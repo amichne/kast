@@ -17,9 +17,9 @@ val ideaHome: File get() = ideaHomeOrNull
 // ───────────────────────────────────────────────────────────────────────────────
 // Compat JAR strategy
 //
-// The AA (analysis-api-standalone-for-ide:2.3.20-ij253-87) was compiled against
-// an early IJ 2025.3 EAP.  The stable IJ 2025.3 distribution has two sets of
-// conflicting classes in the com.intellij.ide.plugins package:
+// The AA (analysis-api-standalone-for-ide) was compiled against an early IJ 2025.3
+// EAP. The stable IJ 2025.3 distribution has two sets of conflicting classes in
+// the com.intellij.ide.plugins package:
 //
 //  ┌─────────────────────────┬─────────────────────────────────────────────────────────┐
 //  │ Source                  │ Required for                                            │
@@ -140,6 +140,7 @@ application {
 
 dependencies {
     implementation(project(":analysis-api"))
+    implementation(project(":analysis-common"))
     implementation(project(":analysis-server"))
     implementation(libs.analysis.api.standalone) {
         isTransitive = false
@@ -154,5 +155,5 @@ dependencies {
     implementation(libs.logback.classic)
     testImplementation(project(":shared-testing"))
     // IJ platform Logger.setFactory() references junit.rules.TestRule at class-init time.
-    testRuntimeOnly("junit:junit:4.13.2")
+    testRuntimeOnly(libs.junit4)
 }

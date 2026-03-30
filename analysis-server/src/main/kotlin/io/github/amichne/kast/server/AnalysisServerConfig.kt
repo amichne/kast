@@ -11,7 +11,19 @@ data class AnalysisServerConfig(
     val maxResults: Int = 500,
     val maxConcurrentRequests: Int = 4,
     val descriptorDirectory: Path = defaultDescriptorDirectory(),
-)
+) {
+    init {
+        validate()
+    }
+
+    private fun validate() {
+        val isLoopback = host == "127.0.0.1" || host == "::1" || host.equals("localhost", ignoreCase = true)
+        require(isLoopback || !token.isNullOrBlank()) {
+            "Binding to non-loopback address '$host' requires a non-empty token for security. " +
+                "Set the 'token' field or bind to 127.0.0.1 / ::1 / localhost instead."
+        }
+    }
+}
 
 fun defaultDescriptorDirectory(): Path = System.getenv("KAST_INSTANCE_DIR")
     ?.let(::Path)

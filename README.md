@@ -21,10 +21,9 @@ The bootstrap and first vertical slice are in place:
 - the Gradle build, convention plugins, and module structure exist
 - the HTTP server, descriptor file workflow, and edit-application path work
 - the IntelliJ backend provides PSI-backed symbol resolution, references,
-  rename planning, and parser-level diagnostics
-- the standalone backend is scaffolded and currently advertises `APPLY_EDITS`
-  only
+  rename planning, and Kotlin semantic diagnostics for Kotlin files
+- the standalone backend provides symbol resolution, references, diagnostics,
+  rename planning, and edit application through the shared HTTP contract
 
-The next work is to replace the standalone scaffolding with a full Kotlin
-Analysis API implementation and to bring `callHierarchy` online behind
-capability gating.
+The main remaining work is to bring `callHierarchy` online and harden the
+standalone dependency path so it does not depend on the IntelliJ build cache.

@@ -4,6 +4,8 @@ plugins {
     kotlin("plugin.serialization")
 }
 
+private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
+
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
@@ -21,8 +23,8 @@ tasks.withType<Test>().configureEach {
 }
 
 dependencies {
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.3")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.3")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.10.3")
+    testImplementation(catalog.findLibrary("junit-jupiter-api").get())
+    testImplementation(catalog.findLibrary("coroutines-test").get())
+    testRuntimeOnly(catalog.findLibrary("junit-jupiter-engine").get())
+    testRuntimeOnly(catalog.findLibrary("junit-platform-launcher").get())
 }

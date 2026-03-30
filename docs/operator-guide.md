@@ -66,8 +66,22 @@ The current IntelliJ limits are fixed at startup:
 - `requestTimeoutMillis = 30000`
 - `maxConcurrentRequests = 4`
 
-`DIAGNOSTICS` currently reports parser-level PSI errors only. Semantic
-diagnostics and call hierarchy support remain future work.
+For repository-side verification of the current IntelliJ `2025.3` and bundled
+Kotlin path, run these checks from the repo root:
+
+```bash
+./gradlew :backend-intellij:test \
+  :backend-intellij:verifyPluginStructure \
+  :backend-intellij:buildSearchableOptions
+```
+
+That sequence proves the plugin descriptor structure, searchable-options
+generation, and project-scoped server startup path that writes a descriptor and
+serves `/api/v1/health` during IntelliJ-hosted tests.
+
+`DIAGNOSTICS` now reports Kotlin semantic diagnostics for Kotlin files and
+falls back to PSI parse errors for non-Kotlin PSI. Call hierarchy support
+remains future work.
 
 ## Standalone host
 
@@ -127,6 +141,7 @@ These constraints affect clients regardless of which host you run.
 
 ## Next steps
 
-Use [Get started](get-started.md) if you need the bootstrap flow. Read
+Use [Choose a runtime](choose-a-runtime.md) if you are deciding which host to
+start. Use [Get started](get-started.md) for the bootstrap flow, and read
 [HTTP API](api-reference.md) when you are implementing a client against the
 contract.

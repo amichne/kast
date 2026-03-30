@@ -3,6 +3,8 @@ plugins {
     id("org.jetbrains.intellij.platform")
 }
 
+private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
+
 kotlin {
     jvmToolchain(21)
 }
@@ -14,7 +16,7 @@ tasks.withType<Test>().configureEach {
 intellijPlatform {
     pluginConfiguration {
         ideaVersion {
-            sinceBuild = "253"
+            sinceBuild = catalog.findVersion("intellij-since-build").get().requiredVersion
         }
     }
 

@@ -9,6 +9,9 @@ Kast lets you point the same client workflow at either an IntelliJ-backed
 server or a standalone JVM process. This guide gets you from a clean checkout
 to a running instance and a first HTTP request.
 
+Use [Choose a runtime](choose-a-runtime.md) first if you are still deciding
+whether to start Kast inside IntelliJ or as a standalone process.
+
 > **Note:** The Gradle build uses Java 21.
 
 ## Prerequisites
@@ -138,5 +141,6 @@ You know the bootstrap worked when all three of these conditions are true.
 ## Next steps
 
 Read [HTTP API](api-reference.md) to wire a client against the contract. Use
-[Operator guide](operator-guide.md) when you need runtime defaults, CLI flags,
-or descriptor lifecycle details.
+[Choose a runtime](choose-a-runtime.md) when you need the host-selection guide.
+Keep [Operator guide](operator-guide.md) nearby for runtime defaults, CLI
+flags, or descriptor lifecycle details.

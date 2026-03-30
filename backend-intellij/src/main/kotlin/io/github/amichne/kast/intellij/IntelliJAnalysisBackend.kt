@@ -7,20 +7,12 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.LocalFileSystem
-import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiErrorElement
-import com.intellij.psi.PsiField
 import com.intellij.psi.PsiFile
-import com.intellij.psi.PsiManager
-import com.intellij.psi.PsiMethod
-import com.intellij.psi.PsiNameIdentifierOwner
-import com.intellij.psi.PsiNamedElement
 import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.ReferencesSearch
-import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.refactoring.rename.RenameProcessor
 import com.intellij.usageView.UsageInfo
 import io.github.amichne.kast.api.AnalysisBackend
@@ -30,16 +22,12 @@ import io.github.amichne.kast.api.BackendCapabilities
 import io.github.amichne.kast.api.CallHierarchyQuery
 import io.github.amichne.kast.api.CallHierarchyResult
 import io.github.amichne.kast.api.ConflictException
-import io.github.amichne.kast.api.Diagnostic
-import io.github.amichne.kast.api.DiagnosticSeverity
 import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.DiagnosticsResult
 import io.github.amichne.kast.api.EditPlanValidator
 import io.github.amichne.kast.api.FileHash
 import io.github.amichne.kast.api.FileHashing
-import io.github.amichne.kast.api.FilePosition
 import io.github.amichne.kast.api.HealthResponse
-import io.github.amichne.kast.api.Location
 import io.github.amichne.kast.api.MutationCapability
 import io.github.amichne.kast.api.NotFoundException
 import io.github.amichne.kast.api.PartialApplyException
@@ -49,11 +37,17 @@ import io.github.amichne.kast.api.ReferencesResult
 import io.github.amichne.kast.api.RenameQuery
 import io.github.amichne.kast.api.RenameResult
 import io.github.amichne.kast.api.ServerLimits
-import io.github.amichne.kast.api.Symbol
-import io.github.amichne.kast.api.SymbolKind
 import io.github.amichne.kast.api.SymbolQuery
 import io.github.amichne.kast.api.SymbolResult
 import io.github.amichne.kast.api.TextEdit
+import io.github.amichne.kast.common.declarationEdit
+import io.github.amichne.kast.common.fqName
+import io.github.amichne.kast.common.nameRange
+import io.github.amichne.kast.common.resolveTarget
+import io.github.amichne.kast.common.toApiDiagnostics
+import io.github.amichne.kast.common.toApiSeverity
+import io.github.amichne.kast.common.toKastLocation
+import io.github.amichne.kast.common.toSymbolModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asExecutor
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -65,15 +59,8 @@ import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.components.KaDiagnosticCheckerFilter
 import org.jetbrains.kotlin.analysis.api.components.collectDiagnostics
-import org.jetbrains.kotlin.analysis.api.diagnostics.KaDiagnosticWithPsi
-import org.jetbrains.kotlin.analysis.api.diagnostics.KaSeverity
 import org.jetbrains.kotlin.psi.KtFile
-import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
-import org.jetbrains.kotlin.psi.KtNamedFunction
-import org.jetbrains.kotlin.psi.KtObjectDeclaration
-import org.jetbrains.kotlin.psi.KtParameter
-import org.jetbrains.kotlin.psi.KtProperty
 import java.util.concurrent.Callable
 import java.nio.file.Path
 import kotlin.io.path.readText
@@ -116,7 +103,7 @@ class IntelliJAnalysisBackend(
     override suspend fun resolveSymbol(query: SymbolQuery): SymbolResult = readInSmartMode {
         val file = requirePsiFile(query.position.filePath)
         val target = resolveTarget(file, query.position.offset)
-        SymbolResult(target.toSymbol(file))
+        SymbolResult(target.toSymbolModel(file.packageNameOrNull()))
     }
 
     override suspend fun findReferences(query: ReferencesQuery): ReferencesResult = readInSmartMode {
@@ -126,12 +113,12 @@ class IntelliJAnalysisBackend(
             .findAll()
             .map { reference ->
                 val range = reference.element.textRange.shiftRight(reference.rangeInElement.startOffset)
-                reference.element.toLocation(range)
+                reference.element.toKastLocation(range)
             }
             .sortedWith(compareBy({ it.filePath }, { it.startOffset }))
 
         ReferencesResult(
-            declaration = if (query.includeDeclaration) target.toSymbol(file) else null,
+            declaration = if (query.includeDeclaration) target.toSymbolModel(file.packageNameOrNull()) else null,
             references = references,
         )
     }
@@ -277,34 +264,11 @@ class IntelliJAnalysisBackend(
                 message = "The requested file does not exist in the IntelliJ project",
                 details = mapOf("filePath" to filePath),
             )
-        return PsiManager.getInstance(project).findFile(virtualFile)
+        return com.intellij.psi.PsiManager.getInstance(project).findFile(virtualFile)
             ?: throw NotFoundException(
                 message = "The requested file could not be resolved to a PSI file",
                 details = mapOf("filePath" to filePath),
             )
-    }
-
-    private fun resolveTarget(
-        file: PsiFile,
-        offset: Int,
-    ): PsiElement {
-        val leaf = file.findElementAt(offset)
-            ?: throw NotFoundException(
-                message = "No PSI element was found at the requested offset",
-                details = mapOf("offset" to offset.toString()),
-            )
-
-        generateSequence(leaf as PsiElement?) { element -> element.parent }.forEach { element ->
-            element.references.firstNotNullOfOrNull { it.resolve() }?.let { resolved ->
-                return resolved
-            }
-
-            if (element is PsiNamedElement && !element.name.isNullOrBlank()) {
-                return element
-            }
-        }
-
-        throw NotFoundException("No resolvable symbol was found at the requested offset")
     }
 
     private fun currentFileHashes(filePaths: Collection<String>): List<FileHash> = filePaths
@@ -343,21 +307,6 @@ class IntelliJAnalysisBackend(
         }
     }
 
-    private fun PsiElement.declarationEdit(newName: String): TextEdit {
-        val range = when (this) {
-            is KtNamedDeclaration -> nameIdentifier?.textRange ?: textRange
-            is PsiNameIdentifierOwner -> nameIdentifier?.textRange ?: textRange
-            else -> textRange
-        }
-
-        return TextEdit(
-            filePath = containingFile.virtualFile.path,
-            startOffset = range.startOffset,
-            endOffset = range.endOffset,
-            newText = newName,
-        )
-    }
-
     private fun UsageInfo.toTextEdit(newName: String): TextEdit? {
         if (isNonCodeUsage) {
             return null
@@ -392,120 +341,20 @@ class IntelliJAnalysisBackend(
         )
     }
 
-    private fun PsiElement.toSymbol(file: PsiFile): Symbol {
-        return Symbol(
-            fqName = fqName(),
-            kind = kind(),
-            location = toLocation(nameRange()),
-            type = typeDescription(),
-            containingDeclaration = file.packageNameOrNull(),
-        )
-    }
-
-    private fun PsiElement.nameRange(): TextRange = when (this) {
-        is KtNamedDeclaration -> nameIdentifier?.textRange ?: textRange
-        is PsiNameIdentifierOwner -> nameIdentifier?.textRange ?: textRange
-        else -> textRange
-    }
-
-    private fun PsiElement.toLocation(range: TextRange): Location {
-        val document = PsiDocumentManager.getInstance(project).getDocument(containingFile)
-            ?: throw NotFoundException("Unable to create a document for the PSI file")
-        val safeStartOffset = range.startOffset.coerceIn(0, document.textLength)
-        val safeEndOffset = range.endOffset.coerceIn(safeStartOffset, document.textLength)
-        val safeRange = TextRange(safeStartOffset, safeEndOffset)
-        val lineIndex = document.getLineNumber(safeRange.startOffset)
-        val previewStart = document.getLineStartOffset(lineIndex)
-        val previewEnd = document.getLineEndOffset(lineIndex)
-
-        return Location(
-            filePath = containingFile.virtualFile.path,
-            startOffset = safeRange.startOffset,
-            endOffset = safeRange.endOffset,
-            startLine = lineIndex + 1,
-            startColumn = safeRange.startOffset - previewStart + 1,
-            preview = document.getText(TextRange(previewStart, previewEnd)).trimEnd(),
-        )
-    }
-
-    private fun PsiElement.fqName(): String = when (this) {
-        is KtNamedDeclaration -> fqName?.asString() ?: name ?: "<anonymous>"
-        is PsiClass -> qualifiedName ?: name ?: "<anonymous>"
-        is PsiMethod -> "${containingClass?.qualifiedName ?: "<local>"}#${name}"
-        is PsiField -> "${containingClass?.qualifiedName ?: "<local>"}.${name}"
-        is PsiNamedElement -> name ?: "<anonymous>"
-        else -> text
-    }
-
-    private fun PsiElement.kind(): SymbolKind = when (this) {
-        is KtClass -> SymbolKind.CLASS
-        is KtObjectDeclaration -> SymbolKind.OBJECT
-        is KtNamedFunction -> SymbolKind.FUNCTION
-        is KtProperty -> SymbolKind.PROPERTY
-        is KtParameter -> SymbolKind.PARAMETER
-        is PsiClass -> if (isInterface) SymbolKind.INTERFACE else SymbolKind.CLASS
-        is PsiMethod -> SymbolKind.FUNCTION
-        is PsiField -> SymbolKind.PROPERTY
-        else -> SymbolKind.UNKNOWN
-    }
-
-    private fun PsiElement.typeDescription(): String? = when (this) {
-        is KtNamedFunction -> typeReference?.text
-        is KtProperty -> typeReference?.text
-        is PsiMethod -> returnType?.presentableText
-        is PsiField -> type.presentableText
-        else -> null
-    }
+    private fun PsiFile.psiParseErrors(): List<io.github.amichne.kast.api.Diagnostic> =
+        com.intellij.psi.util.PsiTreeUtil.collectElementsOfType(this, com.intellij.psi.PsiErrorElement::class.java)
+            .map { error ->
+                io.github.amichne.kast.api.Diagnostic(
+                    location = error.toKastLocation(error.textRange),
+                    severity = io.github.amichne.kast.api.DiagnosticSeverity.ERROR,
+                    message = error.errorDescription,
+                    code = "PSI_PARSE_ERROR",
+                )
+            }
 
     private fun PsiFile.packageNameOrNull(): String? = when (this) {
         is org.jetbrains.kotlin.psi.KtFile -> packageFqName.asString().ifBlank { null }
         else -> null
-    }
-
-    private fun PsiFile.psiParseErrors(): List<Diagnostic> = PsiTreeUtil.collectElementsOfType(this, PsiErrorElement::class.java)
-        .map { error ->
-            Diagnostic(
-                location = error.toLocation(error.textRange),
-                severity = DiagnosticSeverity.ERROR,
-                message = error.errorDescription,
-                code = "PSI_PARSE_ERROR",
-            )
-        }
-
-    private fun KaDiagnosticWithPsi<*>.toApiDiagnostics(): List<Diagnostic> {
-        val ranges = textRanges.ifEmpty { listOf(TextRange(0, psi.textLength)) }
-        return ranges.map { range ->
-            Diagnostic(
-                location = psi.toLocation(absoluteRange(range)),
-                severity = severity.toApiSeverity(),
-                message = defaultMessage,
-                code = factoryName,
-            )
-        }
-    }
-
-    private fun KaDiagnosticWithPsi<*>.absoluteRange(relativeRange: TextRange): TextRange {
-        val fileLength = psi.containingFile.textLength
-        return when {
-            relativeRange.endOffset <= psi.textLength -> {
-                val elementStartOffset = psi.textRange.startOffset
-                TextRange(
-                    elementStartOffset + relativeRange.startOffset,
-                    elementStartOffset + relativeRange.endOffset,
-                )
-            }
-            relativeRange.endOffset <= fileLength -> relativeRange
-            else -> TextRange(
-                relativeRange.startOffset.coerceIn(0, fileLength),
-                relativeRange.endOffset.coerceIn(relativeRange.startOffset.coerceIn(0, fileLength), fileLength),
-            )
-        }
-    }
-
-    private fun KaSeverity.toApiSeverity(): DiagnosticSeverity = when (this) {
-        KaSeverity.ERROR -> DiagnosticSeverity.ERROR
-        KaSeverity.WARNING -> DiagnosticSeverity.WARNING
-        KaSeverity.INFO -> DiagnosticSeverity.INFO
     }
 
     private suspend fun <T> awaitPromise(promise: CancellablePromise<T>): T = suspendCancellableCoroutine { continuation ->

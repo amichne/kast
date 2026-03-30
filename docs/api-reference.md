@@ -48,7 +48,7 @@ truth.
 | `RESOLVE_SYMBOL` | Yes | Yes | IntelliJ resolves against PSI and indices; standalone resolves against the Kotlin Analysis API. |
 | `FIND_REFERENCES` | Yes | Yes | Both hosts return locations and optional declarations. |
 | `CALL_HIERARCHY` | No | No | The route exists, but production support is not implemented. |
-| `DIAGNOSTICS` | Yes | Yes | IntelliJ diagnostics are parser-level today; standalone reports Kotlin Analysis API diagnostics. |
+| `DIAGNOSTICS` | Yes | Yes | IntelliJ reports Kotlin semantic diagnostics for Kotlin files and falls back to PSI parse errors for other PSI; standalone reports Kotlin Analysis API diagnostics. |
 | `RENAME` | Yes | Yes | The response is a text edit plan in both hosts. |
 | `APPLY_EDITS` | Yes | Yes | This is the shared mutation primitive across both hosts. |
 
@@ -97,6 +97,7 @@ the edit set before touching the workspace.
 
 ## Next steps
 
-Use [Get started](get-started.md) if you still need a running instance. Keep
-[Operator guide](operator-guide.md) nearby when you need the descriptor fields,
-CLI flags, or runtime defaults.
+Use [Choose a runtime](choose-a-runtime.md) if you need to decide which host to
+start. Use [Get started](get-started.md) if you still need a running instance.
+Keep [Operator guide](operator-guide.md) nearby when you need the descriptor
+fields, CLI flags, or runtime defaults.

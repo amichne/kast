@@ -18,27 +18,31 @@ class KastProjectService(
 ) : Disposable {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val started = AtomicBoolean(false)
+    private val disposed = AtomicBoolean(false)
+    private val lifecycleLock = Any()
 
     @Volatile
     private var server: RunningAnalysisServer? = null
 
     fun start() {
+        val workspaceRoot = project.basePath ?: return
+        if (disposed.get()) {
+            return
+        }
         if (!started.compareAndSet(false, true)) {
             return
         }
 
-        val workspaceRoot = project.basePath ?: return
         scope.launch {
-            val backend = IntelliJAnalysisBackend(
-                project = project,
-                limits = ServerLimits(
-                    maxResults = 500,
-                    requestTimeoutMillis = 30_000,
-                    maxConcurrentRequests = 4,
+            val runningServer = AnalysisServer(
+                backend = IntelliJAnalysisBackend(
+                    project = project,
+                    limits = ServerLimits(
+                        maxResults = 500,
+                        requestTimeoutMillis = 30_000,
+                        maxConcurrentRequests = 4,
+                    ),
                 ),
-            )
-            server = AnalysisServer(
-                backend = backend,
                 config = AnalysisServerConfig(
                     host = "127.0.0.1",
                     port = 0,
@@ -46,12 +50,31 @@ class KastProjectService(
                     maxConcurrentRequests = 4,
                 ),
             ).start()
-            println("kast IntelliJ backend started for $workspaceRoot on ${server?.descriptor?.port}")
+            val port = synchronized(lifecycleLock) {
+                if (disposed.get()) {
+                    null
+                } else {
+                    server = runningServer
+                    runningServer.descriptor.port
+                }
+            }
+            if (port == null) {
+                runningServer.close()
+                return@launch
+            }
+
+            println("kast IntelliJ backend started for $workspaceRoot on $port")
         }
     }
 
     override fun dispose() {
-        server?.close()
+        disposed.set(true)
+        val runningServer = synchronized(lifecycleLock) {
+            server.also {
+                server = null
+            }
+        }
+        runningServer?.close()
         scope.cancel()
     }
 }

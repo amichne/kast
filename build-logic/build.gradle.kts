@@ -13,8 +13,10 @@ repositories {
     mavenCentral()
 }
 
+private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
+
 dependencies {
-    implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:2.3.20")
-    implementation("org.jetbrains.kotlin:kotlin-serialization:2.3.20")
-    implementation("org.jetbrains.intellij.platform:org.jetbrains.intellij.platform.gradle.plugin:2.13.1")
+    implementation(catalog.findLibrary("kotlin-gradle-plugin").get())
+    implementation(catalog.findLibrary("kotlin-serialization-plugin").get())
+    implementation(catalog.findLibrary("intellij-platform-gradle-plugin").get())
 }

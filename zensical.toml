@@ -16,7 +16,7 @@ Copyright &copy; 2026 amichne
 """
 nav = [
   { "Overview" = "index.md" },
-  { "Guide" = [{ "Get started" = "get-started.md" }, { "Operator guide" = "operator-guide.md" }] },
+  { "Guide" = [{ "Choose a runtime" = "choose-a-runtime.md" }, { "Get started" = "get-started.md" }, { "Operator guide" = "operator-guide.md" }] },
   { "Reference" = [{ "HTTP API" = "api-reference.md" }] },
   { "Architecture" = [{ "Implementation plan" = "impl-001.md" }, { "Remaining work" = "remaining-work.md" }, { "ADR 001" = "adr-001.md" }, { "ADR 002" = "adr-002.md" }, { "ADR 003" = "adr-003.md" }, { "ADR 004" = "adr-004.md" }] },
 ]

@@ -9,6 +9,9 @@
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/analysis-api/kast.analysis-api.iml" filepath="$PROJECT_DIR$/.idea/modules/analysis-api/kast.analysis-api.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/analysis-api/kast.analysis-api.main.iml" filepath="$PROJECT_DIR$/.idea/modules/analysis-api/kast.analysis-api.main.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/analysis-api/kast.analysis-api.test.iml" filepath="$PROJECT_DIR$/.idea/modules/analysis-api/kast.analysis-api.test.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/analysis-common/kast.analysis-common.iml" filepath="$PROJECT_DIR$/.idea/modules/analysis-common/kast.analysis-common.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/analysis-common/kast.analysis-common.main.iml" filepath="$PROJECT_DIR$/.idea/modules/analysis-common/kast.analysis-common.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/analysis-common/kast.analysis-common.test.iml" filepath="$PROJECT_DIR$/.idea/modules/analysis-common/kast.analysis-common.test.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/analysis-server/kast.analysis-server.iml" filepath="$PROJECT_DIR$/.idea/modules/analysis-server/kast.analysis-server.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/analysis-server/kast.analysis-server.main.iml" filepath="$PROJECT_DIR$/.idea/modules/analysis-server/kast.analysis-server.main.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/analysis-server/kast.analysis-server.test.iml" filepath="$PROJECT_DIR$/.idea/modules/analysis-server/kast.analysis-server.test.iml" />

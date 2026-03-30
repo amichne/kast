@@ -15,15 +15,16 @@ repositories {
 
 dependencies {
     implementation(project(":analysis-api"))
+    implementation(project(":analysis-common"))
     implementation(project(":analysis-server"))
     testImplementation(project(":shared-testing"))
-    testImplementation("junit:junit:4.13.2")
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.3")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.3")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.10.3")
+    testImplementation(libs.junit4)
+    testImplementation(libs.junit.jupiter.api)
+    testRuntimeOnly(libs.junit.jupiter.engine)
+    testRuntimeOnly(libs.junit.platform.launcher)
 
     intellijPlatform {
-        intellijIdea("2025.3")
+        intellijIdea(libs.versions.intellij.idea.get())
         bundledPlugin("com.intellij.java")
         bundledPlugin("org.jetbrains.kotlin")
         testFramework(TestFrameworkType.Platform)
@@ -33,13 +34,17 @@ dependencies {
     }
 }
 
+intellijPlatform {
+    pluginConfiguration {
+        version = providers.gradleProperty("VERSION").get()
+        description =
+            "PSI-backed Kotlin analysis server plugin that starts a project-scoped Kast backend inside IntelliJ IDEA."
+    }
+}
+
 configurations.named("testRuntimeClasspath") {
     exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core")
     exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core-jvm")
     exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-test")
     exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-test-jvm")
-}
-
-tasks.named("buildSearchableOptions") {
-    enabled = false
 }

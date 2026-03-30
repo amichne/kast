@@ -13,6 +13,13 @@ text edit application.
 
 <div class="grid cards" markdown>
 
+-   **Choose a runtime**
+
+    Compare the IntelliJ and standalone hosts before you wire one into your
+    workflow.
+
+    [Decide which host to start](choose-a-runtime.md)
+
 -   **Get started**
 
     Build a runtime, discover its descriptor file, and make your first
@@ -71,7 +78,8 @@ important distinction is what each host advertises right now.
 
 ## Next steps
 
-Start with [Get started](get-started.md) if you want a running instance. Use
-[HTTP API](api-reference.md) when you are wiring a client or agent, and keep
+Start with [Choose a runtime](choose-a-runtime.md) if you need to decide
+between the IntelliJ and standalone hosts. Use
+[Get started](get-started.md) once you are ready to start one, then keep
 [Operator guide](operator-guide.md) open when you need the runtime defaults and
 descriptor details.
