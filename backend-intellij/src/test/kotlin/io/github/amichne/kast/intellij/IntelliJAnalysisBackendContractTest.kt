@@ -1,16 +1,14 @@
 package io.github.amichne.kast.intellij
 
-import com.intellij.testFramework.fixtures.LightJavaCodeInsightFixtureTestCase5
-import io.github.amichne.kast.api.ServerLimits
 import io.github.amichne.kast.testing.AnalysisBackendContractAssertions
 import io.github.amichne.kast.testing.AnalysisBackendContractFixture
-import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 import java.nio.file.Path
 
-class IntelliJAnalysisBackendContractTest : LightJavaCodeInsightFixtureTestCase5() {
+class IntelliJAnalysisBackendContractTest : IntelliJFixtureTestCase() {
     @Test
-    fun `intellij backend satisfies the shared contract fixture`() = runTest {
+    fun `intellij backend satisfies the shared contract fixture`() = runBlocking {
         val fixtureProject = createContractFixture()
         val backend = createBackend()
 
@@ -21,7 +19,7 @@ class IntelliJAnalysisBackendContractTest : LightJavaCodeInsightFixtureTestCase5
     }
 
     @Test
-    fun `intellij diagnostics report fixture syntax errors`() = runTest {
+    fun `intellij diagnostics report fixture syntax errors`() = runBlocking {
         val fixtureProject = createContractFixture()
         val backend = createBackend()
 
@@ -33,18 +31,9 @@ class IntelliJAnalysisBackendContractTest : LightJavaCodeInsightFixtureTestCase5
 
     private fun createContractFixture(): AnalysisBackendContractFixture {
         return AnalysisBackendContractFixture.create(
-            workspaceRoot = Path.of(fixture.tempDirPath),
+            workspaceRoot = workspaceRoot(),
         ) { relativePath, content ->
-            Path.of(fixture.addFileToProject(relativePath, content).virtualFile.path)
+            writeWorkspaceFile(relativePath, content)
         }
     }
-
-    private fun createBackend(): IntelliJAnalysisBackend = IntelliJAnalysisBackend(
-        project = project,
-        limits = ServerLimits(
-            maxResults = 100,
-            requestTimeoutMillis = 30_000,
-            maxConcurrentRequests = 4,
-        ),
-    )
 }

@@ -1,10 +1,10 @@
 package io.github.amichne.kast.intellij
 
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
-import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.Computable
+import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.psi.PsiClass
@@ -17,9 +17,12 @@ import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiNameIdentifierOwner
 import com.intellij.psi.PsiNamedElement
+import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.refactoring.rename.RenameProcessor
+import com.intellij.usageView.UsageInfo
 import io.github.amichne.kast.api.AnalysisBackend
 import io.github.amichne.kast.api.ApplyEditsQuery
 import io.github.amichne.kast.api.ApplyEditsResult
@@ -52,23 +55,37 @@ import io.github.amichne.kast.api.SymbolQuery
 import io.github.amichne.kast.api.SymbolResult
 import io.github.amichne.kast.api.TextEdit
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asExecutor
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import org.jetbrains.concurrency.CancellablePromise
+import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
+import org.jetbrains.kotlin.analysis.api.analyze
+import org.jetbrains.kotlin.analysis.api.components.KaDiagnosticCheckerFilter
+import org.jetbrains.kotlin.analysis.api.components.collectDiagnostics
+import org.jetbrains.kotlin.analysis.api.diagnostics.KaDiagnosticWithPsi
+import org.jetbrains.kotlin.analysis.api.diagnostics.KaSeverity
+import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtObjectDeclaration
 import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtProperty
+import java.util.concurrent.Callable
 import java.nio.file.Path
 import kotlin.io.path.readText
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
+@OptIn(KaExperimentalApi::class)
 class IntelliJAnalysisBackend(
     private val project: Project,
     private val limits: ServerLimits,
 ) : AnalysisBackend {
-    private val readDispatcher = Dispatchers.IO.limitedParallelism(limits.maxConcurrentRequests)
+    private val readExecutor = Dispatchers.IO.limitedParallelism(limits.maxConcurrentRequests).asExecutor()
     private val writeMutex = Mutex()
 
     override suspend fun capabilities(): BackendCapabilities = BackendCapabilities(
@@ -126,45 +143,77 @@ class IntelliJAnalysisBackend(
     override suspend fun diagnostics(query: DiagnosticsQuery): DiagnosticsResult = readInSmartMode {
         val diagnostics = query.filePaths.sorted().flatMap { filePath ->
             val file = requirePsiFile(filePath)
-            PsiTreeUtil.collectElementsOfType(file, PsiErrorElement::class.java)
-                .map { error ->
-                    Diagnostic(
-                        location = error.toLocation(error.textRange),
-                        severity = DiagnosticSeverity.ERROR,
-                        message = error.errorDescription,
-                        code = "PSI_PARSE_ERROR",
-                    )
-                }
-        }
+            when (file) {
+                is KtFile -> analyze(file) {
+                    file.collectDiagnostics(KaDiagnosticCheckerFilter.EXTENDED_AND_COMMON_CHECKERS)
+                        .flatMap { diagnostic -> diagnostic.toApiDiagnostics() }
+                }.ifEmpty { file.psiParseErrors() }
+                else -> file.psiParseErrors()
+            }
+        }.sortedWith(compareBy({ it.location.filePath }, { it.location.startOffset }, { it.code ?: "" }))
 
         DiagnosticsResult(diagnostics = diagnostics)
     }
 
-    override suspend fun rename(query: RenameQuery): RenameResult = readInSmartMode {
-        val file = requirePsiFile(query.position.filePath)
-        val target = resolveTarget(file, query.position.offset)
-        val declarationEdit = target.declarationEdit(query.newName)
-        val referenceEdits = ReferencesSearch.search(target, GlobalSearchScope.projectScope(project))
-            .findAll()
-            .map { reference ->
-                val elementRange = reference.element.textRange
-                TextEdit(
-                    filePath = reference.element.containingFile.virtualFile.path,
-                    startOffset = elementRange.startOffset + reference.rangeInElement.startOffset,
-                    endOffset = elementRange.startOffset + reference.rangeInElement.endOffset,
-                    newText = query.newName,
-                )
+    override suspend fun rename(query: RenameQuery): RenameResult {
+        val target = readInSmartMode {
+            val file = requirePsiFile(query.position.filePath)
+            SmartPointerManager.getInstance(project)
+                .createSmartPsiElementPointer(resolveTarget(file, query.position.offset))
+                .element
+                ?: throw NotFoundException("No resolvable symbol was found at the requested offset")
+        }
+        val processor = readInSmartMode {
+            RenameProcessor(project, target, query.newName, false, false).apply {
+                setSearchInComments(false)
+                setSearchTextOccurrences(false)
+            }
+        }
+
+        return withContext(Dispatchers.IO.limitedParallelism(1)) {
+            val preparedRenames = LinkedHashMap<PsiElement, String>()
+            invokeOnEdt {
+                ReadAction.run<RuntimeException> {
+                    processor.prepareRenaming(target, query.newName, preparedRenames)
+                    preparedRenames.forEach { (element, newName) ->
+                        if (element != target) {
+                            processor.addElement(element, newName)
+                        }
+                    }
+                }
+            }
+            val usages = readInSmartMode {
+                processor.findUsages().filterNot { it.isNonCodeUsage }
             }
 
-        val edits = (listOf(declarationEdit) + referenceEdits)
-            .distinctBy { Triple(it.filePath, it.startOffset, it.endOffset) }
-            .sortedWith(compareBy({ it.filePath }, { it.startOffset }))
-        val fileHashes = currentFileHashes(edits.map(TextEdit::filePath))
-        RenameResult(
-            edits = edits,
-            fileHashes = fileHashes,
-            affectedFiles = fileHashes.map(FileHash::filePath),
-        )
+            readInSmartMode {
+                val renamedElements = linkedSetOf(target).apply {
+                    addAll(preparedRenames.keys)
+                }
+                val classifiedUsages = RenameProcessor.classifyUsages(
+                    renamedElements,
+                    usages,
+                )
+                val declarationEdits = renamedElements.map { element ->
+                    element.declarationEdit(processor.getNewName(element))
+                }
+                val usageEdits = renamedElements.flatMap { element ->
+                    classifiedUsages[element].orEmpty().mapNotNull { usage ->
+                        usage.toTextEdit(processor.getNewName(element))
+                    }
+                }
+
+                val edits = (declarationEdits + usageEdits)
+                    .distinctBy { Triple(it.filePath, it.startOffset, it.endOffset) }
+                    .sortedWith(compareBy({ it.filePath }, { it.startOffset }))
+                val fileHashes = currentFileHashes(edits.map(TextEdit::filePath))
+                RenameResult(
+                    edits = edits,
+                    fileHashes = fileHashes,
+                    affectedFiles = fileHashes.map(FileHash::filePath),
+                )
+            }
+        }
     }
 
     override suspend fun applyEdits(query: ApplyEditsQuery): ApplyEditsResult = writeMutex.withLock {
@@ -214,11 +263,13 @@ class IntelliJAnalysisBackend(
         )
     }
 
-    private suspend fun <T> readInSmartMode(action: () -> T): T = withContext(readDispatcher) {
-        DumbService.getInstance(project).runReadActionInSmartMode(
-            Computable { action() },
-        )
-    }
+    private suspend fun <T> readInSmartMode(action: () -> T): T = awaitPromise(
+        ReadAction.nonBlocking(Callable { action() })
+            .inSmartMode(project)
+            .withDocumentsCommitted(project)
+            .expireWith(project)
+            .submit(readExecutor),
+    )
 
     private fun requirePsiFile(filePath: String): PsiFile {
         val virtualFile = LocalFileSystem.getInstance().findFileByPath(filePath)
@@ -307,6 +358,40 @@ class IntelliJAnalysisBackend(
         )
     }
 
+    private fun UsageInfo.toTextEdit(newName: String): TextEdit? {
+        if (isNonCodeUsage) {
+            return null
+        }
+
+        val usageElement = element ?: reference?.element ?: return null
+        val absoluteRange = when {
+            reference != null -> {
+                val usageReference = reference ?: return null
+                usageElement.textRange.shiftRight(usageReference.rangeInElement.startOffset).let { range ->
+                    TextRange(range.startOffset, range.startOffset + usageReference.rangeInElement.length)
+                }
+            }
+            rangeInElement != null -> {
+                val usageRange = rangeInElement ?: return null
+                usageElement.textRange.shiftRight(usageRange.startOffset).let { range ->
+                    TextRange(range.startOffset, range.startOffset + usageRange.length)
+                }
+            }
+            segment != null -> {
+                val usageSegment = segment ?: return null
+                TextRange(usageSegment.startOffset, usageSegment.endOffset)
+            }
+            else -> usageElement.textRange
+        }
+
+        return TextEdit(
+            filePath = usageElement.containingFile.virtualFile.path,
+            startOffset = absoluteRange.startOffset,
+            endOffset = absoluteRange.endOffset,
+            newText = newName,
+        )
+    }
+
     private fun PsiElement.toSymbol(file: PsiFile): Symbol {
         return Symbol(
             fqName = fqName(),
@@ -326,16 +411,19 @@ class IntelliJAnalysisBackend(
     private fun PsiElement.toLocation(range: TextRange): Location {
         val document = PsiDocumentManager.getInstance(project).getDocument(containingFile)
             ?: throw NotFoundException("Unable to create a document for the PSI file")
-        val lineIndex = document.getLineNumber(range.startOffset)
+        val safeStartOffset = range.startOffset.coerceIn(0, document.textLength)
+        val safeEndOffset = range.endOffset.coerceIn(safeStartOffset, document.textLength)
+        val safeRange = TextRange(safeStartOffset, safeEndOffset)
+        val lineIndex = document.getLineNumber(safeRange.startOffset)
         val previewStart = document.getLineStartOffset(lineIndex)
         val previewEnd = document.getLineEndOffset(lineIndex)
 
         return Location(
             filePath = containingFile.virtualFile.path,
-            startOffset = range.startOffset,
-            endOffset = range.endOffset,
+            startOffset = safeRange.startOffset,
+            endOffset = safeRange.endOffset,
             startLine = lineIndex + 1,
-            startColumn = range.startOffset - previewStart + 1,
+            startColumn = safeRange.startOffset - previewStart + 1,
             preview = document.getText(TextRange(previewStart, previewEnd)).trimEnd(),
         )
     }
@@ -372,5 +460,86 @@ class IntelliJAnalysisBackend(
     private fun PsiFile.packageNameOrNull(): String? = when (this) {
         is org.jetbrains.kotlin.psi.KtFile -> packageFqName.asString().ifBlank { null }
         else -> null
+    }
+
+    private fun PsiFile.psiParseErrors(): List<Diagnostic> = PsiTreeUtil.collectElementsOfType(this, PsiErrorElement::class.java)
+        .map { error ->
+            Diagnostic(
+                location = error.toLocation(error.textRange),
+                severity = DiagnosticSeverity.ERROR,
+                message = error.errorDescription,
+                code = "PSI_PARSE_ERROR",
+            )
+        }
+
+    private fun KaDiagnosticWithPsi<*>.toApiDiagnostics(): List<Diagnostic> {
+        val ranges = textRanges.ifEmpty { listOf(TextRange(0, psi.textLength)) }
+        return ranges.map { range ->
+            Diagnostic(
+                location = psi.toLocation(absoluteRange(range)),
+                severity = severity.toApiSeverity(),
+                message = defaultMessage,
+                code = factoryName,
+            )
+        }
+    }
+
+    private fun KaDiagnosticWithPsi<*>.absoluteRange(relativeRange: TextRange): TextRange {
+        val fileLength = psi.containingFile.textLength
+        return when {
+            relativeRange.endOffset <= psi.textLength -> {
+                val elementStartOffset = psi.textRange.startOffset
+                TextRange(
+                    elementStartOffset + relativeRange.startOffset,
+                    elementStartOffset + relativeRange.endOffset,
+                )
+            }
+            relativeRange.endOffset <= fileLength -> relativeRange
+            else -> TextRange(
+                relativeRange.startOffset.coerceIn(0, fileLength),
+                relativeRange.endOffset.coerceIn(relativeRange.startOffset.coerceIn(0, fileLength), fileLength),
+            )
+        }
+    }
+
+    private fun KaSeverity.toApiSeverity(): DiagnosticSeverity = when (this) {
+        KaSeverity.ERROR -> DiagnosticSeverity.ERROR
+        KaSeverity.WARNING -> DiagnosticSeverity.WARNING
+        KaSeverity.INFO -> DiagnosticSeverity.INFO
+    }
+
+    private suspend fun <T> awaitPromise(promise: CancellablePromise<T>): T = suspendCancellableCoroutine { continuation ->
+        promise.onSuccess { result ->
+            if (continuation.isActive) {
+                continuation.resume(result)
+            }
+        }
+        promise.onError { throwable ->
+            if (!continuation.isActive) {
+                return@onError
+            }
+            if (throwable is ProcessCanceledException) {
+                continuation.cancel(throwable)
+            } else {
+                continuation.resumeWithException(throwable)
+            }
+        }
+        continuation.invokeOnCancellation {
+            promise.cancel()
+        }
+    }
+
+    private suspend fun invokeOnEdt(action: () -> Unit) = suspendCancellableCoroutine { continuation ->
+        com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater {
+            if (!continuation.isActive) {
+                return@invokeLater
+            }
+
+            runCatching(action).onSuccess {
+                continuation.resume(Unit)
+            }.onFailure { throwable ->
+                continuation.resumeWithException(throwable)
+            }
+        }
     }
 }
