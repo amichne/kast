@@ -2,6 +2,8 @@ package io.github.amichne.kast.standalone
 
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.fileTypes.BinaryFileTypeDecompilers
+import com.intellij.psi.compiled.ClassFileDecompilers
 import io.github.amichne.kast.api.NotFoundException
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaSourceModule
 import org.jetbrains.kotlin.analysis.api.standalone.StandaloneAnalysisAPISession
@@ -75,6 +77,7 @@ class StandaloneAnalysisSession(
         }
 
         session = createdSession
+        initializeJvmDecompilerServices()
         sourceModule = checkNotNull(createdSourceModule) {
             "The standalone Analysis API session did not create a source module"
         }
@@ -97,6 +100,16 @@ class StandaloneAnalysisSession(
 
     override fun close() {
         Disposer.dispose(disposable)
+    }
+
+    /**
+     * `ClassFileDecompilers` notifies `BinaryFileTypeDecompilers` on extension changes.
+     * If the binary decompiler service is still lazy when the application starts disposing,
+     * IntelliJ tries to instantiate it under an already-disposed parent and fails loudly.
+     */
+    private fun initializeJvmDecompilerServices() {
+        ClassFileDecompilers.getInstance()
+        BinaryFileTypeDecompilers.getInstance()
     }
 
     private fun normalizeFileLookupPath(file: KtFile): String {

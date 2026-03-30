@@ -72,9 +72,12 @@ val buildIdeCompatJar by tasks.registering(Jar::class) {
             provider { ideaHome.resolve("plugins/Kotlin/kotlinc/lib/kotlin-compiler.jar") },
         ),
     ) {
-        // Include all com.intellij.ide.plugins classes that the AA (PluginStructureProvider)
-        // needs in their OLD (kotlin-compiler.jar) form.
+        // Include all plugin-descriptor parsing classes that the AA
+        // (PluginStructureProvider) needs in their OLD (kotlin-compiler.jar) form.
         include("com/intellij/ide/plugins/**/*.class")
+        // ListenerDescriptor moved out of the compiler copy in IJ 2025.3's runtime libs,
+        // but the AA still writes the old mutable pluginDescriptor field.
+        include("com/intellij/util/messages/ListenerDescriptor.class")
         // ContainerDescriptor — replaced by our hybrid above.
         exclude("com/intellij/ide/plugins/ContainerDescriptor.class")
         // IdeaPluginDescriptorImpl — must use the IJ 2025.3 app.jar version (abstract class)

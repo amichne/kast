@@ -1,7 +1,9 @@
 package com.intellij.ide.plugins;
 
+import com.intellij.openapi.components.ServiceDescriptor;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Hybrid ContainerDescriptor that satisfies two incompatible API versions simultaneously:
@@ -10,6 +12,8 @@ import java.util.List;
  * <ul>
  *   <li>no-arg constructor</li>
  *   <li>{@code getServices()} method</li>
+ *   <li>{@code addService(ServiceDescriptor)} method</li>
+ *   <li>{@code getDistinctExtensionPointCount()}/{@code setDistinctExtensionPointCount(int)}</li>
  *   <li>mutable public fields {@code listeners}, {@code extensionPoints}</li>
  * </ul>
  *
@@ -24,14 +28,16 @@ import java.util.List;
 @SuppressWarnings({"rawtypes", "unchecked"})
 public final class ContainerDescriptor {
 
-    // Private backing field for services (old API accesses via getServices()).
-    // AA's PluginStructureProvider calls getServices(), not a direct field access.
-    private List _services = new ArrayList();
+    // Public services field for the new API plus getter/addService for the old API.
+    public List services = new ArrayList();
 
     // Public mutable fields (old API) — AA reads these directly via getfield bytecode.
     public List components = new ArrayList();
     public List listeners = new ArrayList();
     public List extensionPoints = new ArrayList();
+    public transient Map extensions;
+
+    private int distinctExtensionPointCount;
 
     /** No-arg constructor from the old API. */
     public ContainerDescriptor() {}
@@ -41,7 +47,7 @@ public final class ContainerDescriptor {
      * Parameter order: services, components, listeners, extensionPoints.
      */
     public ContainerDescriptor(List services, List components, List listeners, List extensionPoints) {
-        this._services = services != null ? services : new ArrayList();
+        this.services = services != null ? services : new ArrayList();
         this.components = components != null ? components : new ArrayList();
         this.listeners = listeners != null ? listeners : new ArrayList();
         this.extensionPoints = extensionPoints != null ? extensionPoints : new ArrayList();
@@ -49,17 +55,25 @@ public final class ContainerDescriptor {
 
     /** Returns the services list. Called by AA's {@code PluginStructureProvider.getServices()}. */
     public List getServices() {
-        return _services;
+        return services;
     }
 
     /** Adds a service descriptor. Part of the old API used by some AA initialisation paths. */
-    public void addService(Object descriptor) {
-        _services.add(descriptor);
+    public void addService(ServiceDescriptor descriptor) {
+        services.add(descriptor);
+    }
+
+    public int getDistinctExtensionPointCount() {
+        return distinctExtensionPointCount;
+    }
+
+    public void setDistinctExtensionPointCount(int distinctExtensionPointCount) {
+        this.distinctExtensionPointCount = distinctExtensionPointCount;
     }
 
     @Override
     public String toString() {
-        return "ContainerDescriptor(services=" + _services
+        return "ContainerDescriptor(services=" + services
                 + ", components=" + components
                 + ", listeners=" + listeners
                 + ", extensionPoints=" + extensionPoints + ")";

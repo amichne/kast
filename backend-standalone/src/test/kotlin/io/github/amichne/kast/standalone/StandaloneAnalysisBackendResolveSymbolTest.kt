@@ -63,7 +63,7 @@ class StandaloneAnalysisBackendResolveSymbolTest {
 
             assertEquals("sample.greet", result.symbol.fqName)
             assertEquals(SymbolKind.FUNCTION, result.symbol.kind)
-            assertEquals(declarationFile.toString(), result.symbol.location.filePath)
+            assertEquals(normalizePath(declarationFile), result.symbol.location.filePath)
         } finally {
             session.close()
         }
@@ -77,5 +77,10 @@ class StandaloneAnalysisBackendResolveSymbolTest {
         Files.createDirectories(path.parent)
         path.writeText(content)
         return path
+    }
+
+    private fun normalizePath(path: Path): String {
+        val absolutePath = path.toAbsolutePath().normalize()
+        return runCatching { absolutePath.toRealPath().normalize().toString() }.getOrDefault(absolutePath.toString())
     }
 }

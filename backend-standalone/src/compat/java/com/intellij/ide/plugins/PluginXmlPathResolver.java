@@ -8,9 +8,13 @@ import com.intellij.util.xml.dom.StaxFactory;
 import org.codehaus.stax2.XMLStreamReader2;
 import java.io.InputStream;
 import java.nio.file.Path;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Deque;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Bridge PluginXmlPathResolver that implements the bridge {@link PathResolver} interface,
@@ -52,16 +56,11 @@ public final class PluginXmlPathResolver implements PathResolver {
             DataLoader dataLoader,
             String base,
             String relativePath) {
-        InputStream stream;
-        try {
-            stream = dataLoader.load(relativePath, /* ignoreNotFound = */ true);
-        } catch (Exception e) {
-            return false;
-        }
-        if (stream == null) return false;
-        try {
+        ResolvedResource resource = resolveResource(dataLoader, base, relativePath, /* ignoreNotFound = */ true);
+        if (resource == null) return false;
+        try (InputStream stream = resource.stream) {
             com.intellij.ide.plugins.XmlReader.readModuleDescriptor(
-                    stream, context, this, dataLoader, base, descriptor, null);
+                    stream, context, this, dataLoader, resource.path, descriptor, null);
             return true;
         } catch (Exception e) {
             return false;
@@ -74,16 +73,11 @@ public final class PluginXmlPathResolver implements PathResolver {
             DataLoader dataLoader,
             String relativePath,
             RawPluginDescriptor descriptor) {
-        InputStream stream;
-        try {
-            stream = dataLoader.load(relativePath, /* ignoreNotFound = */ false);
-        } catch (Exception e) {
-            return null;
-        }
-        if (stream == null) return null;
-        try {
+        ResolvedResource resource = resolveResource(dataLoader, null, relativePath, /* ignoreNotFound = */ false);
+        if (resource == null) return null;
+        try (InputStream stream = resource.stream) {
             return com.intellij.ide.plugins.XmlReader.readModuleDescriptor(
-                    stream, readContext, this, dataLoader, relativePath, descriptor, null);
+                    stream, readContext, this, dataLoader, resource.path, descriptor, null);
         } catch (Exception e) {
             return null;
         }
@@ -104,13 +98,8 @@ public final class PluginXmlPathResolver implements PathResolver {
     public XIncludeLoader.LoadedXIncludeReference loadXIncludeReference(
             DataLoader dataLoader,
             String relativePath) {
-        try {
-            InputStream stream = dataLoader.load(relativePath, /* ignoreNotFound = */ true);
-            if (stream == null) return null;
-            return new XIncludeLoader.LoadedXIncludeReference(stream, relativePath);
-        } catch (Exception e) {
-            return null;
-        }
+        ResolvedResource resource = resolveResource(dataLoader, null, relativePath, /* ignoreNotFound = */ true);
+        return resource == null ? null : new XIncludeLoader.LoadedXIncludeReference(resource.stream, resource.path);
     }
 
     @Override
@@ -118,14 +107,9 @@ public final class PluginXmlPathResolver implements PathResolver {
             PluginDescriptorReaderContext context,
             DataLoader dataLoader,
             String relativePath) {
-        InputStream stream;
-        try {
-            stream = dataLoader.load(relativePath, /* ignoreNotFound = */ false);
-        } catch (Exception e) {
-            return null;
-        }
-        if (stream == null) return null;
-        try {
+        ResolvedResource resource = resolveResource(dataLoader, null, relativePath, /* ignoreNotFound = */ false);
+        if (resource == null) return null;
+        try (InputStream stream = resource.stream) {
             XIncludeLoader xil = PathResolverKt.toXIncludeLoader(this, dataLoader);
             PluginDescriptorFromXmlStreamConsumer consumer =
                     new PluginDescriptorFromXmlStreamConsumer(context, xil);
@@ -144,5 +128,96 @@ public final class PluginXmlPathResolver implements PathResolver {
             DataLoader dataLoader,
             String relativePath) {
         return resolvePath(context, dataLoader, relativePath);
+    }
+
+    private ResolvedResource resolveResource(
+            DataLoader dataLoader,
+            String base,
+            String relativePath,
+            boolean ignoreNotFound) {
+        for (String candidatePath : candidatePaths(base, relativePath)) {
+            try {
+                InputStream stream = dataLoader.load(candidatePath, ignoreNotFound);
+                if (stream != null) {
+                    return new ResolvedResource(stream, candidatePath);
+                }
+            } catch (Exception ignored) {
+                // Try the next candidate path. The bridge intentionally preserves lenient loading.
+            }
+        }
+        return null;
+    }
+
+    private List<String> candidatePaths(String base, String relativePath) {
+        Set<String> candidates = new LinkedHashSet<>();
+        addCandidate(candidates, normalizePath(relativePath));
+        addCandidate(candidates, stripLeadingSlash(normalizePath(relativePath)));
+
+        if (base != null && relativePath != null && !relativePath.startsWith("/")) {
+            String resolvedPath = resolveAgainstBase(base, relativePath);
+            addCandidate(candidates, resolvedPath);
+            addCandidate(candidates, stripLeadingSlash(resolvedPath));
+        }
+
+        return new ArrayList<>(candidates);
+    }
+
+    private void addCandidate(Set<String> candidates, String candidatePath) {
+        if (candidatePath == null || candidatePath.isEmpty()) {
+            return;
+        }
+        candidates.add(candidatePath);
+    }
+
+    private String resolveAgainstBase(String base, String relativePath) {
+        String normalizedBase = normalizePath(base);
+        int lastSlash = normalizedBase.lastIndexOf('/');
+        String directory = lastSlash >= 0 ? normalizedBase.substring(0, lastSlash + 1) : "";
+        return normalizePath(directory + relativePath);
+    }
+
+    private String normalizePath(String path) {
+        if (path == null || path.isEmpty()) {
+            return path;
+        }
+
+        boolean absolute = path.startsWith("/");
+        String[] segments = path.split("/");
+        Deque<String> normalizedSegments = new ArrayDeque<>();
+        for (String segment : segments) {
+            if (segment.isEmpty() || ".".equals(segment)) {
+                continue;
+            }
+            if ("..".equals(segment)) {
+                if (!normalizedSegments.isEmpty()) {
+                    normalizedSegments.removeLast();
+                }
+                continue;
+            }
+            normalizedSegments.addLast(segment);
+        }
+
+        String joined = String.join("/", normalizedSegments);
+        if (!absolute) {
+            return joined;
+        }
+        return joined.isEmpty() ? "/" : "/" + joined;
+    }
+
+    private String stripLeadingSlash(String path) {
+        if (path == null || path.isEmpty() || !path.startsWith("/")) {
+            return path;
+        }
+        return path.substring(1);
+    }
+
+    private static final class ResolvedResource {
+        private final InputStream stream;
+        private final String path;
+
+        private ResolvedResource(InputStream stream, String path) {
+            this.stream = stream;
+            this.path = path;
+        }
     }
 }
