@@ -33,13 +33,17 @@ dependencies {
     }
 }
 
+intellijPlatform {
+    pluginConfiguration {
+        version = providers.gradleProperty("VERSION").get()
+        description =
+            "PSI-backed Kotlin analysis server plugin that starts a project-scoped Kast backend inside IntelliJ IDEA."
+    }
+}
+
 configurations.named("testRuntimeClasspath") {
     exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core")
     exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core-jvm")
     exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-test")
     exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-test-jvm")
-}
-
-tasks.named("buildSearchableOptions") {
-    enabled = false
 }

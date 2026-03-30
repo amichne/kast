@@ -78,20 +78,24 @@ read path is not the hardened nonblocking variant.
 
 ## IntelliJ K2 compatibility verification
 
-The plugin packages successfully, but one sandbox verification path still uses a
-temporary bypass.
+The IntelliJ plugin now has a repeatable verification path for the current
+target IDE and bundled Kotlin plugin.
 
-- **Status:** Unverified or partially bypassed
-- **Current state:** `buildSearchableOptions` is disabled because the sandbox
-  IDE rejected the plugin in Kotlin K2 mode
+- **Status:** Verified for the current `2025.3` target
+- **Current state:** `plugin.xml` declares Kotlin plugin-mode K2 support,
+  `buildSearchableOptions` succeeds again, and IntelliJ backend tests include a
+  startup smoke test that starts the project-scoped server, reads its
+  descriptor, checks `/api/v1/health`, and verifies descriptor cleanup on
+  shutdown
 - **Where:** `backend-intellij/build.gradle.kts`,
-  `backend-intellij/src/main/resources/META-INF/plugin.xml`
-- **Missing:** Explicit Kotlin plugin-mode compatibility metadata or equivalent
-  configuration that satisfies the 2026.1 sandbox path
-- **Impact:** Packaging succeeds, but runtime compatibility in all IDE bootstrap
-  paths is not fully proven yet
-- **Next step:** Add the required Kotlin compatibility declaration, then
-  re-enable sandbox verification
+  `backend-intellij/src/main/resources/META-INF/plugin.xml`,
+  `backend-intellij/src/test/kotlin/io/github/amichne/kast/intellij/IntelliJAnalysisBackendContractTest.kt`
+- **Verification commands:** `./gradlew :backend-intellij:test
+  :backend-intellij:verifyPluginStructure
+  :backend-intellij:buildSearchableOptions`
+- **Notes:** Plugin descriptor version and description now come from the Gradle
+  IntelliJ plugin configuration so structure verification passes without
+  editing generated files
 
 ## Network hardening
 

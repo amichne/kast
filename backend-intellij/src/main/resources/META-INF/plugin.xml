@@ -6,6 +6,10 @@
   <depends>com.intellij.modules.platform</depends>
   <depends>org.jetbrains.kotlin</depends>
 
+  <extensions defaultExtensionNs="org.jetbrains.kotlin">
+    <supportsKotlinPluginMode supportsK2="true" />
+  </extensions>
+
   <extensions defaultExtensionNs="com.intellij">
     <projectService serviceImplementation="io.github.amichne.kast.intellij.KastProjectService" />
     <postStartupActivity implementation="io.github.amichne.kast.intellij.KastProjectActivity" />
