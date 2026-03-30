@@ -1,4 +1,15 @@
-## Implementation Plan
+---
+title: Implementation plan
+description: Sequencing plan for moving Kast from bootstrap to a fuller backend
+  pair.
+icon: lucide/clipboard-list
+---
+
+# Implementation plan
+
+This plan captures the intended implementation order after the initial
+bootstrap. Read it as the next sequencing target, not as a statement that every
+phase is already complete.
 
 ### Phase 1: Prove the architecture (first pass)
 

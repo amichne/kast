@@ -1,3 +1,10 @@
+---
+title: Remaining work
+description: Gaps between the current bootstrap and the intended production
+  shape.
+icon: lucide/construction
+---
+
 # Remaining work
 
 This page lists the implementation areas that remain incomplete after the

@@ -1,0 +1,55 @@
+[project]
+site_name = "Kast"
+site_description = """
+Kast exposes Kotlin analysis through one HTTP/JSON contract with IntelliJ and
+standalone runtime hosts.
+"""
+site_author = "amichne"
+site_url = "https://amichne.github.io/kast/"
+repo_url = "https://github.com/amichne/kast"
+repo_name = "amichne/kast"
+edit_uri = "edit/main/docs"
+docs_dir = "docs"
+site_dir = "site"
+copyright = """
+Copyright &copy; 2026 amichne
+"""
+nav = [
+  { "Overview" = "index.md" },
+  { "Guide" = [{ "Get started" = "get-started.md" }, { "Operator guide" = "operator-guide.md" }] },
+  { "Reference" = [{ "HTTP API" = "api-reference.md" }] },
+  { "Architecture" = [{ "Implementation plan" = "impl-001.md" }, { "Remaining work" = "remaining-work.md" }, { "ADR 001" = "adr-001.md" }, { "ADR 002" = "adr-002.md" }, { "ADR 003" = "adr-003.md" }, { "ADR 004" = "adr-004.md" }] },
+]
+
+[project.theme]
+language = "en"
+features = [
+  "content.action.edit",
+  "content.action.view",
+  "content.code.copy",
+  "content.tabs.link",
+  "navigation.footer",
+  "navigation.instant",
+  "navigation.instant.prefetch",
+  "navigation.path",
+  "navigation.sections",
+  "navigation.top",
+  "navigation.tracking",
+  "search.highlight",
+]
+
+[project.theme.icon]
+logo = "lucide/network"
+repo = "fontawesome/brands/github"
+edit = "material/file-edit-outline"
+view = "material/file-eye-outline"
+
+[[project.theme.palette]]
+scheme = "default"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+scheme = "slate"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to light mode"
