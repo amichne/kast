@@ -2,9 +2,12 @@ package io.github.amichne.kast.standalone
 
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiNameIdentifierOwner
+import com.intellij.psi.PsiReference
 import io.github.amichne.kast.api.Location
 import io.github.amichne.kast.api.Symbol
 import io.github.amichne.kast.api.SymbolKind
+import io.github.amichne.kast.api.TextEdit
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtNamedFunction
@@ -53,6 +56,40 @@ internal fun PsiElement.toKastLocation(range: TextRange = nameRange()): Location
         startLine = content.take(startOffset).count { it == '\n' } + 1,
         startColumn = startOffset - lineStart + 1,
         preview = content.substring(lineStart, lineEnd).trimEnd(),
+    )
+}
+
+internal fun PsiReference.toKastLocation(): Location {
+    val elementStartOffset = element.textRange.startOffset
+    val absoluteRange = TextRange(
+        elementStartOffset + rangeInElement.startOffset,
+        elementStartOffset + rangeInElement.endOffset,
+    )
+    return element.toKastLocation(absoluteRange)
+}
+
+internal fun PsiReference.toTextEdit(newName: String): TextEdit {
+    val elementStartOffset = element.textRange.startOffset
+    return TextEdit(
+        filePath = element.containingFile.virtualFilePath,
+        startOffset = elementStartOffset + rangeInElement.startOffset,
+        endOffset = elementStartOffset + rangeInElement.endOffset,
+        newText = newName,
+    )
+}
+
+internal fun PsiElement.declarationEdit(newName: String): TextEdit {
+    val range = when (this) {
+        is KtNamedDeclaration -> nameIdentifier?.textRange ?: textRange
+        is PsiNameIdentifierOwner -> nameIdentifier?.textRange ?: textRange
+        else -> textRange
+    }
+
+    return TextEdit(
+        filePath = containingFile.virtualFilePath,
+        startOffset = range.startOffset,
+        endOffset = range.endOffset,
+        newText = newName,
     )
 }
 
