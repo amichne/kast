@@ -19,8 +19,6 @@ jobs:
         os:
           - ubuntu-latest
           - macos-latest
-    env:
-      GRADLE_USER_HOME: ${{ runner.temp }}/gradle-home
     steps:
       - uses: actions/checkout@v5
 
@@ -30,6 +28,8 @@ jobs:
           java-version: "21"
 
       - name: Build standalone backend
+        env:
+          GRADLE_USER_HOME: ${{ runner.temp }}/gradle-home
         run: >
           ./gradlew
           :shared-testing:test
@@ -224,8 +224,6 @@ jobs:
   intellij-tests:
     name: IntelliJ tests
     runs-on: ubuntu-latest
-    env:
-      GRADLE_USER_HOME: ${{ runner.temp }}/gradle-home-test
     steps:
       - uses: actions/checkout@v5
 
@@ -235,13 +233,13 @@ jobs:
           java-version: "21"
 
       - name: Run IntelliJ contract tests
+        env:
+          GRADLE_USER_HOME: ${{ runner.temp }}/gradle-home-test
         run: ./gradlew :backend-intellij:test --tests '*IntelliJAnalysisBackendContractTest'
 
   intellij-package:
     name: IntelliJ package verification
     runs-on: ubuntu-latest
-    env:
-      GRADLE_USER_HOME: ${{ runner.temp }}/gradle-home-package
     steps:
       - uses: actions/checkout@v5
 
@@ -251,6 +249,8 @@ jobs:
           java-version: "21"
 
       - name: Build and verify IntelliJ plugin
+        env:
+          GRADLE_USER_HOME: ${{ runner.temp }}/gradle-home-package
         run: >
           ./gradlew
           :backend-intellij:verifyPluginProjectConfiguration
