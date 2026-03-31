@@ -29,21 +29,20 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: "9.0.0"
+          gradle-version: "9.4.0"
 
       - name: Initialize IntelliJ platform
         env:
           GRADLE_USER_HOME: ${{ runner.temp }}/gradle-home
         run: >
-          gradle
+          ./gradlew
           :backend-intellij:initializeIntellijPlatformPlugin
 
       - name: Build standalone backend
         env:
           GRADLE_USER_HOME: ${{ runner.temp }}/gradle-home
         run: >
-          gradle
-          :shared-testing:test
+          ./gradlew :shared-testing:test
           :backend-standalone:test
           :backend-standalone:fatJar
           :backend-standalone:writeWrapperScript
@@ -274,7 +273,7 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: "9.0.0"
+          gradle-version: "9.4.0"
 
       - name: Initialize IntelliJ platform
         env:
@@ -305,7 +304,7 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: "9.0.0"
+          gradle-version: "9.4.0"
 
       - name: Initialize IntelliJ platform
         env:

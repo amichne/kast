@@ -12,7 +12,7 @@ intellij-platform-gradle-plugin = "2.13.1"
 intellij-idea = "2025.3"
 intellij-since-build = "253"
 analysis-api-standalone = "2.3.20-ij253-119"
-gradle-tooling-api = "9.0.0"
+gradle-tooling-api = "9.4.0"
 
 [libraries]
 coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
