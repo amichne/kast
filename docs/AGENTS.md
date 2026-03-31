@@ -9,11 +9,15 @@ Keep these docs tightly coupled to the real implementation and decision record.
 
 - Keep docs aligned with the code that exists today. Mark planned or missing
   behavior explicitly instead of implying it already works.
+- Treat `docs/` as the source of truth for the published site. `zensical.toml`
+  controls navigation and the generated output path under `site/`.
 - Use ADRs for durable decisions. Add a new ADR or append follow-up context
   when the architecture changes materially rather than silently rewriting
   history.
 - Keep the README, operator guide, and remaining-work notes consistent with the
   current capability surface of the IntelliJ and standalone hosts.
+- Change `docs/` or `zensical.toml` when rendered content must move. Do not
+  hand-edit the generated files under `site/`.
 - Prefer precise statements over broad claims. If evidence is partial, narrow
   the wording and make the uncertainty explicit.
 - When behavior changes, update the docs in the same change set if the user-
@@ -27,3 +31,6 @@ finishing.
 - Re-read modified docs against the implementation before finishing.
 - Check nearby docs for stale references whenever you change module behavior,
   routes, or capabilities.
+- If navigation, layout, or rendered output changes matter, run
+  `zensical build --clean`. Install the pinned docs toolchain with
+  `pip install -r requirements-docs.txt` if needed.

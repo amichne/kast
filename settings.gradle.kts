@@ -17,6 +17,7 @@ dependencyResolutionManagement {
 
 include(
     ":analysis-api",
+    ":analysis-cli",
     ":analysis-common",
     ":analysis-server",
     ":backend-intellij",

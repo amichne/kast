@@ -7,6 +7,7 @@ import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import kotlinx.coroutines.runBlocking
 import java.io.Closeable
+import kotlin.io.path.Path
 
 class AnalysisServer(
     private val backend: AnalysisBackend,
@@ -36,7 +37,9 @@ class AnalysisServer(
             port = connector.port,
             token = config.token,
         )
-        val descriptorStore = DescriptorStore(config.descriptorDirectory)
+        val descriptorStore = DescriptorStore(
+            directory = config.descriptorDirectory ?: defaultDescriptorDirectory(Path(capabilities.workspaceRoot)),
+        )
         descriptorStore.write(descriptor)
 
         return RunningAnalysisServer(

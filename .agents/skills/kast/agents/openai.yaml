@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kast"
+  short_description: "Deterministic Kast transport runner"
+  default_prompt: "Use $kast to resolve the current workspace tooling, choose the correct transport deterministically, and run the requested Kast operation as JSON."

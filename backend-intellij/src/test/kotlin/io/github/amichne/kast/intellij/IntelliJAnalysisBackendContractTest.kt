@@ -2,6 +2,7 @@ package io.github.amichne.kast.intellij
 
 import io.github.amichne.kast.api.HealthResponse
 import io.github.amichne.kast.api.ServerInstanceDescriptor
+import io.github.amichne.kast.server.workspaceMetadataDirectory
 import io.github.amichne.kast.testing.AnalysisBackendContractAssertions
 import io.github.amichne.kast.testing.AnalysisBackendContractFixture
 import kotlinx.coroutines.runBlocking
@@ -49,8 +50,8 @@ class IntelliJAnalysisBackendContractTest : IntelliJFixtureTestCase() {
         val startupProperty = "kast.enable.startup.activity.tests"
         val originalUserHome = System.getProperty("user.home")
         val originalStartupFlag = System.getProperty(startupProperty)
-        val descriptorDirectory = tempHome.resolve(".kast/instances")
         val projectBasePath = checkNotNull(fixture.project.basePath)
+        val descriptorDirectory = workspaceMetadataDirectory(Path.of(projectBasePath)).resolve("instances")
         val service = fixture.project.getService(KastProjectService::class.java)
         var descriptorPath: Path? = null
 

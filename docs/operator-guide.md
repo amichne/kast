@@ -23,11 +23,16 @@ descriptor file instead of a fixed socket address.
 ## Descriptor lifecycle
 
 Both hosts write a `ServerInstanceDescriptor` JSON file under
-`~/.kast/instances/` by default. Set `KAST_INSTANCE_DIR` to place descriptor
-files somewhere else.
+`<workspace>/.kast/instances/` by default. Set `KAST_INSTANCE_DIR` to place
+descriptor files somewhere else.
 
 Kast deletes the descriptor on clean shutdown, so consumers can treat the
 directory as a live registration surface instead of a permanent inventory.
+
+When the workspace is inside Git and Kast uses the default workspace-local
+directory, descriptor registration also adds `/.kast/` to the repo-local
+`.git/info/exclude` file. That keeps the metadata untracked without requiring a
+committed ignore rule.
 
 Each descriptor contains these fields.
 

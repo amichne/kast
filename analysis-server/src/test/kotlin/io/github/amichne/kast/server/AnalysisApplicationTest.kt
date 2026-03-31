@@ -39,6 +39,23 @@ class AnalysisApplicationTest {
     }
 
     @Test
+    fun `runtime status reports backend readiness`() = testApplication {
+        application {
+            kastModule(
+                backend = FakeAnalysisBackend.sample(tempDir),
+                config = AnalysisServerConfig(),
+            )
+        }
+
+        val response = client.get("/api/v1/runtime/status")
+        assertEquals(HttpStatusCode.OK, response.status)
+        val body = response.bodyAsText()
+        assertEquals(true, body.contains("\"backendName\":\"fake\""))
+        assertEquals(true, body.contains("\"state\":\"READY\""))
+        assertEquals(true, body.contains("\"healthy\":true"))
+    }
+
+    @Test
     fun `token protected routes reject missing credentials`() = testApplication {
         application {
             kastModule(

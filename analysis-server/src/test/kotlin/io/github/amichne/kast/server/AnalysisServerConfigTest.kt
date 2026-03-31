@@ -1,11 +1,13 @@
 package io.github.amichne.kast.server
 
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.jupiter.api.assertThrows
+import java.nio.file.Path
 
 class AnalysisServerConfigTest {
-
     @Test
     fun `loopback host without token is accepted`() {
         assertDoesNotThrow { AnalysisServerConfig(host = "127.0.0.1", token = null) }
@@ -39,5 +41,26 @@ class AnalysisServerConfigTest {
     @Test
     fun `default config binds to loopback`() {
         assertDoesNotThrow { AnalysisServerConfig() }
+    }
+
+    @Test
+    fun `default descriptor directory lives under workspace metadata`() {
+        assumeTrue(System.getenv("KAST_INSTANCE_DIR") == null)
+        val workspaceRoot = Path.of("/tmp/workspace").toAbsolutePath().normalize()
+
+        assertEquals(
+            workspaceRoot.resolve(".kast").resolve("instances"),
+            defaultDescriptorDirectory(workspaceRoot),
+        )
+    }
+
+    @Test
+    fun `workspace metadata directory lives under the workspace root`() {
+        val workspaceRoot = Path.of("/tmp/workspace").toAbsolutePath().normalize()
+
+        assertEquals(
+            workspaceRoot.resolve(".kast"),
+            workspaceMetadataDirectory(workspaceRoot),
+        )
     }
 }

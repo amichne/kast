@@ -5,8 +5,10 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.exists
+import kotlin.io.path.readText
 
 class DescriptorStoreTest {
     @TempDir
@@ -29,5 +31,27 @@ class DescriptorStoreTest {
 
         store.delete(descriptor)
         assertEquals(false, path.exists())
+    }
+
+    @Test
+    fun `writing workspace-local descriptors adds a repo-local git exclude entry`() {
+        val workspaceRoot = tempDir.resolve("workspace")
+        Files.createDirectories(workspaceRoot.resolve(".git").resolve("info"))
+        val descriptorDirectory = workspaceMetadataDirectory(workspaceRoot).resolve("instances")
+        val descriptor = ServerInstanceDescriptor(
+            workspaceRoot = workspaceRoot.toString(),
+            backendName = "standalone",
+            backendVersion = "0.1.0",
+            host = "127.0.0.1",
+            port = 9123,
+        )
+        val store = DescriptorStore(descriptorDirectory)
+
+        store.write(descriptor)
+        store.write(descriptor)
+
+        val excludeContents = workspaceRoot.resolve(".git").resolve("info").resolve("exclude").readText()
+        assertTrue(excludeContents.contains("# Kast local workspace metadata"))
+        assertEquals(1, Regex("^/\\.kast/$", RegexOption.MULTILINE).findAll(excludeContents).count())
     }
 }

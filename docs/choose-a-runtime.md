@@ -69,7 +69,7 @@ want Kast to start from that project context.
 3. Open the workspace you want Kast to serve.
 
 4. Wait for the project-scoped service to start and write a descriptor under
-   `~/.kast/instances/`, or under `KAST_INSTANCE_DIR` if you set that
+   `<workspace>/.kast/instances/`, or under `KAST_INSTANCE_DIR` if you set that
    environment variable first.
 
 5. Read the descriptor and connect to the advertised `host` and `port`.
@@ -127,8 +127,8 @@ graph LR
 Use this flow when you want the same client to work in local development and
 headless environments.
 
-1. Read descriptor files from `~/.kast/instances/`, or from `KAST_INSTANCE_DIR`
-   when you override the location.
+1. Read descriptor files from `<workspace>/.kast/instances/`, or from
+   `KAST_INSTANCE_DIR` when you override the location.
 2. Select the descriptor that matches the target `workspaceRoot`, or filter by
    `backendName` if you need one specific host.
 3. Call `/api/v1/health` to confirm the runtime identity.
@@ -145,7 +145,6 @@ running IDE. A minimal bootstrap looks like this.
 ./gradlew :backend-standalone:fatJar \
   :backend-standalone:writeWrapperScript
 
-export KAST_INSTANCE_DIR="$PWD/.kast-instances"
 export KAST_TOKEN="ci-shared-secret"
 
 ./backend-standalone/build/scripts/backend-standalone \

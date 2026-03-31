@@ -19,6 +19,8 @@ import io.github.amichne.kast.api.ReferencesQuery
 import io.github.amichne.kast.api.ReferencesResult
 import io.github.amichne.kast.api.RenameQuery
 import io.github.amichne.kast.api.RenameResult
+import io.github.amichne.kast.api.RuntimeState
+import io.github.amichne.kast.api.RuntimeStatusResponse
 import io.github.amichne.kast.api.ServerLimits
 import io.github.amichne.kast.api.SymbolQuery
 import io.github.amichne.kast.api.SymbolResult
@@ -60,6 +62,20 @@ class StandaloneAnalysisBackend(
         ),
         limits = limits,
     )
+
+    override suspend fun runtimeStatus(): RuntimeStatusResponse {
+        val capabilities = capabilities()
+        return RuntimeStatusResponse(
+            state = RuntimeState.READY,
+            healthy = true,
+            active = true,
+            indexing = false,
+            backendName = capabilities.backendName,
+            backendVersion = capabilities.backendVersion,
+            workspaceRoot = capabilities.workspaceRoot,
+            message = "Standalone analysis session is initialized",
+        )
+    }
 
     override suspend fun health(): HealthResponse {
         val capabilities = capabilities()

@@ -10,7 +10,7 @@ data class AnalysisServerConfig(
     val requestTimeoutMillis: Long = 30_000,
     val maxResults: Int = 500,
     val maxConcurrentRequests: Int = 4,
-    val descriptorDirectory: Path = defaultDescriptorDirectory(),
+    val descriptorDirectory: Path? = null,
 ) {
     init {
         validate()
@@ -20,11 +20,18 @@ data class AnalysisServerConfig(
         val isLoopback = host == "127.0.0.1" || host == "::1" || host.equals("localhost", ignoreCase = true)
         require(isLoopback || !token.isNullOrBlank()) {
             "Binding to non-loopback address '$host' requires a non-empty token for security. " +
-                "Set the 'token' field or bind to 127.0.0.1 / ::1 / localhost instead."
+            "Set the 'token' field or bind to 127.0.0.1 / ::1 / localhost instead."
         }
     }
 }
 
-fun defaultDescriptorDirectory(): Path = System.getenv("KAST_INSTANCE_DIR")
+fun defaultDescriptorDirectory(workspaceRoot: Path): Path = System.getenv("KAST_INSTANCE_DIR")
     ?.let(::Path)
-    ?: Path(System.getProperty("user.home"), ".kast", "instances")
+    ?.toAbsolutePath()
+    ?.normalize()
+    ?: workspaceMetadataDirectory(workspaceRoot).resolve("instances")
+
+fun workspaceMetadataDirectory(workspaceRoot: Path): Path = workspaceRoot
+    .toAbsolutePath()
+    .normalize()
+    .resolve(".kast")

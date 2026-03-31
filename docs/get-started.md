@@ -78,8 +78,12 @@ surface stays the same after startup.
 ## Discover the instance
 
 Both runtimes register themselves by writing a `ServerInstanceDescriptor` JSON
-file under `~/.kast/instances/` by default. Set `KAST_INSTANCE_DIR` if you want
-to override the directory.
+file under `<workspace>/.kast/instances/` by default. Set `KAST_INSTANCE_DIR`
+if you want to override the directory.
+
+When the workspace lives in Git and Kast uses the default workspace-local
+directory, Kast adds `/.kast/` to the repo-local `.git/info/exclude` file so
+the metadata stays untracked without changing the committed `.gitignore`.
 
 Each descriptor includes the values your client needs to connect:
 

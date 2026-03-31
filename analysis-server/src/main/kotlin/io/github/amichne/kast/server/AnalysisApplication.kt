@@ -80,6 +80,13 @@ fun Application.kastModule(
                 call.respond(response)
             }
 
+            get("/runtime/status") {
+                val response = execute(config) {
+                    backend.runtimeStatus()
+                }
+                call.respond(response)
+            }
+
             get("/capabilities") {
                 val response = execute(config) {
                     backend.capabilities()

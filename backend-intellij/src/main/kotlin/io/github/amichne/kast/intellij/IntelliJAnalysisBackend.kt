@@ -3,6 +3,7 @@ package io.github.amichne.kast.intellij
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.util.TextRange
@@ -36,6 +37,8 @@ import io.github.amichne.kast.api.ReferencesQuery
 import io.github.amichne.kast.api.ReferencesResult
 import io.github.amichne.kast.api.RenameQuery
 import io.github.amichne.kast.api.RenameResult
+import io.github.amichne.kast.api.RuntimeState
+import io.github.amichne.kast.api.RuntimeStatusResponse
 import io.github.amichne.kast.api.ServerLimits
 import io.github.amichne.kast.api.SymbolQuery
 import io.github.amichne.kast.api.SymbolResult
@@ -90,6 +93,30 @@ class IntelliJAnalysisBackend(
         ),
         limits = limits,
     )
+
+    override suspend fun runtimeStatus(): RuntimeStatusResponse {
+        val capabilities = capabilities()
+        val active = !project.isDisposed
+        val indexing = active && DumbService.getInstance(project).isDumb
+        return RuntimeStatusResponse(
+            state = when {
+                !active -> RuntimeState.DEGRADED
+                indexing -> RuntimeState.INDEXING
+                else -> RuntimeState.READY
+            },
+            healthy = active,
+            active = active,
+            indexing = indexing,
+            backendName = capabilities.backendName,
+            backendVersion = capabilities.backendVersion,
+            workspaceRoot = capabilities.workspaceRoot,
+            message = when {
+                !active -> "IntelliJ project is disposed"
+                indexing -> "IntelliJ project is still indexing"
+                else -> "IntelliJ project is ready for analysis"
+            },
+        )
+    }
 
     override suspend fun health(): HealthResponse {
         val capabilities = capabilities()

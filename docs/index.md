@@ -40,6 +40,13 @@ text edit application.
 
     [Read the operator guide](operator-guide.md)
 
+-   **Explore a CLI control plane**
+
+    Review the alternatives for a command-first workflow that still preserves
+    the current host split and backend contract.
+
+    [Read the control-plane note](impl-002.md)
+
 -   **Track the gap**
 
     Review what is implemented now and what remains before the full design
@@ -52,13 +59,13 @@ text edit application.
 ## Runtime model
 
 Every Kast instance follows the same discovery and request flow. Clients read
-the descriptor directory first, then call the advertised host and port instead
-of assuming one fixed local endpoint.
+the workspace-local descriptor directory first, then call the advertised host
+and port instead of assuming one fixed local endpoint.
 
 ```mermaid
 graph LR
     Workspace["Kotlin workspace"] --> Runtime["Kast runtime"]
-    Runtime --> Descriptor["~/.kast/instances/*.json"]
+    Runtime --> Descriptor["<workspace>/.kast/instances/*.json"]
     Client["Agent or tool"] --> Descriptor
     Client --> Api["HTTP/JSON routes"]
 ```
