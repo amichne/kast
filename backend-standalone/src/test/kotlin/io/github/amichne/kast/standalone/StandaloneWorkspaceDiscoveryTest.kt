@@ -174,15 +174,22 @@ class StandaloneWorkspaceDiscoveryTest {
                 appendLine("""        named("test") { java.srcDir("src/test/kotlin") }""")
                 appendLine("""    }""")
                 appendLine("""}""")
-                appendLine("""project(":app") {""")
-                appendLine("""    dependencies {""")
-                appendLine("""        add("implementation", project(":lib"))""")
+            },
+        )
+        writeFile(
+            relativePath = "app/build.gradle.kts",
+            content = buildString {
+                appendLine("""dependencies {""")
+                appendLine("""    implementation(project(":lib"))""")
                 if (includeLocalTestJar) {
-                    appendLine("""        add("testImplementation", files(rootProject.layout.projectDirectory.file("support/test-support.jar")))""")
+                    appendLine("""    testImplementation(files(rootProject.layout.projectDirectory.file("support/test-support.jar")))""")
                 }
-                appendLine("""    }""")
                 appendLine("""}""")
             },
+        )
+        writeFile(
+            relativePath = "lib/build.gradle.kts",
+            content = "",
         )
         writeFile(
             relativePath = "lib/src/main/kotlin/sample/Greeter.kt",
