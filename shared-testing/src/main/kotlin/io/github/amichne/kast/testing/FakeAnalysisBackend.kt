@@ -8,6 +8,7 @@ import io.github.amichne.kast.api.CallDirection
 import io.github.amichne.kast.api.CallHierarchyQuery
 import io.github.amichne.kast.api.CallHierarchyResult
 import io.github.amichne.kast.api.CallNode
+import io.github.amichne.kast.api.CallNodeExpansion
 import io.github.amichne.kast.api.Diagnostic
 import io.github.amichne.kast.api.DiagnosticSeverity
 import io.github.amichne.kast.api.DiagnosticsQuery
@@ -92,6 +93,13 @@ class FakeAnalysisBackend private constructor(
 
     override suspend fun callHierarchy(query: CallHierarchyQuery): CallHierarchyResult {
         requireAnchor(query.position)
+        if (query.depth == 0) {
+            return CallHierarchyResult(
+                root = CallNode(symbol = symbol, expansion = CallNodeExpansion.MAX_DEPTH, children = emptyList()),
+                totalNodes = 1,
+                totalEdges = 0,
+            )
+        }
         val outgoingReference = referenceLocations.firstOrNull() ?: symbol.location
         val child = if (query.direction == CallDirection.OUTGOING) {
             CallNode(
@@ -100,14 +108,17 @@ class FakeAnalysisBackend private constructor(
                     kind = SymbolKind.FUNCTION,
                     location = outgoingReference,
                 ),
+                expansion = CallNodeExpansion.MAX_DEPTH,
                 children = emptyList(),
             )
         } else {
-            CallNode(symbol = symbol, children = emptyList())
+            CallNode(symbol = symbol, expansion = CallNodeExpansion.MAX_DEPTH, children = emptyList())
         }
 
         return CallHierarchyResult(
             root = CallNode(symbol = symbol, children = listOf(child)),
+            totalNodes = 2,
+            totalEdges = 1,
         )
     }
 

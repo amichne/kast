@@ -149,8 +149,18 @@ class AnalysisDispatcher(
                 backend.callHierarchy(
                     decodeParams(CallHierarchyQuery.serializer(), params).also { query ->
                         validateFilePosition(query.position.filePath, query.position.offset)
-                        if (query.depth < 1) {
-                            throw ValidationException("Call hierarchy depth must be greater than zero")
+                        if (query.depth < 0) {
+                            throw ValidationException("Call hierarchy depth must be zero or greater")
+                        }
+                        if (query.maxTotalCalls < 1) {
+                            throw ValidationException("Call hierarchy maxTotalCalls must be greater than zero")
+                        }
+                        if (query.maxChildrenPerNode < 1) {
+                            throw ValidationException("Call hierarchy maxChildrenPerNode must be greater than zero")
+                        }
+                        val timeoutMillis = query.timeoutMillis
+                        if (timeoutMillis != null && timeoutMillis < 1) {
+                            throw ValidationException("Call hierarchy timeoutMillis must be greater than zero")
                         }
                         requireReadCapability(ReadCapability.CALL_HIERARCHY)
                     },

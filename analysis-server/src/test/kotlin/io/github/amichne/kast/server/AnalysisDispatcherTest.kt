@@ -3,6 +3,9 @@ package io.github.amichne.kast.server
 import io.github.amichne.kast.api.ApplyEditsQuery
 import io.github.amichne.kast.api.ApplyEditsResult
 import io.github.amichne.kast.api.BackendCapabilities
+import io.github.amichne.kast.api.CallDirection
+import io.github.amichne.kast.api.CallHierarchyQuery
+import io.github.amichne.kast.api.CallHierarchyResult
 import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.FileHash
 import io.github.amichne.kast.api.FileHashing
@@ -92,6 +95,25 @@ class AnalysisDispatcherTest {
 
         assertEquals("sample.greet", result.declaration?.fqName)
         assertEquals(1, result.references.size)
+    }
+
+    @Test
+    fun `call hierarchy dispatches without HTTP`() {
+        val file = sampleFile()
+
+        val result = dispatchSuccess<CallHierarchyResult>(
+            method = "call-hierarchy",
+            params = json.encodeToJsonElement(
+                CallHierarchyQuery.serializer(),
+                CallHierarchyQuery(
+                    position = FilePosition(filePath = file.toString(), offset = 20),
+                    direction = CallDirection.OUTGOING,
+                    depth = 0,
+                ),
+            ),
+        )
+
+        assertEquals("sample.greet", result.root.symbol.fqName)
     }
 
     @Test
