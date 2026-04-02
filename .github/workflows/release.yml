@@ -1,0 +1,108 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare-release:
+    name: Prepare release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Ensure draft release exists
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+
+          if gh release view "$tag" >/dev/null 2>&1; then
+            exit 0
+          fi
+
+          gh release create "$tag" \
+            --draft \
+            --verify-tag \
+            --title "$tag" \
+            --generate-notes
+
+  build-and-upload:
+    name: Build release asset (${{ matrix.asset_id }})
+    needs: prepare-release
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            asset_id: linux-x64
+          - runner: macos-13
+            asset_id: macos-x64
+          - runner: macos-14
+            asset_id: macos-arm64
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.4.0"
+
+      - name: Build portable Kast distribution
+        run: ./gradlew :kast:portableDistZip
+
+      - name: Smoke portable Kast distribution
+        shell: bash
+        run: |
+          set -euo pipefail
+          dist_dir="$RUNNER_TEMP/kast-dist"
+          rm -rf "$dist_dir"
+          mkdir -p "$dist_dir"
+          unzip -q kast/build/distributions/kast-*-portable.zip -d "$dist_dir"
+          ./.github/scripts/smoke-kast-cli.sh "$dist_dir/kast/kast"
+
+      - name: Upload release asset
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          asset_name="kast-${tag}-${{ matrix.asset_id }}.zip"
+          asset_path="kast/build/distributions/${asset_name}"
+
+          cp kast/build/distributions/kast-*-portable.zip "$asset_path"
+          gh release upload "$tag" "$asset_path" --clobber
+
+  publish-release:
+    name: Publish release
+    needs: build-and-upload
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Publish draft release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release edit "${GITHUB_REF_NAME}" --draft=false --latest

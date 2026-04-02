@@ -13,18 +13,28 @@ The repo is organized as a Gradle multi-module build:
     integration
 - `shared-testing`: fake backend fixtures used by server and backend tests
 
-## How to use it
+## Install the published CLI
 
-Build the CLI from the repo root:
+Kast publishes portable release zips for supported operating systems. Install
+the latest release into this checkout:
 
 ```bash
-./gradlew :kast:syncRuntimeLibs :kast:writeWrapperScript
+./install.sh
 ```
+
+That installs `kast` into your user-local bin directory and adds that directory
+to your shell `PATH` when needed.
+
+> **Note:** The published bundle still expects Java 21 or newer on your path or
+> under `JAVA_HOME`. `./install.sh` validates that before it unpacks the
+> release.
+
+## How to use it
 
 Start or reuse a runtime for a workspace:
 
 ```bash
-./kast/build/scripts/kast \
+kast \
   workspace ensure \
   --workspace-root=/absolute/path/to/workspace
 ```
@@ -32,11 +42,11 @@ Start or reuse a runtime for a workspace:
 Run analysis commands the same way:
 
 ```bash
-./kast/build/scripts/kast \
+kast \
   capabilities \
   --workspace-root=/absolute/path/to/workspace
 
-./kast/build/scripts/kast \
+kast \
   diagnostics \
   --workspace-root=/absolute/path/to/workspace \
   --request-file=/absolute/path/to/query.json
@@ -45,7 +55,7 @@ Run analysis commands the same way:
 Stop the daemon when you need to:
 
 ```bash
-./kast/build/scripts/kast \
+kast \
   daemon stop \
   --workspace-root=/absolute/path/to/workspace
 ```
@@ -53,3 +63,11 @@ Stop the daemon when you need to:
 Successful commands print JSON on stdout. Daemon lifecycle notes go to stderr.
 
 The main remaining production gap is `callHierarchy`.
+
+## Build from source
+
+If you are changing Kast itself, you can still build the CLI from source:
+
+```bash
+./gradlew :kast:portableDistZip
+```
