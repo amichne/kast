@@ -8,13 +8,32 @@ import org.gradle.tooling.model.idea.IdeaProject
 import org.gradle.tooling.model.idea.IdeaSingleEntryLibraryDependency
 import java.nio.file.Files
 import java.nio.file.Path
+import kotlin.io.path.isRegularFile
+import kotlin.io.path.readText
+
+internal const val maxIncludedProjectsForToolingApi = 200
 
 internal object GradleWorkspaceDiscovery {
     fun discover(
         workspaceRoot: Path,
         extraClasspathRoots: List<Path>,
     ): StandaloneWorkspaceLayout {
-        val gradleModules = GradleConnector.newConnector()
+        val settingsSnapshot = GradleSettingsSnapshot.read(workspaceRoot)
+        val gradleModules = if (settingsSnapshot.shouldPreferStaticDiscovery()) {
+            StaticGradleWorkspaceDiscovery.discoverModules(workspaceRoot, settingsSnapshot)
+        } else {
+            runCatching {
+                loadModulesWithToolingApi(workspaceRoot)
+            }.getOrElse {
+                StaticGradleWorkspaceDiscovery.discoverModules(workspaceRoot, settingsSnapshot)
+            }
+        }
+
+        return buildStandaloneWorkspaceLayout(gradleModules, extraClasspathRoots)
+    }
+
+    private fun loadModulesWithToolingApi(workspaceRoot: Path): List<GradleModuleModel> =
+        GradleConnector.newConnector()
             .forProjectDirectory(workspaceRoot.toFile())
             .connect()
             .use { connection ->
@@ -23,6 +42,11 @@ internal object GradleWorkspaceDiscovery {
                     .map(::toGradleModuleModel)
                     .sortedBy(GradleModuleModel::gradlePath)
             }
+
+    private fun buildStandaloneWorkspaceLayout(
+        gradleModules: List<GradleModuleModel>,
+        extraClasspathRoots: List<Path>,
+    ): StandaloneWorkspaceLayout {
         val moduleModelsByIdeaName = gradleModules.associateBy(GradleModuleModel::ideaModuleName)
         val sourceModuleNames = gradleModules.flatMap { module ->
             buildList {
@@ -93,12 +117,14 @@ internal object GradleWorkspaceDiscovery {
             .flatMap { contentRoot -> contentRoot.sourceDirectories.map { directory -> directory.directory.toPath() } }
             .filter { path -> Files.exists(path) }
             .map(::normalizeStandalonePath)
+            .filter(::isSupportedStandaloneSourceRoot)
             .distinct()
             .sorted()
         val testSourceRoots = contentRoots
             .flatMap { contentRoot -> contentRoot.testDirectories.map { directory -> directory.directory.toPath() } }
             .filter { path -> Files.exists(path) }
             .map(::normalizeStandalonePath)
+            .filter(::isSupportedStandaloneSourceRoot)
             .distinct()
             .sorted()
         val dependencies = module.dependencies.mapNotNull(::toGradleDependency)
@@ -130,7 +156,7 @@ internal object GradleWorkspaceDiscovery {
     }
 }
 
-private data class GradleModuleModel(
+internal data class GradleModuleModel(
     val gradlePath: String,
     val ideaModuleName: String,
     val mainSourceRoots: List<Path>,
@@ -195,7 +221,7 @@ private data class GradleModuleModel(
         ?.let { analysisModuleName(GradleSourceSet.MAIN) }
 }
 
-private sealed interface GradleDependency {
+internal sealed interface GradleDependency {
     val scope: GradleDependencyScope
 
     data class ModuleDependency(
@@ -209,7 +235,7 @@ private sealed interface GradleDependency {
     ) : GradleDependency
 }
 
-private enum class GradleSourceSet(
+internal enum class GradleSourceSet(
     val id: String,
     val supportedDependencyScopes: Set<GradleDependencyScope>,
 ) {
@@ -232,7 +258,7 @@ private enum class GradleSourceSet(
     ),
 }
 
-private enum class GradleDependencyScope {
+internal enum class GradleDependencyScope {
     COMPILE,
     PROVIDED,
     TEST,
@@ -250,3 +276,57 @@ private enum class GradleDependencyScope {
         }
     }
 }
+
+internal data class GradleSettingsSnapshot(
+    val includedProjectPaths: List<String>,
+    val hasCompositeBuilds: Boolean,
+) {
+    fun shouldPreferStaticDiscovery(): Boolean = hasCompositeBuilds || includedProjectPaths.size > maxIncludedProjectsForToolingApi
+
+    fun projectPathsForStaticDiscovery(): List<String> = buildList {
+        add(":")
+        addAll(includedProjectPaths)
+    }.distinct()
+
+    companion object {
+        private val includeBlockPattern = Regex("""(?s)\binclude\s*\((.*?)\)""")
+        private val stringLiteralPattern = Regex("""[\"']([^\"']+)[\"']""")
+        private val compositeBuildPattern = Regex("""\bincludeBuild\s*\(""")
+
+        fun read(workspaceRoot: Path): GradleSettingsSnapshot {
+            val settingsText = settingsFileCandidates(workspaceRoot)
+                .firstOrNull(Path::isRegularFile)
+                ?.readText()
+                .orEmpty()
+
+            val includedProjectPaths = includeBlockPattern.findAll(settingsText)
+                .flatMap { match ->
+                    stringLiteralPattern.findAll(match.groupValues[1]).map { literal ->
+                        normalizeGradleProjectPath(literal.groupValues[1])
+                    }
+                }
+                .distinct()
+                .sorted()
+                .toList()
+
+            return GradleSettingsSnapshot(
+                includedProjectPaths = includedProjectPaths,
+                hasCompositeBuilds = compositeBuildPattern.containsMatchIn(settingsText),
+            )
+        }
+
+        private fun settingsFileCandidates(workspaceRoot: Path): List<Path> = listOf(
+            workspaceRoot.resolve("settings.gradle.kts"),
+            workspaceRoot.resolve("settings.gradle"),
+        )
+    }
+}
+
+internal fun normalizeGradleProjectPath(projectPath: String): String = when {
+    projectPath == ":" -> ":"
+    projectPath.startsWith(":") -> projectPath
+    projectPath.isBlank() -> ":"
+    else -> ":$projectPath"
+}
+
+internal fun isSupportedStandaloneSourceRoot(path: Path): Boolean = path.fileName?.toString() != "java"

@@ -39,7 +39,7 @@ class StandaloneAnalysisSession(
             moduleName = moduleName,
         )
         require(workspaceLayout.sourceModules.isNotEmpty()) {
-            "No Kotlin or Java source roots were found under ${normalizeStandalonePath(workspaceRoot)}"
+            "No Kotlin source roots were found under ${normalizeStandalonePath(workspaceRoot)}"
         }
 
         resolvedSourceRoots = workspaceLayout.sourceModules
@@ -189,7 +189,7 @@ internal fun discoverStandaloneWorkspaceLayout(
             sourceModules = listOf(
                 StandaloneSourceModuleSpec(
                     name = moduleName,
-                    sourceRoots = normalizeStandalonePaths(sourceRoots),
+                    sourceRoots = normalizeStandaloneSourceRoots(sourceRoots),
                     binaryRoots = normalizeStandalonePaths(classpathRoots),
                     dependencyModuleNames = emptyList(),
                 ),
@@ -225,12 +225,16 @@ internal fun normalizeStandalonePaths(paths: Iterable<Path>): List<Path> = paths
     .distinct()
     .sorted()
 
+internal fun normalizeStandaloneSourceRoots(paths: Iterable<Path>): List<Path> = paths
+    .map(::normalizeStandalonePath)
+    .filter(::isSupportedStandaloneSourceRoot)
+    .distinct()
+    .sorted()
+
 private fun discoverSourceRoots(workspaceRoot: Path): List<Path> {
     val conventionalRoots = listOf(
         workspaceRoot.resolve("src/main/kotlin"),
         workspaceRoot.resolve("src/test/kotlin"),
-        workspaceRoot.resolve("src/main/java"),
-        workspaceRoot.resolve("src/test/java"),
     ).filter(Files::isDirectory)
     if (conventionalRoots.isNotEmpty()) {
         return conventionalRoots.map(::normalizeStandalonePath).distinct().sorted()
@@ -240,7 +244,7 @@ private fun discoverSourceRoots(workspaceRoot: Path): List<Path> {
     Files.walk(workspaceRoot).use { paths ->
         paths
             .filter { path ->
-                Files.isRegularFile(path) && path.extension in setOf("kt", "kts", "java")
+                Files.isRegularFile(path) && path.extension in setOf("kt", "kts")
             }
             .forEach { file -> discoveredRoots.add(normalizeStandalonePath(file.parent)) }
     }

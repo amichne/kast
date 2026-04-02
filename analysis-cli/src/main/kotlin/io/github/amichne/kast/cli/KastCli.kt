@@ -1,12 +1,14 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.standalone.StandaloneRuntime
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 
 internal class KastCli(
     private val processLauncher: ProcessLauncher = DefaultProcessLauncher(),
     private val json: Json = defaultCliJson(),
+    private val commandExecutorFactory: (Json, ProcessLauncher) -> CliCommandExecutor = { configuredJson, configuredProcessLauncher ->
+        DefaultCliCommandExecutor(CliService(configuredJson, configuredProcessLauncher))
+    },
 ) {
     fun run(
         args: Array<String>,
@@ -14,9 +16,14 @@ internal class KastCli(
         stderr: Appendable = System.err,
     ): Int = runBlocking {
         val commandParser = CliCommandParser(json)
-        val cliService = CliService(json, processLauncher)
+        val commandExecutor = commandExecutorFactory(json, processLauncher)
         runCatching {
-            execute(commandParser.parse(args), cliService, stdout)
+            val execution = commandExecutor.execute(commandParser.parse(args))
+            writeCliOutput(stdout, execution.output)
+            execution.daemonNote?.let { note ->
+                stderr.append(note)
+                stderr.append('\n')
+            }
         }.fold(
             onSuccess = { 0 },
             onFailure = { throwable ->
@@ -26,23 +33,20 @@ internal class KastCli(
         )
     }
 
-    private suspend fun execute(
-        command: CliCommand,
-        cliService: CliService,
+    private fun writeCliOutput(
         stdout: Appendable,
+        output: CliOutput,
     ) {
-        when (command) {
-            is CliCommand.WorkspaceStatus -> writeCliJson(stdout, cliService.workspaceStatus(command.options), json)
-            is CliCommand.WorkspaceEnsure -> writeCliJson(stdout, cliService.workspaceEnsure(command.options), json)
-            is CliCommand.DaemonStart -> writeCliJson(stdout, cliService.daemonStart(command.options), json)
-            is CliCommand.DaemonStop -> writeCliJson(stdout, cliService.daemonStop(command.options), json)
-            is CliCommand.Capabilities -> writeCliJson(stdout, cliService.capabilities(command.options), json)
-            is CliCommand.ResolveSymbol -> writeCliJson(stdout, cliService.resolveSymbol(command.options, command.query), json)
-            is CliCommand.FindReferences -> writeCliJson(stdout, cliService.findReferences(command.options, command.query), json)
-            is CliCommand.Diagnostics -> writeCliJson(stdout, cliService.diagnostics(command.options, command.query), json)
-            is CliCommand.Rename -> writeCliJson(stdout, cliService.rename(command.options, command.query), json)
-            is CliCommand.ApplyEdits -> writeCliJson(stdout, cliService.applyEdits(command.options, command.query), json)
-            is CliCommand.InternalDaemonRun -> StandaloneRuntime.run(checkNotNull(command.options.standaloneOptions))
+        when (output) {
+            is CliOutput.JsonValue -> writeCliJson(stdout, output.value, json)
+            is CliOutput.Text -> {
+                stdout.append(output.value)
+                if (!output.value.endsWith('\n')) {
+                    stdout.append('\n')
+                }
+            }
+
+            CliOutput.None -> Unit
         }
     }
 }

@@ -18,49 +18,131 @@ internal class CliCommandParser(
 ) {
     fun parse(args: Array<String>): CliCommand {
         val parsed = ParsedArguments.parse(args)
-        return when (parsed.positionals) {
-            listOf("workspace", "status") -> CliCommand.WorkspaceStatus(parsed.runtimeOptions())
-            listOf("workspace", "ensure") -> CliCommand.WorkspaceEnsure(parsed.runtimeOptions())
-            listOf("daemon", "start") -> CliCommand.DaemonStart(parsed.runtimeOptions(backendName = "standalone"))
-            listOf("daemon", "stop") -> CliCommand.DaemonStop(parsed.runtimeOptions(backendName = "standalone"))
-            listOf("capabilities") -> CliCommand.Capabilities(parsed.runtimeOptions())
-            listOf("symbol", "resolve") -> CliCommand.ResolveSymbol(parsed.runtimeOptions(), parsed.symbolQuery(json))
-            listOf("references") -> CliCommand.FindReferences(parsed.runtimeOptions(), parsed.referencesQuery(json))
-            listOf("diagnostics") -> CliCommand.Diagnostics(parsed.runtimeOptions(), parsed.diagnosticsQuery(json))
-            listOf("rename") -> CliCommand.Rename(parsed.runtimeOptions(), parsed.renameQuery(json))
-            listOf("edits", "apply") -> CliCommand.ApplyEdits(parsed.runtimeOptions(), parsed.applyEditsQuery(json))
-            listOf("internal", "daemon-run") -> CliCommand.InternalDaemonRun(parsed.runtimeOptions(backendName = "standalone"))
-            else -> throw CliFailure(
+        if (parsed.positionals.isEmpty() && parsed.options.isEmpty() && parsed.flags.isEmpty()) {
+            return CliCommand.Help()
+        }
+        if (parsed.flags.contains(HELP_FLAG)) {
+            return CliCommand.Help(parsed.positionals)
+        }
+        if (parsed.positionals.firstOrNull() == "help") {
+            return CliCommand.Help(parsed.positionals.drop(1))
+        }
+        if (parsed.flags.contains(VERSION_FLAG) || parsed.positionals == listOf("version")) {
+            if (parsed.options.isNotEmpty() || parsed.positionals.size > 1 || (parsed.positionals.isNotEmpty() && parsed.positionals != listOf("version"))) {
+                throw CliFailure(
+                    code = "CLI_USAGE",
+                    message = "--version does not accept additional arguments",
+                    details = CliCommandCatalog.topLevelUsageDetails(),
+                )
+            }
+            return CliCommand.Version
+        }
+        if (parsed.positionals.isEmpty()) {
+            throw CliFailure(
                 code = "CLI_USAGE",
-                message = "Unknown command: ${args.joinToString(" ")}",
+                message = "A command is required",
+                details = CliCommandCatalog.topLevelUsageDetails(),
             )
         }
+
+        val metadata = CliCommandCatalog.find(parsed.positionals)
+        if (metadata != null) {
+            return parseKnownCommand(metadata, parsed)
+        }
+        if (CliCommandCatalog.commandsUnder(parsed.positionals).isNotEmpty()) {
+            return CliCommand.Help(parsed.positionals)
+        }
+
+        throw CliFailure(
+            code = "CLI_USAGE",
+            message = "Unknown command: ${args.joinToString(" ")}",
+            details = CliCommandCatalog.unknownCommandDetails(parsed.positionals),
+        )
+    }
+
+    private fun parseKnownCommand(
+        metadata: CliCommandMetadata,
+        parsed: ParsedArguments,
+    ): CliCommand {
+        return try {
+            when (metadata.path) {
+                listOf("workspace", "status") -> CliCommand.WorkspaceStatus(parsed.runtimeOptions())
+                listOf("workspace", "ensure") -> CliCommand.WorkspaceEnsure(parsed.runtimeOptions())
+                listOf("daemon", "start") -> CliCommand.DaemonStart(parsed.runtimeOptions(backendName = "standalone"))
+                listOf("daemon", "stop") -> CliCommand.DaemonStop(parsed.runtimeOptions(backendName = "standalone"))
+                listOf("capabilities") -> CliCommand.Capabilities(parsed.runtimeOptions())
+                listOf("symbol", "resolve") -> CliCommand.ResolveSymbol(parsed.runtimeOptions(), parsed.symbolQuery(json))
+                listOf("references") -> CliCommand.FindReferences(parsed.runtimeOptions(), parsed.referencesQuery(json))
+                listOf("diagnostics") -> CliCommand.Diagnostics(parsed.runtimeOptions(), parsed.diagnosticsQuery(json))
+                listOf("rename") -> CliCommand.Rename(parsed.runtimeOptions(), parsed.renameQuery(json))
+                listOf("edits", "apply") -> CliCommand.ApplyEdits(parsed.runtimeOptions(), parsed.applyEditsQuery(json))
+                listOf("internal", "daemon-run") -> CliCommand.InternalDaemonRun(parsed.runtimeOptions(backendName = "standalone"))
+                else -> throw CliFailure(
+                    code = "CLI_USAGE",
+                    message = "Unknown command: ${metadata.commandText}",
+                    details = CliCommandCatalog.unknownCommandDetails(metadata.path),
+                )
+            }
+        } catch (failure: CliFailure) {
+            if (failure.code != "CLI_USAGE") {
+                throw failure
+            }
+            throw CliFailure(
+                code = failure.code,
+                message = failure.message,
+                details = CliCommandCatalog.usageDetails(metadata.path) + failure.details,
+            )
+        }
+    }
+
+    private companion object {
+        const val HELP_FLAG = "help"
+        const val VERSION_FLAG = "version"
     }
 }
 
 internal data class ParsedArguments(
     val positionals: List<String>,
     val options: Map<String, String>,
+    val flags: Set<String>,
 ) {
     companion object {
         fun parse(args: Array<String>): ParsedArguments {
             val positionals = mutableListOf<String>()
             val options = linkedMapOf<String, String>()
+            val flags = linkedSetOf<String>()
             args.forEach { argument ->
-                if (argument.startsWith("--")) {
-                    val parts = argument.removePrefix("--").split("=", limit = 2)
-                    if (parts.size != 2 || parts[0].isBlank()) {
-                        throw CliFailure(
-                            code = "CLI_USAGE",
-                            message = "Arguments must use --key=value syntax: $argument",
-                        )
+                when (argument) {
+                    "--help", "-h" -> flags += "help"
+                    "--version", "-V" -> flags += "version"
+                    else -> {
+                        if (argument.startsWith("--")) {
+                            val parts = argument.removePrefix("--").split("=", limit = 2)
+                            if (parts.size != 2 || parts[0].isBlank()) {
+                                throw CliFailure(
+                                    code = "CLI_USAGE",
+                                    message = "Arguments must use --key=value syntax: $argument",
+                                    details = CliCommandCatalog.topLevelUsageDetails(),
+                                )
+                            }
+                            options[parts[0]] = parts[1]
+                        } else if (argument.startsWith("-")) {
+                            throw CliFailure(
+                                code = "CLI_USAGE",
+                                message = "Unknown flag: $argument",
+                                details = CliCommandCatalog.topLevelUsageDetails(),
+                            )
+                        } else {
+                            positionals += argument
+                        }
                     }
-                    options[parts[0]] = parts[1]
-                } else {
-                    positionals += argument
                 }
             }
-            return ParsedArguments(positionals = positionals, options = options)
+            return ParsedArguments(
+                positionals = positionals,
+                options = options,
+                flags = flags,
+            )
         }
     }
 

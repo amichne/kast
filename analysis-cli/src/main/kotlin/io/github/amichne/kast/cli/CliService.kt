@@ -35,56 +35,75 @@ internal class CliService(
     suspend fun daemonStop(options: RuntimeCommandOptions): DaemonStopResult =
         runtimeManager.daemonStop(options)
 
-    suspend fun capabilities(options: RuntimeCommandOptions): BackendCapabilities {
+    suspend fun capabilities(options: RuntimeCommandOptions): RuntimeAttachedResult<BackendCapabilities> {
         val runtime = runtimeManager.ensureRuntime(options)
-        return checkNotNull(runtime.selected.capabilities) {
+        val capabilities = checkNotNull(runtime.selected.capabilities) {
             "Runtime capabilities were not loaded after ensure for ${runtime.selected.descriptor.backendName}"
         }
+        return RuntimeAttachedResult(
+            payload = capabilities,
+            runtime = runtime.selected,
+        )
     }
 
     suspend fun resolveSymbol(
         options: RuntimeCommandOptions,
         query: SymbolQuery,
-    ): SymbolResult {
+    ): RuntimeAttachedResult<SymbolResult> {
         val runtime = runtimeManager.ensureRuntime(options)
         requireReadCapability(runtime.selected, ReadCapability.RESOLVE_SYMBOL)
-        return httpClient.post(runtime.selected.descriptor, "/api/v1/symbol/resolve", query)
+        return RuntimeAttachedResult(
+            payload = httpClient.post(runtime.selected.descriptor, "/api/v1/symbol/resolve", query),
+            runtime = runtime.selected,
+        )
     }
 
     suspend fun findReferences(
         options: RuntimeCommandOptions,
         query: ReferencesQuery,
-    ): ReferencesResult {
+    ): RuntimeAttachedResult<ReferencesResult> {
         val runtime = runtimeManager.ensureRuntime(options)
         requireReadCapability(runtime.selected, ReadCapability.FIND_REFERENCES)
-        return httpClient.post(runtime.selected.descriptor, "/api/v1/references", query)
+        return RuntimeAttachedResult(
+            payload = httpClient.post(runtime.selected.descriptor, "/api/v1/references", query),
+            runtime = runtime.selected,
+        )
     }
 
     suspend fun diagnostics(
         options: RuntimeCommandOptions,
         query: DiagnosticsQuery,
-    ): DiagnosticsResult {
+    ): RuntimeAttachedResult<DiagnosticsResult> {
         val runtime = runtimeManager.ensureRuntime(options)
         requireReadCapability(runtime.selected, ReadCapability.DIAGNOSTICS)
-        return httpClient.post(runtime.selected.descriptor, "/api/v1/diagnostics", query)
+        return RuntimeAttachedResult(
+            payload = httpClient.post(runtime.selected.descriptor, "/api/v1/diagnostics", query),
+            runtime = runtime.selected,
+        )
     }
 
     suspend fun rename(
         options: RuntimeCommandOptions,
         query: RenameQuery,
-    ): RenameResult {
+    ): RuntimeAttachedResult<RenameResult> {
         val runtime = runtimeManager.ensureRuntime(options)
         requireMutationCapability(runtime.selected, MutationCapability.RENAME)
-        return httpClient.post(runtime.selected.descriptor, "/api/v1/rename", query)
+        return RuntimeAttachedResult(
+            payload = httpClient.post(runtime.selected.descriptor, "/api/v1/rename", query),
+            runtime = runtime.selected,
+        )
     }
 
     suspend fun applyEdits(
         options: RuntimeCommandOptions,
         query: ApplyEditsQuery,
-    ): ApplyEditsResult {
+    ): RuntimeAttachedResult<ApplyEditsResult> {
         val runtime = runtimeManager.ensureRuntime(options)
         requireMutationCapability(runtime.selected, MutationCapability.APPLY_EDITS)
-        return httpClient.post(runtime.selected.descriptor, "/api/v1/edits/apply", query)
+        return RuntimeAttachedResult(
+            payload = httpClient.post(runtime.selected.descriptor, "/api/v1/edits/apply", query),
+            runtime = runtime.selected,
+        )
     }
 
     private fun requireReadCapability(

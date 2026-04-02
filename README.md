@@ -20,6 +20,10 @@ The standalone-first migration is now the supported shape of the repository:
 
 - the repo-local CLI can ensure a workspace runtime, report status, and dispatch
     analysis operations as JSON
+- the generated `analysis-cli` wrapper is relocatable with its `libs/` directory,
+    uses a packaged `runtime-libs/` classpath for detached daemon launches,
+    supports `--help` and `--version`, and adds human-oriented daemon notes on
+    `stderr` without changing the JSON contract on `stdout`
 - the standalone backend provides symbol resolution, references, diagnostics,
     rename planning, and edit application through the shared HTTP contract
 - the runtime registers itself through workspace-local descriptor files under

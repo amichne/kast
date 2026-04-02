@@ -59,18 +59,35 @@ Build it from the repo root:
 ./gradlew :analysis-cli:fatJar :analysis-cli:writeWrapperScript
 ```
 
+The generated wrapper is relocatable. It looks for its fat JAR in either a
+sibling `libs/` directory or `../libs/`, so you can copy the wrapper and its
+packaged directories together as one shareable unit. When you want CLI-managed
+detached daemons, keep the generated `runtime-libs/` directory beside the
+wrapper too; the CLI uses that ordered non-ZIP64 classpath for daemon launches.
+Set `KAST_APP_JAR` when you need to override fat-JAR autodiscovery explicitly.
+
 Common commands:
 
 ```bash
+./analysis-cli/build/scripts/analysis-cli --help
+./analysis-cli/build/scripts/analysis-cli --version
 ./analysis-cli/build/scripts/analysis-cli workspace status --workspace-root=/absolute/path/to/workspace
 ./analysis-cli/build/scripts/analysis-cli workspace ensure --workspace-root=/absolute/path/to/workspace
 ./analysis-cli/build/scripts/analysis-cli daemon start --workspace-root=/absolute/path/to/workspace
 ./analysis-cli/build/scripts/analysis-cli daemon stop --workspace-root=/absolute/path/to/workspace
 ```
 
+The CLI now supports contextual help such as `help workspace` or
+`workspace status --help`.
+
 Analysis commands such as `capabilities`, `symbol resolve`, `references`,
 `diagnostics`, `rename`, and `edits apply` all run through the same readiness
 gate.
+
+Successful operational commands continue to write machine-readable JSON to
+stdout. When the workspace already has a daemon, or a command starts or stops
+one, Kast also appends a short daemon-status note to stderr so operators can
+see which runtime handled the request without breaking JSON consumers.
 
 ## Standalone daemon
 

@@ -32,6 +32,20 @@ Build the repo-local CLI distribution from the repo root.
 The CLI fat JAR contains the standalone backend and can start detached runtime
 processes for you.
 
+The generated wrapper is relocatable, so you can copy it together with its
+`libs/` directory and keep using it outside the original build directory. If
+you also want the packaged CLI to start detached daemons, copy the generated
+`runtime-libs/` directory too; it carries the ordered non-ZIP64 classpath used
+for daemon launches. If you need an explicit override, set
+`KAST_APP_JAR=/absolute/path/to/analysis-cli-all.jar`.
+
+Quick sanity check:
+
+```bash
+./analysis-cli/build/scripts/analysis-cli --help
+./analysis-cli/build/scripts/analysis-cli --version
+```
+
 ## Ensure a workspace runtime
 
 Start or reuse the standalone daemon for the target workspace.
@@ -45,6 +59,10 @@ Start or reuse the standalone daemon for the target workspace.
 That command prints JSON describing the selected standalone runtime. It starts
 the daemon only when the workspace does not already have one healthy, ready
 instance.
+
+Operational command results stay on stdout as JSON. When a daemon already
+exists, or the command starts one for you, Kast also prints a short daemon note
+to stderr after the JSON output.
 
 Optional follow-up commands:
 

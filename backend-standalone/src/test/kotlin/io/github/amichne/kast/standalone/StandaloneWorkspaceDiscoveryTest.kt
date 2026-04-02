@@ -69,6 +69,52 @@ class StandaloneWorkspaceDiscoveryTest {
     }
 
     @Test
+    fun `composite gradle workspace falls back to static discovery`() {
+        createCompositeGradleWorkspace(includeJavaSource = true)
+
+        val layout = discoverStandaloneWorkspaceLayout(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "ignored",
+        )
+
+        val modulesByName = layout.sourceModules.associateBy(StandaloneSourceModuleSpec::name)
+        assertEquals(setOf(":app[main]", ":app[test]", ":lib[main]"), modulesByName.keys)
+
+        assertEquals(listOf(":lib[main]"), modulesByName.getValue(":app[main]").dependencyModuleNames)
+        assertEquals(
+            listOf(":app[main]", ":lib[main]"),
+            modulesByName.getValue(":app[test]").dependencyModuleNames,
+        )
+        assertTrue(
+            modulesByName.getValue(":app[test]").binaryRoots.any { path -> path.fileName.toString() == "test-support.jar" },
+        )
+        assertFalse(
+            modulesByName.values.flatMap(StandaloneSourceModuleSpec::sourceRoots).any { path -> path.fileName.toString() == "java" },
+        )
+    }
+
+    @Test
+    fun `standalone session skips Java roots in composite gradle workspaces`() = runTest {
+        createCompositeGradleWorkspace(includeJavaSource = true)
+
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "ignored",
+        )
+        try {
+            assertFalse(session.resolvedSourceRoots.any { path -> path.fileName.toString() == "java" })
+            assertTrue(session.sourceModules.any { module -> module.name == ":app[main]" })
+            assertTrue(session.sourceModules.any { module -> module.name == ":lib[main]" })
+        } finally {
+            session.close()
+        }
+    }
+
+    @Test
     fun `standalone session resolves symbols across discovered gradle modules`() = runTest {
         createGradleWorkspace(includeLocalTestJar = false)
         val usageFile = workspaceRoot.resolve("app/src/main/kotlin/sample/Use.kt")
@@ -165,6 +211,72 @@ class StandaloneWorkspaceDiscoveryTest {
         if (includeLocalTestJar) {
             createJar(workspaceRoot.resolve("support/test-support.jar"))
         }
+    }
+
+    private fun createCompositeGradleWorkspace(includeJavaSource: Boolean) {
+        writeFile(
+            relativePath = "settings.gradle.kts",
+            content = """
+                rootProject.name = "workspace"
+                includeBuild("build-logic")
+                include("app", "lib")
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "app/build.gradle.kts",
+            content = """
+                plugins { java-library }
+
+                dependencies {
+                    implementation(project(":lib"))
+                    testImplementation(files(rootProject.layout.projectDirectory.file("support/test-support.jar")))
+                }
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "lib/build.gradle.kts",
+            content = """
+                plugins { java-library }
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "lib/src/main/kotlin/sample/Greeter.kt",
+            content = """
+                package sample
+
+                fun greet(name: String): String = "hi ${'$'}name"
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "app/src/main/kotlin/sample/Use.kt",
+            content = """
+                package sample
+
+                fun use(): String = greet("kast")
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "app/src/test/kotlin/sample/UseTest.kt",
+            content = """
+                package sample
+
+                class UseTest
+            """.trimIndent() + "\n",
+        )
+        if (includeJavaSource) {
+            writeFile(
+                relativePath = "app/src/main/java/sample/LegacyHelper.java",
+                content = """
+                    package sample;
+
+                    public final class LegacyHelper {
+                        private LegacyHelper() {}
+                    }
+                """.trimIndent() + "\n",
+            )
+        }
+        createJar(workspaceRoot.resolve("support/test-support.jar"))
+        workspaceRoot.resolve("build-logic").createDirectories()
     }
 
     private fun createJar(path: Path) {
