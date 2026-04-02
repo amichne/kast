@@ -5,34 +5,40 @@ description: Install Kast, start a workspace runtime, verify it is ready, and
 icon: lucide/play
 ---
 
-This guide gets you from a fresh checkout to a ready workspace runtime. When
-you finish, you will have `kast` on your path, a daemon attached to one
-workspace, and a clear way to confirm the runtime is healthy.
+This guide gets you from a fresh shell to a ready workspace runtime. When you
+finish, you will have `kast` on your path, a daemon attached to one workspace,
+and a clear way to confirm the runtime is healthy.
 
 ## Before you begin
 
 You need a small amount of local setup before the first command can succeed.
 
 - Keep Java 21 or newer available through `JAVA_HOME` or your shell `PATH`.
-- Run the commands from a checkout of this repository.
 - Know the absolute path to the Kotlin workspace you want to analyze.
 
 ## Install the published CLI
 
-Install the current published release from the repo root so the `kast`
-executable is available from your shell.
+Install the current published release so the `kast` executable is available
+from your shell.
 
-1. Run the installer:
+1. Run the copyable installer from any directory:
+
+   ```bash
+   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/install.sh)"
+   ```
+
+2. If you already have this repository checked out, you can run the same
+   installer from the repo root instead:
 
    ```bash
    ./install.sh
    ```
 
-2. If your current shell still cannot find `kast`, open a new shell session so
+3. If your current shell still cannot find `kast`, open a new shell session so
    the updated `PATH` takes effect.
 
 !!! note
-    `./install.sh` validates that Java 21 or newer is available before it
+    The installer validates that Java 21 or newer is available before it
     unpacks the release.
 
 ## Start or reuse a workspace runtime
@@ -97,7 +103,7 @@ explicit and makes it easy to tell which workspace runtimes are active.
 The first failure usually comes from one of a small set of environment or usage
 mistakes.
 
-- If `./install.sh` fails immediately, confirm that Java 21 or newer is
+- If the installer fails immediately, confirm that Java 21 or newer is
   installed and your operating system is supported by the published bundle.
 - If Kast reports a usage error, rewrite the command so every option uses the
   `--key=value` form.

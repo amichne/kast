@@ -1,9 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-readonly SCRIPT_DIR="$(
-  cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd
-)"
+resolve_script_dir() {
+  local bash_source="${BASH_SOURCE[0]-}"
+  if [[ -z "$bash_source" ]]; then
+    printf '%s\n' ""
+    return
+  fi
+
+  cd -- "$(dirname -- "$bash_source")" >/dev/null 2>&1 && pwd
+}
+
+readonly SCRIPT_DIR="$(resolve_script_dir)"
 readonly DEFAULT_RELEASE_REPO="amichne/kast"
 readonly GITHUB_API_ACCEPT="Accept: application/vnd.github+json"
 readonly GITHUB_API_VERSION="X-GitHub-Api-Version: 2022-11-28"
@@ -35,6 +43,11 @@ need_tool() {
 resolve_release_repo() {
   if [[ -n "${KAST_RELEASE_REPO:-}" ]]; then
     printf '%s\n' "$KAST_RELEASE_REPO"
+    return
+  fi
+
+  if [[ -z "$SCRIPT_DIR" ]]; then
+    printf '%s\n' "$DEFAULT_RELEASE_REPO"
     return
   fi
 
@@ -90,7 +103,7 @@ resolve_java_bin() {
     return
   fi
 
-  command -v java >/dev/null 2>&1 || die "Java 21 is required. Install Java 21 and rerun ./install.sh."
+  command -v java >/dev/null 2>&1 || die "Java 21 is required. Install Java 21 and rerun the installer."
   command -v java
 }
 

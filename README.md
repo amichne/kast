@@ -16,17 +16,18 @@ The repo is organized as a Gradle multi-module build:
 ## Install the published CLI
 
 Kast publishes portable release zips for supported operating systems. Install
-the latest release into this checkout:
+the latest release from any shell with a copyable one-line command:
 
 ```bash
-./install.sh
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/install.sh)"
 ```
 
 That installs `kast` into your user-local bin directory and adds that directory
-to your shell `PATH` when needed.
+to your shell `PATH` when needed. If you already have this repository checked
+out, you can run `./install.sh` from the repo root instead.
 
 > **Note:** The published bundle still expects Java 21 or newer on your path or
-> under `JAVA_HOME`. `./install.sh` validates that before it unpacks the
+> under `JAVA_HOME`. The installer validates that before it unpacks the
 > release.
 
 ## How to use it

@@ -29,6 +29,15 @@ first.
 
     [Open the guide](get-started.md)
 
+-   __Command reference__
+
+    ---
+
+    Keep the public command list, key options, and support boundaries nearby
+    while you work.
+
+    [Open the guide](command-reference.md)
+
 -   __Run analysis commands__
 
     ---
@@ -46,15 +55,6 @@ first.
     skill and its CLI discovery workflow.
 
     [Open the guide](use-kast-from-an-llm-agent.md)
-
--   __Command reference__
-
-    ---
-
-    Keep the public command list, key options, and support boundaries nearby
-    while you work.
-
-    [Open the guide](command-reference.md)
 
 </div>
 
@@ -75,7 +75,8 @@ relearning the interface.
 Most sessions follow the same short loop, even when the specific analysis task
 changes.
 
-1. Install the published CLI with `./install.sh`.
+1. Install the published CLI with the copyable installer or `./install.sh`
+   from a checkout.
 2. Start or reuse a workspace runtime with `kast workspace ensure`.
 3. Inspect `kast capabilities`, then run the analysis command you need.
 4. Stop the workspace daemon with `kast daemon stop` when you are done.
