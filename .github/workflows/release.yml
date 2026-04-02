@@ -49,8 +49,6 @@ jobs:
         include:
           - runner: ubuntu-latest
             asset_id: linux-x64
-          - runner: macos-13
-            asset_id: macos-x64
           - runner: macos-14
             asset_id: macos-arm64
     steps:
