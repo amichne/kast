@@ -70,3 +70,4 @@ pages.
 
 - [Get started](get-started.md)
 - [Run analysis commands](run-analysis-commands.md)
+- [Use Kast from an LLM agent](use-kast-from-an-llm-agent.md)

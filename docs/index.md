@@ -38,6 +38,15 @@ first.
 
     [Open the guide](run-analysis-commands.md)
 
+-   __Use Kast from an LLM agent__
+
+    ---
+
+    Run semantic symbol and reference lookups through the packaged `kast`
+    skill and its CLI discovery workflow.
+
+    [Open the guide](use-kast-from-an-llm-agent.md)
+
 -   __Command reference__
 
     ---
@@ -78,4 +87,5 @@ running workspace daemon, jump straight to the task and reference pages.
 
 - [Get started](get-started.md)
 - [Run analysis commands](run-analysis-commands.md)
+- [Use Kast from an LLM agent](use-kast-from-an-llm-agent.md)
 - [Command reference](command-reference.md)

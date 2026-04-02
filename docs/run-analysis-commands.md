@@ -129,4 +129,5 @@ Keep the reference page nearby when you want a smaller lookup-oriented summary
 of the public commands.
 
 - [Command reference](command-reference.md)
+- [Use Kast from an LLM agent](use-kast-from-an-llm-agent.md)
 - [Get started](get-started.md)

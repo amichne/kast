@@ -8,9 +8,15 @@ on:
   workflow_dispatch:
     inputs:
       tag:
+<<<<<<< HEAD
         description: Existing tag to release, for example v1.2.3
         required: true
         type: string
+=======
+        description: "Tag to release (e.g., v1.2.3)"
+        required: true
+        default: "0.0.0"
+>>>>>>> 68528cb6c32751a5169afeb20e68bfa02289d9bc
 
 permissions:
   contents: read
@@ -31,6 +37,7 @@ jobs:
     permissions:
       contents: write
     steps:
+<<<<<<< HEAD
       - name: Resolve release tag
         id: release-tag
         shell: bash
@@ -49,6 +56,9 @@ jobs:
           fi
 
           printf 'value=%s\n' "$tag" >> "$GITHUB_OUTPUT"
+=======
+      - uses: actions/checkout@v5
+>>>>>>> 68528cb6c32751a5169afeb20e68bfa02289d9bc
 
       - name: Ensure draft release exists
         env:
@@ -56,10 +66,6 @@ jobs:
         run: |
           set -euo pipefail
           tag="${{ steps.release-tag.outputs.value }}"
-
-          if gh release view "$tag" >/dev/null 2>&1; then
-            exit 0
-          fi
 
           gh release create "$tag" \
             --draft \
@@ -79,8 +85,6 @@ jobs:
         include:
           - runner: ubuntu-latest
             asset_id: linux-x64
-          - runner: macos-13
-            asset_id: macos-x64
           - runner: macos-14
             asset_id: macos-arm64
     steps:
@@ -132,6 +136,7 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v5
       - name: Publish draft release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

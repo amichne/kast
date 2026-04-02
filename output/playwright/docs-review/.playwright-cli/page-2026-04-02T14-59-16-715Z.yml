@@ -1,0 +1,218 @@
+- generic [active] [ref=e1]:
+  - generic "Navigation"
+  - link "Skip to content" [ref=e2] [cursor=pointer]:
+    - /url: http://127.0.0.1:8123/#start-with-the-page-that-matches-your-goal
+  - banner [ref=e3]:
+    - navigation "Header" [ref=e4]:
+      - link "Kast" [ref=e5] [cursor=pointer]:
+        - /url: ""
+        - img [ref=e6]
+      - generic [ref=e12]:
+        - generic [ref=e14]: Kast
+        - generic:
+          - generic: Kast docs
+      - generic [ref=e15]:
+        - radio "Switch to dark mode"
+        - generic "Switch to dark mode" [ref=e16] [cursor=pointer]:
+          - img [ref=e17]
+        - radio "Switch to light mode"
+      - dialog "Search" [ref=e20]:
+        - button "Search ⌘K" [ref=e21] [cursor=pointer]
+      - link "amichne/kast" [ref=e23] [cursor=pointer]:
+        - /url: https://github.com/amichne/kast
+        - img [ref=e25]
+        - generic [ref=e27]: amichne/kast
+  - generic [ref=e28]:
+    - main [ref=e29]:
+      - generic [ref=e30]:
+        - navigation "Navigation" [ref=e34]:
+          - list [ref=e35]:
+            - listitem [ref=e36]:
+              - link "Overview" [ref=e37] [cursor=pointer]:
+                - /url: ""
+                - img [ref=e38]
+                - generic [ref=e43]: Overview
+            - listitem [ref=e44]:
+              - link "Get started" [ref=e45] [cursor=pointer]:
+                - /url: http://127.0.0.1:8123/get-started/
+                - img [ref=e46]
+                - generic [ref=e48]: Get started
+            - listitem [ref=e49]:
+              - link "Run analysis commands" [ref=e50] [cursor=pointer]:
+                - /url: http://127.0.0.1:8123/run-analysis-commands/
+                - img [ref=e51]
+                - generic [ref=e54]: Run analysis commands
+            - listitem [ref=e55]:
+              - link "Use Kast from an LLM agent" [ref=e56] [cursor=pointer]:
+                - /url: http://127.0.0.1:8123/use-kast-from-an-llm-agent/
+                - img [ref=e57]
+                - generic [ref=e59]: Use Kast from an LLM agent
+            - listitem [ref=e60]:
+              - link "Command reference" [ref=e61] [cursor=pointer]:
+                - /url: http://127.0.0.1:8123/command-reference/
+                - img [ref=e62]
+                - generic [ref=e64]: Command reference
+        - navigation "On this page" [ref=e68]:
+          - generic [ref=e69]: On this page
+          - list [ref=e70]:
+            - listitem [ref=e71]:
+              - link "Start with the page that matches your goal" [ref=e72] [cursor=pointer]:
+                - /url: http://127.0.0.1:8123/#start-with-the-page-that-matches-your-goal
+                - generic [ref=e73]: Start with the page that matches your goal
+            - listitem [ref=e74]:
+              - link "What every Kast command has in common" [ref=e75] [cursor=pointer]:
+                - /url: http://127.0.0.1:8123/#what-every-kast-command-has-in-common
+                - generic [ref=e76]: What every Kast command has in common
+            - listitem [ref=e77]:
+              - link "A typical Kast session" [ref=e78] [cursor=pointer]:
+                - /url: http://127.0.0.1:8123/#a-typical-kast-session
+                - generic [ref=e79]: A typical Kast session
+            - listitem [ref=e80]:
+              - link "Next steps" [ref=e81] [cursor=pointer]:
+                - /url: http://127.0.0.1:8123/#next-steps
+                - generic [ref=e82]: Next steps
+        - article [ref=e84]:
+          - link "Edit this page" [ref=e85] [cursor=pointer]:
+            - /url: https://github.com/amichne/kast/edit/main/docs/index.md
+            - img [ref=e86]
+          - link "View source of this page" [ref=e88] [cursor=pointer]:
+            - /url: https://github.com/amichne/kast/raw/main/docs/index.md
+            - img [ref=e89]
+          - heading "Kast docs" [level=1] [ref=e91]
+          - paragraph [ref=e92]:
+            - text: "Kast has one supported operator path: run the repo-local"
+            - code [ref=e93]: kast
+            - text: "command against the workspace you want to analyze. These pages focus on the flow that works today: install the CLI, ensure a workspace runtime, run analysis commands, and stop the runtime when you are done."
+          - generic [ref=e94]:
+            - paragraph [ref=e95]: Note
+            - paragraph [ref=e96]:
+              - text: The current supported flow does not advertise
+              - code [ref=e97]: callHierarchy
+              - text: yet.
+          - heading "Start with the page that matches your goal" [level=2] [ref=e98]
+          - paragraph [ref=e99]: This short doc set is organized around the jobs people usually need to do first.
+          - list [ref=e101]:
+            - listitem [ref=e102]:
+              - paragraph [ref=e103]:
+                - strong [ref=e104]: Get started
+              - separator [ref=e105]
+              - paragraph [ref=e106]: Install the published CLI, start a workspace runtime, and verify that the workspace is ready for analysis.
+              - paragraph [ref=e107]:
+                - link "Open the guide" [ref=e108] [cursor=pointer]:
+                  - /url: http://127.0.0.1:8123/get-started/
+            - listitem [ref=e109]:
+              - paragraph [ref=e110]:
+                - strong [ref=e111]: Run analysis commands
+              - separator [ref=e112]
+              - paragraph [ref=e113]: Use the common read and mutation commands with examples that stay close to the current CLI surface.
+              - paragraph [ref=e114]:
+                - link "Open the guide" [ref=e115] [cursor=pointer]:
+                  - /url: http://127.0.0.1:8123/run-analysis-commands/
+            - listitem [ref=e116]:
+              - paragraph [ref=e117]:
+                - strong [ref=e118]: Use Kast from an LLM agent
+              - separator [ref=e119]
+              - paragraph [ref=e120]:
+                - text: Run semantic symbol and reference lookups through the packaged
+                - code [ref=e121]: kast
+                - text: skill and its CLI discovery workflow.
+              - paragraph [ref=e122]:
+                - link "Open the guide" [ref=e123] [cursor=pointer]:
+                  - /url: http://127.0.0.1:8123/use-kast-from-an-llm-agent/
+            - listitem [ref=e124]:
+              - paragraph [ref=e125]:
+                - strong [ref=e126]: Command reference
+              - separator [ref=e127]
+              - paragraph [ref=e128]: Keep the public command list, key options, and support boundaries nearby while you work.
+              - paragraph [ref=e129]:
+                - link "Open the guide" [ref=e130] [cursor=pointer]:
+                  - /url: http://127.0.0.1:8123/command-reference/
+          - heading "What every Kast command has in common" [level=2] [ref=e131]
+          - paragraph [ref=e132]: Kast stays consistent across commands so you can move between tasks without relearning the interface.
+          - list [ref=e133]:
+            - listitem [ref=e134]:
+              - text: Use
+              - code [ref=e135]: "--key=value"
+              - text: syntax for command options.
+            - listitem [ref=e136]:
+              - text: Pass absolute paths for
+              - code [ref=e137]: "--workspace-root"
+              - text: ","
+              - code [ref=e138]: "--file-path"
+              - text: ", and"
+              - code [ref=e139]: "--request-file"
+              - text: .
+            - listitem [ref=e140]: Expect successful results as machine-readable JSON on stdout.
+            - listitem [ref=e141]: Expect daemon lifecycle notes, when present, on stderr.
+            - listitem [ref=e142]:
+              - text: Keep Java 21 or newer available on your path or under
+              - code [ref=e143]: JAVA_HOME
+              - text: .
+          - heading "A typical Kast session" [level=2] [ref=e144]
+          - paragraph [ref=e145]: Most sessions follow the same short loop, even when the specific analysis task changes.
+          - list [ref=e146]:
+            - listitem [ref=e147]:
+              - text: Install the published CLI with
+              - code [ref=e148]: ./install.sh
+              - text: .
+            - listitem [ref=e149]:
+              - text: Start or reuse a workspace runtime with
+              - code [ref=e150]: kast workspace ensure
+              - text: .
+            - listitem [ref=e151]:
+              - text: Inspect
+              - code [ref=e152]: kast capabilities
+              - text: ", then run the analysis command you need."
+            - listitem [ref=e153]:
+              - text: Stop the workspace daemon with
+              - code [ref=e154]: kast daemon stop
+              - text: when you are done.
+          - heading "Next steps" [level=2] [ref=e155]
+          - paragraph [ref=e156]: If you are new to Kast, start with the guided setup page. If you already have a running workspace daemon, jump straight to the task and reference pages.
+          - list [ref=e157]:
+            - listitem [ref=e158]:
+              - link "Get started" [ref=e159] [cursor=pointer]:
+                - /url: http://127.0.0.1:8123/get-started/
+            - listitem [ref=e160]:
+              - link "Run analysis commands" [ref=e161] [cursor=pointer]:
+                - /url: http://127.0.0.1:8123/run-analysis-commands/
+            - listitem [ref=e162]:
+              - link "Use Kast from an LLM agent" [ref=e163] [cursor=pointer]:
+                - /url: http://127.0.0.1:8123/use-kast-from-an-llm-agent/
+            - listitem [ref=e164]:
+              - link "Command reference" [ref=e165] [cursor=pointer]:
+                - /url: http://127.0.0.1:8123/command-reference/
+      - button "Back to top":
+        - img
+        - text: Back to top
+    - contentinfo [ref=e166]:
+      - navigation "Footer" [ref=e167]:
+        - 'link "Next: Get started" [ref=e168] [cursor=pointer]':
+          - /url: http://127.0.0.1:8123/get-started/
+          - generic [ref=e169]:
+            - text: Next
+            - generic [ref=e170]: Get started
+          - img [ref=e172]
+      - generic [ref=e176]:
+        - generic [ref=e177]: Copyright © 2026 amichne
+        - text: Made with
+        - link "Zensical" [ref=e178] [cursor=pointer]:
+          - /url: https://zensical.org/
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - button:
+              - img
+            - generic:
+              - combobox "Search"
+            - button:
+              - img
+          - generic:
+            - list
+        - generic:
+          - generic:
+            - heading "Filters" [level=3]
+            - heading "Tags" [level=4]
+            - list

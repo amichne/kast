@@ -22,10 +22,19 @@ internal object GradleWorkspaceDiscovery {
         val gradleModules = if (settingsSnapshot.shouldPreferStaticDiscovery()) {
             StaticGradleWorkspaceDiscovery.discoverModules(workspaceRoot, settingsSnapshot)
         } else {
+            val staticModules = {
+                StaticGradleWorkspaceDiscovery.discoverModules(workspaceRoot, settingsSnapshot)
+            }
             runCatching {
                 loadModulesWithToolingApi(workspaceRoot)
+            }.mapCatching { toolingModules ->
+                if (toolingModules.shouldFallbackToStaticModules(settingsSnapshot)) {
+                    staticModules()
+                } else {
+                    toolingModules
+                }
             }.getOrElse {
-                StaticGradleWorkspaceDiscovery.discoverModules(workspaceRoot, settingsSnapshot)
+                staticModules()
             }
         }
 
@@ -156,6 +165,21 @@ internal object GradleWorkspaceDiscovery {
     }
 }
 
+
+private fun List<GradleModuleModel>.shouldFallbackToStaticModules(
+    settingsSnapshot: GradleSettingsSnapshot,
+): Boolean {
+    if (settingsSnapshot.includedProjectPaths.isEmpty()) {
+        return false
+    }
+
+    val hasModuleDependencies = any { module ->
+        module.dependencies.any(GradleDependency::isModuleDependency)
+    }
+    return !hasModuleDependencies
+}
+
+private fun GradleDependency.isModuleDependency(): Boolean = this is GradleDependency.ModuleDependency
 internal data class GradleModuleModel(
     val gradlePath: String,
     val ideaModuleName: String,
@@ -244,6 +268,7 @@ internal enum class GradleSourceSet(
         supportedDependencyScopes = setOf(
             GradleDependencyScope.COMPILE,
             GradleDependencyScope.PROVIDED,
+            GradleDependencyScope.RUNTIME,
             GradleDependencyScope.UNKNOWN,
         ),
     ),
@@ -253,6 +278,7 @@ internal enum class GradleSourceSet(
             GradleDependencyScope.COMPILE,
             GradleDependencyScope.PROVIDED,
             GradleDependencyScope.TEST,
+            GradleDependencyScope.RUNTIME,
             GradleDependencyScope.UNKNOWN,
         ),
     ),
