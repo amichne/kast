@@ -15,6 +15,13 @@ You need a small amount of local setup before the first command can succeed.
 
 - Keep Java 21 or newer available through `JAVA_HOME` or your shell `PATH`.
 - Know the absolute path to the Kotlin workspace you want to analyze.
+ - (Optional) You can influence how the `kast` CLI binary is resolved at runtime:
+   - `KAST_CLI_PATH` — if set to an executable path, the resolver will prefer it
+     when locating the `kast` binary.
+   - `KAST_SOURCE_ROOT` — when set to the repository source root, the resolver
+     may use local build outputs (for example `kast/build/scripts/kast` or
+     `dist/kast/kast`) and can attempt an auto-build via `./gradlew` if Java
+     21+ is available.
 
 ## Install the published CLI
 
@@ -137,6 +144,24 @@ mistakes.
   path and rerun the command.
 - If you want the shell-specific completion help pages, run
   `kast help completion`.
+ - If `kast` is not found on your PATH you can point the resolver directly at a
+   binary using `KAST_CLI_PATH`:
+
+   ```bash
+   export KAST_CLI_PATH=/absolute/path/to/kast
+   kast workspace status --workspace-root=/absolute/path/to/workspace
+   ```
+
+ - If you have a local checkout of the repository and want `kast` to use the
+   locally-built CLI (or build it automatically), set `KAST_SOURCE_ROOT` to the
+   repo root. The resolver will look for expected build outputs and may run a
+   minimal Gradle step to produce `kast/build/scripts/kast` when Java 21+ is
+   available:
+
+   ```bash
+   export KAST_SOURCE_ROOT=/absolute/path/to/kast/repo
+   kast workspace ensure --workspace-root=/absolute/path/to/workspace
+   ```
 
 ## Next steps
 

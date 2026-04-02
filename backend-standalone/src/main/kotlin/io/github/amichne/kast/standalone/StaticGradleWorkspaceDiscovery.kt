@@ -171,7 +171,10 @@ internal object StaticGradleWorkspaceDiscovery {
     private fun sourceRoots(
         projectDirectory: Path,
         sourceSet: GradleSourceSet,
-    ): List<Path> = listOf(projectDirectory.resolve("src/${sourceSet.id}/kotlin"))
+    ): List<Path> = listOf(
+        projectDirectory.resolve("src/${sourceSet.id}/kotlin"),
+        projectDirectory.resolve("src/${sourceSet.id}/java"),
+    )
         .filter(Path::isDirectory)
         .map(::normalizeStandalonePath)
         .distinct()

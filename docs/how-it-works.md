@@ -69,6 +69,13 @@ The command you run. It manages the daemon lifecycle, parses your arguments,
 sends requests over a Unix domain socket, and prints JSON results to stdout.
 The CLI is the only part you interact with directly.
 
+The client binary resolution follows a small discovery cascade so that users
+can override or point at local builds when iterating on the project. By
+default the system `PATH` is preferred; you can also set `KAST_CLI_PATH` to an
+explicit executable, or set `KAST_SOURCE_ROOT` to point the resolver at local
+build outputs (or enable an auto-build when Java 21+ is available). See the
+Get started guide for examples.
+
 ### `analysis-server`
 
 The transport layer inside the daemon. It handles JSON-RPC protocol, request

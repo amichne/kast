@@ -19,19 +19,22 @@ internal object GradleWorkspaceDiscovery {
         extraClasspathRoots: List<Path>,
     ): StandaloneWorkspaceLayout {
         val settingsSnapshot = GradleSettingsSnapshot.read(workspaceRoot)
-        val gradleModules = if (settingsSnapshot.shouldPreferStaticDiscovery()) {
+        val staticModules = {
             StaticGradleWorkspaceDiscovery.discoverModules(workspaceRoot, settingsSnapshot)
+        }
+        val gradleModules = if (settingsSnapshot.shouldPreferStaticDiscovery()) {
+            staticModules()
         } else {
-            val staticModules = {
-                StaticGradleWorkspaceDiscovery.discoverModules(workspaceRoot, settingsSnapshot)
-            }
             runCatching {
                 loadModulesWithToolingApi(workspaceRoot)
-            }.mapCatching { toolingModules ->
-                if (toolingModules.shouldFallbackToStaticModules(settingsSnapshot)) {
-                    staticModules()
-                } else {
-                    toolingModules
+            }.map { toolingModules ->
+                when {
+                    toolingModules.isEmpty() -> staticModules()
+                    toolingModules.shouldFallbackToStaticModules(settingsSnapshot) -> mergeToolingAndStaticModules(
+                        toolingModules = toolingModules,
+                        staticModules = staticModules(),
+                    )
+                    else -> toolingModules
                 }
             }.getOrElse {
                 staticModules()
@@ -123,19 +126,21 @@ internal object GradleWorkspaceDiscovery {
     private fun toGradleModuleModel(module: IdeaModule): GradleModuleModel {
         val contentRoots = module.contentRoots
         val mainSourceRoots = contentRoots
+            .asSequence()
             .flatMap { contentRoot -> contentRoot.sourceDirectories.map { directory -> directory.directory.toPath() } }
             .filter { path -> Files.exists(path) }
             .map(::normalizeStandalonePath)
-            .filter(::isSupportedStandaloneSourceRoot)
             .distinct()
             .sorted()
+            .toList()
         val testSourceRoots = contentRoots
+            .asSequence()
             .flatMap { contentRoot -> contentRoot.testDirectories.map { directory -> directory.directory.toPath() } }
             .filter { path -> Files.exists(path) }
             .map(::normalizeStandalonePath)
-            .filter(::isSupportedStandaloneSourceRoot)
             .distinct()
             .sorted()
+            .toList()
         val dependencies = module.dependencies.mapNotNull(::toGradleDependency)
         val compilerOutput = module.compilerOutput
         return GradleModuleModel(
@@ -164,6 +169,32 @@ internal object GradleWorkspaceDiscovery {
         }
     }
 }
+
+private fun mergeToolingAndStaticModules(
+    toolingModules: List<GradleModuleModel>,
+    staticModules: List<GradleModuleModel>,
+): List<GradleModuleModel> {
+    val toolingModulesByPath = toolingModules.associateBy(GradleModuleModel::gradlePath)
+    val staticModulesByPath = staticModules.associateBy(GradleModuleModel::gradlePath)
+    return (toolingModulesByPath.keys + staticModulesByPath.keys)
+        .sorted()
+        .map { gradlePath ->
+            val toolingModule = toolingModulesByPath[gradlePath]
+            val staticModule = staticModulesByPath[gradlePath]
+            when {
+                toolingModule != null && staticModule != null -> toolingModule.mergeWithStaticModule(staticModule)
+                toolingModule != null -> toolingModule
+                staticModule != null -> staticModule
+                else -> error("No Gradle module model was available for $gradlePath")
+            }
+        }
+}
+
+private fun GradleModuleModel.mergeWithStaticModule(staticModule: GradleModuleModel): GradleModuleModel = copy(
+    dependencies = (dependencies + staticModule.dependencies).distinct(),
+    mainOutputRoots = mainOutputRoots.ifEmpty { staticModule.mainOutputRoots },
+    testOutputRoots = testOutputRoots.ifEmpty { staticModule.testOutputRoots },
+)
 
 
 private fun List<GradleModuleModel>.shouldFallbackToStaticModules(
@@ -194,11 +225,13 @@ internal data class GradleModuleModel(
     fun binaryRootsFor(sourceSet: GradleSourceSet): List<Path> {
         val supportedScopes = sourceSet.supportedDependencyScopes
         return dependencies
+            .asSequence()
             .filterIsInstance<GradleDependency.LibraryDependency>()
             .filter { dependency -> dependency.scope in supportedScopes }
             .map(GradleDependency.LibraryDependency::binaryRoot)
             .distinct()
             .sorted()
+            .toList()
     }
 
     fun moduleDependencyNamesFor(
@@ -211,12 +244,14 @@ internal data class GradleModuleModel(
             dependencyNames += analysisModuleName(GradleSourceSet.MAIN)
         }
         dependencies
+            .asSequence()
             .filterIsInstance<GradleDependency.ModuleDependency>()
             .filter { dependency -> dependency.scope in sourceSet.supportedDependencyScopes }
             .mapNotNull { dependency -> moduleModelsByIdeaName[dependency.targetIdeaModuleName] }
             .map(GradleModuleModel::mainDependencyModuleName)
             .filterNotNull()
             .filter(availableSourceModuleNames::contains)
+            .toList()
             .forEach(dependencyNames::add)
         return dependencyNames.toList()
     }
@@ -231,11 +266,13 @@ internal data class GradleModuleModel(
             fallbackRoots += mainOutputRoots
         }
         dependencies
+            .asSequence()
             .filterIsInstance<GradleDependency.ModuleDependency>()
             .filter { dependency -> dependency.scope in sourceSet.supportedDependencyScopes }
             .mapNotNull { dependency -> moduleModelsByIdeaName[dependency.targetIdeaModuleName] }
             .filter { dependency -> dependency.mainDependencyModuleName() !in availableSourceModuleNames }
             .flatMap(GradleModuleModel::mainOutputRoots)
+            .toList()
             .forEach(fallbackRoots::add)
         return fallbackRoots.toList().sorted()
     }
@@ -307,7 +344,7 @@ internal data class GradleSettingsSnapshot(
     val includedProjectPaths: List<String>,
     val hasCompositeBuilds: Boolean,
 ) {
-    fun shouldPreferStaticDiscovery(): Boolean = hasCompositeBuilds || includedProjectPaths.size > maxIncludedProjectsForToolingApi
+    fun shouldPreferStaticDiscovery(): Boolean = includedProjectPaths.size > maxIncludedProjectsForToolingApi
 
     fun projectPathsForStaticDiscovery(): List<String> = buildList {
         add(":")
@@ -354,5 +391,3 @@ internal fun normalizeGradleProjectPath(projectPath: String): String = when {
     projectPath.isBlank() -> ":"
     else -> ":$projectPath"
 }
-
-internal fun isSupportedStandaloneSourceRoot(path: Path): Boolean = path.fileName?.toString() != "java"

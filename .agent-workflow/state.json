@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "project_root": "/Users/amichn/code/personal/kast",
+  "created_at": "2026-04-02T20:35:38.945143+00:00",
+  "updated_at": "2026-04-02T21:25:11.495010+00:00",
+  "project": {
+    "status": "complete",
+    "boot_module": null,
+    "main_class": null,
+    "app_modules": [
+      ":analysis-api",
+      ":analysis-server",
+      ":backend-standalone",
+      ":kast",
+      ":shared-testing"
+    ],
+    "leaf_modules": [
+      ":kast"
+    ],
+    "modules_with_ksp": [],
+    "modules_with_kapt": [],
+    "dependency_graph": {
+      ":analysis-api": [],
+      ":shared-testing": [
+        ":analysis-api"
+      ],
+      ":analysis-server": [
+        ":analysis-api",
+        ":shared-testing"
+      ],
+      ":backend-standalone": [
+        ":analysis-api",
+        ":analysis-server",
+        ":shared-testing"
+      ],
+      ":kast": [
+        ":analysis-api",
+        ":analysis-server",
+        ":backend-standalone"
+      ]
+    },
+    "jdk_version": 21,
+    "kotlin_version": "2.3.20",
+    "gradle_version": "9.4.1",
+    "has_buildsrc": false,
+    "has_included_builds": true,
+    "source_sets": {},
+    "errors": []
+  },
+  "goal": {
+    "description": "Make standalone analysis discovery respect Gradle-configured source sets and default to both Kotlin and Java roots",
+    "constraints": [
+      "keep composite/static discovery behavior aligned",
+      "do not break standalone backend tests"
+    ],
+    "acceptance_criteria": [
+      "backend-standalone tests pass",
+      "static Gradle discovery includes configured and default Java/Kotlin source roots"
+    ]
+  },
+  "gradle": {
+    "last_build": {
+      "task": ":backend-standalone:test",
+      "exit_code": 0,
+      "duration_ms": 8633,
+      "build_successful": true
+    },
+    "configuration_cache_compatible": null,
+    "build_cache_enabled": null
+  },
+  "tests": {
+    "status": "passing",
+    "total": 18,
+    "passed": 18,
+    "failed": 0,
+    "skipped": 0,
+    "duration_seconds": 0,
+    "failures": [],
+    "timestamp": null
+  },
+  "coverage": {
+    "status": "pending",
+    "line_percent": null,
+    "branch_percent": null,
+    "class_percent": null,
+    "method_percent": null,
+    "covered_lines": 0,
+    "missed_lines": 0,
+    "total_lines": 0,
+    "lowest_coverage_classes": [],
+    "timestamp": null
+  },
+  "compilation": {
+    "status": "pending",
+    "incremental_modules": [],
+    "non_incremental_modules": [],
+    "non_incremental_reasons": {},
+    "timestamp": null
+  },
+  "history": [
+    {
+      "timestamp": "2026-04-02T21:24:26.188293+00:00",
+      "action": "gradle_test_passed",
+      "detail": {
+        "task": ":backend-standalone:test",
+        "passed": 18,
+        "failed": 0
+      },
+      "outcome": "backend-standalone tests passed after source-set discovery and Java PSI bootstrap updates"
+    }
+  ]
+}

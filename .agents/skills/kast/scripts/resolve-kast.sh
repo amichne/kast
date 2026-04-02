@@ -5,9 +5,8 @@
 set -eu
 
 # Determine the project root: the directory containing this script's skill,
-# which lives at .agents/skills/kast/scripts/resolve-kast.sh relative to root.
 SCRIPT_DIR="$(cd -- "$(dirname -- "$0")" && pwd)"
-PROJECT_ROOT="$(cd -- "${SCRIPT_DIR}/../../../.." && pwd)"
+PROJECT_ROOT="$(git -C "${SCRIPT_DIR}" rev-parse --show-toplevel 2>/dev/null || echo "${SCRIPT_DIR}")"
 
 # 1. PATH — preferred if already installed
 if command -v kast >/dev/null 2>&1; then
@@ -15,18 +14,28 @@ if command -v kast >/dev/null 2>&1; then
     exit 0
 fi
 
-# 2. Local Gradle build output (./gradlew :kast:writeWrapperScript or make cli)
-GRADLE_SCRIPT="${PROJECT_ROOT}/kast/build/scripts/kast"
-if [ -x "${GRADLE_SCRIPT}" ]; then
-    printf '%s\n' "${GRADLE_SCRIPT}"
+# 2. Check if KAST_CLI_PATH environment variable is set and points to an executable
+if [ -n "${KAST_CLI_PATH:-}" ] && [ -x "${KAST_CLI_PATH}" ]; then
+    printf '%s\n' "${KAST_CLI_PATH}"
     exit 0
 fi
 
-# 3. make cli output
-DIST_SCRIPT="${PROJECT_ROOT}/dist/kast/kast"
-if [ -x "${DIST_SCRIPT}" ]; then
-    printf '%s\n' "${DIST_SCRIPT}"
-    exit 0
+# 3. Check for locally built versions if we have KAST_SOURCE_ROOT set (e.g. in CI or if the user has set it manually)
+# This should support those compiling source code, allowing them to iterate without requiring a full install.
+# We check the expected Gradle output location first, then the dist location in case someone built it with `make cli` or similar.
+if [ -n "${KAST_SOURCE_ROOT:-}" ]; then
+    GRADLE_SCRIPT="${KAST_SOURCE_ROOT}/kast/build/scripts/kast"
+    DIST_SCRIPT="${KAST_SOURCE_ROOT}/dist/kast/kast"
+
+    if [ -x "${GRADLE_SCRIPT}" ]; then
+        printf '%s\n' "${GRADLE_SCRIPT}"
+        exit 0
+    fi
+
+    if [ -x "${DIST_SCRIPT}" ]; then
+        printf '%s\n' "${DIST_SCRIPT}"
+        exit 0
+    fi
 fi
 
 # 4. Auto-build fallback: requires Java 21+ and gradlew

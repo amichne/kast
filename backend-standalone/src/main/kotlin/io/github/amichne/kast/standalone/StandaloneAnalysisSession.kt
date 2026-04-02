@@ -4,6 +4,12 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.fileTypes.BinaryFileTypeDecompilers
 import com.intellij.openapi.util.Disposer
 import com.intellij.psi.compiled.ClassFileDecompilers
+import com.intellij.lang.LanguageParserDefinitions
+import com.intellij.lang.java.JavaLanguage
+import com.intellij.lang.java.JavaParserDefinition
+import com.intellij.lang.java.syntax.JavaElementTypeConverterExtension
+import com.intellij.platform.syntax.psi.CommonElementTypeConverterFactory
+import com.intellij.platform.syntax.psi.ElementTypeConverters
 import io.github.amichne.kast.api.NotFoundException
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaSourceModule
 import org.jetbrains.kotlin.analysis.api.standalone.StandaloneAnalysisAPISession
@@ -39,7 +45,7 @@ class StandaloneAnalysisSession(
             moduleName = moduleName,
         )
         require(workspaceLayout.sourceModules.isNotEmpty()) {
-            "No Kotlin source roots were found under ${normalizeStandalonePath(workspaceRoot)}"
+            "No source roots were found under ${normalizeStandalonePath(workspaceRoot)}"
         }
 
         resolvedSourceRoots = workspaceLayout.sourceModules
@@ -59,6 +65,7 @@ class StandaloneAnalysisSession(
             projectDisposable = disposable,
             unitTestMode = false,
         ) {
+            initializeJavaSourceSupport()
             buildKtModuleProvider {
                 val platform = JvmPlatforms.defaultJvmPlatform
                 val sdkModule = buildKtSdkModule {
@@ -130,6 +137,45 @@ class StandaloneAnalysisSession(
     private fun initializeJvmDecompilerServices() {
         ClassFileDecompilers.getInstance()
         BinaryFileTypeDecompilers.getInstance()
+    }
+
+    private fun initializeJavaSourceSupport() {
+        val parserDefinitions = LanguageParserDefinitions.INSTANCE
+        if (parserDefinitions.forLanguage(JavaLanguage.INSTANCE) == null) {
+            val parserDefinition = JavaParserDefinition()
+            parserDefinitions.addExplicitExtension(JavaLanguage.INSTANCE, parserDefinition)
+            Disposer.register(disposable) {
+                parserDefinitions.removeExplicitExtension(JavaLanguage.INSTANCE, parserDefinition)
+            }
+        }
+
+        val converterFactories = ElementTypeConverters.instance
+        var addedConverterFactory = false
+        if (converterFactories.allForLanguage(JavaLanguage.INSTANCE).none { factory ->
+                factory is CommonElementTypeConverterFactory
+            }
+        ) {
+            val commonConverterFactory = CommonElementTypeConverterFactory()
+            converterFactories.addExplicitExtension(JavaLanguage.INSTANCE, commonConverterFactory)
+            addedConverterFactory = true
+            Disposer.register(disposable) {
+                converterFactories.removeExplicitExtension(JavaLanguage.INSTANCE, commonConverterFactory)
+            }
+        }
+        if (converterFactories.allForLanguage(JavaLanguage.INSTANCE).none { factory ->
+                factory is JavaElementTypeConverterExtension
+            }
+        ) {
+            val converterFactory = JavaElementTypeConverterExtension()
+            converterFactories.addExplicitExtension(JavaLanguage.INSTANCE, converterFactory)
+            addedConverterFactory = true
+            Disposer.register(disposable) {
+                converterFactories.removeExplicitExtension(JavaLanguage.INSTANCE, converterFactory)
+            }
+        }
+        if (addedConverterFactory) {
+            converterFactories.clearCache()
+        }
     }
 
     private fun normalizeFileLookupPath(file: KtFile): String {
@@ -227,14 +273,15 @@ internal fun normalizeStandalonePaths(paths: Iterable<Path>): List<Path> = paths
 
 internal fun normalizeStandaloneSourceRoots(paths: Iterable<Path>): List<Path> = paths
     .map(::normalizeStandalonePath)
-    .filter(::isSupportedStandaloneSourceRoot)
     .distinct()
     .sorted()
 
 private fun discoverSourceRoots(workspaceRoot: Path): List<Path> {
     val conventionalRoots = listOf(
         workspaceRoot.resolve("src/main/kotlin"),
+        workspaceRoot.resolve("src/main/java"),
         workspaceRoot.resolve("src/test/kotlin"),
+        workspaceRoot.resolve("src/test/java"),
     ).filter(Files::isDirectory)
     if (conventionalRoots.isNotEmpty()) {
         return conventionalRoots.map(::normalizeStandalonePath).distinct().sorted()
@@ -244,7 +291,7 @@ private fun discoverSourceRoots(workspaceRoot: Path): List<Path> {
     Files.walk(workspaceRoot).use { paths ->
         paths
             .filter { path ->
-                Files.isRegularFile(path) && path.extension in setOf("kt", "kts")
+                Files.isRegularFile(path) && path.extension in setOf("kt", "kts", "java")
             }
             .forEach { file -> discoveredRoots.add(normalizeStandalonePath(file.parent)) }
     }

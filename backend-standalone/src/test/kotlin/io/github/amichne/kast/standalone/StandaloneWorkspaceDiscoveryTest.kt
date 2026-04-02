@@ -2,6 +2,7 @@ package io.github.amichne.kast.standalone
 
 import io.github.amichne.kast.api.FilePosition
 import io.github.amichne.kast.api.ServerLimits
+import io.github.amichne.kast.api.SymbolKind
 import io.github.amichne.kast.api.SymbolQuery
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -69,7 +70,24 @@ class StandaloneWorkspaceDiscoveryTest {
     }
 
     @Test
-    fun `composite gradle workspace falls back to static discovery`() {
+    fun `static gradle discovery defaults to Kotlin and Java source roots`() {
+        createStaticGradleWorkspace(includeJavaSource = true)
+
+        val settingsSnapshot = GradleSettingsSnapshot.read(workspaceRoot)
+        val modulesByPath = StaticGradleWorkspaceDiscovery.discoverModules(workspaceRoot, settingsSnapshot)
+            .associateBy(GradleModuleModel::gradlePath)
+
+        assertEquals(
+            setOf(
+                normalizeStandalonePath(workspaceRoot.resolve("app/src/main/kotlin")),
+                normalizeStandalonePath(workspaceRoot.resolve("app/src/main/java")),
+            ),
+            modulesByPath.getValue(":app").mainSourceRoots.toSet(),
+        )
+    }
+
+    @Test
+    fun `composite gradle workspace respects configured source roots`() {
         createCompositeGradleWorkspace(includeJavaSource = true)
 
         val layout = discoverStandaloneWorkspaceLayout(
@@ -91,12 +109,15 @@ class StandaloneWorkspaceDiscoveryTest {
             modulesByName.getValue(":app[test]").binaryRoots.any { path -> path.fileName.toString() == "test-support.jar" },
         )
         assertFalse(
-            modulesByName.values.flatMap(StandaloneSourceModuleSpec::sourceRoots).any { path -> path.fileName.toString() == "java" },
+            modulesByName.getValue(":app[main]").sourceRoots.any { path -> path == normalizeStandalonePath(workspaceRoot.resolve("app/src/main/java")) },
+        )
+        assertTrue(
+            modulesByName.getValue(":app[main]").sourceRoots.any { path -> path == normalizeStandalonePath(workspaceRoot.resolve("app/src/customMain/java")) },
         )
     }
 
     @Test
-    fun `standalone session skips Java roots in composite gradle workspaces`() = runTest {
+    fun `standalone session includes configured Java roots in composite gradle workspaces`() = runTest {
         createCompositeGradleWorkspace(includeJavaSource = true)
 
         val session = StandaloneAnalysisSession(
@@ -106,9 +127,51 @@ class StandaloneWorkspaceDiscoveryTest {
             moduleName = "ignored",
         )
         try {
-            assertFalse(session.resolvedSourceRoots.any { path -> path.fileName.toString() == "java" })
+            assertTrue(
+                session.resolvedSourceRoots.contains(normalizeStandalonePath(workspaceRoot.resolve("app/src/customMain/java"))),
+            )
             assertTrue(session.sourceModules.any { module -> module.name == ":app[main]" })
             assertTrue(session.sourceModules.any { module -> module.name == ":lib[main]" })
+        } finally {
+            session.close()
+        }
+    }
+
+    @Test
+    fun `standalone session resolves Kotlin references to Java declarations in configured gradle source roots`() = runTest {
+        createCompositeGradleWorkspace(includeJavaSource = true)
+        val usageFile = workspaceRoot.resolve("app/src/main/kotlin/sample/UseJava.kt")
+        val queryOffset = Files.readString(usageFile).indexOf("legacyGreeting")
+        val declarationFile = workspaceRoot.resolve("app/src/customMain/java/sample/LegacyHelper.java")
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "ignored",
+        )
+        try {
+            val backend = StandaloneAnalysisBackend(
+                workspaceRoot = workspaceRoot,
+                limits = ServerLimits(
+                    maxResults = 100,
+                    requestTimeoutMillis = 30_000,
+                    maxConcurrentRequests = 4,
+                ),
+                session = session,
+            )
+
+            val result = backend.resolveSymbol(
+                SymbolQuery(
+                    position = FilePosition(
+                        filePath = usageFile.toString(),
+                        offset = queryOffset,
+                    ),
+                ),
+            )
+
+            assertEquals("sample.LegacyHelper#legacyGreeting", result.symbol.fqName)
+            assertEquals(SymbolKind.FUNCTION, result.symbol.kind)
+            assertEquals(normalizePath(declarationFile), result.symbol.location.filePath)
         } finally {
             session.close()
         }
@@ -220,6 +283,40 @@ class StandaloneWorkspaceDiscoveryTest {
         }
     }
 
+    private fun createStaticGradleWorkspace(includeJavaSource: Boolean) {
+        writeFile(
+            relativePath = "settings.gradle.kts",
+            content = """
+                rootProject.name = "workspace"
+                include(":app")
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "app/build.gradle.kts",
+            content = "",
+        )
+        writeFile(
+            relativePath = "app/src/main/kotlin/sample/Use.kt",
+            content = """
+                package sample
+
+                fun use(): String = "kast"
+            """.trimIndent() + "\n",
+        )
+        if (includeJavaSource) {
+            writeFile(
+                relativePath = "app/src/main/java/sample/LegacyHelper.java",
+                content = """
+                    package sample;
+
+                    public final class LegacyHelper {
+                        private LegacyHelper() {}
+                    }
+                """.trimIndent() + "\n",
+            )
+        }
+    }
+
     private fun createCompositeGradleWorkspace(includeJavaSource: Boolean) {
         writeFile(
             relativePath = "settings.gradle.kts",
@@ -230,10 +327,25 @@ class StandaloneWorkspaceDiscoveryTest {
             """.trimIndent() + "\n",
         )
         writeFile(
+            relativePath = "build.gradle.kts",
+            content = buildString {
+                appendLine("""plugins { idea }""")
+                appendLine("""subprojects {""")
+                appendLine("""    apply(plugin = "java-library")""")
+                appendLine("""    repositories { mavenCentral() }""")
+                appendLine("""    configure<org.gradle.api.tasks.SourceSetContainer> {""")
+                appendLine("""        named("main") {""")
+                appendLine("""            java.srcDir("src/main/kotlin")""")
+                appendLine("""            java.srcDir("src/customMain/java")""")
+                appendLine("""        }""")
+                appendLine("""        named("test") { java.srcDir("src/test/kotlin") }""")
+                appendLine("""    }""")
+                appendLine("""}""")
+            },
+        )
+        writeFile(
             relativePath = "app/build.gradle.kts",
             content = """
-                plugins { java-library }
-
                 dependencies {
                     implementation(project(":lib"))
                     testImplementation(files(rootProject.layout.projectDirectory.file("support/test-support.jar")))
@@ -242,9 +354,7 @@ class StandaloneWorkspaceDiscoveryTest {
         )
         writeFile(
             relativePath = "lib/build.gradle.kts",
-            content = """
-                plugins { java-library }
-            """.trimIndent() + "\n",
+            content = "",
         )
         writeFile(
             relativePath = "lib/src/main/kotlin/sample/Greeter.kt",
@@ -263,6 +373,14 @@ class StandaloneWorkspaceDiscoveryTest {
             """.trimIndent() + "\n",
         )
         writeFile(
+            relativePath = "app/src/main/kotlin/sample/UseJava.kt",
+            content = """
+                package sample
+
+                fun useJava(): String = LegacyHelper.legacyGreeting()
+            """.trimIndent() + "\n",
+        )
+        writeFile(
             relativePath = "app/src/test/kotlin/sample/UseTest.kt",
             content = """
                 package sample
@@ -272,18 +390,31 @@ class StandaloneWorkspaceDiscoveryTest {
         )
         if (includeJavaSource) {
             writeFile(
-                relativePath = "app/src/main/java/sample/LegacyHelper.java",
+                relativePath = "app/src/customMain/java/sample/LegacyHelper.java",
                 content = """
                     package sample;
 
                     public final class LegacyHelper {
                         private LegacyHelper() {}
+
+                        public static String legacyGreeting() {
+                            return "legacy";
+                        }
                     }
                 """.trimIndent() + "\n",
             )
         }
         createJar(workspaceRoot.resolve("support/test-support.jar"))
-        workspaceRoot.resolve("build-logic").createDirectories()
+        writeFile(
+            relativePath = "build-logic/settings.gradle.kts",
+            content = """
+                rootProject.name = "build-logic"
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "build-logic/build.gradle.kts",
+            content = "",
+        )
     }
 
     private fun createJar(path: Path) {

@@ -36,7 +36,7 @@ and works across all environments including sandboxed ones.
 If `kast` is not on PATH, use the helper script:
 
 ```bash
-KAST=$(bash .agents/skills/kast/scripts/resolve-kast.sh)
+KAST=$(bash scripts/resolve-kast.sh)
 ```
 
 The script tries: PATH → Gradle build output → dist output → auto-build via gradlew.
