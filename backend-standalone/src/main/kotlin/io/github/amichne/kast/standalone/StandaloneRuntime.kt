@@ -3,7 +3,9 @@ package io.github.amichne.kast.standalone
 import io.github.amichne.kast.api.ServerLimits
 import io.github.amichne.kast.server.AnalysisServer
 import io.github.amichne.kast.server.AnalysisServerConfig
+import io.github.amichne.kast.server.AnalysisTransport
 import io.github.amichne.kast.server.RunningAnalysisServer
+import io.github.amichne.kast.server.defaultSocketPath
 import java.nio.file.Path
 import kotlin.io.path.Path
 
@@ -12,38 +14,49 @@ data class StandaloneServerOptions(
     val sourceRoots: List<Path>,
     val classpathRoots: List<Path>,
     val moduleName: String,
-    val host: String,
-    val port: Int,
-    val token: String?,
+    val transport: AnalysisTransport,
     val requestTimeoutMillis: Long,
     val maxResults: Int,
     val maxConcurrentRequests: Int,
 ) {
     companion object {
         fun parse(args: Array<String>): StandaloneServerOptions {
-            val values = args.associate { argument ->
+            val values = mutableMapOf<String, String>()
+            args.forEach { argument ->
+                if (argument == "--stdio") {
+                    values["transport"] = "stdio"
+                    return@forEach
+                }
                 val parts = argument.removePrefix("--").split("=", limit = 2)
                 if (parts.size != 2) {
                     error("Arguments must use --key=value syntax: $argument")
                 }
-                parts[0] to parts[1]
+                values[parts[0]] = parts[1]
             }
             return fromValues(values)
         }
 
         fun fromValues(values: Map<String, String>): StandaloneServerOptions {
+            val workspaceRoot = Path(
+                values["workspace-root"]
+                    ?: System.getenv("KAST_WORKSPACE_ROOT")
+                    ?: System.getProperty("user.dir"),
+            ).toAbsolutePath().normalize()
             return StandaloneServerOptions(
-                workspaceRoot = Path(
-                    values["workspace-root"]
-                        ?: System.getenv("KAST_WORKSPACE_ROOT")
-                        ?: System.getProperty("user.dir"),
-                ).toAbsolutePath().normalize(),
+                workspaceRoot = workspaceRoot,
                 sourceRoots = parsePathList(values["source-roots"]),
                 classpathRoots = parsePathList(values["classpath"]),
                 moduleName = values["module-name"] ?: "sources",
-                host = values["host"] ?: "127.0.0.1",
-                port = values["port"]?.toInt() ?: 0,
-                token = values["token"] ?: System.getenv("KAST_TOKEN"),
+                transport = when (values["transport"]?.lowercase()) {
+                    "stdio" -> AnalysisTransport.Stdio
+                    else -> AnalysisTransport.UnixDomainSocket(
+                        socketPath = values["socket-path"]
+                            ?.let(::Path)
+                            ?.toAbsolutePath()
+                            ?.normalize()
+                            ?: defaultSocketPath(workspaceRoot),
+                    )
+                },
                 requestTimeoutMillis = values["request-timeout-ms"]?.toLong() ?: 30_000L,
                 maxResults = values["max-results"]?.toInt() ?: 500,
                 maxConcurrentRequests = values["max-concurrent-requests"]?.toInt() ?: 4,
@@ -67,9 +80,10 @@ data class StandaloneServerOptions(
             add("--classpath=${classpathRoots.joinToString(",")}")
         }
         add("--module-name=$moduleName")
-        add("--host=$host")
-        add("--port=$port")
-        token?.let { add("--token=$it") }
+        when (val transport = transport) {
+            is AnalysisTransport.UnixDomainSocket -> add("--socket-path=${transport.socketPath}")
+            AnalysisTransport.Stdio -> add("--stdio")
+        }
         add("--request-timeout-ms=$requestTimeoutMillis")
         add("--max-results=$maxResults")
         add("--max-concurrent-requests=$maxConcurrentRequests")
@@ -86,7 +100,7 @@ class RunningStandaloneRuntime(
     }
 
     fun await() {
-        Thread.currentThread().join()
+        server.await()
     }
 }
 
@@ -111,9 +125,7 @@ object StandaloneRuntime {
         val server = AnalysisServer(
             backend = backend,
             config = AnalysisServerConfig(
-                host = options.host,
-                port = options.port,
-                token = options.token,
+                transport = options.transport,
                 requestTimeoutMillis = options.requestTimeoutMillis,
                 maxResults = options.maxResults,
                 maxConcurrentRequests = options.maxConcurrentRequests,
@@ -134,8 +146,13 @@ object StandaloneRuntime {
             },
         )
 
-        println("kast standalone listening on ${runtime.server.descriptor.host}:${runtime.server.descriptor.port}")
-        println("descriptor: ${runtime.server.descriptor}")
+        val descriptor = runtime.server.descriptor
+        if (descriptor != null) {
+            println("kast standalone listening on ${descriptor.socketPath}")
+            println("descriptor: $descriptor")
+        } else {
+            println("kast standalone serving JSON-RPC on stdio")
+        }
         runtime.await()
     }
 }

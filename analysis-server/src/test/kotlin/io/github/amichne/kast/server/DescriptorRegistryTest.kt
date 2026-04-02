@@ -18,8 +18,7 @@ class DescriptorRegistryTest {
             workspaceRoot = workspaceRoot.toString(),
             backendName = "standalone",
             backendVersion = "0.1.0",
-            host = "127.0.0.1",
-            port = 9123,
+            socketPath = workspaceRoot.resolve(".kast/s").toString(),
         )
         store.write(descriptor)
 

@@ -20,9 +20,7 @@ class DescriptorStoreTest {
             workspaceRoot = "/tmp/workspace",
             backendName = "standalone",
             backendVersion = "0.1.0",
-            host = "127.0.0.1",
-            port = 9123,
-            token = "secret",
+            socketPath = "/tmp/workspace/.kast/s",
         )
         val store = DescriptorStore(tempDir)
 
@@ -42,8 +40,7 @@ class DescriptorStoreTest {
             workspaceRoot = workspaceRoot.toString(),
             backendName = "standalone",
             backendVersion = "0.1.0",
-            host = "127.0.0.1",
-            port = 9123,
+            socketPath = workspaceRoot.resolve(".kast/s").toString(),
         )
         val store = DescriptorStore(descriptorDirectory)
 

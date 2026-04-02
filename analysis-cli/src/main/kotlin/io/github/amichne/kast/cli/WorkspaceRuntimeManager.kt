@@ -13,7 +13,7 @@ import java.nio.file.Path
 import kotlin.io.path.createDirectories
 
 internal class WorkspaceRuntimeManager(
-    private val httpClient: KastHttpClient,
+    private val rpcClient: KastRpcClient,
     private val processLauncher: ProcessLauncher,
 ) {
     suspend fun workspaceStatus(options: RuntimeCommandOptions): WorkspaceStatusResult {
@@ -105,10 +105,10 @@ internal class WorkspaceRuntimeManager(
             .createDirectories()
             .resolve("standalone-daemon.log")
         val launched = processLauncher.startDetached(
-            mainClassName = "${KastCli::class.java.`package`.name}.CliMainKt",
+            mainClassName = "io.github.amichne.kast.standalone.StandaloneMainKt",
             workingDirectory = options.workspaceRoot,
             logFile = logFile,
-            arguments = listOf("internal", "daemon-run") + standaloneOptions.toCliArguments(),
+            arguments = standaloneOptions.toCliArguments(),
         )
 
         return WorkspaceEnsureResult(
@@ -203,12 +203,12 @@ internal class WorkspaceRuntimeManager(
         }
 
         val runtimeStatusResult = runCatching {
-            httpClient.get<RuntimeStatusResponse>(registered.descriptor, "/api/v1/runtime/status")
+            rpcClient.get<RuntimeStatusResponse>(registered.descriptor, "runtime/status")
         }
         val runtimeStatus = runtimeStatusResult.getOrNull()
         val capabilities = if (runtimeStatus != null) {
             runCatching {
-                httpClient.get<BackendCapabilities>(registered.descriptor, "/api/v1/capabilities")
+                rpcClient.get<BackendCapabilities>(registered.descriptor, "capabilities")
             }.getOrNull()
         } else {
             null
@@ -304,8 +304,6 @@ private fun RuntimeCommandOptions.requireStandaloneBackend(): StandaloneServerOp
     return standaloneOptions ?: StandaloneServerOptions.fromValues(
         mapOf(
             "workspace-root" to workspaceRoot.toString(),
-            "host" to "127.0.0.1",
-            "port" to "0",
             "request-timeout-ms" to "30000",
             "max-results" to "500",
             "max-concurrent-requests" to "4",

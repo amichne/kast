@@ -2,57 +2,77 @@ package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.api.ApiErrorResponse
 import io.github.amichne.kast.api.ServerInstanceDescriptor
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.encodeToString
+import io.github.amichne.kast.server.JsonRpcErrorResponse
+import io.github.amichne.kast.server.JsonRpcRequest
+import io.github.amichne.kast.server.JsonRpcSuccessResponse
 import kotlinx.serialization.json.Json
-import java.net.URI
-import java.net.http.HttpClient
-import java.net.http.HttpRequest
-import java.net.http.HttpResponse
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.encodeToJsonElement
+import java.net.StandardProtocolFamily
+import java.net.UnixDomainSocketAddress
+import java.nio.channels.Channels
+import java.nio.channels.SocketChannel
+import java.nio.charset.StandardCharsets
+import java.nio.file.Path
 
-internal class KastHttpClient(
+internal class KastRpcClient(
     private val json: Json,
 ) {
-    private val client = HttpClient.newHttpClient()
-
     inline fun <reified Response> get(
         descriptor: ServerInstanceDescriptor,
-        path: String,
-    ): Response {
-        val request = baseRequest(descriptor, path)
-            .GET()
-            .build()
-        return execute(request)
-    }
+        method: String,
+    ): Response = execute(descriptor, method, JsonObject(emptyMap()))
 
     inline fun <reified Request : Any, reified Response> post(
         descriptor: ServerInstanceDescriptor,
-        path: String,
+        method: String,
         body: Request,
-    ): Response {
-        val request = baseRequest(descriptor, path)
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(json.encodeToString(body)))
-            .build()
-        return execute(request)
-    }
+    ): Response = execute(
+        descriptor = descriptor,
+        method = method,
+        params = json.encodeToJsonElement(body),
+    )
 
-    fun baseRequest(
+    inline fun <reified Response> execute(
         descriptor: ServerInstanceDescriptor,
-        path: String,
-    ): HttpRequest.Builder {
-        val builder = HttpRequest.newBuilder(URI.create("http://${descriptor.host}:${descriptor.port}$path"))
-        descriptor.token?.let { token ->
-            builder.header("X-Kast-Token", token)
-        }
-        return builder
-    }
+        method: String,
+        params: JsonElement,
+    ): Response {
+        val response = socketRequest(
+            socketPath = Path.of(descriptor.socketPath),
+            request = JsonRpcRequest(
+                id = JsonPrimitive(1),
+                method = method,
+                params = params,
+            ),
+        )
 
-    inline fun <reified Response> execute(request: HttpRequest): Response {
-        val response = client.send(request, HttpResponse.BodyHandlers.ofString())
-        if (response.statusCode() !in 200..299) {
+        val error = runCatching {
+            json.decodeFromString(JsonRpcErrorResponse.serializer(), response)
+        }.getOrNull()
+        if (error != null) {
+            val apiError = error.error.data
+            if (apiError != null) {
+                throw CliFailure(
+                    code = apiError.code,
+                    message = apiError.message,
+                    details = apiError.details,
+                )
+            }
+            throw CliFailure(
+                code = "RPC_${error.error.code}",
+                message = error.error.message,
+            )
+        }
+
+        val success = runCatching {
+            json.decodeFromString(JsonRpcSuccessResponse.serializer(), response)
+        }.getOrElse { exception ->
             val apiError = runCatching {
-                json.decodeFromString<ApiErrorResponse>(response.body())
+                json.decodeFromString<ApiErrorResponse>(response)
             }.getOrNull()
             if (apiError != null) {
                 throw CliFailure(
@@ -62,10 +82,38 @@ internal class KastHttpClient(
                 )
             }
             throw CliFailure(
-                code = "HTTP_${response.statusCode()}",
-                message = "Unexpected HTTP ${response.statusCode()} from ${request.uri()}",
+                code = "RPC_RESPONSE_INVALID",
+                message = exception.message ?: "Invalid JSON-RPC response",
             )
         }
-        return json.decodeFromString(response.body())
+        return json.decodeFromJsonElement(success.result)
+    }
+}
+
+private fun socketRequest(
+    socketPath: Path,
+    request: JsonRpcRequest,
+): String {
+    return runCatching {
+        SocketChannel.open(StandardProtocolFamily.UNIX).use { channel ->
+            channel.connect(UnixDomainSocketAddress.of(socketPath))
+            val writer = Channels.newWriter(channel, StandardCharsets.UTF_8.name()).buffered()
+            val reader = Channels.newReader(channel, StandardCharsets.UTF_8.name()).buffered()
+            writer.write(Json.encodeToString(JsonRpcRequest.serializer(), request))
+            writer.newLine()
+            writer.flush()
+            reader.readLine() ?: throw CliFailure(
+                code = "RPC_RESPONSE_MISSING",
+                message = "The daemon closed the socket without returning a response",
+            )
+        }
+    }.getOrElse { exception ->
+        if (exception is CliFailure) {
+            throw exception
+        }
+        throw CliFailure(
+            code = "DAEMON_UNREACHABLE",
+            message = exception.message ?: "Failed to reach daemon at $socketPath",
+        )
     }
 }

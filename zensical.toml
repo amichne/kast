@@ -1,8 +1,7 @@
 [project]
 site_name = "Kast"
 site_description = """
-Kast exposes Kotlin analysis through one HTTP/JSON contract with a CLI-managed
-standalone runtime.
+Kast exposes Kotlin analysis through one repo-local CLI workflow.
 """
 site_author = "amichne"
 site_url = "https://amichne.github.io/kast/"
@@ -15,10 +14,7 @@ copyright = """
 Copyright &copy; 2026 amichne
 """
 nav = [
-  { "Overview" = "index.md" },
-  { "Guide" = [{ "Runtime model" = "choose-a-runtime.md" }, { "Get started" = "get-started.md" }, { "Operator guide" = "operator-guide.md" }] },
-  { "Reference" = [{ "HTTP API" = "api-reference.md" }] },
-  { "Architecture" = [{ "Implementation plan" = "impl-001.md" }, { "Remaining work" = "remaining-work.md" }, { "ADR 001" = "adr-001.md" }, { "ADR 002" = "adr-002.md" }, { "ADR 003" = "adr-003.md" }, { "ADR 004" = "adr-004.md" }] },
+  { "How to use" = "index.md" },
 ]
 
 [project.theme]

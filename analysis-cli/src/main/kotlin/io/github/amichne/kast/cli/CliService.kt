@@ -20,8 +20,8 @@ internal class CliService(
     json: Json,
     processLauncher: ProcessLauncher,
 ) {
-    private val httpClient = KastHttpClient(json)
-    private val runtimeManager = WorkspaceRuntimeManager(httpClient, processLauncher)
+    private val rpcClient = KastRpcClient(json)
+    private val runtimeManager = WorkspaceRuntimeManager(rpcClient, processLauncher)
 
     suspend fun workspaceStatus(options: RuntimeCommandOptions): WorkspaceStatusResult =
         runtimeManager.workspaceStatus(options)
@@ -53,7 +53,7 @@ internal class CliService(
         val runtime = runtimeManager.ensureRuntime(options)
         requireReadCapability(runtime.selected, ReadCapability.RESOLVE_SYMBOL)
         return RuntimeAttachedResult(
-            payload = httpClient.post(runtime.selected.descriptor, "/api/v1/symbol/resolve", query),
+            payload = rpcClient.post(runtime.selected.descriptor, "symbol/resolve", query),
             runtime = runtime.selected,
         )
     }
@@ -65,7 +65,7 @@ internal class CliService(
         val runtime = runtimeManager.ensureRuntime(options)
         requireReadCapability(runtime.selected, ReadCapability.FIND_REFERENCES)
         return RuntimeAttachedResult(
-            payload = httpClient.post(runtime.selected.descriptor, "/api/v1/references", query),
+            payload = rpcClient.post(runtime.selected.descriptor, "references", query),
             runtime = runtime.selected,
         )
     }
@@ -77,7 +77,7 @@ internal class CliService(
         val runtime = runtimeManager.ensureRuntime(options)
         requireReadCapability(runtime.selected, ReadCapability.DIAGNOSTICS)
         return RuntimeAttachedResult(
-            payload = httpClient.post(runtime.selected.descriptor, "/api/v1/diagnostics", query),
+            payload = rpcClient.post(runtime.selected.descriptor, "diagnostics", query),
             runtime = runtime.selected,
         )
     }
@@ -89,7 +89,7 @@ internal class CliService(
         val runtime = runtimeManager.ensureRuntime(options)
         requireMutationCapability(runtime.selected, MutationCapability.RENAME)
         return RuntimeAttachedResult(
-            payload = httpClient.post(runtime.selected.descriptor, "/api/v1/rename", query),
+            payload = rpcClient.post(runtime.selected.descriptor, "rename", query),
             runtime = runtime.selected,
         )
     }
@@ -101,7 +101,7 @@ internal class CliService(
         val runtime = runtimeManager.ensureRuntime(options)
         requireMutationCapability(runtime.selected, MutationCapability.APPLY_EDITS)
         return RuntimeAttachedResult(
-            payload = httpClient.post(runtime.selected.descriptor, "/api/v1/edits/apply", query),
+            payload = rpcClient.post(runtime.selected.descriptor, "edits/apply", query),
             runtime = runtime.selected,
         )
     }

@@ -2,9 +2,6 @@ package io.github.amichne.kast.server
 
 import io.github.amichne.kast.api.AnalysisBackend
 import io.github.amichne.kast.api.ServerInstanceDescriptor
-import io.ktor.server.engine.EmbeddedServer
-import io.ktor.server.engine.embeddedServer
-import io.ktor.server.netty.Netty
 import kotlinx.coroutines.runBlocking
 import java.io.Closeable
 import kotlin.io.path.Path
@@ -14,49 +11,62 @@ class AnalysisServer(
     private val config: AnalysisServerConfig,
 ) {
     fun start(): RunningAnalysisServer {
-        val engine = embeddedServer(
-            factory = Netty,
-            host = config.host,
-            port = config.port,
-        ) {
-            kastModule(backend, config)
-        }
-        engine.start(wait = false)
-
-        val connector = runBlocking {
-            engine.engine.resolvedConnectors().first()
-        }
         val capabilities = runBlocking {
             backend.capabilities()
         }
-        val descriptor = ServerInstanceDescriptor(
-            workspaceRoot = capabilities.workspaceRoot,
-            backendName = capabilities.backendName,
-            backendVersion = capabilities.backendVersion,
-            host = config.host,
-            port = connector.port,
-            token = config.token,
-        )
-        val descriptorStore = DescriptorStore(
-            directory = config.descriptorDirectory ?: defaultDescriptorDirectory(Path(capabilities.workspaceRoot)),
-        )
-        descriptorStore.write(descriptor)
+        val dispatcher = AnalysisDispatcher(backend, config)
+
+        val transportServer: LocalRpcServer
+        val descriptor: ServerInstanceDescriptor?
+        val descriptorStore: DescriptorStore?
+
+        when (val transport = config.transport) {
+            is AnalysisTransport.UnixDomainSocket -> {
+                val socketPath = transport.socketPath.toAbsolutePath().normalize()
+                transportServer = UnixDomainSocketRpcServer(
+                    socketPath = socketPath,
+                    dispatcher = dispatcher,
+                ).start()
+                descriptor = ServerInstanceDescriptor(
+                    workspaceRoot = capabilities.workspaceRoot,
+                    backendName = capabilities.backendName,
+                    backendVersion = capabilities.backendVersion,
+                    socketPath = socketPath.toString(),
+                )
+                descriptorStore = DescriptorStore(
+                    directory = config.descriptorDirectory ?: defaultDescriptorDirectory(Path(capabilities.workspaceRoot)),
+                )
+                descriptorStore.write(descriptor)
+            }
+
+            AnalysisTransport.Stdio -> {
+                transportServer = StdioRpcServer(dispatcher).start()
+                descriptor = null
+                descriptorStore = null
+            }
+        }
 
         return RunningAnalysisServer(
-            engine = engine,
+            server = transportServer,
             descriptor = descriptor,
             descriptorStore = descriptorStore,
         )
     }
 }
 
-class RunningAnalysisServer(
-    private val engine: EmbeddedServer<*, *>,
-    val descriptor: ServerInstanceDescriptor,
-    private val descriptorStore: DescriptorStore,
+class RunningAnalysisServer internal constructor(
+    private val server: LocalRpcServer,
+    val descriptor: ServerInstanceDescriptor?,
+    private val descriptorStore: DescriptorStore?,
 ) : Closeable {
+    fun await() {
+        server.await()
+    }
+
     override fun close() {
-        descriptorStore.delete(descriptor)
-        engine.stop(gracePeriodMillis = 1_000, timeoutMillis = 5_000)
+        descriptorStore?.let { store ->
+            descriptor?.let(store::delete)
+        }
+        server.close()
     }
 }

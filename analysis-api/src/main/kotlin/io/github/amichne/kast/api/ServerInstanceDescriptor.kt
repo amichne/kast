@@ -7,9 +7,8 @@ data class ServerInstanceDescriptor(
     val workspaceRoot: String,
     val backendName: String,
     val backendVersion: String,
-    val host: String,
-    val port: Int,
-    val token: String? = null,
+    val transport: String = "uds",
+    val socketPath: String,
     val pid: Long = ProcessHandle.current().pid(),
     val schemaVersion: Int = SCHEMA_VERSION,
 )

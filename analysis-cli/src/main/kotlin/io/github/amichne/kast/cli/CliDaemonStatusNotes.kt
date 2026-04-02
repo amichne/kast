@@ -45,7 +45,7 @@ internal fun daemonNoteForRuntime(runtime: RuntimeCandidateStatus): String =
     "daemon: using ${runtime.describeDaemon()}"
 
 private fun RuntimeCandidateStatus.describeDaemon(): String {
-    val endpoint = "${descriptor.host}:${descriptor.port}"
+    val endpoint = descriptor.socketPath
     val stateText = when {
         ready -> "ready"
         !pidAlive -> "stale"
@@ -68,9 +68,7 @@ private fun RuntimeCandidateStatus.describeDaemon(): String {
 
     return buildString {
         append("${descriptor.backendName} daemon pid=${descriptor.pid} $statusText")
-        if (descriptor.port > 0) {
-            append(" at $endpoint")
-        }
+        append(" at $endpoint")
         if (message != null) {
             append(" — $message")
         }

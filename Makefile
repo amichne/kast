@@ -14,6 +14,7 @@ BUILD_DIR=$(MODULE_DIR)/build
 SCRIPTS_DIR=$(BUILD_DIR)/scripts
 LIBS_DIR=$(BUILD_DIR)/libs
 RUNTIME_LIBS_DIR=$(BUILD_DIR)/runtime-libs
+BIN_DIR=$(BUILD_DIR)/bin
 DIST_DIR=dist/$(CLI_NAME)
 TMP_DIST_DIR=$(DIST_DIR).tmp
 DIST_ZIP=dist/$(CLI_NAME).zip
@@ -25,10 +26,12 @@ cli:
 	rm -rf $(TMP_DIST_DIR)
 	mkdir -p $(TMP_DIST_DIR)/libs
 	mkdir -p $(TMP_DIST_DIR)/runtime-libs
+	mkdir -p $(TMP_DIST_DIR)/bin
 	cp $(SCRIPTS_DIR)/$(CLI_NAME) $(TMP_DIST_DIR)/$(CLI_NAME)
 	chmod +x $(TMP_DIST_DIR)/$(CLI_NAME)
 	cp $(LIBS_DIR)/*-all.jar $(TMP_DIST_DIR)/libs/
 	cp $(RUNTIME_LIBS_DIR)/* $(TMP_DIST_DIR)/runtime-libs/
+	cp $(BIN_DIR)/analysis-cli-helper $(TMP_DIST_DIR)/bin/
 	rm -rf $(DIST_DIR)
 	mv $(TMP_DIST_DIR) $(DIST_DIR)
 	@echo "Packaged $(CLI_NAME) into $(DIST_DIR)"

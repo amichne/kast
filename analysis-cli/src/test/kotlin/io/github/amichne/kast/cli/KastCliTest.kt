@@ -62,7 +62,7 @@ class KastCliTest {
     fun `successful commands keep json on stdout and daemon notes on stderr`() {
         val stdout = StringBuilder()
         val stderr = StringBuilder()
-        val expectedNote = "daemon: using standalone daemon pid=42 ready at 127.0.0.1:61234"
+        val expectedNote = "daemon: using standalone daemon pid=42 ready at /tmp/workspace/.kast/s"
         val cli = KastCli(
             commandExecutorFactory = { _, _ ->
                 object : CliCommandExecutor {
