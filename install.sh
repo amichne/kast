@@ -221,6 +221,8 @@ from pathlib import Path
 
 metadata_path = Path(sys.argv[1])
 platform_id = sys.argv[2]
+if not metadata_path.is_file():
+    raise SystemExit(f"Release metadata file was not found: {metadata_path}")
 release = json.loads(metadata_path.read_text(encoding="utf-8"))
 pattern = re.compile(rf"^kast-.*-{re.escape(platform_id)}\.zip$")
 
@@ -409,15 +411,15 @@ prompt_yes_no() {
     fi
     printf '\n' >/dev/tty
 
-    case "${reply,,}" in
+    case "$reply" in
       "")
         [[ "$default_answer" == "yes" ]]
         return
         ;;
-      y | yes)
+      [Yy] | [Yy][Ee][Ss])
         return 0
         ;;
-      n | no)
+      [Nn] | [Nn][Oo])
         return 1
         ;;
     esac
@@ -557,7 +559,15 @@ main() {
       --output "$metadata_path" \
       "$metadata_url"
 
-    mapfile -t release_info < <(extract_release_metadata "$metadata_path" "$platform_id")
+    local release_info_path="${tmp_dir}/release-info.txt"
+    local release_line=""
+
+    extract_release_metadata "$metadata_path" "$platform_id" >"$release_info_path"
+
+    local release_info=()
+    while IFS= read -r release_line || [[ -n "$release_line" ]]; do
+      release_info+=("$release_line")
+    done <"$release_info_path"
     [[ "${#release_info[@]}" -eq 4 ]] || die "Release metadata parsing returned incomplete asset information"
 
     release_tag="${release_info[0]}"

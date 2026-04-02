@@ -5,12 +5,17 @@ description: Install Kast, start a workspace runtime, and run the supported
 icon: lucide/network
 ---
 
-Kast has one supported operator path: run the repo-local `kast` command
-against the workspace you want to analyze. These pages focus on the flow that
-works today: install the CLI, ensure a workspace runtime, run analysis
-commands, and stop the runtime when you are done. The installer can also offer
-to wire Bash or Zsh completions into your shell init file while it sets up the
-launcher.
+Kast is a Kotlin analysis tool that exposes semantic code intelligence through
+a command-line interface. It uses the same K2 Analysis API that powers
+IntelliJ IDEA, so it understands your code the way the IDE does — including
+type inference, inheritance, and cross-module dependencies — but without the
+graphical interface.
+
+The current supported operator path is the repo-local `kast` command. These
+pages focus on the flow that works today: install the CLI, ensure a workspace
+runtime, run analysis commands, and stop the runtime when you are done. The
+installer can also offer to wire Bash or Zsh completions into your shell init
+file while it sets up the launcher.
 
 !!! note
     The current supported flow does not advertise `callHierarchy` yet.
@@ -21,6 +26,15 @@ This short doc set is organized around the jobs people usually need to do
 first.
 
 <div class="grid cards" markdown>
+
+-   __How Kast works__
+
+    ---
+
+    Understand the architecture, what Kast does, and when to use it instead
+    of text search or an IDE.
+
+    [Open the guide](how-it-works.md)
 
 -   __Get started__
 
@@ -103,6 +117,7 @@ changes.
 If you are new to Kast, start with the guided setup page. If you already have a
 running workspace daemon, jump straight to the task and reference pages.
 
+- [How Kast works](how-it-works.md)
 - [Get started](get-started.md)
 - [Run analysis commands](run-analysis-commands.md)
 - [Use Kast from an LLM agent](use-kast-from-an-llm-agent.md)

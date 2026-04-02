@@ -15,6 +15,7 @@ Copyright &copy; 2026 amichne
 """
 nav = [
   { "Overview" = "index.md" },
+  { "How Kast works" = "how-it-works.md" },
   { "Get started" = "get-started.md" },
   { "Run analysis commands" = "run-analysis-commands.md" },
   { "Use Kast from an LLM agent" = "use-kast-from-an-llm-agent.md" },

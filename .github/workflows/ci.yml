@@ -52,3 +52,7 @@ jobs:
           mkdir -p "$dist_dir"
           unzip -q kast/build/distributions/kast-*-portable.zip -d "$dist_dir"
           ./.github/scripts/smoke-kast-cli.sh "$dist_dir/kast/kast"
+
+      - name: Smoke installer
+        shell: bash
+        run: ./.github/scripts/smoke-installer.sh
