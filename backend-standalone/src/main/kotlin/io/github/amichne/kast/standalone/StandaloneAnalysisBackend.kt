@@ -1,11 +1,14 @@
 package io.github.amichne.kast.standalone
 
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiNamedElement
 import com.intellij.psi.PsiRecursiveElementWalkingVisitor
 import io.github.amichne.kast.api.AnalysisBackend
 import io.github.amichne.kast.api.ApplyEditsQuery
 import io.github.amichne.kast.api.ApplyEditsResult
 import io.github.amichne.kast.api.BackendCapabilities
+import io.github.amichne.kast.api.CallDirection
+import io.github.amichne.kast.api.CallNode
 import io.github.amichne.kast.api.CallHierarchyQuery
 import io.github.amichne.kast.api.CallHierarchyResult
 import io.github.amichne.kast.api.DiagnosticsQuery
@@ -26,6 +29,7 @@ import io.github.amichne.kast.api.SymbolQuery
 import io.github.amichne.kast.api.SymbolResult
 import io.github.amichne.kast.api.TextEdit
 import java.nio.file.Path
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
@@ -49,6 +53,7 @@ class StandaloneAnalysisBackend(
         readCapabilities = setOf(
             ReadCapability.RESOLVE_SYMBOL,
             ReadCapability.FIND_REFERENCES,
+            ReadCapability.CALL_HIERARCHY,
             ReadCapability.DIAGNOSTICS,
         ),
         mutationCapabilities = setOf(
@@ -100,8 +105,25 @@ class StandaloneAnalysisBackend(
         )
     }
 
-    override suspend fun callHierarchy(query: CallHierarchyQuery): CallHierarchyResult {
-        throw unsupported(ReadCapability.CALL_HIERARCHY)
+    override suspend fun callHierarchy(query: CallHierarchyQuery): CallHierarchyResult = withContext(readDispatcher) {
+        require(query.depth >= 0) { "depth must be >= 0" }
+        require(query.maxTotalCalls >= 0) { "maxTotalCalls must be >= 0" }
+        require(query.maxChildrenPerNode >= 1) { "maxChildrenPerNode must be >= 1" }
+        val requestedTimeoutMillis = query.timeoutMillis
+        require(requestedTimeoutMillis == null || requestedTimeoutMillis > 0) { "timeoutMillis must be > 0 when provided" }
+        val timeoutMillis = requestedTimeoutMillis ?: limits.requestTimeoutMillis
+
+        val file = session.findKtFile(query.position.filePath)
+        val target = resolveTarget(file, query.position.offset)
+        val builder = CallHierarchyBuilder(
+            query = query,
+            callBudget = query.maxTotalCalls,
+            deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMillis),
+        )
+
+        CallHierarchyResult(
+            root = builder.buildNode(target, remainingDepth = query.depth, ancestry = emptySet()),
+        )
     }
 
     override suspend fun diagnostics(query: DiagnosticsQuery): DiagnosticsResult = withContext(readDispatcher) {
@@ -194,6 +216,134 @@ class StandaloneAnalysisBackend(
     }
 
     private fun currentFileHashes(filePaths: Collection<String>): List<FileHash> = LocalDiskEditApplier.currentHashes(filePaths)
+
+    private inner class CallHierarchyBuilder(
+        private val query: CallHierarchyQuery,
+        private var callBudget: Int,
+        private val deadlineNanos: Long,
+    ) {
+        fun buildNode(target: PsiElement, remainingDepth: Int, ancestry: Set<String>): CallNode {
+            val symbol = target.toSymbol(target.containingDeclarationName())
+            val key = symbol.symbolKey()
+            if (remainingDepth == 0 || callBudget == 0 || System.nanoTime() >= deadlineNanos) {
+                return CallNode(symbol = symbol, children = emptyList())
+            }
+
+            val nextAncestry = ancestry + key
+            val children = mutableListOf<CallNode>()
+            val edges = callEdges(target)
+                .asSequence()
+                .filter { edge -> query.includeExternalSymbols || edge.symbol.location.filePath.startsWith(workspaceRoot.toString()) }
+                .take(query.maxChildrenPerNode)
+                .toList()
+
+            for (edge in edges) {
+                if (callBudget == 0 || System.nanoTime() >= deadlineNanos) {
+                    break
+                }
+
+                callBudget -= 1
+                val childKey = edge.symbol.symbolKey()
+                children += if (childKey in nextAncestry) {
+                    CallNode(symbol = edge.symbol, children = emptyList())
+                } else {
+                    buildNode(edge.element, remainingDepth - 1, nextAncestry)
+                }
+            }
+
+            return CallNode(symbol = symbol, children = children)
+        }
+
+        private fun callEdges(target: PsiElement): List<CallEdge> = when (query.direction) {
+            CallDirection.INCOMING -> incomingEdges(target)
+            CallDirection.OUTGOING -> outgoingEdges(target)
+        }.sortedWith(
+            compareBy<CallEdge>({ it.callSite.filePath }, { it.callSite.startOffset }, { it.callSite.endOffset }, { it.symbol.fqName }),
+        )
+
+        private fun incomingEdges(target: PsiElement): List<CallEdge> = session.allKtFiles()
+            .flatMap { candidateFile -> candidateFile.findCallSitesTo(target) }
+
+        private fun outgoingEdges(target: PsiElement): List<CallEdge> {
+            val edges = mutableListOf<CallEdge>()
+
+            target.accept(
+                object : PsiRecursiveElementWalkingVisitor() {
+                    override fun visitElement(element: PsiElement) {
+                        element.references.forEach { reference ->
+                            val resolved = reference.resolve() ?: return@forEach
+                            if (resolved == target || resolved.isEquivalentTo(target)) {
+                                return@forEach
+                            }
+
+                            val referenceRange = com.intellij.openapi.util.TextRange(
+                                reference.element.textRange.startOffset + reference.rangeInElement.startOffset,
+                                reference.element.textRange.startOffset + reference.rangeInElement.endOffset,
+                            )
+                            edges += CallEdge(
+                                element = resolved,
+                                symbol = resolved.toSymbol(resolved.containingDeclarationName()),
+                                callSite = reference.element.toKastLocation(referenceRange),
+                            )
+                        }
+                        super.visitElement(element)
+                    }
+                },
+            )
+
+            return edges
+        }
+    }
+
+    private data class CallEdge(
+        val element: PsiElement,
+        val symbol: io.github.amichne.kast.api.Symbol,
+        val callSite: io.github.amichne.kast.api.Location,
+    )
+
+    private fun KtFile.findCallSitesTo(target: PsiElement): List<CallEdge> {
+        val edges = mutableListOf<CallEdge>()
+        accept(
+            object : PsiRecursiveElementWalkingVisitor() {
+                override fun visitElement(element: PsiElement) {
+                    element.references.forEach { reference ->
+                        val resolved = reference.resolve()
+                        if (resolved == target || resolved?.isEquivalentTo(target) == true) {
+                            val caller = reference.element.closestNamedCaller() ?: return@forEach
+                            val referenceRange = com.intellij.openapi.util.TextRange(
+                                reference.element.textRange.startOffset + reference.rangeInElement.startOffset,
+                                reference.element.textRange.startOffset + reference.rangeInElement.endOffset,
+                            )
+                            edges += CallEdge(
+                                element = caller,
+                                symbol = caller.toSymbol(caller.containingDeclarationName()),
+                                callSite = reference.element.toKastLocation(referenceRange),
+                            )
+                        }
+                    }
+                    super.visitElement(element)
+                }
+            },
+        )
+
+        return edges
+    }
+
+    private fun PsiElement.closestNamedCaller(): PsiElement? =
+        generateSequence(this) { element -> element.parent }
+            .firstOrNull { element -> element is PsiNamedElement && !element.name.isNullOrBlank() }
+
+    private fun PsiElement.containingDeclarationName(): String? =
+        generateSequence(parent) { element -> element.parent }
+            .filterIsInstance<PsiNamedElement>()
+            .firstOrNull { named -> !named.name.isNullOrBlank() }
+            ?.name
+
+    private fun PsiElement.toSymbol(containingDeclaration: String?) =
+        toSymbolModel(containingDeclaration = containingDeclaration)
+
+    private fun io.github.amichne.kast.api.Symbol.symbolKey(): String =
+        "${fqName}|${location.filePath}:${location.startOffset}-${location.endOffset}"
 
     private fun unsupported(capability: ReadCapability) = io.github.amichne.kast.api.CapabilityNotSupportedException(
         capability = capability.name,
