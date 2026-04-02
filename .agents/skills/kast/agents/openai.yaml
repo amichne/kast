@@ -1,4 +1,7 @@
 interface:
   display_name: "Kast"
-  short_description: "Use the portable Kast CLI path"
-  default_prompt: "Use $kast to verify that kast is on PATH, then run the requested command through kast."
+  short_description: "Kotlin semantic code intelligence via the kast daemon"
+  default_prompt: >
+    Discover the kast CLI using resolve-kast.sh, then run the requested
+    command. Always run workspace ensure before any analysis command.
+    Use --key=value syntax and absolute paths throughout.

@@ -1,9 +1,16 @@
 name: Release
+run-name: Release ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
 
 on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to release, for example v1.2.3
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -12,22 +19,43 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
   cancel-in-progress: false
 
 jobs:
   prepare-release:
     name: Prepare release
     runs-on: ubuntu-latest
+    outputs:
+      release_tag: ${{ steps.release-tag.outputs.value }}
     permissions:
       contents: write
     steps:
+      - name: Resolve release tag
+        id: release-tag
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            tag="${{ inputs.tag }}"
+          else
+            tag="${GITHUB_REF_NAME}"
+          fi
+
+          if [[ -z "$tag" || "$tag" != v* ]]; then
+            echo "release tag must start with v; got '$tag'" >&2
+            exit 1
+          fi
+
+          printf 'value=%s\n' "$tag" >> "$GITHUB_OUTPUT"
+
       - name: Ensure draft release exists
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          tag="${GITHUB_REF_NAME}"
+          tag="${{ steps.release-tag.outputs.value }}"
 
           if gh release view "$tag" >/dev/null 2>&1; then
             exit 0
@@ -57,6 +85,8 @@ jobs:
             asset_id: macos-arm64
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.prepare-release.outputs.release_tag }}
 
       - uses: actions/setup-java@v5
         with:
@@ -86,7 +116,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          tag="${GITHUB_REF_NAME}"
+          tag="${{ needs.prepare-release.outputs.release_tag }}"
           asset_name="kast-${tag}-${{ matrix.asset_id }}.zip"
           asset_path="kast/build/distributions/${asset_name}"
 
@@ -95,7 +125,9 @@ jobs:
 
   publish-release:
     name: Publish release
-    needs: build-and-upload
+    needs:
+      - prepare-release
+      - build-and-upload
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -105,4 +137,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          gh release edit "${GITHUB_REF_NAME}" --draft=false --latest
+          gh release edit "${{ needs.prepare-release.outputs.release_tag }}" --draft=false --latest
