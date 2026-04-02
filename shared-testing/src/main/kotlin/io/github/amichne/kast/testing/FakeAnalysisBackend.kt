@@ -7,6 +7,7 @@ import io.github.amichne.kast.api.BackendCapabilities
 import io.github.amichne.kast.api.CallDirection
 import io.github.amichne.kast.api.CallHierarchyQuery
 import io.github.amichne.kast.api.CallHierarchyResult
+import io.github.amichne.kast.api.CallHierarchyStats
 import io.github.amichne.kast.api.CallNode
 import io.github.amichne.kast.api.Diagnostic
 import io.github.amichne.kast.api.DiagnosticSeverity
@@ -108,6 +109,15 @@ class FakeAnalysisBackend private constructor(
 
         return CallHierarchyResult(
             root = CallNode(symbol = symbol, children = listOf(child)),
+            stats = CallHierarchyStats(
+                totalNodes = 2,
+                totalEdges = 1,
+                truncatedNodes = 0,
+                maxDepthReached = 1,
+                timeoutReached = false,
+                maxTotalCallsReached = false,
+                maxChildrenPerNodeReached = false,
+            ),
         )
     }
 
