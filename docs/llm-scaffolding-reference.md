@@ -11,6 +11,11 @@ lookup that needs explicit CLI control. The public golden path stays
 human-first. This page explains the lower-level scaffolding the skill uses
 under the hood.
 
+Run `kast-skilled` once from the workspace root before you follow the examples
+here. It creates a repository-local `kast` skill symlink that points back to
+the single packaged skill root from `KAST_SKILL_PATH`, so the examples can use
+that linked skill path without copying the skill tree.
+
 !!! note
     The current packaged skill does not support `callHierarchy`. Use
     `symbol resolve` and `references` for semantic navigation today.
@@ -23,9 +28,9 @@ skill is doing before it runs the public commands.
 
 | Layer | What the skill handles | When you need to care |
 | --- | --- | --- |
-| CLI discovery | Runs `bash .agents/skills/kast/scripts/resolve-kast.sh` to find `kast` on `PATH`, in local build output, or in `dist/` | When the binary cannot be found or you need to reproduce the exact invocation |
+| CLI discovery | Runs `bash "$SKILL_ROOT/scripts/resolve-kast.sh"` to find `kast` on `PATH`, in local build output, or in `dist/` | When the binary cannot be found or you need to reproduce the exact invocation |
 | Workspace lifecycle | Runs `workspace ensure` before analysis | When a query hits a cold, indexing, or degraded workspace |
-| Conversational lookup bridge | Searches for candidate declarations from a class, function, or property reference, then uses `.agents/skills/kast/scripts/find-symbol-offset.py` to turn the chosen candidate into declaration-first UTF-16 offsets | When a human reference is ambiguous or you need to debug why one symbol won |
+| Conversational lookup bridge | Searches for candidate declarations from a class, function, or property reference, then uses `"$SKILL_ROOT/scripts/find-symbol-offset.py"` to turn the chosen candidate into declaration-first UTF-16 offsets | When a human reference is ambiguous or you need to debug why one symbol won |
 | Semantic verification | Resolves the chosen position with `symbol resolve` before it expands to `references` or `rename` | When the first match is not the symbol you meant |
 | Failure handling | Treats stderr as daemon notes and must surface missing capabilities, `NOT_FOUND`, and truncation honestly | When automation must distinguish "no result" from "bad input" |
 
@@ -48,7 +53,8 @@ sequence short. Resolve the binary, ensure the workspace, resolve the symbol,
 and only then expand into references.
 
 ```bash
-KAST=$(bash .agents/skills/kast/scripts/resolve-kast.sh)
+SKILL_ROOT=/absolute/path/to/your/installed/kast-skill
+KAST=$(bash "$SKILL_ROOT/scripts/resolve-kast.sh")
 "$KAST" workspace ensure --workspace-root=/absolute/path/to/workspace
 "$KAST" symbol resolve \
   --workspace-root=/absolute/path/to/workspace \
@@ -80,7 +86,7 @@ Example class lookup:
 rg -n --glob '*.kt' 'class HealthCheckService\\b' \
   /absolute/path/to/workspace
 
-python .agents/skills/kast/scripts/find-symbol-offset.py \
+python "$SKILL_ROOT/scripts/find-symbol-offset.py" \
   /absolute/path/to/src/main/kotlin/com/example/HealthCheckService.kt \
   --symbol HealthCheckService
 ```
@@ -91,7 +97,7 @@ Example property lookup:
 rg -n --glob '*.kt' '\\bval retryDelay\\b|\\bvar retryDelay\\b' \
   /absolute/path/to/workspace
 
-python .agents/skills/kast/scripts/find-symbol-offset.py \
+python "$SKILL_ROOT/scripts/find-symbol-offset.py" \
   /absolute/path/to/src/main/kotlin/com/example/RetryConfig.kt \
   --symbol retryDelay
 ```

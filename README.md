@@ -30,6 +30,19 @@ out, you can run `./install.sh` from the repo root instead.
 > under `JAVA_HOME`. The installer validates that before it unpacks the
 > release.
 
+The installer also registers `kast-skilled`. Run it from a workspace root to
+create a `kast` skill symlink without copying the skill contents:
+
+```bash
+kast-skilled
+```
+
+It prompts before linking and defaults to `.agents/skills/kast`,
+`.github/skills/kast`, or `.claude/skills/kast` based on which directories
+already exist in the current directory. All installed links point back to the
+single packaged skill root from `KAST_SKILL_PATH`, which the launcher defaults
+to the installed release copy unless you override it.
+
 ## Local/dev instance installs
 
 For local iteration, keep using `install.sh` for end-user release installs and

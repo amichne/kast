@@ -15,6 +15,25 @@ precise lookup inputs that Kast needs.
     The current packaged skill does not support `callHierarchy`. Use
     `symbol resolve` and `references` for semantic navigation today.
 
+## Install the packaged skill into the workspace
+
+Before an agent can use the packaged `kast` skill from a repository, link it
+into that repository once. The `kast-skilled` command creates a symlink only,
+so every workspace points back to the single packaged skill root from
+`KAST_SKILL_PATH`.
+
+1. Install Kast with `install.sh` if you have not already done that.
+
+2. From the workspace root, run:
+
+   ```bash
+   kast-skilled
+   ```
+
+3. Confirm the prompt before the symlink is created. By default, the command
+   picks `.agents/skills/kast`, `.github/skills/kast`, or `.claude/skills/kast`
+   from the directories already present in the current directory.
+
 ## Start with a conversational reference
 
 The best prompt names the target in human terms and says what you want back.
