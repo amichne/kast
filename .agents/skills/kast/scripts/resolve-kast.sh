@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 # Resolve the kast CLI binary with a discovery cascade.
 # Prints the absolute path to stdout and exits 0 on success.
 # Prints diagnostics to stderr and exits 1 on failure.

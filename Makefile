@@ -1,52 +1,63 @@
-# Makefile to produce a single distributable unit for the kast module.
+# Makefile to produce a single distributable unit for the kast CLI.
 # Targets:
-#   make cli         -> build fat JAR, emit wrapper, package into dist/kast
-#   make cli-zip     -> build a single portable zip in dist/kast.zip
-#   make clean-dist  -> remove dist/
-#   make run         -> run packaged CLI (help)
+#   make cli              -> build a clean staged CLI tree and publish dist/kast
+#   make cli-zip          -> build a clean staged CLI tree and publish dist/kast.zip
+#   make clean-dist       -> remove dist/
+#   make run              -> build dist/kast and run --help
+#   make stage-cli        -> build kast/build/portable-dist/kast
+#   make verify-cli-stage -> fail fast if the staged CLI tree is incomplete
 
-.PHONY: all cli cli-zip clean-dist run
+SHELL := /bin/bash
+.SHELLFLAGS := -euo pipefail -c
+
+.PHONY: all cli cli-zip clean-dist run stage-cli verify-cli-stage
 all: cli
 
-CLI_NAME=kast
-MODULE_DIR=kast
-BUILD_DIR=$(MODULE_DIR)/build
-SCRIPTS_DIR=$(BUILD_DIR)/scripts
-LIBS_DIR=$(BUILD_DIR)/libs
-RUNTIME_LIBS_DIR=$(BUILD_DIR)/runtime-libs
-BIN_DIR=$(BUILD_DIR)/bin
-DIST_DIR=dist/$(CLI_NAME)
-TMP_DIST_DIR=$(DIST_DIR).tmp
-DIST_ZIP=dist/$(CLI_NAME).zip
+CLI_NAME := kast
+MODULE_DIR := kast
+BUILD_DIR := $(MODULE_DIR)/build
+PORTABLE_DIST_DIR := $(BUILD_DIR)/portable-dist/$(CLI_NAME)
+STAGED_JAR_GLOB := $(PORTABLE_DIST_DIR)/libs/$(CLI_NAME)-*-all.jar
+GRADLEW := ./gradlew
+GRADLE_ARGS := --no-configuration-cache
+GRADLE_STAGE_TASK := stageCliDist
+DIST_ROOT := dist
+DIST_DIR := $(DIST_ROOT)/$(CLI_NAME)
+TMP_DIST_DIR := $(DIST_DIR).tmp
+DIST_ZIP := $(DIST_ROOT)/$(CLI_NAME).zip
 
-cli:
-	@echo "Building fat jar and wrapper for $(CLI_NAME)"
-	./gradlew :$(CLI_NAME):writeWrapperScript --no-configuration-cache
-	@echo "Packaging into $(DIST_DIR)"
-	rm -rf $(TMP_DIST_DIR)
-	mkdir -p $(TMP_DIST_DIR)/libs
-	mkdir -p $(TMP_DIST_DIR)/runtime-libs
-	mkdir -p $(TMP_DIST_DIR)/bin
-	cp $(SCRIPTS_DIR)/$(CLI_NAME) $(TMP_DIST_DIR)/$(CLI_NAME)
-	chmod +x $(TMP_DIST_DIR)/$(CLI_NAME)
-	cp $(LIBS_DIR)/*-all.jar $(TMP_DIST_DIR)/libs/
-	cp $(RUNTIME_LIBS_DIR)/* $(TMP_DIST_DIR)/runtime-libs/
-	cp $(BIN_DIR)/kast-helper $(TMP_DIST_DIR)/bin/
-	rm -rf $(DIST_DIR)
-	mv $(TMP_DIST_DIR) $(DIST_DIR)
+stage-cli:
+	@echo "Building a clean staged CLI tree for $(CLI_NAME)"
+	$(GRADLEW) $(GRADLE_STAGE_TASK) $(GRADLE_ARGS)
+
+verify-cli-stage: stage-cli
+	@echo "Verifying staged CLI tree in $(PORTABLE_DIST_DIR)"
+	test -x "$(PORTABLE_DIST_DIR)/$(CLI_NAME)"
+	test -d "$(PORTABLE_DIST_DIR)/bin"
+	test -x "$(PORTABLE_DIST_DIR)/bin/kast-helper"
+	test -d "$(PORTABLE_DIST_DIR)/runtime-libs"
+	test -f "$(PORTABLE_DIST_DIR)/runtime-libs/classpath.txt"
+	shopt -s nullglob; jars=( $(STAGED_JAR_GLOB) ); [[ $${#jars[@]} -eq 1 ]]
+
+cli: verify-cli-stage
+	@echo "Publishing staged CLI tree into $(DIST_DIR)"
+	rm -rf "$(TMP_DIST_DIR)"
+	mkdir -p "$(DIST_ROOT)"
+	cp -R "$(PORTABLE_DIST_DIR)" "$(TMP_DIST_DIR)"
+	rm -rf "$(DIST_DIR)"
+	mv "$(TMP_DIST_DIR)" "$(DIST_DIR)"
 	@echo "Packaged $(CLI_NAME) into $(DIST_DIR)"
 
-cli-zip:
-	@echo "Building portable zip for $(CLI_NAME)"
-	./gradlew :$(CLI_NAME):syncPortableDist --no-configuration-cache
-	mkdir -p dist
-	rm -f $(DIST_ZIP)
-	cd $(BUILD_DIR)/portable-dist && zip -qr $(abspath $(DIST_ZIP)) $(CLI_NAME)
+cli-zip: verify-cli-stage
+	@echo "Packaging staged CLI tree into $(DIST_ZIP)"
+	mkdir -p "$(DIST_ROOT)"
+	rm -f "$(DIST_ZIP)"
+	cd "$(BUILD_DIR)/portable-dist" && zip -qr "$(abspath $(DIST_ZIP))" "$(CLI_NAME)"
 	@echo "Packaged $(CLI_NAME) into $(DIST_ZIP)"
 
 clean-dist:
 	rm -rf dist
 
-run:
-	@echo "Running packaged $(CLI_NAME) (if present)"
-	$(DIST_DIR)/$(CLI_NAME) --help
+run: cli
+	@echo "Running packaged $(CLI_NAME)"
+	"$(DIST_DIR)/$(CLI_NAME)" --help

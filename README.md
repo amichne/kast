@@ -30,6 +30,27 @@ out, you can run `./install.sh` from the repo root instead.
 > under `JAVA_HOME`. The installer validates that before it unpacks the
 > release.
 
+## Local/dev instance installs
+
+For local iteration, keep using `install.sh` for end-user release installs and
+use the dedicated dev installer for named side-by-side instances:
+
+```bash
+./scripts/install-instance.sh --instance my-dev
+./scripts/install-instance.sh
+```
+
+That installs into `~/.local/share/kast/instances/my-dev` and creates
+`~/.local/bin/kast-my-dev` (it does not edit your `PATH`). If you omit
+`--instance`, the script generates a default name like
+`agile-otter`.
+
+Run smoke validation for a named instance with:
+
+```bash
+./scripts/validate-instance.sh my-dev
+```
+
 ## How to use it
 
 Use `kast --help` for the grouped command overview before you move into the

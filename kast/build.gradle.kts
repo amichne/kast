@@ -1,3 +1,4 @@
+import org.gradle.api.tasks.Delete
 import org.gradle.api.tasks.Exec
 import org.gradle.api.tasks.Sync
 import org.gradle.api.tasks.testing.Test
@@ -22,7 +23,15 @@ dependencies {
     implementation(libs.logback.classic)
 }
 
+val cleanHelperOutputs by tasks.registering(Delete::class) {
+    group = "build"
+    description = "Removes generated helper binaries before rebuilding the kast launcher."
+
+    delete(layout.buildDirectory.dir("bin"))
+}
+
 val compileHelper by tasks.registering(Exec::class) {
+    dependsOn(cleanHelperOutputs)
     inputs.file(helperSource)
     outputs.file(helperBinary)
 

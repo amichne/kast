@@ -1,4 +1,5 @@
 import org.gradle.api.file.DuplicatesStrategy
+import org.gradle.api.tasks.Delete
 import org.gradle.api.tasks.Sync
 import org.gradle.api.tasks.bundling.Zip
 import org.gradle.jvm.tasks.Jar
@@ -8,7 +9,21 @@ plugins {
     id("kast.kotlin-library")
 }
 
+val cleanPackagingOutputs by tasks.registering(Delete::class) {
+    group = "build"
+    description = "Removes generated packaging outputs before rebuilding ${project.name}."
+
+    delete(
+        layout.buildDirectory.dir("distributions"),
+        layout.buildDirectory.dir("install"),
+        layout.buildDirectory.dir("libs"),
+        layout.buildDirectory.dir("portable-dist"),
+        layout.buildDirectory.dir("scripts"),
+    )
+}
+
 tasks.named<Jar>("jar") {
+    dependsOn(cleanPackagingOutputs)
     manifest {
         attributes["Main-Class"] = application.mainClass.get()
         attributes["Implementation-Title"] = project.name
@@ -18,6 +33,7 @@ tasks.named<Jar>("jar") {
 }
 
 val fatJar by tasks.registering(Jar::class) {
+    dependsOn(cleanPackagingOutputs)
     archiveClassifier.set("all")
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     dependsOn(configurations.runtimeClasspath.get().buildDependencies)
@@ -102,6 +118,16 @@ val portableDistZip by tasks.registering(Zip::class) {
 
 writeWrapperScript.configure {
     mustRunAfter(tasks.named("startScripts"))
+}
+
+tasks.matching {
+    it.name == "sourcesJar"
+}.configureEach {
+    dependsOn(cleanPackagingOutputs)
+}
+
+tasks.named("startScripts").configure {
+    dependsOn(cleanPackagingOutputs)
 }
 
 tasks.matching {
