@@ -120,5 +120,5 @@ hs_err_pid*
 replay_pid*
 site/
 !/gradle/wrapper/gradle-wrapper.jar
-.agent-workflows
+.agent-workflows/
 dist/

@@ -59,11 +59,11 @@ export PATH="/opt/kast/bin:$PATH"
 
 After install, the `kast` binary is at `${KAST_BIN_DIR}/kast`, pointing to `${KAST_INSTALL_ROOT}/current/kast`.
 
-### Option 2: `make cli` (build from source)
+### Option 2: `./build.sh` (build from source)
 
 ```bash
 # Requires Java 21+ on PATH or JAVA_HOME set
-make cli
+./build.sh --no-install
 # Produces: dist/kast/kast
 export PATH="$PWD/dist/kast:$PATH"
 ```

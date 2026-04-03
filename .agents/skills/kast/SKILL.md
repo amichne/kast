@@ -32,8 +32,7 @@ Never hardcode the kast binary path. Try in this order:
 kast version
 ```
 
-If this succeeds, use `kast` directly for all commands. This is the most reliable path
-and works across all environments including sandboxed ones.
+If this succeeds, use `kast` directly for all commands.
 
 ### Fallback: resolve-kast.sh
 
@@ -43,12 +42,15 @@ If `kast` is not on PATH, use the helper script:
 KAST=$(bash scripts/resolve-kast.sh)
 ```
 
-The script tries: PATH → Gradle build output → dist output → auto-build via gradlew.
+The script tries: PATH → `KAST_CLI_PATH` env var → `KAST_SOURCE_ROOT` Gradle/dist builds → auto-build via `./gradlew :kast:writeWrapperScript`.
+
+**Environment variables the script respects:**
+- `KAST_CLI_PATH` — absolute path to a kast binary (bypasses all discovery)
+- `KAST_SOURCE_ROOT` — repo root containing locally built `kast/build/scripts/kast` or `dist/kast/kast`
 
 **Note:** This script requires the installed `kast` skill directory to be present relative
-to the workspace root. Run `kast-skilled` first if the skill link is missing. If the path
-traversal still fails, fall back to installing kast directly (`./install.sh` or
-`brew install kast`).
+to the workspace root (`.agents/skills/kast/`). Run `kast-skilled` first if the skill link is missing.
+If the path traversal still fails, fall back to installing kast directly (`./install.sh` or `./build.sh --install`).
 
 If you need to call the packaged helper scripts by path, set
 `SKILL_ROOT=/absolute/path/to/your/installed/kast-skill` and run them from
@@ -87,7 +89,7 @@ STARTING → INDEXING → READY
 | `INDEXING` | Building index | Wait; queries may be empty |
 | `READY` | Fully operational | Proceed with analysis |
 | `DEGRADED` | Unhealthy | Run `workspace ensure` to restart |
-| `FAILED` | Daemon exited before READY | See startup failure diagnosis below |
+| `FAILED` | Daemon exited before READY | Check the log |
 
 ### When `workspace ensure` times out
 
@@ -103,7 +105,7 @@ cat .kast/logs/standalone-daemon.log | tail -50
 This is where the real error lives. Look for:
 
 - `SocketException: Operation not permitted` → Unix domain socket bind blocked (see below)
-- `Address already in use` → Port/socket conflict; run `workspace ensure` after `daemon stop`
+- `Address already in use` → Port/socket conflict; run `daemon stop` then `workspace ensure`
 - `OutOfMemoryError` → JVM heap too small; set `KAST_DAEMON_OPTS=-Xmx2g` or equivalent
 - Java version errors → Requires Java 21+
 - Classpath/JAR errors → Binary may be corrupt; reinstall
@@ -128,20 +130,16 @@ socket creation. This is a transport/environment constraint, not an indexing pro
 
 **Recovery options (in order):**
 
-1. **Use TCP transport** — if supported by your kast version:
-   ```bash
-   "$KAST" workspace ensure --workspace-root=/absolute/path --transport=tcp
-   ```
-   All subsequent commands must also pass `--transport=tcp`.
-
-2. **Run outside the sandbox** — restart the terminal/process outside any app sandbox
+1. **Run outside the sandbox** — restart the terminal/process outside any app sandbox
    restrictions and retry.
 
-3. **Check if UDS is blocked by policy:**
+2. **Check if UDS is blocked by policy:**
    ```bash
-   python3 -c "import socket; s=socket.socket(socket.AF_UNIX); s.bind('/tmp/kast-test.sock'); print('UDS OK')"
+   python3 -c "import socket; s=socket.socket(AF_UNIX); s.bind('/tmp/kast-test.sock'); print('UDS OK')"
    ```
    If this fails with `Operation not permitted`, the environment is blocking UDS at the OS level.
+
+3. **Container/CI:** Add `AF_UNIX` to the seccomp allowlist. See `references/cloud-setup.md`.
 
 ### Check status without ensuring
 
@@ -152,6 +150,15 @@ socket creation. This is a transport/environment constraint, not an indexing pro
 Returns an array of `RuntimeStatusResponse`. Check `state`, `healthy`, `active`.
 An empty response (`selected: null`, `candidates: []`) indicates the daemon never
 successfully started and registered — check the log for the startup error.
+
+### Start the daemon explicitly
+
+```bash
+"$KAST" daemon start --workspace-root=/absolute/path
+```
+
+Starts a detached standalone daemon and waits for readiness. Equivalent to `workspace ensure`
+but does not reuse existing candidates — always starts fresh.
 
 ### Stop the daemon
 
@@ -171,14 +178,14 @@ Check what the daemon supports before running analysis commands:
 "$KAST" capabilities --workspace-root=/absolute/path
 ```
 
-| Capability | Required by |
-|------------|-------------|
-| `RESOLVE_SYMBOL` | `symbol resolve` |
-| `FIND_REFERENCES` | `references` |
-| `DIAGNOSTICS` | `diagnostics` |
-| `CALL_HIERARCHY` | (not implemented — known gap) |
-| `RENAME` | `rename` |
-| `APPLY_EDITS` | `edits apply` |
+| Capability | Required by | Status |
+|------------|-------------|--------|
+| `RESOLVE_SYMBOL` | `symbol resolve` | Implemented |
+| `FIND_REFERENCES` | `references` | Implemented |
+| `DIAGNOSTICS` | `diagnostics` | Implemented |
+| `CALL_HIERARCHY` | (not implemented) | Not implemented — known gap |
+| `RENAME` | `rename` | Implemented |
+| `APPLY_EDITS` | `edits apply` | Implemented |
 
 If a needed capability is absent, see `references/troubleshooting.md#capability_not_supported`.
 
@@ -509,7 +516,7 @@ Only once all six steps pass is the index confirmed healthy. If step 5 or 6 retu
 | `APPLY_PARTIAL_FAILURE` (500) | Permissions or disk error mid-apply | Inspect `details` map. Fix root cause; apply remaining manually. |
 | `RUNTIME_TIMEOUT` from `workspace ensure` | Daemon failed to start | Check `.kast/logs/standalone-daemon.log` for root cause |
 | `selected: null` from `workspace status` | Daemon crashed before registering | Check `.kast/logs/standalone-daemon.log`; daemon never reached READY |
-| `SocketException: Operation not permitted` in log | UDS bind blocked by sandbox/container | Use `--transport=tcp`, or run outside sandbox |
+| `SocketException: Operation not permitted` in log | UDS bind blocked by sandbox/container | Run outside sandbox; check seccomp in CI |
 
 For detailed decision trees: `references/troubleshooting.md`
 
@@ -520,12 +527,12 @@ For detailed decision trees: `references/troubleshooting.md`
 **Do:**
 - Use `--key=value` for every option: `--workspace-root=/path`, `--offset=123`
 - Use absolute paths for all file arguments
-- Separate multiple commands by running them sequentially
 - Use `--request-file` for `edits apply` (always) and for complex queries
 - Check `.kast/logs/standalone-daemon.log` when `workspace ensure` fails or times out
+- Run `kast-skilled` before first use to install the skill into the workspace
 
 **Do not:**
-- Do not use `callHierarchy` — not yet implemented
+- Do not use `callHierarchy` — not implemented
 - Do not use hyphenated pseudo-commands: `workspace-status`, `symbol-resolve`, `edits-apply`
 - Do not use repo-local wrapper paths (`./kast/build/scripts/kast`) directly — use `resolve-kast.sh`
 - Do not pass relative paths to `--workspace-root`, `--file-path`, or `--file-paths`
@@ -554,7 +561,29 @@ kotlin-gradle-loop = **build and test iteration** (does it compile, do tests pas
 
 ---
 
-## 11. Reference Documents
+## 11. Building and Installing kast
+
+### From source (development)
+
+```bash
+./build.sh              # builds and prompts to install as a dev instance
+./build.sh --no-install # builds only, no install
+./build.sh --install --instance my-dev  # builds and installs as "my-dev"
+```
+
+Outputs: `dist/kast/` (directory) and `dist/kast.zip` (portable archive).
+
+### From GitHub release (production)
+
+```bash
+./install.sh            # downloads and installs latest release
+```
+
+Installs to `~/.local/share/kast/` with launcher at `~/.local/bin/kast`.
+
+---
+
+## 12. Reference Documents
 
 | Document | When to read |
 |----------|-------------|

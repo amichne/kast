@@ -187,7 +187,7 @@ internal object StaticGradleWorkspaceDiscovery {
         projectDirectory.resolve("build/classes/java/${sourceSet.id}"),
         projectDirectory.resolve("build/classes/kotlin/${sourceSet.id}"),
         projectDirectory.resolve("build/resources/${sourceSet.id}"),
-    ).map(::normalizeStandalonePath).distinct().sorted()
+    ).filter(Path::isDirectory).map(::normalizeStandalonePath).distinct().sorted()
 
     private fun projectDirectoryFor(
         workspaceRoot: Path,

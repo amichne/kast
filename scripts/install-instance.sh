@@ -59,6 +59,11 @@ output_dir = Path(sys.argv[2])
 output_dir.mkdir(parents=True, exist_ok=True)
 
 with zipfile.ZipFile(archive_path) as archive:
+    resolved_output = output_dir.resolve()
+    for member in archive.namelist():
+        dest = (output_dir / member).resolve()
+        if not str(dest).startswith(str(resolved_output) + "/"):
+            raise Exception(f"Zip-slip attempt detected: {member}")
     archive.extractall(output_dir)
 PY
 }

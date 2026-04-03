@@ -50,17 +50,13 @@ Verify UDS is blocked:
   python3 -c "import socket; s=socket.socket(socket.AF_UNIX); s.bind('/tmp/kast-test.sock'); print('UDS OK')"
   → If this raises "Operation not permitted", UDS is blocked at the OS level.
 
-Recovery option 1 — TCP transport (if supported):
-  kast workspace ensure --workspace-root=... --transport=tcp
-  → All subsequent commands must also pass --transport=tcp
-
-Recovery option 2 — Run outside the sandbox:
+Recovery option 1 — Run outside the sandbox:
   → Restart your terminal or process host outside any app sandbox restrictions.
   → On macOS, this typically means running directly in Terminal.app or iTerm2
     rather than in a sandboxed IDE or tool process.
 
-Recovery option 3 — Container/CI:
-  → Add AF_UNIX to the seccomp allowlist, or use --transport=tcp.
+Recovery option 2 — Container/CI:
+  → Add AF_UNIX to the seccomp allowlist.
   → See references/cloud-setup.md for CI-specific guidance.
 ```
 
@@ -256,8 +252,8 @@ Try kast on PATH first:
 
 If kast is not on PATH, check install options:
   → ./install.sh                    # downloads a GitHub release for your platform
-  → brew install kast               # if Homebrew is available
-  → make cli                        # builds dist/kast/kast locally
+  → ./build.sh --install            # builds from source and installs as dev instance
+  → ./gradlew :kast:writeWrapperScript  # builds wrapper script for local dev
 
 If using resolve-kast.sh and it reports "Java not found" or version < 21:
   → Install Java 21+. See references/cloud-setup.md.

@@ -446,6 +446,57 @@ Use `rename` output's `edits` and `fileHashes` fields directly as the request bo
 
 ---
 
+## Shell Integration
+
+### `completion bash`
+
+Emit a Bash completion script.
+
+```
+kast completion bash
+```
+
+Source the output to enable tab completion for kast commands and options in Bash.
+
+### `completion zsh`
+
+Emit a Zsh completion script.
+
+```
+kast completion zsh
+```
+
+Source the output to enable tab completion for kast commands and options in Zsh.
+
+---
+
+## CLI Management
+
+### `install`
+
+Install a portable kast archive as a named local instance.
+
+```
+kast install \
+  --archive=/absolute/path/to/kast.zip \
+  [--instance=my-dev]
+```
+
+**Options:**
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `--archive=` | absolute path | required | Path to a kast portable zip |
+| `--instance=` | string | auto-generated | Instance name for the install |
+
+Installs to `~/.local/share/kast/instances/<name>/` with a launcher at `~/.local/bin/kast-<name>`.
+
+**Output:** Prints the installed instance name and launcher path.
+
+**Errors:** Exit non-zero if the archive is invalid or the instance name contains invalid characters.
+
+---
+
 ## Error Response Format
 
 All errors return `ApiErrorResponse` on stdout with a non-zero exit code:

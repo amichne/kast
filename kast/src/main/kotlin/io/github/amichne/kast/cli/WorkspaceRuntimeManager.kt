@@ -8,9 +8,12 @@ import io.github.amichne.kast.server.RegisteredDescriptor
 import io.github.amichne.kast.server.defaultDescriptorDirectory
 import io.github.amichne.kast.server.workspaceMetadataDirectory
 import io.github.amichne.kast.standalone.StandaloneServerOptions
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import java.nio.file.Path
 import kotlin.io.path.createDirectories
+import kotlin.time.Duration.Companion.milliseconds
 
 internal class WorkspaceRuntimeManager(
     private val rpcClient: KastRpcClient,
@@ -151,7 +154,7 @@ internal class WorkspaceRuntimeManager(
                 )
             }
 
-            delay(250)
+            delay(250.milliseconds)
         }
 
         throw CliFailure(
@@ -160,7 +163,7 @@ internal class WorkspaceRuntimeManager(
         )
     }
 
-    private fun inspectWorkspace(
+    private suspend fun inspectWorkspace(
         options: RuntimeCommandOptions,
         pruneStaleDescriptors: Boolean,
     ): WorkspaceInspection {
@@ -181,7 +184,7 @@ internal class WorkspaceRuntimeManager(
         )
     }
 
-    private fun inspectDescriptor(
+    private suspend fun inspectDescriptor(
         registry: DescriptorRegistry,
         registered: RegisteredDescriptor,
         pruneStaleDescriptors: Boolean,
@@ -202,14 +205,18 @@ internal class WorkspaceRuntimeManager(
             )
         }
 
-        val runtimeStatusResult = runCatching {
-            rpcClient.get<RuntimeStatusResponse>(registered.descriptor, "runtime/status")
+        val runtimeStatusResult = withContext(Dispatchers.IO) {
+            runCatching {
+                rpcClient.get<RuntimeStatusResponse>(registered.descriptor, "runtime/status")
+            }
         }
         val runtimeStatus = runtimeStatusResult.getOrNull()
         val capabilities = if (runtimeStatus != null) {
-            runCatching {
-                rpcClient.get<BackendCapabilities>(registered.descriptor, "capabilities")
-            }.getOrNull()
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    rpcClient.get<BackendCapabilities>(registered.descriptor, "capabilities")
+                }.getOrNull()
+            }
         } else {
             null
         }
@@ -226,7 +233,7 @@ internal class WorkspaceRuntimeManager(
         )
     }
 
-    private fun stopCandidate(
+    private suspend fun stopCandidate(
         descriptorDirectory: Path,
         candidate: RuntimeCandidateStatus,
     ): DaemonStopResult {
@@ -239,7 +246,7 @@ internal class WorkspaceRuntimeManager(
                 if (!processHandle.isAlive) {
                     return@repeat
                 }
-                Thread.sleep(250)
+                delay(250.milliseconds)
             }
             if (processHandle.isAlive) {
                 processHandle.destroyForcibly()
