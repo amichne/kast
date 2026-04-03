@@ -78,6 +78,7 @@ internal class CliCommandParser(
                 listOf("rename") -> CliCommand.Rename(parsed.runtimeOptions(), parsed.renameQuery(json))
                 listOf("edits", "apply") -> CliCommand.ApplyEdits(parsed.runtimeOptions(), parsed.applyEditsQuery(json))
                 listOf("install") -> CliCommand.Install(parsed.installOptions())
+                listOf("install", "skill") -> CliCommand.InstallSkill(parsed.installSkillOptions())
                 listOf("internal", "daemon-run") -> CliCommand.InternalDaemonRun(parsed.runtimeOptions(backendName = "standalone"))
                 else -> throw CliFailure(
                     code = "CLI_USAGE",
@@ -234,6 +235,12 @@ internal data class ParsedArguments(
             message = "`edits apply` requires --request-file=/absolute/path/to/query.json",
         )
     }
+
+    fun installSkillOptions(): InstallSkillOptions = InstallSkillOptions(
+        targetDir = options["target-dir"]?.let { Path.of(it).toAbsolutePath().normalize() },
+        linkName = options["link-name"]?.takeIf(String::isNotEmpty) ?: "kast",
+        force = optionalBoolean("yes", false),
+    )
 
     fun installOptions(): InstallOptions {
         val home = Path.of(System.getProperty("user.home"))

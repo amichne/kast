@@ -20,6 +20,7 @@ internal class CliService(
     json: Json,
     processLauncher: ProcessLauncher,
     private val installService: InstallService = InstallService(),
+    private val installSkillService: InstallSkillService = InstallSkillService(),
 ) {
     private val rpcClient = KastRpcClient(json)
     private val runtimeManager = WorkspaceRuntimeManager(rpcClient, processLauncher)
@@ -96,6 +97,8 @@ internal class CliService(
     }
 
     fun install(options: InstallOptions): InstallResult = installService.install(options)
+
+    fun installSkill(options: InstallSkillOptions): InstallSkillResult = installSkillService.install(options)
 
     suspend fun applyEdits(
         options: RuntimeCommandOptions,

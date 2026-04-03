@@ -154,6 +154,23 @@ internal object CliCommandCatalog {
         description = "Directory for launcher scripts. Defaults to ~/.local/bin.",
         completionKind = CliOptionCompletionKind.DIRECTORY,
     )
+    private val skillTargetDirOption = CliOptionMetadata(
+        key = "target-dir",
+        usage = "--target-dir=/absolute/path/to/skills",
+        description = "Directory to create the skill symlink in. Auto-detected from CWD when omitted.",
+        completionKind = CliOptionCompletionKind.DIRECTORY,
+    )
+    private val skillLinkNameOption = CliOptionMetadata(
+        key = "link-name",
+        usage = "--link-name=kast",
+        description = "Name for the skill symlink. Defaults to kast.",
+    )
+    private val yesOption = CliOptionMetadata(
+        key = "yes",
+        usage = "--yes=true",
+        description = "Replace an existing symlink without prompting. Defaults to false.",
+        completionKind = CliOptionCompletionKind.BOOLEAN,
+    )
 
     private val commands: List<CliCommandMetadata> = listOf(
         CliCommandMetadata(
@@ -341,6 +358,21 @@ internal object CliCommandCatalog {
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME install --archive=/path/to/kast-portable.zip",
                 "$CLI_EXECUTABLE_NAME install --archive=/path/to/kast-portable.zip --instance=my-dev",
+            ),
+        ),
+        CliCommandMetadata(
+            path = listOf("install", "skill"),
+            group = CliCommandGroup.CLI_MANAGEMENT,
+            summary = "Link the packaged kast skill into the current workspace.",
+            description = "Creates a symlink to the bundled kast skill in the nearest recognised skills directory (.agents/skills, .github/skills, or .claude/skills), or the path given by --target-dir. Set KAST_SKILL_PATH to override the packaged skill source.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME install skill [--target-dir=/absolute/path/to/skills] [--link-name=kast] [--yes=true]",
+            ),
+            options = listOf(skillTargetDirOption, skillLinkNameOption, yesOption),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME install skill",
+                "$CLI_EXECUTABLE_NAME install skill --target-dir=/my/project/.agents/skills",
+                "$CLI_EXECUTABLE_NAME install skill --yes=true",
             ),
         ),
         CliCommandMetadata(

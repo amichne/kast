@@ -123,6 +123,10 @@ internal class DefaultCliCommandExecutor(
                 output = CliOutput.JsonValue(cliService.install(command.options)),
             )
 
+            is CliCommand.InstallSkill -> CliExecutionResult(
+                output = CliOutput.JsonValue(cliService.installSkill(command.options)),
+            )
+
             is CliCommand.InternalDaemonRun -> {
                 StandaloneRuntime.run(checkNotNull(command.options.standaloneOptions))
                 CliExecutionResult(output = CliOutput.None)
