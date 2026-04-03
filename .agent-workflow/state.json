@@ -2,7 +2,7 @@
   "schema_version": 1,
   "project_root": "/Users/amichn/code/personal/kast",
   "created_at": "2026-04-02T20:35:38.945143+00:00",
-  "updated_at": "2026-04-02T21:25:11.495010+00:00",
+  "updated_at": "2026-04-03T03:17:43.191450+00:00",
   "project": {
     "status": "complete",
     "boot_module": null,
@@ -48,14 +48,15 @@
     "errors": []
   },
   "goal": {
-    "description": "Make standalone analysis discovery respect Gradle-configured source sets and default to both Kotlin and Java roots",
+    "description": "Reduce standalone workspace discovery overhead in large Gradle multi-module workspaces",
     "constraints": [
-      "keep composite/static discovery behavior aligned",
-      "do not break standalone backend tests"
+      "preserve module/source-set semantics",
+      "keep backend-standalone behavior stable"
     ],
     "acceptance_criteria": [
-      "backend-standalone tests pass",
-      "static Gradle discovery includes configured and default Java/Kotlin source roots"
+      "single-pass layout builder preserves main/test dependency semantics",
+      "tooling-api source-root filtering avoids repeated filesystem probes",
+      "backend-standalone tests pass"
     ]
   },
   "gradle": {
@@ -70,8 +71,8 @@
   },
   "tests": {
     "status": "passing",
-    "total": 18,
-    "passed": 18,
+    "total": 21,
+    "passed": 21,
     "failed": 0,
     "skipped": 0,
     "duration_seconds": 0,
@@ -107,6 +108,33 @@
         "failed": 0
       },
       "outcome": "backend-standalone tests passed after source-set discovery and Java PSI bootstrap updates"
+    },
+    {
+      "timestamp": "2026-04-03T02:44:08.478883+00:00",
+      "action": "added_regression_test",
+      "detail": {
+        "task": ":backend-standalone:test",
+        "scope": "StandaloneWorkspaceDiscoveryTest"
+      },
+      "outcome": "Added lazy-indexing regression test for StandaloneAnalysisSession"
+    },
+    {
+      "timestamp": "2026-04-03T02:44:39.391722+00:00",
+      "action": "completed_change",
+      "detail": {
+        "task": ":backend-standalone:test",
+        "tests_passed": 19
+      },
+      "outcome": "Made StandaloneAnalysisSession Kotlin file index lazy and verified backend-standalone tests"
+    },
+    {
+      "timestamp": "2026-04-03T03:17:20.460094+00:00",
+      "action": "optimized_discovery_path",
+      "detail": {
+        "task": ":backend-standalone:test",
+        "scope": "GradleWorkspaceDiscoveryTest"
+      },
+      "outcome": "Verified single-pass Gradle workspace layout and cached source-root probing with focused tests"
     }
   ]
 }

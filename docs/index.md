@@ -14,8 +14,9 @@ graphical interface.
 The current supported operator path is the repo-local `kast` command. These
 pages focus on the flow that works today: install the CLI, ensure a workspace
 runtime, run analysis commands, and stop the runtime when you are done. The
-installer can also offer to wire Bash or Zsh completions into your shell init
-file while it sets up the launcher.
+installer can also register `kast-skilled` for the packaged skill bridge and
+offer to wire Bash or Zsh completions into your shell init file while it sets
+up the launchers.
 
 !!! note
     The current supported flow does not advertise `callHierarchy` yet.
@@ -106,11 +107,13 @@ changes.
 
 1. Install the published CLI with the copyable installer or `./install.sh`
    from a checkout, and enable shell completion if the installer offers it.
-2. Open `kast --help` to confirm the grouped command view and your first
+2. If you plan to use the packaged skill, run `kast-skilled` once from the
+   workspace root to create the symlinked `kast` skill directory.
+3. Open `kast --help` to confirm the grouped command view and your first
    completion-enabled shell.
-3. Start or reuse a workspace runtime with `kast workspace ensure`.
-4. Inspect `kast capabilities`, then run the analysis command you need.
-5. Stop the workspace daemon with `kast daemon stop` when you are done.
+4. Start or reuse a workspace runtime with `kast workspace ensure`.
+5. Inspect `kast capabilities`, then run the analysis command you need.
+6. Stop the workspace daemon with `kast daemon stop` when you are done.
 
 ## Next steps
 

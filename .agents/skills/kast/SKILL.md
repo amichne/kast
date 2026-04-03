@@ -16,6 +16,10 @@ kast is a Kotlin analysis daemon with a CLI control plane. It provides semantic 
 intelligence (symbol resolution, find references, diagnostics, rename, edit plans) for
 Kotlin/JVM workspaces.
 
+Install this packaged skill into a workspace with `kast-skilled`. The command creates a
+repository-local symlink, for example `.agents/skills/kast`, that points back to the
+single packaged skill root from `KAST_SKILL_PATH`.
+
 ---
 
 ## 1. CLI Discovery
@@ -41,9 +45,14 @@ KAST=$(bash scripts/resolve-kast.sh)
 
 The script tries: PATH → Gradle build output → dist output → auto-build via gradlew.
 
-**Note:** This script requires the `.agents/skills/kast/` directory to be present relative
-to the workspace root. If it is absent or the path traversal fails, fall back to installing
-kast directly (`./install.sh` or `brew install kast`).
+**Note:** This script requires the installed `kast` skill directory to be present relative
+to the workspace root. Run `kast-skilled` first if the skill link is missing. If the path
+traversal still fails, fall back to installing kast directly (`./install.sh` or
+`brew install kast`).
+
+If you need to call the packaged helper scripts by path, set
+`SKILL_ROOT=/absolute/path/to/your/installed/kast-skill` and run them from
+`"$SKILL_ROOT/scripts/..."`.
 
 **Once resolved, use `$KAST` for every subsequent command:**
 ```bash
@@ -194,7 +203,7 @@ Do not assume indexing is healthy just because `workspace ensure` succeeded or s
 "$KAST" capabilities --workspace-root=/absolute/path
 
 # 2. Find a declaration in the workspace (pick any class or top-level function)
-python .agents/skills/kast/scripts/find-symbol-offset.py \
+python "$SKILL_ROOT/scripts/find-symbol-offset.py" \
   /absolute/path/to/SomeFile.kt --symbol SomeClass
 
 # 3. Resolve it
@@ -249,12 +258,12 @@ Pick the declaration site (the line with `class`/`fun`/`val`/`var`/etc.) over pl
 
 ```bash
 # From a symbol name — prints declaration sites first:
-python .agents/skills/kast/scripts/find-symbol-offset.py \
+python "$SKILL_ROOT/scripts/find-symbol-offset.py" \
   /absolute/path/to/File.kt \
   --symbol MyClass
 
 # From a known line (1-based) and column (0-based, default 0):
-python .agents/skills/kast/scripts/find-symbol-offset.py \
+python "$SKILL_ROOT/scripts/find-symbol-offset.py" \
   /absolute/path/to/File.kt \
   --line 42 --col 6
 ```

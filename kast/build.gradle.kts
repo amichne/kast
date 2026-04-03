@@ -2,6 +2,8 @@ import org.gradle.api.tasks.Delete
 import org.gradle.api.tasks.Exec
 import org.gradle.api.tasks.Sync
 import org.gradle.api.tasks.testing.Test
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 
 plugins {
     id("kast.standalone-app")
@@ -13,6 +15,8 @@ application {
 
 val helperSource = layout.projectDirectory.file("src/helper/kast_helper.c")
 val helperBinary = layout.buildDirectory.file("bin/kast-helper")
+val packagedSkillSourceDir = rootProject.layout.projectDirectory.dir(".agents/skills/kast")
+val packagedSkillInstallerSource = layout.projectDirectory.file("src/packaging/install-kast-skilled.sh")
 
 dependencies {
     implementation(project(":analysis-api"))
@@ -110,10 +114,36 @@ tasks.named("writeWrapperScript").configure {
     }
 }
 
+val syncPackagedSkill by tasks.registering(Sync::class) {
+    from(packagedSkillSourceDir)
+    into(layout.buildDirectory.dir("packaged-skill/share/skills/kast"))
+}
+
+val stagePackagedSkillInstaller by tasks.registering {
+    inputs.file(packagedSkillInstallerSource)
+    outputs.file(layout.buildDirectory.file("packaged-skill/scripts/install-kast-skilled.sh"))
+
+    doLast {
+        val source = packagedSkillInstallerSource.asFile.toPath()
+        val target = layout.buildDirectory.file("packaged-skill/scripts/install-kast-skilled.sh").get().asFile.toPath()
+        Files.createDirectories(target.parent)
+        Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING)
+        target.toFile().setExecutable(true)
+    }
+}
+
 tasks.named<Sync>("syncPortableDist") {
     dependsOn(compileHelper)
+    dependsOn(syncPackagedSkill)
+    dependsOn(stagePackagedSkillInstaller)
     from(helperBinary) {
         into("bin")
+    }
+    from(syncPackagedSkill) {
+        into("share/skills/kast")
+    }
+    from(stagePackagedSkillInstaller) {
+        into("scripts")
     }
 }
 

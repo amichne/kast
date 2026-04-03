@@ -138,6 +138,26 @@ class StandaloneWorkspaceDiscoveryTest {
     }
 
     @Test
+    fun `standalone session defers Kotlin file indexing until first file lookup`() {
+        createGradleWorkspace(includeLocalTestJar = false)
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "ignored",
+        )
+        try {
+            assertFalse(session.ktFilesByPathDelegate().isInitialized())
+
+            session.findKtFile(workspaceRoot.resolve("app/src/main/kotlin/sample/Use.kt").toString())
+
+            assertTrue(session.ktFilesByPathDelegate().isInitialized())
+        } finally {
+            session.close()
+        }
+    }
+
+    @Test
     fun `standalone session resolves Kotlin references to Java declarations in configured gradle source roots`() = runTest {
         createCompositeGradleWorkspace(includeJavaSource = true)
         val usageFile = workspaceRoot.resolve("app/src/main/kotlin/sample/UseJava.kt")
@@ -441,4 +461,11 @@ class StandaloneWorkspaceDiscoveryTest {
         val absolutePath = path.toAbsolutePath().normalize()
         return runCatching { absolutePath.toRealPath().normalize().toString() }.getOrDefault(absolutePath.toString())
     }
+}
+
+@Suppress("UNCHECKED_CAST")
+private fun StandaloneAnalysisSession.ktFilesByPathDelegate(): Lazy<Map<String, *>> {
+    val field = StandaloneAnalysisSession::class.java.getDeclaredField("ktFilesByPath\$delegate")
+    field.isAccessible = true
+    return field.get(this) as Lazy<Map<String, *>>
 }

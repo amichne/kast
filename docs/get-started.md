@@ -7,7 +7,9 @@ icon: lucide/play
 
 This guide gets you from a fresh shell to a ready workspace runtime. When you
 finish, you will have `kast` on your path, a daemon attached to one workspace,
-and a clear way to confirm the runtime is healthy.
+and a clear way to confirm the runtime is healthy. If you use an agent
+workflow, the same install also gives you `kast-skilled` so you can link the
+packaged `kast` skill into a workspace without copying it.
 
 ## Before you begin
 
@@ -15,13 +17,13 @@ You need a small amount of local setup before the first command can succeed.
 
 - Keep Java 21 or newer available through `JAVA_HOME` or your shell `PATH`.
 - Know the absolute path to the Kotlin workspace you want to analyze.
- - (Optional) You can influence how the `kast` CLI binary is resolved at runtime:
-   - `KAST_CLI_PATH` — if set to an executable path, the resolver will prefer it
-     when locating the `kast` binary.
-   - `KAST_SOURCE_ROOT` — when set to the repository source root, the resolver
-     may use local build outputs (for example `kast/build/scripts/kast` or
-     `dist/kast/kast`) and can attempt an auto-build via `./gradlew` if Java
-     21+ is available.
+- Optional: You can influence how the `kast` CLI binary is resolved at runtime:
+  - `KAST_CLI_PATH` — if set to an executable path, the resolver will prefer
+    it when locating the `kast` binary.
+  - `KAST_SOURCE_ROOT` — when set to the repository source root, the resolver
+    may use local build outputs, for example `kast/build/scripts/kast` or
+    `dist/kast/kast`, and can attempt an auto-build via `./gradlew` if Java
+    21+ is available.
 
 ## Install the published CLI
 
@@ -47,6 +49,35 @@ from your shell.
 !!! note
     The installer validates that Java 21 or newer is available before it
     unpacks the release.
+
+## Optional: link the packaged `kast` skill into a workspace
+
+If you use an agent that loads repository-local skills, run `kast-skilled`
+from the workspace root after you install the CLI. The command creates only a
+symlink, so every workspace link points at the single packaged skill root from
+`KAST_SKILL_PATH` instead of copying the skill contents.
+
+1. From the workspace root, run:
+
+   ```bash
+   kast-skilled
+   ```
+
+2. Confirm the prompt before the symlink is created.
+
+3. Let the command choose the default location from the directories already
+   present in the current directory:
+
+   - `.agents/skills/kast`
+   - `.github/skills/kast`
+   - `.claude/skills/kast`
+
+4. If you need a non-default path or a non-interactive run, pass explicit
+   options:
+
+   ```bash
+   kast-skilled --target-dir /absolute/path/to/skills --yes
+   ```
 
 ## Optional: enable shell completion
 
@@ -138,25 +169,28 @@ mistakes.
 
 - If the installer fails immediately, confirm that Java 21 or newer is
   installed and your operating system is supported by the published bundle.
+- If `kast-skilled` cannot find the packaged skill root, confirm that the
+  published install completed and that `KAST_SKILL_PATH` points to a real
+  `kast` skill directory when you override it.
 - If Kast reports a usage error, rewrite the command so every option uses the
   `--key=value` form.
 - If Kast cannot find the workspace or a file, convert the path to an absolute
   path and rerun the command.
 - If you want the shell-specific completion help pages, run
   `kast help completion`.
- - If `kast` is not found on your PATH you can point the resolver directly at a
-   binary using `KAST_CLI_PATH`:
+- If `kast` is not found on your PATH, you can point the resolver directly at
+  a binary using `KAST_CLI_PATH`:
 
    ```bash
    export KAST_CLI_PATH=/absolute/path/to/kast
    kast workspace status --workspace-root=/absolute/path/to/workspace
    ```
 
- - If you have a local checkout of the repository and want `kast` to use the
-   locally-built CLI (or build it automatically), set `KAST_SOURCE_ROOT` to the
-   repo root. The resolver will look for expected build outputs and may run a
-   minimal Gradle step to produce `kast/build/scripts/kast` when Java 21+ is
-   available:
+- If you have a local checkout of the repository and want `kast` to use the
+  locally-built CLI, or build it automatically, set `KAST_SOURCE_ROOT` to the
+  repo root. The resolver will look for expected build outputs and may run a
+  minimal Gradle step to produce `kast/build/scripts/kast` when Java 21+ is
+  available:
 
    ```bash
    export KAST_SOURCE_ROOT=/absolute/path/to/kast/repo

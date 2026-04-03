@@ -115,13 +115,41 @@ KAST_INSTALL_COMPLETIONS=false \
 /bin/bash -c "$installer_content"
 
 installed_launcher="${tmp_dir}/bin/kast"
+installed_skill_launcher="${tmp_dir}/bin/kast-skilled"
 installed_root="${tmp_dir}/install-root/current"
 
 [[ -x "$installed_launcher" ]] || die "Installed launcher is not executable: $installed_launcher"
+[[ -x "$installed_skill_launcher" ]] || die "Installed skill launcher is not executable: $installed_skill_launcher"
 [[ -L "$installed_root" ]] || die "Current install symlink was not created: $installed_root"
 [[ -x "${installed_root}/kast" ]] || die "Installed kast launcher is missing from ${installed_root}"
 [[ -x "${installed_root}/bin/kast-helper" ]] || die "Installed kast helper is missing from ${installed_root}/bin"
+[[ -x "${installed_root}/scripts/install-kast-skilled.sh" ]] || die "Installed skill helper is missing from ${installed_root}/scripts"
+[[ -f "${installed_root}/share/skills/kast/SKILL.md" ]] || die "Installed packaged skill is missing from ${installed_root}/share/skills/kast"
 
 "$installed_launcher" --help >/dev/null
+
+workspace_root="${tmp_dir}/workspace"
+mkdir -p "${workspace_root}/.github"
+(
+  cd "$workspace_root"
+  "$installed_skill_launcher" --yes >/dev/null
+)
+
+installed_skill_link="${workspace_root}/.github/skills/kast"
+[[ -L "$installed_skill_link" ]] || die "Packaged skill symlink was not created at ${installed_skill_link}"
+
+python3 - "$installed_skill_link" "${installed_root}/share/skills/kast" <<'PY'
+import sys
+from pathlib import Path
+
+link_path = Path(sys.argv[1])
+expected_target = Path(sys.argv[2]).resolve()
+actual_target = link_path.resolve()
+
+if actual_target != expected_target:
+    raise SystemExit(
+        f"Packaged skill symlink target mismatch: expected {expected_target}, got {actual_target}"
+    )
+PY
 
 log "Installer smoke test passed for ${platform_id}"

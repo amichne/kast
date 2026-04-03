@@ -45,102 +45,53 @@ internal object GradleWorkspaceDiscovery {
     }
 
     private fun loadModulesWithToolingApi(workspaceRoot: Path): List<GradleModuleModel> =
-        GradleConnector.newConnector()
-            .forProjectDirectory(workspaceRoot.toFile())
-            .connect()
-            .use { connection ->
-                connection.getModel(IdeaProject::class.java)
-                    .modules
-                    .map(::toGradleModuleModel)
-                    .sortedBy(GradleModuleModel::gradlePath)
-            }
+        ToolingApiPathNormalizer().let { pathNormalizer ->
+            GradleConnector.newConnector()
+                .forProjectDirectory(workspaceRoot.toFile())
+                .connect()
+                .use { connection ->
+                    connection.getModel(IdeaProject::class.java)
+                        .modules
+                        .map { module -> toGradleModuleModel(module, pathNormalizer) }
+                        .sortedBy(GradleModuleModel::gradlePath)
+                }
+        }
 
-    private fun buildStandaloneWorkspaceLayout(
+    internal fun buildStandaloneWorkspaceLayout(
         gradleModules: List<GradleModuleModel>,
         extraClasspathRoots: List<Path>,
     ): StandaloneWorkspaceLayout {
         val moduleModelsByIdeaName = gradleModules.associateBy(GradleModuleModel::ideaModuleName)
-        val sourceModuleNames = gradleModules.flatMap { module ->
-            buildList {
-                if (module.mainSourceRoots.isNotEmpty()) {
-                    add(module.analysisModuleName(GradleSourceSet.MAIN))
-                }
-                if (module.testSourceRoots.isNotEmpty()) {
-                    add(module.analysisModuleName(GradleSourceSet.TEST))
-                }
-            }
-        }.toSet()
-
-        val sourceModules = buildList {
-            for (module in gradleModules) {
-                if (module.mainSourceRoots.isNotEmpty()) {
-                    add(
-                        StandaloneSourceModuleSpec(
-                            name = module.analysisModuleName(GradleSourceSet.MAIN),
-                            sourceRoots = module.mainSourceRoots,
-                            binaryRoots = (
-                                module.binaryRootsFor(GradleSourceSet.MAIN) +
-                                    module.fallbackOutputRootsFor(
-                                        sourceSet = GradleSourceSet.MAIN,
-                                        moduleModelsByIdeaName = moduleModelsByIdeaName,
-                                        availableSourceModuleNames = sourceModuleNames,
-                                    ) +
-                                    extraClasspathRoots
-                            ).distinct().sorted(),
-                            dependencyModuleNames = module.moduleDependencyNamesFor(
-                                sourceSet = GradleSourceSet.MAIN,
-                                moduleModelsByIdeaName = moduleModelsByIdeaName,
-                                availableSourceModuleNames = sourceModuleNames,
-                            ),
-                        ),
-                    )
-                }
-                if (module.testSourceRoots.isNotEmpty()) {
-                    add(
-                        StandaloneSourceModuleSpec(
-                            name = module.analysisModuleName(GradleSourceSet.TEST),
-                            sourceRoots = module.testSourceRoots,
-                            binaryRoots = (
-                                module.binaryRootsFor(GradleSourceSet.TEST) +
-                                    module.fallbackOutputRootsFor(
-                                        sourceSet = GradleSourceSet.TEST,
-                                        moduleModelsByIdeaName = moduleModelsByIdeaName,
-                                        availableSourceModuleNames = sourceModuleNames,
-                                    ) +
-                                    extraClasspathRoots
-                            ).distinct().sorted(),
-                            dependencyModuleNames = module.moduleDependencyNamesFor(
-                                sourceSet = GradleSourceSet.TEST,
-                                moduleModelsByIdeaName = moduleModelsByIdeaName,
-                                availableSourceModuleNames = sourceModuleNames,
-                            ),
-                        ),
-                    )
-                }
-            }
+        val availableMainSourceModuleNames = gradleModules
+            .mapNotNull(GradleModuleModel::mainDependencyModuleName)
+            .toSet()
+        val normalizedExtraClasspathRoots = extraClasspathRoots.distinct().sorted()
+        val sourceModules = gradleModules.flatMap { module ->
+            module.toStandaloneSourceModuleSpecs(
+                moduleModelsByIdeaName = moduleModelsByIdeaName,
+                availableMainSourceModuleNames = availableMainSourceModuleNames,
+                extraClasspathRoots = normalizedExtraClasspathRoots,
+            )
         }
 
         return StandaloneWorkspaceLayout(sourceModules = sourceModules)
     }
 
-    private fun toGradleModuleModel(module: IdeaModule): GradleModuleModel {
+    private fun toGradleModuleModel(
+        module: IdeaModule,
+        pathNormalizer: ToolingApiPathNormalizer,
+    ): GradleModuleModel {
         val contentRoots = module.contentRoots
-        val mainSourceRoots = contentRoots
+        val mainSourceRoots = pathNormalizer.normalizeExistingSourceRoots(
+            contentRoots
             .asSequence()
             .flatMap { contentRoot -> contentRoot.sourceDirectories.map { directory -> directory.directory.toPath() } }
-            .filter { path -> Files.exists(path) }
-            .map(::normalizeStandalonePath)
-            .distinct()
-            .sorted()
-            .toList()
-        val testSourceRoots = contentRoots
+        )
+        val testSourceRoots = pathNormalizer.normalizeExistingSourceRoots(
+            contentRoots
             .asSequence()
             .flatMap { contentRoot -> contentRoot.testDirectories.map { directory -> directory.directory.toPath() } }
-            .filter { path -> Files.exists(path) }
-            .map(::normalizeStandalonePath)
-            .distinct()
-            .sorted()
-            .toList()
+        )
         val dependencies = module.dependencies.mapNotNull(::toGradleDependency)
         val compilerOutput = module.compilerOutput
         return GradleModuleModel(
@@ -148,8 +99,8 @@ internal object GradleWorkspaceDiscovery {
             ideaModuleName = module.name,
             mainSourceRoots = mainSourceRoots,
             testSourceRoots = testSourceRoots,
-            mainOutputRoots = listOfNotNull(compilerOutput.outputDir?.toPath()).map(::normalizeStandalonePath),
-            testOutputRoots = listOfNotNull(compilerOutput.testOutputDir?.toPath()).map(::normalizeStandalonePath),
+            mainOutputRoots = listOfNotNull(compilerOutput.outputDir?.toPath()).map(::normalizeStandaloneModelPath),
+            testOutputRoots = listOfNotNull(compilerOutput.testOutputDir?.toPath()).map(::normalizeStandaloneModelPath),
             dependencies = dependencies,
         )
     }
@@ -163,10 +114,27 @@ internal object GradleWorkspaceDiscovery {
             )
             is IdeaSingleEntryLibraryDependency -> dependency.file
                 ?.toPath()
-                ?.let(::normalizeStandalonePath)
+                ?.let(::normalizeStandaloneModelPath)
                 ?.let { file -> GradleDependency.LibraryDependency(binaryRoot = file, scope = scope) }
             else -> null
         }
+    }
+}
+
+internal class ToolingApiPathNormalizer(
+    private val pathExists: (Path) -> Boolean = Files::exists,
+) {
+    private val pathExistsCache = linkedMapOf<Path, Boolean>()
+
+    fun normalizeExistingSourceRoots(paths: Sequence<Path>): List<Path> = paths
+        .map(::normalizeStandaloneModelPath)
+        .distinct()
+        .filter(::exists)
+        .toList()
+        .sorted()
+
+    private fun exists(path: Path): Boolean = pathExistsCache.getOrPut(path) {
+        pathExists(path)
     }
 }
 
@@ -222,65 +190,117 @@ internal data class GradleModuleModel(
 ) {
     fun analysisModuleName(sourceSet: GradleSourceSet): String = "$gradlePath[${sourceSet.id}]"
 
-    fun binaryRootsFor(sourceSet: GradleSourceSet): List<Path> {
-        val supportedScopes = sourceSet.supportedDependencyScopes
-        return dependencies
-            .asSequence()
-            .filterIsInstance<GradleDependency.LibraryDependency>()
-            .filter { dependency -> dependency.scope in supportedScopes }
-            .map(GradleDependency.LibraryDependency::binaryRoot)
-            .distinct()
-            .sorted()
-            .toList()
-    }
-
-    fun moduleDependencyNamesFor(
-        sourceSet: GradleSourceSet,
+    fun toStandaloneSourceModuleSpecs(
         moduleModelsByIdeaName: Map<String, GradleModuleModel>,
-        availableSourceModuleNames: Set<String>,
-    ): List<String> {
-        val dependencyNames = linkedSetOf<String>()
-        if (sourceSet == GradleSourceSet.TEST && mainSourceRoots.isNotEmpty()) {
-            dependencyNames += analysisModuleName(GradleSourceSet.MAIN)
+        availableMainSourceModuleNames: Set<String>,
+        extraClasspathRoots: List<Path>,
+    ): List<StandaloneSourceModuleSpec> {
+        val resolvedDependencies = resolveSourceSetDependencies(
+            moduleModelsByIdeaName = moduleModelsByIdeaName,
+            availableMainSourceModuleNames = availableMainSourceModuleNames,
+        )
+        return buildList {
+            mainSourceRoots.takeIf(List<Path>::isNotEmpty)?.let { sourceRoots ->
+                add(
+                    StandaloneSourceModuleSpec(
+                        name = analysisModuleName(GradleSourceSet.MAIN),
+                        sourceRoots = sourceRoots,
+                        binaryRoots = (resolvedDependencies.mainBinaryRoots + extraClasspathRoots).distinct().sorted(),
+                        dependencyModuleNames = resolvedDependencies.mainDependencyNames,
+                    ),
+                )
+            }
+            testSourceRoots.takeIf(List<Path>::isNotEmpty)?.let { sourceRoots ->
+                add(
+                    StandaloneSourceModuleSpec(
+                        name = analysisModuleName(GradleSourceSet.TEST),
+                        sourceRoots = sourceRoots,
+                        binaryRoots = (resolvedDependencies.testBinaryRoots + extraClasspathRoots).distinct().sorted(),
+                        dependencyModuleNames = resolvedDependencies.testDependencyNames,
+                    ),
+                )
+            }
         }
-        dependencies
-            .asSequence()
-            .filterIsInstance<GradleDependency.ModuleDependency>()
-            .filter { dependency -> dependency.scope in sourceSet.supportedDependencyScopes }
-            .mapNotNull { dependency -> moduleModelsByIdeaName[dependency.targetIdeaModuleName] }
-            .map(GradleModuleModel::mainDependencyModuleName)
-            .filterNotNull()
-            .filter(availableSourceModuleNames::contains)
-            .toList()
-            .forEach(dependencyNames::add)
-        return dependencyNames.toList()
     }
 
-    fun fallbackOutputRootsFor(
-        sourceSet: GradleSourceSet,
-        moduleModelsByIdeaName: Map<String, GradleModuleModel>,
-        availableSourceModuleNames: Set<String>,
-    ): List<Path> {
-        val fallbackRoots = linkedSetOf<Path>()
-        if (sourceSet == GradleSourceSet.TEST && mainSourceRoots.isEmpty()) {
-            fallbackRoots += mainOutputRoots
-        }
-        dependencies
-            .asSequence()
-            .filterIsInstance<GradleDependency.ModuleDependency>()
-            .filter { dependency -> dependency.scope in sourceSet.supportedDependencyScopes }
-            .mapNotNull { dependency -> moduleModelsByIdeaName[dependency.targetIdeaModuleName] }
-            .filter { dependency -> dependency.mainDependencyModuleName() !in availableSourceModuleNames }
-            .flatMap(GradleModuleModel::mainOutputRoots)
-            .toList()
-            .forEach(fallbackRoots::add)
-        return fallbackRoots.toList().sorted()
-    }
-
-    private fun mainDependencyModuleName(): String? = mainSourceRoots
+    fun mainDependencyModuleName(): String? = mainSourceRoots
         .takeIf(List<Path>::isNotEmpty)
         ?.let { analysisModuleName(GradleSourceSet.MAIN) }
+
+    private fun resolveSourceSetDependencies(
+        moduleModelsByIdeaName: Map<String, GradleModuleModel>,
+        availableMainSourceModuleNames: Set<String>,
+    ): ResolvedSourceSetDependencies {
+        val mainBinaryRoots = linkedSetOf<Path>()
+        val testBinaryRoots = linkedSetOf<Path>()
+        val mainDependencyNames = linkedSetOf<String>()
+        val testDependencyNames = linkedSetOf<String>()
+
+        if (mainSourceRoots.isEmpty()) {
+            testBinaryRoots.addAll(mainOutputRoots)
+        } else if (testSourceRoots.isNotEmpty()) {
+            testDependencyNames.add(analysisModuleName(GradleSourceSet.MAIN))
+        }
+
+        dependencies.forEach { dependency ->
+            when (dependency) {
+                is GradleDependency.LibraryDependency -> {
+                    if (dependency.scope in GradleSourceSet.MAIN.supportedDependencyScopes) {
+                        mainBinaryRoots.add(dependency.binaryRoot)
+                    }
+                    if (dependency.scope in GradleSourceSet.TEST.supportedDependencyScopes) {
+                        testBinaryRoots.add(dependency.binaryRoot)
+                    }
+                }
+                is GradleDependency.ModuleDependency -> {
+                    val targetModule = moduleModelsByIdeaName[dependency.targetIdeaModuleName] ?: return@forEach
+                    if (dependency.scope in GradleSourceSet.MAIN.supportedDependencyScopes) {
+                        mainBinaryRoots.addAll(
+                            targetModule.addSourceSetDependency(
+                                dependencyNames = mainDependencyNames,
+                                availableMainSourceModuleNames = availableMainSourceModuleNames,
+                            ),
+                        )
+                    }
+                    if (dependency.scope in GradleSourceSet.TEST.supportedDependencyScopes) {
+                        testBinaryRoots.addAll(
+                            targetModule.addSourceSetDependency(
+                                dependencyNames = testDependencyNames,
+                                availableMainSourceModuleNames = availableMainSourceModuleNames,
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+
+        return ResolvedSourceSetDependencies(
+            mainBinaryRoots = mainBinaryRoots.toList(),
+            testBinaryRoots = testBinaryRoots.toList(),
+            mainDependencyNames = mainDependencyNames.toList(),
+            testDependencyNames = testDependencyNames.toList(),
+        )
+    }
+
+    private fun addSourceSetDependency(
+        dependencyNames: MutableSet<String>,
+        availableMainSourceModuleNames: Set<String>,
+    ): List<Path> {
+        val dependencyName = mainDependencyModuleName()
+        if (dependencyName != null && dependencyName in availableMainSourceModuleNames) {
+            dependencyNames.add(dependencyName)
+            return emptyList()
+        }
+        return mainOutputRoots
+    }
 }
+
+private data class ResolvedSourceSetDependencies(
+    val mainBinaryRoots: List<Path>,
+    val testBinaryRoots: List<Path>,
+    val mainDependencyNames: List<String>,
+    val testDependencyNames: List<String>,
+)
 
 internal sealed interface GradleDependency {
     val scope: GradleDependencyScope

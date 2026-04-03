@@ -30,7 +30,7 @@ class StandaloneAnalysisSession(
     moduleName: String,
 ) : AutoCloseable {
     private val disposable: Disposable = Disposer.newDisposable("kast-standalone")
-    private val ktFilesByPath: Map<String, KtFile>
+    private val ktFilesByPath: Map<String, KtFile> by lazy(::loadKtFilesByPath)
 
     val session: StandaloneAnalysisAPISession
     val sourceModules: List<KaSourceModule>
@@ -108,10 +108,6 @@ class StandaloneAnalysisSession(
         check(sourceModules.isNotEmpty()) {
             "The standalone Analysis API session did not create any source modules"
         }
-        ktFilesByPath = sourceModules
-            .flatMap { sourceModule -> createdSession.modulesWithFiles[sourceModule].orEmpty() }
-            .filterIsInstance<KtFile>()
-            .associateBy(::normalizeFileLookupPath)
     }
 
     fun allKtFiles(): List<KtFile> = ktFilesByPath.values.sortedBy(::normalizeFileLookupPath)
@@ -183,6 +179,12 @@ class StandaloneAnalysisSession(
             ?: throw NotFoundException("The standalone analysis session produced a KtFile without a virtual path")
         return normalizePath(Path.of(virtualPath)).toString()
     }
+
+    private fun loadKtFilesByPath(): Map<String, KtFile> = sourceModules
+        .asSequence()
+        .flatMap { sourceModule -> session.modulesWithFiles[sourceModule].orEmpty().asSequence() }
+        .filterIsInstance<KtFile>()
+        .associateBy(::normalizeFileLookupPath)
 
     private fun org.jetbrains.kotlin.analysis.project.structure.builder.KtModuleProviderBuilder.buildLibraryModule(
         moduleName: String,
@@ -265,6 +267,8 @@ internal fun normalizeStandalonePath(path: Path): Path {
     val absolutePath = path.toAbsolutePath().normalize()
     return runCatching { absolutePath.toRealPath().normalize() }.getOrDefault(absolutePath)
 }
+
+internal fun normalizeStandaloneModelPath(path: Path): Path = path.toAbsolutePath().normalize()
 
 internal fun normalizeStandalonePaths(paths: Iterable<Path>): List<Path> = paths
     .map(::normalizeStandalonePath)
