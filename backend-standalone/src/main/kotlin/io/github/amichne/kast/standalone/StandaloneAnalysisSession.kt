@@ -32,10 +32,10 @@ class StandaloneAnalysisSession(
     private val disposable: Disposable = Disposer.newDisposable("kast-standalone")
     private val ktFilesByPath: Map<String, KtFile> by lazy(::loadKtFilesByPath)
 
-    val session: StandaloneAnalysisAPISession
+    private val session: StandaloneAnalysisAPISession
     val sourceModules: List<KaSourceModule>
     val resolvedSourceRoots: List<Path>
-    val resolvedClasspathRoots: List<Path>
+    private val resolvedClasspathRoots: List<Path>
 
     init {
         val workspaceLayout = discoverStandaloneWorkspaceLayout(

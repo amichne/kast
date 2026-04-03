@@ -13,10 +13,10 @@ application {
     mainClass = "io.github.amichne.kast.cli.CliMainKt"
 }
 
-val helperSource = layout.projectDirectory.file("src/helper/kast_helper.c")
-val helperBinary = layout.buildDirectory.file("bin/kast-helper")
-val packagedSkillSourceDir = rootProject.layout.projectDirectory.dir(".agents/skills/kast")
-val packagedSkillInstallerSource = layout.projectDirectory.file("src/packaging/install-kast-skilled.sh")
+val helperSource: RegularFile = layout.projectDirectory.file("src/helper/kast_helper.c")
+val helperBinary: Provider<RegularFile> = layout.buildDirectory.file("bin/kast-helper")
+val packagedSkillSourceDir: Directory = rootProject.layout.projectDirectory.dir(".agents/skills/kast")
+val packagedSkillInstallerSource: RegularFile = layout.projectDirectory.file("src/packaging/install-kast-skilled.sh")
 
 dependencies {
     implementation(project(":analysis-api"))
@@ -27,14 +27,14 @@ dependencies {
     implementation(libs.logback.classic)
 }
 
-val cleanHelperOutputs by tasks.registering(Delete::class) {
+val cleanHelperOutputs: TaskProvider<Delete> by tasks.registering(Delete::class) {
     group = "build"
     description = "Removes generated helper binaries before rebuilding the kast launcher."
 
     delete(layout.buildDirectory.dir("bin"))
 }
 
-val compileHelper by tasks.registering(Exec::class) {
+val compileHelper: TaskProvider<Exec> by tasks.registering(Exec::class) {
     dependsOn(cleanHelperOutputs)
     inputs.file(helperSource)
     outputs.file(helperBinary)
@@ -114,12 +114,12 @@ tasks.named("writeWrapperScript").configure {
     }
 }
 
-val syncPackagedSkill by tasks.registering(Sync::class) {
+val syncPackagedSkill: TaskProvider<Sync> by tasks.registering(Sync::class) {
     from(packagedSkillSourceDir)
     into(layout.buildDirectory.dir("packaged-skill/share/skills/kast"))
 }
 
-val stagePackagedSkillInstaller by tasks.registering {
+val stagePackagedSkillInstaller: TaskProvider<Task> by tasks.registering {
     inputs.file(packagedSkillInstallerSource)
     outputs.file(layout.buildDirectory.file("packaged-skill/scripts/install-kast-skilled.sh"))
 

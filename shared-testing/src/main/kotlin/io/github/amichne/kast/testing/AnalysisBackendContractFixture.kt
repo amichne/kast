@@ -28,25 +28,25 @@ data class AnalysisBackendContractFixture(
     val brokenPreview: String,
 ) {
     val symbolFqName: String = "sample.greet"
-    val renameTarget: String = "welcome"
+    private val renameTarget: String = "welcome"
 
-    val symbolQuery = SymbolQuery(
+    val symbolQuery: SymbolQuery = SymbolQuery(
         position = FilePosition(
             filePath = firstUsageLocation.filePath,
             offset = firstUsageLocation.startOffset,
         ),
     )
 
-    val referencesQuery = ReferencesQuery(
+    val referencesQuery: ReferencesQuery = ReferencesQuery(
         position = symbolQuery.position,
         includeDeclaration = true,
     )
 
-    val diagnosticsQuery = DiagnosticsQuery(
+    val diagnosticsQuery: DiagnosticsQuery = DiagnosticsQuery(
         filePaths = listOf(normalizePath(brokenFile)),
     )
 
-    val renameQuery = RenameQuery(
+    val renameQuery: RenameQuery = RenameQuery(
         position = symbolQuery.position,
         newName = renameTarget,
     )
@@ -75,10 +75,10 @@ data class AnalysisBackendContractFixture(
             workspaceRoot: Path,
             writeFile: (relativePath: String, content: String) -> Path = defaultWriter(workspaceRoot),
         ): AnalysisBackendContractFixture {
-            val declarationContent = """
+            val declarationContent = $$"""
                 package sample
 
-                fun greet(name: String): String = "hi ${'$'}name"
+                fun greet(name: String): String = "hi $name"
             """.trimIndent() + "\n"
             val firstUsageContent = """
                 package sample

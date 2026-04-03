@@ -4,7 +4,6 @@ import io.github.amichne.kast.api.AnalysisBackend
 import io.github.amichne.kast.api.AnalysisException
 import io.github.amichne.kast.api.ApiErrorResponse
 import io.github.amichne.kast.api.ApplyEditsQuery
-import io.github.amichne.kast.api.BackendCapabilities
 import io.github.amichne.kast.api.CallHierarchyQuery
 import io.github.amichne.kast.api.CapabilityNotSupportedException
 import io.github.amichne.kast.api.DiagnosticsQuery
@@ -20,7 +19,6 @@ import io.github.amichne.kast.api.ValidationException
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationCall
-import io.ktor.server.application.call
 import io.ktor.server.application.install
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.statuspages.StatusPages
@@ -252,7 +250,7 @@ private fun AnalysisException.toErrorResponse(requestId: String): ApiErrorRespon
     details = details,
 )
 
-private fun requestId(call: io.ktor.server.application.ApplicationCall): String {
+private fun requestId(call: ApplicationCall): String {
     return call.request.headers["X-Request-Id"] ?: UUID.randomUUID().toString()
 }
 

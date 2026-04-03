@@ -14,7 +14,7 @@ Assume every edit in this unit can affect the whole repo.
   task names and output layout stable unless every consumer is updated
   together.
 - `SyncRuntimeLibsTask` and `WriteWrapperScriptTask` define the runtime-libs
-  and wrapper layout that `Makefile`, `kast`, and portable dist packaging
+  and wrapper layout that `build.sh`, `kast`, and portable dist packaging
   expect.
 - Do not put product behavior or workspace-specific runtime logic here. If a
   change affects shipped analysis behavior, it probably belongs in an

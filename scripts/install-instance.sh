@@ -74,7 +74,7 @@ resolve_default_archive() {
   done
   shopt -u nullglob
 
-  [[ -n "$newest" ]] || die "No portable zip found under ${repo_root}/kast/build/distributions. Run ./gradlew :kast:portableDistZip or pass --archive."
+  [[ -n "$newest" ]] || die "No portable zip found under ${repo_root}/kast/build/distributions. Run ./build.sh or pass --archive."
   printf '%s\n' "$newest"
 }
 

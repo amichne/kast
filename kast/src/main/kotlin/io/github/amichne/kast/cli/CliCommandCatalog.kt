@@ -22,6 +22,10 @@ internal enum class CliCommandGroup(
         title = "Shell integration",
         overview = "Opt-in helpers for interactive terminals that keep the public command tree easy to drive.",
     ),
+    CLI_MANAGEMENT(
+        title = "CLI management",
+        overview = "Install and manage local Kast CLI instances.",
+    ),
 }
 
 internal enum class CliOptionCompletionKind {
@@ -126,6 +130,29 @@ internal object CliCommandCatalog {
         usage = "--dry-run=true",
         description = "Keep rename in planning mode. Defaults to true.",
         completionKind = CliOptionCompletionKind.BOOLEAN,
+    )
+    private val archiveOption = CliOptionMetadata(
+        key = "archive",
+        usage = "--archive=/absolute/path/to/kast-portable.zip",
+        description = "Absolute path to the portable Kast zip archive to install.",
+        completionKind = CliOptionCompletionKind.FILE,
+    )
+    private val instanceNameOption = CliOptionMetadata(
+        key = "instance",
+        usage = "--instance=my-dev",
+        description = "Instance name for the installed build. Defaults to a generated adjective-animal.",
+    )
+    private val instancesRootOption = CliOptionMetadata(
+        key = "instances-root",
+        usage = "--instances-root=/absolute/path/to/instances",
+        description = "Root directory for instances. Defaults to ~/.local/share/kast/instances.",
+        completionKind = CliOptionCompletionKind.DIRECTORY,
+    )
+    private val binDirOption = CliOptionMetadata(
+        key = "bin-dir",
+        usage = "--bin-dir=/absolute/path/to/bin",
+        description = "Directory for launcher scripts. Defaults to ~/.local/bin.",
+        completionKind = CliOptionCompletionKind.DIRECTORY,
     )
 
     private val commands: List<CliCommandMetadata> = listOf(
@@ -300,6 +327,20 @@ internal object CliCommandCatalog {
             ),
             examples = listOf(
                 "source <($CLI_EXECUTABLE_NAME completion zsh)",
+            ),
+        ),
+        CliCommandMetadata(
+            path = listOf("install"),
+            group = CliCommandGroup.CLI_MANAGEMENT,
+            summary = "Install a portable Kast archive as a named local instance.",
+            description = "Extracts a portable zip archive, wires up the instance under the instances root, and creates a launcher script in the bin directory.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME install --archive=/absolute/path/to/kast-portable.zip [--instance=<name>] [--bin-dir=~/.local/bin] [--instances-root=~/.local/share/kast/instances]",
+            ),
+            options = listOf(archiveOption, instanceNameOption, binDirOption, instancesRootOption),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME install --archive=/path/to/kast-portable.zip",
+                "$CLI_EXECUTABLE_NAME install --archive=/path/to/kast-portable.zip --instance=my-dev",
             ),
         ),
         CliCommandMetadata(

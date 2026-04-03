@@ -4,6 +4,7 @@ import io.github.amichne.kast.api.DiagnosticSeverity
 import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.ReadCapability
 import io.github.amichne.kast.api.ServerLimits
+import kotlinx.coroutines.test.TestResult
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -18,7 +19,7 @@ class StandaloneAnalysisBackendDiagnosticsTest {
     lateinit var workspaceRoot: Path
 
     @Test
-    fun `diagnostics report semantic errors from standalone analysis`() = runTest {
+    fun `diagnostics report semantic errors from standalone analysis`(): TestResult = runTest {
         val brokenFile = writeFile(
             relativePath = "src/main/kotlin/sample/Broken.kt",
             content = """
@@ -33,7 +34,7 @@ class StandaloneAnalysisBackendDiagnosticsTest {
             classpathRoots = emptyList(),
             moduleName = "sources",
         )
-        try {
+        session.use { session ->
             val backend = StandaloneAnalysisBackend(
                 workspaceRoot = workspaceRoot,
                 limits = ServerLimits(
@@ -55,13 +56,11 @@ class StandaloneAnalysisBackendDiagnosticsTest {
             assertEquals("UNRESOLVED_REFERENCE", result.diagnostics.first().code)
             assertEquals(normalizePath(brokenFile), result.diagnostics.first().location.filePath)
             assertTrue(result.diagnostics.first().message.contains("Unresolved", ignoreCase = true))
-        } finally {
-            session.close()
         }
     }
 
     @Test
-    fun `capabilities advertise diagnostics after implementation`() = runTest {
+    fun `capabilities advertise diagnostics after implementation`(): TestResult = runTest {
         writeFile(
             relativePath = "src/main/kotlin/sample/Broken.kt",
             content = """
@@ -76,7 +75,7 @@ class StandaloneAnalysisBackendDiagnosticsTest {
             classpathRoots = emptyList(),
             moduleName = "sources",
         )
-        try {
+        session.use { session ->
             val backend = StandaloneAnalysisBackend(
                 workspaceRoot = workspaceRoot,
                 limits = ServerLimits(
@@ -90,8 +89,6 @@ class StandaloneAnalysisBackendDiagnosticsTest {
             val capabilities = backend.capabilities()
 
             assertTrue(ReadCapability.DIAGNOSTICS in capabilities.readCapabilities)
-        } finally {
-            session.close()
         }
     }
 

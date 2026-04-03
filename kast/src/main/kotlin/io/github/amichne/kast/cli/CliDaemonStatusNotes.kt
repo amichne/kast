@@ -12,7 +12,7 @@ internal fun daemonNoteFor(result: WorkspaceStatusResult): String? {
             add("${result.candidates.size} descriptors registered")
         }
         if (liveCount > 1) {
-            add("${liveCount} live daemons")
+            add("$liveCount live daemons")
         }
     }
 

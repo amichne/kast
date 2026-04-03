@@ -188,7 +188,7 @@ internal data class GradleModuleModel(
     val testOutputRoots: List<Path>,
     val dependencies: List<GradleDependency>,
 ) {
-    fun analysisModuleName(sourceSet: GradleSourceSet): String = "$gradlePath[${sourceSet.id}]"
+    private fun analysisModuleName(sourceSet: GradleSourceSet): String = "$gradlePath[${sourceSet.id}]"
 
     fun toStandaloneSourceModuleSpecs(
         moduleModelsByIdeaName: Map<String, GradleModuleModel>,

@@ -190,7 +190,8 @@ mistakes.
   locally-built CLI, or build it automatically, set `KAST_SOURCE_ROOT` to the
   repo root. The resolver will look for expected build outputs and may run a
   minimal Gradle step to produce `kast/build/scripts/kast` when Java 21+ is
-  available:
+  available. If you want the repo-local packaged CLI under `dist/kast`, run
+  `./build.sh` from the repo root first:
 
    ```bash
    export KAST_SOURCE_ROOT=/absolute/path/to/kast/repo

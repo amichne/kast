@@ -40,6 +40,6 @@ internal class CliTextTheme private constructor(
 
         fun ansi(): CliTextTheme = CliTextTheme(true)
 
-        fun plain(): CliTextTheme = CliTextTheme(false)
+        private fun plain(): CliTextTheme = CliTextTheme(false)
     }
 }

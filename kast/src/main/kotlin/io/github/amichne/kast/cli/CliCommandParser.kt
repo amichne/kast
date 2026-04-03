@@ -8,7 +8,6 @@ import io.github.amichne.kast.api.RenameQuery
 import io.github.amichne.kast.api.SymbolQuery
 import io.github.amichne.kast.standalone.StandaloneServerOptions
 import kotlinx.serialization.KSerializer
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import java.nio.file.Path
 import kotlin.io.path.readText
@@ -78,6 +77,7 @@ internal class CliCommandParser(
                 listOf("diagnostics") -> CliCommand.Diagnostics(parsed.runtimeOptions(), parsed.diagnosticsQuery(json))
                 listOf("rename") -> CliCommand.Rename(parsed.runtimeOptions(), parsed.renameQuery(json))
                 listOf("edits", "apply") -> CliCommand.ApplyEdits(parsed.runtimeOptions(), parsed.applyEditsQuery(json))
+                listOf("install") -> CliCommand.Install(parsed.installOptions())
                 listOf("internal", "daemon-run") -> CliCommand.InternalDaemonRun(parsed.runtimeOptions(backendName = "standalone"))
                 else -> throw CliFailure(
                     code = "CLI_USAGE",
@@ -232,6 +232,20 @@ internal data class ParsedArguments(
         throw CliFailure(
             code = "CLI_USAGE",
             message = "`edits apply` requires --request-file=/absolute/path/to/query.json",
+        )
+    }
+
+    fun installOptions(): InstallOptions {
+        val home = Path.of(System.getProperty("user.home"))
+        return InstallOptions(
+            archivePath = Path.of(requireOption("archive")).toAbsolutePath().normalize(),
+            instanceName = options["instance"]?.takeIf(String::isNotEmpty),
+            instancesRoot = options["instances-root"]
+                ?.let { Path.of(it).toAbsolutePath().normalize() }
+                ?: home.resolve(".local/share/kast/instances"),
+            binDir = options["bin-dir"]
+                ?.let { Path.of(it).toAbsolutePath().normalize() }
+                ?: home.resolve(".local/bin"),
         )
     }
 

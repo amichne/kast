@@ -28,4 +28,4 @@ Prove CLI changes at the module boundary before you rely on downstream fixes.
 
 - Run `./gradlew :kast:test` for CLI behavior changes.
 - If you touch the wrapper, helper, or packaging layout, also run
-  `./gradlew :kast:syncRuntimeLibs :kast:writeWrapperScript` or `make cli`.
+  `./gradlew :kast:syncRuntimeLibs :kast:writeWrapperScript` or `./build.sh`.

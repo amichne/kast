@@ -1,6 +1,5 @@
 package io.github.amichne.kast.standalone
 
-import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.exists
 import kotlin.io.path.isDirectory

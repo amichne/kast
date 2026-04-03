@@ -2,7 +2,6 @@ package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.api.BackendCapabilities
 import io.github.amichne.kast.api.DiagnosticsResult
-import kotlinx.serialization.decodeFromString
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -10,7 +9,6 @@ import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
-import kotlin.io.path.createDirectories
 import kotlin.io.path.writeText
 
 class KastWrapperTest {

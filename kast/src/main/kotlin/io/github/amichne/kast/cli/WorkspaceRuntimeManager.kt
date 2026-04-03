@@ -160,14 +160,14 @@ internal class WorkspaceRuntimeManager(
         )
     }
 
-    private suspend fun inspectWorkspace(
+    private fun inspectWorkspace(
         options: RuntimeCommandOptions,
         pruneStaleDescriptors: Boolean,
     ): WorkspaceInspection {
         val descriptorDirectory = defaultDescriptorDirectory(options.workspaceRoot)
         val registry = DescriptorRegistry(descriptorDirectory)
         val registeredDescriptors = registry.findByWorkspaceRoot(options.workspaceRoot)
-        val candidates = registeredDescriptors.mapNotNull { registered ->
+        val candidates = registeredDescriptors.map { registered ->
             inspectDescriptor(registry, registered, pruneStaleDescriptors)
         }.filter { candidate -> candidate.descriptor.backendName == "standalone" }
 
@@ -279,9 +279,7 @@ internal fun selectReadyCandidate(
     backendName: String?,
 ): RuntimeCandidateStatus? = candidates
     .filter { candidate -> backendName == null || candidate.descriptor.backendName == backendName }
-    .filter(RuntimeCandidateStatus::ready)
-    .sortedBy(RuntimeCandidateStatus::descriptorPath)
-    .firstOrNull()
+    .filter(RuntimeCandidateStatus::ready).minByOrNull(RuntimeCandidateStatus::descriptorPath)
 
 internal fun selectStatusCandidate(
     candidates: List<RuntimeCandidateStatus>,

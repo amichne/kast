@@ -90,7 +90,6 @@ class CliDaemonStatusNotesTest {
             backendName = "standalone",
             backendVersion = "0.1.0-SNAPSHOT",
             workspaceRoot = "/tmp/workspace",
-            message = null,
         ),
         errorMessage: String? = null,
     ): RuntimeCandidateStatus {

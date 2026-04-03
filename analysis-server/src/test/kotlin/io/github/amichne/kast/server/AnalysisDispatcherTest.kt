@@ -105,7 +105,6 @@ class AnalysisDispatcherTest {
                 RenameQuery(
                     position = FilePosition(filePath = file.toString(), offset = 20),
                     newName = "welcome",
-                    dryRun = true,
                 ),
             ),
         )

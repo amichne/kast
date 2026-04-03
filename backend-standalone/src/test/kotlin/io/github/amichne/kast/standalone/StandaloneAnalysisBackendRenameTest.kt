@@ -5,6 +5,7 @@ import io.github.amichne.kast.api.FileHashing
 import io.github.amichne.kast.api.MutationCapability
 import io.github.amichne.kast.api.RenameQuery
 import io.github.amichne.kast.api.ServerLimits
+import kotlinx.coroutines.test.TestResult
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -20,13 +21,13 @@ class StandaloneAnalysisBackendRenameTest {
     lateinit var workspaceRoot: Path
 
     @Test
-    fun `rename plans declaration and cross-file reference edits`() = runTest {
+    fun `rename plans declaration and cross-file reference edits`(): TestResult = runTest {
         val declarationFile = writeFile(
             relativePath = "src/main/kotlin/sample/Greeter.kt",
-            content = """
+            content = $$"""
                 package sample
 
-                fun greet(name: String): String = "hi ${'$'}name"
+                fun greet(name: String): String = "hi $name"
             """.trimIndent() + "\n",
         )
         val usageFile = writeFile(
@@ -52,7 +53,7 @@ class StandaloneAnalysisBackendRenameTest {
             classpathRoots = emptyList(),
             moduleName = "sources",
         )
-        try {
+        session.use { session ->
             val backend = StandaloneAnalysisBackend(
                 workspaceRoot = workspaceRoot,
                 limits = ServerLimits(
@@ -94,19 +95,17 @@ class StandaloneAnalysisBackendRenameTest {
                 ),
                 result.fileHashes.map { hash -> hash.filePath to hash.hash },
             )
-        } finally {
-            session.close()
         }
     }
 
     @Test
-    fun `capabilities advertise rename after implementation`() = runTest {
+    fun `capabilities advertise rename after implementation`(): TestResult = runTest {
         writeFile(
             relativePath = "src/main/kotlin/sample/Greeter.kt",
-            content = """
+            content = $$"""
                 package sample
 
-                fun greet(name: String): String = "hi ${'$'}name"
+                fun greet(name: String): String = "hi $name"
             """.trimIndent() + "\n",
         )
         val session = StandaloneAnalysisSession(
@@ -115,7 +114,7 @@ class StandaloneAnalysisBackendRenameTest {
             classpathRoots = emptyList(),
             moduleName = "sources",
         )
-        try {
+        session.use { session ->
             val backend = StandaloneAnalysisBackend(
                 workspaceRoot = workspaceRoot,
                 limits = ServerLimits(
@@ -129,8 +128,6 @@ class StandaloneAnalysisBackendRenameTest {
             val capabilities = backend.capabilities()
 
             assertTrue(MutationCapability.RENAME in capabilities.mutationCapabilities)
-        } finally {
-            session.close()
         }
     }
 

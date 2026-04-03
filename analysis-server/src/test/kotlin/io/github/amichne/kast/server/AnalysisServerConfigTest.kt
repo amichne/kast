@@ -10,15 +10,15 @@ import java.nio.file.Path
 class AnalysisServerConfigTest {
     @Test
     fun `loopback host without token is accepted`() {
-        assertDoesNotThrow { AnalysisServerConfig(host = "127.0.0.1", token = null) }
-        assertDoesNotThrow { AnalysisServerConfig(host = "::1", token = null) }
-        assertDoesNotThrow { AnalysisServerConfig(host = "localhost", token = null) }
-        assertDoesNotThrow { AnalysisServerConfig(host = "LOCALHOST", token = null) }
+        assertDoesNotThrow { AnalysisServerConfig() }
+        assertDoesNotThrow { AnalysisServerConfig(host = "::1") }
+        assertDoesNotThrow { AnalysisServerConfig(host = "localhost") }
+        assertDoesNotThrow { AnalysisServerConfig(host = "LOCALHOST") }
     }
 
     @Test
     fun `loopback host with token is accepted`() {
-        assertDoesNotThrow { AnalysisServerConfig(host = "127.0.0.1", token = "secret") }
+        assertDoesNotThrow { AnalysisServerConfig(token = "secret") }
     }
 
     @Test
@@ -29,7 +29,7 @@ class AnalysisServerConfigTest {
 
     @Test
     fun `non-loopback host without token is rejected`() {
-        assertThrows<IllegalArgumentException> { AnalysisServerConfig(host = "0.0.0.0", token = null) }
+        assertThrows<IllegalArgumentException> { AnalysisServerConfig(host = "0.0.0.0") }
     }
 
     @Test

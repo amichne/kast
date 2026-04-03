@@ -4,7 +4,6 @@ import io.github.amichne.kast.api.BackendCapabilities
 import io.github.amichne.kast.api.MutationCapability
 import io.github.amichne.kast.api.ReadCapability
 import io.github.amichne.kast.api.ServerLimits
-import kotlinx.serialization.decodeFromString
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test

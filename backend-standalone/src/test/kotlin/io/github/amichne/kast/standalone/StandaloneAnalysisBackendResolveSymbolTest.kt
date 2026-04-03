@@ -4,6 +4,7 @@ import io.github.amichne.kast.api.FilePosition
 import io.github.amichne.kast.api.ServerLimits
 import io.github.amichne.kast.api.SymbolKind
 import io.github.amichne.kast.api.SymbolQuery
+import kotlinx.coroutines.test.TestResult
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -17,13 +18,13 @@ class StandaloneAnalysisBackendResolveSymbolTest {
     lateinit var workspaceRoot: Path
 
     @Test
-    fun `resolve symbol returns declaration metadata for a function reference`() = runTest {
+    fun `resolve symbol returns declaration metadata for a function reference`(): TestResult = runTest {
         val declarationFile = writeFile(
             relativePath = "src/main/kotlin/sample/Greeter.kt",
-            content = """
+            content = $$"""
                 package sample
 
-                fun greet(name: String): String = "hi ${'$'}name"
+                fun greet(name: String): String = "hi $name"
             """.trimIndent() + "\n",
         )
         val usageFile = writeFile(
@@ -41,7 +42,7 @@ class StandaloneAnalysisBackendResolveSymbolTest {
             classpathRoots = emptyList(),
             moduleName = "sources",
         )
-        try {
+        session.use { session ->
             val backend = StandaloneAnalysisBackend(
                 workspaceRoot = workspaceRoot,
                 limits = ServerLimits(
@@ -64,8 +65,6 @@ class StandaloneAnalysisBackendResolveSymbolTest {
             assertEquals("sample.greet", result.symbol.fqName)
             assertEquals(SymbolKind.FUNCTION, result.symbol.kind)
             assertEquals(normalizePath(declarationFile), result.symbol.location.filePath)
-        } finally {
-            session.close()
         }
     }
 

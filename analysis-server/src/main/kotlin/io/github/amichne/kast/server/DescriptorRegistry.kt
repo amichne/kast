@@ -40,7 +40,7 @@ class DescriptorRegistry(
                         )
                     }.getOrNull()
                 }
-                .sortedWith(compareBy<RegisteredDescriptor>({ it.descriptor.backendName }, { it.path.name }))
+                .sortedWith(compareBy({ it.descriptor.backendName }, { it.path.name }))
                 .toList()
         }
     }

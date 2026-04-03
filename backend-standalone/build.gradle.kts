@@ -14,7 +14,6 @@ import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.jvm.tasks.Jar
 import org.gradle.kotlin.dsl.creating
 import org.gradle.kotlin.dsl.getByType
-import org.gradle.kotlin.dsl.register
 import java.util.zip.ZipFile
 
 plugins {
@@ -24,14 +23,14 @@ plugins {
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
 private val intellijIdeaVersion = catalog.findVersion("intellij-idea").get().requiredVersion
 
-val ideaDistribution by configurations.creating {
+val ideaDistribution: Configuration by configurations.creating {
     isCanBeConsumed = false
     isCanBeResolved = true
 }
 
 private val extractedIdeaDistributionDirectory = layout.buildDirectory.dir("intellij-distribution")
 
-val extractIdeaDistribution by tasks.registering(Sync::class) {
+val extractIdeaDistribution: TaskProvider<Sync> by tasks.registering(Sync::class) {
     from({
         ideaDistribution.files.map(::zipTree)
     })
@@ -83,14 +82,14 @@ abstract class ExtractLegacyPluginClassesTask : DefaultTask() {
             "com/intellij/ide/plugins/IdeaPluginDescriptorImpl.class",
             "com/intellij/ide/plugins/IdeaPluginDescriptorImplKt.class",
             "com/intellij/ide/plugins/PluginDescriptorLoader.class",
-            "com/intellij/ide/plugins/PluginDescriptorLoader\$loadForCoreEnv\$1.class",
+            $$"com/intellij/ide/plugins/PluginDescriptorLoader$loadForCoreEnv$1.class",
             "com/intellij/ide/plugins/DataLoader.class",
             "com/intellij/ide/plugins/ImmutableZipFileDataLoader.class",
             "com/intellij/ide/plugins/NonShareableJavaZipFilePool.class",
         )
         val excludedPrefixes = listOf(
-            "com/intellij/ide/plugins/ImmutableZipFileDataLoader\$",
-            "com/intellij/ide/plugins/NonShareableJavaZipFilePool\$",
+            "com/intellij/ide/plugins/ImmutableZipFileDataLoader$",
+            "com/intellij/ide/plugins/NonShareableJavaZipFilePool$",
         )
         val outputRoot = outputDirectory.get().asFile
         project.delete(outputRoot)
@@ -125,7 +124,7 @@ abstract class ExtractLegacyPluginClassesTask : DefaultTask() {
     }
 }
 
-val extractLegacyPluginClasses by tasks.registering(ExtractLegacyPluginClassesTask::class) {
+val extractLegacyPluginClasses: TaskProvider<ExtractLegacyPluginClassesTask> by tasks.registering(ExtractLegacyPluginClassesTask::class) {
     dependsOn(extractIdeaDistribution)
     ideaDistributionDirectory.set(extractedIdeaDistributionDirectory)
     outputDirectory.set(layout.buildDirectory.dir("legacy-plugin-classes"))
@@ -158,7 +157,7 @@ val extractLegacyPluginClasses by tasks.registering(ExtractLegacyPluginClassesTa
 // the classes listed above that must come from kotlin-compiler.jar.
 // ───────────────────────────────────────────────────────────────────────────────
 
-val compileCompatJava by tasks.registering(JavaCompile::class) {
+val compileCompatJava: TaskProvider<JavaCompile> by tasks.registering(JavaCompile::class) {
     dependsOn(extractIdeaDistribution)
     source = fileTree("src/compat/java") { include("**/*.java") }
     classpath = files(appJar, kotlinCompilerJar)
@@ -168,7 +167,7 @@ val compileCompatJava by tasks.registering(JavaCompile::class) {
     options.compilerArgs.addAll(listOf("-Xlint:-rawtypes", "-Xlint:-unchecked"))
 }
 
-val buildIdeCompatJar by tasks.registering(Jar::class) {
+val buildIdeCompatJar: TaskProvider<Jar> by tasks.registering(Jar::class) {
     dependsOn(compileCompatJava, extractLegacyPluginClasses)
     archiveFileName.set("ide-plugin-compat.jar")
     destinationDirectory.set(layout.buildDirectory.dir("compat"))
@@ -178,7 +177,7 @@ val buildIdeCompatJar by tasks.registering(Jar::class) {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
-val ideaLibs = extractedIdeaFiles {
+val ideaLibs: ConfigurableFileCollection = extractedIdeaFiles {
     include("**/lib/**/*.jar")
     exclude("**/plugins/**")
     // testFramework.jar auto-registers ThreadLeakTrackerExtension (JUnit 5 extension)
@@ -186,13 +185,13 @@ val ideaLibs = extractedIdeaFiles {
     exclude("**/testFramework.jar")
     exclude("**/testFramework-k1.jar")
 }
-val kotlinPluginLibs = extractedIdeaFiles {
+val kotlinPluginLibs: ConfigurableFileCollection = extractedIdeaFiles {
     include("**/plugins/Kotlin/lib/**/*.jar")
     // kotlin-jps-plugin.jar ships an old Java CompilerConfiguration (no Kotlin companion)
     // that shadows the correct version in kotlin-compiler-common.jar → NoSuchFieldError.
     exclude("**/plugins/Kotlin/lib/jps/**")
 }
-val javaPluginLibs = extractedIdeaFiles {
+val javaPluginLibs: ConfigurableFileCollection = extractedIdeaFiles {
     include("**/plugins/java/lib/**/*.jar")
 }
 

@@ -7,7 +7,6 @@ import io.github.amichne.kast.api.DiagnosticsResult
 import io.github.amichne.kast.api.ReferencesResult
 import io.github.amichne.kast.api.RenameResult
 import io.github.amichne.kast.api.SymbolResult
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 internal fun defaultCliJson(): Json = Json {

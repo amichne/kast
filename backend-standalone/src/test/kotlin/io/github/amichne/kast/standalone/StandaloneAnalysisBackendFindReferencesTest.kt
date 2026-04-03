@@ -4,6 +4,7 @@ import io.github.amichne.kast.api.FilePosition
 import io.github.amichne.kast.api.ReadCapability
 import io.github.amichne.kast.api.ReferencesQuery
 import io.github.amichne.kast.api.ServerLimits
+import kotlinx.coroutines.test.TestResult
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -18,13 +19,13 @@ class StandaloneAnalysisBackendFindReferencesTest {
     lateinit var workspaceRoot: Path
 
     @Test
-    fun `find references returns cross-file usages and declaration metadata`() = runTest {
+    fun `find references returns cross-file usages and declaration metadata`(): TestResult = runTest {
         val declarationFile = writeFile(
             relativePath = "src/main/kotlin/sample/Greeter.kt",
-            content = """
+            content = $$"""
                 package sample
 
-                fun greet(name: String): String = "hi ${'$'}name"
+                fun greet(name: String): String = "hi $name"
             """.trimIndent() + "\n",
         )
         val firstUsageFile = writeFile(
@@ -50,7 +51,7 @@ class StandaloneAnalysisBackendFindReferencesTest {
             classpathRoots = emptyList(),
             moduleName = "sources",
         )
-        try {
+        session.use { session ->
             val backend = StandaloneAnalysisBackend(
                 workspaceRoot = workspaceRoot,
                 limits = ServerLimits(
@@ -81,19 +82,17 @@ class StandaloneAnalysisBackendFindReferencesTest {
                 listOf("fun useAgain(): String = greet(\"again\")", "fun use(): String = greet(\"kast\")"),
                 result.references.map { reference -> reference.preview },
             )
-        } finally {
-            session.close()
         }
     }
 
     @Test
-    fun `capabilities advertise find references after implementation`() = runTest {
+    fun `capabilities advertise find references after implementation`(): TestResult = runTest {
         writeFile(
             relativePath = "src/main/kotlin/sample/Greeter.kt",
-            content = """
+            content = $$"""
                 package sample
 
-                fun greet(name: String): String = "hi ${'$'}name"
+                fun greet(name: String): String = "hi $name"
             """.trimIndent() + "\n",
         )
         val session = StandaloneAnalysisSession(
@@ -102,7 +101,7 @@ class StandaloneAnalysisBackendFindReferencesTest {
             classpathRoots = emptyList(),
             moduleName = "sources",
         )
-        try {
+        session.use { session ->
             val backend = StandaloneAnalysisBackend(
                 workspaceRoot = workspaceRoot,
                 limits = ServerLimits(
@@ -116,8 +115,6 @@ class StandaloneAnalysisBackendFindReferencesTest {
             val capabilities = backend.capabilities()
 
             assertTrue(ReadCapability.FIND_REFERENCES in capabilities.readCapabilities)
-        } finally {
-            session.close()
         }
     }
 

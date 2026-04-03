@@ -3,6 +3,7 @@ package io.github.amichne.kast.standalone
 import io.github.amichne.kast.api.ServerLimits
 import io.github.amichne.kast.testing.AnalysisBackendContractAssertions
 import io.github.amichne.kast.testing.AnalysisBackendContractFixture
+import kotlinx.coroutines.test.TestResult
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -13,7 +14,7 @@ class StandaloneAnalysisBackendContractTest {
     lateinit var workspaceRoot: Path
 
     @Test
-    fun `standalone backend satisfies the shared contract fixture`() = runTest {
+    fun `standalone backend satisfies the shared contract fixture`(): TestResult = runTest {
         val fixture = AnalysisBackendContractFixture.create(workspaceRoot)
         val session = StandaloneAnalysisSession(
             workspaceRoot = workspaceRoot,
@@ -21,7 +22,7 @@ class StandaloneAnalysisBackendContractTest {
             classpathRoots = emptyList(),
             moduleName = "sources",
         )
-        try {
+        session.use { session ->
             val backend = StandaloneAnalysisBackend(
                 workspaceRoot = workspaceRoot,
                 limits = ServerLimits(
@@ -36,8 +37,6 @@ class StandaloneAnalysisBackendContractTest {
                 backend = backend,
                 fixture = fixture,
             )
-        } finally {
-            session.close()
         }
     }
 }

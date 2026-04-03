@@ -4,6 +4,7 @@ import io.github.amichne.kast.api.FilePosition
 import io.github.amichne.kast.api.ServerLimits
 import io.github.amichne.kast.api.SymbolKind
 import io.github.amichne.kast.api.SymbolQuery
+import kotlinx.coroutines.test.TestResult
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -117,7 +118,7 @@ class StandaloneWorkspaceDiscoveryTest {
     }
 
     @Test
-    fun `standalone session includes configured Java roots in composite gradle workspaces`() = runTest {
+    fun `standalone session includes configured Java roots in composite gradle workspaces`(): TestResult = runTest {
         createCompositeGradleWorkspace(includeJavaSource = true)
 
         val session = StandaloneAnalysisSession(
@@ -126,14 +127,12 @@ class StandaloneWorkspaceDiscoveryTest {
             classpathRoots = emptyList(),
             moduleName = "ignored",
         )
-        try {
+        session.use { session ->
             assertTrue(
                 session.resolvedSourceRoots.contains(normalizeStandalonePath(workspaceRoot.resolve("app/src/customMain/java"))),
             )
             assertTrue(session.sourceModules.any { module -> module.name == ":app[main]" })
             assertTrue(session.sourceModules.any { module -> module.name == ":lib[main]" })
-        } finally {
-            session.close()
         }
     }
 
@@ -146,19 +145,17 @@ class StandaloneWorkspaceDiscoveryTest {
             classpathRoots = emptyList(),
             moduleName = "ignored",
         )
-        try {
+        session.use { session ->
             assertFalse(session.ktFilesByPathDelegate().isInitialized())
 
             session.findKtFile(workspaceRoot.resolve("app/src/main/kotlin/sample/Use.kt").toString())
 
             assertTrue(session.ktFilesByPathDelegate().isInitialized())
-        } finally {
-            session.close()
         }
     }
 
     @Test
-    fun `standalone session resolves Kotlin references to Java declarations in configured gradle source roots`() = runTest {
+    fun `standalone session resolves Kotlin references to Java declarations in configured gradle source roots`(): TestResult = runTest {
         createCompositeGradleWorkspace(includeJavaSource = true)
         val usageFile = workspaceRoot.resolve("app/src/main/kotlin/sample/UseJava.kt")
         val queryOffset = Files.readString(usageFile).indexOf("legacyGreeting")
@@ -169,7 +166,7 @@ class StandaloneWorkspaceDiscoveryTest {
             classpathRoots = emptyList(),
             moduleName = "ignored",
         )
-        try {
+        session.use { session ->
             val backend = StandaloneAnalysisBackend(
                 workspaceRoot = workspaceRoot,
                 limits = ServerLimits(
@@ -192,13 +189,11 @@ class StandaloneWorkspaceDiscoveryTest {
             assertEquals("sample.LegacyHelper#legacyGreeting", result.symbol.fqName)
             assertEquals(SymbolKind.FUNCTION, result.symbol.kind)
             assertEquals(normalizePath(declarationFile), result.symbol.location.filePath)
-        } finally {
-            session.close()
         }
     }
 
     @Test
-    fun `standalone session resolves symbols across discovered gradle modules`() = runTest {
+    fun `standalone session resolves symbols across discovered gradle modules`(): TestResult = runTest {
         createGradleWorkspace(includeLocalTestJar = false)
         val usageFile = workspaceRoot.resolve("app/src/main/kotlin/sample/Use.kt")
         val queryOffset = Files.readString(usageFile).indexOf("greet")
@@ -209,7 +204,7 @@ class StandaloneWorkspaceDiscoveryTest {
             classpathRoots = emptyList(),
             moduleName = "ignored",
         )
-        try {
+        session.use { session ->
             val backend = StandaloneAnalysisBackend(
                 workspaceRoot = workspaceRoot,
                 limits = ServerLimits(
@@ -232,8 +227,6 @@ class StandaloneWorkspaceDiscoveryTest {
             assertEquals(normalizePath(declarationFile), result.symbol.location.filePath)
             assertTrue(session.sourceModules.map { module -> module.name }.contains(":lib[main]"))
             assertTrue(session.sourceModules.map { module -> module.name }.contains(":app[main]"))
-        } finally {
-            session.close()
         }
     }
 
@@ -276,10 +269,10 @@ class StandaloneWorkspaceDiscoveryTest {
         )
         writeFile(
             relativePath = "lib/src/main/kotlin/sample/Greeter.kt",
-            content = """
+            content = $$"""
                 package sample
 
-                fun greet(name: String): String = "hi ${'$'}name"
+                fun greet(name: String): String = "hi $name"
             """.trimIndent() + "\n",
         )
         writeFile(
@@ -378,10 +371,10 @@ class StandaloneWorkspaceDiscoveryTest {
         )
         writeFile(
             relativePath = "lib/src/main/kotlin/sample/Greeter.kt",
-            content = """
+            content = $$"""
                 package sample
 
-                fun greet(name: String): String = "hi ${'$'}name"
+                fun greet(name: String): String = "hi $name"
             """.trimIndent() + "\n",
         )
         writeFile(
@@ -465,7 +458,7 @@ class StandaloneWorkspaceDiscoveryTest {
 
 @Suppress("UNCHECKED_CAST")
 private fun StandaloneAnalysisSession.ktFilesByPathDelegate(): Lazy<Map<String, *>> {
-    val field = StandaloneAnalysisSession::class.java.getDeclaredField("ktFilesByPath\$delegate")
+    val field = StandaloneAnalysisSession::class.java.getDeclaredField($$"ktFilesByPath$delegate")
     field.isAccessible = true
     return field.get(this) as Lazy<Map<String, *>>
 }

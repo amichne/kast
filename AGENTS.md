@@ -66,8 +66,7 @@ Apply these rules across the repo before local unit rules add more detail.
   of production code paths.
 - Treat `docs/` plus `zensical.toml` as the documentation source of truth.
   `site/` is generated output and should be rebuilt, not hand-edited.
-- Prefer repo-root packaging entry points for shipped CLI artifacts:
-  `./gradlew :kast:syncRuntimeLibs :kast:writeWrapperScript`, `make cli`, and
-  `make cli-zip`.
+- Prefer repo-root packaging entry points for shipped CLI artifacts: `./build.sh`
+  is the sole entrypoint to build you should use.
 - Verify with the narrowest Gradle task that proves the change. Broaden the
   scope when you touch shared contracts, build logic, or cross-module behavior.

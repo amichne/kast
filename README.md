@@ -43,20 +43,23 @@ already exist in the current directory. All installed links point back to the
 single packaged skill root from `KAST_SKILL_PATH`, which the launcher defaults
 to the installed release copy unless you override it.
 
-## Local/dev instance installs
+## Local/dev builds
 
-For local iteration, keep using `install.sh` for end-user release installs and
-use the dedicated dev installer for named side-by-side instances:
+For local iteration, use `build.sh` from the repo root. It builds the local
+CLI package into `dist/kast`, copies the portable zip to `dist/kast.zip`, and
+can install the result as a named side-by-side dev instance when the build
+finishes.
 
 ```bash
-./scripts/install-instance.sh --instance my-dev
-./scripts/install-instance.sh
+./build.sh
+./build.sh --no-install
+./build.sh --install --instance my-dev
 ```
 
-That installs into `~/.local/share/kast/instances/my-dev` and creates
-`~/.local/bin/kast-my-dev` (it does not edit your `PATH`). If you omit
-`--instance`, the script generates a default name like
-`agile-otter`.
+If you accept the install prompt or pass `--install`, the script installs into
+`~/.local/share/kast/instances/my-dev` and creates `~/.local/bin/kast-my-dev`
+(it does not edit your `PATH`). If you omit `--instance`, the installer
+generates a default name like `agile-otter`.
 
 Run smoke validation for a named instance with:
 
@@ -125,8 +128,9 @@ Run `kast help completion` if you want the shell-specific command pages.
 
 ## Build from source
 
-If you are changing Kast itself, you can still build the CLI from source:
+If you are changing Kast itself, build the local CLI package from the repo
+root:
 
 ```bash
-./gradlew :kast:portableDistZip
+./build.sh
 ```

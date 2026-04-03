@@ -19,6 +19,7 @@ import kotlinx.serialization.json.Json
 internal class CliService(
     json: Json,
     processLauncher: ProcessLauncher,
+    private val installService: InstallService = InstallService(),
 ) {
     private val rpcClient = KastRpcClient(json)
     private val runtimeManager = WorkspaceRuntimeManager(rpcClient, processLauncher)
@@ -93,6 +94,8 @@ internal class CliService(
             runtime = runtime.selected,
         )
     }
+
+    fun install(options: InstallOptions): InstallResult = installService.install(options)
 
     suspend fun applyEdits(
         options: RuntimeCommandOptions,

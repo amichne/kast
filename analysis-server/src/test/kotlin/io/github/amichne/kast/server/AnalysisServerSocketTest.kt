@@ -2,7 +2,6 @@ package io.github.amichne.kast.server
 
 import io.github.amichne.kast.api.RuntimeStatusResponse
 import io.github.amichne.kast.testing.FakeAnalysisBackend
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -43,7 +42,7 @@ class AnalysisServerSocketTest {
             ),
         ).start()
 
-        val descriptor = try {
+        val descriptor = runningServer.use { runningServer ->
             assertNotNull(runningServer.descriptor)
             val response = callSocket(
                 socketPath = socketPath,
@@ -63,8 +62,6 @@ class AnalysisServerSocketTest {
             assertEquals(socketPath.toString(), runningServer.descriptor?.socketPath)
             assertTrue(socketPath.exists())
             DescriptorStore(descriptorDirectory).pathFor(checkNotNull(runningServer.descriptor))
-        } finally {
-            runningServer.close()
         }
 
         assertFalse(socketPath.exists())
