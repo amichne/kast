@@ -95,6 +95,14 @@ internal class DefaultCliCommandExecutor(
                 )
             }
 
+            is CliCommand.CallHierarchy -> {
+                val result = cliService.callHierarchy(command.options, command.query)
+                CliExecutionResult(
+                    output = CliOutput.JsonValue(result.payload),
+                    daemonNote = daemonNoteForRuntime(result.runtime),
+                )
+            }
+
             is CliCommand.Diagnostics -> {
                 val result = cliService.diagnostics(command.options, command.query)
                 CliExecutionResult(

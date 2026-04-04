@@ -12,8 +12,8 @@ the right tool for the job.
 
 Kast is a Kotlin analysis tool that exposes semantic code intelligence through
 a command-line interface. Instead of opening an IDE, you run `kast` commands
-from your shell or automation to resolve symbols, find references, run
-diagnostics, and plan renames.
+from your shell or automation to resolve symbols, find references, expand call
+hierarchies, run diagnostics, and plan renames.
 
 Kast uses the Kotlin K2 Analysis API, the same engine that powers IntelliJ
 IDEA's code understanding. This means it understands your code the way the IDE
@@ -118,6 +118,7 @@ The current capabilities are:
 | --- | --- | --- |
 | Symbol resolution | `symbol resolve` | Given a file position, return the symbol's fully qualified name, kind, and declaration location |
 | Find references | `references` | Given a file position, return all usages of that symbol across the workspace |
+| Call hierarchy | `call hierarchy` | Given a file position and direction, return a bounded tree of callers or callees with traversal stats |
 | Diagnostics | `diagnostics` | Return compiler and analysis diagnostics for one or more files |
 | Rename planning | `rename` | Generate an edit plan showing every location that would change if you renamed a symbol |
 | Apply edits | `edits apply` | Apply a prepared edit plan to disk with conflict detection |
@@ -127,9 +128,9 @@ advertises.
 
 ## Current limitations
 
-- **No call hierarchy.** The `callHierarchy` capability is not yet
-  implemented. Use `symbol resolve` and `references` for semantic navigation
-  instead.
+- **Bounded traversal.** `call hierarchy` is intentionally bounded by depth,
+  total edges, child count, and optional timeout. Read `stats` and per-node
+  `truncation` metadata when you need to know whether the tree is complete.
 - **One workspace per daemon.** Each daemon is attached to a single workspace
   root. Run multiple daemons for multiple workspaces.
 - **Java 21 required.** The daemon runs on the JVM and needs Java 21 or

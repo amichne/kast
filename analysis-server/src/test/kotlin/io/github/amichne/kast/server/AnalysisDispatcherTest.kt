@@ -3,6 +3,9 @@ package io.github.amichne.kast.server
 import io.github.amichne.kast.api.ApplyEditsQuery
 import io.github.amichne.kast.api.ApplyEditsResult
 import io.github.amichne.kast.api.BackendCapabilities
+import io.github.amichne.kast.api.CallDirection
+import io.github.amichne.kast.api.CallHierarchyQuery
+import io.github.amichne.kast.api.CallHierarchyResult
 import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.FileHash
 import io.github.amichne.kast.api.FileHashing
@@ -95,6 +98,26 @@ class AnalysisDispatcherTest {
     }
 
     @Test
+    fun `call hierarchy dispatches without HTTP`() {
+        val file = sampleFile()
+
+        val result = dispatchSuccess<CallHierarchyResult>(
+            method = "call-hierarchy",
+            params = json.encodeToJsonElement(
+                CallHierarchyQuery.serializer(),
+                CallHierarchyQuery(
+                    position = FilePosition(filePath = file.toString(), offset = 20),
+                    direction = CallDirection.INCOMING,
+                    depth = 1,
+                ),
+            ),
+        )
+
+        assertEquals("sample.greet", result.root.symbol.fqName)
+        assertEquals(2, result.stats.totalNodes)
+    }
+
+    @Test
     fun `rename dispatches without HTTP`() {
         val file = sampleFile()
 
@@ -161,6 +184,29 @@ class AnalysisDispatcherTest {
         )
         assertEquals("VALIDATION_ERROR", error.error.data?.code)
         assertTrue(checkNotNull(error.error.data?.details?.get("filePath")).contains("relative/File.kt"))
+    }
+
+    @Test
+    fun `invalid call hierarchy max total calls returns rpc error payload`() {
+        val file = sampleFile()
+        val response = dispatchRaw(
+            method = "call-hierarchy",
+            params = json.encodeToJsonElement(
+                CallHierarchyQuery.serializer(),
+                CallHierarchyQuery(
+                    position = FilePosition(filePath = file.toString(), offset = 20),
+                    direction = CallDirection.OUTGOING,
+                    depth = 0,
+                    maxTotalCalls = 0,
+                ),
+            ),
+        )
+
+        val error = json.decodeFromJsonElement(
+            JsonRpcErrorResponse.serializer(),
+            response,
+        )
+        assertEquals("VALIDATION_ERROR", error.error.data?.code)
     }
 
     private fun sampleFile(): Path = tempDir.resolve("src").resolve("Sample.kt")

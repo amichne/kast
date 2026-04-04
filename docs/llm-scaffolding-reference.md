@@ -17,8 +17,9 @@ the single packaged skill root from `KAST_SKILL_PATH`, so the examples can use
 that linked skill path without copying the skill tree.
 
 !!! note
-    The current packaged skill does not support `callHierarchy`. Use
-    `symbol resolve` and `references` for semantic navigation today.
+    The packaged skill can run `call hierarchy` after `symbol resolve`
+    confirms the target symbol. Provide an incoming or outgoing direction when
+    you ask for it.
 
 ## What the packaged skill scaffolds
 
@@ -31,7 +32,7 @@ skill is doing before it runs the public commands.
 | CLI discovery | Runs `bash "$SKILL_ROOT/scripts/resolve-kast.sh"` to find `kast` on `PATH`, in local build output, or in `dist/` | When the binary cannot be found or you need to reproduce the exact invocation |
 | Workspace lifecycle | Runs `workspace ensure` before analysis | When a query hits a cold, indexing, or degraded workspace |
 | Conversational lookup bridge | Searches for candidate declarations from a class, function, or property reference, then uses `"$SKILL_ROOT/scripts/find-symbol-offset.py"` to turn the chosen candidate into declaration-first UTF-16 offsets | When a human reference is ambiguous or you need to debug why one symbol won |
-| Semantic verification | Resolves the chosen position with `symbol resolve` before it expands to `references` or `rename` | When the first match is not the symbol you meant |
+| Semantic verification | Resolves the chosen position with `symbol resolve` before it expands to `references`, `call hierarchy`, or `rename` | When the first match is not the symbol you meant |
 | Failure handling | Treats stderr as daemon notes and must surface missing capabilities, `NOT_FOUND`, and truncation honestly | When automation must distinguish "no result" from "bad input" |
 
 ## Inputs the CLI still requires
@@ -43,14 +44,15 @@ repeatable automation.
 - An absolute workspace root
 - An absolute file path inside that workspace
 - A zero-based UTF-16 `offset` from the start of the file
-- Optional flags such as `--include-declaration=true`
+- Optional flags such as `--include-declaration=true`, `--direction=incoming`,
+  or `--depth=2`
 - A clear statement of what the caller must summarize from the JSON result
 
 ## Use the minimal command sequence
 
 When you need to reproduce the packaged flow by hand, keep the command
 sequence short. Resolve the binary, ensure the workspace, resolve the symbol,
-and only then expand into references.
+and only then expand into references or call hierarchy.
 
 ```bash
 SKILL_ROOT=/absolute/path/to/your/installed/kast-skill
@@ -65,6 +67,12 @@ KAST=$(bash "$SKILL_ROOT/scripts/resolve-kast.sh")
   --file-path=/absolute/path/to/src/main/kotlin/com/example/App.kt \
   --offset=123 \
   --include-declaration=true
+"$KAST" call hierarchy \
+  --workspace-root=/absolute/path/to/workspace \
+  --file-path=/absolute/path/to/src/main/kotlin/com/example/App.kt \
+  --offset=123 \
+  --direction=incoming \
+  --depth=2
 ```
 
 ## Bridge a human reference into a CLI position
@@ -78,7 +86,8 @@ coordinates.
 2. Run `find-symbol-offset.py` with the symbol name.
 3. Take the first result line as the best declaration candidate.
 4. Verify that candidate with `symbol resolve`.
-5. Reuse the same file and offset for `references` or `rename`.
+5. Reuse the same file and offset for `references`, `call hierarchy`, or
+   `rename`.
 
 Example class lookup:
 
@@ -123,6 +132,8 @@ read the right fields and report their limits honestly.
   prose by themselves.
 - Treat `references[].preview` as a snippet, not as the full surrounding body.
 - Treat `page.truncated=true` as a hard cap on the visible result set.
+- Treat `stats.*Reached` and node `truncation` fields in a call hierarchy
+  result as hard proof that Kast bounded the tree.
 
 ## Watch for common failure patterns
 
@@ -133,7 +144,8 @@ mistakes and interpretation errors.
 - A line and column passed as though they were the raw `offset`
 - An offset that lands on whitespace, comments, or string contents
 - A missing capability that the caller never checked
-- A prompt that assumes `callHierarchy` exists today
+- A `call hierarchy` request that omits direction or ignores truncation
+  metadata
 
 ## Next steps
 

@@ -11,6 +11,7 @@ logback = "1.5.18"
 intellij-idea = "2025.3"
 analysis-api-standalone = "2.3.20-ij253-119"
 gradle-tooling-api = "9.4.0"
+opentelemetry = "1.49.0"
 
 [libraries]
 coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
@@ -34,6 +35,8 @@ analysis-api-standalone = { module = "org.jetbrains.kotlin:analysis-api-standalo
 gradle-tooling-api = { module = "org.gradle:gradle-tooling-api", version.ref = "gradle-tooling-api" }
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 kotlin-serialization-plugin = { module = "org.jetbrains.kotlin:kotlin-serialization", version.ref = "kotlin" }
+opentelemetry-api = { module = "io.opentelemetry:opentelemetry-api", version.ref = "opentelemetry" }
+opentelemetry-sdk = { module = "io.opentelemetry:opentelemetry-sdk", version.ref = "opentelemetry" }
 
 [bundles]
 ktor-server = [

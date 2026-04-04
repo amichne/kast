@@ -151,7 +151,8 @@ Missing FIND_REFERENCES → references unavailable; use grep for text search.
 Missing DIAGNOSTICS     → diagnostics unavailable; run ./gradlew build instead.
 Missing RENAME          → rename unavailable; manual find-and-replace required.
 Missing APPLY_EDITS     → edits apply unavailable; apply edits manually.
-Missing CALL_HIERARCHY  → callHierarchy is not implemented; known gap.
+Missing CALL_HIERARCHY  → call hierarchy unavailable in this backend; confirm
+                          the runtime version and capability gating, then retry.
 
 If a needed capability is missing, the backend version may be too old
 or the workspace may be in a partial initialization state. Restart the

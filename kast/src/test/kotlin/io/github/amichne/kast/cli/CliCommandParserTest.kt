@@ -50,6 +50,35 @@ class CliCommandParserTest {
     }
 
     @Test
+    fun `call hierarchy parses from inline options`() {
+        val command = parser.parse(
+            arrayOf(
+                "call",
+                "hierarchy",
+                "--workspace-root=$tempDir",
+                "--file-path=$tempDir/Sample.kt",
+                "--offset=12",
+                "--direction=incoming",
+                "--depth=0",
+                "--max-total-calls=32",
+                "--max-children-per-node=8",
+                "--timeout-millis=4000",
+                "--persist-to-git-sha-cache=true",
+            ),
+        )
+
+        assertTrue(command is CliCommand.CallHierarchy)
+        val hierarchyCommand = command as CliCommand.CallHierarchy
+        assertEquals(tempDir, hierarchyCommand.options.workspaceRoot)
+        assertEquals(io.github.amichne.kast.api.CallDirection.INCOMING, hierarchyCommand.query.direction)
+        assertEquals(0, hierarchyCommand.query.depth)
+        assertEquals(32, hierarchyCommand.query.maxTotalCalls)
+        assertEquals(8, hierarchyCommand.query.maxChildrenPerNode)
+        assertEquals(4000L, hierarchyCommand.query.timeoutMillis)
+        assertTrue(hierarchyCommand.query.persistToGitShaCache)
+    }
+
+    @Test
     fun `version flag returns version command`() {
         val command = parser.parse(arrayOf("--version"))
 

@@ -24,6 +24,7 @@ class KastCliTest {
         assertEquals(0, exitCode)
         assertTrue(stdout.toString().contains("Kast CLI"))
         assertTrue(stdout.toString().contains("Workspace lifecycle"))
+        assertTrue(stdout.toString().contains("call hierarchy"))
         assertTrue(stdout.toString().contains("completion bash"))
         assertEquals("", stderr.toString())
     }

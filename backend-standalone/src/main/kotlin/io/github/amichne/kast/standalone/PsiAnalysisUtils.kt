@@ -18,6 +18,7 @@ import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtObjectDeclaration
 import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtProperty
+import org.jetbrains.kotlin.lexer.KtTokens
 
 /**
  * Walks the PSI element hierarchy up from [offset] until it finds a resolvable reference
@@ -115,3 +116,27 @@ internal fun PsiElement.toKastLocation(range: TextRange = nameRange()): Location
         preview = content.substring(lineStart, lineEnd).trimEnd(),
     )
 }
+
+internal fun PsiElement.parentsWithSelf(): Sequence<PsiElement> = generateSequence(this) { it.parent }
+
+internal fun PsiElement.callHierarchyDeclaration(): PsiElement? = parentsWithSelf().firstOrNull { element ->
+    when (element) {
+        is KtNamedFunction,
+        is KtProperty,
+        is KtClass,
+        is KtObjectDeclaration,
+        is PsiMethod,
+        is PsiField,
+        is PsiClass,
+        -> true
+
+        else -> false
+    }
+}
+
+internal fun PsiElement.referenceSearchIdentifier(): String? = when (this) {
+    is KtNamedFunction -> name.takeUnless { hasModifier(KtTokens.OPERATOR_KEYWORD) }
+    is KtNamedDeclaration -> name
+    else -> (this as? PsiNamedElement)?.name
+}
+    ?.takeIf { identifier -> identifier.isNotBlank() }

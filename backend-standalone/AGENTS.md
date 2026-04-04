@@ -18,8 +18,10 @@ Use this unit for headless host concerns and nowhere else.
   `StaticGradleWorkspaceDiscovery` must stay aligned on module names, source
   roots, dependency edges, and large or composite-build fallbacks.
 - Keep capability advertising conservative. The standalone backend currently
-  implements `RESOLVE_SYMBOL`, `FIND_REFERENCES`, `DIAGNOSTICS`, `RENAME`, and
-  `APPLY_EDITS`, but not `CALL_HIERARCHY`.
+  implements `RESOLVE_SYMBOL`, `FIND_REFERENCES`, `CALL_HIERARCHY`,
+  `DIAGNOSTICS`, `RENAME`, and `APPLY_EDITS`. Keep the advertised
+  `CALL_HIERARCHY` semantics honest: bounded traversal, truncation metadata,
+  and capability gating must match the real runtime behavior.
 - Keep standalone-only PSI/K2 helpers and IntelliJ compatibility shims here,
   including `src/compat/java`, instead of copying IntelliJ classes into shared
   modules.

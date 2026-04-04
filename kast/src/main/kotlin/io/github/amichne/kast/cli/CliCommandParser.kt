@@ -1,6 +1,8 @@
 package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.api.ApplyEditsQuery
+import io.github.amichne.kast.api.CallDirection
+import io.github.amichne.kast.api.CallHierarchyQuery
 import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.FilePosition
 import io.github.amichne.kast.api.ReferencesQuery
@@ -74,6 +76,7 @@ internal class CliCommandParser(
                 listOf("capabilities") -> CliCommand.Capabilities(parsed.runtimeOptions())
                 listOf("symbol", "resolve") -> CliCommand.ResolveSymbol(parsed.runtimeOptions(), parsed.symbolQuery(json))
                 listOf("references") -> CliCommand.FindReferences(parsed.runtimeOptions(), parsed.referencesQuery(json))
+                listOf("call", "hierarchy") -> CliCommand.CallHierarchy(parsed.runtimeOptions(), parsed.callHierarchyQuery(json))
                 listOf("diagnostics") -> CliCommand.Diagnostics(parsed.runtimeOptions(), parsed.diagnosticsQuery(json))
                 listOf("rename") -> CliCommand.Rename(parsed.runtimeOptions(), parsed.renameQuery(json))
                 listOf("edits", "apply") -> CliCommand.ApplyEdits(parsed.runtimeOptions(), parsed.applyEditsQuery(json))
@@ -210,6 +213,25 @@ internal data class ParsedArguments(
         )
     }
 
+    fun callHierarchyQuery(json: Json): CallHierarchyQuery = requestOrFile(
+        serializer = CallHierarchyQuery.serializer(),
+        requestFileKey = "request-file",
+        json = json,
+    ) {
+        CallHierarchyQuery(
+            position = FilePosition(
+                filePath = absoluteFilePath(requireOption("file-path")),
+                offset = requireInt("offset"),
+            ),
+            direction = requireCallDirection("direction"),
+            depth = optionalInt("depth", 3),
+            maxTotalCalls = optionalInt("max-total-calls", 256),
+            maxChildrenPerNode = optionalInt("max-children-per-node", 64),
+            timeoutMillis = options["timeout-millis"]?.toLongOrNull(),
+            persistToGitShaCache = optionalBoolean("persist-to-git-sha-cache", false),
+        )
+    }
+
     fun renameQuery(json: Json): RenameQuery = requestOrFile(
         serializer = RenameQuery.serializer(),
         requestFileKey = "request-file",
@@ -278,6 +300,20 @@ internal data class ParsedArguments(
             code = "CLI_USAGE",
             message = "Missing required integer option --$key",
         )
+
+    private fun optionalInt(
+        key: String,
+        default: Int,
+    ): Int = options[key]?.toIntOrNull() ?: default
+
+    private fun requireCallDirection(key: String): CallDirection = when (requireOption(key).lowercase()) {
+        "incoming" -> CallDirection.INCOMING
+        "outgoing" -> CallDirection.OUTGOING
+        else -> throw CliFailure(
+            code = "CLI_USAGE",
+            message = "Invalid value for --$key; expected incoming or outgoing",
+        )
+    }
 
     private fun optionalBoolean(
         key: String,

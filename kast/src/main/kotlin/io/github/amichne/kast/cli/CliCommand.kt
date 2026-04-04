@@ -1,6 +1,7 @@
 package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.api.ApplyEditsQuery
+import io.github.amichne.kast.api.CallHierarchyQuery
 import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.ReferencesQuery
 import io.github.amichne.kast.api.RenameQuery
@@ -17,6 +18,7 @@ internal sealed interface CliCommand {
     data class Capabilities(val options: RuntimeCommandOptions) : CliCommand
     data class ResolveSymbol(val options: RuntimeCommandOptions, val query: SymbolQuery) : CliCommand
     data class FindReferences(val options: RuntimeCommandOptions, val query: ReferencesQuery) : CliCommand
+    data class CallHierarchy(val options: RuntimeCommandOptions, val query: CallHierarchyQuery) : CliCommand
     data class Diagnostics(val options: RuntimeCommandOptions, val query: DiagnosticsQuery) : CliCommand
     data class Rename(val options: RuntimeCommandOptions, val query: RenameQuery) : CliCommand
     data class ApplyEdits(val options: RuntimeCommandOptions, val query: ApplyEditsQuery) : CliCommand

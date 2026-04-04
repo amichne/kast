@@ -18,8 +18,8 @@ workflow.
   daemon lifecycle, transport details, or packaging steps change.
 - Prefer precise statements over broad claims. If evidence is partial, narrow
   the wording and make the uncertainty explicit.
-- The current product gap is still `callHierarchy`; say that plainly until the
-  backend actually advertises it.
+- Document `call hierarchy` as available but bounded. Say plainly when results
+  may truncate because of depth, timeout, or other traversal limits.
 - Change `docs/` or `zensical.toml` when rendered content must move. Do not
   hand-edit the generated files under `site/`.
 

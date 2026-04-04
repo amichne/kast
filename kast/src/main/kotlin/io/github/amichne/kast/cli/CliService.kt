@@ -3,6 +3,8 @@ package io.github.amichne.kast.cli
 import io.github.amichne.kast.api.ApplyEditsQuery
 import io.github.amichne.kast.api.ApplyEditsResult
 import io.github.amichne.kast.api.BackendCapabilities
+import io.github.amichne.kast.api.CallHierarchyQuery
+import io.github.amichne.kast.api.CallHierarchyResult
 import io.github.amichne.kast.api.CapabilityNotSupportedException
 import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.DiagnosticsResult
@@ -68,6 +70,18 @@ internal class CliService(
         requireReadCapability(runtime.selected, ReadCapability.FIND_REFERENCES)
         return RuntimeAttachedResult(
             payload = rpcClient.post(runtime.selected.descriptor, "references", query),
+            runtime = runtime.selected,
+        )
+    }
+
+    suspend fun callHierarchy(
+        options: RuntimeCommandOptions,
+        query: CallHierarchyQuery,
+    ): RuntimeAttachedResult<CallHierarchyResult> {
+        val runtime = runtimeManager.ensureRuntime(options)
+        requireReadCapability(runtime.selected, ReadCapability.CALL_HIERARCHY)
+        return RuntimeAttachedResult(
+            payload = rpcClient.post(runtime.selected.descriptor, "call-hierarchy", query),
             runtime = runtime.selected,
         )
     }

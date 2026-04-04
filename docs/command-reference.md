@@ -56,6 +56,7 @@ runtime.
 | `capabilities` | Print the runtime capability set | `--workspace-root`, optional `--wait-timeout-ms` | Use this before relying on an operation in automation |
 | `symbol resolve` | Resolve the symbol at a file position | Inline flags or `--request-file` | Inline form needs `--file-path` and `--offset` |
 | `references` | Find references for the symbol at a file position | Inline flags or `--request-file` | Inline form also supports `--include-declaration=true` |
+| `call hierarchy` | Expand a bounded incoming or outgoing call tree | Inline flags or `--request-file` | Inline form needs `--file-path`, `--offset`, and `--direction`; optional bounds control truncation |
 | `diagnostics` | Run diagnostics for one or more files | Inline flags or `--request-file` | Inline form uses comma-separated absolute file paths |
 
 ## Mutation commands
@@ -70,9 +71,10 @@ the supported mutation flow.
 
 ## Current support boundary
 
-The public command surface is intentionally small. Today, the main remaining
-product gap is `callHierarchy`, so you must not assume it is available until
-the runtime advertises it in `capabilities`.
+The public command surface is intentionally small. `call hierarchy` is
+available, but it is intentionally bounded. Use `--direction` plus the
+optional depth, total-call, child-count, timeout, and cache flags, and read
+`stats` or per-node `truncation` fields before you claim the tree is complete.
 
 ## Next steps
 
