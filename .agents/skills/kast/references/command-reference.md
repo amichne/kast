@@ -2,6 +2,11 @@
 
 Full syntax, JSON schemas, and request-file formats for all public kast commands.
 
+> **Output redirection:** All command examples below show bare invocations for
+> readability. In practice, always redirect per the SKILL.md bootstrap pattern:
+> `> "$KAST_RESULT" 2> "$KAST_STDERR"`. Read `$KAST_RESULT` for the JSON result.
+> Only read `$KAST_STDERR` when the exit code is non-zero. See SKILL.md Section 0.
+
 ---
 
 ## Common Options
@@ -571,8 +576,8 @@ python3 "$UTILS" extract-apply-request "$PLAN" /tmp/apply-req.json
 "$KAST" diagnostics \
   --workspace-root=/absolute/path \
   --file-paths="$(python3 "$UTILS" affected-files-csv "$PLAN")" \
-  > /tmp/diag.json
-python3 "$UTILS" check-diagnostics /tmp/diag.json || echo "Errors found — see stderr"
+  > "$KAST_RESULT" 2> "$KAST_STDERR"
+python3 "$UTILS" check-diagnostics "$KAST_RESULT" || echo "Errors found — see stderr"
 ```
 
 ---

@@ -29,3 +29,9 @@ Prove CLI changes at the module boundary before you rely on downstream fixes.
 - Run `./gradlew :kast:test` for CLI behavior changes.
 - If you touch the wrapper, helper, or packaging layout, also run
   `./gradlew :kast:syncRuntimeLibs :kast:writeWrapperScript` or `./build.sh`.
+- For local/dev packaging workflows, prefer `./build.sh --help` and use the
+  supported install flags (`--install`, `--no-install`, `--instance <name>`)
+  instead of invoking install helpers directly.
+- If you validate a named local instance launcher, run
+  `./scripts/validate-instance.sh <name>` (it wraps the repo smoke script
+  against `~/.local/bin/kast-<name>`).
