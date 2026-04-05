@@ -62,6 +62,9 @@ private val compatCompileLibs: ConfigurableFileCollection = extractedIdeaFiles {
     exclude("**/plugins/**")
     exclude("**/testFramework.jar")
     exclude("**/testFramework-k1.jar")
+    // Keep IntelliJ's repackaged serialization jars off the classpath so the
+    // Gradle-resolved runtime remains the single source of truth across OSes.
+    exclude("**/lib/module-intellij.libraries.kotlinx.serialization*.jar")
 }
 
 abstract class ExtractLegacyPluginClassesTask : DefaultTask() {
