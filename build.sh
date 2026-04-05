@@ -167,7 +167,7 @@ verify_cli_stage() {
   log_step "Verifying staged CLI tree in ${PORTABLE_DIST_DIR}"
   [[ -x "${PORTABLE_DIST_DIR}/kast" ]] || die "Missing staged kast launcher"
   [[ -d "${PORTABLE_DIST_DIR}/bin" ]] || die "Missing staged bin directory"
-  [[ -x "${PORTABLE_DIST_DIR}/bin/kast-helper" ]] || die "Missing staged kast helper"
+  [[ -x "${PORTABLE_DIST_DIR}/bin/kast" ]] || die "Missing staged kast native binary"
   [[ -d "${PORTABLE_DIST_DIR}/runtime-libs" ]] || die "Missing staged runtime-libs directory"
   [[ -f "${PORTABLE_DIST_DIR}/runtime-libs/classpath.txt" ]] || die "Missing staged runtime classpath file"
 

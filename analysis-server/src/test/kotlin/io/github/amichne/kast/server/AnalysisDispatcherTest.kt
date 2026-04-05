@@ -10,6 +10,9 @@ import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.FileHash
 import io.github.amichne.kast.api.FileHashing
 import io.github.amichne.kast.api.FilePosition
+import io.github.amichne.kast.api.JsonRpcErrorResponse
+import io.github.amichne.kast.api.JsonRpcRequest
+import io.github.amichne.kast.api.JsonRpcSuccessResponse
 import io.github.amichne.kast.api.ReadCapability
 import io.github.amichne.kast.api.RefreshQuery
 import io.github.amichne.kast.api.RefreshResult

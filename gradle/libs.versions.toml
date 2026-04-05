@@ -51,3 +51,6 @@ test = [
     "junit-jupiter",
     "coroutines-test",
 ]
+
+[plugins]
+graalvm-native = { id = "org.graalvm.buildtools.native", version = "0.10.6" }

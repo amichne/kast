@@ -26,10 +26,13 @@ not justified.
 
 Use this map to choose the narrowest unit that owns a change.
 
-- `analysis-api`: shared contract, serializable models, errors, file edit
+- `analysis-api`: shared contract, serializable models, JSON-RPC wire types,
+  descriptor discovery helpers, standalone option parsing, errors, file edit
   validation, descriptor schema, and disk edit helpers
-- `kast`: repo-local CLI control plane, wrapper packaging, detached daemon
-  management, runtime readiness checks, and request dispatch
+- `kast-cli`: shared CLI control plane, command parsing, JSON output, install
+  flows, runtime orchestration, and the native-image entrypoint
+- `kast`: JVM shell, wrapper packaging, portable distribution layout, and the
+  real `internal daemon-run` implementation
 - `analysis-server`: JSON-RPC dispatch, local socket and stdio transport,
   request limits, and descriptor lifecycle
 - `backend-standalone`: standalone host, Analysis API session bootstrap,
@@ -60,10 +63,11 @@ Apply these rules across the repo before local unit rules add more detail.
   unless the behavior is intentionally changing across the stack.
 - Keep capability gating honest. A transport or backend must not advertise
   support for work it cannot actually perform.
-- Respect the current architecture: `kast` owns the operator-facing
-  control plane, `analysis-server` owns transport and descriptor plumbing,
-  `backend-standalone` owns runtime behavior, and `shared-testing` stays out
-  of production code paths.
+- Respect the current architecture: `kast-cli` owns the operator-facing
+  control plane and native entrypoint, `kast` owns the JVM shell and wrapper
+  packaging, `analysis-server` owns transport and descriptor plumbing,
+  `backend-standalone` owns runtime behavior, and `shared-testing` stays out of
+  production code paths.
 - Treat `docs/` plus `zensical.toml` as the documentation source of truth.
   `site/` is generated output and should be rebuilt, not hand-edited.
 - Prefer repo-root packaging entry points for shipped CLI artifacts: `./build.sh`

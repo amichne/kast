@@ -606,11 +606,11 @@ main() {
   mv "${staging_dir}/kast" "$release_dir"
 
   [[ -f "${release_dir}/kast" ]] || die "Installed archive did not contain the kast launcher"
-  [[ -f "${release_dir}/bin/kast-helper" ]] || die "Installed archive did not contain the kast helper binary"
+  [[ -f "${release_dir}/bin/kast" ]] || die "Installed archive did not contain the kast native binary"
   [[ -f "${release_dir}/scripts/install-kast-skilled.sh" ]] || die "Installed archive did not contain the kast skill installer"
   [[ -d "${release_dir}/share/skills/kast" ]] || die "Installed archive did not contain the packaged kast skill"
 
-  chmod +x "${release_dir}/kast" "${release_dir}/bin/kast-helper" "${release_dir}/scripts/install-kast-skilled.sh"
+  chmod +x "${release_dir}/kast" "${release_dir}/bin/kast" "${release_dir}/scripts/install-kast-skilled.sh"
   write_install_metadata \
     "${release_dir}/.install-metadata.json" \
     "$release_repo" \

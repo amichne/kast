@@ -12,6 +12,16 @@ import io.github.amichne.kast.api.CapabilityNotSupportedException
 import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.DiagnosticsResult
 import io.github.amichne.kast.api.HealthResponse
+import io.github.amichne.kast.api.JSON_RPC_INTERNAL_ERROR
+import io.github.amichne.kast.api.JSON_RPC_INVALID_REQUEST
+import io.github.amichne.kast.api.JSON_RPC_METHOD_NOT_FOUND
+import io.github.amichne.kast.api.JSON_RPC_PARSE_ERROR
+import io.github.amichne.kast.api.JSON_RPC_SERVER_ERROR_BASE
+import io.github.amichne.kast.api.JSON_RPC_VERSION
+import io.github.amichne.kast.api.JsonRpcErrorObject
+import io.github.amichne.kast.api.JsonRpcErrorResponse
+import io.github.amichne.kast.api.JsonRpcRequest
+import io.github.amichne.kast.api.JsonRpcSuccessResponse
 import io.github.amichne.kast.api.MutationCapability
 import io.github.amichne.kast.api.PageInfo
 import io.github.amichne.kast.api.ReadCapability

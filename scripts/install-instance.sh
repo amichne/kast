@@ -260,8 +260,8 @@ mkdir -p "$(dirname -- "$instance_root")" "$bin_dir"
 mv "${staging_dir}/kast" "$instance_root"
 
 [[ -f "${instance_root}/kast" ]] || die "Installed archive did not contain the kast launcher"
-[[ -f "${instance_root}/bin/kast-helper" ]] || die "Installed archive did not contain the kast helper binary"
-chmod +x "${instance_root}/kast" "${instance_root}/bin/kast-helper"
+[[ -f "${instance_root}/bin/kast" ]] || die "Installed archive did not contain the kast native binary"
+chmod +x "${instance_root}/kast" "${instance_root}/bin/kast"
 
 cat >"$launcher_path" <<EOF2
 #!/usr/bin/env bash

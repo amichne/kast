@@ -122,7 +122,7 @@ installed_root="${tmp_dir}/install-root/current"
 [[ -x "$installed_skill_launcher" ]] || die "Installed skill launcher is not executable: $installed_skill_launcher"
 [[ -L "$installed_root" ]] || die "Current install symlink was not created: $installed_root"
 [[ -x "${installed_root}/kast" ]] || die "Installed kast launcher is missing from ${installed_root}"
-[[ -x "${installed_root}/bin/kast-helper" ]] || die "Installed kast helper is missing from ${installed_root}/bin"
+[[ -x "${installed_root}/bin/kast" ]] || die "Installed kast native binary is missing from ${installed_root}/bin"
 [[ -x "${installed_root}/scripts/install-kast-skilled.sh" ]] || die "Installed skill helper is missing from ${installed_root}/scripts"
 [[ -f "${installed_root}/share/skills/kast/SKILL.md" ]] || die "Installed packaged skill is missing from ${installed_root}/share/skills/kast"
 

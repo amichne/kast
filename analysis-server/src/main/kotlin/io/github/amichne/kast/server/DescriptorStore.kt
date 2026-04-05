@@ -1,6 +1,7 @@
 package io.github.amichne.kast.server
 
 import io.github.amichne.kast.api.ServerInstanceDescriptor
+import io.github.amichne.kast.api.workspaceMetadataDirectory
 import kotlinx.serialization.json.Json
 import java.nio.file.Files
 import java.nio.file.Path

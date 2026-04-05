@@ -1,7 +1,4 @@
-import org.gradle.api.tasks.Delete
-import org.gradle.api.tasks.Exec
 import org.gradle.api.tasks.Sync
-import org.gradle.api.tasks.testing.Test
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 
@@ -10,55 +7,19 @@ plugins {
 }
 
 application {
-    mainClass = "io.github.amichne.kast.cli.CliMainKt"
+    mainClass = "io.github.amichne.kast.cli.jvm.JvmCliMainKt"
 }
 
-val helperSource: RegularFile = layout.projectDirectory.file("src/helper/kast_helper.c")
-val helperBinary: Provider<RegularFile> = layout.buildDirectory.file("bin/kast-helper")
+val nativeBinary = project(":kast-cli").layout.buildDirectory.file("native/nativeCompile/kast")
 val packagedSkillSourceDir: Directory = rootProject.layout.projectDirectory.dir(".agents/skills/kast")
 val packagedSkillInstallerSource: RegularFile = layout.projectDirectory.file("src/packaging/install-kast-skilled.sh")
 
 dependencies {
-    implementation(project(":analysis-api"))
-    implementation(project(":analysis-server"))
+    implementation(project(":kast-cli"))
     implementation(project(":backend-standalone"))
-    implementation(libs.coroutines.core)
-    implementation(libs.serialization.json)
-    implementation(libs.logback.classic)
-}
-
-val cleanHelperOutputs: TaskProvider<Delete> by tasks.registering(Delete::class) {
-    group = "build"
-    description = "Removes generated helper binaries before rebuilding the kast launcher."
-
-    delete(layout.buildDirectory.dir("bin"))
-}
-
-val compileHelper: TaskProvider<Exec> by tasks.registering(Exec::class) {
-    dependsOn(cleanHelperOutputs)
-    inputs.file(helperSource)
-    outputs.file(helperBinary)
-
-    doFirst {
-        helperBinary.get().asFile.parentFile.mkdirs()
-    }
-
-    commandLine(
-        "cc",
-        "-std=c11",
-        "-O2",
-        "-Wall",
-        "-Wextra",
-        "-pedantic",
-        helperSource.asFile.absolutePath,
-        "-o",
-        helperBinary.get().asFile.absolutePath,
-    )
 }
 
 tasks.named("writeWrapperScript").configure {
-    dependsOn(compileHelper)
-
     doLast {
         val script = layout.buildDirectory.file("scripts/${project.name}").get().asFile
         val dollar = '$'
@@ -68,23 +29,35 @@ tasks.named("writeWrapperScript").configure {
                 "set -euo pipefail",
                 "",
                 "script_dir=\"${dollar}(cd -- \"${dollar}(dirname -- \"${dollar}{BASH_SOURCE[0]}\")\" >/dev/null 2>&1 && pwd)\"",
-                "helper_candidates=(",
-                "  \"${dollar}{KAST_HELPER:-}\"",
-                "  \"${dollar}{script_dir}/bin/kast-helper\"",
-                "  \"${dollar}{script_dir}/../bin/kast-helper\"",
-                ")",
-                "",
-                "for candidate in \"${dollar}{helper_candidates[@]}\"; do",
-                "  if [[ -n \"${dollar}{candidate}\" && -x \"${dollar}{candidate}\" ]]; then",
-                "    exec \"${dollar}{candidate}\" \"${dollar}@\"",
-                "  fi",
-                "done",
-                "",
                 "runtime_candidates=(",
                 "  \"${dollar}{KAST_RUNTIME_LIBS:-}\"",
                 "  \"${dollar}{script_dir}/runtime-libs\"",
                 "  \"${dollar}{script_dir}/../runtime-libs\"",
                 ")",
+                "",
+                "native_candidates=(",
+                "  \"${dollar}{KAST_NATIVE:-}\"",
+                "  \"${dollar}{script_dir}/bin/kast\"",
+                "  \"${dollar}{script_dir}/../bin/kast\"",
+                ")",
+                "",
+                "resolved_runtime_libs=\"\"",
+                "for runtime_dir in \"${dollar}{runtime_candidates[@]}\"; do",
+                "  classpath_file=\"${dollar}{runtime_dir}/classpath.txt\"",
+                "  if [[ -n \"${dollar}{runtime_dir}\" && -f \"${dollar}{classpath_file}\" ]]; then",
+                "    resolved_runtime_libs=\"${dollar}{runtime_dir}\"",
+                "    break",
+                "  fi",
+                "done",
+                "",
+                "for candidate in \"${dollar}{native_candidates[@]}\"; do",
+                "  if [[ -n \"${dollar}{candidate}\" && -x \"${dollar}{candidate}\" ]]; then",
+                "    if [[ -n \"${dollar}{resolved_runtime_libs}\" && -z \"${dollar}{KAST_RUNTIME_LIBS:-}\" ]]; then",
+                "      export KAST_RUNTIME_LIBS=\"${dollar}{resolved_runtime_libs}\"",
+                "    fi",
+                "    exec \"${dollar}{candidate}\" \"${dollar}@\"",
+                "  fi",
+                "done",
                 "",
                 "java_bin=\"${dollar}{JAVA_HOME:+${dollar}{JAVA_HOME}/bin/java}\"",
                 "if [[ -z \"${dollar}{java_bin}\" || ! -x \"${dollar}{java_bin}\" ]]; then",
@@ -102,11 +75,11 @@ tasks.named("writeWrapperScript").configure {
                 "      fi",
                 "      classpath=\"${dollar}{classpath}${dollar}{runtime_dir}/${dollar}{entry}\"",
                 "    done < \"${dollar}{classpath_file}\"",
-                "    exec \"${dollar}{java_bin}\" -cp \"${dollar}{classpath}\" io.github.amichne.kast.cli.CliMainKt \"${dollar}@\"",
+                "    exec \"${dollar}{java_bin}\" -cp \"${dollar}{classpath}\" io.github.amichne.kast.cli.jvm.JvmCliMainKt \"${dollar}@\"",
                 "  fi",
                 "done",
                 "",
-                "echo \"Could not locate kast helper or runtime-libs\" >&2",
+                "echo \"Could not locate kast native binary or runtime-libs\" >&2",
                 "exit 1",
             ).joinToString(System.lineSeparator()),
         )
@@ -133,10 +106,10 @@ val stagePackagedSkillInstaller: TaskProvider<Task> by tasks.registering {
 }
 
 tasks.named<Sync>("syncPortableDist") {
-    dependsOn(compileHelper)
+    dependsOn(":kast-cli:nativeCompile")
     dependsOn(syncPackagedSkill)
     dependsOn(stagePackagedSkillInstaller)
-    from(helperBinary) {
+    from(nativeBinary) {
         into("bin")
     }
     from(syncPackagedSkill) {
@@ -145,13 +118,4 @@ tasks.named<Sync>("syncPortableDist") {
     from(stagePackagedSkillInstaller) {
         into("scripts")
     }
-}
-
-tasks.named<Test>("test") {
-    dependsOn(compileHelper)
-    dependsOn(tasks.named("writeWrapperScript"))
-    systemProperty(
-        "kast.wrapper",
-        layout.buildDirectory.file("scripts/${project.name}").get().asFile.absolutePath,
-    )
 }
