@@ -145,6 +145,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ "$skill_name" =~ ^[A-Za-z0-9._-]+$ ]] || die "Skill name may contain only letters, digits, dot, underscore, and dash"
+[[ "$skill_name" != "." && "$skill_name" != ".." ]] || die "Skill name must not be '.' or '..'"
 
 if [[ -z "$target_dir" ]]; then
   target_dir="$(resolve_default_target_dir "$PWD")"
