@@ -82,7 +82,7 @@ internal fun resolveDetachedClassPath(
         )
     }
     runtimeLibClassPathFromCommandPath(currentCommandPath)?.let { return it }
-    return javaClassPath
+    return javaClassPath?.takeIf(String::isNotBlank)
         ?: throw CliFailure(
             code = "DAEMON_START_FAILED",
             message = "Could not determine the JVM classpath for the standalone daemon",
