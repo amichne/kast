@@ -95,9 +95,9 @@ class StandaloneAnalysisSession(
         startInitialSourceIndex()
     }
 
-    fun allKtFiles(): List<KtFile> {
-        ensureFullKtFileMapLoaded()
-        return ktFilesByPath.values.sortedBy(::normalizeFileLookupPath)
+    fun allKtFiles(): List<KtFile> = analysisSessionLock.read {
+        ensureFullKtFileMapLoaded(session)
+        ktFilesByPath.values.sortedBy(::normalizeFileLookupPath)
     }
 
     fun findKtFile(filePath: String): KtFile {
@@ -299,7 +299,7 @@ class StandaloneAnalysisSession(
         return normalizePath(Path.of(virtualPath)).toString()
     }
 
-    private fun ensureFullKtFileMapLoaded() {
+    private fun ensureFullKtFileMapLoaded(analysisSession: StandaloneAnalysisAPISession) {
         if (fullKtFileMapLoaded) {
             return
         }
@@ -309,7 +309,7 @@ class StandaloneAnalysisSession(
                 return
             }
 
-            val loadedFiles = loadKtFilesByPath()
+            val loadedFiles = loadKtFilesByPath(analysisSession)
             ktFilesByPath.clear()
             ktFilesByPath.putAll(loadedFiles)
             targetedKtFilesByPath.clear()
@@ -318,7 +318,7 @@ class StandaloneAnalysisSession(
         }
     }
 
-    private fun loadKtFilesByPath(): Map<String, KtFile> {
+    private fun loadKtFilesByPath(analysisSession: StandaloneAnalysisAPISession): Map<String, KtFile> {
         val loadedFiles = linkedMapOf<String, KtFile>()
 
         resolvedSourceRoots.forEach { sourceRoot ->
@@ -331,7 +331,7 @@ class StandaloneAnalysisSession(
                     .filter { path -> Files.isRegularFile(path) && path.extension == "kt" }
                     .forEach { file ->
                         val normalizedPath = normalizePath(file).toString()
-                        loadKtFileByPath(normalizedPath)?.let { ktFile ->
+                        loadKtFileByPath(normalizedPath, analysisSession)?.let { ktFile ->
                             loadedFiles[normalizedPath] = ktFile
                         }
                     }
