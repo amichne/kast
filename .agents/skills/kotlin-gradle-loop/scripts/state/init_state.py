@@ -86,10 +86,16 @@ def merge_defaults(current, defaults):
             changed = True
             continue
 
-        if isinstance(value, dict) and isinstance(merged[key], dict):
-            merged_child, child_changed = merge_defaults(merged[key], value)
-            if child_changed:
-                merged[key] = merged_child
+        if isinstance(value, dict):
+            if isinstance(merged[key], dict):
+                merged_child, child_changed = merge_defaults(merged[key], value)
+                if child_changed:
+                    merged[key] = merged_child
+                    changed = True
+            else:
+                # Existing value is not a dict (e.g. null from corruption);
+                # replace it with the full default subtree.
+                merged[key] = value
                 changed = True
 
     return merged, changed
