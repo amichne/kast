@@ -11,6 +11,7 @@ import io.github.amichne.kast.api.DiagnosticsResult
 import io.github.amichne.kast.api.MutationCapability
 import io.github.amichne.kast.api.PageInfo
 import io.github.amichne.kast.api.ReadCapability
+import io.github.amichne.kast.api.RefreshQuery
 import io.github.amichne.kast.api.ReferencesQuery
 import io.github.amichne.kast.api.ReferencesResult
 import io.github.amichne.kast.api.RenameQuery
@@ -172,6 +173,17 @@ fun Application.kastModule(
                 val query = call.receive<ApplyEditsQuery>()
                 val response = execute(config) {
                     backend.applyEdits(query)
+                }
+                call.respond(response)
+            }
+
+            post("/workspace/refresh") {
+                call.authorize(config)
+                requireMutationCapability(backend, MutationCapability.REFRESH_WORKSPACE)
+                val query = call.receive<RefreshQuery>()
+                query.filePaths.forEach(::validateAbsoluteFilePath)
+                val response = execute(config) {
+                    backend.refresh(query)
                 }
                 call.respond(response)
             }

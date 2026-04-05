@@ -151,6 +151,32 @@ kast \
 This command does not support inline flags for the payload. It must read the
 request from a file.
 
+## Refresh workspace state manually
+
+Kast refreshes `edits apply` results immediately and watches source roots for
+most external `.kt` file changes. Use `workspace refresh` when you need the
+manual recovery path.
+
+1. Refresh the full workspace:
+
+   ```bash
+   kast \
+     workspace refresh \
+     --workspace-root=/absolute/path/to/workspace
+   ```
+
+2. Optional: Refresh only the files you know changed:
+
+   ```bash
+   kast \
+     workspace refresh \
+     --workspace-root=/absolute/path/to/workspace \
+     --file-paths=/absolute/path/to/src/main/kotlin/com/example/App.kt,/absolute/path/to/src/main/kotlin/com/example/Use.kt
+   ```
+
+3. Inspect `refreshedFiles`, `removedFiles`, and `fullRefresh` in the JSON
+   result when your calling code needs to react to the refresh scope.
+
 ## Understand bounded results
 
 `call hierarchy` is part of the supported CLI, but it is intentionally bounded.

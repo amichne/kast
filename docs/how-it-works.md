@@ -110,6 +110,21 @@ between commands so that:
 The CLI reuses an existing healthy daemon when one is available, so you do
 not need to think about whether to start or stop it manually.
 
+## How workspace state stays fresh
+
+The daemon keeps Kotlin PSI, identifier indexes, and targeted lookup caches in
+sync with workspace changes so repeated queries stay accurate.
+
+- **Kast-applied edits refresh immediately.** `kast edits apply` writes files
+  to disk, refreshes the affected Kotlin files, and updates the running
+  runtime before the command returns.
+- **External source changes refresh automatically.** A background watcher
+  tracks `.kt` file create, modify, and delete events under the registered
+  source roots and batches those updates into daemon refreshes.
+- **Manual refresh exists as recovery only.** Use `kast workspace refresh`
+  when you need to force a targeted or full rescan after a missed external
+  change. Healthy flows do not need this command.
+
 ## What Kast can do today
 
 The current capabilities are:
@@ -122,6 +137,7 @@ The current capabilities are:
 | Diagnostics | `diagnostics` | Return compiler and analysis diagnostics for one or more files |
 | Rename planning | `rename` | Generate an edit plan showing every location that would change if you renamed a symbol |
 | Apply edits | `edits apply` | Apply a prepared edit plan to disk with conflict detection |
+| Workspace refresh | `workspace refresh` | Force a targeted or full workspace state refresh when you need manual recovery |
 
 Run `kast capabilities` against your workspace to see what the current runtime
 advertises.

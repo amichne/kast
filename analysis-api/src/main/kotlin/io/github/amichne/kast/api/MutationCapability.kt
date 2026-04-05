@@ -6,4 +6,5 @@ import kotlinx.serialization.Serializable
 enum class MutationCapability {
     RENAME,
     APPLY_EDITS,
+    REFRESH_WORKSPACE,
 }

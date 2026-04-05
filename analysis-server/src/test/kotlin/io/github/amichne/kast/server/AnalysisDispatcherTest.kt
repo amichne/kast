@@ -11,6 +11,8 @@ import io.github.amichne.kast.api.FileHash
 import io.github.amichne.kast.api.FileHashing
 import io.github.amichne.kast.api.FilePosition
 import io.github.amichne.kast.api.ReadCapability
+import io.github.amichne.kast.api.RefreshQuery
+import io.github.amichne.kast.api.RefreshResult
 import io.github.amichne.kast.api.ReferencesQuery
 import io.github.amichne.kast.api.ReferencesResult
 import io.github.amichne.kast.api.RenameQuery
@@ -166,6 +168,23 @@ class AnalysisDispatcherTest {
 
         assertEquals(listOf(file.toString()), result.affectedFiles)
         assertTrue(file.readText().contains("hello"))
+    }
+
+    @Test
+    fun `workspace refresh dispatches without HTTP`() {
+        val file = sampleFile()
+
+        val result = dispatchSuccess<RefreshResult>(
+            method = "workspace/refresh",
+            params = json.encodeToJsonElement(
+                RefreshQuery.serializer(),
+                RefreshQuery(filePaths = listOf(file.toString())),
+            ),
+        )
+
+        assertEquals(listOf(file.toString()), result.refreshedFiles)
+        assertTrue(result.removedFiles.isEmpty())
+        assertEquals(false, result.fullRefresh)
     }
 
     @Test

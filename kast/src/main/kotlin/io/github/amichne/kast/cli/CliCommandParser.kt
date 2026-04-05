@@ -6,6 +6,7 @@ import io.github.amichne.kast.api.CallHierarchyQuery
 import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.FilePosition
 import io.github.amichne.kast.api.ReferencesQuery
+import io.github.amichne.kast.api.RefreshQuery
 import io.github.amichne.kast.api.RenameQuery
 import io.github.amichne.kast.api.SymbolQuery
 import io.github.amichne.kast.standalone.StandaloneServerOptions
@@ -69,6 +70,7 @@ internal class CliCommandParser(
             when (metadata.path) {
                 listOf("workspace", "status") -> CliCommand.WorkspaceStatus(parsed.runtimeOptions())
                 listOf("workspace", "ensure") -> CliCommand.WorkspaceEnsure(parsed.runtimeOptions())
+                listOf("workspace", "refresh") -> CliCommand.WorkspaceRefresh(parsed.runtimeOptions(), parsed.refreshQuery(json))
                 listOf("daemon", "start") -> CliCommand.DaemonStart(parsed.runtimeOptions(backendName = "standalone"))
                 listOf("daemon", "stop") -> CliCommand.DaemonStop(parsed.runtimeOptions(backendName = "standalone"))
                 listOf("completion", "bash") -> CliCommand.Completion(CliCompletionShell.BASH)
@@ -255,6 +257,21 @@ internal data class ParsedArguments(
         throw CliFailure(
             code = "CLI_USAGE",
             message = "`edits apply` requires --request-file=/absolute/path/to/query.json",
+        )
+    }
+
+    fun refreshQuery(json: Json): RefreshQuery = requestOrFile(
+        serializer = RefreshQuery.serializer(),
+        requestFileKey = "request-file",
+        json = json,
+    ) {
+        RefreshQuery(
+            filePaths = options["file-paths"]
+                ?.split(",")
+                ?.map(String::trim)
+                ?.filter(String::isNotEmpty)
+                ?.map(::absoluteFilePath)
+                .orEmpty(),
         )
     }
 

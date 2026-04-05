@@ -162,6 +162,31 @@ explicit and makes it easy to tell which workspace runtimes are active.
 
 2. Read stderr for the stop note when a daemon was actually stopped.
 
+## Recover workspace state manually
+
+Kast refreshes `edits apply` results immediately and watches source roots for
+most external `.kt` file changes. Use `workspace refresh` only when you need a
+manual recovery path after a missed change.
+
+1. Refresh the full workspace state:
+
+   ```bash
+   kast \
+     workspace refresh \
+     --workspace-root=/absolute/path/to/workspace
+   ```
+
+2. Optional: Refresh only a targeted set of Kotlin files:
+
+   ```bash
+   kast \
+     workspace refresh \
+     --workspace-root=/absolute/path/to/workspace \
+     --file-paths=/absolute/path/to/src/main/kotlin/example/App.kt,/absolute/path/to/src/main/kotlin/example/Use.kt
+   ```
+
+3. Read the JSON result on stdout for the refreshed and removed file paths.
+
 ## Troubleshooting first-run issues
 
 The first failure usually comes from one of a small set of environment or usage
@@ -176,6 +201,9 @@ mistakes.
   `--key=value` form.
 - If Kast cannot find the workspace or a file, convert the path to an absolute
   path and rerun the command.
+- If the daemon misses an external `.kt` file change, run
+  `kast workspace refresh --workspace-root=/absolute/path/to/workspace` to
+  force a rescan. Add `--file-paths=...` when you want a targeted refresh.
 - If you want the shell-specific completion help pages, run
   `kast help completion`.
 - If `kast` is not found on your PATH, you can point the resolver directly at

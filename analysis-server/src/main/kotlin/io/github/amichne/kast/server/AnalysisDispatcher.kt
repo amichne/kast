@@ -15,6 +15,8 @@ import io.github.amichne.kast.api.HealthResponse
 import io.github.amichne.kast.api.MutationCapability
 import io.github.amichne.kast.api.PageInfo
 import io.github.amichne.kast.api.ReadCapability
+import io.github.amichne.kast.api.RefreshQuery
+import io.github.amichne.kast.api.RefreshResult
 import io.github.amichne.kast.api.ReferencesQuery
 import io.github.amichne.kast.api.ReferencesResult
 import io.github.amichne.kast.api.RenameQuery
@@ -197,6 +199,16 @@ class AnalysisDispatcher(
                 backend.applyEdits(
                     decodeParams(ApplyEditsQuery.serializer(), params).also {
                         requireMutationCapability(MutationCapability.APPLY_EDITS)
+                    },
+                ),
+            )
+
+            "workspace/refresh" -> encode(
+                RefreshResult.serializer(),
+                backend.refresh(
+                    decodeParams(RefreshQuery.serializer(), params).also { query ->
+                        query.filePaths.forEach(::validateAbsoluteFilePath)
+                        requireMutationCapability(MutationCapability.REFRESH_WORKSPACE)
                     },
                 ),
             )

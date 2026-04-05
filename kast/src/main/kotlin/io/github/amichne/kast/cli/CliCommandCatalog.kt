@@ -231,6 +231,21 @@ internal object CliCommandCatalog {
             ),
         ),
         CliCommandMetadata(
+            path = listOf("workspace", "refresh"),
+            group = CliCommandGroup.WORKSPACE_LIFECYCLE,
+            summary = "Force the daemon to refresh workspace files and indexes.",
+            description = "Triggers a targeted refresh for the given Kotlin file paths, or a full workspace refresh when no file paths are provided.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME workspace refresh --workspace-root=/absolute/path/to/workspace [--file-paths=/absolute/A.kt,/absolute/B.kt]",
+                "$CLI_EXECUTABLE_NAME workspace refresh --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
+            ),
+            options = listOf(workspaceRootOption, waitTimeoutOption, requestFileOption, filePathsOption),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME workspace refresh --workspace-root=/absolute/path/to/workspace",
+                "$CLI_EXECUTABLE_NAME workspace refresh --workspace-root=/absolute/path/to/workspace --file-paths=/absolute/path/to/File.kt",
+            ),
+        ),
+        CliCommandMetadata(
             path = listOf("daemon", "start"),
             group = CliCommandGroup.WORKSPACE_LIFECYCLE,
             summary = "Start a detached standalone daemon for a workspace.",

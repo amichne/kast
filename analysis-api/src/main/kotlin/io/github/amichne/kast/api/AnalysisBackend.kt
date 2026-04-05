@@ -41,4 +41,11 @@ interface AnalysisBackend {
     suspend fun rename(query: RenameQuery): RenameResult
 
     suspend fun applyEdits(query: ApplyEditsQuery): ApplyEditsResult
+
+    suspend fun refresh(query: RefreshQuery): RefreshResult {
+        throw CapabilityNotSupportedException(
+            capability = "REFRESH_WORKSPACE",
+            message = "Workspace refresh is not available for this backend",
+        )
+    }
 }

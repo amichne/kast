@@ -93,8 +93,10 @@ data class StandaloneServerOptions(
 class RunningStandaloneRuntime(
     val server: RunningAnalysisServer,
     private val session: StandaloneAnalysisSession,
+    private val watcher: AutoCloseable,
 ) : AutoCloseable {
     override fun close() {
+        watcher.close()
         server.close()
         session.close()
     }
@@ -122,6 +124,7 @@ object StandaloneRuntime {
             ),
             session = session,
         )
+        val watcher = WorkspaceRefreshWatcher(session)
         val server = AnalysisServer(
             backend = backend,
             config = AnalysisServerConfig(
@@ -135,6 +138,7 @@ object StandaloneRuntime {
         return RunningStandaloneRuntime(
             server = server,
             session = session,
+            watcher = watcher,
         )
     }
 

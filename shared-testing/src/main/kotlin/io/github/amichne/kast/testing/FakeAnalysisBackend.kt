@@ -22,6 +22,8 @@ import io.github.amichne.kast.api.Location
 import io.github.amichne.kast.api.MutationCapability
 import io.github.amichne.kast.api.NotFoundException
 import io.github.amichne.kast.api.ReadCapability
+import io.github.amichne.kast.api.RefreshQuery
+import io.github.amichne.kast.api.RefreshResult
 import io.github.amichne.kast.api.ReferencesQuery
 import io.github.amichne.kast.api.ReferencesResult
 import io.github.amichne.kast.api.RenameQuery
@@ -63,6 +65,7 @@ class FakeAnalysisBackend private constructor(
         mutationCapabilities = setOf(
             MutationCapability.RENAME,
             MutationCapability.APPLY_EDITS,
+            MutationCapability.REFRESH_WORKSPACE,
         ),
         limits = limits,
     )
@@ -174,6 +177,17 @@ class FakeAnalysisBackend private constructor(
     }
 
     override suspend fun applyEdits(query: ApplyEditsQuery): ApplyEditsResult = LocalDiskEditApplier.apply(query)
+
+    override suspend fun refresh(query: RefreshQuery): RefreshResult {
+        val refreshedFiles = query.filePaths
+            .ifEmpty { availableFiles.toList() }
+            .sorted()
+        return RefreshResult(
+            refreshedFiles = refreshedFiles,
+            removedFiles = emptyList(),
+            fullRefresh = query.filePaths.isEmpty(),
+        )
+    }
 
     private fun requireAnchor(position: FilePosition) {
         requireKnownFile(position.filePath)

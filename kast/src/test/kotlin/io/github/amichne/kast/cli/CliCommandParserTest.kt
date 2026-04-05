@@ -1,5 +1,6 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.api.RefreshQuery
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -76,6 +77,31 @@ class CliCommandParserTest {
         assertEquals(8, hierarchyCommand.query.maxChildrenPerNode)
         assertEquals(4000L, hierarchyCommand.query.timeoutMillis)
         assertTrue(hierarchyCommand.query.persistToGitShaCache)
+    }
+
+    @Test
+    fun `workspace refresh parses from inline options`() {
+        val command = parser.parse(
+            arrayOf(
+                "workspace",
+                "refresh",
+                "--workspace-root=$tempDir",
+                "--file-paths=$tempDir/A.kt,$tempDir/B.kt",
+            ),
+        )
+
+        assertTrue(command is CliCommand.WorkspaceRefresh)
+        val refreshCommand = command as CliCommand.WorkspaceRefresh
+        assertEquals(tempDir, refreshCommand.options.workspaceRoot)
+        assertEquals(
+            RefreshQuery(
+                filePaths = listOf(
+                    tempDir.resolve("A.kt").toString(),
+                    tempDir.resolve("B.kt").toString(),
+                ),
+            ),
+            refreshCommand.query,
+        )
     }
 
     @Test

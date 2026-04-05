@@ -188,7 +188,7 @@ class StandaloneAnalysisBackendCallHierarchyTest {
                 session = session,
             )
 
-            assertFalse(session.ktFilesByPathDelegate().isInitialized())
+            assertFalse(session.isFullKtFileMapLoaded())
 
             val result = backend.callHierarchy(
                 CallHierarchyQuery(
@@ -201,7 +201,7 @@ class StandaloneAnalysisBackendCallHierarchyTest {
                 ),
             )
 
-            assertFalse(session.ktFilesByPathDelegate().isInitialized())
+            assertFalse(session.isFullKtFileMapLoaded())
             assertEquals(3, result.stats.filesVisited)
         }
     }
@@ -295,11 +295,4 @@ class StandaloneAnalysisBackendCallHierarchyTest {
         val absolutePath = path.toAbsolutePath().normalize()
         return runCatching { absolutePath.toRealPath().normalize().toString() }.getOrDefault(absolutePath.toString())
     }
-}
-
-@Suppress("UNCHECKED_CAST")
-private fun StandaloneAnalysisSession.ktFilesByPathDelegate(): Lazy<Map<String, *>> {
-    val field = StandaloneAnalysisSession::class.java.getDeclaredField("ktFilesByPath\$delegate")
-    field.isAccessible = true
-    return field.get(this) as Lazy<Map<String, *>>
 }

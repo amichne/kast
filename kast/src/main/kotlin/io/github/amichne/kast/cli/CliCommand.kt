@@ -4,6 +4,7 @@ import io.github.amichne.kast.api.ApplyEditsQuery
 import io.github.amichne.kast.api.CallHierarchyQuery
 import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.ReferencesQuery
+import io.github.amichne.kast.api.RefreshQuery
 import io.github.amichne.kast.api.RenameQuery
 import io.github.amichne.kast.api.SymbolQuery
 
@@ -13,6 +14,7 @@ internal sealed interface CliCommand {
     data class Completion(val shell: CliCompletionShell) : CliCommand
     data class WorkspaceStatus(val options: RuntimeCommandOptions) : CliCommand
     data class WorkspaceEnsure(val options: RuntimeCommandOptions) : CliCommand
+    data class WorkspaceRefresh(val options: RuntimeCommandOptions, val query: RefreshQuery) : CliCommand
     data class DaemonStart(val options: RuntimeCommandOptions) : CliCommand
     data class DaemonStop(val options: RuntimeCommandOptions) : CliCommand
     data class Capabilities(val options: RuntimeCommandOptions) : CliCommand

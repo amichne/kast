@@ -15,6 +15,8 @@ import io.github.amichne.kast.api.HealthResponse
 import io.github.amichne.kast.api.LocalDiskEditApplier
 import io.github.amichne.kast.api.MutationCapability
 import io.github.amichne.kast.api.ReadCapability
+import io.github.amichne.kast.api.RefreshQuery
+import io.github.amichne.kast.api.RefreshResult
 import io.github.amichne.kast.api.ReferencesQuery
 import io.github.amichne.kast.api.ReferencesResult
 import io.github.amichne.kast.api.RenameQuery
@@ -73,6 +75,7 @@ class StandaloneAnalysisBackend internal constructor(
         mutationCapabilities = setOf(
             MutationCapability.RENAME,
             MutationCapability.APPLY_EDITS,
+            MutationCapability.REFRESH_WORKSPACE,
         ),
         limits = limits,
     )
@@ -101,125 +104,147 @@ class StandaloneAnalysisBackend internal constructor(
     }
 
     override suspend fun resolveSymbol(query: SymbolQuery): SymbolResult = withContext(readDispatcher) {
-        val file = session.findKtFile(query.position.filePath)
-        val target = resolveTarget(file, query.position.offset)
-        SymbolResult(analyze(file) { target.toSymbolModel(containingDeclaration = null) })
+        session.withReadAccess {
+            val file = session.findKtFile(query.position.filePath)
+            val target = resolveTarget(file, query.position.offset)
+            SymbolResult(analyze(file) { target.toSymbolModel(containingDeclaration = null) })
+        }
     }
 
     override suspend fun findReferences(query: ReferencesQuery): ReferencesResult = withContext(readDispatcher) {
-        val file = session.findKtFile(query.position.filePath)
-        val target = resolveTarget(file, query.position.offset)
-        val references = candidateReferenceFiles(target)
-            .flatMap { candidateFile -> candidateFile.findReferenceLocations(target) }
-            .sortedWith(compareBy({ it.filePath }, { it.startOffset }))
+        session.withReadAccess {
+            val file = session.findKtFile(query.position.filePath)
+            val target = resolveTarget(file, query.position.offset)
+            val references = candidateReferenceFiles(target)
+                .flatMap { candidateFile -> candidateFile.findReferenceLocations(target) }
+                .sortedWith(compareBy({ it.filePath }, { it.startOffset }))
 
-        ReferencesResult(
-            declaration = if (query.includeDeclaration) analyze(file) { target.toSymbolModel(containingDeclaration = null) } else null,
-            references = references,
-        )
-    }
-
-    override suspend fun callHierarchy(query: CallHierarchyQuery): CallHierarchyResult = withContext(readDispatcher) {
-        callHierarchyTraversal.build(query)
-    }
-
-    override suspend fun diagnostics(query: DiagnosticsQuery): DiagnosticsResult = withContext(readDispatcher) {
-        val diagnostics = query.filePaths
-            .sorted()
-            .flatMap { filePath ->
-                val file = session.findKtFile(filePath)
-                analyze(file) {
-                    file.collectDiagnostics(KaDiagnosticCheckerFilter.EXTENDED_AND_COMMON_CHECKERS)
-                }.flatMap { diagnostic -> diagnostic.toApiDiagnostics() }
-            }
-            .sortedWith(compareBy({ it.location.filePath }, { it.location.startOffset }, { it.code ?: "" }))
-
-        DiagnosticsResult(diagnostics = diagnostics)
-    }
-
-    override suspend fun rename(query: RenameQuery): RenameResult = withContext(readDispatcher) {
-        telemetry.inSpan(
-            scope = StandaloneTelemetryScope.RENAME,
-            name = "kast.rename",
-            attributes = mapOf(
-                "kast.rename.filePath" to query.position.filePath,
-                "kast.rename.newName" to query.newName,
-            ),
-        ) { renameSpan ->
-            val file = traceRenamePhase(
-                phaseName = "findKtFile",
-                attributes = mapOf("kast.rename.filePath" to query.position.filePath),
-            ) {
-                session.findKtFile(query.position.filePath)
-            }
-            val target = traceRenamePhase(
-                phaseName = "resolveTarget",
-                attributes = mapOf("kast.rename.offset" to query.position.offset),
-            ) {
-                resolveTarget(file, query.position.offset)
-            }
-            val searchIdentifier = target.referenceSearchIdentifier()
-            val candidateFiles = traceRenamePhase(
-                phaseName = "candidateReferenceFiles",
-                attributes = mapOf("kast.rename.identifier" to (searchIdentifier ?: "<fallback>")),
-            ) {
-                candidateReferenceFiles(target)
-            }
-            renameSpan.setAttribute("kast.rename.candidateFileCount", candidateFiles.size)
-            renameSpan.addEvent(
-                name = "candidate-files",
-                attributes = mapOf(
-                    "count" to candidateFiles.size,
-                    "identifier" to (searchIdentifier ?: "<fallback>"),
-                    "files" to candidateFiles.joinToString(separator = "|") { candidateFile ->
-                        candidateFile.virtualFile?.path ?: candidateFile.name
-                    },
-                ),
-                verboseOnly = true,
-            )
-
-            val edits = traceRenamePhase("collectReferenceEdits") {
-                (listOf(target.declarationEdit(query.newName)) + candidateFiles
-                    .flatMap { candidateFile ->
-                        traceRenamePhase(
-                            phaseName = "referenceEdits",
-                            attributes = mapOf(
-                                "kast.rename.candidateFile" to (candidateFile.virtualFile?.path ?: candidateFile.name),
-                            ),
-                        ) { phaseSpan ->
-                            phaseSpan.addEvent(
-                                name = "reference-edits-input",
-                                attributes = mapOf(
-                                    "candidateFile" to (candidateFile.virtualFile?.path ?: candidateFile.name),
-                                    "occurrenceCount" to (
-                                        searchIdentifier
-                                            ?.let(candidateFile.text::identifierOccurrenceOffsets)
-                                            ?.count()
-                                            ?: -1
-                                        ),
-                                ),
-                                verboseOnly = true,
-                            )
-                            candidateFile.referenceEdits(target, query.newName, searchIdentifier)
-                        }
-                    })
-                    .distinctBy { edit -> Triple(edit.filePath, edit.startOffset, edit.endOffset) }
-                    .sortedWith(compareBy({ it.filePath }, { it.startOffset }))
-            }
-            renameSpan.setAttribute("kast.rename.editCount", edits.size)
-            val fileHashes = traceRenamePhase("currentFileHashes") {
-                currentFileHashes(edits.map(TextEdit::filePath))
-            }
-
-            RenameResult(
-                edits = edits,
-                fileHashes = fileHashes,
-                affectedFiles = fileHashes.map(FileHash::filePath),
+            ReferencesResult(
+                declaration = if (query.includeDeclaration) analyze(file) { target.toSymbolModel(containingDeclaration = null) } else null,
+                references = references,
             )
         }
     }
 
-    override suspend fun applyEdits(query: ApplyEditsQuery): ApplyEditsResult = LocalDiskEditApplier.apply(query)
+    override suspend fun callHierarchy(query: CallHierarchyQuery): CallHierarchyResult = withContext(readDispatcher) {
+        session.withReadAccess {
+            callHierarchyTraversal.build(query)
+        }
+    }
+
+    override suspend fun diagnostics(query: DiagnosticsQuery): DiagnosticsResult = withContext(readDispatcher) {
+        session.withReadAccess {
+            val diagnostics = query.filePaths
+                .sorted()
+                .flatMap { filePath ->
+                    val file = session.findKtFile(filePath)
+                    analyze(file) {
+                        file.collectDiagnostics(KaDiagnosticCheckerFilter.EXTENDED_AND_COMMON_CHECKERS)
+                    }.flatMap { diagnostic -> diagnostic.toApiDiagnostics() }
+                }
+                .sortedWith(compareBy({ it.location.filePath }, { it.location.startOffset }, { it.code ?: "" }))
+
+            DiagnosticsResult(diagnostics = diagnostics)
+        }
+    }
+
+    override suspend fun rename(query: RenameQuery): RenameResult = withContext(readDispatcher) {
+        session.withReadAccess {
+            telemetry.inSpan(
+                scope = StandaloneTelemetryScope.RENAME,
+                name = "kast.rename",
+                attributes = mapOf(
+                    "kast.rename.filePath" to query.position.filePath,
+                    "kast.rename.newName" to query.newName,
+                ),
+            ) { renameSpan ->
+                val file = traceRenamePhase(
+                    phaseName = "findKtFile",
+                    attributes = mapOf("kast.rename.filePath" to query.position.filePath),
+                ) {
+                    session.findKtFile(query.position.filePath)
+                }
+                val target = traceRenamePhase(
+                    phaseName = "resolveTarget",
+                    attributes = mapOf("kast.rename.offset" to query.position.offset),
+                ) {
+                    resolveTarget(file, query.position.offset)
+                }
+                val searchIdentifier = target.referenceSearchIdentifier()
+                val candidateFiles = traceRenamePhase(
+                    phaseName = "candidateReferenceFiles",
+                    attributes = mapOf("kast.rename.identifier" to (searchIdentifier ?: "<fallback>")),
+                ) {
+                    candidateReferenceFiles(target)
+                }
+                renameSpan.setAttribute("kast.rename.candidateFileCount", candidateFiles.size)
+                renameSpan.addEvent(
+                    name = "candidate-files",
+                    attributes = mapOf(
+                        "count" to candidateFiles.size,
+                        "identifier" to (searchIdentifier ?: "<fallback>"),
+                        "files" to candidateFiles.joinToString(separator = "|") { candidateFile ->
+                            candidateFile.virtualFile?.path ?: candidateFile.name
+                        },
+                    ),
+                    verboseOnly = true,
+                )
+
+                val edits = traceRenamePhase("collectReferenceEdits") {
+                    (listOf(target.declarationEdit(query.newName)) + candidateFiles
+                        .flatMap { candidateFile ->
+                            traceRenamePhase(
+                                phaseName = "referenceEdits",
+                                attributes = mapOf(
+                                    "kast.rename.candidateFile" to (candidateFile.virtualFile?.path ?: candidateFile.name),
+                                ),
+                            ) { phaseSpan ->
+                                phaseSpan.addEvent(
+                                    name = "reference-edits-input",
+                                    attributes = mapOf(
+                                        "candidateFile" to (candidateFile.virtualFile?.path ?: candidateFile.name),
+                                        "occurrenceCount" to (
+                                            searchIdentifier
+                                                ?.let(candidateFile.text::identifierOccurrenceOffsets)
+                                                ?.count()
+                                                ?: -1
+                                            ),
+                                    ),
+                                    verboseOnly = true,
+                                )
+                                candidateFile.referenceEdits(target, query.newName, searchIdentifier)
+                            }
+                        })
+                        .distinctBy { edit -> Triple(edit.filePath, edit.startOffset, edit.endOffset) }
+                        .sortedWith(compareBy({ it.filePath }, { it.startOffset }))
+                }
+                renameSpan.setAttribute("kast.rename.editCount", edits.size)
+                val fileHashes = traceRenamePhase("currentFileHashes") {
+                    currentFileHashes(edits.map(TextEdit::filePath))
+                }
+
+                RenameResult(
+                    edits = edits,
+                    fileHashes = fileHashes,
+                    affectedFiles = fileHashes.map(FileHash::filePath),
+                )
+            }
+        }
+    }
+
+    override suspend fun applyEdits(query: ApplyEditsQuery): ApplyEditsResult {
+        val result = LocalDiskEditApplier.apply(query)
+        session.refreshFiles(result.affectedFiles.toSet())
+        return result
+    }
+
+    override suspend fun refresh(query: RefreshQuery): RefreshResult {
+        return if (query.filePaths.isEmpty()) {
+            session.refreshWorkspace()
+        } else {
+            session.refreshFiles(query.filePaths.toSet())
+        }
+    }
 
     private fun candidateReferenceFiles(target: PsiElement): List<KtFile> {
         val searchIdentifier = target.referenceSearchIdentifier() ?: return session.allKtFiles()

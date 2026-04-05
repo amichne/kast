@@ -10,6 +10,8 @@ import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.DiagnosticsResult
 import io.github.amichne.kast.api.MutationCapability
 import io.github.amichne.kast.api.ReadCapability
+import io.github.amichne.kast.api.RefreshQuery
+import io.github.amichne.kast.api.RefreshResult
 import io.github.amichne.kast.api.ReferencesQuery
 import io.github.amichne.kast.api.ReferencesResult
 import io.github.amichne.kast.api.RenameQuery
@@ -32,6 +34,18 @@ internal class CliService(
 
     suspend fun workspaceEnsure(options: RuntimeCommandOptions): WorkspaceEnsureResult =
         runtimeManager.workspaceEnsure(options)
+
+    suspend fun workspaceRefresh(
+        options: RuntimeCommandOptions,
+        query: RefreshQuery,
+    ): RuntimeAttachedResult<RefreshResult> {
+        val runtime = runtimeManager.ensureRuntime(options)
+        requireMutationCapability(runtime.selected, MutationCapability.REFRESH_WORKSPACE)
+        return RuntimeAttachedResult(
+            payload = rpcClient.post(runtime.selected.descriptor, "workspace/refresh", query),
+            runtime = runtime.selected,
+        )
+    }
 
     suspend fun daemonStart(options: RuntimeCommandOptions): WorkspaceEnsureResult =
         runtimeManager.daemonStart(options)

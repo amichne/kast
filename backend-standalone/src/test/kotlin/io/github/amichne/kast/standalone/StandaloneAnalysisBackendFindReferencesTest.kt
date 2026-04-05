@@ -173,7 +173,7 @@ class StandaloneAnalysisBackendFindReferencesTest {
                 session = session,
             )
 
-            assertFalse(session.ktFilesByPathDelegate().isInitialized())
+            assertFalse(session.isFullKtFileMapLoaded())
 
             backend.findReferences(
                 ReferencesQuery(
@@ -185,7 +185,7 @@ class StandaloneAnalysisBackendFindReferencesTest {
                 ),
             )
 
-            assertFalse(session.ktFilesByPathDelegate().isInitialized())
+            assertFalse(session.isFullKtFileMapLoaded())
         }
     }
 
@@ -203,11 +203,4 @@ class StandaloneAnalysisBackendFindReferencesTest {
         val absolutePath = path.toAbsolutePath().normalize()
         return runCatching { absolutePath.toRealPath().normalize().toString() }.getOrDefault(absolutePath.toString())
     }
-}
-
-@Suppress("UNCHECKED_CAST")
-private fun StandaloneAnalysisSession.ktFilesByPathDelegate(): Lazy<Map<String, *>> {
-    val field = StandaloneAnalysisSession::class.java.getDeclaredField($$"ktFilesByPath$delegate")
-    field.isAccessible = true
-    return field.get(this) as Lazy<Map<String, *>>
 }
