@@ -41,7 +41,7 @@ kotlin-gradle-loop/
 │       ├── junit_results.py              # Parse JUnit XML → structured JSON
 │       ├── jacoco_report.py              # Parse JaCoCo XML → structured JSON
 │       └── kotlin_build_report.py        # Parse Kotlin build reports → structured JSON
-└── reference/
+└── references/
     └── schemas/
         └── state-schema.md               # Full state file schema documentation
 ```
@@ -304,7 +304,7 @@ The agent must compare before updating state.
 
 ## When to Read the Reference Document
 
-Read `reference/schemas/state-schema.md` when:
+Read `references/schemas/state-schema.md` when:
 - First initializing a project (to understand what fields to populate)
 - Debugging unexpected state (to verify field semantics)
 - Adding custom state fields for project-specific tracking
