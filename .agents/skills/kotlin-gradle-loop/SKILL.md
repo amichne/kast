@@ -27,6 +27,7 @@ for diagnostics — it never parses Gradle console output directly.
 ```
 kotlin-gradle-loop/
 ├── SKILL.md                              # This file
+├── hooks.json                            # Mandatory completion-hook manifest
 ├── scripts/
 │   ├── state/
 │   │   ├── init_state.py                 # Initialize .agent-workflow/state.json
@@ -34,7 +35,8 @@ kotlin-gradle-loop/
 │   │   ├── update_state.py               # Set a state field
 │   │   └── record_action.py              # Append to action history
 │   ├── gradle/
-│   │   └── run_task.sh                   # Run any Gradle task → structured JSON
+│   │   ├── run_task.sh                   # Run any Gradle task → structured JSON
+│   │   └── run_gradle_hook.sh            # Run the required project.gradleHook
 │   └── parse/
 │       ├── junit_results.py              # Parse JUnit XML → structured JSON
 │       ├── jacoco_report.py              # Parse JaCoCo XML → structured JSON
@@ -55,6 +57,9 @@ python3 scripts/state/get_state.py /path/to/project --summary
 If `project_discovered` is `false`, discover the project before anything else.
 Discovery is an agent task — search the codebase, then record findings via
 `update_state.py`. See the Discovery section below.
+
+Re-run `init_state.py` after skill updates when you need to backfill newly
+introduced defaults such as `project.gradleHook`.
 
 ## The Iteration Loop
 
@@ -107,6 +112,12 @@ For each subproject, read its `build.gradle.kts` to determine:
 
 5. **Source file counts.** Per module, count `.kt`/`.java` files in `src/main` and `src/test`.
 
+6. **High-signal validation task.** Record the single existing Gradle task that
+   gives the strongest health signal for the repo as `project.gradleHook`.
+   Prefer `check` when it meaningfully covers the project. If `check` is too
+   weak or too broad, use the best existing task such as `:app:check`, `build`,
+   or a custom verification task.
+
 ### Recording Discovery
 
 ```bash
@@ -121,7 +132,10 @@ python3 scripts/state/update_state.py /project project '{
     ":core": [],
     ":app": [":core", ":feature-users", ":feature-payments"]
   },
-  "jdk_version": 21, "kotlin_version": "2.0.0", "gradle_version": "8.10"
+  "jdk_version": 21,
+  "kotlin_version": "2.0.0",
+  "gradle_version": "8.10",
+  "gradleHook": "check"
 }'
 
 python3 scripts/state/record_action.py /project discovered_project \
@@ -140,6 +154,7 @@ bash scripts/gradle/run_task.sh /project :feature-users:test --tests "com.exampl
 bash scripts/gradle/run_task.sh /project compileKotlin
 bash scripts/gradle/run_task.sh /project test --configuration-cache
 bash scripts/gradle/run_task.sh /project test -Pkotlin.build.report.output=file
+bash scripts/gradle/run_gradle_hook.sh /project
 ```
 
 Returns JSON with `ok`, `exit_code`, `duration_ms`, `tasks_executed`,
@@ -152,6 +167,33 @@ After running, update the state:
 python3 scripts/state/update_state.py /project gradle.last_build \
   '{"task":"test","exit_code":0,"duration_ms":12000,"build_successful":true}'
 ```
+
+Use `run_gradle_hook.sh` for the mandatory final build-health check. It reads
+the configured `project.gradleHook` from `.agent-workflow/state.json` and then
+delegates to `run_task.sh`, so it returns the same structured JSON shape.
+
+## Mandatory completion hooks
+
+This skill ships a machine-readable hook manifest in `hooks.json`. Satisfy both
+hooks before you end work.
+
+### `docs-writer` completion hook
+
+If you changed any Markdown file, invoke `docs-writer` before you finish. Treat
+`docs/**`, repository `*.md`, and skill Markdown as documentation scope. Do not
+end the turn with unreviewed Markdown changes.
+
+### Build-health completion hook
+
+During discovery, set `project.gradleHook` to the single highest-signal Gradle
+task for the project. Before you finish, run:
+
+```bash
+bash scripts/gradle/run_gradle_hook.sh /project
+```
+
+If `project.gradleHook` is unset or the hook fails, keep iterating or report
+the blocker. Never end work with an unsatisfied build-health hook.
 
 ## Parsing Results
 
@@ -247,11 +289,14 @@ When `run_task.sh` returns `{"ok": false, ...}`:
 
 Before considering any change complete:
 
-1. Run the full test suite, not just targeted tests.
-2. Parse JUnit and compare `total`/`passed`/`failed` against previous state.
-   If `failed` increased, the change introduced a regression.
+1. Run `bash scripts/gradle/run_gradle_hook.sh /project`. This is the required
+   final build-health hook.
+2. If the hook includes test tasks, parse JUnit and compare
+   `total`/`passed`/`failed` against previous state. If `failed` increased, the
+   change introduced a regression.
 3. Parse coverage and compare `line_percent`. If it decreased and the goal
    has a coverage constraint, the change may violate it.
+4. If any Markdown changed, invoke `docs-writer` before you finish.
 
 The state file holds previous values; parser output holds current values.
 The agent must compare before updating state.

@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "completion_hooks": [
+    {
+      "name": "docs-writer-completion",
+      "type": "skill",
+      "required": true,
+      "trigger": "before_agent_end",
+      "skill": "docs-writer",
+      "when_any_path_matches": [
+        "docs/**",
+        "**/*.md"
+      ],
+      "description": "Invoke docs-writer before ending work when any Markdown changed."
+    },
+    {
+      "name": "build-health-completion",
+      "type": "gradle",
+      "required": true,
+      "trigger": "before_agent_end",
+      "state_field": "project.gradleHook",
+      "command": "bash scripts/gradle/run_gradle_hook.sh <project_root>",
+      "description": "Run the project-defined highest-signal Gradle validation task before ending work."
+    }
+  ]
+}

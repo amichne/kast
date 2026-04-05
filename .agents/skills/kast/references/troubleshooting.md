@@ -148,7 +148,8 @@ Check readCapabilities and mutationCapabilities arrays.
 
 Missing RESOLVE_SYMBOL  → symbol resolve unavailable; use grep for text search.
 Missing FIND_REFERENCES → references unavailable; use grep for text search.
-Missing DIAGNOSTICS     → diagnostics unavailable; run ./gradlew build instead.
+Missing DIAGNOSTICS     → diagnostics unavailable; run the project's
+                           configured `gradleHook` through `kotlin-gradle-loop`.
 Missing RENAME          → rename unavailable; manual find-and-replace required.
 Missing APPLY_EDITS     → edits apply unavailable; apply edits manually.
 Missing CALL_HIERARCHY  → call hierarchy unavailable in this backend; confirm

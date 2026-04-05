@@ -22,18 +22,43 @@ def extract_path(state, dp):
     return cur, None
 
 def build_summary(s):
-    t,c,comp = s.get("tests",{}), s.get("coverage",{}), s.get("compilation",{})
-    lb = s.get("gradle",{}).get("last_build")
-    return {"project_discovered": s.get("project",{}).get("status")=="complete",
-            "module_count": len(s.get("project",{}).get("app_modules",[])),
-            "goal": s.get("goal",{}).get("description","") or "(no goal set)",
-            "tests": {"status":t.get("status","pending"),"passed":t.get("passed",0),
-                      "failed":t.get("failed",0),"total":t.get("total",0)},
-            "coverage": {"status":c.get("status","pending"),"line_percent":c.get("line_percent")},
-            "compilation": {"status":comp.get("status","pending"),
-                            "non_incremental_count":len(comp.get("non_incremental_modules",[]))},
-            "last_build_successful": lb.get("build_successful") if lb else None,
-            "history_length": len(s.get("history",[]))}
+    project = s.get("project", {})
+    tests = s.get("tests", {})
+    coverage = s.get("coverage", {})
+    compilation = s.get("compilation", {})
+    last_build = s.get("gradle", {}).get("last_build")
+    gradle_hook = project.get("gradleHook")
+    return {
+        "project_discovered": project.get("status") == "complete",
+        "module_count": len(project.get("app_modules", [])),
+        "goal": s.get("goal", {}).get("description", "") or "(no goal set)",
+        "gradle_hook": gradle_hook,
+        "hooks": {
+            "docs_writer_required": True,
+            "build_health_required": True,
+            "build_health_ready": bool(gradle_hook),
+        },
+        "tests": {
+            "status": tests.get("status", "pending"),
+            "passed": tests.get("passed", 0),
+            "failed": tests.get("failed", 0),
+            "total": tests.get("total", 0),
+        },
+        "coverage": {
+            "status": coverage.get("status", "pending"),
+            "line_percent": coverage.get("line_percent"),
+        },
+        "compilation": {
+            "status": compilation.get("status", "pending"),
+            "non_incremental_count": len(
+                compilation.get("non_incremental_modules", [])
+            ),
+        },
+        "last_build_successful": (
+            last_build.get("build_successful") if last_build else None
+        ),
+        "history_length": len(s.get("history", [])),
+    }
 
 def main():
     if len(sys.argv)<2:

@@ -9,11 +9,11 @@ This page is the compact lookup guide for the public `kast` commands. It
 stays focused on the supported CLI surface rather than the internal daemon
 entrypoint.
 
-Note: The CLI binary is resolved with a small discovery cascade that prefers
-the system `PATH` by default. You can override or point at a local build using
+Note: If you use the packaged `kast` skill or the repo-local launcher resolver,
+it prefers the system `PATH` by default. You can override that lookup with
 `KAST_CLI_PATH` (explicit executable) or `KAST_SOURCE_ROOT` (local build
-outputs and optional auto-build when Java 21+ is available). See the Get
-started guide for copyable examples.
+outputs plus the minimal `:kast:writeWrapperScript` auto-build path when Java
+21+ is available). See the Get started guide for copyable examples.
 
 ## Global help and command syntax
 

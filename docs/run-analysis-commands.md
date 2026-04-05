@@ -12,11 +12,11 @@ starting from a human description of a class or property instead of a known
 file position, move to the [human-first agent
 guide](use-kast-from-an-llm-agent.md) first.
 
-Note: the `kast` binary resolution supports two environment variables that
-bring local builds or explicit paths into the discovery cascade: `KAST_CLI_PATH`
-(point at a specific executable) and `KAST_SOURCE_ROOT` (use local build
-outputs or trigger an auto-build when Java 21+ is available). See the Get
-started guide for examples.
+Note: If you use the packaged `kast` skill or the repo-local launcher resolver,
+you can bring local builds or explicit paths into the discovery cascade with
+`KAST_CLI_PATH` (point at a specific executable) and `KAST_SOURCE_ROOT` (use
+local build outputs or trigger `:kast:writeWrapperScript` when Java 21+ is
+available). See the Get started guide for examples.
 
 ## Choose inline options or a request file
 

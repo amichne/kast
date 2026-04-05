@@ -27,14 +27,14 @@ GRADLE_CMD="./gradlew"
 [ ! -f "./gradlew" ] && GRADLE_CMD="gradle"
 
 EXIT_CODE=0
-$GRADLE_CMD "$TASK_NAME" "${EXTRA_ARGS[@]}" --console=plain 2>&1 > "$LOG_FILE" || EXIT_CODE=$?
+$GRADLE_CMD "$TASK_NAME" "${EXTRA_ARGS[@]}" --console=plain > "$LOG_FILE" 2>&1 || EXIT_CODE=$?
 
 END_MS=$(python3 -c "import time; print(int(time.time()*1000))")
 DURATION_MS=$((END_MS - START_MS))
 
-TASKS_EXECUTED=$(grep -c "^> Task " "$LOG_FILE" 2>/dev/null || echo "0")
-TASKS_UP_TO_DATE=$(grep -c "UP-TO-DATE$" "$LOG_FILE" 2>/dev/null || echo "0")
-TASKS_FROM_CACHE=$(grep -c "FROM-CACHE$" "$LOG_FILE" 2>/dev/null || echo "0")
+TASKS_EXECUTED=$(grep -c "^> Task " "$LOG_FILE" 2>/dev/null || true)
+TASKS_UP_TO_DATE=$(grep -c "UP-TO-DATE$" "$LOG_FILE" 2>/dev/null || true)
+TASKS_FROM_CACHE=$(grep -c "FROM-CACHE$" "$LOG_FILE" 2>/dev/null || true)
 
 BUILD_SUCCESSFUL=false
 grep -q "BUILD SUCCESSFUL" "$LOG_FILE" 2>/dev/null && BUILD_SUCCESSFUL=true

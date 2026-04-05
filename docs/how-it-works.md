@@ -44,37 +44,42 @@ Kast is the right choice when:
 
 ## Architecture
 
-Kast has a client-server architecture designed for fast repeated use.
+Kast has a launcher-plus-daemon architecture designed for fast repeated use and
+portable packaging.
 
 ```
-┌─────────────┐     JSON-RPC      ┌──────────────────────────┐
-│   kast CLI  │ ────────────────► │   Standalone Daemon      │
-│  (client)   │  Unix domain      │   (backend-standalone)   │
-│             │ ◄──────────────── │                          │
-└─────────────┘    JSON result    └──────────────────────────┘
-                                           │
-                                           ▼
-                              ┌──────────────────────────┐
-                              │  Kotlin K2 Analysis API  │
-                              │  + Gradle workspace      │
-                              │  discovery               │
-                              └──────────────────────────┘
+┌──────────────────┐ exec ┌────────────────────────────┐ JSON-RPC ┌────────────────────────────┐
+│ `kast` launcher  │ ───► │ `kast-cli` or `kast` JVM  │ ───────► │ standalone daemon          │
+│ wrapper script   │      │ shell                     │          │ `analysis-server` +        │
+│                  │ ◄─── │ native client or fallback │ ◄─────── │ `backend-standalone`       │
+└──────────────────┘      └────────────────────────────┘  JSON    └────────────────────────────┘
+                                      │                    result
+                                      ▼
+                             ┌────────────────────────────┐
+                             │ `analysis-api` contract    │
+                             └────────────────────────────┘
 ```
 
-The system has four layers:
+The system has five main layers:
 
-### `kast` CLI
+### `kast`
 
-The command you run. It manages the daemon lifecycle, parses your arguments,
-sends requests over a Unix domain socket, and prints JSON results to stdout.
-The CLI is the only part you interact with directly.
+The launcher you run. In the portable layout it prefers the bundled native
+client at `bin/kast`. When only `runtime-libs` are available, it falls back to
+the JVM shell entrypoint. The `kast` module also owns the JVM-only
+`internal daemon-run` implementation and the wrapper packaging tasks.
 
-The client binary resolution follows a small discovery cascade so that users
-can override or point at local builds when iterating on the project. By
-default the system `PATH` is preferred; you can also set `KAST_CLI_PATH` to an
-explicit executable, or set `KAST_SOURCE_ROOT` to point the resolver at local
-build outputs (or enable an auto-build when Java 21+ is available). See the
-Get started guide for examples.
+The packaged `kast` skill uses a small resolver when it needs to locate this
+launcher from automation. It prefers the system `PATH`, but you can point it at
+an explicit executable with `KAST_CLI_PATH` or at a source checkout with
+`KAST_SOURCE_ROOT`. See the Get started guide for copyable examples.
+
+### `kast-cli`
+
+The shared operator-facing control plane. It parses arguments, manages daemon
+lifecycle commands, sends JSON-RPC requests over the Unix domain socket, prints
+JSON results, and ships as the native client. The JVM shell reuses the same
+implementation so native and JVM launches stay aligned.
 
 ### `analysis-server`
 
@@ -92,8 +97,9 @@ advertising live.
 ### `analysis-api`
 
 The shared contract. Serializable request and response models, capability
-definitions, error types, and edit-plan validation. This module ensures the
-CLI, server, and backend all speak the same language.
+definitions, descriptor discovery, standalone option parsing, error types, and
+edit-plan validation live here. This module ensures the launcher, client,
+server, and backend all speak the same language.
 
 ## Why a daemon?
 
@@ -149,8 +155,8 @@ advertises.
   `truncation` metadata when you need to know whether the tree is complete.
 - **One workspace per daemon.** Each daemon is attached to a single workspace
   root. Run multiple daemons for multiple workspaces.
-- **Java 21 required.** The daemon runs on the JVM and needs Java 21 or
-  newer.
+- **Java 21 required for daemon-backed work.** The launcher can be native, but
+  the daemon still runs on the JVM and needs Java 21 or newer.
 - **Unix domain sockets.** The default transport uses local sockets, not
   network connections. This is by design for security and performance.
 

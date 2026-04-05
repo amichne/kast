@@ -11,19 +11,25 @@ and a clear way to confirm the runtime is healthy. If you use an agent
 workflow, the same install also gives you `kast-skilled` so you can link the
 packaged `kast` skill into a workspace without copying it.
 
+The published install gives you a launcher plus a bundled native client.
+Daemon-backed commands still rely on the JVM runtime, so Java 21 remains
+required.
+
 ## Before you begin
 
 You need a small amount of local setup before the first command can succeed.
 
 - Keep Java 21 or newer available through `JAVA_HOME` or your shell `PATH`.
+  The launcher is native-first, but the daemon still runs on the JVM.
 - Know the absolute path to the Kotlin workspace you want to analyze.
-- Optional: You can influence how the `kast` CLI binary is resolved at runtime:
-  - `KAST_CLI_PATH` — if set to an executable path, the resolver will prefer
-    it when locating the `kast` binary.
+- Optional: If you use the packaged `kast` skill or the repo-local launcher
+  resolver, you can influence how it finds `kast`:
+  - `KAST_CLI_PATH` — if set to an executable path, the resolver prefers it
+    when locating the `kast` launcher or binary.
   - `KAST_SOURCE_ROOT` — when set to the repository source root, the resolver
     may use local build outputs, for example `kast/build/scripts/kast` or
-    `dist/kast/kast`, and can attempt an auto-build via `./gradlew` if Java
-    21+ is available.
+    `dist/kast/kast`, and can attempt `./gradlew :kast:writeWrapperScript` when
+    Java 21+ is available.
 
 ## Install the published CLI
 
@@ -48,7 +54,8 @@ from your shell.
 
 !!! note
     The installer validates that Java 21 or newer is available before it
-    unpacks the release.
+    unpacks the release. The portable bundle includes the launcher, the bundled
+    native client, and the JVM runtime libs together.
 
 ## Optional: link the packaged `kast` skill into a workspace
 
@@ -206,20 +213,21 @@ mistakes.
   force a rescan. Add `--file-paths=...` when you want a targeted refresh.
 - If you want the shell-specific completion help pages, run
   `kast help completion`.
-- If `kast` is not found on your PATH, you can point the resolver directly at
-  a binary using `KAST_CLI_PATH`:
+- If the packaged skill or repo-local resolver cannot find `kast` on your
+  `PATH`, you can point it directly at an explicit launcher or binary with
+  `KAST_CLI_PATH`:
 
    ```bash
    export KAST_CLI_PATH=/absolute/path/to/kast
    kast workspace status --workspace-root=/absolute/path/to/workspace
    ```
 
-- If you have a local checkout of the repository and want `kast` to use the
-  locally-built CLI, or build it automatically, set `KAST_SOURCE_ROOT` to the
-  repo root. The resolver will look for expected build outputs and may run a
-  minimal Gradle step to produce `kast/build/scripts/kast` when Java 21+ is
-  available. If you want the repo-local packaged CLI under `dist/kast`, run
-  `./build.sh` from the repo root first:
+- If you have a local checkout of the repository and want the packaged skill or
+  repo-local resolver to use a locally-built launcher, set `KAST_SOURCE_ROOT`
+  to the repo root. The resolver looks for `kast/build/scripts/kast` first,
+  then `dist/kast/kast`, and may run `./gradlew :kast:writeWrapperScript` when
+  Java 21+ is available. If you want the repo-local portable layout under
+  `dist/kast`, run `./build.sh` from the repo root first:
 
    ```bash
    export KAST_SOURCE_ROOT=/absolute/path/to/kast/repo

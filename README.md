@@ -1,16 +1,19 @@
 # Kast
 
-Kast is a Kotlin analysis tool for real Kotlin workspaces. The current right
-way to use it is the repo-local `kast` command.
+Kast is a Kotlin analysis tool for real Kotlin workspaces. The current
+supported operator path is the repo-local `kast` command.
 
 The repo is organized as a Gradle multi-module build:
 
-- `analysis-api`: shared contract, models, errors, and edit validation
-- `kast`: CLI control plane for workspace status, ensure, daemon
-    lifecycle, and request dispatch
+- `analysis-api`: shared contract, JSON-RPC models, descriptor discovery,
+  standalone options, errors, and edit validation
+- `kast-cli`: shared operator-facing CLI control plane that builds as the
+  native client and also backs the JVM shell
+- `kast`: wrapper packaging, portable distribution layout, and the JVM-only
+  shell for `internal daemon-run`
 - `analysis-server`: request dispatch and daemon transport plumbing
 - `backend-standalone`: standalone runtime entrypoint plus Kotlin Analysis API
-    integration
+  integration
 - `shared-testing`: fake backend fixtures used by server and backend tests
 
 ## Install the published CLI
@@ -26,9 +29,9 @@ That installs `kast` into your user-local bin directory and adds that directory
 to your shell `PATH` when needed. If you already have this repository checked
 out, you can run `./install.sh` from the repo root instead.
 
-> **Note:** The published bundle still expects Java 21 or newer on your path or
-> under `JAVA_HOME`. The installer validates that before it unpacks the
-> release.
+> **Note:** The published bundle installs a launcher plus a colocated native
+> client under `bin/kast`. Daemon-backed commands still launch the JVM backend
+> from bundled `runtime-libs`, so Java 21 or newer remains required.
 
 The installer also registers `kast-skilled`. Run it from a workspace root to
 create a `kast` skill symlink without copying the skill contents:
@@ -45,10 +48,11 @@ to the installed release copy unless you override it.
 
 ## Local/dev builds
 
-For local iteration, use `build.sh` from the repo root. It builds the local
-CLI package into `dist/kast`, copies the portable zip to `dist/kast.zip`, and
-can install the result as a named side-by-side dev instance when the build
-finishes.
+For local iteration, use `build.sh` from the repo root. It stages the portable
+layout under `dist/kast`, including the `kast` launcher, the native client in
+`dist/kast/bin/kast`, and the JVM fallback runtime libs. It also copies the
+portable zip to `dist/kast.zip` and can install the result as a named
+side-by-side dev instance when the build finishes.
 
 ```bash
 ./build.sh
@@ -146,9 +150,17 @@ Run `kast help completion` if you want the shell-specific command pages.
 
 ## Build from source
 
-If you are changing Kast itself, build the local CLI package from the repo
-root:
+If you are changing Kast itself, `./build.sh` stages the full portable layout
+from the repo root:
 
 ```bash
 ./build.sh
 ```
+
+If you only need the shared native client while working on `kast-cli`, run:
+
+```bash
+./gradlew :kast-cli:nativeCompile
+```
+
+The executable is written to `kast-cli/build/native/nativeCompile/kast`.

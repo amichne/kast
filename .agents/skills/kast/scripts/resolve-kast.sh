@@ -8,9 +8,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(git -C "${SCRIPT_DIR}" rev-parse --show-toplevel 2>/dev/null || echo "${SCRIPT_DIR}")"
 
-# Default to empty; only populated inside the KAST_SOURCE_ROOT block below.
-GRADLE_SCRIPT=""
-DIST_SCRIPT=""
+# Use the explicit source root when provided, otherwise fall back to the
+# repository that contains this skill.
+SOURCE_ROOT="${KAST_SOURCE_ROOT:-${PROJECT_ROOT}}"
+GRADLE_SCRIPT="${SOURCE_ROOT}/kast/build/scripts/kast"
+DIST_SCRIPT="${SOURCE_ROOT}/dist/kast/kast"
 
 # 1. PATH — preferred if already installed
 if command -v kast >/dev/null 2>&1; then
@@ -24,26 +26,21 @@ if [ -n "${KAST_CLI_PATH:-}" ] && [ -x "${KAST_CLI_PATH}" ]; then
     exit 0
 fi
 
-# 3. Check for locally built versions if we have KAST_SOURCE_ROOT set (e.g. in CI or if the user has set it manually)
-# This should support those compiling source code, allowing them to iterate without requiring a full install.
-# We check the expected Gradle output location first, then the dist location in case someone built it with `make cli` or similar.
-if [ -n "${KAST_SOURCE_ROOT:-}" ]; then
-    GRADLE_SCRIPT="${KAST_SOURCE_ROOT}/kast/build/scripts/kast"
-    DIST_SCRIPT="${KAST_SOURCE_ROOT}/dist/kast/kast"
+# 3. Check for locally built versions from the explicit source root or the
+# repo that contains this skill. This supports source iteration without a full
+# install. Check the Gradle wrapper output first, then the portable dist layout.
+if [ -x "${GRADLE_SCRIPT}" ]; then
+    printf '%s\n' "${GRADLE_SCRIPT}"
+    exit 0
+fi
 
-    if [ -x "${GRADLE_SCRIPT}" ]; then
-        printf '%s\n' "${GRADLE_SCRIPT}"
-        exit 0
-    fi
-
-    if [ -x "${DIST_SCRIPT}" ]; then
-        printf '%s\n' "${DIST_SCRIPT}"
-        exit 0
-    fi
+if [ -x "${DIST_SCRIPT}" ]; then
+    printf '%s\n' "${DIST_SCRIPT}"
+    exit 0
 fi
 
 # 4. Auto-build fallback: requires Java 21+ and gradlew
-if [ -x "${PROJECT_ROOT}/gradlew" ]; then
+if [ -x "${SOURCE_ROOT}/gradlew" ]; then
     # Check for Java 21+
     JAVA_BIN=""
     if [ -n "${JAVA_HOME:-}" ] && [ -x "${JAVA_HOME}/bin/java" ]; then
@@ -58,7 +55,7 @@ if [ -x "${PROJECT_ROOT}/gradlew" ]; then
         MAJOR="${SPEC_VERSION%%.*}"
         if [ -n "${MAJOR}" ] && [ "${MAJOR}" -ge 21 ] 2>/dev/null; then
             printf 'kast not found; building from source (this may take a minute)...\n' >&2
-            (cd "${PROJECT_ROOT}" && ./gradlew :kast:writeWrapperScript --quiet --no-configuration-cache 2>&1) >&2 || true
+            (cd "${SOURCE_ROOT}" && ./gradlew :kast:writeWrapperScript --quiet --no-configuration-cache 2>&1) >&2 || true
             if [ -x "${GRADLE_SCRIPT}" ]; then
                 printf '%s\n' "${GRADLE_SCRIPT}"
                 exit 0
@@ -74,12 +71,12 @@ fi
 
 printf 'kast CLI not found. Tried:\n' >&2
 printf '  1. PATH\n' >&2
-printf '  2. %s\n' "${GRADLE_SCRIPT:-<KAST_SOURCE_ROOT not set — skipped>}" >&2
-printf '  3. %s\n' "${DIST_SCRIPT:-<KAST_SOURCE_ROOT not set — skipped>}" >&2
+printf '  2. %s\n' "${GRADLE_SCRIPT}" >&2
+printf '  3. %s\n' "${DIST_SCRIPT}" >&2
 printf '  4. Auto-build via ./gradlew :kast:writeWrapperScript\n' >&2
 printf '\n' >&2
 printf 'Install options:\n' >&2
 printf '  ./install.sh                              # install from GitHub release\n' >&2
-printf '  make cli                                  # build dist/kast/kast locally\n' >&2
+printf '  ./build.sh                                # build dist/kast/kast locally\n' >&2
 printf '  ./gradlew :kast:writeWrapperScript        # build kast/build/scripts/kast\n' >&2
 exit 1

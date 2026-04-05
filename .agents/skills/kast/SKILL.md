@@ -405,9 +405,10 @@ When a build fails or a file has unknown errors:
 | Get compile errors for a file | kast `diagnostics` |
 | Rename a symbol safely | `kast-rename.sh` |
 | Find text in comments or strings | Grep — kast does not search text |
-| Build the project | `kotlin-gradle-loop` skill / `./gradlew build` |
-| Run tests | `kotlin-gradle-loop` skill / `./gradlew test` |
+| Build the project | `kotlin-gradle-loop` skill / configured `project.gradleHook` |
+| Run tests | `kotlin-gradle-loop` skill / targeted Gradle tasks plus final `gradleHook` |
 
 kast = semantic intelligence (what is this symbol, who calls it, where is it
 used, rename it).
-kotlin-gradle-loop = build and test iteration (does it compile, do tests pass).
+kotlin-gradle-loop = build, test, and final build-health validation through the
+configured `gradleHook`.

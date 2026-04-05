@@ -11,12 +11,14 @@ IntelliJ IDEA, so it understands your code the way the IDE does — including
 type inference, inheritance, and cross-module dependencies — but without the
 graphical interface.
 
-The current supported operator path is the repo-local `kast` command. These
-pages focus on the flow that works today: install the CLI, ensure a workspace
-runtime, run analysis commands, and stop the runtime when you are done. The
-installer can also register `kast-skilled` for the packaged skill bridge and
-offer to wire Bash or Zsh completions into your shell init file while it sets
-up the launchers.
+The current supported operator path is the repo-local `kast` command. The
+published bundle installs a launcher that prefers the bundled native client and
+falls back to the JVM shell with colocated `runtime-libs`. These pages focus on
+the flow that works today: install the CLI, ensure a workspace runtime, run
+analysis commands, and stop the runtime when you are done. The installer can
+also register `kast-skilled` for the packaged skill bridge and offer to wire
+Bash or Zsh completions into your shell init file while it sets up the
+launchers.
 
 !!! note
     The current supported flow includes bounded `call hierarchy` traversal
@@ -97,7 +99,10 @@ relearning the interface.
   `--request-file`.
 - Expect successful results as machine-readable JSON on stdout.
 - Expect daemon lifecycle notes, when present, on stderr.
-- Keep Java 21 or newer available on your path or under `JAVA_HOME`.
+- The installed launcher prefers the bundled native client and falls back to
+  the JVM shell when only `runtime-libs` are present.
+- Keep Java 21 or newer available on your path or under `JAVA_HOME` because the
+  workspace daemon still runs on the JVM.
 - Let the installer enable Bash or Zsh completions if you want tab completion
   immediately.
 
@@ -108,6 +113,8 @@ changes.
 
 1. Install the published CLI with the copyable installer or `./install.sh`
    from a checkout, and enable shell completion if the installer offers it.
+   The bundle stages the launcher, the native client, and the JVM fallback
+   runtime libs together.
 2. If you plan to use the packaged skill, run `kast-skilled` once from the
    workspace root to create the symlinked `kast` skill directory.
 3. Open `kast --help` to confirm the grouped command view and your first

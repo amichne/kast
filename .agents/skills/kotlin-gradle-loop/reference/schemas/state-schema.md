@@ -1,8 +1,8 @@
 # Workflow State Schema
 
 The workflow state is a single JSON file that tracks a Kotlin/Gradle project's
-structure, the agent's current goal, action history, and the latest results from
-Gradle builds, JUnit tests, JaCoCo coverage, and Kotlin build reports.
+structure, the agent's current goal, action history, and the latest results
+from Gradle builds, JUnit tests, JaCoCo coverage, and Kotlin build reports.
 
 ## File Location
 
@@ -10,11 +10,23 @@ Gradle builds, JUnit tests, JaCoCo coverage, and Kotlin build reports.
 
 The `.agent-workflow/` directory also holds log files from script executions.
 
+## Completion hooks
+
+The repo-local `kotlin-gradle-loop/hooks.json` file defines two mandatory
+completion hooks:
+
+- `docs-writer-completion`: invoke `docs-writer` whenever Markdown changes.
+- `build-health-completion`: run `scripts/gradle/run_gradle_hook.sh`, which
+  reads `project.gradleHook` from `state.json`.
+
+`project.gradleHook` is therefore a required discovery output for every
+project that uses this skill.
+
 ## Schema
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "project_root": "/absolute/path/to/project",
   "created_at": "ISO-8601",
   "updated_at": "ISO-8601",
@@ -34,6 +46,7 @@ The `.agent-workflow/` directory also holds log files from script executions.
     "jdk_version": 21,
     "kotlin_version": "2.0.0",
     "gradle_version": "8.10",
+    "gradleHook": "check",
     "has_buildsrc": true,
     "has_included_builds": false,
     "source_sets": {
@@ -121,6 +134,8 @@ The `.agent-workflow/` directory also holds log files from script executions.
 ## Status Fields
 
 - `project.status`: Whether project discovery is done.
+- `project.gradleHook`: The single existing Gradle task that the build-health
+  hook must run before the agent finishes.
 - `tests.status`: `pending` (never run), `passing` (all pass), `failing` (some fail), `error` (couldn't run).
 - `coverage.status`: `pending` (never run), `measured` (report parsed), `error` (couldn't generate).
 - `compilation.status`: `pending` (never analyzed), `healthy` (all incremental), `degraded` (some non-incremental), `error`.
