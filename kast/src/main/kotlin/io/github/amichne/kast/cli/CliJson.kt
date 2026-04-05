@@ -33,6 +33,7 @@ internal fun writeCliJson(
         is RenameResult -> json.encodeToString(value)
         is ApplyEditsResult -> json.encodeToString(value)
         is RefreshResult -> json.encodeToString(value)
+        is io.github.amichne.kast.api.CallHierarchyResult -> json.encodeToString(value)
         is CliErrorResponse -> json.encodeToString(value)
         else -> error("Unsupported CLI output type: ${value::class.java.name}")
     }
