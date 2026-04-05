@@ -15,10 +15,10 @@ The current supported operator path is the repo-local `kast` command. The
 published bundle installs a launcher that prefers the bundled native client and
 falls back to the JVM shell with colocated `runtime-libs`. These pages focus on
 the flow that works today: install the CLI, ensure a workspace runtime, run
-analysis commands, and stop the runtime when you are done. The installer can
-also register `kast-skilled` for the packaged skill bridge and offer to wire
-Bash or Zsh completions into your shell init file while it sets up the
-launchers.
+analysis commands, and stop the runtime when you are done. The same `kast` CLI
+can also install the packaged skill into a workspace, and the installer can
+offer to wire Bash or Zsh completions into your shell init file while it sets
+up the launcher.
 
 !!! note
     The current supported flow includes bounded `call hierarchy` traversal
@@ -115,8 +115,8 @@ changes.
    from a checkout, and enable shell completion if the installer offers it.
    The bundle stages the launcher, the native client, and the JVM fallback
    runtime libs together.
-2. If you plan to use the packaged skill, run `kast-skilled` once from the
-   workspace root to install the repository-local `kast` skill directory.
+2. If you plan to use the packaged skill, run `kast install skill` once from
+   the workspace root to install the repository-local `kast` skill directory.
 3. Open `kast --help` to confirm the grouped command view and your first
    completion-enabled shell.
 4. Start or reuse a workspace runtime with `kast workspace ensure`.

@@ -595,7 +595,6 @@ main() {
   local release_dir="${install_root}/releases/${release_tag}/${platform_id}"
   local current_link="${install_root}/current"
   local bin_link="${bin_dir}/kast"
-  local skill_bin_link="${bin_dir}/kast-skilled"
 
   log_section "Install files"
   extract_zip_archive "$archive_path" "$staging_dir"
@@ -607,10 +606,8 @@ main() {
 
   [[ -f "${release_dir}/kast" ]] || die "Installed archive did not contain the kast launcher"
   [[ -f "${release_dir}/bin/kast" ]] || die "Installed archive did not contain the kast native binary"
-  [[ -f "${release_dir}/scripts/install-kast-skilled.sh" ]] || die "Installed archive did not contain the kast skill installer"
-  [[ -d "${release_dir}/share/skills/kast" ]] || die "Installed archive did not contain the packaged kast skill"
 
-  chmod +x "${release_dir}/kast" "${release_dir}/bin/kast" "${release_dir}/scripts/install-kast-skilled.sh"
+  chmod +x "${release_dir}/kast" "${release_dir}/bin/kast"
   write_install_metadata \
     "${release_dir}/.install-metadata.json" \
     "$release_repo" \
@@ -627,14 +624,6 @@ set -euo pipefail
 exec "${install_root}/current/kast" "\$@"
 EOF
   chmod +x "$bin_link"
-
-  cat >"$skill_bin_link" <<EOF
-#!/usr/bin/env bash
-set -euo pipefail
-export KAST_SKILL_PATH="\${KAST_SKILL_PATH:-${install_root}/current/share/skills/kast}"
-exec "${install_root}/current/scripts/install-kast-skilled.sh" "\$@"
-EOF
-  chmod +x "$skill_bin_link"
   log_success "Installed ${archive_name} into ${release_dir}"
 
   log_section "Shell setup"
@@ -643,15 +632,14 @@ EOF
 
   log_section "Ready"
   log_success "Launcher path: ${bin_link}"
-  log_success "Skill launcher path: ${skill_bin_link}"
   if path_contains "$bin_dir"; then
     log_step "Try: kast --help"
-    log_step "Then run: kast-skilled from your workspace root to copy the packaged skill"
+    log_step "If you use the packaged skill, run: kast install skill from your workspace root"
     log_step "Then: kast workspace ensure --workspace-root=/absolute/path/to/workspace"
   else
     log_note "Export PATH=\"${bin_dir}:\$PATH\""
     log_note "Then run: kast --help"
-    log_note "Then run: kast-skilled from your workspace root to copy the packaged skill"
+    log_note "If you use the packaged skill, run: kast install skill from your workspace root"
     log_note "Then run: kast workspace ensure --workspace-root=/absolute/path/to/workspace"
   fi
 }

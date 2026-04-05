@@ -11,11 +11,11 @@ lookup that needs explicit CLI control. The public golden path stays
 human-first. This page explains the lower-level scaffolding the skill uses
 under the hood.
 
-Run `kast-skilled` once from the workspace root before you follow the examples
-here. It installs a repository-local copy of the packaged `kast` skill, so the
-examples can use that local skill path directly. The copied skill tree includes
-a `.kast-version` marker that stays aligned with the CLI version that
-installed it.
+Run `kast install skill` once from the workspace root before you follow the
+examples here. It installs a repository-local copy of the packaged `kast`
+skill, so the examples can use that local skill path directly. The copied
+skill tree includes a `.kast-version` marker that stays aligned with the CLI
+version that installed it.
 
 !!! note
     The packaged skill can run `call hierarchy` after `symbol resolve`

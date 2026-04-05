@@ -8,8 +8,8 @@ icon: lucide/play
 This guide gets you from a fresh shell to a ready workspace runtime. When you
 finish, you will have `kast` on your path, a daemon attached to one workspace,
 and a clear way to confirm the runtime is healthy. If you use an agent
-workflow, the same install also gives you `kast-skilled` so you can install the
-packaged `kast` skill into a workspace as a version-matched local copy.
+workflow, the same CLI can also install the packaged `kast` skill into a
+workspace through `kast install skill` as a version-matched local copy.
 
 The published install gives you a launcher plus a bundled native client.
 Daemon-backed commands still rely on the JVM runtime, so Java 21 remains
@@ -59,31 +59,33 @@ from your shell.
 
 ## Optional: install the packaged `kast` skill into a workspace
 
-If you use an agent that loads repository-local skills, run `kast-skilled`
-from the workspace root after you install the CLI. The command copies the
-packaged skill into a repository-local directory and writes a `.kast-version`
-marker so rerunning the same CLI version can skip a no-op install.
+If you use an agent that loads repository-local skills, run
+`kast install skill` from the workspace root after you install the CLI. The
+command copies the bundled skill into a repository-local directory and writes
+a `.kast-version` marker so rerunning the same CLI version can skip a no-op
+install.
 
 1. From the workspace root, run:
 
    ```bash
-   kast-skilled
+   kast install skill
    ```
 
-2. Confirm the prompt before the files are copied.
-
-3. Let the command choose the default location from the directories already
+2. Let the command choose the default location from the directories already
    present in the current directory:
 
    - `.agents/skills/kast`
    - `.github/skills/kast`
    - `.claude/skills/kast`
 
-4. If you need a non-default path or a non-interactive run, pass explicit
-   options:
+3. If the same CLI version is already installed in the selected target, read
+   the JSON result and confirm that `skipped` is `true`.
+
+4. If you need a non-default path or want to replace an existing install,
+   pass explicit options:
 
    ```bash
-   kast-skilled --target-dir /absolute/path/to/skills --yes
+   kast install skill --target-dir=/absolute/path/to/skills --yes=true
    ```
 
 ## Optional: enable shell completion
@@ -201,9 +203,8 @@ mistakes.
 
 - If the installer fails immediately, confirm that Java 21 or newer is
   installed and your operating system is supported by the published bundle.
-- If `kast-skilled` cannot find the packaged skill root, confirm that the
-  published install completed. If you override the packaged skill source for
-  the shell launcher, point `KAST_SKILL_PATH` at a real `kast` skill directory.
+- If `kast install skill` reports that the target already exists, rerun with
+  `--yes=true` when you intend to replace that install.
 - If Kast reports a usage error, rewrite the command so every option uses the
   `--key=value` form.
 - If Kast cannot find the workspace or a file, convert the path to an absolute
