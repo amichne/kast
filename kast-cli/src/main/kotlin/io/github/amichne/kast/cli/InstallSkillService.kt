@@ -58,7 +58,7 @@ internal class InstallSkillService(
     }
 
     private fun validateName(name: String) {
-        if (!name.matches(Regex("[A-Za-z0-9._-]+"))) {
+        if (!name.matches(Regex(
             throw CliFailure(
                 code = "INSTALL_SKILL_ERROR",
                 message = "Skill name may contain only letters, digits, dot, underscore, and dash",
