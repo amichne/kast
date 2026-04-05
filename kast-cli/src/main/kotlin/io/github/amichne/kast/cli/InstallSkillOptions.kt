@@ -4,6 +4,6 @@ import java.nio.file.Path
 
 internal data class InstallSkillOptions(
     val targetDir: Path?,
-    val linkName: String,
+    val name: String,
     val force: Boolean,
 )

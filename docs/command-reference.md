@@ -34,6 +34,16 @@ When Kast detects an interactive terminal, the help pages use ANSI color. If
 you need color in another context, set `CLICOLOR_FORCE=1` before you run the
 help command.
 
+## CLI management commands
+
+Use these commands when you are installing the published bundle or copying the
+bundled `kast` skill into a workspace.
+
+| Command | Purpose | Key options | Notes |
+| --- | --- | --- | --- |
+| `install` | Install a portable Kast archive as a named local instance | `--archive`, optional `--instance`, `--bin-dir`, `--instances-root` | Used by local and dev packaging flows rather than the published installer script |
+| `install skill` | Install the bundled `kast` skill into the current workspace | Optional `--target-dir`, `--name`, `--yes=true` | Defaults to `.agents/skills`, `.github/skills`, or `.claude/skills` based on directories already present; matching versions skip safely |
+
 ## Workspace lifecycle commands
 
 Use these commands to inspect, start, reuse, and stop the standalone daemon
