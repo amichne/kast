@@ -55,6 +55,14 @@ internal class DefaultCliCommandExecutor(
                 )
             }
 
+            is CliCommand.WorkspaceRefresh -> {
+                val result = cliService.workspaceRefresh(command.options, command.query)
+                CliExecutionResult(
+                    output = CliOutput.JsonValue(result.payload),
+                    daemonNote = daemonNoteForRuntime(result.runtime),
+                )
+            }
+
             is CliCommand.DaemonStart -> {
                 val result = cliService.daemonStart(command.options)
                 CliExecutionResult(
@@ -89,6 +97,14 @@ internal class DefaultCliCommandExecutor(
 
             is CliCommand.FindReferences -> {
                 val result = cliService.findReferences(command.options, command.query)
+                CliExecutionResult(
+                    output = CliOutput.JsonValue(result.payload),
+                    daemonNote = daemonNoteForRuntime(result.runtime),
+                )
+            }
+
+            is CliCommand.CallHierarchy -> {
+                val result = cliService.callHierarchy(command.options, command.query)
                 CliExecutionResult(
                     output = CliOutput.JsonValue(result.payload),
                     daemonNote = daemonNoteForRuntime(result.runtime),

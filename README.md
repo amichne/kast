@@ -88,9 +88,26 @@ kast \
   --workspace-root=/absolute/path/to/workspace
 
 kast \
+  call hierarchy \
+  --workspace-root=/absolute/path/to/workspace \
+  --file-path=/absolute/path/to/src/main/kotlin/com/example/App.kt \
+  --offset=123 \
+  --direction=incoming
+
+kast \
   diagnostics \
   --workspace-root=/absolute/path/to/workspace \
   --request-file=/absolute/path/to/query.json
+```
+
+Kast refreshes `edits apply` results immediately and watches source roots for
+most external `.kt` file changes. If you need to force recovery after a missed
+change, run:
+
+```bash
+kast \
+  workspace refresh \
+  --workspace-root=/absolute/path/to/workspace
 ```
 
 Stop the daemon when you need to:
@@ -103,7 +120,8 @@ kast \
 
 Successful commands print JSON on stdout. Daemon lifecycle notes go to stderr.
 
-The main remaining production gap is `callHierarchy`.
+`call hierarchy` is available through the public CLI and returns bounded trees
+with traversal stats plus truncation metadata.
 
 ## Optional: enable shell completion
 

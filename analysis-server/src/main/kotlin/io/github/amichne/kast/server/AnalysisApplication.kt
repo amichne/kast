@@ -11,6 +11,7 @@ import io.github.amichne.kast.api.DiagnosticsResult
 import io.github.amichne.kast.api.MutationCapability
 import io.github.amichne.kast.api.PageInfo
 import io.github.amichne.kast.api.ReadCapability
+import io.github.amichne.kast.api.RefreshQuery
 import io.github.amichne.kast.api.ReferencesQuery
 import io.github.amichne.kast.api.ReferencesResult
 import io.github.amichne.kast.api.RenameQuery
@@ -119,8 +120,18 @@ fun Application.kastModule(
                 requireReadCapability(backend, ReadCapability.CALL_HIERARCHY)
                 val query = call.receive<CallHierarchyQuery>()
                 validateFilePosition(query.position.filePath, query.position.offset)
-                if (query.depth < 1) {
-                    throw ValidationException("Call hierarchy depth must be greater than zero")
+                if (query.depth < 0) {
+                    throw ValidationException("Call hierarchy depth must be greater than or equal to zero")
+                }
+                if (query.maxTotalCalls < 1) {
+                    throw ValidationException("Call hierarchy maxTotalCalls must be greater than zero")
+                }
+                if (query.maxChildrenPerNode < 1) {
+                    throw ValidationException("Call hierarchy maxChildrenPerNode must be greater than zero")
+                }
+                val timeoutMillis = query.timeoutMillis
+                if (timeoutMillis != null && timeoutMillis < 1) {
+                    throw ValidationException("Call hierarchy timeoutMillis must be greater than zero when provided")
                 }
                 val response = execute(config) {
                     backend.callHierarchy(query)
@@ -162,6 +173,17 @@ fun Application.kastModule(
                 val query = call.receive<ApplyEditsQuery>()
                 val response = execute(config) {
                     backend.applyEdits(query)
+                }
+                call.respond(response)
+            }
+
+            post("/workspace/refresh") {
+                call.authorize(config)
+                requireMutationCapability(backend, MutationCapability.REFRESH_WORKSPACE)
+                val query = call.receive<RefreshQuery>()
+                query.filePaths.forEach(::validateAbsoluteFilePath)
+                val response = execute(config) {
+                    backend.refresh(query)
                 }
                 call.respond(response)
             }

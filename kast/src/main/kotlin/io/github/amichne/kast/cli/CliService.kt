@@ -3,11 +3,15 @@ package io.github.amichne.kast.cli
 import io.github.amichne.kast.api.ApplyEditsQuery
 import io.github.amichne.kast.api.ApplyEditsResult
 import io.github.amichne.kast.api.BackendCapabilities
+import io.github.amichne.kast.api.CallHierarchyQuery
+import io.github.amichne.kast.api.CallHierarchyResult
 import io.github.amichne.kast.api.CapabilityNotSupportedException
 import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.DiagnosticsResult
 import io.github.amichne.kast.api.MutationCapability
 import io.github.amichne.kast.api.ReadCapability
+import io.github.amichne.kast.api.RefreshQuery
+import io.github.amichne.kast.api.RefreshResult
 import io.github.amichne.kast.api.ReferencesQuery
 import io.github.amichne.kast.api.ReferencesResult
 import io.github.amichne.kast.api.RenameQuery
@@ -30,6 +34,18 @@ internal class CliService(
 
     suspend fun workspaceEnsure(options: RuntimeCommandOptions): WorkspaceEnsureResult =
         runtimeManager.workspaceEnsure(options)
+
+    suspend fun workspaceRefresh(
+        options: RuntimeCommandOptions,
+        query: RefreshQuery,
+    ): RuntimeAttachedResult<RefreshResult> {
+        val runtime = runtimeManager.ensureRuntime(options)
+        requireMutationCapability(runtime.selected, MutationCapability.REFRESH_WORKSPACE)
+        return RuntimeAttachedResult(
+            payload = rpcClient.post(runtime.selected.descriptor, "workspace/refresh", query),
+            runtime = runtime.selected,
+        )
+    }
 
     suspend fun daemonStart(options: RuntimeCommandOptions): WorkspaceEnsureResult =
         runtimeManager.daemonStart(options)
@@ -68,6 +84,18 @@ internal class CliService(
         requireReadCapability(runtime.selected, ReadCapability.FIND_REFERENCES)
         return RuntimeAttachedResult(
             payload = rpcClient.post(runtime.selected.descriptor, "references", query),
+            runtime = runtime.selected,
+        )
+    }
+
+    suspend fun callHierarchy(
+        options: RuntimeCommandOptions,
+        query: CallHierarchyQuery,
+    ): RuntimeAttachedResult<CallHierarchyResult> {
+        val runtime = runtimeManager.ensureRuntime(options)
+        requireReadCapability(runtime.selected, ReadCapability.CALL_HIERARCHY)
+        return RuntimeAttachedResult(
+            payload = rpcClient.post(runtime.selected.descriptor, "call-hierarchy", query),
             runtime = runtime.selected,
         )
     }

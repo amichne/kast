@@ -1,6 +1,8 @@
 package io.github.amichne.kast.testing
 
 import io.github.amichne.kast.api.AnalysisBackend
+import io.github.amichne.kast.api.CallDirection
+import io.github.amichne.kast.api.CallHierarchyQuery
 import io.github.amichne.kast.api.DiagnosticSeverity
 import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.FileHashing
@@ -44,6 +46,14 @@ data class AnalysisBackendContractFixture(
 
     val diagnosticsQuery: DiagnosticsQuery = DiagnosticsQuery(
         filePaths = listOf(normalizePath(brokenFile)),
+    )
+
+    val callHierarchyQuery: CallHierarchyQuery = CallHierarchyQuery(
+        position = symbolQuery.position,
+        direction = CallDirection.INCOMING,
+        depth = 1,
+        maxTotalCalls = 16,
+        maxChildrenPerNode = 16,
     )
 
     val renameQuery: RenameQuery = RenameQuery(
@@ -169,6 +179,7 @@ object AnalysisBackendContractAssertions {
     ) {
         assertResolveSymbol(backend, fixture)
         assertFindReferences(backend, fixture)
+        assertCallHierarchy(backend, fixture)
         assertRename(backend, fixture)
     }
 
@@ -214,6 +225,28 @@ object AnalysisBackendContractAssertions {
         expectEquals(DiagnosticSeverity.ERROR, diagnostic.severity, "diagnostic severity")
         expectEquals(fixture.brokenFile.toString(), diagnostic.location.filePath, "diagnostic file")
         expectEquals(fixture.brokenPreview, diagnostic.location.preview, "diagnostic preview")
+    }
+
+    private suspend fun assertCallHierarchy(
+        backend: AnalysisBackend,
+        fixture: AnalysisBackendContractFixture,
+    ) {
+        val result = backend.callHierarchy(fixture.callHierarchyQuery)
+
+        expectEquals(fixture.symbolFqName, result.root.symbol.fqName, "call hierarchy root fqName")
+        expectEquals(
+            fixture.referenceLocations.map(Location::filePath),
+            result.root.children.map { child -> checkNotNull(child.callSite).filePath },
+            "call hierarchy call site files",
+        )
+        expectEquals(
+            fixture.referenceLocations.map(Location::preview),
+            result.root.children.map { child -> checkNotNull(child.callSite).preview },
+            "call hierarchy call site previews",
+        )
+        expectEquals(1 + fixture.referenceLocations.size, result.stats.totalNodes, "call hierarchy total nodes")
+        expectEquals(fixture.referenceLocations.size, result.stats.totalEdges, "call hierarchy total edges")
+        expectEquals(0, result.stats.truncatedNodes, "call hierarchy truncated nodes")
     }
 
     private suspend fun assertRename(

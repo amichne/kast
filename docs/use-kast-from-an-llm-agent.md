@@ -12,8 +12,9 @@ property on `RetryConfig`." The skill can bridge that request into the
 precise lookup inputs that Kast needs.
 
 !!! note
-    The current packaged skill does not support `callHierarchy`. Use
-    `symbol resolve` and `references` for semantic navigation today.
+    The packaged skill can run `call hierarchy` after it has a confirmed symbol
+    position. Ask it to resolve the symbol first, then request incoming or
+    outgoing callers.
 
 ## Install the packaged skill into the workspace
 
@@ -59,6 +60,12 @@ Use the packaged `kast` skill to resolve the `retryDelay` property on
 `RetryConfig`. Tell me where it is declared and what type Kast reports.
 ```
 
+```text
+Use the packaged `kast` skill to show the incoming call hierarchy for
+`HealthCheckService.runChecks`. Resolve the symbol first, then summarize the
+top callers and any truncation.
+```
+
 ## Follow the golden path
 
 The most reliable flow keeps the agent narrow at each stage. Resolve the
@@ -68,9 +75,9 @@ edit planning.
 1. Name the target in conversational terms.
 2. Ask the agent to resolve the symbol before it gathers references.
 3. Confirm the reported symbol kind, fully qualified name, and declaration
-   match what you meant.
-4. Ask for references, rename impact, or diagnostics only after the identity
-   is explicit.
+    match what you meant.
+4. Ask for references, call hierarchy, rename impact, or diagnostics only
+   after the identity is explicit.
 
 ## Let the skill bridge the mechanics
 
@@ -83,7 +90,7 @@ you.
 - Search for likely declaration sites from the human reference you gave it.
 - Translate the selected declaration into the file and offset that Kast needs.
 - Verify the target with `symbol resolve` before it expands into
-  `references`, `rename`, or other follow-up commands.
+  `references`, `call hierarchy`, `rename`, or other follow-up commands.
 
 ## Add context only when the name is ambiguous
 
@@ -115,7 +122,7 @@ that help you decide what to do next.
 - Symbol kind and, when present, type information
 - Declaration file, line, and column
 - References grouped or summarized by caller and file
-- Whether Kast truncated the visible reference set
+- Whether Kast truncated the visible reference set or call hierarchy tree
 
 ## Move to scaffolding only when you need it
 

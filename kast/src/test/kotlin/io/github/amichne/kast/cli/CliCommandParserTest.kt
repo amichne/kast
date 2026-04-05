@@ -1,5 +1,6 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.api.RefreshQuery
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -47,6 +48,60 @@ class CliCommandParserTest {
         val command = parser.parse(arrayOf("completion", "bash"))
 
         assertEquals(CliCommand.Completion(CliCompletionShell.BASH), command)
+    }
+
+    @Test
+    fun `call hierarchy parses from inline options`() {
+        val command = parser.parse(
+            arrayOf(
+                "call",
+                "hierarchy",
+                "--workspace-root=$tempDir",
+                "--file-path=$tempDir/Sample.kt",
+                "--offset=12",
+                "--direction=incoming",
+                "--depth=0",
+                "--max-total-calls=32",
+                "--max-children-per-node=8",
+                "--timeout-millis=4000",
+                "--persist-to-git-sha-cache=true",
+            ),
+        )
+
+        assertTrue(command is CliCommand.CallHierarchy)
+        val hierarchyCommand = command as CliCommand.CallHierarchy
+        assertEquals(tempDir, hierarchyCommand.options.workspaceRoot)
+        assertEquals(io.github.amichne.kast.api.CallDirection.INCOMING, hierarchyCommand.query.direction)
+        assertEquals(0, hierarchyCommand.query.depth)
+        assertEquals(32, hierarchyCommand.query.maxTotalCalls)
+        assertEquals(8, hierarchyCommand.query.maxChildrenPerNode)
+        assertEquals(4000L, hierarchyCommand.query.timeoutMillis)
+        assertTrue(hierarchyCommand.query.persistToGitShaCache)
+    }
+
+    @Test
+    fun `workspace refresh parses from inline options`() {
+        val command = parser.parse(
+            arrayOf(
+                "workspace",
+                "refresh",
+                "--workspace-root=$tempDir",
+                "--file-paths=$tempDir/A.kt,$tempDir/B.kt",
+            ),
+        )
+
+        assertTrue(command is CliCommand.WorkspaceRefresh)
+        val refreshCommand = command as CliCommand.WorkspaceRefresh
+        assertEquals(tempDir, refreshCommand.options.workspaceRoot)
+        assertEquals(
+            RefreshQuery(
+                filePaths = listOf(
+                    tempDir.resolve("A.kt").toString(),
+                    tempDir.resolve("B.kt").toString(),
+                ),
+            ),
+            refreshCommand.query,
+        )
     }
 
     @Test

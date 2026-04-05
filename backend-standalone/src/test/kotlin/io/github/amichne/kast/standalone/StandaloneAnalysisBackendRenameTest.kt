@@ -187,7 +187,7 @@ class StandaloneAnalysisBackendRenameTest {
                 session = session,
             )
 
-            assertFalse(session.ktFilesByPathDelegate().isInitialized())
+            assertFalse(session.isFullKtFileMapLoaded())
 
             backend.rename(
                 RenameQuery(
@@ -199,7 +199,7 @@ class StandaloneAnalysisBackendRenameTest {
                 ),
             )
 
-            assertFalse(session.ktFilesByPathDelegate().isInitialized())
+            assertFalse(session.isFullKtFileMapLoaded())
         }
     }
 
@@ -284,6 +284,181 @@ class StandaloneAnalysisBackendRenameTest {
         }
     }
 
+    @Test
+    fun `rename after apply edits uses refreshed psi state`(): TestResult = runTest {
+        val declarationFile = writeFile(
+            relativePath = "src/main/kotlin/sample/Greeter.kt",
+            content = $$"""
+                package sample
+
+                fun greet(name: String): String = "hi $name"
+            """.trimIndent() + "\n",
+        )
+        val usageFile = writeFile(
+            relativePath = "src/main/kotlin/sample/Use.kt",
+            content = """
+                package sample
+
+                fun use(): String = greet("kast")
+            """.trimIndent() + "\n",
+        )
+        val secondaryUsageFile = writeFile(
+            relativePath = "src/main/kotlin/sample/SecondaryUse.kt",
+            content = """
+                package sample
+
+                fun useAgain(): String = greet("again")
+            """.trimIndent() + "\n",
+        )
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "sources",
+        )
+        session.use { session ->
+            val backend = StandaloneAnalysisBackend(
+                workspaceRoot = workspaceRoot,
+                limits = ServerLimits(
+                    maxResults = 100,
+                    requestTimeoutMillis = 30_000,
+                    maxConcurrentRequests = 4,
+                ),
+                session = session,
+            )
+
+            val firstRename = backend.rename(
+                RenameQuery(
+                    position = FilePosition(
+                        filePath = usageFile.toString(),
+                        offset = usageFile.readText().indexOf("greet"),
+                    ),
+                    newName = "welcome",
+                ),
+            )
+            backend.applyEdits(
+                ApplyEditsQuery(
+                    edits = firstRename.edits,
+                    fileHashes = firstRename.fileHashes,
+                ),
+            )
+
+            val secondRename = backend.rename(
+                RenameQuery(
+                    position = FilePosition(
+                        filePath = usageFile.toString(),
+                        offset = usageFile.readText().indexOf("welcome"),
+                    ),
+                    newName = "salute",
+                ),
+            )
+            backend.applyEdits(
+                ApplyEditsQuery(
+                    edits = secondRename.edits,
+                    fileHashes = secondRename.fileHashes,
+                ),
+            )
+
+            assertEquals(
+                listOf(
+                    $$"""
+                        package sample
+
+                        fun salute(name: String): String = "hi $name"
+                    """.trimIndent() + "\n",
+                    """
+                        package sample
+
+                        fun use(): String = salute("kast")
+                    """.trimIndent() + "\n",
+                    """
+                        package sample
+
+                        fun useAgain(): String = salute("again")
+                    """.trimIndent() + "\n",
+                ),
+                listOf(
+                    declarationFile.readText(),
+                    usageFile.readText(),
+                    secondaryUsageFile.readText(),
+                ),
+            )
+        }
+    }
+
+    @Test
+    fun `apply edits updates identifier index without loading full Kotlin file map`(): TestResult = runTest {
+        val declarationFile = writeFile(
+            relativePath = "src/main/kotlin/sample/Greeter.kt",
+            content = $$"""
+                package sample
+
+                fun greet(name: String): String = "hi $name"
+            """.trimIndent() + "\n",
+        )
+        val usageFile = writeFile(
+            relativePath = "src/main/kotlin/sample/Use.kt",
+            content = """
+                package sample
+
+                fun use(): String = greet("kast")
+            """.trimIndent() + "\n",
+        )
+        val secondaryUsageFile = writeFile(
+            relativePath = "src/main/kotlin/sample/SecondaryUse.kt",
+            content = """
+                package sample
+
+                fun useAgain(): String = greet("again")
+            """.trimIndent() + "\n",
+        )
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "sources",
+        )
+        session.use { session ->
+            session.awaitInitialSourceIndex()
+            val backend = StandaloneAnalysisBackend(
+                workspaceRoot = workspaceRoot,
+                limits = ServerLimits(
+                    maxResults = 100,
+                    requestTimeoutMillis = 30_000,
+                    maxConcurrentRequests = 4,
+                ),
+                session = session,
+            )
+
+            val renameResult = backend.rename(
+                RenameQuery(
+                    position = FilePosition(
+                        filePath = usageFile.toString(),
+                        offset = usageFile.readText().indexOf("greet"),
+                    ),
+                    newName = "welcome",
+                ),
+            )
+            backend.applyEdits(
+                ApplyEditsQuery(
+                    edits = renameResult.edits,
+                    fileHashes = renameResult.fileHashes,
+                ),
+            )
+
+            assertEquals(
+                setOf(
+                    normalizePath(declarationFile),
+                    normalizePath(usageFile),
+                    normalizePath(secondaryUsageFile),
+                ),
+                session.candidateKotlinFilePaths("welcome").toSet(),
+            )
+            assertEquals(emptySet<String>(), session.candidateKotlinFilePaths("greet").toSet())
+            assertFalse(session.isFullKtFileMapLoaded())
+        }
+    }
+
     private fun writeFile(
         relativePath: String,
         content: String,
@@ -298,11 +473,4 @@ class StandaloneAnalysisBackendRenameTest {
         val absolutePath = path.toAbsolutePath().normalize()
         return runCatching { absolutePath.toRealPath().normalize().toString() }.getOrDefault(absolutePath.toString())
     }
-}
-
-@Suppress("UNCHECKED_CAST")
-private fun StandaloneAnalysisSession.ktFilesByPathDelegate(): Lazy<Map<String, *>> {
-    val field = StandaloneAnalysisSession::class.java.getDeclaredField($$"ktFilesByPath$delegate")
-    field.isAccessible = true
-    return field.get(this) as Lazy<Map<String, *>>
 }

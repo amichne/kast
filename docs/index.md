@@ -19,7 +19,8 @@ offer to wire Bash or Zsh completions into your shell init file while it sets
 up the launchers.
 
 !!! note
-    The current supported flow does not advertise `callHierarchy` yet.
+    The current supported flow includes bounded `call hierarchy` traversal
+    through the repo-local `kast` CLI.
 
 ## Start with the page that matches your goal
 

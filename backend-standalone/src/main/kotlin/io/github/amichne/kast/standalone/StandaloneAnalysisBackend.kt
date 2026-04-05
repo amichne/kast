@@ -15,6 +15,8 @@ import io.github.amichne.kast.api.HealthResponse
 import io.github.amichne.kast.api.LocalDiskEditApplier
 import io.github.amichne.kast.api.MutationCapability
 import io.github.amichne.kast.api.ReadCapability
+import io.github.amichne.kast.api.RefreshQuery
+import io.github.amichne.kast.api.RefreshResult
 import io.github.amichne.kast.api.ReferencesQuery
 import io.github.amichne.kast.api.ReferencesResult
 import io.github.amichne.kast.api.RenameQuery
@@ -26,8 +28,6 @@ import io.github.amichne.kast.api.SymbolQuery
 import io.github.amichne.kast.api.SymbolResult
 import io.github.amichne.kast.api.TextEdit
 import java.nio.file.Path
-import kotlin.io.path.appendText
-import kotlin.io.path.createDirectories
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
@@ -35,22 +35,32 @@ import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.components.KaDiagnosticCheckerFilter
 import org.jetbrains.kotlin.analysis.api.components.collectDiagnostics
 import org.jetbrains.kotlin.psi.KtFile
-import org.jetbrains.kotlin.psi.KtNamedDeclaration
-import org.jetbrains.kotlin.psi.KtNamedFunction
-import org.jetbrains.kotlin.psi.KtNameReferenceExpression
-import org.jetbrains.kotlin.lexer.KtTokens
 
 @OptIn(KaExperimentalApi::class)
-class StandaloneAnalysisBackend(
+class StandaloneAnalysisBackend internal constructor(
     private val workspaceRoot: Path,
     private val limits: ServerLimits,
     private val session: StandaloneAnalysisSession,
+    private val telemetry: StandaloneTelemetry,
 ) : AnalysisBackend {
+    constructor(
+        workspaceRoot: Path,
+        limits: ServerLimits,
+        session: StandaloneAnalysisSession,
+    ) : this(
+        workspaceRoot = workspaceRoot,
+        limits = limits,
+        session = session,
+        telemetry = StandaloneTelemetry.fromEnvironment(workspaceRoot),
+    )
+
     private val readDispatcher = Dispatchers.IO.limitedParallelism(limits.maxConcurrentRequests)
-    private val renameProfilingEnabled = System.getenv("KAST_PROFILE_RENAME") == "1"
-    private val renameProfileOutputPath = System.getenv("KAST_PROFILE_RENAME_FILE")
-        ?.takeIf(String::isNotBlank)
-        ?.let(Path::of)
+    private val callHierarchyTraversal = CallHierarchyTraversal(
+        workspaceRoot = workspaceRoot,
+        limits = limits,
+        session = session,
+        telemetry = telemetry,
+    )
 
     override suspend fun capabilities(): BackendCapabilities = BackendCapabilities(
         backendName = "standalone",
@@ -59,11 +69,13 @@ class StandaloneAnalysisBackend(
         readCapabilities = setOf(
             ReadCapability.RESOLVE_SYMBOL,
             ReadCapability.FIND_REFERENCES,
+            ReadCapability.CALL_HIERARCHY,
             ReadCapability.DIAGNOSTICS,
         ),
         mutationCapabilities = setOf(
             MutationCapability.RENAME,
             MutationCapability.APPLY_EDITS,
+            MutationCapability.REFRESH_WORKSPACE,
         ),
         limits = limits,
     )
@@ -92,99 +104,147 @@ class StandaloneAnalysisBackend(
     }
 
     override suspend fun resolveSymbol(query: SymbolQuery): SymbolResult = withContext(readDispatcher) {
-        val file = session.findKtFile(query.position.filePath)
-        val target = resolveTarget(file, query.position.offset)
-        SymbolResult(analyze(file) { target.toSymbolModel(containingDeclaration = null) })
+        session.withReadAccess {
+            val file = session.findKtFile(query.position.filePath)
+            val target = resolveTarget(file, query.position.offset)
+            SymbolResult(analyze(file) { target.toSymbolModel(containingDeclaration = null) })
+        }
     }
 
     override suspend fun findReferences(query: ReferencesQuery): ReferencesResult = withContext(readDispatcher) {
-        val file = session.findKtFile(query.position.filePath)
-        val target = resolveTarget(file, query.position.offset)
-        val references = candidateReferenceFiles(target)
-            .flatMap { candidateFile -> candidateFile.findReferenceLocations(target) }
-            .sortedWith(compareBy({ it.filePath }, { it.startOffset }))
+        session.withReadAccess {
+            val file = session.findKtFile(query.position.filePath)
+            val target = resolveTarget(file, query.position.offset)
+            val references = candidateReferenceFiles(target)
+                .flatMap { candidateFile -> candidateFile.findReferenceLocations(target) }
+                .sortedWith(compareBy({ it.filePath }, { it.startOffset }))
 
-        ReferencesResult(
-            declaration = if (query.includeDeclaration) analyze(file) { target.toSymbolModel(containingDeclaration = null) } else null,
-            references = references,
-        )
+            ReferencesResult(
+                declaration = if (query.includeDeclaration) analyze(file) { target.toSymbolModel(containingDeclaration = null) } else null,
+                references = references,
+            )
+        }
     }
 
-    override suspend fun callHierarchy(query: CallHierarchyQuery): CallHierarchyResult {
-        throw unsupported(ReadCapability.CALL_HIERARCHY)
+    override suspend fun callHierarchy(query: CallHierarchyQuery): CallHierarchyResult = withContext(readDispatcher) {
+        session.withReadAccess {
+            callHierarchyTraversal.build(query)
+        }
     }
 
     override suspend fun diagnostics(query: DiagnosticsQuery): DiagnosticsResult = withContext(readDispatcher) {
-        val diagnostics = query.filePaths
-            .sorted()
-            .flatMap { filePath ->
-                val file = session.findKtFile(filePath)
-                analyze(file) {
-                    file.collectDiagnostics(KaDiagnosticCheckerFilter.EXTENDED_AND_COMMON_CHECKERS)
-                }.flatMap { diagnostic -> diagnostic.toApiDiagnostics() }
-            }
-            .sortedWith(compareBy({ it.location.filePath }, { it.location.startOffset }, { it.code ?: "" }))
+        session.withReadAccess {
+            val diagnostics = query.filePaths
+                .sorted()
+                .flatMap { filePath ->
+                    val file = session.findKtFile(filePath)
+                    analyze(file) {
+                        file.collectDiagnostics(KaDiagnosticCheckerFilter.EXTENDED_AND_COMMON_CHECKERS)
+                    }.flatMap { diagnostic -> diagnostic.toApiDiagnostics() }
+                }
+                .sortedWith(compareBy({ it.location.filePath }, { it.location.startOffset }, { it.code ?: "" }))
 
-        DiagnosticsResult(diagnostics = diagnostics)
+            DiagnosticsResult(diagnostics = diagnostics)
+        }
     }
 
     override suspend fun rename(query: RenameQuery): RenameResult = withContext(readDispatcher) {
-        val file = profileRenamePhase("findKtFile") {
-            session.findKtFile(query.position.filePath)
-        }
-        val target = profileRenamePhase("resolveTarget") {
-            resolveTarget(file, query.position.offset)
-        }
-        val searchIdentifier = target.referenceSearchIdentifier()
-        val candidateFiles = profileRenamePhase("candidateReferenceFiles") {
-            candidateReferenceFiles(target)
-        }.also { files ->
-            if (renameProfilingEnabled) {
-                logRenameProfile("rename-profile phase=candidateReferenceFiles count=${files.size} identifier=${searchIdentifier ?: "<fallback>"}")
-                logRenameProfile(
-                    "rename-profile phase=candidateReferenceFiles files=${files.joinToString(separator = "|") { file -> file.virtualFile?.path ?: file.name }}",
+        session.withReadAccess {
+            telemetry.inSpan(
+                scope = StandaloneTelemetryScope.RENAME,
+                name = "kast.rename",
+                attributes = mapOf(
+                    "kast.rename.filePath" to query.position.filePath,
+                    "kast.rename.newName" to query.newName,
+                ),
+            ) { renameSpan ->
+                val file = traceRenamePhase(
+                    phaseName = "findKtFile",
+                    attributes = mapOf("kast.rename.filePath" to query.position.filePath),
+                ) {
+                    session.findKtFile(query.position.filePath)
+                }
+                val target = traceRenamePhase(
+                    phaseName = "resolveTarget",
+                    attributes = mapOf("kast.rename.offset" to query.position.offset),
+                ) {
+                    resolveTarget(file, query.position.offset)
+                }
+                val searchIdentifier = target.referenceSearchIdentifier()
+                val candidateFiles = traceRenamePhase(
+                    phaseName = "candidateReferenceFiles",
+                    attributes = mapOf("kast.rename.identifier" to (searchIdentifier ?: "<fallback>")),
+                ) {
+                    candidateReferenceFiles(target)
+                }
+                renameSpan.setAttribute("kast.rename.candidateFileCount", candidateFiles.size)
+                renameSpan.addEvent(
+                    name = "candidate-files",
+                    attributes = mapOf(
+                        "count" to candidateFiles.size,
+                        "identifier" to (searchIdentifier ?: "<fallback>"),
+                        "files" to candidateFiles.joinToString(separator = "|") { candidateFile ->
+                            candidateFile.virtualFile?.path ?: candidateFile.name
+                        },
+                    ),
+                    verboseOnly = true,
+                )
+
+                val edits = traceRenamePhase("collectReferenceEdits") {
+                    (listOf(target.declarationEdit(query.newName)) + candidateFiles
+                        .flatMap { candidateFile ->
+                            traceRenamePhase(
+                                phaseName = "referenceEdits",
+                                attributes = mapOf(
+                                    "kast.rename.candidateFile" to (candidateFile.virtualFile?.path ?: candidateFile.name),
+                                ),
+                            ) { phaseSpan ->
+                                phaseSpan.addEvent(
+                                    name = "reference-edits-input",
+                                    attributes = mapOf(
+                                        "candidateFile" to (candidateFile.virtualFile?.path ?: candidateFile.name),
+                                        "occurrenceCount" to (
+                                            searchIdentifier
+                                                ?.let(candidateFile.text::identifierOccurrenceOffsets)
+                                                ?.count()
+                                                ?: -1
+                                            ),
+                                    ),
+                                    verboseOnly = true,
+                                )
+                                candidateFile.referenceEdits(target, query.newName, searchIdentifier)
+                            }
+                        })
+                        .distinctBy { edit -> Triple(edit.filePath, edit.startOffset, edit.endOffset) }
+                        .sortedWith(compareBy({ it.filePath }, { it.startOffset }))
+                }
+                renameSpan.setAttribute("kast.rename.editCount", edits.size)
+                val fileHashes = traceRenamePhase("currentFileHashes") {
+                    currentFileHashes(edits.map(TextEdit::filePath))
+                }
+
+                RenameResult(
+                    edits = edits,
+                    fileHashes = fileHashes,
+                    affectedFiles = fileHashes.map(FileHash::filePath),
                 )
             }
         }
-        val edits = profileRenamePhase("collectReferenceEdits") {
-            (listOf(target.declarationEdit(query.newName)) + candidateFiles
-                .flatMap { candidateFile ->
-                    if (renameProfilingEnabled) {
-                        val occurrenceCount = searchIdentifier
-                            ?.let { identifier -> candidateFile.text.identifierOccurrenceOffsets(identifier).count() }
-                        logRenameProfile(
-                            "rename-profile phase=referenceEdits-start file=${candidateFile.virtualFile?.path ?: candidateFile.name} occurrences=${occurrenceCount ?: -1}",
-                        )
-                    }
-                    profileRenamePhase("referenceEdits:${candidateFile.virtualFile?.path ?: candidateFile.name}") {
-                        candidateFile.referenceEdits(target, query.newName, searchIdentifier)
-                    }.also { candidateEdits ->
-                        if (renameProfilingEnabled) {
-                            logRenameProfile(
-                                "rename-profile phase=referenceEdits file=${candidateFile.virtualFile?.path ?: candidateFile.name} edits=${candidateEdits.size}",
-                            )
-                        }
-                    }
-                })
-                .distinctBy { edit -> Triple(edit.filePath, edit.startOffset, edit.endOffset) }
-                .sortedWith(compareBy({ it.filePath }, { it.startOffset }))
-        }.also { collectedEdits ->
-            if (renameProfilingEnabled) {
-                println("rename-profile phase=collectReferenceEdits edits=${collectedEdits.size}")
-            }
-        }
-        val fileHashes = profileRenamePhase("currentFileHashes") {
-            currentFileHashes(edits.map(TextEdit::filePath))
-        }
-
-        RenameResult(
-            edits = edits,
-            fileHashes = fileHashes,
-            affectedFiles = fileHashes.map(FileHash::filePath),
-        )
     }
 
-    override suspend fun applyEdits(query: ApplyEditsQuery): ApplyEditsResult = LocalDiskEditApplier.apply(query)
+    override suspend fun applyEdits(query: ApplyEditsQuery): ApplyEditsResult {
+        val result = LocalDiskEditApplier.apply(query)
+        session.refreshFiles(result.affectedFiles.toSet())
+        return result
+    }
+
+    override suspend fun refresh(query: RefreshQuery): RefreshResult {
+        return if (query.filePaths.isEmpty()) {
+            session.refreshWorkspace()
+        } else {
+            session.refreshFiles(query.filePaths.toSet())
+        }
+    }
 
     private fun candidateReferenceFiles(target: PsiElement): List<KtFile> {
         val searchIdentifier = target.referenceSearchIdentifier() ?: return session.allKtFiles()
@@ -303,42 +363,18 @@ class StandaloneAnalysisBackend(
 
     private fun currentFileHashes(filePaths: Collection<String>): List<FileHash> = LocalDiskEditApplier.currentHashes(filePaths)
 
-    private fun unsupported(capability: ReadCapability) = io.github.amichne.kast.api.CapabilityNotSupportedException(
-        capability = capability.name,
-        message = "The standalone backend does not support $capability",
-    )
-
-    private inline fun <T> profileRenamePhase(
+    private inline fun <T> traceRenamePhase(
         phaseName: String,
-        action: () -> T,
-    ): T {
-        if (!renameProfilingEnabled) {
-            return action()
-        }
-
-        val startedAt = System.nanoTime()
-        return action().also {
-            val durationMillis = (System.nanoTime() - startedAt) / 1_000_000
-            logRenameProfile("rename-profile phase=$phaseName durationMs=$durationMillis")
-        }
-    }
-
-    private fun logRenameProfile(message: String) {
-        println(message)
-        val outputPath = renameProfileOutputPath ?: return
-        runCatching {
-            outputPath.parent?.createDirectories()
-            outputPath.appendText(message + System.lineSeparator())
-        }
-    }
+        attributes: Map<String, Any?> = emptyMap(),
+        action: (StandaloneTelemetrySpan) -> T,
+    ): T = telemetry.inSpan(
+        scope = StandaloneTelemetryScope.RENAME,
+        name = "kast.rename.$phaseName",
+        attributes = attributes,
+        verboseOnly = true,
+        block = action,
+    )
 }
-
-private fun PsiElement.referenceSearchIdentifier(): String? = when (this) {
-    is KtNamedFunction -> name.takeUnless { hasModifier(KtTokens.OPERATOR_KEYWORD) }
-    is KtNamedDeclaration -> name
-    else -> (this as? com.intellij.psi.PsiNamedElement)?.name
-}
-    ?.takeIf { identifier -> identifier.isNotBlank() }
 
 private fun String.identifierOccurrenceOffsets(identifier: String): Sequence<Int> = sequence {
     var searchFrom = 0

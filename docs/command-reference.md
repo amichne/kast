@@ -43,6 +43,7 @@ for one workspace.
 | --- | --- | --- | --- |
 | `workspace status` | Inspect registered descriptors, liveness, and readiness | `--workspace-root` | Reports the selected daemon plus any additional descriptors for the same workspace |
 | `workspace ensure` | Reuse a ready daemon or start one | `--workspace-root`, `--wait-timeout-ms` | Uses a `60000` millisecond wait timeout unless you override it |
+| `workspace refresh` | Force a targeted or full workspace state refresh | `--workspace-root`, optional `--file-paths` | Use this as a manual recovery path; omit `--file-paths` for a full refresh |
 | `daemon start` | Start a detached standalone daemon explicitly | `--workspace-root`, `--wait-timeout-ms` | Useful when you want a direct start instead of an ensure |
 | `daemon stop` | Stop the selected standalone daemon | `--workspace-root` | Removes the selected descriptor and reports what stopped |
 
@@ -56,6 +57,7 @@ runtime.
 | `capabilities` | Print the runtime capability set | `--workspace-root`, optional `--wait-timeout-ms` | Use this before relying on an operation in automation |
 | `symbol resolve` | Resolve the symbol at a file position | Inline flags or `--request-file` | Inline form needs `--file-path` and `--offset` |
 | `references` | Find references for the symbol at a file position | Inline flags or `--request-file` | Inline form also supports `--include-declaration=true` |
+| `call hierarchy` | Expand a bounded incoming or outgoing call tree | Inline flags or `--request-file` | Inline form needs `--file-path`, `--offset`, and `--direction`; optional bounds control truncation |
 | `diagnostics` | Run diagnostics for one or more files | Inline flags or `--request-file` | Inline form uses comma-separated absolute file paths |
 
 ## Mutation commands
@@ -68,11 +70,25 @@ the supported mutation flow.
 | `rename` | Plan a rename operation | Inline flags or `--request-file` | Inline form needs `--file-path`, `--offset`, and `--new-name` |
 | `edits apply` | Apply a prepared edit plan | `--request-file` only | The request file must include edits and expected file hashes |
 
+## Workspace refresh behavior
+
+Kast keeps workspace state fresh automatically after `edits apply` and after
+most external `.kt` file changes. `workspace refresh` exists as the manual
+recovery path when you need to force the daemon to rescan state.
+
+- Omit `--file-paths` to refresh the full workspace and rebuild the daemon view
+  of current Kotlin files.
+- Pass `--file-paths=/absolute/A.kt,/absolute/B.kt` to refresh only the listed
+  files.
+- Read the `refreshedFiles`, `removedFiles`, and `fullRefresh` fields in the
+  JSON result when automation needs to know what changed.
+
 ## Current support boundary
 
-The public command surface is intentionally small. Today, the main remaining
-product gap is `callHierarchy`, so you must not assume it is available until
-the runtime advertises it in `capabilities`.
+The public command surface is intentionally small. `call hierarchy` is
+available, but it is intentionally bounded. Use `--direction` plus the
+optional depth, total-call, child-count, timeout, and cache flags, and read
+`stats` or per-node `truncation` fields before you claim the tree is complete.
 
 ## Next steps
 

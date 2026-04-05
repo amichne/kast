@@ -4,6 +4,7 @@ import io.github.amichne.kast.api.AnalysisException
 import io.github.amichne.kast.api.ApplyEditsResult
 import io.github.amichne.kast.api.BackendCapabilities
 import io.github.amichne.kast.api.DiagnosticsResult
+import io.github.amichne.kast.api.RefreshResult
 import io.github.amichne.kast.api.ReferencesResult
 import io.github.amichne.kast.api.RenameResult
 import io.github.amichne.kast.api.SymbolResult
@@ -31,6 +32,8 @@ internal fun writeCliJson(
         is DiagnosticsResult -> json.encodeToString(value)
         is RenameResult -> json.encodeToString(value)
         is ApplyEditsResult -> json.encodeToString(value)
+        is RefreshResult -> json.encodeToString(value)
+        is io.github.amichne.kast.api.CallHierarchyResult -> json.encodeToString(value)
         is CliErrorResponse -> json.encodeToString(value)
         else -> error("Unsupported CLI output type: ${value::class.java.name}")
     }

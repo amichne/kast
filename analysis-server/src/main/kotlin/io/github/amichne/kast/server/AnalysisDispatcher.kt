@@ -15,6 +15,8 @@ import io.github.amichne.kast.api.HealthResponse
 import io.github.amichne.kast.api.MutationCapability
 import io.github.amichne.kast.api.PageInfo
 import io.github.amichne.kast.api.ReadCapability
+import io.github.amichne.kast.api.RefreshQuery
+import io.github.amichne.kast.api.RefreshResult
 import io.github.amichne.kast.api.ReferencesQuery
 import io.github.amichne.kast.api.ReferencesResult
 import io.github.amichne.kast.api.RenameQuery
@@ -148,8 +150,18 @@ class AnalysisDispatcher(
                 backend.callHierarchy(
                     decodeParams(CallHierarchyQuery.serializer(), params).also { query ->
                         validateFilePosition(query.position.filePath, query.position.offset)
-                        if (query.depth < 1) {
-                            throw ValidationException("Call hierarchy depth must be greater than zero")
+                        if (query.depth < 0) {
+                            throw ValidationException("Call hierarchy depth must be greater than or equal to zero")
+                        }
+                        if (query.maxTotalCalls < 1) {
+                            throw ValidationException("Call hierarchy maxTotalCalls must be greater than zero")
+                        }
+                        if (query.maxChildrenPerNode < 1) {
+                            throw ValidationException("Call hierarchy maxChildrenPerNode must be greater than zero")
+                        }
+                        val timeoutMillis = query.timeoutMillis
+                        if (timeoutMillis != null && timeoutMillis < 1) {
+                            throw ValidationException("Call hierarchy timeoutMillis must be greater than zero when provided")
                         }
                         requireReadCapability(ReadCapability.CALL_HIERARCHY)
                     },
@@ -187,6 +199,16 @@ class AnalysisDispatcher(
                 backend.applyEdits(
                     decodeParams(ApplyEditsQuery.serializer(), params).also {
                         requireMutationCapability(MutationCapability.APPLY_EDITS)
+                    },
+                ),
+            )
+
+            "workspace/refresh" -> encode(
+                RefreshResult.serializer(),
+                backend.refresh(
+                    decodeParams(RefreshQuery.serializer(), params).also { query ->
+                        query.filePaths.forEach(::validateAbsoluteFilePath)
+                        requireMutationCapability(MutationCapability.REFRESH_WORKSPACE)
                     },
                 ),
             )

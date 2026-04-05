@@ -2,6 +2,8 @@ package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.api.BackendCapabilities
 import io.github.amichne.kast.api.DiagnosticsResult
+import io.github.amichne.kast.api.ReferencesResult
+import io.github.amichne.kast.api.RefreshResult
 import io.github.amichne.kast.api.RenameResult
 import io.github.amichne.kast.api.RuntimeState
 import io.github.amichne.kast.api.RuntimeStatusResponse
@@ -22,6 +24,7 @@ import java.nio.channels.ServerSocketChannel
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
+import kotlin.io.path.readText
 import kotlin.io.path.writeText
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToJsonElement
@@ -149,6 +152,208 @@ class KastWrapperTest {
     }
 
     @Test
+    fun `workspace refresh updates daemon after external file edits`() {
+        val workspace = tempDir.resolve("workspace-refresh")
+        val sourceFile = workspace
+            .resolve("src/main/kotlin/example/Sample.kt")
+            .createDirectoriesForParent()
+        sourceFile.writeText(
+            """
+            package example
+
+            fun greet(): String = "hi"
+            fun use(): String = greet()
+            """.trimIndent() + "\n",
+        )
+
+        try {
+            runCli(
+                "workspace",
+                "ensure",
+                "--workspace-root=$workspace",
+            )
+
+            sourceFile.writeText(
+                """
+                package example
+
+                fun welcome(): String = "hi"
+                fun use(): String = welcome()
+                """.trimIndent() + "\n",
+            )
+
+            val refresh = runCli(
+                "workspace",
+                "refresh",
+                "--workspace-root=$workspace",
+                "--file-paths=$sourceFile",
+            )
+            val refreshResult = defaultCliJson().decodeFromString<RefreshResult>(refresh.stdout)
+            assertEquals(listOf(normalizePath(sourceFile)), refreshResult.refreshedFiles)
+            assertTrue(refreshResult.removedFiles.isEmpty())
+            assertEquals(false, refreshResult.fullRefresh)
+
+            val rename = runCli(
+                "rename",
+                "--workspace-root=$workspace",
+                "--file-path=$sourceFile",
+                "--offset=${sourceFile.readText().indexOf("welcome")}",
+                "--new-name=salute",
+            )
+            val renameResult = defaultCliJson().decodeFromString<RenameResult>(rename.stdout)
+
+            assertTrue(renameResult.edits.isNotEmpty())
+            assertTrue(renameResult.edits.all { edit -> edit.newText == "salute" })
+        } finally {
+            runCli(
+                "daemon",
+                "stop",
+                "--workspace-root=$workspace",
+                allowFailure = true,
+            )
+        }
+    }
+
+    @Test
+    fun `daemon automatically refreshes after external file edits`() {
+        val workspace = tempDir.resolve("workspace-watch-refresh")
+        val sourceFile = workspace
+            .resolve("src/main/kotlin/example/Sample.kt")
+            .createDirectoriesForParent()
+        sourceFile.writeText(
+            """
+            package example
+
+            fun greet(): String = "hi"
+            fun use(): String = greet()
+            """.trimIndent() + "\n",
+        )
+
+        try {
+            runCli(
+                "workspace",
+                "ensure",
+                "--workspace-root=$workspace",
+            )
+
+            sourceFile.writeText(
+                """
+                package example
+
+                fun welcome(): String = "hi"
+                fun use(): String = welcome()
+                """.trimIndent() + "\n",
+            )
+
+            waitForCondition("watch-driven refresh for welcome") {
+                val rename = runCli(
+                    "rename",
+                    "--workspace-root=$workspace",
+                    "--file-path=$sourceFile",
+                    "--offset=${sourceFile.readText().indexOf("welcome")}",
+                    "--new-name=salute",
+                    allowFailure = true,
+                )
+                if (rename.exitCode != 0) {
+                    return@waitForCondition false
+                }
+
+                val renameResult = defaultCliJson().decodeFromString<RenameResult>(rename.stdout)
+                renameResult.edits.isNotEmpty() &&
+                    renameResult.edits.all { edit ->
+                        edit.newText == "salute" &&
+                            edit.endOffset - edit.startOffset == "welcome".length
+                    }
+            }
+        } finally {
+            runCli(
+                "daemon",
+                "stop",
+                "--workspace-root=$workspace",
+                allowFailure = true,
+            )
+        }
+    }
+
+    @Test
+    fun `full workspace refresh handles new and deleted Kotlin files`() {
+        val workspace = tempDir.resolve("workspace-structural-refresh")
+        val declarationFile = workspace
+            .resolve("src/main/kotlin/example/Greeter.kt")
+            .createDirectoriesForParent()
+        declarationFile.writeText(
+            """
+            package example
+
+            fun greet(): String = "hi"
+            """.trimIndent() + "\n",
+        )
+        val deletedUsageFile = workspace
+            .resolve("src/main/kotlin/example/Use.kt")
+            .createDirectoriesForParent()
+        deletedUsageFile.writeText(
+            """
+            package example
+
+            fun use(): String = greet()
+            """.trimIndent() + "\n",
+        )
+        val normalizedDeletedUsageFile = normalizePath(deletedUsageFile)
+
+        try {
+            runCli(
+                "workspace",
+                "ensure",
+                "--workspace-root=$workspace",
+            )
+
+            Files.delete(deletedUsageFile)
+            val newUsageFile = workspace
+                .resolve("src/main/kotlin/example/SecondaryUse.kt")
+                .createDirectoriesForParent()
+            newUsageFile.writeText(
+                """
+                package example
+
+                fun useAgain(): String = greet()
+                """.trimIndent() + "\n",
+            )
+
+            val refresh = runCli(
+                "workspace",
+                "refresh",
+                "--workspace-root=$workspace",
+            )
+            val refreshResult = defaultCliJson().decodeFromString<RefreshResult>(refresh.stdout)
+            assertEquals(true, refreshResult.fullRefresh)
+            assertTrue(refreshResult.refreshedFiles.contains(normalizePath(declarationFile)))
+            assertTrue(refreshResult.refreshedFiles.contains(normalizePath(newUsageFile)))
+            assertTrue(refreshResult.removedFiles.contains(normalizedDeletedUsageFile))
+
+            val references = runCli(
+                "references",
+                "--workspace-root=$workspace",
+                "--file-path=$declarationFile",
+                "--offset=${declarationFile.readText().indexOf("greet")}",
+                "--include-declaration=false",
+            )
+            val referencesResult = defaultCliJson().decodeFromString<ReferencesResult>(references.stdout)
+
+            assertEquals(
+                listOf(normalizePath(newUsageFile)),
+                referencesResult.references.map { reference -> reference.filePath },
+            )
+        } finally {
+            runCli(
+                "daemon",
+                "stop",
+                "--workspace-root=$workspace",
+                allowFailure = true,
+            )
+        }
+    }
+
+    @Test
     fun `wrapper helper parses large rename result from socket daemon`() {
         val workspace = tempDir.resolve("workspace-large-rename")
         val sanitizedWorkspaceRoot = "/workspace/sample-app"
@@ -265,6 +470,27 @@ class KastWrapperTest {
     private fun Path.createDirectoriesForParent(): Path {
         Files.createDirectories(checkNotNull(parent))
         return this
+    }
+
+    private fun normalizePath(path: Path): String {
+        val absolutePath = path.toAbsolutePath().normalize()
+        return runCatching { absolutePath.toRealPath().normalize().toString() }.getOrDefault(absolutePath.toString())
+    }
+
+    private fun waitForCondition(
+        description: String,
+        timeoutMillis: Long = 10_000,
+        pollMillis: Long = 200,
+        condition: () -> Boolean,
+    ) {
+        val deadline = System.nanoTime() + timeoutMillis * 1_000_000
+        while (System.nanoTime() < deadline) {
+            if (condition()) {
+                return
+            }
+            Thread.sleep(pollMillis)
+        }
+        error("Timed out waiting for $description")
     }
 
     private fun loadRenameResponseFixture(): String {

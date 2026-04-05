@@ -12,7 +12,7 @@ internal enum class CliCommandGroup(
     ),
     ANALYSIS(
         title = "Analysis",
-        overview = "Read-only commands for capabilities, symbols, references, and diagnostics.",
+        overview = "Read-only commands for capabilities, symbols, references, call hierarchy, and diagnostics.",
     ),
     MUTATION_FLOW(
         title = "Mutation flow",
@@ -120,6 +120,37 @@ internal object CliCommandCatalog {
         description = "Include the declaration alongside reference results. Defaults to false.",
         completionKind = CliOptionCompletionKind.BOOLEAN,
     )
+    private val directionOption = CliOptionMetadata(
+        key = "direction",
+        usage = "--direction=incoming",
+        description = "Traversal direction for call hierarchy. Use incoming or outgoing.",
+    )
+    private val depthOption = CliOptionMetadata(
+        key = "depth",
+        usage = "--depth=3",
+        description = "Maximum edge depth to expand from the selected declaration. Defaults to 3.",
+    )
+    private val maxTotalCallsOption = CliOptionMetadata(
+        key = "max-total-calls",
+        usage = "--max-total-calls=256",
+        description = "Maximum total call edges to include before truncation. Defaults to 256.",
+    )
+    private val maxChildrenPerNodeOption = CliOptionMetadata(
+        key = "max-children-per-node",
+        usage = "--max-children-per-node=64",
+        description = "Maximum children to include for any single node before truncation. Defaults to 64.",
+    )
+    private val timeoutMillisOption = CliOptionMetadata(
+        key = "timeout-millis",
+        usage = "--timeout-millis=5000",
+        description = "Optional traversal timeout in milliseconds. When omitted, the daemon limit applies.",
+    )
+    private val persistToGitShaCacheOption = CliOptionMetadata(
+        key = "persist-to-git-sha-cache",
+        usage = "--persist-to-git-sha-cache=true",
+        description = "Persist the result under a git-SHA-scoped cache when the workspace has a git commit. Defaults to false.",
+        completionKind = CliOptionCompletionKind.BOOLEAN,
+    )
     private val newNameOption = CliOptionMetadata(
         key = "new-name",
         usage = "--new-name=RenamedSymbol",
@@ -200,6 +231,21 @@ internal object CliCommandCatalog {
             ),
         ),
         CliCommandMetadata(
+            path = listOf("workspace", "refresh"),
+            group = CliCommandGroup.WORKSPACE_LIFECYCLE,
+            summary = "Force the daemon to refresh workspace files and indexes.",
+            description = "Triggers a targeted refresh for the given Kotlin file paths, or a full workspace refresh when no file paths are provided.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME workspace refresh --workspace-root=/absolute/path/to/workspace [--file-paths=/absolute/A.kt,/absolute/B.kt]",
+                "$CLI_EXECUTABLE_NAME workspace refresh --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
+            ),
+            options = listOf(workspaceRootOption, waitTimeoutOption, requestFileOption, filePathsOption),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME workspace refresh --workspace-root=/absolute/path/to/workspace",
+                "$CLI_EXECUTABLE_NAME workspace refresh --workspace-root=/absolute/path/to/workspace --file-paths=/absolute/path/to/File.kt",
+            ),
+        ),
+        CliCommandMetadata(
             path = listOf("daemon", "start"),
             group = CliCommandGroup.WORKSPACE_LIFECYCLE,
             summary = "Start a detached standalone daemon for a workspace.",
@@ -271,6 +317,32 @@ internal object CliCommandCatalog {
             ),
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME references --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
+            ),
+        ),
+        CliCommandMetadata(
+            path = listOf("call", "hierarchy"),
+            group = CliCommandGroup.ANALYSIS,
+            summary = "Expand a bounded call hierarchy for the symbol at a file position.",
+            description = "Accepts either an absolute request file or inline position, direction, and bound arguments.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME call hierarchy --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
+                "$CLI_EXECUTABLE_NAME call hierarchy --workspace-root=/absolute/path/to/workspace --file-path=/absolute/path/to/File.kt --offset=123 --direction=incoming [--depth=3] [--max-total-calls=256] [--max-children-per-node=64] [--timeout-millis=5000] [--persist-to-git-sha-cache=true]",
+            ),
+            options = listOf(
+                workspaceRootOption,
+                waitTimeoutOption,
+                requestFileOption,
+                filePathOption,
+                offsetOption,
+                directionOption,
+                depthOption,
+                maxTotalCallsOption,
+                maxChildrenPerNodeOption,
+                timeoutMillisOption,
+                persistToGitShaCacheOption,
+            ),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME call hierarchy --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
             ),
         ),
         CliCommandMetadata(

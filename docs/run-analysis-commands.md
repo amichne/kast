@@ -28,6 +28,7 @@ you want to save it for repeatable automation.
 | --- | --- | --- | --- |
 | `symbol resolve` | `--file-path` and `--offset` | `--request-file` | Use the inline form for a single lookup |
 | `references` | `--file-path`, `--offset`, and optional `--include-declaration=true` | `--request-file` | Keep `--include-declaration` off unless you need the declaration in the result |
+| `call hierarchy` | `--file-path`, `--offset`, `--direction`, and optional bound flags | `--request-file` | Use inline input when you want to tune depth or truncation limits directly |
 | `diagnostics` | `--file-paths=/absolute/A.kt,/absolute/B.kt` | `--request-file` | Inline input is easiest for a small list of files |
 | `rename` | `--file-path`, `--offset`, `--new-name`, and optional `--dry-run=true` | `--request-file` | Rename stays in planning mode unless you change `dryRun` in the query |
 | `edits apply` | Not supported | `--request-file` | The request file must include edits plus expected file hashes |
@@ -80,6 +81,29 @@ kast \
 Keep `--include-declaration=true` for the cases where your consumer wants the
 declaration returned alongside the reference list.
 
+## Expand a call hierarchy
+
+Use `call hierarchy` when you want incoming callers or outgoing callees for the
+declaration at a specific file position.
+
+```bash
+kast \
+  call hierarchy \
+  --workspace-root=/absolute/path/to/workspace \
+  --file-path=/absolute/path/to/src/main/kotlin/com/example/App.kt \
+  --offset=123 \
+  --direction=incoming \
+  --depth=2
+```
+
+`--direction` is required. Add `--max-total-calls`,
+`--max-children-per-node`, `--timeout-millis`, or
+`--persist-to-git-sha-cache=true` when you need tighter control over result
+shape or repeatable cached runs.
+
+Read the returned `stats` object and any per-node `truncation` metadata when
+automation needs to know whether Kast cut the tree short.
+
 ## Run diagnostics
 
 Use `diagnostics` when you want current diagnostics for one or more files in
@@ -127,10 +151,37 @@ kast \
 This command does not support inline flags for the payload. It must read the
 request from a file.
 
-## Know the current gap
+## Refresh workspace state manually
 
-The supported CLI path still does not advertise `callHierarchy`. Plan around
-that gap until the capability appears in `kast capabilities`.
+Kast refreshes `edits apply` results immediately and watches source roots for
+most external `.kt` file changes. Use `workspace refresh` when you need the
+manual recovery path.
+
+1. Refresh the full workspace:
+
+   ```bash
+   kast \
+     workspace refresh \
+     --workspace-root=/absolute/path/to/workspace
+   ```
+
+2. Optional: Refresh only the files you know changed:
+
+   ```bash
+   kast \
+     workspace refresh \
+     --workspace-root=/absolute/path/to/workspace \
+     --file-paths=/absolute/path/to/src/main/kotlin/com/example/App.kt,/absolute/path/to/src/main/kotlin/com/example/Use.kt
+   ```
+
+3. Inspect `refreshedFiles`, `removedFiles`, and `fullRefresh` in the JSON
+   result when your calling code needs to react to the refresh scope.
+
+## Understand bounded results
+
+`call hierarchy` is part of the supported CLI, but it is intentionally bounded.
+When you summarize results, report the direction you used and surface
+truncation honestly if `stats` or node metadata show that Kast hit a limit.
 
 ## Next steps
 

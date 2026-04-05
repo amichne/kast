@@ -610,13 +610,6 @@ static char *descriptor_directory(const char *workspace_root) {
     return result;
 }
 
-static char *default_socket_path_for_workspace(const char *workspace_root) {
-    char *metadata = path_join(workspace_root, ".kast");
-    char *result = path_join(metadata, "s");
-    free(metadata);
-    return result;
-}
-
 static char *default_log_file(const char *workspace_root) {
     char *metadata = path_join(workspace_root, ".kast");
     char *logs = path_join(metadata, "logs");
@@ -1360,7 +1353,6 @@ static char *daemon_stop_json(const char *workspace_root, bool stopped, const ch
 static pid_t start_daemon_process(
     const char *helper_dir,
     const char *workspace_root,
-    const char *socket_path,
     long request_timeout_ms,
     int max_results,
     int max_concurrent,
@@ -1404,7 +1396,6 @@ static pid_t start_daemon_process(
     }
 
     char *workspace_arg = xstrprintf("--workspace-root=%s", workspace_root);
-    char *socket_arg = xstrprintf("--socket-path=%s", socket_path);
     char *timeout_arg = xstrprintf("--request-timeout-ms=%ld", request_timeout_ms);
     char *results_arg = xstrprintf("--max-results=%d", max_results);
     char *concurrent_arg = xstrprintf("--max-concurrent-requests=%d", max_concurrent);
@@ -1415,7 +1406,6 @@ static pid_t start_daemon_process(
         classpath,
         "io.github.amichne.kast.standalone.StandaloneMainKt",
         workspace_arg,
-        socket_arg,
         timeout_arg,
         results_arg,
         concurrent_arg,
@@ -1501,18 +1491,15 @@ static Candidate *ensure_runtime(
         free_candidate_list(&list);
     }
 
-    char *socket_path = default_socket_path_for_workspace(workspace_root);
     char *log_file = default_log_file(workspace_root);
     pid_t pid = start_daemon_process(
         helper_dir,
         workspace_root,
-        socket_path,
         request_timeout_ms,
         max_results,
         max_concurrent,
         log_file
     );
-    free(socket_path);
     if (pid < 0) {
         free(log_file);
         return NULL;

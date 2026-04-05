@@ -147,11 +147,11 @@ class StandaloneWorkspaceDiscoveryTest {
             moduleName = "ignored",
         )
         session.use { session ->
-            assertFalse(session.ktFilesByPathDelegate().isInitialized())
+            assertFalse(session.isFullKtFileMapLoaded())
 
             session.findKtFile(workspaceRoot.resolve("app/src/main/kotlin/sample/Use.kt").toString())
 
-            assertFalse(session.ktFilesByPathDelegate().isInitialized())
+            assertFalse(session.isFullKtFileMapLoaded())
         }
     }
 
@@ -165,7 +165,7 @@ class StandaloneWorkspaceDiscoveryTest {
             moduleName = "ignored",
         )
         session.use { session ->
-            assertFalse(session.ktFilesByPathDelegate().isInitialized())
+            assertFalse(session.isFullKtFileMapLoaded())
 
             session.awaitInitialSourceIndex()
 
@@ -176,7 +176,7 @@ class StandaloneWorkspaceDiscoveryTest {
                 ),
                 session.candidateKotlinFilePaths("greet").toSet(),
             )
-            assertFalse(session.ktFilesByPathDelegate().isInitialized())
+            assertFalse(session.isFullKtFileMapLoaded())
         }
     }
 
@@ -204,7 +204,7 @@ class StandaloneWorkspaceDiscoveryTest {
                 ),
                 session.candidateKotlinFilePaths("greet").toSet(),
             )
-            assertFalse(session.ktFilesByPathDelegate().isInitialized())
+            assertFalse(session.isFullKtFileMapLoaded())
             assertFalse(session.isInitialSourceIndexReady())
             unblockIndexBuild.countDown()
             session.awaitInitialSourceIndex()
@@ -590,11 +590,4 @@ class StandaloneWorkspaceDiscoveryTest {
         val absolutePath = path.toAbsolutePath().normalize()
         return runCatching { absolutePath.toRealPath().normalize().toString() }.getOrDefault(absolutePath.toString())
     }
-}
-
-@Suppress("UNCHECKED_CAST")
-private fun StandaloneAnalysisSession.ktFilesByPathDelegate(): Lazy<Map<String, *>> {
-    val field = StandaloneAnalysisSession::class.java.getDeclaredField($$"ktFilesByPath$delegate")
-    field.isAccessible = true
-    return field.get(this) as Lazy<Map<String, *>>
 }

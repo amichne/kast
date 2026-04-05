@@ -2,16 +2,19 @@
 name: kast
 description: >
   Use this skill for any Kotlin/JVM semantic code intelligence task: resolve a symbol,
-  find references, run diagnostics, plan a rename, apply edits. Triggers on:
-  "resolve symbol", "find references", "kast", "rename symbol", "run diagnostics",
-  "apply edits", "symbol at offset", "semantic analysis", "kotlin analysis daemon".
-  The daemon lifecycle is fully managed by this skill. Single pathway for every operation.
+  find references, expand call hierarchies, run diagnostics, plan a rename, apply
+  edits. Triggers on: "resolve symbol", "find references", "call hierarchy",
+  "who calls", "incoming callers", "outgoing callers", "kast", "rename symbol",
+  "run diagnostics", "apply edits", "symbol at offset", "semantic analysis",
+  "kotlin analysis daemon". The daemon lifecycle is fully managed by this skill.
+  Single pathway for every operation.
 ---
 
 # Kast Skill
 
-kast is a Kotlin semantic analysis daemon. It provides symbol resolution, reference
-finding, diagnostics, rename planning, and edit application for Kotlin/JVM workspaces.
+kast is a Kotlin semantic analysis daemon. It provides symbol resolution,
+reference finding, call hierarchy expansion, diagnostics, rename planning, and
+edit application for Kotlin/JVM workspaces.
 
 ---
 
@@ -181,6 +184,7 @@ All commands: Redirect stdout to `$KAST_RESULT` and stderr to `$KAST_STDERR`. Re
 - Use `--key=value` for every flag
 - Require absolute paths for `--workspace-root`, `--file-path`, and `--file-paths`
 - `--offset` = zero-based UTF-16 character offset from start of file
+- `call hierarchy` also requires `--direction=incoming|outgoing`
 
 ### symbol resolve
 
@@ -209,6 +213,27 @@ Key output: `references` (array of `Location`), `declaration`, `page.truncated`
 
 If `page.truncated = true`, the result is capped at `limits.maxResults`. There is no
 pagination — this is the full available set.
+
+### call hierarchy
+
+```bash
+"$KAST" call hierarchy \
+  --workspace-root=/absolute/workspace/path \
+  --file-path=/absolute/path/to/File.kt \
+  --offset=<offset> \
+  --direction=incoming \
+  --depth=2 \
+  > "$KAST_RESULT" 2> "$KAST_STDERR"
+```
+
+Optional flags: `--max-total-calls`, `--max-children-per-node`,
+`--timeout-millis`, `--persist-to-git-sha-cache=true`
+
+Key output: `root`, `stats`, optional `persistence`
+
+`children[].callSite` identifies the edge. Any node `truncation` plus
+`stats.timeoutReached`, `stats.maxTotalCallsReached`, or
+`stats.maxChildrenPerNodeReached` means the tree is bounded and incomplete.
 
 ### diagnostics
 
@@ -278,6 +303,16 @@ Key output: `applied` (written edits), `affectedFiles`
 5. references → read $KAST_RESULT for results
 ```
 
+### Caller or callee exploration
+
+```
+1. Bootstrap (Section 0)
+2. Symbol lookup (Section 2) → offset
+3. symbol resolve → read $KAST_RESULT, confirm identity and kind
+4. call hierarchy --direction=incoming|outgoing --depth=<n> → read $KAST_RESULT
+5. Check stats + truncation before claiming the tree is complete
+```
+
 ### Pre-edit impact assessment
 
 Before modifying a symbol:
@@ -286,7 +321,7 @@ Before modifying a symbol:
 1. Bootstrap (Section 0)
 2. Symbol lookup (Section 2) → offset
 3. symbol resolve → read $KAST_RESULT, confirm identity and kind
-4. references → read $KAST_RESULT, count call sites and assess impact
+4. references or call hierarchy → read $KAST_RESULT, assess impact before editing
 ```
 
 ### Safe rename
@@ -351,7 +386,9 @@ When a build fails or a file has unknown errors:
 - All `--workspace-root`, `--file-path`, and `--file-paths` values must be absolute paths.
 - Always use `--request-file` for `edits apply`. Never construct inline JSON.
 - Never use `jq` — use `kast-plan-utils.py` for all JSON operations.
-- Never call `callHierarchy` — it is not implemented.
+- Call `call hierarchy` only after you confirm the declaration offset.
+- Always read call hierarchy `stats` and node `truncation` before you report
+  the tree as complete.
 - Never use hyphenated pseudo-commands (`workspace-status`, `symbol-resolve`, `edits-apply`).
 - When `workspace ensure` fails, read the log before doing anything else.
 - Always redirect stdout to `$KAST_RESULT` and stderr to `$KAST_STDERR`. Never read kast JSON output from the terminal — always read it from the result file.
@@ -364,11 +401,13 @@ When a build fails or a file has unknown errors:
 |------|------|
 | Resolve a symbol at an offset | kast `symbol resolve` |
 | Find all references across workspace | kast `references` |
+| Inspect callers or callees for a symbol | kast `call hierarchy` |
 | Get compile errors for a file | kast `diagnostics` |
 | Rename a symbol safely | `kast-rename.sh` |
 | Find text in comments or strings | Grep — kast does not search text |
 | Build the project | `kotlin-gradle-loop` skill / `./gradlew build` |
 | Run tests | `kotlin-gradle-loop` skill / `./gradlew test` |
 
-kast = semantic intelligence (what is this symbol, where is it used, rename it).
+kast = semantic intelligence (what is this symbol, who calls it, where is it
+used, rename it).
 kotlin-gradle-loop = build and test iteration (does it compile, do tests pass).
