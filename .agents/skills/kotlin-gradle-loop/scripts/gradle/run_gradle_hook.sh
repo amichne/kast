@@ -8,6 +8,11 @@ if [ $# -lt 1 ]; then
   exit 1
 fi
 
+if [ ! -d "$1" ]; then
+  echo "{\"ok\":false,\"error\":\"Not a directory: $1\"}"
+  exit 1
+fi
+
 PROJECT_ROOT="$(cd "$1" && pwd)"
 shift
 
