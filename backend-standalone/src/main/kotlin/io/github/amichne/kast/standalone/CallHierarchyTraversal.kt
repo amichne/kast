@@ -385,7 +385,11 @@ private class TraversalBudget(
     timeoutMillis: Long,
 ) {
     private val startedAtNanos = System.nanoTime()
-    private val timeoutNanos = timeoutMillis * 1_000_000
+    private val timeoutNanos = if (timeoutMillis > Long.MAX_VALUE / 1_000_000) {
+        Long.MAX_VALUE
+    } else {
+        timeoutMillis * 1_000_000
+    }
     private val visitedFiles = linkedSetOf<String>()
 
     var totalNodes: Int = 0
@@ -447,7 +451,9 @@ private class CallHierarchyCache(
             return null
         }
 
-        return json.decodeFromString(Files.readString(cacheFilePath))
+        return runCatching {
+            json.decodeFromString<CallHierarchyCacheEntry>(Files.readString(cacheFilePath))
+        }.getOrNull()
     }
 
     fun persist(
