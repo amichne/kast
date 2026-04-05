@@ -3,10 +3,14 @@ package io.github.amichne.kast.standalone
 import io.github.amichne.kast.api.CallDirection
 import io.github.amichne.kast.api.CallHierarchyQuery
 import io.github.amichne.kast.api.CallNodeTruncationReason
+import io.github.amichne.kast.api.SCHEMA_VERSION
 import io.github.amichne.kast.api.FilePosition
 import io.github.amichne.kast.api.ReadCapability
 import io.github.amichne.kast.api.ServerLimits
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -238,6 +242,12 @@ class StandaloneAnalysisBackendCallHierarchyTest {
             assertFalse(firstPersistence.cacheHit)
             assertTrue(secondPersistence.cacheHit)
             assertTrue(Path.of(firstPersistence.cacheFilePath).exists())
+            val cachePayload = Json.parseToJsonElement(
+                Path.of(firstPersistence.cacheFilePath).readText(),
+            ).jsonObject
+            assertEquals(SCHEMA_VERSION, cachePayload.getValue("schemaVersion").jsonPrimitive.content.toInt())
+            assertNotNull(cachePayload["root"]?.jsonObject)
+            assertNotNull(cachePayload["stats"]?.jsonObject)
             assertEquals(first.root, second.root)
             assertEquals(first.stats, second.stats)
         }

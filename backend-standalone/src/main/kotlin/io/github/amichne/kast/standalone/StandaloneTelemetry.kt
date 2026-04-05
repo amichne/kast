@@ -17,9 +17,10 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption.APPEND
 import java.nio.file.StandardOpenOption.CREATE
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 internal enum class StandaloneTelemetryScope(
     val wireName: String,
@@ -236,14 +237,10 @@ private class JsonLineSpanExporter(
     private val detail: StandaloneTelemetryDetail,
 ) : SpanExporter {
     private val lock = Any()
-    private val json = Json {
-        explicitNulls = false
-        prettyPrint = false
-    }
 
     override fun export(spans: MutableCollection<SpanData>): CompletableResultCode {
         val serializedSpans = spans.joinToString(separator = System.lineSeparator()) { span ->
-            json.encodeToString(SerializedSpan.from(span, detail))
+            SerializedSpan.from(span, detail).toJson().toString()
         }
         val payload = serializedSpans + System.lineSeparator()
 
@@ -263,7 +260,6 @@ private class JsonLineSpanExporter(
     override fun shutdown(): CompletableResultCode = CompletableResultCode.ofSuccess()
 }
 
-@Serializable
 private data class SerializedSpan(
     val name: String,
     val traceId: String,
@@ -293,9 +289,33 @@ private data class SerializedSpan(
             },
         )
     }
+
+    fun toJson() = buildJsonObject {
+        put("name", name)
+        put("traceId", traceId)
+        put("spanId", spanId)
+        parentSpanId?.let { put("parentSpanId", it) }
+        put("kind", kind)
+        put("status", status)
+        put(
+            "attributes",
+            buildJsonObject {
+                attributes.forEach { (key, value) ->
+                    put(key, value)
+                }
+            },
+        )
+        put(
+            "events",
+            buildJsonArray {
+                events.forEach { event ->
+                    add(event.toJson())
+                }
+            },
+        )
+    }
 }
 
-@Serializable
 private data class SerializedEvent(
     val name: String,
     val attributes: Map<String, String>,
@@ -304,6 +324,18 @@ private data class SerializedEvent(
         fun from(event: EventData): SerializedEvent = SerializedEvent(
             name = event.name,
             attributes = event.attributes.asMap().mapKeys { (key, _) -> key.key }.mapValues { (_, value) -> value.toString() },
+        )
+    }
+
+    fun toJson() = buildJsonObject {
+        put("name", name)
+        put(
+            "attributes",
+            buildJsonObject {
+                attributes.forEach { (key, value) ->
+                    put(key, value)
+                }
+            },
         )
     }
 }

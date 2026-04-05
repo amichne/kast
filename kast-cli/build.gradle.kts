@@ -2,7 +2,7 @@ import org.gradle.api.tasks.Sync
 import org.gradle.api.tasks.testing.Test
 
 plugins {
-    id("kast.standalone-app")
+    id("kast.standalone-serialization-app")
     alias(libs.plugins.graalvm.native)
 }
 
