@@ -5,8 +5,8 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 internal data class InstallSkillResult(
-    val linkedFrom: String,
-    val linkedTo: String,
+    val installedAt: String,
+    val version: String,
     val skipped: Boolean,
     val schemaVersion: Int = SCHEMA_VERSION,
 )

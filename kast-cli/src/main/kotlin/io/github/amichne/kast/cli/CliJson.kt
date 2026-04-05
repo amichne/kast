@@ -26,6 +26,7 @@ internal fun writeCliJson(
         is WorkspaceEnsureResult -> json.encodeToString(value)
         is DaemonStopResult -> json.encodeToString(value)
         is InstallResult -> json.encodeToString(value)
+        is InstallSkillResult -> json.encodeToString(value)
         is BackendCapabilities -> json.encodeToString(value)
         is SymbolResult -> json.encodeToString(value)
         is ReferencesResult -> json.encodeToString(value)

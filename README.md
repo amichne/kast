@@ -33,18 +33,19 @@ out, you can run `./install.sh` from the repo root instead.
 > client under `bin/kast`. Daemon-backed commands still launch the JVM backend
 > from bundled `runtime-libs`, so Java 21 or newer remains required.
 
-The installer also registers `kast-skilled`. Run it from a workspace root to
-create a `kast` skill symlink without copying the skill contents:
+If you use an agent workflow, run `kast install skill` from the workspace root
+to copy a version-matched `kast` skill into that workspace:
 
 ```bash
-kast-skilled
+kast install skill
 ```
 
-It prompts before linking and defaults to `.agents/skills/kast`,
-`.github/skills/kast`, or `.claude/skills/kast` based on which directories
-already exist in the current directory. All installed links point back to the
-single packaged skill root from `KAST_SKILL_PATH`, which the launcher defaults
-to the installed release copy unless you override it.
+It defaults to `.agents/skills/kast`, `.github/skills/kast`, or
+`.claude/skills/kast` based on which directories already exist in the current
+directory. Pass `--target-dir=/absolute/path/to/skills` to override the
+location and `--yes=true` to replace an existing install. Each installed skill
+tree includes a `.kast-version` marker, so rerunning the same CLI version can
+skip a no-op install safely.
 
 ## Local/dev builds
 

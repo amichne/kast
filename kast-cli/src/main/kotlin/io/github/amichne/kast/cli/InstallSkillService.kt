@@ -1,86 +1,114 @@
 package io.github.amichne.kast.cli
 
+import java.io.IOException
+import java.nio.file.FileVisitResult
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.SimpleFileVisitor
+import java.nio.file.attribute.BasicFileAttributes
 
-internal class InstallSkillService {
+internal class InstallSkillService(
+    private val embeddedSkillResources: EmbeddedSkillResources = EmbeddedSkillResources(),
+) {
     fun install(options: InstallSkillOptions): InstallSkillResult {
-        val skillPath = resolvePackagedSkillPath()
         val targetDir = (options.targetDir ?: resolveDefaultTargetDir(Path.of(System.getProperty("user.dir", ".")))).toAbsolutePath().normalize()
+        validateName(options.name)
 
         Files.createDirectories(targetDir)
-        val targetPath = targetDir.resolve(options.linkName)
+        val targetPath = targetDir.resolve(options.name)
+        val currentVersion = embeddedSkillResources.version
 
-        if (Files.isSymbolicLink(targetPath)) {
-            val existing = Files.readSymbolicLink(targetPath)
-            val resolvedExisting = targetPath.parent.resolve(existing).normalize()
-            if (resolvedExisting == skillPath) {
-                return InstallSkillResult(
-                    linkedFrom = targetPath.toString(),
-                    linkedTo = skillPath.toString(),
-                    skipped = true,
-                )
+        when {
+            Files.isSymbolicLink(targetPath) -> {
+                if (!options.force) {
+                    throw existingTargetFailure(targetPath)
+                }
+                deletePathRecursively(targetPath)
             }
-            if (!options.force) {
-                throw CliFailure(
-                    code = "INSTALL_SKILL_ERROR",
-                    message = "Symlink already exists at $targetPath pointing to $existing; rerun with --yes=true to replace it",
-                )
+
+            Files.isDirectory(targetPath) -> {
+                val existingVersion = readInstalledVersion(targetPath)
+                if (existingVersion == currentVersion) {
+                    return InstallSkillResult(
+                        installedAt = targetPath.toString(),
+                        version = currentVersion,
+                        skipped = true,
+                    )
+                }
+                if (!options.force) {
+                    throw existingTargetFailure(targetPath)
+                }
+                deletePathRecursively(targetPath)
             }
-            Files.delete(targetPath)
-        } else if (Files.exists(targetPath)) {
-            throw CliFailure(
-                code = "INSTALL_SKILL_ERROR",
-                message = "Target already exists and is not a symlink: $targetPath",
-            )
+
+            Files.exists(targetPath) -> {
+                if (!options.force) {
+                    throw existingTargetFailure(targetPath)
+                }
+                deletePathRecursively(targetPath)
+            }
         }
 
-        Files.createSymbolicLink(targetPath, skillPath)
+        embeddedSkillResources.writeSkillTree(targetPath)
         return InstallSkillResult(
-            linkedFrom = targetPath.toString(),
-            linkedTo = skillPath.toString(),
+            installedAt = targetPath.toString(),
+            version = currentVersion,
             skipped = false,
         )
     }
 
-    private fun resolvePackagedSkillPath(): Path {
-        val override = System.getenv("KAST_SKILL_PATH")
-        if (!override.isNullOrBlank()) {
-            val path = Path.of(override).toAbsolutePath().normalize()
-            if (!Files.isDirectory(path)) {
-                throw CliFailure(
-                    code = "INSTALL_SKILL_ERROR",
-                    message = "KAST_SKILL_PATH directory not found: $path",
-                )
-            }
-            return path
-        }
-
-        val installRoot = resolveInstallRoot()
-            ?: throw CliFailure(
-                code = "INSTALL_SKILL_ERROR",
-                message = "Could not resolve Kast installation root; set KAST_SKILL_PATH to the packaged skill directory",
-            )
-        val skillPath = installRoot.resolve("share/skills/kast").normalize()
-        if (!Files.isDirectory(skillPath)) {
+    private fun validateName(name: String) {
+        if (!name.matches(Regex("[A-Za-z0-9._-]+"))) {
             throw CliFailure(
                 code = "INSTALL_SKILL_ERROR",
-                message = "Packaged kast skill not found at $skillPath; set KAST_SKILL_PATH to override",
+                message = "Skill name may contain only letters, digits, dot, underscore, and dash",
             )
         }
-        return skillPath
+        if (name == "." || name == "..") {
+            throw CliFailure(
+                code = "INSTALL_SKILL_ERROR",
+                message = "Skill name must not be '.' or '..'",
+            )
+        }
     }
 
-    private fun resolveInstallRoot(): Path? {
-        // The main jar lives in ${install_root}/runtime-libs/, so its grandparent is the install root.
-        val codeSource = InstallSkillService::class.java.protectionDomain?.codeSource?.location
-            ?: return null
-        val jarPath = runCatching { Path.of(codeSource.toURI()) }.getOrNull()
-            ?: return null
-        if (!Files.isRegularFile(jarPath)) return null
-        // runtime-libs/ -> install root
-        val candidate = jarPath.parent?.parent?.normalize() ?: return null
-        return candidate.takeIf { Files.isDirectory(it) }
+    private fun readInstalledVersion(targetPath: Path): String? {
+        val markerPath = targetPath.resolve(EmbeddedSkillResources.VERSION_MARKER_FILE_NAME)
+        if (!Files.isRegularFile(markerPath)) {
+            return null
+        }
+        return Files.readString(markerPath)
+            .trim()
+            .takeIf(String::isNotEmpty)
+    }
+
+    private fun existingTargetFailure(targetPath: Path): CliFailure {
+        return CliFailure(
+            code = "INSTALL_SKILL_ERROR",
+            message = "Packaged kast skill already exists at $targetPath; rerun with --yes=true to overwrite it",
+        )
+    }
+
+    private fun deletePathRecursively(path: Path) {
+        if (Files.isSymbolicLink(path) || Files.isRegularFile(path)) {
+            Files.deleteIfExists(path)
+            return
+        }
+
+        Files.walkFileTree(path, object : SimpleFileVisitor<Path>() {
+            override fun visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult {
+                Files.delete(file)
+                return FileVisitResult.CONTINUE
+            }
+
+            override fun postVisitDirectory(dir: Path, exc: IOException?): FileVisitResult {
+                if (exc != null) {
+                    throw exc
+                }
+                Files.delete(dir)
+                return FileVisitResult.CONTINUE
+            }
+        })
     }
 
     private fun resolveDefaultTargetDir(cwd: Path): Path {

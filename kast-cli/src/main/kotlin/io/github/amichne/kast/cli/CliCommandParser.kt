@@ -277,7 +277,9 @@ internal data class ParsedArguments(
 
     fun installSkillOptions(): InstallSkillOptions = InstallSkillOptions(
         targetDir = options["target-dir"]?.let { Path.of(it).toAbsolutePath().normalize() },
-        linkName = options["link-name"]?.takeIf(String::isNotEmpty) ?: "kast",
+        name = options["name"]?.takeIf(String::isNotEmpty)
+            ?: options["link-name"]?.takeIf(String::isNotEmpty)
+            ?: "kast",
         force = optionalBoolean("yes", false),
     )
 

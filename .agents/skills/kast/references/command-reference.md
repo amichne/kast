@@ -601,6 +601,47 @@ Installs to `~/.local/share/kast/instances/<name>/` with a launcher at `~/.local
 
 ---
 
+### `install skill`
+
+Install the packaged `kast` skill into a workspace-local skills directory. The
+command copies the bundled skill tree, writes a `.kast-version` marker, and
+returns `skipped: true` when the target already matches the current CLI
+version.
+
+```bash
+kast install skill \
+  [--target-dir=/absolute/path/to/skills] \
+  [--name=kast] \
+  [--yes=true]
+```
+
+**Options:**
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `--target-dir=` | absolute path | auto-detected | Skills root directory (`.agents/skills`, `.github/skills`, or `.claude/skills`) |
+| `--name=` | string | `kast` | Directory name for the installed skill |
+| `--link-name=` | string | — | Deprecated alias for `--name=` |
+| `--yes=` | boolean | `false` | Overwrite an existing installed skill directory |
+
+**Output — `InstallSkillResult`:**
+
+```json
+{
+  "installedAt": "/absolute/path/to/workspace/.agents/skills/kast",
+  "version": "0.1.1-SNAPSHOT",
+  "skipped": false,
+  "schemaVersion": 1
+}
+```
+
+If the target directory already exists and its `.kast-version` matches the
+current CLI version, the command returns the same payload with `skipped: true`.
+If the target exists with a different version, rerun with `--yes=true` to
+overwrite it.
+
+---
+
 ## Helper Scripts
 
 The packaged kast skill ships two scripts in `"$SKILL_ROOT/scripts/"` that eliminate
