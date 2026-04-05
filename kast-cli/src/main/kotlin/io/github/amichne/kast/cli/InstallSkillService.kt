@@ -64,6 +64,12 @@ internal class InstallSkillService(
                 message = "Skill name may contain only letters, digits, dot, underscore, and dash",
             )
         }
+        if (name == "." || name == "..") {
+            throw CliFailure(
+                code = "INSTALL_SKILL_ERROR",
+                message = "Skill name must not be '.' or '..'",
+            )
+        }
     }
 
     private fun readInstalledVersion(targetPath: Path): String? {

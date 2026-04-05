@@ -128,4 +128,38 @@ class InstallSkillServiceTest {
         assertEquals("INSTALL_SKILL_ERROR", failure.code)
         assertTrue(failure.message.contains("Skill name"))
     }
+
+    @Test
+    fun `install rejects dot as skill name`() {
+        val service = InstallSkillService(embeddedSkillResources = EmbeddedSkillResources(version = "1.2.3"))
+
+        val failure = assertThrows<CliFailure> {
+            service.install(
+                InstallSkillOptions(
+                    targetDir = tempDir.resolve("skills"),
+                    name = ".",
+                    force = false,
+                ),
+            )
+        }
+
+        assertEquals("INSTALL_SKILL_ERROR", failure.code)
+    }
+
+    @Test
+    fun `install rejects dot-dot as skill name`() {
+        val service = InstallSkillService(embeddedSkillResources = EmbeddedSkillResources(version = "1.2.3"))
+
+        val failure = assertThrows<CliFailure> {
+            service.install(
+                InstallSkillOptions(
+                    targetDir = tempDir.resolve("skills"),
+                    name = "..",
+                    force = true,
+                ),
+            )
+        }
+
+        assertEquals("INSTALL_SKILL_ERROR", failure.code)
+    }
 }
