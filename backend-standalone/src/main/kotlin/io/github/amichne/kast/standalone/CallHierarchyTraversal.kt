@@ -349,7 +349,7 @@ internal class CallHierarchyTraversal(
                 query.depth.toString(),
                 query.maxTotalCalls.toString(),
                 query.maxChildrenPerNode.toString(),
-                query.timeoutMillis?.toString() ?: "null",
+                (query.timeoutMillis ?: limits.requestTimeoutMillis).toString(),
             ).joinToString("|"),
         )
         return CallHierarchyCache(
