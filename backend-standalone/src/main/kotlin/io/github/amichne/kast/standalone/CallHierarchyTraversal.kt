@@ -34,6 +34,7 @@ internal class CallHierarchyTraversal(
     private val session: StandaloneAnalysisSession,
     private val telemetry: StandaloneTelemetry,
 ) {
+    private val normalizedWorkspaceRoot = normalizeStandalonePath(workspaceRoot)
     private val json = Json {
         explicitNulls = false
         ignoreUnknownKeys = true
@@ -315,6 +316,9 @@ internal class CallHierarchyTraversal(
                     }
                     element.references.forEach { reference ->
                         val resolved = reference.resolve() ?: return@forEach
+                        if (!resolved.isWithinWorkspaceRoot(normalizedWorkspaceRoot)) {
+                            return@forEach
+                        }
                         edges += CallEdge(
                             target = resolved,
                             symbol = resolved.toSymbolModel(containingDeclaration = null),
@@ -514,6 +518,15 @@ private data class CallHierarchyCacheEntry(
 
 private fun PsiElement.lookupPath(): String = containingFile.virtualFile?.path
                                               ?: containingFile.viewProvider.virtualFile.path
+
+private fun PsiElement.isWithinWorkspaceRoot(workspaceRoot: Path): Boolean {
+    val virtualFile = containingFile.virtualFile ?: containingFile.viewProvider.virtualFile
+    if (!virtualFile.isInLocalFileSystem) {
+        return false
+    }
+    val filePath = runCatching { normalizeStandalonePath(Path.of(virtualFile.path)) }.getOrNull() ?: return false
+    return filePath.startsWith(workspaceRoot)
+}
 
 private fun PsiElement.callHierarchySymbolIdentityKey(
     symbol: Symbol,

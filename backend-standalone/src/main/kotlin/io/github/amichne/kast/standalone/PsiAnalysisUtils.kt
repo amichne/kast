@@ -100,18 +100,19 @@ private fun PsiElement.typeDescription(): String? = when (this) {
  * Converts a PSI element and text range to a [Location] using raw file text.
  */
 internal fun PsiElement.toKastLocation(range: TextRange = nameRange()): Location {
-    val content = containingFile.text
+    val file = containingFile
+    val content = file.viewProvider.contents
     val startOffset = range.startOffset.coerceIn(0, content.length)
     val endOffset = range.endOffset.coerceIn(startOffset, content.length)
     val lineStart = content.lastIndexOf('\n', startOffset - 1).let { if (it == -1) 0 else it + 1 }
     val lineEnd = content.indexOf('\n', startOffset).let { if (it == -1) content.length else it }
 
     return Location(
-        filePath = containingFile.virtualFile?.path
-            ?: containingFile.viewProvider.virtualFile.path,
+        filePath = file.virtualFile?.path
+            ?: file.viewProvider.virtualFile.path,
         startOffset = startOffset,
         endOffset = endOffset,
-        startLine = content.take(startOffset).count { it == '\n' } + 1,
+        startLine = content.subSequence(0, startOffset).count { it == '\n' } + 1,
         startColumn = startOffset - lineStart + 1,
         preview = content.substring(lineStart, lineEnd).trimEnd(),
     )

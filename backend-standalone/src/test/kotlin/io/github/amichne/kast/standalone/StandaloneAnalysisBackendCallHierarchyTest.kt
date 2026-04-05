@@ -142,6 +142,36 @@ class StandaloneAnalysisBackendCallHierarchyTest {
     }
 
     @Test
+    fun `outgoing hierarchy skips library calls without crashing`() = runTest {
+        val content = """
+            package sample
+
+            fun caller(): String = listOf("a").joinToString()
+        """.trimIndent() + "\n"
+        val file = writeFile(
+            relativePath = "src/main/kotlin/sample/LibraryCalls.kt",
+            content = content,
+        )
+        val queryOffset = content.indexOf("fun caller") + "fun ".length
+
+        withBackend { backend ->
+            val result = backend.callHierarchy(
+                CallHierarchyQuery(
+                    position = FilePosition(file.toString(), queryOffset),
+                    direction = CallDirection.OUTGOING,
+                    depth = 1,
+                    maxTotalCalls = 10,
+                ),
+            )
+
+            assertEquals("sample.caller", result.root.symbol.fqName)
+            assertTrue(result.root.children.isEmpty())
+            assertEquals(1, result.stats.totalNodes)
+            assertEquals(0, result.stats.totalEdges)
+        }
+    }
+
+    @Test
     fun `incoming hierarchy uses indexed candidate files and reports bounded file visits`() = runTest {
         writeFile(
             relativePath = "src/main/kotlin/sample/Greeter.kt",
