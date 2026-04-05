@@ -1,5 +1,5 @@
 plugins {
-    id("kast.kotlin-library")
+    id("kast.kotlin-serialization")
 }
 
 dependencies {

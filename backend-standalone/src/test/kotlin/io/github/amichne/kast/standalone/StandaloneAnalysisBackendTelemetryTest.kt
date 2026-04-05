@@ -6,6 +6,9 @@ import io.github.amichne.kast.api.FilePosition
 import io.github.amichne.kast.api.RenameQuery
 import io.github.amichne.kast.api.ServerLimits
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -60,9 +63,18 @@ class StandaloneAnalysisBackendTelemetryTest {
         }
 
         val exportedSpans = telemetryFile.readText()
-        assertTrue(exportedSpans.contains("\"name\":\"kast.rename\""))
-        assertTrue(exportedSpans.contains("\"name\":\"kast.callHierarchy\""))
-        assertTrue(exportedSpans.contains("candidate-files"))
+            .lineSequence()
+            .filter(String::isNotBlank)
+            .map { line -> Json.parseToJsonElement(line).jsonObject }
+            .toList()
+
+        assertTrue(exportedSpans.any { span -> span["name"]?.toString() == "\"kast.rename\"" })
+        assertTrue(exportedSpans.any { span -> span["name"]?.toString() == "\"kast.callHierarchy\"" })
+        val hasCandidateFilesEvent = exportedSpans.any { span ->
+            val events = span["events"]?.jsonArray ?: return@any false
+            events.any { event -> event.jsonObject["name"]?.toString() == "\"candidate-files\"" }
+        }
+        assertTrue(hasCandidateFilesEvent)
     }
 
     private suspend fun withBackend(

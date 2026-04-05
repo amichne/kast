@@ -16,8 +16,14 @@ import io.github.amichne.kast.api.Location
 import io.github.amichne.kast.api.SCHEMA_VERSION
 import io.github.amichne.kast.api.ServerLimits
 import io.github.amichne.kast.api.Symbol
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import org.jetbrains.kotlin.psi.KtFile
 import java.nio.file.Files
 import java.nio.file.Path
@@ -447,7 +453,10 @@ private class CallHierarchyCache(
             return null
         }
 
-        return json.decodeFromString(Files.readString(cacheFilePath))
+        return CallHierarchyCacheEntry.decode(
+            json = json,
+            raw = Files.readString(cacheFilePath),
+        )
     }
 
     fun persist(
@@ -460,7 +469,7 @@ private class CallHierarchyCache(
             schemaVersion = SCHEMA_VERSION,
         )
         Files.createDirectories(cacheFilePath.parent)
-        Files.writeString(cacheFilePath, json.encodeToString(payload))
+        Files.writeString(cacheFilePath, payload.toJson(json).toString())
         return persistence(cacheHit = false)
     }
 
@@ -471,12 +480,37 @@ private class CallHierarchyCache(
     )
 }
 
-@Serializable
 private data class CallHierarchyCacheEntry(
     val root: CallNode,
     val stats: CallHierarchyStats,
     val schemaVersion: Int,
-)
+) {
+    fun toJson(json: Json) = buildJsonObject {
+        put("root", json.encodeToJsonElement(CallNode.serializer(), root))
+        put("stats", json.encodeToJsonElement(CallHierarchyStats.serializer(), stats))
+        put("schemaVersion", schemaVersion)
+    }
+
+    companion object {
+        fun decode(
+            json: Json,
+            raw: String,
+        ): CallHierarchyCacheEntry {
+            val payload = json.parseToJsonElement(raw).jsonObject
+            return CallHierarchyCacheEntry(
+                root = json.decodeFromJsonElement(
+                    CallNode.serializer(),
+                    payload.getValue("root"),
+                ),
+                stats = json.decodeFromJsonElement(
+                    CallHierarchyStats.serializer(),
+                    payload.getValue("stats"),
+                ),
+                schemaVersion = payload["schemaVersion"]?.jsonPrimitive?.intOrNull ?: SCHEMA_VERSION,
+            )
+        }
+    }
+}
 
 private fun PsiElement.lookupPath(): String = containingFile.virtualFile?.path
                                               ?: containingFile.viewProvider.virtualFile.path
