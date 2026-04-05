@@ -116,7 +116,7 @@ changes.
    The bundle stages the launcher, the native client, and the JVM fallback
    runtime libs together.
 2. If you plan to use the packaged skill, run `kast-skilled` once from the
-   workspace root to create the symlinked `kast` skill directory.
+   workspace root to install the repository-local `kast` skill directory.
 3. Open `kast --help` to confirm the grouped command view and your first
    completion-enabled shell.
 4. Start or reuse a workspace runtime with `kast workspace ensure`.

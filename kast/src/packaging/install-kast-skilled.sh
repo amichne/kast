@@ -87,26 +87,31 @@ resolve_default_target_dir() {
 
 usage() {
   cat <<'USAGE' >&2
-Usage: kast-skilled [--target-dir <path>] [--link-name <name>] [--yes]
+Usage: kast-skilled [--target-dir <path>] [--name <name>] [--yes]
 
-Creates a symlink to the packaged kast skill in the current workspace.
+Copies the packaged kast skill into the current workspace.
 
 Defaults:
   target-dir: .agents/skills, .github/skills, or .claude/skills based on what
-              already exists in the current directory; falls back to
-              .agents/skills when none exist
-  link-name:  kast
+               already exists in the current directory; falls back to
+               .agents/skills when none exist
+  name:       kast
 
 Environment:
-  KAST_SKILL_PATH  Override the packaged skill root to symlink from.
+  KAST_SKILL_PATH  Override the packaged skill root to copy from.
 USAGE
 }
 
 script_dir="$(resolve_script_dir)"
 packaged_skill_path="$(resolve_packaged_skill_path "$script_dir")"
 target_dir=""
-link_name="kast"
+skill_name="kast"
 assume_yes="false"
+packaged_skill_version=""
+
+if [[ -f "${packaged_skill_path}/.kast-version" ]]; then
+  packaged_skill_version="$(<"${packaged_skill_path}/.kast-version")"
+fi
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -115,9 +120,14 @@ while [[ $# -gt 0 ]]; do
       target_dir="$2"
       shift 2
       ;;
+    --name)
+      [[ $# -ge 2 ]] || die "Missing value for --name"
+      skill_name="$2"
+      shift 2
+      ;;
     --link-name)
       [[ $# -ge 2 ]] || die "Missing value for --link-name"
-      link_name="$2"
+      skill_name="$2"
       shift 2
       ;;
     --yes)
@@ -134,7 +144,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-[[ "$link_name" =~ ^[A-Za-z0-9._-]+$ ]] || die "Link name may contain only letters, digits, dot, underscore, and dash"
+[[ "$skill_name" =~ ^[A-Za-z0-9._-]+$ ]] || die "Skill name may contain only letters, digits, dot, underscore, and dash"
 
 if [[ -z "$target_dir" ]]; then
   target_dir="$(resolve_default_target_dir "$PWD")"
@@ -142,34 +152,38 @@ fi
 
 mkdir -p "$target_dir"
 target_dir="$(cd -- "$target_dir" >/dev/null 2>&1 && pwd)"
-target_path="${target_dir}/${link_name}"
+target_path="${target_dir}/${skill_name}"
 
-if [[ -L "$target_path" ]]; then
-  if [[ "$(readlink "$target_path")" == "$packaged_skill_path" ]]; then
-    log "Packaged kast skill is already linked at ${target_path}"
+if [[ -d "$target_path" && -n "$packaged_skill_version" && -f "${target_path}/.kast-version" ]]; then
+  if [[ "$(<"${target_path}/.kast-version")" == "$packaged_skill_version" ]]; then
+    log "Packaged kast skill is already installed at ${target_path} (version ${packaged_skill_version})"
     exit 0
   fi
+fi
 
+if [[ -e "$target_path" || -L "$target_path" ]]; then
   if [[ "$assume_yes" != "true" ]]; then
-    can_prompt || die "Target symlink already exists at ${target_path}; rerun with --yes to replace it"
-    prompt_yes_no "Replace existing symlink at ${target_path}?" "yes" || {
+    can_prompt || die "Packaged kast skill already exists at ${target_path}; rerun with --yes to overwrite it"
+    prompt_yes_no "Replace existing packaged kast skill at ${target_path}?" "yes" || {
       log "Skipped replacing ${target_path}"
       exit 0
     }
   fi
 
-  rm -f "$target_path"
-elif [[ -e "$target_path" ]]; then
-  die "Target already exists and is not a symlink: ${target_path}"
+  rm -rf "$target_path"
 fi
 
 if [[ "$assume_yes" != "true" ]]; then
   can_prompt || die "No interactive terminal is available; rerun with --yes to confirm the install path"
-  prompt_yes_no "Link packaged kast skill from ${packaged_skill_path} into ${target_path}?" "yes" || {
+  prompt_yes_no "Copy packaged kast skill from ${packaged_skill_path} into ${target_path}?" "yes" || {
     log "Skipped installing packaged kast skill"
     exit 0
   }
 fi
 
-ln -s "$packaged_skill_path" "$target_path"
-log "Linked packaged kast skill: ${target_path} -> ${packaged_skill_path}"
+mkdir -p "$target_path"
+cp -R "$packaged_skill_path/." "$target_path/"
+if [[ -n "$packaged_skill_version" ]]; then
+  printf '%s\n' "$packaged_skill_version" > "${target_path}/.kast-version"
+fi
+log "Installed packaged kast skill at ${target_path}"

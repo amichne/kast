@@ -135,21 +135,15 @@ mkdir -p "${workspace_root}/.github"
   "$installed_skill_launcher" --yes >/dev/null
 )
 
-installed_skill_link="${workspace_root}/.github/skills/kast"
-[[ -L "$installed_skill_link" ]] || die "Packaged skill symlink was not created at ${installed_skill_link}"
+installed_skill_dir="${workspace_root}/.github/skills/kast"
+[[ -d "$installed_skill_dir" ]] || die "Packaged skill directory was not created at ${installed_skill_dir}"
+[[ ! -L "$installed_skill_dir" ]] || die "Packaged skill install must be a directory, not a symlink: ${installed_skill_dir}"
+[[ -f "${installed_skill_dir}/SKILL.md" ]] || die "Installed skill is missing SKILL.md at ${installed_skill_dir}"
+[[ -f "${installed_root}/share/skills/kast/.kast-version" ]] || die "Packaged skill source is missing .kast-version"
+[[ -f "${installed_skill_dir}/.kast-version" ]] || die "Installed skill is missing .kast-version"
 
-python3 - "$installed_skill_link" "${installed_root}/share/skills/kast" <<'PY'
-import sys
-from pathlib import Path
-
-link_path = Path(sys.argv[1])
-expected_target = Path(sys.argv[2]).resolve()
-actual_target = link_path.resolve()
-
-if actual_target != expected_target:
-    raise SystemExit(
-        f"Packaged skill symlink target mismatch: expected {expected_target}, got {actual_target}"
-    )
-PY
+source_skill_version="$(<"${installed_root}/share/skills/kast/.kast-version")"
+installed_skill_version="$(<"${installed_skill_dir}/.kast-version")"
+[[ "$installed_skill_version" == "$source_skill_version" ]] || die "Installed skill version mismatch: expected ${source_skill_version}, got ${installed_skill_version}"
 
 log "Installer smoke test passed for ${platform_id}"

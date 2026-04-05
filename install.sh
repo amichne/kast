@@ -646,12 +646,12 @@ EOF
   log_success "Skill launcher path: ${skill_bin_link}"
   if path_contains "$bin_dir"; then
     log_step "Try: kast --help"
-    log_step "Then run: kast-skilled"
+    log_step "Then run: kast-skilled from your workspace root to copy the packaged skill"
     log_step "Then: kast workspace ensure --workspace-root=/absolute/path/to/workspace"
   else
     log_note "Export PATH=\"${bin_dir}:\$PATH\""
     log_note "Then run: kast --help"
-    log_note "Then run: kast-skilled"
+    log_note "Then run: kast-skilled from your workspace root to copy the packaged skill"
     log_note "Then run: kast workspace ensure --workspace-root=/absolute/path/to/workspace"
   fi
 }

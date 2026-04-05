@@ -8,8 +8,8 @@ icon: lucide/play
 This guide gets you from a fresh shell to a ready workspace runtime. When you
 finish, you will have `kast` on your path, a daemon attached to one workspace,
 and a clear way to confirm the runtime is healthy. If you use an agent
-workflow, the same install also gives you `kast-skilled` so you can link the
-packaged `kast` skill into a workspace without copying it.
+workflow, the same install also gives you `kast-skilled` so you can install the
+packaged `kast` skill into a workspace as a version-matched local copy.
 
 The published install gives you a launcher plus a bundled native client.
 Daemon-backed commands still rely on the JVM runtime, so Java 21 remains
@@ -57,12 +57,12 @@ from your shell.
     unpacks the release. The portable bundle includes the launcher, the bundled
     native client, and the JVM runtime libs together.
 
-## Optional: link the packaged `kast` skill into a workspace
+## Optional: install the packaged `kast` skill into a workspace
 
 If you use an agent that loads repository-local skills, run `kast-skilled`
-from the workspace root after you install the CLI. The command creates only a
-symlink, so every workspace link points at the single packaged skill root from
-`KAST_SKILL_PATH` instead of copying the skill contents.
+from the workspace root after you install the CLI. The command copies the
+packaged skill into a repository-local directory and writes a `.kast-version`
+marker so rerunning the same CLI version can skip a no-op install.
 
 1. From the workspace root, run:
 
@@ -70,7 +70,7 @@ symlink, so every workspace link points at the single packaged skill root from
    kast-skilled
    ```
 
-2. Confirm the prompt before the symlink is created.
+2. Confirm the prompt before the files are copied.
 
 3. Let the command choose the default location from the directories already
    present in the current directory:
@@ -202,8 +202,8 @@ mistakes.
 - If the installer fails immediately, confirm that Java 21 or newer is
   installed and your operating system is supported by the published bundle.
 - If `kast-skilled` cannot find the packaged skill root, confirm that the
-  published install completed and that `KAST_SKILL_PATH` points to a real
-  `kast` skill directory when you override it.
+  published install completed. If you override the packaged skill source for
+  the shell launcher, point `KAST_SKILL_PATH` at a real `kast` skill directory.
 - If Kast reports a usage error, rewrite the command so every option uses the
   `--key=value` form.
 - If Kast cannot find the workspace or a file, convert the path to an absolute

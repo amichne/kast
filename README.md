@@ -34,17 +34,17 @@ out, you can run `./install.sh` from the repo root instead.
 > from bundled `runtime-libs`, so Java 21 or newer remains required.
 
 The installer also registers `kast-skilled`. Run it from a workspace root to
-create a `kast` skill symlink without copying the skill contents:
+copy a version-matched `kast` skill into that workspace:
 
 ```bash
 kast-skilled
 ```
 
-It prompts before linking and defaults to `.agents/skills/kast`,
+It prompts before copying and defaults to `.agents/skills/kast`,
 `.github/skills/kast`, or `.claude/skills/kast` based on which directories
-already exist in the current directory. All installed links point back to the
-single packaged skill root from `KAST_SKILL_PATH`, which the launcher defaults
-to the installed release copy unless you override it.
+already exist in the current directory. Each installed skill tree includes a
+`.kast-version` marker, so rerunning the same CLI version can skip a no-op
+install safely.
 
 ## Local/dev builds
 

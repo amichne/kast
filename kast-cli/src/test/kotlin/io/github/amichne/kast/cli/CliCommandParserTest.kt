@@ -112,6 +112,41 @@ class CliCommandParserTest {
     }
 
     @Test
+    fun `install skill parses the primary name option`() {
+        val command = parser.parse(
+            arrayOf(
+                "install",
+                "skill",
+                "--target-dir=$tempDir",
+                "--name=kast-ci",
+                "--yes=true",
+            ),
+        )
+
+        assertTrue(command is CliCommand.InstallSkill)
+        val installSkillCommand = command as CliCommand.InstallSkill
+        assertEquals(tempDir, installSkillCommand.options.targetDir)
+        assertEquals("kast-ci", installSkillCommand.options.name)
+        assertTrue(installSkillCommand.options.force)
+    }
+
+    @Test
+    fun `install skill accepts link-name as a compatibility alias`() {
+        val command = parser.parse(
+            arrayOf(
+                "install",
+                "skill",
+                "--target-dir=$tempDir",
+                "--link-name=kast-legacy",
+            ),
+        )
+
+        assertTrue(command is CliCommand.InstallSkill)
+        val installSkillCommand = command as CliCommand.InstallSkill
+        assertEquals("kast-legacy", installSkillCommand.options.name)
+    }
+
+    @Test
     fun `usage errors include command specific help`() {
         val failure = assertThrows<CliFailure> {
             parser.parse(

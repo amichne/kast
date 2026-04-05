@@ -12,9 +12,10 @@ human-first. This page explains the lower-level scaffolding the skill uses
 under the hood.
 
 Run `kast-skilled` once from the workspace root before you follow the examples
-here. It creates a repository-local `kast` skill symlink that points back to
-the single packaged skill root from `KAST_SKILL_PATH`, so the examples can use
-that linked skill path without copying the skill tree.
+here. It installs a repository-local copy of the packaged `kast` skill, so the
+examples can use that local skill path directly. The copied skill tree includes
+a `.kast-version` marker that stays aligned with the CLI version that
+installed it.
 
 !!! note
     The packaged skill can run `call hierarchy` after `symbol resolve`

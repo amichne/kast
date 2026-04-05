@@ -90,6 +90,13 @@ tasks.named("writeWrapperScript").configure {
 val syncPackagedSkill: TaskProvider<Sync> by tasks.registering(Sync::class) {
     from(packagedSkillSourceDir)
     into(layout.buildDirectory.dir("packaged-skill/share/skills/kast"))
+    exclude(".DS_Store")
+    inputs.property("packagedSkillVersion", project.version.toString())
+    doLast {
+        val markerFile = layout.buildDirectory.file("packaged-skill/share/skills/kast/.kast-version").get().asFile
+        markerFile.parentFile.mkdirs()
+        markerFile.writeText("${project.version}${System.lineSeparator()}")
+    }
 }
 
 val stagePackagedSkillInstaller: TaskProvider<Task> by tasks.registering {

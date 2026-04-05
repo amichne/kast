@@ -1,5 +1,6 @@
 import org.gradle.api.tasks.Sync
 import org.gradle.api.tasks.testing.Test
+import org.gradle.language.jvm.tasks.ProcessResources
 
 plugins {
     id("kast.standalone-serialization-app")
@@ -8,6 +9,16 @@ plugins {
 
 val nativeConfigDir = layout.projectDirectory.dir(
     "src/main/resources/META-INF/native-image/io.github.amichne.kast/kast-cli",
+)
+val packagedSkillSourceDir = rootProject.layout.projectDirectory.dir(".agents/skills/kast")
+val embeddedSkillFiles = listOf(
+    "SKILL.md",
+    "agents/openai.yaml",
+    "references/cloud-setup.md",
+    "references/command-reference.md",
+    "references/troubleshooting.md",
+    "scripts/kast-rename.sh",
+    "scripts/resolve-kast.sh",
 )
 
 application {
@@ -34,6 +45,19 @@ graalvmNative {
             )
         }
     }
+}
+
+val syncPackagedSkillResources by tasks.registering(Sync::class) {
+    from(packagedSkillSourceDir) {
+        include(embeddedSkillFiles)
+        into("packaged-skill")
+    }
+    into(layout.buildDirectory.dir("generated/packaged-skill-resources"))
+    includeEmptyDirs = false
+}
+
+tasks.named<ProcessResources>("processResources") {
+    from(syncPackagedSkillResources)
 }
 
 tasks.named<Test>("test") {
