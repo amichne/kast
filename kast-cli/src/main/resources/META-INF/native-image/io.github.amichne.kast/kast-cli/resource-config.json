@@ -1,5 +1,9 @@
 {
   "resources": {
-    "includes": []
+    "includes": [
+      {
+        "pattern": "packaged-skill/.*"
+      }
+    ]
   }
 }

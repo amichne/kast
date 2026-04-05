@@ -188,18 +188,23 @@ internal object CliCommandCatalog {
     private val skillTargetDirOption = CliOptionMetadata(
         key = "target-dir",
         usage = "--target-dir=/absolute/path/to/skills",
-        description = "Directory to create the skill symlink in. Auto-detected from CWD when omitted.",
+        description = "Directory to install the packaged skill in. Auto-detected from CWD when omitted.",
         completionKind = CliOptionCompletionKind.DIRECTORY,
     )
-    private val skillLinkNameOption = CliOptionMetadata(
+    private val skillNameOption = CliOptionMetadata(
+        key = "name",
+        usage = "--name=kast",
+        description = "Directory name for the installed skill. Defaults to kast.",
+    )
+    private val skillLinkNameAliasOption = CliOptionMetadata(
         key = "link-name",
         usage = "--link-name=kast",
-        description = "Name for the skill symlink. Defaults to kast.",
+        description = "Deprecated alias for --name.",
     )
     private val yesOption = CliOptionMetadata(
         key = "yes",
         usage = "--yes=true",
-        description = "Replace an existing symlink without prompting. Defaults to false.",
+        description = "Overwrite an existing installed skill directory without prompting. Defaults to false.",
         completionKind = CliOptionCompletionKind.BOOLEAN,
     )
 
@@ -435,15 +440,16 @@ internal object CliCommandCatalog {
         CliCommandMetadata(
             path = listOf("install", "skill"),
             group = CliCommandGroup.CLI_MANAGEMENT,
-            summary = "Link the packaged kast skill into the current workspace.",
-            description = "Creates a symlink to the bundled kast skill in the nearest recognised skills directory (.agents/skills, .github/skills, or .claude/skills), or the path given by --target-dir. Set KAST_SKILL_PATH to override the packaged skill source.",
+            summary = "Install the packaged kast skill into the current workspace.",
+            description = "Copies the bundled kast skill into the nearest recognised skills directory (.agents/skills, .github/skills, or .claude/skills), or the path given by --target-dir. Installed skill trees include a .kast-version marker so matching installs can be skipped safely.",
             usages = listOf(
-                "$CLI_EXECUTABLE_NAME install skill [--target-dir=/absolute/path/to/skills] [--link-name=kast] [--yes=true]",
+                "$CLI_EXECUTABLE_NAME install skill [--target-dir=/absolute/path/to/skills] [--name=kast] [--yes=true]",
             ),
-            options = listOf(skillTargetDirOption, skillLinkNameOption, yesOption),
+            options = listOf(skillTargetDirOption, skillNameOption, skillLinkNameAliasOption, yesOption),
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME install skill",
                 "$CLI_EXECUTABLE_NAME install skill --target-dir=/my/project/.agents/skills",
+                "$CLI_EXECUTABLE_NAME install skill --name=kast-ci",
                 "$CLI_EXECUTABLE_NAME install skill --yes=true",
             ),
         ),

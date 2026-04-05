@@ -18,22 +18,22 @@ precise lookup inputs that Kast needs.
 
 ## Install the packaged skill into the workspace
 
-Before an agent can use the packaged `kast` skill from a repository, link it
-into that repository once. The `kast-skilled` command creates a symlink only,
-so every workspace points back to the single packaged skill root from
-`KAST_SKILL_PATH`.
+Before an agent can use the packaged `kast` skill from a repository, install it
+into that repository once. `kast install skill` copies the bundled skill tree
+into the workspace and records the CLI version in `.kast-version`.
 
 1. Install Kast with `install.sh` if you have not already done that.
 
 2. From the workspace root, run:
 
    ```bash
-   kast-skilled
+   kast install skill
    ```
 
-3. Confirm the prompt before the symlink is created. By default, the command
-   picks `.agents/skills/kast`, `.github/skills/kast`, or `.claude/skills/kast`
-   from the directories already present in the current directory.
+3. If you need to replace an existing install, rerun with `--yes=true`. By
+   default, the command picks `.agents/skills/kast`, `.github/skills/kast`, or
+   `.claude/skills/kast` from the directories already present in the current
+   directory.
 
 ## Start with a conversational reference
 

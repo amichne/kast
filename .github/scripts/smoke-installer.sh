@@ -115,41 +115,42 @@ KAST_INSTALL_COMPLETIONS=false \
 /bin/bash -c "$installer_content"
 
 installed_launcher="${tmp_dir}/bin/kast"
-installed_skill_launcher="${tmp_dir}/bin/kast-skilled"
 installed_root="${tmp_dir}/install-root/current"
 
 [[ -x "$installed_launcher" ]] || die "Installed launcher is not executable: $installed_launcher"
-[[ -x "$installed_skill_launcher" ]] || die "Installed skill launcher is not executable: $installed_skill_launcher"
 [[ -L "$installed_root" ]] || die "Current install symlink was not created: $installed_root"
 [[ -x "${installed_root}/kast" ]] || die "Installed kast launcher is missing from ${installed_root}"
 [[ -x "${installed_root}/bin/kast" ]] || die "Installed kast native binary is missing from ${installed_root}/bin"
-[[ -x "${installed_root}/scripts/install-kast-skilled.sh" ]] || die "Installed skill helper is missing from ${installed_root}/scripts"
-[[ -f "${installed_root}/share/skills/kast/SKILL.md" ]] || die "Installed packaged skill is missing from ${installed_root}/share/skills/kast"
 
 "$installed_launcher" --help >/dev/null
 
 workspace_root="${tmp_dir}/workspace"
 mkdir -p "${workspace_root}/.github"
+install_skill_output="${tmp_dir}/install-skill.json"
 (
   cd "$workspace_root"
-  "$installed_skill_launcher" --yes >/dev/null
+  "$installed_launcher" install skill --yes=true >"$install_skill_output"
 )
 
-installed_skill_link="${workspace_root}/.github/skills/kast"
-[[ -L "$installed_skill_link" ]] || die "Packaged skill symlink was not created at ${installed_skill_link}"
-
-python3 - "$installed_skill_link" "${installed_root}/share/skills/kast" <<'PY'
+installed_skill_dir="${workspace_root}/.github/skills/kast"
+[[ -d "$installed_skill_dir" ]] || die "Packaged skill directory was not created at ${installed_skill_dir}"
+[[ ! -L "$installed_skill_dir" ]] || die "Packaged skill install must be a directory, not a symlink: ${installed_skill_dir}"
+[[ -f "${installed_skill_dir}/SKILL.md" ]] || die "Installed skill is missing SKILL.md at ${installed_skill_dir}"
+[[ -f "${installed_skill_dir}/.kast-version" ]] || die "Installed skill is missing .kast-version"
+python3 - "$install_skill_output" "$installed_skill_dir" <<'PY'
+import json
 import sys
 from pathlib import Path
 
-link_path = Path(sys.argv[1])
-expected_target = Path(sys.argv[2]).resolve()
-actual_target = link_path.resolve()
+payload_path = Path(sys.argv[1])
+installed_skill_dir = Path(sys.argv[2])
+payload = json.loads(payload_path.read_text(encoding="utf-8"))
 
-if actual_target != expected_target:
-    raise SystemExit(
-        f"Packaged skill symlink target mismatch: expected {expected_target}, got {actual_target}"
-    )
+assert Path(payload["installedAt"]).resolve() == installed_skill_dir.resolve(), payload
+assert payload["skipped"] is False, payload
+
+installed_skill_version = installed_skill_dir.joinpath(".kast-version").read_text(encoding="utf-8").strip()
+assert payload["version"] == installed_skill_version, payload
 PY
 
 log "Installer smoke test passed for ${platform_id}"
