@@ -427,7 +427,12 @@ class StandaloneWorkspaceDiscoveryTest {
     fun `tooling api resolves compileOnly libraries from included-build convention plugins`() {
         createCompositeConventionPluginWorkspace()
 
-        val modulesByPath = GradleWorkspaceDiscovery.loadModulesWithToolingApi(workspaceRoot)
+        // Cold CI can spend noticeably longer compiling the included build's convention plugin
+        // before the Tooling API model is ready.
+        val modulesByPath = GradleWorkspaceDiscovery.loadModulesWithToolingApi(
+            workspaceRoot,
+            timeoutMillis = defaultToolingApiTimeoutMillis * 4,
+        )
             .associateBy(GradleModuleModel::gradlePath)
 
         assertTrue(
@@ -435,7 +440,7 @@ class StandaloneWorkspaceDiscoveryTest {
                 .filterIsInstance<GradleDependency.LibraryDependency>()
                 .any { dependency ->
                     dependency.scope == GradleDependencyScope.PROVIDED &&
-                        dependency.binaryRoot.fileName.toString() == "detekt-api-1.23.7.jar"
+                    dependency.binaryRoot.fileName.toString() == "detekt-api-1.23.7.jar"
                 },
         )
     }
