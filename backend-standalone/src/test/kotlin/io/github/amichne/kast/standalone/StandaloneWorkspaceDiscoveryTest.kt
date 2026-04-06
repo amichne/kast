@@ -14,9 +14,11 @@ import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeoutException
 import java.util.jar.JarEntry
 import java.util.jar.JarOutputStream
 import kotlin.io.path.createDirectories
+import kotlin.io.path.exists
 import kotlin.io.path.writeText
 
 class StandaloneWorkspaceDiscoveryTest {
@@ -173,6 +175,24 @@ class StandaloneWorkspaceDiscoveryTest {
         assertTrue(
             modulesByName.getValue(":app[main]").sourceRoots.any { path -> path == normalizeStandalonePath(workspaceRoot.resolve("app/src/customMain/java")) },
         )
+    }
+
+    @Test
+    fun `composite gradle workspace discovers modules from included builds`() {
+        createCompositeGradleWorkspace(includeJavaSource = false)
+
+        val settingsSnapshot = GradleSettingsSnapshot.read(workspaceRoot)
+        val layout = discoverStandaloneWorkspaceLayout(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "ignored",
+        )
+
+        assertTrue(settingsSnapshot.hasCompositeBuilds)
+        assertEquals(listOf("build-logic"), settingsSnapshot.compositeBuilds)
+        assertTrue(layout.sourceModules.any { module -> module.name == ":app[main]" })
+        assertTrue(layout.sourceModules.any { module -> module.name == ":lib[main]" })
     }
 
     @Test
@@ -431,17 +451,20 @@ class StandaloneWorkspaceDiscoveryTest {
         // before the Tooling API model is ready.
         val modulesByPath = GradleWorkspaceDiscovery.loadModulesWithToolingApi(
             workspaceRoot,
-            timeoutMillis = defaultToolingApiTimeoutMillis * 4,
+            timeoutMillis = maxToolingApiTimeoutMillis,
         )
             .associateBy(GradleModuleModel::gradlePath)
 
+        val detektRuleDependencies = modulesByPath.getValue(":detekt-rules").dependencies
+
         assertTrue(
-            modulesByPath.getValue(":detekt-rules").dependencies
+            detektRuleDependencies
                 .filterIsInstance<GradleDependency.LibraryDependency>()
                 .any { dependency ->
                     dependency.scope == GradleDependencyScope.PROVIDED &&
                     dependency.binaryRoot.fileName.toString() == "detekt-api-1.23.7.jar"
                 },
+            "Resolved dependencies: $detektRuleDependencies",
         )
     }
 
@@ -472,6 +495,48 @@ class StandaloneWorkspaceDiscoveryTest {
             assertTrue(status.warnings.any { warning -> warning.contains(":lib") })
             assertTrue(checkNotNull(status.message).contains("warnings"))
         }
+    }
+
+    @Test
+    fun `gradle workspace discovery reuses cached tooling api result on repeat discovery`() {
+        createGradleWorkspace(includeLocalTestJar = true)
+
+        val firstLayout = discoverStandaloneWorkspaceLayout(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "ignored",
+        )
+        val cacheFilePath = ToolingApiResultCache().cacheFilePath(workspaceRoot)
+
+        val secondLayout = discoverStandaloneWorkspaceLayout(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "ignored",
+        )
+
+        assertTrue(cacheFilePath.exists())
+        assertEquals(firstLayout, secondLayout)
+    }
+
+    @Test
+    fun `static gradle discovery with pre-built project resolves library classpath`() {
+        createLargeStaticGradleWorkspaceWithBuildOutput()
+
+        val layout = GradleWorkspaceDiscovery.discover(
+            workspaceRoot = workspaceRoot,
+            extraClasspathRoots = emptyList(),
+            toolingApiLoader = { _, _ -> throw TimeoutException("forced static fallback") },
+        )
+
+        assertTrue(
+            layout.sourceModules
+                .associateBy(StandaloneSourceModuleSpec::name)
+                .getValue(":app[main]")
+                .binaryRoots
+                .any { binaryRoot -> binaryRoot.fileName.toString() == "prebuilt-lib.jar" },
+        )
     }
 
     private fun createGradleWorkspace(includeLocalTestJar: Boolean) {
@@ -773,6 +838,35 @@ class StandaloneWorkspaceDiscoveryTest {
         )
     }
 
+    private fun createLargeStaticGradleWorkspaceWithBuildOutput() {
+        val projectNames = listOf("app") + (1..200).map { index -> "module$index" }
+        writeFile(
+            relativePath = "settings.gradle.kts",
+            content = buildString {
+                appendLine("rootProject.name = \"workspace\"")
+                appendLine(
+                    "include(${projectNames.joinToString(separator = ", ") { projectName -> "\"$projectName\"" }})",
+                )
+            },
+        )
+        projectNames.forEach { projectName ->
+            writeFile(relativePath = "$projectName/build.gradle.kts", content = "")
+        }
+        writeFile(
+            relativePath = "app/src/main/kotlin/sample/Use.kt",
+            content = """
+                package sample
+
+                fun use(): String = "static"
+            """.trimIndent() + "\n",
+        )
+        val prebuiltJar = createJar(workspaceRoot.resolve("repo/prebuilt-lib.jar"))
+        writeFile(
+            relativePath = "app/build/tmp/compileKotlin/classpath",
+            content = prebuiltJar.toAbsolutePath().normalize().toString() + "\n",
+        )
+    }
+
     private fun createCompositeConventionPluginWorkspace() {
         publishMavenArtifact(
             repositoryRoot = workspaceRoot.resolve("repo"),
@@ -841,24 +935,37 @@ class StandaloneWorkspaceDiscoveryTest {
             relativePath = "build-logic/build.gradle.kts",
             content = """
                 plugins {
-                    `kotlin-dsl`
+                    `java-gradle-plugin`
                 }
 
                 repositories {
                     gradlePluginPortal()
                     mavenCentral()
                 }
+
+                gradlePlugin {
+                    plugins {
+                        create("sampleJavaLibrary") {
+                            id = "sample.java-library"
+                            implementationClass = "sample.JavaLibraryConventionPlugin"
+                        }
+                    }
+                }
             """.trimIndent() + "\n",
         )
         writeFile(
-            relativePath = "build-logic/src/main/kotlin/sample.java-library.gradle.kts",
+            relativePath = "build-logic/src/main/java/sample/JavaLibraryConventionPlugin.java",
             content = """
-                plugins {
-                    `java-library`
-                }
+                package sample;
 
-                repositories {
-                    mavenCentral()
+                import org.gradle.api.Plugin;
+                import org.gradle.api.Project;
+
+                public final class JavaLibraryConventionPlugin implements Plugin<Project> {
+                    @Override
+                    public void apply(Project project) {
+                        project.getPluginManager().apply("java-library");
+                    }
                 }
             """.trimIndent() + "\n",
         )
@@ -867,6 +974,11 @@ class StandaloneWorkspaceDiscoveryTest {
             content = """
                 plugins {
                     id("sample.java-library")
+                }
+
+                repositories {
+                    maven { url = uri(rootProject.layout.projectDirectory.dir("repo")) }
+                    mavenCentral()
                 }
 
                 dependencies {
@@ -884,7 +996,7 @@ class StandaloneWorkspaceDiscoveryTest {
         )
     }
 
-    private fun createJar(path: Path) {
+    private fun createJar(path: Path): Path {
         path.parent.createDirectories()
         Files.newOutputStream(path).use { output ->
             JarOutputStream(output).use { jar ->
@@ -892,6 +1004,7 @@ class StandaloneWorkspaceDiscoveryTest {
                 jar.closeEntry()
             }
         }
+        return path
     }
 
     private fun publishMavenArtifact(

@@ -1,5 +1,7 @@
 package io.github.amichne.kast.standalone
 
+import java.io.File
+import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.exists
 import kotlin.io.path.isDirectory
@@ -53,15 +55,15 @@ internal object StaticGradleWorkspaceDiscovery {
     ): GradleModuleModel {
         val projectDirectory = projectDirectoryFor(workspaceRoot, projectPath)
         val buildFiles = buildFileCandidates(projectDirectory).filter(Path::isRegularFile)
-        val dependencies = buildFiles
-            .flatMap { buildFile ->
+        val dependencies = (
+            buildFiles.flatMap { buildFile ->
                 parseDependencies(
                     buildText = buildFile.readText(),
                     workspaceRoot = workspaceRoot,
                     projectDirectory = projectDirectory,
                 )
-            }
-            .distinct()
+            } + discoverClasspathFromBuildOutput(projectDirectory)
+            ).distinct()
 
         return GradleModuleModel(
             gradlePath = projectPath,
@@ -89,6 +91,95 @@ internal object StaticGradleWorkspaceDiscovery {
             .forEach(::add)
         collectFileDependencies(buildText, addedFileDependencyPattern, workspaceRoot, projectDirectory)
             .forEach(::add)
+    }
+
+    private fun discoverClasspathFromBuildOutput(projectDirectory: Path): List<GradleDependency.LibraryDependency> = runCatching {
+        val mainBinaryRoots = resolveClasspathEntriesFromFiles(
+            projectDirectory,
+            buildOutputClasspathFiles(projectDirectory, GradleSourceSet.MAIN),
+        )
+        val testBinaryRoots = resolveClasspathEntriesFromFiles(
+            projectDirectory,
+            buildOutputClasspathFiles(projectDirectory, GradleSourceSet.TEST),
+        )
+
+        val buildLibDirectory = projectDirectory.resolve("build/libs")
+        val libJars = if (buildLibDirectory.isDirectory()) {
+            Files.list(buildLibDirectory).use { paths ->
+                paths.filter { path ->
+                    Files.isRegularFile(path) && path.fileName.toString().endsWith(".jar")
+                }.map(::normalizeStandalonePath).toList()
+            }
+        } else {
+            emptyList()
+        }
+
+        val allMainRoots = (mainBinaryRoots + libJars).distinct().sorted()
+        val testOnlyRoots = (testBinaryRoots - allMainRoots.toSet()).distinct().sorted()
+
+        allMainRoots.map { binaryRoot ->
+            GradleDependency.LibraryDependency(
+                binaryRoot = binaryRoot,
+                scope = GradleDependencyScope.COMPILE,
+            )
+        } + testOnlyRoots.map { binaryRoot ->
+            GradleDependency.LibraryDependency(
+                binaryRoot = binaryRoot,
+                scope = GradleDependencyScope.TEST,
+            )
+        }
+    }.getOrElse { emptyList() }
+
+    private fun resolveClasspathEntriesFromFiles(
+        projectDirectory: Path,
+        classpathFiles: List<Path>,
+    ): List<Path> = classpathFiles
+        .filter(Path::isRegularFile)
+        .flatMap { classpathFile -> parseBuildOutputClasspathEntries(classpathFile.readText()) }
+        .mapNotNull { rawEntry -> existingJarPathOrNull(resolveBuildOutputClasspathEntry(rawEntry, projectDirectory)) }
+        .distinct()
+
+    private fun buildOutputClasspathFiles(
+        projectDirectory: Path,
+        sourceSet: GradleSourceSet,
+    ): List<Path> = when (sourceSet) {
+        GradleSourceSet.MAIN -> listOf(
+            projectDirectory.resolve("build/tmp/compileKotlin/classpath"),
+            projectDirectory.resolve("build/tmp/compileJava/classpath"),
+        )
+        GradleSourceSet.TEST -> listOf(
+            projectDirectory.resolve("build/tmp/compileTestKotlin/classpath"),
+            projectDirectory.resolve("build/tmp/compileTestJava/classpath"),
+        )
+        GradleSourceSet.TEST_FIXTURES -> listOf(
+            projectDirectory.resolve("build/tmp/compileTestFixturesKotlin/classpath"),
+            projectDirectory.resolve("build/tmp/compileTestFixturesJava/classpath"),
+        )
+    }
+
+    private fun parseBuildOutputClasspathEntries(rawClasspath: String): List<String> = rawClasspath.lineSequence()
+        .flatMap { line ->
+            val trimmedLine = line.trim()
+            when {
+                trimmedLine.isBlank() -> emptySequence()
+                trimmedLine.contains(File.pathSeparator) -> trimmedLine.split(File.pathSeparator).asSequence()
+                else -> sequenceOf(trimmedLine)
+            }
+        }
+        .map(String::trim)
+        .filter(String::isNotBlank)
+        .toList()
+
+    private fun resolveBuildOutputClasspathEntry(
+        rawPath: String,
+        projectDirectory: Path,
+    ): Path {
+        val candidatePath = Path.of(rawPath)
+        return if (candidatePath.isAbsolute) {
+            candidatePath
+        } else {
+            projectDirectory.resolve(rawPath)
+        }
     }
 
     private fun collectProjectDependencies(
@@ -154,6 +245,9 @@ internal object StaticGradleWorkspaceDiscovery {
     private fun existingPathOrNull(path: Path): Path? = path
         .takeIf(Path::exists)
         ?.let(::normalizeStandalonePath)
+
+    private fun existingJarPathOrNull(path: Path): Path? = existingPathOrNull(path)
+        ?.takeIf { normalizedPath -> normalizedPath.fileName.toString().endsWith(".jar") }
 
     private fun resolveRelativeBinaryRoot(
         rawPath: String,

@@ -24,7 +24,7 @@ import java.nio.file.StandardCopyOption
 import java.util.zip.ZipFile
 
 plugins {
-    id("kast.standalone-app")
+    id("kast.standalone-serialization-app")
 }
 
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")

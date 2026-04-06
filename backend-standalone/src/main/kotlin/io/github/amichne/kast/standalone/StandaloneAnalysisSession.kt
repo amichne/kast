@@ -14,6 +14,9 @@ import com.intellij.platform.syntax.psi.CommonElementTypeConverterFactory
 import com.intellij.platform.syntax.psi.ElementTypeConverters
 import io.github.amichne.kast.api.NotFoundException
 import io.github.amichne.kast.api.RefreshResult
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaSourceModule
 import org.jetbrains.kotlin.analysis.api.standalone.StandaloneAnalysisAPISession
 import org.jetbrains.kotlin.analysis.api.standalone.buildStandaloneAnalysisAPISession
@@ -47,6 +50,8 @@ class StandaloneAnalysisSession(
     private val sourceIdentifierIndex = AtomicReference<MutableSourceIdentifierIndex?>(null)
     private val initialSourceIndexReady = CompletableFuture<Unit>()
     private val pendingSourceIndexRefreshPaths = ConcurrentHashMap.newKeySet<String>()
+    private val sourceIndexCache = SourceIdentifierIndexCache()
+    private val normalizedWorkspaceRoot = normalizeStandalonePath(workspaceRoot)
     private val fullKtFileMapLoadLock = Any()
     private val analysisSessionLock = ReentrantReadWriteLock()
     @Volatile
@@ -431,10 +436,17 @@ class StandaloneAnalysisSession(
             name = "kast-initial-source-index",
         ) {
             runCatching {
-                initialSourceIndexBuilder
-                    ?.invoke()
-                    ?.let(MutableSourceIdentifierIndex::fromCandidatePathsByIdentifier)
-                    ?: buildSourceIdentifierIndex()
+                val cachedIndex = sourceIndexCache.load(normalizedWorkspaceRoot, resolvedSourceRoots)
+                if (cachedIndex != null) {
+                    cachedIndex
+                } else {
+                    val builtIndex = initialSourceIndexBuilder
+                        ?.invoke()
+                        ?.let(MutableSourceIdentifierIndex::fromCandidatePathsByIdentifier)
+                        ?: buildSourceIdentifierIndex()
+                    runCatching { sourceIndexCache.write(normalizedWorkspaceRoot, builtIndex, resolvedSourceRoots) }
+                    builtIndex
+                }
             }
                 .onSuccess { builtIndex ->
                     applyPendingSourceIndexRefreshes(builtIndex)
@@ -638,6 +650,9 @@ internal class MutableSourceIdentifierIndex(
 
     fun knownPaths(): Set<String> = identifiersByPath.keys.toSet()
 
+    fun identifiersForPath(normalizedPath: String): Set<String> =
+        identifiersByPath[normalizedPath].orEmpty()
+
     private fun replaceIdentifiers(
         normalizedPath: String,
         identifiers: Set<String>,
@@ -681,6 +696,140 @@ internal class MutableSourceIdentifierIndex(
         }
     }
 }
+
+internal class SourceIdentifierIndexCache(
+    private val json: Json = Json {
+        encodeDefaults = true
+        ignoreUnknownKeys = true
+    },
+    private val fileReader: (Path) -> String = { path -> Files.readString(path) },
+    private val fileWriter: (Path, String) -> Unit = { path, content ->
+        path.parent?.let(Files::createDirectories)
+        Files.writeString(path, content)
+    },
+) {
+    fun cacheFilePath(workspaceRoot: Path): Path = workspaceRoot
+        .resolve(".kast")
+        .resolve("cache")
+        .resolve("source-identifier-index.json")
+
+    fun write(
+        workspaceRoot: Path,
+        index: MutableSourceIdentifierIndex,
+        sourceRoots: List<Path>,
+    ) {
+        val fileMtimes = linkedMapOf<String, Long>()
+        val identifiersByPath = linkedMapOf<String, List<String>>()
+        index.knownPaths().sorted().forEach { normalizedPath ->
+            runCatching {
+                fileMtimes[normalizedPath] = Files.getLastModifiedTime(Path.of(normalizedPath)).toMillis()
+            }
+            identifiersByPath[normalizedPath] = index.identifiersForPath(normalizedPath).sorted()
+        }
+
+        val payload = SourceIdentifierIndexPayload(
+            schemaVersion = 1,
+            identifiersByPath = identifiersByPath,
+            fileMtimes = fileMtimes,
+            sourceRoots = sourceRoots.map(Path::toString).sorted(),
+        )
+
+        fileWriter(cacheFilePath(workspaceRoot), json.encodeToString(payload))
+    }
+
+    fun load(
+        workspaceRoot: Path,
+        currentSourceRoots: List<Path>,
+    ): MutableSourceIdentifierIndex? {
+        val cacheFile = cacheFilePath(workspaceRoot)
+        if (!Files.isRegularFile(cacheFile)) return null
+
+        val payload = runCatching {
+            json.decodeFromString<SourceIdentifierIndexPayload>(fileReader(cacheFile))
+        }.getOrNull() ?: return null
+
+        if (payload.schemaVersion != 1) return null
+
+        val cachedSourceRoots = payload.sourceRoots.toSet()
+        val currentSourceRootStrings = currentSourceRoots.map(Path::toString).toSet()
+        if (cachedSourceRoots != currentSourceRootStrings) return null
+
+        val pathsByIdentifier = ConcurrentHashMap<String, MutableSet<String>>()
+        val identifiersByPath = ConcurrentHashMap<String, Set<String>>()
+        val staleFiles = mutableListOf<String>()
+        val removedFiles = mutableListOf<String>()
+
+        payload.identifiersByPath.forEach { (normalizedPath, identifiers) ->
+            val filePath = Path.of(normalizedPath)
+            if (!Files.isRegularFile(filePath)) {
+                removedFiles += normalizedPath
+                return@forEach
+            }
+
+            val cachedMtime = payload.fileMtimes[normalizedPath]
+            val currentMtime = runCatching { Files.getLastModifiedTime(filePath).toMillis() }.getOrNull()
+            if (cachedMtime != null && currentMtime != null && cachedMtime != currentMtime) {
+                staleFiles += normalizedPath
+                return@forEach
+            }
+
+            val identifierSet = identifiers.toSet()
+            identifiersByPath[normalizedPath] = identifierSet
+            identifierSet.forEach { identifier ->
+                pathsByIdentifier.computeIfAbsent(identifier) { ConcurrentHashMap.newKeySet() }
+                    .add(normalizedPath)
+            }
+        }
+
+        val index = MutableSourceIdentifierIndex(
+            pathsByIdentifier = pathsByIdentifier,
+            identifiersByPath = identifiersByPath,
+        )
+
+        staleFiles.forEach { normalizedPath ->
+            runCatching {
+                val content = Files.readString(Path.of(normalizedPath))
+                index.updateFile(normalizedPath, content)
+            }
+        }
+
+        discoverNewFiles(currentSourceRoots, index.knownPaths()).forEach { normalizedPath ->
+            runCatching {
+                val content = Files.readString(Path.of(normalizedPath))
+                index.updateFile(normalizedPath, content)
+            }
+        }
+
+        return index
+    }
+
+    private fun discoverNewFiles(
+        sourceRoots: List<Path>,
+        knownPaths: Set<String>,
+    ): List<String> = buildList {
+        sourceRoots.forEach { sourceRoot ->
+            if (!Files.isDirectory(sourceRoot)) return@forEach
+            Files.walk(sourceRoot).use { paths ->
+                paths
+                    .filter { path -> Files.isRegularFile(path) && path.extension == "kt" }
+                    .forEach { file ->
+                        val normalizedPath = normalizeStandalonePath(file).toString()
+                        if (normalizedPath !in knownPaths) {
+                            add(normalizedPath)
+                        }
+                    }
+            }
+        }
+    }
+}
+
+@Serializable
+private data class SourceIdentifierIndexPayload(
+    val schemaVersion: Int,
+    val identifiersByPath: Map<String, List<String>>,
+    val fileMtimes: Map<String, Long>,
+    val sourceRoots: List<String>,
+)
 
 private data class CandidateLookupKey(
     val identifier: String,

@@ -1,22 +1,49 @@
 package io.github.amichne.kast.standalone
 
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.Json
 import org.gradle.tooling.GradleConnector
 import org.gradle.tooling.model.idea.IdeaDependency
 import org.gradle.tooling.model.idea.IdeaModule
 import org.gradle.tooling.model.idea.IdeaModuleDependency
 import org.gradle.tooling.model.idea.IdeaProject
 import org.gradle.tooling.model.idea.IdeaSingleEntryLibraryDependency
+import java.security.MessageDigest
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
+import kotlin.io.path.createDirectories
+import kotlin.io.path.exists
 import kotlin.io.path.isRegularFile
 import kotlin.io.path.readText
+import kotlin.io.path.writeText
 
 internal const val maxIncludedProjectsForToolingApi = 200
 internal const val defaultToolingApiTimeoutMillis = 30_000L
+internal const val maxToolingApiTimeoutMillis = 300_000L
+private const val toolingApiTimeoutMillisPerModule = 200L
+private const val toolingApiTimeoutEnvVar = "KAST_GRADLE_TOOLING_TIMEOUT_MS"
+private const val toolingApiCacheDisabledEnvVar = "KAST_GRADLE_CACHE_DISABLED"
+private const val preferBuildOutputEnvVar = "KAST_PREFER_BUILD_OUTPUT"
+private const val toolingApiResultCacheSchemaVersion = 1
+
+internal fun resolveToolingApiTimeoutMillis(
+    moduleCount: Int,
+    envReader: (String) -> String? = System::getenv,
+): Long = envReader(toolingApiTimeoutEnvVar)
+    ?.toLongOrNull()
+    ?: maxOf(defaultToolingApiTimeoutMillis, moduleCount.toLong() * toolingApiTimeoutMillisPerModule)
+        .coerceAtMost(maxToolingApiTimeoutMillis)
 
 internal data class WorkspaceDiscoveryDiagnostics(
     val warnings: List<String> = emptyList(),
@@ -31,20 +58,63 @@ internal object GradleWorkspaceDiscovery {
     fun discover(
         workspaceRoot: Path,
         extraClasspathRoots: List<Path>,
+        toolingApiCache: ToolingApiResultCache = ToolingApiResultCache(),
+        envReader: (String) -> String? = System::getenv,
+        toolingApiLoader: (Path, Long) -> List<GradleModuleModel> = { root, timeoutMillis ->
+            loadModulesWithToolingApi(root, timeoutMillis = timeoutMillis)
+        },
     ): StandaloneWorkspaceLayout {
         val settingsSnapshot = GradleSettingsSnapshot.read(workspaceRoot)
+        val timeoutMillis = resolveToolingApiTimeoutMillis(
+            moduleCount = settingsSnapshot.includedProjectPaths.size,
+            envReader = envReader,
+        )
+        val cacheDisabled = envReader(toolingApiCacheDisabledEnvVar).isTruthy()
+        val preferBuildOutput = envReader(preferBuildOutputEnvVar).isTruthy()
+        logWorkspaceDiscoveryInfo(
+            "resolved Gradle Tooling API timeout to ${timeoutMillis}ms for ${settingsSnapshot.includedProjectPaths.size} included projects",
+        )
         val staticModules = {
             StaticGradleWorkspaceDiscovery.discoverModules(workspaceRoot, settingsSnapshot)
         }
-        val discoveryResult = if (settingsSnapshot.shouldPreferStaticDiscovery()) {
-            val resolvedStaticModules = staticModules()
-            enrichStaticModulesWithToolingApiLibraries(workspaceRoot, resolvedStaticModules)
-        } else {
-            discoverToolingApiModules(
-                workspaceRoot = workspaceRoot,
-                settingsSnapshot = settingsSnapshot,
-                staticModules = staticModules,
-            )
+        val cachedModules = readToolingApiModulesFromCache(
+            workspaceRoot = workspaceRoot,
+            toolingApiCache = toolingApiCache.takeUnless { cacheDisabled },
+        )
+        val discoveryResult = when {
+            cachedModules != null -> GradleWorkspaceDiscoveryResult(modules = cachedModules)
+            preferBuildOutput -> {
+                logWorkspaceDiscoveryInfo("KAST_PREFER_BUILD_OUTPUT is set; using static discovery with build output classpath")
+                GradleWorkspaceDiscoveryResult(modules = staticModules())
+            }
+            settingsSnapshot.shouldPreferStaticDiscovery() -> {
+                val resolvedStaticModules = staticModules()
+                enrichStaticModulesWithToolingApiLibraries(
+                    workspaceRoot = workspaceRoot,
+                    staticModules = resolvedStaticModules,
+                    settingsSnapshot = settingsSnapshot,
+                    toolingApiLoader = { root -> toolingApiLoader(root, timeoutMillis) },
+                    compositeBuildLoader = { root, compositeBuilds ->
+                        loadCompositeBuildsInParallel(
+                            workspaceRoot = root,
+                            compositeBuilds = compositeBuilds,
+                            timeoutMillis = timeoutMillis,
+                            toolingApiLoader = toolingApiLoader,
+                        )
+                    },
+                    toolingApiCache = toolingApiCache.takeUnless { cacheDisabled },
+                )
+            }
+            else -> {
+                discoverToolingApiModules(
+                    workspaceRoot = workspaceRoot,
+                    settingsSnapshot = settingsSnapshot,
+                    staticModules = staticModules,
+                    timeoutMillis = timeoutMillis,
+                    toolingApiLoader = toolingApiLoader,
+                    toolingApiCache = toolingApiCache.takeUnless { cacheDisabled },
+                )
+            }
         }
         val diagnostics = WorkspaceDiscoveryDiagnostics(
             warnings = (discoveryResult.diagnostics.warnings + detectIncompleteClasspath(discoveryResult.modules))
@@ -114,12 +184,29 @@ internal object GradleWorkspaceDiscovery {
     internal fun enrichStaticModulesWithToolingApiLibraries(
         workspaceRoot: Path,
         staticModules: List<GradleModuleModel>,
+        settingsSnapshot: GradleSettingsSnapshot? = null,
         toolingApiLoader: (Path) -> List<GradleModuleModel> = { root -> loadModulesWithToolingApi(root) },
+        compositeBuildLoader: (Path, List<String>) -> List<GradleModuleModel> = { root, compositeBuilds ->
+            loadCompositeBuildsInParallel(
+                workspaceRoot = root,
+                compositeBuilds = compositeBuilds,
+                timeoutMillis = defaultToolingApiTimeoutMillis,
+            )
+        },
+        toolingApiCache: ToolingApiResultCache? = null,
         warningSink: (String) -> Unit = ::logWorkspaceDiscoveryWarning,
     ): GradleWorkspaceDiscoveryResult {
         val warnings = mutableListOf<String>()
         val toolingModules = runCatching {
-            toolingApiLoader(workspaceRoot)
+            val rootToolingModules = toolingApiLoader(workspaceRoot)
+            val compositeBuildModules = if (settingsSnapshot?.hasCompositeBuilds == true &&
+                settingsSnapshot.compositeBuilds.isNotEmpty()
+            ) {
+                compositeBuildLoader(workspaceRoot, settingsSnapshot.compositeBuilds)
+            } else {
+                emptyList()
+            }
+            rootToolingModules + compositeBuildModules
         }.onFailure { error ->
             val warning = toolingApiFailureWarning(
                 prefix = "Gradle Tooling API library enrichment failed; using static workspace discovery results",
@@ -135,6 +222,12 @@ internal object GradleWorkspaceDiscovery {
                 diagnostics = WorkspaceDiscoveryDiagnostics(warnings = warnings),
             )
         }
+
+        persistToolingApiModulesToCache(
+            workspaceRoot = workspaceRoot,
+            toolingApiCache = toolingApiCache,
+            modules = toolingModules,
+        )
 
         return GradleWorkspaceDiscoveryResult(
             modules = mergeToolingAndStaticModules(
@@ -249,10 +342,13 @@ private fun discoverToolingApiModules(
     workspaceRoot: Path,
     settingsSnapshot: GradleSettingsSnapshot,
     staticModules: () -> List<GradleModuleModel>,
+    timeoutMillis: Long,
+    toolingApiLoader: (Path, Long) -> List<GradleModuleModel>,
+    toolingApiCache: ToolingApiResultCache? = null,
 ): GradleWorkspaceDiscoveryResult {
     val warnings = mutableListOf<String>()
     val toolingModules = runCatching {
-        GradleWorkspaceDiscovery.loadModulesWithToolingApi(workspaceRoot)
+        toolingApiLoader(workspaceRoot, timeoutMillis)
     }.onFailure { error ->
         val warning = toolingApiFailureWarning(
             prefix = "Gradle Tooling API workspace discovery failed; falling back to static workspace discovery",
@@ -265,6 +361,12 @@ private fun discoverToolingApiModules(
             modules = staticModules(),
             diagnostics = WorkspaceDiscoveryDiagnostics(warnings = warnings),
         )
+
+    persistToolingApiModulesToCache(
+        workspaceRoot = workspaceRoot,
+        toolingApiCache = toolingApiCache,
+        modules = toolingModules,
+    )
 
     val modules = when {
         toolingModules.isEmpty() -> staticModules()
@@ -298,6 +400,82 @@ private fun toolingApiFailureWarning(prefix: String, error: Throwable): String {
 
 private fun logWorkspaceDiscoveryWarning(message: String) {
     System.err.println("kast gradle workspace discovery warning: $message")
+}
+
+private fun logWorkspaceDiscoveryInfo(message: String) {
+    System.err.println("kast gradle workspace discovery: $message")
+}
+
+private fun readToolingApiModulesFromCache(
+    workspaceRoot: Path,
+    toolingApiCache: ToolingApiResultCache?,
+): List<GradleModuleModel>? = toolingApiCache
+    ?.let { cache -> runCatching { cache.read(workspaceRoot) }.getOrNull() }
+    ?.takeIf(List<GradleModuleModel>::isNotEmpty)
+
+private fun persistToolingApiModulesToCache(
+    workspaceRoot: Path,
+    toolingApiCache: ToolingApiResultCache?,
+    modules: List<GradleModuleModel>,
+) {
+    if (toolingApiCache == null || modules.isEmpty()) {
+        return
+    }
+    runCatching {
+        toolingApiCache.write(workspaceRoot, modules)
+    }
+}
+
+internal fun loadCompositeBuildsInParallel(
+    workspaceRoot: Path,
+    compositeBuilds: List<String>,
+    timeoutMillis: Long,
+    toolingApiLoader: (Path, Long) -> List<GradleModuleModel> = { root, timeout ->
+        GradleWorkspaceDiscovery.loadModulesWithToolingApi(root, timeoutMillis = timeout)
+    },
+    warningSink: (String) -> Unit = ::logWorkspaceDiscoveryWarning,
+): List<GradleModuleModel> {
+    if (compositeBuilds.isEmpty()) {
+        return emptyList()
+    }
+
+    val executor = Executors.newFixedThreadPool(minOf(compositeBuilds.size, 4))
+    return try {
+        compositeBuilds.map { compositeBuild ->
+            executor.submit<CompositeBuildLoadResult> {
+                val compositeBuildRoot = normalizeStandalonePath(workspaceRoot.resolve(compositeBuild))
+                runCatching {
+                    toolingApiLoader(compositeBuildRoot, timeoutMillis)
+                }.fold(
+                    onSuccess = { modules ->
+                        CompositeBuildLoadResult(
+                            compositeBuild = compositeBuild,
+                            modules = modules,
+                        )
+                    },
+                    onFailure = { error ->
+                        CompositeBuildLoadResult(
+                            compositeBuild = compositeBuild,
+                            failure = error,
+                        )
+                    },
+                )
+            }
+        }.flatMap { future ->
+            val result = future.get()
+            result.failure?.let { error ->
+                warningSink(
+                    toolingApiFailureWarning(
+                        prefix = "Gradle Tooling API loading failed for composite build ${result.compositeBuild}; continuing with remaining builds",
+                        error = error,
+                    ),
+                )
+                emptyList()
+            } ?: result.modules
+        }
+    } finally {
+        executor.shutdownNow()
+    }
 }
 
 internal class ToolingApiPathNormalizer(
@@ -395,14 +573,161 @@ private fun List<GradleModuleModel>.shouldFallbackToStaticModules(
 }
 
 private fun GradleDependency.isModuleDependency(): Boolean = this is GradleDependency.ModuleDependency
+
+internal class ToolingApiResultCache(
+    private val json: Json = Json {
+        encodeDefaults = true
+        ignoreUnknownKeys = true
+    },
+    private val pathExists: (Path) -> Boolean = Path::exists,
+    private val fileReader: (Path) -> String = Path::readText,
+    private val fileWriter: (Path, String) -> Unit = { path, content ->
+        path.parent?.createDirectories()
+        path.writeText(content)
+    },
+    private val fileWalker: (Path) -> List<Path> = ::defaultGradleWorkspaceDiscoveryCacheKeyFiles,
+) {
+    fun cacheKey(workspaceRoot: Path): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        fileWalker(workspaceRoot)
+            .sortedBy { path -> workspaceRoot.relativize(path).toString().replace('\\', '/') }
+            .forEach { path ->
+                digest.update(workspaceRoot.relativize(path).toString().replace('\\', '/').toByteArray())
+                digest.update(0)
+                digest.update(fileReader(path).toByteArray())
+                digest.update(0)
+            }
+        return digest.digest().toHexString()
+    }
+
+    fun read(workspaceRoot: Path): List<GradleModuleModel>? {
+        val cacheFilePath = cacheFilePath(workspaceRoot)
+        if (!pathExists(cacheFilePath)) {
+            return null
+        }
+
+        val payload = json.decodeFromString<ToolingApiResultCachePayload>(fileReader(cacheFilePath))
+        if (payload.schemaVersion != toolingApiResultCacheSchemaVersion) {
+            return null
+        }
+
+        return payload.modules.takeIf { payload.cacheKey == cacheKey(workspaceRoot) }
+    }
+
+    fun write(
+        workspaceRoot: Path,
+        modules: List<GradleModuleModel>,
+    ) {
+        val payload = ToolingApiResultCachePayload(
+            schemaVersion = toolingApiResultCacheSchemaVersion,
+            cacheKey = cacheKey(workspaceRoot),
+            modules = modules,
+        )
+        fileWriter(cacheFilePath(workspaceRoot), json.encodeToString(payload))
+    }
+
+    fun cacheFilePath(workspaceRoot: Path): Path = workspaceRoot
+        .resolve(".kast")
+        .resolve("cache")
+        .resolve("gradle-workspace-discovery.json")
+}
+
+private fun defaultGradleWorkspaceDiscoveryCacheKeyFiles(workspaceRoot: Path): List<Path> {
+    val settingsSnapshot = GradleSettingsSnapshot.read(workspaceRoot)
+    return buildList {
+        settingsFileCandidates(workspaceRoot).filter { path -> Files.isRegularFile(path) }.forEach(::add)
+        buildFileCandidates(workspaceRoot).filter { path -> Files.isRegularFile(path) }.forEach(::add)
+        val versionCatalog = workspaceRoot.resolve("gradle/libs.versions.toml")
+        if (Files.isRegularFile(versionCatalog)) {
+            add(versionCatalog)
+        }
+        settingsSnapshot.includedProjectPaths.forEach { projectPath ->
+            val projectDir = projectDirectoryFor(workspaceRoot, projectPath)
+            buildFileCandidates(projectDir)
+                .filter { path -> Files.isRegularFile(path) }
+                .forEach(::add)
+        }
+        settingsSnapshot.compositeBuilds.forEach { compositeBuild ->
+            val compositeBuildRoot = workspaceRoot.resolve(compositeBuild)
+            settingsFileCandidates(compositeBuildRoot).filter { path -> Files.isRegularFile(path) }.forEach(::add)
+            buildFileCandidates(compositeBuildRoot).filter { path -> Files.isRegularFile(path) }.forEach(::add)
+        }
+    }.distinct()
+}
+
+private fun settingsFileCandidates(workspaceRoot: Path): List<Path> = listOf(
+    workspaceRoot.resolve("settings.gradle.kts"),
+    workspaceRoot.resolve("settings.gradle"),
+)
+
+private fun buildFileCandidates(projectDirectory: Path): List<Path> = listOf(
+    projectDirectory.resolve("build.gradle.kts"),
+    projectDirectory.resolve("build.gradle"),
+)
+
+private fun projectDirectoryFor(workspaceRoot: Path, projectPath: String): Path {
+    if (projectPath == ":") return workspaceRoot
+    val relativePath = projectPath.removePrefix(":").replace(':', '/')
+    return workspaceRoot.resolve(relativePath)
+}
+
+private fun ByteArray.toHexString(): String = joinToString(separator = "") { byte -> "%02x".format(byte) }
+
+private fun String?.isTruthy(): Boolean = when (this?.trim()?.lowercase()) {
+    "1", "true", "yes", "on" -> true
+    else -> false
+}
+
+@Serializable
+private data class ToolingApiResultCachePayload(
+    val schemaVersion: Int,
+    val cacheKey: String,
+    val modules: List<GradleModuleModel>,
+)
+
+internal object PathAsStringSerializer : KSerializer<Path> {
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("Path", PrimitiveKind.STRING)
+
+    override fun serialize(
+        encoder: Encoder,
+        value: Path,
+    ) {
+        encoder.encodeString(value.toString())
+    }
+
+    override fun deserialize(decoder: Decoder): Path = Path.of(decoder.decodeString())
+}
+
+internal object PathListSerializer : KSerializer<List<Path>> {
+    private val delegate = ListSerializer(PathAsStringSerializer)
+
+    override val descriptor: SerialDescriptor = delegate.descriptor
+
+    override fun serialize(
+        encoder: Encoder,
+        value: List<Path>,
+    ) {
+        delegate.serialize(encoder, value)
+    }
+
+    override fun deserialize(decoder: Decoder): List<Path> = delegate.deserialize(decoder)
+}
+
+@Serializable
 internal data class GradleModuleModel(
     val gradlePath: String,
     val ideaModuleName: String,
+    @Serializable(with = PathListSerializer::class)
     val mainSourceRoots: List<Path>,
+    @Serializable(with = PathListSerializer::class)
     val testSourceRoots: List<Path>,
+    @Serializable(with = PathListSerializer::class)
     val testFixturesSourceRoots: List<Path> = emptyList(),
+    @Serializable(with = PathListSerializer::class)
     val mainOutputRoots: List<Path>,
+    @Serializable(with = PathListSerializer::class)
     val testOutputRoots: List<Path>,
+    @Serializable(with = PathListSerializer::class)
     val testFixturesOutputRoots: List<Path> = emptyList(),
     val dependencies: List<GradleDependency>,
 ) {
@@ -558,15 +883,25 @@ private data class ResolvedSourceSetDependencies(
     val testDependencyNames: List<String>,
 )
 
+private data class CompositeBuildLoadResult(
+    val compositeBuild: String,
+    val modules: List<GradleModuleModel> = emptyList(),
+    val failure: Throwable? = null,
+)
+
+@Serializable
 internal sealed interface GradleDependency {
     val scope: GradleDependencyScope
 
+    @Serializable
     data class ModuleDependency(
         val targetIdeaModuleName: String,
         override val scope: GradleDependencyScope,
     ) : GradleDependency
 
+    @Serializable
     data class LibraryDependency(
+        @Serializable(with = PathAsStringSerializer::class)
         val binaryRoot: Path,
         override val scope: GradleDependencyScope,
     ) : GradleDependency
@@ -608,6 +943,7 @@ internal enum class GradleSourceSet(
     ),
 }
 
+@Serializable
 internal enum class GradleDependencyScope {
     COMPILE,
     PROVIDED,
@@ -632,6 +968,7 @@ internal enum class GradleDependencyScope {
 internal data class GradleSettingsSnapshot(
     val includedProjectPaths: List<String>,
     val hasCompositeBuilds: Boolean,
+    val compositeBuilds: List<String> = emptyList(),
 ) {
     fun shouldPreferStaticDiscovery(): Boolean = includedProjectPaths.size > maxIncludedProjectsForToolingApi
 
@@ -643,7 +980,7 @@ internal data class GradleSettingsSnapshot(
     companion object {
         private val includeBlockPattern = Regex("""(?s)\binclude\s*\((.*?)\)""")
         private val stringLiteralPattern = Regex("""[\"']([^\"']+)[\"']""")
-        private val compositeBuildPattern = Regex("""\bincludeBuild\s*\(""")
+        private val compositeBuildPattern = Regex("""\bincludeBuild\s*\(\s*[\"']([^\"']+)[\"']\s*\)""")
 
         fun read(workspaceRoot: Path): GradleSettingsSnapshot {
             val settingsText = settingsFileCandidates(workspaceRoot)
@@ -660,10 +997,15 @@ internal data class GradleSettingsSnapshot(
                 .distinct()
                 .sorted()
                 .toList()
+            val compositeBuilds = compositeBuildPattern.findAll(settingsText)
+                .map { match -> match.groupValues[1] }
+                .distinct()
+                .toList()
 
             return GradleSettingsSnapshot(
                 includedProjectPaths = includedProjectPaths,
-                hasCompositeBuilds = compositeBuildPattern.containsMatchIn(settingsText),
+                hasCompositeBuilds = compositeBuilds.isNotEmpty(),
+                compositeBuilds = compositeBuilds,
             )
         }
 
