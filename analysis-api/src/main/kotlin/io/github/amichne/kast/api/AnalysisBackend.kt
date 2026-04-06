@@ -36,11 +36,32 @@ interface AnalysisBackend {
         )
     }
 
+    suspend fun typeHierarchy(query: TypeHierarchyQuery): TypeHierarchyResult {
+        throw CapabilityNotSupportedException(
+            capability = "TYPE_HIERARCHY",
+            message = "Type hierarchy is not available for this backend",
+        )
+    }
+
+    suspend fun semanticInsertionPoint(query: SemanticInsertionQuery): SemanticInsertionResult {
+        throw CapabilityNotSupportedException(
+            capability = "SEMANTIC_INSERTION_POINT",
+            message = "Semantic insertion point lookup is not available for this backend",
+        )
+    }
+
     suspend fun diagnostics(query: DiagnosticsQuery): DiagnosticsResult
 
     suspend fun rename(query: RenameQuery): RenameResult
 
     suspend fun applyEdits(query: ApplyEditsQuery): ApplyEditsResult
+
+    suspend fun optimizeImports(query: ImportOptimizeQuery): ImportOptimizeResult {
+        throw CapabilityNotSupportedException(
+            capability = "OPTIMIZE_IMPORTS",
+            message = "Import optimization is not available for this backend",
+        )
+    }
 
     suspend fun refresh(query: RefreshQuery): RefreshResult {
         throw CapabilityNotSupportedException(

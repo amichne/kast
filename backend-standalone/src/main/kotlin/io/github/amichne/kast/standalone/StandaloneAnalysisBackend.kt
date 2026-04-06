@@ -12,6 +12,8 @@ import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.DiagnosticsResult
 import io.github.amichne.kast.api.FileHash
 import io.github.amichne.kast.api.HealthResponse
+import io.github.amichne.kast.api.ImportOptimizeQuery
+import io.github.amichne.kast.api.ImportOptimizeResult
 import io.github.amichne.kast.api.LocalDiskEditApplier
 import io.github.amichne.kast.api.MutationCapability
 import io.github.amichne.kast.api.ReadCapability
@@ -23,10 +25,14 @@ import io.github.amichne.kast.api.RenameQuery
 import io.github.amichne.kast.api.RenameResult
 import io.github.amichne.kast.api.RuntimeState
 import io.github.amichne.kast.api.RuntimeStatusResponse
+import io.github.amichne.kast.api.SemanticInsertionQuery
+import io.github.amichne.kast.api.SemanticInsertionResult
 import io.github.amichne.kast.api.ServerLimits
 import io.github.amichne.kast.api.SymbolQuery
 import io.github.amichne.kast.api.SymbolResult
 import io.github.amichne.kast.api.TextEdit
+import io.github.amichne.kast.api.TypeHierarchyQuery
+import io.github.amichne.kast.api.TypeHierarchyResult
 import java.nio.file.Path
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -61,6 +67,7 @@ class StandaloneAnalysisBackend internal constructor(
         session = session,
         telemetry = telemetry,
     )
+    private val typeHierarchyTraversal = TypeHierarchyTraversal(session = session)
 
     override suspend fun capabilities(): BackendCapabilities = BackendCapabilities(
         backendName = "standalone",
@@ -70,11 +77,15 @@ class StandaloneAnalysisBackend internal constructor(
             ReadCapability.RESOLVE_SYMBOL,
             ReadCapability.FIND_REFERENCES,
             ReadCapability.CALL_HIERARCHY,
+            ReadCapability.TYPE_HIERARCHY,
+            ReadCapability.SEMANTIC_INSERTION_POINT,
             ReadCapability.DIAGNOSTICS,
         ),
         mutationCapabilities = setOf(
             MutationCapability.RENAME,
             MutationCapability.APPLY_EDITS,
+            MutationCapability.FILE_OPERATIONS,
+            MutationCapability.OPTIMIZE_IMPORTS,
             MutationCapability.REFRESH_WORKSPACE,
         ),
         limits = limits,
@@ -82,6 +93,7 @@ class StandaloneAnalysisBackend internal constructor(
 
     override suspend fun runtimeStatus(): RuntimeStatusResponse {
         val capabilities = capabilities()
+        val warnings = session.workspaceDiagnostics
         return RuntimeStatusResponse(
             state = RuntimeState.READY,
             healthy = true,
@@ -90,7 +102,12 @@ class StandaloneAnalysisBackend internal constructor(
             backendName = capabilities.backendName,
             backendVersion = capabilities.backendVersion,
             workspaceRoot = capabilities.workspaceRoot,
-            message = "Standalone analysis session is initialized",
+            message = if (warnings.isEmpty()) {
+                "Standalone analysis session is initialized"
+            } else {
+                "Standalone analysis session is initialized with warnings: ${warnings.joinToString(separator = " ")}"
+            },
+            warnings = warnings,
         )
     }
 
@@ -107,7 +124,14 @@ class StandaloneAnalysisBackend internal constructor(
         session.withReadAccess {
             val file = session.findKtFile(query.position.filePath)
             val target = resolveTarget(file, query.position.offset)
-            SymbolResult(analyze(file) { target.toSymbolModel(containingDeclaration = null) })
+            SymbolResult(
+                analyze(file) {
+                    target.toSymbolModel(
+                        containingDeclaration = null,
+                        supertypes = supertypeNames(target),
+                    )
+                }
+            )
         }
     }
 
@@ -129,6 +153,21 @@ class StandaloneAnalysisBackend internal constructor(
     override suspend fun callHierarchy(query: CallHierarchyQuery): CallHierarchyResult = withContext(readDispatcher) {
         session.withReadAccess {
             callHierarchyTraversal.build(query)
+        }
+    }
+
+    override suspend fun typeHierarchy(query: TypeHierarchyQuery): TypeHierarchyResult = withContext(readDispatcher) {
+        session.withReadAccess {
+            typeHierarchyTraversal.build(query)
+        }
+    }
+
+    override suspend fun semanticInsertionPoint(
+        query: SemanticInsertionQuery,
+    ): SemanticInsertionResult = withContext(readDispatcher) {
+        session.withReadAccess {
+            val file = session.findKtFile(query.position.filePath)
+            SemanticInsertionPointResolver.resolve(file, query)
         }
     }
 
@@ -191,6 +230,7 @@ class StandaloneAnalysisBackend internal constructor(
                 )
 
                 val edits = traceRenamePhase("collectReferenceEdits") {
+                    // A future import-aware rename pass can append import edits here once qualified-reference tracking is added.
                     (listOf(target.declarationEdit(query.newName)) + candidateFiles
                         .flatMap { candidateFile ->
                             traceRenamePhase(
@@ -232,9 +272,31 @@ class StandaloneAnalysisBackend internal constructor(
         }
     }
 
+    override suspend fun optimizeImports(query: ImportOptimizeQuery): ImportOptimizeResult = withContext(readDispatcher) {
+        session.withReadAccess {
+            val edits = query.filePaths
+                .distinct()
+                .sorted()
+                .flatMap { filePath ->
+                    ImportAnalysis.optimizeImportEdits(session.findKtFile(filePath))
+                }
+                .sortedWith(compareBy({ it.filePath }, { it.startOffset }))
+            val affectedFiles = edits.map(TextEdit::filePath).distinct()
+            ImportOptimizeResult(
+                edits = edits,
+                fileHashes = currentFileHashes(affectedFiles),
+                affectedFiles = affectedFiles,
+            )
+        }
+    }
+
     override suspend fun applyEdits(query: ApplyEditsQuery): ApplyEditsResult {
         val result = LocalDiskEditApplier.apply(query)
-        session.refreshFiles(result.affectedFiles.toSet())
+        if (result.createdFiles.isNotEmpty() || result.deletedFiles.isNotEmpty()) {
+            session.refreshWorkspace()
+        } else {
+            session.refreshFiles(result.affectedFiles.toSet())
+        }
         return result
     }
 

@@ -1,5 +1,14 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.api.Location
+import io.github.amichne.kast.api.ImportOptimizeResult
+import io.github.amichne.kast.api.Symbol
+import io.github.amichne.kast.api.SymbolKind
+import io.github.amichne.kast.api.SemanticInsertionResult
+import io.github.amichne.kast.api.TypeHierarchyNode
+import io.github.amichne.kast.api.TypeHierarchyResult
+import io.github.amichne.kast.api.TypeHierarchyStats
+import io.github.amichne.kast.api.TextEdit
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -44,5 +53,90 @@ class CliJsonTest {
         assertEquals("/tmp/workspace/.agents/skills/kast", result.installedAt)
         assertEquals("0.1.1-SNAPSHOT", result.version)
         assertEquals(false, result.skipped)
+    }
+
+    @Test
+    fun `writeCliJson serializes type hierarchy results`() {
+        val output = StringBuilder()
+
+        writeCliJson(
+            output = output,
+            value = TypeHierarchyResult(
+                root = TypeHierarchyNode(
+                    symbol = Symbol(
+                        fqName = "sample.FriendlyGreeter",
+                        kind = SymbolKind.CLASS,
+                        location = Location(
+                            filePath = "/tmp/workspace/src/Types.kt",
+                            startOffset = 10,
+                            endOffset = 26,
+                            startLine = 4,
+                            startColumn = 12,
+                            preview = "open class FriendlyGreeter : Greeter",
+                        ),
+                        supertypes = listOf("sample.Greeter"),
+                    ),
+                    children = emptyList(),
+                ),
+                stats = TypeHierarchyStats(
+                    totalNodes = 1,
+                    maxDepthReached = 0,
+                    truncated = false,
+                ),
+            ),
+            json = defaultCliJson(),
+        )
+
+        val result = defaultCliJson().decodeFromString<TypeHierarchyResult>(output.toString())
+
+        assertEquals("sample.FriendlyGreeter", result.root.symbol.fqName)
+        assertEquals(listOf("sample.Greeter"), result.root.symbol.supertypes)
+        assertEquals(false, result.stats.truncated)
+    }
+
+    @Test
+    fun `writeCliJson serializes semantic insertion results`() {
+        val output = StringBuilder()
+
+        writeCliJson(
+            output = output,
+            value = SemanticInsertionResult(
+                insertionOffset = 42,
+                filePath = "/tmp/workspace/src/Types.kt",
+            ),
+            json = defaultCliJson(),
+        )
+
+        val result = defaultCliJson().decodeFromString<SemanticInsertionResult>(output.toString())
+
+        assertEquals(42, result.insertionOffset)
+        assertEquals("/tmp/workspace/src/Types.kt", result.filePath)
+    }
+
+    @Test
+    fun `writeCliJson serializes import optimize results`() {
+        val output = StringBuilder()
+
+        writeCliJson(
+            output = output,
+            value = ImportOptimizeResult(
+                edits = listOf(
+                    TextEdit(
+                        filePath = "/tmp/workspace/src/Sample.kt",
+                        startOffset = 10,
+                        endOffset = 28,
+                        newText = "",
+                    ),
+                ),
+                fileHashes = emptyList(),
+                affectedFiles = listOf("/tmp/workspace/src/Sample.kt"),
+            ),
+            json = defaultCliJson(),
+        )
+
+        val result = defaultCliJson().decodeFromString<ImportOptimizeResult>(output.toString())
+
+        assertEquals(1, result.edits.size)
+        assertEquals(listOf("/tmp/workspace/src/Sample.kt"), result.affectedFiles)
     }
 }

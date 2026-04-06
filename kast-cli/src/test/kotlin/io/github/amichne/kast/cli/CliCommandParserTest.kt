@@ -1,6 +1,8 @@
 package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.api.RefreshQuery
+import io.github.amichne.kast.api.SemanticInsertionTarget
+import io.github.amichne.kast.api.TypeHierarchyDirection
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -101,6 +103,71 @@ class CliCommandParserTest {
                 ),
             ),
             refreshCommand.query,
+        )
+    }
+
+    @Test
+    fun `type hierarchy parses from inline options`() {
+        val command = parser.parse(
+            arrayOf(
+                "type",
+                "hierarchy",
+                "--workspace-root=$tempDir",
+                "--file-path=$tempDir/Types.kt",
+                "--offset=18",
+                "--direction=both",
+                "--depth=2",
+                "--max-results=24",
+            ),
+        )
+
+        assertTrue(command is CliCommand.TypeHierarchy)
+        val hierarchyCommand = command as CliCommand.TypeHierarchy
+        assertEquals(tempDir, hierarchyCommand.options.workspaceRoot)
+        assertEquals(TypeHierarchyDirection.BOTH, hierarchyCommand.query.direction)
+        assertEquals(2, hierarchyCommand.query.depth)
+        assertEquals(24, hierarchyCommand.query.maxResults)
+    }
+
+    @Test
+    fun `semantic insertion point parses from inline options`() {
+        val command = parser.parse(
+            arrayOf(
+                "semantic",
+                "insertion-point",
+                "--workspace-root=$tempDir",
+                "--file-path=$tempDir/Types.kt",
+                "--offset=18",
+                "--target=after-imports",
+            ),
+        )
+
+        assertTrue(command is CliCommand.SemanticInsertionPoint)
+        val insertionCommand = command as CliCommand.SemanticInsertionPoint
+        assertEquals(tempDir, insertionCommand.options.workspaceRoot)
+        assertEquals(SemanticInsertionTarget.AFTER_IMPORTS, insertionCommand.query.target)
+    }
+
+    @Test
+    fun `imports optimize parses from inline options`() {
+        val command = parser.parse(
+            arrayOf(
+                "imports",
+                "optimize",
+                "--workspace-root=$tempDir",
+                "--file-paths=$tempDir/A.kt,$tempDir/B.kt",
+            ),
+        )
+
+        assertTrue(command is CliCommand.ImportOptimize)
+        val optimizeCommand = command as CliCommand.ImportOptimize
+        assertEquals(tempDir, optimizeCommand.options.workspaceRoot)
+        assertEquals(
+            listOf(
+                tempDir.resolve("A.kt").toString(),
+                tempDir.resolve("B.kt").toString(),
+            ),
+            optimizeCommand.query.filePaths,
         )
     }
 

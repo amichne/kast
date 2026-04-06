@@ -16,6 +16,20 @@ data class ValidatedFileEdits(
     val edits: List<TextEdit>,
 )
 
+sealed interface ValidatedFileOperation {
+    val filePath: String
+
+    data class CreateFile(
+        override val filePath: String,
+        val content: String,
+    ) : ValidatedFileOperation
+
+    data class DeleteFile(
+        override val filePath: String,
+        val expectedHash: String,
+    ) : ValidatedFileOperation
+}
+
 object EditPlanValidator {
     fun validate(
         edits: List<TextEdit>,
@@ -56,6 +70,33 @@ object EditPlanValidator {
                 expectedHash = expectedHash,
                 edits = editsAscending.sortedByDescending { it.startOffset },
             )
+        }
+    }
+
+    fun validateFileOperations(
+        fileOperations: List<FileOperation>,
+    ): List<ValidatedFileOperation> {
+        val normalizedPaths = linkedSetOf<String>()
+        return fileOperations.map { operation ->
+            val filePath = canonicalPath(operation.filePath)
+            if (!normalizedPaths.add(filePath)) {
+                throw ValidationException(
+                    message = "Duplicate file operation entries were provided",
+                    details = mapOf("filePath" to filePath),
+                )
+            }
+
+            when (operation) {
+                is FileOperation.CreateFile -> ValidatedFileOperation.CreateFile(
+                    filePath = filePath,
+                    content = operation.content,
+                )
+
+                is FileOperation.DeleteFile -> ValidatedFileOperation.DeleteFile(
+                    filePath = filePath,
+                    expectedHash = operation.expectedHash,
+                )
+            }
         }
     }
 
@@ -106,8 +147,51 @@ object FileHashing {
 
 object LocalDiskEditApplier {
     fun apply(query: ApplyEditsQuery): ApplyEditsResult {
-        val validated = EditPlanValidator.validate(query.edits, query.fileHashes)
-        val currentContents = validated.associateWith { plan ->
+        if (query.edits.isEmpty() && query.fileOperations.isEmpty()) {
+            throw ValidationException("At least one text edit or file operation is required")
+        }
+
+        val validatedFileOperations = EditPlanValidator.validateFileOperations(query.fileOperations)
+        validateFileOperationsAgainstDisk(validatedFileOperations)
+
+        val affectedFiles = mutableListOf<String>()
+        val createdFiles = mutableListOf<String>()
+        val deletedFiles = mutableListOf<String>()
+
+        validatedFileOperations.forEach { operation ->
+            val path = Path.of(operation.filePath)
+            try {
+                when (operation) {
+                    is ValidatedFileOperation.CreateFile -> {
+                        writeAtomically(path, operation.content)
+                        createdFiles += operation.filePath
+                    }
+
+                    is ValidatedFileOperation.DeleteFile -> {
+                        Files.delete(path)
+                        deletedFiles += operation.filePath
+                    }
+                }
+                affectedFiles += operation.filePath
+            } catch (exception: Exception) {
+                throw PartialApplyException(
+                    details = mapOf(
+                        "failedFile" to operation.filePath,
+                        "appliedFiles" to affectedFiles.joinToString(","),
+                        "createdFiles" to createdFiles.joinToString(","),
+                        "deletedFiles" to deletedFiles.joinToString(","),
+                        "reason" to (exception.message ?: exception::class.java.simpleName),
+                    ),
+                )
+            }
+        }
+
+        val validatedEdits = if (query.edits.isEmpty()) {
+            emptyList()
+        } else {
+            EditPlanValidator.validate(query.edits, query.fileHashes)
+        }
+        val currentContents = validatedEdits.associateWith { plan ->
             val path = Path.of(plan.filePath)
             ensureExists(path)
             path.readText()
@@ -127,23 +211,24 @@ object LocalDiskEditApplier {
             }
         }
 
-        val appliedFiles = mutableListOf<String>()
         val appliedEdits = mutableListOf<TextEdit>()
 
-        validated.forEach { plan ->
+        validatedEdits.forEach { plan ->
             val currentContent = currentContents.getValue(plan)
             val updatedContent = EditPlanValidator.applyEditsToContent(currentContent, plan.edits)
             val path = Path.of(plan.filePath)
 
             try {
                 writeAtomically(path, updatedContent)
-                appliedFiles += plan.filePath
+                affectedFiles += plan.filePath
                 appliedEdits += plan.edits.sortedBy { it.startOffset }
             } catch (exception: Exception) {
                 throw PartialApplyException(
                     details = mapOf(
                         "failedFile" to plan.filePath,
-                        "appliedFiles" to appliedFiles.joinToString(","),
+                        "appliedFiles" to affectedFiles.joinToString(","),
+                        "createdFiles" to createdFiles.joinToString(","),
+                        "deletedFiles" to deletedFiles.joinToString(","),
                         "reason" to (exception.message ?: exception::class.java.simpleName),
                     ),
                 )
@@ -152,7 +237,9 @@ object LocalDiskEditApplier {
 
         return ApplyEditsResult(
             applied = appliedEdits,
-            affectedFiles = appliedFiles.sorted(),
+            affectedFiles = affectedFiles.distinct().sorted(),
+            createdFiles = createdFiles.sorted(),
+            deletedFiles = deletedFiles.sorted(),
         )
     }
 
@@ -166,6 +253,40 @@ object LocalDiskEditApplier {
         }
 
     fun normalizePath(filePath: String): String = canonicalPath(filePath)
+
+    private fun validateFileOperationsAgainstDisk(
+        fileOperations: List<ValidatedFileOperation>,
+    ) {
+        fileOperations.forEach { operation ->
+            when (operation) {
+                is ValidatedFileOperation.CreateFile -> {
+                    val path = Path.of(operation.filePath)
+                    if (Files.exists(path)) {
+                        throw ConflictException(
+                            message = "The requested file already exists",
+                            details = mapOf("filePath" to operation.filePath),
+                        )
+                    }
+                }
+
+                is ValidatedFileOperation.DeleteFile -> {
+                    val path = Path.of(operation.filePath)
+                    ensureExists(path)
+                    val currentHash = FileHashing.sha256(path.readText())
+                    if (currentHash != operation.expectedHash) {
+                        throw ConflictException(
+                            message = "The file changed after the delete plan was created",
+                            details = mapOf(
+                                "filePath" to operation.filePath,
+                                "expectedHash" to operation.expectedHash,
+                                "actualHash" to currentHash,
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+    }
 
     private fun ensureExists(path: Path) {
         if (!Files.exists(path)) {

@@ -9,7 +9,10 @@ import io.github.amichne.kast.api.CallHierarchyResult
 import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.FileHash
 import io.github.amichne.kast.api.FileHashing
+import io.github.amichne.kast.api.FileOperation
 import io.github.amichne.kast.api.FilePosition
+import io.github.amichne.kast.api.ImportOptimizeQuery
+import io.github.amichne.kast.api.ImportOptimizeResult
 import io.github.amichne.kast.api.JsonRpcErrorResponse
 import io.github.amichne.kast.api.JsonRpcRequest
 import io.github.amichne.kast.api.JsonRpcSuccessResponse
@@ -22,9 +25,15 @@ import io.github.amichne.kast.api.RenameQuery
 import io.github.amichne.kast.api.RenameResult
 import io.github.amichne.kast.api.RuntimeStatusResponse
 import io.github.amichne.kast.api.RuntimeState
+import io.github.amichne.kast.api.SemanticInsertionQuery
+import io.github.amichne.kast.api.SemanticInsertionResult
+import io.github.amichne.kast.api.SemanticInsertionTarget
 import io.github.amichne.kast.api.SymbolQuery
 import io.github.amichne.kast.api.SymbolResult
 import io.github.amichne.kast.api.TextEdit
+import io.github.amichne.kast.api.TypeHierarchyDirection
+import io.github.amichne.kast.api.TypeHierarchyQuery
+import io.github.amichne.kast.api.TypeHierarchyResult
 import io.github.amichne.kast.testing.FakeAnalysisBackend
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.serializer
@@ -123,6 +132,49 @@ class AnalysisDispatcherTest {
     }
 
     @Test
+    fun `type hierarchy dispatches without HTTP`() {
+        dispatcher()
+        val file = sampleTypeFile()
+        val offset = file.readText().indexOf("FriendlyGreeter")
+
+        val result = dispatchSuccess<TypeHierarchyResult>(
+            method = "type-hierarchy",
+            params = json.encodeToJsonElement(
+                TypeHierarchyQuery.serializer(),
+                TypeHierarchyQuery(
+                    position = FilePosition(filePath = file.toString(), offset = offset),
+                    direction = TypeHierarchyDirection.BOTH,
+                    depth = 1,
+                ),
+            ),
+        )
+
+        assertEquals("sample.FriendlyGreeter", result.root.symbol.fqName)
+        assertEquals(listOf("sample.Greeter", "sample.LoudGreeter"), result.root.children.map { child -> child.symbol.fqName })
+    }
+
+    @Test
+    fun `semantic insertion point dispatches without HTTP`() {
+        dispatcher()
+        val file = sampleFile()
+        val content = file.readText()
+
+        val result = dispatchSuccess<SemanticInsertionResult>(
+            method = "semantic-insertion-point",
+            params = json.encodeToJsonElement(
+                SemanticInsertionQuery.serializer(),
+                SemanticInsertionQuery(
+                    position = FilePosition(filePath = file.toString(), offset = 0),
+                    target = SemanticInsertionTarget.FILE_BOTTOM,
+                ),
+            ),
+        )
+
+        assertEquals(content.length, result.insertionOffset)
+        assertEquals(file.toString(), result.filePath)
+    }
+
+    @Test
     fun `rename dispatches without HTTP`() {
         val file = sampleFile()
 
@@ -139,6 +191,24 @@ class AnalysisDispatcherTest {
 
         assertEquals(listOf(file.toString()), result.affectedFiles)
         assertTrue(result.edits.all { edit -> edit.newText == "welcome" })
+    }
+
+    @Test
+    fun `imports optimize dispatches without HTTP`() {
+        val file = sampleFile()
+
+        val result = dispatchSuccess<ImportOptimizeResult>(
+            method = "imports/optimize",
+            params = json.encodeToJsonElement(
+                ImportOptimizeQuery.serializer(),
+                ImportOptimizeQuery(
+                    filePaths = listOf(file.toString()),
+                ),
+            ),
+        )
+
+        assertTrue(result.edits.isEmpty())
+        assertTrue(result.affectedFiles.isEmpty())
     }
 
     @Test
@@ -171,6 +241,49 @@ class AnalysisDispatcherTest {
 
         assertEquals(listOf(file.toString()), result.affectedFiles)
         assertTrue(file.readText().contains("hello"))
+    }
+
+    @Test
+    fun `apply edits validates absolute file operation paths`() {
+        val response = dispatchRaw(
+            method = "edits/apply",
+            params = json.encodeToJsonElement(
+                ApplyEditsQuery.serializer(),
+                ApplyEditsQuery(
+                    edits = emptyList(),
+                    fileHashes = emptyList(),
+                    fileOperations = listOf(
+                        FileOperation.CreateFile(
+                            filePath = "relative/New.kt",
+                            content = "class New",
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val error = json.decodeFromJsonElement(
+            JsonRpcErrorResponse.serializer(),
+            response,
+        )
+        assertEquals("VALIDATION_ERROR", error.error.data?.code)
+    }
+
+    @Test
+    fun `imports optimize validates absolute file paths`() {
+        val response = dispatchRaw(
+            method = "imports/optimize",
+            params = json.encodeToJsonElement(
+                ImportOptimizeQuery.serializer(),
+                ImportOptimizeQuery(filePaths = listOf("relative/File.kt")),
+            ),
+        )
+
+        val error = json.decodeFromJsonElement(
+            JsonRpcErrorResponse.serializer(),
+            response,
+        )
+        assertEquals("VALIDATION_ERROR", error.error.data?.code)
     }
 
     @Test
@@ -231,7 +344,34 @@ class AnalysisDispatcherTest {
         assertEquals("VALIDATION_ERROR", error.error.data?.code)
     }
 
+    @Test
+    fun `invalid type hierarchy max results returns rpc error payload`() {
+        dispatcher()
+        val file = sampleTypeFile()
+        val offset = file.readText().indexOf("FriendlyGreeter")
+        val response = dispatchRaw(
+            method = "type-hierarchy",
+            params = json.encodeToJsonElement(
+                TypeHierarchyQuery.serializer(),
+                TypeHierarchyQuery(
+                    position = FilePosition(filePath = file.toString(), offset = offset),
+                    direction = TypeHierarchyDirection.SUBTYPES,
+                    depth = 1,
+                    maxResults = 0,
+                ),
+            ),
+        )
+
+        val error = json.decodeFromJsonElement(
+            JsonRpcErrorResponse.serializer(),
+            response,
+        )
+        assertEquals("VALIDATION_ERROR", error.error.data?.code)
+    }
+
     private fun sampleFile(): Path = tempDir.resolve("src").resolve("Sample.kt")
+
+    private fun sampleTypeFile(): Path = tempDir.resolve("src").resolve("Types.kt")
 
     private fun dispatcher(): AnalysisDispatcher = AnalysisDispatcher(
         backend = FakeAnalysisBackend.sample(tempDir),

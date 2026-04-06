@@ -4,10 +4,13 @@ import io.github.amichne.kast.api.AnalysisException
 import io.github.amichne.kast.api.ApplyEditsResult
 import io.github.amichne.kast.api.BackendCapabilities
 import io.github.amichne.kast.api.DiagnosticsResult
+import io.github.amichne.kast.api.ImportOptimizeResult
 import io.github.amichne.kast.api.RefreshResult
 import io.github.amichne.kast.api.ReferencesResult
 import io.github.amichne.kast.api.RenameResult
+import io.github.amichne.kast.api.SemanticInsertionResult
 import io.github.amichne.kast.api.SymbolResult
+import io.github.amichne.kast.api.TypeHierarchyResult
 import kotlinx.serialization.json.Json
 
 internal fun defaultCliJson(): Json = Json {
@@ -31,10 +34,13 @@ internal fun writeCliJson(
         is SymbolResult -> json.encodeToString(value)
         is ReferencesResult -> json.encodeToString(value)
         is DiagnosticsResult -> json.encodeToString(value)
+        is SemanticInsertionResult -> json.encodeToString(value)
         is RenameResult -> json.encodeToString(value)
+        is ImportOptimizeResult -> json.encodeToString(value)
         is ApplyEditsResult -> json.encodeToString(value)
         is RefreshResult -> json.encodeToString(value)
         is io.github.amichne.kast.api.CallHierarchyResult -> json.encodeToString(value)
+        is TypeHierarchyResult -> json.encodeToString(value)
         is CliErrorResponse -> json.encodeToString(value)
         else -> error("Unsupported CLI output type: ${value::class.java.name}")
     }

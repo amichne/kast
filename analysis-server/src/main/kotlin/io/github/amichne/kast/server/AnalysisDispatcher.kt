@@ -12,6 +12,8 @@ import io.github.amichne.kast.api.CapabilityNotSupportedException
 import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.DiagnosticsResult
 import io.github.amichne.kast.api.HealthResponse
+import io.github.amichne.kast.api.ImportOptimizeQuery
+import io.github.amichne.kast.api.ImportOptimizeResult
 import io.github.amichne.kast.api.JSON_RPC_INTERNAL_ERROR
 import io.github.amichne.kast.api.JSON_RPC_INVALID_REQUEST
 import io.github.amichne.kast.api.JSON_RPC_METHOD_NOT_FOUND
@@ -32,8 +34,12 @@ import io.github.amichne.kast.api.ReferencesResult
 import io.github.amichne.kast.api.RenameQuery
 import io.github.amichne.kast.api.RenameResult
 import io.github.amichne.kast.api.RuntimeStatusResponse
+import io.github.amichne.kast.api.SemanticInsertionQuery
+import io.github.amichne.kast.api.SemanticInsertionResult
 import io.github.amichne.kast.api.SymbolQuery
 import io.github.amichne.kast.api.SymbolResult
+import io.github.amichne.kast.api.TypeHierarchyQuery
+import io.github.amichne.kast.api.TypeHierarchyResult
 import io.github.amichne.kast.api.ValidationException
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.KSerializer
@@ -178,6 +184,32 @@ class AnalysisDispatcher(
                 ),
             )
 
+            "type-hierarchy" -> encode(
+                TypeHierarchyResult.serializer(),
+                backend.typeHierarchy(
+                    decodeParams(TypeHierarchyQuery.serializer(), params).also { query ->
+                        validateFilePosition(query.position.filePath, query.position.offset)
+                        if (query.depth < 0) {
+                            throw ValidationException("Type hierarchy depth must be greater than or equal to zero")
+                        }
+                        if (query.maxResults < 1) {
+                            throw ValidationException("Type hierarchy maxResults must be greater than zero")
+                        }
+                        requireReadCapability(ReadCapability.TYPE_HIERARCHY)
+                    },
+                ),
+            )
+
+            "semantic-insertion-point" -> encode(
+                SemanticInsertionResult.serializer(),
+                backend.semanticInsertionPoint(
+                    decodeParams(SemanticInsertionQuery.serializer(), params).also { query ->
+                        validateFilePosition(query.position.filePath, query.position.offset)
+                        requireReadCapability(ReadCapability.SEMANTIC_INSERTION_POINT)
+                    },
+                ),
+            )
+
             "diagnostics" -> encode(
                 DiagnosticsResult.serializer(),
                 backend.diagnostics(
@@ -204,11 +236,30 @@ class AnalysisDispatcher(
                 ),
             )
 
+            "imports/optimize" -> encode(
+                ImportOptimizeResult.serializer(),
+                backend.optimizeImports(
+                    decodeParams(ImportOptimizeQuery.serializer(), params).also { query ->
+                        if (query.filePaths.isEmpty()) {
+                            throw ValidationException("At least one file path is required for import optimization")
+                        }
+                        query.filePaths.forEach(::validateAbsoluteFilePath)
+                        requireMutationCapability(MutationCapability.OPTIMIZE_IMPORTS)
+                    },
+                ),
+            )
+
             "edits/apply" -> encode(
                 ApplyEditsResult.serializer(),
                 backend.applyEdits(
-                    decodeParams(ApplyEditsQuery.serializer(), params).also {
+                    decodeParams(ApplyEditsQuery.serializer(), params).also { query ->
+                        query.fileOperations.forEach { operation ->
+                            validateAbsoluteFilePath(operation.filePath)
+                        }
                         requireMutationCapability(MutationCapability.APPLY_EDITS)
+                        if (query.fileOperations.isNotEmpty()) {
+                            requireMutationCapability(MutationCapability.FILE_OPERATIONS)
+                        }
                     },
                 ),
             )

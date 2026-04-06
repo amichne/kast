@@ -12,7 +12,11 @@ import io.github.amichne.kast.api.NotFoundException
 import io.github.amichne.kast.api.Symbol
 import io.github.amichne.kast.api.SymbolKind
 import io.github.amichne.kast.api.TextEdit
+import org.jetbrains.kotlin.analysis.api.KaSession
+import org.jetbrains.kotlin.analysis.api.symbols.classSymbol
+import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.psi.KtClass
+import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtObjectDeclaration
@@ -42,12 +46,16 @@ internal fun resolveTarget(file: com.intellij.psi.PsiFile, offset: Int): PsiElem
     throw NotFoundException("No resolvable symbol was found at the requested offset")
 }
 
-internal fun PsiElement.toSymbolModel(containingDeclaration: String?): Symbol = Symbol(
+internal fun PsiElement.toSymbolModel(
+    containingDeclaration: String?,
+    supertypes: List<String>? = null,
+): Symbol = Symbol(
     fqName = fqName(),
     kind = kind(),
     location = toKastLocation(nameRange()),
     type = typeDescription(),
     containingDeclaration = containingDeclaration,
+    supertypes = supertypes,
 )
 
 private fun PsiElement.nameRange(): TextRange = when (this) {
@@ -133,6 +141,31 @@ internal fun PsiElement.callHierarchyDeclaration(): PsiElement? = parentsWithSel
 
         else -> false
     }
+}
+
+internal fun PsiElement.typeHierarchyDeclaration(): PsiElement? = parentsWithSelf().firstOrNull { element ->
+    when (element) {
+        is KtClassOrObject,
+        is PsiClass,
+        -> true
+
+        else -> false
+    }
+}
+
+internal fun KaSession.supertypeNames(target: PsiElement): List<String>? = when (target) {
+    is KtClassOrObject -> target.classSymbol
+        ?.superTypes
+        ?.mapNotNull { type -> (type as? KaClassType)?.classId?.asSingleFqName()?.asString() }
+        ?.distinct()
+        ?.sorted()
+
+    is PsiClass -> target.supers
+        .mapNotNull(PsiClass::getQualifiedName)
+        .distinct()
+        .sorted()
+
+    else -> null
 }
 
 internal fun PsiElement.referenceSearchIdentifier(): String? = when (this) {

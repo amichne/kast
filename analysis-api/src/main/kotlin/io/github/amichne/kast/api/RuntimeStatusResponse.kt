@@ -12,5 +12,6 @@ data class RuntimeStatusResponse(
     val backendVersion: String,
     val workspaceRoot: String,
     val message: String? = null,
+    val warnings: List<String> = emptyList(),
     val schemaVersion: Int = SCHEMA_VERSION,
 )
