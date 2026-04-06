@@ -5,17 +5,7 @@ description: Install Kast, start a workspace runtime, verify it is ready, and
 icon: lucide/play
 ---
 
-This guide gets you from a fresh shell to a ready workspace runtime. When you
-finish, you will have `kast` on your path, a daemon attached to one workspace,
-and a clear way to confirm the runtime is healthy. If you use an agent
-workflow, the same CLI can also install the packaged `kast` skill into a
-workspace through `kast install skill` as a version-matched local copy.
-
-The published install gives you a launcher plus a bundled native client.
-Daemon-backed commands still rely on the JVM runtime, so Java 21 remains
-required.
-
-## Before you begin
+## Prerequisites
 
 You need a small amount of local setup before the first command can succeed.
 

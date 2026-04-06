@@ -72,10 +72,33 @@ The most reliable flow keeps the agent narrow at each stage. Resolve the
 symbol first, confirm identity, and only then expand into broader usage or
 edit planning.
 
+```mermaid
+sequenceDiagram
+    participant User
+    participant Agent as "LLM Agent"
+    participant Skill as "Kast Skill"
+    participant Daemon as "Analysis Daemon"
+
+    User->>Agent: "Find references to HealthCheckService"
+    Agent->>Skill: Search workspace for declaration
+    Skill-->>Skill: Search candidate files + compute offset
+    Skill->>Daemon: symbol resolve (file, offset)
+    Daemon-->>Skill: symbol identity (fqName, kind, location)
+    Skill-->>Agent: Confirm: io.example.HealthCheckService
+    Agent->>Skill: Find references for confirmed symbol
+    Skill->>Daemon: references (file, offset)
+    Daemon-->>Skill: structured reference list (JSON)
+    Skill-->>Agent: 12 references across 4 files
+    Agent->>User: Summary with file locations and previews
+```
+
+This is the default flow the packaged skill follows when a conversational
+reference is clear enough.
+
 1. Name the target in conversational terms.
 2. Ask the agent to resolve the symbol before it gathers references.
 3. Confirm the reported symbol kind, fully qualified name, and declaration
-    match what you meant.
+     match what you meant.
 4. Ask for references, call hierarchy, rename impact, or diagnostics only
    after the identity is explicit.
 
