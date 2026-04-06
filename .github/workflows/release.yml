@@ -83,10 +83,12 @@ jobs:
         with:
           ref: ${{ needs.prepare-release.outputs.release_tag }}
 
-      - uses: actions/setup-java@v5
+      - uses: graalvm/setup-graalvm@v1
         with:
-          distribution: temurin
+          distribution: graalvm-community
           java-version: "21"
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          native-image-job-reports: "true"
 
       - uses: gradle/actions/setup-gradle@v4
         with:

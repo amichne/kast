@@ -36,6 +36,14 @@ jobs:
         with:
           gradle-version: "9.4.0"
 
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/kast/intellij-distributions
+            backend-standalone/build/compat
+            backend-standalone/build/legacy-plugin-classes
+          key: idea-dist-${{ hashFiles('gradle/libs.versions.toml') }}
+
       - name: Build and test Kast
         run: >
           ./gradlew

@@ -55,7 +55,7 @@ if [ -x "${SOURCE_ROOT}/gradlew" ]; then
         MAJOR="${SPEC_VERSION%%.*}"
         if [ -n "${MAJOR}" ] && [ "${MAJOR}" -ge 21 ] 2>/dev/null; then
             printf 'kast not found; building from source (this may take a minute)...\n' >&2
-            (cd "${SOURCE_ROOT}" && ./gradlew :kast:writeWrapperScript --quiet --no-configuration-cache 2>&1) >&2 || true
+            (cd "${SOURCE_ROOT}" && ./gradlew :kast:writeWrapperScript --quiet 2>&1) >&2 || true
             if [ -x "${GRADLE_SCRIPT}" ]; then
                 printf '%s\n' "${GRADLE_SCRIPT}"
                 exit 0

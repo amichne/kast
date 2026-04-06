@@ -18,4 +18,5 @@ private val catalog = extensions.getByType<VersionCatalogsExtension>().named("li
 dependencies {
     implementation(catalog.findLibrary("kotlin-gradle-plugin").get())
     implementation(catalog.findLibrary("kotlin-serialization-plugin").get())
+    implementation("com.gradleup.shadow:com.gradleup.shadow.gradle.plugin:${catalog.findVersion("shadow").get().requiredVersion}")
 }

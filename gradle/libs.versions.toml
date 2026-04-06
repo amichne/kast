@@ -1,5 +1,6 @@
 [versions]
 kotlin = "2.3.20"
+shadow = "9.4.1"
 coroutines = "1.10.2"
 serialization = "1.8.1"
 junit-jupiter = "5.10.3"
@@ -53,4 +54,5 @@ test = [
 ]
 
 [plugins]
-graalvm-native = { id = "org.graalvm.buildtools.native", version = "0.10.6" }
+graalvm-native = { id = "org.graalvm.buildtools.native", version = "1.0.0" }
+shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }

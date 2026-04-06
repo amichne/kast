@@ -1,17 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-resolve_script_dir() {
-  local bash_source="${BASH_SOURCE[0]-}"
-  if [[ -z "$bash_source" ]]; then
-    printf '%s\n' ""
-    return
-  fi
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/scripts/lib.sh"
 
-  cd -- "$(dirname -- "$bash_source")" >/dev/null 2>&1 && pwd
-}
-
-readonly SCRIPT_DIR="$(resolve_script_dir)"
+readonly SCRIPT_DIR
 readonly REPO_ROOT="$SCRIPT_DIR"
 readonly GRADLEW="${REPO_ROOT}/gradlew"
 readonly DIST_ROOT="${REPO_ROOT}/dist"
@@ -20,69 +14,9 @@ readonly DIST_ZIP="${DIST_ROOT}/kast.zip"
 readonly PORTABLE_DIST_DIR="${REPO_ROOT}/kast/build/portable-dist/kast"
 readonly PORTABLE_ZIP_DIR="${REPO_ROOT}/kast/build/distributions"
 readonly INSTALL_INSTANCE_SCRIPT="${REPO_ROOT}/scripts/install-instance.sh"
-readonly GRADLE_ARGS=(--no-configuration-cache)
+readonly GRADLE_ARGS=()
 
 tmp_dir=""
-
-supports_color() {
-  if [[ "${CLICOLOR_FORCE:-}" == "1" ]]; then
-    return 0
-  fi
-  if [[ -n "${NO_COLOR:-}" ]]; then
-    return 1
-  fi
-  if [[ ! -t 2 ]]; then
-    return 1
-  fi
-  [[ "${TERM:-}" != "dumb" ]]
-}
-
-colorize() {
-  local code="$1"
-  shift
-
-  if supports_color; then
-    printf '\033[%sm%s\033[0m' "$code" "$*"
-    return
-  fi
-
-  printf '%s' "$*"
-}
-
-log_line() {
-  local label="$1"
-  local message="$2"
-  printf '%s %s\n' "$label" "$message" >&2
-}
-
-log() {
-  log_line "$(colorize '2' '│')" "$*"
-}
-
-log_section() {
-  printf '\n%s\n' "$(colorize '1;36' "$*")" >&2
-}
-
-log_step() {
-  log_line "$(colorize '1;34' '›')" "$*"
-}
-
-log_success() {
-  log_line "$(colorize '1;32' '✓')" "$*"
-}
-
-log_note() {
-  log_line "$(colorize '33' '•')" "$*"
-}
-
-log_prompt() {
-  printf '%s %s' "$(colorize '1;34' '?')" "$*" >/dev/tty
-}
-
-die() {
-  log_line "$(colorize '1;31' '✕')" "$*"
-  exit 1
-}
 
 cleanup() {
   if [[ -n "$tmp_dir" && -d "$tmp_dir" ]]; then
@@ -91,43 +25,6 @@ cleanup() {
 }
 
 trap cleanup EXIT
-
-can_prompt() {
-  [[ -r /dev/tty && -w /dev/tty ]]
-}
-
-prompt_yes_no() {
-  local message="$1"
-  local default_answer="${2:-no}"
-  local prompt_suffix="[y/N]"
-  local reply=""
-
-  if [[ "$default_answer" == "yes" ]]; then
-    prompt_suffix="[Y/n]"
-  fi
-
-  while true; do
-    log_prompt "${message} ${prompt_suffix} "
-    if ! IFS= read -r reply </dev/tty; then
-      printf '\n' >/dev/tty
-      return 1
-    fi
-    printf '\n' >/dev/tty
-
-    case "$reply" in
-      "")
-        [[ "$default_answer" == "yes" ]]
-        return
-        ;;
-      [Yy] | [Yy][Ee][Ss])
-        return 0
-        ;;
-      [Nn] | [Nn][Oo])
-        return 1
-        ;;
-    esac
-  done
-}
 
 usage() {
   cat <<'USAGE' >&2
