@@ -1,94 +1,69 @@
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import org.gradle.api.file.DuplicatesStrategy
-import org.gradle.api.tasks.Delete
+import org.gradle.api.file.FileCollection
 import org.gradle.api.tasks.Sync
 import org.gradle.api.tasks.bundling.Zip
 import org.gradle.jvm.tasks.Jar
+import java.io.File
 
 plugins {
     application
     id("kast.kotlin-library")
+    id("com.gradleup.shadow")
 }
 
-val cleanPackagingOutputs by tasks.registering(Delete::class) {
-    group = "build"
-    description = "Removes generated packaging outputs before rebuilding ${project.name}."
-
-    delete(
-        layout.buildDirectory.dir("distributions"),
-        layout.buildDirectory.dir("install"),
-        layout.buildDirectory.dir("libs"),
-        layout.buildDirectory.dir("portable-dist"),
-        layout.buildDirectory.dir("scripts"),
-    )
-}
+val applicationName = project.name
 
 tasks.named<Jar>("jar") {
-    dependsOn(cleanPackagingOutputs)
     manifest {
         attributes["Main-Class"] = application.mainClass.get()
-        attributes["Implementation-Title"] = project.name
+        attributes["Implementation-Title"] = applicationName
         attributes["Implementation-Version"] = project.version.toString()
     }
     isZip64 = true
 }
 
-val fatJar by tasks.registering(Jar::class) {
-    dependsOn(cleanPackagingOutputs)
+val shadowJar = tasks.named<ShadowJar>("shadowJar") {
     archiveClassifier.set("all")
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    dependsOn(configurations.runtimeClasspath.get().buildDependencies)
 
     manifest {
         attributes["Main-Class"] = application.mainClass.get()
-        attributes["Implementation-Title"] = project.name
+        attributes["Implementation-Title"] = applicationName
         attributes["Implementation-Version"] = project.version.toString()
     }
     isZip64 = true
-
-    from(sourceSets.main.get().output)
-
-    from({
-        configurations.runtimeClasspath.get()
-            .filter { it.name.endsWith(".jar") }
-            .map { zipTree(it) }
-    })
 }
 
-val fatJarArchive = fatJar.flatMap { it.archiveFile }
+val shadowJarArchive = shadowJar.flatMap(ShadowJar::getArchiveFile)
 
-val runtimeClassPathJars = configurations.runtimeClasspath.map { classpath ->
-    classpath
-        .filter { file -> file.name.endsWith(".jar") }
-        .map { file -> file.absolutePath }
-}
+val runtimeClassPathJars = configurations.runtimeClasspath.map(::runtimeJarPathsInOrder)
+val mainJar = tasks.named<Jar>("jar")
 
 val syncRuntimeLibs by tasks.registering(SyncRuntimeLibsTask::class) {
-    dependsOn(tasks.named<Jar>("jar"))
-    appJar.set(tasks.named<Jar>("jar").flatMap { it.archiveFile })
-    runtimeJars.from({
-        configurations.runtimeClasspath.get()
-            .filter { it.name.endsWith(".jar") }
-    })
+    dependsOn(mainJar)
+    appJar.set(mainJar.flatMap(Jar::getArchiveFile))
+    runtimeJars.from(configurations.runtimeClasspath)
     runtimeJarPathsInOrder.set(runtimeClassPathJars)
     outputDirectory.set(layout.buildDirectory.dir("runtime-libs"))
     classpathFile.set(layout.buildDirectory.file("runtime-libs/classpath.txt"))
 }
 
 val writeWrapperScript by tasks.registering(WriteWrapperScriptTask::class) {
-    dependsOn(fatJar)
+    dependsOn(shadowJar)
     dependsOn(syncRuntimeLibs)
 
-    jarFileName.set(fatJarArchive.map { it.asFile.name })
-    outputFile.set(layout.buildDirectory.file("scripts/${project.name}"))
+    jarFileName.set(shadowJar.flatMap(ShadowJar::getArchiveFileName))
+    outputFile.set(layout.buildDirectory.file("scripts/$applicationName"))
 }
 
 val syncPortableDist by tasks.registering(Sync::class) {
     dependsOn(writeWrapperScript)
-    into(layout.buildDirectory.dir("portable-dist/${project.name}"))
+    into(layout.buildDirectory.dir("portable-dist/$applicationName"))
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 
     from(writeWrapperScript)
-    from(fatJarArchive) {
+    from(shadowJarArchive) {
         into("libs")
     }
     from(syncRuntimeLibs) {
@@ -97,20 +72,21 @@ val syncPortableDist by tasks.registering(Sync::class) {
 }
 
 val portableDistZip by tasks.registering(Zip::class) {
+    val archiveRoot = applicationName
     dependsOn(syncPortableDist)
-    archiveBaseName.set(project.name)
+    archiveBaseName.set(applicationName)
     archiveClassifier.set("portable")
     destinationDirectory.set(layout.buildDirectory.dir("distributions"))
     dirPermissions { unix("755") }
     filePermissions { unix("644") }
 
     from(syncPortableDist) {
-        into(project.name)
+        into(archiveRoot)
     }
 
     eachFile {
         val archivePath = relativePath.pathString
-        if (archivePath == "${project.name}/${project.name}" || archivePath.startsWith("${project.name}/bin/")) {
+        if (archivePath == "$archiveRoot/$archiveRoot" || archivePath.startsWith("$archiveRoot/bin/")) {
             permissions { unix("755") }
         }
     }
@@ -123,11 +99,6 @@ writeWrapperScript.configure {
 tasks.matching {
     it.name == "sourcesJar"
 }.configureEach {
-    dependsOn(cleanPackagingOutputs)
-}
-
-tasks.named("startScripts").configure {
-    dependsOn(cleanPackagingOutputs)
 }
 
 tasks.matching {
@@ -135,3 +106,9 @@ tasks.matching {
 }.configureEach {
     dependsOn(writeWrapperScript)
 }
+
+private fun runtimeJarPathsInOrder(classpath: FileCollection): List<String> =
+    classpath.files
+        .filter(File::isFile)
+        .filter { it.name.endsWith(".jar") }
+        .map(File::getAbsolutePath)

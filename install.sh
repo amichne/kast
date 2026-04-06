@@ -1,17 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-resolve_script_dir() {
-  local bash_source="${BASH_SOURCE[0]-}"
-  if [[ -z "$bash_source" ]]; then
-    printf '%s\n' ""
-    return
-  fi
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/scripts/lib.sh"
 
-  cd -- "$(dirname -- "$bash_source")" >/dev/null 2>&1 && pwd
-}
-
-readonly SCRIPT_DIR="$(resolve_script_dir)"
+readonly SCRIPT_DIR
 readonly DEFAULT_RELEASE_REPO="amichne/kast"
 readonly GITHUB_API_ACCEPT="Accept: application/vnd.github+json"
 readonly GITHUB_API_VERSION="X-GitHub-Api-Version: 2022-11-28"
@@ -20,66 +14,6 @@ readonly COMPLETION_START_MARKER="# >>> Kast completion >>>"
 readonly COMPLETION_END_MARKER="# <<< Kast completion <<<"
 
 tmp_dir=""
-
-supports_color() {
-  if [[ "${CLICOLOR_FORCE:-}" == "1" ]]; then
-    return 0
-  fi
-  if [[ -n "${NO_COLOR:-}" ]]; then
-    return 1
-  fi
-  if [[ ! -t 2 ]]; then
-    return 1
-  fi
-  [[ "${TERM:-}" != "dumb" ]]
-}
-
-colorize() {
-  local code="$1"
-  shift
-
-  if supports_color; then
-    printf '\033[%sm%s\033[0m' "$code" "$*"
-    return
-  fi
-
-  printf '%s' "$*"
-}
-
-log_line() {
-  local label="$1"
-  local message="$2"
-  printf '%s %s\n' "$label" "$message" >&2
-}
-
-log() {
-  log_line "$(colorize '2' '│')" "$*"
-}
-
-log_section() {
-  printf '\n%s\n' "$(colorize '1;36' "$*")" >&2
-}
-
-log_step() {
-  log_line "$(colorize '1;34' '›')" "$*"
-}
-
-log_success() {
-  log_line "$(colorize '1;32' '✓')" "$*"
-}
-
-log_note() {
-  log_line "$(colorize '33' '•')" "$*"
-}
-
-log_prompt() {
-  printf '%s %s' "$(colorize '1;34' '?')" "$*" >/dev/tty
-}
-
-die() {
-  log_line "$(colorize '1;31' '✕')" "$*"
-  exit 1
-}
 
 cleanup() {
   if [[ -n "$tmp_dir" && -d "$tmp_dir" ]]; then
@@ -149,35 +83,6 @@ detect_platform_id() {
   esac
 }
 
-resolve_java_bin() {
-  if [[ -n "${JAVA_HOME:-}" ]]; then
-    local candidate="${JAVA_HOME}/bin/java"
-    [[ -x "$candidate" ]] || die "JAVA_HOME is set but does not contain an executable java binary"
-    printf '%s\n' "$candidate"
-    return
-  fi
-
-  command -v java >/dev/null 2>&1 || die "Java 21 is required. Install Java 21 and rerun the installer."
-  command -v java
-}
-
-assert_java_21() {
-  local java_bin="$1"
-  local spec_version
-
-  spec_version="$(
-    "$java_bin" -XshowSettings:properties -version 2>&1 |
-      awk -F'= ' '/java.specification.version =/ { print $2; exit }'
-  )"
-
-  [[ -n "$spec_version" ]] || die "Could not determine the installed Java version"
-
-  local major_version="${spec_version%%.*}"
-  if [[ "$major_version" -lt 21 ]]; then
-    die "Kast requires Java 21 or newer. Found Java specification version $spec_version."
-  fi
-}
-
 download_file() {
   local url="$1"
   local output_path="$2"
@@ -240,24 +145,6 @@ else:
         f"No release asset matched platform '{platform_id}'. "
         f"Available assets: {asset_names or '<none>'}"
     )
-PY
-}
-
-extract_zip_archive() {
-  local archive_path="$1"
-  local output_dir="$2"
-
-  python3 - "$archive_path" "$output_dir" <<'PY'
-import sys
-import zipfile
-from pathlib import Path
-
-archive_path = Path(sys.argv[1])
-output_dir = Path(sys.argv[2])
-output_dir.mkdir(parents=True, exist_ok=True)
-
-with zipfile.ZipFile(archive_path) as archive:
-    archive.extractall(output_dir)
 PY
 }
 
@@ -387,43 +274,6 @@ resolve_completion_mode() {
       die "KAST_INSTALL_COMPLETIONS must be one of: prompt, true, false"
       ;;
   esac
-}
-
-can_prompt() {
-  [[ -r /dev/tty && -w /dev/tty ]]
-}
-
-prompt_yes_no() {
-  local message="$1"
-  local default_answer="${2:-yes}"
-  local prompt_suffix="[Y/n]"
-  local reply=""
-
-  if [[ "$default_answer" == "no" ]]; then
-    prompt_suffix="[y/N]"
-  fi
-
-  while true; do
-    log_prompt "${message} ${prompt_suffix} "
-    if ! IFS= read -r reply </dev/tty; then
-      printf '\n' >/dev/tty
-      return 1
-    fi
-    printf '\n' >/dev/tty
-
-    case "$reply" in
-      "")
-        [[ "$default_answer" == "yes" ]]
-        return
-        ;;
-      [Yy] | [Yy][Ee][Ss])
-        return 0
-        ;;
-      [Nn] | [Nn][Oo])
-        return 1
-        ;;
-    esac
-  done
 }
 
 install_shell_completion() {

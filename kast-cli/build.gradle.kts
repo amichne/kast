@@ -32,6 +32,9 @@ dependencies {
 }
 
 graalvmNative {
+    metadataRepository {
+        enabled.set(false)
+    }
     binaries {
         named("main") {
             imageName.set("kast")

@@ -1,71 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-log() {
-  printf '%s\n' "$*" >&2
-}
-
-die() {
-  log "error: $*"
-  exit 1
-}
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/lib.sh"
 
 resolve_repo_root() {
-  local script_dir
-  script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-  cd -- "${script_dir}/.." && pwd
-}
-
-resolve_java_bin() {
-  if [[ -n "${JAVA_HOME:-}" ]]; then
-    local candidate="${JAVA_HOME}/bin/java"
-    [[ -x "$candidate" ]] || die "JAVA_HOME is set but does not contain an executable java binary"
-    printf '%s\n' "$candidate"
-    return
-  fi
-
-  command -v java >/dev/null 2>&1 || die "Java 21 is required. Install Java 21 and rerun."
-  command -v java
-}
-
-assert_java_21() {
-  local java_bin="$1"
-  local spec_version
-
-  spec_version="$(
-    "$java_bin" -XshowSettings:properties -version 2>&1 |
-      awk -F'= ' '/java.specification.version =/ { print $2; exit }'
-  )"
-
-  [[ -n "$spec_version" ]] || die "Could not determine the installed Java version"
-
-  local major_version="${spec_version%%.*}"
-  if [[ "$major_version" -lt 21 ]]; then
-    die "Kast requires Java 21 or newer. Found Java specification version $spec_version."
-  fi
-}
-
-extract_zip_archive() {
-  local archive_path="$1"
-  local output_dir="$2"
-
-  python3 - "$archive_path" "$output_dir" <<'PY'
-import sys
-import zipfile
-from pathlib import Path
-
-archive_path = Path(sys.argv[1])
-output_dir = Path(sys.argv[2])
-output_dir.mkdir(parents=True, exist_ok=True)
-
-with zipfile.ZipFile(archive_path) as archive:
-    resolved_output = output_dir.resolve()
-    for member in archive.namelist():
-        dest = (output_dir / member).resolve()
-        if not str(dest).startswith(str(resolved_output) + "/"):
-            raise Exception(f"Zip-slip attempt detected: {member}")
-    archive.extractall(output_dir)
-PY
+  cd -- "${SCRIPT_DIR}/.." && pwd
 }
 
 resolve_default_archive() {

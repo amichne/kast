@@ -1,19 +1,26 @@
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.artifacts.VersionCatalogsExtension
+import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.ConfigurableFileTree
 import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.provider.Property
+import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.file.DuplicatesStrategy
+import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputDirectory
+import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
-import org.gradle.api.tasks.Sync
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.jvm.tasks.Jar
 import org.gradle.kotlin.dsl.creating
 import org.gradle.kotlin.dsl.getByType
+import java.nio.file.AtomicMoveNotSupportedException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.util.zip.ZipFile
 
 plugins {
@@ -28,14 +35,74 @@ val ideaDistribution: Configuration by configurations.creating {
     isCanBeResolved = true
 }
 
-private val extractedIdeaDistributionDirectory = layout.buildDirectory.dir("intellij-distribution")
+private val extractedIdeaDistributionDirectory = objects.directoryProperty().apply {
+    set(file(gradle.gradleUserHomeDir.resolve("kast/intellij-distributions/$intellijIdeaVersion")))
+}
 
-val extractIdeaDistribution: TaskProvider<Sync> by tasks.registering(Sync::class) {
-    from({
-        ideaDistribution.files.map(::zipTree)
-    })
-    into(extractedIdeaDistributionDirectory)
-    includeEmptyDirs = false
+@CacheableTask
+abstract class ExtractIdeaDistributionTask : DefaultTask() {
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val archives: ConfigurableFileCollection
+
+    @get:Input
+    abstract val ideaVersion: Property<String>
+
+    @get:OutputDirectory
+    abstract val outputDirectory: DirectoryProperty
+
+    @TaskAction
+    fun extract() {
+        val archiveFile = archives.singleFile
+        val outputRoot = outputDirectory.get().asFile.toPath()
+        val versionMarker = outputRoot.resolve(".kast-intellij-version")
+        if (Files.isDirectory(outputRoot) && Files.isRegularFile(versionMarker)) {
+            if (Files.readString(versionMarker).trim() == ideaVersion.get()) {
+                return
+            }
+        }
+
+        val parent = outputRoot.parent ?: throw GradleException("IntelliJ extraction output must have a parent directory: $outputRoot")
+        Files.createDirectories(parent)
+        val tempRoot = Files.createTempDirectory(parent, "${outputRoot.fileName}.tmp-")
+        try {
+            ZipFile(archiveFile).use { archive ->
+                val entries = archive.entries()
+                while (entries.hasMoreElements()) {
+                    val entry = entries.nextElement()
+                    val target = tempRoot.resolve(entry.name).normalize()
+                    if (!target.startsWith(tempRoot)) {
+                        throw GradleException("Zip-slip attempt detected while extracting ${entry.name} from $archiveFile.")
+                    }
+
+                    if (entry.isDirectory) {
+                        Files.createDirectories(target)
+                        continue
+                    }
+
+                    target.parent?.let(Files::createDirectories)
+                    archive.getInputStream(entry).use { input ->
+                        Files.copy(input, target, StandardCopyOption.REPLACE_EXISTING)
+                    }
+                }
+            }
+            Files.writeString(tempRoot.resolve(".kast-intellij-version"), ideaVersion.get())
+            outputRoot.toFile().deleteRecursively()
+            try {
+                Files.move(tempRoot, outputRoot, StandardCopyOption.ATOMIC_MOVE)
+            } catch (_: AtomicMoveNotSupportedException) {
+                Files.move(tempRoot, outputRoot, StandardCopyOption.REPLACE_EXISTING)
+            }
+        } finally {
+            tempRoot.toFile().deleteRecursively()
+        }
+    }
+}
+
+val extractIdeaDistribution: TaskProvider<ExtractIdeaDistributionTask> by tasks.registering(ExtractIdeaDistributionTask::class) {
+    archives.from(ideaDistribution)
+    ideaVersion.set(intellijIdeaVersion)
+    outputDirectory.set(extractedIdeaDistributionDirectory)
 }
 
 private fun extractedIdeaFiles(
@@ -64,6 +131,7 @@ private val compatCompileLibs: ConfigurableFileCollection = extractedIdeaFiles {
     exclude("**/testFramework-k1.jar")
 }
 
+@CacheableTask
 abstract class ExtractLegacyPluginClassesTask : DefaultTask() {
     @get:InputDirectory
     @get:PathSensitive(PathSensitivity.RELATIVE)
@@ -99,7 +167,7 @@ abstract class ExtractLegacyPluginClassesTask : DefaultTask() {
             "com/intellij/ide/plugins/NonShareableJavaZipFilePool$",
         )
         val outputRoot = outputDirectory.get().asFile
-        project.delete(outputRoot)
+        outputRoot.deleteRecursively()
         outputRoot.mkdirs()
 
         ZipFile(compilerJar).use { archive ->
