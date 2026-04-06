@@ -57,6 +57,7 @@ class StandaloneAnalysisSession(
     lateinit var sourceModules: List<KaSourceModule>
         private set
     val resolvedSourceRoots: List<Path>
+    val workspaceDiagnostics: List<String>
     private val resolvedClasspathRoots: List<Path>
     private lateinit var sessionStateDisposable: Disposable
     private lateinit var session: StandaloneAnalysisAPISession
@@ -72,6 +73,7 @@ class StandaloneAnalysisSession(
             "No source roots were found under ${normalizeStandalonePath(workspaceRoot)}"
         }
         sourceModuleSpecs = workspaceLayout.sourceModules
+        workspaceDiagnostics = workspaceLayout.diagnostics.warnings
         dependentModuleNamesBySourceModuleName = buildDependentModuleNamesBySourceModuleName(sourceModuleSpecs)
 
         resolvedSourceRoots = workspaceLayout.sourceModules
@@ -738,6 +740,7 @@ private fun buildDependentModuleNamesBySourceModuleName(
 
 internal data class StandaloneWorkspaceLayout(
     val sourceModules: List<StandaloneSourceModuleSpec>,
+    val diagnostics: WorkspaceDiscoveryDiagnostics = WorkspaceDiscoveryDiagnostics(),
 )
 
 internal data class StandaloneSourceModuleSpec(

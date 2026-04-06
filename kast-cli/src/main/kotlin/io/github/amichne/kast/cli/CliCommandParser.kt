@@ -5,11 +5,16 @@ import io.github.amichne.kast.api.CallDirection
 import io.github.amichne.kast.api.CallHierarchyQuery
 import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.FilePosition
+import io.github.amichne.kast.api.ImportOptimizeQuery
 import io.github.amichne.kast.api.ReferencesQuery
 import io.github.amichne.kast.api.RefreshQuery
 import io.github.amichne.kast.api.RenameQuery
+import io.github.amichne.kast.api.SemanticInsertionQuery
+import io.github.amichne.kast.api.SemanticInsertionTarget
 import io.github.amichne.kast.api.StandaloneServerOptions
 import io.github.amichne.kast.api.SymbolQuery
+import io.github.amichne.kast.api.TypeHierarchyDirection
+import io.github.amichne.kast.api.TypeHierarchyQuery
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import java.nio.file.Path
@@ -79,8 +84,20 @@ internal class CliCommandParser(
                 listOf("symbol", "resolve") -> CliCommand.ResolveSymbol(parsed.runtimeOptions(), parsed.symbolQuery(json))
                 listOf("references") -> CliCommand.FindReferences(parsed.runtimeOptions(), parsed.referencesQuery(json))
                 listOf("call", "hierarchy") -> CliCommand.CallHierarchy(parsed.runtimeOptions(), parsed.callHierarchyQuery(json))
+                listOf("type", "hierarchy") -> CliCommand.TypeHierarchy(
+                    parsed.withoutOption("max-results").runtimeOptions(),
+                    parsed.typeHierarchyQuery(json),
+                )
+                listOf("semantic", "insertion-point") -> CliCommand.SemanticInsertionPoint(
+                    parsed.runtimeOptions(),
+                    parsed.semanticInsertionQuery(json),
+                )
                 listOf("diagnostics") -> CliCommand.Diagnostics(parsed.runtimeOptions(), parsed.diagnosticsQuery(json))
                 listOf("rename") -> CliCommand.Rename(parsed.runtimeOptions(), parsed.renameQuery(json))
+                listOf("imports", "optimize") -> CliCommand.ImportOptimize(
+                    parsed.runtimeOptions(),
+                    parsed.importOptimizeQuery(json),
+                )
                 listOf("edits", "apply") -> CliCommand.ApplyEdits(parsed.runtimeOptions(), parsed.applyEditsQuery(json))
                 listOf("install") -> CliCommand.Install(parsed.installOptions())
                 listOf("install", "skill") -> CliCommand.InstallSkill(parsed.installSkillOptions())
@@ -234,6 +251,36 @@ internal data class ParsedArguments(
         )
     }
 
+    fun typeHierarchyQuery(json: Json): TypeHierarchyQuery = requestOrFile(
+        serializer = TypeHierarchyQuery.serializer(),
+        requestFileKey = "request-file",
+        json = json,
+    ) {
+        TypeHierarchyQuery(
+            position = FilePosition(
+                filePath = absoluteFilePath(requireOption("file-path")),
+                offset = requireInt("offset"),
+            ),
+            direction = requireTypeHierarchyDirection("direction"),
+            depth = optionalInt("depth", 3),
+            maxResults = optionalInt("max-results", 256),
+        )
+    }
+
+    fun semanticInsertionQuery(json: Json): SemanticInsertionQuery = requestOrFile(
+        serializer = SemanticInsertionQuery.serializer(),
+        requestFileKey = "request-file",
+        json = json,
+    ) {
+        SemanticInsertionQuery(
+            position = FilePosition(
+                filePath = absoluteFilePath(requireOption("file-path")),
+                offset = requireInt("offset"),
+            ),
+            target = requireSemanticInsertionTarget("target"),
+        )
+    }
+
     fun renameQuery(json: Json): RenameQuery = requestOrFile(
         serializer = RenameQuery.serializer(),
         requestFileKey = "request-file",
@@ -257,6 +304,20 @@ internal data class ParsedArguments(
         throw CliFailure(
             code = "CLI_USAGE",
             message = "`edits apply` requires --request-file=/absolute/path/to/query.json",
+        )
+    }
+
+    fun importOptimizeQuery(json: Json): ImportOptimizeQuery = requestOrFile(
+        serializer = ImportOptimizeQuery.serializer(),
+        requestFileKey = "request-file",
+        json = json,
+    ) {
+        ImportOptimizeQuery(
+            filePaths = requireOption("file-paths")
+                .split(",")
+                .map(String::trim)
+                .filter(String::isNotEmpty)
+                .map(::absoluteFilePath),
         )
     }
 
@@ -297,6 +358,8 @@ internal data class ParsedArguments(
         )
     }
 
+    fun withoutOption(key: String): ParsedArguments = copy(options = options - key)
+
     private fun <T> requestOrFile(
         serializer: KSerializer<T>,
         requestFileKey: String,
@@ -331,6 +394,28 @@ internal data class ParsedArguments(
         else -> throw CliFailure(
             code = "CLI_USAGE",
             message = "Invalid value for --$key; expected incoming or outgoing",
+        )
+    }
+
+    private fun requireTypeHierarchyDirection(key: String): TypeHierarchyDirection = when (requireOption(key).lowercase()) {
+        "supertypes" -> TypeHierarchyDirection.SUPERTYPES
+        "subtypes" -> TypeHierarchyDirection.SUBTYPES
+        "both" -> TypeHierarchyDirection.BOTH
+        else -> throw CliFailure(
+            code = "CLI_USAGE",
+            message = "Invalid value for --$key; expected supertypes, subtypes, or both",
+        )
+    }
+
+    private fun requireSemanticInsertionTarget(key: String): SemanticInsertionTarget = when (requireOption(key).lowercase()) {
+        "class-body-start" -> SemanticInsertionTarget.CLASS_BODY_START
+        "class-body-end" -> SemanticInsertionTarget.CLASS_BODY_END
+        "file-top" -> SemanticInsertionTarget.FILE_TOP
+        "file-bottom" -> SemanticInsertionTarget.FILE_BOTTOM
+        "after-imports" -> SemanticInsertionTarget.AFTER_IMPORTS
+        else -> throw CliFailure(
+            code = "CLI_USAGE",
+            message = "Invalid value for --$key; expected class-body-start, class-body-end, file-top, file-bottom, or after-imports",
         )
     }
 

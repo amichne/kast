@@ -112,6 +112,22 @@ internal class DefaultCliCommandExecutor(
                 )
             }
 
+            is CliCommand.TypeHierarchy -> {
+                val result = cliService.typeHierarchy(command.options, command.query)
+                CliExecutionResult(
+                    output = CliOutput.JsonValue(result.payload),
+                    daemonNote = daemonNoteForRuntime(result.runtime),
+                )
+            }
+
+            is CliCommand.SemanticInsertionPoint -> {
+                val result = cliService.semanticInsertionPoint(command.options, command.query)
+                CliExecutionResult(
+                    output = CliOutput.JsonValue(result.payload),
+                    daemonNote = daemonNoteForRuntime(result.runtime),
+                )
+            }
+
             is CliCommand.Diagnostics -> {
                 val result = cliService.diagnostics(command.options, command.query)
                 CliExecutionResult(
@@ -122,6 +138,14 @@ internal class DefaultCliCommandExecutor(
 
             is CliCommand.Rename -> {
                 val result = cliService.rename(command.options, command.query)
+                CliExecutionResult(
+                    output = CliOutput.JsonValue(result.payload),
+                    daemonNote = daemonNoteForRuntime(result.runtime),
+                )
+            }
+
+            is CliCommand.ImportOptimize -> {
+                val result = cliService.optimizeImports(command.options, command.query)
                 CliExecutionResult(
                     output = CliOutput.JsonValue(result.payload),
                     daemonNote = daemonNoteForRuntime(result.runtime),

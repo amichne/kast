@@ -13,6 +13,8 @@ import io.github.amichne.kast.api.RenameQuery
 import io.github.amichne.kast.api.SymbolKind
 import io.github.amichne.kast.api.SymbolQuery
 import io.github.amichne.kast.api.TextEdit
+import io.github.amichne.kast.api.TypeHierarchyDirection
+import io.github.amichne.kast.api.TypeHierarchyQuery
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.readText
@@ -23,14 +25,21 @@ data class AnalysisBackendContractFixture(
     val declarationFile: Path,
     val firstUsageFile: Path,
     val secondUsageFile: Path,
+    val typeDeclarationFile: Path,
     val brokenFile: Path,
     val declarationLocation: Location,
     val firstUsageLocation: Location,
     val secondUsageLocation: Location,
+    val typeHierarchyRootLocation: Location,
+    val typeHierarchySupertypeLocation: Location,
+    val typeHierarchySubtypeLocation: Location,
     val brokenPreview: String,
 ) {
     val symbolFqName: String = "sample.greet"
+    val typeHierarchyRootFqName: String = "sample.FriendlyGreeter"
     private val renameTarget: String = "welcome"
+    val typeHierarchyRootSupertypes: List<String> = listOf("sample.Greeter")
+    val typeHierarchyChildFqNames: List<String> = listOf("sample.Greeter", "sample.LoudGreeter")
 
     val symbolQuery: SymbolQuery = SymbolQuery(
         position = FilePosition(
@@ -54,6 +63,16 @@ data class AnalysisBackendContractFixture(
         depth = 1,
         maxTotalCalls = 16,
         maxChildrenPerNode = 16,
+    )
+
+    val typeHierarchyQuery: TypeHierarchyQuery = TypeHierarchyQuery(
+        position = FilePosition(
+            filePath = typeHierarchyRootLocation.filePath,
+            offset = typeHierarchyRootLocation.startOffset,
+        ),
+        direction = TypeHierarchyDirection.BOTH,
+        depth = 1,
+        maxResults = 16,
     )
 
     val renameQuery: RenameQuery = RenameQuery(
@@ -100,6 +119,13 @@ data class AnalysisBackendContractFixture(
 
                 fun useAgain(): String = greet("again")
             """.trimIndent() + "\n"
+            val typeContent = """
+                package sample
+
+                interface Greeter
+                open class FriendlyGreeter : Greeter
+                class LoudGreeter : FriendlyGreeter()
+            """.trimIndent() + "\n"
             val brokenContent = """
                 package sample
 
@@ -109,6 +135,7 @@ data class AnalysisBackendContractFixture(
             val declarationFile = writeFile("src/main/kotlin/sample/Greeter.kt", declarationContent)
             val firstUsageFile = writeFile("src/main/kotlin/sample/Use.kt", firstUsageContent)
             val secondUsageFile = writeFile("src/main/kotlin/sample/SecondaryUse.kt", secondUsageContent)
+            val typeDeclarationFile = writeFile("src/main/kotlin/sample/Types.kt", typeContent)
             val brokenFile = writeFile("src/main/kotlin/sample/Broken.kt", brokenContent)
 
             return AnalysisBackendContractFixture(
@@ -116,24 +143,49 @@ data class AnalysisBackendContractFixture(
                 declarationFile = normalizeStandalonePath(declarationFile),
                 firstUsageFile = normalizeStandalonePath(firstUsageFile),
                 secondUsageFile = normalizeStandalonePath(secondUsageFile),
+                typeDeclarationFile = normalizeStandalonePath(typeDeclarationFile),
                 brokenFile = normalizeStandalonePath(brokenFile),
                 declarationLocation = createLocation(
                     declarationFile,
                     declarationContent,
+                    symbolText = "greet",
                     line = 3,
                     column = 5,
                 ),
                 firstUsageLocation = createLocation(
                     firstUsageFile,
                     firstUsageContent,
+                    symbolText = "greet",
                     line = 3,
                     column = 21,
                 ),
                 secondUsageLocation = createLocation(
                     secondUsageFile,
                     secondUsageContent,
+                    symbolText = "greet",
                     line = 3,
                     column = 26,
+                ),
+                typeHierarchyRootLocation = createLocation(
+                    typeDeclarationFile,
+                    typeContent,
+                    symbolText = "FriendlyGreeter",
+                    line = 4,
+                    column = 12,
+                ),
+                typeHierarchySupertypeLocation = createLocation(
+                    typeDeclarationFile,
+                    typeContent,
+                    symbolText = "Greeter",
+                    line = 3,
+                    column = 11,
+                ),
+                typeHierarchySubtypeLocation = createLocation(
+                    typeDeclarationFile,
+                    typeContent,
+                    symbolText = "LoudGreeter",
+                    line = 5,
+                    column = 7,
                 ),
                 brokenPreview = """fun broken( = "oops"""",
             )
@@ -149,14 +201,15 @@ data class AnalysisBackendContractFixture(
         private fun createLocation(
             file: Path,
             content: String,
+            symbolText: String,
             line: Int,
             column: Int,
         ): Location {
-            val symbolOffset = content.indexOf("greet")
+            val symbolOffset = content.indexOf(symbolText)
             return Location(
                 filePath = normalizePath(file),
                 startOffset = symbolOffset,
-                endOffset = symbolOffset + "greet".length,
+                endOffset = symbolOffset + symbolText.length,
                 startLine = line,
                 startColumn = column,
                 preview = content.lineSequence().drop(line - 1).first().trimEnd(),
@@ -180,6 +233,7 @@ object AnalysisBackendContractAssertions {
         assertResolveSymbol(backend, fixture)
         assertFindReferences(backend, fixture)
         assertCallHierarchy(backend, fixture)
+        assertTypeHierarchy(backend, fixture)
         assertRename(backend, fixture)
     }
 
@@ -247,6 +301,24 @@ object AnalysisBackendContractAssertions {
         expectEquals(1 + fixture.referenceLocations.size, result.stats.totalNodes, "call hierarchy total nodes")
         expectEquals(fixture.referenceLocations.size, result.stats.totalEdges, "call hierarchy total edges")
         expectEquals(0, result.stats.truncatedNodes, "call hierarchy truncated nodes")
+    }
+
+    private suspend fun assertTypeHierarchy(
+        backend: AnalysisBackend,
+        fixture: AnalysisBackendContractFixture,
+    ) {
+        val result = backend.typeHierarchy(fixture.typeHierarchyQuery)
+
+        expectEquals(fixture.typeHierarchyRootFqName, result.root.symbol.fqName, "type hierarchy root fqName")
+        expectEquals(fixture.typeHierarchyRootSupertypes, result.root.symbol.supertypes, "type hierarchy root supertypes")
+        expectEquals(
+            fixture.typeHierarchyChildFqNames,
+            result.root.children.map { child -> child.symbol.fqName },
+            "type hierarchy child fqNames",
+        )
+        expectEquals(3, result.stats.totalNodes, "type hierarchy total nodes")
+        expectEquals(1, result.stats.maxDepthReached, "type hierarchy max depth")
+        expectEquals(false, result.stats.truncated, "type hierarchy truncated")
     }
 
     private suspend fun assertRename(

@@ -12,11 +12,11 @@ internal enum class CliCommandGroup(
     ),
     ANALYSIS(
         title = "Analysis",
-        overview = "Read-only commands for capabilities, symbols, references, call hierarchy, and diagnostics.",
+        overview = "Read-only commands for capabilities, symbols, references, call hierarchy, type hierarchy, semantic insertion, and diagnostics.",
     ),
     MUTATION_FLOW(
         title = "Mutation flow",
-        overview = "Plan or apply code edits through the daemon's supported mutation pipeline.",
+        overview = "Plan renames, optimize imports, or apply code edits through the daemon's mutation pipeline.",
     ),
     SHELL_INTEGRATION(
         title = "Shell integration",
@@ -111,8 +111,13 @@ internal object CliCommandCatalog {
     private val filePathsOption = CliOptionMetadata(
         key = "file-paths",
         usage = "--file-paths=/absolute/A.kt,/absolute/B.kt",
-        description = "Comma-separated absolute file paths for diagnostics.",
+        description = "Comma-separated absolute file paths for file-list requests.",
         completionKind = CliOptionCompletionKind.FILE_LIST,
+    )
+    private val insertionTargetOption = CliOptionMetadata(
+        key = "target",
+        usage = "--target=after-imports",
+        description = "Semantic insertion target. Use class-body-start, class-body-end, file-top, file-bottom, or after-imports.",
     )
     private val includeDeclarationOption = CliOptionMetadata(
         key = "include-declaration",
@@ -125,10 +130,20 @@ internal object CliCommandCatalog {
         usage = "--direction=incoming",
         description = "Traversal direction for call hierarchy. Use incoming or outgoing.",
     )
+    private val typeHierarchyDirectionOption = CliOptionMetadata(
+        key = "direction",
+        usage = "--direction=both",
+        description = "Traversal direction for type hierarchy. Use supertypes, subtypes, or both.",
+    )
     private val depthOption = CliOptionMetadata(
         key = "depth",
         usage = "--depth=3",
         description = "Maximum edge depth to expand from the selected declaration. Defaults to 3.",
+    )
+    private val maxResultsOption = CliOptionMetadata(
+        key = "max-results",
+        usage = "--max-results=256",
+        description = "Maximum total hierarchy nodes to include before truncation. Defaults to 256.",
     )
     private val maxTotalCallsOption = CliOptionMetadata(
         key = "max-total-calls",
@@ -351,6 +366,50 @@ internal object CliCommandCatalog {
             ),
         ),
         CliCommandMetadata(
+            path = listOf("type", "hierarchy"),
+            group = CliCommandGroup.ANALYSIS,
+            summary = "Expand a bounded type hierarchy for the declaration at a file position.",
+            description = "Accepts either an absolute request file or inline position, direction, and bound arguments.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME type hierarchy --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
+                "$CLI_EXECUTABLE_NAME type hierarchy --workspace-root=/absolute/path/to/workspace --file-path=/absolute/path/to/File.kt --offset=123 --direction=both [--depth=3] [--max-results=256]",
+            ),
+            options = listOf(
+                workspaceRootOption,
+                waitTimeoutOption,
+                requestFileOption,
+                filePathOption,
+                offsetOption,
+                typeHierarchyDirectionOption,
+                depthOption,
+                maxResultsOption,
+            ),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME type hierarchy --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
+            ),
+        ),
+        CliCommandMetadata(
+            path = listOf("semantic", "insertion-point"),
+            group = CliCommandGroup.ANALYSIS,
+            summary = "Resolve a semantic insertion offset for the declaration or file at a position.",
+            description = "Accepts either an absolute request file or inline file position plus semantic target arguments.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME semantic insertion-point --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
+                "$CLI_EXECUTABLE_NAME semantic insertion-point --workspace-root=/absolute/path/to/workspace --file-path=/absolute/path/to/File.kt --offset=123 --target=after-imports",
+            ),
+            options = listOf(
+                workspaceRootOption,
+                waitTimeoutOption,
+                requestFileOption,
+                filePathOption,
+                offsetOption,
+                insertionTargetOption,
+            ),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME semantic insertion-point --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
+            ),
+        ),
+        CliCommandMetadata(
             path = listOf("diagnostics"),
             group = CliCommandGroup.ANALYSIS,
             summary = "Run diagnostics for one or more files.",
@@ -384,6 +443,20 @@ internal object CliCommandCatalog {
             ),
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME rename --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
+            ),
+        ),
+        CliCommandMetadata(
+            path = listOf("imports", "optimize"),
+            group = CliCommandGroup.MUTATION_FLOW,
+            summary = "Prepare import cleanup edits for one or more files.",
+            description = "Accepts either an absolute request file or inline comma-separated file paths and returns the edit plan needed to remove unused imports.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME imports optimize --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
+                "$CLI_EXECUTABLE_NAME imports optimize --workspace-root=/absolute/path/to/workspace --file-paths=/absolute/A.kt,/absolute/B.kt",
+            ),
+            options = listOf(workspaceRootOption, waitTimeoutOption, requestFileOption, filePathsOption),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME imports optimize --workspace-root=/absolute/path/to/workspace --file-paths=/absolute/path/to/File.kt",
             ),
         ),
         CliCommandMetadata(

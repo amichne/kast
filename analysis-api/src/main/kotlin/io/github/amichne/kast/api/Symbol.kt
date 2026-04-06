@@ -9,4 +9,5 @@ data class Symbol(
     val location: Location,
     val type: String? = null,
     val containingDeclaration: String? = null,
+    val supertypes: List<String>? = null,
 )

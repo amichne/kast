@@ -8,6 +8,8 @@ import io.github.amichne.kast.api.CallHierarchyResult
 import io.github.amichne.kast.api.CapabilityNotSupportedException
 import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.DiagnosticsResult
+import io.github.amichne.kast.api.ImportOptimizeQuery
+import io.github.amichne.kast.api.ImportOptimizeResult
 import io.github.amichne.kast.api.MutationCapability
 import io.github.amichne.kast.api.ReadCapability
 import io.github.amichne.kast.api.RefreshQuery
@@ -16,8 +18,12 @@ import io.github.amichne.kast.api.ReferencesQuery
 import io.github.amichne.kast.api.ReferencesResult
 import io.github.amichne.kast.api.RenameQuery
 import io.github.amichne.kast.api.RenameResult
+import io.github.amichne.kast.api.SemanticInsertionQuery
+import io.github.amichne.kast.api.SemanticInsertionResult
 import io.github.amichne.kast.api.SymbolQuery
 import io.github.amichne.kast.api.SymbolResult
+import io.github.amichne.kast.api.TypeHierarchyQuery
+import io.github.amichne.kast.api.TypeHierarchyResult
 import kotlinx.serialization.json.Json
 
 internal class CliService(
@@ -100,6 +106,18 @@ internal class CliService(
         )
     }
 
+    suspend fun typeHierarchy(
+        options: RuntimeCommandOptions,
+        query: TypeHierarchyQuery,
+    ): RuntimeAttachedResult<TypeHierarchyResult> {
+        val runtime = runtimeManager.ensureRuntime(options)
+        requireReadCapability(runtime.selected, ReadCapability.TYPE_HIERARCHY)
+        return RuntimeAttachedResult(
+            payload = rpcClient.post(runtime.selected.descriptor, "type-hierarchy", query),
+            runtime = runtime.selected,
+        )
+    }
+
     suspend fun diagnostics(
         options: RuntimeCommandOptions,
         query: DiagnosticsQuery,
@@ -108,6 +126,18 @@ internal class CliService(
         requireReadCapability(runtime.selected, ReadCapability.DIAGNOSTICS)
         return RuntimeAttachedResult(
             payload = rpcClient.post(runtime.selected.descriptor, "diagnostics", query),
+            runtime = runtime.selected,
+        )
+    }
+
+    suspend fun semanticInsertionPoint(
+        options: RuntimeCommandOptions,
+        query: SemanticInsertionQuery,
+    ): RuntimeAttachedResult<SemanticInsertionResult> {
+        val runtime = runtimeManager.ensureRuntime(options)
+        requireReadCapability(runtime.selected, ReadCapability.SEMANTIC_INSERTION_POINT)
+        return RuntimeAttachedResult(
+            payload = rpcClient.post(runtime.selected.descriptor, "semantic-insertion-point", query),
             runtime = runtime.selected,
         )
     }
@@ -124,6 +154,18 @@ internal class CliService(
         )
     }
 
+    suspend fun optimizeImports(
+        options: RuntimeCommandOptions,
+        query: ImportOptimizeQuery,
+    ): RuntimeAttachedResult<ImportOptimizeResult> {
+        val runtime = runtimeManager.ensureRuntime(options)
+        requireMutationCapability(runtime.selected, MutationCapability.OPTIMIZE_IMPORTS)
+        return RuntimeAttachedResult(
+            payload = rpcClient.post(runtime.selected.descriptor, "imports/optimize", query),
+            runtime = runtime.selected,
+        )
+    }
+
     fun install(options: InstallOptions): InstallResult = installService.install(options)
 
     fun installSkill(options: InstallSkillOptions): InstallSkillResult = installSkillService.install(options)
@@ -134,6 +176,9 @@ internal class CliService(
     ): RuntimeAttachedResult<ApplyEditsResult> {
         val runtime = runtimeManager.ensureRuntime(options)
         requireMutationCapability(runtime.selected, MutationCapability.APPLY_EDITS)
+        if (query.fileOperations.isNotEmpty()) {
+            requireMutationCapability(runtime.selected, MutationCapability.FILE_OPERATIONS)
+        }
         return RuntimeAttachedResult(
             payload = rpcClient.post(runtime.selected.descriptor, "edits/apply", query),
             runtime = runtime.selected,

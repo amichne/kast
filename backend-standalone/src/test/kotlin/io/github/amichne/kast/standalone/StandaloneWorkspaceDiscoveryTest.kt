@@ -366,6 +366,35 @@ class StandaloneWorkspaceDiscoveryTest {
         }
     }
 
+    @Test
+    fun `runtime status includes workspace diagnostics when classpath is incomplete`(): TestResult = runTest {
+        createGradleWorkspace(includeLocalTestJar = false)
+
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "ignored",
+        )
+        session.use { session ->
+            val backend = StandaloneAnalysisBackend(
+                workspaceRoot = workspaceRoot,
+                limits = ServerLimits(
+                    maxResults = 100,
+                    requestTimeoutMillis = 30_000,
+                    maxConcurrentRequests = 4,
+                ),
+                session = session,
+            )
+
+            val status = backend.runtimeStatus()
+
+            assertFalse(status.warnings.isEmpty())
+            assertTrue(status.warnings.any { warning -> warning.contains(":lib") })
+            assertTrue(checkNotNull(status.message).contains("warnings"))
+        }
+    }
+
     private fun createGradleWorkspace(includeLocalTestJar: Boolean) {
         writeFile(
             relativePath = "settings.gradle.kts",

@@ -17,6 +17,8 @@ import io.github.amichne.kast.api.FileHash
 import io.github.amichne.kast.api.FileHashing
 import io.github.amichne.kast.api.FilePosition
 import io.github.amichne.kast.api.HealthResponse
+import io.github.amichne.kast.api.ImportOptimizeQuery
+import io.github.amichne.kast.api.ImportOptimizeResult
 import io.github.amichne.kast.api.LocalDiskEditApplier
 import io.github.amichne.kast.api.Location
 import io.github.amichne.kast.api.MutationCapability
@@ -28,12 +30,22 @@ import io.github.amichne.kast.api.ReferencesQuery
 import io.github.amichne.kast.api.ReferencesResult
 import io.github.amichne.kast.api.RenameQuery
 import io.github.amichne.kast.api.RenameResult
+import io.github.amichne.kast.api.SemanticInsertionQuery
+import io.github.amichne.kast.api.SemanticInsertionResult
+import io.github.amichne.kast.api.SemanticInsertionTarget
 import io.github.amichne.kast.api.ServerLimits
 import io.github.amichne.kast.api.Symbol
 import io.github.amichne.kast.api.SymbolKind
 import io.github.amichne.kast.api.SymbolQuery
 import io.github.amichne.kast.api.SymbolResult
 import io.github.amichne.kast.api.TextEdit
+import io.github.amichne.kast.api.TypeHierarchyDirection
+import io.github.amichne.kast.api.TypeHierarchyNode
+import io.github.amichne.kast.api.TypeHierarchyQuery
+import io.github.amichne.kast.api.TypeHierarchyResult
+import io.github.amichne.kast.api.TypeHierarchyStats
+import io.github.amichne.kast.api.TypeHierarchyTruncation
+import io.github.amichne.kast.api.TypeHierarchyTruncationReason
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.writeText
@@ -44,12 +56,17 @@ class FakeAnalysisBackend private constructor(
     private val symbolAnchors: List<Location>,
     private val referenceLocations: List<Location>,
     private val diagnosticsByFile: Map<String, List<Diagnostic>>,
+    private val typeHierarchyRootSymbol: Symbol,
+    private val typeHierarchyAnchors: List<Location>,
+    private val typeHierarchySupertypeSymbol: Symbol,
+    private val typeHierarchySubtypeSymbol: Symbol,
     private val limits: ServerLimits,
     private val backendName: String,
 ) : AnalysisBackend {
     private val availableFiles: Set<String> = buildSet {
         addAll(symbolAnchors.map(Location::filePath))
         addAll(diagnosticsByFile.keys)
+        addAll(typeHierarchyAnchors.map(Location::filePath))
     }
 
     override suspend fun capabilities(): BackendCapabilities = BackendCapabilities(
@@ -60,11 +77,15 @@ class FakeAnalysisBackend private constructor(
             ReadCapability.RESOLVE_SYMBOL,
             ReadCapability.FIND_REFERENCES,
             ReadCapability.CALL_HIERARCHY,
+            ReadCapability.TYPE_HIERARCHY,
+            ReadCapability.SEMANTIC_INSERTION_POINT,
             ReadCapability.DIAGNOSTICS,
         ),
         mutationCapabilities = setOf(
             MutationCapability.RENAME,
             MutationCapability.APPLY_EDITS,
+            MutationCapability.FILE_OPERATIONS,
+            MutationCapability.OPTIMIZE_IMPORTS,
             MutationCapability.REFRESH_WORKSPACE,
         ),
         limits = limits,
@@ -80,8 +101,12 @@ class FakeAnalysisBackend private constructor(
     }
 
     override suspend fun resolveSymbol(query: SymbolQuery): SymbolResult {
-        requireAnchor(query.position)
-        return SymbolResult(symbol)
+        requireKnownFile(query.position.filePath)
+        return when {
+            hasMatchingAnchor(symbolAnchors, query.position) -> SymbolResult(symbol)
+            hasMatchingAnchor(typeHierarchyAnchors, query.position) -> SymbolResult(typeHierarchyRootSymbol)
+            else -> throw missingSymbol(query.position)
+        }
     }
 
     override suspend fun findReferences(query: ReferencesQuery): ReferencesResult {
@@ -140,6 +165,70 @@ class FakeAnalysisBackend private constructor(
         )
     }
 
+    override suspend fun typeHierarchy(query: TypeHierarchyQuery): TypeHierarchyResult {
+        requireTypeHierarchyAnchor(query.position)
+        val directChildren = when (query.direction) {
+            TypeHierarchyDirection.SUPERTYPES -> listOf(typeHierarchySupertypeSymbol)
+            TypeHierarchyDirection.SUBTYPES -> listOf(typeHierarchySubtypeSymbol)
+            TypeHierarchyDirection.BOTH -> listOf(typeHierarchySupertypeSymbol, typeHierarchySubtypeSymbol)
+        }
+        val maxChildren = (query.maxResults - 1).coerceAtLeast(0)
+        val children = if (query.depth == 0) {
+            emptyList()
+        } else {
+            directChildren.take(maxChildren).map { childSymbol ->
+                TypeHierarchyNode(
+                    symbol = childSymbol,
+                    children = emptyList(),
+                )
+            }
+        }
+        val truncated = query.depth > 0 && directChildren.size > children.size
+
+        return TypeHierarchyResult(
+            root = TypeHierarchyNode(
+                symbol = typeHierarchyRootSymbol,
+                truncation = if (truncated) {
+                    TypeHierarchyTruncation(
+                        reason = TypeHierarchyTruncationReason.MAX_RESULTS,
+                        details = "Reached maxResults=${query.maxResults}",
+                    )
+                } else {
+                    null
+                },
+                children = children,
+            ),
+            stats = TypeHierarchyStats(
+                totalNodes = 1 + children.size,
+                maxDepthReached = if (children.isEmpty()) 0 else 1,
+                truncated = truncated,
+            ),
+        )
+    }
+
+    override suspend fun semanticInsertionPoint(query: SemanticInsertionQuery): SemanticInsertionResult {
+        requireKnownFile(query.position.filePath)
+        val content = Files.readString(Path.of(query.position.filePath))
+        val insertionOffset = when (query.target) {
+            SemanticInsertionTarget.CLASS_BODY_START -> content.indexOf('{')
+                .takeIf { it >= 0 }
+                ?.plus(1)
+                ?: throw missingSymbol(query.position)
+
+            SemanticInsertionTarget.CLASS_BODY_END -> content.lastIndexOf('}')
+                .takeIf { it >= 0 }
+                ?: throw missingSymbol(query.position)
+
+            SemanticInsertionTarget.FILE_TOP -> 0
+            SemanticInsertionTarget.FILE_BOTTOM -> content.length
+            SemanticInsertionTarget.AFTER_IMPORTS -> afterImportsOffset(content)
+        }
+        return SemanticInsertionResult(
+            insertionOffset = insertionOffset,
+            filePath = query.position.filePath,
+        )
+    }
+
     override suspend fun diagnostics(query: DiagnosticsQuery): DiagnosticsResult {
         query.filePaths.forEach(::requireKnownFile)
         return DiagnosticsResult(
@@ -176,6 +265,15 @@ class FakeAnalysisBackend private constructor(
         )
     }
 
+    override suspend fun optimizeImports(query: ImportOptimizeQuery): ImportOptimizeResult {
+        query.filePaths.forEach(::requireKnownFile)
+        return ImportOptimizeResult(
+            edits = emptyList(),
+            fileHashes = emptyList(),
+            affectedFiles = emptyList(),
+        )
+    }
+
     override suspend fun applyEdits(query: ApplyEditsQuery): ApplyEditsResult = LocalDiskEditApplier.apply(query)
 
     override suspend fun refresh(query: RefreshQuery): RefreshResult {
@@ -191,18 +289,15 @@ class FakeAnalysisBackend private constructor(
 
     private fun requireAnchor(position: FilePosition) {
         requireKnownFile(position.filePath)
-        val matchingAnchor = symbolAnchors.any { anchor ->
-            anchor.filePath == position.filePath &&
-                position.offset in anchor.startOffset until anchor.endOffset
+        if (!hasMatchingAnchor(symbolAnchors, position)) {
+            throw missingSymbol(position)
         }
-        if (!matchingAnchor) {
-            throw NotFoundException(
-                message = "No symbol was found at the requested offset",
-                details = mapOf(
-                    "filePath" to position.filePath,
-                    "offset" to position.offset.toString(),
-                ),
-            )
+    }
+
+    private fun requireTypeHierarchyAnchor(position: FilePosition) {
+        requireKnownFile(position.filePath)
+        if (!hasMatchingAnchor(typeHierarchyAnchors, position)) {
+            throw missingSymbol(position)
         }
     }
 
@@ -214,6 +309,22 @@ class FakeAnalysisBackend private constructor(
             )
         }
     }
+
+    private fun hasMatchingAnchor(
+        anchors: List<Location>,
+        position: FilePosition,
+    ): Boolean = anchors.any { anchor ->
+        anchor.filePath == position.filePath &&
+            position.offset in anchor.startOffset until anchor.endOffset
+    }
+
+    private fun missingSymbol(position: FilePosition): NotFoundException = NotFoundException(
+        message = "No symbol was found at the requested offset",
+        details = mapOf(
+            "filePath" to position.filePath,
+            "offset" to position.offset.toString(),
+        ),
+    )
 
     companion object {
         fun sample(
@@ -236,16 +347,66 @@ class FakeAnalysisBackend private constructor(
                 fun use() = greet()
             """.trimIndent() + "\n"
             file.writeText(content)
+            val typeFile = sourceDirectory.resolve("Types.kt")
+            val typeContent = """
+                package sample
+
+                interface Greeter
+                open class FriendlyGreeter : Greeter
+                class LoudGreeter : FriendlyGreeter()
+            """.trimIndent() + "\n"
+            typeFile.writeText(typeContent)
 
             val declarationOffset = content.indexOf("greet")
             val referenceOffset = content.lastIndexOf("greet")
             val symbolLocation = referenceLocation(file.toString(), declarationOffset)
             val referenceLocation = referenceLocation(file.toString(), referenceOffset)
+            val typeHierarchySupertypeLocation = declarationLocation(
+                filePath = typeFile.toString(),
+                token = "Greeter",
+                content = typeContent,
+                line = 3,
+                column = 11,
+            )
+            val typeHierarchyRootLocation = declarationLocation(
+                filePath = typeFile.toString(),
+                token = "FriendlyGreeter",
+                content = typeContent,
+                line = 4,
+                column = 12,
+            )
+            val typeHierarchySubtypeLocation = declarationLocation(
+                filePath = typeFile.toString(),
+                token = "LoudGreeter",
+                content = typeContent,
+                line = 5,
+                column = 7,
+            )
             val symbol = Symbol(
                 fqName = "sample.greet",
                 kind = SymbolKind.FUNCTION,
                 location = symbolLocation,
                 containingDeclaration = "sample",
+            )
+            val typeHierarchyRootSymbol = Symbol(
+                fqName = "sample.FriendlyGreeter",
+                kind = SymbolKind.CLASS,
+                location = typeHierarchyRootLocation,
+                containingDeclaration = "sample",
+                supertypes = listOf("sample.Greeter"),
+            )
+            val typeHierarchySupertypeSymbol = Symbol(
+                fqName = "sample.Greeter",
+                kind = SymbolKind.INTERFACE,
+                location = typeHierarchySupertypeLocation,
+                containingDeclaration = "sample",
+            )
+            val typeHierarchySubtypeSymbol = Symbol(
+                fqName = "sample.LoudGreeter",
+                kind = SymbolKind.CLASS,
+                location = typeHierarchySubtypeLocation,
+                containingDeclaration = "sample",
+                supertypes = listOf("sample.FriendlyGreeter"),
             )
 
             return FakeAnalysisBackend(
@@ -254,6 +415,10 @@ class FakeAnalysisBackend private constructor(
                 symbolAnchors = listOf(symbolLocation, referenceLocation),
                 referenceLocations = listOf(referenceLocation),
                 diagnosticsByFile = emptyMap(),
+                typeHierarchyRootSymbol = typeHierarchyRootSymbol,
+                typeHierarchyAnchors = listOf(typeHierarchyRootLocation),
+                typeHierarchySupertypeSymbol = typeHierarchySupertypeSymbol,
+                typeHierarchySubtypeSymbol = typeHierarchySubtypeSymbol,
                 limits = limits,
                 backendName = backendName,
             )
@@ -273,6 +438,26 @@ class FakeAnalysisBackend private constructor(
                 kind = SymbolKind.FUNCTION,
                 location = fixture.declarationLocation,
                 containingDeclaration = "sample",
+            )
+            val typeHierarchyRootSymbol = Symbol(
+                fqName = fixture.typeHierarchyRootFqName,
+                kind = SymbolKind.CLASS,
+                location = fixture.typeHierarchyRootLocation,
+                containingDeclaration = "sample",
+                supertypes = fixture.typeHierarchyRootSupertypes,
+            )
+            val typeHierarchySupertypeSymbol = Symbol(
+                fqName = "sample.Greeter",
+                kind = SymbolKind.INTERFACE,
+                location = fixture.typeHierarchySupertypeLocation,
+                containingDeclaration = "sample",
+            )
+            val typeHierarchySubtypeSymbol = Symbol(
+                fqName = "sample.LoudGreeter",
+                kind = SymbolKind.CLASS,
+                location = fixture.typeHierarchySubtypeLocation,
+                containingDeclaration = "sample",
+                supertypes = listOf(fixture.typeHierarchyRootFqName),
             )
 
             return FakeAnalysisBackend(
@@ -301,6 +486,10 @@ class FakeAnalysisBackend private constructor(
                         ),
                     ),
                 ),
+                typeHierarchyRootSymbol = typeHierarchyRootSymbol,
+                typeHierarchyAnchors = listOf(fixture.typeHierarchyRootLocation),
+                typeHierarchySupertypeSymbol = typeHierarchySupertypeSymbol,
+                typeHierarchySubtypeSymbol = typeHierarchySubtypeSymbol,
                 limits = limits,
                 backendName = backendName,
             )
@@ -320,6 +509,50 @@ class FakeAnalysisBackend private constructor(
                 startColumn = column,
                 preview = "greet",
             )
+        }
+
+        private fun declarationLocation(
+            filePath: String,
+            token: String,
+            content: String,
+            line: Int,
+            column: Int,
+        ): Location {
+            val offset = content.indexOf(token)
+            return Location(
+                filePath = filePath,
+                startOffset = offset,
+                endOffset = offset + token.length,
+                startLine = line,
+                startColumn = column,
+                preview = content.lineSequence().drop(line - 1).first().trimEnd(),
+            )
+        }
+
+        private fun afterImportsOffset(content: String): Int {
+            val importMatch = Regex("^import .*$", RegexOption.MULTILINE).findAll(content).lastOrNull()
+            if (importMatch != null) {
+                return offsetAfterLineBreak(content, importMatch.range.last + 1)
+            }
+            val packageMatch = Regex("^package .*$", RegexOption.MULTILINE).find(content)
+            if (packageMatch != null) {
+                return offsetAfterLineBreak(content, packageMatch.range.last + 1)
+            }
+            return 0
+        }
+
+        private fun offsetAfterLineBreak(
+            content: String,
+            offset: Int,
+        ): Int {
+            var cursor = offset
+            if (content.getOrNull(cursor) == '\r') {
+                cursor += 1
+            }
+            if (content.getOrNull(cursor) == '\n') {
+                cursor += 1
+            }
+            return cursor
         }
     }
 }

@@ -1,8 +1,11 @@
 package io.github.amichne.kast.standalone
 
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.nio.file.Path
+import java.util.concurrent.TimeoutException
 
 class GradleWorkspaceDiscoveryTest {
     @Test
@@ -144,5 +147,120 @@ class GradleWorkspaceDiscoveryTest {
             listOf(":core:lib[main]"),
             modulesByName.getValue(":app[main]").dependencyModuleNames,
         )
+    }
+
+    @Test
+    fun `detect incomplete classpath returns warnings for modules with zero library dependencies`() {
+        val modules = listOf(
+            GradleModuleModel(
+                gradlePath = ":empty",
+                ideaModuleName = "empty",
+                mainSourceRoots = listOf(Path.of("/workspace/empty/src/main/kotlin")),
+                testSourceRoots = emptyList(),
+                mainOutputRoots = emptyList(),
+                testOutputRoots = emptyList(),
+                dependencies = emptyList(),
+            ),
+            GradleModuleModel(
+                gradlePath = ":app",
+                ideaModuleName = "app",
+                mainSourceRoots = listOf(Path.of("/workspace/app/src/main/kotlin")),
+                testSourceRoots = emptyList(),
+                mainOutputRoots = emptyList(),
+                testOutputRoots = emptyList(),
+                dependencies = listOf(
+                    GradleDependency.ModuleDependency(
+                        targetIdeaModuleName = ":lib",
+                        scope = GradleDependencyScope.COMPILE,
+                    ),
+                ),
+            ),
+        )
+
+        val warnings = detectIncompleteClasspath(modules)
+
+        assertEquals(1, warnings.size)
+        assertTrue(warnings.single().contains(":empty"))
+        assertFalse(warnings.any { warning -> warning.contains(":app") })
+    }
+
+    @Test
+    fun `enrich static modules with tooling api libraries preserves static modules when tooling api times out`() {
+        val staticModules = listOf(
+            GradleModuleModel(
+                gradlePath = ":app",
+                ideaModuleName = "app",
+                mainSourceRoots = listOf(Path.of("/workspace/app/src/main/kotlin")),
+                testSourceRoots = emptyList(),
+                mainOutputRoots = emptyList(),
+                testOutputRoots = emptyList(),
+                dependencies = listOf(
+                    GradleDependency.ModuleDependency(
+                        targetIdeaModuleName = ":lib",
+                        scope = GradleDependencyScope.COMPILE,
+                    ),
+                ),
+            ),
+        )
+        val warningMessages = mutableListOf<String>()
+
+        val result = GradleWorkspaceDiscovery.enrichStaticModulesWithToolingApiLibraries(
+            workspaceRoot = Path.of("/workspace"),
+            staticModules = staticModules,
+            toolingApiLoader = {
+                throw TimeoutException("tooling api timed out")
+            },
+            warningSink = { warning -> warningMessages.add(warning) },
+        )
+
+        assertEquals(staticModules, result.modules)
+        assertEquals(1, result.diagnostics.warnings.size)
+        assertTrue(result.diagnostics.warnings.single().contains("timed out"))
+        assertEquals(result.diagnostics.warnings, warningMessages)
+    }
+
+    @Test
+    fun `enrich static modules with tooling api libraries merges library deps from tooling api onto static modules`() {
+        val moduleDependency = GradleDependency.ModuleDependency(
+            targetIdeaModuleName = "lib",
+            scope = GradleDependencyScope.COMPILE,
+        )
+        val libraryDependency = GradleDependency.LibraryDependency(
+            binaryRoot = Path.of("/deps/runtime.jar"),
+            scope = GradleDependencyScope.RUNTIME,
+        )
+        val staticModules = listOf(
+            GradleModuleModel(
+                gradlePath = ":app",
+                ideaModuleName = "app",
+                mainSourceRoots = listOf(Path.of("/workspace/app/src/main/kotlin")),
+                testSourceRoots = emptyList(),
+                mainOutputRoots = emptyList(),
+                testOutputRoots = emptyList(),
+                dependencies = listOf(moduleDependency),
+            ),
+        )
+
+        val result = GradleWorkspaceDiscovery.enrichStaticModulesWithToolingApiLibraries(
+            workspaceRoot = Path.of("/workspace"),
+            staticModules = staticModules,
+            toolingApiLoader = {
+                listOf(
+                    GradleModuleModel(
+                        gradlePath = ":app",
+                        ideaModuleName = "app",
+                        mainSourceRoots = listOf(Path.of("/workspace/app/src/main/kotlin")),
+                        testSourceRoots = emptyList(),
+                        mainOutputRoots = emptyList(),
+                        testOutputRoots = emptyList(),
+                        dependencies = listOf(libraryDependency),
+                    ),
+                )
+            },
+        )
+
+        val mergedDependencies = result.modules.single().dependencies
+        assertTrue(mergedDependencies.contains(moduleDependency))
+        assertTrue(mergedDependencies.contains(libraryDependency))
     }
 }

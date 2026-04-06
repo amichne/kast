@@ -8,10 +8,24 @@ import org.gradle.tooling.model.idea.IdeaProject
 import org.gradle.tooling.model.idea.IdeaSingleEntryLibraryDependency
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 import kotlin.io.path.isRegularFile
 import kotlin.io.path.readText
 
 internal const val maxIncludedProjectsForToolingApi = 200
+internal const val defaultToolingApiTimeoutMillis = 30_000L
+
+internal data class WorkspaceDiscoveryDiagnostics(
+    val warnings: List<String> = emptyList(),
+)
+
+internal data class GradleWorkspaceDiscoveryResult(
+    val modules: List<GradleModuleModel>,
+    val diagnostics: WorkspaceDiscoveryDiagnostics = WorkspaceDiscoveryDiagnostics(),
+)
 
 internal object GradleWorkspaceDiscovery {
     fun discover(
@@ -22,41 +36,68 @@ internal object GradleWorkspaceDiscovery {
         val staticModules = {
             StaticGradleWorkspaceDiscovery.discoverModules(workspaceRoot, settingsSnapshot)
         }
-        val gradleModules = if (settingsSnapshot.shouldPreferStaticDiscovery()) {
+        val discoveryResult = if (settingsSnapshot.shouldPreferStaticDiscovery()) {
             val resolvedStaticModules = staticModules()
             enrichStaticModulesWithToolingApiLibraries(workspaceRoot, resolvedStaticModules)
         } else {
-            runCatching {
-                loadModulesWithToolingApi(workspaceRoot)
-            }.map { toolingModules ->
-                when {
-                    toolingModules.isEmpty() -> staticModules()
-                    toolingModules.shouldFallbackToStaticModules(settingsSnapshot) -> mergeToolingAndStaticModules(
-                        toolingModules = toolingModules,
-                        staticModules = staticModules(),
-                    )
-                    else -> toolingModules
-                }
-            }.getOrElse {
-                staticModules()
-            }
+            discoverToolingApiModules(
+                workspaceRoot = workspaceRoot,
+                settingsSnapshot = settingsSnapshot,
+                staticModules = staticModules,
+            )
         }
+        val diagnostics = WorkspaceDiscoveryDiagnostics(
+            warnings = (discoveryResult.diagnostics.warnings + detectIncompleteClasspath(discoveryResult.modules))
+                .distinct(),
+        )
 
-        return buildStandaloneWorkspaceLayout(gradleModules, extraClasspathRoots)
+        return buildStandaloneWorkspaceLayout(
+            gradleModules = discoveryResult.modules,
+            extraClasspathRoots = extraClasspathRoots,
+            diagnostics = diagnostics,
+        )
     }
 
-    private fun loadModulesWithToolingApi(workspaceRoot: Path): List<GradleModuleModel> =
-        ToolingApiPathNormalizer().let { pathNormalizer ->
-            GradleConnector.newConnector()
-                .forProjectDirectory(workspaceRoot.toFile())
-                .connect()
-                .use { connection ->
-                    connection.getModel(IdeaProject::class.java)
-                        .modules
-                        .map { module -> toGradleModuleModel(module, pathNormalizer) }
-                        .sortedBy(GradleModuleModel::gradlePath)
-                }
+    internal fun loadModulesWithToolingApi(
+        workspaceRoot: Path,
+        timeoutMillis: Long = defaultToolingApiTimeoutMillis,
+    ): List<GradleModuleModel> {
+        val executor = Executors.newSingleThreadExecutor()
+        val cancellationTokenSource = GradleConnector.newCancellationTokenSource()
+        val future = executor.submit<List<GradleModuleModel>> {
+            ToolingApiPathNormalizer().let { pathNormalizer ->
+                GradleConnector.newConnector()
+                    .forProjectDirectory(workspaceRoot.toFile())
+                    .connect()
+                    .use { connection ->
+                        connection.model(IdeaProject::class.java)
+                            .withCancellationToken(cancellationTokenSource.token())
+                            .get()
+                            .modules
+                            .map { module -> toGradleModuleModel(module, pathNormalizer) }
+                            .sortedBy(GradleModuleModel::gradlePath)
+                    }
+            }
         }
+        return try {
+            future.get(timeoutMillis, TimeUnit.MILLISECONDS)
+        } catch (error: TimeoutException) {
+            future.cancel(true)
+            cancellationTokenSource.cancel()
+            throw TimeoutException(
+                "Timed out after ${timeoutMillis}ms while loading the Gradle Tooling API model for $workspaceRoot",
+            )
+        } catch (error: InterruptedException) {
+            future.cancel(true)
+            cancellationTokenSource.cancel()
+            Thread.currentThread().interrupt()
+            throw error
+        } catch (error: ExecutionException) {
+            throw error.cause ?: error
+        } finally {
+            executor.shutdownNow()
+        }
+    }
 
     /**
      * Large workspaces prefer static discovery for module structure (source roots,
@@ -70,27 +111,44 @@ internal object GradleWorkspaceDiscovery {
      * to extract resolved dependencies and merges them onto the statically discovered
      * modules. If the Tooling API fails entirely, the static modules are returned as-is.
      */
-    private fun enrichStaticModulesWithToolingApiLibraries(
+    internal fun enrichStaticModulesWithToolingApiLibraries(
         workspaceRoot: Path,
         staticModules: List<GradleModuleModel>,
-    ): List<GradleModuleModel> {
+        toolingApiLoader: (Path) -> List<GradleModuleModel> = { root -> loadModulesWithToolingApi(root) },
+        warningSink: (String) -> Unit = ::logWorkspaceDiscoveryWarning,
+    ): GradleWorkspaceDiscoveryResult {
+        val warnings = mutableListOf<String>()
         val toolingModules = runCatching {
-            loadModulesWithToolingApi(workspaceRoot)
+            toolingApiLoader(workspaceRoot)
+        }.onFailure { error ->
+            val warning = toolingApiFailureWarning(
+                prefix = "Gradle Tooling API library enrichment failed; using static workspace discovery results",
+                error = error,
+            )
+            warnings += warning
+            warningSink(warning)
         }.getOrNull()
 
         if (toolingModules.isNullOrEmpty()) {
-            return staticModules
+            return GradleWorkspaceDiscoveryResult(
+                modules = staticModules,
+                diagnostics = WorkspaceDiscoveryDiagnostics(warnings = warnings),
+            )
         }
 
-        return mergeToolingAndStaticModules(
-            toolingModules = toolingModules,
-            staticModules = staticModules,
+        return GradleWorkspaceDiscoveryResult(
+            modules = mergeToolingAndStaticModules(
+                toolingModules = toolingModules,
+                staticModules = staticModules,
+            ),
+            diagnostics = WorkspaceDiscoveryDiagnostics(warnings = warnings),
         )
     }
 
     internal fun buildStandaloneWorkspaceLayout(
         gradleModules: List<GradleModuleModel>,
         extraClasspathRoots: List<Path>,
+        diagnostics: WorkspaceDiscoveryDiagnostics = WorkspaceDiscoveryDiagnostics(),
     ): StandaloneWorkspaceLayout {
         val moduleModelsByIdeaName = buildMap {
             gradleModules.forEach { module ->
@@ -110,7 +168,10 @@ internal object GradleWorkspaceDiscovery {
             )
         }
 
-        return StandaloneWorkspaceLayout(sourceModules = sourceModules)
+        return StandaloneWorkspaceLayout(
+            sourceModules = sourceModules,
+            diagnostics = diagnostics,
+        )
     }
 
     private fun toGradleModuleModel(
@@ -155,6 +216,57 @@ internal object GradleWorkspaceDiscovery {
             else -> null
         }
     }
+}
+
+private fun discoverToolingApiModules(
+    workspaceRoot: Path,
+    settingsSnapshot: GradleSettingsSnapshot,
+    staticModules: () -> List<GradleModuleModel>,
+): GradleWorkspaceDiscoveryResult {
+    val warnings = mutableListOf<String>()
+    val toolingModules = runCatching {
+        GradleWorkspaceDiscovery.loadModulesWithToolingApi(workspaceRoot)
+    }.onFailure { error ->
+        val warning = toolingApiFailureWarning(
+            prefix = "Gradle Tooling API workspace discovery failed; falling back to static workspace discovery",
+            error = error,
+        )
+        warnings += warning
+        logWorkspaceDiscoveryWarning(warning)
+    }.getOrNull()
+        ?: return GradleWorkspaceDiscoveryResult(
+            modules = staticModules(),
+            diagnostics = WorkspaceDiscoveryDiagnostics(warnings = warnings),
+        )
+
+    val modules = when {
+        toolingModules.isEmpty() -> staticModules()
+        toolingModules.shouldFallbackToStaticModules(settingsSnapshot) -> mergeToolingAndStaticModules(
+            toolingModules = toolingModules,
+            staticModules = staticModules(),
+        )
+        else -> toolingModules
+    }
+
+    return GradleWorkspaceDiscoveryResult(
+        modules = modules,
+        diagnostics = WorkspaceDiscoveryDiagnostics(warnings = warnings),
+    )
+}
+
+internal fun detectIncompleteClasspath(modules: List<GradleModuleModel>): List<String> = modules
+    .filter { module -> module.dependencies.isEmpty() }
+    .map { module ->
+        "Gradle workspace discovery did not resolve any dependencies for ${module.gradlePath}; standalone classpath may be incomplete."
+    }
+
+private fun toolingApiFailureWarning(prefix: String, error: Throwable): String {
+    val details = error.message?.takeIf(String::isNotBlank) ?: error::class.java.simpleName
+    return "$prefix: $details"
+}
+
+private fun logWorkspaceDiscoveryWarning(message: String) {
+    System.err.println("kast gradle workspace discovery warning: $message")
 }
 
 internal class ToolingApiPathNormalizer(
