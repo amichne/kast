@@ -1,4 +1,5 @@
 import org.gradle.api.tasks.Sync
+import org.gradle.api.tasks.bundling.Zip
 
 plugins {
     id("kast.standalone-app")
@@ -25,6 +26,7 @@ tasks.named("writeWrapperScript").configure {
                 "set -euo pipefail",
                 "",
                 "script_dir=\"${dollar}(cd -- \"${dollar}(dirname -- \"${dollar}{BASH_SOURCE[0]}\")\" >/dev/null 2>&1 && pwd)\"",
+                "export KAST_LAUNCHER_PATH=\"${dollar}{script_dir}/${project.name}\"",
                 "runtime_candidates=(",
                 "  \"${dollar}{KAST_RUNTIME_LIBS:-}\"",
                 "  \"${dollar}{script_dir}/runtime-libs\"",
@@ -85,7 +87,16 @@ tasks.named("writeWrapperScript").configure {
 
 tasks.named<Sync>("syncPortableDist") {
     dependsOn(":kast-cli:nativeCompile")
+    from(rootProject.layout.projectDirectory.file("smoke.sh"))
     from(nativeBinary) {
         into("bin")
+    }
+}
+
+tasks.named<Zip>("portableDistZip").configure {
+    eachFile {
+        if (relativePath.pathString == "${project.name}/smoke.sh") {
+            permissions { unix("755") }
+        }
     }
 }

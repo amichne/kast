@@ -137,7 +137,7 @@ private fun runtimeLibsDirectoryFromEnvironment(): Path? = System.getenv("KAST_R
     ?.toAbsolutePath()
     ?.normalize()
 
-private fun currentCommandPath(): Path? = ProcessHandle.current().info().command()
+internal fun currentCommandPath(): Path? = ProcessHandle.current().info().command()
     .orElse(null)
     ?.takeIf(String::isNotBlank)
     ?.let(Path::of)

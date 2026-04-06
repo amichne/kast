@@ -101,6 +101,7 @@ internal class CliCommandParser(
                 listOf("edits", "apply") -> CliCommand.ApplyEdits(parsed.runtimeOptions(), parsed.applyEditsQuery(json))
                 listOf("install") -> CliCommand.Install(parsed.installOptions())
                 listOf("install", "skill") -> CliCommand.InstallSkill(parsed.installSkillOptions())
+                listOf("smoke") -> CliCommand.Smoke(parsed.smokeOptions())
                 listOf("internal", "daemon-run") -> CliCommand.InternalDaemonRun(parsed.runtimeOptions(backendName = "standalone"))
                 else -> throw CliFailure(
                     code = "CLI_USAGE",
@@ -355,6 +356,41 @@ internal data class ParsedArguments(
             binDir = options["bin-dir"]
                 ?.let { Path.of(it).toAbsolutePath().normalize() }
                 ?: home.resolve(".local/bin"),
+        )
+    }
+
+    fun smokeOptions(): SmokeOptions {
+        if (options.containsKey("dir")) {
+            throw CliFailure(
+                code = "CLI_USAGE",
+                message = "Use --workspace-root for `kast smoke`; --dir is not supported",
+            )
+        }
+        if (options.containsKey("kast")) {
+            throw CliFailure(
+                code = "CLI_USAGE",
+                message = "`kast smoke` does not accept --kast; invoke smoke.sh directly if you need to override the launcher",
+            )
+        }
+        val format = options["format"]
+            ?.takeIf(String::isNotBlank)
+            ?.let(SmokeOutputFormat::fromCliValue)
+            ?: SmokeOutputFormat.JSON
+        if (options["format"] != null && SmokeOutputFormat.fromCliValue(checkNotNull(options["format"])) == null) {
+            throw CliFailure(
+                code = "CLI_USAGE",
+                message = "Invalid value for --format; expected json or markdown",
+            )
+        }
+        return SmokeOptions(
+            workspaceRoot = options["workspace-root"]
+                ?.takeIf(String::isNotBlank)
+                ?.let { Path.of(it).toAbsolutePath().normalize() }
+                ?: Path.of(System.getProperty("user.dir", ".")).toAbsolutePath().normalize(),
+            fileFilter = options["file"]?.takeIf(String::isNotBlank),
+            sourceSetFilter = options["source-set"]?.takeIf(String::isNotBlank),
+            symbolFilter = options["symbol"]?.takeIf(String::isNotBlank),
+            format = format,
         )
     }
 

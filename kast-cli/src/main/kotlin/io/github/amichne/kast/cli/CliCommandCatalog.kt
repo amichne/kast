@@ -18,6 +18,10 @@ internal enum class CliCommandGroup(
         title = "Mutation flow",
         overview = "Plan renames, optimize imports, or apply code edits through the daemon's mutation pipeline.",
     ),
+    VALIDATION(
+        title = "Validation",
+        overview = "Exercise the public CLI surface against a real workspace before you trust a build, install, or agent setup.",
+    ),
     SHELL_INTEGRATION(
         title = "Shell integration",
         overview = "Opt-in helpers for interactive terminals that keep the public command tree easy to drive.",
@@ -221,6 +225,27 @@ internal object CliCommandCatalog {
         usage = "--yes=true",
         description = "Overwrite an existing installed skill directory without prompting. Defaults to false.",
         completionKind = CliOptionCompletionKind.BOOLEAN,
+    )
+    private val smokeFileOption = CliOptionMetadata(
+        key = "file",
+        usage = "--file=CliCommandCatalog.kt",
+        description = "Only keep discovered declarations whose basename or workspace-relative path matches this text.",
+        completionKind = CliOptionCompletionKind.FILE,
+    )
+    private val smokeSourceSetOption = CliOptionMetadata(
+        key = "source-set",
+        usage = "--source-set=:kast-cli:test",
+        description = "Only keep discovered declarations from matching `:module:sourceSet` keys.",
+    )
+    private val smokeSymbolOption = CliOptionMetadata(
+        key = "symbol",
+        usage = "--symbol=KastCli",
+        description = "Only keep discovered declarations whose symbol name matches this text.",
+    )
+    private val smokeFormatOption = CliOptionMetadata(
+        key = "format",
+        usage = "--format=json",
+        description = "Render the smoke report as json or markdown. Defaults to json.",
     )
 
     private val commands: List<CliCommandMetadata> = listOf(
@@ -527,6 +552,21 @@ internal object CliCommandCatalog {
             ),
         ),
         CliCommandMetadata(
+            path = listOf("smoke"),
+            group = CliCommandGroup.VALIDATION,
+            summary = "Run the portable smoke workflow and emit an aggregated readiness report.",
+            description = "Launches the maintained shell smoke script with the current kast executable. The report defaults to JSON for LLM-friendly consumption and can render markdown when you opt into --format=markdown.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME smoke [--workspace-root=/absolute/path/to/workspace] [--file=CliCommandCatalog.kt] [--source-set=:kast-cli:test] [--symbol=KastCli] [--format=json]",
+            ),
+            options = listOf(workspaceRootOption, smokeFileOption, smokeSourceSetOption, smokeSymbolOption, smokeFormatOption),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME smoke",
+                "$CLI_EXECUTABLE_NAME smoke --workspace-root=/absolute/path/to/workspace --file=CliCommandCatalog.kt",
+                "$CLI_EXECUTABLE_NAME smoke --workspace-root=/absolute/path/to/workspace --format=markdown",
+            ),
+        ),
+        CliCommandMetadata(
             path = listOf("internal", "daemon-run"),
             group = CliCommandGroup.WORKSPACE_LIFECYCLE,
             summary = "Internal detached daemon entrypoint.",
@@ -656,7 +696,8 @@ internal object CliCommandCatalog {
             theme = theme,
         ) {
             appendLine("  JSON results stay on stdout.")
-            appendLine("  Daemon lifecycle notes, when present, stay on stderr.")
+            appendLine("  `$CLI_EXECUTABLE_NAME smoke --format=markdown` opts into a human-readable report.")
+            appendLine("  Daemon lifecycle notes, when present, stay on stderr after JSON-returning commands.")
             appendLine("  Every command option uses --key=value syntax.")
         }
         appendLine()
@@ -666,6 +707,7 @@ internal object CliCommandCatalog {
         ) {
             appendLine(theme.command("  $CLI_EXECUTABLE_NAME workspace ensure --workspace-root=/absolute/path/to/workspace"))
             appendLine(theme.command("  $CLI_EXECUTABLE_NAME diagnostics --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json"))
+            appendLine(theme.command("  $CLI_EXECUTABLE_NAME smoke --workspace-root=/absolute/path/to/workspace --file=CliCommandCatalog.kt"))
             appendLine(theme.command("  source <($CLI_EXECUTABLE_NAME completion bash)"))
         }
     }.trimEnd()

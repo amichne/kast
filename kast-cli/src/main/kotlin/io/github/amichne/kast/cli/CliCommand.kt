@@ -33,4 +33,5 @@ internal sealed interface CliCommand {
     data class InternalDaemonRun(val options: RuntimeCommandOptions) : CliCommand
     data class Install(val options: InstallOptions) : CliCommand
     data class InstallSkill(val options: InstallSkillOptions) : CliCommand
+    data class Smoke(val options: SmokeOptions) : CliCommand
 }

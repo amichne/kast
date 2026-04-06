@@ -2,10 +2,13 @@
 
 Full syntax, JSON schemas, and request-file formats for all public kast commands.
 
-> **Output redirection:** All command examples below show bare invocations for
-> readability. In practice, always redirect per the SKILL.md bootstrap pattern:
-> `> "$KAST_RESULT" 2> "$KAST_STDERR"`. Read `$KAST_RESULT` for the JSON result.
-> Only read `$KAST_STDERR` when the exit code is non-zero. See SKILL.md Section 0.
+> **Output redirection:** The JSON-returning command examples below show bare
+> invocations for readability. In practice, redirect them per the SKILL.md
+> bootstrap pattern: `> "$KAST_RESULT" 2> "$KAST_STDERR"`. Read
+> `$KAST_RESULT` for the JSON result. Only read `$KAST_STDERR` when the exit
+> code is non-zero. `kast smoke` follows the same JSON-first contract by
+> default and only switches to human-readable markdown when you pass
+> `--format=markdown`.
 
 ---
 
@@ -639,6 +642,46 @@ If the target directory already exists and its `.kast-version` matches the
 current CLI version, the command returns the same payload with `skipped: true`.
 If the target exists with a different version, rerun with `--yes=true` to
 overwrite it.
+
+---
+
+## Validation
+
+### `smoke`
+
+Run the portable smoke workflow against a real workspace by invoking the
+maintained `smoke.sh` entrypoint through the current `kast` executable. The
+default report is aggregated JSON on stdout so agents can consume one compact
+result; pass `--format=markdown` when you want a human-friendly report.
+
+```bash
+kast smoke \
+  [--workspace-root=/absolute/path/to/workspace] \
+  [--file=CliCommandCatalog.kt] \
+  [--source-set=:kast-cli:test] \
+  [--symbol=KastCli] \
+  [--format=json]
+```
+
+**Options:**
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `--workspace-root=` | absolute path | current working directory | Workspace root to smoke-test |
+| `--file=` | string | — | Match a declaration file by basename or relative path |
+| `--source-set=` | string | — | Match a `:module:sourceSet` key |
+| `--symbol=` | string | — | Match a declaration name |
+| `--format=` | `json` \| `markdown` | `json` | Render the aggregated smoke report as JSON or markdown |
+
+`kast smoke` picks the current launcher path automatically and passes it to the
+shell script as `--kast=`. When you run `smoke.sh` directly, you can still pass
+`--kast=` yourself.
+
+**Output:** Progress lines on stderr plus an aggregated readiness report on
+stdout. The default stdout shape is JSON.
+
+**Errors:** Exit non-zero when any smoke assertion fails or when the active
+filters match no declarations.
 
 ---
 

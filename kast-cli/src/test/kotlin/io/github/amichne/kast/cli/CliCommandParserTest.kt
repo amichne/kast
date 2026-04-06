@@ -179,6 +179,58 @@ class CliCommandParserTest {
     }
 
     @Test
+    fun `smoke parses workspace root filters and format`() {
+        val command = parser.parse(
+            arrayOf(
+                "smoke",
+                "--workspace-root=$tempDir",
+                "--file=CliCommandCatalog.kt",
+                "--source-set=:kast-cli:test",
+                "--symbol=KastCli",
+                "--format=markdown",
+            ),
+        )
+
+        assertTrue(command is CliCommand.Smoke)
+        val smokeCommand = command as CliCommand.Smoke
+        assertEquals(tempDir, smokeCommand.options.workspaceRoot)
+        assertEquals("CliCommandCatalog.kt", smokeCommand.options.fileFilter)
+        assertEquals(":kast-cli:test", smokeCommand.options.sourceSetFilter)
+        assertEquals("KastCli", smokeCommand.options.symbolFilter)
+        assertEquals(SmokeOutputFormat.MARKDOWN, smokeCommand.options.format)
+    }
+
+    @Test
+    fun `smoke rejects dir alias`() {
+        val failure = assertThrows<CliFailure> {
+            parser.parse(
+                arrayOf(
+                    "smoke",
+                    "--dir=$tempDir",
+                ),
+            )
+        }
+
+        assertEquals("CLI_USAGE", failure.code)
+        assertTrue(failure.message.contains("--workspace-root"))
+    }
+
+    @Test
+    fun `smoke rejects invalid format`() {
+        val failure = assertThrows<CliFailure> {
+            parser.parse(
+                arrayOf(
+                    "smoke",
+                    "--format=html",
+                ),
+            )
+        }
+
+        assertEquals("CLI_USAGE", failure.code)
+        assertTrue(failure.message.contains("json or markdown"))
+    }
+
+    @Test
     fun `install skill parses the primary name option`() {
         val command = parser.parse(
             arrayOf(

@@ -9,6 +9,9 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
+import kotlin.io.path.createFile
+import kotlin.io.path.createDirectories
+import kotlin.io.path.setPosixFilePermissions
 
 class KastCliTest {
     @TempDir
@@ -24,7 +27,9 @@ class KastCliTest {
         assertEquals(0, exitCode)
         assertTrue(stdout.toString().contains("Kast CLI"))
         assertTrue(stdout.toString().contains("Workspace lifecycle"))
+        assertTrue(stdout.toString().contains("Validation"))
         assertTrue(stdout.toString().contains("call hierarchy"))
+        assertTrue(stdout.toString().contains("smoke"))
         assertTrue(stdout.toString().contains("completion bash"))
         assertEquals("", stderr.toString())
     }
@@ -112,6 +117,51 @@ class KastCliTest {
         assertEquals(0, exitCode)
         assertEquals("standalone", capabilities.backendName)
         assertEquals("$expectedNote\n", stderr.toString())
+    }
+
+    @Test
+    fun `external process output keeps shell stdout stderr and exit code`() {
+        val script = tempDir.resolve("fixtures").createDirectories().resolve("smoke-fixture.sh").createFile()
+        script.toFile().writeText(
+            """
+            #!/usr/bin/env bash
+            printf 'shell stdout\n'
+            printf 'shell stderr\n' >&2
+            exit 7
+            """.trimIndent(),
+        )
+        script.setPosixFilePermissions(
+            setOf(
+                java.nio.file.attribute.PosixFilePermission.OWNER_READ,
+                java.nio.file.attribute.PosixFilePermission.OWNER_WRITE,
+                java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE,
+            ),
+        )
+
+        val stdout = StringBuilder()
+        val stderr = StringBuilder()
+        val cli = KastCli.testInstance(
+            commandExecutorFactory = { _, _ ->
+                object : CliCommandExecutor {
+                    override suspend fun execute(command: CliCommand): CliExecutionResult {
+                        return CliExecutionResult(
+                            output = CliOutput.ExternalProcess(
+                                CliExternalProcess(
+                                    command = listOf("bash", script.toString()),
+                                    workingDirectory = tempDir,
+                                ),
+                            ),
+                        )
+                    }
+                }
+            },
+        )
+
+        val exitCode = cli.run(arrayOf("--help"), stdout, stderr)
+
+        assertEquals(7, exitCode)
+        assertEquals("shell stdout\n", stdout.toString())
+        assertEquals("shell stderr\n", stderr.toString())
     }
 
     private fun sampleCapabilities(): BackendCapabilities {

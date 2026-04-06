@@ -1,8 +1,13 @@
 package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.api.StandaloneServerOptions
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import java.nio.charset.StandardCharsets
 
 class KastCli private constructor(
     private val processLauncher: ProcessLauncher,
@@ -45,13 +50,14 @@ class KastCli private constructor(
         val commandExecutor = commandExecutorFactory(json, processLauncher)
         runCatching {
             val execution = commandExecutor.execute(commandParser.parse(args))
-            writeCliOutput(stdout, execution.output)
+            val exitCode = writeCliOutput(stdout, stderr, execution.output)
             execution.daemonNote?.let { note ->
                 stderr.append(note)
                 stderr.append('\n')
             }
+            exitCode
         }.fold(
-            onSuccess = { 0 },
+            onSuccess = { it },
             onFailure = { throwable ->
                 writeCliJson(stderr, cliErrorFromThrowable(throwable), json)
                 1
@@ -59,20 +65,61 @@ class KastCli private constructor(
         )
     }
 
-    private fun writeCliOutput(
+    private suspend fun writeCliOutput(
         stdout: Appendable,
+        stderr: Appendable,
         output: CliOutput,
-    ) {
-        when (output) {
-            is CliOutput.JsonValue -> writeCliJson(stdout, output.value, json)
+    ): Int {
+        return when (output) {
+            is CliOutput.JsonValue -> {
+                writeCliJson(stdout, output.value, json)
+                0
+            }
+
             is CliOutput.Text -> {
                 stdout.append(output.value)
                 if (!output.value.endsWith('\n')) {
                     stdout.append('\n')
                 }
+                0
             }
 
-            CliOutput.None -> Unit
+            is CliOutput.ExternalProcess -> runExternalProcess(output.process, stdout, stderr)
+            CliOutput.None -> 0
+        }
+    }
+
+    private suspend fun runExternalProcess(
+        processSpec: CliExternalProcess,
+        stdout: Appendable,
+        stderr: Appendable,
+    ): Int {
+        val processBuilder = ProcessBuilder(processSpec.command)
+        processSpec.workingDirectory?.let { workingDirectory ->
+            processBuilder.directory(workingDirectory.toFile())
+        }
+        processBuilder.environment().putAll(processSpec.environment)
+        if (stdout === System.out && stderr === System.err) {
+            return withContext(Dispatchers.IO) {
+                processBuilder
+                    .inheritIO()
+                    .start()
+                    .waitFor()
+            }
+        }
+
+        return coroutineScope {
+            val process = withContext(Dispatchers.IO) { processBuilder.start() }
+            val stdoutCapture = async(Dispatchers.IO) {
+                process.inputStream.bufferedReader(StandardCharsets.UTF_8).use { reader -> reader.readText() }
+            }
+            val stderrCapture = async(Dispatchers.IO) {
+                process.errorStream.bufferedReader(StandardCharsets.UTF_8).use { reader -> reader.readText() }
+            }
+            val exitCode = withContext(Dispatchers.IO) { process.waitFor() }
+            stdout.append(stdoutCapture.await())
+            stderr.append(stderrCapture.await())
+            exitCode
         }
     }
 }

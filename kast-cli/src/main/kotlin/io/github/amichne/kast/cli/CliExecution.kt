@@ -1,12 +1,20 @@
 package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.api.StandaloneServerOptions
+import java.nio.file.Path
 
 internal sealed interface CliOutput {
     data class JsonValue(val value: Any) : CliOutput
     data class Text(val value: String) : CliOutput
+    data class ExternalProcess(val process: CliExternalProcess) : CliOutput
     data object None : CliOutput
 }
+
+internal data class CliExternalProcess(
+    val command: List<String>,
+    val workingDirectory: Path? = null,
+    val environment: Map<String, String> = emptyMap(),
+)
 
 internal data class CliExecutionResult(
     val output: CliOutput,
@@ -166,6 +174,10 @@ internal class DefaultCliCommandExecutor(
 
             is CliCommand.InstallSkill -> CliExecutionResult(
                 output = CliOutput.JsonValue(cliService.installSkill(command.options)),
+            )
+
+            is CliCommand.Smoke -> CliExecutionResult(
+                output = CliOutput.ExternalProcess(cliService.smoke(command.options)),
             )
 
             is CliCommand.InternalDaemonRun -> {

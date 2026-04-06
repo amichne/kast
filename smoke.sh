@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # kast-smoke-test.sh — Portable smoke test for all kast CLI flows against a real workspace.
-# Usage: ./kast-smoke-test.sh [--workspace-root=/absolute/path] [--kast=/absolute/path/to/kast]
+# Usage: ./kast-smoke-test.sh [--workspace-root=/absolute/path] [--file=Name.kt] [--source-set=:module:main] [--symbol=Name] [--format=json] [--kast=/absolute/path/to/kast]
 #
-# If --workspace-root is omitted, defaults to $(git rev-parse --show-toplevel).
+# If --workspace-root is omitted, defaults to the current working directory.
 # If --kast is omitted, discovers kast via PATH, KAST_CLI_PATH, or resolve-kast.sh.
 #
 # Discovers every Gradle source set in the workspace, picks a random Kotlin
@@ -10,31 +10,111 @@
 set -euo pipefail
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
-log()  { printf '[smoke] %s\n' "$*" >&2; }
-pass() { printf '[PASS]  %s\n' "$*" >&2; }
-fail() { printf '[FAIL]  %s\n' "$*" >&2; FAILURES=$((FAILURES + 1)); }
-die()  { printf '[FATAL] %s\n' "$*" >&2; exit 1; }
+supports_color() {
+  if [[ "${CLICOLOR_FORCE:-}" == "1" ]]; then
+    return 0
+  fi
+  if [[ -n "${NO_COLOR:-}" ]]; then
+    return 1
+  fi
+  if [[ ! -t 2 ]]; then
+    return 1
+  fi
+  [[ "${TERM:-}" != "dumb" ]]
+}
+
+colorize() {
+  local code="$1"
+  shift
+
+  if supports_color; then
+    printf '\033[%sm%s\033[0m' "$code" "$*"
+    return
+  fi
+
+  printf '%s' "$*"
+}
+
+log_line() {
+  local label="$1"
+  local message="$2"
+  printf '%s %s\n' "$label" "$message" >&2
+}
+
+log() {
+  log_line "$(colorize '2' '│')" "$*"
+}
+
+log_step() {
+  log_line "$(colorize '1;34' '›')" "$*"
+}
+
+log_note() {
+  log_line "$(colorize '33' '•')" "$*"
+}
+
+pass() {
+  log_line "$(colorize '1;32' '✓')" "$*"
+}
+
+fail() {
+  log_line "$(colorize '1;31' '✕')" "$*"
+  FAILURES=$((FAILURES + 1))
+  if [[ -n "${OUTDIR:-}" ]]; then
+    printf '%s\n' "$*" >> "$OUTDIR/failures.txt"
+  fi
+}
+
+die() {
+  log_line "$(colorize '1;31' '✕')" "$*"
+  exit 1
+}
+
+usage() {
+  cat <<'USAGE' >&2
+Usage: ./smoke.sh [--workspace-root=/absolute/path/to/workspace] [--file=Name.kt] [--source-set=:module:main] [--symbol=Name] [--format=json] [--kast=/absolute/path/to/kast]
+
+Options:
+  --workspace-root=...  Workspace root to smoke-test. Defaults to the current working directory.
+  --file=...          Only keep discovered declarations whose basename or relative path matches this text.
+  --source-set=...    Only keep discovered declarations from matching :module:sourceSet keys.
+  --symbol=...        Only keep discovered declarations whose symbol name matches this text.
+  --format=...        Report format: json or markdown. Defaults to json.
+  --kast=...          Explicit kast launcher or binary to exercise.
+  --help, -h          Show this help.
+USAGE
+}
 
 FAILURES=0
 OUTDIR="$(mktemp -d "${TMPDIR:-/tmp}/kast-smoke.XXXXXX")"
+: > "$OUTDIR/failures.txt"
 trap 'rm -rf "$OUTDIR"' EXIT
 
 # ── Parse arguments ──────────────────────────────────────────────────────────
-WORKSPACE_ROOT=""
+WORKSPACE_ROOT="$PWD"
 KAST=""
+FILE_FILTER=""
+SOURCE_SET_FILTER=""
+SYMBOL_FILTER=""
+FORMAT="json"
 for arg in "$@"; do
   case "$arg" in
     --workspace-root=*) WORKSPACE_ROOT="${arg#*=}" ;;
+    --file=*)           FILE_FILTER="${arg#*=}" ;;
+    --source-set=*)     SOURCE_SET_FILTER="${arg#*=}" ;;
+    --symbol=*)         SYMBOL_FILTER="${arg#*=}" ;;
+    --format=*)         FORMAT="${arg#*=}" ;;
     --kast=*)           KAST="${arg#*=}" ;;
+    --help|-h)          usage; exit 0 ;;
     *)                  die "Unknown argument: $arg" ;;
   esac
 done
 
-# Default workspace root to git toplevel
-if [ -z "$WORKSPACE_ROOT" ]; then
-  WORKSPACE_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
-  [ -n "$WORKSPACE_ROOT" ] || die "Not in a git repo and --workspace-root not provided"
-fi
+case "$FORMAT" in
+  json|markdown) ;;
+  *) die "Invalid value for --format: $FORMAT (expected json or markdown)" ;;
+esac
+
 [ -d "$WORKSPACE_ROOT" ] || die "Workspace root does not exist: $WORKSPACE_ROOT"
 WORKSPACE_ROOT="$(cd "$WORKSPACE_ROOT" && pwd)"  # absolute
 
@@ -57,8 +137,15 @@ if [ -z "$KAST" ]; then
   fi
 fi
 [ -n "$KAST" ] && [ -x "$KAST" ] || die "kast binary not found. Pass --kast=/path/to/kast or add kast to PATH."
-log "Using kast: $KAST"
-log "Workspace:  $WORKSPACE_ROOT"
+log_step "Kast smoke"
+log "Using kast:  $KAST"
+log "Workspace:   $WORKSPACE_ROOT"
+log_note "Output:      $FORMAT"
+if [[ -n "$FILE_FILTER" || -n "$SOURCE_SET_FILTER" || -n "$SYMBOL_FILTER" ]]; then
+  log_note "Filters:     file=${FILE_FILTER:-<any>} source-set=${SOURCE_SET_FILTER:-<any>} symbol=${SYMBOL_FILTER:-<any>}"
+else
+  log_note "Filters:     one random declaration per discovered source set"
+fi
 
 # Daemon log path for diagnostics on failure
 DAEMON_LOG="$WORKSPACE_ROOT/.kast/logs/standalone-daemon.log"
@@ -90,7 +177,7 @@ $assertion
 # ══════════════════════════════════════════════════════════════════════════════
 # 1. Version check
 # ══════════════════════════════════════════════════════════════════════════════
-log "Step 1: --version"
+log_step "Step 1: --version"
 if "$KAST" --version > "$OUTDIR/version.txt" 2>&1; then
   pass "kast --version (exit 0)"
 else
@@ -100,7 +187,7 @@ fi
 # ══════════════════════════════════════════════════════════════════════════════
 # 2. Workspace ensure
 # ══════════════════════════════════════════════════════════════════════════════
-log "Step 2: workspace ensure"
+log_step "Step 2: workspace ensure"
 if "$KAST" workspace ensure \
     --workspace-root="$WORKSPACE_ROOT" \
     --wait-timeout-ms=180000 \
@@ -122,7 +209,7 @@ assert state == 'READY', f'expected READY, got {state}'
 # ══════════════════════════════════════════════════════════════════════════════
 # 3. Workspace status
 # ══════════════════════════════════════════════════════════════════════════════
-log "Step 3: workspace status"
+log_step "Step 3: workspace status"
 if "$KAST" workspace status \
     --workspace-root="$WORKSPACE_ROOT" \
     > "$OUTDIR/status.json" 2> "$OUTDIR/status.stderr"; then
@@ -134,7 +221,7 @@ fi
 # ══════════════════════════════════════════════════════════════════════════════
 # 4. Capabilities
 # ══════════════════════════════════════════════════════════════════════════════
-log "Step 4: capabilities"
+log_step "Step 4: capabilities"
 if "$KAST" capabilities \
     --workspace-root="$WORKSPACE_ROOT" \
     --wait-timeout-ms=180000 \
@@ -163,13 +250,16 @@ assert 'RENAME' in data['mutationCapabilities']
 # ══════════════════════════════════════════════════════════════════════════════
 # 5. Discover source sets and pick a random symbol from each
 # ══════════════════════════════════════════════════════════════════════════════
-log "Step 5: discover source sets + random symbols"
-python3 - "$WORKSPACE_ROOT" "$OUTDIR" <<'DISCOVER'
+log_step "Step 5: discover source sets + random symbols"
+python3 - "$WORKSPACE_ROOT" "$OUTDIR" "$FILE_FILTER" "$SOURCE_SET_FILTER" "$SYMBOL_FILTER" <<'DISCOVER'
 import json, os, random, re, sys
 from pathlib import Path
 
 workspace = Path(sys.argv[1])
 outdir = Path(sys.argv[2])
+file_filter = sys.argv[3].strip().lower()
+source_set_filter = sys.argv[4].strip().lower()
+symbol_filter = sys.argv[5].strip().lower()
 
 # Conventional Gradle source-set roots: <module>/src/<sourceSet>/kotlin
 # Also handles root-project layout:     src/<sourceSet>/kotlin
@@ -187,6 +277,23 @@ SKIP_DIRS = {'.git', '.gradle', '.kast', 'build', 'out', 'node_modules', '.idea'
 
 # source_set_key -> list of (file_path, symbol_name, offset)
 source_sets: dict[str, list[tuple[str, str, int]]] = {}
+
+def file_matches(relative_path: str, file_path: str) -> bool:
+    if not file_filter:
+        return True
+    relative_candidate = relative_path.replace(os.sep, '/').lower()
+    file_name = Path(file_path).name.lower()
+    return file_filter in relative_candidate or file_filter in file_name
+
+def source_set_matches(source_set_key: str) -> bool:
+    if not source_set_filter:
+        return True
+    return source_set_filter in source_set_key.lower()
+
+def symbol_matches(symbol_name: str) -> bool:
+    if not symbol_filter:
+        return True
+    return symbol_filter in symbol_name.lower()
 
 for root, dirs, files in os.walk(str(workspace)):
     dirs[:] = [d for d in dirs if d not in SKIP_DIRS and not d.startswith('.')]
@@ -211,6 +318,8 @@ for root, dirs, files in os.walk(str(workspace)):
             module = ':' + module.replace('/', ':')
 
         ss_key = f"{module}:{source_set_id}"
+        if not source_set_matches(ss_key):
+            continue
 
         try:
             text = open(fpath, encoding='utf-8').read()
@@ -219,6 +328,8 @@ for root, dirs, files in os.walk(str(workspace)):
 
         for dm in DECL_RE.finditer(text):
             sym_name = dm.group(1)
+            if not symbol_matches(sym_name) or not file_matches(rel, fpath):
+                continue
             offset = dm.start(1)
             source_sets.setdefault(ss_key, []).append((fpath, sym_name, offset))
 
@@ -242,8 +353,8 @@ for ss_key in sorted(source_sets):
 DISCOVER
 
 if [ ! -s "$OUTDIR/source_set_symbols.json" ]; then
-  fail "No source sets or declarations found"
-  die "Cannot continue without test symbols"
+  fail "No source sets or declarations matched the current filters"
+  die "Cannot continue without at least one matching symbol"
 fi
 
 source_set_count="$(python3 -c "import json; print(len(json.loads(open('$OUTDIR/source_set_symbols.json').read())))")"
@@ -279,7 +390,7 @@ while IFS=$'\t' read -r ss_key filepath sym offset; do
   mkdir -p "$ss_outdir"
 
   log "────────────────────────────────────────"
-  log "Source set $ss_index/$source_set_count: $ss_key"
+  log_step "Source set $ss_index/$source_set_count: $ss_key"
   log "  Symbol: $sym  File: $filepath  Offset: $offset"
 
   # ── 6. Symbol resolve ──
@@ -436,14 +547,20 @@ assert isinstance(data.get('refreshedFiles'), list), 'refreshedFiles missing'
 done < "$OUTDIR/loop_entries.txt"
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 13. LLM-readiness health summary (aggregated across source sets)
+# 13. Assemble smoke report
 # ══════════════════════════════════════════════════════════════════════════════
-log "Step 13: LLM-readiness health summary"
-python3 - "$OUTDIR" <<'PY'
+log_step "Step 13: assemble smoke report"
+python3 - "$OUTDIR" "$WORKSPACE_ROOT" "$KAST" "$FORMAT" "$FILE_FILTER" "$SOURCE_SET_FILTER" "$SYMBOL_FILTER" <<'PY'
 import json, sys
 from pathlib import Path
 
 outdir = Path(sys.argv[1])
+workspace_root = Path(sys.argv[2])
+kast_path = sys.argv[3]
+output_format = sys.argv[4]
+file_filter = sys.argv[5] or None
+source_set_filter = sys.argv[6] or None
+symbol_filter = sys.argv[7] or None
 
 def load(path):
     if not path.exists() or path.stat().st_size == 0:
@@ -456,33 +573,28 @@ def load(path):
 ensure     = load(outdir / 'ensure.json')
 caps       = load(outdir / 'capabilities.json')
 selections = load(outdir / 'source_set_symbols.json') or []
+failed_checks_path = outdir / 'failures.txt'
+failed_checks = [
+    line.strip()
+    for line in failed_checks_path.read_text('utf-8').splitlines()
+    if line.strip()
+] if failed_checks_path.exists() else []
 
-print("\n══════════════════════════════════════════")
-print("  KAST SMOKE TEST — LLM READINESS REPORT")
-print("══════════════════════════════════════════\n")
-
-# Workspace state
+selected_runtime = {}
+runtime_status = {}
 if ensure:
-    s = ensure.get('selected', ensure)
-    rs = s.get('runtimeStatus', s)
-    print(f"Daemon state:       {rs.get('state', 'UNKNOWN')}")
-    print(f"Backend:            {s.get('capabilities', rs).get('backendName', 'unknown')}")
-else:
-    print("Daemon state:       UNKNOWN (ensure output missing)")
+    selected_runtime = ensure.get('selected', ensure)
+    runtime_status = selected_runtime.get('runtimeStatus', selected_runtime)
+capability_source = caps or selected_runtime.get('capabilities', {}) or runtime_status
 
-# Capabilities
-if caps:
-    print(f"Read capabilities:  {', '.join(caps.get('readCapabilities', []))}")
-    print(f"Mutation caps:      {', '.join(caps.get('mutationCapabilities', []))}")
-    limits = caps.get('limits', {})
-    print(f"Max results:        {limits.get('maxResults', '?')}")
-    print(f"Request timeout:    {limits.get('requestTimeoutMillis', '?')} ms")
-else:
-    print("Capabilities:       UNAVAILABLE")
+def relative_to_workspace(path_text):
+    try:
+        return str(Path(path_text).resolve().relative_to(workspace_root.resolve()))
+    except Exception:
+        return path_text
 
-# Per-source-set results
-print(f"\nSource sets tested: {len(selections)}")
 all_healthy = True
+source_set_reports = []
 for i, sel in enumerate(selections, 1):
     ss_dir = outdir / f"ss_{i}"
     resolve = load(ss_dir / 'resolve.json')
@@ -502,26 +614,113 @@ for i, sel in enumerate(selections, 1):
     if not ok:
         all_healthy = False
 
-    status = 'OK' if ok else 'FAIL'
-    print(f"\n  [{status}] {sel['sourceSet']}")
-    print(f"       Symbol:     {sel['symbol']} -> {fq} ({kind})")
-    print(f"       Refs:       {ref_count}   CallNodes: {nodes}   Diags: {diag_count}   RenameEdits: {edit_count}")
+    source_set_reports.append({
+        'sourceSet': sel['sourceSet'],
+        'symbol': sel['symbol'],
+        'selectedFilePath': sel['filePath'],
+        'selectedRelativePath': relative_to_workspace(sel['filePath']),
+        'selectedOffset': sel['offset'],
+        'candidateCount': sel['candidateCount'],
+        'resolvedFqName': fq if fq != 'FAILED' else None,
+        'kind': kind if resolve else None,
+        'healthy': bool(ok),
+        'metrics': {
+            'referenceCount': ref_count,
+            'callNodeCount': nodes,
+            'diagnosticCount': diag_count,
+            'renameEditCount': edit_count,
+        },
+    })
 
-# Overall verdict
-healthy = all([
+llm_ready = all([
     ensure is not None,
     caps is not None and 'RESOLVE_SYMBOL' in caps.get('readCapabilities', []),
     all_healthy,
     len(selections) > 0,
 ])
-print(f"\nLLM-READY:          {'YES' if healthy else 'NO'}")
-print()
+status = 'PASS' if not failed_checks and llm_ready else 'FAIL'
+report = {
+    'schemaVersion': 1,
+    'workspaceRoot': str(workspace_root),
+    'kastPath': kast_path,
+    'format': output_format,
+    'filters': {
+        'file': file_filter,
+        'sourceSet': source_set_filter,
+        'symbol': symbol_filter,
+    },
+    'summary': {
+        'status': status,
+        'checksFailed': len(failed_checks),
+        'sourceSetsTested': len(source_set_reports),
+        'llmReady': llm_ready,
+    },
+    'runtime': {
+        'state': runtime_status.get('state', 'UNKNOWN'),
+        'backendName': capability_source.get('backendName', 'unknown'),
+        'readCapabilities': capability_source.get('readCapabilities', []),
+        'mutationCapabilities': capability_source.get('mutationCapabilities', []),
+        'limits': capability_source.get('limits'),
+    },
+    'sourceSets': source_set_reports,
+}
+if failed_checks:
+    report['failedChecks'] = failed_checks
+
+def md(value):
+    text = '' if value is None else str(value)
+    return text.replace('|', '\\|')
+
+def render_markdown():
+    filters = []
+    if file_filter:
+        filters.append(f"`file={md(file_filter)}`")
+    if source_set_filter:
+        filters.append(f"`source-set={md(source_set_filter)}`")
+    if symbol_filter:
+        filters.append(f"`symbol={md(symbol_filter)}`")
+    lines = [
+        '# Kast smoke report',
+        '',
+        f'- **Status:** `{status}`',
+        f'- **LLM ready:** `{str(llm_ready).lower()}`',
+        f'- **Workspace root:** `{md(workspace_root)}`',
+        f'- **Kast path:** `{md(kast_path)}`',
+        f'- **Source sets tested:** `{len(source_set_reports)}`',
+        f'- **Checks failed:** `{len(failed_checks)}`',
+        f'- **Backend:** `{md(report["runtime"]["backendName"])}`',
+        f'- **Daemon state:** `{md(report["runtime"]["state"])}`',
+        f'- **Filters:** {", ".join(filters) if filters else "_none_"}',
+        '',
+        '## Source sets',
+        '',
+        '| Source set | Symbol | File | FQ name | Kind | Refs | Call nodes | Diags | Rename edits | Healthy |',
+        '| --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | --- |',
+    ]
+    for entry in source_set_reports:
+        metrics = entry['metrics']
+        lines.append(
+            f"| `{md(entry['sourceSet'])}` | `{md(entry['symbol'])}` | `{md(entry['selectedRelativePath'])}` | "
+            f"`{md(entry['resolvedFqName'])}` | `{md(entry['kind'])}` | {metrics['referenceCount']} | "
+            f"{metrics['callNodeCount']} | {metrics['diagnosticCount']} | {metrics['renameEditCount']} | "
+            f"`{str(entry['healthy']).lower()}` |"
+        )
+    if failed_checks:
+        lines.extend(['', '## Failed checks', ''])
+        lines.extend(f'- `{md(message)}`' for message in failed_checks)
+    return '\n'.join(lines) + '\n'
+
+report_path = outdir / 'report.out'
+if output_format == 'markdown':
+    report_path.write_text(render_markdown(), encoding='utf-8')
+else:
+    report_path.write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
 PY
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 14. Daemon stop
 # ══════════════════════════════════════════════════════════════════════════════
-log "Step 14: daemon stop"
+log_step "Step 14: daemon stop"
 if "$KAST" daemon stop \
     --workspace-root="$WORKSPACE_ROOT" \
     > "$OUTDIR/stop.json" 2> "$OUTDIR/stop.stderr"; then
@@ -534,11 +733,11 @@ fi
 # ══════════════════════════════════════════════════════════════════════════════
 # Final summary
 # ══════════════════════════════════════════════════════════════════════════════
-echo ""
+cat "$OUTDIR/report.out"
 if [ "$FAILURES" -eq 0 ]; then
-  log "ALL CHECKS PASSED"
+  pass "All smoke checks passed"
   exit 0
 else
-  log "$FAILURES CHECK(S) FAILED"
+  log_line "$(colorize '1;31' '✕')" "$FAILURES smoke check(s) failed"
   exit 1
 fi

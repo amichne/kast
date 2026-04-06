@@ -29,6 +29,8 @@ switch between manual use and automation.
 
 Every option uses `--key=value` syntax. Successful commands print JSON on
 stdout. Daemon notes, when present, print on stderr after the command.
+`kast smoke` follows the same default and can render a markdown report when you
+pass `--format=markdown`.
 
 When Kast detects an interactive terminal, the help pages use ANSI color. If
 you need color in another context, set `CLICOLOR_FORCE=1` before you run the
@@ -79,6 +81,15 @@ the supported mutation flow.
 | --- | --- | --- | --- |
 | `rename` | Plan a rename operation | Inline flags or `--request-file` | Inline form needs `--file-path`, `--offset`, and `--new-name` |
 | `edits apply` | Apply a prepared edit plan | `--request-file` only | The request file must include edits and expected file hashes |
+
+## Validation commands
+
+Use this command when you want Kast to exercise the public CLI surface against
+the current workspace before you trust a local build, install, or agent setup.
+
+| Command | Purpose | Key options | Notes |
+| --- | --- | --- | --- |
+| `smoke` | Run the portable smoke workflow against the current CLI and a real workspace | Optional `--workspace-root`, `--file`, `--source-set`, `--symbol`, `--format=markdown` | Defaults `--workspace-root` to the current working directory, emits an aggregated JSON readiness report on stdout, and shells out to the maintained `smoke.sh` entrypoint with the current `kast` launcher |
 
 ## Workspace refresh behavior
 
