@@ -208,9 +208,7 @@ internal object StaticGradleWorkspaceDiscovery {
     )
 
     private fun configurationNameToScope(configurationName: String): GradleDependencyScope? = when {
-        configurationName.startsWith("testFixturesCompileOnly", ignoreCase = true) -> GradleDependencyScope.PROVIDED
-        configurationName.startsWith("testFixturesRuntimeOnly", ignoreCase = true) -> GradleDependencyScope.RUNTIME
-        configurationName.startsWith("testFixtures", ignoreCase = true) -> GradleDependencyScope.COMPILE
+        configurationName.startsWith("testFixtures", ignoreCase = true) -> GradleDependencyScope.TEST_FIXTURES
         configurationName.startsWith("testCompile", ignoreCase = true) -> GradleDependencyScope.TEST
         configurationName.startsWith("testRuntime", ignoreCase = true) -> GradleDependencyScope.TEST
         configurationName.startsWith("test", ignoreCase = true) -> GradleDependencyScope.TEST

@@ -104,6 +104,64 @@ class GradleWorkspaceDiscoveryTest {
     }
 
     @Test
+    fun `build standalone workspace layout keeps testFixtures scoped dependencies out of main`() {
+        val lib = GradleModuleModel(
+            gradlePath = ":lib",
+            ideaModuleName = "lib",
+            mainSourceRoots = listOf(Path.of("/workspace/lib/src/main/kotlin")),
+            testSourceRoots = emptyList(),
+            mainOutputRoots = listOf(Path.of("/workspace/lib/build/classes/kotlin/main")),
+            testOutputRoots = emptyList(),
+            dependencies = emptyList(),
+        )
+        val app = GradleModuleModel(
+            gradlePath = ":app",
+            ideaModuleName = "app",
+            mainSourceRoots = listOf(Path.of("/workspace/app/src/main/kotlin")),
+            testFixturesSourceRoots = listOf(Path.of("/workspace/app/src/testFixtures/kotlin")),
+            testSourceRoots = listOf(Path.of("/workspace/app/src/test/kotlin")),
+            mainOutputRoots = listOf(Path.of("/workspace/app/build/classes/kotlin/main")),
+            testFixturesOutputRoots = listOf(Path.of("/workspace/app/build/classes/kotlin/testFixtures")),
+            testOutputRoots = listOf(Path.of("/workspace/app/build/classes/kotlin/test")),
+            dependencies = listOf(
+                GradleDependency.ModuleDependency(
+                    targetIdeaModuleName = "lib",
+                    scope = GradleDependencyScope.TEST_FIXTURES,
+                ),
+                GradleDependency.LibraryDependency(
+                    binaryRoot = Path.of("/deps/fixture-support.jar"),
+                    scope = GradleDependencyScope.TEST_FIXTURES,
+                ),
+            ),
+        )
+
+        val layout = GradleWorkspaceDiscovery.buildStandaloneWorkspaceLayout(
+            gradleModules = listOf(app, lib),
+            extraClasspathRoots = emptyList(),
+        )
+        val modulesByName = layout.sourceModules.associateBy(StandaloneSourceModuleSpec::name)
+
+        assertEquals(emptyList<String>(), modulesByName.getValue(":app[main]").dependencyModuleNames)
+        assertEquals(emptyList<Path>(), modulesByName.getValue(":app[main]").binaryRoots)
+        assertEquals(
+            listOf(":app[main]", ":lib[main]"),
+            modulesByName.getValue(":app[testFixtures]").dependencyModuleNames,
+        )
+        assertEquals(
+            listOf(Path.of("/deps/fixture-support.jar")),
+            modulesByName.getValue(":app[testFixtures]").binaryRoots,
+        )
+        assertEquals(
+            listOf(":app[main]", ":app[testFixtures]", ":lib[main]"),
+            modulesByName.getValue(":app[test]").dependencyModuleNames,
+        )
+        assertEquals(
+            listOf(Path.of("/deps/fixture-support.jar")),
+            modulesByName.getValue(":app[test]").binaryRoots,
+        )
+    }
+
+    @Test
     fun `tooling api path normalizer checks each normalized source root once`() {
         val checkedPaths = mutableListOf<Path>()
         val pathNormalizer = ToolingApiPathNormalizer { path ->

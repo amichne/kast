@@ -111,7 +111,7 @@ class StandaloneWorkspaceDiscoveryTest {
             modulesByPath.getValue(":app").dependencies.contains(
                 GradleDependency.ModuleDependency(
                     targetIdeaModuleName = ":lib",
-                    scope = GradleDependencyScope.COMPILE,
+                    scope = GradleDependencyScope.TEST_FIXTURES,
                 ),
             ),
         )

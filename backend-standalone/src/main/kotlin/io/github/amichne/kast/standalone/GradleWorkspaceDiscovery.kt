@@ -590,6 +590,7 @@ internal enum class GradleSourceSet(
         supportedDependencyScopes = setOf(
             GradleDependencyScope.COMPILE,
             GradleDependencyScope.PROVIDED,
+            GradleDependencyScope.TEST_FIXTURES,
             GradleDependencyScope.RUNTIME,
             GradleDependencyScope.UNKNOWN,
         ),
@@ -600,6 +601,7 @@ internal enum class GradleSourceSet(
             GradleDependencyScope.COMPILE,
             GradleDependencyScope.PROVIDED,
             GradleDependencyScope.TEST,
+            GradleDependencyScope.TEST_FIXTURES,
             GradleDependencyScope.RUNTIME,
             GradleDependencyScope.UNKNOWN,
         ),
@@ -610,6 +612,7 @@ internal enum class GradleDependencyScope {
     COMPILE,
     PROVIDED,
     TEST,
+    TEST_FIXTURES,
     RUNTIME,
     UNKNOWN,
     ;
@@ -619,6 +622,7 @@ internal enum class GradleDependencyScope {
             "COMPILE" -> COMPILE
             "PROVIDED" -> PROVIDED
             "TEST" -> TEST
+            "TEST_FIXTURES" -> TEST_FIXTURES
             "RUNTIME" -> RUNTIME
             else -> UNKNOWN
         }
