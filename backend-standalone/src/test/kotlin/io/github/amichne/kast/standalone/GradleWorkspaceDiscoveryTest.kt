@@ -185,6 +185,36 @@ class GradleWorkspaceDiscoveryTest {
     }
 
     @Test
+    fun `detect incomplete classpath ignores root modules with no source roots`() {
+        val modules = listOf(
+            GradleModuleModel(
+                gradlePath = ":",
+                ideaModuleName = "workspace",
+                mainSourceRoots = emptyList(),
+                testSourceRoots = emptyList(),
+                mainOutputRoots = emptyList(),
+                testOutputRoots = emptyList(),
+                dependencies = emptyList(),
+            ),
+            GradleModuleModel(
+                gradlePath = ":lib",
+                ideaModuleName = "lib",
+                mainSourceRoots = listOf(Path.of("/workspace/lib/src/main/kotlin")),
+                testSourceRoots = emptyList(),
+                mainOutputRoots = emptyList(),
+                testOutputRoots = emptyList(),
+                dependencies = emptyList(),
+            ),
+        )
+
+        val warnings = detectIncompleteClasspath(modules)
+
+        assertEquals(1, warnings.size)
+        assertTrue(warnings.single().contains(":lib"))
+        assertFalse(warnings.any { warning -> warning.contains("workspace") && !warning.contains(":lib") })
+    }
+
+    @Test
     fun `enrich static modules with tooling api libraries preserves static modules when tooling api times out`() {
         val staticModules = listOf(
             GradleModuleModel(

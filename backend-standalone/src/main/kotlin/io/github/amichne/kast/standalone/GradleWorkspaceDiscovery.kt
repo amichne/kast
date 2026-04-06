@@ -255,10 +255,12 @@ private fun discoverToolingApiModules(
 }
 
 internal fun detectIncompleteClasspath(modules: List<GradleModuleModel>): List<String> = modules
-    .filter { module -> module.dependencies.isEmpty() }
+    .filter { module -> module.dependencies.isEmpty() && module.hasSourceRoots() }
     .map { module ->
         "Gradle workspace discovery did not resolve any dependencies for ${module.gradlePath}; standalone classpath may be incomplete."
     }
+
+private fun GradleModuleModel.hasSourceRoots(): Boolean = mainSourceRoots.isNotEmpty() || testSourceRoots.isNotEmpty()
 
 private fun toolingApiFailureWarning(prefix: String, error: Throwable): String {
     val details = error.message?.takeIf(String::isNotBlank) ?: error::class.java.simpleName
