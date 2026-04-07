@@ -570,7 +570,7 @@ class StandaloneAnalysisBackendRenameTest {
     }
 
     @Test
-    fun `operator function rename uses function name as search identifier`(): TestResult = runTest {
+    fun `operator function rename finds both explicit and operator-syntax call sites`(): TestResult = runTest {
         val declarationFile = writeFile(
             relativePath = "src/main/kotlin/sample/Vector.kt",
             content = """
@@ -582,11 +582,19 @@ class StandaloneAnalysisBackendRenameTest {
             """.trimIndent() + "\n",
         )
         writeFile(
-            relativePath = "src/main/kotlin/sample/Usage.kt",
+            relativePath = "src/main/kotlin/sample/ExplicitUsage.kt",
             content = """
                 package sample
 
-                fun add(a: Vector, b: Vector): Vector = a.plus(b)
+                fun addExplicit(a: Vector, b: Vector): Vector = a.plus(b)
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "src/main/kotlin/sample/OperatorUsage.kt",
+            content = """
+                package sample
+
+                fun addOperator(a: Vector, b: Vector): Vector = a + b
             """.trimIndent() + "\n",
         )
         val content = Files.readString(declarationFile)
@@ -620,8 +628,8 @@ class StandaloneAnalysisBackendRenameTest {
 
             val editFiles = result.edits.map { it.filePath }.distinct()
             assertTrue(editFiles.any { it.contains("Vector.kt") })
-            assertTrue(editFiles.any { it.contains("Usage.kt") })
-            assertFalse(session.isFullKtFileMapLoaded())
+            assertTrue(editFiles.any { it.contains("ExplicitUsage.kt") })
+            assertTrue(editFiles.any { it.contains("OperatorUsage.kt") })
         }
     }
 
