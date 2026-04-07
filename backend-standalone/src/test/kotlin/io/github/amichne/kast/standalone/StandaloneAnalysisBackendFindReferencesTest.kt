@@ -596,6 +596,178 @@ class StandaloneAnalysisBackendFindReferencesTest {
         }
     }
 
+    @Test
+    fun `internal function references include test source set via friend modules`(): TestResult = runTest {
+        writeFile(
+            relativePath = "settings.gradle.kts",
+            content = """
+                rootProject.name = "workspace"
+                include(":lib")
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "build.gradle.kts",
+            content = buildString {
+                appendLine("""plugins { idea }""")
+                appendLine("""subprojects {""")
+                appendLine("""    apply(plugin = "java-library")""")
+                appendLine("""    repositories { mavenCentral() }""")
+                appendLine("""    configure<org.gradle.api.tasks.SourceSetContainer> {""")
+                appendLine("""        named("main") { java.srcDir("src/main/kotlin") }""")
+                appendLine("""        named("test") { java.srcDir("src/test/kotlin") }""")
+                appendLine("""    }""")
+                appendLine("""}""")
+            },
+        )
+        writeFile(relativePath = "lib/build.gradle.kts", content = "")
+        val declarationFile = writeFile(
+            relativePath = "lib/src/main/kotlin/sample/Greeter.kt",
+            content = $$"""
+                package sample
+
+                internal fun greet(name: String): String = "hi $name"
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "lib/src/main/kotlin/sample/MainUse.kt",
+            content = """
+                package sample
+
+                fun mainUse(): String = greet("main")
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "lib/src/test/kotlin/sample/GreeterTest.kt",
+            content = """
+                package sample
+
+                fun testUse(): String = greet("test")
+            """.trimIndent() + "\n",
+        )
+        val queryOffset = Files.readString(declarationFile).indexOf("greet")
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "ignored",
+        )
+        session.use { session ->
+            val backend = StandaloneAnalysisBackend(
+                workspaceRoot = workspaceRoot,
+                limits = ServerLimits(
+                    maxResults = 100,
+                    requestTimeoutMillis = 30_000,
+                    maxConcurrentRequests = 4,
+                ),
+                session = session,
+            )
+
+            val result = backend.findReferences(
+                ReferencesQuery(
+                    position = FilePosition(
+                        filePath = declarationFile.toString(),
+                        offset = queryOffset,
+                    ),
+                    includeDeclaration = false,
+                ),
+            )
+
+            val referenceFiles = result.references.map { it.filePath }.distinct()
+            assertTrue(referenceFiles.any { it.contains("MainUse.kt") }, "expected main source set reference")
+            assertTrue(referenceFiles.any { it.contains("GreeterTest.kt") }, "expected test source set reference (friend module)")
+            assertNotNull(result.searchScope)
+            assertEquals(SymbolVisibility.INTERNAL, result.searchScope!!.visibility)
+            assertEquals(SearchScopeKind.MODULE, result.searchScope!!.scope)
+            assertTrue(result.searchScope!!.exhaustive)
+        }
+    }
+
+    @Test
+    fun `references result includes searchScope MODULE for internal function`(): TestResult = runTest {
+        writeFile(
+            relativePath = "settings.gradle.kts",
+            content = """
+                rootProject.name = "workspace"
+                include(":app", ":unrelated")
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "build.gradle.kts",
+            content = buildString {
+                appendLine("""plugins { idea }""")
+                appendLine("""subprojects {""")
+                appendLine("""    apply(plugin = "java-library")""")
+                appendLine("""    repositories { mavenCentral() }""")
+                appendLine("""    configure<org.gradle.api.tasks.SourceSetContainer> {""")
+                appendLine("""        named("main") { java.srcDir("src/main/kotlin") }""")
+                appendLine("""    }""")
+                appendLine("""}""")
+            },
+        )
+        writeFile(relativePath = "app/build.gradle.kts", content = "")
+        writeFile(relativePath = "unrelated/build.gradle.kts", content = "")
+        val declarationFile = writeFile(
+            relativePath = "app/src/main/kotlin/sample/Internal.kt",
+            content = """
+                package sample
+
+                internal fun internalHelper(): String = "internal"
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "app/src/main/kotlin/sample/AppUse.kt",
+            content = """
+                package sample
+
+                fun appUse(): String = internalHelper()
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "unrelated/src/main/kotlin/sample/Unrelated.kt",
+            content = """
+                package sample
+
+                fun unrelated(): String = "unrelated"
+            """.trimIndent() + "\n",
+        )
+        val queryOffset = Files.readString(declarationFile).indexOf("internalHelper")
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "ignored",
+        )
+        session.use { session ->
+            val backend = StandaloneAnalysisBackend(
+                workspaceRoot = workspaceRoot,
+                limits = ServerLimits(
+                    maxResults = 100,
+                    requestTimeoutMillis = 30_000,
+                    maxConcurrentRequests = 4,
+                ),
+                session = session,
+            )
+
+            val result = backend.findReferences(
+                ReferencesQuery(
+                    position = FilePosition(
+                        filePath = declarationFile.toString(),
+                        offset = queryOffset,
+                    ),
+                    includeDeclaration = false,
+                ),
+            )
+
+            val referenceFiles = result.references.map { it.filePath }.distinct()
+            assertTrue(referenceFiles.any { it.contains("AppUse.kt") })
+            assertFalse(referenceFiles.any { it.contains("Unrelated.kt") })
+            assertNotNull(result.searchScope)
+            assertEquals(SymbolVisibility.INTERNAL, result.searchScope!!.visibility)
+            assertEquals(SearchScopeKind.MODULE, result.searchScope!!.scope)
+            assertTrue(result.searchScope!!.exhaustive)
+        }
+    }
+
     private fun writeFile(
         relativePath: String,
         content: String,

@@ -688,6 +688,101 @@ class StandaloneWorkspaceDiscoveryTest {
     }
 
     @Test
+    fun `friendModuleNames returns all source sets sharing the same Gradle project prefix`() {
+        writeFile(
+            relativePath = "settings.gradle.kts",
+            content = """
+                rootProject.name = "workspace"
+                include(":app")
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "build.gradle.kts",
+            content = buildString {
+                appendLine("""plugins { idea }""")
+                appendLine("""subprojects {""")
+                appendLine("""    apply(plugin = "java-library")""")
+                appendLine("""    repositories { mavenCentral() }""")
+                appendLine("""    configure<org.gradle.api.tasks.SourceSetContainer> {""")
+                appendLine("""        named("main") { java.srcDir("src/main/kotlin") }""")
+                appendLine("""        named("test") { java.srcDir("src/test/kotlin") }""")
+                appendLine("""    }""")
+                appendLine("""}""")
+            },
+        )
+        writeFile(relativePath = "app/build.gradle.kts", content = "")
+        writeFile(
+            relativePath = "app/src/main/kotlin/sample/App.kt",
+            content = """
+                package sample
+
+                fun app(): String = "ready"
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "app/src/test/kotlin/sample/AppTest.kt",
+            content = """
+                package sample
+
+                class AppTest
+            """.trimIndent() + "\n",
+        )
+
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "ignored",
+        )
+        session.use { session ->
+            val friendNames = session.friendModuleNames(":app[main]")
+
+            assertEquals(setOf(":app[main]", ":app[test]"), friendNames)
+        }
+    }
+
+    @Test
+    fun `friendModuleNames returns singleton for non-Gradle module names`() {
+        writeFile(
+            relativePath = "src/main/kotlin/sample/App.kt",
+            content = """
+                package sample
+
+                fun app(): String = "ready"
+            """.trimIndent() + "\n",
+        )
+
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = listOf(workspaceRoot.resolve("src/main/kotlin")),
+            classpathRoots = emptyList(),
+            moduleName = "manual",
+        )
+        session.use { session ->
+            val friendNames = session.friendModuleNames("manual")
+
+            assertEquals(setOf("manual"), friendNames)
+        }
+    }
+
+    @Test
+    fun `friendModuleNames includes testFixtures source set`() {
+        createGradleWorkspaceWithTestFixtures()
+
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "ignored",
+        )
+        session.use { session ->
+            val friendNames = session.friendModuleNames(":lib[main]")
+
+            assertEquals(setOf(":lib[main]", ":lib[testFixtures]", ":lib[test]"), friendNames)
+        }
+    }
+
+    @Test
     fun `candidate lookup scopes search to declaring module and dependents`() {
         writeFile(
             relativePath = "settings.gradle.kts",
