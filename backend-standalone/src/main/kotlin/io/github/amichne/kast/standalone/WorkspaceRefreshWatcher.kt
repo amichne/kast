@@ -97,6 +97,15 @@ internal class WorkspaceRefreshWatcher(
                                     }
                                     if (absolutePath.extension == "kt") {
                                         pendingPaths += absolutePath.toString()
+                                        // .kt file creation and deletion are structural changes
+                                        // that require a full K2 session rebuild so that resolve
+                                        // caches for other files are properly invalidated.
+                                        // Content-only refresh only invalidates caches for files
+                                        // that were already loaded into the PSI map, which is not
+                                        // the case for newly created files.
+                                        if (event.kind() != StandardWatchEventKinds.ENTRY_MODIFY) {
+                                            forceFullRefresh = true
+                                        }
                                     }
                                 }
                             }
