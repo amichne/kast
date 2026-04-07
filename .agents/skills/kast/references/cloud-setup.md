@@ -80,7 +80,8 @@ export PATH="$PWD/kast/build/scripts:$PATH"
 
 ## CI Pattern
 
-Standard pattern for GitHub Actions or any CI runner:
+Standard pattern for GitHub Actions or any CI runner when you want an explicit
+startup and cleanup phase:
 
 ```yaml
 # .github/workflows/analyze.yml (illustrative)
@@ -115,7 +116,10 @@ steps:
 ```
 
 **Key points:**
-- Always run `workspace ensure` before analysis commands.
+- Run `workspace ensure` when later steps assume a separate readiness phase. If
+  you skip it, the first runtime-dependent command auto-starts the daemon.
+- Add `--accept-indexing=true` to `workspace ensure` when later steps only need
+  a servable daemon.
 - Always run `daemon stop` in a cleanup step (use `|| true` — ok if already stopped).
 - Use absolute paths for `--workspace-root` and all file arguments.
 - In containers, `$GITHUB_WORKSPACE` (or equivalent) is the workspace root.

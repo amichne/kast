@@ -1,5 +1,6 @@
 package io.github.amichne.kast.standalone
 
+import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.exists
 import kotlin.io.path.isDirectory
@@ -222,19 +223,50 @@ internal object StaticGradleWorkspaceDiscovery {
 internal fun conventionalGradleSourceRootCandidates(
     projectDirectory: Path,
     sourceSet: GradleSourceSet,
-): List<Path> = when (sourceSet) {
-    GradleSourceSet.MAIN -> listOf(
-        projectDirectory.resolve("src/main/kotlin"),
-        projectDirectory.resolve("src/main/java"),
-    )
-    GradleSourceSet.TEST -> listOf(
-        projectDirectory.resolve("src/test/kotlin"),
-        projectDirectory.resolve("src/test/java"),
-    )
-    GradleSourceSet.TEST_FIXTURES -> listOf(
-        projectDirectory.resolve("src/testFixtures/kotlin"),
-        projectDirectory.resolve("src/testFixtures/java"),
-    )
+): List<Path> = (
+    when (sourceSet) {
+        GradleSourceSet.MAIN -> listOf(
+            projectDirectory.resolve("src/main/kotlin"),
+            projectDirectory.resolve("src/main/java"),
+        )
+        GradleSourceSet.TEST -> listOf(
+            projectDirectory.resolve("src/test/kotlin"),
+            projectDirectory.resolve("src/test/java"),
+        )
+        GradleSourceSet.TEST_FIXTURES -> listOf(
+            projectDirectory.resolve("src/testFixtures/kotlin"),
+            projectDirectory.resolve("src/testFixtures/java"),
+        )
+    } +
+        discoverAdditionalSourceSets(projectDirectory)
+            .filter { (sourceSetName, _) -> mapsToGradleSourceSet(sourceSetName, sourceSet) }
+            .flatMap { (_, roots) -> roots }
+    ).distinct()
+
+internal fun discoverAdditionalSourceSets(projectDirectory: Path): List<Pair<String, List<Path>>> {
+    val sourceDirectory = projectDirectory.resolve("src")
+    if (!sourceDirectory.isDirectory()) {
+        return emptyList()
+    }
+
+    return Files.list(sourceDirectory).use { sourceSetDirectories ->
+        sourceSetDirectories
+            .iterator()
+            .asSequence()
+            .filter(Files::isDirectory)
+            .map { sourceSetDirectory ->
+                val sourceSetName = sourceSetDirectory.fileName.toString()
+                sourceSetName to listOf(
+                    sourceSetDirectory.resolve("kotlin"),
+                    sourceSetDirectory.resolve("java"),
+                ).filter(Path::isDirectory)
+            }
+            .filter { (sourceSetName, roots) ->
+                roots.isNotEmpty() && sourceSetName !in knownGradleSourceSetNames
+            }
+            .sortedBy { (sourceSetName, _) -> sourceSetName }
+            .toList()
+    }
 }
 
 internal fun conventionalGradleOutputRootCandidates(
@@ -259,4 +291,25 @@ internal fun conventionalGradleOutputRootCandidates(
         projectDirectory.resolve("build/classes/kotlin/testFixtures"),
         projectDirectory.resolve("build/resources/testFixtures"),
     )
+}
+
+private val knownGradleSourceSetNames = setOf(
+    GradleSourceSet.MAIN.id,
+    GradleSourceSet.TEST.id,
+    GradleSourceSet.TEST_FIXTURES.id,
+)
+
+private fun mapsToGradleSourceSet(
+    sourceSetName: String,
+    targetSourceSet: GradleSourceSet,
+): Boolean = when (additionalSourceSetScope(sourceSetName)) {
+    GradleDependencyScope.TEST_FIXTURES -> targetSourceSet == GradleSourceSet.TEST_FIXTURES
+    GradleDependencyScope.TEST -> targetSourceSet == GradleSourceSet.TEST
+    else -> targetSourceSet == GradleSourceSet.MAIN
+}
+
+private fun additionalSourceSetScope(sourceSetName: String): GradleDependencyScope = when {
+    sourceSetName.contains("fixture", ignoreCase = true) -> GradleDependencyScope.TEST_FIXTURES
+    sourceSetName.contains("test", ignoreCase = true) -> GradleDependencyScope.TEST
+    else -> GradleDependencyScope.COMPILE
 }

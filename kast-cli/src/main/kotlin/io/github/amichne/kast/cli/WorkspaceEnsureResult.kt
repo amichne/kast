@@ -9,5 +9,6 @@ internal data class WorkspaceEnsureResult(
     val started: Boolean,
     val logFile: String? = null,
     val selected: RuntimeCandidateStatus,
+    val note: String? = null,
     val schemaVersion: Int = SCHEMA_VERSION,
 )

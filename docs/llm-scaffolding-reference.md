@@ -31,7 +31,7 @@ skill is doing before it runs the public commands.
 | Layer | What the skill handles | When you need to care |
 | --- | --- | --- |
 | CLI discovery | Runs `bash "$SKILL_ROOT/scripts/resolve-kast.sh"` to find `kast` on `PATH`, in local build output, or in `dist/` | When the binary cannot be found or you need to reproduce the exact invocation |
-| Workspace lifecycle | Runs `workspace ensure` before analysis | When a query hits a cold, indexing, or degraded workspace |
+| Workspace lifecycle | Uses `workspace ensure` when you want an explicit prewarm step, or lets the first runtime-dependent command auto-start the daemon | When a query hits a cold, indexing, or degraded workspace |
 | Conversational lookup bridge | Searches for candidate declarations from a class, function, or property reference, then uses `"$SKILL_ROOT/scripts/find-symbol-offset.py"` to turn the chosen candidate into declaration-first UTF-16 offsets | When a human reference is ambiguous or you need to debug why one symbol won |
 | Semantic verification | Resolves the chosen position with `symbol resolve` before it expands to `references`, `call hierarchy`, or `rename` | When the first match is not the symbol you meant |
 | Failure handling | Treats stderr as daemon notes and must surface missing capabilities, `NOT_FOUND`, and truncation honestly | When automation must distinguish "no result" from "bad input" |
@@ -52,12 +52,14 @@ repeatable automation.
 ## Use the minimal command sequence
 
 When you need to reproduce the packaged flow by hand, keep the command
-sequence short. Resolve the binary, ensure the workspace, resolve the symbol,
-and only then expand into references or call hierarchy.
+sequence short. Resolve the binary, optionally prewarm the workspace, resolve
+the symbol, and only then expand into references or call hierarchy.
 
 ```bash
 SKILL_ROOT=/absolute/path/to/your/installed/kast-skill
 KAST=$(bash "$SKILL_ROOT/scripts/resolve-kast.sh")
+# Optional explicit prewarm. Skip this command if you want the first semantic
+# query to auto-start the daemon instead.
 "$KAST" workspace ensure --workspace-root=/absolute/path/to/workspace
 "$KAST" symbol resolve \
   --workspace-root=/absolute/path/to/workspace \
@@ -75,6 +77,10 @@ KAST=$(bash "$SKILL_ROOT/scripts/resolve-kast.sh")
   --direction=incoming \
   --depth=2
 ```
+
+When stderr reports `state: INDEXING`, the daemon is already servable, but
+background enrichment is still running. Early semantic results can still be
+partial or empty until the daemon reaches `READY`.
 
 ## Bridge a human reference into a CLI position
 
@@ -129,10 +135,16 @@ read the right fields and report their limits honestly.
 
 - Treat `symbol.fqName` as the stable identity.
 - Treat `symbol.kind` as the first guardrail against a wrong match.
+- Treat `symbol.visibility` as a signal for how wide a reference or rename
+  search will run (`PRIVATE`/`LOCAL` → file only, `INTERNAL` → module only,
+  `PUBLIC`/`PROTECTED` → dependent modules).
 - Treat declaration coordinates as navigation anchors, not as user-friendly
   prose by themselves.
 - Treat `references[].preview` as a snippet, not as the full surrounding body.
 - Treat `page.truncated=true` as a hard cap on the visible result set.
+- Treat `searchScope.exhaustive=false` in a `references` or `rename` result as
+  proof that Kast did not search every candidate file. Do not claim a reference
+  list is complete until this is `true`.
 - Treat `stats.*Reached` and node `truncation` fields in a call hierarchy
   result as hard proof that Kast bounded the tree.
 
@@ -145,6 +157,8 @@ mistakes and interpretation errors.
 - A line and column passed as though they were the raw `offset`
 - An offset that lands on whitespace, comments, or string contents
 - A missing capability that the caller never checked
+- An unexpected auto-start when the caller meant to require an existing daemon;
+  add `--no-auto-start=true` in that case
 - A `call hierarchy` request that omits direction or ignores truncation
   metadata
 

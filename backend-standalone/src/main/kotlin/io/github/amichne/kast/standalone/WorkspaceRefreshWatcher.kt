@@ -1,5 +1,6 @@
 package io.github.amichne.kast.standalone
 
+import io.github.amichne.kast.api.RefreshResult
 import java.nio.file.ClosedWatchServiceException
 import java.nio.file.FileSystems
 import java.nio.file.Files
@@ -16,10 +17,13 @@ import kotlin.io.path.extension
 internal class WorkspaceRefreshWatcher(
     private val session: StandaloneAnalysisSession,
     private val debounceMillis: Long = 200,
+    private val contentRefresh: (Set<String>) -> RefreshResult = session::refreshFileContents,
+    private val fullRefresh: () -> RefreshResult = session::refreshWorkspace,
 ) : AutoCloseable {
     private val watchService: WatchService = FileSystems.getDefault().newWatchService()
     private val directoriesByWatchKey = ConcurrentHashMap<WatchKey, Path>()
     private val watchKeysByDirectory = ConcurrentHashMap<Path, WatchKey>()
+    private val sourceRoots = ConcurrentHashMap.newKeySet<Path>()
     @Volatile
     private var closed = false
     private val worker = thread(
@@ -31,7 +35,7 @@ internal class WorkspaceRefreshWatcher(
     }
 
     init {
-        session.resolvedSourceRoots.forEach(::registerDirectoryRecursively)
+        refreshSourceRoots(session.resolvedSourceRoots)
     }
 
     override fun close() {
@@ -93,6 +97,15 @@ internal class WorkspaceRefreshWatcher(
                                     }
                                     if (absolutePath.extension == "kt") {
                                         pendingPaths += absolutePath.toString()
+                                        // .kt file creation and deletion are structural changes
+                                        // that require a full K2 session rebuild so that resolve
+                                        // caches for other files are properly invalidated.
+                                        // Content-only refresh only invalidates caches for files
+                                        // that were already loaded into the PSI map, which is not
+                                        // the case for newly created files.
+                                        if (event.kind() != StandardWatchEventKinds.ENTRY_MODIFY) {
+                                            forceFullRefresh = true
+                                        }
                                     }
                                 }
                             }
@@ -110,15 +123,41 @@ internal class WorkspaceRefreshWatcher(
         }
     }
 
+    fun refreshSourceRoots(newSourceRoots: List<Path>) {
+        val normalizedSourceRoots = newSourceRoots
+            .map { sourceRoot -> sourceRoot.toAbsolutePath().normalize() }
+            .toSet()
+        val previousSourceRoots = sourceRoots.toSet()
+        val removedSourceRoots = previousSourceRoots - normalizedSourceRoots
+
+        sourceRoots.clear()
+        sourceRoots.addAll(normalizedSourceRoots)
+
+        (normalizedSourceRoots - previousSourceRoots)
+            .sorted()
+            .forEach(::registerDirectoryRecursively)
+        if (removedSourceRoots.isEmpty()) {
+            return
+        }
+
+        watchKeysByDirectory.entries
+            .filter { (directory, _) ->
+                removedSourceRoots.any(directory::startsWith) &&
+                    normalizedSourceRoots.none(directory::startsWith)
+            }
+            .map { entry -> entry.value }
+            .forEach(::unregister)
+    }
+
     private fun flushPendingChanges(
         changedPaths: Set<String>,
         forceFullRefresh: Boolean,
     ) {
         runCatching {
             if (forceFullRefresh) {
-                session.refreshWorkspace()
+                fullRefresh()
             } else if (changedPaths.isNotEmpty()) {
-                session.refreshFiles(changedPaths)
+                contentRefresh(changedPaths)
             }
         }.onFailure { error ->
             System.err.println(
@@ -160,6 +199,7 @@ internal class WorkspaceRefreshWatcher(
     }
 
     private fun unregister(watchKey: WatchKey) {
+        watchKey.cancel()
         val directory = directoriesByWatchKey.remove(watchKey) ?: return
         watchKeysByDirectory.remove(directory, watchKey)
     }

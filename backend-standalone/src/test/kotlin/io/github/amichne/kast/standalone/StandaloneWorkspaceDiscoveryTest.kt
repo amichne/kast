@@ -1,6 +1,7 @@
 package io.github.amichne.kast.standalone
 
 import io.github.amichne.kast.api.FilePosition
+import io.github.amichne.kast.api.RuntimeState
 import io.github.amichne.kast.api.ServerLimits
 import io.github.amichne.kast.api.SymbolKind
 import io.github.amichne.kast.api.SymbolQuery
@@ -8,11 +9,14 @@ import kotlinx.coroutines.test.TestResult
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import org.jetbrains.kotlin.psi.KtFile
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CountDownLatch
 import java.util.jar.JarEntry
 import java.util.jar.JarOutputStream
@@ -113,6 +117,68 @@ class StandaloneWorkspaceDiscoveryTest {
                     targetIdeaModuleName = ":lib",
                     scope = GradleDependencyScope.TEST_FIXTURES,
                 ),
+            ),
+        )
+    }
+
+    @Test
+    fun `static discovery finds gatling source roots`() {
+        writeFile(
+            relativePath = "settings.gradle.kts",
+            content = """
+                rootProject.name = "workspace"
+                include(":app")
+            """.trimIndent() + "\n",
+        )
+        writeFile(relativePath = "app/build.gradle.kts", content = "")
+        writeFile(
+            relativePath = "app/src/gatling/kotlin/sample/Simulation.kt",
+            content = """
+                package sample
+
+                class Simulation
+            """.trimIndent() + "\n",
+        )
+
+        val modulesByPath = StaticGradleWorkspaceDiscovery.discoverModules(
+            workspaceRoot,
+            GradleSettingsSnapshot.read(workspaceRoot),
+        ).associateBy(GradleModuleModel::gradlePath)
+
+        assertTrue(
+            modulesByPath.getValue(":app").mainSourceRoots.contains(
+                normalizeStandalonePath(workspaceRoot.resolve("app/src/gatling/kotlin")),
+            ),
+        )
+    }
+
+    @Test
+    fun `static discovery finds custom source sets`() {
+        writeFile(
+            relativePath = "settings.gradle.kts",
+            content = """
+                rootProject.name = "workspace"
+                include(":app")
+            """.trimIndent() + "\n",
+        )
+        writeFile(relativePath = "app/build.gradle.kts", content = "")
+        writeFile(
+            relativePath = "app/src/integrationTest/kotlin/sample/IntegrationTest.kt",
+            content = """
+                package sample
+
+                class IntegrationTest
+            """.trimIndent() + "\n",
+        )
+
+        val modulesByPath = StaticGradleWorkspaceDiscovery.discoverModules(
+            workspaceRoot,
+            GradleSettingsSnapshot.read(workspaceRoot),
+        ).associateBy(GradleModuleModel::gradlePath)
+
+        assertTrue(
+            modulesByPath.getValue(":app").testSourceRoots.contains(
+                normalizeStandalonePath(workspaceRoot.resolve("app/src/integrationTest/kotlin")),
             ),
         )
     }
@@ -265,6 +331,454 @@ class StandaloneWorkspaceDiscoveryTest {
             assertFalse(session.isInitialSourceIndexReady())
             unblockIndexBuild.countDown()
             session.awaitInitialSourceIndex()
+        }
+    }
+
+    @Test
+    fun `content-only refresh does not rebuild K2 session`() {
+        val appFile = writeFile(
+            relativePath = "src/main/kotlin/sample/App.kt",
+            content = """
+                package sample
+
+                fun greet(): String = "ready"
+            """.trimIndent() + "\n",
+        )
+        val sourceRoot = workspaceRoot.resolve("src/main/kotlin")
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = listOf(sourceRoot),
+            classpathRoots = emptyList(),
+            moduleName = "main",
+        )
+
+        session.use { standaloneSession ->
+            val initialAnalysisStateGeneration = standaloneSession.currentAnalysisStateGeneration()
+
+            assertTrue(standaloneSession.findKtFile(appFile.toString()).text.contains("greet"))
+
+            appFile.writeText(
+                """
+                    package sample
+
+                    fun welcome(): String = "updated"
+                """.trimIndent() + "\n",
+            )
+
+            standaloneSession.refreshFileContents(setOf(appFile.toString()))
+
+            assertEquals(initialAnalysisStateGeneration, standaloneSession.currentAnalysisStateGeneration())
+            assertTrue(standaloneSession.findKtFile(appFile.toString()).text.contains("welcome"))
+            assertFalse(standaloneSession.findKtFile(appFile.toString()).text.contains("greet"))
+        }
+    }
+
+    @Test
+    fun `content-only refresh updates source identifier index`() {
+        val appFile = writeFile(
+            relativePath = "src/main/kotlin/sample/App.kt",
+            content = """
+                package sample
+
+                fun greet(): String = "ready"
+            """.trimIndent() + "\n",
+        )
+        val sourceRoot = workspaceRoot.resolve("src/main/kotlin")
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = listOf(sourceRoot),
+            classpathRoots = emptyList(),
+            moduleName = "main",
+        )
+
+        session.use { standaloneSession ->
+            standaloneSession.awaitInitialSourceIndex()
+            assertTrue(standaloneSession.candidateKotlinFilePaths("welcome").isEmpty())
+
+            appFile.writeText(
+                """
+                    package sample
+
+                    fun welcome(): String = "updated"
+                """.trimIndent() + "\n",
+            )
+
+            standaloneSession.refreshFileContents(setOf(appFile.toString()))
+
+            assertEquals(
+                setOf(normalizePath(appFile)),
+                standaloneSession.candidateKotlinFilePaths("welcome").toSet(),
+            )
+            assertTrue(standaloneSession.candidateKotlinFilePaths("greet").isEmpty())
+        }
+    }
+
+    @Test
+    fun `content-only refresh keeps shared KtFile instance for partially loaded maps`() {
+        val changedFile = writeFile(
+            relativePath = "src/main/kotlin/sample/App.kt",
+            content = """
+                package sample
+
+                fun greet(): String = "ready"
+            """.trimIndent() + "\n",
+        )
+        val sourceRoot = workspaceRoot.resolve("src/main/kotlin")
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = listOf(sourceRoot),
+            classpathRoots = emptyList(),
+            moduleName = "main",
+        )
+
+        session.use { standaloneSession ->
+            val normalizedPath = normalizePath(changedFile)
+            standaloneSession.findKtFile(changedFile.toString())
+            assertFalse(standaloneSession.isFullKtFileMapLoaded())
+
+            changedFile.writeText(
+                """
+                    package sample
+
+                    fun welcome(): String = "updated"
+                """.trimIndent() + "\n",
+            )
+
+            standaloneSession.refreshFileContents(setOf(changedFile.toString()))
+
+            val refreshedKtFilesByPath = ktFileCache(standaloneSession, "ktFilesByPath")
+            val refreshedTargetedKtFilesByPath = ktFileCache(standaloneSession, "targetedKtFilesByPath")
+            assertSame(
+                refreshedKtFilesByPath.getValue(normalizedPath),
+                refreshedTargetedKtFilesByPath.getValue(normalizedPath),
+            )
+            assertTrue(refreshedKtFilesByPath.getValue(normalizedPath).text.contains("welcome"))
+        }
+    }
+
+    @Test
+    fun `content-only refresh preserves full KtFile map`() {
+        val changedFile = writeFile(
+            relativePath = "src/main/kotlin/sample/App.kt",
+            content = """
+                package sample
+
+                fun app(): String = "ready"
+            """.trimIndent() + "\n",
+        )
+        val unchangedFile = writeFile(
+            relativePath = "src/main/kotlin/sample/Other.kt",
+            content = """
+                package sample
+
+                fun other(): String = "stable"
+            """.trimIndent() + "\n",
+        )
+        val sourceRoot = workspaceRoot.resolve("src/main/kotlin")
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = listOf(sourceRoot),
+            classpathRoots = emptyList(),
+            moduleName = "main",
+        )
+
+        session.use { standaloneSession ->
+            val normalizedChangedPath = normalizePath(changedFile)
+            standaloneSession.allKtFiles()
+            assertTrue(standaloneSession.isFullKtFileMapLoaded())
+            val unchangedKtFile = standaloneSession.findKtFile(unchangedFile.toString())
+
+            changedFile.writeText(
+                """
+                    package sample
+
+                    fun app(): String = other()
+                """.trimIndent() + "\n",
+            )
+
+            standaloneSession.refreshFileContents(setOf(changedFile.toString()))
+
+            assertTrue(standaloneSession.isFullKtFileMapLoaded())
+            assertEquals(
+                setOf(normalizePath(changedFile), normalizePath(unchangedFile)),
+                standaloneSession.allKtFiles().map { file -> file.virtualFilePath }.toSet(),
+            )
+            assertSame(unchangedKtFile, standaloneSession.findKtFile(unchangedFile.toString()))
+            val refreshedKtFilesByPath = ktFileCache(standaloneSession, "ktFilesByPath")
+            val refreshedTargetedKtFilesByPath = ktFileCache(standaloneSession, "targetedKtFilesByPath")
+            assertSame(
+                refreshedKtFilesByPath.getValue(normalizedChangedPath),
+                refreshedTargetedKtFilesByPath.getValue(normalizedChangedPath),
+            )
+            assertTrue(standaloneSession.findKtFile(changedFile.toString()).text.contains("other()"))
+        }
+    }
+
+    @Test
+    fun `structural refresh rebuilds K2 session`() {
+        val appFile = writeFile(
+            relativePath = "src/main/kotlin/sample/App.kt",
+            content = """
+                package sample
+
+                fun greet(): String = "ready"
+            """.trimIndent() + "\n",
+        )
+        val sourceRoot = workspaceRoot.resolve("src/main/kotlin")
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = listOf(sourceRoot),
+            classpathRoots = emptyList(),
+            moduleName = "main",
+        )
+
+        session.use { standaloneSession ->
+            val initialAnalysisStateGeneration = standaloneSession.currentAnalysisStateGeneration()
+
+            Files.delete(appFile)
+            standaloneSession.refreshFiles(setOf(appFile.toString()))
+
+            assertTrue(standaloneSession.currentAnalysisStateGeneration() > initialAnalysisStateGeneration)
+        }
+    }
+
+    @Test
+    fun `phased session serves requests before enrichment completes`() {
+        val appFile = writeFile(
+            relativePath = "app/src/main/kotlin/sample/App.kt",
+            content = """
+                package sample
+
+                fun app(): String = "ready"
+            """.trimIndent() + "\n",
+        )
+        val libFile = writeFile(
+            relativePath = "lib/src/main/kotlin/sample/Lib.kt",
+            content = """
+                package sample
+
+                fun lib(): String = "later"
+            """.trimIndent() + "\n",
+        )
+        val appRoot = normalizeStandalonePath(workspaceRoot.resolve("app/src/main/kotlin"))
+        val libRoot = normalizeStandalonePath(workspaceRoot.resolve("lib/src/main/kotlin"))
+        val enrichmentFuture = CompletableFuture<StandaloneWorkspaceLayout>()
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "ignored",
+            phasedDiscoveryResult = PhasedDiscoveryResult(
+                initialLayout = manualWorkspaceLayout(
+                    sourceModule(name = ":app[main]", sourceRoots = listOf(appRoot)),
+                ),
+                enrichmentFuture = enrichmentFuture,
+            ),
+        )
+
+        session.use { phasedSession ->
+            assertEquals(normalizePath(appFile), phasedSession.findKtFile(appFile.toString()).virtualFilePath)
+            assertFalse(phasedSession.isEnrichmentComplete())
+
+            enrichmentFuture.complete(
+                manualWorkspaceLayout(
+                    sourceModule(
+                        name = ":app[main]",
+                        sourceRoots = listOf(appRoot),
+                        dependencyModuleNames = listOf(":lib[main]"),
+                    ),
+                    sourceModule(name = ":lib[main]", sourceRoots = listOf(libRoot)),
+                ),
+            )
+
+            phasedSession.awaitEnrichment()
+
+            assertTrue(phasedSession.isEnrichmentComplete())
+            assertEquals(normalizePath(libFile), phasedSession.findKtFile(libFile.toString()).virtualFilePath)
+        }
+    }
+
+    @Test
+    fun `phased session rebuilds K2 session after enrichment`() {
+        writeFile(
+            relativePath = "app/src/main/kotlin/sample/App.kt",
+            content = """
+                package sample
+
+                fun app(): String = lib()
+            """.trimIndent() + "\n",
+        )
+        val libFile = writeFile(
+            relativePath = "lib/src/main/kotlin/sample/Lib.kt",
+            content = """
+                package sample
+
+                fun lib(): String = "later"
+            """.trimIndent() + "\n",
+        )
+        val appRoot = normalizeStandalonePath(workspaceRoot.resolve("app/src/main/kotlin"))
+        val libRoot = normalizeStandalonePath(workspaceRoot.resolve("lib/src/main/kotlin"))
+        val enrichmentFuture = CompletableFuture<StandaloneWorkspaceLayout>()
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "ignored",
+            phasedDiscoveryResult = PhasedDiscoveryResult(
+                initialLayout = manualWorkspaceLayout(
+                    sourceModule(name = ":app[main]", sourceRoots = listOf(appRoot)),
+                ),
+                enrichmentFuture = enrichmentFuture,
+            ),
+        )
+
+        session.use { phasedSession ->
+            enrichmentFuture.complete(
+                manualWorkspaceLayout(
+                    sourceModule(
+                        name = ":app[main]",
+                        sourceRoots = listOf(appRoot),
+                        dependencyModuleNames = listOf(":lib[main]"),
+                    ),
+                    sourceModule(name = ":lib[main]", sourceRoots = listOf(libRoot)),
+                ),
+            )
+
+            phasedSession.awaitEnrichment()
+            phasedSession.awaitInitialSourceIndex()
+
+            assertTrue(phasedSession.sourceModules.any { module -> module.name == ":lib[main]" })
+            assertEquals(normalizePath(libFile), phasedSession.findKtFile(libFile.toString()).virtualFilePath)
+        }
+    }
+
+    @Test
+    fun `phased session source index works during enrichment`() {
+        val appFile = writeFile(
+            relativePath = "app/src/main/kotlin/sample/App.kt",
+            content = """
+                package sample
+
+                fun greetDuringIndexing(): String = "ready"
+            """.trimIndent() + "\n",
+        )
+        val appRoot = normalizeStandalonePath(workspaceRoot.resolve("app/src/main/kotlin"))
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "ignored",
+            phasedDiscoveryResult = PhasedDiscoveryResult(
+                initialLayout = manualWorkspaceLayout(
+                    sourceModule(name = ":app[main]", sourceRoots = listOf(appRoot)),
+                ),
+                enrichmentFuture = CompletableFuture<StandaloneWorkspaceLayout>(),
+            ),
+        )
+
+        session.use { phasedSession ->
+            phasedSession.awaitInitialSourceIndex()
+
+            assertEquals(
+                setOf(normalizePath(appFile)),
+                phasedSession.candidateKotlinFilePaths("greetDuringIndexing").toSet(),
+            )
+            assertFalse(phasedSession.isEnrichmentComplete())
+        }
+    }
+
+    @Test
+    fun `friendModuleNames returns all source sets sharing the same Gradle project prefix`() {
+        writeFile(
+            relativePath = "settings.gradle.kts",
+            content = """
+                rootProject.name = "workspace"
+                include(":app")
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "build.gradle.kts",
+            content = buildString {
+                appendLine("""plugins { idea }""")
+                appendLine("""subprojects {""")
+                appendLine("""    apply(plugin = "java-library")""")
+                appendLine("""    repositories { mavenCentral() }""")
+                appendLine("""    configure<org.gradle.api.tasks.SourceSetContainer> {""")
+                appendLine("""        named("main") { java.srcDir("src/main/kotlin") }""")
+                appendLine("""        named("test") { java.srcDir("src/test/kotlin") }""")
+                appendLine("""    }""")
+                appendLine("""}""")
+            },
+        )
+        writeFile(relativePath = "app/build.gradle.kts", content = "")
+        writeFile(
+            relativePath = "app/src/main/kotlin/sample/App.kt",
+            content = """
+                package sample
+
+                fun app(): String = "ready"
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "app/src/test/kotlin/sample/AppTest.kt",
+            content = """
+                package sample
+
+                class AppTest
+            """.trimIndent() + "\n",
+        )
+
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "ignored",
+        )
+        session.use { session ->
+            val friendNames = session.friendModuleNames(":app[main]")
+
+            assertEquals(setOf(":app[main]", ":app[test]"), friendNames)
+        }
+    }
+
+    @Test
+    fun `friendModuleNames returns singleton for non-Gradle module names`() {
+        writeFile(
+            relativePath = "src/main/kotlin/sample/App.kt",
+            content = """
+                package sample
+
+                fun app(): String = "ready"
+            """.trimIndent() + "\n",
+        )
+
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = listOf(workspaceRoot.resolve("src/main/kotlin")),
+            classpathRoots = emptyList(),
+            moduleName = "manual",
+        )
+        session.use { session ->
+            val friendNames = session.friendModuleNames("manual")
+
+            assertEquals(setOf("manual"), friendNames)
+        }
+    }
+
+    @Test
+    fun `friendModuleNames includes testFixtures source set`() {
+        createGradleWorkspaceWithTestFixtures()
+
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "ignored",
+        )
+        session.use { session ->
+            val friendNames = session.friendModuleNames(":lib[main]")
+
+            assertEquals(setOf(":lib[main]", ":lib[testFixtures]", ":lib[test]"), friendNames)
         }
     }
 
@@ -471,6 +985,55 @@ class StandaloneWorkspaceDiscoveryTest {
             assertFalse(status.warnings.isEmpty())
             assertTrue(status.warnings.any { warning -> warning.contains(":lib") })
             assertTrue(checkNotNull(status.message).contains("warnings"))
+        }
+    }
+
+    @Test
+    fun `runtime status reports INDEXING during enrichment`(): TestResult = runTest {
+        writeFile(
+            relativePath = "app/src/main/kotlin/sample/App.kt",
+            content = """
+                package sample
+
+                fun app(): String = "ready"
+            """.trimIndent() + "\n",
+        )
+        val appRoot = normalizeStandalonePath(workspaceRoot.resolve("app/src/main/kotlin"))
+        val enrichmentFuture = CompletableFuture<StandaloneWorkspaceLayout>()
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "ignored",
+            phasedDiscoveryResult = PhasedDiscoveryResult(
+                initialLayout = manualWorkspaceLayout(
+                    sourceModule(name = ":app[main]", sourceRoots = listOf(appRoot)),
+                ),
+                enrichmentFuture = enrichmentFuture,
+            ),
+        )
+        session.use { phasedSession ->
+            val backend = StandaloneAnalysisBackend(
+                workspaceRoot = workspaceRoot,
+                limits = ServerLimits(
+                    maxResults = 100,
+                    requestTimeoutMillis = 30_000,
+                    maxConcurrentRequests = 4,
+                ),
+                session = phasedSession,
+            )
+
+            assertEquals(RuntimeState.INDEXING, backend.runtimeStatus().state)
+
+            enrichmentFuture.complete(
+                manualWorkspaceLayout(
+                    sourceModule(name = ":app[main]", sourceRoots = listOf(appRoot)),
+                ),
+            )
+            phasedSession.awaitEnrichment()
+            phasedSession.awaitInitialSourceIndex()
+
+            assertEquals(RuntimeState.READY, backend.runtimeStatus().state)
         }
     }
 
@@ -935,4 +1498,29 @@ class StandaloneWorkspaceDiscoveryTest {
         val absolutePath = path.toAbsolutePath().normalize()
         return runCatching { absolutePath.toRealPath().normalize().toString() }.getOrDefault(absolutePath.toString())
     }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun ktFileCache(
+        session: StandaloneAnalysisSession,
+        fieldName: String,
+    ): Map<String, KtFile> {
+        val field = StandaloneAnalysisSession::class.java.getDeclaredField(fieldName)
+        field.isAccessible = true
+        return field.get(session) as Map<String, KtFile>
+    }
+
+    private fun manualWorkspaceLayout(vararg sourceModules: StandaloneSourceModuleSpec): StandaloneWorkspaceLayout =
+        StandaloneWorkspaceLayout(sourceModules = sourceModules.toList())
+
+    private fun sourceModule(
+        name: String,
+        sourceRoots: List<Path>,
+        binaryRoots: List<Path> = emptyList(),
+        dependencyModuleNames: List<String> = emptyList(),
+    ): StandaloneSourceModuleSpec = StandaloneSourceModuleSpec(
+        name = name,
+        sourceRoots = sourceRoots,
+        binaryRoots = binaryRoots,
+        dependencyModuleNames = dependencyModuleNames,
+    )
 }

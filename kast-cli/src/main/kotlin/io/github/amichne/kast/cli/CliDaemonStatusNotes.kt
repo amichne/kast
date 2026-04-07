@@ -25,6 +25,7 @@ internal fun daemonNoteFor(result: WorkspaceStatusResult): String? {
 }
 
 internal fun daemonNoteFor(result: WorkspaceEnsureResult): String? {
+    result.note?.let { return it }
     val action = if (result.started) "started" else "using"
     val summary = "daemon: $action ${result.selected.describeDaemon()}"
     return if (result.started && result.logFile != null) {
@@ -44,7 +45,7 @@ internal fun daemonNoteFor(result: DaemonStopResult): String? {
 internal fun daemonNoteForRuntime(runtime: RuntimeCandidateStatus): String =
     "daemon: using ${runtime.describeDaemon()}"
 
-private fun RuntimeCandidateStatus.describeDaemon(): String {
+internal fun RuntimeCandidateStatus.describeDaemon(): String {
     val endpoint = descriptor.socketPath
     val stateText = when {
         ready -> "ready"

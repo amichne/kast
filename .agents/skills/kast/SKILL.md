@@ -41,18 +41,23 @@ KAST_STDERR="$KAST_TMP/stderr.log"
 ```
 
 All kast commands in this session write results to `$KAST_RESULT` and daemon notes to
-`$KAST_STDERR`. Read `$KAST_RESULT` for the JSON output. Only read `$KAST_STDERR` when
-the exit code is non-zero.
+`$KAST_STDERR`. Read `$KAST_RESULT` for the JSON output. When the exit code is
+non-zero, read `$KAST_STDERR` for the error details. On success, `$KAST_STDERR`
+may still contain a daemon note, such as an auto-start message or
+`state: INDEXING`.
 
-Then ensure the workspace daemon is ready:
+Optional: prewarm the workspace when you want a separate readiness step:
 
 ```bash
 "$KAST" workspace ensure --workspace-root="$(git rev-parse --show-toplevel)" \
   > "$KAST_RESULT" 2> "$KAST_STDERR"
 ```
 
-`workspace ensure` starts the daemon if none exists, reuses an existing healthy one,
-and blocks until the daemon reaches `READY` (60 s timeout). Exit 0 = daemon ready.
+`workspace ensure` starts the daemon if none exists, reuses an existing healthy
+one, and waits until the daemon reaches `READY` by default (60 s timeout). Add
+`--accept-indexing=true` when you only need a servable daemon and can tolerate
+`INDEXING` while enrichment finishes. If you skip this step, the first
+runtime-dependent command auto-starts the daemon for you.
 
 ### If `workspace ensure` fails
 
@@ -73,10 +78,10 @@ Do not retry `workspace ensure` without first resolving the root cause shown in 
 
 ---
 
-## 1. Index Validation (after first ensure in a new workspace)
+## 1. Index Validation (after first startup in a new workspace)
 
-`workspace ensure` reaching `READY` does not guarantee the index is serving semantic
-results. Validate once with a known symbol before doing real work:
+Even after the first successful startup, validate once with a known symbol
+before doing real work:
 
 ```bash
 # Pick any class declaration in the workspace — adjust paths as needed
@@ -106,9 +111,11 @@ Then validate the index:
   > "$KAST_RESULT" 2> "$KAST_STDERR"
 ```
 
-Read `$KAST_RESULT` for the JSON. If `symbol.fqName` is present, the index is healthy.
-If it returns `NOT_FOUND` and state is `READY`, wait 15 seconds and retry — the initial
-index pass may still be running.
+Read `$KAST_RESULT` for the JSON. If `symbol.fqName` is present, the index is
+healthy. If stderr reports `state: INDEXING`, wait until
+`"$KAST" workspace status --workspace-root=...` shows `READY`, then retry. If
+the daemon is already `READY`, treat `NOT_FOUND` as an offset, save, or
+workspace-refresh problem rather than as background indexing.
 
 ---
 
@@ -372,11 +379,11 @@ When a build fails or a file has unknown errors:
 | Error / Symptom | Cause | Fix |
 |-----------------|-------|-----|
 | `VALIDATION_ERROR` (400) | Bad parameters | Fix the file path, offset, or name and retry |
-| `NOT_FOUND` (404) | Offset on whitespace or still indexing | Recompute offset to land on the identifier. If state is `READY`, wait 15 s and retry. |
+| `NOT_FOUND` (404) | Offset on whitespace, unsaved file, or daemon still indexing | Recompute offset to land on the identifier. If stderr or `workspace status` reports `INDEXING`, wait for `READY`; otherwise treat it as an offset, save, or refresh problem. |
 | `CONFLICT` (409) | Files changed since rename plan | Re-run `kast-rename.sh` — it produces a fresh plan |
 | `CAPABILITY_NOT_SUPPORTED` (501) | Capability absent | Run `"$KAST" capabilities` to confirm. Use grep for text search; kast does not do it. |
 | `APPLY_PARTIAL_FAILURE` (500) | Disk or permissions error mid-apply | Inspect `details` map; fix the root cause and apply remaining edits manually |
-| `workspace ensure` timeout | Daemon failed before reaching READY | Read `.kast/logs/standalone-daemon.log` — the cause is always there |
+| `workspace ensure` timeout | Daemon failed before becoming servable | Read `.kast/logs/standalone-daemon.log` — the cause is always there |
 
 ---
 

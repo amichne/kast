@@ -95,6 +95,18 @@ internal object CliCommandCatalog {
         usage = "--wait-timeout-ms=60000",
         description = "Maximum time to wait for a ready daemon when a command needs one.",
     )
+    private val acceptIndexingOption = CliOptionMetadata(
+        key = "accept-indexing",
+        usage = "--accept-indexing=true",
+        description = "Allow workspace ensure to return once the daemon is servable in INDEXING. Defaults to false.",
+        completionKind = CliOptionCompletionKind.BOOLEAN,
+    )
+    private val noAutoStartOption = CliOptionMetadata(
+        key = "no-auto-start",
+        usage = "--no-auto-start=true",
+        description = "Fail instead of auto-starting a standalone daemon when none is servable. Defaults to false.",
+        completionKind = CliOptionCompletionKind.BOOLEAN,
+    )
     private val requestFileOption = CliOptionMetadata(
         key = "request-file",
         usage = "--request-file=/absolute/path/to/query.json",
@@ -265,12 +277,12 @@ internal object CliCommandCatalog {
         CliCommandMetadata(
             path = listOf("workspace", "ensure"),
             group = CliCommandGroup.WORKSPACE_LIFECYCLE,
-            summary = "Reuse a ready daemon or start one for the workspace.",
-            description = "Ensures a healthy standalone daemon exists before returning runtime metadata.",
+            summary = "Ensure a healthy standalone daemon for the workspace.",
+            description = "Ensures a healthy standalone daemon exists. Analysis commands auto-start the daemon when needed, so this command is mainly for pre-warming the runtime or checking readiness ahead of time.",
             usages = listOf(
-                "$CLI_EXECUTABLE_NAME workspace ensure --workspace-root=/absolute/path/to/workspace [--wait-timeout-ms=60000]",
+                "$CLI_EXECUTABLE_NAME workspace ensure --workspace-root=/absolute/path/to/workspace [--wait-timeout-ms=60000] [--accept-indexing=true]",
             ),
-            options = listOf(workspaceRootOption, waitTimeoutOption),
+            options = listOf(workspaceRootOption, waitTimeoutOption, acceptIndexingOption, noAutoStartOption),
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME workspace ensure --workspace-root=/absolute/path/to/workspace",
             ),
@@ -284,7 +296,7 @@ internal object CliCommandCatalog {
                 "$CLI_EXECUTABLE_NAME workspace refresh --workspace-root=/absolute/path/to/workspace [--file-paths=/absolute/A.kt,/absolute/B.kt]",
                 "$CLI_EXECUTABLE_NAME workspace refresh --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
             ),
-            options = listOf(workspaceRootOption, waitTimeoutOption, requestFileOption, filePathsOption),
+            options = listOf(workspaceRootOption, waitTimeoutOption, noAutoStartOption, requestFileOption, filePathsOption),
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME workspace refresh --workspace-root=/absolute/path/to/workspace",
                 "$CLI_EXECUTABLE_NAME workspace refresh --workspace-root=/absolute/path/to/workspace --file-paths=/absolute/path/to/File.kt",
@@ -294,7 +306,7 @@ internal object CliCommandCatalog {
             path = listOf("daemon", "start"),
             group = CliCommandGroup.WORKSPACE_LIFECYCLE,
             summary = "Start a detached standalone daemon for a workspace.",
-            description = "Starts a standalone daemon when none is ready, then waits until it reports readiness.",
+            description = "Deprecated: use `workspace ensure` or let analysis commands auto-start the daemon. This command still starts a standalone daemon and waits until it reports readiness.",
             usages = listOf(
                 "$CLI_EXECUTABLE_NAME daemon start --workspace-root=/absolute/path/to/workspace [--wait-timeout-ms=60000]",
             ),
@@ -319,12 +331,12 @@ internal object CliCommandCatalog {
         CliCommandMetadata(
             path = listOf("capabilities"),
             group = CliCommandGroup.ANALYSIS,
-            summary = "Print the advertised capabilities for the ready workspace daemon.",
-            description = "Ensures the workspace has a ready daemon, then returns its current capability set as JSON.",
+            summary = "Print the advertised capabilities for the workspace daemon.",
+            description = "Ensures the workspace has a servable daemon, then returns its current capability set as JSON.",
             usages = listOf(
                 "$CLI_EXECUTABLE_NAME capabilities --workspace-root=/absolute/path/to/workspace [--wait-timeout-ms=60000]",
             ),
-            options = listOf(workspaceRootOption, waitTimeoutOption),
+            options = listOf(workspaceRootOption, waitTimeoutOption, noAutoStartOption),
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME capabilities --workspace-root=/absolute/path/to/workspace",
             ),
@@ -338,7 +350,7 @@ internal object CliCommandCatalog {
                 "$CLI_EXECUTABLE_NAME symbol resolve --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
                 "$CLI_EXECUTABLE_NAME symbol resolve --workspace-root=/absolute/path/to/workspace --file-path=/absolute/path/to/File.kt --offset=123",
             ),
-            options = listOf(workspaceRootOption, waitTimeoutOption, requestFileOption, filePathOption, offsetOption),
+            options = listOf(workspaceRootOption, waitTimeoutOption, noAutoStartOption, requestFileOption, filePathOption, offsetOption),
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME symbol resolve --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
             ),
@@ -355,6 +367,7 @@ internal object CliCommandCatalog {
             options = listOf(
                 workspaceRootOption,
                 waitTimeoutOption,
+                noAutoStartOption,
                 requestFileOption,
                 filePathOption,
                 offsetOption,
@@ -376,6 +389,7 @@ internal object CliCommandCatalog {
             options = listOf(
                 workspaceRootOption,
                 waitTimeoutOption,
+                noAutoStartOption,
                 requestFileOption,
                 filePathOption,
                 offsetOption,
@@ -402,6 +416,7 @@ internal object CliCommandCatalog {
             options = listOf(
                 workspaceRootOption,
                 waitTimeoutOption,
+                noAutoStartOption,
                 requestFileOption,
                 filePathOption,
                 offsetOption,
@@ -425,6 +440,7 @@ internal object CliCommandCatalog {
             options = listOf(
                 workspaceRootOption,
                 waitTimeoutOption,
+                noAutoStartOption,
                 requestFileOption,
                 filePathOption,
                 offsetOption,
@@ -443,7 +459,7 @@ internal object CliCommandCatalog {
                 "$CLI_EXECUTABLE_NAME diagnostics --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
                 "$CLI_EXECUTABLE_NAME diagnostics --workspace-root=/absolute/path/to/workspace --file-paths=/absolute/A.kt,/absolute/B.kt",
             ),
-            options = listOf(workspaceRootOption, waitTimeoutOption, requestFileOption, filePathsOption),
+            options = listOf(workspaceRootOption, waitTimeoutOption, noAutoStartOption, requestFileOption, filePathsOption),
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME diagnostics --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
             ),
@@ -460,6 +476,7 @@ internal object CliCommandCatalog {
             options = listOf(
                 workspaceRootOption,
                 waitTimeoutOption,
+                noAutoStartOption,
                 requestFileOption,
                 filePathOption,
                 offsetOption,
@@ -479,7 +496,7 @@ internal object CliCommandCatalog {
                 "$CLI_EXECUTABLE_NAME imports optimize --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
                 "$CLI_EXECUTABLE_NAME imports optimize --workspace-root=/absolute/path/to/workspace --file-paths=/absolute/A.kt,/absolute/B.kt",
             ),
-            options = listOf(workspaceRootOption, waitTimeoutOption, requestFileOption, filePathsOption),
+            options = listOf(workspaceRootOption, waitTimeoutOption, noAutoStartOption, requestFileOption, filePathsOption),
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME imports optimize --workspace-root=/absolute/path/to/workspace --file-paths=/absolute/path/to/File.kt",
             ),
@@ -492,7 +509,7 @@ internal object CliCommandCatalog {
             usages = listOf(
                 "$CLI_EXECUTABLE_NAME edits apply --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
             ),
-            options = listOf(workspaceRootOption, waitTimeoutOption, requestFileOption),
+            options = listOf(workspaceRootOption, waitTimeoutOption, noAutoStartOption, requestFileOption),
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME edits apply --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
             ),

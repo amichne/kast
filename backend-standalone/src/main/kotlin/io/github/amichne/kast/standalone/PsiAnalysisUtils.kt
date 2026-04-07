@@ -5,18 +5,22 @@ import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiField
 import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiModifier
+import com.intellij.psi.PsiModifierListOwner
 import com.intellij.psi.PsiNameIdentifierOwner
 import com.intellij.psi.PsiNamedElement
 import io.github.amichne.kast.api.Location
 import io.github.amichne.kast.api.NotFoundException
 import io.github.amichne.kast.api.Symbol
 import io.github.amichne.kast.api.SymbolKind
+import io.github.amichne.kast.api.SymbolVisibility
 import io.github.amichne.kast.api.TextEdit
 import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.symbols.classSymbol
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtClassOrObject
+import org.jetbrains.kotlin.psi.KtDeclarationWithBody
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtObjectDeclaration
@@ -56,6 +60,7 @@ internal fun PsiElement.toSymbolModel(
     type = typeDescription(),
     containingDeclaration = containingDeclaration,
     supertypes = supertypes,
+    visibility = visibility(),
 )
 
 private fun PsiElement.nameRange(): TextRange = when (this) {
@@ -74,6 +79,53 @@ internal fun PsiElement.declarationEdit(newName: String): TextEdit {
     )
 }
 
+/**
+ * Extracts the effective visibility of a PSI element.
+ *
+ * Kotlin declarations without an explicit modifier default to [SymbolVisibility.PUBLIC]
+ * at the top level, but declarations nested inside a function body or block expression
+ * are classified as [SymbolVisibility.LOCAL] since they are unreachable outside the
+ * enclosing scope.
+ *
+ * Java package-private (no modifier) maps to [SymbolVisibility.INTERNAL] as the closest
+ * Kotlin analog.
+ */
+internal fun PsiElement.visibility(): SymbolVisibility = when (this) {
+    is KtNamedDeclaration -> ktVisibility()
+    is PsiClass -> javaClassVisibility()
+    is PsiMethod -> javaMemberVisibility()
+    is PsiField -> javaMemberVisibility()
+    else -> SymbolVisibility.UNKNOWN
+}
+
+private fun KtNamedDeclaration.ktVisibility(): SymbolVisibility = when {
+    hasModifier(KtTokens.PRIVATE_KEYWORD) -> SymbolVisibility.PRIVATE
+    hasModifier(KtTokens.INTERNAL_KEYWORD) -> SymbolVisibility.INTERNAL
+    hasModifier(KtTokens.PROTECTED_KEYWORD) -> SymbolVisibility.PROTECTED
+    hasModifier(KtTokens.PUBLIC_KEYWORD) -> SymbolVisibility.PUBLIC
+    isLocalDeclaration() -> SymbolVisibility.LOCAL
+    else -> SymbolVisibility.PUBLIC // Kotlin default for top-level and class members
+}
+
+private fun KtNamedDeclaration.isLocalDeclaration(): Boolean =
+    parentsWithSelf().any { parent ->
+        parent !== this && parent is KtDeclarationWithBody
+    }
+
+private fun PsiClass.javaClassVisibility(): SymbolVisibility = when {
+    hasModifierProperty(PsiModifier.PRIVATE) -> SymbolVisibility.PRIVATE
+    hasModifierProperty(PsiModifier.PROTECTED) -> SymbolVisibility.PROTECTED
+    hasModifierProperty(PsiModifier.PUBLIC) -> SymbolVisibility.PUBLIC
+    else -> SymbolVisibility.INTERNAL // Java package-private ≈ internal
+}
+
+private fun PsiElement.javaMemberVisibility(): SymbolVisibility = when {
+    this is PsiModifierListOwner && hasModifierProperty(PsiModifier.PRIVATE) -> SymbolVisibility.PRIVATE
+    this is PsiModifierListOwner && hasModifierProperty(PsiModifier.PROTECTED) -> SymbolVisibility.PROTECTED
+    this is PsiModifierListOwner && hasModifierProperty(PsiModifier.PUBLIC) -> SymbolVisibility.PUBLIC
+    else -> SymbolVisibility.INTERNAL // Java package-private ≈ internal
+}
+
 private fun PsiElement.fqName(): String = when (this) {
     is KtNamedDeclaration -> fqName?.asString() ?: name ?: "<anonymous>"
     is PsiClass -> qualifiedName ?: name ?: "<anonymous>"
@@ -81,6 +133,44 @@ private fun PsiElement.fqName(): String = when (this) {
     is PsiField -> "${containingClass?.qualifiedName ?: "<local>"}.$name"
     is PsiNamedElement -> name ?: "<anonymous>"
     else -> text
+}
+
+/**
+ * Returns the fully qualified name and containing package of a target element,
+ * or `null` when either cannot be determined (e.g. anonymous or local declarations).
+ *
+ * For class members (methods, properties, fields), the package is derived from
+ * the containing file or class rather than from the member FQ name, so that
+ * import-aware filtering in [MutableSourceIdentifierIndex.candidatePathsForFqName]
+ * matches correctly against file-level package declarations.
+ */
+internal fun PsiElement.targetFqNameAndPackage(): Pair<String, String>? {
+    val fqn: String
+    val pkg: String
+    when (this) {
+        is KtNamedDeclaration -> {
+            fqn = fqName?.asString() ?: return null
+            pkg = (containingFile as? org.jetbrains.kotlin.psi.KtFile)
+                ?.packageFqName?.asString()
+                ?: fqn.substringBeforeLast('.', missingDelimiterValue = "")
+        }
+        is PsiClass -> {
+            fqn = qualifiedName ?: return null
+            pkg = fqn.substringBeforeLast('.', missingDelimiterValue = "")
+        }
+        is PsiMethod -> {
+            val classFqn = containingClass?.qualifiedName ?: return null
+            fqn = "$classFqn.$name"
+            pkg = classFqn.substringBeforeLast('.', missingDelimiterValue = "")
+        }
+        is PsiField -> {
+            val classFqn = containingClass?.qualifiedName ?: return null
+            fqn = "$classFqn.$name"
+            pkg = classFqn.substringBeforeLast('.', missingDelimiterValue = "")
+        }
+        else -> return null
+    }
+    return fqn to pkg
 }
 
 private fun PsiElement.kind(): SymbolKind = when (this) {

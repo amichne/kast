@@ -189,6 +189,8 @@ internal data class ParsedArguments(
             backendName = requestedBackendName,
             waitTimeoutMillis = options["wait-timeout-ms"]?.toLongOrNull() ?: 60_000L,
             standaloneOptions = standaloneOptions,
+            acceptIndexing = optionalBoolean("accept-indexing", false),
+            noAutoStart = optionalBoolean("no-auto-start", false),
         )
     }
 

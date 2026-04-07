@@ -16,6 +16,7 @@ import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.jvm.tasks.Jar
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.gradle.kotlin.dsl.creating
 import org.gradle.kotlin.dsl.getByType
 import java.nio.file.AtomicMoveNotSupportedException
@@ -24,11 +25,17 @@ import java.nio.file.StandardCopyOption
 import java.util.zip.ZipFile
 
 plugins {
-    id("kast.standalone-app")
+    id("kast.standalone-serialization-app")
 }
 
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
 private val intellijIdeaVersion = catalog.findVersion("intellij-idea").get().requiredVersion
+private val serializationVersion = catalog.findVersion("serialization").get().requiredVersion
+
+private val prioritizedSerializationRuntime = configurations.detachedConfiguration(
+    dependencies.create("org.jetbrains.kotlinx:kotlinx-serialization-core:$serializationVersion"),
+    dependencies.create("org.jetbrains.kotlinx:kotlinx-serialization-json:$serializationVersion"),
+)
 
 val ideaDistribution: Configuration by configurations.creating {
     isCanBeConsumed = false
@@ -129,6 +136,11 @@ private val compatCompileLibs: ConfigurableFileCollection = extractedIdeaFiles {
     exclude("**/plugins/**")
     exclude("**/testFramework.jar")
     exclude("**/testFramework-k1.jar")
+    // Linux CI can pick the IntelliJ-bundled serialization jars ahead of the
+    // Gradle-resolved runtime, which breaks the Kotlin serialization plugin's
+    // version detection for @Serializable declarations in this module.
+    exclude("**/module-intellij.libraries.kotlinx.serialization.core.jar")
+    exclude("**/module-intellij.libraries.kotlinx.serialization.json.jar")
 }
 
 @CacheableTask
@@ -287,8 +299,23 @@ dependencies {
     implementation(libs.logback.classic)
     implementation(libs.opentelemetry.api)
     implementation(libs.opentelemetry.sdk)
-    implementation(libs.serialization.json)
+
     testImplementation(project(":shared-testing"))
     // IJ platform Logger.setFactory() references junit.rules.TestRule at class-init time.
     testRuntimeOnly(libs.junit4)
+}
+
+tasks.withType<KotlinCompile>().configureEach {
+    if (name != "compileKotlin") {
+        return@configureEach
+    }
+
+    doFirst {
+        val currentLibraries = libraries.files
+        // IntelliJ's bundled ktor-utils jar also contains kotlinx.serialization
+        // core classes but no version metadata. On Linux it can appear before the
+        // real runtime on the compiler classpath, which breaks the serialization
+        // plugin's runtime version check for @Serializable declarations.
+        libraries.setFrom(prioritizedSerializationRuntime, currentLibraries)
+    }
 }

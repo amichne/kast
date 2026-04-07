@@ -54,5 +54,7 @@ test = [
 ]
 
 [plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 graalvm-native = { id = "org.graalvm.buildtools.native", version = "1.0.0" }
 shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }

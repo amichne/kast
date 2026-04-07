@@ -24,6 +24,7 @@ internal data class CliExecutionResult(
 internal data class RuntimeAttachedResult<out T>(
     val payload: T,
     val runtime: RuntimeCandidateStatus,
+    val daemonNote: String? = null,
 )
 
 internal interface CliCommandExecutor {
@@ -68,7 +69,7 @@ internal class DefaultCliCommandExecutor(
                 val result = cliService.workspaceRefresh(command.options, command.query)
                 CliExecutionResult(
                     output = CliOutput.JsonValue(result.payload),
-                    daemonNote = daemonNoteForRuntime(result.runtime),
+                    daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
                 )
             }
 
@@ -92,7 +93,7 @@ internal class DefaultCliCommandExecutor(
                 val result = cliService.capabilities(command.options)
                 CliExecutionResult(
                     output = CliOutput.JsonValue(result.payload),
-                    daemonNote = daemonNoteForRuntime(result.runtime),
+                    daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
                 )
             }
 
@@ -100,7 +101,7 @@ internal class DefaultCliCommandExecutor(
                 val result = cliService.resolveSymbol(command.options, command.query)
                 CliExecutionResult(
                     output = CliOutput.JsonValue(result.payload),
-                    daemonNote = daemonNoteForRuntime(result.runtime),
+                    daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
                 )
             }
 
@@ -108,7 +109,7 @@ internal class DefaultCliCommandExecutor(
                 val result = cliService.findReferences(command.options, command.query)
                 CliExecutionResult(
                     output = CliOutput.JsonValue(result.payload),
-                    daemonNote = daemonNoteForRuntime(result.runtime),
+                    daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
                 )
             }
 
@@ -116,7 +117,7 @@ internal class DefaultCliCommandExecutor(
                 val result = cliService.callHierarchy(command.options, command.query)
                 CliExecutionResult(
                     output = CliOutput.JsonValue(result.payload),
-                    daemonNote = daemonNoteForRuntime(result.runtime),
+                    daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
                 )
             }
 
@@ -124,7 +125,7 @@ internal class DefaultCliCommandExecutor(
                 val result = cliService.typeHierarchy(command.options, command.query)
                 CliExecutionResult(
                     output = CliOutput.JsonValue(result.payload),
-                    daemonNote = daemonNoteForRuntime(result.runtime),
+                    daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
                 )
             }
 
@@ -132,7 +133,7 @@ internal class DefaultCliCommandExecutor(
                 val result = cliService.semanticInsertionPoint(command.options, command.query)
                 CliExecutionResult(
                     output = CliOutput.JsonValue(result.payload),
-                    daemonNote = daemonNoteForRuntime(result.runtime),
+                    daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
                 )
             }
 
@@ -140,7 +141,7 @@ internal class DefaultCliCommandExecutor(
                 val result = cliService.diagnostics(command.options, command.query)
                 CliExecutionResult(
                     output = CliOutput.JsonValue(result.payload),
-                    daemonNote = daemonNoteForRuntime(result.runtime),
+                    daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
                 )
             }
 
@@ -148,7 +149,7 @@ internal class DefaultCliCommandExecutor(
                 val result = cliService.rename(command.options, command.query)
                 CliExecutionResult(
                     output = CliOutput.JsonValue(result.payload),
-                    daemonNote = daemonNoteForRuntime(result.runtime),
+                    daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
                 )
             }
 
@@ -156,7 +157,7 @@ internal class DefaultCliCommandExecutor(
                 val result = cliService.optimizeImports(command.options, command.query)
                 CliExecutionResult(
                     output = CliOutput.JsonValue(result.payload),
-                    daemonNote = daemonNoteForRuntime(result.runtime),
+                    daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
                 )
             }
 
@@ -164,7 +165,7 @@ internal class DefaultCliCommandExecutor(
                 val result = cliService.applyEdits(command.options, command.query)
                 CliExecutionResult(
                     output = CliOutput.JsonValue(result.payload),
-                    daemonNote = daemonNoteForRuntime(result.runtime),
+                    daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
                 )
             }
 

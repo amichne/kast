@@ -5,10 +5,11 @@ Full syntax, JSON schemas, and request-file formats for all public kast commands
 > **Output redirection:** The JSON-returning command examples below show bare
 > invocations for readability. In practice, redirect them per the SKILL.md
 > bootstrap pattern: `> "$KAST_RESULT" 2> "$KAST_STDERR"`. Read
-> `$KAST_RESULT` for the JSON result. Only read `$KAST_STDERR` when the exit
-> code is non-zero. `kast smoke` follows the same JSON-first contract by
-> default and only switches to human-readable markdown when you pass
-> `--format=markdown`.
+> `$KAST_RESULT` for the JSON result. When the exit code is non-zero, read
+> `$KAST_STDERR` for the error. On success, `$KAST_STDERR` may still contain a
+> daemon note, such as an auto-start message or `state: INDEXING`. `kast smoke`
+> follows the same JSON-first contract by default and only switches to
+> human-readable markdown when you pass `--format=markdown`.
 
 ---
 
@@ -19,10 +20,14 @@ Every command accepts:
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `--workspace-root=` | absolute path | required | Workspace root to analyze |
-| `--wait-timeout-ms=` | integer ms | 60000 | Max wait for a ready daemon |
+| `--wait-timeout-ms=` | integer ms | 60000 | Max wait for the daemon state required by the command |
 | `--request-file=` | absolute path | — | JSON request payload on disk |
 
 All options use `--key=value` syntax. No positional arguments.
+
+Runtime-dependent read, mutation, and refresh commands also accept
+`--no-auto-start=true`. `workspace ensure` accepts `--accept-indexing=true`
+and still waits for `READY` by default.
 
 ---
 
@@ -36,43 +41,47 @@ Inspect daemon descriptors, liveness, and readiness.
 kast workspace status --workspace-root=/absolute/path
 ```
 
-**Output — array of `RuntimeStatusResponse`:**
+**Output — `WorkspaceStatusResult`:**
 
-```json
-[
-  {
-    "state": "READY",
-    "healthy": true,
-    "active": true,
-    "indexing": false,
-    "backendName": "kotlin-analysis",
-    "backendVersion": "1.0.0",
-    "workspaceRoot": "/absolute/path",
-    "message": null,
-    "schemaVersion": 1
-  }
-]
-```
+- `workspaceRoot` — absolute workspace root
+- `descriptorDirectory` — absolute `.kast/instances` directory
+- `selected` — the preferred `RuntimeCandidateStatus`, or `null`
+- `candidates` — every registered `RuntimeCandidateStatus` for the workspace
 
-`state` values: `STARTING` | `INDEXING` | `READY` | `DEGRADED`
+Each `RuntimeCandidateStatus` includes:
 
-`active` = the selected daemon (true for at most one entry). `healthy` = process is live and responding. `indexing` = still building the index (queries may be slow or empty).
+- `descriptorPath` and the parsed `descriptor`
+- `pidAlive`, `reachable`, and `ready`
+- optional `runtimeStatus`, including `state`
+  (`STARTING` | `INDEXING` | `READY` | `DEGRADED`)
+- optional `capabilities`
+- optional `errorMessage`
 
-**Errors:** None specific. Exit 0 with empty array if no descriptor exists.
+**Errors:** None specific. Exit 0 with `selected = null` and an empty
+`candidates` array if no descriptor exists.
 
 ---
 
 ### `workspace ensure`
 
-Reuse a ready daemon or start one; waits until ready before returning.
+Explicitly prewarm or reuse a standalone daemon.
 
 ```
 kast workspace ensure \
   --workspace-root=/absolute/path \
-  [--wait-timeout-ms=60000]
+  [--wait-timeout-ms=60000] \
+  [--accept-indexing=true]
 ```
 
-**Output — `RuntimeStatusResponse`** (same schema as above, `state` = `READY`).
+By default, `workspace ensure` waits for `READY`. Add
+`--accept-indexing=true` to return once the daemon is servable in `INDEXING`.
+
+**Output — `WorkspaceEnsureResult`:**
+
+- `workspaceRoot`
+- `started` — `true` when this command launched a new daemon
+- optional `logFile`
+- `selected` — the chosen `RuntimeCandidateStatus`
 
 **Errors:**
 - Timeout exceeded: exit non-zero, message on stderr.
@@ -92,7 +101,10 @@ kast daemon start \
   [--wait-timeout-ms=60000]
 ```
 
-**Output — `RuntimeStatusResponse`** (`state` = `READY`).
+This command is deprecated. Prefer `workspace ensure` or let analysis commands
+auto-start the daemon.
+
+**Output — `WorkspaceEnsureResult`** (`selected.runtimeStatus.state` = `READY`).
 
 **Errors:** Same timeout behavior as `workspace ensure`.
 
@@ -106,7 +118,8 @@ Stop the registered daemon for a workspace and remove its descriptor.
 kast daemon stop --workspace-root=/absolute/path
 ```
 
-**Output — `RuntimeStatusResponse`** (the state of the daemon just before it was stopped).
+**Output — `DaemonStopResult`** with `stopped`, optional `descriptorPath`, and
+optional `pid`.
 
 **Errors:** Exit non-zero if no daemon is registered.
 
@@ -114,13 +127,16 @@ kast daemon stop --workspace-root=/absolute/path
 
 ## `capabilities`
 
-Print the capability set of the ready daemon.
+Print the capability set of a servable daemon.
 
 ```
 kast capabilities \
   --workspace-root=/absolute/path \
   [--wait-timeout-ms=60000]
 ```
+
+This command auto-starts the daemon when needed unless you add
+`--no-auto-start=true`.
 
 **Output — `BackendCapabilities`:**
 

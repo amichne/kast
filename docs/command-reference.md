@@ -32,6 +32,12 @@ stdout. Daemon notes, when present, print on stderr after the command.
 `kast smoke` follows the same default and can render a markdown report when you
 pass `--format=markdown`.
 
+Runtime-dependent commands can auto-start a standalone daemon when needed. They
+attach once the daemon is servable, which can happen during `INDEXING`. Pass
+`--no-auto-start=true` when automation must fail instead of starting a daemon.
+`workspace ensure` remains the explicit prewarm command and waits for `READY`
+unless you add `--accept-indexing=true`.
+
 When Kast detects an interactive terminal, the help pages use ANSI color. If
 you need color in another context, set `CLICOLOR_FORCE=1` before you run the
 help command.
@@ -54,15 +60,18 @@ for one workspace.
 | Command | Purpose | Key options | Notes |
 | --- | --- | --- | --- |
 | `workspace status` | Inspect registered descriptors, liveness, and readiness | `--workspace-root` | Reports the selected daemon plus any additional descriptors for the same workspace |
-| `workspace ensure` | Reuse a ready daemon or start one | `--workspace-root`, `--wait-timeout-ms` | Uses a `60000` millisecond wait timeout unless you override it |
+| `workspace ensure` | Explicitly prewarm or reuse a standalone daemon | `--workspace-root`, `--wait-timeout-ms`, optional `--accept-indexing=true` | Waits for `READY` by default; `--accept-indexing=true` returns once the daemon is servable in `INDEXING` |
 | `workspace refresh` | Force a targeted or full workspace state refresh | `--workspace-root`, optional `--file-paths` | Use this as a manual recovery path; omit `--file-paths` for a full refresh |
-| `daemon start` | Start a detached standalone daemon explicitly | `--workspace-root`, `--wait-timeout-ms` | Useful when you want a direct start instead of an ensure |
+| `daemon start` | Start a detached standalone daemon explicitly | `--workspace-root`, `--wait-timeout-ms` | Deprecated; use `workspace ensure` or let analysis commands auto-start |
 | `daemon stop` | Stop the selected standalone daemon | `--workspace-root` | Removes the selected descriptor and reports what stopped |
 
 ## Read commands
 
-Use these commands when you want read-only analysis against a ready workspace
+Use these commands when you want read-only analysis against a live workspace
 runtime.
+
+All read commands also accept `--no-auto-start=true` when you want them to fail
+instead of creating a daemon implicitly.
 
 | Command | Purpose | Input shape | Notes |
 | --- | --- | --- | --- |
@@ -76,6 +85,8 @@ runtime.
 
 Use these commands when you want Kast to produce or apply code edits through
 the supported mutation flow.
+
+Mutation commands also accept `--no-auto-start=true`.
 
 | Command | Purpose | Input shape | Notes |
 | --- | --- | --- | --- |

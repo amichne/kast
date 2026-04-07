@@ -2,6 +2,7 @@ package io.github.amichne.kast.standalone
 
 import io.github.amichne.kast.api.DiagnosticSeverity
 import io.github.amichne.kast.api.DiagnosticsQuery
+import io.github.amichne.kast.api.RefreshQuery
 import io.github.amichne.kast.api.ReadCapability
 import io.github.amichne.kast.api.ServerLimits
 import kotlinx.coroutines.test.TestResult
@@ -60,6 +61,77 @@ class StandaloneAnalysisBackendDiagnosticsTest {
     }
 
     @Test
+    fun `targeted refresh rebuilds analysis state for structural dependency changes`(): TestResult = runTest {
+        val usageFile = writeFile(
+            relativePath = "src/main/kotlin/sample/Use.kt",
+            content = """
+                package sample
+
+                fun use(): String = greet()
+            """.trimIndent() + "\n",
+        )
+        val helperFile = workspaceRoot.resolve("src/main/kotlin/sample/Greeter.kt")
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "sources",
+        )
+        session.use { session ->
+            val backend = StandaloneAnalysisBackend(
+                workspaceRoot = workspaceRoot,
+                limits = ServerLimits(
+                    maxResults = 100,
+                    requestTimeoutMillis = 30_000,
+                    maxConcurrentRequests = 4,
+                ),
+                session = session,
+            )
+
+            val initialDiagnostics = backend.diagnostics(
+                DiagnosticsQuery(
+                    filePaths = listOf(usageFile.toString()),
+                ),
+            )
+
+            assertTrue(initialDiagnostics.diagnostics.any { diagnostic -> diagnostic.code == "UNRESOLVED_REFERENCE" })
+
+            Files.createDirectories(helperFile.parent)
+            helperFile.writeText(
+                """
+                    package sample
+
+                    fun greet(): String = "hi"
+                """.trimIndent() + "\n",
+            )
+
+            val createdRefresh = backend.refresh(RefreshQuery(filePaths = listOf(helperFile.toString())))
+
+            assertEquals(listOf(normalizePath(helperFile)), createdRefresh.refreshedFiles)
+            assertTrue(
+                backend.diagnostics(
+                    DiagnosticsQuery(
+                        filePaths = listOf(usageFile.toString()),
+                    ),
+                ).diagnostics.isEmpty(),
+            )
+
+            Files.delete(helperFile)
+
+            val deletedRefresh = backend.refresh(RefreshQuery(filePaths = listOf(helperFile.toString())))
+
+            assertEquals(listOf(normalizePath(helperFile)), deletedRefresh.removedFiles)
+            assertTrue(
+                backend.diagnostics(
+                    DiagnosticsQuery(
+                        filePaths = listOf(usageFile.toString()),
+                    ),
+                ).diagnostics.any { diagnostic -> diagnostic.code == "UNRESOLVED_REFERENCE" },
+            )
+        }
+    }
+
+    @Test
     fun `capabilities advertise diagnostics after implementation`(): TestResult = runTest {
         writeFile(
             relativePath = "src/main/kotlin/sample/Broken.kt",
@@ -103,7 +175,6 @@ class StandaloneAnalysisBackendDiagnosticsTest {
     }
 
     private fun normalizePath(path: Path): String {
-        val absolutePath = path.toAbsolutePath().normalize()
-        return runCatching { absolutePath.toRealPath().normalize().toString() }.getOrDefault(absolutePath.toString())
+        return normalizeStandalonePath(path).toString()
     }
 }

@@ -2,12 +2,32 @@ package io.github.amichne.kast.standalone
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.nio.file.Path
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
 class GradleWorkspaceDiscoveryTest {
+    @Test
+    fun `resolve tooling api timeout millis scales with module count`() {
+        assertEquals(defaultToolingApiTimeoutMillis, resolveToolingApiTimeoutMillis(moduleCount = 50))
+        assertEquals(60_000L, resolveToolingApiTimeoutMillis(moduleCount = 300))
+        assertEquals(300_000L, resolveToolingApiTimeoutMillis(moduleCount = 2_000))
+    }
+
+    @Test
+    fun `resolve tooling api timeout millis respects env var override`() {
+        val timeoutMillis = resolveToolingApiTimeoutMillis(
+            moduleCount = 950,
+            envReader = { name -> if (name == "KAST_GRADLE_TOOLING_TIMEOUT_MS") "123456" else null },
+        )
+
+        assertEquals(123_456L, timeoutMillis)
+    }
+
     @Test
     fun `build standalone workspace layout preserves main, testFixtures, and test source set semantics`() {
         val lib = GradleModuleModel(
@@ -310,7 +330,7 @@ class GradleWorkspaceDiscoveryTest {
         val result = GradleWorkspaceDiscovery.enrichStaticModulesWithToolingApiLibraries(
             workspaceRoot = Path.of("/workspace"),
             staticModules = staticModules,
-            toolingApiLoader = {
+            toolingApiLoader = { _, _ ->
                 throw TimeoutException("tooling api timed out")
             },
             warningSink = { warning -> warningMessages.add(warning) },
@@ -347,7 +367,7 @@ class GradleWorkspaceDiscoveryTest {
         val result = GradleWorkspaceDiscovery.enrichStaticModulesWithToolingApiLibraries(
             workspaceRoot = Path.of("/workspace"),
             staticModules = staticModules,
-            toolingApiLoader = {
+            toolingApiLoader = { _, _ ->
                 listOf(
                     GradleModuleModel(
                         gradlePath = ":app",
@@ -366,4 +386,208 @@ class GradleWorkspaceDiscoveryTest {
         assertTrue(mergedDependencies.contains(moduleDependency))
         assertTrue(mergedDependencies.contains(libraryDependency))
     }
+
+    @Test
+    fun `discoverPhased returns static layout immediately when tooling api is slow`() {
+        val staticModules = listOf(
+            gradleModule(
+                gradlePath = ":app",
+                mainSourceRoots = listOf(Path.of("/workspace/app/src/main/kotlin")),
+            ),
+        )
+        val settingsSnapshot = largeSettingsSnapshot(moduleCount = 250)
+        val unblockToolingApi = CountDownLatch(1)
+
+        val startNanos = System.nanoTime()
+        val result = GradleWorkspaceDiscovery.discoverPhased(
+            workspaceRoot = Path.of("/workspace"),
+            extraClasspathRoots = emptyList(),
+            settingsSnapshot = settingsSnapshot,
+            staticModulesProvider = { staticModules },
+            toolingApiLoader = { _, _ ->
+                unblockToolingApi.await()
+                staticModules
+            },
+        )
+        val elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos)
+
+        try {
+            assertTrue(elapsedMillis < 100, "expected phased discovery to return immediately, took ${elapsedMillis}ms")
+            assertEquals(
+                GradleWorkspaceDiscovery.buildStandaloneWorkspaceLayout(staticModules, extraClasspathRoots = emptyList()).sourceModules,
+                result.initialLayout.sourceModules,
+            )
+            assertFalse(checkNotNull(result.enrichmentFuture).isDone)
+            unblockToolingApi.countDown()
+            assertEquals(
+                result.initialLayout.sourceModules,
+                result.enrichmentFuture.get(1, TimeUnit.SECONDS).sourceModules,
+            )
+        } finally {
+            unblockToolingApi.countDown()
+        }
+    }
+
+    @Test
+    fun `discoverPhased enrichment future merges tooling api results`() {
+        val staticModules = listOf(
+            gradleModule(
+                gradlePath = ":app",
+                mainSourceRoots = listOf(Path.of("/workspace/app/src/main/kotlin")),
+                dependencies = listOf(
+                    GradleDependency.ModuleDependency(
+                        targetIdeaModuleName = ":lib",
+                        scope = GradleDependencyScope.COMPILE,
+                    ),
+                ),
+            ),
+            gradleModule(
+                gradlePath = ":lib",
+                mainSourceRoots = listOf(Path.of("/workspace/lib/src/main/kotlin")),
+            ),
+        )
+        val libraryDependency = GradleDependency.LibraryDependency(
+            binaryRoot = Path.of("/deps/runtime.jar"),
+            scope = GradleDependencyScope.RUNTIME,
+        )
+
+        val result = GradleWorkspaceDiscovery.discoverPhased(
+            workspaceRoot = Path.of("/workspace"),
+            extraClasspathRoots = emptyList(),
+            settingsSnapshot = largeSettingsSnapshot(moduleCount = 250),
+            staticModulesProvider = { staticModules },
+            toolingApiLoader = { _, _ ->
+                listOf(
+                    gradleModule(
+                        gradlePath = ":app",
+                        mainSourceRoots = listOf(Path.of("/workspace/app/src/main/kotlin")),
+                        dependencies = listOf(libraryDependency),
+                    ),
+                    gradleModule(
+                        gradlePath = ":lib",
+                        mainSourceRoots = listOf(Path.of("/workspace/lib/src/main/kotlin")),
+                    ),
+                )
+            },
+        )
+
+        val enrichedLayout = checkNotNull(result.enrichmentFuture).get(1, TimeUnit.SECONDS)
+        val modulesByName = enrichedLayout.sourceModules.associateBy(StandaloneSourceModuleSpec::name)
+
+        assertEquals(listOf(":lib[main]"), modulesByName.getValue(":app[main]").dependencyModuleNames)
+        assertTrue(modulesByName.getValue(":app[main]").binaryRoots.contains(Path.of("/deps/runtime.jar")))
+    }
+
+    @Test
+    fun `discoverPhased enrichment future tolerates tooling api failure`() {
+        val staticModules = listOf(
+            gradleModule(
+                gradlePath = ":app",
+                mainSourceRoots = listOf(Path.of("/workspace/app/src/main/kotlin")),
+            ),
+        )
+
+        val result = GradleWorkspaceDiscovery.discoverPhased(
+            workspaceRoot = Path.of("/workspace"),
+            extraClasspathRoots = emptyList(),
+            settingsSnapshot = largeSettingsSnapshot(moduleCount = 250),
+            staticModulesProvider = { staticModules },
+            toolingApiLoader = { _, _ ->
+                throw TimeoutException("tooling api timed out")
+            },
+        )
+
+        val enrichedLayout = checkNotNull(result.enrichmentFuture).get(1, TimeUnit.SECONDS)
+
+        assertEquals(result.initialLayout.sourceModules, enrichedLayout.sourceModules)
+        assertTrue(enrichedLayout.diagnostics.warnings.any { warning -> warning.contains("timed out") })
+    }
+
+    @Test
+    fun `discoverPhased with small project skips phased approach`() {
+        val staticModules = listOf(
+            gradleModule(
+                gradlePath = ":app",
+                mainSourceRoots = listOf(Path.of("/workspace/app/src/main/kotlin")),
+                dependencies = listOf(
+                    GradleDependency.ModuleDependency(
+                        targetIdeaModuleName = ":lib",
+                        scope = GradleDependencyScope.COMPILE,
+                    ),
+                ),
+            ),
+            gradleModule(
+                gradlePath = ":lib",
+                mainSourceRoots = listOf(Path.of("/workspace/lib/src/main/kotlin")),
+            ),
+        )
+        val toolingModules = listOf(
+            gradleModule(
+                gradlePath = ":app",
+                mainSourceRoots = listOf(Path.of("/workspace/app/src/main/kotlin")),
+                dependencies = listOf(
+                    GradleDependency.ModuleDependency(
+                        targetIdeaModuleName = ":lib",
+                        scope = GradleDependencyScope.COMPILE,
+                    ),
+                    GradleDependency.LibraryDependency(
+                        binaryRoot = Path.of("/deps/runtime.jar"),
+                        scope = GradleDependencyScope.RUNTIME,
+                    ),
+                ),
+            ),
+            gradleModule(
+                gradlePath = ":lib",
+                mainSourceRoots = listOf(Path.of("/workspace/lib/src/main/kotlin")),
+            ),
+        )
+        val settingsSnapshot = GradleSettingsSnapshot(
+            includedProjectPaths = listOf(":app", ":lib"),
+            hasCompositeBuilds = false,
+        )
+
+        val phased = GradleWorkspaceDiscovery.discoverPhased(
+            workspaceRoot = Path.of("/workspace"),
+            extraClasspathRoots = emptyList(),
+            settingsSnapshot = settingsSnapshot,
+            staticModulesProvider = { staticModules },
+            toolingApiLoader = { _, _ -> toolingModules },
+        )
+        val direct = GradleWorkspaceDiscovery.discover(
+            workspaceRoot = Path.of("/workspace"),
+            extraClasspathRoots = emptyList(),
+            settingsSnapshot = settingsSnapshot,
+            staticModulesProvider = { staticModules },
+            toolingApiLoader = { _, _ -> toolingModules },
+        )
+
+        assertNull(phased.enrichmentFuture)
+        assertEquals(direct, phased.initialLayout)
+    }
+
+    private fun gradleModule(
+        gradlePath: String,
+        mainSourceRoots: List<Path>,
+        testSourceRoots: List<Path> = emptyList(),
+        testFixturesSourceRoots: List<Path> = emptyList(),
+        mainOutputRoots: List<Path> = emptyList(),
+        testOutputRoots: List<Path> = emptyList(),
+        testFixturesOutputRoots: List<Path> = emptyList(),
+        dependencies: List<GradleDependency> = emptyList(),
+    ): GradleModuleModel = GradleModuleModel(
+        gradlePath = gradlePath,
+        ideaModuleName = gradlePath,
+        mainSourceRoots = mainSourceRoots,
+        testSourceRoots = testSourceRoots,
+        testFixturesSourceRoots = testFixturesSourceRoots,
+        mainOutputRoots = mainOutputRoots,
+        testOutputRoots = testOutputRoots,
+        testFixturesOutputRoots = testFixturesOutputRoots,
+        dependencies = dependencies,
+    )
+
+    private fun largeSettingsSnapshot(moduleCount: Int): GradleSettingsSnapshot = GradleSettingsSnapshot(
+        includedProjectPaths = (1..moduleCount).map { index -> ":module$index" },
+        hasCompositeBuilds = false,
+    )
 }
