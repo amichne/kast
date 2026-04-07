@@ -395,7 +395,9 @@ internal class StandaloneAnalysisSession(
             enrichmentComplete = true
             enrichmentReady.complete(Unit)
             workspaceRefreshWatcher?.refreshSourceRoots(resolvedSourceRoots)
-        }
+    private fun rebuildWorkspaceLayout(workspaceLayout: StandaloneWorkspaceLayout) {
+        analysisSessionLock.write {
+            val previousSessionDisposable = sessionStateDisposable
     }
 
     private fun rebuildWorkspaceLayout(workspaceLayout: StandaloneWorkspaceLayout) {
