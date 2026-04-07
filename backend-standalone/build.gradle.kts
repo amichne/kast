@@ -129,6 +129,11 @@ private val compatCompileLibs: ConfigurableFileCollection = extractedIdeaFiles {
     exclude("**/plugins/**")
     exclude("**/testFramework.jar")
     exclude("**/testFramework-k1.jar")
+    // Linux CI can pick the IntelliJ-bundled serialization jars ahead of the
+    // Gradle-resolved runtime, which breaks the Kotlin serialization plugin's
+    // version detection for @Serializable declarations in this module.
+    exclude("**/module-intellij.libraries.kotlinx.serialization.core.jar")
+    exclude("**/module-intellij.libraries.kotlinx.serialization.json.jar")
 }
 
 @CacheableTask
