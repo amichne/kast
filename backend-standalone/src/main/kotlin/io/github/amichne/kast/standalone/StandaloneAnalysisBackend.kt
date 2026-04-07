@@ -320,22 +320,16 @@ internal class StandaloneAnalysisBackend internal constructor(
         }
 
         val declaringFile = target.containingFile as? KtFile
-        val searchIdentifier = target.referenceSearchIdentifier()
-        if (searchIdentifier == null) {
-            val files = listOfNotNull(declaringFile)
-            return CandidateSearchResult(
-                files = files,
-                scope = SearchScope(
-                    visibility = visibility,
-                    scope = SearchScopeKind.FILE,
-                    exhaustive = true,
-                    candidateFileCount = files.size,
-                    searchedFileCount = files.size,
-                ),
-            )
-        }
         val anchorFilePath = target.containingFile.virtualFile?.path
             ?: target.containingFile.viewProvider.virtualFile.path
+        val searchIdentifier = target.referenceSearchIdentifier()
+        if (searchIdentifier == null) {
+            return candidateReferenceFilesWithoutIdentifier(
+                declaringFile = declaringFile,
+                visibility = visibility,
+                anchorFilePath = anchorFilePath,
+            )
+        }
 
         val fqNameAndPackage = target.targetFqNameAndPackage()
         val candidatePaths = if (fqNameAndPackage != null) {
@@ -395,6 +389,59 @@ internal class StandaloneAnalysisBackend internal constructor(
                 exhaustive = capped.size == candidatePaths.size,
                 candidateFileCount = candidatePaths.size,
                 searchedFileCount = capped.size,
+            ),
+        )
+    }
+
+    private fun candidateReferenceFilesWithoutIdentifier(
+        declaringFile: KtFile?,
+        visibility: SymbolVisibility,
+        anchorFilePath: String,
+    ): CandidateSearchResult {
+        val allFiles = session.allKtFiles()
+        if (allFiles.isEmpty()) {
+            val files = listOfNotNull(declaringFile)
+            return CandidateSearchResult(
+                files = files,
+                scope = SearchScope(
+                    visibility = visibility,
+                    scope = SearchScopeKind.FILE,
+                    exhaustive = true,
+                    candidateFileCount = files.size,
+                    searchedFileCount = files.size,
+                ),
+            )
+        }
+
+        if (visibility == SymbolVisibility.INTERNAL) {
+            val declaringModuleName = session.sourceModuleNameForFile(anchorFilePath)
+            if (declaringModuleName != null) {
+                val moduleFiltered = allFiles.filter { candidateFile ->
+                    session.sourceModuleNameForFile(candidateFile.lookupPath()) == declaringModuleName
+                }
+                if (moduleFiltered.isNotEmpty()) {
+                    return CandidateSearchResult(
+                        files = moduleFiltered,
+                        scope = SearchScope(
+                            visibility = visibility,
+                            scope = SearchScopeKind.MODULE,
+                            exhaustive = true,
+                            candidateFileCount = allFiles.size,
+                            searchedFileCount = moduleFiltered.size,
+                        ),
+                    )
+                }
+            }
+        }
+
+        return CandidateSearchResult(
+            files = allFiles,
+            scope = SearchScope(
+                visibility = visibility,
+                scope = SearchScopeKind.DEPENDENT_MODULES,
+                exhaustive = true,
+                candidateFileCount = allFiles.size,
+                searchedFileCount = allFiles.size,
             ),
         )
     }
@@ -551,6 +598,8 @@ private data class CandidateSearchResult(
     val files: List<KtFile>,
     val scope: SearchScope,
 )
+
+private fun KtFile.lookupPath(): String = virtualFile?.path ?: viewProvider.virtualFile.path
 
 /**
  * Parallel `flatMap` over a list using Java parallel streams.

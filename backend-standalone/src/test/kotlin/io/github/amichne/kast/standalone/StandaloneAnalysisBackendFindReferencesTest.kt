@@ -431,6 +431,68 @@ class StandaloneAnalysisBackendFindReferencesTest {
     }
 
     @Test
+    fun `operator function references include explicit and operator-syntax call sites`(): TestResult = runTest {
+        val declarationFile = writeFile(
+            relativePath = "src/main/kotlin/sample/Vector.kt",
+            content = """
+                package sample
+
+                data class Vector(val x: Int, val y: Int) {
+                    operator fun plus(other: Vector): Vector = Vector(x + other.x, y + other.y)
+                }
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "src/main/kotlin/sample/ExplicitUsage.kt",
+            content = """
+                package sample
+
+                fun addExplicit(a: Vector, b: Vector): Vector = a.plus(b)
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "src/main/kotlin/sample/OperatorUsage.kt",
+            content = """
+                package sample
+
+                fun addOperator(a: Vector, b: Vector): Vector = a + b
+            """.trimIndent() + "\n",
+        )
+        val queryOffset = Files.readString(declarationFile).indexOf("plus")
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "sources",
+        )
+        session.use { session ->
+            val backend = StandaloneAnalysisBackend(
+                workspaceRoot = workspaceRoot,
+                limits = ServerLimits(
+                    maxResults = 100,
+                    requestTimeoutMillis = 30_000,
+                    maxConcurrentRequests = 4,
+                ),
+                session = session,
+            )
+
+            val result = backend.findReferences(
+                ReferencesQuery(
+                    position = FilePosition(
+                        filePath = declarationFile.toString(),
+                        offset = queryOffset,
+                    ),
+                    includeDeclaration = false,
+                ),
+            )
+
+            val referenceFiles = result.references.map { it.filePath }.distinct()
+            assertTrue(referenceFiles.any { it.contains("ExplicitUsage.kt") })
+            assertTrue(referenceFiles.any { it.contains("OperatorUsage.kt") })
+        }
+    }
+
+    @Test
     fun `references result includes searchScope for private function`(): TestResult = runTest {
         val declarationFile = writeFile(
             relativePath = "src/main/kotlin/sample/Scoped.kt",
