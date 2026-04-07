@@ -29,7 +29,7 @@ internal object SemanticInsertionPointResolver {
 
         return SemanticInsertionResult(
             insertionOffset = insertionOffset,
-            filePath = file.lookupPath(),
+            filePath = file.resolvedFilePath().value,
         )
     }
 
@@ -81,5 +81,3 @@ internal object SemanticInsertionPointResolver {
         return cursor
     }
 }
-
-private fun KtFile.lookupPath(): String = virtualFile?.path ?: viewProvider.virtualFile.path

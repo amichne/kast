@@ -320,8 +320,7 @@ internal class StandaloneAnalysisBackend internal constructor(
         }
 
         val declaringFile = target.containingFile as? KtFile
-        val anchorFilePath = target.containingFile.virtualFile?.path
-            ?: target.containingFile.viewProvider.virtualFile.path
+        val anchorFilePath = target.resolvedFilePath().value
         val searchIdentifier = target.referenceSearchIdentifier()
         if (searchIdentifier == null) {
             return candidateReferenceFilesWithoutIdentifier(
@@ -420,7 +419,7 @@ internal class StandaloneAnalysisBackend internal constructor(
             if (declaringModuleName != null) {
                 val friendNames = session.friendModuleNames(declaringModuleName)
                 val moduleFiltered = allFiles.filter { candidateFile ->
-                    session.sourceModuleNameForFile(candidateFile.lookupPath()) in friendNames
+                    session.sourceModuleNameForFile(candidateFile.resolvedFilePath().value) in friendNames
                 }
                 if (moduleFiltered.isNotEmpty()) {
                     return CandidateSearchResult(
@@ -495,8 +494,7 @@ internal class StandaloneAnalysisBackend internal constructor(
                         if (resolved == target || resolved?.isEquivalentTo(target) == true) {
                             val elementStart = reference.element.textRange.startOffset
                             edits += TextEdit(
-                                filePath = reference.element.containingFile.virtualFile?.path
-                                    ?: reference.element.containingFile.viewProvider.virtualFile.path,
+                                filePath = reference.element.resolvedFilePath().value,
                                 startOffset = elementStart + reference.rangeInElement.startOffset,
                                 endOffset = elementStart + reference.rangeInElement.endOffset,
                                 newText = newName,
@@ -522,8 +520,7 @@ internal class StandaloneAnalysisBackend internal constructor(
                 if (resolved == target || resolved?.isEquivalentTo(target) == true) {
                     val elementStart = reference.element.textRange.startOffset
                     TextEdit(
-                        filePath = reference.element.containingFile.virtualFile?.path
-                            ?: reference.element.containingFile.viewProvider.virtualFile.path,
+                        filePath = reference.element.resolvedFilePath().value,
                         startOffset = elementStart + reference.rangeInElement.startOffset,
                         endOffset = elementStart + reference.rangeInElement.endOffset,
                         newText = newName,
@@ -601,8 +598,6 @@ private data class CandidateSearchResult(
     val files: List<KtFile>,
     val scope: SearchScope,
 )
-
-private fun KtFile.lookupPath(): String = virtualFile?.path ?: viewProvider.virtualFile.path
 
 /**
  * Parallel `flatMap` over a list using Java parallel streams.

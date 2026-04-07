@@ -1,8 +1,7 @@
 package io.github.amichne.kast.standalone
 
+import io.github.amichne.kast.api.ModuleName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.nio.charset.StandardCharsets
 import java.nio.file.FileVisitResult
@@ -31,29 +30,20 @@ private val trackedGradleBuildSkipDirs = setOf(
     ".idea",
 )
 
-private val workspaceDiscoveryCacheJson = Json {
-    encodeDefaults = true
-    ignoreUnknownKeys = true
-}
-
 internal class WorkspaceDiscoveryCache(
-    private val enabled: Boolean = !isCacheDisabled(),
-    private val json: Json = workspaceDiscoveryCacheJson,
+    enabled: Boolean = !isCacheDisabled(),
+    json: Json = defaultCacheJson,
+) : VersionedFileCache<CachedWorkspaceDiscoveryPayload>(
+    schemaVersion = workspaceDiscoveryCacheSchemaVersion,
+    serializer = CachedWorkspaceDiscoveryPayload.serializer(),
+    enabled = enabled,
+    json = json,
 ) {
-    fun read(workspaceRoot: Path): CachedWorkspaceDiscovery? {
-        if (!enabled) {
-            return null
-        }
-        val normalizedWorkspaceRoot = normalizeStandalonePath(workspaceRoot)
-        val cacheFilePath = workspaceDiscoveryCachePath(normalizedWorkspaceRoot)
-        if (!Files.isRegularFile(cacheFilePath)) {
-            return null
-        }
+    override fun payloadSchemaVersion(payload: CachedWorkspaceDiscoveryPayload): Int = payload.schemaVersion
 
-        val payload = json.decodeFromString<CachedWorkspaceDiscoveryPayload>(Files.readString(cacheFilePath))
-        if (payload.schemaVersion != workspaceDiscoveryCacheSchemaVersion) {
-            return null
-        }
+    fun read(workspaceRoot: Path): CachedWorkspaceDiscovery? {
+        val normalizedWorkspaceRoot = normalizeStandalonePath(workspaceRoot)
+        val payload = readPayload(workspaceDiscoveryCachePath(normalizedWorkspaceRoot)) ?: return null
         if (payload.cacheKey != computeWorkspaceDiscoveryCacheKey(normalizedWorkspaceRoot)) {
             return null
         }
@@ -61,7 +51,8 @@ internal class WorkspaceDiscoveryCache(
         return CachedWorkspaceDiscovery(
             discoveryResult = payload.discoveryResult,
             dependentModuleNamesBySourceModuleName = payload.dependentModuleNamesBySourceModuleName
-                .mapValues { (_, moduleNames) -> moduleNames.toSet() },
+                .map { (key, moduleNames) -> ModuleName(key) to moduleNames.map(::ModuleName).toSet() }
+                .toMap(),
         )
     }
 
@@ -69,9 +60,6 @@ internal class WorkspaceDiscoveryCache(
         workspaceRoot: Path,
         result: GradleWorkspaceDiscoveryResult,
     ) {
-        if (!enabled) {
-            return
-        }
         val normalizedWorkspaceRoot = normalizeStandalonePath(workspaceRoot)
         val dependentModuleNamesBySourceModuleName = GradleWorkspaceDiscovery
             .buildStandaloneWorkspaceLayout(
@@ -79,15 +67,14 @@ internal class WorkspaceDiscoveryCache(
                 extraClasspathRoots = emptyList(),
             )
             .dependentModuleNamesBySourceModuleName
-            .mapValues { (_, moduleNames) -> moduleNames.toList().sorted() }
-        writeCacheFileAtomically(
-            path = workspaceDiscoveryCachePath(normalizedWorkspaceRoot),
-            payload = json.encodeToString(
-                CachedWorkspaceDiscoveryPayload(
-                    cacheKey = computeWorkspaceDiscoveryCacheKey(normalizedWorkspaceRoot),
-                    discoveryResult = result,
-                    dependentModuleNamesBySourceModuleName = dependentModuleNamesBySourceModuleName,
-                ),
+            .map { (key, moduleNames) -> key.value to moduleNames.map { it.value }.sorted() }
+            .toMap()
+        writePayload(
+            workspaceDiscoveryCachePath(normalizedWorkspaceRoot),
+            CachedWorkspaceDiscoveryPayload(
+                cacheKey = computeWorkspaceDiscoveryCacheKey(normalizedWorkspaceRoot),
+                discoveryResult = result,
+                dependentModuleNamesBySourceModuleName = dependentModuleNamesBySourceModuleName,
             ),
         )
     }
@@ -95,11 +82,11 @@ internal class WorkspaceDiscoveryCache(
 
 internal data class CachedWorkspaceDiscovery(
     val discoveryResult: GradleWorkspaceDiscoveryResult,
-    val dependentModuleNamesBySourceModuleName: Map<String, Set<String>>,
+    val dependentModuleNamesBySourceModuleName: Map<ModuleName, Set<ModuleName>>,
 )
 
 @Serializable
-private data class CachedWorkspaceDiscoveryPayload(
+internal data class CachedWorkspaceDiscoveryPayload(
     val schemaVersion: Int = workspaceDiscoveryCacheSchemaVersion,
     val cacheKey: String,
     val discoveryResult: GradleWorkspaceDiscoveryResult,

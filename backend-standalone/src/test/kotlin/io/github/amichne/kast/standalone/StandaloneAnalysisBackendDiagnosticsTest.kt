@@ -1,6 +1,7 @@
 package io.github.amichne.kast.standalone
 
 import io.github.amichne.kast.api.DiagnosticSeverity
+import io.github.amichne.kast.api.NormalizedPath
 import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.RefreshQuery
 import io.github.amichne.kast.api.ReadCapability
@@ -174,7 +175,5 @@ class StandaloneAnalysisBackendDiagnosticsTest {
         return path
     }
 
-    private fun normalizePath(path: Path): String {
-        return normalizeStandalonePath(path).toString()
-    }
+    private fun normalizePath(path: Path): String = NormalizedPath.of(path).value
 }

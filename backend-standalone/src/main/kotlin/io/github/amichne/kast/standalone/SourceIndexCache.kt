@@ -1,8 +1,6 @@
 package io.github.amichne.kast.standalone
 
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
@@ -11,19 +9,21 @@ import java.nio.file.StandardCopyOption
 
 private const val sourceIndexCacheSchemaVersion = 2
 
-private val sourceIndexCacheJson = Json {
-    encodeDefaults = true
-    ignoreUnknownKeys = true
-}
-
 internal class SourceIndexCache(
     workspaceRoot: Path,
-    private val enabled: Boolean = true,
-    private val json: Json = sourceIndexCacheJson,
+    enabled: Boolean = true,
+    json: Json = defaultCacheJson,
+) : VersionedFileCache<SourceIdentifierIndexCachePayload>(
+    schemaVersion = sourceIndexCacheSchemaVersion,
+    serializer = SourceIdentifierIndexCachePayload.serializer(),
+    enabled = enabled,
+    json = json,
 ) {
     internal val cacheDirectory: Path = kastCacheDirectory(workspaceRoot)
     internal val indexCachePath: Path = cacheDirectory.resolve("source-identifier-index.json")
     private val fileManifest = FileManifest(workspaceRoot = workspaceRoot, enabled = enabled)
+
+    override fun payloadSchemaVersion(payload: SourceIdentifierIndexCachePayload): Int = payload.schemaVersion
 
     fun save(
         index: MutableSourceIdentifierIndex,
@@ -34,32 +34,20 @@ internal class SourceIndexCache(
         }
         val manifest = fileManifest.snapshot(sourceRoots).currentPathsByLastModifiedMillis
         val metadata = index.toSerializableMetadata()
-        writeCacheFileAtomically(
-            path = indexCachePath,
-            payload = json.encodeToString(
-                SourceIdentifierIndexCachePayload(
-                    candidatePathsByIdentifier = index.toSerializableMap(),
-                    packageByPath = metadata.packageByPath,
-                    importsByPath = metadata.importsByPath,
-                    wildcardImportPackagesByPath = metadata.wildcardImportPackagesByPath,
-                ),
+        writePayload(
+            indexCachePath,
+            SourceIdentifierIndexCachePayload(
+                candidatePathsByIdentifier = index.toSerializableMap(),
+                packageByPath = metadata.packageByPath,
+                importsByPath = metadata.importsByPath,
+                wildcardImportPackagesByPath = metadata.wildcardImportPackagesByPath,
             ),
         )
         fileManifest.save(manifest)
     }
 
     fun load(sourceRoots: List<Path>): IncrementalIndexResult? {
-        if (!enabled) {
-            return null
-        }
-        if (!Files.isRegularFile(indexCachePath)) {
-            return null
-        }
-
-        val cachedIndex = json.decodeFromString<SourceIdentifierIndexCachePayload>(Files.readString(indexCachePath))
-        if (cachedIndex.schemaVersion != sourceIndexCacheSchemaVersion) {
-            return null
-        }
+        val cachedIndex = readPayload(indexCachePath) ?: return null
 
         val manifestSnapshot = fileManifest.snapshot(sourceRoots)
         return IncrementalIndexResult(
@@ -69,22 +57,22 @@ internal class SourceIndexCache(
                 importsByPath = cachedIndex.importsByPath,
                 wildcardImportPackagesByPath = cachedIndex.wildcardImportPackagesByPath,
             ),
-            newPaths = manifestSnapshot.newPaths,
-            modifiedPaths = manifestSnapshot.modifiedPaths,
-            deletedPaths = manifestSnapshot.deletedPaths,
+            changes = manifestSnapshot.changes,
         )
     }
 }
 
 internal data class IncrementalIndexResult(
     val index: MutableSourceIdentifierIndex,
-    val newPaths: List<String>,
-    val modifiedPaths: List<String>,
-    val deletedPaths: List<String>,
-)
+    val changes: FileChangeSet,
+) {
+    val newPaths: List<String> get() = changes.added
+    val modifiedPaths: List<String> get() = changes.modified
+    val deletedPaths: List<String> get() = changes.removed
+}
 
 @Serializable
-private data class SourceIdentifierIndexCachePayload(
+internal data class SourceIdentifierIndexCachePayload(
     val schemaVersion: Int = sourceIndexCacheSchemaVersion,
     val candidatePathsByIdentifier: Map<String, List<String>>,
     val packageByPath: Map<String, String> = emptyMap(),

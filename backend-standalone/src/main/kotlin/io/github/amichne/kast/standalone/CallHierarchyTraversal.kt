@@ -18,15 +18,7 @@ import io.github.amichne.kast.api.ServerLimits
 import io.github.amichne.kast.api.Symbol
 import io.github.amichne.kast.api.SymbolVisibility
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.decodeFromJsonElement
-import kotlinx.serialization.json.encodeToJsonElement
-import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.put
 import org.jetbrains.kotlin.psi.KtFile
-import java.nio.file.Files
 import java.nio.file.Path
 
 internal class CallHierarchyTraversal(
@@ -268,7 +260,7 @@ internal class CallHierarchyTraversal(
             if (budget.timeoutReached()) {
                 return edges
             }
-            budget.visitFile(candidateFile.lookupPath())
+            budget.visitFile(candidateFile.resolvedFilePath().value)
             candidateFile.accept(
                 object : PsiRecursiveElementWalkingVisitor() {
                     override fun visitElement(element: PsiElement) {
@@ -302,7 +294,7 @@ internal class CallHierarchyTraversal(
         budget: TraversalBudget,
     ): List<CallEdge> {
         val declaration = target.callHierarchyDeclaration() ?: return emptyList()
-        budget.visitFile(declaration.lookupPath())
+        budget.visitFile(declaration.resolvedFilePath().value)
         val edges = mutableListOf<CallEdge>()
 
         declaration.accept(
@@ -343,13 +335,13 @@ internal class CallHierarchyTraversal(
         }
 
         val declaringFile = target.containingFile as? KtFile
-        val anchorFilePath = target.lookupPath()
+        val anchorFilePath = target.resolvedFilePath().value
         val searchIdentifier = target.referenceSearchIdentifier()
-            ?: return candidateReferenceFilesWithoutIdentifier(
-                declaringFile = declaringFile,
-                visibility = visibility,
-                anchorFilePath = anchorFilePath,
-            )
+                               ?: return candidateReferenceFilesWithoutIdentifier(
+                                   declaringFile = declaringFile,
+                                   visibility = visibility,
+                                   anchorFilePath = anchorFilePath,
+                               )
 
         val fqNameAndPackage = target.targetFqNameAndPackage()
         val candidatePaths = if (fqNameAndPackage != null) {
@@ -402,7 +394,7 @@ internal class CallHierarchyTraversal(
             if (declaringModuleName != null) {
                 val friendNames = session.friendModuleNames(declaringModuleName)
                 val moduleFiltered = allFiles.filter { candidateFile ->
-                    session.sourceModuleNameForFile(candidateFile.lookupPath()) in friendNames
+                    session.sourceModuleNameForFile(candidateFile.resolvedFilePath().value) in friendNames
                 }
                 if (moduleFiltered.isNotEmpty()) {
                     return moduleFiltered
@@ -516,30 +508,29 @@ private class TraversalBudget(
 private class CallHierarchyCache(
     private val gitSha: String,
     private val cacheFilePath: Path,
-    private val json: Json,
+    json: Json,
+) : VersionedFileCache<CallHierarchyCacheEntry>(
+    schemaVersion = SCHEMA_VERSION,
+    serializer = CallHierarchyCacheEntry.serializer(),
+    enabled = true,
+    json = json,
 ) {
-    fun load(): CallHierarchyCacheEntry? {
-        if (!Files.isRegularFile(cacheFilePath)) {
-            return null
-        }
+    override fun payloadSchemaVersion(payload: CallHierarchyCacheEntry): Int = payload.schemaVersion
 
-        return CallHierarchyCacheEntry.decode(
-            json = json,
-            raw = Files.readString(cacheFilePath),
-        )
-    }
+    fun load(): CallHierarchyCacheEntry? = readPayload(cacheFilePath)
 
     fun persist(
         root: CallNode,
         stats: CallHierarchyStats,
     ): CallHierarchyPersistence {
-        val payload = CallHierarchyCacheEntry(
-            root = root,
-            stats = stats,
-            schemaVersion = SCHEMA_VERSION,
+        writePayload(
+            cacheFilePath,
+            CallHierarchyCacheEntry(
+                root = root,
+                stats = stats,
+                schemaVersion = SCHEMA_VERSION,
+            ),
         )
-        Files.createDirectories(cacheFilePath.parent)
-        Files.writeString(cacheFilePath, payload.toJson(json).toString())
         return persistence(cacheHit = false)
     }
 
@@ -550,47 +541,19 @@ private class CallHierarchyCache(
     )
 }
 
+@kotlinx.serialization.Serializable
 private data class CallHierarchyCacheEntry(
     val root: CallNode,
     val stats: CallHierarchyStats,
     val schemaVersion: Int,
-) {
-    fun toJson(json: Json) = buildJsonObject {
-        put("root", json.encodeToJsonElement(CallNode.serializer(), root))
-        put("stats", json.encodeToJsonElement(CallHierarchyStats.serializer(), stats))
-        put("schemaVersion", schemaVersion)
-    }
-
-    companion object {
-        fun decode(
-            json: Json,
-            raw: String,
-        ): CallHierarchyCacheEntry {
-            val payload = json.parseToJsonElement(raw).jsonObject
-            return CallHierarchyCacheEntry(
-                root = json.decodeFromJsonElement(
-                    CallNode.serializer(),
-                    payload.getValue("root"),
-                ),
-                stats = json.decodeFromJsonElement(
-                    CallHierarchyStats.serializer(),
-                    payload.getValue("stats"),
-                ),
-                schemaVersion = payload["schemaVersion"]?.jsonPrimitive?.intOrNull ?: SCHEMA_VERSION,
-            )
-        }
-    }
-}
-
-private fun PsiElement.lookupPath(): String = containingFile.virtualFile?.path
-                                              ?: containingFile.viewProvider.virtualFile.path
+)
 
 private fun PsiElement.isWithinWorkspaceRoot(workspaceRoot: Path): Boolean {
-    val virtualFile = containingFile.virtualFile ?: containingFile.viewProvider.virtualFile
-    if (!virtualFile.isInLocalFileSystem) {
+    val vf = containingFile.virtualFile ?: containingFile.viewProvider.virtualFile
+    if (!vf.isInLocalFileSystem) {
         return false
     }
-    val filePath = runCatching { normalizeStandalonePath(Path.of(virtualFile.path)) }.getOrNull() ?: return false
+    val filePath = runCatching { normalizeStandalonePath(Path.of(vf.path)) }.getOrNull() ?: return false
     return filePath.startsWith(workspaceRoot)
 }
 
@@ -599,7 +562,7 @@ private fun PsiElement.callHierarchySymbolIdentityKey(
 ): String = buildString {
     append(symbol.fqName)
     append('|')
-    append(lookupPath())
+    append(resolvedFilePath().value)
     append(':')
     append(symbol.location.startOffset)
     append('-')
@@ -615,5 +578,3 @@ private fun com.intellij.psi.PsiReference.callSiteLocation(): Location {
         ),
     )
 }
-
-private fun KtFile.lookupPath(): String = virtualFile?.path ?: viewProvider.virtualFile.path

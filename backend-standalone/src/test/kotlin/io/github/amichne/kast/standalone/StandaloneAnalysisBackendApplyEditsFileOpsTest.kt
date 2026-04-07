@@ -1,6 +1,7 @@
 package io.github.amichne.kast.standalone
 
 import io.github.amichne.kast.api.ApplyEditsQuery
+import io.github.amichne.kast.api.NormalizedPath
 import io.github.amichne.kast.api.FileOperation
 import io.github.amichne.kast.api.FileHashing
 import io.github.amichne.kast.api.NotFoundException
@@ -121,8 +122,5 @@ class StandaloneAnalysisBackendApplyEditsFileOpsTest {
         return path
     }
 
-    private fun normalizePath(path: Path): String {
-        val absolutePath = path.toAbsolutePath().normalize()
-        return runCatching { absolutePath.toRealPath().normalize().toString() }.getOrDefault(absolutePath.toString())
-    }
+    private fun normalizePath(path: Path): String = NormalizedPath.of(path).value
 }

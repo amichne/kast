@@ -1,5 +1,6 @@
 package io.github.amichne.kast.standalone
 
+import io.github.amichne.kast.api.ModuleName
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
@@ -117,7 +118,7 @@ class WorkspaceDiscoveryCacheTest {
         assertEquals(0, staticModulesProviderCalls)
         assertEquals(0, toolingApiLoaderCalls)
         assertEquals(
-            setOf(":app[main]", ":app[test]", ":lib[main]"),
+            setOf(ModuleName(":app[main]"), ModuleName(":app[test]"), ModuleName(":lib[main]")),
             layout.sourceModules.map(StandaloneSourceModuleSpec::name).toSet(),
         )
     }

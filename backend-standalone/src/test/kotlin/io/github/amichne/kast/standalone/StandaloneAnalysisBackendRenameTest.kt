@@ -1,6 +1,7 @@
 package io.github.amichne.kast.standalone
 
 import io.github.amichne.kast.api.FilePosition
+import io.github.amichne.kast.api.NormalizedPath
 import io.github.amichne.kast.api.FileHashing
 import io.github.amichne.kast.api.MutationCapability
 import io.github.amichne.kast.api.ApplyEditsQuery
@@ -696,8 +697,5 @@ class StandaloneAnalysisBackendRenameTest {
         return path
     }
 
-    private fun normalizePath(path: Path): String {
-        val absolutePath = path.toAbsolutePath().normalize()
-        return runCatching { absolutePath.toRealPath().normalize().toString() }.getOrDefault(absolutePath.toString())
-    }
+    private fun normalizePath(path: Path): String = NormalizedPath.of(path).value
 }

@@ -1,6 +1,7 @@
 package io.github.amichne.kast.standalone
 
 import io.github.amichne.kast.api.ImportOptimizeQuery
+import io.github.amichne.kast.api.NormalizedPath
 import io.github.amichne.kast.api.ServerLimits
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -106,10 +107,7 @@ class StandaloneAnalysisBackendImportOptimizeTest {
         append(content.substring(edit.endOffset))
     }
 
-    private fun normalizePath(path: Path): String = normalizePath(path.toString())
+    private fun normalizePath(path: Path): String = NormalizedPath.of(path).value
 
-    private fun normalizePath(path: String): String {
-        val absolutePath = Path.of(path).toAbsolutePath().normalize()
-        return runCatching { absolutePath.toRealPath().normalize().toString() }.getOrDefault(absolutePath.toString())
-    }
+    private fun normalizePath(path: String): String = NormalizedPath.of(Path.of(path)).value
 }

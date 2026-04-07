@@ -8,6 +8,7 @@ import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.FileHashing
 import io.github.amichne.kast.api.FilePosition
 import io.github.amichne.kast.api.Location
+import io.github.amichne.kast.api.NormalizedPath
 import io.github.amichne.kast.api.ReferencesQuery
 import io.github.amichne.kast.api.RenameQuery
 import io.github.amichne.kast.api.SymbolKind
@@ -216,12 +217,9 @@ data class AnalysisBackendContractFixture(
             )
         }
 
-        private fun normalizePath(path: Path): String = normalizeStandalonePath(path).toString()
+        private fun normalizePath(path: Path): String = NormalizedPath.of(path).value
 
-        private fun normalizeStandalonePath(path: Path): Path {
-            val absolutePath = path.toAbsolutePath().normalize()
-            return runCatching { absolutePath.toRealPath().normalize() }.getOrDefault(absolutePath)
-        }
+        private fun normalizeStandalonePath(path: Path): Path = NormalizedPath.of(path).toJavaPath()
     }
 }
 

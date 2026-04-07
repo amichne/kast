@@ -1,8 +1,6 @@
 package io.github.amichne.kast.standalone
 
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.nio.file.Files
 import java.nio.file.Path
@@ -10,27 +8,22 @@ import kotlin.io.path.extension
 
 private const val fileManifestSchemaVersion = 1
 
-private val fileManifestJson = Json {
-    encodeDefaults = true
-    ignoreUnknownKeys = true
-}
-
 internal class FileManifest(
     workspaceRoot: Path,
-    private val enabled: Boolean = true,
-    private val json: Json = fileManifestJson,
+    enabled: Boolean = true,
+    json: Json = defaultCacheJson,
+) : VersionedFileCache<FileManifestPayload>(
+    schemaVersion = fileManifestSchemaVersion,
+    serializer = FileManifestPayload.serializer(),
+    enabled = enabled,
+    json = json,
 ) {
     internal val manifestPath: Path = kastCacheDirectory(workspaceRoot).resolve("file-manifest.json")
 
-    fun load(): Map<String, Long>? {
-        if (!enabled || !Files.isRegularFile(manifestPath)) {
-            return null
-        }
+    override fun payloadSchemaVersion(payload: FileManifestPayload): Int = payload.schemaVersion
 
-        val payload = json.decodeFromString<FileManifestPayload>(Files.readString(manifestPath))
-        if (payload.schemaVersion != fileManifestSchemaVersion) {
-            return null
-        }
+    fun load(): Map<String, Long>? {
+        val payload = readPayload(manifestPath) ?: return null
         return payload.fileLastModifiedMillisByPath
     }
 
@@ -39,41 +32,39 @@ internal class FileManifest(
         val currentManifest = scanTrackedKotlinFileTimestamps(sourceRoots)
         return FileManifestSnapshot(
             currentPathsByLastModifiedMillis = currentManifest,
-            newPaths = (currentManifest.keys - previousManifest.keys).sorted(),
-            modifiedPaths = currentManifest.entries
-                .asSequence()
-                .filter { (path, lastModifiedMillis) -> previousManifest[path]?.let { it != lastModifiedMillis } == true }
-                .map(Map.Entry<String, Long>::key)
-                .sorted()
-                .toList(),
-            deletedPaths = (previousManifest.keys - currentManifest.keys).sorted(),
+            changes = FileChangeSet(
+                added = (currentManifest.keys - previousManifest.keys).sorted(),
+                modified = currentManifest.entries
+                    .asSequence()
+                    .filter { (path, lastModifiedMillis) -> previousManifest[path]?.let { it != lastModifiedMillis } == true }
+                    .map(Map.Entry<String, Long>::key)
+                    .sorted()
+                    .toList(),
+                removed = (previousManifest.keys - currentManifest.keys).sorted(),
+            ),
         )
     }
 
     fun save(currentManifest: Map<String, Long>) {
-        if (!enabled) {
-            return
-        }
-        writeCacheFileAtomically(
-            path = manifestPath,
-            payload = json.encodeToString(
-                FileManifestPayload(
-                    fileLastModifiedMillisByPath = currentManifest,
-                ),
-            ),
+        writePayload(
+            manifestPath,
+            FileManifestPayload(fileLastModifiedMillisByPath = currentManifest),
         )
     }
 }
 
 internal data class FileManifestSnapshot(
     val currentPathsByLastModifiedMillis: Map<String, Long>,
-    val newPaths: List<String>,
-    val modifiedPaths: List<String>,
-    val deletedPaths: List<String>,
-)
+    val changes: FileChangeSet,
+) {
+    /** Alias for backward compatibility with callers that accessed newPaths directly. */
+    val newPaths: List<String> get() = changes.added
+    val modifiedPaths: List<String> get() = changes.modified
+    val deletedPaths: List<String> get() = changes.removed
+}
 
 @Serializable
-private data class FileManifestPayload(
+internal data class FileManifestPayload(
     val schemaVersion: Int = fileManifestSchemaVersion,
     val fileLastModifiedMillisByPath: Map<String, Long>,
 )

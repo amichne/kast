@@ -1,6 +1,7 @@
 package io.github.amichne.kast.standalone
 
 import io.github.amichne.kast.api.FilePosition
+import io.github.amichne.kast.api.NormalizedPath
 import io.github.amichne.kast.api.ReadCapability
 import io.github.amichne.kast.api.ReferencesQuery
 import io.github.amichne.kast.api.SearchScopeKind
@@ -778,8 +779,5 @@ class StandaloneAnalysisBackendFindReferencesTest {
         return path
     }
 
-    private fun normalizePath(path: Path): String {
-        val absolutePath = path.toAbsolutePath().normalize()
-        return runCatching { absolutePath.toRealPath().normalize().toString() }.getOrDefault(absolutePath.toString())
-    }
+    private fun normalizePath(path: Path): String = NormalizedPath.of(path).value
 }

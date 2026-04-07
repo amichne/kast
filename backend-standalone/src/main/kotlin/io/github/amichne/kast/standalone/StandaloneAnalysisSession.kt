@@ -1,21 +1,25 @@
 package io.github.amichne.kast.standalone
 
-import com.intellij.openapi.Disposable
-import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.fileTypes.BinaryFileTypeDecompilers
-import com.intellij.openapi.util.Disposer
-import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.openapi.vfs.VirtualFileManager
-import com.intellij.psi.compiled.ClassFileDecompilers
-import com.intellij.psi.PsiManager
-import com.intellij.psi.impl.PsiManagerEx
 import com.intellij.lang.LanguageParserDefinitions
 import com.intellij.lang.java.JavaLanguage
 import com.intellij.lang.java.JavaParserDefinition
 import com.intellij.lang.java.syntax.JavaElementTypeConverterExtension
+import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.fileTypes.BinaryFileTypeDecompilers
+import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.platform.syntax.psi.CommonElementTypeConverterFactory
 import com.intellij.platform.syntax.psi.ElementTypeConverters
+import com.intellij.psi.PsiManager
+import com.intellij.psi.compiled.ClassFileDecompilers
+import com.intellij.psi.impl.PsiManagerEx
+import io.github.amichne.kast.api.FqName
+import io.github.amichne.kast.api.KotlinIdentifier
+import io.github.amichne.kast.api.ModuleName
+import io.github.amichne.kast.api.NormalizedPath
 import io.github.amichne.kast.api.NotFoundException
+import io.github.amichne.kast.api.PackageName
 import io.github.amichne.kast.api.RefreshResult
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaSourceModule
 import org.jetbrains.kotlin.analysis.api.standalone.StandaloneAnalysisAPISession
@@ -29,13 +33,11 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.locks.ReentrantReadWriteLock
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
-import kotlin.collections.asSequence
-import kotlin.collections.associate
-import kotlin.concurrent.thread
+import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
+import kotlin.concurrent.thread
 import kotlin.concurrent.write
 import kotlin.io.path.extension
 
@@ -53,11 +55,12 @@ internal class StandaloneAnalysisSession(
 ) : AutoCloseable {
     private val normalizedWorkspaceRoot = normalizeStandalonePath(workspaceRoot)
     private val disposable: Disposable = Disposer.newDisposable("kast-standalone")
-    private val ktFilesByPath = ConcurrentHashMap<String, KtFile>()
-    private val targetedKtFilesByPath = ConcurrentHashMap<String, KtFile>()
-    private val ktFileLastModifiedMillisByPath = ConcurrentHashMap<String, Long>()
+    private val ktFilesByPath = ConcurrentHashMap<NormalizedPath, KtFile>()
+    private val targetedKtFilesByPath = ConcurrentHashMap<NormalizedPath, KtFile>()
+    private val ktFileLastModifiedMillisByPath = ConcurrentHashMap<NormalizedPath, Long>()
     private val targetedCandidatePathsByLookupKey = ConcurrentHashMap<CandidateLookupKey, List<String>>()
     private val sourceIdentifierIndex = AtomicReference<MutableSourceIdentifierIndex?>(null)
+
     @Volatile
     private var initialSourceIndexReady = CompletableFuture<Unit>()
     private val pendingSourceIndexRefreshPaths = ConcurrentHashMap.newKeySet<String>()
@@ -72,28 +75,37 @@ internal class StandaloneAnalysisSession(
         workspaceRoot = normalizedWorkspaceRoot,
         enabled = cacheManager.isEnabled(),
     )
+
     @Volatile
     private var workspaceRefreshWatcher: WorkspaceRefreshWatcher? = null
+
     @Volatile
     private var enrichmentComplete = false
+
     @Volatile
     private var closed = false
+
     @Volatile
     private var fullKtFileMapLoaded = false
 
     @Volatile
     private var sourceModuleSpecs: List<StandaloneSourceModuleSpec> = emptyList()
+
     @Volatile
-    private var dependentModuleNamesBySourceModuleName: Map<String, Set<String>> = emptyMap()
+    private var dependentModuleNamesBySourceModuleName: Map<ModuleName, Set<ModuleName>> = emptyMap()
+
     @Volatile
     var sourceModules: List<KaSourceModule> = emptyList()
         private set
+
     @Volatile
     var resolvedSourceRoots: List<Path> = emptyList()
         private set
+
     @Volatile
     var workspaceDiagnostics: List<String> = emptyList()
         private set
+
     @Volatile
     private var resolvedClasspathRoots: List<Path> = emptyList()
     private lateinit var sessionStateDisposable: Disposable
@@ -130,25 +142,25 @@ internal class StandaloneAnalysisSession(
     }
 
     fun findKtFile(filePath: String): KtFile {
-        val normalizedPath = normalizePath(Path.of(filePath)).toString()
+        val normalizedPath = NormalizedPath.of(Path.of(filePath))
         if (fullKtFileMapLoaded) {
             return ktFilesByPath[normalizedPath]
-                ?: throw NotFoundException(
-                    message = "The requested file is not part of the standalone analysis session",
-                    details = mapOf("filePath" to normalizedPath),
-                )
+                   ?: throw NotFoundException(
+                       message = "The requested file is not part of the standalone analysis session",
+                       details = mapOf("filePath" to normalizedPath.value),
+                   )
         }
 
         return targetedKtFilesByPath[normalizedPath]
-            ?: loadKtFileByPath(normalizedPath)
-                ?.also { file ->
-                    targetedKtFilesByPath[normalizedPath] = file
-                    ktFilesByPath[normalizedPath] = file
-                }
-            ?: throw NotFoundException(
-                message = "The requested file is not part of the standalone analysis session",
-                details = mapOf("filePath" to normalizedPath),
-            )
+               ?: loadKtFileByPath(normalizedPath)
+                   ?.also { file ->
+                       targetedKtFilesByPath[normalizedPath] = file
+                       ktFilesByPath[normalizedPath] = file
+                   }
+               ?: throw NotFoundException(
+                   message = "The requested file is not part of the standalone analysis session",
+                   details = mapOf("filePath" to normalizedPath.value),
+               )
     }
 
     fun refreshFileContents(paths: Set<String>): RefreshResult {
@@ -167,8 +179,7 @@ internal class StandaloneAnalysisSession(
             }
             val virtualFileManager = VirtualFileManager.getInstance()
             normalizedPaths.forEach { normalizedPath ->
-                val filePath = Path.of(normalizedPath)
-                virtualFileManager.refreshAndFindFileByNioPath(filePath)
+                virtualFileManager.refreshAndFindFileByNioPath(normalizedPath.toJavaPath())
             }
             val fileManager = PsiManagerEx.getInstanceEx(session.project).fileManager
             val cachedVirtualFilesToInvalidate = normalizedPaths.asSequence()
@@ -197,7 +208,7 @@ internal class StandaloneAnalysisSession(
                 ktFilesByPath.remove(normalizedPath)
                 targetedKtFilesByPath.remove(normalizedPath)
                 ktFileLastModifiedMillisByPath.remove(normalizedPath)
-                if (!Files.isRegularFile(Path.of(normalizedPath))) {
+                if (!Files.isRegularFile(normalizedPath.toJavaPath())) {
                     return@forEach
                 }
                 if (!fullKtFileMapLoaded && !hadKtFileEntry && !hadTargetedEntry) {
@@ -235,7 +246,7 @@ internal class StandaloneAnalysisSession(
 
         analysisSessionLock.write {
             normalizedPaths.forEach { normalizedPath ->
-                VirtualFileManager.getInstance().refreshAndFindFileByNioPath(Path.of(normalizedPath))
+                VirtualFileManager.getInstance().refreshAndFindFileByNioPath(normalizedPath.toJavaPath())
             }
 
             refreshStructureLocked()
@@ -263,8 +274,8 @@ internal class StandaloneAnalysisSession(
         }
         val currentPaths = allTrackedKotlinSourcePaths()
         val knownPaths = buildSet {
-            addAll(ktFilesByPath.keys)
-            addAll(targetedKtFilesByPath.keys)
+            addAll(ktFilesByPath.keys.map { it.value })
+            addAll(targetedKtFilesByPath.keys.map { it.value })
             addAll(sourceIdentifierIndex.get()?.knownPaths().orEmpty())
             addAll(pendingSourceIndexRefreshPaths)
         }
@@ -341,8 +352,8 @@ internal class StandaloneAnalysisSession(
     internal fun candidateKotlinFilePathsForFqName(
         identifier: String,
         anchorFilePath: String?,
-        targetPackage: String,
-        targetFqName: String,
+        targetPackage: PackageName,
+        targetFqName: FqName,
     ): List<String> {
         if (!identifier.isIndexableIdentifier()) {
             return emptyList()
@@ -352,8 +363,8 @@ internal class StandaloneAnalysisSession(
         if (readyIndex != null) {
             val enrichedPaths = readyIndex.candidatePathsForFqName(
                 identifier = identifier,
-                targetPackage = targetPackage,
-                targetFqName = targetFqName,
+                targetPackage = targetPackage.value,
+                targetFqName = targetFqName.value,
             )
             if (enrichedPaths.isNotEmpty()) {
                 val anchorSourceModuleName = anchorFilePath?.let { filePath ->
@@ -392,16 +403,16 @@ internal class StandaloneAnalysisSession(
         sourceModuleSpecs = workspaceLayout.sourceModules
         workspaceDiagnostics = workspaceLayout.diagnostics.warnings
         dependentModuleNamesBySourceModuleName = workspaceLayout.dependentModuleNamesBySourceModuleName
-            .takeIf { it.isNotEmpty() }
-            ?: buildDependentModuleNamesBySourceModuleName(sourceModuleSpecs)
+                                                     .takeIf { it.isNotEmpty() }
+                                                 ?: buildDependentModuleNamesBySourceModuleName(sourceModuleSpecs)
         resolvedSourceRoots = workspaceLayout.sourceModules
             .flatMap { module -> module.sourceRoots }
             .distinct()
             .sorted()
         resolvedClasspathRoots = (
             defaultClasspathRoots() +
-                workspaceLayout.sourceModules.flatMap { module -> module.binaryRoots }
-            ).distinct().sorted()
+            workspaceLayout.sourceModules.flatMap { module -> module.binaryRoots }
+                                 ).distinct().sorted()
     }
 
     private fun beginEnrichment(enrichmentFuture: CompletableFuture<StandaloneWorkspaceLayout>?) {
@@ -508,8 +519,8 @@ internal class StandaloneAnalysisSession(
 
     private fun normalizeFileLookupPath(file: KtFile): String {
         val virtualPath = file.virtualFile?.path
-            ?: throw NotFoundException("The standalone analysis session produced a KtFile without a virtual path")
-        return normalizePath(Path.of(virtualPath)).toString()
+                          ?: throw NotFoundException("The standalone analysis session produced a KtFile without a virtual path")
+        return NormalizedPath.of(Path.of(virtualPath)).value
     }
 
     private fun ensureFullKtFileMapLoaded(analysisSession: StandaloneAnalysisAPISession) {
@@ -531,10 +542,11 @@ internal class StandaloneAnalysisSession(
         }
     }
 
-    private fun loadKtFilesByPath(analysisSession: StandaloneAnalysisAPISession): Map<String, KtFile> {
-        val loadedFiles = linkedMapOf<String, KtFile>()
+    private fun loadKtFilesByPath(analysisSession: StandaloneAnalysisAPISession): Map<NormalizedPath, KtFile> {
+        val loadedFiles = linkedMapOf<NormalizedPath, KtFile>()
         val currentPathsByLastModifiedMillis = fileManifest.snapshot(resolvedSourceRoots).currentPathsByLastModifiedMillis
-        currentPathsByLastModifiedMillis.forEach { (normalizedPath, lastModifiedMillis) ->
+        currentPathsByLastModifiedMillis.forEach { (pathString, lastModifiedMillis) ->
+            val normalizedPath = NormalizedPath.ofNormalized(pathString)
             val cachedKtFile = ktFilesByPath[normalizedPath]
             if (cachedKtFile != null && ktFileLastModifiedMillisByPath[normalizedPath] == lastModifiedMillis) {
                 loadedFiles[normalizedPath] = cachedKtFile
@@ -544,31 +556,36 @@ internal class StandaloneAnalysisSession(
                 }
             }
         }
-        (ktFileLastModifiedMillisByPath.keys - currentPathsByLastModifiedMillis.keys).forEach { removedPath ->
+        val currentNormalizedKeys = currentPathsByLastModifiedMillis.keys.mapTo(mutableSetOf()) {
+            NormalizedPath.ofNormalized(
+                it
+            )
+        }
+        (ktFileLastModifiedMillisByPath.keys - currentNormalizedKeys).forEach { removedPath ->
             ktFileLastModifiedMillisByPath.remove(removedPath)
         }
 
         return loadedFiles
     }
 
-    private fun loadKtFileByPath(normalizedPath: String): KtFile? {
+    private fun loadKtFileByPath(normalizedPath: NormalizedPath): KtFile? {
         return analysisSessionLock.read {
             loadKtFileByPath(normalizedPath, session)
         }
     }
 
     private fun loadKtFileByPath(
-        normalizedPath: String,
+        normalizedPath: NormalizedPath,
         analysisSession: StandaloneAnalysisAPISession,
     ): KtFile? {
-        val filePath = Path.of(normalizedPath)
+        val filePath = normalizedPath.toJavaPath()
         if (!isTrackedKotlinFilePath(filePath) || !Files.isRegularFile(filePath)) {
             return null
         }
 
         val virtualFile = VirtualFileManager.getInstance().findFileByNioPath(filePath)
-            ?: VirtualFileManager.getInstance().refreshAndFindFileByNioPath(filePath)
-            ?: return null
+                          ?: VirtualFileManager.getInstance().refreshAndFindFileByNioPath(filePath)
+                          ?: return null
 
         return (PsiManager.getInstance(analysisSession.project)
             .findFile(virtualFile) as? KtFile)
@@ -580,7 +597,7 @@ internal class StandaloneAnalysisSession(
         val defaultClasspathRoots = defaultClasspathRoots()
         val analysisDisposable = Disposer.newDisposable("kast-standalone-analysis")
         val createdSourceModules = mutableListOf<KaSourceModule>()
-        val createdSourceModulesByName = linkedMapOf<String, KaSourceModule>()
+        val createdSourceModulesByName = linkedMapOf<ModuleName, KaSourceModule>()
         val createdSession = buildStandaloneAnalysisAPISession(
             projectDisposable = analysisDisposable,
             unitTestMode = false,
@@ -591,18 +608,18 @@ internal class StandaloneAnalysisSession(
                 val sdkModule = buildKtSdkModule {
                     this.platform = platform
                     addBinaryRootsFromJdkHome(jdkHome, isJre = false)
-                    libraryName = "JDK for ${sourceModuleSpecs.first().name}"
+                    libraryName = "JDK for ${sourceModuleSpecs.first().name.value}"
                 }
 
                 for (moduleSpec in topologicallySortSourceModules(sourceModuleSpecs)) {
                     val libraryModule = buildLibraryModule(
-                        moduleName = moduleSpec.name,
+                        moduleName = moduleSpec.name.value,
                         platform = platform,
                         binaryRoots = (defaultClasspathRoots + moduleSpec.binaryRoots).distinct().sorted(),
                     )
                     val builtSourceModule = buildKtSourceModule {
                         this.platform = platform
-                        this.moduleName = moduleSpec.name
+                        this.moduleName = moduleSpec.name.value
                         moduleSpec.sourceRoots.forEach(::addSourceRoot)
                         addRegularDependency(sdkModule)
                         libraryModule?.let(::addRegularDependency)
@@ -651,7 +668,7 @@ internal class StandaloneAnalysisSession(
                 initialSourceIndexBuilder
                     ?.invoke()
                     ?.let(MutableSourceIdentifierIndex::fromCandidatePathsByIdentifier)
-                    ?: loadOrBuildSourceIdentifierIndex()
+                ?: loadOrBuildSourceIdentifierIndex()
             }
                 .onSuccess { builtIndex ->
                     if (closed || sourceIndexGeneration.get() != generation) {
@@ -677,15 +694,15 @@ internal class StandaloneAnalysisSession(
         }.getOrNull()
         val index = incrementalIndex?.index ?: return buildSourceIdentifierIndex()
         incrementalIndex.deletedPaths.forEach(index::removeFile)
-        (incrementalIndex.newPaths + incrementalIndex.modifiedPaths).forEach { normalizedPath ->
-            refreshSourceIdentifierIndex(index, normalizedPath)
+        (incrementalIndex.newPaths + incrementalIndex.modifiedPaths).forEach { pathString ->
+            refreshSourceIdentifierIndex(index, NormalizedPath.ofNormalized(pathString))
         }
         return index
     }
 
     private fun buildSourceIdentifierIndex(): MutableSourceIdentifierIndex {
-        val candidatePathsByIdentifier = ConcurrentHashMap<String, MutableSet<String>>()
-        val identifiersByPath = ConcurrentHashMap<String, Set<String>>()
+        val candidatePathsByIdentifier = ConcurrentHashMap<KotlinIdentifier, MutableSet<NormalizedPath>>()
+        val identifiersByPath = ConcurrentHashMap<NormalizedPath, Set<KotlinIdentifier>>()
 
         val index = MutableSourceIdentifierIndex(
             pathsByIdentifier = candidatePathsByIdentifier,
@@ -693,15 +710,16 @@ internal class StandaloneAnalysisSession(
         )
 
         allTrackedKotlinSourcePaths().forEach { normalizedFilePath ->
+            val normalizedPath = NormalizedPath.ofNormalized(normalizedFilePath)
             val content = sourceIndexFileReader(Path.of(normalizedFilePath))
             val identifiers = identifierRegex.findAll(content)
-                .map { match -> match.value }
+                .map { match -> KotlinIdentifier(match.value) }
                 .toSet()
-            identifiersByPath[normalizedFilePath] = identifiers
+            identifiersByPath[normalizedPath] = identifiers
             identifiers.forEach { identifier ->
                 candidatePathsByIdentifier
                     .computeIfAbsent(identifier) { ConcurrentHashMap.newKeySet() }
-                    .add(normalizedFilePath)
+                    .add(normalizedPath)
             }
             index.extractFileMetadata(normalizedFilePath, content)
         }
@@ -710,32 +728,32 @@ internal class StandaloneAnalysisSession(
     }
 
     private fun applyPendingSourceIndexRefreshes(index: MutableSourceIdentifierIndex) {
-        pendingSourceIndexRefreshPaths.toList().forEach { normalizedPath ->
-            refreshSourceIdentifierIndex(index, normalizedPath)
-            pendingSourceIndexRefreshPaths.remove(normalizedPath)
+        pendingSourceIndexRefreshPaths.toList().forEach { pathString ->
+            refreshSourceIdentifierIndex(index, NormalizedPath.ofNormalized(pathString))
+            pendingSourceIndexRefreshPaths.remove(pathString)
         }
     }
 
     private fun refreshSourceIdentifierIndex(
         index: MutableSourceIdentifierIndex,
-        normalizedPath: String,
+        normalizedPath: NormalizedPath,
     ) {
-        val filePath = Path.of(normalizedPath)
+        val filePath = normalizedPath.toJavaPath()
         if (!Files.isRegularFile(filePath)) {
-            index.removeFile(normalizedPath)
+            index.removeFile(normalizedPath.value)
             return
         }
 
-        index.updateFile(normalizedPath, sourceIndexFileReader(filePath))
+        index.updateFile(normalizedPath.value, sourceIndexFileReader(filePath))
     }
 
-    private fun refreshSourceIdentifierIndex(normalizedPaths: List<String>) {
+    private fun refreshSourceIdentifierIndex(normalizedPaths: List<NormalizedPath>) {
         sourceIdentifierIndex.get()?.let { index ->
             normalizedPaths.forEach { normalizedPath ->
                 refreshSourceIdentifierIndex(index, normalizedPath)
             }
             scheduleSourceIndexCacheWrite()
-        } ?: pendingSourceIndexRefreshPaths.addAll(normalizedPaths)
+        } ?: pendingSourceIndexRefreshPaths.addAll(normalizedPaths.map { it.value })
     }
 
     private fun allTrackedKotlinSourcePaths(): Set<String> =
@@ -762,7 +780,7 @@ internal class StandaloneAnalysisSession(
 
     private fun buildTargetedCandidatePaths(
         identifier: String,
-        anchorSourceModuleName: String?,
+        anchorSourceModuleName: ModuleName?,
     ): List<String> = buildList {
         val allowedSourceModuleNames = anchorSourceModuleName
             ?.let(dependentModuleNamesBySourceModuleName::get)
@@ -793,7 +811,7 @@ internal class StandaloneAnalysisSession(
 
     private fun filterCandidatePathsByAnchorScope(
         candidatePaths: List<String>,
-        anchorSourceModuleName: String?,
+        anchorSourceModuleName: ModuleName?,
     ): List<String> {
         if (anchorSourceModuleName == null) {
             return candidatePaths
@@ -805,7 +823,7 @@ internal class StandaloneAnalysisSession(
         }
     }
 
-    internal fun sourceModuleNameForFile(normalizedPath: String): String? {
+    internal fun sourceModuleNameForFile(normalizedPath: String): ModuleName? {
         val filePath = Path.of(normalizedPath)
         return sourceModuleSpecs.firstOrNull { moduleSpec ->
             moduleSpec.sourceRoots.any(filePath::startsWith)
@@ -820,15 +838,15 @@ internal class StandaloneAnalysisSession(
      *
      * For non-Gradle module names (no `[` bracket), returns only the input name.
      */
-    internal fun friendModuleNames(moduleName: String): Set<String> {
-        val projectPrefix = moduleName.substringBefore('[', missingDelimiterValue = "")
+    internal fun friendModuleNames(moduleName: ModuleName): Set<ModuleName> {
+        val projectPrefix = moduleName.value.substringBefore('[', missingDelimiterValue = "")
         if (projectPrefix.isEmpty()) {
             return setOf(moduleName)
         }
         return sourceModuleSpecs
             .asSequence()
             .map(StandaloneSourceModuleSpec::name)
-            .filter { name -> name.substringBefore('[', missingDelimiterValue = "") == projectPrefix }
+            .filter { name -> name.value.substringBefore('[', missingDelimiterValue = "") == projectPrefix }
             .toSet()
             .ifEmpty { setOf(moduleName) }
     }
@@ -856,18 +874,22 @@ internal class StandaloneAnalysisSession(
         return runCatching { normalizePath(Path.of(location.toURI())) }.getOrNull()
     }
 
-    private fun normalizeTrackedKotlinPaths(paths: Set<String>): List<String> = paths.asSequence()
-        .map { path -> normalizePath(Path.of(path)).toString() }
+    private fun normalizeTrackedKotlinPaths(paths: Set<String>): List<NormalizedPath> = paths.asSequence()
+        .map { path -> NormalizedPath.of(Path.of(path)) }
         .distinct()
-        .filter { normalizedPath -> isTrackedKotlinFilePath(Path.of(normalizedPath)) }
+        .filter { normalizedPath -> isTrackedKotlinFilePath(normalizedPath.toJavaPath()) }
         .toList()
 
     private fun buildRefreshResult(
-        normalizedPaths: List<String>,
+        normalizedPaths: List<NormalizedPath>,
         fullRefresh: Boolean,
     ): RefreshResult = RefreshResult(
-        refreshedFiles = normalizedPaths.filter { normalizedPath -> Files.isRegularFile(Path.of(normalizedPath)) }.sorted(),
-        removedFiles = normalizedPaths.filterNot { normalizedPath -> Files.isRegularFile(Path.of(normalizedPath)) }.sorted(),
+        refreshedFiles = normalizedPaths.filter { normalizedPath -> Files.isRegularFile(normalizedPath.toJavaPath()) }
+            .map { it.value }
+            .sorted(),
+        removedFiles = normalizedPaths.filterNot { normalizedPath -> Files.isRegularFile(normalizedPath.toJavaPath()) }
+            .map { it.value }
+            .sorted(),
         fullRefresh = fullRefresh,
     )
 
@@ -890,9 +912,7 @@ internal class StandaloneAnalysisSession(
         targetedCandidatePathsByLookupKey.clear()
     }
 
-    private fun normalizePath(path: Path): Path {
-        return normalizeStandalonePath(path)
-    }
+    private fun normalizePath(path: Path): Path = NormalizedPath.of(path).toJavaPath()
 
     private fun scheduleSourceIndexCacheWrite() {
         val generation = sourceIndexGeneration.get()
@@ -926,14 +946,14 @@ private data class AnalysisState(
 )
 
 internal class MutableSourceIdentifierIndex(
-    private val pathsByIdentifier: ConcurrentHashMap<String, MutableSet<String>>,
-    private val identifiersByPath: ConcurrentHashMap<String, Set<String>>,
-    private val packageByPath: ConcurrentHashMap<String, String> = ConcurrentHashMap(),
-    private val importsByPath: ConcurrentHashMap<String, Set<String>> = ConcurrentHashMap(),
-    private val wildcardImportPackagesByPath: ConcurrentHashMap<String, Set<String>> = ConcurrentHashMap(),
+    private val pathsByIdentifier: ConcurrentHashMap<KotlinIdentifier, MutableSet<NormalizedPath>>,
+    private val identifiersByPath: ConcurrentHashMap<NormalizedPath, Set<KotlinIdentifier>>,
+    private val packageByPath: ConcurrentHashMap<NormalizedPath, PackageName> = ConcurrentHashMap(),
+    private val importsByPath: ConcurrentHashMap<NormalizedPath, Set<FqName>> = ConcurrentHashMap(),
+    private val wildcardImportPackagesByPath: ConcurrentHashMap<NormalizedPath, Set<PackageName>> = ConcurrentHashMap(),
 ) {
     fun candidatePathsFor(identifier: String): List<String> =
-        pathsByIdentifier[identifier]?.toList()?.sorted().orEmpty()
+        pathsByIdentifier[KotlinIdentifier(identifier)]?.map { it.value }?.sorted().orEmpty()
 
     /**
      * Returns file paths that contain [identifier] and are plausibly importing [targetFqName]:
@@ -944,72 +964,88 @@ internal class MutableSourceIdentifierIndex(
         targetPackage: String,
         targetFqName: String,
     ): List<String> {
-        val rawCandidates = pathsByIdentifier[identifier] ?: return emptyList()
+        val id = KotlinIdentifier(identifier)
+        val pkg = PackageName(targetPackage)
+        val fqn = FqName(targetFqName)
+        val rawCandidates = pathsByIdentifier[id] ?: return emptyList()
         return rawCandidates
             .filter { path ->
-                packageByPath[path] == targetPackage ||
-                    importsByPath[path]?.contains(targetFqName) == true ||
-                    wildcardImportPackagesByPath[path]?.contains(targetPackage) == true
+                packageByPath[path] == pkg ||
+                importsByPath[path]?.contains(fqn) == true ||
+                wildcardImportPackagesByPath[path]?.contains(pkg) == true
             }
+            .map { it.value }
             .sorted()
     }
 
     fun toSerializableMap(): Map<String, List<String>> = pathsByIdentifier.entries
         .asSequence()
-        .sortedBy(Map.Entry<String, MutableSet<String>>::key)
+        .sortedBy { it.key.value }
         .associate { (identifier, paths) ->
-            identifier to paths.toList().sorted()
+            identifier.value to paths.map { it.value }.sorted()
         }
 
     fun toSerializableMetadata(): SourceIdentifierIndexMetadataSnapshot =
         SourceIdentifierIndexMetadataSnapshot(
             packageByPath = packageByPath.entries
                 .asSequence()
-                .sortedBy(Map.Entry<String, String>::key)
-                .associate { (path, packageName) -> path to packageName },
+                .sortedBy { it.key.value }
+                .associate { (path, packageName) -> path.value to packageName.value },
             importsByPath = importsByPath.entries
                 .asSequence()
-                .sortedBy(Map.Entry<String, Set<String>>::key)
-                .associate { (path, imports) -> path to imports.toList().sorted() },
+                .sortedBy { it.key.value }
+                .associate { (path, imports) -> path.value to imports.map { it.value }.sorted() },
             wildcardImportPackagesByPath = wildcardImportPackagesByPath.entries
                 .asSequence()
-                .sortedBy(Map.Entry<String, Set<String>>::key)
-                .associate { (path, packages) -> path to packages.toList().sorted() },
+                .sortedBy { it.key.value }
+                .associate { (path, packages) -> path.value to packages.map { it.value }.sorted() },
         )
 
     fun updateFile(
         normalizedPath: String,
         newContent: String,
     ) {
+        val path = NormalizedPath.ofNormalized(normalizedPath)
         replaceIdentifiers(
-            normalizedPath = normalizedPath,
-            identifiers = identifierRegex.findAll(newContent).map { match -> match.value }.toSet(),
+            normalizedPath = path,
+            identifiers = identifierRegex.findAll(newContent).map { match -> KotlinIdentifier(match.value) }.toSet(),
         )
-        extractFileMetadata(normalizedPath, newContent)
+        extractFileMetadata(path, newContent)
     }
 
     fun removeFile(normalizedPath: String) {
-        replaceIdentifiers(normalizedPath = normalizedPath, identifiers = emptySet())
-        packageByPath.remove(normalizedPath)
-        importsByPath.remove(normalizedPath)
-        wildcardImportPackagesByPath.remove(normalizedPath)
+        val path = NormalizedPath.ofNormalized(normalizedPath)
+        replaceIdentifiers(normalizedPath = path, identifiers = emptySet())
+        packageByPath.remove(path)
+        importsByPath.remove(path)
+        wildcardImportPackagesByPath.remove(path)
     }
 
-    fun knownPaths(): Set<String> = identifiersByPath.keys.toSet()
+    fun knownPaths(): Set<String> = identifiersByPath.keys.mapTo(mutableSetOf()) { it.value }
 
-    internal fun extractFileMetadata(normalizedPath: String, content: String) {
+    internal fun extractFileMetadata(
+        normalizedPath: String,
+        content: String,
+    ) {
+        extractFileMetadata(NormalizedPath.ofNormalized(normalizedPath), content)
+    }
+
+    private fun extractFileMetadata(
+        normalizedPath: NormalizedPath,
+        content: String,
+    ) {
         packageRegex.find(content)?.groupValues?.getOrNull(1)
-            ?.let { packageByPath[normalizedPath] = it }
-            ?: packageByPath.remove(normalizedPath)
+            ?.let { packageByPath[normalizedPath] = PackageName(it) }
+        ?: packageByPath.remove(normalizedPath)
 
-        val imports = mutableSetOf<String>()
-        val wildcardPackages = mutableSetOf<String>()
+        val imports = mutableSetOf<FqName>()
+        val wildcardPackages = mutableSetOf<PackageName>()
         importRegex.findAll(content).forEach { match ->
             val fqn = match.groupValues[1]
             if (match.groupValues[2] == ".*") {
-                wildcardPackages += fqn
+                wildcardPackages += PackageName(fqn)
             } else {
-                imports += fqn
+                imports += FqName(fqn)
             }
         }
 
@@ -1021,8 +1057,8 @@ internal class MutableSourceIdentifierIndex(
     }
 
     private fun replaceIdentifiers(
-        normalizedPath: String,
-        identifiers: Set<String>,
+        normalizedPath: NormalizedPath,
+        identifiers: Set<KotlinIdentifier>,
     ) {
         val previousIdentifiers = identifiersByPath.remove(normalizedPath).orEmpty()
         previousIdentifiers.forEach { identifier ->
@@ -1053,26 +1089,32 @@ internal class MutableSourceIdentifierIndex(
             importsByPath: Map<String, List<String>> = emptyMap(),
             wildcardImportPackagesByPath: Map<String, List<String>> = emptyMap(),
         ): MutableSourceIdentifierIndex {
-            val pathsByIdentifier = ConcurrentHashMap<String, MutableSet<String>>()
-            val identifiersByPath = ConcurrentHashMap<String, Set<String>>()
+            val typedPathsByIdentifier = ConcurrentHashMap<KotlinIdentifier, MutableSet<NormalizedPath>>()
+            val typedIdentifiersByPath = ConcurrentHashMap<NormalizedPath, Set<KotlinIdentifier>>()
             candidatePathsByIdentifier.forEach { (identifier, paths) ->
-                val normalizedPaths = paths.toCollection(ConcurrentHashMap.newKeySet())
-                pathsByIdentifier[identifier] = normalizedPaths
-                normalizedPaths.forEach { normalizedPath ->
-                    identifiersByPath.compute(normalizedPath) { _, existingIdentifiers ->
-                        (existingIdentifiers.orEmpty() + identifier)
-                    }
+                typedPathsByIdentifier[KotlinIdentifier(identifier)] = paths.mapTo(ConcurrentHashMap.newKeySet()) {
+                    NormalizedPath.ofNormalized(it)
                 }
+                paths.mapTo<kotlin.String, io.github.amichne.kast.api.NormalizedPath, java.util.concurrent.ConcurrentHashMap.KeySetView<io.github.amichne.kast.api.NormalizedPath, kotlin.Boolean>>(
+                    ConcurrentHashMap.newKeySet()
+                ) { NormalizedPath.ofNormalized(it) }
+                    .forEach { normalizedPath ->
+                        typedIdentifiersByPath.compute(normalizedPath) { _, existingIdentifiers ->
+                            (existingIdentifiers.orEmpty() + KotlinIdentifier(identifier))
+                        }
+                    }
             }
             return MutableSourceIdentifierIndex(
-                pathsByIdentifier = pathsByIdentifier,
-                identifiersByPath = identifiersByPath,
-                packageByPath = ConcurrentHashMap(packageByPath),
+                pathsByIdentifier = typedPathsByIdentifier,
+                identifiersByPath = typedIdentifiersByPath,
+                packageByPath = packageByPath.entries.associateTo(ConcurrentHashMap()) { (path, pkg) ->
+                    NormalizedPath.ofNormalized(path) to PackageName(pkg)
+                },
                 importsByPath = importsByPath.entries.associateTo(ConcurrentHashMap()) { (path, imports) ->
-                    path to imports.toSet()
+                    NormalizedPath.ofNormalized(path) to imports.mapTo(mutableSetOf()) { FqName(it) }
                 },
                 wildcardImportPackagesByPath = wildcardImportPackagesByPath.entries.associateTo(ConcurrentHashMap()) { (path, packages) ->
-                    path to packages.toSet()
+                    NormalizedPath.ofNormalized(path) to packages.mapTo(mutableSetOf()) { PackageName(it) }
                 },
             )
         }
@@ -1087,7 +1129,7 @@ internal data class SourceIdentifierIndexMetadataSnapshot(
 
 private data class CandidateLookupKey(
     val identifier: String,
-    val anchorSourceModuleName: String?,
+    val anchorSourceModuleName: ModuleName?,
 )
 
 private const val defaultSourceIndexCacheSaveDelayMillis = 5_000L
@@ -1120,8 +1162,8 @@ private fun Char.isKastIdentifierPart(): Boolean = this == '_' || isLetterOrDigi
 
 internal fun buildDependentModuleNamesBySourceModuleName(
     sourceModules: List<StandaloneSourceModuleSpec>,
-): Map<String, Set<String>> {
-    val reverseDependencies = linkedMapOf<String, MutableSet<String>>()
+): Map<ModuleName, Set<ModuleName>> {
+    val reverseDependencies = linkedMapOf<ModuleName, MutableSet<ModuleName>>()
     sourceModules.forEach { sourceModule ->
         sourceModule.dependencyModuleNames.forEach { dependencyModuleName ->
             reverseDependencies.getOrPut(dependencyModuleName) { linkedSetOf() }.add(sourceModule.name)
@@ -1146,14 +1188,14 @@ internal fun buildDependentModuleNamesBySourceModuleName(
 internal data class StandaloneWorkspaceLayout(
     val sourceModules: List<StandaloneSourceModuleSpec>,
     val diagnostics: WorkspaceDiscoveryDiagnostics = WorkspaceDiscoveryDiagnostics(),
-    val dependentModuleNamesBySourceModuleName: Map<String, Set<String>> = emptyMap(),
+    val dependentModuleNamesBySourceModuleName: Map<ModuleName, Set<ModuleName>> = emptyMap(),
 )
 
 internal data class StandaloneSourceModuleSpec(
-    val name: String,
+    val name: ModuleName,
     val sourceRoots: List<Path>,
     val binaryRoots: List<Path>,
-    val dependencyModuleNames: List<String>,
+    val dependencyModuleNames: List<ModuleName>,
 )
 
 internal fun discoverStandaloneWorkspaceLayout(
@@ -1167,7 +1209,7 @@ internal fun discoverStandaloneWorkspaceLayout(
         return StandaloneWorkspaceLayout(
             sourceModules = listOf(
                 StandaloneSourceModuleSpec(
-                    name = moduleName,
+                    name = ModuleName(moduleName),
                     sourceRoots = normalizeStandaloneSourceRoots(sourceRoots),
                     binaryRoots = normalizeStandalonePaths(classpathRoots),
                     dependencyModuleNames = emptyList(),
@@ -1185,7 +1227,7 @@ internal fun discoverStandaloneWorkspaceLayout(
     return StandaloneWorkspaceLayout(
         sourceModules = listOf(
             StandaloneSourceModuleSpec(
-                name = moduleName,
+                name = ModuleName(moduleName),
                 sourceRoots = discoverSourceRoots(normalizedWorkspaceRoot),
                 binaryRoots = normalizeStandalonePaths(classpathRoots),
                 dependencyModuleNames = emptyList(),
@@ -1219,36 +1261,26 @@ internal fun discoverStandaloneWorkspaceLayoutPhased(
     )
 }
 
-internal fun normalizeStandalonePath(path: Path): Path {
-    val absolutePath = path.toAbsolutePath().normalize()
-    return runCatching { absolutePath.toRealPath().normalize() }
-        .getOrElse {
-            normalizeStandaloneMissingPath(absolutePath)
-        }
+internal fun normalizeStandalonePath(path: Path): Path = NormalizedPath.of(path).toJavaPath()
+
+@Suppress("unused")
+private fun normalizeStandaloneMissingPath(@Suppress("UNUSED_PARAMETER") path: Path): Path {
+    error("Replaced by NormalizedPath.of()")
 }
 
-private fun normalizeStandaloneMissingPath(path: Path): Path {
-    var existingAncestor: Path? = path.parent
-    while (existingAncestor != null && !Files.exists(existingAncestor)) {
-        existingAncestor = existingAncestor.parent
-    }
-    val normalizedAncestor = existingAncestor
-        ?.let { ancestor -> runCatching { ancestor.toRealPath().normalize() }.getOrDefault(ancestor) }
-        ?: return path
-    return normalizedAncestor.resolve(existingAncestor.relativize(path)).normalize()
-}
-
-internal fun normalizeStandaloneModelPath(path: Path): Path = path.toAbsolutePath().normalize()
+internal fun normalizeStandaloneModelPath(path: Path): Path = NormalizedPath.ofAbsolute(path).toJavaPath()
 
 internal fun normalizeStandalonePaths(paths: Iterable<Path>): List<Path> = paths
-    .map(::normalizeStandalonePath)
+    .map { NormalizedPath.of(it) }
     .distinct()
     .sorted()
+    .map { it.toJavaPath() }
 
 internal fun normalizeStandaloneSourceRoots(paths: Iterable<Path>): List<Path> = paths
-    .map(::normalizeStandalonePath)
+    .map { NormalizedPath.of(it) }
     .distinct()
     .sorted()
+    .map { it.toJavaPath() }
 
 private fun discoverSourceRoots(workspaceRoot: Path): List<Path> {
     val conventionalRoots = listOf(
@@ -1284,7 +1316,7 @@ private fun topologicallySortSourceModules(sourceModules: List<StandaloneSourceM
     val incomingEdges = sourceModules.associate { module ->
         module.name to module.dependencyModuleNames.toMutableSet()
     }.toMutableMap()
-    val outgoingEdges = linkedMapOf<String, MutableSet<String>>()
+    val outgoingEdges = linkedMapOf<ModuleName, MutableSet<ModuleName>>()
     for (module in sourceModules) {
         for (dependencyName in module.dependencyModuleNames) {
             require(sourceModulesByName.containsKey(dependencyName)) {
@@ -1298,13 +1330,13 @@ private fun topologicallySortSourceModules(sourceModules: List<StandaloneSourceM
         sourceModules
             .filter { module -> incomingEdges.getValue(module.name).isEmpty() }
             .map(StandaloneSourceModuleSpec::name)
-            .sorted(),
+            .sortedBy { it.value },
     )
     val orderedModules = mutableListOf<StandaloneSourceModuleSpec>()
     while (readyNames.isNotEmpty()) {
         val moduleName = readyNames.removeFirst()
         orderedModules += checkNotNull(sourceModulesByName[moduleName])
-        for (dependentName in outgoingEdges[moduleName].orEmpty().sorted()) {
+        for (dependentName in outgoingEdges[moduleName].orEmpty().sortedBy { it.value }) {
             val dependencies = incomingEdges.getValue(dependentName)
             dependencies.remove(moduleName)
             if (dependencies.isEmpty()) {
@@ -1315,10 +1347,14 @@ private fun topologicallySortSourceModules(sourceModules: List<StandaloneSourceM
 
     require(orderedModules.size == sourceModules.size) {
         val unresolvedModuleNames = incomingEdges
-            .filterValues(Set<String>::isNotEmpty)
+            .filterValues(Set<ModuleName>::isNotEmpty)
             .keys
-            .sorted()
-        "The standalone workspace layout contains cyclic source module dependencies: ${unresolvedModuleNames.joinToString(", ")}"
+            .sortedBy { it.value }
+        "The standalone workspace layout contains cyclic source module dependencies: ${
+            unresolvedModuleNames.joinToString(
+                ", "
+            )
+        }"
     }
     return orderedModules
 }

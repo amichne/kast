@@ -1,5 +1,6 @@
 package io.github.amichne.kast.standalone
 
+import io.github.amichne.kast.api.ModuleName
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
@@ -83,26 +84,18 @@ class GradleWorkspaceDiscoveryTest {
         )
         val modulesByName = layout.sourceModules.associateBy(StandaloneSourceModuleSpec::name)
 
-        assertEquals(setOf(":app[main]", ":app[testFixtures]", ":app[test]", ":lib[main]"), modulesByName.keys)
+        assertEquals(setOf(":app[main]", ":app[testFixtures]", ":app[test]", ":lib[main]").map(::ModuleName).toSet(), modulesByName.keys)
         assertEquals(
-            listOf(":lib[main]"),
-            modulesByName.getValue(":app[main]").dependencyModuleNames,
+            listOf(ModuleName(":lib[main]")),
+            modulesByName.getValue(ModuleName(":app[main]")).dependencyModuleNames,
         )
         assertEquals(
-            listOf(":app[main]", ":lib[main]"),
-            modulesByName.getValue(":app[testFixtures]").dependencyModuleNames,
+            listOf(ModuleName(":app[main]"), ModuleName(":lib[main]")),
+            modulesByName.getValue(ModuleName(":app[testFixtures]")).dependencyModuleNames,
         )
         assertEquals(
-            listOf(":app[main]", ":app[testFixtures]", ":lib[main]"),
-            modulesByName.getValue(":app[test]").dependencyModuleNames,
-        )
-        assertEquals(
-            listOf(
-                Path.of("/deps/runtime.jar"),
-                Path.of("/deps/shared.jar"),
-                Path.of("/workspace/generated/build/classes/kotlin/main"),
-            ),
-            modulesByName.getValue(":app[main]").binaryRoots,
+            listOf(ModuleName(":app[main]"), ModuleName(":app[testFixtures]"), ModuleName(":lib[main]")),
+            modulesByName.getValue(ModuleName(":app[test]")).dependencyModuleNames,
         )
         assertEquals(
             listOf(
@@ -110,7 +103,15 @@ class GradleWorkspaceDiscoveryTest {
                 Path.of("/deps/shared.jar"),
                 Path.of("/workspace/generated/build/classes/kotlin/main"),
             ),
-            modulesByName.getValue(":app[testFixtures]").binaryRoots,
+            modulesByName.getValue(ModuleName(":app[main]")).binaryRoots,
+        )
+        assertEquals(
+            listOf(
+                Path.of("/deps/runtime.jar"),
+                Path.of("/deps/shared.jar"),
+                Path.of("/workspace/generated/build/classes/kotlin/main"),
+            ),
+            modulesByName.getValue(ModuleName(":app[testFixtures]")).binaryRoots,
         )
         assertEquals(
             listOf(
@@ -119,7 +120,7 @@ class GradleWorkspaceDiscoveryTest {
                 Path.of("/deps/test-support.jar"),
                 Path.of("/workspace/generated/build/classes/kotlin/main"),
             ),
-            modulesByName.getValue(":app[test]").binaryRoots,
+            modulesByName.getValue(ModuleName(":app[test]")).binaryRoots,
         )
     }
 
@@ -161,23 +162,23 @@ class GradleWorkspaceDiscoveryTest {
         )
         val modulesByName = layout.sourceModules.associateBy(StandaloneSourceModuleSpec::name)
 
-        assertEquals(emptyList<String>(), modulesByName.getValue(":app[main]").dependencyModuleNames)
-        assertEquals(emptyList<Path>(), modulesByName.getValue(":app[main]").binaryRoots)
+        assertEquals(emptyList<ModuleName>(), modulesByName.getValue(ModuleName(":app[main]")).dependencyModuleNames)
+        assertEquals(emptyList<Path>(), modulesByName.getValue(ModuleName(":app[main]")).binaryRoots)
         assertEquals(
-            listOf(":app[main]", ":lib[main]"),
-            modulesByName.getValue(":app[testFixtures]").dependencyModuleNames,
+            listOf(ModuleName(":app[main]"), ModuleName(":lib[main]")),
+            modulesByName.getValue(ModuleName(":app[testFixtures]")).dependencyModuleNames,
         )
         assertEquals(
             listOf(Path.of("/deps/fixture-support.jar")),
-            modulesByName.getValue(":app[testFixtures]").binaryRoots,
+            modulesByName.getValue(ModuleName(":app[testFixtures]")).binaryRoots,
         )
         assertEquals(
-            listOf(":app[main]", ":app[testFixtures]", ":lib[main]"),
-            modulesByName.getValue(":app[test]").dependencyModuleNames,
+            listOf(ModuleName(":app[main]"), ModuleName(":app[testFixtures]"), ModuleName(":lib[main]")),
+            modulesByName.getValue(ModuleName(":app[test]")).dependencyModuleNames,
         )
         assertEquals(
             listOf(Path.of("/deps/fixture-support.jar")),
-            modulesByName.getValue(":app[test]").binaryRoots,
+            modulesByName.getValue(ModuleName(":app[test]")).binaryRoots,
         )
     }
 
@@ -237,8 +238,8 @@ class GradleWorkspaceDiscoveryTest {
         val modulesByName = layout.sourceModules.associateBy(StandaloneSourceModuleSpec::name)
 
         assertEquals(
-            listOf(":core:lib[main]"),
-            modulesByName.getValue(":app[main]").dependencyModuleNames,
+            listOf(ModuleName(":core:lib[main]")),
+            modulesByName.getValue(ModuleName(":app[main]")).dependencyModuleNames,
         )
     }
 
@@ -474,8 +475,8 @@ class GradleWorkspaceDiscoveryTest {
         val enrichedLayout = checkNotNull(result.enrichmentFuture).get(1, TimeUnit.SECONDS)
         val modulesByName = enrichedLayout.sourceModules.associateBy(StandaloneSourceModuleSpec::name)
 
-        assertEquals(listOf(":lib[main]"), modulesByName.getValue(":app[main]").dependencyModuleNames)
-        assertTrue(modulesByName.getValue(":app[main]").binaryRoots.contains(Path.of("/deps/runtime.jar")))
+        assertEquals(listOf(ModuleName(":lib[main]")), modulesByName.getValue(ModuleName(":app[main]")).dependencyModuleNames)
+        assertTrue(modulesByName.getValue(ModuleName(":app[main]")).binaryRoots.contains(Path.of("/deps/runtime.jar")))
     }
 
     @Test

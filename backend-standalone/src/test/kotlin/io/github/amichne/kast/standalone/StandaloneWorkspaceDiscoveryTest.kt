@@ -1,6 +1,8 @@
 package io.github.amichne.kast.standalone
 
 import io.github.amichne.kast.api.FilePosition
+import io.github.amichne.kast.api.ModuleName
+import io.github.amichne.kast.api.NormalizedPath
 import io.github.amichne.kast.api.RuntimeState
 import io.github.amichne.kast.api.ServerLimits
 import io.github.amichne.kast.api.SymbolKind
@@ -39,20 +41,20 @@ class StandaloneWorkspaceDiscoveryTest {
         )
 
         val modulesByName = layout.sourceModules.associateBy(StandaloneSourceModuleSpec::name)
-        assertEquals(setOf(":app[main]", ":app[test]", ":lib[main]"), modulesByName.keys)
+        assertEquals(setOf(ModuleName(":app[main]"), ModuleName(":app[test]"), ModuleName(":lib[main]")), modulesByName.keys)
 
-        assertEquals(listOf(":lib[main]"), modulesByName.getValue(":app[main]").dependencyModuleNames)
+        assertEquals(listOf(ModuleName(":lib[main]")), modulesByName.getValue(ModuleName(":app[main]")).dependencyModuleNames)
         assertEquals(
-            listOf(":app[main]", ":lib[main]"),
-            modulesByName.getValue(":app[test]").dependencyModuleNames,
+            listOf(ModuleName(":app[main]"), ModuleName(":lib[main]")),
+            modulesByName.getValue(ModuleName(":app[test]")).dependencyModuleNames,
         )
-        assertEquals(emptyList<String>(), modulesByName.getValue(":lib[main]").dependencyModuleNames)
+        assertEquals(emptyList<ModuleName>(), modulesByName.getValue(ModuleName(":lib[main]")).dependencyModuleNames)
 
         assertFalse(
-            modulesByName.getValue(":app[main]").binaryRoots.any { path -> path.fileName.toString() == "test-support.jar" },
+            modulesByName.getValue(ModuleName(":app[main]")).binaryRoots.any { path -> path.fileName.toString() == "test-support.jar" },
         )
         assertTrue(
-            modulesByName.getValue(":app[test]").binaryRoots.any { path -> path.fileName.toString() == "test-support.jar" },
+            modulesByName.getValue(ModuleName(":app[test]")).binaryRoots.any { path -> path.fileName.toString() == "test-support.jar" },
         )
     }
 
@@ -68,7 +70,7 @@ class StandaloneWorkspaceDiscoveryTest {
         )
 
         assertEquals(1, layout.sourceModules.size)
-        assertEquals("manual", layout.sourceModules.single().name)
+        assertEquals(ModuleName("manual"), layout.sourceModules.single().name)
         assertEquals(
             listOf(normalizeStandalonePath(workspaceRoot.resolve("app/src/main/kotlin"))),
             layout.sourceModules.single().sourceRoots,
@@ -196,18 +198,18 @@ class StandaloneWorkspaceDiscoveryTest {
 
         val modulesByName = layout.sourceModules.associateBy(StandaloneSourceModuleSpec::name)
 
-        assertEquals(setOf(":lib[main]", ":lib[testFixtures]", ":lib[test]"), modulesByName.keys)
+        assertEquals(setOf(ModuleName(":lib[main]"), ModuleName(":lib[testFixtures]"), ModuleName(":lib[test]")), modulesByName.keys)
         assertEquals(
             listOf(normalizeStandalonePath(workspaceRoot.resolve("lib/src/testFixtures/kotlin"))),
-            modulesByName.getValue(":lib[testFixtures]").sourceRoots,
+            modulesByName.getValue(ModuleName(":lib[testFixtures]")).sourceRoots,
         )
         assertEquals(
-            listOf(":lib[main]"),
-            modulesByName.getValue(":lib[testFixtures]").dependencyModuleNames,
+            listOf(ModuleName(":lib[main]")),
+            modulesByName.getValue(ModuleName(":lib[testFixtures]")).dependencyModuleNames,
         )
         assertEquals(
-            listOf(":lib[main]", ":lib[testFixtures]"),
-            modulesByName.getValue(":lib[test]").dependencyModuleNames,
+            listOf(ModuleName(":lib[main]"), ModuleName(":lib[testFixtures]")),
+            modulesByName.getValue(ModuleName(":lib[test]")).dependencyModuleNames,
         )
     }
 
@@ -223,21 +225,21 @@ class StandaloneWorkspaceDiscoveryTest {
         )
 
         val modulesByName = layout.sourceModules.associateBy(StandaloneSourceModuleSpec::name)
-        assertEquals(setOf(":app[main]", ":app[test]", ":lib[main]"), modulesByName.keys)
+        assertEquals(setOf(ModuleName(":app[main]"), ModuleName(":app[test]"), ModuleName(":lib[main]")), modulesByName.keys)
 
-        assertEquals(listOf(":lib[main]"), modulesByName.getValue(":app[main]").dependencyModuleNames)
+        assertEquals(listOf(ModuleName(":lib[main]")), modulesByName.getValue(ModuleName(":app[main]")).dependencyModuleNames)
         assertEquals(
-            listOf(":app[main]", ":lib[main]"),
-            modulesByName.getValue(":app[test]").dependencyModuleNames,
+            listOf(ModuleName(":app[main]"), ModuleName(":lib[main]")),
+            modulesByName.getValue(ModuleName(":app[test]")).dependencyModuleNames,
         )
         assertTrue(
-            modulesByName.getValue(":app[test]").binaryRoots.any { path -> path.fileName.toString() == "test-support.jar" },
+            modulesByName.getValue(ModuleName(":app[test]")).binaryRoots.any { path -> path.fileName.toString() == "test-support.jar" },
         )
         assertFalse(
-            modulesByName.getValue(":app[main]").sourceRoots.any { path -> path == normalizeStandalonePath(workspaceRoot.resolve("app/src/main/java")) },
+            modulesByName.getValue(ModuleName(":app[main]")).sourceRoots.any { path -> path == normalizeStandalonePath(workspaceRoot.resolve("app/src/main/java")) },
         )
         assertTrue(
-            modulesByName.getValue(":app[main]").sourceRoots.any { path -> path == normalizeStandalonePath(workspaceRoot.resolve("app/src/customMain/java")) },
+            modulesByName.getValue(ModuleName(":app[main]")).sourceRoots.any { path -> path == normalizeStandalonePath(workspaceRoot.resolve("app/src/customMain/java")) },
         )
     }
 
@@ -432,7 +434,7 @@ class StandaloneWorkspaceDiscoveryTest {
         )
 
         session.use { standaloneSession ->
-            val normalizedPath = normalizePath(changedFile)
+            val normalizedPath = NormalizedPath.of(changedFile)
             standaloneSession.findKtFile(changedFile.toString())
             assertFalse(standaloneSession.isFullKtFileMapLoaded())
 
@@ -483,7 +485,7 @@ class StandaloneWorkspaceDiscoveryTest {
         )
 
         session.use { standaloneSession ->
-            val normalizedChangedPath = normalizePath(changedFile)
+            val normalizedChangedPath = NormalizedPath.of(changedFile)
             standaloneSession.allKtFiles()
             assertTrue(standaloneSession.isFullKtFileMapLoaded())
             val unchangedKtFile = standaloneSession.findKtFile(unchangedFile.toString())
@@ -735,9 +737,9 @@ class StandaloneWorkspaceDiscoveryTest {
             moduleName = "ignored",
         )
         session.use { session ->
-            val friendNames = session.friendModuleNames(":app[main]")
+            val friendNames = session.friendModuleNames(ModuleName(":app[main]"))
 
-            assertEquals(setOf(":app[main]", ":app[test]"), friendNames)
+            assertEquals(setOf(ModuleName(":app[main]"), ModuleName(":app[test]")), friendNames)
         }
     }
 
@@ -759,9 +761,9 @@ class StandaloneWorkspaceDiscoveryTest {
             moduleName = "manual",
         )
         session.use { session ->
-            val friendNames = session.friendModuleNames("manual")
+            val friendNames = session.friendModuleNames(ModuleName("manual"))
 
-            assertEquals(setOf("manual"), friendNames)
+            assertEquals(setOf(ModuleName("manual")), friendNames)
         }
     }
 
@@ -776,9 +778,9 @@ class StandaloneWorkspaceDiscoveryTest {
             moduleName = "ignored",
         )
         session.use { session ->
-            val friendNames = session.friendModuleNames(":lib[main]")
+            val friendNames = session.friendModuleNames(ModuleName(":lib[main]"))
 
-            assertEquals(setOf(":lib[main]", ":lib[testFixtures]", ":lib[test]"), friendNames)
+            assertEquals(setOf(ModuleName(":lib[main]"), ModuleName(":lib[testFixtures]"), ModuleName(":lib[test]")), friendNames)
         }
     }
 
@@ -1494,19 +1496,17 @@ class StandaloneWorkspaceDiscoveryTest {
         return path
     }
 
-    private fun normalizePath(path: Path): String {
-        val absolutePath = path.toAbsolutePath().normalize()
-        return runCatching { absolutePath.toRealPath().normalize().toString() }.getOrDefault(absolutePath.toString())
-    }
+    private fun normalizePath(path: Path): String = NormalizedPath.of(path).value
 
     @Suppress("UNCHECKED_CAST")
     private fun ktFileCache(
         session: StandaloneAnalysisSession,
         fieldName: String,
-    ): Map<String, KtFile> {
+    ): Map<NormalizedPath, KtFile> {
         val field = StandaloneAnalysisSession::class.java.getDeclaredField(fieldName)
         field.isAccessible = true
-        return field.get(session) as Map<String, KtFile>
+        @Suppress("UNCHECKED_CAST")
+        return field.get(session) as Map<NormalizedPath, KtFile>
     }
 
     private fun manualWorkspaceLayout(vararg sourceModules: StandaloneSourceModuleSpec): StandaloneWorkspaceLayout =
@@ -1518,9 +1518,9 @@ class StandaloneWorkspaceDiscoveryTest {
         binaryRoots: List<Path> = emptyList(),
         dependencyModuleNames: List<String> = emptyList(),
     ): StandaloneSourceModuleSpec = StandaloneSourceModuleSpec(
-        name = name,
+        name = ModuleName(name),
         sourceRoots = sourceRoots,
         binaryRoots = binaryRoots,
-        dependencyModuleNames = dependencyModuleNames,
+        dependencyModuleNames = dependencyModuleNames.map(::ModuleName),
     )
 }

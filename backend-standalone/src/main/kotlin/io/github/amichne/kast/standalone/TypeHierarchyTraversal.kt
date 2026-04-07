@@ -212,7 +212,7 @@ private fun PsiElement.isTypeHierarchyExpandable(): Boolean = this is KtClassOrO
 private fun PsiElement.typeHierarchySymbolIdentityKey(symbol: Symbol): String = buildString {
     append(symbol.fqName)
     append('|')
-    append(containingFile.virtualFile?.path ?: containingFile.viewProvider.virtualFile.path)
+    append(resolvedFilePath().value)
     append(':')
     append(symbol.location.startOffset)
     append('-')

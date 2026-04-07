@@ -1,5 +1,6 @@
 package io.github.amichne.kast.standalone
 
+import io.github.amichne.kast.api.ModuleName
 import kotlinx.serialization.Serializable
 import org.gradle.tooling.GradleConnector
 import org.gradle.tooling.model.idea.IdeaDependency
@@ -282,7 +283,7 @@ internal object GradleWorkspaceDiscovery {
         gradleModules: List<GradleModuleModel>,
         extraClasspathRoots: List<Path>,
         diagnostics: WorkspaceDiscoveryDiagnostics = WorkspaceDiscoveryDiagnostics(),
-        dependentModuleNamesBySourceModuleName: Map<String, Set<String>>? = null,
+        dependentModuleNamesBySourceModuleName: Map<ModuleName, Set<ModuleName>>? = null,
     ): StandaloneWorkspaceLayout {
         val moduleModelsByIdeaName = buildMap {
             gradleModules.forEach { module ->
@@ -522,7 +523,7 @@ private fun GradleModuleModel.mergeWithStaticModule(staticModule: GradleModuleMo
 )
 
 private fun List<StandaloneSourceModuleSpec>.mergeDuplicateSourceModules(): List<StandaloneSourceModuleSpec> {
-    val mergedModules = linkedMapOf<String, StandaloneSourceModuleSpec>()
+    val mergedModules = linkedMapOf<ModuleName, StandaloneSourceModuleSpec>()
     forEach { module ->
         val existing = mergedModules[module.name]
         mergedModules[module.name] = if (existing == null) {
@@ -568,6 +569,8 @@ private fun List<GradleModuleModel>.shouldFallbackToStaticModules(
     return !hasModuleDependencies
 }
 
+// @Serializable  are going to unwrap the value classes by default, so we can just use the typed value here without needing to manually extract the underlying string.
+// @Serializable  are going to unwrap the value classes by default, so we can just use the typed value here without needing to manually extract the underlying string.
 @Serializable
 internal data class GradleModuleModel(
     val gradlePath: String,
@@ -586,11 +589,11 @@ internal data class GradleModuleModel(
     val testFixturesOutputRoots: List<Path> = emptyList(),
     val dependencies: List<GradleDependency>,
 ) {
-    private fun analysisModuleName(sourceSet: GradleSourceSet): String = "$gradlePath[${sourceSet.id}]"
+    private fun analysisModuleName(sourceSet: GradleSourceSet): ModuleName = ModuleName("$gradlePath[${sourceSet.id}]")
 
     fun toStandaloneSourceModuleSpecs(
         moduleModelsByIdeaName: Map<String, GradleModuleModel>,
-        availableMainSourceModuleNames: Set<String>,
+        availableMainSourceModuleNames: Set<ModuleName>,
         extraClasspathRoots: List<Path>,
     ): List<StandaloneSourceModuleSpec> {
         val resolvedDependencies = resolveSourceSetDependencies(
@@ -631,20 +634,20 @@ internal data class GradleModuleModel(
         }
     }
 
-    fun mainDependencyModuleName(): String? = mainSourceRoots
+    fun mainDependencyModuleName(): ModuleName? = mainSourceRoots
         .takeIf(List<Path>::isNotEmpty)
         ?.let { analysisModuleName(GradleSourceSet.MAIN) }
 
     private fun resolveSourceSetDependencies(
         moduleModelsByIdeaName: Map<String, GradleModuleModel>,
-        availableMainSourceModuleNames: Set<String>,
+        availableMainSourceModuleNames: Set<ModuleName>,
     ): ResolvedSourceSetDependencies {
         val mainBinaryRoots = linkedSetOf<Path>()
         val testFixturesBinaryRoots = linkedSetOf<Path>()
         val testBinaryRoots = linkedSetOf<Path>()
-        val mainDependencyNames = linkedSetOf<String>()
-        val testFixturesDependencyNames = linkedSetOf<String>()
-        val testDependencyNames = linkedSetOf<String>()
+        val mainDependencyNames = linkedSetOf<ModuleName>()
+        val testFixturesDependencyNames = linkedSetOf<ModuleName>()
+        val testDependencyNames = linkedSetOf<ModuleName>()
 
         if (mainSourceRoots.isEmpty()) {
             testFixturesBinaryRoots.addAll(mainOutputRoots)
@@ -717,8 +720,8 @@ internal data class GradleModuleModel(
     }
 
     private fun addSourceSetDependency(
-        dependencyNames: MutableSet<String>,
-        availableMainSourceModuleNames: Set<String>,
+        dependencyNames: MutableSet<ModuleName>,
+        availableMainSourceModuleNames: Set<ModuleName>,
     ): List<Path> {
         val dependencyName = mainDependencyModuleName()
         if (dependencyName != null && dependencyName in availableMainSourceModuleNames) {
@@ -733,9 +736,9 @@ private data class ResolvedSourceSetDependencies(
     val mainBinaryRoots: List<Path>,
     val testFixturesBinaryRoots: List<Path>,
     val testBinaryRoots: List<Path>,
-    val mainDependencyNames: List<String>,
-    val testFixturesDependencyNames: List<String>,
-    val testDependencyNames: List<String>,
+    val mainDependencyNames: List<ModuleName>,
+    val testFixturesDependencyNames: List<ModuleName>,
+    val testDependencyNames: List<ModuleName>,
 )
 
 @Serializable
