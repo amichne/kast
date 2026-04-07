@@ -361,7 +361,7 @@ internal class StandaloneAnalysisBackend internal constructor(
         }
 
         if (visibility == SymbolVisibility.INTERNAL) {
-            val declaringModuleName = session.sourceModuleNameForFile(anchorFilePath)
+            val declaringModuleName = session.sourceModuleNameForFile(normalizeStandalonePath(java.nio.file.Path.of(anchorFilePath)).toString())
             if (declaringModuleName != null) {
                 val moduleFiltered = candidatePaths
                     .filter { path -> session.sourceModuleNameForFile(path) == declaringModuleName }
