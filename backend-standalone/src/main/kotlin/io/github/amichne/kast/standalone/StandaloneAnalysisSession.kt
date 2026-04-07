@@ -32,11 +32,14 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.collections.asSequence
+import kotlin.collections.associate
 import kotlin.concurrent.thread
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 import kotlin.io.path.extension
 
+@Suppress("UnstableApiUsage")
 internal class StandaloneAnalysisSession(
     workspaceRoot: Path,
     sourceRoots: List<Path>,
@@ -368,10 +371,9 @@ internal class StandaloneAnalysisSession(
         if (enrichmentFuture == null) {
             enrichmentComplete = true
             enrichmentReady.complete(Unit)
-    private fun rebuildWorkspaceLayout(workspaceLayout: StandaloneWorkspaceLayout) {
-        analysisSessionLock.write {
-            val previousSessionDisposable = sessionStateDisposable
+            return
         }
+
 
         enrichmentFuture.whenComplete { enrichedLayout, error ->
             if (closed) {
@@ -404,15 +406,7 @@ internal class StandaloneAnalysisSession(
         val previousSessionDisposable = sessionStateDisposable
         analysisSessionLock.write {
             applyWorkspaceLayout(workspaceLayout)
-            val rebuiltAnalysisState = buildAnalysisState()
-            session = rebuiltAnalysisState.session
-            analysisStateGeneration.incrementAndGet()
-            sourceModules = rebuiltAnalysisState.sourceModules
-            sessionStateDisposable = rebuiltAnalysisState.disposable
-            targetedKtFilesByPath.clear()
-            ktFilesByPath.clear()
-            ktFileLastModifiedMillisByPath.clear()
-            targetedCandidatePathsByLookupKey.clear()
+            buildAnalysisStateAndCache()
             sourceIdentifierIndex.set(null)
             initialSourceIndexReady = CompletableFuture()
             fullKtFileMapLoaded = false
@@ -817,6 +811,12 @@ internal class StandaloneAnalysisSession(
 
     private fun refreshStructureLocked() {
         val previousSessionDisposable = sessionStateDisposable
+        buildAnalysisStateAndCache()
+        fullKtFileMapLoaded = false
+        Disposer.dispose(previousSessionDisposable)
+    }
+
+    private fun buildAnalysisStateAndCache() {
         val rebuiltAnalysisState = buildAnalysisState()
         session = rebuiltAnalysisState.session
         analysisStateGeneration.incrementAndGet()
@@ -826,8 +826,6 @@ internal class StandaloneAnalysisSession(
         ktFilesByPath.clear()
         ktFileLastModifiedMillisByPath.clear()
         targetedCandidatePathsByLookupKey.clear()
-        fullKtFileMapLoaded = false
-        Disposer.dispose(previousSessionDisposable)
     }
 
     private fun normalizePath(path: Path): Path {
