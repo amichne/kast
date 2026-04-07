@@ -237,6 +237,7 @@ internal fun KaSession.supertypeNames(target: PsiElement): List<String>? = when 
 }
 
 internal fun PsiElement.referenceSearchIdentifier(): String? = when (this) {
+    is KtNamedFunction -> name.takeUnless { hasModifier(KtTokens.OPERATOR_KEYWORD) }
     is KtNamedDeclaration -> name
     else -> (this as? PsiNamedElement)?.name
 }
