@@ -40,8 +40,7 @@ internal class CacheManager(
         }
         synchronized(writeLock) {
             pendingWrites.remove(key)?.future?.cancel(false)
-            lateinit var future: ScheduledFuture<*>
-            future = writeExecutor.schedule(
+            var future: ScheduledFuture<*> = writeExecutor.schedule(
                 {
                     synchronized(writeLock) {
                         pendingWrites.remove(key)

@@ -17,10 +17,10 @@ import io.github.amichne.kast.api.ImportOptimizeResult
 import io.github.amichne.kast.api.LocalDiskEditApplier
 import io.github.amichne.kast.api.MutationCapability
 import io.github.amichne.kast.api.ReadCapability
-import io.github.amichne.kast.api.RefreshQuery
-import io.github.amichne.kast.api.RefreshResult
 import io.github.amichne.kast.api.ReferencesQuery
 import io.github.amichne.kast.api.ReferencesResult
+import io.github.amichne.kast.api.RefreshQuery
+import io.github.amichne.kast.api.RefreshResult
 import io.github.amichne.kast.api.RenameQuery
 import io.github.amichne.kast.api.RenameResult
 import io.github.amichne.kast.api.RuntimeState
@@ -36,14 +36,13 @@ import io.github.amichne.kast.api.SymbolVisibility
 import io.github.amichne.kast.api.TextEdit
 import io.github.amichne.kast.api.TypeHierarchyQuery
 import io.github.amichne.kast.api.TypeHierarchyResult
-import java.nio.file.Path
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.components.KaDiagnosticCheckerFilter
-import org.jetbrains.kotlin.analysis.api.components.collectDiagnostics
 import org.jetbrains.kotlin.psi.KtFile
+import java.nio.file.Path
 
 @OptIn(KaExperimentalApi::class)
 internal class StandaloneAnalysisBackend internal constructor(
@@ -321,14 +320,11 @@ internal class StandaloneAnalysisBackend internal constructor(
 
         val declaringFile = target.containingFile as? KtFile
         val anchorFilePath = target.resolvedFilePath().value
-        val searchIdentifier = target.referenceSearchIdentifier()
-        if (searchIdentifier == null) {
-            return candidateReferenceFilesWithoutIdentifier(
-                declaringFile = declaringFile,
-                visibility = visibility,
-                anchorFilePath = anchorFilePath,
-            )
-        }
+        val searchIdentifier = target.referenceSearchIdentifier() ?: return candidateReferenceFilesWithoutIdentifier(
+            declaringFile = declaringFile,
+            visibility = visibility,
+            anchorFilePath = anchorFilePath,
+        )
 
         val fqNameAndPackage = target.targetFqNameAndPackage()
         val candidatePaths = if (fqNameAndPackage != null) {
@@ -360,7 +356,7 @@ internal class StandaloneAnalysisBackend internal constructor(
         }
 
         if (visibility == SymbolVisibility.INTERNAL) {
-            val declaringModuleName = session.sourceModuleNameForFile(normalizeStandalonePath(java.nio.file.Path.of(anchorFilePath)).toString())
+            val declaringModuleName = session.sourceModuleNameForFile(normalizeStandalonePath(Path.of(anchorFilePath)).toString())
             if (declaringModuleName != null) {
                 val friendNames = session.friendModuleNames(declaringModuleName)
                 val moduleFiltered = candidatePaths
@@ -414,7 +410,7 @@ internal class StandaloneAnalysisBackend internal constructor(
         }
 
         if (visibility == SymbolVisibility.INTERNAL) {
-            val normalizedAnchorFilePath = normalizeStandalonePath(java.nio.file.Path.of(anchorFilePath)).toString()
+            val normalizedAnchorFilePath = normalizeStandalonePath(Path.of(anchorFilePath)).toString()
             val declaringModuleName = session.sourceModuleNameForFile(normalizedAnchorFilePath)
             if (declaringModuleName != null) {
                 val friendNames = session.friendModuleNames(declaringModuleName)

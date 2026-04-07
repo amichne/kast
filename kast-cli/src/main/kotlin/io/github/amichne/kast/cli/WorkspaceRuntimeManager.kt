@@ -1,6 +1,5 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.api.BackendCapabilities
 import io.github.amichne.kast.api.DescriptorRegistry
 import io.github.amichne.kast.api.RegisteredDescriptor
 import io.github.amichne.kast.api.RuntimeState

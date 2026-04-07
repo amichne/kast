@@ -122,11 +122,6 @@ private fun extractedIdeaFiles(
     },
 ).builtBy(extractIdeaDistribution)
 
-private val appJar = extractedIdeaFiles {
-    include("**/lib/app.jar")
-    exclude("**/plugins/**")
-}
-
 private val kotlinCompilerJar = extractedIdeaFiles {
     include("**/plugins/Kotlin/kotlinc/lib/kotlin-compiler.jar")
 }

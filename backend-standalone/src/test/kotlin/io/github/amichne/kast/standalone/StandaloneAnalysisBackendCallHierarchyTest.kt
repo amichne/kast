@@ -294,7 +294,7 @@ class StandaloneAnalysisBackendCallHierarchyTest {
             classpathRoots = emptyList(),
             moduleName = "sources",
         )
-        try {
+        session.use { session ->
             val backend = StandaloneAnalysisBackend(
                 workspaceRoot = workspaceRoot,
                 limits = defaultLimits(),
@@ -302,8 +302,6 @@ class StandaloneAnalysisBackendCallHierarchyTest {
                 telemetry = telemetry,
             )
             block(backend)
-        } finally {
-            session.close()
         }
     }
 

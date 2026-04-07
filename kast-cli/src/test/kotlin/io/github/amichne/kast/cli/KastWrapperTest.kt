@@ -11,23 +11,22 @@ import io.github.amichne.kast.api.RuntimeState
 import io.github.amichne.kast.api.RuntimeStatusResponse
 import io.github.amichne.kast.api.ServerInstanceDescriptor
 import io.github.amichne.kast.api.ServerLimits
+import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Files
-import java.nio.file.Path
 import java.net.StandardProtocolFamily
 import java.net.UnixDomainSocketAddress
 import java.nio.channels.Channels
 import java.nio.channels.ServerSocketChannel
 import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.encodeToJsonElement
 
 class KastWrapperTest {
     @TempDir

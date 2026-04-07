@@ -32,6 +32,5 @@ data class TypeHierarchyTruncation(
 @Serializable
 enum class TypeHierarchyTruncationReason {
     CYCLE,
-    MAX_DEPTH,
     MAX_RESULTS,
 }

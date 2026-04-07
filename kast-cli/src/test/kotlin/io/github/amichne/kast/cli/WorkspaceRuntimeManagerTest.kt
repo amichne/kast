@@ -9,7 +9,6 @@ import io.github.amichne.kast.api.ServerInstanceDescriptor
 import io.github.amichne.kast.api.ServerLimits
 import io.github.amichne.kast.api.defaultDescriptorDirectory
 import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.encodeToString
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -206,19 +205,6 @@ class WorkspaceRuntimeManagerTest {
         backendVersion = "0.1.0-SNAPSHOT",
         workspaceRoot = workspaceRoot.toString(),
         message = state.name,
-    )
-
-    private fun sampleCapabilities(workspaceRoot: Path): BackendCapabilities = BackendCapabilities(
-        backendName = "standalone",
-        backendVersion = "0.1.0-SNAPSHOT",
-        workspaceRoot = workspaceRoot.toString(),
-        readCapabilities = setOf(ReadCapability.DIAGNOSTICS),
-        mutationCapabilities = setOf(MutationCapability.RENAME),
-        limits = ServerLimits(
-            maxResults = 500,
-            requestTimeoutMillis = 30_000,
-            maxConcurrentRequests = 4,
-        ),
     )
 
     private fun writeDescriptor(

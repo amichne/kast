@@ -48,10 +48,10 @@ internal class StandaloneAnalysisSession(
     classpathRoots: List<Path>,
     moduleName: String,
     private val initialSourceIndexBuilder: (() -> Map<String, List<String>>)? = null,
-    private val phasedDiscoveryResult: PhasedDiscoveryResult? = null,
+    phasedDiscoveryResult: PhasedDiscoveryResult? = null,
     private val sourceIndexFileReader: (Path) -> String = Files::readString,
     private val sourceIndexCacheSaveDelayMillis: Long = defaultSourceIndexCacheSaveDelayMillis,
-    private val cacheEnvReader: (String) -> String? = System::getenv,
+    cacheEnvReader: (String) -> String? = System::getenv,
 ) : AutoCloseable {
     private val normalizedWorkspaceRoot = normalizeStandalonePath(workspaceRoot)
     private val disposable: Disposable = Disposer.newDisposable("kast-standalone")
@@ -650,12 +650,6 @@ internal class StandaloneAnalysisSession(
         return filePath.extension == "kt" && resolvedSourceRoots.any(filePath::startsWith)
     }
 
-    internal fun refreshStructure() {
-        analysisSessionLock.write {
-            refreshStructureLocked()
-        }
-    }
-
     private fun startInitialSourceIndex() {
         val generation = sourceIndexGeneration.incrementAndGet()
         val readiness = initialSourceIndexReady
@@ -758,25 +752,6 @@ internal class StandaloneAnalysisSession(
 
     private fun allTrackedKotlinSourcePaths(): Set<String> =
         fileManifest.snapshot(resolvedSourceRoots).currentPathsByLastModifiedMillis.keys
-
-    private fun buildTargetedCandidatePaths(identifier: String): List<String> = buildList {
-        resolvedSourceRoots.forEach { sourceRoot ->
-            if (!Files.isDirectory(sourceRoot)) {
-                return@forEach
-            }
-
-            Files.walk(sourceRoot).use { paths ->
-                paths
-                    .filter { path -> Files.isRegularFile(path) && path.extension == "kt" }
-                    .forEach { file ->
-                        val content = Files.readString(file)
-                        if (content.identifierOccurrenceOffsets(identifier).any()) {
-                            add(normalizePath(file).toString())
-                        }
-                    }
-            }
-        }
-    }.distinct().sorted()
 
     private fun buildTargetedCandidatePaths(
         identifier: String,
@@ -1095,7 +1070,7 @@ internal class MutableSourceIdentifierIndex(
                 typedPathsByIdentifier[KotlinIdentifier(identifier)] = paths.mapTo(ConcurrentHashMap.newKeySet()) {
                     NormalizedPath.ofNormalized(it)
                 }
-                paths.mapTo<kotlin.String, io.github.amichne.kast.api.NormalizedPath, java.util.concurrent.ConcurrentHashMap.KeySetView<io.github.amichne.kast.api.NormalizedPath, kotlin.Boolean>>(
+                paths.mapTo<String, NormalizedPath, ConcurrentHashMap.KeySetView<NormalizedPath, Boolean>>(
                     ConcurrentHashMap.newKeySet()
                 ) { NormalizedPath.ofNormalized(it) }
                     .forEach { normalizedPath ->

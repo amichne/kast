@@ -362,7 +362,7 @@ internal class CallHierarchyTraversal(
             return listOfNotNull(declaringFile)
         }
 
-        val normalizedAnchorFilePath = normalizeStandalonePath(java.nio.file.Path.of(anchorFilePath)).toString()
+        val normalizedAnchorFilePath = normalizeStandalonePath(Path.of(anchorFilePath)).toString()
         if (visibility == SymbolVisibility.INTERNAL) {
             val declaringModuleName = session.sourceModuleNameForFile(normalizedAnchorFilePath)
             if (declaringModuleName != null) {
@@ -389,7 +389,7 @@ internal class CallHierarchyTraversal(
         }
 
         if (visibility == SymbolVisibility.INTERNAL) {
-            val normalizedAnchorFilePath = normalizeStandalonePath(java.nio.file.Path.of(anchorFilePath)).toString()
+            val normalizedAnchorFilePath = normalizeStandalonePath(Path.of(anchorFilePath)).toString()
             val declaringModuleName = session.sourceModuleNameForFile(normalizedAnchorFilePath)
             if (declaringModuleName != null) {
                 val friendNames = session.friendModuleNames(declaringModuleName)

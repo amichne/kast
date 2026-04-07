@@ -87,7 +87,7 @@ class StandaloneAnalysisBackendTelemetryTest {
             classpathRoots = emptyList(),
             moduleName = "sources",
         )
-        try {
+        session.use { session ->
             val backend = StandaloneAnalysisBackend(
                 workspaceRoot = workspaceRoot,
                 limits = ServerLimits(
@@ -99,8 +99,6 @@ class StandaloneAnalysisBackendTelemetryTest {
                 telemetry = telemetry,
             )
             block(backend)
-        } finally {
-            session.close()
         }
     }
 

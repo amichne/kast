@@ -51,7 +51,7 @@ abstract class SyncRuntimeLibsTask : DefaultTask() {
         copiedEntries += appJarPath.name
 
         val runtimeJarSources = runtimeJarPathsInOrder.get()
-            .map(java.nio.file.Path::of)
+            .map(Path::of)
             .filter(Files::isRegularFile)
             .filter { it.name.endsWith(".jar") }
 

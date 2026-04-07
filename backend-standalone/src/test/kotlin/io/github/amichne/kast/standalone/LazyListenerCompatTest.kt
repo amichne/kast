@@ -186,8 +186,8 @@ class LazyListenerCompatTest {
         java.lang.Boolean.TYPE,
         java.lang.Boolean::class.java,
         -> false
-        java.lang.Integer.TYPE,
-        java.lang.Integer::class.java,
+        Integer.TYPE,
+        Integer::class.java,
         -> 0
         java.lang.Long.TYPE,
         java.lang.Long::class.java,
@@ -204,8 +204,8 @@ class LazyListenerCompatTest {
         java.lang.Byte.TYPE,
         java.lang.Byte::class.java,
         -> 0.toByte()
-        java.lang.Character.TYPE,
-        java.lang.Character::class.java,
+        Character.TYPE,
+        Character::class.java,
         -> '\u0000'
         else -> null
     }

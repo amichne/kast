@@ -31,9 +31,7 @@ internal class SmokeCommandSupport(
         listOfNotNull(
             environmentLookup("KAST_LAUNCHER_PATH"),
             propertyLookup("kast.wrapper"),
-        ).asSequence()
-            .mapNotNull(::resolveExecutablePath)
-            .firstOrNull()
+        ).asSequence().firstNotNullOfOrNull(::resolveExecutablePath)
             ?.let { return it }
 
         currentCommandPathProvider()

@@ -9,15 +9,18 @@ import com.intellij.psi.PsiModifier
 import com.intellij.psi.PsiModifierListOwner
 import com.intellij.psi.PsiNameIdentifierOwner
 import com.intellij.psi.PsiNamedElement
+import io.github.amichne.kast.api.FqName
 import io.github.amichne.kast.api.Location
+import io.github.amichne.kast.api.NormalizedPath
 import io.github.amichne.kast.api.NotFoundException
+import io.github.amichne.kast.api.PackageName
 import io.github.amichne.kast.api.Symbol
 import io.github.amichne.kast.api.SymbolKind
 import io.github.amichne.kast.api.SymbolVisibility
 import io.github.amichne.kast.api.TextEdit
 import org.jetbrains.kotlin.analysis.api.KaSession
-import org.jetbrains.kotlin.analysis.api.symbols.classSymbol
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
+import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtDeclarationWithBody
@@ -26,10 +29,6 @@ import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtObjectDeclaration
 import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtProperty
-import org.jetbrains.kotlin.lexer.KtTokens
-import io.github.amichne.kast.api.NormalizedPath
-import io.github.amichne.kast.api.FqName
-import io.github.amichne.kast.api.PackageName
 import java.nio.file.Path
 
 /**

@@ -68,7 +68,7 @@ internal class InstallService(
                 buildString {
                     appendLine("#!/usr/bin/env bash")
                     appendLine("set -euo pipefail")
-                    appendLine("exec \"$instanceRoot/kast\" \"\$@\"")
+                    appendLine($$"exec \"$$instanceRoot/kast\" \"$@\"")
                 },
             )
             launcherPath.toFile().setExecutable(true)

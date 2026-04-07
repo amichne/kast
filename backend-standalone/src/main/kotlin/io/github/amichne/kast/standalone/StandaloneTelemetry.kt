@@ -5,7 +5,6 @@ import io.opentelemetry.api.common.Attributes
 import io.opentelemetry.api.trace.Span
 import io.opentelemetry.api.trace.StatusCode
 import io.opentelemetry.api.trace.Tracer
-import io.opentelemetry.context.Scope as OtelScope
 import io.opentelemetry.sdk.OpenTelemetrySdk
 import io.opentelemetry.sdk.common.CompletableResultCode
 import io.opentelemetry.sdk.trace.SdkTracerProvider
@@ -13,20 +12,18 @@ import io.opentelemetry.sdk.trace.data.EventData
 import io.opentelemetry.sdk.trace.data.SpanData
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor
 import io.opentelemetry.sdk.trace.export.SpanExporter
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption.APPEND
 import java.nio.file.StandardOpenOption.CREATE
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.buildJsonArray
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 
 internal enum class StandaloneTelemetryScope(
-    val wireName: String,
 ) {
-    RENAME("rename"),
-    CALL_HIERARCHY("call-hierarchy"),
+    RENAME(),
+    CALL_HIERARCHY(),
     ;
 
     companion object {
@@ -60,7 +57,6 @@ internal data class StandaloneTelemetryConfig(
 
 internal class StandaloneTelemetry private constructor(
     private val config: StandaloneTelemetryConfig?,
-    private val tracerProvider: SdkTracerProvider?,
     private val tracer: Tracer?,
 ) {
     fun isEnabled(scope: StandaloneTelemetryScope): Boolean = config != null && scope in config.scopes
@@ -102,7 +98,6 @@ internal class StandaloneTelemetry private constructor(
     companion object {
         fun disabled(): StandaloneTelemetry = StandaloneTelemetry(
             config = null,
-            tracerProvider = null,
             tracer = null,
         )
 
@@ -124,7 +119,6 @@ internal class StandaloneTelemetry private constructor(
 
             return StandaloneTelemetry(
                 config = config,
-                tracerProvider = tracerProvider,
                 tracer = openTelemetry.getTracer("io.github.amichne.kast.standalone"),
             )
         }

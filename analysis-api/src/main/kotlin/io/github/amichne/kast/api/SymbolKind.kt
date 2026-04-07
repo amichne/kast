@@ -9,11 +9,6 @@ enum class SymbolKind {
     OBJECT,
     FUNCTION,
     PROPERTY,
-    CONSTRUCTOR,
-    ENUM_ENTRY,
-    TYPE_ALIAS,
-    PACKAGE,
     PARAMETER,
-    LOCAL_VARIABLE,
     UNKNOWN,
 }

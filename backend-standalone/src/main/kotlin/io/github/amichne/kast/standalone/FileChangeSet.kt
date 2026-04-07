@@ -13,10 +13,6 @@ internal data class FileChangeSet(
     val isEmpty: Boolean
         get() = added.isEmpty() && modified.isEmpty() && removed.isEmpty()
 
-    val allAffected: List<String>
-        get() = added + modified + removed
-
     companion object {
-        val EMPTY = FileChangeSet(added = emptyList(), modified = emptyList(), removed = emptyList())
     }
 }
