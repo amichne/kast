@@ -138,16 +138,38 @@ private fun PsiElement.fqName(): String = when (this) {
 /**
  * Returns the fully qualified name and containing package of a target element,
  * or `null` when either cannot be determined (e.g. anonymous or local declarations).
+ *
+ * For class members (methods, properties, fields), the package is derived from
+ * the containing file or class rather than from the member FQ name, so that
+ * import-aware filtering in [MutableSourceIdentifierIndex.candidatePathsForFqName]
+ * matches correctly against file-level package declarations.
  */
 internal fun PsiElement.targetFqNameAndPackage(): Pair<String, String>? {
-    val fqn = when (this) {
-        is KtNamedDeclaration -> fqName?.asString()
-        is PsiClass -> qualifiedName
-        is PsiMethod -> containingClass?.qualifiedName?.let { "$it.$name" }
-        is PsiField -> containingClass?.qualifiedName?.let { "$it.$name" }
-        else -> null
-    } ?: return null
-    val pkg = fqn.substringBeforeLast('.', missingDelimiterValue = "")
+    val fqn: String
+    val pkg: String
+    when (this) {
+        is KtNamedDeclaration -> {
+            fqn = fqName?.asString() ?: return null
+            pkg = (containingFile as? org.jetbrains.kotlin.psi.KtFile)
+                ?.packageFqName?.asString()
+                ?: fqn.substringBeforeLast('.', missingDelimiterValue = "")
+        }
+        is PsiClass -> {
+            fqn = qualifiedName ?: return null
+            pkg = fqn.substringBeforeLast('.', missingDelimiterValue = "")
+        }
+        is PsiMethod -> {
+            val classFqn = containingClass?.qualifiedName ?: return null
+            fqn = "$classFqn.$name"
+            pkg = classFqn.substringBeforeLast('.', missingDelimiterValue = "")
+        }
+        is PsiField -> {
+            val classFqn = containingClass?.qualifiedName ?: return null
+            fqn = "$classFqn.$name"
+            pkg = classFqn.substringBeforeLast('.', missingDelimiterValue = "")
+        }
+        else -> return null
+    }
     return fqn to pkg
 }
 

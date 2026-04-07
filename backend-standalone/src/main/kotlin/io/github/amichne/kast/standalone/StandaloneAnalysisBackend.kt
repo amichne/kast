@@ -415,10 +415,12 @@ internal class StandaloneAnalysisBackend internal constructor(
         }
 
         if (visibility == SymbolVisibility.INTERNAL) {
-            val declaringModuleName = session.sourceModuleNameForFile(anchorFilePath)
+            val normalizedAnchorFilePath = normalizeStandalonePath(java.nio.file.Path.of(anchorFilePath)).toString()
+            val declaringModuleName = session.sourceModuleNameForFile(normalizedAnchorFilePath)
             if (declaringModuleName != null) {
+                val friendNames = session.friendModuleNames(declaringModuleName)
                 val moduleFiltered = allFiles.filter { candidateFile ->
-                    session.sourceModuleNameForFile(candidateFile.lookupPath()) == declaringModuleName
+                    session.sourceModuleNameForFile(candidateFile.lookupPath()) in friendNames
                 }
                 if (moduleFiltered.isNotEmpty()) {
                     return CandidateSearchResult(
