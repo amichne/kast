@@ -343,9 +343,13 @@ internal class CallHierarchyTraversal(
         }
 
         val declaringFile = target.containingFile as? KtFile
-        val searchIdentifier = target.referenceSearchIdentifier()
-            ?: return listOfNotNull(declaringFile)
         val anchorFilePath = target.lookupPath()
+        val searchIdentifier = target.referenceSearchIdentifier()
+            ?: return candidateReferenceFilesWithoutIdentifier(
+                declaringFile = declaringFile,
+                visibility = visibility,
+                anchorFilePath = anchorFilePath,
+            )
 
         val fqNameAndPackage = target.targetFqNameAndPackage()
         val candidatePaths = if (fqNameAndPackage != null) {
@@ -366,8 +370,9 @@ internal class CallHierarchyTraversal(
             return listOfNotNull(declaringFile)
         }
 
+        val normalizedAnchorFilePath = normalizeStandalonePath(java.nio.file.Path.of(anchorFilePath)).toString()
         if (visibility == SymbolVisibility.INTERNAL) {
-            val declaringModuleName = session.sourceModuleNameForFile(anchorFilePath)
+            val declaringModuleName = session.sourceModuleNameForFile(normalizedAnchorFilePath)
             if (declaringModuleName != null) {
                 val friendNames = session.friendModuleNames(declaringModuleName)
                 val moduleFiltered = candidatePaths
@@ -379,6 +384,33 @@ internal class CallHierarchyTraversal(
         }
 
         return candidatePaths.map(session::findKtFile)
+    }
+
+    private fun candidateReferenceFilesWithoutIdentifier(
+        declaringFile: KtFile?,
+        visibility: SymbolVisibility,
+        anchorFilePath: String,
+    ): List<KtFile> {
+        val allFiles = session.allKtFiles()
+        if (allFiles.isEmpty()) {
+            return listOfNotNull(declaringFile)
+        }
+
+        if (visibility == SymbolVisibility.INTERNAL) {
+            val normalizedAnchorFilePath = normalizeStandalonePath(java.nio.file.Path.of(anchorFilePath)).toString()
+            val declaringModuleName = session.sourceModuleNameForFile(normalizedAnchorFilePath)
+            if (declaringModuleName != null) {
+                val friendNames = session.friendModuleNames(declaringModuleName)
+                val moduleFiltered = allFiles.filter { candidateFile ->
+                    session.sourceModuleNameForFile(candidateFile.lookupPath()) in friendNames
+                }
+                if (moduleFiltered.isNotEmpty()) {
+                    return moduleFiltered
+                }
+            }
+        }
+
+        return allFiles
     }
 
     private fun resolveCache(query: CallHierarchyQuery): CallHierarchyCache? {
