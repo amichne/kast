@@ -368,9 +368,8 @@ internal class StandaloneAnalysisSession(
         if (enrichmentFuture == null) {
             enrichmentComplete = true
             enrichmentReady.complete(Unit)
-    private fun rebuildWorkspaceLayout(workspaceLayout: StandaloneWorkspaceLayout) {
-        analysisSessionLock.write {
-            val previousSessionDisposable = sessionStateDisposable
+            return
+        }
         }
 
         enrichmentFuture.whenComplete { enrichedLayout, error ->
