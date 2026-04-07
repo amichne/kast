@@ -84,6 +84,31 @@ file and offset. Two classes with the same name are distinct if they are
 different declarations in different files or packages, which is why position
 beats text matching when identity matters.
 
+## Reference search is visibility-scoped
+
+Kast narrows the files it searches based on the resolved symbol's Kotlin
+visibility. Private and local symbols only need the declaring file. Internal
+symbols stay inside the declaring module. Public and protected symbols use
+the identifier index to find candidate files across dependent modules.
+
+The `searchScope` object returned with `references` and `rename` results
+describes the actual search that ran.
+
+- `searchScope.visibility` — the Kotlin visibility Kast resolved for the
+  symbol (`PUBLIC`, `INTERNAL`, `PROTECTED`, `PRIVATE`, `LOCAL`, or
+  `UNKNOWN`).
+- `searchScope.scope` — the breadth of the search: `FILE`, `MODULE`, or
+  `DEPENDENT_MODULES`.
+- `searchScope.exhaustive` — `true` when every candidate file was searched.
+  `false` means the search was bounded by a missing index or an incomplete
+  scope. Treat results as partial when this is `false`.
+- `searchScope.candidateFileCount` and `searchScope.searchedFileCount` —
+  how many files were candidates versus how many were actually searched.
+
+Read `searchScope.exhaustive` before you claim a reference list or rename
+plan is complete. If it is `false`, results may miss usages outside the
+searched scope.
+
 ## Rename plans use hash-based conflict detection
 
 Rename planning returns edits together with `fileHashes`. Those hashes are

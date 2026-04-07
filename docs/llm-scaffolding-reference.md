@@ -135,10 +135,16 @@ read the right fields and report their limits honestly.
 
 - Treat `symbol.fqName` as the stable identity.
 - Treat `symbol.kind` as the first guardrail against a wrong match.
+- Treat `symbol.visibility` as a signal for how wide a reference or rename
+  search will run (`PRIVATE`/`LOCAL` → file only, `INTERNAL` → module only,
+  `PUBLIC`/`PROTECTED` → dependent modules).
 - Treat declaration coordinates as navigation anchors, not as user-friendly
   prose by themselves.
 - Treat `references[].preview` as a snippet, not as the full surrounding body.
 - Treat `page.truncated=true` as a hard cap on the visible result set.
+- Treat `searchScope.exhaustive=false` in a `references` or `rename` result as
+  proof that Kast did not search every candidate file. Do not claim a reference
+  list is complete until this is `true`.
 - Treat `stats.*Reached` and node `truncation` fields in a call hierarchy
   result as hard proof that Kast bounded the tree.
 

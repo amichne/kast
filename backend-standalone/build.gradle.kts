@@ -24,8 +24,7 @@ import java.nio.file.StandardCopyOption
 import java.util.zip.ZipFile
 
 plugins {
-    id("kast.standalone-app")
-    id("kast.kotlin-library")
+    id("kast.standalone-serialization-app")
 }
 
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
@@ -288,7 +287,7 @@ dependencies {
     implementation(libs.logback.classic)
     implementation(libs.opentelemetry.api)
     implementation(libs.opentelemetry.sdk)
-    implementation(libs.serialization.json)
+
     testImplementation(project(":shared-testing"))
     // IJ platform Logger.setFactory() references junit.rules.TestRule at class-init time.
     testRuntimeOnly(libs.junit4)

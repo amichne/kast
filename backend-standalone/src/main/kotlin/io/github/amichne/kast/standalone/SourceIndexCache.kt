@@ -9,7 +9,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 
-private const val sourceIndexCacheSchemaVersion = 1
+private const val sourceIndexCacheSchemaVersion = 2
 
 private val sourceIndexCacheJson = Json {
     encodeDefaults = true
@@ -33,11 +33,15 @@ internal class SourceIndexCache(
             return
         }
         val manifest = fileManifest.snapshot(sourceRoots).currentPathsByLastModifiedMillis
+        val metadata = index.toSerializableMetadata()
         writeCacheFileAtomically(
             path = indexCachePath,
             payload = json.encodeToString(
                 SourceIdentifierIndexCachePayload(
                     candidatePathsByIdentifier = index.toSerializableMap(),
+                    packageByPath = metadata.packageByPath,
+                    importsByPath = metadata.importsByPath,
+                    wildcardImportPackagesByPath = metadata.wildcardImportPackagesByPath,
                 ),
             ),
         )
@@ -59,7 +63,12 @@ internal class SourceIndexCache(
 
         val manifestSnapshot = fileManifest.snapshot(sourceRoots)
         return IncrementalIndexResult(
-            index = MutableSourceIdentifierIndex.fromCandidatePathsByIdentifier(cachedIndex.candidatePathsByIdentifier),
+            index = MutableSourceIdentifierIndex.fromCandidatePathsByIdentifier(
+                candidatePathsByIdentifier = cachedIndex.candidatePathsByIdentifier,
+                packageByPath = cachedIndex.packageByPath,
+                importsByPath = cachedIndex.importsByPath,
+                wildcardImportPackagesByPath = cachedIndex.wildcardImportPackagesByPath,
+            ),
             newPaths = manifestSnapshot.newPaths,
             modifiedPaths = manifestSnapshot.modifiedPaths,
             deletedPaths = manifestSnapshot.deletedPaths,
@@ -78,6 +87,9 @@ internal data class IncrementalIndexResult(
 private data class SourceIdentifierIndexCachePayload(
     val schemaVersion: Int = sourceIndexCacheSchemaVersion,
     val candidatePathsByIdentifier: Map<String, List<String>>,
+    val packageByPath: Map<String, String> = emptyMap(),
+    val importsByPath: Map<String, List<String>> = emptyMap(),
+    val wildcardImportPackagesByPath: Map<String, List<String>> = emptyMap(),
 )
 
 internal fun kastCacheDirectory(workspaceRoot: Path): Path = workspaceRoot.resolve(".kast").resolve("cache")

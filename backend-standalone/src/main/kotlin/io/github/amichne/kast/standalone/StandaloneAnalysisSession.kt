@@ -940,6 +940,22 @@ internal class MutableSourceIdentifierIndex(
             identifier to paths.toList().sorted()
         }
 
+    fun toSerializableMetadata(): SourceIdentifierIndexMetadataSnapshot =
+        SourceIdentifierIndexMetadataSnapshot(
+            packageByPath = packageByPath.entries
+                .asSequence()
+                .sortedBy(Map.Entry<String, String>::key)
+                .associate { (path, packageName) -> path to packageName },
+            importsByPath = importsByPath.entries
+                .asSequence()
+                .sortedBy(Map.Entry<String, Set<String>>::key)
+                .associate { (path, imports) -> path to imports.toList().sorted() },
+            wildcardImportPackagesByPath = wildcardImportPackagesByPath.entries
+                .asSequence()
+                .sortedBy(Map.Entry<String, Set<String>>::key)
+                .associate { (path, packages) -> path to packages.toList().sorted() },
+        )
+
     fun updateFile(
         normalizedPath: String,
         newContent: String,
@@ -1010,7 +1026,12 @@ internal class MutableSourceIdentifierIndex(
         private val packageRegex = Regex("""^package\s+([\w]+(?:\.[\w]+)*)""", RegexOption.MULTILINE)
         private val importRegex = Regex("""^import\s+([\w]+(?:\.[\w]+)*)(\.\*)?""", RegexOption.MULTILINE)
 
-        fun fromCandidatePathsByIdentifier(candidatePathsByIdentifier: Map<String, List<String>>): MutableSourceIdentifierIndex {
+        fun fromCandidatePathsByIdentifier(
+            candidatePathsByIdentifier: Map<String, List<String>>,
+            packageByPath: Map<String, String> = emptyMap(),
+            importsByPath: Map<String, List<String>> = emptyMap(),
+            wildcardImportPackagesByPath: Map<String, List<String>> = emptyMap(),
+        ): MutableSourceIdentifierIndex {
             val pathsByIdentifier = ConcurrentHashMap<String, MutableSet<String>>()
             val identifiersByPath = ConcurrentHashMap<String, Set<String>>()
             candidatePathsByIdentifier.forEach { (identifier, paths) ->
@@ -1025,10 +1046,23 @@ internal class MutableSourceIdentifierIndex(
             return MutableSourceIdentifierIndex(
                 pathsByIdentifier = pathsByIdentifier,
                 identifiersByPath = identifiersByPath,
+                packageByPath = ConcurrentHashMap(packageByPath),
+                importsByPath = importsByPath.entries.associateTo(ConcurrentHashMap()) { (path, imports) ->
+                    path to imports.toSet()
+                },
+                wildcardImportPackagesByPath = wildcardImportPackagesByPath.entries.associateTo(ConcurrentHashMap()) { (path, packages) ->
+                    path to packages.toSet()
+                },
             )
         }
     }
 }
+
+internal data class SourceIdentifierIndexMetadataSnapshot(
+    val packageByPath: Map<String, String>,
+    val importsByPath: Map<String, List<String>>,
+    val wildcardImportPackagesByPath: Map<String, List<String>>,
+)
 
 private data class CandidateLookupKey(
     val identifier: String,

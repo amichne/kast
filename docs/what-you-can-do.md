@@ -15,7 +15,7 @@ identity behind the code under your cursor or offset.
 
 - **Capability:** Symbol resolution
 - **Returns:** The symbol's fully qualified name, kind, declaration location,
-  and related metadata such as supertypes when available.
+  visibility modifier, and related metadata such as supertypes when available.
 - **Important details:** Resolution is position-based, not name-based. The
   file must be part of the current workspace session.
 
@@ -25,11 +25,14 @@ Use this when you want real usages of one resolved symbol across the
 workspace, not every place the same text happens to appear.
 
 - **Capability:** Find references
-- **Returns:** A list of usage locations across the workspace and, when you
-  ask for it, the declaration alongside the reference list.
+- **Returns:** A list of usage locations across the workspace, a `searchScope`
+  object that describes the visibility-scoped search that ran, and optionally
+  the declaration alongside the reference list.
 - **Important details:** Results are workspace-scoped. Kast follows semantic
   resolution, so it separates one symbol from other declarations with the same
-  name.
+  name. Read `searchScope.exhaustive` before treating the result as complete —
+  private and internal symbols are searched within narrower scopes than public
+  ones.
 
 ## What calls this function?
 
@@ -49,10 +52,13 @@ Use this when you want to see refactoring impact before anything writes to
 disk.
 
 - **Capability:** Rename planning
-- **Returns:** A proposed edit set, the affected files, and the file hashes
-  that lock the plan to the current workspace state.
+- **Returns:** A proposed edit set, the affected files, the file hashes that
+  lock the plan to the current workspace state, and a `searchScope` object
+  that describes the visibility-scoped search that ran.
 - **Important details:** The plan starts from a resolved symbol. The returned
-  hashes are part of conflict detection when you later apply the edits.
+  hashes are part of conflict detection when you later apply the edits. Read
+  `searchScope.exhaustive` to confirm the rename plan covers all usages within
+  the expected scope.
 
 ## Does this file have errors?
 

@@ -97,6 +97,14 @@ kast \
 Keep `--include-declaration=true` for the cases where your consumer wants the
 declaration returned alongside the reference list.
 
+The result includes a `searchScope` object. Read `searchScope.exhaustive`
+before treating the reference list as complete. Kast searches only the files
+visible to the resolved symbol's visibility: private and local symbols produce
+a `FILE`-scoped result, internal symbols produce a `MODULE`-scoped result, and
+public or protected symbols produce a `DEPENDENT_MODULES`-scoped result using
+the identifier index. When `searchScope.exhaustive` is `false`, results may
+miss usages outside the searched scope.
+
 ## Expand a call hierarchy
 
 Use `call hierarchy` when you want incoming callers or outgoing callees for the

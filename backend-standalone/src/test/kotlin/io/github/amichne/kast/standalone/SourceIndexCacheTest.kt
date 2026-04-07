@@ -62,6 +62,47 @@ class SourceIndexCacheTest {
     }
 
     @Test
+    fun `source index cache round-trips import-aware metadata`() {
+        val callerFile = writeSourceFile(
+            relativePath = "consumer/Caller.kt",
+            content = """
+                package consumer
+
+                import lib.Foo
+
+                fun use() = Foo()
+            """.trimIndent() + "\n",
+        )
+        val bystanderFile = writeSourceFile(
+            relativePath = "other/Bystander.kt",
+            content = """
+                package other
+
+                fun Foo() = "shadow"
+            """.trimIndent() + "\n",
+        )
+        val cache = SourceIndexCache(normalizeStandalonePath(workspaceRoot))
+        val index = MutableSourceIdentifierIndex.fromCandidatePathsByIdentifier(emptyMap())
+        index.updateFile(normalizeStandalonePath(callerFile).toString(), Files.readString(callerFile))
+        index.updateFile(normalizeStandalonePath(bystanderFile).toString(), Files.readString(bystanderFile))
+
+        cache.save(
+            index = index,
+            sourceRoots = sourceRoots(),
+        )
+
+        val loaded = requireNotNull(cache.load(sourceRoots()))
+        assertEquals(
+            listOf(normalizeStandalonePath(callerFile).toString()),
+            loaded.index.candidatePathsForFqName(
+                identifier = "Foo",
+                targetPackage = "lib",
+                targetFqName = "lib.Foo",
+            ),
+        )
+    }
+
+    @Test
     fun `source index cache detects modified files`() {
         val file = writeSourceFile(
             relativePath = "sample/App.kt",
