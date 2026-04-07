@@ -403,8 +403,8 @@ internal class StandaloneAnalysisSession(
     }
 
     private fun rebuildWorkspaceLayout(workspaceLayout: StandaloneWorkspaceLayout) {
-        val previousSessionDisposable = sessionStateDisposable
         analysisSessionLock.write {
+            val previousSessionDisposable = sessionStateDisposable
             applyWorkspaceLayout(workspaceLayout)
             buildAnalysisStateAndCache()
             sourceIdentifierIndex.set(null)
