@@ -363,8 +363,9 @@ internal class StandaloneAnalysisBackend internal constructor(
         if (visibility == SymbolVisibility.INTERNAL) {
             val declaringModuleName = session.sourceModuleNameForFile(normalizeStandalonePath(java.nio.file.Path.of(anchorFilePath)).toString())
             if (declaringModuleName != null) {
+                val friendNames = session.friendModuleNames(declaringModuleName)
                 val moduleFiltered = candidatePaths
-                    .filter { path -> session.sourceModuleNameForFile(path) == declaringModuleName }
+                    .filter { path -> session.sourceModuleNameForFile(path) in friendNames }
                 if (moduleFiltered.isNotEmpty()) {
                     return CandidateSearchResult(
                         files = moduleFiltered.map(session::findKtFile),

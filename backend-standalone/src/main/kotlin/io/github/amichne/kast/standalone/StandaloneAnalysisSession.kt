@@ -812,6 +812,27 @@ internal class StandaloneAnalysisSession(
         }?.name
     }
 
+    /**
+     * Returns all source module names that share the same Gradle project as the
+     * given [moduleName]. Kotlin's `internal` visibility is accessible from test
+     * and testFixtures source sets of the same project (friend modules), so
+     * scoping by exact module name alone is too narrow.
+     *
+     * For non-Gradle module names (no `[` bracket), returns only the input name.
+     */
+    internal fun friendModuleNames(moduleName: String): Set<String> {
+        val projectPrefix = moduleName.substringBefore('[', missingDelimiterValue = "")
+        if (projectPrefix.isEmpty()) {
+            return setOf(moduleName)
+        }
+        return sourceModuleSpecs
+            .asSequence()
+            .map(StandaloneSourceModuleSpec::name)
+            .filter { name -> name.substringBefore('[', missingDelimiterValue = "") == projectPrefix }
+            .toSet()
+            .ifEmpty { setOf(moduleName) }
+    }
+
     private fun org.jetbrains.kotlin.analysis.project.structure.builder.KtModuleProviderBuilder.buildLibraryModule(
         moduleName: String,
         platform: org.jetbrains.kotlin.platform.TargetPlatform,

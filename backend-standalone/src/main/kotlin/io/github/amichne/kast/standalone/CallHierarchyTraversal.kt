@@ -369,8 +369,9 @@ internal class CallHierarchyTraversal(
         if (visibility == SymbolVisibility.INTERNAL) {
             val declaringModuleName = session.sourceModuleNameForFile(anchorFilePath)
             if (declaringModuleName != null) {
+                val friendNames = session.friendModuleNames(declaringModuleName)
                 val moduleFiltered = candidatePaths
-                    .filter { path -> session.sourceModuleNameForFile(path) == declaringModuleName }
+                    .filter { path -> session.sourceModuleNameForFile(path) in friendNames }
                 if (moduleFiltered.isNotEmpty()) {
                     return moduleFiltered.map(session::findKtFile)
                 }
