@@ -71,6 +71,29 @@ class WorkspaceDiscoveryCacheTest {
     }
 
     @Test
+    fun `workspace discovery cache ignores build files under skipped directories`() {
+        createGradleWorkspace()
+        val result = workspaceDiscoveryResult()
+        val cache = WorkspaceDiscoveryCache()
+        cache.write(workspaceRoot, result)
+
+        listOf(
+            ".gradle/caches/settings.gradle.kts",
+            ".kast/cache/build.gradle.kts",
+            ".git/hooks/build.gradle",
+            ".idea/modules/settings.gradle",
+            "app/build/generated/build.gradle.kts",
+            "node_modules/example/build.gradle.kts",
+            "out/generated/settings.gradle.kts",
+        ).forEach { relativePath ->
+            writeFile(relativePath = relativePath, content = "// ignored\n")
+        }
+
+        val loaded = requireNotNull(cache.read(workspaceRoot))
+        assertEquals(result, loaded.discoveryResult)
+    }
+
+    @Test
     fun `workspace discovery cache is used when valid`() {
         createGradleWorkspace()
         WorkspaceDiscoveryCache().write(workspaceRoot, workspaceDiscoveryResult())

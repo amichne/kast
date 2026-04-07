@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import org.jetbrains.kotlin.psi.KtFile
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
@@ -413,6 +414,49 @@ class StandaloneWorkspaceDiscoveryTest {
     }
 
     @Test
+    fun `content-only refresh keeps shared KtFile instance for partially loaded maps`() {
+        val changedFile = writeFile(
+            relativePath = "src/main/kotlin/sample/App.kt",
+            content = """
+                package sample
+
+                fun greet(): String = "ready"
+            """.trimIndent() + "\n",
+        )
+        val sourceRoot = workspaceRoot.resolve("src/main/kotlin")
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = listOf(sourceRoot),
+            classpathRoots = emptyList(),
+            moduleName = "main",
+        )
+
+        session.use { standaloneSession ->
+            val normalizedPath = normalizePath(changedFile)
+            standaloneSession.findKtFile(changedFile.toString())
+            assertFalse(standaloneSession.isFullKtFileMapLoaded())
+
+            changedFile.writeText(
+                """
+                    package sample
+
+                    fun welcome(): String = "updated"
+                """.trimIndent() + "\n",
+            )
+
+            standaloneSession.refreshFileContents(setOf(changedFile.toString()))
+
+            val refreshedKtFilesByPath = ktFileCache(standaloneSession, "ktFilesByPath")
+            val refreshedTargetedKtFilesByPath = ktFileCache(standaloneSession, "targetedKtFilesByPath")
+            assertSame(
+                refreshedKtFilesByPath.getValue(normalizedPath),
+                refreshedTargetedKtFilesByPath.getValue(normalizedPath),
+            )
+            assertTrue(refreshedKtFilesByPath.getValue(normalizedPath).text.contains("welcome"))
+        }
+    }
+
+    @Test
     fun `content-only refresh preserves full KtFile map`() {
         val changedFile = writeFile(
             relativePath = "src/main/kotlin/sample/App.kt",
@@ -439,6 +483,7 @@ class StandaloneWorkspaceDiscoveryTest {
         )
 
         session.use { standaloneSession ->
+            val normalizedChangedPath = normalizePath(changedFile)
             standaloneSession.allKtFiles()
             assertTrue(standaloneSession.isFullKtFileMapLoaded())
             val unchangedKtFile = standaloneSession.findKtFile(unchangedFile.toString())
@@ -459,6 +504,12 @@ class StandaloneWorkspaceDiscoveryTest {
                 standaloneSession.allKtFiles().map { file -> file.virtualFilePath }.toSet(),
             )
             assertSame(unchangedKtFile, standaloneSession.findKtFile(unchangedFile.toString()))
+            val refreshedKtFilesByPath = ktFileCache(standaloneSession, "ktFilesByPath")
+            val refreshedTargetedKtFilesByPath = ktFileCache(standaloneSession, "targetedKtFilesByPath")
+            assertSame(
+                refreshedKtFilesByPath.getValue(normalizedChangedPath),
+                refreshedTargetedKtFilesByPath.getValue(normalizedChangedPath),
+            )
             assertTrue(standaloneSession.findKtFile(changedFile.toString()).text.contains("other()"))
         }
     }
@@ -1351,6 +1402,16 @@ class StandaloneWorkspaceDiscoveryTest {
     private fun normalizePath(path: Path): String {
         val absolutePath = path.toAbsolutePath().normalize()
         return runCatching { absolutePath.toRealPath().normalize().toString() }.getOrDefault(absolutePath.toString())
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun ktFileCache(
+        session: StandaloneAnalysisSession,
+        fieldName: String,
+    ): Map<String, KtFile> {
+        val field = StandaloneAnalysisSession::class.java.getDeclaredField(fieldName)
+        field.isAccessible = true
+        return field.get(session) as Map<String, KtFile>
     }
 
     private fun manualWorkspaceLayout(vararg sourceModules: StandaloneSourceModuleSpec): StandaloneWorkspaceLayout =

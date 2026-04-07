@@ -5,11 +5,31 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.nio.charset.StandardCharsets
+import java.nio.file.FileVisitResult
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.SimpleFileVisitor
 import java.security.MessageDigest
+import java.nio.file.attribute.BasicFileAttributes
 
 private const val workspaceDiscoveryCacheSchemaVersion = 1
+
+private val trackedGradleBuildFileNames = setOf(
+    "settings.gradle",
+    "settings.gradle.kts",
+    "build.gradle",
+    "build.gradle.kts",
+)
+
+private val trackedGradleBuildSkipDirs = setOf(
+    ".git",
+    ".gradle",
+    ".kast",
+    "build",
+    "out",
+    "node_modules",
+    ".idea",
+)
 
 private val workspaceDiscoveryCacheJson = Json {
     encodeDefaults = true
@@ -105,20 +125,27 @@ private fun trackedGradleBuildFiles(workspaceRoot: Path): List<Path> {
         return emptyList()
     }
 
-    return Files.walk(workspaceRoot).use { paths ->
-        paths
-            .filter(Files::isRegularFile)
-            .filter { path ->
-                when (path.fileName.toString()) {
-                    "settings.gradle",
-                    "settings.gradle.kts",
-                    "build.gradle",
-                    "build.gradle.kts",
-                    -> true
-                    else -> false
-                }
+    val trackedFiles = mutableListOf<Path>()
+    Files.walkFileTree(workspaceRoot, object : SimpleFileVisitor<Path>() {
+        override fun preVisitDirectory(
+            dir: Path,
+            attrs: BasicFileAttributes,
+        ): FileVisitResult {
+            if (dir != workspaceRoot && dir.fileName?.toString() in trackedGradleBuildSkipDirs) {
+                return FileVisitResult.SKIP_SUBTREE
             }
-            .toList()
-            .sorted()
-    }
+            return FileVisitResult.CONTINUE
+        }
+
+        override fun visitFile(
+            file: Path,
+            attrs: BasicFileAttributes,
+        ): FileVisitResult {
+            if (attrs.isRegularFile && file.fileName?.toString() in trackedGradleBuildFileNames) {
+                trackedFiles.add(file)
+            }
+            return FileVisitResult.CONTINUE
+        }
+    })
+    return trackedFiles.sorted()
 }
