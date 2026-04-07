@@ -25,6 +25,7 @@ import java.util.zip.ZipFile
 
 plugins {
     id("kast.standalone-app")
+    id("kast.kotlin-serialization")
 }
 
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")

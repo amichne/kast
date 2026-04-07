@@ -1,5 +1,6 @@
 package io.github.amichne.kast.standalone
 
+import io.github.amichne.kast.api.RefreshResult
 import java.nio.file.ClosedWatchServiceException
 import java.nio.file.FileSystems
 import java.nio.file.Files
@@ -16,6 +17,8 @@ import kotlin.io.path.extension
 internal class WorkspaceRefreshWatcher(
     private val session: StandaloneAnalysisSession,
     private val debounceMillis: Long = 200,
+    private val contentRefresh: (Set<String>) -> RefreshResult = session::refreshFileContents,
+    private val fullRefresh: () -> RefreshResult = session::refreshWorkspace,
 ) : AutoCloseable {
     private val watchService: WatchService = FileSystems.getDefault().newWatchService()
     private val directoriesByWatchKey = ConcurrentHashMap<WatchKey, Path>()
@@ -143,9 +146,9 @@ internal class WorkspaceRefreshWatcher(
     ) {
         runCatching {
             if (forceFullRefresh) {
-                session.refreshWorkspace()
+                fullRefresh()
             } else if (changedPaths.isNotEmpty()) {
-                session.refreshFiles(changedPaths)
+                contentRefresh(changedPaths)
             }
         }.onFailure { error ->
             System.err.println(

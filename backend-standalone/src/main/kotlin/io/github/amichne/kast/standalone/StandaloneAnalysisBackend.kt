@@ -309,9 +309,9 @@ internal class StandaloneAnalysisBackend internal constructor(
 
     override suspend fun refresh(query: RefreshQuery): RefreshResult {
         return if (query.filePaths.isEmpty()) {
-            session.refreshWorkspace()
+            session.refreshWorkspace(invalidateCaches = true)
         } else {
-            session.refreshFiles(query.filePaths.toSet())
+            session.refreshFileContents(query.filePaths.toSet())
         }
     }
 

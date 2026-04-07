@@ -1,11 +1,14 @@
 package io.github.amichne.kast.standalone
 
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.fileTypes.BinaryFileTypeDecompilers
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.compiled.ClassFileDecompilers
 import com.intellij.psi.PsiManager
+import com.intellij.psi.impl.PsiManagerEx
 import com.intellij.lang.LanguageParserDefinitions
 import com.intellij.lang.java.JavaLanguage
 import com.intellij.lang.java.JavaParserDefinition
@@ -41,19 +44,31 @@ internal class StandaloneAnalysisSession(
     moduleName: String,
     private val initialSourceIndexBuilder: (() -> Map<String, List<String>>)? = null,
     private val phasedDiscoveryResult: PhasedDiscoveryResult? = null,
+    private val sourceIndexFileReader: (Path) -> String = Files::readString,
+    private val sourceIndexCacheSaveDelayMillis: Long = defaultSourceIndexCacheSaveDelayMillis,
+    private val cacheEnvReader: (String) -> String? = System::getenv,
 ) : AutoCloseable {
+    private val normalizedWorkspaceRoot = normalizeStandalonePath(workspaceRoot)
     private val disposable: Disposable = Disposer.newDisposable("kast-standalone")
     private val ktFilesByPath = ConcurrentHashMap<String, KtFile>()
     private val targetedKtFilesByPath = ConcurrentHashMap<String, KtFile>()
+    private val ktFileLastModifiedMillisByPath = ConcurrentHashMap<String, Long>()
     private val targetedCandidatePathsByLookupKey = ConcurrentHashMap<CandidateLookupKey, List<String>>()
     private val sourceIdentifierIndex = AtomicReference<MutableSourceIdentifierIndex?>(null)
     @Volatile
     private var initialSourceIndexReady = CompletableFuture<Unit>()
     private val pendingSourceIndexRefreshPaths = ConcurrentHashMap.newKeySet<String>()
     private val sourceIndexGeneration = AtomicInteger(0)
+    private val analysisStateGeneration = AtomicInteger(0)
     private val enrichmentReady = CompletableFuture<Unit>()
     private val fullKtFileMapLoadLock = Any()
     private val analysisSessionLock = ReentrantReadWriteLock()
+    private val cacheManager = CacheManager(normalizedWorkspaceRoot, envReader = cacheEnvReader)
+    private val fileManifest = FileManifest(normalizedWorkspaceRoot, enabled = cacheManager.isEnabled())
+    private val sourceIndexCache = SourceIndexCache(
+        workspaceRoot = normalizedWorkspaceRoot,
+        enabled = cacheManager.isEnabled(),
+    )
     @Volatile
     private var workspaceRefreshWatcher: WorkspaceRefreshWatcher? = null
     @Volatile
@@ -83,19 +98,20 @@ internal class StandaloneAnalysisSession(
 
     init {
         val workspaceLayout = phasedDiscoveryResult?.initialLayout ?: discoverStandaloneWorkspaceLayout(
-            workspaceRoot = workspaceRoot,
+            workspaceRoot = normalizedWorkspaceRoot,
             sourceRoots = sourceRoots,
             classpathRoots = classpathRoots,
             moduleName = moduleName,
         )
         require(workspaceLayout.sourceModules.isNotEmpty()) {
-            "No source roots were found under ${normalizeStandalonePath(workspaceRoot)}"
+            "No source roots were found under $normalizedWorkspaceRoot"
         }
         applyWorkspaceLayout(workspaceLayout)
 
         val initialAnalysisState = buildAnalysisState()
         sessionStateDisposable = initialAnalysisState.disposable
         session = initialAnalysisState.session
+        analysisStateGeneration.incrementAndGet()
         initializeJvmDecompilerServices()
         sourceModules = initialAnalysisState.sourceModules
         check(sourceModules.isNotEmpty()) {
@@ -132,12 +148,81 @@ internal class StandaloneAnalysisSession(
             )
     }
 
+    fun refreshFileContents(paths: Set<String>): RefreshResult {
+        val normalizedPaths = normalizeTrackedKotlinPaths(paths)
+        if (normalizedPaths.isEmpty()) {
+            return RefreshResult(
+                refreshedFiles = emptyList(),
+                removedFiles = emptyList(),
+                fullRefresh = false,
+            )
+        }
+
+        analysisSessionLock.write {
+            val cachedEntriesByPath = normalizedPaths.associateWith { normalizedPath ->
+                ktFilesByPath[normalizedPath] to targetedKtFilesByPath[normalizedPath]
+            }
+            val virtualFileManager = VirtualFileManager.getInstance()
+            normalizedPaths.forEach { normalizedPath ->
+                val filePath = Path.of(normalizedPath)
+                virtualFileManager.refreshAndFindFileByNioPath(filePath)
+            }
+            val fileManager = PsiManagerEx.getInstanceEx(session.project).fileManager
+            val cachedVirtualFilesToInvalidate = normalizedPaths.asSequence()
+                .flatMap { normalizedPath ->
+                    cachedEntriesByPath.getValue(normalizedPath)
+                        .toList()
+                        .filterNotNull()
+                        .mapNotNull { ktFile -> ktFile.virtualFile }
+                        .asSequence()
+                }
+                .distinct()
+                .toList()
+            if (cachedVirtualFilesToInvalidate.isNotEmpty()) {
+                ApplicationManager.getApplication().runWriteAction {
+                    cachedVirtualFilesToInvalidate.forEach { virtualFile ->
+                        fileManager.setViewProvider(virtualFile, null)
+                    }
+                }
+                PsiManager.getInstance(session.project).dropResolveCaches()
+            }
+
+            normalizedPaths.forEach { normalizedPath ->
+                val (cachedKtFile, cachedTargetedKtFile) = cachedEntriesByPath.getValue(normalizedPath)
+                val hadKtFileEntry = cachedKtFile != null
+                val hadTargetedEntry = cachedTargetedKtFile != null
+                ktFilesByPath.remove(normalizedPath)
+                targetedKtFilesByPath.remove(normalizedPath)
+                ktFileLastModifiedMillisByPath.remove(normalizedPath)
+                if (!Files.isRegularFile(Path.of(normalizedPath))) {
+                    return@forEach
+                }
+                if (!fullKtFileMapLoaded && !hadKtFileEntry && !hadTargetedEntry) {
+                    return@forEach
+                }
+
+                if (fullKtFileMapLoaded || hadKtFileEntry) {
+                    val refreshedKtFile = loadKtFileByPath(normalizedPath)
+                    if (refreshedKtFile != null) {
+                        ktFilesByPath[normalizedPath] = refreshedKtFile
+                    }
+                }
+                if (fullKtFileMapLoaded || hadTargetedEntry) {
+                    val refreshedTargetedKtFile = loadKtFileByPath(normalizedPath)
+                    if (refreshedTargetedKtFile != null) {
+                        targetedKtFilesByPath[normalizedPath] = refreshedTargetedKtFile
+                    }
+                }
+            }
+        }
+
+        refreshSourceIdentifierIndex(normalizedPaths)
+        targetedCandidatePathsByLookupKey.clear()
+        return buildRefreshResult(normalizedPaths, fullRefresh = false)
+    }
+
     fun refreshFiles(paths: Set<String>): RefreshResult {
-        val normalizedPaths = paths.asSequence()
-            .map { path -> normalizePath(Path.of(path)).toString() }
-            .distinct()
-            .filter { normalizedPath -> isTrackedKotlinFilePath(Path.of(normalizedPath)) }
-            .toList()
+        val normalizedPaths = normalizeTrackedKotlinPaths(paths)
         if (normalizedPaths.isEmpty()) {
             return RefreshResult(
                 refreshedFiles = emptyList(),
@@ -151,43 +236,29 @@ internal class StandaloneAnalysisSession(
                 VirtualFileManager.getInstance().refreshAndFindFileByNioPath(Path.of(normalizedPath))
             }
 
-            val previousSessionDisposable = sessionStateDisposable
-            val rebuiltAnalysisState = buildAnalysisState()
-            session = rebuiltAnalysisState.session
-            sourceModules = rebuiltAnalysisState.sourceModules
-            sessionStateDisposable = rebuiltAnalysisState.disposable
-            targetedKtFilesByPath.clear()
-            ktFilesByPath.clear()
-            fullKtFileMapLoaded = false
+            refreshStructureLocked()
 
             normalizedPaths.forEach { normalizedPath ->
                 val refreshedFile = loadKtFileByPath(
                     normalizedPath = normalizedPath,
-                    analysisSession = rebuiltAnalysisState.session,
+                    analysisSession = session,
                 )
                 if (refreshedFile != null) {
                     targetedKtFilesByPath[normalizedPath] = refreshedFile
                     ktFilesByPath[normalizedPath] = refreshedFile
                 }
             }
-
-            Disposer.dispose(previousSessionDisposable)
         }
 
-        sourceIdentifierIndex.get()?.let { index ->
-            normalizedPaths.forEach { normalizedPath ->
-                refreshSourceIdentifierIndex(index, normalizedPath)
-            }
-        } ?: pendingSourceIndexRefreshPaths.addAll(normalizedPaths)
+        refreshSourceIdentifierIndex(normalizedPaths)
         targetedCandidatePathsByLookupKey.clear()
-        return RefreshResult(
-            refreshedFiles = normalizedPaths.filter { normalizedPath -> Files.isRegularFile(Path.of(normalizedPath)) }.sorted(),
-            removedFiles = normalizedPaths.filterNot { normalizedPath -> Files.isRegularFile(Path.of(normalizedPath)) }.sorted(),
-            fullRefresh = false,
-        )
+        return buildRefreshResult(normalizedPaths, fullRefresh = false)
     }
 
-    fun refreshWorkspace(): RefreshResult {
+    fun refreshWorkspace(invalidateCaches: Boolean = false): RefreshResult {
+        if (invalidateCaches) {
+            cacheManager.invalidateAll()
+        }
         val currentPaths = allTrackedKotlinSourcePaths()
         val knownPaths = buildSet {
             addAll(ktFilesByPath.keys)
@@ -207,6 +278,8 @@ internal class StandaloneAnalysisSession(
     internal fun awaitInitialSourceIndex() {
         initialSourceIndexReady.join()
     }
+
+    internal fun currentAnalysisStateGeneration(): Int = analysisStateGeneration.get()
 
     fun isEnrichmentComplete(): Boolean = enrichmentComplete
 
@@ -263,6 +336,12 @@ internal class StandaloneAnalysisSession(
 
     override fun close() {
         closed = true
+        sourceIdentifierIndex.get()?.let { index ->
+            runCatching {
+                sourceIndexCache.save(index = index, sourceRoots = resolvedSourceRoots)
+            }
+        }
+        cacheManager.close()
         workspaceRefreshWatcher = null
         if (!enrichmentReady.isDone) {
             enrichmentReady.complete(Unit)
@@ -273,7 +352,9 @@ internal class StandaloneAnalysisSession(
     private fun applyWorkspaceLayout(workspaceLayout: StandaloneWorkspaceLayout) {
         sourceModuleSpecs = workspaceLayout.sourceModules
         workspaceDiagnostics = workspaceLayout.diagnostics.warnings
-        dependentModuleNamesBySourceModuleName = buildDependentModuleNamesBySourceModuleName(sourceModuleSpecs)
+        dependentModuleNamesBySourceModuleName = workspaceLayout.dependentModuleNamesBySourceModuleName
+            .takeIf { it.isNotEmpty() }
+            ?: buildDependentModuleNamesBySourceModuleName(sourceModuleSpecs)
         resolvedSourceRoots = workspaceLayout.sourceModules
             .flatMap { module -> module.sourceRoots }
             .distinct()
@@ -324,10 +405,12 @@ internal class StandaloneAnalysisSession(
             applyWorkspaceLayout(workspaceLayout)
             val rebuiltAnalysisState = buildAnalysisState()
             session = rebuiltAnalysisState.session
+            analysisStateGeneration.incrementAndGet()
             sourceModules = rebuiltAnalysisState.sourceModules
             sessionStateDisposable = rebuiltAnalysisState.disposable
             targetedKtFilesByPath.clear()
             ktFilesByPath.clear()
+            ktFileLastModifiedMillisByPath.clear()
             targetedCandidatePathsByLookupKey.clear()
             sourceIdentifierIndex.set(null)
             initialSourceIndexReady = CompletableFuture()
@@ -418,22 +501,19 @@ internal class StandaloneAnalysisSession(
 
     private fun loadKtFilesByPath(analysisSession: StandaloneAnalysisAPISession): Map<String, KtFile> {
         val loadedFiles = linkedMapOf<String, KtFile>()
-
-        resolvedSourceRoots.forEach { sourceRoot ->
-            if (!Files.isDirectory(sourceRoot)) {
-                return@forEach
+        val currentPathsByLastModifiedMillis = fileManifest.snapshot(resolvedSourceRoots).currentPathsByLastModifiedMillis
+        currentPathsByLastModifiedMillis.forEach { (normalizedPath, lastModifiedMillis) ->
+            val cachedKtFile = ktFilesByPath[normalizedPath]
+            if (cachedKtFile != null && ktFileLastModifiedMillisByPath[normalizedPath] == lastModifiedMillis) {
+                loadedFiles[normalizedPath] = cachedKtFile
+            } else {
+                loadKtFileByPath(normalizedPath, analysisSession)?.let { ktFile ->
+                    loadedFiles[normalizedPath] = ktFile
+                }
             }
-
-            Files.walk(sourceRoot).use { paths ->
-                paths
-                    .filter { path -> Files.isRegularFile(path) && path.extension == "kt" }
-                    .forEach { file ->
-                        val normalizedPath = normalizePath(file).toString()
-                        loadKtFileByPath(normalizedPath, analysisSession)?.let { ktFile ->
-                            loadedFiles[normalizedPath] = ktFile
-                        }
-                    }
-            }
+        }
+        (ktFileLastModifiedMillisByPath.keys - currentPathsByLastModifiedMillis.keys).forEach { removedPath ->
+            ktFileLastModifiedMillisByPath.remove(removedPath)
         }
 
         return loadedFiles
@@ -450,7 +530,7 @@ internal class StandaloneAnalysisSession(
         analysisSession: StandaloneAnalysisAPISession,
     ): KtFile? {
         val filePath = Path.of(normalizedPath)
-        if (!isTrackedKotlinFilePath(filePath)) {
+        if (!isTrackedKotlinFilePath(filePath) || !Files.isRegularFile(filePath)) {
             return null
         }
 
@@ -458,8 +538,9 @@ internal class StandaloneAnalysisSession(
             ?: VirtualFileManager.getInstance().refreshAndFindFileByNioPath(filePath)
             ?: return null
 
-        return PsiManager.getInstance(analysisSession.project)
-            .findFile(virtualFile) as? KtFile
+        return (PsiManager.getInstance(analysisSession.project)
+            .findFile(virtualFile) as? KtFile)
+            ?.also { ktFileLastModifiedMillisByPath[normalizedPath] = Files.getLastModifiedTime(filePath).toMillis() }
     }
 
     private fun buildAnalysisState(): AnalysisState {
@@ -520,6 +601,12 @@ internal class StandaloneAnalysisSession(
         return filePath.extension == "kt" && resolvedSourceRoots.any(filePath::startsWith)
     }
 
+    internal fun refreshStructure() {
+        analysisSessionLock.write {
+            refreshStructureLocked()
+        }
+    }
+
     private fun startInitialSourceIndex() {
         val generation = sourceIndexGeneration.incrementAndGet()
         val readiness = initialSourceIndexReady
@@ -532,7 +619,7 @@ internal class StandaloneAnalysisSession(
                 initialSourceIndexBuilder
                     ?.invoke()
                     ?.let(MutableSourceIdentifierIndex::fromCandidatePathsByIdentifier)
-                    ?: buildSourceIdentifierIndex()
+                    ?: loadOrBuildSourceIdentifierIndex()
             }
                 .onSuccess { builtIndex ->
                     if (closed || sourceIndexGeneration.get() != generation) {
@@ -540,6 +627,7 @@ internal class StandaloneAnalysisSession(
                     }
                     applyPendingSourceIndexRefreshes(builtIndex)
                     sourceIdentifierIndex.set(builtIndex)
+                    persistSourceIndexCache(generation, builtIndex)
                     readiness.complete(Unit)
                 }
                 .onFailure { error ->
@@ -551,28 +639,31 @@ internal class StandaloneAnalysisSession(
         }
     }
 
+    private fun loadOrBuildSourceIdentifierIndex(): MutableSourceIdentifierIndex {
+        val incrementalIndex = runCatching {
+            sourceIndexCache.load(resolvedSourceRoots)
+        }.getOrNull()
+        val index = incrementalIndex?.index ?: return buildSourceIdentifierIndex()
+        incrementalIndex.deletedPaths.forEach(index::removeFile)
+        (incrementalIndex.newPaths + incrementalIndex.modifiedPaths).forEach { normalizedPath ->
+            refreshSourceIdentifierIndex(index, normalizedPath)
+        }
+        return index
+    }
+
     private fun buildSourceIdentifierIndex(): MutableSourceIdentifierIndex {
         val candidatePathsByIdentifier = ConcurrentHashMap<String, MutableSet<String>>()
         val identifiersByPath = ConcurrentHashMap<String, Set<String>>()
 
-        resolvedSourceRoots.forEach { sourceRoot ->
-            if (!Files.isDirectory(sourceRoot)) {
-                return@forEach
-            }
-
-            Files.walk(sourceRoot).use { paths ->
-                paths
-                    .filter { path -> Files.isRegularFile(path) && path.extension == "kt" }
-                    .forEach { file ->
-                        val normalizedFilePath = normalizePath(file).toString()
-                        val identifiers = identifierRegex.findAll(Files.readString(file)).map { match -> match.value }.toSet()
-                        identifiersByPath[normalizedFilePath] = identifiers
-                        identifiers.forEach { identifier ->
-                            candidatePathsByIdentifier
-                                .computeIfAbsent(identifier) { ConcurrentHashMap.newKeySet() }
-                                .add(normalizedFilePath)
-                        }
-                    }
+        allTrackedKotlinSourcePaths().forEach { normalizedFilePath ->
+            val identifiers = identifierRegex.findAll(sourceIndexFileReader(Path.of(normalizedFilePath)))
+                .map { match -> match.value }
+                .toSet()
+            identifiersByPath[normalizedFilePath] = identifiers
+            identifiers.forEach { identifier ->
+                candidatePathsByIdentifier
+                    .computeIfAbsent(identifier) { ConcurrentHashMap.newKeySet() }
+                    .add(normalizedFilePath)
             }
         }
 
@@ -599,22 +690,20 @@ internal class StandaloneAnalysisSession(
             return
         }
 
-        index.updateFile(normalizedPath, Files.readString(filePath))
+        index.updateFile(normalizedPath, sourceIndexFileReader(filePath))
     }
 
-    private fun allTrackedKotlinSourcePaths(): Set<String> = buildSet {
-        resolvedSourceRoots.forEach { sourceRoot ->
-            if (!Files.isDirectory(sourceRoot)) {
-                return@forEach
+    private fun refreshSourceIdentifierIndex(normalizedPaths: List<String>) {
+        sourceIdentifierIndex.get()?.let { index ->
+            normalizedPaths.forEach { normalizedPath ->
+                refreshSourceIdentifierIndex(index, normalizedPath)
             }
-
-            Files.walk(sourceRoot).use { paths ->
-                paths
-                    .filter { path -> Files.isRegularFile(path) && path.extension == "kt" }
-                    .forEach { file -> add(normalizePath(file).toString()) }
-            }
-        }
+            scheduleSourceIndexCacheWrite()
+        } ?: pendingSourceIndexRefreshPaths.addAll(normalizedPaths)
     }
+
+    private fun allTrackedKotlinSourcePaths(): Set<String> =
+        fileManifest.snapshot(resolvedSourceRoots).currentPathsByLastModifiedMillis.keys
 
     private fun buildTargetedCandidatePaths(identifier: String): List<String> = buildList {
         resolvedSourceRoots.forEach { sourceRoot ->
@@ -710,8 +799,62 @@ internal class StandaloneAnalysisSession(
         return runCatching { normalizePath(Path.of(location.toURI())) }.getOrNull()
     }
 
+    private fun normalizeTrackedKotlinPaths(paths: Set<String>): List<String> = paths.asSequence()
+        .map { path -> normalizePath(Path.of(path)).toString() }
+        .distinct()
+        .filter { normalizedPath -> isTrackedKotlinFilePath(Path.of(normalizedPath)) }
+        .toList()
+
+    private fun buildRefreshResult(
+        normalizedPaths: List<String>,
+        fullRefresh: Boolean,
+    ): RefreshResult = RefreshResult(
+        refreshedFiles = normalizedPaths.filter { normalizedPath -> Files.isRegularFile(Path.of(normalizedPath)) }.sorted(),
+        removedFiles = normalizedPaths.filterNot { normalizedPath -> Files.isRegularFile(Path.of(normalizedPath)) }.sorted(),
+        fullRefresh = fullRefresh,
+    )
+
+    private fun refreshStructureLocked() {
+        val previousSessionDisposable = sessionStateDisposable
+        val rebuiltAnalysisState = buildAnalysisState()
+        session = rebuiltAnalysisState.session
+        analysisStateGeneration.incrementAndGet()
+        sourceModules = rebuiltAnalysisState.sourceModules
+        sessionStateDisposable = rebuiltAnalysisState.disposable
+        targetedKtFilesByPath.clear()
+        ktFilesByPath.clear()
+        ktFileLastModifiedMillisByPath.clear()
+        targetedCandidatePathsByLookupKey.clear()
+        fullKtFileMapLoaded = false
+        Disposer.dispose(previousSessionDisposable)
+    }
+
     private fun normalizePath(path: Path): Path {
         return normalizeStandalonePath(path)
+    }
+
+    private fun scheduleSourceIndexCacheWrite() {
+        val generation = sourceIndexGeneration.get()
+        cacheManager.schedule(
+            key = "source-index-cache",
+            delayMillis = sourceIndexCacheSaveDelayMillis,
+        ) {
+            sourceIdentifierIndex.get()?.let { index ->
+                persistSourceIndexCache(generation, index)
+            }
+        }
+    }
+
+    private fun persistSourceIndexCache(
+        generation: Int,
+        index: MutableSourceIdentifierIndex,
+    ) {
+        if (closed || sourceIndexGeneration.get() != generation) {
+            return
+        }
+        runCatching {
+            sourceIndexCache.save(index = index, sourceRoots = resolvedSourceRoots)
+        }
     }
 }
 
@@ -727,6 +870,13 @@ internal class MutableSourceIdentifierIndex(
 ) {
     fun candidatePathsFor(identifier: String): List<String> =
         pathsByIdentifier[identifier]?.toList()?.sorted().orEmpty()
+
+    fun toSerializableMap(): Map<String, List<String>> = pathsByIdentifier.entries
+        .asSequence()
+        .sortedBy(Map.Entry<String, MutableSet<String>>::key)
+        .associate { (identifier, paths) ->
+            identifier to paths.toList().sorted()
+        }
 
     fun updateFile(
         normalizedPath: String,
@@ -793,6 +943,8 @@ private data class CandidateLookupKey(
     val anchorSourceModuleName: String?,
 )
 
+private const val defaultSourceIndexCacheSaveDelayMillis = 5_000L
+
 private val identifierRegex = Regex("""\b[A-Za-z_][A-Za-z0-9_]*\b""")
 
 private fun String.isIndexableIdentifier(): Boolean = identifierRegex.matches(this)
@@ -819,7 +971,7 @@ private fun String.identifierOccurrenceOffsets(identifier: String): Sequence<Int
 
 private fun Char.isKastIdentifierPart(): Boolean = this == '_' || isLetterOrDigit()
 
-private fun buildDependentModuleNamesBySourceModuleName(
+internal fun buildDependentModuleNamesBySourceModuleName(
     sourceModules: List<StandaloneSourceModuleSpec>,
 ): Map<String, Set<String>> {
     val reverseDependencies = linkedMapOf<String, MutableSet<String>>()
@@ -847,6 +999,7 @@ private fun buildDependentModuleNamesBySourceModuleName(
 internal data class StandaloneWorkspaceLayout(
     val sourceModules: List<StandaloneSourceModuleSpec>,
     val diagnostics: WorkspaceDiscoveryDiagnostics = WorkspaceDiscoveryDiagnostics(),
+    val dependentModuleNamesBySourceModuleName: Map<String, Set<String>> = emptyMap(),
 )
 
 internal data class StandaloneSourceModuleSpec(
@@ -921,7 +1074,21 @@ internal fun discoverStandaloneWorkspaceLayoutPhased(
 
 internal fun normalizeStandalonePath(path: Path): Path {
     val absolutePath = path.toAbsolutePath().normalize()
-    return runCatching { absolutePath.toRealPath().normalize() }.getOrDefault(absolutePath)
+    return runCatching { absolutePath.toRealPath().normalize() }
+        .getOrElse {
+            normalizeStandaloneMissingPath(absolutePath)
+        }
+}
+
+private fun normalizeStandaloneMissingPath(path: Path): Path {
+    var existingAncestor: Path? = path.parent
+    while (existingAncestor != null && !Files.exists(existingAncestor)) {
+        existingAncestor = existingAncestor.parent
+    }
+    val normalizedAncestor = existingAncestor
+        ?.let { ancestor -> runCatching { ancestor.toRealPath().normalize() }.getOrDefault(ancestor) }
+        ?: return path
+    return normalizedAncestor.resolve(existingAncestor.relativize(path)).normalize()
 }
 
 internal fun normalizeStandaloneModelPath(path: Path): Path = path.toAbsolutePath().normalize()

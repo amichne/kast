@@ -1,5 +1,6 @@
 package io.github.amichne.kast.standalone
 
+import kotlinx.serialization.Serializable
 import org.gradle.tooling.GradleConnector
 import org.gradle.tooling.model.idea.IdeaDependency
 import org.gradle.tooling.model.idea.IdeaModule
@@ -27,10 +28,12 @@ internal fun resolveToolingApiTimeoutMillis(
     return (moduleCount * 200L).coerceIn(defaultToolingApiTimeoutMillis, 300_000L)
 }
 
+@Serializable
 internal data class WorkspaceDiscoveryDiagnostics(
     val warnings: List<String> = emptyList(),
 )
 
+@Serializable
 internal data class GradleWorkspaceDiscoveryResult(
     val modules: List<GradleModuleModel>,
     val diagnostics: WorkspaceDiscoveryDiagnostics = WorkspaceDiscoveryDiagnostics(),
@@ -54,6 +57,13 @@ internal object GradleWorkspaceDiscovery {
         },
         warningSink: (String) -> Unit = ::logWorkspaceDiscoveryWarning,
     ): StandaloneWorkspaceLayout {
+        cachedWorkspaceLayout(
+            workspaceRoot = workspaceRoot,
+            extraClasspathRoots = extraClasspathRoots,
+        )?.let { cachedLayout ->
+            return cachedLayout
+        }
+
         val toolingApiTimeoutMillis = resolveToolingApiTimeoutMillis(settingsSnapshot.includedProjectPaths.size)
         val discoveryResult = if (settingsSnapshot.shouldPreferStaticDiscovery()) {
             val resolvedStaticModules = staticModulesProvider()
@@ -82,7 +92,12 @@ internal object GradleWorkspaceDiscovery {
                 modules = discoveryResult.modules,
                 warnings = discoveryResult.diagnostics.warnings,
             ),
-        )
+        ).also {
+            persistWorkspaceDiscoveryCache(
+                workspaceRoot = workspaceRoot,
+                result = discoveryResult,
+            )
+        }
     }
 
     fun discoverPhased(
@@ -97,6 +112,16 @@ internal object GradleWorkspaceDiscovery {
         },
         warningSink: (String) -> Unit = ::logWorkspaceDiscoveryWarning,
     ): PhasedDiscoveryResult {
+        cachedWorkspaceLayout(
+            workspaceRoot = workspaceRoot,
+            extraClasspathRoots = extraClasspathRoots,
+        )?.let { cachedLayout ->
+            return PhasedDiscoveryResult(
+                initialLayout = cachedLayout,
+                enrichmentFuture = null,
+            )
+        }
+
         if (!settingsSnapshot.shouldPreferStaticDiscovery()) {
             return PhasedDiscoveryResult(
                 initialLayout = discover(
@@ -149,7 +174,12 @@ internal object GradleWorkspaceDiscovery {
                     modules = enrichedResult.modules,
                     warnings = enrichedResult.diagnostics.warnings,
                 ),
-            )
+            ).also {
+                persistWorkspaceDiscoveryCache(
+                    workspaceRoot = workspaceRoot,
+                    result = enrichedResult,
+                )
+            }
         }
 
         return PhasedDiscoveryResult(
@@ -252,6 +282,7 @@ internal object GradleWorkspaceDiscovery {
         gradleModules: List<GradleModuleModel>,
         extraClasspathRoots: List<Path>,
         diagnostics: WorkspaceDiscoveryDiagnostics = WorkspaceDiscoveryDiagnostics(),
+        dependentModuleNamesBySourceModuleName: Map<String, Set<String>>? = null,
     ): StandaloneWorkspaceLayout {
         val moduleModelsByIdeaName = buildMap {
             gradleModules.forEach { module ->
@@ -274,6 +305,8 @@ internal object GradleWorkspaceDiscovery {
         return StandaloneWorkspaceLayout(
             sourceModules = sourceModules,
             diagnostics = diagnostics,
+            dependentModuleNamesBySourceModuleName = dependentModuleNamesBySourceModuleName
+                ?: buildDependentModuleNamesBySourceModuleName(sourceModules),
         )
     }
 
@@ -345,6 +378,34 @@ internal object GradleWorkspaceDiscovery {
                 ?.let { file -> GradleDependency.LibraryDependency(binaryRoot = file, scope = scope) }
             else -> null
         }
+    }
+}
+
+private fun cachedWorkspaceLayout(
+    workspaceRoot: Path,
+    extraClasspathRoots: List<Path>,
+): StandaloneWorkspaceLayout? {
+    val cachedDiscovery = runCatching {
+        WorkspaceDiscoveryCache().read(workspaceRoot)
+    }.getOrNull() ?: return null
+
+    return GradleWorkspaceDiscovery.buildStandaloneWorkspaceLayout(
+        gradleModules = cachedDiscovery.discoveryResult.modules,
+        extraClasspathRoots = extraClasspathRoots,
+        diagnostics = workspaceDiscoveryDiagnostics(
+            modules = cachedDiscovery.discoveryResult.modules,
+            warnings = cachedDiscovery.discoveryResult.diagnostics.warnings,
+        ),
+        dependentModuleNamesBySourceModuleName = cachedDiscovery.dependentModuleNamesBySourceModuleName,
+    )
+}
+
+private fun persistWorkspaceDiscoveryCache(
+    workspaceRoot: Path,
+    result: GradleWorkspaceDiscoveryResult,
+) {
+    runCatching {
+        WorkspaceDiscoveryCache().write(workspaceRoot, result)
     }
 }
 
@@ -507,14 +568,21 @@ private fun List<GradleModuleModel>.shouldFallbackToStaticModules(
     return !hasModuleDependencies
 }
 
+@Serializable
 internal data class GradleModuleModel(
     val gradlePath: String,
     val ideaModuleName: String,
+    @Serializable(with = PathListAsStringSerializer::class)
     val mainSourceRoots: List<Path>,
+    @Serializable(with = PathListAsStringSerializer::class)
     val testSourceRoots: List<Path>,
+    @Serializable(with = PathListAsStringSerializer::class)
     val testFixturesSourceRoots: List<Path> = emptyList(),
+    @Serializable(with = PathListAsStringSerializer::class)
     val mainOutputRoots: List<Path>,
+    @Serializable(with = PathListAsStringSerializer::class)
     val testOutputRoots: List<Path>,
+    @Serializable(with = PathListAsStringSerializer::class)
     val testFixturesOutputRoots: List<Path> = emptyList(),
     val dependencies: List<GradleDependency>,
 ) {
@@ -670,15 +738,19 @@ private data class ResolvedSourceSetDependencies(
     val testDependencyNames: List<String>,
 )
 
+@Serializable
 internal sealed interface GradleDependency {
     val scope: GradleDependencyScope
 
+    @Serializable
     data class ModuleDependency(
         val targetIdeaModuleName: String,
         override val scope: GradleDependencyScope,
     ) : GradleDependency
 
+    @Serializable
     data class LibraryDependency(
+        @Serializable(with = PathAsStringSerializer::class)
         val binaryRoot: Path,
         override val scope: GradleDependencyScope,
     ) : GradleDependency
@@ -720,6 +792,7 @@ internal enum class GradleSourceSet(
     ),
 }
 
+@Serializable
 internal enum class GradleDependencyScope {
     COMPILE,
     PROVIDED,

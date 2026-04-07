@@ -9,6 +9,7 @@ import kotlinx.coroutines.test.TestResult
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -329,6 +330,164 @@ class StandaloneWorkspaceDiscoveryTest {
             assertFalse(session.isInitialSourceIndexReady())
             unblockIndexBuild.countDown()
             session.awaitInitialSourceIndex()
+        }
+    }
+
+    @Test
+    fun `content-only refresh does not rebuild K2 session`() {
+        val appFile = writeFile(
+            relativePath = "src/main/kotlin/sample/App.kt",
+            content = """
+                package sample
+
+                fun greet(): String = "ready"
+            """.trimIndent() + "\n",
+        )
+        val sourceRoot = workspaceRoot.resolve("src/main/kotlin")
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = listOf(sourceRoot),
+            classpathRoots = emptyList(),
+            moduleName = "main",
+        )
+
+        session.use { standaloneSession ->
+            val initialAnalysisStateGeneration = standaloneSession.currentAnalysisStateGeneration()
+
+            assertTrue(standaloneSession.findKtFile(appFile.toString()).text.contains("greet"))
+
+            appFile.writeText(
+                """
+                    package sample
+
+                    fun welcome(): String = "updated"
+                """.trimIndent() + "\n",
+            )
+
+            standaloneSession.refreshFileContents(setOf(appFile.toString()))
+
+            assertEquals(initialAnalysisStateGeneration, standaloneSession.currentAnalysisStateGeneration())
+            assertTrue(standaloneSession.findKtFile(appFile.toString()).text.contains("welcome"))
+            assertFalse(standaloneSession.findKtFile(appFile.toString()).text.contains("greet"))
+        }
+    }
+
+    @Test
+    fun `content-only refresh updates source identifier index`() {
+        val appFile = writeFile(
+            relativePath = "src/main/kotlin/sample/App.kt",
+            content = """
+                package sample
+
+                fun greet(): String = "ready"
+            """.trimIndent() + "\n",
+        )
+        val sourceRoot = workspaceRoot.resolve("src/main/kotlin")
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = listOf(sourceRoot),
+            classpathRoots = emptyList(),
+            moduleName = "main",
+        )
+
+        session.use { standaloneSession ->
+            standaloneSession.awaitInitialSourceIndex()
+            assertTrue(standaloneSession.candidateKotlinFilePaths("welcome").isEmpty())
+
+            appFile.writeText(
+                """
+                    package sample
+
+                    fun welcome(): String = "updated"
+                """.trimIndent() + "\n",
+            )
+
+            standaloneSession.refreshFileContents(setOf(appFile.toString()))
+
+            assertEquals(
+                setOf(normalizePath(appFile)),
+                standaloneSession.candidateKotlinFilePaths("welcome").toSet(),
+            )
+            assertTrue(standaloneSession.candidateKotlinFilePaths("greet").isEmpty())
+        }
+    }
+
+    @Test
+    fun `content-only refresh preserves full KtFile map`() {
+        val changedFile = writeFile(
+            relativePath = "src/main/kotlin/sample/App.kt",
+            content = """
+                package sample
+
+                fun app(): String = "ready"
+            """.trimIndent() + "\n",
+        )
+        val unchangedFile = writeFile(
+            relativePath = "src/main/kotlin/sample/Other.kt",
+            content = """
+                package sample
+
+                fun other(): String = "stable"
+            """.trimIndent() + "\n",
+        )
+        val sourceRoot = workspaceRoot.resolve("src/main/kotlin")
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = listOf(sourceRoot),
+            classpathRoots = emptyList(),
+            moduleName = "main",
+        )
+
+        session.use { standaloneSession ->
+            standaloneSession.allKtFiles()
+            assertTrue(standaloneSession.isFullKtFileMapLoaded())
+            val unchangedKtFile = standaloneSession.findKtFile(unchangedFile.toString())
+
+            changedFile.writeText(
+                """
+                    package sample
+
+                    fun app(): String = other()
+                """.trimIndent() + "\n",
+            )
+
+            standaloneSession.refreshFileContents(setOf(changedFile.toString()))
+
+            assertTrue(standaloneSession.isFullKtFileMapLoaded())
+            assertEquals(
+                setOf(normalizePath(changedFile), normalizePath(unchangedFile)),
+                standaloneSession.allKtFiles().map { file -> file.virtualFilePath }.toSet(),
+            )
+            assertSame(unchangedKtFile, standaloneSession.findKtFile(unchangedFile.toString()))
+            assertTrue(standaloneSession.findKtFile(changedFile.toString()).text.contains("other()"))
+        }
+    }
+
+    @Test
+    fun `structural refresh rebuilds K2 session`() {
+        val appFile = writeFile(
+            relativePath = "src/main/kotlin/sample/App.kt",
+            content = """
+                package sample
+
+                fun greet(): String = "ready"
+            """.trimIndent() + "\n",
+        )
+        val sourceRoot = workspaceRoot.resolve("src/main/kotlin")
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = listOf(sourceRoot),
+            classpathRoots = emptyList(),
+            moduleName = "main",
+        )
+
+        session.use { standaloneSession ->
+            val initialAnalysisStateGeneration = standaloneSession.currentAnalysisStateGeneration()
+
+            Files.delete(appFile)
+            standaloneSession.refreshFiles(setOf(appFile.toString()))
+
+            assertTrue(standaloneSession.currentAnalysisStateGeneration() > initialAnalysisStateGeneration)
         }
     }
 
