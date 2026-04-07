@@ -332,6 +332,43 @@ internal class StandaloneAnalysisSession(
         }
     }
 
+    /**
+     * Returns candidate file paths using import-aware filtering when the full source index
+     * is ready and [targetFqName] is provided. Falls back to identifier-only lookup when
+     * the enriched index is unavailable or when the enriched filter yields no results
+     * (safety net for star-import indirection or other edge cases).
+     */
+    internal fun candidateKotlinFilePathsForFqName(
+        identifier: String,
+        anchorFilePath: String?,
+        targetPackage: String,
+        targetFqName: String,
+    ): List<String> {
+        if (!identifier.isIndexableIdentifier()) {
+            return emptyList()
+        }
+
+        val readyIndex = sourceIdentifierIndex.get()
+        if (readyIndex != null) {
+            val enrichedPaths = readyIndex.candidatePathsForFqName(
+                identifier = identifier,
+                targetPackage = targetPackage,
+                targetFqName = targetFqName,
+            )
+            if (enrichedPaths.isNotEmpty()) {
+                val anchorSourceModuleName = anchorFilePath?.let { filePath ->
+                    sourceModuleNameForFile(normalizePath(Path.of(filePath)).toString())
+                }
+                return filterCandidatePathsByAnchorScope(
+                    candidatePaths = enrichedPaths,
+                    anchorSourceModuleName = anchorSourceModuleName,
+                )
+            }
+        }
+
+        return candidateKotlinFilePaths(identifier = identifier, anchorFilePath = anchorFilePath)
+    }
+
     internal fun isInitialSourceIndexReady(): Boolean = initialSourceIndexReady.isDone
 
     internal fun isFullKtFileMapLoaded(): Boolean = fullKtFileMapLoaded
@@ -650,8 +687,14 @@ internal class StandaloneAnalysisSession(
         val candidatePathsByIdentifier = ConcurrentHashMap<String, MutableSet<String>>()
         val identifiersByPath = ConcurrentHashMap<String, Set<String>>()
 
+        val index = MutableSourceIdentifierIndex(
+            pathsByIdentifier = candidatePathsByIdentifier,
+            identifiersByPath = identifiersByPath,
+        )
+
         allTrackedKotlinSourcePaths().forEach { normalizedFilePath ->
-            val identifiers = identifierRegex.findAll(sourceIndexFileReader(Path.of(normalizedFilePath)))
+            val content = sourceIndexFileReader(Path.of(normalizedFilePath))
+            val identifiers = identifierRegex.findAll(content)
                 .map { match -> match.value }
                 .toSet()
             identifiersByPath[normalizedFilePath] = identifiers
@@ -660,12 +703,10 @@ internal class StandaloneAnalysisSession(
                     .computeIfAbsent(identifier) { ConcurrentHashMap.newKeySet() }
                     .add(normalizedFilePath)
             }
+            index.extractFileMetadata(normalizedFilePath, content)
         }
 
-        return MutableSourceIdentifierIndex(
-            pathsByIdentifier = candidatePathsByIdentifier,
-            identifiersByPath = identifiersByPath,
-        )
+        return index
     }
 
     private fun applyPendingSourceIndexRefreshes(index: MutableSourceIdentifierIndex) {
@@ -764,7 +805,7 @@ internal class StandaloneAnalysisSession(
         }
     }
 
-    private fun sourceModuleNameForFile(normalizedPath: String): String? {
+    internal fun sourceModuleNameForFile(normalizedPath: String): String? {
         val filePath = Path.of(normalizedPath)
         return sourceModuleSpecs.firstOrNull { moduleSpec ->
             moduleSpec.sourceRoots.any(filePath::startsWith)
@@ -866,9 +907,31 @@ private data class AnalysisState(
 internal class MutableSourceIdentifierIndex(
     private val pathsByIdentifier: ConcurrentHashMap<String, MutableSet<String>>,
     private val identifiersByPath: ConcurrentHashMap<String, Set<String>>,
+    private val packageByPath: ConcurrentHashMap<String, String> = ConcurrentHashMap(),
+    private val importsByPath: ConcurrentHashMap<String, Set<String>> = ConcurrentHashMap(),
+    private val wildcardImportPackagesByPath: ConcurrentHashMap<String, Set<String>> = ConcurrentHashMap(),
 ) {
     fun candidatePathsFor(identifier: String): List<String> =
         pathsByIdentifier[identifier]?.toList()?.sorted().orEmpty()
+
+    /**
+     * Returns file paths that contain [identifier] and are plausibly importing [targetFqName]:
+     * same package, explicit import, or wildcard import of the target's package.
+     */
+    fun candidatePathsForFqName(
+        identifier: String,
+        targetPackage: String,
+        targetFqName: String,
+    ): List<String> {
+        val rawCandidates = pathsByIdentifier[identifier] ?: return emptyList()
+        return rawCandidates
+            .filter { path ->
+                packageByPath[path] == targetPackage ||
+                    importsByPath[path]?.contains(targetFqName) == true ||
+                    wildcardImportPackagesByPath[path]?.contains(targetPackage) == true
+            }
+            .sorted()
+    }
 
     fun toSerializableMap(): Map<String, List<String>> = pathsByIdentifier.entries
         .asSequence()
@@ -885,13 +948,40 @@ internal class MutableSourceIdentifierIndex(
             normalizedPath = normalizedPath,
             identifiers = identifierRegex.findAll(newContent).map { match -> match.value }.toSet(),
         )
+        extractFileMetadata(normalizedPath, newContent)
     }
 
     fun removeFile(normalizedPath: String) {
         replaceIdentifiers(normalizedPath = normalizedPath, identifiers = emptySet())
+        packageByPath.remove(normalizedPath)
+        importsByPath.remove(normalizedPath)
+        wildcardImportPackagesByPath.remove(normalizedPath)
     }
 
     fun knownPaths(): Set<String> = identifiersByPath.keys.toSet()
+
+    internal fun extractFileMetadata(normalizedPath: String, content: String) {
+        packageRegex.find(content)?.groupValues?.getOrNull(1)
+            ?.let { packageByPath[normalizedPath] = it }
+            ?: packageByPath.remove(normalizedPath)
+
+        val imports = mutableSetOf<String>()
+        val wildcardPackages = mutableSetOf<String>()
+        importRegex.findAll(content).forEach { match ->
+            val fqn = match.groupValues[1]
+            if (match.groupValues[2] == ".*") {
+                wildcardPackages += fqn
+            } else {
+                imports += fqn
+            }
+        }
+
+        if (imports.isNotEmpty()) importsByPath[normalizedPath] = imports
+        else importsByPath.remove(normalizedPath)
+
+        if (wildcardPackages.isNotEmpty()) wildcardImportPackagesByPath[normalizedPath] = wildcardPackages
+        else wildcardImportPackagesByPath.remove(normalizedPath)
+    }
 
     private fun replaceIdentifiers(
         normalizedPath: String,
@@ -917,6 +1007,9 @@ internal class MutableSourceIdentifierIndex(
     }
 
     companion object {
+        private val packageRegex = Regex("""^package\s+([\w]+(?:\.[\w]+)*)""", RegexOption.MULTILINE)
+        private val importRegex = Regex("""^import\s+([\w]+(?:\.[\w]+)*)(\.\*)?""", RegexOption.MULTILINE)
+
         fun fromCandidatePathsByIdentifier(candidatePathsByIdentifier: Map<String, List<String>>): MutableSourceIdentifierIndex {
             val pathsByIdentifier = ConcurrentHashMap<String, MutableSet<String>>()
             val identifiersByPath = ConcurrentHashMap<String, Set<String>>()

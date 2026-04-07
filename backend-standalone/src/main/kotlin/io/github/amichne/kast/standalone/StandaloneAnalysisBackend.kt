@@ -25,11 +25,14 @@ import io.github.amichne.kast.api.RenameQuery
 import io.github.amichne.kast.api.RenameResult
 import io.github.amichne.kast.api.RuntimeState
 import io.github.amichne.kast.api.RuntimeStatusResponse
+import io.github.amichne.kast.api.SearchScope
+import io.github.amichne.kast.api.SearchScopeKind
 import io.github.amichne.kast.api.SemanticInsertionQuery
 import io.github.amichne.kast.api.SemanticInsertionResult
 import io.github.amichne.kast.api.ServerLimits
 import io.github.amichne.kast.api.SymbolQuery
 import io.github.amichne.kast.api.SymbolResult
+import io.github.amichne.kast.api.SymbolVisibility
 import io.github.amichne.kast.api.TextEdit
 import io.github.amichne.kast.api.TypeHierarchyQuery
 import io.github.amichne.kast.api.TypeHierarchyResult
@@ -146,13 +149,15 @@ internal class StandaloneAnalysisBackend internal constructor(
         session.withReadAccess {
             val file = session.findKtFile(query.position.filePath)
             val target = resolveTarget(file, query.position.offset)
-            val references = candidateReferenceFiles(target)
-                .flatMap { candidateFile -> candidateFile.findReferenceLocations(target) }
+            val (candidateFiles, searchScope) = candidateReferenceFiles(target)
+            val references = candidateFiles
+                .parallelMapFlat { candidateFile -> candidateFile.findReferenceLocations(target) }
                 .sortedWith(compareBy({ it.filePath }, { it.startOffset }))
 
             ReferencesResult(
                 declaration = if (query.includeDeclaration) analyze(file) { target.toSymbolModel(containingDeclaration = null) } else null,
                 references = references,
+                searchScope = searchScope,
             )
         }
     }
@@ -217,7 +222,7 @@ internal class StandaloneAnalysisBackend internal constructor(
                     resolveTarget(file, query.position.offset)
                 }
                 val searchIdentifier = target.referenceSearchIdentifier()
-                val candidateFiles = traceRenamePhase(
+                val (candidateFiles, searchScope) = traceRenamePhase(
                     phaseName = "candidateReferenceFiles",
                     attributes = mapOf("kast.rename.identifier" to (searchIdentifier ?: "<fallback>")),
                 ) {
@@ -239,28 +244,8 @@ internal class StandaloneAnalysisBackend internal constructor(
                 val edits = traceRenamePhase("collectReferenceEdits") {
                     // A future import-aware rename pass can append import edits here once qualified-reference tracking is added.
                     (listOf(target.declarationEdit(query.newName)) + candidateFiles
-                        .flatMap { candidateFile ->
-                            traceRenamePhase(
-                                phaseName = "referenceEdits",
-                                attributes = mapOf(
-                                    "kast.rename.candidateFile" to (candidateFile.virtualFile?.path ?: candidateFile.name),
-                                ),
-                            ) { phaseSpan ->
-                                phaseSpan.addEvent(
-                                    name = "reference-edits-input",
-                                    attributes = mapOf(
-                                        "candidateFile" to (candidateFile.virtualFile?.path ?: candidateFile.name),
-                                        "occurrenceCount" to (
-                                            searchIdentifier
-                                                ?.let(candidateFile.text::identifierOccurrenceOffsets)
-                                                ?.count()
-                                                ?: -1
-                                            ),
-                                    ),
-                                    verboseOnly = true,
-                                )
-                                candidateFile.referenceEdits(target, query.newName, searchIdentifier)
-                            }
+                        .parallelMapFlat { candidateFile ->
+                            candidateFile.referenceEdits(target, query.newName, searchIdentifier)
                         })
                         .distinctBy { edit -> Triple(edit.filePath, edit.startOffset, edit.endOffset) }
                         .sortedWith(compareBy({ it.filePath }, { it.startOffset }))
@@ -274,6 +259,7 @@ internal class StandaloneAnalysisBackend internal constructor(
                     edits = edits,
                     fileHashes = fileHashes,
                     affectedFiles = fileHashes.map(FileHash::filePath),
+                    searchScope = searchScope,
                 )
             }
         }
@@ -315,19 +301,102 @@ internal class StandaloneAnalysisBackend internal constructor(
         }
     }
 
-    private fun candidateReferenceFiles(target: PsiElement): List<KtFile> {
-        val searchIdentifier = target.referenceSearchIdentifier() ?: return session.allKtFiles()
-        val anchorFilePath = target.containingFile.virtualFile?.path
-            ?: target.containingFile.viewProvider.virtualFile.path
-        val candidatePaths = session.candidateKotlinFilePaths(
-            identifier = searchIdentifier,
-            anchorFilePath = anchorFilePath,
-        )
-        if (candidatePaths.isEmpty()) {
-            return session.allKtFiles()
+    private fun candidateReferenceFiles(target: PsiElement): CandidateSearchResult {
+        val visibility = target.visibility()
+
+        if (visibility == SymbolVisibility.PRIVATE || visibility == SymbolVisibility.LOCAL) {
+            val declaringFile = target.containingFile
+            val files = if (declaringFile is KtFile) listOf(declaringFile) else emptyList()
+            return CandidateSearchResult(
+                files = files,
+                scope = SearchScope(
+                    visibility = visibility,
+                    scope = SearchScopeKind.FILE,
+                    exhaustive = true,
+                    candidateFileCount = files.size,
+                    searchedFileCount = files.size,
+                ),
+            )
         }
 
-        return candidatePaths.map(session::findKtFile)
+        val declaringFile = target.containingFile as? KtFile
+        val searchIdentifier = target.referenceSearchIdentifier()
+        if (searchIdentifier == null) {
+            val files = listOfNotNull(declaringFile)
+            return CandidateSearchResult(
+                files = files,
+                scope = SearchScope(
+                    visibility = visibility,
+                    scope = SearchScopeKind.FILE,
+                    exhaustive = true,
+                    candidateFileCount = files.size,
+                    searchedFileCount = files.size,
+                ),
+            )
+        }
+        val anchorFilePath = target.containingFile.virtualFile?.path
+            ?: target.containingFile.viewProvider.virtualFile.path
+
+        val fqNameAndPackage = target.targetFqNameAndPackage()
+        val candidatePaths = if (fqNameAndPackage != null) {
+            val (targetFqName, targetPackage) = fqNameAndPackage
+            session.candidateKotlinFilePathsForFqName(
+                identifier = searchIdentifier,
+                anchorFilePath = anchorFilePath,
+                targetPackage = targetPackage,
+                targetFqName = targetFqName,
+            )
+        } else {
+            session.candidateKotlinFilePaths(
+                identifier = searchIdentifier,
+                anchorFilePath = anchorFilePath,
+            )
+        }
+        if (candidatePaths.isEmpty()) {
+            val files = listOfNotNull(declaringFile)
+            return CandidateSearchResult(
+                files = files,
+                scope = SearchScope(
+                    visibility = visibility,
+                    scope = SearchScopeKind.FILE,
+                    exhaustive = true,
+                    candidateFileCount = files.size,
+                    searchedFileCount = files.size,
+                ),
+            )
+        }
+
+        if (visibility == SymbolVisibility.INTERNAL) {
+            val declaringModuleName = session.sourceModuleNameForFile(anchorFilePath)
+            if (declaringModuleName != null) {
+                val moduleFiltered = candidatePaths
+                    .filter { path -> session.sourceModuleNameForFile(path) == declaringModuleName }
+                if (moduleFiltered.isNotEmpty()) {
+                    return CandidateSearchResult(
+                        files = moduleFiltered.map(session::findKtFile),
+                        scope = SearchScope(
+                            visibility = visibility,
+                            scope = SearchScopeKind.MODULE,
+                            exhaustive = true,
+                            candidateFileCount = candidatePaths.size,
+                            searchedFileCount = moduleFiltered.size,
+                        ),
+                    )
+                }
+            }
+        }
+
+        val capped = candidatePaths.capCandidateFiles(searchIdentifier)
+        return CandidateSearchResult(
+            files = capped.map(session::findKtFile),
+            scope = SearchScope(
+                visibility = visibility,
+                scope = SearchScopeKind.DEPENDENT_MODULES,
+                exhaustive = capped.size == candidatePaths.size,
+                candidateFileCount = candidatePaths.size,
+                searchedFileCount = capped.size,
+            ),
+        )
     }
 
     private fun KtFile.findReferenceLocations(target: PsiElement): List<io.github.amichne.kast.api.Location> {
@@ -466,3 +535,34 @@ private fun String.identifierOccurrenceOffsets(identifier: String): Sequence<Int
 }
 
 private fun Char.isKastIdentifierPart(): Boolean = this == '_' || isLetterOrDigit()
+
+/** Safety cap for candidate files to prevent pathological searches with common identifiers. */
+private const val MAX_CANDIDATE_FILES = 500
+
+private fun List<String>.capCandidateFiles(identifier: String): List<String> {
+    if (size <= MAX_CANDIDATE_FILES) return this
+    System.err.println(
+        "kast candidate file cap: identifier '$identifier' matched $size files, capping to $MAX_CANDIDATE_FILES",
+    )
+    return take(MAX_CANDIDATE_FILES)
+}
+
+private data class CandidateSearchResult(
+    val files: List<KtFile>,
+    val scope: SearchScope,
+)
+
+/**
+ * Parallel `flatMap` over a list using Java parallel streams.
+ * Safe to call while the caller holds [StandaloneAnalysisSession.withReadAccess] —
+ * the parent thread's read lock prevents any writer from acquiring the write lock,
+ * so fork-join pool threads read PSI safely without their own lock acquisition.
+ */
+private inline fun <T, R> List<T>.parallelMapFlat(crossinline transform: (T) -> List<R>): List<R> =
+    if (size <= 1) {
+        flatMap(transform)
+    } else {
+        parallelStream()
+            .flatMap { element -> transform(element).stream() }
+            .collect(java.util.stream.Collectors.toList())
+    }

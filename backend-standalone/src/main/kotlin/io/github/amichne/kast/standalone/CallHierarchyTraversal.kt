@@ -16,6 +16,7 @@ import io.github.amichne.kast.api.Location
 import io.github.amichne.kast.api.SCHEMA_VERSION
 import io.github.amichne.kast.api.ServerLimits
 import io.github.amichne.kast.api.Symbol
+import io.github.amichne.kast.api.SymbolVisibility
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
@@ -334,14 +335,46 @@ internal class CallHierarchyTraversal(
     }
 
     private fun candidateReferenceFiles(target: PsiElement): List<KtFile> {
-        val searchIdentifier = target.referenceSearchIdentifier() ?: return session.allKtFiles()
+        val visibility = target.visibility()
+
+        if (visibility == SymbolVisibility.PRIVATE || visibility == SymbolVisibility.LOCAL) {
+            val declaringFile = target.containingFile
+            return if (declaringFile is KtFile) listOf(declaringFile) else emptyList()
+        }
+
+        val declaringFile = target.containingFile as? KtFile
+        val searchIdentifier = target.referenceSearchIdentifier()
+            ?: return listOfNotNull(declaringFile)
         val anchorFilePath = target.lookupPath()
-        val candidatePaths = session.candidateKotlinFilePaths(
-            identifier = searchIdentifier,
-            anchorFilePath = anchorFilePath,
-        )
+
+        val fqNameAndPackage = target.targetFqNameAndPackage()
+        val candidatePaths = if (fqNameAndPackage != null) {
+            val (targetFqName, targetPackage) = fqNameAndPackage
+            session.candidateKotlinFilePathsForFqName(
+                identifier = searchIdentifier,
+                anchorFilePath = anchorFilePath,
+                targetPackage = targetPackage,
+                targetFqName = targetFqName,
+            )
+        } else {
+            session.candidateKotlinFilePaths(
+                identifier = searchIdentifier,
+                anchorFilePath = anchorFilePath,
+            )
+        }
         if (candidatePaths.isEmpty()) {
-            return session.allKtFiles()
+            return listOfNotNull(declaringFile)
+        }
+
+        if (visibility == SymbolVisibility.INTERNAL) {
+            val declaringModuleName = session.sourceModuleNameForFile(anchorFilePath)
+            if (declaringModuleName != null) {
+                val moduleFiltered = candidatePaths
+                    .filter { path -> session.sourceModuleNameForFile(path) == declaringModuleName }
+                if (moduleFiltered.isNotEmpty()) {
+                    return moduleFiltered.map(session::findKtFile)
+                }
+            }
         }
 
         return candidatePaths.map(session::findKtFile)

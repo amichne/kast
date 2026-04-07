@@ -459,6 +459,225 @@ class StandaloneAnalysisBackendRenameTest {
         }
     }
 
+    @Test
+    fun `rename private function only produces edits in declaring file`(): TestResult = runTest {
+        val declarationFile = writeFile(
+            relativePath = "src/main/kotlin/sample/Greeter.kt",
+            content = $$"""
+                package sample
+
+                private fun greet(name: String): String = "hi $name"
+
+                fun useGreet(): String = greet("world")
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "src/main/kotlin/sample/Other.kt",
+            content = """
+                package sample
+
+                fun other(): String = "other"
+            """.trimIndent() + "\n",
+        )
+        val queryOffset = Files.readString(declarationFile).indexOf("greet")
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "sources",
+        )
+        session.use { session ->
+            val backend = StandaloneAnalysisBackend(
+                workspaceRoot = workspaceRoot,
+                limits = ServerLimits(
+                    maxResults = 100,
+                    requestTimeoutMillis = 30_000,
+                    maxConcurrentRequests = 4,
+                ),
+                session = session,
+            )
+
+            val result = backend.rename(
+                RenameQuery(
+                    position = FilePosition(
+                        filePath = declarationFile.toString(),
+                        offset = queryOffset,
+                    ),
+                    newName = "welcome",
+                ),
+            )
+
+            val affectedFiles = result.edits.map { it.filePath }.distinct()
+            assertEquals(listOf(normalizePath(declarationFile)), affectedFiles)
+            assertFalse(session.isFullKtFileMapLoaded())
+        }
+    }
+
+    @Test
+    fun `rename private function does not load full Kotlin file map`(): TestResult = runTest {
+        val declarationFile = writeFile(
+            relativePath = "src/main/kotlin/sample/Greeter.kt",
+            content = $$"""
+                package sample
+
+                private fun greet(name: String): String = "hi $name"
+
+                fun useGreet(): String = greet("world")
+            """.trimIndent() + "\n",
+        )
+        repeat(20) { index ->
+            writeFile(
+                relativePath = "src/main/kotlin/sample/unrelated/Unrelated$index.kt",
+                content = """
+                    package sample.unrelated
+
+                    fun unrelated$index(): String = "value$index"
+                """.trimIndent() + "\n",
+            )
+        }
+        val queryOffset = Files.readString(declarationFile).indexOf("greet")
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "sources",
+        )
+        session.use { session ->
+            val backend = StandaloneAnalysisBackend(
+                workspaceRoot = workspaceRoot,
+                limits = ServerLimits(
+                    maxResults = 100,
+                    requestTimeoutMillis = 30_000,
+                    maxConcurrentRequests = 4,
+                ),
+                session = session,
+            )
+
+            assertFalse(session.isFullKtFileMapLoaded())
+
+            backend.rename(
+                RenameQuery(
+                    position = FilePosition(
+                        filePath = declarationFile.toString(),
+                        offset = queryOffset,
+                    ),
+                    newName = "welcome",
+                ),
+            )
+
+            assertFalse(session.isFullKtFileMapLoaded())
+        }
+    }
+
+    @Test
+    fun `operator function rename uses function name as search identifier`(): TestResult = runTest {
+        val declarationFile = writeFile(
+            relativePath = "src/main/kotlin/sample/Vector.kt",
+            content = """
+                package sample
+
+                data class Vector(val x: Int, val y: Int) {
+                    operator fun plus(other: Vector): Vector = Vector(x + other.x, y + other.y)
+                }
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "src/main/kotlin/sample/Usage.kt",
+            content = """
+                package sample
+
+                fun add(a: Vector, b: Vector): Vector = a.plus(b)
+            """.trimIndent() + "\n",
+        )
+        val content = Files.readString(declarationFile)
+        val queryOffset = content.indexOf("plus")
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "sources",
+        )
+        session.use { session ->
+            val backend = StandaloneAnalysisBackend(
+                workspaceRoot = workspaceRoot,
+                limits = ServerLimits(
+                    maxResults = 100,
+                    requestTimeoutMillis = 30_000,
+                    maxConcurrentRequests = 4,
+                ),
+                session = session,
+            )
+
+            val result = backend.rename(
+                RenameQuery(
+                    position = FilePosition(
+                        filePath = declarationFile.toString(),
+                        offset = queryOffset,
+                    ),
+                    newName = "add",
+                ),
+            )
+
+            val editFiles = result.edits.map { it.filePath }.distinct()
+            assertTrue(editFiles.any { it.contains("Vector.kt") })
+            assertTrue(editFiles.any { it.contains("Usage.kt") })
+            assertFalse(session.isFullKtFileMapLoaded())
+        }
+    }
+
+    @Test
+    fun `empty candidate paths returns declaring file only`(): TestResult = runTest {
+        val declarationFile = writeFile(
+            relativePath = "src/main/kotlin/sample/Unique.kt",
+            content = """
+                package sample
+
+                fun extremelyUniqueNameNeverUsedElsewhere(): String = "unique"
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "src/main/kotlin/sample/Other.kt",
+            content = """
+                package sample
+
+                fun other(): String = "other"
+            """.trimIndent() + "\n",
+        )
+        val content = Files.readString(declarationFile)
+        val queryOffset = content.indexOf("extremelyUniqueNameNeverUsedElsewhere")
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "sources",
+        )
+        session.use { session ->
+            val backend = StandaloneAnalysisBackend(
+                workspaceRoot = workspaceRoot,
+                limits = ServerLimits(
+                    maxResults = 100,
+                    requestTimeoutMillis = 30_000,
+                    maxConcurrentRequests = 4,
+                ),
+                session = session,
+            )
+
+            val result = backend.findReferences(
+                io.github.amichne.kast.api.ReferencesQuery(
+                    position = FilePosition(
+                        filePath = declarationFile.toString(),
+                        offset = queryOffset,
+                    ),
+                    includeDeclaration = true,
+                ),
+            )
+
+            // The function name appears only in the declaring file, so candidates should include
+            // only that file. No allKtFiles() fallback should occur.
+            assertFalse(session.isFullKtFileMapLoaded())
+        }
+    }
+
     private fun writeFile(
         relativePath: String,
         content: String,
