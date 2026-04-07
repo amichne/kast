@@ -201,16 +201,15 @@ internal class StandaloneAnalysisSession(
                     return@forEach
                 }
 
-                if (fullKtFileMapLoaded || hadKtFileEntry) {
+                if (fullKtFileMapLoaded || hadKtFileEntry || hadTargetedEntry) {
                     val refreshedKtFile = loadKtFileByPath(normalizedPath)
                     if (refreshedKtFile != null) {
-                        ktFilesByPath[normalizedPath] = refreshedKtFile
-                    }
-                }
-                if (fullKtFileMapLoaded || hadTargetedEntry) {
-                    val refreshedTargetedKtFile = loadKtFileByPath(normalizedPath)
-                    if (refreshedTargetedKtFile != null) {
-                        targetedKtFilesByPath[normalizedPath] = refreshedTargetedKtFile
+                        if (fullKtFileMapLoaded || hadKtFileEntry) {
+                            ktFilesByPath[normalizedPath] = refreshedKtFile
+                        }
+                        if (fullKtFileMapLoaded || hadTargetedEntry) {
+                            targetedKtFilesByPath[normalizedPath] = refreshedKtFile
+                        }
                     }
                 }
             }
