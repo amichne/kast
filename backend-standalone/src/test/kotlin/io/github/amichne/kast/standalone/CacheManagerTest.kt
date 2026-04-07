@@ -33,7 +33,7 @@ class CacheManagerTest {
             }
         }
 
-        waitUntil { writeCount.get() == 1 }
+        waitUntil { writeCount.get() == 1 && Files.isRegularFile(cacheFile) }
         assertEquals("1", Files.readString(cacheFile))
         cacheManager.close()
     }
