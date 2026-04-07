@@ -6,7 +6,7 @@ import io.github.amichne.kast.server.AnalysisServer
 import io.github.amichne.kast.server.AnalysisServerConfig
 import io.github.amichne.kast.server.RunningAnalysisServer
 
-class RunningStandaloneRuntime(
+internal class RunningStandaloneRuntime(
     val server: RunningAnalysisServer,
     private val session: StandaloneAnalysisSession,
     private val watcher: AutoCloseable,
@@ -23,13 +23,20 @@ class RunningStandaloneRuntime(
 }
 
 object StandaloneRuntime {
-    fun start(options: StandaloneServerOptions): RunningStandaloneRuntime {
+    internal fun start(options: StandaloneServerOptions): RunningStandaloneRuntime {
         System.setProperty("java.awt.headless", "true")
+        val phasedDiscoveryResult = discoverStandaloneWorkspaceLayoutPhased(
+            workspaceRoot = options.workspaceRoot,
+            sourceRoots = options.sourceRoots,
+            classpathRoots = options.classpathRoots,
+            moduleName = options.moduleName,
+        )
         val session = StandaloneAnalysisSession(
             workspaceRoot = options.workspaceRoot,
             sourceRoots = options.sourceRoots,
             classpathRoots = options.classpathRoots,
             moduleName = options.moduleName,
+            phasedDiscoveryResult = phasedDiscoveryResult,
         )
         val backend = StandaloneAnalysisBackend(
             workspaceRoot = options.workspaceRoot,
@@ -41,6 +48,7 @@ object StandaloneRuntime {
             session = session,
         )
         val watcher = WorkspaceRefreshWatcher(session)
+        session.attachWorkspaceRefreshWatcher(watcher)
         val server = AnalysisServer(
             backend = backend,
             config = AnalysisServerConfig(

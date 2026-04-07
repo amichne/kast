@@ -27,43 +27,62 @@ import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.locks.ReentrantReadWriteLock
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.concurrent.thread
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 import kotlin.io.path.extension
 
-class StandaloneAnalysisSession(
+internal class StandaloneAnalysisSession(
     workspaceRoot: Path,
     sourceRoots: List<Path>,
     classpathRoots: List<Path>,
     moduleName: String,
     private val initialSourceIndexBuilder: (() -> Map<String, List<String>>)? = null,
+    private val phasedDiscoveryResult: PhasedDiscoveryResult? = null,
 ) : AutoCloseable {
     private val disposable: Disposable = Disposer.newDisposable("kast-standalone")
     private val ktFilesByPath = ConcurrentHashMap<String, KtFile>()
     private val targetedKtFilesByPath = ConcurrentHashMap<String, KtFile>()
     private val targetedCandidatePathsByLookupKey = ConcurrentHashMap<CandidateLookupKey, List<String>>()
     private val sourceIdentifierIndex = AtomicReference<MutableSourceIdentifierIndex?>(null)
-    private val initialSourceIndexReady = CompletableFuture<Unit>()
+    @Volatile
+    private var initialSourceIndexReady = CompletableFuture<Unit>()
     private val pendingSourceIndexRefreshPaths = ConcurrentHashMap.newKeySet<String>()
+    private val sourceIndexGeneration = AtomicInteger(0)
+    private val enrichmentReady = CompletableFuture<Unit>()
     private val fullKtFileMapLoadLock = Any()
     private val analysisSessionLock = ReentrantReadWriteLock()
     @Volatile
+    private var workspaceRefreshWatcher: WorkspaceRefreshWatcher? = null
+    @Volatile
+    private var enrichmentComplete = false
+    @Volatile
+    private var closed = false
+    @Volatile
     private var fullKtFileMapLoaded = false
 
-    private val sourceModuleSpecs: List<StandaloneSourceModuleSpec>
-    private val dependentModuleNamesBySourceModuleName: Map<String, Set<String>>
-    lateinit var sourceModules: List<KaSourceModule>
+    @Volatile
+    private var sourceModuleSpecs: List<StandaloneSourceModuleSpec> = emptyList()
+    @Volatile
+    private var dependentModuleNamesBySourceModuleName: Map<String, Set<String>> = emptyMap()
+    @Volatile
+    var sourceModules: List<KaSourceModule> = emptyList()
         private set
-    val resolvedSourceRoots: List<Path>
-    val workspaceDiagnostics: List<String>
-    private val resolvedClasspathRoots: List<Path>
+    @Volatile
+    var resolvedSourceRoots: List<Path> = emptyList()
+        private set
+    @Volatile
+    var workspaceDiagnostics: List<String> = emptyList()
+        private set
+    @Volatile
+    private var resolvedClasspathRoots: List<Path> = emptyList()
     private lateinit var sessionStateDisposable: Disposable
     private lateinit var session: StandaloneAnalysisAPISession
 
     init {
-        val workspaceLayout = discoverStandaloneWorkspaceLayout(
+        val workspaceLayout = phasedDiscoveryResult?.initialLayout ?: discoverStandaloneWorkspaceLayout(
             workspaceRoot = workspaceRoot,
             sourceRoots = sourceRoots,
             classpathRoots = classpathRoots,
@@ -72,19 +91,7 @@ class StandaloneAnalysisSession(
         require(workspaceLayout.sourceModules.isNotEmpty()) {
             "No source roots were found under ${normalizeStandalonePath(workspaceRoot)}"
         }
-        sourceModuleSpecs = workspaceLayout.sourceModules
-        workspaceDiagnostics = workspaceLayout.diagnostics.warnings
-        dependentModuleNamesBySourceModuleName = buildDependentModuleNamesBySourceModuleName(sourceModuleSpecs)
-
-        resolvedSourceRoots = workspaceLayout.sourceModules
-            .flatMap { module -> module.sourceRoots }
-            .distinct()
-            .sorted()
-        val defaultClasspathRoots = defaultClasspathRoots()
-        resolvedClasspathRoots = (
-            defaultClasspathRoots +
-                workspaceLayout.sourceModules.flatMap { module -> module.binaryRoots }
-        ).distinct().sorted()
+        applyWorkspaceLayout(workspaceLayout)
 
         val initialAnalysisState = buildAnalysisState()
         sessionStateDisposable = initialAnalysisState.disposable
@@ -95,6 +102,7 @@ class StandaloneAnalysisSession(
             "The standalone Analysis API session did not create any source modules"
         }
         startInitialSourceIndex()
+        beginEnrichment(phasedDiscoveryResult?.enrichmentFuture)
     }
 
     fun allKtFiles(): List<KtFile> = analysisSessionLock.read {
@@ -200,6 +208,17 @@ class StandaloneAnalysisSession(
         initialSourceIndexReady.join()
     }
 
+    fun isEnrichmentComplete(): Boolean = enrichmentComplete
+
+    fun awaitEnrichment() {
+        enrichmentReady.join()
+    }
+
+    internal fun attachWorkspaceRefreshWatcher(watcher: WorkspaceRefreshWatcher) {
+        workspaceRefreshWatcher = watcher
+        watcher.refreshSourceRoots(resolvedSourceRoots)
+    }
+
     internal inline fun <T> withReadAccess(action: () -> T): T = analysisSessionLock.read { action() }
 
     internal fun candidateKotlinFilePaths(identifier: String): List<String> {
@@ -243,7 +262,84 @@ class StandaloneAnalysisSession(
     internal fun isFullKtFileMapLoaded(): Boolean = fullKtFileMapLoaded
 
     override fun close() {
+        closed = true
+        workspaceRefreshWatcher = null
+        if (!enrichmentReady.isDone) {
+            enrichmentReady.complete(Unit)
+        }
         Disposer.dispose(disposable)
+    }
+
+    private fun applyWorkspaceLayout(workspaceLayout: StandaloneWorkspaceLayout) {
+        sourceModuleSpecs = workspaceLayout.sourceModules
+        workspaceDiagnostics = workspaceLayout.diagnostics.warnings
+        dependentModuleNamesBySourceModuleName = buildDependentModuleNamesBySourceModuleName(sourceModuleSpecs)
+        resolvedSourceRoots = workspaceLayout.sourceModules
+            .flatMap { module -> module.sourceRoots }
+            .distinct()
+            .sorted()
+        resolvedClasspathRoots = (
+            defaultClasspathRoots() +
+                workspaceLayout.sourceModules.flatMap { module -> module.binaryRoots }
+            ).distinct().sorted()
+    }
+
+    private fun beginEnrichment(enrichmentFuture: CompletableFuture<StandaloneWorkspaceLayout>?) {
+        if (enrichmentFuture == null) {
+            enrichmentComplete = true
+            enrichmentReady.complete(Unit)
+            return
+        }
+
+        enrichmentFuture.whenComplete { enrichedLayout, error ->
+            if (closed) {
+                enrichmentComplete = true
+                enrichmentReady.complete(Unit)
+                return@whenComplete
+            }
+            if (error != null) {
+                logSessionEnrichmentWarning(error)
+                enrichmentComplete = true
+                enrichmentReady.complete(Unit)
+                return@whenComplete
+            }
+            if (enrichedLayout == null) {
+                enrichmentComplete = true
+                enrichmentReady.complete(Unit)
+                return@whenComplete
+            }
+
+            runCatching {
+                rebuildWorkspaceLayout(enrichedLayout)
+            }.onFailure(::logSessionEnrichmentWarning)
+            enrichmentComplete = true
+            enrichmentReady.complete(Unit)
+            workspaceRefreshWatcher?.refreshSourceRoots(resolvedSourceRoots)
+        }
+    }
+
+    private fun rebuildWorkspaceLayout(workspaceLayout: StandaloneWorkspaceLayout) {
+        val previousSessionDisposable = sessionStateDisposable
+        analysisSessionLock.write {
+            applyWorkspaceLayout(workspaceLayout)
+            val rebuiltAnalysisState = buildAnalysisState()
+            session = rebuiltAnalysisState.session
+            sourceModules = rebuiltAnalysisState.sourceModules
+            sessionStateDisposable = rebuiltAnalysisState.disposable
+            targetedKtFilesByPath.clear()
+            ktFilesByPath.clear()
+            targetedCandidatePathsByLookupKey.clear()
+            sourceIdentifierIndex.set(null)
+            initialSourceIndexReady = CompletableFuture()
+            fullKtFileMapLoaded = false
+            startInitialSourceIndex()
+            Disposer.dispose(previousSessionDisposable)
+        }
+    }
+
+    private fun logSessionEnrichmentWarning(error: Throwable) {
+        val details = error.message?.takeIf(String::isNotBlank) ?: error::class.java.simpleName
+        System.err.println("kast standalone enrichment warning: $details")
     }
 
     /**
@@ -425,6 +521,8 @@ class StandaloneAnalysisSession(
     }
 
     private fun startInitialSourceIndex() {
+        val generation = sourceIndexGeneration.incrementAndGet()
+        val readiness = initialSourceIndexReady
         thread(
             start = true,
             isDaemon = true,
@@ -437,11 +535,19 @@ class StandaloneAnalysisSession(
                     ?: buildSourceIdentifierIndex()
             }
                 .onSuccess { builtIndex ->
+                    if (closed || sourceIndexGeneration.get() != generation) {
+                        return@onSuccess
+                    }
                     applyPendingSourceIndexRefreshes(builtIndex)
                     sourceIdentifierIndex.set(builtIndex)
-                    initialSourceIndexReady.complete(Unit)
+                    readiness.complete(Unit)
                 }
-                .onFailure(initialSourceIndexReady::completeExceptionally)
+                .onFailure { error ->
+                    if (closed || sourceIndexGeneration.get() != generation) {
+                        return@onFailure
+                    }
+                    readiness.completeExceptionally(error)
+                }
         }
     }
 
@@ -785,6 +891,31 @@ internal fun discoverStandaloneWorkspaceLayout(
                 dependencyModuleNames = emptyList(),
             ),
         ),
+    )
+}
+
+internal fun discoverStandaloneWorkspaceLayoutPhased(
+    workspaceRoot: Path,
+    sourceRoots: List<Path>,
+    classpathRoots: List<Path>,
+    moduleName: String,
+): PhasedDiscoveryResult {
+    val normalizedWorkspaceRoot = normalizeStandalonePath(workspaceRoot)
+    if (sourceRoots.isNotEmpty() || !looksLikeGradleWorkspace(normalizedWorkspaceRoot)) {
+        return PhasedDiscoveryResult(
+            initialLayout = discoverStandaloneWorkspaceLayout(
+                workspaceRoot = normalizedWorkspaceRoot,
+                sourceRoots = sourceRoots,
+                classpathRoots = classpathRoots,
+                moduleName = moduleName,
+            ),
+            enrichmentFuture = null,
+        )
+    }
+
+    return GradleWorkspaceDiscovery.discoverPhased(
+        workspaceRoot = normalizedWorkspaceRoot,
+        extraClasspathRoots = normalizeStandalonePaths(classpathRoots),
     )
 }
 

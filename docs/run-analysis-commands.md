@@ -1,22 +1,38 @@
 ---
 title: Run analysis commands
 description: Use the supported read and mutation commands once a workspace
-  runtime is ready.
+  runtime is live.
 icon: lucide/search
 ---
 
-Once `kast workspace ensure` has selected a ready daemon, you can run the
-supported analysis commands through the same CLI. This page focuses on the
-common tasks people reach for during normal workspace analysis. If you are
-starting from a human description of a class or property instead of a known
-file position, move to the [human-first agent
-guide](use-kast-from-an-llm-agent.md) first.
+Once `kast workspace ensure` has prewarmed a daemon, or the first
+runtime-dependent command has auto-started one, you can run the supported
+analysis commands through the same CLI. This page focuses on the common tasks
+people reach for during normal workspace analysis. If you are starting from a
+human description of a class or property instead of a known file position, move
+to the [human-first agent guide](use-kast-from-an-llm-agent.md) first.
 
 Note: If you use the packaged `kast` skill or the repo-local launcher resolver,
 you can bring local builds or explicit paths into the discovery cascade with
 `KAST_CLI_PATH` (point at a specific executable) and `KAST_SOURCE_ROOT` (use
 local build outputs or trigger `:kast:writeWrapperScript` when Java 21+ is
 available). See the Get started guide for examples.
+
+> **Note:** Analysis and refresh commands can attach while the daemon reports
+> `INDEXING`. Early semantic results can still be partial or empty until the
+> daemon reaches `READY`.
+
+## Control startup behavior
+
+Use the startup mode that matches the level of control you need before the
+first semantic query.
+
+- Run `kast workspace ensure --workspace-root=/absolute/path/to/workspace` when
+  you want an explicit prewarm step that waits for `READY`.
+- Add `--accept-indexing=true` to `workspace ensure` when a servable
+  `INDEXING` daemon is enough for the next step.
+- Add `--no-auto-start=true` to any runtime-dependent command when automation
+  must fail instead of starting a daemon implicitly.
 
 ## Choose inline options or a request file
 

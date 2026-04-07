@@ -16,8 +16,9 @@ import kotlin.io.path.createDirectories
 import kotlin.time.Duration.Companion.milliseconds
 
 internal class WorkspaceRuntimeManager(
-    private val rpcClient: KastRpcClient,
+    private val rpcClient: RuntimeRpcClient,
     private val processLauncher: ProcessLauncher,
+    private val processLivenessChecker: (Long) -> Boolean = ::isProcessAlive,
 ) {
     suspend fun workspaceStatus(options: RuntimeCommandOptions): WorkspaceStatusResult {
         val inspection = inspectWorkspace(options, pruneStaleDescriptors = false)
@@ -30,7 +31,11 @@ internal class WorkspaceRuntimeManager(
     }
 
     suspend fun workspaceEnsure(options: RuntimeCommandOptions): WorkspaceEnsureResult =
-        ensureRuntime(options)
+        ensureRuntime(
+            options = options,
+            requireReady = !options.acceptIndexing,
+            purpose = EnsureRuntimePurpose.WORKSPACE_ENSURE,
+        )
 
     suspend fun daemonStart(options: RuntimeCommandOptions): WorkspaceEnsureResult {
         val standaloneOptions = options.requireStandaloneBackend()
@@ -44,6 +49,10 @@ internal class WorkspaceRuntimeManager(
                 workspaceRoot = options.workspaceRoot.toString(),
                 started = false,
                 selected = readyRuntime,
+                note = deprecatedDaemonStartNote(
+                    workspaceRoot = options.workspaceRoot,
+                    selected = readyRuntime,
+                ),
             )
         }
 
@@ -52,6 +61,8 @@ internal class WorkspaceRuntimeManager(
                 standaloneOptions = standaloneOptions,
                 backendName = "standalone",
             ),
+            requireReady = true,
+            purpose = EnsureRuntimePurpose.DAEMON_START,
         )
     }
 
@@ -72,9 +83,17 @@ internal class WorkspaceRuntimeManager(
         )
     }
 
-    suspend fun ensureRuntime(options: RuntimeCommandOptions): WorkspaceEnsureResult {
+    suspend fun ensureRuntime(
+        options: RuntimeCommandOptions,
+        requireReady: Boolean = false,
+        purpose: EnsureRuntimePurpose = EnsureRuntimePurpose.COMMAND,
+    ): WorkspaceEnsureResult {
         val inspection = inspectWorkspace(options, pruneStaleDescriptors = true)
-        selectReadyCandidate(inspection.candidates, options.backendName)?.let { selected ->
+        selectServableCandidate(
+            candidates = inspection.candidates,
+            backendName = options.backendName,
+            acceptIndexing = !requireReady,
+        )?.let { selected ->
             return WorkspaceEnsureResult(
                 workspaceRoot = options.workspaceRoot.toString(),
                 started = false,
@@ -85,23 +104,39 @@ internal class WorkspaceRuntimeManager(
         val liveStandalone = inspection.candidates.firstOrNull { it.descriptor.backendName == "standalone" }
         if (liveStandalone != null) {
             if (!liveStandalone.reachable || liveStandalone.runtimeStatus?.state == RuntimeState.DEGRADED) {
+                if (options.noAutoStart) {
+                    throw noAutoStartFailure(options, liveStandalone)
+                }
                 stopCandidate(inspection.descriptorDirectory, liveStandalone)
             } else {
                 return WorkspaceEnsureResult(
                     workspaceRoot = options.workspaceRoot.toString(),
                     started = false,
-                    selected = waitForReady(
+                    selected = waitForServable(
                         options = options.copy(backendName = "standalone"),
                         backendName = "standalone",
+                        acceptIndexing = !requireReady,
                     ),
                 )
             }
         }
 
-        return startStandaloneAndWait(options)
+        if (options.noAutoStart) {
+            throw noAutoStartFailure(options)
+        }
+
+        return startStandaloneAndWait(
+            options = options,
+            requireReady = requireReady,
+            purpose = purpose,
+        )
     }
 
-    private suspend fun startStandaloneAndWait(options: RuntimeCommandOptions): WorkspaceEnsureResult {
+    private suspend fun startStandaloneAndWait(
+        options: RuntimeCommandOptions,
+        requireReady: Boolean,
+        purpose: EnsureRuntimePurpose,
+    ): WorkspaceEnsureResult {
         val standaloneOptions = options.requireStandaloneBackend()
         val logFile = workspaceMetadataDirectory(options.workspaceRoot)
             .resolve("logs")
@@ -114,36 +149,52 @@ internal class WorkspaceRuntimeManager(
             arguments = standaloneOptions.toCliArguments(),
         )
 
+        val selected = waitForServable(
+            options = options.copy(
+                backendName = "standalone",
+                standaloneOptions = standaloneOptions,
+            ),
+            backendName = "standalone",
+            acceptIndexing = !requireReady,
+            launchedProcess = launched,
+        )
         return WorkspaceEnsureResult(
             workspaceRoot = options.workspaceRoot.toString(),
             started = true,
             logFile = logFile.toString(),
-            selected = waitForReady(
-                options = options.copy(
-                    backendName = "standalone",
-                    standaloneOptions = standaloneOptions,
-                ),
-                backendName = "standalone",
-                launchedProcess = launched,
-            ),
+            selected = selected,
+            note = when (purpose) {
+                EnsureRuntimePurpose.COMMAND -> autoStartedDaemonNote(
+                    workspaceRoot = options.workspaceRoot,
+                    selected = selected,
+                )
+                EnsureRuntimePurpose.WORKSPACE_ENSURE -> null
+                EnsureRuntimePurpose.DAEMON_START -> deprecatedDaemonStartNote(
+                    workspaceRoot = options.workspaceRoot,
+                    selected = selected,
+                    logFile = logFile,
+                    started = true,
+                )
+            },
         )
     }
 
-    private suspend fun waitForReady(
+    private suspend fun waitForServable(
         options: RuntimeCommandOptions,
         backendName: String,
+        acceptIndexing: Boolean,
         launchedProcess: StartedProcess? = null,
     ): RuntimeCandidateStatus {
         val deadline = System.nanoTime() + options.waitTimeoutMillis * 1_000_000
         while (System.nanoTime() < deadline) {
             val inspection = inspectWorkspace(options, pruneStaleDescriptors = true)
-            inspection.candidates
-                .firstOrNull { candidate ->
-                    candidate.descriptor.backendName == backendName && candidate.ready
-                }
-                ?.let { return it }
+            selectServableCandidate(
+                candidates = inspection.candidates,
+                backendName = backendName,
+                acceptIndexing = acceptIndexing,
+            )?.let { return it }
 
-            if (launchedProcess != null && !isProcessAlive(launchedProcess.pid)) {
+            if (launchedProcess != null && !processLivenessChecker(launchedProcess.pid)) {
                 throw CliFailure(
                     code = "DAEMON_START_FAILED",
                     message = "The standalone daemon exited before it became ready",
@@ -157,10 +208,48 @@ internal class WorkspaceRuntimeManager(
             delay(250.milliseconds)
         }
 
+        val targetState = if (acceptIndexing) "servable" else "ready"
         throw CliFailure(
             code = "RUNTIME_TIMEOUT",
-            message = "Timed out waiting for $backendName runtime to become ready for ${options.workspaceRoot}",
+            message = "Timed out waiting for $backendName runtime to become $targetState for ${options.workspaceRoot}",
         )
+    }
+
+    private fun noAutoStartFailure(
+        options: RuntimeCommandOptions,
+        existingCandidate: RuntimeCandidateStatus? = null,
+    ): CliFailure = CliFailure(
+        code = "DAEMON_NOT_RUNNING",
+        message = existingCandidate?.let { candidate ->
+            "No servable standalone daemon is available for ${options.workspaceRoot}; the existing daemon is ${candidate.currentStateLabel()}. Rerun without --no-auto-start or start one with `kast workspace ensure`."
+        } ?: "No standalone daemon is registered for ${options.workspaceRoot}. Rerun without --no-auto-start or start one with `kast workspace ensure`.",
+    )
+
+    private fun autoStartedDaemonNote(
+        workspaceRoot: Path,
+        selected: RuntimeCandidateStatus,
+    ): String = "kast: started daemon for $workspaceRoot (state: ${selected.currentStateLabel()})"
+
+    private fun deprecatedDaemonStartNote(
+        workspaceRoot: Path,
+        selected: RuntimeCandidateStatus,
+        logFile: Path? = null,
+        started: Boolean = false,
+    ): String = buildString {
+        append("daemon: ")
+        append(if (started) "started" else "using")
+        append(' ')
+        append(selected.describeDaemon())
+        if (started && logFile != null) {
+            append(" (log: $logFile)")
+        }
+        append(" — deprecated: use `kast workspace ensure --workspace-root=$workspaceRoot` or let analysis commands auto-start the daemon.")
+    }
+
+    internal enum class EnsureRuntimePurpose {
+        COMMAND,
+        WORKSPACE_ENSURE,
+        DAEMON_START,
     }
 
     private suspend fun inspectWorkspace(
@@ -189,7 +278,7 @@ internal class WorkspaceRuntimeManager(
         registered: RegisteredDescriptor,
         pruneStaleDescriptors: Boolean,
     ): RuntimeCandidateStatus {
-        val pidAlive = isProcessAlive(registered.descriptor.pid)
+        val pidAlive = processLivenessChecker(registered.descriptor.pid)
         if (!pidAlive && pruneStaleDescriptors) {
             registry.delete(registered.path)
         }
@@ -207,14 +296,14 @@ internal class WorkspaceRuntimeManager(
 
         val runtimeStatusResult = withContext(Dispatchers.IO) {
             runCatching {
-                rpcClient.get<RuntimeStatusResponse>(registered.descriptor, "runtime/status")
+                rpcClient.runtimeStatus(registered.descriptor)
             }
         }
         val runtimeStatus = runtimeStatusResult.getOrNull()
         val capabilities = if (runtimeStatus != null) {
             withContext(Dispatchers.IO) {
                 runCatching {
-                    rpcClient.get<BackendCapabilities>(registered.descriptor, "capabilities")
+                    rpcClient.capabilities(registered.descriptor)
                 }.getOrNull()
             }
         } else {
@@ -275,18 +364,31 @@ internal data class WorkspaceInspection(
     val selected: RuntimeCandidateStatus?,
 )
 
+internal fun RuntimeStatusResponse?.isServable(): Boolean = this != null &&
+    (state == RuntimeState.READY || state == RuntimeState.INDEXING) &&
+    healthy &&
+    active
+
 internal fun RuntimeStatusResponse?.isReady(): Boolean = this != null &&
     state == RuntimeState.READY &&
     healthy &&
     active &&
     !indexing
 
-internal fun selectReadyCandidate(
+internal fun selectServableCandidate(
     candidates: List<RuntimeCandidateStatus>,
     backendName: String?,
+    acceptIndexing: Boolean,
 ): RuntimeCandidateStatus? = candidates
     .filter { candidate -> backendName == null || candidate.descriptor.backendName == backendName }
-    .filter(RuntimeCandidateStatus::ready).minByOrNull(RuntimeCandidateStatus::descriptorPath)
+    .filter { candidate ->
+        if (acceptIndexing) {
+            candidate.runtimeStatus.isServable()
+        } else {
+            candidate.ready
+        }
+    }
+    .minByOrNull(RuntimeCandidateStatus::descriptorPath)
 
 internal fun selectStatusCandidate(
     candidates: List<RuntimeCandidateStatus>,
@@ -298,6 +400,14 @@ internal fun selectStatusCandidate(
             .thenBy(RuntimeCandidateStatus::descriptorPath),
     )
     .firstOrNull()
+
+internal fun RuntimeCandidateStatus.currentStateLabel(): String = when {
+    runtimeStatus?.state == RuntimeState.INDEXING || runtimeStatus?.indexing == true -> "INDEXING, enrichment in progress"
+    runtimeStatus != null -> runtimeStatus.state.name
+    reachable -> "STARTING"
+    pidAlive -> "UNREACHABLE"
+    else -> "STOPPED"
+}
 
 private fun isProcessAlive(pid: Long): Boolean = ProcessHandle.of(pid)
     .takeIf { it.isPresent }

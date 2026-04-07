@@ -77,6 +77,22 @@ class CliDaemonStatusNotesTest {
         assertTrue(note.contains("standalone-daemon.log"))
     }
 
+    @Test
+    fun `workspace ensure note prefers explicit override`() {
+        val note = daemonNoteFor(
+            WorkspaceEnsureResult(
+                workspaceRoot = "/tmp/workspace",
+                started = true,
+                logFile = "/tmp/workspace/.kast/logs/standalone-daemon.log",
+                selected = candidate(pid = 71),
+                note = "kast: started daemon for /tmp/workspace (state: INDEXING, enrichment in progress)",
+            ),
+        )
+
+        assertTrue(checkNotNull(note).contains("INDEXING"))
+        assertTrue(!note.contains("standalone-daemon.log"))
+    }
+
     private fun candidate(
         pid: Long,
         pidAlive: Boolean = true,

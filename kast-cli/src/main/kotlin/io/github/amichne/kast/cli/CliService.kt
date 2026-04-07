@@ -48,9 +48,9 @@ internal class CliService(
     ): RuntimeAttachedResult<RefreshResult> {
         val runtime = runtimeManager.ensureRuntime(options)
         requireMutationCapability(runtime.selected, MutationCapability.REFRESH_WORKSPACE)
-        return RuntimeAttachedResult(
+        return attachedResult(
             payload = rpcClient.post(runtime.selected.descriptor, "workspace/refresh", query),
-            runtime = runtime.selected,
+            runtime = runtime,
         )
     }
 
@@ -65,9 +65,9 @@ internal class CliService(
         val capabilities = checkNotNull(runtime.selected.capabilities) {
             "Runtime capabilities were not loaded after ensure for ${runtime.selected.descriptor.backendName}"
         }
-        return RuntimeAttachedResult(
+        return attachedResult(
             payload = capabilities,
-            runtime = runtime.selected,
+            runtime = runtime,
         )
     }
 
@@ -77,9 +77,9 @@ internal class CliService(
     ): RuntimeAttachedResult<SymbolResult> {
         val runtime = runtimeManager.ensureRuntime(options)
         requireReadCapability(runtime.selected, ReadCapability.RESOLVE_SYMBOL)
-        return RuntimeAttachedResult(
+        return attachedResult(
             payload = rpcClient.post(runtime.selected.descriptor, "symbol/resolve", query),
-            runtime = runtime.selected,
+            runtime = runtime,
         )
     }
 
@@ -89,9 +89,9 @@ internal class CliService(
     ): RuntimeAttachedResult<ReferencesResult> {
         val runtime = runtimeManager.ensureRuntime(options)
         requireReadCapability(runtime.selected, ReadCapability.FIND_REFERENCES)
-        return RuntimeAttachedResult(
+        return attachedResult(
             payload = rpcClient.post(runtime.selected.descriptor, "references", query),
-            runtime = runtime.selected,
+            runtime = runtime,
         )
     }
 
@@ -101,9 +101,9 @@ internal class CliService(
     ): RuntimeAttachedResult<CallHierarchyResult> {
         val runtime = runtimeManager.ensureRuntime(options)
         requireReadCapability(runtime.selected, ReadCapability.CALL_HIERARCHY)
-        return RuntimeAttachedResult(
+        return attachedResult(
             payload = rpcClient.post(runtime.selected.descriptor, "call-hierarchy", query),
-            runtime = runtime.selected,
+            runtime = runtime,
         )
     }
 
@@ -113,9 +113,9 @@ internal class CliService(
     ): RuntimeAttachedResult<TypeHierarchyResult> {
         val runtime = runtimeManager.ensureRuntime(options)
         requireReadCapability(runtime.selected, ReadCapability.TYPE_HIERARCHY)
-        return RuntimeAttachedResult(
+        return attachedResult(
             payload = rpcClient.post(runtime.selected.descriptor, "type-hierarchy", query),
-            runtime = runtime.selected,
+            runtime = runtime,
         )
     }
 
@@ -125,9 +125,9 @@ internal class CliService(
     ): RuntimeAttachedResult<DiagnosticsResult> {
         val runtime = runtimeManager.ensureRuntime(options)
         requireReadCapability(runtime.selected, ReadCapability.DIAGNOSTICS)
-        return RuntimeAttachedResult(
+        return attachedResult(
             payload = rpcClient.post(runtime.selected.descriptor, "diagnostics", query),
-            runtime = runtime.selected,
+            runtime = runtime,
         )
     }
 
@@ -137,9 +137,9 @@ internal class CliService(
     ): RuntimeAttachedResult<SemanticInsertionResult> {
         val runtime = runtimeManager.ensureRuntime(options)
         requireReadCapability(runtime.selected, ReadCapability.SEMANTIC_INSERTION_POINT)
-        return RuntimeAttachedResult(
+        return attachedResult(
             payload = rpcClient.post(runtime.selected.descriptor, "semantic-insertion-point", query),
-            runtime = runtime.selected,
+            runtime = runtime,
         )
     }
 
@@ -149,9 +149,9 @@ internal class CliService(
     ): RuntimeAttachedResult<RenameResult> {
         val runtime = runtimeManager.ensureRuntime(options)
         requireMutationCapability(runtime.selected, MutationCapability.RENAME)
-        return RuntimeAttachedResult(
+        return attachedResult(
             payload = rpcClient.post(runtime.selected.descriptor, "rename", query),
-            runtime = runtime.selected,
+            runtime = runtime,
         )
     }
 
@@ -161,9 +161,9 @@ internal class CliService(
     ): RuntimeAttachedResult<ImportOptimizeResult> {
         val runtime = runtimeManager.ensureRuntime(options)
         requireMutationCapability(runtime.selected, MutationCapability.OPTIMIZE_IMPORTS)
-        return RuntimeAttachedResult(
+        return attachedResult(
             payload = rpcClient.post(runtime.selected.descriptor, "imports/optimize", query),
-            runtime = runtime.selected,
+            runtime = runtime,
         )
     }
 
@@ -182,11 +182,20 @@ internal class CliService(
         if (query.fileOperations.isNotEmpty()) {
             requireMutationCapability(runtime.selected, MutationCapability.FILE_OPERATIONS)
         }
-        return RuntimeAttachedResult(
+        return attachedResult(
             payload = rpcClient.post(runtime.selected.descriptor, "edits/apply", query),
-            runtime = runtime.selected,
+            runtime = runtime,
         )
     }
+
+    private fun <T> attachedResult(
+        payload: T,
+        runtime: WorkspaceEnsureResult,
+    ): RuntimeAttachedResult<T> = RuntimeAttachedResult(
+        payload = payload,
+        runtime = runtime.selected,
+        daemonNote = runtime.note,
+    )
 
     private fun requireReadCapability(
         candidate: RuntimeCandidateStatus,

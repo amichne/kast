@@ -185,7 +185,7 @@ else
 fi
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 2. Workspace ensure
+# 2. Workspace ensure (smoke keeps an explicit READY prewarm step)
 # ══════════════════════════════════════════════════════════════════════════════
 log_step "Step 2: workspace ensure"
 if "$KAST" workspace ensure \

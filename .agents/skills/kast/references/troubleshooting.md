@@ -6,7 +6,8 @@ Decision trees for every known failure mode.
 
 ## Daemon Won't Start
 
-**Symptom:** `workspace ensure` or `daemon start` exits non-zero; daemon never reaches `READY`.
+**Symptom:** `workspace ensure`, `daemon start`, or a runtime-dependent command
+exits non-zero; daemon never reaches a servable state.
 
 **First step — always read the log:**
 ```bash
@@ -40,10 +41,11 @@ Is Java 21+ available?
 `java.net.SocketException: Operation not permitted` during socket bind; `workspace status`
 returns `selected: null` and `candidates: []`.
 
-**Cause:** The operating environment (macOS app sandbox, container seccomp profile,
-CI runner policy) is blocking Unix domain socket creation. This is a transport constraint,
-not an indexing or configuration problem. The daemon JVM starts successfully but cannot
-bind its communication socket, so it exits before reaching `READY`.
+**Cause:** The operating environment (macOS app sandbox, container seccomp
+profile, CI runner policy) is blocking Unix domain socket creation. This is a
+transport constraint, not an indexing or configuration problem. The daemon JVM
+starts successfully but cannot bind its communication socket, so it exits
+before it becomes servable.
 
 ```
 Verify UDS is blocked:
@@ -60,15 +62,17 @@ Recovery option 2 — Container/CI:
   → See references/cloud-setup.md for CI-specific guidance.
 ```
 
-**Important:** Once the transport constraint is resolved, kast reaches `READY` and the
-index is typically available immediately. The underlying indexing is not affected by this
-failure — only the daemon's ability to communicate.
+**Important:** Once the transport constraint is resolved, kast starts normally
+again and can progress through `INDEXING` to `READY`. The underlying indexing
+is not affected by this failure — only the daemon's ability to communicate.
 
 ---
 
 ## Daemon Not Ready / Timeout
 
-**Symptom:** `workspace ensure` returns but `state` is `STARTING` or `INDEXING`, or the command times out.
+**Symptom:** `workspace ensure --accept-indexing=true` returns with
+`state = INDEXING`, a runtime-dependent command reports `state: INDEXING` on
+stderr, or the command times out.
 
 A timeout is a symptom, not the root cause. When `workspace ensure` times out, always
 inspect the daemon log before retrying:
@@ -88,9 +92,12 @@ state = STARTING
   → Increase timeout: --wait-timeout-ms=120000
 
 state = INDEXING
-  → Initial index build in progress. Analysis commands will return empty or
-    partial results. Wait until state = READY.
-  → For large workspaces, first ensure can take 30–120s.
+  → The daemon is servable, but background enrichment or the initial index
+    build is still running.
+  → Analysis commands can return partial or empty results. Wait until
+    workspace status reports state = READY when you need stable semantic
+    answers.
+  → For large workspaces, the first startup can still take 30–120s.
 
 state = DEGRADED
   → Daemon is unhealthy. workspace ensure will attempt to restart it.
@@ -98,7 +105,7 @@ state = DEGRADED
   → Check disk space and memory (JVM heap may need tuning).
 
 workspace status returns selected: null, candidates: []
-  → The daemon started but exited before registering a ready descriptor.
+  → The daemon started but exited before registering a servable descriptor.
   → This does NOT mean "no daemon configured" — it means startup failed silently.
   → Read .kast/logs/standalone-daemon.log for the exit reason.
 ```
@@ -189,7 +196,7 @@ will produce offset conflicts.
 **Symptom:** `diagnostics` returns an empty array when errors are expected.
 
 ```
-Is the daemon still indexing?
+Does stderr or workspace status still report INDEXING?
 ├─ Yes → Wait for state = READY, then retry.
 └─ No
    Are the file paths absolute?
@@ -271,7 +278,7 @@ Is the offset pointing to a symbol token?
 ├─ No  → Offset may land on whitespace, a comment, a string literal, or a
 │         keyword. Adjust offset to the first character of the identifier.
 └─ Yes
-   Is the daemon state READY (not INDEXING)?
+   Does stderr or workspace status report READY rather than INDEXING?
    ├─ No  → Wait for READY and retry.
    └─ Yes
       Is the file saved to disk?

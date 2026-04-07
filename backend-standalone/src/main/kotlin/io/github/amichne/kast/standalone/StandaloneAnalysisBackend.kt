@@ -43,7 +43,7 @@ import org.jetbrains.kotlin.analysis.api.components.collectDiagnostics
 import org.jetbrains.kotlin.psi.KtFile
 
 @OptIn(KaExperimentalApi::class)
-class StandaloneAnalysisBackend internal constructor(
+internal class StandaloneAnalysisBackend internal constructor(
     private val workspaceRoot: Path,
     private val limits: ServerLimits,
     private val session: StandaloneAnalysisSession,
@@ -94,18 +94,25 @@ class StandaloneAnalysisBackend internal constructor(
     override suspend fun runtimeStatus(): RuntimeStatusResponse {
         val capabilities = capabilities()
         val warnings = session.workspaceDiagnostics
+        val isIndexing = !session.isEnrichmentComplete() || !session.isInitialSourceIndexReady()
+        val state = if (isIndexing) RuntimeState.INDEXING else RuntimeState.READY
+        val statusMessage = if (isIndexing) {
+            "Standalone analysis session is indexing"
+        } else {
+            "Standalone analysis session is initialized"
+        }
         return RuntimeStatusResponse(
-            state = RuntimeState.READY,
+            state = state,
             healthy = true,
             active = true,
-            indexing = false,
+            indexing = isIndexing,
             backendName = capabilities.backendName,
             backendVersion = capabilities.backendVersion,
             workspaceRoot = capabilities.workspaceRoot,
             message = if (warnings.isEmpty()) {
-                "Standalone analysis session is initialized"
+                statusMessage
             } else {
-                "Standalone analysis session is initialized with warnings: ${warnings.joinToString(separator = " ")}"
+                "$statusMessage with warnings: ${warnings.joinToString(separator = " ")}"
             },
             warnings = warnings,
         )

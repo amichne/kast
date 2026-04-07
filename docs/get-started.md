@@ -1,9 +1,12 @@
 ---
 title: Get started
-description: Install Kast, start a workspace runtime, verify it is ready, and
-  stop it cleanly.
+description: Install Kast, prewarm or auto-start a workspace runtime, verify
+  it, and stop it cleanly.
 icon: lucide/play
 ---
+
+This guide installs Kast, shows the optional explicit prewarm step, and then
+walks through the first workspace commands.
 
 ## Prerequisites
 
@@ -104,11 +107,11 @@ and the supported `--key=value` options.
 4. Run `kast --help` if you want the grouped help page before the first
    workspace command.
 
-## Start or reuse a workspace runtime
+## Optional: prewarm a workspace runtime
 
-Use `workspace ensure` to attach Kast to one workspace. The command reuses a
-healthy daemon when one already exists, or starts a new daemon when it does
-not.
+Analysis commands can start the daemon on demand, so you do not need
+`workspace ensure` before every session. Use it when you want a separate
+startup step or when you want to block for `READY` before the first query.
 
 1. Run the command with an absolute workspace path:
 
@@ -120,12 +123,15 @@ not.
 
 2. Read the JSON result on stdout for the selected runtime metadata.
 3. Read the daemon note on stderr to see whether Kast started a daemon or
-   reused one that was already ready.
+    reused one that was already ready.
+4. Optional: Pass `--accept-indexing=true` when you only need a servable daemon
+   and can tolerate `INDEXING` while background enrichment finishes.
 
-## Verify that the workspace is ready
+## Verify or reuse the workspace runtime
 
-Check status first, then inspect capabilities, so you know the runtime is live
-and the features you plan to call are actually advertised.
+If you skipped the explicit prewarm step, `capabilities` can be your first
+runtime-dependent command. It auto-starts the daemon when needed and returns
+once the daemon is servable.
 
 1. Inspect the workspace runtime:
 
@@ -144,7 +150,9 @@ and the features you plan to call are actually advertised.
    ```
 
 The second command is the fastest way to confirm which read and mutation
-operations the current runtime supports.
+operations the current runtime supports. When `workspace status` reports
+`INDEXING`, semantic commands can still return partial or empty results until
+the state becomes `READY`.
 
 ## Stop the runtime when you are done
 
@@ -199,6 +207,8 @@ mistakes.
   `--key=value` form.
 - If Kast cannot find the workspace or a file, convert the path to an absolute
   path and rerun the command.
+- If you want runtime-dependent commands to fail instead of starting a daemon
+  implicitly, add `--no-auto-start=true` to the command.
 - If the daemon misses an external `.kt` file change, run
   `kast workspace refresh --workspace-root=/absolute/path/to/workspace` to
   force a rescan. Add `--file-paths=...` when you want a targeted refresh.
@@ -227,7 +237,7 @@ mistakes.
 
 ## Next steps
 
-Once the workspace runtime is ready, you can move on to the common analysis
+Once the workspace runtime is live, you can move on to the common analysis
 tasks and the compact reference page.
 
 - [Run analysis commands](run-analysis-commands.md)

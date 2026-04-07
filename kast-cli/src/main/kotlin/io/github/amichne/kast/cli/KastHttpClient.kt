@@ -1,9 +1,11 @@
 package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.api.ApiErrorResponse
+import io.github.amichne.kast.api.BackendCapabilities
 import io.github.amichne.kast.api.JsonRpcErrorResponse
 import io.github.amichne.kast.api.JsonRpcRequest
 import io.github.amichne.kast.api.JsonRpcSuccessResponse
+import io.github.amichne.kast.api.RuntimeStatusResponse
 import io.github.amichne.kast.api.ServerInstanceDescriptor
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
@@ -18,9 +20,21 @@ import java.nio.channels.SocketChannel
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 
+internal interface RuntimeRpcClient {
+    fun runtimeStatus(descriptor: ServerInstanceDescriptor): RuntimeStatusResponse
+
+    fun capabilities(descriptor: ServerInstanceDescriptor): BackendCapabilities
+}
+
 internal class KastRpcClient(
     private val json: Json,
-) {
+) : RuntimeRpcClient {
+    override fun runtimeStatus(descriptor: ServerInstanceDescriptor): RuntimeStatusResponse =
+        get(descriptor = descriptor, method = "runtime/status")
+
+    override fun capabilities(descriptor: ServerInstanceDescriptor): BackendCapabilities =
+        get(descriptor = descriptor, method = "capabilities")
+
     inline fun <reified Response> get(
         descriptor: ServerInstanceDescriptor,
         method: String,

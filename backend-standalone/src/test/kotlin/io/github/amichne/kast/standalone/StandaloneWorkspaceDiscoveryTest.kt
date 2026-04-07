@@ -1,6 +1,7 @@
 package io.github.amichne.kast.standalone
 
 import io.github.amichne.kast.api.FilePosition
+import io.github.amichne.kast.api.RuntimeState
 import io.github.amichne.kast.api.ServerLimits
 import io.github.amichne.kast.api.SymbolKind
 import io.github.amichne.kast.api.SymbolQuery
@@ -13,6 +14,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CountDownLatch
 import java.util.jar.JarEntry
 import java.util.jar.JarOutputStream
@@ -113,6 +115,68 @@ class StandaloneWorkspaceDiscoveryTest {
                     targetIdeaModuleName = ":lib",
                     scope = GradleDependencyScope.TEST_FIXTURES,
                 ),
+            ),
+        )
+    }
+
+    @Test
+    fun `static discovery finds gatling source roots`() {
+        writeFile(
+            relativePath = "settings.gradle.kts",
+            content = """
+                rootProject.name = "workspace"
+                include(":app")
+            """.trimIndent() + "\n",
+        )
+        writeFile(relativePath = "app/build.gradle.kts", content = "")
+        writeFile(
+            relativePath = "app/src/gatling/kotlin/sample/Simulation.kt",
+            content = """
+                package sample
+
+                class Simulation
+            """.trimIndent() + "\n",
+        )
+
+        val modulesByPath = StaticGradleWorkspaceDiscovery.discoverModules(
+            workspaceRoot,
+            GradleSettingsSnapshot.read(workspaceRoot),
+        ).associateBy(GradleModuleModel::gradlePath)
+
+        assertTrue(
+            modulesByPath.getValue(":app").mainSourceRoots.contains(
+                normalizeStandalonePath(workspaceRoot.resolve("app/src/gatling/kotlin")),
+            ),
+        )
+    }
+
+    @Test
+    fun `static discovery finds custom source sets`() {
+        writeFile(
+            relativePath = "settings.gradle.kts",
+            content = """
+                rootProject.name = "workspace"
+                include(":app")
+            """.trimIndent() + "\n",
+        )
+        writeFile(relativePath = "app/build.gradle.kts", content = "")
+        writeFile(
+            relativePath = "app/src/integrationTest/kotlin/sample/IntegrationTest.kt",
+            content = """
+                package sample
+
+                class IntegrationTest
+            """.trimIndent() + "\n",
+        )
+
+        val modulesByPath = StaticGradleWorkspaceDiscovery.discoverModules(
+            workspaceRoot,
+            GradleSettingsSnapshot.read(workspaceRoot),
+        ).associateBy(GradleModuleModel::gradlePath)
+
+        assertTrue(
+            modulesByPath.getValue(":app").testSourceRoots.contains(
+                normalizeStandalonePath(workspaceRoot.resolve("app/src/integrationTest/kotlin")),
             ),
         )
     }
@@ -265,6 +329,151 @@ class StandaloneWorkspaceDiscoveryTest {
             assertFalse(session.isInitialSourceIndexReady())
             unblockIndexBuild.countDown()
             session.awaitInitialSourceIndex()
+        }
+    }
+
+    @Test
+    fun `phased session serves requests before enrichment completes`() {
+        val appFile = writeFile(
+            relativePath = "app/src/main/kotlin/sample/App.kt",
+            content = """
+                package sample
+
+                fun app(): String = "ready"
+            """.trimIndent() + "\n",
+        )
+        val libFile = writeFile(
+            relativePath = "lib/src/main/kotlin/sample/Lib.kt",
+            content = """
+                package sample
+
+                fun lib(): String = "later"
+            """.trimIndent() + "\n",
+        )
+        val appRoot = normalizeStandalonePath(workspaceRoot.resolve("app/src/main/kotlin"))
+        val libRoot = normalizeStandalonePath(workspaceRoot.resolve("lib/src/main/kotlin"))
+        val enrichmentFuture = CompletableFuture<StandaloneWorkspaceLayout>()
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "ignored",
+            phasedDiscoveryResult = PhasedDiscoveryResult(
+                initialLayout = manualWorkspaceLayout(
+                    sourceModule(name = ":app[main]", sourceRoots = listOf(appRoot)),
+                ),
+                enrichmentFuture = enrichmentFuture,
+            ),
+        )
+
+        session.use { phasedSession ->
+            assertEquals(normalizePath(appFile), phasedSession.findKtFile(appFile.toString()).virtualFilePath)
+            assertFalse(phasedSession.isEnrichmentComplete())
+
+            enrichmentFuture.complete(
+                manualWorkspaceLayout(
+                    sourceModule(
+                        name = ":app[main]",
+                        sourceRoots = listOf(appRoot),
+                        dependencyModuleNames = listOf(":lib[main]"),
+                    ),
+                    sourceModule(name = ":lib[main]", sourceRoots = listOf(libRoot)),
+                ),
+            )
+
+            phasedSession.awaitEnrichment()
+
+            assertTrue(phasedSession.isEnrichmentComplete())
+            assertEquals(normalizePath(libFile), phasedSession.findKtFile(libFile.toString()).virtualFilePath)
+        }
+    }
+
+    @Test
+    fun `phased session rebuilds K2 session after enrichment`() {
+        writeFile(
+            relativePath = "app/src/main/kotlin/sample/App.kt",
+            content = """
+                package sample
+
+                fun app(): String = lib()
+            """.trimIndent() + "\n",
+        )
+        val libFile = writeFile(
+            relativePath = "lib/src/main/kotlin/sample/Lib.kt",
+            content = """
+                package sample
+
+                fun lib(): String = "later"
+            """.trimIndent() + "\n",
+        )
+        val appRoot = normalizeStandalonePath(workspaceRoot.resolve("app/src/main/kotlin"))
+        val libRoot = normalizeStandalonePath(workspaceRoot.resolve("lib/src/main/kotlin"))
+        val enrichmentFuture = CompletableFuture<StandaloneWorkspaceLayout>()
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "ignored",
+            phasedDiscoveryResult = PhasedDiscoveryResult(
+                initialLayout = manualWorkspaceLayout(
+                    sourceModule(name = ":app[main]", sourceRoots = listOf(appRoot)),
+                ),
+                enrichmentFuture = enrichmentFuture,
+            ),
+        )
+
+        session.use { phasedSession ->
+            enrichmentFuture.complete(
+                manualWorkspaceLayout(
+                    sourceModule(
+                        name = ":app[main]",
+                        sourceRoots = listOf(appRoot),
+                        dependencyModuleNames = listOf(":lib[main]"),
+                    ),
+                    sourceModule(name = ":lib[main]", sourceRoots = listOf(libRoot)),
+                ),
+            )
+
+            phasedSession.awaitEnrichment()
+            phasedSession.awaitInitialSourceIndex()
+
+            assertTrue(phasedSession.sourceModules.any { module -> module.name == ":lib[main]" })
+            assertEquals(normalizePath(libFile), phasedSession.findKtFile(libFile.toString()).virtualFilePath)
+        }
+    }
+
+    @Test
+    fun `phased session source index works during enrichment`() {
+        val appFile = writeFile(
+            relativePath = "app/src/main/kotlin/sample/App.kt",
+            content = """
+                package sample
+
+                fun greetDuringIndexing(): String = "ready"
+            """.trimIndent() + "\n",
+        )
+        val appRoot = normalizeStandalonePath(workspaceRoot.resolve("app/src/main/kotlin"))
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "ignored",
+            phasedDiscoveryResult = PhasedDiscoveryResult(
+                initialLayout = manualWorkspaceLayout(
+                    sourceModule(name = ":app[main]", sourceRoots = listOf(appRoot)),
+                ),
+                enrichmentFuture = CompletableFuture<StandaloneWorkspaceLayout>(),
+            ),
+        )
+
+        session.use { phasedSession ->
+            phasedSession.awaitInitialSourceIndex()
+
+            assertEquals(
+                setOf(normalizePath(appFile)),
+                phasedSession.candidateKotlinFilePaths("greetDuringIndexing").toSet(),
+            )
+            assertFalse(phasedSession.isEnrichmentComplete())
         }
     }
 
@@ -471,6 +680,55 @@ class StandaloneWorkspaceDiscoveryTest {
             assertFalse(status.warnings.isEmpty())
             assertTrue(status.warnings.any { warning -> warning.contains(":lib") })
             assertTrue(checkNotNull(status.message).contains("warnings"))
+        }
+    }
+
+    @Test
+    fun `runtime status reports INDEXING during enrichment`(): TestResult = runTest {
+        writeFile(
+            relativePath = "app/src/main/kotlin/sample/App.kt",
+            content = """
+                package sample
+
+                fun app(): String = "ready"
+            """.trimIndent() + "\n",
+        )
+        val appRoot = normalizeStandalonePath(workspaceRoot.resolve("app/src/main/kotlin"))
+        val enrichmentFuture = CompletableFuture<StandaloneWorkspaceLayout>()
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "ignored",
+            phasedDiscoveryResult = PhasedDiscoveryResult(
+                initialLayout = manualWorkspaceLayout(
+                    sourceModule(name = ":app[main]", sourceRoots = listOf(appRoot)),
+                ),
+                enrichmentFuture = enrichmentFuture,
+            ),
+        )
+        session.use { phasedSession ->
+            val backend = StandaloneAnalysisBackend(
+                workspaceRoot = workspaceRoot,
+                limits = ServerLimits(
+                    maxResults = 100,
+                    requestTimeoutMillis = 30_000,
+                    maxConcurrentRequests = 4,
+                ),
+                session = phasedSession,
+            )
+
+            assertEquals(RuntimeState.INDEXING, backend.runtimeStatus().state)
+
+            enrichmentFuture.complete(
+                manualWorkspaceLayout(
+                    sourceModule(name = ":app[main]", sourceRoots = listOf(appRoot)),
+                ),
+            )
+            phasedSession.awaitEnrichment()
+            phasedSession.awaitInitialSourceIndex()
+
+            assertEquals(RuntimeState.READY, backend.runtimeStatus().state)
         }
     }
 
@@ -935,4 +1193,19 @@ class StandaloneWorkspaceDiscoveryTest {
         val absolutePath = path.toAbsolutePath().normalize()
         return runCatching { absolutePath.toRealPath().normalize().toString() }.getOrDefault(absolutePath.toString())
     }
+
+    private fun manualWorkspaceLayout(vararg sourceModules: StandaloneSourceModuleSpec): StandaloneWorkspaceLayout =
+        StandaloneWorkspaceLayout(sourceModules = sourceModules.toList())
+
+    private fun sourceModule(
+        name: String,
+        sourceRoots: List<Path>,
+        binaryRoots: List<Path> = emptyList(),
+        dependencyModuleNames: List<String> = emptyList(),
+    ): StandaloneSourceModuleSpec = StandaloneSourceModuleSpec(
+        name = name,
+        sourceRoots = sourceRoots,
+        binaryRoots = binaryRoots,
+        dependencyModuleNames = dependencyModuleNames,
+    )
 }

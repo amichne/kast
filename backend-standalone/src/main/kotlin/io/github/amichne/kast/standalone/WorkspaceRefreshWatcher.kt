@@ -20,6 +20,7 @@ internal class WorkspaceRefreshWatcher(
     private val watchService: WatchService = FileSystems.getDefault().newWatchService()
     private val directoriesByWatchKey = ConcurrentHashMap<WatchKey, Path>()
     private val watchKeysByDirectory = ConcurrentHashMap<Path, WatchKey>()
+    private val sourceRoots = ConcurrentHashMap.newKeySet<Path>()
     @Volatile
     private var closed = false
     private val worker = thread(
@@ -31,7 +32,7 @@ internal class WorkspaceRefreshWatcher(
     }
 
     init {
-        session.resolvedSourceRoots.forEach(::registerDirectoryRecursively)
+        refreshSourceRoots(session.resolvedSourceRoots)
     }
 
     override fun close() {
@@ -110,6 +111,32 @@ internal class WorkspaceRefreshWatcher(
         }
     }
 
+    fun refreshSourceRoots(newSourceRoots: List<Path>) {
+        val normalizedSourceRoots = newSourceRoots
+            .map { sourceRoot -> sourceRoot.toAbsolutePath().normalize() }
+            .toSet()
+        val previousSourceRoots = sourceRoots.toSet()
+        val removedSourceRoots = previousSourceRoots - normalizedSourceRoots
+
+        sourceRoots.clear()
+        sourceRoots.addAll(normalizedSourceRoots)
+
+        (normalizedSourceRoots - previousSourceRoots)
+            .sorted()
+            .forEach(::registerDirectoryRecursively)
+        if (removedSourceRoots.isEmpty()) {
+            return
+        }
+
+        watchKeysByDirectory.entries
+            .filter { (directory, _) ->
+                removedSourceRoots.any(directory::startsWith) &&
+                    normalizedSourceRoots.none(directory::startsWith)
+            }
+            .map { entry -> entry.value }
+            .forEach(::unregister)
+    }
+
     private fun flushPendingChanges(
         changedPaths: Set<String>,
         forceFullRefresh: Boolean,
@@ -160,6 +187,7 @@ internal class WorkspaceRefreshWatcher(
     }
 
     private fun unregister(watchKey: WatchKey) {
+        watchKey.cancel()
         val directory = directoriesByWatchKey.remove(watchKey) ?: return
         watchKeysByDirectory.remove(directory, watchKey)
     }

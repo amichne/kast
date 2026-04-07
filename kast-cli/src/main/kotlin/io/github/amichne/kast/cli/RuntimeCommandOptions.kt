@@ -8,4 +8,6 @@ internal data class RuntimeCommandOptions(
     val backendName: String?,
     val waitTimeoutMillis: Long,
     val standaloneOptions: StandaloneServerOptions? = null,
+    val acceptIndexing: Boolean = false,
+    val noAutoStart: Boolean = false,
 )

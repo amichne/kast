@@ -75,9 +75,11 @@ Run smoke validation for a named instance with:
 ## How to use it
 
 Use `kast --help` for the grouped command overview before you move into the
-JSON-returning commands.
+JSON-returning commands. Analysis commands auto-start the standalone daemon when
+needed. Use `workspace ensure` when you want an explicit prewarm step or a
+separate readiness check.
 
-Start or reuse a runtime for a workspace:
+Optional: prewarm a runtime for a workspace:
 
 ```bash
 kast \
@@ -85,7 +87,12 @@ kast \
   --workspace-root=/absolute/path/to/workspace
 ```
 
-Run analysis commands the same way:
+By default, `workspace ensure` waits for `READY`. Add
+`--accept-indexing=true` when you only need a servable daemon and can tolerate
+`INDEXING` while background enrichment finishes.
+
+Run analysis commands the same way. The first one can start the daemon for you
+when you skip `workspace ensure`:
 
 ```bash
 kast \
@@ -105,6 +112,9 @@ kast \
   --request-file=/absolute/path/to/query.json
 ```
 
+If you want a runtime-dependent command to fail instead of auto-starting a
+daemon, add `--no-auto-start=true`.
+
 Kast refreshes `edits apply` results immediately and watches source roots for
 most external `.kt` file changes. If you need to force recovery after a missed
 change, run:
@@ -123,7 +133,8 @@ kast \
   --workspace-root=/absolute/path/to/workspace
 ```
 
-Successful commands print JSON on stdout. Daemon lifecycle notes go to stderr.
+Successful commands print JSON on stdout. Daemon lifecycle notes go to stderr,
+including successful auto-start and reuse paths.
 
 `call hierarchy` is available through the public CLI and returns bounded trees
 with traversal stats plus truncation metadata.

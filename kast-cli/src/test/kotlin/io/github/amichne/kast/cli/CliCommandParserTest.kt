@@ -107,6 +107,40 @@ class CliCommandParserTest {
     }
 
     @Test
+    fun `workspace ensure parses accept indexing`() {
+        val command = parser.parse(
+            arrayOf(
+                "workspace",
+                "ensure",
+                "--workspace-root=$tempDir",
+                "--accept-indexing=true",
+            ),
+        )
+
+        assertTrue(command is CliCommand.WorkspaceEnsure)
+        val ensureCommand = command as CliCommand.WorkspaceEnsure
+        assertTrue(ensureCommand.options.acceptIndexing)
+    }
+
+    @Test
+    fun `symbol resolve parses no auto start`() {
+        val command = parser.parse(
+            arrayOf(
+                "symbol",
+                "resolve",
+                "--workspace-root=$tempDir",
+                "--file-path=$tempDir/Sample.kt",
+                "--offset=12",
+                "--no-auto-start=true",
+            ),
+        )
+
+        assertTrue(command is CliCommand.ResolveSymbol)
+        val resolveCommand = command as CliCommand.ResolveSymbol
+        assertTrue(resolveCommand.options.noAutoStart)
+    }
+
+    @Test
     fun `type hierarchy parses from inline options`() {
         val command = parser.parse(
             arrayOf(
