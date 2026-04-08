@@ -282,13 +282,8 @@ class StandaloneAnalysisBackendCallHierarchyTest {
             assertFalse(firstPersistence.cacheHit)
             assertTrue(secondPersistence.cacheHit)
             assertTrue(Path.of(firstPersistence.cacheFilePath).exists())
-            assertTrue(firstPersistence.cacheFilePath.contains("/.gradle/kast/call-hierarchy/"))
-            val cachePayload = Json.parseToJsonElement(
-                Path.of(firstPersistence.cacheFilePath).readText(),
-            ).jsonObject
-            assertEquals(SCHEMA_VERSION, cachePayload.getValue("schemaVersion").jsonPrimitive.content.toInt())
-            assertNotNull(cachePayload["root"]?.jsonObject)
-            assertNotNull(cachePayload["stats"]?.jsonObject)
+            assertTrue(firstPersistence.cacheFilePath.contains("/.gradle/kast/cache/"))
+            assertTrue(firstPersistence.cacheFilePath.endsWith("source-index.db"))
             assertEquals(first.root, second.root)
             assertEquals(first.stats, second.stats)
         }

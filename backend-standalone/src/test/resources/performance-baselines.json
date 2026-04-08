@@ -1,0 +1,11 @@
+{
+  "identifier_index_build_500_files_ms": 5000,
+  "incremental_index_10_files_ms": 500,
+  "candidate_resolution_p95_ms": 50,
+  "sqlite_round_trip_500_files_ms": 2000,
+  "startup_to_first_ready_ms": 15000,
+  "concurrent_query_max_ms": 10000,
+  "symbol_ref_lookup_p95_ms": 50,
+  "regression_tolerance": 1.2,
+  "notes": "Baselines established on initial implementation. Update after profiling on CI hardware."
+}

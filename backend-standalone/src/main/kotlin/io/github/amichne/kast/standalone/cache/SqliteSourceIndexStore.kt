@@ -8,7 +8,7 @@ import java.nio.file.Path
 import java.sql.Connection
 import java.sql.DriverManager
 
-private const val SCHEMA_VERSION = 1
+private const val SCHEMA_VERSION = 2
 
 /**
  * Represents all index data for a single file — used to batch-write to SQLite.
@@ -23,11 +23,23 @@ internal data class FileIndexUpdate(
 )
 
 /**
- * SQLite-backed store for the source identifier index and file manifest.
+ * A row from the `symbol_references` table — a reference from a source
+ * location to a target symbol identified by its fully-qualified name.
+ */
+internal data class SymbolReferenceRow(
+    val sourcePath: String,
+    val sourceOffset: Int,
+    val targetFqName: String,
+    val targetPath: String?,
+    val targetOffset: Int?,
+)
+
+/**
+ * SQLite-backed store for the source identifier index, file manifest,
+ * symbol references, workspace discovery cache, and call hierarchy cache.
  *
- * All data for both the identifier index and the file manifest live in a single
- * `source-index.db` database under the kast cache directory. WAL journal mode
- * is enabled so readers never block writers.
+ * All data lives in a single `source-index.db` database under the kast
+ * cache directory. WAL journal mode is enabled so readers never block writers.
  */
 internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
     private val dbPath: Path = kastCacheDirectory(workspaceRoot).resolve("source-index.db")
@@ -57,6 +69,11 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
                 stmt.execute("PRAGMA journal_mode=WAL")
                 stmt.execute("PRAGMA synchronous=NORMAL")
                 stmt.execute("PRAGMA busy_timeout=5000")
+                stmt.execute("PRAGMA cache_size=-64000")
+                stmt.execute("PRAGMA mmap_size=268435456")
+                stmt.execute("PRAGMA temp_store=MEMORY")
+                stmt.execute("PRAGMA wal_autocheckpoint=1000")
+                stmt.execute("PRAGMA foreign_keys=ON")
             }
             cachedConnection = conn
             return conn
@@ -90,6 +107,8 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
         } catch (e: Exception) {
             conn.rollback()
             throw e
+        } finally {
+            conn.autoCommit = true
         }
         return false
     }
@@ -104,17 +123,26 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
 
     private fun dropAllTables(conn: Connection) {
         conn.createStatement().use { stmt ->
-            stmt.execute("DROP TABLE IF EXISTS schema_version")
+            stmt.execute("DROP TABLE IF EXISTS symbol_references")
             stmt.execute("DROP TABLE IF EXISTS identifier_paths")
             stmt.execute("DROP TABLE IF EXISTS file_metadata")
             stmt.execute("DROP TABLE IF EXISTS file_manifest")
+            stmt.execute("DROP TABLE IF EXISTS workspace_discovery")
+            stmt.execute("DROP TABLE IF EXISTS call_hierarchy_cache")
+            stmt.execute("DROP TABLE IF EXISTS schema_version")
         }
     }
 
     private fun createAllTables(conn: Connection) {
         conn.createStatement().use { stmt ->
-            stmt.execute("CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL)")
-            stmt.execute("INSERT INTO schema_version (version) VALUES ($SCHEMA_VERSION)")
+            stmt.execute(
+                """CREATE TABLE IF NOT EXISTS schema_version (
+                    version INTEGER NOT NULL,
+                    generation INTEGER NOT NULL DEFAULT 0
+                )""",
+            )
+            stmt.execute("INSERT INTO schema_version (version, generation) VALUES ($SCHEMA_VERSION, 0)")
+
             stmt.execute(
                 """CREATE TABLE IF NOT EXISTS identifier_paths (
                     identifier TEXT NOT NULL,
@@ -122,9 +150,8 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
                     PRIMARY KEY (identifier, path)
                 )""",
             )
-            stmt.execute(
-                "CREATE INDEX IF NOT EXISTS idx_identifier_paths_path ON identifier_paths(path)",
-            )
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_identifier_paths_path ON identifier_paths(path)")
+
             stmt.execute(
                 """CREATE TABLE IF NOT EXISTS file_metadata (
                     path TEXT PRIMARY KEY,
@@ -134,10 +161,42 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
                     wildcard_imports TEXT
                 )""",
             )
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_file_metadata_module ON file_metadata(module_name)")
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_file_metadata_package ON file_metadata(package_name)")
+
             stmt.execute(
                 """CREATE TABLE IF NOT EXISTS file_manifest (
                     path TEXT PRIMARY KEY,
                     last_modified_millis INTEGER NOT NULL
+                )""",
+            )
+
+            stmt.execute(
+                """CREATE TABLE IF NOT EXISTS symbol_references (
+                    source_path TEXT NOT NULL,
+                    source_offset INTEGER NOT NULL,
+                    target_fq_name TEXT NOT NULL,
+                    target_path TEXT,
+                    target_offset INTEGER,
+                    PRIMARY KEY (source_path, source_offset, target_fq_name)
+                )""",
+            )
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_symref_target ON symbol_references(target_fq_name)")
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_symref_source_path ON symbol_references(source_path)")
+
+            stmt.execute(
+                """CREATE TABLE IF NOT EXISTS workspace_discovery (
+                    cache_key TEXT PRIMARY KEY,
+                    schema_version INTEGER NOT NULL,
+                    payload TEXT NOT NULL
+                )""",
+            )
+
+            stmt.execute(
+                """CREATE TABLE IF NOT EXISTS call_hierarchy_cache (
+                    cache_key TEXT PRIMARY KEY,
+                    schema_version INTEGER NOT NULL,
+                    payload TEXT NOT NULL
                 )""",
             )
         }
@@ -183,7 +242,7 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
         }
     }
 
-    /** Removes all index/manifest rows for the given path. */
+    /** Removes all index/manifest/reference rows for the given path. */
     fun removeFile(path: String) {
         val conn = connection()
         conn.autoCommit = false
@@ -194,6 +253,10 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
                     stmt.executeUpdate()
                 }
             }
+            conn.prepareStatement("DELETE FROM symbol_references WHERE source_path = ?").use { stmt ->
+                stmt.setString(1, path)
+                stmt.executeUpdate()
+            }
             conn.commit()
         } catch (e: Exception) {
             conn.rollback()
@@ -202,7 +265,7 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
     }
 
     /** Reads all rows and constructs a [MutableSourceIdentifierIndex]. */
-    fun loadFullIndex(): MutableSourceIdentifierIndex {
+    fun loadFullIndex(backingStore: SqliteSourceIndexStore? = null): MutableSourceIdentifierIndex {
         val conn = connection()
         val candidatePathsByIdentifier = mutableMapOf<String, MutableList<String>>()
         conn.createStatement().use { stmt ->
@@ -242,6 +305,7 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
             packageByPath = packageByPath,
             importsByPath = importsByPath,
             wildcardImportPackagesByPath = wildcardImportPackagesByPath,
+            backingStore = backingStore,
         )
     }
 
@@ -275,6 +339,187 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
         } catch (_: Exception) {
             null
         }
+    }
+
+    // ── Symbol references ────────────────────────────────────────────────
+
+    /** Inserts or replaces a symbol reference from a source location to a target FQ name. */
+    fun upsertSymbolReference(
+        sourcePath: String,
+        sourceOffset: Int,
+        targetFqName: String,
+        targetPath: String?,
+        targetOffset: Int?,
+    ) {
+        val conn = connection()
+        conn.prepareStatement(
+            """INSERT OR REPLACE INTO symbol_references
+               (source_path, source_offset, target_fq_name, target_path, target_offset)
+               VALUES (?, ?, ?, ?, ?)""",
+        ).use { stmt ->
+            stmt.setString(1, sourcePath)
+            stmt.setInt(2, sourceOffset)
+            stmt.setString(3, targetFqName)
+            stmt.setString(4, targetPath)
+            if (targetOffset != null) stmt.setInt(5, targetOffset) else stmt.setNull(5, java.sql.Types.INTEGER)
+            stmt.executeUpdate()
+        }
+    }
+
+    /** Returns all references that target the given fully-qualified name. */
+    fun referencesToSymbol(targetFqName: String): List<SymbolReferenceRow> {
+        val conn = connection()
+        return conn.prepareStatement(
+            "SELECT source_path, source_offset, target_fq_name, target_path, target_offset FROM symbol_references WHERE target_fq_name = ?",
+        ).use { stmt ->
+            stmt.setString(1, targetFqName)
+            val rs = stmt.executeQuery()
+            buildList {
+                while (rs.next()) {
+                    add(
+                        SymbolReferenceRow(
+                            sourcePath = rs.getString(1),
+                            sourceOffset = rs.getInt(2),
+                            targetFqName = rs.getString(3),
+                            targetPath = rs.getString(4),
+                            targetOffset = rs.getObject(5) as? Int,
+                        ),
+                    )
+                }
+            }
+        }
+    }
+
+    /** Returns all references originating from the given source file. */
+    fun referencesFromFile(sourcePath: String): List<SymbolReferenceRow> {
+        val conn = connection()
+        return conn.prepareStatement(
+            "SELECT source_path, source_offset, target_fq_name, target_path, target_offset FROM symbol_references WHERE source_path = ?",
+        ).use { stmt ->
+            stmt.setString(1, sourcePath)
+            val rs = stmt.executeQuery()
+            buildList {
+                while (rs.next()) {
+                    add(
+                        SymbolReferenceRow(
+                            sourcePath = rs.getString(1),
+                            sourceOffset = rs.getInt(2),
+                            targetFqName = rs.getString(3),
+                            targetPath = rs.getString(4),
+                            targetOffset = rs.getObject(5) as? Int,
+                        ),
+                    )
+                }
+            }
+        }
+    }
+
+    /** Removes all symbol references originating from the given source file. */
+    fun clearReferencesFromFile(sourcePath: String) {
+        val conn = connection()
+        conn.prepareStatement("DELETE FROM symbol_references WHERE source_path = ?").use { stmt ->
+            stmt.setString(1, sourcePath)
+            stmt.executeUpdate()
+        }
+    }
+
+    // ── Workspace discovery cache ────────────────────────────────────────
+
+    /** Returns the JSON payload for a workspace discovery cache entry, or `null` if absent. */
+    fun readWorkspaceDiscovery(cacheKey: String): String? {
+        val conn = connection()
+        return conn.prepareStatement(
+            "SELECT payload FROM workspace_discovery WHERE cache_key = ?",
+        ).use { stmt ->
+            stmt.setString(1, cacheKey)
+            val rs = stmt.executeQuery()
+            if (rs.next()) rs.getString(1) else null
+        }
+    }
+
+    /** Writes or replaces a workspace discovery cache entry. */
+    fun writeWorkspaceDiscovery(cacheKey: String, schemaVersion: Int, payload: String) {
+        val conn = connection()
+        conn.prepareStatement(
+            "INSERT OR REPLACE INTO workspace_discovery (cache_key, schema_version, payload) VALUES (?, ?, ?)",
+        ).use { stmt ->
+            stmt.setString(1, cacheKey)
+            stmt.setInt(2, schemaVersion)
+            stmt.setString(3, payload)
+            stmt.executeUpdate()
+        }
+    }
+
+    // ── Call hierarchy cache ─────────────────────────────────────────────
+
+    /** Returns the JSON payload for a call hierarchy cache entry, or `null` if absent. */
+    fun readCallHierarchyCache(cacheKey: String): String? {
+        val conn = connection()
+        return conn.prepareStatement(
+            "SELECT payload FROM call_hierarchy_cache WHERE cache_key = ?",
+        ).use { stmt ->
+            stmt.setString(1, cacheKey)
+            val rs = stmt.executeQuery()
+            if (rs.next()) rs.getString(1) else null
+        }
+    }
+
+    /** Writes or replaces a call hierarchy cache entry. */
+    fun writeCallHierarchyCache(cacheKey: String, schemaVersion: Int, payload: String) {
+        val conn = connection()
+        conn.prepareStatement(
+            "INSERT OR REPLACE INTO call_hierarchy_cache (cache_key, schema_version, payload) VALUES (?, ?, ?)",
+        ).use { stmt ->
+            stmt.setString(1, cacheKey)
+            stmt.setInt(2, schemaVersion)
+            stmt.setString(3, payload)
+            stmt.executeUpdate()
+        }
+    }
+
+    // ── Transaction helpers ──────────────────────────────────────────────
+
+    /** Begins a transaction for batch writes. */
+    fun beginTransaction() {
+        connection().autoCommit = false
+    }
+
+    /** Commits the current transaction. */
+    fun commitTransaction() {
+        val conn = connection()
+        conn.commit()
+        conn.autoCommit = true
+    }
+
+    /** Rolls back the current transaction. */
+    fun rollbackTransaction() {
+        val conn = connection()
+        runCatching { conn.rollback() }
+        conn.autoCommit = true
+    }
+
+    // ── Generation tracking ──────────────────────────────────────────────
+
+    /** Reads the current generation counter from the schema_version table. */
+    fun readGeneration(): Int {
+        val conn = connection()
+        return try {
+            conn.prepareStatement("SELECT generation FROM schema_version LIMIT 1").use { stmt ->
+                val rs = stmt.executeQuery()
+                if (rs.next()) rs.getInt(1) else 0
+            }
+        } catch (_: Exception) {
+            0
+        }
+    }
+
+    /** Atomically increments and returns the new generation counter. */
+    fun incrementGeneration(): Int {
+        val conn = connection()
+        conn.createStatement().use { stmt ->
+            stmt.executeUpdate("UPDATE schema_version SET generation = generation + 1")
+        }
+        return readGeneration()
     }
 
     private fun insertFileDataInTransaction(

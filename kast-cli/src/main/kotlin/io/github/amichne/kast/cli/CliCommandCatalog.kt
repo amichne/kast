@@ -305,8 +305,8 @@ internal object CliCommandCatalog {
         CliCommandMetadata(
             path = listOf("daemon", "start"),
             group = CliCommandGroup.WORKSPACE_LIFECYCLE,
-            summary = "Start a detached standalone daemon for a workspace.",
-            description = "Deprecated: use `workspace ensure` or let analysis commands auto-start the daemon. This command still starts a standalone daemon and waits until it reports readiness.",
+            summary = "[Deprecated] Alias for `workspace ensure`.",
+            description = "Deprecated: routes through `workspace ensure`. Use `kast workspace ensure` or let analysis commands auto-start the daemon.",
             usages = listOf(
                 "$CLI_EXECUTABLE_NAME daemon start --workspace-root=/absolute/path/to/workspace [--wait-timeout-ms=60000]",
             ),

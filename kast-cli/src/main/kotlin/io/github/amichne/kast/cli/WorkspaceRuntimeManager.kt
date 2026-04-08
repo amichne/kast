@@ -37,31 +37,14 @@ internal class WorkspaceRuntimeManager(
         )
 
     suspend fun daemonStart(options: RuntimeCommandOptions): WorkspaceEnsureResult {
-        val standaloneOptions = options.requireStandaloneBackend()
-        val readyRuntime = inspectWorkspace(options, pruneStaleDescriptors = true)
-            .candidates
-            .firstOrNull { candidate ->
-                candidate.descriptor.backendName == "standalone" && candidate.ready
-            }
-        if (readyRuntime != null) {
-            return WorkspaceEnsureResult(
-                workspaceRoot = options.workspaceRoot.toString(),
-                started = false,
-                selected = readyRuntime,
-                note = deprecatedDaemonStartNote(
-                    workspaceRoot = options.workspaceRoot,
-                    selected = readyRuntime,
-                ),
-            )
-        }
-
-        return startStandaloneAndWait(
-            options = options.copy(
-                standaloneOptions = standaloneOptions,
-                backendName = "standalone",
-            ),
-            requireReady = true,
-            purpose = EnsureRuntimePurpose.DAEMON_START,
+        val result = ensureRuntime(
+            options = options.copy(backendName = "standalone"),
+            requireReady = !options.acceptIndexing,
+            purpose = EnsureRuntimePurpose.WORKSPACE_ENSURE,
+        )
+        return result.copy(
+            note = "deprecated: `daemon start` routes through `workspace ensure`. " +
+                "Use `kast workspace ensure --workspace-root=${options.workspaceRoot}` instead.",
         )
     }
 
@@ -168,12 +151,6 @@ internal class WorkspaceRuntimeManager(
                     selected = selected,
                 )
                 EnsureRuntimePurpose.WORKSPACE_ENSURE -> null
-                EnsureRuntimePurpose.DAEMON_START -> deprecatedDaemonStartNote(
-                    workspaceRoot = options.workspaceRoot,
-                    selected = selected,
-                    logFile = logFile,
-                    started = true,
-                )
             },
         )
     }
@@ -229,26 +206,9 @@ internal class WorkspaceRuntimeManager(
         selected: RuntimeCandidateStatus,
     ): String = "kast: started daemon for $workspaceRoot (state: ${selected.currentStateLabel()})"
 
-    private fun deprecatedDaemonStartNote(
-        workspaceRoot: Path,
-        selected: RuntimeCandidateStatus,
-        logFile: Path? = null,
-        started: Boolean = false,
-    ): String = buildString {
-        append("daemon: ")
-        append(if (started) "started" else "using")
-        append(' ')
-        append(selected.describeDaemon())
-        if (started && logFile != null) {
-            append(" (log: $logFile)")
-        }
-        append(" — deprecated: use `kast workspace ensure --workspace-root=$workspaceRoot` or let analysis commands auto-start the daemon.")
-    }
-
     internal enum class EnsureRuntimePurpose {
         COMMAND,
         WORKSPACE_ENSURE,
-        DAEMON_START,
     }
 
     private suspend fun inspectWorkspace(

@@ -23,8 +23,9 @@ import io.github.amichne.kast.standalone.analysis.resolveTarget
 import io.github.amichne.kast.standalone.analysis.resolvedFilePath
 import io.github.amichne.kast.standalone.analysis.toKastLocation
 import io.github.amichne.kast.standalone.analysis.toSymbolModel
-import io.github.amichne.kast.standalone.cache.VersionedFileCache
-import io.github.amichne.kast.standalone.cache.kastGradleDirectory
+import io.github.amichne.kast.standalone.cache.SqliteSourceIndexStore
+import io.github.amichne.kast.standalone.cache.defaultCacheJson
+import io.github.amichne.kast.standalone.cache.kastCacheDirectory
 import io.github.amichne.kast.standalone.normalizeStandalonePath
 import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetry
 import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetryScope
@@ -344,10 +345,10 @@ internal class CallHierarchyTraversal(
 
     private fun resolveCache(query: CallHierarchyQuery): CallHierarchyCache? {
         val gitSha = resolveGitSha() ?: return null
-        val cacheDirectory = kastGradleDirectory(workspaceRoot).resolve("call-hierarchy").resolve(gitSha)
         val cacheKey = FileHashing.sha256(
             listOf(
                 SCHEMA_VERSION.toString(),
+                gitSha,
                 query.position.filePath,
                 query.position.offset.toString(),
                 query.direction.name,
@@ -359,7 +360,8 @@ internal class CallHierarchyTraversal(
         )
         return CallHierarchyCache(
             gitSha = gitSha,
-            cacheFilePath = cacheDirectory.resolve("$cacheKey.json"),
+            cacheKey = cacheKey,
+            workspaceRoot = workspaceRoot,
             json = json,
         )
     }
@@ -444,36 +446,45 @@ private class TraversalBudget(
 
 private class CallHierarchyCache(
     private val gitSha: String,
-    private val cacheFilePath: Path,
-    json: Json,
-) : VersionedFileCache<CallHierarchyCacheEntry>(
-    schemaVersion = SCHEMA_VERSION,
-    serializer = CallHierarchyCacheEntry.serializer(),
-    enabled = true,
-    json = json,
+    private val cacheKey: String,
+    private val workspaceRoot: Path,
+    private val json: Json,
 ) {
-    override fun payloadSchemaVersion(payload: CallHierarchyCacheEntry): Int = payload.schemaVersion
+    private val dbPath: Path get() = kastCacheDirectory(workspaceRoot).resolve("source-index.db")
 
-    fun load(): CallHierarchyCacheEntry? = readPayload(cacheFilePath)
+    fun load(): CallHierarchyCacheEntry? {
+        return SqliteSourceIndexStore(workspaceRoot).use { store ->
+            store.ensureSchema()
+            val payload = store.readCallHierarchyCache(cacheKey) ?: return@use null
+            runCatching {
+                json.decodeFromString(CallHierarchyCacheEntry.serializer(), payload)
+            }.getOrNull()?.takeIf { it.schemaVersion == SCHEMA_VERSION }
+        }
+    }
 
     fun persist(
         root: CallNode,
         stats: CallHierarchyStats,
     ): CallHierarchyPersistence {
-        writePayload(
-            cacheFilePath,
-            CallHierarchyCacheEntry(
-                root = root,
-                stats = stats,
-                schemaVersion = SCHEMA_VERSION,
-            ),
+        val entry = CallHierarchyCacheEntry(
+            root = root,
+            stats = stats,
+            schemaVersion = SCHEMA_VERSION,
         )
+        SqliteSourceIndexStore(workspaceRoot).use { store ->
+            store.ensureSchema()
+            store.writeCallHierarchyCache(
+                cacheKey,
+                SCHEMA_VERSION,
+                json.encodeToString(CallHierarchyCacheEntry.serializer(), entry),
+            )
+        }
         return persistence(cacheHit = false)
     }
 
     fun persistence(cacheHit: Boolean): CallHierarchyPersistence = CallHierarchyPersistence(
         gitSha = gitSha,
-        cacheFilePath = cacheFilePath.toString(),
+        cacheFilePath = dbPath.toString(),
         cacheHit = cacheHit,
     )
 }

@@ -25,15 +25,19 @@ import io.github.amichne.kast.api.RenameQuery
 import io.github.amichne.kast.api.RenameResult
 import io.github.amichne.kast.api.RuntimeState
 import io.github.amichne.kast.api.RuntimeStatusResponse
+import io.github.amichne.kast.api.SearchScope
+import io.github.amichne.kast.api.SearchScopeKind
 import io.github.amichne.kast.api.SemanticInsertionQuery
 import io.github.amichne.kast.api.SemanticInsertionResult
 import io.github.amichne.kast.api.ServerLimits
 import io.github.amichne.kast.api.SymbolQuery
 import io.github.amichne.kast.api.SymbolResult
+import io.github.amichne.kast.api.SymbolVisibility
 import io.github.amichne.kast.api.TextEdit
 import io.github.amichne.kast.api.TypeHierarchyQuery
 import io.github.amichne.kast.api.TypeHierarchyResult
 import io.github.amichne.kast.standalone.analysis.CandidateFileResolver
+import io.github.amichne.kast.standalone.analysis.CandidateSearchResult
 import io.github.amichne.kast.standalone.analysis.ImportAnalysis
 import io.github.amichne.kast.standalone.analysis.SemanticInsertionPointResolver
 import io.github.amichne.kast.standalone.analysis.callHierarchyDeclaration
@@ -42,6 +46,7 @@ import io.github.amichne.kast.standalone.analysis.referenceSearchIdentifier
 import io.github.amichne.kast.standalone.analysis.resolveTarget
 import io.github.amichne.kast.standalone.analysis.resolvedFilePath
 import io.github.amichne.kast.standalone.analysis.supertypeNames
+import io.github.amichne.kast.standalone.analysis.targetFqNameAndPackage
 import io.github.amichne.kast.standalone.analysis.toApiDiagnostics
 import io.github.amichne.kast.standalone.analysis.toKastLocation
 import io.github.amichne.kast.standalone.analysis.toSymbolModel
@@ -185,7 +190,7 @@ internal class StandaloneAnalysisBackend internal constructor(
             ) { span ->
                 val file = session.findKtFile(query.position.filePath)
                 val target = resolveTarget(file, query.position.offset)
-                val (candidateFiles, searchScope) = candidateFileResolver.resolve(target)
+                val (candidateFiles, searchScope) = resolveCandidateFilesForReferences(target, span)
                 span.setAttribute("kast.references.candidateFileCount", candidateFiles.size)
                 span.setAttribute("kast.references.searchScope", searchScope.scope.name)
 
@@ -342,6 +347,43 @@ internal class StandaloneAnalysisBackend internal constructor(
         } else {
             session.refreshFiles(query.filePaths.toSet())
         }
+    }
+
+    /**
+     * Resolve candidate files for a reference search. When the cached symbol reference index is
+     * complete, use it to narrow candidates; otherwise fall back to the standard resolver.
+     */
+    private fun resolveCandidateFilesForReferences(
+        target: PsiElement,
+        span: StandaloneTelemetrySpan,
+    ): CandidateSearchResult {
+        if (session.isReferenceIndexReady()) {
+            val fqNameAndPkg = target.targetFqNameAndPackage()
+            if (fqNameAndPkg != null) {
+                val (fqName, _) = fqNameAndPkg
+                val cachedRefs = session.sqliteStore.referencesToSymbol(fqName.value)
+                if (cachedRefs.isNotEmpty()) {
+                    val cachedPaths = cachedRefs.mapTo(mutableSetOf()) { it.sourcePath }
+                    val ktFiles = cachedPaths.mapNotNull { path ->
+                        runCatching { session.findKtFile(path) }.getOrNull()
+                    }
+                    span.setAttribute("kast.references.cacheHit", true)
+                    span.setAttribute("kast.references.cachedPathCount", cachedPaths.size)
+                    return CandidateSearchResult(
+                        files = ktFiles,
+                        scope = SearchScope(
+                            visibility = io.github.amichne.kast.api.SymbolVisibility.PUBLIC,
+                            scope = SearchScopeKind.DEPENDENT_MODULES,
+                            exhaustive = true,
+                            candidateFileCount = ktFiles.size,
+                            searchedFileCount = ktFiles.size,
+                        ),
+                    )
+                }
+            }
+        }
+        span.setAttribute("kast.references.cacheHit", false)
+        return candidateFileResolver.resolve(target)
     }
 
     private fun KtFile.findReferenceLocations(target: PsiElement): List<io.github.amichne.kast.api.Location> {

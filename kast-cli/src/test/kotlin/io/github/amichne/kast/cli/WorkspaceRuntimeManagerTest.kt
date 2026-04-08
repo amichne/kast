@@ -175,6 +175,42 @@ class WorkspaceRuntimeManagerTest {
         assertTrue(failure.message.contains("--no-auto-start"))
     }
 
+    @Test
+    fun `daemonStart routes through workspace ensure code path`() = runTest {
+        val workspaceRoot = tempDir.resolve("workspace-daemon-consolidated").createDirectories()
+        val descriptor = writeDescriptor(
+            workspaceRoot = workspaceRoot,
+            descriptor = descriptor(workspaceRoot = workspaceRoot, pid = 88),
+        )
+        val manager = WorkspaceRuntimeManager(
+            rpcClient = FakeRuntimeRpcClient(
+                runtimeStatuses = mapOf(
+                    descriptor.socketPath to listOf(
+                        runtimeStatus(
+                            workspaceRoot = workspaceRoot,
+                            state = RuntimeState.READY,
+                            indexing = false,
+                        ),
+                    ),
+                ),
+            ),
+            processLauncher = FakeProcessLauncher(),
+            processLivenessChecker = { pid -> pid == 88L },
+        )
+
+        val daemonResult = manager.daemonStart(runtimeOptions(workspaceRoot))
+        val ensureResult = manager.workspaceEnsure(runtimeOptions(workspaceRoot))
+
+        // Both return the same runtime candidate (same descriptor, same state)
+        assertEquals(ensureResult.selected.descriptor, daemonResult.selected.descriptor)
+        assertEquals(ensureResult.selected.runtimeStatus?.state, daemonResult.selected.runtimeStatus?.state)
+
+        // daemonStart includes a deprecation note
+        val note = checkNotNull(daemonResult.note)
+        assertTrue(note.contains("deprecated"))
+        assertTrue(note.contains("workspace ensure"))
+    }
+
     private fun runtimeOptions(workspaceRoot: Path): RuntimeCommandOptions = RuntimeCommandOptions(
         workspaceRoot = workspaceRoot,
         backendName = "standalone",

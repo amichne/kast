@@ -34,36 +34,37 @@ private val trackedGradleBuildSkipDirs = setOf(
 )
 
 internal class WorkspaceDiscoveryCache(
-    enabled: Boolean = !isCacheDisabled(),
-    json: Json = defaultCacheJson,
-) : VersionedFileCache<CachedWorkspaceDiscoveryPayload>(
-    schemaVersion = workspaceDiscoveryCacheSchemaVersion,
-    serializer = CachedWorkspaceDiscoveryPayload.serializer(),
-    enabled = enabled,
-    json = json,
+    private val enabled: Boolean = !isCacheDisabled(),
+    private val json: Json = defaultCacheJson,
+    private val store: SqliteSourceIndexStore? = null,
 ) {
-    override fun payloadSchemaVersion(payload: CachedWorkspaceDiscoveryPayload): Int = payload.schemaVersion
 
     fun read(workspaceRoot: Path): CachedWorkspaceDiscovery? {
+        if (!enabled) return null
         val normalizedWorkspaceRoot = normalizeStandalonePath(workspaceRoot)
-        val payload = readPayload(workspaceDiscoveryCachePath(normalizedWorkspaceRoot)) ?: return null
-        if (payload.cacheKey != computeWorkspaceDiscoveryCacheKey(normalizedWorkspaceRoot)) {
-            return null
+        val cacheKey = computeWorkspaceDiscoveryCacheKey(normalizedWorkspaceRoot)
+        return withStore(normalizedWorkspaceRoot) { s ->
+            val payload = s.readWorkspaceDiscovery(cacheKey) ?: return@withStore null
+            val cached = runCatching {
+                json.decodeFromString(CachedWorkspaceDiscoveryPayload.serializer(), payload)
+            }.getOrNull() ?: return@withStore null
+            if (cached.schemaVersion != workspaceDiscoveryCacheSchemaVersion) return@withStore null
+            CachedWorkspaceDiscovery(
+                discoveryResult = cached.discoveryResult,
+                dependentModuleNamesBySourceModuleName = cached.dependentModuleNamesBySourceModuleName
+                    .map { (key, moduleNames) -> ModuleName(key) to moduleNames.map(::ModuleName).toSet() }
+                    .toMap(),
+            )
         }
-
-        return CachedWorkspaceDiscovery(
-            discoveryResult = payload.discoveryResult,
-            dependentModuleNamesBySourceModuleName = payload.dependentModuleNamesBySourceModuleName
-                .map { (key, moduleNames) -> ModuleName(key) to moduleNames.map(::ModuleName).toSet() }
-                .toMap(),
-        )
     }
 
     fun write(
         workspaceRoot: Path,
         result: GradleWorkspaceDiscoveryResult,
     ) {
+        if (!enabled) return
         val normalizedWorkspaceRoot = normalizeStandalonePath(workspaceRoot)
+        val cacheKey = computeWorkspaceDiscoveryCacheKey(normalizedWorkspaceRoot)
         val dependentModuleNamesBySourceModuleName = GradleWorkspaceDiscovery
             .buildStandaloneWorkspaceLayout(
                 gradleModules = result.modules,
@@ -72,14 +73,25 @@ internal class WorkspaceDiscoveryCache(
             .dependentModuleNamesBySourceModuleName
             .map { (key, moduleNames) -> key.value to moduleNames.map { it.value }.sorted() }
             .toMap()
-        writePayload(
-            workspaceDiscoveryCachePath(normalizedWorkspaceRoot),
+        val payload = json.encodeToString(
+            CachedWorkspaceDiscoveryPayload.serializer(),
             CachedWorkspaceDiscoveryPayload(
-                cacheKey = computeWorkspaceDiscoveryCacheKey(normalizedWorkspaceRoot),
+                cacheKey = cacheKey,
                 discoveryResult = result,
                 dependentModuleNamesBySourceModuleName = dependentModuleNamesBySourceModuleName,
             ),
         )
+        withStore(normalizedWorkspaceRoot) { s ->
+            s.writeWorkspaceDiscovery(cacheKey, workspaceDiscoveryCacheSchemaVersion, payload)
+        }
+    }
+
+    private inline fun <T> withStore(workspaceRoot: Path, block: (SqliteSourceIndexStore) -> T): T {
+        if (store != null) return block(store)
+        return SqliteSourceIndexStore(workspaceRoot).use { s ->
+            s.ensureSchema()
+            block(s)
+        }
     }
 }
 
@@ -95,9 +107,6 @@ internal data class CachedWorkspaceDiscoveryPayload(
     val discoveryResult: GradleWorkspaceDiscoveryResult,
     val dependentModuleNamesBySourceModuleName: Map<String, List<String>>,
 )
-
-private fun workspaceDiscoveryCachePath(workspaceRoot: Path): Path =
-    kastCacheDirectory(workspaceRoot).resolve("gradle-workspace.json")
 
 private fun computeWorkspaceDiscoveryCacheKey(workspaceRoot: Path): String {
     val digest = MessageDigest.getInstance("SHA-256")

@@ -1,0 +1,361 @@
+package io.github.amichne.kast.standalone
+
+import io.github.amichne.kast.standalone.cache.FileIndexUpdate
+import io.github.amichne.kast.standalone.cache.SqliteSourceIndexStore
+import io.github.amichne.kast.standalone.cache.kastCacheDirectory
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Files
+import java.nio.file.Path
+import java.sql.DriverManager
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+
+class SqliteCacheInvariantTest {
+    @TempDir
+    lateinit var workspaceRoot: Path
+
+    // ── 1. DB location ──────────────────────────────────────────────────
+
+    @Test
+    fun `SQLite database is created under gradle kast cache directory`() {
+        val normalized = normalizeStandalonePath(workspaceRoot)
+        SqliteSourceIndexStore(normalized).use { store ->
+            store.ensureSchema()
+        }
+        val expected = normalized.resolve(".gradle/kast/cache/source-index.db")
+        assertTrue(Files.isRegularFile(expected)) {
+            "Expected DB at $expected but it was not found"
+        }
+    }
+
+    // ── 2. Schema version mismatch ──────────────────────────────────────
+
+    @Test
+    fun `schema version mismatch triggers full rebuild`() {
+        val normalized = normalizeStandalonePath(workspaceRoot)
+        val cacheDir = kastCacheDirectory(normalized)
+        Files.createDirectories(cacheDir)
+        val dbPath = cacheDir.resolve("source-index.db")
+
+        // Seed the DB with a future schema version (with generation column)
+        DriverManager.getConnection("jdbc:sqlite:$dbPath").use { conn ->
+            conn.createStatement().use { stmt ->
+                stmt.execute("CREATE TABLE schema_version (version INTEGER NOT NULL, generation INTEGER NOT NULL DEFAULT 0)")
+                stmt.execute("INSERT INTO schema_version (version, generation) VALUES (999, 0)")
+            }
+        }
+
+        SqliteSourceIndexStore(normalized).use { store ->
+            val schemaValid = store.ensureSchema()
+            assertFalse(schemaValid) {
+                "ensureSchema() should return false (cache miss) on version mismatch"
+            }
+        }
+
+        // After rebuild the version should be the current one (2)
+        DriverManager.getConnection("jdbc:sqlite:$dbPath").use { conn ->
+            conn.prepareStatement("SELECT version FROM schema_version LIMIT 1").use { stmt ->
+                val rs = stmt.executeQuery()
+                assertTrue(rs.next())
+                assertEquals(2, rs.getInt(1))
+            }
+        }
+    }
+
+    // ── 3. Identifier-to-path round-trip ────────────────────────────────
+
+    @Test
+    fun `identifier to path mappings round-trip correctly`() {
+        val normalized = normalizeStandalonePath(workspaceRoot)
+        SqliteSourceIndexStore(normalized).use { store ->
+            store.ensureSchema()
+
+            val updates = (1..50).map { i ->
+                FileIndexUpdate(
+                    path = "/src/file$i.kt",
+                    identifiers = setOf("Ident_${i}_a", "Ident_${i}_b"),
+                    packageName = "pkg$i",
+                    moduleName = "mod$i",
+                    imports = setOf("import.a$i"),
+                    wildcardImports = setOf("wild$i"),
+                )
+            }
+            store.saveFullIndex(updates, manifest = emptyMap())
+
+            val index = store.loadFullIndex()
+            for (update in updates) {
+                for (id in update.identifiers) {
+                    val paths = index.candidatePathsFor(id)
+                    assertTrue(paths.contains(update.path)) {
+                        "Expected identifier '$id' to map to '${update.path}', got $paths"
+                    }
+                }
+            }
+        }
+    }
+
+    // ── 4. Bidirectional symbol references (pending) ────────────────────
+
+    @Test
+    fun `bidirectional symbol reference links`() {
+        val normalized = normalizeStandalonePath(workspaceRoot)
+        SqliteSourceIndexStore(normalized).use { store ->
+            store.ensureSchema()
+        }
+        val dbPath = kastCacheDirectory(normalized).resolve("source-index.db")
+
+        DriverManager.getConnection("jdbc:sqlite:$dbPath").use { conn ->
+            // Insert into the not-yet-existing symbol_references table
+            conn.createStatement().use { stmt ->
+                stmt.execute(
+                    """INSERT INTO symbol_references
+                       (source_path, source_offset, target_fq_name, target_path, target_offset)
+                       VALUES
+                       ('/src/Caller.kt', 42, 'com.example.Foo', '/src/Foo.kt', 10),
+                       ('/src/Caller.kt', 99, 'com.example.Bar', '/src/Bar.kt', 5),
+                       ('/src/Other.kt',  7,  'com.example.Foo', '/src/Foo.kt', 10)""",
+                )
+            }
+
+            // Query references TO a target
+            conn.prepareStatement(
+                "SELECT source_path, source_offset FROM symbol_references WHERE target_fq_name = ?",
+            ).use { stmt ->
+                stmt.setString(1, "com.example.Foo")
+                val rs = stmt.executeQuery()
+                val sources = mutableListOf<String>()
+                while (rs.next()) sources.add(rs.getString(1))
+                assertEquals(2, sources.size)
+                assertTrue(sources.containsAll(listOf("/src/Caller.kt", "/src/Other.kt")))
+            }
+
+            // Query references FROM a source
+            conn.prepareStatement(
+                "SELECT target_fq_name FROM symbol_references WHERE source_path = ?",
+            ).use { stmt ->
+                stmt.setString(1, "/src/Caller.kt")
+                val rs = stmt.executeQuery()
+                val targets = mutableListOf<String>()
+                while (rs.next()) targets.add(rs.getString(1))
+                assertEquals(2, targets.size)
+                assertTrue(targets.containsAll(listOf("com.example.Foo", "com.example.Bar")))
+            }
+        }
+    }
+
+    // ── 5. Concurrent reads during writes (WAL) ─────────────────────────
+
+    @Test
+    fun `concurrent reads during writes do not block WAL mode`() {
+        val normalized = normalizeStandalonePath(workspaceRoot)
+        SqliteSourceIndexStore(normalized).use { store ->
+            store.ensureSchema()
+            store.saveFullIndex(
+                listOf(
+                    FileIndexUpdate(
+                        path = "/src/Seed.kt",
+                        identifiers = setOf("Seed"),
+                        packageName = "seed",
+                        moduleName = null,
+                        imports = emptySet(),
+                        wildcardImports = emptySet(),
+                    ),
+                ),
+                manifest = mapOf("/src/Seed.kt" to 1L),
+            )
+        }
+
+        val dbUrl = "jdbc:sqlite:${kastCacheDirectory(normalized).resolve("source-index.db")}"
+        val writerReady = CountDownLatch(1)
+        val readerDone = CountDownLatch(1)
+        val readerSucceeded = AtomicBoolean(false)
+
+        // Writer: hold an open write transaction
+        val writerThread = Thread {
+            DriverManager.getConnection(dbUrl).use { conn ->
+                conn.createStatement().use { s -> s.execute("PRAGMA journal_mode=WAL") }
+                conn.autoCommit = false
+                conn.prepareStatement(
+                    "INSERT OR IGNORE INTO identifier_paths (identifier, path) VALUES (?, ?)",
+                ).use { stmt ->
+                    stmt.setString(1, "WriterIdent")
+                    stmt.setString(2, "/src/Writer.kt")
+                    stmt.executeUpdate()
+                }
+                // Signal that the write txn is open
+                writerReady.countDown()
+                // Wait for the reader to finish before committing
+                readerDone.await(5, TimeUnit.SECONDS)
+                conn.commit()
+            }
+        }
+
+        // Reader: read while the writer holds its transaction
+        val readerThread = Thread {
+            writerReady.await(5, TimeUnit.SECONDS)
+            DriverManager.getConnection(dbUrl).use { conn ->
+                conn.createStatement().use { s -> s.execute("PRAGMA journal_mode=WAL") }
+                conn.createStatement().use { stmt ->
+                    val rs = stmt.executeQuery("SELECT COUNT(*) FROM identifier_paths")
+                    rs.next()
+                    // Should see at least the seed row
+                    assertTrue(rs.getInt(1) >= 1)
+                    readerSucceeded.set(true)
+                }
+            }
+            readerDone.countDown()
+        }
+
+        writerThread.start()
+        readerThread.start()
+
+        // Both threads must complete within 2 seconds
+        writerThread.join(2_000)
+        readerThread.join(2_000)
+
+        assertTrue(readerSucceeded.get()) {
+            "Reader should have completed without blocking"
+        }
+    }
+
+    // ── 6. Integrity after simulated crash ──────────────────────────────
+
+    @Test
+    fun `database integrity after simulated crash`() {
+        val normalized = normalizeStandalonePath(workspaceRoot)
+        SqliteSourceIndexStore(normalized).use { store ->
+            store.ensureSchema()
+        }
+
+        val dbUrl = "jdbc:sqlite:${kastCacheDirectory(normalized).resolve("source-index.db")}"
+
+        // Begin a transaction, insert data, then close WITHOUT committing
+        val conn = DriverManager.getConnection(dbUrl)
+        conn.autoCommit = false
+        conn.prepareStatement(
+            "INSERT OR IGNORE INTO identifier_paths (identifier, path) VALUES (?, ?)",
+        ).use { stmt ->
+            stmt.setString(1, "Orphan")
+            stmt.setString(2, "/src/Orphan.kt")
+            stmt.executeUpdate()
+        }
+        // Simulate crash — close the connection without commit
+        conn.close()
+
+        // Re-open and verify integrity
+        DriverManager.getConnection(dbUrl).use { freshConn ->
+            freshConn.createStatement().use { stmt ->
+                val rs = stmt.executeQuery("PRAGMA integrity_check")
+                assertTrue(rs.next())
+                assertEquals("ok", rs.getString(1))
+            }
+
+            // The uncommitted row should NOT be present
+            freshConn.createStatement().use { stmt ->
+                val rs = stmt.executeQuery(
+                    "SELECT COUNT(*) FROM identifier_paths WHERE identifier = 'Orphan'",
+                )
+                rs.next()
+                assertEquals(0, rs.getInt(1)) {
+                    "Uncommitted data should be rolled back after crash"
+                }
+            }
+        }
+    }
+
+    // ── 7. removeFile cascades ──────────────────────────────────────────
+
+    @Test
+    fun `removing a file cascades to identifiers and metadata`() {
+        val normalized = normalizeStandalonePath(workspaceRoot)
+        SqliteSourceIndexStore(normalized).use { store ->
+            store.ensureSchema()
+
+            val targetPath = "/src/Target.kt"
+            val otherPath = "/src/Other.kt"
+
+            store.saveFullIndex(
+                listOf(
+                    FileIndexUpdate(
+                        path = targetPath,
+                        identifiers = setOf("Alpha", "Beta"),
+                        packageName = "target",
+                        moduleName = "modTarget",
+                        imports = setOf("import.x"),
+                        wildcardImports = emptySet(),
+                    ),
+                    FileIndexUpdate(
+                        path = otherPath,
+                        identifiers = setOf("Gamma"),
+                        packageName = "other",
+                        moduleName = "modOther",
+                        imports = emptySet(),
+                        wildcardImports = emptySet(),
+                    ),
+                ),
+                manifest = mapOf(targetPath to 100L, otherPath to 200L),
+            )
+
+            store.removeFile(targetPath)
+        }
+
+        // Verify via raw JDBC that all target rows are gone
+        val dbUrl = "jdbc:sqlite:${kastCacheDirectory(normalized).resolve("source-index.db")}"
+        DriverManager.getConnection(dbUrl).use { conn ->
+            fun countRowsForPath(table: String): Int {
+                conn.prepareStatement("SELECT COUNT(*) FROM $table WHERE path = ?").use { stmt ->
+                    stmt.setString(1, "/src/Target.kt")
+                    val rs = stmt.executeQuery()
+                    rs.next()
+                    return rs.getInt(1)
+                }
+            }
+
+            assertEquals(0, countRowsForPath("identifier_paths")) {
+                "identifier_paths rows should be removed"
+            }
+            assertEquals(0, countRowsForPath("file_metadata")) {
+                "file_metadata row should be removed"
+            }
+            assertEquals(0, countRowsForPath("file_manifest")) {
+                "file_manifest row should be removed"
+            }
+
+            // Other file should still be intact
+            conn.createStatement().use { stmt ->
+                val rs = stmt.executeQuery(
+                    "SELECT COUNT(*) FROM identifier_paths WHERE path = '/src/Other.kt'",
+                )
+                rs.next()
+                assertTrue(rs.getInt(1) > 0) { "Other file's identifiers should remain" }
+            }
+        }
+    }
+
+    // ── 8. Generation counter (pending) ─────────────────────────────────
+
+    @Test
+    fun `generation counter tracks index rebuilds`() {
+        val normalized = normalizeStandalonePath(workspaceRoot)
+
+        SqliteSourceIndexStore(normalized).use { store ->
+            store.ensureSchema()
+            val gen1 = store.readGeneration()
+
+            val gen2 = store.incrementGeneration()
+            assertTrue(gen2 > gen1) {
+                "Generation should increment (was $gen1, now $gen2)"
+            }
+
+            val gen3 = store.incrementGeneration()
+            assertTrue(gen3 > gen2) {
+                "Generation should increment again (was $gen2, now $gen3)"
+            }
+        }
+    }
+}

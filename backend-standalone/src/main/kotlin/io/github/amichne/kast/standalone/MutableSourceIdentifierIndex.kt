@@ -5,6 +5,8 @@ import io.github.amichne.kast.api.KotlinIdentifier
 import io.github.amichne.kast.api.ModuleName
 import io.github.amichne.kast.api.NormalizedPath
 import io.github.amichne.kast.api.PackageName
+import io.github.amichne.kast.standalone.cache.FileIndexUpdate
+import io.github.amichne.kast.standalone.cache.SqliteSourceIndexStore
 import java.util.concurrent.ConcurrentHashMap
 
 internal class MutableSourceIdentifierIndex(
@@ -14,6 +16,7 @@ internal class MutableSourceIdentifierIndex(
     private val packageByPath: ConcurrentHashMap<NormalizedPath, PackageName> = ConcurrentHashMap(),
     private val importsByPath: ConcurrentHashMap<NormalizedPath, Set<FqName>> = ConcurrentHashMap(),
     private val wildcardImportPackagesByPath: ConcurrentHashMap<NormalizedPath, Set<PackageName>> = ConcurrentHashMap(),
+    private val backingStore: SqliteSourceIndexStore? = null,
 ) {
     fun candidatePathsFor(identifier: String): List<String> =
         pathsByIdentifier[KotlinIdentifier(identifier)]?.map { it.value }?.sorted().orEmpty()
@@ -94,11 +97,24 @@ internal class MutableSourceIdentifierIndex(
         moduleName: ModuleName? = null,
     ) {
         val path = NormalizedPath.ofNormalized(normalizedPath)
-        replaceIdentifiers(
-            normalizedPath = path,
-            identifiers = identifierRegex.findAll(newContent).map { match -> KotlinIdentifier(match.value) }.toSet(),
-        )
+        val identifiers = identifierRegex.findAll(newContent).map { match -> KotlinIdentifier(match.value) }.toSet()
+        replaceIdentifiers(normalizedPath = path, identifiers = identifiers)
         extractFileMetadata(path, newContent, moduleName)
+
+        backingStore?.let { store ->
+            runCatching {
+                store.saveFileIndex(
+                    FileIndexUpdate(
+                        path = normalizedPath,
+                        identifiers = identifiers.mapTo(mutableSetOf()) { it.value },
+                        packageName = packageByPath[path]?.value,
+                        moduleName = moduleName?.value,
+                        imports = importsByPath[path]?.mapTo(mutableSetOf()) { it.value }.orEmpty(),
+                        wildcardImports = wildcardImportPackagesByPath[path]?.mapTo(mutableSetOf()) { it.value }.orEmpty(),
+                    ),
+                )
+            }
+        }
     }
 
     fun removeFile(normalizedPath: String) {
@@ -108,6 +124,7 @@ internal class MutableSourceIdentifierIndex(
         packageByPath.remove(path)
         importsByPath.remove(path)
         wildcardImportPackagesByPath.remove(path)
+        backingStore?.let { store -> runCatching { store.removeFile(normalizedPath) } }
     }
 
     fun knownPaths(): Set<String> = identifiersByPath.keys.mapTo(mutableSetOf()) { it.value }
@@ -231,6 +248,7 @@ internal class MutableSourceIdentifierIndex(
             packageByPath: Map<String, String> = emptyMap(),
             importsByPath: Map<String, List<String>> = emptyMap(),
             wildcardImportPackagesByPath: Map<String, List<String>> = emptyMap(),
+            backingStore: SqliteSourceIndexStore? = null,
         ): MutableSourceIdentifierIndex {
             val typedPathsByIdentifier = ConcurrentHashMap<KotlinIdentifier, MutableSet<NormalizedPath>>()
             val typedIdentifiersByPath = ConcurrentHashMap<NormalizedPath, Set<KotlinIdentifier>>()
@@ -262,7 +280,15 @@ internal class MutableSourceIdentifierIndex(
                 wildcardImportPackagesByPath = wildcardImportPackagesByPath.entries.associateTo(ConcurrentHashMap()) { (path, packages) ->
                     NormalizedPath.ofNormalized(path) to packages.mapTo(mutableSetOf()) { PackageName(it) }
                 },
+                backingStore = backingStore,
             )
         }
+
+        /**
+         * Loads the hot cache from [store] and wires write-through so every
+         * subsequent [updateFile]/[removeFile] persists to SQLite immediately.
+         */
+        fun fromSqliteStore(store: SqliteSourceIndexStore): MutableSourceIdentifierIndex =
+            store.loadFullIndex(backingStore = store)
     }
 }

@@ -346,35 +346,20 @@ class SourceIndexCacheTest {
     }
 
     @Test
-    fun `source index cache migrates from legacy JSON to SQLite on first load`() {
+    fun `source index cache returns null when only legacy JSON exists without SQLite DB`() {
         val appFile = writeSourceFile(
             relativePath = "sample/App.kt",
             content = "package sample\n\nfun welcome(): String = \"hi\"\n",
         )
-        val normalizedFile = normalizeStandalonePath(appFile).toString()
-        val lastModified = Files.getLastModifiedTime(appFile).toMillis()
-
         val cacheDir = kastCacheDirectory(normalizeStandalonePath(workspaceRoot))
         Files.createDirectories(cacheDir)
-        // Write legacy JSON files in the old format
         Files.writeString(
             cacheDir.resolve("source-identifier-index.json"),
-            """{"schemaVersion":3,"candidatePathsByIdentifier":{"welcome":["$normalizedFile"]}}""",
-        )
-        Files.writeString(
-            cacheDir.resolve("file-manifest.json"),
-            """{"schemaVersion":1,"fileLastModifiedMillisByPath":{"$normalizedFile":$lastModified}}""",
+            """{"schemaVersion":3,"candidatePathsByIdentifier":{"welcome":["${normalizeStandalonePath(appFile)}"]}}""",
         )
 
         val cache = SourceIndexCache(normalizeStandalonePath(workspaceRoot))
-        val result = requireNotNull(cache.load(sourceRoots()))
-
-        assertEquals(listOf(normalizedFile), result.index.candidatePathsFor("welcome"))
-        // SQLite DB must have been created
-        assertTrue(Files.isRegularFile(cacheDir.resolve("source-index.db")))
-        // Old JSON files must have been deleted
-        assertFalse(Files.exists(cacheDir.resolve("source-identifier-index.json")))
-        assertFalse(Files.exists(cacheDir.resolve("file-manifest.json")))
+        assertNull(cache.load(sourceRoots()))
     }
 
     @Test

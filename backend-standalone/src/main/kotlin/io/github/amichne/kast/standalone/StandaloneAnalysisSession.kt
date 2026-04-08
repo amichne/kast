@@ -23,6 +23,7 @@ import io.github.amichne.kast.api.PackageName
 import io.github.amichne.kast.api.RefreshResult
 import io.github.amichne.kast.standalone.cache.CacheManager
 import io.github.amichne.kast.standalone.cache.SourceIndexCache
+import io.github.amichne.kast.standalone.cache.SqliteSourceIndexStore
 import io.github.amichne.kast.standalone.cache.scanTrackedKotlinFileTimestamps
 import io.github.amichne.kast.standalone.workspace.PhasedDiscoveryResult
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaSourceModule
@@ -42,7 +43,6 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
-import kotlin.concurrent.thread
 import kotlin.concurrent.write
 import kotlin.io.path.extension
 
@@ -67,11 +67,10 @@ internal class StandaloneAnalysisSession(
     private val sourceIdentifierIndex = AtomicReference<MutableSourceIdentifierIndex?>(null)
     private val sourceModuleNamesByPath = ConcurrentHashMap<NormalizedPath, ModuleName>()
 
-    @Volatile
-    private var initialSourceIndexReady = CompletableFuture<Unit>()
     private val pendingSourceIndexRefreshPaths = ConcurrentHashMap.newKeySet<String>()
     private val sourceIndexGeneration = AtomicInteger(0)
     private val analysisStateGeneration = AtomicInteger(0)
+    private lateinit var backgroundIndexer: BackgroundIndexer
     private val enrichmentReady = CompletableFuture<Unit>()
     private val fullKtFileMapLoadLock = Any()
     private val analysisSessionLock = ReentrantReadWriteLock()
@@ -297,8 +296,14 @@ internal class StandaloneAnalysisSession(
     }
 
     internal fun awaitInitialSourceIndex() {
-        initialSourceIndexReady.join()
+        backgroundIndexer.identifierIndexReady.join()
     }
+
+    /** True when Phase 2 (symbol reference) indexing has completed. */
+    internal fun isReferenceIndexReady(): Boolean = backgroundIndexer.referenceIndexReady.isDone
+
+    /** The underlying SQLite store for cached symbol reference lookups. */
+    internal val sqliteStore: SqliteSourceIndexStore get() = sourceIndexCache.store
 
     internal fun currentAnalysisStateGeneration(): Int = analysisStateGeneration.get()
 
@@ -392,12 +397,13 @@ internal class StandaloneAnalysisSession(
         return candidateKotlinFilePaths(identifier = identifier, anchorFilePath = anchorFilePath)
     }
 
-    internal fun isInitialSourceIndexReady(): Boolean = initialSourceIndexReady.isDone
+    internal fun isInitialSourceIndexReady(): Boolean = backgroundIndexer.identifierIndexReady.isDone
 
     internal fun isFullKtFileMapLoaded(): Boolean = fullKtFileMapLoaded
 
     override fun close() {
         closed = true
+        backgroundIndexer.close()
         sourceIdentifierIndex.get()?.let { index ->
             runCatching {
                 sourceIndexCache.save(index = index, sourceRoots = resolvedSourceRoots)
@@ -469,7 +475,7 @@ internal class StandaloneAnalysisSession(
             applyWorkspaceLayout(workspaceLayout)
             buildAnalysisStateAndCache()
             sourceIdentifierIndex.set(null)
-            initialSourceIndexReady = CompletableFuture()
+            backgroundIndexer.close()
             fullKtFileMapLoaded = false
             startInitialSourceIndex()
             Disposer.dispose(previousSessionDisposable)
@@ -664,65 +670,23 @@ internal class StandaloneAnalysisSession(
     }
 
     private fun startInitialSourceIndex() {
-        val generation = sourceIndexGeneration.incrementAndGet()
-        val readiness = initialSourceIndexReady
-        thread(
-            start = true,
-            isDaemon = true,
-            name = "kast-initial-source-index",
-        ) {
-            runCatching {
-                initialSourceIndexBuilder
-                    ?.invoke()
-                    ?.let(MutableSourceIdentifierIndex::fromCandidatePathsByIdentifier)
-                ?: loadOrBuildSourceIdentifierIndex()
-            }
-                .onSuccess { builtIndex ->
-                    if (closed || sourceIndexGeneration.get() != generation) {
-                        return@onSuccess
-                    }
-                    applyPendingSourceIndexRefreshes(builtIndex)
-                    sourceIdentifierIndex.set(builtIndex)
-                    persistSourceIndexCache(generation, builtIndex)
-                    readiness.complete(Unit)
-                }
-                .onFailure { error ->
-                    if (closed || sourceIndexGeneration.get() != generation) {
-                        return@onFailure
-                    }
-                    readiness.completeExceptionally(error)
-                }
-        }
-    }
-
-    private fun loadOrBuildSourceIdentifierIndex(): MutableSourceIdentifierIndex {
-        val incrementalIndex = runCatching {
-            sourceIndexCache.load(resolvedSourceRoots)
-        }.getOrNull()
-        val index = incrementalIndex?.index ?: return buildSourceIdentifierIndex()
-        incrementalIndex.deletedPaths.forEach(index::removeFile)
-        (incrementalIndex.newPaths + incrementalIndex.modifiedPaths).forEach { pathString ->
-            refreshSourceIdentifierIndex(index, NormalizedPath.ofNormalized(pathString), persistIncrementally = false)
-        }
-        return index
-    }
-
-    private fun buildSourceIdentifierIndex(): MutableSourceIdentifierIndex {
-        val index = MutableSourceIdentifierIndex(
-            pathsByIdentifier = ConcurrentHashMap(),
-            identifiersByPath = ConcurrentHashMap(),
+        backgroundIndexer = BackgroundIndexer(
+            sourceRoots = resolvedSourceRoots,
+            sourceIndexFileReader = sourceIndexFileReader,
+            sourceModuleNameResolver = ::sourceModuleNameForFile,
+            sourceIndexCache = sourceIndexCache,
+            store = sourceIndexCache.store,
+            initialSourceIndexBuilder = initialSourceIndexBuilder,
         )
-
-        allTrackedKotlinSourcePaths().forEach { normalizedFilePath ->
-            val normalizedPath = NormalizedPath.ofNormalized(normalizedFilePath)
-            index.updateFile(
-                normalizedPath = normalizedFilePath,
-                newContent = sourceIndexFileReader(normalizedPath.toJavaPath()),
-                moduleName = sourceModuleNameForFile(normalizedPath),
-            )
+        val generation = sourceIndexGeneration.incrementAndGet()
+        backgroundIndexer.startPhase1()
+        backgroundIndexer.identifierIndexReady.thenRun {
+            if (closed || sourceIndexGeneration.get() != generation) return@thenRun
+            backgroundIndexer.getIndex()?.let { builtIndex ->
+                applyPendingSourceIndexRefreshes(builtIndex)
+                sourceIdentifierIndex.set(builtIndex)
+            }
         }
-
-        return index
     }
 
     private fun applyPendingSourceIndexRefreshes(index: MutableSourceIdentifierIndex) {
@@ -940,7 +904,7 @@ internal class StandaloneAnalysisSession(
     private fun readySourceIdentifierIndex(): MutableSourceIdentifierIndex? {
         sourceIdentifierIndex.get()?.let { return it }
         runCatching {
-            initialSourceIndexReady.get(10, TimeUnit.SECONDS)
+            backgroundIndexer.identifierIndexReady.get(10, TimeUnit.SECONDS)
         }.getOrNull()
         return sourceIdentifierIndex.get()
     }
@@ -958,4 +922,3 @@ private data class CandidateLookupKey(
 )
 
 private const val defaultSourceIndexCacheSaveDelayMillis = 5_000L
-
