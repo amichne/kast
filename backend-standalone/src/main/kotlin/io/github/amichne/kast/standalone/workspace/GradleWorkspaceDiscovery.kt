@@ -2,12 +2,12 @@ package io.github.amichne.kast.standalone.workspace
 
 import io.github.amichne.kast.api.ModuleName
 import io.github.amichne.kast.standalone.StandaloneSourceModuleSpec
-import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetry
-import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetryScope
 import io.github.amichne.kast.standalone.StandaloneWorkspaceLayout
 import io.github.amichne.kast.standalone.buildDependentModuleNamesBySourceModuleName
 import io.github.amichne.kast.standalone.cache.WorkspaceDiscoveryCache
 import io.github.amichne.kast.standalone.normalizeStandaloneModelPath
+import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetry
+import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetryScope
 import org.gradle.tooling.GradleConnector
 import org.gradle.tooling.model.idea.IdeaDependency
 import org.gradle.tooling.model.idea.IdeaModule

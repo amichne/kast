@@ -2,7 +2,6 @@ package io.github.amichne.kast.standalone
 
 import io.github.amichne.kast.api.ModuleName
 import io.github.amichne.kast.standalone.workspace.WorkspaceDiscoveryDiagnostics
-import java.nio.file.Path
 
 internal fun buildDependentModuleNamesBySourceModuleName(
     sourceModules: List<StandaloneSourceModuleSpec>,
@@ -33,11 +32,4 @@ internal data class StandaloneWorkspaceLayout(
     val sourceModules: List<StandaloneSourceModuleSpec>,
     val diagnostics: WorkspaceDiscoveryDiagnostics = WorkspaceDiscoveryDiagnostics(),
     val dependentModuleNamesBySourceModuleName: Map<ModuleName, Set<ModuleName>> = emptyMap(),
-)
-
-internal data class StandaloneSourceModuleSpec(
-    val name: ModuleName,
-    val sourceRoots: List<Path>,
-    val binaryRoots: List<Path>,
-    val dependencyModuleNames: List<ModuleName>,
 )
