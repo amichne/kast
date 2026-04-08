@@ -40,11 +40,16 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
 
     private fun connection(): Connection {
         cachedConnection?.let { conn ->
-            if (!conn.isClosed) return conn
+            if (!conn.isClosed && Files.isRegularFile(dbPath)) return conn
         }
         synchronized(connectionLock) {
             cachedConnection?.let { conn ->
-                if (!conn.isClosed) return conn
+                if (!conn.isClosed && Files.isRegularFile(dbPath)) return conn
+                // DB file was deleted (e.g. by CacheManager.invalidateAll()) while
+                // the connection was still open. Close the orphaned connection so
+                // the next getConnection() creates a fresh file.
+                runCatching { conn.close() }
+                cachedConnection = null
             }
             Files.createDirectories(dbPath.parent)
             val conn = DriverManager.getConnection("jdbc:sqlite:$dbPath")
