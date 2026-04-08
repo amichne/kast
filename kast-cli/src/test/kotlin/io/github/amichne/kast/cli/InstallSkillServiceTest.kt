@@ -33,7 +33,16 @@ class InstallSkillServiceTest {
         assertTrue(Files.isDirectory(installedSkillDir))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("SKILL.md")))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("agents/openai.yaml")))
+        assertTrue(Files.isRegularFile(installedSkillDir.resolve("scripts/find-symbol-offset.py")))
+        assertTrue(Files.isRegularFile(installedSkillDir.resolve("scripts/kast-callers.sh")))
+        assertTrue(Files.isRegularFile(installedSkillDir.resolve("scripts/kast-common.sh")))
+        assertTrue(Files.isRegularFile(installedSkillDir.resolve("scripts/kast-diagnostics.sh")))
+        assertTrue(Files.isRegularFile(installedSkillDir.resolve("scripts/kast-impact.sh")))
+        assertTrue(Files.isRegularFile(installedSkillDir.resolve("scripts/kast-plan-utils.py")))
+        assertTrue(Files.isRegularFile(installedSkillDir.resolve("scripts/kast-references.sh")))
+        assertTrue(Files.isRegularFile(installedSkillDir.resolve("scripts/kast-resolve.sh")))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("scripts/resolve-kast.sh")))
+        assertTrue(Files.isRegularFile(installedSkillDir.resolve("scripts/validate-wrapper-json.sh")))
         assertEquals("1.2.3", Files.readString(installedSkillDir.resolve(".kast-version")).trim())
     }
 

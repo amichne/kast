@@ -17,8 +17,17 @@ val embeddedSkillFiles = listOf(
     "references/cloud-setup.md",
     "references/command-reference.md",
     "references/troubleshooting.md",
+    "scripts/find-symbol-offset.py",
+    "scripts/kast-callers.sh",
+    "scripts/kast-common.sh",
+    "scripts/kast-diagnostics.sh",
+    "scripts/kast-impact.sh",
+    "scripts/kast-plan-utils.py",
     "scripts/kast-rename.sh",
+    "scripts/kast-references.sh",
+    "scripts/kast-resolve.sh",
     "scripts/resolve-kast.sh",
+    "scripts/validate-wrapper-json.sh",
 )
 
 application {

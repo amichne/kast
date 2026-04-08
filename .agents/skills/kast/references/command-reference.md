@@ -703,9 +703,138 @@ filters match no declarations.
 
 ## Helper Scripts
 
-The packaged kast skill ships two scripts in `"$SKILL_ROOT/scripts/"` that eliminate
-common shell-quoting pitfalls in automation workflows. Set `SKILL_ROOT` to the absolute
-path of the installed skill directory (e.g. `/your/workspace/.agents/skills/kast`).
+The packaged kast skill ships wrapper scripts and helper utilities in
+`"$SKILL_ROOT/scripts/"` so automation can stay on structured JSON instead of
+shell quoting. Set `SKILL_ROOT` to the absolute path of the installed skill
+directory (for example `/your/workspace/.agents/skills/kast`).
+
+Each wrapper emits structured JSON on stdout with a top-level `ok` boolean and
+`log_file`. The raw `kast` CLI still exists for commands without wrappers, but
+the wrappers are the default path for symbol lookup, references, callers,
+diagnostics, impact assessment, and full rename flows.
+
+| Script | Purpose | Key output |
+| --- | --- | --- |
+| `kast-resolve.sh` | Resolve a human symbol query to a confirmed declaration | `symbol`, `file_path`, `offset`, `candidate`, `log_file` |
+| `kast-references.sh` | Resolve a symbol query and expand references | `symbol`, `references`, `search_scope`, `declaration`, `log_file` |
+| `kast-callers.sh` | Resolve a symbol query and expand incoming or outgoing callers | `symbol`, `root`, `stats`, `log_file` |
+| `kast-diagnostics.sh` | Run structured diagnostics on one or more files | `clean`, `error_count`, `warning_count`, `diagnostics`, `log_file` |
+| `kast-impact.sh` | Resolve a symbol query, gather references, and optionally gather incoming callers | `references`, `search_scope`, optional `call_hierarchy`, `log_file` |
+| `kast-rename.sh` | Run the full rename workflow end to end | `ApplyEditsResult` JSON on stdout; step log on stderr |
+| `kast-plan-utils.py` | Extract or inspect rename-plan JSON | Plan metadata or apply-request JSON |
+| `find-symbol-offset.py` | Compute declaration-first UTF-16 offsets inside one file | Tab-separated candidates |
+| `validate-wrapper-json.sh` | Smoke-test wrapper success and failure JSON contracts | Aggregated validation JSON |
+
+---
+
+### `kast-resolve.sh` — Resolve a human symbol query
+
+Use this wrapper when the user names a symbol instead of giving a file offset.
+It searches for declaration candidates, computes UTF-16 offsets with
+`find-symbol-offset.py`, runs `symbol resolve`, and confirms the match before
+it returns.
+
+```bash
+bash "$SKILL_ROOT/scripts/kast-resolve.sh" \
+  --workspace-root=/absolute/path \
+  --symbol=AnalysisServer \
+  --file=analysis-server/src/main/kotlin/io/github/amichne/kast/server/AnalysisServer.kt
+```
+
+Optional flags:
+- `--file=<absolute path, workspace-relative path, or glob>`
+- `--kind=class|function|property`
+- `--containing-type=OuterType`
+
+**stdout:** wrapper JSON with `ok`, `symbol`, `file_path`, `offset`,
+`candidate`, and `log_file`.
+
+---
+
+### `kast-references.sh` — References from a human symbol query
+
+Use this wrapper when you want the declaration and the reference list in one
+call.
+
+```bash
+bash "$SKILL_ROOT/scripts/kast-references.sh" \
+  --workspace-root=/absolute/path \
+  --symbol=AnalysisServer \
+  --include-declaration=true
+```
+
+Optional flags:
+- `--file=<absolute path, workspace-relative path, or glob>`
+- `--kind=class|function|property`
+- `--containing-type=OuterType`
+- `--include-declaration=true|false`
+
+**stdout:** wrapper JSON with `ok`, `symbol`, `references`, `search_scope`,
+optional `declaration`, and `log_file`.
+
+---
+
+### `kast-callers.sh` — Incoming or outgoing call hierarchy
+
+Use this wrapper when you need callers or callees from a named symbol query.
+
+```bash
+bash "$SKILL_ROOT/scripts/kast-callers.sh" \
+  --workspace-root=/absolute/path \
+  --symbol=AnalysisServer \
+  --direction=incoming \
+  --depth=2
+```
+
+Optional flags:
+- `--file=<absolute path, workspace-relative path, or glob>`
+- `--kind=class|function|property`
+- `--containing-type=OuterType`
+- `--direction=incoming|outgoing`
+- `--depth=<non-negative integer>`
+
+**stdout:** wrapper JSON with `ok`, `symbol`, `root`, `stats`, and `log_file`.
+
+---
+
+### `kast-diagnostics.sh` — Structured diagnostics
+
+Use this wrapper when you need diagnostics on one or more files without
+managing temp files or parsing stderr.
+
+```bash
+bash "$SKILL_ROOT/scripts/kast-diagnostics.sh" \
+  --workspace-root=/absolute/path \
+  --file-paths=/absolute/A.kt,/absolute/B.kt
+```
+
+`--file-paths` accepts comma-separated absolute or workspace-relative paths.
+
+**stdout:** wrapper JSON with `ok`, `clean`, `error_count`, `warning_count`,
+`info_count`, `diagnostics`, and `log_file`.
+
+---
+
+### `kast-impact.sh` — Pre-edit impact assessment
+
+Use this wrapper before you change a symbol. It resolves the symbol, expands
+references, and can include incoming callers in the same result.
+
+```bash
+bash "$SKILL_ROOT/scripts/kast-impact.sh" \
+  --workspace-root=/absolute/path \
+  --symbol=AnalysisServer \
+  --include-callers=true
+```
+
+Optional flags:
+- `--file=<absolute path, workspace-relative path, or glob>`
+- `--kind=class|function|property`
+- `--containing-type=OuterType`
+- `--include-callers=true|false`
+
+**stdout:** wrapper JSON with `ok`, `symbol`, `references`, `search_scope`,
+optional `call_hierarchy`, and `log_file`.
 
 ---
 
@@ -732,6 +861,23 @@ bash "$SKILL_ROOT/scripts/kast-rename.sh" \
 **Exit codes:**
 - `0` — edits applied, diagnostics clean.
 - `1` — ERROR-severity diagnostics found, or apply/plan step failed.
+
+---
+
+### `find-symbol-offset.py` — Declaration-first offsets inside one file
+
+Use this helper when you already know the file and need candidate UTF-16
+offsets for a named symbol.
+
+```bash
+python3 "$SKILL_ROOT/scripts/find-symbol-offset.py" \
+  /absolute/path/to/File.kt \
+  --symbol AnalysisServer
+```
+
+**stdout:** one candidate per line as
+`<offset>\t<line>\t<col>\t<context-snippet>`, with declaration-like matches
+first.
 
 ---
 
@@ -781,9 +927,28 @@ python3 "$UTILS" check-diagnostics "$KAST_RESULT" || echo "Errors found — see 
 
 ---
 
+### `validate-wrapper-json.sh` — Smoke validation for wrapper contracts
+
+Use this helper when you want a quick check that each wrapper still emits valid
+JSON on both success and failure paths.
+
+```bash
+bash "$SKILL_ROOT/scripts/validate-wrapper-json.sh" \
+  /absolute/path/to/workspace
+```
+
+The script discovers a sample Kotlin declaration from the workspace, runs the
+wrappers against that workspace, and emits aggregated validation JSON on
+stdout.
+
+---
+
 ## Error Response Format
 
-All errors return `ApiErrorResponse` on stdout with a non-zero exit code:
+Raw CLI error payloads can surface on stdout or stderr depending on the command
+path and runtime state. The wrappers normalize that surface by always writing
+raw notes to `log_file` and wrapper JSON to stdout. When you drop to raw CLI,
+expect the same `ApiErrorResponse` shape even if it arrives on stderr:
 
 ```json
 {
