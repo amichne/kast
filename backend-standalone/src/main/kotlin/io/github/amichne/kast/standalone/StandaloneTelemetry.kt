@@ -24,12 +24,18 @@ internal enum class StandaloneTelemetryScope(
 ) {
     RENAME(),
     CALL_HIERARCHY(),
+    REFERENCES(),
+    SYMBOL_RESOLVE(),
+    WORKSPACE_DISCOVERY(),
     ;
 
     companion object {
         fun parse(rawValue: String): StandaloneTelemetryScope? = when (rawValue.trim().lowercase()) {
             "rename" -> RENAME
             "call-hierarchy", "call_hierarchy", "callhierarchy" -> CALL_HIERARCHY
+            "references", "find-references", "find_references" -> REFERENCES
+            "symbol-resolve", "symbol_resolve", "symbolresolve", "resolve" -> SYMBOL_RESOLVE
+            "workspace-discovery", "workspace_discovery", "workspacediscovery", "discovery" -> WORKSPACE_DISCOVERY
             else -> null
         }
     }
@@ -123,24 +129,36 @@ internal class StandaloneTelemetry private constructor(
             )
         }
 
-        fun fromEnvironment(workspaceRoot: Path): StandaloneTelemetry {
-            val legacyRenameEnabled = System.getenv("KAST_PROFILE_RENAME").isTruthy()
-            val enabled = System.getenv("KAST_OTEL_ENABLED").isTruthy() || legacyRenameEnabled
+        fun fromEnvironment(
+            workspaceRoot: Path,
+            envReader: (String) -> String? = System::getenv,
+        ): StandaloneTelemetry {
+            val debugMode = envReader("KAST_DEBUG").isTruthy()
+            val legacyRenameEnabled = envReader("KAST_PROFILE_RENAME").isTruthy()
+            val enabled = debugMode || envReader("KAST_OTEL_ENABLED").isTruthy() || legacyRenameEnabled
             if (!enabled) {
                 return disabled()
             }
 
-            val scopes = parseScopes(System.getenv("KAST_OTEL_SCOPES"))
-                ?: if (legacyRenameEnabled) {
-                    setOf(StandaloneTelemetryScope.RENAME)
-                } else {
-                    StandaloneTelemetryScope.entries.toSet()
-                }
-            val detail = StandaloneTelemetryDetail.parse(
-                System.getenv("KAST_OTEL_DETAIL") ?: if (legacyRenameEnabled) "verbose" else null,
-            )
+            val scopes = if (debugMode) {
+                StandaloneTelemetryScope.entries.toSet()
+            } else {
+                parseScopes(envReader("KAST_OTEL_SCOPES"))
+                    ?: if (legacyRenameEnabled) {
+                        setOf(StandaloneTelemetryScope.RENAME)
+                    } else {
+                        StandaloneTelemetryScope.entries.toSet()
+                    }
+            }
+            val detail = if (debugMode) {
+                StandaloneTelemetryDetail.VERBOSE
+            } else {
+                StandaloneTelemetryDetail.parse(
+                    envReader("KAST_OTEL_DETAIL") ?: if (legacyRenameEnabled) "verbose" else null,
+                )
+            }
             val outputFile = resolveOutputFile(
-                rawValue = System.getenv("KAST_OTEL_OUTPUT_FILE") ?: System.getenv("KAST_PROFILE_RENAME_FILE"),
+                rawValue = envReader("KAST_OTEL_OUTPUT_FILE") ?: envReader("KAST_PROFILE_RENAME_FILE"),
                 workspaceRoot = workspaceRoot,
             )
 

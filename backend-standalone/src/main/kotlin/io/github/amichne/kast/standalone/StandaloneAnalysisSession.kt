@@ -94,7 +94,10 @@ internal class StandaloneAnalysisSession(
     private var sourceModuleSpecs: List<StandaloneSourceModuleSpec> = emptyList()
 
     @Volatile
-    private var dependentModuleNamesBySourceModuleName: Map<ModuleName, Set<ModuleName>> = emptyMap()
+    private var _dependentModuleNamesBySourceModuleName: Map<ModuleName, Set<ModuleName>> = emptyMap()
+
+    internal val dependentModuleGraph: Map<ModuleName, Set<ModuleName>>
+        get() = _dependentModuleNamesBySourceModuleName
 
     @Volatile
     var sourceModules: List<KaSourceModule> = emptyList()
@@ -330,7 +333,7 @@ internal class StandaloneAnalysisSession(
         val readyIndex = readySourceIdentifierIndex()
         if (readyIndex != null) {
             val allowedSourceModuleNames = anchorSourceModuleName
-                ?.let(dependentModuleNamesBySourceModuleName::get)
+                ?.let(_dependentModuleNamesBySourceModuleName::get)
                 .takeUnless { it.isNullOrEmpty() }
             return if (allowedSourceModuleNames == null) {
                 readyIndex.candidatePathsFor(identifier)
@@ -370,7 +373,7 @@ internal class StandaloneAnalysisSession(
         if (readyIndex != null) {
             val allowedSourceModuleNames = anchorFilePath
                 ?.let { filePath -> sourceModuleNameForFile(NormalizedPath.of(Path.of(filePath))) }
-                ?.let(dependentModuleNamesBySourceModuleName::get)
+                ?.let(_dependentModuleNamesBySourceModuleName::get)
                 .takeUnless { it.isNullOrEmpty() }
             val enrichedPaths = readyIndex.candidatePathsForFqName(
                 identifier = identifier,
@@ -408,7 +411,7 @@ internal class StandaloneAnalysisSession(
     private fun applyWorkspaceLayout(workspaceLayout: StandaloneWorkspaceLayout) {
         sourceModuleSpecs = workspaceLayout.sourceModules
         workspaceDiagnostics = workspaceLayout.diagnostics.warnings
-        dependentModuleNamesBySourceModuleName = workspaceLayout.dependentModuleNamesBySourceModuleName
+        _dependentModuleNamesBySourceModuleName = workspaceLayout.dependentModuleNamesBySourceModuleName
                                                      .takeIf { it.isNotEmpty() }
                                                  ?: buildDependentModuleNamesBySourceModuleName(sourceModuleSpecs)
         resolvedSourceRoots = workspaceLayout.sourceModules
@@ -760,7 +763,7 @@ internal class StandaloneAnalysisSession(
         anchorSourceModuleName: ModuleName?,
     ): List<String> = buildList {
         val allowedSourceModuleNames = anchorSourceModuleName
-            ?.let(dependentModuleNamesBySourceModuleName::get)
+            ?.let(_dependentModuleNamesBySourceModuleName::get)
             .takeUnless { it.isNullOrEmpty() }
 
         sourceModuleSpecs
@@ -795,7 +798,7 @@ internal class StandaloneAnalysisSession(
             return candidatePaths
         }
 
-        val allowedSourceModuleNames = dependentModuleNamesBySourceModuleName[anchorSourceModuleName]
+        val allowedSourceModuleNames = _dependentModuleNamesBySourceModuleName[anchorSourceModuleName]
             .takeUnless { it.isNullOrEmpty() }
             ?: return candidatePaths
         return candidatePaths.filter { candidatePath ->

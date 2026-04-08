@@ -8,6 +8,7 @@ import org.jetbrains.kotlin.psi.KtFile
 
 internal class CandidateFileResolver(
     private val session: StandaloneAnalysisSession,
+    private val telemetry: StandaloneTelemetry = StandaloneTelemetry.disabled(),
 ) {
     fun resolve(target: PsiElement): CandidateSearchResult {
         val visibility = target.visibility()
@@ -43,6 +44,17 @@ internal class CandidateFileResolver(
                 anchorFilePath = anchorFilePath,
             )
         }
+
+        val anchorSourceModuleName = session.sourceModuleNameForFile(anchorFilePath)
+
+        logCandidateResolution(
+            searchIdentifier = searchIdentifier,
+            anchorFilePath = anchorFilePath,
+            anchorSourceModuleName = anchorSourceModuleName?.value,
+            friendModuleNames = anchorSourceModuleName?.let { session.friendModuleNames(it).map { m -> m.value }.toSet() },
+            candidateCountBefore = candidatePaths.size,
+        )
+
         if (candidatePaths.isEmpty()) {
             return fileScopedResult(
                 declaringFile = declaringFile,
@@ -82,6 +94,26 @@ internal class CandidateFileResolver(
                 searchedFileCount = capped.size,
             ),
         )
+    }
+
+    private fun logCandidateResolution(
+        searchIdentifier: String,
+        anchorFilePath: String,
+        anchorSourceModuleName: String?,
+        friendModuleNames: Set<String>?,
+        candidateCountBefore: Int,
+    ) {
+        telemetry.inSpan(
+            scope = StandaloneTelemetryScope.REFERENCES,
+            name = "kast.candidateFileResolver",
+            attributes = mapOf(
+                "kast.resolver.searchIdentifier" to searchIdentifier,
+                "kast.resolver.anchorFilePath" to anchorFilePath,
+                "kast.resolver.anchorSourceModuleName" to (anchorSourceModuleName ?: "null"),
+                "kast.resolver.friendModuleNames" to (friendModuleNames?.joinToString(",") ?: "null — returning all candidates"),
+                "kast.resolver.candidateCountBefore" to candidateCountBefore,
+            ),
+        ) {}
     }
 
     private fun resolveWithoutIdentifier(

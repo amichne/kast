@@ -13,5 +13,7 @@ data class RuntimeStatusResponse(
     val workspaceRoot: String,
     val message: String? = null,
     val warnings: List<String> = emptyList(),
+    val sourceModuleNames: List<String> = emptyList(),
+    val dependentModuleNamesBySourceModuleName: Map<String, List<String>> = emptyMap(),
     val schemaVersion: Int = SCHEMA_VERSION,
 )

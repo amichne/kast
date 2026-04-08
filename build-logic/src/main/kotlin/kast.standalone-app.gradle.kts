@@ -14,11 +14,26 @@ plugins {
 
 val applicationName = project.name
 
+val gitCommitHash: Provider<String> = providers.exec {
+    commandLine("git", "rev-parse", "HEAD")
+}.standardOutput.asText.map { it.trim() }
+
+val gitDirty: Provider<Boolean> = providers.exec {
+    commandLine("git", "diff", "--quiet", "HEAD")
+    isIgnoreExitValue = true
+}.result.map { it.exitValue != 0 }
+
+val buildVersion: Provider<String> = gitCommitHash.zip(gitDirty) { hash, dirty ->
+    if (dirty) "$hash+dirty" else hash
+}
+
+extra["buildVersion"] = buildVersion
+
 tasks.named<Jar>("jar") {
     manifest {
         attributes["Main-Class"] = application.mainClass.get()
         attributes["Implementation-Title"] = applicationName
-        attributes["Implementation-Version"] = project.version.toString()
+        attributes["Implementation-Version"] = buildVersion.get()
     }
     isZip64 = true
 }
@@ -30,7 +45,7 @@ val shadowJar = tasks.named<ShadowJar>("shadowJar") {
     manifest {
         attributes["Main-Class"] = application.mainClass.get()
         attributes["Implementation-Title"] = applicationName
-        attributes["Implementation-Version"] = project.version.toString()
+        attributes["Implementation-Version"] = buildVersion.get()
     }
     isZip64 = true
 }

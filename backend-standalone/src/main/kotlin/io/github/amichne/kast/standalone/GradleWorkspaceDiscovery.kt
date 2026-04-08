@@ -250,7 +250,15 @@ internal object GradleWorkspaceDiscovery {
             loadModulesWithToolingApi(root, loaderTimeoutMillis)
         },
         warningSink: (String) -> Unit = ::logWorkspaceDiscoveryWarning,
-    ): GradleWorkspaceDiscoveryResult {
+        telemetry: StandaloneTelemetry = StandaloneTelemetry.disabled(),
+    ): GradleWorkspaceDiscoveryResult = telemetry.inSpan(
+        scope = StandaloneTelemetryScope.WORKSPACE_DISCOVERY,
+        name = "kast.workspaceDiscovery.enrichStaticModules",
+        attributes = mapOf(
+            "kast.discovery.staticModuleCount" to staticModules.size,
+            "kast.discovery.timeoutMillis" to timeoutMillis,
+        ),
+    ) { span ->
         val warnings = mutableListOf<String>()
         val toolingModules = runCatching {
             toolingApiLoader(workspaceRoot, timeoutMillis)
@@ -263,18 +271,27 @@ internal object GradleWorkspaceDiscovery {
             warningSink(warning)
         }.getOrNull()
 
+        val toolingApiSucceeded = toolingModules != null
+        span.setAttribute("kast.discovery.toolingApiSucceeded", toolingApiSucceeded)
+        span.setAttribute("kast.discovery.toolingModuleCount", toolingModules?.size ?: 0)
+
         if (toolingModules.isNullOrEmpty()) {
-            return GradleWorkspaceDiscoveryResult(
+            span.setAttribute("kast.discovery.result", "static-only")
+            return@inSpan GradleWorkspaceDiscoveryResult(
                 modules = staticModules,
                 diagnostics = WorkspaceDiscoveryDiagnostics(warnings = warnings),
             )
         }
 
-        return GradleWorkspaceDiscoveryResult(
-            modules = mergeToolingAndStaticModules(
-                toolingModules = toolingModules,
-                staticModules = staticModules,
-            ),
+        val merged = mergeToolingAndStaticModules(
+            toolingModules = toolingModules,
+            staticModules = staticModules,
+        )
+        span.setAttribute("kast.discovery.result", "merged")
+        span.setAttribute("kast.discovery.mergedModuleCount", merged.size)
+
+        GradleWorkspaceDiscoveryResult(
+            modules = merged,
             diagnostics = WorkspaceDiscoveryDiagnostics(warnings = warnings),
         )
     }
