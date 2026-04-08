@@ -701,7 +701,7 @@ internal class StandaloneAnalysisSession(
         val index = incrementalIndex?.index ?: return buildSourceIdentifierIndex()
         incrementalIndex.deletedPaths.forEach(index::removeFile)
         (incrementalIndex.newPaths + incrementalIndex.modifiedPaths).forEach { pathString ->
-            refreshSourceIdentifierIndex(index, NormalizedPath.ofNormalized(pathString))
+            refreshSourceIdentifierIndex(index, NormalizedPath.ofNormalized(pathString), persistIncrementally = false)
         }
         return index
     }
@@ -734,12 +734,15 @@ internal class StandaloneAnalysisSession(
     private fun refreshSourceIdentifierIndex(
         index: MutableSourceIdentifierIndex,
         normalizedPath: NormalizedPath,
+        persistIncrementally: Boolean = true,
     ) {
         val filePath = normalizedPath.toJavaPath()
         if (!Files.isRegularFile(filePath)) {
             sourceModuleNamesByPath.remove(normalizedPath)
             index.removeFile(normalizedPath.value)
-            sourceIndexCache.saveRemovedFile(normalizedPath.value)
+            if (persistIncrementally) {
+                sourceIndexCache.saveRemovedFile(normalizedPath.value)
+            }
             return
         }
 
@@ -748,7 +751,9 @@ internal class StandaloneAnalysisSession(
             newContent = sourceIndexFileReader(filePath),
             moduleName = sourceModuleNameForFile(normalizedPath),
         )
-        sourceIndexCache.saveFileIndex(index, normalizedPath)
+        if (persistIncrementally) {
+            sourceIndexCache.saveFileIndex(index, normalizedPath)
+        }
     }
 
     private fun refreshSourceIdentifierIndex(normalizedPaths: List<NormalizedPath>) {
