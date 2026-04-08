@@ -1,8 +1,6 @@
-package io.github.amichne.kast.standalone
+package io.github.amichne.kast.standalone.telemetry
 
-import io.opentelemetry.api.common.AttributeKey
-import io.opentelemetry.api.common.Attributes
-import io.opentelemetry.api.trace.Span
+import io.github.amichne.kast.standalone.cache.kastGradleDirectory
 import io.opentelemetry.api.trace.StatusCode
 import io.opentelemetry.api.trace.Tracer
 import io.opentelemetry.sdk.OpenTelemetrySdk
@@ -19,47 +17,6 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption.APPEND
 import java.nio.file.StandardOpenOption.CREATE
-
-internal enum class StandaloneTelemetryScope(
-) {
-    RENAME(),
-    CALL_HIERARCHY(),
-    REFERENCES(),
-    SYMBOL_RESOLVE(),
-    WORKSPACE_DISCOVERY(),
-    ;
-
-    companion object {
-        fun parse(rawValue: String): StandaloneTelemetryScope? = when (rawValue.trim().lowercase()) {
-            "rename" -> RENAME
-            "call-hierarchy", "call_hierarchy", "callhierarchy" -> CALL_HIERARCHY
-            "references", "find-references", "find_references" -> REFERENCES
-            "symbol-resolve", "symbol_resolve", "symbolresolve", "resolve" -> SYMBOL_RESOLVE
-            "workspace-discovery", "workspace_discovery", "workspacediscovery", "discovery" -> WORKSPACE_DISCOVERY
-            else -> null
-        }
-    }
-}
-
-internal enum class StandaloneTelemetryDetail {
-    BASIC,
-    VERBOSE,
-    ;
-
-    companion object {
-        fun parse(rawValue: String?): StandaloneTelemetryDetail = when (rawValue?.trim()?.lowercase()) {
-            "verbose" -> VERBOSE
-            else -> BASIC
-        }
-    }
-}
-
-internal data class StandaloneTelemetryConfig(
-    val enabled: Boolean,
-    val scopes: Set<StandaloneTelemetryScope>,
-    val detail: StandaloneTelemetryDetail,
-    val outputFile: Path,
-)
 
 internal class StandaloneTelemetry private constructor(
     private val config: StandaloneTelemetryConfig?,
@@ -196,54 +153,6 @@ internal class StandaloneTelemetry private constructor(
     }
 }
 
-internal class StandaloneTelemetrySpan internal constructor(
-    private val telemetry: StandaloneTelemetry,
-    private val scope: StandaloneTelemetryScope,
-    private val span: Span?,
-) {
-    fun setAttribute(key: String, value: Any?) {
-        if (span == null || value == null) {
-            return
-        }
-        setAttribute(span, key, value)
-    }
-
-    fun addEvent(
-        name: String,
-        attributes: Map<String, Any?> = emptyMap(),
-        verboseOnly: Boolean = false,
-    ) {
-        if (span == null || (verboseOnly && !telemetry.isVerbose(scope))) {
-            return
-        }
-        span.addEvent(name, attributesOf(attributes))
-    }
-
-    inline fun <T> child(
-        name: String,
-        attributes: Map<String, Any?> = emptyMap(),
-        verboseOnly: Boolean = false,
-        block: (StandaloneTelemetrySpan) -> T,
-    ): T = telemetry.inSpan(
-        scope = scope,
-        name = name,
-        attributes = attributes,
-        verboseOnly = verboseOnly,
-        block = block,
-    )
-
-    companion object {
-        fun disabled(
-            telemetry: StandaloneTelemetry,
-            scope: StandaloneTelemetryScope,
-        ): StandaloneTelemetrySpan = StandaloneTelemetrySpan(
-            telemetry = telemetry,
-            scope = scope,
-            span = null,
-        )
-    }
-}
-
 private class JsonLineSpanExporter(
     private val outputFile: Path,
     private val detail: StandaloneTelemetryDetail,
@@ -350,49 +259,4 @@ private data class SerializedEvent(
             },
         )
     }
-}
-
-private fun applyAttributes(
-    span: Span,
-    attributes: Map<String, Any?>,
-) {
-    attributes.forEach { (key, value) ->
-        if (value != null) {
-            setAttribute(span, key, value)
-        }
-    }
-}
-
-private fun attributesOf(attributes: Map<String, Any?>): Attributes {
-    val builder = Attributes.builder()
-    attributes.forEach { (key, value) ->
-        when (value) {
-            null -> Unit
-            is Boolean -> builder.put(AttributeKey.booleanKey(key), value)
-            is Double -> builder.put(AttributeKey.doubleKey(key), value)
-            is Int -> builder.put(AttributeKey.longKey(key), value.toLong())
-            is Long -> builder.put(AttributeKey.longKey(key), value)
-            else -> builder.put(AttributeKey.stringKey(key), value.toString())
-        }
-    }
-    return builder.build()
-}
-
-private fun setAttribute(
-    span: Span,
-    key: String,
-    value: Any,
-) {
-    when (value) {
-        is Boolean -> span.setAttribute(AttributeKey.booleanKey(key), value)
-        is Double -> span.setAttribute(AttributeKey.doubleKey(key), value)
-        is Int -> span.setAttribute(AttributeKey.longKey(key), value.toLong())
-        is Long -> span.setAttribute(AttributeKey.longKey(key), value)
-        else -> span.setAttribute(AttributeKey.stringKey(key), value.toString())
-    }
-}
-
-private fun String?.isTruthy(): Boolean = when (this?.trim()?.lowercase()) {
-    "1", "true", "yes", "on" -> true
-    else -> false
 }

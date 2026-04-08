@@ -1,6 +1,14 @@
 package io.github.amichne.kast.standalone
 
 import io.github.amichne.kast.api.ModuleName
+import io.github.amichne.kast.standalone.cache.WorkspaceDiscoveryCache
+import io.github.amichne.kast.standalone.workspace.GradleDependency
+import io.github.amichne.kast.standalone.workspace.GradleDependencyScope
+import io.github.amichne.kast.standalone.workspace.GradleModuleModel
+import io.github.amichne.kast.standalone.workspace.GradleSettingsSnapshot
+import io.github.amichne.kast.standalone.workspace.GradleWorkspaceDiscovery
+import io.github.amichne.kast.standalone.workspace.GradleWorkspaceDiscoveryResult
+import io.github.amichne.kast.standalone.workspace.WorkspaceDiscoveryDiagnostics
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull

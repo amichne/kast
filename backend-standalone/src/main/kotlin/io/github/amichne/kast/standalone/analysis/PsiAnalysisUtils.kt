@@ -1,4 +1,4 @@
-package io.github.amichne.kast.standalone
+package io.github.amichne.kast.standalone.analysis
 
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiClass
@@ -91,8 +91,6 @@ internal fun PsiElement.declarationEdit(newName: String): TextEdit {
         newText = newName,
     )
 }
-
-
 
 /**
  * Extracts the effective visibility of a PSI element.

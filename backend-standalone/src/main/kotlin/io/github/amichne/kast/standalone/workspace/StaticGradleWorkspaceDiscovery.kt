@@ -1,5 +1,6 @@
-package io.github.amichne.kast.standalone
+package io.github.amichne.kast.standalone.workspace
 
+import io.github.amichne.kast.standalone.normalizeStandalonePath
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.exists

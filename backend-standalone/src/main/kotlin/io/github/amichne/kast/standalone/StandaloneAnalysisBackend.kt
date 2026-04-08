@@ -33,6 +33,23 @@ import io.github.amichne.kast.api.SymbolResult
 import io.github.amichne.kast.api.TextEdit
 import io.github.amichne.kast.api.TypeHierarchyQuery
 import io.github.amichne.kast.api.TypeHierarchyResult
+import io.github.amichne.kast.standalone.analysis.CandidateFileResolver
+import io.github.amichne.kast.standalone.analysis.ImportAnalysis
+import io.github.amichne.kast.standalone.analysis.SemanticInsertionPointResolver
+import io.github.amichne.kast.standalone.analysis.callHierarchyDeclaration
+import io.github.amichne.kast.standalone.analysis.declarationEdit
+import io.github.amichne.kast.standalone.analysis.referenceSearchIdentifier
+import io.github.amichne.kast.standalone.analysis.resolveTarget
+import io.github.amichne.kast.standalone.analysis.resolvedFilePath
+import io.github.amichne.kast.standalone.analysis.supertypeNames
+import io.github.amichne.kast.standalone.analysis.toApiDiagnostics
+import io.github.amichne.kast.standalone.analysis.toKastLocation
+import io.github.amichne.kast.standalone.analysis.toSymbolModel
+import io.github.amichne.kast.standalone.hierarchy.CallHierarchyTraversal
+import io.github.amichne.kast.standalone.hierarchy.TypeHierarchyTraversal
+import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetry
+import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetryScope
+import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetrySpan
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
@@ -447,28 +464,6 @@ internal class StandaloneAnalysisBackend internal constructor(
                 ?: "unknown"
     }
 }
-
-private fun String.identifierOccurrenceOffsets(identifier: String): Sequence<Int> = sequence {
-    var searchFrom = 0
-    while (true) {
-        val occurrenceOffset = indexOf(identifier, startIndex = searchFrom)
-        if (occurrenceOffset == -1) {
-            break
-        }
-
-        val before = getOrNull(occurrenceOffset - 1)
-        val after = getOrNull(occurrenceOffset + identifier.length)
-        val startsIdentifier = before?.isKastIdentifierPart() != true
-        val endsIdentifier = after?.isKastIdentifierPart() != true
-        if (startsIdentifier && endsIdentifier) {
-            yield(occurrenceOffset)
-        }
-
-        searchFrom = occurrenceOffset + identifier.length
-    }
-}
-
-private fun Char.isKastIdentifierPart(): Boolean = this == '_' || isLetterOrDigit()
 
 /**
  * Parallel `flatMap` over a list using Java parallel streams.

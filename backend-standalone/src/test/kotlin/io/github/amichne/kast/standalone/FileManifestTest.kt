@@ -9,6 +9,8 @@ import java.nio.file.Path
 import java.nio.file.attribute.FileTime
 import kotlin.io.path.createDirectories
 import kotlin.io.path.writeText
+import io.github.amichne.kast.standalone.cache.FileManifest
+import io.github.amichne.kast.standalone.cache.scanTrackedKotlinFileTimestamps
 
 class FileManifestTest {
     @TempDir

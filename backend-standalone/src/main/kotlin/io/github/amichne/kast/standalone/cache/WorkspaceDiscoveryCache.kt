@@ -1,6 +1,9 @@
-package io.github.amichne.kast.standalone
+package io.github.amichne.kast.standalone.cache
 
 import io.github.amichne.kast.api.ModuleName
+import io.github.amichne.kast.standalone.normalizeStandalonePath
+import io.github.amichne.kast.standalone.workspace.GradleWorkspaceDiscovery
+import io.github.amichne.kast.standalone.workspace.GradleWorkspaceDiscoveryResult
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.nio.charset.StandardCharsets
@@ -8,8 +11,8 @@ import java.nio.file.FileVisitResult
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.SimpleFileVisitor
-import java.security.MessageDigest
 import java.nio.file.attribute.BasicFileAttributes
+import java.security.MessageDigest
 
 private const val workspaceDiscoveryCacheSchemaVersion = 1
 

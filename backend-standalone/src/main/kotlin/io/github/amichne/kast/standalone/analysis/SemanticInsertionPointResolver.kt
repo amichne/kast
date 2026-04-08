@@ -1,4 +1,4 @@
-package io.github.amichne.kast.standalone
+package io.github.amichne.kast.standalone.analysis
 
 import io.github.amichne.kast.api.NotFoundException
 import io.github.amichne.kast.api.SemanticInsertionQuery

@@ -1,4 +1,4 @@
-package io.github.amichne.kast.standalone
+package io.github.amichne.kast.standalone.analysis
 
 import com.intellij.openapi.util.TextRange
 import io.github.amichne.kast.api.Diagnostic

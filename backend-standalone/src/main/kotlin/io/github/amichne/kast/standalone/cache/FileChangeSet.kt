@@ -1,4 +1,4 @@
-package io.github.amichne.kast.standalone
+package io.github.amichne.kast.standalone.cache
 
 /**
  * Captures the three categories of file changes detected between two snapshots.
@@ -12,7 +12,4 @@ internal data class FileChangeSet(
 ) {
     val isEmpty: Boolean
         get() = added.isEmpty() && modified.isEmpty() && removed.isEmpty()
-
-    companion object {
-    }
 }

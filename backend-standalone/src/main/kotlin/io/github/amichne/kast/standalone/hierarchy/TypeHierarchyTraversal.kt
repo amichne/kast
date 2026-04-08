@@ -1,4 +1,4 @@
-package io.github.amichne.kast.standalone
+package io.github.amichne.kast.standalone.hierarchy
 
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
@@ -11,6 +11,12 @@ import io.github.amichne.kast.api.TypeHierarchyResult
 import io.github.amichne.kast.api.TypeHierarchyStats
 import io.github.amichne.kast.api.TypeHierarchyTruncation
 import io.github.amichne.kast.api.TypeHierarchyTruncationReason
+import io.github.amichne.kast.standalone.StandaloneAnalysisSession
+import io.github.amichne.kast.standalone.analysis.resolveTarget
+import io.github.amichne.kast.standalone.analysis.resolvedFilePath
+import io.github.amichne.kast.standalone.analysis.supertypeNames
+import io.github.amichne.kast.standalone.analysis.toSymbolModel
+import io.github.amichne.kast.standalone.analysis.typeHierarchyDeclaration
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtFile

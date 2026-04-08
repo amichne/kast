@@ -1,5 +1,6 @@
-package io.github.amichne.kast.standalone
+package io.github.amichne.kast.standalone.cache
 
+import io.github.amichne.kast.standalone.normalizeStandalonePath
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.nio.file.Files

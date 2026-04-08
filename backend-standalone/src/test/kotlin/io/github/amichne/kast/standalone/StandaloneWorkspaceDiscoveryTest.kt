@@ -7,6 +7,14 @@ import io.github.amichne.kast.api.RuntimeState
 import io.github.amichne.kast.api.ServerLimits
 import io.github.amichne.kast.api.SymbolKind
 import io.github.amichne.kast.api.SymbolQuery
+import io.github.amichne.kast.standalone.workspace.GradleDependency
+import io.github.amichne.kast.standalone.workspace.GradleDependencyScope
+import io.github.amichne.kast.standalone.workspace.GradleModuleModel
+import io.github.amichne.kast.standalone.workspace.GradleSettingsSnapshot
+import io.github.amichne.kast.standalone.workspace.GradleWorkspaceDiscovery
+import io.github.amichne.kast.standalone.workspace.PhasedDiscoveryResult
+import io.github.amichne.kast.standalone.workspace.StaticGradleWorkspaceDiscovery
+import io.github.amichne.kast.standalone.workspace.defaultToolingApiTimeoutMillis
 import kotlinx.coroutines.test.TestResult
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals

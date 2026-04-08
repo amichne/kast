@@ -7,6 +7,10 @@ import io.github.amichne.kast.api.ReferencesQuery
 import io.github.amichne.kast.api.RenameQuery
 import io.github.amichne.kast.api.ServerLimits
 import io.github.amichne.kast.api.SymbolQuery
+import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetry
+import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetryConfig
+import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetryDetail
+import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetryScope
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray

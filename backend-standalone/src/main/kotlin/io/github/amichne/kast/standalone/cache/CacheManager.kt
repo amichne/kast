@@ -1,5 +1,6 @@
-package io.github.amichne.kast.standalone
+package io.github.amichne.kast.standalone.cache
 
+import io.github.amichne.kast.standalone.normalizeStandalonePath
 import java.nio.file.Path
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledFuture

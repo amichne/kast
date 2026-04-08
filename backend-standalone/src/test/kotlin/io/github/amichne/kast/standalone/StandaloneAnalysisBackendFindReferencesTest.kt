@@ -8,6 +8,7 @@ import io.github.amichne.kast.api.ReferencesQuery
 import io.github.amichne.kast.api.SearchScopeKind
 import io.github.amichne.kast.api.ServerLimits
 import io.github.amichne.kast.api.SymbolVisibility
+import io.github.amichne.kast.standalone.workspace.PhasedDiscoveryResult
 import kotlinx.coroutines.test.TestResult
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals

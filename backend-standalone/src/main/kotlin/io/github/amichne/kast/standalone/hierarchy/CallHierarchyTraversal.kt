@@ -1,4 +1,4 @@
-package io.github.amichne.kast.standalone
+package io.github.amichne.kast.standalone.hierarchy
 
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
@@ -16,6 +16,19 @@ import io.github.amichne.kast.api.Location
 import io.github.amichne.kast.api.SCHEMA_VERSION
 import io.github.amichne.kast.api.ServerLimits
 import io.github.amichne.kast.api.Symbol
+import io.github.amichne.kast.standalone.StandaloneAnalysisSession
+import io.github.amichne.kast.standalone.analysis.CandidateFileResolver
+import io.github.amichne.kast.standalone.analysis.callHierarchyDeclaration
+import io.github.amichne.kast.standalone.analysis.resolveTarget
+import io.github.amichne.kast.standalone.analysis.resolvedFilePath
+import io.github.amichne.kast.standalone.analysis.toKastLocation
+import io.github.amichne.kast.standalone.analysis.toSymbolModel
+import io.github.amichne.kast.standalone.cache.VersionedFileCache
+import io.github.amichne.kast.standalone.cache.kastGradleDirectory
+import io.github.amichne.kast.standalone.normalizeStandalonePath
+import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetry
+import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetryScope
+import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetrySpan
 import kotlinx.serialization.json.Json
 import org.jetbrains.kotlin.psi.KtFile
 import java.nio.file.Path

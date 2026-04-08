@@ -1,5 +1,6 @@
 package io.github.amichne.kast.standalone
 
+import io.github.amichne.kast.standalone.analysis.ImportAnalysis
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue

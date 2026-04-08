@@ -1,7 +1,13 @@
-package io.github.amichne.kast.standalone
+package io.github.amichne.kast.standalone.workspace
 
 import io.github.amichne.kast.api.ModuleName
-import kotlinx.serialization.Serializable
+import io.github.amichne.kast.standalone.StandaloneSourceModuleSpec
+import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetry
+import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetryScope
+import io.github.amichne.kast.standalone.StandaloneWorkspaceLayout
+import io.github.amichne.kast.standalone.buildDependentModuleNamesBySourceModuleName
+import io.github.amichne.kast.standalone.cache.WorkspaceDiscoveryCache
+import io.github.amichne.kast.standalone.normalizeStandaloneModelPath
 import org.gradle.tooling.GradleConnector
 import org.gradle.tooling.model.idea.IdeaDependency
 import org.gradle.tooling.model.idea.IdeaModule
@@ -15,8 +21,6 @@ import java.util.concurrent.ExecutionException
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
-import kotlin.io.path.isRegularFile
-import kotlin.io.path.readText
 
 internal const val maxIncludedProjectsForToolingApi = 200
 internal const val defaultToolingApiTimeoutMillis = 30_000L
@@ -28,22 +32,6 @@ internal fun resolveToolingApiTimeoutMillis(
     envReader("KAST_GRADLE_TOOLING_TIMEOUT_MS")?.toLongOrNull()?.let { return it }
     return (moduleCount * 200L).coerceIn(defaultToolingApiTimeoutMillis, 300_000L)
 }
-
-@Serializable
-internal data class WorkspaceDiscoveryDiagnostics(
-    val warnings: List<String> = emptyList(),
-)
-
-@Serializable
-internal data class GradleWorkspaceDiscoveryResult(
-    val modules: List<GradleModuleModel>,
-    val diagnostics: WorkspaceDiscoveryDiagnostics = WorkspaceDiscoveryDiagnostics(),
-)
-
-internal data class PhasedDiscoveryResult(
-    val initialLayout: StandaloneWorkspaceLayout,
-    val enrichmentFuture: CompletableFuture<StandaloneWorkspaceLayout>?,
-)
 
 internal object GradleWorkspaceDiscovery {
     fun discover(
@@ -492,23 +480,6 @@ private fun logWorkspaceDiscoveryWarning(message: String) {
     System.err.println("kast gradle workspace discovery warning: $message")
 }
 
-internal class ToolingApiPathNormalizer(
-    private val pathExists: (Path) -> Boolean = Files::exists,
-) {
-    private val pathExistsCache = linkedMapOf<Path, Boolean>()
-
-    fun normalizeExistingSourceRoots(paths: Sequence<Path>): List<Path> = paths
-        .map(::normalizeStandaloneModelPath)
-        .distinct()
-        .filter(::exists)
-        .toList()
-        .sorted()
-
-    private fun exists(path: Path): Boolean = pathExistsCache.getOrPut(path) {
-        pathExists(path)
-    }
-}
-
 private fun mergeToolingAndStaticModules(
     toolingModules: List<GradleModuleModel>,
     staticModules: List<GradleModuleModel>,
@@ -572,7 +543,6 @@ private fun Path.matchesGradleOutputRoot(sourceSet: GradleSourceSet): Boolean {
     ).any(normalizedPath::contains)
 }
 
-
 private fun List<GradleModuleModel>.shouldFallbackToStaticModules(
     settingsSnapshot: GradleSettingsSnapshot,
 ): Boolean {
@@ -584,304 +554,4 @@ private fun List<GradleModuleModel>.shouldFallbackToStaticModules(
         module.dependencies.any { dependency -> dependency is GradleDependency.ModuleDependency }
     }
     return !hasModuleDependencies
-}
-
-
-
-@Serializable
-internal data class GradleModuleModel(
-    val gradlePath: String,
-    val ideaModuleName: String,
-    @Serializable(with = PathListAsStringSerializer::class)
-    val mainSourceRoots: List<Path>,
-    @Serializable(with = PathListAsStringSerializer::class)
-    val testSourceRoots: List<Path>,
-    @Serializable(with = PathListAsStringSerializer::class)
-    val testFixturesSourceRoots: List<Path> = emptyList(),
-    @Serializable(with = PathListAsStringSerializer::class)
-    val mainOutputRoots: List<Path>,
-    @Serializable(with = PathListAsStringSerializer::class)
-    val testOutputRoots: List<Path>,
-    @Serializable(with = PathListAsStringSerializer::class)
-    val testFixturesOutputRoots: List<Path> = emptyList(),
-    val dependencies: List<GradleDependency>,
-) {
-    private fun analysisModuleName(sourceSet: GradleSourceSet): ModuleName = ModuleName("$gradlePath[${sourceSet.id}]")
-
-    fun toStandaloneSourceModuleSpecs(
-        moduleModelsByIdeaName: Map<String, GradleModuleModel>,
-        availableMainSourceModuleNames: Set<ModuleName>,
-        extraClasspathRoots: List<Path>,
-    ): List<StandaloneSourceModuleSpec> {
-        val resolvedDependencies = resolveSourceSetDependencies(
-            moduleModelsByIdeaName = moduleModelsByIdeaName,
-            availableMainSourceModuleNames = availableMainSourceModuleNames,
-        )
-        return buildList {
-            mainSourceRoots.takeIf(List<Path>::isNotEmpty)?.let { sourceRoots ->
-                add(
-                    StandaloneSourceModuleSpec(
-                        name = analysisModuleName(GradleSourceSet.MAIN),
-                        sourceRoots = sourceRoots,
-                        binaryRoots = (resolvedDependencies.mainBinaryRoots + extraClasspathRoots).distinct().sorted(),
-                        dependencyModuleNames = resolvedDependencies.mainDependencyNames,
-                    ),
-                )
-            }
-            testFixturesSourceRoots.takeIf(List<Path>::isNotEmpty)?.let { sourceRoots ->
-                add(
-                    StandaloneSourceModuleSpec(
-                        name = analysisModuleName(GradleSourceSet.TEST_FIXTURES),
-                        sourceRoots = sourceRoots,
-                        binaryRoots = (resolvedDependencies.testFixturesBinaryRoots + extraClasspathRoots).distinct().sorted(),
-                        dependencyModuleNames = resolvedDependencies.testFixturesDependencyNames,
-                    ),
-                )
-            }
-            testSourceRoots.takeIf(List<Path>::isNotEmpty)?.let { sourceRoots ->
-                add(
-                    StandaloneSourceModuleSpec(
-                        name = analysisModuleName(GradleSourceSet.TEST),
-                        sourceRoots = sourceRoots,
-                        binaryRoots = (resolvedDependencies.testBinaryRoots + extraClasspathRoots).distinct().sorted(),
-                        dependencyModuleNames = resolvedDependencies.testDependencyNames,
-                    ),
-                )
-            }
-        }
-    }
-
-    fun mainDependencyModuleName(): ModuleName? = mainSourceRoots
-        .takeIf(List<Path>::isNotEmpty)
-        ?.let { analysisModuleName(GradleSourceSet.MAIN) }
-
-    private fun resolveSourceSetDependencies(
-        moduleModelsByIdeaName: Map<String, GradleModuleModel>,
-        availableMainSourceModuleNames: Set<ModuleName>,
-    ): ResolvedSourceSetDependencies {
-        val mainBinaryRoots = linkedSetOf<Path>()
-        val testFixturesBinaryRoots = linkedSetOf<Path>()
-        val testBinaryRoots = linkedSetOf<Path>()
-        val mainDependencyNames = linkedSetOf<ModuleName>()
-        val testFixturesDependencyNames = linkedSetOf<ModuleName>()
-        val testDependencyNames = linkedSetOf<ModuleName>()
-
-        if (mainSourceRoots.isEmpty()) {
-            testFixturesBinaryRoots.addAll(mainOutputRoots)
-            testBinaryRoots.addAll(mainOutputRoots)
-        } else {
-            if (testFixturesSourceRoots.isNotEmpty()) {
-                testFixturesDependencyNames.add(analysisModuleName(GradleSourceSet.MAIN))
-            }
-            if (testSourceRoots.isNotEmpty()) {
-                testDependencyNames.add(analysisModuleName(GradleSourceSet.MAIN))
-            }
-        }
-        if (testFixturesSourceRoots.isEmpty()) {
-            testBinaryRoots.addAll(testFixturesOutputRoots)
-        } else if (testSourceRoots.isNotEmpty()) {
-            testDependencyNames.add(analysisModuleName(GradleSourceSet.TEST_FIXTURES))
-        }
-
-        dependencies.forEach { dependency ->
-            when (dependency) {
-                is GradleDependency.LibraryDependency -> {
-                    if (dependency.scope in GradleSourceSet.MAIN.supportedDependencyScopes) {
-                        mainBinaryRoots.add(dependency.binaryRoot)
-                    }
-                    if (dependency.scope in GradleSourceSet.TEST_FIXTURES.supportedDependencyScopes) {
-                        testFixturesBinaryRoots.add(dependency.binaryRoot)
-                    }
-                    if (dependency.scope in GradleSourceSet.TEST.supportedDependencyScopes) {
-                        testBinaryRoots.add(dependency.binaryRoot)
-                    }
-                }
-                is GradleDependency.ModuleDependency -> {
-                    val targetModule = moduleModelsByIdeaName[dependency.targetIdeaModuleName] ?: return@forEach
-                    if (dependency.scope in GradleSourceSet.MAIN.supportedDependencyScopes) {
-                        mainBinaryRoots.addAll(
-                            targetModule.addSourceSetDependency(
-                                dependencyNames = mainDependencyNames,
-                                availableMainSourceModuleNames = availableMainSourceModuleNames,
-                            ),
-                        )
-                    }
-                    if (dependency.scope in GradleSourceSet.TEST_FIXTURES.supportedDependencyScopes) {
-                        testFixturesBinaryRoots.addAll(
-                            targetModule.addSourceSetDependency(
-                                dependencyNames = testFixturesDependencyNames,
-                                availableMainSourceModuleNames = availableMainSourceModuleNames,
-                            ),
-                        )
-                    }
-                    if (dependency.scope in GradleSourceSet.TEST.supportedDependencyScopes) {
-                        testBinaryRoots.addAll(
-                            targetModule.addSourceSetDependency(
-                                dependencyNames = testDependencyNames,
-                                availableMainSourceModuleNames = availableMainSourceModuleNames,
-                            ),
-                        )
-                    }
-                }
-            }
-        }
-
-        return ResolvedSourceSetDependencies(
-            mainBinaryRoots = mainBinaryRoots.toList(),
-            testFixturesBinaryRoots = testFixturesBinaryRoots.toList(),
-            testBinaryRoots = testBinaryRoots.toList(),
-            mainDependencyNames = mainDependencyNames.toList(),
-            testFixturesDependencyNames = testFixturesDependencyNames.toList(),
-            testDependencyNames = testDependencyNames.toList(),
-        )
-    }
-
-    private fun addSourceSetDependency(
-        dependencyNames: MutableSet<ModuleName>,
-        availableMainSourceModuleNames: Set<ModuleName>,
-    ): List<Path> {
-        val dependencyName = mainDependencyModuleName()
-        if (dependencyName != null && dependencyName in availableMainSourceModuleNames) {
-            dependencyNames.add(dependencyName)
-            return emptyList()
-        }
-        return mainOutputRoots
-    }
-}
-
-private data class ResolvedSourceSetDependencies(
-    val mainBinaryRoots: List<Path>,
-    val testFixturesBinaryRoots: List<Path>,
-    val testBinaryRoots: List<Path>,
-    val mainDependencyNames: List<ModuleName>,
-    val testFixturesDependencyNames: List<ModuleName>,
-    val testDependencyNames: List<ModuleName>,
-)
-
-@Serializable
-internal sealed interface GradleDependency {
-    val scope: GradleDependencyScope
-
-    @Serializable
-    data class ModuleDependency(
-        val targetIdeaModuleName: String,
-        override val scope: GradleDependencyScope,
-    ) : GradleDependency
-
-    @Serializable
-    data class LibraryDependency(
-        @Serializable(with = PathAsStringSerializer::class)
-        val binaryRoot: Path,
-        override val scope: GradleDependencyScope,
-    ) : GradleDependency
-}
-
-internal enum class GradleSourceSet(
-    val id: String,
-    val supportedDependencyScopes: Set<GradleDependencyScope>,
-) {
-    MAIN(
-        id = "main",
-        supportedDependencyScopes = setOf(
-            GradleDependencyScope.COMPILE,
-            GradleDependencyScope.PROVIDED,
-            GradleDependencyScope.RUNTIME,
-            GradleDependencyScope.UNKNOWN,
-        ),
-    ),
-    TEST_FIXTURES(
-        id = "testFixtures",
-        supportedDependencyScopes = setOf(
-            GradleDependencyScope.COMPILE,
-            GradleDependencyScope.PROVIDED,
-            GradleDependencyScope.TEST_FIXTURES,
-            GradleDependencyScope.RUNTIME,
-            GradleDependencyScope.UNKNOWN,
-        ),
-    ),
-    TEST(
-        id = "test",
-        supportedDependencyScopes = setOf(
-            GradleDependencyScope.COMPILE,
-            GradleDependencyScope.PROVIDED,
-            GradleDependencyScope.TEST,
-            GradleDependencyScope.TEST_FIXTURES,
-            GradleDependencyScope.RUNTIME,
-            GradleDependencyScope.UNKNOWN,
-        ),
-    ),
-}
-
-@Serializable
-internal enum class GradleDependencyScope {
-    COMPILE,
-    PROVIDED,
-    TEST,
-    TEST_FIXTURES,
-    RUNTIME,
-    UNKNOWN,
-    ;
-
-    companion object {
-        fun from(dependency: IdeaDependency): GradleDependencyScope = when (dependency.scope?.scope?.uppercase()) {
-            "COMPILE" -> COMPILE
-            "PROVIDED" -> PROVIDED
-            "TEST" -> TEST
-            "TEST_FIXTURES" -> TEST_FIXTURES
-            "RUNTIME" -> RUNTIME
-            else -> UNKNOWN
-        }
-    }
-}
-
-internal data class GradleSettingsSnapshot(
-    val includedProjectPaths: List<String>,
-    val hasCompositeBuilds: Boolean,
-) {
-    fun shouldPreferStaticDiscovery(): Boolean = includedProjectPaths.size > maxIncludedProjectsForToolingApi
-
-    fun projectPathsForStaticDiscovery(): List<String> = buildList {
-        add(":")
-        addAll(includedProjectPaths)
-    }.distinct()
-
-    companion object {
-        private val includeBlockPattern = Regex("""(?s)\binclude\s*\((.*?)\)""")
-        private val stringLiteralPattern = Regex("""[\"']([^\"']+)[\"']""")
-        private val compositeBuildPattern = Regex("""\bincludeBuild\s*\(""")
-
-        fun read(workspaceRoot: Path): GradleSettingsSnapshot {
-            val settingsText = settingsFileCandidates(workspaceRoot)
-                .firstOrNull(Path::isRegularFile)
-                ?.readText()
-                .orEmpty()
-
-            val includedProjectPaths = includeBlockPattern.findAll(settingsText)
-                .flatMap { match ->
-                    stringLiteralPattern.findAll(match.groupValues[1]).map { literal ->
-                        normalizeGradleProjectPath(literal.groupValues[1])
-                    }
-                }
-                .distinct()
-                .sorted()
-                .toList()
-
-            return GradleSettingsSnapshot(
-                includedProjectPaths = includedProjectPaths,
-                hasCompositeBuilds = compositeBuildPattern.containsMatchIn(settingsText),
-            )
-        }
-
-        private fun settingsFileCandidates(workspaceRoot: Path): List<Path> = listOf(
-            workspaceRoot.resolve("settings.gradle.kts"),
-            workspaceRoot.resolve("settings.gradle"),
-        )
-    }
-}
-
-internal fun normalizeGradleProjectPath(projectPath: String): String = when {
-    projectPath == ":" -> ":"
-    projectPath.startsWith(":") -> projectPath
-    projectPath.isBlank() -> ":"
-    else -> ":$projectPath"
 }

@@ -1,4 +1,4 @@
-package io.github.amichne.kast.standalone
+package io.github.amichne.kast.standalone.cache
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json

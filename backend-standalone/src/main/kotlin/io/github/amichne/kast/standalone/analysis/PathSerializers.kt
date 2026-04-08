@@ -1,4 +1,4 @@
-package io.github.amichne.kast.standalone
+package io.github.amichne.kast.standalone.analysis
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.ListSerializer

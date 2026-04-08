@@ -1,9 +1,12 @@
-package io.github.amichne.kast.standalone
+package io.github.amichne.kast.standalone.analysis
 
 import com.intellij.psi.PsiElement
 import io.github.amichne.kast.api.SearchScope
 import io.github.amichne.kast.api.SearchScopeKind
 import io.github.amichne.kast.api.SymbolVisibility
+import io.github.amichne.kast.standalone.StandaloneAnalysisSession
+import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetry
+import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetryScope
 import org.jetbrains.kotlin.psi.KtFile
 
 internal class CandidateFileResolver(
@@ -186,7 +189,6 @@ internal data class CandidateSearchResult(
     val scope: SearchScope,
 )
 
-/** Safety cap for candidate files to prevent pathological searches with common identifiers. */
 private const val MAX_CANDIDATE_FILES = 500
 
 internal fun List<String>.capCandidateFiles(identifier: String): List<String> {
