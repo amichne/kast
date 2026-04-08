@@ -1,26 +1,34 @@
 ---
 name: kast
 description: >
-  Use this skill for any Kotlin/JVM semantic code intelligence task: resolve a symbol,
-  find references, expand call hierarchies, run diagnostics, plan a rename, apply
-  edits. Triggers on: "resolve symbol", "find references", "call hierarchy",
-  "who calls", "incoming callers", "outgoing callers", "kast", "rename symbol",
-  "run diagnostics", "apply edits", "symbol at offset", "semantic analysis",
-  "kotlin analysis daemon". The daemon lifecycle is fully managed by this skill.
-  Single pathway for every operation.
+  Use this skill for any Kotlin/JVM semantic code intelligence task: resolve a
+  symbol, find references, expand call hierarchies, run diagnostics, assess
+  edit impact, plan a rename, or apply rename edits through the packaged
+  wrapper scripts. Triggers on: "resolve symbol", "find references",
+  "call hierarchy", "who calls", "incoming callers", "outgoing callers",
+  "kast", "rename symbol", "run diagnostics", "apply edits", "symbol at
+  offset", "semantic analysis", "kotlin analysis daemon". Every multi-step
+  operation goes through `scripts/` and emits structured JSON on stdout.
 ---
 
-# Kast Skill
+# Kast skill
 
-kast is a Kotlin semantic analysis daemon. It provides symbol resolution,
-reference finding, call hierarchy expansion, diagnostics, rename planning, and
-edit application for Kotlin/JVM workspaces.
+kast is a Kotlin semantic analysis daemon. This skill wraps the CLI in
+structured scripts so the agent can stay on JSON instead of brittle shell
+pipelines.
 
----
+## 0. Core principle
 
-## 0. Bootstrap (run once per session)
+Never interact with raw terminal output for workflows that already have a
+wrapper. Every multi-step kast operation goes through a script in `scripts/`.
+Each wrapper emits structured JSON on stdout, writes raw stderr and daemon
+notes to `log_file`, and cleans up its temp files on exit. Read the wrapper
+JSON first. Open `log_file` only when `ok=false` or you need daemon notes.
 
-Locate the skill root and resolve the kast binary. Do this before anything else.
+## 1. Bootstrap (run once per session)
+
+Locate the skill root first. Resolve the raw `kast` binary only for commands
+that do not have a wrapper yet.
 
 ```bash
 SKILL_ROOT="$(cd "$(dirname "$(find "$(git rev-parse --show-toplevel)" \
@@ -28,315 +36,115 @@ SKILL_ROOT="$(cd "$(dirname "$(find "$(git rev-parse --show-toplevel)" \
 KAST="$(bash "$SKILL_ROOT/scripts/resolve-kast.sh")"
 ```
 
-`$KAST` is the verified kast binary. `$SKILL_ROOT` is the absolute path to bundled
-scripts. Use both variables for every subsequent invocation in this session.
+`$SKILL_ROOT` is the packaged skill root. The wrappers resolve `kast`
+internally, so you do not need temp files, redirects, or manual stderr
+capture.
 
-Next, set up a session temp directory for capturing command output:
+Optional: prewarm the workspace when you want a separate readiness step before
+you call a wrapper.
 
 ```bash
-KAST_TMP="$(mktemp -d)"
-trap 'rm -rf "$KAST_TMP"' EXIT
-KAST_RESULT="$KAST_TMP/result.json"
-KAST_STDERR="$KAST_TMP/stderr.log"
+"$KAST" workspace ensure --workspace-root="$(git rev-parse --show-toplevel)"
 ```
 
-All kast commands in this session write results to `$KAST_RESULT` and daemon notes to
-`$KAST_STDERR`. Read `$KAST_RESULT` for the JSON output. When the exit code is
-non-zero, read `$KAST_STDERR` for the error details. On success, `$KAST_STDERR`
-may still contain a daemon note, such as an auto-start message or
-`state: INDEXING`.
+If `workspace ensure` fails, read
+`$(git rev-parse --show-toplevel)/.kast/logs/standalone-daemon.log` before you
+retry.
 
-Optional: prewarm the workspace when you want a separate readiness step:
+## 2. Symbol lookup
 
-```bash
-"$KAST" workspace ensure --workspace-root="$(git rev-parse --show-toplevel)" \
-  > "$KAST_RESULT" 2> "$KAST_STDERR"
-```
-
-`workspace ensure` starts the daemon if none exists, reuses an existing healthy
-one, and waits until the daemon reaches `READY` by default (60 s timeout). Add
-`--accept-indexing=true` when you only need a servable daemon and can tolerate
-`INDEXING` while enrichment finishes. If you skip this step, the first
-runtime-dependent command auto-starts the daemon for you.
-
-### If `workspace ensure` fails
-
-Read the daemon log — it is the authoritative source for the failure:
+Resolve a named symbol with the wrapper. It handles declaration search, UTF-16
+offset discovery, `symbol resolve`, and identity confirmation.
 
 ```bash
-cat "$(git rev-parse --show-toplevel)/.kast/logs/standalone-daemon.log" | tail -60
-```
-
-| Log message | Fix |
-|-------------|-----|
-| `SocketException: Operation not permitted` | Unix domain sockets are blocked. Run this command outside the sandboxed environment. |
-| `Address already in use` | Run `"$KAST" daemon stop --workspace-root=<abs-path>` then re-run `workspace ensure`. |
-| `OutOfMemoryError` | Export `KAST_DAEMON_OPTS=-Xmx2g` and re-run `workspace ensure`. |
-| Java version errors | Install Java 21+ and re-run. |
-
-Do not retry `workspace ensure` without first resolving the root cause shown in the log.
-
----
-
-## 1. Index Validation (after first startup in a new workspace)
-
-Even after the first successful startup, validate once with a known symbol
-before doing real work:
-
-```bash
-# Pick any class declaration in the workspace — adjust paths as needed
-grep -rn "^class \|^object \|^interface " --include="*.kt" \
-  "$(git rev-parse --show-toplevel)/src" | head -1
-```
-
-Take the file path and symbol name from that output, then compute the offset:
-
-```bash
-python3 -c "
-import sys
-path, sym = sys.argv[1], sys.argv[2]
-text = open(path).read()
-idx = text.find(sym)
-print(idx if idx >= 0 else -1)
-" /absolute/path/to/File.kt SymbolName
-```
-
-Then validate the index:
-
-```bash
-"$KAST" symbol resolve \
+bash "$SKILL_ROOT/scripts/kast-resolve.sh" \
   --workspace-root="$(git rev-parse --show-toplevel)" \
-  --file-path=/absolute/path/to/File.kt \
-  --offset=<offset-from-above> \
-  > "$KAST_RESULT" 2> "$KAST_STDERR"
+  --symbol=AnalysisServer
 ```
 
-Read `$KAST_RESULT` for the JSON. If `symbol.fqName` is present, the index is
-healthy. If stderr reports `state: INDEXING`, wait until
-`"$KAST" workspace status --workspace-root=...` shows `READY`, then retry. If
-the daemon is already `READY`, treat `NOT_FOUND` as an offset, save, or
-workspace-refresh problem rather than as background indexing.
+Add `--file=...`, `--kind=class|function|property`, or
+`--containing-type=OuterType` when the human reference is ambiguous.
 
----
+## 3. Analysis commands
 
-## 2. Symbol Lookup (name → offset)
+Use the wrappers for every multi-step workflow the skill already covers.
 
-All kast commands require `--offset` (a zero-based UTF-16 character offset). When the
-user gives a symbol by name, derive the offset in two steps.
+### Resolve a symbol
 
-**Step 1 — Find the declaration:**
+Use `kast-resolve.sh` when the user gives a symbol name instead of a raw file
+offset.
 
 ```bash
-# class / object / interface / sealed / enum
-grep -rn "\bclass SymbolName\b\|\bobject SymbolName\b\|\binterface SymbolName\b" \
-  --include="*.kt" "$(git rev-parse --show-toplevel)"
-
-# function
-grep -rn "\bfun SymbolName\b" --include="*.kt" "$(git rev-parse --show-toplevel)"
-
-# val / var property
-grep -rn "\bval SymbolName\b\|\bvar SymbolName\b" \
-  --include="*.kt" "$(git rev-parse --show-toplevel)"
-```
-
-Pick the declaration line (the hit that contains `class`/`fun`/`val`/`var`/etc.)
-over plain usage lines.
-
-**Step 2 — Compute the offset:**
-
-```bash
-python3 -c "
-import sys
-path, sym = sys.argv[1], sys.argv[2]
-text = open(path).read()
-idx = text.find(sym)
-print(idx if idx >= 0 else -1)
-" /absolute/path/to/File.kt SymbolName
-```
-
-This prints the zero-based character offset of the first occurrence of `SymbolName`.
-If the symbol appears multiple times and you need a specific line, target by line number:
-
-```bash
-python3 -c "
-import sys
-path = sys.argv[1]; line_no = int(sys.argv[2]) - 1  # 1-based to 0-based
-text = open(path).read()
-lines = text.splitlines(keepends=True)
-print(sum(len(l) for l in lines[:line_no]))
-" /absolute/path/to/File.kt <1-based-line>
-```
-
-**Step 3 — Confirm identity:**
-
-```bash
-"$KAST" symbol resolve \
+bash "$SKILL_ROOT/scripts/kast-resolve.sh" \
   --workspace-root=/absolute/workspace/path \
-  --file-path=/absolute/path/to/File.kt \
-  --offset=<offset> \
-  > "$KAST_RESULT" 2> "$KAST_STDERR"
+  --symbol=AnalysisServer \
+  --file=analysis-server/src/main/kotlin/io/github/amichne/kast/server/AnalysisServer.kt
 ```
 
-Read `$KAST_RESULT`. Check that `symbol.fqName` matches what the user described. If not,
-advance the offset by a few characters toward the start of the identifier and retry.
+Key output: `ok`, `symbol`, `file_path`, `offset`, `candidate`, `log_file`
 
----
+### Find references
 
-## 3. Analysis Commands
-
-All commands: Redirect stdout to `$KAST_RESULT` and stderr to `$KAST_STDERR`. Read
-`$KAST_RESULT` for the JSON result. Check exit code first — if non-zero, read
-`$KAST_STDERR` for the error.
-
-- Use `--key=value` for every flag
-- Require absolute paths for `--workspace-root`, `--file-path`, and `--file-paths`
-- `--offset` = zero-based UTF-16 character offset from start of file
-- `call hierarchy` also requires `--direction=incoming|outgoing`
-
-### symbol resolve
+Use `kast-references.sh` to resolve the symbol and run `references` in one
+step.
 
 ```bash
-"$KAST" symbol resolve \
+bash "$SKILL_ROOT/scripts/kast-references.sh" \
   --workspace-root=/absolute/workspace/path \
-  --file-path=/absolute/path/to/File.kt \
-  --offset=<offset> \
-  > "$KAST_RESULT" 2> "$KAST_STDERR"
+  --symbol=AnalysisServer \
+  --include-declaration=true
 ```
 
-Key output: `symbol.fqName`, `symbol.kind`, `symbol.location`, `symbol.type`
+Key output: `ok`, `symbol`, `references`, `search_scope`, `declaration`,
+`log_file`
 
-### references
+### Expand callers or callees
 
-```bash
-"$KAST" references \
-  --workspace-root=/absolute/workspace/path \
-  --file-path=/absolute/path/to/File.kt \
-  --offset=<offset> \
-  --include-declaration=true \
-  > "$KAST_RESULT" 2> "$KAST_STDERR"
-```
-
-Key output: `references` (array of `Location`), `declaration`, `page.truncated`
-
-If `page.truncated = true`, the result is capped at `limits.maxResults`. There is no
-pagination — this is the full available set.
-
-### call hierarchy
+Use `kast-callers.sh` to resolve the symbol and run `call hierarchy` with the
+requested direction and depth.
 
 ```bash
-"$KAST" call hierarchy \
+bash "$SKILL_ROOT/scripts/kast-callers.sh" \
   --workspace-root=/absolute/workspace/path \
-  --file-path=/absolute/path/to/File.kt \
-  --offset=<offset> \
+  --symbol=AnalysisServer \
   --direction=incoming \
-  --depth=2 \
-  > "$KAST_RESULT" 2> "$KAST_STDERR"
+  --depth=2
 ```
 
-Optional flags: `--max-total-calls`, `--max-children-per-node`,
-`--timeout-millis`, `--persist-to-git-sha-cache=true`
+Key output: `ok`, `symbol`, `root`, `stats`, `log_file`
 
-Key output: `root`, `stats`, optional `persistence`
+### Run diagnostics
 
-`children[].callSite` identifies the edge. Any node `truncation` plus
-`stats.timeoutReached`, `stats.maxTotalCallsReached`, or
-`stats.maxChildrenPerNodeReached` means the tree is bounded and incomplete.
-
-### diagnostics
+Use `kast-diagnostics.sh` when you need structured diagnostics for one or more
+files.
 
 ```bash
-"$KAST" diagnostics \
+bash "$SKILL_ROOT/scripts/kast-diagnostics.sh" \
   --workspace-root=/absolute/workspace/path \
-  --file-paths=/absolute/A.kt,/absolute/B.kt \
-  > "$KAST_RESULT" 2> "$KAST_STDERR"
+  --file-paths=/absolute/A.kt,/absolute/B.kt
 ```
 
-Key output: `diagnostics[].severity` (`ERROR`|`WARNING`|`INFO`), `.message`, `.location`
+Key output: `ok`, `clean`, `error_count`, `warning_count`, `diagnostics`,
+`log_file`
 
-An empty `diagnostics` array means the files are clean.
+### Assess edit impact
 
-### rename (dry-run plan)
+Use `kast-impact.sh` before you change a symbol. It resolves the symbol, finds
+references, and can include incoming callers in the same result.
 
 ```bash
-"$KAST" rename \
+bash "$SKILL_ROOT/scripts/kast-impact.sh" \
   --workspace-root=/absolute/workspace/path \
-  --file-path=/absolute/path/to/File.kt \
-  --offset=<offset> \
-  --new-name=NewSymbolName \
-  --dry-run=true \
-  > "$KAST_TMP/rename-plan.json" 2> "$KAST_STDERR"
+  --symbol=AnalysisServer \
+  --include-callers=true
 ```
 
-Key output: `edits`, `fileHashes` (SHA-256 integrity tokens), `affectedFiles`
+Key output: `ok`, `symbol`, `references`, `search_scope`, optional
+`call_hierarchy`, `log_file`
 
-Pass `fileHashes` unchanged to `edits apply`. Do not recompute or manipulate them.
+### Rename a symbol safely
 
-### edits apply
-
-Always supply the apply request via `--request-file`. Never construct inline JSON.
-Use `kast-plan-utils.py` to extract the request from the rename plan output:
-
-```bash
-"$KAST" rename \
-  --workspace-root=/absolute/workspace/path \
-  --file-path=/absolute/path/to/File.kt \
-  --offset=<offset> \
-  --new-name=NewSymbolName \
-  --dry-run=true \
-  > "$KAST_TMP/rename-plan.json" 2> "$KAST_STDERR"
-
-python3 "$SKILL_ROOT/scripts/kast-plan-utils.py" \
-  extract-apply-request "$KAST_TMP/rename-plan.json" "$KAST_TMP/apply-request.json"
-
-"$KAST" edits apply \
-  --workspace-root=/absolute/workspace/path \
-  --request-file="$KAST_TMP/apply-request.json" \
-  > "$KAST_RESULT" 2> "$KAST_STDERR"
-```
-
-Key output: `applied` (written edits), `affectedFiles`
-
----
-
-## 4. Workflows
-
-### Resolve or find references for a named symbol
-
-```
-1. Bootstrap (Section 0)
-2. grep for declaration → identify file + symbol name
-3. Compute offset (Section 2 Step 2) → take first offset
-4. symbol resolve → read $KAST_RESULT, confirm fqName
-5. references → read $KAST_RESULT for results
-```
-
-### Caller or callee exploration
-
-```
-1. Bootstrap (Section 0)
-2. Symbol lookup (Section 2) → offset
-3. symbol resolve → read $KAST_RESULT, confirm identity and kind
-4. call hierarchy --direction=incoming|outgoing --depth=<n> → read $KAST_RESULT
-5. Check stats + truncation before claiming the tree is complete
-```
-
-### Pre-edit impact assessment
-
-Before modifying a symbol:
-
-```
-1. Bootstrap (Section 0)
-2. Symbol lookup (Section 2) → offset
-3. symbol resolve → read $KAST_RESULT, confirm identity and kind
-4. references or call hierarchy → read $KAST_RESULT, assess impact before editing
-```
-
-### Safe rename
-
-Use the one-shot script. It runs workspace ensure, plans the rename, extracts the apply
-request without `jq`, applies the edits, runs diagnostics, and exits non-zero if any
-`ERROR`-severity diagnostics remain. The script already follows the file-redirect pattern
-internally — it is the canonical example of this workflow.
+Use the one-shot rename wrapper for the full mutation workflow.
 
 ```bash
 bash "$SKILL_ROOT/scripts/kast-rename.sh" \
@@ -346,76 +154,105 @@ bash "$SKILL_ROOT/scripts/kast-rename.sh" \
   --new-name=NewSymbolName
 ```
 
-If `kast-rename.sh` exits non-zero due to `CONFLICT`: files changed between plan and
-apply. Re-run `kast-rename.sh` — it will produce a fresh plan with updated hashes.
+`kast-rename.sh` runs `workspace ensure`, plans the rename, extracts the
+apply-request with `kast-plan-utils.py`, applies the edits, runs diagnostics on
+affected files, and exits non-zero if any `ERROR` diagnostics remain.
+
+### Raw CLI fallback
+
+Use raw `"$KAST"` only when a wrapper does not exist yet, such as
+`type hierarchy`, `semantic insertion-point`, `imports optimize`, or a custom
+rename-plan flow. Keep `kast-plan-utils.py` in the loop for rename JSON.
+
+```bash
+"$KAST" rename \
+  --workspace-root=/absolute/workspace/path \
+  --file-path=/absolute/path/to/File.kt \
+  --offset=<offset> \
+  --new-name=NewSymbolName \
+  --dry-run=true > /tmp/rename-plan.json
+
+python3 "$SKILL_ROOT/scripts/kast-plan-utils.py" \
+  extract-apply-request /tmp/rename-plan.json /tmp/apply-request.json
+
+"$KAST" edits apply \
+  --workspace-root=/absolute/workspace/path \
+  --request-file=/tmp/apply-request.json
+```
+
+## 4. Workflows
+
+Use these wrapper combinations for the common agent tasks.
+
+### Resolve or find references for a named symbol
+
+Start with `kast-resolve.sh` when you only need the declaration. Use
+`kast-references.sh` when the next step is a reference list.
+
+### Caller or callee exploration
+
+Use `kast-callers.sh` with `--direction=incoming` for callers and
+`--direction=outgoing` for callees. Always read `stats` and any node
+`truncation` before you report the tree as complete.
+
+### Pre-edit impact assessment
+
+Use `kast-impact.sh` before you edit a symbol. Treat
+`search_scope.exhaustive=false`, `stats.timeoutReached=true`, or any truncation
+marker as proof that the result is bounded.
 
 ### Post-edit validation
 
-After any code change (rename, manual edit, or generated edit):
+After any code change, run `kast-diagnostics.sh` on the modified files. When
+you need a quick contract check for the wrappers themselves, run
+`validate-wrapper-json.sh`.
 
-```
-1. workspace ensure --workspace-root=<abs-path> > "$KAST_RESULT" 2> "$KAST_STDERR"
-2. diagnostics --file-paths=<comma-separated list of modified files> > "$KAST_RESULT" 2> "$KAST_STDERR"
-3. python3 "$SKILL_ROOT/scripts/kast-plan-utils.py" check-diagnostics "$KAST_RESULT"
-4. Fix any ERROR-severity diagnostic, then repeat from step 2
-```
-
-### Diagnostic triage
-
-When a build fails or a file has unknown errors:
-
-```
-1. Bootstrap (Section 0)
-2. diagnostics --file-paths=<file> > "$KAST_RESULT" 2> "$KAST_STDERR"
-3. Read $KAST_RESULT; for each ERROR: symbol resolve at diagnostic startOffset → identify the symbol
-4. references → read $KAST_RESULT, check for broken call sites
-5. Fix, then diagnostics again to confirm clean
+```bash
+bash "$SKILL_ROOT/scripts/validate-wrapper-json.sh" \
+  "$(git rev-parse --show-toplevel)"
 ```
 
----
+## 5. Error reference
 
-## 5. Error Reference
+Use the wrapper JSON as the first failure surface. The wrapper `message`,
+`stage`, and `log_file` tell you whether the failure came from argument
+validation, workspace startup, candidate lookup, or the underlying CLI call.
 
-| Error / Symptom | Cause | Fix |
-|-----------------|-------|-----|
-| `VALIDATION_ERROR` (400) | Bad parameters | Fix the file path, offset, or name and retry |
-| `NOT_FOUND` (404) | Offset on whitespace, unsaved file, or daemon still indexing | Recompute offset to land on the identifier. If stderr or `workspace status` reports `INDEXING`, wait for `READY`; otherwise treat it as an offset, save, or refresh problem. |
-| `CONFLICT` (409) | Files changed since rename plan | Re-run `kast-rename.sh` — it produces a fresh plan |
-| `CAPABILITY_NOT_SUPPORTED` (501) | Capability absent | Run `"$KAST" capabilities` to confirm. Use grep for text search; kast does not do it. |
-| `APPLY_PARTIAL_FAILURE` (500) | Disk or permissions error mid-apply | Inspect `details` map; fix the root cause and apply remaining edits manually |
-| `workspace ensure` timeout | Daemon failed before becoming servable | Read `.kast/logs/standalone-daemon.log` — the cause is always there |
-
----
+| Error or symptom | Cause | Fix |
+| --- | --- | --- |
+| `argument_validation` | Missing or invalid wrapper arguments | Fix the wrapper flags and rerun |
+| `candidate_search` | No declaration candidate matched the symbol query | Add `--file`, `--kind`, or `--containing-type`, or confirm the symbol exists |
+| `workspace_ensure` | The daemon did not become ready | Read `.kast/logs/standalone-daemon.log` before retrying |
+| `NOT_FOUND` in `log_file` | Offset landed on the wrong token or the file is not indexed | Re-run `kast-resolve.sh` with a better file hint, or wait for `READY` |
+| `CONFLICT` from `kast-rename.sh` | Files changed between plan and apply | Re-run `kast-rename.sh` to generate a fresh plan |
+| `clean=false` from `kast-diagnostics.sh` | Diagnostics found `ERROR` results | Fix the errors, then rerun diagnostics |
 
 ## 6. Rules
 
-- Use `--key=value` syntax for every flag.
-- All `--workspace-root`, `--file-path`, and `--file-paths` values must be absolute paths.
-- Always use `--request-file` for `edits apply`. Never construct inline JSON.
-- Never use `jq` — use `kast-plan-utils.py` for all JSON operations.
-- Call `call hierarchy` only after you confirm the declaration offset.
-- Always read call hierarchy `stats` and node `truncation` before you report
-  the tree as complete.
-- Never use hyphenated pseudo-commands (`workspace-status`, `symbol-resolve`, `edits-apply`).
-- When `workspace ensure` fails, read the log before doing anything else.
-- Always redirect stdout to `$KAST_RESULT` and stderr to `$KAST_STDERR`. Never read kast JSON output from the terminal — always read it from the result file.
-
----
+- Always use the wrapper scripts for multi-step operations.
+- Use raw `kast` CLI only when a wrapper does not exist yet.
+- Keep `--key=value` syntax for raw CLI calls.
+- Use absolute `--workspace-root`, `--file-path`, and `--file-paths` values
+  for raw CLI calls.
+- Use `kast-plan-utils.py` for rename-plan JSON. Never use `jq`.
+- Treat `search_scope.exhaustive=false`, `stats.timeoutReached=true`,
+  `stats.maxTotalCallsReached=true`, `stats.maxChildrenPerNodeReached=true`,
+  or node `truncation` as proof that the result is bounded.
+- Read the wrapper `log_file` before you retry a workspace-startup failure.
+- Never claim a symbol match, reference list, or call tree is complete unless
+  the wrapper result supports that claim.
 
 ## 7. Integration
 
-| Task | Tool |
-|------|------|
-| Resolve a symbol at an offset | kast `symbol resolve` |
-| Find all references across workspace | kast `references` |
-| Inspect callers or callees for a symbol | kast `call hierarchy` |
-| Get compile errors for a file | kast `diagnostics` |
-| Rename a symbol safely | `kast-rename.sh` |
-| Find text in comments or strings | Grep — kast does not search text |
-| Build the project | `kotlin-gradle-loop` skill / configured `project.gradleHook` |
-| Run tests | `kotlin-gradle-loop` skill / targeted Gradle tasks plus final `gradleHook` |
+Use the narrowest tool that owns the task.
 
-kast = semantic intelligence (what is this symbol, who calls it, where is it
-used, rename it).
-kotlin-gradle-loop = build, test, and final build-health validation through the
-configured `gradleHook`.
+| Task | Tool |
+| --- | --- |
+| Resolve a symbol name to a real declaration | `kast-resolve.sh` |
+| Find references for a named symbol | `kast-references.sh` |
+| Explore callers or callees for a named symbol | `kast-callers.sh` |
+| Assess pre-edit impact | `kast-impact.sh` |
+| Run structured diagnostics for changed files | `kast-diagnostics.sh` |
+| Rename a symbol end to end | `kast-rename.sh` |
+| Build the project | `kotlin-gradle-loop` skill or targeted Gradle tasks |
+| Run tests | `kotlin-gradle-loop` skill or targeted Gradle tasks |

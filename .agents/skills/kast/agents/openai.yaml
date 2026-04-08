@@ -1,7 +1,9 @@
 interface:
   display_name: "Kast"
-  short_description: "Kotlin semantic code intelligence via the kast daemon"
+  short_description: "Structured Kotlin semantic analysis via packaged kast wrappers"
   default_prompt: >
-    Discover the kast CLI using resolve-kast.sh, then run the requested
-    command. Always run workspace ensure before any analysis command.
-    Use --key=value syntax and absolute paths throughout.
+    Locate the packaged kast skill root, then use the wrapper scripts in
+    scripts/ for resolve, references, callers, diagnostics, impact, and rename
+    workflows. Trust the wrapper JSON on stdout and inspect log_file only when
+    ok=false or daemon notes matter. Use raw kast CLI only when a wrapper does
+    not exist.
