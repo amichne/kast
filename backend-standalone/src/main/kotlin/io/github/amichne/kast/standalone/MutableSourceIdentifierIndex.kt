@@ -112,6 +112,18 @@ internal class MutableSourceIdentifierIndex(
 
     fun knownPaths(): Set<String> = identifiersByPath.keys.mapTo(mutableSetOf()) { it.value }
 
+    internal fun identifiersForPath(path: NormalizedPath): Set<KotlinIdentifier> =
+        identifiersByPath[path].orEmpty()
+
+    internal fun packageNameForPath(path: NormalizedPath): PackageName? = packageByPath[path]
+
+    internal fun moduleNameForPath(path: NormalizedPath): ModuleName? = moduleNameByPath[path]
+
+    internal fun importsForPath(path: NormalizedPath): Set<FqName> = importsByPath[path].orEmpty()
+
+    internal fun wildcardImportsForPath(path: NormalizedPath): Set<PackageName> =
+        wildcardImportPackagesByPath[path].orEmpty()
+
     internal fun extractFileMetadata(
         normalizedPath: String,
         content: String,

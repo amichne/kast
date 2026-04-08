@@ -115,7 +115,7 @@ class CacheManagerTest {
             session.awaitInitialSourceIndex()
             WorkspaceDiscoveryCache().write(workspaceRoot, workspaceDiscoveryResult())
             val cacheDirectory = kastCacheDirectory(normalizeStandalonePath(workspaceRoot))
-            assertTrue(Files.isRegularFile(cacheDirectory.resolve("source-identifier-index.json")))
+            assertTrue(Files.isRegularFile(cacheDirectory.resolve("source-index.db")))
             assertTrue(Files.isRegularFile(cacheDirectory.resolve("gradle-workspace.json")))
 
             val backend = StandaloneAnalysisBackend(
@@ -130,7 +130,7 @@ class CacheManagerTest {
 
             backend.refresh(RefreshQuery(filePaths = emptyList()))
 
-            assertFalse(Files.exists(cacheDirectory.resolve("source-identifier-index.json")))
+            assertFalse(Files.exists(cacheDirectory.resolve("source-index.db")))
             assertFalse(Files.exists(cacheDirectory.resolve("gradle-workspace.json")))
             assertFalse(Files.exists(cacheDirectory.resolve("file-manifest.json")))
         }

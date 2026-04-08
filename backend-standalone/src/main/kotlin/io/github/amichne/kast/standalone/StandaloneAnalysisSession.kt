@@ -22,8 +22,8 @@ import io.github.amichne.kast.api.NotFoundException
 import io.github.amichne.kast.api.PackageName
 import io.github.amichne.kast.api.RefreshResult
 import io.github.amichne.kast.standalone.cache.CacheManager
-import io.github.amichne.kast.standalone.cache.FileManifest
 import io.github.amichne.kast.standalone.cache.SourceIndexCache
+import io.github.amichne.kast.standalone.cache.scanTrackedKotlinFileTimestamps
 import io.github.amichne.kast.standalone.workspace.PhasedDiscoveryResult
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaSourceModule
 import org.jetbrains.kotlin.analysis.api.standalone.StandaloneAnalysisAPISession
@@ -76,7 +76,6 @@ internal class StandaloneAnalysisSession(
     private val fullKtFileMapLoadLock = Any()
     private val analysisSessionLock = ReentrantReadWriteLock()
     private val cacheManager = CacheManager(normalizedWorkspaceRoot, envReader = cacheEnvReader)
-    private val fileManifest = FileManifest(normalizedWorkspaceRoot, enabled = cacheManager.isEnabled())
     private val sourceIndexCache = SourceIndexCache(
         workspaceRoot = normalizedWorkspaceRoot,
         enabled = cacheManager.isEnabled(),
@@ -557,7 +556,7 @@ internal class StandaloneAnalysisSession(
 
     private fun loadKtFilesByPath(analysisSession: StandaloneAnalysisAPISession): Map<NormalizedPath, KtFile> {
         val loadedFiles = linkedMapOf<NormalizedPath, KtFile>()
-        val currentPathsByLastModifiedMillis = fileManifest.snapshot(resolvedSourceRoots).currentPathsByLastModifiedMillis
+        val currentPathsByLastModifiedMillis = scanTrackedKotlinFileTimestamps(resolvedSourceRoots)
         currentPathsByLastModifiedMillis.forEach { (pathString, lastModifiedMillis) ->
             val normalizedPath = NormalizedPath.ofNormalized(pathString)
             val cachedKtFile = ktFilesByPath[normalizedPath]
@@ -740,6 +739,7 @@ internal class StandaloneAnalysisSession(
         if (!Files.isRegularFile(filePath)) {
             sourceModuleNamesByPath.remove(normalizedPath)
             index.removeFile(normalizedPath.value)
+            sourceIndexCache.saveRemovedFile(normalizedPath.value)
             return
         }
 
@@ -748,6 +748,7 @@ internal class StandaloneAnalysisSession(
             newContent = sourceIndexFileReader(filePath),
             moduleName = sourceModuleNameForFile(normalizedPath),
         )
+        sourceIndexCache.saveFileIndex(index, normalizedPath)
     }
 
     private fun refreshSourceIdentifierIndex(normalizedPaths: List<NormalizedPath>) {
@@ -760,7 +761,7 @@ internal class StandaloneAnalysisSession(
     }
 
     private fun allTrackedKotlinSourcePaths(): Set<String> =
-        fileManifest.snapshot(resolvedSourceRoots).currentPathsByLastModifiedMillis.keys
+        scanTrackedKotlinFileTimestamps(resolvedSourceRoots).keys
 
     private fun buildTargetedCandidatePaths(
         identifier: String,

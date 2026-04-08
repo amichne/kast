@@ -1,13 +1,17 @@
 package io.github.amichne.kast.standalone
 
 import io.github.amichne.kast.api.ModuleName
+import io.github.amichne.kast.api.NormalizedPath
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.FileTime
+import java.sql.DriverManager
 import kotlin.io.path.createDirectories
 import kotlin.io.path.writeText
 import io.github.amichne.kast.standalone.cache.SourceIndexCache
@@ -286,6 +290,108 @@ class SourceIndexCacheTest {
                     loaded.index.candidatePathsFor("salute") == listOf(normalizedFile)
             }
         }
+    }
+
+    @Test
+    fun `source index cache creates SQLite database not legacy JSON`() {
+        val appFile = writeSourceFile(
+            relativePath = "sample/App.kt",
+            content = "package sample\n\nfun welcome(): String = \"hi\"\n",
+        )
+        val cache = SourceIndexCache(normalizeStandalonePath(workspaceRoot))
+        cache.save(
+            index = MutableSourceIdentifierIndex.fromCandidatePathsByIdentifier(
+                mapOf("welcome" to listOf(normalizeStandalonePath(appFile).toString())),
+            ),
+            sourceRoots = sourceRoots(),
+        )
+
+        val cacheDir = kastCacheDirectory(normalizeStandalonePath(workspaceRoot))
+        assertTrue(Files.isRegularFile(cacheDir.resolve("source-index.db")))
+        assertFalse(Files.exists(cacheDir.resolve("source-identifier-index.json")))
+        assertFalse(Files.exists(cacheDir.resolve("file-manifest.json")))
+    }
+
+    @Test
+    fun `saveFileIndex incrementally updates only the target file`() {
+        val appFile = writeSourceFile(
+            relativePath = "sample/App.kt",
+            content = "package sample\n\nfun welcome(): String = \"hi\"\n",
+        )
+        val helperFile = writeSourceFile(
+            relativePath = "sample/Helper.kt",
+            content = "package sample\n\nfun helper(): String = \"ok\"\n",
+        )
+        val normalizedApp = normalizeStandalonePath(appFile).toString()
+        val normalizedHelper = normalizeStandalonePath(helperFile).toString()
+
+        val cache = SourceIndexCache(normalizeStandalonePath(workspaceRoot))
+        val index = MutableSourceIdentifierIndex.fromCandidatePathsByIdentifier(
+            mapOf(
+                "welcome" to listOf(normalizedApp),
+                "helper" to listOf(normalizedHelper),
+            ),
+        )
+        cache.save(index = index, sourceRoots = sourceRoots())
+
+        // Simulate an in-place edit of App.kt — the identifier changes
+        index.updateFile(normalizedApp, "package sample\n\nfun renamed(): String = \"hi\"\n")
+        cache.saveFileIndex(index, NormalizedPath.ofNormalized(normalizedApp))
+
+        val loaded = requireNotNull(cache.load(sourceRoots()))
+        assertEquals(listOf(normalizedApp), loaded.index.candidatePathsFor("renamed"))
+        assertTrue(loaded.index.candidatePathsFor("welcome").isEmpty())
+        // Helper must be untouched
+        assertEquals(listOf(normalizedHelper), loaded.index.candidatePathsFor("helper"))
+    }
+
+    @Test
+    fun `source index cache migrates from legacy JSON to SQLite on first load`() {
+        val appFile = writeSourceFile(
+            relativePath = "sample/App.kt",
+            content = "package sample\n\nfun welcome(): String = \"hi\"\n",
+        )
+        val normalizedFile = normalizeStandalonePath(appFile).toString()
+        val lastModified = Files.getLastModifiedTime(appFile).toMillis()
+
+        val cacheDir = kastCacheDirectory(normalizeStandalonePath(workspaceRoot))
+        Files.createDirectories(cacheDir)
+        // Write legacy JSON files in the old format
+        Files.writeString(
+            cacheDir.resolve("source-identifier-index.json"),
+            """{"schemaVersion":3,"candidatePathsByIdentifier":{"welcome":["$normalizedFile"]}}""",
+        )
+        Files.writeString(
+            cacheDir.resolve("file-manifest.json"),
+            """{"schemaVersion":1,"fileLastModifiedMillisByPath":{"$normalizedFile":$lastModified}}""",
+        )
+
+        val cache = SourceIndexCache(normalizeStandalonePath(workspaceRoot))
+        val result = requireNotNull(cache.load(sourceRoots()))
+
+        assertEquals(listOf(normalizedFile), result.index.candidatePathsFor("welcome"))
+        // SQLite DB must have been created
+        assertTrue(Files.isRegularFile(cacheDir.resolve("source-index.db")))
+        // Old JSON files must have been deleted
+        assertFalse(Files.exists(cacheDir.resolve("source-identifier-index.json")))
+        assertFalse(Files.exists(cacheDir.resolve("file-manifest.json")))
+    }
+
+    @Test
+    fun `source index cache returns null on SQLite schema version mismatch`() {
+        val cacheDir = kastCacheDirectory(normalizeStandalonePath(workspaceRoot))
+        Files.createDirectories(cacheDir)
+        val dbPath = cacheDir.resolve("source-index.db")
+        // Manually write a DB with an unknown schema version
+        DriverManager.getConnection("jdbc:sqlite:$dbPath").use { conn ->
+            conn.createStatement().use { stmt ->
+                stmt.execute("CREATE TABLE schema_version (version INTEGER NOT NULL)")
+                stmt.execute("INSERT INTO schema_version (version) VALUES (999)")
+            }
+        }
+
+        val cache = SourceIndexCache(normalizeStandalonePath(workspaceRoot))
+        assertNull(cache.load(sourceRoots()))
     }
 
     private fun saveSimpleCache(file: Path): SourceIndexCache {

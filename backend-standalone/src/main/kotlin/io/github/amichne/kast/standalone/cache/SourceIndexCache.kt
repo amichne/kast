@@ -1,5 +1,6 @@
 package io.github.amichne.kast.standalone.cache
 
+import io.github.amichne.kast.api.NormalizedPath
 import io.github.amichne.kast.standalone.MutableSourceIdentifierIndex
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -10,58 +11,193 @@ import java.nio.file.StandardCopyOption
 
 private const val sourceIndexCacheSchemaVersion = 3
 
+/**
+ * Persists the source identifier index and file manifest to a SQLite database.
+ *
+ * On first startup after the migration the class reads the old JSON files
+ * (`source-identifier-index.json` + `file-manifest.json`), writes their
+ * content to SQLite in a single transaction, and deletes the JSON files.
+ * Subsequent startups use SQLite directly.
+ */
 internal class SourceIndexCache(
     workspaceRoot: Path,
-    enabled: Boolean = true,
-    json: Json = defaultCacheJson,
-) : VersionedFileCache<SourceIdentifierIndexCachePayload>(
-    schemaVersion = sourceIndexCacheSchemaVersion,
-    serializer = SourceIdentifierIndexCachePayload.serializer(),
-    enabled = enabled,
-    json = json,
+    private val enabled: Boolean = true,
+    private val json: Json = defaultCacheJson,
 ) {
     private val cacheDirectory: Path = kastCacheDirectory(workspaceRoot)
     private val indexCachePath: Path = cacheDirectory.resolve("source-identifier-index.json")
-    private val fileManifest = FileManifest(workspaceRoot = workspaceRoot, enabled = enabled)
+    private val store = SqliteSourceIndexStore(workspaceRoot)
 
-    override fun payloadSchemaVersion(payload: SourceIdentifierIndexCachePayload): Int = payload.schemaVersion
+    // Kept only to read `manifestPath` during JSON migration.
+    private val legacyManifest = FileManifest(workspaceRoot = workspaceRoot, enabled = enabled, json = json)
 
+    /** Full save: replaces all SQLite data in one transaction. */
     fun save(
         index: MutableSourceIdentifierIndex,
         sourceRoots: List<Path>,
     ) {
-        if (!enabled) {
-            return
-        }
-        val manifest = fileManifest.snapshot(sourceRoots).currentPathsByLastModifiedMillis
-        val metadata = index.toSerializableMetadata()
-        writePayload(
-            indexCachePath,
-            SourceIdentifierIndexCachePayload(
-                candidatePathsByIdentifier = index.toSerializableMap(),
-                moduleNameByPath = metadata.moduleNameByPath,
-                packageByPath = metadata.packageByPath,
-                importsByPath = metadata.importsByPath,
-                wildcardImportPackagesByPath = metadata.wildcardImportPackagesByPath,
-            ),
-        )
-        fileManifest.save(manifest)
+        if (!enabled) return
+        store.ensureSchema()
+        val manifest = scanTrackedKotlinFileTimestamps(sourceRoots)
+        store.saveFullIndex(updates = indexToUpdates(index), manifest = manifest)
     }
 
+    /**
+     * Loads the index from SQLite (migrating from JSON on first run), or returns
+     * `null` when no cached data is available and a full build is required.
+     */
     fun load(sourceRoots: List<Path>): IncrementalIndexResult? {
-        val cachedIndex = readPayload(indexCachePath) ?: return null
+        if (!enabled) return null
 
-        val manifestSnapshot = fileManifest.snapshot(sourceRoots)
+        if (store.dbExists()) {
+            val schemaValid = store.ensureSchema()
+            // Schema was rebuilt (version mismatch) — treat as a cache miss so the
+            // caller rebuilds the index from source files.
+            if (!schemaValid) return null
+
+            val manifestSnapshot = makeManifestSnapshot(sourceRoots)
+            return try {
+                IncrementalIndexResult(
+                    index = store.loadFullIndex(),
+                    changes = manifestSnapshot.changes,
+                )
+            } catch (_: Exception) {
+                null
+            }
+        }
+
+        // Migrate from the legacy JSON files, if present.
+        val jsonPayload = readJsonPayload() ?: return null
+        val previousManifest = legacyManifest.load().orEmpty()
+        val currentManifest = scanTrackedKotlinFileTimestamps(sourceRoots)
+        val changes = buildChangeSet(current = currentManifest, previous = previousManifest)
+
+        store.ensureSchema()
+        store.saveFullIndex(updates = jsonPayloadToUpdates(jsonPayload), manifest = previousManifest)
+        deleteJsonFiles()
+
         return IncrementalIndexResult(
             index = MutableSourceIdentifierIndex.fromCandidatePathsByIdentifier(
-                candidatePathsByIdentifier = cachedIndex.candidatePathsByIdentifier,
-                moduleNameByPath = cachedIndex.moduleNameByPath,
-                packageByPath = cachedIndex.packageByPath,
-                importsByPath = cachedIndex.importsByPath,
-                wildcardImportPackagesByPath = cachedIndex.wildcardImportPackagesByPath,
+                candidatePathsByIdentifier = jsonPayload.candidatePathsByIdentifier,
+                moduleNameByPath = jsonPayload.moduleNameByPath,
+                packageByPath = jsonPayload.packageByPath,
+                importsByPath = jsonPayload.importsByPath,
+                wildcardImportPackagesByPath = jsonPayload.wildcardImportPackagesByPath,
             ),
-            changes = manifestSnapshot.changes,
+            changes = changes,
         )
+    }
+
+    /**
+     * Incrementally writes a single file's index data to SQLite.
+     * No-op if the database has not been initialised yet (the next full
+     * [save] will capture the data).
+     */
+    fun saveFileIndex(
+        index: MutableSourceIdentifierIndex,
+        normalizedPath: NormalizedPath,
+    ) {
+        if (!enabled || !store.dbExists()) return
+        runCatching {
+            store.saveFileIndex(
+                FileIndexUpdate(
+                    path = normalizedPath.value,
+                    identifiers = index.identifiersForPath(normalizedPath).map { it.value }.toSet(),
+                    packageName = index.packageNameForPath(normalizedPath)?.value,
+                    moduleName = index.moduleNameForPath(normalizedPath)?.value,
+                    imports = index.importsForPath(normalizedPath).map { it.value }.toSet(),
+                    wildcardImports = index.wildcardImportsForPath(normalizedPath).map { it.value }.toSet(),
+                ),
+            )
+        }
+    }
+
+    /** Incrementally removes a single file's rows from all SQLite tables. */
+    fun saveRemovedFile(path: String) {
+        if (!enabled || !store.dbExists()) return
+        runCatching { store.removeFile(path) }
+    }
+
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
+
+    private fun makeManifestSnapshot(sourceRoots: List<Path>): FileManifestSnapshot {
+        val current = scanTrackedKotlinFileTimestamps(sourceRoots)
+        val previous = store.loadManifest().orEmpty()
+        return FileManifestSnapshot(
+            currentPathsByLastModifiedMillis = current,
+            changes = buildChangeSet(current = current, previous = previous),
+        )
+    }
+
+    private fun buildChangeSet(
+        current: Map<String, Long>,
+        previous: Map<String, Long>,
+    ): FileChangeSet = FileChangeSet(
+        added = (current.keys - previous.keys).sorted(),
+        modified = current.entries
+            .filter { (path, millis) -> previous[path]?.let { it != millis } == true }
+            .map { it.key }
+            .sorted(),
+        removed = (previous.keys - current.keys).sorted(),
+    )
+
+    private fun indexToUpdates(index: MutableSourceIdentifierIndex): List<FileIndexUpdate> {
+        val metadata = index.toSerializableMetadata()
+        val identifiersByPath = mutableMapOf<String, MutableSet<String>>()
+        index.toSerializableMap().forEach { (identifier, paths) ->
+            paths.forEach { path -> identifiersByPath.getOrPut(path) { mutableSetOf() }.add(identifier) }
+        }
+        val allPaths = (identifiersByPath.keys + metadata.packageByPath.keys + metadata.moduleNameByPath.keys)
+            .toHashSet()
+        return allPaths.map { path ->
+            FileIndexUpdate(
+                path = path,
+                identifiers = identifiersByPath[path].orEmpty(),
+                packageName = metadata.packageByPath[path],
+                moduleName = metadata.moduleNameByPath[path],
+                imports = metadata.importsByPath[path].orEmpty().toSet(),
+                wildcardImports = metadata.wildcardImportPackagesByPath[path].orEmpty().toSet(),
+            )
+        }
+    }
+
+    private fun jsonPayloadToUpdates(payload: SourceIdentifierIndexCachePayload): List<FileIndexUpdate> {
+        val identifiersByPath = mutableMapOf<String, MutableSet<String>>()
+        payload.candidatePathsByIdentifier.forEach { (identifier, paths) ->
+            paths.forEach { path -> identifiersByPath.getOrPut(path) { mutableSetOf() }.add(identifier) }
+        }
+        val allPaths = (identifiersByPath.keys + payload.packageByPath.keys + payload.moduleNameByPath.keys)
+            .toHashSet()
+        return allPaths.map { path ->
+            FileIndexUpdate(
+                path = path,
+                identifiers = identifiersByPath[path].orEmpty(),
+                packageName = payload.packageByPath[path],
+                moduleName = payload.moduleNameByPath[path],
+                imports = payload.importsByPath[path].orEmpty().toSet(),
+                wildcardImports = payload.wildcardImportPackagesByPath[path].orEmpty().toSet(),
+            )
+        }
+    }
+
+    private fun readJsonPayload(): SourceIdentifierIndexCachePayload? {
+        if (!Files.isRegularFile(indexCachePath)) return null
+        return try {
+            val payload = json.decodeFromString(
+                SourceIdentifierIndexCachePayload.serializer(),
+                Files.readString(indexCachePath),
+            )
+            if (payload.schemaVersion != sourceIndexCacheSchemaVersion) null else payload
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun deleteJsonFiles() {
+        runCatching { Files.deleteIfExists(indexCachePath) }
+        runCatching { Files.deleteIfExists(legacyManifest.manifestPath) }
     }
 }
 
@@ -106,3 +242,4 @@ internal fun writeCacheFileAtomically(
         Files.deleteIfExists(tempFile)
     }
 }
+
