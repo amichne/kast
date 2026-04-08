@@ -264,6 +264,115 @@ class MutableSourceIdentifierIndexTest {
     }
 
     @Test
+    fun `candidatePathsForFqName matches ancestor import of containing class`() {
+        val index = emptyIndex()
+        index.updateFile(
+            normalizedPath = "/project/src/consumer/Caller.kt",
+            newContent = """
+                package consumer
+
+                import pkg.Foo
+
+                fun use() = Foo.create()
+            """.trimIndent(),
+        )
+        index.updateFile(
+            normalizedPath = "/project/src/bystander/Bystander.kt",
+            newContent = """
+                package bystander
+
+                fun create() = "local shadow"
+            """.trimIndent(),
+        )
+
+        val candidates = index.candidatePathsForFqName(
+            identifier = "create",
+            targetPackage = "pkg",
+            targetFqName = "pkg.Foo.Companion.create",
+        )
+
+        assertEquals(listOf("/project/src/consumer/Caller.kt"), candidates)
+    }
+
+    @Test
+    fun `candidatePathsForFqName matches wildcard import of ancestor package`() {
+        val index = emptyIndex()
+        index.updateFile(
+            normalizedPath = "/project/src/consumer/WildcardCaller.kt",
+            newContent = """
+                package consumer
+
+                import pkg.Foo.*
+
+                fun use() = create()
+            """.trimIndent(),
+        )
+        index.updateFile(
+            normalizedPath = "/project/src/bystander/Bystander.kt",
+            newContent = """
+                package bystander
+
+                fun create() = "unrelated"
+            """.trimIndent(),
+        )
+
+        val candidates = index.candidatePathsForFqName(
+            identifier = "create",
+            targetPackage = "pkg",
+            targetFqName = "pkg.Foo.create",
+        )
+
+        assertEquals(listOf("/project/src/consumer/WildcardCaller.kt"), candidates)
+    }
+
+    @Test
+    fun `candidatePathsForFqName matches deeply nested member via intermediate ancestor import`() {
+        val index = emptyIndex()
+        index.updateFile(
+            normalizedPath = "/project/src/consumer/DeepCaller.kt",
+            newContent = """
+                package consumer
+
+                import pkg.Outer
+
+                fun use() = Outer.Inner.deepMethod()
+            """.trimIndent(),
+        )
+
+        val candidates = index.candidatePathsForFqName(
+            identifier = "deepMethod",
+            targetPackage = "pkg",
+            targetFqName = "pkg.Outer.Inner.deepMethod",
+        )
+
+        assertEquals(listOf("/project/src/consumer/DeepCaller.kt"), candidates)
+    }
+
+    @Test
+    fun `candidatePathsForFqName does not produce ancestors below target package`() {
+        val index = emptyIndex()
+        index.updateFile(
+            normalizedPath = "/project/src/consumer/Caller.kt",
+            newContent = """
+                package consumer
+
+                import pkg
+
+                fun use() = "something"
+            """.trimIndent(),
+        )
+
+        val candidates = index.candidatePathsForFqName(
+            identifier = "create",
+            targetPackage = "pkg",
+            targetFqName = "pkg.Foo.Companion.create",
+        )
+
+        // import "pkg" alone should not match — only ancestors between package and FQ name
+        assertTrue(candidates.isEmpty())
+    }
+
+    @Test
     fun `candidatePathsForFqName returns empty when identifier is absent from all files`() {
         val index = emptyIndex()
         index.updateFile(

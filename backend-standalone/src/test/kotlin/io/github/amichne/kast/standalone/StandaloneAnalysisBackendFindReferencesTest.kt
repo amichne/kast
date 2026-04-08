@@ -847,6 +847,92 @@ class StandaloneAnalysisBackendFindReferencesTest {
         }
     }
 
+    @Test
+    fun `find references for companion object member via class import across modules`(): TestResult = runTest {
+        val declarationFile = writeFile(
+            relativePath = "lib/src/main/kotlin/sample/IdFactory.kt",
+            content = """
+                package sample
+
+                class IdFactory {
+                    companion object {
+                        fun create(value: String): String = "id:${'$'}value"
+                    }
+                }
+            """.trimIndent() + "\n",
+        )
+        val callerFile = writeFile(
+            relativePath = "app/src/main/kotlin/consumer/Caller.kt",
+            content = """
+                package consumer
+
+                import sample.IdFactory
+
+                fun makerId(): String = IdFactory.create("test")
+            """.trimIndent() + "\n",
+        )
+        val queryOffset = Files.readString(declarationFile).indexOf("create")
+        val libModuleName = ModuleName(":lib[main]")
+        val appModuleName = ModuleName(":app[main]")
+        val phasedDiscoveryResult = PhasedDiscoveryResult(
+            initialLayout = StandaloneWorkspaceLayout(
+                sourceModules = listOf(
+                    StandaloneSourceModuleSpec(
+                        name = libModuleName,
+                        sourceRoots = listOf(normalizeStandalonePath(workspaceRoot.resolve("lib/src/main/kotlin"))),
+                        binaryRoots = emptyList(),
+                        dependencyModuleNames = emptyList(),
+                    ),
+                    StandaloneSourceModuleSpec(
+                        name = appModuleName,
+                        sourceRoots = listOf(normalizeStandalonePath(workspaceRoot.resolve("app/src/main/kotlin"))),
+                        binaryRoots = emptyList(),
+                        dependencyModuleNames = listOf(libModuleName),
+                    ),
+                ),
+                dependentModuleNamesBySourceModuleName = mapOf(
+                    appModuleName to setOf(appModuleName),
+                ),
+            ),
+            enrichmentFuture = null,
+        )
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "ignored",
+            phasedDiscoveryResult = phasedDiscoveryResult,
+        )
+        session.use { session ->
+            session.awaitInitialSourceIndex()
+            val backend = StandaloneAnalysisBackend(
+                workspaceRoot = workspaceRoot,
+                limits = ServerLimits(
+                    maxResults = 100,
+                    requestTimeoutMillis = 30_000,
+                    maxConcurrentRequests = 4,
+                ),
+                session = session,
+            )
+
+            val result = backend.findReferences(
+                ReferencesQuery(
+                    position = FilePosition(
+                        filePath = declarationFile.toString(),
+                        offset = queryOffset,
+                    ),
+                    includeDeclaration = false,
+                ),
+            )
+
+            val referenceFiles = result.references.map { it.filePath }.distinct()
+            assertTrue(
+                referenceFiles.any { it.contains("Caller.kt") },
+                "expected cross-module caller with class import to be found, got: $referenceFiles",
+            )
+        }
+    }
+
     private fun writeFile(
         relativePath: String,
         content: String,

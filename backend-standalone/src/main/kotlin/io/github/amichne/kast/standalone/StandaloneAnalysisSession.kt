@@ -964,7 +964,9 @@ internal class MutableSourceIdentifierIndex(
 
     /**
      * Returns file paths that contain [identifier] and are plausibly importing [targetFqName]:
-     * same package, explicit import, or wildcard import of the target's package.
+     * same package, explicit import, wildcard import of the target's package, or an import of
+     * any ancestor FQ name between [targetFqName] and [targetPackage] (e.g., importing a
+     * containing class to access a companion member).
      */
     fun candidatePathsForFqName(
         identifier: String,
@@ -976,11 +978,15 @@ internal class MutableSourceIdentifierIndex(
         val pkg = PackageName(targetPackage)
         val fqn = FqName(targetFqName)
         val rawCandidates = pathsByIdentifier[id] ?: return emptyList()
+        val ancestorFqNames = ancestorFqNamesOf(targetFqName, targetPackage)
+        val ancestorWildcardPackages = ancestorFqNames.mapTo(mutableSetOf()) { PackageName(it.value) }
         return rawCandidates
             .filter { path ->
                 packageByPath[path] == pkg ||
                 importsByPath[path]?.contains(fqn) == true ||
-                wildcardImportPackagesByPath[path]?.contains(pkg) == true
+                wildcardImportPackagesByPath[path]?.contains(pkg) == true ||
+                (ancestorFqNames.isNotEmpty() && importsByPath[path]?.any { it in ancestorFqNames } == true) ||
+                (ancestorWildcardPackages.isNotEmpty() && wildcardImportPackagesByPath[path]?.any { it in ancestorWildcardPackages } == true)
             }
             .let { candidates ->
                 allowedModuleNames?.let { moduleNames -> filterPathsByAllowedModules(candidates, moduleNames) } ?: candidates
@@ -1119,6 +1125,27 @@ internal class MutableSourceIdentifierIndex(
     companion object {
         private val packageRegex = Regex("""^package\s+([\w]+(?:\.[\w]+)*)""", RegexOption.MULTILINE)
         private val importRegex = Regex("""^import\s+([\w]+(?:\.[\w]+)*)(\.\*)?""", RegexOption.MULTILINE)
+
+        /**
+         * Computes intermediate FQ name prefixes between [targetPackage] (exclusive)
+         * and [targetFqName] (exclusive). For example, given
+         * `targetFqName = "pkg.Foo.Companion.create"` and `targetPackage = "pkg"`,
+         * returns `{FqName("pkg.Foo.Companion"), FqName("pkg.Foo")}`.
+         */
+        private fun ancestorFqNamesOf(targetFqName: String, targetPackage: String): Set<FqName> {
+            if (targetFqName.length <= targetPackage.length + 1) return emptySet()
+            return buildSet {
+                var current = targetFqName
+                while (true) {
+                    val lastDot = current.lastIndexOf('.')
+                    if (lastDot < 0 || lastDot <= targetPackage.length) break
+                    current = current.substring(0, lastDot)
+                    if (current.length > targetPackage.length) {
+                        add(FqName(current))
+                    }
+                }
+            }
+        }
 
         fun fromCandidatePathsByIdentifier(
             candidatePathsByIdentifier: Map<String, List<String>>,
