@@ -1,5 +1,7 @@
 package io.github.amichne.kast.standalone
 
+import io.github.amichne.kast.standalone.cache.SourceIndexCache
+import io.github.amichne.kast.standalone.cache.SymbolReferenceRow
 import org.junit.jupiter.api.Assertions.assertDoesNotThrow
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -11,6 +13,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.FileTime
 import java.time.Duration
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.io.path.createDirectories
 import kotlin.io.path.writeText
@@ -258,6 +261,215 @@ class AsyncIndexerInvariantTest {
         }
 
         assertEquals(1, readCount.get(), "Only the changed file should be re-read on incremental startup")
+    }
+
+    // ── Phase 2 tests ───────────────────────────────────────────────────
+
+    @Test
+    fun `phase 2 populates symbol_references from scanner output`() {
+        val filePath = writeSourceFile(
+            relativePath = "sample/Greeter.kt",
+            content = "package sample\n\nfun greet(): String = \"hi\"\n",
+        ).toString()
+        val normalized = normalizeStandalonePath(workspaceRoot)
+        val cache = SourceIndexCache(normalized)
+        val store = cache.store
+        store.ensureSchema()
+        store.saveManifest(mapOf(filePath to System.currentTimeMillis()))
+
+        val indexer = BackgroundIndexer(
+            sourceRoots = sourceRoots(),
+            sourceIndexFileReader = { Files.readString(it) },
+            sourceModuleNameResolver = { null },
+            sourceIndexCache = cache,
+            store = store,
+        )
+        indexer.use {
+            indexer.startPhase2 { path ->
+                if (path == filePath) {
+                    listOf(
+                        SymbolReferenceRow(
+                            sourcePath = path,
+                            sourceOffset = 20,
+                            targetFqName = "kotlin.String",
+                            targetPath = null,
+                            targetOffset = null,
+                        ),
+                    )
+                } else {
+                    emptyList()
+                }
+            }
+            indexer.referenceIndexReady.get(10, TimeUnit.SECONDS)
+        }
+
+        val refs = store.referencesToSymbol("kotlin.String")
+        assertEquals(1, refs.size)
+        assertEquals(filePath, refs.single().sourcePath)
+        assertEquals(20, refs.single().sourceOffset)
+        cache.close()
+    }
+
+    @Test
+    fun `phase 2 clears stale references before re-scanning a file`() {
+        val filePath = writeSourceFile(
+            relativePath = "sample/Caller.kt",
+            content = "package sample\n\nfun call() = greet()\n",
+        ).toString()
+        val normalized = normalizeStandalonePath(workspaceRoot)
+        val cache = SourceIndexCache(normalized)
+        val store = cache.store
+        store.ensureSchema()
+        store.saveManifest(mapOf(filePath to System.currentTimeMillis()))
+
+        // Pre-insert a stale reference
+        store.upsertSymbolReference(
+            sourcePath = filePath,
+            sourceOffset = 5,
+            targetFqName = "sample.staleTarget",
+            targetPath = "/src/Stale.kt",
+            targetOffset = 0,
+        )
+        assertEquals(1, store.referencesFromFile(filePath).size)
+
+        val indexer = BackgroundIndexer(
+            sourceRoots = sourceRoots(),
+            sourceIndexFileReader = { Files.readString(it) },
+            sourceModuleNameResolver = { null },
+            sourceIndexCache = cache,
+            store = store,
+        )
+        indexer.use {
+            indexer.startPhase2 { path ->
+                listOf(
+                    SymbolReferenceRow(
+                        sourcePath = path,
+                        sourceOffset = 28,
+                        targetFqName = "sample.greet",
+                        targetPath = "/src/Greeter.kt",
+                        targetOffset = 15,
+                    ),
+                )
+            }
+            indexer.referenceIndexReady.get(10, TimeUnit.SECONDS)
+        }
+
+        val staleRefs = store.referencesToSymbol("sample.staleTarget")
+        assertTrue(staleRefs.isEmpty(), "Stale reference should be cleared")
+
+        val newRefs = store.referencesToSymbol("sample.greet")
+        assertEquals(1, newRefs.size)
+        assertEquals(filePath, newRefs.single().sourcePath)
+        cache.close()
+    }
+
+    @Test
+    fun `phase 2 completes referenceIndexReady future on success`() {
+        val filePath = writeSourceFile(
+            relativePath = "sample/Empty.kt",
+            content = "package sample\n",
+        ).toString()
+        val normalized = normalizeStandalonePath(workspaceRoot)
+        val cache = SourceIndexCache(normalized)
+        val store = cache.store
+        store.ensureSchema()
+        store.saveManifest(mapOf(filePath to System.currentTimeMillis()))
+
+        val indexer = BackgroundIndexer(
+            sourceRoots = sourceRoots(),
+            sourceIndexFileReader = { Files.readString(it) },
+            sourceModuleNameResolver = { null },
+            sourceIndexCache = cache,
+            store = store,
+        )
+        indexer.use {
+            indexer.startPhase2 { emptyList() }
+            assertDoesNotThrow {
+                indexer.referenceIndexReady.get(10, TimeUnit.SECONDS)
+            }
+            assertTrue(indexer.referenceIndexReady.isDone)
+        }
+        cache.close()
+    }
+
+    @Test
+    fun `phase 2 survives scanner exception on individual file without aborting`() {
+        val filePaths = (0 until 5).map { i ->
+            writeSourceFile(
+                relativePath = "sample/File$i.kt",
+                content = "package sample\n\nfun func$i() = $i\n",
+            ).toString()
+        }
+        val failingPath = filePaths[2]
+
+        val normalized = normalizeStandalonePath(workspaceRoot)
+        val cache = SourceIndexCache(normalized)
+        val store = cache.store
+        store.ensureSchema()
+        store.saveManifest(filePaths.associateWith { System.currentTimeMillis() })
+
+        val indexer = BackgroundIndexer(
+            sourceRoots = sourceRoots(),
+            sourceIndexFileReader = { Files.readString(it) },
+            sourceModuleNameResolver = { null },
+            sourceIndexCache = cache,
+            store = store,
+        )
+        indexer.use {
+            indexer.startPhase2 { path ->
+                if (path == failingPath) {
+                    throw RuntimeException("Simulated scanner failure")
+                }
+                listOf(
+                    SymbolReferenceRow(
+                        sourcePath = path,
+                        sourceOffset = 0,
+                        targetFqName = "sample.target",
+                        targetPath = null,
+                        targetOffset = null,
+                    ),
+                )
+            }
+            indexer.referenceIndexReady.get(10, TimeUnit.SECONDS)
+        }
+
+        val refs = store.referencesToSymbol("sample.target")
+        assertEquals(4, refs.size, "References from non-failing files should be present")
+        assertTrue(refs.none { it.sourcePath == failingPath })
+        cache.close()
+    }
+
+    @Test
+    fun `phase 2 is cancellable via close without hanging`() {
+        val filePaths = (0 until 200).map { i ->
+            writeSourceFile(
+                relativePath = "sample/File$i.kt",
+                content = "package sample\n\nfun func$i() = $i\n",
+            ).toString()
+        }
+        val normalized = normalizeStandalonePath(workspaceRoot)
+        val cache = SourceIndexCache(normalized)
+        val store = cache.store
+        store.ensureSchema()
+        store.saveManifest(filePaths.associateWith { System.currentTimeMillis() })
+
+        val indexer = BackgroundIndexer(
+            sourceRoots = sourceRoots(),
+            sourceIndexFileReader = { Files.readString(it) },
+            sourceModuleNameResolver = { null },
+            sourceIndexCache = cache,
+            store = store,
+        )
+        indexer.startPhase2 { _ ->
+            Thread.sleep(500)
+            emptyList()
+        }
+
+        assertTimeout(Duration.ofSeconds(5)) {
+            indexer.close()
+        }
+        assertTrue(indexer.referenceIndexReady.isDone)
+        cache.close()
     }
 
     // -- helpers --

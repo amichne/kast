@@ -12,6 +12,7 @@ import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.platform.syntax.psi.CommonElementTypeConverterFactory
 import com.intellij.platform.syntax.psi.ElementTypeConverters
 import com.intellij.psi.PsiManager
+import com.intellij.psi.PsiRecursiveElementWalkingVisitor
 import com.intellij.psi.compiled.ClassFileDecompilers
 import com.intellij.psi.impl.PsiManagerEx
 import io.github.amichne.kast.api.FqName
@@ -21,9 +22,12 @@ import io.github.amichne.kast.api.NormalizedPath
 import io.github.amichne.kast.api.NotFoundException
 import io.github.amichne.kast.api.PackageName
 import io.github.amichne.kast.api.RefreshResult
+import io.github.amichne.kast.standalone.analysis.resolvedFilePath
+import io.github.amichne.kast.standalone.analysis.targetFqNameAndPackage
 import io.github.amichne.kast.standalone.cache.CacheManager
 import io.github.amichne.kast.standalone.cache.SourceIndexCache
 import io.github.amichne.kast.standalone.cache.SqliteSourceIndexStore
+import io.github.amichne.kast.standalone.cache.SymbolReferenceRow
 import io.github.amichne.kast.standalone.cache.scanTrackedKotlinFileTimestamps
 import io.github.amichne.kast.standalone.workspace.PhasedDiscoveryResult
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaSourceModule
@@ -205,7 +209,6 @@ internal class StandaloneAnalysisSession(
                         fileManager.setViewProvider(virtualFile, null)
                     }
                 }
-                PsiManager.getInstance(session.project).dropResolveCaches()
             }
 
             normalizedPaths.forEach { normalizedPath ->
@@ -236,6 +239,7 @@ internal class StandaloneAnalysisSession(
             }
         }
 
+        PsiManager.getInstance(session.project).dropResolveCaches()
         refreshSourceIdentifierIndex(normalizedPaths)
         targetedCandidatePathsByLookupKey.clear()
         return buildRefreshResult(normalizedPaths, fullRefresh = false)
@@ -275,8 +279,32 @@ internal class StandaloneAnalysisSession(
         return buildRefreshResult(normalizedPaths, fullRefresh = false)
     }
 
+    /**
+     * Rebuilds the K2 analysis session without a full workspace refresh.
+     *
+     * In K2 standalone mode, `KotlinStandaloneDeclarationProviderFactory` builds a
+     * static declaration index at session construction time. Content changes that alter
+     * declaration signatures (e.g., renames) require a session rebuild for cross-file
+     * resolution to pick up the new names. The lightweight `refreshFileContents` path
+     * updates PSI/VFS and our source identifier index, but cannot incrementally update
+     * K2's declaration index because standalone mode's `MockComponentManager` does not
+     * support the message-bus-based invalidation that IDE mode relies on.
+     *
+     * Call this after `refreshFileContents` when the edits include declaration-level
+     * changes and cross-file resolution correctness is required.
+     */
+    fun rebuildAnalysisSession() {
+        analysisSessionLock.write {
+            val previousDisposable = sessionStateDisposable
+            buildAnalysisStateAndCache()
+            fullKtFileMapLoaded = false
+            Disposer.dispose(previousDisposable)
+        }
+    }
+
     fun refreshWorkspace(invalidateCaches: Boolean = false): RefreshResult {
         if (invalidateCaches) {
+            backgroundIndexer.close()
             cacheManager.invalidateAll()
         }
         val currentPaths = allTrackedKotlinSourcePaths()
@@ -686,7 +714,51 @@ internal class StandaloneAnalysisSession(
                 applyPendingSourceIndexRefreshes(builtIndex)
                 sourceIdentifierIndex.set(builtIndex)
             }
+            backgroundIndexer.startPhase2(::scanFileReferences)
         }
+    }
+
+    /**
+     * Phase 2 reference scanner: walks a single file's PSI tree, resolves references
+     * via the K2 analysis session, and extracts [SymbolReferenceRow]s mapping each
+     * reference site to its target's fully-qualified name, path, and offset.
+     *
+     * Called per-file on the Phase 2 background thread. Errors for individual elements
+     * are silently skipped so one bad reference doesn't abort the entire file scan.
+     */
+    private fun scanFileReferences(filePath: String): List<SymbolReferenceRow> {
+        val rows = mutableListOf<SymbolReferenceRow>()
+        withReadAccess {
+            val ktFile = runCatching { findKtFile(filePath) }.getOrNull() ?: return@withReadAccess
+            val sourceFilePath = runCatching { ktFile.resolvedFilePath().value }.getOrElse { filePath }
+
+            ktFile.accept(
+                object : PsiRecursiveElementWalkingVisitor() {
+                    override fun visitElement(element: com.intellij.psi.PsiElement) {
+                        element.references.forEach { reference ->
+                            runCatching {
+                                val resolved = reference.resolve() ?: return@forEach
+                                val fqNameAndPkg = resolved.targetFqNameAndPackage() ?: return@forEach
+                                val (fqName, _) = fqNameAndPkg
+                                val targetPath = runCatching { resolved.resolvedFilePath().value }.getOrNull()
+                                val targetOffset = resolved.textRange?.startOffset
+                                val sourceOffset = reference.element.textRange.startOffset +
+                                    reference.rangeInElement.startOffset
+                                rows += SymbolReferenceRow(
+                                    sourcePath = sourceFilePath,
+                                    sourceOffset = sourceOffset,
+                                    targetFqName = fqName.value,
+                                    targetPath = targetPath,
+                                    targetOffset = targetOffset,
+                                )
+                            }
+                        }
+                        super.visitElement(element)
+                    }
+                },
+            )
+        }
+        return rows
     }
 
     private fun applyPendingSourceIndexRefreshes(index: MutableSourceIdentifierIndex) {

@@ -68,7 +68,16 @@ public final class LazyListenerKt {
                     throw exception;
                 }
                 catch (Throwable exception) {
-                    MessageBusImpl.LOG.error("Cannot create listener", exception);
+                    // Standalone mode: MockComponentManager throws UnsupportedOperationException
+                    // from createListener. Fall back to direct reflective instantiation so that
+                    // K2 FIR session invalidation listeners (and any other lazy listeners) are
+                    // still registered.
+                    Object fallback = instantiateListenerDirectly(descriptor);
+                    if (fallback != null) {
+                        handlers.add(fallback);
+                    } else {
+                        MessageBusImpl.LOG.error("Cannot create listener", exception);
+                    }
                 }
             }
 
@@ -212,5 +221,31 @@ public final class LazyListenerKt {
             }
         }
         return filteredHandlers;
+    }
+
+    /**
+     * Reflective fallback for standalone mode where {@code MockComponentManager.createListener}
+     * throws {@link UnsupportedOperationException}. Loads the listener class using the plugin
+     * descriptor's classloader and instantiates it via the no-arg constructor.
+     *
+     * @return the instantiated listener, or {@code null} if instantiation fails
+     */
+    private static Object instantiateListenerDirectly(PluginListenerDescriptor descriptor) {
+        try {
+            String listenerClassName = descriptor.getDescriptor().listenerClassName;
+            ClassLoader classLoader = descriptor.getPluginDescriptor().getPluginClassLoader();
+            if (classLoader == null) {
+                classLoader = Thread.currentThread().getContextClassLoader();
+            }
+            if (classLoader == null) {
+                classLoader = LazyListenerKt.class.getClassLoader();
+            }
+            Class<?> listenerClass = Class.forName(listenerClassName, true, classLoader);
+            java.lang.reflect.Constructor<?> constructor = listenerClass.getDeclaredConstructor();
+            constructor.setAccessible(true);
+            return constructor.newInstance();
+        } catch (Throwable fallbackException) {
+            return null;
+        }
     }
 }

@@ -92,20 +92,37 @@ internal class BackgroundIndexer(
                 if (cancelled) return@thread
                 val allPaths = store.loadManifest()?.keys ?: return@thread
                 generation.incrementAndGet()
-                for (filePath in allPaths) {
+                val pathList = allPaths.toList()
+                // Process files in batches: scan without holding a transaction, then
+                // batch-write results in a short transaction to minimize SQLite contention.
+                for (batch in pathList.chunked(PHASE2_BATCH_SIZE)) {
                     if (cancelled || Thread.currentThread().isInterrupted) break
-                    runCatching {
-                        store.clearReferencesFromFile(filePath)
-                        val refs = referenceScanner(filePath)
-                        refs.forEach { ref ->
-                            store.upsertSymbolReference(
-                                sourcePath = ref.sourcePath,
-                                sourceOffset = ref.sourceOffset,
-                                targetFqName = ref.targetFqName,
-                                targetPath = ref.targetPath,
-                                targetOffset = ref.targetOffset,
-                            )
+                    // Phase A: scan files (no SQLite writes, may be slow due to K2 resolution)
+                    val batchResults = batch.mapNotNull { filePath ->
+                        if (cancelled || Thread.currentThread().isInterrupted) return@mapNotNull null
+                        runCatching {
+                            filePath to referenceScanner(filePath)
+                        }.getOrNull()
+                    }
+                    if (cancelled || Thread.currentThread().isInterrupted) break
+                    // Phase B: batch-write in a short transaction
+                    store.beginTransaction()
+                    try {
+                        for ((filePath, refs) in batchResults) {
+                            store.clearReferencesFromFile(filePath)
+                            refs.forEach { ref ->
+                                store.upsertSymbolReference(
+                                    sourcePath = ref.sourcePath,
+                                    sourceOffset = ref.sourceOffset,
+                                    targetFqName = ref.targetFqName,
+                                    targetPath = ref.targetPath,
+                                    targetOffset = ref.targetOffset,
+                                )
+                            }
                         }
+                        store.commitTransaction()
+                    } catch (e: Exception) {
+                        store.rollbackTransaction()
                     }
                 }
                 if (!cancelled) {
@@ -167,6 +184,11 @@ internal class BackgroundIndexer(
     // -------------------------------------------------------------------------
     // Phase 1 internals
     // -------------------------------------------------------------------------
+
+    companion object {
+        /** Number of files to batch per Phase 2 transaction to reduce SQLite write contention. */
+        private const val PHASE2_BATCH_SIZE = 50
+    }
 
     private fun loadOrBuildIndex(): MutableSourceIdentifierIndex {
         val incrementalResult = runCatching {

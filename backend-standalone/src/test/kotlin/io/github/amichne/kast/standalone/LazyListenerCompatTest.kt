@@ -238,6 +238,50 @@ class LazyListenerCompatTest {
     private fun readConnectionHandlers(connection: MessageBusImpl.MessageHandlerHolder): List<Any> {
         return readConnectionField(connection, "handlers") as List<Any>
     }
+
+    @Test
+    fun `subscribe lazy listeners falls back to reflective instantiation when createListener throws`() {
+        val module = testPluginDescriptor("sample.plugin")
+        val topic = Topic.create("fallback-topic", TestTopicListener::class.java)
+        val rawDescriptor = listenerDescriptor(
+            module = module,
+            topic = topic,
+            listenerClass = TestListenerHandler::class.java,
+        )
+        val storedDescriptors = mutableListOf<PluginListenerDescriptor>()
+        @Suppress("UNCHECKED_CAST")
+        (storedDescriptors as MutableList<Any>).add(rawDescriptor)
+        val topicClassToListenerDescriptor = ConcurrentHashMap<String, MutableList<PluginListenerDescriptor>>()
+        topicClassToListenerDescriptor[topic.listenerClass.name] = storedDescriptors
+        val subscribers = ConcurrentLinkedQueue<MessageBusImpl.MessageHandlerHolder>()
+
+        // Owner that always throws — simulates MockComponentManager.createListener
+        val owner = object : MessageBusOwner {
+            override fun createListener(descriptor: PluginListenerDescriptor): Any {
+                throw UnsupportedOperationException("MockComponentManager stub")
+            }
+
+            override fun isDisposed(): Boolean = false
+        }
+
+        LazyListenerKt.subscribeLazyListeners(
+            topic,
+            topicClassToListenerDescriptor,
+            subscribers,
+            owner,
+        )
+
+        // The fallback reflective instantiation should still register the handler.
+        assertTrue(topicClassToListenerDescriptor.isEmpty())
+        assertEquals(1, subscribers.size)
+        val connection = subscribers.single()
+        assertSame(module, readConnectionField(connection, "module"))
+        assertSame(topic, readConnectionField(connection, "topic"))
+        assertEquals(
+            listOf(TestListenerHandler::class.java),
+            readConnectionHandlers(connection).map { it.javaClass },
+        )
+    }
 }
 
 private interface TestTopicListener

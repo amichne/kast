@@ -337,7 +337,160 @@ class SqliteCacheInvariantTest {
         }
     }
 
-    // ── 8. Generation counter (pending) ─────────────────────────────────
+    // ── 8. upsertSymbolReference round-trips through referencesToSymbol ─
+
+    @Test
+    fun `upsertSymbolReference round-trips through referencesToSymbol`() {
+        val normalized = normalizeStandalonePath(workspaceRoot)
+        SqliteSourceIndexStore(normalized).use { store ->
+            store.ensureSchema()
+
+            store.upsertSymbolReference(
+                sourcePath = "/src/Caller.kt",
+                sourceOffset = 42,
+                targetFqName = "com.example.Foo",
+                targetPath = "/src/Foo.kt",
+                targetOffset = 10,
+            )
+            store.upsertSymbolReference(
+                sourcePath = "/src/Caller.kt",
+                sourceOffset = 99,
+                targetFqName = "com.example.Bar",
+                targetPath = "/src/Bar.kt",
+                targetOffset = 5,
+            )
+            store.upsertSymbolReference(
+                sourcePath = "/src/Other.kt",
+                sourceOffset = 7,
+                targetFqName = "com.example.Foo",
+                targetPath = "/src/Foo.kt",
+                targetOffset = 10,
+            )
+
+            val fooRefs = store.referencesToSymbol("com.example.Foo")
+            assertEquals(2, fooRefs.size)
+            assertTrue(fooRefs.map { it.sourcePath }.containsAll(listOf("/src/Caller.kt", "/src/Other.kt")))
+
+            val barRefs = store.referencesToSymbol("com.example.Bar")
+            assertEquals(1, barRefs.size)
+            assertEquals("/src/Caller.kt", barRefs.single().sourcePath)
+        }
+    }
+
+    // ── 9. referencesFromFile returns all outgoing references ────────────
+
+    @Test
+    fun `referencesFromFile returns all outgoing references`() {
+        val normalized = normalizeStandalonePath(workspaceRoot)
+        SqliteSourceIndexStore(normalized).use { store ->
+            store.ensureSchema()
+
+            store.upsertSymbolReference(
+                sourcePath = "/src/Caller.kt",
+                sourceOffset = 42,
+                targetFqName = "com.example.Foo",
+                targetPath = "/src/Foo.kt",
+                targetOffset = 10,
+            )
+            store.upsertSymbolReference(
+                sourcePath = "/src/Caller.kt",
+                sourceOffset = 99,
+                targetFqName = "com.example.Bar",
+                targetPath = "/src/Bar.kt",
+                targetOffset = 5,
+            )
+            store.upsertSymbolReference(
+                sourcePath = "/src/Other.kt",
+                sourceOffset = 7,
+                targetFqName = "com.example.Foo",
+                targetPath = "/src/Foo.kt",
+                targetOffset = 10,
+            )
+
+            val callerRefs = store.referencesFromFile("/src/Caller.kt")
+            assertEquals(2, callerRefs.size)
+            assertTrue(callerRefs.map { it.targetFqName }.containsAll(listOf("com.example.Foo", "com.example.Bar")))
+        }
+    }
+
+    // ── 10. clearReferencesFromFile removes only that file's references ──
+
+    @Test
+    fun `clearReferencesFromFile removes only that file references`() {
+        val normalized = normalizeStandalonePath(workspaceRoot)
+        SqliteSourceIndexStore(normalized).use { store ->
+            store.ensureSchema()
+
+            store.upsertSymbolReference(
+                sourcePath = "/src/Caller.kt",
+                sourceOffset = 42,
+                targetFqName = "com.example.Foo",
+                targetPath = "/src/Foo.kt",
+                targetOffset = 10,
+            )
+            store.upsertSymbolReference(
+                sourcePath = "/src/Other.kt",
+                sourceOffset = 7,
+                targetFqName = "com.example.Foo",
+                targetPath = "/src/Foo.kt",
+                targetOffset = 10,
+            )
+
+            store.clearReferencesFromFile("/src/Caller.kt")
+
+            val callerRefs = store.referencesFromFile("/src/Caller.kt")
+            assertTrue(callerRefs.isEmpty())
+
+            val otherRefs = store.referencesFromFile("/src/Other.kt")
+            assertEquals(1, otherRefs.size)
+            assertEquals("com.example.Foo", otherRefs.single().targetFqName)
+        }
+    }
+
+    // ── 11. upsert replaces existing reference at same source location ───
+
+    @Test
+    fun `upsert replaces existing reference at same source location`() {
+        val normalized = normalizeStandalonePath(workspaceRoot)
+        SqliteSourceIndexStore(normalized).use { store ->
+            store.ensureSchema()
+
+            store.upsertSymbolReference(
+                sourcePath = "/src/Caller.kt",
+                sourceOffset = 42,
+                targetFqName = "com.example.Target",
+                targetPath = "/src/Old.kt",
+                targetOffset = 10,
+            )
+
+            store.upsertSymbolReference(
+                sourcePath = "/src/Caller.kt",
+                sourceOffset = 42,
+                targetFqName = "com.example.Target",
+                targetPath = "/src/New.kt",
+                targetOffset = 20,
+            )
+
+            val refs = store.referencesToSymbol("com.example.Target")
+            assertEquals(1, refs.size, "Upsert should replace, not duplicate")
+            assertEquals("/src/New.kt", refs.single().targetPath)
+            assertEquals(20, refs.single().targetOffset)
+        }
+    }
+
+    // ── 12. referencesToSymbol returns empty list for unknown symbol ─────
+
+    @Test
+    fun `referencesToSymbol returns empty list for unknown symbol`() {
+        val normalized = normalizeStandalonePath(workspaceRoot)
+        SqliteSourceIndexStore(normalized).use { store ->
+            store.ensureSchema()
+            val result = store.referencesToSymbol("does.not.Exist")
+            assertTrue(result.isEmpty())
+        }
+    }
+
+    // ── 13. Generation counter ──────────────────────────────────────────
 
     @Test
     fun `generation counter tracks index rebuilds`() {

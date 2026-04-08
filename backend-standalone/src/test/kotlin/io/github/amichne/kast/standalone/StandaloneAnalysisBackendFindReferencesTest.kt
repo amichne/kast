@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import io.github.amichne.kast.standalone.cache.SourceIndexCache
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.writeText
@@ -930,6 +931,230 @@ class StandaloneAnalysisBackendFindReferencesTest {
             assertTrue(
                 referenceFiles.any { it.contains("Caller.kt") },
                 "expected cross-module caller with class import to be found, got: $referenceFiles",
+            )
+        }
+    }
+
+    // ── Symbol reference cache-hit / fallback tests ───────────────────
+
+    @Test
+    fun `findReferences uses symbol_references cache when phase 2 is complete`(): TestResult = runTest {
+        val declarationFile = writeFile(
+            relativePath = "src/main/kotlin/sample/Greeter.kt",
+            content = $$"""
+                package sample
+
+                fun greet(name: String): String = "hi $name"
+            """.trimIndent() + "\n",
+        )
+        val usageFile = writeFile(
+            relativePath = "src/main/kotlin/sample/Use.kt",
+            content = """
+                package sample
+
+                fun use(): String = greet("kast")
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "src/main/kotlin/sample/Unrelated.kt",
+            content = """
+                package sample
+
+                fun unrelated(): Int = 42
+            """.trimIndent() + "\n",
+        )
+
+        val queryOffset = Files.readString(usageFile).indexOf("greet")
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "sources",
+        )
+        session.use { s ->
+            s.awaitInitialSourceIndex()
+
+            // Insert a symbol_reference mapping Use.kt -> sample.greet
+            s.sqliteStore.ensureSchema()
+            s.sqliteStore.upsertSymbolReference(
+                sourcePath = normalizePath(usageFile),
+                sourceOffset = queryOffset,
+                targetFqName = "sample.greet",
+                targetPath = normalizePath(declarationFile),
+                targetOffset = Files.readString(declarationFile).indexOf("greet"),
+            )
+
+            // Complete the referenceIndexReady future via reflection
+            val indexerField = StandaloneAnalysisSession::class.java.getDeclaredField("backgroundIndexer")
+            indexerField.isAccessible = true
+            val indexer = indexerField.get(s) as BackgroundIndexer
+            indexer.referenceIndexReady.complete(Unit)
+            assertTrue(s.isReferenceIndexReady())
+
+            val backend = StandaloneAnalysisBackend(
+                workspaceRoot = workspaceRoot,
+                limits = ServerLimits(
+                    maxResults = 100,
+                    requestTimeoutMillis = 30_000,
+                    maxConcurrentRequests = 4,
+                ),
+                session = s,
+            )
+
+            val result = backend.findReferences(
+                ReferencesQuery(
+                    position = FilePosition(
+                        filePath = usageFile.toString(),
+                        offset = queryOffset,
+                    ),
+                    includeDeclaration = false,
+                ),
+            )
+
+            val referencePaths = result.references.map { it.filePath }
+            assertTrue(
+                referencePaths.any { it.contains("Use.kt") },
+                "Expected Use.kt in results, got: $referencePaths",
+            )
+            assertTrue(
+                referencePaths.none { it.contains("Unrelated.kt") },
+                "Unrelated.kt should not appear in cache-based results, got: $referencePaths",
+            )
+        }
+    }
+
+    @Test
+    fun `findReferences falls back to CandidateFileResolver when phase 2 is not ready`(): TestResult = runTest {
+        writeFile(
+            relativePath = "src/main/kotlin/sample/Greeter.kt",
+            content = $$"""
+                package sample
+
+                fun greet(name: String): String = "hi $name"
+            """.trimIndent() + "\n",
+        )
+        val usageFile = writeFile(
+            relativePath = "src/main/kotlin/sample/Use.kt",
+            content = """
+                package sample
+
+                fun use(): String = greet("kast")
+            """.trimIndent() + "\n",
+        )
+
+        val queryOffset = Files.readString(usageFile).indexOf("greet")
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "sources",
+        )
+        session.use { s ->
+            s.awaitInitialSourceIndex()
+
+            // Phase 2 auto-starts after Phase 1; replace the backgroundIndexer with a fresh
+            // instance whose referenceIndexReady is not completed, to test the fallback path.
+            val indexerField = StandaloneAnalysisSession::class.java.getDeclaredField("backgroundIndexer")
+            indexerField.isAccessible = true
+            val dummyCache = SourceIndexCache(workspaceRoot, enabled = false)
+            val freshIndexer = BackgroundIndexer(
+                sourceRoots = emptyList(),
+                sourceIndexFileReader = { "" },
+                sourceModuleNameResolver = { null },
+                sourceIndexCache = dummyCache,
+                store = s.sqliteStore,
+            )
+            indexerField.set(s, freshIndexer)
+            assertFalse(s.isReferenceIndexReady(), "Fresh indexer should not be ready")
+
+            val backend = StandaloneAnalysisBackend(
+                workspaceRoot = workspaceRoot,
+                limits = ServerLimits(
+                    maxResults = 100,
+                    requestTimeoutMillis = 30_000,
+                    maxConcurrentRequests = 4,
+                ),
+                session = s,
+            )
+
+            val result = backend.findReferences(
+                ReferencesQuery(
+                    position = FilePosition(
+                        filePath = usageFile.toString(),
+                        offset = queryOffset,
+                    ),
+                    includeDeclaration = false,
+                ),
+            )
+
+            assertTrue(
+                result.references.any { it.filePath.contains("Use.kt") },
+                "Fallback path should still find references in Use.kt, got: ${result.references.map { it.filePath }}",
+            )
+            assertFalse(s.isReferenceIndexReady())
+        }
+    }
+
+    @Test
+    fun `findReferences falls back when symbol_references has no rows for the target`(): TestResult = runTest {
+        writeFile(
+            relativePath = "src/main/kotlin/sample/Greeter.kt",
+            content = $$"""
+                package sample
+
+                fun greet(name: String): String = "hi $name"
+            """.trimIndent() + "\n",
+        )
+        val usageFile = writeFile(
+            relativePath = "src/main/kotlin/sample/Use.kt",
+            content = """
+                package sample
+
+                fun use(): String = greet("kast")
+            """.trimIndent() + "\n",
+        )
+
+        val queryOffset = Files.readString(usageFile).indexOf("greet")
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "sources",
+        )
+        session.use { s ->
+            s.awaitInitialSourceIndex()
+
+            // Complete Phase 2 but don't insert any symbol_reference rows
+            s.sqliteStore.ensureSchema()
+            val indexerField = StandaloneAnalysisSession::class.java.getDeclaredField("backgroundIndexer")
+            indexerField.isAccessible = true
+            val indexer = indexerField.get(s) as BackgroundIndexer
+            indexer.referenceIndexReady.complete(Unit)
+            assertTrue(s.isReferenceIndexReady())
+
+            val backend = StandaloneAnalysisBackend(
+                workspaceRoot = workspaceRoot,
+                limits = ServerLimits(
+                    maxResults = 100,
+                    requestTimeoutMillis = 30_000,
+                    maxConcurrentRequests = 4,
+                ),
+                session = s,
+            )
+
+            val result = backend.findReferences(
+                ReferencesQuery(
+                    position = FilePosition(
+                        filePath = usageFile.toString(),
+                        offset = queryOffset,
+                    ),
+                    includeDeclaration = false,
+                ),
+            )
+
+            assertTrue(
+                result.references.any { it.filePath.contains("Use.kt") },
+                "Should fall back and still find references when cache has no rows, got: ${result.references.map { it.filePath }}",
             )
         }
     }
