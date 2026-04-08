@@ -4,7 +4,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 
-// @Serializable  are going to unwrap the value classes by default, so we can just use the typed value here without needing to manually extract the underlying string.
+
 
 /**
  * A file-system path that has been normalized to an absolute, canonical form.

@@ -413,7 +413,6 @@ class StandaloneAnalysisBackendCallHierarchyTest {
                 "getText" -> "call"
                 "accept" -> {
                     (args!![0] as PsiElementVisitor).visitElement(proxy as PsiElement)
-                    Unit
                 }
                 "acceptChildren" -> Unit
                 else -> null
@@ -440,11 +439,9 @@ class StandaloneAnalysisBackendCallHierarchyTest {
                 "getText" -> "syntheticDeclaration"
                 "accept" -> {
                     (args!![0] as PsiElementVisitor).visitElement(proxy as PsiElement)
-                    Unit
                 }
                 "acceptChildren" -> {
                     child.accept(args!![0] as PsiElementVisitor)
-                    Unit
                 }
                 else -> null
             }

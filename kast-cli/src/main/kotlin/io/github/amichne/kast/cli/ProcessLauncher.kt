@@ -164,8 +164,7 @@ private fun requiredRuntimeLibClassPath(
 
 private fun runtimeLibClassPathFromCommandPath(commandPath: Path?): String? {
     val normalizedCommandPath = commandPath?.toAbsolutePath()?.normalize() ?: return null
-    return runtimeLibDirectoryCandidates(normalizedCommandPath)
-        .asSequence().firstNotNullOfOrNull(::runtimeLibClassPath)
+    return runtimeLibDirectoryCandidates(normalizedCommandPath).firstNotNullOfOrNull(::runtimeLibClassPath)
 }
 
 private fun runtimeLibDirectoryCandidates(commandPath: Path): List<Path> = buildList {

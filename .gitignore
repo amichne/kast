@@ -122,3 +122,4 @@ site/
 !/gradle/wrapper/gradle-wrapper.jar
 .agent-workflows/
 dist/
+.agents/skills/kast/.kast-version

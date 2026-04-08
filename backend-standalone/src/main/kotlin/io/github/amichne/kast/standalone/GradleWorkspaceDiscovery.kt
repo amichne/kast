@@ -586,8 +586,8 @@ private fun List<GradleModuleModel>.shouldFallbackToStaticModules(
     return !hasModuleDependencies
 }
 
-// @Serializable  are going to unwrap the value classes by default, so we can just use the typed value here without needing to manually extract the underlying string.
-// @Serializable  are going to unwrap the value classes by default, so we can just use the typed value here without needing to manually extract the underlying string.
+
+
 @Serializable
 internal data class GradleModuleModel(
     val gradlePath: String,

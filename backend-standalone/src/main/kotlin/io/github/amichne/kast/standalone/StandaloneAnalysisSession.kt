@@ -968,7 +968,7 @@ internal class MutableSourceIdentifierIndex(
      * any ancestor FQ name between [targetFqName] and [targetPackage] (e.g., importing a
      * containing class to access a companion member).
      */
-    fun candidatePathsForFqName(
+    internal fun candidatePathsForFqName(
         identifier: String,
         targetPackage: String,
         targetFqName: String,

@@ -262,7 +262,7 @@ private class JsonLineSpanExporter(
                 Files.writeString(outputFile, payload, CREATE, APPEND)
             }
             CompletableResultCode.ofSuccess()
-        }.getOrElse { failure ->
+        }.getOrElse { _ ->
             CompletableResultCode.ofFailure().also { it.fail() }
         }
     }

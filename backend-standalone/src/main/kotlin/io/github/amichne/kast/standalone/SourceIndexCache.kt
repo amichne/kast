@@ -19,8 +19,8 @@ internal class SourceIndexCache(
     enabled = enabled,
     json = json,
 ) {
-    internal val cacheDirectory: Path = kastCacheDirectory(workspaceRoot)
-    internal val indexCachePath: Path = cacheDirectory.resolve("source-identifier-index.json")
+    private val cacheDirectory: Path = kastCacheDirectory(workspaceRoot)
+    private val indexCachePath: Path = cacheDirectory.resolve("source-identifier-index.json")
     private val fileManifest = FileManifest(workspaceRoot = workspaceRoot, enabled = enabled)
 
     override fun payloadSchemaVersion(payload: SourceIdentifierIndexCachePayload): Int = payload.schemaVersion

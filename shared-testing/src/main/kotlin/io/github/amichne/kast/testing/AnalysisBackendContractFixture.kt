@@ -3,7 +3,6 @@ package io.github.amichne.kast.testing
 import io.github.amichne.kast.api.AnalysisBackend
 import io.github.amichne.kast.api.CallDirection
 import io.github.amichne.kast.api.CallHierarchyQuery
-import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.FileHashing
 import io.github.amichne.kast.api.FilePosition
 import io.github.amichne.kast.api.Location
@@ -51,10 +50,6 @@ data class AnalysisBackendContractFixture(
     val referencesQuery: ReferencesQuery = ReferencesQuery(
         position = symbolQuery.position,
         includeDeclaration = true,
-    )
-
-    val diagnosticsQuery: DiagnosticsQuery = DiagnosticsQuery(
-        filePaths = listOf(normalizePath(brokenFile)),
     )
 
     val callHierarchyQuery: CallHierarchyQuery = CallHierarchyQuery(

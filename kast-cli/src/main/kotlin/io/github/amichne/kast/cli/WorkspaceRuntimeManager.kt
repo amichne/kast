@@ -403,7 +403,7 @@ internal fun selectStatusCandidate(
 internal fun RuntimeCandidateStatus.currentStateLabel(): String = when {
     runtimeStatus?.state == RuntimeState.INDEXING || runtimeStatus?.indexing == true -> "INDEXING, enrichment in progress"
     runtimeStatus != null -> runtimeStatus.state.name
-    reachable -> "STARTING"
+    reachable -> RuntimeState.STARTING.name
     pidAlive -> "UNREACHABLE"
     else -> "STOPPED"
 }

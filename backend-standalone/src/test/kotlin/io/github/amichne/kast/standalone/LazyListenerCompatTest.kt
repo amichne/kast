@@ -1,3 +1,4 @@
+
 package io.github.amichne.kast.standalone
 
 import com.intellij.ide.plugins.IdeaPluginDescriptor
@@ -18,6 +19,7 @@ import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 
+@Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN", "UnstableApiUsage")
 class LazyListenerCompatTest {
     @Test
     fun `subscribe lazy listeners tolerates raw listener descriptors stored in wrapped map`() {
@@ -59,9 +61,8 @@ class LazyListenerCompatTest {
         val connection = subscribers.single()
         assertSame(module, readConnectionField(connection, "module"))
         assertSame(topic, readConnectionField(connection, "topic"))
-        assertEquals(
-            listOf(TestListenerHandler::class.java),
-            readConnectionHandlers(connection).map { it.javaClass },
+        assert(
+            listOf(TestListenerHandler::class.java) == readConnectionHandlers(connection).map { it.javaClass }
         )
     }
 
@@ -111,9 +112,8 @@ class LazyListenerCompatTest {
         val connection = subscribers.single()
         assertSame(removedModule, readConnectionField(connection, "module"))
         assertSame(topic, readConnectionField(connection, "topic"))
-        assertEquals(
-            listOf(OtherListenerHandler::class.java),
-            readConnectionHandlers(connection).map { it.javaClass },
+        assert(
+            listOf(OtherListenerHandler::class.java) == readConnectionHandlers(connection).map { it.javaClass }
         )
     }
 
@@ -157,7 +157,7 @@ class LazyListenerCompatTest {
                 "getUrl",
                 "getSinceBuild",
                 "getUntilBuild",
-                -> ""
+                    -> ""
                 "getVersion" -> "1.0"
                 "getReleaseDate" -> null
                 "getReleaseVersion" -> 0
@@ -173,7 +173,7 @@ class LazyListenerCompatTest {
                 "allowBundledUpdate",
                 "isImplementationDetail",
                 "isRequireRestart",
-                -> false
+                    -> false
                 "hashCode" -> System.identityHashCode(proxy)
                 "equals" -> proxy === args?.singleOrNull()
                 "toString" -> "TestPluginDescriptor($id)"
@@ -185,28 +185,28 @@ class LazyListenerCompatTest {
     private fun defaultReturnValue(type: Class<*>): Any? = when (type) {
         java.lang.Boolean.TYPE,
         java.lang.Boolean::class.java,
-        -> false
+            -> false
         Integer.TYPE,
         Integer::class.java,
-        -> 0
+            -> 0
         java.lang.Long.TYPE,
         java.lang.Long::class.java,
-        -> 0L
+            -> 0L
         java.lang.Float.TYPE,
         java.lang.Float::class.java,
-        -> 0f
+            -> 0f
         java.lang.Double.TYPE,
         java.lang.Double::class.java,
-        -> 0.0
+            -> 0.0
         java.lang.Short.TYPE,
         java.lang.Short::class.java,
-        -> 0.toShort()
+            -> 0.toShort()
         java.lang.Byte.TYPE,
         java.lang.Byte::class.java,
-        -> 0.toByte()
+            -> 0.toByte()
         Character.TYPE,
         Character::class.java,
-        -> '\u0000'
+            -> '\u0000'
         else -> null
     }
 
