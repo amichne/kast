@@ -403,6 +403,7 @@ internal class StandaloneAnalysisSession(
                 sourceIndexCache.save(index = index, sourceRoots = resolvedSourceRoots)
             }
         }
+        sourceIndexCache.close()
         cacheManager.close()
         workspaceRefreshWatcher = null
         if (!enrichmentReady.isDone) {

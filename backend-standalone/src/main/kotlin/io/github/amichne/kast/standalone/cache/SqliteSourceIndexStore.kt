@@ -29,17 +29,40 @@ internal data class FileIndexUpdate(
  * `source-index.db` database under the kast cache directory. WAL journal mode
  * is enabled so readers never block writers.
  */
-internal class SqliteSourceIndexStore(workspaceRoot: Path) {
+internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
     private val dbPath: Path = kastCacheDirectory(workspaceRoot).resolve("source-index.db")
+    private val connectionLock = Any()
+
+    @Volatile
+    private var cachedConnection: Connection? = null
 
     fun dbExists(): Boolean = Files.isRegularFile(dbPath)
 
-    private fun connect(): Connection {
-        Files.createDirectories(dbPath.parent)
-        return DriverManager.getConnection("jdbc:sqlite:$dbPath").also { conn ->
+    private fun connection(): Connection {
+        cachedConnection?.let { conn ->
+            if (!conn.isClosed) return conn
+        }
+        synchronized(connectionLock) {
+            cachedConnection?.let { conn ->
+                if (!conn.isClosed) return conn
+            }
+            Files.createDirectories(dbPath.parent)
+            val conn = DriverManager.getConnection("jdbc:sqlite:$dbPath")
             conn.createStatement().use { stmt ->
                 stmt.execute("PRAGMA journal_mode=WAL")
                 stmt.execute("PRAGMA synchronous=NORMAL")
+                stmt.execute("PRAGMA busy_timeout=5000")
+            }
+            cachedConnection = conn
+            return conn
+        }
+    }
+
+    override fun close() {
+        synchronized(connectionLock) {
+            cachedConnection?.let { conn ->
+                runCatching { conn.close() }
+                cachedConnection = null
             }
         }
     }
@@ -51,20 +74,19 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) {
      *   dropped and recreated (caller should treat this as a cache miss).
      */
     fun ensureSchema(): Boolean {
-        connect().use { conn ->
-            val version = readSchemaVersion(conn)
-            if (version == SCHEMA_VERSION) return true
-            conn.autoCommit = false
-            try {
-                dropAllTables(conn)
-                createAllTables(conn)
-                conn.commit()
-            } catch (e: Exception) {
-                conn.rollback()
-                throw e
-            }
-            return false
+        val conn = connection()
+        val version = readSchemaVersion(conn)
+        if (version == SCHEMA_VERSION) return true
+        conn.autoCommit = false
+        try {
+            dropAllTables(conn)
+            createAllTables(conn)
+            conn.commit()
+        } catch (e: Exception) {
+            conn.rollback()
+            throw e
         }
+        return false
     }
 
     private fun readSchemaVersion(conn: Connection): Int? = try {
@@ -124,116 +146,111 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) {
         updates: List<FileIndexUpdate>,
         manifest: Map<String, Long>,
     ) {
-        connect().use { conn ->
-            conn.autoCommit = false
-            try {
-                conn.createStatement().use { stmt ->
-                    stmt.execute("DELETE FROM identifier_paths")
-                    stmt.execute("DELETE FROM file_metadata")
-                    stmt.execute("DELETE FROM file_manifest")
-                }
-                for (update in updates) {
-                    insertFileDataInTransaction(conn, update)
-                }
-                insertManifestInTransaction(conn, manifest)
-                conn.commit()
-            } catch (e: Exception) {
-                conn.rollback()
-                throw e
+        val conn = connection()
+        conn.autoCommit = false
+        try {
+            conn.createStatement().use { stmt ->
+                stmt.execute("DELETE FROM identifier_paths")
+                stmt.execute("DELETE FROM file_metadata")
+                stmt.execute("DELETE FROM file_manifest")
             }
+            for (update in updates) {
+                insertFileDataInTransaction(conn, update)
+            }
+            insertManifestInTransaction(conn, manifest)
+            conn.commit()
+        } catch (e: Exception) {
+            conn.rollback()
+            throw e
         }
     }
 
     /** Upserts index data for a single file — used for incremental per-file refreshes. */
     fun saveFileIndex(update: FileIndexUpdate) {
-        connect().use { conn ->
-            conn.autoCommit = false
-            try {
-                insertFileDataInTransaction(conn, update)
-                conn.commit()
-            } catch (e: Exception) {
-                conn.rollback()
-                throw e
-            }
+        val conn = connection()
+        conn.autoCommit = false
+        try {
+            insertFileDataInTransaction(conn, update)
+            conn.commit()
+        } catch (e: Exception) {
+            conn.rollback()
+            throw e
         }
     }
 
     /** Removes all index/manifest rows for the given path. */
     fun removeFile(path: String) {
-        connect().use { conn ->
-            conn.autoCommit = false
-            try {
-                for (table in listOf("identifier_paths", "file_metadata", "file_manifest")) {
-                    conn.prepareStatement("DELETE FROM $table WHERE path = ?").use { stmt ->
-                        stmt.setString(1, path)
-                        stmt.executeUpdate()
-                    }
+        val conn = connection()
+        conn.autoCommit = false
+        try {
+            for (table in listOf("identifier_paths", "file_metadata", "file_manifest")) {
+                conn.prepareStatement("DELETE FROM $table WHERE path = ?").use { stmt ->
+                    stmt.setString(1, path)
+                    stmt.executeUpdate()
                 }
-                conn.commit()
-            } catch (e: Exception) {
-                conn.rollback()
-                throw e
             }
+            conn.commit()
+        } catch (e: Exception) {
+            conn.rollback()
+            throw e
         }
     }
 
     /** Reads all rows and constructs a [MutableSourceIdentifierIndex]. */
     fun loadFullIndex(): MutableSourceIdentifierIndex {
-        connect().use { conn ->
-            val candidatePathsByIdentifier = mutableMapOf<String, MutableList<String>>()
-            conn.createStatement().use { stmt ->
-                val rs = stmt.executeQuery("SELECT identifier, path FROM identifier_paths")
-                while (rs.next()) {
-                    candidatePathsByIdentifier
-                        .getOrPut(rs.getString(1)) { mutableListOf() }
-                        .add(rs.getString(2))
-                }
+        val conn = connection()
+        val candidatePathsByIdentifier = mutableMapOf<String, MutableList<String>>()
+        conn.createStatement().use { stmt ->
+            val rs = stmt.executeQuery("SELECT identifier, path FROM identifier_paths")
+            while (rs.next()) {
+                candidatePathsByIdentifier
+                    .getOrPut(rs.getString(1)) { mutableListOf() }
+                    .add(rs.getString(2))
             }
-
-            val moduleNameByPath = mutableMapOf<String, String>()
-            val packageByPath = mutableMapOf<String, String>()
-            val importsByPath = mutableMapOf<String, List<String>>()
-            val wildcardImportPackagesByPath = mutableMapOf<String, List<String>>()
-
-            conn.createStatement().use { stmt ->
-                val rs = stmt.executeQuery(
-                    "SELECT path, package_name, module_name, imports, wildcard_imports FROM file_metadata",
-                )
-                while (rs.next()) {
-                    val path = rs.getString(1)
-                    rs.getString(2)?.let { packageByPath[path] = it }
-                    rs.getString(3)?.let { moduleNameByPath[path] = it }
-                    rs.getString(4)?.decodeJsonArray()
-                        ?.takeIf { it.isNotEmpty() }
-                        ?.let { importsByPath[path] = it }
-                    rs.getString(5)?.decodeJsonArray()
-                        ?.takeIf { it.isNotEmpty() }
-                        ?.let { wildcardImportPackagesByPath[path] = it }
-                }
-            }
-
-            return MutableSourceIdentifierIndex.fromCandidatePathsByIdentifier(
-                candidatePathsByIdentifier = candidatePathsByIdentifier,
-                moduleNameByPath = moduleNameByPath,
-                packageByPath = packageByPath,
-                importsByPath = importsByPath,
-                wildcardImportPackagesByPath = wildcardImportPackagesByPath,
-            )
         }
+
+        val moduleNameByPath = mutableMapOf<String, String>()
+        val packageByPath = mutableMapOf<String, String>()
+        val importsByPath = mutableMapOf<String, List<String>>()
+        val wildcardImportPackagesByPath = mutableMapOf<String, List<String>>()
+
+        conn.createStatement().use { stmt ->
+            val rs = stmt.executeQuery(
+                "SELECT path, package_name, module_name, imports, wildcard_imports FROM file_metadata",
+            )
+            while (rs.next()) {
+                val path = rs.getString(1)
+                rs.getString(2)?.let { packageByPath[path] = it }
+                rs.getString(3)?.let { moduleNameByPath[path] = it }
+                rs.getString(4)?.decodeJsonArray()
+                    ?.takeIf { it.isNotEmpty() }
+                    ?.let { importsByPath[path] = it }
+                rs.getString(5)?.decodeJsonArray()
+                    ?.takeIf { it.isNotEmpty() }
+                    ?.let { wildcardImportPackagesByPath[path] = it }
+            }
+        }
+
+        return MutableSourceIdentifierIndex.fromCandidatePathsByIdentifier(
+            candidatePathsByIdentifier = candidatePathsByIdentifier,
+            moduleNameByPath = moduleNameByPath,
+            packageByPath = packageByPath,
+            importsByPath = importsByPath,
+            wildcardImportPackagesByPath = wildcardImportPackagesByPath,
+        )
     }
 
     /** Replaces the entire manifest table in a single transaction. */
     fun saveManifest(entries: Map<String, Long>) {
-        connect().use { conn ->
-            conn.autoCommit = false
-            try {
-                conn.createStatement().use { stmt -> stmt.execute("DELETE FROM file_manifest") }
-                insertManifestInTransaction(conn, entries)
-                conn.commit()
-            } catch (e: Exception) {
-                conn.rollback()
-                throw e
-            }
+        val conn = connection()
+        conn.autoCommit = false
+        try {
+            conn.createStatement().use { stmt -> stmt.execute("DELETE FROM file_manifest") }
+            insertManifestInTransaction(conn, entries)
+            conn.commit()
+        } catch (e: Exception) {
+            conn.rollback()
+            throw e
         }
     }
 
@@ -241,14 +258,13 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) {
     fun loadManifest(): Map<String, Long>? {
         if (!dbExists()) return null
         return try {
-            connect().use { conn ->
-                buildMap {
-                    conn.createStatement().use { stmt ->
-                        val rs = stmt.executeQuery(
-                            "SELECT path, last_modified_millis FROM file_manifest",
-                        )
-                        while (rs.next()) put(rs.getString(1), rs.getLong(2))
-                    }
+            val conn = connection()
+            buildMap {
+                conn.createStatement().use { stmt ->
+                    val rs = stmt.executeQuery(
+                        "SELECT path, last_modified_millis FROM file_manifest",
+                    )
+                    while (rs.next()) put(rs.getString(1), rs.getLong(2))
                 }
             }
         } catch (_: Exception) {

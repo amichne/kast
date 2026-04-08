@@ -23,7 +23,7 @@ internal class SourceIndexCache(
     workspaceRoot: Path,
     private val enabled: Boolean = true,
     private val json: Json = defaultCacheJson,
-) {
+) : AutoCloseable {
     private val cacheDirectory: Path = kastCacheDirectory(workspaceRoot)
     private val indexCachePath: Path = cacheDirectory.resolve("source-identifier-index.json")
     private val store = SqliteSourceIndexStore(workspaceRoot)
@@ -116,6 +116,10 @@ internal class SourceIndexCache(
     fun saveRemovedFile(path: String) {
         if (!enabled || !store.dbExists()) return
         runCatching { store.removeFile(path) }
+    }
+
+    override fun close() {
+        store.close()
     }
 
     // -------------------------------------------------------------------------
