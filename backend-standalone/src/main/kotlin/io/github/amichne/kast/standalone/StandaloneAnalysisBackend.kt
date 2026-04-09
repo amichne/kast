@@ -216,7 +216,16 @@ internal class StandaloneAnalysisBackend internal constructor(
 
     override suspend fun typeHierarchy(query: TypeHierarchyQuery): TypeHierarchyResult = withContext(readDispatcher) {
         session.withReadAccess {
-            typeHierarchyTraversal.build(query)
+            telemetry.inSpan(
+                scope = StandaloneTelemetryScope.SYMBOL_RESOLVE,
+                name = "kast.typeHierarchy",
+                attributes = mapOf(
+                    "kast.typeHierarchy.filePath" to query.position.filePath,
+                    "kast.typeHierarchy.offset" to query.position.offset,
+                ),
+            ) {
+                typeHierarchyTraversal.build(query)
+            }
         }
     }
 
@@ -224,24 +233,36 @@ internal class StandaloneAnalysisBackend internal constructor(
         query: SemanticInsertionQuery,
     ): SemanticInsertionResult = withContext(readDispatcher) {
         session.withReadAccess {
-            val file = session.findKtFile(query.position.filePath)
-            SemanticInsertionPointResolver.resolve(file, query)
+            telemetry.inSpan(
+                scope = StandaloneTelemetryScope.SYMBOL_RESOLVE,
+                name = "kast.semanticInsertionPoint",
+                attributes = mapOf("kast.insertionPoint.filePath" to query.position.filePath),
+            ) {
+                val file = session.findKtFile(query.position.filePath)
+                SemanticInsertionPointResolver.resolve(file, query)
+            }
         }
     }
 
     override suspend fun diagnostics(query: DiagnosticsQuery): DiagnosticsResult = withContext(readDispatcher) {
         session.withReadAccess {
-            val diagnostics = query.filePaths
-                .sorted()
-                .flatMap { filePath ->
-                    val file = session.findKtFile(filePath)
-                    analyze(file) {
-                        file.collectDiagnostics(KaDiagnosticCheckerFilter.EXTENDED_AND_COMMON_CHECKERS)
-                    }.flatMap { diagnostic -> diagnostic.toApiDiagnostics() }
-                }
-                .sortedWith(compareBy({ it.location.filePath }, { it.location.startOffset }, { it.code ?: "" }))
+            telemetry.inSpan(
+                scope = StandaloneTelemetryScope.SYMBOL_RESOLVE,
+                name = "kast.diagnostics",
+                attributes = mapOf("kast.diagnostics.fileCount" to query.filePaths.size),
+            ) {
+                val diagnostics = query.filePaths
+                    .sorted()
+                    .flatMap { filePath ->
+                        val file = session.findKtFile(filePath)
+                        analyze(file) {
+                            file.collectDiagnostics(KaDiagnosticCheckerFilter.EXTENDED_AND_COMMON_CHECKERS)
+                        }.flatMap { diagnostic -> diagnostic.toApiDiagnostics() }
+                    }
+                    .sortedWith(compareBy({ it.location.filePath }, { it.location.startOffset }, { it.code ?: "" }))
 
-            DiagnosticsResult(diagnostics = diagnostics)
+                DiagnosticsResult(diagnostics = diagnostics)
+            }
         }
     }
 
@@ -315,37 +336,54 @@ internal class StandaloneAnalysisBackend internal constructor(
 
     override suspend fun optimizeImports(query: ImportOptimizeQuery): ImportOptimizeResult = withContext(readDispatcher) {
         session.withReadAccess {
-            val edits = query.filePaths
-                .distinct()
-                .sorted()
-                .flatMap { filePath ->
-                    ImportAnalysis.optimizeImportEdits(session.findKtFile(filePath))
-                }
-                .sortedWith(compareBy({ it.filePath }, { it.startOffset }))
-            val affectedFiles = edits.map(TextEdit::filePath).distinct()
-            ImportOptimizeResult(
-                edits = edits,
-                fileHashes = currentFileHashes(affectedFiles),
-                affectedFiles = affectedFiles,
-            )
+            telemetry.inSpan(
+                scope = StandaloneTelemetryScope.SYMBOL_RESOLVE,
+                name = "kast.optimizeImports",
+                attributes = mapOf("kast.imports.fileCount" to query.filePaths.size),
+            ) {
+                val edits = query.filePaths
+                    .distinct()
+                    .sorted()
+                    .flatMap { filePath ->
+                        ImportAnalysis.optimizeImportEdits(session.findKtFile(filePath))
+                    }
+                    .sortedWith(compareBy({ it.filePath }, { it.startOffset }))
+                val affectedFiles = edits.map(TextEdit::filePath).distinct()
+                ImportOptimizeResult(
+                    edits = edits,
+                    fileHashes = currentFileHashes(affectedFiles),
+                    affectedFiles = affectedFiles,
+                )
+            }
         }
     }
 
     override suspend fun applyEdits(query: ApplyEditsQuery): ApplyEditsResult {
-        val result = LocalDiskEditApplier.apply(query)
-        if (result.createdFiles.isNotEmpty() || result.deletedFiles.isNotEmpty()) {
-            session.refreshWorkspace()
-        } else {
-            session.refreshFiles(result.affectedFiles.toSet())
+        return telemetry.inSpan(
+            scope = StandaloneTelemetryScope.SESSION_LIFECYCLE,
+            name = "kast.applyEdits",
+        ) {
+            val result = LocalDiskEditApplier.apply(query)
+            if (result.createdFiles.isNotEmpty() || result.deletedFiles.isNotEmpty()) {
+                session.refreshWorkspace()
+            } else {
+                session.refreshFiles(result.affectedFiles.toSet())
+            }
+            result
         }
-        return result
     }
 
     override suspend fun refresh(query: RefreshQuery): RefreshResult {
-        return if (query.filePaths.isEmpty()) {
-            session.refreshWorkspace(invalidateCaches = true)
-        } else {
-            session.refreshFiles(query.filePaths.toSet())
+        return telemetry.inSpan(
+            scope = StandaloneTelemetryScope.SESSION_LIFECYCLE,
+            name = "kast.refresh",
+            attributes = mapOf("kast.refresh.fileCount" to query.filePaths.size),
+        ) {
+            if (query.filePaths.isEmpty()) {
+                session.refreshWorkspace(invalidateCaches = true)
+            } else {
+                session.refreshFiles(query.filePaths.toSet())
+            }
         }
     }
 

@@ -59,7 +59,7 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
                 if (!conn.isClosed && Files.isRegularFile(dbPath)) return conn
                 // DB file was deleted (e.g. by CacheManager.invalidateAll()) while
                 // the connection was still open. Close the orphaned connection so
-                // the next getConnection() creates a fresh file.
+                // the next call creates a fresh file.
                 runCatching { conn.close() }
                 cachedConnection = null
             }
@@ -76,6 +76,20 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
                 stmt.execute("PRAGMA foreign_keys=ON")
             }
             cachedConnection = conn
+            // If this is a brand-new or fully empty database (no schema_version row),
+            // bootstrap the full schema immediately so callers never hit a missing-table
+            // error even without an explicit ensureSchema() call.
+            if (readSchemaVersion(conn) == null) {
+                conn.autoCommit = false
+                try {
+                    createAllTables(conn)
+                    conn.commit()
+                } catch (e: Exception) {
+                    runCatching { conn.rollback() }
+                } finally {
+                    conn.autoCommit = true
+                }
+            }
             return conn
         }
     }
@@ -92,13 +106,24 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
     /**
      * Ensures the database schema is present and at the current version.
      *
-     * @return `true` if the existing schema was valid, `false` if tables were
-     *   dropped and recreated (caller should treat this as a cache miss).
+     * When the schema version matches, any tables that were added after the
+     * version was set (e.g. `symbol_references` added to an existing v2 DB)
+     * are created via `CREATE TABLE IF NOT EXISTS` — an additive, non-destructive
+     * uplift that preserves all existing data.
+     *
+     * @return `true` if the existing schema was valid (and uplifted if needed),
+     *   `false` if tables were dropped and recreated (caller should treat this
+     *   as a cache miss).
      */
     fun ensureSchema(): Boolean {
         val conn = connection()
         val version = readSchemaVersion(conn)
-        if (version == SCHEMA_VERSION) return true
+        if (version == SCHEMA_VERSION) {
+            // Additive uplift: create any tables that may be missing in older
+            // databases that share the same schema_version number.
+            additiveMigration(conn)
+            return true
+        }
         conn.autoCommit = false
         try {
             dropAllTables(conn)
@@ -111,6 +136,46 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
             conn.autoCommit = true
         }
         return false
+    }
+
+    /**
+     * Idempotently creates tables and indexes that may be absent in databases
+     * whose `schema_version` predates the addition of those objects.
+     * Safe to call on an already-fully-migrated database.
+     */
+    private fun additiveMigration(conn: Connection) {
+        conn.createStatement().use { stmt ->
+            stmt.execute(
+                """CREATE TABLE IF NOT EXISTS symbol_references (
+                    source_path TEXT NOT NULL,
+                    source_offset INTEGER NOT NULL,
+                    target_fq_name TEXT NOT NULL,
+                    target_path TEXT,
+                    target_offset INTEGER,
+                    PRIMARY KEY (source_path, source_offset, target_fq_name)
+                )""",
+            )
+            stmt.execute(
+                "CREATE INDEX IF NOT EXISTS idx_symref_target ON symbol_references(target_fq_name)",
+            )
+            stmt.execute(
+                "CREATE INDEX IF NOT EXISTS idx_symref_source_path ON symbol_references(source_path)",
+            )
+            stmt.execute(
+                """CREATE TABLE IF NOT EXISTS workspace_discovery (
+                    cache_key TEXT PRIMARY KEY,
+                    schema_version INTEGER NOT NULL,
+                    payload TEXT NOT NULL
+                )""",
+            )
+            stmt.execute(
+                """CREATE TABLE IF NOT EXISTS call_hierarchy_cache (
+                    cache_key TEXT PRIMARY KEY,
+                    schema_version INTEGER NOT NULL,
+                    payload TEXT NOT NULL
+                )""",
+            )
+        }
     }
 
     private fun readSchemaVersion(conn: Connection): Int? = try {

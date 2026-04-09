@@ -6,6 +6,9 @@ internal enum class StandaloneTelemetryScope {
     REFERENCES,
     SYMBOL_RESOLVE,
     WORKSPACE_DISCOVERY,
+    SESSION_LOCK,
+    SESSION_LIFECYCLE,
+    INDEXING,
     ;
 
     companion object {
@@ -15,6 +18,9 @@ internal enum class StandaloneTelemetryScope {
             "references", "find-references", "find_references" -> REFERENCES
             "symbol-resolve", "symbol_resolve", "symbolresolve", "resolve" -> SYMBOL_RESOLVE
             "workspace-discovery", "workspace_discovery", "workspacediscovery", "discovery" -> WORKSPACE_DISCOVERY
+            "session-lock", "session_lock", "sessionlock", "lock" -> SESSION_LOCK
+            "session-lifecycle", "session_lifecycle", "sessionlifecycle", "lifecycle" -> SESSION_LIFECYCLE
+            "indexing", "index" -> INDEXING
             else -> null
         }
     }

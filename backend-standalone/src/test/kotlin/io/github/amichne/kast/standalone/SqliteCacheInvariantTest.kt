@@ -511,4 +511,79 @@ class SqliteCacheInvariantTest {
             }
         }
     }
+
+    // ── Schema uplift: stale v2 database missing symbol_references ───────
+
+    @Test
+    fun `ensureSchema creates missing symbol_references in stale v2 database`() {
+        val normalized = normalizeStandalonePath(workspaceRoot)
+        val cacheDir = kastCacheDirectory(normalized)
+        Files.createDirectories(cacheDir)
+        val dbPath = cacheDir.resolve("source-index.db")
+
+        // Seed a v2 DB that pre-dates symbol_references (the table is absent).
+        DriverManager.getConnection("jdbc:sqlite:$dbPath").use { conn ->
+            conn.createStatement().use { stmt ->
+                stmt.execute(
+                    "CREATE TABLE schema_version (version INTEGER NOT NULL, generation INTEGER NOT NULL DEFAULT 0)",
+                )
+                stmt.execute("INSERT INTO schema_version (version, generation) VALUES (2, 0)")
+                stmt.execute(
+                    "CREATE TABLE identifier_paths (identifier TEXT NOT NULL, path TEXT NOT NULL, PRIMARY KEY (identifier, path))",
+                )
+                stmt.execute(
+                    "CREATE TABLE file_metadata (path TEXT PRIMARY KEY, package_name TEXT, module_name TEXT, imports TEXT, wildcard_imports TEXT)",
+                )
+                stmt.execute(
+                    "CREATE TABLE file_manifest (path TEXT PRIMARY KEY, last_modified_millis INTEGER NOT NULL)",
+                )
+                // Intentionally NO symbol_references table — this is the stale-DB scenario
+            }
+        }
+
+        SqliteSourceIndexStore(normalized).use { store ->
+            val wasValid = store.ensureSchema()
+            assertTrue(wasValid) { "ensureSchema() should return true when schema_version matches" }
+
+            // Additive uplift: symbol_references must be queryable after ensureSchema()
+            val refs = store.referencesToSymbol("io.example.Foo")
+            assertTrue(refs.isEmpty()) { "Freshly uplifted DB should have no references" }
+
+            // Phase-2 writes must also succeed without throwing
+            store.upsertSymbolReference(
+                sourcePath = "/src/Use.kt",
+                sourceOffset = 42,
+                targetFqName = "io.example.Foo",
+                targetPath = "/src/Foo.kt",
+                targetOffset = 0,
+            )
+            val afterInsert = store.referencesToSymbol("io.example.Foo")
+            assertEquals(1, afterInsert.size) { "Inserted reference should be queryable" }
+        }
+    }
+
+    @Test
+    fun `referencesToSymbol returns empty gracefully when DB is deleted at runtime`() {
+        val normalized = normalizeStandalonePath(workspaceRoot)
+        val cacheDir = kastCacheDirectory(normalized)
+        val dbPath = cacheDir.resolve("source-index.db")
+
+        SqliteSourceIndexStore(normalized).use { store ->
+            store.ensureSchema()
+            store.upsertSymbolReference(
+                sourcePath = "/src/Use.kt",
+                sourceOffset = 10,
+                targetFqName = "io.example.Bar",
+                targetPath = "/src/Bar.kt",
+                targetOffset = 0,
+            )
+
+            // Simulate CacheManager.invalidateAll() deleting the cache directory
+            Files.deleteIfExists(dbPath)
+
+            // Must not throw — the store detects the deleted file and reconnects
+            val refs = store.referencesToSymbol("io.example.Bar")
+            assertTrue(refs.isEmpty()) { "No references expected after DB was deleted" }
+        }
+    }
 }

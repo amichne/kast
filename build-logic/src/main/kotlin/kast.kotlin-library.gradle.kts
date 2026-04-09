@@ -18,7 +18,16 @@ kotlin {
 }
 
 tasks.withType<Test>().configureEach {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        val exclude = providers.gradleProperty("excludeTags").orNull
+        val include = providers.gradleProperty("includeTags").orNull
+        if (!exclude.isNullOrBlank()) {
+            excludeTags(*exclude.split(",").map(String::trim).toTypedArray())
+        }
+        if (!include.isNullOrBlank()) {
+            includeTags(*include.split(",").map(String::trim).toTypedArray())
+        }
+    }
 }
 
 dependencies {

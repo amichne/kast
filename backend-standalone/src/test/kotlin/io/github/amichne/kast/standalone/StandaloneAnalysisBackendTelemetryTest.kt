@@ -81,6 +81,15 @@ class StandaloneAnalysisBackendTelemetryTest {
             events.any { event -> event.jsonObject["name"]?.toString() == "\"candidate-files\"" }
         }
         assertTrue(hasCandidateFilesEvent)
+
+        // Verify timing fields are present and sensible
+        exportedSpans.forEach { span ->
+            val durationNanos = span["durationNanos"]?.toString()?.toLongOrNull()
+            val startNanos = span["startEpochNanos"]?.toString()?.toLongOrNull()
+            val endNanos = span["endEpochNanos"]?.toString()?.toLongOrNull()
+            assertTrue(durationNanos != null && durationNanos > 0, "Expected durationNanos > 0 in span ${span["name"]}")
+            assertTrue(startNanos != null && endNanos != null && startNanos < endNanos, "Expected startEpochNanos < endEpochNanos in span ${span["name"]}")
+        }
     }
 
     @Test

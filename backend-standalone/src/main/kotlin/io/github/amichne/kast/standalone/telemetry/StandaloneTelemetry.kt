@@ -190,6 +190,9 @@ private data class SerializedSpan(
     val status: String,
     val attributes: Map<String, String>,
     val events: List<SerializedEvent> = emptyList(),
+    val startEpochNanos: Long = 0L,
+    val endEpochNanos: Long = 0L,
+    val durationNanos: Long = 0L,
 ) {
     companion object {
         fun from(
@@ -208,6 +211,9 @@ private data class SerializedSpan(
             } else {
                 emptyList()
             },
+            startEpochNanos = span.startEpochNanos,
+            endEpochNanos = span.endEpochNanos,
+            durationNanos = span.endEpochNanos - span.startEpochNanos,
         )
     }
 
@@ -218,6 +224,9 @@ private data class SerializedSpan(
         parentSpanId?.let { put("parentSpanId", it) }
         put("kind", kind)
         put("status", status)
+        put("startEpochNanos", startEpochNanos)
+        put("endEpochNanos", endEpochNanos)
+        put("durationNanos", durationNanos)
         put(
             "attributes",
             buildJsonObject {

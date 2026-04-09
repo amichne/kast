@@ -177,7 +177,12 @@ internal class BackgroundIndexer(
             identifierIndexReady.complete(Unit)
         }
         if (!referenceIndexReady.isDone) {
-            referenceIndexReady.complete(Unit)
+            // Complete exceptionally so callers can distinguish a clean Phase-2
+            // completion from a cancellation.  isReferenceIndexReady() checks
+            // isCompletedExceptionally to avoid treating cancelled futures as ready.
+            referenceIndexReady.completeExceptionally(
+                java.util.concurrent.CancellationException("BackgroundIndexer closed"),
+            )
         }
     }
 

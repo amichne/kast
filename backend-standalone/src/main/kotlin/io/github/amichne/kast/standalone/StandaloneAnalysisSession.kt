@@ -29,6 +29,8 @@ import io.github.amichne.kast.standalone.cache.SourceIndexCache
 import io.github.amichne.kast.standalone.cache.SqliteSourceIndexStore
 import io.github.amichne.kast.standalone.cache.SymbolReferenceRow
 import io.github.amichne.kast.standalone.cache.scanTrackedKotlinFileTimestamps
+import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetry
+import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetryScope
 import io.github.amichne.kast.standalone.workspace.PhasedDiscoveryResult
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaSourceModule
 import org.jetbrains.kotlin.analysis.api.standalone.StandaloneAnalysisAPISession
@@ -45,9 +47,6 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
-import java.util.concurrent.locks.ReentrantReadWriteLock
-import kotlin.concurrent.read
-import kotlin.concurrent.write
 import kotlin.io.path.extension
 
 @Suppress("UnstableApiUsage")
@@ -61,6 +60,10 @@ internal class StandaloneAnalysisSession(
     private val sourceIndexFileReader: (Path) -> String = Files::readString,
     private val sourceIndexCacheSaveDelayMillis: Long = defaultSourceIndexCacheSaveDelayMillis,
     cacheEnvReader: (String) -> String? = System::getenv,
+    private val clock: Clock = Clock.SYSTEM,
+    private val analysisSessionLock: SessionLock = ReentrantSessionLock(),
+    private val identifierIndexWaitMillis: Long = defaultIdentifierIndexWaitMillis,
+    internal val telemetry: StandaloneTelemetry = StandaloneTelemetry.disabled(),
 ) : AutoCloseable {
     private val normalizedWorkspaceRoot = normalizeStandalonePath(workspaceRoot)
     private val disposable: Disposable = Disposer.newDisposable("kast-standalone")
@@ -77,7 +80,6 @@ internal class StandaloneAnalysisSession(
     private lateinit var backgroundIndexer: BackgroundIndexer
     private val enrichmentReady = CompletableFuture<Unit>()
     private val fullKtFileMapLoadLock = Any()
-    private val analysisSessionLock = ReentrantReadWriteLock()
     private val cacheManager = CacheManager(normalizedWorkspaceRoot, envReader = cacheEnvReader)
     private val sourceIndexCache = SourceIndexCache(
         workspaceRoot = normalizedWorkspaceRoot,
@@ -255,21 +257,27 @@ internal class StandaloneAnalysisSession(
             )
         }
 
-        analysisSessionLock.write {
-            normalizedPaths.forEach { normalizedPath ->
-                VirtualFileManager.getInstance().refreshAndFindFileByNioPath(normalizedPath.toJavaPath())
-            }
+        telemetry.inSpan(
+            scope = StandaloneTelemetryScope.SESSION_LIFECYCLE,
+            name = "kast.session.refreshFiles",
+            attributes = mapOf("kast.session.refreshedFileCount" to normalizedPaths.size),
+        ) {
+            analysisSessionLock.write {
+                normalizedPaths.forEach { normalizedPath ->
+                    VirtualFileManager.getInstance().refreshAndFindFileByNioPath(normalizedPath.toJavaPath())
+                }
 
-            refreshStructureLocked()
+                refreshStructureLocked()
 
-            normalizedPaths.forEach { normalizedPath ->
-                val refreshedFile = loadKtFileByPath(
-                    normalizedPath = normalizedPath,
-                    analysisSession = session,
-                )
-                if (refreshedFile != null) {
-                    targetedKtFilesByPath[normalizedPath] = refreshedFile
-                    ktFilesByPath[normalizedPath] = refreshedFile
+                normalizedPaths.forEach { normalizedPath ->
+                    val refreshedFile = loadKtFileByPath(
+                        normalizedPath = normalizedPath,
+                        analysisSession = session,
+                    )
+                    if (refreshedFile != null) {
+                        targetedKtFilesByPath[normalizedPath] = refreshedFile
+                        ktFilesByPath[normalizedPath] = refreshedFile
+                    }
                 }
             }
         }
@@ -294,11 +302,16 @@ internal class StandaloneAnalysisSession(
      * changes and cross-file resolution correctness is required.
      */
     fun rebuildAnalysisSession() {
-        analysisSessionLock.write {
-            val previousDisposable = sessionStateDisposable
-            buildAnalysisStateAndCache()
-            fullKtFileMapLoaded = false
-            Disposer.dispose(previousDisposable)
+        telemetry.inSpan(
+            scope = StandaloneTelemetryScope.SESSION_LIFECYCLE,
+            name = "kast.session.rebuildAnalysisSession",
+        ) {
+            analysisSessionLock.write {
+                val previousDisposable = sessionStateDisposable
+                buildAnalysisStateAndCache()
+                fullKtFileMapLoaded = false
+                Disposer.dispose(previousDisposable)
+            }
         }
     }
 
@@ -327,8 +340,10 @@ internal class StandaloneAnalysisSession(
         backgroundIndexer.identifierIndexReady.join()
     }
 
-    /** True when Phase 2 (symbol reference) indexing has completed. */
-    internal fun isReferenceIndexReady(): Boolean = backgroundIndexer.referenceIndexReady.isDone
+    /** True when Phase 2 (symbol reference) indexing has completed successfully (not cancelled). */
+    internal fun isReferenceIndexReady(): Boolean =
+        backgroundIndexer.referenceIndexReady.isDone &&
+            !backgroundIndexer.referenceIndexReady.isCompletedExceptionally
 
     /** The underlying SQLite store for cached symbol reference lookups. */
     internal val sqliteStore: SqliteSourceIndexStore get() = sourceIndexCache.store
@@ -346,7 +361,7 @@ internal class StandaloneAnalysisSession(
         watcher.refreshSourceRoots(resolvedSourceRoots)
     }
 
-    internal inline fun <T> withReadAccess(action: () -> T): T = analysisSessionLock.read { action() }
+    internal inline fun <T> withReadAccess(crossinline action: () -> T): T = analysisSessionLock.read { action() }
 
     internal fun candidateKotlinFilePaths(identifier: String): List<String> {
         return candidateKotlinFilePaths(identifier = identifier, anchorFilePath = null)
@@ -355,23 +370,27 @@ internal class StandaloneAnalysisSession(
     internal fun candidateKotlinFilePaths(
         identifier: String,
         anchorFilePath: String?,
-    ): List<String> {
+    ): List<String> = telemetry.inSpan(
+        scope = StandaloneTelemetryScope.INDEXING,
+        name = "kast.session.candidateKotlinFilePaths",
+        attributes = mapOf("kast.candidates.identifier" to identifier),
+    ) { span ->
         if (!identifier.isIndexableIdentifier()) {
-            return emptyList()
+            span.setAttribute("kast.candidates.source", "empty")
+            span.setAttribute("kast.candidates.resultCount", 0)
+            return@inSpan emptyList()
         }
 
         val anchorSourceModuleName = anchorFilePath?.let { filePath -> sourceModuleNameForFile(NormalizedPath.of(Path.of(filePath))) }
-        val lookupKey = CandidateLookupKey(
-            identifier = identifier,
-            anchorSourceModuleName = anchorSourceModuleName,
-        )
 
         val readyIndex = readySourceIdentifierIndex()
         if (readyIndex != null) {
+            span.setAttribute("kast.candidates.source", "memory-index")
+            span.setAttribute("kast.candidates.indexReady", true)
             val allowedSourceModuleNames = anchorSourceModuleName
                 ?.let(_dependentModuleNamesBySourceModuleName::get)
                 .takeUnless { it.isNullOrEmpty() }
-            return if (allowedSourceModuleNames == null) {
+            val result = if (allowedSourceModuleNames == null) {
                 readyIndex.candidatePathsFor(identifier)
             } else {
                 readyIndex.candidatePathsForModule(
@@ -379,14 +398,35 @@ internal class StandaloneAnalysisSession(
                     allowedModuleNames = allowedSourceModuleNames,
                 )
             }
+            span.setAttribute("kast.candidates.resultCount", result.size)
+            return@inSpan result
         }
 
-        return targetedCandidatePathsByLookupKey.computeIfAbsent(lookupKey) { key ->
+        span.setAttribute("kast.candidates.indexReady", false)
+
+        // Second-tier fallback: try loading from SQLite cache (fast, no filesystem walk).
+        val sqliteIndex = runCatching { sourceIndexCache.store.loadFullIndex() }.getOrNull()
+        if (sqliteIndex != null && sqliteIndex.knownPaths().isNotEmpty()) {
+            span.setAttribute("kast.candidates.source", "sqlite-fallback")
+            val result = sqliteIndex.candidatePathsFor(identifier)
+            span.setAttribute("kast.candidates.resultCount", result.size)
+            return@inSpan result
+        }
+
+        // Last resort: walk-based fallback
+        span.setAttribute("kast.candidates.source", "filesystem-walk")
+        val lookupKey = CandidateLookupKey(
+            identifier = identifier,
+            anchorSourceModuleName = anchorSourceModuleName,
+        )
+        val result = targetedCandidatePathsByLookupKey.computeIfAbsent(lookupKey) { key ->
             buildTargetedCandidatePaths(
                 identifier = key.identifier,
                 anchorSourceModuleName = key.anchorSourceModuleName,
             )
         }
+        span.setAttribute("kast.candidates.resultCount", result.size)
+        result
     }
 
     /**
@@ -498,16 +538,55 @@ internal class StandaloneAnalysisSession(
     }
 
     private fun rebuildWorkspaceLayout(workspaceLayout: StandaloneWorkspaceLayout) {
-        analysisSessionLock.write {
-            val previousSessionDisposable = sessionStateDisposable
-            applyWorkspaceLayout(workspaceLayout)
-            buildAnalysisStateAndCache()
-            sourceIdentifierIndex.set(null)
-            backgroundIndexer.close()
-            fullKtFileMapLoaded = false
-            startInitialSourceIndex()
-            Disposer.dispose(previousSessionDisposable)
+        telemetry.inSpan(
+            scope = StandaloneTelemetryScope.SESSION_LIFECYCLE,
+            name = "kast.session.rebuildWorkspaceLayout",
+            attributes = mapOf("kast.session.sourceModuleCount" to workspaceLayout.sourceModules.size),
+        ) {
+            // Build the expensive K2 analysis state OUTSIDE the write lock.
+            val newAnalysisState = telemetry.inSpan(
+                scope = StandaloneTelemetryScope.SESSION_LIFECYCLE,
+                name = "kast.session.buildAnalysisState",
+                attributes = mapOf("kast.session.sourceModuleCount" to workspaceLayout.sourceModules.size),
+            ) {
+                buildAnalysisStateForSpecs(workspaceLayout.sourceModules)
+            }
+
+            // Short write lock: swap state atomically.
+            telemetry.inSpan(
+                scope = StandaloneTelemetryScope.SESSION_LOCK,
+                name = "kast.lock.acquire",
+                attributes = mapOf("kast.lock.type" to "WRITE", "kast.lock.caller" to "rebuildWorkspaceLayout"),
+            ) {
+                analysisSessionLock.write {
+                    val previousSessionDisposable = sessionStateDisposable
+                    val previousIndexer = backgroundIndexer
+                    applyWorkspaceLayout(workspaceLayout)
+                    applyAnalysisState(newAnalysisState)
+                    sourceIdentifierIndex.set(null)
+                    fullKtFileMapLoaded = false
+                    startInitialSourceIndex()
+                    previousIndexer.close()
+                    Disposer.dispose(previousSessionDisposable)
+                }
+            }
         }
+    }
+
+    /**
+     * Applies a pre-built [AnalysisState] to the session's mutable fields.
+     * Must be called under the write lock.
+     */
+    private fun applyAnalysisState(analysisState: AnalysisState) {
+        session = analysisState.session
+        analysisStateGeneration.incrementAndGet()
+        sourceModules = analysisState.sourceModules
+        sessionStateDisposable = analysisState.disposable
+        sourceModuleNamesByPath.clear()
+        targetedKtFilesByPath.clear()
+        ktFilesByPath.clear()
+        ktFileLastModifiedMillisByPath.clear()
+        targetedCandidatePathsByLookupKey.clear()
     }
 
     private fun logSessionEnrichmentWarning(error: Throwable) {
@@ -639,7 +718,14 @@ internal class StandaloneAnalysisSession(
             ?.also { ktFileLastModifiedMillisByPath[normalizedPath] = Files.getLastModifiedTime(filePath).toMillis() }
     }
 
-    private fun buildAnalysisState(): AnalysisState {
+    private fun buildAnalysisState(): AnalysisState = buildAnalysisStateForSpecs(sourceModuleSpecs)
+
+    /**
+     * Builds a new K2 analysis state for the given module specs without reading or
+     * mutating any shared mutable state. This allows the expensive session construction
+     * to happen outside the write lock.
+     */
+    private fun buildAnalysisStateForSpecs(specs: List<StandaloneSourceModuleSpec>): AnalysisState {
         val jdkHome = normalizePath(Path.of(System.getProperty("java.home")))
         val defaultClasspathRoots = defaultClasspathRoots()
         val analysisDisposable = Disposer.newDisposable("kast-standalone-analysis")
@@ -655,10 +741,10 @@ internal class StandaloneAnalysisSession(
                 val sdkModule = buildKtSdkModule {
                     this.platform = platform
                     addBinaryRootsFromJdkHome(jdkHome, isJre = false)
-                    libraryName = "JDK for ${sourceModuleSpecs.first().name.value}"
+                    libraryName = "JDK for ${specs.first().name.value}"
                 }
 
-                for (moduleSpec in topologicallySortSourceModules(sourceModuleSpecs)) {
+                for (moduleSpec in topologicallySortSourceModules(specs)) {
                     val libraryModule = buildLibraryModule(
                         moduleName = moduleSpec.name.value,
                         platform = platform,
@@ -936,15 +1022,7 @@ internal class StandaloneAnalysisSession(
 
     private fun buildAnalysisStateAndCache() {
         val rebuiltAnalysisState = buildAnalysisState()
-        session = rebuiltAnalysisState.session
-        analysisStateGeneration.incrementAndGet()
-        sourceModules = rebuiltAnalysisState.sourceModules
-        sessionStateDisposable = rebuiltAnalysisState.disposable
-        sourceModuleNamesByPath.clear()
-        targetedKtFilesByPath.clear()
-        ktFilesByPath.clear()
-        ktFileLastModifiedMillisByPath.clear()
-        targetedCandidatePathsByLookupKey.clear()
+        applyAnalysisState(rebuiltAnalysisState)
     }
 
     private fun normalizePath(path: Path): Path = NormalizedPath.of(path).toJavaPath()
@@ -974,11 +1052,26 @@ internal class StandaloneAnalysisSession(
     }
 
     private fun readySourceIdentifierIndex(): MutableSourceIdentifierIndex? {
-        sourceIdentifierIndex.get()?.let { return it }
-        runCatching {
-            backgroundIndexer.identifierIndexReady.get(10, TimeUnit.SECONDS)
-        }.getOrNull()
-        return sourceIdentifierIndex.get()
+        return telemetry.inSpan(
+            scope = StandaloneTelemetryScope.INDEXING,
+            name = "kast.session.readySourceIdentifierIndex",
+            attributes = mapOf("kast.indexWait.configuredTimeoutMillis" to identifierIndexWaitMillis),
+        ) { span ->
+            sourceIdentifierIndex.get()?.let { index ->
+                span.setAttribute("kast.indexWait.immediateHit", true)
+                span.setAttribute("kast.indexWait.indexAvailable", true)
+                return@inSpan index
+            }
+            span.setAttribute("kast.indexWait.immediateHit", false)
+            if (identifierIndexWaitMillis > 0) {
+                runCatching {
+                    backgroundIndexer.identifierIndexReady.get(identifierIndexWaitMillis, TimeUnit.MILLISECONDS)
+                }.getOrNull()
+            }
+            val result = sourceIdentifierIndex.get()
+            span.setAttribute("kast.indexWait.indexAvailable", result != null)
+            result
+        }
     }
 }
 
@@ -994,3 +1087,5 @@ private data class CandidateLookupKey(
 )
 
 private const val defaultSourceIndexCacheSaveDelayMillis = 5_000L
+
+private const val defaultIdentifierIndexWaitMillis = 10_000L

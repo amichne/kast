@@ -18,6 +18,7 @@ internal class WorkspaceRefreshWatcher(
     private val debounceMillis: Long = 200,
     private val contentRefresh: (Set<String>) -> RefreshResult = session::refreshFileContents,
     private val fullRefresh: () -> RefreshResult = session::refreshWorkspace,
+    private val clock: Clock = Clock.SYSTEM,
 ) : AutoCloseable {
     private val watchService: WatchService = FileSystems.getDefault().newWatchService()
     private val directoriesByWatchKey = ConcurrentHashMap<WatchKey, Path>()
@@ -56,7 +57,7 @@ internal class WorkspaceRefreshWatcher(
                 if (nextKey == null) {
                     if ((pendingPaths.isNotEmpty() || forceFullRefresh) &&
                         lastEventAtNanos != 0L &&
-                        System.nanoTime() - lastEventAtNanos >= debounceMillis * 1_000_000
+                        clock.nanoTime() - lastEventAtNanos >= debounceMillis * 1_000_000
                     ) {
                         flushPendingChanges(
                             changedPaths = pendingPaths,
@@ -115,7 +116,7 @@ internal class WorkspaceRefreshWatcher(
                     }
                     key = watchService.poll()
                 }
-                lastEventAtNanos = System.nanoTime()
+                lastEventAtNanos = clock.nanoTime()
             }
         } catch (_: ClosedWatchServiceException) {
             return

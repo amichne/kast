@@ -54,6 +54,28 @@ class StandaloneTelemetryConfigTest {
     }
 
     @Test
+    fun `parse recognizes session-lock scope variants`() {
+        assertEquals(StandaloneTelemetryScope.SESSION_LOCK, StandaloneTelemetryScope.parse("session-lock"))
+        assertEquals(StandaloneTelemetryScope.SESSION_LOCK, StandaloneTelemetryScope.parse("session_lock"))
+        assertEquals(StandaloneTelemetryScope.SESSION_LOCK, StandaloneTelemetryScope.parse("sessionlock"))
+        assertEquals(StandaloneTelemetryScope.SESSION_LOCK, StandaloneTelemetryScope.parse("lock"))
+    }
+
+    @Test
+    fun `parse recognizes session-lifecycle scope variants`() {
+        assertEquals(StandaloneTelemetryScope.SESSION_LIFECYCLE, StandaloneTelemetryScope.parse("session-lifecycle"))
+        assertEquals(StandaloneTelemetryScope.SESSION_LIFECYCLE, StandaloneTelemetryScope.parse("session_lifecycle"))
+        assertEquals(StandaloneTelemetryScope.SESSION_LIFECYCLE, StandaloneTelemetryScope.parse("sessionlifecycle"))
+        assertEquals(StandaloneTelemetryScope.SESSION_LIFECYCLE, StandaloneTelemetryScope.parse("lifecycle"))
+    }
+
+    @Test
+    fun `parse recognizes indexing scope variants`() {
+        assertEquals(StandaloneTelemetryScope.INDEXING, StandaloneTelemetryScope.parse("indexing"))
+        assertEquals(StandaloneTelemetryScope.INDEXING, StandaloneTelemetryScope.parse("index"))
+    }
+
+    @Test
     fun `parse returns null for unknown scope`() {
         assertNull(StandaloneTelemetryScope.parse("unknown"))
         assertNull(StandaloneTelemetryScope.parse(""))

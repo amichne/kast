@@ -300,6 +300,65 @@ class PerformanceBaselineTest {
         }
     }
 
+    @Test
+    fun `candidate resolution uses memory index when available`() {
+        writeSourceFiles(100)
+
+        StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = sourceRoots(),
+            classpathRoots = emptyList(),
+            moduleName = "perfmod",
+            sourceIndexFileReader = { path -> Files.readString(path) },
+        ).use { session ->
+            session.awaitInitialSourceIndex()
+
+            val timings = mutableListOf<Long>()
+            repeat(50) { i ->
+                val t = measureTimeMillis {
+                    session.candidateKotlinFilePaths("File${i % 100}", null)
+                }
+                timings.add(t)
+            }
+            timings.sort()
+            val p95 = timings[(timings.size * 0.95).toInt()]
+
+            println("candidate_resolution_with_index_p95_ms: $p95")
+            assertTrue(p95 <= (CANDIDATE_RESOLUTION_P95_MS * TOLERANCE).toLong()) {
+                "Candidate resolution with index p95 was ${p95}ms, exceeds ${CANDIDATE_RESOLUTION_P95_MS}ms"
+            }
+        }
+    }
+
+    @Test
+    fun `non-blocking candidate resolution with zero wait timeout`() {
+        writeSourceFiles(100)
+
+        val elapsed = measureTimeMillis {
+            StandaloneAnalysisSession(
+                workspaceRoot = workspaceRoot,
+                sourceRoots = sourceRoots(),
+                classpathRoots = emptyList(),
+                moduleName = "perfmod",
+                sourceIndexFileReader = { path ->
+                    Thread.sleep(20)
+                    Files.readString(path)
+                },
+                identifierIndexWaitMillis = 0,
+            ).use { session ->
+                // Query immediately — index definitely not ready with slow reader.
+                repeat(10) { i ->
+                    session.candidateKotlinFilePaths("File${i % 100}", null)
+                }
+            }
+        }
+
+        println("non_blocking_candidate_10_queries_ms: $elapsed")
+        assertTrue(elapsed < STARTUP_TO_READY_MS) {
+            "Non-blocking candidate queries took ${elapsed}ms, expected fast return"
+        }
+    }
+
     private fun sourceRoots(): List<Path> =
         listOf(normalizeStandalonePath(workspaceRoot.resolve("src/main/kotlin")))
 
