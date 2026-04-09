@@ -1,4 +1,4 @@
-package io.github.amichne.kast.standalone.analysis
+package io.github.amichne.kast.shared.analysis
 
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiRecursiveElementWalkingVisitor
@@ -11,14 +11,14 @@ import org.jetbrains.kotlin.psi.KtImportDirective
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.KtPackageDirective
 
-internal data class ImportAnalysisResult(
+data class ImportAnalysisResult(
     val usedImports: List<KtImportDirective>,
     val unusedImports: List<KtImportDirective>,
     val missingImports: List<String>,
 )
 
 @OptIn(KaIdeApi::class)
-internal object ImportAnalysis {
+object ImportAnalysis {
     fun analyzeImports(file: KtFile): ImportAnalysisResult {
         val importDirectives = file.importDirectives
         if (importDirectives.isEmpty()) {

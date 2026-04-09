@@ -1,7 +1,7 @@
 [project]
 site_name = "Kast"
 site_description = """
-IDE-grade Kotlin code intelligence without the IDE.
+IDE-grade Kotlin code intelligence for terminals, CI, and IDEs.
 """
 site_author = "amichne"
 site_url = "https://amichne.github.io/kast/"

@@ -1,4 +1,4 @@
-package io.github.amichne.kast.standalone.analysis
+package io.github.amichne.kast.shared.analysis
 
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiClass
@@ -36,7 +36,7 @@ import java.nio.file.Path
  * Prefers [com.intellij.psi.PsiFile.getVirtualFile] and falls back to
  * [com.intellij.psi.FileViewProvider.getVirtualFile] for in-memory files.
  */
-internal fun PsiElement.resolvedFilePath(): NormalizedPath {
+fun PsiElement.resolvedFilePath(): NormalizedPath {
     val vf = containingFile.virtualFile ?: containingFile.viewProvider.virtualFile
     return NormalizedPath.of(Path.of(vf.path))
 }
@@ -45,7 +45,7 @@ internal fun PsiElement.resolvedFilePath(): NormalizedPath {
  * Walks the PSI element hierarchy up from [offset] until it finds a resolvable reference
  * or a named element, then returns it.
  */
-internal fun resolveTarget(file: com.intellij.psi.PsiFile, offset: Int): PsiElement {
+fun resolveTarget(file: com.intellij.psi.PsiFile, offset: Int): PsiElement {
     val leaf = file.findElementAt(offset)
         ?: throw NotFoundException(
             message = "No PSI element was found at the requested offset",
@@ -63,7 +63,7 @@ internal fun resolveTarget(file: com.intellij.psi.PsiFile, offset: Int): PsiElem
     throw NotFoundException("No resolvable symbol was found at the requested offset")
 }
 
-internal fun PsiElement.toSymbolModel(
+fun PsiElement.toSymbolModel(
     containingDeclaration: String?,
     supertypes: List<String>? = null,
 ): Symbol = Symbol(
@@ -82,7 +82,7 @@ private fun PsiElement.nameRange(): TextRange = when (this) {
     else -> textRange
 }
 
-internal fun PsiElement.declarationEdit(newName: String): TextEdit {
+fun PsiElement.declarationEdit(newName: String): TextEdit {
     val range = nameRange()
     return TextEdit(
         filePath = resolvedFilePath().value,
@@ -103,7 +103,7 @@ internal fun PsiElement.declarationEdit(newName: String): TextEdit {
  * Java package-private (no modifier) maps to [SymbolVisibility.INTERNAL] as the closest
  * Kotlin analog.
  */
-internal fun PsiElement.visibility(): SymbolVisibility = when (this) {
+fun PsiElement.visibility(): SymbolVisibility = when (this) {
     is KtNamedDeclaration -> ktVisibility()
     is PsiClass -> javaClassVisibility()
     is PsiMethod -> javaMemberVisibility(this)
@@ -157,7 +157,7 @@ private fun PsiElement.fqName(): String = when (this) {
  * import-aware filtering in [MutableSourceIdentifierIndex.candidatePathsForFqName]
  * matches correctly against file-level package declarations.
  */
-internal fun PsiElement.targetFqNameAndPackage(): Pair<FqName, PackageName>? {
+fun PsiElement.targetFqNameAndPackage(): Pair<FqName, PackageName>? {
     val fqn: String
     val pkg: String
     when (this) {
@@ -210,7 +210,7 @@ private fun PsiElement.typeDescription(): String? = when (this) {
 /**
  * Converts a PSI element and text range to a [Location] using raw file text.
  */
-internal fun PsiElement.toKastLocation(range: TextRange = nameRange()): Location {
+fun PsiElement.toKastLocation(range: TextRange = nameRange()): Location {
     val file = containingFile
     val content = file.viewProvider.contents
     val startOffset = range.startOffset.coerceIn(0, content.length)
@@ -228,9 +228,9 @@ internal fun PsiElement.toKastLocation(range: TextRange = nameRange()): Location
     )
 }
 
-internal fun PsiElement.parentsWithSelf(): Sequence<PsiElement> = generateSequence(this) { it.parent }
+fun PsiElement.parentsWithSelf(): Sequence<PsiElement> = generateSequence(this) { it.parent }
 
-internal fun PsiElement.callHierarchyDeclaration(): PsiElement? = parentsWithSelf().firstOrNull { element ->
+fun PsiElement.callHierarchyDeclaration(): PsiElement? = parentsWithSelf().firstOrNull { element ->
     when (element) {
         is KtNamedFunction,
         is KtProperty,
@@ -245,7 +245,7 @@ internal fun PsiElement.callHierarchyDeclaration(): PsiElement? = parentsWithSel
     }
 }
 
-internal fun PsiElement.typeHierarchyDeclaration(): PsiElement? = parentsWithSelf().firstOrNull { element ->
+fun PsiElement.typeHierarchyDeclaration(): PsiElement? = parentsWithSelf().firstOrNull { element ->
     when (element) {
         is KtClassOrObject,
         is PsiClass,
@@ -255,7 +255,7 @@ internal fun PsiElement.typeHierarchyDeclaration(): PsiElement? = parentsWithSel
     }
 }
 
-internal fun KaSession.supertypeNames(target: PsiElement): List<String>? = when (target) {
+fun KaSession.supertypeNames(target: PsiElement): List<String>? = when (target) {
     is KtClassOrObject -> target.classSymbol
         ?.superTypes
         ?.mapNotNull { type -> (type as? KaClassType)?.classId?.asSingleFqName()?.asString() }
@@ -270,7 +270,7 @@ internal fun KaSession.supertypeNames(target: PsiElement): List<String>? = when 
     else -> null
 }
 
-internal fun PsiElement.referenceSearchIdentifier(): String? = when (this) {
+fun PsiElement.referenceSearchIdentifier(): String? = when (this) {
     is KtNamedFunction -> name.takeUnless { hasModifier(KtTokens.OPERATOR_KEYWORD) }
     is KtNamedDeclaration -> name
     else -> (this as? PsiNamedElement)?.name

@@ -23,3 +23,9 @@ tasks.register("buildCliPortableZip") {
     description = "Builds the versioned portable kast CLI zip under kast/build/distributions."
     dependsOn(":kast:portableDistZip")
 }
+
+tasks.register("buildIntellijPlugin") {
+    group = "distribution"
+    description = "Builds the IntelliJ plugin zip under backend-intellij/build/distributions."
+    dependsOn(":backend-intellij:buildPlugin")
+}

@@ -50,6 +50,9 @@ jobs:
           :analysis-api:test
           :analysis-server:test
           :backend-standalone:test
+          :backend-intellij:test
+          :backend-intellij:buildPlugin
+          :backend-intellij:verifyPluginStructure
           :kast:test
           :kast:portableDistZip
 

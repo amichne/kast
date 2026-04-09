@@ -300,6 +300,55 @@ class CliCommandParserTest {
     }
 
     @Test
+    fun `runtimeOptions accepts intellij backend name`() {
+        val command = parser.parse(
+            arrayOf(
+                "workspace",
+                "status",
+                "--workspace-root=$tempDir",
+                "--backend-name=intellij",
+            ),
+        )
+
+        assertTrue(command is CliCommand.WorkspaceStatus)
+        val statusCommand = command as CliCommand.WorkspaceStatus
+        assertEquals("intellij", statusCommand.options.backendName)
+    }
+
+    @Test
+    fun `runtimeOptions accepts null backend name for auto-selection`() {
+        val command = parser.parse(
+            arrayOf(
+                "workspace",
+                "status",
+                "--workspace-root=$tempDir",
+            ),
+        )
+
+        assertTrue(command is CliCommand.WorkspaceStatus)
+        val statusCommand = command as CliCommand.WorkspaceStatus
+        // When no --backend-name is specified, it should be null (auto-select)
+        assertEquals(null, statusCommand.options.backendName)
+    }
+
+    @Test
+    fun `runtimeOptions rejects invalid backend name`() {
+        val failure = assertThrows<CliFailure> {
+            parser.parse(
+                arrayOf(
+                    "workspace",
+                    "status",
+                    "--workspace-root=$tempDir",
+                    "--backend-name=foo",
+                ),
+            )
+        }
+
+        assertEquals("CLI_USAGE", failure.code)
+        assertTrue(failure.message.contains("Unsupported --backend-name=foo"))
+    }
+
+    @Test
     fun `usage errors include command specific help`() {
         val failure = assertThrows<CliFailure> {
             parser.parse(

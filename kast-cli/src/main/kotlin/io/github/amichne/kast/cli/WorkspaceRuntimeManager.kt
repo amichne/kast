@@ -18,6 +18,7 @@ internal class WorkspaceRuntimeManager(
     private val rpcClient: RuntimeRpcClient,
     private val processLauncher: ProcessLauncher,
     private val processLivenessChecker: (Long) -> Boolean = ::isProcessAlive,
+    private val standaloneDisabled: () -> Boolean = ::isStandaloneDisabled,
 ) {
     suspend fun workspaceStatus(options: RuntimeCommandOptions): WorkspaceStatusResult {
         val inspection = inspectWorkspace(options, pruneStaleDescriptors = false)
@@ -84,6 +85,28 @@ internal class WorkspaceRuntimeManager(
         }
 
         val liveStandalone = inspection.candidates.firstOrNull { it.descriptor.backendName == "standalone" }
+
+        // IntelliJ backend cannot be auto-started — it requires an open IntelliJ IDEA project.
+        if (liveStandalone == null && (options.backendName == "intellij" || options.backendName == null)) {
+            val requestedIntelliJ = options.backendName == "intellij"
+            if (requestedIntelliJ) {
+                throw CliFailure(
+                    code = "INTELLIJ_NOT_RUNNING",
+                    message = "No IntelliJ backend is available for ${options.workspaceRoot}. " +
+                        "Open the project in IntelliJ IDEA with the Kast plugin installed.",
+                )
+            }
+        }
+
+        // Standalone backend can be disabled via env var.
+        if (standaloneDisabled() && options.backendName == "standalone") {
+            throw CliFailure(
+                code = "STANDALONE_DISABLED",
+                message = "The standalone JVM daemon is disabled by KAST_STANDALONE_DISABLE. " +
+                    "Unset it or use --backend-name=intellij.",
+            )
+        }
+
         if (liveStandalone != null) {
             if (!liveStandalone.reachable || liveStandalone.runtimeStatus?.state == RuntimeState.DEGRADED) {
                 if (options.noAutoStart) {
@@ -105,6 +128,15 @@ internal class WorkspaceRuntimeManager(
 
         if (options.noAutoStart) {
             throw noAutoStartFailure(options)
+        }
+
+        if (standaloneDisabled()) {
+            throw CliFailure(
+                code = "STANDALONE_DISABLED",
+                message = "No servable backend is available for ${options.workspaceRoot} and the standalone JVM daemon " +
+                    "is disabled by KAST_STANDALONE_DISABLE. Open the project in IntelliJ IDEA with the Kast plugin installed, " +
+                    "or unset KAST_STANDALONE_DISABLE.",
+            )
         }
 
         return startStandaloneAndWait(
@@ -220,7 +252,7 @@ internal class WorkspaceRuntimeManager(
         val registeredDescriptors = registry.findByWorkspaceRoot(options.workspaceRoot)
         val candidates = registeredDescriptors.map { registered ->
             inspectDescriptor(registry, registered, pruneStaleDescriptors)
-        }.filter { candidate -> candidate.descriptor.backendName == "standalone" }
+        }
 
         return WorkspaceInspection(
             descriptorDirectory = descriptorDirectory,
@@ -347,7 +379,12 @@ internal fun selectServableCandidate(
             candidate.ready
         }
     }
-    .minByOrNull(RuntimeCandidateStatus::descriptorPath)
+    .sortedWith(
+        // Prefer intellij over standalone when both are available (lighter weight).
+        compareByDescending<RuntimeCandidateStatus> { it.descriptor.backendName == "intellij" }
+            .thenBy(RuntimeCandidateStatus::descriptorPath),
+    )
+    .firstOrNull()
 
 internal fun selectStatusCandidate(
     candidates: List<RuntimeCandidateStatus>,
@@ -356,6 +393,7 @@ internal fun selectStatusCandidate(
     .filter { candidate -> backendName == null || candidate.descriptor.backendName == backendName }
     .sortedWith(
         compareByDescending(RuntimeCandidateStatus::ready)
+            .thenByDescending { it.descriptor.backendName == "intellij" }
             .thenBy(RuntimeCandidateStatus::descriptorPath),
     )
     .firstOrNull()
@@ -373,6 +411,8 @@ private fun isProcessAlive(pid: Long): Boolean = ProcessHandle.of(pid)
     ?.get()
     ?.isAlive
     ?: false
+
+internal fun isStandaloneDisabled(): Boolean = System.getenv("KAST_STANDALONE_DISABLE") != null
 
 private fun RuntimeCommandOptions.requireStandaloneBackend(): StandaloneServerOptions {
     return standaloneOptions ?: StandaloneServerOptions.fromValues(

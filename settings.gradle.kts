@@ -21,5 +21,8 @@ include(
     ":kast",
     ":analysis-server",
     ":backend-standalone",
+    ":backend-shared",
+    ":backend-intellij",
     ":shared-testing",
+    ":parity-tests",
 )

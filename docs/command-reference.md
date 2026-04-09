@@ -36,7 +36,9 @@ Runtime-dependent commands can auto-start a standalone daemon when needed. They
 attach once the daemon is servable, which can happen during `INDEXING`. Pass
 `--no-auto-start=true` when automation must fail instead of starting a daemon.
 `workspace ensure` remains the explicit prewarm command and waits for `READY`
-unless you add `--accept-indexing=true`.
+unless you add `--accept-indexing=true`. If the IntelliJ plugin backend is
+running for the same workspace, the CLI discovers and connects to it
+automatically.
 
 When Kast detects an interactive terminal, the help pages use ANSI color. If
 you need color in another context, set `CLICOLOR_FORCE=1` before you run the

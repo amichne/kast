@@ -4,6 +4,10 @@ import com.intellij.psi.PsiElement
 import io.github.amichne.kast.api.SearchScope
 import io.github.amichne.kast.api.SearchScopeKind
 import io.github.amichne.kast.api.SymbolVisibility
+import io.github.amichne.kast.shared.analysis.referenceSearchIdentifier
+import io.github.amichne.kast.shared.analysis.resolvedFilePath
+import io.github.amichne.kast.shared.analysis.targetFqNameAndPackage
+import io.github.amichne.kast.shared.analysis.visibility
 import io.github.amichne.kast.standalone.StandaloneAnalysisSession
 import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetry
 import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetryScope

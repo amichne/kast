@@ -5,8 +5,9 @@ description: Install Kast, prewarm or auto-start a workspace runtime, verify
 icon: lucide/play
 ---
 
-This guide installs Kast, shows the optional explicit prewarm step, and then
-walks through the first workspace commands.
+This guide covers two ways to get Kast running: the standalone CLI for
+terminal and CI workflows, and the IntelliJ plugin for IDE-integrated
+analysis.
 
 ## Prerequisites
 
@@ -24,7 +25,22 @@ You need a small amount of local setup before the first command can succeed.
     `dist/kast/kast`, and can attempt `./gradlew :kast:writeWrapperScript` when
     Java 21+ is available.
 
-## Install the published CLI
+## Choose a backend
+
+Kast provides two backend options. Pick the one that matches your workflow.
+
+- **Standalone backend (CLI):** Best for terminal workflows, CI pipelines,
+  and LLM agents. The `kast` CLI manages the daemon lifecycle for you.
+  Install the CLI and the standalone distribution together in one step.
+- **IntelliJ plugin backend:** Best when you already have IntelliJ IDEA open.
+  The plugin starts a Kast server automatically when IntelliJ opens a
+  project. Install the plugin into IntelliJ and connect to it from any
+  JSON-RPC client.
+
+See [How Kast works](how-it-works.md) for a detailed comparison of the two
+backends, including a capability table.
+
+## Install the standalone CLI
 
 Install the current published release so the `kast` executable is available
 from your shell.
@@ -106,6 +122,35 @@ and the supported `--key=value` options.
 
 4. Run `kast --help` if you want the grouped help page before the first
    workspace command.
+
+## Install the IntelliJ plugin
+
+If you use IntelliJ IDEA and prefer the plugin backend, install the Kast
+plugin from a release asset. The plugin starts a Kast analysis server
+automatically when IntelliJ opens a project.
+
+1. Download the `kast-intellij-<version>.zip` file from the
+   [latest GitHub release](https://github.com/amichne/kast/releases/latest).
+
+2. In IntelliJ IDEA, open **Settings → Plugins → ⚙️ → Install Plugin from
+   Disk** and select the downloaded zip file.
+
+3. Restart IntelliJ IDEA when prompted.
+
+4. Open a Kotlin project. The plugin starts a Kast server on a Unix domain
+   socket and writes a descriptor file so external clients can discover it.
+
+5. Verify the plugin is running by connecting any JSON-RPC client to the
+   socket path written in the descriptor file under `.gradle/kast/instances/`.
+
+!!! note
+    The IntelliJ plugin backend does not require the standalone CLI to be
+    installed. It reuses the IDE's own K2 analysis session and project model.
+    If you also want CLI access, install the standalone CLI separately and
+    it will detect and connect to the running IntelliJ backend automatically.
+
+To disable the plugin temporarily without uninstalling it, set the
+`KAST_INTELLIJ_DISABLE` environment variable before launching IntelliJ.
 
 ## Optional: prewarm a workspace runtime
 

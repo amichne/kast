@@ -1,4 +1,4 @@
-package io.github.amichne.kast.standalone.analysis
+package io.github.amichne.kast.shared.analysis
 
 import com.intellij.openapi.util.TextRange
 import io.github.amichne.kast.api.Diagnostic
@@ -10,7 +10,7 @@ import org.jetbrains.kotlin.analysis.api.diagnostics.KaSeverity
  * Converts a K2 Analysis API diagnostic to one or more [Diagnostic] API models.
  */
 @Suppress("UnstableApiUsage")
-internal fun KaDiagnosticWithPsi<*>.toApiDiagnostics(): List<Diagnostic> {
+fun KaDiagnosticWithPsi<*>.toApiDiagnostics(): List<Diagnostic> {
     val ranges = textRanges.ifEmpty { listOf(TextRange(0, psi.textLength)) }
     return ranges.map { range ->
         Diagnostic(

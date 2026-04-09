@@ -17,12 +17,12 @@ import io.github.amichne.kast.api.SCHEMA_VERSION
 import io.github.amichne.kast.api.ServerLimits
 import io.github.amichne.kast.api.Symbol
 import io.github.amichne.kast.standalone.StandaloneAnalysisSession
+import io.github.amichne.kast.shared.analysis.callHierarchyDeclaration
+import io.github.amichne.kast.shared.analysis.resolveTarget
+import io.github.amichne.kast.shared.analysis.resolvedFilePath
+import io.github.amichne.kast.shared.analysis.toKastLocation
+import io.github.amichne.kast.shared.analysis.toSymbolModel
 import io.github.amichne.kast.standalone.analysis.CandidateFileResolver
-import io.github.amichne.kast.standalone.analysis.callHierarchyDeclaration
-import io.github.amichne.kast.standalone.analysis.resolveTarget
-import io.github.amichne.kast.standalone.analysis.resolvedFilePath
-import io.github.amichne.kast.standalone.analysis.toKastLocation
-import io.github.amichne.kast.standalone.analysis.toSymbolModel
 import io.github.amichne.kast.standalone.cache.SqliteSourceIndexStore
 import io.github.amichne.kast.standalone.cache.defaultCacheJson
 import io.github.amichne.kast.standalone.cache.kastCacheDirectory

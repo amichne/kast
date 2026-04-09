@@ -1,13 +1,14 @@
 ---
 title: Kast docs
-description: IDE-grade Kotlin code intelligence without the IDE.
+description: IDE-grade Kotlin code intelligence for terminals, CI, and IDEs.
 icon: lucide/network
 ---
 
-Kast gives you IDE-grade Kotlin code intelligence without the IDE. It uses the
-Kotlin K2 Analysis API to answer semantic questions about real workspaces and
-returns structured JSON that scripts, CI jobs, and LLM agents can consume
-directly.
+Kast gives you IDE-grade Kotlin code intelligence wherever you need it. It
+uses the Kotlin K2 Analysis API to answer semantic questions about real
+workspaces and returns structured JSON that scripts, CI jobs, and LLM agents
+can consume directly. Kast runs as a standalone CLI daemon or as an IntelliJ
+IDEA plugin — both expose the same JSON-RPC protocol.
 
 Kast is built to answer questions such as:
 
