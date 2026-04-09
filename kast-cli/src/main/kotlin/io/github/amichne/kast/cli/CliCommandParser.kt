@@ -177,11 +177,11 @@ internal data class ParsedArguments(
         val requestedBackendName = backendName
             ?.trim()
             ?.takeIf(String::isNotEmpty)
-            ?: "standalone"
-        if (requestedBackendName != "standalone") {
+        if (requestedBackendName != null && requestedBackendName !in VALID_BACKEND_NAMES) {
             throw CliFailure(
                 code = "CLI_USAGE",
-                message = "Only --backend-name=standalone is supported",
+                message = "Unsupported --backend-name=$requestedBackendName. " +
+                    "Valid values: ${VALID_BACKEND_NAMES.joinToString()}",
             )
         }
         return RuntimeCommandOptions(
@@ -464,3 +464,5 @@ internal data class ParsedArguments(
 
     private fun absoluteFilePath(value: String): String = Path.of(value).toAbsolutePath().normalize().toString()
 }
+
+private val VALID_BACKEND_NAMES = setOf("standalone", "intellij")

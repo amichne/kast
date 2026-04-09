@@ -1,0 +1,19 @@
+<idea-plugin>
+    <id>io.github.amichne.kast.intellij</id>
+    <name>Kast Analysis Backend</name>
+    <vendor url="https://github.com/amichne/kast">amichne</vendor>
+    <description>Kast Kotlin analysis backend running inside IntelliJ IDEA</description>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>org.jetbrains.kotlin</depends>
+    <depends>com.intellij.modules.java</depends>
+
+    <extensions defaultExtensionNs="org.jetbrains.kotlin">
+        <supportsKotlinPluginMode supportsK1="false" supportsK2="true" />
+    </extensions>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <projectService serviceImplementation="io.github.amichne.kast.intellij.KastPluginService"/>
+        <postStartupActivity implementation="io.github.amichne.kast.intellij.KastStartupActivity"/>
+    </extensions>
+</idea-plugin>
