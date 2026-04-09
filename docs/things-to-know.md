@@ -117,12 +117,14 @@ plan, Kast recomputes the current hashes and rejects the apply if a file
 changed after the plan was created. Treat the returned `fileHashes` as part of
 the contract, and don't edit them by hand.
 
-## One daemon per workspace
+## One backend per workspace
 
-Kast runs independent daemons per workspace root. If you analyze two
-checkouts or two repositories, each one gets its own process and its own
-analysis state. That isolation keeps source indexes, caches, and refresh
-behavior tied to the workspace you actually asked about.
+Kast runs one backend per workspace root. With the standalone CLI, each
+workspace gets its own daemon process. With the IntelliJ plugin, each open
+project gets its own Kast server inside the IDE. If you analyze two checkouts
+or two repositories, each one gets its own analysis state. That isolation
+keeps source indexes, caches, and refresh behavior tied to the workspace you
+actually asked about.
 
 ## The daemon refreshes automatically
 

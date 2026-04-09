@@ -44,7 +44,9 @@ care more about structure than about raw search hits.
   stats and node-level truncation metadata.
 - **Important details:** Traversal is intentionally bounded by depth, total
   edges, per-node child count, and timeout. Read `stats` and any
-  `truncation` fields before you treat the tree as complete.
+  `truncation` fields before you treat the tree as complete. This capability
+  is available in the standalone backend only. The IntelliJ plugin backend
+  does not yet support it.
 
 ## What breaks if I rename this?
 
@@ -85,7 +87,9 @@ to disk with conflict checks in place.
 ## Next steps
 
 Move to the behavioral model when you want to know how to interpret the
-output, or install Kast when you are ready to run it.
+output, or install Kast when you are ready to run it. To see which
+capabilities each backend supports, check the
+[capability comparison table](how-it-works.md#capability-comparison).
 
 - [Things to know](things-to-know.md)
 - [Get started](get-started.md)

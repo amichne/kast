@@ -120,11 +120,59 @@ jobs:
           cp kast/build/distributions/kast-*-portable.zip "$asset_path"
           gh release upload "$tag" "$asset_path" --clobber
 
+  build-intellij-plugin:
+    name: Build IntelliJ plugin
+    needs: prepare-release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.prepare-release.outputs.release_tag }}
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.4.0"
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/kast/intellij-distributions
+            backend-standalone/build/compat
+            backend-standalone/build/legacy-plugin-classes
+          key: idea-dist-${{ hashFiles('gradle/libs.versions.toml') }}
+
+      - name: Build IntelliJ plugin
+        run: >
+          ./gradlew
+          :backend-intellij:buildPlugin
+          :backend-intellij:verifyPluginStructure
+
+      - name: Upload IntelliJ plugin asset
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="${{ needs.prepare-release.outputs.release_tag }}"
+          asset_name="kast-intellij-${tag}.zip"
+          asset_path="backend-intellij/build/distributions/${asset_name}"
+
+          cp backend-intellij/build/distributions/*.zip "$asset_path"
+          gh release upload "$tag" "$asset_path" --clobber
+
   publish-release:
     name: Publish release
     needs:
       - prepare-release
       - build-and-upload
+      - build-intellij-plugin
     runs-on: ubuntu-latest
     permissions:
       contents: write

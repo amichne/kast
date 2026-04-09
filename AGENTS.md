@@ -1,8 +1,9 @@
 # Kast agent guide
 
 Kast is a Kotlin analysis tool with one line-delimited JSON-RPC contract and
-one supported operator path: the repo-local `kast` CLI manages a standalone
-JVM daemon for local automation and CI.
+two supported operator paths: the repo-local `kast` CLI manages a standalone
+JVM daemon for local automation and CI, and the IntelliJ plugin backend runs
+inside a running IntelliJ IDEA instance.
 
 Subdirectory `AGENTS.md` files narrow these rules for their own units. When a
 rule exists in both places, follow the deeper file.
@@ -38,6 +39,10 @@ Use this map to choose the narrowest unit that owns a change.
 - `backend-standalone`: standalone host, Analysis API session bootstrap,
   Gradle workspace discovery, PSI/K2-backed analysis helpers, and runtime
   startup
+- `backend-intellij`: IntelliJ IDEA plugin backend, project-level service,
+  plugin lifecycle, and IDE-hosted analysis server
+- `backend-shared`: shared analysis utilities consumed by both backend
+  runtimes via compileOnly IntelliJ platform dependencies
 - `shared-testing`: fake backend fixtures and shared contract assertions for
   tests
 - `build-logic`: Gradle convention plugins, runtime-lib sync, wrapper
@@ -66,11 +71,13 @@ Apply these rules across the repo before local unit rules add more detail.
 - Respect the current architecture: `kast-cli` owns the operator-facing
   control plane and native entrypoint, `kast` owns the JVM shell and wrapper
   packaging, `analysis-server` owns transport and descriptor plumbing,
-  `backend-standalone` owns runtime behavior, and `shared-testing` stays out of
-  production code paths.
+  `backend-standalone` owns headless runtime behavior, `backend-intellij` owns
+  IDE-hosted runtime behavior, and `shared-testing` stays out of production
+  code paths.
 - Treat `docs/` plus `zensical.toml` as the documentation source of truth.
   `site/` is generated output and should be rebuilt, not hand-edited.
-- Prefer repo-root packaging entry points for shipped CLI artifacts: `./build.sh`
-  is the sole entrypoint to build you should use.
+- Prefer repo-root packaging entry points for shipped artifacts: `./build.sh`
+  builds the standalone portable distribution; `./gradlew buildIntellijPlugin`
+  builds the IntelliJ plugin zip.
 - Verify with the narrowest Gradle task that proves the change. Broaden the
   scope when you touch shared contracts, build logic, or cross-module behavior.
