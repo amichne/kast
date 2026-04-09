@@ -22,8 +22,8 @@ import io.github.amichne.kast.api.NormalizedPath
 import io.github.amichne.kast.api.NotFoundException
 import io.github.amichne.kast.api.PackageName
 import io.github.amichne.kast.api.RefreshResult
-import io.github.amichne.kast.standalone.analysis.resolvedFilePath
-import io.github.amichne.kast.standalone.analysis.targetFqNameAndPackage
+import io.github.amichne.kast.shared.analysis.resolvedFilePath
+import io.github.amichne.kast.shared.analysis.targetFqNameAndPackage
 import io.github.amichne.kast.standalone.cache.CacheManager
 import io.github.amichne.kast.standalone.cache.SourceIndexCache
 import io.github.amichne.kast.standalone.cache.SqliteSourceIndexStore

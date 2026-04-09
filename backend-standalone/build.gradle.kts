@@ -299,6 +299,7 @@ dependencies {
 
     implementation(project(":analysis-api"))
     implementation(project(":analysis-server"))
+    implementation(project(":backend-shared"))
     implementation(libs.analysis.api.standalone) {
         isTransitive = false
     }

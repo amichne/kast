@@ -12,11 +12,11 @@ import io.github.amichne.kast.api.TypeHierarchyStats
 import io.github.amichne.kast.api.TypeHierarchyTruncation
 import io.github.amichne.kast.api.TypeHierarchyTruncationReason
 import io.github.amichne.kast.standalone.StandaloneAnalysisSession
-import io.github.amichne.kast.standalone.analysis.resolveTarget
-import io.github.amichne.kast.standalone.analysis.resolvedFilePath
-import io.github.amichne.kast.standalone.analysis.supertypeNames
-import io.github.amichne.kast.standalone.analysis.toSymbolModel
-import io.github.amichne.kast.standalone.analysis.typeHierarchyDeclaration
+import io.github.amichne.kast.shared.analysis.resolveTarget
+import io.github.amichne.kast.shared.analysis.resolvedFilePath
+import io.github.amichne.kast.shared.analysis.supertypeNames
+import io.github.amichne.kast.shared.analysis.toSymbolModel
+import io.github.amichne.kast.shared.analysis.typeHierarchyDeclaration
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtFile

@@ -1,4 +1,4 @@
-package io.github.amichne.kast.standalone.analysis
+package io.github.amichne.kast.shared.analysis
 
 import io.github.amichne.kast.api.NotFoundException
 import io.github.amichne.kast.api.SemanticInsertionQuery
@@ -8,7 +8,7 @@ import org.jetbrains.kotlin.psi.KtClassBody
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtFile
 
-internal object SemanticInsertionPointResolver {
+object SemanticInsertionPointResolver {
     fun resolve(
         file: KtFile,
         query: SemanticInsertionQuery,
