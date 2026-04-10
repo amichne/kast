@@ -1,5 +1,6 @@
 {
   "version": 1,
+  "scope": "ci",
   "hooks": {
     "build-health": {
       "description": "Run the project's configured Gradle health hook (e.g. 'check' or 'build') and fail if the build is unhealthy.",

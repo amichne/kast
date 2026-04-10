@@ -1,0 +1,51 @@
+# kast-workflows.yaml — End-to-end workflow eval suite
+#
+# Each case presents a multi-step workflow prompt and asserts correct tool
+# sequencing, hook firing, and overall behavior.
+
+suite: kast-workflows
+workspace: evals/fixtures/sample-workspace
+
+cases:
+  - id: full-rename-workflow
+    name: "Full rename workflow uses impact → rename → diagnostics"
+    prompt: >
+      Rename the `greet` function in `Greeter.kt` to `sayHello`. Run the
+      full rename workflow: assess impact first, then rename, then verify
+      diagnostics pass.
+    assertions:
+      - type: tool_sequence_contains
+        sequence:
+          - kast-impact.sh
+          - kast-rename.sh
+          - kast-diagnostics.sh
+      - type: hook_fired
+        hook: kast-diagnostics-gate
+      - type: hook_fired
+        hook: build-health-gate
+
+  - id: multi-step-investigation
+    name: "Multi-step investigation uses resolve then outgoing callers"
+    prompt: >
+      I need to understand the call graph starting from `GreeterFactory.create()`.
+      First resolve the symbol, then show me what it calls (outgoing direction).
+    assertions:
+      - type: tool_used
+        tool: kast-resolve.sh
+      - type: tool_used
+        tool: kast-callers.sh
+      - type: flag_used
+        tool: kast-callers.sh
+        flag: "--direction=outgoing"
+
+  - id: edit-and-validate
+    name: "Edit triggers diagnostics and test gates"
+    prompt: >
+      Fix the type error in `BrokenFile.kt` — the `formatGreeting` function
+      returns String but the return type annotation says Int. After fixing it,
+      verify the fix with diagnostics.
+    assertions:
+      - type: tool_used
+        tool: kast-diagnostics.sh
+      - type: hook_fired
+        hook: test-gate

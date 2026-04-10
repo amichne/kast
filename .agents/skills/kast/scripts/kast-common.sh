@@ -303,7 +303,7 @@ kast_resolve_named_symbol_query() {
         while IFS=$'\t' read -r offset line column context; do
             if kast_run_json \
                 "${attempt_file}" \
-                "${KAST}" symbol resolve \
+                "${KAST}" resolve \
                 --workspace-root="${workspace_root}" \
                 --file-path="${candidate_file}" \
                 --offset="${offset}"; then

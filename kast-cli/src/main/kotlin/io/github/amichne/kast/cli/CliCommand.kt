@@ -18,8 +18,7 @@ internal sealed interface CliCommand {
     data class WorkspaceStatus(val options: RuntimeCommandOptions) : CliCommand
     data class WorkspaceEnsure(val options: RuntimeCommandOptions) : CliCommand
     data class WorkspaceRefresh(val options: RuntimeCommandOptions, val query: RefreshQuery) : CliCommand
-    data class DaemonStart(val options: RuntimeCommandOptions) : CliCommand
-    data class DaemonStop(val options: RuntimeCommandOptions) : CliCommand
+    data class WorkspaceStop(val options: RuntimeCommandOptions) : CliCommand
     data class Capabilities(val options: RuntimeCommandOptions) : CliCommand
     data class ResolveSymbol(val options: RuntimeCommandOptions, val query: SymbolQuery) : CliCommand
     data class FindReferences(val options: RuntimeCommandOptions, val query: ReferencesQuery) : CliCommand

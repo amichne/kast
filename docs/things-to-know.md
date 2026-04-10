@@ -129,7 +129,7 @@ actually asked about.
 ## The daemon refreshes automatically
 
 Kast keeps workspace state fresh without making you restart the daemon for
-normal edits. `edits apply` writes the prepared changes, then refreshes the
+normal edits. `apply-edits` writes the prepared changes, then refreshes the
 affected files or the full workspace when file creation or deletion changed
 the layout. For external `.kt` file changes, a background watcher batches
 create, modify, and delete events under the registered source roots and

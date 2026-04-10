@@ -175,26 +175,13 @@ delegates to `run_task.sh`, so it returns the same structured JSON shape.
 
 ## Mandatory completion hooks
 
-This skill ships a machine-readable hook manifest in `hooks.json`. Satisfy both
-hooks before you end work.
+Completion hooks are defined in `.agents/hooks.json` at the repository root.
+That file is the authoritative source for agent-level hooks. This skill must
+not redeclare any hook already defined there.
 
-### `docs-writer` completion hook
-
-If you changed any Markdown file, invoke `docs-writer` before you finish. Treat
-`docs/**`, repository `*.md`, and skill Markdown as documentation scope. Do not
-end the turn with unreviewed Markdown changes.
-
-### Build-health completion hook
-
-During discovery, set `project.gradleHook` to the single highest-signal Gradle
-task for the project. Before you finish, run:
-
-```bash
-bash scripts/gradle/run_gradle_hook.sh /project
-```
-
-If `project.gradleHook` is unset or the hook fails, keep iterating or report
-the blocker. Never end work with an unsatisfied build-health hook.
+Satisfy all agent-level completion hooks (build-health-gate, test-gate,
+kast-diagnostics-gate, docs-writer-gate) before you end work. Skills inherit
+hooks additively from the repo → agent → skill hierarchy.
 
 ## Parsing Results
 

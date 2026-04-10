@@ -24,8 +24,8 @@ daemon_log=""
 
 cleanup() {
   if [[ -d "$workspace_dir" ]]; then
-    KAST_INSTANCE_DIR="$instance_dir" \
-      "$KAST_CMD" daemon stop --workspace-root="$workspace_dir" >/dev/null 2>&1 || true
+    KAST_CONFIG_HOME="$instance_dir" \
+      "$KAST_CMD" workspace stop --workspace-root="$workspace_dir" >/dev/null 2>&1 || true
   fi
   rm -rf "$tmp_dir"
 }
@@ -33,7 +33,7 @@ cleanup() {
 dump_logs() {
   local candidate_log="$daemon_log"
   if [[ -z "$candidate_log" ]]; then
-    candidate_log="${workspace_dir}/.kast/logs/standalone-daemon.log"
+    candidate_log="${workspace_dir}/.kast/logs/standalone-daemon.log"  # legacy fallback path
   fi
 
   if [[ -f "$candidate_log" ]]; then
@@ -85,7 +85,7 @@ print(use_file.read_text(encoding="utf-8").index("greet"))
 PY
 )"
 
-KAST_INSTANCE_DIR="$instance_dir" \
+KAST_CONFIG_HOME="$instance_dir" \
   "$KAST_CMD" workspace ensure \
   --workspace-root="$workspace_dir" \
   --wait-timeout-ms=180000 >"${tmp_dir}/ensure.json"
@@ -101,19 +101,19 @@ print(payload.get("logFile", ""))
 PY
 )"
 
-KAST_INSTANCE_DIR="$instance_dir" \
+KAST_CONFIG_HOME="$instance_dir" \
   "$KAST_CMD" capabilities \
   --workspace-root="$workspace_dir" \
   --wait-timeout-ms=180000 >"${tmp_dir}/capabilities.json"
 
-KAST_INSTANCE_DIR="$instance_dir" \
-  "$KAST_CMD" symbol resolve \
+KAST_CONFIG_HOME="$instance_dir" \
+  "$KAST_CMD" resolve \
   --workspace-root="$workspace_dir" \
   --file-path="$use_file" \
   --offset="$offset" \
   --wait-timeout-ms=180000 >"${tmp_dir}/symbol.json"
 
-KAST_INSTANCE_DIR="$instance_dir" \
+KAST_CONFIG_HOME="$instance_dir" \
   "$KAST_CMD" references \
   --workspace-root="$workspace_dir" \
   --file-path="$use_file" \
@@ -121,13 +121,13 @@ KAST_INSTANCE_DIR="$instance_dir" \
   --include-declaration=true \
   --wait-timeout-ms=180000 >"${tmp_dir}/references.json"
 
-KAST_INSTANCE_DIR="$instance_dir" \
+KAST_CONFIG_HOME="$instance_dir" \
   "$KAST_CMD" diagnostics \
   --workspace-root="$workspace_dir" \
   --file-paths="$broken_file" \
   --wait-timeout-ms=180000 >"${tmp_dir}/diagnostics.json"
 
-KAST_INSTANCE_DIR="$instance_dir" \
+KAST_CONFIG_HOME="$instance_dir" \
   "$KAST_CMD" rename \
   --workspace-root="$workspace_dir" \
   --file-path="$use_file" \
@@ -181,8 +181,8 @@ assert edit_files == {"Greeter.kt", "Use.kt", "SecondaryUse.kt"}
 assert set(Path(path).name for path in rename["affectedFiles"]) == edit_files
 PY
 
-KAST_INSTANCE_DIR="$instance_dir" \
-  "$KAST_CMD" daemon stop \
+KAST_CONFIG_HOME="$instance_dir" \
+  "$KAST_CMD" workspace stop \
   --workspace-root="$workspace_dir" >"${tmp_dir}/stop.json"
 
 for _ in $(seq 1 30); do

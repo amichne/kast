@@ -44,7 +44,7 @@ kast workspace status --workspace-root=/absolute/path
 **Output — `WorkspaceStatusResult`:**
 
 - `workspaceRoot` — absolute workspace root
-- `descriptorDirectory` — absolute `.kast/instances` directory
+- `descriptorDirectory` — absolute `~/.config/kast/daemons` directory
 - `selected` — the preferred `RuntimeCandidateStatus`, or `null`
 - `candidates` — every registered `RuntimeCandidateStatus` for the workspace
 
@@ -89,33 +89,12 @@ By default, `workspace ensure` waits for `READY`. Add
 
 ---
 
-## Daemon Commands
-
-### `daemon start`
-
-Start a detached standalone daemon and wait for readiness.
-
-```
-kast daemon start \
-  --workspace-root=/absolute/path \
-  [--wait-timeout-ms=60000]
-```
-
-This command is deprecated. Prefer `workspace ensure` or let analysis commands
-auto-start the daemon.
-
-**Output — `WorkspaceEnsureResult`** (`selected.runtimeStatus.state` = `READY`).
-
-**Errors:** Same timeout behavior as `workspace ensure`.
-
----
-
-### `daemon stop`
+### `workspace stop`
 
 Stop the registered daemon for a workspace and remove its descriptor.
 
 ```
-kast daemon stop --workspace-root=/absolute/path
+kast workspace stop --workspace-root=/absolute/path
 ```
 
 **Output — `DaemonStopResult`** with `stopped`, optional `descriptorPath`, and
@@ -171,13 +150,13 @@ This command auto-starts the daemon when needed unless you add
 
 ## Analysis Commands
 
-### `symbol resolve`
+### `resolve`
 
 Resolve the symbol at a file offset.
 
 **Inline form:**
 ```
-kast symbol resolve \
+kast resolve \
   --workspace-root=/absolute/path \
   --file-path=/absolute/path/to/File.kt \
   --offset=123
@@ -185,7 +164,7 @@ kast symbol resolve \
 
 **Request-file form:**
 ```
-kast symbol resolve \
+kast resolve \
   --workspace-root=/absolute/path \
   --request-file=/absolute/path/to/query.json
 ```
@@ -292,14 +271,14 @@ kast references \
 
 ---
 
-### `call hierarchy`
+### `call-hierarchy`
 
 Expand a bounded incoming or outgoing call tree from the symbol at a file
 offset.
 
 **Inline form:**
 ```
-kast call hierarchy \
+kast call-hierarchy \
   --workspace-root=/absolute/path \
   --file-path=/absolute/path/to/File.kt \
   --offset=123 \
@@ -313,7 +292,7 @@ kast call hierarchy \
 
 **Request-file form:**
 ```
-kast call hierarchy \
+kast call-hierarchy \
   --workspace-root=/absolute/path \
   --request-file=/absolute/path/to/query.json
 ```
@@ -480,7 +459,7 @@ kast rename \
 }
 ```
 
-`dryRun` defaults to `true`. Pass `false` only when you intend to apply edits immediately via `edits apply`.
+`dryRun` defaults to `true`. Pass `false` only when you intend to apply edits immediately via `apply-edits`.
 
 **Output — `RenameResult`:**
 ```json
@@ -507,18 +486,18 @@ kast rename \
 }
 ```
 
-`fileHashes` are SHA-256 hashes of each affected file at the time the plan was generated. Pass them unchanged to `edits apply` to guard against concurrent modification.
+`fileHashes` are SHA-256 hashes of each affected file at the time the plan was generated. Pass them unchanged to `apply-edits` to guard against concurrent modification.
 
 **Errors:** `NOT_FOUND`, `VALIDATION_ERROR` (invalid new name), `CAPABILITY_NOT_SUPPORTED` (`RENAME`).
 
 ---
 
-### `edits apply`
+### `apply-edits`
 
 Apply a prepared edit plan. Always requires `--request-file`.
 
 ```
-kast edits apply \
+kast apply-edits \
   --workspace-root=/absolute/path \
   --request-file=/absolute/path/to/query.json
 ```
@@ -731,7 +710,7 @@ diagnostics, impact assessment, and full rename flows.
 
 Use this wrapper when the user names a symbol instead of giving a file offset.
 It searches for declaration candidates, computes UTF-16 offsets with
-`find-symbol-offset.py`, runs `symbol resolve`, and confirms the match before
+`find-symbol-offset.py`, runs `resolve`, and confirms the match before
 it returns.
 
 ```bash
@@ -854,7 +833,7 @@ bash "$SKILL_ROOT/scripts/kast-rename.sh" \
 
 **All four arguments are required.**
 
-**stdout:** `ApplyEditsResult` JSON (same schema as `edits apply`).
+**stdout:** `ApplyEditsResult` JSON (same schema as `apply-edits`).
 
 **stderr:** step-by-step progress lines prefixed with `[kast-rename]`.
 

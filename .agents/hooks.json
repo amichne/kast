@@ -1,0 +1,54 @@
+{
+  "schema_version": 2,
+  "session_hooks": [
+    {
+      "name": "kast-bootstrap",
+      "trigger": "session_start",
+      "required": true,
+      "command": "bash .agents/skills/kast/scripts/resolve-kast.sh",
+      "description": "Resolve the kast CLI binary once per session, caching KAST and SKILL_ROOT into session state and exporting KAST_CLI_PATH."
+    }
+  ],
+  "completion_hooks": [
+    {
+      "name": "kast-diagnostics-gate",
+      "trigger": "before_agent_end",
+      "required": true,
+      "command": "bash .agents/skills/kast/scripts/kast-diagnostics.sh",
+      "when_any_path_matches": ["**/*.kt"],
+      "description": "Run kast diagnostics on all modified Kotlin files before ending work."
+    },
+    {
+      "name": "build-health-gate",
+      "trigger": "before_agent_end",
+      "required": true,
+      "command": "bash scripts/gradle/run_gradle_hook.sh .",
+      "description": "Run the project-defined highest-signal Gradle validation task before ending work."
+    },
+    {
+      "name": "test-gate",
+      "trigger": "before_agent_end",
+      "required": true,
+      "command": "bash scripts/gradle/run_task.sh . test",
+      "description": "Run the full test task for the project before ending work."
+    },
+    {
+      "name": "docs-writer-gate",
+      "trigger": "before_agent_end",
+      "required": true,
+      "skill": "docs-writer",
+      "when_any_path_matches": ["docs/**", "**/*.md", "**/*.kt"],
+      "description": "Invoke docs-writer when documentation-related or Kotlin files are changed."
+    }
+  ],
+  "pre_edit_hooks": [
+    {
+      "name": "kast-impact-gate",
+      "trigger": "before_symbol_edit",
+      "required": true,
+      "command": "bash .agents/skills/kast/scripts/kast-impact.sh",
+      "when_any_path_matches": ["**/*.kt"],
+      "description": "Run kast impact analysis before editing Kotlin symbols to understand downstream effects."
+    }
+  ]
+}

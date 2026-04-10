@@ -112,7 +112,7 @@ steps:
 
   - name: Stop daemon
     if: always()
-    run: kast daemon stop --workspace-root="$GITHUB_WORKSPACE" || true
+    run: kast workspace stop --workspace-root="$GITHUB_WORKSPACE" || true
 ```
 
 **Key points:**
@@ -120,7 +120,7 @@ steps:
   you skip it, the first runtime-dependent command auto-starts the daemon.
 - Add `--accept-indexing=true` to `workspace ensure` when later steps only need
   a servable daemon.
-- Always run `daemon stop` in a cleanup step (use `|| true` — ok if already stopped).
+- Always run `workspace stop` in a cleanup step (use `|| true` — ok if already stopped).
 - Use absolute paths for `--workspace-root` and all file arguments.
 - In containers, `$GITHUB_WORKSPACE` (or equivalent) is the workspace root.
 
@@ -165,7 +165,7 @@ invocation with the matching `kast-plan-utils.py` subcommand:
 
 ## Headless / Container Usage
 
-kast communicates over a Unix domain socket (`.kast/instances/` in the workspace root). This means:
+kast communicates over a Unix domain socket (`~/.config/kast/daemons/` by default). This means:
 
 - No network ports are opened.
 - Multiple workspaces can have independent daemons simultaneously.

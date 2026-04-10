@@ -56,8 +56,7 @@ class CliCommandParserTest {
     fun `call hierarchy parses from inline options`() {
         val command = parser.parse(
             arrayOf(
-                "call",
-                "hierarchy",
+                "call-hierarchy",
                 "--workspace-root=$tempDir",
                 "--file-path=$tempDir/Sample.kt",
                 "--offset=12",
@@ -126,7 +125,6 @@ class CliCommandParserTest {
     fun `symbol resolve parses no auto start`() {
         val command = parser.parse(
             arrayOf(
-                "symbol",
                 "resolve",
                 "--workspace-root=$tempDir",
                 "--file-path=$tempDir/Sample.kt",
@@ -144,8 +142,7 @@ class CliCommandParserTest {
     fun `type hierarchy parses from inline options`() {
         val command = parser.parse(
             arrayOf(
-                "type",
-                "hierarchy",
+                "type-hierarchy",
                 "--workspace-root=$tempDir",
                 "--file-path=$tempDir/Types.kt",
                 "--offset=18",
@@ -167,7 +164,6 @@ class CliCommandParserTest {
     fun `semantic insertion point parses from inline options`() {
         val command = parser.parse(
             arrayOf(
-                "semantic",
                 "insertion-point",
                 "--workspace-root=$tempDir",
                 "--file-path=$tempDir/Types.kt",
@@ -186,8 +182,7 @@ class CliCommandParserTest {
     fun `imports optimize parses from inline options`() {
         val command = parser.parse(
             arrayOf(
-                "imports",
-                "optimize",
+                "optimize-imports",
                 "--workspace-root=$tempDir",
                 "--file-paths=$tempDir/A.kt,$tempDir/B.kt",
             ),
@@ -349,19 +344,63 @@ class CliCommandParserTest {
     }
 
     @Test
-    fun `usage errors include command specific help`() {
+    fun `workspace stop parses from workspace root`() {
+        val command = parser.parse(
+            arrayOf(
+                "workspace",
+                "stop",
+                "--workspace-root=$tempDir",
+            ),
+        )
+
+        assertTrue(command is CliCommand.WorkspaceStop)
+        val stopCommand = command as CliCommand.WorkspaceStop
+        assertEquals(tempDir, stopCommand.options.workspaceRoot)
+    }
+
+    @Test
+    fun `daemon start is unknown`() {
         val failure = assertThrows<CliFailure> {
             parser.parse(
                 arrayOf(
-                    "edits",
-                    "apply",
+                    "daemon",
+                    "start",
                     "--workspace-root=$tempDir",
                 ),
             )
         }
 
         assertEquals("CLI_USAGE", failure.code)
-        assertTrue(checkNotNull(failure.details["usage"]).contains("edits apply"))
-        assertTrue(checkNotNull(failure.details["help"]).contains("help edits apply"))
+    }
+
+    @Test
+    fun `daemon stop is unknown`() {
+        val failure = assertThrows<CliFailure> {
+            parser.parse(
+                arrayOf(
+                    "daemon",
+                    "stop",
+                    "--workspace-root=$tempDir",
+                ),
+            )
+        }
+
+        assertEquals("CLI_USAGE", failure.code)
+    }
+
+    @Test
+    fun `usage errors include command specific help`() {
+        val failure = assertThrows<CliFailure> {
+            parser.parse(
+                arrayOf(
+                    "apply-edits",
+                    "--workspace-root=$tempDir",
+                ),
+            )
+        }
+
+        assertEquals("CLI_USAGE", failure.code)
+        assertTrue(checkNotNull(failure.details["usage"]).contains("apply-edits"))
+        assertTrue(checkNotNull(failure.details["help"]).contains("help apply-edits"))
     }
 }

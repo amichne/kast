@@ -22,7 +22,7 @@ class CliDaemonStatusNotesTest {
         val note = daemonNoteFor(
             WorkspaceStatusResult(
                 workspaceRoot = "/tmp/workspace",
-                descriptorDirectory = "/tmp/workspace/.kast/instances",
+                descriptorDirectory = "/tmp/.config/kast/daemons",
                 selected = selected,
                 candidates = listOf(selected, stale),
             ),
@@ -52,7 +52,7 @@ class CliDaemonStatusNotesTest {
         val note = daemonNoteFor(
             WorkspaceStatusResult(
                 workspaceRoot = "/tmp/workspace",
-                descriptorDirectory = "/tmp/workspace/.kast/instances",
+                descriptorDirectory = "/tmp/.config/kast/daemons",
                 selected = indexing,
                 candidates = listOf(indexing),
             ),
@@ -68,7 +68,7 @@ class CliDaemonStatusNotesTest {
             WorkspaceEnsureResult(
                 workspaceRoot = "/tmp/workspace",
                 started = true,
-                logFile = "/tmp/workspace/.kast/logs/standalone-daemon.log",
+                logFile = "/tmp/.config/kast/logs/a1b2c3d4e5f6/standalone-daemon.log",
                 selected = candidate(pid = 61),
             ),
         )
@@ -83,7 +83,7 @@ class CliDaemonStatusNotesTest {
             WorkspaceEnsureResult(
                 workspaceRoot = "/tmp/workspace",
                 started = true,
-                logFile = "/tmp/workspace/.kast/logs/standalone-daemon.log",
+                logFile = "/tmp/.config/kast/logs/a1b2c3d4e5f6/standalone-daemon.log",
                 selected = candidate(pid = 71),
                 note = "kast: started daemon for /tmp/workspace (state: INDEXING, enrichment in progress)",
             ),
@@ -110,7 +110,7 @@ class CliDaemonStatusNotesTest {
         errorMessage: String? = null,
     ): RuntimeCandidateStatus {
         return RuntimeCandidateStatus(
-            descriptorPath = "/tmp/workspace/.kast/instances/$pid.json",
+            descriptorPath = "/tmp/workspace:/standalone:$pid",
             descriptor = ServerInstanceDescriptor(
                 workspaceRoot = "/tmp/workspace",
                 backendName = "standalone",

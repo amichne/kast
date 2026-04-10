@@ -100,7 +100,7 @@ kast \
   --workspace-root=/absolute/path/to/workspace
 
 kast \
-  call hierarchy \
+  call-hierarchy \
   --workspace-root=/absolute/path/to/workspace \
   --file-path=/absolute/path/to/src/main/kotlin/com/example/App.kt \
   --offset=123 \
@@ -115,7 +115,7 @@ kast \
 If you want a runtime-dependent command to fail instead of auto-starting a
 daemon, add `--no-auto-start=true`.
 
-Kast refreshes `edits apply` results immediately and watches source roots for
+Kast refreshes `apply-edits` results immediately and watches source roots for
 most external `.kt` file changes. If you need to force recovery after a missed
 change, run:
 
@@ -129,14 +129,14 @@ Stop the daemon when you need to:
 
 ```bash
 kast \
-  daemon stop \
+  workspace stop \
   --workspace-root=/absolute/path/to/workspace
 ```
 
 Successful commands print JSON on stdout. Daemon lifecycle notes go to stderr,
 including successful auto-start and reuse paths.
 
-`call hierarchy` is available through the public CLI and returns bounded trees
+`call-hierarchy` is available through the public CLI and returns bounded trees
 with traversal stats plus truncation metadata.
 
 ## Optional: enable shell completion

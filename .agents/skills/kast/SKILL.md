@@ -27,8 +27,11 @@ JSON first. Open `log_file` only when `ok=false` or you need daemon notes.
 
 ## 1. Bootstrap (run once per session)
 
-Locate the skill root first. Resolve the raw `kast` binary only for commands
-that do not have a wrapper yet.
+If the `kast-bootstrap` session hook (`.agents/hooks.json`) has already fired,
+`SKILL_ROOT` and `KAST` are available in session state and `KAST_CLI_PATH` is
+exported. Skip directly to step 2.
+
+**Fallback** — locate the skill root manually when the session hook has not run:
 
 ```bash
 SKILL_ROOT="$(cd "$(dirname "$(find "$(git rev-parse --show-toplevel)" \
@@ -47,14 +50,15 @@ you call a wrapper.
 "$KAST" workspace ensure --workspace-root="$(git rev-parse --show-toplevel)"
 ```
 
-If `workspace ensure` fails, read
-`$(git rev-parse --show-toplevel)/.kast/logs/standalone-daemon.log` before you
-retry.
+If `workspace ensure` fails, check the daemon log at
+`$KAST_CONFIG_HOME/logs/<hash>/standalone-daemon.log` (defaults to
+`~/.config/kast/logs/<hash>/standalone-daemon.log` where `<hash>` is the first
+12 characters of the SHA-256 of the absolute workspace root) before retrying.
 
 ## 2. Symbol lookup
 
 Resolve a named symbol with the wrapper. It handles declaration search, UTF-16
-offset discovery, `symbol resolve`, and identity confirmation.
+offset discovery, `resolve`, and identity confirmation.
 
 ```bash
 bash "$SKILL_ROOT/scripts/kast-resolve.sh" \
@@ -161,7 +165,7 @@ affected files, and exits non-zero if any `ERROR` diagnostics remain.
 ### Raw CLI fallback
 
 Use raw `"$KAST"` only when a wrapper does not exist yet, such as
-`type hierarchy`, `semantic insertion-point`, `imports optimize`, or a custom
+`type-hierarchy`, `insertion-point`, `optimize-imports`, or a custom
 rename-plan flow. Keep `kast-plan-utils.py` in the loop for rename JSON.
 
 ```bash
@@ -175,7 +179,7 @@ rename-plan flow. Keep `kast-plan-utils.py` in the loop for rename JSON.
 python3 "$SKILL_ROOT/scripts/kast-plan-utils.py" \
   extract-apply-request /tmp/rename-plan.json /tmp/apply-request.json
 
-"$KAST" edits apply \
+"$KAST" apply-edits \
   --workspace-root=/absolute/workspace/path \
   --request-file=/tmp/apply-request.json
 ```
@@ -222,7 +226,7 @@ validation, workspace startup, candidate lookup, or the underlying CLI call.
 | --- | --- | --- |
 | `argument_validation` | Missing or invalid wrapper arguments | Fix the wrapper flags and rerun |
 | `candidate_search` | No declaration candidate matched the symbol query | Add `--file`, `--kind`, or `--containing-type`, or confirm the symbol exists |
-| `workspace_ensure` | The daemon did not become ready | Read `.kast/logs/standalone-daemon.log` before retrying |
+| `workspace_ensure` | The daemon did not become ready | Read `$KAST_CONFIG_HOME/logs/<hash>/standalone-daemon.log` before retrying |
 | `NOT_FOUND` in `log_file` | Offset landed on the wrong token or the file is not indexed | Re-run `kast-resolve.sh` with a better file hint, or wait for `READY` |
 | `CONFLICT` from `kast-rename.sh` | Files changed between plan and apply | Re-run `kast-rename.sh` to generate a fresh plan |
 | `clean=false` from `kast-diagnostics.sh` | Diagnostics found `ERROR` results | Fix the errors, then rerun diagnostics |

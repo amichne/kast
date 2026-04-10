@@ -54,11 +54,8 @@ internal class CliService(
         )
     }
 
-    suspend fun daemonStart(options: RuntimeCommandOptions): WorkspaceEnsureResult =
-        runtimeManager.daemonStart(options)
-
-    suspend fun daemonStop(options: RuntimeCommandOptions): DaemonStopResult =
-        runtimeManager.daemonStop(options)
+    suspend fun workspaceStop(options: RuntimeCommandOptions): DaemonStopResult =
+        runtimeManager.workspaceStop(options)
 
     suspend fun capabilities(options: RuntimeCommandOptions): RuntimeAttachedResult<BackendCapabilities> {
         val runtime = runtimeManager.ensureRuntime(options)
