@@ -30,7 +30,8 @@ You need a small amount of local setup before the first command can succeed.
 Kast provides two backend options. Pick the one that matches your workflow.
 
 - **Standalone backend (CLI):** Best for terminal workflows, CI pipelines,
-  and LLM agents. The `kast` CLI manages the daemon lifecycle for you.
+  and LLM agents. Advanced users can also expose the server over TCP for
+  remote JSON-RPC clients. The `kast` CLI manages the daemon lifecycle for you.
   Install the CLI and the standalone distribution together in one step.
 - **IntelliJ plugin backend:** Best when you already have IntelliJ IDEA open.
   The plugin starts a Kast server automatically when IntelliJ opens a

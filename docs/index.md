@@ -15,6 +15,8 @@ Kast is built to answer questions such as:
 - What symbol is at this location, and where is it declared?
 - Where is this symbol used, and what calls this function?
 - What changes if I rename this, and can I apply those edits safely?
+- What declarations does this file contain, and how are they nested?
+- Where is a symbol by name when you don't already know the file and offset?
 
 Start with the page that matches how you want to approach the tool.
 

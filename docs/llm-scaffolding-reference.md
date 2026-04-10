@@ -35,6 +35,7 @@ skill is doing before it runs the public commands.
 | Conversational lookup bridge | Searches for candidate declarations from a class, function, or property reference, then uses `"$SKILL_ROOT/scripts/find-symbol-offset.py"` to turn the chosen candidate into declaration-first UTF-16 offsets | When a human reference is ambiguous or you need to debug why one symbol won |
 | Semantic verification | Resolves the chosen position with `resolve` before it expands to `references`, `call-hierarchy`, or `rename` | When the first match is not the symbol you meant |
 | Failure handling | Treats stderr as daemon notes and must surface missing capabilities, `NOT_FOUND`, and truncation honestly | When automation must distinguish "no result" from "bad input" |
+| CLI analysis | Routes `resolve`, `references`, `call-hierarchy`, `outline`, and `workspace-symbol` through the public command surface | When you want to understand which CLI commands the skill invokes |
 
 ## Inputs the CLI still requires
 
@@ -48,6 +49,9 @@ repeatable automation.
 - Optional flags such as `--include-declaration=true`, `--direction=incoming`,
   or `--depth=2`
 - A clear statement of what the caller must summarize from the JSON result
+- For `outline`: an absolute file path inside the workspace
+- For `workspace-symbol`: a search pattern string, with optional `--regex=true`,
+  `--kind=CLASS`, and `--max-results=N` flags
 
 ## Use the minimal command sequence
 
@@ -76,6 +80,12 @@ KAST=$(bash "$SKILL_ROOT/scripts/resolve-kast.sh")
   --offset=123 \
   --direction=incoming \
   --depth=2
+"$KAST" outline \
+  --workspace-root=/absolute/path/to/workspace \
+  --file-path=/absolute/path/to/src/main/kotlin/com/example/App.kt
+"$KAST" workspace-symbol \
+  --workspace-root=/absolute/path/to/workspace \
+  --pattern=HealthCheckService
 ```
 
 When stderr reports `state: INDEXING`, the daemon is already servable, but
@@ -128,6 +138,23 @@ Take the first line first. If the follow-up `resolve` result does not
 match the class or property you intended, move to the next candidate or add a
 better containing-type hint in the human prompt.
 
+## Use workspace-symbol as a semantic bridge
+
+When text search returns too many false positives or you want to filter by
+symbol kind, `workspace-symbol` can replace the `rg` step in the bridge
+workflow.
+
+```bash
+"$KAST" workspace-symbol \
+  --workspace-root=/absolute/path/to/workspace \
+  --pattern=HealthCheckService \
+  --kind=CLASS
+```
+
+Take the first match and verify it with `resolve` before expanding into
+references or call hierarchy. Add `--regex=true` when the name pattern is not
+an exact substring.
+
 ## Read the result safely
 
 The JSON result is structured enough for reliable summaries, but only if you
@@ -147,6 +174,10 @@ read the right fields and report their limits honestly.
   list is complete until this is `true`.
 - Treat `stats.*Reached` and node `truncation` fields in a call hierarchy
   result as hard proof that Kast bounded the tree.
+- Treat `outline` results as a declaration-only tree. Parameters, anonymous
+  elements, and local declarations are excluded.
+- Treat `workspace-symbol` results as name-matched, not position-resolved.
+  Always follow up with `resolve` to confirm symbol identity.
 
 ## Watch for common failure patterns
 

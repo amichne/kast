@@ -16,6 +16,13 @@ precise lookup inputs that Kast needs.
     position. Ask it to resolve the symbol first, then request incoming or
     outgoing callers.
 
+!!! tip
+    When the packaged skill searches for declaration candidates, it uses
+    text-based search by default. If your agent calls the CLI directly, you
+    can also use `workspace-symbol --pattern=ClassName` to find declarations
+    by name without text search. This is especially useful when a name is
+    common or when you want to filter by symbol kind.
+
 ## Install the packaged skill into the workspace
 
 Before an agent can use the packaged `kast` skill from a repository, install it
@@ -114,6 +121,8 @@ you.
 - Translate the selected declaration into the file and offset that Kast needs.
 - Verify the target with `resolve` before it expands into
   `references`, `call-hierarchy`, `rename`, or other follow-up commands.
+- Use `outline` to inspect the declarations in a file before choosing a target
+  offset.
 
 ## Add context only when the name is ambiguous
 
@@ -155,6 +164,26 @@ lookup, or forcing a specific CLI invocation, use the advanced reference page
 instead of putting those details on the main path.
 
 - [LLM scaffolding reference](llm-scaffolding-reference.md)
+
+## Use workspace-symbol as an alternative bridge
+
+When you call the CLI directly instead of going through the packaged skill,
+`workspace-symbol` gives you a semantic alternative to text search for locating
+declarations.
+
+```bash
+kast \
+  workspace-symbol \
+  --workspace-root=/absolute/path/to/workspace \
+  --pattern=HealthCheckService
+```
+
+This returns matching symbol entries with their file paths, offsets, and kind
+metadata. You can then feed a match directly into `resolve`, `references`, or
+`call-hierarchy` without the intermediate text-search step.
+
+Add `--kind=CLASS` to narrow results when the name is common, or
+`--regex=true` when you need pattern-based matching.
 
 ## Next steps
 

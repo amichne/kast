@@ -46,6 +46,8 @@ you want to save it for repeatable automation.
 | `references` | `--file-path`, `--offset`, and optional `--include-declaration=true` | `--request-file` | Keep `--include-declaration` off unless you need the declaration in the result |
 | `call-hierarchy` | `--file-path`, `--offset`, `--direction`, and optional bound flags | `--request-file` | Use inline input when you want to tune depth or truncation limits directly |
 | `diagnostics` | `--file-paths=/absolute/A.kt,/absolute/B.kt` | `--request-file` | Inline input is easiest for a small list of files |
+| `outline` | `--file-path` | Not supported | Use the inline form for a single file |
+| `workspace-symbol` | `--pattern`, optional `--regex`, `--kind`, `--max-results` | Not supported | Use the inline form for name-based search |
 | `rename` | `--file-path`, `--offset`, `--new-name`, and optional `--dry-run=true` | `--request-file` | Rename stays in planning mode unless you change `dryRun` in the query |
 | `apply-edits` | Not supported | `--request-file` | The request file must include edits plus expected file hashes |
 
@@ -142,6 +144,51 @@ kast \
 Move to `--request-file` when you want the calling side to control the payload
 shape directly.
 
+## Get a file outline
+
+Use `outline` when you want a hierarchical view of the named declarations in a
+Kotlin file.
+
+```bash
+kast \
+  outline \
+  --workspace-root=/absolute/path/to/workspace \
+  --file-path=/absolute/path/to/src/main/kotlin/com/example/App.kt
+```
+
+The result is a nested tree. Top-level classes contain their member functions
+and properties as children. The outline includes classes, objects, named
+functions, and named properties. It excludes parameters, anonymous elements,
+and local declarations.
+
+## Search for symbols by name
+
+Use `workspace-symbol` when you want to find declarations across the workspace
+by name instead of by file position.
+
+```bash
+kast \
+  workspace-symbol \
+  --workspace-root=/absolute/path/to/workspace \
+  --pattern=HealthCheck
+```
+
+The default match is a case-insensitive substring search. Add `--regex=true`
+when you need pattern-based matching. Filter by kind with `--kind=CLASS`,
+`--kind=FUNCTION`, or `--kind=PROPERTY`.
+
+```bash
+kast \
+  workspace-symbol \
+  --workspace-root=/absolute/path/to/workspace \
+  --pattern=Service$ \
+  --regex=true \
+  --kind=CLASS
+```
+
+Read `page.truncated` in the result before you treat the list as complete.
+The default limit is 100 results.
+
 ## Plan a rename
 
 Use `rename` when you want an edit plan for a symbol rename. The inline form is
@@ -202,9 +249,13 @@ manual recovery path.
 
 ## Understand bounded results
 
-`call-hierarchy` is part of the supported CLI, but it is intentionally bounded.
-When you summarize results, report the direction you used and surface
-truncation honestly if `stats` or node metadata show that Kast hit a limit.
+`call-hierarchy`, `outline`, and `workspace-symbol` are part of the supported
+CLI, but each is intentionally bounded. When you summarize `call-hierarchy`
+results, report the direction you used and surface truncation honestly if
+`stats` or node metadata show that Kast hit a limit. `outline` covers named
+declarations but excludes parameters, anonymous elements, and local
+declarations. `workspace-symbol` defaults to 100 results; read
+`page.truncated` before treating the list as complete.
 
 ## Next steps
 

@@ -13,17 +13,23 @@ and why results stay tied to one workspace.
 ## Request flow
 
 Each Kast request moves through three layers. A client sends a JSON-RPC
-request over a Unix domain socket. The backend keeps the analysis session warm
-and hands the semantic work to the Kotlin K2 Analysis API engine. Kast then
-returns a structured JSON result to the caller.
+request over a transport — Unix domain sockets by default for CLI workflows,
+with TCP available as an advanced option for direct JSON-RPC clients. The
+backend keeps the analysis session warm and hands the semantic work to the
+Kotlin K2 Analysis API engine. Kast then returns a structured JSON result to
+the caller.
 
 ```mermaid
 flowchart LR
-    Client["Client (CLI or LLM agent)"] --> Backend["Kast backend"]
+    Client["Client (CLI or LLM agent)"] --> Transport["Transport layer"]
+    Transport --> Backend["Kast backend"]
     Backend --> K2["K2 Analysis API engine"]
     K2 --> Backend
     Backend --> JSON["Structured JSON result"]
 ```
+
+The CLI uses Unix domain sockets by default. TCP is available as an advanced
+transport for direct JSON-RPC clients connecting to a running server.
 
 The backend can run in two modes: as a standalone daemon managed by the CLI,
 or as an IntelliJ IDEA plugin that starts automatically when you open a
@@ -32,8 +38,8 @@ project.
 ## Two backends
 
 Kast ships two backend implementations. Both expose the same JSON-RPC
-protocol over a Unix domain socket, so callers don't need to know which one
-is running.
+protocol, typically over a Unix domain socket, so callers don't need to know
+which one is running.
 
 ### Standalone backend
 
@@ -72,6 +78,8 @@ The table below summarizes the current differences.
 |---------------------------|:----------:|:---------------:|
 | Symbol resolution         | ✓          | ✓               |
 | Find references           | ✓          | ✓               |
+| File outline              | ✓          | ✓               |
+| Workspace symbol search   | ✓          | ✓               |
 | Call hierarchy            | ✓          | —               |
 | Type hierarchy            | ✓          | —               |
 | Semantic insertion point  | ✓          | ✓               |

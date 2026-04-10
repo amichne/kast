@@ -109,6 +109,36 @@ Read `searchScope.exhaustive` before you claim a reference list or rename
 plan is complete. If it is `false`, results may miss usages outside the
 searched scope.
 
+## File outline shows named declarations only
+
+The `outline` command returns a nested tree of the named declarations in a
+file. It includes classes, objects, named functions, and named properties. It
+excludes function parameters, anonymous elements such as lambda expressions or
+object literals, and local declarations inside function bodies. The nesting
+reflects the actual structure of the source file: a top-level class that
+contains member functions and nested classes has those as children in the
+outline tree.
+
+Use outline results as a structural overview, not as a complete list of every
+identifier in the file.
+
+## Workspace symbol search is name-based, not position-based
+
+`workspace-symbol` finds declarations by name across every file in the
+workspace. The default search is a case-insensitive substring match, so
+`--pattern=Check` matches `HealthCheckService`, `checkInventory`, and
+`runChecks`. Pass `--regex=true` when you need pattern-based matching such as
+anchored names or alternation.
+
+Results are capped by the requested limit (default 100). Read
+`page.truncated` before you treat the result as complete. If it is `true`,
+there are more matches than the result contains.
+
+Workspace symbol search returns symbol metadata, not a resolved position. The
+entries include name, kind, file path, and location, but they are not the same
+as a `resolve` result. Always follow up with `resolve` when you need the full
+symbol identity, supertypes, or visibility information.
+
 ## Rename plans use hash-based conflict detection
 
 Rename planning returns edits together with `fileHashes`. Those hashes are

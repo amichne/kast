@@ -73,6 +73,37 @@ more files in the workspace.
 - **Important details:** Diagnostics only cover files in the current workspace
   session and reflect the state the daemon currently sees.
 
+## What declarations does this file contain?
+
+Use this when you want a structured overview of the declarations in one file
+without reading every line of source.
+
+- **Capability:** File outline
+- **Returns:** A nested tree of OutlineSymbol entries. Each entry includes the
+  symbol identity (name, kind, location) and its children. The tree reflects
+  the actual nesting of declarations in the file: a top-level class contains
+  its member functions and properties as children.
+- **Important details:** The outline includes classes, objects, named
+  functions, and named properties. It excludes parameters, anonymous elements,
+  and local declarations. The file must be part of the current workspace
+  session.
+
+## Where is a symbol by name?
+
+Use this when you know what a declaration is called but not where it lives, and
+you want to search across the entire workspace.
+
+- **Capability:** Workspace symbol search
+- **Returns:** A list of matching Symbol entries from across the workspace,
+  with optional pagination metadata when the result set exceeds the requested
+  limit.
+- **Important details:** Search is case-insensitive substring by default. Pass
+  regex mode for pattern-based matching. You can filter by symbol kind (class,
+  function, property). Results are capped by a configurable limit (default
+  100). Read `page.truncated` before treating the list as complete. This is a
+  name-based search across all workspace files, not a position-based
+  resolution.
+
 ## Apply these edits safely
 
 Use this when you already have a prepared edit plan and want Kast to write it
@@ -88,7 +119,8 @@ to disk with conflict checks in place.
 
 Move to the behavioral model when you want to know how to interpret the
 output, or install Kast when you are ready to run it. To see which
-capabilities each backend supports, check the
+capabilities each backend supports — including the new file outline and
+workspace symbol search — check the
 [capability comparison table](how-it-works.md#capability-comparison).
 
 - [Things to know](things-to-know.md)

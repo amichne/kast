@@ -59,13 +59,22 @@ planned the edit. Kast builds a rename plan from a resolved symbol, returns
 the exact edits it would make, and pairs them with SHA-256 file hashes so you
 can detect conflicts before applying anything to disk.
 
+### Text search cannot search by symbol kind
+
+Text search treats every matching line equally. It cannot distinguish a class
+named `Config` from a property named `config` from a local variable named
+`config`. Kast's workspace symbol search lets you filter by kind, match with
+regex, and get results that include the symbol's declaration metadata. When
+you need "all classes whose name ends with Service," Kast gives you a typed
+answer instead of a line list.
+
 The difference is easiest to see side by side.
 
-| Tool | Understands symbols | Follows the call graph | Plans safe renames | Fits automation | Best fit |
-| --- | --- | --- | --- | --- | --- |
-| `grep` / `ripgrep` | No | No | No | Yes | Fast text discovery |
-| **Kast** | Yes | Yes, with explicit bounds | Yes | Yes | Semantic analysis in scripts, CI, and agents |
-| IntelliJ IDEA | Yes | Yes | Yes | Limited | Interactive exploration and refactoring |
+| Tool | Understands symbols | Finds symbols by name | Follows the call graph | Plans safe renames | Fits automation | Best fit |
+| --- | --- | --- | --- | --- | --- | --- |
+| `grep` / `ripgrep` | No | Text only | No | No | Yes | Fast text discovery |
+| **Kast** | Yes | Yes, semantic | Yes, with explicit bounds | Yes | Yes | Semantic analysis in scripts, CI, and agents |
+| IntelliJ IDEA | Yes | Yes | Yes | Yes | Limited | Interactive exploration and refactoring |
 
 ## Why this matters for LLM agents
 
@@ -80,6 +89,8 @@ That changes what an agent can do safely:
 - Resolve a stable symbol identity before it summarizes usage.
 - Follow a bounded call graph and report where the result is partial.
 - Plan edits against the right declaration instead of every matching name.
+- Find declarations by name across the workspace without relying on text
+  search heuristics.
 - Apply prepared edits with hash-based conflict detection instead of blind
   text replacement.
 

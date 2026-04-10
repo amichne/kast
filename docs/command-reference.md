@@ -61,18 +61,19 @@ for one workspace.
 
 | Command | Purpose | Key options | Notes |
 | --- | --- | --- | --- |
-| `workspace status` | Inspect registered descriptors, liveness, and readiness | `--workspace-root` | Reports the selected daemon plus any additional descriptors for the same workspace |
-| `workspace ensure` | Explicitly prewarm or reuse a standalone daemon | `--workspace-root`, `--wait-timeout-ms`, optional `--accept-indexing=true` | Waits for `READY` by default; `--accept-indexing=true` returns once the daemon is servable in `INDEXING` |
+| `workspace status` | Inspect registered descriptors, liveness, and readiness | `--workspace-root`, optional `--backend-name` | Reports the selected daemon plus any additional descriptors for the same workspace |
+| `workspace ensure` | Explicitly prewarm or reuse a standalone daemon | `--workspace-root`, `--wait-timeout-ms`, optional `--accept-indexing=true`, `--backend-name` | Waits for `READY` by default; `--accept-indexing=true` returns once the daemon is servable in `INDEXING` |
 | `workspace refresh` | Force a targeted or full workspace state refresh | `--workspace-root`, optional `--file-paths` | Use this as a manual recovery path; omit `--file-paths` for a full refresh |
-| `workspace stop` | Stop the selected standalone daemon | `--workspace-root` | Removes the selected descriptor and reports what stopped |
+| `workspace stop` | Stop the selected standalone daemon | `--workspace-root`, optional `--backend-name` | Removes the selected descriptor and reports what stopped; pass `--backend-name` to target a specific backend |
 
 ## Read commands
 
 Use these commands when you want read-only analysis against a live workspace
 runtime.
 
-All read commands also accept `--no-auto-start=true` when you want them to fail
-instead of creating a daemon implicitly.
+All read commands also accept `--backend-name` to target a specific backend
+and `--no-auto-start=true` when you want them to fail instead of creating a
+daemon implicitly.
 
 | Command | Purpose | Input shape | Notes |
 | --- | --- | --- | --- |
@@ -81,18 +82,23 @@ instead of creating a daemon implicitly.
 | `references` | Find references for the symbol at a file position | Inline flags or `--request-file` | Inline form also supports `--include-declaration=true` |
 | `call-hierarchy` | Expand a bounded incoming or outgoing call tree | Inline flags or `--request-file` | Inline form needs `--file-path`, `--offset`, and `--direction`; optional bounds control truncation |
 | `diagnostics` | Run diagnostics for one or more files | Inline flags or `--request-file` | Inline form uses comma-separated absolute file paths |
+| `outline` | Get a hierarchical file outline | `--file-path` (absolute, required), `--workspace-root`, optional `--wait-timeout-ms` | Returns a nested tree of named declarations |
+| `workspace-symbol` | Search the workspace for symbols by name | `--pattern` (required), `--workspace-root`, optional `--regex`, `--kind`, `--max-results` | Case-insensitive substring by default; pass `--regex=true` for pattern matching |
+| `type-hierarchy` | Expand supertypes and subtypes from a resolved symbol | Inline flags or `--request-file` | Standalone backend only; inline form needs `--file-path` and `--offset` |
+| `insertion-point` | Find the semantic insertion point for a new declaration | Inline flags or `--request-file` | Returns the best location to insert a new member |
 
 ## Mutation commands
 
 Use these commands when you want Kast to produce or apply code edits through
 the supported mutation flow.
 
-Mutation commands also accept `--no-auto-start=true`.
+Mutation commands also accept `--backend-name` and `--no-auto-start=true`.
 
 | Command | Purpose | Input shape | Notes |
 | --- | --- | --- | --- |
 | `rename` | Plan a rename operation | Inline flags or `--request-file` | Inline form needs `--file-path`, `--offset`, and `--new-name` |
 | `apply-edits` | Apply a prepared edit plan | `--request-file` only | The request file must include edits and expected file hashes |
+| `optimize-imports` | Optimize imports for one or more files | `--file-paths` or `--request-file` | Returns optimized import lists |
 
 ## Validation commands
 
@@ -118,10 +124,14 @@ recovery path when you need to force the daemon to rescan state.
 
 ## Current support boundary
 
-The public command surface is intentionally small. `call-hierarchy` is
-available, but it is intentionally bounded. Use `--direction` plus the
-optional depth, total-call, child-count, timeout, and cache flags, and read
-`stats` or per-node `truncation` fields before you claim the tree is complete.
+The public command surface is intentionally small. `call-hierarchy`, `outline`,
+and `workspace-symbol` are available, but each is intentionally bounded.
+`call-hierarchy` uses `--direction` plus the optional depth, total-call,
+child-count, timeout, and cache flags; read `stats` or per-node `truncation`
+fields before you claim the tree is complete. `outline` covers named
+declarations but excludes parameters, anonymous elements, and local
+declarations. `workspace-symbol` defaults to 100 results; read
+`page.truncated` before treating the list as complete.
 
 ## Next steps
 
