@@ -45,6 +45,16 @@ class AnalysisServer(
                 descriptor = null
                 descriptorStore = null
             }
+
+            is AnalysisTransport.Tcp -> {
+                transportServer = TcpRpcServer(
+                    host = transport.host,
+                    port = transport.port,
+                    dispatcher = dispatcher,
+                ).start()
+                descriptor = null
+                descriptorStore = null
+            }
         }
 
         return RunningAnalysisServer(

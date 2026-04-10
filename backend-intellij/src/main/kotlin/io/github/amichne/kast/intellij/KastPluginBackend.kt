@@ -5,8 +5,11 @@ import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFileManager
+import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiManager
+import com.intellij.psi.PsiRecursiveElementWalkingVisitor
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.search.PsiShortNamesCache
 import com.intellij.psi.search.searches.ReferencesSearch
 import io.github.amichne.kast.api.AnalysisBackend
 import io.github.amichne.kast.api.ApplyEditsQuery
@@ -16,6 +19,8 @@ import io.github.amichne.kast.api.CallHierarchyQuery
 import io.github.amichne.kast.api.CallHierarchyResult
 import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.DiagnosticsResult
+import io.github.amichne.kast.api.FileOutlineQuery
+import io.github.amichne.kast.api.FileOutlineResult
 import io.github.amichne.kast.api.ImportOptimizeQuery
 import io.github.amichne.kast.api.ImportOptimizeResult
 import io.github.amichne.kast.api.LocalDiskEditApplier
@@ -39,8 +44,12 @@ import io.github.amichne.kast.api.SymbolQuery
 import io.github.amichne.kast.api.SymbolResult
 import io.github.amichne.kast.api.TextEdit
 import io.github.amichne.kast.api.SymbolVisibility
+import io.github.amichne.kast.api.WorkspaceSymbolQuery
+import io.github.amichne.kast.api.WorkspaceSymbolResult
+import io.github.amichne.kast.shared.analysis.FileOutlineBuilder
 import io.github.amichne.kast.shared.analysis.ImportAnalysis
 import io.github.amichne.kast.shared.analysis.SemanticInsertionPointResolver
+import io.github.amichne.kast.shared.analysis.SymbolSearchMatcher
 import io.github.amichne.kast.shared.analysis.declarationEdit
 import io.github.amichne.kast.shared.analysis.resolveTarget
 import io.github.amichne.kast.shared.analysis.resolvedFilePath
@@ -79,6 +88,8 @@ internal class KastPluginBackend(
             ReadCapability.CALL_HIERARCHY,
             ReadCapability.SEMANTIC_INSERTION_POINT,
             ReadCapability.DIAGNOSTICS,
+            ReadCapability.FILE_OUTLINE,
+            ReadCapability.WORKSPACE_SYMBOL_SEARCH,
         ),
         mutationCapabilities = setOf(
             MutationCapability.RENAME,
@@ -295,6 +306,75 @@ internal class KastPluginBackend(
             } else {
                 RefreshResult(refreshedFiles = query.filePaths, fullRefresh = false)
             }
+        }
+    }
+
+    override suspend fun fileOutline(query: FileOutlineQuery): FileOutlineResult = withContext(readDispatcher) {
+        readAction {
+            val file = findKtFile(query.filePath)
+            FileOutlineResult(symbols = FileOutlineBuilder.build(file))
+        }
+    }
+
+    override suspend fun workspaceSymbolSearch(query: WorkspaceSymbolQuery): WorkspaceSymbolResult = withContext(readDispatcher) {
+        readAction {
+            val matcher = SymbolSearchMatcher.create(query.pattern, query.regex)
+            val scope = GlobalSearchScope.projectScope(project)
+            val cache = PsiShortNamesCache.getInstance(project)
+            val symbols = mutableListOf<io.github.amichne.kast.api.Symbol>()
+
+            for (className in cache.allClassNames) {
+                if (symbols.size >= query.maxResults) break
+                if (!matcher.matches(className)) continue
+                for (psiClass in cache.getClassesByName(className, scope)) {
+                    if (symbols.size >= query.maxResults) break
+                    val ktElement = psiClass.navigationElement
+                    if (ktElement is org.jetbrains.kotlin.psi.KtNamedDeclaration) {
+                        val filePath = ktElement.containingFile?.virtualFile?.path ?: continue
+                        if (!filePath.startsWith(workspacePrefix) && filePath != workspaceRoot.toString()) continue
+                        val symbol = ktElement.toSymbolModel(containingDeclaration = null)
+                        if (query.kind == null || symbol.kind == query.kind) {
+                            symbols += symbol
+                        }
+                    }
+                }
+            }
+
+            for (methodName in cache.allMethodNames) {
+                if (symbols.size >= query.maxResults) break
+                if (!matcher.matches(methodName)) continue
+                for (psiMethod in cache.getMethodsByName(methodName, scope)) {
+                    if (symbols.size >= query.maxResults) break
+                    val ktElement = psiMethod.navigationElement
+                    if (ktElement is org.jetbrains.kotlin.psi.KtNamedDeclaration) {
+                        val filePath = ktElement.containingFile?.virtualFile?.path ?: continue
+                        if (!filePath.startsWith(workspacePrefix) && filePath != workspaceRoot.toString()) continue
+                        val symbol = ktElement.toSymbolModel(containingDeclaration = null)
+                        if (query.kind == null || symbol.kind == query.kind) {
+                            symbols += symbol
+                        }
+                    }
+                }
+            }
+
+            for (fieldName in cache.allFieldNames) {
+                if (symbols.size >= query.maxResults) break
+                if (!matcher.matches(fieldName)) continue
+                for (psiField in cache.getFieldsByName(fieldName, scope)) {
+                    if (symbols.size >= query.maxResults) break
+                    val ktElement = psiField.navigationElement
+                    if (ktElement is org.jetbrains.kotlin.psi.KtNamedDeclaration) {
+                        val filePath = ktElement.containingFile?.virtualFile?.path ?: continue
+                        if (!filePath.startsWith(workspacePrefix) && filePath != workspaceRoot.toString()) continue
+                        val symbol = ktElement.toSymbolModel(containingDeclaration = null)
+                        if (query.kind == null || symbol.kind == query.kind) {
+                            symbols += symbol
+                        }
+                    }
+                }
+            }
+
+            WorkspaceSymbolResult(symbols = symbols)
         }
     }
 

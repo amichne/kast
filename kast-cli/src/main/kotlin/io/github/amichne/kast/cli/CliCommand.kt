@@ -3,6 +3,7 @@ package io.github.amichne.kast.cli
 import io.github.amichne.kast.api.ApplyEditsQuery
 import io.github.amichne.kast.api.CallHierarchyQuery
 import io.github.amichne.kast.api.DiagnosticsQuery
+import io.github.amichne.kast.api.FileOutlineQuery
 import io.github.amichne.kast.api.ImportOptimizeQuery
 import io.github.amichne.kast.api.ReferencesQuery
 import io.github.amichne.kast.api.RefreshQuery
@@ -10,6 +11,7 @@ import io.github.amichne.kast.api.RenameQuery
 import io.github.amichne.kast.api.SemanticInsertionQuery
 import io.github.amichne.kast.api.SymbolQuery
 import io.github.amichne.kast.api.TypeHierarchyQuery
+import io.github.amichne.kast.api.WorkspaceSymbolQuery
 
 internal sealed interface CliCommand {
     data class Help(val topic: List<String> = emptyList()) : CliCommand
@@ -26,6 +28,8 @@ internal sealed interface CliCommand {
     data class TypeHierarchy(val options: RuntimeCommandOptions, val query: TypeHierarchyQuery) : CliCommand
     data class SemanticInsertionPoint(val options: RuntimeCommandOptions, val query: SemanticInsertionQuery) : CliCommand
     data class Diagnostics(val options: RuntimeCommandOptions, val query: DiagnosticsQuery) : CliCommand
+    data class FileOutline(val options: RuntimeCommandOptions, val query: FileOutlineQuery) : CliCommand
+    data class WorkspaceSymbol(val options: RuntimeCommandOptions, val query: WorkspaceSymbolQuery) : CliCommand
     data class Rename(val options: RuntimeCommandOptions, val query: RenameQuery) : CliCommand
     data class ImportOptimize(val options: RuntimeCommandOptions, val query: ImportOptimizeQuery) : CliCommand
     data class ApplyEdits(val options: RuntimeCommandOptions, val query: ApplyEditsQuery) : CliCommand

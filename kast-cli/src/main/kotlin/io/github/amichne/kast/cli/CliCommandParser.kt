@@ -4,6 +4,7 @@ import io.github.amichne.kast.api.ApplyEditsQuery
 import io.github.amichne.kast.api.CallDirection
 import io.github.amichne.kast.api.CallHierarchyQuery
 import io.github.amichne.kast.api.DiagnosticsQuery
+import io.github.amichne.kast.api.FileOutlineQuery
 import io.github.amichne.kast.api.FilePosition
 import io.github.amichne.kast.api.ImportOptimizeQuery
 import io.github.amichne.kast.api.ReferencesQuery
@@ -12,9 +13,11 @@ import io.github.amichne.kast.api.RenameQuery
 import io.github.amichne.kast.api.SemanticInsertionQuery
 import io.github.amichne.kast.api.SemanticInsertionTarget
 import io.github.amichne.kast.api.StandaloneServerOptions
+import io.github.amichne.kast.api.SymbolKind
 import io.github.amichne.kast.api.SymbolQuery
 import io.github.amichne.kast.api.TypeHierarchyDirection
 import io.github.amichne.kast.api.TypeHierarchyQuery
+import io.github.amichne.kast.api.WorkspaceSymbolQuery
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import java.nio.file.Path
@@ -92,6 +95,8 @@ internal class CliCommandParser(
                     parsed.semanticInsertionQuery(json),
                 )
                 listOf("diagnostics") -> CliCommand.Diagnostics(parsed.runtimeOptions(), parsed.diagnosticsQuery(json))
+                listOf("outline") -> CliCommand.FileOutline(parsed.runtimeOptions(), parsed.fileOutlineQuery(json))
+                listOf("workspace-symbol") -> CliCommand.WorkspaceSymbol(parsed.runtimeOptions(), parsed.workspaceSymbolQuery(json))
                 listOf("rename") -> CliCommand.Rename(parsed.runtimeOptions(), parsed.renameQuery(json))
                 listOf("optimize-imports") -> CliCommand.ImportOptimize(
                     parsed.runtimeOptions(),
@@ -334,6 +339,35 @@ internal data class ParsedArguments(
                 ?.filter(String::isNotEmpty)
                 ?.map(::absoluteFilePath)
                 .orEmpty(),
+        )
+    }
+
+    fun fileOutlineQuery(json: Json): FileOutlineQuery = requestOrFile(
+        serializer = FileOutlineQuery.serializer(),
+        requestFileKey = "request-file",
+        json = json,
+    ) {
+        FileOutlineQuery(
+            filePath = absoluteFilePath(requireOption("file-path")),
+        )
+    }
+
+    fun workspaceSymbolQuery(json: Json): WorkspaceSymbolQuery = requestOrFile(
+        serializer = WorkspaceSymbolQuery.serializer(),
+        requestFileKey = "request-file",
+        json = json,
+    ) {
+        WorkspaceSymbolQuery(
+            pattern = requireOption("pattern"),
+            kind = options["kind"]?.let { raw ->
+                SymbolKind.entries.firstOrNull { it.name.equals(raw, ignoreCase = true) }
+                    ?: throw CliFailure(
+                        code = "CLI_USAGE",
+                        message = "Unknown symbol kind: $raw. Valid values: ${SymbolKind.entries.joinToString { it.name }}",
+                    )
+            },
+            maxResults = optionalInt("max-results", 100),
+            regex = optionalBoolean("regex", false),
         )
     }
 

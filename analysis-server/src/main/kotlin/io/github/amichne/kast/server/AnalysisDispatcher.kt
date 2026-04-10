@@ -11,6 +11,8 @@ import io.github.amichne.kast.api.CallHierarchyResult
 import io.github.amichne.kast.api.CapabilityNotSupportedException
 import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.DiagnosticsResult
+import io.github.amichne.kast.api.FileOutlineQuery
+import io.github.amichne.kast.api.FileOutlineResult
 import io.github.amichne.kast.api.HealthResponse
 import io.github.amichne.kast.api.ImportOptimizeQuery
 import io.github.amichne.kast.api.ImportOptimizeResult
@@ -41,6 +43,8 @@ import io.github.amichne.kast.api.SymbolResult
 import io.github.amichne.kast.api.TypeHierarchyQuery
 import io.github.amichne.kast.api.TypeHierarchyResult
 import io.github.amichne.kast.api.ValidationException
+import io.github.amichne.kast.api.WorkspaceSymbolQuery
+import io.github.amichne.kast.api.WorkspaceSymbolResult
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
@@ -275,6 +279,31 @@ class AnalysisDispatcher(
                 ),
             )
 
+            "file-outline" -> encode(
+                FileOutlineResult.serializer(),
+                backend.fileOutline(
+                    decodeParams(FileOutlineQuery.serializer(), params).also { query ->
+                        validateAbsoluteFilePath(query.filePath)
+                        requireReadCapability(ReadCapability.FILE_OUTLINE)
+                    },
+                ),
+            )
+
+            "workspace-symbol" -> encode(
+                WorkspaceSymbolResult.serializer(),
+                backend.workspaceSymbolSearch(
+                    decodeParams(WorkspaceSymbolQuery.serializer(), params).also { query ->
+                        if (query.pattern.isBlank()) {
+                            throw ValidationException("Symbol search pattern must not be blank")
+                        }
+                        if (query.maxResults < 1) {
+                            throw ValidationException("Symbol search maxResults must be greater than zero")
+                        }
+                        requireReadCapability(ReadCapability.WORKSPACE_SYMBOL_SEARCH)
+                    },
+                ).withLimit(config.maxResults),
+            )
+
             else -> throw UnknownRpcMethodException(method)
         }
     }
@@ -357,6 +386,20 @@ private fun DiagnosticsResult.withLimit(limit: Int): DiagnosticsResult {
         page = PageInfo(
             truncated = true,
             nextPageToken = diagnostics[limit - 1].location.startOffset.toString(),
+        ),
+    )
+}
+
+private fun WorkspaceSymbolResult.withLimit(limit: Int): WorkspaceSymbolResult {
+    if (symbols.size <= limit) {
+        return this
+    }
+
+    return copy(
+        symbols = symbols.take(limit),
+        page = PageInfo(
+            truncated = true,
+            nextPageToken = limit.toString(),
         ),
     )
 }

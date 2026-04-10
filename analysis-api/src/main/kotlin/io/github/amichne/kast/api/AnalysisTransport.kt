@@ -8,4 +8,9 @@ sealed interface AnalysisTransport {
     ) : AnalysisTransport
 
     data object Stdio : AnalysisTransport
+
+    data class Tcp(
+        val host: String,
+        val port: Int,
+    ) : AnalysisTransport
 }

@@ -8,6 +8,8 @@ import io.github.amichne.kast.api.CallHierarchyResult
 import io.github.amichne.kast.api.CapabilityNotSupportedException
 import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.DiagnosticsResult
+import io.github.amichne.kast.api.FileOutlineQuery
+import io.github.amichne.kast.api.FileOutlineResult
 import io.github.amichne.kast.api.ImportOptimizeQuery
 import io.github.amichne.kast.api.ImportOptimizeResult
 import io.github.amichne.kast.api.MutationCapability
@@ -24,6 +26,8 @@ import io.github.amichne.kast.api.SymbolQuery
 import io.github.amichne.kast.api.SymbolResult
 import io.github.amichne.kast.api.TypeHierarchyQuery
 import io.github.amichne.kast.api.TypeHierarchyResult
+import io.github.amichne.kast.api.WorkspaceSymbolQuery
+import io.github.amichne.kast.api.WorkspaceSymbolResult
 import kotlinx.serialization.json.Json
 
 internal class CliService(
@@ -124,6 +128,30 @@ internal class CliService(
         requireReadCapability(runtime.selected, ReadCapability.DIAGNOSTICS)
         return attachedResult(
             payload = rpcClient.post(runtime.selected.descriptor, "diagnostics", query),
+            runtime = runtime,
+        )
+    }
+
+    suspend fun fileOutline(
+        options: RuntimeCommandOptions,
+        query: FileOutlineQuery,
+    ): RuntimeAttachedResult<FileOutlineResult> {
+        val runtime = runtimeManager.ensureRuntime(options)
+        requireReadCapability(runtime.selected, ReadCapability.FILE_OUTLINE)
+        return attachedResult(
+            payload = rpcClient.post(runtime.selected.descriptor, "file-outline", query),
+            runtime = runtime,
+        )
+    }
+
+    suspend fun workspaceSymbolSearch(
+        options: RuntimeCommandOptions,
+        query: WorkspaceSymbolQuery,
+    ): RuntimeAttachedResult<WorkspaceSymbolResult> {
+        val runtime = runtimeManager.ensureRuntime(options)
+        requireReadCapability(runtime.selected, ReadCapability.WORKSPACE_SYMBOL_SEARCH)
+        return attachedResult(
+            payload = rpcClient.post(runtime.selected.descriptor, "workspace-symbol", query),
             runtime = runtime,
         )
     }

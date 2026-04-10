@@ -10,6 +10,8 @@ import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.FileHash
 import io.github.amichne.kast.api.FileHashing
 import io.github.amichne.kast.api.FileOperation
+import io.github.amichne.kast.api.FileOutlineQuery
+import io.github.amichne.kast.api.FileOutlineResult
 import io.github.amichne.kast.api.FilePosition
 import io.github.amichne.kast.api.ImportOptimizeQuery
 import io.github.amichne.kast.api.ImportOptimizeResult
@@ -34,6 +36,8 @@ import io.github.amichne.kast.api.TextEdit
 import io.github.amichne.kast.api.TypeHierarchyDirection
 import io.github.amichne.kast.api.TypeHierarchyQuery
 import io.github.amichne.kast.api.TypeHierarchyResult
+import io.github.amichne.kast.api.WorkspaceSymbolQuery
+import io.github.amichne.kast.api.WorkspaceSymbolResult
 import io.github.amichne.kast.testing.FakeAnalysisBackend
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.serializer
@@ -301,6 +305,87 @@ class AnalysisDispatcherTest {
         assertEquals(listOf(file.toString()), result.refreshedFiles)
         assertTrue(result.removedFiles.isEmpty())
         assertEquals(false, result.fullRefresh)
+    }
+
+    @Test
+    fun `file outline dispatches without HTTP`() {
+        val file = sampleFile()
+
+        val result = dispatchSuccess<FileOutlineResult>(
+            method = "file-outline",
+            params = json.encodeToJsonElement(
+                FileOutlineQuery.serializer(),
+                FileOutlineQuery(filePath = file.toString()),
+            ),
+        )
+
+        assertTrue(result.symbols.isNotEmpty())
+        assertEquals("sample.greet", result.symbols.first().symbol.fqName)
+    }
+
+    @Test
+    fun `file outline validates absolute file path`() {
+        val response = dispatchRaw(
+            method = "file-outline",
+            params = json.encodeToJsonElement(
+                FileOutlineQuery.serializer(),
+                FileOutlineQuery(filePath = "relative/File.kt"),
+            ),
+        )
+
+        val error = json.decodeFromJsonElement(
+            JsonRpcErrorResponse.serializer(),
+            response,
+        )
+        assertEquals("VALIDATION_ERROR", error.error.data?.code)
+    }
+
+    @Test
+    fun `workspace symbol dispatches without HTTP`() {
+        val result = dispatchSuccess<WorkspaceSymbolResult>(
+            method = "workspace-symbol",
+            params = json.encodeToJsonElement(
+                WorkspaceSymbolQuery.serializer(),
+                WorkspaceSymbolQuery(pattern = "greet"),
+            ),
+        )
+
+        assertTrue(result.symbols.isNotEmpty())
+        assertEquals("sample.greet", result.symbols.first().fqName)
+    }
+
+    @Test
+    fun `workspace symbol rejects blank pattern`() {
+        val response = dispatchRaw(
+            method = "workspace-symbol",
+            params = json.encodeToJsonElement(
+                WorkspaceSymbolQuery.serializer(),
+                WorkspaceSymbolQuery(pattern = "  "),
+            ),
+        )
+
+        val error = json.decodeFromJsonElement(
+            JsonRpcErrorResponse.serializer(),
+            response,
+        )
+        assertEquals("VALIDATION_ERROR", error.error.data?.code)
+    }
+
+    @Test
+    fun `workspace symbol rejects zero max results`() {
+        val response = dispatchRaw(
+            method = "workspace-symbol",
+            params = json.encodeToJsonElement(
+                WorkspaceSymbolQuery.serializer(),
+                WorkspaceSymbolQuery(pattern = "greet", maxResults = 0),
+            ),
+        )
+
+        val error = json.decodeFromJsonElement(
+            JsonRpcErrorResponse.serializer(),
+            response,
+        )
+        assertEquals("VALIDATION_ERROR", error.error.data?.code)
     }
 
     @Test

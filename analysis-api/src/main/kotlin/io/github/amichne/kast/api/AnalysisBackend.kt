@@ -69,4 +69,18 @@ interface AnalysisBackend {
             message = "Workspace refresh is not available for this backend",
         )
     }
+
+    suspend fun fileOutline(query: FileOutlineQuery): FileOutlineResult {
+        throw CapabilityNotSupportedException(
+            capability = "FILE_OUTLINE",
+            message = "File outline is not available for this backend",
+        )
+    }
+
+    suspend fun workspaceSymbolSearch(query: WorkspaceSymbolQuery): WorkspaceSymbolResult {
+        throw CapabilityNotSupportedException(
+            capability = "WORKSPACE_SYMBOL_SEARCH",
+            message = "Workspace symbol search is not available for this backend",
+        )
+    }
 }
