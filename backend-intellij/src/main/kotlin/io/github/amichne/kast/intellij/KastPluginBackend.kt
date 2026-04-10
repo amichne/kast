@@ -15,6 +15,8 @@ import io.github.amichne.kast.api.AnalysisBackend
 import io.github.amichne.kast.api.ApplyEditsQuery
 import io.github.amichne.kast.api.ApplyEditsResult
 import io.github.amichne.kast.api.BackendCapabilities
+import io.github.amichne.kast.api.CallHierarchyQuery
+import io.github.amichne.kast.api.CallHierarchyResult
 import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.DiagnosticsResult
 import io.github.amichne.kast.api.FileOutlineQuery
@@ -56,6 +58,9 @@ import io.github.amichne.kast.shared.analysis.toApiDiagnostics
 import io.github.amichne.kast.shared.analysis.toKastLocation
 import io.github.amichne.kast.shared.analysis.toSymbolModel
 import io.github.amichne.kast.shared.analysis.visibility
+import io.github.amichne.kast.shared.hierarchy.CallHierarchyEngine
+import io.github.amichne.kast.shared.hierarchy.ReadAccessScope
+import io.github.amichne.kast.shared.hierarchy.TraversalBudget
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
@@ -81,6 +86,7 @@ internal class KastPluginBackend(
         readCapabilities = setOf(
             ReadCapability.RESOLVE_SYMBOL,
             ReadCapability.FIND_REFERENCES,
+            ReadCapability.CALL_HIERARCHY,
             ReadCapability.SEMANTIC_INSERTION_POINT,
             ReadCapability.DIAGNOSTICS,
             ReadCapability.FILE_OUTLINE,
@@ -167,6 +173,46 @@ internal class KastPluginBackend(
                 ),
             )
         }
+    }
+
+    override suspend fun callHierarchy(query: CallHierarchyQuery): CallHierarchyResult = withContext(readDispatcher) {
+        // Resolve the root target under a short read lock; the recursive
+        // traversal acquires per-level read locks inside the edge resolver
+        // so the IDE write lock is not starved for the full duration.
+        val rootTarget = readAction {
+            val file = findKtFile(query.position.filePath)
+            resolveTarget(file, query.position.offset)
+        }
+
+        val budget = TraversalBudget(
+            maxTotalCalls = query.maxTotalCalls,
+            maxChildrenPerNode = query.maxChildrenPerNode,
+            timeoutMillis = query.timeoutMillis ?: limits.requestTimeoutMillis,
+        )
+        val resolver = IntelliJCallEdgeResolver(
+            project = project,
+            workspacePrefix = workspacePrefix,
+        )
+        val intellijReadAccess = object : ReadAccessScope {
+            override fun <T> run(action: () -> T): T =
+                com.intellij.openapi.application.ApplicationManager.getApplication()
+                    .runReadAction<T> { action() }
+        }
+        val engine = CallHierarchyEngine(edgeResolver = resolver, readAccess = intellijReadAccess)
+        val root = engine.buildNode(
+            target = rootTarget,
+            parentCallSite = null,
+            direction = query.direction,
+            depthRemaining = query.depth,
+            pathKeys = emptySet(),
+            budget = budget,
+            currentDepth = 0,
+        )
+
+        CallHierarchyResult(
+            root = root,
+            stats = budget.toStats(),
+        )
     }
 
     override suspend fun semanticInsertionPoint(

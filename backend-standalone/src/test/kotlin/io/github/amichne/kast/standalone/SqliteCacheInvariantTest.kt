@@ -57,12 +57,12 @@ class SqliteCacheInvariantTest {
             }
         }
 
-        // After rebuild the version should be the current one (2)
+        // After rebuild the version should be the current one (3)
         DriverManager.getConnection("jdbc:sqlite:$dbPath").use { conn ->
             conn.prepareStatement("SELECT version FROM schema_version LIMIT 1").use { stmt ->
                 val rs = stmt.executeQuery()
                 assertTrue(rs.next())
-                assertEquals(2, rs.getInt(1))
+                assertEquals(3, rs.getInt(1))
             }
         }
     }
@@ -527,7 +527,7 @@ class SqliteCacheInvariantTest {
                 stmt.execute(
                     "CREATE TABLE schema_version (version INTEGER NOT NULL, generation INTEGER NOT NULL DEFAULT 0)",
                 )
-                stmt.execute("INSERT INTO schema_version (version, generation) VALUES (2, 0)")
+                stmt.execute("INSERT INTO schema_version (version, generation) VALUES (3, 0)")
                 stmt.execute(
                     "CREATE TABLE identifier_paths (identifier TEXT NOT NULL, path TEXT NOT NULL, PRIMARY KEY (identifier, path))",
                 )

@@ -12,25 +12,18 @@ import io.github.amichne.kast.api.CallNodeTruncationReason
 import io.github.amichne.kast.api.FilePosition
 import io.github.amichne.kast.api.NormalizedPath
 import io.github.amichne.kast.api.ReadCapability
-import io.github.amichne.kast.api.SCHEMA_VERSION
 import io.github.amichne.kast.api.ServerLimits
 import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import io.github.amichne.kast.standalone.hierarchy.CallHierarchyTraversal
+import io.github.amichne.kast.standalone.hierarchy.StandaloneCallEdgeResolver
 import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetry
-import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.lang.reflect.Proxy
 import java.nio.file.Files
 import java.nio.file.Path
-import kotlin.io.path.exists
-import kotlin.io.path.readText
 import kotlin.io.path.writeText
 
 class StandaloneAnalysisBackendCallHierarchyTest {
@@ -251,45 +244,6 @@ class StandaloneAnalysisBackendCallHierarchyTest {
     }
 
     @Test
-    fun `call hierarchy persists to git sha cache and reports cache hits`() = runTest {
-        val file = writeFile(
-            relativePath = "src/main/kotlin/sample/Greeter.kt",
-            content = """
-                package sample
-
-                fun greet(): String = "hi"
-                fun use(): String = greet()
-            """.trimIndent() + "\n",
-        )
-        git("init")
-        git("add", ".")
-        git("-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-m", "init")
-        val queryOffset = Files.readString(file).indexOf("greet()")
-
-        withBackend { backend ->
-            val query = CallHierarchyQuery(
-                position = FilePosition(file.toString(), queryOffset),
-                direction = CallDirection.INCOMING,
-                depth = 1,
-                persistToGitShaCache = true,
-            )
-
-            val first = backend.callHierarchy(query)
-            val second = backend.callHierarchy(query)
-
-            val firstPersistence = checkNotNull(first.persistence)
-            val secondPersistence = checkNotNull(second.persistence)
-            assertFalse(firstPersistence.cacheHit)
-            assertTrue(secondPersistence.cacheHit)
-            assertTrue(Path.of(firstPersistence.cacheFilePath).exists())
-            assertTrue(firstPersistence.cacheFilePath.contains("/.gradle/kast/cache/"))
-            assertTrue(firstPersistence.cacheFilePath.endsWith("source-index.db"))
-            assertEquals(first.root, second.root)
-            assertEquals(first.stats, second.stats)
-        }
-    }
-
-    @Test
     fun `outgoing hierarchy skips resolved symbols without backing file`() = runTest {
         val backingFile = writeFile(
             relativePath = "src/main/kotlin/sample/Anchor.kt",
@@ -306,15 +260,17 @@ class StandaloneAnalysisBackendCallHierarchyTest {
             moduleName = "sources",
         )
         session.use { currentSession ->
-            val traversal = CallHierarchyTraversal(
-                workspaceRoot = workspaceRoot,
-                limits = defaultLimits(),
-                session = currentSession,
-                telemetry = StandaloneTelemetry.disabled(),
+            val resolver = StandaloneCallEdgeResolver(
+                candidateFileResolver = io.github.amichne.kast.standalone.analysis.CandidateFileResolver(session = currentSession),
+                normalizedWorkspaceRoot = io.github.amichne.kast.standalone.normalizeStandalonePath(workspaceRoot),
             )
             val syntheticDeclaration = syntheticPsiDeclaration(currentSession.findKtFile(backingFile.toString()))
 
-            val edges = invokeOutgoingCallEdges(traversal, syntheticDeclaration)
+            val edges = resolver.outgoingEdges(
+                target = syntheticDeclaration,
+                timeoutCheck = { false },
+                onFileVisited = {},
+            )
 
             assertTrue(edges.isEmpty())
         }
@@ -347,15 +303,6 @@ class StandaloneAnalysisBackendCallHierarchyTest {
         maxConcurrentRequests = 4,
     )
 
-    private fun git(vararg args: String) {
-        val process = ProcessBuilder(listOf("git") + args)
-            .directory(workspaceRoot.toFile())
-            .redirectErrorStream(true)
-            .start()
-        val output = process.inputStream.bufferedReader().readText()
-        assertEquals(0, process.waitFor(), output)
-    }
-
     private fun writeFile(
         relativePath: String,
         content: String,
@@ -364,27 +311,6 @@ class StandaloneAnalysisBackendCallHierarchyTest {
         Files.createDirectories(path.parent)
         path.writeText(content)
         return path
-    }
-
-    private fun invokeOutgoingCallEdges(
-        traversal: CallHierarchyTraversal,
-        target: PsiElement,
-    ): List<*> {
-        val budgetClass = Class.forName("io.github.amichne.kast.standalone.hierarchy.TraversalBudget")
-        val budgetConstructor = budgetClass.getDeclaredConstructor(
-            Int::class.javaPrimitiveType,
-            Int::class.javaPrimitiveType,
-            Long::class.javaPrimitiveType,
-        )
-        budgetConstructor.isAccessible = true
-        val budget = budgetConstructor.newInstance(10, 10, 1_000L)
-        val outgoingCallEdges = CallHierarchyTraversal::class.java.getDeclaredMethod(
-            "outgoingCallEdges",
-            PsiElement::class.java,
-            budgetClass,
-        )
-        outgoingCallEdges.isAccessible = true
-        return outgoingCallEdges.invoke(traversal, target, budget) as List<*>
     }
 
     private fun syntheticPsiDeclaration(backingFile: PsiFile): PsiMethod {

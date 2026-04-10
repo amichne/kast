@@ -1,4 +1,5 @@
 # Kast agent guide
+ALways TDD with tracer bullets, use the skill
 
 Kast is a Kotlin analysis tool with one line-delimited JSON-RPC contract and
 two supported operator paths: the repo-local `kast` CLI manages a standalone

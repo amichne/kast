@@ -10,5 +10,4 @@ data class CallHierarchyQuery(
     val maxTotalCalls: Int = 256,
     val maxChildrenPerNode: Int = 64,
     val timeoutMillis: Long? = null,
-    val persistToGitShaCache: Boolean = false,
 )
