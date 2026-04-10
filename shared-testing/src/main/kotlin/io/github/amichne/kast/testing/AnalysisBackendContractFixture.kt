@@ -4,6 +4,7 @@ import io.github.amichne.kast.api.AnalysisBackend
 import io.github.amichne.kast.api.CallDirection
 import io.github.amichne.kast.api.CallHierarchyQuery
 import io.github.amichne.kast.api.FileHashing
+import io.github.amichne.kast.api.FileOutlineQuery
 import io.github.amichne.kast.api.FilePosition
 import io.github.amichne.kast.api.Location
 import io.github.amichne.kast.api.NormalizedPath
@@ -14,6 +15,7 @@ import io.github.amichne.kast.api.SymbolQuery
 import io.github.amichne.kast.api.TextEdit
 import io.github.amichne.kast.api.TypeHierarchyDirection
 import io.github.amichne.kast.api.TypeHierarchyQuery
+import io.github.amichne.kast.api.WorkspaceSymbolQuery
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.readText
@@ -73,6 +75,14 @@ data class AnalysisBackendContractFixture(
     val renameQuery: RenameQuery = RenameQuery(
         position = symbolQuery.position,
         newName = renameTarget,
+    )
+
+    val fileOutlineQuery: FileOutlineQuery = FileOutlineQuery(
+        filePath = declarationFile.toString(),
+    )
+
+    val workspaceSymbolQuery: WorkspaceSymbolQuery = WorkspaceSymbolQuery(
+        pattern = "greet",
     )
 
     val referenceLocations: List<Location> = listOf(secondUsageLocation, firstUsageLocation)
@@ -226,6 +236,8 @@ object AnalysisBackendContractAssertions {
         assertFindReferences(backend, fixture)
         assertCallHierarchy(backend, fixture)
         assertTypeHierarchy(backend, fixture)
+        assertFileOutline(backend, fixture)
+        assertWorkspaceSymbolSearch(backend, fixture)
         assertRename(backend, fixture)
     }
 
@@ -298,6 +310,32 @@ object AnalysisBackendContractAssertions {
         expectEquals(3, result.stats.totalNodes, "type hierarchy total nodes")
         expectEquals(1, result.stats.maxDepthReached, "type hierarchy max depth")
         expectEquals(false, result.stats.truncated, "type hierarchy truncated")
+    }
+
+    private suspend fun assertFileOutline(
+        backend: AnalysisBackend,
+        fixture: AnalysisBackendContractFixture,
+    ) {
+        val result = backend.fileOutline(fixture.fileOutlineQuery)
+
+        check(result.symbols.isNotEmpty()) { "file outline should return at least one symbol" }
+        val fqNames = result.symbols.map { it.symbol.fqName }
+        check(fixture.symbolFqName in fqNames) {
+            "file outline expected to contain <${fixture.symbolFqName}> but had <$fqNames>"
+        }
+    }
+
+    private suspend fun assertWorkspaceSymbolSearch(
+        backend: AnalysisBackend,
+        fixture: AnalysisBackendContractFixture,
+    ) {
+        val result = backend.workspaceSymbolSearch(fixture.workspaceSymbolQuery)
+
+        check(result.symbols.isNotEmpty()) { "workspace symbol search should return at least one symbol" }
+        val fqNames = result.symbols.map { it.fqName }
+        check(fixture.symbolFqName in fqNames) {
+            "workspace symbol search expected to contain <${fixture.symbolFqName}> but had <$fqNames>"
+        }
     }
 
     private suspend fun assertRename(

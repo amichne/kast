@@ -11,6 +11,8 @@ import io.github.amichne.kast.api.CallHierarchyResult
 import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.DiagnosticsResult
 import io.github.amichne.kast.api.FileHash
+import io.github.amichne.kast.api.FileOutlineQuery
+import io.github.amichne.kast.api.FileOutlineResult
 import io.github.amichne.kast.api.HealthResponse
 import io.github.amichne.kast.api.ImportOptimizeQuery
 import io.github.amichne.kast.api.ImportOptimizeResult
@@ -36,8 +38,12 @@ import io.github.amichne.kast.api.SymbolVisibility
 import io.github.amichne.kast.api.TextEdit
 import io.github.amichne.kast.api.TypeHierarchyQuery
 import io.github.amichne.kast.api.TypeHierarchyResult
+import io.github.amichne.kast.api.WorkspaceSymbolQuery
+import io.github.amichne.kast.api.WorkspaceSymbolResult
+import io.github.amichne.kast.shared.analysis.FileOutlineBuilder
 import io.github.amichne.kast.shared.analysis.ImportAnalysis
 import io.github.amichne.kast.shared.analysis.SemanticInsertionPointResolver
+import io.github.amichne.kast.shared.analysis.SymbolSearchMatcher
 import io.github.amichne.kast.shared.analysis.callHierarchyDeclaration
 import io.github.amichne.kast.shared.analysis.declarationEdit
 import io.github.amichne.kast.shared.analysis.referenceSearchIdentifier
@@ -102,6 +108,8 @@ internal class StandaloneAnalysisBackend internal constructor(
             ReadCapability.TYPE_HIERARCHY,
             ReadCapability.SEMANTIC_INSERTION_POINT,
             ReadCapability.DIAGNOSTICS,
+            ReadCapability.FILE_OUTLINE,
+            ReadCapability.WORKSPACE_SYMBOL_SEARCH,
         ),
         mutationCapabilities = setOf(
             MutationCapability.RENAME,
@@ -535,6 +543,74 @@ internal class StandaloneAnalysisBackend internal constructor(
         verboseOnly = true,
         block = action,
     )
+
+    override suspend fun fileOutline(query: FileOutlineQuery): FileOutlineResult = withContext(readDispatcher) {
+        session.withReadAccess {
+            telemetry.inSpan(
+                scope = StandaloneTelemetryScope.FILE_OUTLINE,
+                name = "kast.fileOutline",
+                attributes = mapOf("kast.fileOutline.filePath" to query.filePath),
+            ) {
+                val file = session.findKtFile(query.filePath)
+                FileOutlineResult(symbols = FileOutlineBuilder.build(file))
+            }
+        }
+    }
+
+    override suspend fun workspaceSymbolSearch(query: WorkspaceSymbolQuery): WorkspaceSymbolResult = withContext(readDispatcher) {
+        session.withReadAccess {
+            telemetry.inSpan(
+                scope = StandaloneTelemetryScope.WORKSPACE_SYMBOL_SEARCH,
+                name = "kast.workspaceSymbolSearch",
+                attributes = mapOf(
+                    "kast.workspaceSymbol.pattern" to query.pattern,
+                    "kast.workspaceSymbol.regex" to query.regex,
+                    "kast.workspaceSymbol.kind" to (query.kind?.name ?: "ALL"),
+                ),
+            ) { span ->
+                val matcher = SymbolSearchMatcher.create(query.pattern, query.regex)
+                val files = session.allKtFiles()
+                span.setAttribute("kast.workspaceSymbol.fileCount", files.size)
+
+                val symbols = mutableListOf<io.github.amichne.kast.api.Symbol>()
+                for (file in files) {
+                    file.accept(object : PsiRecursiveElementWalkingVisitor() {
+                        override fun visitElement(element: PsiElement) {
+                            if (symbols.size >= query.maxResults) {
+                                stopWalking()
+                                return
+                            }
+                            if (element is org.jetbrains.kotlin.psi.KtNamedDeclaration &&
+                                element !is org.jetbrains.kotlin.psi.KtParameter &&
+                                isWorkspaceSymbolDeclaration(element)
+                            ) {
+                                val name = element.name
+                                if (name != null && matcher.matches(name)) {
+                                    val symbol = element.toSymbolModel(containingDeclaration = null)
+                                    if (query.kind == null || symbol.kind == query.kind) {
+                                        symbols += symbol
+                                    }
+                                }
+                            }
+                            super.visitElement(element)
+                        }
+                    })
+                    if (symbols.size >= query.maxResults) break
+                }
+                span.setAttribute("kast.workspaceSymbol.resultCount", symbols.size)
+
+                WorkspaceSymbolResult(symbols = symbols)
+            }
+        }
+    }
+
+    private fun isWorkspaceSymbolDeclaration(element: PsiElement): Boolean = when (element) {
+        is org.jetbrains.kotlin.psi.KtClassOrObject,
+        is org.jetbrains.kotlin.psi.KtNamedFunction,
+        is org.jetbrains.kotlin.psi.KtProperty,
+        -> true
+        else -> false
+    }
 
     companion object {
         private fun readBackendVersion(): String =

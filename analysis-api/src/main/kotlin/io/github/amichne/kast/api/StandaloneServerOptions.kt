@@ -77,6 +77,10 @@ data class StandaloneServerOptions(
         when (val transport = transport) {
             is AnalysisTransport.UnixDomainSocket -> add("--socket-path=${transport.socketPath}")
             AnalysisTransport.Stdio -> add("--stdio")
+            is AnalysisTransport.Tcp -> {
+                add("--tcp-host=${transport.host}")
+                add("--tcp-port=${transport.port}")
+            }
         }
         add("--request-timeout-ms=$requestTimeoutMillis")
         add("--max-results=$maxResults")

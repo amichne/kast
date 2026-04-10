@@ -15,6 +15,8 @@ import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.DiagnosticsResult
 import io.github.amichne.kast.api.FileHash
 import io.github.amichne.kast.api.FileHashing
+import io.github.amichne.kast.api.FileOutlineQuery
+import io.github.amichne.kast.api.FileOutlineResult
 import io.github.amichne.kast.api.FilePosition
 import io.github.amichne.kast.api.HealthResponse
 import io.github.amichne.kast.api.ImportOptimizeQuery
@@ -23,6 +25,7 @@ import io.github.amichne.kast.api.LocalDiskEditApplier
 import io.github.amichne.kast.api.Location
 import io.github.amichne.kast.api.MutationCapability
 import io.github.amichne.kast.api.NotFoundException
+import io.github.amichne.kast.api.OutlineSymbol
 import io.github.amichne.kast.api.ReadCapability
 import io.github.amichne.kast.api.RefreshQuery
 import io.github.amichne.kast.api.RefreshResult
@@ -46,6 +49,8 @@ import io.github.amichne.kast.api.TypeHierarchyResult
 import io.github.amichne.kast.api.TypeHierarchyStats
 import io.github.amichne.kast.api.TypeHierarchyTruncation
 import io.github.amichne.kast.api.TypeHierarchyTruncationReason
+import io.github.amichne.kast.api.WorkspaceSymbolQuery
+import io.github.amichne.kast.api.WorkspaceSymbolResult
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.writeText
@@ -80,6 +85,8 @@ class FakeAnalysisBackend private constructor(
             ReadCapability.TYPE_HIERARCHY,
             ReadCapability.SEMANTIC_INSERTION_POINT,
             ReadCapability.DIAGNOSTICS,
+            ReadCapability.FILE_OUTLINE,
+            ReadCapability.WORKSPACE_SYMBOL_SEARCH,
         ),
         mutationCapabilities = setOf(
             MutationCapability.RENAME,
@@ -285,6 +292,43 @@ class FakeAnalysisBackend private constructor(
             removedFiles = emptyList(),
             fullRefresh = query.filePaths.isEmpty(),
         )
+    }
+
+    override suspend fun fileOutline(query: FileOutlineQuery): FileOutlineResult {
+        requireKnownFile(query.filePath)
+        val allSymbols = buildList {
+            add(symbol)
+            add(typeHierarchyRootSymbol)
+            add(typeHierarchySupertypeSymbol)
+            add(typeHierarchySubtypeSymbol)
+        }
+        val fileSymbols = allSymbols
+            .filter { it.location.filePath == query.filePath }
+            .map { OutlineSymbol(symbol = it) }
+        return FileOutlineResult(symbols = fileSymbols)
+    }
+
+    override suspend fun workspaceSymbolSearch(query: WorkspaceSymbolQuery): WorkspaceSymbolResult {
+        val allSymbols = buildList {
+            add(symbol)
+            add(typeHierarchyRootSymbol)
+            add(typeHierarchySupertypeSymbol)
+            add(typeHierarchySubtypeSymbol)
+        }
+        val pattern = query.pattern
+        val matcher: (String) -> Boolean = if (query.regex) {
+            val regex = Regex(pattern);
+            { name -> regex.containsMatchIn(name) }
+        } else {
+            { name -> name.contains(pattern, ignoreCase = true) }
+        }
+        val matched = allSymbols
+            .filter { sym ->
+                val simpleName = sym.fqName.substringAfterLast('.')
+                matcher(simpleName) && (query.kind == null || sym.kind == query.kind)
+            }
+            .take(query.maxResults)
+        return WorkspaceSymbolResult(symbols = matched)
     }
 
     private fun requireAnchor(position: FilePosition) {

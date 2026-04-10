@@ -12,7 +12,7 @@ internal enum class CliCommandGroup(
     ),
     ANALYSIS(
         title = "Analysis",
-        overview = "Read-only commands for capabilities, symbols, references, call hierarchy, type hierarchy, semantic insertion, and diagnostics.",
+        overview = "Read-only commands for capabilities, symbols, references, call hierarchy, type hierarchy, semantic insertion, diagnostics, file outline, and workspace symbol search.",
     ),
     MUTATION_FLOW(
         title = "Mutation flow",
@@ -200,6 +200,22 @@ internal object CliCommandCatalog {
         usage = "--dry-run=true",
         description = "Keep rename in planning mode. Defaults to true.",
         completionKind = CliOptionCompletionKind.BOOLEAN,
+    )
+    private val patternOption = CliOptionMetadata(
+        key = "pattern",
+        usage = "--pattern=MyClass",
+        description = "Symbol name search pattern. Case-insensitive substring match by default; regex when --regex=true.",
+    )
+    private val regexOption = CliOptionMetadata(
+        key = "regex",
+        usage = "--regex=true",
+        description = "Treat the pattern as a regular expression. Defaults to false.",
+        completionKind = CliOptionCompletionKind.BOOLEAN,
+    )
+    private val kindOption = CliOptionMetadata(
+        key = "kind",
+        usage = "--kind=CLASS",
+        description = "Filter by symbol kind: CLASS, OBJECT, INTERFACE, ENUM, FUNCTION, PROPERTY, etc.",
     )
     private val archiveOption = CliOptionMetadata(
         key = "archive",
@@ -471,6 +487,33 @@ internal object CliCommandCatalog {
             options = listOf(workspaceRootOption, backendNameOption, waitTimeoutOption, noAutoStartOption, requestFileOption, filePathsOption),
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME diagnostics --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
+            ),
+        ),
+        CliCommandMetadata(
+            path = listOf("outline"),
+            group = CliCommandGroup.ANALYSIS,
+            summary = "Produce a hierarchical file outline of declarations.",
+            description = "Lists all classes, functions, and properties in a file as a nested outline tree.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME outline --workspace-root=/absolute/path/to/workspace --file-path=/absolute/path/to/File.kt",
+            ),
+            options = listOf(workspaceRootOption, backendNameOption, waitTimeoutOption, noAutoStartOption, filePathOption),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME outline --workspace-root=/absolute/path/to/workspace --file-path=/absolute/path/to/File.kt",
+            ),
+        ),
+        CliCommandMetadata(
+            path = listOf("workspace-symbol"),
+            group = CliCommandGroup.ANALYSIS,
+            summary = "Search for symbols across the workspace by name or regex.",
+            description = "Returns matching classes, functions, and properties. Substring search is the default; pass --regex=true for regular expression matching.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME workspace-symbol --workspace-root=/absolute/path/to/workspace --pattern=MyClass",
+                "$CLI_EXECUTABLE_NAME workspace-symbol --workspace-root=/absolute/path/to/workspace --pattern=.*Service --regex=true --kind=CLASS",
+            ),
+            options = listOf(workspaceRootOption, backendNameOption, waitTimeoutOption, noAutoStartOption, patternOption, regexOption, kindOption, maxResultsOption),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME workspace-symbol --workspace-root=/absolute/path/to/workspace --pattern=MyClass",
             ),
         ),
         CliCommandMetadata(

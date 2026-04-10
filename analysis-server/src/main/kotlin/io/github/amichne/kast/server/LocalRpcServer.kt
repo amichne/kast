@@ -133,7 +133,7 @@ internal class StdioRpcServer(
     }
 }
 
-private fun processRpcStream(
+internal fun processRpcStream(
     dispatcher: AnalysisDispatcher,
     reader: BufferedReader,
     writer: BufferedWriter,
@@ -153,7 +153,7 @@ private fun processRpcStream(
     }
 }
 
-private fun isExpectedClientDisconnect(error: Throwable): Boolean {
+internal fun isExpectedClientDisconnect(error: Throwable): Boolean {
     var current: Throwable? = error
     while (current != null) {
         when (current) {

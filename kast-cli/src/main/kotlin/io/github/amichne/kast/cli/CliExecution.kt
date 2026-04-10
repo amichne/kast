@@ -137,6 +137,22 @@ internal class DefaultCliCommandExecutor(
                 )
             }
 
+            is CliCommand.FileOutline -> {
+                val result = cliService.fileOutline(command.options, command.query)
+                CliExecutionResult(
+                    output = CliOutput.JsonValue(result.payload),
+                    daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
+                )
+            }
+
+            is CliCommand.WorkspaceSymbol -> {
+                val result = cliService.workspaceSymbolSearch(command.options, command.query)
+                CliExecutionResult(
+                    output = CliOutput.JsonValue(result.payload),
+                    daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
+                )
+            }
+
             is CliCommand.Rename -> {
                 val result = cliService.rename(command.options, command.query)
                 CliExecutionResult(
