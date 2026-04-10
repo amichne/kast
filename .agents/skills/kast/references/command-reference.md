@@ -910,9 +910,10 @@ bash "$SKILL_ROOT/scripts/validate-wrapper-json.sh" \
   /absolute/path/to/workspace
 ```
 
-The script discovers a sample Kotlin declaration from the workspace, runs the
-wrappers against that workspace, and emits aggregated validation JSON on
-stdout.
+The script creates a temporary sample Kotlin workspace, runs the wrappers
+against that workspace, and emits aggregated validation JSON on stdout. If you
+want `resolve-kast.sh` to prefer a local checkout, pass that source root as the
+positional argument.
 
 ---
 

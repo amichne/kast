@@ -110,13 +110,13 @@ fi
 CALLERS_RESULT="${TMP_DIR}/callers.json"
 if ! kast_run_json \
     "${CALLERS_RESULT}" \
-    "${KAST}" call hierarchy \
+    "${KAST}" call-hierarchy \
     --workspace-root="${WORKSPACE_ROOT}" \
     --file-path="${RESOLVED_FILE_PATH}" \
     --offset="${RESOLVED_OFFSET}" \
     --direction="${DIRECTION}" \
     --depth="${DEPTH}"; then
-    emit_failure "call_hierarchy" "kast call hierarchy failed." "${CALLERS_RESULT}"
+    emit_failure "call_hierarchy" "kast call-hierarchy failed." "${CALLERS_RESULT}"
     exit 1
 fi
 

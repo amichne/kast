@@ -71,7 +71,8 @@ jobs:
         run: |
           set -euo pipefail
           dist_dir="$RUNNER_TEMP/kast-dist"
-          bash .agents/skills/kast/scripts/validate-wrapper-json.sh "$dist_dir/kast"
+          KAST_CLI_PATH="$dist_dir/kast/kast" \
+            bash .agents/skills/kast/scripts/validate-wrapper-json.sh "$PWD"
 
       - name: Smoke installer
         shell: bash

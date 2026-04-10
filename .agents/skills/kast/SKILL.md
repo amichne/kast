@@ -209,7 +209,9 @@ marker as proof that the result is bounded.
 
 After any code change, run `kast-diagnostics.sh` on the modified files. When
 you need a quick contract check for the wrappers themselves, run
-`validate-wrapper-json.sh`.
+`validate-wrapper-json.sh`. It creates a temporary sample Kotlin workspace and
+checks that each wrapper still emits valid JSON on both success and failure
+paths.
 
 ```bash
 bash "$SKILL_ROOT/scripts/validate-wrapper-json.sh" \

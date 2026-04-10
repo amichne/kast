@@ -2,47 +2,29 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-WORKSPACE_ROOT="${1:-$(git -C "${SCRIPT_DIR}" rev-parse --show-toplevel)}"
+REQUEST_ROOT="${1:-$(git -C "${SCRIPT_DIR}" rev-parse --show-toplevel)}"
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "${TMP_DIR}"' EXIT
 
-DISCOVERY_TEXT="${TMP_DIR}/discovery.txt"
-if ! rg -n --glob '*.kt' '^\s*(class|object|interface)\s+[A-Za-z_][A-Za-z0-9_]*' \
-    "${WORKSPACE_ROOT}" >"${DISCOVERY_TEXT}"; then
-    python3 - "${DISCOVERY_TEXT}" <<'PY'
-import json
-import sys
-from pathlib import Path
+WORKSPACE_ROOT="${TMP_DIR}/workspace"
+mkdir -p "${WORKSPACE_ROOT}/src/main/kotlin/sample"
 
-log_path = Path(sys.argv[1])
-payload = {
-    "ok": False,
-    "stage": "discovery",
-    "message": "Could not discover a Kotlin class, object, or interface in the workspace.",
-    "log_file": str(log_path),
-}
-print(json.dumps(payload, indent=2))
-PY
-    exit 1
-fi
+cat >"${WORKSPACE_ROOT}/src/main/kotlin/sample/Greeter.kt" <<'EOF'
+package sample
 
-read -r SAMPLE_SYMBOL SAMPLE_FILE <<<"$(
-    python3 - "${DISCOVERY_TEXT}" <<'PY'
-import re
-import sys
-from pathlib import Path
+fun greet(name: String): String = "hi $name"
+EOF
 
-pattern = re.compile(r"^(.*?):\d+:\s*(?:class|object|interface)\s+([A-Za-z_][A-Za-z0-9_]*)")
-for line in Path(sys.argv[1]).read_text(encoding="utf-8").splitlines():
-    match = pattern.match(line)
-    if match:
-        print(match.group(2), match.group(1))
-        break
-else:
-    raise SystemExit("No sample symbol found in discovery output.")
-PY
-)"
+cat >"${WORKSPACE_ROOT}/src/main/kotlin/sample/UseGreeter.kt" <<'EOF'
+package sample
 
+fun greetTwice(): String = greet("kast") + greet("again")
+EOF
+
+export KAST_SOURCE_ROOT="${REQUEST_ROOT}"
+
+SAMPLE_SYMBOL="greet"
+SAMPLE_FILE="${WORKSPACE_ROOT}/src/main/kotlin/sample/Greeter.kt"
 MISSING_SYMBOL="DefinitelyMissingSymbolForWrapperValidation"
 SUCCESS_DIAGNOSTICS_FILE="${SAMPLE_FILE}"
 FAILURE_DIAGNOSTICS_FILE="${WORKSPACE_ROOT}/definitely-missing-file.kt"
@@ -106,7 +88,7 @@ print(json.dumps(entry))
 PY
 done
 
-python3 - "${RESULTS_FILE}" "${WORKSPACE_ROOT}" "${SAMPLE_SYMBOL}" "${SAMPLE_FILE}" <<'PY'
+python3 - "${RESULTS_FILE}" "${REQUEST_ROOT}" "${WORKSPACE_ROOT}" "${SAMPLE_SYMBOL}" "${SAMPLE_FILE}" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -115,9 +97,10 @@ results = [json.loads(line) for line in Path(sys.argv[1]).read_text(encoding="ut
 ok = all(item.get("valid_json") and item.get("matches_expectation") for item in results)
 payload = {
     "ok": ok,
-    "workspace_root": sys.argv[2],
-    "sample_symbol": sys.argv[3],
-    "sample_file": sys.argv[4],
+    "request_root": sys.argv[2],
+    "workspace_root": sys.argv[3],
+    "sample_symbol": sys.argv[4],
+    "sample_file": sys.argv[5],
     "checks": results,
 }
 print(json.dumps(payload, indent=2))

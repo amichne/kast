@@ -99,32 +99,45 @@ kast_collect_candidate_files() {
     local kind="${4:-}"
     local candidate_file="${TMP_DIR}/candidate-files.raw"
     local regex
-    local status
-
     regex="$(kast_build_search_regex "${symbol}" "${kind}")"
     : > "${candidate_file}"
 
-    if (cd "${workspace_root}" && rg -l --glob '*.kt' -e "${regex}" . >"${candidate_file}") 2>>"${LOG_FILE}"; then
-        :
-    else
-        status=$?
-        if [[ "${status}" -gt 1 ]]; then
-            printf 'rg declaration search failed with exit status %s\n' "${status}" >>"${LOG_FILE}"
-        fi
-    fi
+    python3 - "${workspace_root}" "${regex}" "${symbol}" "${candidate_file}" <<'PY' 2>>"${LOG_FILE}"
+import re
+import sys
+from pathlib import Path
 
-    if [[ ! -s "${candidate_file}" ]]; then
-        printf 'No declaration-pattern candidates found for %s; widening to plain symbol search.\n' \
-            "${symbol}" >>"${LOG_FILE}"
-        if (cd "${workspace_root}" && rg -l -F --glob '*.kt' -- "${symbol}" . >"${candidate_file}") 2>>"${LOG_FILE}"; then
-            :
-        else
-            status=$?
-            if [[ "${status}" -gt 1 ]]; then
-                printf 'rg fallback search failed with exit status %s\n' "${status}" >>"${LOG_FILE}"
-            fi
-        fi
-    fi
+workspace_root = Path(sys.argv[1]).resolve()
+regex = re.compile(sys.argv[2], re.MULTILINE)
+symbol = sys.argv[3]
+candidate_file = Path(sys.argv[4])
+
+def matching_files(predicate):
+    matches = []
+    for path in sorted(workspace_root.rglob("*.kt")):
+        if not path.is_file():
+            continue
+        try:
+            content = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        if predicate(content):
+            matches.append(str(path))
+    return matches
+
+matches = matching_files(lambda content: bool(regex.search(content)))
+if not matches:
+    print(
+        f"No declaration-pattern candidates found for {symbol}; widening to plain symbol search.",
+        file=sys.stderr,
+    )
+    matches = matching_files(lambda content: symbol in content)
+
+candidate_file.write_text(
+    "".join(f"{path}\n" for path in matches),
+    encoding="utf-8",
+)
+PY
 
     python3 - "${workspace_root}" "${file_hint}" "${candidate_file}" <<'PY'
 from fnmatch import fnmatchcase
