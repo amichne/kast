@@ -95,7 +95,7 @@ jobs:
           gradle-version: "9.4.0"
 
       - name: Build portable Kast distribution
-        run: ./release.sh --tag=${{ needs.prepare-release.outputs.release_tag }} --platform-id=${{ matrix.asset_id }}
+        run: ./release.sh --tag ${{ needs.prepare-release.outputs.release_tag }} --platform-id ${{ matrix.asset_id }}
 
       - name: Smoke portable Kast distribution
         shell: bash
