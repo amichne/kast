@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
+import kotlin.io.path.exists
 import kotlin.io.path.writeText
 
 class DescriptorRegistryTest {
@@ -70,6 +71,7 @@ class DescriptorRegistryTest {
         registry.register(d)
         registry.delete(d)
         assertTrue(registry.list().isEmpty())
+        assertFalse(daemonsFile.exists())
     }
 
     @Test

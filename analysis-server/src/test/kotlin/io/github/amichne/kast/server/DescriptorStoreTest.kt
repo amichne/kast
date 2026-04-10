@@ -3,10 +3,12 @@ package io.github.amichne.kast.server
 import io.github.amichne.kast.api.DescriptorRegistry
 import io.github.amichne.kast.api.ServerInstanceDescriptor
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
+import kotlin.io.path.exists
 
 class DescriptorStoreTest {
     @TempDir
@@ -29,5 +31,6 @@ class DescriptorStoreTest {
 
         store.delete(descriptor)
         assertEquals(0, registry.list().size)
+        assertFalse(daemonsFile.exists())
     }
 }

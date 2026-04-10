@@ -65,6 +65,10 @@ class DescriptorRegistry(
         "${d.workspaceRoot}:${d.backendName}:${d.pid}"
 
     private fun writeAtomically(descriptors: List<ServerInstanceDescriptor>) {
+        if (descriptors.isEmpty()) {
+            Files.deleteIfExists(daemonsFile)
+            return
+        }
         Files.createDirectories(daemonsFile.parent)
         val tempFile = Files.createTempFile(daemonsFile.parent, "daemons", ".tmp")
         try {
