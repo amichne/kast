@@ -356,23 +356,20 @@ class KastWrapperTest {
     fun `wrapper helper parses large rename result from socket daemon`() {
         val workspace = tempDir.resolve("workspace-large-rename")
         val sanitizedWorkspaceRoot = "/workspace/sample-app"
-        Files.createDirectories(workspace.resolve(".kast/instances"))
+        val configHome = tempDir.resolve("config-home")
         val socketPath = tempDir.resolve("fake.sock")
         Files.deleteIfExists(socketPath)
-        val descriptorPath = workspace.resolve(".kast/instances/fake.json")
         val keepAliveProcess = ProcessBuilder("/bin/sh", "-c", "sleep 60").start()
-        descriptorPath.writeText(
-            transportJson.encodeToString(
-                ServerInstanceDescriptor.serializer(),
-                ServerInstanceDescriptor(
-                    workspaceRoot = workspace.toString(),
-                    backendName = "standalone",
-                    backendVersion = "0.1.0",
-                    socketPath = socketPath.toString(),
-                    pid = keepAliveProcess.pid(),
-                ),
-            ),
+        val descriptor = ServerInstanceDescriptor(
+            workspaceRoot = workspace.toString(),
+            backendName = "standalone",
+            backendVersion = "0.1.0",
+            socketPath = socketPath.toString(),
+            pid = keepAliveProcess.pid(),
         )
+        val daemonsDir = configHome.resolve("daemons")
+        Files.createDirectories(daemonsDir)
+        io.github.amichne.kast.api.DescriptorRegistry(daemonsDir.resolve("daemons.json")).register(descriptor)
 
         val runtimeStatus = RuntimeStatusResponse(
             state = RuntimeState.READY,
@@ -427,6 +424,7 @@ class KastWrapperTest {
                 "--file-path=${workspace.resolve("src/main/kotlin/example/Sample.kt")}",
                 "--offset=0",
                 "--new-name=RenamedSymbol",
+                env = mapOf("KAST_CONFIG_HOME" to configHome.toString()),
             )
 
             val renameOutput = defaultCliJson().decodeFromString<RenameResult>(rename.stdout)
@@ -445,12 +443,14 @@ class KastWrapperTest {
     private fun runCli(
         vararg args: String,
         allowFailure: Boolean = false,
+        env: Map<String, String> = emptyMap(),
     ): ProcessResult {
         val wrapper = checkNotNull(System.getProperty("kast.wrapper")) {
             "kast.wrapper system property is missing"
         }
         val process = ProcessBuilder(listOf(wrapper) + args)
             .directory(Path.of("").toAbsolutePath().toFile())
+            .also { pb -> env.forEach { (k, v) -> pb.environment()[k] = v } }
             .start()
         val finished = process.waitFor(90, TimeUnit.SECONDS)
         check(finished) { "kast wrapper timed out: ${args.joinToString(" ")}" }

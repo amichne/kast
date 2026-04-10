@@ -6,7 +6,6 @@ import io.github.amichne.kast.api.ServerInstanceDescriptor
 import io.github.amichne.kast.api.defaultDescriptorDirectory
 import kotlinx.coroutines.runBlocking
 import java.io.Closeable
-import kotlin.io.path.Path
 
 class AnalysisServer(
     private val backend: AnalysisBackend,
@@ -36,7 +35,7 @@ class AnalysisServer(
                     socketPath = socketPath.toString(),
                 )
                 descriptorStore = DescriptorStore(
-                    directory = config.descriptorDirectory ?: defaultDescriptorDirectory(Path(capabilities.workspaceRoot)),
+                    (config.descriptorDirectory ?: defaultDescriptorDirectory()).resolve("daemons.json"),
                 )
                 descriptorStore.write(descriptor)
             }

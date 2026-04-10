@@ -76,29 +76,28 @@ internal class CliCommandParser(
                 listOf("workspace", "status") -> CliCommand.WorkspaceStatus(parsed.runtimeOptions())
                 listOf("workspace", "ensure") -> CliCommand.WorkspaceEnsure(parsed.runtimeOptions())
                 listOf("workspace", "refresh") -> CliCommand.WorkspaceRefresh(parsed.runtimeOptions(), parsed.refreshQuery(json))
-                listOf("daemon", "start") -> CliCommand.DaemonStart(parsed.runtimeOptions(backendName = "standalone"))
-                listOf("daemon", "stop") -> CliCommand.DaemonStop(parsed.runtimeOptions(backendName = "standalone"))
+                listOf("workspace", "stop") -> CliCommand.WorkspaceStop(parsed.runtimeOptions())
                 listOf("completion", "bash") -> CliCommand.Completion(CliCompletionShell.BASH)
                 listOf("completion", "zsh") -> CliCommand.Completion(CliCompletionShell.ZSH)
                 listOf("capabilities") -> CliCommand.Capabilities(parsed.runtimeOptions())
-                listOf("symbol", "resolve") -> CliCommand.ResolveSymbol(parsed.runtimeOptions(), parsed.symbolQuery(json))
+                listOf("resolve") -> CliCommand.ResolveSymbol(parsed.runtimeOptions(), parsed.symbolQuery(json))
                 listOf("references") -> CliCommand.FindReferences(parsed.runtimeOptions(), parsed.referencesQuery(json))
-                listOf("call", "hierarchy") -> CliCommand.CallHierarchy(parsed.runtimeOptions(), parsed.callHierarchyQuery(json))
-                listOf("type", "hierarchy") -> CliCommand.TypeHierarchy(
+                listOf("call-hierarchy") -> CliCommand.CallHierarchy(parsed.runtimeOptions(), parsed.callHierarchyQuery(json))
+                listOf("type-hierarchy") -> CliCommand.TypeHierarchy(
                     parsed.withoutOption("max-results").runtimeOptions(),
                     parsed.typeHierarchyQuery(json),
                 )
-                listOf("semantic", "insertion-point") -> CliCommand.SemanticInsertionPoint(
+                listOf("insertion-point") -> CliCommand.SemanticInsertionPoint(
                     parsed.runtimeOptions(),
                     parsed.semanticInsertionQuery(json),
                 )
                 listOf("diagnostics") -> CliCommand.Diagnostics(parsed.runtimeOptions(), parsed.diagnosticsQuery(json))
                 listOf("rename") -> CliCommand.Rename(parsed.runtimeOptions(), parsed.renameQuery(json))
-                listOf("imports", "optimize") -> CliCommand.ImportOptimize(
+                listOf("optimize-imports") -> CliCommand.ImportOptimize(
                     parsed.runtimeOptions(),
                     parsed.importOptimizeQuery(json),
                 )
-                listOf("edits", "apply") -> CliCommand.ApplyEdits(parsed.runtimeOptions(), parsed.applyEditsQuery(json))
+                listOf("apply-edits") -> CliCommand.ApplyEdits(parsed.runtimeOptions(), parsed.applyEditsQuery(json))
                 listOf("install") -> CliCommand.Install(parsed.installOptions())
                 listOf("install", "skill") -> CliCommand.InstallSkill(parsed.installSkillOptions())
                 listOf("smoke") -> CliCommand.Smoke(parsed.smokeOptions())
@@ -305,7 +304,7 @@ internal data class ParsedArguments(
     ) {
         throw CliFailure(
             code = "CLI_USAGE",
-            message = "`edits apply` requires --request-file=/absolute/path/to/query.json",
+            message = "`apply-edits` requires --request-file=/absolute/path/to/query.json",
         )
     }
 

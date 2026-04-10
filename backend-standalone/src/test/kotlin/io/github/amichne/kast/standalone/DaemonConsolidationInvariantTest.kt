@@ -19,7 +19,7 @@ import kotlin.io.path.writeText
  *
  * The daemon's core contract is that creating a [StandaloneAnalysisSession] eagerly starts
  * indexing and that descriptor uniqueness prevents multiple daemons per workspace root.
- * CLI-side routing (daemon start → workspace ensure) is tested in kast-cli.
+ * CLI-side routing (`workspace stop`) is tested in kast-cli.
  */
 class DaemonConsolidationInvariantTest {
     @TempDir
@@ -123,14 +123,10 @@ class DaemonConsolidationInvariantTest {
     }
 
     @Test
-    @Disabled("This test belongs in kast-cli module — add to WorkspaceRuntimeManagerTest")
-    fun `daemon start routes through workspace ensure (CLI-side)`() {
-        // TODO: In WorkspaceRuntimeManagerTest (kast-cli), verify that
-        //  daemonStart(options) produces the same WorkspaceEnsureResult as
-        //  workspaceEnsure(options). Both should route through ensureRuntime
-        //  with the same parameters, confirming the consolidation at the CLI
-        //  control plane layer. Use FakeRuntimeRpcClient and FakeProcessLauncher
-        //  from the existing kast-cli test fixtures.
+    @Disabled("daemon start was removed — workspace stop is tested in WorkspaceRuntimeManagerTest")
+    fun `daemon consolidation CLI routing placeholder`() {
+        // The `daemonStart` method was removed from WorkspaceRuntimeManager.
+        // `workspaceStop` is tested in kast-cli WorkspaceRuntimeManagerTest.
     }
 
     private fun sourceRoots(): List<Path> =

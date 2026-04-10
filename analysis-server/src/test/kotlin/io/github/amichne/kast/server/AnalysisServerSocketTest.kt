@@ -46,8 +46,8 @@ class AnalysisServerSocketTest {
             ),
         ).start()
 
-        val descriptor = runningServer.use { runningServer ->
-            assertNotNull(runningServer.descriptor)
+        runningServer.use { server ->
+            assertNotNull(server.descriptor)
             val response = callSocket(
                 socketPath = socketPath,
                 request = JsonRpcRequest(
@@ -62,14 +62,15 @@ class AnalysisServerSocketTest {
             )
 
             assertEquals("fake", status.backendName)
-            assertEquals("uds", runningServer.descriptor?.transport)
-            assertEquals(socketPath.toString(), runningServer.descriptor?.socketPath)
+            assertEquals("uds", server.descriptor?.transport)
+            assertEquals(socketPath.toString(), server.descriptor?.socketPath)
             assertTrue(socketPath.exists())
-            DescriptorStore(descriptorDirectory).pathFor(checkNotNull(runningServer.descriptor))
+
+            val daemonsFile = descriptorDirectory.resolve("daemons.json")
+            assertTrue(daemonsFile.exists(), "daemons.json should exist while server is running")
         }
 
         assertFalse(socketPath.exists())
-        assertFalse(descriptor.exists())
     }
 
     @Test

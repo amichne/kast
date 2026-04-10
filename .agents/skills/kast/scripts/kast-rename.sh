@@ -110,7 +110,7 @@ python3 "${PLAN_UTILS}" extract-apply-request "${PLAN_FILE}" "${APPLY_REQ_FILE}"
 # 7.  Apply edits
 # ---------------------------------------------------------------------------
 printf '[kast-rename] Step 3/4: applying edits...\n' >&2
-"${KAST}" edits apply \
+"${KAST}" apply-edits \
     --workspace-root="${WORKSPACE_ROOT}" \
     --request-file="${APPLY_REQ_FILE}" > "${APPLY_RESULT_FILE}"
 

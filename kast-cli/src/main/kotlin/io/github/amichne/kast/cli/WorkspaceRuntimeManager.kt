@@ -6,7 +6,7 @@ import io.github.amichne.kast.api.RuntimeState
 import io.github.amichne.kast.api.RuntimeStatusResponse
 import io.github.amichne.kast.api.StandaloneServerOptions
 import io.github.amichne.kast.api.defaultDescriptorDirectory
-import io.github.amichne.kast.api.workspaceMetadataDirectory
+import io.github.amichne.kast.api.kastLogDirectory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -19,6 +19,7 @@ internal class WorkspaceRuntimeManager(
     private val processLauncher: ProcessLauncher,
     private val processLivenessChecker: (Long) -> Boolean = ::isProcessAlive,
     private val standaloneDisabled: () -> Boolean = ::isStandaloneDisabled,
+    private val envLookup: (String) -> String? = System::getenv,
 ) {
     suspend fun workspaceStatus(options: RuntimeCommandOptions): WorkspaceStatusResult {
         val inspection = inspectWorkspace(options, pruneStaleDescriptors = false)
@@ -37,24 +38,17 @@ internal class WorkspaceRuntimeManager(
             purpose = EnsureRuntimePurpose.WORKSPACE_ENSURE,
         )
 
-    suspend fun daemonStart(options: RuntimeCommandOptions): WorkspaceEnsureResult {
-        val result = ensureRuntime(
-            options = options.copy(backendName = "standalone"),
-            requireReady = !options.acceptIndexing,
-            purpose = EnsureRuntimePurpose.WORKSPACE_ENSURE,
-        )
-        return result.copy(
-            note = "deprecated: `daemon start` routes through `workspace ensure`. " +
-                "Use `kast workspace ensure --workspace-root=${options.workspaceRoot}` instead.",
-        )
-    }
-
-    suspend fun daemonStop(options: RuntimeCommandOptions): DaemonStopResult {
+    suspend fun workspaceStop(options: RuntimeCommandOptions): DaemonStopResult {
         val inspection = inspectWorkspace(
-            options = options.copy(backendName = "standalone"),
+            options = options,
             pruneStaleDescriptors = true,
         )
-        val candidate = inspection.candidates.firstOrNull { it.descriptor.backendName == "standalone" }
+        val backendFilter = options.backendName
+        val candidate = if (backendFilter != null) {
+            inspection.candidates.firstOrNull { it.descriptor.backendName == backendFilter }
+        } else {
+            inspection.candidates.firstOrNull()
+        }
             ?: return DaemonStopResult(
                 workspaceRoot = options.workspaceRoot.toString(),
                 stopped = false,
@@ -152,8 +146,7 @@ internal class WorkspaceRuntimeManager(
         purpose: EnsureRuntimePurpose,
     ): WorkspaceEnsureResult {
         val standaloneOptions = options.requireStandaloneBackend()
-        val logFile = workspaceMetadataDirectory(options.workspaceRoot)
-            .resolve("logs")
+        val logFile = kastLogDirectory(options.workspaceRoot, envLookup)
             .createDirectories()
             .resolve("standalone-daemon.log")
         val launched = processLauncher.startDetached(
@@ -247,8 +240,8 @@ internal class WorkspaceRuntimeManager(
         options: RuntimeCommandOptions,
         pruneStaleDescriptors: Boolean,
     ): WorkspaceInspection {
-        val descriptorDirectory = defaultDescriptorDirectory(options.workspaceRoot)
-        val registry = DescriptorRegistry(descriptorDirectory)
+        val descriptorDirectory = defaultDescriptorDirectory(envLookup)
+        val registry = DescriptorRegistry(descriptorDirectory.resolve("daemons.json"))
         val registeredDescriptors = registry.findByWorkspaceRoot(options.workspaceRoot)
         val candidates = registeredDescriptors.map { registered ->
             inspectDescriptor(registry, registered, pruneStaleDescriptors)
@@ -271,12 +264,12 @@ internal class WorkspaceRuntimeManager(
     ): RuntimeCandidateStatus {
         val pidAlive = processLivenessChecker(registered.descriptor.pid)
         if (!pidAlive && pruneStaleDescriptors) {
-            registry.delete(registered.path)
+            registry.delete(registered.descriptor)
         }
 
         if (!pidAlive) {
             return RuntimeCandidateStatus(
-                descriptorPath = registered.path.toString(),
+                descriptorPath = registered.id,
                 descriptor = registered.descriptor,
                 pidAlive = false,
                 reachable = false,
@@ -302,7 +295,7 @@ internal class WorkspaceRuntimeManager(
         }
 
         return RuntimeCandidateStatus(
-            descriptorPath = registered.path.toString(),
+            descriptorPath = registered.id,
             descriptor = registered.descriptor,
             pidAlive = true,
             reachable = runtimeStatus != null,
@@ -338,7 +331,7 @@ internal class WorkspaceRuntimeManager(
             false
         }
 
-        DescriptorRegistry(descriptorDirectory).delete(Path.of(candidate.descriptorPath))
+        DescriptorRegistry(descriptorDirectory.resolve("daemons.json")).delete(candidate.descriptor)
         return DaemonStopResult(
             workspaceRoot = candidate.descriptor.workspaceRoot,
             stopped = true,

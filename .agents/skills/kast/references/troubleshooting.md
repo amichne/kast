@@ -6,12 +6,12 @@ Decision trees for every known failure mode.
 
 ## Daemon Won't Start
 
-**Symptom:** `workspace ensure`, `daemon start`, or a runtime-dependent command
+**Symptom:** `workspace ensure` or a runtime-dependent command
 exits non-zero; daemon never reaches a servable state.
 
 **First step — always read the log:**
 ```bash
-cat .kast/logs/standalone-daemon.log | tail -50
+cat ~/.config/kast/logs/<hash>/standalone-daemon.log | tail -50
 ```
 
 ```
@@ -24,8 +24,8 @@ Is Java 21+ available?
       Does the log contain "SocketException: Operation not permitted"?
       ├─ Yes → Unix domain socket bind is blocked. See "Unix Domain Socket Bind Failure" below.
       └─ No
-         Is there a stale descriptor (.kast/instances/)?
-         ├─ Yes → Run: kast daemon stop --workspace-root=...
+         Is there a stale descriptor (~/.config/kast/daemons/)?
+         ├─ Yes → Run: kast workspace stop --workspace-root=...
          │         If stop fails, remove the descriptor file manually, then retry.
          └─ No
             Check stderr output for port/socket conflicts.
@@ -78,12 +78,12 @@ A timeout is a symptom, not the root cause. When `workspace ensure` times out, a
 inspect the daemon log before retrying:
 
 ```bash
-cat .kast/logs/standalone-daemon.log | tail -50
+cat ~/.config/kast/logs/<hash>/standalone-daemon.log | tail -50
 ```
 
 ```
 workspace ensure timed out
-  → Read .kast/logs/standalone-daemon.log immediately
+  → Read ~/.config/kast/logs/<hash>/standalone-daemon.log immediately
   → Look for: SocketException, OutOfMemoryError, ClassNotFoundException, port conflicts
   → If the log shows the daemon exited, that is the real cause — fix it, then retry
 
@@ -101,13 +101,13 @@ state = INDEXING
 
 state = DEGRADED
   → Daemon is unhealthy. workspace ensure will attempt to restart it.
-  → If restart fails: daemon stop, then workspace ensure again.
+  → If restart fails: workspace stop, then workspace ensure again.
   → Check disk space and memory (JVM heap may need tuning).
 
 workspace status returns selected: null, candidates: []
   → The daemon started but exited before registering a servable descriptor.
   → This does NOT mean "no daemon configured" — it means startup failed silently.
-  → Read .kast/logs/standalone-daemon.log for the exit reason.
+  → Read ~/.config/kast/logs/<workspace-hash>/standalone-daemon.log for the exit reason.
 ```
 
 ---
@@ -117,18 +117,18 @@ workspace status returns selected: null, candidates: []
 **Symptom:** `workspace status` shows a daemon that isn't running; `healthy: false`.
 
 ```
-Run: kast daemon stop --workspace-root=...
+Run: kast workspace stop --workspace-root=...
 If stop exits non-zero (process already gone):
-  Locate the descriptor in .kast/instances/ under the workspace root.
+  Locate the descriptor in ~/.config/kast/daemons/ under the workspace root.
   Remove the stale JSON file.
 Then: kast workspace ensure --workspace-root=...
 ```
 
 ---
 
-## CONFLICT on edits apply
+## CONFLICT on apply-edits
 
-**Symptom:** `edits apply` exits non-zero; error code `CONFLICT` (409).
+**Symptom:** `apply-edits` exits non-zero; error code `CONFLICT` (409).
 
 ```
 Cause: one or more files were modified after rename generated the plan.
@@ -138,7 +138,7 @@ Recovery:
   2. Inspect details map in the error response to see which files changed.
   3. If files were changed by your own edits, verify intent before re-applying.
   4. Write the new RenameResult edits/fileHashes to the request file.
-  5. Run edits apply again.
+  5. Run apply-edits again.
 
 Do NOT manually merge old and new edits — always start from a fresh rename plan.
 ```
@@ -153,13 +153,13 @@ Do NOT manually merge old and new edits — always start from a fresh rename pla
 Run: kast capabilities --workspace-root=...
 Check readCapabilities and mutationCapabilities arrays.
 
-Missing RESOLVE_SYMBOL  → symbol resolve unavailable; use grep for text search.
+Missing RESOLVE_SYMBOL  → resolve unavailable; use grep for text search.
 Missing FIND_REFERENCES → references unavailable; use grep for text search.
 Missing DIAGNOSTICS     → diagnostics unavailable; run the project's
                            configured `gradleHook` through `kotlin-gradle-loop`.
 Missing RENAME          → rename unavailable; manual find-and-replace required.
-Missing APPLY_EDITS     → edits apply unavailable; apply edits manually.
-Missing CALL_HIERARCHY  → call hierarchy unavailable in this backend; confirm
+Missing APPLY_EDITS     → apply-edits unavailable; apply edits manually.
+Missing CALL_HIERARCHY  → call-hierarchy unavailable in this backend; confirm
                           the runtime version and capability gating, then retry.
 
 If a needed capability is missing, the backend version may be too old
@@ -181,11 +181,11 @@ Files in applied array: already written to disk.
 
 Recovery options:
   A. Fix the root cause, then manually apply the failed edits using the
-     original RenameResult (re-run edits apply with just the failed files).
+     original RenameResult (re-run apply-edits with just the failed files).
   B. If the workspace is now inconsistent, run diagnostics to assess damage,
      then re-plan the rename from scratch.
 
-Do NOT re-run the original edits apply wholesale — already-applied edits
+Do NOT re-run the original apply-edits wholesale — already-applied edits
 will produce offset conflicts.
 ```
 
@@ -269,9 +269,9 @@ python3 "$SKILL_ROOT/scripts/kast-plan-utils.py" check-diagnostics /tmp/diag.jso
 
 ---
 
-## NOT_FOUND on symbol resolve / references
+## NOT_FOUND on resolve / references
 
-**Symptom:** Error code `NOT_FOUND` (404) from `symbol resolve` or `references`.
+**Symptom:** Error code `NOT_FOUND` (404) from `resolve` or `references`.
 
 ```
 Is the offset pointing to a symbol token?
@@ -284,7 +284,7 @@ Is the offset pointing to a symbol token?
       Is the file saved to disk?
       ├─ No  → kast reads from disk. Save the file before querying.
       └─ Yes
-         Try symbol resolve on a known symbol in the same file to
+         Try resolve on a known symbol in the same file to
          verify the workspace is indexing that file correctly.
 ```
 
@@ -302,7 +302,7 @@ To find the offset for a symbol at line L, column C (both 1-based):
   4. For multi-byte UTF-16 characters (emoji, CJK), count UTF-16 code units,
      not Unicode code points.
 
-Quick check: use symbol resolve at the declaration site first, then read
+Quick check: use resolve at the declaration site first, then read
 startOffset from the response to confirm your calculation matches.
 ```
 

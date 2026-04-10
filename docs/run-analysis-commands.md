@@ -42,12 +42,12 @@ you want to save it for repeatable automation.
 
 | Command | Inline input | Request file input | Notes |
 | --- | --- | --- | --- |
-| `symbol resolve` | `--file-path` and `--offset` | `--request-file` | Use the inline form for a single lookup |
+| `resolve` | `--file-path` and `--offset` | `--request-file` | Use the inline form for a single lookup |
 | `references` | `--file-path`, `--offset`, and optional `--include-declaration=true` | `--request-file` | Keep `--include-declaration` off unless you need the declaration in the result |
-| `call hierarchy` | `--file-path`, `--offset`, `--direction`, and optional bound flags | `--request-file` | Use inline input when you want to tune depth or truncation limits directly |
+| `call-hierarchy` | `--file-path`, `--offset`, `--direction`, and optional bound flags | `--request-file` | Use inline input when you want to tune depth or truncation limits directly |
 | `diagnostics` | `--file-paths=/absolute/A.kt,/absolute/B.kt` | `--request-file` | Inline input is easiest for a small list of files |
 | `rename` | `--file-path`, `--offset`, `--new-name`, and optional `--dry-run=true` | `--request-file` | Rename stays in planning mode unless you change `dryRun` in the query |
-| `edits apply` | Not supported | `--request-file` | The request file must include edits plus expected file hashes |
+| `apply-edits` | Not supported | `--request-file` | The request file must include edits plus expected file hashes |
 
 ## Check capabilities before you rely on a feature
 
@@ -66,12 +66,12 @@ runtime supports it.
 
 ## Resolve a symbol
 
-Use `symbol resolve` when you know a file position and want the symbol details
+Use `resolve` when you know a file position and want the symbol details
 at that exact offset.
 
 ```bash
 kast \
-  symbol resolve \
+  resolve \
   --workspace-root=/absolute/path/to/workspace \
   --file-path=/absolute/path/to/src/main/kotlin/com/example/App.kt \
   --offset=123
@@ -107,12 +107,12 @@ miss usages outside the searched scope.
 
 ## Expand a call hierarchy
 
-Use `call hierarchy` when you want incoming callers or outgoing callees for the
+Use `call-hierarchy` when you want incoming callers or outgoing callees for the
 declaration at a specific file position.
 
 ```bash
 kast \
-  call hierarchy \
+  call-hierarchy \
   --workspace-root=/absolute/path/to/workspace \
   --file-path=/absolute/path/to/src/main/kotlin/com/example/App.kt \
   --offset=123 \
@@ -161,12 +161,12 @@ planning mode unless your request payload says otherwise.
 
 ## Apply a prepared edit plan
 
-Use `edits apply` only after you already have a prepared edit plan that
+Use `apply-edits` only after you already have a prepared edit plan that
 includes the edits and expected file hashes.
 
 ```bash
 kast \
-  edits apply \
+  apply-edits \
   --workspace-root=/absolute/path/to/workspace \
   --request-file=/absolute/path/to/query.json
 ```
@@ -176,7 +176,7 @@ request from a file.
 
 ## Refresh workspace state manually
 
-Kast refreshes `edits apply` results immediately and watches source roots for
+Kast refreshes `apply-edits` results immediately and watches source roots for
 most external `.kt` file changes. Use `workspace refresh` when you need the
 manual recovery path.
 
@@ -202,7 +202,7 @@ manual recovery path.
 
 ## Understand bounded results
 
-`call hierarchy` is part of the supported CLI, but it is intentionally bounded.
+`call-hierarchy` is part of the supported CLI, but it is intentionally bounded.
 When you summarize results, report the direction you used and surface
 truncation honestly if `stats` or node metadata show that Kast hit a limit.
 

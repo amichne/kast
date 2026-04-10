@@ -141,7 +141,7 @@ automatically when IntelliJ opens a project.
    socket and writes a descriptor file so external clients can discover it.
 
 5. Verify the plugin is running by connecting any JSON-RPC client to the
-   socket path written in the descriptor file under `.gradle/kast/instances/`.
+   socket path written in the descriptor file under `~/.config/kast/daemons/`.
 
 !!! note
     The IntelliJ plugin backend does not require the standalone CLI to be
@@ -208,7 +208,7 @@ explicit and makes it easy to tell which workspace runtimes are active.
 
    ```bash
    kast \
-     daemon stop \
+     workspace stop \
      --workspace-root=/absolute/path/to/workspace
    ```
 
@@ -216,7 +216,7 @@ explicit and makes it easy to tell which workspace runtimes are active.
 
 ## Recover workspace state manually
 
-Kast refreshes `edits apply` results immediately and watches source roots for
+Kast refreshes `apply-edits` results immediately and watches source roots for
 most external `.kt` file changes. Use `workspace refresh` only when you need a
 manual recovery path after a missed change.
 

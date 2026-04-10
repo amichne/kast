@@ -77,7 +77,7 @@ class KastCliTest {
         val stderr = StringBuilder()
 
         val exitCode = KastCli().run(
-            arrayOf("edits", "apply", "--workspace-root=$tempDir"),
+            arrayOf("apply-edits", "--workspace-root=$tempDir"),
             stdout,
             stderr,
         )
@@ -86,7 +86,7 @@ class KastCliTest {
         assertEquals(1, exitCode)
         assertEquals("", stdout.toString())
         assertEquals("CLI_USAGE", error.code)
-        assertTrue(checkNotNull(error.details["usage"]).contains("edits apply"))
+        assertTrue(checkNotNull(error.details["usage"]).contains("apply-edits"))
     }
 
     @Test

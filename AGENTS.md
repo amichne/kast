@@ -52,6 +52,44 @@ Use this map to choose the narrowest unit that owns a change.
   notes
 - `site`: generated static site output for GitHub Pages
 
+## Mandatory tool routing
+
+Agents must use kast wrapper scripts for all Kotlin semantic operations.
+
+| Operation        | Tool                      | Fallback |
+|-----------------|---------------------------|----------|
+| Resolve symbol  | `kast-resolve.sh`         | None     |
+| Find references | `kast-references.sh`      | None     |
+| Call hierarchy  | `kast-callers.sh`         | None     |
+| Impact analysis | `kast-impact.sh`          | None     |
+| Diagnostics     | `kast-diagnostics.sh`     | None     |
+| Rename symbol   | `kast-rename.sh`          | None     |
+
+**Prohibited substitutions:** `grep`, `rg`, `ast-grep`, `cat` + manual
+parsing must NOT be used for symbol identity, reference finding, or call
+hierarchy. These tools lack semantic understanding and produce incorrect
+results for overloaded symbols, inherited members, and cross-module
+references.
+
+**Text search whitelist:** `grep`/`rg` may be used for finding file paths,
+searching non-Kotlin files, and searching string literals or comments.
+
+## Agent hooks
+
+`.agents/hooks.json` is the authoritative source for agent-level hooks.
+Hooks are additive across the scope hierarchy: repo → agent → skill. Skills
+must not redeclare any hook already defined at the agent level.
+
+## Skill composition
+
+| Phase                | Primary skill     | Supporting skill     |
+|---------------------|-------------------|---------------------|
+| Understand the code | `kast`            | —                   |
+| Plan a change       | `kast` (impact)   | —                   |
+| Make the change     | Agent (direct edit)| `kotlin-standards` |
+| Validate the change | `kast` (diagnostics)| `kotlin-gradle-loop`|
+| Document the change | `docs-writer`     | —                   |
+
 ## Working rules
 
 Apply these rules across the repo before local unit rules add more detail.

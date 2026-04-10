@@ -95,7 +95,7 @@ jobs:
           gradle-version: "9.4.0"
 
       - name: Build portable Kast distribution
-        run: ./gradlew :kast:portableDistZip
+        run: ./release.sh --tag=${{ needs.prepare-release.outputs.release_tag }} --platform-id=${{ matrix.asset_id }}
 
       - name: Smoke portable Kast distribution
         shell: bash
@@ -115,9 +115,9 @@ jobs:
           set -euo pipefail
           tag="${{ needs.prepare-release.outputs.release_tag }}"
           asset_name="kast-${tag}-${{ matrix.asset_id }}.zip"
-          asset_path="kast/build/distributions/${asset_name}"
+          asset_path="dist/${asset_name}"
 
-          cp kast/build/distributions/kast-*-portable.zip "$asset_path"
+          [[ -f "$asset_path" ]] || { echo "Release asset not found: $asset_path" >&2; exit 1; }
           gh release upload "$tag" "$asset_path" --clobber
 
   build-intellij-plugin:
