@@ -43,6 +43,12 @@ data class StandaloneServerOptions(
                 moduleName = values["module-name"] ?: "sources",
                 transport = when (values["transport"]?.lowercase()) {
                     "stdio" -> AnalysisTransport.Stdio
+                    "tcp" -> AnalysisTransport.Tcp(
+                        host = values["tcp-host"]
+                            ?: error("tcp-host is required when transport=tcp"),
+                        port = values["tcp-port"]?.toInt()
+                            ?: error("tcp-port is required when transport=tcp"),
+                    )
                     else -> AnalysisTransport.UnixDomainSocket(
                         socketPath = values["socket-path"]
                             ?.let(::Path)
@@ -78,6 +84,7 @@ data class StandaloneServerOptions(
             is AnalysisTransport.UnixDomainSocket -> add("--socket-path=${transport.socketPath}")
             AnalysisTransport.Stdio -> add("--stdio")
             is AnalysisTransport.Tcp -> {
+                add("--transport=tcp")
                 add("--tcp-host=${transport.host}")
                 add("--tcp-port=${transport.port}")
             }
