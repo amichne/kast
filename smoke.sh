@@ -148,14 +148,14 @@ else
 fi
 
 # Daemon log path for diagnostics on failure
-DAEMON_LOG="$WORKSPACE_ROOT/.kast/logs/standalone-daemon.log"
+DAEMON_LOG="$HOME/.config/kast/logs/standalone-daemon.log"
 dump_daemon_log() {
   if [ -f "$DAEMON_LOG" ]; then
     log "--- Last 60 lines of daemon log ---"
     tail -n 60 "$DAEMON_LOG" >&2 || true
   fi
 }
-trap 'status=$?; [ $status -ne 0 ] && dump_daemon_log; "$KAST" daemon stop --workspace-root="$WORKSPACE_ROOT" >/dev/null 2>&1 || true; rm -rf "$OUTDIR"; exit $status' EXIT
+trap 'status=$?; [ $status -ne 0 ] && dump_daemon_log; "$KAST" workspace stop --workspace-root="$WORKSPACE_ROOT" >/dev/null 2>&1 || true; rm -rf "$OUTDIR"; exit $status' EXIT
 
 # ── Shared JSON assertion helper (no jq dependency) ─────────────────────────
 assert_json() {
@@ -394,15 +394,15 @@ while IFS=$'\t' read -r ss_key filepath sym offset; do
   log "  Symbol: $sym  File: $filepath  Offset: $offset"
 
   # ── 6. Symbol resolve ──
-  if "$KAST" symbol resolve \
+  if "$KAST" resolve \
       --workspace-root="$WORKSPACE_ROOT" \
       --file-path="$filepath" \
       --offset="$offset" \
       --wait-timeout-ms=180000 \
       > "$ss_outdir/resolve.json" 2> "$ss_outdir/resolve.stderr"; then
-    pass "$ss_tag symbol resolve (exit 0)"
+    pass "$ss_tag resolve (exit 0)"
   else
-    fail "$ss_tag symbol resolve (exit $?)"
+    fail "$ss_tag resolve (exit $?)"
     cat "$ss_outdir/resolve.stderr" >&2 || true
   fi
   assert_json "$ss_tag resolve: has fqName" "$ss_outdir/resolve.json" "
@@ -445,7 +445,7 @@ if page is not None:
 "
 
   # ── 8. Call hierarchy (incoming) ──
-  if "$KAST" call hierarchy \
+  if "$KAST" call-hierarchy \
       --workspace-root="$WORKSPACE_ROOT" \
       --file-path="$filepath" \
       --offset="$offset" \
@@ -469,7 +469,7 @@ assert isinstance(stats.get('timeoutReached'), bool), 'stats.timeoutReached miss
 "
 
   # ── 9. Call hierarchy (outgoing) ──
-  if "$KAST" call hierarchy \
+  if "$KAST" call-hierarchy \
       --workspace-root="$WORKSPACE_ROOT" \
       --file-path="$filepath" \
       --offset="$offset" \
@@ -718,16 +718,16 @@ else:
 PY
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 14. Daemon stop
+# 14. Workspace stop
 # ══════════════════════════════════════════════════════════════════════════════
-log_step "Step 14: daemon stop"
-if "$KAST" daemon stop \
+log_step "Step 14: workspace stop"
+if "$KAST" workspace stop \
     --workspace-root="$WORKSPACE_ROOT" \
     > "$OUTDIR/stop.json" 2> "$OUTDIR/stop.stderr"; then
-  pass "daemon stop (exit 0)"
+  pass "workspace stop (exit 0)"
 else
   # Non-fatal: daemon may have been managed externally
-  log "daemon stop exited non-zero (may already be stopped)"
+  log "workspace stop exited non-zero (may already be stopped)"
 fi
 
 # ══════════════════════════════════════════════════════════════════════════════

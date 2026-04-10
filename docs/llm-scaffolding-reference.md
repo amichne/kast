@@ -18,7 +18,7 @@ skill tree includes a `.kast-version` marker that stays aligned with the CLI
 version that installed it.
 
 !!! note
-    The packaged skill can run `call hierarchy` after `symbol resolve`
+    The packaged skill can run `call-hierarchy` after `resolve`
     confirms the target symbol. Provide an incoming or outgoing direction when
     you ask for it.
 
@@ -33,7 +33,7 @@ skill is doing before it runs the public commands.
 | CLI discovery | Runs `bash "$SKILL_ROOT/scripts/resolve-kast.sh"` to find `kast` on `PATH`, in local build output, or in `dist/` | When the binary cannot be found or you need to reproduce the exact invocation |
 | Workspace lifecycle | Uses `workspace ensure` when you want an explicit prewarm step, or lets the first runtime-dependent command auto-start the daemon | When a query hits a cold, indexing, or degraded workspace |
 | Conversational lookup bridge | Searches for candidate declarations from a class, function, or property reference, then uses `"$SKILL_ROOT/scripts/find-symbol-offset.py"` to turn the chosen candidate into declaration-first UTF-16 offsets | When a human reference is ambiguous or you need to debug why one symbol won |
-| Semantic verification | Resolves the chosen position with `symbol resolve` before it expands to `references`, `call hierarchy`, or `rename` | When the first match is not the symbol you meant |
+| Semantic verification | Resolves the chosen position with `resolve` before it expands to `references`, `call-hierarchy`, or `rename` | When the first match is not the symbol you meant |
 | Failure handling | Treats stderr as daemon notes and must surface missing capabilities, `NOT_FOUND`, and truncation honestly | When automation must distinguish "no result" from "bad input" |
 
 ## Inputs the CLI still requires
@@ -61,7 +61,7 @@ KAST=$(bash "$SKILL_ROOT/scripts/resolve-kast.sh")
 # Optional explicit prewarm. Skip this command if you want the first semantic
 # query to auto-start the daemon instead.
 "$KAST" workspace ensure --workspace-root=/absolute/path/to/workspace
-"$KAST" symbol resolve \
+"$KAST" resolve \
   --workspace-root=/absolute/path/to/workspace \
   --file-path=/absolute/path/to/src/main/kotlin/com/example/App.kt \
   --offset=123
@@ -70,7 +70,7 @@ KAST=$(bash "$SKILL_ROOT/scripts/resolve-kast.sh")
   --file-path=/absolute/path/to/src/main/kotlin/com/example/App.kt \
   --offset=123 \
   --include-declaration=true
-"$KAST" call hierarchy \
+"$KAST" call-hierarchy \
   --workspace-root=/absolute/path/to/workspace \
   --file-path=/absolute/path/to/src/main/kotlin/com/example/App.kt \
   --offset=123 \
@@ -92,8 +92,8 @@ coordinates.
 1. Locate the likely declaration file for the class or property.
 2. Run `find-symbol-offset.py` with the symbol name.
 3. Take the first result line as the best declaration candidate.
-4. Verify that candidate with `symbol resolve`.
-5. Reuse the same file and offset for `references`, `call hierarchy`, or
+4. Verify that candidate with `resolve`.
+5. Reuse the same file and offset for `references`, `call-hierarchy`, or
    `rename`.
 
 Example class lookup:
@@ -124,7 +124,7 @@ The script prints one line per candidate in this shape:
 <offset>\t<line>\t<col>\t<context-snippet>
 ```
 
-Take the first line first. If the follow-up `symbol resolve` result does not
+Take the first line first. If the follow-up `resolve` result does not
 match the class or property you intended, move to the next candidate or add a
 better containing-type hint in the human prompt.
 
@@ -159,7 +159,7 @@ mistakes and interpretation errors.
 - A missing capability that the caller never checked
 - An unexpected auto-start when the caller meant to require an existing daemon;
   add `--no-auto-start=true` in that case
-- A `call hierarchy` request that omits direction or ignores truncation
+- A `call-hierarchy` request that omits direction or ignores truncation
   metadata
 
 ## Next steps

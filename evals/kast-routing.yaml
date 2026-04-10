@@ -1,0 +1,85 @@
+# kast-routing.yaml — Tool routing eval suite
+#
+# Each case presents a user prompt to the agent and asserts which tools
+# were (or were not) invoked. The eval harness feeds the prompt, captures
+# the tool-call transcript, and evaluates the assertions.
+
+suite: kast-routing
+workspace: evals/fixtures/sample-workspace
+
+cases:
+  - id: resolve-symbol-uses-kast
+    name: "Resolve symbol routes through kast-resolve.sh"
+    prompt: "Resolve the symbol `Greeter` in the lib module."
+    assertions:
+      - type: tool_used
+        tool: kast-resolve.sh
+      - type: tool_not_used
+        tool: grep
+      - type: tool_not_used
+        tool: rg
+
+  - id: find-references-uses-kast
+    name: "Find references routes through kast-references.sh"
+    prompt: "Find all references to the `greet` function in `Greeter.kt`."
+    assertions:
+      - type: tool_used
+        tool: kast-references.sh
+      - type: tool_not_used
+        tool: grep
+      - type: tool_not_used
+        tool: rg
+
+  - id: call-hierarchy-uses-kast
+    name: "Call hierarchy routes through kast-callers.sh"
+    prompt: "Show me who calls `GreeterFactory.create()` with incoming direction."
+    assertions:
+      - type: tool_used
+        tool: kast-callers.sh
+
+  - id: pre-edit-impact-uses-kast
+    name: "Pre-edit impact assessment routes through kast-impact.sh"
+    prompt: "Before I rename `Greeter.greet`, show me the impact."
+    assertions:
+      - type: tool_used
+        tool: kast-impact.sh
+
+  - id: post-edit-diagnostics
+    name: "Post-edit diagnostics routes through kast-diagnostics.sh"
+    prompt: "Run diagnostics on `app/src/main/kotlin/sample/app/BrokenFile.kt`."
+    assertions:
+      - type: tool_used
+        tool: kast-diagnostics.sh
+
+  - id: no-kast-recalculation
+    name: "Bootstrap runs exactly once across multiple tool calls"
+    prompt: "Resolve `Greeter`, then find its references, then show its callers."
+    assertions:
+      - type: bootstrap_count
+        expected: 1
+      - type: tool_sequence_contains
+        sequence:
+          - kast-resolve.sh
+          - kast-references.sh
+          - kast-callers.sh
+
+  - id: ambiguous-symbol-disambiguation
+    name: "Ambiguous symbol uses --containing-type for disambiguation"
+    prompt: "Resolve the `greet` function that belongs to `UpperCaseGreeter`."
+    assertions:
+      - type: tool_used
+        tool: kast-resolve.sh
+      - type: flag_used
+        tool: kast-resolve.sh
+        flag: "--containing-type"
+
+  - id: fallback-to-text-search-appropriate
+    name: "Non-Kotlin search correctly avoids kast tools"
+    prompt: "Find all markdown files that mention 'Greeter' in their content."
+    assertions:
+      - type: tool_not_used
+        tool: kast-resolve.sh
+      - type: tool_not_used
+        tool: kast-references.sh
+      - type: tool_not_used
+        tool: kast-callers.sh

@@ -311,29 +311,18 @@ internal object CliCommandCatalog {
             ),
         ),
         CliCommandMetadata(
-            path = listOf("daemon", "start"),
+            path = listOf("workspace", "stop"),
             group = CliCommandGroup.WORKSPACE_LIFECYCLE,
-            summary = "[Deprecated] Alias for `workspace ensure`.",
-            description = "Deprecated: routes through `workspace ensure`. Use `kast workspace ensure` or let analysis commands auto-start the daemon.",
+            summary = "Stop a running backend for the workspace.",
+            description = "Stops the selected backend, removes its descriptor, and reports what was stopped. " +
+                "Use --backend-name to target a specific backend; otherwise stops the first candidate found.",
             usages = listOf(
-                "$CLI_EXECUTABLE_NAME daemon start --workspace-root=/absolute/path/to/workspace [--wait-timeout-ms=60000]",
+                "$CLI_EXECUTABLE_NAME workspace stop --workspace-root=/absolute/path/to/workspace [--backend-name=standalone|intellij]",
             ),
-            options = listOf(workspaceRootOption, waitTimeoutOption),
+            options = listOf(workspaceRootOption, backendNameOption),
             examples = listOf(
-                "$CLI_EXECUTABLE_NAME daemon start --workspace-root=/absolute/path/to/workspace",
-            ),
-        ),
-        CliCommandMetadata(
-            path = listOf("daemon", "stop"),
-            group = CliCommandGroup.WORKSPACE_LIFECYCLE,
-            summary = "Stop the standalone daemon registered for a workspace.",
-            description = "Stops the selected daemon, removes its descriptor, and reports what was stopped.",
-            usages = listOf(
-                "$CLI_EXECUTABLE_NAME daemon stop --workspace-root=/absolute/path/to/workspace",
-            ),
-            options = listOf(workspaceRootOption),
-            examples = listOf(
-                "$CLI_EXECUTABLE_NAME daemon stop --workspace-root=/absolute/path/to/workspace",
+                "$CLI_EXECUTABLE_NAME workspace stop --workspace-root=/absolute/path/to/workspace",
+                "$CLI_EXECUTABLE_NAME workspace stop --workspace-root=/absolute/path/to/workspace --backend-name=standalone",
             ),
         ),
         CliCommandMetadata(
@@ -352,17 +341,17 @@ internal object CliCommandCatalog {
             ),
         ),
         CliCommandMetadata(
-            path = listOf("symbol", "resolve"),
+            path = listOf("resolve"),
             group = CliCommandGroup.ANALYSIS,
             summary = "Resolve the symbol at a file position.",
             description = "Accepts either an absolute request file or inline file position arguments.",
             usages = listOf(
-                "$CLI_EXECUTABLE_NAME symbol resolve --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
-                "$CLI_EXECUTABLE_NAME symbol resolve --workspace-root=/absolute/path/to/workspace --file-path=/absolute/path/to/File.kt --offset=123",
+                "$CLI_EXECUTABLE_NAME resolve --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
+                "$CLI_EXECUTABLE_NAME resolve --workspace-root=/absolute/path/to/workspace --file-path=/absolute/path/to/File.kt --offset=123",
             ),
             options = listOf(workspaceRootOption, backendNameOption, waitTimeoutOption, noAutoStartOption, requestFileOption, filePathOption, offsetOption),
             examples = listOf(
-                "$CLI_EXECUTABLE_NAME symbol resolve --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
+                "$CLI_EXECUTABLE_NAME resolve --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
             ),
         ),
         CliCommandMetadata(
@@ -389,13 +378,13 @@ internal object CliCommandCatalog {
             ),
         ),
         CliCommandMetadata(
-            path = listOf("call", "hierarchy"),
+            path = listOf("call-hierarchy"),
             group = CliCommandGroup.ANALYSIS,
             summary = "Expand a bounded call hierarchy for the symbol at a file position.",
             description = "Accepts either an absolute request file or inline position, direction, and bound arguments.",
             usages = listOf(
-                "$CLI_EXECUTABLE_NAME call hierarchy --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
-                "$CLI_EXECUTABLE_NAME call hierarchy --workspace-root=/absolute/path/to/workspace --file-path=/absolute/path/to/File.kt --offset=123 --direction=incoming [--depth=3] [--max-total-calls=256] [--max-children-per-node=64] [--timeout-millis=5000]",
+                "$CLI_EXECUTABLE_NAME call-hierarchy --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
+                "$CLI_EXECUTABLE_NAME call-hierarchy --workspace-root=/absolute/path/to/workspace --file-path=/absolute/path/to/File.kt --offset=123 --direction=incoming [--depth=3] [--max-total-calls=256] [--max-children-per-node=64] [--timeout-millis=5000]",
             ),
             options = listOf(
                 workspaceRootOption,
@@ -412,17 +401,17 @@ internal object CliCommandCatalog {
                 timeoutMillisOption,
             ),
             examples = listOf(
-                "$CLI_EXECUTABLE_NAME call hierarchy --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
+                "$CLI_EXECUTABLE_NAME call-hierarchy --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
             ),
         ),
         CliCommandMetadata(
-            path = listOf("type", "hierarchy"),
+            path = listOf("type-hierarchy"),
             group = CliCommandGroup.ANALYSIS,
             summary = "Expand a bounded type hierarchy for the declaration at a file position.",
             description = "Accepts either an absolute request file or inline position, direction, and bound arguments.",
             usages = listOf(
-                "$CLI_EXECUTABLE_NAME type hierarchy --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
-                "$CLI_EXECUTABLE_NAME type hierarchy --workspace-root=/absolute/path/to/workspace --file-path=/absolute/path/to/File.kt --offset=123 --direction=both [--depth=3] [--max-results=256]",
+                "$CLI_EXECUTABLE_NAME type-hierarchy --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
+                "$CLI_EXECUTABLE_NAME type-hierarchy --workspace-root=/absolute/path/to/workspace --file-path=/absolute/path/to/File.kt --offset=123 --direction=both [--depth=3] [--max-results=256]",
             ),
             options = listOf(
                 workspaceRootOption,
@@ -437,17 +426,17 @@ internal object CliCommandCatalog {
                 maxResultsOption,
             ),
             examples = listOf(
-                "$CLI_EXECUTABLE_NAME type hierarchy --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
+                "$CLI_EXECUTABLE_NAME type-hierarchy --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
             ),
         ),
         CliCommandMetadata(
-            path = listOf("semantic", "insertion-point"),
+            path = listOf("insertion-point"),
             group = CliCommandGroup.ANALYSIS,
             summary = "Resolve a semantic insertion offset for the declaration or file at a position.",
             description = "Accepts either an absolute request file or inline file position plus semantic target arguments.",
             usages = listOf(
-                "$CLI_EXECUTABLE_NAME semantic insertion-point --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
-                "$CLI_EXECUTABLE_NAME semantic insertion-point --workspace-root=/absolute/path/to/workspace --file-path=/absolute/path/to/File.kt --offset=123 --target=after-imports",
+                "$CLI_EXECUTABLE_NAME insertion-point --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
+                "$CLI_EXECUTABLE_NAME insertion-point --workspace-root=/absolute/path/to/workspace --file-path=/absolute/path/to/File.kt --offset=123 --target=after-imports",
             ),
             options = listOf(
                 workspaceRootOption,
@@ -460,7 +449,7 @@ internal object CliCommandCatalog {
                 insertionTargetOption,
             ),
             examples = listOf(
-                "$CLI_EXECUTABLE_NAME semantic insertion-point --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
+                "$CLI_EXECUTABLE_NAME insertion-point --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
             ),
         ),
         CliCommandMetadata(
@@ -502,30 +491,30 @@ internal object CliCommandCatalog {
             ),
         ),
         CliCommandMetadata(
-            path = listOf("imports", "optimize"),
+            path = listOf("optimize-imports"),
             group = CliCommandGroup.MUTATION_FLOW,
             summary = "Prepare import cleanup edits for one or more files.",
             description = "Accepts either an absolute request file or inline comma-separated file paths and returns the edit plan needed to remove unused imports.",
             usages = listOf(
-                "$CLI_EXECUTABLE_NAME imports optimize --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
-                "$CLI_EXECUTABLE_NAME imports optimize --workspace-root=/absolute/path/to/workspace --file-paths=/absolute/A.kt,/absolute/B.kt",
+                "$CLI_EXECUTABLE_NAME optimize-imports --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
+                "$CLI_EXECUTABLE_NAME optimize-imports --workspace-root=/absolute/path/to/workspace --file-paths=/absolute/A.kt,/absolute/B.kt",
             ),
             options = listOf(workspaceRootOption, backendNameOption, waitTimeoutOption, noAutoStartOption, requestFileOption, filePathsOption),
             examples = listOf(
-                "$CLI_EXECUTABLE_NAME imports optimize --workspace-root=/absolute/path/to/workspace --file-paths=/absolute/path/to/File.kt",
+                "$CLI_EXECUTABLE_NAME optimize-imports --workspace-root=/absolute/path/to/workspace --file-paths=/absolute/path/to/File.kt",
             ),
         ),
         CliCommandMetadata(
-            path = listOf("edits", "apply"),
+            path = listOf("apply-edits"),
             group = CliCommandGroup.MUTATION_FLOW,
             summary = "Apply a prepared edit plan.",
             description = "Requires an absolute request file that contains the edits and expected file hashes.",
             usages = listOf(
-                "$CLI_EXECUTABLE_NAME edits apply --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
+                "$CLI_EXECUTABLE_NAME apply-edits --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
             ),
             options = listOf(workspaceRootOption, backendNameOption, waitTimeoutOption, noAutoStartOption, requestFileOption),
             examples = listOf(
-                "$CLI_EXECUTABLE_NAME edits apply --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
+                "$CLI_EXECUTABLE_NAME apply-edits --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
             ),
         ),
         CliCommandMetadata(

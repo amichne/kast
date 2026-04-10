@@ -64,8 +64,7 @@ for one workspace.
 | `workspace status` | Inspect registered descriptors, liveness, and readiness | `--workspace-root` | Reports the selected daemon plus any additional descriptors for the same workspace |
 | `workspace ensure` | Explicitly prewarm or reuse a standalone daemon | `--workspace-root`, `--wait-timeout-ms`, optional `--accept-indexing=true` | Waits for `READY` by default; `--accept-indexing=true` returns once the daemon is servable in `INDEXING` |
 | `workspace refresh` | Force a targeted or full workspace state refresh | `--workspace-root`, optional `--file-paths` | Use this as a manual recovery path; omit `--file-paths` for a full refresh |
-| `daemon start` | Start a detached standalone daemon explicitly | `--workspace-root`, `--wait-timeout-ms` | Deprecated; use `workspace ensure` or let analysis commands auto-start |
-| `daemon stop` | Stop the selected standalone daemon | `--workspace-root` | Removes the selected descriptor and reports what stopped |
+| `workspace stop` | Stop the selected standalone daemon | `--workspace-root` | Removes the selected descriptor and reports what stopped |
 
 ## Read commands
 
@@ -78,9 +77,9 @@ instead of creating a daemon implicitly.
 | Command | Purpose | Input shape | Notes |
 | --- | --- | --- | --- |
 | `capabilities` | Print the runtime capability set | `--workspace-root`, optional `--wait-timeout-ms` | Use this before relying on an operation in automation |
-| `symbol resolve` | Resolve the symbol at a file position | Inline flags or `--request-file` | Inline form needs `--file-path` and `--offset` |
+| `resolve` | Resolve the symbol at a file position | Inline flags or `--request-file` | Inline form needs `--file-path` and `--offset` |
 | `references` | Find references for the symbol at a file position | Inline flags or `--request-file` | Inline form also supports `--include-declaration=true` |
-| `call hierarchy` | Expand a bounded incoming or outgoing call tree | Inline flags or `--request-file` | Inline form needs `--file-path`, `--offset`, and `--direction`; optional bounds control truncation |
+| `call-hierarchy` | Expand a bounded incoming or outgoing call tree | Inline flags or `--request-file` | Inline form needs `--file-path`, `--offset`, and `--direction`; optional bounds control truncation |
 | `diagnostics` | Run diagnostics for one or more files | Inline flags or `--request-file` | Inline form uses comma-separated absolute file paths |
 
 ## Mutation commands
@@ -93,7 +92,7 @@ Mutation commands also accept `--no-auto-start=true`.
 | Command | Purpose | Input shape | Notes |
 | --- | --- | --- | --- |
 | `rename` | Plan a rename operation | Inline flags or `--request-file` | Inline form needs `--file-path`, `--offset`, and `--new-name` |
-| `edits apply` | Apply a prepared edit plan | `--request-file` only | The request file must include edits and expected file hashes |
+| `apply-edits` | Apply a prepared edit plan | `--request-file` only | The request file must include edits and expected file hashes |
 
 ## Validation commands
 
@@ -106,7 +105,7 @@ the current workspace before you trust a local build, install, or agent setup.
 
 ## Workspace refresh behavior
 
-Kast keeps workspace state fresh automatically after `edits apply` and after
+Kast keeps workspace state fresh automatically after `apply-edits` and after
 most external `.kt` file changes. `workspace refresh` exists as the manual
 recovery path when you need to force the daemon to rescan state.
 
@@ -119,7 +118,7 @@ recovery path when you need to force the daemon to rescan state.
 
 ## Current support boundary
 
-The public command surface is intentionally small. `call hierarchy` is
+The public command surface is intentionally small. `call-hierarchy` is
 available, but it is intentionally bounded. Use `--direction` plus the
 optional depth, total-call, child-count, timeout, and cache flags, and read
 `stats` or per-node `truncation` fields before you claim the tree is complete.

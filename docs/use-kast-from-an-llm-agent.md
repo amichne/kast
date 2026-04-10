@@ -12,7 +12,7 @@ property on `RetryConfig`." The skill can bridge that request into the
 precise lookup inputs that Kast needs.
 
 !!! note
-    The packaged skill can run `call hierarchy` after it has a confirmed symbol
+    The packaged skill can run `call-hierarchy` after it has a confirmed symbol
     position. Ask it to resolve the symbol first, then request incoming or
     outgoing callers.
 
@@ -82,7 +82,7 @@ sequenceDiagram
     User->>Agent: "Find references to HealthCheckService"
     Agent->>Skill: Search workspace for declaration
     Skill-->>Skill: Search candidate files + compute offset
-    Skill->>Daemon: symbol resolve (file, offset)
+    Skill->>Daemon: resolve (file, offset)
     Daemon-->>Skill: symbol identity (fqName, kind, location)
     Skill-->>Agent: Confirm: io.example.HealthCheckService
     Agent->>Skill: Find references for confirmed symbol
@@ -112,8 +112,8 @@ you.
 - Ensure the workspace daemon is ready before running analysis.
 - Search for likely declaration sites from the human reference you gave it.
 - Translate the selected declaration into the file and offset that Kast needs.
-- Verify the target with `symbol resolve` before it expands into
-  `references`, `call hierarchy`, `rename`, or other follow-up commands.
+- Verify the target with `resolve` before it expands into
+  `references`, `call-hierarchy`, `rename`, or other follow-up commands.
 
 ## Add context only when the name is ambiguous
 

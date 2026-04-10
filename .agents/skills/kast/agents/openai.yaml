@@ -7,3 +7,182 @@ interface:
     workflows. Trust the wrapper JSON on stdout and inspect log_file only when
     ok=false or daemon notes matter. Use raw kast CLI only when a wrapper does
     not exist.
+
+tools:
+  - name: kast-resolve
+    script: scripts/kast-resolve.sh
+    description: "Resolve a symbol by name, returning declaration metadata and file position."
+    parameters:
+      - name: workspace-root
+        type: string
+        required: true
+        description: "Absolute path to the workspace root."
+      - name: symbol
+        type: string
+        required: true
+        description: "Fully qualified or simple name of the symbol to resolve."
+      - name: file
+        type: string
+        required: false
+        description: "File path hint to narrow resolution scope."
+      - name: containing-type
+        type: string
+        required: false
+        description: "FQN of the containing type for disambiguation."
+
+  - name: kast-references
+    script: scripts/kast-references.sh
+    description: "Find all references to a symbol across the workspace."
+    parameters:
+      - name: workspace-root
+        type: string
+        required: true
+        description: "Absolute path to the workspace root."
+      - name: symbol
+        type: string
+        required: true
+        description: "Fully qualified or simple name of the symbol."
+      - name: file
+        type: string
+        required: false
+        description: "File path hint to narrow resolution scope."
+      - name: containing-type
+        type: string
+        required: false
+        description: "FQN of the containing type for disambiguation."
+
+  - name: kast-callers
+    script: scripts/kast-callers.sh
+    description: "Expand call hierarchy for a symbol."
+    parameters:
+      - name: workspace-root
+        type: string
+        required: true
+        description: "Absolute path to the workspace root."
+      - name: symbol
+        type: string
+        required: true
+        description: "Fully qualified or simple name of the symbol."
+      - name: direction
+        type: string
+        required: true
+        description: "Call direction: 'incoming' or 'outgoing'."
+      - name: depth
+        type: integer
+        required: false
+        description: "Maximum traversal depth (default: 3)."
+      - name: file
+        type: string
+        required: false
+        description: "File path hint to narrow resolution scope."
+      - name: containing-type
+        type: string
+        required: false
+        description: "FQN of the containing type for disambiguation."
+
+  - name: kast-impact
+    script: scripts/kast-impact.sh
+    description: "Assess edit impact for a symbol before modifying it."
+    parameters:
+      - name: workspace-root
+        type: string
+        required: true
+        description: "Absolute path to the workspace root."
+      - name: symbol
+        type: string
+        required: true
+        description: "Fully qualified or simple name of the symbol."
+      - name: file
+        type: string
+        required: false
+        description: "File path hint to narrow resolution scope."
+      - name: containing-type
+        type: string
+        required: false
+        description: "FQN of the containing type for disambiguation."
+
+  - name: kast-diagnostics
+    script: scripts/kast-diagnostics.sh
+    description: "Run diagnostics on one or more Kotlin files."
+    parameters:
+      - name: workspace-root
+        type: string
+        required: true
+        description: "Absolute path to the workspace root."
+      - name: file-paths
+        type: string
+        required: true
+        description: "Comma-separated list of absolute file paths to diagnose."
+
+  - name: kast-rename
+    script: scripts/kast-rename.sh
+    description: "Plan or execute a rename operation for a symbol."
+    parameters:
+      - name: workspace-root
+        type: string
+        required: true
+        description: "Absolute path to the workspace root."
+      - name: symbol
+        type: string
+        required: true
+        description: "Fully qualified or simple name of the symbol to rename."
+      - name: new-name
+        type: string
+        required: true
+        description: "New name for the symbol."
+      - name: dry-run
+        type: boolean
+        required: false
+        description: "If true (default), return the edit plan without applying. If false, apply edits."
+      - name: file
+        type: string
+        required: false
+        description: "File path hint to narrow resolution scope."
+      - name: containing-type
+        type: string
+        required: false
+        description: "FQN of the containing type for disambiguation."
+
+routing_rules:
+  - intent: "resolve a symbol"
+    tool: kast-resolve
+    no_fallback: true
+  - intent: "find references"
+    tool: kast-references
+    no_fallback: true
+  - intent: "call hierarchy / who calls / incoming callers / outgoing callers"
+    tool: kast-callers
+    no_fallback: true
+  - intent: "assess edit impact"
+    tool: kast-impact
+    no_fallback: true
+  - intent: "run diagnostics"
+    tool: kast-diagnostics
+    no_fallback: true
+  - intent: "rename a symbol"
+    tool: kast-rename
+    no_fallback: true
+
+session_init:
+  hook: kast-bootstrap
+  description: >
+    The kast-bootstrap session hook (defined in .agents/hooks.json) runs
+    resolve-kast.sh once at session start, caches KAST and SKILL_ROOT into
+    session state, and exports KAST_CLI_PATH. All subsequent wrapper calls
+    skip binary discovery.
+
+constraints:
+  prohibited_substitutions:
+    - pattern: "grep|rg|ripgrep"
+      for: "symbol identity, reference finding, or call hierarchy"
+      reason: "Text search cannot resolve overloads, type aliases, or cross-module visibility."
+    - pattern: "ast-grep"
+      for: "symbol resolution or reference finding"
+      reason: "AST pattern matching lacks semantic type information."
+    - pattern: "cat + manual parsing"
+      for: "any structured analysis task"
+      reason: "Brittle and loses semantic context."
+  text_search_whitelist:
+    - "Finding file paths by name or glob"
+    - "Searching non-Kotlin files (markdown, YAML, JSON, shell scripts)"
+    - "Searching string literals or comments within Kotlin files"

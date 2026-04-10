@@ -1,6 +1,7 @@
 package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.api.BackendCapabilities
+import io.github.amichne.kast.api.DescriptorRegistry
 import io.github.amichne.kast.api.MutationCapability
 import io.github.amichne.kast.api.ReadCapability
 import io.github.amichne.kast.api.RuntimeState
@@ -12,36 +13,36 @@ import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
-import kotlin.io.path.createDirectories
-import kotlin.io.path.writeText
 
 class WorkspaceRuntimeManagerTest {
     @TempDir
     lateinit var tempDir: Path
 
+    private lateinit var configHome: Path
+    private lateinit var envLookup: (String) -> String?
+
+    @BeforeEach
+    fun setUp() {
+        configHome = tempDir.resolve("config-home")
+        envLookup = mapOf("KAST_CONFIG_HOME" to configHome.toString())::get
+    }
+
     @Test
     fun `ensureRuntime returns immediately when daemon is INDEXING and requireReady is false`() = runTest {
-        val workspaceRoot = tempDir.resolve("workspace-indexing").createDirectories()
+        val workspaceRoot = tempDir.resolve("workspace-indexing")
         val descriptor = writeDescriptor(
-            workspaceRoot = workspaceRoot,
             descriptor = descriptor(workspaceRoot = workspaceRoot, pid = 41),
         )
-        val manager = WorkspaceRuntimeManager(
-            rpcClient = FakeRuntimeRpcClient(
-                runtimeStatuses = mapOf(
-                    descriptor.socketPath to listOf(
-                        runtimeStatus(
-                            workspaceRoot = workspaceRoot,
-                            state = RuntimeState.INDEXING,
-                            indexing = true,
-                        ),
-                    ),
+        val manager = managerWith(
+            runtimeStatuses = mapOf(
+                descriptor.socketPath to listOf(
+                    runtimeStatus(workspaceRoot = workspaceRoot, state = RuntimeState.INDEXING, indexing = true),
                 ),
             ),
-            processLauncher = FakeProcessLauncher(),
             processLivenessChecker = { pid -> pid == 41L },
         )
 
@@ -53,29 +54,17 @@ class WorkspaceRuntimeManagerTest {
 
     @Test
     fun `ensureRuntime waits for READY when requireReady is true`() = runTest {
-        val workspaceRoot = tempDir.resolve("workspace-ready").createDirectories()
+        val workspaceRoot = tempDir.resolve("workspace-ready")
         val descriptor = writeDescriptor(
-            workspaceRoot = workspaceRoot,
             descriptor = descriptor(workspaceRoot = workspaceRoot, pid = 52),
         )
-        val manager = WorkspaceRuntimeManager(
-            rpcClient = FakeRuntimeRpcClient(
-                runtimeStatuses = mapOf(
-                    descriptor.socketPath to listOf(
-                        runtimeStatus(
-                            workspaceRoot = workspaceRoot,
-                            state = RuntimeState.INDEXING,
-                            indexing = true,
-                        ),
-                        runtimeStatus(
-                            workspaceRoot = workspaceRoot,
-                            state = RuntimeState.READY,
-                            indexing = false,
-                        ),
-                    ),
+        val manager = managerWith(
+            runtimeStatuses = mapOf(
+                descriptor.socketPath to listOf(
+                    runtimeStatus(workspaceRoot = workspaceRoot, state = RuntimeState.INDEXING, indexing = true),
+                    runtimeStatus(workspaceRoot = workspaceRoot, state = RuntimeState.READY, indexing = false),
                 ),
             ),
-            processLauncher = FakeProcessLauncher(),
             processLivenessChecker = { pid -> pid == 52L },
         )
 
@@ -88,30 +77,20 @@ class WorkspaceRuntimeManagerTest {
 
     @Test
     fun `workspaceEnsure returns during INDEXING when accept-indexing is true`() = runTest {
-        val workspaceRoot = tempDir.resolve("workspace-ensure-indexing").createDirectories()
+        val workspaceRoot = tempDir.resolve("workspace-ensure-indexing")
         val descriptor = writeDescriptor(
-            workspaceRoot = workspaceRoot,
             descriptor = descriptor(workspaceRoot = workspaceRoot, pid = 61),
         )
-        val manager = WorkspaceRuntimeManager(
-            rpcClient = FakeRuntimeRpcClient(
-                runtimeStatuses = mapOf(
-                    descriptor.socketPath to listOf(
-                        runtimeStatus(
-                            workspaceRoot = workspaceRoot,
-                            state = RuntimeState.INDEXING,
-                            indexing = true,
-                        ),
-                    ),
+        val manager = managerWith(
+            runtimeStatuses = mapOf(
+                descriptor.socketPath to listOf(
+                    runtimeStatus(workspaceRoot = workspaceRoot, state = RuntimeState.INDEXING, indexing = true),
                 ),
             ),
-            processLauncher = FakeProcessLauncher(),
             processLivenessChecker = { pid -> pid == 61L },
         )
 
-        val result = manager.workspaceEnsure(
-            runtimeOptions(workspaceRoot).copy(acceptIndexing = true),
-        )
+        val result = manager.workspaceEnsure(runtimeOptions(workspaceRoot).copy(acceptIndexing = true))
 
         assertFalse(result.started)
         assertEquals(RuntimeState.INDEXING, result.selected.runtimeStatus?.state)
@@ -119,29 +98,17 @@ class WorkspaceRuntimeManagerTest {
 
     @Test
     fun `ensureRuntime auto-start note appears when command starts daemon`() = runTest {
-        val workspaceRoot = tempDir.resolve("workspace-autostart").createDirectories()
+        val workspaceRoot = tempDir.resolve("workspace-autostart")
         val launchedDescriptor = descriptor(workspaceRoot = workspaceRoot, pid = 77)
-        val manager = WorkspaceRuntimeManager(
-            rpcClient = FakeRuntimeRpcClient(
-                runtimeStatuses = mapOf(
-                    launchedDescriptor.socketPath to listOf(
-                        runtimeStatus(
-                            workspaceRoot = workspaceRoot,
-                            state = RuntimeState.INDEXING,
-                            indexing = true,
-                        ),
-                    ),
+        val manager = managerWith(
+            runtimeStatuses = mapOf(
+                launchedDescriptor.socketPath to listOf(
+                    runtimeStatus(workspaceRoot = workspaceRoot, state = RuntimeState.INDEXING, indexing = true),
                 ),
             ),
-            processLauncher = FakeProcessLauncher { workingDirectory, _, _ ->
-                writeDescriptor(
-                    workspaceRoot = workingDirectory,
-                    descriptor = launchedDescriptor,
-                )
-                StartedProcess(
-                    pid = launchedDescriptor.pid,
-                    logFile = workspaceRoot.resolve(".kast/logs/standalone-daemon.log"),
-                )
+            processLauncher = FakeProcessLauncher { _, logFile, _ ->
+                writeDescriptor(descriptor = launchedDescriptor)
+                StartedProcess(pid = launchedDescriptor.pid, logFile = logFile)
             },
             processLivenessChecker = { pid -> pid == 77L },
         )
@@ -154,62 +121,208 @@ class WorkspaceRuntimeManagerTest {
 
     @Test
     fun `ensureRuntime with no-auto-start fails when no daemon exists`() = runTest {
-        val workspaceRoot = tempDir.resolve("workspace-no-autostart").createDirectories()
-        val manager = WorkspaceRuntimeManager(
-            rpcClient = FakeRuntimeRpcClient(runtimeStatuses = emptyMap()),
-            processLauncher = FakeProcessLauncher(),
+        val workspaceRoot = tempDir.resolve("workspace-no-autostart")
+        val manager = managerWith(
+            runtimeStatuses = emptyMap(),
             processLivenessChecker = { false },
         )
 
         val failure = runCatching {
-            manager.ensureRuntime(
-                options = runtimeOptions(workspaceRoot).copy(noAutoStart = true),
-            )
+            manager.ensureRuntime(options = runtimeOptions(workspaceRoot).copy(noAutoStart = true))
         }.exceptionOrNull() as? CliFailure
 
-        checkNotNull(failure) {
-            "Expected ensureRuntime to fail when no-auto-start is enabled"
-        }
-
+        checkNotNull(failure) { "Expected ensureRuntime to fail when no-auto-start is enabled" }
         assertEquals("DAEMON_NOT_RUNNING", failure.code)
         assertTrue(failure.message.contains("--no-auto-start"))
     }
 
     @Test
-    fun `daemonStart routes through workspace ensure code path`() = runTest {
-        val workspaceRoot = tempDir.resolve("workspace-daemon-consolidated").createDirectories()
+    fun `workspaceStop stops running backend and removes descriptor`() = runTest {
+        val workspaceRoot = tempDir.resolve("workspace-stop")
         val descriptor = writeDescriptor(
-            workspaceRoot = workspaceRoot,
             descriptor = descriptor(workspaceRoot = workspaceRoot, pid = 88),
         )
-        val manager = WorkspaceRuntimeManager(
-            rpcClient = FakeRuntimeRpcClient(
-                runtimeStatuses = mapOf(
-                    descriptor.socketPath to listOf(
-                        runtimeStatus(
-                            workspaceRoot = workspaceRoot,
-                            state = RuntimeState.READY,
-                            indexing = false,
-                        ),
-                    ),
+        val manager = managerWith(
+            runtimeStatuses = mapOf(
+                descriptor.socketPath to listOf(
+                    runtimeStatus(workspaceRoot = workspaceRoot, state = RuntimeState.READY, indexing = false),
                 ),
             ),
-            processLauncher = FakeProcessLauncher(),
             processLivenessChecker = { pid -> pid == 88L },
         )
 
-        val daemonResult = manager.daemonStart(runtimeOptions(workspaceRoot))
-        val ensureResult = manager.workspaceEnsure(runtimeOptions(workspaceRoot))
-
-        // Both return the same runtime candidate (same descriptor, same state)
-        assertEquals(ensureResult.selected.descriptor, daemonResult.selected.descriptor)
-        assertEquals(ensureResult.selected.runtimeStatus?.state, daemonResult.selected.runtimeStatus?.state)
-
-        // daemonStart includes a deprecation note
-        val note = checkNotNull(daemonResult.note)
-        assertTrue(note.contains("deprecated"))
-        assertTrue(note.contains("workspace ensure"))
+        val result = manager.workspaceStop(runtimeOptions(workspaceRoot))
+        assertTrue(result.stopped)
+        assertEquals(88L, result.pid)
+        assertEquals(workspaceRoot.toString(), result.workspaceRoot)
     }
+
+    @Test
+    fun `inspectWorkspace discovers intellij backend descriptor`() = runTest {
+        val workspaceRoot = tempDir.resolve("workspace-intellij")
+        val desc = writeDescriptor(
+            descriptor = descriptor(workspaceRoot, pid = 100, backendName = "intellij"),
+        )
+        val manager = managerWith(
+            runtimeStatuses = mapOf(
+                desc.socketPath to listOf(
+                    runtimeStatus(workspaceRoot, RuntimeState.READY, indexing = false, backendName = "intellij"),
+                ),
+            ),
+            processLivenessChecker = { pid -> pid == 100L },
+        )
+
+        val result = manager.ensureRuntime(
+            options = runtimeOptions(workspaceRoot, backendName = "intellij"),
+            requireReady = false,
+        )
+
+        assertFalse(result.started)
+        assertEquals("intellij", result.selected.descriptor.backendName)
+    }
+
+    @Test
+    fun `ensureRuntime prefers intellij when both backends available and no explicit backend`() = runTest {
+        val workspaceRoot = tempDir.resolve("workspace-both")
+        val standaloneDesc = writeDescriptor(
+            descriptor = descriptor(workspaceRoot, pid = 200, backendName = "standalone"),
+        )
+        val intellijDesc = writeDescriptor(
+            descriptor = descriptor(workspaceRoot, pid = 201, backendName = "intellij"),
+        )
+        val manager = managerWith(
+            runtimeStatuses = mapOf(
+                standaloneDesc.socketPath to listOf(
+                    runtimeStatus(workspaceRoot, RuntimeState.READY, indexing = false, backendName = "standalone"),
+                ),
+                intellijDesc.socketPath to listOf(
+                    runtimeStatus(workspaceRoot, RuntimeState.READY, indexing = false, backendName = "intellij"),
+                ),
+            ),
+            processLivenessChecker = { pid -> pid in setOf(200L, 201L) },
+        )
+
+        val result = manager.ensureRuntime(
+            options = runtimeOptions(workspaceRoot, backendName = null),
+            requireReady = false,
+        )
+
+        assertFalse(result.started)
+        assertEquals("intellij", result.selected.descriptor.backendName)
+    }
+
+    @Test
+    fun `ensureRuntime fails with clear message when intellij backend not available`() = runTest {
+        val workspaceRoot = tempDir.resolve("workspace-no-intellij")
+        val manager = managerWith(
+            runtimeStatuses = emptyMap(),
+            processLivenessChecker = { false },
+        )
+
+        val failure = runCatching {
+            manager.ensureRuntime(options = runtimeOptions(workspaceRoot, backendName = "intellij"))
+        }.exceptionOrNull() as? CliFailure
+
+        checkNotNull(failure) { "Expected ensureRuntime to fail when intellij backend is not available" }
+        assertEquals("INTELLIJ_NOT_RUNNING", failure.code)
+        assertTrue(failure.message.contains("IntelliJ"))
+    }
+
+    @Test
+    fun `ensureRuntime falls back to standalone auto-start when no explicit backend`() = runTest {
+        val workspaceRoot = tempDir.resolve("workspace-fallback")
+        val launchedDescriptor = descriptor(workspaceRoot, pid = 300, backendName = "standalone")
+        val manager = managerWith(
+            runtimeStatuses = mapOf(
+                launchedDescriptor.socketPath to listOf(
+                    runtimeStatus(workspaceRoot, RuntimeState.READY, indexing = false),
+                ),
+            ),
+            processLauncher = FakeProcessLauncher { _, logFile, _ ->
+                writeDescriptor(descriptor = launchedDescriptor)
+                StartedProcess(pid = launchedDescriptor.pid, logFile = logFile)
+            },
+            processLivenessChecker = { pid -> pid == 300L },
+        )
+
+        val result = manager.ensureRuntime(options = runtimeOptions(workspaceRoot, backendName = null))
+
+        assertTrue(result.started)
+        assertEquals("standalone", result.selected.descriptor.backendName)
+    }
+
+    @Test
+    fun `ensureRuntime fails with STANDALONE_DISABLED when env var set and backend is standalone`() = runTest {
+        val workspaceRoot = tempDir.resolve("workspace-standalone-disabled")
+        val manager = managerWith(
+            runtimeStatuses = emptyMap(),
+            processLivenessChecker = { false },
+            standaloneDisabled = { true },
+        )
+
+        val failure = runCatching {
+            manager.ensureRuntime(options = runtimeOptions(workspaceRoot, backendName = "standalone"))
+        }.exceptionOrNull() as? CliFailure
+
+        checkNotNull(failure) { "Expected STANDALONE_DISABLED failure" }
+        assertEquals("STANDALONE_DISABLED", failure.code)
+        assertTrue(failure.message.contains("KAST_STANDALONE_DISABLE"))
+    }
+
+    @Test
+    fun `ensureRuntime fails with STANDALONE_DISABLED when env var set and no backend running`() = runTest {
+        val workspaceRoot = tempDir.resolve("workspace-standalone-disabled-no-backend")
+        val manager = managerWith(
+            runtimeStatuses = emptyMap(),
+            processLivenessChecker = { false },
+            standaloneDisabled = { true },
+        )
+
+        val failure = runCatching {
+            manager.ensureRuntime(options = runtimeOptions(workspaceRoot, backendName = null))
+        }.exceptionOrNull() as? CliFailure
+
+        checkNotNull(failure) { "Expected STANDALONE_DISABLED failure when no backend and standalone disabled" }
+        assertEquals("STANDALONE_DISABLED", failure.code)
+        assertTrue(failure.message.contains("IntelliJ"))
+    }
+
+    @Test
+    fun `ensureRuntime succeeds with intellij backend when standalone is disabled`() = runTest {
+        val workspaceRoot = tempDir.resolve("workspace-intellij-only")
+        val intellijDesc = writeDescriptor(
+            descriptor = descriptor(workspaceRoot, pid = 400, backendName = "intellij"),
+        )
+        val manager = managerWith(
+            runtimeStatuses = mapOf(
+                intellijDesc.socketPath to listOf(
+                    runtimeStatus(workspaceRoot, RuntimeState.READY, indexing = false, backendName = "intellij"),
+                ),
+            ),
+            processLivenessChecker = { pid -> pid == 400L },
+            standaloneDisabled = { true },
+        )
+
+        val result = manager.ensureRuntime(options = runtimeOptions(workspaceRoot, backendName = null))
+
+        assertFalse(result.started)
+        assertEquals("intellij", result.selected.descriptor.backendName)
+    }
+
+    // -- helpers --
+
+    private fun managerWith(
+        runtimeStatuses: Map<String, List<RuntimeStatusResponse>>,
+        processLauncher: ProcessLauncher = FakeProcessLauncher(),
+        processLivenessChecker: (Long) -> Boolean = { false },
+        standaloneDisabled: () -> Boolean = { false },
+    ) = WorkspaceRuntimeManager(
+        rpcClient = FakeRuntimeRpcClient(runtimeStatuses),
+        processLauncher = processLauncher,
+        processLivenessChecker = processLivenessChecker,
+        standaloneDisabled = standaloneDisabled,
+        envLookup = envLookup,
+    )
 
     private fun runtimeOptions(
         workspaceRoot: Path,
@@ -249,200 +362,11 @@ class WorkspaceRuntimeManagerTest {
     )
 
     private fun writeDescriptor(
-        workspaceRoot: Path,
         descriptor: ServerInstanceDescriptor,
     ): ServerInstanceDescriptor {
-        val registryDirectory = defaultDescriptorDirectory(workspaceRoot)
-        registryDirectory.createDirectories()
-        registryDirectory.resolve("${descriptor.pid}.json").writeText(
-            defaultCliJson().encodeToString(ServerInstanceDescriptor.serializer(), descriptor),
-        )
+        val daemonsFile = defaultDescriptorDirectory(envLookup).resolve("daemons.json")
+        DescriptorRegistry(daemonsFile).register(descriptor)
         return descriptor
-    }
-
-    @Test
-    fun `inspectWorkspace discovers intellij backend descriptor`() = runTest {
-        val workspaceRoot = tempDir.resolve("workspace-intellij").createDirectories()
-        val desc = writeDescriptor(
-            workspaceRoot = workspaceRoot,
-            descriptor = descriptor(workspaceRoot, pid = 100, backendName = "intellij"),
-        )
-        val manager = WorkspaceRuntimeManager(
-            rpcClient = FakeRuntimeRpcClient(
-                runtimeStatuses = mapOf(
-                    desc.socketPath to listOf(
-                        runtimeStatus(workspaceRoot, RuntimeState.READY, indexing = false, backendName = "intellij"),
-                    ),
-                ),
-            ),
-            processLauncher = FakeProcessLauncher(),
-            processLivenessChecker = { pid -> pid == 100L },
-        )
-
-        val result = manager.ensureRuntime(
-            options = runtimeOptions(workspaceRoot, backendName = "intellij"),
-            requireReady = false,
-        )
-
-        assertFalse(result.started)
-        assertEquals("intellij", result.selected.descriptor.backendName)
-    }
-
-    @Test
-    fun `ensureRuntime prefers intellij when both backends available and no explicit backend`() = runTest {
-        val workspaceRoot = tempDir.resolve("workspace-both").createDirectories()
-        val standaloneDesc = writeDescriptor(
-            workspaceRoot = workspaceRoot,
-            descriptor = descriptor(workspaceRoot, pid = 200, backendName = "standalone"),
-        )
-        val intellijDesc = writeDescriptor(
-            workspaceRoot = workspaceRoot,
-            descriptor = descriptor(workspaceRoot, pid = 201, backendName = "intellij"),
-        )
-        val manager = WorkspaceRuntimeManager(
-            rpcClient = FakeRuntimeRpcClient(
-                runtimeStatuses = mapOf(
-                    standaloneDesc.socketPath to listOf(
-                        runtimeStatus(workspaceRoot, RuntimeState.READY, indexing = false, backendName = "standalone"),
-                    ),
-                    intellijDesc.socketPath to listOf(
-                        runtimeStatus(workspaceRoot, RuntimeState.READY, indexing = false, backendName = "intellij"),
-                    ),
-                ),
-            ),
-            processLauncher = FakeProcessLauncher(),
-            processLivenessChecker = { pid -> pid in setOf(200L, 201L) },
-        )
-
-        val result = manager.ensureRuntime(
-            options = runtimeOptions(workspaceRoot, backendName = null),
-            requireReady = false,
-        )
-
-        assertFalse(result.started)
-        assertEquals("intellij", result.selected.descriptor.backendName)
-    }
-
-    @Test
-    fun `ensureRuntime fails with clear message when intellij backend not available`() = runTest {
-        val workspaceRoot = tempDir.resolve("workspace-no-intellij").createDirectories()
-        val manager = WorkspaceRuntimeManager(
-            rpcClient = FakeRuntimeRpcClient(runtimeStatuses = emptyMap()),
-            processLauncher = FakeProcessLauncher(),
-            processLivenessChecker = { false },
-        )
-
-        val failure = runCatching {
-            manager.ensureRuntime(
-                options = runtimeOptions(workspaceRoot, backendName = "intellij"),
-            )
-        }.exceptionOrNull() as? CliFailure
-
-        checkNotNull(failure) {
-            "Expected ensureRuntime to fail when intellij backend is not available"
-        }
-        assertEquals("INTELLIJ_NOT_RUNNING", failure.code)
-        assertTrue(failure.message.contains("IntelliJ"))
-    }
-
-    @Test
-    fun `ensureRuntime falls back to standalone auto-start when no explicit backend`() = runTest {
-        val workspaceRoot = tempDir.resolve("workspace-fallback").createDirectories()
-        val launchedDescriptor = descriptor(workspaceRoot, pid = 300, backendName = "standalone")
-        val manager = WorkspaceRuntimeManager(
-            rpcClient = FakeRuntimeRpcClient(
-                runtimeStatuses = mapOf(
-                    launchedDescriptor.socketPath to listOf(
-                        runtimeStatus(workspaceRoot, RuntimeState.READY, indexing = false),
-                    ),
-                ),
-            ),
-            processLauncher = FakeProcessLauncher { workingDirectory, _, _ ->
-                writeDescriptor(workspaceRoot = workingDirectory, descriptor = launchedDescriptor)
-                StartedProcess(
-                    pid = launchedDescriptor.pid,
-                    logFile = workspaceRoot.resolve(".kast/logs/standalone-daemon.log"),
-                )
-            },
-            processLivenessChecker = { pid -> pid == 300L },
-        )
-
-        val result = manager.ensureRuntime(
-            options = runtimeOptions(workspaceRoot, backendName = null),
-        )
-
-        assertTrue(result.started)
-        assertEquals("standalone", result.selected.descriptor.backendName)
-    }
-
-    @Test
-    fun `ensureRuntime fails with STANDALONE_DISABLED when env var set and backend is standalone`() = runTest {
-        val workspaceRoot = tempDir.resolve("workspace-standalone-disabled").createDirectories()
-        val manager = WorkspaceRuntimeManager(
-            rpcClient = FakeRuntimeRpcClient(runtimeStatuses = emptyMap()),
-            processLauncher = FakeProcessLauncher(),
-            processLivenessChecker = { false },
-            standaloneDisabled = { true },
-        )
-
-        val failure = runCatching {
-            manager.ensureRuntime(
-                options = runtimeOptions(workspaceRoot, backendName = "standalone"),
-            )
-        }.exceptionOrNull() as? CliFailure
-
-        checkNotNull(failure) { "Expected STANDALONE_DISABLED failure" }
-        assertEquals("STANDALONE_DISABLED", failure.code)
-        assertTrue(failure.message.contains("KAST_STANDALONE_DISABLE"))
-    }
-
-    @Test
-    fun `ensureRuntime fails with STANDALONE_DISABLED when env var set and no backend running`() = runTest {
-        val workspaceRoot = tempDir.resolve("workspace-standalone-disabled-no-backend").createDirectories()
-        val manager = WorkspaceRuntimeManager(
-            rpcClient = FakeRuntimeRpcClient(runtimeStatuses = emptyMap()),
-            processLauncher = FakeProcessLauncher(),
-            processLivenessChecker = { false },
-            standaloneDisabled = { true },
-        )
-
-        val failure = runCatching {
-            manager.ensureRuntime(
-                options = runtimeOptions(workspaceRoot, backendName = null),
-            )
-        }.exceptionOrNull() as? CliFailure
-
-        checkNotNull(failure) { "Expected STANDALONE_DISABLED failure when no backend and standalone disabled" }
-        assertEquals("STANDALONE_DISABLED", failure.code)
-        assertTrue(failure.message.contains("IntelliJ"))
-    }
-
-    @Test
-    fun `ensureRuntime succeeds with intellij backend when standalone is disabled`() = runTest {
-        val workspaceRoot = tempDir.resolve("workspace-intellij-only").createDirectories()
-        val intellijDesc = writeDescriptor(
-            workspaceRoot = workspaceRoot,
-            descriptor = descriptor(workspaceRoot, pid = 400, backendName = "intellij"),
-        )
-        val manager = WorkspaceRuntimeManager(
-            rpcClient = FakeRuntimeRpcClient(
-                runtimeStatuses = mapOf(
-                    intellijDesc.socketPath to listOf(
-                        runtimeStatus(workspaceRoot, RuntimeState.READY, indexing = false, backendName = "intellij"),
-                    ),
-                ),
-            ),
-            processLauncher = FakeProcessLauncher(),
-            processLivenessChecker = { pid -> pid == 400L },
-            standaloneDisabled = { true },
-        )
-
-        val result = manager.ensureRuntime(
-            options = runtimeOptions(workspaceRoot, backendName = null),
-        )
-
-        assertFalse(result.started)
-        assertEquals("intellij", result.selected.descriptor.backendName)
     }
 
     private class FakeRuntimeRpcClient(
