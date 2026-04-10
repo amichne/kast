@@ -250,7 +250,6 @@ internal data class ParsedArguments(
             maxTotalCalls = optionalInt("max-total-calls", 256),
             maxChildrenPerNode = optionalInt("max-children-per-node", 64),
             timeoutMillis = options["timeout-millis"]?.toLongOrNull(),
-            persistToGitShaCache = optionalBoolean("persist-to-git-sha-cache", false),
         )
     }
 

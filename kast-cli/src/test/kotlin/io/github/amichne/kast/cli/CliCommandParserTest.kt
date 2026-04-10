@@ -66,7 +66,6 @@ class CliCommandParserTest {
                 "--max-total-calls=32",
                 "--max-children-per-node=8",
                 "--timeout-millis=4000",
-                "--persist-to-git-sha-cache=true",
             ),
         )
 
@@ -78,7 +77,6 @@ class CliCommandParserTest {
         assertEquals(32, hierarchyCommand.query.maxTotalCalls)
         assertEquals(8, hierarchyCommand.query.maxChildrenPerNode)
         assertEquals(4000L, hierarchyCommand.query.timeoutMillis)
-        assertTrue(hierarchyCommand.query.persistToGitShaCache)
     }
 
     @Test

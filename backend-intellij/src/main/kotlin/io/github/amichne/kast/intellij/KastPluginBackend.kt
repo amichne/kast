@@ -12,6 +12,8 @@ import io.github.amichne.kast.api.AnalysisBackend
 import io.github.amichne.kast.api.ApplyEditsQuery
 import io.github.amichne.kast.api.ApplyEditsResult
 import io.github.amichne.kast.api.BackendCapabilities
+import io.github.amichne.kast.api.CallHierarchyQuery
+import io.github.amichne.kast.api.CallHierarchyResult
 import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.DiagnosticsResult
 import io.github.amichne.kast.api.ImportOptimizeQuery
@@ -47,6 +49,8 @@ import io.github.amichne.kast.shared.analysis.toApiDiagnostics
 import io.github.amichne.kast.shared.analysis.toKastLocation
 import io.github.amichne.kast.shared.analysis.toSymbolModel
 import io.github.amichne.kast.shared.analysis.visibility
+import io.github.amichne.kast.shared.hierarchy.CallHierarchyEngine
+import io.github.amichne.kast.shared.hierarchy.TraversalBudget
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
@@ -72,6 +76,7 @@ internal class KastPluginBackend(
         readCapabilities = setOf(
             ReadCapability.RESOLVE_SYMBOL,
             ReadCapability.FIND_REFERENCES,
+            ReadCapability.CALL_HIERARCHY,
             ReadCapability.SEMANTIC_INSERTION_POINT,
             ReadCapability.DIAGNOSTICS,
         ),
@@ -154,6 +159,38 @@ internal class KastPluginBackend(
                     candidateFileCount = references.size,
                     searchedFileCount = references.size,
                 ),
+            )
+        }
+    }
+
+    override suspend fun callHierarchy(query: CallHierarchyQuery): CallHierarchyResult = withContext(readDispatcher) {
+        readAction {
+            val file = findKtFile(query.position.filePath)
+            val rootTarget = resolveTarget(file, query.position.offset)
+
+            val budget = TraversalBudget(
+                maxTotalCalls = query.maxTotalCalls,
+                maxChildrenPerNode = query.maxChildrenPerNode,
+                timeoutMillis = query.timeoutMillis ?: limits.requestTimeoutMillis,
+            )
+            val resolver = IntelliJCallEdgeResolver(
+                project = project,
+                workspacePrefix = workspacePrefix,
+            )
+            val engine = CallHierarchyEngine(edgeResolver = resolver)
+            val root = engine.buildNode(
+                target = rootTarget,
+                parentCallSite = null,
+                direction = query.direction,
+                depthRemaining = query.depth,
+                pathKeys = emptySet(),
+                budget = budget,
+                currentDepth = 0,
+            )
+
+            CallHierarchyResult(
+                root = root,
+                stats = budget.toStats(),
             )
         }
     }

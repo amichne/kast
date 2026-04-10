@@ -8,7 +8,7 @@ import java.nio.file.Path
 import java.sql.Connection
 import java.sql.DriverManager
 
-private const val SCHEMA_VERSION = 2
+private const val SCHEMA_VERSION = 3
 
 /**
  * Represents all index data for a single file — used to batch-write to SQLite.
@@ -168,13 +168,6 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
                     payload TEXT NOT NULL
                 )""",
             )
-            stmt.execute(
-                """CREATE TABLE IF NOT EXISTS call_hierarchy_cache (
-                    cache_key TEXT PRIMARY KEY,
-                    schema_version INTEGER NOT NULL,
-                    payload TEXT NOT NULL
-                )""",
-            )
         }
     }
 
@@ -193,7 +186,6 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
             stmt.execute("DROP TABLE IF EXISTS file_metadata")
             stmt.execute("DROP TABLE IF EXISTS file_manifest")
             stmt.execute("DROP TABLE IF EXISTS workspace_discovery")
-            stmt.execute("DROP TABLE IF EXISTS call_hierarchy_cache")
             stmt.execute("DROP TABLE IF EXISTS schema_version")
         }
     }
@@ -251,14 +243,6 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
 
             stmt.execute(
                 """CREATE TABLE IF NOT EXISTS workspace_discovery (
-                    cache_key TEXT PRIMARY KEY,
-                    schema_version INTEGER NOT NULL,
-                    payload TEXT NOT NULL
-                )""",
-            )
-
-            stmt.execute(
-                """CREATE TABLE IF NOT EXISTS call_hierarchy_cache (
                     cache_key TEXT PRIMARY KEY,
                     schema_version INTEGER NOT NULL,
                     payload TEXT NOT NULL
@@ -507,33 +491,6 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
         val conn = connection()
         conn.prepareStatement(
             "INSERT OR REPLACE INTO workspace_discovery (cache_key, schema_version, payload) VALUES (?, ?, ?)",
-        ).use { stmt ->
-            stmt.setString(1, cacheKey)
-            stmt.setInt(2, schemaVersion)
-            stmt.setString(3, payload)
-            stmt.executeUpdate()
-        }
-    }
-
-    // ── Call hierarchy cache ─────────────────────────────────────────────
-
-    /** Returns the JSON payload for a call hierarchy cache entry, or `null` if absent. */
-    fun readCallHierarchyCache(cacheKey: String): String? {
-        val conn = connection()
-        return conn.prepareStatement(
-            "SELECT payload FROM call_hierarchy_cache WHERE cache_key = ?",
-        ).use { stmt ->
-            stmt.setString(1, cacheKey)
-            val rs = stmt.executeQuery()
-            if (rs.next()) rs.getString(1) else null
-        }
-    }
-
-    /** Writes or replaces a call hierarchy cache entry. */
-    fun writeCallHierarchyCache(cacheKey: String, schemaVersion: Int, payload: String) {
-        val conn = connection()
-        conn.prepareStatement(
-            "INSERT OR REPLACE INTO call_hierarchy_cache (cache_key, schema_version, payload) VALUES (?, ?, ?)",
         ).use { stmt ->
             stmt.setString(1, cacheKey)
             stmt.setInt(2, schemaVersion)

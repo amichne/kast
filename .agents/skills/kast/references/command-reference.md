@@ -307,8 +307,7 @@ kast call hierarchy \
   [--depth=3] \
   [--max-total-calls=256] \
   [--max-children-per-node=64] \
-  [--timeout-millis=5000] \
-  [--persist-to-git-sha-cache=true]
+  [--timeout-millis=5000]
 ```
 
 **Request-file form:**
@@ -329,8 +328,7 @@ kast call hierarchy \
   "depth": 3,
   "maxTotalCalls": 256,
   "maxChildrenPerNode": 64,
-  "timeoutMillis": null,
-  "persistToGitShaCache": false
+  "timeoutMillis": null
 }
 ```
 
@@ -366,7 +364,6 @@ kast call hierarchy \
     "maxChildrenPerNodeReached": false,
     "filesVisited": 1
   },
-  "persistence": null,
   "schemaVersion": 1
 }
 ```
@@ -378,9 +375,6 @@ populated for child edges.
 
 `truncation.reason` values: `CYCLE` | `MAX_TOTAL_CALLS` |
 `MAX_CHILDREN_PER_NODE` | `TIMEOUT`
-
-`persistence` is `CallHierarchyPersistence | null` and is populated when
-cache persistence is requested and a git-SHA-scoped cache is available.
 
 **Errors:** `NOT_FOUND`, `CAPABILITY_NOT_SUPPORTED` (`CALL_HIERARCHY`).
 

@@ -121,9 +121,8 @@ kast \
 ```
 
 `--direction` is required. Add `--max-total-calls`,
-`--max-children-per-node`, `--timeout-millis`, or
-`--persist-to-git-sha-cache=true` when you need tighter control over result
-shape or repeatable cached runs.
+`--max-children-per-node`, or `--timeout-millis` when you need tighter
+control over result shape.
 
 Read the returned `stats` object and any per-node `truncation` metadata when
 automation needs to know whether Kast cut the tree short.

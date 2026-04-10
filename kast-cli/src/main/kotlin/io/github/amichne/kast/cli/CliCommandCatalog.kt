@@ -184,12 +184,6 @@ internal object CliCommandCatalog {
         usage = "--timeout-millis=5000",
         description = "Optional traversal timeout in milliseconds. When omitted, the daemon limit applies.",
     )
-    private val persistToGitShaCacheOption = CliOptionMetadata(
-        key = "persist-to-git-sha-cache",
-        usage = "--persist-to-git-sha-cache=true",
-        description = "Persist the result under a git-SHA-scoped cache when the workspace has a git commit. Defaults to false.",
-        completionKind = CliOptionCompletionKind.BOOLEAN,
-    )
     private val newNameOption = CliOptionMetadata(
         key = "new-name",
         usage = "--new-name=RenamedSymbol",
@@ -401,7 +395,7 @@ internal object CliCommandCatalog {
             description = "Accepts either an absolute request file or inline position, direction, and bound arguments.",
             usages = listOf(
                 "$CLI_EXECUTABLE_NAME call hierarchy --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
-                "$CLI_EXECUTABLE_NAME call hierarchy --workspace-root=/absolute/path/to/workspace --file-path=/absolute/path/to/File.kt --offset=123 --direction=incoming [--depth=3] [--max-total-calls=256] [--max-children-per-node=64] [--timeout-millis=5000] [--persist-to-git-sha-cache=true]",
+                "$CLI_EXECUTABLE_NAME call hierarchy --workspace-root=/absolute/path/to/workspace --file-path=/absolute/path/to/File.kt --offset=123 --direction=incoming [--depth=3] [--max-total-calls=256] [--max-children-per-node=64] [--timeout-millis=5000]",
             ),
             options = listOf(
                 workspaceRootOption,
@@ -416,7 +410,6 @@ internal object CliCommandCatalog {
                 maxTotalCallsOption,
                 maxChildrenPerNodeOption,
                 timeoutMillisOption,
-                persistToGitShaCacheOption,
             ),
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME call hierarchy --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
