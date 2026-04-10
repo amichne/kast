@@ -148,11 +148,8 @@ else
 fi
 
 # Daemon log path for diagnostics on failure
-<<<<<<< feature/file-outline-symbol-search-and-tcp-part2
 DAEMON_LOG="$(python3 -c "import hashlib,os; wr=os.path.realpath('$WORKSPACE_ROOT'); print(os.path.expanduser('~/.config/kast/logs/' + hashlib.sha256(wr.encode()).hexdigest()[:12] + '/standalone-daemon.log'))" 2>/dev/null || echo '')"
-=======
-DAEMON_LOG="$HOME/.config/kast/logs/standalone-daemon.log"
->>>>>>> main
+
 dump_daemon_log() {
   if [ -f "$DAEMON_LOG" ]; then
     log "--- Last 60 lines of daemon log ---"
