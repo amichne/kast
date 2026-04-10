@@ -96,7 +96,7 @@ internal class CliCommandParser(
                 )
                 listOf("diagnostics") -> CliCommand.Diagnostics(parsed.runtimeOptions(), parsed.diagnosticsQuery(json))
                 listOf("outline") -> CliCommand.FileOutline(parsed.runtimeOptions(), parsed.fileOutlineQuery(json))
-                listOf("workspace-symbol") -> CliCommand.WorkspaceSymbol(parsed.runtimeOptions(), parsed.workspaceSymbolQuery(json))
+            listOf("workspace-symbol") -> CliCommand.WorkspaceSymbol(parsed.withoutOption("max-results").runtimeOptions(), parsed.workspaceSymbolQuery(json))
                 listOf("rename") -> CliCommand.Rename(parsed.runtimeOptions(), parsed.renameQuery(json))
                 listOf("optimize-imports") -> CliCommand.ImportOptimize(
                     parsed.runtimeOptions(),
