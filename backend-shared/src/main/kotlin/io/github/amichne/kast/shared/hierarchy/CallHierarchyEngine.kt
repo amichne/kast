@@ -18,9 +18,15 @@ import io.github.amichne.kast.shared.analysis.toSymbolModel
  * Recursively expands a call graph using a [CallEdgeResolver] for edge
  * discovery. Does not depend on any backend-specific types (no standalone
  * session, no telemetry, no SQLite).
+ *
+ * @param readAccess wraps any direct PSI access that occurs between edge-resolver
+ *        calls. The IntelliJ plugin backend supplies `runReadAction`; the standalone
+ *        backend can pass the identity function since it already holds a session-level
+ *        read lock.
  */
 class CallHierarchyEngine(
     private val edgeResolver: CallEdgeResolver,
+    private val readAccess: ReadAccessScope = ReadAccessScope { it() },
 ) {
 
     /**
@@ -35,8 +41,10 @@ class CallHierarchyEngine(
         budget: TraversalBudget,
         currentDepth: Int,
     ): CallNode {
-        val symbol = target.toSymbolModel(containingDeclaration = null)
-        val nodeKey = target.callHierarchySymbolIdentityKey(symbol)
+        val (symbol, nodeKey) = readAccess.run {
+            val s = target.toSymbolModel(containingDeclaration = null)
+            s to target.callHierarchySymbolIdentityKey(s)
+        }
         budget.recordNode(depth = currentDepth)
 
         if (depthRemaining == 0) {
@@ -92,7 +100,7 @@ class CallHierarchyEngine(
             }
 
             budget.recordEdge()
-            val childKey = edge.target.callHierarchySymbolIdentityKey(edge.symbol)
+            val childKey = readAccess.run { edge.target.callHierarchySymbolIdentityKey(edge.symbol) }
             val child = if (childKey == nodeKey || childKey in pathKeys) {
                 budget.recordNode(depth = currentDepth + 1)
                 budget.recordTruncation()
@@ -158,6 +166,16 @@ class CallHierarchyEngine(
             ),
         )
     }
+}
+
+/**
+ * Abstraction for acquiring a read lock around PSI access.
+ *
+ * - IntelliJ plugin backend: delegates to `ApplicationManager.getApplication().runReadAction`.
+ * - Standalone backend: identity (session-level read lock is already held).
+ */
+fun interface ReadAccessScope {
+    fun <T> run(action: () -> T): T
 }
 
 /**

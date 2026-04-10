@@ -50,6 +50,7 @@ import io.github.amichne.kast.shared.analysis.toKastLocation
 import io.github.amichne.kast.shared.analysis.toSymbolModel
 import io.github.amichne.kast.shared.analysis.visibility
 import io.github.amichne.kast.shared.hierarchy.CallHierarchyEngine
+import io.github.amichne.kast.shared.hierarchy.ReadAccessScope
 import io.github.amichne.kast.shared.hierarchy.TraversalBudget
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -181,7 +182,12 @@ internal class KastPluginBackend(
             project = project,
             workspacePrefix = workspacePrefix,
         )
-        val engine = CallHierarchyEngine(edgeResolver = resolver)
+        val intellijReadAccess = object : ReadAccessScope {
+            override fun <T> run(action: () -> T): T =
+                com.intellij.openapi.application.ApplicationManager.getApplication()
+                    .runReadAction<T> { action() }
+        }
+        val engine = CallHierarchyEngine(edgeResolver = resolver, readAccess = intellijReadAccess)
         val root = engine.buildNode(
             target = rootTarget,
             parentCallSite = null,
