@@ -164,35 +164,38 @@ internal class KastPluginBackend(
     }
 
     override suspend fun callHierarchy(query: CallHierarchyQuery): CallHierarchyResult = withContext(readDispatcher) {
-        readAction {
+        // Resolve the root target under a short read lock; the recursive
+        // traversal acquires per-level read locks inside the edge resolver
+        // so the IDE write lock is not starved for the full duration.
+        val rootTarget = readAction {
             val file = findKtFile(query.position.filePath)
-            val rootTarget = resolveTarget(file, query.position.offset)
-
-            val budget = TraversalBudget(
-                maxTotalCalls = query.maxTotalCalls,
-                maxChildrenPerNode = query.maxChildrenPerNode,
-                timeoutMillis = query.timeoutMillis ?: limits.requestTimeoutMillis,
-            )
-            val resolver = IntelliJCallEdgeResolver(
-                project = project,
-                workspacePrefix = workspacePrefix,
-            )
-            val engine = CallHierarchyEngine(edgeResolver = resolver)
-            val root = engine.buildNode(
-                target = rootTarget,
-                parentCallSite = null,
-                direction = query.direction,
-                depthRemaining = query.depth,
-                pathKeys = emptySet(),
-                budget = budget,
-                currentDepth = 0,
-            )
-
-            CallHierarchyResult(
-                root = root,
-                stats = budget.toStats(),
-            )
+            resolveTarget(file, query.position.offset)
         }
+
+        val budget = TraversalBudget(
+            maxTotalCalls = query.maxTotalCalls,
+            maxChildrenPerNode = query.maxChildrenPerNode,
+            timeoutMillis = query.timeoutMillis ?: limits.requestTimeoutMillis,
+        )
+        val resolver = IntelliJCallEdgeResolver(
+            project = project,
+            workspacePrefix = workspacePrefix,
+        )
+        val engine = CallHierarchyEngine(edgeResolver = resolver)
+        val root = engine.buildNode(
+            target = rootTarget,
+            parentCallSite = null,
+            direction = query.direction,
+            depthRemaining = query.depth,
+            pathKeys = emptySet(),
+            budget = budget,
+            currentDepth = 0,
+        )
+
+        CallHierarchyResult(
+            root = root,
+            stats = budget.toStats(),
+        )
     }
 
     override suspend fun semanticInsertionPoint(

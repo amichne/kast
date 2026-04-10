@@ -25,7 +25,8 @@ interface CallEdgeResolver {
     /**
      * Returns all declarations that call [target].
      *
-     * @param onFileVisited called for each file scanned, even when it yields no edges
+     * @param onFileVisited called once per unique file examined during the search,
+     *        regardless of whether it yields edges. Implementations must deduplicate.
      */
     fun incomingEdges(
         target: PsiElement,
@@ -36,7 +37,8 @@ interface CallEdgeResolver {
     /**
      * Returns all declarations called by [target].
      *
-     * @param onFileVisited called for each file scanned, even when it yields no edges
+     * @param onFileVisited called once per unique file examined during the search,
+     *        regardless of whether it yields edges. Implementations must deduplicate.
      */
     fun outgoingEdges(
         target: PsiElement,

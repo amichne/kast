@@ -1,5 +1,6 @@
 package io.github.amichne.kast.intellij
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiRecursiveElementWalkingVisitor
@@ -17,6 +18,10 @@ import io.github.amichne.kast.shared.hierarchy.callSiteLocation
  *
  * Uses [ReferencesSearch] and [GlobalSearchScope.projectScope] for incoming
  * edges, and a [PsiRecursiveElementWalkingVisitor] walk for outgoing edges.
+ *
+ * Each method acquires its own short-lived read lock so that the caller
+ * (recursive [io.github.amichne.kast.shared.hierarchy.CallHierarchyEngine])
+ * does **not** need to hold the IDE read lock for the entire traversal.
  */
 internal class IntelliJCallEdgeResolver(
     private val project: Project,
@@ -27,15 +32,18 @@ internal class IntelliJCallEdgeResolver(
         target: PsiElement,
         timeoutCheck: () -> Boolean,
         onFileVisited: (filePath: String) -> Unit,
-    ): List<CallEdge> {
+    ): List<CallEdge> = ApplicationManager.getApplication().runReadAction<List<CallEdge>> {
         val edges = mutableListOf<CallEdge>()
+        val visitedFiles = mutableSetOf<String>()
         val searchScope = GlobalSearchScope.projectScope(project)
 
         ReferencesSearch.search(target, searchScope).forEach { ref ->
-            if (timeoutCheck()) return edges
+            if (timeoutCheck()) return@runReadAction edges
             val element = ref.element
             val filePath = element.resolvedFilePath().value
-            onFileVisited(filePath)
+            if (visitedFiles.add(filePath)) {
+                onFileVisited(filePath)
+            }
             if (!filePath.startsWith(workspacePrefix)) return@forEach
 
             val caller = element.callHierarchyDeclaration() ?: return@forEach
@@ -46,15 +54,15 @@ internal class IntelliJCallEdgeResolver(
             )
         }
 
-        return edges
+        edges
     }
 
     override fun outgoingEdges(
         target: PsiElement,
         timeoutCheck: () -> Boolean,
         onFileVisited: (filePath: String) -> Unit,
-    ): List<CallEdge> {
-        val declaration = target.callHierarchyDeclaration() ?: return emptyList()
+    ): List<CallEdge> = ApplicationManager.getApplication().runReadAction<List<CallEdge>> {
+        val declaration = target.callHierarchyDeclaration() ?: return@runReadAction emptyList()
         val filePath = declaration.resolvedFilePath().value
         onFileVisited(filePath)
         val edges = mutableListOf<CallEdge>()
@@ -86,6 +94,6 @@ internal class IntelliJCallEdgeResolver(
             },
         )
 
-        return edges
+        edges
     }
 }
