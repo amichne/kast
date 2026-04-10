@@ -26,7 +26,7 @@ import io.github.amichne.kast.shared.analysis.toSymbolModel
  */
 class CallHierarchyEngine(
     private val edgeResolver: CallEdgeResolver,
-    private val readAccess: ReadAccessScope = ReadAccessScope { it() },
+    private val readAccess: ReadAccessScope = ReadAccessScope.IDENTITY,
 ) {
 
     /**
@@ -174,8 +174,15 @@ class CallHierarchyEngine(
  * - IntelliJ plugin backend: delegates to `ApplicationManager.getApplication().runReadAction`.
  * - Standalone backend: identity (session-level read lock is already held).
  */
-fun interface ReadAccessScope {
+interface ReadAccessScope {
     fun <T> run(action: () -> T): T
+
+    companion object {
+        /** Identity implementation — executes the action directly without acquiring any lock. */
+        val IDENTITY: ReadAccessScope = object : ReadAccessScope {
+            override fun <T> run(action: () -> T): T = action()
+        }
+    }
 }
 
 /**
