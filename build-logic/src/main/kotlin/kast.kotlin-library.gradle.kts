@@ -19,13 +19,15 @@ kotlin {
 
 tasks.withType<Test>().configureEach {
     useJUnitPlatform {
-        val exclude = providers.gradleProperty("excludeTags").orNull
-        val include = providers.gradleProperty("includeTags").orNull
-        if (!exclude.isNullOrBlank()) {
-            excludeTags(*exclude.split(",").map(String::trim).toTypedArray())
+        val tagSelection = DefaultTestTagSelection.from(
+            includeTags = providers.gradleProperty("includeTags").orNull,
+            excludeTags = providers.gradleProperty("excludeTags").orNull,
+        )
+        if (tagSelection.excluded.isNotEmpty()) {
+            excludeTags(*tagSelection.excluded.toTypedArray())
         }
-        if (!include.isNullOrBlank()) {
-            includeTags(*include.split(",").map(String::trim).toTypedArray())
+        if (tagSelection.included.isNotEmpty()) {
+            includeTags(*tagSelection.included.toTypedArray())
         }
     }
 }
