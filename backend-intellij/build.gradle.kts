@@ -1,3 +1,5 @@
+import java.util.zip.ZipFile
+
 plugins {
     kotlin("jvm")
     id("org.jetbrains.intellij.platform") version "2.13.1"
@@ -56,7 +58,7 @@ tasks.register("verifyPluginXmlPresent") {
         val distDir = layout.buildDirectory.dir("distributions").get().asFile
         val pluginZip = distDir.listFiles()?.firstOrNull { it.name.endsWith(".zip") }
             ?: error("No plugin zip found in $distDir")
-        val zipFile = java.util.zip.ZipFile(pluginZip)
+        val zipFile = ZipFile(pluginZip)
         val entry = zipFile.entries().asSequence().firstOrNull { it.name.endsWith("plugin.xml") }
             ?: error("plugin.xml not found in ${pluginZip.name}")
         val content = zipFile.getInputStream(entry).bufferedReader().readText()
