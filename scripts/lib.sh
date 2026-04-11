@@ -148,3 +148,19 @@ with zipfile.ZipFile(archive_path) as archive:
     archive.extractall(output_dir)
 PY
 }
+
+compute_sha256() {
+  local input_path="$1"
+
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$input_path" | awk '{ print $1 }'
+    return
+  fi
+
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$input_path" | awk '{ print $1 }'
+    return
+  fi
+
+  die "Neither sha256sum nor shasum is available for checksum computation"
+}

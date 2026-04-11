@@ -52,15 +52,39 @@ from your shell.
    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/install.sh)"
    ```
 
-2. If you already have this repository checked out, you can run the same
+2. Install all components (standalone CLI + IntelliJ plugin) non-interactively:
+
+   ```bash
+   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/install.sh)" -- --components=all --non-interactive
+   ```
+
+3. Install JVM-only variant for environments without GraalVM native images:
+
+   ```bash
+   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/install.sh)" -- --jvm-only
+   ```
+
+4. If you already have this repository checked out, you can run the same
    installer from the repo root instead:
 
    ```bash
    ./install.sh
    ```
 
-3. If your current shell still cannot find `kast`, open a new shell session so
+5. If your current shell still cannot find `kast`, open a new shell session so
    the updated `PATH` takes effect.
+
+The installer supports these flags:
+
+| Flag | Description |
+|------|-------------|
+| `--components=<list>` | Comma-separated: `standalone`, `intellij`, `all` (default: `standalone`) |
+| `--jvm-only` | Install the JVM-only variant (no native binary) |
+| `--non-interactive` | Skip all interactive prompts |
+
+At the end of installation, the installer prints a config summary showing the
+install root, binary path, JVM-only mode, installed components, and shell RC
+file path.
 
 !!! note
     The installer validates that Java 21 or newer is available before it
@@ -126,9 +150,29 @@ and the supported `--key=value` options.
 
 ## Install the IntelliJ plugin
 
-If you use IntelliJ IDEA and prefer the plugin backend, install the Kast
-plugin from a release asset. The plugin starts a Kast analysis server
-automatically when IntelliJ opens a project.
+If you use IntelliJ IDEA and prefer the plugin backend, you can install the
+Kast plugin using the unified installer or manually from a release asset. The
+plugin starts a Kast analysis server automatically when IntelliJ opens a
+project.
+
+**Option A: Unified installer**
+
+Use the `--components` flag to include the IntelliJ plugin:
+
+```bash
+./install.sh --components=intellij
+```
+
+Or install everything at once:
+
+```bash
+./install.sh --components=all
+```
+
+The installer downloads the plugin zip and places it in
+`$KAST_INSTALL_ROOT/plugins/`. Then install it from disk in IntelliJ.
+
+**Option B: Manual install**
 
 1. Download the `kast-intellij-<version>.zip` file from the
    [latest GitHub release](https://github.com/amichne/kast/releases/latest).

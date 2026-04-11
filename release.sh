@@ -19,18 +19,21 @@ Prepares a release asset from the portable distribution zip.
 Options:
   --tag <version>       Release tag (e.g. v1.2.3). Required.
   --platform-id <id>    Platform identifier (e.g. linux-x64, macos-arm64). Required.
+  --jvm-only            Build JVM-only distribution (no native binary).
   --skip-build          Skip the Gradle build (use existing portable zip).
   --help, -h            Show this help.
 
 Examples:
   ./release.sh --tag v1.0.0 --platform-id linux-x64
   ./release.sh --tag v1.0.0 --platform-id macos-arm64 --skip-build
+  ./release.sh --tag v1.0.0 --platform-id linux-x64-jvm --jvm-only
 USAGE
 }
 
 tag=""
 platform_id=""
 skip_build="false"
+jvm_only="false"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -43,6 +46,10 @@ while [[ $# -gt 0 ]]; do
       [[ $# -ge 2 ]] || die "Missing value for --platform-id"
       platform_id="$2"
       shift 2
+      ;;
+    --jvm-only)
+      jvm_only="true"
+      shift
       ;;
     --skip-build)
       skip_build="true"
@@ -62,12 +69,31 @@ done
 [[ -n "$platform_id" ]] || die "Missing required --platform-id"
 [[ -x "$GRADLEW" ]] || die "Missing executable gradlew at ${GRADLEW}"
 
-if [[ "$skip_build" != "true" ]]; then
-  log_section "Building portable distribution"
+run_gradle_build() {
+  local extra_args=()
+  if [[ "$jvm_only" == "true" ]]; then
+    extra_args+=("-PjvmOnly=true")
+  fi
   (
     cd "$REPO_ROOT"
-    "$GRADLEW" :kast:portableDistZip
+    "$GRADLEW" :kast:portableDistZip "${extra_args[@]}"
   )
+}
+
+if [[ "$skip_build" != "true" ]]; then
+  log_section "Building portable distribution"
+  if ! run_gradle_build; then
+    log_note "Gradle build failed; stopping daemon and retrying with --no-daemon"
+    "$GRADLEW" --stop >/dev/null 2>&1 || true
+    retry_extra=()
+    if [[ "$jvm_only" == "true" ]]; then
+      retry_extra+=("-PjvmOnly=true")
+    fi
+    (
+      cd "$REPO_ROOT"
+      "$GRADLEW" --no-daemon :kast:portableDistZip "${retry_extra[@]}"
+    )
+  fi
 fi
 
 resolve_portable_zip() {
@@ -93,7 +119,9 @@ log_section "Preparing release asset"
 mkdir -p "$dist_root"
 cp "$source_zip" "$asset_path"
 
-digest="$(shasum -a 256 "$asset_path" | awk '{print $1}')"
+digest="$(compute_sha256 "$asset_path")"
+
+printf '%s  %s\n' "$digest" "$asset_name" >> "${dist_root}/checksums.txt"
 
 log_success "Release asset: ${asset_path}"
 log "SHA-256: ${digest}"

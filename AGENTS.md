@@ -116,7 +116,9 @@ Apply these rules across the repo before local unit rules add more detail.
 - Treat `docs/` plus `zensical.toml` as the documentation source of truth.
   `site/` is generated output and should be rebuilt, not hand-edited.
 - Prefer repo-root packaging entry points for shipped artifacts: `./build.sh`
-  builds the standalone portable distribution; `./gradlew buildIntellijPlugin`
-  builds the IntelliJ plugin zip.
+  builds the standalone portable distribution (pass `--jvm-only` for a
+  JVM-only variant); `./gradlew buildIntellijPlugin` builds the IntelliJ
+  plugin zip. `./release.sh` also accepts `--jvm-only` for JVM-only release
+  assets.
 - Verify with the narrowest Gradle task that proves the change. Broaden the
   scope when you touch shared contracts, build logic, or cross-module behavior.

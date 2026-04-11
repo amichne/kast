@@ -43,6 +43,27 @@ intellijPlatform {
         version = project.version.toString()
         description = "Kast Kotlin analysis backend for IntelliJ IDEA"
 
+        ideaVersion {
+            sinceBuild = "253"   // IntelliJ 2025.3
+            untilBuild = "253.*"
+        }
+    }
+}
+
+tasks.register("verifyPluginXmlPresent") {
+    dependsOn(tasks.named("buildPlugin"))
+    doLast {
+        val distDir = layout.buildDirectory.dir("distributions").get().asFile
+        val pluginZip = distDir.listFiles()?.firstOrNull { it.name.endsWith(".zip") }
+            ?: error("No plugin zip found in $distDir")
+        val zipFile = java.util.zip.ZipFile(pluginZip)
+        val entry = zipFile.entries().asSequence().firstOrNull { it.name.endsWith("plugin.xml") }
+            ?: error("plugin.xml not found in ${pluginZip.name}")
+        val content = zipFile.getInputStream(entry).bufferedReader().readText()
+        check("KastPluginService" in content) { "plugin.xml is missing KastPluginService extension" }
+        check("KastStartupActivity" in content) { "plugin.xml is missing KastStartupActivity extension" }
+        check("org.jetbrains.kotlin" in content) { "plugin.xml is missing Kotlin plugin dependency" }
+        zipFile.close()
     }
 }
 

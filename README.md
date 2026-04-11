@@ -25,6 +25,24 @@ the latest release from any shell with a copyable one-line command:
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/install.sh)"
 ```
 
+Install with all components (standalone + IntelliJ plugin):
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/install.sh)" -- --components=all
+```
+
+Install JVM-only variant (for environments without GraalVM native images):
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/install.sh)" -- --jvm-only
+```
+
+Non-interactive install for CI/automation:
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/install.sh)" -- --components=all --jvm-only --non-interactive
+```
+
 That installs `kast` into your user-local bin directory and adds that directory
 to your shell `PATH` when needed. If you already have this repository checked
 out, you can run `./install.sh` from the repo root instead.

@@ -16,6 +16,7 @@ readonly PORTABLE_ZIP_DIR="${REPO_ROOT}/kast/build/distributions"
 readonly GRADLE_ARGS=()
 
 tmp_dir=""
+jvm_only="false"
 
 cleanup() {
   if [[ -n "$tmp_dir" && -d "$tmp_dir" ]]; then
@@ -34,7 +35,8 @@ Builds the local kast CLI package from source, publishes:
   dist/kast.zip
 
 Options:
-  --help, -h         Show this help.
+  --jvm-only           Build JVM-only distribution (no native binary).
+  --help, -h           Show this help.
 USAGE
 }
 
@@ -43,19 +45,48 @@ verify_prerequisites() {
   [[ -x "$GRADLEW" ]] || die "Missing executable gradlew at ${GRADLEW}"
 }
 
+ensure_healthy_daemon() {
+  if ! "$GRADLEW" --status >/dev/null 2>&1; then
+    log_step "Stopping stale Gradle daemons"
+    "$GRADLEW" --stop >/dev/null 2>&1 || true
+  fi
+}
+
 run_gradle_build() {
   log_step "Building staged CLI tree and portable zip"
+  local extra_args=()
+  if [[ "$jvm_only" == "true" ]]; then
+    extra_args+=("-PjvmOnly=true")
+  fi
   (
     cd "$REPO_ROOT"
-    "$GRADLEW" stageCliDist buildCliPortableZip "${GRADLE_ARGS[@]}"
+    "$GRADLEW" stageCliDist buildCliPortableZip "${extra_args[@]}" "${GRADLE_ARGS[@]}"
   )
+}
+
+run_gradle_build_with_retry() {
+  if run_gradle_build; then
+    return 0
+  fi
+  log_note "Gradle build failed; stopping daemon and retrying"
+  "$GRADLEW" --stop >/dev/null 2>&1 || true
+  rm -rf "${REPO_ROOT}/kast/build/portable-dist" "${REPO_ROOT}/kast/build/distributions"
+  run_gradle_build
 }
 
 verify_cli_stage() {
   log_step "Verifying staged CLI tree in ${PORTABLE_DIST_DIR}"
   [[ -x "${PORTABLE_DIST_DIR}/kast" ]] || die "Missing staged kast launcher"
-  [[ -d "${PORTABLE_DIST_DIR}/bin" ]] || die "Missing staged bin directory"
-  [[ -x "${PORTABLE_DIST_DIR}/bin/kast" ]] || die "Missing staged kast native binary"
+
+  if [[ "$jvm_only" != "true" ]]; then
+    [[ -d "${PORTABLE_DIST_DIR}/bin" ]] || die "Missing staged bin directory"
+    [[ -x "${PORTABLE_DIST_DIR}/bin/kast" ]] || die "Missing staged kast native binary"
+  else
+    if [[ ! -x "${PORTABLE_DIST_DIR}/bin/kast" ]]; then
+      log_note "JVM-only build: native binary not present (expected)"
+    fi
+  fi
+
   [[ -d "${PORTABLE_DIST_DIR}/runtime-libs" ]] || die "Missing staged runtime-libs directory"
   [[ -f "${PORTABLE_DIST_DIR}/runtime-libs/classpath.txt" ]] || die "Missing staged runtime classpath file"
 
@@ -103,8 +134,29 @@ publish_dist_zip() {
   log_success "Published ${DIST_ZIP}"
 }
 
+clean_stale_outputs() {
+  if [[ -d "$DIST_DIR" ]]; then
+    if [[ ! -f "${DIST_DIR}/kast" || ! -d "${DIST_DIR}/runtime-libs" ]]; then
+      log_step "Removing incomplete dist/kast from a previous run"
+      rm -rf "$DIST_DIR"
+    fi
+  fi
+  # Clean leftover temp dirs from previous builds
+  shopt -s nullglob
+  for stale in "${TMPDIR:-/tmp}"/kast-build.??????; do
+    if [[ -d "$stale" ]]; then
+      rm -rf "$stale"
+    fi
+  done
+  shopt -u nullglob
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --jvm-only)
+      jvm_only="true"
+      shift
+      ;;
     --help|-h)
       usage
       exit 0
@@ -116,9 +168,11 @@ while [[ $# -gt 0 ]]; do
 done
 
 verify_prerequisites
+clean_stale_outputs
 
 log_section "Kast local build"
-run_gradle_build
+ensure_healthy_daemon
+run_gradle_build_with_retry
 verify_cli_stage
 
 portable_zip="$(resolve_portable_zip)"

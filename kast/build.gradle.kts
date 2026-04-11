@@ -48,14 +48,16 @@ tasks.named("writeWrapperScript").configure {
                 "  fi",
                 "done",
                 "",
-                "for candidate in \"${dollar}{native_candidates[@]}\"; do",
-                "  if [[ -n \"${dollar}{candidate}\" && -x \"${dollar}{candidate}\" ]]; then",
-                "    if [[ -n \"${dollar}{resolved_runtime_libs}\" && -z \"${dollar}{KAST_RUNTIME_LIBS:-}\" ]]; then",
-                "      export KAST_RUNTIME_LIBS=\"${dollar}{resolved_runtime_libs}\"",
+                "if [[ \"${dollar}{KAST_JVM_ONLY:-false}\" != \"true\" ]]; then",
+                "  for candidate in \"${dollar}{native_candidates[@]}\"; do",
+                "    if [[ -n \"${dollar}{candidate}\" && -x \"${dollar}{candidate}\" ]]; then",
+                "      if [[ -n \"${dollar}{resolved_runtime_libs}\" && -z \"${dollar}{KAST_RUNTIME_LIBS:-}\" ]]; then",
+                "        export KAST_RUNTIME_LIBS=\"${dollar}{resolved_runtime_libs}\"",
+                "      fi",
+                "      exec \"${dollar}{candidate}\" \"${dollar}@\"",
                 "    fi",
-                "    exec \"${dollar}{candidate}\" \"${dollar}@\"",
-                "  fi",
-                "done",
+                "  done",
+                "fi",
                 "",
                 "java_bin=\"${dollar}{JAVA_HOME:+${dollar}{JAVA_HOME}/bin/java}\"",
                 "if [[ -z \"${dollar}{java_bin}\" || ! -x \"${dollar}{java_bin}\" ]]; then",
@@ -86,11 +88,13 @@ tasks.named("writeWrapperScript").configure {
 }
 
 tasks.named<Sync>("syncPortableDist") {
-    dependsOn(":kast-cli:nativeCompile")
-    from(rootProject.layout.projectDirectory.file("smoke.sh"))
-    from(nativeBinary) {
-        into("bin")
+    if (!project.hasProperty("jvmOnly")) {
+        dependsOn(":kast-cli:nativeCompile")
+        from(nativeBinary) {
+            into("bin")
+        }
     }
+    from(rootProject.layout.projectDirectory.file("smoke.sh"))
 }
 
 tasks.named<Zip>("portableDistZip").configure {

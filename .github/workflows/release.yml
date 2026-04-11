@@ -78,26 +78,47 @@ jobs:
             asset_id: linux-x64
           - runner: macos-14
             asset_id: macos-arm64
+          - runner: ubuntu-latest
+            asset_id: linux-x64-jvm
+            jvm_only: true
+          - runner: macos-14
+            asset_id: macos-arm64-jvm
+            jvm_only: true
     steps:
       - uses: actions/checkout@v5
         with:
           ref: ${{ needs.prepare-release.outputs.release_tag }}
 
       - uses: graalvm/setup-graalvm@v1
+        if: ${{ !matrix.jvm_only }}
         with:
           distribution: graalvm-community
           java-version: "21"
           github-token: ${{ secrets.GITHUB_TOKEN }}
           native-image-job-reports: "true"
 
+      - uses: actions/setup-java@v4
+        if: ${{ matrix.jvm_only }}
+        with:
+          distribution: temurin
+          java-version: "21"
+
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "9.4.0"
 
       - name: Build portable Kast distribution
-        run: ./release.sh --tag ${{ needs.prepare-release.outputs.release_tag }} --platform-id ${{ matrix.asset_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=(--tag "${{ needs.prepare-release.outputs.release_tag }}" --platform-id "${{ matrix.asset_id }}")
+          if [[ "${{ matrix.jvm_only }}" == "true" ]]; then
+            args+=(--jvm-only)
+          fi
+          ./release.sh "${args[@]}"
 
       - name: Smoke portable Kast distribution
+        if: ${{ !matrix.jvm_only }}
         shell: bash
         run: |
           set -euo pipefail
@@ -106,6 +127,30 @@ jobs:
           mkdir -p "$dist_dir"
           unzip -q kast/build/distributions/kast-*-portable.zip -d "$dist_dir"
           ./.github/scripts/smoke-kast-cli.sh "$dist_dir/kast/kast"
+
+      - name: Write build provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          digest=""
+          if [[ -f dist/checksums.txt ]]; then
+            digest="$(grep '${{ matrix.asset_id }}' dist/checksums.txt | awk '{print $1}' || true)"
+          fi
+          cat > dist/build-provenance-${{ matrix.asset_id }}.json <<PROVEOF
+          {
+            "runId": "${{ github.run_id }}",
+            "runNumber": "${{ github.run_number }}",
+            "runAttempt": "${{ github.run_attempt }}",
+            "sha": "${{ github.sha }}",
+            "ref": "${{ github.ref }}",
+            "workflowRef": "${{ github.workflow_ref }}",
+            "actor": "${{ github.actor }}",
+            "platformId": "${{ matrix.asset_id }}",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "assetDigest": "sha256:${digest}"
+          }
+          PROVEOF
 
       - name: Upload release asset
         shell: bash
@@ -119,6 +164,16 @@ jobs:
 
           [[ -f "$asset_path" ]] || { echo "Release asset not found: $asset_path" >&2; exit 1; }
           gh release upload "$tag" "$asset_path" --clobber
+
+      - name: Upload build artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-asset-${{ matrix.asset_id }}-${{ github.run_id }}
+          path: |
+            dist/
+            kast/build/distributions/
+          if-no-files-found: warn
 
   build-intellij-plugin:
     name: Build IntelliJ plugin
@@ -153,6 +208,7 @@ jobs:
           ./gradlew
           :backend-intellij:buildPlugin
           :backend-intellij:verifyPluginStructure
+          :backend-intellij:verifyPluginXmlPresent
 
       - name: Upload IntelliJ plugin asset
         shell: bash
@@ -162,10 +218,47 @@ jobs:
           set -euo pipefail
           tag="${{ needs.prepare-release.outputs.release_tag }}"
           asset_name="kast-intellij-${tag}.zip"
-          asset_path="backend-intellij/build/distributions/${asset_name}"
 
-          cp backend-intellij/build/distributions/*.zip "$asset_path"
-          gh release upload "$tag" "$asset_path" --clobber
+          source_zip=""
+          for candidate in backend-intellij/build/distributions/*.zip; do
+            [[ -f "$candidate" ]] || continue
+            source_zip="$candidate"
+            break
+          done
+          [[ -n "$source_zip" ]] || { echo "No IntelliJ plugin zip found" >&2; exit 1; }
+
+          mkdir -p dist
+          cp "$source_zip" "dist/${asset_name}"
+          gh release upload "$tag" "dist/${asset_name}" --clobber
+
+      - name: Write plugin build provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cat > dist/build-provenance-intellij.json <<PROVEOF
+          {
+            "runId": "${{ github.run_id }}",
+            "runNumber": "${{ github.run_number }}",
+            "runAttempt": "${{ github.run_attempt }}",
+            "sha": "${{ github.sha }}",
+            "ref": "${{ github.ref }}",
+            "workflowRef": "${{ github.workflow_ref }}",
+            "actor": "${{ github.actor }}",
+            "platformId": "intellij",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          PROVEOF
+
+      - name: Upload plugin artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: intellij-plugin-${{ github.run_id }}
+          path: |
+            dist/
+            backend-intellij/build/distributions/
+          if-no-files-found: warn
 
   publish-release:
     name: Publish release
@@ -178,9 +271,63 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v5
-      - name: Publish draft release
+
+      - name: Download all provenance artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: provenance-artifacts
+          pattern: release-asset-*
+
+      - name: Download IntelliJ provenance
+        uses: actions/download-artifact@v4
+        with:
+          path: provenance-intellij
+          pattern: intellij-plugin-*
+
+      - name: Assemble combined provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+
+          # Collect all individual provenance files into a JSON array
+          provenance_files=()
+          for f in provenance-artifacts/*/dist/build-provenance-*.json provenance-intellij/*/dist/build-provenance-*.json; do
+            [[ -f "$f" ]] || continue
+            provenance_files+=("$f")
+          done
+
+          if [[ ${#provenance_files[@]} -gt 0 ]]; then
+            python3 -c "
+          import json, sys, glob
+          files = sys.argv[1:]
+          entries = []
+          for f in files:
+              with open(f) as fh:
+                  entries.append(json.load(fh))
+          print(json.dumps({'builds': entries}, indent=2))
+          " "${provenance_files[@]}" > dist/build-provenance.json
+          else
+            echo '{"builds": []}' > dist/build-provenance.json
+          fi
+
+      - name: Upload combined provenance
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          gh release edit "${{ needs.prepare-release.outputs.release_tag }}" --draft=false --latest
+          tag="${{ needs.prepare-release.outputs.release_tag }}"
+          gh release upload "$tag" dist/build-provenance.json --clobber
+
+      - name: Publish draft release with provenance annotation
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="${{ needs.prepare-release.outputs.release_tag }}"
+          run_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          gh release edit "$tag" --draft=false --latest \
+            --notes "$(gh release view "$tag" --json body -q .body)
+
+          ---
+          **Build provenance:** [CI Run #${{ github.run_number }}]($run_url)"

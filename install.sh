@@ -98,21 +98,6 @@ download_file() {
     "$url"
 }
 
-compute_sha256() {
-  local input_path="$1"
-
-  if command -v sha256sum >/dev/null 2>&1; then
-    sha256sum "$input_path" | awk '{ print $1 }'
-    return
-  fi
-
-  if command -v shasum >/dev/null 2>&1; then
-    shasum -a 256 "$input_path" | awk '{ print $1 }'
-    return
-  fi
-
-  die "Neither sha256sum nor shasum is available for checksum verification"
-}
 
 extract_release_metadata() {
   local metadata_path="$1"
@@ -345,7 +330,134 @@ EOF
   log_success "Enabled ${shell_name} completions in ${rc_file}"
 }
 
+install_intellij_plugin() {
+  local release_repo="$1"
+  local release_tag="$2"
+  local install_root="$3"
+
+  log_section "Install IntelliJ plugin"
+
+  local plugin_dir="${install_root}/plugins"
+  local plugin_name="kast-intellij-${release_tag}.zip"
+  local plugin_path="${plugin_dir}/${plugin_name}"
+  local plugin_url="https://github.com/${release_repo}/releases/download/${release_tag}/${plugin_name}"
+
+  mkdir -p "$plugin_dir"
+
+  log_step "Downloading IntelliJ plugin ${plugin_name}"
+  local download_attempt
+  for download_attempt in 1 2 3; do
+    if download_file "$plugin_url" "$plugin_path"; then
+      break
+    fi
+    if [[ "$download_attempt" -eq 3 ]]; then
+      log_note "Failed to download IntelliJ plugin after 3 attempts; skipping"
+      return 1
+    fi
+    log_note "Download attempt ${download_attempt} failed; retrying in 5 seconds"
+    sleep 5
+  done
+
+  log_success "IntelliJ plugin saved to ${plugin_path}"
+  log_note "Install from IntelliJ: Settings → Plugins → ⚙️ → Install Plugin from Disk"
+  log_note "Select: ${plugin_path}"
+  return 0
+}
+
+prompt_components() {
+  if ! can_prompt; then
+    printf '%s\n' "standalone"
+    return
+  fi
+
+  log_prompt "Which components? [standalone/intellij/all] (standalone) "
+  local reply=""
+  if ! IFS= read -r reply </dev/tty; then
+    printf '\n' >/dev/tty
+    printf '%s\n' "standalone"
+    return
+  fi
+  printf '\n' >/dev/tty
+
+  case "${reply,,}" in
+    "" | standalone)
+      printf '%s\n' "standalone"
+      ;;
+    intellij)
+      printf '%s\n' "intellij"
+      ;;
+    all)
+      printf '%s\n' "standalone,intellij"
+      ;;
+    *)
+      printf '%s\n' "$reply"
+      ;;
+  esac
+}
+
+print_config_summary() {
+  local install_root="$1"
+  local bin_dir="$2"
+  local jvm_only_mode="$3"
+  local components="$4"
+  local rc_file="$5"
+
+  log_section "Install summary"
+  log "Install root:   ${install_root}"
+  log "Binary path:    ${bin_dir}/kast"
+  log "Config dir:     ${install_root}/current"
+  log "JVM-only mode:  ${jvm_only_mode}"
+  log "Components:     ${components}"
+  if [[ -n "$rc_file" ]]; then
+    log "Shell RC:       ${rc_file}"
+  fi
+}
+
 main() {
+  local components=""
+  local jvm_only="false"
+  local non_interactive="false"
+
+  # Parse CLI arguments (supports one-liner: -- --components=all --jvm-only)
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --components=*)
+        components="${1#--components=}"
+        shift
+        ;;
+      --components)
+        [[ $# -ge 2 ]] || die "Missing value for --components"
+        components="$2"
+        shift 2
+        ;;
+      --jvm-only)
+        jvm_only="true"
+        shift
+        ;;
+      --non-interactive)
+        non_interactive="true"
+        shift
+        ;;
+      --help|-h)
+        cat <<'USAGE' >&2
+Usage: ./install.sh [options]
+
+Install the Kast CLI and optional components.
+
+Options:
+  --components=<list>   Comma-separated: standalone,intellij,all (default: standalone)
+  --jvm-only            Install JVM-only variant (no native binary)
+  --non-interactive     Skip all interactive prompts
+  --help, -h            Show this help
+USAGE
+        exit 0
+        ;;
+      *)
+        die "Unknown argument: $1"
+        ;;
+    esac
+  done
+
   log_section "Kast installer"
   log "Install the published CLI, wire your shell, and leave the workspace commands ready to run."
 
@@ -369,128 +481,215 @@ main() {
 
   release_repo="$(resolve_release_repo)"
   platform_id="$(detect_platform_id)"
+  if [[ "$jvm_only" == "true" ]]; then
+    platform_id="${platform_id}-jvm"
+  fi
   install_root="${KAST_INSTALL_ROOT:-${HOME}/.local/share/kast}"
   bin_dir="${KAST_BIN_DIR:-${HOME}/.local/bin}"
   shell_name="$(resolve_shell_name)"
 
+  # Resolve components
+  if [[ -z "$components" ]]; then
+    if [[ "$non_interactive" == "true" ]]; then
+      components="standalone"
+    else
+      components="$(prompt_components)"
+    fi
+  fi
+  [[ "$components" == "all" ]] && components="standalone,intellij"
+
+  local install_standalone="false"
+  local install_intellij="false"
+  IFS=',' read -r -a component_list <<<"$components"
+  for comp in "${component_list[@]}"; do
+    case "$comp" in
+      standalone) install_standalone="true" ;;
+      intellij)   install_intellij="true" ;;
+      server)     install_standalone="true" ;;
+      *)          die "Unknown component: $comp" ;;
+    esac
+  done
+
   tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/kast-install.XXXXXX")"
 
-  if [[ -n "${KAST_ARCHIVE_PATH:-}" ]]; then
-    log_section "Resolve release"
-    archive_path="$KAST_ARCHIVE_PATH"
-    [[ -f "$archive_path" ]] || die "KAST_ARCHIVE_PATH does not exist: $archive_path"
-    archive_name="$(basename -- "$archive_path")"
-    archive_source="$archive_path"
-    release_tag="${KAST_VERSION:-local}"
-    archive_digest="${KAST_EXPECTED_SHA256:-}"
-    log_step "Using local archive ${archive_name}"
-  else
-    local metadata_url="${KAST_RELEASE_METADATA_URL:-}"
-    if [[ -z "$metadata_url" ]]; then
-      if [[ -n "${KAST_VERSION:-}" ]]; then
-        metadata_url="https://api.github.com/repos/${release_repo}/releases/tags/${KAST_VERSION}"
-      else
-        metadata_url="https://api.github.com/repos/${release_repo}/releases/latest"
+  if [[ "$install_standalone" == "true" ]]; then
+    if [[ -n "${KAST_ARCHIVE_PATH:-}" ]]; then
+      log_section "Resolve release"
+      archive_path="$KAST_ARCHIVE_PATH"
+      [[ -f "$archive_path" ]] || die "KAST_ARCHIVE_PATH does not exist: $archive_path"
+      archive_name="$(basename -- "$archive_path")"
+      archive_source="$archive_path"
+      release_tag="${KAST_VERSION:-local}"
+      archive_digest="${KAST_EXPECTED_SHA256:-}"
+      log_step "Using local archive ${archive_name}"
+    else
+      local metadata_url="${KAST_RELEASE_METADATA_URL:-}"
+      if [[ -z "$metadata_url" ]]; then
+        if [[ -n "${KAST_VERSION:-}" ]]; then
+          metadata_url="https://api.github.com/repos/${release_repo}/releases/tags/${KAST_VERSION}"
+        else
+          metadata_url="https://api.github.com/repos/${release_repo}/releases/latest"
+        fi
+      fi
+
+      local metadata_path="${tmp_dir}/release.json"
+      log_section "Resolve release"
+      log_step "Resolving release metadata for ${release_repo} (${platform_id})"
+      curl \
+        --fail \
+        --location \
+        --retry 3 \
+        --retry-delay 2 \
+        --silent \
+        --show-error \
+        --header "$GITHUB_API_ACCEPT" \
+        --header "$GITHUB_API_VERSION" \
+        --output "$metadata_path" \
+        "$metadata_url"
+
+      local release_info_path="${tmp_dir}/release-info.txt"
+      local release_line=""
+
+      extract_release_metadata "$metadata_path" "$platform_id" >"$release_info_path"
+
+      local release_info=()
+      while IFS= read -r release_line || [[ -n "$release_line" ]]; do
+        release_info+=("$release_line")
+      done <"$release_info_path"
+      [[ "${#release_info[@]}" -eq 4 ]] || die "Release metadata parsing returned incomplete asset information"
+
+      release_tag="${release_info[0]}"
+      archive_name="${release_info[1]}"
+      archive_source="${release_info[2]}"
+      archive_digest="${release_info[3]}"
+      archive_path="${tmp_dir}/${archive_name}"
+
+      log_step "Downloading ${archive_name}"
+      local download_attempt
+      for download_attempt in 1 2 3; do
+        if download_file "$archive_source" "$archive_path"; then
+          break
+        fi
+        if [[ "$download_attempt" -eq 3 ]]; then
+          die "Failed to download ${archive_name} after 3 attempts"
+        fi
+        log_note "Download attempt ${download_attempt} failed; retrying in 5 seconds"
+        sleep 5
+      done
+    fi
+
+    log_section "Verify package"
+    if [[ -n "$archive_digest" ]]; then
+      local expected_sha256="${archive_digest#sha256:}"
+      local actual_sha256
+      actual_sha256="$(compute_sha256 "$archive_path")"
+      [[ "$actual_sha256" == "$expected_sha256" ]] || die "Checksum verification failed for ${archive_name}"
+      log_success "Verified SHA-256 for ${archive_name}"
+    else
+      log_note "No published SHA-256 digest was available for ${archive_name}; skipping checksum verification."
+    fi
+
+    local staging_dir="${tmp_dir}/extract"
+    local release_dir="${install_root}/releases/${release_tag}/${platform_id}"
+    local current_link="${install_root}/current"
+    local bin_link="${bin_dir}/kast"
+
+    log_section "Install files"
+
+    # Partial install recovery: remove release_dir if it lacks metadata
+    if [[ -d "$release_dir" && ! -f "${release_dir}/.install-metadata.json" ]]; then
+      log_note "Removing partial install at ${release_dir}"
+      rm -rf "$release_dir"
+    fi
+
+    # Broken symlink repair
+    if [[ -L "$current_link" && ! -e "$current_link" ]]; then
+      log_note "Removing broken symlink at ${current_link}"
+      rm -f "$current_link"
+    fi
+
+    extract_zip_archive "$archive_path" "$staging_dir"
+    [[ -d "${staging_dir}/kast" ]] || die "Archive ${archive_name} did not contain the expected kast/ directory"
+
+    rm -rf "$release_dir"
+    mkdir -p "$(dirname -- "$release_dir")"
+    mv "${staging_dir}/kast" "$release_dir"
+
+    [[ -f "${release_dir}/kast" ]] || die "Installed archive did not contain the kast launcher"
+
+    if [[ "$jvm_only" != "true" ]]; then
+      [[ -f "${release_dir}/bin/kast" ]] || die "Installed archive did not contain the kast native binary"
+      chmod +x "${release_dir}/kast" "${release_dir}/bin/kast"
+    else
+      chmod +x "${release_dir}/kast"
+      if [[ -f "${release_dir}/bin/kast" ]]; then
+        chmod +x "${release_dir}/bin/kast"
       fi
     fi
 
-    local metadata_path="${tmp_dir}/release.json"
-    log_section "Resolve release"
-    log_step "Resolving release metadata for ${release_repo} (${platform_id})"
-    curl \
-      --fail \
-      --location \
-      --retry 3 \
-      --retry-delay 2 \
-      --silent \
-      --show-error \
-      --header "$GITHUB_API_ACCEPT" \
-      --header "$GITHUB_API_VERSION" \
-      --output "$metadata_path" \
-      "$metadata_url"
+    write_install_metadata \
+      "${release_dir}/.install-metadata.json" \
+      "$release_repo" \
+      "$release_tag" \
+      "$platform_id" \
+      "$archive_name" \
+      "$archive_source"
 
-    local release_info_path="${tmp_dir}/release-info.txt"
-    local release_line=""
-
-    extract_release_metadata "$metadata_path" "$platform_id" >"$release_info_path"
-
-    local release_info=()
-    while IFS= read -r release_line || [[ -n "$release_line" ]]; do
-      release_info+=("$release_line")
-    done <"$release_info_path"
-    [[ "${#release_info[@]}" -eq 4 ]] || die "Release metadata parsing returned incomplete asset information"
-
-    release_tag="${release_info[0]}"
-    archive_name="${release_info[1]}"
-    archive_source="${release_info[2]}"
-    archive_digest="${release_info[3]}"
-    archive_path="${tmp_dir}/${archive_name}"
-
-    log_step "Downloading ${archive_name}"
-    download_file "$archive_source" "$archive_path"
-  fi
-
-  log_section "Verify package"
-  if [[ -n "$archive_digest" ]]; then
-    local expected_sha256="${archive_digest#sha256:}"
-    local actual_sha256
-    actual_sha256="$(compute_sha256 "$archive_path")"
-    [[ "$actual_sha256" == "$expected_sha256" ]] || die "Checksum verification failed for ${archive_name}"
-    log_success "Verified SHA-256 for ${archive_name}"
-  else
-    log_note "No published SHA-256 digest was available for ${archive_name}; skipping checksum verification."
-  fi
-
-  local staging_dir="${tmp_dir}/extract"
-  local release_dir="${install_root}/releases/${release_tag}/${platform_id}"
-  local current_link="${install_root}/current"
-  local bin_link="${bin_dir}/kast"
-
-  log_section "Install files"
-  extract_zip_archive "$archive_path" "$staging_dir"
-  [[ -d "${staging_dir}/kast" ]] || die "Archive ${archive_name} did not contain the expected kast/ directory"
-
-  rm -rf "$release_dir"
-  mkdir -p "$(dirname -- "$release_dir")"
-  mv "${staging_dir}/kast" "$release_dir"
-
-  [[ -f "${release_dir}/kast" ]] || die "Installed archive did not contain the kast launcher"
-  [[ -f "${release_dir}/bin/kast" ]] || die "Installed archive did not contain the kast native binary"
-
-  chmod +x "${release_dir}/kast" "${release_dir}/bin/kast"
-  write_install_metadata \
-    "${release_dir}/.install-metadata.json" \
-    "$release_repo" \
-    "$release_tag" \
-    "$platform_id" \
-    "$archive_name" \
-    "$archive_source"
-
-  mkdir -p "$install_root" "$bin_dir"
-  ln -sfn "$release_dir" "$current_link"
-  cat >"$bin_link" <<EOF
+    mkdir -p "$install_root" "$bin_dir"
+    ln -sfn "$release_dir" "$current_link"
+    cat >"$bin_link" <<EOF
 #!/usr/bin/env bash
 set -euo pipefail
 exec "${install_root}/current/kast" "\$@"
 EOF
-  chmod +x "$bin_link"
-  log_success "Installed ${archive_name} into ${release_dir}"
+    chmod +x "$bin_link"
+    log_success "Installed ${archive_name} into ${release_dir}"
 
-  log_section "Shell setup"
-  ensure_bin_dir_on_path "$bin_dir"
-  install_shell_completion "$release_dir" "$install_root" "$shell_name"
+    log_section "Shell setup"
+    ensure_bin_dir_on_path "$bin_dir"
+    install_shell_completion "$release_dir" "$install_root" "$shell_name"
+  fi
+
+  # Install IntelliJ plugin component
+  if [[ "$install_intellij" == "true" ]]; then
+    local resolved_tag="${release_tag:-}"
+    if [[ -z "$resolved_tag" ]]; then
+      # Need to resolve the release tag for plugin download
+      resolved_tag="${KAST_VERSION:-}"
+      if [[ -z "$resolved_tag" ]]; then
+        local latest_meta="${tmp_dir}/latest-release.json"
+        curl \
+          --fail --location --retry 3 --retry-delay 2 --silent --show-error \
+          --header "$GITHUB_API_ACCEPT" \
+          --header "$GITHUB_API_VERSION" \
+          --output "$latest_meta" \
+          "https://api.github.com/repos/${release_repo}/releases/latest"
+        resolved_tag="$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['tag_name'])" "$latest_meta")"
+      fi
+    fi
+    install_intellij_plugin "$release_repo" "$resolved_tag" "$install_root" || true
+  fi
+
+  local rc_file
+  rc_file="$(resolve_shell_rc_file)"
+  print_config_summary "$install_root" "$bin_dir" "$jvm_only" "$components" "$rc_file"
 
   log_section "Ready"
-  log_success "Launcher path: ${bin_link}"
-  if path_contains "$bin_dir"; then
-    log_step "Try: kast --help"
-    log_step "If you use the packaged skill, run: kast install skill from your workspace root"
-    log_step "Then: kast workspace ensure --workspace-root=/absolute/path/to/workspace"
-  else
-    log_note "Export PATH=\"${bin_dir}:\$PATH\""
-    log_note "Then run: kast --help"
-    log_note "If you use the packaged skill, run: kast install skill from your workspace root"
-    log_note "Then run: kast workspace ensure --workspace-root=/absolute/path/to/workspace"
+  if [[ "$install_standalone" == "true" ]]; then
+    log_success "Launcher path: ${bin_dir}/kast"
+    if path_contains "$bin_dir"; then
+      log_step "Try: kast --help"
+      log_step "If you use the packaged skill, run: kast install skill from your workspace root"
+      log_step "Then: kast workspace ensure --workspace-root=/absolute/path/to/workspace"
+    else
+      log_note "Export PATH=\"${bin_dir}:\$PATH\""
+      log_note "Then run: kast --help"
+      log_note "If you use the packaged skill, run: kast install skill from your workspace root"
+      log_note "Then run: kast workspace ensure --workspace-root=/absolute/path/to/workspace"
+    fi
+  fi
+  if [[ "$install_intellij" == "true" ]]; then
+    log_step "IntelliJ plugin: ${install_root}/plugins/"
   fi
 }
 

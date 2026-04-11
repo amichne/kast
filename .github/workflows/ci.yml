@@ -53,6 +53,7 @@ jobs:
           :backend-intellij:test
           :backend-intellij:buildPlugin
           :backend-intellij:verifyPluginStructure
+          :backend-intellij:verifyPluginXmlPresent
           :kast:test
           :kast:portableDistZip
 
