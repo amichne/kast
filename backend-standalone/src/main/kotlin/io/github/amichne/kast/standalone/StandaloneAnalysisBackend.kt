@@ -179,6 +179,7 @@ internal class StandaloneAnalysisBackend internal constructor(
                         target.toSymbolModel(
                             containingDeclaration = null,
                             supertypes = supertypeNames(target),
+                            includeDeclarationScope = query.includeDeclarationScope,
                         )
                     },
                 )
@@ -586,7 +587,10 @@ internal class StandaloneAnalysisBackend internal constructor(
                             ) {
                                 val name = element.name
                                 if (name != null && matcher.matches(name)) {
-                                    val symbol = element.toSymbolModel(containingDeclaration = null)
+                                    val symbol = element.toSymbolModel(
+                                        containingDeclaration = null,
+                                        includeDeclarationScope = query.includeDeclarationScope,
+                                    )
                                     if (query.kind == null || symbol.kind == query.kind) {
                                         symbols += symbol
                                     }

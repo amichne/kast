@@ -8,4 +8,5 @@ data class WorkspaceSymbolQuery(
     val kind: SymbolKind? = null,
     val maxResults: Int = 100,
     val regex: Boolean = false,
+    val includeDeclarationScope: Boolean = false,
 )

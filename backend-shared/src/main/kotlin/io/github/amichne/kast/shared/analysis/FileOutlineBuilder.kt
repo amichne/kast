@@ -61,7 +61,10 @@ object FileOutlineBuilder {
             .filter { (_, p) -> p === parent }
             .map { (decl, _) ->
                 OutlineSymbol(
-                    symbol = decl.toSymbolModel(containingDeclaration = parent?.fqName?.asString()),
+                    symbol = decl.toSymbolModel(
+                        containingDeclaration = parent?.fqName?.asString(),
+                        includeDeclarationScope = true,
+                    ),
                     children = buildTree(declarations, parent = decl),
                 )
             }

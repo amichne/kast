@@ -1,0 +1,4 @@
+interface:
+  display_name: "Author Zensical Docs"
+  short_description: "Craft polished Zensical docs"
+  default_prompt: "Use $author-zensical-docs to draft a polished Zensical documentation page with strong information architecture and tasteful customization guidance."

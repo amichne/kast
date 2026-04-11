@@ -9,6 +9,9 @@ import io.github.amichne.kast.api.SymbolVisibility
 import kotlinx.coroutines.test.TestResult
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
@@ -150,6 +153,56 @@ class StandaloneAnalysisBackendResolveSymbolTest {
             )
 
             assertEquals(SymbolVisibility.LOCAL, result.symbol.visibility)
+        }
+    }
+
+    @Test
+    fun `resolve symbol includes declarationScope when requested`(): TestResult = runTest {
+        val declarationFile = writeFile(
+            relativePath = "src/main/kotlin/sample/Greeter.kt",
+            content = $$"""
+                package sample
+
+                fun greet(name: String): String = "hi $name"
+            """.trimIndent() + "\n",
+        )
+        val queryOffset = Files.readString(declarationFile).indexOf("greet")
+        withBackend { backend ->
+            val result = backend.resolveSymbol(
+                SymbolQuery(
+                    position = FilePosition(filePath = declarationFile.toString(), offset = queryOffset),
+                    includeDeclarationScope = true,
+                ),
+            )
+
+            assertNotNull(result.symbol.declarationScope)
+            val scope = result.symbol.declarationScope!!
+            assertEquals(3, scope.startLine)
+            assertEquals(3, scope.endLine)
+            assertNotNull(scope.sourceText)
+            assertTrue(scope.sourceText!!.contains("fun greet"))
+        }
+    }
+
+    @Test
+    fun `resolve symbol omits declarationScope by default`(): TestResult = runTest {
+        val declarationFile = writeFile(
+            relativePath = "src/main/kotlin/sample/Greeter.kt",
+            content = $$"""
+                package sample
+
+                fun greet(name: String): String = "hi $name"
+            """.trimIndent() + "\n",
+        )
+        val queryOffset = Files.readString(declarationFile).indexOf("greet")
+        withBackend { backend ->
+            val result = backend.resolveSymbol(
+                SymbolQuery(
+                    position = FilePosition(filePath = declarationFile.toString(), offset = queryOffset),
+                ),
+            )
+
+            assertNull(result.symbol.declarationScope)
         }
     }
 

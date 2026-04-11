@@ -7,6 +7,13 @@
       "required": true,
       "command": "bash .agents/skills/kast/scripts/resolve-kast.sh",
       "description": "Resolve the kast CLI binary once per session, caching KAST and SKILL_ROOT into session state and exporting KAST_CLI_PATH."
+    },
+    {
+      "name": "agents",
+      "trigger": "session_end",
+      "required": true,
+      "skill": "refresh-affected-agents",
+      "description": "Refresh affected agents.md file at the end of each session to keep it up to date with the latest changes and diagnostics."
     }
   ],
   "completion_hooks": [

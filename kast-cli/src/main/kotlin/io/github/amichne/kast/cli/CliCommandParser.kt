@@ -208,6 +208,7 @@ internal data class ParsedArguments(
                 filePath = absoluteFilePath(requireOption("file-path")),
                 offset = requireInt("offset"),
             ),
+            includeDeclarationScope = optionalBoolean("include-body", false),
         )
     }
 
@@ -368,6 +369,7 @@ internal data class ParsedArguments(
             },
             maxResults = optionalInt("max-results", 100),
             regex = optionalBoolean("regex", false),
+            includeDeclarationScope = optionalBoolean("include-body", false),
         )
     }
 

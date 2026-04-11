@@ -149,6 +149,12 @@ internal object CliCommandCatalog {
         description = "Include the declaration alongside reference results. Defaults to false.",
         completionKind = CliOptionCompletionKind.BOOLEAN,
     )
+    private val includeBodyOption = CliOptionMetadata(
+        key = "include-body",
+        usage = "--include-body=true",
+        description = "Include the full declaration scope (text range and source text) on each resolved symbol. Defaults to false.",
+        completionKind = CliOptionCompletionKind.BOOLEAN,
+    )
     private val directionOption = CliOptionMetadata(
         key = "direction",
         usage = "--direction=incoming",
@@ -365,7 +371,7 @@ internal object CliCommandCatalog {
                 "$CLI_EXECUTABLE_NAME resolve --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
                 "$CLI_EXECUTABLE_NAME resolve --workspace-root=/absolute/path/to/workspace --file-path=/absolute/path/to/File.kt --offset=123",
             ),
-            options = listOf(workspaceRootOption, backendNameOption, waitTimeoutOption, noAutoStartOption, requestFileOption, filePathOption, offsetOption),
+            options = listOf(workspaceRootOption, backendNameOption, waitTimeoutOption, noAutoStartOption, requestFileOption, filePathOption, offsetOption, includeBodyOption),
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME resolve --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
             ),
@@ -504,7 +510,7 @@ internal object CliCommandCatalog {
                 "$CLI_EXECUTABLE_NAME workspace-symbol --workspace-root=/absolute/path/to/workspace --pattern=MyClass",
                 "$CLI_EXECUTABLE_NAME workspace-symbol --workspace-root=/absolute/path/to/workspace --pattern=.*Service --regex=true --kind=CLASS",
             ),
-            options = listOf(workspaceRootOption, backendNameOption, waitTimeoutOption, noAutoStartOption, patternOption, regexOption, kindOption, maxResultsOption),
+            options = listOf(workspaceRootOption, backendNameOption, waitTimeoutOption, noAutoStartOption, patternOption, regexOption, kindOption, maxResultsOption, includeBodyOption),
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME workspace-symbol --workspace-root=/absolute/path/to/workspace --pattern=MyClass",
             ),
