@@ -38,12 +38,10 @@ def case_result(
 
 class ReportCliTest(unittest.TestCase):
     def test_accepts_jsonl_case_results_with_blank_lines(self) -> None:
-        raw_results = "\n".join(
+        raw_results = json.dumps(
             [
-                json.dumps(case_result("resolve-symbol", "Resolve symbol", passed=True)),
-                "",
-                json.dumps(case_result("find-callers", "Find callers", passed=False)),
-                "",
+                case_result("resolve-symbol", "Resolve symbol", passed=True),
+                case_result("find-callers", "Find callers", passed=False),
             ]
         )
 
