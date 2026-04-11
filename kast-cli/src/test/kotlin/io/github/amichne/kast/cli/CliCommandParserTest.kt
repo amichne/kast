@@ -457,4 +457,53 @@ class CliCommandParserTest {
         assertEquals(SymbolKind.CLASS, symbolCommand.query.kind)
         assertEquals(50, symbolCommand.query.maxResults)
     }
+
+    @Test
+    fun `resolve parses include-body option`() {
+        val command = parser.parse(
+            arrayOf(
+                "resolve",
+                "--workspace-root=$tempDir",
+                "--file-path=$tempDir/Sample.kt",
+                "--offset=12",
+                "--include-body=true",
+            ),
+        )
+
+        assertTrue(command is CliCommand.ResolveSymbol)
+        val resolveCommand = command as CliCommand.ResolveSymbol
+        assertEquals(true, resolveCommand.query.includeDeclarationScope)
+    }
+
+    @Test
+    fun `resolve defaults include-body to false`() {
+        val command = parser.parse(
+            arrayOf(
+                "resolve",
+                "--workspace-root=$tempDir",
+                "--file-path=$tempDir/Sample.kt",
+                "--offset=12",
+            ),
+        )
+
+        assertTrue(command is CliCommand.ResolveSymbol)
+        val resolveCommand = command as CliCommand.ResolveSymbol
+        assertEquals(false, resolveCommand.query.includeDeclarationScope)
+    }
+
+    @Test
+    fun `workspace symbol parses include-body option`() {
+        val command = parser.parse(
+            arrayOf(
+                "workspace-symbol",
+                "--workspace-root=$tempDir",
+                "--pattern=MyClass",
+                "--include-body=true",
+            ),
+        )
+
+        assertTrue(command is CliCommand.WorkspaceSymbol)
+        val symbolCommand = command as CliCommand.WorkspaceSymbol
+        assertEquals(true, symbolCommand.query.includeDeclarationScope)
+    }
 }

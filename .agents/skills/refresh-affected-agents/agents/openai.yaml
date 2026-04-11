@@ -1,0 +1,4 @@
+interface:
+  display_name: "Refresh Affected AGENTS"
+  short_description: "Update AGENTS.md from git diff changes"
+  default_prompt: "Use $refresh-affected-agents to update the AGENTS.md files implied by the current git diff."

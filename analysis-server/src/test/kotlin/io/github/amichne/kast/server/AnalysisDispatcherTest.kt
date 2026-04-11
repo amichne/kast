@@ -97,6 +97,40 @@ class AnalysisDispatcherTest {
     }
 
     @Test
+    fun `symbol resolve with includeDeclarationScope passes through`() {
+        val file = sampleFile()
+
+        val result = dispatchSuccess<SymbolResult>(
+            method = "symbol/resolve",
+            params = json.encodeToJsonElement(
+                SymbolQuery.serializer(),
+                SymbolQuery(
+                    position = FilePosition(filePath = file.toString(), offset = 20),
+                    includeDeclarationScope = true,
+                ),
+            ),
+        )
+
+        assertEquals("sample.greet", result.symbol.fqName)
+    }
+
+    @Test
+    fun `file outline includes declarationScope on symbols`() {
+        val file = sampleFile()
+
+        val result = dispatchSuccess<FileOutlineResult>(
+            method = "file-outline",
+            params = json.encodeToJsonElement(
+                FileOutlineQuery.serializer(),
+                FileOutlineQuery(filePath = file.toString()),
+            ),
+        )
+
+        assertTrue(result.symbols.isNotEmpty())
+        assertEquals("sample.greet", result.symbols.first().symbol.fqName)
+    }
+
+    @Test
     fun `references dispatches without HTTP`() {
         val file = sampleFile()
 

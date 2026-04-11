@@ -9,6 +9,7 @@ import com.intellij.psi.PsiModifier
 import com.intellij.psi.PsiModifierListOwner
 import com.intellij.psi.PsiNameIdentifierOwner
 import com.intellij.psi.PsiNamedElement
+import io.github.amichne.kast.api.DeclarationScope
 import io.github.amichne.kast.api.FqName
 import io.github.amichne.kast.api.Location
 import io.github.amichne.kast.api.NormalizedPath
@@ -66,6 +67,7 @@ fun resolveTarget(file: com.intellij.psi.PsiFile, offset: Int): PsiElement {
 fun PsiElement.toSymbolModel(
     containingDeclaration: String?,
     supertypes: List<String>? = null,
+    includeDeclarationScope: Boolean = false,
 ): Symbol = Symbol(
     fqName = fqName(),
     kind = kind(),
@@ -74,7 +76,30 @@ fun PsiElement.toSymbolModel(
     containingDeclaration = containingDeclaration,
     supertypes = supertypes,
     visibility = visibility(),
+    declarationScope = if (includeDeclarationScope) toDeclarationScope() else null,
 )
+
+/**
+ * Builds a [DeclarationScope] from this element's full text range (not name range).
+ * Line numbers are 1-indexed. [includeSourceText] controls whether the full declaration
+ * source is included (can be large for class bodies).
+ */
+fun PsiElement.toDeclarationScope(includeSourceText: Boolean = true): DeclarationScope {
+    val file = containingFile
+    val content = file.viewProvider.contents
+    val range = textRange
+    val startOffset = range.startOffset.coerceIn(0, content.length)
+    val endOffset = range.endOffset.coerceIn(startOffset, content.length)
+    val startLine = content.subSequence(0, startOffset).count { it == '\n' } + 1
+    val endLine = content.subSequence(0, endOffset).count { it == '\n' } + 1
+    return DeclarationScope(
+        startOffset = startOffset,
+        endOffset = endOffset,
+        startLine = startLine,
+        endLine = endLine,
+        sourceText = if (includeSourceText) content.substring(startOffset, endOffset) else null,
+    )
+}
 
 private fun PsiElement.nameRange(): TextRange = when (this) {
     is KtNamedDeclaration -> nameIdentifier?.textRange ?: textRange

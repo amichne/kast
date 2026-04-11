@@ -11,4 +11,5 @@ data class Symbol(
     val containingDeclaration: String? = null,
     val supertypes: List<String>? = null,
     val visibility: SymbolVisibility? = null,
+    val declarationScope: DeclarationScope? = null,
 )
