@@ -1,8 +1,0 @@
-2026-04-13T01:16:50.3130000Z Requested labels: ubuntu-latest
-2026-04-13T01:16:50.3130000Z Job defined at: amichne/kast/.github/workflows/ci.yml@refs/pull/54/merge
-2026-04-13T01:16:50.3130000Z Waiting for a runner to pick up this job...
-2026-04-13T01:16:50.3110000Z Evaluating cli-smoke.if
-2026-04-13T01:16:50.3110000Z Evaluating: success()
-2026-04-13T01:16:50.3110000Z Result: true
-2026-04-13T01:16:50.7570000Z Job is waiting for a hosted runner to come online.
-2026-04-13T01:16:50.7580000Z Job is about to start running on the hosted runner: GitHub Actions 1000003207
