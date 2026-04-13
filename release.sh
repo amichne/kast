@@ -37,10 +37,18 @@ jvm_only="false"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --tag=*)
+      tag="${1#*=}"
+      shift
+      ;;
     --tag)
       [[ $# -ge 2 ]] || die "Missing value for --tag"
       tag="$2"
       shift 2
+      ;;
+    --platform-id=*)
+      platform_id="${1#*=}"
+      shift
       ;;
     --platform-id)
       [[ $# -ge 2 ]] || die "Missing value for --platform-id"
