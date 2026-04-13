@@ -1,5 +1,5 @@
 <idea-plugin>
-    <id>io.github.amichne.kast.intellij</id>
+    <id>io.github.amichne.kast</id>
     <name>Kast Analysis Backend</name>
     <vendor url="https://github.com/amichne/kast">amichne</vendor>
     <description>Kast Kotlin analysis backend running inside IntelliJ IDEA</description>
