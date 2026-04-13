@@ -33,15 +33,10 @@ jobs:
           native-image-job-reports: "true"
 
       - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: "9.4.0"
 
       - uses: actions/cache@v4
         with:
-          path: |
-            ~/.gradle/kast/intellij-distributions
-            backend-standalone/build/compat
-            backend-standalone/build/legacy-plugin-classes
+          path: ~/.gradle/kast/intellij-distributions
           key: idea-dist-${{ hashFiles('gradle/libs.versions.toml') }}
 
       - name: Build and test Kast
@@ -83,11 +78,6 @@ jobs:
     name: Eval agent routing
     runs-on: ubuntu-latest
     needs: cli-smoke
-    if: >
-      github.event_name == 'push' ||
-      contains(github.event.pull_request.changed_files, '.agents/') ||
-      contains(github.event.pull_request.changed_files, 'evals/') ||
-      contains(github.event.pull_request.changed_files, 'AGENTS.md')
     steps:
       - uses: actions/checkout@v5
 
@@ -97,8 +87,6 @@ jobs:
           java-version: "21"
 
       - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: "9.4.0"
 
       - name: Build kast
         run: ./gradlew --no-daemon :kast:installDist
