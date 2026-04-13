@@ -147,11 +147,11 @@ else
   log_note "Filters:     one random declaration per discovered source set"
 fi
 
-# Daemon log path for diagnostics on failure
-DAEMON_LOG="$(python3 -c "import hashlib,os; wr=os.path.realpath('$WORKSPACE_ROOT'); print(os.path.expanduser('~/.config/kast/logs/' + hashlib.sha256(wr.encode()).hexdigest()[:12] + '/standalone-daemon.log'))" 2>/dev/null || echo '')"
+# Daemon log path for diagnostics on failure (populated after workspace ensure)
+DAEMON_LOG=""
 
 dump_daemon_log() {
-  if [ -f "$DAEMON_LOG" ]; then
+  if [[ -n "$DAEMON_LOG" && -f "$DAEMON_LOG" ]]; then
     log "--- Last 60 lines of daemon log ---"
     tail -n 60 "$DAEMON_LOG" >&2 || true
   fi
@@ -200,6 +200,15 @@ else
   dump_daemon_log
   die "Cannot continue without a ready workspace"
 fi
+
+# Extract daemon log path from ensure response
+DAEMON_LOG="$(python3 -c "
+import json, sys
+from pathlib import Path
+data = json.loads(Path(sys.argv[1]).read_text('utf-8'))
+selected = data.get('selected', data)
+print(data.get('logFile', selected.get('logFile', '')))
+" "$OUTDIR/ensure.json" 2>/dev/null || echo '')"
 
 assert_json "ensure: state=READY" "$OUTDIR/ensure.json" "
 s = data.get('selected', data)
@@ -411,7 +420,7 @@ assert data.get('symbol', {}).get('fqName'), 'fqName is empty'
 "
   assert_json "$ss_tag resolve: has kind" "$ss_outdir/resolve.json" "
 kind = data.get('symbol', {}).get('kind', '')
-valid = ('CLASS','INTERFACE','OBJECT','FUNCTION','PROPERTY','CONSTRUCTOR','ENUM_ENTRY','TYPE_ALIAS','PACKAGE','PARAMETER','LOCAL_VARIABLE','UNKNOWN')
+valid = ('CLASS','INTERFACE','OBJECT','FUNCTION','PROPERTY','PARAMETER','UNKNOWN')
 assert kind in valid, f'unexpected kind: {kind}'
 "
   assert_json "$ss_tag resolve: has location" "$ss_outdir/resolve.json" "
