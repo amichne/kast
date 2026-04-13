@@ -33,6 +33,7 @@ dependencies {
     }
 
     testImplementation(catalog.findLibrary("junit-jupiter-api").get())
+    testImplementation(catalog.findLibrary("junit4").get())
     testImplementation(catalog.findLibrary("coroutines-test").get())
     testRuntimeOnly(catalog.findLibrary("junit-jupiter-engine").get())
     testRuntimeOnly(catalog.findLibrary("junit-platform-launcher").get())

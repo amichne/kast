@@ -15,5 +15,6 @@
     <extensions defaultExtensionNs="com.intellij">
         <projectService serviceImplementation="io.github.amichne.kast.intellij.KastPluginService"/>
         <postStartupActivity implementation="io.github.amichne.kast.intellij.KastStartupActivity"/>
+        <supportsKotlinPluginMode supportsK1="false" supportsK2="true" />
     </extensions>
 </idea-plugin>

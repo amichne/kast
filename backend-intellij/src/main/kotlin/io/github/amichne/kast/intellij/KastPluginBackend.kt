@@ -341,7 +341,12 @@ internal class KastPluginBackend(
                     if (ktElement is org.jetbrains.kotlin.psi.KtNamedDeclaration) {
                         val filePath = ktElement.containingFile?.virtualFile?.path ?: continue
                         if (!filePath.startsWith(workspacePrefix) && filePath != workspaceRoot.toString()) continue
-                        val symbol = ktElement.toSymbolModel(containingDeclaration = null)
+                        val symbol = query.withDeclarationScopeRequested { includeDeclarationScope ->
+                            ktElement.toSymbolModel(
+                                containingDeclaration = null,
+                                includeDeclarationScope = includeDeclarationScope,
+                            )
+                        }
                         if (query.kind == null || symbol.kind == query.kind) {
                             symbols += symbol
                         }
@@ -358,7 +363,12 @@ internal class KastPluginBackend(
                     if (ktElement is org.jetbrains.kotlin.psi.KtNamedDeclaration) {
                         val filePath = ktElement.containingFile?.virtualFile?.path ?: continue
                         if (!filePath.startsWith(workspacePrefix) && filePath != workspaceRoot.toString()) continue
-                        val symbol = ktElement.toSymbolModel(containingDeclaration = null)
+                        val symbol = query.withDeclarationScopeRequested { includeDeclarationScope ->
+                            ktElement.toSymbolModel(
+                                containingDeclaration = null,
+                                includeDeclarationScope = includeDeclarationScope,
+                            )
+                        }
                         if (query.kind == null || symbol.kind == query.kind) {
                             symbols += symbol
                         }
@@ -375,7 +385,12 @@ internal class KastPluginBackend(
                     if (ktElement is org.jetbrains.kotlin.psi.KtNamedDeclaration) {
                         val filePath = ktElement.containingFile?.virtualFile?.path ?: continue
                         if (!filePath.startsWith(workspacePrefix) && filePath != workspaceRoot.toString()) continue
-                        val symbol = ktElement.toSymbolModel(containingDeclaration = null)
+                        val symbol = query.withDeclarationScopeRequested { includeDeclarationScope ->
+                            ktElement.toSymbolModel(
+                                containingDeclaration = null,
+                                includeDeclarationScope = includeDeclarationScope,
+                            )
+                        }
                         if (query.kind == null || symbol.kind == query.kind) {
                             symbols += symbol
                         }
@@ -401,3 +416,7 @@ internal class KastPluginBackend(
         private const val BACKEND_VERSION = "0.1.0-SNAPSHOT"
     }
 }
+
+internal inline fun <T> WorkspaceSymbolQuery.withDeclarationScopeRequested(
+    build: (includeDeclarationScope: Boolean) -> T,
+): T = build(includeDeclarationScope)
