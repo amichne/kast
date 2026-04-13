@@ -52,6 +52,7 @@ internal class IntelliJCallEdgeResolver(
             // lock can be acquired between references.
             val edge = ApplicationManager.getApplication().runReadAction<CallEdge?> {
                 val element = ref.element
+                if (!element.isValid) return@runReadAction null
                 val filePath = element.resolvedFilePath().value
                 if (visitedFiles.add(filePath)) {
                     onFileVisited(filePath)
