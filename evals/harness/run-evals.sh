@@ -348,9 +348,15 @@ except Exception:
     pass
 json.dump({
     'case_id': case_id,
-    'name':    case_name,
-    'status':  status,
-    'detail':  detail,
+    'case_name': case_name,
+    'suite': '$SUITE',
+    'assertions': [{
+        'assertion': case_name,
+        'passed': status == 'pass',
+        'expected': 'pass',
+        'actual': status,
+        'message': detail or status,
+    }],
 }, sys.stdout)
 sys.stdout.write('\n')
 " "$CASE_ID" "$CASE_NAME" "$CASE_STATUS" "$ASSERT_OUTPUT" >> "$RESULTS_JSONL"
@@ -360,7 +366,11 @@ done < "$WORK_DIR/cases.jsonl"
 # ── Report ───────────────────────────────────────────────────────────────
 log_section "Results"
 
-python3 "$HARNESS_DIR/report.py" --format="$FORMAT" < "$RESULTS_JSONL" 2>&1 || {
+python3 -c "
+import json, sys
+results = [json.loads(line) for line in sys.stdin if line.strip()]
+json.dump(results, sys.stdout)
+" < "$RESULTS_JSONL" | python3 "$HARNESS_DIR/report.py" --format="$FORMAT" 2>&1 || {
   # Fallback: emit raw JSONL if report.py is a placeholder / fails
   log_note "report.py failed; falling back to raw results"
   echo "---"
