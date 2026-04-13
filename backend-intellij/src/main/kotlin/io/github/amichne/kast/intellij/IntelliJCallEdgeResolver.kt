@@ -4,6 +4,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiRecursiveElementWalkingVisitor
+import com.intellij.psi.PsiReference
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.ReferencesSearch
 import io.github.amichne.kast.shared.analysis.callHierarchyDeclaration
@@ -32,29 +33,42 @@ internal class IntelliJCallEdgeResolver(
         target: PsiElement,
         timeoutCheck: () -> Boolean,
         onFileVisited: (filePath: String) -> Unit,
-    ): List<CallEdge> = ApplicationManager.getApplication().runReadAction<List<CallEdge>> {
-        val edges = mutableListOf<CallEdge>()
-        val visitedFiles = mutableSetOf<String>()
-        val searchScope = GlobalSearchScope.projectScope(project)
-
-        ReferencesSearch.search(target, searchScope).forEach { ref ->
-            if (timeoutCheck()) return@runReadAction edges
-            val element = ref.element
-            val filePath = element.resolvedFilePath().value
-            if (visitedFiles.add(filePath)) {
-                onFileVisited(filePath)
-            }
-            if (!filePath.startsWith(workspacePrefix)) return@forEach
-
-            val caller = element.callHierarchyDeclaration() ?: return@forEach
-            edges += CallEdge(
-                target = caller,
-                symbol = caller.toSymbolModel(containingDeclaration = null),
-                callSite = ref.callSiteLocation(),
-            )
+    ): List<CallEdge> {
+        // Collect all raw references eagerly in one short read action. This trades
+        // peak memory (all refs held at once) for shorter lock duration: holding the
+        // read lock only for the initial findAll() call instead of the full search
+        // loop prevents starvation of the IDE write lock during recursive traversal.
+        val refs = ApplicationManager.getApplication().runReadAction<Collection<PsiReference>> {
+            val searchScope = GlobalSearchScope.projectScope(project)
+            ReferencesSearch.search(target, searchScope).findAll()
         }
 
-        edges
+        val edges = mutableListOf<CallEdge>()
+        val visitedFiles = mutableSetOf<String>()
+
+        for (ref in refs) {
+            if (timeoutCheck()) break
+            // Process each reference in its own short read action so the IDE write
+            // lock can be acquired between references.
+            val edge = ApplicationManager.getApplication().runReadAction<CallEdge?> {
+                val element = ref.element
+                if (!element.isValid) return@runReadAction null
+                val filePath = element.resolvedFilePath().value
+                if (visitedFiles.add(filePath)) {
+                    onFileVisited(filePath)
+                }
+                if (!filePath.startsWith(workspacePrefix)) return@runReadAction null
+                val caller = element.callHierarchyDeclaration() ?: return@runReadAction null
+                CallEdge(
+                    target = caller,
+                    symbol = caller.toSymbolModel(containingDeclaration = null),
+                    callSite = ref.callSiteLocation(),
+                )
+            }
+            edge?.let { edges += it }
+        }
+
+        return edges
     }
 
     override fun outgoingEdges(
