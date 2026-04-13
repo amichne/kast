@@ -1,0 +1,24 @@
+﻿2026-04-13T01:17:04.6204490Z ##[group]Run actions/cache@v4
+2026-04-13T01:17:04.6204740Z with:
+2026-04-13T01:17:04.6229080Z   path: ~/.gradle/kast/intellij-distributions
+2026-04-13T01:17:04.6229500Z   key: idea-dist-1e74a20ed57ea92fefe485f08ba1a80dd1dfc9497c9192495883dacc1d89250d
+2026-04-13T01:17:04.6229850Z   enableCrossOsArchive: false
+2026-04-13T01:17:04.6230020Z   fail-on-cache-miss: false
+2026-04-13T01:17:04.6230190Z   lookup-only: false
+2026-04-13T01:17:04.6230330Z   save-always: false
+2026-04-13T01:17:04.6230490Z env:
+2026-04-13T01:17:04.6230620Z   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+2026-04-13T01:17:04.6231230Z   GRAALVM_HOME: /Users/runner/hostedtoolcache/graalvm-community-jdk-21.0.2_macos-aarch64_bin/21.0.2/arm64/graalvm-community-openjdk-21.0.2+13.1/Contents/Home
+2026-04-13T01:17:04.6232140Z   JAVA_HOME: /Users/runner/hostedtoolcache/graalvm-community-jdk-21.0.2_macos-aarch64_bin/21.0.2/arm64/graalvm-community-openjdk-21.0.2+13.1/Contents/Home
+2026-04-13T01:17:04.6232800Z   NATIVE_IMAGE_CONFIG_FILE: /var/folders/tb/y368xp_x10s3ty1b_mtl5mxr0000gn/T/native-image-options.properties
+2026-04-13T01:17:04.6233400Z   GRADLE_ACTION_ID: gradle/actions/setup-gradle
+2026-04-13T01:17:04.6233700Z   GRADLE_USER_HOME: /Users/runner/.gradle
+2026-04-13T01:17:04.6233930Z   GRADLE_BUILD_ACTION_SETUP_COMPLETED: true
+2026-04-13T01:17:04.6234160Z   GRADLE_BUILD_ACTION_CACHE_RESTORED: true
+2026-04-13T01:17:04.6234490Z   DEVELOCITY_INJECTION_INIT_SCRIPT_NAME: gradle-actions.inject-develocity.init.gradle
+2026-04-13T01:17:04.6234850Z   DEVELOCITY_INJECTION_CUSTOM_VALUE: gradle-actions
+2026-04-13T01:17:04.6235090Z   GITHUB_DEPENDENCY_GRAPH_ENABLED: false
+2026-04-13T01:17:04.6235280Z ##[endgroup]
+2026-04-13T01:17:04.7370400Z (node:9065) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-04-13T01:17:04.7371310Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-04-13T01:17:04.9763690Z Cache not found for input keys: idea-dist-1e74a20ed57ea92fefe485f08ba1a80dd1dfc9497c9192495883dacc1d89250d

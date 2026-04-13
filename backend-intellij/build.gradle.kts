@@ -1,4 +1,5 @@
 import java.util.zip.ZipFile
+import java.util.jar.JarInputStream
 
 plugins {
     kotlin("jvm")
@@ -59,18 +60,37 @@ tasks.register("verifyPluginXmlPresent") {
         val distDir = layout.buildDirectory.dir("distributions").get().asFile
         val pluginZip = distDir.listFiles()?.firstOrNull { it.name.endsWith(".zip") }
             ?: error("No plugin zip found in $distDir")
-        val zipFile = ZipFile(pluginZip)
-        val entry = zipFile.entries().asSequence().firstOrNull { it.name.endsWith("plugin.xml") }
-            ?: error("plugin.xml not found in ${pluginZip.name}")
-        val content = zipFile.getInputStream(entry).bufferedReader().readText()
+
+        val content = ZipFile(pluginZip).use { zipFile ->
+            zipFile.readPluginXmlContent()
+        }
         check("KastPluginService" in content) { "plugin.xml is missing KastPluginService extension" }
         check("KastStartupActivity" in content) { "plugin.xml is missing KastStartupActivity extension" }
         check("org.jetbrains.kotlin" in content) { "plugin.xml is missing Kotlin plugin dependency" }
-        zipFile.close()
     }
 }
 
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
     systemProperty("idea.home.path", layout.buildDirectory.dir("idea-sandbox").get().asFile.absolutePath)
+}
+
+private fun ZipFile.readPluginXmlContent(): String {
+    entries().asSequence()
+        .firstOrNull { entry -> !entry.isDirectory && entry.name == "META-INF/plugin.xml" }
+        ?.let { entry -> return getInputStream(entry).bufferedReader().use { reader -> reader.readText() } }
+
+    entries().asSequence()
+        .filter { entry -> !entry.isDirectory && entry.name.endsWith(".jar") }
+        .forEach { jarEntry ->
+            JarInputStream(getInputStream(jarEntry)).use { jarStream ->
+                generateSequence { jarStream.nextJarEntry }
+                    .firstOrNull { entry -> !entry.isDirectory && entry.name == "META-INF/plugin.xml" }
+                    ?.let {
+                        return jarStream.bufferedReader().use { reader -> reader.readText() }
+                    }
+            }
+        }
+
+    error("plugin.xml not found in ${name}")
 }

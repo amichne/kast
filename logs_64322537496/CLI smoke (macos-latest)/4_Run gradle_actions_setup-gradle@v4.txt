@@ -1,0 +1,38 @@
+﻿2026-04-13T01:17:03.6321550Z ##[group]Run gradle/actions/setup-gradle@v4
+2026-04-13T01:17:03.6321870Z with:
+2026-04-13T01:17:03.6322050Z   cache-disabled: false
+2026-04-13T01:17:03.6322320Z   cache-read-only: true
+2026-04-13T01:17:03.6322580Z   cache-write-only: false
+2026-04-13T01:17:03.6322740Z   cache-overwrite-existing: false
+2026-04-13T01:17:03.6322970Z   cache-cleanup: on-success
+2026-04-13T01:17:03.6323270Z   gradle-home-cache-includes: caches
+notifications
+
+2026-04-13T01:17:03.6323590Z   add-job-summary: always
+2026-04-13T01:17:03.6323820Z   add-job-summary-as-pr-comment: never
+2026-04-13T01:17:03.6324060Z   dependency-graph: disabled
+2026-04-13T01:17:03.6324390Z   dependency-graph-report-dir: dependency-graph-reports
+2026-04-13T01:17:03.6324730Z   dependency-graph-continue-on-failure: true
+2026-04-13T01:17:03.6325050Z   build-scan-publish: false
+2026-04-13T01:17:03.6325220Z   validate-wrappers: true
+2026-04-13T01:17:03.6325380Z   allow-snapshot-wrappers: false
+2026-04-13T01:17:03.6325770Z   gradle-home-cache-strict-match: false
+2026-04-13T01:17:03.6326100Z   workflow-job-context: {
+  "os": "macos-latest"
+}
+2026-04-13T01:17:03.6326570Z   github-token: ***
+2026-04-13T01:17:03.6326690Z env:
+2026-04-13T01:17:03.6326830Z   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+2026-04-13T01:17:03.6327480Z   GRAALVM_HOME: /Users/runner/hostedtoolcache/graalvm-community-jdk-21.0.2_macos-aarch64_bin/21.0.2/arm64/graalvm-community-openjdk-21.0.2+13.1/Contents/Home
+2026-04-13T01:17:03.6328320Z   JAVA_HOME: /Users/runner/hostedtoolcache/graalvm-community-jdk-21.0.2_macos-aarch64_bin/21.0.2/arm64/graalvm-community-openjdk-21.0.2+13.1/Contents/Home
+2026-04-13T01:17:03.6329030Z   NATIVE_IMAGE_CONFIG_FILE: /var/folders/tb/y368xp_x10s3ty1b_mtl5mxr0000gn/T/native-image-options.properties
+2026-04-13T01:17:03.6329520Z ##[endgroup]
+2026-04-13T01:17:04.0666200Z Gradle User Home already exists at /Users/runner/.gradle
+2026-04-13T01:17:04.0714700Z Wrote default JDK locations to /Users/runner/.m2/toolchains.xml
+2026-04-13T01:17:04.0719680Z ##[group]Restore Gradle state from cache
+2026-04-13T01:17:04.3290840Z Gradle User Home cache not found. Will initialize empty.
+2026-04-13T01:17:04.3292930Z ##[endgroup]
+2026-04-13T01:17:04.3422370Z ##[group]All Gradle Wrapper jars are valid
+2026-04-13T01:17:04.3433100Z ✓ Found known Gradle Wrapper JAR files:
+2026-04-13T01:17:04.3433550Z   7d3a4ac4de1c32b59bc6a4eb8ecb8e612ccd0cf1ae1e99f66902da64df296172 gradle/wrapper/gradle-wrapper.jar
+2026-04-13T01:17:04.3434260Z ##[endgroup]

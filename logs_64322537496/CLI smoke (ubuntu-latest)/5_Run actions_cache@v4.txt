@@ -1,0 +1,24 @@
+﻿2026-04-13T01:17:36.8353046Z ##[group]Run actions/cache@v4
+2026-04-13T01:17:36.8353403Z with:
+2026-04-13T01:17:36.8353672Z   path: ~/.gradle/kast/intellij-distributions
+2026-04-13T01:17:36.8354186Z   key: idea-dist-1e74a20ed57ea92fefe485f08ba1a80dd1dfc9497c9192495883dacc1d89250d
+2026-04-13T01:17:36.8354683Z   enableCrossOsArchive: false
+2026-04-13T01:17:36.8354982Z   fail-on-cache-miss: false
+2026-04-13T01:17:36.8355262Z   lookup-only: false
+2026-04-13T01:17:36.8355509Z   save-always: false
+2026-04-13T01:17:36.8355745Z env:
+2026-04-13T01:17:36.8355987Z   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+2026-04-13T01:17:36.8356643Z   GRAALVM_HOME: /opt/hostedtoolcache/graalvm-community-jdk-21.0.2_linux-x64_bin/21.0.2/x64/graalvm-community-openjdk-21.0.2+13.1
+2026-04-13T01:17:36.8357922Z   JAVA_HOME: /opt/hostedtoolcache/graalvm-community-jdk-21.0.2_linux-x64_bin/21.0.2/x64/graalvm-community-openjdk-21.0.2+13.1
+2026-04-13T01:17:36.8358708Z   NATIVE_IMAGE_CONFIG_FILE: /tmp/native-image-options.properties
+2026-04-13T01:17:36.8359156Z   GRADLE_ACTION_ID: gradle/actions/setup-gradle
+2026-04-13T01:17:36.8359577Z   GRADLE_USER_HOME: /home/runner/.gradle
+2026-04-13T01:17:36.8359916Z   GRADLE_BUILD_ACTION_SETUP_COMPLETED: true
+2026-04-13T01:17:36.8360262Z   GRADLE_BUILD_ACTION_CACHE_RESTORED: true
+2026-04-13T01:17:36.8360757Z   DEVELOCITY_INJECTION_INIT_SCRIPT_NAME: gradle-actions.inject-develocity.init.gradle
+2026-04-13T01:17:36.8361295Z   DEVELOCITY_INJECTION_CUSTOM_VALUE: gradle-actions
+2026-04-13T01:17:36.8361671Z   GITHUB_DEPENDENCY_GRAPH_ENABLED: false
+2026-04-13T01:17:36.8361986Z ##[endgroup]
+2026-04-13T01:17:36.9828517Z (node:2467) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-04-13T01:17:36.9829628Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-04-13T01:17:37.0757037Z Cache not found for input keys: idea-dist-1e74a20ed57ea92fefe485f08ba1a80dd1dfc9497c9192495883dacc1d89250d

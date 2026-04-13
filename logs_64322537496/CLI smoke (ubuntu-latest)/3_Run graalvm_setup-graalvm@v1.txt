@@ -1,0 +1,24 @@
+﻿2026-04-13T01:16:55.6336879Z ##[group]Run graalvm/setup-graalvm@v1
+2026-04-13T01:16:55.6337378Z with:
+2026-04-13T01:16:55.6338032Z   distribution: graalvm-community
+2026-04-13T01:16:55.6338454Z   java-version: 21
+2026-04-13T01:16:55.6339055Z   github-token: ***
+2026-04-13T01:16:55.6339480Z   native-image-job-reports: true
+2026-04-13T01:16:55.6339965Z   java-package: jdk
+2026-04-13T01:16:55.6340290Z   set-java-home: true
+2026-04-13T01:16:55.6340622Z   check-for-updates: true
+2026-04-13T01:16:55.6340975Z   native-image-musl: false
+2026-04-13T01:16:55.6341381Z   native-image-pr-reports: false
+2026-04-13T01:16:55.6341900Z   native-image-pr-reports-update-existing: false
+2026-04-13T01:16:55.6342452Z   native-image-enable-sbom: false
+2026-04-13T01:16:55.6342938Z env:
+2026-04-13T01:16:55.6343286Z   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+2026-04-13T01:16:55.6343728Z ##[endgroup]
+2026-04-13T01:16:58.1204798Z [command]/usr/bin/tar xz --warning=no-unknown-keyword --overwrite -C /home/runner/work/_temp/88b694a8-9279-4163-8719-9a77098c9dea -f /home/runner/work/_temp/01aa5c6a-005b-4b0e-8dc0-9e1b6451a832/.gz
+2026-04-13T01:17:01.8184171Z Adding graalvm-community-jdk-21.0.2_linux-x64_bin 21.0.2 to tool-cache ...
+2026-04-13T01:17:03.8546268Z ##[group]Successfully set up 'graalvm-community-openjdk-21.0.2+13.1'
+2026-04-13T01:17:03.8548547Z [command]/opt/hostedtoolcache/graalvm-community-jdk-21.0.2_linux-x64_bin/21.0.2/x64/graalvm-community-openjdk-21.0.2+13.1/bin/java --version
+2026-04-13T01:17:03.9154270Z openjdk 21.0.2 2024-01-16
+2026-04-13T01:17:03.9157126Z OpenJDK Runtime Environment GraalVM CE 21.0.2+13.1 (build 21.0.2+13-jvmci-23.1-b30)
+2026-04-13T01:17:03.9158751Z OpenJDK 64-Bit Server VM GraalVM CE 21.0.2+13.1 (build 21.0.2+13-jvmci-23.1-b30, mixed mode, sharing)
+2026-04-13T01:17:04.1271464Z ##[endgroup]

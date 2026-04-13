@@ -1,0 +1,90 @@
+﻿2026-04-13T01:16:54.9816953Z ##[group]Run actions/checkout@v5
+2026-04-13T01:16:54.9818095Z with:
+2026-04-13T01:16:54.9818549Z   repository: amichne/kast
+2026-04-13T01:16:54.9819215Z   token: ***
+2026-04-13T01:16:54.9819629Z   ssh-strict: true
+2026-04-13T01:16:54.9820034Z   ssh-user: git
+2026-04-13T01:16:54.9820465Z   persist-credentials: true
+2026-04-13T01:16:54.9820940Z   clean: true
+2026-04-13T01:16:54.9821363Z   sparse-checkout-cone-mode: true
+2026-04-13T01:16:54.9821845Z   fetch-depth: 1
+2026-04-13T01:16:54.9822261Z   fetch-tags: false
+2026-04-13T01:16:54.9822676Z   show-progress: true
+2026-04-13T01:16:54.9823105Z   lfs: false
+2026-04-13T01:16:54.9823488Z   submodules: false
+2026-04-13T01:16:54.9823902Z   set-safe-directory: true
+2026-04-13T01:16:54.9824895Z env:
+2026-04-13T01:16:54.9825372Z   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+2026-04-13T01:16:54.9825881Z ##[endgroup]
+2026-04-13T01:16:55.0791082Z Syncing repository: amichne/kast
+2026-04-13T01:16:55.0793869Z ##[group]Getting Git version info
+2026-04-13T01:16:55.0794800Z Working directory is '/home/runner/work/kast/kast'
+2026-04-13T01:16:55.0795802Z [command]/usr/bin/git version
+2026-04-13T01:16:55.0803895Z git version 2.53.0
+2026-04-13T01:16:55.0856381Z ##[endgroup]
+2026-04-13T01:16:55.0873937Z Temporarily overriding HOME='/home/runner/work/_temp/160cf0e1-95a1-4f28-b6b2-bfde1c5c07a8' before making global git config changes
+2026-04-13T01:16:55.0875681Z Adding repository directory to the temporary git global config as a safe directory
+2026-04-13T01:16:55.0879667Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/kast/kast
+2026-04-13T01:16:55.0916543Z Deleting the contents of '/home/runner/work/kast/kast'
+2026-04-13T01:16:55.0920665Z ##[group]Initializing the repository
+2026-04-13T01:16:55.0925232Z [command]/usr/bin/git init /home/runner/work/kast/kast
+2026-04-13T01:16:55.1035575Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-04-13T01:16:55.1038078Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-04-13T01:16:55.1039841Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-04-13T01:16:55.1041133Z hint: call:
+2026-04-13T01:16:55.1041807Z hint:
+2026-04-13T01:16:55.1042929Z hint: 	git config --global init.defaultBranch <name>
+2026-04-13T01:16:55.1044136Z hint:
+2026-04-13T01:16:55.1045259Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-04-13T01:16:55.1046755Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-04-13T01:16:55.1048341Z hint:
+2026-04-13T01:16:55.1049429Z hint: 	git branch -m <name>
+2026-04-13T01:16:55.1050526Z hint:
+2026-04-13T01:16:55.1051737Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-04-13T01:16:55.1052893Z Initialized empty Git repository in /home/runner/work/kast/kast/.git/
+2026-04-13T01:16:55.1054599Z [command]/usr/bin/git remote add origin https://github.com/amichne/kast
+2026-04-13T01:16:55.1083070Z ##[endgroup]
+2026-04-13T01:16:55.1083854Z ##[group]Disabling automatic garbage collection
+2026-04-13T01:16:55.1088266Z [command]/usr/bin/git config --local gc.auto 0
+2026-04-13T01:16:55.1117899Z ##[endgroup]
+2026-04-13T01:16:55.1118671Z ##[group]Setting up auth
+2026-04-13T01:16:55.1125688Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-04-13T01:16:55.1159377Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-04-13T01:16:55.1478681Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-04-13T01:16:55.1513739Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-04-13T01:16:55.1751465Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-04-13T01:16:55.1782032Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-04-13T01:16:55.2002734Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-04-13T01:16:55.2039319Z ##[endgroup]
+2026-04-13T01:16:55.2040554Z ##[group]Fetching the repository
+2026-04-13T01:16:55.2052260Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +172c979ef2a54158fc3fed75e353d84288d2e429:refs/remotes/pull/54/merge
+2026-04-13T01:16:55.5545186Z From https://github.com/amichne/kast
+2026-04-13T01:16:55.5546671Z  * [new ref]         172c979ef2a54158fc3fed75e353d84288d2e429 -> pull/54/merge
+2026-04-13T01:16:55.5576101Z ##[endgroup]
+2026-04-13T01:16:55.5576800Z ##[group]Determining the checkout info
+2026-04-13T01:16:55.5579273Z ##[endgroup]
+2026-04-13T01:16:55.5586653Z [command]/usr/bin/git sparse-checkout disable
+2026-04-13T01:16:55.5632127Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-04-13T01:16:55.5664830Z ##[group]Checking out the ref
+2026-04-13T01:16:55.5668971Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/54/merge
+2026-04-13T01:16:55.5999027Z Note: switching to 'refs/remotes/pull/54/merge'.
+2026-04-13T01:16:55.5999596Z 
+2026-04-13T01:16:55.6082365Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-04-13T01:16:55.6083564Z changes and commit them, and you can discard any commits you make in this
+2026-04-13T01:16:55.6084486Z state without impacting any branches by switching back to a branch.
+2026-04-13T01:16:55.6085136Z 
+2026-04-13T01:16:55.6085503Z If you want to create a new branch to retain commits you create, you may
+2026-04-13T01:16:55.6086338Z do so (now or later) by using -c with the switch command. Example:
+2026-04-13T01:16:55.6087212Z 
+2026-04-13T01:16:55.6087398Z   git switch -c <new-branch-name>
+2026-04-13T01:16:55.6087993Z 
+2026-04-13T01:16:55.6088179Z Or undo this operation with:
+2026-04-13T01:16:55.6088410Z 
+2026-04-13T01:16:55.6088537Z   git switch -
+2026-04-13T01:16:55.6088732Z 
+2026-04-13T01:16:55.6089073Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-04-13T01:16:55.6089572Z 
+2026-04-13T01:16:55.6090093Z HEAD is now at 172c979 Merge f36b0133cb5341848b54957b818762da0650c15e into 741871c668b11f054d705725404ec5cdf2ee27d0
+2026-04-13T01:16:55.6091789Z ##[endgroup]
+2026-04-13T01:16:55.6092758Z [command]/usr/bin/git log -1 --format=%H
+2026-04-13T01:16:55.6093362Z 172c979ef2a54158fc3fed75e353d84288d2e429
