@@ -34,9 +34,10 @@ internal class IntelliJCallEdgeResolver(
         timeoutCheck: () -> Boolean,
         onFileVisited: (filePath: String) -> Unit,
     ): List<CallEdge> {
-        // Collect all raw references eagerly in one short read action. This avoids
-        // holding the IDE read lock for the full duration of a project-wide search,
-        // which would starve the IDE write lock during recursive traversal.
+        // Collect all raw references eagerly in one short read action. This trades
+        // peak memory (all refs held at once) for shorter lock duration: holding the
+        // read lock only for the initial findAll() call instead of the full search
+        // loop prevents starvation of the IDE write lock during recursive traversal.
         val refs = ApplicationManager.getApplication().runReadAction<Collection<PsiReference>> {
             val searchScope = GlobalSearchScope.projectScope(project)
             ReferencesSearch.search(target, searchScope).findAll()
