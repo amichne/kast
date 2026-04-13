@@ -13,7 +13,6 @@ readonly DIST_DIR="${DIST_ROOT}/kast"
 readonly DIST_ZIP="${DIST_ROOT}/kast.zip"
 readonly PORTABLE_DIST_DIR="${REPO_ROOT}/kast/build/portable-dist/kast"
 readonly PORTABLE_ZIP_DIR="${REPO_ROOT}/kast/build/distributions"
-readonly GRADLE_ARGS=()
 
 tmp_dir=""
 jvm_only="false"
@@ -60,7 +59,7 @@ run_gradle_build() {
   fi
   (
     cd "$REPO_ROOT"
-    "$GRADLEW" stageCliDist buildCliPortableZip "${extra_args[@]}" "${GRADLE_ARGS[@]}"
+    "$GRADLEW" stageCliDist buildCliPortableZip "${extra_args[@]}"
   )
 }
 
