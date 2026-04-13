@@ -84,7 +84,7 @@ run_gradle_build() {
   fi
   (
     cd "$REPO_ROOT"
-    "$GRADLEW" :kast:portableDistZip "${extra_args[@]}"
+    "$GRADLEW" :kast:portableDistZip "${extra_args[@]+"${extra_args[@]}"}"
   )
 }
 
@@ -99,7 +99,7 @@ if [[ "$skip_build" != "true" ]]; then
     fi
     (
       cd "$REPO_ROOT"
-      "$GRADLEW" --no-daemon :kast:portableDistZip "${retry_extra[@]}"
+      "$GRADLEW" --no-daemon :kast:portableDistZip "${retry_extra[@]+"${retry_extra[@]}"}"
     )
   fi
 fi
