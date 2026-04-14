@@ -24,7 +24,11 @@ tools:
       - name: file
         type: string
         required: false
-        description: "File path hint to narrow resolution scope."
+        description: "File path hint (absolute, workspace-relative, or glob) to narrow resolution scope."
+      - name: kind
+        type: string
+        required: false
+        description: "Restrict to a declaration kind: class, function, or property."
       - name: containing-type
         type: string
         required: false
@@ -42,10 +46,18 @@ tools:
         type: string
         required: true
         description: "Fully qualified or simple name of the symbol."
+      - name: include-declaration
+        type: boolean
+        required: false
+        description: "Include the declaration site in the reference list (default: true)."
       - name: file
         type: string
         required: false
         description: "File path hint to narrow resolution scope."
+      - name: kind
+        type: string
+        required: false
+        description: "Restrict to a declaration kind: class, function, or property."
       - name: containing-type
         type: string
         required: false
@@ -53,7 +65,7 @@ tools:
 
   - name: kast-callers
     script: scripts/kast-callers.sh
-    description: "Expand call hierarchy for a symbol."
+    description: "Expand call hierarchy for a symbol. Returns an ok-keyed JSON tree with traversal stats."
     parameters:
       - name: workspace-root
         type: string
@@ -65,16 +77,32 @@ tools:
         description: "Fully qualified or simple name of the symbol."
       - name: direction
         type: string
-        required: true
-        description: "Call direction: 'incoming' or 'outgoing'."
+        required: false
+        description: "Call direction: 'incoming' (callers) or 'outgoing' (callees). Default: incoming."
       - name: depth
         type: integer
         required: false
-        description: "Maximum traversal depth (default: 3)."
+        description: "Maximum traversal depth. Default: 2."
+      - name: max-total-calls
+        type: integer
+        required: false
+        description: "Cap total nodes in the result tree. Omit to use the backend default."
+      - name: max-children-per-node
+        type: integer
+        required: false
+        description: "Cap children per node. Omit to use the backend default."
+      - name: timeout-millis
+        type: integer
+        required: false
+        description: "Traversal timeout in milliseconds. Omit to use the backend default."
       - name: file
         type: string
         required: false
         description: "File path hint to narrow resolution scope."
+      - name: kind
+        type: string
+        required: false
+        description: "Restrict to a declaration kind: class, function, or property."
       - name: containing-type
         type: string
         required: false
@@ -82,7 +110,7 @@ tools:
 
   - name: kast-impact
     script: scripts/kast-impact.sh
-    description: "Assess edit impact for a symbol before modifying it."
+    description: "Assess edit impact for a symbol before modifying it. Returns references and optionally incoming callers."
     parameters:
       - name: workspace-root
         type: string
@@ -92,10 +120,22 @@ tools:
         type: string
         required: true
         description: "Fully qualified or simple name of the symbol."
+      - name: include-callers
+        type: boolean
+        required: false
+        description: "Include the incoming call hierarchy in the result (default: true)."
+      - name: caller-depth
+        type: integer
+        required: false
+        description: "Depth for the incoming call hierarchy when include-callers=true. Default: 2."
       - name: file
         type: string
         required: false
         description: "File path hint to narrow resolution scope."
+      - name: kind
+        type: string
+        required: false
+        description: "Restrict to a declaration kind: class, function, or property."
       - name: containing-type
         type: string
         required: false
@@ -103,7 +143,7 @@ tools:
 
   - name: kast-diagnostics
     script: scripts/kast-diagnostics.sh
-    description: "Run diagnostics on one or more Kotlin files."
+    description: "Run diagnostics on one or more Kotlin files. Returns ok, clean, error_count, warning_count, and a diagnostics array."
     parameters:
       - name: workspace-root
         type: string
@@ -112,36 +152,48 @@ tools:
       - name: file-paths
         type: string
         required: true
-        description: "Comma-separated list of absolute file paths to diagnose."
+        description: "Comma-separated list of absolute (or workspace-relative) file paths to diagnose."
 
   - name: kast-rename
     script: scripts/kast-rename.sh
-    description: "Plan or execute a rename operation for a symbol."
+    description: >
+      Run the full rename workflow end-to-end: resolve symbol → plan → apply edits → diagnostics.
+      Accepts a symbol name (symbol mode, recommended) or an exact file-path and offset (offset mode).
+      Returns ok-keyed JSON with edit_count, affected_files, apply_result, and a diagnostics summary.
+      Exits non-zero when ERROR-severity diagnostics remain after apply.
     parameters:
       - name: workspace-root
         type: string
         required: true
         description: "Absolute path to the workspace root."
-      - name: symbol
-        type: string
-        required: true
-        description: "Fully qualified or simple name of the symbol to rename."
       - name: new-name
         type: string
         required: true
         description: "New name for the symbol."
-      - name: dry-run
-        type: boolean
+      - name: symbol
+        type: string
         required: false
-        description: "If true (default), return the edit plan without applying. If false, apply edits."
+        description: "Symbol name to rename (symbol mode). Provide this OR file-path+offset."
+      - name: file-path
+        type: string
+        required: false
+        description: "Absolute path to the file containing the symbol (offset mode)."
+      - name: offset
+        type: integer
+        required: false
+        description: "Zero-based UTF-16 offset of the symbol in the file (offset mode)."
       - name: file
         type: string
         required: false
-        description: "File path hint to narrow resolution scope."
+        description: "File path hint to narrow symbol resolution scope (symbol mode only)."
+      - name: kind
+        type: string
+        required: false
+        description: "Restrict resolution to a declaration kind: class, function, or property (symbol mode only)."
       - name: containing-type
         type: string
         required: false
-        description: "FQN of the containing type for disambiguation."
+        description: "FQN of the containing type for disambiguation (symbol mode only)."
 
 routing_rules:
   - intent: "resolve a symbol"
@@ -162,14 +214,6 @@ routing_rules:
   - intent: "rename a symbol"
     tool: kast-rename
     no_fallback: true
-
-session_init:
-  hook: kast-bootstrap
-  description: >
-    The kast-bootstrap session hook (defined in .agents/hooks.json) runs
-    resolve-kast.sh once at session start, caches KAST and SKILL_ROOT into
-    session state, and exports KAST_CLI_PATH. All subsequent wrapper calls
-    skip binary discovery.
 
 constraints:
   prohibited_substitutions:

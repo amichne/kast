@@ -8,16 +8,18 @@ WORKSPACE_ROOT=""
 SYMBOL=""
 FILE_HINT=""
 INCLUDE_CALLERS="true"
+CALLER_DEPTH="2"
 KIND=""
 CONTAINING_TYPE=""
 
 for arg in "$@"; do
     case "${arg}" in
-        --workspace-root=*) WORKSPACE_ROOT="${arg#*=}" ;;
-        --symbol=*) SYMBOL="${arg#*=}" ;;
-        --file=*) FILE_HINT="${arg#*=}" ;;
+        --workspace-root=*)  WORKSPACE_ROOT="${arg#*=}" ;;
+        --symbol=*)          SYMBOL="${arg#*=}" ;;
+        --file=*)            FILE_HINT="${arg#*=}" ;;
         --include-callers=*) INCLUDE_CALLERS="${arg#*=}" ;;
-        --kind=*) KIND="${arg#*=}" ;;
+        --caller-depth=*)    CALLER_DEPTH="${arg#*=}" ;;
+        --kind=*)            KIND="${arg#*=}" ;;
         --containing-type=*) CONTAINING_TYPE="${arg#*=}" ;;
         *)
             printf 'Unknown argument: %s\n' "${arg}" >&2
@@ -36,7 +38,7 @@ emit_failure() {
     log_path="$(kast_preserve_log_file)"
 
     python3 - "${stage}" "${message}" "${WORKSPACE_ROOT}" "${SYMBOL}" "${FILE_HINT}" "${KIND}" \
-        "${CONTAINING_TYPE}" "${INCLUDE_CALLERS}" "${log_path}" "${error_file}" <<'PY'
+        "${CONTAINING_TYPE}" "${INCLUDE_CALLERS}" "${CALLER_DEPTH}" "${log_path}" "${error_file}" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -50,6 +52,7 @@ from pathlib import Path
     kind,
     containing_type,
     include_callers,
+    caller_depth,
     log_file,
     error_file,
 ) = sys.argv[1:]
@@ -65,6 +68,7 @@ payload = {
         "kind": kind or None,
         "containing_type": containing_type or None,
         "include_callers": include_callers == "true",
+        "caller_depth": int(caller_depth),
     },
     "log_file": log_file,
 }
@@ -90,6 +94,11 @@ fi
 
 if [[ "${INCLUDE_CALLERS}" != "true" && "${INCLUDE_CALLERS}" != "false" ]]; then
     emit_failure "argument_validation" "--include-callers must be true or false."
+    exit 1
+fi
+
+if ! [[ "${CALLER_DEPTH}" =~ ^[0-9]+$ ]]; then
+    emit_failure "argument_validation" "--caller-depth must be a non-negative integer."
     exit 1
 fi
 
@@ -120,7 +129,7 @@ if [[ "${INCLUDE_CALLERS}" == "true" ]]; then
         --file-path="${RESOLVED_FILE_PATH}" \
         --offset="${RESOLVED_OFFSET}" \
         --direction=incoming \
-        --depth=2; then
+        --depth="${CALLER_DEPTH}"; then
         emit_failure "call_hierarchy" "kast call-hierarchy failed." "${CALLERS_RESULT}"
         exit 1
     fi
@@ -129,7 +138,7 @@ fi
 LOG_PATH="$(kast_preserve_log_file)"
 python3 - "${RESOLVED_JSON_FILE}" "${REFERENCES_RESULT}" "${CALLERS_RESULT}" "${RESOLVED_FILE_PATH}" \
     "${RESOLVED_OFFSET}" "${WORKSPACE_ROOT}" "${SYMBOL}" "${FILE_HINT}" "${KIND}" \
-    "${CONTAINING_TYPE}" "${INCLUDE_CALLERS}" "${LOG_PATH}" <<'PY'
+    "${CONTAINING_TYPE}" "${INCLUDE_CALLERS}" "${CALLER_DEPTH}" "${LOG_PATH}" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -146,6 +155,7 @@ from pathlib import Path
     kind,
     containing_type,
     include_callers,
+    caller_depth,
     log_file,
 ) = sys.argv[1:]
 
@@ -160,6 +170,7 @@ payload = {
         "kind": kind or None,
         "containing_type": containing_type or None,
         "include_callers": include_callers == "true",
+        "caller_depth": int(caller_depth),
     },
     "symbol": resolve_result["symbol"],
     "file_path": file_path,
@@ -174,6 +185,7 @@ if callers_file:
     callers_result = json.loads(Path(callers_file).read_text(encoding="utf-8"))
     payload["call_hierarchy"] = {
         "direction": "incoming",
+        "depth": int(caller_depth),
         "root": callers_result.get("root"),
         "stats": callers_result.get("stats"),
     }

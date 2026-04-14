@@ -334,29 +334,35 @@ install_intellij_plugin() {
   local release_repo="$1"
   local release_tag="$2"
   local install_root="$3"
+  local local_archive="${4:-}"
 
   log_section "Install IntelliJ plugin"
 
   local plugin_dir="${install_root}/plugins"
   local plugin_name="kast-intellij-${release_tag}.zip"
   local plugin_path="${plugin_dir}/${plugin_name}"
-  local plugin_url="https://github.com/${release_repo}/releases/download/${release_tag}/${plugin_name}"
 
   mkdir -p "$plugin_dir"
 
-  log_step "Downloading IntelliJ plugin ${plugin_name}"
-  local download_attempt
-  for download_attempt in 1 2 3; do
-    if download_file "$plugin_url" "$plugin_path"; then
-      break
-    fi
-    if [[ "$download_attempt" -eq 3 ]]; then
-      log_note "Failed to download IntelliJ plugin after 3 attempts; skipping"
-      return 1
-    fi
-    log_note "Download attempt ${download_attempt} failed; retrying in 5 seconds"
-    sleep 5
-  done
+  if [[ -n "$local_archive" ]]; then
+    log_step "Copying local plugin archive ${local_archive}"
+    cp "$local_archive" "$plugin_path"
+  else
+    local plugin_url="https://github.com/${release_repo}/releases/download/${release_tag}/${plugin_name}"
+    log_step "Downloading IntelliJ plugin ${plugin_name}"
+    local download_attempt
+    for download_attempt in 1 2 3; do
+      if download_file "$plugin_url" "$plugin_path"; then
+        break
+      fi
+      if [[ "$download_attempt" -eq 3 ]]; then
+        log_note "Failed to download IntelliJ plugin after 3 attempts; skipping"
+        return 1
+      fi
+      log_note "Download attempt ${download_attempt} failed; retrying in 5 seconds"
+      sleep 5
+    done
+  fi
 
   log_success "IntelliJ plugin saved to ${plugin_path}"
   log_note "Install from IntelliJ: Settings → Plugins → ⚙️ → Install Plugin from Disk"
@@ -416,6 +422,7 @@ print_config_summary() {
 main() {
   local components=""
   local jvm_only="false"
+  local local_build="false"
   local non_interactive="false"
 
   # Parse CLI arguments (supports one-liner: -- --components=all --jvm-only)
@@ -434,6 +441,10 @@ main() {
         jvm_only="true"
         shift
         ;;
+      --local)
+        local_build="true"
+        shift
+        ;;
       --non-interactive)
         non_interactive="true"
         shift
@@ -447,6 +458,8 @@ Install the Kast CLI and optional components.
 Options:
   --components=<list>   Comma-separated: standalone,intellij,all (default: standalone)
   --jvm-only            Install JVM-only variant (no native binary)
+  --local               Install from local dist/ artifacts built by build.sh
+                        (uses dist/cli.zip or dist/cli-jvm.zip + dist/plugin.zip)
   --non-interactive     Skip all interactive prompts
   --help, -h            Show this help
 USAGE
@@ -509,6 +522,25 @@ USAGE
       *)          die "Unknown component: $comp" ;;
     esac
   done
+
+  # Resolve local dist artifacts when --local is requested.
+  local local_plugin_archive=""
+  if [[ "$local_build" == "true" ]]; then
+    if [[ "$install_standalone" == "true" && -z "${KAST_ARCHIVE_PATH:-}" ]]; then
+      local dist_archive
+      if [[ "$jvm_only" == "true" ]]; then
+        dist_archive="${SCRIPT_DIR}/dist/cli-jvm.zip"
+      else
+        dist_archive="${SCRIPT_DIR}/dist/cli.zip"
+      fi
+      [[ -f "$dist_archive" ]] || die "Local build archive not found at ${dist_archive}. Run ./build.sh first."
+      KAST_ARCHIVE_PATH="$dist_archive"
+    fi
+    if [[ "$install_intellij" == "true" ]]; then
+      local_plugin_archive="${SCRIPT_DIR}/dist/plugin.zip"
+      [[ -f "$local_plugin_archive" ]] || die "Local plugin archive not found at ${local_plugin_archive}. Run ./build.sh plugin first."
+    fi
+  fi
 
   tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/kast-install.XXXXXX")"
 
@@ -667,7 +699,7 @@ EOF
         resolved_tag="$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['tag_name'])" "$latest_meta")"
       fi
     fi
-    install_intellij_plugin "$release_repo" "$resolved_tag" "$install_root" || true
+    install_intellij_plugin "$release_repo" "$resolved_tag" "$install_root" "$local_plugin_archive" || true
   fi
 
   local rc_file

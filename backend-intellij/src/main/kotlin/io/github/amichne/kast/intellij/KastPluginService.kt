@@ -12,6 +12,10 @@ import io.github.amichne.kast.server.AnalysisServerConfig
 import io.github.amichne.kast.server.RunningAnalysisServer
 import java.nio.file.Path
 
+private const val DEFAULT_MAX_RESULTS = 500
+private const val DEFAULT_REQUEST_TIMEOUT_MILLIS = 30_000L
+private const val DEFAULT_MAX_CONCURRENT_REQUESTS = 4
+
 @Service(Service.Level.PROJECT)
 internal class KastPluginService(
     private val project: Project,
@@ -27,11 +31,7 @@ internal class KastPluginService(
 
         LOG.info("Starting kast intellij backend for workspace: $workspaceRoot")
 
-        val limits = ServerLimits(
-            maxResults = DEFAULT_MAX_RESULTS,
-            requestTimeoutMillis = DEFAULT_REQUEST_TIMEOUT_MILLIS,
-            maxConcurrentRequests = DEFAULT_MAX_CONCURRENT_REQUESTS,
-        )
+        val limits = intellijServerLimits()
 
         val backend = KastPluginBackend(
             project = project,
@@ -42,9 +42,9 @@ internal class KastPluginService(
         val socketPath = defaultSocketPath(workspaceRoot)
         val config = AnalysisServerConfig(
             transport = AnalysisTransport.UnixDomainSocket(socketPath),
-            requestTimeoutMillis = DEFAULT_REQUEST_TIMEOUT_MILLIS,
-            maxResults = DEFAULT_MAX_RESULTS,
-            maxConcurrentRequests = DEFAULT_MAX_CONCURRENT_REQUESTS,
+            requestTimeoutMillis = limits.requestTimeoutMillis,
+            maxResults = limits.maxResults,
+            maxConcurrentRequests = limits.maxConcurrentRequests,
         )
 
         val server = AnalysisServer(backend, config)
@@ -64,8 +64,13 @@ internal class KastPluginService(
 
     companion object {
         private val LOG = Logger.getInstance(KastPluginService::class.java)
-        private const val DEFAULT_MAX_RESULTS = 500
-        private const val DEFAULT_REQUEST_TIMEOUT_MILLIS = 30_000L
-        private const val DEFAULT_MAX_CONCURRENT_REQUESTS = 4
     }
 }
+
+internal fun intellijServerLimits(
+    getenv: (String) -> String? = System::getenv,
+): ServerLimits = ServerLimits(
+    maxConcurrentRequests = (getenv("KAST_INTELLIJ_MAX_CONCURRENT")?.toIntOrNull() ?: DEFAULT_MAX_CONCURRENT_REQUESTS).coerceAtLeast(1),
+    requestTimeoutMillis = getenv("KAST_INTELLIJ_TIMEOUT_MS")?.toLongOrNull() ?: DEFAULT_REQUEST_TIMEOUT_MILLIS,
+    maxResults = getenv("KAST_INTELLIJ_MAX_RESULTS")?.toIntOrNull() ?: DEFAULT_MAX_RESULTS,
+)

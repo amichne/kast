@@ -1,13 +1,15 @@
 package io.github.amichne.kast.intellij
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.readAction
+import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiManager
-import com.intellij.psi.PsiRecursiveElementWalkingVisitor
+import com.intellij.psi.PsiReference
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.PsiShortNamesCache
 import com.intellij.psi.search.searches.ReferencesSearch
@@ -17,10 +19,12 @@ import io.github.amichne.kast.api.ApplyEditsResult
 import io.github.amichne.kast.api.BackendCapabilities
 import io.github.amichne.kast.api.CallHierarchyQuery
 import io.github.amichne.kast.api.CallHierarchyResult
+import io.github.amichne.kast.api.CapabilityNotSupportedException
 import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.DiagnosticsResult
 import io.github.amichne.kast.api.FileOutlineQuery
 import io.github.amichne.kast.api.FileOutlineResult
+import io.github.amichne.kast.api.HealthResponse
 import io.github.amichne.kast.api.ImportOptimizeQuery
 import io.github.amichne.kast.api.ImportOptimizeResult
 import io.github.amichne.kast.api.LocalDiskEditApplier
@@ -40,10 +44,13 @@ import io.github.amichne.kast.api.SearchScopeKind
 import io.github.amichne.kast.api.SemanticInsertionQuery
 import io.github.amichne.kast.api.SemanticInsertionResult
 import io.github.amichne.kast.api.ServerLimits
+import io.github.amichne.kast.api.Symbol
 import io.github.amichne.kast.api.SymbolQuery
 import io.github.amichne.kast.api.SymbolResult
-import io.github.amichne.kast.api.TextEdit
 import io.github.amichne.kast.api.SymbolVisibility
+import io.github.amichne.kast.api.TextEdit
+import io.github.amichne.kast.api.TypeHierarchyQuery
+import io.github.amichne.kast.api.TypeHierarchyResult
 import io.github.amichne.kast.api.WorkspaceSymbolQuery
 import io.github.amichne.kast.api.WorkspaceSymbolResult
 import io.github.amichne.kast.shared.analysis.FileOutlineBuilder
@@ -67,6 +74,7 @@ import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.components.KaDiagnosticCheckerFilter
 import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import java.nio.file.Path
 
 @OptIn(KaExperimentalApi::class)
@@ -106,6 +114,7 @@ internal class KastPluginBackend(
         val caps = capabilities()
         val isDumb = DumbService.isDumb(project)
         val state = if (isDumb) RuntimeState.INDEXING else RuntimeState.READY
+        val moduleNames = ModuleManager.getInstance(project).modules.map { it.name }.sorted()
         return RuntimeStatusResponse(
             state = state,
             healthy = true,
@@ -119,6 +128,16 @@ internal class KastPluginBackend(
             } else {
                 "IntelliJ analysis backend is ready"
             },
+            sourceModuleNames = moduleNames,
+        )
+    }
+
+    override suspend fun health(): HealthResponse {
+        val caps = capabilities()
+        return HealthResponse(
+            backendName = caps.backendName,
+            backendVersion = caps.backendVersion,
+            workspaceRoot = caps.workspaceRoot,
         )
     }
 
@@ -131,6 +150,7 @@ internal class KastPluginBackend(
                     target.toSymbolModel(
                         containingDeclaration = null,
                         supertypes = supertypeNames(target),
+                        includeDeclarationScope = query.includeDeclarationScope,
                     )
                 },
             )
@@ -138,41 +158,42 @@ internal class KastPluginBackend(
     }
 
     override suspend fun findReferences(query: ReferencesQuery): ReferencesResult = withContext(readDispatcher) {
-        readAction {
-            val file = findKtFile(query.position.filePath)
-            val target = resolveTarget(file, query.position.offset)
-            val searchScope = GlobalSearchScope.projectScope(project)
-            val references = ReferencesSearch.search(target, searchScope)
-                .mapNotNull { ref ->
-                    val element = ref.element
-                    val location = element.toKastLocation()
-                    // Filter to files within the workspace root
-                    if (location.filePath.startsWith(workspacePrefix) ||
-                        location.filePath == workspaceRoot.toString()
-                    ) {
-                        location
+        val (snapshot, references) = collectInShortReadActions(
+            collectSnapshot = {
+                val file = findKtFile(query.position.filePath)
+                val target = resolveTarget(file, query.position.offset)
+                val searchScope = GlobalSearchScope.projectScope(project)
+                ReferenceSearchSnapshot(
+                    declaration = if (query.includeDeclaration) {
+                        analyze(file) { target.toSymbolModel(containingDeclaration = null) }
                     } else {
                         null
-                    }
-                }
-                .sortedWith(compareBy({ it.filePath }, { it.startOffset }))
-
-            ReferencesResult(
-                declaration = if (query.includeDeclaration) {
-                    analyze(file) { target.toSymbolModel(containingDeclaration = null) }
-                } else {
-                    null
-                },
-                references = references,
-                searchScope = SearchScope(
+                    },
                     visibility = target.visibility(),
-                    scope = SearchScopeKind.DEPENDENT_MODULES,
-                    exhaustive = true,
-                    candidateFileCount = references.size,
-                    searchedFileCount = references.size,
-                ),
-            )
-        }
+                ) to ReferencesSearch.search(target, searchScope).findAll()
+            },
+            processItem = { ref ->
+                val element = ref.element
+                if (!element.isValid) return@collectInShortReadActions null
+                val location = element.toKastLocation()
+                if (isWorkspaceFile(location.filePath)) location else null
+            },
+            runInitialReadAction = { action -> runIntellijReadAction(action) },
+            runPerItemReadAction = { action -> runIntellijReadAction(action) },
+        )
+        val sortedReferences = references.sortedWith(compareBy({ it.filePath }, { it.startOffset }))
+
+        ReferencesResult(
+            declaration = snapshot.declaration,
+            references = sortedReferences,
+            searchScope = SearchScope(
+                visibility = snapshot.visibility,
+                scope = SearchScopeKind.DEPENDENT_MODULES,
+                exhaustive = true,
+                candidateFileCount = sortedReferences.size,
+                searchedFileCount = sortedReferences.size,
+            ),
+        )
     }
 
     override suspend fun callHierarchy(query: CallHierarchyQuery): CallHierarchyResult = withContext(readDispatcher) {
@@ -215,6 +236,13 @@ internal class KastPluginBackend(
         )
     }
 
+    override suspend fun typeHierarchy(query: TypeHierarchyQuery): TypeHierarchyResult {
+        throw CapabilityNotSupportedException(
+            capability = "TYPE_HIERARCHY",
+            message = "Type hierarchy is not supported by the IntelliJ plugin backend",
+        )
+    }
+
     override suspend fun semanticInsertionPoint(
         query: SemanticInsertionQuery,
     ): SemanticInsertionResult = withContext(readDispatcher) {
@@ -241,46 +269,51 @@ internal class KastPluginBackend(
     }
 
     override suspend fun rename(query: RenameQuery): RenameResult = withContext(readDispatcher) {
-        readAction {
-            val file = findKtFile(query.position.filePath)
-            val target = resolveTarget(file, query.position.offset)
-            val searchScope = GlobalSearchScope.projectScope(project)
-
-            val declarationEdit = target.declarationEdit(query.newName)
-            val referenceEdits = ReferencesSearch.search(target, searchScope)
-                .mapNotNull { ref ->
-                    val element = ref.element
-                    val refFilePath = element.resolvedFilePath().value
-                    // Filter to workspace files
-                    if (!refFilePath.startsWith(workspacePrefix)) return@mapNotNull null
-                    TextEdit(
-                        filePath = refFilePath,
-                        startOffset = ref.rangeInElement.startOffset + element.textRange.startOffset,
-                        endOffset = ref.rangeInElement.endOffset + element.textRange.startOffset,
-                        newText = query.newName,
-                    )
-                }
-
-            val edits = (listOf(declarationEdit) + referenceEdits)
-                .distinctBy { Triple(it.filePath, it.startOffset, it.endOffset) }
-                .sortedWith(compareBy({ it.filePath }, { it.startOffset }))
-
-            val affectedFiles = edits.map(TextEdit::filePath).distinct()
-            val fileHashes = LocalDiskEditApplier.currentHashes(affectedFiles)
-
-            RenameResult(
-                edits = edits,
-                fileHashes = fileHashes,
-                affectedFiles = affectedFiles,
-                searchScope = SearchScope(
+        val (snapshot, referenceEdits) = collectInShortReadActions(
+            collectSnapshot = {
+                val file = findKtFile(query.position.filePath)
+                val target = resolveTarget(file, query.position.offset)
+                val searchScope = GlobalSearchScope.projectScope(project)
+                RenameSnapshot(
+                    declarationEdit = target.declarationEdit(query.newName),
                     visibility = target.visibility(),
-                    scope = SearchScopeKind.DEPENDENT_MODULES,
-                    exhaustive = true,
-                    candidateFileCount = edits.size,
-                    searchedFileCount = edits.size,
-                ),
-            )
-        }
+                ) to ReferencesSearch.search(target, searchScope).findAll()
+            },
+            processItem = { ref ->
+                val element = ref.element
+                if (!element.isValid) return@collectInShortReadActions null
+                val refFilePath = element.resolvedFilePath().value
+                if (!isWorkspaceFile(refFilePath)) return@collectInShortReadActions null
+                TextEdit(
+                    filePath = refFilePath,
+                    startOffset = ref.rangeInElement.startOffset + element.textRange.startOffset,
+                    endOffset = ref.rangeInElement.endOffset + element.textRange.startOffset,
+                    newText = query.newName,
+                )
+            },
+            runInitialReadAction = { action -> runIntellijReadAction(action) },
+            runPerItemReadAction = { action -> runIntellijReadAction(action) },
+        )
+
+        val edits = (listOf(snapshot.declarationEdit) + referenceEdits)
+            .distinctBy { Triple(it.filePath, it.startOffset, it.endOffset) }
+            .sortedWith(compareBy({ it.filePath }, { it.startOffset }))
+
+        val affectedFiles = edits.map(TextEdit::filePath).distinct()
+        val fileHashes = LocalDiskEditApplier.currentHashes(affectedFiles)
+
+        RenameResult(
+            edits = edits,
+            fileHashes = fileHashes,
+            affectedFiles = affectedFiles,
+            searchScope = SearchScope(
+                visibility = snapshot.visibility,
+                scope = SearchScopeKind.DEPENDENT_MODULES,
+                exhaustive = true,
+                candidateFileCount = edits.size,
+                searchedFileCount = edits.size,
+            ),
+        )
     }
 
     override suspend fun applyEdits(query: ApplyEditsQuery): ApplyEditsResult {
@@ -330,77 +363,66 @@ internal class KastPluginBackend(
             val matcher = SymbolSearchMatcher.create(query.pattern, query.regex)
             val scope = GlobalSearchScope.projectScope(project)
             val cache = PsiShortNamesCache.getInstance(project)
-            val symbols = mutableListOf<io.github.amichne.kast.api.Symbol>()
+            val symbols = mutableListOf<Symbol>()
 
-            for (className in cache.allClassNames) {
-                if (symbols.size >= query.maxResults) break
-                if (!matcher.matches(className)) continue
-                for (psiClass in cache.getClassesByName(className, scope)) {
-                    if (symbols.size >= query.maxResults) break
-                    val ktElement = psiClass.navigationElement
-                    if (ktElement is org.jetbrains.kotlin.psi.KtNamedDeclaration) {
-                        val filePath = ktElement.containingFile?.virtualFile?.path ?: continue
-                        if (!filePath.startsWith(workspacePrefix) && filePath != workspaceRoot.toString()) continue
-                        val symbol = query.withDeclarationScopeRequested { includeDeclarationScope ->
-                            ktElement.toSymbolModel(
-                                containingDeclaration = null,
-                                includeDeclarationScope = includeDeclarationScope,
-                            )
-                        }
-                        if (query.kind == null || symbol.kind == query.kind) {
-                            symbols += symbol
-                        }
-                    }
-                }
-            }
-
-            for (methodName in cache.allMethodNames) {
-                if (symbols.size >= query.maxResults) break
-                if (!matcher.matches(methodName)) continue
-                for (psiMethod in cache.getMethodsByName(methodName, scope)) {
-                    if (symbols.size >= query.maxResults) break
-                    val ktElement = psiMethod.navigationElement
-                    if (ktElement is org.jetbrains.kotlin.psi.KtNamedDeclaration) {
-                        val filePath = ktElement.containingFile?.virtualFile?.path ?: continue
-                        if (!filePath.startsWith(workspacePrefix) && filePath != workspaceRoot.toString()) continue
-                        val symbol = query.withDeclarationScopeRequested { includeDeclarationScope ->
-                            ktElement.toSymbolModel(
-                                containingDeclaration = null,
-                                includeDeclarationScope = includeDeclarationScope,
-                            )
-                        }
-                        if (query.kind == null || symbol.kind == query.kind) {
-                            symbols += symbol
-                        }
-                    }
-                }
-            }
-
-            for (fieldName in cache.allFieldNames) {
-                if (symbols.size >= query.maxResults) break
-                if (!matcher.matches(fieldName)) continue
-                for (psiField in cache.getFieldsByName(fieldName, scope)) {
-                    if (symbols.size >= query.maxResults) break
-                    val ktElement = psiField.navigationElement
-                    if (ktElement is org.jetbrains.kotlin.psi.KtNamedDeclaration) {
-                        val filePath = ktElement.containingFile?.virtualFile?.path ?: continue
-                        if (!filePath.startsWith(workspacePrefix) && filePath != workspaceRoot.toString()) continue
-                        val symbol = query.withDeclarationScopeRequested { includeDeclarationScope ->
-                            ktElement.toSymbolModel(
-                                containingDeclaration = null,
-                                includeDeclarationScope = includeDeclarationScope,
-                            )
-                        }
-                        if (query.kind == null || symbol.kind == query.kind) {
-                            symbols += symbol
-                        }
-                    }
-                }
-            }
+            collectMatchingSymbols(
+                scope = scope,
+                matcher = matcher,
+                query = query,
+                symbols = symbols,
+                allNames = cache.allClassNames,
+                lookupByName = cache::getClassesByName,
+            )
+            collectMatchingSymbols(
+                scope = scope,
+                matcher = matcher,
+                query = query,
+                symbols = symbols,
+                allNames = cache.allMethodNames,
+                lookupByName = cache::getMethodsByName,
+            )
+            collectMatchingSymbols(
+                scope = scope,
+                matcher = matcher,
+                query = query,
+                symbols = symbols,
+                allNames = cache.allFieldNames,
+                lookupByName = cache::getFieldsByName,
+            )
 
             WorkspaceSymbolResult(symbols = symbols)
         }
     }
+
+    private fun <T : PsiElement> collectMatchingSymbols(
+        scope: GlobalSearchScope,
+        matcher: SymbolSearchMatcher,
+        query: WorkspaceSymbolQuery,
+        symbols: MutableList<Symbol>,
+        allNames: Array<String>,
+        lookupByName: (String, GlobalSearchScope) -> Array<out T>,
+    ) {
+        for (name in allNames) {
+            if (symbols.size >= query.maxResults) break
+            if (!matcher.matches(name)) continue
+            for (element in lookupByName(name, scope)) {
+                if (symbols.size >= query.maxResults) break
+                val ktElement = element.navigationElement as? KtNamedDeclaration ?: continue
+                val filePath = ktElement.containingFile?.virtualFile?.path ?: continue
+                if (!isWorkspaceFile(filePath)) continue
+                val symbol = ktElement.toSymbolModel(
+                    containingDeclaration = null,
+                    includeDeclarationScope = query.includeDeclarationScope,
+                )
+                if (query.kind == null || symbol.kind == query.kind) {
+                    symbols += symbol
+                }
+            }
+        }
+    }
+
+    private fun isWorkspaceFile(filePath: String): Boolean =
+        filePath.startsWith(workspacePrefix) || filePath == workspaceRoot.toString()
 
     private fun findKtFile(filePath: String): KtFile {
         val normalizedPath = Path.of(filePath).toAbsolutePath().normalize().toString()
@@ -412,11 +434,38 @@ internal class KastPluginBackend(
             ?: throw NotFoundException("Not a Kotlin file: $filePath")
     }
 
+    private data class ReferenceSearchSnapshot(
+        val declaration: Symbol?,
+        val visibility: SymbolVisibility,
+    )
+
+    private data class RenameSnapshot(
+        val declarationEdit: TextEdit,
+        val visibility: SymbolVisibility,
+    )
+
     companion object {
-        private const val BACKEND_VERSION = "0.1.0-SNAPSHOT"
+        private val BACKEND_VERSION = readBackendVersion()
+
+        private fun readBackendVersion(): String =
+            KastPluginBackend::class.java
+                .getResource("/kast-backend-version.txt")
+                ?.readText()
+                ?.trim()
+                ?: "unknown"
     }
 }
 
-internal inline fun <T> WorkspaceSymbolQuery.withDeclarationScopeRequested(
-    build: (includeDeclarationScope: Boolean) -> T,
-): T = build(includeDeclarationScope)
+internal inline fun <S, T, R : Any> collectInShortReadActions(
+    crossinline collectSnapshot: () -> Pair<S, Collection<T>>,
+    crossinline processItem: (T) -> R?,
+    crossinline runInitialReadAction: (() -> Pair<S, Collection<T>>) -> Pair<S, Collection<T>>,
+    crossinline runPerItemReadAction: (() -> R?) -> R?,
+): Pair<S, List<R>> {
+    val (snapshot, items) = runInitialReadAction { collectSnapshot() }
+    val results = items.mapNotNull { item -> runPerItemReadAction { processItem(item) } }
+    return snapshot to results
+}
+
+internal inline fun <T> runIntellijReadAction(crossinline action: () -> T): T =
+    ApplicationManager.getApplication().runReadAction<T> { action() }

@@ -1,20 +1,21 @@
 import java.util.zip.ZipFile
 import java.util.jar.JarInputStream
+import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
 plugins {
     kotlin("jvm")
-    id("org.jetbrains.intellij.platform") version "2.13.1"
+    id("org.jetbrains.intellij.platform") version "2.14.0"
 }
-
-private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
 
 repositories {
     mavenCentral()
     gradlePluginPortal()
     maven("https://packages.jetbrains.team/maven/p/ij/intellij-dependencies")
     maven("https://www.jetbrains.com/intellij-repository/releases")
+    maven("https://cache-redirector.jetbrains.com/intellij-dependencies")
     intellijPlatform {
         defaultRepositories()
+        localPlatformArtifacts()
     }
 }
 
@@ -29,15 +30,16 @@ dependencies {
 
     intellijPlatform {
         intellijIdea("2025.3")
+//        jetbrainsRuntime()
         bundledPlugin("org.jetbrains.kotlin")
         bundledPlugin("com.intellij.java")
+        testFramework(TestFrameworkType.Platform)
+        testFramework(TestFrameworkType.JUnit5)
     }
 
-    testImplementation(catalog.findLibrary("junit-jupiter-api").get())
-    testImplementation(catalog.findLibrary("junit4").get())
-    testImplementation(catalog.findLibrary("coroutines-test").get())
-    testRuntimeOnly(catalog.findLibrary("junit-jupiter-engine").get())
-    testRuntimeOnly(catalog.findLibrary("junit-platform-launcher").get())
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.13.4")
+    testImplementation("junit:junit:4.13.2")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.13.4")
 }
 
 intellijPlatform {
@@ -52,6 +54,21 @@ intellijPlatform {
             untilBuild = "253.*"
         }
     }
+}
+
+val writeBackendVersion by tasks.registering {
+    val versionFile = layout.buildDirectory.file("generated-resources/kast-backend-version.txt")
+    outputs.file(versionFile)
+    doLast {
+        versionFile.get().asFile.apply {
+            parentFile.mkdirs()
+            writeText(project.version.toString())
+        }
+    }
+}
+
+sourceSets.main {
+    resources.srcDir(writeBackendVersion.map { it.outputs.files.singleFile.parentFile })
 }
 
 tasks.register("verifyPluginXmlPresent") {
@@ -73,6 +90,11 @@ tasks.register("verifyPluginXmlPresent") {
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
     systemProperty("idea.home.path", layout.buildDirectory.dir("idea-sandbox").get().asFile.absolutePath)
+}
+
+configurations.matching { it.name == "testRuntimeClasspath" }.configureEach {
+    exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core")
+    exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core-jvm")
 }
 
 private fun ZipFile.readPluginXmlContent(): String {

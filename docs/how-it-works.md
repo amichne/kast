@@ -66,8 +66,8 @@ Kast analysis without a second JVM process.
   `KAST_INTELLIJ_DISABLE` environment variable).
 - Reuses the IDE's project model, so there is no separate workspace discovery
   step.
-- Supports most capabilities. Call hierarchy and type hierarchy are not yet
-  available through the plugin backend.
+- Supports most capabilities. Type hierarchy is not yet available through the
+  plugin backend.
 
 ### Capability comparison
 
@@ -80,7 +80,7 @@ The table below summarizes the current differences.
 | Find references           | ✓          | ✓               |
 | File outline              | ✓          | ✓               |
 | Workspace symbol search   | ✓          | ✓               |
-| Call hierarchy            | ✓          | —               |
+| Call hierarchy            | ✓          | ✓               |
 | Type hierarchy            | ✓          | —               |
 | Semantic insertion point  | ✓          | ✓               |
 | Diagnostics               | ✓          | ✓               |
