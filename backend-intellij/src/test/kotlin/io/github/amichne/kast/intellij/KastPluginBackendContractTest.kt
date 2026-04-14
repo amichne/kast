@@ -1,0 +1,135 @@
+package io.github.amichne.kast.intellij
+
+import com.intellij.openapi.application.readAction
+import com.intellij.openapi.module.Module
+import com.intellij.openapi.project.Project
+import com.intellij.psi.PsiDirectory
+import com.intellij.psi.PsiFile
+import com.intellij.testFramework.IndexingTestUtil
+import com.intellij.testFramework.junit5.TestApplication
+import com.intellij.testFramework.junit5.fixture.TestFixture
+import com.intellij.testFramework.junit5.fixture.moduleFixture
+import com.intellij.testFramework.junit5.fixture.projectFixture
+import com.intellij.testFramework.junit5.fixture.psiFileFixture
+import com.intellij.testFramework.junit5.fixture.sourceRootFixture
+import io.github.amichne.kast.api.CapabilityNotSupportedException
+import io.github.amichne.kast.api.FilePosition
+import io.github.amichne.kast.api.ServerLimits
+import io.github.amichne.kast.api.SymbolQuery
+import io.github.amichne.kast.api.TypeHierarchyQuery
+import kotlinx.coroutines.runBlocking
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
+import java.nio.file.Path
+
+@TestApplication
+class KastPluginBackendContractTest {
+    companion object {
+        private val projectFixture: TestFixture<Project> = projectFixture()
+
+        private val defaultLimits = ServerLimits(
+            maxResults = 500,
+            requestTimeoutMillis = 30_000L,
+            maxConcurrentRequests = 4,
+        )
+
+        private const val sampleSource = """
+            package demo
+
+            fun greet(name: String): String = "Hello, ${'$'}name"
+        """
+    }
+
+    private val mainModuleFixture: TestFixture<Module> = projectFixture.moduleFixture("main")
+    private val secondaryModuleFixture: TestFixture<Module> = projectFixture.moduleFixture("secondary")
+    private val mainSourceRootFixture: TestFixture<PsiDirectory> = mainModuleFixture.sourceRootFixture()
+    private val sampleFileFixture: TestFixture<PsiFile> = mainSourceRootFixture.psiFileFixture("Sample.kt", sampleSource)
+
+    private val project: Project
+        get() = projectFixture.get()
+
+    private val sampleFile: PsiFile
+        get() = sampleFileFixture.get()
+
+    private fun backend(): KastPluginBackend = KastPluginBackend(
+        project = project,
+        workspaceRoot = Path.of(project.basePath!!),
+        limits = defaultLimits,
+    )
+
+    private fun ensureProjectReady() {
+        mainModuleFixture.get()
+        secondaryModuleFixture.get()
+        sampleFileFixture.get()
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+    }
+
+    @Test
+    fun `runtime status lists source module names`() = runBlocking {
+        ensureProjectReady()
+
+        val status = backend().runtimeStatus()
+
+        assertEquals(listOf("main", "secondary"), status.sourceModuleNames)
+    }
+
+    @Test
+    fun `resolve symbol includes declaration scope when requested`() = runBlocking {
+        ensureProjectReady()
+
+        val (filePath, offset) = readAction {
+            sampleFile.virtualFile.path to sampleFile.text.indexOf("greet")
+        }
+        val result = backend().resolveSymbol(
+            SymbolQuery(
+                position = FilePosition(
+                    filePath = filePath,
+                    offset = offset,
+                ),
+                includeDeclarationScope = true,
+            ),
+        )
+
+        val declarationScope = result.symbol.declarationScope
+        assertNotNull(declarationScope)
+        assertTrue(declarationScope?.sourceText.orEmpty().contains("fun greet"))
+    }
+
+    @Test
+    fun `type hierarchy reports plugin backend unsupported message`() = runBlocking {
+        ensureProjectReady()
+
+        val (filePath, offset) = readAction {
+            sampleFile.virtualFile.path to sampleFile.text.indexOf("greet")
+        }
+
+        val error = assertThrows(CapabilityNotSupportedException::class.java) {
+            runBlocking {
+                backend().typeHierarchy(
+                    TypeHierarchyQuery(
+                        position = FilePosition(filePath = filePath, offset = offset),
+                    ),
+                )
+            }
+        }
+
+        assertEquals("TYPE_HIERARCHY", error.details["capability"])
+        assertEquals("Type hierarchy is not supported by the IntelliJ plugin backend", error.message)
+    }
+
+    @Test
+    fun `capabilities read backend version from generated resource`() = runBlocking {
+        ensureProjectReady()
+
+        val expectedVersion = KastPluginBackend::class.java
+            .getResource("/kast-backend-version.txt")
+            ?.readText()
+            ?.trim()
+
+        assertNotNull(expectedVersion)
+        assertEquals(expectedVersion, backend().capabilities().backendVersion)
+    }
+}
