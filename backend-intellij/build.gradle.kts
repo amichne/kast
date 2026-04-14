@@ -4,7 +4,7 @@ import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
 plugins {
     kotlin("jvm")
-    id("org.jetbrains.intellij.platform") version "2.13.1"
+    id("org.jetbrains.intellij.platform") version "2.14.0"
 }
 
 repositories {
@@ -12,8 +12,10 @@ repositories {
     gradlePluginPortal()
     maven("https://packages.jetbrains.team/maven/p/ij/intellij-dependencies")
     maven("https://www.jetbrains.com/intellij-repository/releases")
+    maven("https://cache-redirector.jetbrains.com/intellij-dependencies")
     intellijPlatform {
         defaultRepositories()
+        localPlatformArtifacts()
     }
 }
 
@@ -28,6 +30,7 @@ dependencies {
 
     intellijPlatform {
         intellijIdea("2025.3")
+//        jetbrainsRuntime()
         bundledPlugin("org.jetbrains.kotlin")
         bundledPlugin("com.intellij.java")
         testFramework(TestFrameworkType.Platform)

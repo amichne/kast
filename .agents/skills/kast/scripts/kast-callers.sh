@@ -9,18 +9,24 @@ SYMBOL=""
 FILE_HINT=""
 DIRECTION="incoming"
 DEPTH="2"
+MAX_TOTAL_CALLS=""
+MAX_CHILDREN_PER_NODE=""
+TIMEOUT_MILLIS=""
 KIND=""
 CONTAINING_TYPE=""
 
 for arg in "$@"; do
     case "${arg}" in
-        --workspace-root=*) WORKSPACE_ROOT="${arg#*=}" ;;
-        --symbol=*) SYMBOL="${arg#*=}" ;;
-        --file=*) FILE_HINT="${arg#*=}" ;;
-        --direction=*) DIRECTION="${arg#*=}" ;;
-        --depth=*) DEPTH="${arg#*=}" ;;
-        --kind=*) KIND="${arg#*=}" ;;
-        --containing-type=*) CONTAINING_TYPE="${arg#*=}" ;;
+        --workspace-root=*)       WORKSPACE_ROOT="${arg#*=}" ;;
+        --symbol=*)               SYMBOL="${arg#*=}" ;;
+        --file=*)                 FILE_HINT="${arg#*=}" ;;
+        --direction=*)            DIRECTION="${arg#*=}" ;;
+        --depth=*)                DEPTH="${arg#*=}" ;;
+        --max-total-calls=*)      MAX_TOTAL_CALLS="${arg#*=}" ;;
+        --max-children-per-node=*) MAX_CHILDREN_PER_NODE="${arg#*=}" ;;
+        --timeout-millis=*)       TIMEOUT_MILLIS="${arg#*=}" ;;
+        --kind=*)                 KIND="${arg#*=}" ;;
+        --containing-type=*)      CONTAINING_TYPE="${arg#*=}" ;;
         *)
             printf 'Unknown argument: %s\n' "${arg}" >&2
             exit 1
@@ -38,7 +44,8 @@ emit_failure() {
     log_path="$(kast_preserve_log_file)"
 
     python3 - "${stage}" "${message}" "${WORKSPACE_ROOT}" "${SYMBOL}" "${FILE_HINT}" "${KIND}" \
-        "${CONTAINING_TYPE}" "${DIRECTION}" "${DEPTH}" "${log_path}" "${error_file}" <<'PY'
+        "${CONTAINING_TYPE}" "${DIRECTION}" "${DEPTH}" "${MAX_TOTAL_CALLS}" \
+        "${MAX_CHILDREN_PER_NODE}" "${TIMEOUT_MILLIS}" "${log_path}" "${error_file}" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -53,6 +60,9 @@ from pathlib import Path
     containing_type,
     direction,
     depth,
+    max_total_calls,
+    max_children_per_node,
+    timeout_millis,
     log_file,
     error_file,
 ) = sys.argv[1:]
@@ -69,6 +79,9 @@ payload = {
         "containing_type": containing_type or None,
         "direction": direction,
         "depth": int(depth),
+        "max_total_calls": int(max_total_calls) if max_total_calls else None,
+        "max_children_per_node": int(max_children_per_node) if max_children_per_node else None,
+        "timeout_millis": int(timeout_millis) if timeout_millis else None,
     },
     "log_file": log_file,
 }
@@ -107,15 +120,21 @@ if ! kast_resolve_named_symbol_query "${WORKSPACE_ROOT}" "${SYMBOL}" "${FILE_HIN
     exit 1
 fi
 
+# Build call-hierarchy command with optional tuning flags
+CALLERS_CMD=(
+    "${KAST}" call-hierarchy
+    --workspace-root="${WORKSPACE_ROOT}"
+    --file-path="${RESOLVED_FILE_PATH}"
+    --offset="${RESOLVED_OFFSET}"
+    --direction="${DIRECTION}"
+    --depth="${DEPTH}"
+)
+[[ -n "${MAX_TOTAL_CALLS}" ]]       && CALLERS_CMD+=(--max-total-calls="${MAX_TOTAL_CALLS}")
+[[ -n "${MAX_CHILDREN_PER_NODE}" ]] && CALLERS_CMD+=(--max-children-per-node="${MAX_CHILDREN_PER_NODE}")
+[[ -n "${TIMEOUT_MILLIS}" ]]        && CALLERS_CMD+=(--timeout-millis="${TIMEOUT_MILLIS}")
+
 CALLERS_RESULT="${TMP_DIR}/callers.json"
-if ! kast_run_json \
-    "${CALLERS_RESULT}" \
-    "${KAST}" call-hierarchy \
-    --workspace-root="${WORKSPACE_ROOT}" \
-    --file-path="${RESOLVED_FILE_PATH}" \
-    --offset="${RESOLVED_OFFSET}" \
-    --direction="${DIRECTION}" \
-    --depth="${DEPTH}"; then
+if ! kast_run_json "${CALLERS_RESULT}" "${CALLERS_CMD[@]}"; then
     emit_failure "call_hierarchy" "kast call-hierarchy failed." "${CALLERS_RESULT}"
     exit 1
 fi
@@ -123,7 +142,8 @@ fi
 LOG_PATH="$(kast_preserve_log_file)"
 python3 - "${RESOLVED_JSON_FILE}" "${CALLERS_RESULT}" "${RESOLVED_FILE_PATH}" "${RESOLVED_OFFSET}" \
     "${WORKSPACE_ROOT}" "${SYMBOL}" "${FILE_HINT}" "${KIND}" "${CONTAINING_TYPE}" \
-    "${DIRECTION}" "${DEPTH}" "${LOG_PATH}" <<'PY'
+    "${DIRECTION}" "${DEPTH}" "${MAX_TOTAL_CALLS}" "${MAX_CHILDREN_PER_NODE}" \
+    "${TIMEOUT_MILLIS}" "${LOG_PATH}" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -140,6 +160,9 @@ from pathlib import Path
     containing_type,
     direction,
     depth,
+    max_total_calls,
+    max_children_per_node,
+    timeout_millis,
     log_file,
 ) = sys.argv[1:]
 
@@ -155,6 +178,9 @@ payload = {
         "containing_type": containing_type or None,
         "direction": direction,
         "depth": int(depth),
+        "max_total_calls": int(max_total_calls) if max_total_calls else None,
+        "max_children_per_node": int(max_children_per_node) if max_children_per_node else None,
+        "timeout_millis": int(timeout_millis) if timeout_millis else None,
     },
     "symbol": resolve_result["symbol"],
     "file_path": file_path,
