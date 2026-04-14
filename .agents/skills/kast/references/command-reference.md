@@ -693,7 +693,7 @@ diagnostics, impact assessment, and full rename flows.
 | `kast-callers.sh` | Resolve a symbol query and expand incoming or outgoing callers | `symbol`, `root`, `stats`, `log_file` |
 | `kast-diagnostics.sh` | Run structured diagnostics on one or more files | `clean`, `error_count`, `warning_count`, `diagnostics`, `log_file` |
 | `kast-impact.sh` | Resolve a symbol query, gather references, and optionally gather incoming callers | `references`, `search_scope`, optional `call_hierarchy`, `log_file` |
-| `kast-rename.sh` | Run the full rename workflow end to end | `ApplyEditsResult` JSON on stdout; step log on stderr |
+| `kast-rename.sh` | Run the full rename workflow end to end | `ok`, `edit_count`, `affected_files`, `apply_result`, `diagnostics`, `log_file` |
 | `kast-plan-utils.py` | Extract or inspect rename-plan JSON | Plan metadata or apply-request JSON |
 | `find-symbol-offset.py` | Compute declaration-first UTF-16 offsets inside one file | Tab-separated candidates |
 | `validate-wrapper-json.sh` | Smoke-test wrapper success and failure JSON contracts | Aggregated validation JSON |
@@ -763,8 +763,11 @@ Optional flags:
 - `--file=<absolute path, workspace-relative path, or glob>`
 - `--kind=class|function|property`
 - `--containing-type=OuterType`
-- `--direction=incoming|outgoing`
-- `--depth=<non-negative integer>`
+- `--direction=incoming|outgoing` (default: `incoming`)
+- `--depth=<non-negative integer>` (default: `2`)
+- `--max-total-calls=<integer>` — cap total nodes in the result tree
+- `--max-children-per-node=<integer>` — cap children per node
+- `--timeout-millis=<integer>` — traversal timeout
 
 **stdout:** wrapper JSON with `ok`, `symbol`, `root`, `stats`, and `log_file`.
 
@@ -797,25 +800,41 @@ references, and can include incoming callers in the same result.
 bash "$SKILL_ROOT/scripts/kast-impact.sh" \
   --workspace-root=/absolute/path \
   --symbol=AnalysisServer \
-  --include-callers=true
+  --include-callers=true \
+  --caller-depth=2
 ```
 
 Optional flags:
 - `--file=<absolute path, workspace-relative path, or glob>`
 - `--kind=class|function|property`
 - `--containing-type=OuterType`
-- `--include-callers=true|false`
+- `--include-callers=true|false` (default: `true`)
+- `--caller-depth=<non-negative integer>` — depth for the incoming call hierarchy (default: `2`)
 
 **stdout:** wrapper JSON with `ok`, `symbol`, `references`, `search_scope`,
-optional `call_hierarchy`, and `log_file`.
+optional `call_hierarchy` (includes `direction` and `depth`), and `log_file`.
 
 ---
 
 ### `kast-rename.sh` — One-shot rename workflow
 
-Runs the complete rename workflow (workspace ensure → plan → apply → diagnostics) in a
-single invocation. All JSON manipulation is handled by `kast-plan-utils.py`; no `jq`
-required. Temp files are created under `mktemp -d` and removed on exit via `trap`.
+Runs the complete rename workflow (resolve → plan → apply → diagnostics) in a
+single invocation. All JSON manipulation is handled by `kast-plan-utils.py`; no
+`jq` required. Temp files are created under `mktemp -d` and removed on exit.
+
+**Symbol mode (recommended — resolves the symbol first):**
+
+```bash
+bash "$SKILL_ROOT/scripts/kast-rename.sh" \
+  --workspace-root=/absolute/path \
+  --symbol=OldName \
+  --new-name=NewName
+```
+
+Optional symbol-mode flags: `--file=<hint>`, `--kind=class|function|property`,
+`--containing-type=OuterType`
+
+**Offset mode (when exact position is already known):**
 
 ```bash
 bash "$SKILL_ROOT/scripts/kast-rename.sh" \
@@ -825,15 +844,15 @@ bash "$SKILL_ROOT/scripts/kast-rename.sh" \
   --new-name=NewName
 ```
 
-**All four arguments are required.**
-
-**stdout:** `ApplyEditsResult` JSON (same schema as `apply-edits`).
+**stdout:** wrapper JSON with `ok`, `query`, `edit_count`, `affected_files`,
+`apply_result` (the raw `ApplyEditsResult`), `diagnostics` (with `clean`,
+`error_count`, `warning_count`, and `errors` when non-empty), and `log_file`.
 
 **stderr:** step-by-step progress lines prefixed with `[kast-rename]`.
 
 **Exit codes:**
 - `0` — edits applied, diagnostics clean.
-- `1` — ERROR-severity diagnostics found, or apply/plan step failed.
+- `1` — any failure: resolve, plan, apply, or ERROR-severity diagnostics.
 
 ---
 

@@ -3,18 +3,18 @@ name: kast
 description: >
   Use this skill for any Kotlin/JVM semantic code intelligence task: resolve a
   symbol, find references, expand call hierarchies, run diagnostics, assess
-  edit impact, plan a rename, or apply rename edits through the packaged
-  wrapper scripts. Triggers on: "resolve symbol", "find references",
-  "call hierarchy", "who calls", "incoming callers", "outgoing callers",
-  "kast", "rename symbol", "run diagnostics", "apply edits", "symbol at
-  offset", "semantic analysis", "kotlin analysis daemon". Every multi-step
-  operation goes through `scripts/` and emits structured JSON on stdout.
+  edit impact, rename a symbol, or check workspace health — all through
+  structured wrapper scripts that emit `ok`-keyed JSON. Triggers on: "resolve
+  symbol", "find references", "call hierarchy", "who calls", "incoming
+  callers", "outgoing callers", "kast", "rename symbol", "run diagnostics",
+  "apply edits", "symbol at offset", "semantic analysis",
+  "kotlin analysis daemon", "workspace status", "capabilities".
 ---
 
 # Kast skill
 
-kast is a Kotlin semantic analysis daemon. This skill wraps the CLI in
-structured scripts so the agent can stay on JSON instead of brittle shell
+Kast is a Kotlin semantic analysis daemon. This skill wraps the CLI in
+structured scripts so the agent stays on JSON instead of brittle shell
 pipelines.
 
 ## 0. Core principle
@@ -27,11 +27,7 @@ JSON first. Open `log_file` only when `ok=false` or you need daemon notes.
 
 ## 1. Bootstrap (run once per session)
 
-If the `kast-bootstrap` session hook (`.agents/hooks.json`) has already fired,
-`SKILL_ROOT` and `KAST` are available in session state and `KAST_CLI_PATH` is
-exported. Skip directly to step 2.
-
-**Fallback** — locate the skill root manually when the session hook has not run:
+Locate the skill root and resolve the kast binary before calling any wrapper:
 
 ```bash
 SKILL_ROOT="$(cd "$(dirname "$(find "$(git rev-parse --show-toplevel)" \
@@ -40,25 +36,25 @@ KAST="$(bash "$SKILL_ROOT/scripts/resolve-kast.sh")"
 ```
 
 `$SKILL_ROOT` is the packaged skill root. The wrappers resolve `kast`
-internally, so you do not need temp files, redirects, or manual stderr
-capture.
+internally, so you do not need to pass `$KAST` explicitly to them.
 
-Optional: prewarm the workspace when you want a separate readiness step before
-you call a wrapper.
+**Optional prewarm** — run this when you want an explicit readiness check
+before calling any wrapper:
 
 ```bash
 "$KAST" workspace ensure --workspace-root="$(git rev-parse --show-toplevel)"
 ```
 
-If `workspace ensure` fails, check the daemon log at
+If `workspace ensure` fails, read the daemon log at
 `$KAST_CONFIG_HOME/logs/<hash>/standalone-daemon.log` (defaults to
-`~/.config/kast/logs/<hash>/standalone-daemon.log` where `<hash>` is the first
-12 characters of the SHA-256 of the absolute workspace root) before retrying.
+`~/.config/kast/logs/<hash>/standalone-daemon.log`, where `<hash>` is the
+first 12 characters of the SHA-256 of the absolute workspace root) before
+retrying. See `references/troubleshooting.md` for decision trees.
 
 ## 2. Symbol lookup
 
-Resolve a named symbol with the wrapper. It handles declaration search, UTF-16
-offset discovery, `resolve`, and identity confirmation.
+Resolve a named symbol with the wrapper. It handles declaration search,
+UTF-16 offset discovery, `resolve`, and identity confirmation.
 
 ```bash
 bash "$SKILL_ROOT/scripts/kast-resolve.sh" \
@@ -104,7 +100,7 @@ Key output: `ok`, `symbol`, `references`, `search_scope`, `declaration`,
 
 ### Expand callers or callees
 
-Use `kast-callers.sh` to resolve the symbol and run `call hierarchy` with the
+Use `kast-callers.sh` to resolve the symbol and run `call-hierarchy` with the
 requested direction and depth.
 
 ```bash
@@ -115,12 +111,16 @@ bash "$SKILL_ROOT/scripts/kast-callers.sh" \
   --depth=2
 ```
 
+Optional tuning flags (passed through to the underlying CLI):
+`--max-total-calls=256`, `--max-children-per-node=64`,
+`--timeout-millis=5000`
+
 Key output: `ok`, `symbol`, `root`, `stats`, `log_file`
 
 ### Run diagnostics
 
-Use `kast-diagnostics.sh` when you need structured diagnostics for one or more
-files.
+Use `kast-diagnostics.sh` when you need structured diagnostics for one or
+more files.
 
 ```bash
 bash "$SKILL_ROOT/scripts/kast-diagnostics.sh" \
@@ -128,8 +128,8 @@ bash "$SKILL_ROOT/scripts/kast-diagnostics.sh" \
   --file-paths=/absolute/A.kt,/absolute/B.kt
 ```
 
-Key output: `ok`, `clean`, `error_count`, `warning_count`, `diagnostics`,
-`log_file`
+Key output: `ok`, `clean`, `error_count`, `warning_count`, `info_count`,
+`diagnostics`, `log_file`
 
 ### Assess edit impact
 
@@ -140,7 +140,8 @@ references, and can include incoming callers in the same result.
 bash "$SKILL_ROOT/scripts/kast-impact.sh" \
   --workspace-root=/absolute/workspace/path \
   --symbol=AnalysisServer \
-  --include-callers=true
+  --include-callers=true \
+  --caller-depth=2
 ```
 
 Key output: `ok`, `symbol`, `references`, `search_scope`, optional
@@ -148,7 +149,19 @@ Key output: `ok`, `symbol`, `references`, `search_scope`, optional
 
 ### Rename a symbol safely
 
-Use the one-shot rename wrapper for the full mutation workflow.
+Use the one-shot rename wrapper for the full mutation workflow. It accepts
+either a symbol name (recommended) or a precise file-path and offset.
+
+**Symbol mode (recommended — resolves the symbol first):**
+
+```bash
+bash "$SKILL_ROOT/scripts/kast-rename.sh" \
+  --workspace-root=/absolute/workspace/path \
+  --symbol=OldName \
+  --new-name=NewSymbolName
+```
+
+**Offset mode (when exact position is already known):**
 
 ```bash
 bash "$SKILL_ROOT/scripts/kast-rename.sh" \
@@ -158,9 +171,13 @@ bash "$SKILL_ROOT/scripts/kast-rename.sh" \
   --new-name=NewSymbolName
 ```
 
-`kast-rename.sh` runs `workspace ensure`, plans the rename, extracts the
-apply-request with `kast-plan-utils.py`, applies the edits, runs diagnostics on
-affected files, and exits non-zero if any `ERROR` diagnostics remain.
+`kast-rename.sh` runs workspace ensure (or symbol resolution), plans the
+rename, extracts the apply-request with `kast-plan-utils.py`, applies the
+edits, runs diagnostics on affected files, and exits non-zero if any `ERROR`
+diagnostics remain.
+
+Key output: `ok`, `query`, `edit_count`, `affected_files`, `apply_result`,
+`diagnostics`, `log_file`
 
 ### Raw CLI fallback
 
@@ -184,7 +201,76 @@ python3 "$SKILL_ROOT/scripts/kast-plan-utils.py" \
   --request-file=/tmp/apply-request.json
 ```
 
-## 4. Workflows
+## 4. Workspace and daemon lifecycle
+
+Use these raw CLI commands to manage workspace state. They do not have
+wrappers; call `$KAST` directly.
+
+### Check daemon state
+
+```bash
+"$KAST" workspace status --workspace-root=/absolute/workspace/path
+```
+
+Prints `RuntimeCandidateStatus` for every registered daemon, including:
+`state` (`STARTING` | `INDEXING` | `READY` | `DEGRADED`), `pidAlive`,
+`reachable`, `ready`, and `capabilities`.
+
+### Wait for the daemon to be ready
+
+```bash
+"$KAST" workspace ensure --workspace-root=/absolute/workspace/path
+```
+
+Waits for `READY` by default. Add `--accept-indexing=true` to return as soon
+as the daemon is servable (state `INDEXING` or better).
+
+### Stop the daemon
+
+```bash
+"$KAST" workspace stop --workspace-root=/absolute/workspace/path
+```
+
+### Check what capabilities are available
+
+```bash
+"$KAST" capabilities --workspace-root=/absolute/workspace/path
+```
+
+Prints `readCapabilities` and `mutationCapabilities`. Run this when a wrapper
+returns `CAPABILITY_NOT_SUPPORTED` to confirm what the backend supports.
+
+### Daemon states
+
+| State | Meaning | Safe to query? |
+| --- | --- | --- |
+| `STARTING` | JVM starting; workspace not yet bootstrapped | No |
+| `INDEXING` | Background index build running; partial results possible | With `--accept-indexing=true` |
+| `READY` | Fully indexed; all queries return stable results | Yes |
+| `DEGRADED` | Unhealthy; `workspace ensure` will attempt restart | No |
+
+When `workspace ensure` times out, always read the daemon log before retrying.
+`selected: null` in `workspace status` means startup failed silently — not
+that no daemon is configured.
+
+### Smoke validation
+
+```bash
+"$KAST" smoke --workspace-root=/absolute/workspace/path [--format=json]
+```
+
+Runs the portable smoke workflow and emits aggregated JSON on stdout. Use this
+after install or when the wrappers behave unexpectedly.
+
+For a quick wrapper-contract check (success and failure paths for every
+wrapper), run:
+
+```bash
+bash "$SKILL_ROOT/scripts/validate-wrapper-json.sh" \
+  "$(git rev-parse --show-toplevel)"
+```
+
+## 5. Workflows
 
 Use these wrapper combinations for the common agent tasks.
 
@@ -202,23 +288,23 @@ Use `kast-callers.sh` with `--direction=incoming` for callers and
 ### Pre-edit impact assessment
 
 Use `kast-impact.sh` before you edit a symbol. Treat
-`search_scope.exhaustive=false`, `stats.timeoutReached=true`, or any truncation
-marker as proof that the result is bounded.
+`search_scope.exhaustive=false`, `stats.timeoutReached=true`, or any
+truncation marker as proof that the result is bounded — do not claim
+completeness.
 
 ### Post-edit validation
 
-After any code change, run `kast-diagnostics.sh` on the modified files. When
-you need a quick contract check for the wrappers themselves, run
-`validate-wrapper-json.sh`. It creates a temporary sample Kotlin workspace and
-checks that each wrapper still emits valid JSON on both success and failure
-paths.
+After any code change, run `kast-diagnostics.sh` on the modified files. A
+clean result (`clean=true`, `error_count=0`) is required before reporting
+success to the user.
 
-```bash
-bash "$SKILL_ROOT/scripts/validate-wrapper-json.sh" \
-  "$(git rev-parse --show-toplevel)"
-```
+### Full rename end-to-end
 
-## 5. Error reference
+Use `kast-rename.sh --symbol=X --new-name=Y` for agent-driven renames. Check
+`ok` and `diagnostics.clean` in the wrapper JSON result. If `ok=false`,
+inspect `stage` and `log_file` to identify where the workflow failed.
+
+## 6. Error reference
 
 Use the wrapper JSON as the first failure surface. The wrapper `message`,
 `stage`, and `log_file` tell you whether the failure came from argument
@@ -228,12 +314,17 @@ validation, workspace startup, candidate lookup, or the underlying CLI call.
 | --- | --- | --- |
 | `argument_validation` | Missing or invalid wrapper arguments | Fix the wrapper flags and rerun |
 | `candidate_search` | No declaration candidate matched the symbol query | Add `--file`, `--kind`, or `--containing-type`, or confirm the symbol exists |
-| `workspace_ensure` | The daemon did not become ready | Read `$KAST_CONFIG_HOME/logs/<hash>/standalone-daemon.log` before retrying |
-| `NOT_FOUND` in `log_file` | Offset landed on the wrong token or the file is not indexed | Re-run `kast-resolve.sh` with a better file hint, or wait for `READY` |
-| `CONFLICT` from `kast-rename.sh` | Files changed between plan and apply | Re-run `kast-rename.sh` to generate a fresh plan |
-| `clean=false` from `kast-diagnostics.sh` | Diagnostics found `ERROR` results | Fix the errors, then rerun diagnostics |
+| `workspace_ensure` | The daemon did not become ready | Read the daemon log before retrying |
+| `symbol_resolve` | No resolved symbol matched after candidate search | Try a more precise file hint or kind |
+| `NOT_FOUND` in `log_file` | Offset landed on the wrong token or file not indexed | Re-run `kast-resolve.sh` with a better hint, or wait for `READY` |
+| `CONFLICT` from `apply-edits` | Files changed between plan and apply | Re-run `kast-rename.sh` to generate a fresh plan |
+| `APPLY_PARTIAL_FAILURE` | Commit phase failed for some files | Inspect `details` map; files not in `details` were written |
+| `clean=false` from `kast-diagnostics.sh` | ERROR-severity diagnostics found | Fix the errors, then rerun diagnostics |
+| `CAPABILITY_NOT_SUPPORTED` | Backend lacks the requested operation | Run `kast capabilities` to see what is available |
 
-## 6. Rules
+See `references/troubleshooting.md` for full decision trees.
+
+## 7. Rules
 
 - Always use the wrapper scripts for multi-step operations.
 - Use raw `kast` CLI only when a wrapper does not exist yet.
@@ -244,11 +335,15 @@ validation, workspace startup, candidate lookup, or the underlying CLI call.
 - Treat `search_scope.exhaustive=false`, `stats.timeoutReached=true`,
   `stats.maxTotalCallsReached=true`, `stats.maxChildrenPerNodeReached=true`,
   or node `truncation` as proof that the result is bounded.
+- Treat `page.truncated=true` in a `references` result as proof that the
+  reference list is incomplete — do not claim exhaustive coverage.
 - Read the wrapper `log_file` before you retry a workspace-startup failure.
 - Never claim a symbol match, reference list, or call tree is complete unless
-  the wrapper result supports that claim.
+  the wrapper result explicitly supports that claim.
+- Wait for `state = READY` (not just `INDEXING`) before trusting semantic
+  results in a newly started daemon.
 
-## 7. Integration
+## 8. Integration
 
 Use the narrowest tool that owns the task.
 
@@ -260,5 +355,8 @@ Use the narrowest tool that owns the task.
 | Assess pre-edit impact | `kast-impact.sh` |
 | Run structured diagnostics for changed files | `kast-diagnostics.sh` |
 | Rename a symbol end to end | `kast-rename.sh` |
+| Check daemon health and state | `kast workspace status` (raw CLI) |
+| Confirm available capabilities | `kast capabilities` (raw CLI) |
+| Smoke-test the skill wrappers | `validate-wrapper-json.sh` |
 | Build the project | `kotlin-gradle-loop` skill or targeted Gradle tasks |
 | Run tests | `kotlin-gradle-loop` skill or targeted Gradle tasks |
