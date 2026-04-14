@@ -70,7 +70,7 @@ internal class KastPluginService(
 internal fun intellijServerLimits(
     getenv: (String) -> String? = System::getenv,
 ): ServerLimits = ServerLimits(
-    maxConcurrentRequests = getenv("KAST_INTELLIJ_MAX_CONCURRENT")?.toIntOrNull() ?: DEFAULT_MAX_CONCURRENT_REQUESTS,
+    maxConcurrentRequests = (getenv("KAST_INTELLIJ_MAX_CONCURRENT")?.toIntOrNull() ?: DEFAULT_MAX_CONCURRENT_REQUESTS).coerceAtLeast(1),
     requestTimeoutMillis = getenv("KAST_INTELLIJ_TIMEOUT_MS")?.toLongOrNull() ?: DEFAULT_REQUEST_TIMEOUT_MILLIS,
     maxResults = getenv("KAST_INTELLIJ_MAX_RESULTS")?.toIntOrNull() ?: DEFAULT_MAX_RESULTS,
 )
