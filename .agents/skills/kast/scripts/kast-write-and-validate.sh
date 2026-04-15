@@ -160,7 +160,7 @@ from pathlib import Path
 query: dict = {"edits": [], "fileOperations": []}
 
 if mode == "create-file":
-    query["fileOperations"] = [{"kind": "create", "path": file_path, "content": content}]
+    query["fileOperations"] = [{"type": "create", "filePath": file_path, "content": content}]
 elif mode == "insert-at-offset":
     off = int(offset)
     existing = Path(file_path).read_bytes() if Path(file_path).exists() else b""
