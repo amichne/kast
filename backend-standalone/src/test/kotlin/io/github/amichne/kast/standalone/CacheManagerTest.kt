@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
+import java.nio.file.NoSuchFileException
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.concurrent.thread
@@ -32,15 +33,16 @@ class CacheManagerTest {
         val cacheManager = CacheManager(workspaceRoot)
         val cacheFile = kastCacheDirectory(normalizeStandalonePath(workspaceRoot)).resolve("debounce.txt")
         val writeCount = AtomicInteger(0)
+        val debounceDelayMillis = 100L
 
         repeat(10) {
-            cacheManager.schedule(key = "debounce", delayMillis = 25) {
+            cacheManager.schedule(key = "debounce", delayMillis = debounceDelayMillis) {
                 val nextCount = writeCount.incrementAndGet()
                 writeCacheFileAtomically(cacheFile, nextCount.toString())
             }
         }
 
-        waitUntil { writeCount.get() == 1 && Files.isRegularFile(cacheFile) }
+        waitUntil { writeCount.get() == 1 && readCacheFileIfPresent(cacheFile) == "1" }
         assertEquals("1", Files.readString(cacheFile))
         cacheManager.close()
     }
@@ -53,6 +55,7 @@ class CacheManagerTest {
         val newPayload = "new".repeat(8_192)
         val observedPayloads = linkedSetOf<String>()
         writeCacheFileAtomically(cacheFile, oldPayload)
+        observedPayloads += Files.readString(cacheFile)
 
         val writer = thread(start = true) {
             cacheManager.runNow {
@@ -61,11 +64,15 @@ class CacheManagerTest {
         }
 
         while (writer.isAlive) {
-            observedPayloads += Files.readString(cacheFile)
+            readCacheFileIfPresent(cacheFile)?.let(observedPayloads::add)
+            Thread.yield()
         }
         writer.join()
+        waitUntil { readCacheFileIfPresent(cacheFile) == newPayload }
         observedPayloads += Files.readString(cacheFile)
 
+        assertTrue(observedPayloads.contains(oldPayload))
+        assertTrue(observedPayloads.contains(newPayload))
         assertTrue(observedPayloads.all { payload -> payload == oldPayload || payload == newPayload })
         cacheManager.close()
     }
@@ -194,5 +201,11 @@ class CacheManagerTest {
             Thread.sleep(pollMillis)
         }
         error("Condition was not met within ${timeoutMillis}ms")
+    }
+
+    private fun readCacheFileIfPresent(path: Path): String? = try {
+        Files.readString(path)
+    } catch (_: NoSuchFileException) {
+        null
     }
 }

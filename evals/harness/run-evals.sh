@@ -261,7 +261,7 @@ log "Workspace:      ${WORKSPACE:-<none>}"
 log "Transcript dir: $TRANSCRIPT_DIR"
 
 # ── Build kast if needed ─────────────────────────────────────────────────
-KAST_BIN="$REPO_ROOT/kast/build/install/kast/bin/kast"
+KAST_BIN="${KAST_BIN:-$REPO_ROOT/kast/build/install/kast/bin/kast}"
 if [[ ! -x "$KAST_BIN" ]]; then
   log_step "Building kast (installDist)…"
   (cd "$REPO_ROOT" && ./gradlew :kast:installDist --no-daemon --quiet) || die "kast build failed"

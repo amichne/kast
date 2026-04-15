@@ -43,6 +43,7 @@ jobs:
           :analysis-api:test
           :analysis-server:test
           :backend-standalone:test
+          :kast-cli:test
           :kast:test
           :kast:portableDistZip
 
@@ -79,6 +80,14 @@ jobs:
           :backend-intellij:buildPlugin
           :backend-intellij:verifyPluginStructure
           :backend-intellij:verifyPluginXmlPresent
+
+      - name: Upload IntelliJ plugin artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kast-intellij-plugin
+          path: backend-intellij/build/distributions/*.zip
+          if-no-files-found: error
+          retention-days: 1
 
   smoke-kast-cli:
     name: Smoke CLI (${{ matrix.os }})
