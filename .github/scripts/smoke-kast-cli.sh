@@ -179,6 +179,44 @@ assert diagnostics["diagnostics"][0]["code"] == "UNRESOLVED_REFERENCE"
 edit_files = {Path(edit["filePath"]).name for edit in rename["edits"]}
 assert edit_files == {"Greeter.kt", "Use.kt", "SecondaryUse.kt"}
 assert set(Path(path).name for path in rename["affectedFiles"]) == edit_files
+
+# Build an ApplyEditsQuery from the rename result
+apply_edits_query = {
+    "edits": rename["edits"],
+    "fileHashes": rename["fileHashes"],
+    "fileOperations": [],
+}
+(tmp_dir / "apply-edits-request.json").write_text(
+    json.dumps(apply_edits_query), encoding="utf-8"
+)
+PY
+
+KAST_CONFIG_HOME="$instance_dir" \
+  "$KAST_CMD" apply-edits \
+  --workspace-root="$workspace_dir" \
+  --request-file="${tmp_dir}/apply-edits-request.json" \
+  --wait-timeout-ms=180000 >"${tmp_dir}/apply-edits.json"
+
+python3 - "$tmp_dir" "$workspace_dir" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+tmp_dir = Path(sys.argv[1])
+workspace_dir = Path(sys.argv[2])
+source_root = workspace_dir / "src/main/kotlin/sample"
+
+apply_result = json.loads((tmp_dir / "apply-edits.json").read_text(encoding="utf-8"))
+assert len(apply_result.get("applied", [])) > 0, f"expected edits to be applied: {apply_result}"
+
+greeter_text = (source_root / "Greeter.kt").read_text(encoding="utf-8")
+use_text = (source_root / "Use.kt").read_text(encoding="utf-8")
+secondary_text = (source_root / "SecondaryUse.kt").read_text(encoding="utf-8")
+
+assert "welcome" in greeter_text, f"Greeter.kt should contain 'welcome' after apply-edits: {greeter_text}"
+assert "greet" not in greeter_text, f"Greeter.kt should not contain 'greet' after rename: {greeter_text}"
+assert "welcome" in use_text, f"Use.kt should contain 'welcome' after apply-edits: {use_text}"
+assert "welcome" in secondary_text, f"SecondaryUse.kt should contain 'welcome' after apply-edits: {secondary_text}"
 PY
 
 KAST_CONFIG_HOME="$instance_dir" \
