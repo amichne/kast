@@ -687,6 +687,173 @@ class StandaloneAnalysisBackendRenameTest {
         }
     }
 
+    @Test
+    fun `rename updates explicit import in another file`(): TestResult = runTest {
+        writeFile(
+            relativePath = "src/main/kotlin/sample/Greeter.kt",
+            content = """
+                package sample
+
+                class Greeter
+            """.trimIndent() + "\n",
+        )
+        val usingFile = writeFile(
+            relativePath = "src/main/kotlin/other/UseGreeter.kt",
+            content = """
+                package other
+
+                import sample.Greeter
+
+                fun make(): Greeter = Greeter()
+            """.trimIndent() + "\n",
+        )
+
+        val content = Files.readString(workspaceRoot.resolve("src/main/kotlin/sample/Greeter.kt"))
+        val queryOffset = content.indexOf("Greeter")
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "sources",
+        )
+        session.use { s ->
+            val backend = StandaloneAnalysisBackend(
+                workspaceRoot = workspaceRoot,
+                limits = ServerLimits(maxResults = 100, requestTimeoutMillis = 30_000, maxConcurrentRequests = 4),
+                session = s,
+            )
+            val result = backend.rename(
+                RenameQuery(
+                    position = FilePosition(
+                        filePath = workspaceRoot.resolve("src/main/kotlin/sample/Greeter.kt").toString(),
+                        offset = queryOffset,
+                    ),
+                    newName = "Welcomer",
+                ),
+            )
+            val usingFilePath = normalizePath(usingFile)
+            val importEdit = result.edits.find { edit ->
+                edit.filePath == usingFilePath && edit.newText == "sample.Welcomer"
+            }
+            assertTrue(
+                importEdit != null,
+                "Expected an edit for import sample.Greeter → sample.Welcomer in ${usingFilePath}.\nActual edits: ${result.edits}",
+            )
+        }
+    }
+
+    @Test
+    fun `rename preserves alias in import directive`(): TestResult = runTest {
+        writeFile(
+            relativePath = "src/main/kotlin/sample/Greeter.kt",
+            content = """
+                package sample
+
+                class Greeter
+            """.trimIndent() + "\n",
+        )
+        val usingFile = writeFile(
+            relativePath = "src/main/kotlin/other/UseGreeter.kt",
+            content = """
+                package other
+
+                import sample.Greeter as G
+
+                fun make(): G = G()
+            """.trimIndent() + "\n",
+        )
+
+        val content = Files.readString(workspaceRoot.resolve("src/main/kotlin/sample/Greeter.kt"))
+        val queryOffset = content.indexOf("Greeter")
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "sources",
+        )
+        session.use { s ->
+            val backend = StandaloneAnalysisBackend(
+                workspaceRoot = workspaceRoot,
+                limits = ServerLimits(maxResults = 100, requestTimeoutMillis = 30_000, maxConcurrentRequests = 4),
+                session = s,
+            )
+            val result = backend.rename(
+                RenameQuery(
+                    position = FilePosition(
+                        filePath = workspaceRoot.resolve("src/main/kotlin/sample/Greeter.kt").toString(),
+                        offset = queryOffset,
+                    ),
+                    newName = "Welcomer",
+                ),
+            )
+            val usingFilePath = normalizePath(usingFile)
+            // The import FQN should be updated to sample.Welcomer while the "as G" alias is preserved
+            val importEdit = result.edits.find { edit ->
+                edit.filePath == usingFilePath && edit.newText == "sample.Welcomer"
+            }
+            assertTrue(
+                importEdit != null,
+                "Expected an edit updating import FQN to sample.Welcomer (alias preserved).\nActual edits: ${result.edits}",
+            )
+        }
+    }
+
+    @Test
+    fun `rename does not produce duplicate edits for import`(): TestResult = runTest {
+        writeFile(
+            relativePath = "src/main/kotlin/sample/Greeter.kt",
+            content = """
+                package sample
+
+                class Greeter
+            """.trimIndent() + "\n",
+        )
+        val usingFile = writeFile(
+            relativePath = "src/main/kotlin/other/UseGreeter.kt",
+            content = """
+                package other
+
+                import sample.Greeter
+
+                fun make(): Greeter = Greeter()
+            """.trimIndent() + "\n",
+        )
+
+        val content = Files.readString(workspaceRoot.resolve("src/main/kotlin/sample/Greeter.kt"))
+        val queryOffset = content.indexOf("Greeter")
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "sources",
+        )
+        session.use { s ->
+            val backend = StandaloneAnalysisBackend(
+                workspaceRoot = workspaceRoot,
+                limits = ServerLimits(maxResults = 100, requestTimeoutMillis = 30_000, maxConcurrentRequests = 4),
+                session = s,
+            )
+            val result = backend.rename(
+                RenameQuery(
+                    position = FilePosition(
+                        filePath = workspaceRoot.resolve("src/main/kotlin/sample/Greeter.kt").toString(),
+                        offset = queryOffset,
+                    ),
+                    newName = "Welcomer",
+                ),
+            )
+            val usingFilePath = normalizePath(usingFile)
+            val importEdits = result.edits.filter { edit ->
+                edit.filePath == usingFilePath && edit.newText == "sample.Welcomer"
+            }
+            assertEquals(
+                1,
+                importEdits.size,
+                "Expected exactly one import edit, got ${importEdits.size}: $importEdits",
+            )
+        }
+    }
+
     private fun writeFile(
         relativePath: String,
         content: String,

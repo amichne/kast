@@ -17,6 +17,7 @@ import io.github.amichne.kast.api.SymbolKind
 import io.github.amichne.kast.api.SymbolQuery
 import io.github.amichne.kast.api.TypeHierarchyDirection
 import io.github.amichne.kast.api.TypeHierarchyQuery
+import io.github.amichne.kast.api.WorkspaceFilesQuery
 import io.github.amichne.kast.api.WorkspaceSymbolQuery
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
@@ -80,6 +81,7 @@ internal class CliCommandParser(
                 listOf("workspace", "ensure") -> CliCommand.WorkspaceEnsure(parsed.runtimeOptions())
                 listOf("workspace", "refresh") -> CliCommand.WorkspaceRefresh(parsed.runtimeOptions(), parsed.refreshQuery(json))
                 listOf("workspace", "stop") -> CliCommand.WorkspaceStop(parsed.runtimeOptions())
+                listOf("workspace", "files") -> CliCommand.WorkspaceFiles(parsed.runtimeOptions(), parsed.workspaceFilesQuery(json))
                 listOf("completion", "bash") -> CliCommand.Completion(CliCompletionShell.BASH)
                 listOf("completion", "zsh") -> CliCommand.Completion(CliCompletionShell.ZSH)
                 listOf("capabilities") -> CliCommand.Capabilities(parsed.runtimeOptions())
@@ -325,6 +327,17 @@ internal data class ParsedArguments(
                 .map(String::trim)
                 .filter(String::isNotEmpty)
                 .map(::absoluteFilePath),
+        )
+    }
+
+    fun workspaceFilesQuery(json: Json): WorkspaceFilesQuery = requestOrFile(
+        serializer = WorkspaceFilesQuery.serializer(),
+        requestFileKey = "request-file",
+        json = json,
+    ) {
+        WorkspaceFilesQuery(
+            moduleName = options["module-name"],
+            includeFiles = optionalBoolean("include-files", false),
         )
     }
 

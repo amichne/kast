@@ -104,6 +104,44 @@ optional `pid`.
 
 ---
 
+### `workspace files`
+
+List workspace modules with source roots, dependency relationships, and
+optionally individual Kotlin file paths.
+
+```
+kast workspace files \
+  --workspace-root=/absolute/path \
+  [--include-files=true] \
+  [--module-name=app]
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `--module-name=` | string | — | Filter to a single module |
+| `--include-files=` | boolean | false | Enumerate .kt file paths per module |
+
+**Output — `WorkspaceFilesResult`:**
+
+```json
+{
+  "modules": [
+    {
+      "name": "app",
+      "sourceRoots": ["/abs/path/src/main/kotlin"],
+      "dependencyModuleNames": ["core"],
+      "files": ["/abs/path/src/main/kotlin/App.kt"],
+      "fileCount": 1
+    }
+  ],
+  "schemaVersion": 3
+}
+```
+
+`files` is populated only when `--include-files=true`. `fileCount` is always present.
+
+---
+
 ## `capabilities`
 
 Print the capability set of a servable daemon.

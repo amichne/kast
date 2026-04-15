@@ -195,6 +195,85 @@ tools:
         required: false
         description: "FQN of the containing type for disambiguation (symbol mode only)."
 
+  - name: kast-workspace-files
+    script: scripts/kast-workspace-files.sh
+    description: "List workspace modules with source roots, dependencies, and optionally individual .kt file paths."
+    parameters:
+      - name: workspace-root
+        type: string
+        required: true
+        description: "Absolute path to the workspace root."
+      - name: module-name
+        type: string
+        required: false
+        description: "Filter listing to a single module name. Omit for all modules."
+      - name: include-files
+        type: boolean
+        required: false
+        description: "Enumerate individual .kt file paths per module. Defaults to false."
+
+  - name: kast-scaffold
+    script: scripts/kast-scaffold.sh
+    description: "Gather structural context (outline, type hierarchy, references, insertion point, file content) that an LLM needs to generate code that implements, replaces, consolidates, or extracts a declaration."
+    parameters:
+      - name: workspace-root
+        type: string
+        required: true
+        description: "Absolute path to the workspace root."
+      - name: target-file
+        type: string
+        required: true
+        description: "Absolute path to the file where new code will go or that contains the symbol to implement/replace."
+      - name: target-symbol
+        type: string
+        required: false
+        description: "Simple or fully qualified name of the interface, class, or function to scaffold around."
+      - name: mode
+        type: string
+        required: false
+        description: "Generation intent: implement (generate a new impl), replace (overwrite a declaration), consolidate (merge multiple into one), or extract (pull a declaration out). Defaults to implement."
+      - name: kind
+        type: string
+        required: false
+        description: "Restrict symbol resolution to a declaration kind: class, interface, function, or property."
+
+  - name: kast-write-and-validate
+    script: scripts/kast-write-and-validate.sh
+    description: "Apply LLM-generated code (create file, insert at offset, or replace range), clean up imports, and run diagnostics. Emits ok=true only when diagnostics are clean."
+    parameters:
+      - name: workspace-root
+        type: string
+        required: true
+        description: "Absolute path to the workspace root."
+      - name: mode
+        type: string
+        required: true
+        description: "Edit mode: create-file, insert-at-offset, or replace-range."
+      - name: file-path
+        type: string
+        required: true
+        description: "Absolute path to the target file."
+      - name: content
+        type: string
+        required: false
+        description: "The generated code to write. Use either content or content-file."
+      - name: content-file
+        type: string
+        required: false
+        description: "Absolute path to a file containing the generated code."
+      - name: offset
+        type: integer
+        required: false
+        description: "Zero-based character offset for insert-at-offset mode."
+      - name: start-offset
+        type: integer
+        required: false
+        description: "Zero-based start offset for replace-range mode (inclusive)."
+      - name: end-offset
+        type: integer
+        required: false
+        description: "Zero-based end offset for replace-range mode (exclusive)."
+
 routing_rules:
   - intent: "resolve a symbol"
     tool: kast-resolve
@@ -213,6 +292,15 @@ routing_rules:
     no_fallback: true
   - intent: "rename a symbol"
     tool: kast-rename
+    no_fallback: true
+  - intent: "list workspace modules / list source files / module structure"
+    tool: kast-workspace-files
+    no_fallback: true
+  - intent: "gather context for code generation / scaffold a new class or implementation"
+    tool: kast-scaffold
+    no_fallback: true
+  - intent: "apply generated code / write and validate / create file with diagnostics"
+    tool: kast-write-and-validate
     no_fallback: true
 
 constraints:

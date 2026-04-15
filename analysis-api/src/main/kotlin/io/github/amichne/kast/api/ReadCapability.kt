@@ -12,4 +12,5 @@ enum class ReadCapability {
     DIAGNOSTICS,
     FILE_OUTLINE,
     WORKSPACE_SYMBOL_SEARCH,
+    WORKSPACE_FILES,
 }

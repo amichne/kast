@@ -56,6 +56,27 @@ object ImportAnalysis {
         )
     }
 
+    /**
+     * Returns a [TextEdit] that replaces [oldFqn] with [newFqn] inside [directive],
+     * leaving any ` as Alias` suffix intact. Returns null for star imports or if
+     * the directive does not import [oldFqn].
+     */
+    fun renameImportFqnEdit(directive: KtImportDirective, oldFqn: String, newFqn: String): TextEdit? {
+        if (directive.isAllUnder) return null
+        val importedFqName = directive.importedFqName?.asString() ?: return null
+        if (importedFqName != oldFqn) return null
+        val dirText = directive.text
+        val fqnIndex = dirText.indexOf(oldFqn)
+        if (fqnIndex < 0) return null
+        val directiveStart = directive.textRange.startOffset
+        return TextEdit(
+            filePath = directive.containingKtFile.virtualFile.path,
+            startOffset = directiveStart + fqnIndex,
+            endOffset = directiveStart + fqnIndex + oldFqn.length,
+            newText = newFqn,
+        )
+    }
+
     fun insertImportEdit(file: KtFile, fqName: String): TextEdit? {
         if (fqName.isBlank()) {
             return null

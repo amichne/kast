@@ -43,6 +43,8 @@ import io.github.amichne.kast.api.SymbolResult
 import io.github.amichne.kast.api.TypeHierarchyQuery
 import io.github.amichne.kast.api.TypeHierarchyResult
 import io.github.amichne.kast.api.ValidationException
+import io.github.amichne.kast.api.WorkspaceFilesQuery
+import io.github.amichne.kast.api.WorkspaceFilesResult
 import io.github.amichne.kast.api.WorkspaceSymbolQuery
 import io.github.amichne.kast.api.WorkspaceSymbolResult
 import kotlinx.coroutines.withTimeout
@@ -302,6 +304,15 @@ class AnalysisDispatcher(
                         requireReadCapability(ReadCapability.WORKSPACE_SYMBOL_SEARCH)
                     },
                 ).withLimit(config.maxResults),
+            )
+
+            "workspace/files" -> encode(
+                WorkspaceFilesResult.serializer(),
+                backend.workspaceFiles(
+                    decodeParams(WorkspaceFilesQuery.serializer(), params).also {
+                        requireReadCapability(ReadCapability.WORKSPACE_FILES)
+                    },
+                ),
             )
 
             else -> throw UnknownRpcMethodException(method)

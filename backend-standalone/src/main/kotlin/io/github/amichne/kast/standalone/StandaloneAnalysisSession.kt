@@ -154,6 +154,8 @@ internal class StandaloneAnalysisSession(
         ktFilesByPath.values.sortedBy(::normalizeFileLookupPath)
     }
 
+    fun moduleSpecs(): List<StandaloneSourceModuleSpec> = sourceModuleSpecs
+
     fun findKtFile(filePath: String): KtFile {
         val normalizedPath = NormalizedPath.of(Path.of(filePath))
         if (fullKtFileMapLoaded) {

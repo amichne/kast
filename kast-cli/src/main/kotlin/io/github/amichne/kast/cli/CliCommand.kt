@@ -11,6 +11,7 @@ import io.github.amichne.kast.api.RenameQuery
 import io.github.amichne.kast.api.SemanticInsertionQuery
 import io.github.amichne.kast.api.SymbolQuery
 import io.github.amichne.kast.api.TypeHierarchyQuery
+import io.github.amichne.kast.api.WorkspaceFilesQuery
 import io.github.amichne.kast.api.WorkspaceSymbolQuery
 
 internal sealed interface CliCommand {
@@ -30,6 +31,7 @@ internal sealed interface CliCommand {
     data class Diagnostics(val options: RuntimeCommandOptions, val query: DiagnosticsQuery) : CliCommand
     data class FileOutline(val options: RuntimeCommandOptions, val query: FileOutlineQuery) : CliCommand
     data class WorkspaceSymbol(val options: RuntimeCommandOptions, val query: WorkspaceSymbolQuery) : CliCommand
+    data class WorkspaceFiles(val options: RuntimeCommandOptions, val query: WorkspaceFilesQuery) : CliCommand
     data class Rename(val options: RuntimeCommandOptions, val query: RenameQuery) : CliCommand
     data class ImportOptimize(val options: RuntimeCommandOptions, val query: ImportOptimizeQuery) : CliCommand
     data class ApplyEdits(val options: RuntimeCommandOptions, val query: ApplyEditsQuery) : CliCommand
