@@ -56,14 +56,17 @@ Use this map to choose the narrowest unit that owns a change.
 
 Agents must use kast wrapper scripts for all Kotlin semantic operations.
 
-| Operation        | Tool                      | Fallback |
-|-----------------|---------------------------|----------|
-| Resolve symbol  | `kast-resolve.sh`         | None     |
-| Find references | `kast-references.sh`      | None     |
-| Call hierarchy  | `kast-callers.sh`         | None     |
-| Impact analysis | `kast-impact.sh`          | None     |
-| Diagnostics     | `kast-diagnostics.sh`     | None     |
-| Rename symbol   | `kast-rename.sh`          | None     |
+| Operation             | Tool                          | Fallback |
+|-----------------------|-------------------------------|----------|
+| Resolve symbol        | `kast-resolve.sh`             | None     |
+| Find references       | `kast-references.sh`          | None     |
+| Call hierarchy        | `kast-callers.sh`             | None     |
+| Impact analysis       | `kast-impact.sh`              | None     |
+| Diagnostics           | `kast-diagnostics.sh`         | None     |
+| Rename symbol         | `kast-rename.sh`              | None     |
+| Scaffold context      | `kast-scaffold.sh`            | None     |
+| Write and validate    | `kast-write-and-validate.sh`  | None     |
+| List workspace files  | `kast-workspace-files.sh`     | None     |
 
 **Prohibited substitutions:** `grep`, `rg`, `ast-grep`, `cat` + manual
 parsing must NOT be used for symbol identity, reference finding, or call
@@ -80,15 +83,33 @@ searching non-Kotlin files, and searching string literals or comments.
 Hooks are additive across the scope hierarchy: repo → agent → skill. Skills
 must not redeclare any hook already defined at the agent level.
 
+## Copilot agents
+
+The `.github/copilot/agents/` directory contains four GitHub Copilot custom agents
+([spec](https://code.visualstudio.com/docs/copilot/customization/custom-agents#_custom-agent-file-structure))
+that are the primary entry points for Copilot-assisted Kotlin work:
+
+| Agent | File | Role |
+|-------|------|------|
+| `@kast` | `kast.md` | Orchestrator — routes to sub-agents and validates with diagnostics |
+| `@explore` | `explore.md` | Navigate and understand code via kast semantic tools |
+| `@plan` | `plan.md` | Assess change scope and produce a structured change plan |
+| `@edit` | `edit.md` | Make code changes with kast-write-and-validate or kast-rename |
+
+All four agents route Kotlin semantic operations through the kast wrapper scripts in
+`.agents/skills/kast/scripts/`. They do not use `grep`/`rg`/`ast-grep` for symbol
+operations. See each agent's `.md` file for its specific routing rules and `SKILL.md`
+for complete wrapper documentation.
+
 ## Skill composition
 
-| Phase                | Primary skill     | Supporting skill     |
-|---------------------|-------------------|---------------------|
-| Understand the code | `kast`            | —                   |
-| Plan a change       | `kast` (impact)   | —                   |
-| Make the change     | Agent (direct edit)| `kotlin-standards` |
-| Validate the change | `kast` (diagnostics)| `kotlin-gradle-loop`|
-| Document the change | `docs-writer`     | —                   |
+| Phase                | Primary skill                  | Supporting skill     |
+|---------------------|-------------------------------|---------------------|
+| Understand the code | `kast` (scaffold, explore)     | —                   |
+| Plan a change       | `kast` (impact, scaffold)      | —                   |
+| Make the change     | `kast` (write-and-validate)    | `kotlin-standards`  |
+| Validate the change | `kast` (diagnostics)           | `kotlin-gradle-loop`|
+| Document the change | `docs-writer`                  | —                   |
 
 ## Working rules
 

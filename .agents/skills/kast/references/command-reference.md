@@ -109,12 +109,40 @@ optional `pid`.
 List workspace modules with source roots, dependency relationships, and
 optionally individual Kotlin file paths.
 
+Requires the `WORKSPACE_FILES` read capability (advertised in `kast capabilities` output).
+
+**Inline form:**
+
 ```
 kast workspace files \
   --workspace-root=/absolute/path \
   [--include-files=true] \
   [--module-name=app]
 ```
+
+**Request-file form:**
+
+```
+kast workspace files \
+  --workspace-root=/absolute/path \
+  --request-file=/path/to/query.json
+```
+
+Request schema (`WorkspaceFilesQuery`):
+
+```json
+{
+  "workspaceRoot": "/absolute/path",
+  "moduleName": "app",
+  "includeFiles": true
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `workspaceRoot` | string | yes | Absolute workspace root |
+| `moduleName` | string | no | Filter to a single module by name |
+| `includeFiles` | boolean | no | Enumerate .kt file paths per module (default: false) |
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -138,7 +166,19 @@ kast workspace files \
 }
 ```
 
+`WorkspaceModule` fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | string | Module name (matches Gradle project name) |
+| `sourceRoots` | string[] | Absolute paths to source root directories |
+| `dependencyModuleNames` | string[] | Names of modules this module depends on |
+| `files` | string[] | Absolute paths to .kt files (only when `includeFiles=true`) |
+| `fileCount` | integer | Total .kt file count; always present regardless of `includeFiles` |
+
 `files` is populated only when `--include-files=true`. `fileCount` is always present.
+
+**Errors:** `CAPABILITY_NOT_SUPPORTED` if the backend does not advertise `WORKSPACE_FILES`.
 
 ---
 
@@ -178,7 +218,7 @@ This command auto-starts the daemon when needed unless you add
 }
 ```
 
-`readCapabilities` values: `RESOLVE_SYMBOL` | `FIND_REFERENCES` | `CALL_HIERARCHY` | `DIAGNOSTICS`
+`readCapabilities` values: `RESOLVE_SYMBOL` | `FIND_REFERENCES` | `CALL_HIERARCHY` | `DIAGNOSTICS` | `WORKSPACE_FILES`
 
 `mutationCapabilities` values: `RENAME` | `APPLY_EDITS`
 
