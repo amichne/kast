@@ -335,6 +335,8 @@ internal class KastPluginBackend(
         }
     }
 
+    // Note: Unlike the standalone backend, IntelliJ's ReferencesSearch.search() resolves
+    // import directives as reference sites, so explicit import FQN handling is not needed here.
     override suspend fun rename(query: RenameQuery): RenameResult = withContext(readDispatcher) {
         val (snapshot, referenceEdits) = collectInShortReadActions(
             collectSnapshot = {

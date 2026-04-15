@@ -508,7 +508,9 @@ kast-write-and-validate.sh --mode=replace-range --file-path=Z3.kt --start-offset
   insert-at-offset, or `insertion_point.startOffset`/`endOffset` for
   replace-range.
 
-## 8. Rules- Always use the wrapper scripts for multi-step operations.
+## 8. Rules
+
+- Always use the wrapper scripts for multi-step operations.
 - Use raw `kast` CLI only when a wrapper does not exist yet.
 - Keep `--key=value` syntax for raw CLI calls.
 - Use absolute `--workspace-root`, `--file-path`, and `--file-paths` values

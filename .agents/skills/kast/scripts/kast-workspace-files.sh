@@ -73,6 +73,11 @@ if [[ "${INCLUDE_FILES}" != "true" && "${INCLUDE_FILES}" != "false" ]]; then
     exit 1
 fi
 
+if ! kast_resolve_binary; then
+    emit_failure "resolve_kast" "Could not resolve the kast binary."
+    exit 1
+fi
+
 WORKSPACE_FILES_RESULT="${TMP_DIR}/workspace-files.json"
 
 EXTRA_ARGS=()

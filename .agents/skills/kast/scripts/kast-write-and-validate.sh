@@ -146,6 +146,11 @@ case "${MODE}" in
 esac
 
 # ── 1. Build and apply the edit ───────────────────────────────────────────────
+if ! kast_resolve_binary; then
+    emit_failure "resolve_kast" "Could not resolve the kast binary."
+    exit 1
+fi
+
 QUERY_FILE="${TMP_DIR}/apply-query.json"
 
 python3 - "${MODE}" "${FILE_PATH}" "${CONTENT}" "${OFFSET}" "${START_OFFSET}" "${END_OFFSET}" \
@@ -157,37 +162,37 @@ from pathlib import Path
 
 (mode, file_path, content, offset, start_offset, end_offset, query_file) = sys.argv[1:]
 
-query: dict = {"edits": [], "fileOperations": []}
+query: dict = {"edits": [], "fileHashes": [], "fileOperations": []}
 
 if mode == "create-file":
     query["fileOperations"] = [{"type": "create", "filePath": file_path, "content": content}]
 elif mode == "insert-at-offset":
     off = int(offset)
-    existing = Path(file_path).read_bytes() if Path(file_path).exists() else b""
-    file_hash = hashlib.sha256(existing).hexdigest() if existing else None
+    existing_text = Path(file_path).read_text(encoding="utf-8") if Path(file_path).exists() else ""
+    file_hash = hashlib.sha256(existing_text.encode("utf-8")).hexdigest() if existing_text else None
     edit = {
         "filePath": file_path,
         "startOffset": off,
         "endOffset": off,
         "newText": content,
     }
-    if file_hash:
-        edit["expectedHash"] = file_hash
     query["edits"] = [edit]
+    if file_hash:
+        query["fileHashes"] = [{"filePath": file_path, "hash": file_hash}]
 elif mode == "replace-range":
     s_off = int(start_offset)
     e_off = int(end_offset)
-    existing = Path(file_path).read_bytes() if Path(file_path).exists() else b""
-    file_hash = hashlib.sha256(existing).hexdigest() if existing else None
+    existing_text = Path(file_path).read_text(encoding="utf-8") if Path(file_path).exists() else ""
+    file_hash = hashlib.sha256(existing_text.encode("utf-8")).hexdigest() if existing_text else None
     edit = {
         "filePath": file_path,
         "startOffset": s_off,
         "endOffset": e_off,
         "newText": content,
     }
-    if file_hash:
-        edit["expectedHash"] = file_hash
     query["edits"] = [edit]
+    if file_hash:
+        query["fileHashes"] = [{"filePath": file_path, "hash": file_hash}]
 
 Path(query_file).write_text(json.dumps(query), encoding="utf-8")
 PY
@@ -228,13 +233,22 @@ if kast_run_json \
     python3 - "${OPTIMIZE_RESULT}" "${TMP_DIR}/import-apply-query.json" <<'PY'
 import json
 import sys
+import hashlib
 from pathlib import Path
 
 (optimize_file, query_file) = sys.argv[1:]
 result = json.loads(Path(optimize_file).read_text(encoding="utf-8"))
 edits = result.get("edits", [])
 if edits:
-    Path(query_file).write_text(json.dumps({"edits": edits, "fileOperations": []}), encoding="utf-8")
+    file_paths = list({e["filePath"] for e in edits})
+    file_hashes = []
+    for fp in sorted(file_paths):
+        p = Path(fp)
+        if p.exists():
+            content = p.read_text(encoding="utf-8")
+            h = hashlib.sha256(content.encode("utf-8")).hexdigest()
+            file_hashes.append({"filePath": fp, "hash": h})
+    Path(query_file).write_text(json.dumps({"edits": edits, "fileHashes": file_hashes, "fileOperations": []}), encoding="utf-8")
 else:
     Path(query_file).write_text("", encoding="utf-8")
 PY

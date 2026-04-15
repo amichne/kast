@@ -95,6 +95,11 @@ if ! echo "${VALID_MODES}" | grep -qw "${MODE}"; then
 fi
 
 # ── 1. Outline the target file ────────────────────────────────────────────────
+if ! kast_resolve_binary; then
+    emit_failure "resolve_kast" "Could not resolve the kast binary."
+    exit 1
+fi
+
 OUTLINE_RESULT="${TMP_DIR}/outline.json"
 if ! kast_run_json \
     "${OUTLINE_RESULT}" \
@@ -145,11 +150,11 @@ if [[ -n "${TARGET_SYMBOL}" ]]; then
     fi
 
     # Insertion point — pick target based on mode
-    INSERTION_TARGET="CLASS_BODY_END"
+    INSERTION_TARGET="class-body-end"
     case "${MODE}" in
-        implement|consolidate) INSERTION_TARGET="FILE_BOTTOM" ;;
-        replace)               INSERTION_TARGET="CLASS_BODY_END" ;;
-        extract)               INSERTION_TARGET="FILE_BOTTOM" ;;
+        implement|consolidate) INSERTION_TARGET="file-bottom" ;;
+        replace)               INSERTION_TARGET="class-body-end" ;;
+        extract)               INSERTION_TARGET="file-bottom" ;;
     esac
 
     INSERTION_POINT_RESULT="${TMP_DIR}/insertion-point.json"

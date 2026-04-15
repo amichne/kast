@@ -638,45 +638,51 @@ internal class StandaloneAnalysisBackend internal constructor(
     }
 
     override suspend fun workspaceFiles(query: WorkspaceFilesQuery): WorkspaceFilesResult = withContext(readDispatcher) {
-        val specs = session.moduleSpecs()
-        val filtered = if (query.moduleName != null) {
-            specs.filter { it.name.value == query.moduleName }
-        } else {
-            specs
-        }
-        val modules = filtered.map { spec ->
-            val sourceRootStrings = spec.sourceRoots.map { it.toString() }
-            val files = if (query.includeFiles) {
-                spec.sourceRoots
-                    .flatMap { root ->
-                        Files.walk(root)
-                            .filter { Files.isRegularFile(it) && it.toString().endsWith(".kt") }
-                            .map { it.toRealPath().toString() }
-                            .toList()
-                    }
-                    .sorted()
+        session.withReadAccess {
+            val specs = session.moduleSpecs()
+            val filtered = if (query.moduleName != null) {
+                specs.filter { it.name.value == query.moduleName }
             } else {
-                emptyList()
+                specs
             }
-            val fileCount = if (query.includeFiles) {
-                files.size
-            } else {
-                spec.sourceRoots.sumOf { root ->
-                    Files.walk(root)
-                        .filter { Files.isRegularFile(it) && it.toString().endsWith(".kt") }
-                        .count()
-                        .toInt()
+            val modules = filtered.map { spec ->
+                val sourceRootStrings = spec.sourceRoots.map { it.toString() }
+                val files = if (query.includeFiles) {
+                    spec.sourceRoots
+                        .flatMap { root ->
+                            Files.walk(root).use { stream ->
+                                stream
+                                    .filter { Files.isRegularFile(it) && it.toString().endsWith(".kt") }
+                                    .map { it.toRealPath().toString() }
+                                    .toList()
+                            }
+                        }
+                        .sorted()
+                } else {
+                    emptyList()
                 }
+                val fileCount = if (query.includeFiles) {
+                    files.size
+                } else {
+                    spec.sourceRoots.sumOf { root ->
+                        Files.walk(root).use { stream ->
+                            stream
+                                .filter { Files.isRegularFile(it) && it.toString().endsWith(".kt") }
+                                .count()
+                                .toInt()
+                        }
+                    }
+                }
+                WorkspaceModule(
+                    name = spec.name.value,
+                    sourceRoots = sourceRootStrings,
+                    dependencyModuleNames = spec.dependencyModuleNames.map { it.value },
+                    files = files,
+                    fileCount = fileCount,
+                )
             }
-            WorkspaceModule(
-                name = spec.name.value,
-                sourceRoots = sourceRootStrings,
-                dependencyModuleNames = spec.dependencyModuleNames.map { it.value },
-                files = files,
-                fileCount = fileCount,
-            )
+            WorkspaceFilesResult(modules = modules)
         }
-        WorkspaceFilesResult(modules = modules)
     }
 
     companion object {
