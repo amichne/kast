@@ -1,5 +1,11 @@
 name: Release
-run-name: Release ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+run-name: >-
+  Release
+  ${{
+    github.event_name == 'workflow_dispatch'
+      && format('{0} ({1})', inputs.release_type, github.ref_name)
+      || github.ref_name
+  }}
 
 on:
   push:
@@ -7,10 +13,18 @@ on:
       - "v*"
   workflow_dispatch:
     inputs:
-      tag:
-        description: Existing tag to release, for example v1.2.3
+      release_type:
+        description: >
+          Release type — automatically increments the latest semver tag.
+          Beta appends the short commit SHA for uniqueness.
         required: true
-        type: string
+        default: patch
+        type: choice
+        options:
+          - major
+          - minor
+          - patch
+          - beta
 
 permissions:
   contents: read
@@ -19,12 +33,87 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 concurrency:
-  group: release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+  group: release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
+  # ── Step 0 (workflow_dispatch only): auto-increment semver and push new tag ──
+  bump-version:
+    name: Bump version (${{ inputs.release_type }})
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      release_tag: ${{ steps.bump.outputs.release_tag }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          # Use GITHUB_TOKEN — pushes made with it do NOT re-trigger tag-push
+          # workflows, preventing recursive runs.
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute next semver tag and push
+        id: bump
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          release_type="${{ inputs.release_type }}"
+          short_sha="${GITHUB_SHA:0:7}"
+
+          # Resolve the latest vX.Y.Z tag (ignore pre-release tags for the base).
+          latest_stable="$(git tag --list 'v*' --sort=-version:refname \
+            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1 || true)"
+          if [[ -z "$latest_stable" ]]; then
+            latest_stable="v0.0.0"
+          fi
+          echo "Latest stable tag: ${latest_stable}"
+
+          base="${latest_stable#v}"
+          IFS='.' read -r major minor patch <<< "$base"
+          major="${major:-0}"; minor="${minor:-0}"; patch="${patch:-0}"
+
+          case "$release_type" in
+            major)
+              major=$((major + 1)); minor=0; patch=0
+              new_tag="v${major}.${minor}.${patch}"
+              ;;
+            minor)
+              minor=$((minor + 1)); patch=0
+              new_tag="v${major}.${minor}.${patch}"
+              ;;
+            patch)
+              patch=$((patch + 1))
+              new_tag="v${major}.${minor}.${patch}"
+              ;;
+            beta)
+              patch=$((patch + 1))
+              new_tag="v${major}.${minor}.${patch}-beta.${short_sha}"
+              ;;
+            *)
+              echo "Unknown release_type: ${release_type}" >&2
+              exit 1
+              ;;
+          esac
+
+          echo "New tag: ${new_tag}"
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "$new_tag"
+          git push origin "$new_tag"
+
+          printf 'release_tag=%s\n' "$new_tag" >> "$GITHUB_OUTPUT"
+
+  # ── Step 1: create draft GitHub release ──────────────────────────────────────
   prepare-release:
     name: Prepare release
+    # Run after bump-version (workflow_dispatch) or directly (push tag).
+    # 'always()' lets us proceed even when bump-version was skipped.
+    needs: [bump-version]
+    if: always() && (needs.bump-version.result == 'success' || needs.bump-version.result == 'skipped')
     runs-on: ubuntu-latest
     outputs:
       release_tag: ${{ steps.release-tag.outputs.value }}
@@ -39,7 +128,7 @@ jobs:
           set -euo pipefail
 
           if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
-            tag="${{ inputs.tag }}"
+            tag="${{ needs.bump-version.outputs.release_tag }}"
           else
             tag="${GITHUB_REF_NAME}"
           fi
@@ -66,7 +155,7 @@ jobs:
 
   build-and-upload:
     name: Build release asset (${{ matrix.asset_id }})
-    needs: prepare-release
+    needs: [bump-version, prepare-release]
     runs-on: ${{ matrix.runner }}
     permissions:
       contents: write
@@ -175,7 +264,7 @@ jobs:
 
   build-intellij-plugin:
     name: Build IntelliJ plugin
-    needs: prepare-release
+    needs: [bump-version, prepare-release]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -256,6 +345,7 @@ jobs:
   publish-release:
     name: Publish release
     needs:
+      - bump-version
       - prepare-release
       - build-and-upload
       - build-intellij-plugin
