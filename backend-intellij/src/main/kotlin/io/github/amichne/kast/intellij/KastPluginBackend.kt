@@ -253,7 +253,7 @@ internal class KastPluginBackend(
             val resolved = resolveTarget(file, query.position.offset)
             resolved.typeHierarchyDeclaration() ?: resolved
         }
-        val resolver = IntelliJTypeEdgeResolver(project = project, workspacePrefix = workspacePrefix)
+        val resolver = IntelliJTypeEdgeResolver(project = project)
         val intellijReadAccess = object : ReadAccessScope {
             override fun <T> run(action: () -> T): T =
                 ApplicationManager.getApplication().runReadAction<T> { action() }

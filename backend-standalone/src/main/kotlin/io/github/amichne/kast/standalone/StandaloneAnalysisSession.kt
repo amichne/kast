@@ -795,13 +795,16 @@ internal class StandaloneAnalysisSession(
             initialSourceIndexBuilder = initialSourceIndexBuilder,
         )
         val generation = sourceIndexGeneration.incrementAndGet()
-        backgroundIndexer.startPhase1()
+        // Publish the index synchronously in the Phase 1 thread before identifierIndexReady
+        // completes, so that any caller waiting on identifierIndexReady sees a non-null
+        // sourceIdentifierIndex immediately (no async thenRun race).
+        backgroundIndexer.startPhase1 { builtIndex ->
+            if (closed || sourceIndexGeneration.get() != generation) return@startPhase1
+            applyPendingSourceIndexRefreshes(builtIndex)
+            sourceIdentifierIndex.set(builtIndex)
+        }
         backgroundIndexer.identifierIndexReady.thenRun {
             if (closed || sourceIndexGeneration.get() != generation) return@thenRun
-            backgroundIndexer.getIndex()?.let { builtIndex ->
-                applyPendingSourceIndexRefreshes(builtIndex)
-                sourceIdentifierIndex.set(builtIndex)
-            }
             backgroundIndexer.startPhase2(::scanFileReferences)
         }
     }

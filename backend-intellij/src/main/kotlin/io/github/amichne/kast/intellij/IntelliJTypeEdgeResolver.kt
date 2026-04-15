@@ -27,7 +27,6 @@ import org.jetbrains.kotlin.psi.KtClassOrObject
  */
 internal class IntelliJTypeEdgeResolver(
     private val project: Project,
-    private val workspacePrefix: String,
 ) : TypeEdgeResolver {
 
     override fun symbolFor(target: PsiElement): Symbol =
@@ -47,11 +46,10 @@ internal class IntelliJTypeEdgeResolver(
         }
         return fqNames.mapNotNull { fqName ->
             ApplicationManager.getApplication().runReadAction<TypeHierarchyEdge?> {
+                // projectScope already limits to project content — no further path filter needed.
                 val scope = GlobalSearchScope.projectScope(project)
                 val psiClass = JavaPsiFacade.getInstance(project).findClass(fqName, scope)
                     ?: return@runReadAction null
-                val filePath = psiClass.containingFile?.virtualFile?.path ?: return@runReadAction null
-                if (!filePath.startsWith(workspacePrefix)) return@runReadAction null
                 TypeHierarchyEdge(target = psiClass, symbol = symbolFor(psiClass))
             }
         }
@@ -66,6 +64,7 @@ internal class IntelliJTypeEdgeResolver(
             }
         } ?: return emptyList()
 
+        // projectScope already limits to project content — no further path filter needed.
         val subtypes = ApplicationManager.getApplication().runReadAction<Collection<PsiClass>> {
             val scope = GlobalSearchScope.projectScope(project)
             DirectClassInheritorsSearch.search(psiClass, scope).findAll()
@@ -74,8 +73,6 @@ internal class IntelliJTypeEdgeResolver(
         return subtypes.mapNotNull { subtype ->
             ApplicationManager.getApplication().runReadAction<TypeHierarchyEdge?> {
                 if (!subtype.isValid) return@runReadAction null
-                val filePath = subtype.containingFile?.virtualFile?.path ?: return@runReadAction null
-                if (!filePath.startsWith(workspacePrefix)) return@runReadAction null
                 TypeHierarchyEdge(target = subtype, symbol = symbolFor(subtype))
             }
         }

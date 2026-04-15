@@ -50,7 +50,15 @@ internal class BackgroundIndexer(
      * Starts Phase 1 (identifier index) on a daemon thread. Returns the
      * generation counter so the caller can detect stale results.
      */
-    fun startPhase1(): Int {
+    /**
+     * Starts Phase 1 (identifier index) on a daemon thread.
+     *
+     * @param onIndexBuilt called synchronously in the Phase 1 thread, with the completed
+     *   index, **before** [identifierIndexReady] is completed. This guarantees that any
+     *   state the caller publishes via this callback is visible to all threads that wait
+     *   on [identifierIndexReady].
+     */
+    fun startPhase1(onIndexBuilt: ((MutableSourceIdentifierIndex) -> Unit)? = null): Int {
         val gen = generation.incrementAndGet()
         phase1Thread = thread(
             start = true,
@@ -67,6 +75,9 @@ internal class BackgroundIndexer(
                 if (cancelled || generation.get() != gen) return@onSuccess
                 indexRef.set(index)
                 runCatching { sourceIndexCache.save(index = index, sourceRoots = sourceRoots) }
+                // Publish the index synchronously before completing the future, so any
+                // waiter on identifierIndexReady is guaranteed to see the updated state.
+                onIndexBuilt?.invoke(index)
                 identifierIndexReady.complete(Unit)
             }.onFailure { error ->
                 if (cancelled || generation.get() != gen) return@onFailure
@@ -173,6 +184,10 @@ internal class BackgroundIndexer(
         cancelled = true
         phase1Thread?.interrupt()
         phase2Thread?.interrupt()
+        // Wait for threads to observe cancellation before completing futures,
+        // so callers (e.g. JUnit @TempDir cleanup) can safely delete source files.
+        phase1Thread?.join(2000)
+        phase2Thread?.join(2000)
         if (!identifierIndexReady.isDone) {
             identifierIndexReady.complete(Unit)
         }
