@@ -49,6 +49,9 @@ import io.github.amichne.kast.api.TypeHierarchyResult
 import io.github.amichne.kast.api.TypeHierarchyStats
 import io.github.amichne.kast.api.TypeHierarchyTruncation
 import io.github.amichne.kast.api.TypeHierarchyTruncationReason
+import io.github.amichne.kast.api.WorkspaceFilesQuery
+import io.github.amichne.kast.api.WorkspaceFilesResult
+import io.github.amichne.kast.api.WorkspaceModule
 import io.github.amichne.kast.api.WorkspaceSymbolQuery
 import io.github.amichne.kast.api.WorkspaceSymbolResult
 import java.nio.file.Files
@@ -87,6 +90,7 @@ class FakeAnalysisBackend private constructor(
             ReadCapability.DIAGNOSTICS,
             ReadCapability.FILE_OUTLINE,
             ReadCapability.WORKSPACE_SYMBOL_SEARCH,
+            ReadCapability.WORKSPACE_FILES,
         ),
         mutationCapabilities = setOf(
             MutationCapability.RENAME,
@@ -329,6 +333,26 @@ class FakeAnalysisBackend private constructor(
             }
             .take(query.maxResults)
         return WorkspaceSymbolResult(symbols = matched)
+    }
+
+    override suspend fun workspaceFiles(query: WorkspaceFilesQuery): WorkspaceFilesResult {
+        val module = WorkspaceModule(
+            name = "fake-module",
+            sourceRoots = listOf(workspaceRoot.resolve("src").toString()),
+            dependencyModuleNames = emptyList(),
+            files = if (query.includeFiles) {
+                availableFiles.filter { it.endsWith(".kt") }.sorted()
+            } else {
+                emptyList()
+            },
+            fileCount = availableFiles.count { it.endsWith(".kt") },
+        )
+        val modules = if (query.moduleName == null || query.moduleName == "fake-module") {
+            listOf(module)
+        } else {
+            emptyList()
+        }
+        return WorkspaceFilesResult(modules = modules)
     }
 
     private fun requireAnchor(position: FilePosition) {

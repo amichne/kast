@@ -38,6 +38,9 @@ import io.github.amichne.kast.api.SymbolVisibility
 import io.github.amichne.kast.api.TextEdit
 import io.github.amichne.kast.api.TypeHierarchyQuery
 import io.github.amichne.kast.api.TypeHierarchyResult
+import io.github.amichne.kast.api.WorkspaceFilesQuery
+import io.github.amichne.kast.api.WorkspaceFilesResult
+import io.github.amichne.kast.api.WorkspaceModule
 import io.github.amichne.kast.api.WorkspaceSymbolQuery
 import io.github.amichne.kast.api.WorkspaceSymbolResult
 import io.github.amichne.kast.shared.analysis.FileOutlineBuilder
@@ -67,6 +70,7 @@ import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.components.KaDiagnosticCheckerFilter
 import org.jetbrains.kotlin.psi.KtFile
+import java.nio.file.Files
 import java.nio.file.Path
 
 @OptIn(KaExperimentalApi::class)
@@ -110,6 +114,7 @@ internal class StandaloneAnalysisBackend internal constructor(
             ReadCapability.DIAGNOSTICS,
             ReadCapability.FILE_OUTLINE,
             ReadCapability.WORKSPACE_SYMBOL_SEARCH,
+            ReadCapability.WORKSPACE_FILES,
         ),
         mutationCapabilities = setOf(
             MutationCapability.RENAME,
@@ -320,11 +325,27 @@ internal class StandaloneAnalysisBackend internal constructor(
                 )
 
                 val edits = traceRenamePhase("collectReferenceEdits") {
-                    // A future import-aware rename pass can append import edits here once qualified-reference tracking is added.
-                    (listOf(target.declarationEdit(query.newName)) + candidateFiles
+                    val referenceEdits = (listOf(target.declarationEdit(query.newName)) + candidateFiles
                         .parallelMapFlat { candidateFile ->
                             candidateFile.referenceEdits(target, query.newName, searchIdentifier)
                         })
+
+                    val importEdits = run {
+                        val oldFqn = target.targetFqNameAndPackage()?.first?.value
+                        if (oldFqn != null && oldFqn.isNotBlank()) {
+                            val lastDot = oldFqn.lastIndexOf('.')
+                            val newFqn = if (lastDot < 0) query.newName else "${oldFqn.substring(0, lastDot)}.${query.newName}"
+                            candidateFiles.flatMap { candidateFile ->
+                                candidateFile.importDirectives.mapNotNull { directive ->
+                                    ImportAnalysis.renameImportFqnEdit(directive, oldFqn, newFqn)
+                                }
+                            }
+                        } else {
+                            emptyList()
+                        }
+                    }
+
+                    (referenceEdits + importEdits)
                         .distinctBy { edit -> Triple(edit.filePath, edit.startOffset, edit.endOffset) }
                         .sortedWith(compareBy({ it.filePath }, { it.startOffset }))
                 }
@@ -614,6 +635,54 @@ internal class StandaloneAnalysisBackend internal constructor(
         is org.jetbrains.kotlin.psi.KtProperty,
         -> true
         else -> false
+    }
+
+    override suspend fun workspaceFiles(query: WorkspaceFilesQuery): WorkspaceFilesResult = withContext(readDispatcher) {
+        session.withReadAccess {
+            val specs = session.moduleSpecs()
+            val filtered = if (query.moduleName != null) {
+                specs.filter { it.name.value == query.moduleName }
+            } else {
+                specs
+            }
+            val modules = filtered.map { spec ->
+                val sourceRootStrings = spec.sourceRoots.map { it.toString() }
+                val files = if (query.includeFiles) {
+                    spec.sourceRoots
+                        .flatMap { root ->
+                            Files.walk(root).use { stream ->
+                                stream
+                                    .filter { Files.isRegularFile(it) && it.toString().endsWith(".kt") }
+                                    .map { it.toRealPath().toString() }
+                                    .toList()
+                            }
+                        }
+                        .sorted()
+                } else {
+                    emptyList()
+                }
+                val fileCount = if (query.includeFiles) {
+                    files.size
+                } else {
+                    spec.sourceRoots.sumOf { root ->
+                        Files.walk(root).use { stream ->
+                            stream
+                                .filter { Files.isRegularFile(it) && it.toString().endsWith(".kt") }
+                                .count()
+                                .toInt()
+                        }
+                    }
+                }
+                WorkspaceModule(
+                    name = spec.name.value,
+                    sourceRoots = sourceRootStrings,
+                    dependencyModuleNames = spec.dependencyModuleNames.map { it.value },
+                    files = files,
+                    fileCount = fileCount,
+                )
+            }
+            WorkspaceFilesResult(modules = modules)
+        }
     }
 
     companion object {

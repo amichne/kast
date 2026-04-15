@@ -12,15 +12,14 @@ import com.intellij.testFramework.junit5.fixture.moduleFixture
 import com.intellij.testFramework.junit5.fixture.projectFixture
 import com.intellij.testFramework.junit5.fixture.psiFileFixture
 import com.intellij.testFramework.junit5.fixture.sourceRootFixture
-import io.github.amichne.kast.api.CapabilityNotSupportedException
 import io.github.amichne.kast.api.FilePosition
 import io.github.amichne.kast.api.ServerLimits
 import io.github.amichne.kast.api.SymbolQuery
+import io.github.amichne.kast.api.TypeHierarchyDirection
 import io.github.amichne.kast.api.TypeHierarchyQuery
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.nio.file.Path
@@ -41,18 +40,30 @@ class KastPluginBackendContractTest {
 
             fun greet(name: String): String = "Hello, ${'$'}name"
         """
+
+        private const val hierarchySource = """
+            package demo.hierarchy
+
+            interface Shape
+
+            class Circle : Shape
+        """
     }
 
     private val mainModuleFixture: TestFixture<Module> = projectFixture.moduleFixture("main")
     private val secondaryModuleFixture: TestFixture<Module> = projectFixture.moduleFixture("secondary")
     private val mainSourceRootFixture: TestFixture<PsiDirectory> = mainModuleFixture.sourceRootFixture()
     private val sampleFileFixture: TestFixture<PsiFile> = mainSourceRootFixture.psiFileFixture("Sample.kt", sampleSource)
+    private val hierarchyFileFixture: TestFixture<PsiFile> = mainSourceRootFixture.psiFileFixture("Hierarchy.kt", hierarchySource)
 
     private val project: Project
         get() = projectFixture.get()
 
     private val sampleFile: PsiFile
         get() = sampleFileFixture.get()
+
+    private val hierarchyFile: PsiFile
+        get() = hierarchyFileFixture.get()
 
     private fun backend(): KastPluginBackend = KastPluginBackend(
         project = project,
@@ -64,6 +75,7 @@ class KastPluginBackendContractTest {
         mainModuleFixture.get()
         secondaryModuleFixture.get()
         sampleFileFixture.get()
+        hierarchyFileFixture.get()
         IndexingTestUtil.waitUntilIndexesAreReady(project)
     }
 
@@ -99,25 +111,28 @@ class KastPluginBackendContractTest {
     }
 
     @Test
-    fun `type hierarchy reports plugin backend unsupported message`() = runBlocking {
+    fun `type hierarchy returns subtypes for interface`() = runBlocking {
         ensureProjectReady()
 
         val (filePath, offset) = readAction {
-            sampleFile.virtualFile.path to sampleFile.text.indexOf("greet")
+            hierarchyFile.virtualFile.path to hierarchyFile.text.indexOf("Shape")
         }
 
-        val error = assertThrows(CapabilityNotSupportedException::class.java) {
-            runBlocking {
-                backend().typeHierarchy(
-                    TypeHierarchyQuery(
-                        position = FilePosition(filePath = filePath, offset = offset),
-                    ),
-                )
-            }
-        }
+        val result = backend().typeHierarchy(
+            TypeHierarchyQuery(
+                position = FilePosition(filePath = filePath, offset = offset),
+                direction = TypeHierarchyDirection.SUBTYPES,
+                depth = 1,
+            ),
+        )
 
-        assertEquals("TYPE_HIERARCHY", error.details["capability"])
-        assertEquals("Type hierarchy is not supported by the IntelliJ plugin backend", error.message)
+        assertNotNull(result.root)
+        assertTrue(result.stats.totalNodes >= 1)
+        val childFqNames = result.root.children.map { it.symbol.fqName }
+        assertTrue(
+            childFqNames.any { it.contains("Circle") },
+            "Expected Circle in subtypes but got: $childFqNames",
+        )
     }
 
     @Test

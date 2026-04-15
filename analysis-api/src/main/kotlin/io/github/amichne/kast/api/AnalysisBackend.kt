@@ -83,4 +83,11 @@ interface AnalysisBackend {
             message = "Workspace symbol search is not available for this backend",
         )
     }
+
+    suspend fun workspaceFiles(query: WorkspaceFilesQuery): WorkspaceFilesResult {
+        throw CapabilityNotSupportedException(
+            capability = "WORKSPACE_FILES",
+            message = "Workspace file listing is not available for this backend",
+        )
+    }
 }

@@ -26,6 +26,8 @@ import io.github.amichne.kast.api.SymbolQuery
 import io.github.amichne.kast.api.SymbolResult
 import io.github.amichne.kast.api.TypeHierarchyQuery
 import io.github.amichne.kast.api.TypeHierarchyResult
+import io.github.amichne.kast.api.WorkspaceFilesQuery
+import io.github.amichne.kast.api.WorkspaceFilesResult
 import io.github.amichne.kast.api.WorkspaceSymbolQuery
 import io.github.amichne.kast.api.WorkspaceSymbolResult
 import kotlinx.serialization.json.Json
@@ -152,6 +154,18 @@ internal class CliService(
         requireReadCapability(runtime.selected, ReadCapability.WORKSPACE_SYMBOL_SEARCH)
         return attachedResult(
             payload = rpcClient.post(runtime.selected.descriptor, "workspace-symbol", query),
+            runtime = runtime,
+        )
+    }
+
+    suspend fun workspaceFiles(
+        options: RuntimeCommandOptions,
+        query: WorkspaceFilesQuery,
+    ): RuntimeAttachedResult<WorkspaceFilesResult> {
+        val runtime = runtimeManager.ensureRuntime(options)
+        requireReadCapability(runtime.selected, ReadCapability.WORKSPACE_FILES)
+        return attachedResult(
+            payload = rpcClient.post(runtime.selected.descriptor, "workspace/files", query),
             runtime = runtime,
         )
     }

@@ -83,19 +83,21 @@ trap cleanup EXIT
 cp "$portable_zip" "$asset_path"
 
 python3 - "$metadata_path" "$asset_path" <<'PY'
+import hashlib
 import json
 import sys
 from pathlib import Path
 
 metadata_path = Path(sys.argv[1])
 asset_path = Path(sys.argv[2])
+digest = hashlib.sha256(asset_path.read_bytes()).hexdigest()
 payload = {
     "tag_name": "v0.0.0-smoke",
     "assets": [
         {
             "name": asset_path.name,
             "browser_download_url": asset_path.as_uri(),
-            "digest": "",
+            "digest": f"sha256:{digest}",
         }
     ],
 }

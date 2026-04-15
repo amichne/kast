@@ -89,6 +89,18 @@ internal class StandaloneAnalysisSession(
     @Volatile
     private var workspaceRefreshWatcher: WorkspaceRefreshWatcher? = null
 
+    /**
+     * Stable snapshot of known paths taken immediately after Phase 1 indexing completes and
+     * advanced after each explicit full refresh (invalidateCaches=true). Used by
+     * [refreshWorkspace] when invalidating caches so that interim watcher-driven partial
+     * refreshes cannot corrupt the "before" picture used to compute [RefreshResult.removedFiles].
+     *
+     * Watcher-triggered refreshes (invalidateCaches=false) still use the live
+     * [sourceIdentifierIndex] because they need up-to-date incremental state.
+     */
+    @Volatile
+    private var checkpointKnownPaths: Set<String> = emptySet()
+
     @Volatile
     private var enrichmentComplete = false
 
@@ -153,6 +165,8 @@ internal class StandaloneAnalysisSession(
         ensureFullKtFileMapLoaded(session)
         ktFilesByPath.values.sortedBy(::normalizeFileLookupPath)
     }
+
+    fun moduleSpecs(): List<StandaloneSourceModuleSpec> = sourceModuleSpecs
 
     fun findKtFile(filePath: String): KtFile {
         val normalizedPath = NormalizedPath.of(Path.of(filePath))
@@ -324,11 +338,26 @@ internal class StandaloneAnalysisSession(
         val knownPaths = buildSet {
             addAll(ktFilesByPath.keys.map { it.value })
             addAll(targetedKtFilesByPath.keys.map { it.value })
-            addAll(sourceIdentifierIndex.get()?.knownPaths().orEmpty())
+            // When invalidating caches we use the stable checkpoint instead of the live index.
+            // The WorkspaceRefreshWatcher may have already mutated sourceIdentifierIndex via
+            // incremental refreshes (e.g. removing deleted files) before this explicit full
+            // refresh runs.  On slow runners (Linux CI) the watcher's 200 ms debounce fires
+            // before the CLI process finishes starting, wiping the "before" picture from the
+            // live index.  checkpointKnownPaths is only advanced by explicit full refreshes
+            // and by the Phase 1 onIndexBuilt callback, so it is always the last clean baseline.
+            if (invalidateCaches) {
+                addAll(checkpointKnownPaths)
+            } else {
+                addAll(sourceIdentifierIndex.get()?.knownPaths().orEmpty())
+            }
             addAll(pendingSourceIndexRefreshPaths)
         }
         val removedPaths = (knownPaths - currentPaths).sorted()
         refreshFiles(currentPaths + removedPaths)
+        if (invalidateCaches) {
+            // Advance the stable baseline so the next explicit refresh has an accurate picture.
+            checkpointKnownPaths = currentPaths.toSet()
+        }
         return RefreshResult(
             refreshedFiles = currentPaths.sorted(),
             removedFiles = removedPaths,
@@ -564,6 +593,9 @@ internal class StandaloneAnalysisSession(
                     applyWorkspaceLayout(workspaceLayout)
                     applyAnalysisState(newAnalysisState)
                     sourceIdentifierIndex.set(null)
+                    // Clear the stable baseline so that any refreshWorkspace(invalidateCaches=true)
+                    // that races during Phase 1 rebuild cannot report stale files from the old layout.
+                    checkpointKnownPaths = emptySet()
                     fullKtFileMapLoaded = false
                     startInitialSourceIndex()
                     previousIndexer.close()
@@ -793,13 +825,19 @@ internal class StandaloneAnalysisSession(
             initialSourceIndexBuilder = initialSourceIndexBuilder,
         )
         val generation = sourceIndexGeneration.incrementAndGet()
-        backgroundIndexer.startPhase1()
+        // Publish the index synchronously in the Phase 1 thread before identifierIndexReady
+        // completes, so that any caller waiting on identifierIndexReady sees a non-null
+        // sourceIdentifierIndex immediately (no async thenRun race).
+        backgroundIndexer.startPhase1 { builtIndex ->
+            if (closed || sourceIndexGeneration.get() != generation) return@startPhase1
+            applyPendingSourceIndexRefreshes(builtIndex)
+            sourceIdentifierIndex.set(builtIndex)
+            // Advance the stable baseline so refreshWorkspace(invalidateCaches=true) has a
+            // clean starting point that watcher-driven partial refreshes cannot corrupt.
+            checkpointKnownPaths = builtIndex.knownPaths()
+        }
         backgroundIndexer.identifierIndexReady.thenRun {
             if (closed || sourceIndexGeneration.get() != generation) return@thenRun
-            backgroundIndexer.getIndex()?.let { builtIndex ->
-                applyPendingSourceIndexRefreshes(builtIndex)
-                sourceIdentifierIndex.set(builtIndex)
-            }
             backgroundIndexer.startPhase2(::scanFileReferences)
         }
     }

@@ -36,6 +36,8 @@ import io.github.amichne.kast.api.TextEdit
 import io.github.amichne.kast.api.TypeHierarchyDirection
 import io.github.amichne.kast.api.TypeHierarchyQuery
 import io.github.amichne.kast.api.TypeHierarchyResult
+import io.github.amichne.kast.api.WorkspaceFilesQuery
+import io.github.amichne.kast.api.WorkspaceFilesResult
 import io.github.amichne.kast.api.WorkspaceSymbolQuery
 import io.github.amichne.kast.api.WorkspaceSymbolResult
 import io.github.amichne.kast.testing.FakeAnalysisBackend
@@ -372,6 +374,33 @@ class AnalysisDispatcherTest {
             response,
         )
         assertEquals("VALIDATION_ERROR", error.error.data?.code)
+    }
+
+    @Test
+    fun `workspace files dispatches without HTTP`() {
+        val result = dispatchSuccess<WorkspaceFilesResult>(
+            method = "workspace/files",
+            params = json.encodeToJsonElement(
+                WorkspaceFilesQuery.serializer(),
+                WorkspaceFilesQuery(),
+            ),
+        )
+
+        assertTrue(result.modules.isNotEmpty())
+        assertEquals("fake-module", result.modules.first().name)
+    }
+
+    @Test
+    fun `workspace files filters by module name`() {
+        val result = dispatchSuccess<WorkspaceFilesResult>(
+            method = "workspace/files",
+            params = json.encodeToJsonElement(
+                WorkspaceFilesQuery.serializer(),
+                WorkspaceFilesQuery(moduleName = "nonexistent"),
+            ),
+        )
+
+        assertTrue(result.modules.isEmpty())
     }
 
     @Test

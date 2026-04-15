@@ -121,6 +121,14 @@ internal class DefaultCliCommandExecutor(
                 )
             }
 
+            is CliCommand.WorkspaceFiles -> {
+                val result = cliService.workspaceFiles(command.options, command.query)
+                CliExecutionResult(
+                    output = CliOutput.JsonValue(result.payload),
+                    daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
+                )
+            }
+
             is CliCommand.SemanticInsertionPoint -> {
                 val result = cliService.semanticInsertionPoint(command.options, command.query)
                 CliExecutionResult(

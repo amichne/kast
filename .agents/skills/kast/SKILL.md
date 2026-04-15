@@ -179,11 +179,138 @@ diagnostics remain.
 Key output: `ok`, `query`, `edit_count`, `affected_files`, `apply_result`,
 `diagnostics`, `log_file`
 
-### Raw CLI fallback
+### Scaffold context for code generation
 
-Use raw `"$KAST"` only when a wrapper does not exist yet, such as
-`type-hierarchy`, `insertion-point`, `optimize-imports`, or a custom
-rename-plan flow. Keep `kast-plan-utils.py` in the loop for rename JSON.
+Use `kast-scaffold.sh` to gather everything an LLM needs to generate correct code for a symbol:
+outline, type hierarchy, references, insertion point, and surrounding file content — in one call.
+This replaces manually chaining `outline`, `type-hierarchy`, `references`, and `insertion-point`.
+
+```bash
+bash "$SKILL_ROOT/scripts/kast-scaffold.sh" \
+  --workspace-root=/absolute/workspace/path \
+  --target-file=/absolute/path/to/Interface.kt \
+  --target-symbol=MyInterface \
+  --mode=implement
+```
+
+Modes: `implement` (new impl), `replace` (overwrite a declaration), `consolidate` (merge two into one),
+`extract` (pull a nested declaration out).
+
+Add `--kind=class|interface|function|property` to restrict symbol resolution.
+
+Key output fields: `ok`, `outline`, `type_hierarchy`, `references`, `insertion_point` (with
+`offset`, `startOffset`, `endOffset`), `file_content`, `log_file`
+
+Use `insertion_point.offset` as `--offset` for insert-at-offset writes, or
+`insertion_point.startOffset`/`endOffset` for replace-range writes.
+
+**When to use vs. atomic wrappers:**
+- Use `kast-scaffold.sh` when you need full context for code generation (it's a single call).
+- Use `kast-resolve.sh` + `kast-references.sh` individually only when you need one specific signal
+  and don't need the full scaffold payload.
+
+### Write generated code and validate
+
+Use `kast-write-and-validate.sh` to apply LLM-generated code, clean up imports, and confirm
+correctness with diagnostics — in one atomic workflow. Returns `ok=true` only when diagnostics
+are clean.
+
+```bash
+# Create a new file
+bash "$SKILL_ROOT/scripts/kast-write-and-validate.sh" \
+  --workspace-root=/absolute/workspace/path \
+  --mode=create-file \
+  --file-path=/absolute/path/to/NewImpl.kt \
+  --content="..."
+
+# Insert at a character offset
+bash "$SKILL_ROOT/scripts/kast-write-and-validate.sh" \
+  --workspace-root=/absolute/workspace/path \
+  --mode=insert-at-offset \
+  --file-path=/absolute/path/to/File.kt \
+  --offset=1234 \
+  --content="..."
+
+# Replace a character range (use startOffset/endOffset from kast-scaffold.sh)
+bash "$SKILL_ROOT/scripts/kast-write-and-validate.sh" \
+  --workspace-root=/absolute/workspace/path \
+  --mode=replace-range \
+  --file-path=/absolute/path/to/File.kt \
+  --start-offset=100 \
+  --end-offset=500 \
+  --content="..."
+```
+
+Use `--content-file=/path/to/file` instead of `--content` for large payloads.
+
+Key output fields: `ok`, `stage` (where failure occurred: `write`, `optimize_imports`, `diagnostics`),
+`import_changes`, `diagnostics` (with `clean`, `error_count`), `log_file`
+
+If `ok=false`, read `stage` and `diagnostics.errors` to identify what to fix before resubmitting.
+
+**When to use vs. direct file writes:**
+- Always use `kast-write-and-validate.sh` for Kotlin files — it handles import cleanup and validation.
+- Direct file writes bypass optimize-imports and diagnostics; use them only for non-Kotlin files.
+
+### List workspace modules and files
+
+Use `kast-workspace-files.sh` to enumerate workspace modules with their source roots and dependency
+relationships. Replaces `find`/`ls`/`tree` for Kotlin file discovery.
+
+```bash
+# List all modules (no file enumeration)
+bash "$SKILL_ROOT/scripts/kast-workspace-files.sh" \
+  --workspace-root=/absolute/workspace/path
+
+# List all modules with individual .kt file paths
+bash "$SKILL_ROOT/scripts/kast-workspace-files.sh" \
+  --workspace-root=/absolute/workspace/path \
+  --include-files=true
+
+# Filter to a single module
+bash "$SKILL_ROOT/scripts/kast-workspace-files.sh" \
+  --workspace-root=/absolute/workspace/path \
+  --module-name=analysis-api \
+  --include-files=true
+```
+
+Key output fields: `ok`, `modules` (array of `WorkspaceModule` with `name`, `sourceRoots`,
+`dependencyModuleNames`, `files`, `fileCount`), `log_file`
+
+`files` is populated only when `--include-files=true`. `fileCount` is always present.
+
+**When to use vs. raw `kast workspace files`:**
+- Use `kast-workspace-files.sh` for all agent-driven module/file discovery — it wraps the raw
+  command with standard `ok`-keyed JSON, error handling, and log management.
+- Use raw `kast workspace files` only when debugging the wrapper itself.
+
+ The following commands are still
+available directly but are now called internally by composite wrappers — prefer the wrappers:
+
+- `type-hierarchy` and `insertion-point` — called internally by `kast-scaffold.sh`
+- `optimize-imports` — called internally by `kast-write-and-validate.sh`
+
+If you need these primitives directly (for example, in a custom flow that the composite wrappers
+don't cover), use:
+
+```bash
+"$KAST" type-hierarchy \
+  --workspace-root=/absolute/workspace/path \
+  --file-path=/absolute/path/to/File.kt \
+  --offset=<offset> \
+  --direction=both
+
+"$KAST" insertion-point \
+  --workspace-root=/absolute/workspace/path \
+  --file-path=/absolute/path/to/File.kt \
+  --target-symbol=MyInterface
+
+"$KAST" optimize-imports \
+  --workspace-root=/absolute/workspace/path \
+  --file-path=/absolute/path/to/File.kt
+```
+
+For custom rename-plan flows, keep `kast-plan-utils.py` in the loop:
 
 ```bash
 "$KAST" rename \
@@ -324,7 +451,64 @@ validation, workspace startup, candidate lookup, or the underlying CLI call.
 
 See `references/troubleshooting.md` for full decision trees.
 
-## 7. Rules
+## 7. "Write a New X" Workflows
+
+Use `kast-scaffold.sh` + `kast-write-and-validate.sh` for LLM-driven code
+generation. Kast provides structural context and compiler validation; the LLM
+generates the code.
+
+### Implements Y (new implementation of an interface or abstract class)
+
+```
+kast-scaffold.sh --workspace-root=… --target-file=Y.kt --target-symbol=Y --mode=implement
+  → emit context to LLM
+  → LLM generates NewImpl.kt content
+kast-write-and-validate.sh --workspace-root=… --mode=create-file --file-path=NewImpl.kt --content=…
+  → ok=true when diagnostics are clean
+```
+
+### Replaces Z (rewrite a declaration in place)
+
+```
+kast-scaffold.sh --workspace-root=… --target-file=Z.kt --target-symbol=Z --mode=replace
+  → emit context (includes insertion_point with startOffset/endOffset of the declaration)
+  → LLM generates replacement content
+kast-write-and-validate.sh --workspace-root=… --mode=replace-range \
+  --file-path=Z.kt --start-offset=… --end-offset=… --content=…
+```
+
+### Consolidates Y1+Y2 (merge two declarations into one)
+
+```
+kast-scaffold.sh … --target-symbol=Y1 --mode=consolidate
+kast-scaffold.sh … --target-symbol=Y2 --mode=consolidate
+  → LLM generates consolidated Merged.kt
+kast-write-and-validate.sh --mode=create-file --file-path=Merged.kt --content=…
+  → then use kast-rename.sh to migrate all references
+```
+
+### Extracts Y3 from Z3 (pull out a nested declaration)
+
+```
+kast-scaffold.sh --target-symbol=Z3 --mode=extract
+  → LLM generates: (a) extracted Y3.kt, (b) modified Z3.kt with Y3 removed
+kast-write-and-validate.sh --mode=create-file --file-path=Y3.kt --content=…
+kast-write-and-validate.sh --mode=replace-range --file-path=Z3.kt --start-offset=… --end-offset=… --content=…
+```
+
+**Rules for write-and-validate:**
+
+- Always check `ok` first. If `ok=false`, read `diagnostics.errors` and fix
+  before resubmitting.
+- `import_changes > 0` means optimize-imports removed or inserted lines; this
+  is expected and correct.
+- After a `create-file` write, the daemon automatically refreshes the new
+  file. You do not need a separate `workspace refresh` call.
+- Use `insertion_point.offset` from scaffold output as the `--offset` for
+  insert-at-offset, or `insertion_point.startOffset`/`endOffset` for
+  replace-range.
+
+## 8. Rules
 
 - Always use the wrapper scripts for multi-step operations.
 - Use raw `kast` CLI only when a wrapper does not exist yet.
@@ -343,7 +527,7 @@ See `references/troubleshooting.md` for full decision trees.
 - Wait for `state = READY` (not just `INDEXING`) before trusting semantic
   results in a newly started daemon.
 
-## 8. Integration
+## 9. Integration
 
 Use the narrowest tool that owns the task.
 
@@ -355,6 +539,9 @@ Use the narrowest tool that owns the task.
 | Assess pre-edit impact | `kast-impact.sh` |
 | Run structured diagnostics for changed files | `kast-diagnostics.sh` |
 | Rename a symbol end to end | `kast-rename.sh` |
+| Scaffold full symbol context (outline + hierarchy + refs + insertion) | `kast-scaffold.sh` |
+| Apply generated code and validate with diagnostics | `kast-write-and-validate.sh` |
+| List workspace modules and Kotlin files | `kast-workspace-files.sh` |
 | Check daemon health and state | `kast workspace status` (raw CLI) |
 | Confirm available capabilities | `kast capabilities` (raw CLI) |
 | Smoke-test the skill wrappers | `validate-wrapper-json.sh` |

@@ -5,11 +5,13 @@ import com.intellij.openapi.application.readAction
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiReference
+import com.intellij.psi.search.FileTypeIndex
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.PsiShortNamesCache
 import com.intellij.psi.search.searches.ReferencesSearch
@@ -51,6 +53,9 @@ import io.github.amichne.kast.api.SymbolVisibility
 import io.github.amichne.kast.api.TextEdit
 import io.github.amichne.kast.api.TypeHierarchyQuery
 import io.github.amichne.kast.api.TypeHierarchyResult
+import io.github.amichne.kast.api.WorkspaceFilesQuery
+import io.github.amichne.kast.api.WorkspaceFilesResult
+import io.github.amichne.kast.api.WorkspaceModule
 import io.github.amichne.kast.api.WorkspaceSymbolQuery
 import io.github.amichne.kast.api.WorkspaceSymbolResult
 import io.github.amichne.kast.shared.analysis.FileOutlineBuilder
@@ -64,8 +69,11 @@ import io.github.amichne.kast.shared.analysis.supertypeNames
 import io.github.amichne.kast.shared.analysis.toApiDiagnostics
 import io.github.amichne.kast.shared.analysis.toKastLocation
 import io.github.amichne.kast.shared.analysis.toSymbolModel
+import io.github.amichne.kast.shared.analysis.typeHierarchyDeclaration
 import io.github.amichne.kast.shared.analysis.visibility
 import io.github.amichne.kast.shared.hierarchy.CallHierarchyEngine
+import io.github.amichne.kast.shared.hierarchy.TypeHierarchyBudget
+import io.github.amichne.kast.shared.hierarchy.TypeHierarchyEngine
 import io.github.amichne.kast.shared.hierarchy.ReadAccessScope
 import io.github.amichne.kast.shared.hierarchy.TraversalBudget
 import kotlinx.coroutines.Dispatchers
@@ -73,6 +81,7 @@ import kotlinx.coroutines.withContext
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.components.KaDiagnosticCheckerFilter
+import org.jetbrains.kotlin.idea.KotlinFileType
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import java.nio.file.Path
@@ -95,10 +104,12 @@ internal class KastPluginBackend(
             ReadCapability.RESOLVE_SYMBOL,
             ReadCapability.FIND_REFERENCES,
             ReadCapability.CALL_HIERARCHY,
+            ReadCapability.TYPE_HIERARCHY,
             ReadCapability.SEMANTIC_INSERTION_POINT,
             ReadCapability.DIAGNOSTICS,
             ReadCapability.FILE_OUTLINE,
             ReadCapability.WORKSPACE_SYMBOL_SEARCH,
+            ReadCapability.WORKSPACE_FILES,
         ),
         mutationCapabilities = setOf(
             MutationCapability.RENAME,
@@ -236,11 +247,67 @@ internal class KastPluginBackend(
         )
     }
 
-    override suspend fun typeHierarchy(query: TypeHierarchyQuery): TypeHierarchyResult {
-        throw CapabilityNotSupportedException(
-            capability = "TYPE_HIERARCHY",
-            message = "Type hierarchy is not supported by the IntelliJ plugin backend",
+    override suspend fun typeHierarchy(query: TypeHierarchyQuery): TypeHierarchyResult = withContext(readDispatcher) {
+        val rootTarget = readAction {
+            val file = findKtFile(query.position.filePath)
+            val resolved = resolveTarget(file, query.position.offset)
+            resolved.typeHierarchyDeclaration() ?: resolved
+        }
+        val resolver = IntelliJTypeEdgeResolver(project = project)
+        val intellijReadAccess = object : ReadAccessScope {
+            override fun <T> run(action: () -> T): T =
+                ApplicationManager.getApplication().runReadAction<T> { action() }
+        }
+        val engine = TypeHierarchyEngine(edgeResolver = resolver, readAccess = intellijReadAccess)
+        val budget = TypeHierarchyBudget(maxResults = query.maxResults.coerceAtLeast(1))
+        val root = engine.buildNode(
+            target = rootTarget,
+            direction = query.direction,
+            depthRemaining = query.depth.coerceAtLeast(0),
+            pathKeys = emptySet(),
+            budget = budget,
+            currentDepth = 0,
         )
+        TypeHierarchyResult(root = root, stats = budget.toStats())
+    }
+
+    override suspend fun workspaceFiles(query: WorkspaceFilesQuery): WorkspaceFilesResult = withContext(readDispatcher) {
+        readAction {
+            val allModules = ModuleManager.getInstance(project).modules
+            val targetModules = if (query.moduleName != null) {
+                allModules.filter { it.name == query.moduleName }
+            } else {
+                allModules.toList()
+            }
+            val modules = targetModules.map { module ->
+                val rootManager = ModuleRootManager.getInstance(module)
+                val sourceRoots = rootManager.sourceRoots
+                    .map { it.path }
+                    .filter { it.startsWith(workspacePrefix) }
+                val depNames = rootManager.dependencies.map { it.name }
+                val files = if (query.includeFiles) {
+                    FileTypeIndex.getFiles(KotlinFileType.INSTANCE, GlobalSearchScope.moduleScope(module))
+                        .map { it.path }
+                        .filter { it.startsWith(workspacePrefix) }
+                        .sorted()
+                } else {
+                    emptyList()
+                }
+                WorkspaceModule(
+                    name = module.name,
+                    sourceRoots = sourceRoots,
+                    dependencyModuleNames = depNames,
+                    files = files,
+                    fileCount = if (query.includeFiles) {
+                        files.size
+                    } else {
+                        FileTypeIndex.getFiles(KotlinFileType.INSTANCE, GlobalSearchScope.moduleScope(module))
+                            .count { it.path.startsWith(workspacePrefix) }
+                    },
+                )
+            }
+            WorkspaceFilesResult(modules = modules)
+        }
     }
 
     override suspend fun semanticInsertionPoint(
@@ -268,6 +335,8 @@ internal class KastPluginBackend(
         }
     }
 
+    // Note: Unlike the standalone backend, IntelliJ's ReferencesSearch.search() resolves
+    // import directives as reference sites, so explicit import FQN handling is not needed here.
     override suspend fun rename(query: RenameQuery): RenameResult = withContext(readDispatcher) {
         val (snapshot, referenceEdits) = collectInShortReadActions(
             collectSnapshot = {

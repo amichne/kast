@@ -195,6 +195,17 @@ internal object CliCommandCatalog {
         usage = "--new-name=RenamedSymbol",
         description = "Replacement symbol name for rename planning.",
     )
+    private val moduleNameOption = CliOptionMetadata(
+        key = "module-name",
+        usage = "--module-name=app",
+        description = "Filter workspace file listing to a single module. Omit for all modules.",
+    )
+    private val includeFilesOption = CliOptionMetadata(
+        key = "include-files",
+        usage = "--include-files=true",
+        description = "Enumerate individual file paths per module. Defaults to false.",
+        completionKind = CliOptionCompletionKind.BOOLEAN,
+    )
     private val dryRunOption = CliOptionMetadata(
         key = "dry-run",
         usage = "--dry-run=true",
@@ -345,6 +356,23 @@ internal object CliCommandCatalog {
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME workspace stop --workspace-root=/absolute/path/to/workspace",
                 "$CLI_EXECUTABLE_NAME workspace stop --workspace-root=/absolute/path/to/workspace --backend-name=standalone",
+            ),
+        ),
+        CliCommandMetadata(
+            path = listOf("workspace", "files"),
+            group = CliCommandGroup.WORKSPACE_LIFECYCLE,
+            summary = "List workspace modules and their Kotlin source files.",
+            description = "Returns the module layout discovered by the backend, including source roots and " +
+                "dependency relationships. Pass --include-files to enumerate individual .kt file paths per module.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME workspace files --workspace-root=/absolute/path/to/workspace",
+                "$CLI_EXECUTABLE_NAME workspace files --workspace-root=/absolute/path/to/workspace --include-files=true [--module-name=app]",
+            ),
+            options = listOf(workspaceRootOption, backendNameOption, waitTimeoutOption, noAutoStartOption, requestFileOption, moduleNameOption, includeFilesOption),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME workspace files --workspace-root=/absolute/path/to/workspace",
+                "$CLI_EXECUTABLE_NAME workspace files --workspace-root=/absolute/path/to/workspace --include-files=true",
+                "$CLI_EXECUTABLE_NAME workspace files --workspace-root=/absolute/path/to/workspace --module-name=app --include-files=true",
             ),
         ),
         CliCommandMetadata(
