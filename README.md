@@ -1,5 +1,7 @@
 # Kast
 
+[![DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/amichne/kast)
+
 Kast is a Kotlin analysis tool for real Kotlin workspaces. The current
 supported operator path is the repo-local `kast` command.
 
