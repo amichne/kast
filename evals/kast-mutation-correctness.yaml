@@ -23,7 +23,7 @@ cases:
       - type: output_field_gte
         tool: kast-rename.sh
         field: edit_count
-        expected: 2
+        threshold: 2
       - type: tool_used
         tool: kast-diagnostics.sh
       - type: output_field_equals
@@ -48,7 +48,7 @@ cases:
       - type: output_field_gte
         tool: kast-rename.sh
         field: edit_count
-        expected: 4
+        threshold: 4
       - type: tool_used
         tool: kast-diagnostics.sh
       - type: output_field_equals
