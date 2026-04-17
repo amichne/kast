@@ -1,0 +1,486 @@
+openapi: 3.1.0
+info:
+  title: kast wrapper requests
+  version: 1.0.0
+  description: >
+    JSON request contracts for the packaged kast wrapper scripts. Invoke each
+    script with exactly one argument: either a JSON object literal or a path
+    to a `.json` file containing the same object.
+
+servers:
+  - url: file://scripts
+    description: Local wrapper script directory
+
+paths:
+  /kast-resolve:
+    post:
+      operationId: kastResolve
+      summary: Resolve a symbol by name
+      x-script: scripts/kast-resolve.sh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KastResolveRequest'
+      responses:
+        '200':
+          description: Wrapper JSON response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WrapperResponse'
+
+  /kast-references:
+    post:
+      operationId: kastReferences
+      summary: Find references for a named symbol
+      x-script: scripts/kast-references.sh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KastReferencesRequest'
+      responses:
+        '200':
+          description: Wrapper JSON response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WrapperResponse'
+
+  /kast-callers:
+    post:
+      operationId: kastCallers
+      summary: Expand an incoming or outgoing call hierarchy
+      x-script: scripts/kast-callers.sh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KastCallersRequest'
+      responses:
+        '200':
+          description: Wrapper JSON response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WrapperResponse'
+
+  /kast-impact:
+    post:
+      operationId: kastImpact
+      summary: Gather pre-edit impact for a named symbol
+      x-script: scripts/kast-impact.sh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KastImpactRequest'
+      responses:
+        '200':
+          description: Wrapper JSON response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WrapperResponse'
+
+  /kast-diagnostics:
+    post:
+      operationId: kastDiagnostics
+      summary: Run diagnostics on Kotlin files
+      x-script: scripts/kast-diagnostics.sh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KastDiagnosticsRequest'
+      responses:
+        '200':
+          description: Wrapper JSON response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WrapperResponse'
+
+  /kast-rename:
+    post:
+      operationId: kastRename
+      summary: Resolve or target a symbol and apply a rename
+      x-script: scripts/kast-rename.sh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KastRenameRequest'
+      responses:
+        '200':
+          description: Wrapper JSON response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WrapperResponse'
+
+  /kast-scaffold:
+    post:
+      operationId: kastScaffold
+      summary: Gather structural generation context
+      x-script: scripts/kast-scaffold.sh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KastScaffoldRequest'
+      responses:
+        '200':
+          description: Wrapper JSON response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WrapperResponse'
+
+  /kast-workspace-files:
+    post:
+      operationId: kastWorkspaceFiles
+      summary: List workspace modules and optional file paths
+      x-script: scripts/kast-workspace-files.sh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KastWorkspaceFilesRequest'
+      responses:
+        '200':
+          description: Wrapper JSON response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WrapperResponse'
+
+  /kast-write-and-validate:
+    post:
+      operationId: kastWriteAndValidate
+      summary: Apply generated Kotlin code and validate the result
+      x-script: scripts/kast-write-and-validate.sh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KastWriteAndValidateRequest'
+      responses:
+        '200':
+          description: Wrapper JSON response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WrapperResponse'
+
+components:
+  schemas:
+    NamedSymbolRequestBase:
+      type: object
+      required:
+        - symbol
+      properties:
+        workspaceRoot:
+          type: string
+          description: >
+            Absolute workspace root path. Optional when `KAST_WORKSPACE_ROOT`
+            or the current git workspace can supply it.
+        symbol:
+          type: string
+          description: Simple or fully qualified symbol name.
+        fileHint:
+          type: string
+          description: >
+            Optional absolute path, workspace-relative path, or glob to narrow
+            symbol resolution.
+        kind:
+          type: string
+          enum: [class, function, property]
+        containingType:
+          type: string
+          description: Fully qualified containing type for disambiguation.
+      additionalProperties: false
+
+    KastResolveRequest:
+      allOf:
+        - $ref: '#/components/schemas/NamedSymbolRequestBase'
+
+    KastReferencesRequest:
+      allOf:
+        - $ref: '#/components/schemas/NamedSymbolRequestBase'
+        - type: object
+          properties:
+            includeDeclaration:
+              type: boolean
+              default: true
+          additionalProperties: false
+
+    KastCallersRequest:
+      allOf:
+        - $ref: '#/components/schemas/NamedSymbolRequestBase'
+        - type: object
+          properties:
+            direction:
+              type: string
+              enum: [incoming, outgoing]
+              default: incoming
+            depth:
+              type: integer
+              minimum: 0
+              default: 2
+            maxTotalCalls:
+              type: integer
+              minimum: 1
+            maxChildrenPerNode:
+              type: integer
+              minimum: 1
+            timeoutMillis:
+              type: integer
+              minimum: 1
+          additionalProperties: false
+
+    KastImpactRequest:
+      allOf:
+        - $ref: '#/components/schemas/NamedSymbolRequestBase'
+        - type: object
+          properties:
+            includeCallers:
+              type: boolean
+              default: true
+            callerDepth:
+              type: integer
+              minimum: 0
+              default: 2
+          additionalProperties: false
+
+    KastDiagnosticsRequest:
+      type: object
+      required:
+        - filePaths
+      properties:
+        workspaceRoot:
+          type: string
+          description: >
+            Absolute workspace root path. Optional when `KAST_WORKSPACE_ROOT`
+            or the current git workspace can supply it.
+        filePaths:
+          type: array
+          minItems: 1
+          items:
+            type: string
+          description: Absolute or workspace-relative Kotlin file paths.
+      additionalProperties: false
+
+    KastRenameBySymbolRequest:
+      allOf:
+        - $ref: '#/components/schemas/NamedSymbolRequestBase'
+        - type: object
+          required:
+            - newName
+          properties:
+            newName:
+              type: string
+          additionalProperties: false
+
+    KastRenameByOffsetRequest:
+      type: object
+      required:
+        - filePath
+        - offset
+        - newName
+      properties:
+        workspaceRoot:
+          type: string
+          description: >
+            Absolute workspace root path. Optional when `KAST_WORKSPACE_ROOT`
+            or the current git workspace can supply it.
+        filePath:
+          type: string
+        offset:
+          type: integer
+          minimum: 0
+        newName:
+          type: string
+      additionalProperties: false
+
+    KastRenameRequest:
+      oneOf:
+        - $ref: '#/components/schemas/KastRenameBySymbolRequest'
+        - $ref: '#/components/schemas/KastRenameByOffsetRequest'
+
+    KastScaffoldRequest:
+      type: object
+      required:
+        - targetFile
+      properties:
+        workspaceRoot:
+          type: string
+          description: >
+            Absolute workspace root path. Optional when `KAST_WORKSPACE_ROOT`
+            or the current git workspace can supply it.
+        targetFile:
+          type: string
+        targetSymbol:
+          type: string
+        mode:
+          type: string
+          enum: [implement, replace, consolidate, extract]
+          default: implement
+        kind:
+          type: string
+      additionalProperties: false
+
+    KastWorkspaceFilesRequest:
+      type: object
+      properties:
+        workspaceRoot:
+          type: string
+          description: >
+            Absolute workspace root path. Optional when `KAST_WORKSPACE_ROOT`
+            or the current git workspace can supply it.
+        moduleName:
+          type: string
+        includeFiles:
+          type: boolean
+          default: false
+      additionalProperties: false
+
+    KastWriteAndValidateCreateFileRequest:
+      type: object
+      required:
+        - mode
+        - filePath
+      properties:
+        workspaceRoot:
+          type: string
+          description: >
+            Absolute workspace root path. Optional when `KAST_WORKSPACE_ROOT`
+            or the current git workspace can supply it.
+        mode:
+          type: string
+          const: create-file
+        filePath:
+          type: string
+        content:
+          type: string
+        contentFile:
+          type: string
+      oneOf:
+        - required: [content]
+        - required: [contentFile]
+      additionalProperties: false
+
+    KastWriteAndValidateInsertRequest:
+      type: object
+      required:
+        - mode
+        - filePath
+        - offset
+      properties:
+        workspaceRoot:
+          type: string
+          description: >
+            Absolute workspace root path. Optional when `KAST_WORKSPACE_ROOT`
+            or the current git workspace can supply it.
+        mode:
+          type: string
+          const: insert-at-offset
+        filePath:
+          type: string
+        offset:
+          type: integer
+          minimum: 0
+        content:
+          type: string
+        contentFile:
+          type: string
+      oneOf:
+        - required: [content]
+        - required: [contentFile]
+      additionalProperties: false
+
+    KastWriteAndValidateReplaceRequest:
+      type: object
+      required:
+        - mode
+        - filePath
+        - startOffset
+        - endOffset
+      properties:
+        workspaceRoot:
+          type: string
+          description: >
+            Absolute workspace root path. Optional when `KAST_WORKSPACE_ROOT`
+            or the current git workspace can supply it.
+        mode:
+          type: string
+          const: replace-range
+        filePath:
+          type: string
+        startOffset:
+          type: integer
+          minimum: 0
+        endOffset:
+          type: integer
+          minimum: 0
+        content:
+          type: string
+        contentFile:
+          type: string
+      oneOf:
+        - required: [content]
+        - required: [contentFile]
+      additionalProperties: false
+
+    KastWriteAndValidateRequest:
+      oneOf:
+        - $ref: '#/components/schemas/KastWriteAndValidateCreateFileRequest'
+        - $ref: '#/components/schemas/KastWriteAndValidateInsertRequest'
+        - $ref: '#/components/schemas/KastWriteAndValidateReplaceRequest'
+
+    WrapperSuccessResponse:
+      type: object
+      required:
+        - ok
+        - log_file
+      properties:
+        ok:
+          type: boolean
+          const: true
+        log_file:
+          type: string
+      additionalProperties: true
+
+    WrapperFailureResponse:
+      type: object
+      required:
+        - ok
+        - stage
+        - message
+        - log_file
+      properties:
+        ok:
+          type: boolean
+          const: false
+        stage:
+          type: string
+        message:
+          type: string
+        log_file:
+          type: string
+      additionalProperties: true
+
+    WrapperResponse:
+      oneOf:
+        - $ref: '#/components/schemas/WrapperSuccessResponse'
+        - $ref: '#/components/schemas/WrapperFailureResponse'

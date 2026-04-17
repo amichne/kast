@@ -4,10 +4,35 @@
     "sessionStart": [
       {
         "type": "command",
+        "bash": "bash .github/hooks/session-start.sh",
+        "cwd": ".",
+        "timeoutSec": 30,
+        "comment": "Reset per-session hook state used to track edited files."
+      },
+      {
+        "type": "command",
         "bash": "bash .agents/skills/kast/scripts/kast-session-start.sh",
         "cwd": ".",
         "timeoutSec": 180,
-        "comment": "Resolve kast and explicitly prewarm the workspace as soon as the session opens."
+        "comment": "Resolve kast and prewarm the workspace when the Copilot session starts."
+      }
+    ],
+    "postToolUse": [
+      {
+        "type": "command",
+        "bash": "bash .github/hooks/record-paths.sh",
+        "cwd": ".",
+        "timeoutSec": 30,
+        "comment": "Track files edited successfully during the session so final validation only checks session-owned paths."
+      }
+    ],
+    "sessionEnd": [
+      {
+        "type": "command",
+        "bash": "bash .github/hooks/session-end.sh",
+        "cwd": ".",
+        "timeoutSec": 1800,
+        "comment": "Run the command-based subset of the legacy completion hooks when the session completes successfully."
       }
     ]
   }

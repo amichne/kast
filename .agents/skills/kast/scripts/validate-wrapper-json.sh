@@ -22,24 +22,38 @@ fun greetTwice(): String = greet("kast") + greet("again")
 EOF
 
 export KAST_SOURCE_ROOT="${REQUEST_ROOT}"
+export KAST_WORKSPACE_ROOT="${WORKSPACE_ROOT}"
+if [[ -d "${REQUEST_ROOT}/kast/build/runtime-libs" ]]; then
+    export KAST_RUNTIME_LIBS="${REQUEST_ROOT}/kast/build/runtime-libs"
+fi
 
 SAMPLE_SYMBOL="greet"
 SAMPLE_FILE="${WORKSPACE_ROOT}/src/main/kotlin/sample/Greeter.kt"
 MISSING_SYMBOL="DefinitelyMissingSymbolForWrapperValidation"
 SUCCESS_DIAGNOSTICS_FILE="${SAMPLE_FILE}"
 FAILURE_DIAGNOSTICS_FILE="${WORKSPACE_ROOT}/definitely-missing-file.kt"
+DIAGNOSTICS_REQUEST="${TMP_DIR}/diagnostics-request.json"
+DIAGNOSTICS_FAILURE_REQUEST="${TMP_DIR}/diagnostics-failure-request.json"
+
+cat >"${DIAGNOSTICS_REQUEST}" <<EOF
+{"filePaths":["${SUCCESS_DIAGNOSTICS_FILE}"]}
+EOF
+
+cat >"${DIAGNOSTICS_FAILURE_REQUEST}" <<EOF
+{"filePaths":["${FAILURE_DIAGNOSTICS_FILE}"]}
+EOF
 
 declare -a CHECKS=(
-    "kast-resolve.sh|success|bash \"${SCRIPT_DIR}/kast-resolve.sh\" --workspace-root=\"${WORKSPACE_ROOT}\" --symbol=\"${SAMPLE_SYMBOL}\" --file=\"${SAMPLE_FILE}\"|true"
-    "kast-resolve.sh|failure|bash \"${SCRIPT_DIR}/kast-resolve.sh\" --workspace-root=\"${WORKSPACE_ROOT}\" --symbol=\"${MISSING_SYMBOL}\"|false"
-    "kast-references.sh|success|bash \"${SCRIPT_DIR}/kast-references.sh\" --workspace-root=\"${WORKSPACE_ROOT}\" --symbol=\"${SAMPLE_SYMBOL}\" --file=\"${SAMPLE_FILE}\"|true"
-    "kast-references.sh|failure|bash \"${SCRIPT_DIR}/kast-references.sh\" --workspace-root=\"${WORKSPACE_ROOT}\" --symbol=\"${MISSING_SYMBOL}\"|false"
-    "kast-callers.sh|success|bash \"${SCRIPT_DIR}/kast-callers.sh\" --workspace-root=\"${WORKSPACE_ROOT}\" --symbol=\"${SAMPLE_SYMBOL}\" --file=\"${SAMPLE_FILE}\"|true"
-    "kast-callers.sh|failure|bash \"${SCRIPT_DIR}/kast-callers.sh\" --workspace-root=\"${WORKSPACE_ROOT}\" --symbol=\"${MISSING_SYMBOL}\"|false"
-    "kast-diagnostics.sh|success|bash \"${SCRIPT_DIR}/kast-diagnostics.sh\" --workspace-root=\"${WORKSPACE_ROOT}\" --file-paths=\"${SUCCESS_DIAGNOSTICS_FILE}\"|true"
-    "kast-diagnostics.sh|failure|bash \"${SCRIPT_DIR}/kast-diagnostics.sh\" --workspace-root=\"${WORKSPACE_ROOT}\" --file-paths=\"${FAILURE_DIAGNOSTICS_FILE}\"|false"
-    "kast-impact.sh|success|bash \"${SCRIPT_DIR}/kast-impact.sh\" --workspace-root=\"${WORKSPACE_ROOT}\" --symbol=\"${SAMPLE_SYMBOL}\" --file=\"${SAMPLE_FILE}\"|true"
-    "kast-impact.sh|failure|bash \"${SCRIPT_DIR}/kast-impact.sh\" --workspace-root=\"${WORKSPACE_ROOT}\" --symbol=\"${MISSING_SYMBOL}\"|false"
+    "kast-resolve.sh|success|bash \"${SCRIPT_DIR}/kast-resolve.sh\" '{\"symbol\":\"${SAMPLE_SYMBOL}\",\"fileHint\":\"${SAMPLE_FILE}\"}'|true"
+    "kast-resolve.sh|failure|bash \"${SCRIPT_DIR}/kast-resolve.sh\" '{\"symbol\":\"${MISSING_SYMBOL}\"}'|false"
+    "kast-references.sh|success|bash \"${SCRIPT_DIR}/kast-references.sh\" '{\"symbol\":\"${SAMPLE_SYMBOL}\",\"fileHint\":\"${SAMPLE_FILE}\"}'|true"
+    "kast-references.sh|failure|bash \"${SCRIPT_DIR}/kast-references.sh\" '{\"symbol\":\"${MISSING_SYMBOL}\"}'|false"
+    "kast-callers.sh|success|bash \"${SCRIPT_DIR}/kast-callers.sh\" '{\"symbol\":\"${SAMPLE_SYMBOL}\",\"fileHint\":\"${SAMPLE_FILE}\",\"direction\":\"incoming\",\"depth\":2}'|true"
+    "kast-callers.sh|failure|bash \"${SCRIPT_DIR}/kast-callers.sh\" '{\"symbol\":\"${MISSING_SYMBOL}\"}'|false"
+    "kast-diagnostics.sh|success|bash \"${SCRIPT_DIR}/kast-diagnostics.sh\" \"${DIAGNOSTICS_REQUEST}\"|true"
+    "kast-diagnostics.sh|failure|bash \"${SCRIPT_DIR}/kast-diagnostics.sh\" \"${DIAGNOSTICS_FAILURE_REQUEST}\"|false"
+    "kast-impact.sh|success|bash \"${SCRIPT_DIR}/kast-impact.sh\" '{\"symbol\":\"${SAMPLE_SYMBOL}\",\"fileHint\":\"${SAMPLE_FILE}\"}'|true"
+    "kast-impact.sh|failure|bash \"${SCRIPT_DIR}/kast-impact.sh\" '{\"symbol\":\"${MISSING_SYMBOL}\"}'|false"
 )
 
 RESULTS_FILE="${TMP_DIR}/results.jsonl"

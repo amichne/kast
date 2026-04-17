@@ -7,17 +7,6 @@ source "${SCRIPT_DIR}/kast-common.sh"
 WORKSPACE_ROOT=""
 FILE_PATHS=""
 
-for arg in "$@"; do
-    case "${arg}" in
-        --workspace-root=*) WORKSPACE_ROOT="${arg#*=}" ;;
-        --file-paths=*) FILE_PATHS="${arg#*=}" ;;
-        *)
-            printf 'Unknown argument: %s\n' "${arg}" >&2
-            exit 1
-            ;;
-    esac
-done
-
 kast_wrapper_init "kast-diagnostics"
 
 emit_failure() {
@@ -58,8 +47,38 @@ print(json.dumps(payload, indent=2))
 PY
 }
 
+REQUEST_JSON_FILE="${TMP_DIR}/request.json"
+if ! kast_load_request "${REQUEST_JSON_FILE}" "$@"; then
+    emit_failure "request_validation" "${KAST_REQUEST_ERROR_MESSAGE}" "${KAST_REQUEST_ERROR_JSON_FILE:-}"
+    exit 1
+fi
+
+eval "$(
+    python3 - "${REQUEST_JSON_FILE}" <<'PY'
+import json
+import shlex
+import sys
+from pathlib import Path
+
+request = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+file_paths = request.get("filePaths") or []
+if not isinstance(file_paths, list):
+    file_paths = []
+fields = {
+    "WORKSPACE_ROOT": request.get("workspaceRoot", ""),
+    "FILE_PATHS": ",".join(str(entry) for entry in file_paths if entry is not None),
+}
+for key, value in fields.items():
+    print(f"{key}={shlex.quote('' if value is None else str(value))}")
+PY
+)"
+
+if [[ -z "${WORKSPACE_ROOT}" ]]; then
+    WORKSPACE_ROOT="$(kast_default_workspace_root || true)"
+fi
+
 if [[ -z "${WORKSPACE_ROOT}" || -z "${FILE_PATHS}" ]]; then
-    emit_failure "argument_validation" "Both --workspace-root and --file-paths are required."
+    emit_failure "request_validation" "Request must include a non-empty filePaths array. workspaceRoot is optional only when KAST_WORKSPACE_ROOT or the current git workspace can supply it."
     exit 1
 fi
 

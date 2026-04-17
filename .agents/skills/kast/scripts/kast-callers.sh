@@ -15,25 +15,6 @@ TIMEOUT_MILLIS=""
 KIND=""
 CONTAINING_TYPE=""
 
-for arg in "$@"; do
-    case "${arg}" in
-        --workspace-root=*)       WORKSPACE_ROOT="${arg#*=}" ;;
-        --symbol=*)               SYMBOL="${arg#*=}" ;;
-        --file=*)                 FILE_HINT="${arg#*=}" ;;
-        --direction=*)            DIRECTION="${arg#*=}" ;;
-        --depth=*)                DEPTH="${arg#*=}" ;;
-        --max-total-calls=*)      MAX_TOTAL_CALLS="${arg#*=}" ;;
-        --max-children-per-node=*) MAX_CHILDREN_PER_NODE="${arg#*=}" ;;
-        --timeout-millis=*)       TIMEOUT_MILLIS="${arg#*=}" ;;
-        --kind=*)                 KIND="${arg#*=}" ;;
-        --containing-type=*)      CONTAINING_TYPE="${arg#*=}" ;;
-        *)
-            printf 'Unknown argument: %s\n' "${arg}" >&2
-            exit 1
-            ;;
-    esac
-done
-
 kast_wrapper_init "kast-callers"
 
 emit_failure() {
@@ -100,18 +81,53 @@ print(json.dumps(payload, indent=2))
 PY
 }
 
+REQUEST_JSON_FILE="${TMP_DIR}/request.json"
+if ! kast_load_request "${REQUEST_JSON_FILE}" "$@"; then
+    emit_failure "request_validation" "${KAST_REQUEST_ERROR_MESSAGE}" "${KAST_REQUEST_ERROR_JSON_FILE:-}"
+    exit 1
+fi
+
+eval "$(
+    python3 - "${REQUEST_JSON_FILE}" <<'PY'
+import json
+import shlex
+import sys
+from pathlib import Path
+
+request = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+fields = {
+    "WORKSPACE_ROOT": request.get("workspaceRoot", ""),
+    "SYMBOL": request.get("symbol", ""),
+    "FILE_HINT": request.get("fileHint", ""),
+    "DIRECTION": request.get("direction", "incoming"),
+    "DEPTH": request.get("depth", 2),
+    "MAX_TOTAL_CALLS": request.get("maxTotalCalls", ""),
+    "MAX_CHILDREN_PER_NODE": request.get("maxChildrenPerNode", ""),
+    "TIMEOUT_MILLIS": request.get("timeoutMillis", ""),
+    "KIND": request.get("kind", ""),
+    "CONTAINING_TYPE": request.get("containingType", ""),
+}
+for key, value in fields.items():
+    print(f"{key}={shlex.quote('' if value is None else str(value))}")
+PY
+)"
+
+if [[ -z "${WORKSPACE_ROOT}" ]]; then
+    WORKSPACE_ROOT="$(kast_default_workspace_root || true)"
+fi
+
 if [[ -z "${WORKSPACE_ROOT}" || -z "${SYMBOL}" ]]; then
-    emit_failure "argument_validation" "Both --workspace-root and --symbol are required."
+    emit_failure "request_validation" "Request must include symbol. workspaceRoot is optional only when KAST_WORKSPACE_ROOT or the current git workspace can supply it."
     exit 1
 fi
 
 if [[ "${DIRECTION}" != "incoming" && "${DIRECTION}" != "outgoing" ]]; then
-    emit_failure "argument_validation" "--direction must be incoming or outgoing."
+    emit_failure "request_validation" "direction must be incoming or outgoing."
     exit 1
 fi
 
 if ! [[ "${DEPTH}" =~ ^[0-9]+$ ]]; then
-    emit_failure "argument_validation" "--depth must be a non-negative integer."
+    emit_failure "request_validation" "depth must be a non-negative integer."
     exit 1
 fi
 

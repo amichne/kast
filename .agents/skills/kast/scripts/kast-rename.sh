@@ -42,23 +42,6 @@ FILE_PATH=""
 OFFSET=""
 NEW_NAME=""
 
-for arg in "$@"; do
-    case "${arg}" in
-        --workspace-root=*)  WORKSPACE_ROOT="${arg#*=}" ;;
-        --symbol=*)          SYMBOL="${arg#*=}" ;;
-        --file=*)            FILE_HINT="${arg#*=}" ;;
-        --kind=*)            KIND="${arg#*=}" ;;
-        --containing-type=*) CONTAINING_TYPE="${arg#*=}" ;;
-        --file-path=*)       FILE_PATH="${arg#*=}" ;;
-        --offset=*)          OFFSET="${arg#*=}" ;;
-        --new-name=*)        NEW_NAME="${arg#*=}" ;;
-        *)
-            printf 'Unknown argument: %s\n' "${arg}" >&2
-            exit 1
-            ;;
-    esac
-done
-
 kast_wrapper_init "kast-rename"
 
 PLAN_UTILS="${SCRIPT_DIR}/kast-plan-utils.py"
@@ -116,11 +99,44 @@ print(json.dumps(payload, indent=2))
 PY
 }
 
+REQUEST_JSON_FILE="${TMP_DIR}/request.json"
+if ! kast_load_request "${REQUEST_JSON_FILE}" "$@"; then
+    emit_failure "request_validation" "${KAST_REQUEST_ERROR_MESSAGE}" "${KAST_REQUEST_ERROR_JSON_FILE:-}"
+    exit 1
+fi
+
+eval "$(
+    python3 - "${REQUEST_JSON_FILE}" <<'PY'
+import json
+import shlex
+import sys
+from pathlib import Path
+
+request = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+fields = {
+    "WORKSPACE_ROOT": request.get("workspaceRoot", ""),
+    "SYMBOL": request.get("symbol", ""),
+    "FILE_HINT": request.get("fileHint", ""),
+    "KIND": request.get("kind", ""),
+    "CONTAINING_TYPE": request.get("containingType", ""),
+    "FILE_PATH": request.get("filePath", ""),
+    "OFFSET": request.get("offset", ""),
+    "NEW_NAME": request.get("newName", ""),
+}
+for key, value in fields.items():
+    print(f"{key}={shlex.quote('' if value is None else str(value))}")
+PY
+)"
+
+if [[ -z "${WORKSPACE_ROOT}" ]]; then
+    WORKSPACE_ROOT="$(kast_default_workspace_root || true)"
+fi
+
 # ---------------------------------------------------------------------------
 # Validate arguments
 # ---------------------------------------------------------------------------
 if [[ -z "${WORKSPACE_ROOT}" || -z "${NEW_NAME}" ]]; then
-    emit_failure "argument_validation" "--workspace-root and --new-name are required."
+    emit_failure "request_validation" "Request must include newName. workspaceRoot is optional only when KAST_WORKSPACE_ROOT or the current git workspace can supply it."
     exit 1
 fi
 
@@ -129,12 +145,12 @@ if [[ -n "${SYMBOL}" ]]; then
 elif [[ -n "${FILE_PATH}" && -n "${OFFSET}" ]]; then
     RENAME_MODE="offset"
     if ! [[ "${OFFSET}" =~ ^[0-9]+$ ]]; then
-        emit_failure "argument_validation" "--offset must be a non-negative integer."
+        emit_failure "request_validation" "offset must be a non-negative integer."
         exit 1
     fi
 else
-    emit_failure "argument_validation" \
-        "Provide --symbol (symbol mode) or both --file-path and --offset (offset mode)."
+    emit_failure "request_validation" \
+        "Provide symbol (symbol mode) or both filePath and offset (offset mode)."
     exit 1
 fi
 

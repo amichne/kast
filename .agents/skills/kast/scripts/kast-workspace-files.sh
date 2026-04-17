@@ -8,18 +8,6 @@ WORKSPACE_ROOT=""
 MODULE_NAME=""
 INCLUDE_FILES="false"
 
-for arg in "$@"; do
-    case "${arg}" in
-        --workspace-root=*) WORKSPACE_ROOT="${arg#*=}" ;;
-        --module-name=*)    MODULE_NAME="${arg#*=}" ;;
-        --include-files=*)  INCLUDE_FILES="${arg#*=}" ;;
-        *)
-            printf 'Unknown argument: %s\n' "${arg}" >&2
-            exit 1
-            ;;
-    esac
-done
-
 kast_wrapper_init "kast-workspace-files"
 
 emit_failure() {
@@ -63,13 +51,44 @@ print(json.dumps(payload, indent=2))
 PY
 }
 
+REQUEST_JSON_FILE="${TMP_DIR}/request.json"
+if ! kast_load_request "${REQUEST_JSON_FILE}" "$@"; then
+    emit_failure "request_validation" "${KAST_REQUEST_ERROR_MESSAGE}" "${KAST_REQUEST_ERROR_JSON_FILE:-}"
+    exit 1
+fi
+
+eval "$(
+    python3 - "${REQUEST_JSON_FILE}" <<'PY'
+import json
+import shlex
+import sys
+from pathlib import Path
+
+request = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+include_files = request.get("includeFiles")
+if include_files is None:
+    include_files = False
+fields = {
+    "WORKSPACE_ROOT": request.get("workspaceRoot", ""),
+    "MODULE_NAME": request.get("moduleName", ""),
+    "INCLUDE_FILES": str(include_files).lower(),
+}
+for key, value in fields.items():
+    print(f"{key}={shlex.quote('' if value is None else str(value))}")
+PY
+)"
+
 if [[ -z "${WORKSPACE_ROOT}" ]]; then
-    emit_failure "argument_validation" "--workspace-root is required."
+    WORKSPACE_ROOT="$(kast_default_workspace_root || true)"
+fi
+
+if [[ -z "${WORKSPACE_ROOT}" ]]; then
+    emit_failure "request_validation" "workspaceRoot is required unless KAST_WORKSPACE_ROOT or the current git workspace can supply it."
     exit 1
 fi
 
 if [[ "${INCLUDE_FILES}" != "true" && "${INCLUDE_FILES}" != "false" ]]; then
-    emit_failure "argument_validation" "--include-files must be true or false."
+    emit_failure "request_validation" "includeFiles must be true or false."
     exit 1
 fi
 

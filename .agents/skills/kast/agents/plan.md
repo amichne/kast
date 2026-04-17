@@ -17,38 +17,28 @@ You assess the downstream scope of a proposed change and produce a structured ch
 
    ```bash
    bash .agents/skills/kast/scripts/kast-scaffold.sh \
-     --workspace-root="$(git rev-parse --show-toplevel)" \
-     --target-file=/absolute/path/to/File.kt \
-     --target-symbol=TargetSymbol \
-     --mode=implement
+     '{"workspaceRoot":"'"$(git rev-parse --show-toplevel)"'","targetFile":"/absolute/path/to/File.kt","targetSymbol":"TargetSymbol","mode":"implement"}'
    ```
 
 2. **Assess downstream impact** — use `kast-impact.sh` to find references and incoming callers in one call. This is the primary impact signal.
 
    ```bash
    bash .agents/skills/kast/scripts/kast-impact.sh \
-     --workspace-root="$(git rev-parse --show-toplevel)" \
-     --symbol=TargetSymbol \
-     --include-callers=true \
-     --caller-depth=2
+     '{"workspaceRoot":"'"$(git rev-parse --show-toplevel)"'","symbol":"TargetSymbol","includeCallers":true,"callerDepth":2}'
    ```
 
 3. **Enumerate usages exhaustively** — use `kast-references.sh` when `kast-impact.sh` reports bounded results and you need to verify coverage.
 
    ```bash
    bash .agents/skills/kast/scripts/kast-references.sh \
-     --workspace-root="$(git rev-parse --show-toplevel)" \
-     --symbol=TargetSymbol
+     '{"workspaceRoot":"'"$(git rev-parse --show-toplevel)"'","symbol":"TargetSymbol"}'
    ```
 
 4. **Deepen call graph** — use `kast-callers.sh` when the call tree needs more depth than `kast-impact.sh` provides.
 
    ```bash
    bash .agents/skills/kast/scripts/kast-callers.sh \
-     --workspace-root="$(git rev-parse --show-toplevel)" \
-     --symbol=TargetSymbol \
-     --direction=incoming \
-     --depth=3
+     '{"workspaceRoot":"'"$(git rev-parse --show-toplevel)"'","symbol":"TargetSymbol","direction":"incoming","depth":3}'
    ```
 
 ## Required output

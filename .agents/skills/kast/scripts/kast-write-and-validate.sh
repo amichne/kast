@@ -44,23 +44,6 @@ OFFSET=""
 START_OFFSET=""
 END_OFFSET=""
 
-for arg in "$@"; do
-    case "${arg}" in
-        --workspace-root=*) WORKSPACE_ROOT="${arg#*=}" ;;
-        --mode=*)           MODE="${arg#*=}" ;;
-        --file-path=*)      FILE_PATH="${arg#*=}" ;;
-        --content=*)        CONTENT="${arg#*=}" ;;
-        --content-file=*)   CONTENT_FILE="${arg#*=}" ;;
-        --offset=*)         OFFSET="${arg#*=}" ;;
-        --start-offset=*)   START_OFFSET="${arg#*=}" ;;
-        --end-offset=*)     END_OFFSET="${arg#*=}" ;;
-        *)
-            printf 'Unknown argument: %s\n' "${arg}" >&2
-            exit 1
-            ;;
-    esac
-done
-
 kast_wrapper_init "kast-write-and-validate"
 
 emit_failure() {
@@ -104,42 +87,75 @@ print(json.dumps(payload, indent=2))
 PY
 }
 
+REQUEST_JSON_FILE="${TMP_DIR}/request.json"
+if ! kast_load_request "${REQUEST_JSON_FILE}" "$@"; then
+    emit_failure "request_validation" "${KAST_REQUEST_ERROR_MESSAGE}" "${KAST_REQUEST_ERROR_JSON_FILE:-}"
+    exit 1
+fi
+
+eval "$(
+    python3 - "${REQUEST_JSON_FILE}" <<'PY'
+import json
+import shlex
+import sys
+from pathlib import Path
+
+request = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+fields = {
+    "WORKSPACE_ROOT": request.get("workspaceRoot", ""),
+    "MODE": request.get("mode", ""),
+    "FILE_PATH": request.get("filePath", ""),
+    "CONTENT": request.get("content", ""),
+    "CONTENT_FILE": request.get("contentFile", ""),
+    "OFFSET": request.get("offset", ""),
+    "START_OFFSET": request.get("startOffset", ""),
+    "END_OFFSET": request.get("endOffset", ""),
+}
+for key, value in fields.items():
+    print(f"{key}={shlex.quote('' if value is None else str(value))}")
+PY
+)"
+
+if [[ -z "${WORKSPACE_ROOT}" ]]; then
+    WORKSPACE_ROOT="$(kast_default_workspace_root || true)"
+fi
+
 # ── Validate arguments ────────────────────────────────────────────────────────
 VALID_MODES="create-file insert-at-offset replace-range"
 if [[ -z "${WORKSPACE_ROOT}" || -z "${MODE}" || -z "${FILE_PATH}" ]]; then
-    emit_failure "argument_validation" "--workspace-root, --mode, and --file-path are required."
+    emit_failure "request_validation" "Request must include mode and filePath. workspaceRoot is optional only when KAST_WORKSPACE_ROOT or the current git workspace can supply it."
     exit 1
 fi
 
 if ! echo "${VALID_MODES}" | grep -qw "${MODE}"; then
-    emit_failure "argument_validation" "--mode must be one of: ${VALID_MODES}."
+    emit_failure "request_validation" "mode must be one of: ${VALID_MODES}."
     exit 1
 fi
 
-# Resolve content from --content or --content-file
+# Resolve content from content or contentFile
 if [[ -n "${CONTENT_FILE}" ]]; then
     if [[ ! -f "${CONTENT_FILE}" ]]; then
-        emit_failure "argument_validation" "--content-file path does not exist: ${CONTENT_FILE}"
+        emit_failure "request_validation" "contentFile path does not exist: ${CONTENT_FILE}"
         exit 1
     fi
     CONTENT="$(cat "${CONTENT_FILE}")"
 fi
 
 if [[ -z "${CONTENT}" ]]; then
-    emit_failure "argument_validation" "Either --content or --content-file is required."
+    emit_failure "request_validation" "Request must include content or contentFile."
     exit 1
 fi
 
 case "${MODE}" in
     insert-at-offset)
         if [[ -z "${OFFSET}" ]]; then
-            emit_failure "argument_validation" "--offset is required for insert-at-offset mode."
+            emit_failure "request_validation" "offset is required for insert-at-offset mode."
             exit 1
         fi
         ;;
     replace-range)
         if [[ -z "${START_OFFSET}" || -z "${END_OFFSET}" ]]; then
-            emit_failure "argument_validation" "--start-offset and --end-offset are required for replace-range mode."
+            emit_failure "request_validation" "startOffset and endOffset are required for replace-range mode."
             exit 1
         fi
         ;;

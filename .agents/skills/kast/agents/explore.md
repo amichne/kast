@@ -20,46 +20,35 @@ Work through these steps in order, stopping when you have enough context:
 
    ```bash
    bash .agents/skills/kast/scripts/kast-workspace-files.sh \
-     --workspace-root="$(git rev-parse --show-toplevel)" \
-     --include-files=true
+     '{"workspaceRoot":"'"$(git rev-parse --show-toplevel)"'","includeFiles":true}'
    ```
 
 2. **Get full symbol context** — use `kast-scaffold.sh` to get outline + type hierarchy + references + insertion point in one call. This is the primary context-gathering tool.
 
    ```bash
    bash .agents/skills/kast/scripts/kast-scaffold.sh \
-     --workspace-root="$(git rev-parse --show-toplevel)" \
-     --target-file=/absolute/path/to/File.kt \
-     --target-symbol=TargetSymbol \
-     --mode=implement
+     '{"workspaceRoot":"'"$(git rev-parse --show-toplevel)"'","targetFile":"/absolute/path/to/File.kt","targetSymbol":"TargetSymbol","mode":"implement"}'
    ```
 
 3. **Confirm symbol identity** — use `kast-resolve.sh` when you need to pin down the exact declaration without full scaffold context.
 
    ```bash
    bash .agents/skills/kast/scripts/kast-resolve.sh \
-     --workspace-root="$(git rev-parse --show-toplevel)" \
-     --symbol=SymbolName \
-     --kind=class
+     '{"workspaceRoot":"'"$(git rev-parse --show-toplevel)"'","symbol":"SymbolName","kind":"class"}'
    ```
 
 4. **Enumerate usages** — use `kast-references.sh` for a complete reference list.
 
    ```bash
    bash .agents/skills/kast/scripts/kast-references.sh \
-     --workspace-root="$(git rev-parse --show-toplevel)" \
-     --symbol=SymbolName \
-     --include-declaration=true
+     '{"workspaceRoot":"'"$(git rev-parse --show-toplevel)"'","symbol":"SymbolName","includeDeclaration":true}'
    ```
 
 5. **Explore call graph** — use `kast-callers.sh` for caller/callee traversal.
 
    ```bash
    bash .agents/skills/kast/scripts/kast-callers.sh \
-     --workspace-root="$(git rev-parse --show-toplevel)" \
-     --symbol=SymbolName \
-     --direction=incoming \
-     --depth=2
+     '{"workspaceRoot":"'"$(git rev-parse --show-toplevel)"'","symbol":"SymbolName","direction":"incoming","depth":2}'
    ```
 
 6. **Search by name pattern** — use raw `kast workspace-symbol` when searching by a partial name without a known file.

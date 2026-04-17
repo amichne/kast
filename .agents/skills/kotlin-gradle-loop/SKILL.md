@@ -173,15 +173,23 @@ Use `run_gradle_hook.sh` for the mandatory final build-health check. It reads
 the configured `project.gradleHook` from `.agent-workflow/state.json` and then
 delegates to `run_task.sh`, so it returns the same structured JSON shape.
 
-## Mandatory completion hooks
+## Mandatory Copilot hooks
 
-Completion hooks are defined in `.agents/hooks.json` at the repository root.
-That file is the authoritative source for agent-level hooks. This skill must
-not redeclare any hook already defined there.
+The repo-level Copilot hook manifest lives at `.github/hooks/hooks.json`.
+That file is the authoritative source for GitHub Copilot command hooks in this
+repository. This skill must not redeclare those hooks.
 
-Satisfy all agent-level completion hooks (build-health, run-tests,
-kast-diagnostics-gate, docs-writer-gate) before you end work. Skills inherit
-hooks additively from the repo → agent → skill hierarchy.
+The current standard-hook migration keeps three repository hooks:
+
+- `sessionStart`: bootstraps `kast workspace ensure` and resets hook state
+- `postToolUse`: records successful session-owned file edits
+- `sessionEnd`: runs the command-based subset of the old completion gates
+
+The `sessionEnd` hook runs `build-health`, `run-tests`, and
+`kast-diagnostics` when the session-recorded file edits warrant those checks.
+Skill-only workflows such as `docs-writer` or `refresh-affected-agents`
+remain guidance in agent instructions rather than hook entries, because
+Copilot hooks only execute commands.
 
 ## Parsing Results
 
