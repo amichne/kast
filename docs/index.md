@@ -4,80 +4,95 @@ description: IDE-grade Kotlin code intelligence for terminals, CI, and IDEs.
 icon: lucide/network
 ---
 
-Kast gives you IDE-grade Kotlin code intelligence wherever you need it. It
-uses the Kotlin K2 Analysis API to answer semantic questions about real
-workspaces and returns structured JSON that scripts, CI jobs, and LLM agents
-can consume directly. Kast runs as a standalone CLI daemon or as an IntelliJ
-IDEA plugin — both expose the same JSON-RPC protocol.
+Kast is a Kotlin semantic analysis system that returns structured JSON for
+humans, scripts, CI, and LLM-driven workflows. The fastest way to use these
+docs is to choose the perspective that matches your goal, then follow that path
+end to end.
 
-Kast is built to answer questions such as:
+## Choose your path
 
-- What symbol is at this location, and where is it declared?
-- Where is this symbol used, and what calls this function?
-- What changes if I rename this, and can I apply those edits safely?
-- What declarations does this file contain, and how are they nested?
-- Where is a symbol by name when you don't already know the file and offset?
-
-Start with the page that matches how you want to approach the tool.
+The documentation supports three primary perspectives. Each path highlights
+what matters most for that audience and keeps lower-level detail available
+without making the starting path noisy.
 
 <div class="grid cards" markdown>
 
--   __Why Kast__
+-   __Path 1: Capability overview (most readers)__
 
     ---
 
-    See where Kast fits between text search, IDE workflows, and automation.
+    Use this path when you want to understand what Kast can do and how to run
+    the commands people use most often.
 
-    [Open the guide](why-kast.md)
+    Start here:
 
--   __What you can do__
+    - [Why Kast](why-kast.md)
+    - [What you can do](what-you-can-do.md)
+    - [Get started](get-started.md)
+    - [Run analysis commands](run-analysis-commands.md)
 
-    ---
-
-    Learn the questions Kast can answer before you think about commands or
-    request payloads.
-
-    [Open the guide](what-you-can-do.md)
-
--   __How Kast works__
+-   __Path 2: Advanced architecture and module depth__
 
     ---
 
-    Understand the high-level flow from the CLI to the daemon and into the K2
-    analysis engine.
+    Use this path when you need module-by-module understanding, architectural
+    tradeoffs, and reasoning behind system boundaries.
 
-    [Open the guide](how-it-works.md)
+    Start here:
 
--   __Things to know__
+    - [How Kast works](how-it-works.md)
+    - [Architecture deep dive](architecture-deep-dive.md)
+    - [Things to know](things-to-know.md)
+    - [Command reference](command-reference.md)
 
-    ---
-
-    Read the behavioral model and result boundaries that matter when you
-    interpret Kast output.
-
-    [Open the guide](things-to-know.md)
-
--   __Get started__
+-   __Path 3: LLM integration and agent workflows__
 
     ---
 
-    Install Kast, attach it to a workspace, and verify that the runtime is
-    ready.
+    Use this path when your main question is how an LLM agent can leverage
+    Kast safely and repeatably.
 
-    [Open the guide](get-started.md)
+    Start here:
 
--   __Use Kast from an LLM agent__
-
-    ---
-
-    Start from a human description of a symbol and let the packaged skill
-    bridge the lookup.
-
-    [Open the guide](use-kast-from-an-llm-agent.md)
+    - [Use Kast from an LLM agent](use-kast-from-an-llm-agent.md)
+    - [Run analysis commands](run-analysis-commands.md)
+    - [LLM scaffolding reference](llm-scaffolding-reference.md)
+    - [Things to know](things-to-know.md)
 
 </div>
 
-If you already know the flow and need the operational surface, move to
-[Run analysis commands](run-analysis-commands.md),
-[Command reference](command-reference.md), or the
-[LLM scaffolding reference](llm-scaffolding-reference.md).
+## Command surface model
+
+Most teams only need a compact command set day to day:
+
+- `workspace ensure`, `workspace status`, `workspace stop`
+- `capabilities`
+- `resolve`, `references`, `diagnostics`
+- `rename` and `apply-edits` for controlled mutation
+
+Kast also exposes advanced primitives such as `call-hierarchy`, `outline`,
+`workspace-symbol`, `type-hierarchy`, and `insertion-point`. Those stay fully
+supported, but they live behind the core path because they are most useful in
+power-user or agent-driven workflows.
+
+## System model at a glance
+
+At runtime, Kast follows the same high-level flow for CLI users and agent
+integrations.
+
+```mermaid
+flowchart LR
+    A[Operator or LLM agent] --> B[kast CLI]
+    B --> C[analysis-server JSON-RPC layer]
+    C --> D[backend-standalone or IntelliJ backend]
+    D --> E[K2 analysis session + workspace model + indexes]
+    E --> F[Structured JSON result]
+```
+
+This model keeps semantic state warm in a long-lived backend while preserving a
+small CLI surface for common operations.
+
+## Next steps
+
+Pick one perspective path above, then continue into deeper pages only when you
+need more granularity for automation or architecture work.

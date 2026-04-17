@@ -2,11 +2,11 @@
   "schema_version": 2,
   "session_hooks": [
     {
-      "name": "kast-bootstrap",
+      "name": "kast-session-start",
       "trigger": "session_start",
       "required": true,
-      "command": "bash .agents/skills/kast/scripts/resolve-kast.sh",
-      "description": "Resolve the kast CLI binary once per session, caching KAST and SKILL_ROOT into session state and exporting KAST_CLI_PATH."
+      "command": "bash .agents/skills/kast/scripts/kast-session-start.sh",
+      "description": "Resolve the kast CLI binary and run `kast workspace ensure` for the repository root at session start."
     },
     {
       "name": "agents",
@@ -26,18 +26,18 @@
       "description": "Run kast diagnostics on all modified Kotlin files before ending work."
     },
     {
-      "name": "build-health-gate",
+      "name": "build-health",
       "trigger": "before_agent_end",
       "required": true,
       "command": "bash scripts/gradle/run_gradle_hook.sh .",
-      "description": "Run the project-defined highest-signal Gradle validation task before ending work."
+      "description": "Run the project's configured Gradle health hook (e.g. 'check' or 'build') and fail if the build is unhealthy."
     },
     {
-      "name": "test-gate",
+      "name": "run-tests",
       "trigger": "before_agent_end",
       "required": true,
       "command": "bash scripts/gradle/run_task.sh . test",
-      "description": "Run the full test task for the project before ending work."
+      "description": "Run the full Gradle test task and assert all tests pass."
     },
     {
       "name": "docs-writer-gate",

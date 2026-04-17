@@ -24,13 +24,9 @@ Use kast wrapper scripts exclusively for all symbol resolution, reference findin
 
 ## Bootstrap
 
-A session hook in `.agents/hooks.json` runs `resolve-kast.sh` at session start to locate the kast binary and export `KAST_CLI_PATH`. Before calling any wrapper, confirm the binary is available:
-
-```bash
-bash .agents/skills/kast/scripts/resolve-kast.sh
-```
-
-The copilot-setup-steps workflow pre-builds kast and exports `KAST_CLI_PATH` automatically in CI.
+Session bootstrap runs `kast-session-start.sh` automatically. Treat
+`KAST_CLI_PATH` and `kast workspace ensure` as already handled. In CI,
+`copilot-setup-steps` pre-builds `kast`.
 
 ## Phase routing
 

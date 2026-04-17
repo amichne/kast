@@ -179,7 +179,7 @@ Completion hooks are defined in `.agents/hooks.json` at the repository root.
 That file is the authoritative source for agent-level hooks. This skill must
 not redeclare any hook already defined there.
 
-Satisfy all agent-level completion hooks (build-health-gate, test-gate,
+Satisfy all agent-level completion hooks (build-health, run-tests,
 kast-diagnostics-gate, docs-writer-gate) before you end work. Skills inherit
 hooks additively from the repo → agent → skill hierarchy.
 
