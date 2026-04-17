@@ -1,0 +1,12 @@
+{
+  "_comment": "Golden output for: kast references for 'greet' in Greeter.kt",
+  "assertions": {
+    "reference_count_gte": 3,
+    "reference_files_contain": [
+      "lib/src/main/kotlin/sample/lib/Greeter.kt",
+      "lib/src/main/kotlin/sample/lib/Formatting.kt",
+      "app/src/main/kotlin/sample/app/UpperCaseGreeter.kt"
+    ],
+    "each_reference_has": ["filePath", "range"]
+  }
+}

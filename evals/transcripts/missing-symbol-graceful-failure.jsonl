@@ -1,0 +1,1 @@
+{"tool": "kast-resolve.sh", "args": {"--workspace-root": "/workspace", "--symbol": "NonExistentSymbol123"}, "output": "{\"ok\": false, \"stage\": \"candidate_search\", \"message\": \"No declaration candidate matched the symbol query\"}", "exit_code": 1}

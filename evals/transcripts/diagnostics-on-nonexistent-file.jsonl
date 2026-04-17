@@ -1,0 +1,1 @@
+{"tool": "kast-diagnostics.sh", "args": {"--workspace-root": "/workspace", "--file-paths": "lib/src/main/kotlin/sample/lib/DoesNotExist.kt"}, "output": "{\"ok\": false, \"stage\": \"diagnostics\", \"message\": \"File not found: lib/src/main/kotlin/sample/lib/DoesNotExist.kt\"}", "exit_code": 1}

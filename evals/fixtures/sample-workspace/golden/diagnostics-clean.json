@@ -1,0 +1,9 @@
+{
+  "_comment": "Golden output for: kast diagnostics --file-paths=<clean file> (e.g. Formatting.kt)",
+  "assertions": {
+    "diagnostics_empty": true,
+    "has_field": "diagnostics",
+    "error_count": 0,
+    "warning_count": 0
+  }
+}

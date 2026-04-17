@@ -37,6 +37,7 @@ internal class KastPluginService(
             project = project,
             workspaceRoot = workspaceRoot,
             limits = limits,
+            telemetry = IntelliJBackendTelemetry.fromEnvironment(workspaceRoot),
         )
 
         val socketPath = defaultSocketPath(workspaceRoot)

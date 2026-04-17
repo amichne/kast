@@ -1,0 +1,1 @@
+{"tool": "kast-resolve.sh", "args": {"--workspace-root": "/workspace", "--symbol": "greet", "--file": "lib/src/main/kotlin/sample/lib/Greeter.kt"}, "output": "{\"ok\": true, \"symbol\": \"greet\", \"file_path\": \"lib/src/main/kotlin/sample/lib/Greeter.kt\", \"offset\": 56}", "exit_code": 0}

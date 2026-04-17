@@ -1,0 +1,10 @@
+{
+  "_comment": "Golden output for: kast diagnostics --file-paths=<BrokenFile.kt>",
+  "assertions": {
+    "diagnostics_not_empty": true,
+    "has_field": "diagnostics",
+    "min_error_count": 1,
+    "error_codes_contain": ["UNRESOLVED_REFERENCE"],
+    "error_messages_contain": ["NonExistentType"]
+  }
+}

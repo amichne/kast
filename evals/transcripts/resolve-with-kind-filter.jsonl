@@ -1,0 +1,1 @@
+{"tool": "kast-resolve.sh", "args": {"--workspace-root": "/workspace", "--symbol": "name", "--kind": "property"}, "output": "{\"ok\": true, \"symbol\": \"name\", \"kind\": \"property\"}", "exit_code": 0}

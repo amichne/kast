@@ -1,0 +1,44 @@
+# kast-disambiguation.yaml — Symbol disambiguation eval suite
+#
+# Each case validates that the agent uses disambiguation flags correctly
+# when resolving ambiguous symbols.
+
+suite: kast-disambiguation
+workspace: evals/fixtures/sample-workspace
+
+cases:
+  - id: resolve-with-containing-type
+    name: "Resolve greet in UpperCaseGreeter uses --containing-type"
+    prompt: >
+      Resolve the `greet` function that belongs to `UpperCaseGreeter`, not
+      the one in `Greeter` or `DefaultGreeter`.
+    assertions:
+      - type: tool_used
+        tool: kast-resolve.sh
+      - type: flag_used
+        tool: kast-resolve.sh
+        flag: "--containing-type"
+
+  - id: resolve-with-kind-filter
+    name: "Resolve property name uses --kind filter"
+    prompt: >
+      Resolve the property `name` (not the function parameter `name`) in the
+      workspace. Use the kind filter to distinguish it.
+    assertions:
+      - type: tool_used
+        tool: kast-resolve.sh
+      - type: flag_used
+        tool: kast-resolve.sh
+        flag: "--kind"
+
+  - id: resolve-with-file-hint
+    name: "Resolve greet with file hint uses --file flag"
+    prompt: >
+      Resolve `greet` specifically in `lib/src/main/kotlin/sample/lib/Greeter.kt`,
+      not in any other file. Use the file hint to narrow the search.
+    assertions:
+      - type: tool_used
+        tool: kast-resolve.sh
+      - type: flag_used
+        tool: kast-resolve.sh
+        flag: "--file"

@@ -1,0 +1,98 @@
+# kast-mutation-correctness.yaml — Mutation workflow correctness eval suite
+#
+# Each case validates that mutation operations (rename, write-and-validate)
+# produce correct results with clean diagnostics.
+
+suite: kast-mutation-correctness
+workspace: evals/fixtures/sample-workspace
+
+cases:
+  - id: rename-class-across-modules
+    name: "Rename Greeter to Saluter across modules"
+    prompt: >
+      Rename the `Greeter` interface in `lib/src/main/kotlin/sample/lib/Greeter.kt`
+      to `Saluter`. Make sure all references across both the lib and app modules
+      are updated. Verify diagnostics are clean afterward.
+    assertions:
+      - type: tool_used
+        tool: kast-rename.sh
+      - type: output_field_equals
+        tool: kast-rename.sh
+        field: ok
+        expected: true
+      - type: output_field_gte
+        tool: kast-rename.sh
+        field: edit_count
+        expected: 2
+      - type: tool_used
+        tool: kast-diagnostics.sh
+      - type: output_field_equals
+        tool: kast-diagnostics.sh
+        field: clean
+        expected: true
+
+  - id: rename-function-with-overloads
+    name: "Rename greet function touches multiple files"
+    prompt: >
+      Rename the `greet` function (the interface method in `Greeter`) to
+      `sayHello`. Ensure edits touch the interface, DefaultGreeter,
+      FormalGreeter, UpperCaseGreeter, and Formatting.kt. Verify diagnostics
+      are clean.
+    assertions:
+      - type: tool_used
+        tool: kast-rename.sh
+      - type: output_field_equals
+        tool: kast-rename.sh
+        field: ok
+        expected: true
+      - type: output_field_gte
+        tool: kast-rename.sh
+        field: edit_count
+        expected: 4
+      - type: tool_used
+        tool: kast-diagnostics.sh
+      - type: output_field_equals
+        tool: kast-diagnostics.sh
+        field: clean
+        expected: true
+
+  - id: create-new-file-and-validate
+    name: "Create a new file with kast-write-and-validate"
+    prompt: >
+      Create a new Kotlin file `lib/src/main/kotlin/sample/lib/CasualGreeter.kt`
+      that implements the `Greeter` interface with a casual greeting. Use
+      kast-write-and-validate.sh with mode=create-file, then verify diagnostics.
+    assertions:
+      - type: tool_used
+        tool: kast-write-and-validate.sh
+      - type: output_field_equals
+        tool: kast-write-and-validate.sh
+        field: ok
+        expected: true
+      - type: tool_used
+        tool: kast-diagnostics.sh
+      - type: output_field_equals
+        tool: kast-diagnostics.sh
+        field: clean
+        expected: true
+
+  - id: replace-range-and-validate
+    name: "Replace a declaration body with kast-write-and-validate"
+    prompt: >
+      Replace the body of `DefaultGreeter.greet` in `Greeter.kt` so it returns
+      "Hey there, $name!" instead of "Hello, $name!". Use kast-scaffold.sh to
+      get the insertion point, then kast-write-and-validate.sh with
+      mode=replace-range. Verify diagnostics are clean.
+    assertions:
+      - type: tool_used
+        tool: kast-write-and-validate.sh
+      - type: output_field_equals
+        tool: kast-write-and-validate.sh
+        field: ok
+        expected: true
+      - type: tool_used
+        tool: kast-diagnostics.sh
+      - type: output_field_equals
+        tool: kast-diagnostics.sh
+        field: clean
+        expected: true

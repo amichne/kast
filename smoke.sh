@@ -72,7 +72,7 @@ die() {
 
 usage() {
   cat <<'USAGE' >&2
-Usage: ./smoke.sh [--workspace-root=/absolute/path/to/workspace] [--file=Name.kt] [--source-set=:module:main] [--symbol=Name] [--format=json] [--kast=/absolute/path/to/kast]
+Usage: ./smoke.sh [--workspace-root=/absolute/path/to/workspace] [--file=Name.kt] [--source-set=:module:main] [--symbol=Name] [--format=json] [--kast=/absolute/path/to/kast] [--golden-dir=/path/to/golden]
 
 Options:
   --workspace-root=...  Workspace root to smoke-test. Defaults to the current working directory.
@@ -81,6 +81,7 @@ Options:
   --symbol=...        Only keep discovered declarations whose symbol name matches this text.
   --format=...        Report format: json or markdown. Defaults to json.
   --kast=...          Explicit kast launcher or binary to exercise.
+  --golden-dir=...    Path to golden output files. When provided, compares tool outputs against golden assertions.
   --help, -h          Show this help.
 USAGE
 }
@@ -97,6 +98,7 @@ FILE_FILTER=""
 SOURCE_SET_FILTER=""
 SYMBOL_FILTER=""
 FORMAT="json"
+GOLDEN_DIR=""
 for arg in "$@"; do
   case "$arg" in
     --workspace-root=*) WORKSPACE_ROOT="${arg#*=}" ;;
@@ -105,6 +107,7 @@ for arg in "$@"; do
     --symbol=*)         SYMBOL_FILTER="${arg#*=}" ;;
     --format=*)         FORMAT="${arg#*=}" ;;
     --kast=*)           KAST="${arg#*=}" ;;
+    --golden-dir=*)     GOLDEN_DIR="${arg#*=}" ;;
     --help|-h)          usage; exit 0 ;;
     *)                  die "Unknown argument: $arg" ;;
   esac
@@ -738,6 +741,89 @@ if "$KAST" workspace stop \
 else
   # Non-fatal: daemon may have been managed externally
   log "workspace stop exited non-zero (may already be stopped)"
+fi
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Golden-file comparison (optional — only when --golden-dir is provided)
+# ══════════════════════════════════════════════════════════════════════════════
+if [ -n "$GOLDEN_DIR" ] && [ -d "$GOLDEN_DIR" ]; then
+  log_step "Golden-file comparison: $GOLDEN_DIR"
+  GOLDEN_RESULT_FILE="$OUTDIR/golden-comparison.json"
+  python3 - "$GOLDEN_DIR" "$OUTDIR/report.out" "$FORMAT" >"$GOLDEN_RESULT_FILE" 2>/dev/null <<'GOLDEN_PY'
+import json
+import sys
+from pathlib import Path
+
+golden_dir = Path(sys.argv[1])
+report_file = Path(sys.argv[2])
+output_format = sys.argv[3]
+
+results = []
+report = {}
+if output_format == "json":
+    try:
+        report = json.loads(report_file.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        pass
+
+for golden_file in sorted(golden_dir.glob("*.json")):
+    golden = json.loads(golden_file.read_text(encoding="utf-8"))
+    assertions = golden.get("assertions", {})
+    case_name = golden_file.stem
+    entry = {"case": case_name, "checks": [], "ok": True}
+
+    # Match golden cases to report data by heuristic naming
+    source_sets = report.get("sourceSetReports", [])
+    metrics = {}
+    for ss in source_sets:
+        metrics = ss.get("metrics", {})
+        break  # use first source set as default
+
+    for key, expected in assertions.items():
+        check = {"assertion": key, "expected": expected, "pass": True}
+
+        if key == "edit_count_gte":
+            actual = metrics.get("renameEditCount", 0)
+            check["actual"] = actual
+            check["pass"] = actual >= expected
+        elif key == "reference_count_gte":
+            actual = metrics.get("referenceCount", 0)
+            check["actual"] = actual
+            check["pass"] = actual >= expected
+        elif key == "error_count":
+            actual = metrics.get("diagnosticErrorCount", 0)
+            check["actual"] = actual
+            check["pass"] = actual == expected
+        elif key == "min_error_count":
+            actual = metrics.get("diagnosticErrorCount", 0)
+            check["actual"] = actual
+            check["pass"] = actual >= expected
+        elif key == "diagnostics_empty":
+            actual = metrics.get("diagnosticCount", 0)
+            check["actual"] = actual
+            check["pass"] = (actual == 0) == expected
+        elif key == "diagnostics_not_empty":
+            actual = metrics.get("diagnosticCount", 0)
+            check["actual"] = actual
+            check["pass"] = (actual > 0) == expected
+
+        entry["checks"].append(check)
+        if not check["pass"]:
+            entry["ok"] = False
+
+    results.append(entry)
+
+all_ok = all(r["ok"] for r in results)
+print(json.dumps({"ok": all_ok, "golden_checks": results}, indent=2))
+sys.exit(0 if all_ok else 1)
+GOLDEN_PY
+
+  if [ $? -eq 0 ]; then
+    pass "Golden-file comparison passed"
+  else
+    fail "Golden-file comparison had mismatches"
+    cat "$GOLDEN_RESULT_FILE" >&2
+  fi
 fi
 
 # ══════════════════════════════════════════════════════════════════════════════

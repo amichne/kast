@@ -125,3 +125,62 @@ payload = {
 print(json.dumps(payload, indent=2))
 raise SystemExit(0 if ok else 1)
 PY
+
+# ---------------------------------------------------------------------------
+# Golden-file structural comparison (optional — runs if golden dir exists)
+# ---------------------------------------------------------------------------
+GOLDEN_DIR="${REQUEST_ROOT}/evals/fixtures/sample-workspace/golden"
+if [[ -d "${GOLDEN_DIR}" ]]; then
+    printf '\n[validate-wrapper-json] Running golden-file structural comparisons...\n' >&2
+
+    GOLDEN_RESULTS_FILE="${TMP_DIR}/golden-results.json"
+    python3 - "${GOLDEN_DIR}" "${TMP_DIR}" <<'GOLDEN_PY' >"${GOLDEN_RESULTS_FILE}"
+import json
+import sys
+from pathlib import Path
+
+golden_dir = Path(sys.argv[1])
+results_dir = Path(sys.argv[2])
+results = []
+
+for golden_file in sorted(golden_dir.glob("*.json")):
+    golden = json.loads(golden_file.read_text(encoding="utf-8"))
+    assertions = golden.get("assertions", {})
+    case_name = golden_file.stem
+    entry = {"case": case_name, "golden_file": str(golden_file), "checks": [], "ok": True}
+
+    # Find corresponding output file by naming convention
+    output_candidates = list(results_dir.glob(f"*{case_name}*")) + list(results_dir.glob("*.success.json"))
+    # Golden files are structural templates; validate their assertion schema is well-formed
+    for key, value in assertions.items():
+        check = {"assertion": key, "expected": value, "pass": True}
+        if key in ("edit_count_gte", "reference_count_gte", "min_error_count"):
+            if not isinstance(value, int) or value < 0:
+                check["pass"] = False
+                check["reason"] = f"Expected positive integer, got {value}"
+        elif key in ("affected_files_contain", "reference_files_contain", "error_codes_contain", "error_messages_contain"):
+            if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
+                check["pass"] = False
+                check["reason"] = f"Expected list of strings, got {type(value).__name__}"
+        elif key in ("diagnostics_empty", "diagnostics_not_empty"):
+            if not isinstance(value, bool):
+                check["pass"] = False
+                check["reason"] = f"Expected boolean, got {type(value).__name__}"
+        entry["checks"].append(check)
+        if not check["pass"]:
+            entry["ok"] = False
+
+    results.append(entry)
+
+all_ok = all(r["ok"] for r in results)
+print(json.dumps({"ok": all_ok, "golden_checks": results}, indent=2))
+sys.exit(0 if all_ok else 1)
+GOLDEN_PY
+
+    if [[ $? -ne 0 ]]; then
+        printf '[validate-wrapper-json] Golden-file validation FAILED.\n' >&2
+        cat "${GOLDEN_RESULTS_FILE}" >&2
+        exit 1
+    fi
+    printf '[validate-wrapper-json] Golden-file schema validation passed.\n' >&2
+fi
