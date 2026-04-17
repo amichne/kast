@@ -18,6 +18,7 @@ nav = [
   { "Why Kast" = "why-kast.md" },
   { "What you can do" = "what-you-can-do.md" },
   { "How Kast works" = "how-it-works.md" },
+  { "Architecture deep dive" = "architecture-deep-dive.md" },
   { "Things to know" = "things-to-know.md" },
   { "Get started" = "get-started.md" },
   { "Run analysis commands" = "run-analysis-commands.md" },
