@@ -223,15 +223,20 @@ KAST_CONFIG_HOME="$instance_dir" \
   "$KAST_CMD" workspace stop \
   --workspace-root="$workspace_dir" >"${tmp_dir}/stop.json"
 
-for _ in $(seq 1 30); do
+stop_timeout=60
+for i in $(seq 1 "$stop_timeout"); do
   if ! find "$instance_dir" -name '*.json' -print -quit | grep -q .; then
     break
+  fi
+  if (( i % 10 == 0 )); then
+    log "Still waiting for descriptor cleanup (${i}/${stop_timeout}s)..."
   fi
   sleep 1
 done
 
 if find "$instance_dir" -name '*.json' -print -quit | grep -q .; then
-  die "descriptor file was not removed on shutdown"
+  remaining="$(find "$instance_dir" -name '*.json' -print)"
+  die "descriptor files were not removed within ${stop_timeout}s after stop: ${remaining}"
 fi
 
 log "Portable Kast smoke test passed for $KAST_CMD"

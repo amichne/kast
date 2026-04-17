@@ -126,6 +126,13 @@ jobs:
           unzip -q kast/build/distributions/kast-*-portable.zip -d "$dist_dir"
           ./.github/scripts/smoke-kast-cli.sh "$dist_dir/kast/kast"
 
+      - name: Smoke standalone backend (direct RPC)
+        shell: bash
+        run: |
+          set -euo pipefail
+          dist_dir="$RUNNER_TEMP/kast-dist"
+          ./.github/scripts/smoke-standalone-backend.sh "$dist_dir/kast/kast"
+
       - name: Validate wrapper JSON contracts
         shell: bash
         run: |
