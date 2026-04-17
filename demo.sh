@@ -31,23 +31,6 @@ else
   can_prompt()  { [[ -r /dev/tty && -w /dev/tty ]]; }
 fi
 
-# ── Extended palette for demo UI ─────────────────────────────────────────────
-C_RESET='\033[0m'
-C_BOLD='\033[1m'
-C_DIM='\033[2m'
-C_CYAN='\033[1;36m'
-C_GREEN='\033[1;32m'
-C_RED='\033[1;31m'
-C_YELLOW='\033[33m'
-C_BLUE='\033[1;34m'
-C_MAGENTA='\033[35m'
-C_WHITE='\033[1;37m'
-C_BG_DIM='\033[48;5;236m'
-
-ansi() {
-  if supports_color; then printf "$@"; else printf '%s' "${*##*m}"; fi
-}
-
 # ── Parse arguments ──────────────────────────────────────────────────────────
 usage() {
   cat <<'USAGE' >&2
@@ -82,8 +65,173 @@ case "$FORMAT" in
   *) die "Invalid --format: $FORMAT (expected ansi or markdown)" ;;
 esac
 
+if [ "$FORMAT" = "markdown" ]; then
+  export NO_COLOR=1
+fi
+
 [ -d "$WORKSPACE_ROOT" ] || die "Workspace root does not exist: $WORKSPACE_ROOT"
 WORKSPACE_ROOT="$(cd "$WORKSPACE_ROOT" && pwd)"
+
+# ── Demo UI palette + layout ──────────────────────────────────────────────────
+use_color_output() {
+  [[ "$FORMAT" == "ansi" ]] && supports_color
+}
+
+if use_color_output; then
+  C_RESET=$'\033[0m'
+  C_BOLD=$'\033[1m'
+  C_DIM=$'\033[2m'
+  C_CYAN=$'\033[1;36m'
+  C_GREEN=$'\033[1;32m'
+  C_RED=$'\033[1;31m'
+  C_YELLOW=$'\033[33m'
+  C_BLUE=$'\033[1;34m'
+  C_MAGENTA=$'\033[35m'
+  C_WHITE=$'\033[1;37m'
+else
+  C_RESET=''
+  C_BOLD=''
+  C_DIM=''
+  C_CYAN=''
+  C_GREEN=''
+  C_RED=''
+  C_YELLOW=''
+  C_BLUE=''
+  C_MAGENTA=''
+  C_WHITE=''
+fi
+
+terminal_width() {
+  if [[ "${COLUMNS:-}" =~ ^[0-9]+$ ]] && [ "${COLUMNS}" -ge 60 ]; then
+    printf '%s\n' "$COLUMNS"
+    return
+  fi
+
+  if can_prompt && command -v tput >/dev/null 2>&1; then
+    local cols
+    cols="$(tput cols 2>/dev/null || true)"
+    if [[ "$cols" =~ ^[0-9]+$ ]] && [ "$cols" -ge 60 ]; then
+      printf '%s\n' "$cols"
+      return
+    fi
+  fi
+
+  printf '%s\n' "100"
+}
+
+repeat_char() {
+  local char="$1"
+  local count="$2"
+  [ "$count" -gt 0 ] || return 0
+  printf '%*s' "$count" '' | tr ' ' "$char"
+}
+
+TERM_WIDTH="$(terminal_width)"
+if [ "$TERM_WIDTH" -lt 78 ]; then
+  UI_WIDTH=62
+elif [ "$TERM_WIDTH" -gt 110 ]; then
+  UI_WIDTH=88
+else
+  UI_WIDTH=$((TERM_WIDTH - 18))
+fi
+
+dim_text() {
+  if use_color_output; then
+    colorize '2' "$*"
+  else
+    printf '%s' "$*"
+  fi
+}
+
+log_section_heading() {
+  local title="$1"
+  local fill_count=$((UI_WIDTH - ${#title} - 4))
+  [ "$fill_count" -lt 0 ] && fill_count=0
+  printf '\n%b── %s %b%s%b\n\n' \
+    "$C_CYAN" \
+    "$title" \
+    "$C_DIM" \
+    "$(repeat_char '─' "$fill_count")" \
+    "$C_RESET" >&2
+}
+
+render_panel() {
+  local title="$1"
+  local body
+  body="$(</dev/stdin)"
+  PANEL_TITLE="$title" PANEL_BODY="$body" python3 - "$UI_WIDTH" <<'PY' >&2
+import os
+import re
+import sys
+import textwrap
+
+title = os.environ["PANEL_TITLE"]
+width = max(58, int(sys.argv[1]))
+body = os.environ.get("PANEL_BODY", "").splitlines()
+ansi = re.compile(r"\x1b\[[0-9;]*m")
+
+use_color = not os.environ.get("NO_COLOR") and os.isatty(2)
+C = "\033[1;36m" if use_color else ""
+W = "\033[1;37m" if use_color else ""
+X = "\033[0m" if use_color else ""
+inner = max(40, width - 4)
+
+def emit(text=""):
+    visible = len(ansi.sub("", text))
+    print(f"{C}│{X} {text}{' ' * max(0, inner - visible)} {C}│{X}")
+
+def wrap_line(line):
+    raw = line.rstrip()
+    if not raw:
+        return [""]
+    stripped = raw.lstrip()
+    indent = len(raw) - len(stripped)
+    marker = ""
+    marker_width = 0
+    if stripped.startswith("- "):
+        marker = "• "
+        stripped = stripped[2:]
+        marker_width = len(marker)
+    elif stripped.startswith("> "):
+        marker = "› "
+        stripped = stripped[2:]
+        marker_width = len(marker)
+    initial = (" " * indent) + marker
+    subsequent = " " * (indent + marker_width)
+    wrap_width = max(12, inner - len(initial))
+    if "/" in stripped and " " not in stripped and len(stripped) > wrap_width:
+        tokens = [token for token in re.split(r"(/)", stripped) if token]
+        lines = []
+        current = initial
+        for token in tokens:
+            candidate = current + token
+            if len(candidate) <= inner or current == initial:
+                current = candidate
+                continue
+            lines.append(current)
+            current = subsequent + token.lstrip()
+        lines.append(current)
+        return lines
+    wrapped = textwrap.wrap(
+        stripped,
+        width=wrap_width,
+        initial_indent=initial,
+        subsequent_indent=subsequent,
+        break_long_words=True,
+        break_on_hyphens=False,
+    )
+    return wrapped or [initial.rstrip()]
+
+print(f"{C}╭{'─' * (inner + 2)}╮{X}")
+emit(f"{W}{title}{X}")
+if body:
+    emit()
+    for line in body:
+        for wrapped_line in wrap_line(line):
+            emit(wrapped_line)
+print(f"{C}╰{'─' * (inner + 2)}╯{X}")
+PY
+}
 
 # ── Discover kast binary (same cascade as smoke.sh) ─────────────────────────
 if [ -z "$KAST" ]; then
@@ -108,20 +256,27 @@ fi
 OUTDIR="$(mktemp -d "${TMPDIR:-/tmp}/kast-demo.XXXXXX")"
 trap '"$KAST" workspace stop --workspace-root="$WORKSPACE_ROOT" >/dev/null 2>&1 || true; rm -rf "$OUTDIR"' EXIT
 
-# ── Timing helper ────────────────────────────────────────────────────────────
-time_cmd() {
-  # Usage: time_cmd <label> <cmd...>
-  # Runs cmd, prints timing, returns exit code.
-  local label="$1"; shift
-  local start end elapsed
+# ── Timed command helper ──────────────────────────────────────────────────────
+run_captured() {
+  local label="$1"
+  local stdout_file="$2"
+  local stderr_file="$3"
+  shift 3
+
+  local start end elapsed rc
   start="$(python3 -c 'import time; print(time.monotonic())')"
-  "$@" && local rc=0 || local rc=$?
-  end="$(python3 -c 'import time; print(time.monotonic())')"
-  elapsed="$(python3 -c "print(f'{$end - $start:.2f}s')")"
-  if [ "$rc" -eq 0 ]; then
-    log_success "$label  ${C_DIM}(${elapsed})${C_RESET}"
+  if "$@" >"$stdout_file" 2>"$stderr_file"; then
+    rc=0
   else
-    log_line "$(colorize '1;31' '✕')" "$label  ${C_DIM}(${elapsed})${C_RESET}"
+    rc=$?
+  fi
+  end="$(python3 -c 'import time; print(time.monotonic())')"
+  elapsed="$(python3 -c "start = float(${start}); end = float(${end}); print(f'{end - start:.2f}s')")"
+
+  if [ "$rc" -eq 0 ]; then
+    log_success "$label $(dim_text "(${elapsed})")"
+  else
+    log_line "$(colorize '1;31' '✕')" "$label $(dim_text "(${elapsed})")"
   fi
   return "$rc"
 }
@@ -130,30 +285,24 @@ time_cmd() {
 #  Banner
 # ══════════════════════════════════════════════════════════════════════════════
 printf '\n' >&2
-printf '%b' "${C_CYAN}" >&2
-cat >&2 <<'BANNER'
-    ╭─────────────────────────────────────────────╮
-    │                                             │
-    │     k a s t    d e m o                      │
-    │     semantic analysis vs text search         │
-    │                                             │
-    ╰─────────────────────────────────────────────╯
-BANNER
-printf '%b' "${C_RESET}" >&2
-printf '\n' >&2
-log "Workspace:  $WORKSPACE_ROOT"
-log "Binary:     $KAST"
+{
+  printf 'semantic analysis vs text search\n\n'
+  printf 'Workspace  %s\n' "$WORKSPACE_ROOT"
+  printf 'Binary     %s\n' "$KAST"
+} | render_panel "kast demo"
 printf '\n' >&2
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  Step 1 — Warm the daemon
 # ══════════════════════════════════════════════════════════════════════════════
 log_step "Warming workspace daemon..."
-if ! time_cmd "workspace ensure" \
+if ! run_captured \
+    "workspace ensure" \
+    "$OUTDIR/ensure.json" \
+    "$OUTDIR/ensure.stderr" \
     "$KAST" workspace ensure \
       --workspace-root="$WORKSPACE_ROOT" \
-      --wait-timeout-ms=180000 \
-      > "$OUTDIR/ensure.json" 2>"$OUTDIR/ensure.stderr"; then
+      --wait-timeout-ms=180000; then
   cat "$OUTDIR/ensure.stderr" >&2 || true
   die "Failed to start daemon. Check that Java 21+ is available."
 fi
@@ -190,11 +339,6 @@ outdir = Path(sys.argv[3])
 
 data = json.loads(symbols_path.read_text("utf-8"))
 symbols = data.get("symbols", [])
-page = data.get("page")
-
-if not symbols:
-    print("0", file=sys.stderr)
-    sys.exit(0)
 
 lines = []
 for s in symbols:
@@ -205,14 +349,13 @@ for s in symbols:
         f"{s['kind']:<12s} {s['fqName']:<55s} {rel}  {loc['filePath']}:{loc['startOffset']}"
     )
 
-(outdir / "symbol_lines.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
-print(f"{len(symbols)}", file=sys.stderr)
-
-if page and page.get("truncated"):
-    print("TRUNCATED", file=sys.stderr)
+(outdir / "symbol_lines.txt").write_text(
+    ("\n".join(lines) + "\n") if lines else "",
+    encoding="utf-8",
+)
 FORMAT_SYMBOLS
 
-symbol_count="$(python3 -c "import json; print(len(json.loads(open('$OUTDIR/symbols.json').read()).get('symbols',[])))")"
+symbol_count="$(wc -l < "$OUTDIR/symbol_lines.txt" | tr -d ' ')"
 log_success "Found $symbol_count symbols"
 
 if [ "$symbol_count" -eq 0 ]; then
@@ -335,61 +478,29 @@ print(f'{file_path} {offset} {simple_name} {kind} {fq_name} {rel_path}')
 " "$SELECTED_LINE"
 )"
 
-log "Symbol: $(colorize '1;37' "$SYMBOL_FQNAME") ($SYMBOL_KIND)"
-log "File:   $SYMBOL_REL_PATH  offset=$SYMBOL_OFFSET"
-
 # ══════════════════════════════════════════════════════════════════════════════
 #  Step 4 — "The Task" box
 # ══════════════════════════════════════════════════════════════════════════════
 printf '\n' >&2
-python3 - "$SYMBOL_FQNAME" "$SYMBOL_KIND" "$SYMBOL_REL_PATH" <<'TASK_BOX' >&2
-import sys, os
-
-fq = sys.argv[1]
-kind = sys.argv[2]
-rel = sys.argv[3]
-
-no_color = os.environ.get("NO_COLOR", "")
-use_color = not no_color and os.isatty(2)
-C = "\033[1;36m" if use_color else ""
-W = "\033[1;37m" if use_color else ""
-D = "\033[2m" if use_color else ""
-R = "\033[0m" if use_color else ""
-
-width = 62
-def pad(text, raw_len=None):
-    if raw_len is None:
-        raw_len = len(text)
-    return text + " " * (width - 2 - raw_len)
-
-lines = [
-    f"{C}╭{'─' * width}╮{R}",
-    f"{C}│{R} {pad('', 0)}{C}│{R}",
-    f"{C}│{R}  {W}THE TASK{R}{pad('THE TASK', 8 + 2)}{C}│{R}",
-    f"{C}│{R} {pad('', 0)}{C}│{R}",
-    f"{C}│{R}  Symbol: {W}{fq}{R} ({kind})" + " " * max(0, width - 14 - len(fq) - len(kind)) + f"{C}│{R}",
-    f"{C}│{R}  File:   {D}{rel}{R}" + " " * max(0, width - 11 - len(rel)) + f"{C}│{R}",
-    f"{C}│{R} {pad('', 0)}{C}│{R}",
-    f"{C}│{R}  {D}▸ Find all usages{R}" + " " * max(0, width - 20) + f"{C}│{R}",
-    f"{C}│{R}  {D}▸ Plan a safe rename{R}" + " " * max(0, width - 23) + f"{C}│{R}",
-    f"{C}│{R}  {D}▸ Trace the call graph{R}" + " " * max(0, width - 25) + f"{C}│{R}",
-    f"{C}│{R}  {D}▸ Compare grep vs semantic results{R}" + " " * max(0, width - 37) + f"{C}│{R}",
-    f"{C}│{R} {pad('', 0)}{C}│{R}",
-    f"{C}╰{'─' * width}╯{R}",
-]
-for l in lines:
-    print(l)
-TASK_BOX
+{
+  printf 'Symbol  %s\n' "$SYMBOL_FQNAME"
+  printf 'Kind    %s\n' "$SYMBOL_KIND"
+  printf 'File\n'
+  printf '  %s\n' "$SYMBOL_REL_PATH"
+  printf 'Offset  %s\n' "$SYMBOL_OFFSET"
+  printf '\n'
+  printf '> Find semantic references without comment, import, or substring noise\n'
+  printf '> Preview a safe rename before editing a single file\n'
+  printf '> Trace incoming callers and compare that graph with grep output\n'
+} | render_panel "demo target"
 printf '\n' >&2
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  Step 5 — Act 1: "Without Kast (grep)"
 # ══════════════════════════════════════════════════════════════════════════════
-printf '%b\n' "${C_YELLOW}───── Act 1: Without Kast (grep + sed) ─────${C_RESET}" >&2
-printf '\n' >&2
+log_section_heading "Act 1 · text search baseline"
 
 grep -rn "$SYMBOL_NAME" "$WORKSPACE_ROOT" --include='*.kt' > "$OUTDIR/grep_raw.txt" 2>/dev/null || true
-GREP_COUNT="$(wc -l < "$OUTDIR/grep_raw.txt" | tr -d ' ')"
 
 python3 - "$OUTDIR/grep_raw.txt" "$SYMBOL_NAME" "$WORKSPACE_ROOT" "$OUTDIR" <<'GREP_ANALYSIS' >&2
 import json, os, re, sys
@@ -504,18 +615,19 @@ printf '\n' >&2
 # ══════════════════════════════════════════════════════════════════════════════
 #  Step 6 — Act 2: "With Kast (semantic)"
 # ══════════════════════════════════════════════════════════════════════════════
-printf '%b\n' "${C_CYAN}───── Act 2: With Kast (semantic analysis) ─────${C_RESET}" >&2
-printf '\n' >&2
+log_section_heading "Act 2 · semantic analysis"
 
 # ── resolve ──────────────────────────────────────────────────────────────────
 log_step "resolve"
-if time_cmd "resolve" \
+if run_captured \
+    "resolve" \
+    "$OUTDIR/resolve.json" \
+    "$OUTDIR/resolve.stderr" \
     "$KAST" resolve \
       --workspace-root="$WORKSPACE_ROOT" \
       --file-path="$SYMBOL_FILE" \
       --offset="$SYMBOL_OFFSET" \
-      --wait-timeout-ms=180000 \
-      > "$OUTDIR/resolve.json" 2>"$OUTDIR/resolve.stderr"; then
+      --wait-timeout-ms=180000; then
 
   python3 - "$OUTDIR/resolve.json" "$WORKSPACE_ROOT" <<'SHOW_RESOLVE' >&2
 import json, os, sys
@@ -547,14 +659,16 @@ printf '\n' >&2
 
 # ── references ───────────────────────────────────────────────────────────────
 log_step "references"
-if time_cmd "references" \
+if run_captured \
+    "references" \
+    "$OUTDIR/refs.json" \
+    "$OUTDIR/refs.stderr" \
     "$KAST" references \
       --workspace-root="$WORKSPACE_ROOT" \
       --file-path="$SYMBOL_FILE" \
       --offset="$SYMBOL_OFFSET" \
       --include-declaration=true \
-      --wait-timeout-ms=180000 \
-      > "$OUTDIR/refs.json" 2>"$OUTDIR/refs.stderr"; then
+      --wait-timeout-ms=180000; then
 
   python3 - "$OUTDIR/refs.json" "$WORKSPACE_ROOT" <<'SHOW_REFS' >&2
 import json, os, sys
@@ -593,15 +707,17 @@ printf '\n' >&2
 # ── rename (dry-run) ─────────────────────────────────────────────────────────
 RENAME_NAME="${SYMBOL_NAME}Renamed"
 log_step "rename --dry-run  (${SYMBOL_NAME} → ${RENAME_NAME})"
-if time_cmd "rename (dry-run)" \
+if run_captured \
+    "rename (dry-run)" \
+    "$OUTDIR/rename.json" \
+    "$OUTDIR/rename.stderr" \
     "$KAST" rename \
       --workspace-root="$WORKSPACE_ROOT" \
       --file-path="$SYMBOL_FILE" \
       --offset="$SYMBOL_OFFSET" \
       --new-name="$RENAME_NAME" \
       --dry-run=true \
-      --wait-timeout-ms=180000 \
-      > "$OUTDIR/rename.json" 2>"$OUTDIR/rename.stderr"; then
+      --wait-timeout-ms=180000; then
 
   python3 - "$OUTDIR/rename.json" "$WORKSPACE_ROOT" <<'SHOW_RENAME' >&2
 import json, os, sys
@@ -636,15 +752,17 @@ printf '\n' >&2
 
 # ── call-hierarchy ───────────────────────────────────────────────────────────
 log_step "call-hierarchy (incoming, depth=2)"
-if time_cmd "call-hierarchy" \
+if run_captured \
+    "call-hierarchy" \
+    "$OUTDIR/callhier.json" \
+    "$OUTDIR/callhier.stderr" \
     "$KAST" call-hierarchy \
       --workspace-root="$WORKSPACE_ROOT" \
       --file-path="$SYMBOL_FILE" \
       --offset="$SYMBOL_OFFSET" \
       --direction=incoming \
       --depth=2 \
-      --wait-timeout-ms=180000 \
-      > "$OUTDIR/callhier.json" 2>"$OUTDIR/callhier.stderr"; then
+      --wait-timeout-ms=180000; then
 
   python3 - "$OUTDIR/callhier.json" "$WORKSPACE_ROOT" <<'SHOW_CALLS' >&2
 import json, os, sys
@@ -696,95 +814,93 @@ printf '\n' >&2
 # ══════════════════════════════════════════════════════════════════════════════
 #  Step 7 — "The Difference" comparison table
 # ══════════════════════════════════════════════════════════════════════════════
-printf '%b\n' "${C_WHITE}───── The Difference ─────${C_RESET}" >&2
-printf '\n' >&2
+log_section_heading "Side-by-side summary"
 
 python3 - \
   "$OUTDIR/grep_stats.json" \
-  "$OUTDIR/resolve.json" \
   "$OUTDIR/refs.json" \
   "$OUTDIR/rename.json" \
   "$OUTDIR/callhier.json" \
-  "$SYMBOL_FQNAME" \
-  "$SYMBOL_KIND" \
+  "$UI_WIDTH" \
   <<'COMPARISON' >&2
 import json, os, sys
 from pathlib import Path
+import textwrap
 
 grep_stats = json.loads(Path(sys.argv[1]).read_text("utf-8"))
 
-resolve = {}
-try: resolve = json.loads(Path(sys.argv[2]).read_text("utf-8"))
-except: pass
-
 refs = {}
-try: refs = json.loads(Path(sys.argv[3]).read_text("utf-8"))
+try: refs = json.loads(Path(sys.argv[2]).read_text("utf-8"))
 except: pass
 
 rename = {}
-try: rename = json.loads(Path(sys.argv[4]).read_text("utf-8"))
+try: rename = json.loads(Path(sys.argv[3]).read_text("utf-8"))
 except: pass
 
 callhier = {}
-try: callhier = json.loads(Path(sys.argv[5]).read_text("utf-8"))
+try: callhier = json.loads(Path(sys.argv[4]).read_text("utf-8"))
 except: pass
 
-fq_name = sys.argv[6]
-kind = sys.argv[7]
+ui_width = max(66, int(sys.argv[5]))
 
 no_color = os.environ.get("NO_COLOR", "")
 use_color = not no_color and os.isatty(2)
 C = "\033[1;36m" if use_color else ""
-G = "\033[1;32m" if use_color else ""
-R = "\033[1;31m" if use_color else ""
 W = "\033[1;37m" if use_color else ""
-D = "\033[2m" if use_color else ""
 X = "\033[0m" if use_color else ""
 
-# Extract values
 grep_total = grep_stats.get("total", 0)
-grep_fp = grep_stats.get("false_positives", 0)
+grep_ambiguous = grep_stats.get("ambiguous", 0)
+grep_correct = grep_stats.get("correct", 0)
+files_touched = grep_stats.get("files_touched", 0)
 ref_count = len(refs.get("references", []))
 scope = refs.get("searchScope", {})
-exhaustive_val = scope.get("exhaustive", "?")
-exhaustive = f"{G}Yes{X}" if exhaustive_val is True else f"{R}No{X}" if exhaustive_val is False else "?"
+searched = scope.get("searchedFileCount", "?")
+candidates = scope.get("candidateFileCount", "?")
+exhaustive = "yes" if scope.get("exhaustive") is True else "no" if scope.get("exhaustive") is False else "?"
 nodes = callhier.get("stats", {}).get("totalNodes", 0)
 edits = len(rename.get("edits", []))
+affected = len(rename.get("affectedFiles", []))
 hashes = len(rename.get("fileHashes", []))
 
-# Build table rows
 rows = [
-    ("Matches found",       f"{grep_total} ({R}{grep_fp} suspect{X})",  f"{G}{ref_count}{X} (semantic)"),
-    ("Knows symbol identity", f"{R}No{X}",                              f"{G}Yes{X} {D}({fq_name}){X}"),
-    ("Knows symbol kind",    f"{R}No{X}",                               f"{G}Yes{X} {D}({kind}){X}"),
-    ("Follows call graph",   f"{R}No{X}",                               f"{G}Yes{X} {D}({nodes} callers){X}"),
-    ("Safe rename plan",     f"{R}No{X}",                               f"{G}Yes{X} {D}({edits} edits){X}"),
-    ("Conflict detection",   f"{R}No{X}",                               f"{G}Yes{X} {D}(SHA-256 hashes){X}"),
-    ("Exhaustiveness signal", f"{R}No{X}",                              exhaustive),
-    ("Post-edit validation", f"{R}Manual{X}",                           f"{G}kast diagnostics{X}"),
+    ("Matches found", f"{grep_total} total / {grep_correct} likely true / {grep_ambiguous} ambiguous", f"{ref_count} semantic references"),
+    ("Symbol identity", "text only", "exact symbol identity"),
+    ("Kind awareness", "none", "knows the declaration kind"),
+    ("Call graph", "none", f"{nodes} incoming callers"),
+    ("Rename plan", f"blind sed across {files_touched} files", f"{edits} edits across {affected} files"),
+    ("Conflict detection", "none", f"{hashes} file hashes"),
+    ("Coverage signal", "none", f"exhaustive={exhaustive} over {searched}/{candidates} files"),
+    ("Post-edit checks", "manual", "kast diagnostics"),
 ]
 
-# Column widths (visual, ignoring ANSI)
-c1 = 26
-c2 = 22
-c3 = 30
+inner = max(60, ui_width - 4)
+c1 = 18
+remaining = inner - c1 - 6
+c2 = remaining // 2
+c3 = remaining - c2
 
-def strip_ansi(s):
-    import re
-    return re.sub(r'\033\[[0-9;]*m', '', s)
+def wrap(text, width):
+    return textwrap.wrap(text, width=width, break_long_words=False, break_on_hyphens=False) or [""]
 
-def vpad(s, width):
-    visible = len(strip_ansi(s))
-    return s + " " * max(0, width - visible)
+def row_lines(row):
+    left = wrap(row[0], c1)
+    middle = wrap(row[1], c2)
+    right = wrap(row[2], c3)
+    height = max(len(left), len(middle), len(right))
+    left += [""] * (height - len(left))
+    middle += [""] * (height - len(middle))
+    right += [""] * (height - len(right))
+    return zip(left, middle, right)
 
-# Print table
 print(f"  {C}┌{'─' * c1}┬{'─' * c2}┬{'─' * c3}┐{X}")
-print(f"  {C}│{X}{vpad('', c1)}{C}│{X} {vpad(f'{D}grep + sed{X}', c2 - 1)}{C}│{X} {vpad(f'{W}kast{X}', c3 - 1)}{C}│{X}")
+print(f"  {C}│{X}{'metric'.ljust(c1)}{C}│{X}{'grep + sed'.ljust(c2)}{C}│{X}{W}{'kast'.ljust(c3)}{X}{C}│{X}")
 print(f"  {C}├{'─' * c1}┼{'─' * c2}┼{'─' * c3}┤{X}")
-
-for label, grep_val, kast_val in rows:
-    print(f"  {C}│{X} {vpad(label, c1 - 1)}{C}│{X} {vpad(grep_val, c2 - 1)}{C}│{X} {vpad(kast_val, c3 - 1)}{C}│{X}")
-
+for row in rows:
+    for left, middle, right in row_lines(row):
+        print(f"  {C}│{X}{left.ljust(c1)}{C}│{X}{middle.ljust(c2)}{C}│{X}{right.ljust(c3)}{C}│{X}")
+    if row != rows[-1]:
+        print(f"  {C}├{'─' * c1}┼{'─' * c2}┼{'─' * c3}┤{X}")
 print(f"  {C}└{'─' * c1}┴{'─' * c2}┴{'─' * c3}┘{X}")
 COMPARISON
 
@@ -793,34 +909,13 @@ printf '\n' >&2
 # ══════════════════════════════════════════════════════════════════════════════
 #  Step 8 — Closing
 # ══════════════════════════════════════════════════════════════════════════════
-python3 - "$SYMBOL_NAME" <<'CLOSING' >&2
-import os, sys
-
-symbol = sys.argv[1]
-no_color = os.environ.get("NO_COLOR", "")
-use_color = not no_color and os.isatty(2)
-C = "\033[1;36m" if use_color else ""
-D = "\033[2m" if use_color else ""
-W = "\033[1;37m" if use_color else ""
-X = "\033[0m" if use_color else ""
-
-print(f"  {C}╭─────────────────────────────────────────────────────────────╮{X}")
-print(f"  {C}│{X}                                                             {C}│{X}")
-print(f"  {C}│{X}  {W}What just happened{X}                                          {C}│{X}")
-print(f"  {C}│{X}                                                             {C}│{X}")
-print(f"  {C}│{X}  grep found text matches — including comments, strings,     {C}│{X}")
-print(f"  {C}│{X}  imports, and substring collisions. A sed rename would       {C}│{X}")
-print(f"  {C}│{X}  break code silently.                                       {C}│{X}")
-print(f"  {C}│{X}                                                             {C}│{X}")
-print(f"  {C}│{X}  kast resolved the {W}exact symbol identity{X}, found only        {C}│{X}")
-print(f"  {C}│{X}  {W}true semantic references{X}, planned a safe rename with      {C}│{X}")
-print(f"  {C}│{X}  conflict detection, and traced the call graph.             {C}│{X}")
-print(f"  {C}│{X}                                                             {C}│{X}")
-print(f"  {C}│{X}  {D}Docs:  https://amichne.github.io/kast/{X}                    {C}│{X}")
-print(f"  {C}│{X}  {D}Repo:  https://github.com/amichne/kast{X}                    {C}│{X}")
-print(f"  {C}│{X}                                                             {C}│{X}")
-print(f"  {C}╰─────────────────────────────────────────────────────────────╯{X}")
-CLOSING
+{
+  printf 'grep only sees text, so it mixes real usages with imports, comments, string literals, and substring collisions.\n'
+  printf 'kast resolves the exact declaration, returns true semantic references, previews a safe rename, and maps the incoming call graph before you edit anything.\n'
+  printf '\n'
+  printf 'Docs  https://amichne.github.io/kast/\n'
+  printf 'Repo  https://github.com/amichne/kast\n'
+} | render_panel "why the semantic pass wins"
 
 printf '\n' >&2
 log_success "Demo complete."
