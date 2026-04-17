@@ -108,6 +108,7 @@ internal class CliCommandParser(
                 listOf("install") -> CliCommand.Install(parsed.installOptions())
                 listOf("install", "skill") -> CliCommand.InstallSkill(parsed.installSkillOptions())
                 listOf("smoke") -> CliCommand.Smoke(parsed.smokeOptions())
+                listOf("demo") -> CliCommand.Demo(parsed.demoOptions())
                 listOf("internal", "daemon-run") -> CliCommand.InternalDaemonRun(parsed.runtimeOptions(backendName = "standalone"))
                 else -> throw CliFailure(
                     code = "CLI_USAGE",
@@ -444,6 +445,22 @@ internal data class ParsedArguments(
     }
 
     fun withoutOption(key: String): ParsedArguments = copy(options = options - key)
+
+    fun demoOptions(): DemoOptions {
+        if (options.containsKey("kast")) {
+            throw CliFailure(
+                code = "CLI_USAGE",
+                message = "`kast demo` does not accept --kast; invoke demo.sh directly if you need to override the launcher",
+            )
+        }
+        return DemoOptions(
+            workspaceRoot = options["workspace-root"]
+                ?.takeIf(String::isNotBlank)
+                ?.let { Path.of(it).toAbsolutePath().normalize() }
+                ?: Path.of(System.getProperty("user.dir", ".")).toAbsolutePath().normalize(),
+            symbolFilter = options["symbol"]?.takeIf(String::isNotBlank),
+        )
+    }
 
     private fun <T> requestOrFile(
         serializer: KSerializer<T>,

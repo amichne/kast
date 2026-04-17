@@ -295,6 +295,12 @@ internal object CliCommandCatalog {
         description = "Render the smoke report as json or markdown. Defaults to json.",
     )
 
+    private val demoSymbolOption = CliOptionMetadata(
+        key = "symbol",
+        usage = "--symbol=CliService",
+        description = "Skip the interactive picker and use the first symbol matching this text.",
+    )
+
     private val commands: List<CliCommandMetadata> = listOf(
         CliCommandMetadata(
             path = listOf("workspace", "status"),
@@ -661,6 +667,21 @@ internal object CliCommandCatalog {
                 "$CLI_EXECUTABLE_NAME smoke",
                 "$CLI_EXECUTABLE_NAME smoke --workspace-root=/absolute/path/to/workspace --file=CliCommandCatalog.kt",
                 "$CLI_EXECUTABLE_NAME smoke --workspace-root=/absolute/path/to/workspace --format=markdown",
+            ),
+        ),
+        CliCommandMetadata(
+            path = listOf("demo"),
+            group = CliCommandGroup.VALIDATION,
+            summary = "Interactive comparison of grep vs kast semantic analysis on your workspace.",
+            description = "Picks a symbol from your workspace — interactively via fzf or by name — and runs grep + sed alongside kast resolve, references, rename, and call-hierarchy so you can see the difference side by side.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME demo [--workspace-root=/absolute/path/to/workspace] [--symbol=CliService]",
+            ),
+            options = listOf(workspaceRootOption, demoSymbolOption),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME demo",
+                "$CLI_EXECUTABLE_NAME demo --workspace-root=/absolute/path/to/workspace",
+                "$CLI_EXECUTABLE_NAME demo --workspace-root=/absolute/path/to/workspace --symbol=CliService",
             ),
         ),
         CliCommandMetadata(
