@@ -24,20 +24,6 @@ TARGET_SYMBOL=""
 MODE="implement"
 KIND=""
 
-for arg in "$@"; do
-    case "${arg}" in
-        --workspace-root=*) WORKSPACE_ROOT="${arg#*=}" ;;
-        --target-file=*)    TARGET_FILE="${arg#*=}" ;;
-        --target-symbol=*)  TARGET_SYMBOL="${arg#*=}" ;;
-        --mode=*)           MODE="${arg#*=}" ;;
-        --kind=*)           KIND="${arg#*=}" ;;
-        *)
-            printf 'Unknown argument: %s\n' "${arg}" >&2
-            exit 1
-            ;;
-    esac
-done
-
 kast_wrapper_init "kast-scaffold"
 
 emit_failure() {
@@ -56,6 +42,7 @@ from pathlib import Path
 (stage, message, workspace_root, target_file, target_symbol, mode, kind, log_file, error_file) = sys.argv[1:]
 
 payload = {
+    "type": "SCAFFOLD_FAILURE",
     "ok": False,
     "stage": stage,
     "message": message,
@@ -83,14 +70,44 @@ print(json.dumps(payload, indent=2))
 PY
 }
 
+REQUEST_JSON_FILE="${TMP_DIR}/request.json"
+if ! kast_load_request "${REQUEST_JSON_FILE}" "$@"; then
+    emit_failure "request_validation" "${KAST_REQUEST_ERROR_MESSAGE}" "${KAST_REQUEST_ERROR_JSON_FILE:-}"
+    exit 1
+fi
+
+eval "$(
+    python3 - "${REQUEST_JSON_FILE}" <<'PY'
+import json
+import shlex
+import sys
+from pathlib import Path
+
+request = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+fields = {
+    "WORKSPACE_ROOT": request.get("workspaceRoot", ""),
+    "TARGET_FILE": request.get("targetFile", ""),
+    "TARGET_SYMBOL": request.get("targetSymbol", ""),
+    "MODE": request.get("mode", "implement"),
+    "KIND": request.get("kind", ""),
+}
+for key, value in fields.items():
+    print(f"{key}={shlex.quote('' if value is None else str(value))}")
+PY
+)"
+
+if [[ -z "${WORKSPACE_ROOT}" ]]; then
+    WORKSPACE_ROOT="$(kast_default_workspace_root || true)"
+fi
+
 VALID_MODES="implement replace consolidate extract"
 if [[ -z "${WORKSPACE_ROOT}" || -z "${TARGET_FILE}" ]]; then
-    emit_failure "argument_validation" "--workspace-root and --target-file are required."
+    emit_failure "request_validation" "Request must include targetFile. workspaceRoot is optional only when KAST_WORKSPACE_ROOT or the current git workspace can supply it."
     exit 1
 fi
 
 if ! echo "${VALID_MODES}" | grep -qw "${MODE}"; then
-    emit_failure "argument_validation" "--mode must be one of: ${VALID_MODES}."
+    emit_failure "request_validation" "mode must be one of: ${VALID_MODES}."
     exit 1
 fi
 
@@ -209,6 +226,7 @@ from pathlib import Path
 outline_result = json.loads(Path(outline_file).read_text(encoding="utf-8"))
 
 payload = {
+    "type": "SCAFFOLD_SUCCESS",
     "ok": True,
     "query": {
         "workspace_root": workspace_root,

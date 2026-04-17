@@ -197,6 +197,10 @@ internal class DefaultCliCommandExecutor(
                 output = CliOutput.ExternalProcess(cliService.smoke(command.options)),
             )
 
+            is CliCommand.Demo -> CliExecutionResult(
+                output = CliOutput.ExternalProcess(cliService.demo(command.options)),
+            )
+
             is CliCommand.InternalDaemonRun -> {
                 val runner = internalDaemonRunner
                     ?: throw CliFailure(

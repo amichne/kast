@@ -159,6 +159,32 @@ including successful auto-start and reuse paths.
 `call-hierarchy` is available through the public CLI and returns bounded trees
 with traversal stats plus truncation metadata.
 
+## Try it on your code
+
+`kast demo` runs an interactive comparison of grep-based text search versus
+kast's semantic analysis on your own workspace. It picks a symbol, shows what
+grep gets wrong (comments, strings, substring collisions), and then runs
+resolve, references, rename (dry-run), and call-hierarchy to show the
+difference.
+
+Interactive mode (requires [fzf](https://github.com/junegunn/fzf)):
+
+```bash
+kast demo --workspace-root=/path/to/your/kotlin/project
+```
+
+Non-interactive (skip the picker):
+
+```bash
+kast demo --workspace-root=/path/to/your/kotlin/project --symbol=YourClassName
+```
+
+You can also run the script directly from a checkout:
+
+```bash
+./demo.sh --workspace-root=/path/to/your/kotlin/project
+```
+
 ## Optional: enable shell completion
 
 The installer can offer to enable completion in your shell init file. If you

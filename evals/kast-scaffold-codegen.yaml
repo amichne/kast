@@ -1,0 +1,43 @@
+# kast-scaffold-codegen.yaml — Scaffold + code generation eval suite
+#
+# Each case validates that the agent uses kast-scaffold.sh for context
+# gathering followed by kast-write-and-validate.sh for code generation.
+
+suite: kast-scaffold-codegen
+workspace: evals/fixtures/sample-workspace
+
+cases:
+  - id: scaffold-then-write
+    name: "Scaffold context then write new implementation"
+    prompt: >
+      Implement a new `WhisperGreeter` class that implements the `Greeter`
+      interface, returning the greeting in lowercase. First scaffold the
+      context for `Greeter` to understand the interface, then write the new
+      implementation file using kast-write-and-validate.sh.
+    assertions:
+      - type: tool_used
+        tool: kast-scaffold.sh
+      - type: tool_used
+        tool: kast-write-and-validate.sh
+      - type: tool_sequence_contains
+        sequence:
+          - kast-scaffold.sh
+          - kast-write-and-validate.sh
+
+  - id: scaffold-then-replace
+    name: "Scaffold context then replace declaration body"
+    prompt: >
+      Replace the body of `DefaultGreeter.greet` so it returns
+      "Greetings, $name!" instead. First scaffold the context for
+      `DefaultGreeter` with mode=replace to get the insertion point, then
+      use kast-write-and-validate.sh with mode=replace-range to apply the
+      change.
+    assertions:
+      - type: tool_used
+        tool: kast-scaffold.sh
+      - type: tool_used
+        tool: kast-write-and-validate.sh
+      - type: tool_sequence_contains
+        sequence:
+          - kast-scaffold.sh
+          - kast-write-and-validate.sh

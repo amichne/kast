@@ -27,6 +27,8 @@ dependencies {
     implementation(project(":analysis-api"))
     implementation(project(":analysis-server"))
     implementation(project(":backend-shared"))
+    implementation(libs.opentelemetry.api)
+    implementation(libs.opentelemetry.sdk)
 
     intellijPlatform {
         intellijIdea("2025.3")

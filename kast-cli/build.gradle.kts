@@ -1,5 +1,6 @@
 import org.gradle.api.tasks.Sync
 import org.gradle.api.tasks.testing.Test
+import org.gradle.api.tasks.JavaExec
 import org.gradle.language.jvm.tasks.ProcessResources
 
 plugins {
@@ -17,15 +18,18 @@ val embeddedSkillFiles = listOf(
     "references/cloud-setup.md",
     "references/command-reference.md",
     "references/troubleshooting.md",
+    "references/wrapper-openapi.yaml",
     "scripts/find-symbol-offset.py",
     "scripts/kast-callers.sh",
     "scripts/kast-common.sh",
     "scripts/kast-diagnostics.sh",
-    "scripts/kast-impact.sh",
     "scripts/kast-plan-utils.py",
     "scripts/kast-rename.sh",
     "scripts/kast-references.sh",
     "scripts/kast-resolve.sh",
+    "scripts/kast-scaffold.sh",
+    "scripts/kast-workspace-files.sh",
+    "scripts/kast-write-and-validate.sh",
     "scripts/resolve-kast.sh",
     "scripts/validate-wrapper-json.sh",
 )
@@ -78,6 +82,14 @@ tasks.named<Test>("test") {
         "kast.wrapper",
         project(":kast").layout.buildDirectory.file("scripts/kast").get().asFile.absolutePath,
     )
+}
+
+tasks.register<JavaExec>("generateWrapperOpenApiSchema") {
+    group = "documentation"
+    description = "Generate the packaged kast wrapper OpenAPI document from serialized model shapes."
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("io.github.amichne.kast.cli.WrapperOpenApiDocumentKt")
+    args(rootProject.layout.projectDirectory.file(".agents/skills/kast/references/wrapper-openapi.yaml").asFile.absolutePath)
 }
 
 val stageNativeRuntimeLibs by tasks.registering(Sync::class) {

@@ -89,6 +89,9 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+      - name: Run IntelliJ performance baselines
+        run: ./gradlew :backend-intellij:test -PincludeTags=performance
+
   smoke-kast-cli:
     name: Smoke CLI (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -168,6 +171,18 @@ jobs:
 
       - name: Run kast-workflows evals
         run: bash evals/harness/run-evals.sh --suite=kast-workflows --format=json
+
+      - name: Run kast-mutation-correctness evals
+        run: bash evals/harness/run-evals.sh --suite=kast-mutation-correctness --format=json
+
+      - name: Run kast-error-recovery evals
+        run: bash evals/harness/run-evals.sh --suite=kast-error-recovery --format=json
+
+      - name: Run kast-disambiguation evals
+        run: bash evals/harness/run-evals.sh --suite=kast-disambiguation --format=json
+
+      - name: Run kast-scaffold-codegen evals
+        run: bash evals/harness/run-evals.sh --suite=kast-scaffold-codegen --format=json
 
       - name: Upload eval results
         if: always()

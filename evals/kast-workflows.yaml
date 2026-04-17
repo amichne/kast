@@ -20,9 +20,9 @@ cases:
           - kast-rename.sh
           - kast-diagnostics.sh
       - type: hook_fired
-        hook: kast-diagnostics-gate
+        hook: sessionStart
       - type: hook_fired
-        hook: build-health-gate
+        hook: sessionEnd
 
   - id: multi-step-investigation
     name: "Multi-step investigation uses resolve then outgoing callers"
@@ -48,4 +48,4 @@ cases:
       - type: tool_used
         tool: kast-diagnostics.sh
       - type: hook_fired
-        hook: test-gate
+        hook: sessionEnd

@@ -17,11 +17,11 @@ Full syntax, JSON schemas, and request-file formats for all public kast commands
 
 Every command accepts:
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `--workspace-root=` | absolute path | required | Workspace root to analyze |
-| `--wait-timeout-ms=` | integer ms | 60000 | Max wait for the daemon state required by the command |
-| `--request-file=` | absolute path | — | JSON request payload on disk |
+| Option               | Type          | Default  | Description                                           |
+|----------------------|---------------|----------|-------------------------------------------------------|
+| `--workspace-root=`  | absolute path | required | Workspace root to analyze                             |
+| `--wait-timeout-ms=` | integer ms    | 60000    | Max wait for the daemon state required by the command |
+| `--request-file=`    | absolute path | —        | JSON request payload on disk                          |
 
 All options use `--key=value` syntax. No positional arguments.
 
@@ -138,16 +138,16 @@ Request schema (`WorkspaceFilesQuery`):
 }
 ```
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `workspaceRoot` | string | yes | Absolute workspace root |
-| `moduleName` | string | no | Filter to a single module by name |
-| `includeFiles` | boolean | no | Enumerate .kt file paths per module (default: false) |
+| Field           | Type    | Required | Description                                          |
+|-----------------|---------|----------|------------------------------------------------------|
+| `workspaceRoot` | string  | yes      | Absolute workspace root                              |
+| `moduleName`    | string  | no       | Filter to a single module by name                    |
+| `includeFiles`  | boolean | no       | Enumerate .kt file paths per module (default: false) |
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `--module-name=` | string | — | Filter to a single module |
-| `--include-files=` | boolean | false | Enumerate .kt file paths per module |
+| Option             | Type    | Default | Description                         |
+|--------------------|---------|---------|-------------------------------------|
+| `--module-name=`   | string  | —       | Filter to a single module           |
+| `--include-files=` | boolean | false   | Enumerate .kt file paths per module |
 
 **Output — `WorkspaceFilesResult`:**
 
@@ -168,13 +168,13 @@ Request schema (`WorkspaceFilesQuery`):
 
 `WorkspaceModule` fields:
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `name` | string | Module name (matches Gradle project name) |
-| `sourceRoots` | string[] | Absolute paths to source root directories |
-| `dependencyModuleNames` | string[] | Names of modules this module depends on |
-| `files` | string[] | Absolute paths to .kt files (only when `includeFiles=true`) |
-| `fileCount` | integer | Total .kt file count; always present regardless of `includeFiles` |
+| Field                   | Type     | Description                                                       |
+|-------------------------|----------|-------------------------------------------------------------------|
+| `name`                  | string   | Module name (matches Gradle project name)                         |
+| `sourceRoots`           | string[] | Absolute paths to source root directories                         |
+| `dependencyModuleNames` | string[] | Names of modules this module depends on                           |
+| `files`                 | string[] | Absolute paths to .kt files (only when `includeFiles=true`)       |
+| `fileCount`             | integer  | Total .kt file count; always present regardless of `includeFiles` |
 
 `files` is populated only when `--include-files=true`. `fileCount` is always present.
 
@@ -658,10 +658,10 @@ kast install \
 
 **Options:**
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `--archive=` | absolute path | required | Path to a kast portable zip |
-| `--instance=` | string | auto-generated | Instance name for the install |
+| Option        | Type          | Default        | Description                   |
+|---------------|---------------|----------------|-------------------------------|
+| `--archive=`  | absolute path | required       | Path to a kast portable zip   |
+| `--instance=` | string        | auto-generated | Instance name for the install |
 
 Installs to `~/.local/share/kast/instances/<name>/` with a launcher at `~/.local/bin/kast-<name>`.
 
@@ -687,12 +687,12 @@ kast install skill \
 
 **Options:**
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
+| Option          | Type          | Default       | Description                                                                     |
+|-----------------|---------------|---------------|---------------------------------------------------------------------------------|
 | `--target-dir=` | absolute path | auto-detected | Skills root directory (`.agents/skills`, `.github/skills`, or `.claude/skills`) |
-| `--name=` | string | `kast` | Directory name for the installed skill |
-| `--link-name=` | string | — | Deprecated alias for `--name=` |
-| `--yes=` | boolean | `false` | Overwrite an existing installed skill directory |
+| `--name=`       | string        | `kast`        | Directory name for the installed skill                                          |
+| `--link-name=`  | string        | —             | Deprecated alias for `--name=`                                                  |
+| `--yes=`        | boolean       | `false`       | Overwrite an existing installed skill directory                                 |
 
 **Output — `InstallSkillResult`:**
 
@@ -732,13 +732,13 @@ kast smoke \
 
 **Options:**
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `--workspace-root=` | absolute path | current working directory | Workspace root to smoke-test |
-| `--file=` | string | — | Match a declaration file by basename or relative path |
-| `--source-set=` | string | — | Match a `:module:sourceSet` key |
-| `--symbol=` | string | — | Match a declaration name |
-| `--format=` | `json` \| `markdown` | `json` | Render the aggregated smoke report as JSON or markdown |
+| Option              | Type                 | Default                   | Description                                            |
+|---------------------|----------------------|---------------------------|--------------------------------------------------------|
+| `--workspace-root=` | absolute path        | current working directory | Workspace root to smoke-test                           |
+| `--file=`           | string               | —                         | Match a declaration file by basename or relative path  |
+| `--source-set=`     | string               | —                         | Match a `:module:sourceSet` key                        |
+| `--symbol=`         | string               | —                         | Match a declaration name                               |
+| `--format=`         | `json` \| `markdown` | `json`                    | Render the aggregated smoke report as JSON or markdown |
 
 `kast smoke` picks the current launcher path automatically and passes it to the
 shell script as `--kast=`. When you run `smoke.sh` directly, you can still pass
@@ -764,17 +764,17 @@ Each wrapper emits structured JSON on stdout with a top-level `ok` boolean and
 the wrappers are the default path for symbol lookup, references, callers,
 diagnostics, impact assessment, and full rename flows.
 
-| Script | Purpose | Key output |
-| --- | --- | --- |
-| `kast-resolve.sh` | Resolve a human symbol query to a confirmed declaration | `symbol`, `file_path`, `offset`, `candidate`, `log_file` |
-| `kast-references.sh` | Resolve a symbol query and expand references | `symbol`, `references`, `search_scope`, `declaration`, `log_file` |
-| `kast-callers.sh` | Resolve a symbol query and expand incoming or outgoing callers | `symbol`, `root`, `stats`, `log_file` |
-| `kast-diagnostics.sh` | Run structured diagnostics on one or more files | `clean`, `error_count`, `warning_count`, `diagnostics`, `log_file` |
-| `kast-impact.sh` | Resolve a symbol query, gather references, and optionally gather incoming callers | `references`, `search_scope`, optional `call_hierarchy`, `log_file` |
-| `kast-rename.sh` | Run the full rename workflow end to end | `ok`, `edit_count`, `affected_files`, `apply_result`, `diagnostics`, `log_file` |
-| `kast-plan-utils.py` | Extract or inspect rename-plan JSON | Plan metadata or apply-request JSON |
-| `find-symbol-offset.py` | Compute declaration-first UTF-16 offsets inside one file | Tab-separated candidates |
-| `validate-wrapper-json.sh` | Smoke-test wrapper success and failure JSON contracts | Aggregated validation JSON |
+| Script                       | Purpose                                                            | Key output                                                                      |
+|------------------------------|--------------------------------------------------------------------|---------------------------------------------------------------------------------|
+| `kast-resolve.sh`            | Resolve a human symbol query to a confirmed declaration            | `symbol`, `file_path`, `offset`, `candidate`, `log_file`                        |
+| `kast-references.sh`         | Resolve a symbol query and expand references                       | `symbol`, `references`, `search_scope`, `declaration`, `log_file`               |
+| `kast-callers.sh`            | Resolve a symbol query and expand incoming or outgoing callers     | `symbol`, `root`, `stats`, `log_file`                                           |
+| `kast-diagnostics.sh`        | Run structured diagnostics on one or more files                    | `clean`, `error_count`, `warning_count`, `diagnostics`, `log_file`              |
+| `kast-rename.sh`             | Run the full rename workflow end to end                            | `ok`, `edit_count`, `affected_files`, `apply_result`, `diagnostics`, `log_file` |
+| `kast-write-and-validate.sh` | Apply generated code, clean imports, and validate with diagnostics | `ok`, `applied_edits`, `import_changes`, `diagnostics`, `log_file`              |
+| `kast-plan-utils.py`         | Extract or inspect rename-plan JSON                                | Plan metadata or apply-request JSON                                             |
+| `find-symbol-offset.py`      | Compute declaration-first UTF-16 offsets inside one file           | Tab-separated candidates                                                        |
+| `validate-wrapper-json.sh`   | Smoke-test wrapper success and failure JSON contracts              | Aggregated validation JSON                                                      |
 
 ---
 
@@ -869,68 +869,102 @@ bash "$SKILL_ROOT/scripts/kast-diagnostics.sh" \
 
 ---
 
-### `kast-impact.sh` — Pre-edit impact assessment
-
-Use this wrapper before you change a symbol. It resolves the symbol, expands
-references, and can include incoming callers in the same result.
-
-```bash
-bash "$SKILL_ROOT/scripts/kast-impact.sh" \
-  --workspace-root=/absolute/path \
-  --symbol=AnalysisServer \
-  --include-callers=true \
-  --caller-depth=2
-```
-
-Optional flags:
-- `--file=<absolute path, workspace-relative path, or glob>`
-- `--kind=class|function|property`
-- `--containing-type=OuterType`
-- `--include-callers=true|false` (default: `true`)
-- `--caller-depth=<non-negative integer>` — depth for the incoming call hierarchy (default: `2`)
-
-**stdout:** wrapper JSON with `ok`, `symbol`, `references`, `search_scope`,
-optional `call_hierarchy` (includes `direction` and `depth`), and `log_file`.
-
----
-
 ### `kast-rename.sh` — One-shot rename workflow
 
 Runs the complete rename workflow (resolve → plan → apply → diagnostics) in a
 single invocation. All JSON manipulation is handled by `kast-plan-utils.py`; no
 `jq` required. Temp files are created under `mktemp -d` and removed on exit.
 
-**Symbol mode (recommended — resolves the symbol first):**
+Each wrapper accepts exactly one argument: an inline JSON object literal or a
+path to a `.json` request file. `workspaceRoot` is optional — the wrapper
+falls back to `$KAST_WORKSPACE_ROOT` then `git rev-parse --show-toplevel`.
+
+**`RENAME_BY_SYMBOL_REQUEST` (recommended — resolves the symbol first):**
 
 ```bash
 bash "$SKILL_ROOT/scripts/kast-rename.sh" \
-  --workspace-root=/absolute/path \
-  --symbol=OldName \
-  --new-name=NewName
+  '{"type":"RENAME_BY_SYMBOL_REQUEST","symbol":"OldName","newName":"NewName"}'
 ```
 
-Optional symbol-mode flags: `--file=<hint>`, `--kind=class|function|property`,
-`--containing-type=OuterType`
+Optional fields: `workspaceRoot`, `fileHint`, `kind` (`class`|`function`|`property`),
+`containingType`.
 
-**Offset mode (when exact position is already known):**
+**`RENAME_BY_OFFSET_REQUEST` (when exact position is already known):**
 
 ```bash
 bash "$SKILL_ROOT/scripts/kast-rename.sh" \
-  --workspace-root=/absolute/path \
-  --file-path=/absolute/path/to/File.kt \
-  --offset=<offset> \
-  --new-name=NewName
+  '{"type":"RENAME_BY_OFFSET_REQUEST","filePath":"/absolute/path/to/File.kt","offset":123,"newName":"NewName"}'
 ```
 
-**stdout:** wrapper JSON with `ok`, `query`, `edit_count`, `affected_files`,
-`apply_result` (the raw `ApplyEditsResult`), `diagnostics` (with `clean`,
-`error_count`, `warning_count`, and `errors` when non-empty), and `log_file`.
+Optional field: `workspaceRoot`.
+
+**Request file form** (useful for large payloads or scripted construction):
+
+```bash
+bash "$SKILL_ROOT/scripts/kast-rename.sh" /path/to/request.json
+```
+
+**stdout:** wrapper JSON with `ok`, `query` (echoes request type and resolved
+fields), `edit_count`, `affected_files`, `apply_result` (the raw
+`ApplyEditsResult`), `diagnostics` (with `clean`, `error_count`,
+`warning_count`, and `errors` when non-empty), and `log_file`.
 
 **stderr:** step-by-step progress lines prefixed with `[kast-rename]`.
 
 **Exit codes:**
 - `0` — edits applied, diagnostics clean.
-- `1` — any failure: resolve, plan, apply, or ERROR-severity diagnostics.
+- `1` — any failure: request validation, resolve, plan, apply, or ERROR-severity diagnostics.
+
+---
+
+### `kast-write-and-validate.sh` — Apply generated code with compiler validation
+
+Applies LLM-generated code to the workspace, cleans up imports, and runs
+diagnostics to verify the result — in one atomic workflow. Returns `ok=true`
+only when diagnostics are clean after the write.
+
+Each wrapper accepts exactly one argument: an inline JSON object literal or a
+path to a `.json` request file. `workspaceRoot` is optional.
+
+**`CREATE_FILE_REQUEST` — create a new file:**
+
+```bash
+bash "$SKILL_ROOT/scripts/kast-write-and-validate.sh" \
+  '{"type":"CREATE_FILE_REQUEST","filePath":"/absolute/path/to/NewImpl.kt","content":"package foo\n\nclass NewImpl : MyInterface {}"}'
+```
+
+**`INSERT_AT_OFFSET_REQUEST` — insert at a character offset:**
+
+```bash
+bash "$SKILL_ROOT/scripts/kast-write-and-validate.sh" \
+  '{"type":"INSERT_AT_OFFSET_REQUEST","filePath":"/absolute/path/to/File.kt","offset":1234,"content":"fun newMethod() {}"}'
+```
+
+**`REPLACE_RANGE_REQUEST` — replace a character range:**
+
+```bash
+bash "$SKILL_ROOT/scripts/kast-write-and-validate.sh" \
+  '{"type":"REPLACE_RANGE_REQUEST","filePath":"/absolute/path/to/File.kt","startOffset":100,"endOffset":500,"content":"fun replaced() {}"}'
+```
+
+Optional field for all modes: `workspaceRoot`. Use `contentFile` instead of
+`content` when the generated code is too large for an inline literal.
+
+**Request file form:**
+
+```bash
+bash "$SKILL_ROOT/scripts/kast-write-and-validate.sh" /path/to/request.json
+```
+
+**stdout:** wrapper JSON with `ok`, `query` (echoes request type and file
+path), `applied_edits`, `import_changes` (lines added or removed by
+optimize-imports — non-zero is expected and correct), `diagnostics` (with
+`clean`, `error_count`, `warning_count`, and `errors` when non-empty),
+optional `message` when `ok=false`, and `log_file`.
+
+**Exit codes:**
+- `0` — edits applied, imports optimized, diagnostics clean.
+- `1` — any failure: request validation, apply, optimize-imports, or ERROR-severity diagnostics.
 
 ---
 
@@ -962,13 +996,13 @@ UTILS="$SKILL_ROOT/scripts/kast-plan-utils.py"
 
 **Subcommands:**
 
-| Subcommand | Arguments | stdout | Exit |
-|---|---|---|---|
-| `extract-apply-request` | `<plan-file> <out-file>` | Writes `{edits, fileHashes}` to `<out-file>` | 0 |
-| `affected-files-csv` | `<plan-file>` | Comma-separated absolute paths of affected files | 0 |
-| `affected-files-list` | `<plan-file>` | One absolute file path per line | 0 |
-| `count-edits` | `<plan-file>` | Number of edits in the plan | 0 |
-| `check-diagnostics` | `<diagnostics-result-file>` | ERROR count; ERROR details on stderr | 0 if clean, 1 if errors |
+| Subcommand              | Arguments                   | stdout                                           | Exit                    |
+|-------------------------|-----------------------------|--------------------------------------------------|-------------------------|
+| `extract-apply-request` | `<plan-file> <out-file>`    | Writes `{edits, fileHashes}` to `<out-file>`     | 0                       |
+| `affected-files-csv`    | `<plan-file>`               | Comma-separated absolute paths of affected files | 0                       |
+| `affected-files-list`   | `<plan-file>`               | One absolute file path per line                  | 0                       |
+| `count-edits`           | `<plan-file>`               | Number of edits in the plan                      | 0                       |
+| `check-diagnostics`     | `<diagnostics-result-file>` | ERROR count; ERROR details on stderr             | 0 if clean, 1 if errors |
 
 `<plan-file>` is the JSON output of `kast rename --dry-run=true`.
 
@@ -1032,11 +1066,11 @@ expect the same `ApiErrorResponse` shape even if it arrives on stderr:
 }
 ```
 
-| `code` | HTTP | `retryable` | Meaning |
-|--------|------|-------------|---------|
-| `VALIDATION_ERROR` | 400 | false | Bad request parameters |
-| `UNAUTHORIZED` | 401 | false | Invalid auth token |
-| `NOT_FOUND` | 404 | false | Symbol/file not found |
-| `CONFLICT` | 409 | false | File modified since plan; re-plan needed |
-| `CAPABILITY_NOT_SUPPORTED` | 501 | false | Backend lacks this capability |
-| `APPLY_PARTIAL_FAILURE` | 500 | false | Partial write failure; inspect details |
+| `code`                     | HTTP | `retryable` | Meaning                                  |
+|----------------------------|------|-------------|------------------------------------------|
+| `VALIDATION_ERROR`         | 400  | false       | Bad request parameters                   |
+| `UNAUTHORIZED`             | 401  | false       | Invalid auth token                       |
+| `NOT_FOUND`                | 404  | false       | Symbol/file not found                    |
+| `CONFLICT`                 | 409  | false       | File modified since plan; re-plan needed |
+| `CAPABILITY_NOT_SUPPORTED` | 501  | false       | Backend lacks this capability            |
+| `APPLY_PARTIAL_FAILURE`    | 500  | false       | Partial write failure; inspect details   |

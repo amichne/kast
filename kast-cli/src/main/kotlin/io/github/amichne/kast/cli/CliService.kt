@@ -38,6 +38,7 @@ internal class CliService(
     private val installService: InstallService = InstallService(),
     private val installSkillService: InstallSkillService = InstallSkillService(),
     private val smokeCommandSupport: SmokeCommandSupport = SmokeCommandSupport(),
+    private val demoCommandSupport: DemoCommandSupport = DemoCommandSupport(),
 ) {
     private val rpcClient = KastRpcClient(json)
     private val runtimeManager = WorkspaceRuntimeManager(rpcClient, processLauncher)
@@ -211,6 +212,8 @@ internal class CliService(
     fun installSkill(options: InstallSkillOptions): InstallSkillResult = installSkillService.install(options)
 
     fun smoke(options: SmokeOptions): CliExternalProcess = smokeCommandSupport.plan(options)
+
+    fun demo(options: DemoOptions): CliExternalProcess = demoCommandSupport.plan(options)
 
     suspend fun applyEdits(
         options: RuntimeCommandOptions,

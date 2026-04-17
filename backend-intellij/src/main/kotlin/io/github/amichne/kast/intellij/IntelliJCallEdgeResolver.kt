@@ -1,6 +1,7 @@
 package io.github.amichne.kast.intellij
 
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiRecursiveElementWalkingVisitor
@@ -34,13 +35,17 @@ internal class IntelliJCallEdgeResolver(
         timeoutCheck: () -> Boolean,
         onFileVisited: (filePath: String) -> Unit,
     ): List<CallEdge> {
-        // Collect all raw references eagerly in one short read action. This trades
-        // peak memory (all refs held at once) for shorter lock duration: holding the
-        // read lock only for the initial findAll() call instead of the full search
-        // loop prevents starvation of the IDE write lock during recursive traversal.
-        val refs = ApplicationManager.getApplication().runReadAction<Collection<PsiReference>> {
+        // Collect references incrementally so the read lock can be interrupted by
+        // checkCanceled() if a write action is pending, preventing EDT freezes.
+        val refs = ApplicationManager.getApplication().runReadAction<List<PsiReference>> {
             val searchScope = GlobalSearchScope.projectScope(project)
-            ReferencesSearch.search(target, searchScope).findAll()
+            val collected = mutableListOf<PsiReference>()
+            ReferencesSearch.search(target, searchScope).forEach { ref ->
+                ProgressManager.checkCanceled()
+                collected.add(ref)
+                true
+            }
+            collected
         }
 
         val edges = mutableListOf<CallEdge>()

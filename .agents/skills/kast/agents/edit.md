@@ -20,10 +20,7 @@ You make code changes using kast semantic mutation tools. You do not report succ
 
    ```bash
    bash .agents/skills/kast/scripts/kast-scaffold.sh \
-     --workspace-root="$(git rev-parse --show-toplevel)" \
-     --target-file=/absolute/path/to/Interface.kt \
-     --target-symbol=MyInterface \
-     --mode=implement
+     '{"workspaceRoot":"'"$(git rev-parse --show-toplevel)"'","targetFile":"/absolute/path/to/Interface.kt","targetSymbol":"MyInterface","mode":"implement"}'
    ```
 
 2. Generate the code (or receive it from the user/plan).
@@ -33,31 +30,19 @@ You make code changes using kast semantic mutation tools. You do not report succ
    **Create a new file:**
    ```bash
    bash .agents/skills/kast/scripts/kast-write-and-validate.sh \
-     --workspace-root="$(git rev-parse --show-toplevel)" \
-     --mode=create-file \
-     --file-path=/absolute/path/to/NewImpl.kt \
-     --content="..."
+     '{"workspaceRoot":"'"$(git rev-parse --show-toplevel)"'","mode":"create-file","filePath":"/absolute/path/to/NewImpl.kt","content":"..."}'
    ```
 
    **Insert at offset:**
    ```bash
    bash .agents/skills/kast/scripts/kast-write-and-validate.sh \
-     --workspace-root="$(git rev-parse --show-toplevel)" \
-     --mode=insert-at-offset \
-     --file-path=/absolute/path/to/File.kt \
-     --offset=1234 \
-     --content="..."
+     '{"workspaceRoot":"'"$(git rev-parse --show-toplevel)"'","mode":"insert-at-offset","filePath":"/absolute/path/to/File.kt","offset":1234,"content":"..."}'
    ```
 
    **Replace range (use `insertion_point.startOffset`/`endOffset` from scaffold):**
    ```bash
    bash .agents/skills/kast/scripts/kast-write-and-validate.sh \
-     --workspace-root="$(git rev-parse --show-toplevel)" \
-     --mode=replace-range \
-     --file-path=/absolute/path/to/File.kt \
-     --start-offset=100 \
-     --end-offset=500 \
-     --content="..."
+     '{"workspaceRoot":"'"$(git rev-parse --show-toplevel)"'","mode":"replace-range","filePath":"/absolute/path/to/File.kt","startOffset":100,"endOffset":500,"content":"..."}'
    ```
 
 ### Symbol renames
@@ -66,9 +51,7 @@ Use `kast-rename.sh` for all renames. It is import-aware (WI3) and handles resol
 
 ```bash
 bash .agents/skills/kast/scripts/kast-rename.sh \
-  --workspace-root="$(git rev-parse --show-toplevel)" \
-  --symbol=OldName \
-  --new-name=NewName
+  '{"workspaceRoot":"'"$(git rev-parse --show-toplevel)"'","symbol":"OldName","newName":"NewName"}'
 ```
 
 ### Complex edits
@@ -92,5 +75,5 @@ Use `kast-scaffold.sh` for context, then chain `kast-write-and-validate.sh` call
 - `kast-rename.sh` is always preferred over manual find-replace for symbol renames
 - `import_changes > 0` from `kast-write-and-validate.sh` is expected and correct — optimize-imports cleaned up the imports
 - After `create-file`, the daemon refreshes automatically — no separate `workspace refresh` is needed
-- Use `insertion_point.offset` from scaffold output as `--offset` for insert-at-offset
+- Use `insertion_point.offset` from scaffold output as `offset` for insert-at-offset
 - Use `insertion_point.startOffset`/`endOffset` from scaffold output for replace-range

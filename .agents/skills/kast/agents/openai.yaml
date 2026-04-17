@@ -2,319 +2,82 @@ interface:
   display_name: "Kast"
   short_description: "Structured Kotlin semantic analysis via packaged kast wrappers"
   default_prompt: >
-    Locate the packaged kast skill root, then use the wrapper scripts in
-    scripts/ for resolve, references, callers, diagnostics, impact, and rename
-    workflows. Trust the wrapper JSON on stdout and inspect log_file only when
-    ok=false or daemon notes matter. Use raw kast CLI only when a wrapper does
-    not exist.
+    Locate the packaged kast skill root, then call the wrapper scripts in
+    `scripts/` with exactly one argument: either an inline JSON object literal
+    or a path to a `.json` request file. Match each request object to the
+    schema documented in `references/wrapper-openapi.yaml`. Trust the wrapper
+    JSON on stdout and inspect `log_file` only when `ok=false` or daemon notes
+    matter. Use raw `kast` CLI commands only when a wrapper does not exist.
 
 tools:
   - name: kast-resolve
     script: scripts/kast-resolve.sh
-    description: "Resolve a symbol by name, returning declaration metadata and file position."
+    description: "Resolve a symbol by name and return declaration metadata plus file position."
     parameters:
-      - name: workspace-root
+      - name: request
         type: string
         required: true
-        description: "Absolute path to the workspace root."
-      - name: symbol
-        type: string
-        required: true
-        description: "Fully qualified or simple name of the symbol to resolve."
-      - name: file
-        type: string
-        required: false
-        description: "File path hint (absolute, workspace-relative, or glob) to narrow resolution scope."
-      - name: kind
-        type: string
-        required: false
-        description: "Restrict to a declaration kind: class, function, or property."
-      - name: containing-type
-        type: string
-        required: false
-        description: "FQN of the containing type for disambiguation."
+        description: "JSON object literal or path to a `.json` file matching `KastResolveRequest`."
 
   - name: kast-references
     script: scripts/kast-references.sh
-    description: "Find all references to a symbol across the workspace."
+    description: "Resolve a symbol and return its references across the workspace."
     parameters:
-      - name: workspace-root
+      - name: request
         type: string
         required: true
-        description: "Absolute path to the workspace root."
-      - name: symbol
-        type: string
-        required: true
-        description: "Fully qualified or simple name of the symbol."
-      - name: include-declaration
-        type: boolean
-        required: false
-        description: "Include the declaration site in the reference list (default: true)."
-      - name: file
-        type: string
-        required: false
-        description: "File path hint to narrow resolution scope."
-      - name: kind
-        type: string
-        required: false
-        description: "Restrict to a declaration kind: class, function, or property."
-      - name: containing-type
-        type: string
-        required: false
-        description: "FQN of the containing type for disambiguation."
+        description: "JSON object literal or path to a `.json` file matching `KastReferencesRequest`."
 
   - name: kast-callers
     script: scripts/kast-callers.sh
-    description: "Expand call hierarchy for a symbol. Returns an ok-keyed JSON tree with traversal stats."
+    description: "Resolve a symbol and return an incoming or outgoing call hierarchy."
     parameters:
-      - name: workspace-root
+      - name: request
         type: string
         required: true
-        description: "Absolute path to the workspace root."
-      - name: symbol
-        type: string
-        required: true
-        description: "Fully qualified or simple name of the symbol."
-      - name: direction
-        type: string
-        required: false
-        description: "Call direction: 'incoming' (callers) or 'outgoing' (callees). Default: incoming."
-      - name: depth
-        type: integer
-        required: false
-        description: "Maximum traversal depth. Default: 2."
-      - name: max-total-calls
-        type: integer
-        required: false
-        description: "Cap total nodes in the result tree. Omit to use the backend default."
-      - name: max-children-per-node
-        type: integer
-        required: false
-        description: "Cap children per node. Omit to use the backend default."
-      - name: timeout-millis
-        type: integer
-        required: false
-        description: "Traversal timeout in milliseconds. Omit to use the backend default."
-      - name: file
-        type: string
-        required: false
-        description: "File path hint to narrow resolution scope."
-      - name: kind
-        type: string
-        required: false
-        description: "Restrict to a declaration kind: class, function, or property."
-      - name: containing-type
-        type: string
-        required: false
-        description: "FQN of the containing type for disambiguation."
-
-  - name: kast-impact
-    script: scripts/kast-impact.sh
-    description: "Assess edit impact for a symbol before modifying it. Returns references and optionally incoming callers."
-    parameters:
-      - name: workspace-root
-        type: string
-        required: true
-        description: "Absolute path to the workspace root."
-      - name: symbol
-        type: string
-        required: true
-        description: "Fully qualified or simple name of the symbol."
-      - name: include-callers
-        type: boolean
-        required: false
-        description: "Include the incoming call hierarchy in the result (default: true)."
-      - name: caller-depth
-        type: integer
-        required: false
-        description: "Depth for the incoming call hierarchy when include-callers=true. Default: 2."
-      - name: file
-        type: string
-        required: false
-        description: "File path hint to narrow resolution scope."
-      - name: kind
-        type: string
-        required: false
-        description: "Restrict to a declaration kind: class, function, or property."
-      - name: containing-type
-        type: string
-        required: false
-        description: "FQN of the containing type for disambiguation."
+        description: "JSON object literal or path to a `.json` file matching `KastCallersRequest`."
 
   - name: kast-diagnostics
     script: scripts/kast-diagnostics.sh
-    description: "Run diagnostics on one or more Kotlin files. Returns ok, clean, error_count, warning_count, and a diagnostics array."
+    description: "Run diagnostics on one or more Kotlin files."
     parameters:
-      - name: workspace-root
+      - name: request
         type: string
         required: true
-        description: "Absolute path to the workspace root."
-      - name: file-paths
-        type: string
-        required: true
-        description: "Comma-separated list of absolute (or workspace-relative) file paths to diagnose."
+        description: "JSON object literal or path to a `.json` file matching `KastDiagnosticsRequest`."
 
   - name: kast-rename
     script: scripts/kast-rename.sh
-    description: >
-      Run the full rename workflow end-to-end: resolve symbol → plan → apply edits → diagnostics.
-      Accepts a symbol name (symbol mode, recommended) or an exact file-path and offset (offset mode).
-      Returns ok-keyed JSON with edit_count, affected_files, apply_result, and a diagnostics summary.
-      Exits non-zero when ERROR-severity diagnostics remain after apply.
+    description: "Run the full rename workflow: resolve or target a position, plan, apply, and validate."
     parameters:
-      - name: workspace-root
+      - name: request
         type: string
         required: true
-        description: "Absolute path to the workspace root."
-      - name: new-name
-        type: string
-        required: true
-        description: "New name for the symbol."
-      - name: symbol
-        type: string
-        required: false
-        description: "Symbol name to rename (symbol mode). Provide this OR file-path+offset."
-      - name: file-path
-        type: string
-        required: false
-        description: "Absolute path to the file containing the symbol (offset mode)."
-      - name: offset
-        type: integer
-        required: false
-        description: "Zero-based UTF-16 offset of the symbol in the file (offset mode)."
-      - name: file
-        type: string
-        required: false
-        description: "File path hint to narrow symbol resolution scope (symbol mode only)."
-      - name: kind
-        type: string
-        required: false
-        description: "Restrict resolution to a declaration kind: class, function, or property (symbol mode only)."
-      - name: containing-type
-        type: string
-        required: false
-        description: "FQN of the containing type for disambiguation (symbol mode only)."
+        description: "JSON object literal or path to a `.json` file matching `KastRenameRequest`."
 
   - name: kast-workspace-files
     script: scripts/kast-workspace-files.sh
-    description: "List workspace modules with source roots, dependencies, and optionally individual .kt file paths."
+    description: "List workspace modules, source roots, dependencies, and optional Kotlin files."
     parameters:
-      - name: workspace-root
+      - name: request
         type: string
         required: true
-        description: "Absolute path to the workspace root."
-      - name: module-name
-        type: string
-        required: false
-        description: "Filter listing to a single module name. Omit for all modules."
-      - name: include-files
-        type: boolean
-        required: false
-        description: "Enumerate individual .kt file paths per module. Defaults to false."
+        description: "JSON object literal or path to a `.json` file matching `KastWorkspaceFilesRequest`."
 
   - name: kast-scaffold
     script: scripts/kast-scaffold.sh
-    description: "Gather structural context (outline, type hierarchy, references, insertion point, file content) that an LLM needs to generate code that implements, replaces, consolidates, or extracts a declaration."
+    description: "Gather outline, hierarchy, references, insertion point, and file content for code generation."
     parameters:
-      - name: workspace-root
+      - name: request
         type: string
         required: true
-        description: "Absolute path to the workspace root."
-      - name: target-file
-        type: string
-        required: true
-        description: "Absolute path to the file where new code will go or that contains the symbol to implement/replace."
-      - name: target-symbol
-        type: string
-        required: false
-        description: "Simple or fully qualified name of the interface, class, or function to scaffold around."
-      - name: mode
-        type: string
-        required: false
-        description: "Generation intent: implement (generate a new impl), replace (overwrite a declaration), consolidate (merge multiple into one), or extract (pull a declaration out). Defaults to implement."
-      - name: kind
-        type: string
-        required: false
-        description: "Restrict symbol resolution to a declaration kind: class, interface, function, or property."
+        description: "JSON object literal or path to a `.json` file matching `KastScaffoldRequest`."
 
   - name: kast-write-and-validate
     script: scripts/kast-write-and-validate.sh
-    description: "Apply LLM-generated code (create file, insert at offset, or replace range), clean up imports, and run diagnostics. Emits ok=true only when diagnostics are clean."
+    description: "Apply generated Kotlin code, optimize imports, and validate diagnostics."
     parameters:
-      - name: workspace-root
+      - name: request
         type: string
         required: true
-        description: "Absolute path to the workspace root."
-      - name: mode
-        type: string
-        required: true
-        description: "Edit mode: create-file, insert-at-offset, or replace-range."
-      - name: file-path
-        type: string
-        required: true
-        description: "Absolute path to the target file."
-      - name: content
-        type: string
-        required: false
-        description: "The generated code to write. Use either content or content-file."
-      - name: content-file
-        type: string
-        required: false
-        description: "Absolute path to a file containing the generated code."
-      - name: offset
-        type: integer
-        required: false
-        description: "Zero-based character offset for insert-at-offset mode."
-      - name: start-offset
-        type: integer
-        required: false
-        description: "Zero-based start offset for replace-range mode (inclusive)."
-      - name: end-offset
-        type: integer
-        required: false
-        description: "Zero-based end offset for replace-range mode (exclusive)."
-
-routing_rules:
-  - intent: "resolve a symbol"
-    tool: kast-resolve
-    no_fallback: true
-  - intent: "find references"
-    tool: kast-references
-    no_fallback: true
-  - intent: "call hierarchy / who calls / incoming callers / outgoing callers"
-    tool: kast-callers
-    no_fallback: true
-  - intent: "assess edit impact"
-    tool: kast-impact
-    no_fallback: true
-  - intent: "run diagnostics"
-    tool: kast-diagnostics
-    no_fallback: true
-  - intent: "rename a symbol"
-    tool: kast-rename
-    no_fallback: true
-  - intent: "list workspace modules / list source files / module structure"
-    tool: kast-workspace-files
-    no_fallback: true
-  - intent: "gather context for code generation / scaffold a new class or implementation"
-    tool: kast-scaffold
-    no_fallback: true
-  - intent: "apply generated code / write and validate / create file with diagnostics"
-    tool: kast-write-and-validate
-    no_fallback: true
-
-constraints:
-  prohibited_substitutions:
-    - pattern: "grep|rg|ripgrep"
-      for: "symbol identity, reference finding, or call hierarchy"
-      reason: "Text search cannot resolve overloads, type aliases, or cross-module visibility."
-    - pattern: "ast-grep"
-      for: "symbol resolution or reference finding"
-      reason: "AST pattern matching lacks semantic type information."
-    - pattern: "cat + manual parsing"
-      for: "any structured analysis task"
-      reason: "Brittle and loses semantic context."
-  text_search_whitelist:
-    - "Finding file paths by name or glob"
-    - "Searching non-Kotlin files (markdown, YAML, JSON, shell scripts)"
-    - "Searching string literals or comments within Kotlin files"
+        description: "JSON object literal or path to a `.json` file matching `KastWriteAndValidateRequest`."

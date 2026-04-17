@@ -10,17 +10,18 @@ from Gradle builds, JUnit tests, JaCoCo coverage, and Kotlin build reports.
 
 The `.agent-workflow/` directory also holds log files from script executions.
 
-## Completion hooks
+## Copilot session-end validation
 
-The repo-local `kotlin-gradle-loop/hooks.json` file defines two mandatory
-completion hooks:
+The repository-level Copilot hook manifest at `.github/hooks/hooks.json`
+tracks session-owned file edits via `postToolUse` and invokes a `sessionEnd`
+validation command for completed sessions. When the recorded edits include
+code or Gradle build inputs, that command runs the Gradle build-health check
+via `.agents/skills/kotlin-gradle-loop/scripts/gradle/run_gradle_hook.sh`
+when `state.json` is present and falls back to `check` otherwise.
 
-- `docs-writer-completion`: invoke `docs-writer` whenever Markdown changes.
-- `build-health-completion`: run `scripts/gradle/run_gradle_hook.sh`, which
-  reads `project.gradleHook` from `state.json`.
-
-`project.gradleHook` is therefore a required discovery output for every
-project that uses this skill.
+`project.gradleHook` remains a required discovery output for projects that
+want the session-end build-health hook to use a project-specific high-signal
+Gradle task.
 
 ## Schema
 

@@ -79,9 +79,13 @@ searching non-Kotlin files, and searching string literals or comments.
 
 ## Agent hooks
 
-`.agents/hooks.json` is the authoritative source for agent-level hooks.
-Hooks are additive across the scope hierarchy: repo → agent → skill. Skills
-must not redeclare any hook already defined at the agent level.
+`.github/hooks/hooks.json` is the authoritative source for GitHub Copilot hook
+configuration in this repository. Use the standard Copilot hook schema:
+`{"version":1,"hooks":{...}}` with command hooks only. The repo-level hooks
+use `sessionStart` plus `postToolUse` state capture to track session-owned file
+edits, then run final command-based validation from `sessionEnd`. Workflow
+guidance that depends on skills, such as `refresh-affected-agents` or docs
+refresh, belongs in agent instructions rather than in the hook manifest.
 
 ## Copilot agents
 

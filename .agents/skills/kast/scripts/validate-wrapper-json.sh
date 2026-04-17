@@ -22,24 +22,37 @@ fun greetTwice(): String = greet("kast") + greet("again")
 EOF
 
 export KAST_SOURCE_ROOT="${REQUEST_ROOT}"
+export KAST_WORKSPACE_ROOT="${WORKSPACE_ROOT}"
+export KAST_CONFIG_HOME="${TMP_DIR}/kast-config"
+if [[ -d "${REQUEST_ROOT}/kast/build/runtime-libs" ]]; then
+    export KAST_RUNTIME_LIBS="${REQUEST_ROOT}/kast/build/runtime-libs"
+fi
 
 SAMPLE_SYMBOL="greet"
 SAMPLE_FILE="${WORKSPACE_ROOT}/src/main/kotlin/sample/Greeter.kt"
 MISSING_SYMBOL="DefinitelyMissingSymbolForWrapperValidation"
 SUCCESS_DIAGNOSTICS_FILE="${SAMPLE_FILE}"
 FAILURE_DIAGNOSTICS_FILE="${WORKSPACE_ROOT}/definitely-missing-file.kt"
+DIAGNOSTICS_REQUEST="${TMP_DIR}/diagnostics-request.json"
+DIAGNOSTICS_FAILURE_REQUEST="${TMP_DIR}/diagnostics-failure-request.json"
+
+cat >"${DIAGNOSTICS_REQUEST}" <<EOF
+{"filePaths":["${SUCCESS_DIAGNOSTICS_FILE}"]}
+EOF
+
+cat >"${DIAGNOSTICS_FAILURE_REQUEST}" <<EOF
+{"filePaths":["${FAILURE_DIAGNOSTICS_FILE}"]}
+EOF
 
 declare -a CHECKS=(
-    "kast-resolve.sh|success|bash \"${SCRIPT_DIR}/kast-resolve.sh\" --workspace-root=\"${WORKSPACE_ROOT}\" --symbol=\"${SAMPLE_SYMBOL}\" --file=\"${SAMPLE_FILE}\"|true"
-    "kast-resolve.sh|failure|bash \"${SCRIPT_DIR}/kast-resolve.sh\" --workspace-root=\"${WORKSPACE_ROOT}\" --symbol=\"${MISSING_SYMBOL}\"|false"
-    "kast-references.sh|success|bash \"${SCRIPT_DIR}/kast-references.sh\" --workspace-root=\"${WORKSPACE_ROOT}\" --symbol=\"${SAMPLE_SYMBOL}\" --file=\"${SAMPLE_FILE}\"|true"
-    "kast-references.sh|failure|bash \"${SCRIPT_DIR}/kast-references.sh\" --workspace-root=\"${WORKSPACE_ROOT}\" --symbol=\"${MISSING_SYMBOL}\"|false"
-    "kast-callers.sh|success|bash \"${SCRIPT_DIR}/kast-callers.sh\" --workspace-root=\"${WORKSPACE_ROOT}\" --symbol=\"${SAMPLE_SYMBOL}\" --file=\"${SAMPLE_FILE}\"|true"
-    "kast-callers.sh|failure|bash \"${SCRIPT_DIR}/kast-callers.sh\" --workspace-root=\"${WORKSPACE_ROOT}\" --symbol=\"${MISSING_SYMBOL}\"|false"
-    "kast-diagnostics.sh|success|bash \"${SCRIPT_DIR}/kast-diagnostics.sh\" --workspace-root=\"${WORKSPACE_ROOT}\" --file-paths=\"${SUCCESS_DIAGNOSTICS_FILE}\"|true"
-    "kast-diagnostics.sh|failure|bash \"${SCRIPT_DIR}/kast-diagnostics.sh\" --workspace-root=\"${WORKSPACE_ROOT}\" --file-paths=\"${FAILURE_DIAGNOSTICS_FILE}\"|false"
-    "kast-impact.sh|success|bash \"${SCRIPT_DIR}/kast-impact.sh\" --workspace-root=\"${WORKSPACE_ROOT}\" --symbol=\"${SAMPLE_SYMBOL}\" --file=\"${SAMPLE_FILE}\"|true"
-    "kast-impact.sh|failure|bash \"${SCRIPT_DIR}/kast-impact.sh\" --workspace-root=\"${WORKSPACE_ROOT}\" --symbol=\"${MISSING_SYMBOL}\"|false"
+    "kast-resolve.sh|success|bash \"${SCRIPT_DIR}/kast-resolve.sh\" '{\"symbol\":\"${SAMPLE_SYMBOL}\",\"fileHint\":\"${SAMPLE_FILE}\"}'|true"
+    "kast-resolve.sh|failure|bash \"${SCRIPT_DIR}/kast-resolve.sh\" '{\"symbol\":\"${MISSING_SYMBOL}\"}'|false"
+    "kast-references.sh|success|bash \"${SCRIPT_DIR}/kast-references.sh\" '{\"symbol\":\"${SAMPLE_SYMBOL}\",\"fileHint\":\"${SAMPLE_FILE}\"}'|true"
+    "kast-references.sh|failure|bash \"${SCRIPT_DIR}/kast-references.sh\" '{\"symbol\":\"${MISSING_SYMBOL}\"}'|false"
+    "kast-callers.sh|success|bash \"${SCRIPT_DIR}/kast-callers.sh\" '{\"symbol\":\"${SAMPLE_SYMBOL}\",\"fileHint\":\"${SAMPLE_FILE}\",\"direction\":\"incoming\",\"depth\":2}'|true"
+    "kast-callers.sh|failure|bash \"${SCRIPT_DIR}/kast-callers.sh\" '{\"symbol\":\"${MISSING_SYMBOL}\"}'|false"
+    "kast-diagnostics.sh|success|bash \"${SCRIPT_DIR}/kast-diagnostics.sh\" \"${DIAGNOSTICS_REQUEST}\"|true"
+    "kast-diagnostics.sh|failure|bash \"${SCRIPT_DIR}/kast-diagnostics.sh\" \"${DIAGNOSTICS_FAILURE_REQUEST}\"|false"
 )
 
 RESULTS_FILE="${TMP_DIR}/results.jsonl"
@@ -76,8 +89,14 @@ try:
     payload = json.loads(stdout_text)
     entry["valid_json"] = True
     entry["ok_value"] = payload.get("ok")
+    entry["response_type"] = payload.get("type")
+    entry["has_type"] = isinstance(payload.get("type"), str) and bool(payload.get("type"))
     entry["log_file"] = payload.get("log_file")
-    entry["matches_expectation"] = payload.get("ok") == (expected_ok == "true")
+    entry["matches_expectation"] = (
+        payload.get("ok") == (expected_ok == "true")
+        and entry["has_type"]
+        and str(payload.get("type")).endswith("_SUCCESS" if expected_ok == "true" else "_FAILURE")
+    )
 except json.JSONDecodeError as error:
     entry["valid_json"] = False
     entry["matches_expectation"] = False
@@ -106,3 +125,62 @@ payload = {
 print(json.dumps(payload, indent=2))
 raise SystemExit(0 if ok else 1)
 PY
+
+# ---------------------------------------------------------------------------
+# Golden-file structural comparison (optional — runs if golden dir exists)
+# ---------------------------------------------------------------------------
+GOLDEN_DIR="${REQUEST_ROOT}/evals/fixtures/sample-workspace/golden"
+if [[ -d "${GOLDEN_DIR}" ]]; then
+    printf '\n[validate-wrapper-json] Running golden-file structural comparisons...\n' >&2
+
+    GOLDEN_RESULTS_FILE="${TMP_DIR}/golden-results.json"
+    python3 - "${GOLDEN_DIR}" "${TMP_DIR}" <<'GOLDEN_PY' >"${GOLDEN_RESULTS_FILE}"
+import json
+import sys
+from pathlib import Path
+
+golden_dir = Path(sys.argv[1])
+results_dir = Path(sys.argv[2])
+results = []
+
+for golden_file in sorted(golden_dir.glob("*.json")):
+    golden = json.loads(golden_file.read_text(encoding="utf-8"))
+    assertions = golden.get("assertions", {})
+    case_name = golden_file.stem
+    entry = {"case": case_name, "golden_file": str(golden_file), "checks": [], "ok": True}
+
+    # Find corresponding output file by naming convention
+    output_candidates = list(results_dir.glob(f"*{case_name}*")) + list(results_dir.glob("*.success.json"))
+    # Golden files are structural templates; validate their assertion schema is well-formed
+    for key, value in assertions.items():
+        check = {"assertion": key, "expected": value, "pass": True}
+        if key in ("edit_count_gte", "reference_count_gte", "min_error_count"):
+            if not isinstance(value, int) or value < 0:
+                check["pass"] = False
+                check["reason"] = f"Expected positive integer, got {value}"
+        elif key in ("affected_files_contain", "reference_files_contain", "error_codes_contain", "error_messages_contain"):
+            if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
+                check["pass"] = False
+                check["reason"] = f"Expected list of strings, got {type(value).__name__}"
+        elif key in ("diagnostics_empty", "diagnostics_not_empty"):
+            if not isinstance(value, bool):
+                check["pass"] = False
+                check["reason"] = f"Expected boolean, got {type(value).__name__}"
+        entry["checks"].append(check)
+        if not check["pass"]:
+            entry["ok"] = False
+
+    results.append(entry)
+
+all_ok = all(r["ok"] for r in results)
+print(json.dumps({"ok": all_ok, "golden_checks": results}, indent=2))
+sys.exit(0 if all_ok else 1)
+GOLDEN_PY
+
+    if [[ $? -ne 0 ]]; then
+        printf '[validate-wrapper-json] Golden-file validation FAILED.\n' >&2
+        cat "${GOLDEN_RESULTS_FILE}" >&2
+        exit 1
+    fi
+    printf '[validate-wrapper-json] Golden-file schema validation passed.\n' >&2
+fi

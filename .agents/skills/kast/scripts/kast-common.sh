@@ -55,6 +55,122 @@ kast_run_json() {
     fi
 }
 
+kast_load_request() {
+    local output_file="$1"
+    shift
+
+    KAST_REQUEST_SOURCE=""
+    KAST_REQUEST_ERROR_MESSAGE=""
+    KAST_REQUEST_ERROR_JSON_FILE=""
+
+    local error_file="${TMP_DIR}/request-error.json"
+
+    if [[ "$#" -ne 1 ]]; then
+        KAST_REQUEST_ERROR_MESSAGE="Expected exactly one JSON input argument (literal JSON or path to a request file)."
+        python3 - "${error_file}" "$#" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+error_file = Path(sys.argv[1])
+argument_count = int(sys.argv[2])
+error_file.write_text(
+    json.dumps(
+        {
+            "code": "INVALID_REQUEST_ARGUMENT_COUNT",
+            "message": "Expected exactly one JSON input argument.",
+            "argumentCount": argument_count,
+        }
+    ),
+    encoding="utf-8",
+)
+PY
+        KAST_REQUEST_ERROR_JSON_FILE="${error_file}"
+        return 1
+    fi
+
+    local source
+    if ! source="$(
+        python3 - "$1" "${output_file}" "${error_file}" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+raw_input = sys.argv[1]
+output_file = Path(sys.argv[2])
+error_file = Path(sys.argv[3])
+
+def fail(code: str, message: str, **details: object) -> None:
+    payload = {"code": code, "message": message}
+    payload.update(details)
+    error_file.write_text(json.dumps(payload), encoding="utf-8")
+    raise SystemExit(1)
+
+trimmed = raw_input.lstrip()
+if trimmed.startswith("{"):
+    source = "literal"
+    request_text = raw_input
+else:
+    request_path = Path(raw_input)
+    if not request_path.is_file():
+        fail(
+            "REQUEST_FILE_NOT_FOUND",
+            "Request input must be a JSON object literal or a readable file path.",
+            requestInput=raw_input,
+        )
+    source = str(request_path.resolve())
+    try:
+        request_text = request_path.read_text(encoding="utf-8")
+    except OSError as error:
+        fail(
+            "REQUEST_FILE_READ_ERROR",
+            "Could not read request file.",
+            requestFile=str(request_path),
+            detail=str(error),
+        )
+
+try:
+    request = json.loads(request_text)
+except json.JSONDecodeError as error:
+    fail(
+        "INVALID_JSON_REQUEST",
+        "Request input is not valid JSON.",
+        detail=str(error),
+    )
+
+if not isinstance(request, dict):
+    fail(
+        "INVALID_JSON_REQUEST",
+        "Request input must be a JSON object.",
+        actualType=type(request).__name__,
+    )
+
+output_file.write_text(json.dumps(request), encoding="utf-8")
+print(source)
+PY
+    )"; then
+        KAST_REQUEST_ERROR_MESSAGE="Could not load JSON request input."
+        KAST_REQUEST_ERROR_JSON_FILE="${error_file}"
+        return 1
+    fi
+
+    KAST_REQUEST_SOURCE="${source}"
+}
+
+kast_default_workspace_root() {
+    if [[ -n "${KAST_WORKSPACE_ROOT:-}" ]]; then
+        printf '%s\n' "${KAST_WORKSPACE_ROOT}"
+        return 0
+    fi
+
+    if git_root="$(git -C "${PWD}" rev-parse --show-toplevel 2>/dev/null)"; then
+        printf '%s\n' "${git_root}"
+        return 0
+    fi
+
+    return 1
+}
+
 kast_build_search_regex() {
     python3 - "$1" "${2:-}" <<'PY'
 import re

@@ -1,0 +1,2100 @@
+openapi: 3.1.0
+info:
+  title: kast wrapper contracts
+  version: 1.1.0
+  description: >
+    Generated from the wrapper request and response serializers.
+servers:
+  - url: file://scripts
+    description: Local wrapper script directory
+paths:
+  "/kast-resolve":
+    post:
+      operationId: kastResolve
+      summary: Resolve a symbol by name
+      x-script: scripts/kast-resolve.sh
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              $ref: "#/components/schemas/KastResolveRequest"
+      responses:
+        "200":
+          description: Wrapper JSON response
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/KastResolveResponse"
+  "/kast-references":
+    post:
+      operationId: kastReferences
+      summary: Find references for a named symbol
+      x-script: scripts/kast-references.sh
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              $ref: "#/components/schemas/KastReferencesRequest"
+      responses:
+        "200":
+          description: Wrapper JSON response
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/KastReferencesResponse"
+  "/kast-callers":
+    post:
+      operationId: kastCallers
+      summary: Expand an incoming or outgoing call hierarchy
+      x-script: scripts/kast-callers.sh
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              $ref: "#/components/schemas/KastCallersRequest"
+      responses:
+        "200":
+          description: Wrapper JSON response
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/KastCallersResponse"
+  "/kast-diagnostics":
+    post:
+      operationId: kastDiagnostics
+      summary: Run diagnostics on Kotlin files
+      x-script: scripts/kast-diagnostics.sh
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              $ref: "#/components/schemas/KastDiagnosticsRequest"
+      responses:
+        "200":
+          description: Wrapper JSON response
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/KastDiagnosticsResponse"
+  "/kast-rename":
+    post:
+      operationId: kastRename
+      summary: Resolve or target a symbol and apply a rename
+      x-script: scripts/kast-rename.sh
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              $ref: "#/components/schemas/KastRenameRequest"
+      responses:
+        "200":
+          description: Wrapper JSON response
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/KastRenameResponse"
+  "/kast-scaffold":
+    post:
+      operationId: kastScaffold
+      summary: Gather structural generation context
+      x-script: scripts/kast-scaffold.sh
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              $ref: "#/components/schemas/KastScaffoldRequest"
+      responses:
+        "200":
+          description: Wrapper JSON response
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/KastScaffoldResponse"
+  "/kast-workspace-files":
+    post:
+      operationId: kastWorkspaceFiles
+      summary: List workspace modules and optional file paths
+      x-script: scripts/kast-workspace-files.sh
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              $ref: "#/components/schemas/KastWorkspaceFilesRequest"
+      responses:
+        "200":
+          description: Wrapper JSON response
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/KastWorkspaceFilesResponse"
+  "/kast-write-and-validate":
+    post:
+      operationId: kastWriteAndValidate
+      summary: Apply generated Kotlin code and validate the result
+      x-script: scripts/kast-write-and-validate.sh
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              $ref: "#/components/schemas/KastWriteAndValidateRequest"
+      responses:
+        "200":
+          description: Wrapper JSON response
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/KastWriteAndValidateResponse"
+components:
+  schemas:
+    ApiErrorResponse:
+      type: object
+      properties:
+        schemaVersion:
+          type: integer
+          format: int32
+        requestId:
+          type: string
+        code:
+          type: string
+        message:
+          type: string
+        retryable:
+          type: boolean
+        details:
+          type: object
+          additionalProperties:
+            type: string
+      additionalProperties: false
+      required:
+        - requestId
+        - code
+        - message
+        - retryable
+    KastResolveRequest:
+      type: object
+      properties:
+        workspaceRoot:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        symbol:
+          type: string
+        fileHint:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        kind:
+          anyOf:
+            -
+              $ref: "#/components/schemas/WrapperNamedSymbolKind"
+            -
+              type: null
+        containingType:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+      additionalProperties: false
+      required:
+        - symbol
+    WrapperNamedSymbolKind:
+      type: string
+      enum:
+        - class
+        - interface
+        - object
+        - function
+        - property
+    KastReferencesRequest:
+      type: object
+      properties:
+        workspaceRoot:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        symbol:
+          type: string
+        fileHint:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        kind:
+          anyOf:
+            -
+              $ref: "#/components/schemas/WrapperNamedSymbolKind"
+            -
+              type: null
+        containingType:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        includeDeclaration:
+          type: boolean
+      additionalProperties: false
+      required:
+        - symbol
+    KastCallersRequest:
+      type: object
+      properties:
+        workspaceRoot:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        symbol:
+          type: string
+        fileHint:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        kind:
+          anyOf:
+            -
+              $ref: "#/components/schemas/WrapperNamedSymbolKind"
+            -
+              type: null
+        containingType:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        direction:
+          $ref: "#/components/schemas/WrapperCallDirection"
+        depth:
+          type: integer
+          format: int32
+        maxTotalCalls:
+          anyOf:
+            -
+              type: integer
+              format: int32
+            -
+              type: null
+        maxChildrenPerNode:
+          anyOf:
+            -
+              type: integer
+              format: int32
+            -
+              type: null
+        timeoutMillis:
+          anyOf:
+            -
+              type: integer
+              format: int32
+            -
+              type: null
+      additionalProperties: false
+      required:
+        - symbol
+    WrapperCallDirection:
+      type: string
+      enum:
+        - incoming
+        - outgoing
+    KastDiagnosticsRequest:
+      type: object
+      properties:
+        workspaceRoot:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        filePaths:
+          type: array
+          items:
+            type: string
+      additionalProperties: false
+      required:
+        - filePaths
+    KastRenameBySymbolRequest:
+      type: object
+      properties:
+        workspaceRoot:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        symbol:
+          type: string
+        newName:
+          type: string
+        fileHint:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        kind:
+          anyOf:
+            -
+              $ref: "#/components/schemas/WrapperNamedSymbolKind"
+            -
+              type: null
+        containingType:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        type:
+          type: string
+          const: RENAME_BY_SYMBOL_REQUEST
+      additionalProperties: false
+      required:
+        - symbol
+        - newName
+        - type
+    KastRenameByOffsetRequest:
+      type: object
+      properties:
+        workspaceRoot:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        filePath:
+          type: string
+        offset:
+          type: integer
+          format: int32
+        newName:
+          type: string
+        type:
+          type: string
+          const: RENAME_BY_OFFSET_REQUEST
+      additionalProperties: false
+      required:
+        - filePath
+        - offset
+        - newName
+        - type
+    KastRenameRequest:
+      oneOf:
+        -
+          $ref: "#/components/schemas/KastRenameBySymbolRequest"
+        -
+          $ref: "#/components/schemas/KastRenameByOffsetRequest"
+      discriminator:
+        propertyName: type
+        mapping:
+          RENAME_BY_SYMBOL_REQUEST: "#/components/schemas/KastRenameBySymbolRequest"
+          RENAME_BY_OFFSET_REQUEST: "#/components/schemas/KastRenameByOffsetRequest"
+    KastScaffoldRequest:
+      type: object
+      properties:
+        workspaceRoot:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        targetFile:
+          type: string
+        targetSymbol:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        mode:
+          $ref: "#/components/schemas/WrapperScaffoldMode"
+        kind:
+          anyOf:
+            -
+              $ref: "#/components/schemas/WrapperNamedSymbolKind"
+            -
+              type: null
+      additionalProperties: false
+      required:
+        - targetFile
+    WrapperScaffoldMode:
+      type: string
+      enum:
+        - implement
+        - replace
+        - consolidate
+        - extract
+    KastWorkspaceFilesRequest:
+      type: object
+      properties:
+        workspaceRoot:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        moduleName:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        includeFiles:
+          type: boolean
+      additionalProperties: false
+    KastWriteAndValidateCreateFileRequest:
+      type: object
+      properties:
+        workspaceRoot:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        filePath:
+          type: string
+        content:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        contentFile:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        type:
+          type: string
+          const: CREATE_FILE_REQUEST
+      additionalProperties: false
+      required:
+        - filePath
+        - type
+    KastWriteAndValidateInsertAtOffsetRequest:
+      type: object
+      properties:
+        workspaceRoot:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        filePath:
+          type: string
+        offset:
+          type: integer
+          format: int32
+        content:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        contentFile:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        type:
+          type: string
+          const: INSERT_AT_OFFSET_REQUEST
+      additionalProperties: false
+      required:
+        - filePath
+        - offset
+        - type
+    KastWriteAndValidateReplaceRangeRequest:
+      type: object
+      properties:
+        workspaceRoot:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        filePath:
+          type: string
+        startOffset:
+          type: integer
+          format: int32
+        endOffset:
+          type: integer
+          format: int32
+        content:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        contentFile:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        type:
+          type: string
+          const: REPLACE_RANGE_REQUEST
+      additionalProperties: false
+      required:
+        - filePath
+        - startOffset
+        - endOffset
+        - type
+    KastWriteAndValidateRequest:
+      oneOf:
+        -
+          $ref: "#/components/schemas/KastWriteAndValidateCreateFileRequest"
+        -
+          $ref: "#/components/schemas/KastWriteAndValidateInsertAtOffsetRequest"
+        -
+          $ref: "#/components/schemas/KastWriteAndValidateReplaceRangeRequest"
+      discriminator:
+        propertyName: type
+        mapping:
+          CREATE_FILE_REQUEST: "#/components/schemas/KastWriteAndValidateCreateFileRequest"
+          INSERT_AT_OFFSET_REQUEST: "#/components/schemas/KastWriteAndValidateInsertAtOffsetRequest"
+          REPLACE_RANGE_REQUEST: "#/components/schemas/KastWriteAndValidateReplaceRangeRequest"
+    KastRenameBySymbolQuery:
+      type: object
+      properties:
+        workspace_root:
+          type: string
+        symbol:
+          type: string
+        new_name:
+          type: string
+        file_hint:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        kind:
+          anyOf:
+            -
+              $ref: "#/components/schemas/WrapperNamedSymbolKind"
+            -
+              type: null
+        containing_type:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        file_path:
+          type: string
+        offset:
+          type: integer
+          format: int32
+        type:
+          type: string
+          const: RENAME_BY_SYMBOL_REQUEST
+      additionalProperties: false
+      required:
+        - workspace_root
+        - symbol
+        - new_name
+        - file_path
+        - offset
+        - type
+    KastRenameByOffsetQuery:
+      type: object
+      properties:
+        workspace_root:
+          type: string
+        file_path:
+          type: string
+        offset:
+          type: integer
+          format: int32
+        new_name:
+          type: string
+        type:
+          type: string
+          const: RENAME_BY_OFFSET_REQUEST
+      additionalProperties: false
+      required:
+        - workspace_root
+        - file_path
+        - offset
+        - new_name
+        - type
+    KastWriteAndValidateCreateFileQuery:
+      type: object
+      properties:
+        workspace_root:
+          type: string
+        file_path:
+          type: string
+        type:
+          type: string
+          const: CREATE_FILE_REQUEST
+      additionalProperties: false
+      required:
+        - workspace_root
+        - file_path
+        - type
+    KastWriteAndValidateInsertAtOffsetQuery:
+      type: object
+      properties:
+        workspace_root:
+          type: string
+        file_path:
+          type: string
+        offset:
+          type: integer
+          format: int32
+        type:
+          type: string
+          const: INSERT_AT_OFFSET_REQUEST
+      additionalProperties: false
+      required:
+        - workspace_root
+        - file_path
+        - offset
+        - type
+    KastWriteAndValidateReplaceRangeQuery:
+      type: object
+      properties:
+        workspace_root:
+          type: string
+        file_path:
+          type: string
+        start_offset:
+          type: integer
+          format: int32
+        end_offset:
+          type: integer
+          format: int32
+        type:
+          type: string
+          const: REPLACE_RANGE_REQUEST
+      additionalProperties: false
+      required:
+        - workspace_root
+        - file_path
+        - start_offset
+        - end_offset
+        - type
+    KastResolveSuccessResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        query:
+          $ref: "#/components/schemas/KastResolveQuery"
+        symbol:
+          $ref: "#/components/schemas/Symbol"
+        file_path:
+          type: string
+        offset:
+          type: integer
+          format: int32
+        candidate:
+          $ref: "#/components/schemas/KastCandidate"
+        log_file:
+          type: string
+        type:
+          type: string
+          const: RESOLVE_SUCCESS
+      additionalProperties: false
+      required:
+        - query
+        - symbol
+        - file_path
+        - offset
+        - candidate
+        - log_file
+        - type
+    KastResolveQuery:
+      type: object
+      properties:
+        workspace_root:
+          type: string
+        symbol:
+          type: string
+        file_hint:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        kind:
+          anyOf:
+            -
+              $ref: "#/components/schemas/WrapperNamedSymbolKind"
+            -
+              type: null
+        containing_type:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+      additionalProperties: false
+      required:
+        - workspace_root
+        - symbol
+    Symbol:
+      type: object
+      properties:
+        fqName:
+          type: string
+        kind:
+          $ref: "#/components/schemas/SymbolKind"
+        location:
+          $ref: "#/components/schemas/Location"
+        type:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        containingDeclaration:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        supertypes:
+          anyOf:
+            -
+              type: array
+              items:
+                type: string
+            -
+              type: null
+        visibility:
+          anyOf:
+            -
+              $ref: "#/components/schemas/SymbolVisibility"
+            -
+              type: null
+        declarationScope:
+          anyOf:
+            -
+              $ref: "#/components/schemas/DeclarationScope"
+            -
+              type: null
+      additionalProperties: false
+      required:
+        - fqName
+        - kind
+        - location
+    SymbolKind:
+      type: string
+      enum:
+        - CLASS
+        - INTERFACE
+        - OBJECT
+        - FUNCTION
+        - PROPERTY
+        - PARAMETER
+        - UNKNOWN
+    Location:
+      type: object
+      properties:
+        filePath:
+          type: string
+        startOffset:
+          type: integer
+          format: int32
+        endOffset:
+          type: integer
+          format: int32
+        startLine:
+          type: integer
+          format: int32
+        startColumn:
+          type: integer
+          format: int32
+        preview:
+          type: string
+      additionalProperties: false
+      required:
+        - filePath
+        - startOffset
+        - endOffset
+        - startLine
+        - startColumn
+        - preview
+    SymbolVisibility:
+      type: string
+      enum:
+        - PUBLIC
+        - INTERNAL
+        - PROTECTED
+        - PRIVATE
+        - LOCAL
+        - UNKNOWN
+    DeclarationScope:
+      type: object
+      properties:
+        startOffset:
+          type: integer
+          format: int32
+        endOffset:
+          type: integer
+          format: int32
+        startLine:
+          type: integer
+          format: int32
+        endLine:
+          type: integer
+          format: int32
+        sourceText:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+      additionalProperties: false
+      required:
+        - startOffset
+        - endOffset
+        - startLine
+        - endLine
+    KastCandidate:
+      type: object
+      properties:
+        line:
+          type: integer
+          format: int32
+        column:
+          type: integer
+          format: int32
+        context:
+          type: string
+      additionalProperties: false
+      required:
+        - line
+        - column
+        - context
+    KastResolveFailureResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        stage:
+          type: string
+        message:
+          type: string
+        query:
+          $ref: "#/components/schemas/KastResolveQuery"
+        log_file:
+          type: string
+        error:
+          anyOf:
+            -
+              $ref: "#/components/schemas/ApiErrorResponse"
+            -
+              type: null
+        error_text:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        type:
+          type: string
+          const: RESOLVE_FAILURE
+      additionalProperties: false
+      required:
+        - stage
+        - message
+        - query
+        - log_file
+        - type
+    KastResolveResponse:
+      oneOf:
+        -
+          $ref: "#/components/schemas/KastResolveSuccessResponse"
+        -
+          $ref: "#/components/schemas/KastResolveFailureResponse"
+      discriminator:
+        propertyName: type
+        mapping:
+          RESOLVE_SUCCESS: "#/components/schemas/KastResolveSuccessResponse"
+          RESOLVE_FAILURE: "#/components/schemas/KastResolveFailureResponse"
+    KastReferencesSuccessResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        query:
+          $ref: "#/components/schemas/KastReferencesQuery"
+        symbol:
+          $ref: "#/components/schemas/Symbol"
+        file_path:
+          type: string
+        offset:
+          type: integer
+          format: int32
+        references:
+          type: array
+          items:
+            $ref: "#/components/schemas/Location"
+        search_scope:
+          anyOf:
+            -
+              $ref: "#/components/schemas/SearchScope"
+            -
+              type: null
+        declaration:
+          anyOf:
+            -
+              $ref: "#/components/schemas/Symbol"
+            -
+              type: null
+        log_file:
+          type: string
+        type:
+          type: string
+          const: REFERENCES_SUCCESS
+      additionalProperties: false
+      required:
+        - query
+        - symbol
+        - file_path
+        - offset
+        - references
+        - log_file
+        - type
+    KastReferencesQuery:
+      type: object
+      properties:
+        workspace_root:
+          type: string
+        symbol:
+          type: string
+        file_hint:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        kind:
+          anyOf:
+            -
+              $ref: "#/components/schemas/WrapperNamedSymbolKind"
+            -
+              type: null
+        containing_type:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        include_declaration:
+          type: boolean
+      additionalProperties: false
+      required:
+        - workspace_root
+        - symbol
+    SearchScope:
+      type: object
+      properties:
+        visibility:
+          $ref: "#/components/schemas/SymbolVisibility"
+        scope:
+          $ref: "#/components/schemas/SearchScopeKind"
+        exhaustive:
+          type: boolean
+        candidateFileCount:
+          type: integer
+          format: int32
+        searchedFileCount:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - visibility
+        - scope
+        - exhaustive
+        - candidateFileCount
+        - searchedFileCount
+    SearchScopeKind:
+      type: string
+      enum:
+        - FILE
+        - MODULE
+        - DEPENDENT_MODULES
+    KastReferencesFailureResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        stage:
+          type: string
+        message:
+          type: string
+        query:
+          $ref: "#/components/schemas/KastReferencesQuery"
+        log_file:
+          type: string
+        error:
+          anyOf:
+            -
+              $ref: "#/components/schemas/ApiErrorResponse"
+            -
+              type: null
+        error_text:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        type:
+          type: string
+          const: REFERENCES_FAILURE
+      additionalProperties: false
+      required:
+        - stage
+        - message
+        - query
+        - log_file
+        - type
+    KastReferencesResponse:
+      oneOf:
+        -
+          $ref: "#/components/schemas/KastReferencesSuccessResponse"
+        -
+          $ref: "#/components/schemas/KastReferencesFailureResponse"
+      discriminator:
+        propertyName: type
+        mapping:
+          REFERENCES_SUCCESS: "#/components/schemas/KastReferencesSuccessResponse"
+          REFERENCES_FAILURE: "#/components/schemas/KastReferencesFailureResponse"
+    KastCallersSuccessResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        query:
+          $ref: "#/components/schemas/KastCallersQuery"
+        symbol:
+          $ref: "#/components/schemas/Symbol"
+        file_path:
+          type: string
+        offset:
+          type: integer
+          format: int32
+        root:
+          $ref: "#/components/schemas/CallNode"
+        stats:
+          $ref: "#/components/schemas/CallHierarchyStats"
+        log_file:
+          type: string
+        type:
+          type: string
+          const: CALLERS_SUCCESS
+      additionalProperties: false
+      required:
+        - query
+        - symbol
+        - file_path
+        - offset
+        - root
+        - stats
+        - log_file
+        - type
+    KastCallersQuery:
+      type: object
+      properties:
+        workspace_root:
+          type: string
+        symbol:
+          type: string
+        file_hint:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        kind:
+          anyOf:
+            -
+              $ref: "#/components/schemas/WrapperNamedSymbolKind"
+            -
+              type: null
+        containing_type:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        direction:
+          $ref: "#/components/schemas/WrapperCallDirection"
+        depth:
+          type: integer
+          format: int32
+        max_total_calls:
+          anyOf:
+            -
+              type: integer
+              format: int32
+            -
+              type: null
+        max_children_per_node:
+          anyOf:
+            -
+              type: integer
+              format: int32
+            -
+              type: null
+        timeout_millis:
+          anyOf:
+            -
+              type: integer
+              format: int32
+            -
+              type: null
+      additionalProperties: false
+      required:
+        - workspace_root
+        - symbol
+    CallNode:
+      type: object
+      properties:
+        symbol:
+          $ref: "#/components/schemas/Symbol"
+        callSite:
+          anyOf:
+            -
+              $ref: "#/components/schemas/Location"
+            -
+              type: null
+        truncation:
+          anyOf:
+            -
+              $ref: "#/components/schemas/CallNodeTruncation"
+            -
+              type: null
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/CallNode"
+      additionalProperties: false
+      required:
+        - symbol
+        - children
+    CallNodeTruncation:
+      type: object
+      properties:
+        reason:
+          $ref: "#/components/schemas/CallNodeTruncationReason"
+        details:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+      additionalProperties: false
+      required:
+        - reason
+    CallNodeTruncationReason:
+      type: string
+      enum:
+        - CYCLE
+        - MAX_TOTAL_CALLS
+        - MAX_CHILDREN_PER_NODE
+        - TIMEOUT
+    CallHierarchyStats:
+      type: object
+      properties:
+        totalNodes:
+          type: integer
+          format: int32
+        totalEdges:
+          type: integer
+          format: int32
+        truncatedNodes:
+          type: integer
+          format: int32
+        maxDepthReached:
+          type: integer
+          format: int32
+        timeoutReached:
+          type: boolean
+        maxTotalCallsReached:
+          type: boolean
+        maxChildrenPerNodeReached:
+          type: boolean
+        filesVisited:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - totalNodes
+        - totalEdges
+        - truncatedNodes
+        - maxDepthReached
+        - timeoutReached
+        - maxTotalCallsReached
+        - maxChildrenPerNodeReached
+        - filesVisited
+    KastCallersFailureResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        stage:
+          type: string
+        message:
+          type: string
+        query:
+          $ref: "#/components/schemas/KastCallersQuery"
+        log_file:
+          type: string
+        error:
+          anyOf:
+            -
+              $ref: "#/components/schemas/ApiErrorResponse"
+            -
+              type: null
+        error_text:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        type:
+          type: string
+          const: CALLERS_FAILURE
+      additionalProperties: false
+      required:
+        - stage
+        - message
+        - query
+        - log_file
+        - type
+    KastCallersResponse:
+      oneOf:
+        -
+          $ref: "#/components/schemas/KastCallersSuccessResponse"
+        -
+          $ref: "#/components/schemas/KastCallersFailureResponse"
+      discriminator:
+        propertyName: type
+        mapping:
+          CALLERS_SUCCESS: "#/components/schemas/KastCallersSuccessResponse"
+          CALLERS_FAILURE: "#/components/schemas/KastCallersFailureResponse"
+    KastDiagnosticsSuccessResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        query:
+          $ref: "#/components/schemas/KastDiagnosticsQuery"
+        clean:
+          type: boolean
+        error_count:
+          type: integer
+          format: int32
+        warning_count:
+          type: integer
+          format: int32
+        info_count:
+          type: integer
+          format: int32
+        diagnostics:
+          type: array
+          items:
+            $ref: "#/components/schemas/Diagnostic"
+        log_file:
+          type: string
+        type:
+          type: string
+          const: DIAGNOSTICS_SUCCESS
+      additionalProperties: false
+      required:
+        - query
+        - clean
+        - error_count
+        - warning_count
+        - info_count
+        - diagnostics
+        - log_file
+        - type
+    KastDiagnosticsQuery:
+      type: object
+      properties:
+        workspace_root:
+          type: string
+        file_paths:
+          type: array
+          items:
+            type: string
+      additionalProperties: false
+      required:
+        - workspace_root
+        - file_paths
+    Diagnostic:
+      type: object
+      properties:
+        location:
+          $ref: "#/components/schemas/Location"
+        severity:
+          $ref: "#/components/schemas/DiagnosticSeverity"
+        message:
+          type: string
+        code:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+      additionalProperties: false
+      required:
+        - location
+        - severity
+        - message
+    DiagnosticSeverity:
+      type: string
+      enum:
+        - ERROR
+        - WARNING
+        - INFO
+    KastDiagnosticsFailureResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        stage:
+          type: string
+        message:
+          type: string
+        query:
+          $ref: "#/components/schemas/KastDiagnosticsQuery"
+        log_file:
+          type: string
+        error:
+          anyOf:
+            -
+              $ref: "#/components/schemas/ApiErrorResponse"
+            -
+              type: null
+        error_text:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        type:
+          type: string
+          const: DIAGNOSTICS_FAILURE
+      additionalProperties: false
+      required:
+        - stage
+        - message
+        - query
+        - log_file
+        - type
+    KastDiagnosticsResponse:
+      oneOf:
+        -
+          $ref: "#/components/schemas/KastDiagnosticsSuccessResponse"
+        -
+          $ref: "#/components/schemas/KastDiagnosticsFailureResponse"
+      discriminator:
+        propertyName: type
+        mapping:
+          DIAGNOSTICS_SUCCESS: "#/components/schemas/KastDiagnosticsSuccessResponse"
+          DIAGNOSTICS_FAILURE: "#/components/schemas/KastDiagnosticsFailureResponse"
+    KastRenameSuccessResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        query:
+          $ref: "#/components/schemas/KastRenameQuery"
+        edit_count:
+          type: integer
+          format: int32
+        affected_files:
+          type: array
+          items:
+            type: string
+        apply_result:
+          $ref: "#/components/schemas/ApplyEditsResult"
+        diagnostics:
+          $ref: "#/components/schemas/KastDiagnosticsSummary"
+        log_file:
+          type: string
+        type:
+          type: string
+          const: RENAME_SUCCESS
+      additionalProperties: false
+      required:
+        - ok
+        - query
+        - edit_count
+        - affected_files
+        - apply_result
+        - diagnostics
+        - log_file
+        - type
+    KastRenameQuery:
+      oneOf:
+        -
+          $ref: "#/components/schemas/KastRenameBySymbolQuery"
+        -
+          $ref: "#/components/schemas/KastRenameByOffsetQuery"
+      discriminator:
+        propertyName: type
+        mapping:
+          RENAME_BY_SYMBOL_REQUEST: "#/components/schemas/KastRenameBySymbolQuery"
+          RENAME_BY_OFFSET_REQUEST: "#/components/schemas/KastRenameByOffsetQuery"
+    ApplyEditsResult:
+      type: object
+      properties:
+        applied:
+          type: array
+          items:
+            $ref: "#/components/schemas/TextEdit"
+        affectedFiles:
+          type: array
+          items:
+            type: string
+        createdFiles:
+          type: array
+          items:
+            type: string
+        deletedFiles:
+          type: array
+          items:
+            type: string
+        schemaVersion:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - applied
+        - affectedFiles
+    TextEdit:
+      type: object
+      properties:
+        filePath:
+          type: string
+        startOffset:
+          type: integer
+          format: int32
+        endOffset:
+          type: integer
+          format: int32
+        newText:
+          type: string
+      additionalProperties: false
+      required:
+        - filePath
+        - startOffset
+        - endOffset
+        - newText
+    KastDiagnosticsSummary:
+      type: object
+      properties:
+        clean:
+          type: boolean
+        error_count:
+          type: integer
+          format: int32
+        warning_count:
+          type: integer
+          format: int32
+        errors:
+          type: array
+          items:
+            $ref: "#/components/schemas/Diagnostic"
+      additionalProperties: false
+      required:
+        - clean
+        - error_count
+        - warning_count
+    KastRenameFailureResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        stage:
+          type: string
+        message:
+          type: string
+        query:
+          $ref: "#/components/schemas/KastRenameFailureQuery"
+        log_file:
+          type: string
+        error:
+          anyOf:
+            -
+              $ref: "#/components/schemas/ApiErrorResponse"
+            -
+              type: null
+        error_text:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        type:
+          type: string
+          const: RENAME_FAILURE
+      additionalProperties: false
+      required:
+        - stage
+        - message
+        - query
+        - log_file
+        - type
+    KastRenameFailureQuery:
+      type: object
+      properties:
+        type:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        workspace_root:
+          type: string
+        symbol:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        file_hint:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        kind:
+          anyOf:
+            -
+              $ref: "#/components/schemas/WrapperNamedSymbolKind"
+            -
+              type: null
+        containing_type:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        file_path:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        offset:
+          anyOf:
+            -
+              type: integer
+              format: int32
+            -
+              type: null
+        new_name:
+          type: string
+      additionalProperties: false
+      required:
+        - workspace_root
+        - new_name
+    KastRenameResponse:
+      oneOf:
+        -
+          $ref: "#/components/schemas/KastRenameSuccessResponse"
+        -
+          $ref: "#/components/schemas/KastRenameFailureResponse"
+      discriminator:
+        propertyName: type
+        mapping:
+          RENAME_SUCCESS: "#/components/schemas/KastRenameSuccessResponse"
+          RENAME_FAILURE: "#/components/schemas/KastRenameFailureResponse"
+    KastScaffoldSuccessResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        query:
+          $ref: "#/components/schemas/KastScaffoldQuery"
+        outline:
+          type: array
+          items:
+            $ref: "#/components/schemas/OutlineSymbol"
+        file_content:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        symbol:
+          anyOf:
+            -
+              $ref: "#/components/schemas/Symbol"
+            -
+              type: null
+        references:
+          anyOf:
+            -
+              $ref: "#/components/schemas/KastScaffoldReferences"
+            -
+              type: null
+        type_hierarchy:
+          anyOf:
+            -
+              $ref: "#/components/schemas/KastScaffoldTypeHierarchy"
+            -
+              type: null
+        insertion_point:
+          anyOf:
+            -
+              $ref: "#/components/schemas/SemanticInsertionResult"
+            -
+              type: null
+        log_file:
+          type: string
+        type:
+          type: string
+          const: SCAFFOLD_SUCCESS
+      additionalProperties: false
+      required:
+        - query
+        - outline
+        - log_file
+        - type
+    KastScaffoldQuery:
+      type: object
+      properties:
+        workspace_root:
+          type: string
+        target_file:
+          type: string
+        target_symbol:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        mode:
+          $ref: "#/components/schemas/WrapperScaffoldMode"
+        kind:
+          anyOf:
+            -
+              $ref: "#/components/schemas/WrapperNamedSymbolKind"
+            -
+              type: null
+      additionalProperties: false
+      required:
+        - workspace_root
+        - target_file
+    OutlineSymbol:
+      type: object
+      properties:
+        symbol:
+          $ref: "#/components/schemas/Symbol"
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/OutlineSymbol"
+      additionalProperties: false
+      required:
+        - symbol
+    KastScaffoldReferences:
+      type: object
+      properties:
+        locations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Location"
+        count:
+          type: integer
+          format: int32
+        search_scope:
+          anyOf:
+            -
+              $ref: "#/components/schemas/SearchScope"
+            -
+              type: null
+        declaration:
+          anyOf:
+            -
+              $ref: "#/components/schemas/Symbol"
+            -
+              type: null
+      additionalProperties: false
+      required:
+        - locations
+        - count
+    KastScaffoldTypeHierarchy:
+      type: object
+      properties:
+        root:
+          $ref: "#/components/schemas/TypeHierarchyNode"
+        stats:
+          $ref: "#/components/schemas/TypeHierarchyStats"
+      additionalProperties: false
+      required:
+        - root
+        - stats
+    TypeHierarchyNode:
+      type: object
+      properties:
+        symbol:
+          $ref: "#/components/schemas/Symbol"
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/TypeHierarchyNode"
+        truncation:
+          anyOf:
+            -
+              $ref: "#/components/schemas/TypeHierarchyTruncation"
+            -
+              type: null
+      additionalProperties: false
+      required:
+        - symbol
+        - children
+    TypeHierarchyTruncation:
+      type: object
+      properties:
+        reason:
+          $ref: "#/components/schemas/TypeHierarchyTruncationReason"
+        details:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+      additionalProperties: false
+      required:
+        - reason
+    TypeHierarchyTruncationReason:
+      type: string
+      enum:
+        - CYCLE
+        - MAX_RESULTS
+    TypeHierarchyStats:
+      type: object
+      properties:
+        totalNodes:
+          type: integer
+          format: int32
+        maxDepthReached:
+          type: integer
+          format: int32
+        truncated:
+          type: boolean
+      additionalProperties: false
+      required:
+        - totalNodes
+        - maxDepthReached
+        - truncated
+    SemanticInsertionResult:
+      type: object
+      properties:
+        insertionOffset:
+          type: integer
+          format: int32
+        filePath:
+          type: string
+        schemaVersion:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - insertionOffset
+        - filePath
+    KastScaffoldFailureResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        stage:
+          type: string
+        message:
+          type: string
+        query:
+          $ref: "#/components/schemas/KastScaffoldQuery"
+        log_file:
+          type: string
+        error:
+          anyOf:
+            -
+              $ref: "#/components/schemas/ApiErrorResponse"
+            -
+              type: null
+        error_text:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        type:
+          type: string
+          const: SCAFFOLD_FAILURE
+      additionalProperties: false
+      required:
+        - stage
+        - message
+        - query
+        - log_file
+        - type
+    KastScaffoldResponse:
+      oneOf:
+        -
+          $ref: "#/components/schemas/KastScaffoldSuccessResponse"
+        -
+          $ref: "#/components/schemas/KastScaffoldFailureResponse"
+      discriminator:
+        propertyName: type
+        mapping:
+          SCAFFOLD_SUCCESS: "#/components/schemas/KastScaffoldSuccessResponse"
+          SCAFFOLD_FAILURE: "#/components/schemas/KastScaffoldFailureResponse"
+    KastWorkspaceFilesSuccessResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        query:
+          $ref: "#/components/schemas/KastWorkspaceFilesQuery"
+        modules:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkspaceModule"
+        schema_version:
+          type: integer
+          format: int32
+        log_file:
+          type: string
+        type:
+          type: string
+          const: WORKSPACE_FILES_SUCCESS
+      additionalProperties: false
+      required:
+        - query
+        - modules
+        - schema_version
+        - log_file
+        - type
+    KastWorkspaceFilesQuery:
+      type: object
+      properties:
+        workspace_root:
+          type: string
+        module_name:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        include_files:
+          type: boolean
+      additionalProperties: false
+      required:
+        - workspace_root
+    WorkspaceModule:
+      type: object
+      properties:
+        name:
+          type: string
+        sourceRoots:
+          type: array
+          items:
+            type: string
+        dependencyModuleNames:
+          type: array
+          items:
+            type: string
+        files:
+          type: array
+          items:
+            type: string
+        fileCount:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - name
+        - sourceRoots
+        - dependencyModuleNames
+        - fileCount
+    KastWorkspaceFilesFailureResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        stage:
+          type: string
+        message:
+          type: string
+        query:
+          $ref: "#/components/schemas/KastWorkspaceFilesQuery"
+        log_file:
+          type: string
+        error:
+          anyOf:
+            -
+              $ref: "#/components/schemas/ApiErrorResponse"
+            -
+              type: null
+        error_text:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        type:
+          type: string
+          const: WORKSPACE_FILES_FAILURE
+      additionalProperties: false
+      required:
+        - stage
+        - message
+        - query
+        - log_file
+        - type
+    KastWorkspaceFilesResponse:
+      oneOf:
+        -
+          $ref: "#/components/schemas/KastWorkspaceFilesSuccessResponse"
+        -
+          $ref: "#/components/schemas/KastWorkspaceFilesFailureResponse"
+      discriminator:
+        propertyName: type
+        mapping:
+          WORKSPACE_FILES_SUCCESS: "#/components/schemas/KastWorkspaceFilesSuccessResponse"
+          WORKSPACE_FILES_FAILURE: "#/components/schemas/KastWorkspaceFilesFailureResponse"
+    KastWriteAndValidateSuccessResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        query:
+          $ref: "#/components/schemas/KastWriteAndValidateQuery"
+        applied_edits:
+          type: integer
+          format: int32
+        import_changes:
+          type: integer
+          format: int32
+        diagnostics:
+          $ref: "#/components/schemas/KastDiagnosticsSummary"
+        message:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        log_file:
+          type: string
+        type:
+          type: string
+          const: WRITE_AND_VALIDATE_SUCCESS
+      additionalProperties: false
+      required:
+        - ok
+        - query
+        - applied_edits
+        - import_changes
+        - diagnostics
+        - log_file
+        - type
+    KastWriteAndValidateQuery:
+      oneOf:
+        -
+          $ref: "#/components/schemas/KastWriteAndValidateCreateFileQuery"
+        -
+          $ref: "#/components/schemas/KastWriteAndValidateInsertAtOffsetQuery"
+        -
+          $ref: "#/components/schemas/KastWriteAndValidateReplaceRangeQuery"
+      discriminator:
+        propertyName: type
+        mapping:
+          CREATE_FILE_REQUEST: "#/components/schemas/KastWriteAndValidateCreateFileQuery"
+          INSERT_AT_OFFSET_REQUEST: "#/components/schemas/KastWriteAndValidateInsertAtOffsetQuery"
+          REPLACE_RANGE_REQUEST: "#/components/schemas/KastWriteAndValidateReplaceRangeQuery"
+    KastWriteAndValidateFailureResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        stage:
+          type: string
+        message:
+          type: string
+        query:
+          $ref: "#/components/schemas/KastWriteAndValidateFailureQuery"
+        log_file:
+          type: string
+        error:
+          anyOf:
+            -
+              $ref: "#/components/schemas/ApiErrorResponse"
+            -
+              type: null
+        error_text:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        type:
+          type: string
+          const: WRITE_AND_VALIDATE_FAILURE
+      additionalProperties: false
+      required:
+        - stage
+        - message
+        - query
+        - log_file
+        - type
+    KastWriteAndValidateFailureQuery:
+      type: object
+      properties:
+        type:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        workspace_root:
+          type: string
+        file_path:
+          type: string
+      additionalProperties: false
+      required:
+        - workspace_root
+        - file_path
+    KastWriteAndValidateResponse:
+      oneOf:
+        -
+          $ref: "#/components/schemas/KastWriteAndValidateSuccessResponse"
+        -
+          $ref: "#/components/schemas/KastWriteAndValidateFailureResponse"
+      discriminator:
+        propertyName: type
+        mapping:
+          WRITE_AND_VALIDATE_SUCCESS: "#/components/schemas/KastWriteAndValidateSuccessResponse"
+          WRITE_AND_VALIDATE_FAILURE: "#/components/schemas/KastWriteAndValidateFailureResponse"

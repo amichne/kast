@@ -130,6 +130,99 @@ def assert_hook_fired(transcript: List[Dict[str, Any]], hook_name: str) -> Asser
     return _fail("hook_fired", hook_name, "not fired", f"Hook '{hook_name}' was never fired")
 
 
+def _parse_tool_output(transcript: List[Dict[str, Any]], tool_name: str) -> Dict[str, Any] | None:
+    """Find the last invocation of *tool_name* and parse its ``output`` as JSON."""
+    for entry in reversed(transcript):
+        if entry.get("tool") == tool_name:
+            raw = entry.get("output", "")
+            if isinstance(raw, dict):
+                return raw
+            try:
+                return json.loads(raw)
+            except (json.JSONDecodeError, TypeError):
+                return None
+    return None
+
+
+def assert_output_field_equals(
+    transcript: List[Dict[str, Any]], tool_name: str, field: str, expected: Any,
+) -> AssertionResult:
+    """Assert that *field* in the tool's JSON output equals *expected*."""
+    parsed = _parse_tool_output(transcript, tool_name)
+    if parsed is None:
+        return _fail("output_field_equals", f"{tool_name}.{field}=={expected}",
+                      "no parseable output", f"No JSON output found for '{tool_name}'")
+    actual = parsed.get(field)
+    # Coerce expected to match type of actual for comparison
+    if isinstance(actual, bool) and isinstance(expected, str):
+        expected = expected.lower() in ("true", "1", "yes")
+    elif isinstance(actual, int) and isinstance(expected, str):
+        try:
+            expected = int(expected)
+        except ValueError:
+            pass
+    if actual == expected:
+        return _pass("output_field_equals", f"{tool_name}.{field}=={expected}",
+                      str(actual), f"Field '{field}' equals {expected}")
+    return _fail("output_field_equals", f"{tool_name}.{field}=={expected}",
+                  str(actual), f"Field '{field}' is {actual}, expected {expected}")
+
+
+def assert_output_field_gte(
+    transcript: List[Dict[str, Any]], tool_name: str, field: str, threshold: Any,
+) -> AssertionResult:
+    """Assert that *field* in the tool's JSON output is >= *threshold*."""
+    parsed = _parse_tool_output(transcript, tool_name)
+    if parsed is None:
+        return _fail("output_field_gte", f"{tool_name}.{field}>={threshold}",
+                      "no parseable output", f"No JSON output found for '{tool_name}'")
+    actual = parsed.get(field)
+    try:
+        actual_num = float(actual)
+        threshold_num = float(threshold)
+    except (TypeError, ValueError):
+        return _fail("output_field_gte", f"{tool_name}.{field}>={threshold}",
+                      str(actual), f"Cannot compare '{field}'={actual} with threshold {threshold}")
+    if actual_num >= threshold_num:
+        return _pass("output_field_gte", f"{tool_name}.{field}>={threshold}",
+                      str(actual), f"Field '{field}' is {actual} (>= {threshold})")
+    return _fail("output_field_gte", f"{tool_name}.{field}>={threshold}",
+                  str(actual), f"Field '{field}' is {actual}, expected >= {threshold}")
+
+
+def assert_output_field_absent(
+    transcript: List[Dict[str, Any]], tool_name: str, field: str,
+) -> AssertionResult:
+    """Assert that *field* is missing or null in the tool's JSON output."""
+    parsed = _parse_tool_output(transcript, tool_name)
+    if parsed is None:
+        return _fail("output_field_absent", f"{tool_name}.{field} absent",
+                      "no parseable output", f"No JSON output found for '{tool_name}'")
+    actual = parsed.get(field)
+    if actual is None:
+        return _pass("output_field_absent", f"{tool_name}.{field} absent",
+                      "absent/null", f"Field '{field}' is correctly absent or null")
+    return _fail("output_field_absent", f"{tool_name}.{field} absent",
+                  str(actual), f"Field '{field}' is present with value {actual}")
+
+
+def assert_exit_code(
+    transcript: List[Dict[str, Any]], tool_name: str, expected: int,
+) -> AssertionResult:
+    """Assert that an invocation of *tool_name* has ``exit_code == expected``."""
+    expected = int(expected)
+    for entry in transcript:
+        if entry.get("tool") == tool_name and "exit_code" in entry:
+            actual = int(entry["exit_code"])
+            if actual == expected:
+                return _pass("exit_code", f"{tool_name} exit_code=={expected}",
+                              str(actual), f"Exit code is {actual}")
+            return _fail("exit_code", f"{tool_name} exit_code=={expected}",
+                          str(actual), f"Exit code is {actual}, expected {expected}")
+    return _fail("exit_code", f"{tool_name} exit_code=={expected}",
+                  "not found", f"No invocation of '{tool_name}' with exit_code found")
+
+
 # ── dispatcher ────────────────────────────────────────────────────────
 
 _DISPATCH: Dict[str, Any] = {
@@ -141,6 +234,10 @@ _DISPATCH: Dict[str, Any] = {
     "tool_sequence_contains": lambda t, a: assert_tool_sequence_contains(t, a["sequence"]),
     "output_contains": lambda t, a: assert_output_contains(t, a["tool"], a["substring"]),
     "hook_fired": lambda t, a: assert_hook_fired(t, a["hook"]),
+    "output_field_equals": lambda t, a: assert_output_field_equals(t, a["tool"], a["field"], a["expected"]),
+    "output_field_gte": lambda t, a: assert_output_field_gte(t, a["tool"], a["field"], a["threshold"]),
+    "output_field_absent": lambda t, a: assert_output_field_absent(t, a["tool"], a["field"]),
+    "exit_code": lambda t, a: assert_exit_code(t, a["tool"], a["expected"]),
 }
 
 

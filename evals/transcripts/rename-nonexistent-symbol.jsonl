@@ -1,0 +1,1 @@
+{"tool": "kast-rename.sh", "args": {"--workspace-root": "/workspace", "--symbol": "NonExistentSymbol123", "--new-name": "StillDoesNotExist"}, "output": "{\"ok\": false, \"stage\": \"candidate_search\", \"message\": \"No declaration candidate matched the symbol query\"}", "exit_code": 1}

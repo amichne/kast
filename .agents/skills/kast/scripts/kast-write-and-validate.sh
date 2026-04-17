@@ -43,23 +43,7 @@ CONTENT_FILE=""
 OFFSET=""
 START_OFFSET=""
 END_OFFSET=""
-
-for arg in "$@"; do
-    case "${arg}" in
-        --workspace-root=*) WORKSPACE_ROOT="${arg#*=}" ;;
-        --mode=*)           MODE="${arg#*=}" ;;
-        --file-path=*)      FILE_PATH="${arg#*=}" ;;
-        --content=*)        CONTENT="${arg#*=}" ;;
-        --content-file=*)   CONTENT_FILE="${arg#*=}" ;;
-        --offset=*)         OFFSET="${arg#*=}" ;;
-        --start-offset=*)   START_OFFSET="${arg#*=}" ;;
-        --end-offset=*)     END_OFFSET="${arg#*=}" ;;
-        *)
-            printf 'Unknown argument: %s\n' "${arg}" >&2
-            exit 1
-            ;;
-    esac
-done
+REQUEST_TYPE=""
 
 kast_wrapper_init "kast-write-and-validate"
 
@@ -70,21 +54,22 @@ emit_failure() {
     local log_path
     log_path="$(kast_preserve_log_file)"
 
-    python3 - "${stage}" "${message}" "${WORKSPACE_ROOT}" "${MODE}" "${FILE_PATH}" \
+    python3 - "${stage}" "${message}" "${REQUEST_TYPE}" "${WORKSPACE_ROOT}" "${FILE_PATH}" \
         "${log_path}" "${error_file}" <<'PY'
 import json
 import sys
 from pathlib import Path
 
-(stage, message, workspace_root, mode, file_path, log_file, error_file) = sys.argv[1:]
+(stage, message, request_type, workspace_root, file_path, log_file, error_file) = sys.argv[1:]
 
 payload = {
+    "type": "WRITE_AND_VALIDATE_FAILURE",
     "ok": False,
     "stage": stage,
     "message": message,
     "query": {
+        "type": request_type or None,
         "workspace_root": workspace_root,
-        "mode": mode,
         "file_path": file_path,
     },
     "log_file": log_file,
@@ -104,42 +89,106 @@ print(json.dumps(payload, indent=2))
 PY
 }
 
+REQUEST_JSON_FILE="${TMP_DIR}/request.json"
+if ! kast_load_request "${REQUEST_JSON_FILE}" "$@"; then
+    emit_failure "request_validation" "${KAST_REQUEST_ERROR_MESSAGE}" "${KAST_REQUEST_ERROR_JSON_FILE:-}"
+    exit 1
+fi
+
+eval "$(
+    python3 - "${REQUEST_JSON_FILE}" <<'PY'
+import json
+import shlex
+import sys
+from pathlib import Path
+
+request = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+fields = {
+    "REQUEST_TYPE": request.get("type", ""),
+    "WORKSPACE_ROOT": request.get("workspaceRoot", ""),
+    "MODE": request.get("mode", ""),
+    "FILE_PATH": request.get("filePath", ""),
+    "CONTENT": request.get("content", ""),
+    "CONTENT_FILE": request.get("contentFile", ""),
+    "OFFSET": request.get("offset", ""),
+    "START_OFFSET": request.get("startOffset", ""),
+    "END_OFFSET": request.get("endOffset", ""),
+}
+for key, value in fields.items():
+    print(f"{key}={shlex.quote('' if value is None else str(value))}")
+PY
+)"
+
+if [[ -z "${WORKSPACE_ROOT}" ]]; then
+    WORKSPACE_ROOT="$(kast_default_workspace_root || true)"
+fi
+
 # ── Validate arguments ────────────────────────────────────────────────────────
-VALID_MODES="create-file insert-at-offset replace-range"
-if [[ -z "${WORKSPACE_ROOT}" || -z "${MODE}" || -z "${FILE_PATH}" ]]; then
-    emit_failure "argument_validation" "--workspace-root, --mode, and --file-path are required."
+if [[ -z "${WORKSPACE_ROOT}" || -z "${FILE_PATH}" || ( -z "${REQUEST_TYPE}" && -z "${MODE}" ) ]]; then
+    if [[ -z "${REQUEST_TYPE}" ]]; then
+        emit_failure "request_validation" "Request must include type and filePath. workspaceRoot is optional only when KAST_WORKSPACE_ROOT or the current git workspace can supply it."
+    else
+        emit_failure "request_validation" "Request must include filePath. workspaceRoot is optional only when KAST_WORKSPACE_ROOT or the current git workspace can supply it."
+    fi
     exit 1
 fi
 
-if ! echo "${VALID_MODES}" | grep -qw "${MODE}"; then
-    emit_failure "argument_validation" "--mode must be one of: ${VALID_MODES}."
+if [[ -z "${REQUEST_TYPE}" ]]; then
+    case "${MODE}" in
+        create-file) REQUEST_TYPE="CREATE_FILE_REQUEST" ;;
+        insert-at-offset) REQUEST_TYPE="INSERT_AT_OFFSET_REQUEST" ;;
+        replace-range) REQUEST_TYPE="REPLACE_RANGE_REQUEST" ;;
+    esac
+fi
+
+case "${REQUEST_TYPE}" in
+    CREATE_FILE_REQUEST)
+        EXPECTED_MODE="create-file"
+        ;;
+    INSERT_AT_OFFSET_REQUEST)
+        EXPECTED_MODE="insert-at-offset"
+        ;;
+    REPLACE_RANGE_REQUEST)
+        EXPECTED_MODE="replace-range"
+        ;;
+    *)
+        emit_failure "request_validation" \
+            "Request type must be CREATE_FILE_REQUEST, INSERT_AT_OFFSET_REQUEST, or REPLACE_RANGE_REQUEST."
+        exit 1
+        ;;
+esac
+
+if [[ -n "${MODE}" && "${MODE}" != "${EXPECTED_MODE}" ]]; then
+    emit_failure "request_validation" "Request type ${REQUEST_TYPE} does not match mode ${MODE}."
     exit 1
 fi
 
-# Resolve content from --content or --content-file
+MODE="${EXPECTED_MODE}"
+
+# Resolve content from content or contentFile
 if [[ -n "${CONTENT_FILE}" ]]; then
     if [[ ! -f "${CONTENT_FILE}" ]]; then
-        emit_failure "argument_validation" "--content-file path does not exist: ${CONTENT_FILE}"
+        emit_failure "request_validation" "contentFile path does not exist: ${CONTENT_FILE}"
         exit 1
     fi
     CONTENT="$(cat "${CONTENT_FILE}")"
 fi
 
 if [[ -z "${CONTENT}" ]]; then
-    emit_failure "argument_validation" "Either --content or --content-file is required."
+    emit_failure "request_validation" "Request must include content or contentFile."
     exit 1
 fi
 
 case "${MODE}" in
     insert-at-offset)
         if [[ -z "${OFFSET}" ]]; then
-            emit_failure "argument_validation" "--offset is required for insert-at-offset mode."
+            emit_failure "request_validation" "offset is required for insert-at-offset mode."
             exit 1
         fi
         ;;
     replace-range)
         if [[ -z "${START_OFFSET}" || -z "${END_OFFSET}" ]]; then
-            emit_failure "argument_validation" "--start-offset and --end-offset are required for replace-range mode."
+            emit_failure "request_validation" "startOffset and endOffset are required for replace-range mode."
             exit 1
         fi
         ;;
@@ -286,8 +335,11 @@ python3 - \
     "${APPLY_RESULT}" \
     "${DIAGNOSTICS_RESULT}" \
     "${WORKSPACE_ROOT}" \
-    "${MODE}" \
+    "${REQUEST_TYPE}" \
     "${FILE_PATH}" \
+    "${OFFSET}" \
+    "${START_OFFSET}" \
+    "${END_OFFSET}" \
     "${IMPORT_EDITS_APPLIED}" \
     "${LOG_PATH}" <<'PY'
 import json
@@ -298,8 +350,11 @@ from pathlib import Path
     apply_file,
     diagnostics_file,
     workspace_root,
-    mode,
+    request_type,
     file_path,
+    offset,
+    start_offset,
+    end_offset,
     import_edits_applied,
     log_file,
 ) = sys.argv[1:]
@@ -313,12 +368,8 @@ warnings = [d for d in all_diags if d.get("severity") == "WARNING"]
 clean = len(errors) == 0
 
 payload = {
+    "type": "WRITE_AND_VALIDATE_SUCCESS",
     "ok": clean,
-    "query": {
-        "workspace_root": workspace_root,
-        "mode": mode,
-        "file_path": file_path,
-    },
     "applied_edits": len(apply_result.get("appliedEdits", apply_result.get("edits", []))),
     "import_changes": int(import_edits_applied),
     "diagnostics": {
@@ -329,6 +380,28 @@ payload = {
     },
     "log_file": log_file,
 }
+
+if request_type == "CREATE_FILE_REQUEST":
+    payload["query"] = {
+        "type": request_type,
+        "workspace_root": workspace_root,
+        "file_path": file_path,
+    }
+elif request_type == "INSERT_AT_OFFSET_REQUEST":
+    payload["query"] = {
+        "type": request_type,
+        "workspace_root": workspace_root,
+        "file_path": file_path,
+        "offset": int(offset),
+    }
+else:
+    payload["query"] = {
+        "type": request_type,
+        "workspace_root": workspace_root,
+        "file_path": file_path,
+        "start_offset": int(start_offset),
+        "end_offset": int(end_offset),
+    }
 
 if not clean:
     payload["message"] = f"{len(errors)} diagnostic error(s) found after applying edits."
