@@ -5,6 +5,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -73,6 +74,7 @@ class PackagedSkillJsonContractTest {
             .parseToJsonElement(resolveResult.stdout)
             .jsonObject
         assertEquals(true, resolvedPayload["ok"]?.toString()?.toBooleanStrictOrNull())
+        assertEquals("RESOLVE_SUCCESS", resolvedPayload["type"]?.jsonPrimitive?.content)
         assertTrue(resolveResult.stderr.isBlank())
 
         val diagnosticsRequestFile = tempDir.resolve("diagnostics-request.json")
@@ -98,6 +100,7 @@ class PackagedSkillJsonContractTest {
             .parseToJsonElement(diagnosticsResult.stdout)
             .jsonObject
         assertEquals(true, diagnosticsPayload["ok"]?.toString()?.toBooleanStrictOrNull())
+        assertEquals("DIAGNOSTICS_SUCCESS", diagnosticsPayload["type"]?.jsonPrimitive?.content)
     }
 
     private fun runScript(

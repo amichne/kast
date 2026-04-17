@@ -49,6 +49,7 @@ from pathlib import Path
 ) = sys.argv[1:]
 
 payload = {
+    "type": "CALLERS_FAILURE",
     "ok": False,
     "stage": stage,
     "message": message,
@@ -185,6 +186,7 @@ from pathlib import Path
 resolve_result = json.loads(Path(resolve_file).read_text(encoding="utf-8"))
 callers_result = json.loads(Path(callers_file).read_text(encoding="utf-8"))
 payload = {
+    "type": "CALLERS_SUCCESS",
     "ok": True,
     "query": {
         "workspace_root": workspace_root,

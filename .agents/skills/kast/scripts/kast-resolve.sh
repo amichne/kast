@@ -27,6 +27,7 @@ from pathlib import Path
 
 stage, message, workspace_root, symbol, file_hint, kind, containing_type, log_file, error_file = sys.argv[1:]
 payload = {
+    "type": "RESOLVE_FAILURE",
     "ok": False,
     "stage": stage,
     "message": message,
@@ -119,6 +120,7 @@ from pathlib import Path
 
 result = json.loads(Path(resolve_file).read_text(encoding="utf-8"))
 payload = {
+    "type": "RESOLVE_SUCCESS",
     "ok": True,
     "query": {
         "workspace_root": workspace_root,

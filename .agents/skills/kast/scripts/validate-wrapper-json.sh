@@ -23,6 +23,7 @@ EOF
 
 export KAST_SOURCE_ROOT="${REQUEST_ROOT}"
 export KAST_WORKSPACE_ROOT="${WORKSPACE_ROOT}"
+export KAST_CONFIG_HOME="${TMP_DIR}/kast-config"
 if [[ -d "${REQUEST_ROOT}/kast/build/runtime-libs" ]]; then
     export KAST_RUNTIME_LIBS="${REQUEST_ROOT}/kast/build/runtime-libs"
 fi
@@ -88,8 +89,14 @@ try:
     payload = json.loads(stdout_text)
     entry["valid_json"] = True
     entry["ok_value"] = payload.get("ok")
+    entry["response_type"] = payload.get("type")
+    entry["has_type"] = isinstance(payload.get("type"), str) and bool(payload.get("type"))
     entry["log_file"] = payload.get("log_file")
-    entry["matches_expectation"] = payload.get("ok") == (expected_ok == "true")
+    entry["matches_expectation"] = (
+        payload.get("ok") == (expected_ok == "true")
+        and entry["has_type"]
+        and str(payload.get("type")).endswith("_SUCCESS" if expected_ok == "true" else "_FAILURE")
+    )
 except json.JSONDecodeError as error:
     entry["valid_json"] = False
     entry["matches_expectation"] = False

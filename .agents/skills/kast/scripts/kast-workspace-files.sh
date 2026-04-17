@@ -26,6 +26,7 @@ from pathlib import Path
 (stage, message, workspace_root, module_name, include_files, log_file, error_file) = sys.argv[1:]
 
 payload = {
+    "type": "WORKSPACE_FILES_FAILURE",
     "ok": False,
     "stage": stage,
     "message": message,
@@ -125,6 +126,7 @@ from pathlib import Path
 files_result = json.loads(Path(files_result_file).read_text(encoding="utf-8"))
 
 payload = {
+    "type": "WORKSPACE_FILES_SUCCESS",
     "ok": True,
     "query": {
         "workspace_root": workspace_root,

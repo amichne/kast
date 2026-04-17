@@ -46,7 +46,6 @@ internal class EmbeddedSkillResources(
             "scripts/kast-callers.sh",
             "scripts/kast-common.sh",
             "scripts/kast-diagnostics.sh",
-            "scripts/kast-impact.sh",
             "scripts/kast-plan-utils.py",
             "scripts/kast-rename.sh",
             "scripts/kast-references.sh",

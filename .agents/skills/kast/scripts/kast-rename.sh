@@ -41,6 +41,7 @@ CONTAINING_TYPE=""
 FILE_PATH=""
 OFFSET=""
 NEW_NAME=""
+REQUEST_TYPE=""
 
 kast_wrapper_init "kast-rename"
 
@@ -57,22 +58,24 @@ emit_failure() {
     local log_path
     log_path="$(kast_preserve_log_file)"
 
-    python3 - "${stage}" "${message}" "${WORKSPACE_ROOT}" "${SYMBOL}" "${FILE_HINT}" "${KIND}" \
+    python3 - "${stage}" "${message}" "${REQUEST_TYPE}" "${WORKSPACE_ROOT}" "${SYMBOL}" "${FILE_HINT}" "${KIND}" \
         "${CONTAINING_TYPE}" "${FILE_PATH}" "${OFFSET}" "${NEW_NAME}" "${log_path}" "${error_file}" <<'PY'
 import json
 import sys
 from pathlib import Path
 
 (
-    stage, message, workspace_root, symbol, file_hint, kind,
+    stage, message, request_type, workspace_root, symbol, file_hint, kind,
     containing_type, file_path, offset, new_name, log_file, error_file,
 ) = sys.argv[1:]
 
 payload = {
+    "type": "RENAME_FAILURE",
     "ok": False,
     "stage": stage,
     "message": message,
     "query": {
+        "type": request_type or None,
         "workspace_root": workspace_root,
         "symbol": symbol or None,
         "file_hint": file_hint or None,
@@ -114,6 +117,7 @@ from pathlib import Path
 
 request = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 fields = {
+    "REQUEST_TYPE": request.get("type", ""),
     "WORKSPACE_ROOT": request.get("workspaceRoot", ""),
     "SYMBOL": request.get("symbol", ""),
     "FILE_HINT": request.get("fileHint", ""),
@@ -140,19 +144,39 @@ if [[ -z "${WORKSPACE_ROOT}" || -z "${NEW_NAME}" ]]; then
     exit 1
 fi
 
-if [[ -n "${SYMBOL}" ]]; then
-    RENAME_MODE="symbol"
-elif [[ -n "${FILE_PATH}" && -n "${OFFSET}" ]]; then
-    RENAME_MODE="offset"
-    if ! [[ "${OFFSET}" =~ ^[0-9]+$ ]]; then
-        emit_failure "request_validation" "offset must be a non-negative integer."
-        exit 1
+if [[ -z "${REQUEST_TYPE}" ]]; then
+    if [[ -n "${SYMBOL}" ]]; then
+        REQUEST_TYPE="RENAME_BY_SYMBOL_REQUEST"
+    elif [[ -n "${FILE_PATH}" && -n "${OFFSET}" ]]; then
+        REQUEST_TYPE="RENAME_BY_OFFSET_REQUEST"
     fi
-else
-    emit_failure "request_validation" \
-        "Provide symbol (symbol mode) or both filePath and offset (offset mode)."
-    exit 1
 fi
+
+case "${REQUEST_TYPE}" in
+    RENAME_BY_SYMBOL_REQUEST)
+        RENAME_MODE="symbol"
+        if [[ -z "${SYMBOL}" ]]; then
+            emit_failure "request_validation" "RENAME_BY_SYMBOL_REQUEST requires symbol."
+            exit 1
+        fi
+        ;;
+    RENAME_BY_OFFSET_REQUEST)
+        RENAME_MODE="offset"
+        if [[ -z "${FILE_PATH}" || -z "${OFFSET}" ]]; then
+            emit_failure "request_validation" "RENAME_BY_OFFSET_REQUEST requires filePath and offset."
+            exit 1
+        fi
+        if ! [[ "${OFFSET}" =~ ^[0-9]+$ ]]; then
+            emit_failure "request_validation" "offset must be a non-negative integer."
+            exit 1
+        fi
+        ;;
+    *)
+        emit_failure "request_validation" \
+            "Request type must be RENAME_BY_SYMBOL_REQUEST or RENAME_BY_OFFSET_REQUEST."
+        exit 1
+        ;;
+esac
 
 # ---------------------------------------------------------------------------
 # Resolve binary + workspace; resolve symbol name when in symbol mode
@@ -258,7 +282,7 @@ LOG_PATH="$(kast_preserve_log_file)"
 
 python3 - \
     "${PLAN_FILE}" "${APPLY_RESULT_FILE}" "${DIAGNOSTICS_FILE}" \
-    "${WORKSPACE_ROOT}" "${SYMBOL}" "${FILE_HINT}" "${KIND}" "${CONTAINING_TYPE}" \
+    "${REQUEST_TYPE}" "${WORKSPACE_ROOT}" "${SYMBOL}" "${FILE_HINT}" "${KIND}" "${CONTAINING_TYPE}" \
     "${FILE_PATH}" "${OFFSET}" "${NEW_NAME}" \
     "${EDIT_COUNT}" "${DIAG_CLEAN}" "${DIAG_ERROR_COUNT}" "${DIAG_WARNING_COUNT}" \
     "${LOG_PATH}" <<'PY'
@@ -268,7 +292,7 @@ from pathlib import Path
 
 (
     plan_file, apply_result_file, diagnostics_file,
-    workspace_root, symbol, file_hint, kind, containing_type,
+    request_type, workspace_root, symbol, file_hint, kind, containing_type,
     file_path, offset, new_name,
     edit_count, diag_clean, diag_error_count, diag_warning_count,
     log_file,
@@ -293,23 +317,35 @@ if diag_path.exists() and diag_path.stat().st_size > 0:
         pass
 
 payload = {
+    "type": "RENAME_SUCCESS",
     "ok": diag_clean == "true",
-    "query": {
-        "workspace_root": workspace_root,
-        "symbol": symbol or None,
-        "file_hint": file_hint or None,
-        "kind": kind or None,
-        "containing_type": containing_type or None,
-        "file_path": file_path,
-        "offset": int(offset),
-        "new_name": new_name,
-    },
     "edit_count": int(edit_count),
     "affected_files": plan.get("affectedFiles", []),
     "apply_result": apply_result,
     "diagnostics": diag_summary,
     "log_file": log_file,
 }
+
+if request_type == "RENAME_BY_SYMBOL_REQUEST":
+    payload["query"] = {
+        "type": request_type,
+        "workspace_root": workspace_root,
+        "symbol": symbol,
+        "file_hint": file_hint or None,
+        "kind": kind or None,
+        "containing_type": containing_type or None,
+        "file_path": file_path,
+        "offset": int(offset),
+        "new_name": new_name,
+    }
+else:
+    payload["query"] = {
+        "type": request_type,
+        "workspace_root": workspace_root,
+        "file_path": file_path,
+        "offset": int(offset),
+        "new_name": new_name,
+    }
 print(json.dumps(payload, indent=2))
 PY
 

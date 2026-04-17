@@ -23,6 +23,7 @@ from pathlib import Path
 
 stage, message, workspace_root, file_paths, log_file, error_file = sys.argv[1:]
 payload = {
+    "type": "DIAGNOSTICS_FAILURE",
     "ok": False,
     "stage": stage,
     "message": message,
@@ -138,6 +139,7 @@ warning_count = sum(1 for item in diagnostics if item.get("severity") == "WARNIN
 info_count = sum(1 for item in diagnostics if item.get("severity") == "INFO")
 
 payload = {
+    "type": "DIAGNOSTICS_SUCCESS",
     "ok": True,
     "query": {
         "workspace_root": workspace_root,

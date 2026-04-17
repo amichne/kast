@@ -40,6 +40,7 @@ from pathlib import Path
 ) = sys.argv[1:]
 
 payload = {
+    "type": "REFERENCES_FAILURE",
     "ok": False,
     "stage": stage,
     "message": message,
@@ -154,6 +155,7 @@ from pathlib import Path
 resolve_result = json.loads(Path(resolve_file).read_text(encoding="utf-8"))
 references_result = json.loads(Path(references_file).read_text(encoding="utf-8"))
 payload = {
+    "type": "REFERENCES_SUCCESS",
     "ok": True,
     "query": {
         "workspace_root": workspace_root,

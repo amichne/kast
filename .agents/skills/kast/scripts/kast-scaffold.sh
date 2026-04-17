@@ -42,6 +42,7 @@ from pathlib import Path
 (stage, message, workspace_root, target_file, target_symbol, mode, kind, log_file, error_file) = sys.argv[1:]
 
 payload = {
+    "type": "SCAFFOLD_FAILURE",
     "ok": False,
     "stage": stage,
     "message": message,
@@ -225,6 +226,7 @@ from pathlib import Path
 outline_result = json.loads(Path(outline_file).read_text(encoding="utf-8"))
 
 payload = {
+    "type": "SCAFFOLD_SUCCESS",
     "ok": True,
     "query": {
         "workspace_root": workspace_root,

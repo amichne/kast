@@ -37,7 +37,6 @@ class InstallSkillServiceTest {
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("scripts/kast-callers.sh")))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("scripts/kast-common.sh")))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("scripts/kast-diagnostics.sh")))
-        assertTrue(Files.isRegularFile(installedSkillDir.resolve("scripts/kast-impact.sh")))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("scripts/kast-plan-utils.py")))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("scripts/kast-scaffold.sh")))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("scripts/kast-references.sh")))
