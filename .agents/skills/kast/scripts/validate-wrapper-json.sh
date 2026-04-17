@@ -52,8 +52,6 @@ declare -a CHECKS=(
     "kast-callers.sh|failure|bash \"${SCRIPT_DIR}/kast-callers.sh\" '{\"symbol\":\"${MISSING_SYMBOL}\"}'|false"
     "kast-diagnostics.sh|success|bash \"${SCRIPT_DIR}/kast-diagnostics.sh\" \"${DIAGNOSTICS_REQUEST}\"|true"
     "kast-diagnostics.sh|failure|bash \"${SCRIPT_DIR}/kast-diagnostics.sh\" \"${DIAGNOSTICS_FAILURE_REQUEST}\"|false"
-    "kast-impact.sh|success|bash \"${SCRIPT_DIR}/kast-impact.sh\" '{\"symbol\":\"${SAMPLE_SYMBOL}\",\"fileHint\":\"${SAMPLE_FILE}\"}'|true"
-    "kast-impact.sh|failure|bash \"${SCRIPT_DIR}/kast-impact.sh\" '{\"symbol\":\"${MISSING_SYMBOL}\"}'|false"
 )
 
 RESULTS_FILE="${TMP_DIR}/results.jsonl"

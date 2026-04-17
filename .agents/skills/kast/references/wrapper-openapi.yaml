@@ -69,25 +69,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/WrapperResponse'
 
-  /kast-impact:
-    post:
-      operationId: kastImpact
-      summary: Gather pre-edit impact for a named symbol
-      x-script: scripts/kast-impact.sh
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/KastImpactRequest'
-      responses:
-        '200':
-          description: Wrapper JSON response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/WrapperResponse'
-
   /kast-diagnostics:
     post:
       operationId: kastDiagnostics
@@ -247,20 +228,6 @@ components:
             timeoutMillis:
               type: integer
               minimum: 1
-          additionalProperties: false
-
-    KastImpactRequest:
-      allOf:
-        - $ref: '#/components/schemas/NamedSymbolRequestBase'
-        - type: object
-          properties:
-            includeCallers:
-              type: boolean
-              default: true
-            callerDepth:
-              type: integer
-              minimum: 0
-              default: 2
           additionalProperties: false
 
     KastDiagnosticsRequest:

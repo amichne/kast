@@ -46,17 +46,17 @@ Each wrapper calls `workspace ensure` internally on first use. In CI,
 
 ## Tool routing table
 
-| Intent                                         | Script                       | No fallback |
-|------------------------------------------------|------------------------------|-------------|
-| Resolve a symbol                               | `kast-resolve.sh`            | ✓           |
-| Find all references                            | `kast-references.sh`         | ✓           |
-| Call hierarchy / who calls / callers / callees | `kast-callers.sh`            | ✓           |
-| Assess edit impact                             | `kast-impact.sh`             | ✓           |
-| Run diagnostics                                | `kast-diagnostics.sh`        | ✓           |
-| Rename a symbol                                | `kast-rename.sh`             | ✓           |
-| Gather context for code generation             | `kast-scaffold.sh`           | ✓           |
-| Apply generated code and validate              | `kast-write-and-validate.sh` | ✓           |
-| List workspace modules and source files        | `kast-workspace-files.sh`    | ✓           |
+| Intent                                         | Script                                    | No fallback |
+|------------------------------------------------|-------------------------------------------|-------------|
+| Resolve a symbol                               | `kast-resolve.sh`                         | ✓           |
+| Find all references                            | `kast-references.sh`                      | ✓           |
+| Call hierarchy / who calls / callers / callees | `kast-callers.sh`                         | ✓           |
+| Assess pre-edit impact                         | `kast-references.sh` + `kast-callers.sh`  | ✓           |
+| Run diagnostics                                | `kast-diagnostics.sh`                     | ✓           |
+| Rename a symbol                                | `kast-rename.sh`                          | ✓           |
+| Gather context for code generation             | `kast-scaffold.sh`                        | ✓           |
+| Apply generated code and validate              | `kast-write-and-validate.sh`              | ✓           |
+| List workspace modules and source files        | `kast-workspace-files.sh`                 | ✓           |
 
 ## Wrapper scripts
 
@@ -95,15 +95,6 @@ bash .agents/skills/kast/scripts/kast-callers.sh \
 ```
 
 Expand incoming or outgoing call hierarchy for a symbol.
-
-### kast-impact
-
-```bash
-bash .agents/skills/kast/scripts/kast-impact.sh \
-  '{"symbol":"AnalysisServer","includeCallers":true}'
-```
-
-Assess pre-edit impact: references + optional callers in one call.
 
 ### kast-diagnostics
 

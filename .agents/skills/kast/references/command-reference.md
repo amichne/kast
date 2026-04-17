@@ -770,7 +770,6 @@ diagnostics, impact assessment, and full rename flows.
 | `kast-references.sh` | Resolve a symbol query and expand references | `symbol`, `references`, `search_scope`, `declaration`, `log_file` |
 | `kast-callers.sh` | Resolve a symbol query and expand incoming or outgoing callers | `symbol`, `root`, `stats`, `log_file` |
 | `kast-diagnostics.sh` | Run structured diagnostics on one or more files | `clean`, `error_count`, `warning_count`, `diagnostics`, `log_file` |
-| `kast-impact.sh` | Resolve a symbol query, gather references, and optionally gather incoming callers | `references`, `search_scope`, optional `call_hierarchy`, `log_file` |
 | `kast-rename.sh` | Run the full rename workflow end to end | `ok`, `edit_count`, `affected_files`, `apply_result`, `diagnostics`, `log_file` |
 | `kast-plan-utils.py` | Extract or inspect rename-plan JSON | Plan metadata or apply-request JSON |
 | `find-symbol-offset.py` | Compute declaration-first UTF-16 offsets inside one file | Tab-separated candidates |
@@ -866,31 +865,6 @@ bash "$SKILL_ROOT/scripts/kast-diagnostics.sh" \
 
 **stdout:** wrapper JSON with `ok`, `clean`, `error_count`, `warning_count`,
 `info_count`, `diagnostics`, and `log_file`.
-
----
-
-### `kast-impact.sh` — Pre-edit impact assessment
-
-Use this wrapper before you change a symbol. It resolves the symbol, expands
-references, and can include incoming callers in the same result.
-
-```bash
-bash "$SKILL_ROOT/scripts/kast-impact.sh" \
-  --workspace-root=/absolute/path \
-  --symbol=AnalysisServer \
-  --include-callers=true \
-  --caller-depth=2
-```
-
-Optional flags:
-- `--file=<absolute path, workspace-relative path, or glob>`
-- `--kind=class|function|property`
-- `--containing-type=OuterType`
-- `--include-callers=true|false` (default: `true`)
-- `--caller-depth=<non-negative integer>` — depth for the incoming call hierarchy (default: `2`)
-
-**stdout:** wrapper JSON with `ok`, `symbol`, `references`, `search_scope`,
-optional `call_hierarchy` (includes `direction` and `depth`), and `log_file`.
 
 ---
 

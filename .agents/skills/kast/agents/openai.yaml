@@ -37,15 +37,6 @@ tools:
         required: true
         description: "JSON object literal or path to a `.json` file matching `KastCallersRequest`."
 
-  - name: kast-impact
-    script: scripts/kast-impact.sh
-    description: "Resolve a symbol and return references plus optional incoming callers."
-    parameters:
-      - name: request
-        type: string
-        required: true
-        description: "JSON object literal or path to a `.json` file matching `KastImpactRequest`."
-
   - name: kast-diagnostics
     script: scripts/kast-diagnostics.sh
     description: "Run diagnostics on one or more Kotlin files."
