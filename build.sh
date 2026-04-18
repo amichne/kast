@@ -274,6 +274,18 @@ build_and_publish_backend() {
 }
 
 # ---------------------------------------------------------------------------
+# OpenAPI spec generation + publish
+# ---------------------------------------------------------------------------
+
+build_and_publish_openapi() {
+  log_section "Generating OpenAPI specification"
+  run_gradle_tasks_with_retry stageOpenApiSpec
+  local dist_spec="${DIST_ROOT}/openapi.yaml"
+  [[ -f "$dist_spec" ]] || die "Missing generated OpenAPI spec at ${dist_spec}"
+  log_success "openapi  →  ${dist_spec}"
+}
+
+# ---------------------------------------------------------------------------
 # Stale-output cleanup
 # ---------------------------------------------------------------------------
 
@@ -347,6 +359,9 @@ for target in "${selected_targets[@]}"; do
     backend)     build_and_publish_backend ;;
   esac
 done
+
+# Always publish the OpenAPI spec alongside other artifacts
+build_and_publish_openapi
 
 log_section "Build complete"
 for target in "${selected_targets[@]}"; do

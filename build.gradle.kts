@@ -41,3 +41,11 @@ tasks.register("buildBackendPortableZip") {
     description = "Builds the versioned portable backend-standalone zip under backend-standalone/build/distributions."
     dependsOn(":backend-standalone:portableDistZip")
 }
+
+tasks.register<Copy>("stageOpenApiSpec") {
+    group = "distribution"
+    description = "Copies the generated OpenAPI spec to dist/openapi.yaml."
+    dependsOn(":analysis-api:generateOpenApiSpec")
+    from(layout.projectDirectory.file("docs/openapi.yaml"))
+    into(layout.projectDirectory.dir("dist"))
+}

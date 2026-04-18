@@ -25,6 +25,7 @@ nav = [
   { "Use Kast from an LLM agent" = "use-kast-from-an-llm-agent.md" },
   { "LLM scaffolding reference" = "llm-scaffolding-reference.md" },
   { "Command reference" = "command-reference.md" },
+  { "API specification" = "api-specification.md" },
 ]
 
 [project.markdown_extensions.admonition]
