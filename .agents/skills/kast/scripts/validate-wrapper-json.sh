@@ -24,8 +24,8 @@ EOF
 export KAST_SOURCE_ROOT="${REQUEST_ROOT}"
 export KAST_WORKSPACE_ROOT="${WORKSPACE_ROOT}"
 export KAST_CONFIG_HOME="${TMP_DIR}/kast-config"
-if [[ -d "${REQUEST_ROOT}/kast/build/runtime-libs" ]]; then
-    export KAST_RUNTIME_LIBS="${REQUEST_ROOT}/kast/build/runtime-libs"
+if [[ -d "${REQUEST_ROOT}/kast-cli/build/runtime-libs" ]]; then
+    export KAST_RUNTIME_LIBS="${REQUEST_ROOT}/kast-cli/build/runtime-libs"
 fi
 
 SAMPLE_SYMBOL="greet"

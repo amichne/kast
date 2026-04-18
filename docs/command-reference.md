@@ -12,7 +12,7 @@ entrypoint.
 Note: If you use the packaged `kast` skill or the repo-local launcher resolver,
 it prefers the system `PATH` by default. You can override that lookup with
 `KAST_CLI_PATH` (explicit executable) or `KAST_SOURCE_ROOT` (local build
-outputs plus the minimal `:kast:writeWrapperScript` auto-build path when Java
+outputs plus the minimal `:kast-cli:writeWrapperScript` auto-build path when Java
 21+ is available). See the Get started guide for copyable examples.
 
 ## Global help and command syntax
@@ -107,7 +107,7 @@ the current workspace before you trust a local build, install, or agent setup.
 
 | Command | Purpose | Key options | Notes |
 | --- | --- | --- | --- |
-| `smoke` | Run the portable smoke workflow against the current CLI and a real workspace | Optional `--workspace-root`, `--file`, `--source-set`, `--symbol`, `--format=markdown` | Defaults `--workspace-root` to the current working directory, emits an aggregated JSON readiness report on stdout, and shells out to the maintained `smoke.sh` entrypoint with the current `kast` launcher |
+| `smoke` | Run the portable smoke workflow against the current CLI and a real workspace | Optional `--workspace-root`, `--file`, `--source-set`, `--symbol`, `--format=markdown` | Defaults `--workspace-root` to the current working directory, emits an aggregated JSON readiness report on stdout. Currently a stub pending native implementation. |
 
 ## Workspace refresh behavior
 

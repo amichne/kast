@@ -1,0 +1,1503 @@
+openapi: 3.1.0
+info:
+  title: Kast Analysis API
+  version: "3.0.0"
+  description: >
+    JSON-RPC 2.0 analysis protocol for the Kast daemon. Each operation is
+    modelled as a logical POST whose request body is the JSON-RPC params
+    payload and whose response body is the result payload. The actual
+    transport is line-delimited JSON-RPC over Unix domain sockets, stdio,
+    or TCP — not HTTP. Batch requests and JSON-RPC notifications are not
+    supported. Capability gating is noted per operation via
+    x-kast-required-capability.
+  license:
+    name: Apache-2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+servers:
+  - url: jsonrpc://localhost
+    description: >
+      Logical server — the daemon binds a Unix domain socket, stdio pipe,
+      or TCP port, not an HTTP endpoint.
+tags:
+  - name: system
+    description: Health, status, and capability introspection
+  - name: read
+    description: Read-only analysis operations
+  - name: mutation
+    description: Operations that modify workspace state
+paths:
+  "/rpc/health":
+    post:
+      operationId: health
+      summary: Basic health check
+      tags:
+        - system
+      x-jsonrpc-method: health
+      responses:
+        200:
+          description: JSON-RPC success result
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/HealthResponse"
+        default:
+          description: JSON-RPC error response
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/JsonRpcErrorResponse"
+  "/rpc/runtime-status":
+    post:
+      operationId: runtimeStatus
+      summary: Detailed runtime state including indexing progress
+      tags:
+        - system
+      x-jsonrpc-method: runtime/status
+      responses:
+        200:
+          description: JSON-RPC success result
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/RuntimeStatusResponse"
+        default:
+          description: JSON-RPC error response
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/JsonRpcErrorResponse"
+  "/rpc/capabilities":
+    post:
+      operationId: capabilities
+      summary: Advertised read and mutation capabilities
+      tags:
+        - system
+      x-jsonrpc-method: capabilities
+      responses:
+        200:
+          description: JSON-RPC success result
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/BackendCapabilities"
+        default:
+          description: JSON-RPC error response
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/JsonRpcErrorResponse"
+  "/rpc/symbol/resolve":
+    post:
+      operationId: resolveSymbol
+      summary: Resolve the symbol at a file position
+      tags:
+        - read
+      x-jsonrpc-method: symbol/resolve
+      x-kast-required-capability: RESOLVE_SYMBOL
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SymbolQuery"
+      responses:
+        200:
+          description: JSON-RPC success result
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/SymbolResult"
+        default:
+          description: JSON-RPC error response
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/JsonRpcErrorResponse"
+  "/rpc/references":
+    post:
+      operationId: findReferences
+      summary: Find all references to the symbol at a file position
+      tags:
+        - read
+      x-jsonrpc-method: references
+      x-kast-required-capability: FIND_REFERENCES
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/ReferencesQuery"
+      responses:
+        200:
+          description: JSON-RPC success result
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/ReferencesResult"
+        default:
+          description: JSON-RPC error response
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/JsonRpcErrorResponse"
+  "/rpc/call-hierarchy":
+    post:
+      operationId: callHierarchy
+      summary: Expand a bounded incoming or outgoing call tree
+      tags:
+        - read
+      x-jsonrpc-method: call-hierarchy
+      x-kast-required-capability: CALL_HIERARCHY
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/CallHierarchyQuery"
+      responses:
+        200:
+          description: JSON-RPC success result
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/CallHierarchyResult"
+        default:
+          description: JSON-RPC error response
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/JsonRpcErrorResponse"
+  "/rpc/type-hierarchy":
+    post:
+      operationId: typeHierarchy
+      summary: Expand supertypes and subtypes from a resolved symbol
+      tags:
+        - read
+      x-jsonrpc-method: type-hierarchy
+      x-kast-required-capability: TYPE_HIERARCHY
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/TypeHierarchyQuery"
+      responses:
+        200:
+          description: JSON-RPC success result
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/TypeHierarchyResult"
+        default:
+          description: JSON-RPC error response
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/JsonRpcErrorResponse"
+  "/rpc/semantic-insertion-point":
+    post:
+      operationId: semanticInsertionPoint
+      summary: Find the best insertion point for a new declaration
+      tags:
+        - read
+      x-jsonrpc-method: semantic-insertion-point
+      x-kast-required-capability: SEMANTIC_INSERTION_POINT
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SemanticInsertionQuery"
+      responses:
+        200:
+          description: JSON-RPC success result
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/SemanticInsertionResult"
+        default:
+          description: JSON-RPC error response
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/JsonRpcErrorResponse"
+  "/rpc/diagnostics":
+    post:
+      operationId: diagnostics
+      summary: Run compilation diagnostics for one or more files
+      tags:
+        - read
+      x-jsonrpc-method: diagnostics
+      x-kast-required-capability: DIAGNOSTICS
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/DiagnosticsQuery"
+      responses:
+        200:
+          description: JSON-RPC success result
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/DiagnosticsResult"
+        default:
+          description: JSON-RPC error response
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/JsonRpcErrorResponse"
+  "/rpc/file-outline":
+    post:
+      operationId: fileOutline
+      summary: Get a hierarchical symbol outline for a single file
+      tags:
+        - read
+      x-jsonrpc-method: file-outline
+      x-kast-required-capability: FILE_OUTLINE
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/FileOutlineQuery"
+      responses:
+        200:
+          description: JSON-RPC success result
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/FileOutlineResult"
+        default:
+          description: JSON-RPC error response
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/JsonRpcErrorResponse"
+  "/rpc/workspace-symbol":
+    post:
+      operationId: workspaceSymbolSearch
+      summary: Search the workspace for symbols by name pattern
+      tags:
+        - read
+      x-jsonrpc-method: workspace-symbol
+      x-kast-required-capability: WORKSPACE_SYMBOL_SEARCH
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/WorkspaceSymbolQuery"
+      responses:
+        200:
+          description: JSON-RPC success result
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/WorkspaceSymbolResult"
+        default:
+          description: JSON-RPC error response
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/JsonRpcErrorResponse"
+  "/rpc/workspace/files":
+    post:
+      operationId: workspaceFiles
+      summary: List workspace modules and their source files
+      tags:
+        - read
+      x-jsonrpc-method: workspace/files
+      x-kast-required-capability: WORKSPACE_FILES
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/WorkspaceFilesQuery"
+      responses:
+        200:
+          description: JSON-RPC success result
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/WorkspaceFilesResult"
+        default:
+          description: JSON-RPC error response
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/JsonRpcErrorResponse"
+  "/rpc/rename":
+    post:
+      operationId: rename
+      summary: Plan a symbol rename (dry-run by default)
+      tags:
+        - mutation
+      x-jsonrpc-method: rename
+      x-kast-required-capability: RENAME
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/RenameQuery"
+      responses:
+        200:
+          description: JSON-RPC success result
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/RenameResult"
+        default:
+          description: JSON-RPC error response
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/JsonRpcErrorResponse"
+  "/rpc/imports/optimize":
+    post:
+      operationId: optimizeImports
+      summary: Optimize imports for one or more files
+      tags:
+        - mutation
+      x-jsonrpc-method: imports/optimize
+      x-kast-required-capability: OPTIMIZE_IMPORTS
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/ImportOptimizeQuery"
+      responses:
+        200:
+          description: JSON-RPC success result
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/ImportOptimizeResult"
+        default:
+          description: JSON-RPC error response
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/JsonRpcErrorResponse"
+  "/rpc/edits/apply":
+    post:
+      operationId: applyEdits
+      summary: Apply a prepared edit plan with file-hash conflict detection
+      tags:
+        - mutation
+      x-jsonrpc-method: edits/apply
+      x-kast-required-capability: APPLY_EDITS
+      x-kast-conditional-capability: FILE_OPERATIONS — required when fileOperations is non-empty
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/ApplyEditsQuery"
+      responses:
+        200:
+          description: JSON-RPC success result
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/ApplyEditsResult"
+        default:
+          description: JSON-RPC error response
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/JsonRpcErrorResponse"
+  "/rpc/workspace/refresh":
+    post:
+      operationId: refreshWorkspace
+      summary: Force a targeted or full workspace state refresh
+      tags:
+        - mutation
+      x-jsonrpc-method: workspace/refresh
+      x-kast-required-capability: REFRESH_WORKSPACE
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/RefreshQuery"
+      responses:
+        200:
+          description: JSON-RPC success result
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/RefreshResult"
+        default:
+          description: JSON-RPC error response
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/JsonRpcErrorResponse"
+components:
+  schemas:
+    JsonRpcRequest:
+      type: object
+      required:
+        - jsonrpc
+        - method
+      properties:
+        jsonrpc:
+          type: string
+          const: "2.0"
+        method:
+          type: string
+        params:
+          description: Method-specific parameter object
+        id:
+          description: Request identifier (string, number, or null)
+      additionalProperties: false
+    JsonRpcSuccessResponse:
+      type: object
+      required:
+        - jsonrpc
+        - result
+      properties:
+        jsonrpc:
+          type: string
+          const: "2.0"
+        result:
+          description: Method-specific result object
+        id:
+          description: Echoed request identifier
+      additionalProperties: false
+    JsonRpcErrorResponse:
+      type: object
+      required:
+        - jsonrpc
+        - error
+      properties:
+        jsonrpc:
+          type: string
+          const: "2.0"
+        error:
+          $ref: "#/components/schemas/JsonRpcErrorObject"
+        id:
+          description: Echoed request identifier
+      additionalProperties: false
+    JsonRpcErrorObject:
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        message:
+          type: string
+        data:
+          anyOf:
+            - "$ref": "#/components/schemas/ApiErrorResponse"
+            - type: "null"
+      additionalProperties: false
+      required:
+        - code
+        - message
+    ApiErrorResponse:
+      type: object
+      properties:
+        schemaVersion:
+          type: integer
+          format: int32
+        requestId:
+          type: string
+        code:
+          type: string
+        message:
+          type: string
+        retryable:
+          type: boolean
+        details:
+          type: object
+          additionalProperties:
+            type: string
+      additionalProperties: false
+      required:
+        - requestId
+        - code
+        - message
+        - retryable
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        backendName:
+          type: string
+        backendVersion:
+          type: string
+        workspaceRoot:
+          type: string
+        schemaVersion:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - backendName
+        - backendVersion
+        - workspaceRoot
+    RuntimeStatusResponse:
+      type: object
+      properties:
+        state:
+          "$ref": "#/components/schemas/RuntimeState"
+        healthy:
+          type: boolean
+        active:
+          type: boolean
+        indexing:
+          type: boolean
+        backendName:
+          type: string
+        backendVersion:
+          type: string
+        workspaceRoot:
+          type: string
+        message:
+          anyOf:
+            - type: string
+            - type: "null"
+        warnings:
+          type: array
+          items:
+            type: string
+        sourceModuleNames:
+          type: array
+          items:
+            type: string
+        dependentModuleNamesBySourceModuleName:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+        schemaVersion:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - state
+        - healthy
+        - active
+        - indexing
+        - backendName
+        - backendVersion
+        - workspaceRoot
+    RuntimeState:
+      type: string
+      enum:
+        - STARTING
+        - INDEXING
+        - READY
+        - DEGRADED
+    BackendCapabilities:
+      type: object
+      properties:
+        backendName:
+          type: string
+        backendVersion:
+          type: string
+        workspaceRoot:
+          type: string
+        readCapabilities:
+          type: array
+          items:
+            "$ref": "#/components/schemas/ReadCapability"
+        mutationCapabilities:
+          type: array
+          items:
+            "$ref": "#/components/schemas/MutationCapability"
+        limits:
+          "$ref": "#/components/schemas/ServerLimits"
+        schemaVersion:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - backendName
+        - backendVersion
+        - workspaceRoot
+        - readCapabilities
+        - mutationCapabilities
+        - limits
+    ReadCapability:
+      type: string
+      enum:
+        - RESOLVE_SYMBOL
+        - FIND_REFERENCES
+        - CALL_HIERARCHY
+        - TYPE_HIERARCHY
+        - SEMANTIC_INSERTION_POINT
+        - DIAGNOSTICS
+        - FILE_OUTLINE
+        - WORKSPACE_SYMBOL_SEARCH
+        - WORKSPACE_FILES
+    MutationCapability:
+      type: string
+      enum:
+        - RENAME
+        - APPLY_EDITS
+        - FILE_OPERATIONS
+        - OPTIMIZE_IMPORTS
+        - REFRESH_WORKSPACE
+    ServerLimits:
+      type: object
+      properties:
+        maxResults:
+          type: integer
+          format: int32
+        requestTimeoutMillis:
+          type: integer
+          format: int64
+        maxConcurrentRequests:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - maxResults
+        - requestTimeoutMillis
+        - maxConcurrentRequests
+    FilePosition:
+      type: object
+      properties:
+        filePath:
+          type: string
+        offset:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - filePath
+        - offset
+    Location:
+      type: object
+      properties:
+        filePath:
+          type: string
+        startOffset:
+          type: integer
+          format: int32
+        endOffset:
+          type: integer
+          format: int32
+        startLine:
+          type: integer
+          format: int32
+        startColumn:
+          type: integer
+          format: int32
+        preview:
+          type: string
+      additionalProperties: false
+      required:
+        - filePath
+        - startOffset
+        - endOffset
+        - startLine
+        - startColumn
+        - preview
+    Symbol:
+      type: object
+      properties:
+        fqName:
+          type: string
+        kind:
+          "$ref": "#/components/schemas/SymbolKind"
+        location:
+          "$ref": "#/components/schemas/Location"
+        type:
+          anyOf:
+            - type: string
+            - type: "null"
+        containingDeclaration:
+          anyOf:
+            - type: string
+            - type: "null"
+        supertypes:
+          anyOf:
+            - type: array
+              items:
+                type: string
+            - type: "null"
+        visibility:
+          anyOf:
+            - "$ref": "#/components/schemas/SymbolVisibility"
+            - type: "null"
+        declarationScope:
+          anyOf:
+            - "$ref": "#/components/schemas/DeclarationScope"
+            - type: "null"
+      additionalProperties: false
+      required:
+        - fqName
+        - kind
+        - location
+    SymbolKind:
+      type: string
+      enum:
+        - CLASS
+        - INTERFACE
+        - OBJECT
+        - FUNCTION
+        - PROPERTY
+        - PARAMETER
+        - UNKNOWN
+    SymbolVisibility:
+      type: string
+      enum:
+        - PUBLIC
+        - INTERNAL
+        - PROTECTED
+        - PRIVATE
+        - LOCAL
+        - UNKNOWN
+    DeclarationScope:
+      type: object
+      properties:
+        startOffset:
+          type: integer
+          format: int32
+        endOffset:
+          type: integer
+          format: int32
+        startLine:
+          type: integer
+          format: int32
+        endLine:
+          type: integer
+          format: int32
+        sourceText:
+          anyOf:
+            - type: string
+            - type: "null"
+      additionalProperties: false
+      required:
+        - startOffset
+        - endOffset
+        - startLine
+        - endLine
+    PageInfo:
+      type: object
+      properties:
+        truncated:
+          type: boolean
+        nextPageToken:
+          anyOf:
+            - type: string
+            - type: "null"
+      additionalProperties: false
+      required:
+        - truncated
+    SearchScope:
+      type: object
+      properties:
+        visibility:
+          "$ref": "#/components/schemas/SymbolVisibility"
+        scope:
+          "$ref": "#/components/schemas/SearchScopeKind"
+        exhaustive:
+          type: boolean
+        candidateFileCount:
+          type: integer
+          format: int32
+        searchedFileCount:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - visibility
+        - scope
+        - exhaustive
+        - candidateFileCount
+        - searchedFileCount
+    SearchScopeKind:
+      type: string
+      enum:
+        - FILE
+        - MODULE
+        - DEPENDENT_MODULES
+    TextEdit:
+      type: object
+      properties:
+        filePath:
+          type: string
+        startOffset:
+          type: integer
+          format: int32
+        endOffset:
+          type: integer
+          format: int32
+        newText:
+          type: string
+      additionalProperties: false
+      required:
+        - filePath
+        - startOffset
+        - endOffset
+        - newText
+    FileHash:
+      type: object
+      properties:
+        filePath:
+          type: string
+        hash:
+          type: string
+      additionalProperties: false
+      required:
+        - filePath
+        - hash
+    OutlineSymbol:
+      type: object
+      properties:
+        symbol:
+          "$ref": "#/components/schemas/Symbol"
+        children:
+          type: array
+          items:
+            "$ref": "#/components/schemas/OutlineSymbol"
+      additionalProperties: false
+      required:
+        - symbol
+    WorkspaceModule:
+      type: object
+      properties:
+        name:
+          type: string
+        sourceRoots:
+          type: array
+          items:
+            type: string
+        dependencyModuleNames:
+          type: array
+          items:
+            type: string
+        files:
+          type: array
+          items:
+            type: string
+        fileCount:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - name
+        - sourceRoots
+        - dependencyModuleNames
+        - fileCount
+    SymbolQuery:
+      type: object
+      properties:
+        position:
+          "$ref": "#/components/schemas/FilePosition"
+        includeDeclarationScope:
+          type: boolean
+      additionalProperties: false
+      required:
+        - position
+    SymbolResult:
+      type: object
+      properties:
+        symbol:
+          "$ref": "#/components/schemas/Symbol"
+        schemaVersion:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - symbol
+    ReferencesQuery:
+      type: object
+      properties:
+        position:
+          "$ref": "#/components/schemas/FilePosition"
+        includeDeclaration:
+          type: boolean
+      additionalProperties: false
+      required:
+        - position
+    ReferencesResult:
+      type: object
+      properties:
+        declaration:
+          anyOf:
+            - "$ref": "#/components/schemas/Symbol"
+            - type: "null"
+        references:
+          type: array
+          items:
+            "$ref": "#/components/schemas/Location"
+        page:
+          anyOf:
+            - "$ref": "#/components/schemas/PageInfo"
+            - type: "null"
+        searchScope:
+          anyOf:
+            - "$ref": "#/components/schemas/SearchScope"
+            - type: "null"
+        schemaVersion:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - references
+    CallHierarchyQuery:
+      type: object
+      properties:
+        position:
+          "$ref": "#/components/schemas/FilePosition"
+        direction:
+          "$ref": "#/components/schemas/CallDirection"
+        depth:
+          type: integer
+          format: int32
+        maxTotalCalls:
+          type: integer
+          format: int32
+        maxChildrenPerNode:
+          type: integer
+          format: int32
+        timeoutMillis:
+          anyOf:
+            - type: integer
+              format: int64
+            - type: "null"
+      additionalProperties: false
+      required:
+        - position
+        - direction
+    CallDirection:
+      type: string
+      enum:
+        - INCOMING
+        - OUTGOING
+    CallHierarchyResult:
+      type: object
+      properties:
+        root:
+          "$ref": "#/components/schemas/CallNode"
+        stats:
+          "$ref": "#/components/schemas/CallHierarchyStats"
+        schemaVersion:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - root
+        - stats
+    CallNode:
+      type: object
+      properties:
+        symbol:
+          "$ref": "#/components/schemas/Symbol"
+        callSite:
+          anyOf:
+            - "$ref": "#/components/schemas/Location"
+            - type: "null"
+        truncation:
+          anyOf:
+            - "$ref": "#/components/schemas/CallNodeTruncation"
+            - type: "null"
+        children:
+          type: array
+          items:
+            "$ref": "#/components/schemas/CallNode"
+      additionalProperties: false
+      required:
+        - symbol
+        - children
+    CallNodeTruncation:
+      type: object
+      properties:
+        reason:
+          "$ref": "#/components/schemas/CallNodeTruncationReason"
+        details:
+          anyOf:
+            - type: string
+            - type: "null"
+      additionalProperties: false
+      required:
+        - reason
+    CallNodeTruncationReason:
+      type: string
+      enum:
+        - CYCLE
+        - MAX_TOTAL_CALLS
+        - MAX_CHILDREN_PER_NODE
+        - TIMEOUT
+    CallHierarchyStats:
+      type: object
+      properties:
+        totalNodes:
+          type: integer
+          format: int32
+        totalEdges:
+          type: integer
+          format: int32
+        truncatedNodes:
+          type: integer
+          format: int32
+        maxDepthReached:
+          type: integer
+          format: int32
+        timeoutReached:
+          type: boolean
+        maxTotalCallsReached:
+          type: boolean
+        maxChildrenPerNodeReached:
+          type: boolean
+        filesVisited:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - totalNodes
+        - totalEdges
+        - truncatedNodes
+        - maxDepthReached
+        - timeoutReached
+        - maxTotalCallsReached
+        - maxChildrenPerNodeReached
+        - filesVisited
+    TypeHierarchyQuery:
+      type: object
+      properties:
+        position:
+          "$ref": "#/components/schemas/FilePosition"
+        direction:
+          "$ref": "#/components/schemas/TypeHierarchyDirection"
+        depth:
+          type: integer
+          format: int32
+        maxResults:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - position
+    TypeHierarchyDirection:
+      type: string
+      enum:
+        - SUPERTYPES
+        - SUBTYPES
+        - BOTH
+    TypeHierarchyResult:
+      type: object
+      properties:
+        root:
+          "$ref": "#/components/schemas/TypeHierarchyNode"
+        stats:
+          "$ref": "#/components/schemas/TypeHierarchyStats"
+        schemaVersion:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - root
+        - stats
+    TypeHierarchyNode:
+      type: object
+      properties:
+        symbol:
+          "$ref": "#/components/schemas/Symbol"
+        children:
+          type: array
+          items:
+            "$ref": "#/components/schemas/TypeHierarchyNode"
+        truncation:
+          anyOf:
+            - "$ref": "#/components/schemas/TypeHierarchyTruncation"
+            - type: "null"
+      additionalProperties: false
+      required:
+        - symbol
+        - children
+    TypeHierarchyTruncation:
+      type: object
+      properties:
+        reason:
+          "$ref": "#/components/schemas/TypeHierarchyTruncationReason"
+        details:
+          anyOf:
+            - type: string
+            - type: "null"
+      additionalProperties: false
+      required:
+        - reason
+    TypeHierarchyTruncationReason:
+      type: string
+      enum:
+        - CYCLE
+        - MAX_RESULTS
+    TypeHierarchyStats:
+      type: object
+      properties:
+        totalNodes:
+          type: integer
+          format: int32
+        maxDepthReached:
+          type: integer
+          format: int32
+        truncated:
+          type: boolean
+      additionalProperties: false
+      required:
+        - totalNodes
+        - maxDepthReached
+        - truncated
+    SemanticInsertionQuery:
+      type: object
+      properties:
+        position:
+          "$ref": "#/components/schemas/FilePosition"
+        target:
+          "$ref": "#/components/schemas/SemanticInsertionTarget"
+      additionalProperties: false
+      required:
+        - position
+        - target
+    SemanticInsertionTarget:
+      type: string
+      enum:
+        - CLASS_BODY_START
+        - CLASS_BODY_END
+        - FILE_TOP
+        - FILE_BOTTOM
+        - AFTER_IMPORTS
+    SemanticInsertionResult:
+      type: object
+      properties:
+        insertionOffset:
+          type: integer
+          format: int32
+        filePath:
+          type: string
+        schemaVersion:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - insertionOffset
+        - filePath
+    DiagnosticsQuery:
+      type: object
+      properties:
+        filePaths:
+          type: array
+          items:
+            type: string
+      additionalProperties: false
+      required:
+        - filePaths
+    DiagnosticsResult:
+      type: object
+      properties:
+        diagnostics:
+          type: array
+          items:
+            "$ref": "#/components/schemas/Diagnostic"
+        page:
+          anyOf:
+            - "$ref": "#/components/schemas/PageInfo"
+            - type: "null"
+        schemaVersion:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - diagnostics
+    Diagnostic:
+      type: object
+      properties:
+        location:
+          "$ref": "#/components/schemas/Location"
+        severity:
+          "$ref": "#/components/schemas/DiagnosticSeverity"
+        message:
+          type: string
+        code:
+          anyOf:
+            - type: string
+            - type: "null"
+      additionalProperties: false
+      required:
+        - location
+        - severity
+        - message
+    DiagnosticSeverity:
+      type: string
+      enum:
+        - ERROR
+        - WARNING
+        - INFO
+    FileOutlineQuery:
+      type: object
+      properties:
+        filePath:
+          type: string
+      additionalProperties: false
+      required:
+        - filePath
+    FileOutlineResult:
+      type: object
+      properties:
+        symbols:
+          type: array
+          items:
+            "$ref": "#/components/schemas/OutlineSymbol"
+        schemaVersion:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - symbols
+    WorkspaceSymbolQuery:
+      type: object
+      properties:
+        pattern:
+          type: string
+        kind:
+          anyOf:
+            - "$ref": "#/components/schemas/SymbolKind"
+            - type: "null"
+        maxResults:
+          type: integer
+          format: int32
+        regex:
+          type: boolean
+        includeDeclarationScope:
+          type: boolean
+      additionalProperties: false
+      required:
+        - pattern
+    WorkspaceSymbolResult:
+      type: object
+      properties:
+        symbols:
+          type: array
+          items:
+            "$ref": "#/components/schemas/Symbol"
+        page:
+          anyOf:
+            - "$ref": "#/components/schemas/PageInfo"
+            - type: "null"
+        schemaVersion:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - symbols
+    WorkspaceFilesQuery:
+      type: object
+      properties:
+        moduleName:
+          anyOf:
+            - type: string
+            - type: "null"
+        includeFiles:
+          type: boolean
+      additionalProperties: false
+    WorkspaceFilesResult:
+      type: object
+      properties:
+        modules:
+          type: array
+          items:
+            "$ref": "#/components/schemas/WorkspaceModule"
+        schemaVersion:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - modules
+    RenameQuery:
+      type: object
+      properties:
+        position:
+          "$ref": "#/components/schemas/FilePosition"
+        newName:
+          type: string
+        dryRun:
+          type: boolean
+      additionalProperties: false
+      required:
+        - position
+        - newName
+    RenameResult:
+      type: object
+      properties:
+        edits:
+          type: array
+          items:
+            "$ref": "#/components/schemas/TextEdit"
+        fileHashes:
+          type: array
+          items:
+            "$ref": "#/components/schemas/FileHash"
+        affectedFiles:
+          type: array
+          items:
+            type: string
+        searchScope:
+          anyOf:
+            - "$ref": "#/components/schemas/SearchScope"
+            - type: "null"
+        schemaVersion:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - edits
+        - fileHashes
+        - affectedFiles
+    ImportOptimizeQuery:
+      type: object
+      properties:
+        filePaths:
+          type: array
+          items:
+            type: string
+      additionalProperties: false
+      required:
+        - filePaths
+    ImportOptimizeResult:
+      type: object
+      properties:
+        edits:
+          type: array
+          items:
+            "$ref": "#/components/schemas/TextEdit"
+        fileHashes:
+          type: array
+          items:
+            "$ref": "#/components/schemas/FileHash"
+        affectedFiles:
+          type: array
+          items:
+            type: string
+        schemaVersion:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - edits
+        - fileHashes
+        - affectedFiles
+    ApplyEditsQuery:
+      type: object
+      properties:
+        edits:
+          type: array
+          items:
+            "$ref": "#/components/schemas/TextEdit"
+        fileHashes:
+          type: array
+          items:
+            "$ref": "#/components/schemas/FileHash"
+        fileOperations:
+          type: array
+          items:
+            "$ref": "#/components/schemas/FileOperation"
+      additionalProperties: false
+      required:
+        - edits
+        - fileHashes
+    FileOperation:
+      oneOf:
+        - "$ref": "#/components/schemas/FileOperation.CreateFile"
+        - "$ref": "#/components/schemas/FileOperation.DeleteFile"
+      discriminator:
+        propertyName: type
+        mapping:
+          create: "#/components/schemas/FileOperation.CreateFile"
+          delete: "#/components/schemas/FileOperation.DeleteFile"
+    ApplyEditsResult:
+      type: object
+      properties:
+        applied:
+          type: array
+          items:
+            "$ref": "#/components/schemas/TextEdit"
+        affectedFiles:
+          type: array
+          items:
+            type: string
+        createdFiles:
+          type: array
+          items:
+            type: string
+        deletedFiles:
+          type: array
+          items:
+            type: string
+        schemaVersion:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - applied
+        - affectedFiles
+    RefreshQuery:
+      type: object
+      properties:
+        filePaths:
+          type: array
+          items:
+            type: string
+      additionalProperties: false
+    RefreshResult:
+      type: object
+      properties:
+        refreshedFiles:
+          type: array
+          items:
+            type: string
+        removedFiles:
+          type: array
+          items:
+            type: string
+        fullRefresh:
+          type: boolean
+        schemaVersion:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - refreshedFiles
+        - fullRefresh
+    FileOperation.CreateFile:
+      type: object
+      properties:
+        type:
+          type: string
+          const: create
+        filePath:
+          type: string
+        content:
+          type: string
+      additionalProperties: false
+      required:
+        - type
+        - filePath
+        - content
+    FileOperation.DeleteFile:
+      type: object
+      properties:
+        type:
+          type: string
+          const: delete
+        filePath:
+          type: string
+        expectedHash:
+          type: string
+      additionalProperties: false
+      required:
+        - type
+        - filePath
+        - expectedHash

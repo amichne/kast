@@ -27,6 +27,6 @@ Prove shared CLI changes here before you rely on the JVM shell or backend.
 
 - Run `./gradlew :kast-cli:test` for CLI behavior changes.
 - If you change public CLI wiring or cross-module launch behavior, also run
-  `./gradlew :kast-cli:compileKotlin :kast:compileKotlin`.
+  `./gradlew :kast-cli:compileKotlin`.
 - If you change native-image wiring and GraalVM is available, also run
   `./gradlew :kast-cli:nativeCompile`.

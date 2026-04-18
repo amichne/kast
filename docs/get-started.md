@@ -21,8 +21,8 @@ You need a small amount of local setup before the first command can succeed.
   - `KAST_CLI_PATH` — if set to an executable path, the resolver prefers it
     when locating the `kast` launcher or binary.
   - `KAST_SOURCE_ROOT` — when set to the repository source root, the resolver
-    may use local build outputs, for example `kast/build/scripts/kast` or
-    `dist/kast/kast`, and can attempt `./gradlew :kast:writeWrapperScript` when
+    may use local build outputs, for example `kast-cli/build/scripts/kast-cli` or
+    `dist/cli/kast-cli`, and can attempt `./gradlew :kast-cli:writeWrapperScript` when
     Java 21+ is available.
 
 ## Choose a backend
@@ -58,20 +58,14 @@ from your shell.
    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/install.sh)" -- --components=all --non-interactive
    ```
 
-3. Install JVM-only variant for environments without GraalVM native images:
-
-   ```bash
-   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/install.sh)" -- --jvm-only
-   ```
-
-4. If you already have this repository checked out, you can run the same
+3. If you already have this repository checked out, you can run the same
    installer from the repo root instead:
 
    ```bash
    ./install.sh
    ```
 
-5. If your current shell still cannot find `kast`, open a new shell session so
+4. If your current shell still cannot find `kast`, open a new shell session so
    the updated `PATH` takes effect.
 
 The installer supports these flags:
@@ -79,17 +73,15 @@ The installer supports these flags:
 | Flag | Description |
 |------|-------------|
 | `--components=<list>` | Comma-separated: `standalone`, `intellij`, `all` (default: `standalone`) |
-| `--jvm-only` | Install the JVM-only variant (no native binary) |
 | `--non-interactive` | Skip all interactive prompts |
 
 At the end of installation, the installer prints a config summary showing the
-install root, binary path, JVM-only mode, installed components, and shell RC
+install root, binary path, installed components, and shell RC
 file path.
 
 !!! note
-    The installer validates that Java 21 or newer is available before it
-    unpacks the release. The portable bundle includes the launcher, the bundled
-    native client, and the JVM runtime libs together.
+    The installer downloads the portable release bundle containing the native
+    binary and JVM runtime libs for the standalone daemon.
 
 ## Optional: install the packaged `kast` skill into a workspace
 
@@ -315,10 +307,10 @@ mistakes.
 
 - If you have a local checkout of the repository and want the packaged skill or
   repo-local resolver to use a locally-built launcher, set `KAST_SOURCE_ROOT`
-  to the repo root. The resolver looks for `kast/build/scripts/kast` first,
-  then `dist/kast/kast`, and may run `./gradlew :kast:writeWrapperScript` when
+  to the repo root. The resolver looks for `kast-cli/build/scripts/kast-cli` first,
+  then `dist/cli/kast-cli`, and may run `./gradlew :kast-cli:writeWrapperScript` when
   Java 21+ is available. If you want the repo-local portable layout under
-  `dist/kast`, run `./build.sh` from the repo root first:
+  `dist/cli`, run `./build.sh cli` from the repo root first:
 
    ```bash
    export KAST_SOURCE_ROOT=/absolute/path/to/kast/repo

@@ -320,13 +320,13 @@ Try kast on PATH first:
 If kast is not on PATH, check install options:
   → ./install.sh                    # downloads a GitHub release for your platform
   → ./build.sh --install            # builds from source and installs as dev instance
-  → ./gradlew :kast:writeWrapperScript  # builds wrapper script for local dev
+  → ./gradlew :kast-cli:writeWrapperScript  # builds wrapper script for local dev
 
 If using resolve-kast.sh and it reports "Java not found" or version < 21:
   → Install Java 21+. See references/cloud-setup.md.
 
 If resolve-kast.sh reports Gradle build failed:
-  → Run: ./gradlew :kast:writeWrapperScript
+  → Run: ./gradlew :kast-cli:writeWrapperScript
   → Check Gradle output for compilation errors.
 
 Note: resolve-kast.sh requires .agents/skills/kast/ to exist relative to the

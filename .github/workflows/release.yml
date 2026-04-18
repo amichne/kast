@@ -167,30 +167,17 @@ jobs:
             asset_id: linux-x64
           - runner: macos-14
             asset_id: macos-arm64
-          - runner: ubuntu-latest
-            asset_id: linux-x64-jvm
-            jvm_only: true
-          - runner: macos-14
-            asset_id: macos-arm64-jvm
-            jvm_only: true
     steps:
       - uses: actions/checkout@v5
         with:
           ref: ${{ needs.prepare-release.outputs.release_tag }}
 
       - uses: graalvm/setup-graalvm@v1
-        if: ${{ !matrix.jvm_only }}
         with:
           distribution: graalvm-community
           java-version: "21"
           github-token: ${{ secrets.GITHUB_TOKEN }}
           native-image-job-reports: "true"
-
-      - uses: actions/setup-java@v4
-        if: ${{ matrix.jvm_only }}
-        with:
-          distribution: temurin
-          java-version: "21"
 
       - uses: gradle/actions/setup-gradle@v4
 
@@ -198,22 +185,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          args=(--tag "${{ needs.prepare-release.outputs.release_tag }}" --platform-id "${{ matrix.asset_id }}")
-          if [[ "${{ matrix.jvm_only }}" == "true" ]]; then
-            args+=(--jvm-only)
-          fi
-          ./release.sh "${args[@]}"
+          ./release.sh --tag "${{ needs.prepare-release.outputs.release_tag }}" --platform-id "${{ matrix.asset_id }}"
 
       - name: Smoke portable Kast distribution
-        if: ${{ !matrix.jvm_only }}
         shell: bash
         run: |
           set -euo pipefail
           dist_dir="$RUNNER_TEMP/kast-dist"
           rm -rf "$dist_dir"
           mkdir -p "$dist_dir"
-          unzip -q kast/build/distributions/kast-*-portable.zip -d "$dist_dir"
-          ./.github/scripts/smoke-kast-cli.sh "$dist_dir/kast/kast"
+          unzip -q kast-cli/build/distributions/kast-cli-*-portable.zip -d "$dist_dir"
+          "$dist_dir/kast-cli/kast-cli" --help
 
       - name: Write build provenance
         shell: bash
@@ -259,7 +241,7 @@ jobs:
           name: release-asset-${{ matrix.asset_id }}-${{ github.run_id }}
           path: |
             dist/
-            kast/build/distributions/
+            kast-cli/build/distributions/
           if-no-files-found: warn
 
   build-intellij-plugin:
