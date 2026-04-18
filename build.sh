@@ -9,13 +9,13 @@ readonly SCRIPT_DIR
 readonly REPO_ROOT="$SCRIPT_DIR"
 readonly GRADLEW="${REPO_ROOT}/gradlew"
 readonly DIST_ROOT="${REPO_ROOT}/dist"
-readonly PORTABLE_DIST_DIR="${REPO_ROOT}/kast/build/portable-dist/kast"
-readonly PORTABLE_ZIP_DIR="${REPO_ROOT}/kast/build/distributions"
+readonly PORTABLE_DIST_DIR="${REPO_ROOT}/kast-cli/build/portable-dist/kast-cli"
+readonly PORTABLE_ZIP_DIR="${REPO_ROOT}/kast-cli/build/distributions"
 readonly PLUGIN_DIST_DIR="${REPO_ROOT}/backend-intellij/build/distributions"
 readonly BACKEND_PORTABLE_DIST_DIR="${REPO_ROOT}/backend-standalone/build/portable-dist/backend-standalone"
 readonly BACKEND_PORTABLE_ZIP_DIR="${REPO_ROOT}/backend-standalone/build/distributions"
 
-readonly ALL_TARGETS=(cli cli-jvm plugin backend)
+readonly ALL_TARGETS=(cli plugin backend)
 
 tmp_dir=""
 selected_targets=()
@@ -36,7 +36,6 @@ Builds selected Kast components and publishes artifacts to dist/.
 
 Targets (positional, repeatable):
   cli          Native CLI binary + wrapper  → dist/cli/   dist/cli.zip
-  cli-jvm      JVM-only CLI + wrapper       → dist/cli-jvm/  dist/cli-jvm.zip
   plugin       IntelliJ plugin zip          → dist/plugin.zip
   backend      Backend-standalone server    → dist/backend/  dist/backend.zip
 
@@ -121,36 +120,21 @@ run_gradle_tasks_with_retry() {
 # ---------------------------------------------------------------------------
 
 build_cli_gradle() {
-  local jvm_only="$1"
   local gradle_args=(stageCliDist buildCliPortableZip)
-  if [[ "$jvm_only" == "true" ]]; then
-    gradle_args+=("-PjvmOnly=true")
-  fi
   # Wipe intermediate outputs so a prior CLI build doesn't bleed into this one.
-  rm -rf "${REPO_ROOT}/kast/build/portable-dist" "${REPO_ROOT}/kast/build/distributions"
+  rm -rf "${REPO_ROOT}/kast-cli/build/portable-dist" "${REPO_ROOT}/kast-cli/build/distributions"
   run_gradle_tasks_with_retry "${gradle_args[@]}"
 }
 
 verify_cli_stage() {
-  local jvm_only="$1"
   log_step "Verifying staged CLI tree in ${PORTABLE_DIST_DIR}"
-  [[ -x "${PORTABLE_DIST_DIR}/kast" ]] || die "Missing staged kast launcher"
-
-  if [[ "$jvm_only" != "true" ]]; then
-    [[ -d "${PORTABLE_DIST_DIR}/bin" ]] || die "Missing staged bin directory"
-    [[ -x "${PORTABLE_DIST_DIR}/bin/kast" ]] || die "Missing staged kast native binary"
-  else
-    if [[ ! -x "${PORTABLE_DIST_DIR}/bin/kast" ]]; then
-      log_note "JVM-only build: native binary not present (expected)"
-    fi
-  fi
-
+  [[ -x "${PORTABLE_DIST_DIR}/kast-cli" ]] || die "Missing staged kast-cli launcher"
   [[ -d "${PORTABLE_DIST_DIR}/runtime-libs" ]] || die "Missing staged runtime-libs directory"
   [[ -f "${PORTABLE_DIST_DIR}/runtime-libs/classpath.txt" ]] || die "Missing staged runtime classpath file"
 
   local jars=()
   shopt -s nullglob
-  jars=("${PORTABLE_DIST_DIR}"/libs/kast-*-all.jar)
+  jars=("${PORTABLE_DIST_DIR}"/libs/kast-cli-*-all.jar)
   shopt -u nullglob
   [[ "${#jars[@]}" -eq 1 ]] || die "Expected exactly one staged fat jar under ${PORTABLE_DIST_DIR}/libs"
 }
@@ -158,7 +142,7 @@ verify_cli_stage() {
 resolve_portable_zip() {
   local newest="" candidate=""
   shopt -s nullglob
-  for candidate in "${PORTABLE_ZIP_DIR}"/kast-*-portable.zip; do
+  for candidate in "${PORTABLE_ZIP_DIR}"/kast-cli-*-portable.zip; do
     if [[ -z "$newest" || "$candidate" -nt "$newest" ]]; then
       newest="$candidate"
     fi
@@ -193,13 +177,10 @@ publish_cli() {
 }
 
 build_and_publish_cli() {
-  local target="$1"
-  local jvm_only="false"
-  [[ "$target" == "cli-jvm" ]] && jvm_only="true"
-
+  local target="cli"
   log_section "Building target: ${target}"
-  build_cli_gradle "$jvm_only"
-  verify_cli_stage "$jvm_only"
+  build_cli_gradle
+  verify_cli_stage
   publish_cli "$target"
 }
 
@@ -297,16 +278,13 @@ build_and_publish_backend() {
 # ---------------------------------------------------------------------------
 
 clean_stale_outputs() {
-  local target dist_dir
-  for target in cli cli-jvm; do
-    dist_dir="${DIST_ROOT}/${target}"
-    if [[ -d "$dist_dir" ]]; then
-      if [[ ! -f "${dist_dir}/kast" || ! -d "${dist_dir}/runtime-libs" ]]; then
-        log_step "Removing incomplete ${dist_dir} from a previous run"
-        rm -rf "$dist_dir"
-      fi
+  local dist_dir="${DIST_ROOT}/cli"
+  if [[ -d "$dist_dir" ]]; then
+    if [[ ! -f "${dist_dir}/kast-cli" || ! -d "${dist_dir}/runtime-libs" ]]; then
+      log_step "Removing incomplete ${dist_dir} from a previous run"
+      rm -rf "$dist_dir"
     fi
-  done
+  fi
 
   local backend_dir="${DIST_ROOT}/backend"
   if [[ -d "$backend_dir" ]]; then
@@ -330,7 +308,7 @@ clean_stale_outputs() {
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    cli|cli-jvm|plugin|backend)
+    cli|plugin|backend)
       selected_targets+=("$1")
       shift
       ;;
@@ -364,7 +342,7 @@ ensure_healthy_daemon
 
 for target in "${selected_targets[@]}"; do
   case "$target" in
-    cli|cli-jvm) build_and_publish_cli "$target" ;;
+    cli)         build_and_publish_cli ;;
     plugin)      build_and_publish_plugin ;;
     backend)     build_and_publish_backend ;;
   esac
@@ -373,7 +351,7 @@ done
 log_section "Build complete"
 for target in "${selected_targets[@]}"; do
   case "$target" in
-    cli|cli-jvm)
+    cli)
       log_success "${target}  →  ${DIST_ROOT}/${target}/  ${DIST_ROOT}/${target}.zip"
       ;;
     plugin)

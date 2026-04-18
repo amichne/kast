@@ -11,8 +11,8 @@ PROJECT_ROOT="$(git -C "${SCRIPT_DIR}" rev-parse --show-toplevel 2>/dev/null || 
 # Use the explicit source root when provided, otherwise fall back to the
 # repository that contains this skill.
 SOURCE_ROOT="${KAST_SOURCE_ROOT:-${PROJECT_ROOT}}"
-GRADLE_SCRIPT="${SOURCE_ROOT}/kast/build/scripts/kast"
-DIST_SCRIPT="${SOURCE_ROOT}/dist/kast/kast"
+GRADLE_SCRIPT="${SOURCE_ROOT}/kast-cli/build/scripts/kast-cli"
+DIST_SCRIPT="${SOURCE_ROOT}/dist/cli/kast-cli"
 
 # 1. PATH — preferred if already installed
 if command -v kast >/dev/null 2>&1; then
@@ -55,7 +55,7 @@ if [ -x "${SOURCE_ROOT}/gradlew" ]; then
         MAJOR="${SPEC_VERSION%%.*}"
         if [ -n "${MAJOR}" ] && [ "${MAJOR}" -ge 21 ] 2>/dev/null; then
             printf 'kast not found; building from source (this may take a minute)...\n' >&2
-            (cd "${SOURCE_ROOT}" && ./gradlew :kast:writeWrapperScript --quiet 2>&1) >&2 || true
+            (cd "${SOURCE_ROOT}" && ./gradlew :kast-cli:writeWrapperScript --quiet 2>&1) >&2 || true
             if [ -x "${GRADLE_SCRIPT}" ]; then
                 printf '%s\n' "${GRADLE_SCRIPT}"
                 exit 0
@@ -73,10 +73,10 @@ printf 'kast CLI not found. Tried:\n' >&2
 printf '  1. PATH\n' >&2
 printf '  2. %s\n' "${GRADLE_SCRIPT}" >&2
 printf '  3. %s\n' "${DIST_SCRIPT}" >&2
-printf '  4. Auto-build via ./gradlew :kast:writeWrapperScript\n' >&2
+printf '  4. Auto-build via ./gradlew :kast-cli:writeWrapperScript\n' >&2
 printf '\n' >&2
 printf 'Install options:\n' >&2
-printf '  ./install.sh                              # install from GitHub release\n' >&2
-printf '  ./build.sh                                # build dist/kast/kast locally\n' >&2
-printf '  ./gradlew :kast:writeWrapperScript        # build kast/build/scripts/kast\n' >&2
+printf '  ./install.sh                                     # install from GitHub release\n' >&2
+printf '  ./build.sh cli                                   # build dist/cli/kast-cli locally\n' >&2
+printf '  ./gradlew :kast-cli:writeWrapperScript           # build kast-cli/build/scripts/kast-cli\n' >&2
 exit 1

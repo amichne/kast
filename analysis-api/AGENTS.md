@@ -28,4 +28,4 @@ Validate the contract locally before you rely on downstream failures.
 
 - Run `./gradlew :analysis-api:test` for local changes.
 - If you change public models, capabilities, or descriptor schema, also run
-  `./gradlew :analysis-server:test :kast-cli:test :kast:compileKotlin`.
+  `./gradlew :analysis-server:test :kast-cli:test`.

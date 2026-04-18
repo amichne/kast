@@ -716,10 +716,10 @@ overwrite it.
 
 ### `smoke`
 
-Run the portable smoke workflow against a real workspace by invoking the
-maintained `smoke.sh` entrypoint through the current `kast` executable. The
+Run the portable smoke workflow against a real workspace. The
 default report is aggregated JSON on stdout so agents can consume one compact
 result; pass `--format=markdown` when you want a human-friendly report.
+Currently a stub pending native self-recursive implementation.
 
 ```bash
 kast smoke \
@@ -740,9 +740,8 @@ kast smoke \
 | `--symbol=`         | string               | —                         | Match a declaration name                               |
 | `--format=`         | `json` \| `markdown` | `json`                    | Render the aggregated smoke report as JSON or markdown |
 
-`kast smoke` picks the current launcher path automatically and passes it to the
-shell script as `--kast=`. When you run `smoke.sh` directly, you can still pass
-`--kast=` yourself.
+`kast smoke` will use self-recursive invocation to validate the CLI
+against a real workspace. The native implementation is pending.
 
 **Output:** Progress lines on stderr plus an aggregated readiness report on
 stdout. The default stdout shape is JSON.

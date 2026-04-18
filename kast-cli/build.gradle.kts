@@ -77,10 +77,21 @@ tasks.named<ProcessResources>("processResources") {
 }
 
 tasks.named<Test>("test") {
-    dependsOn(":kast:writeWrapperScript")
+    dependsOn(tasks.named("writeWrapperScript"))
+    dependsOn(":backend-standalone:syncRuntimeLibs")
     systemProperty(
         "kast.wrapper",
-        project(":kast").layout.buildDirectory.file("scripts/kast").get().asFile.absolutePath,
+        layout.buildDirectory.file("scripts/kast-cli").get().asFile.absolutePath,
+    )
+    systemProperty(
+        "kast.runtime-libs",
+        project(":backend-standalone").layout.buildDirectory.dir("runtime-libs").get().asFile.absolutePath,
+    )
+    // The wrapper script spawns a daemon that needs backend-standalone jars on its classpath.
+    // KAST_RUNTIME_LIBS propagates through the subprocess chain to ProcessLauncher.
+    environment(
+        "KAST_RUNTIME_LIBS",
+        project(":backend-standalone").layout.buildDirectory.dir("runtime-libs").get().asFile.absolutePath,
     )
 }
 
@@ -93,11 +104,19 @@ tasks.register<JavaExec>("generateWrapperOpenApiSchema") {
 }
 
 val stageNativeRuntimeLibs by tasks.registering(Sync::class) {
-    dependsOn(":kast:syncRuntimeLibs")
-    from(project(":kast").layout.buildDirectory.dir("runtime-libs"))
+    dependsOn(":backend-standalone:syncRuntimeLibs")
+    from(project(":backend-standalone").layout.buildDirectory.dir("runtime-libs"))
     into(layout.buildDirectory.dir("native/nativeCompile/runtime-libs"))
 }
 
 tasks.named("nativeCompile").configure {
     finalizedBy(stageNativeRuntimeLibs)
+}
+
+tasks.named<Sync>("syncPortableDist") {
+    // Replace kast-cli's own runtime-libs with backend-standalone's (needed for daemon classpath).
+    from(project(":backend-standalone").tasks.named("syncRuntimeLibs")) {
+        into("runtime-libs")
+    }
+    dependsOn(":backend-standalone:syncRuntimeLibs")
 }

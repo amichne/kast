@@ -71,9 +71,9 @@ export PATH="$PWD/dist/kast:$PATH"
 ### Option 3: Gradle direct
 
 ```bash
-./gradlew :kast:writeWrapperScript
-# Produces: kast/build/scripts/kast
-export PATH="$PWD/kast/build/scripts:$PATH"
+./gradlew :kast-cli:writeWrapperScript
+# Produces: kast-cli/build/scripts/kast-cli
+export PATH="$PWD/kast-cli/build/scripts:$PATH"
 ```
 
 ---

@@ -31,10 +31,9 @@ Use this map to choose the narrowest unit that owns a change.
 - `analysis-api`: shared contract, serializable models, JSON-RPC wire types,
   descriptor discovery helpers, standalone option parsing, errors, file edit
   validation, descriptor schema, and disk edit helpers
-- `kast-cli`: shared CLI control plane, command parsing, JSON output, install
-  flows, runtime orchestration, and the native-image entrypoint
-- `kast`: JVM shell, wrapper packaging, portable distribution layout, and the
-  real `internal daemon-run` implementation
+- `kast-cli`: CLI control plane, command parsing, JSON output, install
+  flows, runtime orchestration, wrapper packaging, portable distribution
+  layout, and the native-image entrypoint
 - `analysis-server`: JSON-RPC dispatch, local socket and stdio transport,
   request limits, and descriptor lifecycle
 - `backend-standalone`: standalone host, Analysis API session bootstrap,
@@ -133,17 +132,15 @@ Apply these rules across the repo before local unit rules add more detail.
 - Keep capability gating honest. A transport or backend must not advertise
   support for work it cannot actually perform.
 - Respect the current architecture: `kast-cli` owns the operator-facing
-  control plane and native entrypoint, `kast` owns the JVM shell and wrapper
-  packaging, `analysis-server` owns transport and descriptor plumbing,
+  control plane, native entrypoint, wrapper packaging, and portable
+  distribution, `analysis-server` owns transport and descriptor plumbing,
   `backend-standalone` owns headless runtime behavior, `backend-intellij` owns
   IDE-hosted runtime behavior, and `shared-testing` stays out of production
   code paths.
 - Treat `docs/` plus `zensical.toml` as the documentation source of truth.
   `site/` is generated output and should be rebuilt, not hand-edited.
 - Prefer repo-root packaging entry points for shipped artifacts: `./build.sh`
-  builds the standalone portable distribution (pass `--jvm-only` for a
-  JVM-only variant); `./gradlew buildIntellijPlugin` builds the IntelliJ
-  plugin zip. `./release.sh` also accepts `--jvm-only` for JVM-only release
-  assets.
+  builds the standalone portable distribution; `./gradlew buildIntellijPlugin` builds the IntelliJ
+  plugin zip.
 - Verify with the narrowest Gradle task that proves the change. Broaden the
   scope when you touch shared contracts, build logic, or cross-module behavior.

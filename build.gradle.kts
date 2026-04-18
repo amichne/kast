@@ -14,14 +14,14 @@ subprojects {
 
 tasks.register("stageCliDist") {
     group = "distribution"
-    description = "Builds a clean staged kast CLI tree under kast/build/portable-dist/kast."
-    dependsOn(":kast:syncPortableDist")
+    description = "Builds a clean staged kast CLI tree under kast-cli/build/portable-dist/kast-cli."
+    dependsOn(":kast-cli:syncPortableDist")
 }
 
 tasks.register("buildCliPortableZip") {
     group = "distribution"
-    description = "Builds the versioned portable kast CLI zip under kast/build/distributions."
-    dependsOn(":kast:portableDistZip")
+    description = "Builds the versioned portable kast CLI zip under kast-cli/build/distributions."
+    dependsOn(":kast-cli:portableDistZip")
 }
 
 tasks.register("buildIntellijPlugin") {
