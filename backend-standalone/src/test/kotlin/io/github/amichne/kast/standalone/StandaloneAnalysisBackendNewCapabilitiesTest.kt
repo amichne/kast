@@ -51,7 +51,7 @@ class StandaloneAnalysisBackendNewCapabilitiesTest {
             content = """
                 package sample
 
-                fun greet(name: String): String = "hi $name"
+                fun greet(name: String): String = "hi ${'$'}name"
                 fun use(): String = greet("kast")
             """.trimIndent() + "\n",
         )
@@ -73,7 +73,7 @@ class StandaloneAnalysisBackendNewCapabilitiesTest {
             content = """
                 package sample
 
-                fun greet(name: String): String = "hi $name"
+                fun greet(name: String): String = "hi ${'$'}name"
             """.trimIndent() + "\n",
         )
         val offset = Files.readString(file).indexOf("greet")

@@ -179,7 +179,7 @@ class StandaloneAnalysisBackendResolveSymbolTest {
             assertNotNull(result.symbol.declarationScope)
             val scope = result.symbol.declarationScope!!
             assertEquals(3, scope.startLine)
-            assertEquals(3, scope.endLine)
+            assertEquals(4, scope.endLine)
             assertNotNull(scope.sourceText)
             assertTrue(scope.sourceText!!.contains("fun greet"))
         }

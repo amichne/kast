@@ -462,6 +462,7 @@ class AnalysisDispatcherTest {
 
     @Test
     fun `implementations dispatches without HTTP`() {
+        dispatcher()
         val file = sampleTypeFile()
         val offset = file.readText().indexOf("FriendlyGreeter")
         val result = dispatchSuccess<ImplementationsResult>(

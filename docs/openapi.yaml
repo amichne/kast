@@ -329,6 +329,87 @@ paths:
             "application/json":
               schema:
                 "$ref": "#/components/schemas/JsonRpcErrorResponse"
+  "/rpc/implementations":
+    post:
+      operationId: implementations
+      summary: Find concrete implementations and subclasses for a declaration
+      tags:
+        - read
+      x-jsonrpc-method: implementations
+      x-kast-required-capability: IMPLEMENTATIONS
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/ImplementationsQuery"
+      responses:
+        200:
+          description: JSON-RPC success result
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/ImplementationsResult"
+        default:
+          description: JSON-RPC error response
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/JsonRpcErrorResponse"
+  "/rpc/code-actions":
+    post:
+      operationId: codeActions
+      summary: Return available code actions at a file position
+      tags:
+        - read
+      x-jsonrpc-method: code-actions
+      x-kast-required-capability: CODE_ACTIONS
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/CodeActionsQuery"
+      responses:
+        200:
+          description: JSON-RPC success result
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/CodeActionsResult"
+        default:
+          description: JSON-RPC error response
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/JsonRpcErrorResponse"
+  "/rpc/completions":
+    post:
+      operationId: completions
+      summary: Return completion candidates available at a file position
+      tags:
+        - read
+      x-jsonrpc-method: completions
+      x-kast-required-capability: COMPLETIONS
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/CompletionsQuery"
+      responses:
+        200:
+          description: JSON-RPC success result
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/CompletionsResult"
+        default:
+          description: JSON-RPC error response
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/JsonRpcErrorResponse"
   "/rpc/rename":
     post:
       operationId: rename
@@ -639,6 +720,9 @@ components:
         - FILE_OUTLINE
         - WORKSPACE_SYMBOL_SEARCH
         - WORKSPACE_FILES
+        - IMPLEMENTATIONS
+        - CODE_ACTIONS
+        - COMPLETIONS
     MutationCapability:
       type: string
       enum:
@@ -716,6 +800,20 @@ components:
           anyOf:
             - type: string
             - type: "null"
+        returnType:
+          anyOf:
+            - type: string
+            - type: "null"
+        parameters:
+          anyOf:
+            - type: array
+              items:
+                "$ref": "#/components/schemas/ParameterInfo"
+            - type: "null"
+        documentation:
+          anyOf:
+            - type: string
+            - type: "null"
         containingDeclaration:
           anyOf:
             - type: string
@@ -749,6 +847,23 @@ components:
         - PROPERTY
         - PARAMETER
         - UNKNOWN
+    ParameterInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        defaultValue:
+          anyOf:
+            - type: string
+            - type: "null"
+        isVararg:
+          type: boolean
+      additionalProperties: false
+      required:
+        - name
+        - type
     SymbolVisibility:
       type: string
       enum:
@@ -897,6 +1012,8 @@ components:
         position:
           "$ref": "#/components/schemas/FilePosition"
         includeDeclarationScope:
+          type: boolean
+        includeDocumentation:
           type: boolean
       additionalProperties: false
       required:
@@ -1316,6 +1433,142 @@ components:
       additionalProperties: false
       required:
         - modules
+    ImplementationsQuery:
+      type: object
+      properties:
+        position:
+          "$ref": "#/components/schemas/FilePosition"
+        maxResults:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - position
+    ImplementationsResult:
+      type: object
+      properties:
+        declaration:
+          "$ref": "#/components/schemas/Symbol"
+        implementations:
+          type: array
+          items:
+            "$ref": "#/components/schemas/Symbol"
+        exhaustive:
+          type: boolean
+        schemaVersion:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - declaration
+        - implementations
+    CodeActionsQuery:
+      type: object
+      properties:
+        position:
+          "$ref": "#/components/schemas/FilePosition"
+        diagnosticCode:
+          anyOf:
+            - type: string
+            - type: "null"
+      additionalProperties: false
+      required:
+        - position
+    CodeActionsResult:
+      type: object
+      properties:
+        actions:
+          type: array
+          items:
+            "$ref": "#/components/schemas/CodeAction"
+        schemaVersion:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - actions
+    CodeAction:
+      type: object
+      properties:
+        title:
+          type: string
+        diagnosticCode:
+          anyOf:
+            - type: string
+            - type: "null"
+        edits:
+          type: array
+          items:
+            "$ref": "#/components/schemas/TextEdit"
+        fileHashes:
+          type: array
+          items:
+            "$ref": "#/components/schemas/FileHash"
+      additionalProperties: false
+      required:
+        - title
+        - edits
+        - fileHashes
+    CompletionsQuery:
+      type: object
+      properties:
+        position:
+          "$ref": "#/components/schemas/FilePosition"
+        maxResults:
+          type: integer
+          format: int32
+        kindFilter:
+          anyOf:
+            - type: array
+              items:
+                "$ref": "#/components/schemas/SymbolKind"
+            - type: "null"
+      additionalProperties: false
+      required:
+        - position
+    CompletionsResult:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            "$ref": "#/components/schemas/CompletionItem"
+        exhaustive:
+          type: boolean
+        schemaVersion:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - items
+    CompletionItem:
+      type: object
+      properties:
+        name:
+          type: string
+        fqName:
+          type: string
+        kind:
+          "$ref": "#/components/schemas/SymbolKind"
+        type:
+          anyOf:
+            - type: string
+            - type: "null"
+        parameters:
+          anyOf:
+            - type: array
+              items:
+                "$ref": "#/components/schemas/ParameterInfo"
+            - type: "null"
+        documentation:
+          anyOf:
+            - type: string
+            - type: "null"
+      additionalProperties: false
+      required:
+        - name
+        - fqName
+        - kind
     RenameQuery:
       type: object
       properties:

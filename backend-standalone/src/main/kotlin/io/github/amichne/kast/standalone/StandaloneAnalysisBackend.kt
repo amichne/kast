@@ -323,6 +323,7 @@ internal class StandaloneAnalysisBackend internal constructor(
     override suspend fun completions(query: CompletionsQuery): CompletionsResult = withContext(readDispatcher) {
         session.withReadAccess {
             val file = session.findKtFile(query.position.filePath)
+            val kindFilter = query.kindFilter
             val symbols = mutableListOf<CompletionItem>()
             file.accept(object : PsiRecursiveElementWalkingVisitor() {
                 override fun visitElement(element: PsiElement) {
@@ -337,7 +338,7 @@ internal class StandaloneAnalysisBackend internal constructor(
                                 includeDocumentation = true,
                             )
                         }
-                        if (query.kindFilter == null || symbol.kind in query.kindFilter) {
+                        if (kindFilter == null || symbol.kind in kindFilter) {
                             symbols += CompletionItem(
                                 name = element.name ?: symbol.fqName.substringAfterLast('.'),
                                 fqName = symbol.fqName,

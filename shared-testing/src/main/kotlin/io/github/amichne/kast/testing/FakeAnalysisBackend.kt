@@ -382,6 +382,7 @@ class FakeAnalysisBackend private constructor(
 
     override suspend fun completions(query: CompletionsQuery): CompletionsResult {
         requireKnownFile(query.position.filePath)
+        val kindFilter = query.kindFilter
         val items = listOf(
             CompletionItem(
                 name = "greet",
@@ -391,7 +392,7 @@ class FakeAnalysisBackend private constructor(
                 parameters = symbol.parameters,
                 documentation = symbol.documentation,
             ),
-        ).filter { item -> query.kindFilter == null || item.kind in query.kindFilter }
+        ).filter { item -> kindFilter == null || item.kind in kindFilter }
         val capped = items.take(query.maxResults.coerceAtLeast(1))
         return CompletionsResult(
             items = capped,
