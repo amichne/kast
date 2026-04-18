@@ -492,6 +492,23 @@ class CliCommandParserTest {
     }
 
     @Test
+    fun `resolve parses include-documentation option`() {
+        val command = parser.parse(
+            arrayOf(
+                "resolve",
+                "--workspace-root=$tempDir",
+                "--file-path=$tempDir/Sample.kt",
+                "--offset=12",
+                "--include-documentation=true",
+            ),
+        )
+
+        assertTrue(command is CliCommand.ResolveSymbol)
+        val resolveCommand = command as CliCommand.ResolveSymbol
+        assertEquals(true, resolveCommand.query.includeDocumentation)
+    }
+
+    @Test
     fun `workspace symbol parses include-body option`() {
         val command = parser.parse(
             arrayOf(
@@ -505,5 +522,58 @@ class CliCommandParserTest {
         assertTrue(command is CliCommand.WorkspaceSymbol)
         val symbolCommand = command as CliCommand.WorkspaceSymbol
         assertEquals(true, symbolCommand.query.includeDeclarationScope)
+    }
+
+    @Test
+    fun `implementations parses from inline options`() {
+        val command = parser.parse(
+            arrayOf(
+                "implementations",
+                "--workspace-root=$tempDir",
+                "--file-path=$tempDir/Types.kt",
+                "--offset=10",
+                "--max-results=5",
+            ),
+        )
+
+        assertTrue(command is CliCommand.Implementations)
+        val implementationsCommand = command as CliCommand.Implementations
+        assertEquals(5, implementationsCommand.query.maxResults)
+    }
+
+    @Test
+    fun `code actions parses inline options`() {
+        val command = parser.parse(
+            arrayOf(
+                "code-actions",
+                "--workspace-root=$tempDir",
+                "--file-path=$tempDir/Types.kt",
+                "--offset=10",
+                "--diagnostic-code=UNRESOLVED_REFERENCE",
+            ),
+        )
+
+        assertTrue(command is CliCommand.CodeActions)
+        val codeActionsCommand = command as CliCommand.CodeActions
+        assertEquals("UNRESOLVED_REFERENCE", codeActionsCommand.query.diagnosticCode)
+    }
+
+    @Test
+    fun `completions parses inline options`() {
+        val command = parser.parse(
+            arrayOf(
+                "completions",
+                "--workspace-root=$tempDir",
+                "--file-path=$tempDir/Types.kt",
+                "--offset=10",
+                "--max-results=7",
+                "--kind-filter=FUNCTION,CLASS",
+            ),
+        )
+
+        assertTrue(command is CliCommand.Completions)
+        val completionsCommand = command as CliCommand.Completions
+        assertEquals(7, completionsCommand.query.maxResults)
+        assertEquals(setOf(SymbolKind.FUNCTION, SymbolKind.CLASS), completionsCommand.query.kindFilter)
     }
 }

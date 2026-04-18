@@ -129,6 +129,30 @@ internal class DefaultCliCommandExecutor(
                 )
             }
 
+            is CliCommand.Implementations -> {
+                val result = cliService.implementations(command.options, command.query)
+                CliExecutionResult(
+                    output = CliOutput.JsonValue(result.payload),
+                    daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
+                )
+            }
+
+            is CliCommand.CodeActions -> {
+                val result = cliService.codeActions(command.options, command.query)
+                CliExecutionResult(
+                    output = CliOutput.JsonValue(result.payload),
+                    daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
+                )
+            }
+
+            is CliCommand.Completions -> {
+                val result = cliService.completions(command.options, command.query)
+                CliExecutionResult(
+                    output = CliOutput.JsonValue(result.payload),
+                    daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
+                )
+            }
+
             is CliCommand.SemanticInsertionPoint -> {
                 val result = cliService.semanticInsertionPoint(command.options, command.query)
                 CliExecutionResult(

@@ -2,9 +2,12 @@ package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.api.ApplyEditsQuery
 import io.github.amichne.kast.api.CallHierarchyQuery
+import io.github.amichne.kast.api.CodeActionsQuery
+import io.github.amichne.kast.api.CompletionsQuery
 import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.FileOutlineQuery
 import io.github.amichne.kast.api.ImportOptimizeQuery
+import io.github.amichne.kast.api.ImplementationsQuery
 import io.github.amichne.kast.api.ReferencesQuery
 import io.github.amichne.kast.api.RefreshQuery
 import io.github.amichne.kast.api.RenameQuery
@@ -32,6 +35,9 @@ internal sealed interface CliCommand {
     data class FileOutline(val options: RuntimeCommandOptions, val query: FileOutlineQuery) : CliCommand
     data class WorkspaceSymbol(val options: RuntimeCommandOptions, val query: WorkspaceSymbolQuery) : CliCommand
     data class WorkspaceFiles(val options: RuntimeCommandOptions, val query: WorkspaceFilesQuery) : CliCommand
+    data class Implementations(val options: RuntimeCommandOptions, val query: ImplementationsQuery) : CliCommand
+    data class CodeActions(val options: RuntimeCommandOptions, val query: CodeActionsQuery) : CliCommand
+    data class Completions(val options: RuntimeCommandOptions, val query: CompletionsQuery) : CliCommand
     data class Rename(val options: RuntimeCommandOptions, val query: RenameQuery) : CliCommand
     data class ImportOptimize(val options: RuntimeCommandOptions, val query: ImportOptimizeQuery) : CliCommand
     data class ApplyEdits(val options: RuntimeCommandOptions, val query: ApplyEditsQuery) : CliCommand

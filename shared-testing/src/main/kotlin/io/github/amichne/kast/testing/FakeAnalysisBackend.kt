@@ -9,6 +9,11 @@ import io.github.amichne.kast.api.CallHierarchyQuery
 import io.github.amichne.kast.api.CallHierarchyResult
 import io.github.amichne.kast.api.CallHierarchyStats
 import io.github.amichne.kast.api.CallNode
+import io.github.amichne.kast.api.CodeActionsQuery
+import io.github.amichne.kast.api.CodeActionsResult
+import io.github.amichne.kast.api.CompletionItem
+import io.github.amichne.kast.api.CompletionsQuery
+import io.github.amichne.kast.api.CompletionsResult
 import io.github.amichne.kast.api.Diagnostic
 import io.github.amichne.kast.api.DiagnosticSeverity
 import io.github.amichne.kast.api.DiagnosticsQuery
@@ -21,11 +26,14 @@ import io.github.amichne.kast.api.FilePosition
 import io.github.amichne.kast.api.HealthResponse
 import io.github.amichne.kast.api.ImportOptimizeQuery
 import io.github.amichne.kast.api.ImportOptimizeResult
+import io.github.amichne.kast.api.ImplementationsQuery
+import io.github.amichne.kast.api.ImplementationsResult
 import io.github.amichne.kast.api.LocalDiskEditApplier
 import io.github.amichne.kast.api.Location
 import io.github.amichne.kast.api.MutationCapability
 import io.github.amichne.kast.api.NotFoundException
 import io.github.amichne.kast.api.OutlineSymbol
+import io.github.amichne.kast.api.ParameterInfo
 import io.github.amichne.kast.api.ReadCapability
 import io.github.amichne.kast.api.RefreshQuery
 import io.github.amichne.kast.api.RefreshResult
@@ -91,6 +99,9 @@ class FakeAnalysisBackend private constructor(
             ReadCapability.FILE_OUTLINE,
             ReadCapability.WORKSPACE_SYMBOL_SEARCH,
             ReadCapability.WORKSPACE_FILES,
+            ReadCapability.IMPLEMENTATIONS,
+            ReadCapability.CODE_ACTIONS,
+            ReadCapability.COMPLETIONS,
         ),
         mutationCapabilities = setOf(
             MutationCapability.RENAME,
@@ -355,6 +366,39 @@ class FakeAnalysisBackend private constructor(
         return WorkspaceFilesResult(modules = modules)
     }
 
+    override suspend fun implementations(query: ImplementationsQuery): ImplementationsResult {
+        requireTypeHierarchyAnchor(query.position)
+        return ImplementationsResult(
+            declaration = typeHierarchySupertypeSymbol,
+            implementations = listOf(typeHierarchySubtypeSymbol).take(query.maxResults.coerceAtLeast(1)),
+            exhaustive = query.maxResults >= 1,
+        )
+    }
+
+    override suspend fun codeActions(query: CodeActionsQuery): CodeActionsResult {
+        requireKnownFile(query.position.filePath)
+        return CodeActionsResult(actions = emptyList())
+    }
+
+    override suspend fun completions(query: CompletionsQuery): CompletionsResult {
+        requireKnownFile(query.position.filePath)
+        val items = listOf(
+            CompletionItem(
+                name = "greet",
+                fqName = symbol.fqName,
+                kind = symbol.kind,
+                type = symbol.returnType ?: symbol.type,
+                parameters = symbol.parameters,
+                documentation = symbol.documentation,
+            ),
+        ).filter { item -> query.kindFilter == null || item.kind in query.kindFilter }
+        val capped = items.take(query.maxResults.coerceAtLeast(1))
+        return CompletionsResult(
+            items = capped,
+            exhaustive = items.size <= capped.size,
+        )
+    }
+
     private fun requireAnchor(position: FilePosition) {
         requireKnownFile(position.filePath)
         if (!hasMatchingAnchor(symbolAnchors, position)) {
@@ -454,6 +498,14 @@ class FakeAnalysisBackend private constructor(
                 fqName = "sample.greet",
                 kind = SymbolKind.FUNCTION,
                 location = symbolLocation,
+                returnType = "String",
+                parameters = listOf(
+                    ParameterInfo(
+                        name = "name",
+                        type = "String",
+                    ),
+                ),
+                documentation = "/** Greets the provided name. */",
                 containingDeclaration = "sample",
             )
             val typeHierarchyRootSymbol = Symbol(
@@ -505,6 +557,9 @@ class FakeAnalysisBackend private constructor(
                 fqName = fixture.symbolFqName,
                 kind = SymbolKind.FUNCTION,
                 location = fixture.declarationLocation,
+                returnType = "String",
+                parameters = listOf(ParameterInfo(name = "name", type = "String")),
+                documentation = "/** Contract fixture symbol. */",
                 containingDeclaration = "sample",
             )
             val typeHierarchyRootSymbol = Symbol(

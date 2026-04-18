@@ -104,6 +104,37 @@ you want to search across the entire workspace.
   name-based search across all workspace files, not a position-based
   resolution.
 
+## Which concrete classes implement this interface?
+
+Use this when you are on an interface or abstract base type and want concrete
+implementers directly.
+
+- **Capability:** Implementations
+- **Returns:** The declaration and concrete implementing/extending symbols.
+- **Important details:** Results are bounded by `maxResults`. Read `exhaustive`
+  before treating the list as complete.
+
+## What quick fixes are available here?
+
+Use this when you want machine-readable code action candidates for a location
+or diagnostic code.
+
+- **Capability:** Code actions
+- **Returns:** Structured action titles plus edit payloads compatible with
+  `apply-edits`.
+- **Important details:** The response is intended for automation flows, not
+  interactive IDE UI.
+
+## What symbols are available at this position?
+
+Use this when you need one-shot scoped completion candidates for generation or
+analysis workflows.
+
+- **Capability:** Completions
+- **Returns:** Candidate names, kinds, type metadata, and optional docs.
+- **Important details:** This is a bounded query, not live typing-time editor
+  completion.
+
 ## Apply these edits safely
 
 Use this when you already have a prepared edit plan and want Kast to write it

@@ -27,6 +27,7 @@ without making the starting path noisy.
     Start here:
 
     - [Why Kast](why-kast.md)
+    - [Kast vs LSP](kast-vs-lsp.md)
     - [What you can do](what-you-can-do.md)
     - [Get started](get-started.md)
     - [Run analysis commands](run-analysis-commands.md)

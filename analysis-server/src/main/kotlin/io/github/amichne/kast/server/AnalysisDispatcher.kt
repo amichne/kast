@@ -9,6 +9,10 @@ import io.github.amichne.kast.api.BackendCapabilities
 import io.github.amichne.kast.api.CallHierarchyQuery
 import io.github.amichne.kast.api.CallHierarchyResult
 import io.github.amichne.kast.api.CapabilityNotSupportedException
+import io.github.amichne.kast.api.CodeActionsQuery
+import io.github.amichne.kast.api.CodeActionsResult
+import io.github.amichne.kast.api.CompletionsQuery
+import io.github.amichne.kast.api.CompletionsResult
 import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.DiagnosticsResult
 import io.github.amichne.kast.api.FileOutlineQuery
@@ -16,6 +20,8 @@ import io.github.amichne.kast.api.FileOutlineResult
 import io.github.amichne.kast.api.HealthResponse
 import io.github.amichne.kast.api.ImportOptimizeQuery
 import io.github.amichne.kast.api.ImportOptimizeResult
+import io.github.amichne.kast.api.ImplementationsQuery
+import io.github.amichne.kast.api.ImplementationsResult
 import io.github.amichne.kast.api.JSON_RPC_INTERNAL_ERROR
 import io.github.amichne.kast.api.JSON_RPC_INVALID_REQUEST
 import io.github.amichne.kast.api.JSON_RPC_METHOD_NOT_FOUND
@@ -311,6 +317,42 @@ class AnalysisDispatcher(
                 backend.workspaceFiles(
                     decodeParams(WorkspaceFilesQuery.serializer(), params).also {
                         requireReadCapability(ReadCapability.WORKSPACE_FILES)
+                    },
+                ),
+            )
+
+            "implementations" -> encode(
+                ImplementationsResult.serializer(),
+                backend.implementations(
+                    decodeParams(ImplementationsQuery.serializer(), params).also { query ->
+                        validateFilePosition(query.position.filePath, query.position.offset)
+                        if (query.maxResults < 1) {
+                            throw ValidationException("Implementations maxResults must be greater than zero")
+                        }
+                        requireReadCapability(ReadCapability.IMPLEMENTATIONS)
+                    },
+                ),
+            )
+
+            "code-actions" -> encode(
+                CodeActionsResult.serializer(),
+                backend.codeActions(
+                    decodeParams(CodeActionsQuery.serializer(), params).also { query ->
+                        validateFilePosition(query.position.filePath, query.position.offset)
+                        requireReadCapability(ReadCapability.CODE_ACTIONS)
+                    },
+                ),
+            )
+
+            "completions" -> encode(
+                CompletionsResult.serializer(),
+                backend.completions(
+                    decodeParams(CompletionsQuery.serializer(), params).also { query ->
+                        validateFilePosition(query.position.filePath, query.position.offset)
+                        if (query.maxResults < 1) {
+                            throw ValidationException("Completions maxResults must be greater than zero")
+                        }
+                        requireReadCapability(ReadCapability.COMPLETIONS)
                     },
                 ),
             )

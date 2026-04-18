@@ -8,6 +8,11 @@ import io.github.amichne.kast.api.ApplyEditsResult
 import io.github.amichne.kast.api.BackendCapabilities
 import io.github.amichne.kast.api.CallHierarchyQuery
 import io.github.amichne.kast.api.CallHierarchyResult
+import io.github.amichne.kast.api.CodeActionsQuery
+import io.github.amichne.kast.api.CodeActionsResult
+import io.github.amichne.kast.api.CompletionItem
+import io.github.amichne.kast.api.CompletionsQuery
+import io.github.amichne.kast.api.CompletionsResult
 import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.DiagnosticsResult
 import io.github.amichne.kast.api.FileHash
@@ -16,6 +21,8 @@ import io.github.amichne.kast.api.FileOutlineResult
 import io.github.amichne.kast.api.HealthResponse
 import io.github.amichne.kast.api.ImportOptimizeQuery
 import io.github.amichne.kast.api.ImportOptimizeResult
+import io.github.amichne.kast.api.ImplementationsQuery
+import io.github.amichne.kast.api.ImplementationsResult
 import io.github.amichne.kast.api.LocalDiskEditApplier
 import io.github.amichne.kast.api.MutationCapability
 import io.github.amichne.kast.api.ReadCapability
@@ -57,10 +64,12 @@ import io.github.amichne.kast.shared.analysis.targetFqNameAndPackage
 import io.github.amichne.kast.shared.analysis.toApiDiagnostics
 import io.github.amichne.kast.shared.analysis.toKastLocation
 import io.github.amichne.kast.shared.analysis.toSymbolModel
+import io.github.amichne.kast.shared.analysis.typeHierarchyDeclaration
 import io.github.amichne.kast.standalone.analysis.CandidateFileResolver
 import io.github.amichne.kast.standalone.analysis.CandidateSearchResult
 import io.github.amichne.kast.standalone.hierarchy.CallHierarchyTraversal
 import io.github.amichne.kast.standalone.hierarchy.TypeHierarchyTraversal
+import io.github.amichne.kast.standalone.hierarchy.namedTypeDeclarations
 import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetry
 import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetryScope
 import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetrySpan
@@ -69,6 +78,11 @@ import kotlinx.coroutines.withContext
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.components.KaDiagnosticCheckerFilter
+import org.jetbrains.kotlin.lexer.KtTokens
+import org.jetbrains.kotlin.psi.KtClass
+import org.jetbrains.kotlin.psi.KtNamedDeclaration
+import org.jetbrains.kotlin.psi.KtObjectDeclaration
+import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtFile
 import java.nio.file.Files
 import java.nio.file.Path
@@ -115,6 +129,9 @@ internal class StandaloneAnalysisBackend internal constructor(
             ReadCapability.FILE_OUTLINE,
             ReadCapability.WORKSPACE_SYMBOL_SEARCH,
             ReadCapability.WORKSPACE_FILES,
+            ReadCapability.IMPLEMENTATIONS,
+            ReadCapability.CODE_ACTIONS,
+            ReadCapability.COMPLETIONS,
         ),
         mutationCapabilities = setOf(
             MutationCapability.RENAME,
@@ -185,6 +202,7 @@ internal class StandaloneAnalysisBackend internal constructor(
                             containingDeclaration = null,
                             supertypes = supertypeNames(target),
                             includeDeclarationScope = query.includeDeclarationScope,
+                            includeDocumentation = query.includeDocumentation,
                         )
                     },
                 )
@@ -240,6 +258,107 @@ internal class StandaloneAnalysisBackend internal constructor(
             ) {
                 typeHierarchyTraversal.build(query)
             }
+        }
+    }
+
+    override suspend fun implementations(query: ImplementationsQuery): ImplementationsResult = withContext(readDispatcher) {
+        session.withReadAccess {
+            val file = session.findKtFile(query.position.filePath)
+            val resolvedTarget = resolveTarget(file, query.position.offset)
+            val declaration = resolvedTarget.typeHierarchyDeclaration() ?: resolvedTarget
+            val declarationSymbol = analyze(file) {
+                declaration.toSymbolModel(
+                    containingDeclaration = null,
+                    supertypes = supertypeNames(declaration),
+                )
+            }
+            val allTypes = session.allKtFiles().flatMap(KtFile::namedTypeDeclarations)
+            val directSupertypesByType = allTypes.associateWith { type ->
+                analyze(type.containingKtFile) { supertypeNames(type).orEmpty() }
+            }
+            val discovered = linkedSetOf(declarationSymbol.fqName)
+            var changed = true
+            while (changed) {
+                changed = false
+                for ((type, supertypes) in directSupertypesByType) {
+                    if (type.fqName?.asString() in discovered) continue
+                    if (supertypes.any(discovered::contains)) {
+                        val fqName = type.fqName?.asString() ?: continue
+                        if (discovered.add(fqName)) changed = true
+                    }
+                }
+            }
+            val implementations = allTypes
+                .filter { type ->
+                    val fqName = type.fqName?.asString() ?: return@filter false
+                    fqName != declarationSymbol.fqName &&
+                        fqName in discovered &&
+                        isConcreteType(type)
+                }
+                .map { type ->
+                    analyze(type.containingKtFile) {
+                        type.toSymbolModel(
+                            containingDeclaration = null,
+                            supertypes = supertypeNames(type),
+                        )
+                    }
+                }
+                .sortedWith(compareBy({ it.fqName }, { it.location.filePath }, { it.location.startOffset }))
+            val capped = implementations.take(query.maxResults.coerceAtLeast(1))
+            ImplementationsResult(
+                declaration = declarationSymbol,
+                implementations = capped,
+                exhaustive = implementations.size <= capped.size,
+            )
+        }
+    }
+
+    override suspend fun codeActions(query: CodeActionsQuery): CodeActionsResult = withContext(readDispatcher) {
+        session.withReadAccess {
+            session.findKtFile(query.position.filePath)
+            CodeActionsResult(actions = emptyList())
+        }
+    }
+
+    override suspend fun completions(query: CompletionsQuery): CompletionsResult = withContext(readDispatcher) {
+        session.withReadAccess {
+            val file = session.findKtFile(query.position.filePath)
+            val symbols = mutableListOf<CompletionItem>()
+            file.accept(object : PsiRecursiveElementWalkingVisitor() {
+                override fun visitElement(element: PsiElement) {
+                    if (element is KtNamedDeclaration &&
+                        element !is KtParameter &&
+                        element.name != null &&
+                        element.textOffset <= query.position.offset
+                    ) {
+                        val symbol = analyze(file) {
+                            element.toSymbolModel(
+                                containingDeclaration = null,
+                                includeDocumentation = true,
+                            )
+                        }
+                        if (query.kindFilter == null || symbol.kind in query.kindFilter) {
+                            symbols += CompletionItem(
+                                name = element.name ?: symbol.fqName.substringAfterLast('.'),
+                                fqName = symbol.fqName,
+                                kind = symbol.kind,
+                                type = symbol.type ?: symbol.returnType,
+                                parameters = symbol.parameters,
+                                documentation = symbol.documentation,
+                            )
+                        }
+                    }
+                    super.visitElement(element)
+                }
+            })
+            val deduped = symbols
+                .distinctBy { Triple(it.fqName, it.kind, it.name) }
+                .sortedWith(compareBy({ it.name }, { it.fqName }))
+            val capped = deduped.take(query.maxResults.coerceAtLeast(1))
+            CompletionsResult(
+                items = capped,
+                exhaustive = deduped.size <= capped.size,
+            )
         }
     }
 
@@ -691,6 +810,12 @@ internal class StandaloneAnalysisBackend internal constructor(
                 .getResource("/kast-backend-version.txt")
                 ?.readText()?.trim()
                 ?: "unknown"
+    }
+
+    private fun isConcreteType(type: PsiElement): Boolean = when (type) {
+        is KtClass -> !type.isInterface() && !type.hasModifier(KtTokens.ABSTRACT_KEYWORD)
+        is KtObjectDeclaration -> !type.isCompanion()
+        else -> false
     }
 }
 

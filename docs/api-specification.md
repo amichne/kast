@@ -18,7 +18,7 @@ daemon as a logical `POST /rpc/{method}` operation. Request bodies map to the
 | Category | Methods | Capability gated |
 | --- | --- | --- |
 | System | `health`, `runtime/status`, `capabilities` | No |
-| Read | `symbol/resolve`, `references`, `call-hierarchy`, `type-hierarchy`, `semantic-insertion-point`, `diagnostics`, `file-outline`, `workspace-symbol`, `workspace/files` | Yes |
+| Read | `symbol/resolve`, `references`, `call-hierarchy`, `type-hierarchy`, `semantic-insertion-point`, `diagnostics`, `file-outline`, `workspace-symbol`, `workspace/files`, `implementations`, `code-actions`, `completions` | Yes |
 | Mutation | `rename`, `imports/optimize`, `edits/apply`, `workspace/refresh` | Yes |
 
 ## Transport note
