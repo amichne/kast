@@ -355,6 +355,7 @@ internal class KastPluginBackend(
     override suspend fun completions(query: CompletionsQuery): CompletionsResult = withContext(readDispatcher) {
         readAction {
             val file = findKtFile(query.position.filePath)
+            val kindFilter = query.kindFilter
             val items = mutableListOf<CompletionItem>()
             file.accept(object : com.intellij.psi.PsiRecursiveElementWalkingVisitor() {
                 override fun visitElement(element: PsiElement) {
@@ -367,7 +368,7 @@ internal class KastPluginBackend(
                             containingDeclaration = null,
                             includeDocumentation = true,
                         )
-                        if (query.kindFilter == null || symbol.kind in query.kindFilter) {
+                        if (kindFilter == null || symbol.kind in kindFilter) {
                             items += CompletionItem(
                                 name = element.name ?: symbol.fqName.substringAfterLast('.'),
                                 fqName = symbol.fqName,
