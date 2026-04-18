@@ -3,8 +3,7 @@ package io.github.amichne.kast.api
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class SymbolQuery(
+data class ImplementationsQuery(
     val position: FilePosition,
-    val includeDeclarationScope: Boolean = false,
-    val includeDocumentation: Boolean = false,
+    val maxResults: Int = 100,
 )

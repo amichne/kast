@@ -6,6 +6,10 @@ import io.github.amichne.kast.api.BackendCapabilities
 import io.github.amichne.kast.api.CallDirection
 import io.github.amichne.kast.api.CallHierarchyQuery
 import io.github.amichne.kast.api.CallHierarchyResult
+import io.github.amichne.kast.api.CodeActionsQuery
+import io.github.amichne.kast.api.CodeActionsResult
+import io.github.amichne.kast.api.CompletionsQuery
+import io.github.amichne.kast.api.CompletionsResult
 import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.FileHash
 import io.github.amichne.kast.api.FileHashing
@@ -15,6 +19,8 @@ import io.github.amichne.kast.api.FileOutlineResult
 import io.github.amichne.kast.api.FilePosition
 import io.github.amichne.kast.api.ImportOptimizeQuery
 import io.github.amichne.kast.api.ImportOptimizeResult
+import io.github.amichne.kast.api.ImplementationsQuery
+import io.github.amichne.kast.api.ImplementationsResult
 import io.github.amichne.kast.api.JsonRpcErrorResponse
 import io.github.amichne.kast.api.JsonRpcRequest
 import io.github.amichne.kast.api.JsonRpcSuccessResponse
@@ -91,11 +97,14 @@ class AnalysisDispatcherTest {
                 SymbolQuery.serializer(),
                 SymbolQuery(
                     position = FilePosition(filePath = file.toString(), offset = 20),
+                    includeDocumentation = true,
                 ),
             ),
         )
 
         assertEquals("sample.greet", result.symbol.fqName)
+        assertTrue(result.symbol.documentation != null)
+        assertTrue(result.symbol.parameters != null)
     }
 
     @Test
@@ -449,6 +458,54 @@ class AnalysisDispatcherTest {
             response,
         )
         assertEquals("VALIDATION_ERROR", error.error.data?.code)
+    }
+
+    @Test
+    fun `implementations dispatches without HTTP`() {
+        dispatcher()
+        val file = sampleTypeFile()
+        val offset = file.readText().indexOf("FriendlyGreeter")
+        val result = dispatchSuccess<ImplementationsResult>(
+            method = "implementations",
+            params = json.encodeToJsonElement(
+                ImplementationsQuery.serializer(),
+                ImplementationsQuery(
+                    position = FilePosition(filePath = file.toString(), offset = offset),
+                ),
+            ),
+        )
+        assertEquals("sample.Greeter", result.declaration.fqName)
+        assertTrue(result.implementations.isNotEmpty())
+    }
+
+    @Test
+    fun `code actions dispatches without HTTP`() {
+        val file = sampleFile()
+        val result = dispatchSuccess<CodeActionsResult>(
+            method = "code-actions",
+            params = json.encodeToJsonElement(
+                CodeActionsQuery.serializer(),
+                CodeActionsQuery(
+                    position = FilePosition(filePath = file.toString(), offset = 20),
+                ),
+            ),
+        )
+        assertTrue(result.actions.isEmpty())
+    }
+
+    @Test
+    fun `completions dispatches without HTTP`() {
+        val file = sampleFile()
+        val result = dispatchSuccess<CompletionsResult>(
+            method = "completions",
+            params = json.encodeToJsonElement(
+                CompletionsQuery.serializer(),
+                CompletionsQuery(
+                    position = FilePosition(filePath = file.toString(), offset = 20),
+                ),
+            ),
+        )
+        assertTrue(result.items.isNotEmpty())
     }
 
     @Test

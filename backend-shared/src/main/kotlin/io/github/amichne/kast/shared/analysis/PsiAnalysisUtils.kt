@@ -9,11 +9,13 @@ import com.intellij.psi.PsiModifier
 import com.intellij.psi.PsiModifierListOwner
 import com.intellij.psi.PsiNameIdentifierOwner
 import com.intellij.psi.PsiNamedElement
+import com.intellij.psi.PsiParameter
 import io.github.amichne.kast.api.DeclarationScope
 import io.github.amichne.kast.api.FqName
 import io.github.amichne.kast.api.Location
 import io.github.amichne.kast.api.NormalizedPath
 import io.github.amichne.kast.api.NotFoundException
+import io.github.amichne.kast.api.ParameterInfo
 import io.github.amichne.kast.api.PackageName
 import io.github.amichne.kast.api.Symbol
 import io.github.amichne.kast.api.SymbolKind
@@ -24,6 +26,7 @@ import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtClassOrObject
+import org.jetbrains.kotlin.psi.KtDeclaration
 import org.jetbrains.kotlin.psi.KtDeclarationWithBody
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtNamedFunction
@@ -68,11 +71,15 @@ fun PsiElement.toSymbolModel(
     containingDeclaration: String?,
     supertypes: List<String>? = null,
     includeDeclarationScope: Boolean = false,
+    includeDocumentation: Boolean = false,
 ): Symbol = Symbol(
     fqName = fqName(),
     kind = kind(),
     location = toKastLocation(nameRange()),
     type = typeDescription(),
+    returnType = if (kind() == SymbolKind.FUNCTION) functionReturnTypeDescription() else null,
+    parameters = if (includeDocumentation) parameterInfo() else null,
+    documentation = if (includeDocumentation) documentationText() else null,
     containingDeclaration = containingDeclaration,
     supertypes = supertypes,
     visibility = visibility(),
@@ -231,6 +238,37 @@ private fun PsiElement.typeDescription(): String? = when (this) {
     is PsiField -> type.presentableText
     else -> null
 }
+
+private fun PsiElement.functionReturnTypeDescription(): String? = when (this) {
+    is KtNamedFunction -> typeReference?.text
+    is PsiMethod -> returnType?.presentableText
+    else -> null
+}
+
+private fun PsiElement.documentationText(): String? = when (this) {
+    is KtDeclaration -> docComment?.text
+    else -> null
+}
+
+private fun PsiElement.parameterInfo(): List<ParameterInfo>? = when (this) {
+    is KtNamedFunction -> valueParameters.map(::toParameterInfo)
+    is PsiMethod -> parameterList.parameters.map(::toParameterInfo)
+    else -> null
+}
+
+private fun toParameterInfo(parameter: KtParameter): ParameterInfo = ParameterInfo(
+    name = parameter.name ?: "<anonymous>",
+    type = parameter.typeReference?.text ?: "Any?",
+    defaultValue = parameter.defaultValue?.text,
+    isVararg = parameter.isVarArg,
+)
+
+private fun toParameterInfo(parameter: PsiParameter): ParameterInfo = ParameterInfo(
+    name = parameter.name,
+    type = parameter.type.presentableText,
+    defaultValue = null,
+    isVararg = parameter.isVarArgs,
+)
 
 /**
  * Converts a PSI element and text range to a [Location] using raw file text.

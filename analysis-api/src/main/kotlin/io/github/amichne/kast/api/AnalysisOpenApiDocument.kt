@@ -120,6 +120,7 @@ object AnalysisOpenApiDocument {
         registry.register("FilePosition", FilePosition.serializer())
         registry.register("Location", Location.serializer())
         registry.register("Symbol", Symbol.serializer())
+        registry.register("ParameterInfo", ParameterInfo.serializer())
         registry.register("PageInfo", PageInfo.serializer())
         registry.register("SearchScope", SearchScope.serializer())
         registry.register("DeclarationScope", DeclarationScope.serializer())
@@ -155,6 +156,14 @@ object AnalysisOpenApiDocument {
         registry.register("WorkspaceSymbolResult", WorkspaceSymbolResult.serializer())
         registry.register("WorkspaceFilesQuery", WorkspaceFilesQuery.serializer())
         registry.register("WorkspaceFilesResult", WorkspaceFilesResult.serializer())
+        registry.register("ImplementationsQuery", ImplementationsQuery.serializer())
+        registry.register("ImplementationsResult", ImplementationsResult.serializer())
+        registry.register("CodeActionsQuery", CodeActionsQuery.serializer())
+        registry.register("CodeActionsResult", CodeActionsResult.serializer())
+        registry.register("CodeAction", CodeAction.serializer())
+        registry.register("CompletionsQuery", CompletionsQuery.serializer())
+        registry.register("CompletionsResult", CompletionsResult.serializer())
+        registry.register("CompletionItem", CompletionItem.serializer())
 
         // Mutation queries & results
         registry.register("RenameQuery", RenameQuery.serializer())
@@ -265,6 +274,30 @@ object AnalysisOpenApiDocument {
             requestSchema = "WorkspaceFilesQuery",
             responseSchema = "WorkspaceFilesResult",
             capability = "WORKSPACE_FILES",
+        ),
+        "/rpc/implementations" to readMethod(
+            operationId = "implementations",
+            summary = "Find concrete implementations and subclasses for a declaration",
+            method = "implementations",
+            requestSchema = "ImplementationsQuery",
+            responseSchema = "ImplementationsResult",
+            capability = "IMPLEMENTATIONS",
+        ),
+        "/rpc/code-actions" to readMethod(
+            operationId = "codeActions",
+            summary = "Return available code actions at a file position",
+            method = "code-actions",
+            requestSchema = "CodeActionsQuery",
+            responseSchema = "CodeActionsResult",
+            capability = "CODE_ACTIONS",
+        ),
+        "/rpc/completions" to readMethod(
+            operationId = "completions",
+            summary = "Return completion candidates available at a file position",
+            method = "completions",
+            requestSchema = "CompletionsQuery",
+            responseSchema = "CompletionsResult",
+            capability = "COMPLETIONS",
         ),
 
         // Mutation operations

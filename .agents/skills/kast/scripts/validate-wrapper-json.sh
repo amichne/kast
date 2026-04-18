@@ -32,16 +32,19 @@ SAMPLE_SYMBOL="greet"
 SAMPLE_FILE="${WORKSPACE_ROOT}/src/main/kotlin/sample/Greeter.kt"
 MISSING_SYMBOL="DefinitelyMissingSymbolForWrapperValidation"
 SUCCESS_DIAGNOSTICS_FILE="${SAMPLE_FILE}"
-FAILURE_DIAGNOSTICS_FILE="${WORKSPACE_ROOT}/definitely-missing-file.kt"
 DIAGNOSTICS_REQUEST="${TMP_DIR}/diagnostics-request.json"
+# Use an empty filePaths array to trigger request_validation failure.
+# A missing-file path is NOT used here because per-file error isolation
+# (PR #70) absorbs file-not-found into an ANALYSIS_FAILURE diagnostic
+# and still exits 0; only a structurally invalid request reliably fails.
 DIAGNOSTICS_FAILURE_REQUEST="${TMP_DIR}/diagnostics-failure-request.json"
 
 cat >"${DIAGNOSTICS_REQUEST}" <<EOF
 {"filePaths":["${SUCCESS_DIAGNOSTICS_FILE}"]}
 EOF
 
-cat >"${DIAGNOSTICS_FAILURE_REQUEST}" <<EOF
-{"filePaths":["${FAILURE_DIAGNOSTICS_FILE}"]}
+cat >"${DIAGNOSTICS_FAILURE_REQUEST}" <<'EOF'
+{"filePaths":[]}
 EOF
 
 declare -a CHECKS=(

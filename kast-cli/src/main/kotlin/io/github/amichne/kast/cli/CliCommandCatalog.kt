@@ -12,7 +12,7 @@ internal enum class CliCommandGroup(
     ),
     ANALYSIS(
         title = "Analysis",
-        overview = "Read-only commands for capabilities, symbols, references, call hierarchy, type hierarchy, semantic insertion, diagnostics, file outline, and workspace symbol search.",
+        overview = "Read-only commands for capabilities, symbols, references, hierarchy traversal, semantic insertion, diagnostics, outlines, workspace symbol search, implementations, code actions, and completions.",
     ),
     MUTATION_FLOW(
         title = "Mutation flow",
@@ -155,6 +155,12 @@ internal object CliCommandCatalog {
         description = "Include the full declaration scope (text range and source text) on each resolved symbol. Defaults to false.",
         completionKind = CliOptionCompletionKind.BOOLEAN,
     )
+    private val includeDocumentationOption = CliOptionMetadata(
+        key = "include-documentation",
+        usage = "--include-documentation=true",
+        description = "Include declaration documentation and parameter metadata when supported. Defaults to false.",
+        completionKind = CliOptionCompletionKind.BOOLEAN,
+    )
     private val directionOption = CliOptionMetadata(
         key = "direction",
         usage = "--direction=incoming",
@@ -227,6 +233,16 @@ internal object CliCommandCatalog {
         key = "kind",
         usage = "--kind=CLASS",
         description = "Filter by symbol kind: CLASS, OBJECT, INTERFACE, ENUM, FUNCTION, PROPERTY, etc.",
+    )
+    private val kindFilterOption = CliOptionMetadata(
+        key = "kind-filter",
+        usage = "--kind-filter=FUNCTION,CLASS",
+        description = "Optional comma-separated symbol kinds to include in completion results.",
+    )
+    private val diagnosticCodeOption = CliOptionMetadata(
+        key = "diagnostic-code",
+        usage = "--diagnostic-code=UNRESOLVED_REFERENCE",
+        description = "Optional diagnostic code filter for code actions.",
     )
     private val archiveOption = CliOptionMetadata(
         key = "archive",
@@ -405,7 +421,17 @@ internal object CliCommandCatalog {
                 "$CLI_EXECUTABLE_NAME resolve --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
                 "$CLI_EXECUTABLE_NAME resolve --workspace-root=/absolute/path/to/workspace --file-path=/absolute/path/to/File.kt --offset=123",
             ),
-            options = listOf(workspaceRootOption, backendNameOption, waitTimeoutOption, noAutoStartOption, requestFileOption, filePathOption, offsetOption, includeBodyOption),
+            options = listOf(
+                workspaceRootOption,
+                backendNameOption,
+                waitTimeoutOption,
+                noAutoStartOption,
+                requestFileOption,
+                filePathOption,
+                offsetOption,
+                includeBodyOption,
+                includeDocumentationOption,
+            ),
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME resolve --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
             ),
@@ -547,6 +573,76 @@ internal object CliCommandCatalog {
             options = listOf(workspaceRootOption, backendNameOption, waitTimeoutOption, noAutoStartOption, patternOption, regexOption, kindOption, maxResultsOption, includeBodyOption),
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME workspace-symbol --workspace-root=/absolute/path/to/workspace --pattern=MyClass",
+            ),
+        ),
+        CliCommandMetadata(
+            path = listOf("implementations"),
+            group = CliCommandGroup.ANALYSIS,
+            summary = "Find concrete implementations/subclasses for the declaration at a file position.",
+            description = "Accepts either an absolute request file or inline position with optional max-results bounds.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME implementations --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
+                "$CLI_EXECUTABLE_NAME implementations --workspace-root=/absolute/path/to/workspace --file-path=/absolute/path/to/File.kt --offset=123 [--max-results=100]",
+            ),
+            options = listOf(
+                workspaceRootOption,
+                backendNameOption,
+                waitTimeoutOption,
+                noAutoStartOption,
+                requestFileOption,
+                filePathOption,
+                offsetOption,
+                maxResultsOption,
+            ),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME implementations --workspace-root=/absolute/path/to/workspace --file-path=/absolute/path/to/File.kt --offset=123",
+            ),
+        ),
+        CliCommandMetadata(
+            path = listOf("code-actions"),
+            group = CliCommandGroup.ANALYSIS,
+            summary = "Return structured code actions at a file position.",
+            description = "Accepts either an absolute request file or inline position with an optional diagnostic-code filter.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME code-actions --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
+                "$CLI_EXECUTABLE_NAME code-actions --workspace-root=/absolute/path/to/workspace --file-path=/absolute/path/to/File.kt --offset=123 [--diagnostic-code=UNRESOLVED_REFERENCE]",
+            ),
+            options = listOf(
+                workspaceRootOption,
+                backendNameOption,
+                waitTimeoutOption,
+                noAutoStartOption,
+                requestFileOption,
+                filePathOption,
+                offsetOption,
+                diagnosticCodeOption,
+            ),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME code-actions --workspace-root=/absolute/path/to/workspace --file-path=/absolute/path/to/File.kt --offset=123",
+            ),
+        ),
+        CliCommandMetadata(
+            path = listOf("completions"),
+            group = CliCommandGroup.ANALYSIS,
+            summary = "List completion candidates available at a file position.",
+            description = "Accepts either an absolute request file or inline position with optional kind and max-results filters.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME completions --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
+                "$CLI_EXECUTABLE_NAME completions --workspace-root=/absolute/path/to/workspace --file-path=/absolute/path/to/File.kt --offset=123 [--max-results=100] [--kind-filter=FUNCTION,CLASS]",
+            ),
+            options = listOf(
+                workspaceRootOption,
+                backendNameOption,
+                waitTimeoutOption,
+                noAutoStartOption,
+                requestFileOption,
+                filePathOption,
+                offsetOption,
+                maxResultsOption,
+                kindFilterOption,
+            ),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME completions --workspace-root=/absolute/path/to/workspace --file-path=/absolute/path/to/File.kt --offset=123",
             ),
         ),
         CliCommandMetadata(

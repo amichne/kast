@@ -16,6 +16,7 @@ Copyright &copy; 2026 amichne
 nav = [
   { "Overview" = "index.md" },
   { "Why Kast" = "why-kast.md" },
+  { "Kast vs LSP" = "kast-vs-lsp.md" },
   { "What you can do" = "what-you-can-do.md" },
   { "How Kast works" = "how-it-works.md" },
   { "Architecture deep dive" = "architecture-deep-dive.md" },
