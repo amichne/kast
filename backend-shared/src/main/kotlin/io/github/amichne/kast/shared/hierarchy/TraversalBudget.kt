@@ -1,7 +1,8 @@
 package io.github.amichne.kast.shared.hierarchy
 
 import io.github.amichne.kast.api.CallHierarchyStats
-import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.Collections
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -19,7 +20,7 @@ class TraversalBudget(
 ) {
     private val startedAtNanos = System.nanoTime()
     private val timeoutNanos = timeoutMillis * 1_000_000
-    private val visitedFilesQueue = ConcurrentLinkedQueue<String>()
+    private val visitedFiles: MutableSet<String> = Collections.newSetFromMap(ConcurrentHashMap())
 
     private val _totalNodes = AtomicInteger(0)
     private val _totalEdges = AtomicInteger(0)
@@ -36,7 +37,7 @@ class TraversalBudget(
     val maxChildrenHit = AtomicBoolean(false)
 
     fun visitFile(filePath: String) {
-        visitedFilesQueue += filePath
+        visitedFiles += filePath
     }
 
     fun recordNode(depth: Int) {
@@ -70,6 +71,6 @@ class TraversalBudget(
         timeoutReached = timeoutHit.get(),
         maxTotalCallsReached = maxTotalCallsHit.get(),
         maxChildrenPerNodeReached = maxChildrenHit.get(),
-        filesVisited = visitedFilesQueue.distinct().size,
+        filesVisited = visitedFiles.size,
     )
 }
