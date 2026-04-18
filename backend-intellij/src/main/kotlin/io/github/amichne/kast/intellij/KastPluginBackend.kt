@@ -23,6 +23,8 @@ import io.github.amichne.kast.api.BackendCapabilities
 import io.github.amichne.kast.api.CallHierarchyQuery
 import io.github.amichne.kast.api.CallHierarchyResult
 import io.github.amichne.kast.api.CapabilityNotSupportedException
+import io.github.amichne.kast.api.Diagnostic
+import io.github.amichne.kast.api.DiagnosticSeverity
 import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.DiagnosticsResult
 import io.github.amichne.kast.api.FileOutlineQuery
@@ -31,6 +33,7 @@ import io.github.amichne.kast.api.HealthResponse
 import io.github.amichne.kast.api.ImportOptimizeQuery
 import io.github.amichne.kast.api.ImportOptimizeResult
 import io.github.amichne.kast.api.LocalDiskEditApplier
+import io.github.amichne.kast.api.Location
 import io.github.amichne.kast.api.MutationCapability
 import io.github.amichne.kast.api.NotFoundException
 import io.github.amichne.kast.api.ReadCapability
@@ -302,8 +305,10 @@ internal class KastPluginBackend(
                     .map { it.path }
                     .filter { it.startsWith(workspacePrefix) }
                 val depNames = rootManager.dependencies.map { it.name }
-                val files = if (query.includeFiles) {
-                    FileTypeIndex.getFiles(KotlinFileType.INSTANCE, GlobalSearchScope.moduleScope(module))
+                val moduleScope = GlobalSearchScope.moduleScope(module)
+                val kotlinFiles = FileTypeIndex.getFiles(KotlinFileType.INSTANCE, moduleScope)
+                val filteredPaths = if (query.includeFiles) {
+                    kotlinFiles
                         .map { it.path }
                         .filter { it.startsWith(workspacePrefix) }
                         .sorted()
@@ -314,12 +319,11 @@ internal class KastPluginBackend(
                     name = module.name,
                     sourceRoots = sourceRoots,
                     dependencyModuleNames = depNames,
-                    files = files,
+                    files = filteredPaths,
                     fileCount = if (query.includeFiles) {
-                        files.size
+                        filteredPaths.size
                     } else {
-                        FileTypeIndex.getFiles(KotlinFileType.INSTANCE, GlobalSearchScope.moduleScope(module))
-                            .count { it.path.startsWith(workspacePrefix) }
+                        kotlinFiles.count { it.path.startsWith(workspacePrefix) }
                     },
                 )
             }
@@ -342,11 +346,29 @@ internal class KastPluginBackend(
             val diagnostics = query.filePaths
                 .sorted()
                 .flatMap { filePath ->
-                    timedReadAction(telemetry, IntelliJTelemetryScope.DIAGNOSTICS, "kast.intellij.diagnostics.file") {
-                        val file = findKtFile(filePath)
-                        analyze(file) {
-                            file.collectDiagnostics(KaDiagnosticCheckerFilter.EXTENDED_AND_COMMON_CHECKERS)
-                        }.flatMap { diagnostic -> diagnostic.toApiDiagnostics() }
+                    runCatching {
+                        timedReadAction(telemetry, IntelliJTelemetryScope.DIAGNOSTICS, "kast.intellij.diagnostics.file") {
+                            val file = findKtFile(filePath)
+                            analyze(file) {
+                                file.collectDiagnostics(KaDiagnosticCheckerFilter.EXTENDED_AND_COMMON_CHECKERS)
+                            }.flatMap { diagnostic -> diagnostic.toApiDiagnostics() }
+                        }
+                    }.getOrElse { ex ->
+                        listOf(
+                            Diagnostic(
+                                location = Location(
+                                    filePath = filePath,
+                                    startOffset = 0,
+                                    endOffset = 0,
+                                    startLine = 0,
+                                    startColumn = 0,
+                                    preview = "",
+                                ),
+                                severity = DiagnosticSeverity.ERROR,
+                                message = ex.message ?: ex.toString(),
+                                code = "ANALYSIS_FAILURE",
+                            ),
+                        )
                     }
                 }
                 .sortedWith(compareBy({ it.location.filePath }, { it.location.startOffset }, { it.code ?: "" }))
@@ -424,19 +446,21 @@ internal class KastPluginBackend(
     }
 
     override suspend fun optimizeImports(query: ImportOptimizeQuery): ImportOptimizeResult = withContext(readDispatcher) {
-        readAction {
-            val edits = query.filePaths
-                .distinct()
-                .sorted()
-                .flatMap { filePath -> ImportAnalysis.optimizeImportEdits(findKtFile(filePath)) }
-                .sortedWith(compareBy({ it.filePath }, { it.startOffset }))
-            val affectedFiles = edits.map(TextEdit::filePath).distinct()
-            ImportOptimizeResult(
-                edits = edits,
-                fileHashes = LocalDiskEditApplier.currentHashes(affectedFiles),
-                affectedFiles = affectedFiles,
-            )
-        }
+        val edits = query.filePaths
+            .distinct()
+            .sorted()
+            .flatMap { filePath ->
+                timedReadAction(telemetry, IntelliJTelemetryScope.DIAGNOSTICS, "kast.intellij.optimizeImports.file") {
+                    ImportAnalysis.optimizeImportEdits(findKtFile(filePath))
+                }
+            }
+            .sortedWith(compareBy({ it.filePath }, { it.startOffset }))
+        val affectedFiles = edits.map(TextEdit::filePath).distinct()
+        ImportOptimizeResult(
+            edits = edits,
+            fileHashes = LocalDiskEditApplier.currentHashes(affectedFiles),
+            affectedFiles = affectedFiles,
+        )
     }
 
     override suspend fun refresh(query: RefreshQuery): RefreshResult {
@@ -462,12 +486,12 @@ internal class KastPluginBackend(
     }
 
     override suspend fun workspaceSymbolSearch(query: WorkspaceSymbolQuery): WorkspaceSymbolResult = withContext(readDispatcher) {
-        readAction {
-            val matcher = SymbolSearchMatcher.create(query.pattern, query.regex)
-            val scope = GlobalSearchScope.projectScope(project)
-            val cache = PsiShortNamesCache.getInstance(project)
-            val symbols = mutableListOf<Symbol>()
+        val matcher = SymbolSearchMatcher.create(query.pattern, query.regex)
+        val scope = GlobalSearchScope.projectScope(project)
+        val cache = PsiShortNamesCache.getInstance(project)
+        val symbols = mutableListOf<Symbol>()
 
+        timedReadAction(telemetry, IntelliJTelemetryScope.DIAGNOSTICS, "kast.intellij.workspaceSymbolSearch.classes") {
             collectMatchingSymbols(
                 scope = scope,
                 matcher = matcher,
@@ -476,6 +500,8 @@ internal class KastPluginBackend(
                 allNames = cache.allClassNames,
                 lookupByName = cache::getClassesByName,
             )
+        }
+        timedReadAction(telemetry, IntelliJTelemetryScope.DIAGNOSTICS, "kast.intellij.workspaceSymbolSearch.methods") {
             collectMatchingSymbols(
                 scope = scope,
                 matcher = matcher,
@@ -484,6 +510,8 @@ internal class KastPluginBackend(
                 allNames = cache.allMethodNames,
                 lookupByName = cache::getMethodsByName,
             )
+        }
+        timedReadAction(telemetry, IntelliJTelemetryScope.DIAGNOSTICS, "kast.intellij.workspaceSymbolSearch.fields") {
             collectMatchingSymbols(
                 scope = scope,
                 matcher = matcher,
@@ -492,9 +520,9 @@ internal class KastPluginBackend(
                 allNames = cache.allFieldNames,
                 lookupByName = cache::getFieldsByName,
             )
-
-            WorkspaceSymbolResult(symbols = symbols)
         }
+
+        WorkspaceSymbolResult(symbols = symbols)
     }
 
     private fun <T : PsiElement> collectMatchingSymbols(

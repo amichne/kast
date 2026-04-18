@@ -70,16 +70,19 @@ class CallHierarchyEngine(
         }
 
         val edges = findCallEdges(target, direction, budget)
-        val children = mutableListOf<CallNode>()
         var truncation: CallNodeTruncation? = null
 
+        // Phase 1: Sequentially determine which edges to expand, respecting budget limits.
+        data class PendingChild(val edge: CallEdge, val childKey: String, val isCycle: Boolean)
+
+        val pending = mutableListOf<PendingChild>()
         for (edge in edges) {
             if (budget.timeoutReached()) {
                 truncation = CallNodeTruncation(
                     reason = CallNodeTruncationReason.TIMEOUT,
                     details = "Traversal timeout reached while expanding children",
                 )
-                budget.timeoutHit = true
+                budget.timeoutHit.set(true)
                 break
             }
             if (budget.totalEdges >= budget.maxTotalCalls) {
@@ -87,45 +90,56 @@ class CallHierarchyEngine(
                     reason = CallNodeTruncationReason.MAX_TOTAL_CALLS,
                     details = "Reached maxTotalCalls=${budget.maxTotalCalls}",
                 )
-                budget.maxTotalCallsHit = true
+                budget.maxTotalCallsHit.set(true)
                 break
             }
-            if (children.size >= budget.maxChildrenPerNode) {
+            if (pending.size >= budget.maxChildrenPerNode) {
                 truncation = CallNodeTruncation(
                     reason = CallNodeTruncationReason.MAX_CHILDREN_PER_NODE,
                     details = "Reached maxChildrenPerNode=${budget.maxChildrenPerNode}",
                 )
-                budget.maxChildrenHit = true
+                budget.maxChildrenHit.set(true)
                 break
             }
 
             budget.recordEdge()
             val childKey = readAccess.run { edge.target.callHierarchySymbolIdentityKey(edge.symbol) }
-            val child = if (childKey == nodeKey || childKey in pathKeys) {
+            val isCycle = childKey == nodeKey || childKey in pathKeys
+            if (isCycle) {
                 budget.recordNode(depth = currentDepth + 1)
                 budget.recordTruncation()
-                CallNode(
-                    symbol = edge.symbol,
-                    callSite = edge.callSite,
-                    truncation = CallNodeTruncation(
-                        reason = CallNodeTruncationReason.CYCLE,
-                        details = "Cycle detected for symbol=$childKey",
-                    ),
-                    children = emptyList(),
-                )
-            } else {
-                buildNode(
-                    target = edge.target,
-                    parentCallSite = edge.callSite,
-                    direction = direction,
-                    depthRemaining = depthRemaining - 1,
-                    pathKeys = pathKeys + nodeKey,
-                    budget = budget,
-                    currentDepth = currentDepth + 1,
-                )
             }
-            children += child
+            pending += PendingChild(edge, childKey, isCycle)
         }
+
+        // Phase 2: Expand children in parallel — each buildNode() call is independent.
+        val childPathKeys = pathKeys + nodeKey
+        val children = pending
+            .parallelStream()
+            .map { (edge, childKey, isCycle) ->
+                if (isCycle) {
+                    CallNode(
+                        symbol = edge.symbol,
+                        callSite = edge.callSite,
+                        truncation = CallNodeTruncation(
+                            reason = CallNodeTruncationReason.CYCLE,
+                            details = "Cycle detected for symbol=$childKey",
+                        ),
+                        children = emptyList(),
+                    )
+                } else {
+                    buildNode(
+                        target = edge.target,
+                        parentCallSite = edge.callSite,
+                        direction = direction,
+                        depthRemaining = depthRemaining - 1,
+                        pathKeys = childPathKeys,
+                        budget = budget,
+                        currentDepth = currentDepth + 1,
+                    )
+                }
+            }
+            .toList()
 
         if (truncation != null) {
             budget.recordTruncation()

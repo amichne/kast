@@ -80,39 +80,62 @@ internal class IntelliJCallEdgeResolver(
         target: PsiElement,
         timeoutCheck: () -> Boolean,
         onFileVisited: (filePath: String) -> Unit,
-    ): List<CallEdge> = ApplicationManager.getApplication().runReadAction<List<CallEdge>> {
-        val declaration = target.callHierarchyDeclaration() ?: return@runReadAction emptyList()
-        val filePath = declaration.resolvedFilePath().value
+    ): List<CallEdge> {
+        // Phase 1: Collect call-expression elements and their references in one read action.
+        data class ElementRef(val element: PsiElement, val reference: PsiReference)
+
+        val declaration = ApplicationManager.getApplication().runReadAction<PsiElement?> {
+            target.callHierarchyDeclaration()
+        } ?: return emptyList()
+
+        val filePath = ApplicationManager.getApplication().runReadAction<String> {
+            declaration.resolvedFilePath().value
+        }
         onFileVisited(filePath)
+
+        val elementRefs = ApplicationManager.getApplication().runReadAction<List<ElementRef>> {
+            val collected = mutableListOf<ElementRef>()
+            declaration.accept(
+                object : PsiRecursiveElementWalkingVisitor() {
+                    override fun visitElement(element: PsiElement) {
+                        ProgressManager.checkCanceled()
+                        if (timeoutCheck()) {
+                            stopWalking()
+                            return
+                        }
+                        // Skip nested declarations to avoid expanding inner hierarchy targets.
+                        if (element !== declaration && element.callHierarchyDeclaration() === element) {
+                            return
+                        }
+                        element.references.forEach { reference ->
+                            collected += ElementRef(element, reference)
+                        }
+                        super.visitElement(element)
+                    }
+                },
+            )
+            collected
+        }
+
+        // Phase 2: Process each collected reference in its own short read action.
         val edges = mutableListOf<CallEdge>()
+        for (ref in elementRefs) {
+            if (timeoutCheck()) break
+            val edge = ApplicationManager.getApplication().runReadAction<CallEdge?> {
+                if (!ref.element.isValid) return@runReadAction null
+                val resolved = ref.reference.resolve() ?: return@runReadAction null
+                if (resolved.containingFile == null) return@runReadAction null
+                val resolvedPath = resolved.resolvedFilePath().value
+                if (!resolvedPath.startsWith(workspacePrefix)) return@runReadAction null
+                CallEdge(
+                    target = resolved,
+                    symbol = resolved.toSymbolModel(containingDeclaration = null),
+                    callSite = ref.reference.callSiteLocation(),
+                )
+            }
+            edge?.let { edges += it }
+        }
 
-        declaration.accept(
-            object : PsiRecursiveElementWalkingVisitor() {
-                override fun visitElement(element: PsiElement) {
-                    if (timeoutCheck()) {
-                        stopWalking()
-                        return
-                    }
-                    // Skip nested declarations to avoid expanding inner hierarchy targets.
-                    if (element !== declaration && element.callHierarchyDeclaration() === element) {
-                        return
-                    }
-                    element.references.forEach { reference ->
-                        val resolved = reference.resolve() ?: return@forEach
-                        if (resolved.containingFile == null) return@forEach
-                        val resolvedPath = resolved.resolvedFilePath().value
-                        if (!resolvedPath.startsWith(workspacePrefix)) return@forEach
-                        edges += CallEdge(
-                            target = resolved,
-                            symbol = resolved.toSymbolModel(containingDeclaration = null),
-                            callSite = reference.callSiteLocation(),
-                        )
-                    }
-                    super.visitElement(element)
-                }
-            },
-        )
-
-        edges
+        return edges
     }
 }

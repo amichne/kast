@@ -1,10 +1,16 @@
 package io.github.amichne.kast.shared.hierarchy
 
 import io.github.amichne.kast.api.CallHierarchyStats
+import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Tracks resource budgets and accumulated statistics during a single
  * call hierarchy traversal. Create a fresh instance per request.
+ *
+ * All counters and flags are atomic so that concurrent child-node
+ * expansion (via coroutines or parallel streams) is safe.
  */
 class TraversalBudget(
     val maxTotalCalls: Int,
@@ -13,47 +19,47 @@ class TraversalBudget(
 ) {
     private val startedAtNanos = System.nanoTime()
     private val timeoutNanos = timeoutMillis * 1_000_000
-    private val visitedFiles = linkedSetOf<String>()
+    private val visitedFilesQueue = ConcurrentLinkedQueue<String>()
 
-    var totalNodes: Int = 0
-        private set
-    var totalEdges: Int = 0
-        private set
-    var truncatedNodes: Int = 0
-        private set
-    var maxDepthReached: Int = 0
-        private set
-    var timeoutHit: Boolean = false
-    var maxTotalCallsHit: Boolean = false
-    var maxChildrenHit: Boolean = false
+    private val _totalNodes = AtomicInteger(0)
+    private val _totalEdges = AtomicInteger(0)
+    private val _truncatedNodes = AtomicInteger(0)
+    private val _maxDepthReached = AtomicInteger(0)
+
+    val totalNodes: Int get() = _totalNodes.get()
+    val totalEdges: Int get() = _totalEdges.get()
+    val truncatedNodes: Int get() = _truncatedNodes.get()
+    val maxDepthReached: Int get() = _maxDepthReached.get()
+
+    val timeoutHit = AtomicBoolean(false)
+    val maxTotalCallsHit = AtomicBoolean(false)
+    val maxChildrenHit = AtomicBoolean(false)
 
     fun visitFile(filePath: String) {
-        visitedFiles += filePath
+        visitedFilesQueue += filePath
     }
 
     fun recordNode(depth: Int) {
-        totalNodes += 1
-        if (depth > maxDepthReached) {
-            maxDepthReached = depth
-        }
+        _totalNodes.incrementAndGet()
+        _maxDepthReached.updateAndGet { current -> maxOf(current, depth) }
     }
 
     fun recordEdge() {
-        totalEdges += 1
+        _totalEdges.incrementAndGet()
     }
 
     fun recordTruncation() {
-        truncatedNodes += 1
+        _truncatedNodes.incrementAndGet()
     }
 
     fun timeoutReached(): Boolean {
-        if (timeoutHit) {
+        if (timeoutHit.get()) {
             return true
         }
         if (System.nanoTime() - startedAtNanos >= timeoutNanos) {
-            timeoutHit = true
+            timeoutHit.set(true)
         }
-        return timeoutHit
+        return timeoutHit.get()
     }
 
     fun toStats(): CallHierarchyStats = CallHierarchyStats(
@@ -61,9 +67,9 @@ class TraversalBudget(
         totalEdges = totalEdges,
         truncatedNodes = truncatedNodes,
         maxDepthReached = maxDepthReached,
-        timeoutReached = timeoutHit,
-        maxTotalCallsReached = maxTotalCallsHit,
-        maxChildrenPerNodeReached = maxChildrenHit,
-        filesVisited = visitedFiles.size,
+        timeoutReached = timeoutHit.get(),
+        maxTotalCallsReached = maxTotalCallsHit.get(),
+        maxChildrenPerNodeReached = maxChildrenHit.get(),
+        filesVisited = visitedFilesQueue.distinct().size,
     )
 }
