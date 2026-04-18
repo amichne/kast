@@ -1,8 +1,3 @@
-import org.gradle.api.tasks.Sync
-import org.gradle.api.tasks.testing.Test
-import org.gradle.api.tasks.JavaExec
-import org.gradle.language.jvm.tasks.ProcessResources
-
 plugins {
     id("kast.standalone-serialization-app")
     alias(libs.plugins.graalvm.native)
@@ -114,9 +109,24 @@ tasks.named("nativeCompile").configure {
 }
 
 tasks.named<Sync>("syncPortableDist") {
-    // Replace kast-cli's own runtime-libs with backend-standalone's (needed for daemon classpath).
-    from(project(":backend-standalone").tasks.named("syncRuntimeLibs")) {
+    val backendRuntimeLibsDir = project(":backend-standalone").layout.buildDirectory.dir("runtime-libs")
+    from(backendRuntimeLibsDir) {
         into("runtime-libs")
     }
     dependsOn(":backend-standalone:syncRuntimeLibs")
+
+    doLast {
+        val distDir = project.layout.buildDirectory.dir("portable-dist/${project.name}").get().asFile
+        val classpathFile = distDir.resolve("runtime-libs/classpath.txt")
+        check(classpathFile.exists()) {
+            "syncPortableDist: runtime-libs/classpath.txt is missing from $distDir"
+        }
+        val entries = classpathFile.readLines().filter(String::isNotEmpty)
+        check(entries.any { "backend-standalone" in it }) {
+            "syncPortableDist: classpath.txt must reference backend-standalone jars for the daemon; found: $entries"
+        }
+        check(entries.none { it.startsWith("kast-cli") }) {
+            "syncPortableDist: classpath.txt must not reference kast-cli jars (daemon doesn't need them); found: $entries"
+        }
+    }
 }

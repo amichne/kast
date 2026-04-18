@@ -1,10 +1,5 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
-import org.gradle.api.file.DuplicatesStrategy
-import org.gradle.api.file.FileCollection
-import org.gradle.api.tasks.Sync
-import org.gradle.api.tasks.bundling.Zip
 import org.gradle.jvm.tasks.Jar
-import java.io.File
 
 plugins {
     application
@@ -75,15 +70,16 @@ val writeWrapperScript by tasks.registering(WriteWrapperScriptTask::class) {
 val syncPortableDist by tasks.registering(Sync::class) {
     dependsOn(writeWrapperScript)
     into(layout.buildDirectory.dir("portable-dist/$applicationName"))
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    duplicatesStrategy = DuplicatesStrategy.FAIL
 
     from(writeWrapperScript)
     from(shadowJarArchive) {
         into("libs")
     }
-    from(syncRuntimeLibs) {
-        into("runtime-libs")
-    }
+    // runtime-libs is intentionally absent here: each consumer must explicitly wire its
+    // own runtime-libs source so that classpath.txt references the correct daemon jars.
+    // See backend-standalone/build.gradle.kts (own syncRuntimeLibs) and
+    // kast-cli/build.gradle.kts (backend-standalone's syncRuntimeLibs).
 }
 
 val portableDistZip by tasks.registering(Zip::class) {

@@ -1,24 +1,5 @@
-import org.gradle.api.DefaultTask
-import org.gradle.api.GradleException
-import org.gradle.api.artifacts.VersionCatalogsExtension
-import org.gradle.api.file.ConfigurableFileCollection
-import org.gradle.api.file.ConfigurableFileTree
-import org.gradle.api.file.DirectoryProperty
-import org.gradle.api.provider.Property
-import org.gradle.api.tasks.CacheableTask
-import org.gradle.api.file.DuplicatesStrategy
-import org.gradle.api.tasks.Input
-import org.gradle.api.tasks.InputDirectory
-import org.gradle.api.tasks.InputFiles
-import org.gradle.api.tasks.OutputDirectory
-import org.gradle.api.tasks.PathSensitive
-import org.gradle.api.tasks.PathSensitivity
-import org.gradle.api.tasks.TaskAction
-import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.jvm.tasks.Jar
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import org.gradle.kotlin.dsl.creating
-import org.gradle.kotlin.dsl.getByType
 import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
@@ -69,7 +50,8 @@ abstract class ExtractIdeaDistributionTask : DefaultTask() {
             }
         }
 
-        val parent = outputRoot.parent ?: throw GradleException("IntelliJ extraction output must have a parent directory: $outputRoot")
+        val parent = outputRoot.parent
+                     ?: throw GradleException("IntelliJ extraction output must have a parent directory: $outputRoot")
         Files.createDirectories(parent)
         val tempRoot = Files.createTempDirectory(parent, "${outputRoot.fileName}.tmp-")
         try {
@@ -151,13 +133,13 @@ abstract class ExtractLegacyPluginClassesTask : DefaultTask() {
     fun extract() {
         val distributionRoot = ideaDistributionDirectory.get().asFile
         val compilerJar = distributionRoot.walkTopDown()
-            .firstOrNull { file ->
-                file.isFile && file.name == "kotlin-compiler.jar" &&
-                    file.invariantSeparatorsPath.contains("/plugins/Kotlin/kotlinc/lib/")
-            }
-            ?: throw GradleException(
-                "IntelliJ IDEA distribution under $distributionRoot did not contain plugins/Kotlin/kotlinc/lib/kotlin-compiler.jar.",
-            )
+                              .firstOrNull { file ->
+                                  file.isFile && file.name == "kotlin-compiler.jar" &&
+                                  file.invariantSeparatorsPath.contains("/plugins/Kotlin/kotlinc/lib/")
+                              }
+                          ?: throw GradleException(
+                              "IntelliJ IDEA distribution under $distributionRoot did not contain plugins/Kotlin/kotlinc/lib/kotlin-compiler.jar.",
+                          )
 
         val excludedEntries = setOf(
             "com/intellij/ide/plugins/ContainerDescriptor.class",
@@ -188,7 +170,7 @@ abstract class ExtractLegacyPluginClassesTask : DefaultTask() {
                 val name = entry.name
                 val included =
                     name.startsWith("com/intellij/ide/plugins/") && name.endsWith(".class") ||
-                        name == "com/intellij/util/messages/ListenerDescriptor.class"
+                    name == "com/intellij/util/messages/ListenerDescriptor.class"
                 val excluded = name in excludedEntries || excludedPrefixes.any(name::startsWith)
                 if (!included || excluded) {
                     continue
@@ -206,7 +188,9 @@ abstract class ExtractLegacyPluginClassesTask : DefaultTask() {
     }
 }
 
-val extractLegacyPluginClasses: TaskProvider<ExtractLegacyPluginClassesTask> by tasks.registering(ExtractLegacyPluginClassesTask::class) {
+val extractLegacyPluginClasses: TaskProvider<ExtractLegacyPluginClassesTask> by tasks.registering(
+    ExtractLegacyPluginClassesTask::class
+) {
     dependsOn(extractIdeaDistribution)
     ideaDistributionDirectory.set(extractedIdeaDistributionDirectory)
     outputDirectory.set(layout.buildDirectory.dir("legacy-plugin-classes"))
@@ -334,3 +318,11 @@ tasks.withType<KotlinCompile>().configureEach {
         libraries.setFrom(prioritizedSerializationRuntime, currentLibraries)
     }
 }
+
+tasks.named<Sync>("syncPortableDist") {
+    from(layout.buildDirectory.dir("runtime-libs")) {
+        into("runtime-libs")
+    }
+    dependsOn("syncRuntimeLibs")
+}
+
