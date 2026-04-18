@@ -14,15 +14,15 @@ SOURCE_ROOT="${KAST_SOURCE_ROOT:-${PROJECT_ROOT}}"
 GRADLE_SCRIPT="${SOURCE_ROOT}/kast-cli/build/scripts/kast-cli"
 DIST_SCRIPT="${SOURCE_ROOT}/dist/cli/kast-cli"
 
-# 1. PATH — preferred if already installed
-if command -v kast >/dev/null 2>&1; then
-    command -v kast
+# 1. Explicit override — KAST_CLI_PATH takes precedence over everything
+if [ -n "${KAST_CLI_PATH:-}" ] && [ -x "${KAST_CLI_PATH}" ]; then
+    printf '%s\n' "${KAST_CLI_PATH}"
     exit 0
 fi
 
-# 2. Check if KAST_CLI_PATH environment variable is set and points to an executable
-if [ -n "${KAST_CLI_PATH:-}" ] && [ -x "${KAST_CLI_PATH}" ]; then
-    printf '%s\n' "${KAST_CLI_PATH}"
+# 2. PATH — use the installed binary if available
+if command -v kast >/dev/null 2>&1; then
+    command -v kast
     exit 0
 fi
 
@@ -39,7 +39,7 @@ if [ -x "${DIST_SCRIPT}" ]; then
     exit 0
 fi
 
-# 4. Auto-build fallback: requires Java 21+ and gradlew
+# 5. Auto-build fallback: requires Java 21+ and gradlew
 if [ -x "${SOURCE_ROOT}/gradlew" ]; then
     # Check for Java 21+
     JAVA_BIN=""
@@ -70,10 +70,11 @@ if [ -x "${SOURCE_ROOT}/gradlew" ]; then
 fi
 
 printf 'kast CLI not found. Tried:\n' >&2
-printf '  1. PATH\n' >&2
-printf '  2. %s\n' "${GRADLE_SCRIPT}" >&2
-printf '  3. %s\n' "${DIST_SCRIPT}" >&2
-printf '  4. Auto-build via ./gradlew :kast-cli:writeWrapperScript\n' >&2
+printf '  1. KAST_CLI_PATH env var\n' >&2
+printf '  2. PATH\n' >&2
+printf '  3. %s\n' "${GRADLE_SCRIPT}" >&2
+printf '  4. %s\n' "${DIST_SCRIPT}" >&2
+printf '  5. Auto-build via ./gradlew :kast-cli:writeWrapperScript\n' >&2
 printf '\n' >&2
 printf 'Install options:\n' >&2
 printf '  ./install.sh                                     # install from GitHub release\n' >&2
