@@ -13,8 +13,11 @@ import io.github.amichne.kast.api.CodeActionsResult
 import io.github.amichne.kast.api.CompletionItem
 import io.github.amichne.kast.api.CompletionsQuery
 import io.github.amichne.kast.api.CompletionsResult
+import io.github.amichne.kast.api.Diagnostic
+import io.github.amichne.kast.api.DiagnosticSeverity
 import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.DiagnosticsResult
+import io.github.amichne.kast.api.Location
 import io.github.amichne.kast.api.FileHash
 import io.github.amichne.kast.api.FileOutlineQuery
 import io.github.amichne.kast.api.FileOutlineResult
@@ -388,10 +391,28 @@ internal class StandaloneAnalysisBackend internal constructor(
                 val diagnostics = query.filePaths
                     .sorted()
                     .flatMap { filePath ->
-                        val file = session.findKtFile(filePath)
-                        analyze(file) {
-                            file.collectDiagnostics(KaDiagnosticCheckerFilter.EXTENDED_AND_COMMON_CHECKERS)
-                        }.flatMap { diagnostic -> diagnostic.toApiDiagnostics() }
+                        runCatching {
+                            val file = session.findKtFile(filePath)
+                            analyze(file) {
+                                file.collectDiagnostics(KaDiagnosticCheckerFilter.EXTENDED_AND_COMMON_CHECKERS)
+                            }.flatMap { diagnostic -> diagnostic.toApiDiagnostics() }
+                        }.getOrElse { ex ->
+                            listOf(
+                                Diagnostic(
+                                    location = Location(
+                                        filePath = filePath,
+                                        startOffset = 0,
+                                        endOffset = 0,
+                                        startLine = 0,
+                                        startColumn = 0,
+                                        preview = "",
+                                    ),
+                                    severity = DiagnosticSeverity.ERROR,
+                                    message = ex.message ?: ex.toString(),
+                                    code = "ANALYSIS_FAILURE",
+                                ),
+                            )
+                        }
                     }
                     .sortedWith(compareBy({ it.location.filePath }, { it.location.startOffset }, { it.code ?: "" }))
 
