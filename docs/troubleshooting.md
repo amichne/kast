@@ -33,7 +33,7 @@ with diagnostic steps and solutions.
 The daemon indexes the entire workspace on first connect. Large projects with
 many modules may take 30–60 seconds.
 
-- Use `kast runtime-status` to monitor indexing progress.
+- Use `kast workspace status` to monitor indexing progress.
 - Wait for `state: READY` before dispatching analysis queries.
 - If indexing never completes, check that the Gradle wrapper in the project is
   functional (`./gradlew tasks` should succeed).
@@ -45,9 +45,9 @@ many modules may take 30–60 seconds.
 - Confirm the file path is absolute and within the workspace root.
 - Confirm the line/column position points to an actual symbol (identifiers,
   not whitespace or comments).
-- Verify the daemon has finished indexing (`kast runtime-status` shows
+- Verify the daemon has finished indexing (`kast workspace status` shows
   `state: READY`).
-- If the file was recently created, call `kast refresh` to update the
+- If the file was recently created, call `kast workspace refresh` to update the
   workspace index.
 
 ## References return partial results
@@ -60,7 +60,7 @@ See [Things to know](things-to-know.md) for details on workspace scoping.
 
 Call hierarchy results are bounded by depth, max total calls, and max children
 per node. Check the `stats` field in the response to see whether limits were
-hit. You can adjust `maxDepth`, `maxTotalCalls`, and `maxChildrenPerNode` in
+hit. You can adjust `depth`, `maxTotalCalls`, and `maxChildrenPerNode` in
 the query. See [Things to know](things-to-know.md#call-hierarchy-is-intentionally-bounded)
 for the default limits.
 
@@ -102,7 +102,7 @@ Run all three generation commands after any model change:
 
 If none of the above resolves your issue:
 
-1. Run `kast health` and `kast runtime-status` and include the output.
+1. Run `kast health` and `kast workspace status` and include the output.
 2. Check the daemon log output for stack traces.
 3. Open an issue at [github.com/amichne/kast](https://github.com/amichne/kast/issues)
    with the diagnostic output.
