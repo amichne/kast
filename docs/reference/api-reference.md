@@ -27,7 +27,7 @@ Returns a lightweight health check confirming the daemon is responsive. Use this
 
 === "CLI example"
 
-    ```bash
+    ```console
     kast health --workspace-root=/path/to/project
     ```
 
@@ -82,7 +82,7 @@ Returns the full runtime state including indexing progress, backend identity, an
 
 === "CLI example"
 
-    ```bash
+    ```console
     kast workspace status --workspace-root=/path/to/project
     ```
 
@@ -138,7 +138,7 @@ Lists every read and mutation capability the current backend advertises, along w
 
 === "CLI example"
 
-    ```bash
+    ```console
     kast capabilities --workspace-root=/path/to/project
     ```
 
@@ -218,7 +218,7 @@ Resolves the symbol at a file position, returning its fully qualified name, kind
 
 === "CLI example"
 
-    ```bash
+    ```console
     kast resolve --workspace-root=/path/to/project --file=/path/to/project/src/main/kotlin/Example.kt --offset=42
     ```
 
@@ -307,7 +307,7 @@ Finds all references to the symbol at a file position across the workspace. Opti
 
 === "CLI example"
 
-    ```bash
+    ```console
     kast references --workspace-root=/path/to/project --file=/path/to/project/src/main/kotlin/Example.kt --offset=42
     ```
 
@@ -407,7 +407,7 @@ Expands a bounded incoming or outgoing call tree from a function or method. Use 
 
 === "CLI example"
 
-    ```bash
+    ```console
     kast call-hierarchy --workspace-root=/path/to/project --file=/path/to/project/src/main/kotlin/Example.kt --offset=42 --direction=INCOMING --depth=2
     ```
 
@@ -535,7 +535,7 @@ Expands supertypes and subtypes from a resolved symbol. Use this to understand i
 
 === "CLI example"
 
-    ```bash
+    ```console
     kast type-hierarchy --workspace-root=/path/to/project --file=/path/to/project/src/main/kotlin/Example.kt --offset=42 --direction=BOTH
     ```
 
@@ -660,7 +660,7 @@ Finds the best insertion point for a new declaration relative to a file position
 
 === "CLI example"
 
-    ```bash
+    ```console
     kast insertion-point --workspace-root=/path/to/project --file=/path/to/project/src/main/kotlin/Example.kt --offset=42 --target=AFTER_IMPORTS
     ```
 
@@ -723,7 +723,7 @@ Runs compilation diagnostics for one or more files, returning errors, warnings, 
 
 === "CLI example"
 
-    ```bash
+    ```console
     kast diagnostics --workspace-root=/path/to/project --file=/path/to/project/src/main/kotlin/Example.kt
     ```
 
@@ -783,7 +783,7 @@ Returns a hierarchical symbol outline for a single file, listing all named decla
 
 === "CLI example"
 
-    ```bash
+    ```console
     kast outline --workspace-root=/path/to/project --file=/path/to/project/src/main/kotlin/Example.kt
     ```
 
@@ -871,7 +871,7 @@ Searches the entire workspace for symbols matching a name pattern. Supports subs
 
 === "CLI example"
 
-    ```bash
+    ```console
     kast workspace-symbol --workspace-root=/path/to/project --pattern=UserService
     ```
 
@@ -1002,7 +1002,7 @@ Lists workspace modules and their source files. Use this to discover the project
 
 === "CLI example"
 
-    ```bash
+    ```console
     kast workspace-files --workspace-root=/path/to/project
     ```
 
@@ -1073,7 +1073,7 @@ Finds concrete implementations and subclasses for an interface or abstract class
 
 === "CLI example"
 
-    ```bash
+    ```console
     kast implementations --workspace-root=/path/to/project --file=/path/to/project/src/main/kotlin/Example.kt --offset=42
     ```
 
@@ -1167,7 +1167,7 @@ Returns available code actions at a file position, such as quick fixes and refac
 
 === "CLI example"
 
-    ```bash
+    ```console
     kast code-actions --workspace-root=/path/to/project --file=/path/to/project/src/main/kotlin/Example.kt --offset=42
     ```
 
@@ -1230,7 +1230,7 @@ Returns completion candidates available at a file position. Use this to discover
 
 === "CLI example"
 
-    ```bash
+    ```console
     kast completions --workspace-root=/path/to/project --file=/path/to/project/src/main/kotlin/Example.kt --offset=42
     ```
 
@@ -1315,7 +1315,7 @@ Plans a symbol rename by computing all text edits needed across the workspace. T
 
 === "CLI example"
 
-    ```bash
+    ```console
     kast rename --workspace-root=/path/to/project --file=/path/to/project/src/main/kotlin/Example.kt --offset=42 --new-name=updatedName
     ```
 
@@ -1402,7 +1402,7 @@ Optimizes imports for one or more files, removing unused imports and sorting the
 
 === "CLI example"
 
-    ```bash
+    ```console
     kast optimize-imports --workspace-root=/path/to/project --file=/path/to/project/src/main/kotlin/Example.kt
     ```
 
@@ -1468,7 +1468,7 @@ Applies a prepared edit plan with file-hash conflict detection. Pass the edits a
 
 === "CLI example"
 
-    ```bash
+    ```console
     kast apply-edits --workspace-root=/path/to/project --edits-json='{...}'
     ```
 
@@ -1554,7 +1554,7 @@ Forces the daemon to refresh its workspace state. Use this after external file m
 
 === "CLI example"
 
-    ```bash
+    ```console
     kast workspace refresh --workspace-root=/path/to/project
     ```
 

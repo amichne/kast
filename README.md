@@ -1,6 +1,5 @@
 # Kast
-
-[![DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/amichne/kast)
+[![CI](https://github.com/amichne/kast/actions/workflows/ci.yml/badge.svg)](https://github.com/amichne/kast/actions/workflows/ci.yml) [![DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/amichne/kast)
 
 Kast is a Kotlin analysis tool for real Kotlin workspaces. The current
 supported operator path is the repo-local `kast` command.
@@ -21,19 +20,19 @@ The repo is organized as a Gradle multi-module build:
 Kast publishes portable release zips for supported operating systems. Install
 the latest release from any shell with a copyable one-line command:
 
-```bash
+```console
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/install.sh)"
 ```
 
 Install with all components (standalone + IntelliJ plugin):
 
-```bash
+```console
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/install.sh)" -- --components=all
 ```
 
 Non-interactive install for CI/automation:
 
-```bash
+```console
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/install.sh)" -- --components=all --non-interactive
 ```
 
@@ -48,7 +47,7 @@ out, you can run `./install.sh` from the repo root instead.
 If you use an agent workflow, run `kast install skill` from the workspace root
 to copy a version-matched `kast` skill into that workspace:
 
-```bash
+```console
 kast install skill
 ```
 
@@ -67,7 +66,7 @@ layout under `dist/kast`, including the `kast` launcher, the native client in
 portable zip to `dist/kast.zip` and can install the result as a named
 side-by-side dev instance when the build finishes.
 
-```bash
+```console
 ./build.sh
 ./build.sh --no-install
 ./build.sh --install --instance my-dev
@@ -80,7 +79,7 @@ generates a default name like `agile-otter`.
 
 Run smoke validation for a named instance with:
 
-```bash
+```console
 ./scripts/validate-instance.sh my-dev
 ```
 
@@ -93,7 +92,7 @@ separate readiness check.
 
 Optional: prewarm a runtime for a workspace:
 
-```bash
+```console
 kast \
   workspace ensure \
   --workspace-root=/absolute/path/to/workspace
@@ -106,7 +105,7 @@ By default, `workspace ensure` waits for `READY`. Add
 Run analysis commands the same way. The first one can start the daemon for you
 when you skip `workspace ensure`:
 
-```bash
+```console
 kast \
   capabilities \
   --workspace-root=/absolute/path/to/workspace
@@ -131,7 +130,7 @@ Kast refreshes `apply-edits` results immediately and watches source roots for
 most external `.kt` file changes. If you need to force recovery after a missed
 change, run:
 
-```bash
+```console
 kast \
   workspace refresh \
   --workspace-root=/absolute/path/to/workspace
@@ -139,7 +138,7 @@ kast \
 
 Stop the daemon when you need to:
 
-```bash
+```console
 kast \
   workspace stop \
   --workspace-root=/absolute/path/to/workspace
@@ -162,13 +161,13 @@ difference.
 
 Interactive mode:
 
-```bash
+```console
 kast demo --workspace-root=/path/to/your/kotlin/project
 ```
 
 Non-interactive (skip the picker):
 
-```bash
+```console
 kast demo --workspace-root=/path/to/your/kotlin/project --symbol=YourClassName
 ```
 
@@ -181,13 +180,13 @@ completion scripts for the public command tree and the supported
 
 Bash:
 
-```bash
+```console
 source <(kast completion bash)
 ```
 
 Zsh:
 
-```bash
+```console
 source <(kast completion zsh)
 ```
 
@@ -198,13 +197,13 @@ Run `kast help completion` if you want the shell-specific command pages.
 If you are changing Kast itself, `./build.sh` stages the full portable layout
 from the repo root:
 
-```bash
+```console
 ./build.sh
 ```
 
 If you only need the shared native client while working on `kast-cli`, run:
 
-```bash
+```console
 ./gradlew :kast-cli:nativeCompile
 ```
 

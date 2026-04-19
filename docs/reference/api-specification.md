@@ -36,14 +36,14 @@ requirement is documented with the `x-kast-conditional-capability` extension.
 The generated YAML is checked into `docs/openapi.yaml` in the repository root
 and served alongside these docs on GitHub Pages.
 
-[:material-file-code: View openapi.yaml](openapi.yaml){ .md-button }
+[:material-file-code: View openapi.yaml](../openapi.yaml){ .md-button }
 
 ## Download as build artifact
 
 The OpenAPI spec is published as `dist/openapi.yaml` alongside the CLI and
 plugin artifacts when you run `./build.sh`. You can also generate it directly:
 
-```bash
+```console
 ./gradlew :analysis-api:generateOpenApiSpec
 ```
 
@@ -64,7 +64,7 @@ this.
 
 To regenerate the checked-in YAML after changing analysis-api models:
 
-```bash
+```console
 ./gradlew :analysis-api:generateOpenApiSpec
 ```
 

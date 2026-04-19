@@ -13,7 +13,7 @@ Use `.agents/skills/kast/SKILL.md` as the authority.
 
 Bootstrap:
 
-```bash
+```console
 KAST="$(bash .agents/skills/kast/scripts/resolve-kast.sh)"
 ```
 

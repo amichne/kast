@@ -22,7 +22,7 @@ only to locate the binary.
 
 Resolve the kast binary once per session:
 
-```bash
+```console
 SKILL_ROOT="$(cd "$(dirname "$(find "$(git rev-parse --show-toplevel)" \
   -name SKILL.md -path "*/kast/SKILL.md" -maxdepth 6 -print -quit)")" && pwd)"
 KAST="$(bash "$SKILL_ROOT/scripts/resolve-kast.sh")"
@@ -68,56 +68,56 @@ including `type` and `log_file`.
 
 ### Resolve a symbol
 
-```bash
+```console
 "$KAST" skill resolve \
   '{"symbol":"AnalysisServer","fileHint":"analysis-server/src/main/kotlin/io/github/amichne/kast/server/AnalysisServer.kt"}'
 ```
 
 ### Find references
 
-```bash
+```console
 "$KAST" skill references \
   '{"symbol":"AnalysisServer","includeDeclaration":true}'
 ```
 
 ### Expand callers
 
-```bash
+```console
 "$KAST" skill callers \
   '{"symbol":"AnalysisServer","direction":"incoming","depth":2}'
 ```
 
 ### Run diagnostics
 
-```bash
+```console
 "$KAST" skill diagnostics \
   '{"filePaths":["/absolute/path/to/File.kt"]}'
 ```
 
 ### Rename a symbol
 
-```bash
+```console
 "$KAST" skill rename \
   '{"symbol":"OldName","newName":"NewName"}'
 ```
 
 ### Scaffold implementation context
 
-```bash
+```console
 "$KAST" skill scaffold \
   '{"targetFile":"/absolute/path/to/Interface.kt","targetSymbol":"MyInterface","mode":"implement"}'
 ```
 
 ### Apply code and validate
 
-```bash
+```console
 "$KAST" skill write-and-validate \
   '{"mode":"create-file","filePath":"/absolute/path/to/NewImpl.kt","content":"..."}'
 ```
 
 ### List workspace files
 
-```bash
+```console
 "$KAST" skill workspace-files \
   '{"includeFiles":true}'
 ```
@@ -126,7 +126,7 @@ including `type` and `log_file`.
 
 Use the built-in evaluator for regression tracking:
 
-```bash
+```console
 "$KAST" eval skill --skill-dir="$SKILL_ROOT"
 "$KAST" eval skill --skill-dir="$SKILL_ROOT" --format=markdown
 "$KAST" eval skill --skill-dir="$SKILL_ROOT" --compare=baseline.json
