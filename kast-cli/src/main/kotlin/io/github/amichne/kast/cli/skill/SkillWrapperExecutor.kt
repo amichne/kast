@@ -729,7 +729,7 @@ internal class SkillWrapperExecutor(
         if (resolved.isEmpty()) {
             throw CliFailure(
                 code = "SKILL_VALIDATION",
-                message = "workspaceRoot is required unless KAST_WORKSPACE_ROOT or the current git workspace can supply it.",
+                message = "workspaceRoot is required: set it in the request body or export KAST_WORKSPACE_ROOT.",
             )
         }
         return resolved

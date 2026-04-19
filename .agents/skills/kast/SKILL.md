@@ -42,8 +42,11 @@ Request/response schemas live in `references/wrapper-openapi.yaml`.
 `workspaceRoot` is optional in request bodies. Resolution order is:
 
 1. explicit `workspaceRoot`
-2. `KAST_WORKSPACE_ROOT`
-3. `git rev-parse --show-toplevel`
+2. `KAST_WORKSPACE_ROOT` environment variable
+
+If neither is set, the command fails with a validation error. There is no
+implicit `git rev-parse` fallback — this is intentional so agents always know
+exactly which workspace they are targeting.
 
 Responses are the same `ok`-keyed JSON payloads used by the former wrappers,
 including `type` and `log_file`.
