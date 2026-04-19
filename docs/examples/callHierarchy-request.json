@@ -1,0 +1,15 @@
+{
+    "method": "call-hierarchy",
+    "params": {
+        "position": {
+            "filePath": "/workspace/src/Sample.kt",
+            "offset": 48
+        },
+        "direction": "INCOMING",
+        "depth": 1,
+        "maxTotalCalls": 16,
+        "maxChildrenPerNode": 16
+    },
+    "id": 1,
+    "jsonrpc": "2.0"
+}

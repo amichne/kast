@@ -99,7 +99,7 @@ That changes what an agent can do safely:
 If you want to see the capability surface next, move to the questions Kast can
 answer or the high-level architecture.
 
-- [What you can do](what-you-can-do.md)
+- [Capabilities](capabilities.md)
 - [How Kast works](how-it-works.md)
 - [Get started](get-started.md)
 - [Kast vs LSP](kast-vs-lsp.md) — detailed comparison with Language Server Protocol implementations

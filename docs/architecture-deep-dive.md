@@ -169,5 +169,5 @@ After you absorb this model, continue with command-level details or the
 LLM-specific integration path.
 
 - [Run analysis commands](run-analysis-commands.md)
-- [Command reference](command-reference.md)
+- [API reference](api-reference.md)
 - [Use Kast from an LLM agent](use-kast-from-an-llm-agent.md)

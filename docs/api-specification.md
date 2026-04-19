@@ -9,17 +9,8 @@ This page describes the OpenAPI specification that documents the Kast analysis
 daemon's JSON-RPC protocol. The spec is generated from the Kotlin serialization
 models in `analysis-api` and stays in sync via automated tests.
 
-## What the spec covers
-
-The specification models every JSON-RPC method dispatched by the analysis
-daemon as a logical `POST /rpc/{method}` operation. Request bodies map to the
-`params` payload and response bodies map to the `result` payload.
-
-| Category | Methods | Capability gated |
-| --- | --- | --- |
-| System | `health`, `runtime/status`, `capabilities` | No |
-| Read | `symbol/resolve`, `references`, `call-hierarchy`, `type-hierarchy`, `semantic-insertion-point`, `diagnostics`, `file-outline`, `workspace-symbol`, `workspace/files`, `implementations`, `code-actions`, `completions` | Yes |
-| Mutation | `rename`, `imports/optimize`, `edits/apply`, `workspace/refresh` | Yes |
+For human-readable documentation of every operation including schemas, examples,
+and behavioral notes, see the [API reference](api-reference.md).
 
 ## Transport note
 
@@ -40,16 +31,14 @@ The `edits/apply` method additionally requires the `FILE_OPERATIONS` capability
 when the request includes non-empty `fileOperations`. This conditional
 requirement is documented with the `x-kast-conditional-capability` extension.
 
-## Using the spec
-
-### View online
+## View the spec
 
 The generated YAML is checked into `docs/openapi.yaml` in the repository root
 and served alongside these docs on GitHub Pages.
 
 [:material-file-code: View openapi.yaml](openapi.yaml){ .md-button }
 
-### Download as build artifact
+## Download as build artifact
 
 The OpenAPI spec is published as `dist/openapi.yaml` alongside the CLI and
 plugin artifacts when you run `./build.sh`. You can also generate it directly:
@@ -58,7 +47,7 @@ plugin artifacts when you run `./build.sh`. You can also generate it directly:
 ./gradlew :analysis-api:generateOpenApiSpec
 ```
 
-### Import into tools
+## Import into tools
 
 The spec is valid OpenAPI 3.1 and can be imported into tools like Swagger UI,
 Redoc, Stoplight, or used for client code generation with openapi-generator.

@@ -102,6 +102,5 @@ work or `--request-file` for repeatable automation payloads.
 
 ## Next steps
 
-- [Command reference](command-reference.md)
+- [API reference](api-reference.md)
 - [Use Kast from an LLM agent](use-kast-from-an-llm-agent.md)
-- [LLM scaffolding reference](llm-scaffolding-reference.md)

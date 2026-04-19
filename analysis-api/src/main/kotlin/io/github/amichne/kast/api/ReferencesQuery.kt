@@ -1,9 +1,13 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package io.github.amichne.kast.api
 
 import kotlinx.serialization.Serializable
 
 @Serializable
 data class ReferencesQuery(
+    @DocField(description = "File position identifying the symbol whose references to find.")
     val position: FilePosition,
+    @DocField(description = "When true, includes the symbol's own declaration in the results.")
     val includeDeclaration: Boolean = false,
 )

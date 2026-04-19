@@ -1,0 +1,10 @@
+{
+    "method": "workspace/refresh",
+    "params": {
+        "filePaths": [
+            "/workspace/src/Sample.kt"
+        ]
+    },
+    "id": 1,
+    "jsonrpc": "2.0"
+}

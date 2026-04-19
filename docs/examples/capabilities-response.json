@@ -1,0 +1,36 @@
+{
+    "result": {
+        "backendName": "fake",
+        "backendVersion": "0.1.0-test",
+        "workspaceRoot": "/workspace",
+        "readCapabilities": [
+            "RESOLVE_SYMBOL",
+            "FIND_REFERENCES",
+            "CALL_HIERARCHY",
+            "TYPE_HIERARCHY",
+            "SEMANTIC_INSERTION_POINT",
+            "DIAGNOSTICS",
+            "FILE_OUTLINE",
+            "WORKSPACE_SYMBOL_SEARCH",
+            "WORKSPACE_FILES",
+            "IMPLEMENTATIONS",
+            "CODE_ACTIONS",
+            "COMPLETIONS"
+        ],
+        "mutationCapabilities": [
+            "RENAME",
+            "APPLY_EDITS",
+            "FILE_OPERATIONS",
+            "OPTIMIZE_IMPORTS",
+            "REFRESH_WORKSPACE"
+        ],
+        "limits": {
+            "maxResults": 100,
+            "requestTimeoutMillis": 30000,
+            "maxConcurrentRequests": 4
+        },
+        "schemaVersion": 3
+    },
+    "id": 1,
+    "jsonrpc": "2.0"
+}

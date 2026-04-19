@@ -1,0 +1,11 @@
+{
+    "method": "workspace-symbol",
+    "params": {
+        "pattern": "greet",
+        "maxResults": 100,
+        "regex": false,
+        "includeDeclarationScope": false
+    },
+    "id": 1,
+    "jsonrpc": "2.0"
+}

@@ -1,0 +1,13 @@
+{
+    "method": "symbol/resolve",
+    "params": {
+        "position": {
+            "filePath": "/workspace/src/Sample.kt",
+            "offset": 20
+        },
+        "includeDeclarationScope": false,
+        "includeDocumentation": false
+    },
+    "id": 1,
+    "jsonrpc": "2.0"
+}

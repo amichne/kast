@@ -160,10 +160,10 @@ that help you decide what to do next.
 
 Most people do not need to think about absolute paths, UTF-16 offsets, or raw
 request payloads. When you are authoring automation, debugging an ambiguous
-lookup, or forcing a specific CLI invocation, use the advanced reference page
+lookup, or forcing a specific CLI invocation, use the API reference page
 instead of putting those details on the main path.
 
-- [LLM scaffolding reference](llm-scaffolding-reference.md)
+- [API reference](api-reference.md)
 
 ## Use workspace-symbol as an alternative bridge
 
@@ -191,6 +191,5 @@ Once the symbol identity is clear, move to the command pages that match the
 next action you want to take.
 
 - [Run analysis commands](run-analysis-commands.md)
-- [LLM scaffolding reference](llm-scaffolding-reference.md)
+- [API reference](api-reference.md)
 - [Get started](get-started.md)
-- [Command reference](command-reference.md)

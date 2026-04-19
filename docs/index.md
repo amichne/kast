@@ -28,7 +28,7 @@ without making the starting path noisy.
 
     - [Why Kast](why-kast.md)
     - [Kast vs LSP](kast-vs-lsp.md)
-    - [What you can do](what-you-can-do.md)
+    - [Capabilities](capabilities.md)
     - [Get started](get-started.md)
     - [Run analysis commands](run-analysis-commands.md)
 
@@ -44,7 +44,7 @@ without making the starting path noisy.
     - [How Kast works](how-it-works.md)
     - [Architecture deep dive](architecture-deep-dive.md)
     - [Things to know](things-to-know.md)
-    - [Command reference](command-reference.md)
+    - [API reference](api-reference.md)
 
 -   __Path 3: LLM integration and agent workflows__
 
@@ -57,7 +57,7 @@ without making the starting path noisy.
 
     - [Use Kast from an LLM agent](use-kast-from-an-llm-agent.md)
     - [Run analysis commands](run-analysis-commands.md)
-    - [LLM scaffolding reference](llm-scaffolding-reference.md)
+    - [API reference](api-reference.md)
     - [Things to know](things-to-know.md)
 
 </div>
