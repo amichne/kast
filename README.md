@@ -24,6 +24,12 @@ the latest release from any shell with a copyable one-line command:
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh)"
 ```
 
+Or via pipe:
+
+```console
+curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh | bash
+```
+
 Install with all components (standalone + IntelliJ plugin):
 
 ```console

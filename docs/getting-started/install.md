@@ -32,6 +32,12 @@ the standalone CLI.
   https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh)"
 ```
 
+Or via pipe:
+
+```console title="Install via pipe"
+curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh | bash
+```
+
 The installer prints a config summary at the end showing the install
 root, binary path, and shell RC file path.
 

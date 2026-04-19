@@ -432,6 +432,7 @@ already have IntelliJ open. Zero additional setup.
 # Install
 /bin/bash -c "$(curl -fsSL \
   https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh)"
+# Or: curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh | bash
 
 # Start the daemon
 kast workspace ensure \

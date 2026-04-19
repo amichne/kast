@@ -8,6 +8,7 @@
 #
 # Curl one-liner (auto-invokes install):
 #   curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh | bash
+#   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh)"
 #
 # Explicit subcommand:
 #   ./kast.sh build [cli] [plugin] [backend] [--all]
@@ -1066,9 +1067,11 @@ USAGE
 main() {
   local cmd="${1:-}"
 
-  # Auto-detect curl/pipe invocation: no-or-option args with non-tty stdin -> install.
-  # Handles `curl ... | bash` (no args) and `bash -c "..." bash --non-interactive`.
-  if ! [ -t 0 ] && [[ -z "$cmd" || "$cmd" == --* ]]; then
+  # Auto-detect curl/pipe or `bash -c "$(curl ...)"` invocation:
+  # SCRIPT_DIR is empty whenever the script is loaded from stdin, a pipe,
+  # or bash -c — all the documented one-liner installation forms.
+  # A real file-backed invocation (./kast.sh build) always sets SCRIPT_DIR.
+  if [[ -z "$SCRIPT_DIR" ]] && [[ -z "$cmd" || "$cmd" == --* ]]; then
     cmd_install "$@"
     return
   fi
