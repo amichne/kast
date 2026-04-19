@@ -790,6 +790,105 @@ internal object CliCommandCatalog {
             ),
             visible = false,
         ),
+        // Skill wrapper commands — hidden, called by agent shell scripts and SKILL.md tooling
+        CliCommandMetadata(
+            path = listOf("skill", "resolve"),
+            group = CliCommandGroup.ANALYSIS,
+            summary = "Skill wrapper: resolve a named symbol to a file position.",
+            description = "Replaces kast-resolve.sh. Accepts a JSON request on the command line.",
+            usages = listOf("$CLI_EXECUTABLE_NAME skill resolve '{\"workspace_root\":\"/ws\",\"symbol\":\"MyClass\"}'"),
+            visible = false,
+        ),
+        CliCommandMetadata(
+            path = listOf("skill", "references"),
+            group = CliCommandGroup.ANALYSIS,
+            summary = "Skill wrapper: find references to a named symbol.",
+            description = "Replaces kast-references.sh. Accepts a JSON request on the command line.",
+            usages = listOf("$CLI_EXECUTABLE_NAME skill references '{\"workspace_root\":\"/ws\",\"symbol\":\"myFun\"}'"),
+            visible = false,
+        ),
+        CliCommandMetadata(
+            path = listOf("skill", "callers"),
+            group = CliCommandGroup.ANALYSIS,
+            summary = "Skill wrapper: find callers of a named symbol.",
+            description = "Replaces kast-callers.sh. Accepts a JSON request on the command line.",
+            usages = listOf("$CLI_EXECUTABLE_NAME skill callers '{\"workspace_root\":\"/ws\",\"symbol\":\"myFun\"}'"),
+            visible = false,
+        ),
+        CliCommandMetadata(
+            path = listOf("skill", "diagnostics"),
+            group = CliCommandGroup.ANALYSIS,
+            summary = "Skill wrapper: run diagnostics on specified files.",
+            description = "Replaces kast-diagnostics.sh. Accepts a JSON request on the command line.",
+            usages = listOf("$CLI_EXECUTABLE_NAME skill diagnostics '{\"workspace_root\":\"/ws\",\"file_paths\":[\"src/Main.kt\"]}'"),
+            visible = false,
+        ),
+        CliCommandMetadata(
+            path = listOf("skill", "rename"),
+            group = CliCommandGroup.MUTATION_FLOW,
+            summary = "Skill wrapper: rename a symbol with validation.",
+            description = "Replaces kast-rename.sh. Accepts a JSON request on the command line.",
+            usages = listOf("$CLI_EXECUTABLE_NAME skill rename '{\"workspace_root\":\"/ws\",\"symbol\":\"old\",\"new_name\":\"new\"}'"),
+            visible = false,
+        ),
+        CliCommandMetadata(
+            path = listOf("skill", "scaffold"),
+            group = CliCommandGroup.ANALYSIS,
+            summary = "Skill wrapper: scaffold context for a target file.",
+            description = "Replaces kast-scaffold.sh. Accepts a JSON request on the command line.",
+            usages = listOf("$CLI_EXECUTABLE_NAME skill scaffold '{\"workspace_root\":\"/ws\",\"target_file\":\"/ws/src/Foo.kt\"}'"),
+            visible = false,
+        ),
+        CliCommandMetadata(
+            path = listOf("skill", "write-and-validate"),
+            group = CliCommandGroup.MUTATION_FLOW,
+            summary = "Skill wrapper: write code and validate with diagnostics.",
+            description = "Replaces kast-write-and-validate.sh. Accepts a JSON request on the command line.",
+            usages = listOf("$CLI_EXECUTABLE_NAME skill write-and-validate '{\"workspace_root\":\"/ws\",\"file_path\":\"/ws/src/New.kt\"}'"),
+            visible = false,
+        ),
+        CliCommandMetadata(
+            path = listOf("skill", "workspace-files"),
+            group = CliCommandGroup.ANALYSIS,
+            summary = "Skill wrapper: list workspace modules and source files.",
+            description = "Replaces kast-workspace-files.sh. Accepts a JSON request on the command line.",
+            usages = listOf("$CLI_EXECUTABLE_NAME skill workspace-files '{\"workspace_root\":\"/ws\"}'"),
+            visible = false,
+        ),
+        CliCommandMetadata(
+            path = listOf("eval", "skill"),
+            group = CliCommandGroup.VALIDATION,
+            summary = "Evaluate the packaged kast skill for structural quality, budget, and contract compliance.",
+            description = "Scans the skill directory, runs structural/contract/completeness checks, estimates token budgets, and produces a scored EvalResult. " +
+                "Use --compare=baseline.json to compare against a baseline and exit non-zero on regression. " +
+                "Use --format=markdown for a human-readable report.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME eval skill [--skill-dir=/path/to/.agents/skills/kast] [--compare=baseline.json] [--format=json|markdown]",
+            ),
+            options = listOf(
+                CliOptionMetadata(
+                    key = "skill-dir",
+                    usage = "--skill-dir=/path/to/.agents/skills/kast",
+                    description = "Path to the skill directory to evaluate. Defaults to .agents/skills/kast relative to workspace root.",
+                ),
+                CliOptionMetadata(
+                    key = "compare",
+                    usage = "--compare=baseline.json",
+                    description = "Path to a baseline EvalResult JSON file. When provided, exits non-zero if score regresses.",
+                ),
+                CliOptionMetadata(
+                    key = "format",
+                    usage = "--format=json|markdown",
+                    description = "Output format: json (default) or markdown.",
+                ),
+            ),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME eval skill",
+                "$CLI_EXECUTABLE_NAME eval skill --compare=baseline.json",
+                "$CLI_EXECUTABLE_NAME eval skill --format=markdown",
+                "$CLI_EXECUTABLE_NAME eval skill --skill-dir=/path/to/.agents/skills/kast",
+            ),
+        ),
     )
 
     private val metadataByPath: Map<List<String>, CliCommandMetadata> = commands.associateBy(CliCommandMetadata::path)

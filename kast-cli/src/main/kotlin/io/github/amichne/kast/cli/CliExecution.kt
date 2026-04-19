@@ -1,6 +1,9 @@
 package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.api.StandaloneServerOptions
+import io.github.amichne.kast.cli.skill.SkillWrapperExecutor
+import io.github.amichne.kast.cli.skill.SkillWrapperSerializer
+import kotlinx.serialization.json.Json
 import java.nio.file.Path
 
 internal sealed interface CliOutput {
@@ -33,6 +36,7 @@ internal interface CliCommandExecutor {
 
 internal class DefaultCliCommandExecutor(
     private val cliService: CliService,
+    private val json: Json = defaultCliJson(),
     private val internalDaemonRunner: (suspend (StandaloneServerOptions) -> Unit)? = null,
 ) : CliCommandExecutor {
     override suspend fun execute(command: CliCommand): CliExecutionResult {
@@ -233,6 +237,20 @@ internal class DefaultCliCommandExecutor(
                     )
                 runner(checkNotNull(command.options.standaloneOptions))
                 CliExecutionResult(output = CliOutput.None)
+            }
+
+            is CliCommand.Skill -> {
+                val executor = SkillWrapperExecutor(cliService, json)
+                val response = executor.execute(command)
+                val encoded = SkillWrapperSerializer.encode(json, command.name, response)
+                CliExecutionResult(
+                    output = CliOutput.Text(encoded),
+                )
+            }
+
+            is CliCommand.EvalSkill -> {
+                val result = EvalSkillExecutor(json).execute(command.options)
+                CliExecutionResult(output = result)
             }
         }
     }

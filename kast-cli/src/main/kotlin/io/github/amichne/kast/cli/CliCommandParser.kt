@@ -22,6 +22,7 @@ import io.github.amichne.kast.api.TypeHierarchyDirection
 import io.github.amichne.kast.api.TypeHierarchyQuery
 import io.github.amichne.kast.api.WorkspaceFilesQuery
 import io.github.amichne.kast.api.WorkspaceSymbolQuery
+import io.github.amichne.kast.cli.skill.SkillWrapperName
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import java.nio.file.Path
@@ -57,6 +58,10 @@ internal class CliCommandParser(
                 message = "A command is required",
                 details = CliCommandCatalog.topLevelUsageDetails(),
             )
+        }
+
+        if (parsed.positionals.firstOrNull() == "skill") {
+            return parseSkillCommand(parsed)
         }
 
         val metadata = CliCommandCatalog.find(parsed.positionals)
@@ -115,6 +120,7 @@ internal class CliCommandParser(
                 listOf("install", "skill") -> CliCommand.InstallSkill(parsed.installSkillOptions())
                 listOf("smoke") -> CliCommand.Smoke(parsed.smokeOptions())
                 listOf("demo") -> CliCommand.Demo(parsed.demoOptions())
+                listOf("eval", "skill") -> CliCommand.EvalSkill(parsed.evalSkillOptions())
                 listOf("internal", "daemon-run") -> CliCommand.InternalDaemonRun(parsed.runtimeOptions(backendName = "standalone"))
                 else -> throw CliFailure(
                     code = "CLI_USAGE",
@@ -132,6 +138,28 @@ internal class CliCommandParser(
                 details = CliCommandCatalog.usageDetails(metadata.path) + failure.details,
             )
         }
+    }
+
+    private fun parseSkillCommand(parsed: ParsedArguments): CliCommand {
+        val positionals = parsed.positionals
+        if (positionals.size < 2) {
+            return CliCommand.Help(listOf("skill"))
+        }
+        val wrapperCliName = positionals[1]
+        val wrapperName = SkillWrapperName.fromCliName(wrapperCliName)
+            ?: throw CliFailure(
+                code = "CLI_USAGE",
+                message = "Unknown skill wrapper: $wrapperCliName. " +
+                    "Valid wrappers: ${SkillWrapperName.entries.joinToString { it.cliName }}",
+            )
+        if (positionals.size < 3) {
+            throw CliFailure(
+                code = "CLI_USAGE",
+                message = "Skill wrapper '$wrapperCliName' requires a JSON argument (literal or file path)",
+            )
+        }
+        val rawInput = positionals[2]
+        return CliCommand.Skill(name = wrapperName, rawInput = rawInput)
     }
 
     private companion object {
@@ -522,6 +550,30 @@ internal data class ParsedArguments(
                 ?.let { Path.of(it).toAbsolutePath().normalize() }
                 ?: Path.of(System.getProperty("user.dir", ".")).toAbsolutePath().normalize(),
             symbolFilter = options["symbol"]?.takeIf(String::isNotBlank),
+        )
+    }
+
+    fun evalSkillOptions(): EvalSkillOptions {
+        val skillDir = options["skill-dir"]
+            ?.takeIf(String::isNotBlank)
+            ?.let { Path.of(it).toAbsolutePath().normalize() }
+            ?: Path.of(System.getProperty("user.dir", ".")).toAbsolutePath().normalize()
+                .resolve(".agents/skills/kast")
+        val compareBaseline = options["compare"]
+            ?.takeIf(String::isNotBlank)
+            ?.let { Path.of(it).toAbsolutePath().normalize() }
+        val format = when (options["format"]?.lowercase()) {
+            "markdown" -> EvalOutputFormat.MARKDOWN
+            "json", null -> EvalOutputFormat.JSON
+            else -> throw CliFailure(
+                code = "CLI_USAGE",
+                message = "Unknown format: ${options["format"]}. Valid values: json, markdown",
+            )
+        }
+        return EvalSkillOptions(
+            skillDir = skillDir,
+            compareBaseline = compareBaseline,
+            format = format,
         )
     }
 

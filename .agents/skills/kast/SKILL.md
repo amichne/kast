@@ -31,6 +31,36 @@ path to a `.json` request file. Request schemas live in
 explicit request field, `KAST_WORKSPACE_ROOT`, then `git rev-parse
 --show-toplevel` from the current working directory.
 
+### Native Kotlin commands (preferred)
+
+When the `kast` CLI is available, prefer the native `kast skill` subcommands
+over the shell scripts. They call `CliService` directly (no subprocess), are
+faster, and produce identical JSON output:
+
+| Shell script | Native command |
+|---|---|
+| `kast-resolve.sh '...'` | `kast skill resolve '...'` |
+| `kast-references.sh '...'` | `kast skill references '...'` |
+| `kast-callers.sh '...'` | `kast skill callers '...'` |
+| `kast-diagnostics.sh '...'` | `kast skill diagnostics '...'` |
+| `kast-rename.sh '...'` | `kast skill rename '...'` |
+| `kast-scaffold.sh '...'` | `kast skill scaffold '...'` |
+| `kast-write-and-validate.sh '...'` | `kast skill write-and-validate '...'` |
+| `kast-workspace-files.sh '...'` | `kast skill workspace-files '...'` |
+
+The JSON input contract is identical: one argument, either a JSON literal or a
+file path. The output contract is byte-for-byte compatible.
+
+### Skill evaluation
+
+Run `kast eval skill` to produce a deterministic quality report for the skill:
+
+```bash
+kast eval skill --skill-dir=.agents/skills/kast
+kast eval skill --skill-dir=.agents/skills/kast --format=markdown
+kast eval skill --skill-dir=.agents/skills/kast --compare=baseline.json
+```
+
 ## 1. Bootstrap (run once per session)
 
 Locate the skill root and resolve the kast binary before calling any wrapper:

@@ -16,6 +16,7 @@ import io.github.amichne.kast.api.SymbolQuery
 import io.github.amichne.kast.api.TypeHierarchyQuery
 import io.github.amichne.kast.api.WorkspaceFilesQuery
 import io.github.amichne.kast.api.WorkspaceSymbolQuery
+import io.github.amichne.kast.cli.skill.SkillWrapperName
 
 internal sealed interface CliCommand {
     data class Help(val topic: List<String> = emptyList()) : CliCommand
@@ -46,4 +47,14 @@ internal sealed interface CliCommand {
     data class InstallSkill(val options: InstallSkillOptions) : CliCommand
     data class Smoke(val options: SmokeOptions) : CliCommand
     data class Demo(val options: DemoOptions) : CliCommand
+    data class Skill(val name: SkillWrapperName, val rawInput: String) : CliCommand
+    data class EvalSkill(val options: EvalSkillOptions) : CliCommand
 }
+
+internal data class EvalSkillOptions(
+    val skillDir: java.nio.file.Path,
+    val compareBaseline: java.nio.file.Path? = null,
+    val format: EvalOutputFormat = EvalOutputFormat.JSON,
+)
+
+internal enum class EvalOutputFormat { JSON, MARKDOWN }
