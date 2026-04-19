@@ -1,0 +1,66 @@
+{
+    "result": {
+        "root": {
+            "symbol": {
+                "fqName": "sample.greet",
+                "kind": "FUNCTION",
+                "location": {
+                    "filePath": "/workspace/src/Sample.kt",
+                    "startOffset": 20,
+                    "endOffset": 25,
+                    "startLine": 4,
+                    "startColumn": 13,
+                    "preview": "greet"
+                },
+                "returnType": "String",
+                "parameters": [
+                    {
+                        "name": "name",
+                        "type": "String",
+                        "isVararg": false
+                    }
+                ],
+                "documentation": "/** Greets the provided name. */",
+                "containingDeclaration": "sample"
+            },
+            "children": [
+                {
+                    "symbol": {
+                        "fqName": "sample.caller0",
+                        "kind": "FUNCTION",
+                        "location": {
+                            "filePath": "/workspace/src/Sample.kt",
+                            "startOffset": 48,
+                            "endOffset": 53,
+                            "startLine": 4,
+                            "startColumn": 13,
+                            "preview": "greet"
+                        }
+                    },
+                    "callSite": {
+                        "filePath": "/workspace/src/Sample.kt",
+                        "startOffset": 48,
+                        "endOffset": 53,
+                        "startLine": 4,
+                        "startColumn": 13,
+                        "preview": "greet"
+                    },
+                    "children": []
+                }
+            ]
+        },
+        "stats": {
+            "totalNodes": 2,
+            "totalEdges": 1,
+            "truncatedNodes": 0,
+            "maxDepthReached": 1,
+            "timeoutReached": false,
+            "maxTotalCallsReached": false,
+            "maxChildrenPerNodeReached": false,
+            "filesVisited": 1
+        },
+        "schemaVersion": 3
+    },
+    "id": 1,
+    "jsonrpc": "2.0"
+}

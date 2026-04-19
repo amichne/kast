@@ -1,0 +1,12 @@
+{
+    "method": "completions",
+    "params": {
+        "position": {
+            "filePath": "/workspace/src/Sample.kt",
+            "offset": 0
+        },
+        "maxResults": 10
+    },
+    "id": 1,
+    "jsonrpc": "2.0"
+}

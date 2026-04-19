@@ -1,0 +1,10 @@
+{
+    "method": "imports/optimize",
+    "params": {
+        "filePaths": [
+            "/workspace/src/Sample.kt"
+        ]
+    },
+    "id": 1,
+    "jsonrpc": "2.0"
+}

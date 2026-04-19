@@ -15,3 +15,12 @@ tasks.register<JavaExec>("generateOpenApiSpec") {
     val outputFile = rootProject.layout.projectDirectory.file("docs/openapi.yaml")
     args(outputFile.asFile.absolutePath)
 }
+
+tasks.register<JavaExec>("generateDocPages") {
+    description = "Generates Markdown capability and API reference pages from the model registry"
+    group = "documentation"
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("io.github.amichne.kast.api.AnalysisDocsDocumentKt")
+    val outputDir = rootProject.layout.projectDirectory.dir("docs")
+    args(outputDir.asFile.absolutePath)
+}

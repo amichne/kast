@@ -1,0 +1,20 @@
+{
+    "result": {
+        "applied": [
+            {
+                "filePath": "/workspace/src/Sample.kt",
+                "startOffset": 0,
+                "endOffset": 0,
+                "newText": "// edited\n"
+            }
+        ],
+        "affectedFiles": [
+            "/workspace/src/Sample.kt"
+        ],
+        "createdFiles": [],
+        "deletedFiles": [],
+        "schemaVersion": 3
+    },
+    "id": 1,
+    "jsonrpc": "2.0"
+}

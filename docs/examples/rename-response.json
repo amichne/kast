@@ -1,0 +1,30 @@
+{
+    "result": {
+        "edits": [
+            {
+                "filePath": "/workspace/src/Sample.kt",
+                "startOffset": 20,
+                "endOffset": 25,
+                "newText": "welcome"
+            },
+            {
+                "filePath": "/workspace/src/Sample.kt",
+                "startOffset": 48,
+                "endOffset": 53,
+                "newText": "welcome"
+            }
+        ],
+        "fileHashes": [
+            {
+                "filePath": "/workspace/src/Sample.kt",
+                "hash": "fd31168346a51e49dbb21eca8e5d7cc897afe7116bb3ef21754f782ddb261f72"
+            }
+        ],
+        "affectedFiles": [
+            "/workspace/src/Sample.kt"
+        ],
+        "schemaVersion": 3
+    },
+    "id": 1,
+    "jsonrpc": "2.0"
+}

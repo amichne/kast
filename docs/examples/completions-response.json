@@ -1,0 +1,24 @@
+{
+    "result": {
+        "items": [
+            {
+                "name": "greet",
+                "fqName": "sample.greet",
+                "kind": "FUNCTION",
+                "type": "String",
+                "parameters": [
+                    {
+                        "name": "name",
+                        "type": "String",
+                        "isVararg": false
+                    }
+                ],
+                "documentation": "/** Greets the provided name. */"
+            }
+        ],
+        "exhaustive": true,
+        "schemaVersion": 3
+    },
+    "id": 1,
+    "jsonrpc": "2.0"
+}

@@ -1,0 +1,17 @@
+{
+    "result": {
+        "state": "READY",
+        "healthy": true,
+        "active": true,
+        "indexing": false,
+        "backendName": "fake",
+        "backendVersion": "0.1.0-test",
+        "workspaceRoot": "/workspace",
+        "warnings": [],
+        "sourceModuleNames": [],
+        "dependentModuleNamesBySourceModuleName": {},
+        "schemaVersion": 3
+    },
+    "id": 1,
+    "jsonrpc": "2.0"
+}

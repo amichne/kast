@@ -1,0 +1,12 @@
+{
+    "method": "implementations",
+    "params": {
+        "position": {
+            "filePath": "/workspace/src/Types.kt",
+            "offset": 45
+        },
+        "maxResults": 10
+    },
+    "id": 1,
+    "jsonrpc": "2.0"
+}

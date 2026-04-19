@@ -1,0 +1,39 @@
+{
+    "result": {
+        "declaration": {
+            "fqName": "sample.Greeter",
+            "kind": "INTERFACE",
+            "location": {
+                "filePath": "/workspace/src/Types.kt",
+                "startOffset": 26,
+                "endOffset": 33,
+                "startLine": 3,
+                "startColumn": 11,
+                "preview": "interface Greeter"
+            },
+            "containingDeclaration": "sample"
+        },
+        "implementations": [
+            {
+                "fqName": "sample.LoudGreeter",
+                "kind": "CLASS",
+                "location": {
+                    "filePath": "/workspace/src/Types.kt",
+                    "startOffset": 77,
+                    "endOffset": 88,
+                    "startLine": 5,
+                    "startColumn": 7,
+                    "preview": "class LoudGreeter : FriendlyGreeter()"
+                },
+                "containingDeclaration": "sample",
+                "supertypes": [
+                    "sample.FriendlyGreeter"
+                ]
+            }
+        ],
+        "exhaustive": true,
+        "schemaVersion": 3
+    },
+    "id": 1,
+    "jsonrpc": "2.0"
+}

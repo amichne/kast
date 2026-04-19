@@ -1,0 +1,67 @@
+{
+    "result": {
+        "root": {
+            "symbol": {
+                "fqName": "sample.FriendlyGreeter",
+                "kind": "CLASS",
+                "location": {
+                    "filePath": "/workspace/src/Types.kt",
+                    "startOffset": 45,
+                    "endOffset": 60,
+                    "startLine": 4,
+                    "startColumn": 12,
+                    "preview": "open class FriendlyGreeter : Greeter"
+                },
+                "containingDeclaration": "sample",
+                "supertypes": [
+                    "sample.Greeter"
+                ]
+            },
+            "children": [
+                {
+                    "symbol": {
+                        "fqName": "sample.Greeter",
+                        "kind": "INTERFACE",
+                        "location": {
+                            "filePath": "/workspace/src/Types.kt",
+                            "startOffset": 26,
+                            "endOffset": 33,
+                            "startLine": 3,
+                            "startColumn": 11,
+                            "preview": "interface Greeter"
+                        },
+                        "containingDeclaration": "sample"
+                    },
+                    "children": []
+                },
+                {
+                    "symbol": {
+                        "fqName": "sample.LoudGreeter",
+                        "kind": "CLASS",
+                        "location": {
+                            "filePath": "/workspace/src/Types.kt",
+                            "startOffset": 77,
+                            "endOffset": 88,
+                            "startLine": 5,
+                            "startColumn": 7,
+                            "preview": "class LoudGreeter : FriendlyGreeter()"
+                        },
+                        "containingDeclaration": "sample",
+                        "supertypes": [
+                            "sample.FriendlyGreeter"
+                        ]
+                    },
+                    "children": []
+                }
+            ]
+        },
+        "stats": {
+            "totalNodes": 3,
+            "maxDepthReached": 1,
+            "truncated": false
+        },
+        "schemaVersion": 3
+    },
+    "id": 1,
+    "jsonrpc": "2.0"
+}

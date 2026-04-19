@@ -1,0 +1,14 @@
+{
+    "method": "type-hierarchy",
+    "params": {
+        "position": {
+            "filePath": "/workspace/src/Types.kt",
+            "offset": 45
+        },
+        "direction": "BOTH",
+        "depth": 1,
+        "maxResults": 16
+    },
+    "id": 1,
+    "jsonrpc": "2.0"
+}

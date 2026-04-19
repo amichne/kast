@@ -323,4 +323,4 @@ Once the workspace runtime is live, you can move on to the common analysis
 tasks and the compact reference page.
 
 - [Run analysis commands](run-analysis-commands.md)
-- [Command reference](command-reference.md)
+- [API reference](api-reference.md)

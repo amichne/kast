@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package io.github.amichne.kast.api
 
 import kotlinx.serialization.Serializable
@@ -8,10 +10,15 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class SearchScope(
+    @DocField(description = "Visibility of the target symbol, used to determine search breadth.")
     val visibility: SymbolVisibility,
+    @DocField(description = "The breadth of files examined: FILE, MODULE, or DEPENDENT_MODULES.")
     val scope: SearchScopeKind,
+    @DocField(description = "True when the search covered all candidate files without truncation.")
     val exhaustive: Boolean,
+    @DocField(description = "Total number of files that could contain references.")
     val candidateFileCount: Int,
+    @DocField(description = "Number of files actually examined during the search.")
     val searchedFileCount: Int,
 )
 

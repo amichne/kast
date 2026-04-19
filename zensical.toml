@@ -15,18 +15,22 @@ Copyright &copy; 2026 amichne
 """
 nav = [
   { "Overview" = "index.md" },
-  { "Why Kast" = "why-kast.md" },
-  { "Kast vs LSP" = "kast-vs-lsp.md" },
-  { "What you can do" = "what-you-can-do.md" },
-  { "How Kast works" = "how-it-works.md" },
-  { "Architecture deep dive" = "architecture-deep-dive.md" },
-  { "Things to know" = "things-to-know.md" },
-  { "Get started" = "get-started.md" },
-  { "Run analysis commands" = "run-analysis-commands.md" },
-  { "Use Kast from an LLM agent" = "use-kast-from-an-llm-agent.md" },
-  { "LLM scaffolding reference" = "llm-scaffolding-reference.md" },
-  { "Command reference" = "command-reference.md" },
-  { "API specification" = "api-specification.md" },
+  { "Getting started" = [
+    { "Why Kast" = "why-kast.md" },
+    { "Kast vs LSP" = "kast-vs-lsp.md" },
+    { "Get started" = "get-started.md" },
+    { "Run analysis commands" = "run-analysis-commands.md" },
+    { "Capabilities" = "capabilities.md" },
+  ]},
+  { "Architecture" = [
+    { "How Kast works" = "how-it-works.md" },
+    { "Architecture deep dive" = "architecture-deep-dive.md" },
+    { "Things to know" = "things-to-know.md" },
+    { "API reference" = "api-reference.md" },
+    { "API specification" = "api-specification.md" },
+  ]},
+  { "LLM integration" = "use-kast-from-an-llm-agent.md" },
+  { "Troubleshooting" = "troubleshooting.md" },
 ]
 
 [project.markdown_extensions.admonition]
@@ -35,6 +39,8 @@ nav = [
 custom_fences = [
   { name = "mermaid", class = "mermaid", format = "pymdownx.superfences.fence_code_format" }
 ]
+[project.markdown_extensions.pymdownx.tabbed]
+alternate_style = true
 
 [project.markdown_extensions.attr_list]
 [project.markdown_extensions.md_in_html]
