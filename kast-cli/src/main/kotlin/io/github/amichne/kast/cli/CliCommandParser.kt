@@ -158,6 +158,18 @@ internal class CliCommandParser(
                 message = "Skill wrapper '$wrapperCliName' requires a JSON argument (literal or file path)",
             )
         }
+        if (positionals.size != 3) {
+            throw CliFailure(
+                code = "CLI_USAGE",
+                message = "Unexpected additional arguments for 'skill' command. Expected exactly 3 positionals: skill <wrapper-name> <json-input>",
+            )
+        }
+        if (parsed.options.isNotEmpty() || parsed.flags.isNotEmpty()) {
+            throw CliFailure(
+                code = "CLI_USAGE",
+                message = "Unexpected options/flags for 'skill' command. Skill commands do not accept CLI options; pass all parameters in the JSON request.",
+            )
+        }
         val rawInput = positionals[2]
         return CliCommand.Skill(name = wrapperName, rawInput = rawInput)
     }

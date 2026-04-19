@@ -63,6 +63,12 @@ internal object SkillEvalEngine {
     }
 
     fun compareResults(before: EvalResult, after: EvalResult): ComparisonResult {
+        if (before.target != after.target) {
+            throw IllegalArgumentException(
+                "Cannot compare results for different targets: before=${before.target}, after=${after.target}"
+            )
+        }
+
         val beforeFailIds = before.checks.filter { it.status == EvalStatus.FAIL }.map { it.id }.toSet()
         val afterFailIds = after.checks.filter { it.status == EvalStatus.FAIL }.map { it.id }.toSet()
 

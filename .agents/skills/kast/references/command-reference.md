@@ -14,5 +14,7 @@ The authoritative command surface is:
 - `kast skill workspace-files`
 - `kast eval skill`
 
+Note: The `kast skill impact` command was intentionally removed.
+
 For examples, request shapes, and workflow guidance, use
-`.agents/skills/kast/SKILL.md` and `references/wrapper-openapi.yaml`.
+`.agents/skills/kast/SKILL.md` and `wrapper-openapi.yaml`.

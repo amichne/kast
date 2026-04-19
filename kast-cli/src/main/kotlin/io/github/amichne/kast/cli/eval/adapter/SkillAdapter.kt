@@ -138,25 +138,70 @@ internal class SkillAdapter(private val skillDir: Path) {
         val agentsDir = skillDir.resolve("agents")
         if (!agentsDir.exists()) return emptyList()
 
-        val commandPatterns = SkillWrapperName.entries.map { "kast skill ${it.cliName}" }
+        val validCommands = SkillWrapperName.entries.map { it.cliName }.toSet()
 
         return Files.list(agentsDir).use { stream ->
             stream.filter { it.isRegularFile() && it.name.endsWith(".md") }.toList()
         }.flatMap { agentFile ->
             val content = agentFile.readText()
-            val referenced = commandPatterns.filter(content::contains)
+
+            // Find all "kast skill X" invocations
+            val kastSkillPattern = Regex("""kast\s+skill\s+(\S+)""")
+            val referencedSubcommands = kastSkillPattern.findAll(content)
+                .map { it.groupValues[1] }
+                .toSet()
+
+            // Check for legacy references
+            val hasAnalysisCli = content.contains("analysis-cli")
+            val hasShellWrappers = content.contains(".sh") && (
+                content.contains("kast-resolve.sh") ||
+                content.contains("kast-references.sh") ||
+                content.contains("kast-callers.sh") ||
+                content.contains("kast-diagnostics.sh") ||
+                content.contains("kast-rename.sh") ||
+                content.contains("kast-scaffold.sh") ||
+                content.contains("kast-write-and-validate.sh") ||
+                content.contains("kast-workspace-files.sh")
+            )
+
+            val invalidSubcommands = referencedSubcommands - validCommands
+            val hasLegacy = hasAnalysisCli || hasShellWrappers
+            val hasInvalid = invalidSubcommands.isNotEmpty()
+
+            val status = when {
+                hasLegacy || hasInvalid -> EvalStatus.FAIL
+                referencedSubcommands.isEmpty() -> EvalStatus.WARN
+                else -> EvalStatus.PASS
+            }
+
+            val severity = when {
+                hasLegacy || hasInvalid -> EvalSeverity.ERROR
+                referencedSubcommands.isEmpty() -> EvalSeverity.WARNING
+                else -> EvalSeverity.INFO
+            }
+
+            val message = when {
+                hasLegacy -> "Agent ${agentFile.name} contains legacy references (analysis-cli or .sh wrappers)"
+                hasInvalid -> "Agent ${agentFile.name} references invalid skill commands: ${invalidSubcommands.joinToString()}"
+                referencedSubcommands.isEmpty() -> "Agent ${agentFile.name} does not mention any native `kast skill` subcommand"
+                else -> "Agent ${agentFile.name} references ${referencedSubcommands.size} valid native `kast skill` subcommands"
+            }
+
+            val remediation = when {
+                hasLegacy -> "Replace legacy references with native `kast skill` commands (${validCommands.joinToString()}). Remove analysis-cli and .sh wrapper references."
+                hasInvalid -> "Fix invalid subcommand references. Valid subcommands: ${validCommands.joinToString()}"
+                referencedSubcommands.isEmpty() -> "Reference the relevant native `kast skill` commands or direct the reader to SKILL.md"
+                else -> null
+            }
+
             listOf(
                 EvalCheck(
                     id = "structural-agent-${agentFile.name}-command-refs",
                     category = "structural",
-                    severity = if (referenced.isEmpty()) EvalSeverity.WARNING else EvalSeverity.INFO,
-                    status = if (referenced.isEmpty()) EvalStatus.WARN else EvalStatus.PASS,
-                    message = if (referenced.isEmpty()) {
-                        "Agent ${agentFile.name} does not mention any native `kast skill` subcommand"
-                    } else {
-                        "Agent ${agentFile.name} references ${referenced.size} native `kast skill` subcommands"
-                    },
-                    remediation = if (referenced.isEmpty()) "Reference the relevant native `kast skill` commands or direct the reader to SKILL.md" else null,
+                    severity = severity,
+                    status = status,
+                    message = message,
+                    remediation = remediation,
                 ),
             )
         }
@@ -227,7 +272,7 @@ internal class SkillAdapter(private val skillDir: Path) {
 
     private fun sumTokensInDir(dir: Path, extension: String? = null): Int {
         if (!dir.exists()) return 0
-        return Files.list(dir).use { stream ->
+        return Files.walk(dir).use { stream ->
             stream.filter { it.isRegularFile() && (extension == null || it.name.endsWith(extension)) }
                 .toList()
         }.sumOf { estimateTokens(it) }

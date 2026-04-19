@@ -126,56 +126,56 @@ object WrapperOpenApiDocument {
     }
 
     private fun writePaths(): Map<String, Any?> = linkedMapOf(
-        "/skill/resolve" to pathItem(
+        "/resolve" to pathItem(
             operationId = "kastSkillResolve",
             summary = "Resolve a symbol by name",
             command = "kast skill resolve",
             requestSchema = "KastResolveRequest",
             responseSchema = "KastResolveResponse",
         ),
-        "/skill/references" to pathItem(
+        "/references" to pathItem(
             operationId = "kastSkillReferences",
             summary = "Find references for a named symbol",
             command = "kast skill references",
             requestSchema = "KastReferencesRequest",
             responseSchema = "KastReferencesResponse",
         ),
-        "/skill/callers" to pathItem(
+        "/callers" to pathItem(
             operationId = "kastSkillCallers",
             summary = "Expand an incoming or outgoing call hierarchy",
             command = "kast skill callers",
             requestSchema = "KastCallersRequest",
             responseSchema = "KastCallersResponse",
         ),
-        "/skill/diagnostics" to pathItem(
+        "/diagnostics" to pathItem(
             operationId = "kastSkillDiagnostics",
             summary = "Run diagnostics on Kotlin files",
             command = "kast skill diagnostics",
             requestSchema = "KastDiagnosticsRequest",
             responseSchema = "KastDiagnosticsResponse",
         ),
-        "/skill/rename" to pathItem(
+        "/rename" to pathItem(
             operationId = "kastSkillRename",
             summary = "Resolve or target a symbol and apply a rename",
             command = "kast skill rename",
             requestSchema = "KastRenameRequest",
             responseSchema = "KastRenameResponse",
         ),
-        "/skill/scaffold" to pathItem(
+        "/scaffold" to pathItem(
             operationId = "kastSkillScaffold",
             summary = "Gather structural generation context",
             command = "kast skill scaffold",
             requestSchema = "KastScaffoldRequest",
             responseSchema = "KastScaffoldResponse",
         ),
-        "/skill/workspace-files" to pathItem(
+        "/workspace-files" to pathItem(
             operationId = "kastSkillWorkspaceFiles",
             summary = "List workspace modules and optional file paths",
             command = "kast skill workspace-files",
             requestSchema = "KastWorkspaceFilesRequest",
             responseSchema = "KastWorkspaceFilesResponse",
         ),
-        "/skill/write-and-validate" to pathItem(
+        "/write-and-validate" to pathItem(
             operationId = "kastSkillWriteAndValidate",
             summary = "Apply generated Kotlin code and validate the result",
             command = "kast skill write-and-validate",

@@ -23,6 +23,6 @@ Editing flow:
 1. Gather context with `"$KAST" skill scaffold '{...}'`
 2. Apply edits with `"$KAST" skill write-and-validate '{...}'`
 3. Use `"$KAST" skill rename '{...}'` for symbol renames
-4. End with `"$KAST" skill diagnostics '{...}'` if the mutation command did not already validate the final files
+4. Always run `"$KAST" skill diagnostics '{...}'` after mutation commands
 
-Do not report success unless diagnostics are clean.
+Only report success when `"$KAST" skill diagnostics` returns `clean=true`.

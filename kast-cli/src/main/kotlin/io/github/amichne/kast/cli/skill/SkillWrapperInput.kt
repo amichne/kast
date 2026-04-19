@@ -12,7 +12,7 @@ internal object SkillWrapperInput {
 
     /**
      * Resolves the workspace root from the hierarchy:
-     * explicit request value → KAST_WORKSPACE_ROOT env → empty string (caller decides error).
+     * explicit request value → KAST_WORKSPACE_ROOT env → git root → empty string (caller decides error).
      */
     fun resolveWorkspaceRoot(
         explicit: String?,
@@ -20,7 +20,21 @@ internal object SkillWrapperInput {
     ): String {
         val trimmed = explicit?.trim()?.takeIf(String::isNotEmpty)
         if (trimmed != null) return trimmed
-        return env["KAST_WORKSPACE_ROOT"]?.trim()?.takeIf(String::isNotEmpty) ?: ""
+
+        val envValue = env["KAST_WORKSPACE_ROOT"]?.trim()?.takeIf(String::isNotEmpty)
+        if (envValue != null) return envValue
+
+        // Try git fallback
+        return try {
+            val process = ProcessBuilder("git", "rev-parse", "--show-toplevel")
+                .redirectErrorStream(true)
+                .start()
+            val output = process.inputStream.bufferedReader().use { it.readText() }.trim()
+            val exitCode = process.waitFor()
+            if (exitCode == 0 && output.isNotEmpty()) output else ""
+        } catch (e: Exception) {
+            ""
+        }
     }
 
     /**

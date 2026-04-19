@@ -31,7 +31,12 @@ internal class DemoCommandSupport(
         return when {
             filter == null && symbols.size == 1 -> symbols.single()
             filter == null -> symbolChooser.choose(symbols)
-            else -> symbols.firstOrNull { symbolMatchesFilter(it, filter) } ?: symbols.first()
+            else -> {
+                val matched = symbols.firstOrNull { symbolMatchesFilter(it, filter) }
+                matched ?: throw IllegalArgumentException(
+                    "No symbol matching filter '$filter' found. Available symbols: ${symbols.take(10).joinToString { it.fqName }}"
+                )
+            }
         }
     }
 

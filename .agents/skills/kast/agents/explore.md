@@ -26,4 +26,6 @@ Use these commands in order until you have enough context:
 4. `"$KAST" skill references '{...}'`
 5. `"$KAST" skill callers '{...}'`
 
+Do not use grep/rg/ast-grep/cat or any manual text-parsing to determine Kotlin symbol identity, references, or call hierarchy. Text search (grep/rg) is only allowed for locating file paths, non-Kotlin files, and searching string literals or comments. Always prefer the `"$KAST" skill` commands for semantic analysis.
+
 Never claim completeness unless the JSON response supports it.

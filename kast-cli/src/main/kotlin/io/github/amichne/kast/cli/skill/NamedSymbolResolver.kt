@@ -54,23 +54,20 @@ internal class NamedSymbolResolver(
         // Filter by file hint (path suffix match)
         if (!fileHint.isNullOrEmpty()) {
             val hintSuffix = fileHint.removePrefix("/")
-            val filtered = candidates.filter { it.location.filePath.endsWith(hintSuffix) }
-            if (filtered.isNotEmpty()) candidates = filtered
+            candidates = candidates.filter { it.location.filePath.endsWith(hintSuffix) }
         }
 
         // Filter by kind
         if (kind != null) {
             val apiKind = kind.toSymbolKind()
-            val filtered = candidates.filter { it.kind == apiKind }
-            if (filtered.isNotEmpty()) candidates = filtered
+            candidates = candidates.filter { it.kind == apiKind }
         }
 
         // Filter by containing type
         if (!containingType.isNullOrEmpty()) {
-            val filtered = candidates.filter {
+            candidates = candidates.filter {
                 it.containingDeclaration?.endsWith(containingType) == true
             }
-            if (filtered.isNotEmpty()) candidates = filtered
         }
 
         // Filter to exact name matches (fqName ends with the symbol name)
@@ -91,10 +88,11 @@ internal class NamedSymbolResolver(
             io.github.amichne.kast.api.SymbolQuery(position = position),
         )
 
+        val resolvedSymbol = resolveResult.payload.symbol
         return ResolvedSymbol(
-            symbol = resolveResult.payload.symbol,
-            filePath = best.location.filePath,
-            offset = best.location.startOffset,
+            symbol = resolvedSymbol,
+            filePath = resolvedSymbol.location.filePath,
+            offset = resolvedSymbol.location.startOffset,
         )
     }
 }

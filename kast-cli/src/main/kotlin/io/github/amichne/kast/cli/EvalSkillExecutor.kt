@@ -40,8 +40,15 @@ internal class EvalSkillExecutor(private val json: Json) {
                 message = "Baseline file does not exist: $baselinePath",
             )
         }
-        val baselineText = baselinePath.readText()
-        val baseline = json.decodeFromString(EvalResult.serializer(), baselineText)
+        val baseline = try {
+            val baselineText = baselinePath.readText()
+            json.decodeFromString(EvalResult.serializer(), baselineText)
+        } catch (e: Exception) {
+            throw CliFailure(
+                code = "EVAL_SKILL_ERROR",
+                message = "Failed to read or parse baseline file: $baselinePath. Error: ${e.message}",
+            )
+        }
         val comparison = SkillEvalEngine.compareResults(baseline, result)
 
         val output = when (options.format) {

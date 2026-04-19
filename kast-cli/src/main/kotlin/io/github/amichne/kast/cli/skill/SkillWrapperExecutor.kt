@@ -120,8 +120,14 @@ internal class SkillWrapperExecutor(
         val request = json.decodeFromString<KastDiagnosticsRequest>(rawJson)
         val workspaceRoot = requireWorkspaceRoot(request.workspaceRoot)
         val options = runtimeOptionsFor(workspaceRoot)
+        val workspaceRootPath = Path.of(workspaceRoot)
         val filePaths = request.filePaths.map { path ->
-            Path.of(path).toAbsolutePath().normalize().toString()
+            val p = Path.of(path)
+            if (p.isAbsolute) {
+                p.normalize().toString()
+            } else {
+                workspaceRootPath.resolve(p).normalize().toString()
+            }
         }
         val diagnosticsResult = cliService.diagnostics(options, DiagnosticsQuery(filePaths = filePaths)).payload
         return KastDiagnosticsSuccessResponse(
@@ -366,7 +372,13 @@ internal class SkillWrapperExecutor(
     private suspend fun executeRenameByOffset(request: KastRenameByOffsetRequest): Any {
         val workspaceRoot = requireWorkspaceRoot(request.workspaceRoot)
         val options = runtimeOptionsFor(workspaceRoot)
-        val filePath = Path.of(request.filePath).toAbsolutePath().normalize().toString()
+        val workspaceRootPath = Path.of(workspaceRoot)
+        val filePathRaw = Path.of(request.filePath)
+        val filePath = if (filePathRaw.isAbsolute) {
+            filePathRaw.normalize().toString()
+        } else {
+            workspaceRootPath.resolve(filePathRaw).normalize().toString()
+        }
 
         return performRename(
             options = options,
@@ -400,50 +412,59 @@ internal class SkillWrapperExecutor(
         queryBuilder: () -> io.github.amichne.kast.api.KastRenameQuery,
         failureQueryBuilder: () -> KastRenameFailureQuery,
     ): Any {
-        // Dry-run rename to get edits
-        val renameResult = cliService.rename(
-            options,
-            RenameQuery(
-                position = FilePosition(filePath = filePath, offset = offset),
-                newName = newName,
-                dryRun = true,
-            ),
-        ).payload
+        return try {
+            // Dry-run rename to get edits
+            val renameResult = cliService.rename(
+                options,
+                RenameQuery(
+                    position = FilePosition(filePath = filePath, offset = offset),
+                    newName = newName,
+                    dryRun = true,
+                ),
+            ).payload
 
-        // Apply the edits
-        val applyResult = cliService.applyEdits(
-            options,
-            ApplyEditsQuery(
-                edits = renameResult.edits,
-                fileHashes = renameResult.fileHashes,
-            ),
-        ).payload
+            // Apply the edits
+            val applyResult = cliService.applyEdits(
+                options,
+                ApplyEditsQuery(
+                    edits = renameResult.edits,
+                    fileHashes = renameResult.fileHashes,
+                ),
+            ).payload
 
-        // Run diagnostics on affected files
-        val affectedFiles = renameResult.affectedFiles
-        val diagnosticsPayload = if (affectedFiles.isNotEmpty()) {
-            cliService.diagnostics(options, DiagnosticsQuery(filePaths = affectedFiles)).payload
-        } else {
-            null
-        }
-        val diagSummary = diagnosticsPayload?.let { d ->
-            KastDiagnosticsSummary(
-                clean = d.diagnostics.none { it.severity == DiagnosticSeverity.ERROR },
-                errorCount = d.diagnostics.count { it.severity == DiagnosticSeverity.ERROR },
-                warningCount = d.diagnostics.count { it.severity == DiagnosticSeverity.WARNING },
-                errors = d.diagnostics.filter { it.severity == DiagnosticSeverity.ERROR },
+            // Run diagnostics on affected files
+            val affectedFiles = renameResult.affectedFiles
+            val diagnosticsPayload = if (affectedFiles.isNotEmpty()) {
+                cliService.diagnostics(options, DiagnosticsQuery(filePaths = affectedFiles)).payload
+            } else {
+                null
+            }
+            val diagSummary = diagnosticsPayload?.let { d ->
+                KastDiagnosticsSummary(
+                    clean = d.diagnostics.none { it.severity == DiagnosticSeverity.ERROR },
+                    errorCount = d.diagnostics.count { it.severity == DiagnosticSeverity.ERROR },
+                    warningCount = d.diagnostics.count { it.severity == DiagnosticSeverity.WARNING },
+                    errors = d.diagnostics.filter { it.severity == DiagnosticSeverity.ERROR },
+                )
+            } ?: KastDiagnosticsSummary(clean = true, errorCount = 0, warningCount = 0)
+
+            KastRenameSuccessResponse(
+                ok = diagSummary.clean,
+                query = queryBuilder(),
+                editCount = renameResult.edits.size,
+                affectedFiles = renameResult.affectedFiles,
+                applyResult = applyResult,
+                diagnostics = diagSummary,
+                logFile = SkillLogFile.placeholder(),
             )
-        } ?: KastDiagnosticsSummary(clean = true, errorCount = 0, warningCount = 0)
-
-        return KastRenameSuccessResponse(
-            ok = diagSummary.clean,
-            query = queryBuilder(),
-            editCount = renameResult.edits.size,
-            affectedFiles = renameResult.affectedFiles,
-            applyResult = applyResult,
-            diagnostics = diagSummary,
-            logFile = SkillLogFile.placeholder(),
-        )
+        } catch (e: Exception) {
+            KastRenameFailureResponse(
+                stage = "rename",
+                message = "Rename operation failed: ${e.message}",
+                query = failureQueryBuilder(),
+                logFile = SkillLogFile.placeholder(),
+            )
+        }
     }
 
     // endregion
@@ -454,7 +475,13 @@ internal class SkillWrapperExecutor(
         val request = json.decodeFromString<KastScaffoldRequest>(rawJson)
         val workspaceRoot = requireWorkspaceRoot(request.workspaceRoot)
         val options = runtimeOptionsFor(workspaceRoot)
-        val targetFile = Path.of(request.targetFile).toAbsolutePath().normalize().toString()
+        val workspaceRootPath = Path.of(workspaceRoot)
+        val targetFilePath = Path.of(request.targetFile)
+        val targetFile = if (targetFilePath.isAbsolute) {
+            targetFilePath.normalize().toString()
+        } else {
+            workspaceRootPath.resolve(targetFilePath).normalize().toString()
+        }
 
         // File outline
         val outlineResult = cliService.fileOutline(
@@ -564,8 +591,14 @@ internal class SkillWrapperExecutor(
     private suspend fun executeWriteAndValidateCreate(request: KastWriteAndValidateCreateFileRequest): Any {
         val workspaceRoot = requireWorkspaceRoot(request.workspaceRoot)
         val options = runtimeOptionsFor(workspaceRoot)
-        val filePath = Path.of(request.filePath).toAbsolutePath().normalize().toString()
-        val content = resolveContent(request.content, request.contentFile)
+        val workspaceRootPath = Path.of(workspaceRoot)
+        val filePathRaw = Path.of(request.filePath)
+        val filePath = if (filePathRaw.isAbsolute) {
+            filePathRaw.normalize().toString()
+        } else {
+            workspaceRootPath.resolve(filePathRaw).normalize().toString()
+        }
+        val content = resolveContent(request.content, request.contentFile, workspaceRoot)
 
         val query = KastWriteAndValidateCreateFileQuery(
             workspaceRoot = workspaceRoot,
@@ -620,8 +653,14 @@ internal class SkillWrapperExecutor(
     private suspend fun executeWriteAndValidateInsert(request: KastWriteAndValidateInsertAtOffsetRequest): Any {
         val workspaceRoot = requireWorkspaceRoot(request.workspaceRoot)
         val options = runtimeOptionsFor(workspaceRoot)
-        val filePath = Path.of(request.filePath).toAbsolutePath().normalize().toString()
-        val content = resolveContent(request.content, request.contentFile)
+        val workspaceRootPath = Path.of(workspaceRoot)
+        val filePathRaw = Path.of(request.filePath)
+        val filePath = if (filePathRaw.isAbsolute) {
+            filePathRaw.normalize().toString()
+        } else {
+            workspaceRootPath.resolve(filePathRaw).normalize().toString()
+        }
+        val content = resolveContent(request.content, request.contentFile, workspaceRoot)
 
         val query = KastWriteAndValidateInsertAtOffsetQuery(
             workspaceRoot = workspaceRoot,
@@ -642,8 +681,14 @@ internal class SkillWrapperExecutor(
     private suspend fun executeWriteAndValidateReplace(request: KastWriteAndValidateReplaceRangeRequest): Any {
         val workspaceRoot = requireWorkspaceRoot(request.workspaceRoot)
         val options = runtimeOptionsFor(workspaceRoot)
-        val filePath = Path.of(request.filePath).toAbsolutePath().normalize().toString()
-        val content = resolveContent(request.content, request.contentFile)
+        val workspaceRootPath = Path.of(workspaceRoot)
+        val filePathRaw = Path.of(request.filePath)
+        val filePath = if (filePathRaw.isAbsolute) {
+            filePathRaw.normalize().toString()
+        } else {
+            workspaceRootPath.resolve(filePathRaw).normalize().toString()
+        }
+        val content = resolveContent(request.content, request.contentFile, workspaceRoot)
 
         val query = KastWriteAndValidateReplaceRangeQuery(
             workspaceRoot = workspaceRoot,
@@ -702,14 +747,21 @@ internal class SkillWrapperExecutor(
         )
     }
 
-    private fun resolveContent(content: String?, contentFile: String?): String {
+    private fun resolveContent(content: String?, contentFile: String?, workspaceRoot: String): String {
         if (content != null) return content
         if (contentFile != null) {
-            val file = java.io.File(contentFile)
+            val workspaceRootPath = Path.of(workspaceRoot)
+            val contentPath = Path.of(contentFile)
+            val resolvedPath = if (contentPath.isAbsolute) {
+                contentPath
+            } else {
+                workspaceRootPath.resolve(contentPath)
+            }
+            val file = resolvedPath.toFile()
             if (!file.exists()) {
                 throw CliFailure(
                     code = "SKILL_VALIDATION",
-                    message = "contentFile does not exist: $contentFile",
+                    message = "contentFile does not exist: $contentFile (resolved to: ${resolvedPath.toAbsolutePath()})",
                 )
             }
             return file.readText()
