@@ -41,30 +41,38 @@ class SkillAdapterTest {
     }
 
     @Test
-    fun `scan detects agent files`() {
+    fun `scan detects agent interface presence`() {
         val skillDir = createMinimalSkill()
         val descriptor = SkillAdapter(skillDir).scan()
-        val kastAgent = descriptor.checks.first { it.id == "structural-agent-kast.md-exists" }
-        assertEquals(EvalStatus.PASS, kastAgent.status)
-        val editAgent = descriptor.checks.first { it.id == "structural-agent-edit.md-exists" }
-        assertEquals(EvalStatus.PASS, editAgent.status)
+        val check = descriptor.checks.first { it.id == "structural-agent-interface-exists" }
+        assertEquals(EvalStatus.PASS, check.status)
     }
 
     @Test
-    fun `scan flags missing agent files`() {
+    fun `scan flags missing agent interface`() {
         val skillDir = tempDir.resolve("partial-skill").createDirectories()
         skillDir.resolve("SKILL.md").writeText("description: test")
         val descriptor = SkillAdapter(skillDir).scan()
-        val kastAgent = descriptor.checks.first { it.id == "structural-agent-kast.md-exists" }
-        assertEquals(EvalStatus.FAIL, kastAgent.status)
+        val check = descriptor.checks.first { it.id == "structural-agent-interface-exists" }
+        assertEquals(EvalStatus.FAIL, check.status)
     }
 
     @Test
-    fun `scan checks binary resolver`() {
+    fun `scan flags lingering legacy artifacts`() {
+        val skillDir = createMinimalSkill()
+        skillDir.resolve("agents/kast.md").writeText("stale")
+        val descriptor = SkillAdapter(skillDir).scan()
+        val legacy = descriptor.checks.first { it.id == "structural-legacy-artifacts-removed" }
+        assertEquals(EvalStatus.WARN, legacy.status)
+        assertTrue(legacy.message.contains("agents/kast.md"))
+    }
+
+    @Test
+    fun `scan passes legacy-artifact check when the tree is clean`() {
         val skillDir = createMinimalSkill()
         val descriptor = SkillAdapter(skillDir).scan()
-        val resolver = descriptor.checks.first { it.id == "structural-resolve-kast-exists" }
-        assertEquals(EvalStatus.PASS, resolver.status)
+        val legacy = descriptor.checks.first { it.id == "structural-legacy-artifacts-removed" }
+        assertEquals(EvalStatus.PASS, legacy.status)
     }
 
     @Test
@@ -147,13 +155,14 @@ class SkillAdapterTest {
         )
 
         val agents = skillDir.resolve("agents").createDirectories()
-        agents.resolve("kast.md").writeText("# Kast Agent\nSee SKILL.md\nkast skill resolve\nkast skill diagnostics")
-        agents.resolve("explore.md").writeText("# Explore Agent\nkast skill workspace-files\nkast skill scaffold\nkast skill references")
-        agents.resolve("plan.md").writeText("# Plan Agent\nkast skill scaffold\nkast skill callers")
-        agents.resolve("edit.md").writeText("# Edit Agent\nkast skill write-and-validate\nkast skill rename")
-
-        val scripts = skillDir.resolve("scripts").createDirectories()
-        scripts.resolve("resolve-kast.sh").writeText("#!/bin/bash\nexit 0\n")
+        agents.resolve("openai.yaml").writeText(
+            """
+            interface:
+              display_name: "Kast"
+              default_prompt: >
+                Invoke kast skill subcommands via the CLI path hook.
+            """.trimIndent(),
+        )
 
         val refs = skillDir.resolve("references").createDirectories()
         refs.resolve("wrapper-openapi.yaml").writeText(

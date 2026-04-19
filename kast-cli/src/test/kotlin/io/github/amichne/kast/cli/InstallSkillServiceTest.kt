@@ -34,9 +34,8 @@ class InstallSkillServiceTest {
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("SKILL.md")))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("agents/openai.yaml")))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("references/wrapper-openapi.yaml")))
-        assertTrue(Files.isRegularFile(installedSkillDir.resolve("scripts/resolve-kast.sh")))
-        assertFalse(Files.exists(installedSkillDir.resolve("scripts/kast-resolve.sh")))
-        assertFalse(Files.exists(installedSkillDir.resolve("scripts/kast-diagnostics.sh")))
+        assertFalse(Files.exists(installedSkillDir.resolve("scripts")))
+        assertFalse(Files.exists(installedSkillDir.resolve("agents/kast.md")))
         assertFalse(Files.exists(installedSkillDir.resolve("references/cloud-setup.md")))
         assertEquals("1.2.3", Files.readString(installedSkillDir.resolve(".kast-version")).trim())
     }

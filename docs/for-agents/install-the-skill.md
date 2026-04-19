@@ -57,21 +57,22 @@ The installed skill directory includes:
   every available command, its parameters, and expected output
 - **`agents/openai.yaml`** — OpenAI-compatible agent configuration
 - **`references/wrapper-openapi.yaml`** — OpenAPI specification for
-  the CLI wrapper commands
-- **`scripts/resolve-kast.sh`** — resolver script that locates the
-  `kast` binary on the system
+  the `kast skill` subcommand surface
 
-## How the resolver finds Kast
+## How agents locate the Kast binary
 
-The resolver script searches for the `kast` executable in this order:
+The packaged skill assumes a companion hook sets `KAST_CLI_PATH` to
+an absolute path to the Kast binary before the skill runs. Every
+command documented in `SKILL.md` is then invoked as
+`"$KAST_CLI_PATH" skill <command> <json>`. There is no in-skill
+resolver script — wire `KAST_CLI_PATH` from your agent harness (for
+example, a `sessionStart` hook) using whichever of these sources is
+authoritative for your environment:
 
-1. `$KAST_CLI_PATH` — if set, use this path directly
-2. `$KAST_SOURCE_ROOT/kast-cli/build/scripts/kast-cli` — local build
-   output
-3. `$KAST_SOURCE_ROOT/dist/cli/kast-cli` — local portable distribution
-4. `kast` on `$PATH` — system-installed binary
-5. If `KAST_SOURCE_ROOT` is set and Java 21+ is available, attempt
-   `./gradlew :kast-cli:writeWrapperScript` as a last resort
+- `kast` on `$PATH` — system-installed binary
+- `$KAST_SOURCE_ROOT/kast-cli/build/scripts/kast-cli` — local build
+  output
+- `$KAST_SOURCE_ROOT/dist/cli/kast-cli` — local portable distribution
 
 ## Next steps
 

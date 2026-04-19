@@ -39,7 +39,6 @@ internal class EmbeddedSkillResources(
             "SKILL.md",
             "agents/openai.yaml",
             "references/wrapper-openapi.yaml",
-            "scripts/resolve-kast.sh",
         )
     }
 }

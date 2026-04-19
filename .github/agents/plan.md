@@ -11,17 +11,14 @@ user-invocable: true
 
 Use `.agents/skills/kast/SKILL.md` as the authority.
 
-Bootstrap:
-
-```console
-KAST="$(bash .agents/skills/kast/scripts/resolve-kast.sh)"
-```
+The companion hook guarantees `KAST_CLI_PATH` points at the kast
+binary before this agent runs. Invoke it directly.
 
 Planning sequence:
 
-1. `"$KAST" skill scaffold '{...}'`
-2. `"$KAST" skill references '{...}'`
-3. `"$KAST" skill callers '{...}'`
+1. `"$KAST_CLI_PATH" skill scaffold '{...}'`
+2. `"$KAST_CLI_PATH" skill references '{...}'`
+3. `"$KAST_CLI_PATH" skill callers '{...}'`
 
 Every plan must report the target symbol, affected files, affected symbols,
 edit order, and any bounded/truncated results.

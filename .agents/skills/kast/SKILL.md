@@ -1,151 +1,304 @@
 ---
 name: kast
 description: >
-  Use this skill for Kotlin/JVM semantic analysis and mutation tasks through the
-  native `kast skill ...` subcommands. Triggers on: "resolve symbol", "find
-  references", "call hierarchy", "who calls", "incoming callers", "outgoing
-  callers", "kast", "rename symbol", "run diagnostics", "apply edits",
-  "symbol at offset", "semantic analysis", "kotlin analysis daemon",
-  "workspace status", "capabilities".
+  IDE-grade Kotlin/JVM semantic analysis and refactoring for agents. Use
+  this skill whenever you'd otherwise reach for grep, sed, or hand-edits
+  against Kotlin code. It exposes a live analysis daemon through a single
+  binary — resolve symbols, find references, expand call hierarchies,
+  rename safely across the workspace, scaffold new implementations, and
+  apply edits with automatic diagnostics. Trigger on any request that
+  mentions "kast", "resolve symbol", "find references", "who calls",
+  "call hierarchy", "incoming/outgoing callers", "rename symbol",
+  "refactor", "run diagnostics", "apply edits", "scaffold", "semantic
+  analysis", "symbol at offset", "workspace files", "workspace symbol",
+  or any IDE-style operation on Kotlin. Prefer this over text search
+  and manual edits for anything that touches Kotlin identity — text
+  matches will lie about overloads, extensions, and supertypes; kast
+  will not.
 ---
 
-# Kast skill
+# Kast
 
-This file is the **sole source of truth** for the packaged kast skill.
+IDE-grade Kotlin analysis and refactoring, exposed as a single executable
+that speaks JSON in / JSON out. A companion hook guarantees
+`KAST_CLI_PATH` points at the binary before this skill runs, so every
+command in this document invokes `"$KAST_CLI_PATH"` directly.
 
-The old shell wrapper layer is gone. Every supported workflow now goes through
-the native `kast skill ...` commands exposed by the kast CLI. The only shell
-entrypoint kept in the skill tree is `scripts/resolve-kast.sh`, which exists
-only to locate the binary.
+## Shape of every call
 
-## 1. Bootstrap
+    "$KAST_CLI_PATH" skill <command> <request>
 
-Resolve the kast binary once per session:
+`<request>` is **exactly one argument** and may be either:
 
-```console
-SKILL_ROOT="$(cd "$(dirname "$(find "$(git rev-parse --show-toplevel)" \
-  -name SKILL.md -path "*/kast/SKILL.md" -maxdepth 6 -print -quit)")" && pwd)"
-KAST="$(bash "$SKILL_ROOT/scripts/resolve-kast.sh")"
-```
+1. an inline JSON object literal (single-quoted in the shell), or
+2. an absolute path to a `.json` file containing the same object.
 
-After that, call `"$KAST"` directly.
+The response is a single JSON document on stdout. Anything on stderr is
+lifecycle chatter from the daemon and is safe to ignore when `ok=true`.
 
-## 2. Input and output contract
+Every successful response carries:
 
-All `kast skill` subcommands accept **exactly one argument**:
+- `type` — discriminator tag (for example `RESOLVE_SUCCESS`,
+  `REFERENCES_FAILURE`, `WRITE_AND_VALIDATE_SUCCESS`).
+- `ok` — boolean. Treat `false` as a failed transaction: stop the
+  current plan, read `log_file`, fix the cause, rerun.
+- `query` — a normalized echo of the inputs. Useful when chaining
+  commands so you can keep using the resolved `file_path` / `offset`.
+- `log_file` — absolute path to the per-request daemon log.
 
-1. an inline JSON object literal, or
-2. a path to a `.json` request file.
+## Casing is asymmetric — don't fight it
 
-Request/response schemas live in `references/wrapper-openapi.yaml`.
+- **Request input** uses camelCase (`workspaceRoot`, `filePath`,
+  `newName`, `includeDeclaration`, `maxTotalCalls`).
+- **Response output** uses snake_case (`workspace_root`, `file_path`,
+  `new_name`, `include_declaration`, `max_total_calls`).
 
-`workspaceRoot` is optional in request bodies. Resolution order is:
+Both shapes come straight from the Kotlin contract types. Don't
+translate them; the daemon won't accept camelCase in responses or
+snake_case in requests. The full schema lives in
+`references/wrapper-openapi.yaml` — consult it before guessing.
 
-1. explicit `workspaceRoot`
+## Workspace root
+
+Every request targets one workspace. Resolution order:
+
+1. `workspaceRoot` inside the request body
 2. `KAST_WORKSPACE_ROOT` environment variable
 
-If neither is set, the command fails with a validation error. There is no
-implicit `git rev-parse` fallback — this is intentional so agents always know
-exactly which workspace they are targeting.
+No implicit "use git to find the root" fallback exists. If neither is
+set the command fails with a `SKILL_VALIDATION` error. Pick one and
+stick with it for the session.
 
-Responses are the same `ok`-keyed JSON payloads used by the former wrappers,
-including `type` and `log_file`.
-
-## 3. Supported commands
+## The command catalog
 
 | Intent | Command |
 | --- | --- |
-| Resolve a symbol | `"$KAST" skill resolve '{...}'` |
-| Find references | `"$KAST" skill references '{...}'` |
-| Expand callers/callees | `"$KAST" skill callers '{...}'` |
-| Run diagnostics | `"$KAST" skill diagnostics '{...}'` |
-| Rename a symbol | `"$KAST" skill rename '{...}'` |
-| Gather scaffold context | `"$KAST" skill scaffold '{...}'` |
-| Apply code and validate | `"$KAST" skill write-and-validate '{...}'` |
-| List workspace files | `"$KAST" skill workspace-files '{...}'` |
+| Locate a declaration by name | `skill resolve` |
+| Find every usage of a symbol | `skill references` |
+| Walk the call graph (incoming / outgoing) | `skill callers` |
+| Check error/warning state for files | `skill diagnostics` |
+| Rename a symbol across the workspace | `skill rename` |
+| Gather implementation context for a target | `skill scaffold` |
+| Create / insert / replace, then validate | `skill write-and-validate` |
+| List modules and source files | `skill workspace-files` |
 
-## 4. Common examples
+Two of these — `rename` and `write-and-validate` — are polymorphic and
+require a `type` discriminator in the request body (see below).
+
+## How to think about the workflow
+
+Treat every non-trivial task as three phases:
+
+1. **Navigate.** Turn the user's name for a thing into a concrete
+   position with `resolve`, `workspace-files`, or `scaffold`. These are
+   cheap and idempotent.
+2. **Act.** Do the one mutation that matters — `rename`,
+   `write-and-validate`, or a chain of reads with `references` /
+   `callers` to decide what to write.
+3. **Validate.** `diagnostics` on the files you touched, plus the
+   diagnostics summary already embedded in mutation responses. Don't
+   report success until both agree.
+
+Skipping navigate → act produces wrong edits. Skipping act → validate
+produces plausible-looking edits that break the build.
+
+## Reference recipes
 
 ### Resolve a symbol
 
-```console
-"$KAST" skill resolve \
-  '{"symbol":"AnalysisServer","fileHint":"analysis-server/src/main/kotlin/io/github/amichne/kast/server/AnalysisServer.kt"}'
-```
+    "$KAST_CLI_PATH" skill resolve '{
+      "symbol":"AnalysisServer",
+      "fileHint":"analysis-server/src/main/kotlin/io/github/amichne/kast/server/AnalysisServer.kt"
+    }'
+
+Narrow ambiguous matches with:
+
+- `kind` — one of `class`, `interface`, `object`, `function`, `property`.
+- `containingType` — fully qualified name of the enclosing declaration.
+- `fileHint` — absolute or workspace-relative path. When a symbol exists
+  in several modules, this is usually the fastest disambiguator.
 
 ### Find references
 
-```console
-"$KAST" skill references \
-  '{"symbol":"AnalysisServer","includeDeclaration":true}'
-```
+    "$KAST_CLI_PATH" skill references '{
+      "symbol":"AnalysisServer",
+      "includeDeclaration":true
+    }'
 
-### Expand callers
+`includeDeclaration` defaults to `true`; set it to `false` when you want
+only call-sites, not the declaration itself.
 
-```console
-"$KAST" skill callers \
-  '{"symbol":"AnalysisServer","direction":"incoming","depth":2}'
-```
+### Walk the call hierarchy
+
+    "$KAST_CLI_PATH" skill callers '{
+      "symbol":"process",
+      "direction":"incoming",
+      "depth":3,
+      "maxTotalCalls":256,
+      "maxChildrenPerNode":64
+    }'
+
+- `direction` is `incoming` (who calls me) or `outgoing` (who I call).
+- `depth` caps recursion. Default 2; increase deliberately — the graph
+  grows fast.
+- `maxTotalCalls` / `maxChildrenPerNode` bound the traversal so it
+  stays responsive. Defaults are 256 and 64.
 
 ### Run diagnostics
 
-```console
-"$KAST" skill diagnostics \
-  '{"filePaths":["/absolute/path/to/File.kt"]}'
-```
+    "$KAST_CLI_PATH" skill diagnostics '{
+      "filePaths":[
+        "/abs/path/File.kt",
+        "/abs/path/Other.kt"
+      ]
+    }'
 
-### Rename a symbol
+Paths must be absolute. The response's `clean` field is your quick
+green-light; `errors` contains anything that would prevent a build.
 
-```console
-"$KAST" skill rename \
-  '{"symbol":"OldName","newName":"NewName"}'
-```
+### Rename a symbol — by name
+
+    "$KAST_CLI_PATH" skill rename '{
+      "type":"RENAME_BY_SYMBOL_REQUEST",
+      "symbol":"OldName",
+      "newName":"NewName"
+    }'
+
+### Rename a symbol — by explicit position
+
+Use this when the name is ambiguous (e.g. an overload or a property
+that shares a name with a class).
+
+    "$KAST_CLI_PATH" skill rename '{
+      "type":"RENAME_BY_OFFSET_REQUEST",
+      "filePath":"/abs/path/File.kt",
+      "offset":1234,
+      "newName":"NewName"
+    }'
+
+The typical pattern is `resolve` → read `file_path` and `offset` from
+the response → `rename` with `RENAME_BY_OFFSET_REQUEST`. This sidesteps
+any naming collisions the workspace might contain.
+
+Either variant returns an `ApplyEditsResult`, a list of
+`affected_files`, and a `diagnostics` summary. `ok=true` means the
+workspace compiles cleanly after the rename.
 
 ### Scaffold implementation context
 
-```console
-"$KAST" skill scaffold \
-  '{"targetFile":"/absolute/path/to/Interface.kt","targetSymbol":"MyInterface","mode":"implement"}'
-```
+Before writing a new implementation, pull everything you need in one
+request:
 
-### Apply code and validate
+    "$KAST_CLI_PATH" skill scaffold '{
+      "targetFile":"/abs/path/Interface.kt",
+      "targetSymbol":"MyInterface",
+      "mode":"implement"
+    }'
 
-```console
-"$KAST" skill write-and-validate \
-  '{"mode":"create-file","filePath":"/absolute/path/to/NewImpl.kt","content":"..."}'
-```
+You get the file outline, the current file content, the resolved
+target symbol, its references and type hierarchy, and a
+`semantic_insertion` offset tailored to `mode`:
+
+| mode | Where insertion points to |
+| --- | --- |
+| `implement` | end of the class body |
+| `replace` | start of the class body |
+| `consolidate` | bottom of the file |
+| `extract` | after the imports |
+
+### Write and validate — create a file
+
+    "$KAST_CLI_PATH" skill write-and-validate '{
+      "type":"CREATE_FILE_REQUEST",
+      "filePath":"/abs/path/NewImpl.kt",
+      "content":"package foo\n\nclass NewImpl"
+    }'
+
+### Write and validate — insert at an offset
+
+    "$KAST_CLI_PATH" skill write-and-validate '{
+      "type":"INSERT_AT_OFFSET_REQUEST",
+      "filePath":"/abs/path/File.kt",
+      "offset":42,
+      "content":"override fun x() = y()\n"
+    }'
+
+### Write and validate — replace a range
+
+    "$KAST_CLI_PATH" skill write-and-validate '{
+      "type":"REPLACE_RANGE_REQUEST",
+      "filePath":"/abs/path/File.kt",
+      "startOffset":120,
+      "endOffset":240,
+      "content":"…"
+    }'
+
+For all three variants you may pass `contentFile` (absolute path) in
+place of `content`. Prefer that when the payload is large, contains
+newlines, or is built from another tool — it avoids shell-quoting
+pitfalls and keeps the command line readable.
+
+Every write-and-validate response has already run import optimization
+and diagnostics for you; `ok` is true only when both came back clean.
 
 ### List workspace files
 
-```console
-"$KAST" skill workspace-files \
-  '{"includeFiles":true}'
-```
+    "$KAST_CLI_PATH" skill workspace-files '{"includeFiles":true}'
 
-## 5. Evaluation
+Without `includeFiles` you get modules, source roots, and file counts —
+the cheap version. Add `moduleName` to narrow to one module.
 
-Use the built-in evaluator for regression tracking:
+## Passing requests from a file
 
-```console
-"$KAST" eval skill --skill-dir="$SKILL_ROOT"
-"$KAST" eval skill --skill-dir="$SKILL_ROOT" --format=markdown
-"$KAST" eval skill --skill-dir="$SKILL_ROOT" --compare=baseline.json
-```
+Any request form accepts a path to a `.json` file in place of the
+inline literal. Use this whenever the payload is awkward to quote:
 
-## 6. Rules
+    cat > /tmp/new-impl.json <<'JSON'
+    {
+      "type":"CREATE_FILE_REQUEST",
+      "filePath":"/abs/path/NewImpl.kt",
+      "contentFile":"/tmp/new-impl.kt"
+    }
+    JSON
+    "$KAST_CLI_PATH" skill write-and-validate /tmp/new-impl.json
 
-- Use `kast skill ...` for every workflow covered above.
-- Use raw `kast` commands only when no `kast skill` subcommand exists.
-- Do not resurrect the deleted shell wrapper layer.
-- Read `log_file` only when `ok=false` or daemon notes matter.
-- Do not use `grep`/`rg`/manual parsing for Kotlin semantic identity.
+## Working rules
 
-## 7. Quick routing
+- **Never grep for Kotlin identity.** `references` and `callers` are
+  correct across overloads, extension receivers, type parameters, and
+  supertype chains. Text search is not.
+- **Always use absolute paths** for any field ending in `filePath` /
+  `filePaths` / `contentFile`. Resolve relatives before sending.
+- **When `ok=false`, read `log_file` before retrying.** The daemon's
+  trace tells you whether the problem is your request shape, the
+  workspace state, or something transient.
+- **Don't swallow partial failures.** A rename that applies edits but
+  leaves diagnostics dirty is not a successful rename.
 
-| Task | Preferred command |
+## IDE-action lookup
+
+| You want to… | Use |
 | --- | --- |
-| Explore structure | `kast skill workspace-files`, `kast skill scaffold` |
-| Confirm a declaration | `kast skill resolve` |
-| Measure scope | `kast skill references`, `kast skill callers` |
-| Edit Kotlin | `kast skill write-and-validate`, `kast skill rename` |
-| Validate final state | `kast skill diagnostics` |
+| Go to declaration | `skill resolve` |
+| Find usages | `skill references` |
+| Call hierarchy — who calls this? | `skill callers` with `direction:"incoming"` |
+| Call hierarchy — what does this call? | `skill callers` with `direction:"outgoing"` |
+| Rename refactor | `skill rename` |
+| Problems panel for a file | `skill diagnostics` |
+| File outline / structure view | `skill scaffold` (see `outline`) |
+| Find all implementations of an interface | `skill scaffold` with `mode:"implement"` (see `type_hierarchy`) |
+| Project view / module map | `skill workspace-files` |
+| New file with imports organized | `skill write-and-validate` + `CREATE_FILE_REQUEST` |
+| Edit a region and re-check | `skill write-and-validate` + `REPLACE_RANGE_REQUEST` |
+
+## Evaluation
+
+Regression-check this skill against the CLI it targets:
+
+    "$KAST_CLI_PATH" eval skill
+    "$KAST_CLI_PATH" eval skill --format=markdown
+    "$KAST_CLI_PATH" eval skill --compare=baseline.json
+
+The evaluator scans this directory, checks structural, contract, and
+completeness invariants, estimates the token budget, and emits a scored
+result that's comparable across revisions.

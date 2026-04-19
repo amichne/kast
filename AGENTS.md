@@ -97,13 +97,14 @@ that are the primary entry points for Copilot-assisted Kotlin work:
 | `@kast` | `kast.md` | Orchestrator — routes to sub-agents and validates with diagnostics |
 | `@explore` | `explore.md` | Navigate and understand code via kast semantic tools |
 | `@plan` | `plan.md` | Assess change scope and produce a structured change plan |
-| `@edit` | `edit.md` | Make code changes with kast-write-and-validate or kast-rename |
+| `@edit` | `edit.md` | Make code changes with `kast skill write-and-validate` or `kast skill rename` |
 
-All four agents route Kotlin semantic operations through the native subcommands
-documented in `.agents/skills/kast/SKILL.md`. Use
-`.agents/skills/kast/scripts/resolve-kast.sh` only to locate the binary when `kast`
-is not already on `PATH`. They do not use `grep`/`rg`/`ast-grep` for symbol
-operations.
+All four agents route Kotlin semantic operations through the native
+`kast skill` subcommands documented in `.agents/skills/kast/SKILL.md`. A
+companion hook sets `KAST_CLI_PATH` to the kast binary before the agent
+runs, and every command is invoked as
+`"$KAST_CLI_PATH" skill <command> <json>`. Agents never use
+`grep`/`rg`/`ast-grep` for symbol operations.
 
 ## Skill composition
 

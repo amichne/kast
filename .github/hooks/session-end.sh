@@ -7,7 +7,6 @@ source "${SCRIPT_DIR}/hook-state.sh"
 REPO_ROOT="$(git -C "${SCRIPT_DIR}" rev-parse --show-toplevel)"
 GRADLE_HOOK_SCRIPT="${REPO_ROOT}/.agents/skills/kotlin-gradle-loop/scripts/gradle/run_gradle_hook.sh"
 GRADLE_TASK_SCRIPT="${REPO_ROOT}/.agents/skills/kotlin-gradle-loop/scripts/gradle/run_task.sh"
-KAST_RESOLVER_SCRIPT="${REPO_ROOT}/.agents/skills/kast/scripts/resolve-kast.sh"
 STATE_FILE="${REPO_ROOT}/.agent-workflow/state.json"
 PATH_STATE_FILE="$(hook_state_file "${REPO_ROOT}")"
 
@@ -81,7 +80,11 @@ PY
 }
 
 if [[ "${#KOTLIN_FILES[@]}" -gt 0 ]]; then
-    KAST_BIN="$(bash "${KAST_RESOLVER_SCRIPT}")"
+    if [[ -z "${KAST_CLI_PATH:-}" ]]; then
+        echo "session-end: KAST_CLI_PATH is not set; cannot run kast skill diagnostics" >&2
+        exit 1
+    fi
+    KAST_BIN="${KAST_CLI_PATH}"
     DIAGNOSTICS_REQUEST="$(
         python3 - "${REPO_ROOT}" "${KOTLIN_FILES[@]}" <<'PY'
 import json

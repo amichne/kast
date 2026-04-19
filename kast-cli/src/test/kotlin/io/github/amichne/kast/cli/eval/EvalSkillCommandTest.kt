@@ -72,7 +72,7 @@ class EvalSkillCommandTest {
         val baselineFile = tempDir.resolve("baseline.json")
         baselineFile.writeText((baselineOutput as CliOutput.Text).value)
 
-        skillDir.resolve("agents/kast.md").deleteExisting()
+        skillDir.resolve("agents/openai.yaml").deleteExisting()
 
         val failure = assertThrows(CliFailure::class.java) {
             executor.execute(
@@ -112,13 +112,14 @@ class EvalSkillCommandTest {
         )
 
         val agents = skillDir.resolve("agents").createDirectories()
-        agents.resolve("kast.md").writeText("# Kast Agent\nkast skill resolve\nkast skill diagnostics")
-        agents.resolve("explore.md").writeText("# Explore Agent\nkast skill references")
-        agents.resolve("plan.md").writeText("# Plan Agent\nkast skill callers")
-        agents.resolve("edit.md").writeText("# Edit Agent\nkast skill write-and-validate")
-
-        val scripts = skillDir.resolve("scripts").createDirectories()
-        scripts.resolve("resolve-kast.sh").writeText("#!/bin/bash\nexit 0\n")
+        agents.resolve("openai.yaml").writeText(
+            """
+            interface:
+              display_name: "Kast"
+              default_prompt: >
+                Invoke kast skill subcommands via the CLI path hook.
+            """.trimIndent(),
+        )
 
         val refs = skillDir.resolve("references").createDirectories()
         refs.resolve("wrapper-openapi.yaml").writeText(

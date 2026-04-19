@@ -16,11 +16,9 @@ agents:
 
 Use `.agents/skills/kast/SKILL.md` as the authority.
 
-Bootstrap once:
-
-```console
-KAST="$(bash .agents/skills/kast/scripts/resolve-kast.sh)"
-```
+Invoke the CLI directly — a companion hook sets `KAST_CLI_PATH`
+before this agent runs, so every command below reads
+`"$KAST_CLI_PATH" skill <command> <json>`.
 
 Route work like this:
 
@@ -33,6 +31,5 @@ Route work like this:
 
 Rules:
 
-- Never call the removed wrapper scripts.
 - Never use `grep`/`rg`/manual parsing for Kotlin semantic identity.
 - Use raw `kast` commands only when no `kast skill` command exists.
