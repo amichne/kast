@@ -3,6 +3,7 @@ package io.github.amichne.kast.cli
 import io.github.amichne.kast.api.ApplyEditsQuery
 import io.github.amichne.kast.api.ApplyEditsResult
 import io.github.amichne.kast.api.BackendCapabilities
+import io.github.amichne.kast.api.CallDirection
 import io.github.amichne.kast.api.CallHierarchyQuery
 import io.github.amichne.kast.api.CallHierarchyResult
 import io.github.amichne.kast.api.CapabilityNotSupportedException
@@ -12,6 +13,7 @@ import io.github.amichne.kast.api.CompletionsQuery
 import io.github.amichne.kast.api.CompletionsResult
 import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.DiagnosticsResult
+import io.github.amichne.kast.api.FilePosition
 import io.github.amichne.kast.api.FileOutlineQuery
 import io.github.amichne.kast.api.FileOutlineResult
 import io.github.amichne.kast.api.ImportOptimizeQuery
@@ -255,7 +257,68 @@ internal class CliService(
 
     fun smoke(options: SmokeOptions): CliExternalProcess = smokeCommandSupport.plan(options)
 
-    fun demo(options: DemoOptions): CliExternalProcess = demoCommandSupport.plan(options)
+    suspend fun demo(options: DemoOptions): RuntimeAttachedResult<String> {
+        val runtimeOptions = RuntimeCommandOptions(
+            workspaceRoot = options.workspaceRoot,
+            backendName = "standalone",
+            waitTimeoutMillis = 180_000L,
+        )
+        val ensured = workspaceEnsure(runtimeOptions)
+        val symbolSearch = workspaceSymbolSearch(
+            runtimeOptions,
+            WorkspaceSymbolQuery(
+                pattern = options.symbolFilter ?: ".",
+                maxResults = 500,
+                regex = options.symbolFilter == null,
+            ),
+        )
+        val selectedSymbol = demoCommandSupport.selectSymbol(options, symbolSearch.payload.symbols)
+        val symbolPosition = FilePosition(
+            filePath = selectedSymbol.location.filePath,
+            offset = selectedSymbol.location.startOffset,
+        )
+        val resolvedSymbol = resolveSymbol(
+            runtimeOptions,
+            SymbolQuery(position = symbolPosition),
+        ).payload.symbol
+        val references = findReferences(
+            runtimeOptions,
+            ReferencesQuery(
+                position = symbolPosition,
+                includeDeclaration = true,
+            ),
+        ).payload
+        val rename = rename(
+            runtimeOptions,
+            RenameQuery(
+                position = symbolPosition,
+                newName = "${resolvedSymbol.fqName.substringAfterLast('.')}Renamed",
+                dryRun = true,
+            ),
+        ).payload
+        val callHierarchy = callHierarchy(
+            runtimeOptions,
+            CallHierarchyQuery(
+                position = symbolPosition,
+                direction = CallDirection.INCOMING,
+                depth = 2,
+            ),
+        ).payload
+        val report = DemoReport(
+            workspaceRoot = options.workspaceRoot,
+            selectedSymbol = selectedSymbol,
+            textSearch = demoCommandSupport.analyzeTextSearch(options.workspaceRoot, resolvedSymbol),
+            resolvedSymbol = resolvedSymbol,
+            references = references,
+            rename = rename,
+            callHierarchy = callHierarchy,
+        )
+        return RuntimeAttachedResult(
+            payload = demoCommandSupport.render(report),
+            runtime = ensured.selected,
+            daemonNote = ensured.note,
+        )
+    }
 
     suspend fun applyEdits(
         options: RuntimeCommandOptions,

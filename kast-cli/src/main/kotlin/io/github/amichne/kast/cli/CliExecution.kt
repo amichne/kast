@@ -225,9 +225,13 @@ internal class DefaultCliCommandExecutor(
                 output = CliOutput.ExternalProcess(cliService.smoke(command.options)),
             )
 
-            is CliCommand.Demo -> CliExecutionResult(
-                output = CliOutput.ExternalProcess(cliService.demo(command.options)),
-            )
+            is CliCommand.Demo -> {
+                val result = cliService.demo(command.options)
+                CliExecutionResult(
+                    output = CliOutput.Text(result.payload),
+                    daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
+                )
+            }
 
             is CliCommand.InternalDaemonRun -> {
                 val runner = internalDaemonRunner

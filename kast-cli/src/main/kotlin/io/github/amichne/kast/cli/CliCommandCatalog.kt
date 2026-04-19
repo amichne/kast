@@ -769,7 +769,7 @@ internal object CliCommandCatalog {
             path = listOf("demo"),
             group = CliCommandGroup.VALIDATION,
             summary = "Interactive comparison of grep vs kast semantic analysis on your workspace.",
-            description = "Picks a symbol from your workspace — interactively via fzf or by name — and runs grep + sed alongside kast resolve, references, rename, and call-hierarchy so you can see the difference side by side.",
+            description = "Picks a symbol from your workspace — via --symbol or the built-in terminal chooser — and runs grep-style text search alongside standalone kast resolve, references, rename, and call-hierarchy so you can see the difference side by side.",
             usages = listOf(
                 "$CLI_EXECUTABLE_NAME demo [--workspace-root=/absolute/path/to/workspace] [--symbol=CliService]",
             ),
