@@ -12,9 +12,8 @@
 Process:
 1. `@explore` to understand the target code.
 2. `@plan` to assess impact and produce a change plan.
-3. `@edit` to make the change with `kast-write-and-validate.sh` or `kast-rename.sh`.
-4. `kast-diagnostics.sh` must return `clean=true` before completing.
+3. `@edit` to make the change with `kast skill write-and-validate` or `kast skill rename`.
+4. `kast skill diagnostics` must return `clean=true` before completing.
 5. Run the narrowest Gradle task that proves the change.
 6. Update `AGENTS.md`/docs when behavioral or contract rules change.
 7. Ensure local `./build.sh` and CI pass before merging.
-

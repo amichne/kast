@@ -1,83 +1,8 @@
 interface:
   display_name: "Kast"
-  short_description: "Structured Kotlin semantic analysis via packaged kast wrappers"
+  short_description: "Native Kotlin semantic analysis via `kast skill` subcommands"
   default_prompt: >
-    Locate the packaged kast skill root, then call the wrapper scripts in
-    `scripts/` with exactly one argument: either an inline JSON object literal
-    or a path to a `.json` request file. Match each request object to the
-    schema documented in `references/wrapper-openapi.yaml`. Trust the wrapper
-    JSON on stdout and inspect `log_file` only when `ok=false` or daemon notes
-    matter. Use raw `kast` CLI commands only when a wrapper does not exist.
-
-tools:
-  - name: kast-resolve
-    script: scripts/kast-resolve.sh
-    description: "Resolve a symbol by name and return declaration metadata plus file position."
-    parameters:
-      - name: request
-        type: string
-        required: true
-        description: "JSON object literal or path to a `.json` file matching `KastResolveRequest`."
-
-  - name: kast-references
-    script: scripts/kast-references.sh
-    description: "Resolve a symbol and return its references across the workspace."
-    parameters:
-      - name: request
-        type: string
-        required: true
-        description: "JSON object literal or path to a `.json` file matching `KastReferencesRequest`."
-
-  - name: kast-callers
-    script: scripts/kast-callers.sh
-    description: "Resolve a symbol and return an incoming or outgoing call hierarchy."
-    parameters:
-      - name: request
-        type: string
-        required: true
-        description: "JSON object literal or path to a `.json` file matching `KastCallersRequest`."
-
-  - name: kast-diagnostics
-    script: scripts/kast-diagnostics.sh
-    description: "Run diagnostics on one or more Kotlin files."
-    parameters:
-      - name: request
-        type: string
-        required: true
-        description: "JSON object literal or path to a `.json` file matching `KastDiagnosticsRequest`."
-
-  - name: kast-rename
-    script: scripts/kast-rename.sh
-    description: "Run the full rename workflow: resolve or target a position, plan, apply, and validate."
-    parameters:
-      - name: request
-        type: string
-        required: true
-        description: "JSON object literal or path to a `.json` file matching `KastRenameRequest`."
-
-  - name: kast-workspace-files
-    script: scripts/kast-workspace-files.sh
-    description: "List workspace modules, source roots, dependencies, and optional Kotlin files."
-    parameters:
-      - name: request
-        type: string
-        required: true
-        description: "JSON object literal or path to a `.json` file matching `KastWorkspaceFilesRequest`."
-
-  - name: kast-scaffold
-    script: scripts/kast-scaffold.sh
-    description: "Gather outline, hierarchy, references, insertion point, and file content for code generation."
-    parameters:
-      - name: request
-        type: string
-        required: true
-        description: "JSON object literal or path to a `.json` file matching `KastScaffoldRequest`."
-
-  - name: kast-write-and-validate
-    script: scripts/kast-write-and-validate.sh
-    description: "Apply generated Kotlin code, optimize imports, and validate diagnostics."
-    parameters:
-      - name: request
-        type: string
-        required: true
-        description: "JSON object literal or path to a `.json` file matching `KastWriteAndValidateRequest`."
+    Treat `.agents/skills/kast/SKILL.md` as the sole source of truth. Resolve
+    the binary with `bash scripts/resolve-kast.sh`, then call
+    `"$KAST" skill <command> <json>` with exactly one JSON argument matching
+    `references/wrapper-openapi.yaml`.

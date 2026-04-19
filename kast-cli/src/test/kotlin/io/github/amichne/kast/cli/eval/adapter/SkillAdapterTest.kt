@@ -60,11 +60,11 @@ class SkillAdapterTest {
     }
 
     @Test
-    fun `scan checks wrapper scripts`() {
+    fun `scan checks binary resolver`() {
         val skillDir = createMinimalSkill()
         val descriptor = SkillAdapter(skillDir).scan()
-        val resolveScript = descriptor.checks.first { it.id == "structural-script-resolve-exists" }
-        assertEquals(EvalStatus.PASS, resolveScript.status)
+        val resolver = descriptor.checks.first { it.id == "structural-resolve-kast-exists" }
+        assertEquals(EvalStatus.PASS, resolver.status)
     }
 
     @Test
@@ -116,6 +116,7 @@ class SkillAdapterTest {
         val descriptor = SkillAdapter(skillDir).scan()
         val completenessChecks = descriptor.checks.filter { it.category == "completeness" }
         assertEquals(8, completenessChecks.size, "Should have one completeness check per wrapper")
+        assertTrue(completenessChecks.all { it.status == EvalStatus.PASS })
     }
 
     @Test
@@ -128,30 +129,46 @@ class SkillAdapterTest {
         }
     }
 
-    // --- Helper ---
-
     private fun createMinimalSkill(): Path {
         val skillDir = tempDir.resolve("kast").createDirectories()
-        skillDir.resolve("SKILL.md").writeText("description: test\nTrigger phrases: resolve, analyze")
+        skillDir.resolve("SKILL.md").writeText(
+            """
+            description: test
+            Trigger phrases: resolve, analyze
+            kast skill resolve
+            kast skill references
+            kast skill callers
+            kast skill diagnostics
+            kast skill rename
+            kast skill scaffold
+            kast skill write-and-validate
+            kast skill workspace-files
+            """.trimIndent(),
+        )
 
         val agents = skillDir.resolve("agents").createDirectories()
-        agents.resolve("kast.md").writeText("# Kast Agent\nUse kast-resolve.sh for resolution\nkast skill resolve")
-        agents.resolve("explore.md").writeText("# Explore Agent\nkast-references.sh")
-        agents.resolve("plan.md").writeText("# Plan Agent\nkast-callers.sh")
-        agents.resolve("edit.md").writeText("# Edit Agent\nkast-write-and-validate.sh")
+        agents.resolve("kast.md").writeText("# Kast Agent\nSee SKILL.md\nkast skill resolve\nkast skill diagnostics")
+        agents.resolve("explore.md").writeText("# Explore Agent\nkast skill workspace-files\nkast skill scaffold\nkast skill references")
+        agents.resolve("plan.md").writeText("# Plan Agent\nkast skill scaffold\nkast skill callers")
+        agents.resolve("edit.md").writeText("# Edit Agent\nkast skill write-and-validate\nkast skill rename")
 
         val scripts = skillDir.resolve("scripts").createDirectories()
-        scripts.resolve("kast-resolve.sh").writeText("#!/bin/bash\n# resolve wrapper")
-        scripts.resolve("kast-references.sh").writeText("#!/bin/bash\n# references wrapper")
-        scripts.resolve("kast-callers.sh").writeText("#!/bin/bash\n# callers wrapper")
-        scripts.resolve("kast-diagnostics.sh").writeText("#!/bin/bash\n# diagnostics wrapper")
-        scripts.resolve("kast-rename.sh").writeText("#!/bin/bash\n# rename wrapper")
-        scripts.resolve("kast-scaffold.sh").writeText("#!/bin/bash\n# scaffold wrapper")
-        scripts.resolve("kast-write-and-validate.sh").writeText("#!/bin/bash\n# write-and-validate wrapper")
-        scripts.resolve("kast-workspace-files.sh").writeText("#!/bin/bash\n# workspace-files wrapper")
+        scripts.resolve("resolve-kast.sh").writeText("#!/bin/bash\nexit 0\n")
 
         val refs = skillDir.resolve("references").createDirectories()
-        refs.resolve("wrapper-openapi.yaml").writeText("openapi: '3.0.0'\ninfo:\n  title: Kast Wrappers")
+        refs.resolve("wrapper-openapi.yaml").writeText(
+            """
+            openapi: '3.0.0'
+            x-command: kast skill resolve
+            x-command: kast skill references
+            x-command: kast skill callers
+            x-command: kast skill diagnostics
+            x-command: kast skill rename
+            x-command: kast skill scaffold
+            x-command: kast skill write-and-validate
+            x-command: kast skill workspace-files
+            """.trimIndent(),
+        )
 
         return skillDir
     }

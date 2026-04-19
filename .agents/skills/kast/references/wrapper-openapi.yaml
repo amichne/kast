@@ -1,18 +1,18 @@
 openapi: 3.1.0
 info:
-  title: kast wrapper contracts
+  title: kast skill contracts
   version: 1.1.0
   description: >
-    Generated from the wrapper request and response serializers.
+    Generated from the native kast skill request and response serializers.
 servers:
-  - url: file://scripts
-    description: Local wrapper script directory
+  - url: kast://skill
+    description: Native kast skill command surface
 paths:
-  "/kast-resolve":
+  "/skill/resolve":
     post:
-      operationId: kastResolve
+      operationId: kastSkillResolve
       summary: Resolve a symbol by name
-      x-script: scripts/kast-resolve.sh
+      x-command: kast skill resolve
       requestBody:
         required: true
         content:
@@ -26,11 +26,11 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/KastResolveResponse"
-  "/kast-references":
+  "/skill/references":
     post:
-      operationId: kastReferences
+      operationId: kastSkillReferences
       summary: Find references for a named symbol
-      x-script: scripts/kast-references.sh
+      x-command: kast skill references
       requestBody:
         required: true
         content:
@@ -44,11 +44,11 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/KastReferencesResponse"
-  "/kast-callers":
+  "/skill/callers":
     post:
-      operationId: kastCallers
+      operationId: kastSkillCallers
       summary: Expand an incoming or outgoing call hierarchy
-      x-script: scripts/kast-callers.sh
+      x-command: kast skill callers
       requestBody:
         required: true
         content:
@@ -62,11 +62,11 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/KastCallersResponse"
-  "/kast-diagnostics":
+  "/skill/diagnostics":
     post:
-      operationId: kastDiagnostics
+      operationId: kastSkillDiagnostics
       summary: Run diagnostics on Kotlin files
-      x-script: scripts/kast-diagnostics.sh
+      x-command: kast skill diagnostics
       requestBody:
         required: true
         content:
@@ -80,11 +80,11 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/KastDiagnosticsResponse"
-  "/kast-rename":
+  "/skill/rename":
     post:
-      operationId: kastRename
+      operationId: kastSkillRename
       summary: Resolve or target a symbol and apply a rename
-      x-script: scripts/kast-rename.sh
+      x-command: kast skill rename
       requestBody:
         required: true
         content:
@@ -98,11 +98,11 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/KastRenameResponse"
-  "/kast-scaffold":
+  "/skill/scaffold":
     post:
-      operationId: kastScaffold
+      operationId: kastSkillScaffold
       summary: Gather structural generation context
-      x-script: scripts/kast-scaffold.sh
+      x-command: kast skill scaffold
       requestBody:
         required: true
         content:
@@ -116,11 +116,11 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/KastScaffoldResponse"
-  "/kast-workspace-files":
+  "/skill/workspace-files":
     post:
-      operationId: kastWorkspaceFiles
+      operationId: kastSkillWorkspaceFiles
       summary: List workspace modules and optional file paths
-      x-script: scripts/kast-workspace-files.sh
+      x-command: kast skill workspace-files
       requestBody:
         required: true
         content:
@@ -134,11 +134,11 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/KastWorkspaceFilesResponse"
-  "/kast-write-and-validate":
+  "/skill/write-and-validate":
     post:
-      operationId: kastWriteAndValidate
+      operationId: kastSkillWriteAndValidate
       summary: Apply generated Kotlin code and validate the result
-      x-script: scripts/kast-write-and-validate.sh
+      x-command: kast skill write-and-validate
       requestBody:
         required: true
         content:

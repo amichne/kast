@@ -7,7 +7,7 @@ source "${SCRIPT_DIR}/hook-state.sh"
 REPO_ROOT="$(git -C "${SCRIPT_DIR}" rev-parse --show-toplevel)"
 GRADLE_HOOK_SCRIPT="${REPO_ROOT}/.agents/skills/kotlin-gradle-loop/scripts/gradle/run_gradle_hook.sh"
 GRADLE_TASK_SCRIPT="${REPO_ROOT}/.agents/skills/kotlin-gradle-loop/scripts/gradle/run_task.sh"
-KAST_DIAGNOSTICS_SCRIPT="${REPO_ROOT}/.agents/skills/kast/scripts/kast-diagnostics.sh"
+KAST_RESOLVER_SCRIPT="${REPO_ROOT}/.agents/skills/kast/scripts/resolve-kast.sh"
 STATE_FILE="${REPO_ROOT}/.agent-workflow/state.json"
 PATH_STATE_FILE="$(hook_state_file "${REPO_ROOT}")"
 
@@ -81,6 +81,7 @@ PY
 }
 
 if [[ "${#KOTLIN_FILES[@]}" -gt 0 ]]; then
+    KAST_BIN="$(bash "${KAST_RESOLVER_SCRIPT}")"
     DIAGNOSTICS_REQUEST="$(
         python3 - "${REPO_ROOT}" "${KOTLIN_FILES[@]}" <<'PY'
 import json
@@ -91,7 +92,7 @@ file_paths = sys.argv[2:]
 print(json.dumps({"workspaceRoot": workspace_root, "filePaths": file_paths}))
 PY
     )"
-    DIAGNOSTICS_OUTPUT="$(bash "${KAST_DIAGNOSTICS_SCRIPT}" "${DIAGNOSTICS_REQUEST}")"
+    DIAGNOSTICS_OUTPUT="$("${KAST_BIN}" skill diagnostics "${DIAGNOSTICS_REQUEST}")"
     python3 - <<'PY' <<<"${DIAGNOSTICS_OUTPUT}"
 import json
 import sys
@@ -101,7 +102,7 @@ if payload.get("ok") and payload.get("clean"):
     sys.exit(0)
 
 message = payload.get("message") or f"Diagnostics reported {payload.get('error_count', 'unknown')} errors"
-print(f"kast diagnostics failed: {message}", file=sys.stderr)
+print(f"kast skill diagnostics failed: {message}", file=sys.stderr)
 sys.exit(1)
 PY
 fi

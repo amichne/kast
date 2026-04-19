@@ -10,23 +10,8 @@ val packagedSkillSourceDir = rootProject.layout.projectDirectory.dir(".agents/sk
 val embeddedSkillFiles = listOf(
     "SKILL.md",
     "agents/openai.yaml",
-    "references/cloud-setup.md",
-    "references/command-reference.md",
-    "references/troubleshooting.md",
     "references/wrapper-openapi.yaml",
-    "scripts/find-symbol-offset.py",
-    "scripts/kast-callers.sh",
-    "scripts/kast-common.sh",
-    "scripts/kast-diagnostics.sh",
-    "scripts/kast-plan-utils.py",
-    "scripts/kast-rename.sh",
-    "scripts/kast-references.sh",
-    "scripts/kast-resolve.sh",
-    "scripts/kast-scaffold.sh",
-    "scripts/kast-workspace-files.sh",
-    "scripts/kast-write-and-validate.sh",
     "scripts/resolve-kast.sh",
-    "scripts/validate-wrapper-json.sh",
 )
 
 application {

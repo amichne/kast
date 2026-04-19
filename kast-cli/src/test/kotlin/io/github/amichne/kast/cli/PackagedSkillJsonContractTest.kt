@@ -21,7 +21,7 @@ class PackagedSkillJsonContractTest {
     lateinit var tempDir: Path
 
     @Test
-    fun `installed skill wrappers accept json literal and json file inputs`() {
+    fun `installed skill uses resolve-kast and native commands for json literal and file inputs`() {
         val installedSkillDir = tempDir.resolve("skills")
         InstallSkillService(
             embeddedSkillResources = EmbeddedSkillResources(version = "test"),
@@ -46,8 +46,7 @@ class PackagedSkillJsonContractTest {
         )
 
         val skillRoot = installedSkillDir.resolve("kast")
-        val resolveScript = skillRoot.resolve("scripts/kast-resolve.sh")
-        val diagnosticsScript = skillRoot.resolve("scripts/kast-diagnostics.sh")
+        val kastResolver = skillRoot.resolve("scripts/resolve-kast.sh")
         val kastWrapper = checkNotNull(System.getProperty("kast.wrapper")) {
             "kast.wrapper system property is missing"
         }
@@ -62,13 +61,26 @@ class PackagedSkillJsonContractTest {
             "KAST_WORKSPACE_ROOT" to workspaceRoot.toString(),
         )
 
+        val resolvedKast = runCommand(
+            command = listOf("bash", kastResolver.toString()),
+            env = wrapperEnv,
+        )
+        assertEquals(0, resolvedKast.exitCode, "stderr: ${resolvedKast.stderr}")
+        assertTrue(resolvedKast.stderr.isBlank())
+        val kastBinary = resolvedKast.stdout
+
         val resolveRequest = buildJsonObject {
+            put("workspaceRoot", workspaceRoot.toString())
             put("symbol", "greet")
             put("fileHint", sourceFile.toString())
         }
-        val resolveResult = runScript(
-            script = resolveScript,
-            input = defaultCliJson().encodeToString(JsonObject.serializer(), resolveRequest),
+        val resolveResult = runCommand(
+            command = listOf(
+                kastBinary,
+                "skill",
+                "resolve",
+                defaultCliJson().encodeToString(JsonObject.serializer(), resolveRequest),
+            ),
             env = wrapperEnv,
         )
         assertEquals(0, resolveResult.exitCode, "stderr: ${resolveResult.stderr}")
@@ -81,6 +93,7 @@ class PackagedSkillJsonContractTest {
 
         val diagnosticsRequestFile = tempDir.resolve("diagnostics-request.json")
         val diagnosticsRequest = buildJsonObject {
+            put("workspaceRoot", workspaceRoot.toString())
             put(
                 "filePaths",
                 buildJsonArray {
@@ -92,9 +105,13 @@ class PackagedSkillJsonContractTest {
             defaultCliJson().encodeToString(JsonObject.serializer(), diagnosticsRequest),
         )
 
-        val diagnosticsResult = runScript(
-            script = diagnosticsScript,
-            input = diagnosticsRequestFile.toString(),
+        val diagnosticsResult = runCommand(
+            command = listOf(
+                kastBinary,
+                "skill",
+                "diagnostics",
+                diagnosticsRequestFile.toString(),
+            ),
             env = wrapperEnv,
         )
         assertEquals(0, diagnosticsResult.exitCode, "stderr: ${diagnosticsResult.stderr}")
@@ -105,25 +122,24 @@ class PackagedSkillJsonContractTest {
         assertEquals("DIAGNOSTICS_SUCCESS", diagnosticsPayload["type"]?.jsonPrimitive?.content)
     }
 
-    private fun runScript(
-        script: Path,
-        input: String,
+    private fun runCommand(
+        command: List<String>,
         env: Map<String, String>,
-    ): ScriptResult {
-        val process = ProcessBuilder("bash", script.toString(), input)
+    ): CommandResult {
+        val process = ProcessBuilder(command)
             .directory(Path.of("").toAbsolutePath().toFile())
             .also { pb -> env.forEach { (key, value) -> pb.environment()[key] = value } }
             .start()
         val finished = process.waitFor(90, TimeUnit.SECONDS)
-        check(finished) { "script timed out: $script" }
-        return ScriptResult(
+        check(finished) { "command timed out: ${command.joinToString(" ")}" }
+        return CommandResult(
             exitCode = process.exitValue(),
             stdout = process.inputStream.readAllBytes().toString(Charsets.UTF_8).trim(),
             stderr = process.errorStream.readAllBytes().toString(Charsets.UTF_8).trim(),
         )
     }
 
-    private data class ScriptResult(
+    private data class CommandResult(
         val exitCode: Int,
         val stdout: String,
         val stderr: String,

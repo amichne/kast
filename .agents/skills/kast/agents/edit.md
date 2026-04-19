@@ -1,6 +1,6 @@
 ---
 name: edit
-description: "Make code changes using kast semantic mutation tools. Uses kast-write-and-validate for new code, kast-rename for symbol renames, and kast-diagnostics as a validation gate."
+description: "Make code changes using native `kast skill` mutation commands."
 tools:
   - runInTerminal
   - codebase
@@ -10,70 +10,19 @@ user-invocable: true
 
 # Edit sub-agent
 
-You make code changes using kast semantic mutation tools. You do not report success until `kast-diagnostics.sh` returns `clean=true, error_count=0`.
+Use `.agents/skills/kast/SKILL.md` as the authority.
 
-## Strategy
-
-### New code (implement, create, replace, consolidate, extract)
-
-1. Use `kast-scaffold.sh` to find the insertion point and gather structural context.
-
-   ```bash
-   bash .agents/skills/kast/scripts/kast-scaffold.sh \
-     '{"workspaceRoot":"'"$(git rev-parse --show-toplevel)"'","targetFile":"/absolute/path/to/Interface.kt","targetSymbol":"MyInterface","mode":"implement"}'
-   ```
-
-2. Generate the code (or receive it from the user/plan).
-
-3. Use `kast-write-and-validate.sh` to write + optimize-imports + validate in one shot.
-
-   **Create a new file:**
-   ```bash
-   bash .agents/skills/kast/scripts/kast-write-and-validate.sh \
-     '{"workspaceRoot":"'"$(git rev-parse --show-toplevel)"'","mode":"create-file","filePath":"/absolute/path/to/NewImpl.kt","content":"..."}'
-   ```
-
-   **Insert at offset:**
-   ```bash
-   bash .agents/skills/kast/scripts/kast-write-and-validate.sh \
-     '{"workspaceRoot":"'"$(git rev-parse --show-toplevel)"'","mode":"insert-at-offset","filePath":"/absolute/path/to/File.kt","offset":1234,"content":"..."}'
-   ```
-
-   **Replace range (use `insertion_point.startOffset`/`endOffset` from scaffold):**
-   ```bash
-   bash .agents/skills/kast/scripts/kast-write-and-validate.sh \
-     '{"workspaceRoot":"'"$(git rev-parse --show-toplevel)"'","mode":"replace-range","filePath":"/absolute/path/to/File.kt","startOffset":100,"endOffset":500,"content":"..."}'
-   ```
-
-### Symbol renames
-
-Use `kast-rename.sh` for all renames. It is import-aware (WI3) and handles resolve → plan → apply → diagnostics end-to-end.
+Bootstrap:
 
 ```bash
-bash .agents/skills/kast/scripts/kast-rename.sh \
-  '{"workspaceRoot":"'"$(git rev-parse --show-toplevel)"'","symbol":"OldName","newName":"NewName"}'
+KAST="$(bash .agents/skills/kast/scripts/resolve-kast.sh)"
 ```
 
-### Complex edits
+Editing flow:
 
-Use `kast-scaffold.sh` for context, then chain `kast-write-and-validate.sh` calls for each file in the edit sequence.
+1. Gather context with `"$KAST" skill scaffold '{...}'`
+2. Apply edits with `"$KAST" skill write-and-validate '{...}'`
+3. Use `"$KAST" skill rename '{...}'` for symbol renames
+4. End with `"$KAST" skill diagnostics '{...}'` if the mutation command did not already validate the final files
 
-## Validation gate
-
-**An edit is not complete until `kast-diagnostics.sh` returns `clean=true, error_count=0`.**
-
-`kast-write-and-validate.sh` runs diagnostics internally and returns `ok=true` only when clean. If `ok=false`:
-
-1. Read `stage` to identify where the workflow failed (`write`, `optimize_imports`, or `diagnostics`)
-2. Read `diagnostics.errors` to understand what needs fixing
-3. Read `log_file` if `stage=workspace_ensure` or the daemon is not responding
-4. Fix the errors and resubmit — do not report success on `ok=false`
-
-## Rules
-
-- Never use direct file writes for Kotlin files when a kast wrapper exists for the operation
-- `kast-rename.sh` is always preferred over manual find-replace for symbol renames
-- `import_changes > 0` from `kast-write-and-validate.sh` is expected and correct — optimize-imports cleaned up the imports
-- After `create-file`, the daemon refreshes automatically — no separate `workspace refresh` is needed
-- Use `insertion_point.offset` from scaffold output as `offset` for insert-at-offset
-- Use `insertion_point.startOffset`/`endOffset` from scaffold output for replace-range
+Do not report success unless diagnostics are clean.

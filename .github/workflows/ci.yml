@@ -125,13 +125,54 @@ jobs:
           unzip -q kast-cli/build/distributions/kast-cli-*-portable.zip -d "$dist_dir"
           "$dist_dir/kast-cli/kast-cli" --help
 
-      - name: Validate wrapper JSON contracts
+      - name: Validate skill JSON contracts
         shell: bash
         run: |
           set -euo pipefail
           dist_dir="$RUNNER_TEMP/kast-dist"
-          KAST_CLI_PATH="$dist_dir/kast-cli/kast-cli" \
-            bash .agents/skills/kast/scripts/validate-wrapper-json.sh "$PWD"
+          KAST_BIN="$dist_dir/kast-cli/kast-cli"
+          export KAST_CONFIG_HOME="$RUNNER_TEMP/kast-config"
+          workspace="$RUNNER_TEMP/kast-skill-contracts"
+          source_file="$workspace/src/main/kotlin/sample/Greeter.kt"
+          mkdir -p "$(dirname "$source_file")"
+          cat > "$source_file" <<'EOF'
+          package sample
+
+          fun greet(name: String): String = "hi $name"
+          EOF
+
+          resolve_request="$(python3 - <<'PY' "$workspace" "$source_file"
+          import json, sys
+          print(json.dumps({
+              "workspaceRoot": sys.argv[1],
+              "symbol": "greet",
+              "fileHint": sys.argv[2],
+          }))
+          PY
+          )"
+          resolve_output="$("$KAST_BIN" skill resolve "$resolve_request")"
+          python3 - <<'PY' "$resolve_output"
+          import json, sys
+          payload = json.loads(sys.argv[1])
+          assert payload["ok"] is True, payload
+          assert payload["type"] == "RESOLVE_SUCCESS", payload
+          PY
+
+          diagnostics_request="$RUNNER_TEMP/diagnostics-request.json"
+          python3 - <<'PY' "$workspace" "$source_file" "$diagnostics_request"
+          import json, pathlib, sys
+          pathlib.Path(sys.argv[3]).write_text(json.dumps({
+              "workspaceRoot": sys.argv[1],
+              "filePaths": [sys.argv[2]],
+          }), encoding="utf-8")
+          PY
+          diagnostics_output="$("$KAST_BIN" skill diagnostics "$diagnostics_request")"
+          python3 - <<'PY' "$diagnostics_output"
+          import json, sys
+          payload = json.loads(sys.argv[1])
+          assert payload["ok"] is True, payload
+          assert payload["type"] == "DIAGNOSTICS_SUCCESS", payload
+          PY
 
       - name: Smoke installer
         shell: bash

@@ -13,7 +13,7 @@ import io.github.amichne.kast.cli.RuntimeCommandOptions
  * by performing a workspace symbol search, filtering candidates, and confirming
  * via symbol/resolve.
  *
- * This is the Kotlin port of `kast_resolve_named_symbol_query` from `kast-common.sh`.
+ * This is the Kotlin port of the former shell helper that resolved named symbol queries.
  */
 internal class NamedSymbolResolver(
     private val cliService: CliService,

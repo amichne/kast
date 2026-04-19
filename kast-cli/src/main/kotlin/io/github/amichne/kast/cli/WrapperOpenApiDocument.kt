@@ -61,13 +61,13 @@ object WrapperOpenApiDocument {
         return buildString {
             appendLine("openapi: 3.1.0")
             appendLine("info:")
-            appendLine("  title: kast wrapper contracts")
+            appendLine("  title: kast skill contracts")
             appendLine("  version: 1.1.0")
             appendLine("  description: >")
-            appendLine("    Generated from the wrapper request and response serializers.")
+            appendLine("    Generated from the native kast skill request and response serializers.")
             appendLine("servers:")
-            appendLine("  - url: file://scripts")
-            appendLine("    description: Local wrapper script directory")
+            appendLine("  - url: kast://skill")
+            appendLine("    description: Native kast skill command surface")
             appendLine("paths:")
             append(renderYaml(writePaths(), 2))
             appendLine("components:")
@@ -126,59 +126,59 @@ object WrapperOpenApiDocument {
     }
 
     private fun writePaths(): Map<String, Any?> = linkedMapOf(
-        "/kast-resolve" to pathItem(
-            operationId = "kastResolve",
+        "/skill/resolve" to pathItem(
+            operationId = "kastSkillResolve",
             summary = "Resolve a symbol by name",
-            script = "scripts/kast-resolve.sh",
+            command = "kast skill resolve",
             requestSchema = "KastResolveRequest",
             responseSchema = "KastResolveResponse",
         ),
-        "/kast-references" to pathItem(
-            operationId = "kastReferences",
+        "/skill/references" to pathItem(
+            operationId = "kastSkillReferences",
             summary = "Find references for a named symbol",
-            script = "scripts/kast-references.sh",
+            command = "kast skill references",
             requestSchema = "KastReferencesRequest",
             responseSchema = "KastReferencesResponse",
         ),
-        "/kast-callers" to pathItem(
-            operationId = "kastCallers",
+        "/skill/callers" to pathItem(
+            operationId = "kastSkillCallers",
             summary = "Expand an incoming or outgoing call hierarchy",
-            script = "scripts/kast-callers.sh",
+            command = "kast skill callers",
             requestSchema = "KastCallersRequest",
             responseSchema = "KastCallersResponse",
         ),
-        "/kast-diagnostics" to pathItem(
-            operationId = "kastDiagnostics",
+        "/skill/diagnostics" to pathItem(
+            operationId = "kastSkillDiagnostics",
             summary = "Run diagnostics on Kotlin files",
-            script = "scripts/kast-diagnostics.sh",
+            command = "kast skill diagnostics",
             requestSchema = "KastDiagnosticsRequest",
             responseSchema = "KastDiagnosticsResponse",
         ),
-        "/kast-rename" to pathItem(
-            operationId = "kastRename",
+        "/skill/rename" to pathItem(
+            operationId = "kastSkillRename",
             summary = "Resolve or target a symbol and apply a rename",
-            script = "scripts/kast-rename.sh",
+            command = "kast skill rename",
             requestSchema = "KastRenameRequest",
             responseSchema = "KastRenameResponse",
         ),
-        "/kast-scaffold" to pathItem(
-            operationId = "kastScaffold",
+        "/skill/scaffold" to pathItem(
+            operationId = "kastSkillScaffold",
             summary = "Gather structural generation context",
-            script = "scripts/kast-scaffold.sh",
+            command = "kast skill scaffold",
             requestSchema = "KastScaffoldRequest",
             responseSchema = "KastScaffoldResponse",
         ),
-        "/kast-workspace-files" to pathItem(
-            operationId = "kastWorkspaceFiles",
+        "/skill/workspace-files" to pathItem(
+            operationId = "kastSkillWorkspaceFiles",
             summary = "List workspace modules and optional file paths",
-            script = "scripts/kast-workspace-files.sh",
+            command = "kast skill workspace-files",
             requestSchema = "KastWorkspaceFilesRequest",
             responseSchema = "KastWorkspaceFilesResponse",
         ),
-        "/kast-write-and-validate" to pathItem(
-            operationId = "kastWriteAndValidate",
+        "/skill/write-and-validate" to pathItem(
+            operationId = "kastSkillWriteAndValidate",
             summary = "Apply generated Kotlin code and validate the result",
-            script = "scripts/kast-write-and-validate.sh",
+            command = "kast skill write-and-validate",
             requestSchema = "KastWriteAndValidateRequest",
             responseSchema = "KastWriteAndValidateResponse",
         ),
@@ -187,14 +187,14 @@ object WrapperOpenApiDocument {
     private fun pathItem(
         operationId: String,
         summary: String,
-        script: String,
+        command: String,
         requestSchema: String,
         responseSchema: String,
     ): Map<String, Any?> = linkedMapOf(
         "post" to linkedMapOf(
             "operationId" to operationId,
             "summary" to summary,
-            "x-script" to script,
+            "x-command" to command,
             "requestBody" to linkedMapOf(
                 "required" to true,
                 "content" to linkedMapOf(

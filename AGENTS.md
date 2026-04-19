@@ -53,19 +53,19 @@ Use this map to choose the narrowest unit that owns a change.
 
 ## Mandatory tool routing
 
-Agents must use kast wrapper scripts for all Kotlin semantic operations.
+Agents must use native `kast skill ...` subcommands for Kotlin semantic operations.
 
 | Operation             | Tool                          | Fallback |
 |-----------------------|-------------------------------|----------|
-| Resolve symbol        | `kast-resolve.sh`             | None     |
-| Find references       | `kast-references.sh`          | None     |
-| Call hierarchy        | `kast-callers.sh`             | None     |
-| Impact analysis       | `kast-impact.sh`              | None     |
-| Diagnostics           | `kast-diagnostics.sh`         | None     |
-| Rename symbol         | `kast-rename.sh`              | None     |
-| Scaffold context      | `kast-scaffold.sh`            | None     |
-| Write and validate    | `kast-write-and-validate.sh`  | None     |
-| List workspace files  | `kast-workspace-files.sh`     | None     |
+| Resolve symbol        | `kast skill resolve`                    | None     |
+| Find references       | `kast skill references`                 | None     |
+| Call hierarchy        | `kast skill callers`                    | None     |
+| Impact analysis       | `kast skill references` + `kast skill callers` | None |
+| Diagnostics           | `kast skill diagnostics`                | None     |
+| Rename symbol         | `kast skill rename`                     | None     |
+| Scaffold context      | `kast skill scaffold`                   | None     |
+| Write and validate    | `kast skill write-and-validate`         | None     |
+| List workspace files  | `kast skill workspace-files`            | None     |
 
 **Prohibited substitutions:** `grep`, `rg`, `ast-grep`, `cat` + manual
 parsing must NOT be used for symbol identity, reference finding, or call
@@ -99,10 +99,11 @@ that are the primary entry points for Copilot-assisted Kotlin work:
 | `@plan` | `plan.md` | Assess change scope and produce a structured change plan |
 | `@edit` | `edit.md` | Make code changes with kast-write-and-validate or kast-rename |
 
-All four agents route Kotlin semantic operations through the kast wrapper scripts in
-`.agents/skills/kast/scripts/`. They do not use `grep`/`rg`/`ast-grep` for symbol
-operations. See each agent's `.md` file for its specific routing rules and `SKILL.md`
-for complete wrapper documentation.
+All four agents route Kotlin semantic operations through the native subcommands
+documented in `.agents/skills/kast/SKILL.md`. Use
+`.agents/skills/kast/scripts/resolve-kast.sh` only to locate the binary when `kast`
+is not already on `PATH`. They do not use `grep`/`rg`/`ast-grep` for symbol
+operations.
 
 ## Skill composition
 
