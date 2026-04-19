@@ -1,6 +1,6 @@
 package io.github.amichne.kast.server
 
-import io.github.amichne.kast.api.ValidationException
+import io.github.amichne.kast.api.protocol.ValidationException
 
 private fun validateAbsoluteFilePath(filePath: String) {
     val path = java.nio.file.Path.of(filePath)

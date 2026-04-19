@@ -1,6 +1,6 @@
 package io.github.amichne.kast.server
 
-import io.github.amichne.kast.api.AnalysisTransport
+import io.github.amichne.kast.api.contract.AnalysisTransport
 import java.nio.file.Path
 
 data class AnalysisServerConfig(

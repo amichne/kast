@@ -1,7 +1,7 @@
 package io.github.amichne.kast.standalone
 
-import io.github.amichne.kast.api.ModuleName
-import io.github.amichne.kast.api.NormalizedPath
+import io.github.amichne.kast.api.contract.ModuleName
+import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.standalone.cache.SourceIndexCache
 import io.github.amichne.kast.standalone.cache.SqliteSourceIndexStore
 import io.github.amichne.kast.standalone.cache.SymbolReferenceRow

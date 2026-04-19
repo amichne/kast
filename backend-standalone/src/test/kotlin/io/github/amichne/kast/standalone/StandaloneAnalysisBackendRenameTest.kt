@@ -1,12 +1,13 @@
 package io.github.amichne.kast.standalone
 
-import io.github.amichne.kast.api.FilePosition
-import io.github.amichne.kast.api.NormalizedPath
-import io.github.amichne.kast.api.FileHashing
-import io.github.amichne.kast.api.MutationCapability
-import io.github.amichne.kast.api.ApplyEditsQuery
-import io.github.amichne.kast.api.RenameQuery
-import io.github.amichne.kast.api.ServerLimits
+import io.github.amichne.kast.api.contract.FilePosition
+import io.github.amichne.kast.api.contract.NormalizedPath
+import io.github.amichne.kast.api.validation.FileHashing
+import io.github.amichne.kast.api.contract.MutationCapability
+import io.github.amichne.kast.api.contract.ApplyEditsQuery
+import io.github.amichne.kast.api.contract.ReferencesQuery
+import io.github.amichne.kast.api.contract.RenameQuery
+import io.github.amichne.kast.api.contract.ServerLimits
 import kotlinx.coroutines.test.TestResult
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -672,7 +673,7 @@ class StandaloneAnalysisBackendRenameTest {
             )
 
             val result = backend.findReferences(
-                io.github.amichne.kast.api.ReferencesQuery(
+                ReferencesQuery(
                     position = FilePosition(
                         filePath = declarationFile.toString(),
                         offset = queryOffset,

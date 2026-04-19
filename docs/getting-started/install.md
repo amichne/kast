@@ -29,7 +29,7 @@ the standalone CLI.
 
 ```console linenums="1" title="Install standalone CLI"
 /bin/bash -c "$(curl -fsSL \
-  https://raw.githubusercontent.com/amichne/kast/HEAD/install.sh)"
+  https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh)"
 ```
 
 The installer prints a config summary at the end showing the install
@@ -40,7 +40,7 @@ root, binary path, and shell RC file path.
 === "Standalone only"
 
     ```console title="Default — standalone CLI"
-    ./install.sh
+    ./kast.sh install
     ```
 
     This is the default. It installs the native launcher and the JVM
@@ -49,7 +49,7 @@ root, binary path, and shell RC file path.
 === "IntelliJ plugin only"
 
     ```console title="Install the IntelliJ plugin"
-    ./install.sh --components=intellij
+    ./kast.sh install --components=intellij
     ```
 
     Downloads the plugin zip to `$KAST_INSTALL_ROOT/plugins/`. Then
@@ -59,7 +59,7 @@ root, binary path, and shell RC file path.
 === "Both"
 
     ```console title="Install everything"
-    ./install.sh --components=all --non-interactive
+    ./kast.sh install --components=all --non-interactive
     ```
 
     Installs the standalone CLI and downloads the IntelliJ plugin zip

@@ -1,6 +1,6 @@
 package io.github.amichne.kast.standalone.cache
 
-import io.github.amichne.kast.api.NormalizedPath
+import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.standalone.MutableSourceIdentifierIndex
 import kotlinx.serialization.json.Json
 import java.nio.file.Path

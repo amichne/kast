@@ -1,6 +1,6 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.api.StandaloneServerOptions
+import io.github.amichne.kast.api.client.StandaloneServerOptions
 import io.github.amichne.kast.cli.skill.SkillWrapperExecutor
 import io.github.amichne.kast.cli.skill.SkillWrapperSerializer
 import kotlinx.serialization.json.Json

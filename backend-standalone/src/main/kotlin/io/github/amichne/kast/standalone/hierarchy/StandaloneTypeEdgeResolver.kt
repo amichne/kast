@@ -41,7 +41,7 @@ internal class StandaloneTypeEdgeResolver(
             }
     }
 
-    override fun symbolFor(target: PsiElement): io.github.amichne.kast.api.Symbol {
+    override fun symbolFor(target: PsiElement): io.github.amichne.kast.api.contract.Symbol {
         val supertypes = directSupertypeNames(target).takeUnless { it.isEmpty() }
         return when (target) {
             is KtClassOrObject -> analyze(target.containingKtFile) {

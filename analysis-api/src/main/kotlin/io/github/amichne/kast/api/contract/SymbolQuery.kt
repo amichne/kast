@@ -1,0 +1,18 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
+package io.github.amichne.kast.api.contract
+
+import io.github.amichne.kast.api.docs.DocField
+import io.github.amichne.kast.api.protocol.*
+
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class SymbolQuery(
+    @DocField(description = "File position identifying the symbol to resolve.")
+    val position: FilePosition,
+    @DocField(description = "When true, populates the declarationScope field on the resolved symbol.")
+    val includeDeclarationScope: Boolean = false,
+    @DocField(description = "When true, populates the documentation field on the resolved symbol.")
+    val includeDocumentation: Boolean = false,
+)

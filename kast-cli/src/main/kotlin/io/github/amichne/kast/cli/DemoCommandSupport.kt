@@ -1,11 +1,11 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.api.CallHierarchyResult
-import io.github.amichne.kast.api.CallNode
-import io.github.amichne.kast.api.Location
-import io.github.amichne.kast.api.ReferencesResult
-import io.github.amichne.kast.api.RenameResult
-import io.github.amichne.kast.api.Symbol
+import io.github.amichne.kast.api.contract.CallHierarchyResult
+import io.github.amichne.kast.api.contract.CallNode
+import io.github.amichne.kast.api.contract.Location
+import io.github.amichne.kast.api.contract.ReferencesResult
+import io.github.amichne.kast.api.contract.RenameResult
+import io.github.amichne.kast.api.contract.Symbol
 import java.io.Console
 import java.nio.file.Files
 import java.nio.file.Path

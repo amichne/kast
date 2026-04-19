@@ -1,62 +1,70 @@
 package io.github.amichne.kast.cli.skill
 
-import io.github.amichne.kast.api.ApplyEditsQuery
-import io.github.amichne.kast.api.CallDirection
-import io.github.amichne.kast.api.CallHierarchyQuery
-import io.github.amichne.kast.api.DiagnosticSeverity
-import io.github.amichne.kast.api.DiagnosticsQuery
-import io.github.amichne.kast.api.FileOutlineQuery
-import io.github.amichne.kast.api.FilePosition
-import io.github.amichne.kast.api.KastCallersFailureResponse
-import io.github.amichne.kast.api.KastCallersQuery
-import io.github.amichne.kast.api.KastCallersRequest
-import io.github.amichne.kast.api.KastCallersSuccessResponse
-import io.github.amichne.kast.api.KastDiagnosticsQuery
-import io.github.amichne.kast.api.KastDiagnosticsRequest
-import io.github.amichne.kast.api.KastDiagnosticsSuccessResponse
-import io.github.amichne.kast.api.KastDiagnosticsSummary
-import io.github.amichne.kast.api.KastReferencesFailureResponse
-import io.github.amichne.kast.api.KastReferencesQuery
-import io.github.amichne.kast.api.KastReferencesRequest
-import io.github.amichne.kast.api.KastReferencesSuccessResponse
-import io.github.amichne.kast.api.KastRenameByOffsetQuery
-import io.github.amichne.kast.api.KastRenameByOffsetRequest
-import io.github.amichne.kast.api.KastRenameBySymbolQuery
-import io.github.amichne.kast.api.KastRenameBySymbolRequest
-import io.github.amichne.kast.api.KastRenameFailureQuery
-import io.github.amichne.kast.api.KastRenameFailureResponse
-import io.github.amichne.kast.api.KastRenameRequest
-import io.github.amichne.kast.api.KastRenameSuccessResponse
-import io.github.amichne.kast.api.KastResolveFailureResponse
-import io.github.amichne.kast.api.KastResolveQuery
-import io.github.amichne.kast.api.KastResolveRequest
-import io.github.amichne.kast.api.KastResolveSuccessResponse
-import io.github.amichne.kast.api.KastScaffoldQuery
-import io.github.amichne.kast.api.KastScaffoldRequest
-import io.github.amichne.kast.api.KastScaffoldSuccessResponse
-import io.github.amichne.kast.api.KastWorkspaceFilesQuery
-import io.github.amichne.kast.api.KastWorkspaceFilesRequest
-import io.github.amichne.kast.api.KastWorkspaceFilesSuccessResponse
-import io.github.amichne.kast.api.KastWriteAndValidateCreateFileQuery
-import io.github.amichne.kast.api.KastWriteAndValidateCreateFileRequest
-import io.github.amichne.kast.api.KastWriteAndValidateFailureQuery
-import io.github.amichne.kast.api.KastWriteAndValidateFailureResponse
-import io.github.amichne.kast.api.KastWriteAndValidateInsertAtOffsetQuery
-import io.github.amichne.kast.api.KastWriteAndValidateInsertAtOffsetRequest
-import io.github.amichne.kast.api.KastWriteAndValidateReplaceRangeQuery
-import io.github.amichne.kast.api.KastWriteAndValidateReplaceRangeRequest
-import io.github.amichne.kast.api.KastWriteAndValidateRequest
-import io.github.amichne.kast.api.KastWriteAndValidateSuccessResponse
-import io.github.amichne.kast.api.KastCandidate
-import io.github.amichne.kast.api.ReferencesQuery
-import io.github.amichne.kast.api.RenameQuery
-import io.github.amichne.kast.api.SemanticInsertionQuery
-import io.github.amichne.kast.api.SemanticInsertionTarget
-import io.github.amichne.kast.api.SymbolQuery
-import io.github.amichne.kast.api.TextEdit
-import io.github.amichne.kast.api.TypeHierarchyQuery
-import io.github.amichne.kast.api.WrapperCallDirection
-import io.github.amichne.kast.api.WorkspaceFilesQuery
+import io.github.amichne.kast.api.contract.ApplyEditsQuery
+import io.github.amichne.kast.api.contract.CallDirection
+import io.github.amichne.kast.api.contract.CallHierarchyQuery
+import io.github.amichne.kast.api.contract.DiagnosticSeverity
+import io.github.amichne.kast.api.contract.DiagnosticsQuery
+import io.github.amichne.kast.api.contract.FileOperation
+import io.github.amichne.kast.api.contract.FileOutlineQuery
+import io.github.amichne.kast.api.contract.FilePosition
+import io.github.amichne.kast.api.contract.ImportOptimizeQuery
+import io.github.amichne.kast.api.wrapper.KastCallersFailureResponse
+import io.github.amichne.kast.api.wrapper.KastCallersQuery
+import io.github.amichne.kast.api.wrapper.KastCallersRequest
+import io.github.amichne.kast.api.wrapper.KastCallersSuccessResponse
+import io.github.amichne.kast.api.wrapper.KastDiagnosticsQuery
+import io.github.amichne.kast.api.wrapper.KastDiagnosticsRequest
+import io.github.amichne.kast.api.wrapper.KastDiagnosticsSuccessResponse
+import io.github.amichne.kast.api.wrapper.KastDiagnosticsSummary
+import io.github.amichne.kast.api.wrapper.KastReferencesFailureResponse
+import io.github.amichne.kast.api.wrapper.KastReferencesQuery
+import io.github.amichne.kast.api.wrapper.KastReferencesRequest
+import io.github.amichne.kast.api.wrapper.KastReferencesSuccessResponse
+import io.github.amichne.kast.api.wrapper.KastRenameByOffsetQuery
+import io.github.amichne.kast.api.wrapper.KastRenameByOffsetRequest
+import io.github.amichne.kast.api.wrapper.KastRenameBySymbolQuery
+import io.github.amichne.kast.api.wrapper.KastRenameBySymbolRequest
+import io.github.amichne.kast.api.wrapper.KastRenameFailureQuery
+import io.github.amichne.kast.api.wrapper.KastRenameFailureResponse
+import io.github.amichne.kast.api.wrapper.KastRenameQuery
+import io.github.amichne.kast.api.wrapper.KastRenameRequest
+import io.github.amichne.kast.api.wrapper.KastRenameSuccessResponse
+import io.github.amichne.kast.api.wrapper.KastResolveFailureResponse
+import io.github.amichne.kast.api.wrapper.KastResolveQuery
+import io.github.amichne.kast.api.wrapper.KastResolveRequest
+import io.github.amichne.kast.api.wrapper.KastResolveSuccessResponse
+import io.github.amichne.kast.api.wrapper.KastScaffoldReferences
+import io.github.amichne.kast.api.wrapper.KastScaffoldQuery
+import io.github.amichne.kast.api.wrapper.KastScaffoldRequest
+import io.github.amichne.kast.api.wrapper.KastScaffoldSuccessResponse
+import io.github.amichne.kast.api.wrapper.KastScaffoldTypeHierarchy
+import io.github.amichne.kast.api.wrapper.KastWorkspaceFilesQuery
+import io.github.amichne.kast.api.wrapper.KastWorkspaceFilesRequest
+import io.github.amichne.kast.api.wrapper.KastWorkspaceFilesSuccessResponse
+import io.github.amichne.kast.api.wrapper.KastWriteAndValidateQuery
+import io.github.amichne.kast.api.wrapper.KastWriteAndValidateCreateFileQuery
+import io.github.amichne.kast.api.wrapper.KastWriteAndValidateCreateFileRequest
+import io.github.amichne.kast.api.wrapper.KastWriteAndValidateFailureQuery
+import io.github.amichne.kast.api.wrapper.KastWriteAndValidateFailureResponse
+import io.github.amichne.kast.api.wrapper.KastWriteAndValidateInsertAtOffsetQuery
+import io.github.amichne.kast.api.wrapper.KastWriteAndValidateInsertAtOffsetRequest
+import io.github.amichne.kast.api.wrapper.KastWriteAndValidateReplaceRangeQuery
+import io.github.amichne.kast.api.wrapper.KastWriteAndValidateReplaceRangeRequest
+import io.github.amichne.kast.api.wrapper.KastWriteAndValidateRequest
+import io.github.amichne.kast.api.wrapper.KastWriteAndValidateSuccessResponse
+import io.github.amichne.kast.api.wrapper.KastCandidate
+import io.github.amichne.kast.api.wrapper.WrapperScaffoldMode
+import io.github.amichne.kast.api.contract.ReferencesQuery
+import io.github.amichne.kast.api.contract.RenameQuery
+import io.github.amichne.kast.api.contract.SemanticInsertionQuery
+import io.github.amichne.kast.api.contract.SemanticInsertionTarget
+import io.github.amichne.kast.api.contract.SymbolKind
+import io.github.amichne.kast.api.contract.SymbolQuery
+import io.github.amichne.kast.api.contract.TextEdit
+import io.github.amichne.kast.api.contract.TypeHierarchyQuery
+import io.github.amichne.kast.api.wrapper.WrapperCallDirection
+import io.github.amichne.kast.api.contract.WorkspaceFilesQuery
 import io.github.amichne.kast.cli.CliCommand
 import io.github.amichne.kast.cli.CliFailure
 import io.github.amichne.kast.cli.CliService
@@ -397,7 +405,7 @@ internal class SkillWrapperExecutor(
         filePath: String,
         offset: Int,
         newName: String,
-        queryBuilder: () -> io.github.amichne.kast.api.KastRenameQuery,
+        queryBuilder: () -> KastRenameQuery,
         failureQueryBuilder: () -> KastRenameFailureQuery,
     ): Any {
         // Dry-run rename to get edits
@@ -481,7 +489,7 @@ internal class SkillWrapperExecutor(
                     includeDeclaration = true,
                 ),
             ).payload
-            io.github.amichne.kast.api.KastScaffoldReferences(
+            KastScaffoldReferences(
                 locations = refsPayload.references,
                 count = refsPayload.references.size,
                 searchScope = refsPayload.searchScope,
@@ -492,9 +500,9 @@ internal class SkillWrapperExecutor(
         // Optional: type hierarchy if we have a class/interface/object symbol
         val typeHierarchy = resolvedSymbol?.takeIf {
             it.symbol.kind in setOf(
-                io.github.amichne.kast.api.SymbolKind.CLASS,
-                io.github.amichne.kast.api.SymbolKind.INTERFACE,
-                io.github.amichne.kast.api.SymbolKind.OBJECT,
+                SymbolKind.CLASS,
+                SymbolKind.INTERFACE,
+                SymbolKind.OBJECT,
             )
         }?.let { sym ->
             val thPayload = cliService.typeHierarchy(
@@ -503,7 +511,7 @@ internal class SkillWrapperExecutor(
                     position = FilePosition(filePath = sym.filePath, offset = sym.offset),
                 ),
             ).payload
-            io.github.amichne.kast.api.KastScaffoldTypeHierarchy(
+            KastScaffoldTypeHierarchy(
                 root = thPayload.root,
                 stats = thPayload.stats,
             )
@@ -512,10 +520,10 @@ internal class SkillWrapperExecutor(
         // Optional: insertion point
         val insertionPoint = resolvedSymbol?.let { sym ->
             val target = when (request.mode) {
-                io.github.amichne.kast.api.WrapperScaffoldMode.IMPLEMENT -> SemanticInsertionTarget.CLASS_BODY_END
-                io.github.amichne.kast.api.WrapperScaffoldMode.REPLACE -> SemanticInsertionTarget.CLASS_BODY_START
-                io.github.amichne.kast.api.WrapperScaffoldMode.CONSOLIDATE -> SemanticInsertionTarget.FILE_BOTTOM
-                io.github.amichne.kast.api.WrapperScaffoldMode.EXTRACT -> SemanticInsertionTarget.AFTER_IMPORTS
+                WrapperScaffoldMode.IMPLEMENT -> SemanticInsertionTarget.CLASS_BODY_END
+                WrapperScaffoldMode.REPLACE -> SemanticInsertionTarget.CLASS_BODY_START
+                WrapperScaffoldMode.CONSOLIDATE -> SemanticInsertionTarget.FILE_BOTTOM
+                WrapperScaffoldMode.EXTRACT -> SemanticInsertionTarget.AFTER_IMPORTS
             }
             cliService.semanticInsertionPoint(
                 options,
@@ -579,7 +587,7 @@ internal class SkillWrapperExecutor(
                 edits = emptyList(),
                 fileHashes = emptyList(),
                 fileOperations = listOf(
-                    io.github.amichne.kast.api.FileOperation.CreateFile(
+                    FileOperation.CreateFile(
                         filePath = filePath,
                         content = content,
                     ),
@@ -591,7 +599,7 @@ internal class SkillWrapperExecutor(
         val importResult = runCatching {
             cliService.optimizeImports(
                 options,
-                io.github.amichne.kast.api.ImportOptimizeQuery(filePaths = listOf(filePath)),
+                ImportOptimizeQuery(filePaths = listOf(filePath)),
             ).payload
         }.getOrNull()
 
@@ -666,7 +674,7 @@ internal class SkillWrapperExecutor(
         options: RuntimeCommandOptions,
         edits: List<TextEdit>,
         filePath: String,
-        query: io.github.amichne.kast.api.KastWriteAndValidateQuery,
+        query: KastWriteAndValidateQuery,
     ): Any {
         val applyResult = cliService.applyEdits(
             options,
@@ -676,7 +684,7 @@ internal class SkillWrapperExecutor(
         val importResult = runCatching {
             cliService.optimizeImports(
                 options,
-                io.github.amichne.kast.api.ImportOptimizeQuery(filePaths = listOf(filePath)),
+                ImportOptimizeQuery(filePaths = listOf(filePath)),
             ).payload
         }.getOrNull()
 

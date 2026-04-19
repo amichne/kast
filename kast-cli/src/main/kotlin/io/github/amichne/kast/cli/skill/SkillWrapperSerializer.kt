@@ -1,13 +1,13 @@
 package io.github.amichne.kast.cli.skill
 
-import io.github.amichne.kast.api.KastCallersResponse
-import io.github.amichne.kast.api.KastDiagnosticsResponse
-import io.github.amichne.kast.api.KastReferencesResponse
-import io.github.amichne.kast.api.KastRenameResponse
-import io.github.amichne.kast.api.KastResolveResponse
-import io.github.amichne.kast.api.KastScaffoldResponse
-import io.github.amichne.kast.api.KastWorkspaceFilesResponse
-import io.github.amichne.kast.api.KastWriteAndValidateResponse
+import io.github.amichne.kast.api.wrapper.KastCallersResponse
+import io.github.amichne.kast.api.wrapper.KastDiagnosticsResponse
+import io.github.amichne.kast.api.wrapper.KastReferencesResponse
+import io.github.amichne.kast.api.wrapper.KastRenameResponse
+import io.github.amichne.kast.api.wrapper.KastResolveResponse
+import io.github.amichne.kast.api.wrapper.KastScaffoldResponse
+import io.github.amichne.kast.api.wrapper.KastWorkspaceFilesResponse
+import io.github.amichne.kast.api.wrapper.KastWriteAndValidateResponse
 import kotlinx.serialization.json.Json
 
 /**

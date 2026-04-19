@@ -27,5 +27,5 @@ Initial public release.
   repository-local directory.
 - **Native launcher** — GraalVM native-image entrypoint for fast
   startup with JVM daemon fallback.
-- **Portable distribution** — `./build.sh cli-jvm` produces a
+- **Portable distribution** — `./kast.sh build cli` produces a
   self-contained bundle with launcher and runtime libs.

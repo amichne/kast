@@ -1,10 +1,10 @@
 package io.github.amichne.kast.standalone
 
-import io.github.amichne.kast.api.CodeActionsQuery
-import io.github.amichne.kast.api.CompletionsQuery
-import io.github.amichne.kast.api.FilePosition
-import io.github.amichne.kast.api.ImplementationsQuery
-import io.github.amichne.kast.api.ServerLimits
+import io.github.amichne.kast.api.contract.CodeActionsQuery
+import io.github.amichne.kast.api.contract.CompletionsQuery
+import io.github.amichne.kast.api.contract.FilePosition
+import io.github.amichne.kast.api.contract.ImplementationsQuery
+import io.github.amichne.kast.api.contract.ServerLimits
 import kotlinx.coroutines.test.TestResult
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals

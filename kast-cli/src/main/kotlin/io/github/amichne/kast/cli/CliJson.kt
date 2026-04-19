@@ -1,18 +1,19 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.api.AnalysisException
-import io.github.amichne.kast.api.ApplyEditsResult
-import io.github.amichne.kast.api.BackendCapabilities
-import io.github.amichne.kast.api.DiagnosticsResult
-import io.github.amichne.kast.api.FileOutlineResult
-import io.github.amichne.kast.api.ImportOptimizeResult
-import io.github.amichne.kast.api.RefreshResult
-import io.github.amichne.kast.api.ReferencesResult
-import io.github.amichne.kast.api.RenameResult
-import io.github.amichne.kast.api.SemanticInsertionResult
-import io.github.amichne.kast.api.SymbolResult
-import io.github.amichne.kast.api.TypeHierarchyResult
-import io.github.amichne.kast.api.WorkspaceSymbolResult
+import io.github.amichne.kast.api.protocol.AnalysisException
+import io.github.amichne.kast.api.contract.ApplyEditsResult
+import io.github.amichne.kast.api.contract.BackendCapabilities
+import io.github.amichne.kast.api.contract.DiagnosticsResult
+import io.github.amichne.kast.api.contract.FileOutlineResult
+import io.github.amichne.kast.api.contract.ImportOptimizeResult
+import io.github.amichne.kast.api.contract.RefreshResult
+import io.github.amichne.kast.api.contract.ReferencesResult
+import io.github.amichne.kast.api.contract.RenameResult
+import io.github.amichne.kast.api.contract.CallHierarchyResult
+import io.github.amichne.kast.api.contract.SemanticInsertionResult
+import io.github.amichne.kast.api.contract.SymbolResult
+import io.github.amichne.kast.api.contract.TypeHierarchyResult
+import io.github.amichne.kast.api.contract.WorkspaceSymbolResult
 import kotlinx.serialization.json.Json
 
 internal fun defaultCliJson(): Json = Json {
@@ -43,7 +44,7 @@ internal fun writeCliJson(
         is ImportOptimizeResult -> json.encodeToString(value)
         is ApplyEditsResult -> json.encodeToString(value)
         is RefreshResult -> json.encodeToString(value)
-        is io.github.amichne.kast.api.CallHierarchyResult -> json.encodeToString(value)
+        is CallHierarchyResult -> json.encodeToString(value)
         is TypeHierarchyResult -> json.encodeToString(value)
         is CliErrorResponse -> json.encodeToString(value)
         else -> error("Unsupported CLI output type: ${value::class.java.name}")

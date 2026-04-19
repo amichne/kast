@@ -1,6 +1,6 @@
 package io.github.amichne.kast.standalone.workspace
 
-import io.github.amichne.kast.api.ModuleName
+import io.github.amichne.kast.api.contract.ModuleName
 import io.github.amichne.kast.standalone.StandaloneSourceModuleSpec
 import io.github.amichne.kast.standalone.StandaloneWorkspaceLayout
 import io.github.amichne.kast.standalone.buildDependentModuleNamesBySourceModuleName

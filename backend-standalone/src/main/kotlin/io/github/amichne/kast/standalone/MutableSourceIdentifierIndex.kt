@@ -1,10 +1,10 @@
 package io.github.amichne.kast.standalone
 
-import io.github.amichne.kast.api.FqName
-import io.github.amichne.kast.api.KotlinIdentifier
-import io.github.amichne.kast.api.ModuleName
-import io.github.amichne.kast.api.NormalizedPath
-import io.github.amichne.kast.api.PackageName
+import io.github.amichne.kast.api.contract.FqName
+import io.github.amichne.kast.api.contract.KotlinIdentifier
+import io.github.amichne.kast.api.contract.ModuleName
+import io.github.amichne.kast.api.contract.NormalizedPath
+import io.github.amichne.kast.api.contract.PackageName
 import io.github.amichne.kast.standalone.cache.FileIndexUpdate
 import io.github.amichne.kast.standalone.cache.SqliteSourceIndexStore
 import java.util.concurrent.ConcurrentHashMap

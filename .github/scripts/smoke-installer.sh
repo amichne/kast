@@ -58,7 +58,7 @@ for candidate in "${repo_root}"/kast-cli/build/distributions/kast-cli-*-portable
 done
 
 [[ -n "$portable_zip" ]] || die "Portable distribution was not found under ${repo_root}/kast-cli/build/distributions"
-[[ -f "${repo_root}/install.sh" ]] || die "Installer script was not found at ${repo_root}/install.sh"
+[[ -f "${repo_root}/kast.sh" ]] || die "Installer script was not found at ${repo_root}/kast.sh"
 
 tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/kast-installer-smoke.XXXXXX")"
 platform_id="$(detect_platform_id)"
@@ -107,7 +107,7 @@ metadata_path.write_text(json.dumps(payload), encoding="utf-8")
 PY
 
 mkdir -p "${tmp_dir}/home"
-installer_content="$(cat "${repo_root}/install.sh")"
+installer_content="$(cat "${repo_root}/kast.sh")"
 
 HOME="${tmp_dir}/home" \
 SHELL=/bin/bash \
@@ -116,7 +116,7 @@ KAST_INSTALL_ROOT="${tmp_dir}/install-root" \
 KAST_BIN_DIR="${tmp_dir}/bin" \
 KAST_SKIP_PATH_UPDATE=true \
 KAST_INSTALL_COMPLETIONS=false \
-/bin/bash -c "$installer_content" bash --non-interactive
+/bin/bash -c "$installer_content" bash install --non-interactive
 
 installed_launcher="${tmp_dir}/bin/kast"
 installed_root="${tmp_dir}/install-root/current"

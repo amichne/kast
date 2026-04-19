@@ -1,21 +1,21 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.api.ApplyEditsQuery
-import io.github.amichne.kast.api.CallHierarchyQuery
-import io.github.amichne.kast.api.CodeActionsQuery
-import io.github.amichne.kast.api.CompletionsQuery
-import io.github.amichne.kast.api.DiagnosticsQuery
-import io.github.amichne.kast.api.FileOutlineQuery
-import io.github.amichne.kast.api.ImportOptimizeQuery
-import io.github.amichne.kast.api.ImplementationsQuery
-import io.github.amichne.kast.api.ReferencesQuery
-import io.github.amichne.kast.api.RefreshQuery
-import io.github.amichne.kast.api.RenameQuery
-import io.github.amichne.kast.api.SemanticInsertionQuery
-import io.github.amichne.kast.api.SymbolQuery
-import io.github.amichne.kast.api.TypeHierarchyQuery
-import io.github.amichne.kast.api.WorkspaceFilesQuery
-import io.github.amichne.kast.api.WorkspaceSymbolQuery
+import io.github.amichne.kast.api.contract.ApplyEditsQuery
+import io.github.amichne.kast.api.contract.CallHierarchyQuery
+import io.github.amichne.kast.api.contract.CodeActionsQuery
+import io.github.amichne.kast.api.contract.CompletionsQuery
+import io.github.amichne.kast.api.contract.DiagnosticsQuery
+import io.github.amichne.kast.api.contract.FileOutlineQuery
+import io.github.amichne.kast.api.contract.ImportOptimizeQuery
+import io.github.amichne.kast.api.contract.ImplementationsQuery
+import io.github.amichne.kast.api.contract.ReferencesQuery
+import io.github.amichne.kast.api.contract.RefreshQuery
+import io.github.amichne.kast.api.contract.RenameQuery
+import io.github.amichne.kast.api.contract.SemanticInsertionQuery
+import io.github.amichne.kast.api.contract.SymbolQuery
+import io.github.amichne.kast.api.contract.TypeHierarchyQuery
+import io.github.amichne.kast.api.contract.WorkspaceFilesQuery
+import io.github.amichne.kast.api.contract.WorkspaceSymbolQuery
 import io.github.amichne.kast.cli.skill.SkillWrapperName
 
 internal sealed interface CliCommand {

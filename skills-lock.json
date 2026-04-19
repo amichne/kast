@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "llm-wiki": {
+      "source": "/Users/amichne/.codex/skills/llm-wiki",
+      "sourceType": "local",
+      "computedHash": "3f532658613c7f9be060089c9549d6ae9926f895fdc352baf34b5cf9e40e60b2"
+    }
+  }
+}

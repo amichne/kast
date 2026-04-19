@@ -1,14 +1,14 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.api.BackendCapabilities
-import io.github.amichne.kast.api.DescriptorRegistry
-import io.github.amichne.kast.api.MutationCapability
-import io.github.amichne.kast.api.ReadCapability
-import io.github.amichne.kast.api.RuntimeState
-import io.github.amichne.kast.api.RuntimeStatusResponse
-import io.github.amichne.kast.api.ServerInstanceDescriptor
-import io.github.amichne.kast.api.ServerLimits
-import io.github.amichne.kast.api.defaultDescriptorDirectory
+import io.github.amichne.kast.api.contract.BackendCapabilities
+import io.github.amichne.kast.api.client.DescriptorRegistry
+import io.github.amichne.kast.api.contract.MutationCapability
+import io.github.amichne.kast.api.contract.ReadCapability
+import io.github.amichne.kast.api.contract.RuntimeState
+import io.github.amichne.kast.api.contract.RuntimeStatusResponse
+import io.github.amichne.kast.api.client.ServerInstanceDescriptor
+import io.github.amichne.kast.api.contract.ServerLimits
+import io.github.amichne.kast.api.client.defaultDescriptorDirectory
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse

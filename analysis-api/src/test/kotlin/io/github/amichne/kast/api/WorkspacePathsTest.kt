@@ -1,4 +1,8 @@
-package io.github.amichne.kast.api
+package io.github.amichne.kast.api.client
+
+import io.github.amichne.kast.api.validation.FileHashing
+
+import io.github.amichne.kast.api.contract.*
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue

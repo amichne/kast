@@ -431,7 +431,7 @@ already have IntelliJ open. Zero additional setup.
 ```console linenums="1" title="From zero to first result"
 # Install
 /bin/bash -c "$(curl -fsSL \
-  https://raw.githubusercontent.com/amichne/kast/HEAD/install.sh)"
+  https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh)"
 
 # Start the daemon
 kast workspace ensure \

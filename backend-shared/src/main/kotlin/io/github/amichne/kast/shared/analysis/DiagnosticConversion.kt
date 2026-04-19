@@ -1,8 +1,8 @@
 package io.github.amichne.kast.shared.analysis
 
 import com.intellij.openapi.util.TextRange
-import io.github.amichne.kast.api.Diagnostic
-import io.github.amichne.kast.api.DiagnosticSeverity
+import io.github.amichne.kast.api.contract.Diagnostic
+import io.github.amichne.kast.api.contract.DiagnosticSeverity
 import org.jetbrains.kotlin.analysis.api.diagnostics.KaDiagnosticWithPsi
 import org.jetbrains.kotlin.analysis.api.diagnostics.KaSeverity
 

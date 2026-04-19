@@ -1,13 +1,13 @@
 package io.github.amichne.kast.standalone
 
-import io.github.amichne.kast.api.FilePosition
-import io.github.amichne.kast.api.ModuleName
-import io.github.amichne.kast.api.NormalizedPath
-import io.github.amichne.kast.api.ReadCapability
-import io.github.amichne.kast.api.ReferencesQuery
-import io.github.amichne.kast.api.SearchScopeKind
-import io.github.amichne.kast.api.ServerLimits
-import io.github.amichne.kast.api.SymbolVisibility
+import io.github.amichne.kast.api.contract.FilePosition
+import io.github.amichne.kast.api.contract.ModuleName
+import io.github.amichne.kast.api.contract.NormalizedPath
+import io.github.amichne.kast.api.contract.ReadCapability
+import io.github.amichne.kast.api.contract.ReferencesQuery
+import io.github.amichne.kast.api.contract.SearchScopeKind
+import io.github.amichne.kast.api.contract.ServerLimits
+import io.github.amichne.kast.api.contract.SymbolVisibility
 import io.github.amichne.kast.standalone.workspace.PhasedDiscoveryResult
 import kotlinx.coroutines.test.TestResult
 import kotlinx.coroutines.test.runTest

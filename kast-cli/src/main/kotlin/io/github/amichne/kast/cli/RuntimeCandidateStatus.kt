@@ -1,9 +1,9 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.api.BackendCapabilities
-import io.github.amichne.kast.api.RuntimeStatusResponse
-import io.github.amichne.kast.api.SCHEMA_VERSION
-import io.github.amichne.kast.api.ServerInstanceDescriptor
+import io.github.amichne.kast.api.contract.BackendCapabilities
+import io.github.amichne.kast.api.contract.RuntimeStatusResponse
+import io.github.amichne.kast.api.protocol.SCHEMA_VERSION
+import io.github.amichne.kast.api.client.ServerInstanceDescriptor
 import kotlinx.serialization.Serializable
 
 @Serializable

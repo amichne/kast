@@ -77,7 +77,7 @@ printf '  4. %s\n' "${DIST_SCRIPT}" >&2
 printf '  5. Auto-build via ./gradlew :kast-cli:writeWrapperScript\n' >&2
 printf '\n' >&2
 printf 'Install options:\n' >&2
-printf '  ./install.sh                                     # install from GitHub release\n' >&2
-printf '  ./build.sh cli                                   # build dist/cli/kast-cli locally\n' >&2
+printf '  ./kast.sh install                                # install from GitHub release\n' >&2
+printf '  ./kast.sh build cli                              # build dist/cli/kast-cli locally\n' >&2
 printf '  ./gradlew :kast-cli:writeWrapperScript           # build kast-cli/build/scripts/kast-cli\n' >&2
 exit 1

@@ -1,16 +1,16 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.api.BackendCapabilities
-import io.github.amichne.kast.api.DiagnosticsResult
-import io.github.amichne.kast.api.JsonRpcRequest
-import io.github.amichne.kast.api.JsonRpcSuccessResponse
-import io.github.amichne.kast.api.ReferencesResult
-import io.github.amichne.kast.api.RefreshResult
-import io.github.amichne.kast.api.RenameResult
-import io.github.amichne.kast.api.RuntimeState
-import io.github.amichne.kast.api.RuntimeStatusResponse
-import io.github.amichne.kast.api.ServerInstanceDescriptor
-import io.github.amichne.kast.api.ServerLimits
+import io.github.amichne.kast.api.contract.BackendCapabilities
+import io.github.amichne.kast.api.contract.DiagnosticsResult
+import io.github.amichne.kast.api.protocol.JsonRpcRequest
+import io.github.amichne.kast.api.protocol.JsonRpcSuccessResponse
+import io.github.amichne.kast.api.contract.ReferencesResult
+import io.github.amichne.kast.api.contract.RefreshResult
+import io.github.amichne.kast.api.contract.RenameResult
+import io.github.amichne.kast.api.contract.RuntimeState
+import io.github.amichne.kast.api.contract.RuntimeStatusResponse
+import io.github.amichne.kast.api.client.ServerInstanceDescriptor
+import io.github.amichne.kast.api.contract.ServerLimits
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -376,7 +376,7 @@ class KastWrapperTest {
         )
         val daemonsDir = configHome.resolve("daemons")
         Files.createDirectories(daemonsDir)
-        io.github.amichne.kast.api.DescriptorRegistry(daemonsDir.resolve("daemons.json")).register(descriptor)
+        io.github.amichne.kast.api.client.DescriptorRegistry(daemonsDir.resolve("daemons.json")).register(descriptor)
 
         val runtimeStatus = RuntimeStatusResponse(
             state = RuntimeState.READY,
@@ -393,7 +393,7 @@ class KastWrapperTest {
             backendVersion = "0.1.0",
             workspaceRoot = workspace.toString(),
             readCapabilities = emptySet(),
-            mutationCapabilities = setOf(io.github.amichne.kast.api.MutationCapability.RENAME),
+            mutationCapabilities = setOf(io.github.amichne.kast.api.contract.MutationCapability.RENAME),
             limits = ServerLimits(
                 maxResults = 500,
                 requestTimeoutMillis = 120_000,

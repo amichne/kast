@@ -88,7 +88,7 @@ refresh, belongs in agent instructions rather than in the hook manifest.
 
 ## Copilot agents
 
-The `.github/copilot/agents/` directory contains four GitHub Copilot custom agents
+The `.github/agents/` directory contains four GitHub Copilot custom agents
 ([spec](https://code.visualstudio.com/docs/copilot/customization/custom-agents#_custom-agent-file-structure))
 that are the primary entry points for Copilot-assisted Kotlin work:
 
@@ -140,8 +140,8 @@ Apply these rules across the repo before local unit rules add more detail.
   code paths.
 - Treat `docs/` plus `zensical.toml` as the documentation source of truth.
   `site/` is generated output and should be rebuilt, not hand-edited.
-- Prefer repo-root packaging entry points for shipped artifacts: `./build.sh`
-  builds the standalone portable distribution; `./gradlew buildIntellijPlugin` builds the IntelliJ
+- Prefer repo-root packaging entry points for shipped artifacts: `./kast.sh build`
+  builds the portable distribution artifacts; `./gradlew buildIntellijPlugin` builds the IntelliJ
   plugin zip.
 - Verify with the narrowest Gradle task that proves the change. Broaden the
   scope when you touch shared contracts, build logic, or cross-module behavior.

@@ -21,24 +21,24 @@ Kast publishes portable release zips for supported operating systems. Install
 the latest release from any shell with a copyable one-line command:
 
 ```console
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/install.sh)"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh)"
 ```
 
 Install with all components (standalone + IntelliJ plugin):
 
 ```console
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/install.sh)" -- --components=all
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh)" -- install --components=all
 ```
 
 Non-interactive install for CI/automation:
 
 ```console
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/install.sh)" -- --components=all --non-interactive
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh)" -- install --components=all --non-interactive
 ```
 
 That installs `kast` into your user-local bin directory and adds that directory
 to your shell `PATH` when needed. If you already have this repository checked
-out, you can run `./install.sh` from the repo root instead.
+out, you can run `./kast.sh install` from the repo root instead.
 
 > **Note:** The published bundle installs a launcher plus a colocated native
 > client under `bin/kast`. Daemon-backed commands still launch the JVM backend
@@ -60,27 +60,21 @@ skip a no-op install safely.
 
 ## Local/dev builds
 
-For local iteration, use `build.sh` from the repo root. It stages the portable
-layout under `dist/kast`, including the `kast` launcher, the native client in
-`dist/kast/bin/kast`, and the JVM fallback runtime libs. It also copies the
-portable zip to `dist/kast.zip` and can install the result as a named
-side-by-side dev instance when the build finishes.
+For local iteration, use `kast.sh` from the repo root. It builds selected
+components and publishes artifacts to `dist/`:
 
 ```console
-./build.sh
-./build.sh --no-install
-./build.sh --install --instance my-dev
+./kast.sh build           # interactive target selection (requires fzf)
+./kast.sh build cli       # CLI binary + JVM wrapper  ->  dist/cli/  dist/cli.zip
+./kast.sh build plugin    # IntelliJ plugin zip       ->  dist/plugin.zip
+./kast.sh build backend   # standalone server         ->  dist/backend/  dist/backend.zip
+./kast.sh build --all     # all targets
 ```
 
-If you accept the install prompt or pass `--install`, the script installs into
-`~/.local/share/kast/instances/my-dev` and creates `~/.local/bin/kast-my-dev`
-(it does not edit your `PATH`). If you omit `--instance`, the installer
-generates a default name like `agile-otter`.
-
-Run smoke validation for a named instance with:
+Then install from the local build:
 
 ```console
-./scripts/validate-instance.sh my-dev
+./kast.sh install --local
 ```
 
 ## How to use it
@@ -194,11 +188,11 @@ Run `kast help completion` if you want the shell-specific command pages.
 
 ## Build from source
 
-If you are changing Kast itself, `./build.sh` stages the full portable layout
+If you are changing Kast itself, `./kast.sh build` stages the full portable layout
 from the repo root:
 
 ```console
-./build.sh
+./kast.sh build --all
 ```
 
 If you only need the shared native client while working on `kast-cli`, run:

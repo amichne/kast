@@ -185,7 +185,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ./release.sh --tag "${{ needs.prepare-release.outputs.release_tag }}" --platform-id "${{ matrix.asset_id }}"
+          ./kast.sh release --tag "${{ needs.prepare-release.outputs.release_tag }}" --platform-id "${{ matrix.asset_id }}"
 
       - name: Smoke portable Kast distribution
         shell: bash

@@ -1,4 +1,7 @@
-package io.github.amichne.kast.api
+package io.github.amichne.kast.api.docs
+
+import io.github.amichne.kast.api.contract.*
+import io.github.amichne.kast.api.protocol.*
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -10,21 +13,21 @@ class AnalysisDocsDocumentTest {
 
     @Test
     fun `checked in capabilities markdown matches generated document`() {
-        val expected = repoRoot().resolve("docs/capabilities.md").toFile().readText()
-        val generated = AnalysisDocsDocument.renderCapabilities()
-        assertEquals(expected, generated, "docs/capabilities.md has drifted from the generator — run ./gradlew :analysis-api:generateDocPages")
+        val expected = repoRoot().resolve("docs/reference/capabilities.md").toFile().readText()
+        val generated = DocsDocument.renderCapabilities()
+        assertEquals(expected, generated, "docs/reference/capabilities.md has drifted from the generator — run ./gradlew :analysis-api:generateDocPages")
     }
 
     @Test
     fun `checked in api-reference markdown matches generated document`() {
-        val expected = repoRoot().resolve("docs/api-reference.md").toFile().readText()
-        val generated = AnalysisDocsDocument.renderApiReference()
-        assertEquals(expected, generated, "docs/api-reference.md has drifted from the generator — run ./gradlew :analysis-api:generateDocPages")
+        val expected = repoRoot().resolve("docs/reference/api-reference.md").toFile().readText()
+        val generated = DocsDocument.renderApiReference()
+        assertEquals(expected, generated, "docs/reference/api-reference.md has drifted from the generator — run ./gradlew :analysis-api:generateDocPages")
     }
 
     @Test
     fun `generated capabilities page contains a section for every JSON-RPC method`() {
-        val markdown = AnalysisDocsDocument.renderCapabilities()
+        val markdown = DocsDocument.renderCapabilities()
         val expectedMethods = OperationDocRegistry.all().map { it.jsonRpcMethod }
         expectedMethods.forEach { method ->
             assertTrue(markdown.contains("### $method"), "Missing section for $method in capabilities.md")
@@ -33,7 +36,7 @@ class AnalysisDocsDocumentTest {
 
     @Test
     fun `generated api-reference page contains a section for every JSON-RPC method`() {
-        val markdown = AnalysisDocsDocument.renderApiReference()
+        val markdown = DocsDocument.renderApiReference()
         val expectedMethods = OperationDocRegistry.all().map { it.jsonRpcMethod }
         expectedMethods.forEach { method ->
             assertTrue(markdown.contains("### $method"), "Missing section for $method in api-reference.md")
@@ -42,8 +45,8 @@ class AnalysisDocsDocumentTest {
 
     @Test
     fun `every schema field in generated markdown exists in the OpenAPI spec`() {
-        val yaml = AnalysisOpenApiDocument.renderYaml()
-        val markdown = AnalysisDocsDocument.renderApiReference()
+        val yaml = OpenApiDocument.renderYaml()
+        val markdown = DocsDocument.renderApiReference()
 
         // Extract field names from markdown tables (lines starting with "| `fieldName`")
         val fieldPattern = Regex("""\| `(\w+)` \|""")
@@ -61,7 +64,7 @@ class AnalysisDocsDocumentTest {
 
     @Test
     fun `OperationDocRegistry covers all OpenAPI operations`() {
-        val yaml = AnalysisOpenApiDocument.renderYaml()
+        val yaml = OpenApiDocument.renderYaml()
         val operationIdRegex = Regex("""operationId:\s*(\w+)""")
         val specIds = operationIdRegex.findAll(yaml).map { it.groupValues[1] }.toSet()
         val registryIds = OperationDocRegistry.operationIds()

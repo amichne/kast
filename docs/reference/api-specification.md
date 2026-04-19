@@ -41,7 +41,7 @@ and served alongside these docs on GitHub Pages.
 ## Download as build artifact
 
 The OpenAPI spec is published as `dist/openapi.yaml` alongside the CLI and
-plugin artifacts when you run `./build.sh`. You can also generate it directly:
+plugin artifacts when you run `./kast.sh build`. You can also generate it directly:
 
 ```console
 ./gradlew :analysis-api:generateOpenApiSpec

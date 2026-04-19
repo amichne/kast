@@ -1,8 +1,8 @@
 package io.github.amichne.kast.standalone
 
-import io.github.amichne.kast.api.ReadCapability
-import io.github.amichne.kast.api.ServerLimits
-import io.github.amichne.kast.api.WorkspaceFilesQuery
+import io.github.amichne.kast.api.contract.ReadCapability
+import io.github.amichne.kast.api.contract.ServerLimits
+import io.github.amichne.kast.api.contract.WorkspaceFilesQuery
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse

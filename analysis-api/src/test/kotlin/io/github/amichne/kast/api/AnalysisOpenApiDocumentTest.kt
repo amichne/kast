@@ -1,4 +1,4 @@
-package io.github.amichne.kast.api
+package io.github.amichne.kast.api.docs
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -11,13 +11,13 @@ class AnalysisOpenApiDocumentTest {
     @Test
     fun `checked in openapi yaml matches generated document`() {
         val expected = repoRoot().resolve("docs/openapi.yaml").toFile().readText()
-        val generated = AnalysisOpenApiDocument.renderYaml()
+        val generated = OpenApiDocument.renderYaml()
         assertEquals(expected.trimEnd(), generated.trimEnd())
     }
 
     @Test
     fun `spec contains a path for every AnalysisBackend JSON-RPC method`() {
-        val yaml = AnalysisOpenApiDocument.renderYaml()
+        val yaml = OpenApiDocument.renderYaml()
         val expectedMethods = listOf(
             "health",
             "runtime/status",
@@ -49,7 +49,7 @@ class AnalysisOpenApiDocumentTest {
 
     @Test
     fun `spec is valid OpenAPI 3_1 structure`() {
-        val yaml = AnalysisOpenApiDocument.renderYaml()
+        val yaml = OpenApiDocument.renderYaml()
         assertTrue(yaml.startsWith("openapi: 3.1.0"))
         assertTrue(yaml.contains("paths:"))
         assertTrue(yaml.contains("components:"))
@@ -58,7 +58,7 @@ class AnalysisOpenApiDocumentTest {
 
     @Test
     fun `read and mutation operations include capability extensions`() {
-        val yaml = AnalysisOpenApiDocument.renderYaml()
+        val yaml = OpenApiDocument.renderYaml()
         val capabilities = listOf(
             "RESOLVE_SYMBOL",
             "FIND_REFERENCES",
@@ -87,7 +87,7 @@ class AnalysisOpenApiDocumentTest {
 
     @Test
     fun `system operations have no capability requirement`() {
-        val yaml = AnalysisOpenApiDocument.renderYaml()
+        val yaml = OpenApiDocument.renderYaml()
         val lines = yaml.lines()
 
         // Find lines with system tag and verify no capability extension follows before next path
@@ -111,7 +111,7 @@ class AnalysisOpenApiDocumentTest {
 
     @Test
     fun `all schema refs resolve to defined components`() {
-        val yaml = AnalysisOpenApiDocument.renderYaml()
+        val yaml = OpenApiDocument.renderYaml()
         val refRegex = Regex("""#/components/schemas/([A-Za-z0-9_.]+)""")
         val schemaDefRegex = Regex("""^ {4}([A-Za-z0-9_.]+):$""", RegexOption.MULTILINE)
 

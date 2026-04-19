@@ -1,12 +1,12 @@
 package io.github.amichne.kast.standalone
 
-import io.github.amichne.kast.api.CallDirection
-import io.github.amichne.kast.api.CallHierarchyQuery
-import io.github.amichne.kast.api.FilePosition
-import io.github.amichne.kast.api.ReferencesQuery
-import io.github.amichne.kast.api.RenameQuery
-import io.github.amichne.kast.api.ServerLimits
-import io.github.amichne.kast.api.SymbolQuery
+import io.github.amichne.kast.api.contract.CallDirection
+import io.github.amichne.kast.api.contract.CallHierarchyQuery
+import io.github.amichne.kast.api.contract.FilePosition
+import io.github.amichne.kast.api.contract.ReferencesQuery
+import io.github.amichne.kast.api.contract.RenameQuery
+import io.github.amichne.kast.api.contract.ServerLimits
+import io.github.amichne.kast.api.contract.SymbolQuery
 import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetry
 import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetryConfig
 import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetryDetail

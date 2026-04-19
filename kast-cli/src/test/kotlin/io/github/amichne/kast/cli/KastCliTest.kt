@@ -1,9 +1,9 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.api.BackendCapabilities
-import io.github.amichne.kast.api.MutationCapability
-import io.github.amichne.kast.api.ReadCapability
-import io.github.amichne.kast.api.ServerLimits
+import io.github.amichne.kast.api.contract.BackendCapabilities
+import io.github.amichne.kast.api.contract.MutationCapability
+import io.github.amichne.kast.api.contract.ReadCapability
+import io.github.amichne.kast.api.contract.ServerLimits
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test

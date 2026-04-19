@@ -1,11 +1,12 @@
 package io.github.amichne.kast.shared.hierarchy
 
 import com.intellij.psi.PsiElement
-import io.github.amichne.kast.api.Symbol
-import io.github.amichne.kast.api.TypeHierarchyDirection
-import io.github.amichne.kast.api.TypeHierarchyNode
-import io.github.amichne.kast.api.TypeHierarchyTruncation
-import io.github.amichne.kast.api.TypeHierarchyTruncationReason
+import io.github.amichne.kast.api.contract.Symbol
+import io.github.amichne.kast.api.contract.TypeHierarchyDirection
+import io.github.amichne.kast.api.contract.TypeHierarchyNode
+import io.github.amichne.kast.api.contract.TypeHierarchyStats
+import io.github.amichne.kast.api.contract.TypeHierarchyTruncation
+import io.github.amichne.kast.api.contract.TypeHierarchyTruncationReason
 import io.github.amichne.kast.shared.analysis.resolvedFilePath
 
 /**
@@ -129,7 +130,7 @@ class TypeHierarchyBudget(
         truncated = true
     }
 
-    fun toStats() = io.github.amichne.kast.api.TypeHierarchyStats(
+    fun toStats() = TypeHierarchyStats(
         totalNodes = totalNodes,
         maxDepthReached = maxDepthReached,
         truncated = truncated,

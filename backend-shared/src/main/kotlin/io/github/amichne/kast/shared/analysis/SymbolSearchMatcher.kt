@@ -1,6 +1,6 @@
 package io.github.amichne.kast.shared.analysis
 
-import io.github.amichne.kast.api.ValidationException
+import io.github.amichne.kast.api.protocol.ValidationException
 import java.util.regex.Pattern
 import java.util.regex.PatternSyntaxException
 

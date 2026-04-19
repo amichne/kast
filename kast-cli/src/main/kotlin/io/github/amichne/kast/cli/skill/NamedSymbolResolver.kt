@@ -1,10 +1,11 @@
 package io.github.amichne.kast.cli.skill
 
-import io.github.amichne.kast.api.FilePosition
-import io.github.amichne.kast.api.Symbol
-import io.github.amichne.kast.api.SymbolKind
-import io.github.amichne.kast.api.WrapperNamedSymbolKind
-import io.github.amichne.kast.api.WorkspaceSymbolQuery
+import io.github.amichne.kast.api.contract.FilePosition
+import io.github.amichne.kast.api.contract.Symbol
+import io.github.amichne.kast.api.contract.SymbolKind
+import io.github.amichne.kast.api.contract.SymbolQuery
+import io.github.amichne.kast.api.wrapper.WrapperNamedSymbolKind
+import io.github.amichne.kast.api.contract.WorkspaceSymbolQuery
 import io.github.amichne.kast.cli.CliService
 import io.github.amichne.kast.cli.RuntimeCommandOptions
 
@@ -88,7 +89,7 @@ internal class NamedSymbolResolver(
         )
         val resolveResult = cliService.resolveSymbol(
             options,
-            io.github.amichne.kast.api.SymbolQuery(position = position),
+            SymbolQuery(position = position),
         )
 
         return ResolvedSymbol(

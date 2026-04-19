@@ -1,8 +1,8 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.api.RuntimeState
-import io.github.amichne.kast.api.RuntimeStatusResponse
-import io.github.amichne.kast.api.ServerInstanceDescriptor
+import io.github.amichne.kast.api.contract.RuntimeState
+import io.github.amichne.kast.api.contract.RuntimeStatusResponse
+import io.github.amichne.kast.api.client.ServerInstanceDescriptor
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 

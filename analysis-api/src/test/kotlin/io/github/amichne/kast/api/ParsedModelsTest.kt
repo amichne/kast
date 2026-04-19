@@ -1,4 +1,7 @@
-package io.github.amichne.kast.api
+package io.github.amichne.kast.api.validation
+
+import io.github.amichne.kast.api.contract.*
+import io.github.amichne.kast.api.protocol.*
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test

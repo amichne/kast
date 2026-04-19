@@ -7,14 +7,7 @@
         "bash": "bash .github/hooks/session-start.sh",
         "cwd": ".",
         "timeoutSec": 30,
-        "comment": "Reset per-session hook state used to track edited files."
-      },
-      {
-        "type": "command",
-        "bash": "bash .agents/skills/kast/scripts/kast-session-start.sh",
-        "cwd": ".",
-        "timeoutSec": 180,
-        "comment": "Resolve kast and prewarm the workspace when the Copilot session starts."
+        "comment": "Reset per-session hook state used to track edited files and required-skill reads."
       }
     ],
     "postToolUse": [
@@ -24,6 +17,15 @@
         "cwd": ".",
         "timeoutSec": 30,
         "comment": "Track files edited successfully during the session so final validation only checks session-owned paths."
+      }
+    ],
+    "preToolUse": [
+      {
+        "type": "command",
+        "bash": "bash .github/hooks/require-skills.sh",
+        "cwd": ".",
+        "timeoutSec": 30,
+        "comment": "Require required skill docs to be read before other tools are allowed in this session."
       }
     ],
     "sessionEnd": [

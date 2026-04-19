@@ -1,9 +1,9 @@
 package io.github.amichne.kast.shared.analysis
 
-import io.github.amichne.kast.api.NotFoundException
-import io.github.amichne.kast.api.SemanticInsertionQuery
-import io.github.amichne.kast.api.SemanticInsertionResult
-import io.github.amichne.kast.api.SemanticInsertionTarget
+import io.github.amichne.kast.api.protocol.NotFoundException
+import io.github.amichne.kast.api.contract.SemanticInsertionQuery
+import io.github.amichne.kast.api.contract.SemanticInsertionResult
+import io.github.amichne.kast.api.contract.SemanticInsertionTarget
 import org.jetbrains.kotlin.psi.KtClassBody
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtFile
