@@ -1,9 +1,9 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.api.RefreshQuery
-import io.github.amichne.kast.api.SemanticInsertionTarget
-import io.github.amichne.kast.api.SymbolKind
-import io.github.amichne.kast.api.TypeHierarchyDirection
+import io.github.amichne.kast.api.contract.RefreshQuery
+import io.github.amichne.kast.api.contract.SemanticInsertionTarget
+import io.github.amichne.kast.api.contract.SymbolKind
+import io.github.amichne.kast.api.contract.TypeHierarchyDirection
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -72,7 +72,7 @@ class CliCommandParserTest {
         assertTrue(command is CliCommand.CallHierarchy)
         val hierarchyCommand = command as CliCommand.CallHierarchy
         assertEquals(tempDir, hierarchyCommand.options.workspaceRoot)
-        assertEquals(io.github.amichne.kast.api.CallDirection.INCOMING, hierarchyCommand.query.direction)
+        assertEquals(io.github.amichne.kast.api.contract.CallDirection.INCOMING, hierarchyCommand.query.direction)
         assertEquals(0, hierarchyCommand.query.depth)
         assertEquals(32, hierarchyCommand.query.maxTotalCalls)
         assertEquals(8, hierarchyCommand.query.maxChildrenPerNode)

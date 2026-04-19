@@ -1,6 +1,9 @@
 @file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
 
-package io.github.amichne.kast.api
+package io.github.amichne.kast.api.docs
+
+import io.github.amichne.kast.api.contract.*
+import io.github.amichne.kast.api.protocol.*
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.SerialDescriptor
@@ -13,13 +16,13 @@ import org.junit.jupiter.api.Test
  * a [DocField] annotation with a non-blank description.
  *
  * This prevents new fields from being added to API models without documentation.
- * The serializer list mirrors [AnalysisOpenApiDocument.registerSchemas] — any
+ * The serializer list mirrors [OpenApiDocument.registerSchemas] — any
  * class registered there must appear here.
  */
 class DocFieldCoverageTest {
 
     /**
-     * All serializers registered in [AnalysisOpenApiDocument.registerSchemas].
+     * All serializers registered in [OpenApiDocument.registerSchemas].
      * Enums are excluded because they don't have documentable properties.
      */
     private val registeredSerializers: List<Pair<String, KSerializer<*>>> = listOf(
@@ -121,11 +124,11 @@ class DocFieldCoverageTest {
     }
 
     @Test
-    fun `registered serializers list matches AnalysisOpenApiDocument schema count`() {
+    fun `registered serializers list matches OpenApiDocument schema count`() {
         // Verify this test covers the same schemas as the OpenAPI generator.
         // The OpenAPI generator registers enums inline so they don't need DocField.
         // Count only CLASS/OBJECT descriptors from the OpenAPI spec.
-        val yaml = AnalysisOpenApiDocument.renderYaml()
+        val yaml = OpenApiDocument.renderYaml()
         val schemaDefRegex = Regex("""^ {4}([A-Za-z0-9_.]+):$""", RegexOption.MULTILINE)
         val allSchemaNames = schemaDefRegex.findAll(yaml).map { it.groupValues[1] }.toSet()
 

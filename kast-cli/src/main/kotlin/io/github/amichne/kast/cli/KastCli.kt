@@ -1,6 +1,6 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.api.StandaloneServerOptions
+import io.github.amichne.kast.api.client.StandaloneServerOptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope

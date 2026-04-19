@@ -16,21 +16,36 @@ Copyright &copy; 2026 amichne
 nav = [
   { "Overview" = "index.md" },
   { "Getting started" = [
-    { "Why Kast" = "why-kast.md" },
-    { "Kast vs LSP" = "kast-vs-lsp.md" },
-    { "Get started" = "get-started.md" },
-    { "Run analysis commands" = "run-analysis-commands.md" },
-    { "Capabilities" = "capabilities.md" },
+    { "Install" = "getting-started/install.md" },
+    { "Quickstart" = "getting-started/quickstart.md" },
+    { "Backends" = "getting-started/backends.md" },
+  ]},
+  { "What can Kast do?" = [
+    { "Understand symbols" = "what-can-kast-do/understand-symbols.md" },
+    { "Trace usage" = "what-can-kast-do/trace-usage.md" },
+    { "Refactor safely" = "what-can-kast-do/refactor-safely.md" },
+    { "Validate code" = "what-can-kast-do/validate-code.md" },
+    { "Manage workspaces" = "what-can-kast-do/manage-workspaces.md" },
+  ]},
+  { "For agents" = [
+    { "Overview" = "for-agents/index.md" },
+    { "Talk to your agent" = "for-agents/talk-to-your-agent.md" },
+    { "Install the skill" = "for-agents/install-the-skill.md" },
+    { "Direct CLI usage" = "for-agents/direct-cli.md" },
   ]},
   { "Architecture" = [
-    { "How Kast works" = "how-it-works.md" },
-    { "Architecture deep dive" = "architecture-deep-dive.md" },
-    { "Things to know" = "things-to-know.md" },
-    { "API reference" = "api-reference.md" },
-    { "API specification" = "api-specification.md" },
+    { "How Kast works" = "architecture/how-it-works.md" },
+    { "Behavioral model" = "architecture/behavioral-model.md" },
+    { "Kast vs LSP" = "architecture/kast-vs-lsp.md" },
   ]},
-  { "LLM integration" = "use-kast-from-an-llm-agent.md" },
+  { "Reference" = [
+    { "API reference" = "reference/api-reference.md" },
+    { "API specification" = "reference/api-specification.md" },
+    { "Capabilities" = "reference/capabilities.md" },
+    { "Error codes" = "reference/error-codes.md" },
+  ]},
   { "Troubleshooting" = "troubleshooting.md" },
+  { "Changelog" = "changelog.md" },
 ]
 
 [project.markdown_extensions.admonition]
@@ -41,6 +56,14 @@ custom_fences = [
 ]
 [project.markdown_extensions.pymdownx.tabbed]
 alternate_style = true
+
+[project.markdown_extensions.pymdownx.highlight]
+anchor_linenums = true
+line_spans = "__span"
+pygments_lang_class = true
+
+[project.markdown_extensions.pymdownx.inlinehilite]
+[project.markdown_extensions.pymdownx.snippets]
 
 [project.markdown_extensions.attr_list]
 [project.markdown_extensions.md_in_html]

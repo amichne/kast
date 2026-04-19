@@ -1,12 +1,12 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.api.DescriptorRegistry
-import io.github.amichne.kast.api.RegisteredDescriptor
-import io.github.amichne.kast.api.RuntimeState
-import io.github.amichne.kast.api.RuntimeStatusResponse
-import io.github.amichne.kast.api.StandaloneServerOptions
-import io.github.amichne.kast.api.defaultDescriptorDirectory
-import io.github.amichne.kast.api.kastLogDirectory
+import io.github.amichne.kast.api.client.DescriptorRegistry
+import io.github.amichne.kast.api.client.RegisteredDescriptor
+import io.github.amichne.kast.api.contract.RuntimeState
+import io.github.amichne.kast.api.contract.RuntimeStatusResponse
+import io.github.amichne.kast.api.client.StandaloneServerOptions
+import io.github.amichne.kast.api.client.defaultDescriptorDirectory
+import io.github.amichne.kast.api.client.kastLogDirectory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext

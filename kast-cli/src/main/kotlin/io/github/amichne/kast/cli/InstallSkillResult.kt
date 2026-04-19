@@ -1,6 +1,6 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.api.SCHEMA_VERSION
+import io.github.amichne.kast.api.protocol.SCHEMA_VERSION
 import kotlinx.serialization.Serializable
 
 @Serializable

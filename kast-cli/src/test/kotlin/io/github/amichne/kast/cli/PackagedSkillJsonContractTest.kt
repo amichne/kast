@@ -21,7 +21,7 @@ class PackagedSkillJsonContractTest {
     lateinit var tempDir: Path
 
     @Test
-    fun `installed skill uses resolve-kast and native commands for json literal and file inputs`() {
+    fun `installed skill drives native commands for json literal and file inputs`() {
         val installedSkillDir = tempDir.resolve("skills")
         InstallSkillService(
             embeddedSkillResources = EmbeddedSkillResources(version = "test"),
@@ -45,9 +45,7 @@ class PackagedSkillJsonContractTest {
             """.trimIndent() + "\n",
         )
 
-        val skillRoot = installedSkillDir.resolve("kast")
-        val kastResolver = skillRoot.resolve("scripts/resolve-kast.sh")
-        val kastWrapper = checkNotNull(System.getProperty("kast.wrapper")) {
+        val kastBinary = checkNotNull(System.getProperty("kast.wrapper")) {
             "kast.wrapper system property is missing"
         }
         val runtimeLibs = checkNotNull(System.getProperty("kast.runtime-libs")) {
@@ -55,19 +53,11 @@ class PackagedSkillJsonContractTest {
         }
         val configHome = tempDir.resolve("kast-config")
         val wrapperEnv = mapOf(
-            "KAST_CLI_PATH" to kastWrapper,
+            "KAST_CLI_PATH" to kastBinary,
             "KAST_RUNTIME_LIBS" to runtimeLibs,
             "KAST_CONFIG_HOME" to configHome.toString(),
             "KAST_WORKSPACE_ROOT" to workspaceRoot.toString(),
         )
-
-        val resolvedKast = runCommand(
-            command = listOf("bash", kastResolver.toString()),
-            env = wrapperEnv,
-        )
-        assertEquals(0, resolvedKast.exitCode, "stderr: ${resolvedKast.stderr}")
-        assertTrue(resolvedKast.stderr.isBlank())
-        val kastBinary = resolvedKast.stdout
 
         val resolveRequest = buildJsonObject {
             put("workspaceRoot", workspaceRoot.toString())

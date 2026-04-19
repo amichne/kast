@@ -1,6 +1,6 @@
 package io.github.amichne.kast.intellij
 
-import io.github.amichne.kast.api.ServerLimits
+import io.github.amichne.kast.api.contract.ServerLimits
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 

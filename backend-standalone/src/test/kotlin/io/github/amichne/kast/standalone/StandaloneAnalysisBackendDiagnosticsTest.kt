@@ -1,11 +1,11 @@
 package io.github.amichne.kast.standalone
 
-import io.github.amichne.kast.api.DiagnosticSeverity
-import io.github.amichne.kast.api.NormalizedPath
-import io.github.amichne.kast.api.DiagnosticsQuery
-import io.github.amichne.kast.api.RefreshQuery
-import io.github.amichne.kast.api.ReadCapability
-import io.github.amichne.kast.api.ServerLimits
+import io.github.amichne.kast.api.contract.DiagnosticSeverity
+import io.github.amichne.kast.api.contract.NormalizedPath
+import io.github.amichne.kast.api.contract.DiagnosticsQuery
+import io.github.amichne.kast.api.contract.RefreshQuery
+import io.github.amichne.kast.api.contract.ReadCapability
+import io.github.amichne.kast.api.contract.ServerLimits
 import kotlinx.coroutines.test.TestResult
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals

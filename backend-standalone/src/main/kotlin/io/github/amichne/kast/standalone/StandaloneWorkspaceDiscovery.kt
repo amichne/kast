@@ -1,6 +1,6 @@
 package io.github.amichne.kast.standalone
 
-import io.github.amichne.kast.api.ModuleName
+import io.github.amichne.kast.api.contract.ModuleName
 import io.github.amichne.kast.standalone.workspace.GradleWorkspaceDiscovery
 import io.github.amichne.kast.standalone.workspace.PhasedDiscoveryResult
 import java.nio.file.Files

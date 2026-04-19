@@ -1,10 +1,10 @@
 package io.github.amichne.kast.standalone
 
-import io.github.amichne.kast.api.FilePosition
-import io.github.amichne.kast.api.ServerLimits
-import io.github.amichne.kast.api.SymbolQuery
-import io.github.amichne.kast.api.TypeHierarchyDirection
-import io.github.amichne.kast.api.TypeHierarchyQuery
+import io.github.amichne.kast.api.contract.FilePosition
+import io.github.amichne.kast.api.contract.ServerLimits
+import io.github.amichne.kast.api.contract.SymbolQuery
+import io.github.amichne.kast.api.contract.TypeHierarchyDirection
+import io.github.amichne.kast.api.contract.TypeHierarchyQuery
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse

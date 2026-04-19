@@ -1,4 +1,4 @@
-package io.github.amichne.kast.api
+package io.github.amichne.kast.api.wrapper
 
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertTrue

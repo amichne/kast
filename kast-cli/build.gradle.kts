@@ -11,7 +11,6 @@ val embeddedSkillFiles = listOf(
     "SKILL.md",
     "agents/openai.yaml",
     "references/wrapper-openapi.yaml",
-    "scripts/resolve-kast.sh",
 )
 
 application {

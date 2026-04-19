@@ -1,6 +1,6 @@
 package io.github.amichne.kast.standalone
 
-import io.github.amichne.kast.api.ModuleName
+import io.github.amichne.kast.api.contract.ModuleName
 import java.nio.file.Path
 
 internal data class StandaloneSourceModuleSpec(

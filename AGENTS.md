@@ -88,7 +88,7 @@ refresh, belongs in agent instructions rather than in the hook manifest.
 
 ## Copilot agents
 
-The `.github/copilot/agents/` directory contains four GitHub Copilot custom agents
+The `.github/agents/` directory contains four GitHub Copilot custom agents
 ([spec](https://code.visualstudio.com/docs/copilot/customization/custom-agents#_custom-agent-file-structure))
 that are the primary entry points for Copilot-assisted Kotlin work:
 
@@ -97,13 +97,14 @@ that are the primary entry points for Copilot-assisted Kotlin work:
 | `@kast` | `kast.md` | Orchestrator — routes to sub-agents and validates with diagnostics |
 | `@explore` | `explore.md` | Navigate and understand code via kast semantic tools |
 | `@plan` | `plan.md` | Assess change scope and produce a structured change plan |
-| `@edit` | `edit.md` | Make code changes with kast-write-and-validate or kast-rename |
+| `@edit` | `edit.md` | Make code changes with `kast skill write-and-validate` or `kast skill rename` |
 
-All four agents route Kotlin semantic operations through the native subcommands
-documented in `.agents/skills/kast/SKILL.md`. Use
-`.agents/skills/kast/scripts/resolve-kast.sh` only to locate the binary when `kast`
-is not already on `PATH`. They do not use `grep`/`rg`/`ast-grep` for symbol
-operations.
+All four agents route Kotlin semantic operations through the native
+`kast skill` subcommands documented in `.agents/skills/kast/SKILL.md`. A
+companion hook sets `KAST_CLI_PATH` to the kast binary before the agent
+runs, and every command is invoked as
+`"$KAST_CLI_PATH" skill <command> <json>`. Agents never use
+`grep`/`rg`/`ast-grep` for symbol operations.
 
 ## Skill composition
 
@@ -140,8 +141,8 @@ Apply these rules across the repo before local unit rules add more detail.
   code paths.
 - Treat `docs/` plus `zensical.toml` as the documentation source of truth.
   `site/` is generated output and should be rebuilt, not hand-edited.
-- Prefer repo-root packaging entry points for shipped artifacts: `./build.sh`
-  builds the standalone portable distribution; `./gradlew buildIntellijPlugin` builds the IntelliJ
+- Prefer repo-root packaging entry points for shipped artifacts: `./kast.sh build`
+  builds the portable distribution artifacts; `./gradlew buildIntellijPlugin` builds the IntelliJ
   plugin zip.
 - Verify with the narrowest Gradle task that proves the change. Broaden the
   scope when you touch shared contracts, build logic, or cross-module behavior.

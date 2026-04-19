@@ -1,7 +1,7 @@
 package io.github.amichne.kast.standalone
 
-import io.github.amichne.kast.api.ServerLimits
-import io.github.amichne.kast.api.StandaloneServerOptions
+import io.github.amichne.kast.api.contract.ServerLimits
+import io.github.amichne.kast.api.client.StandaloneServerOptions
 import io.github.amichne.kast.server.AnalysisServer
 import io.github.amichne.kast.server.AnalysisServerConfig
 import io.github.amichne.kast.server.RunningAnalysisServer

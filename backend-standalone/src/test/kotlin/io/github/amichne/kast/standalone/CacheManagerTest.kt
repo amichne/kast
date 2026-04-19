@@ -1,7 +1,7 @@
 package io.github.amichne.kast.standalone
 
-import io.github.amichne.kast.api.RefreshQuery
-import io.github.amichne.kast.api.ServerLimits
+import io.github.amichne.kast.api.contract.RefreshQuery
+import io.github.amichne.kast.api.contract.ServerLimits
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse

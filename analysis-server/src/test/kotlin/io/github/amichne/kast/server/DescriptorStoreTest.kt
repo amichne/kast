@@ -1,7 +1,7 @@
 package io.github.amichne.kast.server
 
-import io.github.amichne.kast.api.DescriptorRegistry
-import io.github.amichne.kast.api.ServerInstanceDescriptor
+import io.github.amichne.kast.api.client.DescriptorRegistry
+import io.github.amichne.kast.api.client.ServerInstanceDescriptor
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue

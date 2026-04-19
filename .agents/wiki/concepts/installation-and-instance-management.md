@@ -6,7 +6,7 @@ and instance discovery fit together.
 
 ## Summary
 
-The installation story is broader than `install.sh`. Kast supports published and
+The installation story is broader than `kast.sh install`. Kast supports published and
 local builds, side-by-side instances, shell completion, and a discovery cascade
 that lets the CLI pick the right executable without asking the caller to know
 the full installation layout.

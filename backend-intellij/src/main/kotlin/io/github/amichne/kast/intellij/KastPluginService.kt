@@ -4,9 +4,9 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
-import io.github.amichne.kast.api.AnalysisTransport
-import io.github.amichne.kast.api.ServerLimits
-import io.github.amichne.kast.api.defaultSocketPath
+import io.github.amichne.kast.api.contract.AnalysisTransport
+import io.github.amichne.kast.api.contract.ServerLimits
+import io.github.amichne.kast.api.client.defaultSocketPath
 import io.github.amichne.kast.server.AnalysisServer
 import io.github.amichne.kast.server.AnalysisServerConfig
 import io.github.amichne.kast.server.RunningAnalysisServer

@@ -2,7 +2,7 @@ package io.github.amichne.kast.shared.analysis
 
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiRecursiveElementWalkingVisitor
-import io.github.amichne.kast.api.TextEdit
+import io.github.amichne.kast.api.contract.TextEdit
 import org.jetbrains.kotlin.analysis.api.KaIdeApi
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.idea.references.KtReference

@@ -12,18 +12,15 @@ user-invocable: true
 
 Use `.agents/skills/kast/SKILL.md` as the authority.
 
-Bootstrap:
-
-```bash
-KAST="$(bash .agents/skills/kast/scripts/resolve-kast.sh)"
-```
+The companion hook guarantees `KAST_CLI_PATH` points at the kast
+binary before this agent runs. Invoke it directly.
 
 Use these commands in order until you have enough context:
 
-1. `"$KAST" skill workspace-files '{...}'`
-2. `"$KAST" skill scaffold '{...}'`
-3. `"$KAST" skill resolve '{...}'`
-4. `"$KAST" skill references '{...}'`
-5. `"$KAST" skill callers '{...}'`
+1. `"$KAST_CLI_PATH" skill workspace-files '{...}'`
+2. `"$KAST_CLI_PATH" skill scaffold '{...}'`
+3. `"$KAST_CLI_PATH" skill resolve '{...}'`
+4. `"$KAST_CLI_PATH" skill references '{...}'`
+5. `"$KAST_CLI_PATH" skill callers '{...}'`
 
 Never claim completeness unless the JSON response supports it.

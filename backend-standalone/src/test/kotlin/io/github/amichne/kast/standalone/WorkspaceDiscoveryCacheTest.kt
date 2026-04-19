@@ -1,6 +1,6 @@
 package io.github.amichne.kast.standalone
 
-import io.github.amichne.kast.api.ModuleName
+import io.github.amichne.kast.api.contract.ModuleName
 import io.github.amichne.kast.standalone.cache.WorkspaceDiscoveryCache
 import io.github.amichne.kast.standalone.workspace.GradleDependency
 import io.github.amichne.kast.standalone.workspace.GradleDependencyScope

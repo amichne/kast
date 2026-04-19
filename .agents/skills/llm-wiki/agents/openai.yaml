@@ -1,0 +1,4 @@
+interface:
+  display_name: "LLM Wiki"
+  short_description: "Maintain a persistent markdown wiki"
+  default_prompt: "Use $llm-wiki to ingest these sources into a persistent markdown wiki and update the index, linked pages, and log."

@@ -1,7 +1,7 @@
 package io.github.amichne.kast.standalone
 
-import io.github.amichne.kast.api.ModuleName
-import io.github.amichne.kast.api.NormalizedPath
+import io.github.amichne.kast.api.contract.ModuleName
+import io.github.amichne.kast.api.contract.NormalizedPath
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull

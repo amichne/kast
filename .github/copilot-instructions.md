@@ -16,4 +16,4 @@ Process:
 4. `kast skill diagnostics` must return `clean=true` before completing.
 5. Run the narrowest Gradle task that proves the change.
 6. Update `AGENTS.md`/docs when behavioral or contract rules change.
-7. Ensure local `./build.sh` and CI pass before merging.
+7. Ensure local `./kast.sh build` and CI pass before merging.

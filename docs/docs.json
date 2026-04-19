@@ -1,0 +1,83 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Kast",
+  "description": "IDE-grade Kotlin code intelligence for terminals, CI, and IDEs.",
+  "colors": {
+    "primary": "#6366f1",
+    "light": "#818cf8",
+    "dark": "#4f46e5"
+  },
+  "topbar": {
+    "links": [
+      {
+        "name": "GitHub",
+        "url": "https://github.com/amichne/kast"
+      }
+    ]
+  },
+  "navigation": {
+    "groups": [
+      {
+        "group": "Overview",
+        "pages": ["index"]
+      },
+      {
+        "group": "Getting Started",
+        "pages": [
+          "getting-started/install",
+          "getting-started/quickstart",
+          "getting-started/backends"
+        ]
+      },
+      {
+        "group": "What can Kast do?",
+        "pages": [
+          "what-can-kast-do/understand-symbols",
+          "what-can-kast-do/trace-usage",
+          "what-can-kast-do/refactor-safely",
+          "what-can-kast-do/validate-code",
+          "what-can-kast-do/manage-workspaces"
+        ]
+      },
+      {
+        "group": "For Agents",
+        "pages": [
+          "for-agents/index",
+          "for-agents/talk-to-your-agent",
+          "for-agents/install-the-skill",
+          "for-agents/direct-cli"
+        ]
+      },
+      {
+        "group": "Architecture",
+        "pages": [
+          "architecture/how-it-works",
+          "architecture/behavioral-model",
+          "architecture/kast-vs-lsp"
+        ]
+      },
+      {
+        "group": "Reference",
+        "pages": [
+          "reference/api-reference",
+          "reference/api-specification",
+          "reference/capabilities",
+          "reference/error-codes"
+        ]
+      },
+      {
+        "group": "Help",
+        "pages": [
+          "troubleshooting",
+          "changelog"
+        ]
+      }
+    ]
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/amichne/kast"
+    }
+  }
+}

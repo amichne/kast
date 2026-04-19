@@ -1,8 +1,8 @@
 package io.github.amichne.kast.shared.hierarchy
 
 import com.intellij.psi.PsiElement
-import io.github.amichne.kast.api.Location
-import io.github.amichne.kast.api.Symbol
+import io.github.amichne.kast.api.contract.Location
+import io.github.amichne.kast.api.contract.Symbol
 
 /**
  * Represents a single edge in the call hierarchy: a resolved target declaration

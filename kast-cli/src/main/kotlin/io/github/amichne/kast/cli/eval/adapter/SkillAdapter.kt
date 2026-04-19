@@ -27,10 +27,8 @@ internal class SkillAdapter(private val skillDir: Path) {
         val metrics = mutableListOf<EvalMetric>()
 
         checks += checkSkillMdExists()
-        checks += checkAgentFilesExist()
-        checks += checkResolveKastExists()
+        checks += checkAgentInterfaceExists()
         checks += checkLegacyWrappersRemoved()
-        checks += checkAgentReferencesValidWrappers()
         checks += checkSkillMdHasTriggerPhrases()
         checks += checkWrapperOpenApiExists()
         checks += checkWrapperCompleteness()
@@ -53,11 +51,10 @@ internal class SkillAdapter(private val skillDir: Path) {
         val triggerTokens = estimateTokens(skillMd)
 
         val agentsDir = skillDir.resolve("agents")
-        val invokeTokens = sumTokensInDir(agentsDir, ".md")
+        val invokeTokens = sumTokensInDir(agentsDir)
 
         val refsDir = skillDir.resolve("references")
-        val scriptsDir = skillDir.resolve("scripts")
-        val deferredTokens = sumTokensInDir(refsDir) + sumTokensInDir(scriptsDir)
+        val deferredTokens = sumTokensInDir(refsDir)
 
         return RawBudget(
             triggerTokens = triggerTokens,
@@ -80,86 +77,45 @@ internal class SkillAdapter(private val skillDir: Path) {
         )
     }
 
-    private fun checkAgentFilesExist(): List<EvalCheck> {
-        val agentsDir = skillDir.resolve("agents")
-        val expectedAgents = listOf("kast.md", "explore.md", "plan.md", "edit.md")
-        return expectedAgents.map { name ->
-            val exists = agentsDir.resolve(name).exists()
-            EvalCheck(
-                id = "structural-agent-$name-exists",
-                category = "structural",
-                severity = EvalSeverity.ERROR,
-                status = if (exists) EvalStatus.PASS else EvalStatus.FAIL,
-                message = if (exists) "Agent file agents/$name found" else "Agent file agents/$name missing",
-                remediation = if (!exists) "Create agents/$name" else null,
-            )
-        }
-    }
-
-    private fun checkResolveKastExists(): EvalCheck {
-        val exists = skillDir.resolve("scripts/resolve-kast.sh").exists()
+    private fun checkAgentInterfaceExists(): EvalCheck {
+        val exists = skillDir.resolve("agents/openai.yaml").exists()
         return EvalCheck(
-            id = "structural-resolve-kast-exists",
+            id = "structural-agent-interface-exists",
             category = "structural",
             severity = EvalSeverity.ERROR,
             status = if (exists) EvalStatus.PASS else EvalStatus.FAIL,
-            message = if (exists) "Binary resolver scripts/resolve-kast.sh found" else "Binary resolver scripts/resolve-kast.sh missing",
-            remediation = if (!exists) "Restore scripts/resolve-kast.sh so the packaged skill can locate the kast binary" else null,
+            message = if (exists) "Agent interface agents/openai.yaml found" else "Agent interface agents/openai.yaml missing",
+            remediation = if (!exists) "Create agents/openai.yaml describing the skill's invocation contract" else null,
         )
     }
 
     private fun checkLegacyWrappersRemoved(): EvalCheck {
-        val legacyFiles = buildList {
-            SkillWrapperName.entries.forEach { add(skillDir.resolve("scripts/kast-${it.cliName}.sh")) }
-            add(skillDir.resolve("scripts/kast-common.sh"))
-            add(skillDir.resolve("scripts/find-symbol-offset.py"))
-            add(skillDir.resolve("scripts/kast-plan-utils.py"))
-            add(skillDir.resolve("scripts/validate-wrapper-json.sh"))
+        val legacyPaths = buildList {
+            add(skillDir.resolve("scripts"))
+            listOf("kast.md", "explore.md", "plan.md", "edit.md").forEach {
+                add(skillDir.resolve("agents/$it"))
+            }
         }
-        val present = legacyFiles
+        val present = legacyPaths
             .filter(Path::exists)
             .map { skillDir.relativize(it).toString() }
             .sorted()
         return EvalCheck(
-            id = "structural-legacy-wrapper-files-removed",
+            id = "structural-legacy-artifacts-removed",
             category = "structural",
             severity = EvalSeverity.WARNING,
             status = if (present.isEmpty()) EvalStatus.PASS else EvalStatus.WARN,
             message = if (present.isEmpty()) {
-                "Legacy shell wrapper files are absent"
+                "Legacy shell-wrapper and sub-agent artifacts are absent"
             } else {
-                "Legacy shell wrapper files still present: ${present.joinToString()}"
+                "Legacy artifacts still present: ${present.joinToString()}"
             },
-            remediation = if (present.isNotEmpty()) "Delete the legacy wrapper files and rely on native `kast skill` subcommands" else null,
+            remediation = if (present.isNotEmpty()) {
+                "Remove the legacy artifacts and rely on native `kast skill` subcommands invoked via \$KAST_CLI_PATH"
+            } else {
+                null
+            },
         )
-    }
-
-    private fun checkAgentReferencesValidWrappers(): List<EvalCheck> {
-        val agentsDir = skillDir.resolve("agents")
-        if (!agentsDir.exists()) return emptyList()
-
-        val commandPatterns = SkillWrapperName.entries.map { "kast skill ${it.cliName}" }
-
-        return Files.list(agentsDir).use { stream ->
-            stream.filter { it.isRegularFile() && it.name.endsWith(".md") }.toList()
-        }.flatMap { agentFile ->
-            val content = agentFile.readText()
-            val referenced = commandPatterns.filter(content::contains)
-            listOf(
-                EvalCheck(
-                    id = "structural-agent-${agentFile.name}-command-refs",
-                    category = "structural",
-                    severity = if (referenced.isEmpty()) EvalSeverity.WARNING else EvalSeverity.INFO,
-                    status = if (referenced.isEmpty()) EvalStatus.WARN else EvalStatus.PASS,
-                    message = if (referenced.isEmpty()) {
-                        "Agent ${agentFile.name} does not mention any native `kast skill` subcommand"
-                    } else {
-                        "Agent ${agentFile.name} references ${referenced.size} native `kast skill` subcommands"
-                    },
-                    remediation = if (referenced.isEmpty()) "Reference the relevant native `kast skill` commands or direct the reader to SKILL.md" else null,
-                ),
-            )
-        }
     }
 
     private fun checkSkillMdHasTriggerPhrases(): EvalCheck {
@@ -225,11 +181,10 @@ internal class SkillAdapter(private val skillDir: Path) {
         return ceil(file.readText().length / 4.0).toInt()
     }
 
-    private fun sumTokensInDir(dir: Path, extension: String? = null): Int {
+    private fun sumTokensInDir(dir: Path): Int {
         if (!dir.exists()) return 0
         return Files.list(dir).use { stream ->
-            stream.filter { it.isRegularFile() && (extension == null || it.name.endsWith(extension)) }
-                .toList()
+            stream.filter(Path::isRegularFile).toList()
         }.sumOf { estimateTokens(it) }
     }
 

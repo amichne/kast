@@ -2,12 +2,12 @@ package io.github.amichne.kast.shared.hierarchy
 
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
-import io.github.amichne.kast.api.CallDirection
-import io.github.amichne.kast.api.CallNode
-import io.github.amichne.kast.api.CallNodeTruncation
-import io.github.amichne.kast.api.CallNodeTruncationReason
-import io.github.amichne.kast.api.Location
-import io.github.amichne.kast.api.Symbol
+import io.github.amichne.kast.api.contract.CallDirection
+import io.github.amichne.kast.api.contract.CallNode
+import io.github.amichne.kast.api.contract.CallNodeTruncation
+import io.github.amichne.kast.api.contract.CallNodeTruncationReason
+import io.github.amichne.kast.api.contract.Location
+import io.github.amichne.kast.api.contract.Symbol
 import io.github.amichne.kast.shared.analysis.resolvedFilePath
 import io.github.amichne.kast.shared.analysis.toKastLocation
 import io.github.amichne.kast.shared.analysis.toSymbolModel

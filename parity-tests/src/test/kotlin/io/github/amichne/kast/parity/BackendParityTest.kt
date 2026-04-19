@@ -1,10 +1,10 @@
 package io.github.amichne.kast.parity
 
-import io.github.amichne.kast.api.DiagnosticsQuery
-import io.github.amichne.kast.api.FilePosition
-import io.github.amichne.kast.api.ReferencesQuery
-import io.github.amichne.kast.api.RenameQuery
-import io.github.amichne.kast.api.SymbolQuery
+import io.github.amichne.kast.api.contract.DiagnosticsQuery
+import io.github.amichne.kast.api.contract.FilePosition
+import io.github.amichne.kast.api.contract.ReferencesQuery
+import io.github.amichne.kast.api.contract.RenameQuery
+import io.github.amichne.kast.api.contract.SymbolQuery
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToJsonElement
 import org.junit.jupiter.api.Assumptions.assumeTrue

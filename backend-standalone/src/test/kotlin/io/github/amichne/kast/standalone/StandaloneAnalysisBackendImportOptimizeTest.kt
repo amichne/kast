@@ -1,8 +1,9 @@
 package io.github.amichne.kast.standalone
 
-import io.github.amichne.kast.api.ImportOptimizeQuery
-import io.github.amichne.kast.api.NormalizedPath
-import io.github.amichne.kast.api.ServerLimits
+import io.github.amichne.kast.api.contract.ImportOptimizeQuery
+import io.github.amichne.kast.api.contract.NormalizedPath
+import io.github.amichne.kast.api.contract.ServerLimits
+import io.github.amichne.kast.api.contract.TextEdit
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -100,7 +101,7 @@ class StandaloneAnalysisBackendImportOptimizeTest {
 
     private fun applyEdit(
         content: String,
-        edit: io.github.amichne.kast.api.TextEdit,
+        edit: TextEdit,
     ): String = buildString {
         append(content.substring(0, edit.startOffset))
         append(edit.newText)

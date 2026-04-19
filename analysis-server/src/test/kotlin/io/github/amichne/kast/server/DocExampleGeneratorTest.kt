@@ -1,6 +1,6 @@
 package io.github.amichne.kast.server
 
-import io.github.amichne.kast.api.AnalysisOpenApiDocument
+import io.github.amichne.kast.api.docs.OpenApiDocument
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -25,7 +25,7 @@ class DocExampleGeneratorTest {
 
     @Test
     fun `every OpenAPI operation has a corresponding example fixture`() {
-        val yaml = AnalysisOpenApiDocument.renderYaml()
+        val yaml = OpenApiDocument.renderYaml()
         val operationIdRegex = Regex("""operationId:\s*(\w+)""")
         val operationIds = operationIdRegex.findAll(yaml).map { it.groupValues[1] }.toSet()
 

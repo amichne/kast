@@ -1,9 +1,9 @@
 package io.github.amichne.kast.standalone.analysis
 
 import com.intellij.psi.PsiElement
-import io.github.amichne.kast.api.SearchScope
-import io.github.amichne.kast.api.SearchScopeKind
-import io.github.amichne.kast.api.SymbolVisibility
+import io.github.amichne.kast.api.contract.SearchScope
+import io.github.amichne.kast.api.contract.SearchScopeKind
+import io.github.amichne.kast.api.contract.SymbolVisibility
 import io.github.amichne.kast.shared.analysis.referenceSearchIdentifier
 import io.github.amichne.kast.shared.analysis.resolvedFilePath
 import io.github.amichne.kast.shared.analysis.targetFqNameAndPackage

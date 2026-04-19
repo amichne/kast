@@ -1,9 +1,9 @@
 package io.github.amichne.kast.server
 
-import io.github.amichne.kast.api.AnalysisBackend
-import io.github.amichne.kast.api.AnalysisTransport
-import io.github.amichne.kast.api.ServerInstanceDescriptor
-import io.github.amichne.kast.api.defaultDescriptorDirectory
+import io.github.amichne.kast.api.contract.AnalysisBackend
+import io.github.amichne.kast.api.contract.AnalysisTransport
+import io.github.amichne.kast.api.client.ServerInstanceDescriptor
+import io.github.amichne.kast.api.client.defaultDescriptorDirectory
 import kotlinx.coroutines.runBlocking
 import java.io.Closeable
 

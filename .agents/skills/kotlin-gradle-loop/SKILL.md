@@ -50,7 +50,7 @@ kotlin-gradle-loop/
 
 On first invocation, initialize the state file, then check status:
 
-```bash
+```console
 python3 scripts/state/init_state.py /path/to/project
 python3 scripts/state/get_state.py /path/to/project --summary
 ```
@@ -81,7 +81,7 @@ Never retry the same action more than 3 times without changing something.
 
 ### Setting a Goal
 
-```bash
+```console
 python3 scripts/state/update_state.py /project goal \
   '{"description":"Get all tests passing and line coverage above 80%",
     "constraints":["do not delete tests","do not reduce coverage"],
@@ -121,7 +121,7 @@ For each subproject, read its `build.gradle.kts` to determine:
 
 ### Recording Discovery
 
-```bash
+```console
 python3 scripts/state/update_state.py /project project '{
   "status": "complete",
   "boot_module": ":app",
@@ -148,7 +148,7 @@ python3 scripts/state/record_action.py /project discovered_project \
 
 All Gradle invocations go through `scripts/gradle/run_task.sh`:
 
-```bash
+```console
 bash scripts/gradle/run_task.sh /project test
 bash scripts/gradle/run_task.sh /project :feature-users:test
 bash scripts/gradle/run_task.sh /project :feature-users:test --tests "com.example.UserServiceTest"
@@ -164,7 +164,7 @@ Returns JSON with `ok`, `exit_code`, `duration_ms`, `tasks_executed`,
 
 After running, update the state:
 
-```bash
+```console
 python3 scripts/state/update_state.py /project gradle.last_build \
   '{"task":"test","exit_code":0,"duration_ms":12000,"build_successful":true}'
 ```
@@ -197,7 +197,7 @@ Copilot hooks only execute commands.
 
 After any test task:
 
-```bash
+```console
 python3 scripts/parse/junit_results.py /project
 python3 scripts/parse/junit_results.py /project --module :feature-users
 ```
@@ -209,7 +209,7 @@ Returns `total`, `passed`, `failed`, `skipped`, `duration_seconds`, and `failure
 
 After `jacocoTestReport`:
 
-```bash
+```console
 python3 scripts/parse/jacoco_report.py /project
 python3 scripts/parse/jacoco_report.py /project --threshold 80.0
 python3 scripts/parse/jacoco_report.py /project --module :feature-users
@@ -222,7 +222,7 @@ Returns `aggregate` (line/branch/class/method percentages), `modules`,
 
 After any compilation:
 
-```bash
+```console
 python3 scripts/parse/kotlin_build_report.py /project
 ```
 
@@ -275,7 +275,7 @@ When `run_task.sh` returns `{"ok": false, ...}`:
    `FAILURE:`, `BUILD FAILED`, or error class names.
 3. Categorize: compilation error, test failure, configuration error, infrastructure error.
 4. Record in history:
-   ```bash
+   ```console
    python3 scripts/state/record_action.py /project gradle_failed \
      '{"task":"test","exit_code":1}' "Compilation error in UserService.kt"
    ```

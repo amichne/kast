@@ -1,1 +1,0 @@
-{"tool": "kast-resolve.sh", "args": {"--workspace-root": "/workspace", "--symbol": "greet", "--containing-type": "UpperCaseGreeter"}, "output": "{\"ok\": true, \"symbol\": \"greet\", \"file_path\": \"app/src/main/kotlin/sample/app/UpperCaseGreeter.kt\", \"offset\": 112}", "exit_code": 0}

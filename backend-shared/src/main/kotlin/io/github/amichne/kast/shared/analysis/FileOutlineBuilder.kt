@@ -2,7 +2,7 @@ package io.github.amichne.kast.shared.analysis
 
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiRecursiveElementWalkingVisitor
-import io.github.amichne.kast.api.OutlineSymbol
+import io.github.amichne.kast.api.contract.OutlineSymbol
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedDeclaration

@@ -7,7 +7,7 @@ import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.DirectClassInheritorsSearch
-import io.github.amichne.kast.api.Symbol
+import io.github.amichne.kast.api.contract.Symbol
 import io.github.amichne.kast.shared.analysis.supertypeNames
 import io.github.amichne.kast.shared.analysis.toSymbolModel
 import io.github.amichne.kast.shared.hierarchy.TypeEdgeResolver

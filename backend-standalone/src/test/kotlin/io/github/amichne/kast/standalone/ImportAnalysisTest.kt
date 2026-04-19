@@ -1,5 +1,6 @@
 package io.github.amichne.kast.standalone
 
+import io.github.amichne.kast.api.contract.TextEdit
 import io.github.amichne.kast.shared.analysis.ImportAnalysis
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -207,7 +208,7 @@ class ImportAnalysisTest {
 
     private fun applyEdit(
         content: String,
-        edit: io.github.amichne.kast.api.TextEdit,
+        edit: TextEdit,
     ): String = buildString {
         append(content.substring(0, edit.startOffset))
         append(edit.newText)

@@ -1,6 +1,6 @@
 package io.github.amichne.kast.standalone
 
-import io.github.amichne.kast.api.RefreshResult
+import io.github.amichne.kast.api.contract.RefreshResult
 import java.nio.file.ClosedWatchServiceException
 import java.nio.file.FileSystems
 import java.nio.file.Files
