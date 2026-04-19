@@ -611,7 +611,7 @@ internal class SkillWrapperExecutor(
             ok = diagSummary.clean,
             query = query,
             appliedEdits = applyResult.applied.size + applyResult.createdFiles.size,
-            importChanges = importResult?.affectedFiles?.size ?: 0,
+            importChanges = importResult?.edits?.size ?: 0,
             diagnostics = diagSummary,
             logFile = SkillLogFile.placeholder(),
         )
