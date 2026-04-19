@@ -9,10 +9,8 @@ The repo is organized as a Gradle multi-module build:
 
 - `analysis-api`: shared contract, JSON-RPC models, descriptor discovery,
   standalone options, errors, and edit validation
-- `kast-cli`: shared operator-facing CLI control plane that builds as the
-  native client and also backs the JVM shell
-- `kast`: wrapper packaging, portable distribution layout, and the JVM-only
-  shell for `internal daemon-run`
+- `kast-cli`: operator-facing CLI control plane, wrapper packaging, portable
+  distribution layout, and the native-image entrypoint
 - `analysis-server`: request dispatch and daemon transport plumbing
 - `backend-standalone`: standalone runtime entrypoint plus Kotlin Analysis API
   integration
@@ -33,16 +31,10 @@ Install with all components (standalone + IntelliJ plugin):
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/install.sh)" -- --components=all
 ```
 
-Install JVM-only variant (for environments without GraalVM native images):
-
-```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/install.sh)" -- --jvm-only
-```
-
 Non-interactive install for CI/automation:
 
 ```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/install.sh)" -- --components=all --jvm-only --non-interactive
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/install.sh)" -- --components=all --non-interactive
 ```
 
 That installs `kast` into your user-local bin directory and adds that directory
@@ -177,12 +169,6 @@ Non-interactive (skip the picker):
 
 ```bash
 kast demo --workspace-root=/path/to/your/kotlin/project --symbol=YourClassName
-```
-
-You can also run the script directly from a checkout:
-
-```bash
-./demo.sh --workspace-root=/path/to/your/kotlin/project
 ```
 
 ## Optional: enable shell completion

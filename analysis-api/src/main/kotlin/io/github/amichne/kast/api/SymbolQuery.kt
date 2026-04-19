@@ -6,4 +6,5 @@ import kotlinx.serialization.Serializable
 data class SymbolQuery(
     val position: FilePosition,
     val includeDeclarationScope: Boolean = false,
+    val includeDocumentation: Boolean = false,
 )

@@ -90,4 +90,25 @@ interface AnalysisBackend {
             message = "Workspace file listing is not available for this backend",
         )
     }
+
+    suspend fun implementations(query: ImplementationsQuery): ImplementationsResult {
+        throw CapabilityNotSupportedException(
+            capability = "IMPLEMENTATIONS",
+            message = "Go to implementation is not available for this backend",
+        )
+    }
+
+    suspend fun codeActions(query: CodeActionsQuery): CodeActionsResult {
+        throw CapabilityNotSupportedException(
+            capability = "CODE_ACTIONS",
+            message = "Code actions are not available for this backend",
+        )
+    }
+
+    suspend fun completions(query: CompletionsQuery): CompletionsResult {
+        throw CapabilityNotSupportedException(
+            capability = "COMPLETIONS",
+            message = "Completions are not available for this backend",
+        )
+    }
 }

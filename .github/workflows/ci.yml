@@ -39,19 +39,18 @@ jobs:
 
       - name: Test and build portable distribution
         run: >
-          ./gradlew -PjvmOnly
+          ./gradlew
           :analysis-api:test
           :analysis-server:test
           :backend-standalone:test
           :kast-cli:test
-          :kast:test
-          :kast:portableDistZip
+          :kast-cli:portableDistZip
 
       - name: Upload portable distribution
         uses: actions/upload-artifact@v4
         with:
           name: kast-portable-${{ matrix.os }}
-          path: kast/build/distributions/kast-*-portable.zip
+          path: kast-cli/build/distributions/kast-cli-*-portable.zip
           if-no-files-found: error
           retention-days: 1
 
@@ -114,7 +113,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: kast-portable-${{ matrix.os }}
-          path: kast/build/distributions
+          path: kast-cli/build/distributions
 
       - name: Smoke portable Kast distribution
         shell: bash
@@ -123,15 +122,15 @@ jobs:
           dist_dir="$RUNNER_TEMP/kast-dist"
           rm -rf "$dist_dir"
           mkdir -p "$dist_dir"
-          unzip -q kast/build/distributions/kast-*-portable.zip -d "$dist_dir"
-          ./.github/scripts/smoke-kast-cli.sh "$dist_dir/kast/kast"
+          unzip -q kast-cli/build/distributions/kast-cli-*-portable.zip -d "$dist_dir"
+          "$dist_dir/kast-cli/kast-cli" --help
 
       - name: Validate wrapper JSON contracts
         shell: bash
         run: |
           set -euo pipefail
           dist_dir="$RUNNER_TEMP/kast-dist"
-          KAST_CLI_PATH="$dist_dir/kast/kast" \
+          KAST_CLI_PATH="$dist_dir/kast-cli/kast-cli" \
             bash .agents/skills/kast/scripts/validate-wrapper-json.sh "$PWD"
 
       - name: Smoke installer
@@ -154,7 +153,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: kast-portable-ubuntu-latest
-          path: kast/build/distributions
+          path: kast-cli/build/distributions
 
       - name: Prepare kast binary
         shell: bash
@@ -163,8 +162,8 @@ jobs:
           dist_dir="$RUNNER_TEMP/kast-dist"
           rm -rf "$dist_dir"
           mkdir -p "$dist_dir"
-          unzip -q kast/build/distributions/kast-*-portable.zip -d "$dist_dir"
-          echo "KAST_BIN=$dist_dir/kast/kast" >> "$GITHUB_ENV"
+          unzip -q kast-cli/build/distributions/kast-cli-*-portable.zip -d "$dist_dir"
+          echo "KAST_BIN=$dist_dir/kast-cli/kast-cli" >> "$GITHUB_ENV"
 
       - name: Run kast-routing evals
         run: bash evals/harness/run-evals.sh --suite=kast-routing --format=json

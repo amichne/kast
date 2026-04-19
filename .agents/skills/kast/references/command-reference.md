@@ -218,7 +218,7 @@ This command auto-starts the daemon when needed unless you add
 }
 ```
 
-`readCapabilities` values: `RESOLVE_SYMBOL` | `FIND_REFERENCES` | `CALL_HIERARCHY` | `DIAGNOSTICS` | `WORKSPACE_FILES`
+`readCapabilities` values: `RESOLVE_SYMBOL` | `FIND_REFERENCES` | `CALL_HIERARCHY` | `TYPE_HIERARCHY` | `SEMANTIC_INSERTION_POINT` | `DIAGNOSTICS` | `FILE_OUTLINE` | `WORKSPACE_SYMBOL_SEARCH` | `WORKSPACE_FILES` | `IMPLEMENTATIONS` | `CODE_ACTIONS` | `COMPLETIONS`
 
 `mutationCapabilities` values: `RENAME` | `APPLY_EDITS`
 
@@ -434,6 +434,79 @@ populated for child edges.
 `MAX_CHILDREN_PER_NODE` | `TIMEOUT`
 
 **Errors:** `NOT_FOUND`, `CAPABILITY_NOT_SUPPORTED` (`CALL_HIERARCHY`).
+
+---
+
+### `implementations`
+
+Find concrete implementations and subclasses for the declaration at a file offset.
+
+**Inline form:**
+```
+kast implementations \
+  --workspace-root=/absolute/path \
+  --file-path=/absolute/path/to/File.kt \
+  --offset=123 \
+  [--max-results=100]
+```
+
+**Request-file form:**
+```
+kast implementations \
+  --workspace-root=/absolute/path \
+  --request-file=/absolute/path/to/query.json
+```
+
+**Errors:** `NOT_FOUND`, `CAPABILITY_NOT_SUPPORTED` (`IMPLEMENTATIONS`).
+
+---
+
+### `code-actions`
+
+Return structured code actions at a file offset, optionally filtered by diagnostic code.
+
+**Inline form:**
+```
+kast code-actions \
+  --workspace-root=/absolute/path \
+  --file-path=/absolute/path/to/File.kt \
+  --offset=123 \
+  [--diagnostic-code=UNRESOLVED_REFERENCE]
+```
+
+**Request-file form:**
+```
+kast code-actions \
+  --workspace-root=/absolute/path \
+  --request-file=/absolute/path/to/query.json
+```
+
+**Errors:** `NOT_FOUND`, `CAPABILITY_NOT_SUPPORTED` (`CODE_ACTIONS`).
+
+---
+
+### `completions`
+
+Return scoped completion candidates at a file offset.
+
+**Inline form:**
+```
+kast completions \
+  --workspace-root=/absolute/path \
+  --file-path=/absolute/path/to/File.kt \
+  --offset=123 \
+  [--max-results=100] \
+  [--kind-filter=FUNCTION,CLASS]
+```
+
+**Request-file form:**
+```
+kast completions \
+  --workspace-root=/absolute/path \
+  --request-file=/absolute/path/to/query.json
+```
+
+**Errors:** `NOT_FOUND`, `CAPABILITY_NOT_SUPPORTED` (`COMPLETIONS`).
 
 ---
 
@@ -716,10 +789,10 @@ overwrite it.
 
 ### `smoke`
 
-Run the portable smoke workflow against a real workspace by invoking the
-maintained `smoke.sh` entrypoint through the current `kast` executable. The
+Run the portable smoke workflow against a real workspace. The
 default report is aggregated JSON on stdout so agents can consume one compact
 result; pass `--format=markdown` when you want a human-friendly report.
+Currently a stub pending native self-recursive implementation.
 
 ```bash
 kast smoke \
@@ -740,9 +813,8 @@ kast smoke \
 | `--symbol=`         | string               | —                         | Match a declaration name                               |
 | `--format=`         | `json` \| `markdown` | `json`                    | Render the aggregated smoke report as JSON or markdown |
 
-`kast smoke` picks the current launcher path automatically and passes it to the
-shell script as `--kast=`. When you run `smoke.sh` directly, you can still pass
-`--kast=` yourself.
+`kast smoke` will use self-recursive invocation to validate the CLI
+against a real workspace. The native implementation is pending.
 
 **Output:** Progress lines on stderr plus an aggregated readiness report on
 stdout. The default stdout shape is JSON.

@@ -14,7 +14,6 @@ import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
-import kotlin.io.path.readText
 import kotlin.io.path.writeText
 
 class PackagedSkillJsonContractTest {
@@ -52,10 +51,13 @@ class PackagedSkillJsonContractTest {
         val kastWrapper = checkNotNull(System.getProperty("kast.wrapper")) {
             "kast.wrapper system property is missing"
         }
+        val runtimeLibs = checkNotNull(System.getProperty("kast.runtime-libs")) {
+            "kast.runtime-libs system property is missing"
+        }
         val configHome = tempDir.resolve("kast-config")
         val wrapperEnv = mapOf(
             "KAST_CLI_PATH" to kastWrapper,
-            "KAST_RUNTIME_LIBS" to Path.of(kastWrapper).parent.parent.resolve("runtime-libs").toString(),
+            "KAST_RUNTIME_LIBS" to runtimeLibs,
             "KAST_CONFIG_HOME" to configHome.toString(),
             "KAST_WORKSPACE_ROOT" to workspaceRoot.toString(),
         )

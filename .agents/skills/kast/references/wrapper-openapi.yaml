@@ -771,6 +771,26 @@ components:
               type: string
             -
               type: null
+        returnType:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        parameters:
+          anyOf:
+            -
+              type: array
+              items:
+                $ref: "#/components/schemas/ParameterInfo"
+            -
+              type: null
+        documentation:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
         containingDeclaration:
           anyOf:
             -
@@ -839,6 +859,25 @@ components:
         - startLine
         - startColumn
         - preview
+    ParameterInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        defaultValue:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        isVararg:
+          type: boolean
+      additionalProperties: false
+      required:
+        - name
+        - type
     SymbolVisibility:
       type: string
       enum:

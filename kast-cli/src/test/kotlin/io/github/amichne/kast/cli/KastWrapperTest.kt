@@ -194,7 +194,7 @@ class KastWrapperTest {
 
             // The K2 analysis session rebuild after refresh may not complete
             // synchronously on slow CI runners, so poll until rename succeeds.
-            waitForCondition("rename after refresh resolves welcome") {
+            waitForCondition("rename after refresh resolves welcome", timeoutMillis = 60_000) {
                 val rename = runCli(
                     "rename",
                     "--workspace-root=$workspace",
@@ -251,7 +251,7 @@ class KastWrapperTest {
                 """.trimIndent() + "\n",
             )
 
-            waitForCondition("watch-driven refresh for welcome") {
+            waitForCondition("watch-driven refresh for welcome", timeoutMillis = 60_000) {
                 val rename = runCli(
                     "rename",
                     "--workspace-root=$workspace",

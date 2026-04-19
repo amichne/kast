@@ -3,10 +3,13 @@ package io.github.amichne.kast.cli
 import io.github.amichne.kast.api.ApplyEditsQuery
 import io.github.amichne.kast.api.CallDirection
 import io.github.amichne.kast.api.CallHierarchyQuery
+import io.github.amichne.kast.api.CodeActionsQuery
+import io.github.amichne.kast.api.CompletionsQuery
 import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.FileOutlineQuery
 import io.github.amichne.kast.api.FilePosition
 import io.github.amichne.kast.api.ImportOptimizeQuery
+import io.github.amichne.kast.api.ImplementationsQuery
 import io.github.amichne.kast.api.ReferencesQuery
 import io.github.amichne.kast.api.RefreshQuery
 import io.github.amichne.kast.api.RenameQuery
@@ -98,7 +101,10 @@ internal class CliCommandParser(
                 )
                 listOf("diagnostics") -> CliCommand.Diagnostics(parsed.runtimeOptions(), parsed.diagnosticsQuery(json))
                 listOf("outline") -> CliCommand.FileOutline(parsed.runtimeOptions(), parsed.fileOutlineQuery(json))
-            listOf("workspace-symbol") -> CliCommand.WorkspaceSymbol(parsed.withoutOption("max-results").runtimeOptions(), parsed.workspaceSymbolQuery(json))
+                listOf("workspace-symbol") -> CliCommand.WorkspaceSymbol(parsed.withoutOption("max-results").runtimeOptions(), parsed.workspaceSymbolQuery(json))
+                listOf("implementations") -> CliCommand.Implementations(parsed.withoutOption("max-results").runtimeOptions(), parsed.implementationsQuery(json))
+                listOf("code-actions") -> CliCommand.CodeActions(parsed.runtimeOptions(), parsed.codeActionsQuery(json))
+                listOf("completions") -> CliCommand.Completions(parsed.withoutOption("max-results").runtimeOptions(), parsed.completionsQuery(json))
                 listOf("rename") -> CliCommand.Rename(parsed.runtimeOptions(), parsed.renameQuery(json))
                 listOf("optimize-imports") -> CliCommand.ImportOptimize(
                     parsed.runtimeOptions(),
@@ -212,6 +218,7 @@ internal data class ParsedArguments(
                 offset = requireInt("offset"),
             ),
             includeDeclarationScope = optionalBoolean("include-body", false),
+            includeDocumentation = optionalBoolean("include-documentation", false),
         )
     }
 
@@ -339,6 +346,62 @@ internal data class ParsedArguments(
         WorkspaceFilesQuery(
             moduleName = options["module-name"],
             includeFiles = optionalBoolean("include-files", false),
+        )
+    }
+
+    fun implementationsQuery(json: Json): ImplementationsQuery = requestOrFile(
+        serializer = ImplementationsQuery.serializer(),
+        requestFileKey = "request-file",
+        json = json,
+    ) {
+        ImplementationsQuery(
+            position = FilePosition(
+                filePath = absoluteFilePath(requireOption("file-path")),
+                offset = requireInt("offset"),
+            ),
+            maxResults = optionalInt("max-results", 100),
+        )
+    }
+
+    fun codeActionsQuery(json: Json): CodeActionsQuery = requestOrFile(
+        serializer = CodeActionsQuery.serializer(),
+        requestFileKey = "request-file",
+        json = json,
+    ) {
+        CodeActionsQuery(
+            position = FilePosition(
+                filePath = absoluteFilePath(requireOption("file-path")),
+                offset = requireInt("offset"),
+            ),
+            diagnosticCode = options["diagnostic-code"]?.takeIf { it.isNotBlank() },
+        )
+    }
+
+    fun completionsQuery(json: Json): CompletionsQuery = requestOrFile(
+        serializer = CompletionsQuery.serializer(),
+        requestFileKey = "request-file",
+        json = json,
+    ) {
+        CompletionsQuery(
+            position = FilePosition(
+                filePath = absoluteFilePath(requireOption("file-path")),
+                offset = requireInt("offset"),
+            ),
+            maxResults = optionalInt("max-results", 100),
+            kindFilter = options["kind-filter"]
+                ?.split(",")
+                ?.map(String::trim)
+                ?.filter(String::isNotBlank)
+                ?.map { raw ->
+                    SymbolKind.entries.firstOrNull { it.name.equals(raw, ignoreCase = true) }
+                        ?: throw CliFailure(
+                            code = "CLI_USAGE",
+                            message = "Unknown symbol kind in --kind-filter: $raw. " +
+                                "Valid values: ${SymbolKind.entries.joinToString { it.name }}",
+                        )
+                }
+                ?.toSet()
+                ?.takeIf { it.isNotEmpty() },
         )
     }
 

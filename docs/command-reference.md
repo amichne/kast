@@ -12,7 +12,7 @@ entrypoint.
 Note: If you use the packaged `kast` skill or the repo-local launcher resolver,
 it prefers the system `PATH` by default. You can override that lookup with
 `KAST_CLI_PATH` (explicit executable) or `KAST_SOURCE_ROOT` (local build
-outputs plus the minimal `:kast:writeWrapperScript` auto-build path when Java
+outputs plus the minimal `:kast-cli:writeWrapperScript` auto-build path when Java
 21+ is available). See the Get started guide for copyable examples.
 
 ## Global help and command syntax
@@ -81,6 +81,9 @@ daemon implicitly.
 | `resolve` | Resolve the symbol at a file position | Inline flags or `--request-file` | Inline form needs `--file-path` and `--offset` |
 | `references` | Find references for the symbol at a file position | Inline flags or `--request-file` | Inline form also supports `--include-declaration=true` |
 | `call-hierarchy` | Expand a bounded incoming or outgoing call tree | Inline flags or `--request-file` | Inline form needs `--file-path`, `--offset`, and `--direction`; optional bounds control truncation |
+| `implementations` | Find concrete implementations/subclasses for a declaration | Inline flags or `--request-file` | Inline form needs `--file-path` and `--offset`; optional `--max-results` |
+| `completions` | List scoped completion candidates at a position | Inline flags or `--request-file` | Optional `--kind-filter` and `--max-results` |
+| `code-actions` | Get structured code actions for a position | Inline flags or `--request-file` | Optional `--diagnostic-code` filter |
 | `diagnostics` | Run diagnostics for one or more files | Inline flags or `--request-file` | Inline form uses comma-separated absolute file paths |
 | `outline` | Get a hierarchical file outline | `--file-path` (absolute, required), `--workspace-root`, optional `--wait-timeout-ms` | Returns a nested tree of named declarations |
 | `workspace-symbol` | Search the workspace for symbols by name | `--pattern` (required), `--workspace-root`, optional `--regex`, `--kind`, `--max-results` | Case-insensitive substring by default; pass `--regex=true` for pattern matching |
@@ -107,7 +110,7 @@ the current workspace before you trust a local build, install, or agent setup.
 
 | Command | Purpose | Key options | Notes |
 | --- | --- | --- | --- |
-| `smoke` | Run the portable smoke workflow against the current CLI and a real workspace | Optional `--workspace-root`, `--file`, `--source-set`, `--symbol`, `--format=markdown` | Defaults `--workspace-root` to the current working directory, emits an aggregated JSON readiness report on stdout, and shells out to the maintained `smoke.sh` entrypoint with the current `kast` launcher |
+| `smoke` | Run the portable smoke workflow against the current CLI and a real workspace | Optional `--workspace-root`, `--file`, `--source-set`, `--symbol`, `--format=markdown` | Defaults `--workspace-root` to the current working directory, emits an aggregated JSON readiness report on stdout. Currently a stub pending native implementation. |
 
 ## Workspace refresh behavior
 
@@ -124,8 +127,9 @@ recovery path when you need to force the daemon to rescan state.
 
 ## Current support boundary
 
-The public command surface is intentionally small. `call-hierarchy`, `outline`,
-and `workspace-symbol` are available, but each is intentionally bounded.
+The public command surface is intentionally small. `call-hierarchy`,
+`implementations`, `completions`, `code-actions`, `outline`, and
+`workspace-symbol` are available, but each is intentionally bounded.
 `call-hierarchy` uses `--direction` plus the optional depth, total-call,
 child-count, timeout, and cache flags; read `stats` or per-node `truncation`
 fields before you claim the tree is complete. `outline` covers named

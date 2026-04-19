@@ -6,12 +6,18 @@ import io.github.amichne.kast.api.BackendCapabilities
 import io.github.amichne.kast.api.CallHierarchyQuery
 import io.github.amichne.kast.api.CallHierarchyResult
 import io.github.amichne.kast.api.CapabilityNotSupportedException
+import io.github.amichne.kast.api.CodeActionsQuery
+import io.github.amichne.kast.api.CodeActionsResult
+import io.github.amichne.kast.api.CompletionsQuery
+import io.github.amichne.kast.api.CompletionsResult
 import io.github.amichne.kast.api.DiagnosticsQuery
 import io.github.amichne.kast.api.DiagnosticsResult
 import io.github.amichne.kast.api.FileOutlineQuery
 import io.github.amichne.kast.api.FileOutlineResult
 import io.github.amichne.kast.api.ImportOptimizeQuery
 import io.github.amichne.kast.api.ImportOptimizeResult
+import io.github.amichne.kast.api.ImplementationsQuery
+import io.github.amichne.kast.api.ImplementationsResult
 import io.github.amichne.kast.api.MutationCapability
 import io.github.amichne.kast.api.ReadCapability
 import io.github.amichne.kast.api.RefreshQuery
@@ -167,6 +173,42 @@ internal class CliService(
         requireReadCapability(runtime.selected, ReadCapability.WORKSPACE_FILES)
         return attachedResult(
             payload = rpcClient.post(runtime.selected.descriptor, "workspace/files", query),
+            runtime = runtime,
+        )
+    }
+
+    suspend fun implementations(
+        options: RuntimeCommandOptions,
+        query: ImplementationsQuery,
+    ): RuntimeAttachedResult<ImplementationsResult> {
+        val runtime = runtimeManager.ensureRuntime(options)
+        requireReadCapability(runtime.selected, ReadCapability.IMPLEMENTATIONS)
+        return attachedResult(
+            payload = rpcClient.post(runtime.selected.descriptor, "implementations", query),
+            runtime = runtime,
+        )
+    }
+
+    suspend fun codeActions(
+        options: RuntimeCommandOptions,
+        query: CodeActionsQuery,
+    ): RuntimeAttachedResult<CodeActionsResult> {
+        val runtime = runtimeManager.ensureRuntime(options)
+        requireReadCapability(runtime.selected, ReadCapability.CODE_ACTIONS)
+        return attachedResult(
+            payload = rpcClient.post(runtime.selected.descriptor, "code-actions", query),
+            runtime = runtime,
+        )
+    }
+
+    suspend fun completions(
+        options: RuntimeCommandOptions,
+        query: CompletionsQuery,
+    ): RuntimeAttachedResult<CompletionsResult> {
+        val runtime = runtimeManager.ensureRuntime(options)
+        requireReadCapability(runtime.selected, ReadCapability.COMPLETIONS)
+        return attachedResult(
+            payload = rpcClient.post(runtime.selected.descriptor, "completions", query),
             runtime = runtime,
         )
     }

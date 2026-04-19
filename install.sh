@@ -404,15 +404,13 @@ prompt_components() {
 print_config_summary() {
   local install_root="$1"
   local bin_dir="$2"
-  local jvm_only_mode="$3"
-  local components="$4"
-  local rc_file="$5"
+  local components="$3"
+  local rc_file="$4"
 
   log_section "Install summary"
   log "Install root:   ${install_root}"
   log "Binary path:    ${bin_dir}/kast"
   log "Config dir:     ${install_root}/current"
-  log "JVM-only mode:  ${jvm_only_mode}"
   log "Components:     ${components}"
   if [[ -n "$rc_file" ]]; then
     log "Shell RC:       ${rc_file}"
@@ -421,11 +419,10 @@ print_config_summary() {
 
 main() {
   local components=""
-  local jvm_only="false"
   local local_build="false"
   local non_interactive="false"
 
-  # Parse CLI arguments (supports one-liner: -- --components=all --jvm-only)
+  # Parse CLI arguments (supports one-liner: -- --components=all)
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --components=*)
@@ -436,10 +433,6 @@ main() {
         [[ $# -ge 2 ]] || die "Missing value for --components"
         components="$2"
         shift 2
-        ;;
-      --jvm-only)
-        jvm_only="true"
-        shift
         ;;
       --local)
         local_build="true"
@@ -457,9 +450,8 @@ Install the Kast CLI and optional components.
 
 Options:
   --components=<list>   Comma-separated: standalone,intellij,all (default: standalone)
-  --jvm-only            Install JVM-only variant (no native binary)
   --local               Install from local dist/ artifacts built by build.sh
-                        (uses dist/cli.zip or dist/cli-jvm.zip + dist/plugin.zip)
+                        (uses dist/cli.zip + dist/plugin.zip)
   --non-interactive     Skip all interactive prompts
   --help, -h            Show this help
 USAGE
@@ -477,10 +469,6 @@ USAGE
   need_tool curl
   need_tool python3
 
-  local java_bin
-  java_bin="$(resolve_java_bin)"
-  assert_java_21 "$java_bin"
-
   local release_repo
   local platform_id
   local install_root
@@ -494,9 +482,6 @@ USAGE
 
   release_repo="$(resolve_release_repo)"
   platform_id="$(detect_platform_id)"
-  if [[ "$jvm_only" == "true" ]]; then
-    platform_id="${platform_id}-jvm"
-  fi
   install_root="${KAST_INSTALL_ROOT:-${HOME}/.local/share/kast}"
   bin_dir="${KAST_BIN_DIR:-${HOME}/.local/bin}"
   shell_name="$(resolve_shell_name)"
@@ -527,12 +512,7 @@ USAGE
   local local_plugin_archive=""
   if [[ "$local_build" == "true" ]]; then
     if [[ "$install_standalone" == "true" && -z "${KAST_ARCHIVE_PATH:-}" ]]; then
-      local dist_archive
-      if [[ "$jvm_only" == "true" ]]; then
-        dist_archive="${SCRIPT_DIR}/dist/cli-jvm.zip"
-      else
-        dist_archive="${SCRIPT_DIR}/dist/cli.zip"
-      fi
+      local dist_archive="${SCRIPT_DIR}/dist/cli.zip"
       [[ -f "$dist_archive" ]] || die "Local build archive not found at ${dist_archive}. Run ./build.sh first."
       KAST_ARCHIVE_PATH="$dist_archive"
     fi
@@ -641,23 +621,19 @@ USAGE
     fi
 
     extract_zip_archive "$archive_path" "$staging_dir"
-    [[ -d "${staging_dir}/kast" ]] || die "Archive ${archive_name} did not contain the expected kast/ directory"
+
+    # The archive root is kast-cli/ — rename to kast/ for the installed layout.
+    if [[ -d "${staging_dir}/kast-cli" ]]; then
+      mv "${staging_dir}/kast-cli" "${staging_dir}/kast"
+    fi
+    [[ -d "${staging_dir}/kast" ]] || die "Archive ${archive_name} did not contain the expected kast-cli/ or kast/ directory"
 
     rm -rf "$release_dir"
     mkdir -p "$(dirname -- "$release_dir")"
     mv "${staging_dir}/kast" "$release_dir"
 
-    [[ -f "${release_dir}/kast" ]] || die "Installed archive did not contain the kast launcher"
-
-    if [[ "$jvm_only" != "true" ]]; then
-      [[ -f "${release_dir}/bin/kast" ]] || die "Installed archive did not contain the kast native binary"
-      chmod +x "${release_dir}/kast" "${release_dir}/bin/kast"
-    else
-      chmod +x "${release_dir}/kast"
-      if [[ -f "${release_dir}/bin/kast" ]]; then
-        chmod +x "${release_dir}/bin/kast"
-      fi
-    fi
+    [[ -f "${release_dir}/kast-cli" ]] || die "Installed archive did not contain the kast-cli launcher"
+    chmod +x "${release_dir}/kast-cli"
 
     write_install_metadata \
       "${release_dir}/.install-metadata.json" \
@@ -672,7 +648,7 @@ USAGE
     cat >"$bin_link" <<EOF
 #!/usr/bin/env bash
 set -euo pipefail
-exec "${install_root}/current/kast" "\$@"
+exec "${install_root}/current/kast-cli" "\$@"
 EOF
     chmod +x "$bin_link"
     log_success "Installed ${archive_name} into ${release_dir}"
@@ -704,7 +680,7 @@ EOF
 
   local rc_file
   rc_file="$(resolve_shell_rc_file)"
-  print_config_summary "$install_root" "$bin_dir" "$jvm_only" "$components" "$rc_file"
+  print_config_summary "$install_root" "$bin_dir" "$components" "$rc_file"
 
   log_section "Ready"
   if [[ "$install_standalone" == "true" ]]; then

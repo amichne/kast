@@ -38,7 +38,7 @@ jobs:
         run: ./gradlew --no-daemon assemble
 
       - name: Build kast wrapper
-        run: ./gradlew --no-daemon :kast:writeWrapperScript
+        run: ./gradlew --no-daemon :kast-cli:writeWrapperScript
 
       - name: Export KAST_CLI_PATH
-        run: echo "KAST_CLI_PATH=$(pwd)/kast/build/install/kast/bin/kast" >> "$GITHUB_ENV"
+        run: echo "KAST_CLI_PATH=$(pwd)/kast-cli/build/scripts/kast-cli" >> "$GITHUB_ENV"

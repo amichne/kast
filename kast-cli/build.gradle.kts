@@ -1,8 +1,3 @@
-import org.gradle.api.tasks.Sync
-import org.gradle.api.tasks.testing.Test
-import org.gradle.api.tasks.JavaExec
-import org.gradle.language.jvm.tasks.ProcessResources
-
 plugins {
     id("kast.standalone-serialization-app")
     alias(libs.plugins.graalvm.native)
@@ -77,10 +72,21 @@ tasks.named<ProcessResources>("processResources") {
 }
 
 tasks.named<Test>("test") {
-    dependsOn(":kast:writeWrapperScript")
+    dependsOn(tasks.named("writeWrapperScript"))
+    dependsOn(":backend-standalone:syncRuntimeLibs")
     systemProperty(
         "kast.wrapper",
-        project(":kast").layout.buildDirectory.file("scripts/kast").get().asFile.absolutePath,
+        layout.buildDirectory.file("scripts/kast-cli").get().asFile.absolutePath,
+    )
+    systemProperty(
+        "kast.runtime-libs",
+        project(":backend-standalone").layout.buildDirectory.dir("runtime-libs").get().asFile.absolutePath,
+    )
+    // The wrapper script spawns a daemon that needs backend-standalone jars on its classpath.
+    // KAST_RUNTIME_LIBS propagates through the subprocess chain to ProcessLauncher.
+    environment(
+        "KAST_RUNTIME_LIBS",
+        project(":backend-standalone").layout.buildDirectory.dir("runtime-libs").get().asFile.absolutePath,
     )
 }
 
@@ -93,11 +99,34 @@ tasks.register<JavaExec>("generateWrapperOpenApiSchema") {
 }
 
 val stageNativeRuntimeLibs by tasks.registering(Sync::class) {
-    dependsOn(":kast:syncRuntimeLibs")
-    from(project(":kast").layout.buildDirectory.dir("runtime-libs"))
+    dependsOn(":backend-standalone:syncRuntimeLibs")
+    from(project(":backend-standalone").layout.buildDirectory.dir("runtime-libs"))
     into(layout.buildDirectory.dir("native/nativeCompile/runtime-libs"))
 }
 
 tasks.named("nativeCompile").configure {
     finalizedBy(stageNativeRuntimeLibs)
+}
+
+tasks.named<Sync>("syncPortableDist") {
+    val backendRuntimeLibsDir = project(":backend-standalone").layout.buildDirectory.dir("runtime-libs")
+    from(backendRuntimeLibsDir) {
+        into("runtime-libs")
+    }
+    dependsOn(":backend-standalone:syncRuntimeLibs")
+
+    doLast {
+        val distDir = project.layout.buildDirectory.dir("portable-dist/${project.name}").get().asFile
+        val classpathFile = distDir.resolve("runtime-libs/classpath.txt")
+        check(classpathFile.exists()) {
+            "syncPortableDist: runtime-libs/classpath.txt is missing from $distDir"
+        }
+        val entries = classpathFile.readLines().filter(String::isNotEmpty)
+        check(entries.any { "backend-standalone" in it }) {
+            "syncPortableDist: classpath.txt must reference backend-standalone jars for the daemon; found: $entries"
+        }
+        check(entries.none { it.startsWith("kast-cli") }) {
+            "syncPortableDist: classpath.txt must not reference kast-cli jars (daemon doesn't need them); found: $entries"
+        }
+    }
 }

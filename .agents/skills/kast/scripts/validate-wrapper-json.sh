@@ -24,24 +24,27 @@ EOF
 export KAST_SOURCE_ROOT="${REQUEST_ROOT}"
 export KAST_WORKSPACE_ROOT="${WORKSPACE_ROOT}"
 export KAST_CONFIG_HOME="${TMP_DIR}/kast-config"
-if [[ -d "${REQUEST_ROOT}/kast/build/runtime-libs" ]]; then
-    export KAST_RUNTIME_LIBS="${REQUEST_ROOT}/kast/build/runtime-libs"
+if [[ -d "${REQUEST_ROOT}/kast-cli/build/runtime-libs" ]]; then
+    export KAST_RUNTIME_LIBS="${REQUEST_ROOT}/kast-cli/build/runtime-libs"
 fi
 
 SAMPLE_SYMBOL="greet"
 SAMPLE_FILE="${WORKSPACE_ROOT}/src/main/kotlin/sample/Greeter.kt"
 MISSING_SYMBOL="DefinitelyMissingSymbolForWrapperValidation"
 SUCCESS_DIAGNOSTICS_FILE="${SAMPLE_FILE}"
-FAILURE_DIAGNOSTICS_FILE="${WORKSPACE_ROOT}/definitely-missing-file.kt"
 DIAGNOSTICS_REQUEST="${TMP_DIR}/diagnostics-request.json"
+# Use an empty filePaths array to trigger request_validation failure.
+# A missing-file path is NOT used here because per-file error isolation
+# (PR #70) absorbs file-not-found into an ANALYSIS_FAILURE diagnostic
+# and still exits 0; only a structurally invalid request reliably fails.
 DIAGNOSTICS_FAILURE_REQUEST="${TMP_DIR}/diagnostics-failure-request.json"
 
 cat >"${DIAGNOSTICS_REQUEST}" <<EOF
 {"filePaths":["${SUCCESS_DIAGNOSTICS_FILE}"]}
 EOF
 
-cat >"${DIAGNOSTICS_FAILURE_REQUEST}" <<EOF
-{"filePaths":["${FAILURE_DIAGNOSTICS_FILE}"]}
+cat >"${DIAGNOSTICS_FAILURE_REQUEST}" <<'EOF'
+{"filePaths":[]}
 EOF
 
 declare -a CHECKS=(

@@ -163,6 +163,7 @@ class StandaloneAnalysisBackendResolveSymbolTest {
             content = $$"""
                 package sample
 
+                /** Returns a greeting for the provided name. */
                 fun greet(name: String): String = "hi $name"
             """.trimIndent() + "\n",
         )
@@ -178,9 +179,38 @@ class StandaloneAnalysisBackendResolveSymbolTest {
             assertNotNull(result.symbol.declarationScope)
             val scope = result.symbol.declarationScope!!
             assertEquals(3, scope.startLine)
-            assertEquals(3, scope.endLine)
+            assertEquals(4, scope.endLine)
             assertNotNull(scope.sourceText)
             assertTrue(scope.sourceText!!.contains("fun greet"))
+        }
+    }
+
+    @Test
+    fun `resolve symbol includes documentation and parameters when requested`(): TestResult = runTest {
+        val declarationFile = writeFile(
+            relativePath = "src/main/kotlin/sample/Greeter.kt",
+            content = $$"""
+                package sample
+
+                /** Returns a greeting for the provided name. */
+                fun greet(name: String): String = "hi $name"
+            """.trimIndent() + "\n",
+        )
+        val queryOffset = Files.readString(declarationFile).indexOf("greet")
+        withBackend { backend ->
+            val result = backend.resolveSymbol(
+                SymbolQuery(
+                    position = FilePosition(filePath = declarationFile.toString(), offset = queryOffset),
+                    includeDocumentation = true,
+                ),
+            )
+
+            assertTrue(checkNotNull(result.symbol.documentation).contains("Returns a greeting"))
+            val parameters = checkNotNull(result.symbol.parameters)
+            assertEquals(1, parameters.size)
+            assertEquals("name", parameters.first().name)
+            assertEquals("String", parameters.first().type)
+            assertEquals("String", result.symbol.returnType)
         }
     }
 
