@@ -16,6 +16,13 @@ internal data class DemoOptions(
      *    Kast plugin; fails fast when no IntelliJ runtime is available.
      */
     val backend: String? = null,
+    /**
+     * When `true`, the demo renders fully-qualified names and workspace-
+     * relative paths everywhere (symbol identity, walker tree, declaration
+     * headers). When `false` (default), simple names and bare file names are
+     * used, keeping tree rows readable in a standard terminal width.
+     */
+    val verbose: Boolean = false,
 )
 
 /**

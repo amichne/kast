@@ -561,6 +561,14 @@ internal data class ParsedArguments(
                 message = "Unknown value for --backend-name: ${options["backend-name"]}. Valid values: auto, standalone, intellij.",
             )
         }
+        val verbose = when (options["verbose"]?.lowercase()) {
+            null, "", "true", "on", "yes", "1" -> options.containsKey("verbose")
+            "false", "off", "no", "0" -> false
+            else -> throw CliFailure(
+                code = "CLI_USAGE",
+                message = "Unknown value for --verbose: ${options["verbose"]}. Valid values: true, false.",
+            )
+        }
         return DemoOptions(
             workspaceRoot = options["workspace-root"]
                 ?.takeIf(String::isNotBlank)
@@ -569,6 +577,7 @@ internal data class ParsedArguments(
             symbolFilter = options["symbol"]?.takeIf(String::isNotBlank),
             walkMode = walkMode,
             backend = backend,
+            verbose = verbose,
         )
     }
 

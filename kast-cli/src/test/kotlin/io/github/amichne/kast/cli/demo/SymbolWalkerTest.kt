@@ -40,7 +40,8 @@ class SymbolWalkerTest {
         val transcript = io.emitted.joinToString("\n")
         assertTrue(transcript.contains("Act 3 · walk the symbol graph"), transcript)
         assertTrue(transcript.contains("current node"), transcript)
-        assertTrue(transcript.contains(root.fqName), transcript)
+        // Default display is simple name + bare file name; verbose FQCN paths are gated behind --verbose.
+        assertTrue(transcript.contains(root.fqName.substringAfterLast('.')), transcript)
     }
 
     @Test
@@ -79,7 +80,8 @@ class SymbolWalkerTest {
         }
         assertEquals(1, summary.hops)
         val transcript = io.emitted.joinToString("\n")
-        assertTrue(transcript.contains(refTarget.fqName), transcript)
+        // Default renders the simple name; verbose renders the FQCN.
+        assertTrue(transcript.contains(refTarget.fqName.substringAfterLast('.')), transcript)
     }
 
     @Test
@@ -103,6 +105,113 @@ class SymbolWalkerTest {
         }
         assertEquals(0, summary.hops)
         assertTrue(io.emitted.joinToString("\n").contains("out of range"))
+    }
+
+    @Test
+    fun `cursor card uses tree prefixes for references callers and callees`() {
+        val root = symbol("app.Root", tempDir.resolve("Root.kt"))
+        val refLoc = Location(
+            filePath = tempDir.resolve("Caller.kt").toString(),
+            startOffset = 10,
+            endOffset = 14,
+            startLine = 2,
+            startColumn = 3,
+            preview = "Root()",
+        )
+        val graph = RecordingGraph(
+            resolves = mapOf(root.location.asKey() to Result.success(root)),
+            references = mapOf(root.location.asKey() to Result.success(listOf(refLoc))),
+            callers = mapOf(root.location.asKey() to Result.success(emptyList())),
+            callees = mapOf(root.location.asKey() to Result.success(emptyList())),
+        )
+        val io = ScriptedIO(inputs = listOf("q"))
+        runBlocking {
+            SymbolWalker(
+                workspaceRoot = tempDir,
+                graph = graph,
+                io = io,
+                renderer = DemoRenderer(CliTextTheme.ansi(), ansiEnabled = false),
+                grepRunner = NoopGrepRunner,
+            ).run(root)
+        }
+        val transcript = io.emitted.joinToString("\n")
+        // Non-empty branch gets the tree elbow + token prefix.
+        assertTrue(transcript.contains("├── [r 1]") || transcript.contains("└── [r 1]"), transcript)
+        // Empty branches fall through to the terminal elbow.
+        assertTrue(transcript.contains("└── no callers found at depth 1"), transcript)
+        assertTrue(transcript.contains("└── no callees found at depth 1"), transcript)
+    }
+
+    @Test
+    fun `choose result takes priority over prompt input`() {
+        val root = symbol("app.Root", tempDir.resolve("Root.kt"))
+        val graph = RecordingGraph(
+            resolves = mapOf(root.location.asKey() to Result.success(root)),
+            references = mapOf(root.location.asKey() to Result.success(emptyList())),
+            callers = mapOf(root.location.asKey() to Result.success(emptyList())),
+            callees = mapOf(root.location.asKey() to Result.success(emptyList())),
+        )
+        // If choose returned "q" the walker must exit without ever reading from prompt.
+        val io = ChoosingIO(chooseReturns = listOf("q"), promptInputs = emptyList())
+        runBlocking {
+            SymbolWalker(
+                workspaceRoot = tempDir,
+                graph = graph,
+                io = io,
+                renderer = DemoRenderer(CliTextTheme.ansi(), ansiEnabled = false),
+                grepRunner = NoopGrepRunner,
+            ).run(root)
+        }
+        assertEquals(0, io.promptCalls)
+        assertEquals(1, io.chooseCalls)
+    }
+
+    @Test
+    fun `walker falls back to prompt when choose returns null`() {
+        val root = symbol("app.Root", tempDir.resolve("Root.kt"))
+        val graph = RecordingGraph(
+            resolves = mapOf(root.location.asKey() to Result.success(root)),
+            references = mapOf(root.location.asKey() to Result.success(emptyList())),
+            callers = mapOf(root.location.asKey() to Result.success(emptyList())),
+            callees = mapOf(root.location.asKey() to Result.success(emptyList())),
+        )
+        val io = ChoosingIO(chooseReturns = listOf<String?>(null), promptInputs = listOf("q"))
+        runBlocking {
+            SymbolWalker(
+                workspaceRoot = tempDir,
+                graph = graph,
+                io = io,
+                renderer = DemoRenderer(CliTextTheme.ansi(), ansiEnabled = false),
+                grepRunner = NoopGrepRunner,
+            ).run(root)
+        }
+        assertEquals(1, io.chooseCalls)
+        assertEquals(1, io.promptCalls)
+    }
+
+    @Test
+    fun `verbose display shows fully-qualified names and workspace-relative paths`() {
+        val root = symbol("app.nested.Root", tempDir.resolve("nested/Root.kt"))
+        val graph = RecordingGraph(
+            resolves = mapOf(root.location.asKey() to Result.success(root)),
+            references = mapOf(root.location.asKey() to Result.success(emptyList())),
+            callers = mapOf(root.location.asKey() to Result.success(emptyList())),
+            callees = mapOf(root.location.asKey() to Result.success(emptyList())),
+        )
+        val io = ScriptedIO(inputs = listOf("q"))
+        runBlocking {
+            SymbolWalker(
+                workspaceRoot = tempDir,
+                graph = graph,
+                io = io,
+                renderer = DemoRenderer(CliTextTheme.ansi(), ansiEnabled = false),
+                display = SymbolDisplay(workspaceRoot = tempDir, verbose = true),
+                grepRunner = NoopGrepRunner,
+            ).run(root)
+        }
+        val transcript = io.emitted.joinToString("\n")
+        assertTrue(transcript.contains(root.fqName), transcript)
+        assertTrue(transcript.contains("nested/Root.kt") || transcript.contains("nested\\Root.kt"), transcript)
     }
 
     @Test
@@ -181,6 +290,34 @@ class SymbolWalkerTest {
         }
 
         override fun prompt(): String? = queue.removeFirstOrNull()
+    }
+
+    /**
+     * Records invocations of [choose] vs [prompt] so we can prove the walker
+     * prefers structured selection when available and only falls back to a
+     * raw prompt read when the picker returns null.
+     */
+    private class ChoosingIO(
+        chooseReturns: List<String?>,
+        promptInputs: List<String>,
+    ) : WalkerIO {
+        private val chooseQueue: ArrayDeque<String?> = ArrayDeque(chooseReturns)
+        private val promptQueue: ArrayDeque<String> = ArrayDeque(promptInputs)
+        var chooseCalls: Int = 0
+            private set
+        var promptCalls: Int = 0
+            private set
+
+        override fun emit(line: String) { /* discard */ }
+        override fun prompt(): String? {
+            promptCalls += 1
+            return promptQueue.removeFirstOrNull()
+        }
+
+        override fun choose(header: String, choices: List<WalkerMenuChoice>): String? {
+            chooseCalls += 1
+            return chooseQueue.removeFirstOrNull()
+        }
     }
 
     private object NoopGrepRunner : GrepRunner {

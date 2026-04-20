@@ -323,6 +323,13 @@ internal object CliCommandCatalog {
         description = "Run the interactive symbol-graph walker after Act 2. Defaults to auto: on when stdin is a TTY and --symbol is not set.",
     )
 
+    private val demoVerboseOption = CliOptionMetadata(
+        key = "verbose",
+        usage = "--verbose=true",
+        description = "Render fully-qualified names and workspace-relative paths everywhere. Default: simple names and bare file names.",
+        completionKind = CliOptionCompletionKind.BOOLEAN,
+    )
+
     private val commands: List<CliCommandMetadata> = listOf(
         CliCommandMetadata(
             path = listOf("workspace", "status"),
@@ -778,15 +785,16 @@ internal object CliCommandCatalog {
             description = "Picks a symbol from your workspace — via --symbol or the built-in terminal chooser — and runs grep-style text search alongside kast resolve, references, rename, and call-hierarchy so you can see the difference side by side. " +
                 "Uses the live IntelliJ plugin backend when one is available and auto-starts the standalone JVM daemon otherwise; pin with --backend-name=intellij|standalone.",
             usages = listOf(
-                "$CLI_EXECUTABLE_NAME demo [--workspace-root=/absolute/path/to/workspace] [--symbol=CliService] [--walk=auto|true|false] [--backend-name=intellij|standalone]",
+                "$CLI_EXECUTABLE_NAME demo [--workspace-root=/absolute/path/to/workspace] [--symbol=CliService] [--walk=auto|true|false] [--backend-name=intellij|standalone] [--verbose=true]",
             ),
-            options = listOf(workspaceRootOption, demoSymbolOption, demoWalkOption, backendNameOption),
+            options = listOf(workspaceRootOption, demoSymbolOption, demoWalkOption, backendNameOption, demoVerboseOption),
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME demo",
                 "$CLI_EXECUTABLE_NAME demo --workspace-root=/absolute/path/to/workspace",
                 "$CLI_EXECUTABLE_NAME demo --workspace-root=/absolute/path/to/workspace --symbol=CliService",
                 "$CLI_EXECUTABLE_NAME demo --walk=true  # always runs the interactive symbol-graph walker",
                 "$CLI_EXECUTABLE_NAME demo --backend-name=intellij  # target a running IntelliJ IDEA plugin backend",
+                "$CLI_EXECUTABLE_NAME demo --verbose=true  # render fully-qualified names and full paths",
             ),
         ),
         CliCommandMetadata(
