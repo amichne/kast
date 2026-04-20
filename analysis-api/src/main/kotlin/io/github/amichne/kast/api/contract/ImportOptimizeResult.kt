@@ -15,6 +15,6 @@ data class ImportOptimizeResult(
     val fileHashes: List<FileHash>,
     @DocField(description = "Absolute paths of all files that were modified.")
     val affectedFiles: List<String>,
-    @DocField(description = "Protocol schema version for forward compatibility.")
+    @DocField(description = "Protocol schema version for forward compatibility.", serverManaged = true)
     val schemaVersion: Int = SCHEMA_VERSION,
 )

@@ -13,7 +13,7 @@ data class TypeHierarchyResult(
     val root: TypeHierarchyNode,
     @DocField(description = "Traversal statistics including truncation indicators.")
     val stats: TypeHierarchyStats,
-    @DocField(description = "Protocol schema version for forward compatibility.")
+    @DocField(description = "Protocol schema version for forward compatibility.", serverManaged = true)
     val schemaVersion: Int = SCHEMA_VERSION,
 )
 

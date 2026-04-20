@@ -13,11 +13,11 @@ data class CallHierarchyQuery(
     val position: FilePosition,
     @DocField(description = "INCOMING for callers or OUTGOING for callees.")
     val direction: CallDirection,
-    @DocField(description = "Maximum tree depth to traverse.")
+    @DocField(description = "Maximum tree depth to traverse.", defaultValue = "3")
     val depth: Int = 3,
-    @DocField(description = "Maximum total call nodes to return across the entire tree.")
+    @DocField(description = "Maximum total call nodes to return across the entire tree.", defaultValue = "256")
     val maxTotalCalls: Int = 256,
-    @DocField(description = "Maximum direct children per node before truncation.")
+    @DocField(description = "Maximum direct children per node before truncation.", defaultValue = "64")
     val maxChildrenPerNode: Int = 64,
     @DocField(description = "Optional timeout in milliseconds for the traversal.")
     val timeoutMillis: Long? = null,

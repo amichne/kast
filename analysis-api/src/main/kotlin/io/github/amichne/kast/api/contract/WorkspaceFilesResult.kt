@@ -11,7 +11,7 @@ import kotlinx.serialization.Serializable
 data class WorkspaceFilesResult(
     @DocField(description = "List of workspace modules visible to the daemon.")
     val modules: List<WorkspaceModule>,
-    @DocField(description = "Protocol schema version for forward compatibility.")
+    @DocField(description = "Protocol schema version for forward compatibility.", serverManaged = true)
     val schemaVersion: Int = SCHEMA_VERSION,
 )
 
@@ -23,7 +23,7 @@ data class WorkspaceModule(
     val sourceRoots: List<String>,
     @DocField(description = "Names of other modules this module depends on.")
     val dependencyModuleNames: List<String>,
-    @DocField(description = "Individual source file paths, populated when includeFiles is true.")
+    @DocField(description = "Individual source file paths, populated when includeFiles is true.", defaultValue = "emptyList()")
     val files: List<String> = emptyList(),
     @DocField(description = "Total number of source files in this module.")
     val fileCount: Int,

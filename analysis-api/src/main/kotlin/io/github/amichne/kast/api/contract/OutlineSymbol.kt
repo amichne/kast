@@ -11,6 +11,6 @@ import kotlinx.serialization.Serializable
 data class OutlineSymbol(
     @DocField(description = "The declaration at this outline node.")
     val symbol: Symbol,
-    @DocField(description = "Nested declarations contained within this symbol.")
+    @DocField(description = "Nested declarations contained within this symbol.", defaultValue = "emptyList()")
     val children: List<OutlineSymbol> = emptyList(),
 )

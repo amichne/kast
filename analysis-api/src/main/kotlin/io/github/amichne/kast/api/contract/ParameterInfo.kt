@@ -15,6 +15,6 @@ data class ParameterInfo(
     val type: String,
     @DocField(description = "Default value expression text, if any.")
     val defaultValue: String? = null,
-    @DocField(description = "Whether this parameter is declared as vararg.")
+    @DocField(description = "Whether this parameter is declared as vararg.", defaultValue = "false")
     val isVararg: Boolean = false,
 )

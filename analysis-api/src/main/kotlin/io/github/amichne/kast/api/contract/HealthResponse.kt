@@ -9,7 +9,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class HealthResponse(
-    @DocField(description = "Health status string, always \"ok\" when the daemon is responsive.")
+    @DocField(description = "Health status string, always \"ok\" when the daemon is responsive.", defaultValue = "\"ok\"")
     val status: String = "ok",
     @DocField(description = "Identifier of the analysis backend (e.g. \"standalone\" or \"intellij\").")
     val backendName: String,
@@ -17,6 +17,6 @@ data class HealthResponse(
     val backendVersion: String,
     @DocField(description = "Absolute path of the workspace root directory.")
     val workspaceRoot: String,
-    @DocField(description = "Protocol schema version for forward compatibility.")
+    @DocField(description = "Protocol schema version for forward compatibility.", serverManaged = true)
     val schemaVersion: Int = SCHEMA_VERSION,
 )

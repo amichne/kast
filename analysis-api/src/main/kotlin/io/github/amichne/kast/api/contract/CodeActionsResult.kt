@@ -23,6 +23,6 @@ data class CodeAction(
 data class CodeActionsResult(
     @DocField(description = "Available code actions at the queried position.")
     val actions: List<CodeAction>,
-    @DocField(description = "Protocol schema version for forward compatibility.")
+    @DocField(description = "Protocol schema version for forward compatibility.", serverManaged = true)
     val schemaVersion: Int = SCHEMA_VERSION,
 )

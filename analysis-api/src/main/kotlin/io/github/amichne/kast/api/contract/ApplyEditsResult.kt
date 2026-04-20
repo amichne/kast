@@ -13,10 +13,10 @@ data class ApplyEditsResult(
     val applied: List<TextEdit>,
     @DocField(description = "Absolute paths of all files that were modified.")
     val affectedFiles: List<String>,
-    @DocField(description = "Absolute paths of files created by file operations.")
+    @DocField(description = "Absolute paths of files created by file operations.", defaultValue = "emptyList()")
     val createdFiles: List<String> = emptyList(),
-    @DocField(description = "Absolute paths of files deleted by file operations.")
+    @DocField(description = "Absolute paths of files deleted by file operations.", defaultValue = "emptyList()")
     val deletedFiles: List<String> = emptyList(),
-    @DocField(description = "Protocol schema version for forward compatibility.")
+    @DocField(description = "Protocol schema version for forward compatibility.", serverManaged = true)
     val schemaVersion: Int = SCHEMA_VERSION,
 )

@@ -13,8 +13,8 @@ data class ImplementationsResult(
     val declaration: Symbol,
     @DocField(description = "Concrete implementations or subclasses found.")
     val implementations: List<Symbol>,
-    @DocField(description = "True when all implementations were found within maxResults.")
+    @DocField(description = "True when all implementations were found within maxResults.", defaultValue = "true")
     val exhaustive: Boolean = true,
-    @DocField(description = "Protocol schema version for forward compatibility.")
+    @DocField(description = "Protocol schema version for forward compatibility.", serverManaged = true)
     val schemaVersion: Int = SCHEMA_VERSION,
 )

@@ -27,8 +27,8 @@ data class CompletionItem(
 data class CompletionsResult(
     @DocField(description = "Completion candidates available at the queried position.")
     val items: List<CompletionItem>,
-    @DocField(description = "True when all candidates were returned within maxResults.")
+    @DocField(description = "True when all candidates were returned within maxResults.", defaultValue = "true")
     val exhaustive: Boolean = true,
-    @DocField(description = "Protocol schema version for forward compatibility.")
+    @DocField(description = "Protocol schema version for forward compatibility.", serverManaged = true)
     val schemaVersion: Int = SCHEMA_VERSION,
 )

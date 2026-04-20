@@ -13,7 +13,7 @@ data class CallHierarchyResult(
     val root: CallNode,
     @DocField(description = "Traversal statistics including truncation indicators.")
     val stats: CallHierarchyStats,
-    @DocField(description = "Protocol schema version for forward compatibility.")
+    @DocField(description = "Protocol schema version for forward compatibility.", serverManaged = true)
     val schemaVersion: Int = SCHEMA_VERSION,
 )
 

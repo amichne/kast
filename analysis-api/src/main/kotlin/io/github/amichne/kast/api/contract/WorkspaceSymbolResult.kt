@@ -13,6 +13,6 @@ data class WorkspaceSymbolResult(
     val symbols: List<Symbol>,
     @DocField(description = "Pagination metadata when results are truncated.")
     val page: PageInfo? = null,
-    @DocField(description = "Protocol schema version for forward compatibility.")
+    @DocField(description = "Protocol schema version for forward compatibility.", serverManaged = true)
     val schemaVersion: Int = SCHEMA_VERSION,
 )

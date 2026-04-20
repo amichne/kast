@@ -13,6 +13,6 @@ data class ApplyEditsQuery(
     val edits: List<TextEdit>,
     @DocField(description = "Expected file hashes for conflict detection before writing.")
     val fileHashes: List<FileHash>,
-    @DocField(description = "Optional file create or delete operations to perform.")
+    @DocField(description = "Optional file create or delete operations to perform.", defaultValue = "emptyList()")
     val fileOperations: List<FileOperation> = emptyList(),
 )
