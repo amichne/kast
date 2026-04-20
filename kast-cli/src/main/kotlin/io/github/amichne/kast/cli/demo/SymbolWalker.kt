@@ -116,7 +116,10 @@ internal class FzfWalkerIO(
 ) : WalkerIO by delegate {
     override fun choose(header: String, choices: List<WalkerMenuChoice>): String? {
         if (choices.isEmpty()) return null
-        val separator = "\u0000" // NUL is safe: no choice display ever contains it.
+        // Tab is safe: no walker token or choice display ever contains one, and unlike
+        // NUL it is accepted in ProcessBuilder argv (JDK 17+ throws `IOException: Invalid
+        // null character in command` when any arg contains U+0000).
+        val separator = "\t"
         val process = ProcessBuilder(
             fzfPath,
             "--prompt", "walker› ",
@@ -147,7 +150,10 @@ internal class FzfWalkerIO(
         if (code != 0) return null
         val lines = output.lineSequence().filter { it.isNotEmpty() }.toList()
         // With --expect, fzf prints the key line first (empty when Enter was used).
-        val payload = lines.dropWhile { it in CANCEL_KEYS }.firstOrNull() ?: return null
+        // If the first non-empty line is a cancel key the user dismissed the picker —
+        // treat it as a cancel and do NOT execute the highlighted item.
+        if (lines.firstOrNull() in CANCEL_KEYS) return null
+        val payload = lines.firstOrNull { it !in CANCEL_KEYS } ?: return null
         return payload.substringBefore(separator).takeIf { it.isNotBlank() }
     }
 
