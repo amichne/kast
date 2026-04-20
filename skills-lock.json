@@ -1,6 +1,11 @@
 {
   "version": 1,
   "skills": {
+    "Agent Development": {
+      "source": "anthropics/claude-code",
+      "sourceType": "github",
+      "computedHash": "4931c2867890bfef5881225adb691c3d719fe9ad556e3d5fae15f83e0668fa60"
+    },
     "llm-wiki": {
       "source": "/Users/amichne/.codex/skills/llm-wiki",
       "sourceType": "local",
