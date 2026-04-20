@@ -41,4 +41,4 @@ jobs:
         run: ./gradlew --no-daemon :kast-cli:writeWrapperScript
 
       - name: Export KAST_CLI_PATH
-        run: echo "KAST_CLI_PATH=$(pwd)/kast-cli/build/scripts/kast-cli" >> "$GITHUB_ENV"
+        run: echo "KAST_CLI_PATH=$(bash .github/hooks/resolve-kast-cli-path.sh)" >> "$GITHUB_ENV"

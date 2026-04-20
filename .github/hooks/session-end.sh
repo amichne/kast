@@ -80,11 +80,10 @@ PY
 }
 
 if [[ "${#KOTLIN_FILES[@]}" -gt 0 ]]; then
-    if [[ -z "${KAST_CLI_PATH:-}" ]]; then
-        echo "session-end: KAST_CLI_PATH is not set; cannot run kast skill diagnostics" >&2
+    if ! KAST_BIN="$(bash "${SCRIPT_DIR}/resolve-kast-cli-path.sh")"; then
+        echo "session-end: unable to resolve KAST_CLI_PATH; cannot run kast skill diagnostics" >&2
         exit 1
     fi
-    KAST_BIN="${KAST_CLI_PATH}"
     DIAGNOSTICS_REQUEST="$(
         python3 - "${REPO_ROOT}" "${KOTLIN_FILES[@]}" <<'PY'
 import json
