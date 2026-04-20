@@ -258,10 +258,14 @@ object DocsDocument {
 
     private fun StringBuilder.appendTabbedExamples(op: OperationDoc) {
         val hasCliExample = op.cliExample.isNotBlank()
-        val requestJson = readExampleFile("${op.operationId}-request.json")
-        val responseJson = readExampleFile("${op.operationId}-response.json")
+        val fixtureId = op.exampleFixtureId.ifBlank { op.operationId }
+        val requestJson = readExampleFile("$fixtureId-request.json")
+        val responseJson = readExampleFile("$fixtureId-response.json")
 
         if (!hasCliExample && requestJson == null && responseJson == null) return
+
+        appendLine("#### Examples")
+        appendLine()
 
         if (hasCliExample) {
             appendLine("=== \"CLI example\"")

@@ -71,14 +71,14 @@ object DocExampleGenerator {
             )
 
             val result = linkedMapOf<String, ExamplePair>()
-            for ((operationId, request) in operations) {
+            for ((fixtureId, request) in operations) {
                 val requestJson = json.encodeToString(JsonRpcRequest.serializer(), request)
                     .replace(pathToSanitize, "/workspace")
                 val responseRaw = runBlocking { dispatcher.dispatch(request) }
                 val responseElement = json.parseToJsonElement(responseRaw)
                 val responseJson = json.encodeToString(JsonElement.serializer(), responseElement)
                     .replace(pathToSanitize, "/workspace")
-                result[operationId] = ExamplePair(requestJson, responseJson)
+                result[fixtureId] = ExamplePair(requestJson, responseJson)
             }
             return result
         } finally {
@@ -275,9 +275,9 @@ fun main(args: Array<String>) {
     val outputDir = if (args.isNotEmpty()) Path.of(args[0]) else repoRoot().resolve("docs/examples")
     Files.createDirectories(outputDir)
     val examples = DocExampleGenerator.generateExamples()
-    examples.forEach { (operationId, pair) ->
-        outputDir.resolve("$operationId-request.json").writeText(pair.request + "\n")
-        outputDir.resolve("$operationId-response.json").writeText(pair.response + "\n")
+    examples.forEach { (fixtureId, pair) ->
+        outputDir.resolve("$fixtureId-request.json").writeText(pair.request + "\n")
+        outputDir.resolve("$fixtureId-response.json").writeText(pair.response + "\n")
     }
     println("Generated ${examples.size} example pairs in $outputDir")
 }

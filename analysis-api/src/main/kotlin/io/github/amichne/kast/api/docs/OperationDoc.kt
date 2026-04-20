@@ -25,7 +25,7 @@ data class OperationDoc(
     val description: String,
     val behavioralNotes: List<String> = emptyList(),
     val cliExample: String = "",
-    val exampleFixtureId: String? = null,
+    val exampleFixtureId: String = operationId,
     val errorCodes: List<String> = emptyList(),
 )
 
