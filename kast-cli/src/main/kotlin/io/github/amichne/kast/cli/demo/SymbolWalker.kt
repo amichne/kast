@@ -77,7 +77,22 @@ internal class CliServiceSymbolGraph(
 internal interface WalkerIO {
     fun emit(line: String)
     fun prompt(): String?
+
+    /**
+     * Offer the user a structured menu of [choices]. Return the selected
+     * choice's [WalkerMenuChoice.token], or `null` to fall back to reading a
+     * raw command line via [prompt]. Default: always fall back.
+     */
+    fun choose(header: String, choices: List<WalkerMenuChoice>): String? = null
 }
+
+/** One line offered to the walker's interactive picker. */
+internal data class WalkerMenuChoice(
+    /** The command string to feed into [WalkerCommand.parse], e.g. `"r 3"` or `"q"`. */
+    val token: String,
+    /** What the operator sees when selecting the choice. */
+    val display: String,
+)
 
 internal class StreamWalkerIO(
     private val reader: BufferedReader,
@@ -85,6 +100,73 @@ internal class StreamWalkerIO(
 ) : WalkerIO {
     override fun emit(line: String) = output(line)
     override fun prompt(): String? = reader.readLine()
+}
+
+/**
+ * [WalkerIO] that delegates emit/prompt to [delegate] but offers an fzf-backed
+ * [choose] when the `fzf` binary is available on `PATH`. Falls back cleanly
+ * when fzf is missing, the terminal is non-interactive, or fzf exits without a
+ * selection (e.g. the operator pressed Esc), letting the caller re-prompt.
+ */
+internal class FzfWalkerIO(
+    private val delegate: WalkerIO,
+    private val fzfPath: String,
+) : WalkerIO by delegate {
+    override fun choose(header: String, choices: List<WalkerMenuChoice>): String? {
+        if (choices.isEmpty()) return null
+        val separator = "\u0000" // NUL is safe: no choice display ever contains it.
+        val process = ProcessBuilder(
+            fzfPath,
+            "--prompt", "walker› ",
+            "--header", header,
+            "--layout=reverse",
+            "--height=~60%",
+            "--no-mouse",
+            "--ansi",
+            "--with-nth=2..",
+            "--delimiter=$separator",
+            "--expect=esc,ctrl-c,ctrl-d",
+        )
+            .redirectError(ProcessBuilder.Redirect.INHERIT)
+            .redirectOutput(ProcessBuilder.Redirect.PIPE)
+            .redirectInput(ProcessBuilder.Redirect.PIPE)
+            .start()
+        process.outputStream.bufferedWriter().use { writer ->
+            choices.forEach { choice ->
+                writer.write(choice.token)
+                writer.write(separator)
+                writer.write(choice.display)
+                writer.newLine()
+            }
+        }
+        val output = process.inputStream.bufferedReader().readText()
+        val code = process.waitFor()
+        if (code == 130 || code == 1) return null // user cancelled or no match
+        if (code != 0) return null
+        val lines = output.lineSequence().filter { it.isNotEmpty() }.toList()
+        // With --expect, fzf prints the key line first (empty when Enter was used).
+        val payload = lines.dropWhile { it in CANCEL_KEYS }.firstOrNull() ?: return null
+        return payload.substringBefore(separator).takeIf { it.isNotBlank() }
+    }
+
+    companion object {
+        private val CANCEL_KEYS = setOf("esc", "ctrl-c", "ctrl-d")
+
+        /** Resolve an `fzf` executable on `PATH`; null if not found. */
+        fun locateFzf(): String? {
+            val path = System.getenv("PATH") ?: return null
+            val isWindows = System.getProperty("os.name").orEmpty().startsWith("Windows")
+            val exts = if (isWindows) listOf(".exe", ".bat", ".cmd") else listOf("")
+            for (dir in path.split(java.io.File.pathSeparatorChar)) {
+                if (dir.isBlank()) continue
+                for (ext in exts) {
+                    val candidate = java.io.File(dir, "fzf$ext")
+                    if (candidate.canExecute()) return candidate.absolutePath
+                }
+            }
+            return null
+        }
+    }
 }
 
 /** Runs the interactive symbol-graph walk and returns the number of successful hops made. */
@@ -107,8 +189,8 @@ internal class SymbolWalker(
         var hops = 0
         while (true) {
             io.emit(renderer.render(cursorCard(cursor)))
-            io.emit(renderer.render(promptLine()))
-            when (val command = WalkerCommand.parse(io.prompt())) {
+            val raw = readCommand(cursor)
+            when (val command = WalkerCommand.parse(raw)) {
                 WalkerCommand.Help -> io.emit(renderer.render(helpCard()))
                 WalkerCommand.Quit, WalkerCommand.EndOfInput -> return WalkSummary(hops = hops)
                 WalkerCommand.Back -> {
@@ -138,6 +220,62 @@ internal class SymbolWalker(
                 )
             }
         }
+    }
+
+    /**
+     * Read the next walker command. Prefers [WalkerIO.choose] so fzf-style
+     * transports can render a navigable menu; falls back to a plain `prompt`
+     * read when choose returns null (Esc, missing fzf, EOF from a script,
+     * etc.).
+     */
+    private fun readCommand(cursor: SymbolCursor): String? {
+        val choices = buildMenuChoices(cursor)
+        val picked = if (choices.isNotEmpty()) io.choose(menuHeader(cursor), choices) else null
+        if (picked != null) return picked
+        io.emit(renderer.render(promptLine()))
+        return io.prompt()
+    }
+
+    private fun menuHeader(cursor: SymbolCursor): String =
+        "current: ${cursor.symbol.fqName}  ·  " +
+            "${cursor.references.size} refs · ${cursor.incomingCallers.size} callers · ${cursor.outgoingCallees.size} callees"
+
+    /**
+     * Build the fzf menu for the current cursor. Rows are grouped by action
+     * (references → callers → callees → meta), each row carries a parser
+     * token identical to what the operator would type.
+     */
+    private fun buildMenuChoices(cursor: SymbolCursor): List<WalkerMenuChoice> {
+        val choices = mutableListOf<WalkerMenuChoice>()
+        cursor.references.take(WALK_PREVIEW).forEachIndexed { index, ref ->
+            val n = index + 1
+            choices += WalkerMenuChoice(
+                token = "r $n",
+                display = "[r $n] reference   ${Paths.locationLine(workspaceRoot, ref)}  ${ref.preview.trim().take(PREVIEW_MAX)}",
+            )
+        }
+        cursor.incomingCallers.take(WALK_PREVIEW).forEachIndexed { index, sym ->
+            val n = index + 1
+            choices += WalkerMenuChoice(
+                token = "c $n",
+                display = "[c $n] caller      ${sym.fqName.substringAfterLast('.')} · ${sym.kind}  ${Paths.locationLine(workspaceRoot, sym.location)}",
+            )
+        }
+        cursor.outgoingCallees.take(WALK_PREVIEW).forEachIndexed { index, sym ->
+            val n = index + 1
+            choices += WalkerMenuChoice(
+                token = "o $n",
+                display = "[o $n] callee      ${sym.fqName.substringAfterLast('.')} · ${sym.kind}  ${Paths.locationLine(workspaceRoot, sym.location)}",
+            )
+        }
+        choices += WalkerMenuChoice("s", "[s]   show current declaration")
+        choices += WalkerMenuChoice("g", "[g]   compare against grep (baseline)")
+        if (history.size > 1) {
+            choices += WalkerMenuChoice("b", "[b]   pop the last hop")
+        }
+        choices += WalkerMenuChoice("h", "[h]   help")
+        choices += WalkerMenuChoice("q", "[q]   finish the walker")
+        return choices
     }
 
     private suspend fun hopTo(
@@ -188,51 +326,70 @@ internal class SymbolWalker(
 
     private fun cursorCard(cursor: SymbolCursor): DemoScript = demoScript {
         val symbol = cursor.symbol
-        panel("current node") {
+        panel("current node · ${symbol.fqName}") {
             line("fqName   ${symbol.fqName}", emphasis = LineEmphasis.STRONG)
             line("kind     ${symbol.kind}${symbol.visibility?.let { " · $it" } ?: ""}")
             line("location ${Paths.locationLine(workspaceRoot, symbol.location)}")
             symbol.containingDeclaration?.takeIf { it.isNotBlank() }?.let { line("inside   $it") }
+            blank()
+            renderSymbolBranch(
+                header = "references (${cursor.references.size})",
+                emptyNote = "no semantic references",
+                tokenPrefix = "r",
+                entries = cursor.references.take(WALK_PREVIEW).mapIndexed { index, ref ->
+                    index + 1 to "${Paths.locationLine(workspaceRoot, ref)}  ${ref.preview.trim().take(PREVIEW_MAX)}"
+                },
+                truncatedNote = (cursor.references.size - WALK_PREVIEW)
+                    .takeIf { it > 0 }
+                    ?.let { "... and $it more (use r <n> with larger n)" },
+            )
+            blank()
+            renderSymbolBranch(
+                header = "incoming callers (${cursor.incomingCallers.size})",
+                emptyNote = "no callers found at depth 1",
+                tokenPrefix = "c",
+                entries = cursor.incomingCallers.take(WALK_PREVIEW).mapIndexed { index, sym ->
+                    index + 1 to "${sym.fqName.substringAfterLast('.')} · ${sym.kind}  ${Paths.locationLine(workspaceRoot, sym.location)}"
+                },
+                truncatedNote = (cursor.incomingCallers.size - WALK_PREVIEW)
+                    .takeIf { it > 0 }
+                    ?.let { "... and $it more" },
+            )
+            blank()
+            renderSymbolBranch(
+                header = "outgoing callees (${cursor.outgoingCallees.size})",
+                emptyNote = "no callees found at depth 1",
+                tokenPrefix = "o",
+                entries = cursor.outgoingCallees.take(WALK_PREVIEW).mapIndexed { index, sym ->
+                    index + 1 to "${sym.fqName.substringAfterLast('.')} · ${sym.kind}  ${Paths.locationLine(workspaceRoot, sym.location)}"
+                },
+                truncatedNote = (cursor.outgoingCallees.size - WALK_PREVIEW)
+                    .takeIf { it > 0 }
+                    ?.let { "... and $it more" },
+            )
         }
-        step("references (${cursor.references.size})") {
-            info()
-            body {
-                if (cursor.references.isEmpty()) {
-                    line("no semantic references", emphasis = LineEmphasis.DIM)
-                } else {
-                    cursor.references.take(WALK_PREVIEW).forEachIndexed { index, ref ->
-                        line("[r ${index + 1}]  ${Paths.locationLine(workspaceRoot, ref)}  ${ref.preview.trim().take(70)}")
-                    }
-                    if (cursor.references.size > WALK_PREVIEW) {
-                        line("... and ${cursor.references.size - WALK_PREVIEW} more (use r <n> with larger n)", emphasis = LineEmphasis.DIM)
-                    }
-                }
-            }
+    }
+
+    private fun PanelBuilder.renderSymbolBranch(
+        header: String,
+        emptyNote: String,
+        tokenPrefix: String,
+        entries: List<Pair<Int, String>>,
+        truncatedNote: String?,
+    ) {
+        line(header, emphasis = LineEmphasis.STRONG)
+        if (entries.isEmpty()) {
+            line("  └── $emptyNote", emphasis = LineEmphasis.DIM)
+            return
         }
-        step("incoming callers (${cursor.incomingCallers.size})") {
-            info()
-            body {
-                if (cursor.incomingCallers.isEmpty()) {
-                    line("no callers found at depth 1", emphasis = LineEmphasis.DIM)
-                } else {
-                    cursor.incomingCallers.take(WALK_PREVIEW).forEachIndexed { index, sym ->
-                        line("[c ${index + 1}]  ${sym.fqName.substringAfterLast('.')} (${sym.kind})  ${Paths.locationLine(workspaceRoot, sym.location)}")
-                    }
-                }
-            }
+        val lastIndex = entries.lastIndex
+        val hasTail = truncatedNote != null
+        entries.forEachIndexed { i, (number, text) ->
+            val isTerminal = i == lastIndex && !hasTail
+            val elbow = if (isTerminal) "└──" else "├──"
+            line("  $elbow [$tokenPrefix $number]  $text")
         }
-        step("outgoing callees (${cursor.outgoingCallees.size})") {
-            info()
-            body {
-                if (cursor.outgoingCallees.isEmpty()) {
-                    line("no callees found at depth 1", emphasis = LineEmphasis.DIM)
-                } else {
-                    cursor.outgoingCallees.take(WALK_PREVIEW).forEachIndexed { index, sym ->
-                        line("[o ${index + 1}]  ${sym.fqName.substringAfterLast('.')} (${sym.kind})  ${Paths.locationLine(workspaceRoot, sym.location)}")
-                    }
-                }
-            }
-        }
+        truncatedNote?.let { line("  └── $it", emphasis = LineEmphasis.DIM) }
     }
 
     private fun promptLine(): DemoScript = demoScript {
@@ -308,6 +465,8 @@ internal class SymbolWalker(
     companion object {
         const val WALK_PREVIEW: Int = 8
         const val DECLARATION_CONTEXT: Int = 3
+        /** Max characters of reference-line preview we carry into a row. */
+        const val PREVIEW_MAX: Int = 60
     }
 }
 

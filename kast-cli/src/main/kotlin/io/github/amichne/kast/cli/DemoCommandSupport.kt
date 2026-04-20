@@ -21,8 +21,10 @@ import io.github.amichne.kast.cli.demo.DemoActs.targetPanel
 import io.github.amichne.kast.cli.demo.DemoRenderer
 import io.github.amichne.kast.cli.demo.DemoScript
 import io.github.amichne.kast.cli.demo.LineEmphasis
+import io.github.amichne.kast.cli.demo.FzfWalkerIO
 import io.github.amichne.kast.cli.demo.StreamWalkerIO
 import io.github.amichne.kast.cli.demo.SymbolWalker
+import io.github.amichne.kast.cli.demo.WalkerIO
 import io.github.amichne.kast.cli.demo.Timed
 import io.github.amichne.kast.cli.demo.demoScript
 import io.github.amichne.kast.cli.demo.timed
@@ -53,7 +55,42 @@ internal class DemoCommandSupport(
         return when {
             filter == null && symbols.size == 1 -> symbols.single()
             filter == null -> symbolChooser.choose(symbols)
-            else -> symbols.firstOrNull { symbolMatchesFilter(it, filter) } ?: symbols.first()
+            else -> pickBestMatch(symbols, filter) ?: symbols.first()
+        }
+    }
+
+    /**
+     * Choose the [Symbol] that best matches a user filter. Prefers an exact
+     * `fqName` match so callers can disambiguate overloaded simple names by
+     * passing a fully-qualified class name; falls back through suffix and
+     * substring matches in that order.
+     */
+    private fun pickBestMatch(symbols: List<Symbol>, filter: String): Symbol? {
+        val exact = symbols.firstOrNull { it.fqName == filter }
+        if (exact != null) return exact
+        val suffix = symbols.firstOrNull { it.fqName.endsWith(".$filter") }
+        if (suffix != null) return suffix
+        val simple = symbols.firstOrNull { it.fqName.substringAfterLast('.') == filter }
+        if (simple != null) return simple
+        return symbols.firstOrNull { symbolMatchesFilter(it, filter) }
+    }
+
+    /**
+     * Build the server-side query for a user-provided symbol filter. FQNs
+     * are split so the daemon can find the declaration by simple name — the
+     * client then re-filters by FQN exactness. Substring inputs flow through
+     * as-is with `regex=false`.
+     */
+    internal fun workspaceSymbolQueryFor(filter: String?): WorkspaceSymbolQuery {
+        val trimmed = filter?.takeIf(String::isNotBlank)
+        return when {
+            trimmed == null -> WorkspaceSymbolQuery(pattern = ".", maxResults = 500, regex = true)
+            trimmed.contains('.') -> WorkspaceSymbolQuery(
+                pattern = trimmed.substringAfterLast('.'),
+                maxResults = 500,
+                regex = false,
+            )
+            else -> WorkspaceSymbolQuery(pattern = trimmed, maxResults = 500, regex = false)
         }
     }
 
@@ -182,16 +219,8 @@ internal class DemoCommandSupport(
         warm.value.getOrThrow()
 
         emit(demoScript { progress("Discovering workspace symbols (kast workspace-symbol)...") })
-        val symbolSearch = timed {
-            cliService.workspaceSymbolSearch(
-                runtimeOptions,
-                WorkspaceSymbolQuery(
-                    pattern = options.symbolFilter ?: ".",
-                    maxResults = 500,
-                    regex = options.symbolFilter == null,
-                ),
-            )
-        }
+        val searchQuery = workspaceSymbolQueryFor(options.symbolFilter)
+        val symbolSearch = timed { cliService.workspaceSymbolSearch(runtimeOptions, searchQuery) }
         emit(stepOutcomeScript("workspace symbol search", symbolSearch))
         val symbolPayload = symbolSearch.value.getOrThrow().payload
 
@@ -261,10 +290,15 @@ internal class DemoCommandSupport(
         })
 
         if (walkerEnabled && reader != null) {
+            val base: WalkerIO = StreamWalkerIO(reader = reader, output = sink)
+            val io: WalkerIO = FzfWalkerIO.locateFzf()
+                ?.takeIf { System.console() != null }
+                ?.let { FzfWalkerIO(delegate = base, fzfPath = it) }
+                ?: base
             val walker = SymbolWalker(
                 workspaceRoot = options.workspaceRoot,
                 graph = CliServiceSymbolGraph(cliService, runtimeOptions),
-                io = StreamWalkerIO(reader = reader, output = sink),
+                io = io,
                 renderer = renderer,
             )
             walker.run(resolvedSymbol)
