@@ -23,6 +23,7 @@ import io.github.amichne.kast.cli.demo.DemoScript
 import io.github.amichne.kast.cli.demo.LineEmphasis
 import io.github.amichne.kast.cli.demo.FzfWalkerIO
 import io.github.amichne.kast.cli.demo.StreamWalkerIO
+import io.github.amichne.kast.cli.demo.SymbolDisplay
 import io.github.amichne.kast.cli.demo.SymbolWalker
 import io.github.amichne.kast.cli.demo.WalkerIO
 import io.github.amichne.kast.cli.demo.Timed
@@ -300,6 +301,11 @@ internal class DemoCommandSupport(
                 graph = CliServiceSymbolGraph(cliService, runtimeOptions),
                 io = io,
                 renderer = renderer,
+                theme = themeProvider(),
+                display = SymbolDisplay(
+                    workspaceRoot = options.workspaceRoot,
+                    verbose = options.verbose,
+                ),
             )
             walker.run(resolvedSymbol)
         } else {

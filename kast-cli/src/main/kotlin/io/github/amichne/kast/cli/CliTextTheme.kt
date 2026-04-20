@@ -1,5 +1,7 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.api.contract.SymbolKind
+
 internal class CliTextTheme private constructor(
     private val ansiEnabled: Boolean,
 ) {
@@ -12,6 +14,25 @@ internal class CliTextTheme private constructor(
     fun option(text: String): String = style(text, "33")
 
     fun muted(text: String): String = style(text, "2")
+
+    /** Light-grey text. Used for file-name headers and other secondary metadata. */
+    fun fileHeader(text: String): String = style(text, "38;5;245")
+
+    /** Color a symbol-kind label (e.g. "class", "function") consistently across the walker. */
+    fun kind(kind: SymbolKind, text: String): String = style(text, kindCode(kind))
+
+    /**
+     * Return the raw SGR code for a [SymbolKind] so callers can inline the style.
+     * Palette keeps each category visually distinct without fighting the panel chrome:
+     * type declarations land on yellow / magenta, behavior on cyan, data on green.
+     */
+    fun kindCode(kind: SymbolKind): String = when (kind) {
+        SymbolKind.CLASS, SymbolKind.OBJECT -> "1;33"
+        SymbolKind.INTERFACE -> "1;35"
+        SymbolKind.FUNCTION -> "1;36"
+        SymbolKind.PROPERTY, SymbolKind.PARAMETER -> "1;32"
+        SymbolKind.UNKNOWN -> "37"
+    }
 
     private fun style(
         text: String,

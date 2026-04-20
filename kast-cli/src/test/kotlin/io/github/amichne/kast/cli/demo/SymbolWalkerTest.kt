@@ -40,7 +40,8 @@ class SymbolWalkerTest {
         val transcript = io.emitted.joinToString("\n")
         assertTrue(transcript.contains("Act 3 · walk the symbol graph"), transcript)
         assertTrue(transcript.contains("current node"), transcript)
-        assertTrue(transcript.contains(root.fqName), transcript)
+        // Default display is simple name + bare file name; verbose FQCN paths are gated behind --verbose.
+        assertTrue(transcript.contains(root.fqName.substringAfterLast('.')), transcript)
     }
 
     @Test
@@ -79,7 +80,8 @@ class SymbolWalkerTest {
         }
         assertEquals(1, summary.hops)
         val transcript = io.emitted.joinToString("\n")
-        assertTrue(transcript.contains(refTarget.fqName), transcript)
+        // Default renders the simple name; verbose renders the FQCN.
+        assertTrue(transcript.contains(refTarget.fqName.substringAfterLast('.')), transcript)
     }
 
     @Test
@@ -185,6 +187,31 @@ class SymbolWalkerTest {
         }
         assertEquals(1, io.chooseCalls)
         assertEquals(1, io.promptCalls)
+    }
+
+    @Test
+    fun `verbose display shows fully-qualified names and workspace-relative paths`() {
+        val root = symbol("app.nested.Root", tempDir.resolve("nested/Root.kt"))
+        val graph = RecordingGraph(
+            resolves = mapOf(root.location.asKey() to Result.success(root)),
+            references = mapOf(root.location.asKey() to Result.success(emptyList())),
+            callers = mapOf(root.location.asKey() to Result.success(emptyList())),
+            callees = mapOf(root.location.asKey() to Result.success(emptyList())),
+        )
+        val io = ScriptedIO(inputs = listOf("q"))
+        runBlocking {
+            SymbolWalker(
+                workspaceRoot = tempDir,
+                graph = graph,
+                io = io,
+                renderer = DemoRenderer(CliTextTheme.ansi(), ansiEnabled = false),
+                display = SymbolDisplay(workspaceRoot = tempDir, verbose = true),
+                grepRunner = NoopGrepRunner,
+            ).run(root)
+        }
+        val transcript = io.emitted.joinToString("\n")
+        assertTrue(transcript.contains(root.fqName), transcript)
+        assertTrue(transcript.contains("nested/Root.kt") || transcript.contains("nested\\Root.kt"), transcript)
     }
 
     @Test

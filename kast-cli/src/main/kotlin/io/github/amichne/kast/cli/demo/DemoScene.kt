@@ -58,10 +58,19 @@ internal sealed interface DemoScene {
 
 internal enum class StepResult { SUCCESS, FAILURE, INFO }
 
-/** A line inside a [DemoScene.Panel]. */
+/**
+ * A line inside a [DemoScene.Panel].
+ *
+ * Width is always measured from [text] (plain, no ANSI). When [prerendered] is
+ * non-null the renderer emits that string verbatim instead of applying
+ * [emphasis]; this lets callers (e.g. the walker) hand the renderer an
+ * ANSI-styled composition while the renderer keeps ownership of padding and
+ * truncation using the plain [text].
+ */
 internal data class PanelLine(
     val text: String,
     val emphasis: LineEmphasis = LineEmphasis.NORMAL,
+    val prerendered: String? = null,
 )
 
 /** A line inside a [DemoScene.StepBody] — carries enough classification for the renderer to colour it. */
@@ -161,6 +170,16 @@ internal class PanelBuilder internal constructor() {
 
     fun line(text: String, emphasis: LineEmphasis = LineEmphasis.NORMAL) {
         lines += PanelLine(text, emphasis)
+    }
+
+    /**
+     * A panel line whose styling is owned by the caller. [plain] is used for
+     * width measurement and padding; [rendered] is emitted verbatim. The
+     * caller is responsible for pre-truncating [plain] / [rendered] to fit
+     * the panel's inner width (use [DemoRenderer.truncate] / [DemoRenderer.truncateLeft]).
+     */
+    fun styledLine(plain: String, rendered: String) {
+        lines += PanelLine(text = plain, prerendered = rendered)
     }
 
     fun blank() {

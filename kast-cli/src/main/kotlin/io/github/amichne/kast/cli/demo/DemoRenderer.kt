@@ -41,6 +41,19 @@ internal class DemoRenderer(
         appendLine(renderPanelRow(styleAnsi("1;37", truncate(panel.title, contentWidth)), truncate(panel.title, contentWidth).length, contentWidth))
         appendLine(separator)
         panel.lines.forEach { line ->
+            if (line.prerendered != null) {
+                // Pre-styled lines own their own ANSI / truncation. We still
+                // pad them out to contentWidth using the plain text length.
+                val rawLength = line.text.length.coerceAtMost(contentWidth)
+                val rendered = if (line.text.length > contentWidth) {
+                    // Caller gave us an oversize line. Fall back to a plain-text truncate so we don't overflow.
+                    emphasise(line.emphasis, truncate(line.text, contentWidth))
+                } else {
+                    line.prerendered
+                }
+                appendLine(renderPanelRow(rendered, rawLength, contentWidth))
+                return@forEach
+            }
             val segments = wrapForWidth(line.text, contentWidth)
             if (segments.isEmpty()) {
                 appendLine(renderPanelRow("", 0, contentWidth))
@@ -228,8 +241,25 @@ internal class DemoRenderer(
         return listOf(token.take(width - 1) + "…")
     }
 
+    /** Columns available inside a panel's borders (after the `│ ` / ` │` gutters). */
+    internal val panelContentWidth: Int
+        get() = max(MIN_PANEL_WIDTH, width - 2) - 2
+
     internal fun truncate(text: String, width: Int): String =
         if (text.length <= width) text else text.take(width - 1) + "…"
+
+    /**
+     * Right-biased truncation: keep the **tail** of [text] visible and
+     * replace the leading prefix with `…`. Use for file paths and similar
+     * strings where the rightmost segment (file name, line number) is the
+     * most useful part for the reader.
+     */
+    internal fun truncateLeft(text: String, width: Int): String = when {
+        width <= 0 -> ""
+        text.length <= width -> text
+        width == 1 -> "…"
+        else -> "…" + text.takeLast(width - 1)
+    }
 
     @Suppress("UNUSED_PARAMETER")
     private fun themeTitle(text: String): String = theme.title(text)
