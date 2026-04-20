@@ -16,7 +16,8 @@ agents:
 
 Use `.agents/skills/kast/SKILL.md` as the authority.
 
-Invoke the CLI directly — a companion hook sets `KAST_CLI_PATH`
+Invoke the CLI directly — a companion hook should resolve and set
+`KAST_CLI_PATH` (for example via `.github/hooks/resolve-kast-cli-path.sh`)
 before this agent runs, so every command below reads
 `"$KAST_CLI_PATH" skill <command> <json>`.
 

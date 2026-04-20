@@ -64,15 +64,15 @@ The installed skill directory includes:
 The packaged skill assumes a companion hook sets `KAST_CLI_PATH` to
 an absolute path to the Kast binary before the skill runs. Every
 command documented in `SKILL.md` is then invoked as
-`"$KAST_CLI_PATH" skill <command> <json>`. There is no in-skill
-resolver script — wire `KAST_CLI_PATH` from your agent harness (for
-example, a `sessionStart` hook) using whichever of these sources is
-authoritative for your environment:
+`"$KAST_CLI_PATH" skill <command> <json>`.
 
-- `kast` on `$PATH` — system-installed binary
-- `$KAST_SOURCE_ROOT/kast-cli/build/scripts/kast-cli` — local build
-  output
-- `$KAST_SOURCE_ROOT/dist/cli/kast-cli` — local portable distribution
+Use `.github/hooks/resolve-kast-cli-path.sh` in your harness to encode
+the standard resolution flow (existing `KAST_CLI_PATH`, then `kast` on
+`$PATH`, then local build/distribution outputs). For example:
+
+```bash
+export KAST_CLI_PATH="$(bash .github/hooks/resolve-kast-cli-path.sh)"
+```
 
 ## Next steps
 
