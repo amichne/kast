@@ -28,19 +28,51 @@ class AnalysisDocsDocumentTest {
     @Test
     fun `generated capabilities page contains a section for every JSON-RPC method`() {
         val markdown = DocsDocument.renderCapabilities()
-        val expectedMethods = OperationDocRegistry.all().map { it.jsonRpcMethod }
-        expectedMethods.forEach { method ->
-            assertTrue(markdown.contains("\"$method —"), "Missing section for $method in capabilities.md")
+        for (op in OperationDocRegistry.all()) {
+            assertTrue(
+                markdown.contains("<code>${op.jsonRpcMethod}</code>"),
+                "Missing badge for ${op.jsonRpcMethod} in capabilities.md",
+            )
         }
     }
 
     @Test
     fun `generated api-reference page contains a section for every JSON-RPC method`() {
         val markdown = DocsDocument.renderApiReference()
-        val expectedMethods = OperationDocRegistry.all().map { it.jsonRpcMethod }
-        expectedMethods.forEach { method ->
-            assertTrue(markdown.contains("\"$method —"), "Missing section for $method in api-reference.md")
+        for (op in OperationDocRegistry.all()) {
+            assertTrue(
+                markdown.contains("<code>${op.jsonRpcMethod}</code>"),
+                "Missing badge for ${op.jsonRpcMethod} in api-reference.md",
+            )
         }
+    }
+
+    @Test
+    fun `capabilities page uses properly-cased capability as admonition title`() {
+        val markdown = DocsDocument.renderCapabilities()
+        // Capability ops: FIND_REFERENCES → "Find References" appears as admonition title
+        assertTrue(
+            markdown.contains("??? info \"Find References\""),
+            "Expected 'Find References' title from FIND_REFERENCES capability",
+        )
+        // System ops with no capability fall back to summary
+        assertTrue(
+            markdown.contains("??? info \"Basic health check\""),
+            "Expected summary fallback title for health op (no capability)",
+        )
+    }
+
+    @Test
+    fun `api-reference page uses properly-cased capability as admonition title`() {
+        val markdown = DocsDocument.renderApiReference()
+        assertTrue(
+            markdown.contains("??? example \"Find References\""),
+            "Expected 'Find References' title from FIND_REFERENCES capability",
+        )
+        assertTrue(
+            markdown.contains("??? example \"Basic health check\""),
+            "Expected summary fallback title for health op (no capability)",
+        )
     }
 
     @Test

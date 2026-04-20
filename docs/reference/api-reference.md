@@ -15,12 +15,13 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         3 operations for health checks, runtime status, and capability discovery. No capability gating required.
 
-    ??? example "health — Basic health check"
+    ??? example "Basic health check"
 
         Returns a lightweight health check confirming the daemon is responsive. Use this before dispatching heavier queries.
 
-
-        **JSON-RPC method:** `health`
+        <div style="text-align:right">
+        <code>health</code>
+        </div>
 
         #### Output: HealthResponse
 
@@ -65,12 +66,13 @@ daemon, including input/output schemas, examples, and behavioral notes.
             ```
 
 
-    ??? example "runtime/status — Detailed runtime state including indexing progress"
+    ??? example "Detailed runtime state including indexing progress"
 
         Returns the full runtime state including indexing progress, backend identity, and workspace root. Use this to verify readiness before running analysis commands.
 
-
-        **JSON-RPC method:** `runtime/status`
+        <div style="text-align:right">
+        <code>runtime/status</code>
+        </div>
 
         #### Output: RuntimeStatusResponse
 
@@ -128,12 +130,13 @@ daemon, including input/output schemas, examples, and behavioral notes.
             ```
 
 
-    ??? example "capabilities — Advertised read and mutation capabilities"
+    ??? example "Advertised read and mutation capabilities"
 
         Lists every read and mutation capability the current backend advertises, along with server limits. Query this before calling an operation to confirm it is available.
 
-
-        **JSON-RPC method:** `capabilities`
+        <div style="text-align:right">
+        <code>capabilities</code>
+        </div>
 
         #### Output: BackendCapabilities
 
@@ -211,13 +214,13 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         12 read-only operations for querying symbols, references, hierarchies, diagnostics, outlines, and completions.
 
-    ??? example "symbol/resolve — Resolve the symbol at a file position"
+    ??? example "Resolve Symbol"
 
         Resolves the symbol at a file position, returning its fully qualified name, kind, location, and optional metadata such as type information and documentation.
 
-        **Capability:** `RESOLVE_SYMBOL`
-
-        **JSON-RPC method:** `symbol/resolve`
+        <div style="text-align:right">
+        <code>RESOLVE_SYMBOL</code>&ensp;<code>symbol/resolve</code>
+        </div>
 
         #### Input: SymbolQuery
 
@@ -300,13 +303,13 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         **Error codes:** `NOT_FOUND`
 
-    ??? example "references — Find all references to the symbol at a file position"
+    ??? example "Find References"
 
         Finds all references to the symbol at a file position across the workspace. Optionally includes the declaration itself.
 
-        **Capability:** `FIND_REFERENCES`
-
-        **JSON-RPC method:** `references`
+        <div style="text-align:right">
+        <code>FIND_REFERENCES</code>&ensp;<code>references</code>
+        </div>
 
         #### Input: ReferencesQuery
 
@@ -400,13 +403,13 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         **Error codes:** `NOT_FOUND`
 
-    ??? example "call-hierarchy — Expand a bounded incoming or outgoing call tree"
+    ??? example "Call Hierarchy"
 
         Expands a bounded incoming or outgoing call tree from a function or method. Use incoming to find callers, outgoing to find callees.
 
-        **Capability:** `CALL_HIERARCHY`
-
-        **JSON-RPC method:** `call-hierarchy`
+        <div style="text-align:right">
+        <code>CALL_HIERARCHY</code>&ensp;<code>call-hierarchy</code>
+        </div>
 
         #### Input: CallHierarchyQuery
 
@@ -532,13 +535,13 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         **Error codes:** `NOT_FOUND`, `CAPABILITY_NOT_SUPPORTED`
 
-    ??? example "type-hierarchy — Expand supertypes and subtypes from a resolved symbol"
+    ??? example "Type Hierarchy"
 
         Expands supertypes and subtypes from a resolved symbol. Use this to understand inheritance relationships.
 
-        **Capability:** `TYPE_HIERARCHY`
-
-        **JSON-RPC method:** `type-hierarchy`
+        <div style="text-align:right">
+        <code>TYPE_HIERARCHY</code>&ensp;<code>type-hierarchy</code>
+        </div>
 
         #### Input: TypeHierarchyQuery
 
@@ -661,13 +664,13 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         **Error codes:** `NOT_FOUND`, `CAPABILITY_NOT_SUPPORTED`
 
-    ??? example "semantic-insertion-point — Find the best insertion point for a new declaration"
+    ??? example "Semantic Insertion Point"
 
         Finds the best insertion point for a new declaration relative to a file position. Use this to place generated code at a semantically appropriate location.
 
-        **Capability:** `SEMANTIC_INSERTION_POINT`
-
-        **JSON-RPC method:** `semantic-insertion-point`
+        <div style="text-align:right">
+        <code>SEMANTIC_INSERTION_POINT</code>&ensp;<code>semantic-insertion-point</code>
+        </div>
 
         #### Input: SemanticInsertionQuery
 
@@ -727,13 +730,13 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         **Error codes:** `NOT_FOUND`, `CAPABILITY_NOT_SUPPORTED`
 
-    ??? example "diagnostics — Run compilation diagnostics for files"
+    ??? example "Diagnostics"
 
         Runs compilation diagnostics for one or more files, returning errors, warnings, and informational messages with precise source locations.
 
-        **Capability:** `DIAGNOSTICS`
-
-        **JSON-RPC method:** `diagnostics`
+        <div style="text-align:right">
+        <code>DIAGNOSTICS</code>&ensp;<code>diagnostics</code>
+        </div>
 
         #### Input: DiagnosticsQuery
 
@@ -790,13 +793,13 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         **Error codes:** `NOT_FOUND`
 
-    ??? example "file-outline — Get a hierarchical symbol outline for a file"
+    ??? example "File Outline"
 
         Returns a hierarchical symbol outline for a single file, listing all named declarations and their nesting.
 
-        **Capability:** `FILE_OUTLINE`
-
-        **JSON-RPC method:** `file-outline`
+        <div style="text-align:right">
+        <code>FILE_OUTLINE</code>&ensp;<code>file-outline</code>
+        </div>
 
         #### Input: FileOutlineQuery
 
@@ -875,13 +878,13 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         **Error codes:** `NOT_FOUND`, `CAPABILITY_NOT_SUPPORTED`
 
-    ??? example "workspace-symbol — Search the workspace for symbols by name pattern"
+    ??? example "Workspace Symbol Search"
 
         Searches the entire workspace for symbols matching a name pattern. Supports substring matching and optional regex.
 
-        **Capability:** `WORKSPACE_SYMBOL_SEARCH`
-
-        **JSON-RPC method:** `workspace-symbol`
+        <div style="text-align:right">
+        <code>WORKSPACE_SYMBOL_SEARCH</code>&ensp;<code>workspace-symbol</code>
+        </div>
 
         #### Input: WorkspaceSymbolQuery
 
@@ -1012,13 +1015,13 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         **Error codes:** `CAPABILITY_NOT_SUPPORTED`
 
-    ??? example "workspace/files — List workspace modules and source files"
+    ??? example "Workspace Files"
 
         Lists workspace modules and their source files. Use this to discover the project structure visible to the daemon.
 
-        **Capability:** `WORKSPACE_FILES`
-
-        **JSON-RPC method:** `workspace/files`
+        <div style="text-align:right">
+        <code>WORKSPACE_FILES</code>&ensp;<code>workspace/files</code>
+        </div>
 
         #### Input: WorkspaceFilesQuery
 
@@ -1083,13 +1086,13 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         **Error codes:** `CAPABILITY_NOT_SUPPORTED`
 
-    ??? example "implementations — Find concrete implementations and subclasses for a declaration"
+    ??? example "Implementations"
 
         Finds concrete implementations and subclasses for an interface or abstract class declaration.
 
-        **Capability:** `IMPLEMENTATIONS`
-
-        **JSON-RPC method:** `implementations`
+        <div style="text-align:right">
+        <code>IMPLEMENTATIONS</code>&ensp;<code>implementations</code>
+        </div>
 
         #### Input: ImplementationsQuery
 
@@ -1181,13 +1184,13 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         **Error codes:** `NOT_FOUND`, `CAPABILITY_NOT_SUPPORTED`
 
-    ??? example "code-actions — Return available code actions at a file position"
+    ??? example "Code Actions"
 
         Returns available code actions at a file position, such as quick fixes and refactoring suggestions.
 
-        **Capability:** `CODE_ACTIONS`
-
-        **JSON-RPC method:** `code-actions`
+        <div style="text-align:right">
+        <code>CODE_ACTIONS</code>&ensp;<code>code-actions</code>
+        </div>
 
         #### Input: CodeActionsQuery
 
@@ -1244,13 +1247,13 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         **Error codes:** `NOT_FOUND`, `CAPABILITY_NOT_SUPPORTED`
 
-    ??? example "completions — Return completion candidates available at a file position"
+    ??? example "Completions"
 
         Returns completion candidates available at a file position. Use this to discover what symbols, keywords, or snippets the compiler suggests.
 
-        **Capability:** `COMPLETIONS`
-
-        **JSON-RPC method:** `completions`
+        <div style="text-align:right">
+        <code>COMPLETIONS</code>&ensp;<code>completions</code>
+        </div>
 
         #### Input: CompletionsQuery
 
@@ -1333,13 +1336,13 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         4 operations that modify workspace state: rename, optimize imports, apply edits, and refresh.
 
-    ??? example "rename — Plan a symbol rename (dry-run by default)"
+    ??? example "Rename"
 
         Plans a symbol rename by computing all text edits needed across the workspace. This is a dry-run by default — it returns edits without applying them.
 
-        **Capability:** `RENAME`
-
-        **JSON-RPC method:** `rename`
+        <div style="text-align:right">
+        <code>RENAME</code>&ensp;<code>rename</code>
+        </div>
 
         #### Input: RenameQuery
 
@@ -1425,13 +1428,13 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         **Error codes:** `NOT_FOUND`
 
-    ??? example "imports/optimize — Optimize imports for one or more files"
+    ??? example "Optimize Imports"
 
         Optimizes imports for one or more files, removing unused imports and sorting the remainder.
 
-        **Capability:** `OPTIMIZE_IMPORTS`
-
-        **JSON-RPC method:** `imports/optimize`
+        <div style="text-align:right">
+        <code>OPTIMIZE_IMPORTS</code>&ensp;<code>imports/optimize</code>
+        </div>
 
         #### Input: ImportOptimizeQuery
 
@@ -1490,13 +1493,13 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         **Error codes:** `NOT_FOUND`, `CAPABILITY_NOT_SUPPORTED`
 
-    ??? example "edits/apply — Apply a prepared edit plan with conflict detection"
+    ??? example "Apply Edits"
 
         Applies a prepared edit plan with file-hash conflict detection. Pass the edits and hashes returned by a prior `rename` or other planning operation.
 
-        **Capability:** `APPLY_EDITS`
-
-        **JSON-RPC method:** `edits/apply`
+        <div style="text-align:right">
+        <code>APPLY_EDITS</code>&ensp;<code>edits/apply</code>
+        </div>
 
         #### Input: ApplyEditsQuery
 
@@ -1581,13 +1584,13 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         **Error codes:** `CONFLICT`, `VALIDATION_ERROR`
 
-    ??? example "workspace/refresh — Force a targeted or full workspace state refresh"
+    ??? example "Refresh Workspace"
 
         Forces the daemon to refresh its workspace state. Use this after external file modifications to ensure the daemon's view is current.
 
-        **Capability:** `REFRESH_WORKSPACE`
-
-        **JSON-RPC method:** `workspace/refresh`
+        <div style="text-align:right">
+        <code>REFRESH_WORKSPACE</code>&ensp;<code>workspace/refresh</code>
+        </div>
 
         #### Input: RefreshQuery
 

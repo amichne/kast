@@ -173,7 +173,7 @@ object DocsDocument {
     // ── Per-operation renderers ───────────────────────────────────────
 
     private fun IndentedWriter.capabilitiesOperation(op: OperationDoc) {
-        details("info", "${op.jsonRpcMethod} — ${op.summary}") {
+        details("info", op.capabilityTitle()) {
             badgeLine(op)
             line()
 
@@ -195,7 +195,7 @@ object DocsDocument {
     }
 
     private fun IndentedWriter.apiReferenceOperation(op: OperationDoc) {
-        details("example", op.summary) {
+        details("example", op.capabilityTitle()) {
             lines(op.description)
             line()
             badgeLine(op)
@@ -232,13 +232,26 @@ object DocsDocument {
 
     // ── Badge line ────────────────────────────────────────────────────
 
+    /**
+     * Emits a right-aligned row of delineated badges: one for the capability slug (if present)
+     * and one for the raw JSON-RPC method name. Uses block-level HTML so no `md_in_html`
+     * processing is needed — `<code>` tags render identically to Markdown backtick spans.
+     */
     private fun IndentedWriter.badgeLine(op: OperationDoc) {
-        if (op.capability != null) {
-            line("**Capability:** `${op.capability}`")
-        }
-        line()
-        line("**JSON-RPC method:** `${op.jsonRpcMethod}`")
+        line("<div style=\"text-align:right\">")
+        line(buildString {
+            if (op.capability != null) append("<code>${op.capability}</code>&ensp;")
+            append("<code>${op.jsonRpcMethod}</code>")
+        })
+        line("</div>")
     }
+
+    /** Converts `"FIND_REFERENCES"` → `"Find References"`. Falls back to [OperationDoc.summary] for operations with no capability gating (system ops). */
+    private fun OperationDoc.capabilityTitle(): String =
+        capability
+            ?.split("_")
+            ?.joinToString(" ") { it.lowercase().replaceFirstChar { c -> c.uppercase() } }
+            ?: summary
 
     // ── Schema table rendering ────────────────────────────────────────
 
