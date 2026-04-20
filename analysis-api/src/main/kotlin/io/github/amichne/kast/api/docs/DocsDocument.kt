@@ -248,18 +248,19 @@ object DocsDocument {
             return
         }
 
-        line("| Field | Type | Required | Description |")
-        line("|-------|------|----------|-------------|")
+        line("| Signature | Description |")
+        line("|-----------|-------------|")
         repeat(descriptor.elementsCount) { index ->
             val name = descriptor.getElementName(index)
             val elementDescriptor = descriptor.getElementDescriptor(index)
             val typeName = resolveTypeName(elementDescriptor)
-            val required = if (!descriptor.isElementOptional(index)) "✓" else ""
+            val isOptional = descriptor.isElementOptional(index)
+            val displayType = if (isOptional && !typeName.endsWith("?")) "$typeName?" else typeName
             val docField = descriptor.getElementAnnotations(index)
                 .filterIsInstance<DocField>()
                 .firstOrNull()
             val description = docField?.description?.ifBlank { "" } ?: ""
-            line("| `$name` | `$typeName` | $required | $description |")
+            line("| `$name: $displayType` | $description |")
         }
     }
 

@@ -48,8 +48,8 @@ class AnalysisDocsDocumentTest {
         val yaml = OpenApiDocument.renderYaml()
         val markdown = DocsDocument.renderApiReference()
 
-        // Extract field names from markdown tables (lines starting with "| `fieldName`")
-        val fieldPattern = Regex("""\| `(\w+)` \|""")
+        // Extract field names from markdown tables (signature column: `fieldName: Type`)
+        val fieldPattern = Regex("""\| `(\w+):""")
         val markdownFields = fieldPattern.findAll(markdown).map { it.groupValues[1] }.toSet()
 
         // Extract property names from OpenAPI YAML
