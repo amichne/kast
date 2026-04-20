@@ -487,8 +487,16 @@ internal class SymbolWalker(
                 location = locationRaw,
             )
             val plain = "$prefix$signaturePlain${if (locationPlain.isNotEmpty()) "  $locationPlain" else ""}"
-            val renderedSignature = signaturePlain.replace(namePlain, theme.kind(sym.kind, namePlain))
-                .replace("· $kindLabel", "${theme.muted("·")} ${theme.kind(sym.kind, kindLabel)}")
+            // Style each half of `name · kindLabel` by splitting on the separator once. Using
+            // String.replace here would corrupt rendering when the name is a substring of the
+            // kind label (e.g. `face` in `interface`).
+            val renderedSignature = if (signaturePlain.contains(" · ")) {
+                val styledName = theme.kind(sym.kind, signaturePlain.substringBefore(" · "))
+                val styledKind = theme.kind(sym.kind, signaturePlain.substringAfter(" · "))
+                "$styledName ${theme.muted("·")} $styledKind"
+            } else {
+                theme.kind(sym.kind, signaturePlain)
+            }
             val rendered = "$prefix$renderedSignature" +
                 if (locationPlain.isNotEmpty()) "  ${theme.fileHeader(locationPlain)}" else ""
             styledLine(plain = plain, rendered = rendered)
