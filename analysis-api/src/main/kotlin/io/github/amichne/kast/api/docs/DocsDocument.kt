@@ -107,6 +107,9 @@ object DocsDocument {
         val writer = IndentedWriter()
         writer.line("---")
         writer.line("title: Capabilities")
+        writer.line("hide:")
+        writer.line("    - navigation")
+        writer.line("    - toc")
         writer.line("---")
         writer.line()
         writer.line("# Capabilities")
@@ -138,6 +141,8 @@ object DocsDocument {
         val writer = IndentedWriter()
         writer.line("---")
         writer.line("title: API reference")
+        writer.line("hide:")
+        writer.line("    - toc")
         writer.line("---")
         writer.line()
         writer.line("# API reference")
@@ -190,7 +195,7 @@ object DocsDocument {
     }
 
     private fun IndentedWriter.apiReferenceOperation(op: OperationDoc) {
-        details("example", "${op.jsonRpcMethod} — ${op.summary}") {
+        details("example", op.summary) {
             lines(op.description)
             line()
             badgeLine(op)
@@ -228,13 +233,11 @@ object DocsDocument {
     // ── Badge line ────────────────────────────────────────────────────
 
     private fun IndentedWriter.badgeLine(op: OperationDoc) {
-        val parts = mutableListOf<String>()
         if (op.capability != null) {
-            parts += "**Capability:** `${op.capability}`"
+            line("**Capability:** `${op.capability}`")
         }
-        parts += "**Category:** ${op.tag}"
-        parts += "**JSON-RPC method:** `${op.jsonRpcMethod}`"
-        line(parts.joinToString(" | "))
+        line()
+        line("**JSON-RPC method:** `${op.jsonRpcMethod}`")
     }
 
     // ── Schema table rendering ────────────────────────────────────────
@@ -283,7 +286,7 @@ object DocsDocument {
                     tooltip = ""
                 }
                 explicitDefault != null -> {
-                    signature = "`#!kotlin $name: $typeName = $explicitDefault`"
+                    signature = "`#!kotlin $name: $typeName`"
                     val escapedDefault = explicitDefault.replace("\"", "&quot;")
                     tooltip = " :material-information-outline:{ title=\"Default: $escapedDefault\" }"
                 }

@@ -1,5 +1,7 @@
 ---
 title: API reference
+hide:
+    - toc
 ---
 
 # API reference
@@ -17,13 +19,14 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         Returns a lightweight health check confirming the daemon is responsive. Use this before dispatching heavier queries.
 
-        **Category:** system | **JSON-RPC method:** `health`
+
+        **JSON-RPC method:** `health`
 
         #### Output: HealthResponse
 
         | Signature | Description |
         |-----------|-------------|
-        | `#!kotlin status: String = "ok"` :material-information-outline:{ title="Default: &quot;ok&quot;" } | Health status string, always "ok" when the daemon is responsive. |
+        | `#!kotlin status: String` :material-information-outline:{ title="Default: &quot;ok&quot;" } | Health status string, always "ok" when the daemon is responsive. |
         | `#!kotlin backendName: String` | Identifier of the analysis backend (e.g. "standalone" or "intellij"). |
         | `#!kotlin backendVersion: String` | Version string of the analysis backend. |
         | `#!kotlin workspaceRoot: String` | Absolute path of the workspace root directory. |
@@ -66,7 +69,8 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         Returns the full runtime state including indexing progress, backend identity, and workspace root. Use this to verify readiness before running analysis commands.
 
-        **Category:** system | **JSON-RPC method:** `runtime/status`
+
+        **JSON-RPC method:** `runtime/status`
 
         #### Output: RuntimeStatusResponse
 
@@ -80,9 +84,9 @@ daemon, including input/output schemas, examples, and behavioral notes.
         | `#!kotlin backendVersion: String` | Version string of the analysis backend. |
         | `#!kotlin workspaceRoot: String` | Absolute path of the workspace root directory. |
         | `#!kotlin message: String?` | Human-readable status message with additional context. |
-        | `#!kotlin warnings: List<String> = emptyList()` :material-information-outline:{ title="Default: emptyList()" } | Active warning messages about the runtime environment. |
-        | `#!kotlin sourceModuleNames: List<String> = emptyList()` :material-information-outline:{ title="Default: emptyList()" } | Names of source modules discovered in the workspace. |
-        | `#!kotlin dependentModuleNamesBySourceModuleName: Map<String, List<String>> = emptyMap()` :material-information-outline:{ title="Default: emptyMap()" } | Map from source module name to its dependency module names. |
+        | `#!kotlin warnings: List<String>` :material-information-outline:{ title="Default: emptyList()" } | Active warning messages about the runtime environment. |
+        | `#!kotlin sourceModuleNames: List<String>` :material-information-outline:{ title="Default: emptyList()" } | Names of source modules discovered in the workspace. |
+        | `#!kotlin dependentModuleNamesBySourceModuleName: Map<String, List<String>>` :material-information-outline:{ title="Default: emptyMap()" } | Map from source module name to its dependency module names. |
         | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
         === "CLI example"
@@ -128,7 +132,8 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         Lists every read and mutation capability the current backend advertises, along with server limits. Query this before calling an operation to confirm it is available.
 
-        **Category:** system | **JSON-RPC method:** `capabilities`
+
+        **JSON-RPC method:** `capabilities`
 
         #### Output: BackendCapabilities
 
@@ -210,15 +215,17 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         Resolves the symbol at a file position, returning its fully qualified name, kind, location, and optional metadata such as type information and documentation.
 
-        **Capability:** `RESOLVE_SYMBOL` | **Category:** read | **JSON-RPC method:** `symbol/resolve`
+        **Capability:** `RESOLVE_SYMBOL`
+
+        **JSON-RPC method:** `symbol/resolve`
 
         #### Input: SymbolQuery
 
         | Signature | Description |
         |-----------|-------------|
         | `#!kotlin position: FilePosition` | File position identifying the symbol to resolve. |
-        | `#!kotlin includeDeclarationScope: Boolean = false` :material-information-outline:{ title="Default: false" } | When true, populates the declarationScope field on the resolved symbol. |
-        | `#!kotlin includeDocumentation: Boolean = false` :material-information-outline:{ title="Default: false" } | When true, populates the documentation field on the resolved symbol. |
+        | `#!kotlin includeDeclarationScope: Boolean` :material-information-outline:{ title="Default: false" } | When true, populates the declarationScope field on the resolved symbol. |
+        | `#!kotlin includeDocumentation: Boolean` :material-information-outline:{ title="Default: false" } | When true, populates the documentation field on the resolved symbol. |
 
         #### Output: SymbolResult
 
@@ -297,14 +304,16 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         Finds all references to the symbol at a file position across the workspace. Optionally includes the declaration itself.
 
-        **Capability:** `FIND_REFERENCES` | **Category:** read | **JSON-RPC method:** `references`
+        **Capability:** `FIND_REFERENCES`
+
+        **JSON-RPC method:** `references`
 
         #### Input: ReferencesQuery
 
         | Signature | Description |
         |-----------|-------------|
         | `#!kotlin position: FilePosition` | File position identifying the symbol whose references to find. |
-        | `#!kotlin includeDeclaration: Boolean = false` :material-information-outline:{ title="Default: false" } | When true, includes the symbol's own declaration in the results. |
+        | `#!kotlin includeDeclaration: Boolean` :material-information-outline:{ title="Default: false" } | When true, includes the symbol's own declaration in the results. |
 
         #### Output: ReferencesResult
 
@@ -395,7 +404,9 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         Expands a bounded incoming or outgoing call tree from a function or method. Use incoming to find callers, outgoing to find callees.
 
-        **Capability:** `CALL_HIERARCHY` | **Category:** read | **JSON-RPC method:** `call-hierarchy`
+        **Capability:** `CALL_HIERARCHY`
+
+        **JSON-RPC method:** `call-hierarchy`
 
         #### Input: CallHierarchyQuery
 
@@ -403,9 +414,9 @@ daemon, including input/output schemas, examples, and behavioral notes.
         |-----------|-------------|
         | `#!kotlin position: FilePosition` | File position identifying the function or method to expand. |
         | `#!kotlin direction: CallDirection` | INCOMING for callers or OUTGOING for callees. |
-        | `#!kotlin depth: Int = 3` :material-information-outline:{ title="Default: 3" } | Maximum tree depth to traverse. |
-        | `#!kotlin maxTotalCalls: Int = 256` :material-information-outline:{ title="Default: 256" } | Maximum total call nodes to return across the entire tree. |
-        | `#!kotlin maxChildrenPerNode: Int = 64` :material-information-outline:{ title="Default: 64" } | Maximum direct children per node before truncation. |
+        | `#!kotlin depth: Int` :material-information-outline:{ title="Default: 3" } | Maximum tree depth to traverse. |
+        | `#!kotlin maxTotalCalls: Int` :material-information-outline:{ title="Default: 256" } | Maximum total call nodes to return across the entire tree. |
+        | `#!kotlin maxChildrenPerNode: Int` :material-information-outline:{ title="Default: 64" } | Maximum direct children per node before truncation. |
         | `#!kotlin timeoutMillis: Long?` | Optional timeout in milliseconds for the traversal. |
 
         #### Output: CallHierarchyResult
@@ -525,16 +536,18 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         Expands supertypes and subtypes from a resolved symbol. Use this to understand inheritance relationships.
 
-        **Capability:** `TYPE_HIERARCHY` | **Category:** read | **JSON-RPC method:** `type-hierarchy`
+        **Capability:** `TYPE_HIERARCHY`
+
+        **JSON-RPC method:** `type-hierarchy`
 
         #### Input: TypeHierarchyQuery
 
         | Signature | Description |
         |-----------|-------------|
         | `#!kotlin position: FilePosition` | File position identifying the class or interface to expand. |
-        | `#!kotlin direction: TypeHierarchyDirection = BOTH` :material-information-outline:{ title="Default: BOTH" } | SUPERTYPES, SUBTYPES, or BOTH. |
-        | `#!kotlin depth: Int = 3` :material-information-outline:{ title="Default: 3" } | Maximum tree depth to traverse. |
-        | `#!kotlin maxResults: Int = 256` :material-information-outline:{ title="Default: 256" } | Maximum total nodes to return. |
+        | `#!kotlin direction: TypeHierarchyDirection` :material-information-outline:{ title="Default: BOTH" } | SUPERTYPES, SUBTYPES, or BOTH. |
+        | `#!kotlin depth: Int` :material-information-outline:{ title="Default: 3" } | Maximum tree depth to traverse. |
+        | `#!kotlin maxResults: Int` :material-information-outline:{ title="Default: 256" } | Maximum total nodes to return. |
 
         #### Output: TypeHierarchyResult
 
@@ -652,7 +665,9 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         Finds the best insertion point for a new declaration relative to a file position. Use this to place generated code at a semantically appropriate location.
 
-        **Capability:** `SEMANTIC_INSERTION_POINT` | **Category:** read | **JSON-RPC method:** `semantic-insertion-point`
+        **Capability:** `SEMANTIC_INSERTION_POINT`
+
+        **JSON-RPC method:** `semantic-insertion-point`
 
         #### Input: SemanticInsertionQuery
 
@@ -716,7 +731,9 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         Runs compilation diagnostics for one or more files, returning errors, warnings, and informational messages with precise source locations.
 
-        **Capability:** `DIAGNOSTICS` | **Category:** read | **JSON-RPC method:** `diagnostics`
+        **Capability:** `DIAGNOSTICS`
+
+        **JSON-RPC method:** `diagnostics`
 
         #### Input: DiagnosticsQuery
 
@@ -777,7 +794,9 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         Returns a hierarchical symbol outline for a single file, listing all named declarations and their nesting.
 
-        **Capability:** `FILE_OUTLINE` | **Category:** read | **JSON-RPC method:** `file-outline`
+        **Capability:** `FILE_OUTLINE`
+
+        **JSON-RPC method:** `file-outline`
 
         #### Input: FileOutlineQuery
 
@@ -860,7 +879,9 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         Searches the entire workspace for symbols matching a name pattern. Supports substring matching and optional regex.
 
-        **Capability:** `WORKSPACE_SYMBOL_SEARCH` | **Category:** read | **JSON-RPC method:** `workspace-symbol`
+        **Capability:** `WORKSPACE_SYMBOL_SEARCH`
+
+        **JSON-RPC method:** `workspace-symbol`
 
         #### Input: WorkspaceSymbolQuery
 
@@ -868,9 +889,9 @@ daemon, including input/output schemas, examples, and behavioral notes.
         |-----------|-------------|
         | `#!kotlin pattern: String` | Search pattern to match against symbol names. |
         | `#!kotlin kind: SymbolKind?` | Filter results to symbols of this kind only. |
-        | `#!kotlin maxResults: Int = 100` :material-information-outline:{ title="Default: 100" } | Maximum number of symbols to return. |
-        | `#!kotlin regex: Boolean = false` :material-information-outline:{ title="Default: false" } | When true, treats the pattern as a regular expression. |
-        | `#!kotlin includeDeclarationScope: Boolean = false` :material-information-outline:{ title="Default: false" } | When true, populates the declarationScope field on each matched symbol. |
+        | `#!kotlin maxResults: Int` :material-information-outline:{ title="Default: 100" } | Maximum number of symbols to return. |
+        | `#!kotlin regex: Boolean` :material-information-outline:{ title="Default: false" } | When true, treats the pattern as a regular expression. |
+        | `#!kotlin includeDeclarationScope: Boolean` :material-information-outline:{ title="Default: false" } | When true, populates the declarationScope field on each matched symbol. |
 
         #### Output: WorkspaceSymbolResult
 
@@ -995,14 +1016,16 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         Lists workspace modules and their source files. Use this to discover the project structure visible to the daemon.
 
-        **Capability:** `WORKSPACE_FILES` | **Category:** read | **JSON-RPC method:** `workspace/files`
+        **Capability:** `WORKSPACE_FILES`
+
+        **JSON-RPC method:** `workspace/files`
 
         #### Input: WorkspaceFilesQuery
 
         | Signature | Description |
         |-----------|-------------|
         | `#!kotlin moduleName: String?` | Filter to a single module by name. Omit to list all modules. |
-        | `#!kotlin includeFiles: Boolean = false` :material-information-outline:{ title="Default: false" } | When true, includes individual file paths for each module. |
+        | `#!kotlin includeFiles: Boolean` :material-information-outline:{ title="Default: false" } | When true, includes individual file paths for each module. |
 
         #### Output: WorkspaceFilesResult
 
@@ -1064,14 +1087,16 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         Finds concrete implementations and subclasses for an interface or abstract class declaration.
 
-        **Capability:** `IMPLEMENTATIONS` | **Category:** read | **JSON-RPC method:** `implementations`
+        **Capability:** `IMPLEMENTATIONS`
+
+        **JSON-RPC method:** `implementations`
 
         #### Input: ImplementationsQuery
 
         | Signature | Description |
         |-----------|-------------|
         | `#!kotlin position: FilePosition` | File position identifying the interface or abstract class. |
-        | `#!kotlin maxResults: Int = 100` :material-information-outline:{ title="Default: 100" } | Maximum number of implementation symbols to return. |
+        | `#!kotlin maxResults: Int` :material-information-outline:{ title="Default: 100" } | Maximum number of implementation symbols to return. |
 
         #### Output: ImplementationsResult
 
@@ -1079,7 +1104,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         |-----------|-------------|
         | `#!kotlin declaration: Symbol` | The interface or abstract class symbol that was queried. |
         | `#!kotlin implementations: List<Symbol>` | Concrete implementations or subclasses found. |
-        | `#!kotlin exhaustive: Boolean = true` :material-information-outline:{ title="Default: true" } | True when all implementations were found within maxResults. |
+        | `#!kotlin exhaustive: Boolean` :material-information-outline:{ title="Default: true" } | True when all implementations were found within maxResults. |
         | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
         === "CLI example"
@@ -1160,7 +1185,9 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         Returns available code actions at a file position, such as quick fixes and refactoring suggestions.
 
-        **Capability:** `CODE_ACTIONS` | **Category:** read | **JSON-RPC method:** `code-actions`
+        **Capability:** `CODE_ACTIONS`
+
+        **JSON-RPC method:** `code-actions`
 
         #### Input: CodeActionsQuery
 
@@ -1221,14 +1248,16 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         Returns completion candidates available at a file position. Use this to discover what symbols, keywords, or snippets the compiler suggests.
 
-        **Capability:** `COMPLETIONS` | **Category:** read | **JSON-RPC method:** `completions`
+        **Capability:** `COMPLETIONS`
+
+        **JSON-RPC method:** `completions`
 
         #### Input: CompletionsQuery
 
         | Signature | Description |
         |-----------|-------------|
         | `#!kotlin position: FilePosition` | File position where completions are requested. |
-        | `#!kotlin maxResults: Int = 100` :material-information-outline:{ title="Default: 100" } | Maximum number of completion items to return. |
+        | `#!kotlin maxResults: Int` :material-information-outline:{ title="Default: 100" } | Maximum number of completion items to return. |
         | `#!kotlin kindFilter: List<SymbolKind>?` | Restrict results to these symbol kinds only. |
 
         #### Output: CompletionsResult
@@ -1236,7 +1265,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         | Signature | Description |
         |-----------|-------------|
         | `#!kotlin items: List<CompletionItem>` | Completion candidates available at the queried position. |
-        | `#!kotlin exhaustive: Boolean = true` :material-information-outline:{ title="Default: true" } | True when all candidates were returned within maxResults. |
+        | `#!kotlin exhaustive: Boolean` :material-information-outline:{ title="Default: true" } | True when all candidates were returned within maxResults. |
         | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
         === "CLI example"
@@ -1308,7 +1337,9 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         Plans a symbol rename by computing all text edits needed across the workspace. This is a dry-run by default — it returns edits without applying them.
 
-        **Capability:** `RENAME` | **Category:** mutation | **JSON-RPC method:** `rename`
+        **Capability:** `RENAME`
+
+        **JSON-RPC method:** `rename`
 
         #### Input: RenameQuery
 
@@ -1316,7 +1347,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         |-----------|-------------|
         | `#!kotlin position: FilePosition` | File position identifying the symbol to rename. |
         | `#!kotlin newName: String` | The new name to assign to the symbol. |
-        | `#!kotlin dryRun: Boolean = true` :material-information-outline:{ title="Default: true" } | When true (default), computes edits without applying them. |
+        | `#!kotlin dryRun: Boolean` :material-information-outline:{ title="Default: true" } | When true (default), computes edits without applying them. |
 
         #### Output: RenameResult
 
@@ -1398,7 +1429,9 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         Optimizes imports for one or more files, removing unused imports and sorting the remainder.
 
-        **Capability:** `OPTIMIZE_IMPORTS` | **Category:** mutation | **JSON-RPC method:** `imports/optimize`
+        **Capability:** `OPTIMIZE_IMPORTS`
+
+        **JSON-RPC method:** `imports/optimize`
 
         #### Input: ImportOptimizeQuery
 
@@ -1461,7 +1494,9 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         Applies a prepared edit plan with file-hash conflict detection. Pass the edits and hashes returned by a prior `rename` or other planning operation.
 
-        **Capability:** `APPLY_EDITS` | **Category:** mutation | **JSON-RPC method:** `edits/apply`
+        **Capability:** `APPLY_EDITS`
+
+        **JSON-RPC method:** `edits/apply`
 
         #### Input: ApplyEditsQuery
 
@@ -1469,7 +1504,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         |-----------|-------------|
         | `#!kotlin edits: List<TextEdit>` | Text edits to apply, typically from a prior rename or code action. |
         | `#!kotlin fileHashes: List<FileHash>` | Expected file hashes for conflict detection before writing. |
-        | `#!kotlin fileOperations: List<FileOperation> = emptyList()` :material-information-outline:{ title="Default: emptyList()" } | Optional file create or delete operations to perform. |
+        | `#!kotlin fileOperations: List<FileOperation>` :material-information-outline:{ title="Default: emptyList()" } | Optional file create or delete operations to perform. |
 
         #### Output: ApplyEditsResult
 
@@ -1477,8 +1512,8 @@ daemon, including input/output schemas, examples, and behavioral notes.
         |-----------|-------------|
         | `#!kotlin applied: List<TextEdit>` | Text edits that were successfully applied. |
         | `#!kotlin affectedFiles: List<String>` | Absolute paths of all files that were modified. |
-        | `#!kotlin createdFiles: List<String> = emptyList()` :material-information-outline:{ title="Default: emptyList()" } | Absolute paths of files created by file operations. |
-        | `#!kotlin deletedFiles: List<String> = emptyList()` :material-information-outline:{ title="Default: emptyList()" } | Absolute paths of files deleted by file operations. |
+        | `#!kotlin createdFiles: List<String>` :material-information-outline:{ title="Default: emptyList()" } | Absolute paths of files created by file operations. |
+        | `#!kotlin deletedFiles: List<String>` :material-information-outline:{ title="Default: emptyList()" } | Absolute paths of files deleted by file operations. |
         | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
         === "CLI example"
@@ -1550,20 +1585,22 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         Forces the daemon to refresh its workspace state. Use this after external file modifications to ensure the daemon's view is current.
 
-        **Capability:** `REFRESH_WORKSPACE` | **Category:** mutation | **JSON-RPC method:** `workspace/refresh`
+        **Capability:** `REFRESH_WORKSPACE`
+
+        **JSON-RPC method:** `workspace/refresh`
 
         #### Input: RefreshQuery
 
         | Signature | Description |
         |-----------|-------------|
-        | `#!kotlin filePaths: List<String> = emptyList()` :material-information-outline:{ title="Default: emptyList()" } | Absolute paths of files to refresh. Empty for a full workspace refresh. |
+        | `#!kotlin filePaths: List<String>` :material-information-outline:{ title="Default: emptyList()" } | Absolute paths of files to refresh. Empty for a full workspace refresh. |
 
         #### Output: RefreshResult
 
         | Signature | Description |
         |-----------|-------------|
         | `#!kotlin refreshedFiles: List<String>` | Absolute paths of files whose state was refreshed. |
-        | `#!kotlin removedFiles: List<String> = emptyList()` :material-information-outline:{ title="Default: emptyList()" } | Absolute paths of files that were removed from the workspace. |
+        | `#!kotlin removedFiles: List<String>` :material-information-outline:{ title="Default: emptyList()" } | Absolute paths of files that were removed from the workspace. |
         | `#!kotlin fullRefresh: Boolean` | True when a full workspace refresh was performed. |
         | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
