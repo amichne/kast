@@ -34,48 +34,10 @@ calls and external dependency usages don't appear as tree edges.
 
 ## Call hierarchy is intentionally bounded
 
-A call hierarchy result is not an unbounded whole-program graph. Kast
-stops expanding based on configurable limits.
-
-```mermaid
-graph TD
-    A["processOrder()"] --> B["validateCart()"]
-    A --> C["applyDiscount()"]
-    A --> D["chargePayment()"]
-    B --> E["checkInventory()"]
-    B --> F["...truncated: MAX_CHILDREN_PER_NODE"]
-    D --> G["PaymentGateway.charge()"]
-    G --> H["...truncated: CYCLE"]
-    C --> I["...stop: depth limit"]
-
-    style F stroke-dasharray: 5 5
-    style H stroke-dasharray: 5 5
-    style I stroke-dasharray: 5 5
-```
-
-The default traversal bounds are:
-
-| Parameter | Default | What it controls |
-|-----------|---------|------------------|
-| `depth` | 3 | How many levels deep to expand |
-| `maxTotalCalls` | 256 | Maximum edges across the entire tree |
-| `maxChildrenPerNode` | 64 | Maximum direct callers/callees per node |
-| Timeout | Daemon default | Wall-clock time limit for the traversal |
-
-When a node is truncated, `truncation.reason` tells you why:
-
-- **`CYCLE`** — Kast found a recursive path and stopped that branch.
-  Not an error.
-- **`MAX_CHILDREN_PER_NODE`** — the node had more direct
-  callers/callees than the limit. Results are partial at that node.
-- **`MAX_TOTAL_CALLS`** and **`TIMEOUT`** — the traversal exceeded a
-  global limit. Check `stats` for totals.
-- **Depth-limited leaves** — expansion stopped because the configured
-  depth ran out. These don't carry a truncation reason.
-
-Always read `stats` and node `truncation` data before claiming a call
-hierarchy is complete. Increase `depth` or `maxTotalCalls` when you
-need to see further.
+Call hierarchy results are bounded by configurable depth, fan-out, total
+edge, and timeout limits. Every truncated node carries a reason, and
+`stats` reports which bounds were hit.
+[Full truncation model →](../what-can-kast-do/trace-usage.md#how-truncation-works)
 
 ## Entry points have no incoming callers
 
@@ -98,31 +60,10 @@ beats text matching when identity matters.
 
 ## Reference search is visibility-scoped
 
-Kast narrows the files it searches based on the resolved symbol's
-Kotlin visibility.
-
-| Visibility | Search scope |
-|------------|-------------|
-| `PRIVATE` / `LOCAL` | Declaring file only |
-| `INTERNAL` | Declaring module |
-| `PUBLIC` / `PROTECTED` | All dependent modules |
-
-The `searchScope` object tells you exactly what happened:
-
-- **`searchScope.visibility`** — the Kotlin visibility Kast resolved
-  (`PUBLIC`, `INTERNAL`, `PROTECTED`, `PRIVATE`, `LOCAL`, `UNKNOWN`)
-- **`searchScope.scope`** — the breadth: `FILE`, `MODULE`, or
-  `DEPENDENT_MODULES`
-- **`searchScope.exhaustive`** — `true` when every candidate file was
-  searched. `false` means results may be incomplete.
-- **`searchScope.candidateFileCount`** and
-  **`searchScope.searchedFileCount`** — how many files were candidates
-  versus actually searched
-
-!!! warning
-    Read `searchScope.exhaustive` before claiming a reference list or
-    rename plan is complete. When it's `false`, results may miss usages
-    outside the searched scope.
+Kast narrows reference searches based on Kotlin visibility rules and
+reports exhaustiveness via `searchScope`. Always read
+`searchScope.exhaustive` before claiming a reference list is complete.
+[Full scoping model →](../what-can-kast-do/trace-usage.md#how-visibility-drives-scope)
 
 ## File outline shows named declarations only
 

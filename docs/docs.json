@@ -62,7 +62,6 @@
         "pages": [
           "reference/api-reference",
           "reference/api-specification",
-          "reference/capabilities",
           "reference/error-codes"
         ]
       },

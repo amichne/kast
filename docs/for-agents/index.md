@@ -33,45 +33,31 @@ mindmap
 
 ## Symbol identity — not string matching
 
-When your agent asks "what is `processOrder`?", text search returns every
-line containing that string. Kast resolves the exact declaration at a
-specific position and returns the fully qualified name, kind, return type,
-parameters, and source location. Your agent can refer to the symbol
-unambiguously for the rest of the conversation.
-
-```text title="Example agent prompt"
-Use kast to resolve the processOrder function on OrderService.
-Tell me its fully qualified name and return type.
-```
+Kast resolves the exact declaration at a position instead of matching
+text, so your agent can refer to a symbol by its fully qualified name for
+the rest of the conversation.
+[Understand symbols →](../what-can-kast-do/understand-symbols.md)
 
 ## Structural evidence — not line matches
 
-When your agent needs to know "who calls this function?", `grep` returns
-files that mention the name. Kast returns a bounded call hierarchy tree
-with traversal stats and truncation metadata. Your agent knows exactly
-which functions are actual callers, how deep the tree goes, and where
-expansion was cut short.
-
-When your agent asks "is this used anywhere?", Kast returns every
-reference along with `searchScope.exhaustive` — a boolean proving whether
-every candidate file was searched. No more hedging with "I found these
-references, but there might be more."
+Kast returns bounded call hierarchies and reference lists with
+`searchScope.exhaustive`, so your agent knows exactly which functions are
+callers and whether a usage search was complete.
+[Trace usage →](../what-can-kast-do/trace-usage.md)
 
 ## Safe mutations — not find-and-replace
 
-When your agent needs to rename a symbol, find-and-replace rewrites bytes
-without knowing whether each match is the right symbol. Kast's two-phase
-flow generates a rename plan with exact edits and SHA-256 file hashes.
-The agent reviews the plan, then applies it. If any file changed between
-planning and applying, Kast rejects the apply with a clear error.
+Kast's two-phase plan→apply flow with SHA-256 file hashes lets your agent
+review edits before touching disk and detects conflicts if files change
+in between.
+[Refactor safely →](../what-can-kast-do/refactor-safely.md)
 
 ## Workspace awareness — not file-by-file
 
-Kast analyzes entire Gradle workspaces as a single session. Your agent
-gets visibility into module boundaries, dependency relationships, and
-symbol visibility scoping. When Kast reports a reference search as
-`exhaustive`, it means the search covered every module that could
-possibly contain a usage — not just the files the agent happened to open.
+Kast analyzes entire Gradle workspaces as a single session, giving your
+agent module boundaries and visibility-scoped results rather than
+per-file guesses.
+[Manage workspaces →](../what-can-kast-do/manage-workspaces.md)
 
 ## What your agent can do with Kast
 

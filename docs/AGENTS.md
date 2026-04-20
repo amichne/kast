@@ -8,16 +8,21 @@ defining navigation, extensions, and theme configuration.
 
 The documentation is organized into six sections:
 
-- `docs/index.md` — sales-pitch landing page with demos and quickstart
+- `docs/index.md` — focused landing page: differentiators, `kast demo`,
+  a 60-second quickstart, and navigation cards. No inline capability
+  walkthroughs — those live under `what-can-kast-do/`.
 - `docs/getting-started/` — install, quickstart, backends
 - `docs/what-can-kast-do/` — intent-organized capability pages
   (understand-symbols, trace-usage, refactor-safely, validate-code,
-  manage-workspaces)
+  manage-workspaces). These are the canonical home for CLI/JSON-RPC
+  examples.
 - `docs/for-agents/` — agent-facing content (overview, talk-to-agent,
   install-skill, direct-cli)
 - `docs/architecture/` — how-it-works, behavioral-model, kast-vs-lsp
-- `docs/reference/` — generated pages (api-reference, api-specification,
-  capabilities, error-codes)
+- `docs/reference/` — generated pages. `api-reference` and
+  `api-specification` appear in the nav, plus `error-codes`.
+  `capabilities.md` is generated but intentionally excluded from the
+  nav to avoid duplicating `api-reference.md`.
 
 Generated reference pages under `docs/reference/` are produced by
 `./gradlew :analysis-api:generateDocPages` and drift-tested by
