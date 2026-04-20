@@ -25,6 +25,8 @@ Returns a lightweight health check confirming the daemon is responsive. Use this
 | `workspaceRoot` | `String` | ✓ | Absolute path of the workspace root directory. |
 | `schemaVersion` | `Int` |  | Protocol schema version for forward compatibility. |
 
+#### Examples
+
 === "CLI example"
 
     ```bash
@@ -79,6 +81,8 @@ Returns the full runtime state including indexing progress, backend identity, an
 | `sourceModuleNames` | `List<String>` |  | Names of source modules discovered in the workspace. |
 | `dependentModuleNamesBySourceModuleName` | `Map<String, List<String>>` |  | Map from source module name to its dependency module names. |
 | `schemaVersion` | `Int` |  | Protocol schema version for forward compatibility. |
+
+#### Examples
 
 === "CLI example"
 
@@ -135,6 +139,8 @@ Lists every read and mutation capability the current backend advertises, along w
 | `mutationCapabilities` | `List<MutationCapability>` | ✓ | Set of mutation operations this backend supports. |
 | `limits` | `ServerLimits` | ✓ | Server-enforced resource limits. |
 | `schemaVersion` | `Int` |  | Protocol schema version for forward compatibility. |
+
+#### Examples
 
 === "CLI example"
 
@@ -215,6 +221,8 @@ Resolves the symbol at a file position, returning its fully qualified name, kind
 |-------|------|----------|-------------|
 | `symbol` | `Symbol` | ✓ | The resolved symbol at the queried position. |
 | `schemaVersion` | `Int` |  | Protocol schema version for forward compatibility. |
+
+#### Examples
 
 === "CLI example"
 
@@ -304,6 +312,8 @@ Finds all references to the symbol at a file position across the workspace. Opti
 | `page` | `PageInfo?` |  | Pagination metadata when results are truncated. |
 | `searchScope` | `SearchScope?` |  | Describes the scope and exhaustiveness of the search. |
 | `schemaVersion` | `Int` |  | Protocol schema version for forward compatibility. |
+
+#### Examples
 
 === "CLI example"
 
@@ -404,6 +414,8 @@ Expands a bounded incoming or outgoing call tree from a function or method. Use 
 | `root` | `CallNode` | ✓ | Root node of the call hierarchy tree. |
 | `stats` | `CallHierarchyStats` | ✓ | Traversal statistics including truncation indicators. |
 | `schemaVersion` | `Int` |  | Protocol schema version for forward compatibility. |
+
+#### Examples
 
 === "CLI example"
 
@@ -533,6 +545,8 @@ Expands supertypes and subtypes from a resolved symbol. Use this to understand i
 | `stats` | `TypeHierarchyStats` | ✓ | Traversal statistics including truncation indicators. |
 | `schemaVersion` | `Int` |  | Protocol schema version for forward compatibility. |
 
+#### Examples
+
 === "CLI example"
 
     ```bash
@@ -658,6 +672,8 @@ Finds the best insertion point for a new declaration relative to a file position
 | `filePath` | `String` | ✓ | Absolute path of the file containing the insertion point. |
 | `schemaVersion` | `Int` |  | Protocol schema version for forward compatibility. |
 
+#### Examples
+
 === "CLI example"
 
     ```bash
@@ -721,6 +737,8 @@ Runs compilation diagnostics for one or more files, returning errors, warnings, 
 | `page` | `PageInfo?` |  | Pagination metadata when results are truncated. |
 | `schemaVersion` | `Int` |  | Protocol schema version for forward compatibility. |
 
+#### Examples
+
 === "CLI example"
 
     ```bash
@@ -780,6 +798,8 @@ Returns a hierarchical symbol outline for a single file, listing all named decla
 |-------|------|----------|-------------|
 | `symbols` | `List<OutlineSymbol>` | ✓ | Top-level symbols in the file, each containing nested children. |
 | `schemaVersion` | `Int` |  | Protocol schema version for forward compatibility. |
+
+#### Examples
 
 === "CLI example"
 
@@ -868,6 +888,8 @@ Searches the entire workspace for symbols matching a name pattern. Supports subs
 | `symbols` | `List<Symbol>` | ✓ | Symbols matching the search pattern. |
 | `page` | `PageInfo?` |  | Pagination metadata when results are truncated. |
 | `schemaVersion` | `Int` |  | Protocol schema version for forward compatibility. |
+
+#### Examples
 
 === "CLI example"
 
@@ -1000,6 +1022,8 @@ Lists workspace modules and their source files. Use this to discover the project
 | `modules` | `List<WorkspaceModule>` | ✓ | List of workspace modules visible to the daemon. |
 | `schemaVersion` | `Int` |  | Protocol schema version for forward compatibility. |
 
+#### Examples
+
 === "CLI example"
 
     ```bash
@@ -1070,6 +1094,8 @@ Finds concrete implementations and subclasses for an interface or abstract class
 | `implementations` | `List<Symbol>` | ✓ | Concrete implementations or subclasses found. |
 | `exhaustive` | `Boolean` |  | True when all implementations were found within maxResults. |
 | `schemaVersion` | `Int` |  | Protocol schema version for forward compatibility. |
+
+#### Examples
 
 === "CLI example"
 
@@ -1165,6 +1191,8 @@ Returns available code actions at a file position, such as quick fixes and refac
 | `actions` | `List<CodeAction>` | ✓ | Available code actions at the queried position. |
 | `schemaVersion` | `Int` |  | Protocol schema version for forward compatibility. |
 
+#### Examples
+
 === "CLI example"
 
     ```bash
@@ -1227,6 +1255,8 @@ Returns completion candidates available at a file position. Use this to discover
 | `items` | `List<CompletionItem>` | ✓ | Completion candidates available at the queried position. |
 | `exhaustive` | `Boolean` |  | True when all candidates were returned within maxResults. |
 | `schemaVersion` | `Int` |  | Protocol schema version for forward compatibility. |
+
+#### Examples
 
 === "CLI example"
 
@@ -1312,6 +1342,8 @@ Plans a symbol rename by computing all text edits needed across the workspace. T
 | `affectedFiles` | `List<String>` | ✓ | Absolute paths of all files that would be modified. |
 | `searchScope` | `SearchScope?` |  | Describes the scope and exhaustiveness of the rename search. |
 | `schemaVersion` | `Int` |  | Protocol schema version for forward compatibility. |
+
+#### Examples
 
 === "CLI example"
 
@@ -1400,6 +1432,8 @@ Optimizes imports for one or more files, removing unused imports and sorting the
 | `affectedFiles` | `List<String>` | ✓ | Absolute paths of all files that were modified. |
 | `schemaVersion` | `Int` |  | Protocol schema version for forward compatibility. |
 
+#### Examples
+
 === "CLI example"
 
     ```bash
@@ -1465,6 +1499,8 @@ Applies a prepared edit plan with file-hash conflict detection. Pass the edits a
 | `createdFiles` | `List<String>` |  | Absolute paths of files created by file operations. |
 | `deletedFiles` | `List<String>` |  | Absolute paths of files deleted by file operations. |
 | `schemaVersion` | `Int` |  | Protocol schema version for forward compatibility. |
+
+#### Examples
 
 === "CLI example"
 
@@ -1551,6 +1587,8 @@ Forces the daemon to refresh its workspace state. Use this after external file m
 | `removedFiles` | `List<String>` |  | Absolute paths of files that were removed from the workspace. |
 | `fullRefresh` | `Boolean` | ✓ | True when a full workspace refresh was performed. |
 | `schemaVersion` | `Int` |  | Protocol schema version for forward compatibility. |
+
+#### Examples
 
 === "CLI example"
 

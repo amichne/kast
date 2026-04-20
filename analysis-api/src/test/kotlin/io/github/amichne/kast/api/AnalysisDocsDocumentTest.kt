@@ -71,6 +71,30 @@ class AnalysisDocsDocumentTest {
         assertEquals(specIds, registryIds, "OperationDocRegistry does not match OpenAPI spec operations")
     }
 
+    @Test
+    fun `every operation in api-reference includes ordered examples tabs`() {
+        val markdown = DocsDocument.renderApiReference()
+        val expectedMethods = OperationDocRegistry.all().map { it.jsonRpcMethod }
+
+        expectedMethods.forEach { method ->
+            val sectionMatch = Regex("""(?ms)^### ${Regex.escape(method)}\n(.*?)(?=^### |\z)""").find(markdown)
+            assertTrue(sectionMatch != null, "Missing section for $method in api-reference.md")
+
+            val section = sectionMatch!!.groupValues[1]
+            val examplesHeadingIndex = section.indexOf("#### Examples")
+            assertTrue(examplesHeadingIndex >= 0, "Missing #### Examples section for $method")
+
+            val examplesSection = section.substring(examplesHeadingIndex)
+            val cliTabIndex = examplesSection.indexOf("=== \"CLI example\"")
+            val requestTabIndex = examplesSection.indexOf("=== \"JSON-RPC request\"")
+            val responseTabIndex = examplesSection.indexOf("=== \"Example response\"")
+
+            assertTrue(cliTabIndex >= 0, "Missing CLI example tab for $method")
+            assertTrue(requestTabIndex > cliTabIndex, "JSON-RPC request tab must come after CLI example for $method")
+            assertTrue(responseTabIndex > requestTabIndex, "Example response tab must come after JSON-RPC request for $method")
+        }
+    }
+
     private fun repoRoot(): Path =
         generateSequence(Path.of("").toAbsolutePath()) { it.parent }
             .first { Files.isDirectory(it.resolve("docs")) }
