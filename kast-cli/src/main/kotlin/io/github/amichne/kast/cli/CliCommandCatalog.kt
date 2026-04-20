@@ -317,6 +317,12 @@ internal object CliCommandCatalog {
         description = "Skip the interactive picker and use the first symbol matching this text.",
     )
 
+    private val demoWalkOption = CliOptionMetadata(
+        key = "walk",
+        usage = "--walk=auto|true|false",
+        description = "Run the interactive symbol-graph walker after Act 2. Defaults to auto: on when stdin is a TTY and --symbol is not set.",
+    )
+
     private val commands: List<CliCommandMetadata> = listOf(
         CliCommandMetadata(
             path = listOf("workspace", "status"),
@@ -771,13 +777,14 @@ internal object CliCommandCatalog {
             summary = "Interactive comparison of grep vs kast semantic analysis on your workspace.",
             description = "Picks a symbol from your workspace — via --symbol or the built-in terminal chooser — and runs grep-style text search alongside standalone kast resolve, references, rename, and call-hierarchy so you can see the difference side by side.",
             usages = listOf(
-                "$CLI_EXECUTABLE_NAME demo [--workspace-root=/absolute/path/to/workspace] [--symbol=CliService]",
+                "$CLI_EXECUTABLE_NAME demo [--workspace-root=/absolute/path/to/workspace] [--symbol=CliService] [--walk=auto|true|false]",
             ),
-            options = listOf(workspaceRootOption, demoSymbolOption),
+            options = listOf(workspaceRootOption, demoSymbolOption, demoWalkOption),
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME demo",
                 "$CLI_EXECUTABLE_NAME demo --workspace-root=/absolute/path/to/workspace",
                 "$CLI_EXECUTABLE_NAME demo --workspace-root=/absolute/path/to/workspace --symbol=CliService",
+                "$CLI_EXECUTABLE_NAME demo --walk=true  # always runs the interactive symbol-graph walker",
             ),
         ),
         CliCommandMetadata(
