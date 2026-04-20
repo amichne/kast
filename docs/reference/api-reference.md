@@ -7,59 +7,53 @@ title: API reference
 Complete reference for every JSON-RPC method in the Kast analysis
 daemon, including input/output schemas, examples, and behavioral notes.
 
-=== "System operations"
+=== "System operations" 
+    !!! abstract "At a glance" 
+        3 operations for health checks, runtime status, and capability discovery. No capability gating required.
 
- !!! abstract "At a glance"
+    ??? example "health — Basic health check" 
+        Returns a lightweight health check confirming the daemon is responsive. Use this before dispatching heavier queries.
 
-  3 operations for health checks, runtime status, and capability discovery. No capability gating required.
+        **Category:** system | **JSON-RPC method:** `health`
 
- ??? example "health — Basic health check"
+        #### Output: HealthResponse
 
-  Returns a lightweight health check confirming the daemon is responsive. Use this before dispatching heavier queries.
+        | Field | Type | Required | Description |
+        |-------|------|----------|-------------|
+        | `status` | `String` |  | Health status string, always "ok" when the daemon is responsive. |
+        | `backendName` | `String` | ✓ | Identifier of the analysis backend (e.g. "standalone" or "intellij"). |
+        | `backendVersion` | `String` | ✓ | Version string of the analysis backend. |
+        | `workspaceRoot` | `String` | ✓ | Absolute path of the workspace root directory. |
+        | `schemaVersion` | `Int` |  | Protocol schema version for forward compatibility. | 
 
-  **Category:** system | **JSON-RPC method:** `health`
-
-  #### Output: HealthResponse
-
-  | Field | Type | Required | Description |
-  |-------|------|----------|-------------|
-  | `status` | `String` |  | Health status string, always "ok" when the daemon is responsive. |
-  | `backendName` | `String` | ✓ | Identifier of the analysis backend (e.g. "standalone" or "intellij"). |
-  | `backendVersion` | `String` | ✓ | Version string of the analysis backend. |
-  | `workspaceRoot` | `String` | ✓ | Absolute path of the workspace root directory. |
-  | `schemaVersion` | `Int` |  | Protocol schema version for forward compatibility. |
-
-  === "CLI example"
-
-   ```bash
-   kast health --workspace-root=/path/to/project
-   ```
-
-  === "JSON-RPC request"
-
-   ```json
-   {
-       "method": "health",
-       "id": 1,
-       "jsonrpc": "2.0"
-   }
-   ```
-
-  === "Example response"
-
-   ```json
-   {
-       "result": {
-           "status": "ok",
-           "backendName": "fake",
-           "backendVersion": "0.1.0-test",
-           "workspaceRoot": "/workspace",
-           "schemaVersion": 3
-       },
-       "id": 1,
-       "jsonrpc": "2.0"
-   }
-   ```
+        === "CLI example" 
+            ```bash
+            kast health --workspace-root=/path/to/project
+            ```
+    
+        === "JSON-RPC request" 
+            ```json
+            {
+                "method": "health",
+                "id": 1,
+                "jsonrpc": "2.0"
+            }
+            ```
+    
+        === "Example response" 
+            ```json
+            {
+                "result": {
+                    "status": "ok",
+                    "backendName": "fake",
+                    "backendVersion": "0.1.0-test",
+                    "workspaceRoot": "/workspace",
+                    "schemaVersion": 3
+                },
+                "id": 1,
+                "jsonrpc": "2.0"
+            }
+            ```
 
 
  ??? example "runtime/status — Detailed runtime state including indexing progress"
