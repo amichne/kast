@@ -3,7 +3,7 @@ package io.github.amichne.kast.api.docs
 
 internal class IndentedWriter(private val sb: StringBuilder = StringBuilder()) {
     private var depth: Int = 0
-    private val indent: String get() = " ".repeat(depth)
+    private val indent: String get() = "    ".repeat(depth)
 
     fun line(text: String = "") {
         if (text.isEmpty()) sb.appendLine() else sb.appendLine("$indent$text")
