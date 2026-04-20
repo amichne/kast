@@ -6,6 +6,16 @@ internal data class DemoOptions(
     val workspaceRoot: Path,
     val symbolFilter: String?,
     val walkMode: DemoWalkMode = DemoWalkMode.AUTO,
+    /**
+     * Backend the demo should talk to.
+     *  - `null` — auto-select: prefer a live IntelliJ plugin backend when one
+     *    is discoverable, otherwise fall back to (and auto-start if needed)
+     *    the standalone JVM daemon.
+     *  - `"standalone"` — force the standalone JVM daemon.
+     *  - `"intellij"` — require a running IntelliJ IDEA instance with the
+     *    Kast plugin; fails fast when no IntelliJ runtime is available.
+     */
+    val backend: String? = null,
 )
 
 /**

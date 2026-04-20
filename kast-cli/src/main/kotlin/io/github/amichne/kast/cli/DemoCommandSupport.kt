@@ -172,7 +172,7 @@ internal class DemoCommandSupport(
 
         val runtimeOptions = RuntimeCommandOptions(
             workspaceRoot = options.workspaceRoot,
-            backendName = "standalone",
+            backendName = options.backend,
             waitTimeoutMillis = 180_000L,
         )
 

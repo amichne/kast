@@ -553,6 +553,14 @@ internal data class ParsedArguments(
                 message = "Unknown value for --walk: ${options["walk"]}. Valid values: auto, true, false.",
             )
         }
+        val backend = when (val raw = options["backend-name"]?.trim()?.lowercase()?.takeIf(String::isNotEmpty)) {
+            null, "auto" -> null
+            "standalone", "intellij" -> raw
+            else -> throw CliFailure(
+                code = "CLI_USAGE",
+                message = "Unknown value for --backend-name: ${options["backend-name"]}. Valid values: auto, standalone, intellij.",
+            )
+        }
         return DemoOptions(
             workspaceRoot = options["workspace-root"]
                 ?.takeIf(String::isNotBlank)
@@ -560,6 +568,7 @@ internal data class ParsedArguments(
                 ?: Path.of(System.getProperty("user.dir", ".")).toAbsolutePath().normalize(),
             symbolFilter = options["symbol"]?.takeIf(String::isNotBlank),
             walkMode = walkMode,
+            backend = backend,
         )
     }
 

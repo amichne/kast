@@ -278,7 +278,7 @@ internal class CliService(
         val runtime = runtimeManager.workspaceEnsure(
             RuntimeCommandOptions(
                 workspaceRoot = options.workspaceRoot,
-                backendName = "standalone",
+                backendName = options.backend,
                 waitTimeoutMillis = 180_000L,
             ),
         )

@@ -775,16 +775,18 @@ internal object CliCommandCatalog {
             path = listOf("demo"),
             group = CliCommandGroup.VALIDATION,
             summary = "Interactive comparison of grep vs kast semantic analysis on your workspace.",
-            description = "Picks a symbol from your workspace — via --symbol or the built-in terminal chooser — and runs grep-style text search alongside standalone kast resolve, references, rename, and call-hierarchy so you can see the difference side by side.",
+            description = "Picks a symbol from your workspace — via --symbol or the built-in terminal chooser — and runs grep-style text search alongside kast resolve, references, rename, and call-hierarchy so you can see the difference side by side. " +
+                "Uses the live IntelliJ plugin backend when one is available and auto-starts the standalone JVM daemon otherwise; pin with --backend-name=intellij|standalone.",
             usages = listOf(
-                "$CLI_EXECUTABLE_NAME demo [--workspace-root=/absolute/path/to/workspace] [--symbol=CliService] [--walk=auto|true|false]",
+                "$CLI_EXECUTABLE_NAME demo [--workspace-root=/absolute/path/to/workspace] [--symbol=CliService] [--walk=auto|true|false] [--backend-name=intellij|standalone]",
             ),
-            options = listOf(workspaceRootOption, demoSymbolOption, demoWalkOption),
+            options = listOf(workspaceRootOption, demoSymbolOption, demoWalkOption, backendNameOption),
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME demo",
                 "$CLI_EXECUTABLE_NAME demo --workspace-root=/absolute/path/to/workspace",
                 "$CLI_EXECUTABLE_NAME demo --workspace-root=/absolute/path/to/workspace --symbol=CliService",
                 "$CLI_EXECUTABLE_NAME demo --walk=true  # always runs the interactive symbol-graph walker",
+                "$CLI_EXECUTABLE_NAME demo --backend-name=intellij  # target a running IntelliJ IDEA plugin backend",
             ),
         ),
         CliCommandMetadata(
