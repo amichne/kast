@@ -544,12 +544,31 @@ internal data class ParsedArguments(
                 message = "`kast demo` does not accept --kast; invoke demo.sh directly if you need to override the launcher",
             )
         }
+        val walkMode = when (options["walk"]?.lowercase()) {
+            null, "", "auto" -> DemoWalkMode.AUTO
+            "true", "on", "yes", "1" -> DemoWalkMode.ENABLED
+            "false", "off", "no", "0" -> DemoWalkMode.DISABLED
+            else -> throw CliFailure(
+                code = "CLI_USAGE",
+                message = "Unknown value for --walk: ${options["walk"]}. Valid values: auto, true, false.",
+            )
+        }
+        val backend = when (val raw = options["backend-name"]?.trim()?.lowercase()?.takeIf(String::isNotEmpty)) {
+            null, "auto" -> null
+            "standalone", "intellij" -> raw
+            else -> throw CliFailure(
+                code = "CLI_USAGE",
+                message = "Unknown value for --backend-name: ${options["backend-name"]}. Valid values: auto, standalone, intellij.",
+            )
+        }
         return DemoOptions(
             workspaceRoot = options["workspace-root"]
                 ?.takeIf(String::isNotBlank)
                 ?.let { Path.of(it).toAbsolutePath().normalize() }
                 ?: Path.of(System.getProperty("user.dir", ".")).toAbsolutePath().normalize(),
             symbolFilter = options["symbol"]?.takeIf(String::isNotBlank),
+            walkMode = walkMode,
+            backend = backend,
         )
     }
 

@@ -1,18 +1,40 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.api.contract.CallDirection
+import io.github.amichne.kast.api.contract.CallHierarchyQuery
 import io.github.amichne.kast.api.contract.CallHierarchyResult
-import io.github.amichne.kast.api.contract.CallNode
-import io.github.amichne.kast.api.contract.Location
+import io.github.amichne.kast.api.contract.FilePosition
+import io.github.amichne.kast.api.contract.ReferencesQuery
 import io.github.amichne.kast.api.contract.ReferencesResult
+import io.github.amichne.kast.api.contract.RenameQuery
 import io.github.amichne.kast.api.contract.RenameResult
 import io.github.amichne.kast.api.contract.Symbol
+import io.github.amichne.kast.api.contract.SymbolQuery
+import io.github.amichne.kast.api.contract.WorkspaceSymbolQuery
+import io.github.amichne.kast.cli.demo.CliServiceSymbolGraph
+import io.github.amichne.kast.cli.demo.DemoActs.act1TextSearchBaseline
+import io.github.amichne.kast.cli.demo.DemoActs.act2Semantic
+import io.github.amichne.kast.cli.demo.DemoActs.closingPanel
+import io.github.amichne.kast.cli.demo.DemoActs.comparisonSummary
+import io.github.amichne.kast.cli.demo.DemoActs.openingBanner
+import io.github.amichne.kast.cli.demo.DemoActs.targetPanel
+import io.github.amichne.kast.cli.demo.DemoRenderer
+import io.github.amichne.kast.cli.demo.DemoScript
+import io.github.amichne.kast.cli.demo.LineEmphasis
+import io.github.amichne.kast.cli.demo.StreamWalkerIO
+import io.github.amichne.kast.cli.demo.SymbolWalker
+import io.github.amichne.kast.cli.demo.Timed
+import io.github.amichne.kast.cli.demo.demoScript
+import io.github.amichne.kast.cli.demo.timed
+import java.io.BufferedReader
 import java.io.Console
+import java.io.InputStreamReader
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.name
 import kotlin.io.path.readLines
-import kotlin.math.max
 
+/** Shared entry points used by [CliService.demo] and directly by unit tests. */
 internal class DemoCommandSupport(
     private val symbolChooser: DemoSymbolChooser = TerminalDemoSymbolChooser(),
     private val themeProvider: () -> CliTextTheme = CliTextTheme::detect,
@@ -101,165 +123,197 @@ internal class DemoCommandSupport(
         )
     }
 
+    /**
+     * Batch rendering used when the caller wants a complete transcript in
+     * one shot (older callers + unit tests). Builds the full scene tree,
+     * then renders it in a single pass.
+     */
     fun render(report: DemoReport): String {
-        val theme = themeProvider()
-        val symbolName = report.selectedSymbol.fqName.substringAfterLast('.')
-        return buildString {
-            appendLine(theme.title("kast demo"))
-            appendLine("Workspace  ${report.workspaceRoot}")
-            appendLine("Selected   ${report.resolvedSymbol.fqName}")
-            appendLine()
-
-            appendLine(theme.heading("Act 1 · text search baseline"))
-            appendLine("grep found ${report.textSearch.totalMatches} matches for \"$symbolName\"")
-            appendLine("- likely true: ${report.textSearch.likelyCorrect}")
-            appendLine("- ambiguous: ${report.textSearch.ambiguous}")
-            appendLine("- likely false positives: ${report.textSearch.falsePositives}")
-            appendLine("- blind rename would touch ${report.textSearch.filesTouched} files")
-            report.textSearch.sampleMatches.forEach { match ->
-                appendLine(
-                    "  ${relativeToWorkspace(report.workspaceRoot, match.filePath)}:${match.lineNumber}  " +
-                        "${match.preview} ${match.category.renderHint(theme)}",
-                )
-            }
-            appendLine()
-
-            appendLine(theme.heading("Act 2 · semantic analysis"))
-            appendLine("resolve")
-            appendLine("- fqName: ${report.resolvedSymbol.fqName}")
-            appendLine("- kind: ${report.resolvedSymbol.kind}")
-            report.resolvedSymbol.visibility?.let { appendLine("- visibility: $it") }
-            appendLine("- location: ${renderLocation(report.workspaceRoot, report.resolvedSymbol.location)}")
-            report.resolvedSymbol.containingDeclaration?.let { appendLine("- container: $it") }
-            appendLine()
-
-            appendLine("references")
-            appendLine("- semantic references: ${report.references.references.size}")
-            report.references.searchScope?.let { scope ->
-                appendLine("- exhaustive: ${scope.exhaustive}")
-                appendLine("- searched: ${scope.searchedFileCount}/${scope.candidateFileCount} files (${scope.scope})")
-            }
-            report.references.references.take(REFERENCE_PREVIEW_LIMIT).forEach { reference ->
-                appendLine("  ${renderLocation(report.workspaceRoot, reference)}  ${reference.preview.trim()}")
-            }
-            appendLine()
-
-            appendLine("rename --dry-run")
-            appendLine("- edits: ${report.rename.edits.size}")
-            appendLine("- affected files: ${report.rename.affectedFiles.size}")
-            appendLine("- file hashes: ${report.rename.fileHashes.size}")
-            report.rename.affectedFiles.take(FILE_PREVIEW_LIMIT).forEach { filePath ->
-                appendLine("  ${relativeToWorkspace(report.workspaceRoot, filePath)}")
-            }
-            appendLine()
-
-            appendLine("call-hierarchy (incoming, depth=2)")
-            appendLine("- incoming callers: ${report.callHierarchy.stats.totalNodes}")
-            appendLine("- max depth: ${report.callHierarchy.stats.maxDepthReached}")
-            appendLine("- files visited: ${report.callHierarchy.stats.filesVisited}")
-            renderCallTree(report.workspaceRoot, report.callHierarchy.root).forEach(::appendLine)
-            appendLine()
-
-            appendLine(theme.heading("Side-by-side summary"))
-            append(renderComparisonTable(report, theme))
-            appendLine()
-            appendLine()
-
-            appendLine(theme.heading("why the semantic pass wins"))
-            appendLine("grep only sees text, so it mixes real usages with imports, comments, strings, and substring collisions.")
-            appendLine("kast resolves the exact declaration, returns true semantic references, previews a safe rename, and maps incoming callers before you edit anything.")
+        val renderer = newRenderer()
+        val script = demoScript {
+            openingBanner(report.workspaceRoot)
+            targetPanel(report.workspaceRoot, report.resolvedSymbol)
+            act1TextSearchBaseline(
+                workspaceRoot = report.workspaceRoot,
+                symbolName = report.resolvedSymbol.fqName.substringAfterLast('.'),
+                summary = report.textSearch,
+            )
+            act2Semantic(
+                workspaceRoot = report.workspaceRoot,
+                resolvedSymbol = report.resolvedSymbol,
+                references = report.references,
+                rename = report.rename,
+                callHierarchy = report.callHierarchy,
+            )
+            comparisonSummary(report)
+            closingPanel()
         }
+        return renderer.render(script)
     }
 
-    private fun renderCallTree(
-        workspaceRoot: Path,
-        root: CallNode,
-    ): List<String> {
-        val lines = mutableListOf<String>()
-        val remaining = ArrayDeque<Int>().apply { add(CALL_TREE_LIMIT) }
+    /**
+     * Streaming orchestrator. Gathers the analysis payload piece by piece,
+     * emits each scene to [sink] as it completes, optionally runs the
+     * interactive symbol-graph walker, and finally prints the comparison
+     * summary and closing panel. Returns the populated [DemoReport] so the
+     * caller can attach it to a runtime-aware result.
+     */
+    suspend fun runInteractive(
+        options: DemoOptions,
+        cliService: CliService,
+        sink: (String) -> Unit,
+        reader: BufferedReader?,
+        walkerEnabled: Boolean,
+    ): DemoReport {
+        val renderer = newRenderer()
+        fun emit(script: DemoScript) = sink(renderer.render(script))
 
-        fun walk(node: CallNode, depth: Int) {
-            val left = remaining.removeFirst()
-            if (left <= 0) {
-                remaining.addFirst(0)
-                return
-            }
-            remaining.addFirst(left - 1)
-            val symbol = node.symbol
-            val indent = "  ".repeat(max(0, depth))
-            lines += buildString {
-                append(indent)
-                append("- ")
-                append(symbol.fqName.substringAfterLast('.'))
-                append(" (")
-                append(symbol.kind)
-                append(") ")
-                append(renderLocation(workspaceRoot, symbol.location))
-            }
-            node.children.forEach { child -> walk(child, depth + 1) }
-        }
+        emit(demoScript { openingBanner(options.workspaceRoot) })
 
-        walk(root, depth = 0)
-        return lines
-    }
-
-    private fun renderComparisonTable(
-        report: DemoReport,
-        theme: CliTextTheme,
-    ): String {
-        val rows = listOf(
-            Triple(
-                "Matches found",
-                "${report.textSearch.totalMatches} total / ${report.textSearch.likelyCorrect} likely true / ${report.textSearch.ambiguous} ambiguous",
-                "${report.references.references.size} semantic references",
-            ),
-            Triple("Symbol identity", "text only", "exact symbol identity"),
-            Triple("Kind awareness", "none", "knows the declaration kind"),
-            Triple("Call graph", "none", "${report.callHierarchy.stats.totalNodes} incoming callers"),
-            Triple("Rename plan", "blind sed across ${report.textSearch.filesTouched} files", "${report.rename.edits.size} edits across ${report.rename.affectedFiles.size} files"),
-            Triple("Conflict detection", "none", "${report.rename.fileHashes.size} file hashes"),
-            Triple(
-                "Coverage signal",
-                "none",
-                report.references.searchScope?.let { "exhaustive=${it.exhaustive} over ${it.searchedFileCount}/${it.candidateFileCount} files" } ?: "scope unavailable",
-            ),
-            Triple("Post-edit checks", "manual", "kast diagnostics"),
+        val runtimeOptions = RuntimeCommandOptions(
+            workspaceRoot = options.workspaceRoot,
+            backendName = options.backend,
+            waitTimeoutMillis = 180_000L,
         )
-        val metricWidth = max("metric".length, rows.maxOf { it.first.length })
-        val grepWidth = max("grep + sed".length, rows.maxOf { it.second.length })
-        val kastWidth = max("kast".length, rows.maxOf { it.third.length })
-        val separator = "${"-".repeat(metricWidth)}-+-${"-".repeat(grepWidth)}-+-${"-".repeat(kastWidth)}"
-        return buildString {
-            appendLine("metric".padEnd(metricWidth) + " | " + "grep + sed".padEnd(grepWidth) + " | " + theme.command("kast").padEnd(kastWidth))
-            appendLine(separator)
-            rows.forEachIndexed { index, row ->
-                append(row.first.padEnd(metricWidth))
-                append(" | ")
-                append(row.second.padEnd(grepWidth))
-                append(" | ")
-                append(row.third.padEnd(kastWidth))
-                if (index < rows.lastIndex) {
-                    appendLine()
+
+        emit(demoScript { progress("Warming workspace daemon (kast workspace ensure)...") })
+        val warm = timed { cliService.workspaceEnsure(runtimeOptions) }
+        emit(stepOutcomeScript("workspace ensure", warm))
+        warm.value.getOrThrow()
+
+        emit(demoScript { progress("Discovering workspace symbols (kast workspace-symbol)...") })
+        val symbolSearch = timed {
+            cliService.workspaceSymbolSearch(
+                runtimeOptions,
+                WorkspaceSymbolQuery(
+                    pattern = options.symbolFilter ?: ".",
+                    maxResults = 500,
+                    regex = options.symbolFilter == null,
+                ),
+            )
+        }
+        emit(stepOutcomeScript("workspace symbol search", symbolSearch))
+        val symbolPayload = symbolSearch.value.getOrThrow().payload
+
+        val selectedSymbol = selectSymbol(options, symbolPayload.symbols)
+        val symbolPosition = FilePosition(
+            filePath = selectedSymbol.location.filePath,
+            offset = selectedSymbol.location.startOffset,
+        )
+
+        emit(demoScript { targetPanel(options.workspaceRoot, selectedSymbol) })
+
+        emit(demoScript { progress("Classifying grep matches for ${selectedSymbol.fqName.substringAfterLast('.')}...") })
+        val textSearch = analyzeTextSearch(options.workspaceRoot, selectedSymbol)
+        emit(demoScript {
+            act1TextSearchBaseline(
+                workspaceRoot = options.workspaceRoot,
+                symbolName = selectedSymbol.fqName.substringAfterLast('.'),
+                summary = textSearch,
+            )
+        })
+
+        val resolved = timed {
+            cliService.resolveSymbol(runtimeOptions, SymbolQuery(position = symbolPosition))
+        }
+        val resolvedSymbol = resolved.value.getOrThrow().payload.symbol
+
+        val references = timed {
+            cliService.findReferences(
+                runtimeOptions,
+                ReferencesQuery(position = symbolPosition, includeDeclaration = true),
+            )
+        }
+        val referencesPayload = references.value.getOrThrow().payload
+
+        val rename = timed {
+            cliService.rename(
+                runtimeOptions,
+                RenameQuery(
+                    position = symbolPosition,
+                    newName = "${resolvedSymbol.fqName.substringAfterLast('.')}Renamed",
+                    dryRun = true,
+                ),
+            )
+        }
+        val renamePayload = rename.value.getOrThrow().payload
+
+        val callHierarchy = timed {
+            cliService.callHierarchy(
+                runtimeOptions,
+                CallHierarchyQuery(
+                    position = symbolPosition,
+                    direction = CallDirection.INCOMING,
+                    depth = 2,
+                ),
+            )
+        }
+        val callHierarchyPayload = callHierarchy.value.getOrThrow().payload
+
+        emit(demoScript {
+            act2Semantic(
+                workspaceRoot = options.workspaceRoot,
+                resolvedSymbol = resolvedSymbol,
+                references = referencesPayload,
+                rename = renamePayload,
+                callHierarchy = callHierarchyPayload,
+            )
+        })
+
+        if (walkerEnabled && reader != null) {
+            val walker = SymbolWalker(
+                workspaceRoot = options.workspaceRoot,
+                graph = CliServiceSymbolGraph(cliService, runtimeOptions),
+                io = StreamWalkerIO(reader = reader, output = sink),
+                renderer = renderer,
+            )
+            walker.run(resolvedSymbol)
+        } else {
+            emit(demoScript {
+                section("Act 3 · walk the symbol graph")
+                panel("interactive walker · skipped") {
+                    line(
+                        text = "pass --walk=true with a real terminal to hop between references, callers, and callees.",
+                        emphasis = LineEmphasis.DIM,
+                    )
+                }
+                blank()
+            })
+        }
+
+        val report = DemoReport(
+            workspaceRoot = options.workspaceRoot,
+            selectedSymbol = selectedSymbol,
+            textSearch = textSearch,
+            resolvedSymbol = resolvedSymbol,
+            references = referencesPayload,
+            rename = renamePayload,
+            callHierarchy = callHierarchyPayload,
+        )
+
+        emit(demoScript {
+            comparisonSummary(report)
+            closingPanel()
+        })
+
+        return report
+    }
+
+    private fun newRenderer(): DemoRenderer = DemoRenderer(theme = themeProvider())
+
+    private fun stepOutcomeScript(message: String, outcome: Timed<Result<*>>): DemoScript = demoScript {
+        step(message) {
+            if (outcome.value.isSuccess) success(outcome.elapsed) else failure(outcome.elapsed)
+            if (outcome.value.isFailure) {
+                body {
+                    line(
+                        text = outcome.value.exceptionOrNull()?.message ?: "unknown failure",
+                        emphasis = LineEmphasis.ERROR,
+                    )
                 }
             }
         }
     }
-
-    private fun relativeToWorkspace(
-        workspaceRoot: Path,
-        filePath: String,
-    ): String {
-        val absolutePath = Path.of(filePath).toAbsolutePath().normalize()
-        return absolutePath
-            .takeIf { it.startsWith(workspaceRoot.toAbsolutePath().normalize()) }
-            ?.let { workspaceRoot.toAbsolutePath().normalize().relativize(it).toString() }
-            ?: absolutePath.toString()
-    }
-
-    private fun renderLocation(
-        workspaceRoot: Path,
-        location: Location,
-    ): String = "${relativeToWorkspace(workspaceRoot, location.filePath)}:${location.startLine}"
 
     private fun symbolMatchesFilter(
         symbol: Symbol,
@@ -311,14 +365,6 @@ internal class DemoCommandSupport(
         segmentName.startsWith(".") || segmentName in IGNORED_DIRECTORIES
     }
 
-    private fun DemoTextMatchCategory.renderHint(theme: CliTextTheme): String = when (this) {
-        DemoTextMatchCategory.LIKELY_CORRECT -> ""
-        DemoTextMatchCategory.IMPORT -> theme.muted("← import")
-        DemoTextMatchCategory.COMMENT -> theme.muted("← comment")
-        DemoTextMatchCategory.STRING -> theme.muted("← string")
-        DemoTextMatchCategory.SUBSTRING -> theme.muted("← substring")
-    }
-
     private companion object {
         val IGNORED_DIRECTORIES = setOf(
             ".git",
@@ -332,9 +378,6 @@ internal class DemoCommandSupport(
             "buildSrc",
         )
         const val SAMPLE_MATCH_LIMIT = 12
-        const val REFERENCE_PREVIEW_LIMIT = 8
-        const val FILE_PREVIEW_LIMIT = 6
-        const val CALL_TREE_LIMIT = 12
     }
 }
 
@@ -402,3 +445,7 @@ internal data class DemoReport(
     val rename: RenameResult,
     val callHierarchy: CallHierarchyResult,
 )
+
+/** Convenience reader for CLI plumbing. */
+internal fun defaultDemoReader(): BufferedReader =
+    BufferedReader(InputStreamReader(System.`in`, Charsets.UTF_8))

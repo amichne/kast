@@ -257,66 +257,35 @@ internal class CliService(
 
     fun smoke(options: SmokeOptions): CliExternalProcess = smokeCommandSupport.plan(options)
 
-    suspend fun demo(options: DemoOptions): RuntimeAttachedResult<String> {
-        val runtimeOptions = RuntimeCommandOptions(
-            workspaceRoot = options.workspaceRoot,
-            backendName = "standalone",
-            waitTimeoutMillis = 180_000L,
+    suspend fun demo(
+        options: DemoOptions,
+        sink: (String) -> Unit = { text -> System.err.print(text) },
+        reader: java.io.BufferedReader? = defaultDemoReader(),
+        consoleProvider: () -> java.io.Console? = System::console,
+    ): RuntimeAttachedResult<String> {
+        val walkerEnabled = when (options.walkMode) {
+            DemoWalkMode.DISABLED -> false
+            DemoWalkMode.ENABLED -> true
+            DemoWalkMode.AUTO -> consoleProvider() != null && options.symbolFilter == null
+        }
+        demoCommandSupport.runInteractive(
+            options = options,
+            cliService = this,
+            sink = sink,
+            reader = reader,
+            walkerEnabled = walkerEnabled,
         )
-        val ensured = workspaceEnsure(runtimeOptions)
-        val symbolSearch = workspaceSymbolSearch(
-            runtimeOptions,
-            WorkspaceSymbolQuery(
-                pattern = options.symbolFilter ?: ".",
-                maxResults = 500,
-                regex = options.symbolFilter == null,
+        val runtime = runtimeManager.workspaceEnsure(
+            RuntimeCommandOptions(
+                workspaceRoot = options.workspaceRoot,
+                backendName = options.backend,
+                waitTimeoutMillis = 180_000L,
             ),
-        )
-        val selectedSymbol = demoCommandSupport.selectSymbol(options, symbolSearch.payload.symbols)
-        val symbolPosition = FilePosition(
-            filePath = selectedSymbol.location.filePath,
-            offset = selectedSymbol.location.startOffset,
-        )
-        val resolvedSymbol = resolveSymbol(
-            runtimeOptions,
-            SymbolQuery(position = symbolPosition),
-        ).payload.symbol
-        val references = findReferences(
-            runtimeOptions,
-            ReferencesQuery(
-                position = symbolPosition,
-                includeDeclaration = true,
-            ),
-        ).payload
-        val rename = rename(
-            runtimeOptions,
-            RenameQuery(
-                position = symbolPosition,
-                newName = "${resolvedSymbol.fqName.substringAfterLast('.')}Renamed",
-                dryRun = true,
-            ),
-        ).payload
-        val callHierarchy = callHierarchy(
-            runtimeOptions,
-            CallHierarchyQuery(
-                position = symbolPosition,
-                direction = CallDirection.INCOMING,
-                depth = 2,
-            ),
-        ).payload
-        val report = DemoReport(
-            workspaceRoot = options.workspaceRoot,
-            selectedSymbol = selectedSymbol,
-            textSearch = demoCommandSupport.analyzeTextSearch(options.workspaceRoot, resolvedSymbol),
-            resolvedSymbol = resolvedSymbol,
-            references = references,
-            rename = rename,
-            callHierarchy = callHierarchy,
         )
         return RuntimeAttachedResult(
-            payload = demoCommandSupport.render(report),
-            runtime = ensured.selected,
-            daemonNote = ensured.note,
+            payload = "",
+            runtime = runtime.selected,
+            daemonNote = runtime.note,
         )
     }
 
