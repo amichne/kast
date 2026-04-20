@@ -11,6 +11,6 @@ import kotlinx.serialization.Serializable
 data class SymbolResult(
     @DocField(description = "The resolved symbol at the queried position.")
     val symbol: Symbol,
-    @DocField(description = "Protocol schema version for forward compatibility.")
+    @DocField(description = "Protocol schema version for forward compatibility.", serverManaged = true)
     val schemaVersion: Int = SCHEMA_VERSION,
 )

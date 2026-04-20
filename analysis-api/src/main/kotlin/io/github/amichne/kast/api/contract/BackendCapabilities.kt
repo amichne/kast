@@ -21,6 +21,6 @@ data class BackendCapabilities(
     val mutationCapabilities: Set<MutationCapability>,
     @DocField(description = "Server-enforced resource limits.")
     val limits: ServerLimits,
-    @DocField(description = "Protocol schema version for forward compatibility.")
+    @DocField(description = "Protocol schema version for forward compatibility.", serverManaged = true)
     val schemaVersion: Int = SCHEMA_VERSION,
 )

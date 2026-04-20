@@ -11,6 +11,6 @@ import kotlinx.serialization.Serializable
 data class WorkspaceFilesQuery(
     @DocField(description = "Filter to a single module by name. Omit to list all modules.")
     val moduleName: String? = null,
-    @DocField(description = "When true, includes individual file paths for each module.")
+    @DocField(description = "When true, includes individual file paths for each module.", defaultValue = "false")
     val includeFiles: Boolean = false,
 )

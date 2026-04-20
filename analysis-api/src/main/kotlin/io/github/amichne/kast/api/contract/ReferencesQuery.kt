@@ -11,6 +11,6 @@ import kotlinx.serialization.Serializable
 data class ReferencesQuery(
     @DocField(description = "File position identifying the symbol whose references to find.")
     val position: FilePosition,
-    @DocField(description = "When true, includes the symbol's own declaration in the results.")
+    @DocField(description = "When true, includes the symbol's own declaration in the results.", defaultValue = "false")
     val includeDeclaration: Boolean = false,
 )

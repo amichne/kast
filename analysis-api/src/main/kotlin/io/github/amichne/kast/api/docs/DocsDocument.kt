@@ -100,6 +100,9 @@ object DocsDocument {
 
     // ── Public render methods ─────────────────────────────────────────
 
+    /** Exposes schema serializers for testing purposes only. */
+    fun schemaSerializersForTesting(): Map<String, KSerializer<*>> = schemaSerializers
+
     fun renderCapabilities(): String {
         val writer = IndentedWriter()
         writer.line("---")
@@ -173,7 +176,7 @@ object DocsDocument {
                 line("??? info \"Input: ${op.requestSchema}\"")
                 line()
                 indented {
-                    schemaTable(op.requestSchema)
+                    schemaTable(op.requestSchema, "api-reference.md")
                 }
                 line()
             }
@@ -181,7 +184,7 @@ object DocsDocument {
             line("??? info \"Output: ${op.responseSchema}\"")
             line()
             indented {
-                schemaTable(op.responseSchema)
+                schemaTable(op.responseSchema, "api-reference.md")
             }
         }
     }
@@ -236,7 +239,18 @@ object DocsDocument {
 
     // ── Schema table rendering ────────────────────────────────────────
 
-    private fun IndentedWriter.schemaTable(schemaName: String) {
+    // Maps operation-level schema names to their anchor in api-reference.md.
+    // Only schemas that appear directly as Input/Output of an operation have anchors.
+    private val typeAnchors: Map<String, String> by lazy {
+        val result = mutableMapOf<String, String>()
+        for (op in OperationDocRegistry.all()) {
+            op.requestSchema?.let { result.putIfAbsent(it, "input-${it.lowercase()}") }
+            result.putIfAbsent(op.responseSchema, "output-${op.responseSchema.lowercase()}")
+        }
+        result
+    }
+
+    private fun IndentedWriter.schemaTable(schemaName: String, crossRefBase: String? = null) {
         val serializer = schemaSerializers[schemaName]
         if (serializer == null) {
             line("*Schema not found: $schemaName*")
@@ -255,12 +269,37 @@ object DocsDocument {
             val elementDescriptor = descriptor.getElementDescriptor(index)
             val typeName = resolveTypeName(elementDescriptor)
             val isOptional = descriptor.isElementOptional(index)
-            val displayType = if (isOptional && !typeName.endsWith("?")) "$typeName?" else typeName
             val docField = descriptor.getElementAnnotations(index)
                 .filterIsInstance<DocField>()
                 .firstOrNull()
             val description = docField?.description?.ifBlank { "" } ?: ""
-            line("| `$name: $displayType` | $description |")
+            val explicitDefault = docField?.defaultValue?.ifBlank { null }
+
+            val signature: String
+            val tooltip: String
+            when {
+                docField?.serverManaged == true -> {
+                    signature = "`#!kotlin $name: $typeName`"
+                    tooltip = ""
+                }
+                explicitDefault != null -> {
+                    signature = "`#!kotlin $name: $typeName = $explicitDefault`"
+                    val escapedDefault = explicitDefault.replace("\"", "&quot;")
+                    tooltip = " :material-information-outline:{ title=\"Default: $escapedDefault\" }"
+                }
+                else -> {
+                    val displayType = if (isOptional && !typeName.endsWith("?")) "$typeName?" else typeName
+                    signature = "`#!kotlin $name: $displayType`"
+                    tooltip = ""
+                }
+            }
+
+            val baseTypeName = simpleName(elementDescriptor.serialName)
+            val previewLink = if (crossRefBase != null) {
+                typeAnchors[baseTypeName]?.let { anchor -> " [↗]($crossRefBase#$anchor){ data-preview }" }
+            } else null
+
+            line("| $signature$tooltip${previewLink ?: ""} | $description |")
         }
     }
 

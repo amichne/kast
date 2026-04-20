@@ -9,6 +9,6 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class RefreshQuery(
-    @DocField(description = "Absolute paths of files to refresh. Empty for a full workspace refresh.")
+    @DocField(description = "Absolute paths of files to refresh. Empty for a full workspace refresh.", defaultValue = "emptyList()")
     val filePaths: List<String> = emptyList(),
 )

@@ -25,12 +25,12 @@ data class RuntimeStatusResponse(
     val workspaceRoot: String,
     @DocField(description = "Human-readable status message with additional context.")
     val message: String? = null,
-    @DocField(description = "Active warning messages about the runtime environment.")
+    @DocField(description = "Active warning messages about the runtime environment.", defaultValue = "emptyList()")
     val warnings: List<String> = emptyList(),
-    @DocField(description = "Names of source modules discovered in the workspace.")
+    @DocField(description = "Names of source modules discovered in the workspace.", defaultValue = "emptyList()")
     val sourceModuleNames: List<String> = emptyList(),
-    @DocField(description = "Map from source module name to its dependency module names.")
+    @DocField(description = "Map from source module name to its dependency module names.", defaultValue = "emptyMap()")
     val dependentModuleNamesBySourceModuleName: Map<String, List<String>> = emptyMap(),
-    @DocField(description = "Protocol schema version for forward compatibility.")
+    @DocField(description = "Protocol schema version for forward compatibility.", serverManaged = true)
     val schemaVersion: Int = SCHEMA_VERSION,
 )

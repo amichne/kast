@@ -30,6 +30,6 @@ data class SemanticInsertionResult(
     val insertionOffset: Int,
     @DocField(description = "Absolute path of the file containing the insertion point.")
     val filePath: String,
-    @DocField(description = "Protocol schema version for forward compatibility.")
+    @DocField(description = "Protocol schema version for forward compatibility.", serverManaged = true)
     val schemaVersion: Int = SCHEMA_VERSION,
 )

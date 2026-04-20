@@ -13,6 +13,6 @@ data class RenameQuery(
     val position: FilePosition,
     @DocField(description = "The new name to assign to the symbol.")
     val newName: String,
-    @DocField(description = "When true (default), computes edits without applying them.")
+    @DocField(description = "When true (default), computes edits without applying them.", defaultValue = "true")
     val dryRun: Boolean = true,
 )

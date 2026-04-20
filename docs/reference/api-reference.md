@@ -23,11 +23,11 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         | Signature | Description |
         |-----------|-------------|
-        | `status: String?` | Health status string, always "ok" when the daemon is responsive. |
-        | `backendName: String` | Identifier of the analysis backend (e.g. "standalone" or "intellij"). |
-        | `backendVersion: String` | Version string of the analysis backend. |
-        | `workspaceRoot: String` | Absolute path of the workspace root directory. |
-        | `schemaVersion: Int?` | Protocol schema version for forward compatibility. |
+        | `#!kotlin status: String = "ok"` :material-information-outline:{ title="Default: &quot;ok&quot;" } | Health status string, always "ok" when the daemon is responsive. |
+        | `#!kotlin backendName: String` | Identifier of the analysis backend (e.g. "standalone" or "intellij"). |
+        | `#!kotlin backendVersion: String` | Version string of the analysis backend. |
+        | `#!kotlin workspaceRoot: String` | Absolute path of the workspace root directory. |
+        | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
         === "CLI example"
 
@@ -72,18 +72,18 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         | Signature | Description |
         |-----------|-------------|
-        | `state: RuntimeState` | Current runtime state: STARTING, INDEXING, READY, or DEGRADED. |
-        | `healthy: Boolean` | True when the daemon is responsive and not in an error state. |
-        | `active: Boolean` | True when the daemon has an active workspace session. |
-        | `indexing: Boolean` | True when the daemon is currently indexing the workspace. |
-        | `backendName: String` | Identifier of the analysis backend. |
-        | `backendVersion: String` | Version string of the analysis backend. |
-        | `workspaceRoot: String` | Absolute path of the workspace root directory. |
-        | `message: String?` | Human-readable status message with additional context. |
-        | `warnings: List<String>?` | Active warning messages about the runtime environment. |
-        | `sourceModuleNames: List<String>?` | Names of source modules discovered in the workspace. |
-        | `dependentModuleNamesBySourceModuleName: Map<String, List<String>>?` | Map from source module name to its dependency module names. |
-        | `schemaVersion: Int?` | Protocol schema version for forward compatibility. |
+        | `#!kotlin state: RuntimeState` | Current runtime state: STARTING, INDEXING, READY, or DEGRADED. |
+        | `#!kotlin healthy: Boolean` | True when the daemon is responsive and not in an error state. |
+        | `#!kotlin active: Boolean` | True when the daemon has an active workspace session. |
+        | `#!kotlin indexing: Boolean` | True when the daemon is currently indexing the workspace. |
+        | `#!kotlin backendName: String` | Identifier of the analysis backend. |
+        | `#!kotlin backendVersion: String` | Version string of the analysis backend. |
+        | `#!kotlin workspaceRoot: String` | Absolute path of the workspace root directory. |
+        | `#!kotlin message: String?` | Human-readable status message with additional context. |
+        | `#!kotlin warnings: List<String> = emptyList()` :material-information-outline:{ title="Default: emptyList()" } | Active warning messages about the runtime environment. |
+        | `#!kotlin sourceModuleNames: List<String> = emptyList()` :material-information-outline:{ title="Default: emptyList()" } | Names of source modules discovered in the workspace. |
+        | `#!kotlin dependentModuleNamesBySourceModuleName: Map<String, List<String>> = emptyMap()` :material-information-outline:{ title="Default: emptyMap()" } | Map from source module name to its dependency module names. |
+        | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
         === "CLI example"
 
@@ -134,13 +134,13 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         | Signature | Description |
         |-----------|-------------|
-        | `backendName: String` | Identifier of the analysis backend. |
-        | `backendVersion: String` | Version string of the analysis backend. |
-        | `workspaceRoot: String` | Absolute path of the workspace root directory. |
-        | `readCapabilities: List<ReadCapability>` | Set of read operations this backend supports. |
-        | `mutationCapabilities: List<MutationCapability>` | Set of mutation operations this backend supports. |
-        | `limits: ServerLimits` | Server-enforced resource limits. |
-        | `schemaVersion: Int?` | Protocol schema version for forward compatibility. |
+        | `#!kotlin backendName: String` | Identifier of the analysis backend. |
+        | `#!kotlin backendVersion: String` | Version string of the analysis backend. |
+        | `#!kotlin workspaceRoot: String` | Absolute path of the workspace root directory. |
+        | `#!kotlin readCapabilities: List<ReadCapability>` | Set of read operations this backend supports. |
+        | `#!kotlin mutationCapabilities: List<MutationCapability>` | Set of mutation operations this backend supports. |
+        | `#!kotlin limits: ServerLimits` | Server-enforced resource limits. |
+        | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
         === "CLI example"
 
@@ -216,16 +216,16 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         | Signature | Description |
         |-----------|-------------|
-        | `position: FilePosition` | File position identifying the symbol to resolve. |
-        | `includeDeclarationScope: Boolean?` | When true, populates the declarationScope field on the resolved symbol. |
-        | `includeDocumentation: Boolean?` | When true, populates the documentation field on the resolved symbol. |
+        | `#!kotlin position: FilePosition` | File position identifying the symbol to resolve. |
+        | `#!kotlin includeDeclarationScope: Boolean = false` :material-information-outline:{ title="Default: false" } | When true, populates the declarationScope field on the resolved symbol. |
+        | `#!kotlin includeDocumentation: Boolean = false` :material-information-outline:{ title="Default: false" } | When true, populates the documentation field on the resolved symbol. |
 
         #### Output: SymbolResult
 
         | Signature | Description |
         |-----------|-------------|
-        | `symbol: Symbol` | The resolved symbol at the queried position. |
-        | `schemaVersion: Int?` | Protocol schema version for forward compatibility. |
+        | `#!kotlin symbol: Symbol` | The resolved symbol at the queried position. |
+        | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
         === "CLI example"
 
@@ -303,18 +303,18 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         | Signature | Description |
         |-----------|-------------|
-        | `position: FilePosition` | File position identifying the symbol whose references to find. |
-        | `includeDeclaration: Boolean?` | When true, includes the symbol's own declaration in the results. |
+        | `#!kotlin position: FilePosition` | File position identifying the symbol whose references to find. |
+        | `#!kotlin includeDeclaration: Boolean = false` :material-information-outline:{ title="Default: false" } | When true, includes the symbol's own declaration in the results. |
 
         #### Output: ReferencesResult
 
         | Signature | Description |
         |-----------|-------------|
-        | `declaration: Symbol?` | The resolved declaration symbol, included when `includeDeclaration` was set. |
-        | `references: List<Location>` | List of source locations where the symbol is referenced. |
-        | `page: PageInfo?` | Pagination metadata when results are truncated. |
-        | `searchScope: SearchScope?` | Describes the scope and exhaustiveness of the search. |
-        | `schemaVersion: Int?` | Protocol schema version for forward compatibility. |
+        | `#!kotlin declaration: Symbol?` | The resolved declaration symbol, included when `includeDeclaration` was set. |
+        | `#!kotlin references: List<Location>` | List of source locations where the symbol is referenced. |
+        | `#!kotlin page: PageInfo?` | Pagination metadata when results are truncated. |
+        | `#!kotlin searchScope: SearchScope?` | Describes the scope and exhaustiveness of the search. |
+        | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
         === "CLI example"
 
@@ -401,20 +401,20 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         | Signature | Description |
         |-----------|-------------|
-        | `position: FilePosition` | File position identifying the function or method to expand. |
-        | `direction: CallDirection` | INCOMING for callers or OUTGOING for callees. |
-        | `depth: Int?` | Maximum tree depth to traverse. |
-        | `maxTotalCalls: Int?` | Maximum total call nodes to return across the entire tree. |
-        | `maxChildrenPerNode: Int?` | Maximum direct children per node before truncation. |
-        | `timeoutMillis: Long?` | Optional timeout in milliseconds for the traversal. |
+        | `#!kotlin position: FilePosition` | File position identifying the function or method to expand. |
+        | `#!kotlin direction: CallDirection` | INCOMING for callers or OUTGOING for callees. |
+        | `#!kotlin depth: Int = 3` :material-information-outline:{ title="Default: 3" } | Maximum tree depth to traverse. |
+        | `#!kotlin maxTotalCalls: Int = 256` :material-information-outline:{ title="Default: 256" } | Maximum total call nodes to return across the entire tree. |
+        | `#!kotlin maxChildrenPerNode: Int = 64` :material-information-outline:{ title="Default: 64" } | Maximum direct children per node before truncation. |
+        | `#!kotlin timeoutMillis: Long?` | Optional timeout in milliseconds for the traversal. |
 
         #### Output: CallHierarchyResult
 
         | Signature | Description |
         |-----------|-------------|
-        | `root: CallNode` | Root node of the call hierarchy tree. |
-        | `stats: CallHierarchyStats` | Traversal statistics including truncation indicators. |
-        | `schemaVersion: Int?` | Protocol schema version for forward compatibility. |
+        | `#!kotlin root: CallNode` | Root node of the call hierarchy tree. |
+        | `#!kotlin stats: CallHierarchyStats` | Traversal statistics including truncation indicators. |
+        | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
         === "CLI example"
 
@@ -531,18 +531,18 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         | Signature | Description |
         |-----------|-------------|
-        | `position: FilePosition` | File position identifying the class or interface to expand. |
-        | `direction: TypeHierarchyDirection?` | SUPERTYPES, SUBTYPES, or BOTH. |
-        | `depth: Int?` | Maximum tree depth to traverse. |
-        | `maxResults: Int?` | Maximum total nodes to return. |
+        | `#!kotlin position: FilePosition` | File position identifying the class or interface to expand. |
+        | `#!kotlin direction: TypeHierarchyDirection = BOTH` :material-information-outline:{ title="Default: BOTH" } | SUPERTYPES, SUBTYPES, or BOTH. |
+        | `#!kotlin depth: Int = 3` :material-information-outline:{ title="Default: 3" } | Maximum tree depth to traverse. |
+        | `#!kotlin maxResults: Int = 256` :material-information-outline:{ title="Default: 256" } | Maximum total nodes to return. |
 
         #### Output: TypeHierarchyResult
 
         | Signature | Description |
         |-----------|-------------|
-        | `root: TypeHierarchyNode` | Root node of the type hierarchy tree. |
-        | `stats: TypeHierarchyStats` | Traversal statistics including truncation indicators. |
-        | `schemaVersion: Int?` | Protocol schema version for forward compatibility. |
+        | `#!kotlin root: TypeHierarchyNode` | Root node of the type hierarchy tree. |
+        | `#!kotlin stats: TypeHierarchyStats` | Traversal statistics including truncation indicators. |
+        | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
         === "CLI example"
 
@@ -658,16 +658,16 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         | Signature | Description |
         |-----------|-------------|
-        | `position: FilePosition` | File position near the desired insertion location. |
-        | `target: SemanticInsertionTarget` | Where to compute the insertion point relative to the position. |
+        | `#!kotlin position: FilePosition` | File position near the desired insertion location. |
+        | `#!kotlin target: SemanticInsertionTarget` | Where to compute the insertion point relative to the position. |
 
         #### Output: SemanticInsertionResult
 
         | Signature | Description |
         |-----------|-------------|
-        | `insertionOffset: Int` | Zero-based byte offset where new code should be inserted. |
-        | `filePath: String` | Absolute path of the file containing the insertion point. |
-        | `schemaVersion: Int?` | Protocol schema version for forward compatibility. |
+        | `#!kotlin insertionOffset: Int` | Zero-based byte offset where new code should be inserted. |
+        | `#!kotlin filePath: String` | Absolute path of the file containing the insertion point. |
+        | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
         === "CLI example"
 
@@ -722,15 +722,15 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         | Signature | Description |
         |-----------|-------------|
-        | `filePaths: List<String>` | Absolute paths of the files to analyze for diagnostics. |
+        | `#!kotlin filePaths: List<String>` | Absolute paths of the files to analyze for diagnostics. |
 
         #### Output: DiagnosticsResult
 
         | Signature | Description |
         |-----------|-------------|
-        | `diagnostics: List<Diagnostic>` | List of compilation diagnostics found in the requested files. |
-        | `page: PageInfo?` | Pagination metadata when results are truncated. |
-        | `schemaVersion: Int?` | Protocol schema version for forward compatibility. |
+        | `#!kotlin diagnostics: List<Diagnostic>` | List of compilation diagnostics found in the requested files. |
+        | `#!kotlin page: PageInfo?` | Pagination metadata when results are truncated. |
+        | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
         === "CLI example"
 
@@ -783,14 +783,14 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         | Signature | Description |
         |-----------|-------------|
-        | `filePath: String` | Absolute path of the file to outline. |
+        | `#!kotlin filePath: String` | Absolute path of the file to outline. |
 
         #### Output: FileOutlineResult
 
         | Signature | Description |
         |-----------|-------------|
-        | `symbols: List<OutlineSymbol>` | Top-level symbols in the file, each containing nested children. |
-        | `schemaVersion: Int?` | Protocol schema version for forward compatibility. |
+        | `#!kotlin symbols: List<OutlineSymbol>` | Top-level symbols in the file, each containing nested children. |
+        | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
         === "CLI example"
 
@@ -866,19 +866,19 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         | Signature | Description |
         |-----------|-------------|
-        | `pattern: String` | Search pattern to match against symbol names. |
-        | `kind: SymbolKind?` | Filter results to symbols of this kind only. |
-        | `maxResults: Int?` | Maximum number of symbols to return. |
-        | `regex: Boolean?` | When true, treats the pattern as a regular expression. |
-        | `includeDeclarationScope: Boolean?` | When true, populates the declarationScope field on each matched symbol. |
+        | `#!kotlin pattern: String` | Search pattern to match against symbol names. |
+        | `#!kotlin kind: SymbolKind?` | Filter results to symbols of this kind only. |
+        | `#!kotlin maxResults: Int = 100` :material-information-outline:{ title="Default: 100" } | Maximum number of symbols to return. |
+        | `#!kotlin regex: Boolean = false` :material-information-outline:{ title="Default: false" } | When true, treats the pattern as a regular expression. |
+        | `#!kotlin includeDeclarationScope: Boolean = false` :material-information-outline:{ title="Default: false" } | When true, populates the declarationScope field on each matched symbol. |
 
         #### Output: WorkspaceSymbolResult
 
         | Signature | Description |
         |-----------|-------------|
-        | `symbols: List<Symbol>` | Symbols matching the search pattern. |
-        | `page: PageInfo?` | Pagination metadata when results are truncated. |
-        | `schemaVersion: Int?` | Protocol schema version for forward compatibility. |
+        | `#!kotlin symbols: List<Symbol>` | Symbols matching the search pattern. |
+        | `#!kotlin page: PageInfo?` | Pagination metadata when results are truncated. |
+        | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
         === "CLI example"
 
@@ -1001,15 +1001,15 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         | Signature | Description |
         |-----------|-------------|
-        | `moduleName: String?` | Filter to a single module by name. Omit to list all modules. |
-        | `includeFiles: Boolean?` | When true, includes individual file paths for each module. |
+        | `#!kotlin moduleName: String?` | Filter to a single module by name. Omit to list all modules. |
+        | `#!kotlin includeFiles: Boolean = false` :material-information-outline:{ title="Default: false" } | When true, includes individual file paths for each module. |
 
         #### Output: WorkspaceFilesResult
 
         | Signature | Description |
         |-----------|-------------|
-        | `modules: List<WorkspaceModule>` | List of workspace modules visible to the daemon. |
-        | `schemaVersion: Int?` | Protocol schema version for forward compatibility. |
+        | `#!kotlin modules: List<WorkspaceModule>` | List of workspace modules visible to the daemon. |
+        | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
         === "CLI example"
 
@@ -1070,17 +1070,17 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         | Signature | Description |
         |-----------|-------------|
-        | `position: FilePosition` | File position identifying the interface or abstract class. |
-        | `maxResults: Int?` | Maximum number of implementation symbols to return. |
+        | `#!kotlin position: FilePosition` | File position identifying the interface or abstract class. |
+        | `#!kotlin maxResults: Int = 100` :material-information-outline:{ title="Default: 100" } | Maximum number of implementation symbols to return. |
 
         #### Output: ImplementationsResult
 
         | Signature | Description |
         |-----------|-------------|
-        | `declaration: Symbol` | The interface or abstract class symbol that was queried. |
-        | `implementations: List<Symbol>` | Concrete implementations or subclasses found. |
-        | `exhaustive: Boolean?` | True when all implementations were found within maxResults. |
-        | `schemaVersion: Int?` | Protocol schema version for forward compatibility. |
+        | `#!kotlin declaration: Symbol` | The interface or abstract class symbol that was queried. |
+        | `#!kotlin implementations: List<Symbol>` | Concrete implementations or subclasses found. |
+        | `#!kotlin exhaustive: Boolean = true` :material-information-outline:{ title="Default: true" } | True when all implementations were found within maxResults. |
+        | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
         === "CLI example"
 
@@ -1166,15 +1166,15 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         | Signature | Description |
         |-----------|-------------|
-        | `position: FilePosition` | File position to query for available code actions. |
-        | `diagnosticCode: String?` | Filter to actions that address this diagnostic code. |
+        | `#!kotlin position: FilePosition` | File position to query for available code actions. |
+        | `#!kotlin diagnosticCode: String?` | Filter to actions that address this diagnostic code. |
 
         #### Output: CodeActionsResult
 
         | Signature | Description |
         |-----------|-------------|
-        | `actions: List<CodeAction>` | Available code actions at the queried position. |
-        | `schemaVersion: Int?` | Protocol schema version for forward compatibility. |
+        | `#!kotlin actions: List<CodeAction>` | Available code actions at the queried position. |
+        | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
         === "CLI example"
 
@@ -1227,17 +1227,17 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         | Signature | Description |
         |-----------|-------------|
-        | `position: FilePosition` | File position where completions are requested. |
-        | `maxResults: Int?` | Maximum number of completion items to return. |
-        | `kindFilter: List<SymbolKind>?` | Restrict results to these symbol kinds only. |
+        | `#!kotlin position: FilePosition` | File position where completions are requested. |
+        | `#!kotlin maxResults: Int = 100` :material-information-outline:{ title="Default: 100" } | Maximum number of completion items to return. |
+        | `#!kotlin kindFilter: List<SymbolKind>?` | Restrict results to these symbol kinds only. |
 
         #### Output: CompletionsResult
 
         | Signature | Description |
         |-----------|-------------|
-        | `items: List<CompletionItem>` | Completion candidates available at the queried position. |
-        | `exhaustive: Boolean?` | True when all candidates were returned within maxResults. |
-        | `schemaVersion: Int?` | Protocol schema version for forward compatibility. |
+        | `#!kotlin items: List<CompletionItem>` | Completion candidates available at the queried position. |
+        | `#!kotlin exhaustive: Boolean = true` :material-information-outline:{ title="Default: true" } | True when all candidates were returned within maxResults. |
+        | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
         === "CLI example"
 
@@ -1314,19 +1314,19 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         | Signature | Description |
         |-----------|-------------|
-        | `position: FilePosition` | File position identifying the symbol to rename. |
-        | `newName: String` | The new name to assign to the symbol. |
-        | `dryRun: Boolean?` | When true (default), computes edits without applying them. |
+        | `#!kotlin position: FilePosition` | File position identifying the symbol to rename. |
+        | `#!kotlin newName: String` | The new name to assign to the symbol. |
+        | `#!kotlin dryRun: Boolean = true` :material-information-outline:{ title="Default: true" } | When true (default), computes edits without applying them. |
 
         #### Output: RenameResult
 
         | Signature | Description |
         |-----------|-------------|
-        | `edits: List<TextEdit>` | Text edits needed to perform the rename across the workspace. |
-        | `fileHashes: List<FileHash>` | File hashes at edit-plan time for conflict detection. |
-        | `affectedFiles: List<String>` | Absolute paths of all files that would be modified. |
-        | `searchScope: SearchScope?` | Describes the scope and exhaustiveness of the rename search. |
-        | `schemaVersion: Int?` | Protocol schema version for forward compatibility. |
+        | `#!kotlin edits: List<TextEdit>` | Text edits needed to perform the rename across the workspace. |
+        | `#!kotlin fileHashes: List<FileHash>` | File hashes at edit-plan time for conflict detection. |
+        | `#!kotlin affectedFiles: List<String>` | Absolute paths of all files that would be modified. |
+        | `#!kotlin searchScope: SearchScope?` | Describes the scope and exhaustiveness of the rename search. |
+        | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
         === "CLI example"
 
@@ -1404,16 +1404,16 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         | Signature | Description |
         |-----------|-------------|
-        | `filePaths: List<String>` | Absolute paths of the files whose imports should be optimized. |
+        | `#!kotlin filePaths: List<String>` | Absolute paths of the files whose imports should be optimized. |
 
         #### Output: ImportOptimizeResult
 
         | Signature | Description |
         |-----------|-------------|
-        | `edits: List<TextEdit>` | Text edits that remove unused imports and sort the remainder. |
-        | `fileHashes: List<FileHash>` | File hashes at edit-plan time for conflict detection. |
-        | `affectedFiles: List<String>` | Absolute paths of all files that were modified. |
-        | `schemaVersion: Int?` | Protocol schema version for forward compatibility. |
+        | `#!kotlin edits: List<TextEdit>` | Text edits that remove unused imports and sort the remainder. |
+        | `#!kotlin fileHashes: List<FileHash>` | File hashes at edit-plan time for conflict detection. |
+        | `#!kotlin affectedFiles: List<String>` | Absolute paths of all files that were modified. |
+        | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
         === "CLI example"
 
@@ -1467,19 +1467,19 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         | Signature | Description |
         |-----------|-------------|
-        | `edits: List<TextEdit>` | Text edits to apply, typically from a prior rename or code action. |
-        | `fileHashes: List<FileHash>` | Expected file hashes for conflict detection before writing. |
-        | `fileOperations: List<FileOperation>?` | Optional file create or delete operations to perform. |
+        | `#!kotlin edits: List<TextEdit>` | Text edits to apply, typically from a prior rename or code action. |
+        | `#!kotlin fileHashes: List<FileHash>` | Expected file hashes for conflict detection before writing. |
+        | `#!kotlin fileOperations: List<FileOperation> = emptyList()` :material-information-outline:{ title="Default: emptyList()" } | Optional file create or delete operations to perform. |
 
         #### Output: ApplyEditsResult
 
         | Signature | Description |
         |-----------|-------------|
-        | `applied: List<TextEdit>` | Text edits that were successfully applied. |
-        | `affectedFiles: List<String>` | Absolute paths of all files that were modified. |
-        | `createdFiles: List<String>?` | Absolute paths of files created by file operations. |
-        | `deletedFiles: List<String>?` | Absolute paths of files deleted by file operations. |
-        | `schemaVersion: Int?` | Protocol schema version for forward compatibility. |
+        | `#!kotlin applied: List<TextEdit>` | Text edits that were successfully applied. |
+        | `#!kotlin affectedFiles: List<String>` | Absolute paths of all files that were modified. |
+        | `#!kotlin createdFiles: List<String> = emptyList()` :material-information-outline:{ title="Default: emptyList()" } | Absolute paths of files created by file operations. |
+        | `#!kotlin deletedFiles: List<String> = emptyList()` :material-information-outline:{ title="Default: emptyList()" } | Absolute paths of files deleted by file operations. |
+        | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
         === "CLI example"
 
@@ -1556,16 +1556,16 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         | Signature | Description |
         |-----------|-------------|
-        | `filePaths: List<String>?` | Absolute paths of files to refresh. Empty for a full workspace refresh. |
+        | `#!kotlin filePaths: List<String> = emptyList()` :material-information-outline:{ title="Default: emptyList()" } | Absolute paths of files to refresh. Empty for a full workspace refresh. |
 
         #### Output: RefreshResult
 
         | Signature | Description |
         |-----------|-------------|
-        | `refreshedFiles: List<String>` | Absolute paths of files whose state was refreshed. |
-        | `removedFiles: List<String>?` | Absolute paths of files that were removed from the workspace. |
-        | `fullRefresh: Boolean` | True when a full workspace refresh was performed. |
-        | `schemaVersion: Int?` | Protocol schema version for forward compatibility. |
+        | `#!kotlin refreshedFiles: List<String>` | Absolute paths of files whose state was refreshed. |
+        | `#!kotlin removedFiles: List<String> = emptyList()` :material-information-outline:{ title="Default: emptyList()" } | Absolute paths of files that were removed from the workspace. |
+        | `#!kotlin fullRefresh: Boolean` | True when a full workspace refresh was performed. |
+        | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
         === "CLI example"
 
