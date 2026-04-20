@@ -30,7 +30,7 @@ class AnalysisDocsDocumentTest {
         val markdown = DocsDocument.renderCapabilities()
         val expectedMethods = OperationDocRegistry.all().map { it.jsonRpcMethod }
         expectedMethods.forEach { method ->
-            assertTrue(markdown.contains("### $method"), "Missing section for $method in capabilities.md")
+            assertTrue(markdown.contains("\"$method —"), "Missing section for $method in capabilities.md")
         }
     }
 
@@ -39,7 +39,7 @@ class AnalysisDocsDocumentTest {
         val markdown = DocsDocument.renderApiReference()
         val expectedMethods = OperationDocRegistry.all().map { it.jsonRpcMethod }
         expectedMethods.forEach { method ->
-            assertTrue(markdown.contains("### $method"), "Missing section for $method in api-reference.md")
+            assertTrue(markdown.contains("\"$method —"), "Missing section for $method in api-reference.md")
         }
     }
 
