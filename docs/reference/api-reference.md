@@ -19,9 +19,6 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         Returns a lightweight health check confirming the daemon is responsive. Use this before dispatching heavier queries.
 
-        <div style="text-align:right">
-        <code>health</code>
-        </div>
 
         #### Output: HealthResponse
 
@@ -70,9 +67,6 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         Returns the full runtime state including indexing progress, backend identity, and workspace root. Use this to verify readiness before running analysis commands.
 
-        <div style="text-align:right">
-        <code>runtime/status</code>
-        </div>
 
         #### Output: RuntimeStatusResponse
 
@@ -134,9 +128,6 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         Lists every read and mutation capability the current backend advertises, along with server limits. Query this before calling an operation to confirm it is available.
 
-        <div style="text-align:right">
-        <code>capabilities</code>
-        </div>
 
         #### Output: BackendCapabilities
 
@@ -218,9 +209,6 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         Resolves the symbol at a file position, returning its fully qualified name, kind, location, and optional metadata such as type information and documentation.
 
-        <div style="text-align:right">
-        <code>RESOLVE_SYMBOL</code>&ensp;<code>symbol/resolve</code>
-        </div>
 
         #### Input: SymbolQuery
 
@@ -307,9 +295,6 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         Finds all references to the symbol at a file position across the workspace. Optionally includes the declaration itself.
 
-        <div style="text-align:right">
-        <code>FIND_REFERENCES</code>&ensp;<code>references</code>
-        </div>
 
         #### Input: ReferencesQuery
 
@@ -407,9 +392,6 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         Expands a bounded incoming or outgoing call tree from a function or method. Use incoming to find callers, outgoing to find callees.
 
-        <div style="text-align:right">
-        <code>CALL_HIERARCHY</code>&ensp;<code>call-hierarchy</code>
-        </div>
 
         #### Input: CallHierarchyQuery
 
@@ -539,9 +521,6 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         Expands supertypes and subtypes from a resolved symbol. Use this to understand inheritance relationships.
 
-        <div style="text-align:right">
-        <code>TYPE_HIERARCHY</code>&ensp;<code>type-hierarchy</code>
-        </div>
 
         #### Input: TypeHierarchyQuery
 
@@ -668,9 +647,6 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         Finds the best insertion point for a new declaration relative to a file position. Use this to place generated code at a semantically appropriate location.
 
-        <div style="text-align:right">
-        <code>SEMANTIC_INSERTION_POINT</code>&ensp;<code>semantic-insertion-point</code>
-        </div>
 
         #### Input: SemanticInsertionQuery
 
@@ -734,9 +710,6 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         Runs compilation diagnostics for one or more files, returning errors, warnings, and informational messages with precise source locations.
 
-        <div style="text-align:right">
-        <code>DIAGNOSTICS</code>&ensp;<code>diagnostics</code>
-        </div>
 
         #### Input: DiagnosticsQuery
 
@@ -797,9 +770,6 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         Returns a hierarchical symbol outline for a single file, listing all named declarations and their nesting.
 
-        <div style="text-align:right">
-        <code>FILE_OUTLINE</code>&ensp;<code>file-outline</code>
-        </div>
 
         #### Input: FileOutlineQuery
 
@@ -882,9 +852,6 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         Searches the entire workspace for symbols matching a name pattern. Supports substring matching and optional regex.
 
-        <div style="text-align:right">
-        <code>WORKSPACE_SYMBOL_SEARCH</code>&ensp;<code>workspace-symbol</code>
-        </div>
 
         #### Input: WorkspaceSymbolQuery
 
@@ -1019,9 +986,6 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         Lists workspace modules and their source files. Use this to discover the project structure visible to the daemon.
 
-        <div style="text-align:right">
-        <code>WORKSPACE_FILES</code>&ensp;<code>workspace/files</code>
-        </div>
 
         #### Input: WorkspaceFilesQuery
 
@@ -1090,9 +1054,6 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         Finds concrete implementations and subclasses for an interface or abstract class declaration.
 
-        <div style="text-align:right">
-        <code>IMPLEMENTATIONS</code>&ensp;<code>implementations</code>
-        </div>
 
         #### Input: ImplementationsQuery
 
@@ -1188,9 +1149,6 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         Returns available code actions at a file position, such as quick fixes and refactoring suggestions.
 
-        <div style="text-align:right">
-        <code>CODE_ACTIONS</code>&ensp;<code>code-actions</code>
-        </div>
 
         #### Input: CodeActionsQuery
 
@@ -1251,9 +1209,6 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         Returns completion candidates available at a file position. Use this to discover what symbols, keywords, or snippets the compiler suggests.
 
-        <div style="text-align:right">
-        <code>COMPLETIONS</code>&ensp;<code>completions</code>
-        </div>
 
         #### Input: CompletionsQuery
 
@@ -1340,9 +1295,6 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         Plans a symbol rename by computing all text edits needed across the workspace. This is a dry-run by default — it returns edits without applying them.
 
-        <div style="text-align:right">
-        <code>RENAME</code>&ensp;<code>rename</code>
-        </div>
 
         #### Input: RenameQuery
 
@@ -1432,9 +1384,6 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         Optimizes imports for one or more files, removing unused imports and sorting the remainder.
 
-        <div style="text-align:right">
-        <code>OPTIMIZE_IMPORTS</code>&ensp;<code>imports/optimize</code>
-        </div>
 
         #### Input: ImportOptimizeQuery
 
@@ -1497,9 +1446,6 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         Applies a prepared edit plan with file-hash conflict detection. Pass the edits and hashes returned by a prior `rename` or other planning operation.
 
-        <div style="text-align:right">
-        <code>APPLY_EDITS</code>&ensp;<code>edits/apply</code>
-        </div>
 
         #### Input: ApplyEditsQuery
 
@@ -1588,9 +1534,6 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         Forces the daemon to refresh its workspace state. Use this after external file modifications to ensure the daemon's view is current.
 
-        <div style="text-align:right">
-        <code>REFRESH_WORKSPACE</code>&ensp;<code>workspace/refresh</code>
-        </div>
 
         #### Input: RefreshQuery
 

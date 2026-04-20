@@ -178,7 +178,7 @@ object DocsDocument {
             line()
 
             if (op.requestSchema != null) {
-                line("??? info \"Input: ${op.requestSchema}\"")
+                line("??? info \"Input: ${op.requestSchema}\" (capability: ${op.capability})")
                 line()
                 indented {
                     schemaTable(op.requestSchema, "api-reference.md")
@@ -238,12 +238,12 @@ object DocsDocument {
      * processing is needed — `<code>` tags render identically to Markdown backtick spans.
      */
     private fun IndentedWriter.badgeLine(op: OperationDoc) {
-        line("<div style=\"text-align:right\">")
-        line(buildString {
-            if (op.capability != null) append("<code>${op.capability}</code>&ensp;")
-            append("<code>${op.jsonRpcMethod}</code>")
-        })
-        line("</div>")
+//        line("<div style=\"text-align:right\">")
+//        line(buildString {
+//            if (op.capability != null) append("Capability: <code>${op.capability}</code>&ensp;")
+//            append("<code>${op.jsonRpcMethod}</code>")
+//        })
+//        line("</div>")
     }
 
     /** Converts `"FIND_REFERENCES"` → `"Find References"`. Falls back to [OperationDoc.summary] for operations with no capability gating (system ops). */

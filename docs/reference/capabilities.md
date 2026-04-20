@@ -18,9 +18,6 @@ category. Expand any operation to see its input and output schemas.
 
     ??? info "Basic health check"
 
-        <div style="text-align:right">
-        <code>health</code>
-        </div>
 
         ??? info "Output: HealthResponse"
 
@@ -34,9 +31,6 @@ category. Expand any operation to see its input and output schemas.
 
     ??? info "Detailed runtime state including indexing progress"
 
-        <div style="text-align:right">
-        <code>runtime/status</code>
-        </div>
 
         ??? info "Output: RuntimeStatusResponse"
 
@@ -57,9 +51,6 @@ category. Expand any operation to see its input and output schemas.
 
     ??? info "Advertised read and mutation capabilities"
 
-        <div style="text-align:right">
-        <code>capabilities</code>
-        </div>
 
         ??? info "Output: BackendCapabilities"
 
@@ -81,11 +72,8 @@ category. Expand any operation to see its input and output schemas.
 
     ??? info "Resolve Symbol"
 
-        <div style="text-align:right">
-        <code>RESOLVE_SYMBOL</code>&ensp;<code>symbol/resolve</code>
-        </div>
 
-        ??? info "Input: SymbolQuery"
+        ??? info "Input: SymbolQuery" (capability: RESOLVE_SYMBOL)
 
             | Signature | Description |
             |-----------|-------------|
@@ -102,11 +90,8 @@ category. Expand any operation to see its input and output schemas.
 
     ??? info "Find References"
 
-        <div style="text-align:right">
-        <code>FIND_REFERENCES</code>&ensp;<code>references</code>
-        </div>
 
-        ??? info "Input: ReferencesQuery"
+        ??? info "Input: ReferencesQuery" (capability: FIND_REFERENCES)
 
             | Signature | Description |
             |-----------|-------------|
@@ -125,11 +110,8 @@ category. Expand any operation to see its input and output schemas.
 
     ??? info "Call Hierarchy"
 
-        <div style="text-align:right">
-        <code>CALL_HIERARCHY</code>&ensp;<code>call-hierarchy</code>
-        </div>
 
-        ??? info "Input: CallHierarchyQuery"
+        ??? info "Input: CallHierarchyQuery" (capability: CALL_HIERARCHY)
 
             | Signature | Description |
             |-----------|-------------|
@@ -150,11 +132,8 @@ category. Expand any operation to see its input and output schemas.
 
     ??? info "Type Hierarchy"
 
-        <div style="text-align:right">
-        <code>TYPE_HIERARCHY</code>&ensp;<code>type-hierarchy</code>
-        </div>
 
-        ??? info "Input: TypeHierarchyQuery"
+        ??? info "Input: TypeHierarchyQuery" (capability: TYPE_HIERARCHY)
 
             | Signature | Description |
             |-----------|-------------|
@@ -173,11 +152,8 @@ category. Expand any operation to see its input and output schemas.
 
     ??? info "Semantic Insertion Point"
 
-        <div style="text-align:right">
-        <code>SEMANTIC_INSERTION_POINT</code>&ensp;<code>semantic-insertion-point</code>
-        </div>
 
-        ??? info "Input: SemanticInsertionQuery"
+        ??? info "Input: SemanticInsertionQuery" (capability: SEMANTIC_INSERTION_POINT)
 
             | Signature | Description |
             |-----------|-------------|
@@ -194,11 +170,8 @@ category. Expand any operation to see its input and output schemas.
 
     ??? info "Diagnostics"
 
-        <div style="text-align:right">
-        <code>DIAGNOSTICS</code>&ensp;<code>diagnostics</code>
-        </div>
 
-        ??? info "Input: DiagnosticsQuery"
+        ??? info "Input: DiagnosticsQuery" (capability: DIAGNOSTICS)
 
             | Signature | Description |
             |-----------|-------------|
@@ -214,11 +187,8 @@ category. Expand any operation to see its input and output schemas.
 
     ??? info "File Outline"
 
-        <div style="text-align:right">
-        <code>FILE_OUTLINE</code>&ensp;<code>file-outline</code>
-        </div>
 
-        ??? info "Input: FileOutlineQuery"
+        ??? info "Input: FileOutlineQuery" (capability: FILE_OUTLINE)
 
             | Signature | Description |
             |-----------|-------------|
@@ -233,11 +203,8 @@ category. Expand any operation to see its input and output schemas.
 
     ??? info "Workspace Symbol Search"
 
-        <div style="text-align:right">
-        <code>WORKSPACE_SYMBOL_SEARCH</code>&ensp;<code>workspace-symbol</code>
-        </div>
 
-        ??? info "Input: WorkspaceSymbolQuery"
+        ??? info "Input: WorkspaceSymbolQuery" (capability: WORKSPACE_SYMBOL_SEARCH)
 
             | Signature | Description |
             |-----------|-------------|
@@ -257,11 +224,8 @@ category. Expand any operation to see its input and output schemas.
 
     ??? info "Workspace Files"
 
-        <div style="text-align:right">
-        <code>WORKSPACE_FILES</code>&ensp;<code>workspace/files</code>
-        </div>
 
-        ??? info "Input: WorkspaceFilesQuery"
+        ??? info "Input: WorkspaceFilesQuery" (capability: WORKSPACE_FILES)
 
             | Signature | Description |
             |-----------|-------------|
@@ -277,11 +241,8 @@ category. Expand any operation to see its input and output schemas.
 
     ??? info "Implementations"
 
-        <div style="text-align:right">
-        <code>IMPLEMENTATIONS</code>&ensp;<code>implementations</code>
-        </div>
 
-        ??? info "Input: ImplementationsQuery"
+        ??? info "Input: ImplementationsQuery" (capability: IMPLEMENTATIONS)
 
             | Signature | Description |
             |-----------|-------------|
@@ -299,11 +260,8 @@ category. Expand any operation to see its input and output schemas.
 
     ??? info "Code Actions"
 
-        <div style="text-align:right">
-        <code>CODE_ACTIONS</code>&ensp;<code>code-actions</code>
-        </div>
 
-        ??? info "Input: CodeActionsQuery"
+        ??? info "Input: CodeActionsQuery" (capability: CODE_ACTIONS)
 
             | Signature | Description |
             |-----------|-------------|
@@ -319,11 +277,8 @@ category. Expand any operation to see its input and output schemas.
 
     ??? info "Completions"
 
-        <div style="text-align:right">
-        <code>COMPLETIONS</code>&ensp;<code>completions</code>
-        </div>
 
-        ??? info "Input: CompletionsQuery"
+        ??? info "Input: CompletionsQuery" (capability: COMPLETIONS)
 
             | Signature | Description |
             |-----------|-------------|
@@ -347,11 +302,8 @@ category. Expand any operation to see its input and output schemas.
 
     ??? info "Rename"
 
-        <div style="text-align:right">
-        <code>RENAME</code>&ensp;<code>rename</code>
-        </div>
 
-        ??? info "Input: RenameQuery"
+        ??? info "Input: RenameQuery" (capability: RENAME)
 
             | Signature | Description |
             |-----------|-------------|
@@ -371,11 +323,8 @@ category. Expand any operation to see its input and output schemas.
 
     ??? info "Optimize Imports"
 
-        <div style="text-align:right">
-        <code>OPTIMIZE_IMPORTS</code>&ensp;<code>imports/optimize</code>
-        </div>
 
-        ??? info "Input: ImportOptimizeQuery"
+        ??? info "Input: ImportOptimizeQuery" (capability: OPTIMIZE_IMPORTS)
 
             | Signature | Description |
             |-----------|-------------|
@@ -392,11 +341,8 @@ category. Expand any operation to see its input and output schemas.
 
     ??? info "Apply Edits"
 
-        <div style="text-align:right">
-        <code>APPLY_EDITS</code>&ensp;<code>edits/apply</code>
-        </div>
 
-        ??? info "Input: ApplyEditsQuery"
+        ??? info "Input: ApplyEditsQuery" (capability: APPLY_EDITS)
 
             | Signature | Description |
             |-----------|-------------|
@@ -416,11 +362,8 @@ category. Expand any operation to see its input and output schemas.
 
     ??? info "Refresh Workspace"
 
-        <div style="text-align:right">
-        <code>REFRESH_WORKSPACE</code>&ensp;<code>workspace/refresh</code>
-        </div>
 
-        ??? info "Input: RefreshQuery"
+        ??? info "Input: RefreshQuery" (capability: REFRESH_WORKSPACE)
 
             | Signature | Description |
             |-----------|-------------|
