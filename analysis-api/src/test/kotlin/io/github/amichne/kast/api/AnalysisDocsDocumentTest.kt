@@ -30,7 +30,7 @@ class AnalysisDocsDocumentTest {
         val markdown = DocsDocument.renderCapabilities()
         val expectedMethods = OperationDocRegistry.all().map { it.jsonRpcMethod }
         expectedMethods.forEach { method ->
-            assertTrue(markdown.contains("### $method"), "Missing section for $method in capabilities.md")
+            assertTrue(markdown.contains("\"$method —"), "Missing section for $method in capabilities.md")
         }
     }
 
@@ -39,7 +39,7 @@ class AnalysisDocsDocumentTest {
         val markdown = DocsDocument.renderApiReference()
         val expectedMethods = OperationDocRegistry.all().map { it.jsonRpcMethod }
         expectedMethods.forEach { method ->
-            assertTrue(markdown.contains("### $method"), "Missing section for $method in api-reference.md")
+            assertTrue(markdown.contains("\"$method —"), "Missing section for $method in api-reference.md")
         }
     }
 
@@ -48,8 +48,8 @@ class AnalysisDocsDocumentTest {
         val yaml = OpenApiDocument.renderYaml()
         val markdown = DocsDocument.renderApiReference()
 
-        // Extract field names from markdown tables (lines starting with "| `fieldName`")
-        val fieldPattern = Regex("""\| `(\w+)` \|""")
+        // Extract field names from markdown tables (signature column: `#!kotlin fieldName: Type`)
+        val fieldPattern = Regex("""\| `#!kotlin (\w+):""")
         val markdownFields = fieldPattern.findAll(markdown).map { it.groupValues[1] }.toSet()
 
         // Extract property names from OpenAPI YAML
@@ -69,6 +69,61 @@ class AnalysisDocsDocumentTest {
         val specIds = operationIdRegex.findAll(yaml).map { it.groupValues[1] }.toSet()
         val registryIds = OperationDocRegistry.operationIds()
         assertEquals(specIds, registryIds, "OperationDocRegistry does not match OpenAPI spec operations")
+    }
+
+    /**
+     * Guards against annotating server-output fields with [DocField.defaultValue] when
+     * [DocField.serverManaged] should be used instead. A field is considered server-managed
+     * when it is always populated by the server and never supplied by callers.
+     *
+     * The canonical example is [schemaVersion] on every result type.
+     */
+    @Test
+    fun `schemaVersion fields on all registered schemas are marked serverManaged`() {
+        val violations = mutableListOf<String>()
+        for ((schemaName, serializer) in DocsDocument.schemaSerializersForTesting()) {
+            val descriptor = serializer.descriptor
+            repeat(descriptor.elementsCount) { index ->
+                if (descriptor.getElementName(index) == "schemaVersion") {
+                    val docField = descriptor.getElementAnnotations(index)
+                        .filterIsInstance<DocField>()
+                        .firstOrNull()
+                    if (docField?.serverManaged != true) {
+                        violations.add("$schemaName.schemaVersion is missing @DocField(serverManaged = true)")
+                    }
+                }
+            }
+        }
+        assertTrue(violations.isEmpty(), "Server-managed fields must use @DocField(serverManaged = true):\n${violations.joinToString("\n")}")
+    }
+
+    /**
+     * Guards against using bare Kotlin constant names (e.g. SCHEMA_VERSION) as [DocField.defaultValue].
+     * Such values render as meaningless tooltips in the generated docs. Use [DocField.serverManaged]
+     * for server-populated fields, or provide a concrete literal value for user-configurable defaults.
+     *
+     * Enum-typed fields are exempted — their defaults are valid all-caps enum member names (e.g. BOTH, SUPERTYPES).
+     */
+    @Test
+    fun `no DocField defaultValue looks like a bare constant name`() {
+        val allCapsConstant = Regex("""^[A-Z][A-Z_0-9]{3,}${'$'}""")
+        val violations = mutableListOf<String>()
+        for ((schemaName, serializer) in DocsDocument.schemaSerializersForTesting()) {
+            val descriptor = serializer.descriptor
+            repeat(descriptor.elementsCount) { index ->
+                val elementDescriptor = descriptor.getElementDescriptor(index)
+                // Enum defaults are legitimately all-caps (e.g. BOTH, SUPERTYPES)
+                if (elementDescriptor.kind == kotlinx.serialization.descriptors.SerialKind.ENUM) continue
+                val docField = descriptor.getElementAnnotations(index)
+                    .filterIsInstance<DocField>()
+                    .firstOrNull() ?: continue
+                val dv = docField.defaultValue
+                if (dv.isNotBlank() && allCapsConstant.matches(dv)) {
+                    violations.add("$schemaName.${descriptor.getElementName(index)}: defaultValue=\"$dv\" looks like a constant — use a literal value or serverManaged = true")
+                }
+            }
+        }
+        assertTrue(violations.isEmpty(), "Bare constant names in @DocField.defaultValue:\n${violations.joinToString("\n")}")
     }
 
     private fun repoRoot(): Path =

@@ -13,6 +13,6 @@ data class DiagnosticsResult(
     val diagnostics: List<Diagnostic>,
     @DocField(description = "Pagination metadata when results are truncated.")
     val page: PageInfo? = null,
-    @DocField(description = "Protocol schema version for forward compatibility.")
+    @DocField(description = "Protocol schema version for forward compatibility.", serverManaged = true)
     val schemaVersion: Int = SCHEMA_VERSION,
 )

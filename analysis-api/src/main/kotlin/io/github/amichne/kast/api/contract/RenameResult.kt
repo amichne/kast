@@ -17,6 +17,6 @@ data class RenameResult(
     val affectedFiles: List<String>,
     @DocField(description = "Describes the scope and exhaustiveness of the rename search.")
     val searchScope: SearchScope? = null,
-    @DocField(description = "Protocol schema version for forward compatibility.")
+    @DocField(description = "Protocol schema version for forward compatibility.", serverManaged = true)
     val schemaVersion: Int = SCHEMA_VERSION,
 )

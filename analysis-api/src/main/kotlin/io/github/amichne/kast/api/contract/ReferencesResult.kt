@@ -17,6 +17,6 @@ data class ReferencesResult(
     val page: PageInfo? = null,
     @DocField(description = "Describes the scope and exhaustiveness of the search.")
     val searchScope: SearchScope? = null,
-    @DocField(description = "Protocol schema version for forward compatibility.")
+    @DocField(description = "Protocol schema version for forward compatibility.", serverManaged = true)
     val schemaVersion: Int = SCHEMA_VERSION,
 )

@@ -11,7 +11,7 @@ import kotlinx.serialization.Serializable
 data class CompletionsQuery(
     @DocField(description = "File position where completions are requested.")
     val position: FilePosition,
-    @DocField(description = "Maximum number of completion items to return.")
+    @DocField(description = "Maximum number of completion items to return.", defaultValue = "100")
     val maxResults: Int = 100,
     @DocField(description = "Restrict results to these symbol kinds only.")
     val kindFilter: Set<SymbolKind>? = null,
