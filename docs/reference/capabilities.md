@@ -18,10 +18,10 @@ category. Expand any operation to see its input and output schemas.
 
     ??? info "health — Basic health check"
 
+        === "Input"
 
-        **JSON-RPC method:** `health`
-
-        ??? info "Output: HealthResponse"
+            _No parameters._
+        === "Output: HealthResponse"
 
             | Signature | Description |
             |-----------|-------------|
@@ -33,10 +33,10 @@ category. Expand any operation to see its input and output schemas.
 
     ??? info "runtime/status — Detailed runtime state including indexing progress"
 
+        === "Input"
 
-        **JSON-RPC method:** `runtime/status`
-
-        ??? info "Output: RuntimeStatusResponse"
+            _No parameters._
+        === "Output: RuntimeStatusResponse"
 
             | Signature | Description |
             |-----------|-------------|
@@ -55,10 +55,10 @@ category. Expand any operation to see its input and output schemas.
 
     ??? info "capabilities — Advertised read and mutation capabilities"
 
+        === "Input"
 
-        **JSON-RPC method:** `capabilities`
-
-        ??? info "Output: BackendCapabilities"
+            _No parameters._
+        === "Output: BackendCapabilities"
 
             | Signature | Description |
             |-----------|-------------|
@@ -78,19 +78,16 @@ category. Expand any operation to see its input and output schemas.
 
     ??? info "symbol/resolve — Resolve the symbol at a file position"
 
-        **Capability:** `RESOLVE_SYMBOL`
+        **Capability** &nbsp;·&nbsp; `RESOLVE_SYMBOL`
 
-        **JSON-RPC method:** `symbol/resolve`
-
-        ??? info "Input: SymbolQuery"
+        === "Input: SymbolQuery"
 
             | Signature | Description |
             |-----------|-------------|
             | `#!kotlin position: FilePosition` | File position identifying the symbol to resolve. |
             | `#!kotlin includeDeclarationScope: Boolean` :material-information-outline:{ title="Default: false" } | When true, populates the declarationScope field on the resolved symbol. |
             | `#!kotlin includeDocumentation: Boolean` :material-information-outline:{ title="Default: false" } | When true, populates the documentation field on the resolved symbol. |
-
-        ??? info "Output: SymbolResult"
+        === "Output: SymbolResult"
 
             | Signature | Description |
             |-----------|-------------|
@@ -99,18 +96,15 @@ category. Expand any operation to see its input and output schemas.
 
     ??? info "references — Find all references to the symbol at a file position"
 
-        **Capability:** `FIND_REFERENCES`
+        **Capability** &nbsp;·&nbsp; `FIND_REFERENCES`
 
-        **JSON-RPC method:** `references`
-
-        ??? info "Input: ReferencesQuery"
+        === "Input: ReferencesQuery"
 
             | Signature | Description |
             |-----------|-------------|
             | `#!kotlin position: FilePosition` | File position identifying the symbol whose references to find. |
             | `#!kotlin includeDeclaration: Boolean` :material-information-outline:{ title="Default: false" } | When true, includes the symbol's own declaration in the results. |
-
-        ??? info "Output: ReferencesResult"
+        === "Output: ReferencesResult"
 
             | Signature | Description |
             |-----------|-------------|
@@ -122,11 +116,9 @@ category. Expand any operation to see its input and output schemas.
 
     ??? info "call-hierarchy — Expand a bounded incoming or outgoing call tree"
 
-        **Capability:** `CALL_HIERARCHY`
+        **Capability** &nbsp;·&nbsp; `CALL_HIERARCHY`
 
-        **JSON-RPC method:** `call-hierarchy`
-
-        ??? info "Input: CallHierarchyQuery"
+        === "Input: CallHierarchyQuery"
 
             | Signature | Description |
             |-----------|-------------|
@@ -136,8 +128,7 @@ category. Expand any operation to see its input and output schemas.
             | `#!kotlin maxTotalCalls: Int` :material-information-outline:{ title="Default: 256" } | Maximum total call nodes to return across the entire tree. |
             | `#!kotlin maxChildrenPerNode: Int` :material-information-outline:{ title="Default: 64" } | Maximum direct children per node before truncation. |
             | `#!kotlin timeoutMillis: Long?` | Optional timeout in milliseconds for the traversal. |
-
-        ??? info "Output: CallHierarchyResult"
+        === "Output: CallHierarchyResult"
 
             | Signature | Description |
             |-----------|-------------|
@@ -147,11 +138,9 @@ category. Expand any operation to see its input and output schemas.
 
     ??? info "type-hierarchy — Expand supertypes and subtypes from a resolved symbol"
 
-        **Capability:** `TYPE_HIERARCHY`
+        **Capability** &nbsp;·&nbsp; `TYPE_HIERARCHY`
 
-        **JSON-RPC method:** `type-hierarchy`
-
-        ??? info "Input: TypeHierarchyQuery"
+        === "Input: TypeHierarchyQuery"
 
             | Signature | Description |
             |-----------|-------------|
@@ -159,8 +148,7 @@ category. Expand any operation to see its input and output schemas.
             | `#!kotlin direction: TypeHierarchyDirection` :material-information-outline:{ title="Default: BOTH" } | SUPERTYPES, SUBTYPES, or BOTH. |
             | `#!kotlin depth: Int` :material-information-outline:{ title="Default: 3" } | Maximum tree depth to traverse. |
             | `#!kotlin maxResults: Int` :material-information-outline:{ title="Default: 256" } | Maximum total nodes to return. |
-
-        ??? info "Output: TypeHierarchyResult"
+        === "Output: TypeHierarchyResult"
 
             | Signature | Description |
             |-----------|-------------|
@@ -170,18 +158,15 @@ category. Expand any operation to see its input and output schemas.
 
     ??? info "semantic-insertion-point — Find the best insertion point for a new declaration"
 
-        **Capability:** `SEMANTIC_INSERTION_POINT`
+        **Capability** &nbsp;·&nbsp; `SEMANTIC_INSERTION_POINT`
 
-        **JSON-RPC method:** `semantic-insertion-point`
-
-        ??? info "Input: SemanticInsertionQuery"
+        === "Input: SemanticInsertionQuery"
 
             | Signature | Description |
             |-----------|-------------|
             | `#!kotlin position: FilePosition` | File position near the desired insertion location. |
             | `#!kotlin target: SemanticInsertionTarget` | Where to compute the insertion point relative to the position. |
-
-        ??? info "Output: SemanticInsertionResult"
+        === "Output: SemanticInsertionResult"
 
             | Signature | Description |
             |-----------|-------------|
@@ -191,17 +176,14 @@ category. Expand any operation to see its input and output schemas.
 
     ??? info "diagnostics — Run compilation diagnostics for files"
 
-        **Capability:** `DIAGNOSTICS`
+        **Capability** &nbsp;·&nbsp; `DIAGNOSTICS`
 
-        **JSON-RPC method:** `diagnostics`
-
-        ??? info "Input: DiagnosticsQuery"
+        === "Input: DiagnosticsQuery"
 
             | Signature | Description |
             |-----------|-------------|
             | `#!kotlin filePaths: List<String>` | Absolute paths of the files to analyze for diagnostics. |
-
-        ??? info "Output: DiagnosticsResult"
+        === "Output: DiagnosticsResult"
 
             | Signature | Description |
             |-----------|-------------|
@@ -211,17 +193,14 @@ category. Expand any operation to see its input and output schemas.
 
     ??? info "file-outline — Get a hierarchical symbol outline for a file"
 
-        **Capability:** `FILE_OUTLINE`
+        **Capability** &nbsp;·&nbsp; `FILE_OUTLINE`
 
-        **JSON-RPC method:** `file-outline`
-
-        ??? info "Input: FileOutlineQuery"
+        === "Input: FileOutlineQuery"
 
             | Signature | Description |
             |-----------|-------------|
             | `#!kotlin filePath: String` | Absolute path of the file to outline. |
-
-        ??? info "Output: FileOutlineResult"
+        === "Output: FileOutlineResult"
 
             | Signature | Description |
             |-----------|-------------|
@@ -230,11 +209,9 @@ category. Expand any operation to see its input and output schemas.
 
     ??? info "workspace-symbol — Search the workspace for symbols by name pattern"
 
-        **Capability:** `WORKSPACE_SYMBOL_SEARCH`
+        **Capability** &nbsp;·&nbsp; `WORKSPACE_SYMBOL_SEARCH`
 
-        **JSON-RPC method:** `workspace-symbol`
-
-        ??? info "Input: WorkspaceSymbolQuery"
+        === "Input: WorkspaceSymbolQuery"
 
             | Signature | Description |
             |-----------|-------------|
@@ -243,8 +220,7 @@ category. Expand any operation to see its input and output schemas.
             | `#!kotlin maxResults: Int` :material-information-outline:{ title="Default: 100" } | Maximum number of symbols to return. |
             | `#!kotlin regex: Boolean` :material-information-outline:{ title="Default: false" } | When true, treats the pattern as a regular expression. |
             | `#!kotlin includeDeclarationScope: Boolean` :material-information-outline:{ title="Default: false" } | When true, populates the declarationScope field on each matched symbol. |
-
-        ??? info "Output: WorkspaceSymbolResult"
+        === "Output: WorkspaceSymbolResult"
 
             | Signature | Description |
             |-----------|-------------|
@@ -254,18 +230,15 @@ category. Expand any operation to see its input and output schemas.
 
     ??? info "workspace/files — List workspace modules and source files"
 
-        **Capability:** `WORKSPACE_FILES`
+        **Capability** &nbsp;·&nbsp; `WORKSPACE_FILES`
 
-        **JSON-RPC method:** `workspace/files`
-
-        ??? info "Input: WorkspaceFilesQuery"
+        === "Input: WorkspaceFilesQuery"
 
             | Signature | Description |
             |-----------|-------------|
             | `#!kotlin moduleName: String?` | Filter to a single module by name. Omit to list all modules. |
             | `#!kotlin includeFiles: Boolean` :material-information-outline:{ title="Default: false" } | When true, includes individual file paths for each module. |
-
-        ??? info "Output: WorkspaceFilesResult"
+        === "Output: WorkspaceFilesResult"
 
             | Signature | Description |
             |-----------|-------------|
@@ -274,18 +247,15 @@ category. Expand any operation to see its input and output schemas.
 
     ??? info "implementations — Find concrete implementations and subclasses for a declaration"
 
-        **Capability:** `IMPLEMENTATIONS`
+        **Capability** &nbsp;·&nbsp; `IMPLEMENTATIONS`
 
-        **JSON-RPC method:** `implementations`
-
-        ??? info "Input: ImplementationsQuery"
+        === "Input: ImplementationsQuery"
 
             | Signature | Description |
             |-----------|-------------|
             | `#!kotlin position: FilePosition` | File position identifying the interface or abstract class. |
             | `#!kotlin maxResults: Int` :material-information-outline:{ title="Default: 100" } | Maximum number of implementation symbols to return. |
-
-        ??? info "Output: ImplementationsResult"
+        === "Output: ImplementationsResult"
 
             | Signature | Description |
             |-----------|-------------|
@@ -296,18 +266,15 @@ category. Expand any operation to see its input and output schemas.
 
     ??? info "code-actions — Return available code actions at a file position"
 
-        **Capability:** `CODE_ACTIONS`
+        **Capability** &nbsp;·&nbsp; `CODE_ACTIONS`
 
-        **JSON-RPC method:** `code-actions`
-
-        ??? info "Input: CodeActionsQuery"
+        === "Input: CodeActionsQuery"
 
             | Signature | Description |
             |-----------|-------------|
             | `#!kotlin position: FilePosition` | File position to query for available code actions. |
             | `#!kotlin diagnosticCode: String?` | Filter to actions that address this diagnostic code. |
-
-        ??? info "Output: CodeActionsResult"
+        === "Output: CodeActionsResult"
 
             | Signature | Description |
             |-----------|-------------|
@@ -316,19 +283,16 @@ category. Expand any operation to see its input and output schemas.
 
     ??? info "completions — Return completion candidates available at a file position"
 
-        **Capability:** `COMPLETIONS`
+        **Capability** &nbsp;·&nbsp; `COMPLETIONS`
 
-        **JSON-RPC method:** `completions`
-
-        ??? info "Input: CompletionsQuery"
+        === "Input: CompletionsQuery"
 
             | Signature | Description |
             |-----------|-------------|
             | `#!kotlin position: FilePosition` | File position where completions are requested. |
             | `#!kotlin maxResults: Int` :material-information-outline:{ title="Default: 100" } | Maximum number of completion items to return. |
             | `#!kotlin kindFilter: List<SymbolKind>?` | Restrict results to these symbol kinds only. |
-
-        ??? info "Output: CompletionsResult"
+        === "Output: CompletionsResult"
 
             | Signature | Description |
             |-----------|-------------|
@@ -344,19 +308,16 @@ category. Expand any operation to see its input and output schemas.
 
     ??? info "rename — Plan a symbol rename (dry-run by default)"
 
-        **Capability:** `RENAME`
+        **Capability** &nbsp;·&nbsp; `RENAME`
 
-        **JSON-RPC method:** `rename`
-
-        ??? info "Input: RenameQuery"
+        === "Input: RenameQuery"
 
             | Signature | Description |
             |-----------|-------------|
             | `#!kotlin position: FilePosition` | File position identifying the symbol to rename. |
             | `#!kotlin newName: String` | The new name to assign to the symbol. |
             | `#!kotlin dryRun: Boolean` :material-information-outline:{ title="Default: true" } | When true (default), computes edits without applying them. |
-
-        ??? info "Output: RenameResult"
+        === "Output: RenameResult"
 
             | Signature | Description |
             |-----------|-------------|
@@ -368,17 +329,14 @@ category. Expand any operation to see its input and output schemas.
 
     ??? info "imports/optimize — Optimize imports for one or more files"
 
-        **Capability:** `OPTIMIZE_IMPORTS`
+        **Capability** &nbsp;·&nbsp; `OPTIMIZE_IMPORTS`
 
-        **JSON-RPC method:** `imports/optimize`
-
-        ??? info "Input: ImportOptimizeQuery"
+        === "Input: ImportOptimizeQuery"
 
             | Signature | Description |
             |-----------|-------------|
             | `#!kotlin filePaths: List<String>` | Absolute paths of the files whose imports should be optimized. |
-
-        ??? info "Output: ImportOptimizeResult"
+        === "Output: ImportOptimizeResult"
 
             | Signature | Description |
             |-----------|-------------|
@@ -389,19 +347,16 @@ category. Expand any operation to see its input and output schemas.
 
     ??? info "edits/apply — Apply a prepared edit plan with conflict detection"
 
-        **Capability:** `APPLY_EDITS`
+        **Capability** &nbsp;·&nbsp; `APPLY_EDITS`
 
-        **JSON-RPC method:** `edits/apply`
-
-        ??? info "Input: ApplyEditsQuery"
+        === "Input: ApplyEditsQuery"
 
             | Signature | Description |
             |-----------|-------------|
             | `#!kotlin edits: List<TextEdit>` | Text edits to apply, typically from a prior rename or code action. |
             | `#!kotlin fileHashes: List<FileHash>` | Expected file hashes for conflict detection before writing. |
             | `#!kotlin fileOperations: List<FileOperation>` :material-information-outline:{ title="Default: emptyList()" } | Optional file create or delete operations to perform. |
-
-        ??? info "Output: ApplyEditsResult"
+        === "Output: ApplyEditsResult"
 
             | Signature | Description |
             |-----------|-------------|
@@ -413,17 +368,14 @@ category. Expand any operation to see its input and output schemas.
 
     ??? info "workspace/refresh — Force a targeted or full workspace state refresh"
 
-        **Capability:** `REFRESH_WORKSPACE`
+        **Capability** &nbsp;·&nbsp; `REFRESH_WORKSPACE`
 
-        **JSON-RPC method:** `workspace/refresh`
-
-        ??? info "Input: RefreshQuery"
+        === "Input: RefreshQuery"
 
             | Signature | Description |
             |-----------|-------------|
             | `#!kotlin filePaths: List<String>` :material-information-outline:{ title="Default: emptyList()" } | Absolute paths of files to refresh. Empty for a full workspace refresh. |
-
-        ??? info "Output: RefreshResult"
+        === "Output: RefreshResult"
 
             | Signature | Description |
             |-----------|-------------|

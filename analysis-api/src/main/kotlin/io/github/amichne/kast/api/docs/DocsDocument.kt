@@ -174,23 +174,8 @@ object DocsDocument {
 
     private fun IndentedWriter.capabilitiesOperation(op: OperationDoc) {
         details("info", "${op.jsonRpcMethod} — ${op.summary}") {
-            badgeLine(op)
-            line()
-
-            if (op.requestSchema != null) {
-                line("??? info \"Input: ${op.requestSchema}\"")
-                line()
-                indented {
-                    schemaTable(op.requestSchema, "api-reference.md")
-                }
-                line()
-            }
-
-            line("??? info \"Output: ${op.responseSchema}\"")
-            line()
-            indented {
-                schemaTable(op.responseSchema, "api-reference.md")
-            }
+            metaLine(op)
+            schemaTabs(op)
         }
     }
 
@@ -198,62 +183,62 @@ object DocsDocument {
         details("example", "${op.jsonRpcMethod} — ${op.summary}") {
             lines(op.description)
             line()
-            badgeLine(op)
-            line()
-
-            if (op.requestSchema != null) {
-                line("#### Input: ${op.requestSchema}")
-                line()
-                schemaTable(op.requestSchema)
-                line()
-            }
-
-            line("#### Output: ${op.responseSchema}")
-            line()
-            schemaTable(op.responseSchema)
-            line()
-
-            tabbedExamples(op)
-
-            if (op.behavioralNotes.isNotEmpty()) {
-                admonition("note", "Behavioral notes") {
-                    for (note in op.behavioralNotes) {
-                        line("- $note")
-                    }
-                }
-                line()
-            }
-
-            if (op.errorCodes.isNotEmpty()) {
-                line("**Error codes:** ${op.errorCodes.joinToString(", ") { "`$it`" }}")
-            }
+            metaLine(op)
+            schemaTabs(op)
+            exampleTabs(op)
+            behavioralNotes(op)
+            errorCodes(op)
         }
     }
 
-    // ── Badge line ────────────────────────────────────────────────────
+    // ── Operation section helpers ─────────────────────────────────────
 
-    private fun IndentedWriter.badgeLine(op: OperationDoc) {
-        if (op.capability != null) {
-            line("**Capability:** `${op.capability}`")
+    // Compact one-liner above the schema tabs. The JSON-RPC method is
+    // already in the collapsible title; we only emit a line when the
+    // operation is capability-gated.
+    private fun IndentedWriter.metaLine(op: OperationDoc) {
+        if (op.capability == null) return
+        line("**Capability** &nbsp;·&nbsp; `${op.capability}`")
+        line()
+    }
+
+    // Input and Output render as peer content tabs — along with the
+    // example tabs that may follow — so the reader can flip between the
+    // request schema, response schema, and a concrete example in one
+    // tab group.
+    private fun IndentedWriter.schemaTabs(op: OperationDoc) {
+        if (op.requestSchema != null) {
+            tab("Input: ${op.requestSchema}") {
+                schemaTable(op.requestSchema)
+            }
+        } else {
+            tab("Input") {
+                line("_No parameters._")
+            }
+        }
+        tab("Output: ${op.responseSchema}") {
+            schemaTable(op.responseSchema)
+        }
+    }
+
+    private fun IndentedWriter.behavioralNotes(op: OperationDoc) {
+        if (op.behavioralNotes.isEmpty()) return
+        admonition("note", "Behavioral notes") {
+            for (note in op.behavioralNotes) {
+                line("- $note")
+            }
         }
         line()
-        line("**JSON-RPC method:** `${op.jsonRpcMethod}`")
+    }
+
+    private fun IndentedWriter.errorCodes(op: OperationDoc) {
+        if (op.errorCodes.isEmpty()) return
+        line("**Error codes** &nbsp;·&nbsp; ${op.errorCodes.joinToString(", ") { "`$it`" }}")
     }
 
     // ── Schema table rendering ────────────────────────────────────────
 
-    // Maps operation-level schema names to their anchor in api-reference.md.
-    // Only schemas that appear directly as Input/Output of an operation have anchors.
-    private val typeAnchors: Map<String, String> by lazy {
-        val result = mutableMapOf<String, String>()
-        for (op in OperationDocRegistry.all()) {
-            op.requestSchema?.let { result.putIfAbsent(it, "input-${it.lowercase()}") }
-            result.putIfAbsent(op.responseSchema, "output-${op.responseSchema.lowercase()}")
-        }
-        result
-    }
-
-    private fun IndentedWriter.schemaTable(schemaName: String, crossRefBase: String? = null) {
+    private fun IndentedWriter.schemaTable(schemaName: String) {
         val serializer = schemaSerializers[schemaName]
         if (serializer == null) {
             line("*Schema not found: $schemaName*")
@@ -297,49 +282,39 @@ object DocsDocument {
                 }
             }
 
-            val baseTypeName = simpleName(elementDescriptor.serialName)
-            val previewLink = if (crossRefBase != null) {
-                typeAnchors[baseTypeName]?.let { anchor -> " [↗]($crossRefBase#$anchor){ data-preview }" }
-            } else null
-
-            line("| $signature$tooltip${previewLink ?: ""} | $description |")
+            line("| $signature$tooltip | $description |")
         }
     }
 
-    // ── Tabbed examples ───────────────────────────────────────────────
+    // ── Example tabs ──────────────────────────────────────────────────
 
-    private fun IndentedWriter.tabbedExamples(op: OperationDoc) {
-        val hasCliExample = op.cliExample.isNotBlank()
-        val requestJson = readExampleFile("${op.operationId}-request.json")
-        val responseJson = readExampleFile("${op.operationId}-response.json")
-
-        if (!hasCliExample && requestJson == null && responseJson == null) return
-
-        if (hasCliExample) {
-            tab("CLI example") {
+    // Rendered as peers of the Input/Output schema tabs so everything
+    // about a single operation — its request shape, response shape, CLI
+    // invocation, and wire-level JSON — lives in one tab group. Tabs use
+    // consistent labels ("CLI", "Request", "Response") so pymdownx
+    // `content.tabs.link` can sync the active tab across every operation
+    // on the page.
+    private fun IndentedWriter.exampleTabs(op: OperationDoc) {
+        if (op.cliExample.isNotBlank()) {
+            tab("CLI") {
                 line("```bash")
                 line(op.cliExample)
                 line("```")
             }
-            line()
         }
-
-        if (requestJson != null) {
-            tab("JSON-RPC request") {
+        readExampleFile("${op.operationId}-request.json")?.let { requestJson ->
+            tab("Request") {
                 line("```json")
                 lines(requestJson)
                 line("```")
             }
-            line()
         }
-
-        if (responseJson != null) {
-            tab("Example response") {
+        readExampleFile("${op.operationId}-response.json")?.let { responseJson ->
+            tab("Response") {
                 line("```json")
                 lines(responseJson)
                 line("```")
             }
-            line()
         }
     }
 
