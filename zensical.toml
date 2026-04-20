@@ -41,7 +41,6 @@ nav = [
   { "Reference" = [
     { "API reference" = "reference/api-reference.md" },
     { "API specification" = "reference/api-specification.md" },
-    { "Capabilities" = "reference/capabilities.md" },
     { "Error codes" = "reference/error-codes.md" },
   ]},
   { "Troubleshooting" = "troubleshooting.md" },
