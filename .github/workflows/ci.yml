@@ -14,14 +14,8 @@ env:
 
 jobs:
   build-and-test:
-    name: Build & test (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os:
-          - ubuntu-latest
-          - macos-latest
+    name: Build & test
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
 
@@ -49,7 +43,7 @@ jobs:
       - name: Upload portable distribution
         uses: actions/upload-artifact@v4
         with:
-          name: kast-portable-${{ matrix.os }}
+          name: kast-portable-ubuntu-latest
           path: kast-cli/build/distributions/kast-cli-*-portable.zip
           if-no-files-found: error
           retention-days: 1
@@ -92,15 +86,9 @@ jobs:
         run: ./gradlew :backend-intellij:test -PincludeTags=performance
 
   smoke-kast-cli:
-    name: Smoke CLI (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
+    name: Smoke CLI
+    runs-on: ubuntu-latest
     needs: build-and-test
-    strategy:
-      fail-fast: false
-      matrix:
-        os:
-          - ubuntu-latest
-          - macos-latest
     steps:
       - uses: actions/checkout@v5
 
@@ -112,7 +100,7 @@ jobs:
       - name: Download portable distribution
         uses: actions/download-artifact@v4
         with:
-          name: kast-portable-${{ matrix.os }}
+          name: kast-portable-ubuntu-latest
           path: kast-cli/build/distributions
 
       - name: Smoke portable Kast distribution
