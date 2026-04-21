@@ -28,6 +28,17 @@ class KastCli private constructor(
     )
 
     internal companion object {
+        internal val NO_QUALIFYING_RESULT_CODES: Set<String> = setOf(
+            "DEMO_NO_QUALIFYING_SYMBOL",
+            "DEMO_NO_SYMBOLS",
+        )
+        internal val INFRASTRUCTURE_UNAVAILABLE_CODES: Set<String> = setOf(
+            "DEMO_INDEX_UNAVAILABLE",
+            "DAEMON_NOT_RUNNING",
+            "CAPABILITIES_UNAVAILABLE",
+            "RUNTIME_TIMEOUT",
+        )
+
         fun testInstance(
             processLauncher: ProcessLauncher = DefaultProcessLauncher(),
             json: Json = defaultCliJson(),
@@ -59,10 +70,23 @@ class KastCli private constructor(
         }.fold(
             onSuccess = { it },
             onFailure = { throwable ->
-                writeCliJson(stderr, cliErrorFromThrowable(throwable), json)
-                1
+                val errorResponse = cliErrorFromThrowable(throwable)
+                writeCliJson(stderr, errorResponse, json)
+                exitCodeFor(errorResponse.code)
             },
         )
+    }
+
+    /**
+     * Maps CLI failure codes onto deterministic process exit codes so demo
+     * automation (and `kast-demo-spec.md`) can distinguish "we ran but found
+     * nothing interesting" (1) from "we couldn't run because the backend or
+     * index isn't available" (2). All other failures fall back to 1.
+     */
+    private fun exitCodeFor(code: String?): Int = when (code) {
+        in KastCli.NO_QUALIFYING_RESULT_CODES -> 1
+        in KastCli.INFRASTRUCTURE_UNAVAILABLE_CODES -> 2
+        else -> 1
     }
 
     private suspend fun writeCliOutput(

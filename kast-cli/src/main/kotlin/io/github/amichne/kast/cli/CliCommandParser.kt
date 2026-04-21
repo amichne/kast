@@ -569,6 +569,9 @@ internal data class ParsedArguments(
                 message = "Unknown value for --verbose: ${options["verbose"]}. Valid values: true, false.",
             )
         }
+        val minRefs = parseDemoInt("min-refs", default = 5, minimum = 0)
+        val noiseRatio = parseDemoDouble("noise-ratio", default = 2.0, minimum = 0.0)
+        val rippleDepth = parseDemoInt("depth", default = 2, minimum = 1, maximum = DemoOptions.MAX_RIPPLE_DEPTH)
         return DemoOptions(
             workspaceRoot = options["workspace-root"]
                 ?.takeIf(String::isNotBlank)
@@ -578,8 +581,44 @@ internal data class ParsedArguments(
             walkMode = walkMode,
             backend = backend,
             verbose = verbose,
+            minRefs = minRefs,
+            noiseRatio = noiseRatio,
+            rippleDepth = rippleDepth,
         )
     }
+
+    private fun parseDemoInt(key: String, default: Int, minimum: Int, maximum: Int = Int.MAX_VALUE): Int {
+        val raw = options[key]?.trim()?.takeIf(String::isNotEmpty) ?: return default
+        val parsed = raw.toIntOrNull() ?: throw CliFailure(
+            code = "CLI_USAGE",
+            message = "Invalid value for --$key: '$raw'. Expected an integer.",
+        )
+        if (parsed < minimum || parsed > maximum) {
+            throw CliFailure(
+                code = "CLI_USAGE",
+                message = "Invalid value for --$key: $parsed. Expected ${rangeDescription(minimum, maximum)}.",
+            )
+        }
+        return parsed
+    }
+
+    private fun parseDemoDouble(key: String, default: Double, minimum: Double): Double {
+        val raw = options[key]?.trim()?.takeIf(String::isNotEmpty) ?: return default
+        val parsed = raw.toDoubleOrNull() ?: throw CliFailure(
+            code = "CLI_USAGE",
+            message = "Invalid value for --$key: '$raw'. Expected a decimal number.",
+        )
+        if (parsed.isNaN() || parsed < minimum) {
+            throw CliFailure(
+                code = "CLI_USAGE",
+                message = "Invalid value for --$key: $parsed. Expected a number >= $minimum.",
+            )
+        }
+        return parsed
+    }
+
+    private fun rangeDescription(minimum: Int, maximum: Int): String =
+        if (maximum == Int.MAX_VALUE) "an integer >= $minimum" else "an integer in [$minimum..$maximum]"
 
     fun evalSkillOptions(): EvalSkillOptions {
         val skillDir = options["skill-dir"]

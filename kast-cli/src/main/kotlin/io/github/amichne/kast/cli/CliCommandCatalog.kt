@@ -320,7 +320,7 @@ internal object CliCommandCatalog {
     private val demoWalkOption = CliOptionMetadata(
         key = "walk",
         usage = "--walk=auto|true|false",
-        description = "Run the interactive symbol-graph walker after Act 2. Defaults to auto: on when stdin is a TTY and --symbol is not set.",
+        description = "Run the interactive symbol-graph walker after the three-act transcript. Defaults to auto: emit the transcript only unless you force true.",
     )
 
     private val demoVerboseOption = CliOptionMetadata(
@@ -328,6 +328,24 @@ internal object CliCommandCatalog {
         usage = "--verbose=true",
         description = "Render fully-qualified names and workspace-relative paths everywhere. Default: simple names and bare file names.",
         completionKind = CliOptionCompletionKind.BOOLEAN,
+    )
+
+    private val demoMinRefsOption = CliOptionMetadata(
+        key = "min-refs",
+        usage = "--min-refs=5",
+        description = "Auto-selection threshold: minimum number of resolved references a candidate must have. Default: 5. Ignored when --symbol is supplied.",
+    )
+
+    private val demoNoiseRatioOption = CliOptionMetadata(
+        key = "noise-ratio",
+        usage = "--noise-ratio=2.0",
+        description = "Auto-selection threshold: minimum grep-hits / resolved-refs ratio a candidate must have. Default: 2.0. Ignored when --symbol is supplied.",
+    )
+
+    private val demoDepthOption = CliOptionMetadata(
+        key = "depth",
+        usage = "--depth=2",
+        description = "Maximum depth of the Act 2 incoming-call hierarchy. Default: 2. Higher values follow the ripple farther but cost more analysis time.",
     )
 
     private val commands: List<CliCommandMetadata> = listOf(
@@ -782,12 +800,21 @@ internal object CliCommandCatalog {
             path = listOf("demo"),
             group = CliCommandGroup.VALIDATION,
             summary = "Interactive comparison of grep vs kast semantic analysis on your workspace.",
-            description = "Picks a symbol from your workspace — via --symbol or the built-in terminal chooser — and runs grep-style text search alongside kast resolve, references, rename, and call-hierarchy so you can see the difference side by side. " +
+            description = "Picks a symbol from your workspace — via --symbol or the built-in terminal chooser — and renders a three-act terminal comparison of grep-style text search versus kast semantic resolution, references, and caller graph traversal. " +
                 "Uses the live IntelliJ plugin backend when one is available and auto-starts the standalone JVM daemon otherwise; pin with --backend-name=intellij|standalone.",
             usages = listOf(
-                "$CLI_EXECUTABLE_NAME demo [--workspace-root=/absolute/path/to/workspace] [--symbol=CliService] [--walk=auto|true|false] [--backend-name=intellij|standalone] [--verbose=true]",
+                "$CLI_EXECUTABLE_NAME demo [--workspace-root=/absolute/path/to/workspace] [--symbol=CliService] [--walk=auto|true|false] [--backend-name=intellij|standalone] [--verbose=true] [--min-refs=5] [--noise-ratio=2.0] [--depth=2]",
             ),
-            options = listOf(workspaceRootOption, demoSymbolOption, demoWalkOption, backendNameOption, demoVerboseOption),
+            options = listOf(
+                workspaceRootOption,
+                demoSymbolOption,
+                demoWalkOption,
+                backendNameOption,
+                demoVerboseOption,
+                demoMinRefsOption,
+                demoNoiseRatioOption,
+                demoDepthOption,
+            ),
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME demo",
                 "$CLI_EXECUTABLE_NAME demo --workspace-root=/absolute/path/to/workspace",
@@ -795,6 +822,8 @@ internal object CliCommandCatalog {
                 "$CLI_EXECUTABLE_NAME demo --walk=true  # always runs the interactive symbol-graph walker",
                 "$CLI_EXECUTABLE_NAME demo --backend-name=intellij  # target a running IntelliJ IDEA plugin backend",
                 "$CLI_EXECUTABLE_NAME demo --verbose=true  # render fully-qualified names and full paths",
+                "$CLI_EXECUTABLE_NAME demo --min-refs=10 --noise-ratio=3.0  # pickier auto-selection",
+                "$CLI_EXECUTABLE_NAME demo --depth=4  # deepen Act 2's caller ripple",
             ),
         ),
         CliCommandMetadata(

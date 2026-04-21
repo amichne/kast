@@ -82,7 +82,7 @@ class DemoCommandSupportTest {
     }
 
     @Test
-    fun `render prints the semantic comparison summary`() {
+    fun `render prints the three-act transcript without legacy summary panels`() {
         val selectedSymbol = demoSymbol("io.github.amichne.kast.cli.CliService")
         val searchScope = SearchScope(
             visibility = SymbolVisibility.PUBLIC,
@@ -152,10 +152,11 @@ class DemoCommandSupportTest {
 
         assertTrue(output.contains("Act 1"))
         assertTrue(output.contains("Act 2"))
-        assertTrue(output.contains("semantic references"))
-        assertTrue(output.contains("incoming callers"))
-        assertTrue(output.contains("grep + sed"))
-        assertTrue(output.contains("why the semantic pass wins"))
+        assertTrue(output.contains("Act 3"))
+        assertTrue(output.contains("Noise eliminated"))
+        assertTrue(output.contains("Every edge is a compiler-verified call site."))
+        assertTrue(!output.contains("Side-by-side summary"))
+        assertTrue(!output.contains("why the semantic pass wins"))
     }
 
     private fun writeKotlinFile(relativePath: String, content: String) {

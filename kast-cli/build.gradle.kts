@@ -21,6 +21,7 @@ dependencies {
     api(project(":analysis-api"))
     implementation(libs.coroutines.core)
     implementation(libs.serialization.json)
+    implementation(libs.mordant)
 }
 
 graalvmNative {

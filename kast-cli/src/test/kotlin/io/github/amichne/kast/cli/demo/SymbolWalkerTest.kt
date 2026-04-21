@@ -32,7 +32,7 @@ class SymbolWalkerTest {
                 workspaceRoot = tempDir,
                 graph = graph,
                 io = io,
-                renderer = DemoRenderer(CliTextTheme.ansi(), ansiEnabled = false),
+                ui = DemoTerminal.captured(sink = { }),
                 grepRunner = NoopGrepRunner,
             ).run(root)
         }
@@ -74,7 +74,7 @@ class SymbolWalkerTest {
                 workspaceRoot = tempDir,
                 graph = graph,
                 io = io,
-                renderer = DemoRenderer(CliTextTheme.ansi(), ansiEnabled = false),
+                ui = DemoTerminal.captured(sink = { }),
                 grepRunner = NoopGrepRunner,
             ).run(root)
         }
@@ -99,7 +99,7 @@ class SymbolWalkerTest {
                 workspaceRoot = tempDir,
                 graph = graph,
                 io = io,
-                renderer = DemoRenderer(CliTextTheme.ansi(), ansiEnabled = false),
+                ui = DemoTerminal.captured(sink = { }),
                 grepRunner = NoopGrepRunner,
             ).run(root)
         }
@@ -130,7 +130,7 @@ class SymbolWalkerTest {
                 workspaceRoot = tempDir,
                 graph = graph,
                 io = io,
-                renderer = DemoRenderer(CliTextTheme.ansi(), ansiEnabled = false),
+                ui = DemoTerminal.captured(sink = { }),
                 grepRunner = NoopGrepRunner,
             ).run(root)
         }
@@ -158,7 +158,7 @@ class SymbolWalkerTest {
                 workspaceRoot = tempDir,
                 graph = graph,
                 io = io,
-                renderer = DemoRenderer(CliTextTheme.ansi(), ansiEnabled = false),
+                ui = DemoTerminal.captured(sink = { }),
                 grepRunner = NoopGrepRunner,
             ).run(root)
         }
@@ -181,7 +181,7 @@ class SymbolWalkerTest {
                 workspaceRoot = tempDir,
                 graph = graph,
                 io = io,
-                renderer = DemoRenderer(CliTextTheme.ansi(), ansiEnabled = false),
+                ui = DemoTerminal.captured(sink = { }),
                 grepRunner = NoopGrepRunner,
             ).run(root)
         }
@@ -204,7 +204,7 @@ class SymbolWalkerTest {
                 workspaceRoot = tempDir,
                 graph = graph,
                 io = io,
-                renderer = DemoRenderer(CliTextTheme.ansi(), ansiEnabled = false),
+                ui = DemoTerminal.captured(sink = { }),
                 display = SymbolDisplay(workspaceRoot = tempDir, verbose = true),
                 grepRunner = NoopGrepRunner,
             ).run(root)
@@ -230,13 +230,13 @@ class SymbolWalkerTest {
                 workspaceRoot = tempDir,
                 graph = graph,
                 io = io,
-                renderer = DemoRenderer(CliTextTheme.ansi(), ansiEnabled = false),
+                ui = DemoTerminal.captured(sink = { }),
                 grepRunner = grep,
             ).run(root)
         }
         val transcript = io.emitted.joinToString("\n")
         assertTrue(transcript.contains("A.kt:1: class Root"), transcript)
-        assertTrue(transcript.contains("grep has no way"), transcript)
+        assertTrue(transcript.contains("grep cannot tell"), transcript)
     }
 
     // ---- test helpers ----

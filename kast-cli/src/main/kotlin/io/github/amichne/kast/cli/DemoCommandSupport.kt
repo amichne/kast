@@ -1,5 +1,8 @@
 package io.github.amichne.kast.cli
 
+import com.github.ajalt.mordant.rendering.AnsiLevel
+import com.github.ajalt.mordant.terminal.Terminal
+import com.github.ajalt.mordant.terminal.TerminalRecorder
 import io.github.amichne.kast.api.contract.CallDirection
 import io.github.amichne.kast.api.contract.CallHierarchyQuery
 import io.github.amichne.kast.api.contract.CallHierarchyResult
@@ -12,22 +15,18 @@ import io.github.amichne.kast.api.contract.Symbol
 import io.github.amichne.kast.api.contract.SymbolQuery
 import io.github.amichne.kast.api.contract.WorkspaceSymbolQuery
 import io.github.amichne.kast.cli.demo.CliServiceSymbolGraph
-import io.github.amichne.kast.cli.demo.DemoActs.act1TextSearchBaseline
-import io.github.amichne.kast.cli.demo.DemoActs.act2Semantic
-import io.github.amichne.kast.cli.demo.DemoActs.closingPanel
-import io.github.amichne.kast.cli.demo.DemoActs.comparisonSummary
-import io.github.amichne.kast.cli.demo.DemoActs.openingBanner
-import io.github.amichne.kast.cli.demo.DemoActs.targetPanel
-import io.github.amichne.kast.cli.demo.DemoRenderer
-import io.github.amichne.kast.cli.demo.DemoScript
-import io.github.amichne.kast.cli.demo.LineEmphasis
+import io.github.amichne.kast.cli.demo.DemoTerminal
 import io.github.amichne.kast.cli.demo.FzfWalkerIO
 import io.github.amichne.kast.cli.demo.StreamWalkerIO
+import io.github.amichne.kast.cli.demo.DemoSelectionConfig
+import io.github.amichne.kast.cli.demo.SelectionOutcome
 import io.github.amichne.kast.cli.demo.SymbolDisplay
+import io.github.amichne.kast.cli.demo.SymbolEvidence
+import io.github.amichne.kast.cli.demo.SymbolProbe
+import io.github.amichne.kast.cli.demo.SymbolSelector
 import io.github.amichne.kast.cli.demo.SymbolWalker
 import io.github.amichne.kast.cli.demo.WalkerIO
 import io.github.amichne.kast.cli.demo.Timed
-import io.github.amichne.kast.cli.demo.demoScript
 import io.github.amichne.kast.cli.demo.timed
 import java.io.BufferedReader
 import java.io.Console
@@ -42,6 +41,67 @@ internal class DemoCommandSupport(
     private val symbolChooser: DemoSymbolChooser = TerminalDemoSymbolChooser(),
     private val themeProvider: () -> CliTextTheme = CliTextTheme::detect,
 ) {
+    /**
+     * Picks the symbol that the demo will narrate around. When the user
+     * supplies `--symbol` we honour that filter as before. Otherwise the
+     * heuristic [SymbolSelector] is run so the demo always lands on a
+     * symbol where the grep-vs-semantic comparison is interesting.
+     *
+     * The probe used to score candidates also produces the evidence we
+     * later render in Act 1, so we cache it on the returned
+     * [DemoSubjectSelection] to avoid re-running text search and reference
+     * lookup against the chosen symbol.
+     */
+    private suspend fun resolveDemoSubject(
+        options: DemoOptions,
+        cliService: CliService,
+        runtimeOptions: RuntimeCommandOptions,
+        candidates: List<Symbol>,
+        emit: (String) -> Unit,
+    ): DemoSubjectSelection {
+        if (candidates.isEmpty()) {
+            throw CliFailure(
+                code = "DEMO_NO_SYMBOLS",
+                message = "Could not find any workspace symbols for `kast demo` in ${options.workspaceRoot}",
+            )
+        }
+        val filter = options.symbolFilter?.takeIf(String::isNotBlank)
+        if (filter != null) {
+            return DemoSubjectSelection(symbol = selectSymbol(options, candidates))
+        }
+        if (candidates.size == 1) {
+            return DemoSubjectSelection(symbol = candidates.single())
+        }
+
+        emit("› Auto-selecting a noisy symbol (--min-refs=${options.minRefs}, --noise-ratio=${options.noiseRatio})...")
+        val selector = SymbolSelector(
+            DemoSelectionConfig(minRefs = options.minRefs, noiseRatio = options.noiseRatio),
+        )
+        val probe = SymbolProbe { candidate ->
+            val textSearch = analyzeTextSearch(options.workspaceRoot, candidate)
+            val candidatePosition = FilePosition(
+                filePath = candidate.location.filePath,
+                offset = candidate.location.startOffset,
+            )
+            val references = cliService.findReferences(
+                runtimeOptions,
+                ReferencesQuery(position = candidatePosition, includeDeclaration = true),
+            ).payload
+            SymbolEvidence(textSearch = textSearch, references = references)
+        }
+        return when (val outcome = selector.select(candidates, probe)) {
+            is SelectionOutcome.Found -> DemoSubjectSelection(
+                symbol = outcome.symbol,
+                evidence = outcome.evidence,
+            )
+            is SelectionOutcome.NoQualifyingSymbol -> throw CliFailure(
+                code = "DEMO_NO_QUALIFYING_SYMBOL",
+                message = "No symbol satisfied the demo thresholds (${outcome.reason}). " +
+                    "Pass --symbol to pick one explicitly, or relax --min-refs / --noise-ratio.",
+            )
+        }
+    }
+
     fun selectSymbol(
         options: DemoOptions,
         symbols: List<Symbol>,
@@ -163,38 +223,53 @@ internal class DemoCommandSupport(
 
     /**
      * Batch rendering used when the caller wants a complete transcript in
-     * one shot (older callers + unit tests). Builds the full scene tree,
-     * then renders it in a single pass.
+     * one shot (older callers + unit tests). Builds a captured
+     * [DemoTerminal] and emits each act in order.
      */
     fun render(report: DemoReport): String {
-        val renderer = newRenderer()
-        val script = demoScript {
-            openingBanner(report.workspaceRoot)
-            targetPanel(report.workspaceRoot, report.resolvedSymbol)
-            act1TextSearchBaseline(
+        val recorder = TerminalRecorder(
+            ansiLevel = AnsiLevel.NONE,
+            width = 100,
+            hyperlinks = false,
+            outputInteractive = false,
+            inputInteractive = false,
+        )
+        val ui = DemoTerminal(terminal = Terminal(terminalInterface = recorder))
+        ui.emit(
+            ui.act1TextSearchBaseline(
                 workspaceRoot = report.workspaceRoot,
                 symbolName = report.resolvedSymbol.fqName.substringAfterLast('.'),
                 summary = report.textSearch,
             )
-            act2Semantic(
+        )
+        ui.blankLine()
+        ui.emit(
+            ui.act2Semantic(
                 workspaceRoot = report.workspaceRoot,
+                textSearch = report.textSearch,
                 resolvedSymbol = report.resolvedSymbol,
                 references = report.references,
                 rename = report.rename,
                 callHierarchy = report.callHierarchy,
             )
-            comparisonSummary(report)
-            closingPanel()
-        }
-        return renderer.render(script)
+        )
+        ui.blankLine()
+        ui.emit(
+            ui.act3CallerTree(
+                workspaceRoot = report.workspaceRoot,
+                callHierarchy = report.callHierarchy,
+                depth = 2,
+            )
+        )
+        return recorder.stdout()
     }
 
     /**
      * Streaming orchestrator. Gathers the analysis payload piece by piece,
-     * emits each scene to [sink] as it completes, optionally runs the
-     * interactive symbol-graph walker, and finally prints the comparison
-     * summary and closing panel. Returns the populated [DemoReport] so the
-     * caller can attach it to a runtime-aware result.
+     * emits the three demo acts to [sink], and optionally hands off to the
+     * interactive symbol-graph walker once the transcript has landed.
+     * Returns the populated [DemoReport] so the caller can attach it to a
+     * runtime-aware result.
      */
     suspend fun runInteractive(
         options: DemoOptions,
@@ -203,10 +278,19 @@ internal class DemoCommandSupport(
         reader: BufferedReader?,
         walkerEnabled: Boolean,
     ): DemoReport {
-        val renderer = newRenderer()
-        fun emit(script: DemoScript) = sink(renderer.render(script))
-
-        emit(demoScript { openingBanner(options.workspaceRoot) })
+        val ui = DemoTerminal.captured(sink = sink)
+        fun emitOutcome(message: String, outcome: Timed<Result<*>>) {
+            ui.emit(
+                ui.stepOutcome(
+                    message = message,
+                    success = outcome.value.isSuccess,
+                    elapsed = outcome.elapsed,
+                )
+            )
+            if (outcome.value.isFailure) {
+                ui.emit(ui.stepFailureBody(outcome.value.exceptionOrNull()?.message ?: "unknown failure"))
+            }
+        }
 
         val runtimeOptions = RuntimeCommandOptions(
             workspaceRoot = options.workspaceRoot,
@@ -214,47 +298,51 @@ internal class DemoCommandSupport(
             waitTimeoutMillis = 180_000L,
         )
 
-        emit(demoScript { progress("Warming workspace daemon (kast workspace ensure)...") })
         val warm = timed { cliService.workspaceEnsure(runtimeOptions) }
-        emit(stepOutcomeScript("workspace ensure", warm))
         warm.value.getOrThrow()
 
-        emit(demoScript { progress("Discovering workspace symbols (kast workspace-symbol)...") })
         val searchQuery = workspaceSymbolQueryFor(options.symbolFilter)
         val symbolSearch = timed { cliService.workspaceSymbolSearch(runtimeOptions, searchQuery) }
-        emit(stepOutcomeScript("workspace symbol search", symbolSearch))
         val symbolPayload = symbolSearch.value.getOrThrow().payload
 
-        val selectedSymbol = selectSymbol(options, symbolPayload.symbols)
+        val resolvedSelection = resolveDemoSubject(
+            options = options,
+            cliService = cliService,
+            runtimeOptions = runtimeOptions,
+            candidates = symbolPayload.symbols,
+            emit = sink,
+        )
+        val selectedSymbol = resolvedSelection.symbol
         val symbolPosition = FilePosition(
             filePath = selectedSymbol.location.filePath,
             offset = selectedSymbol.location.startOffset,
         )
 
-        emit(demoScript { targetPanel(options.workspaceRoot, selectedSymbol) })
-
-        emit(demoScript { progress("Classifying grep matches for ${selectedSymbol.fqName.substringAfterLast('.')}...") })
-        val textSearch = analyzeTextSearch(options.workspaceRoot, selectedSymbol)
-        emit(demoScript {
-            act1TextSearchBaseline(
+        val textSearch = resolvedSelection.evidence?.textSearch
+            ?: analyzeTextSearch(options.workspaceRoot, selectedSymbol)
+        ui.emit(
+            ui.act1TextSearchBaseline(
                 workspaceRoot = options.workspaceRoot,
                 symbolName = selectedSymbol.fqName.substringAfterLast('.'),
                 summary = textSearch,
             )
-        })
+        )
+        ui.blankLine()
 
         val resolved = timed {
             cliService.resolveSymbol(runtimeOptions, SymbolQuery(position = symbolPosition))
         }
         val resolvedSymbol = resolved.value.getOrThrow().payload.symbol
 
-        val references = timed {
-            cliService.findReferences(
-                runtimeOptions,
-                ReferencesQuery(position = symbolPosition, includeDeclaration = true),
-            )
+        val referencesPayload = resolvedSelection.evidence?.references ?: run {
+            val references = timed {
+                cliService.findReferences(
+                    runtimeOptions,
+                    ReferencesQuery(position = symbolPosition, includeDeclaration = true),
+                )
+            }
+            references.value.getOrThrow().payload
         }
-        val referencesPayload = references.value.getOrThrow().payload
 
         val rename = timed {
             cliService.rename(
@@ -274,21 +362,31 @@ internal class DemoCommandSupport(
                 CallHierarchyQuery(
                     position = symbolPosition,
                     direction = CallDirection.INCOMING,
-                    depth = 2,
+                    depth = options.rippleDepth,
                 ),
             )
         }
         val callHierarchyPayload = callHierarchy.value.getOrThrow().payload
 
-        emit(demoScript {
-            act2Semantic(
+        ui.emit(
+            ui.act2Semantic(
                 workspaceRoot = options.workspaceRoot,
+                textSearch = textSearch,
                 resolvedSymbol = resolvedSymbol,
                 references = referencesPayload,
                 rename = renamePayload,
                 callHierarchy = callHierarchyPayload,
             )
-        })
+        )
+        ui.blankLine()
+
+        ui.emit(
+            ui.act3CallerTree(
+                workspaceRoot = options.workspaceRoot,
+                callHierarchy = callHierarchyPayload,
+                depth = options.rippleDepth,
+            )
+        )
 
         if (walkerEnabled && reader != null) {
             val base: WalkerIO = StreamWalkerIO(reader = reader, output = sink)
@@ -300,7 +398,7 @@ internal class DemoCommandSupport(
                 workspaceRoot = options.workspaceRoot,
                 graph = CliServiceSymbolGraph(cliService, runtimeOptions),
                 io = io,
-                renderer = renderer,
+                ui = ui,
                 theme = themeProvider(),
                 display = SymbolDisplay(
                     workspaceRoot = options.workspaceRoot,
@@ -308,17 +406,6 @@ internal class DemoCommandSupport(
                 ),
             )
             walker.run(resolvedSymbol)
-        } else {
-            emit(demoScript {
-                section("Act 3 · walk the symbol graph")
-                panel("interactive walker · skipped") {
-                    line(
-                        text = "pass --walk=true with a real terminal to hop between references, callers, and callees.",
-                        emphasis = LineEmphasis.DIM,
-                    )
-                }
-                blank()
-            })
         }
 
         val report = DemoReport(
@@ -331,28 +418,7 @@ internal class DemoCommandSupport(
             callHierarchy = callHierarchyPayload,
         )
 
-        emit(demoScript {
-            comparisonSummary(report)
-            closingPanel()
-        })
-
         return report
-    }
-
-    private fun newRenderer(): DemoRenderer = DemoRenderer(theme = themeProvider())
-
-    private fun stepOutcomeScript(message: String, outcome: Timed<Result<*>>): DemoScript = demoScript {
-        step(message) {
-            if (outcome.value.isSuccess) success(outcome.elapsed) else failure(outcome.elapsed)
-            if (outcome.value.isFailure) {
-                body {
-                    line(
-                        text = outcome.value.exceptionOrNull()?.message ?: "unknown failure",
-                        emphasis = LineEmphasis.ERROR,
-                    )
-                }
-            }
-        }
     }
 
     private fun symbolMatchesFilter(
@@ -484,6 +550,16 @@ internal data class DemoReport(
     val references: ReferencesResult,
     val rename: RenameResult,
     val callHierarchy: CallHierarchyResult,
+)
+
+/**
+ * Result of picking the demo's subject symbol. When the heuristic
+ * [SymbolSelector] runs the probe, it produces evidence (text search +
+ * references) we then reuse instead of recomputing it for Act 1 / Act 2.
+ */
+internal data class DemoSubjectSelection(
+    val symbol: Symbol,
+    val evidence: SymbolEvidence? = null,
 )
 
 /** Convenience reader for CLI plumbing. */

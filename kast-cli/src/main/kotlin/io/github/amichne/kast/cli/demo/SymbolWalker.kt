@@ -182,15 +182,19 @@ internal class SymbolWalker(
     private val workspaceRoot: Path,
     private val graph: SymbolGraph,
     private val io: WalkerIO,
-    private val renderer: DemoRenderer,
+    private val ui: DemoTerminal,
     private val theme: CliTextTheme = CliTextTheme.detect(),
     private val display: SymbolDisplay = SymbolDisplay(workspaceRoot = workspaceRoot, verbose = false),
     private val grepRunner: GrepRunner = DefaultGrepRunner(workspaceRoot),
 ) {
     private val history: ArrayDeque<SymbolCursor> = ArrayDeque()
 
+    private fun emit(widget: com.github.ajalt.mordant.rendering.Widget) {
+        io.emit(ui.terminal.render(widget))
+    }
+
     suspend fun run(initialSymbol: Symbol): WalkSummary {
-        io.emit(renderer.render(intro()))
+        emit(ui.walkerIntro())
         var cursor = hydrate(initialSymbol).getOrElse {
             io.emit("Could not hydrate starting symbol: ${it.message}")
             return WalkSummary(hops = 0)
@@ -198,21 +202,25 @@ internal class SymbolWalker(
         history.addLast(cursor)
         var hops = 0
         while (true) {
-            io.emit(renderer.render(cursorCard(cursor)))
+            emit(ui.walkerCursor(cursor, workspaceRoot))
             val raw = readCommand(cursor)
             when (val command = WalkerCommand.parse(raw)) {
-                WalkerCommand.Help -> io.emit(renderer.render(helpCard()))
+                WalkerCommand.Help -> emit(ui.walkerHelp())
                 WalkerCommand.Quit, WalkerCommand.EndOfInput -> return WalkSummary(hops = hops)
                 WalkerCommand.Back -> {
                     if (history.size <= 1) {
-                        io.emit(renderer.render(errorCard("Already at the starting symbol — nothing to pop.")))
+                        emit(ui.walkerError("Already at the starting symbol — nothing to pop."))
                     } else {
                         history.removeLast()
                         cursor = history.last()
                     }
                 }
-                WalkerCommand.ShowDeclaration -> io.emit(renderer.render(declarationCard(cursor)))
-                is WalkerCommand.GrepComparison -> io.emit(renderer.render(grepCard(cursor, command.maxLines)))
+                WalkerCommand.ShowDeclaration -> emit(
+                    ui.walkerDeclaration(workspaceRoot, cursor, readDeclarationContext(cursor.symbol.location))
+                )
+                is WalkerCommand.GrepComparison -> emit(
+                    ui.walkerGrep(cursor.simpleName, grepRunner.grep(cursor.simpleName, command.maxLines))
+                )
                 is WalkerCommand.JumpReference -> {
                     val target = cursor.references.getOrNull(command.oneBasedIndex - 1)
                     cursor = hopTo(cursor, target?.asPosition())?.also { history.addLast(it); hops += 1 } ?: cursor
@@ -225,8 +233,8 @@ internal class SymbolWalker(
                     val target = cursor.outgoingCallees.getOrNull(command.oneBasedIndex - 1)
                     cursor = hopTo(cursor, target?.location?.asPosition())?.also { history.addLast(it); hops += 1 } ?: cursor
                 }
-                is WalkerCommand.Unknown -> io.emit(
-                    renderer.render(errorCard("Unknown command: ${command.raw}. Type `h` for help."))
+                is WalkerCommand.Unknown -> emit(
+                    ui.walkerError("Unknown command: ${command.raw}. Type `h` for help.")
                 )
             }
         }
@@ -242,7 +250,7 @@ internal class SymbolWalker(
         val choices = buildMenuChoices(cursor)
         val picked = if (choices.isNotEmpty()) io.choose(menuHeader(cursor), choices) else null
         if (picked != null) return picked
-        io.emit(renderer.render(promptLine()))
+        emit(ui.walkerPrompt())
         return io.prompt()
     }
 
@@ -295,60 +303,17 @@ internal class SymbolWalker(
     private fun styledSymbolLabel(symbol: Symbol): String =
         "${theme.kind(symbol.kind, display.name(symbol))} ${theme.muted("·")} ${theme.kind(symbol.kind, display.kindLabel(symbol.kind))}"
 
-    /** Columns available inside a demo panel (`width - borders - padding`). */
-    private fun panelContentWidth(): Int = renderer.panelContentWidth
-
-    /**
-     * Fit `<location>  <preview>` into [availableWidth] columns. The file
-     * location is preserved in full whenever it fits; any remaining budget
-     * goes to the preview, which is right-truncated with `…`. If even the
-     * location doesn't fit, it's left-truncated so the file name stays
-     * visible.
-     */
-    private fun fitLocationAndPreview(
-        availableWidth: Int,
-        location: String,
-        preview: String,
-    ): Pair<String, String> {
-        if (availableWidth <= 0) return "" to ""
-        val maxLocation = (availableWidth * 2 / 3).coerceAtLeast(12)
-        val fittedLocation = renderer.truncateLeft(location, maxLocation)
-        val remaining = (availableWidth - fittedLocation.length - 2).coerceAtLeast(0)
-        val fittedPreview = if (remaining <= 0 || preview.isEmpty()) "" else renderer.truncate(preview, remaining)
-        return fittedLocation to fittedPreview
-    }
-
-    /**
-     * Fit `<name> · <kind>  <file>` into [availableWidth]. The identity
-     * segment (`name · kind`) stays as-is whenever possible; the file
-     * location is left-truncated to fit the remaining budget so the
-     * filename stays on the right edge.
-     */
-    private fun fitSignatureAndLocation(
-        availableWidth: Int,
-        name: String,
-        kindLabel: String,
-        location: String,
-    ): Pair<String, String> {
-        if (availableWidth <= 0) return "" to ""
-        val signature = "$name · $kindLabel"
-        val fittedSignature = renderer.truncate(signature, (availableWidth * 2 / 3).coerceAtLeast(12))
-        val remaining = (availableWidth - fittedSignature.length - 2).coerceAtLeast(0)
-        val fittedLocation = if (remaining <= 0) "" else renderer.truncateLeft(location, remaining)
-        return fittedSignature to fittedLocation
-    }
-
     private suspend fun hopTo(
         current: SymbolCursor,
         target: FilePosition?,
     ): SymbolCursor? {
         if (target == null) {
-            io.emit(renderer.render(errorCard("That index is out of range for the current node.")))
+            emit(ui.walkerError("That index is out of range for the current node."))
             return null
         }
         val resolved = graph.resolve(target)
         val symbol = resolved.getOrElse {
-            io.emit(renderer.render(errorCard("resolve failed: ${it.message ?: "no message"}")))
+            emit(ui.walkerError("resolve failed: ${it.message ?: "no message"}"))
             return null
         }
         return hydrateAt(symbol, target)
@@ -369,207 +334,6 @@ internal class SymbolWalker(
             incomingCallers = callers,
             outgoingCallees = callees,
         )
-    }
-
-    private fun intro(): DemoScript = demoScript {
-        section("Act 3 · walk the symbol graph")
-        panel("interactive walker") {
-            line("Hop between references, callers, and callees — every move is anchored to symbol identity.", emphasis = LineEmphasis.STRONG)
-            blank()
-            line("r <n>  jump to reference #n        c <n>  jump to incoming caller #n")
-            line("o <n>  jump to outgoing callee #n  g [n]  compare against grep (n lines)")
-            line("s      show current declaration    b      pop the last hop")
-            line("h      help                         q      finish the walker")
-        }
-        blank()
-    }
-
-    private fun cursorCard(cursor: SymbolCursor): DemoScript = demoScript {
-        val symbol = cursor.symbol
-        val title = "current node · ${display.name(symbol)}"
-        panel(title) {
-            line("name     ${display.name(symbol)}", emphasis = LineEmphasis.STRONG)
-            val kindSuffix = symbol.visibility?.let { " · $it" } ?: ""
-            val kindPlain = "kind     ${display.kindLabel(symbol.kind)}$kindSuffix"
-            styledLine(
-                plain = kindPlain,
-                rendered = "kind     ${theme.kind(symbol.kind, display.kindLabel(symbol.kind))}${theme.muted(kindSuffix)}",
-            )
-            val locationPlain = "file     ${display.locationLabel(symbol.location)}"
-            styledLine(
-                plain = locationPlain,
-                rendered = "file     ${theme.fileHeader(display.locationLabel(symbol.location))}",
-            )
-            symbol.containingDeclaration?.takeIf { it.isNotBlank() }?.let { line("inside   $it") }
-            blank()
-            renderReferenceBranch(
-                header = "references (${cursor.references.size})",
-                references = cursor.references.take(WALK_PREVIEW),
-                truncatedNote = (cursor.references.size - WALK_PREVIEW)
-                    .takeIf { it > 0 }
-                    ?.let { "... and $it more (use r <n> with larger n)" },
-            )
-            blank()
-            renderSymbolCallBranch(
-                header = "incoming callers (${cursor.incomingCallers.size})",
-                tokenPrefix = "c",
-                symbols = cursor.incomingCallers.take(WALK_PREVIEW),
-                truncatedNote = (cursor.incomingCallers.size - WALK_PREVIEW)
-                    .takeIf { it > 0 }
-                    ?.let { "... and $it more" },
-            )
-            blank()
-            renderSymbolCallBranch(
-                header = "outgoing callees (${cursor.outgoingCallees.size})",
-                tokenPrefix = "o",
-                symbols = cursor.outgoingCallees.take(WALK_PREVIEW),
-                truncatedNote = (cursor.outgoingCallees.size - WALK_PREVIEW)
-                    .takeIf { it > 0 }
-                    ?.let { "... and $it more" },
-            )
-        }
-    }
-
-    /** A reference row: `├── [r n]  <file:line>  <preview>`. Path is left-truncated, preview is right-truncated. */
-    private fun PanelBuilder.renderReferenceBranch(
-        header: String,
-        references: List<Location>,
-        truncatedNote: String?,
-    ) {
-        line(header, emphasis = LineEmphasis.STRONG)
-        if (references.isEmpty()) {
-            line("  └── no semantic references", emphasis = LineEmphasis.DIM)
-            return
-        }
-        val contentWidth = panelContentWidth()
-        val lastIndex = references.lastIndex
-        val hasTail = truncatedNote != null
-        references.forEachIndexed { i, ref ->
-            val n = i + 1
-            val elbow = if (i == lastIndex && !hasTail) "└──" else "├──"
-            val prefix = "  $elbow [r $n]  "
-            val locationRaw = display.locationLabel(ref)
-            val previewRaw = ref.preview.trim().take(PREVIEW_MAX)
-            val (locationPlain, previewPlain) = fitLocationAndPreview(
-                availableWidth = (contentWidth - prefix.length).coerceAtLeast(8),
-                location = locationRaw,
-                preview = previewRaw,
-            )
-            val plain = "$prefix$locationPlain${if (previewPlain.isNotEmpty()) "  $previewPlain" else ""}"
-            val rendered = "$prefix${theme.fileHeader(locationPlain)}" +
-                if (previewPlain.isNotEmpty()) "  ${theme.muted(previewPlain)}" else ""
-            styledLine(plain = plain, rendered = rendered)
-        }
-        truncatedNote?.let { line("  └── $it", emphasis = LineEmphasis.DIM) }
-    }
-
-    /** A caller / callee row: `├── [c n]  <name> · <kind>  <file:line>`. */
-    private fun PanelBuilder.renderSymbolCallBranch(
-        header: String,
-        tokenPrefix: String,
-        symbols: List<Symbol>,
-        truncatedNote: String?,
-    ) {
-        line(header, emphasis = LineEmphasis.STRONG)
-        if (symbols.isEmpty()) {
-            line("  └── no ${if (tokenPrefix == "c") "callers" else "callees"} found at depth 1", emphasis = LineEmphasis.DIM)
-            return
-        }
-        val contentWidth = panelContentWidth()
-        val lastIndex = symbols.lastIndex
-        val hasTail = truncatedNote != null
-        symbols.forEachIndexed { i, sym ->
-            val n = i + 1
-            val elbow = if (i == lastIndex && !hasTail) "└──" else "├──"
-            val prefix = "  $elbow [$tokenPrefix $n]  "
-            val namePlain = display.name(sym)
-            val kindLabel = display.kindLabel(sym.kind)
-            val locationRaw = display.locationLabel(sym.location)
-            val available = (contentWidth - prefix.length).coerceAtLeast(8)
-            val (signaturePlain, locationPlain) = fitSignatureAndLocation(
-                availableWidth = available,
-                name = namePlain,
-                kindLabel = kindLabel,
-                location = locationRaw,
-            )
-            val plain = "$prefix$signaturePlain${if (locationPlain.isNotEmpty()) "  $locationPlain" else ""}"
-            // Style each half of `name · kindLabel` by splitting on the separator once. Using
-            // String.replace here would corrupt rendering when the name is a substring of the
-            // kind label (e.g. `face` in `interface`).
-            val renderedSignature = if (signaturePlain.contains(" · ")) {
-                val styledName = theme.kind(sym.kind, signaturePlain.substringBefore(" · "))
-                val styledKind = theme.kind(sym.kind, signaturePlain.substringAfter(" · "))
-                "$styledName ${theme.muted("·")} $styledKind"
-            } else {
-                theme.kind(sym.kind, signaturePlain)
-            }
-            val rendered = "$prefix$renderedSignature" +
-                if (locationPlain.isNotEmpty()) "  ${theme.fileHeader(locationPlain)}" else ""
-            styledLine(plain = plain, rendered = rendered)
-        }
-        truncatedNote?.let { line("  └── $it", emphasis = LineEmphasis.DIM) }
-    }
-
-    private fun promptLine(): DemoScript = demoScript {
-        step("walker›") { info() }
-    }
-
-    private fun helpCard(): DemoScript = demoScript {
-        panel("walker commands") {
-            line("r <n>  jump to reference #n")
-            line("c <n>  jump to incoming caller #n")
-            line("o <n>  jump to outgoing callee #n")
-            line("g [n]  run grep on the current simple name and show n lines (default 6)")
-            line("s      show the declaration line")
-            line("b      pop the last hop")
-            line("h ?    show this help")
-            line("q      end the walker and continue the demo")
-        }
-    }
-
-    private fun errorCard(message: String): DemoScript = demoScript {
-        panel("walker error") {
-            line(message, emphasis = LineEmphasis.ERROR)
-        }
-    }
-
-    private fun declarationCard(cursor: SymbolCursor): DemoScript = demoScript {
-        val location = cursor.symbol.location
-        panel("declaration @ ${display.locationLabel(location)}") {
-            val fileHeaderText = "file     ${display.locationLabel(location)}"
-            styledLine(
-                plain = fileHeaderText,
-                rendered = "file     ${theme.fileHeader(display.locationLabel(location))}",
-            )
-            blank()
-            val lines = readDeclarationContext(location)
-            if (lines.isEmpty()) {
-                line("(file unreadable from walker)", emphasis = LineEmphasis.DIM)
-            } else {
-                lines.forEach { line(it) }
-            }
-        }
-    }
-
-    private fun grepCard(cursor: SymbolCursor, maxLines: Int): DemoScript = demoScript {
-        panel("grep '${cursor.simpleName}' — the same question without identity") {
-            val outcome = grepRunner.grep(cursor.simpleName, maxLines)
-            outcome.onSuccess { lines ->
-                if (lines.isEmpty()) {
-                    line("(no text matches found)", emphasis = LineEmphasis.DIM)
-                } else {
-                    lines.forEach { line(it) }
-                    blank()
-                    line(
-                        text = "grep has no way to tell you which of these is the current node, which are imports, and which are strings. The walker above already did.",
-                        emphasis = LineEmphasis.DIM,
-                    )
-                }
-            }
-            outcome.onFailure {
-                line("grep unavailable: ${it.message}", emphasis = LineEmphasis.ERROR)
-            }
-        }
     }
 
     private fun readDeclarationContext(location: Location): List<String> {

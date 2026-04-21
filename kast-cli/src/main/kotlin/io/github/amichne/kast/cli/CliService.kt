@@ -266,7 +266,7 @@ internal class CliService(
         val walkerEnabled = when (options.walkMode) {
             DemoWalkMode.DISABLED -> false
             DemoWalkMode.ENABLED -> true
-            DemoWalkMode.AUTO -> consoleProvider() != null && options.symbolFilter == null
+            DemoWalkMode.AUTO -> false
         }
         demoCommandSupport.runInteractive(
             options = options,

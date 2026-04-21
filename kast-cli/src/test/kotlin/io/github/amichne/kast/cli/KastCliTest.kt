@@ -164,6 +164,51 @@ class KastCliTest {
         assertEquals("shell stderr\n", stderr.toString())
     }
 
+    @Test
+    fun `demo failure with no qualifying symbol exits 1`() {
+        val exitCode = runCliFailing(
+            CliFailure(code = "DEMO_NO_QUALIFYING_SYMBOL", message = "no symbol satisfied thresholds"),
+        )
+        assertEquals(1, exitCode)
+    }
+
+    @Test
+    fun `demo failure with daemon not running exits 2`() {
+        val exitCode = runCliFailing(
+            CliFailure(code = "DAEMON_NOT_RUNNING", message = "daemon not reachable"),
+        )
+        assertEquals(2, exitCode)
+    }
+
+    @Test
+    fun `demo failure with index unavailable exits 2`() {
+        val exitCode = runCliFailing(
+            CliFailure(code = "DEMO_INDEX_UNAVAILABLE", message = "index missing"),
+        )
+        assertEquals(2, exitCode)
+    }
+
+    @Test
+    fun `unknown failure code exits 1 by default`() {
+        val exitCode = runCliFailing(
+            CliFailure(code = "CLI_INTERNAL_ERROR", message = "boom"),
+        )
+        assertEquals(1, exitCode)
+    }
+
+    private fun runCliFailing(failure: Throwable): Int {
+        val stdout = StringBuilder()
+        val stderr = StringBuilder()
+        val cli = KastCli.testInstance(
+            commandExecutorFactory = { _, _ ->
+                object : CliCommandExecutor {
+                    override suspend fun execute(command: CliCommand): CliExecutionResult = throw failure
+                }
+            },
+        )
+        return cli.run(arrayOf("capabilities", "--workspace-root=$tempDir"), stdout, stderr)
+    }
+
     private fun sampleCapabilities(): BackendCapabilities {
         return BackendCapabilities(
             backendName = "standalone",
