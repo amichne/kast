@@ -23,7 +23,7 @@ class PackagedSkillJsonContractTest {
 
     @Test
     fun `installed skill drives native commands for json literal and file inputs`() {
-        assumeRuntimeAvailable()
+        assumeWrapperAndRuntimeLibsAvailable()
         val installedSkillDir = tempDir.resolve("skills")
         InstallSkillService(
             embeddedSkillResources = EmbeddedSkillResources(version = "test"),
@@ -137,7 +137,7 @@ class PackagedSkillJsonContractTest {
         val stderr: String,
     )
 
-    private fun assumeRuntimeAvailable() {
+    private fun assumeWrapperAndRuntimeLibsAvailable() {
         assumeTrue(
             System.getProperty("kast.wrapper") != null &&
                 System.getProperty("kast.runtime-libs") != null,

@@ -41,7 +41,7 @@ class KastWrapperTest {
 
     @Test
     fun `wrapper can ensure status capabilities and diagnostics through the launcher`() {
-        assumeRuntimeAvailable()
+        assumeWrapperAvailable()
         val workspace = tempDir.resolve("workspace")
         val sourceFile = workspace
             .resolve("src/main/kotlin/example/Sample.kt")
@@ -101,7 +101,7 @@ class KastWrapperTest {
 
     @Test
     fun `wrapper exposes bash completion script`() {
-        assumeRuntimeAvailable()
+        assumeWrapperAvailable()
         val completion = runCli(
             "completion",
             "bash",
@@ -225,7 +225,7 @@ class KastWrapperTest {
 
     @Test
     fun `daemon automatically refreshes after external file edits`() {
-        assumeRuntimeAvailable()
+        assumeWrapperAvailable()
         val workspace = tempDir.resolve("workspace-watch-refresh")
         val sourceFile = workspace
             .resolve("src/main/kotlin/example/Sample.kt")
@@ -477,7 +477,7 @@ class KastWrapperTest {
         )
     }
 
-    private fun assumeRuntimeAvailable() {
+    private fun assumeWrapperAvailable() {
         assumeTrue(
             System.getProperty("kast.wrapper") != null,
             "kast.wrapper system property not available; skipping runtime integration test",
