@@ -190,7 +190,7 @@ class DemoTranscriptRenderingTest {
           ├──────────────────┼───────┼──────────────────────────────┤
           │ String literals  │    12 │ println("execute this comman │
           │ Comments         │     9 │ // TODO: execute after init  │
-          │ Imports          │     8 │ import demo.WorkflowEngine.e │
+          │ Unrelated scope  │     8 │ import demo.WorkflowEngine.e │
           │ Possible matches │    19 │ workflowEngine.execute(conte │
           └──────────────────┴───────┴──────────────────────────────┘
         
@@ -204,16 +204,16 @@ class DemoTranscriptRenderingTest {
           Declared in: core/src/main/kotlin/WorkflowEngine.kt:42
           Type:        suspend fun execute(context: ExecutionContext): Result<Unit>
         
-          ┌────────────────────────────────┬──────┬───────┬────────────────┐
-          │ File                           │ Line │ Kind  │ Module         │
-          ├────────────────────────────────┼──────┼───────┼────────────────┤
-          │ orchestration/Scheduler.kt     │   87 │ call  │ :orchestration │
-          │ orchestration/Scheduler.kt     │  143 │ call  │ :orchestration │
-          │ api/WorkflowResource.kt        │   31 │ call  │ :api           │
-          │ core/WorkflowEngineTest.kt     │   19 │ call  │ :core          │
-          │ core/WorkflowEngineTest.kt     │   67 │ call  │ :core          │
-          │ integration/PipelineRunner.kt  │  204 │ call  │ :integration   │
-          └────────────────────────────────┴──────┴───────┴────────────────┘
+          ┌────────────────────────────────┬──────┬───────┬────────────────────┬────────────────┐
+          │ File                           │ Line │ Kind  │ Resolved Type      │ Module         │
+          ├────────────────────────────────┼──────┼───────┼────────────────────┼────────────────┤
+          │ orchestration/Scheduler.kt     │   87 │ call  │ WorkflowEngine     │ :orchestration │
+          │ orchestration/Scheduler.kt     │  143 │ call  │ WorkflowEngine     │ :orchestration │
+          │ api/WorkflowResource.kt        │   31 │ call  │ WorkflowEngine     │ :api           │
+          │ core/WorkflowEngineTest.kt     │   19 │ call  │ WorkflowEngine     │ :core          │
+          │ core/WorkflowEngineTest.kt     │   67 │ call  │ WorkflowEngine     │ :core          │
+          │ integration/PipelineRunner.kt  │  204 │ call  │ WorkflowEngine     │ :integration   │
+          └────────────────────────────────┴──────┴───────┴────────────────────┴────────────────┘
         
           ──────────────────────────────────────────────────────────────────
           38 text matches  →  6 actual references to WorkflowEngine.execute
@@ -224,16 +224,17 @@ class DemoTranscriptRenderingTest {
         │  Act 3 of 3 — Caller Graph (depth 2)                │
         └─────────────────────────────────────────────────────┘
         
-          WorkflowEngine.execute                      [:core]
-          ├── Scheduler.scheduleNext()                [:orchestration]
-          │   ├── PipelineCoordinator.start()         [:integration]
-          │   └── RetryPolicy.attempt()               [:orchestration]
-          ├── WorkflowResource.run()                  [:api]
-          │   └── AuthMiddleware.withContext()        [:api]
-          └── PipelineRunner.executePipeline()        [:integration]
-              └── BatchProcessor.processBatch()       [:integration]
+          WorkflowEngine.execute                                                                     [:core]
+          ├── Scheduler.scheduleNext()                                                      [:orchestration]
+          │   ├── PipelineCoordinator.start()                                                 [:integration]
+          │   └── RetryPolicy.attempt()                                                     [:orchestration]
+          ├── WorkflowResource.run()                                                                  [:api]
+          │   └── AuthMiddleware.withContext()                                                        [:api]
+          └── PipelineRunner.executePipeline()                                                [:integration]
+              └── BatchProcessor.processBatch()                                               [:integration]
         
           4 modules. 8 symbols reachable in 2 hops.
           Every edge is a compiler-verified call site.
+          kast demo --symbol demo.WorkflowEngine.execute --depth 3
         """
 }

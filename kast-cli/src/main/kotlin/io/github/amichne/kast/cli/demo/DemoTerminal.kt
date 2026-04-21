@@ -10,6 +10,7 @@ import com.github.ajalt.mordant.rendering.Widget
 import com.github.ajalt.mordant.table.Borders
 import com.github.ajalt.mordant.table.table
 import com.github.ajalt.mordant.terminal.Terminal
+import com.github.ajalt.mordant.animation.animation
 import com.github.ajalt.mordant.widgets.HorizontalRule
 import com.github.ajalt.mordant.widgets.Panel
 import com.github.ajalt.mordant.widgets.Text
@@ -54,6 +55,9 @@ internal class DemoTerminal(
     }
 
     val width: Int get() = terminal.info.width.coerceAtLeast(80)
+
+    /** True when this terminal writes directly to a real [Terminal] (no captured sink). */
+    val isInteractive: Boolean get() = sink == null
 
     // --- Spec-driven act renderers -----------------------------------------
 
@@ -125,62 +129,66 @@ internal class DemoTerminal(
                 rows = listOf(
                     listOf("String literals", countOf(summary, DemoTextMatchCategory.STRING).toString(), sampleExample(summary, DemoTextMatchCategory.STRING)),
                     listOf("Comments", countOf(summary, DemoTextMatchCategory.COMMENT).toString(), sampleExample(summary, DemoTextMatchCategory.COMMENT)),
-                    listOf("Imports", countOf(summary, DemoTextMatchCategory.IMPORT).toString(), sampleExample(summary, DemoTextMatchCategory.IMPORT)),
+                    listOf("Unrelated scope", unrelatedScopeCount(summary).toString(), unrelatedScopeExample(summary)),
                     listOf("Possible matches", summary.likelyCorrect.toString(), sampleExample(summary, DemoTextMatchCategory.LIKELY_CORRECT)),
                 ),
                 alignments = listOf(CellAlignment.LEFT, CellAlignment.RIGHT, CellAlignment.LEFT),
             ))
             appendLine()
             appendLine()
-            append("  ${summary.totalMatches} grep hits. No type information. No scope. Just noise.")
+            append("  ").append(STYLE_FAIL("${summary.totalMatches} grep hits. No type information. No scope. Just noise."))
         },
         whitespace = Whitespace.PRE,
     )
 
-    private fun act1CategoryTable(summary: DemoTextSearchSummary): Widget = table {
-        borderStyle = TextStyles.dim.style
-        borderType = com.github.ajalt.mordant.rendering.BorderType.ROUNDED
-        header {
-            style = STYLE_HEAD
-            row("Category", "Count", "Bucket")
+    /**
+     * Drives a Mordant streaming animation to convey the volume of grep
+     * hits arriving live. Only runs when the [DemoTerminal] is bound to a
+     * real interactive [Terminal] (`sink == null`); in captured/test mode
+     * this is a no-op so the static [act1TextSearchBaseline] is the sole
+     * Act 1 surface.
+     */
+    suspend fun act1StreamingAnimation(
+        symbolName: String,
+        estimatedTotal: Int,
+        onComplete: () -> Unit,
+    ) {
+        if (sink != null || estimatedTotal <= 0) {
+            onComplete()
+            return
         }
-        body {
-            row("Likely correct", summary.likelyCorrect, STYLE_OK("real call sites")) {
-                cellBorders = Borders.LEFT_RIGHT
+        terminal.println(framedHeader("Act 1 of 3 — Text Search", "grep -rn \"$symbolName\" --include=\"*.kt\""))
+        terminal.println()
+        val animation = terminal.animation<Int> { hits ->
+            val ratio = (hits.toDouble() / estimatedTotal).coerceIn(0.0, 1.0)
+            val filled = (ratio * STREAM_BAR_WIDTH).toInt().coerceIn(0, STREAM_BAR_WIDTH)
+            val bar = "█".repeat(filled) + "░".repeat(STREAM_BAR_WIDTH - filled)
+            Text("  Scanning... $bar  $hits hits", whitespace = Whitespace.PRE)
+        }
+        try {
+            for (hits in 0..estimatedTotal) {
+                animation.update(hits)
+                kotlinx.coroutines.delay(STREAM_TICK_MS)
             }
-            row("Imports", countOf(summary, DemoTextMatchCategory.IMPORT), STYLE_WARN("ambiguous"))
-            row("Comments", countOf(summary, DemoTextMatchCategory.COMMENT), STYLE_FAIL("noise"))
-            row("String literals", countOf(summary, DemoTextMatchCategory.STRING), STYLE_FAIL("noise"))
-            row("Substring collisions", countOf(summary, DemoTextMatchCategory.SUBSTRING), STYLE_FAIL("noise"))
+            kotlinx.coroutines.delay(STREAM_HOLD_MS)
+        } finally {
+            animation.clear()
+            onComplete()
         }
     }
 
     private fun countOf(summary: DemoTextSearchSummary, category: DemoTextMatchCategory): Int =
         summary.categoryCounts[category] ?: 0
 
-    private fun act1SamplesTable(workspaceRoot: Path, summary: DemoTextSearchSummary): Widget = table {
-        borderStyle = TextStyles.dim.style
-        borderType = com.github.ajalt.mordant.rendering.BorderType.ROUNDED
-        header {
-            style = STYLE_HEAD
-            row("File:Line", "Category", "Preview")
-        }
-        body {
-            summary.sampleMatches.take(SAMPLE_LIMIT).forEach { match ->
-                val rel = relativise(workspaceRoot, match.filePath)
-                val cat = match.category.label()
-                val styledCat = when (match.category) {
-                    DemoTextMatchCategory.LIKELY_CORRECT -> STYLE_OK(cat)
-                    DemoTextMatchCategory.IMPORT -> STYLE_WARN(cat)
-                    else -> STYLE_FAIL(cat)
-                }
-                row(
-                    "$rel:${match.lineNumber}",
-                    styledCat,
-                    TextFit.truncate(match.preview, 60),
-                )
-            }
-        }
+    /** Combined count for "Unrelated scope" (imports + substring collisions). */
+    private fun unrelatedScopeCount(summary: DemoTextSearchSummary): Int =
+        countOf(summary, DemoTextMatchCategory.IMPORT) + countOf(summary, DemoTextMatchCategory.SUBSTRING)
+
+    /** Pick an example from whichever unrelated-scope category has one. */
+    private fun unrelatedScopeExample(summary: DemoTextSearchSummary): String {
+        val importExample = sampleExample(summary, DemoTextMatchCategory.IMPORT)
+        if (importExample.isNotEmpty()) return importExample
+        return sampleExample(summary, DemoTextMatchCategory.SUBSTRING)
     }
 
     // --- Act 2 -------------------------------------------------------------
@@ -190,8 +198,7 @@ internal class DemoTerminal(
         textSearch: DemoTextSearchSummary,
         resolvedSymbol: Symbol,
         references: ReferencesResult,
-        rename: RenameResult,
-        callHierarchy: CallHierarchyResult,
+        rippleEnabled: Boolean = true,
     ): Widget = Text(
         buildString {
             val simpleName = resolvedSymbol.fqName.substringAfterLast('.')
@@ -200,26 +207,38 @@ internal class DemoTerminal(
             appendLine("  Declared in: ${relativise(workspaceRoot, resolvedSymbol.location.filePath)}:${resolvedSymbol.location.startLine}")
             appendLine("  Type:        ${resolvedSymbol.location.preview.trim()}")
             appendLine()
+            val resolvedTypeLabel = resolvedTypeLabel(resolvedSymbol)
             append(renderTextTable(
                 indent = "  ",
-                headers = listOf("File", "Line", "Kind", "Module"),
-                widths = listOf(30, 4, 5, 14),
+                headers = listOf("File", "Line", "Kind", "Resolved Type", "Module"),
+                widths = listOf(30, 4, 5, 18, 14),
                 rows = references.references.map { ref ->
                     listOf(
                         displayPath(workspaceRoot, ref.filePath),
                         ref.startLine.toString(),
                         referenceKind(ref.preview),
+                        resolvedTypeLabel,
                         ":${inferModule(relativise(workspaceRoot, ref.filePath))}",
                     )
                 },
-                alignments = listOf(CellAlignment.LEFT, CellAlignment.RIGHT, CellAlignment.LEFT, CellAlignment.LEFT),
+                alignments = listOf(
+                    CellAlignment.LEFT,
+                    CellAlignment.RIGHT,
+                    CellAlignment.LEFT,
+                    CellAlignment.LEFT,
+                    CellAlignment.LEFT,
+                ),
             ))
             appendLine()
             appendLine()
             appendLine("  ${"─".repeat(66)}")
             appendLine("  ${textMatchSummary(textSearch.totalMatches, references.references.size, resolvedSymbol)}")
-            appendLine("  Noise eliminated: ${noiseEliminatedPercent(textSearch.totalMatches, references.references.size)}%")
+            appendLine("  Noise eliminated: ${STYLE_OK("${noiseEliminatedPercent(textSearch.totalMatches, references.references.size)}%")}")
             append("  ${"─".repeat(66)}")
+            if (rippleEnabled) {
+                appendLine()
+                append("  ").append(STYLE_DIM("[Enter] → explore caller graph"))
+            }
         },
         whitespace = Whitespace.PRE,
     )
@@ -314,8 +333,16 @@ internal class DemoTerminal(
                 lines.forEach { appendLine("  $it") }
             }
             appendLine()
-            appendLine("  ${moduleCount(workspaceRoot, callHierarchy.root)} modules. ${callHierarchy.stats.totalNodes} symbols reachable in $depth hops.")
-            append("  Every edge is a compiler-verified call site.")
+            val moduleCount = moduleCount(workspaceRoot, callHierarchy.root)
+            val totalNodes = callHierarchy.stats.totalNodes
+            appendLine(
+                "  ${STYLE_OK("$moduleCount modules")}. " +
+                    "${STYLE_OK("$totalNodes symbols")} reachable in ${STYLE_OK("$depth hops")}."
+            )
+            appendLine("  ${STYLE_DIM("Every edge is a compiler-verified call site.")}")
+            append(
+                "  ${STYLE_DIM("kast demo --symbol ${callHierarchy.root.symbol.fqName} --depth ${depth + 1}")}"
+            )
         },
         whitespace = Whitespace.PRE,
     )
@@ -332,17 +359,28 @@ internal class DemoTerminal(
 
     private fun renderCallTreeLines(workspaceRoot: Path, root: CallNode): List<String> {
         val lines = mutableListOf<String>()
+        val targetWidth = this@DemoTerminal.width - 2 // subtract the 2-space indent prepended by callers
         fun walk(node: CallNode, prefix: String, isLast: Boolean, depth: Int) {
             val sym = node.symbol
             val branch = if (depth == 0) "" else if (isLast) "└── " else "├── "
-            val label = when {
+            val rawLabel = when {
                 depth == 0 -> resolvedHeadline(sym)
                 sym.kind == SymbolKind.FUNCTION -> "${resolvedHeadline(sym)}()"
                 else -> resolvedHeadline(sym)
             }
+            val styledLabel = when (depth) {
+                0 -> TextColors.brightCyan(rawLabel)
+                1 -> TextColors.brightYellow(rawLabel)
+                else -> rawLabel
+            }
             val rel = relativise(workspaceRoot, sym.location.filePath)
-            val moduleTag = "[:${inferModule(rel)}]"
-            lines += "$prefix$branch${label.padEnd(TREE_LABEL_WIDTH - prefix.length - branch.length)}$moduleTag"
+            val module = inferModule(rel)
+            val moduleTag = "[:$module]"
+            val styledModuleTag = moduleColor(module)(moduleTag)
+            // Width math uses *visible* lengths, not the styled (ANSI-wrapped) strings.
+            val padding = (targetWidth - prefix.length - branch.length - rawLabel.length - moduleTag.length)
+                .coerceAtLeast(1)
+            lines += "$prefix$branch$styledLabel${" ".repeat(padding)}$styledModuleTag"
             val nextPrefix = prefix + if (depth == 0) "" else if (isLast) "    " else "│   "
             node.children.forEachIndexed { idx, child ->
                 walk(child, nextPrefix, idx == node.children.lastIndex, depth + 1)
@@ -676,6 +714,16 @@ internal class DemoTerminal(
         return if (owner == null) simple else "$owner.$simple"
     }
 
+    /**
+     * Containing-class/type label rendered in the Act 2 reference table.
+     * Falls back to the symbol's simple name when no owner is known.
+     */
+    private fun resolvedTypeLabel(symbol: Symbol): String =
+        symbol.containingDeclaration
+            ?.substringAfterLast('.')
+            ?.takeIf { it.isNotBlank() }
+            ?: symbol.fqName.substringAfterLast('.')
+
     private fun referenceKind(preview: String): String =
         if (preview.contains("(") && preview.contains(")")) "call" else "ref"
 
@@ -771,6 +819,9 @@ internal class DemoTerminal(
         const val WALK_PREVIEW = 8
         const val HEADER_WIDTH = 53
         const val TREE_LABEL_WIDTH = 44
+        const val STREAM_BAR_WIDTH = 24
+        const val STREAM_TICK_MS = 50L
+        const val STREAM_HOLD_MS = 1_200L
 
         private val STYLE_HEAD = TextColors.brightCyan + TextStyles.bold
         private val STYLE_TITLE = TextColors.brightCyan + TextStyles.bold

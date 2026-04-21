@@ -249,8 +249,7 @@ internal class DemoCommandSupport(
                 textSearch = report.textSearch,
                 resolvedSymbol = report.resolvedSymbol,
                 references = report.references,
-                rename = report.rename,
-                callHierarchy = report.callHierarchy,
+                rippleEnabled = false,
             )
         )
         ui.blankLine()
@@ -320,10 +319,18 @@ internal class DemoCommandSupport(
 
         val textSearch = resolvedSelection.evidence?.textSearch
             ?: analyzeTextSearch(options.workspaceRoot, selectedSymbol)
+        val symbolSimpleName = selectedSymbol.fqName.substringAfterLast('.')
+        if (ui.isInteractive) {
+            ui.act1StreamingAnimation(
+                symbolName = symbolSimpleName,
+                estimatedTotal = textSearch.totalMatches,
+                onComplete = {},
+            )
+        }
         ui.emit(
             ui.act1TextSearchBaseline(
                 workspaceRoot = options.workspaceRoot,
-                symbolName = selectedSymbol.fqName.substringAfterLast('.'),
+                symbolName = symbolSimpleName,
                 summary = textSearch,
             )
         )
@@ -368,25 +375,32 @@ internal class DemoCommandSupport(
         }
         val callHierarchyPayload = callHierarchy.value.getOrThrow().payload
 
+        val rippleEnabled = true
         ui.emit(
             ui.act2Semantic(
                 workspaceRoot = options.workspaceRoot,
                 textSearch = textSearch,
                 resolvedSymbol = resolvedSymbol,
                 references = referencesPayload,
-                rename = renamePayload,
-                callHierarchy = callHierarchyPayload,
+                rippleEnabled = rippleEnabled,
             )
         )
         ui.blankLine()
 
-        ui.emit(
-            ui.act3CallerTree(
-                workspaceRoot = options.workspaceRoot,
-                callHierarchy = callHierarchyPayload,
-                depth = options.rippleDepth,
+        if (rippleEnabled) {
+            // Wait for the user to press Enter before flipping into Act 3.
+            // In captured/test runs there is no reader, so we proceed immediately.
+            if (reader != null) {
+                runCatching { reader.readLine() }
+            }
+            ui.emit(
+                ui.act3CallerTree(
+                    workspaceRoot = options.workspaceRoot,
+                    callHierarchy = callHierarchyPayload,
+                    depth = options.rippleDepth,
+                )
             )
-        )
+        }
 
         if (walkerEnabled && reader != null) {
             val base: WalkerIO = StreamWalkerIO(reader = reader, output = sink)

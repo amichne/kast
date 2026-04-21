@@ -155,6 +155,9 @@ class DemoCommandSupportTest {
         assertTrue(output.contains("Act 3"))
         assertTrue(output.contains("Noise eliminated"))
         assertTrue(output.contains("Every edge is a compiler-verified call site."))
+        assertTrue(output.contains("Unrelated scope"))
+        assertTrue(!output.contains("│ Imports"))
+        assertTrue(!output.contains("rename --dry-run"))
         assertTrue(!output.contains("Side-by-side summary"))
         assertTrue(!output.contains("why the semantic pass wins"))
     }
