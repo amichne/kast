@@ -277,7 +277,10 @@ internal class DemoCommandSupport(
         reader: BufferedReader?,
         walkerEnabled: Boolean,
     ): DemoReport {
-        val ui = DemoTerminal.captured(sink = sink)
+        // When a reader is present we're on a real TTY — create a live
+        // terminal so the Act 1 streaming animation can drive cursor updates.
+        val liveTerminal: Terminal? = if (reader != null) Terminal() else null
+        val ui = DemoTerminal.captured(sink = sink, animationTerminal = liveTerminal)
         fun emitOutcome(message: String, outcome: Timed<Result<*>>) {
             ui.emit(
                 ui.stepOutcome(

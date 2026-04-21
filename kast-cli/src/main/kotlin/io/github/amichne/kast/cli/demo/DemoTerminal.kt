@@ -41,6 +41,13 @@ import kotlin.time.DurationUnit
 internal class DemoTerminal(
     val terminal: Terminal = Terminal(),
     private val sink: ((String) -> Unit)? = null,
+    /**
+     * An optional *real* terminal used exclusively for cursor-based
+     * animations (e.g. the Act 1 streaming progress bar). When running in
+     * captured mode the primary [terminal] is non-interactive and cannot
+     * drive animations, so callers can supply a separate live terminal here.
+     */
+    private val animationTerminal: Terminal? = null,
 ) {
     fun emit(widget: Widget) {
         if (sink != null) sink(terminal.render(widget)) else terminal.println(widget)
@@ -165,13 +172,17 @@ internal class DemoTerminal(
         }
         emit(header)
         emit("")
-        if (sink != null) {
-            // Captured / test mode — no real terminal for animation, just
-            // emit the final state so the header is still printed once.
+        // Resolve which terminal can actually drive cursor-based animations.
+        // In captured mode the primary `terminal` is non-interactive, so we
+        // need the dedicated `animationTerminal`. When neither is available
+        // (e.g. unit tests) we skip the animation entirely.
+        val liveTerminal = animationTerminal ?: terminal.takeIf { sink == null }
+        if (liveTerminal == null) {
+            // No real terminal for animation — just emit the header once.
             onComplete()
             return
         }
-        val animation = terminal.animation<Int> { hits ->
+        val animation = liveTerminal.animation<Int> { hits ->
             val ratio = (hits.toDouble() / estimatedTotal).coerceIn(0.0, 1.0)
             val filled = (ratio * STREAM_BAR_WIDTH).toInt().coerceIn(0, STREAM_BAR_WIDTH)
             val bar = "█".repeat(filled) + "░".repeat(STREAM_BAR_WIDTH - filled)
@@ -830,7 +841,6 @@ internal class DemoTerminal(
         const val CALL_TREE_LIMIT = 12
         const val WALK_PREVIEW = 8
         const val HEADER_WIDTH = 53
-        const val TREE_LABEL_WIDTH = 44
         const val STREAM_BAR_WIDTH = 24
         const val STREAM_TICK_MS = 50L
         const val STREAM_HOLD_MS = 1_200L
@@ -845,8 +855,17 @@ internal class DemoTerminal(
         private val STYLE_BORDER: TextStyle = TextColors.brightCyan
         private val STYLE_FILE: TextStyle = TextColors.cyan
 
-        /** Build a non-interactive [DemoTerminal] suitable for tests / capture. */
-        fun captured(sink: (String) -> Unit, width: Int = 100): DemoTerminal =
+        /**
+         * Build a captured [DemoTerminal] that routes rendered output through
+         * [sink]. When [animationTerminal] is supplied, cursor-based animations
+         * (e.g. the Act 1 streaming progress bar) are driven on that real
+         * terminal instead of being skipped.
+         */
+        fun captured(
+            sink: (String) -> Unit,
+            width: Int = 100,
+            animationTerminal: Terminal? = null,
+        ): DemoTerminal =
             DemoTerminal(
                 terminal = Terminal(
                     ansiLevel = AnsiLevel.NONE,
@@ -855,6 +874,7 @@ internal class DemoTerminal(
                     hyperlinks = false,
                 ),
                 sink = sink,
+                animationTerminal = animationTerminal,
             )
     }
 }
