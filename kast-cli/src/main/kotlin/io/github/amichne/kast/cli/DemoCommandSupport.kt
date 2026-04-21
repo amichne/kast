@@ -320,18 +320,22 @@ internal class DemoCommandSupport(
         val textSearch = resolvedSelection.evidence?.textSearch
             ?: analyzeTextSearch(options.workspaceRoot, selectedSymbol)
         val symbolSimpleName = selectedSymbol.fqName.substringAfterLast('.')
-        if (ui.isInteractive) {
+        val animationRan = if (reader != null) {
             ui.act1StreamingAnimation(
                 symbolName = symbolSimpleName,
                 estimatedTotal = textSearch.totalMatches,
                 onComplete = {},
             )
+            true
+        } else {
+            false
         }
         ui.emit(
             ui.act1TextSearchBaseline(
                 workspaceRoot = options.workspaceRoot,
                 symbolName = symbolSimpleName,
                 summary = textSearch,
+                includeHeader = !animationRan,
             )
         )
         ui.blankLine()

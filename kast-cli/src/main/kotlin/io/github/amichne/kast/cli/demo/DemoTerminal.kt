@@ -116,10 +116,13 @@ internal class DemoTerminal(
         workspaceRoot: Path,
         symbolName: String,
         summary: DemoTextSearchSummary,
+        includeHeader: Boolean = true,
     ): Widget = Text(
         buildString {
-            appendLine(framedHeader("Act 1 of 3 — Text Search", "grep -rn \"$symbolName\" --include=\"*.kt\""))
-            appendLine()
+            if (includeHeader) {
+                appendLine(framedHeader("Act 1 of 3 — Text Search", "grep -rn \"$symbolName\" --include=\"*.kt\""))
+                appendLine()
+            }
             appendLine("  Scanning... ${progressBar(summary.totalMatches)}  ${summary.totalMatches} hits")
             appendLine()
             append(renderTextTable(
@@ -143,22 +146,31 @@ internal class DemoTerminal(
 
     /**
      * Drives a Mordant streaming animation to convey the volume of grep
-     * hits arriving live. Only runs when the [DemoTerminal] is bound to a
-     * real interactive [Terminal] (`sink == null`); in captured/test mode
-     * this is a no-op so the static [act1TextSearchBaseline] is the sole
-     * Act 1 surface.
+     * hits arriving live. The caller is responsible for gating invocation
+     * (e.g. only when a real terminal reader is available). After the
+     * animation completes, the caller should emit [act1TextSearchBaseline]
+     * with `includeHeader = false` to avoid a duplicate header.
      */
     suspend fun act1StreamingAnimation(
         symbolName: String,
         estimatedTotal: Int,
         onComplete: () -> Unit,
     ) {
-        if (sink != null || estimatedTotal <= 0) {
+        val header = framedHeader("Act 1 of 3 — Text Search", "grep -rn \"$symbolName\" --include=\"*.kt\"")
+        if (estimatedTotal <= 0) {
+            emit(header)
+            emit("")
             onComplete()
             return
         }
-        terminal.println(framedHeader("Act 1 of 3 — Text Search", "grep -rn \"$symbolName\" --include=\"*.kt\""))
-        terminal.println()
+        emit(header)
+        emit("")
+        if (sink != null) {
+            // Captured / test mode — no real terminal for animation, just
+            // emit the final state so the header is still printed once.
+            onComplete()
+            return
+        }
         val animation = terminal.animation<Int> { hits ->
             val ratio = (hits.toDouble() / estimatedTotal).coerceIn(0.0, 1.0)
             val filled = (ratio * STREAM_BAR_WIDTH).toInt().coerceIn(0, STREAM_BAR_WIDTH)
