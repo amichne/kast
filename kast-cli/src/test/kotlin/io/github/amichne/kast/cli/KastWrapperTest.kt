@@ -14,6 +14,7 @@ import io.github.amichne.kast.api.contract.ServerLimits
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.net.StandardProtocolFamily
@@ -40,6 +41,7 @@ class KastWrapperTest {
 
     @Test
     fun `wrapper can ensure status capabilities and diagnostics through the launcher`() {
+        assumeRuntimeAvailable()
         val workspace = tempDir.resolve("workspace")
         val sourceFile = workspace
             .resolve("src/main/kotlin/example/Sample.kt")
@@ -99,6 +101,7 @@ class KastWrapperTest {
 
     @Test
     fun `wrapper exposes bash completion script`() {
+        assumeRuntimeAvailable()
         val completion = runCli(
             "completion",
             "bash",
@@ -222,6 +225,7 @@ class KastWrapperTest {
 
     @Test
     fun `daemon automatically refreshes after external file edits`() {
+        assumeRuntimeAvailable()
         val workspace = tempDir.resolve("workspace-watch-refresh")
         val sourceFile = workspace
             .resolve("src/main/kotlin/example/Sample.kt")
@@ -470,6 +474,13 @@ class KastWrapperTest {
             exitCode = process.exitValue(),
             stdout = stdout.trim(),
             stderr = stderr.trim(),
+        )
+    }
+
+    private fun assumeRuntimeAvailable() {
+        assumeTrue(
+            System.getProperty("kast.wrapper") != null,
+            "kast.wrapper system property not available; skipping runtime integration test",
         )
     }
 

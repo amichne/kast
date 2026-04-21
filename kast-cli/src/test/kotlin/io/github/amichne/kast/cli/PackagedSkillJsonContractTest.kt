@@ -7,6 +7,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -22,6 +23,7 @@ class PackagedSkillJsonContractTest {
 
     @Test
     fun `installed skill drives native commands for json literal and file inputs`() {
+        assumeRuntimeAvailable()
         val installedSkillDir = tempDir.resolve("skills")
         InstallSkillService(
             embeddedSkillResources = EmbeddedSkillResources(version = "test"),
@@ -134,6 +136,14 @@ class PackagedSkillJsonContractTest {
         val stdout: String,
         val stderr: String,
     )
+
+    private fun assumeRuntimeAvailable() {
+        assumeTrue(
+            System.getProperty("kast.wrapper") != null &&
+                System.getProperty("kast.runtime-libs") != null,
+            "Required runtime properties (kast.wrapper, kast.runtime-libs) not available; skipping runtime integration test",
+        )
+    }
 
     private fun Path.createDirectoriesForParent(): Path {
         Files.createDirectories(checkNotNull(parent))
