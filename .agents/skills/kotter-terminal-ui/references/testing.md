@@ -1,16 +1,26 @@
 # Testing Kotter UIs
 
-These are the lowest-friction test patterns that worked well against the local Kotter source and the `kast` demo work.
+Use Kotter's in-memory test support by default. It is fast, deterministic, and good enough for most renderer and interaction tests.
+
+## Core tools
+
+The key primitives are:
+
+- `testSession`
+- `terminal.resolveRerenders()`
+- `stripFormatting()`
+- `assertMatches`
+- `matches`
+- `highlightControlCharacters()`
+- `blockUntilRenderWhen`
+- `blockUntilRenderMatches`
+- `terminal.type(...)`
+- `terminal.press(...)`
+- `sendKeys(...)`
 
 ## 1. Pure renderer snapshot
 
-**Sources:**
-
-- `kast-demo/src/test/kotlin/io/github/amichne/kast/demo/GrepActTest.kt`
-- `kast-demo/src/test/kotlin/io/github/amichne/kast/demo/ResolutionActTest.kt`
-- `kast-demo/src/test/kotlin/io/github/amichne/kast/demo/RippleActTest.kt`
-
-Pattern:
+Use this for static screens where visible content matters more than ANSI bytes:
 
 ```kotlin
 testSession { terminal ->
@@ -23,77 +33,100 @@ testSession { terminal ->
 }
 ```
 
-Use this when:
+This is the cheapest, highest-value test shape for most renderers.
 
-- the screen is static
-- you care about visible content, not ANSI details
+## 2. Exact render assertion
 
-## 2. Key handling in a live section
-
-**Source:** `kotter/kotter/src/commonTest/.../InputSupportTest.kt`
-
-Pattern:
+Use `assertMatches` when you want exact Kotter render output, including formatting:
 
 ```kotlin
-section {}.runUntilSignal {
-    onKeyPressed {
-        if (key == Keys.Q) signal()
-    }
-    terminal.press(Keys.Q)
+terminal.assertMatches {
+    green { textLine("PASS") }
 }
 ```
 
-Use this when:
+If it fails, the diff output is much more readable than hand-rolled string assertions.
 
-- you want to prove a key path works
-- ESC / arrows / ENTER matter
+Use `matches(...)` when you just want a boolean.
 
-## 3. Input typing vs key pressing
+## 3. Async render settling
 
-**Source:** `InputSupportTest.kt`
+Kotter sometimes resolves renders across multiple event-loop turns. When that matters, use:
 
-Pattern:
+```kotlin
+blockUntilRenderMatches(terminal) {
+    textLine("Expected final state")
+}
+```
+
+or:
+
+```kotlin
+blockUntilRenderWhen {
+    terminal.resolveRerenders().stripFormatting().contains("Done")
+}
+```
+
+Prefer this over arbitrary sleeps.
+
+## 4. Key handling
+
+Use semantic key presses for arrows, ESC, ENTER, TAB, and similar controls:
+
+```kotlin
+terminal.press(Keys.DOWN)
+terminal.press(Keys.ENTER)
+```
+
+Use this to prove navigation paths and quit / accept flows.
+
+## 5. Typed input
+
+Use literal typing for text entry:
 
 ```kotlin
 terminal.type("Hello")
 terminal.press(Keys.ENTER)
 ```
 
-Use:
+Rule of thumb:
 
-- `type(...)` for literal characters
-- `press(...)` for semantic control keys
+- `type(...)` for characters
+- `press(...)` for terminal control keys
+- `sendKeys(...)` when injecting Kotter `Key` values from inside a running section
 
-## 4. Waiting for rerenders
+## 6. State-machine tests
 
-When the render settles asynchronously, use `blockUntilRenderMatches(...)` instead of assuming a single render pass.
-
-## 5. Programmatic key injection from the run block
-
-**Source:** `kotter/kotter/src/commonMain/.../InputSupport.kt`
-
-```kotlin
-sendKeys(Keys.W_UPPER, Keys.O, Keys.R, Keys.L, Keys.D)
-```
-
-This is useful when the UI is already running and you want to inject Kotter `Key` values without translating them to terminal byte sequences yourself.
-
-## 6. Test the state machine separately
-
-**Source:** `kast-cli/src/test/kotlin/io/github/amichne/kast/cli/demo/InteractiveDemoStateTest.kt`
-
-Pattern:
+If the UI has meaningful navigation logic, test that logic outside the terminal first:
 
 ```kotlin
 val actTwo = checkNotNull(InteractiveDemoState().advance(Keys.ENTER, deck))
 val nextHit = checkNotNull(actTwo.advance(Keys.DOWN, deck))
 ```
 
-Do this before writing a full terminal transcript test when the interaction logic is non-trivial.
+This keeps transcript tests focused on rendering instead of state math.
 
-## Testing checklist
+## 7. Control-character debugging
 
-1. Pure renderer test for visible content.
-2. State-machine test for navigation rules.
-3. Key-path test for ESC / arrows / ENTER if relevant.
-4. `stripFormatting()` unless ANSI styling is the point of the test.
+When a render mismatch is confusing, use `highlightControlCharacters()` or the failure output from `assertMatches` to make newlines and control codes visible.
+
+## 8. Section exception behavior
+
+`testSession` captures exceptions thrown during renders. By default, unexpected render exceptions fail the test, which is usually what you want.
+
+If you intentionally need to inspect failure behavior, `suppressSectionExceptions = true` exists, but it should be rare.
+
+## Good testing strategy
+
+1. Pure state-machine test for non-trivial navigation.
+2. Pure renderer test for visible content.
+3. Focused key-path test for critical controls.
+4. Async settle test only when rerender timing genuinely matters.
+
+## Good sources
+
+- `kotter/kotterx/kotter-test-support/src/commonMain/kotlin/com/varabyte/kotterx/test/foundation/TestSession.kt`
+- `kotter/kotterx/kotter-test-support/src/commonMain/kotlin/com/varabyte/kotterx/test/runtime/RunScopeExtensions.kt`
+- `kotter/kotterx/kotter-test-support/src/commonMain/kotlin/com/varabyte/kotterx/test/terminal/TerminalTestUtils.kt`
+- `kast-demo/src/test/kotlin/io/github/amichne/kast/demo/*.kt`
+- `kast-cli/src/test/kotlin/io/github/amichne/kast/cli/demo/InteractiveDemoStateTest.kt`

@@ -1,140 +1,176 @@
 ---
 name: kotter-terminal-ui
-description: Build, refactor, and test Kotter/Kotterx terminal UIs with strong defaults for pure renderers, interactive key-driven flows, and in-memory test coverage. Use this whenever the user mentions Kotter, kotterx, RenderScope, testSession, liveVarOf, runUntilSignal, bordered or grid layouts, arrow-key navigation, in-memory terminal tests, terminal dashboards, CLI demos, or converting ad-hoc println output into a structured terminal UI — even if they do not explicitly say "Kotter."
+description: "Design, implement, refactor, and test Kotter/Kotterx terminal UIs, including styling, layout, input, animations, live state, offscreen composition, grids, borders, and custom extensions. Use this whenever the user wants richer CLI or terminal UX in this repository: demos, dashboards, progress views, interactive selectors, input forms, terminal games, compiler-like output, or converting raw println/ANSI output into a structured terminal UI, even if they never mention Kotter by name."
 compatibility: Requires bash, view, and apply_patch.
 ---
 
 # Kotter Terminal UI
 
-Use this skill to turn Kotter work into a repeatable three-layer shape:
+Treat this as the primary source for terminal UI work in this repository.
+
+Prefer Kotter unless the user explicitly wants plain one-shot output or the task is so small that raw `println` is the better tool. Kotter already covers most of what terminal code here needs out of the box:
+
+- text and styling
+- reactive rerendering
+- typed input and key handling
+- timers and animations
+- offscreen composition and asides
+- grids, borders, justification, and indentation
+- in-memory test support
+
+Start with `references/capabilities.md` if you need the broad feature map first.
+
+## Build terminal code in three layers
+
+Use this shape by default:
 
 1. **Display model** — small data classes that already reflect the screen you want.
 2. **Renderer** — pure `RenderScope` extensions that only draw.
 3. **Interaction / orchestration** — session state, key handling, file IO, backend calls, and tests.
 
-That split keeps the rendering cheap to reason about, cheap to test, and cheap to reuse across modules.
+That split keeps the rendering easy to reason about, easy to test, and easy to evolve as the terminal UX grows.
 
-## Start with the right path
+## Pick the right reference
 
-### Static terminal output
+- `references/capabilities.md` — high-level map of what Kotter supports out of the box.
+- `references/styling.md` — colors, decorations, paragraphs, links, RGB / HSV, resets, and style composition.
+- `references/composition.md` — sections, static history, asides, offscreen buffers, borders, grids, justification, and shifting.
+- `references/reactivity.md` — `session`, `section`, `run`, `LiveVar`, live collections, signals, timers, shutdown hooks, and thread model.
+- `references/interactive.md` — `input`, completions, multiline input, key handling, multi-field UIs, and navigation patterns.
+- `references/renderers.md` — repo-local renderer exemplars that worked well for `kast`.
+- `references/extending.md` — how to add new reusable Kotter helpers without fighting the framework.
+- `references/testing.md` — `testSession`, in-memory terminal assertions, async render waits, and key simulation.
 
-Use this shape when the screen is just a report or summary:
+Open only the references you need for the current subproblem.
 
-- Define a compact display model first.
-- Write `RenderScope` extension functions over that model.
-- Use Kotter layout primitives like `bordered`, `grid`, colors, and `textLine`.
-- Keep truncation and limits explicit in the UI (`"Showing first N of M"`).
+## Default workflow
 
-Read `references/renderers.md` for exemplars.
+1. Define the smallest display model that matches the screen.
+2. Write a pure renderer around it.
+3. Pick the narrowest scope that owns the behavior:
+   - `RenderScope` for drawing
+   - `MainRenderScope` for interactive inputs
+   - `RunScope` for timers, input listeners, shutdown hooks, and side effects
+   - `Session` for live state / section composition
+4. Use live state first (`liveVarOf`, `liveListOf`, `liveMapOf`, `liveSetOf`) and manual `rerender()` only when you truly need it.
+5. Make limits explicit in the UI.
+6. Add Kotter test support before wiring real orchestration.
 
-### Interactive key-driven UI
+## Strong defaults for this repo
 
-Use this shape when the user needs arrow keys, page state, or selection:
-
-- Keep the **state machine pure** if you can.
-- Store session state with `liveVarOf` / live collections.
-- Render from current state inside `section { ... }`.
-- Update state in `runUntilSignal { onKeyPressed { ... } }`.
-- Compute focused windows / viewports as pure functions instead of mutating render code.
-
-Read `references/interactive.md` for exemplars.
-
-### Tests
-
-Default to Kotter’s in-memory terminal tooling:
-
-- `testSession`
-- `resolveRerenders()`
-- `stripFormatting()`
-- `terminal.press(...)`
-- `terminal.type(...)`
-- `blockUntilRenderMatches(...)`
-- `sendKeys(...)`
-
-Read `references/testing.md` for exemplars.
+- Prefer structured layouts over ad hoc ANSI strings:
+  - `bordered` for framed panels
+  - `grid` for tables and side-by-side comparisons
+  - `justified` / `shiftRight` for alignment
+- Keep backend or file work out of render blocks. Renderers should consume prepared models.
+- If the UI has navigation, keep the transition logic pure and let rendering consume focused state.
+- Use `aside` for "history grows while the active area keeps repainting" flows.
+- Use `offscreen` whenever you need to measure, align, pad, or decorate previously rendered content.
+- Keep static instructions in their own finished section when they do not need rerendering.
 
 ## Working rules
 
 ### 1. Keep renderers pure
 
-Do not mix file reads, backend calls, symbol resolution, or grep execution into `RenderScope` functions. Map domain data into a screen-shaped model first, then render.
+Do not mix file reads, backend calls, symbol resolution, grep execution, or process control into `RenderScope` functions.
 
-### 2. Make limits visible
+### 2. Prefer screen-shaped models over raw payloads
 
-If you cap rows, files, hits, or children for responsiveness, print the cap. Silent truncation makes demos feel dishonest.
+Flatten rich domain data into view-specific models before rendering. This keeps the UI logic short and prevents giant renderer branches.
 
-### 3. Prefer screen-shaped models over raw domain payloads
+### 3. Make limits visible
 
-If the upstream data is rich, flatten it before rendering:
+If rows, files, hits, lines, or animations are capped for responsiveness, print the cap. Silent truncation makes demos and tools feel dishonest.
 
-- `GrepDiffRow`
-- `ResolvedReference`
-- `RippleView`
-- `RippleLine`
+### 4. Model interaction separately from formatting
 
-That keeps the renderer short and reduces token and reasoning cost later.
+If the UI moves between items, panes, files, pages, or hits, model those transitions in pure functions first.
 
-### 4. Keep interaction logic out of text formatting
+### 5. Use the right composition primitive
 
-If the UI has movement (`UP`, `DOWN`, file tabs, hit navigation), model it as state transitions first. Then let rendering consume the current state.
+- `section` for the active render area
+- `aside` for durable history emitted while a section is still active
+- `offscreen` when you need to measure or replay rendered content
+- `bordered` / `grid` / `justified` / `shiftRight` when composition matters more than raw text order
 
-### 5. Test the state machine separately
+### 6. Choose the narrowest extension receiver
 
-If the interactive flow has navigation rules, add a pure state test for them before asserting the full terminal transcript.
+- `Session` for live state and section composition
+- `RenderScope` for reusable drawing helpers
+- `MainRenderScope` for helpers that call `input`
+- `OffscreenRenderScope` / `AsideRenderScope` when a helper only makes sense there
+- `RunScope` for listeners, timers, async orchestration, and shutdown hooks
+- `SectionScope` only when a helper genuinely needs to work in both render and run phases
 
-### 6. Export Kotter APIs with `api(...)` when needed
+### 7. Store long-lived custom behavior in Kotter data lifecycles
 
-If one module exposes public `RenderScope` extension functions and another module imports them, the producer module often needs `api(libs.kotter)` rather than `implementation(libs.kotter)`.
+If you build custom terminal helpers, prefer the framework's `data` + lifecycle model over global state. See `references/extending.md`.
+
+### 8. Test the state machine separately
+
+If the UI is interactive, write pure tests for the navigation rules before asserting the terminal transcript.
+
+### 9. Export Kotter APIs with `api(...)` when needed
+
+If one module exposes public `RenderScope`-based APIs that another module imports, the producer often needs `api(libs.kotter)` instead of `implementation(libs.kotter)`.
 
 ## Watch-outs
 
 ### `input()` is not available from plain `RenderScope`
 
-For multi-input UIs, helpers need `MainRenderScope`, not just `RenderScope`.
+Helpers that call `input(...)` or `multilineInput(...)` need `MainRenderScope`.
 
 ### Multiple inputs must have unique IDs
 
-If you use more than one `input(...)` in a section, assign stable unique IDs. Reusing IDs causes surprising focus behavior.
+If a section contains multiple inputs, assign stable unique IDs or focus behavior becomes confusing.
+
+### Truecolor may degrade
+
+`rgb(...)` and `hsv(...)` are supported, but some terminals will approximate them. Avoid assuming smooth gradients always look smooth.
+
+### Links are best-effort
+
+`link(...)` gracefully degrades to normal text on terminals that do not support it.
 
 ### ESC is special
 
-Terminals often encode ESC as a prefix for ANSI sequences. Use Kotter’s key APIs (`Keys.ESC`, `terminal.press(Keys.ESC)`) rather than trying to hand-roll escape handling.
+Use Kotter key APIs (`Keys.ESC`, `terminal.press(Keys.ESC)`) instead of manually synthesizing escape sequences.
 
-### Know the difference between `type`, `press`, and `sendKeys`
+### Shutdown hooks are best-effort
 
-- `terminal.type(...)` sends literal characters.
-- `terminal.press(...)` sends semantic terminal keys like arrows and ESC.
-- `sendKeys(...)` injects Kotter `Key` events from inside a run block.
+Keep them short, never rely on them for core correctness, and treat the extra rerender opportunity as a convenience rather than a guarantee.
 
-### Separate ANSI-sensitive and content-sensitive assertions
+### Sections are sequential
 
-If the test cares about the words, use `resolveRerenders().stripFormatting()`.  
-If the test cares about precise render state, use `assertMatches` / `blockUntilRenderMatches`.
+Kotter is built around one active rendering area at a time. Do not design around multiple simultaneously active sections.
 
-### Grids need bounded content
+### Gradle run is not the best UX proxy
 
-Kotter grids are happiest when previews are truncated intentionally. Do not dump full source lines into narrow columns.
-
-## Default implementation workflow
-
-1. Define the smallest display model that matches the screen.
-2. Write a pure renderer around it.
-3. Add a red test with `testSession`.
-4. If the UI is interactive, add a pure state-machine test.
-5. Only then wire the renderer to real backend / file / CLI orchestration.
+For realistic interactive behavior, prefer running installed binaries or direct executables instead of relying on `gradlew run`.
 
 ## Source map
 
-The bundled references were distilled from these local exemplars:
+The bundled references were synthesized from the local Kotter README, the local examples, test-support sources, and the repo's own Kotter usage. Key inputs included:
 
+- `kotter/README.md`
+- `kotter/examples/text/src/main/kotlin/main.kt`
+- `kotter/examples/input/src/main/kotlin/main.kt`
+- `kotter/examples/keys/src/main/kotlin/main.kt`
+- `kotter/examples/grid/src/main/kotlin/main.kt`
+- `kotter/examples/border/src/main/kotlin/main.kt`
+- `kotter/examples/anim/src/main/kotlin/main.kt`
+- `kotter/examples/blink/src/main/kotlin/main.kt`
+- `kotter/examples/picker/src/main/kotlin/main.kt`
+- `kotter/examples/extend/src/main/kotlin/main.kt`
+- `kotter/examples/extend/src/main/kotlin/textorize.kt`
+- `kotter/examples/splash/src/main/kotlin/main.kt`
+- `kotter/examples/chatgpt/src/main/kotlin/main.kt`
+- `kotter/kotter/src/commonMain/kotlin/com/varabyte/kotter/foundation/**/*.kt`
+- `kotter/kotter/src/commonMain/kotlin/com/varabyte/kotterx/**/*.kt`
+- `kotter/kotterx/kotter-test-support/src/commonMain/kotlin/com/varabyte/kotterx/test/**/*.kt`
 - `kast-demo/src/main/kotlin/io/github/amichne/kast/demo/GrepAct.kt`
 - `kast-demo/src/main/kotlin/io/github/amichne/kast/demo/ResolutionAct.kt`
 - `kast-demo/src/main/kotlin/io/github/amichne/kast/demo/RippleAct.kt`
-- `kotter/examples/list/src/main/kotlin/main.kt`
-- `kotter/examples/input/src/main/kotlin/main.kt`
-- `kotter/examples/keys/src/main/kotlin/main.kt`
-- `kotter/kotter/src/commonTest/kotlin/com/varabyte/kotter/foundation/input/InputSupportTest.kt`
-- `kotter/kotter/src/commonMain/kotlin/com/varabyte/kotter/foundation/input/InputSupport.kt`
 - `kast-cli/src/test/kotlin/io/github/amichne/kast/cli/demo/InteractiveDemoStateTest.kt`
 
 Open the specific reference file only when you need more detail for that subproblem.
