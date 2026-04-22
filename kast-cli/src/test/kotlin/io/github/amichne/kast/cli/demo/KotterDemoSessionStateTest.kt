@@ -18,7 +18,7 @@ class KotterDemoSessionStateTest {
 
         advanceTimeBy(100)
         runCurrent()
-        assertEquals(listOf("[rename] resolve target symbol"), session.snapshot().liveLines)
+        assertEquals(listOf("[rename] resolve target symbol"), session.snapshot().liveTexts())
 
         session.switchOperation("references")
 
@@ -31,7 +31,7 @@ class KotterDemoSessionStateTest {
 
         advanceTimeBy(100)
         runCurrent()
-        assertEquals(listOf("[refs] queue semantic references"), session.snapshot().liveLines)
+        assertEquals(listOf("[refs] queue semantic references"), session.snapshot().liveTexts())
     }
 
     @Test
@@ -54,7 +54,7 @@ class KotterDemoSessionStateTest {
         assertEquals(KotterDemoPhaseStatus.ACTIVE, afterMilestone.phaseStates.getValue("traverse"))
         assertEquals(
             listOf("[rename] resolve target symbol", "[rename] queue branch fan-out"),
-            afterMilestone.asideLines,
+            afterMilestone.asideTexts(),
         )
         assertTrue(afterMilestone.liveLines.isEmpty(), "phase output should flush out of the live region when the milestone lands")
     }
@@ -70,7 +70,7 @@ class KotterDemoSessionStateTest {
         val beforeReplay = session.snapshot()
         assertEquals(KotterDemoPhaseStatus.COMPLETE, beforeReplay.phaseStates.getValue("resolve"))
         assertEquals(KotterDemoPhaseStatus.ACTIVE, beforeReplay.phaseStates.getValue("summarize"))
-        assertTrue(beforeReplay.allLines().isNotEmpty(), "expected scripted output before replay")
+        assertTrue(beforeReplay.allTexts().isNotEmpty(), "expected scripted output before replay")
 
         session.replay()
 
@@ -83,7 +83,7 @@ class KotterDemoSessionStateTest {
 
         advanceTimeBy(100)
         runCurrent()
-        assertEquals(listOf("[refs] queue semantic references"), session.snapshot().liveLines)
+        assertEquals(listOf("[refs] queue semantic references"), session.snapshot().liveTexts())
     }
 
     @Test
@@ -97,7 +97,7 @@ class KotterDemoSessionStateTest {
         advanceTimeBy(12_000)
         runCurrent()
 
-        val linesAfterSwitch = session.snapshot().allLines()
+        val linesAfterSwitch = session.snapshot().allTexts()
         assertFalse(linesAfterSwitch.any { it == "[rename] queue branch fan-out" }, "delayed rename output leaked after switching operations")
         assertFalse(linesAfterSwitch.any { it == "[rename] fan out rename branches" }, "post-switch rename traversal leaked into the replacement scenario")
         assertTrue(linesAfterSwitch.any { it.startsWith("[refs]") }, "expected the replacement scenario to produce output after the switch")

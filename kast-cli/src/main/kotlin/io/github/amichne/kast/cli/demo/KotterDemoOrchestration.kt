@@ -93,6 +93,7 @@ internal fun Session.runKotterDemoSession(
     clearScreen: () -> Unit = {},
     layoutCalculator: KotterDemoLayoutCalculator = KotterDemoLayoutCalculator(),
     blinkInterval: Duration = 400.milliseconds,
+    onLaunchWalker: (() -> Unit)? = null,
 ) {
     val keyBindings = KotterDemoKeyBindings(presentation)
     presentation.haltWarningFor(terminalWidth, layoutCalculator)?.let { warning ->
@@ -117,6 +118,11 @@ internal fun Session.runKotterDemoSession(
             KotterDemoCommand.Replay -> Unit
             KotterDemoCommand.Quit -> return
             is KotterDemoCommand.SwitchOperation -> activeOperationId = command.operationId
+            KotterDemoCommand.LaunchWalker -> {
+                if (onLaunchWalker != null) {
+                    onLaunchWalker()
+                }
+            }
         }
     }
 }
@@ -131,6 +137,7 @@ private fun Session.runKotterDemoOperation(
     val initialState = presentation.scenario.initialStateFor(operationId)
     var sessionState by liveVarOf(initialState)
     var pulseVisible by liveVarOf(true)
+    var scrollOffset by liveVarOf(0)
     var nextCommand: KotterDemoCommand = KotterDemoCommand.Quit
 
     section {
@@ -141,6 +148,7 @@ private fun Session.runKotterDemoOperation(
                 pulseVisible = pulseVisible,
                 terminalWidth = width,
                 layoutCalculator = layoutCalculator,
+                scrollOffset = scrollOffset,
             ),
         )
     }.runUntilSignal {
@@ -162,9 +170,20 @@ private fun Session.runKotterDemoOperation(
         controller.start(operationId)
 
         onKeyPressed {
-            keyBindings.commandFor(key, activeOperationId = operationId)?.let { command ->
-                nextCommand = command
-                signal()
+            when (key) {
+                Keys.UP -> {
+                    val totalLines = sessionState.allLines().size
+                    if (totalLines > TRANSCRIPT_VISIBLE_LINES) {
+                        scrollOffset = (scrollOffset + 1).coerceAtMost(totalLines - TRANSCRIPT_VISIBLE_LINES)
+                    }
+                }
+                Keys.DOWN -> {
+                    scrollOffset = (scrollOffset - 1).coerceAtLeast(0)
+                }
+                else -> keyBindings.commandFor(key, activeOperationId = operationId)?.let { command ->
+                    nextCommand = command
+                    signal()
+                }
             }
         }
     }
@@ -176,9 +195,10 @@ private sealed interface KotterDemoScreen {
     data class Running(
         val actHeader: KotterDemoActHeader,
         val statusPanel: KotterDemoStatusPanel,
-        val transcriptLines: List<String>,
+        val transcriptLines: List<KotterDemoTranscriptLine>,
         val branchSection: KotterDemoBranchSection?,
         val panelContentWidth: Int,
+        val scrollOffset: Int = 0,
     ) : KotterDemoScreen
 
     data class Halted(val warning: String) : KotterDemoScreen
@@ -196,6 +216,7 @@ private fun buildKotterDemoScreen(
     pulseVisible: Boolean,
     terminalWidth: Int,
     layoutCalculator: KotterDemoLayoutCalculator,
+    scrollOffset: Int = 0,
 ): KotterDemoScreen {
     val activeOperation = presentation.operation(sessionState.activeOperationId)
     val activeOperationIndex = presentation.operations.indexOfFirst { it.id == sessionState.activeOperationId }
@@ -214,12 +235,26 @@ private fun buildKotterDemoScreen(
         is KotterDemoLayoutDecision.Halted -> KotterDemoScreen.Halted(layoutDecision.warning)
         is KotterDemoLayoutDecision.Ready -> {
             val running = sessionState.isRunning()
-            val transcriptLines = sessionState.allLines()
-                .takeLast(TRANSCRIPT_VISIBLE_LINES)
-                .map { "• $it" }
-                .ifEmpty {
-                    if (running) listOf("• Streaming next demo event…") else listOf("✓ Operation complete")
+            val allLines = sessionState.allLines()
+            val visibleWindow = if (allLines.size <= TRANSCRIPT_VISIBLE_LINES) {
+                allLines
+            } else {
+                val endIndex = (allLines.size - scrollOffset).coerceAtLeast(TRANSCRIPT_VISIBLE_LINES)
+                val startIndex = (endIndex - TRANSCRIPT_VISIBLE_LINES).coerceAtLeast(0)
+                allLines.subList(startIndex, endIndex)
+            }
+            val transcriptLines = visibleWindow.ifEmpty {
+                if (running) {
+                    listOf(KotterDemoTranscriptLine("Streaming next demo event…", KotterDemoStreamTone.STRUCTURE))
+                } else {
+                    listOf(KotterDemoTranscriptLine("Operation complete", KotterDemoStreamTone.CONFIRMED))
                 }
+            }
+            val scrollIndicator = if (allLines.size > TRANSCRIPT_VISIBLE_LINES && scrollOffset > 0) {
+                " (↑${scrollOffset} more)"
+            } else {
+                ""
+            }
             KotterDemoScreen.Running(
                 actHeader = KotterDemoActHeader(
                     title = "Act ${activeOperationIndex + 1} of ${presentation.operations.size} — ${activeOperation.label}",
@@ -239,7 +274,7 @@ private fun buildKotterDemoScreen(
                         status = if (running) KotterDemoActivityStatus.RUNNING else KotterDemoActivityStatus.COMPLETE,
                         pulseVisible = pulseVisible,
                     ),
-                    controls = "Keys   [${presentation.replayKey.uppercaseChar()}] Replay  [${presentation.quitKey.uppercaseChar()}] Quit  [${presentation.operations.joinToString("/") { it.shortcutKey.uppercaseChar().toString() }}] Switch act",
+                    controls = "Keys   [${presentation.replayKey.uppercaseChar()}] Replay  [${presentation.quitKey.uppercaseChar()}] Quit  [${presentation.operations.joinToString("/") { it.shortcutKey.uppercaseChar().toString() }}] Switch act  [W] Walker  [↑/↓] Scroll",
                 ),
                 transcriptLines = transcriptLines,
                 branchSection = layoutDecision.shell.live.branchGrid?.let { branchGrid ->
@@ -250,6 +285,7 @@ private fun buildKotterDemoScreen(
                     )
                 },
                 panelContentWidth = (terminalWidth.coerceAtMost(MAX_TERMINAL_WIDTH) - PANEL_FRAME_WIDTH).coerceAtLeast(1),
+                scrollOffset = scrollOffset,
             )
         }
         else -> error("Unexpected layout decision: $layoutDecision")
@@ -262,12 +298,17 @@ private fun RenderScope.renderKotterDemoScreen(screen: KotterDemoScreen) {
         is KotterDemoScreen.Running -> {
             renderActHeader(screen.actHeader, screen.panelContentWidth)
             textLine()
-            renderStatusPanel(screen.statusPanel, screen.panelContentWidth)
+            renderColoredStatusPanel(screen.statusPanel, screen.panelContentWidth)
             textLine()
-            renderPanel(
-                title = "Live Transcript",
+            val transcriptTitle = if (screen.scrollOffset > 0) {
+                "Live Transcript (↑${screen.scrollOffset} more)"
+            } else {
+                "Live Transcript"
+            }
+            renderTranscriptPanel(
+                title = transcriptTitle,
                 panelContentWidth = screen.panelContentWidth,
-                bodyLines = screen.transcriptLines,
+                lines = screen.transcriptLines,
             )
             screen.branchSection?.let { branchSection ->
                 textLine()
@@ -298,6 +339,8 @@ internal sealed interface KotterDemoCommand {
     data object Replay : KotterDemoCommand
 
     data object Quit : KotterDemoCommand
+
+    data object LaunchWalker : KotterDemoCommand
 }
 
 internal class KotterDemoKeyBindings(
@@ -312,6 +355,7 @@ internal class KotterDemoKeyBindings(
     ): KotterDemoCommand? = when (key) {
         Keys.ESC -> KotterDemoCommand.Quit
         is CharKey -> when (val normalized = key.code.normalizedShortcut()) {
+            'w' -> KotterDemoCommand.LaunchWalker
             presentation.replayKey.normalizedShortcut() -> KotterDemoCommand.Replay
             presentation.quitKey.normalizedShortcut() -> KotterDemoCommand.Quit
             else -> operationIdsByShortcut[normalized]

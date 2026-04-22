@@ -40,16 +40,16 @@ internal class KotterDemoSessionController private constructor(
                 delay(event.atMillis - previousAtMillis)
                 previousAtMillis = event.atMillis
                 when (event) {
-                    is KotterDemoScenarioEvent.Line -> appendLiveLine(event.text)
+                    is KotterDemoScenarioEvent.Line -> appendLiveLine(event.text, event.tone)
                     is KotterDemoScenarioEvent.Milestone -> advancePast(event.phaseId, operation)
                 }
             }
         }
     }
 
-    private fun appendLiveLine(text: String) {
+    private fun appendLiveLine(text: String, tone: KotterDemoStreamTone = KotterDemoStreamTone.DETAIL) {
         sessionState.update { state ->
-            state.copy(liveLines = state.liveLines + text)
+            state.copy(liveLines = state.liveLines + KotterDemoTranscriptLine(text, tone))
         }
     }
 

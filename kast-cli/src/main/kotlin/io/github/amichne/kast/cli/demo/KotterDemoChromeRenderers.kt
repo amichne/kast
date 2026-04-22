@@ -3,6 +3,7 @@ package io.github.amichne.kast.cli.demo
 import com.varabyte.kotter.foundation.text.black
 import com.varabyte.kotter.foundation.text.cyan
 import com.varabyte.kotter.foundation.text.green
+import com.varabyte.kotter.foundation.text.red
 import com.varabyte.kotter.foundation.text.text
 import com.varabyte.kotter.foundation.text.textLine
 import com.varabyte.kotter.foundation.text.white
@@ -170,4 +171,128 @@ private fun RenderScope.renderPanelLine(
 
 private fun RenderScope.structural(block: RenderScope.() -> Unit) {
     black(isBright = true, scopedBlock = block)
+}
+
+// -- Colored transcript panel -----------------------------------------------
+
+internal fun RenderScope.renderTranscriptPanel(
+    title: String,
+    panelContentWidth: Int,
+    lines: List<KotterDemoTranscriptLine>,
+) {
+    val width = panelContentWidth.coerceAtLeast(1)
+    structural { textLine("┌${"─".repeat(width + 2)}┐") }
+    renderPanelLine(title, width, tone = PanelTone.TITLE)
+    structural { textLine("├${"─".repeat(width + 2)}┤") }
+    if (lines.isEmpty()) {
+        renderPanelLine("", width)
+    } else {
+        lines.forEach { line -> renderTranscriptLine(line, width) }
+    }
+    structural { textLine("└${"─".repeat(width + 2)}┘") }
+}
+
+private fun RenderScope.renderTranscriptLine(
+    line: KotterDemoTranscriptLine,
+    width: Int,
+) {
+    val prefix = tonePrefix(line.tone)
+    val content = TextFit.truncate("$prefix ${line.text}", width).padEnd(width)
+    structural { text("│ ") }
+    when (line.tone) {
+        KotterDemoStreamTone.COMMAND -> cyan(isBright = true) { text(content) }
+        KotterDemoStreamTone.CONFIRMED -> green(isBright = true) { text(content) }
+        KotterDemoStreamTone.FLAGGED -> yellow(isBright = true) { text(content) }
+        KotterDemoStreamTone.ERROR -> red(isBright = true) { text(content) }
+        KotterDemoStreamTone.STRUCTURE -> black(isBright = true) { text(content) }
+        KotterDemoStreamTone.DETAIL -> text(content)
+    }
+    structural { textLine(" │") }
+}
+
+private fun tonePrefix(tone: KotterDemoStreamTone): String = when (tone) {
+    KotterDemoStreamTone.COMMAND -> "$"
+    KotterDemoStreamTone.CONFIRMED -> "✓"
+    KotterDemoStreamTone.FLAGGED -> "⚑"
+    KotterDemoStreamTone.ERROR -> "✕"
+    KotterDemoStreamTone.DETAIL -> "•"
+    KotterDemoStreamTone.STRUCTURE -> "·"
+}
+
+// -- Colored status panel ---------------------------------------------------
+
+internal fun RenderScope.renderColoredStatusPanel(
+    statusPanel: KotterDemoStatusPanel,
+    panelContentWidth: Int,
+) {
+    val width = panelContentWidth.coerceAtLeast(1)
+    structural { textLine("┌${"─".repeat(width + 2)}┐") }
+    renderPanelLine("Status", width, tone = PanelTone.TITLE)
+    structural { textLine("├${"─".repeat(width + 2)}┤") }
+    renderColoredOperationRail(statusPanel.operationRail, width)
+    renderColoredPhaseBar(statusPanel.phaseBar, statusPanel.activityIndicator, width)
+    renderPanelLine(statusPanel.controls, width)
+    structural { textLine("└${"─".repeat(width + 2)}┘") }
+}
+
+private fun RenderScope.renderColoredOperationRail(
+    operationRail: List<KotterDemoOperationChip>,
+    width: Int,
+) {
+    structural { text("│ ") }
+    val railContent = StringBuilder()
+    railContent.append("Acts   ")
+    operationRail.forEachIndexed { index, chip ->
+        if (index > 0) railContent.append("  ")
+        railContent.append(if (chip.active) "[${chip.label}]" else chip.label)
+    }
+    val plainRail = railContent.toString()
+    val truncated = TextFit.truncate(plainRail, width)
+    val padded = truncated.padEnd(width)
+
+    // Re-render with color: highlight the active chip
+    text("Acts   ")
+    operationRail.forEachIndexed { index, chip ->
+        if (index > 0) text("  ")
+        if (chip.active) {
+            cyan(isBright = true) { text("[${chip.label}]") }
+        } else {
+            text(chip.label)
+        }
+    }
+    val renderedLength = plainRail.length.coerceAtMost(width)
+    if (renderedLength < width) text(" ".repeat(width - renderedLength))
+    structural { textLine(" │") }
+}
+
+private fun RenderScope.renderColoredPhaseBar(
+    phaseBar: KotterDemoPhaseBar,
+    indicator: KotterDemoActivityIndicator,
+    width: Int,
+) {
+    structural { text("│ ") }
+    text("Phase  ")
+    phaseBar.phases.forEachIndexed { index, phase ->
+        if (index > 0) text(" → ")
+        when (phase.status) {
+            KotterDemoPhaseStatus.PENDING -> text(phase.label)
+            KotterDemoPhaseStatus.ACTIVE -> yellow(isBright = true) { text("▶ ${phase.label}") }
+            KotterDemoPhaseStatus.COMPLETE -> green(isBright = true) { text("✓ ${phase.label}") }
+        }
+    }
+    text("   ")
+    when (indicator.status) {
+        KotterDemoActivityStatus.RUNNING ->
+            if (indicator.pulseVisible) {
+                yellow(isBright = true) { text("● Live") }
+            } else {
+                text("○ Live")
+            }
+        KotterDemoActivityStatus.COMPLETE -> green(isBright = true) { text("● Complete") }
+    }
+    // Pad to width — approximate: the plain-text version gives us the right length
+    val plainPhase = phaseStatusLine(phaseBar, indicator)
+    val renderedLength = plainPhase.length.coerceAtMost(width)
+    if (renderedLength < width) text(" ".repeat(width - renderedLength))
+    structural { textLine(" │") }
 }

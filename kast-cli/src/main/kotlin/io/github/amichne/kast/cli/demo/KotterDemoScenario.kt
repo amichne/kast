@@ -6,6 +6,16 @@ internal enum class KotterDemoPhaseStatus {
     COMPLETE,
 }
 
+/**
+ * A transcript line carrying semantic tone for colored rendering.
+ * Shared across the scenario event model, session state, and screen model
+ * so tone flows from data creation to display without conversion.
+ */
+internal data class KotterDemoTranscriptLine(
+    val text: String,
+    val tone: KotterDemoStreamTone = KotterDemoStreamTone.DETAIL,
+)
+
 internal sealed interface KotterDemoScenarioEvent {
     val atMillis: Long
     val phaseId: String
@@ -14,6 +24,7 @@ internal sealed interface KotterDemoScenarioEvent {
         override val atMillis: Long,
         override val phaseId: String,
         val text: String,
+        val tone: KotterDemoStreamTone = KotterDemoStreamTone.DETAIL,
     ) : KotterDemoScenarioEvent
 
     data class Milestone(
@@ -115,6 +126,7 @@ internal data class KotterDemoSessionScenario(
                         atMillis = event.long("atMillis"),
                         phaseId = event.string("phase"),
                         text = event.string("text"),
+                        tone = event.toneOrDefault("tone"),
                     )
                     "milestone" -> KotterDemoScenarioEvent.Milestone(
                         atMillis = event.long("atMillis"),
@@ -126,14 +138,23 @@ internal data class KotterDemoSessionScenario(
 
         private fun Map<*, *>.long(key: String): Long =
             (this[key] as? Number)?.toLong() ?: error("Missing numeric contract field: $key")
+
+        private fun Map<*, *>.toneOrDefault(key: String): KotterDemoStreamTone =
+            (this[key] as? String)?.let { name ->
+                runCatching { KotterDemoStreamTone.valueOf(name.uppercase()) }.getOrNull()
+            } ?: KotterDemoStreamTone.DETAIL
     }
 }
 
 internal data class KotterDemoSessionState(
     val activeOperationId: String,
     val phaseStates: Map<String, KotterDemoPhaseStatus>,
-    val liveLines: List<String>,
-    val asideLines: List<String>,
+    val liveLines: List<KotterDemoTranscriptLine>,
+    val asideLines: List<KotterDemoTranscriptLine>,
 ) {
-    fun allLines(): List<String> = asideLines + liveLines
+    fun allLines(): List<KotterDemoTranscriptLine> = asideLines + liveLines
+
+    fun liveTexts(): List<String> = liveLines.map { it.text }
+    fun asideTexts(): List<String> = asideLines.map { it.text }
+    fun allTexts(): List<String> = allLines().map { it.text }
 }

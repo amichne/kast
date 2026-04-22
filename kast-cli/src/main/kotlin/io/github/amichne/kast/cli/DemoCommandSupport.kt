@@ -22,6 +22,8 @@ import io.github.amichne.kast.cli.demo.KotterDemoOperationScenario
 import io.github.amichne.kast.cli.demo.KotterDemoScenarioEvent
 import io.github.amichne.kast.cli.demo.KotterDemoSessionPresentation
 import io.github.amichne.kast.cli.demo.KotterDemoSessionScenario
+import io.github.amichne.kast.cli.demo.KotterDemoStreamTone
+import io.github.amichne.kast.cli.demo.KotterDemoTranscriptLine
 import io.github.amichne.kast.cli.demo.Paths
 import io.github.amichne.kast.cli.demo.renderCallTreePreview
 import io.github.amichne.kast.cli.demo.runKotterDemoSession
@@ -259,20 +261,20 @@ internal class DemoCommandSupport(
                 DemoPhasePlayback(
                     id = "resolve",
                     lines = listOf(
-                        "resolve ${report.resolvedSymbol.kind.name.lowercase()} $symbolName",
-                        "declaration ${Paths.locationLine(report.workspaceRoot, report.resolvedSymbol.location)}",
+                        tl("resolve ${report.resolvedSymbol.kind.name.lowercase()} $symbolName", KotterDemoStreamTone.COMMAND),
+                        tl("declaration ${Paths.locationLine(report.workspaceRoot, report.resolvedSymbol.location)}", KotterDemoStreamTone.COMMAND),
                     ),
                 ),
                 DemoPhasePlayback(
                     id = "search",
                     lines = buildList {
-                        add("semantic references ${references.size}")
-                        add("grep baseline ${report.textSearch.totalMatches} matches / ${report.textSearch.falsePositives} false positives")
+                        add(tl("semantic references ${references.size}", KotterDemoStreamTone.CONFIRMED))
+                        add(tl("grep baseline ${report.textSearch.totalMatches} matches / ${report.textSearch.falsePositives} false positives", KotterDemoStreamTone.FLAGGED))
                         references.take(REFERENCE_PREVIEW_LIMIT).forEach { reference ->
-                            add("${Paths.locationLine(report.workspaceRoot, reference)}  ${reference.preview.trim().take(LIVE_LINE_PREVIEW_LIMIT)}")
+                            add(tl("${Paths.locationLine(report.workspaceRoot, reference)}  ${reference.preview.trim().take(LIVE_LINE_PREVIEW_LIMIT)}"))
                         }
                         if (references.size > REFERENCE_PREVIEW_LIMIT) {
-                            add("... and ${references.size - REFERENCE_PREVIEW_LIMIT} more semantic hits")
+                            add(tl("... and ${references.size - REFERENCE_PREVIEW_LIMIT} more semantic hits", KotterDemoStreamTone.STRUCTURE))
                         }
                     },
                 ),
@@ -280,10 +282,10 @@ internal class DemoCommandSupport(
                     id = "summarize",
                     lines = buildList {
                         report.references.searchScope?.let { scope ->
-                            add("scope ${scope.scope} exhaustive=${scope.exhaustive}")
-                            add("searched ${scope.searchedFileCount}/${scope.candidateFileCount} candidate files")
-                        } ?: add("search scope unavailable")
-                        add("declaration included ${report.references.declaration != null}")
+                            add(tl("scope ${scope.scope} exhaustive=${scope.exhaustive}", KotterDemoStreamTone.CONFIRMED))
+                            add(tl("searched ${scope.searchedFileCount}/${scope.candidateFileCount} candidate files"))
+                        } ?: add(tl("search scope unavailable", KotterDemoStreamTone.FLAGGED))
+                        add(tl("declaration included ${report.references.declaration != null}", KotterDemoStreamTone.CONFIRMED))
                     },
                 ),
             ),
@@ -303,28 +305,28 @@ internal class DemoCommandSupport(
                 DemoPhasePlayback(
                     id = "resolve",
                     lines = listOf(
-                        "resolve rename target $symbolName",
-                        "compare against grep touching ${report.textSearch.filesTouched} files blindly",
+                        tl("resolve rename target $symbolName", KotterDemoStreamTone.COMMAND),
+                        tl("compare against grep touching ${report.textSearch.filesTouched} files blindly", KotterDemoStreamTone.FLAGGED),
                     ),
                 ),
                 DemoPhasePlayback(
                     id = "plan",
                     lines = buildList {
-                        add("dry run edits ${report.rename.edits.size}")
-                        add("affected files ${report.rename.affectedFiles.size}")
+                        add(tl("dry run edits ${report.rename.edits.size}", KotterDemoStreamTone.CONFIRMED))
+                        add(tl("affected files ${report.rename.affectedFiles.size}", KotterDemoStreamTone.CONFIRMED))
                         report.rename.affectedFiles.take(RENAME_FILE_PREVIEW_LIMIT).forEach { filePath ->
-                            add(Paths.relative(report.workspaceRoot, filePath))
+                            add(tl(Paths.relative(report.workspaceRoot, filePath)))
                         }
                         if (report.rename.affectedFiles.size > RENAME_FILE_PREVIEW_LIMIT) {
-                            add("... and ${report.rename.affectedFiles.size - RENAME_FILE_PREVIEW_LIMIT} more affected files")
+                            add(tl("... and ${report.rename.affectedFiles.size - RENAME_FILE_PREVIEW_LIMIT} more affected files", KotterDemoStreamTone.STRUCTURE))
                         }
                     },
                 ),
                 DemoPhasePlayback(
                     id = "verify",
                     lines = listOf(
-                        "preimage hashes ${report.rename.fileHashes.size}",
-                        "semantic plan avoids ${report.textSearch.falsePositives} grep false positives",
+                        tl("preimage hashes ${report.rename.fileHashes.size}", KotterDemoStreamTone.CONFIRMED),
+                        tl("semantic plan avoids ${report.textSearch.falsePositives} grep false positives", KotterDemoStreamTone.CONFIRMED),
                     ),
                 ),
             ),
@@ -343,29 +345,29 @@ internal class DemoCommandSupport(
                 DemoPhasePlayback(
                     id = "resolve",
                     lines = listOf(
-                        "resolve incoming-call target $symbolName",
-                        "grep cannot recover caller identity from substrings alone",
+                        tl("resolve incoming-call target $symbolName", KotterDemoStreamTone.COMMAND),
+                        tl("grep cannot recover caller identity from substrings alone", KotterDemoStreamTone.FLAGGED),
                     ),
                 ),
                 DemoPhasePlayback(
                     id = "walk",
                     lines = buildList {
-                        add("incoming callers ${report.callHierarchy.stats.totalNodes}")
-                        callTree.take(CALL_TREE_PREVIEW_LIMIT).forEach(::add)
+                        add(tl("incoming callers ${report.callHierarchy.stats.totalNodes}", KotterDemoStreamTone.CONFIRMED))
+                        callTree.take(CALL_TREE_PREVIEW_LIMIT).forEach { add(tl(it)) }
                         if (callTree.size > CALL_TREE_PREVIEW_LIMIT) {
-                            add("... and ${callTree.size - CALL_TREE_PREVIEW_LIMIT} more nodes")
+                            add(tl("... and ${callTree.size - CALL_TREE_PREVIEW_LIMIT} more nodes", KotterDemoStreamTone.STRUCTURE))
                         }
                     },
                 ),
                 DemoPhasePlayback(
                     id = "summarize",
                     lines = buildList {
-                        add("max depth ${report.callHierarchy.stats.maxDepthReached}")
-                        add("files visited ${report.callHierarchy.stats.filesVisited}")
+                        add(tl("max depth ${report.callHierarchy.stats.maxDepthReached}"))
+                        add(tl("files visited ${report.callHierarchy.stats.filesVisited}"))
                         if (report.callHierarchy.stats.timeoutReached || report.callHierarchy.stats.maxTotalCallsReached) {
-                            add("results truncated before the full graph completed")
+                            add(tl("results truncated before the full graph completed", KotterDemoStreamTone.FLAGGED))
                         } else {
-                            add("graph completed without backend truncation")
+                            add(tl("graph completed without backend truncation", KotterDemoStreamTone.CONFIRMED))
                         }
                     },
                 ),
@@ -482,6 +484,12 @@ internal class DemoCommandSupport(
     }
 }
 
+/** Shorthand for building [KotterDemoTranscriptLine]s in the operation builders. */
+private fun tl(
+    text: String,
+    tone: KotterDemoStreamTone = KotterDemoStreamTone.DETAIL,
+): KotterDemoTranscriptLine = KotterDemoTranscriptLine(text, tone)
+
 internal data class DemoPlaybackResult(
     val report: DemoReport,
     val runtime: WorkspaceEnsureResult,
@@ -524,7 +532,7 @@ private data class DemoOperationPlayback(
             phases.forEach { phase ->
                 phase.lines.forEach { line ->
                     currentAt += DemoCommandSupport.SCENARIO_LINE_DELAY_MILLIS
-                    add(KotterDemoScenarioEvent.Line(atMillis = currentAt, phaseId = phase.id, text = line))
+                    add(KotterDemoScenarioEvent.Line(atMillis = currentAt, phaseId = phase.id, text = line.text, tone = line.tone))
                 }
                 currentAt += DemoCommandSupport.SCENARIO_PHASE_DELAY_MILLIS
                 add(KotterDemoScenarioEvent.Milestone(atMillis = currentAt, phaseId = phase.id))
@@ -548,7 +556,7 @@ private data class DemoOperationPlayback(
 
 private data class DemoPhasePlayback(
     val id: String,
-    val lines: List<String>,
+    val lines: List<KotterDemoTranscriptLine>,
 )
 
 internal fun interface DemoSymbolChooser {
