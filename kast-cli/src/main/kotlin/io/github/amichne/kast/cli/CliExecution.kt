@@ -226,11 +226,21 @@ internal class DefaultCliCommandExecutor(
             )
 
             is CliCommand.Demo -> {
-                val result = cliService.demo(command.options)
-                CliExecutionResult(
-                    output = CliOutput.Text(result.payload),
-                    daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
-                )
+                val outcome = cliService.demo(command.options)
+                when (outcome) {
+                    is DemoFlowOutcome.Completed -> CliExecutionResult(
+                        output = CliOutput.Text(""),
+                        daemonNote = outcome.result.runtime.note
+                            ?: daemonNoteForRuntime(outcome.result.runtime.selected),
+                    )
+                    is DemoFlowOutcome.Cancelled -> CliExecutionResult(
+                        output = CliOutput.Text("demo cancelled by user"),
+                    )
+                    is DemoFlowOutcome.Failed -> throw CliFailure(
+                        code = "DEMO_FAILED",
+                        message = outcome.message,
+                    )
+                }
             }
 
             is CliCommand.InternalDaemonRun -> {

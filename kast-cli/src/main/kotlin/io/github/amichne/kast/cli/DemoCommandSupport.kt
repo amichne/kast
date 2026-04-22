@@ -1,6 +1,7 @@
 package io.github.amichne.kast.cli
 
 import com.varabyte.kotter.foundation.session
+import com.varabyte.kotter.runtime.Session
 import com.varabyte.kotter.runtime.terminal.Terminal
 import com.varabyte.kotter.terminal.system.SystemTerminal
 import com.varabyte.kotter.terminal.virtual.VirtualTerminal
@@ -25,9 +26,11 @@ import io.github.amichne.kast.cli.demo.KotterDemoSessionScenario
 import io.github.amichne.kast.cli.demo.KotterDemoStreamTone
 import io.github.amichne.kast.cli.demo.KotterDemoTranscriptLine
 import io.github.amichne.kast.cli.demo.Paths
+import io.github.amichne.kast.cli.demo.SymbolPickerResult
 import io.github.amichne.kast.cli.demo.renderCallTreePreview
 import io.github.amichne.kast.cli.demo.runKotterDemoSession
-import io.github.amichne.kast.cli.demo.timed
+import io.github.amichne.kast.cli.demo.runLoadingPhase
+import io.github.amichne.kast.cli.demo.runSymbolPicker
 import java.io.Console
 import java.nio.file.Files
 import java.nio.file.Path
@@ -161,77 +164,114 @@ internal class DemoCommandSupport(
     suspend fun runInteractive(
         options: DemoOptions,
         cliService: CliService,
-    ): DemoPlaybackResult {
+    ): DemoFlowOutcome {
         val runtimeOptions = RuntimeCommandOptions(
             workspaceRoot = options.workspaceRoot,
             backendName = options.backend,
             waitTimeoutMillis = 180_000L,
         )
 
-        val warm = timed { cliService.workspaceEnsure(runtimeOptions) }
-        val runtime = warm.value.getOrThrow()
-
-        val searchQuery = workspaceSymbolQueryFor(options.symbolFilter)
-        val symbolSearch = timed { cliService.workspaceSymbolSearch(runtimeOptions, searchQuery) }
-        val symbolPayload = symbolSearch.value.getOrThrow().payload
-
-        val selectedSymbol = selectSymbol(options, symbolPayload.symbols)
-        val symbolPosition = FilePosition(
-            filePath = selectedSymbol.location.filePath,
-            offset = selectedSymbol.location.startOffset,
-        )
-
-        val textSearch = analyzeTextSearch(options.workspaceRoot, selectedSymbol)
-
-        val resolved = timed {
-            cliService.resolveSymbol(runtimeOptions, SymbolQuery(position = symbolPosition))
-        }
-        val resolvedSymbol = resolved.value.getOrThrow().payload.symbol
-
-        val references = timed {
-            cliService.findReferences(
-                runtimeOptions,
-                ReferencesQuery(position = symbolPosition, includeDeclaration = true),
+        return sessionRunner.runSession(options.verbose) { terminal ->
+            // Phase 1+2: Warm backend + symbol picker (combined in runSymbolPicker)
+            var ensureResult: WorkspaceEnsureResult? = null
+            val pickerResult = runSymbolPicker(
+                verbose = options.verbose,
+                searchSymbols = { query ->
+                    cliService.workspaceSymbolSearch(runtimeOptions, query).payload
+                },
+                warmBackend = {
+                    ensureResult = cliService.workspaceEnsure(runtimeOptions)
+                },
             )
-        }
-        val referencesPayload = references.value.getOrThrow().payload
 
-        val rename = timed {
-            cliService.rename(
-                runtimeOptions,
-                RenameQuery(
-                    position = symbolPosition,
-                    newName = "${resolvedSymbol.fqName.substringAfterLast('.')}Renamed",
-                    dryRun = true,
+            val selectedSymbol = when (pickerResult) {
+                is SymbolPickerResult.Cancelled -> return@runSession DemoFlowOutcome.Cancelled
+                is SymbolPickerResult.Selected -> pickerResult.symbol
+            }
+
+            val symbolPosition = FilePosition(
+                filePath = selectedSymbol.location.filePath,
+                offset = selectedSymbol.location.startOffset,
+            )
+
+            // Phase 3: Load demo data with progress
+            var resolvedSymbol: Symbol = selectedSymbol
+            var referencesPayload: ReferencesResult? = null
+            var renamePayload: RenameResult? = null
+            var callHierarchyPayload: CallHierarchyResult? = null
+            var textSearch: DemoTextSearchSummary? = null
+
+            val loadSuccess = runLoadingPhase(
+                symbolName = selectedSymbol.fqName.substringAfterLast('.'),
+                steps = listOf("Resolve symbol", "Find references", "Rename dry-run", "Call hierarchy", "Text search"),
+            ) { onStepComplete ->
+                val t0 = System.currentTimeMillis()
+                resolvedSymbol = cliService.resolveSymbol(
+                    runtimeOptions,
+                    SymbolQuery(position = symbolPosition),
+                ).payload.symbol
+                onStepComplete(0, System.currentTimeMillis() - t0)
+
+                val t1 = System.currentTimeMillis()
+                referencesPayload = cliService.findReferences(
+                    runtimeOptions,
+                    ReferencesQuery(position = symbolPosition, includeDeclaration = true),
+                ).payload
+                onStepComplete(1, System.currentTimeMillis() - t1)
+
+                val t2 = System.currentTimeMillis()
+                renamePayload = cliService.rename(
+                    runtimeOptions,
+                    RenameQuery(
+                        position = symbolPosition,
+                        newName = "${resolvedSymbol.fqName.substringAfterLast('.')}Renamed",
+                        dryRun = true,
+                    ),
+                ).payload
+                onStepComplete(2, System.currentTimeMillis() - t2)
+
+                val t3 = System.currentTimeMillis()
+                callHierarchyPayload = cliService.callHierarchy(
+                    runtimeOptions,
+                    CallHierarchyQuery(
+                        position = symbolPosition,
+                        direction = CallDirection.INCOMING,
+                        depth = 2,
+                    ),
+                ).payload
+                onStepComplete(3, System.currentTimeMillis() - t3)
+
+                val t4 = System.currentTimeMillis()
+                textSearch = analyzeTextSearch(options.workspaceRoot, selectedSymbol)
+                onStepComplete(4, System.currentTimeMillis() - t4)
+            }
+
+            if (!loadSuccess) return@runSession DemoFlowOutcome.Failed("Backend queries failed")
+
+            val report = DemoReport(
+                workspaceRoot = options.workspaceRoot,
+                selectedSymbol = selectedSymbol,
+                textSearch = textSearch!!,
+                resolvedSymbol = resolvedSymbol,
+                references = referencesPayload!!,
+                rename = renamePayload!!,
+                callHierarchy = callHierarchyPayload!!,
+            )
+
+            // Phase 4: Demo playback
+            runKotterDemoSession(
+                presentation = presentationFor(report),
+                terminalWidth = terminal.width,
+                clearScreen = terminal::clear,
+            )
+
+            DemoFlowOutcome.Completed(
+                DemoPlaybackResult(
+                    report = report,
+                    runtime = ensureResult!!,
                 ),
             )
         }
-        val renamePayload = rename.value.getOrThrow().payload
-
-        val callHierarchy = timed {
-            cliService.callHierarchy(
-                runtimeOptions,
-                CallHierarchyQuery(
-                    position = symbolPosition,
-                    direction = CallDirection.INCOMING,
-                    depth = 2,
-                ),
-            )
-        }
-        val callHierarchyPayload = callHierarchy.value.getOrThrow().payload
-
-        val report = DemoReport(
-            workspaceRoot = options.workspaceRoot,
-            selectedSymbol = selectedSymbol,
-            textSearch = textSearch,
-            resolvedSymbol = resolvedSymbol,
-            references = referencesPayload,
-            rename = renamePayload,
-            callHierarchy = callHierarchyPayload,
-        )
-
-        sessionRunner.run(presentationFor(report))
-        return DemoPlaybackResult(report = report, runtime = runtime)
     }
 
     internal fun presentationFor(report: DemoReport): KotterDemoSessionPresentation {
@@ -490,27 +530,31 @@ private fun tl(
     tone: KotterDemoStreamTone = KotterDemoStreamTone.DETAIL,
 ): KotterDemoTranscriptLine = KotterDemoTranscriptLine(text, tone)
 
+internal sealed interface DemoFlowOutcome {
+    data class Completed(val result: DemoPlaybackResult) : DemoFlowOutcome
+    data object Cancelled : DemoFlowOutcome
+    data class Failed(val message: String) : DemoFlowOutcome
+}
+
 internal data class DemoPlaybackResult(
     val report: DemoReport,
     val runtime: WorkspaceEnsureResult,
 )
 
 internal fun interface KotterDemoSessionRunner {
-    fun run(presentation: KotterDemoSessionPresentation)
+    fun runSession(verbose: Boolean, block: Session.(terminal: Terminal) -> DemoFlowOutcome): DemoFlowOutcome
 }
 
 internal class LiveKotterDemoSessionRunner(
     private val terminalFactory: () -> Terminal = ::defaultKotterDemoTerminal,
 ) : KotterDemoSessionRunner {
-    override fun run(presentation: KotterDemoSessionPresentation) {
+    override fun runSession(verbose: Boolean, block: Session.(terminal: Terminal) -> DemoFlowOutcome): DemoFlowOutcome {
         val terminal = terminalFactory()
+        var outcome: DemoFlowOutcome = DemoFlowOutcome.Cancelled
         session(terminal = terminal, clearTerminal = true) {
-            runKotterDemoSession(
-                presentation = presentation,
-                terminalWidth = terminal.width,
-                clearScreen = terminal::clear,
-            )
+            outcome = block(terminal)
         }
+        return outcome
     }
 }
 

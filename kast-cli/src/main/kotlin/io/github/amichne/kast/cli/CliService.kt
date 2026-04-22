@@ -259,15 +259,10 @@ internal class CliService(
 
     suspend fun demo(
         options: DemoOptions,
-    ): RuntimeAttachedResult<String> {
-        val demo = demoCommandSupport.runInteractive(
+    ): DemoFlowOutcome {
+        return demoCommandSupport.runInteractive(
             options = options,
             cliService = this,
-        )
-        return RuntimeAttachedResult(
-            payload = "",
-            runtime = demo.runtime.selected,
-            daemonNote = demo.runtime.note,
         )
     }
 
