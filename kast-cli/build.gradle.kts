@@ -9,8 +9,9 @@ val nativeConfigDir = layout.projectDirectory.dir(
 val packagedSkillSourceDir = rootProject.layout.projectDirectory.dir(".agents/skills/kast")
 val embeddedSkillFiles = listOf(
     "SKILL.md",
-    "agents/openai.yaml",
+    "evals/evals.json",
     "evals/routing.json",
+    "references/quickstart.md",
     "references/routing-improvement.md",
     "references/wrapper-openapi.yaml",
     "scripts/build-routing-corpus.py",

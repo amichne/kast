@@ -46,9 +46,10 @@ python3 .agents/skills/kast/scripts/build-routing-corpus.py \
 The script:
 
 - prefers Markdown exports over sibling HTML files
+- extracts visible prompts, skill loads, and tool traces from HTML-only exports
 - redacts absolute paths and session identifiers
 - classifies cases such as `trigger-miss`, `loaded-but-bypassed`,
-  `route-via-subagent`, and `config-drift`
+  `semantic-abandonment`, `route-via-subagent`, and `config-drift`
 - emits promotion candidates in the same shape as the checked-in eval corpus
 
 ## Review the output
@@ -73,6 +74,8 @@ Good routing evals:
 
 - keep the prompt phrasing realistic
 - state the expected skill and route
+- encode recovery expectations when the first Kast attempt hits setup friction
+  or a noisy JSON result
 - forbid raw `grep` / `rg` for semantic Kotlin work
 - stay generic enough to survive codebase churn
 
@@ -81,10 +84,10 @@ Good routing evals:
 Once the eval corpus captures the recurring miss, update the narrowest
 surface that explains the behavior:
 
-1. `SKILL.md` for trigger phrasing and operator guidance
-2. `agents/openai.yaml` for implicit invocation defaults
-3. `.github/agents/*.md` for repo-local agent routing
-4. `.github/hooks/*` for enforcement and compatibility drift
+1. `SKILL.md` for portable, standards-based skill behavior
+2. `.github/agents/*.md` for GitHub Copilot-specific routing and invocation hints
+3. `.github/hooks/*` for enforcement and compatibility drift
+4. optional vendor-specific metadata only when a host actually requires it
 
 Do not change several of these at once unless the evidence says they all
 need to move together.

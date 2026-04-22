@@ -54,10 +54,13 @@ kast install skill --target-dir=/absolute/path/to/skills --yes=true
 The installed skill directory includes:
 
 - **`SKILL.md`** — the agent-facing instruction file that describes
-  every available command, its parameters, and expected output
-- **`agents/openai.yaml`** — OpenAI-compatible agent configuration
+  the portable Kast workflow and when to trigger it
+- **`evals/evals.json`** — richer transcript-derived eval prompts for
+  measuring routing, recovery, and semantic persistence
 - **`references/wrapper-openapi.yaml`** — OpenAPI specification for
   the `kast skill` subcommand surface
+- **`references/quickstart.md`** — compact request snippets and recovery
+  guidance for bootstrap and navigation
 - **`references/routing-improvement.md`** — the playbook for mining
   transcripts and logs into routing evals
 - **`evals/routing.json`** — sanitized routing prompts used to keep
@@ -68,6 +71,10 @@ The installed skill directory includes:
   prints an `export KAST_CLI_PATH=...` fragment
 - **`scripts/build-routing-corpus.py`** — builds sanitized routing cases
   and promotion candidates from session exports and process logs
+
+GitHub Copilot custom agents are a separate surface. If you want
+Copilot-specific personas or tool restrictions, keep those in
+`.github/agents/*.md`; they are not part of the portable Agent Skills bundle.
 
 ## How agents locate the Kast binary
 

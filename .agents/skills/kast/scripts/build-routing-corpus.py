@@ -10,6 +10,7 @@ import sys
 from collections import Counter
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
+from html import unescape
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Iterable
@@ -23,6 +24,15 @@ WORKSPACE_RE = re.compile(r"Workspace initialized:\s+([0-9a-f-]{36})")
 AGENT_PROMPT_RE = re.compile(r'Custom agent "([^"]+)" invoked with prompt:\s*(.*)')
 AGENT_TOOLS_RE = re.compile(r'Custom agent "([^"]+)" using tools:\s*(.*)')
 HOOK_RE = re.compile(r"Hook execution failed:\s*(.*)")
+HTML_ENTRY_RE = re.compile(r"^#\d+$")
+HTML_TOOL_RE = re.compile(r"^([a-z][a-z0-9_-]*) - (.+)$")
+HTML_DURATION_RE = re.compile(r"^(?:\d+h\s+)?(?:\d+m\s+)?\d+s$")
+HTML_STYLE_OR_SCRIPT_RE = re.compile(r"<(?:style|script)\b.*?</(?:style|script)>", re.IGNORECASE | re.DOTALL)
+HTML_TAG_RE = re.compile(r"<[^>]+>")
+KAST_COMMAND_RE = re.compile(
+    r'(?:(?:"?\$KAST_CLI_PATH"?|(?:[^\s"\']+/)?kast)\s+skill\s+'
+    r'(?:resolve|references|callers|diagnostics|rename|scaffold|write-and-validate|workspace-files))'
+)
 ABS_PATH_RE = re.compile(
     r"(?:(?:/Users|/home|/tmp|/private/tmp|/var/folders)/[^\s`\"'<>]+)"
 )
@@ -48,6 +58,7 @@ PROMOTION_CLASSIFICATIONS = {
     "trigger-miss",
     "loaded-but-bypassed",
     "route-via-subagent",
+    "semantic-abandonment",
 }
 
 
@@ -96,6 +107,40 @@ class TitleParser(HTMLParser):
         return "".join(self.title_parts).strip()
 
 
+def extract_html_visible_lines(raw: str) -> list[str]:
+    raw = HTML_STYLE_OR_SCRIPT_RE.sub("\n", raw)
+    text = HTML_TAG_RE.sub("\n", raw)
+    return [
+        normalized
+        for line in text.splitlines()
+        if (normalized := re.sub(r"\s+", " ", unescape(line)).strip())
+    ]
+
+
+def collect_html_blocks(lines: list[str]) -> list[list[str]]:
+    starts = [index for index, line in enumerate(lines) if HTML_ENTRY_RE.match(line)]
+    blocks: list[list[str]] = []
+    for position, start in enumerate(starts):
+        end = starts[position + 1] if position + 1 < len(starts) else len(lines)
+        block = lines[start:end]
+        if len(block) > 1:
+            blocks.append(block)
+    return blocks
+
+
+def block_heading(block: list[str]) -> str | None:
+    return block[1].strip() if len(block) > 1 else None
+
+
+def block_content_lines(block: list[str]) -> list[str]:
+    index = 2
+    if index < len(block) and block[index] in {"interactive", "autopilot"}:
+        index += 1
+    if index < len(block) and HTML_DURATION_RE.match(block[index]):
+        index += 1
+    return [line for line in block[index:] if line not in {"✔", "ℹ", "⚠", "💬", "💭"}]
+
+
 def sanitize_text(value: str, *, limit: int = 280) -> str:
     value = ABS_PATH_RE.sub("<ABS_PATH>", value)
     value = UUID_RE.sub("<SESSION_ID>", value)
@@ -115,6 +160,23 @@ def classify_export(prompt: str, loaded_skills: list[str], tool_counts: Counter[
         return "loaded-but-bypassed"
     if looks_semantic(prompt) and "kast" not in loaded_skills:
         return "trigger-miss"
+    return "needs-review"
+
+
+def classify_html_export(
+    prompt: str,
+    loaded_skills: list[str],
+    tool_counts: Counter[str],
+    *,
+    kast_command_blocks: int,
+    grep_like_commands: int,
+) -> str:
+    if kast_command_blocks > 0 and grep_like_commands > 0:
+        return "semantic-abandonment"
+    if looks_semantic(prompt) and "kast" not in loaded_skills and kast_command_blocks == 0:
+        return "trigger-miss"
+    if "kast" in loaded_skills and tool_counts.get("bash", 0) > 0 and kast_command_blocks == 0:
+        return "loaded-but-bypassed"
     return "needs-review"
 
 
@@ -209,21 +271,96 @@ def parse_html_export(path: Path) -> list[RoutingCase]:
     parser = TitleParser()
     parser.feed(raw)
     title = parser.title or sanitize_text(TITLE_RE.search(raw).group(1)) if TITLE_RE.search(raw) else ""
-    if not title:
+    lines = extract_html_visible_lines(raw)
+    blocks = collect_html_blocks(lines)
+    session_id = next((line for line in lines if UUID_RE.fullmatch(line)), None)
+    prompts: list[str] = []
+    fallback_prompts: list[str] = []
+    loaded_skills: list[str] = []
+    tool_counts: Counter[str] = Counter()
+    kast_command_blocks = 0
+    grep_like_commands = 0
+    contract_reference_reads = 0
+    bootstrap_probes = 0
+
+    for block in blocks:
+        heading = block_heading(block)
+        if heading is None:
+            continue
+        content_lines = block_content_lines(block)
+        content_text = "\n".join(content_lines)
+
+        if heading == "User":
+            prompt = sanitize_text(" ".join(content_lines))
+            if prompt:
+                prompts.append(prompt)
+            continue
+
+        if heading == "Copilot":
+            prompt = sanitize_text(" ".join(content_lines))
+            if prompt:
+                fallback_prompts.append(prompt)
+            continue
+
+        match = HTML_TOOL_RE.match(heading)
+        if not match:
+            continue
+        tool_name, detail = match.groups()
+        tool_counts[tool_name] += 1
+        if tool_name == "skill":
+            skill_name = detail.strip()
+            if skill_name:
+                loaded_skills.append(skill_name)
+        if tool_name == "bash":
+            if KAST_COMMAND_RE.search(content_text):
+                kast_command_blocks += 1
+            if re.search(r"\b(?:grep|rg)\b", content_text):
+                grep_like_commands += 1
+            if "KAST_CLI_PATH=" in content_text or "command not found" in content_text:
+                bootstrap_probes += 1
+        if tool_name in {"grep", "rg"}:
+            grep_like_commands += 1
+        if tool_name == "view" and any(
+            marker in content_text
+            for marker in (".kast-version", "wrapper-openapi.yaml")
+        ):
+            contract_reference_reads += 1
+
+    prompt = next(iter(prompts), "")
+    if not prompt:
+        prompt = next(iter(fallback_prompts), "")
+    if not prompt and title:
+        prompt = sanitize_text(title)
+    if not prompt:
         return []
-    session_match = SESSION_ID_RE.search(raw)
+
+    classification = classify_html_export(
+        prompt,
+        loaded_skills,
+        tool_counts,
+        kast_command_blocks=kast_command_blocks,
+        grep_like_commands=grep_like_commands,
+    )
     return [
         RoutingCase(
             source_type="session-export-html",
             source_name=path.name,
-            session_id=session_match.group(1) if session_match else None,
-            prompt=sanitize_text(title),
-            classification="needs-review",
-            loaded_skills=[],
+            session_id=session_id,
+            prompt=prompt,
+            classification=classification,
+            loaded_skills=sorted(set(loaded_skills)),
             custom_agent=None,
-            tool_counts={},
+            tool_counts=dict(tool_counts),
             available_tools=[],
-            evidence=["html_export_title_only=true"],
+            evidence=[
+                "html_visible_text_blocks=true",
+                f"loaded_skills={','.join(sorted(set(loaded_skills))) or 'none'}",
+                f"tool_counts={json.dumps(tool_counts, sort_keys=True)}",
+                f"kast_command_blocks={kast_command_blocks}",
+                f"grep_like_commands={grep_like_commands}",
+                f"contract_reference_reads={contract_reference_reads}",
+                f"bootstrap_probes={bootstrap_probes}",
+            ],
         ),
     ]
 

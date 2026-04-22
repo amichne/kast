@@ -72,7 +72,7 @@ class EvalSkillCommandTest {
         val baselineFile = tempDir.resolve("baseline.json")
         baselineFile.writeText((baselineOutput as CliOutput.Text).value)
 
-        skillDir.resolve("agents/openai.yaml").deleteExisting()
+        skillDir.resolve("references/wrapper-openapi.yaml").deleteExisting()
 
         val failure = assertThrows(CliFailure::class.java) {
             executor.execute(
@@ -111,23 +111,12 @@ class EvalSkillCommandTest {
             """.trimIndent(),
         )
 
-        val agents = skillDir.resolve("agents").createDirectories()
-        agents.resolve("openai.yaml").writeText(
-            """
-            interface:
-              display_name: "Kast"
-              default_prompt: >
-                Invoke kast skill subcommands via the CLI path hook.
-
-            policy:
-              allow_implicit_invocation: true
-            """.trimIndent(),
-        )
-
         val evals = skillDir.resolve("evals").createDirectories()
+        evals.resolve("evals.json").writeText("""{"skill_name":"kast","evals":[]}""")
         evals.resolve("routing.json").writeText("""{"skill_name":"kast","suite":"routing","evals":[]}""")
 
         val refs = skillDir.resolve("references").createDirectories()
+        refs.resolve("quickstart.md").writeText("# Quickstart\n")
         refs.resolve("routing-improvement.md").writeText("# Routing improvement\n")
         refs.resolve("wrapper-openapi.yaml").writeText(
             """

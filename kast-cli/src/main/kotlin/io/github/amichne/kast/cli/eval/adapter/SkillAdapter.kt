@@ -27,8 +27,6 @@ internal class SkillAdapter(private val skillDir: Path) {
         val metrics = mutableListOf<EvalMetric>()
 
         checks += checkSkillMdExists()
-        checks += checkAgentInterfaceExists()
-        checks += checkAgentInterfaceAllowsImplicitInvocation()
         checks += checkLegacyWrappersRemoved()
         checks += checkSkillMdHasTriggerPhrases()
         checks += checkWrapperOpenApiExists()
@@ -76,50 +74,6 @@ internal class SkillAdapter(private val skillDir: Path) {
             status = if (exists) EvalStatus.PASS else EvalStatus.FAIL,
             message = if (exists) "SKILL.md found" else "SKILL.md missing",
             remediation = if (!exists) "Create SKILL.md at skill root" else null,
-        )
-    }
-
-    private fun checkAgentInterfaceExists(): EvalCheck {
-        val exists = skillDir.resolve("agents/openai.yaml").exists()
-        return EvalCheck(
-            id = "structural-agent-interface-exists",
-            category = "structural",
-            severity = EvalSeverity.ERROR,
-            status = if (exists) EvalStatus.PASS else EvalStatus.FAIL,
-            message = if (exists) "Agent interface agents/openai.yaml found" else "Agent interface agents/openai.yaml missing",
-            remediation = if (!exists) "Create agents/openai.yaml describing the skill's invocation contract" else null,
-        )
-    }
-
-    private fun checkAgentInterfaceAllowsImplicitInvocation(): EvalCheck {
-        val openAiYaml = skillDir.resolve("agents/openai.yaml")
-        if (!openAiYaml.exists()) {
-            return EvalCheck(
-                id = "structural-agent-interface-implicit-invocation",
-                category = "structural",
-                severity = EvalSeverity.WARNING,
-                status = EvalStatus.WARN,
-                message = "Cannot check implicit invocation policy: agents/openai.yaml missing",
-                remediation = "Create agents/openai.yaml and set policy.allow_implicit_invocation to true",
-            )
-        }
-        val content = openAiYaml.readText()
-        val allowImplicit = content.contains("allow_implicit_invocation: true")
-        return EvalCheck(
-            id = "structural-agent-interface-implicit-invocation",
-            category = "structural",
-            severity = EvalSeverity.WARNING,
-            status = if (allowImplicit) EvalStatus.PASS else EvalStatus.WARN,
-            message = if (allowImplicit) {
-                "agents/openai.yaml explicitly allows implicit invocation"
-            } else {
-                "agents/openai.yaml does not explicitly allow implicit invocation"
-            },
-            remediation = if (!allowImplicit) {
-                "Set policy.allow_implicit_invocation to true in agents/openai.yaml"
-            } else {
-                null
-            },
         )
     }
 

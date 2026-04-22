@@ -345,14 +345,14 @@ internal class DemoCommandSupport(
                 DemoPhasePlayback(
                     id = "resolve",
                     lines = listOf(
-                        tl("resolve rename target $symbolName", KotterDemoStreamTone.COMMAND),
+                        tl("renaming ${report.resolvedSymbol.fqName.substringAfterLast(".")}", KotterDemoStreamTone.COMMAND),
                         tl("compare against grep touching ${report.textSearch.filesTouched} files blindly", KotterDemoStreamTone.FLAGGED),
                     ),
                 ),
                 DemoPhasePlayback(
                     id = "plan",
                     lines = buildList {
-                        add(tl("dry run edits ${report.rename.edits.size}", KotterDemoStreamTone.CONFIRMED))
+                        add(tl("rename edits ${report.rename.edits.size}", KotterDemoStreamTone.CONFIRMED))
                         add(tl("affected files ${report.rename.affectedFiles.size}", KotterDemoStreamTone.CONFIRMED))
                         report.rename.affectedFiles.take(RENAME_FILE_PREVIEW_LIMIT).forEach { filePath ->
                             add(tl(Paths.relative(report.workspaceRoot, filePath)))

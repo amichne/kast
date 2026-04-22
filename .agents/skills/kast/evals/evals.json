@@ -1,0 +1,73 @@
+{
+  "skill_name": "kast",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Audit the Kotlin `EventBean` model in the timeline feature. Show where `actionTitle`, `actionType`, `date`, and `headerActionTitle` are set in production code, which processors construct `EventBean`, and what tests cover those writes.",
+      "expected_output": "A semantic audit rooted in EventBean that identifies the relevant production processors and tests without abandoning Kast for raw search.",
+      "files": [],
+      "expectations": [
+        "Starts from a stable semantic anchor such as `EventBean` or a resolved member, not a bare text search for field names.",
+        "Names the production processors that construct or populate `EventBean`.",
+        "Calls out relevant tests when they exist.",
+        "Does not replace semantic navigation with grep/rg after JSON or jq friction."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I tried a Kotlin symbol lookup with Kast and the first shell command failed because `KAST_CLI_PATH` was empty. Bootstrap Kast for this workspace, then continue tracing the symbol and its usages.",
+      "expected_output": "A bootstrap-and-resume flow that repairs the environment quickly and gets back to semantic navigation.",
+      "files": [],
+      "expectations": [
+        "Uses the bundled session-start helper before broad filesystem search.",
+        "Avoids reading `.kast-version` or `wrapper-openapi.yaml` before the first recovery attempt.",
+        "Resumes with Kast commands once setup is fixed.",
+        "Does not fall back to grep/rg for Kotlin identity."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I already ran `kast skill references`, but my first JSON projection came back empty. Keep digging into the same Kotlin symbol semantically and do not switch to grep.",
+      "expected_output": "A recovery flow that inspects the result shape or narrows the request, then continues with Kast.",
+      "files": [],
+      "expectations": [
+        "Inspects a sample response shape or reruns with a narrower request.",
+        "Uses `resolve`, `references`, `callers`, or `scaffold` to continue the investigation.",
+        "Avoids grep/rg fallback after parse friction."
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Find usages of the `date` property on `EventBean`, not every `date` in the repo. I need the exact Kotlin member, not text matches.",
+      "expected_output": "A disambiguated member-usage audit tied to the owning type.",
+      "files": [],
+      "expectations": [
+        "Resolves the member with `kind`, `containingType`, or `fileHint` before scanning usages.",
+        "Keeps the result scoped to `EventBean.date` instead of every `date` symbol.",
+        "Does not use raw text search for symbol identity."
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Help me understand a Kotlin feature I have not seen before. Start from the relevant module or file list, then show how the main model is wired through processors or callers.",
+      "expected_output": "A low-token navigation pass that uses workspace discovery, scaffold, and call/reference traversal instead of contract-reading thrash.",
+      "files": [],
+      "expectations": [
+        "Starts with `workspace-files`, `scaffold`, or another narrow semantic op instead of front-loading contract docs.",
+        "Shows concrete file-to-file or caller/callee relationships.",
+        "Keeps the transcript centered on Kast commands."
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Fix a failing Kotlin test by tracing the production flow, making the smallest change that works, and validating the touched files before you report back.",
+      "expected_output": "An end-to-end semantic edit that uses Kast to navigate, applies the change through the validated mutation path, and finishes cleanly.",
+      "files": [],
+      "expectations": [
+        "Uses semantic navigation before editing.",
+        "Makes the edit with `write-and-validate` or `rename`, not a hand-edit path.",
+        "Checks diagnostics on the touched files before concluding."
+      ]
+    }
+  ]
+}
