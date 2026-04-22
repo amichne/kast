@@ -10,7 +10,12 @@ val packagedSkillSourceDir = rootProject.layout.projectDirectory.dir(".agents/sk
 val embeddedSkillFiles = listOf(
     "SKILL.md",
     "agents/openai.yaml",
+    "evals/routing.json",
+    "references/routing-improvement.md",
     "references/wrapper-openapi.yaml",
+    "scripts/build-routing-corpus.py",
+    "scripts/kast-session-start.sh",
+    "scripts/resolve-kast.sh",
 )
 
 application {
@@ -20,7 +25,11 @@ application {
 dependencies {
     api(project(":analysis-api"))
     implementation(libs.coroutines.core)
+    implementation(libs.kotter)
+    implementation(libs.mordant)
     implementation(libs.serialization.json)
+
+    testImplementation(libs.kotter.test)
 }
 
 graalvmNative {

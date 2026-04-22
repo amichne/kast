@@ -1,0 +1,86 @@
+{
+  "skill_name": "kast",
+  "suite": "routing",
+  "evals": [
+    {
+      "id": "understand-kotlin-file",
+      "prompt": "Help me understand this Kotlin file and how it is wired into the rest of the project.",
+      "expected_skill": "kast",
+      "expected_route": "@kast",
+      "allowed_ops": [
+        "kast skill workspace-files",
+        "kast skill scaffold",
+        "kast skill resolve",
+        "kast skill references",
+        "kast skill callers"
+      ],
+      "forbidden_ops": [
+        "grep",
+        "rg"
+      ]
+    },
+    {
+      "id": "trace-kotlin-flow",
+      "prompt": "Trace this Kotlin flow from the controller down to the implementation and show me what calls what.",
+      "expected_skill": "kast",
+      "expected_route": "@kast",
+      "allowed_ops": [
+        "kast skill scaffold",
+        "kast skill references",
+        "kast skill callers"
+      ],
+      "forbidden_ops": [
+        "grep",
+        "rg"
+      ]
+    },
+    {
+      "id": "find-kotlin-usages",
+      "prompt": "Where is this Kotlin symbol used, and what code depends on it?",
+      "expected_skill": "kast",
+      "expected_route": "@kast",
+      "allowed_ops": [
+        "kast skill resolve",
+        "kast skill references",
+        "kast skill callers"
+      ],
+      "forbidden_ops": [
+        "grep",
+        "rg"
+      ]
+    },
+    {
+      "id": "rename-kotlin-symbol",
+      "prompt": "Rename this Kotlin symbol safely across the workspace and tell me what changed.",
+      "expected_skill": "kast",
+      "expected_route": "@kast",
+      "allowed_ops": [
+        "kast skill resolve",
+        "kast skill rename",
+        "kast skill diagnostics"
+      ],
+      "forbidden_ops": [
+        "grep",
+        "rg",
+        "sed"
+      ]
+    },
+    {
+      "id": "fix-kotlin-test",
+      "prompt": "Fix this failing Kotlin test by tracing the relevant production code and validating the edit.",
+      "expected_skill": "kast",
+      "expected_route": "@kast",
+      "allowed_ops": [
+        "kast skill scaffold",
+        "kast skill references",
+        "kast skill callers",
+        "kast skill write-and-validate",
+        "kast skill diagnostics"
+      ],
+      "forbidden_ops": [
+        "grep",
+        "rg"
+      ]
+    }
+  ]
+}

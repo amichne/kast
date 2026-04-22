@@ -20,6 +20,7 @@ repo_root = Path(sys.argv[1]).resolve()
 state_file = Path(sys.argv[2])
 
 required_skills = [
+    (repo_root / ".agents/skills/kast/SKILL.md").resolve(),
     (repo_root / ".agents/skills/refresh-affected-agents/SKILL.md").resolve(),
     (repo_root / ".agents/skills/llm-wiki/SKILL.md").resolve(),
 ]

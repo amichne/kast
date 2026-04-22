@@ -58,6 +58,16 @@ The installed skill directory includes:
 - **`agents/openai.yaml`** — OpenAI-compatible agent configuration
 - **`references/wrapper-openapi.yaml`** — OpenAPI specification for
   the `kast skill` subcommand surface
+- **`references/routing-improvement.md`** — the playbook for mining
+  transcripts and logs into routing evals
+- **`evals/routing.json`** — sanitized routing prompts used to keep
+  real-world trigger coverage stable
+- **`scripts/resolve-kast.sh`** — a portable helper that resolves the
+  Kast binary without repo-local hook paths
+- **`scripts/kast-session-start.sh`** — a compatibility helper that
+  prints an `export KAST_CLI_PATH=...` fragment
+- **`scripts/build-routing-corpus.py`** — builds sanitized routing cases
+  and promotion candidates from session exports and process logs
 
 ## How agents locate the Kast binary
 
@@ -72,6 +82,14 @@ the standard resolution flow (existing `KAST_CLI_PATH`, then `kast` on
 
 ```bash
 export KAST_CLI_PATH="$(bash .github/hooks/resolve-kast-cli-path.sh)"
+```
+
+If you are operating outside the repo hook environment, the installed skill
+also includes portable helpers:
+
+```console title="Use the installed compatibility helpers"
+eval "$(bash .agents/skills/kast/scripts/kast-session-start.sh)"
+python3 .agents/skills/kast/scripts/build-routing-corpus.py --help
 ```
 
 ## Next steps

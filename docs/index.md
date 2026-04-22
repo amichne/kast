@@ -15,9 +15,8 @@ compiler knows — symbol identity, caller relationships, reference
 exhaustiveness, and conflict-safe edit plans.
 
 ```mermaid
-flowchart LR
-    A["Your terminal, CI, or agent"] --> B["kast CLI"]
-    B --> C["JSON-RPC"]
+flowchart TD
+    A["Your terminal, CI, or agent"] --> C["kast CLI via JSON-RPC"]
     C --> D["Standalone daemon\n(any machine with Java 21)"]
     C --> E["IntelliJ plugin\n(reuses IDE index)"]
     D --> F["K2 Analysis API"]
@@ -52,10 +51,11 @@ protocol. [Learn more →](getting-started/backends.md)
 
 ## See it on your code
 
-`kast demo` runs an interactive comparison of grep-based text search versus
-Kast's semantic analysis on your own workspace. It picks a symbol, shows
-what grep gets wrong, then runs resolve, references, rename (dry-run), and
-call-hierarchy to show the difference.
+`kast demo` opens a live Kotter shell on your own workspace. It picks a symbol
+for you (or uses `--symbol`) and lets you switch between semantic references,
+rename dry-run, and incoming callers while keeping the grep baseline in view.
+Run it in a reasonably wide terminal; if the terminal is too narrow, Kast
+halts and tells you to resize before rerunning.
 
 ```console
 kast demo --workspace-root=/path/to/your/kotlin/project

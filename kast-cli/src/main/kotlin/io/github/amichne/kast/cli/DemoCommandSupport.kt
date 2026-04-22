@@ -1,8 +1,13 @@
 package io.github.amichne.kast.cli
 
+import com.varabyte.kotter.foundation.session
+import com.varabyte.kotter.runtime.terminal.Terminal
+import com.varabyte.kotter.terminal.system.SystemTerminal
+import com.varabyte.kotter.terminal.virtual.VirtualTerminal
 import io.github.amichne.kast.api.contract.CallDirection
 import io.github.amichne.kast.api.contract.CallHierarchyQuery
 import io.github.amichne.kast.api.contract.CallHierarchyResult
+import io.github.amichne.kast.api.contract.FileHash
 import io.github.amichne.kast.api.contract.FilePosition
 import io.github.amichne.kast.api.contract.ReferencesQuery
 import io.github.amichne.kast.api.contract.ReferencesResult
@@ -11,27 +16,17 @@ import io.github.amichne.kast.api.contract.RenameResult
 import io.github.amichne.kast.api.contract.Symbol
 import io.github.amichne.kast.api.contract.SymbolQuery
 import io.github.amichne.kast.api.contract.WorkspaceSymbolQuery
-import io.github.amichne.kast.cli.demo.CliServiceSymbolGraph
-import io.github.amichne.kast.cli.demo.DemoActs.act1TextSearchBaseline
-import io.github.amichne.kast.cli.demo.DemoActs.act2Semantic
-import io.github.amichne.kast.cli.demo.DemoActs.closingPanel
-import io.github.amichne.kast.cli.demo.DemoActs.comparisonSummary
-import io.github.amichne.kast.cli.demo.DemoActs.openingBanner
-import io.github.amichne.kast.cli.demo.DemoActs.targetPanel
-import io.github.amichne.kast.cli.demo.DemoRenderer
-import io.github.amichne.kast.cli.demo.DemoScript
-import io.github.amichne.kast.cli.demo.LineEmphasis
-import io.github.amichne.kast.cli.demo.FzfWalkerIO
-import io.github.amichne.kast.cli.demo.StreamWalkerIO
-import io.github.amichne.kast.cli.demo.SymbolDisplay
-import io.github.amichne.kast.cli.demo.SymbolWalker
-import io.github.amichne.kast.cli.demo.WalkerIO
-import io.github.amichne.kast.cli.demo.Timed
-import io.github.amichne.kast.cli.demo.demoScript
+import io.github.amichne.kast.cli.demo.KotterDemoBranchSpec
+import io.github.amichne.kast.cli.demo.KotterDemoOperationPresentation
+import io.github.amichne.kast.cli.demo.KotterDemoOperationScenario
+import io.github.amichne.kast.cli.demo.KotterDemoScenarioEvent
+import io.github.amichne.kast.cli.demo.KotterDemoSessionPresentation
+import io.github.amichne.kast.cli.demo.KotterDemoSessionScenario
+import io.github.amichne.kast.cli.demo.Paths
+import io.github.amichne.kast.cli.demo.renderCallTreePreview
+import io.github.amichne.kast.cli.demo.runKotterDemoSession
 import io.github.amichne.kast.cli.demo.timed
-import java.io.BufferedReader
 import java.io.Console
-import java.io.InputStreamReader
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.name
@@ -40,7 +35,7 @@ import kotlin.io.path.readLines
 /** Shared entry points used by [CliService.demo] and directly by unit tests. */
 internal class DemoCommandSupport(
     private val symbolChooser: DemoSymbolChooser = TerminalDemoSymbolChooser(),
-    private val themeProvider: () -> CliTextTheme = CliTextTheme::detect,
+    private val sessionRunner: KotterDemoSessionRunner = LiveKotterDemoSessionRunner(),
 ) {
     fun selectSymbol(
         options: DemoOptions,
@@ -161,68 +156,21 @@ internal class DemoCommandSupport(
         )
     }
 
-    /**
-     * Batch rendering used when the caller wants a complete transcript in
-     * one shot (older callers + unit tests). Builds the full scene tree,
-     * then renders it in a single pass.
-     */
-    fun render(report: DemoReport): String {
-        val renderer = newRenderer()
-        val script = demoScript {
-            openingBanner(report.workspaceRoot)
-            targetPanel(report.workspaceRoot, report.resolvedSymbol)
-            act1TextSearchBaseline(
-                workspaceRoot = report.workspaceRoot,
-                symbolName = report.resolvedSymbol.fqName.substringAfterLast('.'),
-                summary = report.textSearch,
-            )
-            act2Semantic(
-                workspaceRoot = report.workspaceRoot,
-                resolvedSymbol = report.resolvedSymbol,
-                references = report.references,
-                rename = report.rename,
-                callHierarchy = report.callHierarchy,
-            )
-            comparisonSummary(report)
-            closingPanel()
-        }
-        return renderer.render(script)
-    }
-
-    /**
-     * Streaming orchestrator. Gathers the analysis payload piece by piece,
-     * emits each scene to [sink] as it completes, optionally runs the
-     * interactive symbol-graph walker, and finally prints the comparison
-     * summary and closing panel. Returns the populated [DemoReport] so the
-     * caller can attach it to a runtime-aware result.
-     */
     suspend fun runInteractive(
         options: DemoOptions,
         cliService: CliService,
-        sink: (String) -> Unit,
-        reader: BufferedReader?,
-        walkerEnabled: Boolean,
-    ): DemoReport {
-        val renderer = newRenderer()
-        fun emit(script: DemoScript) = sink(renderer.render(script))
-
-        emit(demoScript { openingBanner(options.workspaceRoot) })
-
+    ): DemoPlaybackResult {
         val runtimeOptions = RuntimeCommandOptions(
             workspaceRoot = options.workspaceRoot,
             backendName = options.backend,
             waitTimeoutMillis = 180_000L,
         )
 
-        emit(demoScript { progress("Warming workspace daemon (kast workspace ensure)...") })
         val warm = timed { cliService.workspaceEnsure(runtimeOptions) }
-        emit(stepOutcomeScript("workspace ensure", warm))
-        warm.value.getOrThrow()
+        val runtime = warm.value.getOrThrow()
 
-        emit(demoScript { progress("Discovering workspace symbols (kast workspace-symbol)...") })
         val searchQuery = workspaceSymbolQueryFor(options.symbolFilter)
         val symbolSearch = timed { cliService.workspaceSymbolSearch(runtimeOptions, searchQuery) }
-        emit(stepOutcomeScript("workspace symbol search", symbolSearch))
         val symbolPayload = symbolSearch.value.getOrThrow().payload
 
         val selectedSymbol = selectSymbol(options, symbolPayload.symbols)
@@ -231,17 +179,7 @@ internal class DemoCommandSupport(
             offset = selectedSymbol.location.startOffset,
         )
 
-        emit(demoScript { targetPanel(options.workspaceRoot, selectedSymbol) })
-
-        emit(demoScript { progress("Classifying grep matches for ${selectedSymbol.fqName.substringAfterLast('.')}...") })
         val textSearch = analyzeTextSearch(options.workspaceRoot, selectedSymbol)
-        emit(demoScript {
-            act1TextSearchBaseline(
-                workspaceRoot = options.workspaceRoot,
-                symbolName = selectedSymbol.fqName.substringAfterLast('.'),
-                summary = textSearch,
-            )
-        })
 
         val resolved = timed {
             cliService.resolveSymbol(runtimeOptions, SymbolQuery(position = symbolPosition))
@@ -280,47 +218,6 @@ internal class DemoCommandSupport(
         }
         val callHierarchyPayload = callHierarchy.value.getOrThrow().payload
 
-        emit(demoScript {
-            act2Semantic(
-                workspaceRoot = options.workspaceRoot,
-                resolvedSymbol = resolvedSymbol,
-                references = referencesPayload,
-                rename = renamePayload,
-                callHierarchy = callHierarchyPayload,
-            )
-        })
-
-        if (walkerEnabled && reader != null) {
-            val base: WalkerIO = StreamWalkerIO(reader = reader, output = sink)
-            val io: WalkerIO = FzfWalkerIO.locateFzf()
-                ?.takeIf { System.console() != null }
-                ?.let { FzfWalkerIO(delegate = base, fzfPath = it) }
-                ?: base
-            val walker = SymbolWalker(
-                workspaceRoot = options.workspaceRoot,
-                graph = CliServiceSymbolGraph(cliService, runtimeOptions),
-                io = io,
-                renderer = renderer,
-                theme = themeProvider(),
-                display = SymbolDisplay(
-                    workspaceRoot = options.workspaceRoot,
-                    verbose = options.verbose,
-                ),
-            )
-            walker.run(resolvedSymbol)
-        } else {
-            emit(demoScript {
-                section("Act 3 · walk the symbol graph")
-                panel("interactive walker · skipped") {
-                    line(
-                        text = "pass --walk=true with a real terminal to hop between references, callers, and callees.",
-                        emphasis = LineEmphasis.DIM,
-                    )
-                }
-                blank()
-            })
-        }
-
         val report = DemoReport(
             workspaceRoot = options.workspaceRoot,
             selectedSymbol = selectedSymbol,
@@ -331,28 +228,185 @@ internal class DemoCommandSupport(
             callHierarchy = callHierarchyPayload,
         )
 
-        emit(demoScript {
-            comparisonSummary(report)
-            closingPanel()
-        })
-
-        return report
+        sessionRunner.run(presentationFor(report))
+        return DemoPlaybackResult(report = report, runtime = runtime)
     }
 
-    private fun newRenderer(): DemoRenderer = DemoRenderer(theme = themeProvider())
+    internal fun presentationFor(report: DemoReport): KotterDemoSessionPresentation {
+        val operations = listOf(
+            referencesOperation(report),
+            renameOperation(report),
+            callersOperation(report),
+        )
+        return KotterDemoSessionPresentation(
+            scenario = KotterDemoSessionScenario(
+                initialOperationId = operations.first().id,
+                operations = operations.map(DemoOperationPlayback::toScenario),
+            ),
+            operations = operations.map(DemoOperationPlayback::toPresentation),
+        )
+    }
 
-    private fun stepOutcomeScript(message: String, outcome: Timed<Result<*>>): DemoScript = demoScript {
-        step(message) {
-            if (outcome.value.isSuccess) success(outcome.elapsed) else failure(outcome.elapsed)
-            if (outcome.value.isFailure) {
-                body {
-                    line(
-                        text = outcome.value.exceptionOrNull()?.message ?: "unknown failure",
-                        emphasis = LineEmphasis.ERROR,
-                    )
-                }
-            }
+    private fun referencesOperation(report: DemoReport): DemoOperationPlayback {
+        val symbolName = report.resolvedSymbol.fqName
+        val references = report.references.references
+        return DemoOperationPlayback(
+            id = "references",
+            label = "Find References",
+            shortcutKey = 'f',
+            query = "kast references --symbol $symbolName",
+            phases = listOf(
+                DemoPhasePlayback(
+                    id = "resolve",
+                    lines = listOf(
+                        "resolve ${report.resolvedSymbol.kind.name.lowercase()} $symbolName",
+                        "declaration ${Paths.locationLine(report.workspaceRoot, report.resolvedSymbol.location)}",
+                    ),
+                ),
+                DemoPhasePlayback(
+                    id = "search",
+                    lines = buildList {
+                        add("semantic references ${references.size}")
+                        add("grep baseline ${report.textSearch.totalMatches} matches / ${report.textSearch.falsePositives} false positives")
+                        references.take(REFERENCE_PREVIEW_LIMIT).forEach { reference ->
+                            add("${Paths.locationLine(report.workspaceRoot, reference)}  ${reference.preview.trim().take(LIVE_LINE_PREVIEW_LIMIT)}")
+                        }
+                        if (references.size > REFERENCE_PREVIEW_LIMIT) {
+                            add("... and ${references.size - REFERENCE_PREVIEW_LIMIT} more semantic hits")
+                        }
+                    },
+                ),
+                DemoPhasePlayback(
+                    id = "summarize",
+                    lines = buildList {
+                        report.references.searchScope?.let { scope ->
+                            add("scope ${scope.scope} exhaustive=${scope.exhaustive}")
+                            add("searched ${scope.searchedFileCount}/${scope.candidateFileCount} candidate files")
+                        } ?: add("search scope unavailable")
+                        add("declaration included ${report.references.declaration != null}")
+                    },
+                ),
+            ),
+        )
+    }
+
+    private fun renameOperation(report: DemoReport): DemoOperationPlayback {
+        val symbolName = report.resolvedSymbol.fqName
+        val renamed = "${report.resolvedSymbol.fqName.substringAfterLast('.')}Renamed"
+        return DemoOperationPlayback(
+            id = "rename",
+            label = "Rename Dry Run",
+            shortcutKey = 'n',
+            query = "kast rename --symbol $symbolName --new-name $renamed --dry-run",
+            branches = renameBranches(report),
+            phases = listOf(
+                DemoPhasePlayback(
+                    id = "resolve",
+                    lines = listOf(
+                        "resolve rename target $symbolName",
+                        "compare against grep touching ${report.textSearch.filesTouched} files blindly",
+                    ),
+                ),
+                DemoPhasePlayback(
+                    id = "plan",
+                    lines = buildList {
+                        add("dry run edits ${report.rename.edits.size}")
+                        add("affected files ${report.rename.affectedFiles.size}")
+                        report.rename.affectedFiles.take(RENAME_FILE_PREVIEW_LIMIT).forEach { filePath ->
+                            add(Paths.relative(report.workspaceRoot, filePath))
+                        }
+                        if (report.rename.affectedFiles.size > RENAME_FILE_PREVIEW_LIMIT) {
+                            add("... and ${report.rename.affectedFiles.size - RENAME_FILE_PREVIEW_LIMIT} more affected files")
+                        }
+                    },
+                ),
+                DemoPhasePlayback(
+                    id = "verify",
+                    lines = listOf(
+                        "preimage hashes ${report.rename.fileHashes.size}",
+                        "semantic plan avoids ${report.textSearch.falsePositives} grep false positives",
+                    ),
+                ),
+            ),
+        )
+    }
+
+    private fun callersOperation(report: DemoReport): DemoOperationPlayback {
+        val symbolName = report.resolvedSymbol.fqName
+        val callTree = renderCallTreePreview(report.workspaceRoot, report.callHierarchy.root)
+        return DemoOperationPlayback(
+            id = "callers",
+            label = "Incoming Callers",
+            shortcutKey = 'c',
+            query = "kast call-hierarchy --symbol $symbolName --direction incoming --depth 2",
+            phases = listOf(
+                DemoPhasePlayback(
+                    id = "resolve",
+                    lines = listOf(
+                        "resolve incoming-call target $symbolName",
+                        "grep cannot recover caller identity from substrings alone",
+                    ),
+                ),
+                DemoPhasePlayback(
+                    id = "walk",
+                    lines = buildList {
+                        add("incoming callers ${report.callHierarchy.stats.totalNodes}")
+                        callTree.take(CALL_TREE_PREVIEW_LIMIT).forEach(::add)
+                        if (callTree.size > CALL_TREE_PREVIEW_LIMIT) {
+                            add("... and ${callTree.size - CALL_TREE_PREVIEW_LIMIT} more nodes")
+                        }
+                    },
+                ),
+                DemoPhasePlayback(
+                    id = "summarize",
+                    lines = buildList {
+                        add("max depth ${report.callHierarchy.stats.maxDepthReached}")
+                        add("files visited ${report.callHierarchy.stats.filesVisited}")
+                        if (report.callHierarchy.stats.timeoutReached || report.callHierarchy.stats.maxTotalCallsReached) {
+                            add("results truncated before the full graph completed")
+                        } else {
+                            add("graph completed without backend truncation")
+                        }
+                    },
+                ),
+            ),
+        )
+    }
+
+    private fun renameBranches(report: DemoReport): List<KotterDemoBranchSpec> {
+        if (report.rename.affectedFiles.isEmpty()) return emptyList()
+
+        val editsByFile = report.rename.edits.groupingBy { it.filePath }.eachCount()
+        val hashedFiles = report.rename.fileHashes.mapTo(linkedSetOf(), FileHash::filePath)
+        val visibleFiles = when {
+            report.rename.affectedFiles.size <= RENAME_BRANCH_COLUMN_LIMIT -> report.rename.affectedFiles
+            else -> report.rename.affectedFiles.take(RENAME_BRANCH_COLUMN_LIMIT - 1)
         }
+
+        val visibleBranches = visibleFiles.map { filePath ->
+            KotterDemoBranchSpec(
+                header = Paths.fileName(filePath),
+                lines = listOf(
+                    "${editsByFile[filePath] ?: 0} planned edits",
+                    if (filePath in hashedFiles) "hash guard ready" else "hash guard unavailable",
+                ),
+                summary = Paths.relative(report.workspaceRoot, filePath),
+            )
+        }
+
+        val overflowCount = report.rename.affectedFiles.size - visibleFiles.size
+        if (overflowCount <= 0) return visibleBranches
+
+        val overflowFiles = report.rename.affectedFiles.drop(visibleFiles.size)
+        val overflowEdits = overflowFiles.sumOf { filePath -> editsByFile[filePath] ?: 0 }
+        return visibleBranches + KotterDemoBranchSpec(
+            header = "+$overflowCount more",
+            lines = listOf(
+                "$overflowCount additional files",
+                "$overflowEdits additional edits",
+            ),
+            summary = "dry-run output contains the full plan",
+        )
     }
 
     private fun symbolMatchesFilter(
@@ -405,7 +459,7 @@ internal class DemoCommandSupport(
         segmentName.startsWith(".") || segmentName in IGNORED_DIRECTORIES
     }
 
-    private companion object {
+    companion object {
         val IGNORED_DIRECTORIES = setOf(
             ".git",
             ".gradle",
@@ -417,9 +471,85 @@ internal class DemoCommandSupport(
             "build-logic",
             "buildSrc",
         )
+        const val CALL_TREE_PREVIEW_LIMIT = 8
+        const val LIVE_LINE_PREVIEW_LIMIT = 72
+        const val REFERENCE_PREVIEW_LIMIT = 5
+        const val RENAME_FILE_PREVIEW_LIMIT = 6
+        const val RENAME_BRANCH_COLUMN_LIMIT = 3
+        const val SCENARIO_LINE_DELAY_MILLIS = 90L
+        const val SCENARIO_PHASE_DELAY_MILLIS = 150L
         const val SAMPLE_MATCH_LIMIT = 12
     }
 }
+
+internal data class DemoPlaybackResult(
+    val report: DemoReport,
+    val runtime: WorkspaceEnsureResult,
+)
+
+internal fun interface KotterDemoSessionRunner {
+    fun run(presentation: KotterDemoSessionPresentation)
+}
+
+internal class LiveKotterDemoSessionRunner(
+    private val terminalFactory: () -> Terminal = ::defaultKotterDemoTerminal,
+) : KotterDemoSessionRunner {
+    override fun run(presentation: KotterDemoSessionPresentation) {
+        val terminal = terminalFactory()
+        session(terminal = terminal, clearTerminal = true) {
+            runKotterDemoSession(
+                presentation = presentation,
+                terminalWidth = terminal.width,
+                clearScreen = terminal::clear,
+            )
+        }
+    }
+}
+
+private fun defaultKotterDemoTerminal(): Terminal =
+    runCatching { SystemTerminal() }
+        .getOrElse { VirtualTerminal.create() }
+
+private data class DemoOperationPlayback(
+    val id: String,
+    val label: String,
+    val shortcutKey: Char,
+    val query: String,
+    val phases: List<DemoPhasePlayback>,
+    val branches: List<KotterDemoBranchSpec> = emptyList(),
+) {
+    fun toScenario(): KotterDemoOperationScenario {
+        var currentAt = 0L
+        val events = buildList {
+            phases.forEach { phase ->
+                phase.lines.forEach { line ->
+                    currentAt += DemoCommandSupport.SCENARIO_LINE_DELAY_MILLIS
+                    add(KotterDemoScenarioEvent.Line(atMillis = currentAt, phaseId = phase.id, text = line))
+                }
+                currentAt += DemoCommandSupport.SCENARIO_PHASE_DELAY_MILLIS
+                add(KotterDemoScenarioEvent.Milestone(atMillis = currentAt, phaseId = phase.id))
+            }
+        }
+        return KotterDemoOperationScenario(
+            id = id,
+            phases = phases.map(DemoPhasePlayback::id),
+            events = events,
+        )
+    }
+
+    fun toPresentation(): KotterDemoOperationPresentation = KotterDemoOperationPresentation(
+        id = id,
+        label = label,
+        shortcutKey = shortcutKey,
+        query = query,
+        branches = branches,
+    )
+}
+
+private data class DemoPhasePlayback(
+    val id: String,
+    val lines: List<String>,
+)
 
 internal fun interface DemoSymbolChooser {
     fun choose(candidates: List<Symbol>): Symbol
@@ -485,7 +615,3 @@ internal data class DemoReport(
     val rename: RenameResult,
     val callHierarchy: CallHierarchyResult,
 )
-
-/** Convenience reader for CLI plumbing. */
-internal fun defaultDemoReader(): BufferedReader =
-    BufferedReader(InputStreamReader(System.`in`, Charsets.UTF_8))

@@ -118,10 +118,17 @@ class EvalSkillCommandTest {
               display_name: "Kast"
               default_prompt: >
                 Invoke kast skill subcommands via the CLI path hook.
+
+            policy:
+              allow_implicit_invocation: true
             """.trimIndent(),
         )
 
+        val evals = skillDir.resolve("evals").createDirectories()
+        evals.resolve("routing.json").writeText("""{"skill_name":"kast","suite":"routing","evals":[]}""")
+
         val refs = skillDir.resolve("references").createDirectories()
+        refs.resolve("routing-improvement.md").writeText("# Routing improvement\n")
         refs.resolve("wrapper-openapi.yaml").writeText(
             """
             openapi: '3.0.0'
@@ -133,6 +140,14 @@ class EvalSkillCommandTest {
             x-command: kast skill scaffold
             x-command: kast skill write-and-validate
             x-command: kast skill workspace-files
+            """.trimIndent(),
+        )
+
+        val scripts = skillDir.resolve("scripts").createDirectories()
+        scripts.resolve("build-routing-corpus.py").writeText(
+            """
+            #!/usr/bin/env python3
+            print("ok")
             """.trimIndent(),
         )
 

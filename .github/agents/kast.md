@@ -1,15 +1,11 @@
 ---
 name: kast
-description: "Kast-first Kotlin semantic analysis orchestrator. Routes tasks to @explore, @plan, or @edit and uses native `kast skill` subcommands."
+description: "Use this agent for Kotlin code understanding, tracing, debugging, refactoring, workspace mapping, or safe edits — especially when developers say things like 'understand this Kotlin file', 'trace this flow', 'where is this used', 'who calls this', 'rename this symbol', or 'fix this Kotlin test'. Route the work through native `kast skill` commands and the dedicated sub-agents."
 tools:
   - runInTerminal
   - codebase
   - search
   - editFiles
-agents:
-  - explore
-  - plan
-  - edit
 ---
 
 # Kast orchestrator

@@ -6,8 +6,10 @@ import kotlin.time.Duration
 import kotlin.time.DurationUnit
 
 /**
- * Pure rendering of a [DemoScript] into an ANSI (or plain-text) transcript.
- * Kept host-free so tests can assert against the exact string output.
+ * Pure rendering of the small walker-card [DemoScript] model.
+ *
+ * Kept host-free so the interactive walker can render boxed cards and prompts
+ * without depending on the Kotter runtime.
  */
 internal class DemoRenderer(
     private val theme: CliTextTheme,
@@ -22,10 +24,7 @@ internal class DemoRenderer(
         when (scene) {
             is DemoScene.Panel -> renderPanel(scene)
             is DemoScene.SectionHeading -> renderSectionHeading(scene)
-            is DemoScene.StepProgress -> appendLine("${styleIcon("›", "1;34")} ${scene.message}")
             is DemoScene.StepOutcome -> renderStepOutcome(scene)
-            is DemoScene.StepBody -> renderStepBody(scene)
-            is DemoScene.ComparisonTable -> renderComparisonTable(scene)
             is DemoScene.BlankLine -> appendLine()
         }
     }
@@ -87,79 +86,6 @@ internal class DemoRenderer(
         }
         val elapsed = outcome.elapsed?.let { " ${styleAnsi("2", "(${formatDuration(it)})")}" } ?: ""
         appendLine("$icon ${outcome.message}$elapsed")
-    }
-
-    private fun StringBuilder.renderStepBody(body: DemoScene.StepBody) {
-        body.lines.forEach { line ->
-            val tag = when (line.tag) {
-                BodyLineTag.NONE -> ""
-                BodyLineTag.COMMENT -> " ${styleAnsi("2", "← comment")}"
-                BodyLineTag.STRING -> " ${styleAnsi("2", "← string")}"
-                BodyLineTag.IMPORT -> " ${styleAnsi("2", "← import")}"
-                BodyLineTag.SUBSTRING -> " ${styleAnsi("2", "← substring")}"
-                BodyLineTag.CORRECT -> ""
-            }
-            if (line.text.isEmpty() && line.tag == BodyLineTag.NONE) {
-                appendLine()
-                return@forEach
-            }
-            val prefix = styleAnsi("2", "  │ ")
-            appendLine("$prefix${emphasise(line.emphasis, line.text)}$tag")
-        }
-    }
-
-    private fun StringBuilder.renderComparisonTable(table: DemoScene.ComparisonTable) {
-        val natMetric = max(table.header.first.length, table.rows.maxOfOrNull { it.first.length } ?: 0)
-        val natLeft = max(table.header.second.length, table.rows.maxOfOrNull { it.second.length } ?: 0)
-        val natRight = max(table.header.third.length, table.rows.maxOfOrNull { it.third.length } ?: 0)
-        // Budget: width - (4 vertical bars + 6 single-space pads) = width - 10.
-        val budget = max(natMetric + 12, width - 10)
-        val metricCap = natMetric.coerceAtMost((budget * 0.22).toInt().coerceAtLeast(12))
-        val remaining = (budget - metricCap).coerceAtLeast(24)
-        val (leftCap, rightCap) = splitProportional(remaining, natLeft, natRight)
-
-        val pipe = styleAnsi("1;36", "│")
-        fun ruler(left: String, mid: String, right: String): String =
-            "${styleAnsi("1;36", left)}${styleAnsi("1;36", "─".repeat(metricCap + 2))}${styleAnsi("1;36", mid)}${styleAnsi("1;36", "─".repeat(leftCap + 2))}${styleAnsi("1;36", mid)}${styleAnsi("1;36", "─".repeat(rightCap + 2))}${styleAnsi("1;36", right)}"
-
-        val top = ruler("┌", "┬", "┐")
-        val mid = ruler("├", "┼", "┤")
-        val bottom = ruler("└", "┴", "┘")
-
-        fun renderRow(row: Triple<String, String, String>, strongRight: Boolean) {
-            val metricSegs = wrapForWidth(row.first, metricCap)
-            val leftSegs = wrapForWidth(row.second, leftCap)
-            val rightSegs = wrapForWidth(row.third, rightCap)
-            val rows = maxOf(metricSegs.size, leftSegs.size, rightSegs.size)
-            for (r in 0 until rows) {
-                val metric = (metricSegs.getOrNull(r) ?: "").padEnd(metricCap)
-                val left = (leftSegs.getOrNull(r) ?: "").padEnd(leftCap)
-                val rightRaw = rightSegs.getOrNull(r) ?: ""
-                val right = if (strongRight) styleAnsi("1;37", rightRaw) else rightRaw
-                val rightPad = padTo(rightRaw.length, rightCap)
-                appendLine("$pipe $metric $pipe $left $pipe $right$rightPad $pipe")
-            }
-        }
-
-        appendLine(top)
-        renderRow(table.header, strongRight = true)
-        appendLine(mid)
-        table.rows.forEachIndexed { index, row ->
-            renderRow(row, strongRight = true)
-            if (index < table.rows.size - 1) appendLine(mid)
-        }
-        appendLine(bottom)
-    }
-
-    /** Split [budget] between two natural widths, never shrinking either below [MIN_CELL]. */
-    private fun splitProportional(budget: Int, leftNatural: Int, rightNatural: Int): Pair<Int, Int> {
-        val total = (leftNatural + rightNatural).coerceAtLeast(1)
-        val leftShare = ((budget.toDouble() * leftNatural) / total).toInt().coerceAtLeast(MIN_CELL)
-        val rightShare = (budget - leftShare).coerceAtLeast(MIN_CELL)
-        // Don't blow past the natural size — leaves breathing room when the
-        // terminal is wider than the content.
-        return leftShare.coerceAtMost(leftNatural.coerceAtLeast(MIN_CELL)) to
-            rightShare.coerceAtMost(rightNatural.coerceAtLeast(MIN_CELL))
     }
 
     private fun emphasise(emphasis: LineEmphasis, text: String): String = when (emphasis) {
@@ -272,6 +198,5 @@ internal class DemoRenderer(
     companion object {
         const val DEFAULT_WIDTH: Int = 96
         const val MIN_PANEL_WIDTH: Int = 58
-        const val MIN_CELL: Int = 10
     }
 }

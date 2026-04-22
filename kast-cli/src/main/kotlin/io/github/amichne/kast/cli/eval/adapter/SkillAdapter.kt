@@ -28,9 +28,11 @@ internal class SkillAdapter(private val skillDir: Path) {
 
         checks += checkSkillMdExists()
         checks += checkAgentInterfaceExists()
+        checks += checkAgentInterfaceAllowsImplicitInvocation()
         checks += checkLegacyWrappersRemoved()
         checks += checkSkillMdHasTriggerPhrases()
         checks += checkWrapperOpenApiExists()
+        checks += checkRoutingImprovementAssets()
         checks += checkWrapperCompleteness()
 
         val budget = estimateBudget()
@@ -89,9 +91,40 @@ internal class SkillAdapter(private val skillDir: Path) {
         )
     }
 
+    private fun checkAgentInterfaceAllowsImplicitInvocation(): EvalCheck {
+        val openAiYaml = skillDir.resolve("agents/openai.yaml")
+        if (!openAiYaml.exists()) {
+            return EvalCheck(
+                id = "structural-agent-interface-implicit-invocation",
+                category = "structural",
+                severity = EvalSeverity.WARNING,
+                status = EvalStatus.WARN,
+                message = "Cannot check implicit invocation policy: agents/openai.yaml missing",
+                remediation = "Create agents/openai.yaml and set policy.allow_implicit_invocation to true",
+            )
+        }
+        val content = openAiYaml.readText()
+        val allowImplicit = content.contains("allow_implicit_invocation: true")
+        return EvalCheck(
+            id = "structural-agent-interface-implicit-invocation",
+            category = "structural",
+            severity = EvalSeverity.WARNING,
+            status = if (allowImplicit) EvalStatus.PASS else EvalStatus.WARN,
+            message = if (allowImplicit) {
+                "agents/openai.yaml explicitly allows implicit invocation"
+            } else {
+                "agents/openai.yaml does not explicitly allow implicit invocation"
+            },
+            remediation = if (!allowImplicit) {
+                "Set policy.allow_implicit_invocation to true in agents/openai.yaml"
+            } else {
+                null
+            },
+        )
+    }
+
     private fun checkLegacyWrappersRemoved(): EvalCheck {
         val legacyPaths = buildList {
-            add(skillDir.resolve("scripts"))
             listOf("kast.md", "explore.md", "plan.md", "edit.md").forEach {
                 add(skillDir.resolve("agents/$it"))
             }
@@ -112,6 +145,25 @@ internal class SkillAdapter(private val skillDir: Path) {
             },
             remediation = if (present.isNotEmpty()) {
                 "Remove the legacy artifacts and rely on native `kast skill` subcommands invoked via \$KAST_CLI_PATH"
+            } else {
+                null
+            },
+        )
+    }
+
+    private fun checkRoutingImprovementAssets(): EvalCheck {
+        val routingEvalExists = skillDir.resolve("evals/routing.json").exists()
+        val routingScriptExists = skillDir.resolve("scripts/build-routing-corpus.py").exists()
+        val routingReferenceExists = skillDir.resolve("references/routing-improvement.md").exists()
+        val allPresent = routingEvalExists && routingScriptExists && routingReferenceExists
+        return EvalCheck(
+            id = "structural-routing-improvement-assets",
+            category = "structural",
+            severity = EvalSeverity.WARNING,
+            status = if (allPresent) EvalStatus.PASS else EvalStatus.WARN,
+            message = "routing-evals=$routingEvalExists, routing-script=$routingScriptExists, routing-reference=$routingReferenceExists",
+            remediation = if (!allPresent) {
+                "Add evals/routing.json, scripts/build-routing-corpus.py, and references/routing-improvement.md"
             } else {
                 null
             },

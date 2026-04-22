@@ -8,6 +8,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -58,6 +59,23 @@ class PackagedSkillJsonContractTest {
             "KAST_CONFIG_HOME" to configHome.toString(),
             "KAST_WORKSPACE_ROOT" to workspaceRoot.toString(),
         )
+
+        assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/scripts/resolve-kast.sh")))
+        assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/scripts/kast-session-start.sh")))
+        assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/scripts/build-routing-corpus.py")))
+        assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/evals/routing.json")))
+        assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/references/routing-improvement.md")))
+
+        val resolveScriptResult = runCommand(
+            command = listOf(
+                "bash",
+                installedSkillDir.resolve("kast/scripts/resolve-kast.sh").toString(),
+            ),
+            env = wrapperEnv,
+        )
+        assertEquals(0, resolveScriptResult.exitCode, "stderr: ${resolveScriptResult.stderr}")
+        assertTrue(resolveScriptResult.stdout.contains("kast-cli"))
+        assertFalse(resolveScriptResult.stdout.contains(" "))
 
         val resolveRequest = buildJsonObject {
             put("workspaceRoot", workspaceRoot.toString())

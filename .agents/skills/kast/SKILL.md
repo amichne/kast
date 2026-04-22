@@ -6,23 +6,27 @@ description: >
   against Kotlin code. It exposes a live analysis daemon through a single
   binary — resolve symbols, find references, expand call hierarchies,
   rename safely across the workspace, scaffold new implementations, and
-  apply edits with automatic diagnostics. Trigger on any request that
-  mentions "kast", "resolve symbol", "find references", "who calls",
-  "call hierarchy", "incoming/outgoing callers", "rename symbol",
-  "refactor", "run diagnostics", "apply edits", "scaffold", "semantic
-  analysis", "symbol at offset", "workspace files", "workspace symbol",
-  or any IDE-style operation on Kotlin. Prefer this over text search
-  and manual edits for anything that touches Kotlin identity — text
-  matches will lie about overloads, extensions, and supertypes; kast
-  will not.
+  apply edits with automatic diagnostics. Trigger on Kotlin requests such
+  as "understand this Kotlin file", "trace this flow", "where is this
+  used", "who calls this", "rename this symbol", "fix this Kotlin test",
+  "workspace files", "workspace symbol", "semantic analysis", or any
+  IDE-style operation on Kotlin. Prefer this over text search and manual
+  edits for anything that touches Kotlin identity — text matches will lie
+  about overloads, extensions, and supertypes; kast will not.
 ---
 
 # Kast
 
 IDE-grade Kotlin analysis and refactoring, exposed as a single executable
-that speaks JSON in / JSON out. A companion hook guarantees
-`KAST_CLI_PATH` points at the binary before this skill runs, so every
-command in this document invokes `"$KAST_CLI_PATH"` directly.
+that speaks JSON in / JSON out. A companion hook or helper script should
+guarantee `KAST_CLI_PATH` points at the binary before this skill runs, so
+every command in this document invokes `"$KAST_CLI_PATH"` directly.
+
+For portable installs, use `scripts/resolve-kast.sh` to resolve the Kast
+binary and `scripts/kast-session-start.sh` to print an
+`export KAST_CLI_PATH=...` fragment suitable for:
+
+    eval "$(bash .agents/skills/kast/scripts/kast-session-start.sh)"
 
 ## Shape of every call
 
@@ -302,3 +306,26 @@ Regression-check this skill against the CLI it targets:
 The evaluator scans this directory, checks structural, contract, and
 completeness invariants, estimates the token budget, and emits a scored
 result that's comparable across revisions.
+
+## Routing improvement
+
+Use this workflow when Kotlin-semantic requests are being handled with raw
+search or when the skill is loading less often than expected.
+
+1. Export real sessions as Markdown with `/share`.
+2. Keep the raw exports and Copilot process logs immutable.
+3. Run the routing corpus builder:
+
+       python3 .agents/skills/kast/scripts/build-routing-corpus.py \
+         --session-dir=/path/to/shared-exports \
+         --logs-dir=/path/to/copilot/logs \
+         --output-jsonl=build/skill-routing/routing-cases.jsonl \
+         --output-markdown=build/skill-routing/routing-summary.md \
+         --output-promotions=build/skill-routing/promotion-candidates.json
+
+4. Review the sanitized promotion candidates and move durable misses into
+   `evals/routing.json`.
+5. Re-run `"$KAST_CLI_PATH" eval skill --compare=baseline.json`.
+
+Read `references/routing-improvement.md` before changing trigger text,
+`agents/openai.yaml`, or the routing eval corpus.

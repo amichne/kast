@@ -2,8 +2,8 @@ interface:
   display_name: "Kast"
   short_description: "IDE-grade Kotlin semantic analysis via `kast skill` subcommands"
   default_prompt: >
-    Treat `.agents/skills/kast/SKILL.md` as the sole source of truth.
-    Invoke `"$KAST_CLI_PATH" skill <command> <json>` with a single JSON
-    argument matching `references/wrapper-openapi.yaml` — camelCase in,
-    snake_case out. `KAST_CLI_PATH` is set by a companion hook before
-    the skill runs.
+    Use $kast to understand Kotlin code, trace usages and callers, rename
+    symbols safely, and validate edits with native `kast skill` subcommands.
+
+policy:
+  allow_implicit_invocation: true

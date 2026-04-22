@@ -58,6 +58,28 @@ class SkillAdapterTest {
     }
 
     @Test
+    fun `scan flags missing implicit invocation policy`() {
+        val skillDir = createMinimalSkill()
+        skillDir.resolve("agents/openai.yaml").writeText(
+            """
+            interface:
+              display_name: "Kast"
+            """.trimIndent(),
+        )
+        val descriptor = SkillAdapter(skillDir).scan()
+        val check = descriptor.checks.first { it.id == "structural-agent-interface-implicit-invocation" }
+        assertEquals(EvalStatus.WARN, check.status)
+    }
+
+    @Test
+    fun `scan checks routing improvement assets`() {
+        val skillDir = createMinimalSkill()
+        val descriptor = SkillAdapter(skillDir).scan()
+        val check = descriptor.checks.first { it.id == "structural-routing-improvement-assets" }
+        assertEquals(EvalStatus.PASS, check.status)
+    }
+
+    @Test
     fun `scan flags lingering legacy artifacts`() {
         val skillDir = createMinimalSkill()
         skillDir.resolve("agents/kast.md").writeText("stale")
@@ -161,10 +183,17 @@ class SkillAdapterTest {
               display_name: "Kast"
               default_prompt: >
                 Invoke kast skill subcommands via the CLI path hook.
+
+            policy:
+              allow_implicit_invocation: true
             """.trimIndent(),
         )
 
+        val evals = skillDir.resolve("evals").createDirectories()
+        evals.resolve("routing.json").writeText("""{"skill_name":"kast","suite":"routing","evals":[]}""")
+
         val refs = skillDir.resolve("references").createDirectories()
+        refs.resolve("routing-improvement.md").writeText("# Routing improvement\n")
         refs.resolve("wrapper-openapi.yaml").writeText(
             """
             openapi: '3.0.0'
@@ -176,6 +205,14 @@ class SkillAdapterTest {
             x-command: kast skill scaffold
             x-command: kast skill write-and-validate
             x-command: kast skill workspace-files
+            """.trimIndent(),
+        )
+
+        val scripts = skillDir.resolve("scripts").createDirectories()
+        scripts.resolve("build-routing-corpus.py").writeText(
+            """
+            #!/usr/bin/env python3
+            print("ok")
             """.trimIndent(),
         )
 
