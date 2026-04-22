@@ -46,7 +46,7 @@ class KotterDemoOrchestrationTest {
     }
 
     @Test
-    fun `completed phase output flushes into aside while the next phase stays live`() {
+    fun `completed phase output accumulates in rolling transcript alongside live line`() {
         val terminal = TestInMemoryTerminal()
         val runner = startSession(terminal, sessionPresentation())
 
@@ -55,8 +55,8 @@ class KotterDemoOrchestrationTest {
         }
 
         val lines = terminal.visibleLines()
-        assertTrue(lines.any { "[rename] resolve target symbol" in it }, "expected flushed resolve output in aside")
-        assertTrue(lines.any { "[rename] fan out rename branches" in it }, "expected active traversal output in live area")
+        assertTrue(lines.any { "[rename] resolve target symbol" in it }, "expected completed resolve output in rolling transcript")
+        assertTrue(lines.any { "[rename] fan out rename branches" in it }, "expected active traversal output in rolling transcript")
 
         terminal.press(Keys.Q)
         assertSessionStopped(runner)

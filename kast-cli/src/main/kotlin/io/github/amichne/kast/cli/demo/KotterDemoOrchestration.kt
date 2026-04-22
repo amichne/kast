@@ -7,7 +7,6 @@ import com.varabyte.kotter.foundation.input.Key
 import com.varabyte.kotter.foundation.input.Keys
 import com.varabyte.kotter.foundation.input.onKeyPressed
 import com.varabyte.kotter.foundation.input.runUntilKeyPressed
-import com.varabyte.kotter.foundation.render.aside
 import com.varabyte.kotter.foundation.text.red
 import com.varabyte.kotter.foundation.text.textLine
 import com.varabyte.kotter.foundation.text.yellow
@@ -155,15 +154,7 @@ private fun Session.runKotterDemoOperation(
         }
 
         section.coroutineScope.launch {
-            var emittedAsideCount = 0
             controller.states().collect { snapshot ->
-                val newAsideLines = snapshot.asideLines.drop(emittedAsideCount)
-                if (newAsideLines.isNotEmpty()) {
-                    aside {
-                        renderStreamBlock(newAsideLines.toStreamBlock())
-                    }
-                }
-                emittedAsideCount = snapshot.asideLines.size
                 sessionState = snapshot
             }
         }
@@ -223,14 +214,12 @@ private fun buildKotterDemoScreen(
         is KotterDemoLayoutDecision.Halted -> KotterDemoScreen.Halted(layoutDecision.warning)
         is KotterDemoLayoutDecision.Ready -> {
             val running = sessionState.isRunning()
-            val completedPreview = sessionState.asideLines.lastOrNull()
-                ?.let { streamLines(listOf(it).toStreamBlock()).last() }
-                ?: "• Waiting for the first completed phase"
-            val livePreview = when {
-                sessionState.liveLines.isNotEmpty() -> streamLines(listOf(sessionState.liveLines.last()).toStreamBlock()).last()
-                running -> "• Streaming next demo event…"
-                else -> "✓ Operation complete"
-            }
+            val transcriptLines = sessionState.allLines()
+                .takeLast(TRANSCRIPT_VISIBLE_LINES)
+                .map { "• $it" }
+                .ifEmpty {
+                    if (running) listOf("• Streaming next demo event…") else listOf("✓ Operation complete")
+                }
             KotterDemoScreen.Running(
                 actHeader = KotterDemoActHeader(
                     title = "Act ${activeOperationIndex + 1} of ${presentation.operations.size} — ${activeOperation.label}",
@@ -252,10 +241,7 @@ private fun buildKotterDemoScreen(
                     ),
                     controls = "Keys   [${presentation.replayKey.uppercaseChar()}] Replay  [${presentation.quitKey.uppercaseChar()}] Quit  [${presentation.operations.joinToString("/") { it.shortcutKey.uppercaseChar().toString() }}] Switch act",
                 ),
-                transcriptLines = listOf(
-                    transcriptLine("Completed", completedPreview),
-                    transcriptLine("Live", livePreview),
-                ),
+                transcriptLines = transcriptLines,
                 branchSection = layoutDecision.shell.live.branchGrid?.let { branchGrid ->
                     KotterDemoBranchSection(
                         title = "Impact Grid",
@@ -263,7 +249,7 @@ private fun buildKotterDemoScreen(
                         grid = branchGrid,
                     )
                 },
-                panelContentWidth = (terminalWidth - PANEL_FRAME_WIDTH).coerceAtLeast(1),
+                panelContentWidth = (terminalWidth.coerceAtMost(MAX_TERMINAL_WIDTH) - PANEL_FRAME_WIDTH).coerceAtLeast(1),
             )
         }
         else -> error("Unexpected layout decision: $layoutDecision")
@@ -342,11 +328,6 @@ internal class KotterDemoKeyBindings(
     }
 }
 
-private fun List<String>.toStreamBlock(): KotterDemoStreamBlock =
-    KotterDemoStreamBlock(
-        entries = map { KotterDemoStreamEntry.Content(it) },
-    )
-
 private fun KotterDemoSessionState.isRunning(): Boolean =
     phaseStates.values.any { it == KotterDemoPhaseStatus.ACTIVE }
 
@@ -355,11 +336,11 @@ private fun String.phaseLabel(): String =
         .replace('_', ' ')
         .uppercase()
 
-private fun transcriptLine(
-    label: String,
-    value: String,
-): String = label.padEnd(11) + value
-
 private fun Char.normalizedShortcut(): Char = lowercaseChar()
 
 private const val PANEL_FRAME_WIDTH: Int = 4
+private const val TRANSCRIPT_VISIBLE_LINES: Int = 8
+
+/** Cap the panel width so that terminal-width queries returning [Int.MAX_VALUE] (e.g. InMemoryTerminal in tests)
+ *  do not cause string allocations that exhaust heap during section renders. */
+private const val MAX_TERMINAL_WIDTH: Int = 260
