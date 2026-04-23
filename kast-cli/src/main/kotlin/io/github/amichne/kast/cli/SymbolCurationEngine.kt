@@ -13,11 +13,31 @@ internal data class CuratedSymbol(
 )
 
 /**
+ * Returns the minimum contrast score a group must reach to be included in demo output.
+ *
+ * The bar scales with codebase size: larger codebases have more textual noise, so a higher
+ * contrast is needed before a symbol meaningfully demonstrates semantic value over grep.
+ * Tiny codebases use a bar of 0.0 so any symbol is acceptable.
+ */
+internal fun minContrastThreshold(symbolCount: Int): Double = when {
+    symbolCount < 50   -> 0.0
+    symbolCount < 200  -> 1.0
+    symbolCount < 1000 -> 5.0
+    symbolCount < 5000 -> 15.0
+    else               -> 30.0
+}
+
+/**
  * Selects symbols that best demonstrate kast's value over plain text search.
  *
- * Curation prefers symbols whose simple name is shared by multiple declarations (overloads,
- * same-named classes across packages) because those produce the largest contrast between
- * grep-style search and semantic resolution.
+ * Groups are visited in descending group-size order (more overloads = more ambiguous = more
+ * interesting) with alphabetical tiebreaking for determinism. For each group, the contrast
+ * score is computed on demand; the first [count] groups whose score meets or exceeds the
+ * [minContrastThreshold] for this codebase size are returned.
+ *
+ * This "first-N-above-bar" strategy avoids scoring every group upfront, stops early once
+ * [count] are found, and auto-adapts the quality bar to codebase size so large repos only
+ * surface high-signal symbols while small repos are still usable.
  */
 internal class SymbolCurationEngine(
     private val demoCommandSupport: DemoCommandSupport = DemoCommandSupport(),
@@ -27,28 +47,26 @@ internal class SymbolCurationEngine(
         allSymbols: List<Symbol>,
         count: Int = 3,
     ): List<CuratedSymbol> {
-        if (count <= 0 || allSymbols.isEmpty()) {
-            return emptyList()
+        if (count <= 0 || allSymbols.isEmpty()) return emptyList()
+
+        val threshold = minContrastThreshold(allSymbols.size)
+
+        // Larger groups (more overloads) are visited first; alphabetical within same size for
+        // determinism.
+        val orderedGroups = allSymbols
+            .groupBy { it.fqName.substringAfterLast('.') }
+            .entries
+            .sortedWith(compareByDescending<Map.Entry<String, List<Symbol>>> { it.value.size }.thenBy { it.key })
+
+        val accepted = mutableListOf<CuratedSymbol>()
+        for ((simpleName, group) in orderedGroups) {
+            if (accepted.size >= count) break
+            val candidate = buildCuratedFromGroup(workspaceRoot, simpleName, group)
+            if (candidate.contrastScore >= threshold) {
+                accepted += candidate
+            }
         }
-
-        val groups = allSymbols.groupBy { it.fqName.substringAfterLast('.') }
-        val ambiguousGroups = groups.filter { (_, symbols) -> symbols.size >= 2 }
-        val singletonGroups = groups.filter { (_, symbols) -> symbols.size == 1 }
-
-        val ambiguousCurated = ambiguousGroups.map { (simpleName, group) ->
-            buildCuratedFromGroup(workspaceRoot, simpleName, group)
-        }.sortedByDescending { it.contrastScore }
-
-        if (ambiguousCurated.size >= count) {
-            return ambiguousCurated.take(count)
-        }
-
-        // Fall back to non-ambiguous symbols (groups of size 1) ranked by raw grep noise.
-        val singletonCurated = singletonGroups.map { (simpleName, group) ->
-            buildCuratedFromGroup(workspaceRoot, simpleName, group)
-        }.sortedByDescending { it.grepHits }
-
-        return (ambiguousCurated + singletonCurated).take(count)
+        return accepted
     }
 
     private fun buildCuratedFromGroup(
@@ -62,15 +80,12 @@ internal class SymbolCurationEngine(
         val falsePositiveRatio = if (total == 0) 0.0 else summary.falsePositives.toDouble() / total
         val ambiguityScore = group.size
         // The `+ 1` term keeps the contrast score positive when there is no textual noise but the
-        // simple name is still ambiguous across declarations: such symbols still demonstrate
-        // semantic value over grep, so they should not collapse to zero.
+        // simple name is still ambiguous across declarations.
         val contrastScore = grepHits.toDouble() *
             (summary.falsePositives + summary.ambiguous + 1) /
             maxOf(1, total) *
             ambiguityScore
 
-        // Pick the first symbol in the group as the canonical entry — we want one curated entry
-        // per simple name, not one per overload.
         return CuratedSymbol(
             symbol = group.first(),
             simpleName = simpleName,
