@@ -32,8 +32,11 @@ curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh | bash
 
 ## Try it
 
-`kast demo` runs an interactive comparison of grep-based text search versus
-Kast's semantic analysis on your own Kotlin workspace.
+`kast demo` opens a live Kotter shell on your own Kotlin workspace. It picks a
+symbol (or uses `--symbol`) and lets you switch between semantic references,
+rename dry-run, and incoming callers while keeping the grep baseline visible.
+Run it in a reasonably wide terminal; if the terminal is too narrow, Kast
+stops and asks you to rerun after resizing.
 
 ```console
 kast demo --workspace-root=/path/to/your/kotlin/project

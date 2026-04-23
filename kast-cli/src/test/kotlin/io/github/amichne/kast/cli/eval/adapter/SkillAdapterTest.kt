@@ -41,25 +41,25 @@ class SkillAdapterTest {
     }
 
     @Test
-    fun `scan detects agent interface presence`() {
+    fun `scan does not require vendor-specific agent metadata`() {
         val skillDir = createMinimalSkill()
         val descriptor = SkillAdapter(skillDir).scan()
-        val check = descriptor.checks.first { it.id == "structural-agent-interface-exists" }
-        assertEquals(EvalStatus.PASS, check.status)
+        assertTrue(descriptor.checks.none { it.id == "structural-agent-interface-exists" })
+        assertTrue(descriptor.checks.none { it.id == "structural-agent-interface-implicit-invocation" })
     }
 
     @Test
-    fun `scan flags missing agent interface`() {
-        val skillDir = tempDir.resolve("partial-skill").createDirectories()
-        skillDir.resolve("SKILL.md").writeText("description: test")
+    fun `scan checks routing improvement assets`() {
+        val skillDir = createMinimalSkill()
         val descriptor = SkillAdapter(skillDir).scan()
-        val check = descriptor.checks.first { it.id == "structural-agent-interface-exists" }
-        assertEquals(EvalStatus.FAIL, check.status)
+        val check = descriptor.checks.first { it.id == "structural-routing-improvement-assets" }
+        assertEquals(EvalStatus.PASS, check.status)
     }
 
     @Test
     fun `scan flags lingering legacy artifacts`() {
         val skillDir = createMinimalSkill()
+        skillDir.resolve("agents").createDirectories()
         skillDir.resolve("agents/kast.md").writeText("stale")
         val descriptor = SkillAdapter(skillDir).scan()
         val legacy = descriptor.checks.first { it.id == "structural-legacy-artifacts-removed" }
@@ -96,7 +96,8 @@ class SkillAdapterTest {
         val skillDir = createMinimalSkill()
         val descriptor = SkillAdapter(skillDir).scan()
         assertTrue(descriptor.budget.triggerTokens > 0, "trigger tokens should be positive")
-        assertTrue(descriptor.budget.invokeTokens > 0, "invoke tokens should be positive")
+        assertEquals(0, descriptor.budget.invokeTokens, "invoke tokens should be zero without optional vendor metadata")
+        assertTrue(descriptor.budget.deferredTokens > 0, "deferred tokens should be positive")
     }
 
     @Test
@@ -154,17 +155,13 @@ class SkillAdapterTest {
             """.trimIndent(),
         )
 
-        val agents = skillDir.resolve("agents").createDirectories()
-        agents.resolve("openai.yaml").writeText(
-            """
-            interface:
-              display_name: "Kast"
-              default_prompt: >
-                Invoke kast skill subcommands via the CLI path hook.
-            """.trimIndent(),
-        )
+        val evals = skillDir.resolve("evals").createDirectories()
+        evals.resolve("evals.json").writeText("""{"skill_name":"kast","evals":[]}""")
+        evals.resolve("routing.json").writeText("""{"skill_name":"kast","suite":"routing","evals":[]}""")
 
         val refs = skillDir.resolve("references").createDirectories()
+        refs.resolve("quickstart.md").writeText("# Quickstart\n")
+        refs.resolve("routing-improvement.md").writeText("# Routing improvement\n")
         refs.resolve("wrapper-openapi.yaml").writeText(
             """
             openapi: '3.0.0'
@@ -176,6 +173,14 @@ class SkillAdapterTest {
             x-command: kast skill scaffold
             x-command: kast skill write-and-validate
             x-command: kast skill workspace-files
+            """.trimIndent(),
+        )
+
+        val scripts = skillDir.resolve("scripts").createDirectories()
+        scripts.resolve("build-routing-corpus.py").writeText(
+            """
+            #!/usr/bin/env python3
+            print("ok")
             """.trimIndent(),
         )
 

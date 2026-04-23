@@ -544,13 +544,10 @@ internal data class ParsedArguments(
                 message = "`kast demo` does not accept --kast; invoke demo.sh directly if you need to override the launcher",
             )
         }
-        val walkMode = when (options["walk"]?.lowercase()) {
-            null, "", "auto" -> DemoWalkMode.AUTO
-            "true", "on", "yes", "1" -> DemoWalkMode.ENABLED
-            "false", "off", "no", "0" -> DemoWalkMode.DISABLED
-            else -> throw CliFailure(
+        if (options.containsKey("walk")) {
+            throw CliFailure(
                 code = "CLI_USAGE",
-                message = "Unknown value for --walk: ${options["walk"]}. Valid values: auto, true, false.",
+                message = "`kast demo` does not accept --walk; the initial Kotter demo does not include the interactive walker, and freeform SymbolWalker remains deferred.",
             )
         }
         val backend = when (val raw = options["backend-name"]?.trim()?.lowercase()?.takeIf(String::isNotEmpty)) {
@@ -575,7 +572,6 @@ internal data class ParsedArguments(
                 ?.let { Path.of(it).toAbsolutePath().normalize() }
                 ?: Path.of(System.getProperty("user.dir", ".")).toAbsolutePath().normalize(),
             symbolFilter = options["symbol"]?.takeIf(String::isNotBlank),
-            walkMode = walkMode,
             backend = backend,
             verbose = verbose,
         )

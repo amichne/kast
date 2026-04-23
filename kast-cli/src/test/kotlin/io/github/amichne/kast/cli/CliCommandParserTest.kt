@@ -259,6 +259,23 @@ class CliCommandParserTest {
     }
 
     @Test
+    fun `demo rejects deferred walk option`() {
+        val failure = assertThrows<CliFailure> {
+            parser.parse(
+                arrayOf(
+                    "demo",
+                    "--workspace-root=$tempDir",
+                    "--walk=true",
+                ),
+            )
+        }
+
+        assertEquals("CLI_USAGE", failure.code)
+        assertTrue(failure.message.contains("does not accept --walk"))
+        assertTrue(failure.message.contains("SymbolWalker remains deferred"))
+    }
+
+    @Test
     fun `install skill parses the primary name option`() {
         val command = parser.parse(
             arrayOf(

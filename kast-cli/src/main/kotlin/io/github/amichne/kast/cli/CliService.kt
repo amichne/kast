@@ -259,33 +259,10 @@ internal class CliService(
 
     suspend fun demo(
         options: DemoOptions,
-        sink: (String) -> Unit = { text -> System.err.print(text) },
-        reader: java.io.BufferedReader? = defaultDemoReader(),
-        consoleProvider: () -> java.io.Console? = System::console,
-    ): RuntimeAttachedResult<String> {
-        val walkerEnabled = when (options.walkMode) {
-            DemoWalkMode.DISABLED -> false
-            DemoWalkMode.ENABLED -> true
-            DemoWalkMode.AUTO -> consoleProvider() != null && options.symbolFilter == null
-        }
-        demoCommandSupport.runInteractive(
+    ): DemoFlowOutcome {
+        return demoCommandSupport.runInteractive(
             options = options,
             cliService = this,
-            sink = sink,
-            reader = reader,
-            walkerEnabled = walkerEnabled,
-        )
-        val runtime = runtimeManager.workspaceEnsure(
-            RuntimeCommandOptions(
-                workspaceRoot = options.workspaceRoot,
-                backendName = options.backend,
-                waitTimeoutMillis = 180_000L,
-            ),
-        )
-        return RuntimeAttachedResult(
-            payload = "",
-            runtime = runtime.selected,
-            daemonNote = runtime.note,
         )
     }
 

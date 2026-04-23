@@ -1,0 +1,170 @@
+{
+  "skill_name": "kast",
+  "suite": "routing",
+  "evals": [
+    {
+      "id": "understand-kotlin-file",
+      "prompt": "Help me understand this Kotlin file and how it is wired into the rest of the project.",
+      "expected_skill": "kast",
+      "expected_route": "@kast",
+      "allowed_ops": [
+        "kast skill workspace-files",
+        "kast skill scaffold",
+        "kast skill resolve",
+        "kast skill references",
+        "kast skill callers"
+      ],
+      "forbidden_ops": [
+        "grep",
+        "rg"
+      ]
+    },
+    {
+      "id": "trace-kotlin-flow",
+      "prompt": "Trace this Kotlin flow from the controller down to the implementation and show me what calls what.",
+      "expected_skill": "kast",
+      "expected_route": "@kast",
+      "allowed_ops": [
+        "kast skill scaffold",
+        "kast skill resolve",
+        "kast skill callers",
+        "kast skill references"
+      ],
+      "forbidden_ops": [
+        "grep",
+        "rg"
+      ]
+    },
+    {
+      "id": "find-kotlin-usages",
+      "prompt": "Where is this Kotlin symbol used, and what code depends on it?",
+      "expected_skill": "kast",
+      "expected_route": "@kast",
+      "allowed_ops": [
+        "kast skill resolve",
+        "kast skill references",
+        "kast skill callers"
+      ],
+      "forbidden_ops": [
+        "grep",
+        "rg"
+      ]
+    },
+    {
+      "id": "rename-kotlin-symbol",
+      "prompt": "Rename this Kotlin symbol safely across the workspace and tell me what changed.",
+      "expected_skill": "kast",
+      "expected_route": "@kast",
+      "allowed_ops": [
+        "kast skill resolve",
+        "kast skill rename",
+        "kast skill diagnostics"
+      ],
+      "forbidden_ops": [
+        "grep",
+        "rg",
+        "sed"
+      ]
+    },
+    {
+      "id": "fix-kotlin-test",
+      "prompt": "Fix this failing Kotlin test by tracing the relevant production code and validating the edit.",
+      "expected_skill": "kast",
+      "expected_route": "@kast",
+      "allowed_ops": [
+        "kast skill scaffold",
+        "kast skill resolve",
+        "kast skill references",
+        "kast skill callers",
+        "kast skill write-and-validate",
+        "kast skill diagnostics"
+      ],
+      "forbidden_ops": [
+        "grep",
+        "rg"
+      ]
+    },
+    {
+      "id": "audit-eventbean-field-writes",
+      "prompt": "Audit the Kotlin `EventBean` model and show where `actionTitle`, `actionType`, `date`, and `headerActionTitle` are set across the timeline processors.",
+      "expected_skill": "kast",
+      "expected_route": "@kast",
+      "allowed_ops": [
+        "kast skill workspace-files",
+        "kast skill scaffold",
+        "kast skill resolve",
+        "kast skill references",
+        "kast skill callers"
+      ],
+      "forbidden_ops": [
+        "grep",
+        "rg"
+      ]
+    },
+    {
+      "id": "recover-kast-bootstrap",
+      "prompt": "I tried using Kast and the first command failed with `bash: : command not found` because `KAST_CLI_PATH` is empty. Bootstrap Kast for this workspace and keep tracing the Kotlin symbol semantically.",
+      "expected_skill": "kast",
+      "expected_route": "@kast",
+      "allowed_ops": [
+        "bash .agents/skills/kast/scripts/kast-session-start.sh",
+        "kast skill scaffold",
+        "kast skill resolve",
+        "kast skill references"
+      ],
+      "forbidden_ops": [
+        "find /usr -name kast",
+        "grep",
+        "rg"
+      ]
+    },
+    {
+      "id": "stay-semantic-after-parse-friction",
+      "prompt": "The first `kast skill references` result was huge and my `jq` projection came back empty. Keep tracing the same Kotlin symbol semantically and do not switch to grep.",
+      "expected_skill": "kast",
+      "expected_route": "@kast",
+      "allowed_ops": [
+        "kast skill resolve",
+        "kast skill references",
+        "kast skill scaffold",
+        "kast skill callers"
+      ],
+      "forbidden_ops": [
+        "grep",
+        "rg"
+      ]
+    },
+    {
+      "id": "disambiguate-member-property",
+      "prompt": "Find usages of the `date` property on `EventBean`, not every `date` symbol in the repo. I need the exact Kotlin member.",
+      "expected_skill": "kast",
+      "expected_route": "@kast",
+      "allowed_ops": [
+        "kast skill resolve",
+        "kast skill references",
+        "kast skill scaffold"
+      ],
+      "forbidden_ops": [
+        "grep",
+        "rg"
+      ]
+    },
+    {
+      "id": "map-workspace-before-trace",
+      "prompt": "I only know the feature name. List the relevant Kotlin files for the timeline module, then trace how `EventBean` gets built.",
+      "expected_skill": "kast",
+      "expected_route": "@kast",
+      "allowed_ops": [
+        "kast skill workspace-files",
+        "kast skill scaffold",
+        "kast skill resolve",
+        "kast skill references",
+        "kast skill callers"
+      ],
+      "forbidden_ops": [
+        "grep",
+        "rg"
+      ]
+    }
+  ]
+}

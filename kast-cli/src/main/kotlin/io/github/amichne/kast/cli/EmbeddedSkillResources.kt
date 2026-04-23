@@ -37,8 +37,14 @@ internal class EmbeddedSkillResources(
 
         val MANIFEST: List<String> = listOf(
             "SKILL.md",
-            "agents/openai.yaml",
+            "evals/evals.json",
+            "evals/routing.json",
+            "references/quickstart.md",
+            "references/routing-improvement.md",
             "references/wrapper-openapi.yaml",
+            "scripts/build-routing-corpus.py",
+            "scripts/kast-session-start.sh",
+            "scripts/resolve-kast.sh",
         )
     }
 }

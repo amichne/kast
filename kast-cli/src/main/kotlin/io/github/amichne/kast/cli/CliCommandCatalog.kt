@@ -317,12 +317,6 @@ internal object CliCommandCatalog {
         description = "Skip the interactive picker and use the first symbol matching this text.",
     )
 
-    private val demoWalkOption = CliOptionMetadata(
-        key = "walk",
-        usage = "--walk=auto|true|false",
-        description = "Run the interactive symbol-graph walker after Act 2. Defaults to auto: on when stdin is a TTY and --symbol is not set.",
-    )
-
     private val demoVerboseOption = CliOptionMetadata(
         key = "verbose",
         usage = "--verbose=true",
@@ -781,18 +775,18 @@ internal object CliCommandCatalog {
         CliCommandMetadata(
             path = listOf("demo"),
             group = CliCommandGroup.VALIDATION,
-            summary = "Interactive comparison of grep vs kast semantic analysis on your workspace.",
-            description = "Picks a symbol from your workspace — via --symbol or the built-in terminal chooser — and runs grep-style text search alongside kast resolve, references, rename, and call-hierarchy so you can see the difference side by side. " +
-                "Uses the live IntelliJ plugin backend when one is available and auto-starts the standalone JVM daemon otherwise; pin with --backend-name=intellij|standalone.",
+            summary = "Live Kotter demo of grep vs kast semantic analysis on your workspace.",
+            description = "Opens a live Kotter shell, picks a symbol from your workspace — via --symbol or the built-in terminal chooser — and lets you switch between semantic references, rename dry-run, and incoming callers while keeping the grep baseline visible. " +
+                "This initial experience stops there: the freeform SymbolWalker remains deferred and is not part of the shipped demo flow. " +
+                "Uses the live IntelliJ plugin backend when one is available and auto-starts the standalone JVM daemon otherwise; pin with --backend-name=intellij|standalone. If the terminal is too narrow, the demo halts and asks you to rerun after resizing.",
             usages = listOf(
-                "$CLI_EXECUTABLE_NAME demo [--workspace-root=/absolute/path/to/workspace] [--symbol=CliService] [--walk=auto|true|false] [--backend-name=intellij|standalone] [--verbose=true]",
+                "$CLI_EXECUTABLE_NAME demo [--workspace-root=/absolute/path/to/workspace] [--symbol=CliService] [--backend-name=intellij|standalone] [--verbose=true]",
             ),
-            options = listOf(workspaceRootOption, demoSymbolOption, demoWalkOption, backendNameOption, demoVerboseOption),
+            options = listOf(workspaceRootOption, demoSymbolOption, backendNameOption, demoVerboseOption),
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME demo",
                 "$CLI_EXECUTABLE_NAME demo --workspace-root=/absolute/path/to/workspace",
                 "$CLI_EXECUTABLE_NAME demo --workspace-root=/absolute/path/to/workspace --symbol=CliService",
-                "$CLI_EXECUTABLE_NAME demo --walk=true  # always runs the interactive symbol-graph walker",
                 "$CLI_EXECUTABLE_NAME demo --backend-name=intellij  # target a running IntelliJ IDEA plugin backend",
                 "$CLI_EXECUTABLE_NAME demo --verbose=true  # render fully-qualified names and full paths",
             ),
