@@ -56,7 +56,7 @@ fun RenderScope.renderDualPaneConversation(
 }
 
 /**
- * Renders the full demo-gen screen: act header for the active conversation,
+ * Renders the full demo generate screen: act header for the active conversation,
  * the dual-pane comparison, and (when more than one conversation is loaded)
  * a dim footer hint summarizing keyboard controls.
  */

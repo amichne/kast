@@ -71,11 +71,11 @@
     },
     {
       "id": 7,
-      "prompt": "Generate a synthetic demo comparing grep vs kast for a GitHub repository.",
-      "expected_output": "A dual-pane synthetic conversation using real symbols from the target repo, produced via `kast demo-gen` rather than a hand-rolled transcript.",
+      "prompt": "Generate a synthetic demo comparing grep vs kast for a git repository.",
+      "expected_output": "A dual-pane synthetic conversation using real symbols from the target repo, produced via `kast demo generate` rather than a hand-rolled transcript.",
       "files": [],
       "expectations": [
-        "Uses `kast demo-gen` to produce the dual-pane comparison instead of fabricating text by hand.",
+        "Uses `kast demo generate` to produce the dual-pane comparison instead of fabricating text by hand.",
         "Anchors each pane on real symbols resolved from the target repo, not invented identifiers.",
         "Keeps the baseline (grep) and kast-augmented panes structurally aligned per turn."
       ]

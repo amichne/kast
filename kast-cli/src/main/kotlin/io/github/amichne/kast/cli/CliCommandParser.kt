@@ -30,6 +30,8 @@ import kotlin.io.path.readText
 
 internal class CliCommandParser(
     private val json: Json,
+    private val gitRemoteResolver: GitRemoteResolver = SystemGitRemoteResolver,
+    private val workingDirectory: Path = Path.of(System.getProperty("user.dir", ".")).toAbsolutePath().normalize(),
 ) {
     fun parse(args: Array<String>): CliCommand {
         val parsed = ParsedArguments.parse(args)
@@ -120,7 +122,8 @@ internal class CliCommandParser(
                 listOf("install", "skill") -> CliCommand.InstallSkill(parsed.installSkillOptions())
                 listOf("smoke") -> CliCommand.Smoke(parsed.smokeOptions())
                 listOf("demo") -> CliCommand.Demo(parsed.demoOptions())
-                listOf("demo-gen") -> CliCommand.DemoGen(parsed.demoGenOptions())
+                listOf("demo", "generate") -> CliCommand.DemoGen(parsed.demoGenOptions(gitRemoteResolver, workingDirectory))
+                listOf("demo", "render") -> CliCommand.DemoRender(parsed.demoRenderOptions())
                 listOf("eval", "skill") -> CliCommand.EvalSkill(parsed.evalSkillOptions())
                 listOf("internal", "daemon-run") -> CliCommand.InternalDaemonRun(parsed.runtimeOptions(backendName = "standalone"))
                 else -> throw CliFailure(
@@ -559,14 +562,6 @@ internal data class ParsedArguments(
                 message = "Unknown value for --backend-name: ${options["backend-name"]}. Valid values: auto, standalone, intellij.",
             )
         }
-        val verbose = when (options["verbose"]?.lowercase()) {
-            null, "", "true", "on", "yes", "1" -> options.containsKey("verbose")
-            "false", "off", "no", "0" -> false
-            else -> throw CliFailure(
-                code = "CLI_USAGE",
-                message = "Unknown value for --verbose: ${options["verbose"]}. Valid values: true, false.",
-            )
-        }
         return DemoOptions(
             workspaceRoot = options["workspace-root"]
                 ?.takeIf(String::isNotBlank)
@@ -574,16 +569,26 @@ internal data class ParsedArguments(
                 ?: Path.of(System.getProperty("user.dir", ".")).toAbsolutePath().normalize(),
             symbolFilter = options["symbol"]?.takeIf(String::isNotBlank),
             backend = backend,
-            verbose = verbose,
+            verbose = parseBool("verbose"),
         )
     }
 
-    fun demoGenOptions(): DemoGenOptions {
+    fun demoGenOptions(
+        gitRemoteResolver: GitRemoteResolver = SystemGitRemoteResolver,
+        workingDirectory: Path = Path.of(System.getProperty("user.dir", ".")).toAbsolutePath().normalize(),
+    ): DemoGenOptions {
+        val local = parseBool("local")
+        val background = parseBool("background")
         val repoUrl = options["repo-url"]?.takeIf(String::isNotBlank)
-            ?: throw CliFailure(
-                code = "CLI_USAGE",
-                message = "kast demo-gen requires --repo-url",
-            )
+            ?: gitRemoteResolver.resolveOriginUrl(workingDirectory)
+            ?: if (local) {
+                null
+            } else {
+                throw CliFailure(
+                    code = "CLI_USAGE",
+                    message = "kast demo generate requires --repo-url when the current directory has no git origin remote",
+                )
+            }
         val symbolCount = options["symbol-count"]?.takeIf(String::isNotBlank)?.let { raw ->
             val parsed = raw.toIntOrNull() ?: throw CliFailure(
                 code = "CLI_USAGE",
@@ -606,19 +611,33 @@ internal data class ParsedArguments(
                 message = "Unknown value for --output: ${options["output"]}. Valid values: terminal, markdown, json.",
             )
         }
-        val verbose = when (options["verbose"]?.lowercase()) {
-            null, "", "true", "on", "yes", "1" -> options.containsKey("verbose")
-            "false", "off", "no", "0" -> false
-            else -> throw CliFailure(
-                code = "CLI_USAGE",
-                message = "Unknown value for --verbose: ${options["verbose"]}. Valid values: true, false.",
-            )
-        }
+        val verbose = parseBool("verbose")
+        val workspaceRoot = options["workspace-root"]
+            ?.takeIf(String::isNotBlank)
+            ?.let { Path.of(it).toAbsolutePath().normalize() }
+            ?: if (local) workingDirectory else null
         return DemoGenOptions(
             repoUrl = repoUrl,
             symbolCount = symbolCount,
             output = output,
             verbose = verbose,
+            local = local,
+            background = background,
+            workspaceRoot = workspaceRoot,
+        )
+    }
+
+    fun demoRenderOptions(): DemoRenderOptions {
+        val jsonFile = options["json-file"]
+            ?.takeIf(String::isNotBlank)
+            ?.let { Path.of(it).toAbsolutePath().normalize() }
+            ?: throw CliFailure(
+                code = "CLI_USAGE",
+                message = "kast demo render requires --json-file=<path>",
+            )
+        return DemoRenderOptions(
+            jsonFile = jsonFile,
+            verbose = parseBool("verbose"),
         )
     }
 
@@ -711,6 +730,15 @@ internal data class ParsedArguments(
     ): Boolean = options[key]?.toBooleanStrictOrNull() ?: default
 
     private fun absoluteFilePath(value: String): String = Path.of(value).toAbsolutePath().normalize().toString()
+}
+
+private fun ParsedArguments.parseBool(key: String): Boolean = when (options[key]?.lowercase()) {
+    null, "", "true", "on", "yes", "1" -> options.containsKey(key)
+    "false", "off", "no", "0" -> false
+    else -> throw CliFailure(
+        code = "CLI_USAGE",
+        message = "Unknown value for --$key: ${options[key]}. Valid values: true, false.",
+    )
 }
 
 private val VALID_BACKEND_NAMES = setOf("standalone", "intellij")

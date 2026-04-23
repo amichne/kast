@@ -85,6 +85,23 @@ kast demo --workspace-root=/path/to/your/kotlin/project
 kast demo --workspace-root=/path/to/your/kotlin/project --symbol=YourClassName
 ```
 
+`kast demo generate` produces a shareable dual-pane demo for any Kotlin
+repository. Use `--local=true` to analyze your current workspace without
+cloning (IntelliJ is auto-preferred when available), `--background=true` to
+connect while indexing is still in progress, and `kast demo render` to replay
+a saved artifact at any time.
+
+```console
+# Analyze the current workspace — no clone, IntelliJ preferred if open
+kast demo generate --local=true
+
+# Allow connecting while IntelliJ is still indexing
+kast demo generate --local=true --background=true
+
+# Replay a previously saved artifact
+kast demo render --json-file=.kast/demo-generate/demo-20240101T120000Z.json
+```
+
 ## Get running in 60 seconds
 
 The fastest path is the standalone CLI. If IntelliJ is already open on the

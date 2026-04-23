@@ -48,6 +48,7 @@ internal sealed interface CliCommand {
     data class Smoke(val options: SmokeOptions) : CliCommand
     data class Demo(val options: DemoOptions) : CliCommand
     data class DemoGen(val options: DemoGenOptions) : CliCommand
+    data class DemoRender(val options: DemoRenderOptions) : CliCommand
     data class Skill(val name: SkillWrapperName, val rawInput: String) : CliCommand
     data class EvalSkill(val options: EvalSkillOptions) : CliCommand
 }

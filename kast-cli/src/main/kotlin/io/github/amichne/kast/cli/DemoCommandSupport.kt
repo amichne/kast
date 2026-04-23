@@ -554,8 +554,8 @@ internal sealed interface DemoFlowOutcome {
 }
 
 internal data class DemoPlaybackResult(
-    val report: DemoReport,
-    val runtime: RuntimeCandidateStatus,
+    val report: DemoReport? = null,
+    val runtime: RuntimeCandidateStatus? = null,
     val daemonNote: String? = null,
 )
 

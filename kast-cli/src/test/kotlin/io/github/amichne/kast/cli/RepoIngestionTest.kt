@@ -45,13 +45,21 @@ class RepoIngestionTest {
     }
 
     @Test
-    fun `clone rejects non-GitHub URLs`() {
+    fun `clone accepts GitHub Enterprise HTTPS URL`() {
         val runner = RecordingGitRunner()
-        val failure = assertThrows<CliFailure> {
-            RepoIngestion.clone("https://gitlab.com/foo/bar", runner)
-        }
-        assertEquals("DEMO_GEN_INVALID_URL", failure.code)
-        assertTrue(runner.calls.isEmpty())
+        val result = RepoIngestion.clone("https://ghe.example.com/acme/kast.git", runner)
+        assertEquals(1, runner.calls.size)
+        assertEquals("https://ghe.example.com/acme/kast.git", runner.calls[0].first)
+        assertTrue(Files.isDirectory(result))
+    }
+
+    @Test
+    fun `clone accepts non GitHub HTTPS URL`() {
+        val runner = RecordingGitRunner()
+        val result = RepoIngestion.clone("https://gitlab.com/foo/bar", runner)
+        assertEquals(1, runner.calls.size)
+        assertEquals("https://gitlab.com/foo/bar", runner.calls[0].first)
+        assertTrue(Files.isDirectory(result))
     }
 
     @Test
@@ -74,12 +82,12 @@ class RepoIngestionTest {
     }
 
     @Test
-    fun `clone rejects malformed GitHub URL`() {
+    fun `clone accepts ssh scheme URL`() {
         val runner = RecordingGitRunner()
-        val failure = assertThrows<CliFailure> {
-            RepoIngestion.clone("http://github.com/foo/bar", runner)
-        }
-        assertEquals("DEMO_GEN_INVALID_URL", failure.code)
+        val result = RepoIngestion.clone("ssh://git@ghe.example.com/acme/kast.git", runner)
+        assertEquals(1, runner.calls.size)
+        assertEquals("ssh://git@ghe.example.com/acme/kast.git", runner.calls[0].first)
+        assertTrue(Files.isDirectory(result))
     }
 
     @Test

@@ -326,8 +326,8 @@ internal object CliCommandCatalog {
 
     private val demoGenRepoUrlOption = CliOptionMetadata(
         key = "repo-url",
-        usage = "--repo-url=https://github.com/owner/repo",
-        description = "GitHub repository to clone, index, and demo. https:// or git@ form.",
+        usage = "--repo-url=https://git.example.com/owner/repo.git",
+        description = "Repository URL to clone, index, and demo from any git host that `git clone` can reach. Optional: defaults to the current directory's git origin remote.",
     )
 
     private val demoGenSymbolCountOption = CliOptionMetadata(
@@ -340,6 +340,26 @@ internal object CliCommandCatalog {
         key = "output",
         usage = "--output=terminal|markdown|json",
         description = "Render mode: terminal (interactive Kotter), markdown (printed table), or json. Default terminal.",
+    )
+
+    private val demoGenLocalOption = CliOptionMetadata(
+        key = "local",
+        usage = "--local=true",
+        description = "Use a local workspace instead of cloning a remote repository. When set, --workspace-root is used if provided; otherwise the current working directory is used.",
+        completionKind = CliOptionCompletionKind.BOOLEAN,
+    )
+
+    private val demoGenBackgroundOption = CliOptionMetadata(
+        key = "background",
+        usage = "--background=true",
+        description = "Allow demo generation to continue while the selected backend is still indexing and progressively update the saved output.",
+        completionKind = CliOptionCompletionKind.BOOLEAN,
+    )
+
+    private val demoRenderJsonFileOption = CliOptionMetadata(
+        key = "json-file",
+        usage = "--json-file=/path/to/demo-20240101T120000Z.json",
+        description = "Path to the JSON artifact produced by a previous `kast demo generate` run.",
     )
 
     private val commands: List<CliCommandMetadata> = listOf(
@@ -810,21 +830,49 @@ internal object CliCommandCatalog {
             ),
         ),
         CliCommandMetadata(
-            path = listOf("demo-gen"),
+            path = listOf("demo", "generate"),
             group = CliCommandGroup.VALIDATION,
-            summary = "Synthesize a dual-pane LLM-vs-kast demo from a GitHub repository.",
-            description = "Clones a public GitHub repository, indexes it through the standalone Kast daemon, " +
+            summary = "Synthesize a dual-pane LLM-vs-kast demo from a git repository.",
+            description = "Clones a repository from any accessible git host, indexes it through the standalone Kast daemon, " +
                 "auto-curates symbols that maximize grep-vs-semantic contrast (overloaded names, common " +
                 "method words), and renders a synthetic dual-pane conversation comparing a baseline LLM " +
-                "(grep-driven) against a kast-augmented LLM. Choose --output=terminal for an interactive " +
-                "Kotter session, markdown for a doc-friendly export, or json for downstream tooling.",
+                "(grep-driven) against a kast-augmented LLM. When --repo-url is omitted, Kast uses the " +
+                "current directory's git origin remote. Use --local=true to work from an existing local workspace, " +
+                "optionally pinning it with --workspace-root. Choose --output=terminal for an interactive Kotter " +
+                "session, markdown for a doc-friendly export, or json for downstream tooling.",
             usages = listOf(
-                "$CLI_EXECUTABLE_NAME demo-gen --repo-url=https://github.com/owner/repo [--symbol-count=3] [--output=terminal|markdown|json]",
+                "$CLI_EXECUTABLE_NAME demo generate [--repo-url=https://git.example.com/owner/repo.git] [--symbol-count=3] [--output=terminal|markdown|json] [--local=true] [--background=true] [--workspace-root=/absolute/path/to/workspace]",
             ),
-            options = listOf(demoGenRepoUrlOption, demoGenSymbolCountOption, demoGenOutputOption, demoVerboseOption),
+            options = listOf(
+                demoGenRepoUrlOption,
+                demoGenSymbolCountOption,
+                demoGenOutputOption,
+                demoGenLocalOption,
+                demoGenBackgroundOption,
+                workspaceRootOption,
+                demoVerboseOption,
+            ),
             examples = listOf(
-                "$CLI_EXECUTABLE_NAME demo-gen --repo-url=https://github.com/JetBrains/kotlin",
-                "$CLI_EXECUTABLE_NAME demo-gen --repo-url=https://github.com/owner/repo --symbol-count=5 --output=markdown",
+                "$CLI_EXECUTABLE_NAME demo generate",
+                "$CLI_EXECUTABLE_NAME demo generate --repo-url=https://ghe.example.com/owner/repo.git",
+                "$CLI_EXECUTABLE_NAME demo generate --repo-url=git@ghe.example.com:owner/repo.git --symbol-count=5 --output=markdown",
+                "$CLI_EXECUTABLE_NAME demo generate --local=true --workspace-root=/absolute/path/to/workspace --background=true",
+            ),
+        ),
+        CliCommandMetadata(
+            path = listOf("demo", "render"),
+            group = CliCommandGroup.VALIDATION,
+            summary = "Replay a saved demo generate artifact in an interactive terminal.",
+            description = "Reads a JSON artifact produced by `kast demo generate` and renders the dual-pane " +
+                "conversation in an interactive Kotter session. Supports partial artifacts from interrupted or " +
+                "background runs. Use number keys (1–9) to switch between symbols, R to refresh, Q or ESC to quit.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME demo render --json-file=/path/to/demo-20240101T120000Z.json",
+            ),
+            options = listOf(demoRenderJsonFileOption, demoVerboseOption),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME demo render --json-file=.kast/demo-generate/demo-20240101T120000Z.json",
+                "$CLI_EXECUTABLE_NAME demo render --json-file=/absolute/path/to/demo-20240101T120000Z.json --verbose=true",
             ),
         ),
         CliCommandMetadata(

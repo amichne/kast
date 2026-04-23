@@ -5,6 +5,7 @@ import io.github.amichne.kast.api.contract.SemanticInsertionTarget
 import io.github.amichne.kast.api.contract.SymbolKind
 import io.github.amichne.kast.api.contract.TypeHierarchyDirection
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -273,6 +274,156 @@ class CliCommandParserTest {
         assertEquals("CLI_USAGE", failure.code)
         assertTrue(failure.message.contains("does not accept --walk"))
         assertTrue(failure.message.contains("SymbolWalker remains deferred"))
+    }
+
+    @Test
+    fun `demo generate parses demo gen options`() {
+        val command = parser.parse(
+            arrayOf(
+                "demo",
+                "generate",
+                "--repo-url=https://github.com/owner/repo",
+                "--symbol-count=5",
+                "--output=markdown",
+            ),
+        )
+
+        assertTrue(command is CliCommand.DemoGen)
+        val demoGenCommand = command as CliCommand.DemoGen
+        assertEquals("https://github.com/owner/repo", demoGenCommand.options.repoUrl)
+        assertEquals(5, demoGenCommand.options.symbolCount)
+        assertEquals(DemoGenOutputFormat.MARKDOWN, demoGenCommand.options.output)
+    }
+
+    @Test
+    fun `demo generate parses local background and workspace root options`() {
+        val expectedWorkspaceRoot = tempDir.resolve("demo-workspace").toAbsolutePath().normalize()
+        val command = parser.parse(
+            arrayOf(
+                "demo",
+                "generate",
+                "--repo-url=https://github.com/owner/repo",
+                "--local=true",
+                "--background=true",
+                "--workspace-root=${expectedWorkspaceRoot.resolveSibling("nested").resolve("..").resolve(expectedWorkspaceRoot.fileName)}",
+            ),
+        )
+
+        assertTrue(command is CliCommand.DemoGen)
+        val demoGenCommand = command as CliCommand.DemoGen
+        assertTrue(demoGenCommand.options.local)
+        assertTrue(demoGenCommand.options.background)
+        assertEquals(expectedWorkspaceRoot, demoGenCommand.options.workspaceRoot)
+    }
+
+    @Test
+    fun `demo generate without repo url uses current repo remote`() {
+        val parser = CliCommandParser(
+            defaultCliJson(),
+            gitRemoteResolver = GitRemoteResolver { "https://ghe.example.com/acme/kast" },
+            workingDirectory = tempDir,
+        )
+
+        val command = parser.parse(
+            arrayOf(
+                "demo",
+                "generate",
+                "--symbol-count=4",
+            ),
+        )
+
+        assertTrue(command is CliCommand.DemoGen)
+        val demoGenCommand = command as CliCommand.DemoGen
+        assertEquals("https://ghe.example.com/acme/kast", demoGenCommand.options.repoUrl)
+        assertEquals(4, demoGenCommand.options.symbolCount)
+    }
+
+    @Test
+    fun `demo generate without repo url fails when current repo has no origin remote`() {
+        val parser = CliCommandParser(
+            defaultCliJson(),
+            gitRemoteResolver = GitRemoteResolver { null },
+            workingDirectory = tempDir,
+        )
+
+        val failure = assertThrows<CliFailure> {
+            parser.parse(
+                arrayOf(
+                    "demo",
+                    "generate",
+                ),
+            )
+        }
+
+        assertEquals("CLI_USAGE", failure.code)
+        assertTrue(failure.message.contains("--repo-url"))
+        assertTrue(failure.message.contains("origin"))
+    }
+
+    @Test
+    fun `demo generate local mode does not require repo url`() {
+        val parser = CliCommandParser(
+            defaultCliJson(),
+            gitRemoteResolver = GitRemoteResolver { null },
+            workingDirectory = tempDir,
+        )
+
+        val command = parser.parse(
+            arrayOf(
+                "demo",
+                "generate",
+                "--local=true",
+            ),
+        )
+
+        assertTrue(command is CliCommand.DemoGen)
+        val demoGenCommand = command as CliCommand.DemoGen
+        assertTrue(demoGenCommand.options.local)
+        assertEquals(tempDir.toAbsolutePath().normalize(), demoGenCommand.options.workspaceRoot)
+        assertEquals(null, demoGenCommand.options.repoUrl)
+    }
+
+    @Test
+    fun `demo render parses json-file option`() {
+        val jsonFile = tempDir.resolve("demo-20240101T120000Z.json")
+        val command = parser.parse(
+            arrayOf(
+                "demo",
+                "render",
+                "--json-file=${jsonFile.toAbsolutePath()}",
+            ),
+        )
+
+        assertTrue(command is CliCommand.DemoRender)
+        val renderCommand = command as CliCommand.DemoRender
+        assertEquals(jsonFile.toAbsolutePath().normalize(), renderCommand.options.jsonFile)
+        assertFalse(renderCommand.options.verbose)
+    }
+
+    @Test
+    fun `demo render parses verbose flag`() {
+        val jsonFile = tempDir.resolve("artifact.json")
+        val command = parser.parse(
+            arrayOf(
+                "demo",
+                "render",
+                "--json-file=${jsonFile.toAbsolutePath()}",
+                "--verbose=true",
+            ),
+        )
+
+        assertTrue(command is CliCommand.DemoRender)
+        assertTrue((command as CliCommand.DemoRender).options.verbose)
+    }
+
+    @Test
+    fun `demo render without json-file fails with usage error`() {
+        val failure = assertThrows<CliFailure> {
+            parser.parse(arrayOf("demo", "render"))
+        }
+
+        assertEquals("CLI_USAGE", failure.code)
+        assertTrue(failure.message.contains("--json-file"))
     }
 
     @Test

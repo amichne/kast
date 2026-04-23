@@ -37,7 +37,7 @@ data class DualPaneConversation(
 )
 
 /**
- * Top-level state for the `kast demo-gen` interactive screen.
+ * Top-level state for the `kast demo generate` interactive screen.
  *
  * `activeIndex` selects which conversation is currently displayed; the
  * renderer also uses it to compute the act-header position.

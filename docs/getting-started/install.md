@@ -109,7 +109,7 @@ when the standalone backend discovers a workspace.
 > `kast` still falls back to conventional source roots and source-file
 > scanning. A root `settings.gradle.kts` matters most for multi-module
 > Gradle workspaces and for repo-cloning demo flows such as
-> `kast demo-gen`.
+> `kast demo generate`.
 
 ## Install the IntelliJ plugin manually
 

@@ -231,7 +231,7 @@ internal class DefaultCliCommandExecutor(
                     is DemoFlowOutcome.Completed -> CliExecutionResult(
                         output = CliOutput.Text(""),
                         daemonNote = outcome.result.daemonNote
-                            ?: daemonNoteForRuntime(outcome.result.runtime),
+                            ?: outcome.result.runtime?.let { daemonNoteForRuntime(it) },
                     )
                     is DemoFlowOutcome.Cancelled -> CliExecutionResult(
                         output = CliOutput.Text("demo cancelled by user"),
@@ -249,13 +249,30 @@ internal class DefaultCliCommandExecutor(
                     is DemoFlowOutcome.Completed -> CliExecutionResult(
                         output = CliOutput.Text(""),
                         daemonNote = outcome.result.daemonNote
-                            ?: daemonNoteForRuntime(outcome.result.runtime),
+                            ?: outcome.result.runtime?.let { daemonNoteForRuntime(it) },
                     )
                     is DemoFlowOutcome.Cancelled -> CliExecutionResult(
-                        output = CliOutput.Text("demo-gen cancelled by user"),
+                        output = CliOutput.Text("demo generate cancelled by user"),
                     )
                     is DemoFlowOutcome.Failed -> throw CliFailure(
                         code = "DEMO_GEN_FAILED",
+                        message = outcome.message,
+                    )
+                }
+            }
+
+            is CliCommand.DemoRender -> {
+                val outcome = cliService.demoRender(command.options)
+                when (outcome) {
+                    is DemoFlowOutcome.Completed -> CliExecutionResult(
+                        output = CliOutput.Text(""),
+                        daemonNote = outcome.result.daemonNote,
+                    )
+                    is DemoFlowOutcome.Cancelled -> CliExecutionResult(
+                        output = CliOutput.Text("demo render cancelled by user"),
+                    )
+                    is DemoFlowOutcome.Failed -> throw CliFailure(
+                        code = "DEMO_RENDER_FAILED",
                         message = outcome.message,
                     )
                 }

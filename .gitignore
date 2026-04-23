@@ -121,5 +121,8 @@ replay_pid*
 site/
 !/gradle/wrapper/gradle-wrapper.jar
 .agent-workflows/
+.agent-workflow/
+copilot-session-*.html
+copilot-session-*.md
 dist/
 .agents/skills/kast/.kast-version

@@ -20,6 +20,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -121,6 +122,132 @@ class DemoGenCommandSupportTest {
         )
     }
 
+    @Test
+    fun `local mode skips clone and uses workspace root directly`() = runBlocking {
+        var cloneCalled = false
+        val ingestion = object : RepoIngestionPort {
+            override fun clone(repoUrl: String): Path {
+                cloneCalled = true
+                return tempDir
+            }
+            override suspend fun bootstrap(workspaceRoot: Path, backend: DemoGenBackend): WorkspaceEnsureResult =
+                backend.bootstrap(workspaceRoot)
+        }
+        val support = supportWith(ingestion = ingestion)
+
+        val options = DemoGenOptions(
+            local = true,
+            workspaceRoot = tempDir,
+            output = DemoGenOutputFormat.JSON,
+        )
+        val outcome = support.runInteractive(options)
+
+        assertFalse(cloneCalled, "Clone must NOT be called in local mode")
+        assertTrue(outcome is DemoFlowOutcome.Completed, "Expected Completed, got $outcome")
+    }
+
+    @Test
+    fun `per-symbol failure does not abort run, remaining symbols are processed`() = runBlocking {
+        val recordedOutput = mutableListOf<String>()
+        val failingSymbol = "io.example.Foo"
+        val backend = FakeDemoGenBackend(symbolFqNames = listOf(failingSymbol, "io.example.Bar"))
+        val failingBackend = object : DemoGenBackend by backend {
+            override suspend fun buildReportInstrumented(
+                workspaceRoot: Path,
+                symbol: Symbol,
+                onStepComplete: (index: Int, durationMs: Long) -> Unit,
+            ): DemoReport {
+                if (symbol.fqName == failingSymbol) {
+                    throw IllegalStateException("analysis timed out")
+                }
+                return backend.buildReportInstrumented(workspaceRoot, symbol, onStepComplete)
+            }
+        }
+        val support = supportWith(
+            backend = failingBackend,
+            output = { recordedOutput += it },
+        )
+
+        val outcome = support.runInteractive(demoGenOptions(DemoGenOutputFormat.JSON, symbolCount = 2))
+
+        // Run should complete with the remaining symbol, not fail entirely.
+        assertTrue(outcome is DemoFlowOutcome.Completed, "Expected Completed even with one failure; got $outcome")
+        val json = recordedOutput.single()
+        val parsed = Json.parseToJsonElement(json) as JsonObject
+        // Only Bar succeeded → 1 conversation.
+        assertEquals(1, parsed["conversations"]!!.jsonArray.size)
+        // The artifact should record the failure.
+        val failures = parsed["failures"]!!.jsonArray
+        assertEquals(1, failures.size)
+    }
+
+    @Test
+    fun `all per-symbol failures return Failed outcome`() = runBlocking {
+        val backend = object : DemoGenBackend by FakeDemoGenBackend() {
+            override suspend fun buildReportInstrumented(
+                workspaceRoot: Path,
+                symbol: Symbol,
+                onStepComplete: (index: Int, durationMs: Long) -> Unit,
+            ): DemoReport = throw RuntimeException("always fails")
+        }
+        val support = supportWith(backend = backend)
+
+        val outcome = support.runInteractive(demoGenOptions(DemoGenOutputFormat.JSON))
+
+        assertTrue(outcome is DemoFlowOutcome.Failed, "Expected Failed when all symbols fail; got $outcome")
+    }
+
+    @Test
+    fun `artifact JSON is written under kast demo-generate in workspace for local mode`() = runBlocking {
+        val recordedOutput = mutableListOf<String>()
+        val workspaceRoot = tempDir.resolve("ws").also { java.nio.file.Files.createDirectories(it) }
+        val support = supportWith(
+            output = { recordedOutput += it },
+            workingDirectory = workspaceRoot,
+        )
+        val options = DemoGenOptions(
+            local = true,
+            workspaceRoot = workspaceRoot,
+            output = DemoGenOutputFormat.JSON,
+        )
+
+        support.runInteractive(options)
+
+        val artifactDir = workspaceRoot.resolve(".kast/demo-generate")
+        assertTrue(java.nio.file.Files.isDirectory(artifactDir), ".kast/demo-generate directory must be created")
+        val artifacts = java.nio.file.Files.list(artifactDir).toList()
+        assertTrue(artifacts.isNotEmpty(), "At least one artifact file must be written")
+        val artifactJson = Json.parseToJsonElement(artifacts.first().toFile().readText()) as JsonObject
+        assertTrue(artifactJson.containsKey("activeIndex"))
+        assertTrue(artifactJson.containsKey("conversations"))
+        assertTrue(artifactJson.containsKey("generatedAt"))
+        assertTrue(artifactJson.containsKey("status"))
+    }
+
+    @Test
+    fun `renderFromFile renders a screen imported from JSON`() {
+        val screen = io.github.amichne.kast.demo.DemoGenScreen(
+            conversations = listOf(
+                io.github.amichne.kast.demo.DualPaneConversation(
+                    symbolFqn = "io.example.Foo",
+                    simpleName = "Foo",
+                    turns = emptyList(),
+                ),
+            ),
+            activeIndex = 0,
+        )
+        val jsonFile = tempDir.resolve("artifact.json")
+        jsonFile.toFile().writeText(DemoGenJsonExporter.export(screen))
+
+        val sessionRunner = RecordingSessionRunner()
+        val support = supportWith(sessionRunner = sessionRunner)
+
+        val outcome = support.renderFromFile(jsonFile)
+
+        assertEquals(1, sessionRunner.callCount, "renderFromFile must enter a Kotter session")
+        assertTrue(outcome is DemoFlowOutcome.Cancelled, "RecordingSessionRunner returns Cancelled; got $outcome")
+    }
+
     // ── Test fixtures ───────────────────────────────────────────────
 
     private fun demoGenOptions(format: DemoGenOutputFormat, symbolCount: Int = 1): DemoGenOptions =
@@ -135,6 +262,7 @@ class DemoGenCommandSupportTest {
         sessionRunner: KotterDemoSessionRunner = RecordingSessionRunner(),
         ingestion: RepoIngestionPort = FakeIngestion(tempDir),
         output: (String) -> Unit = {},
+        workingDirectory: Path = tempDir,
     ): DemoGenCommandSupport {
         // analyzeTextSearch on the real DemoCommandSupport just walks tempDir
         // (empty), which yields zero matches — fine for ranking the canned
@@ -143,11 +271,11 @@ class DemoGenCommandSupportTest {
         val curation = SymbolCurationEngine(demoSupport)
         return DemoGenCommandSupport(
             backend = backend,
-            demoSupport = demoSupport,
             curationEngine = curation,
             sessionRunner = sessionRunner,
             ingestion = ingestion,
             output = DemoGenOutput { output(it) },
+            workingDirectory = workingDirectory,
         )
     }
 

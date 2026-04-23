@@ -19,38 +19,81 @@ import io.github.amichne.kast.cli.demo.runLoadingPhase
 import io.github.amichne.kast.demo.DemoGenScreen
 import io.github.amichne.kast.demo.DualPaneConversation
 import io.github.amichne.kast.demo.renderDemoGenScreen
+import java.nio.file.Files
 import java.nio.file.Path
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+import kotlin.io.path.readText
+import kotlin.io.path.writeText
 
 /**
- * Orchestrates `kast demo-gen`: clones a target repo, bootstraps a
- * standalone backend, curates interesting symbols, generates per-symbol
- * dual-pane reports, then renders or exports them.
+ * Orchestrates `kast demo generate` and `kast demo render`:
  *
- * Mirrors [DemoCommandSupport.runInteractive] in spirit but reuses the
- * existing [DemoCommandSupport] for text-search analytics and the
- * existing [SymbolCurationEngine] for ranking.
+ * - Local mode: skips clone; uses the provided/current workspace, auto-selects
+ *   backend (so IntelliJ is preferred when available).
+ * - Remote mode: clones the target repo, indexes it via the standalone backend,
+ *   and writes a JSON artifact to `<cwd>/.kast/demo-generate/` so it survives
+ *   temp-dir cleanup.
+ * - Progressive: per-symbol failures do not abort the run; failures are recorded
+ *   and the artifact is updated after each symbol.
+ * - Always saves a JSON artifact; the artifact is renderable even if only
+ *   partially populated.
  */
 internal class DemoGenCommandSupport(
     private val backend: DemoGenBackend,
-    private val demoSupport: DemoCommandSupport,
     private val curationEngine: SymbolCurationEngine,
     private val sessionRunner: KotterDemoSessionRunner = LiveKotterDemoSessionRunner(),
     private val ingestion: RepoIngestionPort = DefaultRepoIngestionPort,
     private val output: DemoGenOutput = StdoutDemoGenOutput,
+    private val workingDirectory: Path = Path.of(System.getProperty("user.dir", ".")).toAbsolutePath().normalize(),
 ) {
     suspend fun runInteractive(options: DemoGenOptions): DemoFlowOutcome {
-        // Clone is synchronous I/O that throws CliFailure on bad URL or
-        // failed clone; let those propagate unchanged so the CLI surfaces
-        // them with their original error codes.
-        val workspaceRoot = ingestion.clone(options.repoUrl)
+        // ── Workspace preparation ─────────────────────────────────────────────
+        // Local mode: skip clone and use the provided/current workspace.
+        // Remote mode: clone into a temp dir (cleanup remains registered by
+        // RepoIngestion; artifact is written to cwd so it survives cleanup).
+        val workspaceRoot: Path = if (options.local) {
+            options.workspaceRoot ?: workingDirectory
+        } else {
+            // repoUrl is guaranteed non-null for remote mode by the parser.
+            ingestion.clone(options.repoUrl!!)
+        }
+
+        // Artifact lives under workspaceRoot for local mode; under cwd for
+        // remote mode (so it survives temp-dir cleanup on JVM exit).
+        val artifactDir = (if (options.local) workspaceRoot else workingDirectory)
+            .resolve(".kast/demo-generate")
+
+        val generatedAt = Instant.now().atOffset(ZoneOffset.UTC)
+            .format(DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'"))
+        val artifactPath = artifactDir.resolve("demo-$generatedAt.json")
 
         return when (options.output) {
-            DemoGenOutputFormat.MARKDOWN, DemoGenOutputFormat.JSON -> runHeadless(options, workspaceRoot)
-            DemoGenOutputFormat.TERMINAL -> runTerminal(options, workspaceRoot)
+            DemoGenOutputFormat.MARKDOWN, DemoGenOutputFormat.JSON ->
+                runHeadless(options, workspaceRoot, artifactPath, generatedAt)
+            DemoGenOutputFormat.TERMINAL ->
+                runTerminal(options, workspaceRoot, artifactPath, generatedAt)
         }
     }
 
-    private suspend fun runHeadless(options: DemoGenOptions, workspaceRoot: Path): DemoFlowOutcome {
+    /** Render a previously saved artifact JSON in a Kotter terminal session. */
+    fun renderFromFile(jsonFile: Path, verbose: Boolean = false): DemoFlowOutcome {
+        val screen = DemoGenJsonExporter.importScreen(jsonFile.readText())
+        return sessionRunner.runSession(verbose) { terminal ->
+            renderInteractiveScreen(terminal, screen)
+            DemoFlowOutcome.Completed(DemoPlaybackResult())
+        }
+    }
+
+    // ── Headless path (JSON / Markdown output) ───────────────────────────────
+
+    private suspend fun runHeadless(
+        options: DemoGenOptions,
+        workspaceRoot: Path,
+        artifactPath: Path,
+        generatedAt: String,
+    ): DemoFlowOutcome {
         val ensure = try {
             ingestion.bootstrap(workspaceRoot, backend)
         } catch (failure: CliFailure) {
@@ -67,20 +110,81 @@ internal class DemoGenCommandSupport(
 
         val curated = curationEngine.curate(workspaceRoot, symbols, options.symbolCount)
         if (curated.isEmpty()) {
-            return DemoFlowOutcome.Failed("No symbols selected by curation engine for ${options.repoUrl}")
+            return DemoFlowOutcome.Failed("No symbols selected by curation engine for ${workspaceLabel(options, workspaceRoot)}")
         }
 
-        val reports = try {
-            curated.map { backend.buildReportInstrumented(workspaceRoot, it.symbol) { _, _ -> } }
-        } catch (t: Throwable) {
-            return DemoFlowOutcome.Failed("Per-symbol analysis failed: ${t.message ?: t::class.simpleName}")
+        val reports = mutableListOf<DemoReport>()
+        val failures = mutableListOf<SymbolFailure>()
+
+        for (entry in curated) {
+            try {
+                val report = backend.buildReportInstrumented(workspaceRoot, entry.symbol) { _, _ -> }
+                reports += report
+            } catch (t: Throwable) {
+                failures += SymbolFailure(
+                    symbol = entry.simpleName,
+                    reason = t.message ?: t::class.simpleName ?: "unknown",
+                )
+            }
+            // Progressive: persist after every symbol so partial results survive failure.
+            writeArtifact(
+                artifactPath,
+                DemoGenArtifact(
+                    screen = buildScreen(reports),
+                    generatedAt = generatedAt,
+                    status = if (reports.isEmpty()) DemoGenArtifactStatus.IN_PROGRESS else DemoGenArtifactStatus.PARTIAL,
+                    workspaceRoot = workspaceRoot.toString(),
+                    repoUrl = options.repoUrl,
+                    failures = failures,
+                ),
+            )
+        }
+
+        if (reports.isEmpty()) {
+            writeArtifact(
+                artifactPath,
+                DemoGenArtifact(
+                    screen = buildScreen(emptyList()),
+                    generatedAt = generatedAt,
+                    status = DemoGenArtifactStatus.FAILED,
+                    workspaceRoot = workspaceRoot.toString(),
+                    repoUrl = options.repoUrl,
+                    failures = failures,
+                ),
+            )
+            return DemoFlowOutcome.Failed(
+                "All per-symbol analyses failed for ${workspaceLabel(options, workspaceRoot)}. " +
+                    "Artifact saved to $artifactPath",
+            )
         }
 
         val screen = buildScreen(reports)
+        val finalStatus = if (failures.isEmpty()) DemoGenArtifactStatus.COMPLETED else DemoGenArtifactStatus.PARTIAL
+        writeArtifact(
+            artifactPath,
+            DemoGenArtifact(
+                screen = screen,
+                generatedAt = generatedAt,
+                status = finalStatus,
+                workspaceRoot = workspaceRoot.toString(),
+                repoUrl = options.repoUrl,
+                failures = failures,
+            ),
+        )
+
         when (options.output) {
             DemoGenOutputFormat.MARKDOWN -> output.println(DemoGenMarkdownExporter.export(screen))
-            DemoGenOutputFormat.JSON -> output.println(DemoGenJsonExporter.export(screen))
-            DemoGenOutputFormat.TERMINAL -> Unit // Unreachable in this branch.
+            DemoGenOutputFormat.JSON -> output.println(DemoGenJsonExporter.exportArtifact(
+                DemoGenArtifact(
+                    screen = screen,
+                    generatedAt = generatedAt,
+                    status = finalStatus,
+                    workspaceRoot = workspaceRoot.toString(),
+                    repoUrl = options.repoUrl,
+                    failures = failures,
+                ),
+            ))
+            DemoGenOutputFormat.TERMINAL -> Unit
         }
 
         return DemoFlowOutcome.Completed(
@@ -92,16 +196,26 @@ internal class DemoGenCommandSupport(
         )
     }
 
-    private suspend fun runTerminal(options: DemoGenOptions, workspaceRoot: Path): DemoFlowOutcome {
+    // ── Terminal path ────────────────────────────────────────────────────────
+
+    private suspend fun runTerminal(
+        options: DemoGenOptions,
+        workspaceRoot: Path,
+        artifactPath: Path,
+        generatedAt: String,
+    ): DemoFlowOutcome {
         return sessionRunner.runSession(options.verbose) { terminal ->
-            // ── Phase A: clone + bootstrap + symbol indexing ────────────
+            // ── Phase A: bootstrap + symbol indexing ─────────────────────────
             var ensureResult: WorkspaceEnsureResult? = null
             var allSymbols: List<Symbol> = emptyList()
             val phaseAOk = runLoadingPhase(
-                symbolName = repoLabel(options.repoUrl),
-                steps = listOf("Cloning repository", "Bootstrapping workspace", "Indexing symbols"),
+                symbolName = workspaceLabel(options, workspaceRoot),
+                steps = if (options.local) {
+                    listOf("Connecting to workspace", "Bootstrapping backend", "Indexing symbols")
+                } else {
+                    listOf("Cloning repository", "Bootstrapping workspace", "Indexing symbols")
+                },
             ) { onStepComplete ->
-                // Step 0 — clone already happened upfront; record it as instant.
                 onStepComplete(0, 0L)
 
                 val t1 = System.currentTimeMillis()
@@ -115,10 +229,10 @@ internal class DemoGenCommandSupport(
             if (!phaseAOk) return@runSession DemoFlowOutcome.Failed("Workspace bootstrap failed")
             val ensure = ensureResult ?: return@runSession DemoFlowOutcome.Failed("Workspace bootstrap returned no runtime")
 
-            // ── Phase B: curation ───────────────────────────────────────
+            // ── Phase B: curation ────────────────────────────────────────────
             var curated: List<CuratedSymbol> = emptyList()
             val phaseBOk = runLoadingPhase(
-                symbolName = repoLabel(options.repoUrl),
+                symbolName = workspaceLabel(options, workspaceRoot),
                 steps = listOf("Scanning symbols", "Scoring contrast", "Selecting top ${options.symbolCount}"),
             ) { onStepComplete ->
                 val t0 = System.currentTimeMillis()
@@ -133,8 +247,10 @@ internal class DemoGenCommandSupport(
             if (!phaseBOk) return@runSession DemoFlowOutcome.Failed("Curation failed")
             if (curated.isEmpty()) return@runSession DemoFlowOutcome.Failed("No symbols selected by curation engine")
 
-            // ── Phase C: per-symbol analysis ────────────────────────────
+            // ── Phase C: per-symbol analysis (progressive, failure-tolerant) ─
             val reports = mutableListOf<DemoReport>()
+            val failures = mutableListOf<SymbolFailure>()
+
             for (entry in curated) {
                 var report: DemoReport? = null
                 val ok = runLoadingPhase(
@@ -144,13 +260,55 @@ internal class DemoGenCommandSupport(
                     report = backend.buildReportInstrumented(workspaceRoot, entry.symbol, onStepComplete)
                 }
                 if (!ok || report == null) {
-                    return@runSession DemoFlowOutcome.Failed("Per-symbol analysis failed for ${entry.simpleName}")
+                    failures += SymbolFailure(entry.simpleName, "analysis phase failed")
+                } else {
+                    reports += report
                 }
-                reports += report!!
+                // Persist progressive state after each symbol.
+                writeArtifact(
+                    artifactPath,
+                    DemoGenArtifact(
+                        screen = buildScreen(reports),
+                        generatedAt = generatedAt,
+                        status = DemoGenArtifactStatus.IN_PROGRESS,
+                        workspaceRoot = workspaceRoot.toString(),
+                        repoUrl = options.repoUrl,
+                        failures = failures,
+                    ),
+                )
             }
 
-            // ── Phase D: presentation ───────────────────────────────────
+            if (reports.isEmpty()) {
+                writeArtifact(
+                    artifactPath,
+                    DemoGenArtifact(
+                        screen = buildScreen(emptyList()),
+                        generatedAt = generatedAt,
+                        status = DemoGenArtifactStatus.FAILED,
+                        workspaceRoot = workspaceRoot.toString(),
+                        repoUrl = options.repoUrl,
+                        failures = failures,
+                    ),
+                )
+                return@runSession DemoFlowOutcome.Failed(
+                    "All per-symbol analyses failed. Artifact saved to $artifactPath",
+                )
+            }
+
+            // ── Phase D: presentation ────────────────────────────────────────
             val screen = buildScreen(reports)
+            val finalStatus = if (failures.isEmpty()) DemoGenArtifactStatus.COMPLETED else DemoGenArtifactStatus.PARTIAL
+            writeArtifact(
+                artifactPath,
+                DemoGenArtifact(
+                    screen = screen,
+                    generatedAt = generatedAt,
+                    status = finalStatus,
+                    workspaceRoot = workspaceRoot.toString(),
+                    repoUrl = options.repoUrl,
+                    failures = failures,
+                ),
+            )
             renderInteractiveScreen(terminal, screen)
 
             DemoFlowOutcome.Completed(
@@ -163,15 +321,23 @@ internal class DemoGenCommandSupport(
         }
     }
 
+    // ── Shared helpers ────────────────────────────────────────────────────────
+
     private fun buildScreen(reports: List<DemoReport>): DemoGenScreen {
         val conversations: List<DualPaneConversation> = reports.map { ConversationTemplateEngine.build(it) }
         return DemoGenScreen(conversations = conversations, activeIndex = 0)
     }
 
+    private fun writeArtifact(artifactPath: Path, artifact: DemoGenArtifact) {
+        runCatching {
+            Files.createDirectories(artifactPath.parent)
+            artifactPath.writeText(DemoGenJsonExporter.exportArtifact(artifact))
+        }
+    }
+
     /**
      * Interactive Kotter loop: redraws the current screen on each switch/replay
-     * and breaks out on quit. Scroll keys are wired into local state but the
-     * renderer does not currently consume an offset, so they are no-ops for now.
+     * and breaks out on quit.
      */
     private fun Session.renderInteractiveScreen(terminal: Terminal, initial: DemoGenScreen) {
         var screen by liveVarOf(initial)
@@ -188,7 +354,6 @@ internal class DemoGenCommandSupport(
                     Keys.UP -> { scrollOffset = (scrollOffset - 1).coerceAtLeast(0) }
                     Keys.DOWN -> { scrollOffset += 1 }
                     CharKey('r'), CharKey('R') -> {
-                        // Re-emit the current screen to force a redraw.
                         screen = screen.copy()
                     }
                     is CharKey -> {
@@ -206,8 +371,13 @@ internal class DemoGenCommandSupport(
         }
     }
 
-    private fun repoLabel(repoUrl: String): String =
-        repoUrl.substringAfterLast('/').removeSuffix(".git").ifBlank { repoUrl }
+    private fun workspaceLabel(options: DemoGenOptions, workspaceRoot: Path): String =
+        options.repoUrl
+            ?.substringAfterLast('/')
+            ?.removeSuffix(".git")
+            ?.ifBlank { options.repoUrl }
+            ?: workspaceRoot.fileName?.toString()
+            ?: "local workspace"
 }
 
 /**
@@ -244,9 +414,11 @@ internal interface DemoGenBackend {
 internal class CliServiceDemoGenBackend(
     private val cliService: CliService,
     private val demoSupport: DemoCommandSupport,
+    private val backendName: String? = "standalone",
+    private val acceptIndexing: Boolean = false,
 ) : DemoGenBackend {
     override suspend fun bootstrap(workspaceRoot: Path): WorkspaceEnsureResult =
-        RepoIngestion.bootstrap(workspaceRoot, cliService)
+        RepoIngestion.bootstrap(workspaceRoot, cliService, backendName = backendName, acceptIndexing = acceptIndexing)
 
     override suspend fun listAllSymbols(workspaceRoot: Path): List<Symbol> {
         val root = workspaceRoot.toAbsolutePath().normalize()
@@ -322,9 +494,24 @@ internal class CliServiceDemoGenBackend(
     private fun runtimeOptionsFor(workspaceRoot: Path): RuntimeCommandOptions =
         RuntimeCommandOptions(
             workspaceRoot = workspaceRoot,
-            backendName = "standalone",
+            backendName = backendName,
             waitTimeoutMillis = 180_000L,
+            acceptIndexing = acceptIndexing,
         )
+}
+
+internal object NoOpDemoGenBackend : DemoGenBackend {
+    override suspend fun bootstrap(workspaceRoot: Path): WorkspaceEnsureResult =
+        error("NoOpDemoGenBackend.bootstrap must not be called (render-from-file path)")
+
+    override suspend fun listAllSymbols(workspaceRoot: Path): List<Symbol> =
+        error("NoOpDemoGenBackend.listAllSymbols must not be called (render-from-file path)")
+
+    override suspend fun buildReportInstrumented(
+        workspaceRoot: Path,
+        symbol: Symbol,
+        onStepComplete: (index: Int, durationMs: Long) -> Unit,
+    ): DemoReport = error("NoOpDemoGenBackend.buildReportInstrumented must not be called (render-from-file path)")
 }
 
 /** Stdout sink — split so MARKDOWN/JSON output can be captured in tests. */

@@ -71,4 +71,59 @@ class DemoGenJsonExporterTest {
             assertEquals(source.turns.size, obj["turns"]!!.jsonArray.size)
         }
     }
+
+    @Test
+    fun `importScreen round-trips conversations and activeIndex`() {
+        val exported = DemoGenJsonExporter.export(sample)
+        val imported = DemoGenJsonExporter.importScreen(exported)
+
+        assertEquals(sample.activeIndex, imported.activeIndex)
+        assertEquals(sample.conversations.size, imported.conversations.size)
+        assertEquals(sample.conversations[0].symbolFqn, imported.conversations[0].symbolFqn)
+        assertEquals(sample.conversations[0].turns.size, imported.conversations[0].turns.size)
+        val importedTurn = imported.conversations[0].turns[0]
+        assertEquals("What does Foo do?", importedTurn.userPrompt)
+        assertEquals("kast", importedTurn.rightResponse[0].text)
+    }
+
+    @Test
+    fun `exportArtifact includes metadata fields`() {
+        val artifact = DemoGenArtifact(
+            screen = sample,
+            generatedAt = "20240101T120000Z",
+            status = DemoGenArtifactStatus.COMPLETED,
+            workspaceRoot = "/workspace",
+            repoUrl = "https://github.com/owner/repo.git",
+            failures = listOf(SymbolFailure("Baz", "timeout")),
+        )
+
+        val out = DemoGenJsonExporter.exportArtifact(artifact)
+        val root = Json.parseToJsonElement(out).jsonObject
+
+        assertEquals(sample.activeIndex, root["activeIndex"]!!.jsonPrimitive.content.toInt())
+        assertEquals("20240101T120000Z", root["generatedAt"]!!.jsonPrimitive.content)
+        assertEquals("COMPLETED", root["status"]!!.jsonPrimitive.content)
+        assertEquals("/workspace", root["workspaceRoot"]!!.jsonPrimitive.content)
+        assertEquals("https://github.com/owner/repo.git", root["repoUrl"]!!.jsonPrimitive.content)
+        val failures = root["failures"]!!.jsonArray
+        assertEquals(1, failures.size)
+        assertEquals("Baz", failures[0].jsonObject["symbol"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun `importScreen tolerates artifact JSON with extra metadata fields`() {
+        val artifact = DemoGenArtifact(
+            screen = sample,
+            generatedAt = "20240101T120000Z",
+            status = DemoGenArtifactStatus.PARTIAL,
+            workspaceRoot = "/workspace",
+            repoUrl = null,
+            failures = listOf(SymbolFailure("Bar", "failed")),
+        )
+        val artifactJson = DemoGenJsonExporter.exportArtifact(artifact)
+        val imported = DemoGenJsonExporter.importScreen(artifactJson)
+
+        assertEquals(sample.activeIndex, imported.activeIndex)
+        assertEquals(sample.conversations.size, imported.conversations.size)
+    }
 }

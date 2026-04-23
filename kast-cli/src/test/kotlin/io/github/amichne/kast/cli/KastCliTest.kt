@@ -5,6 +5,7 @@ import io.github.amichne.kast.api.contract.MutationCapability
 import io.github.amichne.kast.api.contract.ReadCapability
 import io.github.amichne.kast.api.contract.ServerLimits
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -57,6 +58,60 @@ class KastCliTest {
 
         assertTrue(help.contains("\u001B["))
         assertTrue(help.contains("Shell integration"))
+    }
+
+    @Test
+    fun `demo generate help uses renamed command`() {
+        val stdout = StringBuilder()
+        val stderr = StringBuilder()
+
+        val exitCode = KastCli().run(arrayOf("help", "demo", "generate"), stdout, stderr)
+
+        assertEquals(0, exitCode)
+        assertTrue(stdout.toString().contains("kast demo generate"))
+        assertFalse(stdout.toString().contains("demo-gen"))
+        assertEquals("", stderr.toString())
+    }
+
+    @Test
+    fun `demo generate help documents generic repo urls and origin fallback`() {
+        val stdout = StringBuilder()
+        val stderr = StringBuilder()
+
+        val exitCode = KastCli().run(arrayOf("help", "demo", "generate"), stdout, stderr)
+
+        assertEquals(0, exitCode)
+        assertTrue(stdout.toString().contains("[--repo-url="))
+        assertTrue(stdout.toString().contains("origin"))
+        assertTrue(stdout.toString().contains("git host"))
+        assertEquals("", stderr.toString())
+    }
+
+    @Test
+    fun `demo generate help documents local background and workspace root options`() {
+        val stdout = StringBuilder()
+        val stderr = StringBuilder()
+
+        val exitCode = KastCli().run(arrayOf("help", "demo", "generate"), stdout, stderr)
+
+        assertEquals(0, exitCode)
+        assertTrue(stdout.toString().contains("--local=true"))
+        assertTrue(stdout.toString().contains("--background=true"))
+        assertTrue(stdout.toString().contains("--workspace-root="))
+        assertEquals("", stderr.toString())
+    }
+
+    @Test
+    fun `demo render help documents json-file option`() {
+        val stdout = StringBuilder()
+        val stderr = StringBuilder()
+
+        val exitCode = KastCli().run(arrayOf("help", "demo", "render"), stdout, stderr)
+
+        assertEquals(0, exitCode)
+        assertTrue(stdout.toString().contains("kast demo render"))
+        assertTrue(stdout.toString().contains("--json-file="))
+        assertEquals("", stderr.toString())
     }
 
     @Test
