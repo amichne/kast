@@ -173,14 +173,19 @@ internal class DemoCommandSupport(
 
         return sessionRunner.runSession(options.verbose) { terminal ->
             // Phase 1+2: Warm backend + symbol picker (combined in runSymbolPicker)
-            var ensureResult: WorkspaceEnsureResult? = null
             val pickerResult = runSymbolPicker(
                 verbose = options.verbose,
                 searchSymbols = { query ->
                     cliService.workspaceSymbolSearch(runtimeOptions, query).payload
                 },
                 warmBackend = {
-                    ensureResult = cliService.workspaceEnsure(runtimeOptions)
+                    // Best-effort: start the daemon while the user browses.
+                    // The result is intentionally discarded — we capture the
+                    // authoritative WorkspaceEnsureResult from the first
+                    // RuntimeAttachedResult in the loading phase instead,
+                    // which avoids a race where signal() cancels this
+                    // coroutine before the assignment can land.
+                    cliService.workspaceEnsure(runtimeOptions)
                 },
             )
 
@@ -194,8 +199,15 @@ internal class DemoCommandSupport(
                 offset = selectedSymbol.location.startOffset,
             )
 
-            // Phase 3: Load demo data with progress
+            // Phase 3: Load demo data with progress.
+            // The first CliService call (resolveSymbol) returns a
+            // RuntimeAttachedResult that carries the authoritative runtime
+            // metadata — we capture it here instead of relying on the
+            // fire-and-forget warmBackend coroutine that may have been
+            // cancelled when the picker section ended.
             var resolvedSymbol: Symbol = selectedSymbol
+            var runtimeStatus: RuntimeCandidateStatus? = null
+            var daemonNote: String? = null
             var referencesPayload: ReferencesResult? = null
             var renamePayload: RenameResult? = null
             var callHierarchyPayload: CallHierarchyResult? = null
@@ -206,10 +218,13 @@ internal class DemoCommandSupport(
                 steps = listOf("Resolve symbol", "Find references", "Rename dry-run", "Call hierarchy", "Text search"),
             ) { onStepComplete ->
                 val t0 = System.currentTimeMillis()
-                resolvedSymbol = cliService.resolveSymbol(
+                val resolveResult = cliService.resolveSymbol(
                     runtimeOptions,
                     SymbolQuery(position = symbolPosition),
-                ).payload.symbol
+                )
+                resolvedSymbol = resolveResult.payload.symbol
+                runtimeStatus = resolveResult.runtime
+                daemonNote = resolveResult.daemonNote
                 onStepComplete(0, System.currentTimeMillis() - t0)
 
                 val t1 = System.currentTimeMillis()
@@ -268,7 +283,8 @@ internal class DemoCommandSupport(
             DemoFlowOutcome.Completed(
                 DemoPlaybackResult(
                     report = report,
-                    runtime = ensureResult!!,
+                    runtime = runtimeStatus!!,
+                    daemonNote = daemonNote,
                 ),
             )
         }
@@ -538,7 +554,8 @@ internal sealed interface DemoFlowOutcome {
 
 internal data class DemoPlaybackResult(
     val report: DemoReport,
-    val runtime: WorkspaceEnsureResult,
+    val runtime: RuntimeCandidateStatus,
+    val daemonNote: String? = null,
 )
 
 internal fun interface KotterDemoSessionRunner {

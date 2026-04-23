@@ -230,8 +230,8 @@ internal class DefaultCliCommandExecutor(
                 when (outcome) {
                     is DemoFlowOutcome.Completed -> CliExecutionResult(
                         output = CliOutput.Text(""),
-                        daemonNote = outcome.result.runtime.note
-                            ?: daemonNoteForRuntime(outcome.result.runtime.selected),
+                        daemonNote = outcome.result.daemonNote
+                            ?: daemonNoteForRuntime(outcome.result.runtime),
                     )
                     is DemoFlowOutcome.Cancelled -> CliExecutionResult(
                         output = CliOutput.Text("demo cancelled by user"),
