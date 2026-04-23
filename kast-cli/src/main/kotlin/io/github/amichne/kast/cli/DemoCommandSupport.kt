@@ -38,7 +38,7 @@ import kotlin.io.path.name
 import kotlin.io.path.readLines
 
 /** Shared entry points used by [CliService.demo] and directly by unit tests. */
-internal class DemoCommandSupport(
+internal open class DemoCommandSupport(
     private val symbolChooser: DemoSymbolChooser = TerminalDemoSymbolChooser(),
     private val sessionRunner: KotterDemoSessionRunner = LiveKotterDemoSessionRunner(),
 ) {
@@ -95,7 +95,8 @@ internal class DemoCommandSupport(
         }
     }
 
-    fun analyzeTextSearch(
+    // `open` so test seams (e.g. SymbolCurationEngineTest) can subclass and stub the filesystem walk.
+    open fun analyzeTextSearch(
         workspaceRoot: Path,
         symbol: Symbol,
     ): DemoTextSearchSummary {

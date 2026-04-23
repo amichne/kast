@@ -6,10 +6,19 @@ icon: lucide/zap
 
 # Quickstart
 
-This page walks you through a complete first session — from starting a
-workspace daemon to resolving a symbol and finding its references. By the
-end, you'll have run three commands and seen structured JSON output from
-each one.
+This page walks you through a first semantic result. By the end, you'll
+know exactly which declaration sits at a cursor position and where that
+declaration is used across your workspace, with structured JSON you can
+hand to a script or agent.
+
+`kast` has two independent runtime modes. This walkthrough uses the
+standalone runtime mode because it works in any terminal, CI job, or
+agent session. If IntelliJ IDEA is already open with the plugin
+installed, skip the standalone startup and shutdown steps, then run the
+resolve and references commands with `--backend-name=intellij` instead.
+That plugin-backed runtime piggybacks on IntelliJ's already-open project
+model, indexes, and analysis session, so there is no separate daemon to
+start or stop.
 
 ## Before you begin
 
@@ -20,13 +29,25 @@ Make sure you have:
   project)
 - The absolute path to that workspace root
 
-## Step 1: Start the workspace daemon
+For standalone discovery, Gradle files are helpful but not always
+required.
 
-Tell Kast which workspace to analyze. This starts the daemon and waits
-until it finishes indexing.
+> **Note:** If the workspace root contains `settings.gradle.kts`,
+> `settings.gradle`, `build.gradle.kts`, or `build.gradle`, the
+> standalone backend uses Gradle-aware discovery. Without those files,
+> `kast` still falls back to conventional source roots and source-file
+> scanning. A root `settings.gradle.kts` matters most for multi-module
+> Gradle workspaces and for repo-cloning demo flows such as
+> `kast demo-gen`.
+
+## Step 1: Start the standalone backend
+
+Tell `kast` which workspace to analyze. This starts the standalone
+daemon and waits until it finishes indexing.
 
 ```console linenums="1" title="Start the daemon"
 kast workspace ensure \
+  --backend-name=standalone \
   --workspace-root=/absolute/path/to/workspace
 ```
 
@@ -47,7 +68,8 @@ sequenceDiagram
 
 The first start takes longer because the daemon discovers your project
 structure and indexes every Kotlin file. Later commands reuse that warm
-state.
+state. This command is the one-time setup cost that turns later semantic
+queries into fast lookups.
 
 !!! tip
     Pass `--accept-indexing=true` if you want the command to return as
@@ -57,11 +79,12 @@ state.
 ## Step 2: Resolve a symbol
 
 Pick any Kotlin file in your workspace and an offset pointing at a
-symbol you want to identify. Kast returns the fully qualified name,
+symbol you want to identify. `kast` returns the fully qualified name,
 kind, parameters, return type, and source location.
 
 ```console linenums="1" title="Resolve a symbol"
 kast resolve \
+  --backend-name=standalone \
   --workspace-root=/absolute/path/to/workspace \
   --file-path=/absolute/path/to/workspace/src/main/kotlin/App.kt \
   --offset=42
@@ -84,6 +107,12 @@ kast resolve \
 }
 ```
 
+This first result answers the question, "What symbol is this, exactly?"
+The `fqName` and `kind` give you compiler identity, not a text match.
+The signature and location tell you what the declaration does and where
+it lives. That is the value of the first result: every later command can
+stay anchored to the same declaration with no ambiguity.
+
 ## Step 3: Find references
 
 Using the same file and offset, ask Kast for every reference to that
@@ -91,6 +120,7 @@ symbol across the workspace.
 
 ```console linenums="1" title="Find references"
 kast references \
+  --backend-name=standalone \
   --workspace-root=/absolute/path/to/workspace \
   --file-path=/absolute/path/to/workspace/src/main/kotlin/App.kt \
   --offset=42
@@ -120,14 +150,18 @@ kast references \
 ```
 
 Notice `searchScope.exhaustive: true` — this means Kast searched every
-candidate file. The reference list is complete, not a sample.
+candidate file. The reference list is complete for this workspace, not a
+sample. In one step, you go from "what declaration is this?" to "who
+uses it?" with proof that the search finished.
 
-## Step 4: Stop the daemon
+## Step 4: Optional: stop the daemon
 
-When you're done, stop the daemon to free resources.
+If you used the standalone path for this walkthrough, stop the daemon to
+free resources.
 
 ```console title="Stop the daemon"
 kast workspace stop \
+  --backend-name=standalone \
   --workspace-root=/absolute/path/to/workspace
 ```
 
