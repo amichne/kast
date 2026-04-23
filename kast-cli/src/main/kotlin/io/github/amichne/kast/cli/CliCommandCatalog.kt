@@ -324,6 +324,24 @@ internal object CliCommandCatalog {
         completionKind = CliOptionCompletionKind.BOOLEAN,
     )
 
+    private val demoGenRepoUrlOption = CliOptionMetadata(
+        key = "repo-url",
+        usage = "--repo-url=https://github.com/owner/repo",
+        description = "GitHub repository to clone, index, and demo. https:// or git@ form.",
+    )
+
+    private val demoGenSymbolCountOption = CliOptionMetadata(
+        key = "symbol-count",
+        usage = "--symbol-count=3",
+        description = "Number of high-contrast symbols to curate. Default 3.",
+    )
+
+    private val demoGenOutputOption = CliOptionMetadata(
+        key = "output",
+        usage = "--output=terminal|markdown|json",
+        description = "Render mode: terminal (interactive Kotter), markdown (printed table), or json. Default terminal.",
+    )
+
     private val commands: List<CliCommandMetadata> = listOf(
         CliCommandMetadata(
             path = listOf("workspace", "status"),
@@ -789,6 +807,24 @@ internal object CliCommandCatalog {
                 "$CLI_EXECUTABLE_NAME demo --workspace-root=/absolute/path/to/workspace --symbol=CliService",
                 "$CLI_EXECUTABLE_NAME demo --backend-name=intellij  # target a running IntelliJ IDEA plugin backend",
                 "$CLI_EXECUTABLE_NAME demo --verbose=true  # render fully-qualified names and full paths",
+            ),
+        ),
+        CliCommandMetadata(
+            path = listOf("demo-gen"),
+            group = CliCommandGroup.VALIDATION,
+            summary = "Synthesize a dual-pane LLM-vs-kast demo from a GitHub repository.",
+            description = "Clones a public GitHub repository, indexes it through the standalone Kast daemon, " +
+                "auto-curates symbols that maximize grep-vs-semantic contrast (overloaded names, common " +
+                "method words), and renders a synthetic dual-pane conversation comparing a baseline LLM " +
+                "(grep-driven) against a kast-augmented LLM. Choose --output=terminal for an interactive " +
+                "Kotter session, markdown for a doc-friendly export, or json for downstream tooling.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME demo-gen --repo-url=https://github.com/owner/repo [--symbol-count=3] [--output=terminal|markdown|json]",
+            ),
+            options = listOf(demoGenRepoUrlOption, demoGenSymbolCountOption, demoGenOutputOption, demoVerboseOption),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME demo-gen --repo-url=https://github.com/JetBrains/kotlin",
+                "$CLI_EXECUTABLE_NAME demo-gen --repo-url=https://github.com/owner/repo --symbol-count=5 --output=markdown",
             ),
         ),
         CliCommandMetadata(

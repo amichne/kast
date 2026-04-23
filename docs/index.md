@@ -1,35 +1,60 @@
 ---
 title: Kast
-description: IDE-grade Kotlin code intelligence for your terminal, your CI,
-  your agent, and your cloud.
+description: Compiler-backed Kotlin analysis for your terminal, CI, agent,
+  or IntelliJ-backed workflow.
 icon: lucide/network
 ---
 
 # IDE-grade Kotlin code intelligence — anywhere you need it
 
-Kast gives you the same semantic analysis that powers IntelliJ IDEA, but as
-a headless daemon with structured JSON output. Run it in your terminal, pipe
-it through CI, hand it to an LLM agent, or spin it up on a cloud VM. Every
-command returns machine-readable JSON that tells you exactly what the Kotlin
-compiler knows — symbol identity, caller relationships, reference
-exhaustiveness, and conflict-safe edit plans.
+`kast` gives you compiler-backed Kotlin answers outside plain text search.
+Use it when `grep` or `rg` can show you where a name appears, but you need to
+know which declaration it resolves to, which callers are real, or whether an
+edit plan is safe to apply.
 
-```mermaid
-flowchart TD
-    A["Your terminal, CI, or agent"] --> C["kast CLI via JSON-RPC"]
-    C --> D["Standalone daemon\n(any machine with Java 21)"]
-    C --> E["IntelliJ plugin\n(reuses IDE index)"]
-    D --> F["K2 Analysis API"]
-    E --> F
-    F --> G["Structured JSON results"]
-```
+Choose the entry point that fits your workflow:
 
-## What makes Kast different
+<div class="grid cards" markdown>
 
-Kast replaces text search with compiler-backed answers. Four capabilities
-set it apart from `grep`, `rg`, and ad-hoc refactoring scripts.
+- **Install the CLI**
 
-- **Symbol identity, not text matching** — Kast resolves the exact compiler
+  ---
+
+  Start a fully independent standalone daemon for terminal work, CI, and
+  agent automation.
+
+  [Open the CLI install guide →](getting-started/install.md#one-line-install)
+
+- **Install the IntelliJ plugin**
+
+  ---
+
+  Connect to the IntelliJ-backed runtime and reuse the IDE's
+  already-open project model, indexes, and analysis session.
+
+  [Open the plugin install guide →](getting-started/install.md#install-the-intellij-plugin-manually)
+
+</div>
+
+## Two independent runtime modes, one contract
+
+`kast` ships two independent runtime modes. Both expose the same JSON-RPC
+contract, so your scripts, agents, and integrations do not need a different
+API when you switch between them.
+
+| Runtime mode | What runs | Best when | Why it shines |
+| --- | --- | --- | --- |
+| **Standalone CLI + daemon** | The `kast` CLI starts a separate backend process outside IntelliJ | You need terminal automation, CI, or a headless agent | It is fully independent, needs no IDE session, and gives you explicit daemon lifecycle control |
+| **IntelliJ plugin-backed runtime** | The plugin starts `kast` inside a running IntelliJ project | IntelliJ is already open on the workspace | It piggybacks on the IDE's already-open project model, indexes, and analysis session |
+
+For a deeper comparison, read [Backends](getting-started/backends.md).
+
+## Why `kast` matters
+
+`kast` replaces guesswork with compiler-backed answers. These capabilities make
+it useful when text search is not enough:
+
+- **Symbol identity, not text matching** — `kast` resolves the exact compiler
   declaration at a position and returns its fully qualified name, kind, and
   location. [Learn more →](what-can-kast-do/understand-symbols.md)
 - **Exhaustive reference search** — Every reference result includes
@@ -42,19 +67,17 @@ set it apart from `grep`, `rg`, and ad-hoc refactoring scripts.
   SHA-256 file hashes for conflict detection.
   [Learn more →](what-can-kast-do/refactor-safely.md)
 
-Kast isn't a replacement for your editor's LSP — it's the tool for when
-work happens outside an editor.
+`kast` complements your editor's LSP and your usual text search. Use it when
+the workflow happens outside the editor or when you need compiler-backed
+answers instead of string matches.
 [Full comparison →](architecture/kast-vs-lsp.md)
-
-Kast ships a standalone daemon and an IntelliJ plugin. Both speak the same
-protocol. [Learn more →](getting-started/backends.md)
 
 ## See it on your code
 
 `kast demo` opens a live Kotter shell on your own workspace. It picks a symbol
 for you (or uses `--symbol`) and lets you switch between semantic references,
 rename dry-run, and incoming callers while keeping the grep baseline in view.
-Run it in a reasonably wide terminal; if the terminal is too narrow, Kast
+Run it in a reasonably wide terminal; if the terminal is too narrow, `kast`
 halts and tells you to resize before rerunning.
 
 ```console
@@ -63,6 +86,9 @@ kast demo --workspace-root=/path/to/your/kotlin/project --symbol=YourClassName
 ```
 
 ## Get running in 60 seconds
+
+The fastest path is the standalone CLI. If IntelliJ is already open on the
+project, install the plugin instead and connect to that runtime.
 
 ```console linenums="1" title="From zero to first result"
 # Install
@@ -95,11 +121,11 @@ for subsequent commands, so everything after the first query is fast.
 
   ---
 
-  Install Kast, run your first query, and understand the two backends.
+  Install `kast`, run your first query, and understand the two backends.
 
   [Install →](getting-started/install.md)
 
-- **See what Kast can do**
+- **See what `kast` can do**
 
   ---
 
@@ -107,7 +133,7 @@ for subsequent commands, so everything after the first query is fast.
 
   [Understand symbols →](what-can-kast-do/understand-symbols.md)
 
-- **Use Kast from an agent**
+- **Use `kast` from an agent**
 
   ---
 

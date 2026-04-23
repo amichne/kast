@@ -25,6 +25,7 @@ application {
 
 dependencies {
     api(project(":analysis-api"))
+    implementation(project(":kast-demo"))
     implementation(libs.coroutines.core)
     implementation(libs.kotter)
     implementation(libs.mordant)

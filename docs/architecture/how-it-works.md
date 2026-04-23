@@ -10,12 +10,15 @@ icon: lucide/layers
 This page explains the architecture behind Kast — what each module
 owns, how a request flows from your terminal to the K2 engine and back,
 and why the system is designed the way it is. Read this when you want to
-understand the "why" behind the behavior you see.
+understand the "why" behind the behavior you see, including how Kast can
+run on its own or piggyback on a warm IntelliJ session while exposing the
+same protocol surface.
 
 ## High-level architecture
 
-Kast follows a client-daemon design. The CLI is a lightweight control
-plane. The backend keeps Kotlin semantic state warm across requests.
+Kast follows a client-daemon design with a shared contract layer and two
+runtime modes. The CLI is a lightweight control plane. The backend keeps
+Kotlin semantic state warm across requests.
 
 ```mermaid
 flowchart LR
@@ -45,6 +48,22 @@ flowchart LR
 The core design decision: isolate semantic runtime cost in long-lived
 backends so repeat queries reuse session state instead of rebuilding
 compiler context on every command.
+
+## One protocol, two runtime modes
+
+Kast keeps the JSON-RPC contract stable and swaps only the runtime that
+holds semantic state. Both backends expose the same method surface,
+capability reporting, and result shapes. The practical difference is where
+the warm Kotlin state lives.
+
+| Runtime mode | Where semantic state lives | Who keeps it warm | Best fit |
+|---|---|---|---|
+| Standalone | In a standalone daemon process with its own analysis session and caches | `kast` workspace lifecycle | Terminals, CI, remote machines, and cloud agents |
+| IntelliJ plugin | Inside an already-open IntelliJ project, reusing the IDE's project model, PSI, and indexes | IntelliJ project lifecycle | Local tools when the IDE is already open |
+
+If IntelliJ is already warm, external tools can connect to the plugin
+backend and immediately benefit from that state. If no IDE is running, the
+standalone backend exposes the same JSON-RPC surface independently.
 
 ## Module ownership
 
@@ -88,6 +107,11 @@ sequenceDiagram
 Every step returns structured data. There is no string scraping or
 regex parsing anywhere in the pipeline.
 
+In standalone mode, the "Backend runtime" in that sequence is the
+standalone daemon process and its own analysis session. In IntelliJ plugin
+mode, that runtime is the plugin service inside IntelliJ, answering through
+the same transport while reusing the IDE's warm project state.
+
 ## Why a daemon?
 
 Starting a Kotlin analysis session is the expensive part. It involves
@@ -98,12 +122,29 @@ session warm.
 - **First command is slower** — workspace discovery, session startup,
   and initial indexing happen up front.
 - **Later commands are fast** — the backend reuses loaded state.
-- **One process holds the analysis context** — caches and indexes stay
-  with the workspace until you stop the daemon.
+- **One long-lived host holds the analysis context** — caches and indexes
+  stay with the workspace until the host stops.
 
-When you use the IntelliJ plugin backend, IntelliJ itself is the
-long-lived process. The plugin starts the Kast server as part of the
-IDE lifecycle.
+In standalone mode, that host is the kast daemon. In IntelliJ plugin mode,
+that host is IntelliJ itself. The plugin starts the Kast server as part of
+the IDE lifecycle, so tools can piggyback on the IDE's already-open
+project model, indexes, and analysis session instead of building a
+second warm session.
+
+## Why two runtimes?
+
+Kast supports both runtimes because the same protocol serves two different
+operating environments.
+
+- **Standalone favors independence** — it works without any IDE, so the
+  same semantic operations are available in terminals, CI jobs, remote
+  machines, and cloud agents.
+- **IntelliJ plugin favors reuse** — it lets external tools benefit from an
+  IDE session that is already open, indexed, and ready to answer semantic
+  queries.
+
+This split keeps the contract stable for clients while letting the semantic
+state live in the place that is already natural for the workflow.
 
 ## Design decisions
 
@@ -188,6 +229,10 @@ stable.
 
 ## Next steps
 
+Use these pages to go deeper into runtime behavior and positioning:
+
+- [Backends](../getting-started/backends.md) — choose between the
+  standalone daemon and the IntelliJ plugin in day-to-day use
 - [Behavioral model](behavioral-model.md) — the rules and limits
   behind Kast results
 - [Kast vs LSP](kast-vs-lsp.md) — why Kast exists alongside the

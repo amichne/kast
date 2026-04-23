@@ -266,6 +266,17 @@ internal class CliService(
         )
     }
 
+    suspend fun demoGen(options: DemoGenOptions): DemoFlowOutcome {
+        val curation = SymbolCurationEngine(demoCommandSupport)
+        val backend = CliServiceDemoGenBackend(this, demoCommandSupport)
+        val support = DemoGenCommandSupport(
+            backend = backend,
+            demoSupport = demoCommandSupport,
+            curationEngine = curation,
+        )
+        return support.runInteractive(options)
+    }
+
     suspend fun applyEdits(
         options: RuntimeCommandOptions,
         query: ApplyEditsQuery,

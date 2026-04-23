@@ -120,6 +120,7 @@ internal class CliCommandParser(
                 listOf("install", "skill") -> CliCommand.InstallSkill(parsed.installSkillOptions())
                 listOf("smoke") -> CliCommand.Smoke(parsed.smokeOptions())
                 listOf("demo") -> CliCommand.Demo(parsed.demoOptions())
+                listOf("demo-gen") -> CliCommand.DemoGen(parsed.demoGenOptions())
                 listOf("eval", "skill") -> CliCommand.EvalSkill(parsed.evalSkillOptions())
                 listOf("internal", "daemon-run") -> CliCommand.InternalDaemonRun(parsed.runtimeOptions(backendName = "standalone"))
                 else -> throw CliFailure(
@@ -573,6 +574,50 @@ internal data class ParsedArguments(
                 ?: Path.of(System.getProperty("user.dir", ".")).toAbsolutePath().normalize(),
             symbolFilter = options["symbol"]?.takeIf(String::isNotBlank),
             backend = backend,
+            verbose = verbose,
+        )
+    }
+
+    fun demoGenOptions(): DemoGenOptions {
+        val repoUrl = options["repo-url"]?.takeIf(String::isNotBlank)
+            ?: throw CliFailure(
+                code = "CLI_USAGE",
+                message = "kast demo-gen requires --repo-url",
+            )
+        val symbolCount = options["symbol-count"]?.takeIf(String::isNotBlank)?.let { raw ->
+            val parsed = raw.toIntOrNull() ?: throw CliFailure(
+                code = "CLI_USAGE",
+                message = "Invalid value for --symbol-count: $raw. Expected an integer between 1 and 20.",
+            )
+            if (parsed < 1 || parsed > 20) {
+                throw CliFailure(
+                    code = "CLI_USAGE",
+                    message = "Invalid value for --symbol-count: $parsed. Expected an integer between 1 and 20.",
+                )
+            }
+            parsed
+        } ?: 3
+        val output = when (options["output"]?.lowercase()) {
+            null, "", "terminal" -> DemoGenOutputFormat.TERMINAL
+            "markdown" -> DemoGenOutputFormat.MARKDOWN
+            "json" -> DemoGenOutputFormat.JSON
+            else -> throw CliFailure(
+                code = "CLI_USAGE",
+                message = "Unknown value for --output: ${options["output"]}. Valid values: terminal, markdown, json.",
+            )
+        }
+        val verbose = when (options["verbose"]?.lowercase()) {
+            null, "", "true", "on", "yes", "1" -> options.containsKey("verbose")
+            "false", "off", "no", "0" -> false
+            else -> throw CliFailure(
+                code = "CLI_USAGE",
+                message = "Unknown value for --verbose: ${options["verbose"]}. Valid values: true, false.",
+            )
+        }
+        return DemoGenOptions(
+            repoUrl = repoUrl,
+            symbolCount = symbolCount,
+            output = output,
             verbose = verbose,
         )
     }

@@ -165,6 +165,19 @@
         "grep",
         "rg"
       ]
+    },
+    {
+      "id": "demo-gen-basic",
+      "prompt": "Generate a synthetic demo comparing grep vs kast for a GitHub repository.",
+      "expected_skill": "kast",
+      "expected_route": "@kast",
+      "allowed_ops": [
+        "kast demo-gen"
+      ],
+      "forbidden_ops": [
+        "grep",
+        "rg"
+      ]
     }
   ]
 }
