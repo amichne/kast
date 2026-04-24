@@ -7,9 +7,8 @@ import com.varabyte.kotter.foundation.input.Key
 import com.varabyte.kotter.foundation.input.Keys
 import com.varabyte.kotter.foundation.input.onKeyPressed
 import com.varabyte.kotter.foundation.input.runUntilKeyPressed
-import com.varabyte.kotter.foundation.text.red
+import com.varabyte.kotter.foundation.text.rgb
 import com.varabyte.kotter.foundation.text.textLine
-import com.varabyte.kotter.foundation.text.yellow
 import com.varabyte.kotter.runtime.Session
 import com.varabyte.kotter.runtime.render.RenderScope
 import kotlinx.coroutines.delay
@@ -139,18 +138,23 @@ private fun Session.runKotterDemoOperation(
     var pulseVisible by liveVarOf(true)
     var scrollOffset by liveVarOf(0)
     var nextCommand: KotterDemoCommand = KotterDemoCommand.Quit
+    var lastTerminalHeight = MAX_TERMINAL_HEIGHT
+    var lastVisibleLineCount = MIN_TRANSCRIPT_VISIBLE_LINES
 
     section {
-        renderKotterDemoScreen(
-            buildKotterDemoScreen(
-                presentation = presentation,
-                sessionState = sessionState,
-                pulseVisible = pulseVisible,
-                terminalWidth = width,
-                layoutCalculator = layoutCalculator,
-                scrollOffset = scrollOffset,
-            ),
+        val currentHeight = height
+        lastTerminalHeight = currentHeight
+        val screen = buildKotterDemoScreen(
+            presentation = presentation,
+            sessionState = sessionState,
+            pulseVisible = pulseVisible,
+            terminalWidth = width,
+            terminalHeight = currentHeight,
+            layoutCalculator = layoutCalculator,
+            scrollOffset = scrollOffset,
         )
+        (screen as? KotterDemoScreen.Running)?.let { lastVisibleLineCount = it.visibleLineCount }
+        renderKotterDemoScreen(screen)
     }.runUntilSignal {
         val controller = KotterDemoSessionController.create(section.coroutineScope, presentation.scenario)
 
@@ -173,8 +177,9 @@ private fun Session.runKotterDemoOperation(
             when (key) {
                 Keys.UP -> {
                     val totalLines = sessionState.allLines().size
-                    if (totalLines > TRANSCRIPT_VISIBLE_LINES) {
-                        scrollOffset = (scrollOffset + 1).coerceAtMost(totalLines - TRANSCRIPT_VISIBLE_LINES)
+                    val visibleCount = lastVisibleLineCount
+                    if (totalLines > visibleCount) {
+                        scrollOffset = (scrollOffset + 1).coerceAtMost(totalLines - visibleCount)
                     }
                 }
                 Keys.DOWN -> {
@@ -199,6 +204,7 @@ private sealed interface KotterDemoScreen {
         val branchSection: KotterDemoBranchSection?,
         val panelContentWidth: Int,
         val scrollOffset: Int = 0,
+        val visibleLineCount: Int,
     ) : KotterDemoScreen
 
     data class Halted(val warning: String) : KotterDemoScreen
@@ -207,7 +213,7 @@ private sealed interface KotterDemoScreen {
 private data class KotterDemoBranchSection(
     val title: String,
     val caption: String,
-    val grid: KotterDemoBranchGrid,
+    val gridLines: List<String>,
 )
 
 private fun buildKotterDemoScreen(
@@ -215,6 +221,7 @@ private fun buildKotterDemoScreen(
     sessionState: KotterDemoSessionState,
     pulseVisible: Boolean,
     terminalWidth: Int,
+    terminalHeight: Int,
     layoutCalculator: KotterDemoLayoutCalculator,
     scrollOffset: Int = 0,
 ): KotterDemoScreen {
@@ -236,11 +243,17 @@ private fun buildKotterDemoScreen(
         is KotterDemoLayoutDecision.Ready -> {
             val running = sessionState.isRunning()
             val allLines = sessionState.allLines()
-            val visibleWindow = if (allLines.size <= TRANSCRIPT_VISIBLE_LINES) {
+
+            val hasBranches = layoutDecision.shell.live.branchGrid != null
+            val precomputedBranchLines = layoutDecision.shell.live.branchGrid?.let { branchGridLines(it) }
+            val branchGridLineCount = precomputedBranchLines?.size ?: 0
+            val visibleLineCount = transcriptVisibleLines(terminalHeight, hasBranches, branchGridLineCount)
+
+            val visibleWindow = if (allLines.size <= visibleLineCount) {
                 allLines
             } else {
-                val endIndex = (allLines.size - scrollOffset).coerceAtLeast(TRANSCRIPT_VISIBLE_LINES)
-                val startIndex = (endIndex - TRANSCRIPT_VISIBLE_LINES).coerceAtLeast(0)
+                val endIndex = (allLines.size - scrollOffset).coerceAtLeast(visibleLineCount)
+                val startIndex = (endIndex - visibleLineCount).coerceAtLeast(0)
                 allLines.subList(startIndex, endIndex)
             }
             val transcriptLines = visibleWindow.ifEmpty {
@@ -250,10 +263,13 @@ private fun buildKotterDemoScreen(
                     listOf(KotterDemoTranscriptLine("Operation complete", KotterDemoStreamTone.CONFIRMED))
                 }
             }
-            val scrollIndicator = if (allLines.size > TRANSCRIPT_VISIBLE_LINES && scrollOffset > 0) {
-                " (↑${scrollOffset} more)"
+            // Pad to fill the terminal
+            val paddedLines = if (transcriptLines.size < visibleLineCount) {
+                transcriptLines + List(visibleLineCount - transcriptLines.size) {
+                    KotterDemoTranscriptLine("", KotterDemoStreamTone.DETAIL)
+                }
             } else {
-                ""
+                transcriptLines
             }
             KotterDemoScreen.Running(
                 actHeader = KotterDemoActHeader(
@@ -276,16 +292,17 @@ private fun buildKotterDemoScreen(
                     ),
                     controls = "Keys   [${presentation.replayKey.uppercaseChar()}] Replay  [${presentation.quitKey.uppercaseChar()}] Quit  [${presentation.operations.joinToString("/") { it.shortcutKey.uppercaseChar().toString() }}] Switch act  [W] Walker  [↑/↓] Scroll",
                 ),
-                transcriptLines = transcriptLines,
-                branchSection = layoutDecision.shell.live.branchGrid?.let { branchGrid ->
+                transcriptLines = paddedLines,
+                branchSection = precomputedBranchLines?.let { gridLines ->
                     KotterDemoBranchSection(
                         title = "Impact Grid",
-                        caption = "Compiler-verified file fan-out across ${branchGrid.columns.size} branches.",
-                        grid = branchGrid,
+                        caption = "Compiler-verified file fan-out across ${layoutDecision.shell.live.branchGrid!!.columns.size} branches.",
+                        gridLines = gridLines,
                     )
                 },
                 panelContentWidth = (terminalWidth.coerceAtMost(MAX_TERMINAL_WIDTH) - PANEL_FRAME_WIDTH).coerceAtLeast(1),
                 scrollOffset = scrollOffset,
+                visibleLineCount = visibleLineCount,
             )
         }
         else -> error("Unexpected layout decision: $layoutDecision")
@@ -317,7 +334,7 @@ private fun RenderScope.renderKotterDemoScreen(screen: KotterDemoScreen) {
                     panelContentWidth = screen.panelContentWidth,
                     bodyLines = listOf(branchSection.caption),
                 )
-                renderBranchGrid(branchSection.grid)
+                renderBranchGrid(branchSection.gridLines)
             }
         }
     }
@@ -327,8 +344,8 @@ private fun RenderScope.renderKotterDemoHaltWarning(
     warning: String,
     quitKey: Char = 'q',
 ) {
-    red(isBright = true) { textLine("Kotter demo halted") }
-    yellow(isBright = true) { textLine(warning) }
+    rgb(TranscriptPalette.ERROR) { textLine("Kotter demo halted") }
+    rgb(TranscriptPalette.WARNING) { textLine(warning) }
     textLine("Resize the terminal and rerun `kast demo`.")
     textLine("Press ${quitKey.uppercaseChar()} or Esc to quit.")
 }
@@ -383,8 +400,26 @@ private fun String.phaseLabel(): String =
 private fun Char.normalizedShortcut(): Char = lowercaseChar()
 
 private const val PANEL_FRAME_WIDTH: Int = 4
-private const val TRANSCRIPT_VISIBLE_LINES: Int = 8
 
 /** Cap the panel width so that terminal-width queries returning [Int.MAX_VALUE] (e.g. InMemoryTerminal in tests)
  *  do not cause string allocations that exhaust heap during section renders. */
 private const val MAX_TERMINAL_WIDTH: Int = 260
+
+/**
+ * Act-header panel (6) + blank (1) + status panel (7) + blank (1) + transcript chrome (4) = 19.
+ * Branch section adds: blank (1) + caption panel (5) + grid lines (variable).
+ */
+internal const val BASE_CHROME_LINES: Int = 19
+internal const val BRANCH_CAPTION_CHROME_LINES: Int = 6
+internal const val MIN_TRANSCRIPT_VISIBLE_LINES: Int = 4
+internal const val MAX_TERMINAL_HEIGHT: Int = 80
+
+internal fun transcriptVisibleLines(
+    terminalHeight: Int,
+    hasBranches: Boolean,
+    branchGridLineCount: Int,
+): Int {
+    val cappedHeight = terminalHeight.coerceIn(1, MAX_TERMINAL_HEIGHT)
+    val branchOverhead = if (hasBranches) BRANCH_CAPTION_CHROME_LINES + branchGridLineCount else 0
+    return (cappedHeight - BASE_CHROME_LINES - branchOverhead).coerceAtLeast(MIN_TRANSCRIPT_VISIBLE_LINES)
+}

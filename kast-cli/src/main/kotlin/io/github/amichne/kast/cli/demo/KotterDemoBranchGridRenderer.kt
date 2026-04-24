@@ -1,11 +1,11 @@
 package io.github.amichne.kast.cli.demo
 
-import com.varabyte.kotter.foundation.text.black
+import com.varabyte.kotter.foundation.text.rgb
 import com.varabyte.kotter.foundation.text.textLine
 import com.varabyte.kotter.runtime.render.RenderScope
 
-internal fun RenderScope.renderBranchGrid(branchGrid: KotterDemoBranchGrid) {
-    branchGridLines(branchGrid).forEach { line ->
+internal fun RenderScope.renderBranchGrid(lines: List<String>) {
+    lines.forEach { line ->
         if (line.startsWith("┌") || line.startsWith("├") || line.startsWith("└") || line.startsWith("│")) {
             structural { textLine(line) }
         } else {
@@ -13,6 +13,10 @@ internal fun RenderScope.renderBranchGrid(branchGrid: KotterDemoBranchGrid) {
         }
     }
 }
+
+/** Overload for callers that only have a [KotterDemoBranchGrid] (e.g. tests). Prefer passing pre-computed lines. */
+internal fun RenderScope.renderBranchGrid(branchGrid: KotterDemoBranchGrid) =
+    renderBranchGrid(branchGridLines(branchGrid))
 
 internal fun branchGridLines(branchGrid: KotterDemoBranchGrid): List<String> {
     if (branchGrid.columns.isEmpty()) return emptyList()
@@ -61,5 +65,5 @@ private fun boundedCell(
 ): String = TextFit.truncate(text, width).padEnd(width)
 
 private fun RenderScope.structural(block: RenderScope.() -> Unit) {
-    black(isBright = true, scopedBlock = block)
+    rgb(TranscriptPalette.BORDER, scopedBlock = block)
 }
