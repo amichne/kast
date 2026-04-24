@@ -87,7 +87,7 @@ class DemoCommandSupportTest {
             affectedFiles = listOf(
                 tempDir.resolve("src/main/kotlin/io/github/amichne/kast/cli/CliService.kt"),
                 tempDir.resolve("src/main/kotlin/io/github/amichne/kast/cli/KastCli.kt"),
-                tempDir.resolve("src/main/kotlin/io/github/amichne/kast/cli/ProcessLauncher.kt"),
+                tempDir.resolve("src/main/kotlin/io/github/amichne/kast/cli/CliCommandParser.kt"),
                 tempDir.resolve("src/main/kotlin/io/github/amichne/kast/cli/WorkspaceRuntimeManager.kt"),
             ),
         )

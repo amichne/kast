@@ -167,12 +167,12 @@
       ]
     },
     {
-      "id": "demo-gen-basic",
-      "prompt": "Generate a synthetic demo comparing grep vs kast for a GitHub repository.",
+      "id": "demo-generate-basic",
+      "prompt": "Generate a synthetic demo comparing grep vs kast for a git repository.",
       "expected_skill": "kast",
       "expected_route": "@kast",
       "allowed_ops": [
-        "kast demo-gen"
+        "kast demo generate"
       ],
       "forbidden_ops": [
         "grep",

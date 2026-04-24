@@ -85,33 +85,47 @@ kast demo --workspace-root=/path/to/your/kotlin/project
 kast demo --workspace-root=/path/to/your/kotlin/project --symbol=YourClassName
 ```
 
+`kast demo generate` produces a shareable dual-pane demo for any Kotlin
+repository. Use `--local=true` to analyze your current workspace without
+cloning (IntelliJ is auto-preferred when available), `--background=true` to
+connect while indexing is still in progress, and `kast demo render` to replay
+a saved artifact at any time.
+
+```console
+# Analyze the current workspace — no clone, IntelliJ preferred if open
+kast demo generate --local=true
+
+# Allow connecting while IntelliJ is still indexing
+kast demo generate --local=true --background=true
+
+# Replay a previously saved artifact
+kast demo render --json-file=.kast/demo-generate/demo-20240101T120000Z.json
+```
+
 ## Get running in 60 seconds
 
-The fastest path is the standalone CLI. If IntelliJ is already open on the
-project, install the plugin instead and connect to that runtime.
+Install the CLI, start a backend, then run your first query.
 
 ```console linenums="1" title="From zero to first result"
-# Install
+# 1. Install the kast CLI
 /bin/bash -c "$(curl -fsSL \
   https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh)"
 # Or: curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh | bash
 
-# Start the daemon
-kast workspace ensure \
-  --workspace-root=/path/to/your/project
+# 2. Start the standalone backend (keep it running in background / separate terminal)
+kast-standalone --workspace-root=/path/to/your/project
 
-# Resolve a symbol
+# 3. Resolve a symbol (in another shell, once the backend is READY)
 kast resolve \
   --workspace-root=/path/to/your/project \
   --file-path=/path/to/your/project/src/main/kotlin/App.kt \
   --offset=42
 ```
 
-That's it. Three commands: install, start, query. The daemon stays warm
-for subsequent commands, so everything after the first query is fast.
-
-[Full install guide →](getting-started/install.md) ·
-[Quickstart tutorial →](getting-started/quickstart.md)
+Three steps: install, start backend, query. The backend stays warm for
+subsequent commands, so everything after the first start is fast.
+If IntelliJ with the plugin is already open on the project, skip step 2 —
+`kast` connects to the IDE's backend automatically.
 
 ## Next steps
 

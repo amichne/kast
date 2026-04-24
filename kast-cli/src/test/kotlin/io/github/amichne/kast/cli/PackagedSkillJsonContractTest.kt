@@ -49,23 +49,29 @@ class PackagedSkillJsonContractTest {
         val kastBinary = checkNotNull(System.getProperty("kast.wrapper")) {
             "kast.wrapper system property is missing"
         }
-        val runtimeLibs = checkNotNull(System.getProperty("kast.runtime-libs")) {
-            "kast.runtime-libs system property is missing"
-        }
         val configHome = tempDir.resolve("kast-config")
         val wrapperEnv = mapOf(
             "KAST_CLI_PATH" to kastBinary,
-            "KAST_RUNTIME_LIBS" to runtimeLibs,
             "KAST_CONFIG_HOME" to configHome.toString(),
             "KAST_WORKSPACE_ROOT" to workspaceRoot.toString(),
         )
 
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/scripts/resolve-kast.sh")))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/scripts/kast-session-start.sh")))
-        assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/scripts/build-routing-corpus.py")))
-        assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/evals/routing.json")))
-        assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/references/routing-improvement.md")))
+        assertTrue(
+            Files.isRegularFile(
+                installedSkillDir.resolve("kast/fixtures/maintenance/scripts/build-routing-corpus.py"),
+            ),
+        )
+        assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/fixtures/maintenance/evals/routing.json")))
+        assertTrue(
+            Files.isRegularFile(
+                installedSkillDir.resolve("kast/fixtures/maintenance/references/routing-improvement.md"),
+            ),
+        )
 
+        val daemon = startRealBackend(workspaceRoot, wrapperEnv)
+        try {
         val resolveScriptResult = runCommand(
             command = listOf(
                 "bash",
@@ -128,6 +134,56 @@ class PackagedSkillJsonContractTest {
             .jsonObject
         assertEquals(true, diagnosticsPayload["ok"]?.toString()?.toBooleanStrictOrNull())
         assertEquals("DIAGNOSTICS_SUCCESS", diagnosticsPayload["type"]?.jsonPrimitive?.content)
+        } finally {
+            runCommand(
+                command = listOf(kastBinary, "workspace", "stop", "--workspace-root=$workspaceRoot"),
+                env = wrapperEnv,
+            )
+            daemon.destroyForcibly()
+        }
+    }
+
+    private fun startRealBackend(
+        workspace: Path,
+        env: Map<String, String>,
+        timeoutMillis: Long = 120_000,
+    ): Process {
+        val runtimeLibs = checkNotNull(System.getProperty("kast.runtime-libs")) {
+            "kast.runtime-libs system property is missing"
+        }
+        val classpathFile = java.io.File(runtimeLibs, "classpath.txt")
+        val classpath = classpathFile.readLines()
+            .filter { it.isNotBlank() }
+            .joinToString(":") { "$runtimeLibs/$it" }
+        val command = buildList {
+            add("java"); add("-cp"); add(classpath)
+            add("io.github.amichne.kast.standalone.StandaloneMainKt")
+            add("--workspace-root=$workspace")
+        }
+        Files.createDirectories(workspace)
+        val process = ProcessBuilder(command)
+            .directory(workspace.toFile())
+            .also { pb -> env.forEach { (k, v) -> pb.environment()[k] = v } }
+            .start()
+        val kastBinary = checkNotNull(env["KAST_CLI_PATH"]) { "KAST_CLI_PATH missing from env" }
+        val deadline = System.nanoTime() + timeoutMillis * 1_000_000L
+        while (System.nanoTime() < deadline) {
+            val statusResult = runCatching {
+                runCommand(
+                    command = listOf(kastBinary, "workspace", "status", "--workspace-root=$workspace"),
+                    env = env,
+                )
+            }.getOrNull()
+            if (statusResult?.exitCode == 0) {
+                val status = runCatching {
+                    defaultCliJson().decodeFromString<WorkspaceStatusResult>(statusResult.stdout)
+                }.getOrNull()
+                if (status?.selected?.ready == true) return process
+            }
+            Thread.sleep(500)
+        }
+        process.destroyForcibly()
+        error("Timed out waiting for standalone backend at $workspace")
     }
 
     private fun runCommand(

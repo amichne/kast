@@ -34,11 +34,18 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      - name: Pre-fetch Gradle dependencies (assemble)
-        run: ./gradlew --no-daemon assemble
+      - name: Cache IntelliJ distribution
+        uses: actions/cache@v4
+        with:
+          path: ~/.gradle/kast/intellij-distributions
+          key: idea-dist-${{ hashFiles('gradle/libs.versions.toml') }}
 
-      - name: Build kast wrapper
-        run: ./gradlew --no-daemon :kast-cli:writeWrapperScript
+      - name: Build kast portable distribution
+        run: ./gradlew --no-daemon :kast-cli:syncPortableDist
 
-      - name: Export KAST_CLI_PATH
-        run: echo "KAST_CLI_PATH=$(bash .github/hooks/resolve-kast-cli-path.sh)" >> "$GITHUB_ENV"
+      - name: Export kast environment
+        run: |
+          KAST_DIST_DIR="$GITHUB_WORKSPACE/kast-cli/build/portable-dist/kast-cli"
+          echo "KAST_CLI_PATH=${KAST_DIST_DIR}/kast-cli" >> "$GITHUB_ENV"
+          echo "KAST_STANDALONE_PATH=${KAST_DIST_DIR}/kast-standalone" >> "$GITHUB_ENV"
+          echo "${KAST_DIST_DIR}" >> "$GITHUB_PATH"

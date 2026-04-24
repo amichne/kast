@@ -97,26 +97,20 @@ class WorkspaceRuntimeManagerTest {
     }
 
     @Test
-    fun `ensureRuntime auto-start note appears when command starts daemon`() = runTest {
+    fun `ensureRuntime throws NO_BACKEND_AVAILABLE when no daemon exists`() = runTest {
         val workspaceRoot = tempDir.resolve("workspace-autostart")
-        val launchedDescriptor = descriptor(workspaceRoot = workspaceRoot, pid = 77)
         val manager = managerWith(
-            runtimeStatuses = mapOf(
-                launchedDescriptor.socketPath to listOf(
-                    runtimeStatus(workspaceRoot = workspaceRoot, state = RuntimeState.INDEXING, indexing = true),
-                ),
-            ),
-            processLauncher = FakeProcessLauncher { _, logFile, _ ->
-                writeDescriptor(descriptor = launchedDescriptor)
-                StartedProcess(pid = launchedDescriptor.pid, logFile = logFile)
-            },
-            processLivenessChecker = { pid -> pid == 77L },
+            runtimeStatuses = emptyMap(),
+            processLivenessChecker = { false },
         )
 
-        val result = manager.ensureRuntime(options = runtimeOptions(workspaceRoot))
+        val failure = runCatching {
+            manager.ensureRuntime(options = runtimeOptions(workspaceRoot))
+        }.exceptionOrNull() as? CliFailure
 
-        assertTrue(result.started)
-        assertTrue(checkNotNull(result.note).contains("state: INDEXING"))
+        checkNotNull(failure) { "Expected ensureRuntime to fail when no backend is running" }
+        assertEquals("NO_BACKEND_AVAILABLE", failure.code)
+        assertTrue(failure.message.contains("kast-standalone"))
     }
 
     @Test
@@ -131,9 +125,9 @@ class WorkspaceRuntimeManagerTest {
             manager.ensureRuntime(options = runtimeOptions(workspaceRoot).copy(noAutoStart = true))
         }.exceptionOrNull() as? CliFailure
 
-        checkNotNull(failure) { "Expected ensureRuntime to fail when no-auto-start is enabled" }
-        assertEquals("DAEMON_NOT_RUNNING", failure.code)
-        assertTrue(failure.message.contains("--no-auto-start"))
+        checkNotNull(failure) { "Expected ensureRuntime to fail when no backend is running" }
+        assertEquals("NO_BACKEND_AVAILABLE", failure.code)
+        assertTrue(failure.message.contains("kast-standalone"))
     }
 
     @Test
@@ -229,62 +223,54 @@ class WorkspaceRuntimeManagerTest {
     }
 
     @Test
-    fun `ensureRuntime falls back to standalone auto-start when no explicit backend`() = runTest {
+    fun `ensureRuntime throws NO_BACKEND_AVAILABLE when no explicit backend and none running`() = runTest {
         val workspaceRoot = tempDir.resolve("workspace-fallback")
-        val launchedDescriptor = descriptor(workspaceRoot, pid = 300, backendName = "standalone")
-        val manager = managerWith(
-            runtimeStatuses = mapOf(
-                launchedDescriptor.socketPath to listOf(
-                    runtimeStatus(workspaceRoot, RuntimeState.READY, indexing = false),
-                ),
-            ),
-            processLauncher = FakeProcessLauncher { _, logFile, _ ->
-                writeDescriptor(descriptor = launchedDescriptor)
-                StartedProcess(pid = launchedDescriptor.pid, logFile = logFile)
-            },
-            processLivenessChecker = { pid -> pid == 300L },
-        )
-
-        val result = manager.ensureRuntime(options = runtimeOptions(workspaceRoot, backendName = null))
-
-        assertTrue(result.started)
-        assertEquals("standalone", result.selected.descriptor.backendName)
-    }
-
-    @Test
-    fun `ensureRuntime fails with STANDALONE_DISABLED when env var set and backend is standalone`() = runTest {
-        val workspaceRoot = tempDir.resolve("workspace-standalone-disabled")
         val manager = managerWith(
             runtimeStatuses = emptyMap(),
             processLivenessChecker = { false },
-            standaloneDisabled = { true },
-        )
-
-        val failure = runCatching {
-            manager.ensureRuntime(options = runtimeOptions(workspaceRoot, backendName = "standalone"))
-        }.exceptionOrNull() as? CliFailure
-
-        checkNotNull(failure) { "Expected STANDALONE_DISABLED failure" }
-        assertEquals("STANDALONE_DISABLED", failure.code)
-        assertTrue(failure.message.contains("KAST_STANDALONE_DISABLE"))
-    }
-
-    @Test
-    fun `ensureRuntime fails with STANDALONE_DISABLED when env var set and no backend running`() = runTest {
-        val workspaceRoot = tempDir.resolve("workspace-standalone-disabled-no-backend")
-        val manager = managerWith(
-            runtimeStatuses = emptyMap(),
-            processLivenessChecker = { false },
-            standaloneDisabled = { true },
         )
 
         val failure = runCatching {
             manager.ensureRuntime(options = runtimeOptions(workspaceRoot, backendName = null))
         }.exceptionOrNull() as? CliFailure
 
-        checkNotNull(failure) { "Expected STANDALONE_DISABLED failure when no backend and standalone disabled" }
-        assertEquals("STANDALONE_DISABLED", failure.code)
-        assertTrue(failure.message.contains("IntelliJ"))
+        checkNotNull(failure) { "Expected NO_BACKEND_AVAILABLE when no backend is running" }
+        assertEquals("NO_BACKEND_AVAILABLE", failure.code)
+        assertTrue(failure.message.contains("kast-standalone"))
+    }
+
+    @Test
+    fun `ensureRuntime throws NO_BACKEND_AVAILABLE when no backend is running and standalone requested`() = runTest {
+        val workspaceRoot = tempDir.resolve("workspace-standalone-disabled")
+        val manager = managerWith(
+            runtimeStatuses = emptyMap(),
+            processLivenessChecker = { false },
+        )
+
+        val failure = runCatching {
+            manager.ensureRuntime(options = runtimeOptions(workspaceRoot, backendName = "standalone"))
+        }.exceptionOrNull() as? CliFailure
+
+        checkNotNull(failure) { "Expected NO_BACKEND_AVAILABLE failure" }
+        assertEquals("NO_BACKEND_AVAILABLE", failure.code)
+        assertTrue(failure.message.contains("kast-standalone"))
+    }
+
+    @Test
+    fun `ensureRuntime throws NO_BACKEND_AVAILABLE when no backend running and none specified`() = runTest {
+        val workspaceRoot = tempDir.resolve("workspace-standalone-disabled-no-backend")
+        val manager = managerWith(
+            runtimeStatuses = emptyMap(),
+            processLivenessChecker = { false },
+        )
+
+        val failure = runCatching {
+            manager.ensureRuntime(options = runtimeOptions(workspaceRoot, backendName = null))
+        }.exceptionOrNull() as? CliFailure
+
+        checkNotNull(failure) { "Expected NO_BACKEND_AVAILABLE failure when no backend running" }
+        assertEquals("NO_BACKEND_AVAILABLE", failure.code)
+        assertTrue(failure.message.contains("kast-standalone"))
     }
 
     @Test
@@ -300,7 +286,6 @@ class WorkspaceRuntimeManagerTest {
                 ),
             ),
             processLivenessChecker = { pid -> pid == 400L },
-            standaloneDisabled = { true },
         )
 
         val result = manager.ensureRuntime(options = runtimeOptions(workspaceRoot, backendName = null))
@@ -313,14 +298,10 @@ class WorkspaceRuntimeManagerTest {
 
     private fun managerWith(
         runtimeStatuses: Map<String, List<RuntimeStatusResponse>>,
-        processLauncher: ProcessLauncher = FakeProcessLauncher(),
         processLivenessChecker: (Long) -> Boolean = { false },
-        standaloneDisabled: () -> Boolean = { false },
     ) = WorkspaceRuntimeManager(
         rpcClient = FakeRuntimeRpcClient(runtimeStatuses),
-        processLauncher = processLauncher,
         processLivenessChecker = processLivenessChecker,
-        standaloneDisabled = standaloneDisabled,
         envLookup = envLookup,
     )
 
@@ -398,16 +379,5 @@ class WorkspaceRuntimeManagerTest {
             )
     }
 
-    private class FakeProcessLauncher(
-        private val onStart: (Path, Path, List<String>) -> StartedProcess = { _, logFile, _ ->
-            StartedProcess(pid = 999, logFile = logFile)
-        },
-    ) : ProcessLauncher {
-        override fun startDetached(
-            mainClassName: String,
-            workingDirectory: Path,
-            logFile: Path,
-            arguments: List<String>,
-        ): StartedProcess = onStart(workingDirectory, logFile, arguments)
-    }
 }
+

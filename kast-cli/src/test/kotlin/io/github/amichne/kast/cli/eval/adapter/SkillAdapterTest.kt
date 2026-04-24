@@ -157,12 +157,16 @@ class SkillAdapterTest {
 
         val evals = skillDir.resolve("evals").createDirectories()
         evals.resolve("evals.json").writeText("""{"skill_name":"kast","evals":[]}""")
-        evals.resolve("routing.json").writeText("""{"skill_name":"kast","suite":"routing","evals":[]}""")
 
         val refs = skillDir.resolve("references").createDirectories()
         refs.resolve("quickstart.md").writeText("# Quickstart\n")
-        refs.resolve("routing-improvement.md").writeText("# Routing improvement\n")
-        refs.resolve("wrapper-openapi.yaml").writeText(
+
+        val maintenanceDir = skillDir.resolve("fixtures/maintenance")
+        val maintenanceEvals = maintenanceDir.resolve("evals").createDirectories()
+        maintenanceEvals.resolve("routing.json").writeText("""{"skill_name":"kast","suite":"routing","evals":[]}""")
+        val maintenanceRefs = maintenanceDir.resolve("references").createDirectories()
+        maintenanceRefs.resolve("routing-improvement.md").writeText("# Routing improvement\n")
+        maintenanceRefs.resolve("wrapper-openapi.yaml").writeText(
             """
             openapi: '3.0.0'
             x-command: kast skill resolve
@@ -176,8 +180,8 @@ class SkillAdapterTest {
             """.trimIndent(),
         )
 
-        val scripts = skillDir.resolve("scripts").createDirectories()
-        scripts.resolve("build-routing-corpus.py").writeText(
+        val maintenanceScripts = maintenanceDir.resolve("scripts").createDirectories()
+        maintenanceScripts.resolve("build-routing-corpus.py").writeText(
             """
             #!/usr/bin/env python3
             print("ok")

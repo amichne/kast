@@ -145,7 +145,7 @@ class InstallServiceTest {
         val stderr = StringBuilder()
 
         val cli = KastCli.testInstance(
-            commandExecutorFactory = { _, _ ->
+            commandExecutorFactory = { _ ->
                 object : CliCommandExecutor {
                     override suspend fun execute(command: CliCommand): CliExecutionResult {
                         check(command is CliCommand.Install)

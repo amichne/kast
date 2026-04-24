@@ -18,8 +18,9 @@ Any change to an `AnalysisBackend` operation must be applied to **both** `backen
 Before modifying `EmbeddedSkillResources`, `WrapperOpenApiDocument`,
 `AnalysisBackend`, or any packaged artifact manifest, enumerate all
 consumers: `docs/openapi.yaml`, `.agents/skills/kast/SKILL.md`,
-`.agents/skills/kast/references/*.md`, `.agents/skills/kast/evals/*.json`,
-`.agents/skills/kast/scripts/*`, `.github/agents/*.md`,
+`.agents/skills/kast/references/*.md`,
+`.agents/skills/kast/fixtures/maintenance/**/*`, `.agents/skills/kast/scripts/*`,
+`.github/agents/*.md`,
 `kast-cli/build.gradle.kts`, and `kast.sh`/`install.sh`. These are contract
 surfaces — a change without updating all consumers silently breaks the
 distribution.

@@ -13,7 +13,7 @@
 # Explicit subcommand:
 #   ./kast.sh build [cli] [plugin] [backend] [--all]
 #   ./kast.sh release --tag v1.0.0 --platform-id linux-x64
-#   ./kast.sh install [--components=standalone,intellij] [--non-interactive]
+#   ./kast.sh install [--components=cli,intellij] [--non-interactive]
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
@@ -779,23 +779,37 @@ _install_intellij_plugin() {
   return 0
 }
 
+_install_standalone_backend() {
+  local release_repo="$1" release_tag="$2" install_root="$3"
+
+  log_section "Install standalone backend"
+  # TODO: standalone backend zip is not yet published as a release asset.
+  #       Once the release pipeline produces kast-standalone-<tag>.zip, download
+  #       it here (mirroring _install_intellij_plugin) and extract to
+  #       "${install_root}/backends/standalone-${release_tag}/".
+  log_note "Standalone backend installation from releases is not yet available."
+  log_note "Build from source: ./kast.sh build backend"
+  log_note "Then launch with: <build-output>/kast-standalone --workspace-root=<path>"
+  return 0
+}
+
 _install_prompt_components() {
   if ! can_prompt; then
-    printf '%s\n' "standalone"; return
+    printf '%s\n' "cli"; return
   fi
-  log_prompt "Which components? [standalone/intellij/all] (standalone) "
+  log_prompt "Which components? [cli/intellij/all] (cli) "
   local reply=""
   if ! IFS= read -r reply </dev/tty; then
     printf '\n' >/dev/tty
-    printf '%s\n' "standalone"
+    printf '%s\n' "cli"
     return
   fi
   printf '\n' >/dev/tty
   case "${reply,,}" in
-    ""|standalone) printf '%s\n' "standalone" ;;
-    intellij)      printf '%s\n' "intellij" ;;
-    all)           printf '%s\n' "standalone,intellij" ;;
-    *)             printf '%s\n' "$reply" ;;
+    ""|cli)    printf '%s\n' "cli" ;;
+    intellij)  printf '%s\n' "intellij" ;;
+    all)       printf '%s\n' "cli,intellij" ;;
+    *)         printf '%s\n' "$reply" ;;
   esac
 }
 
@@ -816,7 +830,10 @@ Usage: ./kast.sh install [options]
 Install the Kast CLI and optional components.
 
 Options:
-  --components=<list>   Comma-separated: standalone,intellij,all (default: standalone)
+  --components=<list>   Comma-separated: cli,intellij,all (default: cli)
+                        cli              - Install the kast CLI binary
+                        intellij         - Download IntelliJ plugin zip
+                        all              - cli + intellij
   --local               Install from local dist/ artifacts built by ./kast.sh build
   --non-interactive     Skip all interactive prompts
   --help, -h            Show this help
@@ -844,26 +861,26 @@ USAGE
 
   if [[ -z "$components" ]]; then
     if [[ "$non_interactive" == "true" ]]; then
-      components="standalone"
+      components="cli"
     else
       components="$(_install_prompt_components)"
     fi
   fi
-  [[ "$components" == "all" ]] && components="standalone,intellij"
+  [[ "$components" == "all" ]] && components="cli,intellij"
 
-  local install_standalone="false" install_intellij="false"
+  local install_cli="false" install_intellij="false"
   IFS=',' read -r -a component_list <<<"$components"
   for comp in "${component_list[@]}"; do
     case "$comp" in
-      standalone|server) install_standalone="true" ;;
-      intellij)          install_intellij="true" ;;
+      cli|standalone|server) install_cli="true" ;;  # standalone/server kept as aliases
+      intellij)              install_intellij="true" ;;
       *) die "Unknown component: $comp" ;;
     esac
   done
 
   local local_plugin_archive=""
   if [[ "$local_build" == "true" ]]; then
-    if [[ "$install_standalone" == "true" && -z "${KAST_ARCHIVE_PATH:-}" ]]; then
+    if [[ "$install_cli" == "true" && -z "${KAST_ARCHIVE_PATH:-}" ]]; then
       local dist_archive="${SCRIPT_DIR}/dist/cli.zip"
       [[ -f "$dist_archive" ]] || die "Local build archive not found at ${dist_archive}. Run ./kast.sh build first."
       KAST_ARCHIVE_PATH="$dist_archive"
@@ -876,7 +893,7 @@ USAGE
 
   tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/kast-install.XXXXXX")"
 
-  if [[ "$install_standalone" == "true" ]]; then
+  if [[ "$install_cli" == "true" ]]; then
     if [[ -n "${KAST_ARCHIVE_PATH:-}" ]]; then
       log_section "Resolve release"
       archive_path="$KAST_ARCHIVE_PATH"
@@ -1027,17 +1044,21 @@ USAGE
   [[ -n "$rc_file" ]] && log "Shell RC:       ${rc_file}"
 
   log_section "Ready"
-  if [[ "$install_standalone" == "true" ]]; then
+  if [[ "$install_cli" == "true" ]]; then
     log_success "Launcher path: ${bin_dir}/kast"
     if _install_path_contains "$bin_dir"; then
       log_step "Try: kast --help"
-      log_step "If you use the packaged skill, run: kast install skill from your workspace root"
-      log_step "Then: kast workspace ensure --workspace-root=/absolute/path/to/workspace"
+      log_step "Start a backend before running analysis commands:"
+      log_step "  kast-standalone --workspace-root=/absolute/path/to/workspace  (standalone JVM backend)"
+      log_step "  OR open IntelliJ IDEA with the kast plugin installed"
+      log_step "Then run commands e.g.: kast references ..."
+      if [[ "$install_intellij" != "true" ]]; then
+        log_note "To also install the IntelliJ plugin: ./kast.sh install --components=intellij"
+      fi
     else
       log_note "Export PATH=\"${bin_dir}:\$PATH\""
       log_note "Then run: kast --help"
-      log_note "If you use the packaged skill, run: kast install skill from your workspace root"
-      log_note "Then run: kast workspace ensure --workspace-root=/absolute/path/to/workspace"
+      log_note "Start a backend: kast-standalone --workspace-root=<path>"
     fi
   fi
   if [[ "$install_intellij" == "true" ]]; then

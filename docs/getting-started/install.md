@@ -1,43 +1,40 @@
 ---
 title: Install
-description: Install the standalone CLI, the IntelliJ plugin, or both.
+description: Install the kast CLI, the standalone backend, the IntelliJ plugin, or any combination.
 icon: lucide/download
 ---
 
 # Install
 
-`kast` supports two fully independent runtime modes. You can install the
-standalone CLI path for terminal, CI, and agent workflows, the IntelliJ
-plugin path for IDE-hosted analysis, or both when you move between them.
+`kast` is split into two independently managed pieces: the **CLI** (the
+`kast` command you type) and a **backend** (the analysis process that does
+the work). You install and start them separately.
 
-## Choose a runtime mode
+## Choose your setup
 
-Use this table to pick the install path that matches how you work.
+| What you want | Install this | How you start the backend |
+|---------------|--------------|---------------------------|
+| Terminal, CI, or agent work | `kast` CLI + standalone backend | `kast-standalone --workspace-root=<path>` |
+| IDE-backed runtime (IntelliJ already open) | IntelliJ plugin | The plugin starts automatically when IntelliJ opens the project |
+| Both | CLI + plugin | Pick the backend you want for each session |
 
-| Runtime mode | Install this | Best when | What you gain |
-|--------------|--------------|-----------|---------------|
-| Standalone CLI + daemon | `kast` CLI | You work in a terminal, CI, or an agent | A self-managed headless path that works without IntelliJ |
-| IntelliJ plugin-backed runtime | IntelliJ plugin | IntelliJ IDEA already has the project open | Reuse IntelliJ's already-open project model and indexes without a second analysis JVM |
-| Both | CLI + plugin | You switch between terminal and IDE workflows | A headless path when the IDE is closed, plus instant reuse when it is open |
-
-Start with [One-line install](#one-line-install) for the standalone CLI path.
-If you want the plugin entry point instead, jump to [Install options](#install-options)
-or [Install the IntelliJ plugin manually](#install-the-intellij-plugin-manually).
+The CLI alone does not run analysis. It routes commands to a running backend.
+You must have at least one backend running before `kast` analysis commands
+will work.
 
 ## Prerequisites
 
 Before you install, confirm these are in place:
 
 - **Java 21 or newer** available through `JAVA_HOME` or your shell
-  `PATH`. The launcher is native-first, but the daemon runs on the JVM.
+  `PATH`. The standalone backend runs on the JVM.
 - **macOS, Linux, or Windows** — the installer covers all three.
 
 ## One-line install
 
-Run this from any directory to install the standalone CLI path. This is
-the fastest way to get `kast` running in a terminal, CI job, or agent.
+Run this from any directory to install the `kast` CLI.
 
-```console linenums="1" title="Install standalone CLI"
+```console linenums="1" title="Install the kast CLI"
 /bin/bash -c "$(curl -fsSL \
   https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh)"
 ```
@@ -56,15 +53,15 @@ root, binary path, and shell RC file path.
 Use these install commands when you want a specific combination of
 components.
 
-=== "Standalone only"
+=== "CLI only (default)"
 
-    ```console title="Default — standalone CLI"
+    ```console title="Default — kast CLI"
     ./kast.sh install
     ```
 
-    This is the default. It installs the native launcher and the
-    packaged standalone daemon runtime. You do not need IntelliJ for
-    this path.
+    Installs the native `kast` launcher. You still need a backend running
+    before analysis commands work. Start `kast-standalone` separately, or
+    open the project in IntelliJ with the plugin installed.
 
 === "IntelliJ plugin only"
 
@@ -74,28 +71,41 @@ components.
 
     Downloads the plugin zip to `$KAST_INSTALL_ROOT/plugins/`. Then
     install it from disk in IntelliJ: **Settings → Plugins → ⚙️ →
-    Install Plugin from Disk**. This path does not require the
-    standalone CLI.
+    Install Plugin from Disk**. This path does not require the `kast` CLI.
 
 === "Both"
 
-    ```console title="Install everything"
+    ```console title="Install CLI and IntelliJ plugin"
     ./kast.sh install --components=all --non-interactive
     ```
 
-    Installs the standalone CLI and downloads the IntelliJ plugin zip
+    Installs the `kast` CLI and downloads the IntelliJ plugin zip
     in one step. Add `--non-interactive` to skip prompts.
 
-If both backends are available for the same workspace, `kast` prefers a
-running IntelliJ backend by default. Add
-`--backend-name=standalone` when you want to pin commands to the
-self-managed standalone path.
+## Starting the standalone backend
+
+After installing the CLI, start the standalone backend before running
+analysis commands:
+
+```console title="Start the standalone backend"
+kast-standalone --workspace-root=/absolute/path/to/your/workspace
+```
+
+Keep this running in a background terminal or as a background process.
+Once it prints `READY`, the `kast` CLI will find it automatically for any
+command targeting the same workspace root.
+
+To stop it, send `SIGTERM` or use:
+
+```console title="Stop the standalone backend"
+kast daemon stop --workspace-root=/absolute/path/to/your/workspace
+```
 
 ## Installer flags
 
 | Flag | What it does |
 |------|--------------|
-| `--components=<list>` | Comma-separated: `standalone`, `intellij`, `all`. Default: `standalone` |
+| `--components=<list>` | Comma-separated: `cli`, `intellij`, `all`. Default: `cli` |
 | `--non-interactive` | Skip all interactive prompts |
 
 ## When Gradle files matter
@@ -109,7 +119,7 @@ when the standalone backend discovers a workspace.
 > `kast` still falls back to conventional source roots and source-file
 > scanning. A root `settings.gradle.kts` matters most for multi-module
 > Gradle workspaces and for repo-cloning demo flows such as
-> `kast demo-gen`.
+> `kast demo generate`.
 
 ## Install the IntelliJ plugin manually
 

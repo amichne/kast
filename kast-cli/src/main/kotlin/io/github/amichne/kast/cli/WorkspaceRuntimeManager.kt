@@ -4,21 +4,16 @@ import io.github.amichne.kast.api.client.DescriptorRegistry
 import io.github.amichne.kast.api.client.RegisteredDescriptor
 import io.github.amichne.kast.api.contract.RuntimeState
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
-import io.github.amichne.kast.api.client.StandaloneServerOptions
 import io.github.amichne.kast.api.client.defaultDescriptorDirectory
-import io.github.amichne.kast.api.client.kastLogDirectory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.nio.file.Path
-import kotlin.io.path.createDirectories
 import kotlin.time.Duration.Companion.milliseconds
 
 internal class WorkspaceRuntimeManager(
     private val rpcClient: RuntimeRpcClient,
-    private val processLauncher: ProcessLauncher,
     private val processLivenessChecker: (Long) -> Boolean = ::isProcessAlive,
-    private val standaloneDisabled: () -> Boolean = ::isStandaloneDisabled,
     private val envLookup: (String) -> String? = System::getenv,
 ) {
     suspend fun workspaceStatus(options: RuntimeCommandOptions): WorkspaceStatusResult {
@@ -35,7 +30,6 @@ internal class WorkspaceRuntimeManager(
         ensureRuntime(
             options = options,
             requireReady = !options.acceptIndexing,
-            purpose = EnsureRuntimePurpose.WORKSPACE_ENSURE,
         )
 
     suspend fun workspaceStop(options: RuntimeCommandOptions): DaemonStopResult {
@@ -63,7 +57,6 @@ internal class WorkspaceRuntimeManager(
     suspend fun ensureRuntime(
         options: RuntimeCommandOptions,
         requireReady: Boolean = false,
-        purpose: EnsureRuntimePurpose = EnsureRuntimePurpose.COMMAND,
     ): WorkspaceEnsureResult {
         val inspection = inspectWorkspace(options, pruneStaleDescriptors = true)
         selectServableCandidate(
@@ -78,34 +71,17 @@ internal class WorkspaceRuntimeManager(
             )
         }
 
-        val liveStandalone = inspection.candidates.firstOrNull { it.descriptor.backendName == "standalone" }
-
-        // IntelliJ backend cannot be auto-started — it requires an open IntelliJ IDEA project.
-        if (liveStandalone == null && (options.backendName == "intellij" || options.backendName == null)) {
-            val requestedIntelliJ = options.backendName == "intellij"
-            if (requestedIntelliJ) {
-                throw CliFailure(
-                    code = "INTELLIJ_NOT_RUNNING",
-                    message = "No IntelliJ backend is available for ${options.workspaceRoot}. " +
-                        "Open the project in IntelliJ IDEA with the Kast plugin installed.",
-                )
-            }
-        }
-
-        // Standalone backend can be disabled via env var.
-        if (standaloneDisabled() && options.backendName == "standalone") {
+        if (options.backendName == "intellij") {
             throw CliFailure(
-                code = "STANDALONE_DISABLED",
-                message = "The standalone JVM daemon is disabled by KAST_STANDALONE_DISABLE. " +
-                    "Unset it or use --backend-name=intellij.",
+                code = "INTELLIJ_NOT_RUNNING",
+                message = "No IntelliJ backend is available for ${options.workspaceRoot}. " +
+                    "Open the project in IntelliJ IDEA with the Kast plugin installed.",
             )
         }
 
+        val liveStandalone = inspection.candidates.firstOrNull { it.descriptor.backendName == "standalone" }
         if (liveStandalone != null) {
             if (!liveStandalone.reachable || liveStandalone.runtimeStatus?.state == RuntimeState.DEGRADED) {
-                if (options.noAutoStart) {
-                    throw noAutoStartFailure(options, liveStandalone)
-                }
                 stopCandidate(inspection.descriptorDirectory, liveStandalone)
             } else {
                 return WorkspaceEnsureResult(
@@ -120,63 +96,10 @@ internal class WorkspaceRuntimeManager(
             }
         }
 
-        if (options.noAutoStart) {
-            throw noAutoStartFailure(options)
-        }
-
-        if (standaloneDisabled()) {
-            throw CliFailure(
-                code = "STANDALONE_DISABLED",
-                message = "No servable backend is available for ${options.workspaceRoot} and the standalone JVM daemon " +
-                    "is disabled by KAST_STANDALONE_DISABLE. Open the project in IntelliJ IDEA with the Kast plugin installed, " +
-                    "or unset KAST_STANDALONE_DISABLE.",
-            )
-        }
-
-        return startStandaloneAndWait(
-            options = options,
-            requireReady = requireReady,
-            purpose = purpose,
-        )
-    }
-
-    private suspend fun startStandaloneAndWait(
-        options: RuntimeCommandOptions,
-        requireReady: Boolean,
-        purpose: EnsureRuntimePurpose,
-    ): WorkspaceEnsureResult {
-        val standaloneOptions = options.requireStandaloneBackend()
-        val logFile = kastLogDirectory(options.workspaceRoot, envLookup)
-            .createDirectories()
-            .resolve("standalone-daemon.log")
-        val launched = processLauncher.startDetached(
-            mainClassName = "io.github.amichne.kast.standalone.StandaloneMainKt",
-            workingDirectory = options.workspaceRoot,
-            logFile = logFile,
-            arguments = standaloneOptions.toCliArguments(),
-        )
-
-        val selected = waitForServable(
-            options = options.copy(
-                backendName = "standalone",
-                standaloneOptions = standaloneOptions,
-            ),
-            backendName = "standalone",
-            acceptIndexing = !requireReady,
-            launchedProcess = launched,
-        )
-        return WorkspaceEnsureResult(
-            workspaceRoot = options.workspaceRoot.toString(),
-            started = true,
-            logFile = logFile.toString(),
-            selected = selected,
-            note = when (purpose) {
-                EnsureRuntimePurpose.COMMAND -> autoStartedDaemonNote(
-                    workspaceRoot = options.workspaceRoot,
-                    selected = selected,
-                )
-                EnsureRuntimePurpose.WORKSPACE_ENSURE -> null
-            },
+        throw CliFailure(
+            code = "NO_BACKEND_AVAILABLE",
+            message = "No backend is running for ${options.workspaceRoot}. " +
+                "Start with: kast-standalone --workspace-root=${options.workspaceRoot}",
         )
     }
 
@@ -184,7 +107,6 @@ internal class WorkspaceRuntimeManager(
         options: RuntimeCommandOptions,
         backendName: String,
         acceptIndexing: Boolean,
-        launchedProcess: StartedProcess? = null,
     ): RuntimeCandidateStatus {
         val deadline = System.nanoTime() + options.waitTimeoutMillis * 1_000_000
         while (System.nanoTime() < deadline) {
@@ -195,17 +117,6 @@ internal class WorkspaceRuntimeManager(
                 acceptIndexing = acceptIndexing,
             )?.let { return it }
 
-            if (launchedProcess != null && !processLivenessChecker(launchedProcess.pid)) {
-                throw CliFailure(
-                    code = "DAEMON_START_FAILED",
-                    message = "The standalone daemon exited before it became ready",
-                    details = mapOf(
-                        "logFile" to launchedProcess.logFile.toString(),
-                        "pid" to launchedProcess.pid.toString(),
-                    ),
-                )
-            }
-
             delay(250.milliseconds)
         }
 
@@ -214,26 +125,6 @@ internal class WorkspaceRuntimeManager(
             code = "RUNTIME_TIMEOUT",
             message = "Timed out waiting for $backendName runtime to become $targetState for ${options.workspaceRoot}",
         )
-    }
-
-    private fun noAutoStartFailure(
-        options: RuntimeCommandOptions,
-        existingCandidate: RuntimeCandidateStatus? = null,
-    ): CliFailure = CliFailure(
-        code = "DAEMON_NOT_RUNNING",
-        message = existingCandidate?.let { candidate ->
-            "No servable standalone daemon is available for ${options.workspaceRoot}; the existing daemon is ${candidate.currentStateLabel()}. Rerun without --no-auto-start or start one with `kast workspace ensure`."
-        } ?: "No standalone daemon is registered for ${options.workspaceRoot}. Rerun without --no-auto-start or start one with `kast workspace ensure`.",
-    )
-
-    private fun autoStartedDaemonNote(
-        workspaceRoot: Path,
-        selected: RuntimeCandidateStatus,
-    ): String = "kast: started daemon for $workspaceRoot (state: ${selected.currentStateLabel()})"
-
-    internal enum class EnsureRuntimePurpose {
-        COMMAND,
-        WORKSPACE_ENSURE,
     }
 
     private suspend fun inspectWorkspace(
@@ -404,16 +295,3 @@ private fun isProcessAlive(pid: Long): Boolean = ProcessHandle.of(pid)
     ?.get()
     ?.isAlive
     ?: false
-
-internal fun isStandaloneDisabled(): Boolean = System.getenv("KAST_STANDALONE_DISABLE") != null
-
-private fun RuntimeCommandOptions.requireStandaloneBackend(): StandaloneServerOptions {
-    return standaloneOptions ?: StandaloneServerOptions.fromValues(
-        mapOf(
-            "workspace-root" to workspaceRoot.toString(),
-            "request-timeout-ms" to "30000",
-            "max-results" to "500",
-            "max-concurrent-requests" to "4",
-        ),
-    )
-}

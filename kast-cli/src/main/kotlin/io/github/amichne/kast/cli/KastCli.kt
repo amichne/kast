@@ -1,6 +1,5 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.api.client.StandaloneServerOptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -10,32 +9,25 @@ import kotlinx.serialization.json.Json
 import java.nio.charset.StandardCharsets
 
 class KastCli private constructor(
-    private val processLauncher: ProcessLauncher,
     private val json: Json,
-    private val commandExecutorFactory: (Json, ProcessLauncher) -> CliCommandExecutor,
+    private val commandExecutorFactory: (Json) -> CliCommandExecutor,
 ) {
-    constructor(
-        internalDaemonRunner: (suspend (StandaloneServerOptions) -> Unit)? = null,
-    ) : this(
-        processLauncher = DefaultProcessLauncher(),
+    constructor() : this(
         json = defaultCliJson(),
-        commandExecutorFactory = { configuredJson: Json, configuredProcessLauncher: ProcessLauncher ->
+        commandExecutorFactory = { configuredJson: Json ->
             DefaultCliCommandExecutor(
-                cliService = CliService(configuredJson, configuredProcessLauncher),
-                internalDaemonRunner = internalDaemonRunner,
+                cliService = CliService(configuredJson),
             )
         },
     )
 
     internal companion object {
         fun testInstance(
-            processLauncher: ProcessLauncher = DefaultProcessLauncher(),
             json: Json = defaultCliJson(),
-            commandExecutorFactory: (Json, ProcessLauncher) -> CliCommandExecutor = { configuredJson, configuredProcessLauncher ->
-                DefaultCliCommandExecutor(CliService(configuredJson, configuredProcessLauncher))
+            commandExecutorFactory: (Json) -> CliCommandExecutor = { configuredJson ->
+                DefaultCliCommandExecutor(CliService(configuredJson))
             },
         ): KastCli = KastCli(
-            processLauncher = processLauncher,
             json = json,
             commandExecutorFactory = commandExecutorFactory,
         )
@@ -47,7 +39,7 @@ class KastCli private constructor(
         stderr: Appendable = System.err,
     ): Int = runBlocking {
         val commandParser = CliCommandParser(json)
-        val commandExecutor = commandExecutorFactory(json, processLauncher)
+        val commandExecutor = commandExecutorFactory(json)
         runCatching {
             val execution = commandExecutor.execute(commandParser.parse(args))
             val exitCode = writeCliOutput(stdout, stderr, execution.output)

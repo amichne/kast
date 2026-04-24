@@ -1,5 +1,6 @@
 import org.gradle.jvm.tasks.Jar
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import WriteWrapperScriptTask
 import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
@@ -319,10 +320,68 @@ tasks.withType<KotlinCompile>().configureEach {
     }
 }
 
+// Rename the launcher to kast-standalone and switch to classpath-based launch
+// (as opposed to the default shadow-jar -jar launcher) to honour IntelliJ
+// classpath ordering that the fat-jar approach cannot guarantee.
+tasks.named<WriteWrapperScriptTask>("writeWrapperScript") {
+    outputFile.set(layout.buildDirectory.file("scripts/kast-standalone"))
+    val dollar = "\$"
+    scriptContent.set(
+        """
+        #!/usr/bin/env bash
+        set -euo pipefail
+
+        script_dir="$(cd -- "$(dirname -- "${dollar}{BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+        main_class="io.github.amichne.kast.standalone.StandaloneMainKt"
+        runtime_libs_dir="${dollar}{KAST_STANDALONE_RUNTIME_LIBS:-${dollar}{script_dir}/runtime-libs}"
+
+        if [[ ! -d "${dollar}{runtime_libs_dir}" ]]; then
+          echo "kast-standalone: runtime-libs directory not found: ${dollar}{runtime_libs_dir}" >&2
+          echo "hint: reinstall with kast.sh or set KAST_STANDALONE_RUNTIME_LIBS=/path/to/runtime-libs" >&2
+          exit 1
+        fi
+
+        classpath_file="${dollar}{runtime_libs_dir}/classpath.txt"
+        if [[ ! -f "${dollar}{classpath_file}" ]]; then
+          echo "kast-standalone: classpath.txt not found in ${dollar}{runtime_libs_dir}" >&2
+          exit 1
+        fi
+
+        classpath=""
+        while IFS= read -r jar; do
+          [[ -z "${dollar}{jar}" ]] && continue
+          if [[ -z "${dollar}{classpath}" ]]; then
+            classpath="${dollar}{runtime_libs_dir}/${dollar}{jar}"
+          else
+            classpath="${dollar}{classpath}:${dollar}{runtime_libs_dir}/${dollar}{jar}"
+          fi
+        done < "${dollar}{classpath_file}"
+
+        if [[ -z "${dollar}{classpath}" ]]; then
+          echo "kast-standalone: classpath.txt is empty in ${dollar}{runtime_libs_dir}" >&2
+          exit 1
+        fi
+
+        java_exec="${dollar}{JAVA_HOME:+${dollar}{JAVA_HOME}/bin/java}"
+        java_exec="${dollar}{java_exec:-java}"
+
+        exec "${dollar}{java_exec}" ${dollar}{JAVA_OPTS:-} -cp "${dollar}{classpath}" "${dollar}{main_class}" "$@"
+        """.trimIndent(),
+    )
+}
+
 tasks.named<Sync>("syncPortableDist") {
     from(layout.buildDirectory.dir("runtime-libs")) {
         into("runtime-libs")
     }
     dependsOn("syncRuntimeLibs")
+}
+
+tasks.named<Zip>("portableDistZip") {
+    eachFile {
+        if (relativePath.pathString == "backend-standalone/kast-standalone") {
+            permissions { unix("755") }
+        }
+    }
 }
 

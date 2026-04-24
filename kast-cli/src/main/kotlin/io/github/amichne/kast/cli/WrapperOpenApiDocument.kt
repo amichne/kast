@@ -464,7 +464,7 @@ private class SchemaRegistry {
 
 fun main(args: Array<String>) {
     val target = args.firstOrNull()?.let(Path::of)
-        ?: Path.of(".agents/skills/kast/references/wrapper-openapi.yaml")
+        ?: Path.of(".agents/skills/kast/fixtures/maintenance/references/wrapper-openapi.yaml")
     Files.writeString(target, WrapperOpenApiDocument.renderYaml())
 }
 

@@ -1,6 +1,5 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.api.client.StandaloneServerOptions
 import io.github.amichne.kast.cli.skill.SkillWrapperExecutor
 import io.github.amichne.kast.cli.skill.SkillWrapperSerializer
 import kotlinx.serialization.json.Json
@@ -37,7 +36,6 @@ internal interface CliCommandExecutor {
 internal class DefaultCliCommandExecutor(
     private val cliService: CliService,
     private val json: Json = defaultCliJson(),
-    private val internalDaemonRunner: (suspend (StandaloneServerOptions) -> Unit)? = null,
 ) : CliCommandExecutor {
     override suspend fun execute(command: CliCommand): CliExecutionResult {
         return when (command) {
@@ -231,7 +229,7 @@ internal class DefaultCliCommandExecutor(
                     is DemoFlowOutcome.Completed -> CliExecutionResult(
                         output = CliOutput.Text(""),
                         daemonNote = outcome.result.daemonNote
-                            ?: daemonNoteForRuntime(outcome.result.runtime),
+                            ?: outcome.result.runtime?.let { daemonNoteForRuntime(it) },
                     )
                     is DemoFlowOutcome.Cancelled -> CliExecutionResult(
                         output = CliOutput.Text("demo cancelled by user"),
@@ -249,10 +247,10 @@ internal class DefaultCliCommandExecutor(
                     is DemoFlowOutcome.Completed -> CliExecutionResult(
                         output = CliOutput.Text(""),
                         daemonNote = outcome.result.daemonNote
-                            ?: daemonNoteForRuntime(outcome.result.runtime),
+                            ?: outcome.result.runtime?.let { daemonNoteForRuntime(it) },
                     )
                     is DemoFlowOutcome.Cancelled -> CliExecutionResult(
-                        output = CliOutput.Text("demo-gen cancelled by user"),
+                        output = CliOutput.Text("demo generate cancelled by user"),
                     )
                     is DemoFlowOutcome.Failed -> throw CliFailure(
                         code = "DEMO_GEN_FAILED",
@@ -261,14 +259,21 @@ internal class DefaultCliCommandExecutor(
                 }
             }
 
-            is CliCommand.InternalDaemonRun -> {
-                val runner = internalDaemonRunner
-                    ?: throw CliFailure(
-                        code = "UNSUPPORTED_COMMAND",
-                        message = "internal daemon-run requires the JVM distribution",
+            is CliCommand.DemoRender -> {
+                val outcome = cliService.demoRender(command.options)
+                when (outcome) {
+                    is DemoFlowOutcome.Completed -> CliExecutionResult(
+                        output = CliOutput.Text(""),
+                        daemonNote = outcome.result.daemonNote,
                     )
-                runner(checkNotNull(command.options.standaloneOptions))
-                CliExecutionResult(output = CliOutput.None)
+                    is DemoFlowOutcome.Cancelled -> CliExecutionResult(
+                        output = CliOutput.Text("demo render cancelled by user"),
+                    )
+                    is DemoFlowOutcome.Failed -> throw CliFailure(
+                        code = "DEMO_RENDER_FAILED",
+                        message = outcome.message,
+                    )
+                }
             }
 
             is CliCommand.Skill -> {

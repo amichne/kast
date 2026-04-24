@@ -9,12 +9,12 @@ val nativeConfigDir = layout.projectDirectory.dir(
 val packagedSkillSourceDir = rootProject.layout.projectDirectory.dir(".agents/skills/kast")
 val embeddedSkillFiles = listOf(
     "SKILL.md",
-    "evals/evals.json",
-    "evals/routing.json",
+    "fixtures/maintenance/evals/evals.json",
+    "fixtures/maintenance/evals/routing.json",
+    "fixtures/maintenance/references/routing-improvement.md",
+    "fixtures/maintenance/references/wrapper-openapi.yaml",
+    "fixtures/maintenance/scripts/build-routing-corpus.py",
     "references/quickstart.md",
-    "references/routing-improvement.md",
-    "references/wrapper-openapi.yaml",
-    "scripts/build-routing-corpus.py",
     "scripts/kast-session-start.sh",
     "scripts/resolve-kast.sh",
 )
@@ -77,12 +77,6 @@ tasks.named<Test>("test") {
         "kast.runtime-libs",
         project(":backend-standalone").layout.buildDirectory.dir("runtime-libs").get().asFile.absolutePath,
     )
-    // The wrapper script spawns a daemon that needs backend-standalone jars on its classpath.
-    // KAST_RUNTIME_LIBS propagates through the subprocess chain to ProcessLauncher.
-    environment(
-        "KAST_RUNTIME_LIBS",
-        project(":backend-standalone").layout.buildDirectory.dir("runtime-libs").get().asFile.absolutePath,
-    )
 }
 
 tasks.register<JavaExec>("generateWrapperOpenApiSchema") {
@@ -90,38 +84,9 @@ tasks.register<JavaExec>("generateWrapperOpenApiSchema") {
     description = "Generate the packaged kast wrapper OpenAPI document from serialized model shapes."
     classpath = sourceSets.main.get().runtimeClasspath
     mainClass.set("io.github.amichne.kast.cli.WrapperOpenApiDocumentKt")
-    args(rootProject.layout.projectDirectory.file(".agents/skills/kast/references/wrapper-openapi.yaml").asFile.absolutePath)
-}
-
-val stageNativeRuntimeLibs by tasks.registering(Sync::class) {
-    dependsOn(":backend-standalone:syncRuntimeLibs")
-    from(project(":backend-standalone").layout.buildDirectory.dir("runtime-libs"))
-    into(layout.buildDirectory.dir("native/nativeCompile/runtime-libs"))
-}
-
-tasks.named("nativeCompile").configure {
-    finalizedBy(stageNativeRuntimeLibs)
-}
-
-tasks.named<Sync>("syncPortableDist") {
-    val backendRuntimeLibsDir = project(":backend-standalone").layout.buildDirectory.dir("runtime-libs")
-    from(backendRuntimeLibsDir) {
-        into("runtime-libs")
-    }
-    dependsOn(":backend-standalone:syncRuntimeLibs")
-
-    doLast {
-        val distDir = project.layout.buildDirectory.dir("portable-dist/${project.name}").get().asFile
-        val classpathFile = distDir.resolve("runtime-libs/classpath.txt")
-        check(classpathFile.exists()) {
-            "syncPortableDist: runtime-libs/classpath.txt is missing from $distDir"
-        }
-        val entries = classpathFile.readLines().filter(String::isNotEmpty)
-        check(entries.any { "backend-standalone" in it }) {
-            "syncPortableDist: classpath.txt must reference backend-standalone jars for the daemon; found: $entries"
-        }
-        check(entries.none { it.startsWith("kast-cli") }) {
-            "syncPortableDist: classpath.txt must not reference kast-cli jars (daemon doesn't need them); found: $entries"
-        }
-    }
+    args(
+        rootProject.layout.projectDirectory
+            .file(".agents/skills/kast/fixtures/maintenance/references/wrapper-openapi.yaml")
+            .asFile.absolutePath,
+    )
 }

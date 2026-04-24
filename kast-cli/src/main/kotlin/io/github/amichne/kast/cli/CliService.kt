@@ -3,7 +3,6 @@ package io.github.amichne.kast.cli
 import io.github.amichne.kast.api.contract.ApplyEditsQuery
 import io.github.amichne.kast.api.contract.ApplyEditsResult
 import io.github.amichne.kast.api.contract.BackendCapabilities
-import io.github.amichne.kast.api.contract.CallDirection
 import io.github.amichne.kast.api.contract.CallHierarchyQuery
 import io.github.amichne.kast.api.contract.CallHierarchyResult
 import io.github.amichne.kast.api.protocol.CapabilityNotSupportedException
@@ -13,7 +12,6 @@ import io.github.amichne.kast.api.contract.CompletionsQuery
 import io.github.amichne.kast.api.contract.CompletionsResult
 import io.github.amichne.kast.api.contract.DiagnosticsQuery
 import io.github.amichne.kast.api.contract.DiagnosticsResult
-import io.github.amichne.kast.api.contract.FilePosition
 import io.github.amichne.kast.api.contract.FileOutlineQuery
 import io.github.amichne.kast.api.contract.FileOutlineResult
 import io.github.amichne.kast.api.contract.ImportOptimizeQuery
@@ -42,14 +40,13 @@ import kotlinx.serialization.json.Json
 
 internal class CliService(
     json: Json,
-    processLauncher: ProcessLauncher,
     private val installService: InstallService = InstallService(),
     private val installSkillService: InstallSkillService = InstallSkillService(),
     private val smokeCommandSupport: SmokeCommandSupport = SmokeCommandSupport(),
     private val demoCommandSupport: DemoCommandSupport = DemoCommandSupport(),
 ) {
     private val rpcClient = KastRpcClient(json)
-    private val runtimeManager = WorkspaceRuntimeManager(rpcClient, processLauncher)
+    private val runtimeManager = WorkspaceRuntimeManager(rpcClient)
 
     suspend fun workspaceStatus(options: RuntimeCommandOptions): WorkspaceStatusResult =
         runtimeManager.workspaceStatus(options)
@@ -268,13 +265,28 @@ internal class CliService(
 
     suspend fun demoGen(options: DemoGenOptions): DemoFlowOutcome {
         val curation = SymbolCurationEngine(demoCommandSupport)
-        val backend = CliServiceDemoGenBackend(this, demoCommandSupport)
+        // Local mode: auto-select backend (null) so IntelliJ is preferred when available.
+        // Remote mode: always standalone (cloned repo has no IntelliJ project open).
+        val backendName = if (options.local) null else "standalone"
+        val backend = CliServiceDemoGenBackend(
+            cliService = this,
+            demoSupport = demoCommandSupport,
+            backendName = backendName,
+            acceptIndexing = options.background,
+        )
         val support = DemoGenCommandSupport(
             backend = backend,
-            demoSupport = demoCommandSupport,
             curationEngine = curation,
         )
         return support.runInteractive(options)
+    }
+
+    suspend fun demoRender(options: DemoRenderOptions): DemoFlowOutcome {
+        val support = DemoGenCommandSupport(
+            backend = NoOpDemoGenBackend,
+            curationEngine = SymbolCurationEngine(demoCommandSupport),
+        )
+        return support.renderFromFile(options.jsonFile, options.verbose)
     }
 
     suspend fun applyEdits(

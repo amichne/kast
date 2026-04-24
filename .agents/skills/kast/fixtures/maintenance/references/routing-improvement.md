@@ -35,7 +35,7 @@ user prompts, loaded skills, and tool usage.
 Run the corpus builder on one or more directories of exports and logs:
 
 ```console title="Build routing cases"
-python3 .agents/skills/kast/scripts/build-routing-corpus.py \
+python3 .agents/skills/kast/fixtures/maintenance/scripts/build-routing-corpus.py \
   --session-dir=/absolute/path/to/session-exports \
   --logs-dir=/absolute/path/to/copilot/logs \
   --output-jsonl=build/skill-routing/routing-cases.jsonl \
@@ -63,11 +63,12 @@ case. This is where you decide whether a miss is durable enough to become a
 checked-in eval.
 
 Finally review `promotion-candidates.json`. These are suggested additions to
-`evals/routing.json`, not auto-approved changes.
+`fixtures/maintenance/evals/routing.json`, not auto-approved changes.
 
 ## Promote durable misses
 
-When a prompt pattern recurs, add a sanitized entry to `evals/routing.json`.
+When a prompt pattern recurs, add a sanitized entry to
+`fixtures/maintenance/evals/routing.json`.
 Use the existing examples in that file as the canonical schema.
 
 Good routing evals:

@@ -24,8 +24,8 @@ Use this table to decide which runtime mode matches your environment.
 ## Standalone backend
 
 The standalone backend runs as an independent JVM process outside the
-IDE. The `kast` CLI starts it on demand, manages its lifecycle, and
-keeps it available for later commands.
+IDE. You start it explicitly with `kast-standalone`, and it keeps
+semantic state warm for subsequent `kast` commands.
 
 Use this path when you want:
 
@@ -40,13 +40,13 @@ no editor is open.
 
 The standalone backend works like this:
 
-1. You run a `kast` command with `--workspace-root`.
-2. The CLI checks for an existing daemon for that workspace.
-3. If none is running, it starts one and waits for READY.
-4. The daemon discovers your project layout.
-5. It bootstraps a K2 analysis session from extracted IntelliJ platform
-   libraries bundled in the distribution.
-6. Your command runs against the warm session.
+1. You run `kast-standalone --workspace-root=<path>` in a terminal or
+   background process. It starts, discovers the project, and prints
+   `READY` when the analysis session is warm.
+2. You run `kast` commands from another shell, targeting the same
+   workspace root. The CLI finds the running backend automatically.
+3. The backend stays alive and warm. Later commands reuse the warm
+   session without a cold-start penalty.
 
 For workspace discovery, `kast` treats the workspace root as
 Gradle-aware when it contains `settings.gradle.kts`, `settings.gradle`,
@@ -60,7 +60,7 @@ or `.java` files.
 > **Note:** A root `settings.gradle.kts` or `settings.gradle` matters
 > most when you want accurate multi-module Gradle discovery. A root
 > `settings.gradle.kts` is also required by repo-cloning demo flows such
-> as `kast demo-gen`.
+> as `kast demo generate`.
 
 ## IntelliJ plugin backend
 
@@ -106,12 +106,18 @@ these rules:
 
 1. If a servable IntelliJ backend is already running for that workspace,
    the CLI prefers it.
-2. Otherwise, if a servable standalone daemon exists, the CLI reuses it.
-3. Otherwise, the CLI auto-starts the standalone daemon.
+2. Otherwise, if a servable standalone backend (`kast-standalone`) exists
+   for that workspace, the CLI reuses it.
+3. Otherwise, the CLI returns an error: no backend is available.
 
-`kast workspace ensure` can start the standalone backend, but it cannot
-start IntelliJ for you. To use the plugin path, open the project in
-IntelliJ IDEA with the plugin installed.
+The CLI never starts a backend for you. You must start `kast-standalone`
+yourself (or have IntelliJ open with the plugin) before running analysis
+commands.
+
+`kast workspace status` reports the current backend state and helps
+diagnose connection problems. To use the standalone path, open the
+project in `kast-standalone` before running commands. To use the plugin
+path, open the project in IntelliJ IDEA with the plugin installed.
 
 ## Using both
 

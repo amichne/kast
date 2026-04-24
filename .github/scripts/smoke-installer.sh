@@ -124,7 +124,6 @@ installed_root="${tmp_dir}/install-root/current"
 [[ -x "$installed_launcher" ]] || die "Installed launcher is not executable: $installed_launcher"
 [[ -L "$installed_root" ]] || die "Current install symlink was not created: $installed_root"
 [[ -x "${installed_root}/kast-cli" ]] || die "Installed kast-cli launcher is missing from ${installed_root}"
-[[ -f "${installed_root}/runtime-libs/classpath.txt" ]] || die "Install is missing runtime-libs/classpath.txt"
 
 "$installed_launcher" --help >/dev/null
 

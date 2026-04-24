@@ -21,6 +21,11 @@ import kotlin.math.ceil
  * budget estimates, structural checks, and completeness metrics.
  */
 internal class SkillAdapter(private val skillDir: Path) {
+    private val maintenanceDir = skillDir.resolve("fixtures/maintenance")
+    private val wrapperOpenApiPath = maintenanceDir.resolve("references/wrapper-openapi.yaml")
+    private val routingEvalPath = maintenanceDir.resolve("evals/routing.json")
+    private val routingScriptPath = maintenanceDir.resolve("scripts/build-routing-corpus.py")
+    private val routingReferencePath = maintenanceDir.resolve("references/routing-improvement.md")
 
     fun scan(): SkillDescriptor {
         val checks = mutableListOf<EvalCheck>()
@@ -106,18 +111,24 @@ internal class SkillAdapter(private val skillDir: Path) {
     }
 
     private fun checkRoutingImprovementAssets(): EvalCheck {
-        val routingEvalExists = skillDir.resolve("evals/routing.json").exists()
-        val routingScriptExists = skillDir.resolve("scripts/build-routing-corpus.py").exists()
-        val routingReferenceExists = skillDir.resolve("references/routing-improvement.md").exists()
+        val routingEvalExists = routingEvalPath.exists()
+        val routingScriptExists = routingScriptPath.exists()
+        val routingReferenceExists = routingReferencePath.exists()
         val allPresent = routingEvalExists && routingScriptExists && routingReferenceExists
         return EvalCheck(
             id = "structural-routing-improvement-assets",
             category = "structural",
             severity = EvalSeverity.WARNING,
             status = if (allPresent) EvalStatus.PASS else EvalStatus.WARN,
-            message = "routing-evals=$routingEvalExists, routing-script=$routingScriptExists, routing-reference=$routingReferenceExists",
+            message = listOf(
+                "routing-evals=$routingEvalExists",
+                "routing-script=$routingScriptExists",
+                "routing-reference=$routingReferenceExists",
+            ).joinToString(),
             remediation = if (!allPresent) {
-                "Add evals/routing.json, scripts/build-routing-corpus.py, and references/routing-improvement.md"
+                "Add fixtures/maintenance/evals/routing.json, " +
+                    "fixtures/maintenance/scripts/build-routing-corpus.py, and " +
+                    "fixtures/maintenance/references/routing-improvement.md"
             } else {
                 null
             },
@@ -151,20 +162,24 @@ internal class SkillAdapter(private val skillDir: Path) {
     }
 
     private fun checkWrapperOpenApiExists(): EvalCheck {
-        val exists = skillDir.resolve("references/wrapper-openapi.yaml").exists()
+        val exists = wrapperOpenApiPath.exists()
         return EvalCheck(
             id = "structural-openapi-exists",
             category = "structural",
             severity = EvalSeverity.WARNING,
             status = if (exists) EvalStatus.PASS else EvalStatus.WARN,
             message = if (exists) "wrapper-openapi.yaml found" else "wrapper-openapi.yaml missing",
-            remediation = if (!exists) "Generate wrapper-openapi.yaml from wrapper contracts" else null,
+            remediation = if (!exists) {
+                "Generate fixtures/maintenance/references/wrapper-openapi.yaml from wrapper contracts"
+            } else {
+                null
+            },
         )
     }
 
     private fun checkWrapperCompleteness(): List<EvalCheck> {
         val skillMdText = skillDir.resolve("SKILL.md").takeIf(Path::exists)?.readText().orEmpty()
-        val openApiText = skillDir.resolve("references/wrapper-openapi.yaml").takeIf(Path::exists)?.readText().orEmpty()
+        val openApiText = wrapperOpenApiPath.takeIf(Path::exists)?.readText().orEmpty()
         return SkillWrapperName.entries.map { wrapper ->
             val command = "kast skill ${wrapper.cliName}"
             val documentedInSkillMd = skillMdText.contains(command)
@@ -175,7 +190,11 @@ internal class SkillAdapter(private val skillDir: Path) {
                 severity = EvalSeverity.INFO,
                 status = if (documentedInSkillMd && documentedInOpenApi) EvalStatus.PASS else EvalStatus.WARN,
                 message = "Wrapper ${wrapper.cliName}: skillMd=$documentedInSkillMd, openApi=$documentedInOpenApi",
-                remediation = if (documentedInSkillMd && documentedInOpenApi) null else "Document `$command` in both SKILL.md and wrapper-openapi.yaml",
+                remediation = if (documentedInSkillMd && documentedInOpenApi) {
+                    null
+                } else {
+                    "Document `$command` in both SKILL.md and fixtures/maintenance/references/wrapper-openapi.yaml"
+                },
             )
         }
     }

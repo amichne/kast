@@ -32,12 +32,24 @@ class InstallSkillServiceTest {
         assertFalse(result.skipped)
         assertTrue(Files.isDirectory(installedSkillDir))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("SKILL.md")))
-        assertTrue(Files.isRegularFile(installedSkillDir.resolve("evals/evals.json")))
-        assertTrue(Files.isRegularFile(installedSkillDir.resolve("evals/routing.json")))
+        assertTrue(Files.isRegularFile(installedSkillDir.resolve("fixtures/maintenance/evals/evals.json")))
+        assertTrue(Files.isRegularFile(installedSkillDir.resolve("fixtures/maintenance/evals/routing.json")))
+        assertTrue(
+            Files.isRegularFile(
+                installedSkillDir.resolve("fixtures/maintenance/references/routing-improvement.md"),
+            ),
+        )
+        assertTrue(
+            Files.isRegularFile(
+                installedSkillDir.resolve("fixtures/maintenance/references/wrapper-openapi.yaml"),
+            ),
+        )
+        assertTrue(
+            Files.isRegularFile(
+                installedSkillDir.resolve("fixtures/maintenance/scripts/build-routing-corpus.py"),
+            ),
+        )
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("references/quickstart.md")))
-        assertTrue(Files.isRegularFile(installedSkillDir.resolve("references/routing-improvement.md")))
-        assertTrue(Files.isRegularFile(installedSkillDir.resolve("references/wrapper-openapi.yaml")))
-        assertTrue(Files.isRegularFile(installedSkillDir.resolve("scripts/build-routing-corpus.py")))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("scripts/kast-session-start.sh")))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("scripts/resolve-kast.sh")))
         assertFalse(Files.exists(installedSkillDir.resolve("agents/openai.yaml")))

@@ -10,9 +10,9 @@
    ```
 
 3. Retry the same command.
-4. Only then inspect `references/wrapper-openapi.yaml` or the binary path.
+4. Only then inspect the binary path or maintenance fixtures.
 
-Do not start by reading `.kast-version` or the full OpenAPI document.
+Do not start by reading `.kast-version` or the full OpenAPI fixture.
 
 ## Command map
 

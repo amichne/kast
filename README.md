@@ -9,10 +9,10 @@ planned edit is safe to apply.
 
 `kast` has two independent runtime modes:
 
-- **Standalone CLI + daemon** runs fully independently from IntelliJ. The
-  `kast` command starts and talks to a separate backend process for terminal
-  workflows, CI, and headless agents.
-- **IntelliJ plugin-backed runtime** runs inside IntelliJ IDEA and reuses the
+- **Standalone CLI + backend** — install the `kast` CLI and run
+  `kast-standalone` to start the analysis backend. Fully independent from
+  IntelliJ; works in terminals, CI, and headless agents.
+- **IntelliJ plugin-backed runtime** — runs inside IntelliJ IDEA and reuses the
   IDE's already-open project model, indexes, and analysis session.
 
 Both runtime modes expose the same JSON-RPC contract, so the calling workflow
@@ -24,10 +24,10 @@ Pick the entry point you want first:
 
 | Runtime mode | Best when | Install |
 | --- | --- | --- |
-| **Standalone CLI + daemon** | You want an independent runtime for terminal work, CI, or agents | [Install guide](https://amichne.github.io/kast/getting-started/install/) |
+| **Standalone CLI + backend** | You want an independent runtime for terminal work, CI, or agents | [Install guide](https://amichne.github.io/kast/getting-started/install/) |
 | **IntelliJ plugin-backed runtime** | IntelliJ is already open and you want to reuse its already-open project model and indexes | [Plugin install guide](https://amichne.github.io/kast/getting-started/install/#install-the-intellij-plugin-manually) · [Latest plugin zip](https://github.com/amichne/kast/releases/latest) |
 
-Install the standalone CLI from any shell with a copyable one-line command:
+Install the `kast` CLI from any shell:
 
 ```console
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh)"
@@ -38,6 +38,19 @@ Or via pipe:
 ```console
 curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh | bash
 ```
+
+Then start the standalone backend before running analysis commands:
+
+```console
+# Start the backend (keep running in background or separate terminal)
+kast-standalone --workspace-root=/path/to/your/workspace
+
+# Once READY, run commands from another shell
+kast resolve --workspace-root=/path/to/your/workspace --file-path=... --offset=42
+```
+
+If IntelliJ with the plugin is already open on the project, skip `kast-standalone` —
+the CLI connects to the IDE's backend automatically.
 
 ## Why `kast` instead of text search?
 

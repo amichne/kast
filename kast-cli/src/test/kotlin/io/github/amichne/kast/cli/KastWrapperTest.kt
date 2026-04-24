@@ -52,6 +52,7 @@ class KastWrapperTest {
             """.trimIndent() + "\n",
         )
 
+        val daemon = startRealBackend(workspace)
         try {
             val ensure = runCli(
                 "workspace",
@@ -94,6 +95,7 @@ class KastWrapperTest {
                 "--workspace-root=$workspace",
                 allowFailure = true,
             )
+            daemon.destroyForcibly()
         }
     }
 
@@ -123,12 +125,12 @@ class KastWrapperTest {
             """.trimIndent() + "\n",
         )
 
+        val daemon = startRealBackend(workspace, extraArgs = listOf("--request-timeout-ms=120000"))
         try {
             val ensure = runCli(
                 "workspace",
                 "ensure",
                 "--workspace-root=$workspace",
-                "--request-timeout-ms=120000",
             )
             val ensureResult = defaultCliJson().decodeFromString<WorkspaceEnsureResult>(ensure.stdout)
 
@@ -147,6 +149,7 @@ class KastWrapperTest {
                 "--workspace-root=$workspace",
                 allowFailure = true,
             )
+            daemon.destroyForcibly()
         }
     }
 
@@ -165,12 +168,9 @@ class KastWrapperTest {
             """.trimIndent() + "\n",
         )
 
+        var daemon: Process? = null
         try {
-            runCli(
-                "workspace",
-                "ensure",
-                "--workspace-root=$workspace",
-            )
+            daemon = startRealBackend(workspace)
 
             sourceFile.writeText(
                 """
@@ -217,6 +217,7 @@ class KastWrapperTest {
                 "--workspace-root=$workspace",
                 allowFailure = true,
             )
+            daemon?.destroyForcibly()
         }
     }
 
@@ -235,12 +236,9 @@ class KastWrapperTest {
             """.trimIndent() + "\n",
         )
 
+        var daemon: Process? = null
         try {
-            runCli(
-                "workspace",
-                "ensure",
-                "--workspace-root=$workspace",
-            )
+            daemon = startRealBackend(workspace)
 
             sourceFile.writeText(
                 """
@@ -278,6 +276,7 @@ class KastWrapperTest {
                 "--workspace-root=$workspace",
                 allowFailure = true,
             )
+            daemon?.destroyForcibly()
         }
     }
 
@@ -306,12 +305,9 @@ class KastWrapperTest {
         )
         val normalizedDeletedUsageFile = normalizePath(deletedUsageFile)
 
+        var daemon: Process? = null
         try {
-            runCli(
-                "workspace",
-                "ensure",
-                "--workspace-root=$workspace",
-            )
+            daemon = startRealBackend(workspace)
 
             Files.delete(deletedUsageFile)
             val newUsageFile = workspace
@@ -356,6 +352,7 @@ class KastWrapperTest {
                 "--workspace-root=$workspace",
                 allowFailure = true,
             )
+            daemon?.destroyForcibly()
         }
     }
 
@@ -503,6 +500,41 @@ class KastWrapperTest {
         return checkNotNull(javaClass.classLoader.getResourceAsStream("io/github/amichne/kast/cli/large-rename-response.json")) {
             "Missing large rename response fixture"
         }.bufferedReader().use { reader -> reader.readText().trim() }
+    }
+
+    private fun startRealBackend(
+        workspace: Path,
+        extraArgs: List<String> = emptyList(),
+        timeoutMillis: Long = 120_000,
+    ): Process {
+        val runtimeLibs = checkNotNull(System.getProperty("kast.runtime-libs")) {
+            "kast.runtime-libs system property is missing"
+        }
+        val classpathFile = java.io.File(runtimeLibs, "classpath.txt")
+        val classpath = classpathFile.readLines()
+            .filter { it.isNotBlank() }
+            .joinToString(":") { "$runtimeLibs/$it" }
+        val command = buildList {
+            add("java"); add("-cp"); add(classpath)
+            add("io.github.amichne.kast.standalone.StandaloneMainKt")
+            add("--workspace-root=$workspace")
+            addAll(extraArgs)
+        }
+        Files.createDirectories(workspace)
+        val process = ProcessBuilder(command).directory(workspace.toFile()).start()
+        val deadline = System.nanoTime() + timeoutMillis * 1_000_000L
+        while (System.nanoTime() < deadline) {
+            val result = runCli("workspace", "status", "--workspace-root=$workspace", allowFailure = true)
+            if (result.exitCode == 0) {
+                val status = runCatching {
+                    defaultCliJson().decodeFromString<WorkspaceStatusResult>(result.stdout)
+                }.getOrNull()
+                if (status?.selected?.ready == true) return process
+            }
+            Thread.sleep(500)
+        }
+        process.destroyForcibly()
+        error("Timed out waiting for standalone backend at $workspace")
     }
 
     private fun startFakeDaemon(
