@@ -79,19 +79,6 @@ tasks.named<Test>("test") {
     )
 }
 
-tasks.named<Sync>("syncPortableDist") {
-    dependsOn(":backend-standalone:syncPortableDist")
-    from(project(":backend-standalone").layout.buildDirectory.dir("portable-dist/backend-standalone"))
-}
-
-tasks.named<Zip>("portableDistZip") {
-    eachFile {
-        if (relativePath.pathString == "kast-cli/kast-standalone") {
-            permissions { unix("755") }
-        }
-    }
-}
-
 tasks.register<JavaExec>("generateWrapperOpenApiSchema") {
     group = "documentation"
     description = "Generate the packaged kast wrapper OpenAPI document from serialized model shapes."
