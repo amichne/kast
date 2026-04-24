@@ -30,6 +30,12 @@ Pick the entry point you want first:
 Install the standalone CLI from any shell with a copyable one-line command:
 
 ```console
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh)"
+```
+
+Or via pipe:
+
+```console
 curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh | bash
 ```
 

@@ -1,256 +1,121 @@
 ---
 name: kotlin-standards
 description: >
-  Produce production-grade Kotlin that is type-driven, boundary-aware, and easy
-  to verify. Use when writing, reviewing, or refactoring Kotlin code that
-  benefits from strong domain modeling, parse-don't-validate boundaries, value
-  classes, sealed types, explicit error semantics, coroutine correctness, or
-  rigorous testing. Trigger for Kotlin implementation work, domain modeling,
-  API design, refactors away from primitive obsession, null-heavy logic,
-  boolean flags, or validation-heavy code.
+  Use when writing, reviewing, or refactoring Kotlin code that needs type-driven
+  design, parse-don't-validate boundaries, scoped package/file layout,
+  Kotlin-native expression style, immutable state, explicit errors, coroutine
+  safety, or correctness-focused tests.
 ---
 
-# Kotlin Mastery
+# Kotlin Standards
 
-Write Kotlin that makes illegal states hard or impossible to represent. Parse
-untrusted input at boundaries, move invariants into types, and prove behavior
-with executable verification instead of explanation alone.
+Write Kotlin whose shape communicates the domain. Make illegal states hard to
+construct, keep core logic pure, and prove behavior with focused tests.
 
-## Core stance
+## Operating Rules
 
-- Prefer types over comments, conventions, and repeated runtime checks.
-- Parse once at trust boundaries, then operate on trusted domain models.
-- Keep side effects and infrastructure at the edges; keep core rules pure.
-- Preserve existing public behavior unless the task explicitly calls for a
-  breaking change.
-- Reuse repository-native patterns when they are clearly established in the
-  immediate context; do not introduce a second version of the same idea.
-- Match the repository's established style before introducing new abstractions.
+- Prefer types over comments, conventions, nullable flags, and repeated checks.
+- Parse untrusted input at boundaries, then pass trusted domain models inward.
+- Keep side effects at the edge; keep the important rules pure and state-free.
+- Preserve local public behavior unless the task explicitly asks for a break.
+- Follow the nearest established repository pattern before introducing a new
+  abstraction.
+- Test correctness through observable behavior, not coverage targets.
 
-## Non-negotiable standards
+## Layout Rules
 
-### Domain modeling
+- A package should contain one logical or semantic unit. Avoid layer buckets
+  such as `utils`, `common`, `helpers`, or broad cross-cutting packages.
+- Use package scope to remove redundant names. Inside `project.workspace`, prefer
+  `Parser` over `WorkspaceParser` when the shorter name is still clear.
+- Default to one primary public interface, class, value class, or sealed root per
+  file. For a sealed hierarchy, keep the root and its variants together unless a
+  variant becomes an independently owned subsystem.
+- Keep an interface and its small library-owned implementations in the same file
+  when they form one unit. Split only when implementations have separate
+  ownership, lifecycle, dependencies, or test surface.
+- Companion factories and tightly-owned extensions may live in the owning type's
+  file. Create an extension file only for integration APIs, many unrelated
+  receivers, or a separate package-level vocabulary.
+- Do not split cohesive code just to satisfy a mechanical file-size instinct.
+  Split when the reader can name the new semantic unit.
 
-- Replace primitive obsession with value classes, enums, or sealed hierarchies
-  when domain meaning matters.
-- Use sealed types for closed state machines and mutually exclusive outcomes.
-- Prefer immutable models with `val`; justify `var` and mutable collections.
-- Eliminate illegal states instead of documenting them.
+For detailed layout heuristics, read
+`references/layout-package-code-style.md`.
 
-### Boundary discipline
+## Type And Boundary Rules
 
-- Treat network payloads, files, environment variables, database rows, CLI
-  arguments, and user input as untrusted.
-- Parse external input into trusted types at the boundary.
-- Avoid `require`, `check`, and exception-first construction for ordinary input
-  rejection; prefer parsing or factories that return typed outcomes.
-- Do not re-parse the same invariant deeper in the system unless crossing a new
-  trust boundary.
-
-### Error semantics
-
-- When replacing throws or designing non-throwing flows, inspect the immediate
-  repository context first for existing error ADTs, typed outcomes, or
-  repository-standard wrappers and use those as the reference pattern.
-- If no local typed-error pattern exists, prefer Kotlin standard-library
-  primitives such as `Result` over inventing a new generic wrapper or bringing
-  in an ad hoc abstraction.
-- Reserve exceptions for truly exceptional conditions or
-  repository-established contracts.
-- Keep error types precise enough for callers and tests to assert on behavior.
-
-### API and implementation quality
-
+- Use value classes, enums, sealed hierarchies, and focused data classes when a
+  primitive carries domain meaning.
+- Make constructors private when invariants require parsing or normalization.
+- Prefer typed outcomes for expected failures. Use the repository's existing
+  result/error pattern when one is present; otherwise prefer Kotlin standard
+  `Result` before inventing a wrapper.
+- Reserve exceptions for exceptional conditions or established API contracts.
 - Keep public APIs small, coherent, and hard to misuse.
-- Prefer explicit names over boolean traps and nullable control flags.
-- Hide internals aggressively with `private` or `internal`.
-- Use KDoc for public APIs and non-obvious invariants.
 
-### Concurrency and state
+## Style Rules
 
-- Prefer immutable state and confinement over shared mutation.
-- When coroutines are present, preserve structured concurrency and make
-  cancellation behavior explicit.
-- Avoid `GlobalScope`, ambient context assumptions, and hidden shared state.
-
-### Verification
-
-- Add or update tests for any meaningful behavior change.
-- Run the repository's real verification commands before claiming success.
-- Do not infer build or test success from static inspection alone.
-
-## Reference map
-
-Read extra references only when they help the current task:
-
-- `references/parse-dont-validate-examples.md` for boundary refactors and
-  before/after transformations
-- `references/types-domain-modeling.md` for value classes, sealed state
-  modeling, nullability elimination, and immutability
-- `references/types-dsls-and-generics.md` for DSL scoping, variance, reified
-  generics, and context receivers
-- `references/types-errors-and-testing.md` for typed outcomes, type-safety
-  anti-patterns, and verification techniques
-- `references/type-safety-patterns.md` as a router when the type-system
-  subtopic is not clear yet
-- `references/kotlin-antipatterns.md` for smell detection
-- `references/idioms.md` for Kotlin-native expression and DSL style
-- `references/api-parameter-selection.md` for plain parameters, named
-  arguments, overloads, lambda flavours, and constructor-versus-builder choices
-- `references/api-builders-and-configuration.md` for builders, receiver
-  lambdas, configuration objects, and contract details
-- `references/api-extensions-and-factories.md` for extension APIs, framework
-  integration, factory naming, and reified shortcuts
-- `references/api-surface-stability.md` for visibility, opt-in tiers, and
-  mutable-versus-read-only exposure
-- `references/api-review-guides.md` for decision flowcharts and API
-  anti-pattern review
-- `references/api-dsl-choices.md` as a router when the API-design subtopic is
-  not clear yet
-
-Prefer the narrowest leaf reference over a router file. Load multiple
-references only when the task truly crosses multiple subtopics.
+- Prefer expression-oriented code: `map`, `flatMap`, `fold`, `associate`,
+  `partition`, `takeIf`, and `runCatching` when they state the transformation
+  directly.
+- Avoid transient `var`s, mutable accumulators, and temporary values inside
+  functions unless they materially improve clarity or performance.
+- Prefer `val`, immutable collections at boundaries, and confined mutation in
+  builders or adapters.
+- Use explicit names instead of boolean traps, nullable control flags, and type
+  prefixes that the package already supplies.
+- Hide implementation details with `private` or `internal`.
+- Add KDoc for public APIs and non-obvious invariants; do not narrate obvious
+  assignments.
 
 ## Workflow
 
-1. **Frame the task**
-   - Identify the boundary inputs, trusted outputs, domain invariants, and
-     behavior that must remain stable.
-   - Note ambiguity explicitly instead of inventing business rules.
-2. **Assess the current design**
-   - Scan for primitive obsession, nullable state encoding, boolean flags,
-     `Map<String, Any>`, unchecked casts, `!!`, repeated validation,
-     exception-driven control flow, and hidden shared mutation.
-   - Inspect the immediate package, module, and nearby tests for established
-     local patterns before introducing a well-known abstraction yourself:
-     error ADTs, result wrappers, identifiers, time abstractions, builders,
-     DSL markers, and parser entry points.
-   - Record the highest-risk issues before editing.
-3. **Design the types**
-   - Introduce the smallest set of types that capture the real domain: value
-     classes, sealed hierarchies, explicit configuration types, and focused
-     error models.
-   - Prefer the repository's existing best-practice implementation of a common
-     pattern when one is present; otherwise fall back to Kotlin standard
-     library or already-established general-purpose solutions.
-   - Keep constructors private when parsing or invariants must be enforced.
-4. **Implement in thin vertical slices**
-   - Start with core domain types and pure logic.
-   - Add boundary parsers or translators.
-   - Integrate with IO, frameworks, or concurrency only after the types are
-     stable.
-   - Keep diffs small and easy to verify.
-5. **Verify behavior**
-   - Run the narrowest useful tests while iterating.
-   - Run the repository's standard build or test commands before finishing.
-   - Treat verification failures as feedback, not as a side note.
-6. **Iterate until the quality bar is met**
-   - Re-score the change using the scorecard below.
-   - Fix the highest-severity failing dimension first.
-   - Repeat until all mandatory dimensions pass or an external blocker
-     remains.
+1. Frame the behavior: boundary inputs, trusted outputs, invariants, and stable
+   public behavior.
+2. Inspect the immediate package, tests, and existing abstractions for local
+   naming, error, layout, and verification patterns.
+3. Choose the narrowest semantic unit that owns the change.
+4. Add one tracer-bullet test for the next observable behavior, then implement
+   the smallest vertical slice that passes.
+5. Refactor only while green: improve names, package boundaries, file ownership,
+   type modeling, and expression style.
+6. Run the narrowest useful verification command before broadening scope.
 
-## Quality scorecard
+## Scorecard
 
-Score each dimension as `Pass`, `Concern`, or `Fail`.
+Mark each dimension `Pass`, `Concern`, or `Fail` before finishing:
 
-### 1. Domain fidelity
+- Domain fidelity: important concepts are represented by types, not comments or
+  caller discipline.
+- Boundary parsing: untrusted data is parsed once with clear failures.
+- Layout cohesion: packages and files map to semantic units and avoid redundant
+  prefixes.
+- Error design: expected failures are explicit and testable.
+- State safety: core code is immutable or intentionally confined.
+- Test value: tests verify correctness themes and boundary failures through
+  public behavior.
+- Kotlin idiom: code reads as Kotlin, not Java with Kotlin syntax.
 
-- `Pass`: Types encode the important business concepts and illegal states are
-  difficult or impossible to construct.
-- `Concern`: Some important concepts remain primitive or only partially
-  encoded.
-- `Fail`: Core invariants still rely on comments, scattered checks, or caller
-  discipline.
+## Reference Map
 
-### 2. Boundary parsing
+Load only the smallest reference that matches the task:
 
-- `Pass`: Untrusted input is parsed once into trusted types with clear failure
-  modes.
-- `Concern`: Parsing exists but some unchecked or repeated validation remains.
-- `Fail`: Raw external data flows through core logic or constructors throw on
-  ordinary input mistakes.
-
-### 3. Error design
-
-- `Pass`: Expected failures are explicit, typed, and testable.
-- `Concern`: Error paths exist but are coarse, leaky, or hard to assert on.
-- `Fail`: Behavior depends on generic exceptions, `null`, or ambiguous
-  booleans.
-
-### 4. API ergonomics
-
-- `Pass`: Call sites are clear, misuse is difficult, and public surface area is
-  minimal.
-- `Concern`: API is workable but exposes avoidable flags, nulls, or internals.
-- `Fail`: API invites invalid combinations, temporal coupling, or stringly
-  typed usage.
-
-### 5. State and concurrency safety
-
-- `Pass`: State is immutable or intentionally synchronized, and coroutine
-  behavior is explicit.
-- `Concern`: Some mutable or concurrent behavior is safe but underexplained.
-- `Fail`: Hidden shared mutation, lifecycle leaks, or unstructured concurrency
-  can cause correctness bugs.
-
-### 6. Test coverage and executability
-
-- `Pass`: Tests cover core success paths, boundary failures, and relevant edge
-  cases; verification commands were run.
-- `Concern`: Some important edges or failure cases lack tests.
-- `Fail`: Changes rely on reasoning alone or unverifiable claims.
-
-### 7. Kotlin idiomatic quality
-
-- `Pass`: Code uses Kotlin-native constructs clearly and avoids Java-shaped
-  ceremony.
-- `Concern`: Code works but misses obvious Kotlin improvements.
-- `Fail`: Code fights the language with unnecessary mutability, reflection, or
-  unsafe casts.
-
-## Improvement loop
-
-Use this loop whenever the first draft is not clearly good enough:
-
-1. Write a short findings list ordered by risk.
-2. Choose the single highest-value improvement that increases correctness or
-   reduces invalid states.
-3. Make the smallest change that resolves that issue without widening scope.
-4. Re-run the relevant verification commands.
-5. Re-score the affected scorecard dimensions.
-6. Repeat until the remaining concerns are minor, intentional, or blocked by
-   constraints.
-
-When reviewing existing code, report findings in this format:
-
-- `Issue`: what is wrong
-- `Why it matters`: the correctness, safety, or maintenance risk
-- `Proposed type/design change`: the smallest credible fix
-- `Verification`: which test or command proves the improvement
-
-## Testing expectations
-
-Always include:
-
-- Unit tests for pure domain logic
-- Boundary tests for parse failures and error typing
-- Regression tests for any bug fix or behavior-sensitive refactor
-
-Include when relevant:
-
-- Property-based tests for reducers, parsers, ordering, or combinator-heavy
-  logic
-- Concurrency tests for shared state or cancellation-sensitive code
-- Serialization or fixture tests for external formats
-
-## Completion gate
-
-Do not declare the task complete until all of the following are true:
-
-- The code satisfies the mandatory scorecard dimensions without any `Fail`
-  ratings.
-- Behavior claims are backed by executed tests or build commands.
-- Public or reusable APIs document non-obvious invariants and error semantics.
-- Any remaining `Concern` ratings are explicitly called out with rationale or
-  follow-up suggestions.
+- `references/layout-package-code-style.md`: package scope, file ownership,
+  extensions, expression style, and test themes
+- `references/parse-dont-validate-examples.md`: boundary parsing examples
+- `references/types-domain-modeling.md`: value classes, sealed state, and
+  immutability
+- `references/types-errors-and-testing.md`: typed outcomes and test strategy
+- `references/types-dsls-and-generics.md`: DSLs, variance, reified generics, and
+  receiver scopes
+- `references/api-dsl-choices.md`: router for API design questions
+- `references/api-parameter-selection.md`: parameters, overloads, and builders
+- `references/api-builders-and-configuration.md`: configuration objects and DSL
+  builders
+- `references/api-extensions-and-factories.md`: extension APIs and factories
+- `references/api-surface-stability.md`: visibility, compatibility, and opt-in
+  tiers
+- `references/api-review-guides.md`: API review prompts
+- `references/kotlin-antipatterns.md`: smell checklist
+- `references/idioms.md`: concise Kotlin idiom reminders
