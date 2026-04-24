@@ -1,12 +1,10 @@
 package io.github.amichne.kast.cli.demo
 
-import com.varabyte.kotter.foundation.text.black
 import com.varabyte.kotter.foundation.text.cyan
 import com.varabyte.kotter.foundation.text.green
-import com.varabyte.kotter.foundation.text.red
+import com.varabyte.kotter.foundation.text.rgb
 import com.varabyte.kotter.foundation.text.text
 import com.varabyte.kotter.foundation.text.textLine
-import com.varabyte.kotter.foundation.text.white
 import com.varabyte.kotter.foundation.text.yellow
 import com.varabyte.kotter.runtime.render.RenderScope
 
@@ -163,14 +161,14 @@ private fun RenderScope.renderPanelLine(
     val content = TextFit.truncate(textValue, width).padEnd(width)
     structural { text("│ ") }
     when (tone) {
-        PanelTone.TITLE -> white(isBright = true) { text(content) }
+        PanelTone.TITLE -> rgb(TranscriptPalette.TITLE) { text(content) }
         PanelTone.BODY -> text(content)
     }
     structural { textLine(" │") }
 }
 
 private fun RenderScope.structural(block: RenderScope.() -> Unit) {
-    black(isBright = true, scopedBlock = block)
+    rgb(TranscriptPalette.BORDER, scopedBlock = block)
 }
 
 // -- Colored transcript panel -----------------------------------------------
@@ -197,26 +195,35 @@ private fun RenderScope.renderTranscriptLine(
     width: Int,
 ) {
     val prefix = tonePrefix(line.tone)
-    val content = TextFit.truncate("$prefix ${line.text}", width).padEnd(width)
     structural { text("│ ") }
-    when (line.tone) {
-        KotterDemoStreamTone.COMMAND -> cyan(isBright = true) { text(content) }
-        KotterDemoStreamTone.CONFIRMED -> green(isBright = true) { text(content) }
-        KotterDemoStreamTone.FLAGGED -> yellow(isBright = true) { text(content) }
-        KotterDemoStreamTone.ERROR -> red(isBright = true) { text(content) }
-        KotterDemoStreamTone.STRUCTURE -> black(isBright = true) { text(content) }
-        KotterDemoStreamTone.DETAIL -> text(content)
-    }
-    structural { textLine(" │") }
-}
 
-private fun tonePrefix(tone: KotterDemoStreamTone): String = when (tone) {
-    KotterDemoStreamTone.COMMAND -> "$"
-    KotterDemoStreamTone.CONFIRMED -> "✓"
-    KotterDemoStreamTone.FLAGGED -> "⚑"
-    KotterDemoStreamTone.ERROR -> "✕"
-    KotterDemoStreamTone.DETAIL -> "•"
-    KotterDemoStreamTone.STRUCTURE -> "·"
+    if (line.codePreview != null) {
+        val pathPart = "$prefix ${line.text}"
+        val codePart = "  `${line.codePreview}`"
+        val combined = TextFit.truncate("$pathPart$codePart", width)
+        val pathVisible = combined.take(pathPart.length.coerceAtMost(combined.length))
+        val codeVisible = combined.drop(pathVisible.length)
+
+        val toneRgb = TranscriptPalette.toneColor(line.tone)
+        if (toneRgb != null) {
+            rgb(toneRgb) { text(pathVisible) }
+        } else {
+            rgb(TranscriptPalette.PATH) { text(pathVisible) }
+        }
+        rgb(TranscriptPalette.CODE) { text(codeVisible) }
+        val remaining = width - combined.length
+        if (remaining > 0) text(" ".repeat(remaining))
+    } else {
+        val content = TextFit.truncate("$prefix ${line.text}", width).padEnd(width)
+        val toneRgb = TranscriptPalette.toneColor(line.tone)
+        if (toneRgb != null) {
+            rgb(toneRgb) { text(content) }
+        } else {
+            text(content)
+        }
+    }
+
+    structural { textLine(" │") }
 }
 
 // -- Colored status panel ---------------------------------------------------

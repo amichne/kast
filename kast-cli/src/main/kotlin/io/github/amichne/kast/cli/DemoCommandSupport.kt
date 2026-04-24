@@ -276,7 +276,7 @@ internal open class DemoCommandSupport(
 
             // Phase 4: Demo playback
             runKotterDemoSession(
-                presentation = presentationFor(report),
+                presentation = presentationFor(report, verbose = options.verbose),
                 terminalWidth = terminal.width,
                 clearScreen = terminal::clear,
             )
@@ -291,11 +291,11 @@ internal open class DemoCommandSupport(
         }
     }
 
-    internal fun presentationFor(report: DemoReport): KotterDemoSessionPresentation {
+    internal fun presentationFor(report: DemoReport, verbose: Boolean = true): KotterDemoSessionPresentation {
         val operations = listOf(
-            referencesOperation(report),
-            renameOperation(report),
-            callersOperation(report),
+            referencesOperation(report, verbose),
+            renameOperation(report, verbose),
+            callersOperation(report, verbose),
         )
         return KotterDemoSessionPresentation(
             scenario = KotterDemoSessionScenario(
@@ -306,7 +306,7 @@ internal open class DemoCommandSupport(
         )
     }
 
-    private fun referencesOperation(report: DemoReport): DemoOperationPlayback {
+    private fun referencesOperation(report: DemoReport, verbose: Boolean): DemoOperationPlayback {
         val symbolName = report.resolvedSymbol.fqName
         val references = report.references.references
         return DemoOperationPlayback(
@@ -319,7 +319,7 @@ internal open class DemoCommandSupport(
                     id = "resolve",
                     lines = listOf(
                         tl("resolve ${report.resolvedSymbol.kind.name.lowercase()} $symbolName", KotterDemoStreamTone.COMMAND),
-                        tl("declaration ${Paths.locationLine(report.workspaceRoot, report.resolvedSymbol.location)}", KotterDemoStreamTone.COMMAND),
+                        tl("declaration ${Paths.locationLine(report.workspaceRoot, report.resolvedSymbol.location, verbose)}", KotterDemoStreamTone.COMMAND),
                     ),
                 ),
                 DemoPhasePlayback(
@@ -330,9 +330,10 @@ internal open class DemoCommandSupport(
                         references.take(REFERENCE_PREVIEW_LIMIT).forEach { reference ->
                             add(
                                 tl(
-                                    "${Paths.locationLine(report.workspaceRoot, reference)}  ${reference.preview.trim().take(LIVE_LINE_PREVIEW_LIMIT)}",
-                                    tone = KotterDemoStreamTone.ERROR
-                                )
+                                    Paths.locationLine(report.workspaceRoot, reference, verbose),
+                                    tone = KotterDemoStreamTone.DETAIL,
+                                    codePreview = reference.preview.trim().take(LIVE_LINE_PREVIEW_LIMIT),
+                                ),
                             )
                         }
                         if (references.size > REFERENCE_PREVIEW_LIMIT) {
@@ -354,7 +355,7 @@ internal open class DemoCommandSupport(
         )
     }
 
-    private fun renameOperation(report: DemoReport): DemoOperationPlayback {
+    private fun renameOperation(report: DemoReport, verbose: Boolean): DemoOperationPlayback {
         val symbolName = report.resolvedSymbol.fqName
         val renamed = "${report.resolvedSymbol.fqName.substringAfterLast('.')}Renamed"
         return DemoOperationPlayback(
@@ -362,13 +363,13 @@ internal open class DemoCommandSupport(
             label = "Rename Dry Run",
             shortcutKey = 'n',
             query = "kast rename --symbol $symbolName --new-name $renamed --dry-run",
-            branches = renameBranches(report),
+            branches = renameBranches(report, verbose),
             phases = listOf(
                 DemoPhasePlayback(
                     id = "resolve",
                     lines = listOf(
                         tl("renaming ${report.resolvedSymbol.fqName.substringAfterLast(".")}", KotterDemoStreamTone.COMMAND),
-                        tl("compare against grep touching ${report.textSearch.filesTouched} files blindly", KotterDemoStreamTone.FLAGGED),
+                        tl("compare against grep touching ${report.textSearch.filesTouched} files blindly", KotterDemoStreamTone.ERROR),
                     ),
                 ),
                 DemoPhasePlayback(
@@ -377,7 +378,8 @@ internal open class DemoCommandSupport(
                         add(tl("rename edits ${report.rename.edits.size}", KotterDemoStreamTone.CONFIRMED))
                         add(tl("affected files ${report.rename.affectedFiles.size}", KotterDemoStreamTone.CONFIRMED))
                         report.rename.affectedFiles.take(RENAME_FILE_PREVIEW_LIMIT).forEach { filePath ->
-                            add(tl(Paths.relative(report.workspaceRoot, filePath)))
+                            val displayPath = if (verbose) Paths.relative(report.workspaceRoot, filePath) else Paths.fileName(filePath)
+                            add(tl(displayPath))
                         }
                         if (report.rename.affectedFiles.size > RENAME_FILE_PREVIEW_LIMIT) {
                             add(tl("... and ${report.rename.affectedFiles.size - RENAME_FILE_PREVIEW_LIMIT} more affected files", KotterDemoStreamTone.STRUCTURE))
@@ -395,9 +397,9 @@ internal open class DemoCommandSupport(
         )
     }
 
-    private fun callersOperation(report: DemoReport): DemoOperationPlayback {
+    private fun callersOperation(report: DemoReport, verbose: Boolean): DemoOperationPlayback {
         val symbolName = report.resolvedSymbol.fqName
-        val callTree = renderCallTreePreview(report.workspaceRoot, report.callHierarchy.root)
+        val callTree = renderCallTreePreview(report.workspaceRoot, report.callHierarchy.root, verbose = verbose)
         return DemoOperationPlayback(
             id = "callers",
             label = "Incoming Callers",
@@ -408,7 +410,7 @@ internal open class DemoCommandSupport(
                     id = "resolve",
                     lines = listOf(
                         tl("resolve incoming-call target $symbolName", KotterDemoStreamTone.COMMAND),
-                        tl("grep cannot recover caller identity from substrings alone", KotterDemoStreamTone.FLAGGED),
+                        tl("grep cannot recover caller identity from substrings alone", KotterDemoStreamTone.ERROR),
                     ),
                 ),
                 DemoPhasePlayback(
@@ -437,7 +439,7 @@ internal open class DemoCommandSupport(
         )
     }
 
-    private fun renameBranches(report: DemoReport): List<KotterDemoBranchSpec> {
+    private fun renameBranches(report: DemoReport, verbose: Boolean): List<KotterDemoBranchSpec> {
         if (report.rename.affectedFiles.isEmpty()) return emptyList()
 
         val editsByFile = report.rename.edits.groupingBy { it.filePath }.eachCount()
@@ -454,7 +456,7 @@ internal open class DemoCommandSupport(
                     "${editsByFile[filePath] ?: 0} planned edits",
                     if (filePath in hashedFiles) "hash guard ready" else "hash guard unavailable",
                 ),
-                summary = Paths.relative(report.workspaceRoot, filePath),
+                summary = if (verbose) Paths.relative(report.workspaceRoot, filePath) else Paths.fileName(filePath),
             )
         }
 
@@ -550,7 +552,8 @@ internal open class DemoCommandSupport(
 private fun tl(
     text: String,
     tone: KotterDemoStreamTone = KotterDemoStreamTone.DETAIL,
-): KotterDemoTranscriptLine = KotterDemoTranscriptLine(text, tone)
+    codePreview: String? = null,
+): KotterDemoTranscriptLine = KotterDemoTranscriptLine(text, tone, codePreview)
 
 internal sealed interface DemoFlowOutcome {
     data class Completed(val result: DemoPlaybackResult) : DemoFlowOutcome
@@ -599,7 +602,7 @@ private data class DemoOperationPlayback(
             phases.forEach { phase ->
                 phase.lines.forEach { line ->
                     currentAt += DemoCommandSupport.SCENARIO_LINE_DELAY_MILLIS
-                    add(KotterDemoScenarioEvent.Line(atMillis = currentAt, phaseId = phase.id, text = line.text, tone = line.tone))
+                    add(KotterDemoScenarioEvent.Line(atMillis = currentAt, phaseId = phase.id, text = line.text, tone = line.tone, codePreview = line.codePreview))
                 }
                 currentAt += DemoCommandSupport.SCENARIO_PHASE_DELAY_MILLIS
                 add(KotterDemoScenarioEvent.Milestone(atMillis = currentAt, phaseId = phase.id))

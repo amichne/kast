@@ -8,6 +8,7 @@
 - Kotlin standards: follow Kotlin style, apply formatting and lints (ktlint/detekt/spotless), avoid platform-specific APIs in shared modules.
 - Constitutional code: treat API/model changes as contract changes; preserve schema compatibility and capability advertising unless intentionally changing.
 - Clean code: prefer small, single-responsibility units, clear names, and minimal surface area.
+- Run all gradle scripts with `--offline` (falling back to normal if issues)
 
 ## Backend parity
 

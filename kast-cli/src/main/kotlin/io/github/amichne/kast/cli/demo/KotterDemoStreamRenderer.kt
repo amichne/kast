@@ -1,11 +1,7 @@
 package io.github.amichne.kast.cli.demo
 
-import com.varabyte.kotter.foundation.text.black
-import com.varabyte.kotter.foundation.text.cyan
-import com.varabyte.kotter.foundation.text.green
-import com.varabyte.kotter.foundation.text.red
+import com.varabyte.kotter.foundation.text.rgb
 import com.varabyte.kotter.foundation.text.textLine
-import com.varabyte.kotter.foundation.text.yellow
 import com.varabyte.kotter.runtime.render.RenderScope
 
 internal enum class KotterDemoStreamTone {
@@ -23,6 +19,7 @@ internal sealed interface KotterDemoStreamEntry {
     data class Content(
         val text: String,
         val tone: KotterDemoStreamTone = KotterDemoStreamTone.DETAIL,
+        val codePreview: String? = null,
     ) : KotterDemoStreamEntry {
         init {
             require(text.isNotEmpty()) { "Stream content must be non-empty. Use Separator for blank lines." }
@@ -46,23 +43,36 @@ internal fun RenderScope.renderStreamBlock(block: KotterDemoStreamBlock) {
 internal fun streamLines(block: KotterDemoStreamBlock): List<String> = block.entries.map { entry ->
     when (entry) {
         KotterDemoStreamEntry.Separator -> ""
-        is KotterDemoStreamEntry.Content -> "${tonePrefix(entry.tone)} ${entry.text}"
+        is KotterDemoStreamEntry.Content -> buildStreamPlainText(entry)
+    }
+}
+
+private fun buildStreamPlainText(entry: KotterDemoStreamEntry.Content): String = buildString {
+    append(tonePrefix(entry.tone))
+    append(' ')
+    append(entry.text)
+    entry.codePreview?.let { code ->
+        append("  `")
+        append(code)
+        append('`')
     }
 }
 
 private fun RenderScope.renderStreamLine(entry: KotterDemoStreamEntry.Content) {
-    val line = "${tonePrefix(entry.tone)} ${entry.text}"
-    when (entry.tone) {
-        KotterDemoStreamTone.COMMAND -> cyan(isBright = true) { textLine(line) }
-        KotterDemoStreamTone.CONFIRMED -> green(isBright = true) { textLine(line) }
-        KotterDemoStreamTone.FLAGGED -> yellow(isBright = true) { textLine(line) }
-        KotterDemoStreamTone.ERROR -> red(isBright = true) { textLine(line) }
-        KotterDemoStreamTone.STRUCTURE -> black(isBright = true) { textLine(line) }
-        KotterDemoStreamTone.DETAIL -> textLine(line)
+    val prefix = tonePrefix(entry.tone)
+    val toneRgb = TranscriptPalette.toneColor(entry.tone)
+    if (toneRgb != null) {
+        rgb(toneRgb) {
+            textLine(buildStreamPlainText(entry))
+        }
+    } else if (entry.codePreview != null) {
+        textLine(buildStreamPlainText(entry))
+    } else {
+        textLine("$prefix ${entry.text}")
     }
 }
 
-private fun tonePrefix(tone: KotterDemoStreamTone): String = when (tone) {
+internal fun tonePrefix(tone: KotterDemoStreamTone): String = when (tone) {
     KotterDemoStreamTone.COMMAND -> "$"
     KotterDemoStreamTone.CONFIRMED -> "✓"
     KotterDemoStreamTone.FLAGGED -> "⚑"

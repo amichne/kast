@@ -14,6 +14,7 @@ internal enum class KotterDemoPhaseStatus {
 internal data class KotterDemoTranscriptLine(
     val text: String,
     val tone: KotterDemoStreamTone = KotterDemoStreamTone.DETAIL,
+    val codePreview: String? = null,
 )
 
 internal sealed interface KotterDemoScenarioEvent {
@@ -25,6 +26,7 @@ internal sealed interface KotterDemoScenarioEvent {
         override val phaseId: String,
         val text: String,
         val tone: KotterDemoStreamTone = KotterDemoStreamTone.DETAIL,
+        val codePreview: String? = null,
     ) : KotterDemoScenarioEvent
 
     data class Milestone(
@@ -127,6 +129,7 @@ internal data class KotterDemoSessionScenario(
                         phaseId = event.string("phase"),
                         text = event.string("text"),
                         tone = event.toneOrDefault("tone"),
+                        codePreview = event.optionalString("codePreview"),
                     )
                     "milestone" -> KotterDemoScenarioEvent.Milestone(
                         atMillis = event.long("atMillis"),
@@ -143,6 +146,9 @@ internal data class KotterDemoSessionScenario(
             (this[key] as? String)?.let { name ->
                 runCatching { KotterDemoStreamTone.valueOf(name.uppercase()) }.getOrNull()
             } ?: KotterDemoStreamTone.DETAIL
+
+        private fun Map<*, *>.optionalString(key: String): String? =
+            this[key]?.toString()
     }
 }
 

@@ -103,6 +103,36 @@ class KotterDemoSessionStateTest {
         assertTrue(linesAfterSwitch.any { it.startsWith("[refs]") }, "expected the replacement scenario to produce output after the switch")
     }
 
+    @Test
+    fun `codePreview propagates through scenario events into session state transcript lines`() = runTest {
+        val scenario = KotterDemoSessionScenario(
+            initialOperationId = "refs",
+            operations = listOf(
+                KotterDemoOperationScenario(
+                    id = "refs",
+                    phases = listOf("search"),
+                    events = listOf(
+                        KotterDemoScenarioEvent.Line(
+                            atMillis = 100,
+                            phaseId = "search",
+                            text = "Walker.kt:93",
+                            codePreview = "val cmd = parse(raw)",
+                        ),
+                        KotterDemoScenarioEvent.Milestone(atMillis = 200, phaseId = "search"),
+                    ),
+                ),
+            ),
+        )
+        val session = KotterDemoSessionController.createForTest(this, scenario).apply { start() }
+
+        advanceTimeBy(150)
+        runCurrent()
+
+        val line = session.snapshot().liveLines.single()
+        assertEquals("Walker.kt:93", line.text)
+        assertEquals("val cmd = parse(raw)", line.codePreview)
+    }
+
     private fun TestScope.startSession(contract: KotterDemoSessionScenario): KotterDemoSessionController =
         KotterDemoSessionController.createForTest(this, contract).apply { start() }
 

@@ -237,7 +237,7 @@ _build_run_gradle_tasks_with_retry() {
   if _build_run_gradle_tasks "$@"; then return 0; fi
   log_note "Gradle build failed; stopping daemon and retrying"
   "$GRADLEW" --stop >/dev/null 2>&1 || true
-  _build_run_gradle_tasks "$@"
+  _build_run_gradle_tasks "$@" --offline
 }
 
 _build_resolve_cli_zip() {
@@ -306,7 +306,7 @@ _build_cli() {
 
 _build_plugin() {
   log_section "Building target: plugin"
-  _build_run_gradle_tasks_with_retry buildIntellijPlugin || _build_run_gradle_tasks_with_retry buildIntellijPlugin --offline
+  _build_run_gradle_tasks_with_retry buildIntellijPlugin
 
   local source_zip; source_zip="$(_build_resolve_plugin_zip)"
   local dist_zip="${DIST_ROOT}/plugin.zip"

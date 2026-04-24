@@ -8,6 +8,7 @@ internal const val CALL_TREE_PREVIEW_LIMIT: Int = 12
 internal fun renderCallTreePreview(
     workspaceRoot: Path,
     root: CallNode,
+    verbose: Boolean = true,
     limit: Int = CALL_TREE_PREVIEW_LIMIT,
 ): List<String> {
     val lines = mutableListOf<String>()
@@ -19,7 +20,7 @@ internal fun renderCallTreePreview(
         val indent = "  ".repeat(depth.coerceAtLeast(0))
         val prefix = if (depth > 0) "├─ " else ""
         val symbol = node.symbol
-        lines += "$indent$prefix${symbol.fqName.substringAfterLast('.')} (${symbol.kind})  ${Paths.locationLine(workspaceRoot, symbol.location)}"
+        lines += "$indent$prefix${symbol.fqName.substringAfterLast('.')} (${symbol.kind})  ${Paths.locationLine(workspaceRoot, symbol.location, verbose)}"
         node.children.forEach { child -> walk(child, depth + 1) }
     }
 
