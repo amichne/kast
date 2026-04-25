@@ -1,3 +1,6 @@
+import org.gradle.api.tasks.testing.logging.TestExceptionFormat
+import org.gradle.api.tasks.testing.logging.TestLogEvent
+
 plugins {
     kotlin("jvm")
     `java-library`
@@ -29,6 +32,16 @@ tasks.withType<Test>().configureEach {
         if (tagSelection.included.isNotEmpty()) {
             includeTags(*tagSelection.included.toTypedArray())
         }
+    }
+    testLogging {
+        events(TestLogEvent.FAILED, TestLogEvent.SKIPPED)
+        exceptionFormat = TestExceptionFormat.FULL
+        showExceptions = true
+        showCauses = true
+        showStackTraces = true
+        showStandardStreams = providers.environmentVariable("CI")
+            .map(String::toBoolean)
+            .getOrElse(false)
     }
 }
 

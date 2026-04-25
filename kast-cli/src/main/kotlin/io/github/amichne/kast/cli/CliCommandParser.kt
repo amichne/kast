@@ -27,7 +27,6 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import java.nio.file.Path
 import kotlin.io.path.readText
-
 internal class CliCommandParser(
     private val json: Json,
     private val gitRemoteResolver: GitRemoteResolver = SystemGitRemoteResolver,
@@ -568,6 +567,9 @@ internal data class ParsedArguments(
                 ?: Path.of(System.getProperty("user.dir", ".")).toAbsolutePath().normalize(),
             symbolFilter = options["symbol"]?.takeIf(String::isNotBlank),
             backend = backend,
+            fixture = options["fixture"]
+                ?.takeIf(String::isNotBlank)
+                ?.let { Path.of(it).toAbsolutePath().normalize() },
             verbose = parseBool("verbose"),
         )
     }

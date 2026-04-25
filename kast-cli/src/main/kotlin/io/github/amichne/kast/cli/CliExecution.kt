@@ -228,8 +228,7 @@ internal class DefaultCliCommandExecutor(
                 when (outcome) {
                     is DemoFlowOutcome.Completed -> CliExecutionResult(
                         output = CliOutput.Text(""),
-                        daemonNote = outcome.result.daemonNote
-                            ?: outcome.result.runtime?.let { daemonNoteForRuntime(it) },
+                        daemonNote = daemonNoteForPlayback(outcome.result),
                     )
                     is DemoFlowOutcome.Cancelled -> CliExecutionResult(
                         output = CliOutput.Text("demo cancelled by user"),
@@ -246,8 +245,7 @@ internal class DefaultCliCommandExecutor(
                 when (outcome) {
                     is DemoFlowOutcome.Completed -> CliExecutionResult(
                         output = CliOutput.Text(""),
-                        daemonNote = outcome.result.daemonNote
-                            ?: outcome.result.runtime?.let { daemonNoteForRuntime(it) },
+                        daemonNote = daemonNoteForPlayback(outcome.result),
                     )
                     is DemoFlowOutcome.Cancelled -> CliExecutionResult(
                         output = CliOutput.Text("demo generate cancelled by user"),
@@ -264,7 +262,7 @@ internal class DefaultCliCommandExecutor(
                 when (outcome) {
                     is DemoFlowOutcome.Completed -> CliExecutionResult(
                         output = CliOutput.Text(""),
-                        daemonNote = outcome.result.daemonNote,
+                        daemonNote = daemonNoteForPlayback(outcome.result),
                     )
                     is DemoFlowOutcome.Cancelled -> CliExecutionResult(
                         output = CliOutput.Text("demo render cancelled by user"),
@@ -292,3 +290,9 @@ internal class DefaultCliCommandExecutor(
         }
     }
 }
+
+private fun daemonNoteForPlayback(result: DemoPlaybackResult): String? =
+    when (result) {
+        is DemoPlaybackResult.Full -> result.daemonNote ?: daemonNoteForRuntime(result.runtime)
+        DemoPlaybackResult.RenderOnly -> null
+    }

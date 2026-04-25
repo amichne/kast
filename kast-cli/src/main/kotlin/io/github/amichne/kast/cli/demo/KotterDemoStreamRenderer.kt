@@ -3,7 +3,9 @@ package io.github.amichne.kast.cli.demo
 import com.varabyte.kotter.foundation.text.rgb
 import com.varabyte.kotter.foundation.text.textLine
 import com.varabyte.kotter.runtime.render.RenderScope
+import kotlinx.serialization.Serializable
 
+@Serializable
 internal enum class KotterDemoStreamTone {
     COMMAND,
     CONFIRMED,

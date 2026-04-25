@@ -27,7 +27,7 @@ class SymbolCurationEngineTest {
         val midNoise = makeSymbol("a.pkg.Mid")
         val midNoise2 = makeSymbol("b.pkg.Mid")
 
-        val support = StubDemoCommandSupport { symbol ->
+        val search = RecordingTextSearchAnalyzer { symbol ->
             when (symbol.fqName.substringAfterLast('.')) {
                 "High" -> summary(total = 50, falsePositives = 30, ambiguous = 10)
                 "Mid" -> summary(total = 20, falsePositives = 5, ambiguous = 3)
@@ -35,7 +35,7 @@ class SymbolCurationEngineTest {
                 else -> summary(0, 0, 0)
             }
         }
-        val engine = SymbolCurationEngine(support)
+        val engine = SymbolCurationEngine(search)
 
         val result = engine.curate(
             workspaceRoot = tempDir,
@@ -46,6 +46,7 @@ class SymbolCurationEngineTest {
         assertEquals(2, result.size)
         assertEquals("High", result[0].simpleName)
         assertEquals("Low", result[1].simpleName)
+        assertEquals(listOf("High", "Low"), search.analyzedSimpleNames)
     }
 
     @Test
@@ -56,7 +57,7 @@ class SymbolCurationEngineTest {
         val ambiguousD = makeSymbol("b.pkg.Baz")
         val singleton = makeSymbol("a.pkg.Bar")
 
-        val support = StubDemoCommandSupport { summary(total = 10, falsePositives = 5, ambiguous = 2) }
+        val support = StubTextSearchAnalyzer { summary(total = 10, falsePositives = 5, ambiguous = 2) }
         val engine = SymbolCurationEngine(support)
 
         val result = engine.curate(
@@ -78,7 +79,7 @@ class SymbolCurationEngineTest {
         val singletonHi = makeSymbol("a.pkg.HighHits")
         val singletonLo = makeSymbol("a.pkg.LowHits")
 
-        val support = StubDemoCommandSupport { symbol ->
+        val support = StubTextSearchAnalyzer { symbol ->
             when (symbol.fqName.substringAfterLast('.')) {
                 "Foo" -> summary(total = 4, falsePositives = 1, ambiguous = 1)
                 "HighHits" -> summary(total = 100, falsePositives = 0, ambiguous = 0)
@@ -110,7 +111,7 @@ class SymbolCurationEngineTest {
             makeSymbol("a.pkg.Bar"),
             makeSymbol("b.pkg.Bar"),
         )
-        val support = StubDemoCommandSupport { summary(total = 10, falsePositives = 3, ambiguous = 2) }
+        val support = StubTextSearchAnalyzer { summary(total = 10, falsePositives = 3, ambiguous = 2) }
         val engine = SymbolCurationEngine(support)
 
         val result = engine.curate(tempDir, symbols, count = 5)
@@ -122,7 +123,7 @@ class SymbolCurationEngineTest {
 
     @Test
     fun `empty input returns empty list`() {
-        val support = StubDemoCommandSupport { summary(0, 0, 0) }
+        val support = StubTextSearchAnalyzer { summary(0, 0, 0) }
         val engine = SymbolCurationEngine(support)
 
         assertEquals(emptyList<CuratedSymbol>(), engine.curate(tempDir, emptyList(), count = 3))
@@ -130,7 +131,7 @@ class SymbolCurationEngineTest {
 
     @Test
     fun `count of zero returns empty list`() {
-        val support = StubDemoCommandSupport { summary(total = 10, falsePositives = 5, ambiguous = 2) }
+        val support = StubTextSearchAnalyzer { summary(total = 10, falsePositives = 5, ambiguous = 2) }
         val engine = SymbolCurationEngine(support)
 
         val result = engine.curate(
@@ -158,7 +159,7 @@ class SymbolCurationEngineTest {
             makeSymbol("b.pkg.Weak"),
         )
 
-        val support = StubDemoCommandSupport { symbol ->
+        val support = StubTextSearchAnalyzer { symbol ->
             when (symbol.fqName.substringAfterLast('.')) {
                 "Strong" -> summary(total = 50, falsePositives = 30, ambiguous = 10)
                 "Weak"   -> summary(total = 4, falsePositives = 0, ambiguous = 0)
@@ -182,7 +183,7 @@ class SymbolCurationEngineTest {
         }
         val passingGroup = listOf(makeSymbol("a.pkg.Rare"), makeSymbol("b.pkg.Rare"))
 
-        val support = StubDemoCommandSupport { symbol ->
+        val support = StubTextSearchAnalyzer { symbol ->
             if (symbol.fqName.substringAfterLast('.') == "Rare") {
                 summary(total = 50, falsePositives = 30, ambiguous = 10) // score ≈ 82 → passes
             } else {
@@ -217,7 +218,7 @@ class SymbolCurationEngineTest {
             makeSymbol("a.pkg.Foo"), makeSymbol("b.pkg.Foo"), makeSymbol("c.pkg.Foo"),
             makeSymbol("a.pkg.Bar"), makeSymbol("b.pkg.Bar"),
         )
-        val support = StubDemoCommandSupport { summary(total = 10, falsePositives = 3, ambiguous = 2) }
+        val support = StubTextSearchAnalyzer { summary(total = 10, falsePositives = 3, ambiguous = 2) }
         val engine = SymbolCurationEngine(support)
 
         val result = engine.curate(tempDir, symbols, count = 1)
@@ -257,10 +258,24 @@ class SymbolCurationEngineTest {
         )
     }
 
-    private class StubDemoCommandSupport(
+    private class RecordingTextSearchAnalyzer(
         private val summarize: (Symbol) -> DemoTextSearchSummary,
-    ) : DemoCommandSupport() {
-        override fun analyzeTextSearch(
+    ) : TextSearchAnalyzer {
+        val analyzedSimpleNames = mutableListOf<String>()
+
+        override fun analyze(
+            workspaceRoot: Path,
+            symbol: Symbol,
+        ): DemoTextSearchSummary {
+            analyzedSimpleNames += symbol.fqName.substringAfterLast('.')
+            return summarize(symbol)
+        }
+    }
+
+    private class StubTextSearchAnalyzer(
+        private val summarize: (Symbol) -> DemoTextSearchSummary,
+    ) : TextSearchAnalyzer {
+        override fun analyze(
             workspaceRoot: Path,
             symbol: Symbol,
         ): DemoTextSearchSummary = summarize(symbol)

@@ -9,11 +9,15 @@ import com.varabyte.kotter.runtime.Session
 import com.varabyte.kotter.runtime.terminal.Terminal
 import io.github.amichne.kast.api.contract.CallDirection
 import io.github.amichne.kast.api.contract.CallHierarchyQuery
+import io.github.amichne.kast.api.contract.CallHierarchyResult
 import io.github.amichne.kast.api.contract.FilePosition
 import io.github.amichne.kast.api.contract.ReferencesQuery
+import io.github.amichne.kast.api.contract.ReferencesResult
 import io.github.amichne.kast.api.contract.RenameQuery
+import io.github.amichne.kast.api.contract.RenameResult
 import io.github.amichne.kast.api.contract.Symbol
 import io.github.amichne.kast.api.contract.SymbolQuery
+import io.github.amichne.kast.api.contract.SymbolResult
 import io.github.amichne.kast.api.contract.WorkspaceSymbolQuery
 import io.github.amichne.kast.cli.demo.runLoadingPhase
 import io.github.amichne.kast.demo.DemoGenScreen
@@ -26,6 +30,8 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 
 /**
  * Orchestrates `kast demo generate` and `kast demo render`:
@@ -82,7 +88,7 @@ internal class DemoGenCommandSupport(
         val screen = DemoGenJsonExporter.importScreen(jsonFile.readText())
         return sessionRunner.runSession(verbose) { terminal ->
             renderInteractiveScreen(terminal, screen)
-            DemoFlowOutcome.Completed(DemoPlaybackResult())
+            DemoFlowOutcome.Completed(DemoPlaybackResult.RenderOnly)
         }
     }
 
@@ -188,7 +194,7 @@ internal class DemoGenCommandSupport(
         }
 
         return DemoFlowOutcome.Completed(
-            DemoPlaybackResult(
+            DemoPlaybackResult.Full(
                 report = reports.first(),
                 runtime = ensure.selected,
                 daemonNote = ensure.note,
@@ -312,7 +318,7 @@ internal class DemoGenCommandSupport(
             renderInteractiveScreen(terminal, screen)
 
             DemoFlowOutcome.Completed(
-                DemoPlaybackResult(
+                DemoPlaybackResult.Full(
                     report = reports.first(),
                     runtime = ensure.selected,
                     daemonNote = ensure.note,
@@ -410,12 +416,13 @@ internal interface DemoGenBackend {
     ): DemoReport
 }
 
-/** Production [DemoGenBackend] that delegates to [CliService] and [DemoCommandSupport]. */
+/** Production [DemoGenBackend] that delegates to [CliService] and shared text search. */
 internal class CliServiceDemoGenBackend(
     private val cliService: CliService,
-    private val demoSupport: DemoCommandSupport,
+    private val textSearchAnalyzer: TextSearchAnalyzer = WorkspaceTextSearchAnalyzer(),
     private val backendName: String? = "standalone",
     private val acceptIndexing: Boolean = false,
+    private val loadingClient: DemoLoadingClient = CliServiceDemoGenLoadingClient(cliService),
 ) : DemoGenBackend {
     override suspend fun bootstrap(workspaceRoot: Path): WorkspaceEnsureResult =
         RepoIngestion.bootstrap(workspaceRoot, cliService, backendName = backendName, acceptIndexing = acceptIndexing)
@@ -447,38 +454,59 @@ internal class CliServiceDemoGenBackend(
         )
 
         val t0 = System.currentTimeMillis()
-        val resolved = cliService.resolveSymbol(runtimeOptions, SymbolQuery(position = symbolPosition))
+        val resolved = loadingClient.resolveSymbol(runtimeOptions, SymbolQuery(position = symbolPosition))
             .payload.symbol
         onStepComplete(0, System.currentTimeMillis() - t0)
 
-        val t1 = System.currentTimeMillis()
-        val references = cliService.findReferences(
-            runtimeOptions,
-            ReferencesQuery(position = symbolPosition, includeDeclaration = true),
-        ).payload
-        onStepComplete(1, System.currentTimeMillis() - t1)
+        val (references, rename, callHierarchy, textSearch) = coroutineScope {
+            val referencesDeferred = async {
+                val t1 = System.currentTimeMillis()
+                val payload = loadingClient.findReferences(
+                    runtimeOptions,
+                    ReferencesQuery(position = symbolPosition, includeDeclaration = true),
+                ).payload
+                onStepComplete(1, System.currentTimeMillis() - t1)
+                payload
+            }
 
-        val t2 = System.currentTimeMillis()
-        val rename = cliService.rename(
-            runtimeOptions,
-            RenameQuery(
-                position = symbolPosition,
-                newName = "${resolved.fqName.substringAfterLast('.')}Renamed",
-                dryRun = true,
-            ),
-        ).payload
-        onStepComplete(2, System.currentTimeMillis() - t2)
+            val renameDeferred = async {
+                val t2 = System.currentTimeMillis()
+                val payload = loadingClient.rename(
+                    runtimeOptions,
+                    RenameQuery(
+                        position = symbolPosition,
+                        newName = "${resolved.fqName.substringAfterLast('.')}Renamed",
+                        dryRun = true,
+                    ),
+                ).payload
+                onStepComplete(2, System.currentTimeMillis() - t2)
+                payload
+            }
 
-        val t3 = System.currentTimeMillis()
-        val callHierarchy = cliService.callHierarchy(
-            runtimeOptions,
-            CallHierarchyQuery(position = symbolPosition, direction = CallDirection.INCOMING, depth = 2),
-        ).payload
-        onStepComplete(3, System.currentTimeMillis() - t3)
+            val callHierarchyDeferred = async {
+                val t3 = System.currentTimeMillis()
+                val payload = loadingClient.callHierarchy(
+                    runtimeOptions,
+                    CallHierarchyQuery(position = symbolPosition, direction = CallDirection.INCOMING, depth = 2),
+                ).payload
+                onStepComplete(3, System.currentTimeMillis() - t3)
+                payload
+            }
 
-        val t4 = System.currentTimeMillis()
-        val textSearch = demoSupport.analyzeTextSearch(workspaceRoot, symbol)
-        onStepComplete(4, System.currentTimeMillis() - t4)
+            val textSearchDeferred = async {
+                val t4 = System.currentTimeMillis()
+                val payload = textSearchAnalyzer.analyze(workspaceRoot, symbol)
+                onStepComplete(4, System.currentTimeMillis() - t4)
+                payload
+            }
+
+            DemoGenLoadedQueries(
+                references = referencesDeferred.await(),
+                rename = renameDeferred.await(),
+                callHierarchy = callHierarchyDeferred.await(),
+                textSearch = textSearchDeferred.await(),
+            )
+        }
 
         return DemoReport(
             workspaceRoot = workspaceRoot,
@@ -498,6 +526,37 @@ internal class CliServiceDemoGenBackend(
             waitTimeoutMillis = 180_000L,
             acceptIndexing = acceptIndexing,
         )
+}
+
+private data class DemoGenLoadedQueries(
+    val references: ReferencesResult,
+    val rename: RenameResult,
+    val callHierarchy: CallHierarchyResult,
+    val textSearch: DemoTextSearchSummary,
+)
+
+private class CliServiceDemoGenLoadingClient(
+    private val cliService: CliService,
+) : DemoLoadingClient {
+    override suspend fun resolveSymbol(
+        options: RuntimeCommandOptions,
+        query: SymbolQuery,
+    ): RuntimeAttachedResult<SymbolResult> = cliService.resolveSymbol(options, query)
+
+    override suspend fun findReferences(
+        options: RuntimeCommandOptions,
+        query: ReferencesQuery,
+    ): RuntimeAttachedResult<ReferencesResult> = cliService.findReferences(options, query)
+
+    override suspend fun rename(
+        options: RuntimeCommandOptions,
+        query: RenameQuery,
+    ): RuntimeAttachedResult<RenameResult> = cliService.rename(options, query)
+
+    override suspend fun callHierarchy(
+        options: RuntimeCommandOptions,
+        query: CallHierarchyQuery,
+    ): RuntimeAttachedResult<CallHierarchyResult> = cliService.callHierarchy(options, query)
 }
 
 internal object NoOpDemoGenBackend : DemoGenBackend {

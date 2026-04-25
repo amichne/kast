@@ -148,42 +148,29 @@ class PackagedSkillJsonContractTest {
         env: Map<String, String>,
         timeoutMillis: Long = 120_000,
     ): Process {
-        val runtimeLibs = checkNotNull(System.getProperty("kast.runtime-libs")) {
-            "kast.runtime-libs system property is missing"
-        }
-        val classpathFile = java.io.File(runtimeLibs, "classpath.txt")
-        val classpath = classpathFile.readLines()
-            .filter { it.isNotBlank() }
-            .joinToString(":") { "$runtimeLibs/$it" }
-        val command = buildList {
-            add("java"); add("-cp"); add(classpath)
-            add("io.github.amichne.kast.standalone.StandaloneMainKt")
-            add("--workspace-root=$workspace")
-        }
-        Files.createDirectories(workspace)
-        val process = ProcessBuilder(command)
-            .directory(workspace.toFile())
-            .also { pb -> env.forEach { (k, v) -> pb.environment()[k] = v } }
-            .start()
         val kastBinary = checkNotNull(env["KAST_CLI_PATH"]) { "KAST_CLI_PATH missing from env" }
-        val deadline = System.nanoTime() + timeoutMillis * 1_000_000L
-        while (System.nanoTime() < deadline) {
-            val statusResult = runCatching {
-                runCommand(
+        return startStandaloneBackendForTest(
+            workspace = workspace,
+            env = env,
+            timeoutMillis = timeoutMillis,
+            statusProbe = {
+                val statusResult = runCommand(
                     command = listOf(kastBinary, "workspace", "status", "--workspace-root=$workspace"),
                     env = env,
                 )
-            }.getOrNull()
-            if (statusResult?.exitCode == 0) {
-                val status = runCatching {
-                    defaultCliJson().decodeFromString<WorkspaceStatusResult>(statusResult.stdout)
-                }.getOrNull()
-                if (status?.selected?.ready == true) return process
-            }
-            Thread.sleep(500)
-        }
-        process.destroyForcibly()
-        error("Timed out waiting for standalone backend at $workspace")
+                BackendStatusProbeSnapshot(
+                    exitCode = statusResult.exitCode,
+                    stdout = statusResult.stdout,
+                    stderr = statusResult.stderr,
+                )
+            },
+            isReady = { probe ->
+                probe.exitCode == 0 &&
+                    runCatching {
+                        defaultCliJson().decodeFromString<WorkspaceStatusResult>(probe.stdout)
+                    }.getOrNull()?.selected?.ready == true
+            },
+        )
     }
 
     private fun runCommand(
