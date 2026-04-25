@@ -46,6 +46,17 @@ jobs:
           :kast-cli:test
           :kast-cli:portableDistZip
 
+      - name: Upload build-and-test test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-and-test-reports-${{ matrix.os }}
+          path: |
+            **/build/test-results/test/*.xml
+            **/build/reports/tests/test/
+          if-no-files-found: ignore
+          retention-days: 3
+
       - name: Upload portable distribution
         uses: actions/upload-artifact@v4
         with:

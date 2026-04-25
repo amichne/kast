@@ -2,6 +2,7 @@ package io.github.amichne.kast.cli
 
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
+import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
@@ -23,13 +24,25 @@ internal data class BackendReadinessFailureDiagnostics(
     val backendStdout: String,
     val backendStderr: String,
     val lastStatusProbe: BackendStatusProbeSnapshot?,
+    val failure: String? = null,
+    val backendNotStarted: Boolean = false,
 ) {
     fun toErrorMessage(): String = buildString {
-        appendLine("Timed out waiting for standalone backend at $workspace")
+        if (failure == null) {
+            appendLine("Timed out waiting for standalone backend at $workspace")
+        } else {
+            appendLine("Failed before standalone backend readiness polling at $workspace")
+            appendLine("failure=$failure")
+        }
         appendLine("timeoutMillis=$timeoutMillis")
         appendLine("startupCommand=$commandSummary")
         appendLine(runtimeLibsSummary)
-        appendLine("backendExitCode=${processExitCode ?: "<still-running>"}")
+        val exitCode = when {
+            processExitCode != null -> processExitCode.toString()
+            backendNotStarted -> "<not-started>"
+            else -> "<still-running>"
+        }
+        appendLine("backendExitCode=$exitCode")
         appendLine("backendStdout=${backendStdout.ifBlank { "<empty>" }}")
         appendLine("backendStderr=${backendStderr.ifBlank { "<empty>" }}")
         if (lastStatusProbe == null) {
@@ -50,31 +63,66 @@ internal fun startStandaloneBackendForTest(
     env: Map<String, String> = emptyMap(),
     extraArgs: List<String> = emptyList(),
     timeoutMillis: Long = 120_000,
+    javaExecutable: String = "java",
     statusProbe: () -> BackendStatusProbeSnapshot,
     isReady: (BackendStatusProbeSnapshot) -> Boolean,
 ): Process {
-    val runtimeLibs = checkNotNull(System.getProperty("kast.runtime-libs")) {
-        "kast.runtime-libs system property is missing"
-    }
+    Files.createDirectories(workspace)
+    val runtimeLibs = System.getProperty("kast.runtime-libs")
+        ?: failBeforeReadinessPolling(
+            workspace = workspace,
+            timeoutMillis = timeoutMillis,
+            commandSummary = "<not-built>",
+            runtimeLibsSummary = runtimeLibsSummary(null, null, emptyList()),
+            failure = "kast.runtime-libs system property is missing",
+        )
     val classpathFile = Path.of(runtimeLibs).resolve("classpath.txt")
+    if (!Files.isRegularFile(classpathFile) || !Files.isReadable(classpathFile)) {
+        failBeforeReadinessPolling(
+            workspace = workspace,
+            timeoutMillis = timeoutMillis,
+            commandSummary = "<not-built>",
+            runtimeLibsSummary = runtimeLibsSummary(runtimeLibs, classpathFile, emptyList()),
+            failure = "runtime classpath file is missing or unreadable: $classpathFile",
+        )
+    }
     val classpathEntries = classpathFile.toFile().readLines()
         .filter { entry -> entry.isNotBlank() }
+    if (classpathEntries.isEmpty()) {
+        failBeforeReadinessPolling(
+            workspace = workspace,
+            timeoutMillis = timeoutMillis,
+            commandSummary = "<not-built>",
+            runtimeLibsSummary = runtimeLibsSummary(runtimeLibs, classpathFile, classpathEntries),
+            failure = "runtime classpath file has no entries: $classpathFile",
+        )
+    }
     val classpath = classpathEntries.joinToString(System.getProperty("path.separator")) { entry ->
         Path.of(runtimeLibs).resolve(entry).toString()
     }
     val command = buildList {
-        add("java")
+        add(javaExecutable)
         add("-cp")
         add(classpath)
         add("io.github.amichne.kast.standalone.StandaloneMainKt")
         add("--workspace-root=$workspace")
         addAll(extraArgs)
     }
-    Files.createDirectories(workspace)
-    val process = ProcessBuilder(command)
-        .directory(workspace.toFile())
-        .also { pb -> env.forEach { (key, value) -> pb.environment()[key] = value } }
-        .start()
+    val commandSummary = commandSummary(javaExecutable, workspace, runtimeLibs, classpathEntries.size, extraArgs)
+    val process = try {
+        ProcessBuilder(command)
+            .directory(workspace.toFile())
+            .also { pb -> env.forEach { (key, value) -> pb.environment()[key] = value } }
+            .start()
+    } catch (error: IOException) {
+        failBeforeReadinessPolling(
+            workspace = workspace,
+            timeoutMillis = timeoutMillis,
+            commandSummary = commandSummary,
+            runtimeLibsSummary = runtimeLibsSummary(runtimeLibs, classpathFile, classpathEntries),
+            failure = error.stackTraceToString(),
+        )
+    }
     val stdoutCapture = StreamCapture(process.inputStream)
     val stderrCapture = StreamCapture(process.errorStream)
     val deadline = System.nanoTime() + timeoutMillis * 1_000_000L
@@ -99,7 +147,7 @@ internal fun startStandaloneBackendForTest(
         BackendReadinessFailureDiagnostics(
             workspace = workspace,
             timeoutMillis = timeoutMillis,
-            commandSummary = commandSummary(workspace, runtimeLibs, classpathEntries.size, extraArgs),
+            commandSummary = commandSummary,
             runtimeLibsSummary = runtimeLibsSummary(runtimeLibs, classpathFile, classpathEntries),
             processExitCode = processExitCode,
             backendStdout = stdoutCapture.awaitText(),
@@ -110,12 +158,13 @@ internal fun startStandaloneBackendForTest(
 }
 
 private fun commandSummary(
+    javaExecutable: String,
     workspace: Path,
     runtimeLibs: String,
     classpathEntryCount: Int,
     extraArgs: List<String>,
 ): String = buildList {
-    add("java")
+    add(javaExecutable)
     add("-cp")
     add("<$classpathEntryCount runtime libs from $runtimeLibs>")
     add("io.github.amichne.kast.standalone.StandaloneMainKt")
@@ -123,13 +172,35 @@ private fun commandSummary(
     addAll(extraArgs)
 }.joinToString(" ")
 
+private fun failBeforeReadinessPolling(
+    workspace: Path,
+    timeoutMillis: Long,
+    commandSummary: String,
+    runtimeLibsSummary: String,
+    failure: String,
+): Nothing = error(
+    BackendReadinessFailureDiagnostics(
+        workspace = workspace,
+        timeoutMillis = timeoutMillis,
+        commandSummary = commandSummary,
+        runtimeLibsSummary = runtimeLibsSummary,
+        processExitCode = null,
+        backendStdout = "",
+        backendStderr = "",
+        lastStatusProbe = null,
+        failure = failure,
+        backendNotStarted = true,
+    ).toErrorMessage(),
+)
+
 private fun runtimeLibsSummary(
-    runtimeLibs: String,
-    classpathFile: Path,
+    runtimeLibs: String?,
+    classpathFile: Path?,
     classpathEntries: List<String>,
 ): String {
     val preview = classpathEntries.take(5).joinToString(", ")
-    return "runtimeLibs=$runtimeLibs; classpathFile=$classpathFile; classpath.txt exists=${Files.isRegularFile(classpathFile)}; " +
+    val classpathExists = classpathFile?.let(Files::isRegularFile) ?: false
+    return "runtimeLibs=${runtimeLibs ?: "<missing>"}; classpathFile=${classpathFile ?: "<not-built>"}; classpath.txt exists=$classpathExists; " +
         "entries=${classpathEntries.size}; firstEntries=${preview.ifBlank { "<empty>" }}"
 }
 

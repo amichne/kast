@@ -1,7 +1,10 @@
 package io.github.amichne.kast.cli
 
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Files
 import java.nio.file.Path
 
 class BackendReadinessDiagnosticsTest {
@@ -32,5 +35,124 @@ class BackendReadinessDiagnosticsTest {
         assertTrue(message.contains("lastStatusProbe.exitCode=2"))
         assertTrue(message.contains("lastStatusProbe.stdout={\"selected\":{\"ready\":false},\"candidates\":[]}"))
         assertTrue(message.contains("lastStatusProbe.stderr=status stderr line"))
+    }
+
+    @Test
+    fun `missing runtime libs property uses backend readiness diagnostics`(@TempDir workspace: Path) {
+        val error = withSystemProperty("kast.runtime-libs", null) {
+            assertThrows(IllegalStateException::class.java) {
+                startStandaloneBackendForTest(
+                    workspace = workspace,
+                    timeoutMillis = 1,
+                    statusProbe = { BackendStatusProbeSnapshot() },
+                    isReady = { false },
+                )
+            }
+        }
+
+        val message = error.message.orEmpty()
+        assertTrue(message.contains("Failed before standalone backend readiness polling at $workspace"))
+        assertTrue(message.contains("failure=kast.runtime-libs system property is missing"))
+        assertTrue(message.contains("startupCommand=<not-built>"))
+        assertTrue(message.contains("runtimeLibs=<missing>"))
+        assertTrue(message.contains("backendExitCode=<not-started>"))
+        assertTrue(message.contains("lastStatusProbe=<none>"))
+    }
+
+    @Test
+    fun `missing classpath file uses backend readiness diagnostics`(@TempDir workspace: Path, @TempDir runtimeLibs: Path) {
+        val error = withSystemProperty("kast.runtime-libs", runtimeLibs.toString()) {
+            assertThrows(IllegalStateException::class.java) {
+                startStandaloneBackendForTest(
+                    workspace = workspace,
+                    timeoutMillis = 1,
+                    statusProbe = { BackendStatusProbeSnapshot() },
+                    isReady = { false },
+                )
+            }
+        }
+
+        val classpathFile = runtimeLibs.resolve("classpath.txt")
+        val message = error.message.orEmpty()
+        assertTrue(message.contains("Failed before standalone backend readiness polling at $workspace"))
+        assertTrue(message.contains("failure=runtime classpath file is missing or unreadable: $classpathFile"))
+        assertTrue(message.contains("startupCommand=<not-built>"))
+        assertTrue(message.contains("runtimeLibs=$runtimeLibs"))
+        assertTrue(message.contains("classpathFile=$classpathFile"))
+        assertTrue(message.contains("classpath.txt exists=false"))
+        assertTrue(message.contains("entries=0"))
+        assertTrue(message.contains("backendExitCode=<not-started>"))
+        assertTrue(message.contains("lastStatusProbe=<none>"))
+    }
+
+    @Test
+    fun `empty classpath file uses backend readiness diagnostics`(@TempDir workspace: Path, @TempDir runtimeLibs: Path) {
+        val classpathFile = Files.writeString(runtimeLibs.resolve("classpath.txt"), "\n")
+        val error = withSystemProperty("kast.runtime-libs", runtimeLibs.toString()) {
+            assertThrows(IllegalStateException::class.java) {
+                startStandaloneBackendForTest(
+                    workspace = workspace,
+                    timeoutMillis = 1,
+                    statusProbe = { BackendStatusProbeSnapshot() },
+                    isReady = { false },
+                )
+            }
+        }
+
+        val message = error.message.orEmpty()
+        assertTrue(message.contains("Failed before standalone backend readiness polling at $workspace"))
+        assertTrue(message.contains("failure=runtime classpath file has no entries: $classpathFile"))
+        assertTrue(message.contains("classpath.txt exists=true"))
+        assertTrue(message.contains("entries=0"))
+        assertTrue(message.contains("backendExitCode=<not-started>"))
+        assertTrue(message.contains("lastStatusProbe=<none>"))
+    }
+
+    @Test
+    fun `process start failure uses backend readiness diagnostics`(@TempDir workspace: Path, @TempDir runtimeLibs: Path) {
+        Files.writeString(runtimeLibs.resolve("classpath.txt"), "backend.jar\n")
+        val missingJava = workspace.resolve("missing-java").toString()
+        val error = withSystemProperty("kast.runtime-libs", runtimeLibs.toString()) {
+            assertThrows(IllegalStateException::class.java) {
+                startStandaloneBackendForTest(
+                    workspace = workspace,
+                    timeoutMillis = 1,
+                    javaExecutable = missingJava,
+                    statusProbe = { BackendStatusProbeSnapshot() },
+                    isReady = { false },
+                )
+            }
+        }
+
+        val message = error.message.orEmpty()
+        assertTrue(message.contains("Failed before standalone backend readiness polling at $workspace"))
+        assertTrue(message.contains("failure=java.io.IOException: Cannot run program"))
+        assertTrue(message.contains(missingJava))
+        assertTrue(message.contains("startupCommand=$missingJava -cp <1 runtime libs from $runtimeLibs>"))
+        assertTrue(message.contains("runtimeLibs=$runtimeLibs"))
+        assertTrue(message.contains("classpath.txt exists=true"))
+        assertTrue(message.contains("entries=1"))
+        assertTrue(message.contains("backendExitCode=<not-started>"))
+        assertTrue(message.contains("backendStdout=<empty>"))
+        assertTrue(message.contains("backendStderr=<empty>"))
+        assertTrue(message.contains("lastStatusProbe=<none>"))
+    }
+
+    private fun <T> withSystemProperty(name: String, value: String?, block: () -> T): T {
+        val previous = System.getProperty(name)
+        if (value == null) {
+            System.clearProperty(name)
+        } else {
+            System.setProperty(name, value)
+        }
+        return try {
+            block()
+        } finally {
+            if (previous == null) {
+                System.clearProperty(name)
+            } else {
+                System.setProperty(name, previous)
+            }
+        }
     }
 }
