@@ -11,6 +11,10 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.io.path.createDirectories
 import kotlin.io.path.writeText
 
+/**
+ * Validates java.nio.file.WatchService integration for filesystem change monitoring.
+ * Requires real filesystem: java.nio.file.WatchService does not support Jimfs or other in-memory filesystems.
+ */
 class WorkspaceRefreshWatcherTest {
     @TempDir
     lateinit var workspaceRoot: Path
@@ -105,6 +109,73 @@ class WorkspaceRefreshWatcherTest {
                 assertEquals(0, fullRefreshCount)
             }
         }
+    }
+
+    @Test
+    fun `watcher continues registering accessible directories when some are inaccessible`() {
+        // Create a simple valid source root first
+        val initialRoot = writeFile(
+            relativePath = "initial/src/main/kotlin/sample/Init.kt",
+            content = """
+                package sample
+
+                fun init(): String = "ok"
+            """.trimIndent() + "\n",
+        ).parent.parent.parent
+
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = listOf(initialRoot),
+            classpathRoots = emptyList(),
+            moduleName = "main",
+        )
+
+        session.use { standaloneSession ->
+            WorkspaceRefreshWatcher(standaloneSession).use { watcher ->
+                // Now create additional directories, including one with problems
+                val goodDir = writeFile(
+                    relativePath = "good/src/main/kotlin/sample/Good.kt",
+                    content = """
+                        package sample
+
+                        fun good(): String = "ok"
+                    """.trimIndent() + "\n",
+                ).parent.parent.parent
+
+                // Create a directory with a broken symlink inside it
+                val problematicRoot = workspaceRoot.resolve("problematic/src/main/kotlin")
+                problematicRoot.createDirectories()
+                val brokenSymlink = problematicRoot.resolve("broken")
+                java.nio.file.Files.createSymbolicLink(brokenSymlink, workspaceRoot.resolve("nonexistent"))
+
+                // Manually refresh with new source roots including the problematic one
+                // This directly tests the error handling in refreshSourceRoots
+                callRefreshSourceRoots(watcher, listOf(initialRoot, goodDir, problematicRoot))
+
+                val watchedDirs = watchedDirectories(watcher)
+
+                // Verify that accessible directories were successfully registered
+                assertTrue(
+                    watchedDirs.any { it.startsWith(goodDir.toAbsolutePath().normalize()) },
+                    "Accessible directory should be registered despite sibling with broken symlink"
+                )
+
+                // Verify that the problematic root itself is registered
+                assertTrue(
+                    watchedDirs.contains(problematicRoot.toAbsolutePath().normalize()),
+                    "Problematic root should be registered even if it contains broken symlink"
+                )
+            }
+        }
+    }
+
+    private fun callRefreshSourceRoots(watcher: WorkspaceRefreshWatcher, sourceRoots: List<Path>) {
+        val method = WorkspaceRefreshWatcher::class.java.getDeclaredMethod(
+            "refreshSourceRoots",
+            List::class.java,
+        )
+        method.isAccessible = true
+        method.invoke(watcher, sourceRoots)
     }
 
     @Suppress("UNCHECKED_CAST")

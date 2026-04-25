@@ -16,6 +16,10 @@ import java.nio.file.Path
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
 
+/**
+ * Validates that file operations (create/delete) correctly trigger K2 Analysis API workspace refresh.
+ * Requires real filesystem: in-memory filesystems bypass StandaloneAnalysisSession workspace refresh semantics.
+ */
 class StandaloneAnalysisBackendApplyEditsFileOpsTest {
     @TempDir
     lateinit var workspaceRoot: Path

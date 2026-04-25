@@ -1,16 +1,12 @@
 package io.github.amichne.kast.api.validation
 
 import io.github.amichne.kast.api.contract.*
+import io.github.amichne.kast.api.io.KastFileOperations
+import io.github.amichne.kast.api.io.LocalDiskFileOperations
 import io.github.amichne.kast.api.protocol.*
 
 import java.nio.charset.StandardCharsets
-import java.nio.file.Files
-import java.nio.file.Path
-import java.nio.file.StandardCopyOption
-import java.nio.file.StandardOpenOption
 import java.security.MessageDigest
-import kotlin.io.path.readText
-import kotlin.io.path.writeText
 
 data class ValidatedFileEdits(
     val filePath: String,
@@ -147,7 +143,15 @@ object FileHashing {
     }
 }
 
-object LocalDiskEditApplier {
+/**
+ * Applies text edits and file operations to the filesystem.
+ *
+ * Supports injection of [KastFileOperations] for testing with in-memory filesystems.
+ * For production use, the companion object provides a default instance backed by local disk.
+ *
+ * @param fileOps File operations abstraction for read/write/delete/exists operations
+ */
+class LocalDiskEditApplier(private val fileOps: KastFileOperations = LocalDiskFileOperations) {
     fun apply(query: ApplyEditsQuery): ApplyEditsResult {
         if (query.edits.isEmpty() && query.fileOperations.isEmpty()) {
             throw ValidationException("At least one text edit or file operation is required")
@@ -161,16 +165,15 @@ object LocalDiskEditApplier {
         val deletedFiles = mutableListOf<String>()
 
         validatedFileOperations.forEach { operation ->
-            val path = Path.of(operation.filePath)
             try {
                 when (operation) {
                     is ValidatedFileOperation.CreateFile -> {
-                        writeAtomically(path, operation.content)
+                        fileOps.writeText(operation.filePath, operation.content)
                         createdFiles += operation.filePath
                     }
 
                     is ValidatedFileOperation.DeleteFile -> {
-                        Files.delete(path)
+                        fileOps.delete(operation.filePath)
                         deletedFiles += operation.filePath
                     }
                 }
@@ -194,9 +197,8 @@ object LocalDiskEditApplier {
             EditPlanValidator.validate(query.edits, query.fileHashes)
         }
         val currentContents = validatedEdits.associateWith { plan ->
-            val path = Path.of(plan.filePath)
-            ensureExists(path)
-            path.readText()
+            ensureExists(plan.filePath)
+            fileOps.readText(plan.filePath)
         }
 
         currentContents.forEach { (plan, content) ->
@@ -218,10 +220,20 @@ object LocalDiskEditApplier {
         validatedEdits.forEach { plan ->
             val currentContent = currentContents.getValue(plan)
             val updatedContent = EditPlanValidator.applyEditsToContent(currentContent, plan.edits)
-            val path = Path.of(plan.filePath)
 
             try {
-                writeAtomically(path, updatedContent)
+                // Use atomic write pattern: temp file + atomic move
+                // This ensures crash safety - either the write completes fully or not at all
+                val tempFile = fileOps.createTempFile(plan.filePath)
+                try {
+                    fileOps.writeText(tempFile, updatedContent)
+                    fileOps.moveAtomic(tempFile, plan.filePath)
+                } catch (e: Exception) {
+                    // Cleanup temp file on failure
+                    fileOps.delete(tempFile)
+                    throw e
+                }
+
                 affectedFiles += plan.filePath
                 appliedEdits += plan.edits.sortedBy { it.startOffset }
             } catch (exception: Exception) {
@@ -250,7 +262,7 @@ object LocalDiskEditApplier {
         .distinct()
         .sorted()
         .map { filePath ->
-            val content = Path.of(filePath).readText()
+            val content = fileOps.readText(filePath)
             FileHash(filePath = filePath, hash = FileHashing.sha256(content))
         }
 
@@ -262,8 +274,7 @@ object LocalDiskEditApplier {
         fileOperations.forEach { operation ->
             when (operation) {
                 is ValidatedFileOperation.CreateFile -> {
-                    val path = Path.of(operation.filePath)
-                    if (Files.exists(path)) {
+                    if (fileOps.exists(operation.filePath)) {
                         throw ConflictException(
                             message = "The requested file already exists",
                             details = mapOf("filePath" to operation.filePath),
@@ -272,9 +283,8 @@ object LocalDiskEditApplier {
                 }
 
                 is ValidatedFileOperation.DeleteFile -> {
-                    val path = Path.of(operation.filePath)
-                    ensureExists(path)
-                    val currentHash = FileHashing.sha256(path.readText())
+                    ensureExists(operation.filePath)
+                    val currentHash = FileHashing.sha256(fileOps.readText(operation.filePath))
                     if (currentHash != operation.expectedHash) {
                         throw ConflictException(
                             message = "The file changed after the delete plan was created",
@@ -290,39 +300,37 @@ object LocalDiskEditApplier {
         }
     }
 
-    private fun ensureExists(path: Path) {
-        if (!Files.exists(path)) {
+    private fun ensureExists(filePath: String) {
+        if (!fileOps.exists(filePath)) {
             throw NotFoundException(
                 message = "The requested file does not exist",
-                details = mapOf("filePath" to path.toString()),
+                details = mapOf("filePath" to filePath),
             )
         }
     }
 
-    private fun writeAtomically(
-        path: Path,
-        content: String,
-    ) {
-        val directory = path.parent ?: throw ValidationException("A parent directory is required for edited files")
-        Files.createDirectories(directory)
-        val tempFile = Files.createTempFile(directory, ".kast-", ".tmp")
-        try {
-            tempFile.writeText(
-                content,
-                options = arrayOf(
-                    StandardOpenOption.TRUNCATE_EXISTING,
-                    StandardOpenOption.WRITE,
-                ),
-            )
-            Files.move(
-                tempFile,
-                path,
-                StandardCopyOption.ATOMIC_MOVE,
-                StandardCopyOption.REPLACE_EXISTING,
-            )
-        } finally {
-            Files.deleteIfExists(tempFile)
-        }
+    companion object {
+        /**
+         * Default instance backed by local disk operations.
+         * Preserves backward compatibility for existing callers.
+         */
+        private val defaultInstance = LocalDiskEditApplier(LocalDiskFileOperations)
+
+        /**
+         * Apply edits using default local disk operations.
+         */
+        fun apply(query: ApplyEditsQuery): ApplyEditsResult = defaultInstance.apply(query)
+
+        /**
+         * Get current file hashes using default local disk operations.
+         */
+        fun currentHashes(filePaths: Collection<String>): List<FileHash> =
+            defaultInstance.currentHashes(filePaths)
+
+        /**
+         * Normalize a file path.
+         */
+        fun normalizePath(filePath: String): String = defaultInstance.normalizePath(filePath)
     }
 }
 

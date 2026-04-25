@@ -5,6 +5,7 @@ plugins {
 
 dependencies {
     implementation(libs.coroutines.core)
+    testImplementation(project(":shared-testing"))
 }
 
 tasks.register<JavaExec>("generateOpenApiSpec") {
