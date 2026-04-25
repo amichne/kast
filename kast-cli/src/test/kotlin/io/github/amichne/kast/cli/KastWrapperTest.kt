@@ -39,10 +39,21 @@ class KastWrapperTest {
     }
 
     @Test
+    fun `test workspaces are isolated from parent Gradle discovery`() {
+        val workspace = createIsolatedTestWorkspace("workspace-isolation-test")
+
+        assertEquals(
+            "rootProject.name = \"workspace-isolation-test\"\n",
+            workspace.resolve("settings.gradle.kts").readText(),
+        )
+        assertEquals(workspace.resolve("src/main/kotlin"), standaloneSourceRoot(workspace))
+    }
+
+    @Test
     fun `wrapper can ensure status capabilities and diagnostics through the launcher`() {
-        val workspace = tempDir.resolve("workspace")
-        val sourceFile = workspace
-            .resolve("src/main/kotlin/example/Sample.kt")
+        val workspace = createIsolatedTestWorkspace("workspace")
+        val sourceFile = standaloneSourceRoot(workspace)
+            .resolve("example/Sample.kt")
             .createDirectoriesForParent()
         sourceFile.writeText(
             """
@@ -52,7 +63,7 @@ class KastWrapperTest {
             """.trimIndent() + "\n",
         )
 
-        val daemon = startRealBackend(workspace)
+        val daemon = startIsolatedRealBackend(workspace)
         try {
             val ensure = runCli(
                 "workspace",
@@ -113,9 +124,9 @@ class KastWrapperTest {
 
     @Test
     fun `wrapper propagates custom daemon request timeout through the launcher`() {
-        val workspace = tempDir.resolve("workspace-timeout")
-        val sourceFile = workspace
-            .resolve("src/main/kotlin/example/Sample.kt")
+        val workspace = createIsolatedTestWorkspace("workspace-timeout")
+        val sourceFile = standaloneSourceRoot(workspace)
+            .resolve("example/Sample.kt")
             .createDirectoriesForParent()
         sourceFile.writeText(
             """
@@ -125,7 +136,7 @@ class KastWrapperTest {
             """.trimIndent() + "\n",
         )
 
-        val daemon = startRealBackend(workspace, extraArgs = listOf("--request-timeout-ms=120000"))
+        val daemon = startIsolatedRealBackend(workspace, extraArgs = listOf("--request-timeout-ms=120000"))
         try {
             val ensure = runCli(
                 "workspace",
@@ -155,9 +166,9 @@ class KastWrapperTest {
 
     @Test
     fun `workspace refresh updates daemon after external file edits`() {
-        val workspace = tempDir.resolve("workspace-refresh")
-        val sourceFile = workspace
-            .resolve("src/main/kotlin/example/Sample.kt")
+        val workspace = createIsolatedTestWorkspace("workspace-refresh")
+        val sourceFile = standaloneSourceRoot(workspace)
+            .resolve("example/Sample.kt")
             .createDirectoriesForParent()
         sourceFile.writeText(
             """
@@ -170,7 +181,7 @@ class KastWrapperTest {
 
         var daemon: Process? = null
         try {
-            daemon = startRealBackend(workspace)
+            daemon = startIsolatedRealBackend(workspace)
 
             sourceFile.writeText(
                 """
@@ -223,9 +234,9 @@ class KastWrapperTest {
 
     @Test
     fun `daemon automatically refreshes after external file edits`() {
-        val workspace = tempDir.resolve("workspace-watch-refresh")
-        val sourceFile = workspace
-            .resolve("src/main/kotlin/example/Sample.kt")
+        val workspace = createIsolatedTestWorkspace("workspace-watch-refresh")
+        val sourceFile = standaloneSourceRoot(workspace)
+            .resolve("example/Sample.kt")
             .createDirectoriesForParent()
         sourceFile.writeText(
             """
@@ -238,7 +249,7 @@ class KastWrapperTest {
 
         var daemon: Process? = null
         try {
-            daemon = startRealBackend(workspace)
+            daemon = startIsolatedRealBackend(workspace)
 
             sourceFile.writeText(
                 """
@@ -282,9 +293,9 @@ class KastWrapperTest {
 
     @Test
     fun `full workspace refresh handles new and deleted Kotlin files`() {
-        val workspace = tempDir.resolve("workspace-structural-refresh")
-        val declarationFile = workspace
-            .resolve("src/main/kotlin/example/Greeter.kt")
+        val workspace = createIsolatedTestWorkspace("workspace-structural-refresh")
+        val declarationFile = standaloneSourceRoot(workspace)
+            .resolve("example/Greeter.kt")
             .createDirectoriesForParent()
         declarationFile.writeText(
             """
@@ -293,8 +304,8 @@ class KastWrapperTest {
             fun greet(): String = "hi"
             """.trimIndent() + "\n",
         )
-        val deletedUsageFile = workspace
-            .resolve("src/main/kotlin/example/Use.kt")
+        val deletedUsageFile = standaloneSourceRoot(workspace)
+            .resolve("example/Use.kt")
             .createDirectoriesForParent()
         deletedUsageFile.writeText(
             """
@@ -307,11 +318,11 @@ class KastWrapperTest {
 
         var daemon: Process? = null
         try {
-            daemon = startRealBackend(workspace)
+            daemon = startIsolatedRealBackend(workspace)
 
             Files.delete(deletedUsageFile)
-            val newUsageFile = workspace
-                .resolve("src/main/kotlin/example/SecondaryUse.kt")
+            val newUsageFile = standaloneSourceRoot(workspace)
+                .resolve("example/SecondaryUse.kt")
                 .createDirectoriesForParent()
             newUsageFile.writeText(
                 """
@@ -473,6 +484,27 @@ class KastWrapperTest {
     private fun Path.createDirectoriesForParent(): Path {
         Files.createDirectories(checkNotNull(parent))
         return this
+    }
+
+    private fun createIsolatedTestWorkspace(name: String): Path {
+        val workspace = tempDir.resolve(name)
+        Files.createDirectories(workspace)
+        workspace.resolve("settings.gradle.kts").writeText("rootProject.name = \"$name\"\n")
+        return workspace
+    }
+
+    private fun standaloneSourceRoot(workspace: Path): Path = workspace.resolve("src/main/kotlin")
+
+    private fun startIsolatedRealBackend(
+        workspace: Path,
+        extraArgs: List<String> = emptyList(),
+        timeoutMillis: Long = 120_000,
+    ): Process {
+        return startRealBackend(
+            workspace = workspace,
+            extraArgs = listOf("--source-roots=${standaloneSourceRoot(workspace)}") + extraArgs,
+            timeoutMillis = timeoutMillis,
+        )
     }
 
     private fun normalizePath(path: Path): String {
