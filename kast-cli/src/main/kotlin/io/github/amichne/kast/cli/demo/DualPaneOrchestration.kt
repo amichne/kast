@@ -1,10 +1,12 @@
 package io.github.amichne.kast.cli.demo
 
 import com.varabyte.kotter.foundation.liveVarOf
+import com.varabyte.kotter.foundation.input.Keys
+import com.varabyte.kotter.foundation.input.onKeyPressed
 import com.varabyte.kotter.foundation.runUntilSignal
 import com.varabyte.kotter.foundation.text.textLine
 import com.varabyte.kotter.runtime.Session
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.CompletableDeferred
 
 internal fun Session.runDualPaneSession(
     scenario: DualPaneScenario,
@@ -17,12 +19,17 @@ internal fun Session.runDualPaneSession(
     var leftVisible by liveVarOf<List<DualPaneLeftLine>>(emptyList())
     var rightVisible by liveVarOf<List<KotterDemoTranscriptLine>>(emptyList())
     var scoreboardVisible by liveVarOf<List<ScoreboardRow>>(emptyList())
+    var awaitingAdvance by liveVarOf(false)
+    var advanceSignal: CompletableDeferred<Unit>? = null
 
     section {
         renderPanel(
             title = "Live Demo",
             panelContentWidth = (layout.totalWidth - 4).coerceAtLeast(1),
-            bodyLines = listOf(activeRound.title),
+            bodyLines = listOf(
+                activeRound.title,
+                if (awaitingAdvance) "Enter advances when you are ready." else "Streaming preview.",
+            ),
         )
         textLine()
         renderDualTranscriptPanel(
@@ -41,6 +48,12 @@ internal fun Session.runDualPaneSession(
             renderScoreboard(scoreboardVisible, layout.totalWidth)
         }
     }.runUntilSignal {
+        onKeyPressed {
+            if (key == Keys.ENTER) {
+                advanceSignal?.complete(Unit)
+            }
+        }
+
         for (round in scenario.rounds) {
             activeRound = round
             leftVisible = emptyList()
@@ -53,12 +66,20 @@ internal fun Session.runDualPaneSession(
                 scoreboardRowCount = round.scoreboard.size,
             ) { tick ->
                 when (tick.side) {
-                    Side.LEFT -> leftVisible = leftVisible + round.leftLines[tick.lineIndex]
+                    Side.LEFT -> leftVisible = leftVisible + round.leftLines.subList(
+                        tick.lineIndex,
+                        (tick.lineIndex + tick.lineCount).coerceAtMost(round.leftLines.size),
+                    )
                     Side.RIGHT -> rightVisible = rightVisible + round.rightLines[tick.lineIndex]
                     Side.SCOREBOARD -> scoreboardVisible = scoreboardVisible + round.scoreboard[tick.lineIndex]
                 }
             }
-            delay(0)
+            awaitingAdvance = true
+            val signal = CompletableDeferred<Unit>()
+            advanceSignal = signal
+            signal.await()
+            advanceSignal = null
+            awaitingAdvance = false
         }
         signal()
     }

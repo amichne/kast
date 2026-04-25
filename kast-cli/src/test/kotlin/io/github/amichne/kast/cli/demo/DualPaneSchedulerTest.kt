@@ -23,12 +23,17 @@ class DualPaneSchedulerTest {
 
         advanceTimeBy(100)
         runCurrent()
-        assertEquals(2, ticks.count { it.side == Side.LEFT })
+        assertEquals(0, ticks.count { it.side == Side.LEFT })
         assertEquals(0, ticks.count { it.side == Side.RIGHT })
 
-        advanceTimeBy(500)
+        advanceTimeBy(50)
         runCurrent()
-        assertEquals(12, ticks.count { it.side == Side.LEFT })
+        assertEquals(3, ticks.filter { it.side == Side.LEFT }.sumOf(Tick::lineCount))
+        assertEquals(0, ticks.count { it.side == Side.RIGHT })
+
+        advanceTimeBy(450)
+        runCurrent()
+        assertEquals(12, ticks.filter { it.side == Side.LEFT }.sumOf(Tick::lineCount))
         assertEquals(2, ticks.count { it.side == Side.RIGHT })
         assertEquals(0, ticks.count { it.side == Side.SCOREBOARD })
 

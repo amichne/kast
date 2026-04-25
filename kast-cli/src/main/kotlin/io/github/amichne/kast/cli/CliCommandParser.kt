@@ -27,7 +27,6 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import java.nio.file.Path
 import kotlin.io.path.readText
-
 internal class CliCommandParser(
     private val json: Json,
     private val gitRemoteResolver: GitRemoteResolver = SystemGitRemoteResolver,

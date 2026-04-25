@@ -7,6 +7,7 @@ import kotlinx.coroutines.launch
 internal data class Tick(
     val side: Side,
     val lineIndex: Int,
+    val lineCount: Int = 1,
 )
 
 internal enum class Side {
@@ -16,10 +17,11 @@ internal enum class Side {
 }
 
 internal class DualPaneScheduler(
-    val leftCadenceMs: Long = 50L,
-    val rightCadenceMs: Long = 300L,
-    val scoreboardRevealMs: Long = 120L,
-    val roundHoldMs: Long = 1500L,
+    val leftCadenceMs: Long = 150L,
+    val rightCadenceMs: Long = 200L,
+    val scoreboardRevealMs: Long = 80L,
+    val roundHoldMs: Long = 0L,
+    val leftBatchSize: Int = 3,
 ) {
     suspend fun playRound(
         leftLineCount: Int,
@@ -29,9 +31,12 @@ internal class DualPaneScheduler(
     ) {
         coroutineScope {
             launch {
-                repeat(leftLineCount) { index ->
+                var index = 0
+                while (index < leftLineCount) {
+                    val lineCount = leftBatchSize.coerceAtLeast(1).coerceAtMost(leftLineCount - index)
                     delay(leftCadenceMs)
-                    onTick(Tick(Side.LEFT, index))
+                    onTick(Tick(Side.LEFT, index, lineCount))
+                    index += lineCount
                 }
             }
             launch {

@@ -18,30 +18,38 @@ internal fun buildReferencesRound(
     val scope = report.references.searchScope
     val rightLines = buildList {
         report.references.declaration?.let { symbol ->
-            add(KotterDemoTranscriptLine("declaration ${symbol.kind.name.lowercase()} ${symbol.fqName}", KotterDemoStreamTone.COMMAND))
-        }
-        scope?.let {
-            add(KotterDemoTranscriptLine("scope ${it.scope} exhaustive=${it.exhaustive}", KotterDemoStreamTone.CONFIRMED))
-            add(KotterDemoTranscriptLine("searched ${it.searchedFileCount}/${it.candidateFileCount} candidate files", KotterDemoStreamTone.DETAIL))
-        }
-        references.forEach { reference ->
             add(
                 KotterDemoTranscriptLine(
-                    text = "${Paths.locationLine(report.workspaceRoot, reference, verbose = true)} reference",
-                    tone = KotterDemoStreamTone.CONFIRMED,
-                    codePreview = reference.preview.trim(),
+                    "declaration ${symbol.kind.name.lowercase()} ${symbol.fqName.substringAfterLast('.')}",
+                    KotterDemoStreamTone.COMMAND,
                 ),
             )
         }
+        scope?.let {
+            add(KotterDemoTranscriptLine("scope ${it.scope} · ${it.searchedFileCount}/${it.candidateFileCount} files · exhaustive=${it.exhaustive}", KotterDemoStreamTone.CONFIRMED))
+        }
+        references.take(REFERENCE_RIGHT_PREVIEW_LIMIT).forEach { reference ->
+            add(
+                KotterDemoTranscriptLine(
+                    text = "ref · ${simpleLocation(reference)} · ${previewSnippet(reference.preview)}",
+                    tone = KotterDemoStreamTone.CONFIRMED,
+                ),
+            )
+        }
+        val omitted = references.size - REFERENCE_RIGHT_PREVIEW_LIMIT
+        if (omitted > 0) {
+            add(KotterDemoTranscriptLine("… $omitted more refs in result", KotterDemoStreamTone.STRUCTURE))
+        }
     }
+    val symbolName = report.resolvedSymbol.fqName.substringAfterLast('.')
     return DualPaneRound(
         title = "References",
-        leftCommand = """grep -rn "${report.resolvedSymbol.fqName.substringAfterLast('.')}" --include="*.kt"""",
-        rightCommand = "kast references --symbol ${report.resolvedSymbol.fqName}",
-        leftLines = textSearch.sampleMatches.map { it.toLeftLine(report.workspaceRoot) },
+        leftCommand = """grep "$symbolName"""",
+        rightCommand = "kast refs $symbolName",
+        leftLines = textSearch.sampleMatches.take(LEFT_PREVIEW_LIMIT).map(DemoTextMatch::toLeftLine),
         rightLines = rightLines,
-        leftFooter = "⚑ ${textSearch.totalMatches} hits · 0 type info · 0 scope · ${textSearch.categoryBreakdown()}",
-        rightFooter = "✓ ${references.size} refs · typed · scoped · proven",
+        leftFooter = "⚑ ${textSearch.totalMatches} hits · ${textSearch.falsePositives} noisy · ${textSearch.categoryBreakdown()}",
+        rightFooter = "✓ ${references.size} refs · ${report.resolvedSymbol.kind} · scoped",
         scoreboard = listOf(
             ScoreboardRow(
                 metric = "Noise reduction",
@@ -60,7 +68,7 @@ internal fun buildReferencesRound(
             ScoreboardRow(
                 metric = "Type information",
                 grepValue = "none",
-                kastValue = "${report.resolvedSymbol.fqName} ${report.resolvedSymbol.kind}",
+                kastValue = "${report.resolvedSymbol.kind} $symbolName",
                 delta = "NEW",
                 isNewCapability = true,
             ),
@@ -80,17 +88,28 @@ internal fun buildRenameRound(
     textSearch: DemoTextSearchSummary,
 ): DualPaneRound {
     val unsafeMatches = textSearch.sampleMatches.filter { it.category != DemoTextMatchCategory.LIKELY_CORRECT }
-    val rightLines = report.rename.edits.map { edit -> edit.toRenameLine(report.workspaceRoot, report.resolvedSymbol.fqName.substringAfterLast('.')) } +
-        report.rename.fileHashes.map { hash -> hash.toHashLine(report.workspaceRoot) }
+    val symbolName = report.resolvedSymbol.fqName.substringAfterLast('.')
+    val newName = "${symbolName}Renamed"
+    val rightLines = buildList {
+        report.rename.edits.take(RENAME_EDIT_PREVIEW_LIMIT).forEach { edit -> add(edit.toRenameLine(symbolName)) }
+        val omittedEdits = report.rename.edits.size - RENAME_EDIT_PREVIEW_LIMIT
+        if (omittedEdits > 0) {
+            add(KotterDemoTranscriptLine("… $omittedEdits more edits in plan", KotterDemoStreamTone.STRUCTURE))
+        }
+        report.rename.fileHashes.take(RENAME_HASH_PREVIEW_LIMIT).forEach { hash -> add(hash.toHashLine()) }
+        val omittedHashes = report.rename.fileHashes.size - RENAME_HASH_PREVIEW_LIMIT
+        if (omittedHashes > 0) {
+            add(KotterDemoTranscriptLine("… $omittedHashes more hash guards", KotterDemoStreamTone.STRUCTURE))
+        }
+    }
     return DualPaneRound(
         title = "Rename",
-        leftCommand = """sed -i '' "s/${report.resolvedSymbol.fqName.substringAfterLast('.')}/${report.resolvedSymbol.fqName.substringAfterLast('.')}Renamed/g"""",
-        rightCommand = "kast rename --symbol ${report.resolvedSymbol.fqName} --new-name ${report.resolvedSymbol.fqName.substringAfterLast('.')}Renamed --dry-run",
-        leftLines = unsafeMatches.map { match ->
+        leftCommand = """sed "$symbolName" → "$newName"""",
+        rightCommand = "kast rename $symbolName → $newName",
+        leftLines = unsafeMatches.take(LEFT_PREVIEW_LIMIT).map { match ->
             DualPaneLeftLine(
-                text = "sed would rewrite ${Paths.relative(report.workspaceRoot, match.filePath)}:${match.lineNumber}",
+                text = "${simpleLocation(match.filePath, match.lineNumber)} · ${match.category.label()} · would edit",
                 category = match.category,
-                codePreview = match.preview,
             )
         },
         rightLines = rightLines,
@@ -123,19 +142,20 @@ internal fun buildCallGraphRound(
 ): DualPaneRound {
     val callerNames = report.callHierarchy.root.children.map { it.simpleCallerName() }.distinct()
     val leftLines = callerNames.flatMap { callerName ->
-        textSearchOf(callerName).sampleMatches.take(CALLER_GREP_SAMPLE_LIMIT).map { it.toLeftLine(workspaceRoot) }
+        textSearchOf(callerName).sampleMatches.take(CALLER_GREP_SAMPLE_LIMIT).map(DemoTextMatch::toLeftLine)
     }
     val rightLines = renderCallTreePreview(
         workspaceRoot = workspaceRoot,
         root = report.callHierarchy.root,
-        verbose = verbose,
-        limit = CALL_GRAPH_RIGHT_LINE_LIMIT,
+        verbose = false,
+        limit = CALL_GRAPH_RIGHT_PREVIEW_LIMIT,
     ).map { line -> KotterDemoTranscriptLine(line, KotterDemoStreamTone.STRUCTURE) }
+    val symbolName = report.resolvedSymbol.fqName.substringAfterLast('.')
 
     return DualPaneRound(
         title = "Call Graph",
-        leftCommand = callerNames.joinToString(prefix = "grep -rn ", separator = " && grep -rn ") { "\"$it\"" },
-        rightCommand = "kast call-hierarchy --symbol ${report.resolvedSymbol.fqName} --direction incoming --depth 2",
+        leftCommand = callerNames.joinToString(prefix = "grep callers: ", separator = ", "),
+        rightCommand = "kast callers $symbolName depth=2",
         leftLines = leftLines,
         rightLines = rightLines,
         leftFooter = "⚑ caller identity unrecoverable: ${leftLines.size} hits across ${callerNames.size} names",
@@ -166,22 +186,21 @@ internal fun buildDualPaneScenario(
     ),
 )
 
-private fun DemoTextMatch.toLeftLine(workspaceRoot: Path): DualPaneLeftLine =
+private fun DemoTextMatch.toLeftLine(): DualPaneLeftLine =
     DualPaneLeftLine(
-        text = "${Paths.relative(workspaceRoot, filePath)}:$lineNumber  $preview",
+        text = "${simpleLocation(filePath, lineNumber)} · ${category.label()} · ${previewSnippet(preview)}",
         category = category,
-        codePreview = preview,
     )
 
-private fun TextEdit.toRenameLine(workspaceRoot: Path, oldName: String): KotterDemoTranscriptLine =
+private fun TextEdit.toRenameLine(oldName: String): KotterDemoTranscriptLine =
     KotterDemoTranscriptLine(
-        text = "${Paths.relative(workspaceRoot, filePath)}:${startOffset}..$endOffset  $oldName → $newText",
+        text = "edit · ${Paths.fileName(filePath)} · $oldName → $newText",
         tone = KotterDemoStreamTone.CONFIRMED,
     )
 
-private fun FileHash.toHashLine(workspaceRoot: Path): KotterDemoTranscriptLine =
+private fun FileHash.toHashLine(): KotterDemoTranscriptLine =
     KotterDemoTranscriptLine(
-        text = "SHA-256 ${hash.take(HASH_PREVIEW_LENGTH)}…  ${Paths.relative(workspaceRoot, filePath)}",
+        text = "hash · ${Paths.fileName(filePath)} · ${hash.take(HASH_PREVIEW_LENGTH)}…",
         tone = KotterDemoStreamTone.CONFIRMED,
     )
 
@@ -195,11 +214,38 @@ private fun DemoTextSearchSummary.categoryBreakdown(): String =
         .ifEmpty { listOf("clean") }
         .joinToString(" · ")
 
+private fun DemoTextMatchCategory.label(): String = when (this) {
+    DemoTextMatchCategory.LIKELY_CORRECT -> "candidate"
+    DemoTextMatchCategory.COMMENT -> "comment"
+    DemoTextMatchCategory.STRING -> "string"
+    DemoTextMatchCategory.IMPORT -> "import"
+    DemoTextMatchCategory.SUBSTRING -> "substring"
+}
+
+private fun simpleLocation(location: Location): String =
+    simpleLocation(location.filePath, location.startLine)
+
+private fun simpleLocation(filePath: String, lineNumber: Int): String =
+    "${Paths.fileName(filePath)}:$lineNumber"
+
+private fun previewSnippet(preview: String): String =
+    TextFit.truncate(
+        preview.trim()
+            .replace(Regex("^//\\s*|^/\\*\\s*|^\\*\\s*"), "")
+            .replace(Regex("\\s+"), " "),
+        PREVIEW_SNIPPET_LIMIT,
+    )
+
 private fun noiseReductionPercent(grepHits: Int, kastHits: Int): Int {
     if (grepHits <= 0) return 0
     return (((grepHits - kastHits).coerceAtLeast(0).toDouble() / grepHits.toDouble()) * 100).toInt()
 }
 
 private const val HASH_PREVIEW_LENGTH: Int = 12
-private const val CALLER_GREP_SAMPLE_LIMIT: Int = 6
-private const val CALL_GRAPH_RIGHT_LINE_LIMIT: Int = 15
+private const val LEFT_PREVIEW_LIMIT: Int = 9
+private const val REFERENCE_RIGHT_PREVIEW_LIMIT: Int = 6
+private const val RENAME_EDIT_PREVIEW_LIMIT: Int = 5
+private const val RENAME_HASH_PREVIEW_LIMIT: Int = 2
+private const val CALLER_GREP_SAMPLE_LIMIT: Int = 2
+private const val CALL_GRAPH_RIGHT_PREVIEW_LIMIT: Int = 8
+private const val PREVIEW_SNIPPET_LIMIT: Int = 44

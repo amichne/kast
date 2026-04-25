@@ -37,6 +37,10 @@ class DualPaneRoundBuilderTest {
         assertEquals(4, round.leftLines.size)
         assertTrue(round.leftFooter.contains("4 hits"))
         assertTrue(round.rightFooter.contains("2 refs"))
+        assertTrue(round.leftLines.all { tempDir.toString() !in it.text }, "left pane should not show absolute paths: ${round.leftLines}")
+        assertTrue(round.rightLines.all { tempDir.toString() !in it.text }, "right pane should not show absolute paths: ${round.rightLines}")
+        assertTrue(round.leftLines.any { it.text.contains("comment") })
+        assertTrue(round.rightLines.any { it.text.contains("ref · ExecuteService.kt:12") })
         assertTrue(round.scoreboard.any { it.metric == "Type information" && it.isNewCapability })
         assertTrue(round.scoreboard.any { it.metric == "Scope proof" && it.isNewCapability })
     }
@@ -50,7 +54,8 @@ class DualPaneRoundBuilderTest {
         assertEquals(3, round.leftLines.size)
         assertEquals(2, round.rightLines.size)
         assertTrue(round.leftFooter.contains("3 blind edits"))
-        assertTrue(round.rightLines.any { it.text.contains("SHA-256 abcdef123456") })
+        assertTrue(round.leftLines.all { tempDir.toString() !in it.text }, "rename noise should not show absolute paths: ${round.leftLines}")
+        assertTrue(round.rightLines.any { it.text.contains("hash · ExecuteService.kt · abcdef123456") })
         assertTrue(round.scoreboard.single { it.metric == "Rename safety" }.isNewCapability)
     }
 
@@ -74,6 +79,7 @@ class DualPaneRoundBuilderTest {
         assertEquals(2, round.leftLines.size)
         assertTrue(round.leftFooter.contains("2 hits across 1 names"))
         assertTrue(round.rightLines.any { it.text.contains("run") })
+        assertTrue(round.leftLines.all { tempDir.toString() !in it.text }, "call graph noise should not show absolute paths: ${round.leftLines}")
         assertTrue(round.scoreboard.single().isNewCapability)
     }
 
