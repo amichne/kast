@@ -1,4 +1,5 @@
 import org.gradle.api.DefaultTask
+import org.gradle.api.GradleException
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFileProperty
@@ -17,10 +18,15 @@ import org.gradle.work.InputChanges
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import java.util.zip.ZipFile
 import kotlin.io.path.name
 import kotlin.io.path.writeText
 
 abstract class SyncRuntimeLibsTask : DefaultTask() {
+    init {
+        requiredClassEntries.convention(emptyList())
+    }
+
     @get:InputFile
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val appJar: RegularFileProperty
@@ -32,6 +38,9 @@ abstract class SyncRuntimeLibsTask : DefaultTask() {
 
     @get:Input
     abstract val runtimeJarPathsInOrder: ListProperty<String>
+
+    @get:Input
+    abstract val requiredClassEntries: ListProperty<String>
 
     @get:OutputDirectory
     abstract val outputDirectory: DirectoryProperty
@@ -81,7 +90,49 @@ abstract class SyncRuntimeLibsTask : DefaultTask() {
             classpathPath = classpathFile.get().asFile.toPath(),
             entries = copiedEntries,
         )
+
+        val missingRequiredClassEntries = RuntimeClasspathAssertions.missingRequiredClassEntries(
+            runtimeLibsDirectory = runtimeLibsDirectory,
+            classpathEntries = copiedEntries,
+            requiredClassEntries = requiredClassEntries.get(),
+        )
+        if (missingRequiredClassEntries.isNotEmpty()) {
+            throw GradleException(
+                "runtime-libs classpath is missing required class entries: " +
+                    missingRequiredClassEntries.joinToString() +
+                    ". Ensure the module or jar containing each required class is on runtimeClasspath.",
+            )
+        }
     }
+}
+
+object RuntimeClasspathAssertions {
+    fun missingRequiredClassEntries(
+        runtimeLibsDirectory: Path,
+        classpathEntries: List<String>,
+        requiredClassEntries: List<String>,
+    ): List<String> {
+        if (requiredClassEntries.isEmpty()) {
+            return emptyList()
+        }
+
+        val jarPaths = classpathEntries
+            .asSequence()
+            .filter(String::isNotBlank)
+            .map(runtimeLibsDirectory::resolve)
+            .filter(Files::isRegularFile)
+            .filter { path -> path.name.endsWith(".jar") }
+            .toList()
+
+        return requiredClassEntries.filterNot { requiredEntry ->
+            jarPaths.any { jarPath -> jarContainsEntry(jarPath, requiredEntry) }
+        }
+    }
+
+    private fun jarContainsEntry(jarPath: Path, entryName: String): Boolean =
+        ZipFile(jarPath.toFile()).use { archive ->
+            archive.getEntry(entryName) != null
+        }
 }
 
 private fun copyIfChanged(sourcePath: Path, targetPath: Path) {

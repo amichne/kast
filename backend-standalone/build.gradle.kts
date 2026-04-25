@@ -376,6 +376,10 @@ tasks.named<WriteWrapperScriptTask>("writeWrapperScript") {
     )
 }
 
+tasks.named<SyncRuntimeLibsTask>("syncRuntimeLibs") {
+    requiredClassEntries.add("io/github/amichne/kast/api/client/StandaloneServerOptions.class")
+}
+
 tasks.named<Sync>("syncPortableDist") {
     from(layout.buildDirectory.dir("runtime-libs")) {
         into("runtime-libs")
@@ -390,4 +394,3 @@ tasks.named<Zip>("portableDistZip") {
         }
     }
 }
-
