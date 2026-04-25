@@ -57,7 +57,7 @@ PY
         EXPORT_DIR="${KAST_SESSION_EXPORT_PATH:-${HOME}/.kast/sessions}"
 
         if [[ -f "${EVENTS_FILE}" ]]; then
-            python3 - "${SESSION_ID}" "${EVENTS_FILE}" "${EXPORT_DIR}" <<'PY'
+            python3 - "${SESSION_ID}" "${EVENTS_FILE}" "${EXPORT_DIR}" <<'PY' || echo "session-end: session export failed (non-fatal)" >&2
 import json, sys
 from pathlib import Path
 
