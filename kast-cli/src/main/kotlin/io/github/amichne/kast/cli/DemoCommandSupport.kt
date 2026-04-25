@@ -18,6 +18,10 @@ import io.github.amichne.kast.api.contract.Symbol
 import io.github.amichne.kast.api.contract.SymbolQuery
 import io.github.amichne.kast.api.contract.WorkspaceSymbolQuery
 import io.github.amichne.kast.cli.demo.KotterDemoBranchSpec
+import io.github.amichne.kast.cli.demo.KotterDemoLayoutCalculator
+import io.github.amichne.kast.cli.demo.KotterDemoLayoutDecision
+import io.github.amichne.kast.cli.demo.KotterDemoLayoutMode
+import io.github.amichne.kast.cli.demo.KotterDemoLayoutRequest
 import io.github.amichne.kast.cli.demo.KotterDemoOperationPresentation
 import io.github.amichne.kast.cli.demo.KotterDemoOperationScenario
 import io.github.amichne.kast.cli.demo.KotterDemoScenarioEvent
@@ -27,6 +31,9 @@ import io.github.amichne.kast.cli.demo.KotterDemoStreamTone
 import io.github.amichne.kast.cli.demo.KotterDemoTranscriptLine
 import io.github.amichne.kast.cli.demo.Paths
 import io.github.amichne.kast.cli.demo.SymbolPickerResult
+import io.github.amichne.kast.cli.demo.buildDualPaneScenario
+import io.github.amichne.kast.cli.demo.loadCapture
+import io.github.amichne.kast.cli.demo.runDualPaneSession
 import io.github.amichne.kast.cli.demo.renderCallTreePreview
 import io.github.amichne.kast.cli.demo.runKotterDemoSession
 import io.github.amichne.kast.cli.demo.runLoadingPhase
@@ -173,6 +180,23 @@ internal open class DemoCommandSupport(
         )
 
         return sessionRunner.runSession(options.verbose) { terminal ->
+            options.fixture?.let { fixturePath ->
+                val capture = loadCapture(fixturePath)
+                val decision = dualPaneLayoutDecision(terminal.width)
+                when (decision) {
+                    is KotterDemoLayoutDecision.Ready -> {
+                        val dualPaneLayout = decision.dualPane
+                            ?: return@runSession DemoFlowOutcome.Failed("Terminal width ${terminal.width} is too narrow for fixture replay; need at least 120 columns.")
+                        runDualPaneSession(capture.scenario, dualPaneLayout)
+                        return@runSession DemoFlowOutcome.Completed(
+                            DemoPlaybackResult(report = null, runtime = null, daemonNote = "fixture ${fixturePath.fileName}"),
+                        )
+                    }
+                    is KotterDemoLayoutDecision.Halted -> return@runSession DemoFlowOutcome.Failed(decision.warning)
+                    else -> return@runSession DemoFlowOutcome.Failed("Unexpected dual-pane layout decision: $decision")
+                }
+            }
+
             // Phase 1+2: Warm backend + symbol picker (combined in runSymbolPicker)
             val pickerResult = runSymbolPicker(
                 verbose = options.verbose,
@@ -275,11 +299,38 @@ internal open class DemoCommandSupport(
             )
 
             // Phase 4: Demo playback
-            runKotterDemoSession(
-                presentation = presentationFor(report, verbose = options.verbose),
-                terminalWidth = terminal.width,
-                clearScreen = terminal::clear,
-            )
+            val layoutDecision = dualPaneLayoutDecision(terminal.width)
+            when (layoutDecision) {
+                is KotterDemoLayoutDecision.Ready -> {
+                    val dualPane = layoutDecision.dualPane
+                    if (dualPane != null) {
+                        val scenario = buildDualPaneScenario(
+                            report = report,
+                            textSearchSummary = report.textSearch,
+                            workspaceRoot = options.workspaceRoot,
+                            verbose = options.verbose,
+                            textSearchOf = { callerName -> analyzeTextSearch(options.workspaceRoot, symbolForTextSearch(callerName, selectedSymbol)) },
+                        )
+                        runDualPaneSession(scenario, dualPane)
+                    } else {
+                        runKotterDemoSession(
+                            presentation = presentationFor(report, verbose = options.verbose),
+                            terminalWidth = terminal.width,
+                            clearScreen = terminal::clear,
+                        )
+                    }
+                }
+                is KotterDemoLayoutDecision.Halted -> runKotterDemoSession(
+                    presentation = presentationFor(report, verbose = options.verbose),
+                    terminalWidth = terminal.width,
+                    clearScreen = terminal::clear,
+                )
+                else -> runKotterDemoSession(
+                    presentation = presentationFor(report, verbose = options.verbose),
+                    terminalWidth = terminal.width,
+                    clearScreen = terminal::clear,
+                )
+            }
 
             DemoFlowOutcome.Completed(
                 DemoPlaybackResult(
@@ -290,6 +341,21 @@ internal open class DemoCommandSupport(
             )
         }
     }
+
+    private fun dualPaneLayoutDecision(terminalWidth: Int): KotterDemoLayoutDecision =
+        KotterDemoLayoutCalculator().layout(
+            KotterDemoLayoutRequest(
+                terminalWidth = terminalWidth,
+                operations = listOf("References", "Rename", "Call Graph"),
+                activeOperation = "References",
+                query = "kast demo",
+                cursorVisible = false,
+                mode = KotterDemoLayoutMode.DualPane,
+            ),
+        )
+
+    private fun symbolForTextSearch(name: String, fallback: Symbol): Symbol =
+        fallback.copy(fqName = name)
 
     internal fun presentationFor(report: DemoReport, verbose: Boolean = true): KotterDemoSessionPresentation {
         val operations = listOf(
@@ -659,6 +725,7 @@ internal class TerminalDemoSymbolChooser(
     }
 }
 
+@kotlinx.serialization.Serializable
 internal enum class DemoTextMatchCategory {
     LIKELY_CORRECT,
     COMMENT,

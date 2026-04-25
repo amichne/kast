@@ -7,12 +7,18 @@ internal data class KotterDemoLayoutRequest(
     val query: String,
     val cursorVisible: Boolean,
     val branches: List<KotterDemoBranchSpec> = emptyList(),
+    val mode: KotterDemoLayoutMode = KotterDemoLayoutMode.Single,
 ) {
     init {
         require(activeOperation in operations) {
             "Active operation '$activeOperation' must exist in operations: $operations"
         }
     }
+}
+
+internal enum class KotterDemoLayoutMode {
+    Single,
+    DualPane,
 }
 
 internal data class KotterDemoBranchSpec(
@@ -22,10 +28,20 @@ internal data class KotterDemoBranchSpec(
 )
 
 internal sealed interface KotterDemoLayoutDecision {
-    data class Ready(val shell: KotterDemoShellLayout) : KotterDemoLayoutDecision
+    data class Ready(
+        val shell: KotterDemoShellLayout,
+        val dualPane: KotterDemoDualPaneLayout? = null,
+        val fallbackToSingle: Boolean = false,
+    ) : KotterDemoLayoutDecision
 
     data class Halted(val warning: String) : KotterDemoLayoutDecision
 }
+
+internal data class KotterDemoDualPaneLayout(
+    val paneWidth: Int,
+    val gap: Int,
+    val totalWidth: Int,
+)
 
 internal data class KotterDemoShellLayout(
     val persistent: KotterDemoPersistentShell,
@@ -68,6 +84,11 @@ internal class KotterDemoLayoutCalculator(
     private val faithfulBranchColumnWidth: Int = MIN_FAITHFUL_BRANCH_COLUMN_WIDTH,
 ) {
     fun layout(request: KotterDemoLayoutRequest): KotterDemoLayoutDecision {
+        if (request.mode == KotterDemoLayoutMode.DualPane && request.terminalWidth < MIN_SINGLE_PANE_WIDTH) {
+            return KotterDemoLayoutDecision.Halted(
+                warning = "Terminal width ${request.terminalWidth} is too narrow for faithful Kotter demo rendering; need at least $MIN_SINGLE_PANE_WIDTH columns.",
+            )
+        }
         return when (val branchGridDecision = branchGridFor(request)) {
             is BranchGridDecision.Halted -> KotterDemoLayoutDecision.Halted(branchGridDecision.warning)
             is BranchGridDecision.Ready -> KotterDemoLayoutDecision.Ready(
@@ -88,8 +109,24 @@ internal class KotterDemoLayoutCalculator(
                         branchGrid = branchGridDecision.grid,
                     ),
                 ),
+                dualPane = dualPaneLayoutFor(request),
+                fallbackToSingle = request.mode == KotterDemoLayoutMode.DualPane && request.terminalWidth < MIN_DUAL_PANE_WIDTH,
             )
         }
+    }
+
+    private fun dualPaneLayoutFor(request: KotterDemoLayoutRequest): KotterDemoDualPaneLayout? {
+        if (request.mode != KotterDemoLayoutMode.DualPane || request.terminalWidth < MIN_DUAL_PANE_WIDTH) {
+            return null
+        }
+
+        val totalWidth = request.terminalWidth - shellInsetWidth
+        val paneWidth = ((totalWidth - DUAL_PANE_GAP) / 2).coerceAtLeast(1)
+        return KotterDemoDualPaneLayout(
+            paneWidth = paneWidth,
+            gap = DUAL_PANE_GAP,
+            totalWidth = paneWidth * 2 + DUAL_PANE_GAP,
+        )
     }
 
     private fun branchGridFor(request: KotterDemoLayoutRequest): BranchGridDecision {
@@ -136,5 +173,8 @@ internal class KotterDemoLayoutCalculator(
         const val SHELL_INSET_WIDTH: Int = 3
         const val BRANCH_COLUMN_GAP_WIDTH: Int = 3
         const val MIN_FAITHFUL_BRANCH_COLUMN_WIDTH: Int = 22
+        const val MIN_SINGLE_PANE_WIDTH: Int = 80
+        const val MIN_DUAL_PANE_WIDTH: Int = 120
+        const val DUAL_PANE_GAP: Int = 1
     }
 }

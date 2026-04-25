@@ -15,6 +15,7 @@ internal data class DemoOptions(
      *    Kast plugin; fails fast when no IntelliJ runtime is available.
      */
     val backend: String? = null,
+    val fixture: Path? = null,
     /**
      * When `true`, the demo renders fully-qualified names and workspace-
      * relative paths everywhere (symbol identity, semantic panels, declaration
@@ -23,4 +24,3 @@ internal data class DemoOptions(
      */
     val verbose: Boolean = false,
 )
-

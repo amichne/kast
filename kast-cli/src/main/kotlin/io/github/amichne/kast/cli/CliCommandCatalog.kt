@@ -323,6 +323,12 @@ internal object CliCommandCatalog {
         description = "Render fully-qualified names and workspace-relative paths everywhere. Default: simple names and bare file names.",
         completionKind = CliOptionCompletionKind.BOOLEAN,
     )
+    private val demoFixtureOption = CliOptionMetadata(
+        key = "fixture",
+        usage = "--fixture=/absolute/path/to/dual-pane-capture.json",
+        description = "Replay a canned dual-pane demo capture without connecting to a backend.",
+        completionKind = CliOptionCompletionKind.FILE,
+    )
 
     private val demoGenRepoUrlOption = CliOptionMetadata(
         key = "repo-url",
@@ -818,9 +824,9 @@ internal object CliCommandCatalog {
                 "This initial experience stops there: the freeform SymbolWalker remains deferred and is not part of the shipped demo flow. " +
                 "Uses the live IntelliJ plugin backend when one is available and auto-starts the standalone JVM daemon otherwise; pin with --backend-name=intellij|standalone. If the terminal is too narrow, the demo halts and asks you to rerun after resizing.",
             usages = listOf(
-                "$CLI_EXECUTABLE_NAME demo [--workspace-root=/absolute/path/to/workspace] [--symbol=CliService] [--backend-name=intellij|standalone] [--verbose=true]",
+                "$CLI_EXECUTABLE_NAME demo [--workspace-root=/absolute/path/to/workspace] [--symbol=CliService] [--backend-name=intellij|standalone] [--fixture=/absolute/path/to/capture.json] [--verbose=true]",
             ),
-            options = listOf(workspaceRootOption, demoSymbolOption, backendNameOption, demoVerboseOption),
+            options = listOf(workspaceRootOption, demoSymbolOption, backendNameOption, demoFixtureOption, demoVerboseOption),
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME demo",
                 "$CLI_EXECUTABLE_NAME demo --workspace-root=/absolute/path/to/workspace",

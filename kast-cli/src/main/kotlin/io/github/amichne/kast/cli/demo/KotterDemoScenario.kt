@@ -1,5 +1,7 @@
 package io.github.amichne.kast.cli.demo
 
+import kotlinx.serialization.Serializable
+
 internal enum class KotterDemoPhaseStatus {
     PENDING,
     ACTIVE,
@@ -11,6 +13,7 @@ internal enum class KotterDemoPhaseStatus {
  * Shared across the scenario event model, session state, and screen model
  * so tone flows from data creation to display without conversion.
  */
+@Serializable
 internal data class KotterDemoTranscriptLine(
     val text: String,
     val tone: KotterDemoStreamTone = KotterDemoStreamTone.DETAIL,

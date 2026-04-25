@@ -277,6 +277,25 @@ class CliCommandParserTest {
     }
 
     @Test
+    fun `demo parses fixture replay option`() {
+        val fixture = tempDir.resolve("capture.json")
+        val command = parser.parse(
+            arrayOf(
+                "demo",
+                "--workspace-root=$tempDir",
+                "--fixture=$fixture",
+                "--verbose=true",
+            ),
+        )
+
+        assertTrue(command is CliCommand.Demo)
+        val demoCommand = command as CliCommand.Demo
+        assertEquals(tempDir, demoCommand.options.workspaceRoot)
+        assertEquals(fixture.toAbsolutePath().normalize(), demoCommand.options.fixture)
+        assertTrue(demoCommand.options.verbose)
+    }
+
+    @Test
     fun `demo generate parses demo gen options`() {
         val command = parser.parse(
             arrayOf(
