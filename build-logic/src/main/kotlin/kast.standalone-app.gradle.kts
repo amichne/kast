@@ -47,7 +47,9 @@ val shadowJar = tasks.named<ShadowJar>("shadowJar") {
 
 val shadowJarArchive = shadowJar.flatMap(ShadowJar::getArchiveFile)
 
-val runtimeClassPathJars = configurations.runtimeClasspath.map(::runtimeJarPathsInOrder)
+val runtimeClassPathJars = configurations.runtimeClasspath.map { classpath ->
+    RuntimeJarPathOrdering.inOrder(classpath.files)
+}
 val mainJar = tasks.named<Jar>("jar")
 
 val syncRuntimeLibs by tasks.registering(SyncRuntimeLibsTask::class) {
@@ -117,9 +119,3 @@ tasks.matching {
 }.configureEach {
     dependsOn(writeWrapperScript)
 }
-
-private fun runtimeJarPathsInOrder(classpath: FileCollection): List<String> =
-    classpath.files
-        .filter(File::isFile)
-        .filter { it.name.endsWith(".jar") }
-        .map(File::getAbsolutePath)
