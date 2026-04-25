@@ -5,23 +5,33 @@ import io.github.amichne.kast.api.contract.CallHierarchyResult
 import io.github.amichne.kast.api.contract.CallHierarchyStats
 import io.github.amichne.kast.api.contract.CallNode
 import io.github.amichne.kast.api.contract.FileHash
+import io.github.amichne.kast.api.contract.CallHierarchyQuery
 import io.github.amichne.kast.api.contract.Location
+import io.github.amichne.kast.api.contract.ReferencesQuery
 import io.github.amichne.kast.api.contract.ReferencesResult
+import io.github.amichne.kast.api.contract.RenameQuery
 import io.github.amichne.kast.api.contract.RenameResult
 import io.github.amichne.kast.api.contract.SearchScope
 import io.github.amichne.kast.api.contract.SearchScopeKind
 import io.github.amichne.kast.api.contract.Symbol
 import io.github.amichne.kast.api.contract.SymbolKind
+import io.github.amichne.kast.api.contract.SymbolQuery
+import io.github.amichne.kast.api.contract.SymbolResult
 import io.github.amichne.kast.api.contract.SymbolVisibility
 import io.github.amichne.kast.api.contract.TextEdit
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -66,6 +76,8 @@ class DemoGenCommandSupportTest {
         val outcome = support.runInteractive(demoGenOptions(DemoGenOutputFormat.JSON, symbolCount = 2))
 
         assertTrue(outcome is DemoFlowOutcome.Completed, "Expected Completed, got $outcome")
+        val completed = assertInstanceOf(DemoFlowOutcome.Completed::class.java, outcome)
+        assertInstanceOf(DemoPlaybackResult.Full::class.java, completed.result)
         assertEquals(0, sessionRunner.callCount, "Session runner must NOT be invoked for headless output")
         val json = recordedOutput.single()
         // Round-trip parse to ensure validity.
@@ -203,6 +215,69 @@ class DemoGenCommandSupportTest {
     }
 
     @Test
+    fun `buildReportInstrumented starts all post-resolve queries before any completes`() = runBlocking {
+        val selectedSymbol = demoSymbol("io.example.Foo")
+        val report = sampleReport(selectedSymbol)
+        val resolvedSymbol = selectedSymbol.copy(fqName = "io.example.ResolvedFoo")
+        val runtime = fakeRuntimeStatus(tempDir)
+        val probe = ParallelPostResolveProbe(setOf("references", "rename", "callHierarchy", "textSearch"))
+        val client = object : DemoLoadingClient {
+            override suspend fun resolveSymbol(
+                options: RuntimeCommandOptions,
+                query: SymbolQuery,
+            ): RuntimeAttachedResult<SymbolResult> {
+                probe.recordResolveCompleted()
+                return RuntimeAttachedResult(SymbolResult(resolvedSymbol), runtime, daemonNote = "daemon warmed")
+            }
+
+            override suspend fun findReferences(
+                options: RuntimeCommandOptions,
+                query: ReferencesQuery,
+            ): RuntimeAttachedResult<ReferencesResult> = probe.suspendPostResolve("references") {
+                RuntimeAttachedResult(report.references, runtime)
+            }
+
+            override suspend fun rename(
+                options: RuntimeCommandOptions,
+                query: RenameQuery,
+            ): RuntimeAttachedResult<RenameResult> = probe.suspendPostResolve("rename") {
+                RuntimeAttachedResult(report.rename, runtime)
+            }
+
+            override suspend fun callHierarchy(
+                options: RuntimeCommandOptions,
+                query: CallHierarchyQuery,
+            ): RuntimeAttachedResult<CallHierarchyResult> = probe.suspendPostResolve("callHierarchy") {
+                RuntimeAttachedResult(report.callHierarchy, runtime)
+            }
+        }
+        val completedSteps = mutableListOf<Int>()
+        val backend = CliServiceDemoGenBackend(
+            cliService = CliService(Json),
+            textSearchAnalyzer = TextSearchAnalyzer { _, symbol ->
+                assertSame(selectedSymbol, symbol)
+                probe.blockPostResolve("textSearch") { report.textSearch }
+            },
+            loadingClient = client,
+        )
+
+        val loading = async {
+            backend.buildReportInstrumented(tempDir, selectedSymbol) { index, _ -> completedSteps += index }
+        }
+        withTimeout(500L) { probe.awaitAllPostResolveStarted() }
+        probe.releasePostResolveCompletions()
+        val completed = loading.await()
+
+        assertSame(resolvedSymbol, completed.resolvedSymbol)
+        assertEquals(listOf(1, 2, 3, 4), completedSteps.filter { it != 0 }.sorted())
+        assertEquals(setOf("references", "rename", "callHierarchy", "textSearch"), probe.completedOperations())
+        assertTrue(
+            probe.events().first() == "resolve-completed",
+            "Resolve must complete before post-resolve work starts; events=${probe.events()}",
+        )
+    }
+
+    @Test
     fun `artifact JSON is written under kast demo-generate in workspace for local mode`() = runBlocking {
         val recordedOutput = mutableListOf<String>()
         val workspaceRoot = tempDir.resolve("ws").also { java.nio.file.Files.createDirectories(it) }
@@ -269,11 +344,9 @@ class DemoGenCommandSupportTest {
         output: (String) -> Unit = {},
         workingDirectory: Path = tempDir,
     ): DemoGenCommandSupport {
-        // analyzeTextSearch on the real DemoCommandSupport just walks tempDir
-        // (empty), which yields zero matches — fine for ranking the canned
-        // symbols by FQName tie-break.
-        val demoSupport = DemoCommandSupport()
-        val curation = SymbolCurationEngine(demoSupport)
+        // The default text-search analyzer walks tempDir (empty), which yields
+        // zero matches — fine for ranking the canned symbols by FQName tie-break.
+        val curation = SymbolCurationEngine()
         return DemoGenCommandSupport(
             backend = backend,
             curationEngine = curation,
@@ -356,6 +429,55 @@ class DemoGenCommandSupportTest {
         reachable = true,
         ready = true,
     )
+
+    private class ParallelPostResolveProbe(private val expectedOperations: Set<String>) {
+        private val release = CompletableDeferred<Unit>()
+        private val allStarted = CompletableDeferred<Unit>()
+        private val started = linkedSetOf<String>()
+        private val completed = linkedSetOf<String>()
+        private val events = mutableListOf<String>()
+
+        fun recordResolveCompleted() {
+            synchronized(this) { events += "resolve-completed" }
+        }
+
+        suspend fun <T> suspendPostResolve(name: String, result: () -> T): T {
+            markStarted(name)
+            release.await()
+            synchronized(this) {
+                completed += name
+                events += "$name-completed"
+            }
+            return result()
+        }
+
+        fun <T> blockPostResolve(name: String, result: () -> T): T = runBlocking {
+            suspendPostResolve(name, result)
+        }
+
+        suspend fun awaitAllPostResolveStarted() {
+            allStarted.await()
+        }
+
+        fun releasePostResolveCompletions() {
+            release.complete(Unit)
+        }
+
+        fun completedOperations(): Set<String> = synchronized(this) { completed.toSet() }
+
+        fun events(): List<String> = synchronized(this) { events.toList() }
+
+        private fun markStarted(name: String) {
+            synchronized(this) {
+                check(name in expectedOperations) { "Unexpected operation $name" }
+                started += name
+                events += "$name-started"
+                if (started == expectedOperations) {
+                    allStarted.complete(Unit)
+                }
+            }
+        }
+    }
 
     private fun demoSymbol(fqName: String): Symbol {
         val simple = fqName.substringAfterLast('.')

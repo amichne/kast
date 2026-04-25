@@ -1,19 +1,31 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.api.client.ServerInstanceDescriptor
+import io.github.amichne.kast.api.contract.CallHierarchyQuery
 import io.github.amichne.kast.api.contract.CallHierarchyResult
 import io.github.amichne.kast.api.contract.CallHierarchyStats
 import io.github.amichne.kast.api.contract.CallNode
+import io.github.amichne.kast.api.contract.FilePosition
 import io.github.amichne.kast.api.contract.FileHash
 import io.github.amichne.kast.api.contract.Location
+import io.github.amichne.kast.api.contract.ReferencesQuery
 import io.github.amichne.kast.api.contract.ReferencesResult
+import io.github.amichne.kast.api.contract.RenameQuery
 import io.github.amichne.kast.api.contract.RenameResult
 import io.github.amichne.kast.api.contract.SearchScope
 import io.github.amichne.kast.api.contract.SearchScopeKind
 import io.github.amichne.kast.api.contract.Symbol
 import io.github.amichne.kast.api.contract.SymbolKind
+import io.github.amichne.kast.api.contract.SymbolQuery
+import io.github.amichne.kast.api.contract.SymbolResult
 import io.github.amichne.kast.api.contract.SymbolVisibility
 import io.github.amichne.kast.api.contract.TextEdit
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -124,6 +136,165 @@ class DemoCommandSupportTest {
         )
     }
 
+    @Test
+    fun `load demo data completes with all analysis data`() {
+        val report = sampleReport()
+        val selectedSymbol = report.selectedSymbol
+        val resolvedSymbol = selectedSymbol.copy(fqName = "io.github.amichne.kast.cli.ResolvedCliService")
+        val runtime = runtimeStatus()
+        val client = RecordingDemoLoadingClient(
+            resolveResult = RuntimeAttachedResult(SymbolResult(resolvedSymbol), runtime, daemonNote = "daemon warmed"),
+            referencesResult = RuntimeAttachedResult(report.references, runtime),
+            renameResult = RuntimeAttachedResult(report.rename, runtime),
+            callHierarchyResult = RuntimeAttachedResult(report.callHierarchy, runtime),
+        )
+
+        val result = loadDemoData(
+            selectedSymbol = selectedSymbol,
+            symbolPosition = FilePosition(
+                filePath = selectedSymbol.location.filePath,
+                offset = selectedSymbol.location.startOffset,
+            ),
+            runtimeOptions = RuntimeCommandOptions(
+                workspaceRoot = tempDir,
+                backendName = null,
+                waitTimeoutMillis = 180_000L,
+            ),
+            client = client,
+            textSearchOf = { symbol ->
+                assertSame(selectedSymbol, symbol)
+                report.textSearch
+            },
+            runLoading = { execute ->
+                runBlocking {
+                    execute { _, _ -> }
+                }
+                true
+            },
+        )
+
+        val completed = assertInstanceOf(DemoLoadResult.Completed::class.java, result)
+        assertSame(runtime, completed.runtimeStatus)
+        assertEquals("daemon warmed", completed.daemonNote)
+        assertSame(resolvedSymbol, completed.resolvedSymbol)
+        assertSame(report.references, completed.references)
+        assertSame(report.rename, completed.rename)
+        assertSame(report.callHierarchy, completed.callHierarchy)
+        assertSame(report.textSearch, completed.textSearch)
+    }
+
+    @Test
+    fun `runInteractive loading starts all post-resolve backend queries before any completes`() {
+        val report = sampleReport()
+        val selectedSymbol = report.selectedSymbol
+        val resolvedSymbol = selectedSymbol.copy(fqName = "io.github.amichne.kast.cli.ResolvedCliService")
+        val runtime = runtimeStatus()
+        val probe = ParallelPostResolveProbe(setOf("references", "rename", "callHierarchy", "textSearch"))
+        val client = object : DemoLoadingClient {
+            override suspend fun resolveSymbol(
+                options: RuntimeCommandOptions,
+                query: SymbolQuery,
+            ): RuntimeAttachedResult<SymbolResult> {
+                probe.recordResolveCompleted()
+                return RuntimeAttachedResult(SymbolResult(resolvedSymbol), runtime, daemonNote = "daemon warmed")
+            }
+
+            override suspend fun findReferences(
+                options: RuntimeCommandOptions,
+                query: ReferencesQuery,
+            ): RuntimeAttachedResult<ReferencesResult> = probe.suspendPostResolve("references") {
+                RuntimeAttachedResult(report.references, runtime)
+            }
+
+            override suspend fun rename(
+                options: RuntimeCommandOptions,
+                query: RenameQuery,
+            ): RuntimeAttachedResult<RenameResult> = probe.suspendPostResolve("rename") {
+                RuntimeAttachedResult(report.rename, runtime)
+            }
+
+            override suspend fun callHierarchy(
+                options: RuntimeCommandOptions,
+                query: CallHierarchyQuery,
+            ): RuntimeAttachedResult<CallHierarchyResult> = probe.suspendPostResolve("callHierarchy") {
+                RuntimeAttachedResult(report.callHierarchy, runtime)
+            }
+        }
+        val completedSteps = mutableListOf<Int>()
+
+        val result = loadDemoData(
+            selectedSymbol = selectedSymbol,
+            symbolPosition = FilePosition(
+                filePath = selectedSymbol.location.filePath,
+                offset = selectedSymbol.location.startOffset,
+            ),
+            runtimeOptions = RuntimeCommandOptions(
+                workspaceRoot = tempDir,
+                backendName = null,
+                waitTimeoutMillis = 180_000L,
+            ),
+            client = client,
+            textSearchOf = { symbol ->
+                assertSame(selectedSymbol, symbol)
+                probe.blockPostResolve("textSearch") { report.textSearch }
+            },
+            runLoading = { execute ->
+                runBlocking {
+                    val loading = async { execute { index, _ -> completedSteps += index } }
+                    withTimeout(500L) { probe.awaitAllPostResolveStarted() }
+                    probe.releasePostResolveCompletions()
+                    loading.await()
+                }
+                true
+            },
+        )
+
+        val completed = assertInstanceOf(DemoLoadResult.Completed::class.java, result)
+        assertSame(resolvedSymbol, completed.resolvedSymbol)
+        assertEquals(listOf(1, 2, 3, 4), completedSteps.filter { it != 0 }.sorted())
+        assertEquals(setOf("references", "rename", "callHierarchy", "textSearch"), probe.completedOperations())
+        assertTrue(
+            probe.events().first() == "resolve-completed",
+            "Resolve must complete before post-resolve work starts; events=${probe.events()}",
+        )
+    }
+
+    @Test
+    fun `load demo data failure does not expose partial results`() {
+        val report = sampleReport()
+        val selectedSymbol = report.selectedSymbol
+        val runtime = runtimeStatus()
+        val client = RecordingDemoLoadingClient(
+            resolveResult = RuntimeAttachedResult(SymbolResult(report.resolvedSymbol), runtime, daemonNote = "daemon warmed"),
+            referencesResult = RuntimeAttachedResult(report.references, runtime),
+            renameResult = RuntimeAttachedResult(report.rename, runtime),
+            callHierarchyResult = RuntimeAttachedResult(report.callHierarchy, runtime),
+        )
+
+        val result = loadDemoData(
+            selectedSymbol = selectedSymbol,
+            symbolPosition = FilePosition(
+                filePath = selectedSymbol.location.filePath,
+                offset = selectedSymbol.location.startOffset,
+            ),
+            runtimeOptions = RuntimeCommandOptions(
+                workspaceRoot = tempDir,
+                backendName = null,
+                waitTimeoutMillis = 180_000L,
+            ),
+            client = client,
+            textSearchOf = { report.textSearch },
+            runLoading = { execute ->
+                runBlocking {
+                    execute { _, _ -> }
+                }
+                false
+            },
+        )
+
+        assertSame(DemoLoadResult.Failed, result)
+    }
+
     private fun writeKotlinFile(relativePath: String, content: String) {
         val file = tempDir.resolve(relativePath)
         file.parent.createDirectories()
@@ -220,5 +391,94 @@ class DemoCommandSupportTest {
                 ),
             ),
         )
+    }
+
+    private fun runtimeStatus(): RuntimeCandidateStatus = RuntimeCandidateStatus(
+        descriptorPath = tempDir.resolve("kast.sock.json").toString(),
+        descriptor = ServerInstanceDescriptor(
+            workspaceRoot = tempDir.toString(),
+            backendName = "standalone",
+            backendVersion = "test",
+            socketPath = tempDir.resolve("kast.sock").toString(),
+        ),
+        pidAlive = true,
+        reachable = true,
+        ready = true,
+    )
+
+    private class ParallelPostResolveProbe(private val expectedOperations: Set<String>) {
+        private val release = CompletableDeferred<Unit>()
+        private val allStarted = CompletableDeferred<Unit>()
+        private val started = linkedSetOf<String>()
+        private val completed = linkedSetOf<String>()
+        private val events = mutableListOf<String>()
+
+        fun recordResolveCompleted() {
+            synchronized(this) { events += "resolve-completed" }
+        }
+
+        suspend fun <T> suspendPostResolve(name: String, result: () -> T): T {
+            markStarted(name)
+            release.await()
+            synchronized(this) {
+                completed += name
+                events += "$name-completed"
+            }
+            return result()
+        }
+
+        fun <T> blockPostResolve(name: String, result: () -> T): T = runBlocking {
+            suspendPostResolve(name, result)
+        }
+
+        suspend fun awaitAllPostResolveStarted() {
+            allStarted.await()
+        }
+
+        fun releasePostResolveCompletions() {
+            release.complete(Unit)
+        }
+
+        fun completedOperations(): Set<String> = synchronized(this) { completed.toSet() }
+
+        fun events(): List<String> = synchronized(this) { events.toList() }
+
+        private fun markStarted(name: String) {
+            synchronized(this) {
+                check(name in expectedOperations) { "Unexpected operation $name" }
+                started += name
+                events += "$name-started"
+                if (started == expectedOperations) {
+                    allStarted.complete(Unit)
+                }
+            }
+        }
+    }
+
+    private class RecordingDemoLoadingClient(
+        private val resolveResult: RuntimeAttachedResult<SymbolResult>,
+        private val referencesResult: RuntimeAttachedResult<ReferencesResult>,
+        private val renameResult: RuntimeAttachedResult<RenameResult>,
+        private val callHierarchyResult: RuntimeAttachedResult<CallHierarchyResult>,
+    ) : DemoLoadingClient {
+        override suspend fun resolveSymbol(
+            options: RuntimeCommandOptions,
+            query: SymbolQuery,
+        ): RuntimeAttachedResult<SymbolResult> = resolveResult
+
+        override suspend fun findReferences(
+            options: RuntimeCommandOptions,
+            query: ReferencesQuery,
+        ): RuntimeAttachedResult<ReferencesResult> = referencesResult
+
+        override suspend fun rename(
+            options: RuntimeCommandOptions,
+            query: RenameQuery,
+        ): RuntimeAttachedResult<RenameResult> = renameResult
+
+        override suspend fun callHierarchy(
+            options: RuntimeCommandOptions,
+            query: CallHierarchyQuery,
+        ): RuntimeAttachedResult<CallHierarchyResult> = callHierarchyResult
     }
 }

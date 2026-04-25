@@ -9,18 +9,18 @@ import org.junit.jupiter.api.Test
 class DualPaneRendererTest {
 
     private val sampleConversation = DualPaneConversation(
-        symbolFqn = "io.github.amichne.kast.demo.GrepAct.renderGrepAct",
-        simpleName = "renderGrepAct",
+        symbolFqn = "io.github.amichne.kast.demo.DualPaneConversation",
+        simpleName = "DualPaneConversation",
         turns = listOf(
             ConversationTurn(
-                userPrompt = "What does renderGrepAct do?",
+                userPrompt = "What does DualPaneConversation model?",
                 leftResponse = listOf(
-                    ConversationLine("It probably renders something.", ConversationTone.WARNING),
-                    ConversationLine("Cannot resolve receiver.", ConversationTone.ERROR),
+                    ConversationLine("It probably stores chat text.", ConversationTone.WARNING),
+                    ConversationLine("Cannot resolve panes without context.", ConversationTone.ERROR),
                 ),
                 rightResponse = listOf(
-                    ConversationLine("RenderScope extension on GrepResult.", ConversationTone.SUCCESS),
-                    ConversationLine("Calls renderActHeader and a category table.", ConversationTone.NORMAL),
+                    ConversationLine("Current model keeps symbol context and turns.", ConversationTone.SUCCESS),
+                    ConversationLine("Renderer consumes DemoGenScreen.", ConversationTone.NORMAL),
                 ),
             ),
             ConversationTurn(
@@ -35,7 +35,7 @@ class DualPaneRendererTest {
     fun `renders user prompt prefixed with You`() = testSession { terminal ->
         section { renderDualPaneConversation(sampleConversation) }.run()
         val lines = terminal.resolveRerenders().stripFormatting()
-        assertTrue(lines.any { it.contains("You: What does renderGrepAct do?") },
+        assertTrue(lines.any { it.contains("You: What does DualPaneConversation model?") },
             "Should render first prompt with You: prefix. Got: $lines")
         assertTrue(lines.any { it.contains("You: Who calls it?") },
             "Should render second prompt with You: prefix. Got: $lines")
@@ -53,10 +53,10 @@ class DualPaneRendererTest {
     fun `renders all left and right lines`() = testSession { terminal ->
         section { renderDualPaneConversation(sampleConversation) }.run()
         val lines = terminal.resolveRerenders().stripFormatting()
-        assertTrue(lines.any { "It probably renders something." in it }, "Left WARNING line missing. Got: $lines")
-        assertTrue(lines.any { "Cannot resolve receiver." in it }, "Left ERROR line missing")
-        assertTrue(lines.any { "RenderScope extension on GrepResult." in it }, "Right SUCCESS line missing")
-        assertTrue(lines.any { "Calls renderActHeader and a category table." in it }, "Right NORMAL line missing")
+        assertTrue(lines.any { "It probably stores chat text." in it }, "Left WARNING line missing. Got: $lines")
+        assertTrue(lines.any { "Cannot resolve panes without context." in it }, "Left ERROR line missing")
+        assertTrue(lines.any { "Current model keeps symbol context and turns." in it }, "Right SUCCESS line missing")
+        assertTrue(lines.any { "Renderer consumes DemoGenScreen." in it }, "Right NORMAL line missing")
         assertTrue(lines.any { "Unknown." in it }, "Second turn left DIM line missing")
         assertTrue(lines.any { "Called from DemoSession.run." in it }, "Second turn right SUCCESS line missing")
     }
@@ -117,7 +117,7 @@ class DualPaneRendererTest {
         section { renderDemoGenScreen(screen) }.run()
         val lines = terminal.resolveRerenders().stripFormatting()
         assertTrue(lines.any { "Act 1 of 2" in it }, "Should render act header. Got: $lines")
-        assertTrue(lines.any { "Symbol: renderGrepAct" in it }, "Should render symbol simple name in title")
+        assertTrue(lines.any { "Symbol: DualPaneConversation" in it }, "Should render symbol simple name in title")
         assertTrue(lines.any { sampleConversation.symbolFqn in it }, "Should render symbol FQN in subtitle")
         assertTrue(lines.any { "[1/2/3] switch" in it && "[Q/Esc] quit" in it },
             "Should render footer hints when multiple conversations exist. Got: $lines")

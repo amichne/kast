@@ -264,13 +264,14 @@ internal class CliService(
     }
 
     suspend fun demoGen(options: DemoGenOptions): DemoFlowOutcome {
-        val curation = SymbolCurationEngine(demoCommandSupport)
+        val textSearchAnalyzer = WorkspaceTextSearchAnalyzer()
+        val curation = SymbolCurationEngine(textSearchAnalyzer)
         // Local mode: auto-select backend (null) so IntelliJ is preferred when available.
         // Remote mode: always standalone (cloned repo has no IntelliJ project open).
         val backendName = if (options.local) null else "standalone"
         val backend = CliServiceDemoGenBackend(
             cliService = this,
-            demoSupport = demoCommandSupport,
+            textSearchAnalyzer = textSearchAnalyzer,
             backendName = backendName,
             acceptIndexing = options.background,
         )
@@ -284,7 +285,7 @@ internal class CliService(
     suspend fun demoRender(options: DemoRenderOptions): DemoFlowOutcome {
         val support = DemoGenCommandSupport(
             backend = NoOpDemoGenBackend,
-            curationEngine = SymbolCurationEngine(demoCommandSupport),
+            curationEngine = SymbolCurationEngine(),
         )
         return support.renderFromFile(options.jsonFile, options.verbose)
     }

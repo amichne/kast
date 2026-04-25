@@ -507,34 +507,25 @@ class KastWrapperTest {
         extraArgs: List<String> = emptyList(),
         timeoutMillis: Long = 120_000,
     ): Process {
-        val runtimeLibs = checkNotNull(System.getProperty("kast.runtime-libs")) {
-            "kast.runtime-libs system property is missing"
-        }
-        val classpathFile = java.io.File(runtimeLibs, "classpath.txt")
-        val classpath = classpathFile.readLines()
-            .filter { it.isNotBlank() }
-            .joinToString(":") { "$runtimeLibs/$it" }
-        val command = buildList {
-            add("java"); add("-cp"); add(classpath)
-            add("io.github.amichne.kast.standalone.StandaloneMainKt")
-            add("--workspace-root=$workspace")
-            addAll(extraArgs)
-        }
-        Files.createDirectories(workspace)
-        val process = ProcessBuilder(command).directory(workspace.toFile()).start()
-        val deadline = System.nanoTime() + timeoutMillis * 1_000_000L
-        while (System.nanoTime() < deadline) {
-            val result = runCli("workspace", "status", "--workspace-root=$workspace", allowFailure = true)
-            if (result.exitCode == 0) {
-                val status = runCatching {
-                    defaultCliJson().decodeFromString<WorkspaceStatusResult>(result.stdout)
-                }.getOrNull()
-                if (status?.selected?.ready == true) return process
-            }
-            Thread.sleep(500)
-        }
-        process.destroyForcibly()
-        error("Timed out waiting for standalone backend at $workspace")
+        return startStandaloneBackendForTest(
+            workspace = workspace,
+            extraArgs = extraArgs,
+            timeoutMillis = timeoutMillis,
+            statusProbe = {
+                val result = runCli("workspace", "status", "--workspace-root=$workspace", allowFailure = true)
+                BackendStatusProbeSnapshot(
+                    exitCode = result.exitCode,
+                    stdout = result.stdout,
+                    stderr = result.stderr,
+                )
+            },
+            isReady = { probe ->
+                probe.exitCode == 0 &&
+                    runCatching {
+                        defaultCliJson().decodeFromString<WorkspaceStatusResult>(probe.stdout)
+                    }.getOrNull()?.selected?.ready == true
+            },
+        )
     }
 
     private fun startFakeDaemon(

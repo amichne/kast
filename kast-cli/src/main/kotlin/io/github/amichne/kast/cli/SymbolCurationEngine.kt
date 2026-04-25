@@ -39,8 +39,23 @@ internal fun minContrastThreshold(symbolCount: Int): Double = when {
  * [count] are found, and auto-adapts the quality bar to codebase size so large repos only
  * surface high-signal symbols while small repos are still usable.
  */
+internal fun interface TextSearchAnalyzer {
+    fun analyze(workspaceRoot: Path, symbol: Symbol): DemoTextSearchSummary
+}
+
+internal class WorkspaceTextSearchAnalyzer(
+    private val indexFactory: (Path) -> WorkspaceTextIndex = ::WorkspaceTextIndex,
+) : TextSearchAnalyzer {
+    private val indexes = mutableMapOf<Path, WorkspaceTextIndex>()
+
+    override fun analyze(workspaceRoot: Path, symbol: Symbol): DemoTextSearchSummary {
+        val root = workspaceRoot.toAbsolutePath().normalize()
+        return indexes.getOrPut(root) { indexFactory(root) }.analyze(symbol)
+    }
+}
+
 internal class SymbolCurationEngine(
-    private val demoCommandSupport: DemoCommandSupport = DemoCommandSupport(),
+    private val textSearchAnalyzer: TextSearchAnalyzer = WorkspaceTextSearchAnalyzer(),
 ) {
     fun curate(
         workspaceRoot: Path,
@@ -74,7 +89,7 @@ internal class SymbolCurationEngine(
         simpleName: String,
         group: List<Symbol>,
     ): CuratedSymbol {
-        val summary = demoCommandSupport.analyzeTextSearch(workspaceRoot, group.first())
+        val summary = textSearchAnalyzer.analyze(workspaceRoot, group.first())
         val total = summary.totalMatches
         val grepHits = total
         val falsePositiveRatio = if (total == 0) 0.0 else summary.falsePositives.toDouble() / total
