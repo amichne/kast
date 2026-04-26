@@ -37,16 +37,7 @@ required.
 > standalone backend uses Gradle-aware discovery. Without those files,
 > `kast` still falls back to conventional source roots and source-file
 > scanning. A root `settings.gradle.kts` matters most for multi-module
-> Gradle workspaces and for repo-cloning demo flows such as
-> `kast demo generate`. When `--repo-url` is omitted, Kast uses the
-> current repo's `origin` remote and accepts any repository URL that
-> your local `git clone` can reach.
->
-> Pass `--local=true` to analyze your current workspace without cloning
-> (IntelliJ is auto-preferred when available). Pass `--background=true`
-> to connect while indexing is still in progress. A JSON artifact is
-> always saved under `.kast/demo-generate/` and can be replayed later
-> with `kast demo render --json-file=<path>`.
+> Gradle workspaces.
 
 ## Step 1: Start the standalone backend
 

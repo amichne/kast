@@ -68,19 +68,6 @@ project model and index.
 For the full comparison, see
 [Backends](https://amichne.github.io/kast/getting-started/backends/).
 
-## See it on your code
-
-`kast demo` opens a live Kotter shell on your own Kotlin workspace. It picks a
-symbol (or uses `--symbol`) and lets you switch between semantic references,
-rename dry-run, and incoming callers while keeping the grep baseline visible.
-Run it in a reasonably wide terminal; if the terminal is too narrow, `kast`
-stops and asks you to rerun after resizing.
-
-```console
-kast demo --workspace-root=/path/to/your/kotlin/project
-kast demo --workspace-root=/path/to/your/kotlin/project --symbol=YourClassName
-```
-
 ## Documentation
 
 - Documentation site: <https://amichne.github.io/kast/>

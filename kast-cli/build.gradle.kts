@@ -25,13 +25,9 @@ application {
 
 dependencies {
     api(project(":analysis-api"))
-    implementation(project(":kast-demo"))
     implementation(libs.coroutines.core)
-    implementation(libs.kotter)
     implementation(libs.mordant)
     implementation(libs.serialization.json)
-
-    testImplementation(libs.kotter.test)
 }
 
 graalvmNative {

@@ -58,9 +58,7 @@ those files, it falls back to conventional source roots such as
 or `.java` files.
 
 > **Note:** A root `settings.gradle.kts` or `settings.gradle` matters
-> most when you want accurate multi-module Gradle discovery. A root
-> `settings.gradle.kts` is also required by repo-cloning demo flows such
-> as `kast demo generate`.
+> most when you want accurate multi-module Gradle discovery.
 
 ## IntelliJ plugin backend
 

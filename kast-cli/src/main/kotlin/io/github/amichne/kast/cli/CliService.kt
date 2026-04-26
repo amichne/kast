@@ -43,7 +43,6 @@ internal class CliService(
     private val installService: InstallService = InstallService(),
     private val installSkillService: InstallSkillService = InstallSkillService(),
     private val smokeCommandSupport: SmokeCommandSupport = SmokeCommandSupport(),
-    private val demoCommandSupport: DemoCommandSupport = DemoCommandSupport(),
 ) {
     private val rpcClient = KastRpcClient(json)
     private val runtimeManager = WorkspaceRuntimeManager(rpcClient)
@@ -253,42 +252,6 @@ internal class CliService(
     fun installSkill(options: InstallSkillOptions): InstallSkillResult = installSkillService.install(options)
 
     fun smoke(options: SmokeOptions): CliExternalProcess = smokeCommandSupport.plan(options)
-
-    suspend fun demo(
-        options: DemoOptions,
-    ): DemoFlowOutcome {
-        return demoCommandSupport.runInteractive(
-            options = options,
-            cliService = this,
-        )
-    }
-
-    suspend fun demoGen(options: DemoGenOptions): DemoFlowOutcome {
-        val textSearchAnalyzer = WorkspaceTextSearchAnalyzer()
-        val curation = SymbolCurationEngine(textSearchAnalyzer)
-        // Local mode: auto-select backend (null) so IntelliJ is preferred when available.
-        // Remote mode: always standalone (cloned repo has no IntelliJ project open).
-        val backendName = if (options.local) null else "standalone"
-        val backend = CliServiceDemoGenBackend(
-            cliService = this,
-            textSearchAnalyzer = textSearchAnalyzer,
-            backendName = backendName,
-            acceptIndexing = options.background,
-        )
-        val support = DemoGenCommandSupport(
-            backend = backend,
-            curationEngine = curation,
-        )
-        return support.runInteractive(options)
-    }
-
-    suspend fun demoRender(options: DemoRenderOptions): DemoFlowOutcome {
-        val support = DemoGenCommandSupport(
-            backend = NoOpDemoGenBackend,
-            curationEngine = SymbolCurationEngine(),
-        )
-        return support.renderFromFile(options.jsonFile, options.verbose)
-    }
 
     suspend fun applyEdits(
         options: RuntimeCommandOptions,

@@ -118,8 +118,7 @@ when the standalone backend discovers a workspace.
 > standalone backend uses Gradle-aware discovery. Without those files,
 > `kast` still falls back to conventional source roots and source-file
 > scanning. A root `settings.gradle.kts` matters most for multi-module
-> Gradle workspaces and for repo-cloning demo flows such as
-> `kast demo generate`.
+> Gradle workspaces.
 
 ## Install the IntelliJ plugin manually
 

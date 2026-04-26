@@ -223,57 +223,6 @@ internal class DefaultCliCommandExecutor(
                 output = CliOutput.ExternalProcess(cliService.smoke(command.options)),
             )
 
-            is CliCommand.Demo -> {
-                val outcome = cliService.demo(command.options)
-                when (outcome) {
-                    is DemoFlowOutcome.Completed -> CliExecutionResult(
-                        output = CliOutput.Text(""),
-                        daemonNote = daemonNoteForPlayback(outcome.result),
-                    )
-                    is DemoFlowOutcome.Cancelled -> CliExecutionResult(
-                        output = CliOutput.Text("demo cancelled by user"),
-                    )
-                    is DemoFlowOutcome.Failed -> throw CliFailure(
-                        code = "DEMO_FAILED",
-                        message = outcome.message,
-                    )
-                }
-            }
-
-            is CliCommand.DemoGen -> {
-                val outcome = cliService.demoGen(command.options)
-                when (outcome) {
-                    is DemoFlowOutcome.Completed -> CliExecutionResult(
-                        output = CliOutput.Text(""),
-                        daemonNote = daemonNoteForPlayback(outcome.result),
-                    )
-                    is DemoFlowOutcome.Cancelled -> CliExecutionResult(
-                        output = CliOutput.Text("demo generate cancelled by user"),
-                    )
-                    is DemoFlowOutcome.Failed -> throw CliFailure(
-                        code = "DEMO_GEN_FAILED",
-                        message = outcome.message,
-                    )
-                }
-            }
-
-            is CliCommand.DemoRender -> {
-                val outcome = cliService.demoRender(command.options)
-                when (outcome) {
-                    is DemoFlowOutcome.Completed -> CliExecutionResult(
-                        output = CliOutput.Text(""),
-                        daemonNote = daemonNoteForPlayback(outcome.result),
-                    )
-                    is DemoFlowOutcome.Cancelled -> CliExecutionResult(
-                        output = CliOutput.Text("demo render cancelled by user"),
-                    )
-                    is DemoFlowOutcome.Failed -> throw CliFailure(
-                        code = "DEMO_RENDER_FAILED",
-                        message = outcome.message,
-                    )
-                }
-            }
-
             is CliCommand.Skill -> {
                 val executor = SkillWrapperExecutor(cliService, json)
                 val response = executor.execute(command)
@@ -290,9 +239,3 @@ internal class DefaultCliCommandExecutor(
         }
     }
 }
-
-private fun daemonNoteForPlayback(result: DemoPlaybackResult): String? =
-    when (result) {
-        is DemoPlaybackResult.Full -> result.daemonNote ?: daemonNoteForRuntime(result.runtime)
-        DemoPlaybackResult.RenderOnly -> null
-    }

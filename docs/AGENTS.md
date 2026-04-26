@@ -8,9 +8,9 @@ defining navigation, extensions, and theme configuration.
 
 The documentation is organized into six sections:
 
-- `docs/index.md` — focused landing page: differentiators, `kast demo`,
-  a 60-second quickstart, and navigation cards. No inline capability
-  walkthroughs — those live under `what-can-kast-do/`.
+- `docs/index.md` — focused landing page: differentiators, a 60-second
+  quickstart, and navigation cards. No inline capability walkthroughs —
+  those live under `what-can-kast-do/`.
 - `docs/getting-started/` — install, quickstart, backends
 - `docs/what-can-kast-do/` — intent-organized capability pages
   (understand-symbols, trace-usage, refactor-safely, validate-code,

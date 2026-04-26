@@ -29,8 +29,6 @@ import java.nio.file.Path
 import kotlin.io.path.readText
 internal class CliCommandParser(
     private val json: Json,
-    private val gitRemoteResolver: GitRemoteResolver = SystemGitRemoteResolver,
-    private val workingDirectory: Path = Path.of(System.getProperty("user.dir", ".")).toAbsolutePath().normalize(),
 ) {
     fun parse(args: Array<String>): CliCommand {
         val parsed = ParsedArguments.parse(args)
@@ -120,9 +118,6 @@ internal class CliCommandParser(
                 listOf("install") -> CliCommand.Install(parsed.installOptions())
                 listOf("install", "skill") -> CliCommand.InstallSkill(parsed.installSkillOptions())
                 listOf("smoke") -> CliCommand.Smoke(parsed.smokeOptions())
-                listOf("demo") -> CliCommand.Demo(parsed.demoOptions())
-                listOf("demo", "generate") -> CliCommand.DemoGen(parsed.demoGenOptions(gitRemoteResolver, workingDirectory))
-                listOf("demo", "render") -> CliCommand.DemoRender(parsed.demoRenderOptions())
                 listOf("eval", "skill") -> CliCommand.EvalSkill(parsed.evalSkillOptions())
                 else -> throw CliFailure(
                     code = "CLI_USAGE",
@@ -538,109 +533,6 @@ internal data class ParsedArguments(
     }
 
     fun withoutOption(key: String): ParsedArguments = copy(options = options - key)
-
-    fun demoOptions(): DemoOptions {
-        if (options.containsKey("kast")) {
-            throw CliFailure(
-                code = "CLI_USAGE",
-                message = "`kast demo` does not accept --kast; invoke demo.sh directly if you need to override the launcher",
-            )
-        }
-        if (options.containsKey("walk")) {
-            throw CliFailure(
-                code = "CLI_USAGE",
-                message = "`kast demo` does not accept --walk; the initial Kotter demo does not include the interactive walker, and freeform SymbolWalker remains deferred.",
-            )
-        }
-        val backend = when (val raw = options["backend-name"]?.trim()?.lowercase()?.takeIf(String::isNotEmpty)) {
-            null, "auto" -> null
-            "standalone", "intellij" -> raw
-            else -> throw CliFailure(
-                code = "CLI_USAGE",
-                message = "Unknown value for --backend-name: ${options["backend-name"]}. Valid values: auto, standalone, intellij.",
-            )
-        }
-        return DemoOptions(
-            workspaceRoot = options["workspace-root"]
-                ?.takeIf(String::isNotBlank)
-                ?.let { Path.of(it).toAbsolutePath().normalize() }
-                ?: Path.of(System.getProperty("user.dir", ".")).toAbsolutePath().normalize(),
-            symbolFilter = options["symbol"]?.takeIf(String::isNotBlank),
-            backend = backend,
-            fixture = options["fixture"]
-                ?.takeIf(String::isNotBlank)
-                ?.let { Path.of(it).toAbsolutePath().normalize() },
-            verbose = parseBool("verbose"),
-        )
-    }
-
-    fun demoGenOptions(
-        gitRemoteResolver: GitRemoteResolver = SystemGitRemoteResolver,
-        workingDirectory: Path = Path.of(System.getProperty("user.dir", ".")).toAbsolutePath().normalize(),
-    ): DemoGenOptions {
-        val local = parseBool("local")
-        val background = parseBool("background")
-        val repoUrl = options["repo-url"]?.takeIf(String::isNotBlank)
-            ?: gitRemoteResolver.resolveOriginUrl(workingDirectory)
-            ?: if (local) {
-                null
-            } else {
-                throw CliFailure(
-                    code = "CLI_USAGE",
-                    message = "kast demo generate requires --repo-url when the current directory has no git origin remote",
-                )
-            }
-        val symbolCount = options["symbol-count"]?.takeIf(String::isNotBlank)?.let { raw ->
-            val parsed = raw.toIntOrNull() ?: throw CliFailure(
-                code = "CLI_USAGE",
-                message = "Invalid value for --symbol-count: $raw. Expected an integer between 1 and 20.",
-            )
-            if (parsed < 1 || parsed > 20) {
-                throw CliFailure(
-                    code = "CLI_USAGE",
-                    message = "Invalid value for --symbol-count: $parsed. Expected an integer between 1 and 20.",
-                )
-            }
-            parsed
-        } ?: 3
-        val output = when (options["output"]?.lowercase()) {
-            null, "", "terminal" -> DemoGenOutputFormat.TERMINAL
-            "markdown" -> DemoGenOutputFormat.MARKDOWN
-            "json" -> DemoGenOutputFormat.JSON
-            else -> throw CliFailure(
-                code = "CLI_USAGE",
-                message = "Unknown value for --output: ${options["output"]}. Valid values: terminal, markdown, json.",
-            )
-        }
-        val verbose = parseBool("verbose")
-        val workspaceRoot = options["workspace-root"]
-            ?.takeIf(String::isNotBlank)
-            ?.let { Path.of(it).toAbsolutePath().normalize() }
-            ?: if (local) workingDirectory else null
-        return DemoGenOptions(
-            repoUrl = repoUrl,
-            symbolCount = symbolCount,
-            output = output,
-            verbose = verbose,
-            local = local,
-            background = background,
-            workspaceRoot = workspaceRoot,
-        )
-    }
-
-    fun demoRenderOptions(): DemoRenderOptions {
-        val jsonFile = options["json-file"]
-            ?.takeIf(String::isNotBlank)
-            ?.let { Path.of(it).toAbsolutePath().normalize() }
-            ?: throw CliFailure(
-                code = "CLI_USAGE",
-                message = "kast demo render requires --json-file=<path>",
-            )
-        return DemoRenderOptions(
-            jsonFile = jsonFile,
-            verbose = parseBool("verbose"),
-        )
-    }
 
     fun evalSkillOptions(): EvalSkillOptions {
         val skillDir = options["skill-dir"]

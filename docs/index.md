@@ -72,36 +72,6 @@ the workflow happens outside the editor or when you need compiler-backed
 answers instead of string matches.
 [Full comparison →](architecture/kast-vs-lsp.md)
 
-## See it on your code
-
-`kast demo` opens a live Kotter shell on your own workspace. It picks a symbol
-for you (or uses `--symbol`) and lets you switch between semantic references,
-rename dry-run, and incoming callers while keeping the grep baseline in view.
-Run it in a reasonably wide terminal; if the terminal is too narrow, `kast`
-halts and tells you to resize before rerunning.
-
-```console
-kast demo --workspace-root=/path/to/your/kotlin/project
-kast demo --workspace-root=/path/to/your/kotlin/project --symbol=YourClassName
-```
-
-`kast demo generate` produces a shareable dual-pane demo for any Kotlin
-repository. Use `--local=true` to analyze your current workspace without
-cloning (IntelliJ is auto-preferred when available), `--background=true` to
-connect while indexing is still in progress, and `kast demo render` to replay
-a saved artifact at any time.
-
-```console
-# Analyze the current workspace — no clone, IntelliJ preferred if open
-kast demo generate --local=true
-
-# Allow connecting while IntelliJ is still indexing
-kast demo generate --local=true --background=true
-
-# Replay a previously saved artifact
-kast demo render --json-file=.kast/demo-generate/demo-20240101T120000Z.json
-```
-
 ## Get running in 60 seconds
 
 Install the CLI, start a backend, then run your first query.

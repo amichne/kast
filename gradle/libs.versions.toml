@@ -14,7 +14,6 @@ analysis-api-standalone = "2.3.20-ij253-119"
 gradle-tooling-api = "9.4.0"
 opentelemetry = "1.49.0"
 sqlite-jdbc = "3.45.3.0"
-kotter = "1.2.1"
 mordant = "3.0.2"
 
 [libraries]
@@ -42,8 +41,6 @@ kotlin-serialization-plugin = { module = "org.jetbrains.kotlin:kotlin-serializat
 opentelemetry-api = { module = "io.opentelemetry:opentelemetry-api", version.ref = "opentelemetry" }
 opentelemetry-sdk = { module = "io.opentelemetry:opentelemetry-sdk", version.ref = "opentelemetry" }
 sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version.ref = "sqlite-jdbc" }
-kotter = { module = "com.varabyte.kotter:kotter-jvm", version.ref = "kotter" }
-kotter-test = { module = "com.varabyte.kotterx:kotter-test-support-jvm", version.ref = "kotter" }
 mordant = { module = "com.github.ajalt.mordant:mordant", version.ref = "mordant" }
 
 [bundles]

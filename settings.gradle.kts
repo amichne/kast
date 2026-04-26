@@ -23,5 +23,4 @@ include(
     ":backend-intellij",
     ":shared-testing",
     ":parity-tests",
-    ":kast-demo",
 )

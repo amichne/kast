@@ -311,63 +311,6 @@ internal object CliCommandCatalog {
         description = "Render the smoke report as json or markdown. Defaults to json.",
     )
 
-    private val demoSymbolOption = CliOptionMetadata(
-        key = "symbol",
-        usage = "--symbol=CliService",
-        description = "Skip the interactive picker and use the first symbol matching this text.",
-    )
-
-    private val demoVerboseOption = CliOptionMetadata(
-        key = "verbose",
-        usage = "--verbose=true",
-        description = "Render fully-qualified names and workspace-relative paths everywhere. Default: simple names and bare file names.",
-        completionKind = CliOptionCompletionKind.BOOLEAN,
-    )
-    private val demoFixtureOption = CliOptionMetadata(
-        key = "fixture",
-        usage = "--fixture=/absolute/path/to/dual-pane-capture.json",
-        description = "Replay a canned dual-pane demo capture without connecting to a backend.",
-        completionKind = CliOptionCompletionKind.FILE,
-    )
-
-    private val demoGenRepoUrlOption = CliOptionMetadata(
-        key = "repo-url",
-        usage = "--repo-url=https://git.example.com/owner/repo.git",
-        description = "Repository URL to clone, index, and demo from any git host that `git clone` can reach. Optional: defaults to the current directory's git origin remote.",
-    )
-
-    private val demoGenSymbolCountOption = CliOptionMetadata(
-        key = "symbol-count",
-        usage = "--symbol-count=3",
-        description = "Number of high-contrast symbols to curate. Default 3.",
-    )
-
-    private val demoGenOutputOption = CliOptionMetadata(
-        key = "output",
-        usage = "--output=terminal|markdown|json",
-        description = "Render mode: terminal (interactive Kotter), markdown (printed table), or json. Default terminal.",
-    )
-
-    private val demoGenLocalOption = CliOptionMetadata(
-        key = "local",
-        usage = "--local=true",
-        description = "Use a local workspace instead of cloning a remote repository. When set, --workspace-root is used if provided; otherwise the current working directory is used.",
-        completionKind = CliOptionCompletionKind.BOOLEAN,
-    )
-
-    private val demoGenBackgroundOption = CliOptionMetadata(
-        key = "background",
-        usage = "--background=true",
-        description = "Allow demo generation to continue while the selected backend is still indexing and progressively update the saved output.",
-        completionKind = CliOptionCompletionKind.BOOLEAN,
-    )
-
-    private val demoRenderJsonFileOption = CliOptionMetadata(
-        key = "json-file",
-        usage = "--json-file=/path/to/demo-20240101T120000Z.json",
-        description = "Path to the JSON artifact produced by a previous `kast demo generate` run.",
-    )
-
     private val commands: List<CliCommandMetadata> = listOf(
         CliCommandMetadata(
             path = listOf("workspace", "status"),
@@ -814,71 +757,6 @@ internal object CliCommandCatalog {
                 "$CLI_EXECUTABLE_NAME smoke",
                 "$CLI_EXECUTABLE_NAME smoke --workspace-root=/absolute/path/to/workspace --file=CliCommandCatalog.kt",
                 "$CLI_EXECUTABLE_NAME smoke --workspace-root=/absolute/path/to/workspace --format=markdown",
-            ),
-        ),
-        CliCommandMetadata(
-            path = listOf("demo"),
-            group = CliCommandGroup.VALIDATION,
-            summary = "Live Kotter demo of grep vs kast semantic analysis on your workspace.",
-            description = "Opens a live Kotter shell, picks a symbol from your workspace — via --symbol or the built-in terminal chooser — and lets you switch between semantic references, rename dry-run, and incoming callers while keeping the grep baseline visible. " +
-                "This initial experience stops there: the freeform SymbolWalker remains deferred and is not part of the shipped demo flow. " +
-                "Uses the live IntelliJ plugin backend when one is available and auto-starts the standalone JVM daemon otherwise; pin with --backend-name=intellij|standalone. If the terminal is too narrow, the demo halts and asks you to rerun after resizing.",
-            usages = listOf(
-                "$CLI_EXECUTABLE_NAME demo [--workspace-root=/absolute/path/to/workspace] [--symbol=CliService] [--backend-name=intellij|standalone] [--fixture=/absolute/path/to/capture.json] [--verbose=true]",
-            ),
-            options = listOf(workspaceRootOption, demoSymbolOption, backendNameOption, demoFixtureOption, demoVerboseOption),
-            examples = listOf(
-                "$CLI_EXECUTABLE_NAME demo",
-                "$CLI_EXECUTABLE_NAME demo --workspace-root=/absolute/path/to/workspace",
-                "$CLI_EXECUTABLE_NAME demo --workspace-root=/absolute/path/to/workspace --symbol=CliService",
-                "$CLI_EXECUTABLE_NAME demo --backend-name=intellij  # target a running IntelliJ IDEA plugin backend",
-                "$CLI_EXECUTABLE_NAME demo --verbose=true  # render fully-qualified names and full paths",
-            ),
-        ),
-        CliCommandMetadata(
-            path = listOf("demo", "generate"),
-            group = CliCommandGroup.VALIDATION,
-            summary = "Synthesize a dual-pane LLM-vs-kast demo from a git repository.",
-            description = "Clones a repository from any accessible git host, indexes it through the standalone Kast daemon, " +
-                "auto-curates symbols that maximize grep-vs-semantic contrast (overloaded names, common " +
-                "method words), and renders a synthetic dual-pane conversation comparing a baseline LLM " +
-                "(grep-driven) against a kast-augmented LLM. When --repo-url is omitted, Kast uses the " +
-                "current directory's git origin remote. Use --local=true to work from an existing local workspace, " +
-                "optionally pinning it with --workspace-root. Choose --output=terminal for an interactive Kotter " +
-                "session, markdown for a doc-friendly export, or json for downstream tooling.",
-            usages = listOf(
-                "$CLI_EXECUTABLE_NAME demo generate [--repo-url=https://git.example.com/owner/repo.git] [--symbol-count=3] [--output=terminal|markdown|json] [--local=true] [--background=true] [--workspace-root=/absolute/path/to/workspace]",
-            ),
-            options = listOf(
-                demoGenRepoUrlOption,
-                demoGenSymbolCountOption,
-                demoGenOutputOption,
-                demoGenLocalOption,
-                demoGenBackgroundOption,
-                workspaceRootOption,
-                demoVerboseOption,
-            ),
-            examples = listOf(
-                "$CLI_EXECUTABLE_NAME demo generate",
-                "$CLI_EXECUTABLE_NAME demo generate --repo-url=https://ghe.example.com/owner/repo.git",
-                "$CLI_EXECUTABLE_NAME demo generate --repo-url=git@ghe.example.com:owner/repo.git --symbol-count=5 --output=markdown",
-                "$CLI_EXECUTABLE_NAME demo generate --local=true --workspace-root=/absolute/path/to/workspace --background=true",
-            ),
-        ),
-        CliCommandMetadata(
-            path = listOf("demo", "render"),
-            group = CliCommandGroup.VALIDATION,
-            summary = "Replay a saved demo generate artifact in an interactive terminal.",
-            description = "Reads a JSON artifact produced by `kast demo generate` and renders the dual-pane " +
-                "conversation in an interactive Kotter session. Supports partial artifacts from interrupted or " +
-                "background runs. Use number keys (1–9) to switch between symbols, R to refresh, Q or ESC to quit.",
-            usages = listOf(
-                "$CLI_EXECUTABLE_NAME demo render --json-file=/path/to/demo-20240101T120000Z.json",
-            ),
-            options = listOf(demoRenderJsonFileOption, demoVerboseOption),
-            examples = listOf(
-                "$CLI_EXECUTABLE_NAME demo render --json-file=.kast/demo-generate/demo-20240101T120000Z.json",
-                "$CLI_EXECUTABLE_NAME demo render --json-file=/absolute/path/to/demo-20240101T120000Z.json --verbose=true",
             ),
         ),
         // Skill wrapper commands — hidden, called by agent shell scripts and SKILL.md tooling
