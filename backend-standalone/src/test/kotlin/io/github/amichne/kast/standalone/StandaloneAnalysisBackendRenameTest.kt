@@ -57,6 +57,7 @@ class StandaloneAnalysisBackendRenameTest {
             sourceRoots = emptyList(),
             classpathRoots = emptyList(),
             moduleName = "sources",
+            enablePhase2Indexing = false,
         )
         session.use { session ->
             val backend = StandaloneAnalysisBackend(
@@ -118,6 +119,7 @@ class StandaloneAnalysisBackendRenameTest {
             sourceRoots = emptyList(),
             classpathRoots = emptyList(),
             moduleName = "sources",
+            enablePhase2Indexing = false,
         )
         session.use { session ->
             val backend = StandaloneAnalysisBackend(
@@ -178,6 +180,7 @@ class StandaloneAnalysisBackendRenameTest {
             sourceRoots = emptyList(),
             classpathRoots = emptyList(),
             moduleName = "sources",
+            enablePhase2Indexing = false,
         )
         session.use { session ->
             val backend = StandaloneAnalysisBackend(
@@ -230,6 +233,7 @@ class StandaloneAnalysisBackendRenameTest {
             sourceRoots = emptyList(),
             classpathRoots = emptyList(),
             moduleName = "sources",
+            enablePhase2Indexing = false,
         )
         session.use { session ->
             val backend = StandaloneAnalysisBackend(
@@ -318,6 +322,7 @@ class StandaloneAnalysisBackendRenameTest {
             sourceRoots = emptyList(),
             classpathRoots = emptyList(),
             moduleName = "sources",
+            enablePhase2Indexing = false,
         )
         session.use { session ->
             val backend = StandaloneAnalysisBackend(
@@ -406,6 +411,7 @@ class StandaloneAnalysisBackendRenameTest {
             sourceRoots = emptyList(),
             classpathRoots = emptyList(),
             moduleName = "sources",
+            enablePhase2Indexing = false,
         )
         session.use { session ->
             val backend = StandaloneAnalysisBackend(
@@ -476,6 +482,7 @@ class StandaloneAnalysisBackendRenameTest {
             sourceRoots = emptyList(),
             classpathRoots = emptyList(),
             moduleName = "sources",
+            enablePhase2Indexing = false,
         )
         session.use { session ->
             session.awaitInitialSourceIndex()
@@ -550,6 +557,7 @@ class StandaloneAnalysisBackendRenameTest {
             sourceRoots = emptyList(),
             classpathRoots = emptyList(),
             moduleName = "sources",
+            enablePhase2Indexing = false,
         )
         session.use { session ->
             session.awaitInitialSourceIndex()
@@ -618,6 +626,7 @@ class StandaloneAnalysisBackendRenameTest {
             sourceRoots = emptyList(),
             classpathRoots = emptyList(),
             moduleName = "sources",
+            enablePhase2Indexing = false,
         )
         session.use { session ->
             val backend = StandaloneAnalysisBackend(
@@ -674,6 +683,7 @@ class StandaloneAnalysisBackendRenameTest {
             sourceRoots = emptyList(),
             classpathRoots = emptyList(),
             moduleName = "sources",
+            enablePhase2Indexing = false,
         )
         session.use { session ->
             val backend = StandaloneAnalysisBackend(
@@ -737,6 +747,7 @@ class StandaloneAnalysisBackendRenameTest {
             sourceRoots = emptyList(),
             classpathRoots = emptyList(),
             moduleName = "sources",
+            enablePhase2Indexing = false,
         )
         session.use { session ->
             val backend = StandaloneAnalysisBackend(
@@ -791,6 +802,7 @@ class StandaloneAnalysisBackendRenameTest {
             sourceRoots = emptyList(),
             classpathRoots = emptyList(),
             moduleName = "sources",
+            enablePhase2Indexing = false,
         )
         session.use { session ->
             val backend = StandaloneAnalysisBackend(
@@ -847,6 +859,7 @@ class StandaloneAnalysisBackendRenameTest {
             sourceRoots = emptyList(),
             classpathRoots = emptyList(),
             moduleName = "sources",
+            enablePhase2Indexing = false,
         )
         session.use { s ->
             val backend = StandaloneAnalysisBackend(
@@ -902,6 +915,7 @@ class StandaloneAnalysisBackendRenameTest {
             sourceRoots = emptyList(),
             classpathRoots = emptyList(),
             moduleName = "sources",
+            enablePhase2Indexing = false,
         )
         session.use { s ->
             val backend = StandaloneAnalysisBackend(
@@ -958,6 +972,7 @@ class StandaloneAnalysisBackendRenameTest {
             sourceRoots = emptyList(),
             classpathRoots = emptyList(),
             moduleName = "sources",
+            enablePhase2Indexing = false,
         )
         session.use { s ->
             val backend = StandaloneAnalysisBackend(
