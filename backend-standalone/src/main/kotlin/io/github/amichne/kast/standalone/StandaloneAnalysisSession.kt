@@ -285,6 +285,14 @@ internal class StandaloneAnalysisSession(
         return buildRefreshResult(normalizedPaths, fullRefresh = false)
     }
 
+    fun refreshTargetedPaths(paths: Set<String>): RefreshResult {
+        val normalizedPaths = normalizeTrackedKotlinPaths(paths)
+        if (normalizedPaths.all(::isKnownRegularKotlinFile)) {
+            return refreshFileContents(paths)
+        }
+        return refreshFiles(paths)
+    }
+
     private data class CachedKtFileEntries(
         val ktFile: KtFile?,
         val targetedKtFile: KtFile?,
@@ -338,6 +346,16 @@ internal class StandaloneAnalysisSession(
             virtualFile,
         )
         return virtualFile
+    }
+
+    private fun isKnownRegularKotlinFile(normalizedPath: NormalizedPath): Boolean {
+        if (!Files.isRegularFile(normalizedPath.toJavaPath())) {
+            return false
+        }
+        if (ktFilesByPath.containsKey(normalizedPath) || targetedKtFilesByPath.containsKey(normalizedPath)) {
+            return true
+        }
+        return sourceIdentifierIndex.get()?.knownPaths()?.contains(normalizedPath.value) == true
     }
 
     /**

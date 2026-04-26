@@ -554,7 +554,7 @@ internal class StandaloneAnalysisBackend internal constructor(
             if (query.filePaths.isEmpty()) {
                 session.refreshWorkspace(invalidateCaches = true)
             } else {
-                session.refreshFiles(query.filePaths.toSet())
+                session.refreshTargetedPaths(query.filePaths.toSet())
             }
         }
     }
