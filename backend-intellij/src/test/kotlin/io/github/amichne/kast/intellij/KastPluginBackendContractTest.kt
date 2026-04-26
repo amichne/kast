@@ -1,8 +1,11 @@
 package io.github.amichne.kast.intellij
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.DependencyScope
+import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.psi.PsiDirectory
 import com.intellij.psi.PsiFile
 import com.intellij.testFramework.IndexingTestUtil
@@ -13,6 +16,8 @@ import com.intellij.testFramework.junit5.fixture.projectFixture
 import com.intellij.testFramework.junit5.fixture.psiFileFixture
 import com.intellij.testFramework.junit5.fixture.sourceRootFixture
 import io.github.amichne.kast.api.contract.FilePosition
+import io.github.amichne.kast.api.contract.ReferencesQuery
+import io.github.amichne.kast.api.contract.SearchScopeKind
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.contract.SymbolQuery
 import io.github.amichne.kast.api.contract.TypeHierarchyDirection
@@ -48,13 +53,33 @@ class KastPluginBackendContractTest {
 
             class Circle : Shape
         """
+
+        private const val internalDeclarationSource = """
+            package demo.internalvisibility
+
+            internal fun internalName(): String = "internal"
+
+            fun mainUse(): String = internalName()
+        """
+
+        private const val internalDependentSource = """
+            package demo.internalvisibility
+
+            fun dependentUse(): String = internalName()
+        """
     }
 
     private val mainModuleFixture: TestFixture<Module> = projectFixture.moduleFixture("main")
     private val secondaryModuleFixture: TestFixture<Module> = projectFixture.moduleFixture("secondary")
     private val mainSourceRootFixture: TestFixture<PsiDirectory> = mainModuleFixture.sourceRootFixture()
+    private val secondarySourceRootFixture: TestFixture<PsiDirectory> =
+        secondaryModuleFixture.sourceRootFixture(isTestSource = true)
     private val sampleFileFixture: TestFixture<PsiFile> = mainSourceRootFixture.psiFileFixture("Sample.kt", sampleSource)
     private val hierarchyFileFixture: TestFixture<PsiFile> = mainSourceRootFixture.psiFileFixture("Hierarchy.kt", hierarchySource)
+    private val internalDeclarationFileFixture: TestFixture<PsiFile> =
+        mainSourceRootFixture.psiFileFixture("InternalDeclaration.kt", internalDeclarationSource)
+    private val internalDependentFileFixture: TestFixture<PsiFile> =
+        secondarySourceRootFixture.psiFileFixture("InternalDependent.kt", internalDependentSource)
 
     private val project: Project
         get() = projectFixture.get()
@@ -65,9 +90,9 @@ class KastPluginBackendContractTest {
     private val hierarchyFile: PsiFile
         get() = hierarchyFileFixture.get()
 
-    private fun backend(): KastPluginBackend = KastPluginBackend(
+    private fun backend(workspaceRoot: Path = Path.of(project.basePath!!)): KastPluginBackend = KastPluginBackend(
         project = project,
-        workspaceRoot = Path.of(project.basePath!!),
+        workspaceRoot = workspaceRoot,
         limits = defaultLimits,
     )
 
@@ -76,6 +101,25 @@ class KastPluginBackendContractTest {
         secondaryModuleFixture.get()
         sampleFileFixture.get()
         hierarchyFileFixture.get()
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+    }
+
+    private suspend fun ensureInternalVisibilityProjectReady() {
+        ensureProjectReady()
+        internalDeclarationFileFixture.get()
+        internalDependentFileFixture.get()
+        val application = ApplicationManager.getApplication()
+        application.invokeAndWait {
+            application.runWriteAction {
+                ModuleRootModificationUtil.addDependency(
+                    secondaryModuleFixture.get(),
+                    mainModuleFixture.get(),
+                    DependencyScope.TEST,
+                    false,
+                    true,
+                )
+            }
+        }
         IndexingTestUtil.waitUntilIndexesAreReady(project)
     }
 
@@ -108,6 +152,46 @@ class KastPluginBackendContractTest {
         val declarationScope = result.symbol.declarationScope
         assertNotNull(declarationScope)
         assertTrue(declarationScope?.sourceText.orEmpty().contains("fun greet"))
+    }
+
+    @Test
+    fun `find references for internal symbol searches declaring module dependents`() = runBlocking {
+        ensureInternalVisibilityProjectReady()
+
+        val (workspaceRoot, filePath, offset) = readAction {
+            val declarationFile = internalDeclarationFileFixture.get()
+            val dependentFile = internalDependentFileFixture.get()
+            Triple(
+                commonWorkspaceRoot(declarationFile.virtualFile.path, dependentFile.virtualFile.path),
+                declarationFile.virtualFile.path,
+                declarationFile.text.indexOf("internalName"),
+            )
+        }
+
+        val result = backend(workspaceRoot).findReferences(
+            ReferencesQuery(
+                position = FilePosition(filePath = filePath, offset = offset),
+                includeDeclaration = false,
+            ),
+        )
+
+        val referenceFileNames = result.references
+            .map { Path.of(it.filePath).fileName.toString() }
+            .toSet()
+        assertEquals(SearchScopeKind.DEPENDENT_MODULES, result.searchScope?.scope)
+        assertTrue("InternalDeclaration.kt" in referenceFileNames) {
+            "Expected declaring module reference, got: $referenceFileNames"
+        }
+        assertTrue("InternalDependent.kt" in referenceFileNames) {
+            "Expected dependent module reference, got: $referenceFileNames"
+        }
+    }
+
+    private fun commonWorkspaceRoot(first: String, second: String): Path {
+        val firstPath = Path.of(first).toAbsolutePath().normalize()
+        val secondPath = Path.of(second).toAbsolutePath().normalize()
+        return generateSequence(firstPath.parent) { it.parent }
+            .first { candidate -> secondPath.startsWith(candidate) }
     }
 
     @Test

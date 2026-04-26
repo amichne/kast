@@ -205,7 +205,7 @@ internal class KastPluginBackend(
                 val file = findKtFile(query.position.filePath)
                 val target = resolveTarget(file, query.position.offset)
                 val visibility = target.visibility()
-                val (searchScope, scopeKind) = visibilityScopedSearch(file, visibility)
+                val (searchScope, scopeKind) = visibilityScopedSearch(target, visibility)
                 val refs = mutableListOf<PsiReference>()
                 ReferencesSearch.search(target, searchScope).forEach { ref ->
                     ProgressManager.checkCanceled()
@@ -506,7 +506,7 @@ internal class KastPluginBackend(
                 val file = findKtFile(query.position.filePath)
                 val target = resolveTarget(file, query.position.offset)
                 val visibility = target.visibility()
-                val (searchScope, scopeKind) = visibilityScopedSearch(file, visibility)
+                val (searchScope, scopeKind) = visibilityScopedSearch(target, visibility)
                 val candidateFileCount = FileTypeIndex.getFiles(KotlinFileType.INSTANCE, searchScope)
                     .count { it.path.startsWith(workspacePrefix) }
                 val refs = mutableListOf<PsiReference>()
@@ -696,18 +696,22 @@ internal class KastPluginBackend(
     }
 
     private fun visibilityScopedSearch(
-        file: KtFile,
+        target: PsiElement,
         visibility: SymbolVisibility,
     ): Pair<GlobalSearchScope, SearchScopeKind> = when (visibility) {
         SymbolVisibility.PRIVATE, SymbolVisibility.LOCAL -> {
+            val file = target.containingFile as? KtFile
+                ?: return GlobalSearchScope.projectScope(project) to SearchScopeKind.DEPENDENT_MODULES
             val vf = file.virtualFile
             GlobalSearchScope.fileScope(project, vf) to SearchScopeKind.FILE
         }
         SymbolVisibility.INTERNAL -> {
+            val file = target.containingFile as? KtFile
+                ?: return GlobalSearchScope.projectScope(project) to SearchScopeKind.DEPENDENT_MODULES
             val vf = file.virtualFile
             val module = ProjectFileIndex.getInstance(project).getModuleForFile(vf)
             if (module != null) {
-                GlobalSearchScope.moduleScope(module) to SearchScopeKind.MODULE
+                GlobalSearchScope.moduleWithDependentsScope(module) to SearchScopeKind.DEPENDENT_MODULES
             } else {
                 GlobalSearchScope.projectScope(project) to SearchScopeKind.DEPENDENT_MODULES
             }

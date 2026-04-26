@@ -235,7 +235,7 @@ class IntelliJBackendOperationPerformanceTest {
 
     private fun backend(): KastPluginBackend = KastPluginBackend(
         project = project,
-        workspaceRoot = Path.of(project.basePath!!),
+        workspaceRoot = Path.of(sourceRootFixture.get().virtualFile.path).toAbsolutePath().normalize(),
         limits = defaultLimits,
     )
 
@@ -266,9 +266,9 @@ class IntelliJBackendOperationPerformanceTest {
                     includeDeclaration = false,
                 ),
             )
-            assertEquals(SearchScopeKind.FILE, result.searchScope.scope)
-            assertTrue(result.searchScope.candidateFileCount <= 1) {
-                "Private symbol should search at most 1 file, got ${result.searchScope.candidateFileCount}"
+            assertEquals(SearchScopeKind.FILE, result.searchScope?.scope)
+            assertTrue((result.searchScope?.candidateFileCount ?: Int.MAX_VALUE) <= 1) {
+                "Private symbol should search at most 1 file, got ${result.searchScope?.candidateFileCount}"
             }
         }
 
@@ -294,7 +294,7 @@ class IntelliJBackendOperationPerformanceTest {
                     includeDeclaration = false,
                 ),
             )
-            assertEquals(SearchScopeKind.DEPENDENT_MODULES, result.searchScope.scope)
+            assertEquals(SearchScopeKind.DEPENDENT_MODULES, result.searchScope?.scope)
         }
 
         println("findReferences_public_ms: $elapsed")
@@ -304,7 +304,7 @@ class IntelliJBackendOperationPerformanceTest {
     }
 
     @Test
-    fun `findReferences for internal symbol uses module scope`() = runBlocking {
+    fun `findReferences for internal symbol uses dependent modules scope`() = runBlocking {
         ensureProjectReady()
 
         val (filePath, offset) = readAction {
@@ -319,7 +319,7 @@ class IntelliJBackendOperationPerformanceTest {
                     includeDeclaration = false,
                 ),
             )
-            assertEquals(SearchScopeKind.MODULE, result.searchScope.scope)
+            assertEquals(SearchScopeKind.DEPENDENT_MODULES, result.searchScope?.scope)
         }
 
         println("findReferences_internal_ms: $elapsed")
