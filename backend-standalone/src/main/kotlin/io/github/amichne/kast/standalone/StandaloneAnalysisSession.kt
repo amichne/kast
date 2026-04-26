@@ -260,6 +260,10 @@ internal class StandaloneAnalysisSession(
                     targetedKtFilesByPath.remove(normalizedPath)
                     ktFileLastModifiedMillisByPath.remove(normalizedPath)
                 }
+                normalizedPaths
+                    .filter { normalizedPath -> Files.isRegularFile(normalizedPath.toJavaPath()) }
+                    .forEach { normalizedPath -> loadKtFileByPath(normalizedPath, session) }
+                PsiManager.getInstance(session.project).dropResolveCaches()
 
                 refreshStructureLocked()
 
