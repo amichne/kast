@@ -221,7 +221,34 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
 
     private inline fun <T> readMetric(defaultValue: T, query: (Connection) -> T): T {
         if (!Files.isRegularFile(dbPath)) return defaultValue
-        return query(connection())
+        val conn = connection()
+        if (!schemaIsCurrent(conn)) return defaultValue
+        return query(conn)
+    }
+
+    private fun schemaIsCurrent(conn: Connection): Boolean = try {
+        val version = conn.prepareStatement("SELECT version FROM schema_version LIMIT 1").use { stmt ->
+            val rs = stmt.executeQuery()
+            if (rs.next()) rs.getInt(1) else null
+        }
+        version == SOURCE_INDEX_SCHEMA_VERSION && requiredTablesExist(conn)
+    } catch (_: Exception) {
+        false
+    }
+
+    private fun requiredTablesExist(conn: Connection): Boolean {
+        val requiredTables = setOf("symbol_references", "identifier_paths", "file_metadata")
+        val existingTables = conn.prepareStatement(
+            """SELECT name FROM sqlite_master
+               WHERE type = 'table' AND name IN (${requiredTables.joinToString(",") { "?" }})""",
+        ).use { stmt ->
+            requiredTables.forEachIndexed { index, tableName -> stmt.setString(index + 1, tableName) }
+            val rs = stmt.executeQuery()
+            buildSet {
+                while (rs.next()) add(rs.getString(1))
+            }
+        }
+        return existingTables == requiredTables
     }
 
     private fun connection(): Connection {

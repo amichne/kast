@@ -7,7 +7,7 @@ import java.nio.file.Path
 import java.sql.Connection
 import java.sql.DriverManager
 
-private const val SCHEMA_VERSION = 3
+internal const val SOURCE_INDEX_SCHEMA_VERSION = 3
 
 /**
  * SQLite-backed store for the source identifier index, file manifest,
@@ -19,6 +19,7 @@ private const val SCHEMA_VERSION = 3
 class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWriter {
     private val dbPath: Path = sourceIndexDatabasePath(workspaceRoot)
     private val connectionLock = Any()
+    private val writeLock = Any()
 
     @Volatile
     private var cachedConnection: Connection? = null
@@ -82,24 +83,26 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
      * dropped and recreated.
      */
     fun ensureSchema(): Boolean {
-        val conn = connection()
-        val version = readSchemaVersion(conn)
-        if (version == SCHEMA_VERSION) {
-            additiveMigration(conn)
-            return true
+        synchronized(writeLock) {
+            val conn = connection()
+            val version = readSchemaVersion(conn)
+            if (version == SOURCE_INDEX_SCHEMA_VERSION) {
+                additiveMigration(conn)
+                return true
+            }
+            conn.autoCommit = false
+            try {
+                dropAllTables(conn)
+                createAllTables(conn)
+                conn.commit()
+            } catch (e: Exception) {
+                conn.rollback()
+                throw e
+            } finally {
+                conn.autoCommit = true
+            }
+            return false
         }
-        conn.autoCommit = false
-        try {
-            dropAllTables(conn)
-            createAllTables(conn)
-            conn.commit()
-        } catch (e: Exception) {
-            conn.rollback()
-            throw e
-        } finally {
-            conn.autoCommit = true
-        }
-        return false
     }
 
     private fun additiveMigration(conn: Connection) {
@@ -153,7 +156,7 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
                     generation INTEGER NOT NULL DEFAULT 0
                 )""",
             )
-            stmt.execute("INSERT INTO schema_version (version, generation) VALUES ($SCHEMA_VERSION, 0)")
+            stmt.execute("INSERT INTO schema_version (version, generation) VALUES ($SOURCE_INDEX_SCHEMA_VERSION, 0)")
 
             stmt.execute(
                 """CREATE TABLE IF NOT EXISTS identifier_paths (
@@ -210,134 +213,148 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
         updates: List<FileIndexUpdate>,
         manifest: Map<String, Long>,
     ) {
-        val conn = connection()
-        conn.autoCommit = false
-        try {
-            conn.createStatement().use { stmt ->
-                stmt.execute("DELETE FROM identifier_paths")
-                stmt.execute("DELETE FROM file_metadata")
-                stmt.execute("DELETE FROM file_manifest")
+        synchronized(writeLock) {
+            val conn = connection()
+            conn.autoCommit = false
+            try {
+                conn.createStatement().use { stmt ->
+                    stmt.execute("DELETE FROM symbol_references")
+                    stmt.execute("DELETE FROM identifier_paths")
+                    stmt.execute("DELETE FROM file_metadata")
+                    stmt.execute("DELETE FROM file_manifest")
+                }
+                for (update in updates) {
+                    insertFileDataInTransaction(conn, update)
+                }
+                insertManifestInTransaction(conn, manifest)
+                conn.commit()
+            } catch (e: Exception) {
+                conn.rollback()
+                throw e
+            } finally {
+                conn.autoCommit = true
             }
-            for (update in updates) {
-                insertFileDataInTransaction(conn, update)
-            }
-            insertManifestInTransaction(conn, manifest)
-            conn.commit()
-        } catch (e: Exception) {
-            conn.rollback()
-            throw e
-        } finally {
-            conn.autoCommit = true
         }
     }
 
     override fun saveFileIndex(update: FileIndexUpdate) {
-        val conn = connection()
-        conn.autoCommit = false
-        try {
-            insertFileDataInTransaction(conn, update)
-            conn.commit()
-        } catch (e: Exception) {
-            conn.rollback()
-            throw e
-        } finally {
-            conn.autoCommit = true
+        synchronized(writeLock) {
+            val conn = connection()
+            conn.autoCommit = false
+            try {
+                insertFileDataInTransaction(conn, update)
+                conn.commit()
+            } catch (e: Exception) {
+                conn.rollback()
+                throw e
+            } finally {
+                conn.autoCommit = true
+            }
         }
     }
 
     override fun removeFile(path: String) {
-        val conn = connection()
-        conn.autoCommit = false
-        try {
-            for (table in listOf("identifier_paths", "file_metadata", "file_manifest")) {
-                conn.prepareStatement("DELETE FROM $table WHERE path = ?").use { stmt ->
+        synchronized(writeLock) {
+            val conn = connection()
+            conn.autoCommit = false
+            try {
+                for (table in listOf("identifier_paths", "file_metadata", "file_manifest")) {
+                    conn.prepareStatement("DELETE FROM $table WHERE path = ?").use { stmt ->
+                        stmt.setString(1, path)
+                        stmt.executeUpdate()
+                    }
+                }
+                conn.prepareStatement("DELETE FROM symbol_references WHERE source_path = ? OR target_path = ?").use { stmt ->
                     stmt.setString(1, path)
+                    stmt.setString(2, path)
                     stmt.executeUpdate()
                 }
+                conn.commit()
+            } catch (e: Exception) {
+                conn.rollback()
+                throw e
+            } finally {
+                conn.autoCommit = true
             }
-            conn.prepareStatement("DELETE FROM symbol_references WHERE source_path = ?").use { stmt ->
-                stmt.setString(1, path)
-                stmt.executeUpdate()
-            }
-            conn.commit()
-        } catch (e: Exception) {
-            conn.rollback()
-            throw e
-        } finally {
-            conn.autoCommit = true
         }
     }
 
     fun loadSourceIndexSnapshot(): SourceIndexSnapshot {
-        val conn = connection()
-        val candidatePathsByIdentifier = mutableMapOf<String, MutableList<String>>()
-        conn.createStatement().use { stmt ->
-            val rs = stmt.executeQuery("SELECT identifier, path FROM identifier_paths")
-            while (rs.next()) {
-                candidatePathsByIdentifier
-                    .getOrPut(rs.getString(1)) { mutableListOf() }
-                    .add(rs.getString(2))
+        synchronized(writeLock) {
+            val conn = connection()
+            val candidatePathsByIdentifier = mutableMapOf<String, MutableList<String>>()
+            conn.createStatement().use { stmt ->
+                val rs = stmt.executeQuery("SELECT identifier, path FROM identifier_paths")
+                while (rs.next()) {
+                    candidatePathsByIdentifier
+                        .getOrPut(rs.getString(1)) { mutableListOf() }
+                        .add(rs.getString(2))
+                }
             }
-        }
 
-        val moduleNameByPath = mutableMapOf<String, String>()
-        val packageByPath = mutableMapOf<String, String>()
-        val importsByPath = mutableMapOf<String, List<String>>()
-        val wildcardImportPackagesByPath = mutableMapOf<String, List<String>>()
+            val moduleNameByPath = mutableMapOf<String, String>()
+            val packageByPath = mutableMapOf<String, String>()
+            val importsByPath = mutableMapOf<String, List<String>>()
+            val wildcardImportPackagesByPath = mutableMapOf<String, List<String>>()
 
-        conn.createStatement().use { stmt ->
-            val rs = stmt.executeQuery(
-                "SELECT path, package_name, module_name, imports, wildcard_imports FROM file_metadata",
+            conn.createStatement().use { stmt ->
+                val rs = stmt.executeQuery(
+                    "SELECT path, package_name, module_name, imports, wildcard_imports FROM file_metadata",
+                )
+                while (rs.next()) {
+                    val path = rs.getString(1)
+                    rs.getString(2)?.let { packageByPath[path] = it }
+                    rs.getString(3)?.let { moduleNameByPath[path] = it }
+                    rs.getString(4)?.decodeJsonArray()
+                        ?.takeIf { it.isNotEmpty() }
+                        ?.let { importsByPath[path] = it }
+                    rs.getString(5)?.decodeJsonArray()
+                        ?.takeIf { it.isNotEmpty() }
+                        ?.let { wildcardImportPackagesByPath[path] = it }
+                }
+            }
+
+            return SourceIndexSnapshot(
+                candidatePathsByIdentifier = candidatePathsByIdentifier,
+                moduleNameByPath = moduleNameByPath,
+                packageByPath = packageByPath,
+                importsByPath = importsByPath,
+                wildcardImportPackagesByPath = wildcardImportPackagesByPath,
             )
-            while (rs.next()) {
-                val path = rs.getString(1)
-                rs.getString(2)?.let { packageByPath[path] = it }
-                rs.getString(3)?.let { moduleNameByPath[path] = it }
-                rs.getString(4)?.decodeJsonArray()
-                    ?.takeIf { it.isNotEmpty() }
-                    ?.let { importsByPath[path] = it }
-                rs.getString(5)?.decodeJsonArray()
-                    ?.takeIf { it.isNotEmpty() }
-                    ?.let { wildcardImportPackagesByPath[path] = it }
-            }
         }
-
-        return SourceIndexSnapshot(
-            candidatePathsByIdentifier = candidatePathsByIdentifier,
-            moduleNameByPath = moduleNameByPath,
-            packageByPath = packageByPath,
-            importsByPath = importsByPath,
-            wildcardImportPackagesByPath = wildcardImportPackagesByPath,
-        )
     }
 
     fun saveManifest(entries: Map<String, Long>) {
-        val conn = connection()
-        conn.autoCommit = false
-        try {
-            conn.createStatement().use { stmt -> stmt.execute("DELETE FROM file_manifest") }
-            insertManifestInTransaction(conn, entries)
-            conn.commit()
-        } catch (e: Exception) {
-            conn.rollback()
-            throw e
-        } finally {
-            conn.autoCommit = true
+        synchronized(writeLock) {
+            val conn = connection()
+            conn.autoCommit = false
+            try {
+                conn.createStatement().use { stmt -> stmt.execute("DELETE FROM file_manifest") }
+                insertManifestInTransaction(conn, entries)
+                conn.commit()
+            } catch (e: Exception) {
+                conn.rollback()
+                throw e
+            } finally {
+                conn.autoCommit = true
+            }
         }
     }
 
     fun loadManifest(): Map<String, Long>? {
         if (!dbExists()) return null
-        return try {
-            val conn = connection()
-            buildMap {
-                conn.createStatement().use { stmt ->
-                    val rs = stmt.executeQuery("SELECT path, last_modified_millis FROM file_manifest")
-                    while (rs.next()) put(rs.getString(1), rs.getLong(2))
+        return synchronized(writeLock) {
+            try {
+                val conn = connection()
+                buildMap {
+                    conn.createStatement().use { stmt ->
+                        val rs = stmt.executeQuery("SELECT path, last_modified_millis FROM file_manifest")
+                        while (rs.next()) put(rs.getString(1), rs.getLong(2))
+                    }
                 }
+            } catch (_: Exception) {
+                null
             }
-        } catch (_: Exception) {
-            null
         }
     }
 
@@ -348,7 +365,26 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
         targetPath: String?,
         targetOffset: Int?,
     ) {
-        val conn = connection()
+        synchronized(writeLock) {
+            upsertSymbolReferenceInTransaction(
+                conn = connection(),
+                sourcePath = sourcePath,
+                sourceOffset = sourceOffset,
+                targetFqName = targetFqName,
+                targetPath = targetPath,
+                targetOffset = targetOffset,
+            )
+        }
+    }
+
+    private fun upsertSymbolReferenceInTransaction(
+        conn: Connection,
+        sourcePath: String,
+        sourceOffset: Int,
+        targetFqName: String,
+        targetPath: String?,
+        targetOffset: Int?,
+    ) {
         conn.prepareStatement(
             """INSERT OR REPLACE INTO symbol_references
                (source_path, source_offset, target_fq_name, target_path, target_offset)
@@ -364,116 +400,160 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
     }
 
     fun referencesToSymbol(targetFqName: String): List<SymbolReferenceRow> {
-        val conn = connection()
-        return conn.prepareStatement(
-            "SELECT source_path, source_offset, target_fq_name, target_path, target_offset FROM symbol_references WHERE target_fq_name = ?",
-        ).use { stmt ->
-            stmt.setString(1, targetFqName)
-            val rs = stmt.executeQuery()
-            buildList {
-                while (rs.next()) {
-                    add(
-                        SymbolReferenceRow(
-                            sourcePath = rs.getString(1),
-                            sourceOffset = rs.getInt(2),
-                            targetFqName = rs.getString(3),
-                            targetPath = rs.getString(4),
-                            targetOffset = rs.getObject(5) as? Int,
-                        ),
-                    )
+        synchronized(writeLock) {
+            val conn = connection()
+            return conn.prepareStatement(
+                "SELECT source_path, source_offset, target_fq_name, target_path, target_offset FROM symbol_references WHERE target_fq_name = ?",
+            ).use { stmt ->
+                stmt.setString(1, targetFqName)
+                val rs = stmt.executeQuery()
+                buildList {
+                    while (rs.next()) {
+                        add(
+                            SymbolReferenceRow(
+                                sourcePath = rs.getString(1),
+                                sourceOffset = rs.getInt(2),
+                                targetFqName = rs.getString(3),
+                                targetPath = rs.getString(4),
+                                targetOffset = rs.getObject(5) as? Int,
+                            ),
+                        )
+                    }
                 }
             }
         }
     }
 
     fun referencesFromFile(sourcePath: String): List<SymbolReferenceRow> {
-        val conn = connection()
-        return conn.prepareStatement(
-            "SELECT source_path, source_offset, target_fq_name, target_path, target_offset FROM symbol_references WHERE source_path = ?",
-        ).use { stmt ->
-            stmt.setString(1, sourcePath)
-            val rs = stmt.executeQuery()
-            buildList {
-                while (rs.next()) {
-                    add(
-                        SymbolReferenceRow(
-                            sourcePath = rs.getString(1),
-                            sourceOffset = rs.getInt(2),
-                            targetFqName = rs.getString(3),
-                            targetPath = rs.getString(4),
-                            targetOffset = rs.getObject(5) as? Int,
-                        ),
-                    )
+        synchronized(writeLock) {
+            val conn = connection()
+            return conn.prepareStatement(
+                "SELECT source_path, source_offset, target_fq_name, target_path, target_offset FROM symbol_references WHERE source_path = ?",
+            ).use { stmt ->
+                stmt.setString(1, sourcePath)
+                val rs = stmt.executeQuery()
+                buildList {
+                    while (rs.next()) {
+                        add(
+                            SymbolReferenceRow(
+                                sourcePath = rs.getString(1),
+                                sourceOffset = rs.getInt(2),
+                                targetFqName = rs.getString(3),
+                                targetPath = rs.getString(4),
+                                targetOffset = rs.getObject(5) as? Int,
+                            ),
+                        )
+                    }
                 }
             }
         }
     }
 
     fun clearReferencesFromFile(sourcePath: String) {
-        val conn = connection()
+        synchronized(writeLock) {
+            clearReferencesFromFileInTransaction(connection(), sourcePath)
+        }
+    }
+
+    private fun clearReferencesFromFileInTransaction(conn: Connection, sourcePath: String) {
         conn.prepareStatement("DELETE FROM symbol_references WHERE source_path = ?").use { stmt ->
             stmt.setString(1, sourcePath)
             stmt.executeUpdate()
         }
     }
 
+    fun removeReferencesOutsideSources(sourcePaths: Collection<String>) {
+        synchronized(writeLock) {
+            val conn = connection()
+            if (sourcePaths.isEmpty()) {
+                conn.createStatement().use { stmt -> stmt.execute("DELETE FROM symbol_references") }
+                return
+            }
+            val placeholders = sourcePaths.joinToString(",") { "?" }
+            conn.prepareStatement("DELETE FROM symbol_references WHERE source_path NOT IN ($placeholders)").use { stmt ->
+                sourcePaths.forEachIndexed { index, sourcePath -> stmt.setString(index + 1, sourcePath) }
+                stmt.executeUpdate()
+            }
+        }
+    }
+
+    fun replaceReferencesFromFiles(referencesBySource: List<Pair<String, List<SymbolReferenceRow>>>) {
+        synchronized(writeLock) {
+            val conn = connection()
+            conn.autoCommit = false
+            try {
+                for ((filePath, refs) in referencesBySource) {
+                    clearReferencesFromFileInTransaction(conn, filePath)
+                    refs.forEach { ref ->
+                        upsertSymbolReferenceInTransaction(
+                            conn = conn,
+                            sourcePath = ref.sourcePath,
+                            sourceOffset = ref.sourceOffset,
+                            targetFqName = ref.targetFqName,
+                            targetPath = ref.targetPath,
+                            targetOffset = ref.targetOffset,
+                        )
+                    }
+                }
+                conn.commit()
+            } catch (e: Exception) {
+                conn.rollback()
+                throw e
+            } finally {
+                conn.autoCommit = true
+            }
+        }
+    }
+
     fun readWorkspaceDiscovery(cacheKey: String): String? {
-        val conn = connection()
-        return conn.prepareStatement(
-            "SELECT payload FROM workspace_discovery WHERE cache_key = ?",
-        ).use { stmt ->
-            stmt.setString(1, cacheKey)
-            val rs = stmt.executeQuery()
-            if (rs.next()) rs.getString(1) else null
+        synchronized(writeLock) {
+            val conn = connection()
+            return conn.prepareStatement(
+                "SELECT payload FROM workspace_discovery WHERE cache_key = ?",
+            ).use { stmt ->
+                stmt.setString(1, cacheKey)
+                val rs = stmt.executeQuery()
+                if (rs.next()) rs.getString(1) else null
+            }
         }
     }
 
     fun writeWorkspaceDiscovery(cacheKey: String, schemaVersion: Int, payload: String) {
-        val conn = connection()
-        conn.prepareStatement(
-            "INSERT OR REPLACE INTO workspace_discovery (cache_key, schema_version, payload) VALUES (?, ?, ?)",
-        ).use { stmt ->
-            stmt.setString(1, cacheKey)
-            stmt.setInt(2, schemaVersion)
-            stmt.setString(3, payload)
-            stmt.executeUpdate()
+        synchronized(writeLock) {
+            val conn = connection()
+            conn.prepareStatement(
+                "INSERT OR REPLACE INTO workspace_discovery (cache_key, schema_version, payload) VALUES (?, ?, ?)",
+            ).use { stmt ->
+                stmt.setString(1, cacheKey)
+                stmt.setInt(2, schemaVersion)
+                stmt.setString(3, payload)
+                stmt.executeUpdate()
+            }
         }
     }
 
-    fun beginTransaction() {
-        connection().autoCommit = false
-    }
-
-    fun commitTransaction() {
-        val conn = connection()
-        conn.commit()
-        conn.autoCommit = true
-    }
-
-    fun rollbackTransaction() {
-        val conn = connection()
-        runCatching { conn.rollback() }
-        conn.autoCommit = true
-    }
-
     fun readGeneration(): Int {
-        val conn = connection()
-        return try {
-            conn.prepareStatement("SELECT generation FROM schema_version LIMIT 1").use { stmt ->
-                val rs = stmt.executeQuery()
-                if (rs.next()) rs.getInt(1) else 0
+        synchronized(writeLock) {
+            val conn = connection()
+            return try {
+                conn.prepareStatement("SELECT generation FROM schema_version LIMIT 1").use { stmt ->
+                    val rs = stmt.executeQuery()
+                    if (rs.next()) rs.getInt(1) else 0
+                }
+            } catch (_: Exception) {
+                0
             }
-        } catch (_: Exception) {
-            0
         }
     }
 
     fun incrementGeneration(): Int {
-        val conn = connection()
-        conn.createStatement().use { stmt ->
-            stmt.executeUpdate("UPDATE schema_version SET generation = generation + 1")
+        synchronized(writeLock) {
+            val conn = connection()
+            conn.createStatement().use { stmt ->
+                stmt.executeUpdate("UPDATE schema_version SET generation = generation + 1")
+            }
+            return readGeneration()
         }
-        return readGeneration()
     }
 
     private fun insertFileDataInTransaction(

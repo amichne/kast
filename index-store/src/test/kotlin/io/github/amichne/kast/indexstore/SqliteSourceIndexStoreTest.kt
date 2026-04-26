@@ -107,4 +107,95 @@ class SqliteSourceIndexStoreTest {
             assertEquals(1, store.referencesToSymbol("lib.Foo").size)
         }
     }
+
+    @Test
+    fun `full source index rebuild clears stale symbol references`() {
+        val normalized = workspaceRoot.toAbsolutePath().normalize()
+        SqliteSourceIndexStore(normalized).use { store ->
+            store.ensureSchema()
+            store.saveFullIndex(
+                updates = listOf(fileUpdate("/src/Caller.kt", "Caller")),
+                manifest = mapOf("/src/Caller.kt" to 1L),
+            )
+            store.upsertSymbolReference(
+                sourcePath = "/src/Caller.kt",
+                sourceOffset = 1,
+                targetFqName = "lib.Removed",
+                targetPath = "/src/Removed.kt",
+                targetOffset = 1,
+            )
+
+            store.saveFullIndex(
+                updates = listOf(fileUpdate("/src/Other.kt", "Other")),
+                manifest = mapOf("/src/Other.kt" to 2L),
+            )
+
+            assertTrue(store.referencesToSymbol("lib.Removed").isEmpty())
+        }
+    }
+
+    @Test
+    fun `removing a file clears inbound and outbound symbol references`() {
+        val normalized = workspaceRoot.toAbsolutePath().normalize()
+        SqliteSourceIndexStore(normalized).use { store ->
+            store.ensureSchema()
+            store.saveFullIndex(
+                updates = listOf(fileUpdate("/src/Caller.kt", "Caller"), fileUpdate("/src/Target.kt", "Target")),
+                manifest = mapOf("/src/Caller.kt" to 1L, "/src/Target.kt" to 1L),
+            )
+            store.upsertSymbolReference(
+                sourcePath = "/src/Caller.kt",
+                sourceOffset = 1,
+                targetFqName = "demo.Target",
+                targetPath = "/src/Target.kt",
+                targetOffset = 1,
+            )
+            store.upsertSymbolReference(
+                sourcePath = "/src/Target.kt",
+                sourceOffset = 2,
+                targetFqName = "demo.Other",
+                targetPath = "/src/Other.kt",
+                targetOffset = 1,
+            )
+
+            store.removeFile("/src/Target.kt")
+
+            assertTrue(store.referencesToSymbol("demo.Target").isEmpty())
+            assertTrue(store.referencesFromFile("/src/Target.kt").isEmpty())
+        }
+    }
+
+    @Test
+    fun `reference-only cleanup does not replace source index manifest`() {
+        val normalized = workspaceRoot.toAbsolutePath().normalize()
+        SqliteSourceIndexStore(normalized).use { store ->
+            store.ensureSchema()
+            store.saveFullIndex(
+                updates = listOf(fileUpdate("/src/Caller.kt", "Caller")),
+                manifest = mapOf("/src/Caller.kt" to 123L),
+            )
+            store.upsertSymbolReference(
+                sourcePath = "/src/Stale.kt",
+                sourceOffset = 1,
+                targetFqName = "demo.Caller",
+                targetPath = "/src/Caller.kt",
+                targetOffset = 1,
+            )
+
+            store.removeReferencesOutsideSources(listOf("/src/Caller.kt"))
+
+            assertEquals(mapOf("/src/Caller.kt" to 123L), store.loadManifest())
+            assertTrue(store.referencesFromFile("/src/Stale.kt").isEmpty())
+        }
+    }
+
+    private fun fileUpdate(path: String, identifier: String): FileIndexUpdate =
+        FileIndexUpdate(
+            path = path,
+            identifiers = setOf(identifier),
+            packageName = "demo",
+            moduleName = ":main",
+            imports = emptySet(),
+            wildcardImports = emptySet(),
+        )
 }

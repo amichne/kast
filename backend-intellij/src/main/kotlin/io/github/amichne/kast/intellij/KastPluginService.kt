@@ -15,7 +15,6 @@ import io.github.amichne.kast.server.AnalysisServer
 import io.github.amichne.kast.server.AnalysisServerConfig
 import io.github.amichne.kast.server.RunningAnalysisServer
 import io.github.amichne.kast.shared.analysis.PsiReferenceScanner
-import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.thread
@@ -101,8 +100,7 @@ internal class KastPluginService(
                 runCatching {
                     store.ensureSchema()
                     val currentFilePaths = environment.allFilePaths()
-                    removeStaleManifestEntries(store, currentFilePaths)
-                    store.saveManifest(currentFilePaths.associateWith(::lastModifiedMillis))
+                    store.removeReferencesOutsideSources(currentFilePaths)
                     ReferenceIndexer(store).indexReferences(
                         filePaths = currentFilePaths,
                         referenceScanner = PsiReferenceScanner(environment)::scanFileReferences,
@@ -134,21 +132,6 @@ internal class KastPluginService(
         }
         indexStore = null
     }
-
-    private fun removeStaleManifestEntries(
-        store: SqliteSourceIndexStore,
-        currentFilePaths: Collection<String>,
-    ) {
-        val current = currentFilePaths.toSet()
-        store.loadManifest()
-            ?.keys
-            .orEmpty()
-            .filterNot(current::contains)
-            .forEach(store::removeFile)
-    }
-
-    private fun lastModifiedMillis(filePath: String): Long =
-        runCatching { Files.getLastModifiedTime(Path.of(filePath)).toMillis() }.getOrDefault(0L)
 
     companion object {
         private val LOG = Logger.getInstance(KastPluginService::class.java)

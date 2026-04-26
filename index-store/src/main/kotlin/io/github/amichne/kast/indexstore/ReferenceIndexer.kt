@@ -36,25 +36,7 @@ class ReferenceIndexer(
             }
             if (isCancelled()) break
 
-            store.beginTransaction()
-            try {
-                for ((filePath, refs) in batchResults) {
-                    store.clearReferencesFromFile(filePath)
-                    refs.forEach { ref ->
-                        store.upsertSymbolReference(
-                            sourcePath = ref.sourcePath,
-                            sourceOffset = ref.sourceOffset,
-                            targetFqName = ref.targetFqName,
-                            targetPath = ref.targetPath,
-                            targetOffset = ref.targetOffset,
-                        )
-                    }
-                }
-                store.commitTransaction()
-            } catch (error: Exception) {
-                store.rollbackTransaction()
-                throw error
-            }
+            store.replaceReferencesFromFiles(batchResults)
         }
     }
 

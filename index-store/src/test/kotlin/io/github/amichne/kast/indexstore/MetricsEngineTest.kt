@@ -5,7 +5,9 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Files
 import java.nio.file.Path
+import java.sql.DriverManager
 
 class MetricsEngineTest {
     @TempDir
@@ -146,6 +148,27 @@ class MetricsEngineTest {
     @Test
     fun `returns empty metrics when index database does not exist`() {
         val root = workspaceRoot.toAbsolutePath().normalize()
+
+        MetricsEngine(root).use { metrics ->
+            assertTrue(metrics.fanInRanking(limit = 10).isEmpty())
+            assertTrue(metrics.fanOutRanking(limit = 10).isEmpty())
+            assertTrue(metrics.moduleCouplingMatrix().isEmpty())
+            assertTrue(metrics.deadCodeCandidates().isEmpty())
+            assertTrue(metrics.changeImpactRadius(fqName = "lib.Foo", depth = 2).isEmpty())
+        }
+    }
+
+    @Test
+    fun `returns empty metrics when database schema is not current`() {
+        val root = workspaceRoot.toAbsolutePath().normalize()
+        val dbPath = sourceIndexDatabasePath(root)
+        Files.createDirectories(dbPath.parent)
+        DriverManager.getConnection("jdbc:sqlite:$dbPath").use { conn ->
+            conn.createStatement().use { stmt ->
+                stmt.execute("CREATE TABLE schema_version (version INTEGER NOT NULL, generation INTEGER NOT NULL DEFAULT 0)")
+                stmt.execute("INSERT INTO schema_version (version, generation) VALUES (999, 0)")
+            }
+        }
 
         MetricsEngine(root).use { metrics ->
             assertTrue(metrics.fanInRanking(limit = 10).isEmpty())
