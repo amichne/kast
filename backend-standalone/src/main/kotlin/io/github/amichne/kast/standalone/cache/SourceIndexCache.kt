@@ -1,17 +1,10 @@
 package io.github.amichne.kast.standalone.cache
 
 import io.github.amichne.kast.api.contract.NormalizedPath
+import io.github.amichne.kast.indexstore.FileIndexUpdate
+import io.github.amichne.kast.indexstore.SqliteSourceIndexStore
 import io.github.amichne.kast.standalone.MutableSourceIdentifierIndex
-import kotlinx.serialization.json.Json
 import java.nio.file.Path
-
-/**
- * Default JSON configuration shared by caches.
- */
-internal val defaultCacheJson: Json = Json {
-    encodeDefaults = true
-    ignoreUnknownKeys = true
-}
 
 /**
  * Persists the source identifier index and file manifest to a SQLite database.
@@ -48,7 +41,7 @@ internal class SourceIndexCache(
         val manifestSnapshot = makeManifestSnapshot(sourceRoots)
         return try {
             IncrementalIndexResult(
-                index = store.loadFullIndex(),
+                index = MutableSourceIdentifierIndex.fromSourceIndexSnapshot(store.loadSourceIndexSnapshot()),
                 changes = manifestSnapshot.changes,
             )
         } catch (_: Exception) {
@@ -143,27 +136,4 @@ internal data class IncrementalIndexResult(
     val newPaths: List<String> get() = changes.added
     val modifiedPaths: List<String> get() = changes.modified
     val deletedPaths: List<String> get() = changes.removed
-}
-
-internal fun kastGradleDirectory(workspaceRoot: Path): Path = workspaceRoot.resolve(".gradle").resolve("kast")
-
-internal fun kastCacheDirectory(workspaceRoot: Path): Path = kastGradleDirectory(workspaceRoot).resolve("cache")
-
-internal fun writeCacheFileAtomically(
-    path: Path,
-    payload: String,
-) {
-    val parent = requireNotNull(path.parent) { "Cache path must have a parent directory: $path" }
-    java.nio.file.Files.createDirectories(parent)
-    val tempFile = java.nio.file.Files.createTempFile(parent, "${path.fileName}.tmp-", null)
-    try {
-        java.nio.file.Files.writeString(tempFile, payload)
-        try {
-            java.nio.file.Files.move(tempFile, path, java.nio.file.StandardCopyOption.ATOMIC_MOVE, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-        } catch (_: java.nio.file.AtomicMoveNotSupportedException) {
-            java.nio.file.Files.move(tempFile, path, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-        }
-    } finally {
-        java.nio.file.Files.deleteIfExists(tempFile)
-    }
 }

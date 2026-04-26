@@ -11,6 +11,7 @@ private val intellijDistRoot = gradle.gradleUserHomeDir.resolve("kast/intellij-d
 
 dependencies {
     api(project(":analysis-api"))
+    api(project(":index-store"))
     // K2 Analysis API standalone bootstrap classes (compileOnly — host provides at runtime).
     compileOnly(libs.analysis.api.standalone) {
         isTransitive = false

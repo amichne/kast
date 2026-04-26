@@ -2,6 +2,8 @@ package io.github.amichne.kast.standalone
 
 import io.github.amichne.kast.api.contract.RefreshQuery
 import io.github.amichne.kast.api.contract.ServerLimits
+import io.github.amichne.kast.indexstore.kastCacheDirectory
+import io.github.amichne.kast.indexstore.writeCacheFileAtomically
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -19,8 +21,6 @@ import kotlin.io.path.writeText
 import io.github.amichne.kast.standalone.cache.CacheManager
 import io.github.amichne.kast.standalone.cache.SourceIndexCache
 import io.github.amichne.kast.standalone.cache.WorkspaceDiscoveryCache
-import io.github.amichne.kast.standalone.cache.kastCacheDirectory
-import io.github.amichne.kast.standalone.cache.writeCacheFileAtomically
 import io.github.amichne.kast.standalone.workspace.GradleModuleModel
 import io.github.amichne.kast.standalone.workspace.GradleWorkspaceDiscoveryResult
 

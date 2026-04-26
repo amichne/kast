@@ -14,8 +14,8 @@ import java.nio.file.attribute.FileTime
 import java.sql.DriverManager
 import kotlin.io.path.createDirectories
 import kotlin.io.path.writeText
+import io.github.amichne.kast.indexstore.kastCacheDirectory
 import io.github.amichne.kast.standalone.cache.SourceIndexCache
-import io.github.amichne.kast.standalone.cache.kastCacheDirectory
 
 class SourceIndexCacheTest {
     @TempDir

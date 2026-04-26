@@ -1,6 +1,8 @@
 package io.github.amichne.kast.standalone.cache
 
 import io.github.amichne.kast.api.contract.ModuleName
+import io.github.amichne.kast.indexstore.SqliteSourceIndexStore
+import io.github.amichne.kast.indexstore.defaultCacheJson
 import io.github.amichne.kast.standalone.normalizeStandalonePath
 import io.github.amichne.kast.standalone.workspace.GradleWorkspaceDiscovery
 import io.github.amichne.kast.standalone.workspace.GradleWorkspaceDiscoveryResult

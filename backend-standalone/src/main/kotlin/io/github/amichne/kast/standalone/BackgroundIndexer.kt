@@ -2,9 +2,10 @@ package io.github.amichne.kast.standalone
 
 import io.github.amichne.kast.api.contract.ModuleName
 import io.github.amichne.kast.api.contract.NormalizedPath
+import io.github.amichne.kast.indexstore.ReferenceIndexer
+import io.github.amichne.kast.indexstore.SqliteSourceIndexStore
+import io.github.amichne.kast.indexstore.SymbolReferenceRow
 import io.github.amichne.kast.standalone.cache.SourceIndexCache
-import io.github.amichne.kast.standalone.cache.SqliteSourceIndexStore
-import io.github.amichne.kast.standalone.cache.SymbolReferenceRow
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicInteger
@@ -103,39 +104,11 @@ internal class BackgroundIndexer(
                 if (cancelled) return@thread
                 val allPaths = store.loadManifest()?.keys ?: return@thread
                 generation.incrementAndGet()
-                val pathList = allPaths.toList()
-                // Process files in batches: scan without holding a transaction, then
-                // batch-write results in a short transaction to minimize SQLite contention.
-                for (batch in pathList.chunked(PHASE2_BATCH_SIZE)) {
-                    if (cancelled || Thread.currentThread().isInterrupted) break
-                    // Phase A: scan files (no SQLite writes, may be slow due to K2 resolution)
-                    val batchResults = batch.mapNotNull { filePath ->
-                        if (cancelled || Thread.currentThread().isInterrupted) return@mapNotNull null
-                        runCatching {
-                            filePath to referenceScanner(filePath)
-                        }.getOrNull()
-                    }
-                    if (cancelled || Thread.currentThread().isInterrupted) break
-                    // Phase B: batch-write in a short transaction
-                    store.beginTransaction()
-                    try {
-                        for ((filePath, refs) in batchResults) {
-                            store.clearReferencesFromFile(filePath)
-                            refs.forEach { ref ->
-                                store.upsertSymbolReference(
-                                    sourcePath = ref.sourcePath,
-                                    sourceOffset = ref.sourceOffset,
-                                    targetFqName = ref.targetFqName,
-                                    targetPath = ref.targetPath,
-                                    targetOffset = ref.targetOffset,
-                                )
-                            }
-                        }
-                        store.commitTransaction()
-                    } catch (e: Exception) {
-                        store.rollbackTransaction()
-                    }
-                }
+                ReferenceIndexer(store, batchSize = PHASE2_BATCH_SIZE).indexReferences(
+                    filePaths = allPaths,
+                    referenceScanner = referenceScanner,
+                    isCancelled = { cancelled || Thread.currentThread().isInterrupted },
+                )
                 if (!cancelled) {
                     referenceIndexReady.complete(Unit)
                 }

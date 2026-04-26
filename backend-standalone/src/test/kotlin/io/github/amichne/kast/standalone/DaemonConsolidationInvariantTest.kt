@@ -1,6 +1,6 @@
 package io.github.amichne.kast.standalone
 
-import io.github.amichne.kast.standalone.cache.kastCacheDirectory
+import io.github.amichne.kast.indexstore.kastCacheDirectory
 import org.junit.jupiter.api.Assertions.assertDoesNotThrow
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue

@@ -1,7 +1,7 @@
 package io.github.amichne.kast.standalone
 
+import io.github.amichne.kast.indexstore.SymbolReferenceRow
 import io.github.amichne.kast.standalone.cache.SourceIndexCache
-import io.github.amichne.kast.standalone.cache.SymbolReferenceRow
 import org.junit.jupiter.api.Assertions.assertDoesNotThrow
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue

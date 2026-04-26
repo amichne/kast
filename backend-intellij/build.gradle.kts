@@ -102,6 +102,7 @@ dependencies {
     implementation(project(":analysis-api"))
     implementation(project(":analysis-server"))
     implementation(project(":backend-shared"))
+    implementation(project(":index-store"))
     implementation(libs.opentelemetry.api)
     implementation(libs.opentelemetry.sdk)
 

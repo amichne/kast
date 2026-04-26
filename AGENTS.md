@@ -36,6 +36,9 @@ Use this map to choose the narrowest unit that owns a change.
   layout, and the native-image entrypoint
 - `analysis-server`: JSON-RPC dispatch, local socket and stdio transport,
   request limits, and descriptor lifecycle
+- `index-store`: SQLite source index persistence, file manifest state,
+  workspace discovery cache payload storage, and generic reference-index
+  batching without IntelliJ or backend runtime dependencies
 - `backend-standalone`: standalone host, Analysis API session bootstrap,
   Gradle workspace discovery, PSI/K2-backed analysis helpers, and runtime
   startup

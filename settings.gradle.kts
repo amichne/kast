@@ -18,6 +18,7 @@ include(
     ":analysis-api",
     ":kast-cli",
     ":analysis-server",
+    ":index-store",
     ":backend-standalone",
     ":backend-shared",
     ":backend-intellij",

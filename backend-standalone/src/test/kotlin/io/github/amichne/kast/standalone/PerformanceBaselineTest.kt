@@ -1,7 +1,7 @@
 package io.github.amichne.kast.standalone
 
-import io.github.amichne.kast.standalone.cache.FileIndexUpdate
-import io.github.amichne.kast.standalone.cache.SqliteSourceIndexStore
+import io.github.amichne.kast.indexstore.FileIndexUpdate
+import io.github.amichne.kast.indexstore.SqliteSourceIndexStore
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
@@ -130,7 +130,7 @@ class PerformanceBaselineTest {
             }
             store.saveManifest(manifest)
 
-            val index = store.loadFullIndex()
+            val index = MutableSourceIdentifierIndex.fromSourceIndexSnapshot(store.loadSourceIndexSnapshot())
 
             val iterations = 100
             val timings = mutableListOf<Long>()
@@ -187,8 +187,8 @@ class PerformanceBaselineTest {
                 assertTrue(manifest != null && manifest.size == fileCount) {
                     "Expected $fileCount manifest entries, got ${manifest?.size}"
                 }
-                val index = store.loadFullIndex()
-                assertTrue(index.candidatePathsFor("identifier0_0").isNotEmpty()) {
+                val snapshot = store.loadSourceIndexSnapshot()
+                assertTrue(snapshot.candidatePathsByIdentifier["identifier0_0"].orEmpty().isNotEmpty()) {
                     "Expected non-empty identifier paths after reload"
                 }
             }

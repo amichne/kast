@@ -1,6 +1,5 @@
-package io.github.amichne.kast.standalone.cache
+package io.github.amichne.kast.indexstore
 
-import io.github.amichne.kast.standalone.MutableSourceIdentifierIndex
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import java.nio.file.Files
@@ -11,38 +10,14 @@ import java.sql.DriverManager
 private const val SCHEMA_VERSION = 3
 
 /**
- * Represents all index data for a single file — used to batch-write to SQLite.
- */
-internal data class FileIndexUpdate(
-    val path: String,
-    val identifiers: Set<String>,
-    val packageName: String?,
-    val moduleName: String?,
-    val imports: Set<String>,
-    val wildcardImports: Set<String>,
-)
-
-/**
- * A row from the `symbol_references` table — a reference from a source
- * location to a target symbol identified by its fully-qualified name.
- */
-internal data class SymbolReferenceRow(
-    val sourcePath: String,
-    val sourceOffset: Int,
-    val targetFqName: String,
-    val targetPath: String?,
-    val targetOffset: Int?,
-)
-
-/**
  * SQLite-backed store for the source identifier index, file manifest,
- * symbol references, workspace discovery cache, and call hierarchy cache.
+ * symbol references, and workspace discovery cache.
  *
- * All data lives in a single `source-index.db` database under the kast
- * cache directory. WAL journal mode is enabled so readers never block writers.
+ * All data lives in a single `source-index.db` database under the kast cache
+ * directory. WAL journal mode is enabled so readers never block writers.
  */
-internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
-    private val dbPath: Path = kastCacheDirectory(workspaceRoot).resolve("source-index.db")
+class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWriter {
+    private val dbPath: Path = sourceIndexDatabasePath(workspaceRoot)
     private val connectionLock = Any()
 
     @Volatile
@@ -76,9 +51,6 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
                 stmt.execute("PRAGMA foreign_keys=ON")
             }
             cachedConnection = conn
-            // If this is a brand-new or fully empty database (no schema_version row),
-            // bootstrap the full schema immediately so callers never hit a missing-table
-            // error even without an explicit ensureSchema() call.
             if (readSchemaVersion(conn) == null) {
                 conn.autoCommit = false
                 try {
@@ -106,21 +78,13 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
     /**
      * Ensures the database schema is present and at the current version.
      *
-     * When the schema version matches, any tables that were added after the
-     * version was set (e.g. `symbol_references` added to an existing v2 DB)
-     * are created via `CREATE TABLE IF NOT EXISTS` — an additive, non-destructive
-     * uplift that preserves all existing data.
-     *
-     * @return `true` if the existing schema was valid (and uplifted if needed),
-     *   `false` if tables were dropped and recreated (caller should treat this
-     *   as a cache miss).
+     * @return `true` if the existing schema was valid, `false` if tables were
+     * dropped and recreated.
      */
     fun ensureSchema(): Boolean {
         val conn = connection()
         val version = readSchemaVersion(conn)
         if (version == SCHEMA_VERSION) {
-            // Additive uplift: create any tables that may be missing in older
-            // databases that share the same schema_version number.
             additiveMigration(conn)
             return true
         }
@@ -138,11 +102,6 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
         return false
     }
 
-    /**
-     * Idempotently creates tables and indexes that may be absent in databases
-     * whose `schema_version` predates the addition of those objects.
-     * Safe to call on an already-fully-migrated database.
-     */
     private fun additiveMigration(conn: Connection) {
         conn.createStatement().use { stmt ->
             stmt.execute(
@@ -155,12 +114,8 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
                     PRIMARY KEY (source_path, source_offset, target_fq_name)
                 )""",
             )
-            stmt.execute(
-                "CREATE INDEX IF NOT EXISTS idx_symref_target ON symbol_references(target_fq_name)",
-            )
-            stmt.execute(
-                "CREATE INDEX IF NOT EXISTS idx_symref_source_path ON symbol_references(source_path)",
-            )
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_symref_target ON symbol_references(target_fq_name)")
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_symref_source_path ON symbol_references(source_path)")
             stmt.execute(
                 """CREATE TABLE IF NOT EXISTS workspace_discovery (
                     cache_key TEXT PRIMARY KEY,
@@ -251,10 +206,6 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
         }
     }
 
-    /**
-     * Clears all existing index/manifest data and replaces it in a single
-     * transaction — used for the full scheduled save and initial cold-start write.
-     */
     fun saveFullIndex(
         updates: List<FileIndexUpdate>,
         manifest: Map<String, Long>,
@@ -275,11 +226,12 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
         } catch (e: Exception) {
             conn.rollback()
             throw e
+        } finally {
+            conn.autoCommit = true
         }
     }
 
-    /** Upserts index data for a single file — used for incremental per-file refreshes. */
-    fun saveFileIndex(update: FileIndexUpdate) {
+    override fun saveFileIndex(update: FileIndexUpdate) {
         val conn = connection()
         conn.autoCommit = false
         try {
@@ -288,11 +240,12 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
         } catch (e: Exception) {
             conn.rollback()
             throw e
+        } finally {
+            conn.autoCommit = true
         }
     }
 
-    /** Removes all index/manifest/reference rows for the given path. */
-    fun removeFile(path: String) {
+    override fun removeFile(path: String) {
         val conn = connection()
         conn.autoCommit = false
         try {
@@ -310,11 +263,12 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
         } catch (e: Exception) {
             conn.rollback()
             throw e
+        } finally {
+            conn.autoCommit = true
         }
     }
 
-    /** Reads all rows and constructs a [MutableSourceIdentifierIndex]. */
-    fun loadFullIndex(backingStore: SqliteSourceIndexStore? = null): MutableSourceIdentifierIndex {
+    fun loadSourceIndexSnapshot(): SourceIndexSnapshot {
         val conn = connection()
         val candidatePathsByIdentifier = mutableMapOf<String, MutableList<String>>()
         conn.createStatement().use { stmt ->
@@ -348,17 +302,15 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
             }
         }
 
-        return MutableSourceIdentifierIndex.fromCandidatePathsByIdentifier(
+        return SourceIndexSnapshot(
             candidatePathsByIdentifier = candidatePathsByIdentifier,
             moduleNameByPath = moduleNameByPath,
             packageByPath = packageByPath,
             importsByPath = importsByPath,
             wildcardImportPackagesByPath = wildcardImportPackagesByPath,
-            backingStore = backingStore,
         )
     }
 
-    /** Replaces the entire manifest table in a single transaction. */
     fun saveManifest(entries: Map<String, Long>) {
         val conn = connection()
         conn.autoCommit = false
@@ -369,19 +321,18 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
         } catch (e: Exception) {
             conn.rollback()
             throw e
+        } finally {
+            conn.autoCommit = true
         }
     }
 
-    /** Returns the persisted manifest, or `null` if the database does not exist. */
     fun loadManifest(): Map<String, Long>? {
         if (!dbExists()) return null
         return try {
             val conn = connection()
             buildMap {
                 conn.createStatement().use { stmt ->
-                    val rs = stmt.executeQuery(
-                        "SELECT path, last_modified_millis FROM file_manifest",
-                    )
+                    val rs = stmt.executeQuery("SELECT path, last_modified_millis FROM file_manifest")
                     while (rs.next()) put(rs.getString(1), rs.getLong(2))
                 }
             }
@@ -390,9 +341,6 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
         }
     }
 
-    // ── Symbol references ────────────────────────────────────────────────
-
-    /** Inserts or replaces a symbol reference from a source location to a target FQ name. */
     fun upsertSymbolReference(
         sourcePath: String,
         sourceOffset: Int,
@@ -415,7 +363,6 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
         }
     }
 
-    /** Returns all references that target the given fully-qualified name. */
     fun referencesToSymbol(targetFqName: String): List<SymbolReferenceRow> {
         val conn = connection()
         return conn.prepareStatement(
@@ -439,7 +386,6 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
         }
     }
 
-    /** Returns all references originating from the given source file. */
     fun referencesFromFile(sourcePath: String): List<SymbolReferenceRow> {
         val conn = connection()
         return conn.prepareStatement(
@@ -463,7 +409,6 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
         }
     }
 
-    /** Removes all symbol references originating from the given source file. */
     fun clearReferencesFromFile(sourcePath: String) {
         val conn = connection()
         conn.prepareStatement("DELETE FROM symbol_references WHERE source_path = ?").use { stmt ->
@@ -472,9 +417,6 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
         }
     }
 
-    // ── Workspace discovery cache ────────────────────────────────────────
-
-    /** Returns the JSON payload for a workspace discovery cache entry, or `null` if absent. */
     fun readWorkspaceDiscovery(cacheKey: String): String? {
         val conn = connection()
         return conn.prepareStatement(
@@ -486,7 +428,6 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
         }
     }
 
-    /** Writes or replaces a workspace discovery cache entry. */
     fun writeWorkspaceDiscovery(cacheKey: String, schemaVersion: Int, payload: String) {
         val conn = connection()
         conn.prepareStatement(
@@ -499,30 +440,22 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
         }
     }
 
-    // ── Transaction helpers ──────────────────────────────────────────────
-
-    /** Begins a transaction for batch writes. */
     fun beginTransaction() {
         connection().autoCommit = false
     }
 
-    /** Commits the current transaction. */
     fun commitTransaction() {
         val conn = connection()
         conn.commit()
         conn.autoCommit = true
     }
 
-    /** Rolls back the current transaction. */
     fun rollbackTransaction() {
         val conn = connection()
         runCatching { conn.rollback() }
         conn.autoCommit = true
     }
 
-    // ── Generation tracking ──────────────────────────────────────────────
-
-    /** Reads the current generation counter from the schema_version table. */
     fun readGeneration(): Int {
         val conn = connection()
         return try {
@@ -535,7 +468,6 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
         }
     }
 
-    /** Atomically increments and returns the new generation counter. */
     fun incrementGeneration(): Int {
         val conn = connection()
         conn.createStatement().use { stmt ->
@@ -557,9 +489,7 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
             stmt.executeUpdate()
         }
         if (update.identifiers.isNotEmpty()) {
-            conn.prepareStatement(
-                "INSERT OR IGNORE INTO identifier_paths (identifier, path) VALUES (?, ?)",
-            ).use { stmt ->
+            conn.prepareStatement("INSERT OR IGNORE INTO identifier_paths (identifier, path) VALUES (?, ?)").use { stmt ->
                 for (identifier in update.identifiers) {
                     stmt.setString(1, identifier)
                     stmt.setString(2, update.path)
@@ -587,9 +517,7 @@ internal class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable {
         entries: Map<String, Long>,
     ) {
         if (entries.isEmpty()) return
-        conn.prepareStatement(
-            "INSERT INTO file_manifest (path, last_modified_millis) VALUES (?, ?)",
-        ).use { stmt ->
+        conn.prepareStatement("INSERT INTO file_manifest (path, last_modified_millis) VALUES (?, ?)").use { stmt ->
             entries.forEach { (path, millis) ->
                 stmt.setString(1, path)
                 stmt.setLong(2, millis)

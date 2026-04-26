@@ -1,6 +1,6 @@
 package io.github.amichne.kast.standalone.telemetry
 
-import io.github.amichne.kast.standalone.cache.kastGradleDirectory
+import io.github.amichne.kast.indexstore.kastGradleDirectory
 import io.opentelemetry.api.trace.StatusCode
 import io.opentelemetry.api.trace.Tracer
 import io.opentelemetry.sdk.OpenTelemetrySdk

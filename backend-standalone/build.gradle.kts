@@ -288,6 +288,7 @@ dependencies {
     implementation(project(":analysis-api"))
     implementation(project(":analysis-server"))
     implementation(project(":backend-shared"))
+    implementation(project(":index-store"))
     implementation(libs.analysis.api.standalone) {
         isTransitive = false
     }
@@ -301,7 +302,6 @@ dependencies {
     implementation(libs.logback.classic)
     implementation(libs.opentelemetry.api)
     implementation(libs.opentelemetry.sdk)
-    implementation(libs.sqlite.jdbc)
 
     testImplementation(project(":shared-testing"))
     // IJ platform Logger.setFactory() references junit.rules.TestRule at class-init time.

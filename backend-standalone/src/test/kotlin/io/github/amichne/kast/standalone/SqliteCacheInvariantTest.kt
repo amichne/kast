@@ -1,8 +1,8 @@
 package io.github.amichne.kast.standalone
 
-import io.github.amichne.kast.standalone.cache.FileIndexUpdate
-import io.github.amichne.kast.standalone.cache.SqliteSourceIndexStore
-import io.github.amichne.kast.standalone.cache.kastCacheDirectory
+import io.github.amichne.kast.indexstore.FileIndexUpdate
+import io.github.amichne.kast.indexstore.SqliteSourceIndexStore
+import io.github.amichne.kast.indexstore.kastCacheDirectory
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -87,7 +87,7 @@ class SqliteCacheInvariantTest {
             }
             store.saveFullIndex(updates, manifest = emptyMap())
 
-            val index = store.loadFullIndex()
+            val index = MutableSourceIdentifierIndex.fromSourceIndexSnapshot(store.loadSourceIndexSnapshot())
             for (update in updates) {
                 for (id in update.identifiers) {
                     val paths = index.candidatePathsFor(id)

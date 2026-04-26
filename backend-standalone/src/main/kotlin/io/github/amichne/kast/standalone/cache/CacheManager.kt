@@ -1,5 +1,6 @@
 package io.github.amichne.kast.standalone.cache
 
+import io.github.amichne.kast.indexstore.kastCacheDirectory
 import io.github.amichne.kast.standalone.normalizeStandalonePath
 import java.nio.file.Path
 import java.util.concurrent.Executors
@@ -41,7 +42,7 @@ internal class CacheManager(
         }
         synchronized(writeLock) {
             pendingWrites.remove(key)?.future?.cancel(false)
-            var future: ScheduledFuture<*> = writeExecutor.schedule(
+            val future: ScheduledFuture<*> = writeExecutor.schedule(
                 {
                     synchronized(writeLock) {
                         pendingWrites.remove(key)

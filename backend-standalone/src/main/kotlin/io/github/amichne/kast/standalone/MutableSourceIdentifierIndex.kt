@@ -5,8 +5,9 @@ import io.github.amichne.kast.api.contract.KotlinIdentifier
 import io.github.amichne.kast.api.contract.ModuleName
 import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.PackageName
-import io.github.amichne.kast.standalone.cache.FileIndexUpdate
-import io.github.amichne.kast.standalone.cache.SqliteSourceIndexStore
+import io.github.amichne.kast.indexstore.FileIndexUpdate
+import io.github.amichne.kast.indexstore.SourceIndexSnapshot
+import io.github.amichne.kast.indexstore.SourceIndexWriter
 import java.util.concurrent.ConcurrentHashMap
 
 internal class MutableSourceIdentifierIndex(
@@ -16,7 +17,7 @@ internal class MutableSourceIdentifierIndex(
     private val packageByPath: ConcurrentHashMap<NormalizedPath, PackageName> = ConcurrentHashMap(),
     private val importsByPath: ConcurrentHashMap<NormalizedPath, Set<FqName>> = ConcurrentHashMap(),
     private val wildcardImportPackagesByPath: ConcurrentHashMap<NormalizedPath, Set<PackageName>> = ConcurrentHashMap(),
-    private val backingStore: SqliteSourceIndexStore? = null,
+    private val backingStore: SourceIndexWriter? = null,
 ) {
     fun candidatePathsFor(identifier: String): List<String> =
         pathsByIdentifier[KotlinIdentifier(identifier)]?.map { it.value }?.sorted().orEmpty()
@@ -248,7 +249,7 @@ internal class MutableSourceIdentifierIndex(
             packageByPath: Map<String, String> = emptyMap(),
             importsByPath: Map<String, List<String>> = emptyMap(),
             wildcardImportPackagesByPath: Map<String, List<String>> = emptyMap(),
-            backingStore: SqliteSourceIndexStore? = null,
+            backingStore: SourceIndexWriter? = null,
         ): MutableSourceIdentifierIndex {
             val typedPathsByIdentifier = ConcurrentHashMap<KotlinIdentifier, MutableSet<NormalizedPath>>()
             val typedIdentifiersByPath = ConcurrentHashMap<NormalizedPath, Set<KotlinIdentifier>>()
@@ -284,11 +285,17 @@ internal class MutableSourceIdentifierIndex(
             )
         }
 
-        /**
-         * Loads the hot cache from [store] and wires write-through so every
-         * subsequent [updateFile]/[removeFile] persists to SQLite immediately.
-         */
-        fun fromSqliteStore(store: SqliteSourceIndexStore): MutableSourceIdentifierIndex =
-            store.loadFullIndex(backingStore = store)
+        fun fromSourceIndexSnapshot(
+            snapshot: SourceIndexSnapshot,
+            backingStore: SourceIndexWriter? = null,
+        ): MutableSourceIdentifierIndex =
+            fromCandidatePathsByIdentifier(
+                candidatePathsByIdentifier = snapshot.candidatePathsByIdentifier,
+                moduleNameByPath = snapshot.moduleNameByPath,
+                packageByPath = snapshot.packageByPath,
+                importsByPath = snapshot.importsByPath,
+                wildcardImportPackagesByPath = snapshot.wildcardImportPackagesByPath,
+                backingStore = backingStore,
+            )
     }
 }
