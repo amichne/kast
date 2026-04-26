@@ -65,6 +65,7 @@ internal class StandaloneAnalysisSession(
     private val analysisSessionLock: SessionLock = ReentrantSessionLock(),
     private val identifierIndexWaitMillis: Long = defaultIdentifierIndexWaitMillis,
     internal val telemetry: StandaloneTelemetry = StandaloneTelemetry.disabled(),
+    private val enablePhase2Indexing: Boolean = true,
 ) : AutoCloseable {
     private val normalizedWorkspaceRoot = normalizeStandalonePath(workspaceRoot)
     private val disposable: Disposable = Disposer.newDisposable("kast-standalone")
@@ -893,9 +894,11 @@ internal class StandaloneAnalysisSession(
             // clean starting point that watcher-driven partial refreshes cannot corrupt.
             checkpointKnownPaths = builtIndex.knownPaths()
         }
-        backgroundIndexer.identifierIndexReady.thenRun {
-            if (closed || sourceIndexGeneration.get() != generation) return@thenRun
-            backgroundIndexer.startPhase2(::scanFileReferences)
+        if (enablePhase2Indexing) {
+            backgroundIndexer.identifierIndexReady.thenRun {
+                if (closed || sourceIndexGeneration.get() != generation) return@thenRun
+                backgroundIndexer.startPhase2(::scanFileReferences)
+            }
         }
     }
 
@@ -909,8 +912,8 @@ internal class StandaloneAnalysisSession(
      */
     private fun scanFileReferences(filePath: String): List<SymbolReferenceRow> {
         val rows = mutableListOf<SymbolReferenceRow>()
-        withReadAccess {
-            val ktFile = runCatching { findKtFile(filePath) }.getOrNull() ?: return@withReadAccess
+        analysisSessionLock.write {
+            val ktFile = runCatching { findKtFile(filePath) }.getOrNull() ?: return@write
             val sourceFilePath = runCatching { ktFile.resolvedFilePath().value }.getOrElse { filePath }
 
             ktFile.accept(

@@ -17,7 +17,6 @@ import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import io.github.amichne.kast.standalone.cache.SourceIndexCache
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.writeText
@@ -970,6 +969,7 @@ class StandaloneAnalysisBackendFindReferencesTest {
             sourceRoots = emptyList(),
             classpathRoots = emptyList(),
             moduleName = "sources",
+            enablePhase2Indexing = false,
         )
         session.use { s ->
             s.awaitInitialSourceIndex()
@@ -1048,24 +1048,14 @@ class StandaloneAnalysisBackendFindReferencesTest {
             sourceRoots = emptyList(),
             classpathRoots = emptyList(),
             moduleName = "sources",
+            enablePhase2Indexing = false,
         )
         session.use { s ->
             s.awaitInitialSourceIndex()
 
-            // Phase 2 auto-starts after Phase 1; replace the backgroundIndexer with a fresh
-            // instance whose referenceIndexReady is not completed, to test the fallback path.
-            val indexerField = StandaloneAnalysisSession::class.java.getDeclaredField("backgroundIndexer")
-            indexerField.isAccessible = true
-            val dummyCache = SourceIndexCache(workspaceRoot, enabled = false)
-            val freshIndexer = BackgroundIndexer(
-                sourceRoots = emptyList(),
-                sourceIndexFileReader = { "" },
-                sourceModuleNameResolver = { null },
-                sourceIndexCache = dummyCache,
-                store = s.sqliteStore,
-            )
-            indexerField.set(s, freshIndexer)
-            assertFalse(s.isReferenceIndexReady(), "Fresh indexer should not be ready")
+            // Phase 2 is disabled; the backgroundIndexer's referenceIndexReady
+            // is not completed, which is exactly the state we want to test.
+            assertFalse(s.isReferenceIndexReady(), "Phase 2 disabled; indexer should not be ready")
 
             val backend = StandaloneAnalysisBackend(
                 workspaceRoot = workspaceRoot,
@@ -1120,11 +1110,12 @@ class StandaloneAnalysisBackendFindReferencesTest {
             sourceRoots = emptyList(),
             classpathRoots = emptyList(),
             moduleName = "sources",
+            enablePhase2Indexing = false,
         )
         session.use { s ->
             s.awaitInitialSourceIndex()
 
-            // Complete Phase 2 but don't insert any symbol_reference rows
+            // Complete Phase 2 future without inserting any symbol_reference rows
             s.sqliteStore.ensureSchema()
             val indexerField = StandaloneAnalysisSession::class.java.getDeclaredField("backgroundIndexer")
             indexerField.isAccessible = true
