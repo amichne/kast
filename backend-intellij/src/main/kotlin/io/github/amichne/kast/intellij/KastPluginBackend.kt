@@ -554,7 +554,7 @@ internal class KastPluginBackend(
                 scope = snapshot.scopeKind,
                 exhaustive = true,
                 candidateFileCount = snapshot.candidateFileCount,
-                searchedFileCount = affectedFiles.size,
+                searchedFileCount = snapshot.candidateFileCount,
             ),
         )
         }
