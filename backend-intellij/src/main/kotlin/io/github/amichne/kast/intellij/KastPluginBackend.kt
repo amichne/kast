@@ -39,7 +39,7 @@ import io.github.amichne.kast.api.contract.ImportOptimizeQuery
 import io.github.amichne.kast.api.contract.ImportOptimizeResult
 import io.github.amichne.kast.api.contract.ImplementationsQuery
 import io.github.amichne.kast.api.contract.ImplementationsResult
-import io.github.amichne.kast.api.validation.LocalDiskEditApplier
+
 import io.github.amichne.kast.api.contract.Location
 import io.github.amichne.kast.api.contract.MutationCapability
 import io.github.amichne.kast.api.protocol.NotFoundException
@@ -523,7 +523,7 @@ internal class KastPluginBackend(
             .sortedWith(compareBy({ it.filePath }, { it.startOffset }))
 
         val affectedFiles = edits.map(TextEdit::filePath).distinct()
-        val fileHashes = LocalDiskEditApplier.currentHashes(affectedFiles)
+        val fileHashes = IntelliJFileHashComputer.currentHashes(affectedFiles)
 
         RenameResult(
             edits = edits,
@@ -542,11 +542,9 @@ internal class KastPluginBackend(
 
     override suspend fun applyEdits(query: ApplyEditsQuery): ApplyEditsResult {
         return telemetry.inSpan(IntelliJTelemetryScope.APPLY_EDITS, "kast.intellij.applyEdits") {
-            val result = LocalDiskEditApplier.apply(query)
-            ApplicationManager.getApplication().invokeLater {
-                VirtualFileManager.getInstance().asyncRefresh(null)
-            }
-            result
+            val applier = IntelliJEditApplier(project)
+            applier.apply(query)
+            // No asyncRefresh needed - IntelliJ APIs handle VFS updates automatically
         }
     }
 
@@ -563,7 +561,7 @@ internal class KastPluginBackend(
         val affectedFiles = edits.map(TextEdit::filePath).distinct()
         ImportOptimizeResult(
             edits = edits,
-            fileHashes = LocalDiskEditApplier.currentHashes(affectedFiles),
+            fileHashes = IntelliJFileHashComputer.currentHashes(affectedFiles),
             affectedFiles = affectedFiles,
         )
     }

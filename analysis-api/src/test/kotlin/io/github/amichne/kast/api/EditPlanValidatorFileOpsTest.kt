@@ -2,56 +2,64 @@ package io.github.amichne.kast.api.validation
 
 import io.github.amichne.kast.api.contract.*
 import io.github.amichne.kast.api.protocol.*
+import io.github.amichne.kast.testing.InMemoryFileOperationsFixture
+import io.github.amichne.kast.testing.inMemoryFileOperations
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Path
-import kotlin.io.path.exists
-import kotlin.io.path.readText
-import kotlin.io.path.writeText
 
+/**
+ * Tests for LocalDiskEditApplier file operations using in-memory filesystem (Jimfs).
+ * These tests verify CreateFile, DeleteFile, and mixed operations without touching real disk.
+ */
 class EditPlanValidatorFileOpsTest {
-    @TempDir
-    lateinit var tempDir: Path
+    private lateinit var fixture: InMemoryFileOperationsFixture
+    private lateinit var applier: LocalDiskEditApplier
+
+    @BeforeEach
+    fun setup() {
+        fixture = inMemoryFileOperations()
+        applier = LocalDiskEditApplier(fixture.fileOps)
+    }
 
     @Test
     fun `CreateFile creates new file with correct content`() {
-        val file = tempDir.resolve("New.kt")
+        val file = "${fixture.root}New.kt"
 
-        LocalDiskEditApplier.apply(
+        applier.apply(
             ApplyEditsQuery(
                 edits = emptyList(),
                 fileHashes = emptyList(),
                 fileOperations = listOf(
                     FileOperation.CreateFile(
-                        filePath = file.toString(),
+                        filePath = file,
                         content = "class New\n",
                     ),
                 ),
             ),
         )
 
-        assertTrue(file.exists())
-        assertEquals("class New\n", file.readText())
+        assertTrue(fixture.fileOps.exists(file))
+        assertEquals("class New\n", fixture.fileOps.readText(file))
     }
 
     @Test
     fun `CreateFile fails if file already exists`() {
-        val file = tempDir.resolve("Existing.kt")
-        file.writeText("class Existing\n")
+        val file = "${fixture.root}Existing.kt"
+        fixture.createFile(file, "class Existing\n")
 
         assertThrows(ConflictException::class.java) {
-            LocalDiskEditApplier.apply(
+            applier.apply(
                 ApplyEditsQuery(
                     edits = emptyList(),
                     fileHashes = emptyList(),
                     fileOperations = listOf(
                         FileOperation.CreateFile(
-                            filePath = file.toString(),
+                            filePath = file,
                             content = "class Existing\n",
                         ),
                     ),
@@ -62,29 +70,29 @@ class EditPlanValidatorFileOpsTest {
 
     @Test
     fun `CreateFile creates parent directories`() {
-        val file = tempDir.resolve("a/b/c/New.kt")
+        val file = "${fixture.root}a/b/c/New.kt"
 
-        LocalDiskEditApplier.apply(
+        applier.apply(
             ApplyEditsQuery(
                 edits = emptyList(),
                 fileHashes = emptyList(),
                 fileOperations = listOf(
                     FileOperation.CreateFile(
-                        filePath = file.toString(),
+                        filePath = file,
                         content = "class Nested\n",
                     ),
                 ),
             ),
         )
 
-        assertTrue(file.exists())
-        assertEquals("class Nested\n", file.readText())
+        assertTrue(fixture.fileOps.exists(file))
+        assertEquals("class Nested\n", fixture.fileOps.readText(file))
     }
 
     @Test
     fun `CreateFile with relative path throws ValidationException`() {
         assertThrows(ValidationException::class.java) {
-            LocalDiskEditApplier.apply(
+            applier.apply(
                 ApplyEditsQuery(
                     edits = emptyList(),
                     fileHashes = emptyList(),
@@ -101,38 +109,39 @@ class EditPlanValidatorFileOpsTest {
 
     @Test
     fun `DeleteFile removes existing file`() {
-        val file = tempDir.resolve("DeleteMe.kt")
-        file.writeText("class DeleteMe\n")
+        val file = "${fixture.root}DeleteMe.kt"
+        val content = "class DeleteMe\n"
+        fixture.createFile(file, content)
 
-        LocalDiskEditApplier.apply(
+        applier.apply(
             ApplyEditsQuery(
                 edits = emptyList(),
                 fileHashes = emptyList(),
                 fileOperations = listOf(
                     FileOperation.DeleteFile(
-                        filePath = file.toString(),
-                        expectedHash = FileHashing.sha256(file.readText()),
+                        filePath = file,
+                        expectedHash = FileHashing.sha256(content),
                     ),
                 ),
             ),
         )
 
-        assertFalse(file.exists())
+        assertFalse(fixture.fileOps.exists(file))
     }
 
     @Test
     fun `DeleteFile fails if hash does not match`() {
-        val file = tempDir.resolve("DeleteMe.kt")
-        file.writeText("class DeleteMe\n")
+        val file = "${fixture.root}DeleteMe.kt"
+        fixture.createFile(file, "class DeleteMe\n")
 
         assertThrows(ConflictException::class.java) {
-            LocalDiskEditApplier.apply(
+            applier.apply(
                 ApplyEditsQuery(
                     edits = emptyList(),
                     fileHashes = emptyList(),
                     fileOperations = listOf(
                         FileOperation.DeleteFile(
-                            filePath = file.toString(),
+                            filePath = file,
                             expectedHash = "wrong",
                         ),
                     ),
@@ -143,16 +152,16 @@ class EditPlanValidatorFileOpsTest {
 
     @Test
     fun `DeleteFile fails if file does not exist`() {
-        val file = tempDir.resolve("Missing.kt")
+        val file = "${fixture.root}Missing.kt"
 
         assertThrows(NotFoundException::class.java) {
-            LocalDiskEditApplier.apply(
+            applier.apply(
                 ApplyEditsQuery(
                     edits = emptyList(),
                     fileHashes = emptyList(),
                     fileOperations = listOf(
                         FileOperation.DeleteFile(
-                            filePath = file.toString(),
+                            filePath = file,
                             expectedHash = "missing",
                         ),
                     ),
@@ -163,14 +172,14 @@ class EditPlanValidatorFileOpsTest {
 
     @Test
     fun `mixed text edits and file operations apply in correct order`() {
-        val file = tempDir.resolve("Created.kt")
+        val file = "${fixture.root}Created.kt"
         val createdContent = "class Foo {}\n"
 
-        LocalDiskEditApplier.apply(
+        applier.apply(
             ApplyEditsQuery(
                 edits = listOf(
                     TextEdit(
-                        filePath = file.toString(),
+                        filePath = file,
                         startOffset = createdContent.indexOf('{') + 1,
                         endOffset = createdContent.indexOf('{') + 1,
                         newText = "\n    fun answer() = 42\n",
@@ -178,13 +187,13 @@ class EditPlanValidatorFileOpsTest {
                 ),
                 fileHashes = listOf(
                     FileHash(
-                        filePath = file.toString(),
+                        filePath = file,
                         hash = FileHashing.sha256(createdContent),
                     ),
                 ),
                 fileOperations = listOf(
                     FileOperation.CreateFile(
-                        filePath = file.toString(),
+                        filePath = file,
                         content = createdContent,
                     ),
                 ),
@@ -197,48 +206,49 @@ class EditPlanValidatorFileOpsTest {
                     fun answer() = 42
                 }
             """.trimIndent() + "\n",
-            file.readText(),
+            fixture.fileOps.readText(file),
         )
     }
 
     @Test
     fun `CreateFile appears in result createdFiles`() {
-        val file = tempDir.resolve("Created.kt")
+        val file = "${fixture.root}Created.kt"
 
-        val result = LocalDiskEditApplier.apply(
+        val result = applier.apply(
             ApplyEditsQuery(
                 edits = emptyList(),
                 fileHashes = emptyList(),
                 fileOperations = listOf(
                     FileOperation.CreateFile(
-                        filePath = file.toString(),
+                        filePath = file,
                         content = "class Created\n",
                     ),
                 ),
             ),
         )
 
-        assertEquals(listOf(file.toString()), result.createdFiles)
+        assertEquals(listOf(file), result.createdFiles)
     }
 
     @Test
     fun `DeleteFile appears in result deletedFiles`() {
-        val file = tempDir.resolve("Deleted.kt")
-        file.writeText("class Deleted\n")
+        val file = "${fixture.root}Deleted.kt"
+        val content = "class Deleted\n"
+        fixture.createFile(file, content)
 
-        val result = LocalDiskEditApplier.apply(
+        val result = applier.apply(
             ApplyEditsQuery(
                 edits = emptyList(),
                 fileHashes = emptyList(),
                 fileOperations = listOf(
                     FileOperation.DeleteFile(
-                        filePath = file.toString(),
-                        expectedHash = FileHashing.sha256(file.readText()),
+                        filePath = file,
+                        expectedHash = FileHashing.sha256(content),
                     ),
                 ),
             ),
         )
 
-        assertEquals(listOf(file.toString()), result.deletedFiles)
+        assertEquals(listOf(file), result.deletedFiles)
     }
 }

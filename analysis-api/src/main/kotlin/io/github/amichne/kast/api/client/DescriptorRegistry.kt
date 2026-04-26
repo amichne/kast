@@ -1,35 +1,63 @@
 package io.github.amichne.kast.api.client
 
+import io.github.amichne.kast.api.io.KastFileOperations
+import io.github.amichne.kast.api.io.LocalDiskFileOperations
 import kotlinx.serialization.json.Json
-import java.nio.file.Files
 import java.nio.file.Path
-import java.nio.file.StandardCopyOption
-import kotlin.io.path.exists
-import kotlin.io.path.readText
-import kotlin.io.path.writeText
 
 data class RegisteredDescriptor(
     val id: String,
     val descriptor: ServerInstanceDescriptor,
 )
 
-class DescriptorRegistry(
-    private val daemonsFile: Path,
-) {
+class DescriptorRegistry {
+    private val daemonsPath: String
+    private val fileOps: KastFileOperations
+
     private val json = Json {
         prettyPrint = true
         encodeDefaults = true
         explicitNulls = false
     }
 
+    /**
+     * Constructor accepting String path and injectable KastFileOperations.
+     * This is the primary constructor for testing and alternative filesystem implementations.
+     */
+    constructor(
+        daemonsPath: String,
+        fileOps: KastFileOperations = LocalDiskFileOperations
+    ) {
+        this.daemonsPath = daemonsPath
+        this.fileOps = fileOps
+    }
+
+    /**
+     * Backward-compatible constructor accepting Path.
+     * Delegates to the primary constructor using LocalDiskFileOperations.
+     */
+    constructor(daemonsFile: Path) : this(
+        daemonsPath = daemonsFile.toAbsolutePath().toString(),
+        fileOps = LocalDiskFileOperations
+    )
+
+    /**
+     * List all registered descriptors.
+     *
+     * This method is intentionally lock-free for reads. It is also called
+     * from within withLock-guarded read-modify-write operations in
+     * register() and delete() to read the current state before modification.
+     *
+     * @return List of registered descriptors sorted by backend name and id
+     */
     fun list(): List<RegisteredDescriptor> {
-        if (!daemonsFile.exists()) {
+        if (!fileOps.exists(daemonsPath)) {
             return emptyList()
         }
 
         return runCatching {
             val descriptors: List<ServerInstanceDescriptor> =
-                json.decodeFromString(daemonsFile.readText())
+                json.decodeFromString(fileOps.readText(daemonsPath))
             descriptors.map { d ->
                 RegisteredDescriptor(
                     id = idFor(d),
@@ -39,26 +67,40 @@ class DescriptorRegistry(
         }.getOrDefault(emptyList())
     }
 
-    fun findByWorkspaceRoot(workspaceRoot: Path): List<RegisteredDescriptor> {
-        val normalizedWorkspaceRoot = workspaceRoot.toAbsolutePath().normalize().toString()
+    /**
+     * Find descriptors by workspace root using String path.
+     */
+    fun findByWorkspaceRoot(workspaceRoot: String): List<RegisteredDescriptor> {
+        val normalizedWorkspaceRoot = Path.of(workspaceRoot).toAbsolutePath().normalize().toString()
         return list().filter { registered ->
             Path.of(registered.descriptor.workspaceRoot).toAbsolutePath().normalize().toString() == normalizedWorkspaceRoot
         }
     }
 
+    /**
+     * Find descriptors by workspace root using Path (backward compatibility).
+     */
+    fun findByWorkspaceRoot(workspaceRoot: Path): List<RegisteredDescriptor> {
+        return findByWorkspaceRoot(workspaceRoot.toAbsolutePath().toString())
+    }
+
     fun register(descriptor: ServerInstanceDescriptor) {
-        val current = list().map { it.descriptor }.toMutableList()
-        val id = idFor(descriptor)
-        current.removeAll { idFor(it) == id }
-        current.add(descriptor)
-        writeAtomically(current)
+        fileOps.withLock(daemonsPath) {
+            val current = list().map { it.descriptor }.toMutableList()
+            val id = idFor(descriptor)
+            current.removeAll { idFor(it) == id }
+            current.add(descriptor)
+            writeAtomically(current)
+        }
     }
 
     fun delete(descriptor: ServerInstanceDescriptor) {
-        val id = idFor(descriptor)
-        val current = list().map { it.descriptor }.toMutableList()
-        current.removeAll { idFor(it) == id }
-        writeAtomically(current)
+        fileOps.withLock(daemonsPath) {
+            val id = idFor(descriptor)
+            val current = list().map { it.descriptor }.toMutableList()
+            current.removeAll { idFor(it) == id }
+            writeAtomically(current)
+        }
     }
 
     private fun idFor(d: ServerInstanceDescriptor): String =
@@ -66,16 +108,15 @@ class DescriptorRegistry(
 
     private fun writeAtomically(descriptors: List<ServerInstanceDescriptor>) {
         if (descriptors.isEmpty()) {
-            Files.deleteIfExists(daemonsFile)
+            fileOps.delete(daemonsPath)
             return
         }
-        Files.createDirectories(daemonsFile.parent)
-        val tempFile = Files.createTempFile(daemonsFile.parent, "daemons", ".tmp")
+        val tempFile = fileOps.createTempFile(daemonsPath)
         try {
-            tempFile.writeText(json.encodeToString(descriptors))
-            Files.move(tempFile, daemonsFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+            fileOps.writeText(tempFile, json.encodeToString(descriptors))
+            fileOps.moveAtomic(tempFile, daemonsPath)
         } catch (e: Exception) {
-            Files.deleteIfExists(tempFile)
+            fileOps.delete(tempFile)
             throw e
         }
     }

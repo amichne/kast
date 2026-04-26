@@ -171,10 +171,33 @@ internal class WorkspaceRefreshWatcher(
             return
         }
 
-        Files.walk(rootDirectory).use { paths ->
-            paths
-                .filter(Files::isDirectory)
-                .forEach(::registerDirectory)
+        runCatching {
+            Files.walkFileTree(
+                rootDirectory,
+                object : java.nio.file.SimpleFileVisitor<Path>() {
+                    override fun preVisitDirectory(
+                        dir: Path,
+                        attrs: java.nio.file.attribute.BasicFileAttributes,
+                    ): java.nio.file.FileVisitResult {
+                        registerDirectory(dir)
+                        return java.nio.file.FileVisitResult.CONTINUE
+                    }
+
+                    override fun visitFileFailed(
+                        file: Path,
+                        exc: java.io.IOException,
+                    ): java.nio.file.FileVisitResult {
+                        System.err.println(
+                            "kast workspace watcher skipping inaccessible path $file: ${exc.message ?: exc::class.java.simpleName}",
+                        )
+                        return java.nio.file.FileVisitResult.CONTINUE
+                    }
+                },
+            )
+        }.onFailure { error ->
+            System.err.println(
+                "kast workspace watcher registration failed for $rootDirectory: ${error.message ?: error::class.java.simpleName}",
+            )
         }
     }
 
@@ -184,17 +207,23 @@ internal class WorkspaceRefreshWatcher(
             return
         }
 
-        val watchKey = normalizedDirectory.register(
-            watchService,
-            StandardWatchEventKinds.ENTRY_CREATE,
-            StandardWatchEventKinds.ENTRY_MODIFY,
-            StandardWatchEventKinds.ENTRY_DELETE,
-        )
-        val existingKey = watchKeysByDirectory.putIfAbsent(normalizedDirectory, watchKey)
-        if (existingKey == null) {
-            directoriesByWatchKey[watchKey] = normalizedDirectory
-        } else {
-            watchKey.cancel()
+        runCatching {
+            val watchKey = normalizedDirectory.register(
+                watchService,
+                StandardWatchEventKinds.ENTRY_CREATE,
+                StandardWatchEventKinds.ENTRY_MODIFY,
+                StandardWatchEventKinds.ENTRY_DELETE,
+            )
+            val existingKey = watchKeysByDirectory.putIfAbsent(normalizedDirectory, watchKey)
+            if (existingKey == null) {
+                directoriesByWatchKey[watchKey] = normalizedDirectory
+            } else {
+                watchKey.cancel()
+            }
+        }.onFailure { error ->
+            System.err.println(
+                "kast workspace watcher registration failed for $normalizedDirectory: ${error.message ?: error::class.java.simpleName}",
+            )
         }
     }
 

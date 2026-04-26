@@ -33,6 +33,10 @@ import java.util.jar.JarOutputStream
 import kotlin.io.path.createDirectories
 import kotlin.io.path.writeText
 
+/**
+ * Validates workspace discovery, K2 Analysis API session rebuild, and multi-module configuration semantics.
+ * Requires real filesystem: tests validate StandaloneAnalysisSession workspace refresh behavior with real K2 semantics.
+ */
 class StandaloneWorkspaceDiscoveryTest {
     @TempDir
     lateinit var workspaceRoot: Path
