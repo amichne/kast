@@ -34,7 +34,7 @@ INIT_FRICTION_RE = re.compile(
     re.IGNORECASE,
 )
 SCHEMA_FRICTION_RE = re.compile(
-    r"(?:jq|projection|file_path|filePath|snake_case|camelCase|references\[\]|\.references|empty)",
+    r"(?:jq|projection|file_path|filePath|snake_case|camelCase|references\[\]|\.references|\bempty\b)",
     re.IGNORECASE,
 )
 MUTATION_VALIDATION_RE = re.compile(
