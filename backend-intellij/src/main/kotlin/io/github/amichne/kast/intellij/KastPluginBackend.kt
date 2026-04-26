@@ -716,8 +716,8 @@ internal class KastPluginBackend(
                 GlobalSearchScope.projectScope(project) to SearchScopeKind.DEPENDENT_MODULES
             }
         }
-        }
-        else -> GlobalSearchScope.projectScope(project) to SearchScopeKind.DEPENDENT_MODULES
+        SymbolVisibility.PUBLIC, SymbolVisibility.PROTECTED, SymbolVisibility.UNKNOWN ->
+            GlobalSearchScope.projectScope(project) to SearchScopeKind.DEPENDENT_MODULES
     }
 
     private data class ReferenceSearchSnapshot(
