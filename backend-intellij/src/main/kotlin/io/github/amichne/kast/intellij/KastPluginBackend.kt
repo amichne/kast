@@ -711,7 +711,7 @@ internal class KastPluginBackend(
             val vf = file.virtualFile
             val module = ProjectFileIndex.getInstance(project).getModuleForFile(vf)
             if (module != null) {
-                GlobalSearchScope.moduleScope(module) to SearchScopeKind.MODULE
+                GlobalSearchScope.moduleWithDependentsScope(module) to SearchScopeKind.DEPENDENT_MODULES
             } else {
                 GlobalSearchScope.projectScope(project) to SearchScopeKind.DEPENDENT_MODULES
             }

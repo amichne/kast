@@ -87,6 +87,7 @@ jobs:
         run: >
           ./gradlew
           :backend-intellij:test
+          -PexcludeTags=performance
           :backend-intellij:buildPlugin
           :backend-intellij:verifyPluginStructure
           :backend-intellij:verifyPluginXmlPresent

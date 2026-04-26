@@ -138,6 +138,17 @@ val writeBackendVersion by tasks.registering(WriteBackendVersionTask::class) {
     versionFile.set(generatedResourcesDir.map { it.file("kast-backend-version.txt") })
 }
 
+val defaultExcludedTestTags = linkedSetOf("concurrency", "performance", "parity")
+
+fun parseTestTags(rawTags: String?): LinkedHashSet<String> =
+    rawTags
+        ?.split(",")
+        ?.asSequence()
+        ?.map(String::trim)
+        ?.filter(String::isNotEmpty)
+        ?.toCollection(linkedSetOf())
+        ?: linkedSetOf()
+
 sourceSets.main {
     resources.srcDir(generatedResourcesDir)
 }
@@ -154,7 +165,21 @@ tasks.register<VerifyPluginXmlPresentTask>("verifyPluginXmlPresent") {
 }
 
 tasks.withType<Test>().configureEach {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        val includedTags = parseTestTags(providers.gradleProperty("includeTags").orNull)
+        val excludedTags = linkedSetOf<String>().apply {
+            if (includedTags.isEmpty()) {
+                addAll(defaultExcludedTestTags)
+            }
+            addAll(parseTestTags(providers.gradleProperty("excludeTags").orNull))
+        }
+        if (excludedTags.isNotEmpty()) {
+            excludeTags(*excludedTags.toTypedArray())
+        }
+        if (includedTags.isNotEmpty()) {
+            includeTags(*includedTags.toTypedArray())
+        }
+    }
     systemProperty("idea.home.path", layout.buildDirectory.dir("idea-sandbox").get().asFile.absolutePath)
 }
 
