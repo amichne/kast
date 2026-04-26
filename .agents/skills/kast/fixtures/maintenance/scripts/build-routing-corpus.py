@@ -350,7 +350,7 @@ def parse_html_export(path: Path) -> list[RoutingCase]:
                 bootstrap_probes += 1
             if SCHEMA_FRICTION_RE.search(content_text) and KAST_COMMAND_RE.search(content_text):
                 schema_shape_frictions += 1
-            if MUTATION_VALIDATION_RE.search(content_text):
+            if MUTATION_VALIDATION_RE.search(content_text) and KAST_COMMAND_RE.search(content_text):
                 mutation_validation_failures += 1
         if tool_name in {"grep", "rg"}:
             grep_like_commands += 1
