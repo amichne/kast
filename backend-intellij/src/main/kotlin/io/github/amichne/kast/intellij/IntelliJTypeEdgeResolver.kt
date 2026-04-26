@@ -41,15 +41,12 @@ internal class IntelliJTypeEdgeResolver(
         }
 
     override fun supertypeEdges(target: PsiElement): List<TypeHierarchyEdge> {
-        val fqNames = ApplicationManager.getApplication().runReadAction<List<String>> {
-            directSupertypeNames(target)
-        }
-        return fqNames.mapNotNull { fqName ->
-            ApplicationManager.getApplication().runReadAction<TypeHierarchyEdge?> {
-                // projectScope already limits to project content — no further path filter needed.
-                val scope = GlobalSearchScope.projectScope(project)
-                val psiClass = JavaPsiFacade.getInstance(project).findClass(fqName, scope)
-                    ?: return@runReadAction null
+        return ApplicationManager.getApplication().runReadAction<List<TypeHierarchyEdge>> {
+            val fqNames = directSupertypeNames(target)
+            val scope = GlobalSearchScope.projectScope(project)
+            val facade = JavaPsiFacade.getInstance(project)
+            fqNames.mapNotNull { fqName ->
+                val psiClass = facade.findClass(fqName, scope) ?: return@mapNotNull null
                 TypeHierarchyEdge(target = psiClass, symbol = symbolFor(psiClass))
             }
         }

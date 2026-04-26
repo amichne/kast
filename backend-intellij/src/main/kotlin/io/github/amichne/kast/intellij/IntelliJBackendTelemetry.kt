@@ -24,9 +24,15 @@ internal enum class IntelliJTelemetryScope {
     RENAME,
     REFERENCES,
     CALL_HIERARCHY,
+    TYPE_HIERARCHY,
+    IMPLEMENTATIONS,
+    COMPLETIONS,
+    SEMANTIC_INSERTION_POINT,
     DIAGNOSTICS,
+    OPTIMIZE_IMPORTS,
     RESOLVE,
     WORKSPACE_FILES,
+    WORKSPACE_SYMBOL_SEARCH,
     READ_ACTION,
     FILE_OUTLINE,
     APPLY_EDITS,
@@ -38,9 +44,15 @@ internal enum class IntelliJTelemetryScope {
             "rename" -> RENAME
             "references", "find-references", "find_references" -> REFERENCES
             "call-hierarchy", "call_hierarchy", "callhierarchy" -> CALL_HIERARCHY
+            "type-hierarchy", "type_hierarchy", "typehierarchy" -> TYPE_HIERARCHY
+            "implementations" -> IMPLEMENTATIONS
+            "completions" -> COMPLETIONS
+            "semantic-insertion-point", "semantic_insertion_point", "semanticinsertionpoint" -> SEMANTIC_INSERTION_POINT
             "diagnostics" -> DIAGNOSTICS
+            "optimize-imports", "optimize_imports", "optimizeimports" -> OPTIMIZE_IMPORTS
             "resolve", "symbol-resolve", "symbol_resolve" -> RESOLVE
             "workspace-files", "workspace_files", "workspacefiles" -> WORKSPACE_FILES
+            "workspace-symbol-search", "workspace_symbol_search", "workspacesymbolsearch" -> WORKSPACE_SYMBOL_SEARCH
             "read-action", "read_action", "readaction" -> READ_ACTION
             "file-outline", "file_outline", "fileoutline", "outline" -> FILE_OUTLINE
             "apply-edits", "apply_edits", "applyedits" -> APPLY_EDITS

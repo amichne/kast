@@ -7,6 +7,7 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootManager
+import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiElement
@@ -88,6 +89,9 @@ import io.github.amichne.kast.shared.hierarchy.TypeHierarchyEngine
 import io.github.amichne.kast.shared.hierarchy.ReadAccessScope
 import io.github.amichne.kast.shared.hierarchy.TraversalBudget
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
 import org.jetbrains.kotlin.analysis.api.analyze
@@ -111,6 +115,10 @@ internal class KastPluginBackend(
 
     private val readDispatcher = Dispatchers.Default.limitedParallelism(limits.maxConcurrentRequests)
     private val workspacePrefix = workspaceRoot.toString() + "/"
+    private val intellijReadAccess = object : ReadAccessScope {
+        override fun <T> run(action: () -> T): T =
+            ApplicationManager.getApplication().runReadAction<T> { action() }
+    }
 
     override suspend fun capabilities(): BackendCapabilities = BackendCapabilities(
         backendName = "intellij",
@@ -196,7 +204,8 @@ internal class KastPluginBackend(
             collectSnapshot = {
                 val file = findKtFile(query.position.filePath)
                 val target = resolveTarget(file, query.position.offset)
-                val searchScope = GlobalSearchScope.projectScope(project)
+                val visibility = target.visibility()
+                val (searchScope, scopeKind) = visibilityScopedSearch(file, visibility)
                 val refs = mutableListOf<PsiReference>()
                 ReferencesSearch.search(target, searchScope).forEach { ref ->
                     ProgressManager.checkCanceled()
@@ -209,7 +218,12 @@ internal class KastPluginBackend(
                     } else {
                         null
                     },
-                    visibility = target.visibility(),
+                    visibility = visibility,
+                    scopeKind = scopeKind,
+                    candidateFileCount = searchScope.let { scope ->
+                        FileTypeIndex.getFiles(KotlinFileType.INSTANCE, scope)
+                            .count { it.path.startsWith(workspacePrefix) }
+                    },
                 ) to refs
             },
             processItem = { ref ->
@@ -219,19 +233,20 @@ internal class KastPluginBackend(
                 if (isWorkspaceFile(location.filePath)) location else null
             },
             runInitialReadAction = { action -> runIntellijReadAction(action) },
-            runPerItemReadAction = { action -> runIntellijReadAction(action) },
+            runBatchReadAction = { action -> runIntellijReadAction(action) },
         )
         val sortedReferences = references.sortedWith(compareBy({ it.filePath }, { it.startOffset }))
+        val searchedFileCount = sortedReferences.map { it.filePath }.distinct().count()
 
         ReferencesResult(
             declaration = snapshot.declaration,
             references = sortedReferences,
             searchScope = SearchScope(
                 visibility = snapshot.visibility,
-                scope = SearchScopeKind.DEPENDENT_MODULES,
+                scope = snapshot.scopeKind,
                 exhaustive = true,
-                candidateFileCount = sortedReferences.size,
-                searchedFileCount = sortedReferences.size,
+                candidateFileCount = snapshot.candidateFileCount,
+                searchedFileCount = searchedFileCount,
             ),
         )
         }
@@ -256,11 +271,6 @@ internal class KastPluginBackend(
             project = project,
             workspacePrefix = workspacePrefix,
         )
-        val intellijReadAccess = object : ReadAccessScope {
-            override fun <T> run(action: () -> T): T =
-                com.intellij.openapi.application.ApplicationManager.getApplication()
-                    .runReadAction<T> { action() }
-        }
         val engine = CallHierarchyEngine(edgeResolver = resolver, readAccess = intellijReadAccess)
         val root = engine.buildNode(
             target = rootTarget,
@@ -280,16 +290,13 @@ internal class KastPluginBackend(
     }
 
     override suspend fun typeHierarchy(query: TypeHierarchyQuery): TypeHierarchyResult = withContext(readDispatcher) {
+        telemetry.inSpan(IntelliJTelemetryScope.TYPE_HIERARCHY, "kast.intellij.typeHierarchy") {
         val rootTarget = readAction {
             val file = findKtFile(query.position.filePath)
             val resolved = resolveTarget(file, query.position.offset)
             resolved.typeHierarchyDeclaration() ?: resolved
         }
         val resolver = IntelliJTypeEdgeResolver(project = project)
-        val intellijReadAccess = object : ReadAccessScope {
-            override fun <T> run(action: () -> T): T =
-                ApplicationManager.getApplication().runReadAction<T> { action() }
-        }
         val engine = TypeHierarchyEngine(edgeResolver = resolver, readAccess = intellijReadAccess)
         val budget = TypeHierarchyBudget(maxResults = query.maxResults.coerceAtLeast(1))
         val root = engine.buildNode(
@@ -301,9 +308,11 @@ internal class KastPluginBackend(
             currentDepth = 0,
         )
         TypeHierarchyResult(root = root, stats = budget.toStats())
+        }
     }
 
     override suspend fun implementations(query: ImplementationsQuery): ImplementationsResult = withContext(readDispatcher) {
+        telemetry.inSpan(IntelliJTelemetryScope.IMPLEMENTATIONS, "kast.intellij.implementations") {
         val rootTarget = readAction {
             val file = findKtFile(query.position.filePath)
             val resolved = resolveTarget(file, query.position.offset)
@@ -343,6 +352,7 @@ internal class KastPluginBackend(
             ),
             exhaustive = exhaustive,
         )
+        }
     }
 
     override suspend fun codeActions(query: CodeActionsQuery): CodeActionsResult = withContext(readDispatcher) {
@@ -353,6 +363,7 @@ internal class KastPluginBackend(
     }
 
     override suspend fun completions(query: CompletionsQuery): CompletionsResult = withContext(readDispatcher) {
+        telemetry.inSpan(IntelliJTelemetryScope.COMPLETIONS, "kast.intellij.completions") {
         readAction {
             val file = findKtFile(query.position.filePath)
             val kindFilter = query.kindFilter
@@ -390,6 +401,7 @@ internal class KastPluginBackend(
                 items = capped,
                 exhaustive = deduped.size <= capped.size,
             )
+        }
         }
     }
 
@@ -440,43 +452,46 @@ internal class KastPluginBackend(
     override suspend fun semanticInsertionPoint(
         query: SemanticInsertionQuery,
     ): SemanticInsertionResult = withContext(readDispatcher) {
+        telemetry.inSpan(IntelliJTelemetryScope.SEMANTIC_INSERTION_POINT, "kast.intellij.semanticInsertionPoint") {
         readAction {
             val file = findKtFile(query.position.filePath)
             SemanticInsertionPointResolver.resolve(file, query)
+        }
         }
     }
 
     override suspend fun diagnostics(query: DiagnosticsQuery): DiagnosticsResult = withContext(readDispatcher) {
         telemetry.inSpan(IntelliJTelemetryScope.DIAGNOSTICS, "kast.intellij.diagnostics") {
-            val diagnostics = query.filePaths
-                .sorted()
-                .flatMap { filePath ->
-                    runCatching {
-                        timedReadAction(telemetry, IntelliJTelemetryScope.DIAGNOSTICS, "kast.intellij.diagnostics.file") {
-                            val file = findKtFile(filePath)
-                            analyze(file) {
-                                file.collectDiagnostics(KaDiagnosticCheckerFilter.EXTENDED_AND_COMMON_CHECKERS)
-                            }.flatMap { diagnostic -> diagnostic.toApiDiagnostics() }
-                        }
-                    }.getOrElse { ex ->
-                        listOf(
-                            Diagnostic(
-                                location = Location(
-                                    filePath = filePath,
-                                    startOffset = 0,
-                                    endOffset = 0,
-                                    startLine = 0,
-                                    startColumn = 0,
-                                    preview = "",
+            val diagnostics = coroutineScope {
+                query.filePaths.sorted().map { filePath ->
+                    async(readDispatcher) {
+                        runCatching {
+                            timedReadAction(telemetry, IntelliJTelemetryScope.DIAGNOSTICS, "kast.intellij.diagnostics.file") {
+                                val file = findKtFile(filePath)
+                                analyze(file) {
+                                    file.collectDiagnostics(KaDiagnosticCheckerFilter.EXTENDED_AND_COMMON_CHECKERS)
+                                }.flatMap { diagnostic -> diagnostic.toApiDiagnostics() }
+                            }
+                        }.getOrElse { ex ->
+                            listOf(
+                                Diagnostic(
+                                    location = Location(
+                                        filePath = filePath,
+                                        startOffset = 0,
+                                        endOffset = 0,
+                                        startLine = 0,
+                                        startColumn = 0,
+                                        preview = "",
+                                    ),
+                                    severity = DiagnosticSeverity.ERROR,
+                                    message = ex.message ?: ex.toString(),
+                                    code = "ANALYSIS_FAILURE",
                                 ),
-                                severity = DiagnosticSeverity.ERROR,
-                                message = ex.message ?: ex.toString(),
-                                code = "ANALYSIS_FAILURE",
-                            ),
-                        )
+                            )
+                        }
                     }
-                }
-                .sortedWith(compareBy({ it.location.filePath }, { it.location.startOffset }, { it.code ?: "" }))
+                }.awaitAll().flatten()
+            }.sortedWith(compareBy({ it.location.filePath }, { it.location.startOffset }, { it.code ?: "" }))
 
             DiagnosticsResult(diagnostics = diagnostics)
         }
@@ -490,7 +505,10 @@ internal class KastPluginBackend(
             collectSnapshot = {
                 val file = findKtFile(query.position.filePath)
                 val target = resolveTarget(file, query.position.offset)
-                val searchScope = GlobalSearchScope.projectScope(project)
+                val visibility = target.visibility()
+                val (searchScope, scopeKind) = visibilityScopedSearch(file, visibility)
+                val candidateFileCount = FileTypeIndex.getFiles(KotlinFileType.INSTANCE, searchScope)
+                    .count { it.path.startsWith(workspacePrefix) }
                 val refs = mutableListOf<PsiReference>()
                 ReferencesSearch.search(target, searchScope).forEach { ref ->
                     ProgressManager.checkCanceled()
@@ -499,7 +517,9 @@ internal class KastPluginBackend(
                 }
                 RenameSnapshot(
                     declarationEdit = target.declarationEdit(query.newName),
-                    visibility = target.visibility(),
+                    visibility = visibility,
+                    scopeKind = scopeKind,
+                    candidateFileCount = candidateFileCount,
                 ) to refs
             },
             processItem = { ref ->
@@ -515,7 +535,7 @@ internal class KastPluginBackend(
                 )
             },
             runInitialReadAction = { action -> runIntellijReadAction(action) },
-            runPerItemReadAction = { action -> runIntellijReadAction(action) },
+            runBatchReadAction = { action -> runIntellijReadAction(action) },
         )
 
         val edits = (listOf(snapshot.declarationEdit) + referenceEdits)
@@ -531,10 +551,10 @@ internal class KastPluginBackend(
             affectedFiles = affectedFiles,
             searchScope = SearchScope(
                 visibility = snapshot.visibility,
-                scope = SearchScopeKind.DEPENDENT_MODULES,
+                scope = snapshot.scopeKind,
                 exhaustive = true,
-                candidateFileCount = edits.size,
-                searchedFileCount = edits.size,
+                candidateFileCount = snapshot.candidateFileCount,
+                searchedFileCount = affectedFiles.size,
             ),
         )
         }
@@ -549,11 +569,12 @@ internal class KastPluginBackend(
     }
 
     override suspend fun optimizeImports(query: ImportOptimizeQuery): ImportOptimizeResult = withContext(readDispatcher) {
+        telemetry.inSpan(IntelliJTelemetryScope.OPTIMIZE_IMPORTS, "kast.intellij.optimizeImports") {
         val edits = query.filePaths
             .distinct()
             .sorted()
             .flatMap { filePath ->
-                timedReadAction(telemetry, IntelliJTelemetryScope.DIAGNOSTICS, "kast.intellij.optimizeImports.file") {
+                timedReadAction(telemetry, IntelliJTelemetryScope.OPTIMIZE_IMPORTS, "kast.intellij.optimizeImports.file") {
                     ImportAnalysis.optimizeImportEdits(findKtFile(filePath))
                 }
             }
@@ -564,6 +585,7 @@ internal class KastPluginBackend(
             fileHashes = IntelliJFileHashComputer.currentHashes(affectedFiles),
             affectedFiles = affectedFiles,
         )
+        }
     }
 
     override suspend fun refresh(query: RefreshQuery): RefreshResult {
@@ -589,12 +611,13 @@ internal class KastPluginBackend(
     }
 
     override suspend fun workspaceSymbolSearch(query: WorkspaceSymbolQuery): WorkspaceSymbolResult = withContext(readDispatcher) {
+        telemetry.inSpan(IntelliJTelemetryScope.WORKSPACE_SYMBOL_SEARCH, "kast.intellij.workspaceSymbolSearch") {
         val matcher = SymbolSearchMatcher.create(query.pattern, query.regex)
         val scope = GlobalSearchScope.projectScope(project)
         val cache = PsiShortNamesCache.getInstance(project)
         val symbols = mutableListOf<Symbol>()
 
-        timedReadAction(telemetry, IntelliJTelemetryScope.DIAGNOSTICS, "kast.intellij.workspaceSymbolSearch.classes") {
+        timedReadAction(telemetry, IntelliJTelemetryScope.WORKSPACE_SYMBOL_SEARCH, "kast.intellij.workspaceSymbolSearch.readAction") {
             collectMatchingSymbols(
                 scope = scope,
                 matcher = matcher,
@@ -603,8 +626,6 @@ internal class KastPluginBackend(
                 allNames = cache.allClassNames,
                 lookupByName = cache::getClassesByName,
             )
-        }
-        timedReadAction(telemetry, IntelliJTelemetryScope.DIAGNOSTICS, "kast.intellij.workspaceSymbolSearch.methods") {
             collectMatchingSymbols(
                 scope = scope,
                 matcher = matcher,
@@ -613,8 +634,6 @@ internal class KastPluginBackend(
                 allNames = cache.allMethodNames,
                 lookupByName = cache::getMethodsByName,
             )
-        }
-        timedReadAction(telemetry, IntelliJTelemetryScope.DIAGNOSTICS, "kast.intellij.workspaceSymbolSearch.fields") {
             collectMatchingSymbols(
                 scope = scope,
                 matcher = matcher,
@@ -626,6 +645,7 @@ internal class KastPluginBackend(
         }
 
         WorkspaceSymbolResult(symbols = symbols)
+        }
     }
 
     private fun <T : PsiElement> collectMatchingSymbols(
@@ -675,14 +695,38 @@ internal class KastPluginBackend(
             ?: throw NotFoundException("Not a Kotlin file: $filePath")
     }
 
+    private fun visibilityScopedSearch(
+        file: KtFile,
+        visibility: SymbolVisibility,
+    ): Pair<GlobalSearchScope, SearchScopeKind> = when (visibility) {
+        SymbolVisibility.PRIVATE, SymbolVisibility.LOCAL -> {
+            val vf = file.virtualFile
+            GlobalSearchScope.fileScope(project, vf) to SearchScopeKind.FILE
+        }
+        SymbolVisibility.INTERNAL -> {
+            val vf = file.virtualFile
+            val module = ProjectFileIndex.getInstance(project).getModuleForFile(vf)
+            if (module != null) {
+                GlobalSearchScope.moduleScope(module) to SearchScopeKind.MODULE
+            } else {
+                GlobalSearchScope.projectScope(project) to SearchScopeKind.DEPENDENT_MODULES
+            }
+        }
+        else -> GlobalSearchScope.projectScope(project) to SearchScopeKind.DEPENDENT_MODULES
+    }
+
     private data class ReferenceSearchSnapshot(
         val declaration: Symbol?,
         val visibility: SymbolVisibility,
+        val scopeKind: SearchScopeKind,
+        val candidateFileCount: Int,
     )
 
     private data class RenameSnapshot(
         val declarationEdit: TextEdit,
         val visibility: SymbolVisibility,
+        val scopeKind: SearchScopeKind,
+        val candidateFileCount: Int,
     )
 
     companion object {
@@ -697,14 +741,23 @@ internal class KastPluginBackend(
     }
 }
 
+private const val READ_ACTION_BATCH_SIZE = 50
+
 internal inline fun <S, T, R : Any> collectInShortReadActions(
     crossinline collectSnapshot: () -> Pair<S, Collection<T>>,
     crossinline processItem: (T) -> R?,
     crossinline runInitialReadAction: (() -> Pair<S, Collection<T>>) -> Pair<S, Collection<T>>,
-    crossinline runPerItemReadAction: (() -> R?) -> R?,
+    crossinline runBatchReadAction: (() -> List<R>) -> List<R>,
 ): Pair<S, List<R>> {
     val (snapshot, items) = runInitialReadAction { collectSnapshot() }
-    val results = items.mapNotNull { item -> runPerItemReadAction { processItem(item) } }
+    val itemList = items.toList()
+    val results = mutableListOf<R>()
+    for (batch in itemList.chunked(READ_ACTION_BATCH_SIZE)) {
+        val batchResults = runBatchReadAction {
+            batch.mapNotNull { item -> processItem(item) }
+        }
+        results.addAll(batchResults)
+    }
     return snapshot to results
 }
 
