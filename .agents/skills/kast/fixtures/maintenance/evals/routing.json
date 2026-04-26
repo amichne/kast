@@ -178,6 +178,74 @@
         "grep",
         "rg"
       ]
+    },
+    {
+      "id": "parse-nested-response-shape",
+      "prompt": "A Kast `references` response has snake_case wrapper fields, but `.references[].file_path` is empty. Inspect the shape and keep tracing the Kotlin usages semantically.",
+      "expected_skill": "kast",
+      "expected_route": "@kast",
+      "allowed_ops": [
+        "kast skill references",
+        "kast skill resolve",
+        "kast skill scaffold",
+        "kast skill callers"
+      ],
+      "forbidden_ops": [
+        "grep",
+        "rg"
+      ]
+    },
+    {
+      "id": "write-validate-hash-failure",
+      "prompt": "Use `kast skill write-and-validate` for a Kotlin replacement, but if it returns `VALIDATION_ERROR: Missing expected hash for edited file`, recover safely and tell me whether the edit landed.",
+      "expected_skill": "kast",
+      "expected_route": "@kast",
+      "allowed_ops": [
+        "kast skill write-and-validate",
+        "kast skill diagnostics"
+      ],
+      "forbidden_ops": [
+        "sed",
+        "grep",
+        "rg"
+      ]
+    },
+    {
+      "id": "selected-skill-no-maintenance-thrash",
+      "prompt": "The Kast skill is already selected for a Kotlin flow-tracing task. Start with the first useful semantic command instead of reading `.kast-version`, maintenance evals, or the OpenAPI fixture.",
+      "expected_skill": "kast",
+      "expected_route": "@kast",
+      "allowed_ops": [
+        "bash .agents/skills/kast/scripts/kast-session-start.sh",
+        "kast skill workspace-files",
+        "kast skill scaffold",
+        "kast skill resolve",
+        "kast skill references",
+        "kast skill callers"
+      ],
+      "forbidden_ops": [
+        ".agents/skills/kast/.kast-version",
+        ".agents/skills/kast/fixtures/maintenance/references/wrapper-openapi.yaml",
+        "grep",
+        "rg"
+      ]
+    },
+    {
+      "id": "respect-failure-response",
+      "prompt": "A Kast command returned `ok:false` with `stage`, `message`, `error_text`, and `log_file`. Use that response to decide the next step without abandoning Kast.",
+      "expected_skill": "kast",
+      "expected_route": "@kast",
+      "allowed_ops": [
+        "kast skill resolve",
+        "kast skill references",
+        "kast skill callers",
+        "kast skill scaffold",
+        "kast skill diagnostics"
+      ],
+      "forbidden_ops": [
+        "grep",
+        "rg"
+      ]
     }
   ]
 }

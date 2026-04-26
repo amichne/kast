@@ -13,6 +13,8 @@
 4. Only then inspect the binary path or maintenance fixtures.
 
 Do not start by reading `.kast-version` or the full OpenAPI fixture.
+If the helper cannot resolve a binary, stop and report that setup blocker
+instead of switching to non-semantic Kotlin search.
 
 ## Command map
 
@@ -30,9 +32,18 @@ Do not start by reading `.kast-version` or the full OpenAPI fixture.
 ## Request and response shape
 
 - Request JSON uses camelCase.
-- Response JSON uses snake_case.
+- Top-level wrapper response metadata uses snake_case.
+- Nested API model fields may keep camelCase. Common examples are
+  `symbol.fqName`, `symbol.location.filePath`, `symbol.location.startOffset`,
+  and `references[].location.filePath`.
 - Any field ending in `filePath`, `filePaths`, or `contentFile` should be an
   absolute path.
+- Check `ok` and `type` first. Failure responses include `stage`, `message`,
+  optional `error` or `error_text`, and `log_file`.
+- `rename` and `write-and-validate` requests require a `type` discriminator:
+  `RENAME_BY_SYMBOL_REQUEST`, `RENAME_BY_OFFSET_REQUEST`,
+  `CREATE_FILE_REQUEST`, `INSERT_AT_OFFSET_REQUEST`, or
+  `REPLACE_RANGE_REQUEST`.
 
 ## Common requests
 
@@ -63,6 +74,17 @@ Do not start by reading `.kast-version` or the full OpenAPI fixture.
 }'
 ```
 
+If a projection such as `.references[].file_path` returns nothing, inspect one
+item before assuming the command failed:
+
+```bash
+"$KAST_CLI_PATH" skill references '{"symbol":"EventBean","includeDeclaration":true}' \
+  | jq '{ok,type,first_reference:.references[0]}'
+```
+
+Wrapper metadata is snake_case, but nested locations use fields such as
+`location.filePath`.
+
 ### Trace callers
 
 ```bash
@@ -81,9 +103,13 @@ Do not start by reading `.kast-version` or the full OpenAPI fixture.
 "$KAST_CLI_PATH" skill scaffold '{
   "targetFile":"/abs/path/EventBean.kt",
   "targetSymbol":"EventBean",
+  "workspaceRoot":"/abs/path/project",
   "mode":"implement"
 }'
 ```
+
+`targetFile` is singular (not `filePaths`). Always include `workspaceRoot` in
+the request body. Run one `scaffold` call per file; there is no batch variant.
 
 ### Rename
 
@@ -107,6 +133,12 @@ Do not start by reading `.kast-version` or the full OpenAPI fixture.
 }'
 ```
 
+If this returns `ok:false`, `WRITE_AND_VALIDATE_FAILURE`, dirty diagnostics, or
+a validation/hash error such as `Missing expected hash for edited file`, the
+edit did not succeed. Keep the failed response in view, run `diagnostics` on the
+intended file if that helps explain the state, and report the blocker rather
+than applying a manual edit.
+
 ### Validate touched files
 
 ```bash
@@ -118,7 +150,8 @@ Do not start by reading `.kast-version` or the full OpenAPI fixture.
 ## Recovery
 
 - If a `jq` projection is wrong, inspect one item first, for example
-  `.references[0]`, before assuming field names.
+  `.references[0]`, before assuming field names. Remember that nested API model
+  fields may be camelCase even when wrapper metadata is snake_case.
 - If a symbol name is broad, add `kind`, `containingType`, or `fileHint`.
 - For large result sets, narrow the query before post-processing.
 - Never pivot to `grep` or `rg` for Kotlin identity.

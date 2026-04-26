@@ -82,6 +82,77 @@ class ParseHtmlExportTest(unittest.TestCase):
         self.assertEqual([], case.loaded_skills)
         self.assertEqual({"bash": 1}, case.tool_counts)
 
+    def test_html_export_flags_schema_friction_before_grep_fallback(self) -> None:
+        path = self.write_html(
+            """
+            <html>
+              <head><title>Copilot CLI Session</title></head>
+              <body>
+                <div>#1</div><div>User</div><div>interactive</div><div>12s</div>
+                <div>Keep tracing this Kotlin symbol with Kast after my jq projection came back empty.</div>
+                <div>#2</div><div>skill - kast</div><div>13s</div><div>{"skill":"kast"}</div>
+                <div>#3</div><div>bash - references with jq</div><div>14s</div>
+                <div>$ "$KAST_CLI_PATH" skill references '{"symbol":"EventBean"}' | jq '.references[].file_path'</div>
+                <div>empty result; maybe wrapper fields are snake_case but nested filePath is camelCase</div>
+              </body>
+            </html>
+            """.strip(),
+        )
+
+        cases = MODULE.parse_html_export(path)
+
+        self.assertEqual(1, len(cases))
+        case = cases[0]
+        self.assertEqual("schema-friction", case.classification)
+        self.assertIn("schema_shape_frictions=1", case.evidence)
+
+    def test_html_export_flags_mutation_validation_failure(self) -> None:
+        path = self.write_html(
+            """
+            <html>
+              <head><title>Copilot CLI Session</title></head>
+              <body>
+                <div>#1</div><div>User</div><div>interactive</div><div>12s</div>
+                <div>Use Kast write-and-validate to replace this Kotlin range.</div>
+                <div>#2</div><div>skill - kast</div><div>13s</div><div>{"skill":"kast"}</div>
+                <div>#3</div><div>bash - write and validate</div><div>14s</div>
+                <div>$ "$KAST_CLI_PATH" skill write-and-validate '{"type":"REPLACE_RANGE_REQUEST"}'</div>
+                <div>VALIDATION_ERROR: Missing expected hash for edited file</div>
+              </body>
+            </html>
+            """.strip(),
+        )
+
+        cases = MODULE.parse_html_export(path)
+
+        self.assertEqual(1, len(cases))
+        case = cases[0]
+        self.assertEqual("mutation-validation-friction", case.classification)
+        self.assertIn("mutation_validation_failures=1", case.evidence)
+
+    def test_html_export_flags_maintenance_thrash_after_skill_load(self) -> None:
+        path = self.write_html(
+            """
+            <html>
+              <head><title>Copilot CLI Session</title></head>
+              <body>
+                <div>#1</div><div>User</div><div>interactive</div><div>12s</div>
+                <div>Trace this Kotlin flow through the processors.</div>
+                <div>#2</div><div>skill - kast</div><div>13s</div><div>{"skill":"kast"}</div>
+                <div>#3</div><div>view - read contract fixture</div><div>14s</div>
+                <div>/repo/.agents/skills/kast/fixtures/maintenance/references/wrapper-openapi.yaml</div>
+              </body>
+            </html>
+            """.strip(),
+        )
+
+        cases = MODULE.parse_html_export(path)
+
+        self.assertEqual(1, len(cases))
+        case = cases[0]
+        self.assertEqual("maintenance-thrash", case.classification)
+        self.assertIn("contract_reference_reads=1", case.evidence)
+
     def test_semantic_abandonment_becomes_promotion_candidate(self) -> None:
         cases = [
             MODULE.RoutingCase(

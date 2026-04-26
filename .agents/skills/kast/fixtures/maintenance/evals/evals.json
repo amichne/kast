@@ -79,6 +79,78 @@
         "Anchors each pane on real symbols resolved from the target repo, not invented identifiers.",
         "Keeps the baseline (grep) and kast-augmented panes structurally aligned per turn."
       ]
+    },
+    {
+      "id": 8,
+      "prompt": "A Kast `references` response parsed oddly: top-level fields like `log_file` are snake_case, but my jq query for `.references[].file_path` was empty. Inspect the response shape and continue finding the Kotlin usages semantically.",
+      "expected_output": "A schema-recovery flow that distinguishes wrapper metadata from nested API model fields and resumes semantic traversal.",
+      "files": [],
+      "expectations": [
+        "Checks top-level `ok` and `type` before assuming the command failed.",
+        "Recognizes that nested symbol/location fields can be camelCase, such as `location.filePath` or `symbol.fqName`.",
+        "Continues with `references`, `resolve`, `callers`, or `scaffold` after fixing the projection.",
+        "Does not fall back to grep/rg because a snake_case projection was wrong."
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "Use `kast skill write-and-validate` to make a small Kotlin replacement. If it fails with `VALIDATION_ERROR: Missing expected hash for edited file`, recover safely and tell me whether the edit actually landed.",
+      "expected_output": "A mutation recovery flow that treats the wrapper failure as a failed edit, gathers diagnostics if useful, and avoids success-shaped manual edits.",
+      "files": [],
+      "expectations": [
+        "Uses `kast skill write-and-validate` with the correct request `type` discriminator and camelCase request fields.",
+        "Treats `ok=false`, `WRITE_AND_VALIDATE_FAILURE`, or a missing-hash validation message as a failed mutation.",
+        "Runs `kast skill diagnostics` on the intended or touched file when useful to characterize the current state.",
+        "Does not claim success or switch to sed/apply-patch/manual edits after the wrapper reports failure."
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "The Kast skill was selected for a Kotlin flow-tracing task. Do the first useful semantic command quickly; do not spend the opening turns reading `.kast-version`, maintenance evals, or the OpenAPI fixture.",
+      "expected_output": "A low-friction selected-skill flow that begins with setup recovery only if needed, then uses a semantic command instead of contract-reading thrash.",
+      "files": [],
+      "expectations": [
+        "Starts with the requested semantic operation or a single `kast-session-start.sh` bootstrap if the binary is unavailable.",
+        "Avoids loading `.kast-version`, `fixtures/maintenance`, or `wrapper-openapi.yaml` during normal navigation.",
+        "Uses `workspace-files`, `scaffold`, `resolve`, `references`, or `callers` to make progress in the first substantive step.",
+        "Keeps the transcript centered on Kast instead of raw search or maintenance-file inspection."
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "A Kast command returned a failure response with `ok:false`, `stage`, `message`, `error_text`, and `log_file`. Use that output to decide the next step without abandoning Kast.",
+      "expected_output": "A response-handling flow that surfaces the failure stage/message, retries or narrows only when appropriate, and does not ignore `ok:false`.",
+      "files": [],
+      "expectations": [
+        "Checks `ok` and `type` before presenting results as successful.",
+        "Summarizes the failure `stage`, `message`, and available log/error fields.",
+        "Chooses a targeted retry, narrower semantic query, diagnostics run, or explicit blocker based on the failure.",
+        "Does not discard the failed Kast response and redo the task with grep/rg."
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "I need to understand how the `DescriptorRegistry` class manages daemon lifecycle state in the kast codebase — specifically what it reads and writes to disk. Get me a structural summary so I can plan a change to its locking behavior.",
+      "expected_output": "A scaffold-rooted file understanding that uses the correct `targetFile` and `workspaceRoot` fields on the first attempt, without probing the schema or falling back to file reads.",
+      "files": [],
+      "expectations": [
+        "Uses `kast skill scaffold` with `targetFile` (singular absolute path), not `filePaths`.",
+        "Includes `workspaceRoot` in the scaffold request body.",
+        "Does not probe the schema by sending `{}` or by running `kast skill scaffold --help`.",
+        "Does not replace scaffold with grep or cat to understand the file structure."
+      ]
+    },
+    {
+      "id": 13,
+      "prompt": "Walk me through how three Kotlin files interact: `DescriptorRegistry.kt`, `WorkspaceRuntimeManager.kt`, and `KastFileOperations.kt`. I want to understand the data flow between them before I make a change to the file-locking path.",
+      "expected_output": "A multi-file semantic walkthrough that scaffolds each file individually with correct request fields, then uses references or callers to show the interaction.",
+      "files": [],
+      "expectations": [
+        "Calls `kast skill scaffold` once per file with `targetFile` (singular), not a batched `filePaths` array.",
+        "Includes `workspaceRoot` in each scaffold request.",
+        "Uses `references` or `callers` to trace actual cross-file data flow rather than reading source manually.",
+        "Does not use grep/rg to trace the interaction between files."
+      ]
     }
   ]
 }

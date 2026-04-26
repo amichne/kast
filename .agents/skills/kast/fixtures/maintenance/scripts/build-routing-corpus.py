@@ -29,6 +29,18 @@ HTML_TOOL_RE = re.compile(r"^([a-z][a-z0-9_-]*) - (.+)$")
 HTML_DURATION_RE = re.compile(r"^(?:\d+h\s+)?(?:\d+m\s+)?\d+s$")
 HTML_STYLE_OR_SCRIPT_RE = re.compile(r"<(?:style|script)\b.*?</(?:style|script)>", re.IGNORECASE | re.DOTALL)
 HTML_TAG_RE = re.compile(r"<[^>]+>")
+INIT_FRICTION_RE = re.compile(
+    r"(?:KAST_CLI_PATH\s*(?:=|is empty)|command not found|bash:\s*:\s*command not found|Unable to resolve Kast CLI path)",
+    re.IGNORECASE,
+)
+SCHEMA_FRICTION_RE = re.compile(
+    r"(?:jq|projection|file_path|filePath|snake_case|camelCase|references\[\]|\.references|empty)",
+    re.IGNORECASE,
+)
+MUTATION_VALIDATION_RE = re.compile(
+    r"(?:Missing expected hash|VALIDATION_ERROR|WRITE_AND_VALIDATE_FAILURE|ok\s*[:=]\s*false)",
+    re.IGNORECASE,
+)
 KAST_COMMAND_RE = re.compile(
     r'(?:(?:"?\$KAST_CLI_PATH"?|(?:[^\s"\']+/)?kast)\s+skill\s+'
     r'(?:resolve|references|callers|diagnostics|rename|scaffold|write-and-validate|workspace-files))'
@@ -55,6 +67,10 @@ SEMANTIC_HINTS = (
 )
 
 PROMOTION_CLASSIFICATIONS = {
+    "initialization-friction",
+    "maintenance-thrash",
+    "mutation-validation-friction",
+    "schema-friction",
     "trigger-miss",
     "loaded-but-bypassed",
     "route-via-subagent",
@@ -170,7 +186,19 @@ def classify_html_export(
     *,
     kast_command_blocks: int,
     grep_like_commands: int,
+    contract_reference_reads: int,
+    bootstrap_probes: int,
+    schema_shape_frictions: int,
+    mutation_validation_failures: int,
 ) -> str:
+    if mutation_validation_failures > 0:
+        return "mutation-validation-friction"
+    if schema_shape_frictions > 0 and kast_command_blocks > 0:
+        return "schema-friction"
+    if bootstrap_probes > 0:
+        return "initialization-friction"
+    if contract_reference_reads > 0 and "kast" in loaded_skills:
+        return "maintenance-thrash"
     if kast_command_blocks > 0 and grep_like_commands > 0:
         return "semantic-abandonment"
     if looks_semantic(prompt) and "kast" not in loaded_skills and kast_command_blocks == 0:
@@ -282,6 +310,8 @@ def parse_html_export(path: Path) -> list[RoutingCase]:
     grep_like_commands = 0
     contract_reference_reads = 0
     bootstrap_probes = 0
+    schema_shape_frictions = 0
+    mutation_validation_failures = 0
 
     for block in blocks:
         heading = block_heading(block)
@@ -316,8 +346,12 @@ def parse_html_export(path: Path) -> list[RoutingCase]:
                 kast_command_blocks += 1
             if re.search(r"\b(?:grep|rg)\b", content_text):
                 grep_like_commands += 1
-            if "KAST_CLI_PATH=" in content_text or "command not found" in content_text:
+            if INIT_FRICTION_RE.search(content_text):
                 bootstrap_probes += 1
+            if SCHEMA_FRICTION_RE.search(content_text) and KAST_COMMAND_RE.search(content_text):
+                schema_shape_frictions += 1
+            if MUTATION_VALIDATION_RE.search(content_text):
+                mutation_validation_failures += 1
         if tool_name in {"grep", "rg"}:
             grep_like_commands += 1
         if tool_name == "view" and any(
@@ -325,6 +359,10 @@ def parse_html_export(path: Path) -> list[RoutingCase]:
             for marker in (".kast-version", "wrapper-openapi.yaml")
         ):
             contract_reference_reads += 1
+        if tool_name != "bash" and SCHEMA_FRICTION_RE.search(content_text) and "kast" in loaded_skills:
+            schema_shape_frictions += 1
+        if tool_name != "bash" and MUTATION_VALIDATION_RE.search(content_text):
+            mutation_validation_failures += 1
 
     prompt = next(iter(prompts), "")
     if not prompt:
@@ -340,6 +378,10 @@ def parse_html_export(path: Path) -> list[RoutingCase]:
         tool_counts,
         kast_command_blocks=kast_command_blocks,
         grep_like_commands=grep_like_commands,
+        contract_reference_reads=contract_reference_reads,
+        bootstrap_probes=bootstrap_probes,
+        schema_shape_frictions=schema_shape_frictions,
+        mutation_validation_failures=mutation_validation_failures,
     )
     return [
         RoutingCase(
@@ -360,6 +402,8 @@ def parse_html_export(path: Path) -> list[RoutingCase]:
                 f"grep_like_commands={grep_like_commands}",
                 f"contract_reference_reads={contract_reference_reads}",
                 f"bootstrap_probes={bootstrap_probes}",
+                f"schema_shape_frictions={schema_shape_frictions}",
+                f"mutation_validation_failures={mutation_validation_failures}",
             ],
         ),
     ]

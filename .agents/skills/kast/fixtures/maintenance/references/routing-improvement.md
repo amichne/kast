@@ -49,7 +49,9 @@ The script:
 - extracts visible prompts, skill loads, and tool traces from HTML-only exports
 - redacts absolute paths and session identifiers
 - classifies cases such as `trigger-miss`, `loaded-but-bypassed`,
-  `semantic-abandonment`, `route-via-subagent`, and `config-drift`
+  `semantic-abandonment`, `schema-friction`,
+  `mutation-validation-friction`, `initialization-friction`,
+  `maintenance-thrash`, `route-via-subagent`, and `config-drift`
 - emits promotion candidates in the same shape as the checked-in eval corpus
 
 ## Review the output
@@ -77,6 +79,10 @@ Good routing evals:
 - state the expected skill and route
 - encode recovery expectations when the first Kast attempt hits setup friction
   or a noisy JSON result
+- distinguish top-level wrapper response fields from nested API model fields
+  when the observed failure was schema/projection friction
+- preserve failed mutation responses such as validation/hash errors as failed
+  edits instead of turning them into success-shaped manual edits
 - forbid raw `grep` / `rg` for semantic Kotlin work
 - stay generic enough to survive codebase churn
 
