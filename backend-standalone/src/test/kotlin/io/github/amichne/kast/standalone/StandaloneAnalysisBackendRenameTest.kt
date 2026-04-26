@@ -460,6 +460,66 @@ class StandaloneAnalysisBackendRenameTest {
     }
 
     @Test
+    fun `rename after targeted refresh observes external rewrite before file is loaded`(): TestResult = runTest {
+        val sourceFile = writeFile(
+            relativePath = "src/main/kotlin/sample/Greeter.kt",
+            content = """
+                package sample
+
+                fun greet(): String = "hi"
+
+                fun use(): String = greet()
+            """.trimIndent() + "\n",
+        )
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "sources",
+        )
+        session.use { session ->
+            session.awaitInitialSourceIndex()
+            val backend = StandaloneAnalysisBackend(
+                workspaceRoot = workspaceRoot,
+                limits = ServerLimits(
+                    maxResults = 100,
+                    requestTimeoutMillis = 30_000,
+                    maxConcurrentRequests = 4,
+                ),
+                session = session,
+            )
+
+            sourceFile.writeText(
+                """
+                    package sample
+
+                    fun welcome(): String = "hi"
+
+                    fun use(): String = welcome()
+                """.trimIndent() + "\n",
+            )
+
+            backend.refresh(RefreshQuery(filePaths = listOf(sourceFile.toString())))
+
+            val refreshedRename = backend.rename(
+                RenameQuery(
+                    position = FilePosition(
+                        filePath = sourceFile.toString(),
+                        offset = sourceFile.readText().indexOf("welcome"),
+                    ),
+                    newName = "salute",
+                ),
+            )
+
+            assertTrue(refreshedRename.edits.isNotEmpty())
+            assertTrue(
+                refreshedRename.edits.all { edit -> edit.newText == "salute" },
+                "Expected targeted refresh rename edits to use the refreshed symbol. Actual edits: ${refreshedRename.edits}",
+            )
+        }
+    }
+
+    @Test
     fun `apply edits updates identifier index without loading full Kotlin file map`(): TestResult = runTest {
         val declarationFile = writeFile(
             relativePath = "src/main/kotlin/sample/Greeter.kt",

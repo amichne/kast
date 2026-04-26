@@ -8,6 +8,7 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.fileTypes.BinaryFileTypeDecompilers
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.platform.syntax.psi.CommonElementTypeConverterFactory
 import com.intellij.platform.syntax.psi.ElementTypeConverters
@@ -294,18 +295,19 @@ internal class StandaloneAnalysisSession(
                 targetedKtFile = targetedKtFilesByPath[normalizedPath],
             )
         }
-        val virtualFileManager = VirtualFileManager.getInstance()
-        normalizedPaths.forEach { normalizedPath ->
-            virtualFileManager.refreshAndFindFileByNioPath(normalizedPath.toJavaPath())
+        val refreshedVirtualFiles = normalizedPaths.mapNotNull { normalizedPath ->
+            refreshVirtualFile(normalizedPath)
         }
 
         val fileManager = PsiManagerEx.getInstanceEx(session.project).fileManager
-        val cachedVirtualFilesToInvalidate = cachedEntriesByPath.values.asSequence()
-            .flatMap { cachedEntries ->
-                sequenceOf(cachedEntries.ktFile, cachedEntries.targetedKtFile)
-                    .filterNotNull()
-                    .mapNotNull { ktFile -> ktFile.virtualFile }
-            }
+        val cachedVirtualFilesToInvalidate = (
+            cachedEntriesByPath.values.asSequence()
+                .flatMap { cachedEntries ->
+                    sequenceOf(cachedEntries.ktFile, cachedEntries.targetedKtFile)
+                        .filterNotNull()
+                        .mapNotNull { ktFile -> ktFile.virtualFile }
+                } + refreshedVirtualFiles.asSequence()
+            )
             .distinct()
             .toList()
         if (cachedVirtualFilesToInvalidate.isNotEmpty()) {
@@ -317,6 +319,21 @@ internal class StandaloneAnalysisSession(
         }
 
         return cachedEntriesByPath
+    }
+
+    private fun refreshVirtualFile(normalizedPath: NormalizedPath): com.intellij.openapi.vfs.VirtualFile? {
+        val filePath = normalizedPath.toJavaPath()
+        val virtualFileManager = VirtualFileManager.getInstance()
+        val virtualFile = virtualFileManager.findFileByNioPath(filePath)
+                          ?: virtualFileManager.refreshAndFindFileByNioPath(filePath)
+                          ?: return null
+        VfsUtil.markDirtyAndRefresh(
+            false,
+            false,
+            false,
+            virtualFile,
+        )
+        return virtualFile
     }
 
     /**
