@@ -236,7 +236,7 @@ internal class KastPluginBackend(
             runBatchReadAction = { action -> runIntellijReadAction(action) },
         )
         val sortedReferences = references.sortedWith(compareBy({ it.filePath }, { it.startOffset }))
-        val searchedFileCount = sortedReferences.map { it.filePath }.distinct().count()
+        val searchedFileCount = snapshot.candidateFileCount
 
         ReferencesResult(
             declaration = snapshot.declaration,
