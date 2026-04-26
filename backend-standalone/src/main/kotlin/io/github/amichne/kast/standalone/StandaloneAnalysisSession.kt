@@ -201,36 +201,12 @@ internal class StandaloneAnalysisSession(
         }
 
         analysisSessionLock.write {
-            val cachedEntriesByPath = normalizedPaths.associateWith { normalizedPath ->
-                ktFilesByPath[normalizedPath] to targetedKtFilesByPath[normalizedPath]
-            }
-            val virtualFileManager = VirtualFileManager.getInstance()
-            normalizedPaths.forEach { normalizedPath ->
-                virtualFileManager.refreshAndFindFileByNioPath(normalizedPath.toJavaPath())
-            }
-            val fileManager = PsiManagerEx.getInstanceEx(session.project).fileManager
-            val cachedVirtualFilesToInvalidate = normalizedPaths.asSequence()
-                .flatMap { normalizedPath ->
-                    cachedEntriesByPath.getValue(normalizedPath)
-                        .toList()
-                        .filterNotNull()
-                        .mapNotNull { ktFile -> ktFile.virtualFile }
-                        .asSequence()
-                }
-                .distinct()
-                .toList()
-            if (cachedVirtualFilesToInvalidate.isNotEmpty()) {
-                ApplicationManager.getApplication().runWriteAction {
-                    cachedVirtualFilesToInvalidate.forEach { virtualFile ->
-                        fileManager.setViewProvider(virtualFile, null)
-                    }
-                }
-            }
+            val cachedEntriesByPath = refreshVirtualFilesAndInvalidateCachedPsi(normalizedPaths)
 
             normalizedPaths.forEach { normalizedPath ->
-                val (cachedKtFile, cachedTargetedKtFile) = cachedEntriesByPath.getValue(normalizedPath)
-                val hadKtFileEntry = cachedKtFile != null
-                val hadTargetedEntry = cachedTargetedKtFile != null
+                val cachedEntries = cachedEntriesByPath.getValue(normalizedPath)
+                val hadKtFileEntry = cachedEntries.ktFile != null
+                val hadTargetedEntry = cachedEntries.targetedKtFile != null
                 ktFilesByPath.remove(normalizedPath)
                 targetedKtFilesByPath.remove(normalizedPath)
                 ktFileLastModifiedMillisByPath.remove(normalizedPath)
@@ -277,8 +253,11 @@ internal class StandaloneAnalysisSession(
             attributes = mapOf("kast.session.refreshedFileCount" to normalizedPaths.size),
         ) {
             analysisSessionLock.write {
+                refreshVirtualFilesAndInvalidateCachedPsi(normalizedPaths)
                 normalizedPaths.forEach { normalizedPath ->
-                    VirtualFileManager.getInstance().refreshAndFindFileByNioPath(normalizedPath.toJavaPath())
+                    ktFilesByPath.remove(normalizedPath)
+                    targetedKtFilesByPath.remove(normalizedPath)
+                    ktFileLastModifiedMillisByPath.remove(normalizedPath)
                 }
 
                 refreshStructureLocked()
@@ -299,6 +278,45 @@ internal class StandaloneAnalysisSession(
         refreshSourceIdentifierIndex(normalizedPaths)
         targetedCandidatePathsByLookupKey.clear()
         return buildRefreshResult(normalizedPaths, fullRefresh = false)
+    }
+
+    private data class CachedKtFileEntries(
+        val ktFile: KtFile?,
+        val targetedKtFile: KtFile?,
+    )
+
+    private fun refreshVirtualFilesAndInvalidateCachedPsi(
+        normalizedPaths: Collection<NormalizedPath>,
+    ): Map<NormalizedPath, CachedKtFileEntries> {
+        val cachedEntriesByPath = normalizedPaths.associateWith { normalizedPath ->
+            CachedKtFileEntries(
+                ktFile = ktFilesByPath[normalizedPath],
+                targetedKtFile = targetedKtFilesByPath[normalizedPath],
+            )
+        }
+        val virtualFileManager = VirtualFileManager.getInstance()
+        normalizedPaths.forEach { normalizedPath ->
+            virtualFileManager.refreshAndFindFileByNioPath(normalizedPath.toJavaPath())
+        }
+
+        val fileManager = PsiManagerEx.getInstanceEx(session.project).fileManager
+        val cachedVirtualFilesToInvalidate = cachedEntriesByPath.values.asSequence()
+            .flatMap { cachedEntries ->
+                sequenceOf(cachedEntries.ktFile, cachedEntries.targetedKtFile)
+                    .filterNotNull()
+                    .mapNotNull { ktFile -> ktFile.virtualFile }
+            }
+            .distinct()
+            .toList()
+        if (cachedVirtualFilesToInvalidate.isNotEmpty()) {
+            ApplicationManager.getApplication().runWriteAction {
+                cachedVirtualFilesToInvalidate.forEach { virtualFile ->
+                    fileManager.setViewProvider(virtualFile, null)
+                }
+            }
+        }
+
+        return cachedEntriesByPath
     }
 
     /**

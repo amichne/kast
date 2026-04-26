@@ -6,6 +6,7 @@ import io.github.amichne.kast.api.validation.FileHashing
 import io.github.amichne.kast.api.contract.MutationCapability
 import io.github.amichne.kast.api.contract.ApplyEditsQuery
 import io.github.amichne.kast.api.contract.ReferencesQuery
+import io.github.amichne.kast.api.contract.RefreshQuery
 import io.github.amichne.kast.api.contract.RenameQuery
 import io.github.amichne.kast.api.contract.ServerLimits
 import kotlinx.coroutines.test.TestResult
@@ -384,6 +385,76 @@ class StandaloneAnalysisBackendRenameTest {
                     usageFile.readText(),
                     secondaryUsageFile.readText(),
                 ),
+            )
+        }
+    }
+
+    @Test
+    fun `rename after targeted refresh observes external file rewrite`(): TestResult = runTest {
+        val sourceFile = writeFile(
+            relativePath = "src/main/kotlin/sample/Greeter.kt",
+            content = """
+                package sample
+
+                fun greet(): String = "hi"
+
+                fun use(): String = greet()
+            """.trimIndent() + "\n",
+        )
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "sources",
+        )
+        session.use { session ->
+            val backend = StandaloneAnalysisBackend(
+                workspaceRoot = workspaceRoot,
+                limits = ServerLimits(
+                    maxResults = 100,
+                    requestTimeoutMillis = 30_000,
+                    maxConcurrentRequests = 4,
+                ),
+                session = session,
+            )
+
+            val initialRename = backend.rename(
+                RenameQuery(
+                    position = FilePosition(
+                        filePath = sourceFile.toString(),
+                        offset = sourceFile.readText().indexOf("greet"),
+                    ),
+                    newName = "initialGreeting",
+                ),
+            )
+            assertTrue(initialRename.edits.isNotEmpty())
+
+            sourceFile.writeText(
+                """
+                    package sample
+
+                    fun welcome(): String = "hi"
+
+                    fun use(): String = welcome()
+                """.trimIndent() + "\n",
+            )
+
+            backend.refresh(RefreshQuery(filePaths = listOf(sourceFile.toString())))
+
+            val refreshedRename = backend.rename(
+                RenameQuery(
+                    position = FilePosition(
+                        filePath = sourceFile.toString(),
+                        offset = sourceFile.readText().indexOf("welcome"),
+                    ),
+                    newName = "salute",
+                ),
+            )
+
+            assertTrue(refreshedRename.edits.isNotEmpty())
+            assertTrue(
+                refreshedRename.edits.all { edit -> edit.newText == "salute" },
+                "Expected targeted refresh rename edits to use the refreshed symbol. Actual edits: ${refreshedRename.edits}",
             )
         }
     }
