@@ -10,7 +10,7 @@ planned edit is safe to apply.
 `kast` has two independent runtime modes:
 
 - **Standalone CLI + backend** — install the `kast` CLI and run
-  `kast-standalone` to start the analysis backend. Fully independent from
+  `kast daemon start` to start the analysis backend. Fully independent from
   IntelliJ; works in terminals, CI, and headless agents.
 - **IntelliJ plugin-backed runtime** — runs inside IntelliJ IDEA and reuses the
   IDE's already-open project model, indexes, and analysis session.
@@ -37,13 +37,13 @@ Then start the standalone backend before running analysis commands:
 
 ```console
 # Start the backend (keep running in background or separate terminal)
-kast-standalone --workspace-root=/path/to/your/workspace
+kast daemon start --workspace-root=/path/to/your/workspace
 
 # Once READY, run commands from another shell
 kast resolve --workspace-root=/path/to/your/workspace --file-path=... --offset=42
 ```
 
-If IntelliJ with the plugin is already open on the project, skip `kast-standalone` —
+If IntelliJ with the plugin is already open on the project, skip `kast daemon start` —
 the CLI connects to the IDE's backend automatically.
 
 ## Why `kast` instead of text search?

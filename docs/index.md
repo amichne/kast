@@ -83,7 +83,7 @@ Install the CLI, start a backend, then run your first query.
 # Or: curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh | bash
 
 # 2. Start the standalone backend (keep it running in background / separate terminal)
-kast-standalone --workspace-root=/path/to/your/project
+kast daemon start --workspace-root=/path/to/your/project
 
 # 3. Resolve a symbol (in another shell, once the backend is READY)
 kast resolve \

@@ -52,7 +52,7 @@ internal class SmokeCommandSupport(
             checks += SmokeCheck(
                 name = "workspace-ensure",
                 status = SmokeCheckStatus.SKIP,
-                message = "No runtime manager available; start a backend with: kast-standalone --workspace-root=${options.workspaceRoot}",
+                message = "No runtime manager available; start a backend with: kast daemon start --workspace-root=${options.workspaceRoot}",
             )
             return false
         }
@@ -75,7 +75,7 @@ internal class SmokeCommandSupport(
                 name = "workspace-ensure",
                 status = if (isNoBackend) SmokeCheckStatus.SKIP else SmokeCheckStatus.FAIL,
                 message = if (isNoBackend) {
-                    "No backend running for ${options.workspaceRoot}; start one with: kast-standalone --workspace-root=${options.workspaceRoot}"
+                    "No backend running for ${options.workspaceRoot}; start one with: kast daemon start --workspace-root=${options.workspaceRoot}"
                 } else {
                     failure?.message ?: "Backend connectivity check failed"
                 },

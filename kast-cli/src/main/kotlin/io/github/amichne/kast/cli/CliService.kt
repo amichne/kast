@@ -253,6 +253,62 @@ internal class CliService(
 
     suspend fun smoke(options: SmokeOptions): SmokeReport = smokeCommandSupport.run(options)
 
+    fun daemonStart(options: DaemonStartOptions): CliOutput {
+        val runtimeLibsDir = options.runtimeLibsDir
+            ?: System.getenv("KAST_STANDALONE_RUNTIME_LIBS")
+                ?.takeIf(String::isNotBlank)
+                ?.let { java.nio.file.Path.of(it) }
+            ?: System.getenv("KAST_INSTALL_ROOT")
+                ?.takeIf(String::isNotBlank)
+                ?.let { java.nio.file.Path.of(it).resolve("backends/current/runtime-libs") }
+            ?: throw CliFailure(
+                code = "DAEMON_START_ERROR",
+                message = "Cannot locate backend runtime-libs. " +
+                    "Set KAST_STANDALONE_RUNTIME_LIBS=/path/to/runtime-libs or install the backend with " +
+                    "`./kast.sh install --components=backend`.",
+            )
+
+        val classpathFile = runtimeLibsDir.resolve("classpath.txt")
+        if (!java.nio.file.Files.isRegularFile(classpathFile)) {
+            throw CliFailure(
+                code = "DAEMON_START_ERROR",
+                message = "Backend runtime-libs classpath not found at $classpathFile. " +
+                    "Reinstall with `./kast.sh install --components=backend` or set KAST_STANDALONE_RUNTIME_LIBS.",
+            )
+        }
+
+        val entries = classpathFile.toFile().readLines().filter(String::isNotBlank)
+        if (entries.isEmpty()) {
+            throw CliFailure(
+                code = "DAEMON_START_ERROR",
+                message = "Backend classpath.txt is empty at $classpathFile.",
+            )
+        }
+
+        val pathSeparator = System.getProperty("path.separator", ":")
+        val classpath = entries.joinToString(pathSeparator) { entry ->
+            runtimeLibsDir.resolve(entry).toString()
+        }
+
+        val javaExec = System.getenv("JAVA_HOME")
+            ?.takeIf(String::isNotBlank)
+            ?.let { "$it/bin/java" }
+            ?: "java"
+
+        val command = buildList {
+            add(javaExec)
+            System.getenv("JAVA_OPTS")?.takeIf(String::isNotBlank)?.let { addAll(it.split(" ")) }
+            add("-cp")
+            add(classpath)
+            add("io.github.amichne.kast.standalone.StandaloneMainKt")
+            addAll(options.standaloneArgs)
+        }
+
+        return CliOutput.ExternalProcess(
+            CliExternalProcess(command = command),
+        )
+    }
+
     suspend fun applyEdits(
         options: RuntimeCommandOptions,
         query: ApplyEditsQuery,

@@ -118,6 +118,7 @@ internal class CliCommandParser(
                 listOf("install") -> CliCommand.Install(parsed.installOptions())
                 listOf("install", "skill") -> CliCommand.InstallSkill(parsed.installSkillOptions())
                 listOf("smoke") -> CliCommand.Smoke(parsed.smokeOptions())
+                listOf("daemon", "start") -> CliCommand.DaemonStart(parsed.daemonStartOptions())
                 listOf("eval", "skill") -> CliCommand.EvalSkill(parsed.evalSkillOptions())
                 listOf("metrics", "fan-in") -> CliCommand.Metrics(
                     subcommand = MetricsSubcommand.FAN_IN,
@@ -560,6 +561,17 @@ internal data class ParsedArguments(
     }
 
     fun withoutOption(key: String): ParsedArguments = copy(options = options - key)
+
+    fun daemonStartOptions(): DaemonStartOptions {
+        val runtimeLibsDir = options["runtime-libs-dir"]
+            ?.takeIf(String::isNotBlank)
+            ?.let { Path.of(it).toAbsolutePath().normalize() }
+        val forwardedArgs = (options - "runtime-libs-dir").map { (key, value) -> "--$key=$value" }
+        return DaemonStartOptions(
+            standaloneArgs = forwardedArgs,
+            runtimeLibsDir = runtimeLibsDir,
+        )
+    }
 
     fun evalSkillOptions(): EvalSkillOptions {
         val skillDir = options["skill-dir"]

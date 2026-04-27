@@ -24,7 +24,7 @@ Use this table to decide which runtime mode matches your environment.
 ## Standalone backend
 
 The standalone backend runs as an independent JVM process outside the
-IDE. You start it explicitly with `kast-standalone`, and it keeps
+IDE. You start it explicitly with `kast daemon start`, and it keeps
 semantic state warm for subsequent `kast` commands.
 
 Use this path when you want:
@@ -44,7 +44,7 @@ Install the standalone backend from releases with:
 ./kast.sh install --components=backend
 ```
 
-This places a `kast-standalone` launcher in your `bin` directory. You
+This places the standalone backend in your install root. You
 can also install the CLI and standalone backend together:
 
 ```console title="Install CLI and standalone backend"
@@ -53,7 +53,7 @@ can also install the CLI and standalone backend together:
 
 The standalone backend works like this:
 
-1. You run `kast-standalone --workspace-root=<path>` in a terminal or
+1. You run `kast daemon start --workspace-root=<path>` in a terminal or
    background process. It starts, discovers the project, and prints
    `READY` when the analysis session is warm.
 2. You run `kast` commands from another shell, targeting the same
@@ -117,18 +117,19 @@ these rules:
 
 1. If a servable IntelliJ backend is already running for that workspace,
    the CLI prefers it.
-2. Otherwise, if a servable standalone backend (`kast-standalone`) exists
+2. Otherwise, if a servable standalone backend exists
    for that workspace, the CLI reuses it.
 3. Otherwise, the CLI returns an error: no backend is available.
 
-The CLI never starts a backend for you. You must start `kast-standalone`
+The CLI never starts a backend for you. You must run `kast daemon start`
 yourself (or have IntelliJ open with the plugin) before running analysis
 commands.
 
 `kast workspace status` reports the current backend state and helps
-diagnose connection problems. To use the standalone path, open the
-project in `kast-standalone` before running commands. To use the plugin
-path, open the project in IntelliJ IDEA with the plugin installed.
+diagnose connection problems. To use the standalone path, start the
+backend with `kast daemon start --workspace-root=<path>` before running
+commands. To use the plugin path, open the project in IntelliJ IDEA with
+the plugin installed.
 
 ## Using both
 

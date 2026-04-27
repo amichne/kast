@@ -14,7 +14,7 @@ the work). You install and start them separately.
 
 | What you want | Install this | How you start the backend |
 |---------------|--------------|---------------------------|
-| Terminal, CI, or agent work | `kast` CLI + standalone backend | `kast-standalone --workspace-root=<path>` |
+| Terminal, CI, or agent work | `kast` CLI + standalone backend | `kast daemon start --workspace-root=<path>` |
 | IDE-backed runtime (IntelliJ already open) | IntelliJ plugin | The plugin starts automatically when IntelliJ opens the project |
 | Both | CLI + plugin + standalone backend | Pick the backend you want for each session |
 
@@ -60,8 +60,8 @@ components.
     ```
 
     Installs the native `kast` launcher. You still need a backend running
-    before analysis commands work. Start `kast-standalone` separately, or
-    open the project in IntelliJ with the plugin installed.
+    before analysis commands work. Start the backend separately with
+    `kast daemon start`, or open the project in IntelliJ with the plugin installed.
 
 === "Standalone backend"
 
@@ -69,12 +69,11 @@ components.
     ./kast.sh install --components=cli,backend --non-interactive
     ```
 
-    Installs the `kast` CLI and the standalone JVM backend. A
-    `kast-standalone` launcher is placed in your `bin` directory. Start
+    Installs the `kast` CLI and the standalone JVM backend. Start
     the backend with:
 
     ```console title="Start the standalone backend"
-    kast-standalone --workspace-root=/absolute/path/to/workspace
+    kast daemon start --workspace-root=/absolute/path/to/workspace
     ```
 
 === "IntelliJ plugin only"
@@ -111,7 +110,7 @@ After installing the CLI, start the standalone backend before running
 analysis commands:
 
 ```console title="Start the standalone backend"
-kast-standalone --workspace-root=/absolute/path/to/your/workspace
+kast daemon start --workspace-root=/absolute/path/to/your/workspace
 ```
 
 Keep this running in a background terminal or as a background process.

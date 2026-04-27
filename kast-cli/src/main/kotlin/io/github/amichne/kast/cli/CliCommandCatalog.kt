@@ -94,7 +94,7 @@ internal object CliCommandCatalog {
         description = "Pin the command to a specific backend. " +
             "When omitted, intellij is preferred if running for that workspace; standalone is used if already running. " +
             "If no backend is running, the command fails with NO_BACKEND_AVAILABLE. " +
-            "Start a backend first with `kast-standalone --workspace-root=<path>` or open the project in IntelliJ with the Kast plugin installed. " +
+            "Start a backend first with `kast daemon start --workspace-root=<path>` or open the project in IntelliJ with the Kast plugin installed. " +
             "Set KAST_INTELLIJ_DISABLE=1 to prevent the plugin from starting inside IntelliJ IDEA.",
     )
     private val workspaceRootOption = CliOptionMetadata(
@@ -315,6 +315,13 @@ internal object CliCommandCatalog {
         usage = "--format=json",
         description = "Render the smoke report as json or markdown. Defaults to json.",
     )
+    private val daemonRuntimeLibsDirOption = CliOptionMetadata(
+        key = "runtime-libs-dir",
+        usage = "--runtime-libs-dir=/absolute/path/to/runtime-libs",
+        description = "Override the directory containing the backend runtime classpath. " +
+            "Defaults to KAST_STANDALONE_RUNTIME_LIBS env var, then \$KAST_INSTALL_ROOT/backends/current/runtime-libs.",
+        completionKind = CliOptionCompletionKind.DIRECTORY,
+    )
     private val metricsLimitOption = CliOptionMetadata(
         key = "limit",
         usage = "--limit=50",
@@ -353,7 +360,7 @@ internal object CliCommandCatalog {
         description = "Ensures a healthy backend exists for the workspace. " +
                 "When the IntelliJ plugin is running it is used automatically; otherwise the standalone backend is used if already running. " +
                 "Use --backend-name=standalone or --backend-name=intellij to pin to a specific backend. " +
-                "If no backend is running, the command fails — start one first with `kast-standalone --workspace-root=<path>` or open IntelliJ with the plugin installed. " +
+                "If no backend is running, the command fails — start one first with `kast daemon start --workspace-root=<path>` or open IntelliJ with the plugin installed. " +
                 "Use this command to pre-warm the runtime or check readiness ahead of analysis commands.",
             usages = listOf(
                 "$CLI_EXECUTABLE_NAME workspace ensure --workspace-root=/absolute/path/to/workspace [--backend-name=intellij|standalone] [--wait-timeout-ms=60000] [--accept-indexing=true]",
@@ -410,6 +417,60 @@ internal object CliCommandCatalog {
                 "$CLI_EXECUTABLE_NAME workspace files --workspace-root=/absolute/path/to/workspace",
                 "$CLI_EXECUTABLE_NAME workspace files --workspace-root=/absolute/path/to/workspace --include-files=true",
                 "$CLI_EXECUTABLE_NAME workspace files --workspace-root=/absolute/path/to/workspace --module-name=app --include-files=true",
+            ),
+        ),
+        CliCommandMetadata(
+            path = listOf("daemon", "start"),
+            group = CliCommandGroup.WORKSPACE_LIFECYCLE,
+            summary = "Start the standalone JVM backend for a workspace.",
+            description = "Launches the standalone JVM backend process for the given workspace. " +
+                "The process runs in the foreground; use a terminal multiplexer or background shell job to keep it alive. " +
+                "The backend runtime-libs are located from the KAST_STANDALONE_RUNTIME_LIBS environment variable or " +
+                "from \$KAST_INSTALL_ROOT/backends/current/runtime-libs. " +
+                "Pass --runtime-libs-dir to override both. " +
+                "All other options are forwarded verbatim to the backend process. " +
+                "Once running, send analysis commands with `$CLI_EXECUTABLE_NAME workspace ensure --workspace-root=<path>` to verify it is ready.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME daemon start --workspace-root=/absolute/path/to/workspace [--socket-path=...] [--runtime-libs-dir=...]",
+            ),
+            options = listOf(
+                workspaceRootOption,
+                daemonRuntimeLibsDirOption,
+                CliOptionMetadata(
+                    key = "socket-path",
+                    usage = "--socket-path=/absolute/path/to/socket",
+                    description = "Unix-domain socket path for the backend to listen on. Auto-computed from workspace-root when omitted.",
+                ),
+                CliOptionMetadata(
+                    key = "module-name",
+                    usage = "--module-name=app",
+                    description = "Source module name (passed to the backend). Defaults to 'sources'.",
+                ),
+                CliOptionMetadata(
+                    key = "source-roots",
+                    usage = "--source-roots=/abs/src/main/kotlin,/abs/src/test/kotlin",
+                    description = "Comma-separated source root paths to index (passed to the backend).",
+                ),
+                CliOptionMetadata(
+                    key = "classpath",
+                    usage = "--classpath=/abs/lib/a.jar,/abs/lib/b.jar",
+                    description = "Comma-separated classpath JAR paths (passed to the backend).",
+                ),
+                CliOptionMetadata(
+                    key = "request-timeout-ms",
+                    usage = "--request-timeout-ms=30000",
+                    description = "Request timeout in milliseconds (passed to the backend). Defaults to 30000.",
+                ),
+                CliOptionMetadata(
+                    key = "max-results",
+                    usage = "--max-results=500",
+                    description = "Maximum results the backend returns per request. Defaults to 500.",
+                ),
+            ),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME daemon start --workspace-root=/absolute/path/to/workspace",
+                "$CLI_EXECUTABLE_NAME daemon start --workspace-root=/absolute/path/to/workspace --module-name=myApp",
+                "$CLI_EXECUTABLE_NAME daemon start --workspace-root=/absolute/path/to/workspace --runtime-libs-dir=/path/to/runtime-libs",
             ),
         ),
         CliCommandMetadata(

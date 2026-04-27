@@ -110,7 +110,7 @@ class WorkspaceRuntimeManagerTest {
 
         checkNotNull(failure) { "Expected ensureRuntime to fail when no backend is running" }
         assertEquals("NO_BACKEND_AVAILABLE", failure.code)
-        assertTrue(failure.message.contains("kast-standalone"))
+        assertTrue(failure.message.contains("kast daemon start"))
     }
 
     @Test
@@ -127,7 +127,7 @@ class WorkspaceRuntimeManagerTest {
 
         checkNotNull(failure) { "Expected ensureRuntime to fail when no backend is running" }
         assertEquals("NO_BACKEND_AVAILABLE", failure.code)
-        assertTrue(failure.message.contains("kast-standalone"))
+        assertTrue(failure.message.contains("kast daemon start"))
     }
 
     @Test
@@ -236,7 +236,7 @@ class WorkspaceRuntimeManagerTest {
 
         checkNotNull(failure) { "Expected NO_BACKEND_AVAILABLE when no backend is running" }
         assertEquals("NO_BACKEND_AVAILABLE", failure.code)
-        assertTrue(failure.message.contains("kast-standalone"))
+        assertTrue(failure.message.contains("kast daemon start"))
     }
 
     @Test
@@ -253,7 +253,7 @@ class WorkspaceRuntimeManagerTest {
 
         checkNotNull(failure) { "Expected NO_BACKEND_AVAILABLE failure" }
         assertEquals("NO_BACKEND_AVAILABLE", failure.code)
-        assertTrue(failure.message.contains("kast-standalone"))
+        assertTrue(failure.message.contains("kast daemon start"))
     }
 
     @Test
@@ -270,7 +270,7 @@ class WorkspaceRuntimeManagerTest {
 
         checkNotNull(failure) { "Expected NO_BACKEND_AVAILABLE failure when no backend running" }
         assertEquals("NO_BACKEND_AVAILABLE", failure.code)
-        assertTrue(failure.message.contains("kast-standalone"))
+        assertTrue(failure.message.contains("kast daemon start"))
     }
 
     @Test

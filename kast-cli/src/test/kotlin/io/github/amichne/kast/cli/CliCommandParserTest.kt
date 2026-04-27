@@ -6,6 +6,7 @@ import io.github.amichne.kast.api.contract.SymbolKind
 import io.github.amichne.kast.api.contract.TypeHierarchyDirection
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -359,18 +360,33 @@ class CliCommandParserTest {
     }
 
     @Test
-    fun `daemon start is unknown`() {
-        val failure = assertThrows<CliFailure> {
-            parser.parse(
-                arrayOf(
-                    "daemon",
-                    "start",
-                    "--workspace-root=$tempDir",
-                ),
-            )
-        }
+    fun `daemon start parses workspace root`() {
+        val command = parser.parse(
+            arrayOf(
+                "daemon",
+                "start",
+                "--workspace-root=$tempDir",
+            ),
+        ) as CliCommand.DaemonStart
 
-        assertEquals("CLI_USAGE", failure.code)
+        assertTrue(command.options.standaloneArgs.any { it.contains("workspace-root") })
+        assertNull(command.options.runtimeLibsDir)
+    }
+
+    @Test
+    fun `daemon start passes runtime-libs-dir when provided`() {
+        val runtimeLibsDir = tempDir.resolve("runtime-libs")
+        val command = parser.parse(
+            arrayOf(
+                "daemon",
+                "start",
+                "--workspace-root=$tempDir",
+                "--runtime-libs-dir=$runtimeLibsDir",
+            ),
+        ) as CliCommand.DaemonStart
+
+        assertEquals(runtimeLibsDir, command.options.runtimeLibsDir)
+        assertTrue(command.options.standaloneArgs.none { it.contains("runtime-libs-dir") })
     }
 
     @Test

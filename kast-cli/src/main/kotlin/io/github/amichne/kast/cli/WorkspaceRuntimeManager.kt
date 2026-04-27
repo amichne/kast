@@ -99,7 +99,7 @@ internal class WorkspaceRuntimeManager(
         throw CliFailure(
             code = "NO_BACKEND_AVAILABLE",
             message = "No backend is running for ${options.workspaceRoot}. " +
-                "Start with: kast-standalone --workspace-root=${options.workspaceRoot}",
+                "Start with: kast daemon start --workspace-root=${options.workspaceRoot}",
         )
     }
 

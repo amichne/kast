@@ -45,6 +45,7 @@ internal sealed interface CliCommand {
     data class Install(val options: InstallOptions) : CliCommand
     data class InstallSkill(val options: InstallSkillOptions) : CliCommand
     data class Smoke(val options: SmokeOptions) : CliCommand
+    data class DaemonStart(val options: DaemonStartOptions) : CliCommand
     data class Skill(val name: SkillWrapperName, val rawInput: String) : CliCommand
     data class EvalSkill(val options: EvalSkillOptions) : CliCommand
     data class Metrics(

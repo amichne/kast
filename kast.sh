@@ -819,23 +819,32 @@ _install_standalone_backend() {
   mkdir -p "$(dirname -- "$backend_release_dir")"
   mv "${staging_dir}/kast-standalone-extracted" "$backend_release_dir"
 
-  local launcher="${backend_release_dir}/kast-standalone"
-  [[ -f "$launcher" ]] || die "Installed backend archive did not contain kast-standalone launcher at expected path: ${launcher}"
-  chmod +x "$launcher"
-
   local current_link="${backend_dir}/current"
   ln -sfn "$backend_release_dir" "$current_link"
 
-  mkdir -p "$bin_dir"
-  {
-    printf '#!/usr/bin/env bash\n'
-    printf 'set -euo pipefail\n'
-    printf 'exec "%s/backends/current/kast-standalone" "$@"\n' "$install_root"
-  } > "${bin_dir}/kast-standalone"
-  chmod +x "${bin_dir}/kast-standalone"
+  # Export KAST_STANDALONE_RUNTIME_LIBS so that `kast daemon start` can locate the backend
+  local runtime_libs_dir="${backend_release_dir}/runtime-libs"
+  local rc_file; rc_file="$(_install_resolve_shell_rc_file)"
+  if [[ -n "$rc_file" ]]; then
+    mkdir -p "$(dirname -- "$rc_file")"
+    touch "$rc_file"
+    if grep -q "KAST_STANDALONE_RUNTIME_LIBS" "$rc_file"; then
+      # Replace existing KAST_STANDALONE_RUNTIME_LIBS line
+      local tmp_rc; tmp_rc="$(mktemp)"
+      grep -v "KAST_STANDALONE_RUNTIME_LIBS" "$rc_file" > "$tmp_rc" || true
+      printf 'export KAST_STANDALONE_RUNTIME_LIBS="%s"\n' "$runtime_libs_dir" >> "$tmp_rc"
+      mv "$tmp_rc" "$rc_file"
+      log_step "Updated KAST_STANDALONE_RUNTIME_LIBS in ${rc_file}"
+    else
+      printf '\nexport KAST_STANDALONE_RUNTIME_LIBS="%s"\n' "$runtime_libs_dir" >> "$rc_file"
+      log_success "Set KAST_STANDALONE_RUNTIME_LIBS in ${rc_file}"
+    fi
+  else
+    log_note "Set KAST_STANDALONE_RUNTIME_LIBS=${runtime_libs_dir} to use kast daemon start."
+  fi
 
   log_success "Standalone backend installed to ${backend_release_dir}"
-  log_note "Start with: kast-standalone --workspace-root=/absolute/path/to/workspace"
+  log_note "Start with: kast daemon start --workspace-root=/absolute/path/to/workspace"
   return 0
 }
 
@@ -1115,7 +1124,7 @@ USAGE
     if _install_path_contains "$bin_dir"; then
       log_step "Try: kast --help"
       log_step "Start a backend before running analysis commands:"
-      log_step "  kast-standalone --workspace-root=/absolute/path/to/workspace  (standalone JVM backend)"
+      log_step "  kast daemon start --workspace-root=/absolute/path/to/workspace  (standalone JVM backend)"
       log_step "  OR open IntelliJ IDEA with the kast plugin installed"
       log_step "Then run commands e.g.: kast references ..."
       if [[ "$install_intellij" != "true" && "$install_standalone" != "true" ]]; then
@@ -1124,14 +1133,14 @@ USAGE
     else
       log_note "Export PATH=\"${bin_dir}:\$PATH\""
       log_note "Then run: kast --help"
-      log_note "Start a backend: kast-standalone --workspace-root=<path>"
+      log_note "Start a backend: kast daemon start --workspace-root=<path>"
     fi
   fi
   if [[ "$install_intellij" == "true" ]]; then
     log_step "IntelliJ plugin: ${install_root}/plugins/"
   fi
   if [[ "$install_standalone" == "true" ]]; then
-    log_success "Standalone backend: ${bin_dir}/kast-standalone"
+    log_success "Standalone backend: ${install_root}/backends/current/"
     log_note "Backends dir: ${install_root}/backends/"
   fi
 }
