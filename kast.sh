@@ -322,7 +322,7 @@ _build_backend() {
   _build_run_gradle_tasks_with_retry kast-cli:syncRuntimeLibs stageBackendDist buildBackendPortableZip
 
   log_step "Verifying staged backend tree in ${BACKEND_PORTABLE_DIST_DIR}"
-  [[ -x "${BACKEND_PORTABLE_DIST_DIR}/backend-standalone" ]]          || die "Missing staged backend-standalone launcher"
+  [[ -x "${BACKEND_PORTABLE_DIST_DIR}/kast-standalone" ]]             || die "Missing staged backend-standalone launcher"
   [[ -d "${BACKEND_PORTABLE_DIST_DIR}/runtime-libs" ]]                || die "Missing staged runtime-libs directory"
   [[ -f "${BACKEND_PORTABLE_DIST_DIR}/runtime-libs/classpath.txt" ]]  || die "Missing staged runtime classpath file"
   local jars=()
@@ -363,7 +363,7 @@ _build_clean_stale_outputs() {
   fi
 
   local backend_dir="${DIST_ROOT}/backend"
-  if [[ -d "$backend_dir" && (! -f "${backend_dir}/backend-standalone" || ! -d "${backend_dir}/runtime-libs") ]]; then
+  if [[ -d "$backend_dir" && (! -f "${backend_dir}/kast-standalone" || ! -d "${backend_dir}/runtime-libs") ]]; then
     log_step "Removing incomplete ${backend_dir} from a previous run"
     rm -rf "$backend_dir"
   fi
