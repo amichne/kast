@@ -14,6 +14,9 @@ import io.github.amichne.kast.api.contract.SemanticInsertionResult
 import io.github.amichne.kast.api.contract.SymbolResult
 import io.github.amichne.kast.api.contract.TypeHierarchyResult
 import io.github.amichne.kast.api.contract.WorkspaceSymbolResult
+import io.github.amichne.kast.cli.runtime.DaemonStopResult
+import io.github.amichne.kast.cli.runtime.WorkspaceEnsureResult
+import io.github.amichne.kast.cli.runtime.WorkspaceStatusResult
 import kotlinx.serialization.json.Json
 
 internal fun defaultCliJson(): Json = Json {

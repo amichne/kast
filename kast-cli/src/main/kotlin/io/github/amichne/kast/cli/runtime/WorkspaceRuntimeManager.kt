@@ -1,10 +1,12 @@
-package io.github.amichne.kast.cli
+package io.github.amichne.kast.cli.runtime
 
 import io.github.amichne.kast.api.client.DescriptorRegistry
 import io.github.amichne.kast.api.client.RegisteredDescriptor
 import io.github.amichne.kast.api.contract.RuntimeState
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
 import io.github.amichne.kast.api.client.defaultDescriptorDirectory
+import io.github.amichne.kast.cli.CliFailure
+import io.github.amichne.kast.cli.RuntimeRpcClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -16,35 +18,35 @@ internal class WorkspaceRuntimeManager(
     private val processLivenessChecker: (Long) -> Boolean = ::isProcessAlive,
     private val envLookup: (String) -> String? = System::getenv,
 ) {
-    suspend fun workspaceStatus(options: RuntimeCommandOptions): WorkspaceStatusResult {
-        val inspection = inspectWorkspace(options, pruneStaleDescriptors = false)
+    suspend fun workspaceStatus(request: RuntimeLifecycleRequest): WorkspaceStatusResult {
+        val inspection = inspectWorkspace(request.selection, pruneStaleDescriptors = false)
         return WorkspaceStatusResult(
-            workspaceRoot = options.workspaceRoot.toString(),
+            workspaceRoot = request.selection.workspaceRoot.toString(),
             descriptorDirectory = inspection.descriptorDirectory.toString(),
             selected = inspection.selected,
             candidates = inspection.candidates,
         )
     }
 
-    suspend fun workspaceEnsure(options: RuntimeCommandOptions): WorkspaceEnsureResult =
+    suspend fun workspaceEnsure(request: RuntimeLifecycleRequest): WorkspaceEnsureResult =
         ensureRuntime(
-            options = options,
-            requireReady = !options.acceptIndexing,
+            request = request,
+            requireReady = !request.acceptIndexing,
         )
 
-    suspend fun workspaceStop(options: RuntimeCommandOptions): DaemonStopResult {
+    suspend fun workspaceStop(request: RuntimeLifecycleRequest): DaemonStopResult {
         val inspection = inspectWorkspace(
-            options = options,
+            selection = request.selection,
             pruneStaleDescriptors = true,
         )
-        val backendFilter = options.backendName
+        val backendFilter = request.selection.backendName
         val candidate = if (backendFilter != null) {
             inspection.candidates.firstOrNull { it.descriptor.backendName == backendFilter }
         } else {
             inspection.candidates.firstOrNull()
         }
             ?: return DaemonStopResult(
-                workspaceRoot = options.workspaceRoot.toString(),
+                workspaceRoot = request.selection.workspaceRoot.toString(),
                 stopped = false,
             )
 
@@ -55,26 +57,26 @@ internal class WorkspaceRuntimeManager(
     }
 
     suspend fun ensureRuntime(
-        options: RuntimeCommandOptions,
+        request: RuntimeLifecycleRequest,
         requireReady: Boolean = false,
     ): WorkspaceEnsureResult {
-        val inspection = inspectWorkspace(options, pruneStaleDescriptors = true)
+        val inspection = inspectWorkspace(request.selection, pruneStaleDescriptors = true)
         selectServableCandidate(
             candidates = inspection.candidates,
-            backendName = options.backendName,
+            backendName = request.selection.backendName,
             acceptIndexing = !requireReady,
         )?.let { selected ->
             return WorkspaceEnsureResult(
-                workspaceRoot = options.workspaceRoot.toString(),
+                workspaceRoot = request.selection.workspaceRoot.toString(),
                 started = false,
                 selected = selected,
             )
         }
 
-        if (options.backendName == "intellij") {
+        if (request.selection.backendName == "intellij") {
             throw CliFailure(
                 code = "INTELLIJ_NOT_RUNNING",
-                message = "No IntelliJ backend is available for ${options.workspaceRoot}. " +
+                message = "No IntelliJ backend is available for ${request.selection.workspaceRoot}. " +
                     "Open the project in IntelliJ IDEA with the Kast plugin installed.",
             )
         }
@@ -85,10 +87,10 @@ internal class WorkspaceRuntimeManager(
                 stopCandidate(inspection.descriptorDirectory, liveStandalone)
             } else {
                 return WorkspaceEnsureResult(
-                    workspaceRoot = options.workspaceRoot.toString(),
+                    workspaceRoot = request.selection.workspaceRoot.toString(),
                     started = false,
                     selected = waitForServable(
-                        options = options.copy(backendName = "standalone"),
+                        selection = request.selection.copy(backendName = "standalone"),
                         backendName = "standalone",
                         acceptIndexing = !requireReady,
                     ),
@@ -98,19 +100,19 @@ internal class WorkspaceRuntimeManager(
 
         throw CliFailure(
             code = "NO_BACKEND_AVAILABLE",
-            message = "No backend is running for ${options.workspaceRoot}. " +
-                "Start with: kast-standalone --workspace-root=${options.workspaceRoot}",
+            message = "No backend is running for ${request.selection.workspaceRoot}. " +
+                "Start with: kast-standalone --workspace-root=${request.selection.workspaceRoot}",
         )
     }
 
     private suspend fun waitForServable(
-        options: RuntimeCommandOptions,
+        selection: RuntimeSelection,
         backendName: String,
         acceptIndexing: Boolean,
     ): RuntimeCandidateStatus {
-        val deadline = System.nanoTime() + options.waitTimeoutMillis * 1_000_000
+        val deadline = System.nanoTime() + selection.waitTimeoutMillis * 1_000_000
         while (System.nanoTime() < deadline) {
-            val inspection = inspectWorkspace(options, pruneStaleDescriptors = true)
+            val inspection = inspectWorkspace(selection, pruneStaleDescriptors = true)
             selectServableCandidate(
                 candidates = inspection.candidates,
                 backendName = backendName,
@@ -123,17 +125,17 @@ internal class WorkspaceRuntimeManager(
         val targetState = if (acceptIndexing) "servable" else "ready"
         throw CliFailure(
             code = "RUNTIME_TIMEOUT",
-            message = "Timed out waiting for $backendName runtime to become $targetState for ${options.workspaceRoot}",
+            message = "Timed out waiting for $backendName runtime to become $targetState for ${selection.workspaceRoot}",
         )
     }
 
     private suspend fun inspectWorkspace(
-        options: RuntimeCommandOptions,
+        selection: RuntimeSelection,
         pruneStaleDescriptors: Boolean,
     ): WorkspaceInspection {
         val descriptorDirectory = defaultDescriptorDirectory(envLookup)
         val registry = DescriptorRegistry(descriptorDirectory.resolve("daemons.json"))
-        val registeredDescriptors = registry.findByWorkspaceRoot(options.workspaceRoot)
+        val registeredDescriptors = registry.findByWorkspaceRoot(selection.workspaceRoot)
         val candidates = registeredDescriptors.map { registered ->
             inspectDescriptor(registry, registered, pruneStaleDescriptors)
         }
@@ -144,7 +146,7 @@ internal class WorkspaceRuntimeManager(
                 compareByDescending(RuntimeCandidateStatus::ready)
                     .thenBy(RuntimeCandidateStatus::descriptorPath),
             ),
-            selected = selectStatusCandidate(candidates, options.backendName),
+            selected = selectStatusCandidate(candidates, selection.backendName),
         )
     }
 

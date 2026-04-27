@@ -36,6 +36,11 @@ import io.github.amichne.kast.api.contract.WorkspaceFilesQuery
 import io.github.amichne.kast.api.contract.WorkspaceFilesResult
 import io.github.amichne.kast.api.contract.WorkspaceSymbolQuery
 import io.github.amichne.kast.api.contract.WorkspaceSymbolResult
+import io.github.amichne.kast.cli.runtime.DaemonStopResult
+import io.github.amichne.kast.cli.runtime.RuntimeCandidateStatus
+import io.github.amichne.kast.cli.runtime.WorkspaceEnsureResult
+import io.github.amichne.kast.cli.runtime.WorkspaceRuntimeManager
+import io.github.amichne.kast.cli.runtime.WorkspaceStatusResult
 import kotlinx.serialization.json.Json
 
 internal class CliService(
@@ -48,16 +53,16 @@ internal class CliService(
     private val runtimeManager = WorkspaceRuntimeManager(rpcClient)
 
     suspend fun workspaceStatus(options: RuntimeCommandOptions): WorkspaceStatusResult =
-        runtimeManager.workspaceStatus(options)
+        runtimeManager.workspaceStatus(options.toLifecycleRequest())
 
     suspend fun workspaceEnsure(options: RuntimeCommandOptions): WorkspaceEnsureResult =
-        runtimeManager.workspaceEnsure(options)
+        runtimeManager.workspaceEnsure(options.toLifecycleRequest())
 
     suspend fun workspaceRefresh(
         options: RuntimeCommandOptions,
         query: RefreshQuery,
     ): RuntimeAttachedResult<RefreshResult> {
-        val runtime = runtimeManager.ensureRuntime(options)
+        val runtime = runtimeManager.ensureRuntime(options.toLifecycleRequest())
         requireMutationCapability(runtime.selected, MutationCapability.REFRESH_WORKSPACE)
         return attachedResult(
             payload = rpcClient.post(runtime.selected.descriptor, "workspace/refresh", query),
@@ -66,10 +71,10 @@ internal class CliService(
     }
 
     suspend fun workspaceStop(options: RuntimeCommandOptions): DaemonStopResult =
-        runtimeManager.workspaceStop(options)
+        runtimeManager.workspaceStop(options.toLifecycleRequest())
 
     suspend fun capabilities(options: RuntimeCommandOptions): RuntimeAttachedResult<BackendCapabilities> {
-        val runtime = runtimeManager.ensureRuntime(options)
+        val runtime = runtimeManager.ensureRuntime(options.toLifecycleRequest())
         val capabilities = checkNotNull(runtime.selected.capabilities) {
             "Runtime capabilities were not loaded after ensure for ${runtime.selected.descriptor.backendName}"
         }
@@ -83,7 +88,7 @@ internal class CliService(
         options: RuntimeCommandOptions,
         query: SymbolQuery,
     ): RuntimeAttachedResult<SymbolResult> {
-        val runtime = runtimeManager.ensureRuntime(options)
+        val runtime = runtimeManager.ensureRuntime(options.toLifecycleRequest())
         requireReadCapability(runtime.selected, ReadCapability.RESOLVE_SYMBOL)
         return attachedResult(
             payload = rpcClient.post(runtime.selected.descriptor, "symbol/resolve", query),
@@ -95,7 +100,7 @@ internal class CliService(
         options: RuntimeCommandOptions,
         query: ReferencesQuery,
     ): RuntimeAttachedResult<ReferencesResult> {
-        val runtime = runtimeManager.ensureRuntime(options)
+        val runtime = runtimeManager.ensureRuntime(options.toLifecycleRequest())
         requireReadCapability(runtime.selected, ReadCapability.FIND_REFERENCES)
         return attachedResult(
             payload = rpcClient.post(runtime.selected.descriptor, "references", query),
@@ -107,7 +112,7 @@ internal class CliService(
         options: RuntimeCommandOptions,
         query: CallHierarchyQuery,
     ): RuntimeAttachedResult<CallHierarchyResult> {
-        val runtime = runtimeManager.ensureRuntime(options)
+        val runtime = runtimeManager.ensureRuntime(options.toLifecycleRequest())
         requireReadCapability(runtime.selected, ReadCapability.CALL_HIERARCHY)
         return attachedResult(
             payload = rpcClient.post(runtime.selected.descriptor, "call-hierarchy", query),
@@ -119,7 +124,7 @@ internal class CliService(
         options: RuntimeCommandOptions,
         query: TypeHierarchyQuery,
     ): RuntimeAttachedResult<TypeHierarchyResult> {
-        val runtime = runtimeManager.ensureRuntime(options)
+        val runtime = runtimeManager.ensureRuntime(options.toLifecycleRequest())
         requireReadCapability(runtime.selected, ReadCapability.TYPE_HIERARCHY)
         return attachedResult(
             payload = rpcClient.post(runtime.selected.descriptor, "type-hierarchy", query),
@@ -131,7 +136,7 @@ internal class CliService(
         options: RuntimeCommandOptions,
         query: DiagnosticsQuery,
     ): RuntimeAttachedResult<DiagnosticsResult> {
-        val runtime = runtimeManager.ensureRuntime(options)
+        val runtime = runtimeManager.ensureRuntime(options.toLifecycleRequest())
         requireReadCapability(runtime.selected, ReadCapability.DIAGNOSTICS)
         return attachedResult(
             payload = rpcClient.post(runtime.selected.descriptor, "diagnostics", query),
@@ -143,7 +148,7 @@ internal class CliService(
         options: RuntimeCommandOptions,
         query: FileOutlineQuery,
     ): RuntimeAttachedResult<FileOutlineResult> {
-        val runtime = runtimeManager.ensureRuntime(options)
+        val runtime = runtimeManager.ensureRuntime(options.toLifecycleRequest())
         requireReadCapability(runtime.selected, ReadCapability.FILE_OUTLINE)
         return attachedResult(
             payload = rpcClient.post(runtime.selected.descriptor, "file-outline", query),
@@ -155,7 +160,7 @@ internal class CliService(
         options: RuntimeCommandOptions,
         query: WorkspaceSymbolQuery,
     ): RuntimeAttachedResult<WorkspaceSymbolResult> {
-        val runtime = runtimeManager.ensureRuntime(options)
+        val runtime = runtimeManager.ensureRuntime(options.toLifecycleRequest())
         requireReadCapability(runtime.selected, ReadCapability.WORKSPACE_SYMBOL_SEARCH)
         return attachedResult(
             payload = rpcClient.post(runtime.selected.descriptor, "workspace-symbol", query),
@@ -167,7 +172,7 @@ internal class CliService(
         options: RuntimeCommandOptions,
         query: WorkspaceFilesQuery,
     ): RuntimeAttachedResult<WorkspaceFilesResult> {
-        val runtime = runtimeManager.ensureRuntime(options)
+        val runtime = runtimeManager.ensureRuntime(options.toLifecycleRequest())
         requireReadCapability(runtime.selected, ReadCapability.WORKSPACE_FILES)
         return attachedResult(
             payload = rpcClient.post(runtime.selected.descriptor, "workspace/files", query),
@@ -179,7 +184,7 @@ internal class CliService(
         options: RuntimeCommandOptions,
         query: ImplementationsQuery,
     ): RuntimeAttachedResult<ImplementationsResult> {
-        val runtime = runtimeManager.ensureRuntime(options)
+        val runtime = runtimeManager.ensureRuntime(options.toLifecycleRequest())
         requireReadCapability(runtime.selected, ReadCapability.IMPLEMENTATIONS)
         return attachedResult(
             payload = rpcClient.post(runtime.selected.descriptor, "implementations", query),
@@ -191,7 +196,7 @@ internal class CliService(
         options: RuntimeCommandOptions,
         query: CodeActionsQuery,
     ): RuntimeAttachedResult<CodeActionsResult> {
-        val runtime = runtimeManager.ensureRuntime(options)
+        val runtime = runtimeManager.ensureRuntime(options.toLifecycleRequest())
         requireReadCapability(runtime.selected, ReadCapability.CODE_ACTIONS)
         return attachedResult(
             payload = rpcClient.post(runtime.selected.descriptor, "code-actions", query),
@@ -203,7 +208,7 @@ internal class CliService(
         options: RuntimeCommandOptions,
         query: CompletionsQuery,
     ): RuntimeAttachedResult<CompletionsResult> {
-        val runtime = runtimeManager.ensureRuntime(options)
+        val runtime = runtimeManager.ensureRuntime(options.toLifecycleRequest())
         requireReadCapability(runtime.selected, ReadCapability.COMPLETIONS)
         return attachedResult(
             payload = rpcClient.post(runtime.selected.descriptor, "completions", query),
@@ -215,7 +220,7 @@ internal class CliService(
         options: RuntimeCommandOptions,
         query: SemanticInsertionQuery,
     ): RuntimeAttachedResult<SemanticInsertionResult> {
-        val runtime = runtimeManager.ensureRuntime(options)
+        val runtime = runtimeManager.ensureRuntime(options.toLifecycleRequest())
         requireReadCapability(runtime.selected, ReadCapability.SEMANTIC_INSERTION_POINT)
         return attachedResult(
             payload = rpcClient.post(runtime.selected.descriptor, "semantic-insertion-point", query),
@@ -227,7 +232,7 @@ internal class CliService(
         options: RuntimeCommandOptions,
         query: RenameQuery,
     ): RuntimeAttachedResult<RenameResult> {
-        val runtime = runtimeManager.ensureRuntime(options)
+        val runtime = runtimeManager.ensureRuntime(options.toLifecycleRequest())
         requireMutationCapability(runtime.selected, MutationCapability.RENAME)
         return attachedResult(
             payload = rpcClient.post(runtime.selected.descriptor, "rename", query),
@@ -239,7 +244,7 @@ internal class CliService(
         options: RuntimeCommandOptions,
         query: ImportOptimizeQuery,
     ): RuntimeAttachedResult<ImportOptimizeResult> {
-        val runtime = runtimeManager.ensureRuntime(options)
+        val runtime = runtimeManager.ensureRuntime(options.toLifecycleRequest())
         requireMutationCapability(runtime.selected, MutationCapability.OPTIMIZE_IMPORTS)
         return attachedResult(
             payload = rpcClient.post(runtime.selected.descriptor, "imports/optimize", query),
@@ -257,7 +262,7 @@ internal class CliService(
         options: RuntimeCommandOptions,
         query: ApplyEditsQuery,
     ): RuntimeAttachedResult<ApplyEditsResult> {
-        val runtime = runtimeManager.ensureRuntime(options)
+        val runtime = runtimeManager.ensureRuntime(options.toLifecycleRequest())
         requireMutationCapability(runtime.selected, MutationCapability.APPLY_EDITS)
         if (query.fileOperations.isNotEmpty()) {
             requireMutationCapability(runtime.selected, MutationCapability.FILE_OPERATIONS)

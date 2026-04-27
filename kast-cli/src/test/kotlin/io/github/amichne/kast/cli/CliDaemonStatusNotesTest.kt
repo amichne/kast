@@ -3,6 +3,11 @@ package io.github.amichne.kast.cli
 import io.github.amichne.kast.api.contract.RuntimeState
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
 import io.github.amichne.kast.api.client.ServerInstanceDescriptor
+import io.github.amichne.kast.cli.runtime.RuntimeCandidateStatus
+import io.github.amichne.kast.cli.runtime.WorkspaceEnsureResult
+import io.github.amichne.kast.cli.runtime.WorkspaceStatusResult
+import io.github.amichne.kast.cli.runtime.daemonNoteFor
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -90,7 +95,7 @@ class CliDaemonStatusNotesTest {
         )
 
         assertTrue(checkNotNull(note).contains("INDEXING"))
-        assertTrue(!note.contains("standalone-daemon.log"))
+        assertFalse(note.contains("standalone-daemon.log"))
     }
 
     private fun candidate(

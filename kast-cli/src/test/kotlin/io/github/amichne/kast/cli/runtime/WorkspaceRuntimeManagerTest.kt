@@ -1,14 +1,16 @@
-package io.github.amichne.kast.cli
+package io.github.amichne.kast.cli.runtime
 
-import io.github.amichne.kast.api.contract.BackendCapabilities
 import io.github.amichne.kast.api.client.DescriptorRegistry
+import io.github.amichne.kast.api.client.ServerInstanceDescriptor
+import io.github.amichne.kast.api.client.defaultDescriptorDirectory
+import io.github.amichne.kast.api.contract.BackendCapabilities
 import io.github.amichne.kast.api.contract.MutationCapability
 import io.github.amichne.kast.api.contract.ReadCapability
 import io.github.amichne.kast.api.contract.RuntimeState
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
-import io.github.amichne.kast.api.client.ServerInstanceDescriptor
 import io.github.amichne.kast.api.contract.ServerLimits
-import io.github.amichne.kast.api.client.defaultDescriptorDirectory
+import io.github.amichne.kast.cli.CliFailure
+import io.github.amichne.kast.cli.RuntimeRpcClient
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -46,7 +48,7 @@ class WorkspaceRuntimeManagerTest {
             processLivenessChecker = { pid -> pid == 41L },
         )
 
-        val result = manager.ensureRuntime(options = runtimeOptions(workspaceRoot), requireReady = false)
+        val result = manager.ensureRuntime(request = lifecycleRequest(workspaceRoot), requireReady = false)
 
         assertFalse(result.started)
         assertEquals(RuntimeState.INDEXING, result.selected.runtimeStatus?.state)
@@ -68,7 +70,7 @@ class WorkspaceRuntimeManagerTest {
             processLivenessChecker = { pid -> pid == 52L },
         )
 
-        val result = manager.ensureRuntime(options = runtimeOptions(workspaceRoot), requireReady = true)
+        val result = manager.ensureRuntime(request = lifecycleRequest(workspaceRoot), requireReady = true)
 
         assertFalse(result.started)
         assertTrue(result.selected.ready)
@@ -90,7 +92,9 @@ class WorkspaceRuntimeManagerTest {
             processLivenessChecker = { pid -> pid == 61L },
         )
 
-        val result = manager.workspaceEnsure(runtimeOptions(workspaceRoot).copy(acceptIndexing = true))
+        val result = manager.workspaceEnsure(
+            lifecycleRequest(workspaceRoot, acceptIndexing = true),
+        )
 
         assertFalse(result.started)
         assertEquals(RuntimeState.INDEXING, result.selected.runtimeStatus?.state)
@@ -105,7 +109,7 @@ class WorkspaceRuntimeManagerTest {
         )
 
         val failure = runCatching {
-            manager.ensureRuntime(options = runtimeOptions(workspaceRoot))
+            manager.ensureRuntime(request = lifecycleRequest(workspaceRoot))
         }.exceptionOrNull() as? CliFailure
 
         checkNotNull(failure) { "Expected ensureRuntime to fail when no backend is running" }
@@ -122,7 +126,7 @@ class WorkspaceRuntimeManagerTest {
         )
 
         val failure = runCatching {
-            manager.ensureRuntime(options = runtimeOptions(workspaceRoot).copy(noAutoStart = true))
+            manager.ensureRuntime(request = lifecycleRequest(workspaceRoot, noAutoStart = true))
         }.exceptionOrNull() as? CliFailure
 
         checkNotNull(failure) { "Expected ensureRuntime to fail when no backend is running" }
@@ -145,7 +149,7 @@ class WorkspaceRuntimeManagerTest {
             processLivenessChecker = { pid -> pid == 88L },
         )
 
-        val result = manager.workspaceStop(runtimeOptions(workspaceRoot))
+        val result = manager.workspaceStop(lifecycleRequest(workspaceRoot))
         assertTrue(result.stopped)
         assertEquals(88L, result.pid)
         assertEquals(workspaceRoot.toString(), result.workspaceRoot)
@@ -167,7 +171,7 @@ class WorkspaceRuntimeManagerTest {
         )
 
         val result = manager.ensureRuntime(
-            options = runtimeOptions(workspaceRoot, backendName = "intellij"),
+            request = lifecycleRequest(workspaceRoot, backendName = "intellij"),
             requireReady = false,
         )
 
@@ -197,7 +201,7 @@ class WorkspaceRuntimeManagerTest {
         )
 
         val result = manager.ensureRuntime(
-            options = runtimeOptions(workspaceRoot, backendName = null),
+            request = lifecycleRequest(workspaceRoot, backendName = null),
             requireReady = false,
         )
 
@@ -214,7 +218,7 @@ class WorkspaceRuntimeManagerTest {
         )
 
         val failure = runCatching {
-            manager.ensureRuntime(options = runtimeOptions(workspaceRoot, backendName = "intellij"))
+            manager.ensureRuntime(request = lifecycleRequest(workspaceRoot, backendName = "intellij"))
         }.exceptionOrNull() as? CliFailure
 
         checkNotNull(failure) { "Expected ensureRuntime to fail when intellij backend is not available" }
@@ -231,7 +235,7 @@ class WorkspaceRuntimeManagerTest {
         )
 
         val failure = runCatching {
-            manager.ensureRuntime(options = runtimeOptions(workspaceRoot, backendName = null))
+            manager.ensureRuntime(request = lifecycleRequest(workspaceRoot, backendName = null))
         }.exceptionOrNull() as? CliFailure
 
         checkNotNull(failure) { "Expected NO_BACKEND_AVAILABLE when no backend is running" }
@@ -248,7 +252,7 @@ class WorkspaceRuntimeManagerTest {
         )
 
         val failure = runCatching {
-            manager.ensureRuntime(options = runtimeOptions(workspaceRoot, backendName = "standalone"))
+            manager.ensureRuntime(request = lifecycleRequest(workspaceRoot, backendName = "standalone"))
         }.exceptionOrNull() as? CliFailure
 
         checkNotNull(failure) { "Expected NO_BACKEND_AVAILABLE failure" }
@@ -265,7 +269,7 @@ class WorkspaceRuntimeManagerTest {
         )
 
         val failure = runCatching {
-            manager.ensureRuntime(options = runtimeOptions(workspaceRoot, backendName = null))
+            manager.ensureRuntime(request = lifecycleRequest(workspaceRoot, backendName = null))
         }.exceptionOrNull() as? CliFailure
 
         checkNotNull(failure) { "Expected NO_BACKEND_AVAILABLE failure when no backend running" }
@@ -288,13 +292,11 @@ class WorkspaceRuntimeManagerTest {
             processLivenessChecker = { pid -> pid == 400L },
         )
 
-        val result = manager.ensureRuntime(options = runtimeOptions(workspaceRoot, backendName = null))
+        val result = manager.ensureRuntime(request = lifecycleRequest(workspaceRoot, backendName = null))
 
         assertFalse(result.started)
         assertEquals("intellij", result.selected.descriptor.backendName)
     }
-
-    // -- helpers --
 
     private fun managerWith(
         runtimeStatuses: Map<String, List<RuntimeStatusResponse>>,
@@ -305,13 +307,19 @@ class WorkspaceRuntimeManagerTest {
         envLookup = envLookup,
     )
 
-    private fun runtimeOptions(
+    private fun lifecycleRequest(
         workspaceRoot: Path,
         backendName: String? = "standalone",
-    ): RuntimeCommandOptions = RuntimeCommandOptions(
-        workspaceRoot = workspaceRoot,
-        backendName = backendName,
-        waitTimeoutMillis = 2_000L,
+        acceptIndexing: Boolean = false,
+        noAutoStart: Boolean = false,
+    ): RuntimeLifecycleRequest = RuntimeLifecycleRequest(
+        selection = RuntimeSelection(
+            workspaceRoot = workspaceRoot,
+            backendName = backendName,
+            waitTimeoutMillis = 2_000L,
+        ),
+        acceptIndexing = acceptIndexing,
+        noAutoStart = noAutoStart,
     )
 
     private fun descriptor(
@@ -378,6 +386,4 @@ class WorkspaceRuntimeManagerTest {
                 ),
             )
     }
-
 }
-
