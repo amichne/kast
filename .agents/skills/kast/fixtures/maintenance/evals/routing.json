@@ -17,7 +17,8 @@
       "forbidden_ops": [
         "grep",
         "rg"
-      ]
+      ],
+      "failure_mode": "trigger_miss"
     },
     {
       "id": "trace-kotlin-flow",
@@ -33,7 +34,8 @@
       "forbidden_ops": [
         "grep",
         "rg"
-      ]
+      ],
+      "failure_mode": "trigger_miss"
     },
     {
       "id": "find-kotlin-usages",
@@ -48,7 +50,8 @@
       "forbidden_ops": [
         "grep",
         "rg"
-      ]
+      ],
+      "failure_mode": "routing_bypass"
     },
     {
       "id": "rename-kotlin-symbol",
@@ -64,7 +67,8 @@
         "grep",
         "rg",
         "sed"
-      ]
+      ],
+      "failure_mode": "trigger_miss"
     },
     {
       "id": "fix-kotlin-test",
@@ -82,7 +86,8 @@
       "forbidden_ops": [
         "grep",
         "rg"
-      ]
+      ],
+      "failure_mode": "trigger_miss"
     },
     {
       "id": "audit-eventbean-field-writes",
@@ -99,7 +104,8 @@
       "forbidden_ops": [
         "grep",
         "rg"
-      ]
+      ],
+      "failure_mode": "routing_bypass"
     },
     {
       "id": "recover-kast-bootstrap",
@@ -116,7 +122,8 @@
         "find /usr -name kast",
         "grep",
         "rg"
-      ]
+      ],
+      "failure_mode": "initialization_friction"
     },
     {
       "id": "stay-semantic-after-parse-friction",
@@ -132,7 +139,8 @@
       "forbidden_ops": [
         "grep",
         "rg"
-      ]
+      ],
+      "failure_mode": "schema_response"
     },
     {
       "id": "disambiguate-member-property",
@@ -147,7 +155,8 @@
       "forbidden_ops": [
         "grep",
         "rg"
-      ]
+      ],
+      "failure_mode": "routing_bypass"
     },
     {
       "id": "map-workspace-before-trace",
@@ -164,7 +173,8 @@
       "forbidden_ops": [
         "grep",
         "rg"
-      ]
+      ],
+      "failure_mode": "maintenance_thrash"
     },
     {
       "id": "demo-generate-basic",
@@ -177,7 +187,8 @@
       "forbidden_ops": [
         "grep",
         "rg"
-      ]
+      ],
+      "failure_mode": "trigger_miss"
     },
     {
       "id": "parse-nested-response-shape",
@@ -193,7 +204,8 @@
       "forbidden_ops": [
         "grep",
         "rg"
-      ]
+      ],
+      "failure_mode": "schema_response"
     },
     {
       "id": "write-validate-hash-failure",
@@ -208,7 +220,8 @@
         "sed",
         "grep",
         "rg"
-      ]
+      ],
+      "failure_mode": "mutation_abandonment"
     },
     {
       "id": "selected-skill-no-maintenance-thrash",
@@ -228,7 +241,8 @@
         ".agents/skills/kast/fixtures/maintenance/references/wrapper-openapi.yaml",
         "grep",
         "rg"
-      ]
+      ],
+      "failure_mode": "maintenance_thrash"
     },
     {
       "id": "respect-failure-response",
@@ -245,7 +259,42 @@
       "forbidden_ops": [
         "grep",
         "rg"
-      ]
+      ],
+      "failure_mode": "failure_response_ignored"
+    },
+    {
+      "id": "trigger-fix-kotlin-class",
+      "prompt": "Fix the broken method in this Kotlin class and validate the change instead of patching the file by hand.",
+      "expected_skill": "kast",
+      "expected_route": "@kast",
+      "allowed_ops": [
+        "kast skill scaffold",
+        "kast skill resolve",
+        "kast skill write-and-validate",
+        "kast skill diagnostics"
+      ],
+      "forbidden_ops": [
+        "grep",
+        "rg",
+        "sed"
+      ],
+      "failure_mode": "trigger_miss"
+    },
+    {
+      "id": "loaded-but-bypassed",
+      "prompt": "The kast skill is already active. Show me every place `AnalysisBackend` is referenced in this Kotlin project without switching to grep.",
+      "expected_skill": "kast",
+      "expected_route": "@kast",
+      "allowed_ops": [
+        "kast skill resolve",
+        "kast skill references",
+        "kast skill callers"
+      ],
+      "forbidden_ops": [
+        "grep",
+        "rg"
+      ],
+      "failure_mode": "routing_bypass"
     }
   ]
 }

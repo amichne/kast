@@ -2,9 +2,8 @@
 """Phoenix evaluations for the kast skill.
 
 Runs LLM-as-judge + code evaluators against prompts drawn from:
-  - evals.json     (13 behavior evals)
-  - routing.json   (15 routing evals)
-  - session_cases  (8 new cases derived from conversation history)
+  - evals.json
+  - routing.json
 
 Usage:
     pip install arize-phoenix openai
@@ -68,110 +67,28 @@ QUICKSTART_MD = _SKILL_ROOT / "references" / "quickstart.md"
 #   mutation_abandonment  - falls back to sed/manual edit after write-and-validate ok=false
 #   failure_response_ignored - treats ok=false as success or abandons kast entirely
 
-# ── Additional cases from session history ────────────────────────────────────
-
-_SESSION_CASES: list[dict] = [
-    {
-        "id": "trigger-generic-kotlin-flow",
-        "prompt": "I need to understand how this Kotlin service class is wired into the rest of the project. Can you trace the relevant code for me?",
-        "category": "routing",
-        "failure_mode": "trigger_miss",
-        "expected_behavior": "Routes to kast (workspace-files or scaffold) before any raw file reads.",
-        "expectations": json.dumps([
-            "Does not start with grep, rg, or find to explore Kotlin files.",
-            "Uses kast skill workspace-files or kast skill scaffold as the first semantic step.",
-        ]),
-    },
-    {
-        "id": "trigger-fix-kotlin-class",
-        "prompt": "Fix the broken method in this Kotlin class.",
-        "category": "routing",
-        "failure_mode": "trigger_miss",
-        "expected_behavior": "Uses kast for navigation and write-and-validate for mutation instead of sed.",
-        "expectations": json.dumps([
-            "Uses kast skill scaffold or resolve to understand the class before editing.",
-            "Uses kast skill write-and-validate for the mutation, not sed or direct text replacement.",
-        ]),
-    },
-    {
-        "id": "loaded-but-bypassed",
-        "prompt": "The kast skill is active. Show me every place AnalysisBackend is referenced in this project.",
-        "category": "routing",
-        "failure_mode": "routing_bypass",
-        "expected_behavior": "Uses kast skill references with symbol=AnalysisBackend, not grep.",
-        "expectations": json.dumps([
-            "Uses kast skill references with symbol AnalysisBackend.",
-            "Does not use grep or rg for Kotlin identity.",
-        ]),
-    },
-    {
-        "id": "init-reads-maintenance-first",
-        "prompt": "Kast is available. Help me understand the DescriptorRegistry class and its lifecycle.",
-        "category": "initialization",
-        "failure_mode": "maintenance_thrash",
-        "expected_behavior": "Starts with kast skill scaffold immediately, does not open maintenance files.",
-        "expectations": json.dumps([
-            "Does not open .kast-version, fixtures/maintenance/, or wrapper-openapi.yaml.",
-            "Starts with kast skill scaffold targeting DescriptorRegistry.kt.",
-        ]),
-    },
-    {
-        "id": "schema-batch-scaffold",
-        "prompt": "Use kast scaffold to understand three Kotlin files at once: FileA.kt, FileB.kt, FileC.kt.",
-        "category": "schema",
-        "failure_mode": "schema_request",
-        "expected_behavior": "Calls scaffold once per file with targetFile (singular), includes workspaceRoot each time.",
-        "expectations": json.dumps([
-            "Calls kast skill scaffold separately for each file, not once with a filePaths array.",
-            "Each scaffold request uses targetFile as a singular absolute path.",
-            "Each scaffold request includes workspaceRoot.",
-        ]),
-    },
-    {
-        "id": "schema-omit-workspace-root",
-        "prompt": "Use kast scaffold to understand how AnalysisDispatcher.kt is structured.",
-        "category": "schema",
-        "failure_mode": "schema_request",
-        "expected_behavior": "Scaffold request includes workspaceRoot; uses targetFile (singular), not filePaths.",
-        "expectations": json.dumps([
-            "The scaffold JSON includes workspaceRoot.",
-            "Uses targetFile (singular), not filePaths.",
-        ]),
-    },
-    {
-        "id": "mutation-treat-ok-false-as-success",
-        "prompt": (
-            'I ran kast skill write-and-validate and got: '
-            '{"ok":false,"type":"WRITE_AND_VALIDATE_FAILURE","stage":"validation",'
-            '"message":"Missing expected hash for edited file"}. What happened and what do you do next?'
-        ),
-        "category": "failure_handling",
-        "failure_mode": "mutation_abandonment",
-        "expected_behavior": "Treats the edit as failed. Runs diagnostics if helpful. Does not apply a manual edit.",
-        "expectations": json.dumps([
-            "Recognizes ok=false as a failed mutation.",
-            "Does not claim the edit succeeded.",
-            "Does not switch to sed or manual text editing.",
-            "Optionally runs kast skill diagnostics on the touched file.",
-        ]),
-    },
-    {
-        "id": "failure-grep-after-kast-error",
-        "prompt": (
-            "I ran kast skill resolve and got ok=false with stage=dispatch "
-            "and message='symbol not found'. Keep tracing the Kotlin symbol."
-        ),
-        "category": "failure_handling",
-        "failure_mode": "failure_response_ignored",
-        "expected_behavior": "Narrows the kast request (kind, containingType, fileHint). Does not switch to grep.",
-        "expectations": json.dumps([
-            "Does not fall back to grep or rg after the failure.",
-            "Uses stage/message to narrow the next kast request (kind, containingType, fileHint).",
-        ]),
-    },
-]
+_REQUIRED_FAILURE_MODES = {
+    "trigger_miss",
+    "routing_bypass",
+    "initialization_friction",
+    "maintenance_thrash",
+    "schema_request",
+    "schema_response",
+    "mutation_abandonment",
+    "failure_response_ignored",
+}
 
 # ── Dataset builder ───────────────────────────────────────────────────────────
+
+
+def _require_failure_mode(ev: dict, source: str) -> str:
+    failure_mode = ev.get("failure_mode")
+    if failure_mode not in _REQUIRED_FAILURE_MODES:
+        raise ValueError(
+            f"{source} case {ev.get('id', '<unknown>')} has invalid failure_mode={failure_mode!r}. "
+            f"Expected one of {sorted(_REQUIRED_FAILURE_MODES)}"
+        )
+    return failure_mode
 
 
 def build_dataframe() -> pd.DataFrame:
@@ -183,7 +100,7 @@ def build_dataframe() -> pd.DataFrame:
                 "id": f"behavior-{ev['id']}",
                 "prompt": ev["prompt"],
                 "category": "behavior",
-                "failure_mode": "general",
+                "failure_mode": _require_failure_mode(ev, "behavior"),
                 "expected_behavior": ev["expected_output"],
                 "expectations": json.dumps(ev["expectations"]),
             })
@@ -194,7 +111,7 @@ def build_dataframe() -> pd.DataFrame:
                 "id": f"routing-{ev['id']}",
                 "prompt": ev["prompt"],
                 "category": "routing",
-                "failure_mode": "routing",
+                "failure_mode": _require_failure_mode(ev, "routing"),
                 "expected_behavior": (
                     f"Routes to @kast. "
                     f"Allowed: {ev['allowed_ops']}. "
@@ -203,7 +120,6 @@ def build_dataframe() -> pd.DataFrame:
                 "expectations": json.dumps(ev["allowed_ops"]),
             })
 
-    rows.extend(_SESSION_CASES)
     return pd.DataFrame(rows)
 
 

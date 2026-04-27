@@ -32,10 +32,13 @@ Derived from sessions `803057da`, `dbda65ca`, `fe3aa9ad`, `431e7b1e`:
 
 ## Dataset
 
-36 examples total:
+30 examples total:
 - 13 from `evals/evals.json` (behavior evals)
-- 15 from `evals/routing.json` (routing evals)
-- 8 new cases derived from session conversation history
+- 17 from `evals/routing.json` (routing evals)
+
+The checked-in native corpora are now the source of truth for both `kast eval skill`
+and the Phoenix experiment. The Phoenix script no longer carries a separate
+`_SESSION_CASES` shadow dataset.
 
 ## Quickstart
 
@@ -76,10 +79,12 @@ Per `fundamentals-anti-patterns.md`:
 
 ## Adding new cases
 
-Append to `_SESSION_CASES` in `kast_evals.py` with:
-- `id`: kebab-case unique identifier
-- `prompt`: the user-facing message to the agent
-- `category`: routing | behavior | schema | initialization | failure_handling
-- `failure_mode`: one of the taxonomy entries above
-- `expected_behavior`: what a correct response does
-- `expectations`: JSON array of specific things to check
+Add durable prompts to the checked-in corpora instead of editing the Phoenix
+script directly:
+
+- `fixtures/maintenance/evals/evals.json` for behavior-oriented cases
+- `fixtures/maintenance/evals/routing.json` for routing/trigger cases
+
+Each promoted case should include a `failure_mode` field so the native
+`kast eval skill` corpus checks and the Phoenix breakdown use the same
+taxonomy.

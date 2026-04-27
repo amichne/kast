@@ -11,7 +11,8 @@
         "Names the production processors that construct or populate `EventBean`.",
         "Calls out relevant tests when they exist.",
         "Does not replace semantic navigation with grep/rg after JSON or jq friction."
-      ]
+      ],
+      "failure_mode": "routing_bypass"
     },
     {
       "id": 2,
@@ -23,7 +24,8 @@
         "Avoids reading `.kast-version` or `wrapper-openapi.yaml` before the first recovery attempt.",
         "Resumes with Kast commands once setup is fixed.",
         "Does not fall back to grep/rg for Kotlin identity."
-      ]
+      ],
+      "failure_mode": "initialization_friction"
     },
     {
       "id": 3,
@@ -34,7 +36,8 @@
         "Inspects a sample response shape or reruns with a narrower request.",
         "Uses `resolve`, `references`, `callers`, or `scaffold` to continue the investigation.",
         "Avoids grep/rg fallback after parse friction."
-      ]
+      ],
+      "failure_mode": "schema_response"
     },
     {
       "id": 4,
@@ -45,7 +48,8 @@
         "Resolves the member with `kind`, `containingType`, or `fileHint` before scanning usages.",
         "Keeps the result scoped to `EventBean.date` instead of every `date` symbol.",
         "Does not use raw text search for symbol identity."
-      ]
+      ],
+      "failure_mode": "routing_bypass"
     },
     {
       "id": 5,
@@ -56,7 +60,8 @@
         "Starts with `workspace-files`, `scaffold`, or another narrow semantic op instead of front-loading contract docs.",
         "Shows concrete file-to-file or caller/callee relationships.",
         "Keeps the transcript centered on Kast commands."
-      ]
+      ],
+      "failure_mode": "maintenance_thrash"
     },
     {
       "id": 6,
@@ -67,7 +72,8 @@
         "Uses semantic navigation before editing.",
         "Makes the edit with `write-and-validate` or `rename`, not a hand-edit path.",
         "Checks diagnostics on the touched files before concluding."
-      ]
+      ],
+      "failure_mode": "mutation_abandonment"
     },
     {
       "id": 7,
@@ -78,7 +84,8 @@
         "Uses `kast demo generate` to produce the dual-pane comparison instead of fabricating text by hand.",
         "Anchors each pane on real symbols resolved from the target repo, not invented identifiers.",
         "Keeps the baseline (grep) and kast-augmented panes structurally aligned per turn."
-      ]
+      ],
+      "failure_mode": "trigger_miss"
     },
     {
       "id": 8,
@@ -90,7 +97,8 @@
         "Recognizes that nested symbol/location fields can be camelCase, such as `location.filePath` or `symbol.fqName`.",
         "Continues with `references`, `resolve`, `callers`, or `scaffold` after fixing the projection.",
         "Does not fall back to grep/rg because a snake_case projection was wrong."
-      ]
+      ],
+      "failure_mode": "schema_response"
     },
     {
       "id": 9,
@@ -102,7 +110,8 @@
         "Treats `ok=false`, `WRITE_AND_VALIDATE_FAILURE`, or a missing-hash validation message as a failed mutation.",
         "Runs `kast skill diagnostics` on the intended or touched file when useful to characterize the current state.",
         "Does not claim success or switch to sed/apply-patch/manual edits after the wrapper reports failure."
-      ]
+      ],
+      "failure_mode": "mutation_abandonment"
     },
     {
       "id": 10,
@@ -114,7 +123,8 @@
         "Avoids loading `.kast-version`, `fixtures/maintenance`, or `wrapper-openapi.yaml` during normal navigation.",
         "Uses `workspace-files`, `scaffold`, `resolve`, `references`, or `callers` to make progress in the first substantive step.",
         "Keeps the transcript centered on Kast instead of raw search or maintenance-file inspection."
-      ]
+      ],
+      "failure_mode": "maintenance_thrash"
     },
     {
       "id": 11,
@@ -126,7 +136,8 @@
         "Summarizes the failure `stage`, `message`, and available log/error fields.",
         "Chooses a targeted retry, narrower semantic query, diagnostics run, or explicit blocker based on the failure.",
         "Does not discard the failed Kast response and redo the task with grep/rg."
-      ]
+      ],
+      "failure_mode": "failure_response_ignored"
     },
     {
       "id": 12,
@@ -138,7 +149,8 @@
         "Includes `workspaceRoot` in the scaffold request body.",
         "Does not probe the schema by sending `{}` or by running `kast skill scaffold --help`.",
         "Does not replace scaffold with grep or cat to understand the file structure."
-      ]
+      ],
+      "failure_mode": "schema_request"
     },
     {
       "id": 13,
@@ -150,7 +162,8 @@
         "Includes `workspaceRoot` in each scaffold request.",
         "Uses `references` or `callers` to trace actual cross-file data flow rather than reading source manually.",
         "Does not use grep/rg to trace the interaction between files."
-      ]
+      ],
+      "failure_mode": "schema_request"
     }
   ]
 }
