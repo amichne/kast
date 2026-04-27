@@ -92,9 +92,10 @@ internal object CliCommandCatalog {
         key = "backend-name",
         usage = "--backend-name=intellij|standalone",
         description = "Pin the command to a specific backend. " +
-            "When omitted, intellij is preferred if running; standalone is auto-started otherwise. " +
-            "Set KAST_INTELLIJ_DISABLE=1 to prevent the plugin from starting inside IntelliJ IDEA. " +
-            "Set KAST_STANDALONE_DISABLE=1 to prevent the CLI from auto-starting the standalone JVM daemon.",
+            "When omitted, intellij is preferred if running for that workspace; standalone is used if already running. " +
+            "If no backend is running, the command fails with NO_BACKEND_AVAILABLE. " +
+            "Start a backend first with `kast-standalone --workspace-root=<path>` or open the project in IntelliJ with the Kast plugin installed. " +
+            "Set KAST_INTELLIJ_DISABLE=1 to prevent the plugin from starting inside IntelliJ IDEA.",
     )
     private val workspaceRootOption = CliOptionMetadata(
         key = "workspace-root",
@@ -349,10 +350,11 @@ internal object CliCommandCatalog {
             path = listOf("workspace", "ensure"),
             group = CliCommandGroup.WORKSPACE_LIFECYCLE,
             summary = "Ensure a healthy backend is running for the workspace.",
-            description = "Ensures a healthy backend exists for the workspace. " +
-                "When the IntelliJ plugin is running it is used automatically; otherwise the standalone JVM daemon is started. " +
+        description = "Ensures a healthy backend exists for the workspace. " +
+                "When the IntelliJ plugin is running it is used automatically; otherwise the standalone backend is used if already running. " +
                 "Use --backend-name=standalone or --backend-name=intellij to pin to a specific backend. " +
-                "Analysis commands auto-start the daemon when needed, so this command is mainly for pre-warming the runtime or checking readiness ahead of time.",
+                "If no backend is running, the command fails — start one first with `kast-standalone --workspace-root=<path>` or open IntelliJ with the plugin installed. " +
+                "Use this command to pre-warm the runtime or check readiness ahead of analysis commands.",
             usages = listOf(
                 "$CLI_EXECUTABLE_NAME workspace ensure --workspace-root=/absolute/path/to/workspace [--backend-name=intellij|standalone] [--wait-timeout-ms=60000] [--accept-indexing=true]",
             ),

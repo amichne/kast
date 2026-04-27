@@ -38,6 +38,19 @@ What you gain from this path is operational independence. You can run
 the same compiler-backed queries anywhere Java 21 is available, even if
 no editor is open.
 
+Install the standalone backend from releases with:
+
+```console title="Install the standalone backend"
+./kast.sh install --components=backend
+```
+
+This places a `kast-standalone` launcher in your `bin` directory. You
+can also install the CLI and standalone backend together:
+
+```console title="Install CLI and standalone backend"
+./kast.sh install --components=cli,backend --non-interactive
+```
+
 The standalone backend works like this:
 
 1. You run `kast-standalone --workspace-root=<path>` in a terminal or

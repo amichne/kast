@@ -324,6 +324,72 @@ jobs:
             backend-intellij/build/distributions/
           if-no-files-found: warn
 
+  build-standalone-backend:
+    name: Build standalone backend
+    needs: [bump-version, prepare-release]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.prepare-release.outputs.release_tag }}
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build standalone backend
+        run: ./kast.sh build backend
+
+      - name: Upload standalone backend asset
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="${{ needs.prepare-release.outputs.release_tag }}"
+          asset_name="kast-standalone-${tag}.zip"
+
+          source_zip="dist/backend.zip"
+          [[ -f "$source_zip" ]] || { echo "Backend zip not found: $source_zip" >&2; exit 1; }
+
+          mkdir -p dist
+          cp "$source_zip" "dist/${asset_name}"
+          gh release upload "$tag" "dist/${asset_name}" --clobber
+
+      - name: Write standalone backend build provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cat > dist/build-provenance-standalone.json <<PROVEOF
+          {
+            "runId": "${{ github.run_id }}",
+            "runNumber": "${{ github.run_number }}",
+            "runAttempt": "${{ github.run_attempt }}",
+            "sha": "${{ github.sha }}",
+            "ref": "${{ github.ref }}",
+            "workflowRef": "${{ github.workflow_ref }}",
+            "actor": "${{ github.actor }}",
+            "platformId": "standalone",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          PROVEOF
+
+      - name: Upload standalone backend artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: standalone-backend-${{ github.run_id }}
+          path: |
+            dist/
+            backend-standalone/build/distributions/
+          if-no-files-found: warn
+
   publish-release:
     name: Publish release
     needs:
@@ -331,6 +397,7 @@ jobs:
       - prepare-release
       - build-and-upload
       - build-intellij-plugin
+      - build-standalone-backend
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -349,6 +416,12 @@ jobs:
           path: provenance-intellij
           pattern: intellij-plugin-*
 
+      - name: Download standalone backend provenance
+        uses: actions/download-artifact@v4
+        with:
+          path: provenance-standalone
+          pattern: standalone-backend-*
+
       - name: Assemble combined provenance
         shell: bash
         run: |
@@ -357,7 +430,7 @@ jobs:
 
           # Collect all individual provenance files into a JSON array
           provenance_files=()
-          for f in provenance-artifacts/*/dist/build-provenance-*.json provenance-intellij/*/dist/build-provenance-*.json; do
+          for f in provenance-artifacts/*/dist/build-provenance-*.json provenance-intellij/*/dist/build-provenance-*.json provenance-standalone/*/dist/build-provenance-*.json; do
             [[ -f "$f" ]] || continue
             provenance_files+=("$f")
           done

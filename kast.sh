@@ -780,16 +780,62 @@ _install_intellij_plugin() {
 }
 
 _install_standalone_backend() {
-  local release_repo="$1" release_tag="$2" install_root="$3"
+  local release_repo="$1" release_tag="$2" install_root="$3" local_archive="${4:-}" bin_dir="${5:-${KAST_BIN_DIR:-${HOME}/.local/bin}}"
 
   log_section "Install standalone backend"
-  # TODO: standalone backend zip is not yet published as a release asset.
-  #       Once the release pipeline produces kast-standalone-<tag>.zip, download
-  #       it here (mirroring _install_intellij_plugin) and extract to
-  #       "${install_root}/backends/standalone-${release_tag}/".
-  log_note "Standalone backend installation from releases is not yet available."
-  log_note "Build from source: ./kast.sh build backend"
-  log_note "Then launch with: <build-output>/kast-standalone --workspace-root=<path>"
+  local backend_dir="${install_root}/backends"
+  local backend_name="kast-standalone-${release_tag}.zip"
+  local backend_release_dir="${backend_dir}/standalone-${release_tag}"
+  local backend_path="${tmp_dir}/${backend_name}"
+  mkdir -p "$backend_dir"
+
+  if [[ -n "$local_archive" ]]; then
+    log_step "Copying local backend archive ${local_archive}"
+    cp "$local_archive" "$backend_path"
+  else
+    local backend_url="https://github.com/${release_repo}/releases/download/${release_tag}/${backend_name}"
+    log_step "Downloading standalone backend ${backend_name}"
+    local download_attempt
+    for download_attempt in 1 2 3; do
+      if _install_download_file "$backend_url" "$backend_path"; then break; fi
+      if [[ "$download_attempt" -eq 3 ]]; then
+        log_note "Failed to download standalone backend after 3 attempts; skipping"
+        return 1
+      fi
+      log_note "Download attempt ${download_attempt} failed; retrying in 5 seconds"
+      sleep 5
+    done
+  fi
+
+  local staging_dir="${tmp_dir}/backend-extract"
+  extract_zip_archive "$backend_path" "$staging_dir"
+
+  if [[ -d "${staging_dir}/backend-standalone" ]]; then
+    mv "${staging_dir}/backend-standalone" "${staging_dir}/kast-standalone-extracted"
+  fi
+  [[ -d "${staging_dir}/kast-standalone-extracted" ]] || die "Backend archive did not contain expected backend-standalone/ directory"
+
+  rm -rf "$backend_release_dir"
+  mkdir -p "$(dirname -- "$backend_release_dir")"
+  mv "${staging_dir}/kast-standalone-extracted" "$backend_release_dir"
+
+  local launcher="${backend_release_dir}/kast-standalone"
+  [[ -f "$launcher" ]] || die "Installed backend archive did not contain kast-standalone launcher"
+  chmod +x "$launcher"
+
+  local current_link="${backend_dir}/current"
+  ln -sfn "$backend_release_dir" "$current_link"
+
+  mkdir -p "$bin_dir"
+  {
+    printf '#!/usr/bin/env bash\n'
+    printf 'set -euo pipefail\n'
+    printf 'exec "%s/backends/current/kast-standalone" "$@"\n' "$install_root"
+  } > "${bin_dir}/kast-standalone"
+  chmod +x "${bin_dir}/kast-standalone"
+
+  log_success "Standalone backend installed to ${backend_release_dir}"
+  log_note "Start with: kast-standalone --workspace-root=/absolute/path/to/workspace"
   return 0
 }
 
@@ -797,7 +843,7 @@ _install_prompt_components() {
   if ! can_prompt; then
     printf '%s\n' "cli"; return
   fi
-  log_prompt "Which components? [cli/intellij/all] (cli) "
+  log_prompt "Which components? [cli/intellij/backend/all] (cli) "
   local reply=""
   if ! IFS= read -r reply </dev/tty; then
     printf '\n' >/dev/tty
@@ -808,7 +854,8 @@ _install_prompt_components() {
   case "${reply,,}" in
     ""|cli)    printf '%s\n' "cli" ;;
     intellij)  printf '%s\n' "intellij" ;;
-    all)       printf '%s\n' "cli,intellij" ;;
+    backend)   printf '%s\n' "backend" ;;
+    all)       printf '%s\n' "cli,intellij,backend" ;;
     *)         printf '%s\n' "$reply" ;;
   esac
 }
@@ -830,10 +877,11 @@ Usage: ./kast.sh install [options]
 Install the Kast CLI and optional components.
 
 Options:
-  --components=<list>   Comma-separated: cli,intellij,all (default: cli)
+  --components=<list>   Comma-separated: cli,intellij,backend,all (default: cli)
                         cli              - Install the kast CLI binary
                         intellij         - Download IntelliJ plugin zip
-                        all              - cli + intellij
+                        backend          - Install standalone backend from releases
+                        all              - cli + intellij + backend
   --local               Install from local dist/ artifacts built by ./kast.sh build
   --non-interactive     Skip all interactive prompts
   --help, -h            Show this help
@@ -866,19 +914,20 @@ USAGE
       components="$(_install_prompt_components)"
     fi
   fi
-  [[ "$components" == "all" ]] && components="cli,intellij"
+  [[ "$components" == "all" ]] && components="cli,intellij,backend"
 
-  local install_cli="false" install_intellij="false"
+  local install_cli="false" install_intellij="false" install_standalone="false"
   IFS=',' read -r -a component_list <<<"$components"
   for comp in "${component_list[@]}"; do
     case "$comp" in
-      cli|standalone|server) install_cli="true" ;;  # standalone/server kept as aliases
-      intellij)              install_intellij="true" ;;
+      cli)                      install_cli="true" ;;
+      intellij)                 install_intellij="true" ;;
+      backend|standalone-backend) install_standalone="true" ;;
       *) die "Unknown component: $comp" ;;
     esac
   done
 
-  local local_plugin_archive=""
+  local local_plugin_archive="" local_backend_archive=""
   if [[ "$local_build" == "true" ]]; then
     if [[ "$install_cli" == "true" && -z "${KAST_ARCHIVE_PATH:-}" ]]; then
       local dist_archive="${SCRIPT_DIR}/dist/cli.zip"
@@ -888,6 +937,10 @@ USAGE
     if [[ "$install_intellij" == "true" ]]; then
       local_plugin_archive="${SCRIPT_DIR}/dist/plugin.zip"
       [[ -f "$local_plugin_archive" ]] || die "Local plugin archive not found at ${local_plugin_archive}. Run ./kast.sh build plugin first."
+    fi
+    if [[ "$install_standalone" == "true" ]]; then
+      local_backend_archive="${SCRIPT_DIR}/dist/backend.zip"
+      [[ -f "$local_backend_archive" ]] || die "Local backend archive not found at ${local_backend_archive}. Run ./kast.sh build backend first."
     fi
   fi
 
@@ -1034,6 +1087,24 @@ USAGE
     _install_intellij_plugin "$release_repo" "$resolved_tag" "$install_root" "$local_plugin_archive" || true
   fi
 
+  if [[ "$install_standalone" == "true" ]]; then
+    local resolved_tag="${release_tag:-}"
+    if [[ -z "$resolved_tag" ]]; then
+      resolved_tag="${KAST_VERSION:-}"
+      if [[ -z "$resolved_tag" ]]; then
+        local latest_meta="${tmp_dir}/latest-standalone-release.json"
+        curl \
+          --fail --location --retry 3 --retry-delay 2 --silent --show-error \
+          --header "$GITHUB_API_ACCEPT" \
+          --header "$GITHUB_API_VERSION" \
+          --output "$latest_meta" \
+          "https://api.github.com/repos/${release_repo}/releases/latest"
+        resolved_tag="$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['tag_name'])" "$latest_meta")"
+      fi
+    fi
+    _install_standalone_backend "$release_repo" "$resolved_tag" "$install_root" "$local_backend_archive" "$bin_dir" || true
+  fi
+
   local rc_file; rc_file="$(_install_resolve_shell_rc_file)"
 
   log_section "Install summary"
@@ -1052,8 +1123,8 @@ USAGE
       log_step "  kast-standalone --workspace-root=/absolute/path/to/workspace  (standalone JVM backend)"
       log_step "  OR open IntelliJ IDEA with the kast plugin installed"
       log_step "Then run commands e.g.: kast references ..."
-      if [[ "$install_intellij" != "true" ]]; then
-        log_note "To also install the IntelliJ plugin: ./kast.sh install --components=intellij"
+      if [[ "$install_intellij" != "true" && "$install_standalone" != "true" ]]; then
+        log_note "To also install components: ./kast.sh install --components=intellij,backend"
       fi
     else
       log_note "Export PATH=\"${bin_dir}:\$PATH\""
@@ -1063,6 +1134,10 @@ USAGE
   fi
   if [[ "$install_intellij" == "true" ]]; then
     log_step "IntelliJ plugin: ${install_root}/plugins/"
+  fi
+  if [[ "$install_standalone" == "true" ]]; then
+    log_success "Standalone backend: ${bin_dir}/kast-standalone"
+    log_note "Backends dir: ${install_root}/backends/"
   fi
 }
 

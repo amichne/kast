@@ -16,7 +16,7 @@ the work). You install and start them separately.
 |---------------|--------------|---------------------------|
 | Terminal, CI, or agent work | `kast` CLI + standalone backend | `kast-standalone --workspace-root=<path>` |
 | IDE-backed runtime (IntelliJ already open) | IntelliJ plugin | The plugin starts automatically when IntelliJ opens the project |
-| Both | CLI + plugin | Pick the backend you want for each session |
+| Both | CLI + plugin + standalone backend | Pick the backend you want for each session |
 
 The CLI alone does not run analysis. It routes commands to a running backend.
 You must have at least one backend running before `kast` analysis commands
@@ -63,6 +63,20 @@ components.
     before analysis commands work. Start `kast-standalone` separately, or
     open the project in IntelliJ with the plugin installed.
 
+=== "Standalone backend"
+
+    ```console title="Install CLI and standalone backend"
+    ./kast.sh install --components=cli,backend --non-interactive
+    ```
+
+    Installs the `kast` CLI and the standalone JVM backend. A
+    `kast-standalone` launcher is placed in your `bin` directory. Start
+    the backend with:
+
+    ```console title="Start the standalone backend"
+    kast-standalone --workspace-root=/absolute/path/to/workspace
+    ```
+
 === "IntelliJ plugin only"
 
     ```console title="Install the IntelliJ plugin"
@@ -76,11 +90,20 @@ components.
 === "Both"
 
     ```console title="Install CLI and IntelliJ plugin"
-    ./kast.sh install --components=all --non-interactive
+    ./kast.sh install --components=cli,intellij --non-interactive
     ```
 
     Installs the `kast` CLI and downloads the IntelliJ plugin zip
     in one step. Add `--non-interactive` to skip prompts.
+
+=== "All three"
+
+    ```console title="Install CLI, IntelliJ plugin, and standalone backend"
+    ./kast.sh install --components=all --non-interactive
+    ```
+
+    Installs the `kast` CLI, the IntelliJ plugin zip, and the standalone
+    backend in one step.
 
 ## Starting the standalone backend
 
@@ -105,7 +128,7 @@ kast daemon stop --workspace-root=/absolute/path/to/your/workspace
 
 | Flag | What it does |
 |------|--------------|
-| `--components=<list>` | Comma-separated: `cli`, `intellij`, `all`. Default: `cli` |
+| `--components=<list>` | Comma-separated: `cli`, `intellij`, `backend`, `all`. Default: `cli` |
 | `--non-interactive` | Skip all interactive prompts |
 
 ## When Gradle files matter
