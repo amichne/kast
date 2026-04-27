@@ -111,15 +111,13 @@ class EvalSkillCommandTest {
             """.trimIndent(),
         )
 
-        val evals = skillDir.resolve("evals").createDirectories()
-        evals.resolve("evals.json").writeText("""{"skill_name":"kast","evals":[]}""")
-
         val refs = skillDir.resolve("references").createDirectories()
         refs.resolve("quickstart.md").writeText("# Quickstart\n")
 
         val maintenanceDir = skillDir.resolve("fixtures/maintenance")
         val maintenanceEvals = maintenanceDir.resolve("evals").createDirectories()
-        maintenanceEvals.resolve("routing.json").writeText("""{"skill_name":"kast","suite":"routing","evals":[]}""")
+        writeBehaviorCorpus(skillDir, REQUIRED_FAILURE_MODES.take(4))
+        writeRoutingCorpus(skillDir, REQUIRED_FAILURE_MODES.drop(4))
         val maintenanceRefs = maintenanceDir.resolve("references").createDirectories()
         maintenanceRefs.resolve("routing-improvement.md").writeText("# Routing improvement\n")
         maintenanceRefs.resolve("wrapper-openapi.yaml").writeText(
@@ -145,5 +143,52 @@ class EvalSkillCommandTest {
         )
 
         return skillDir
+    }
+
+    private fun writeBehaviorCorpus(skillDir: Path, failureModes: List<String>) {
+        skillDir.resolve("fixtures/maintenance/evals/evals.json").writeText(
+            buildString {
+                append("""{"skill_name":"kast","evals":[""")
+                failureModes.forEachIndexed { index, failureMode ->
+                    if (index > 0) append(",")
+                    append(
+                        """
+                        {"id":${index + 1},"prompt":"Behavior prompt ${index + 1}","expected_output":"Expected behavior ${index + 1}","files":[],"expectations":["Uses kast semantically"],"failure_mode":"$failureMode"}
+                        """.trimIndent(),
+                    )
+                }
+                append("]}")
+            },
+        )
+    }
+
+    private fun writeRoutingCorpus(skillDir: Path, failureModes: List<String>) {
+        skillDir.resolve("fixtures/maintenance/evals/routing.json").writeText(
+            buildString {
+                append("""{"skill_name":"kast","suite":"routing","evals":[""")
+                failureModes.forEachIndexed { index, failureMode ->
+                    if (index > 0) append(",")
+                    append(
+                        """
+                        {"id":"routing-${index + 1}","prompt":"Routing prompt ${index + 1}","expected_skill":"kast","expected_route":"@kast","allowed_ops":["kast skill resolve"],"forbidden_ops":["grep"],"failure_mode":"$failureMode"}
+                        """.trimIndent(),
+                    )
+                }
+                append("]}")
+            },
+        )
+    }
+
+    private companion object {
+        private val REQUIRED_FAILURE_MODES = listOf(
+            "trigger_miss",
+            "routing_bypass",
+            "initialization_friction",
+            "maintenance_thrash",
+            "schema_request",
+            "schema_response",
+            "mutation_abandonment",
+            "failure_response_ignored",
+        )
     }
 }

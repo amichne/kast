@@ -3,9 +3,10 @@ name: kast
 description: >
   Semantic Kotlin/JVM navigation and safe refactoring via `kast skill`
   subcommands. Use this whenever a task involves Kotlin/JVM symbol identity,
-  file understanding, flow or call tracing, usages, ambiguous members, failing
-  Kotlin tests, renames, or validated Kotlin edits, even if the user does not
-  explicitly say "Kast." Never use grep/rg for Kotlin identity.
+  class or service understanding, feature tracing, usages, ambiguous members,
+  failing Kotlin tests, renames, or validated Kotlin edits, even if the user
+  does not explicitly say "Kast" and only asks to understand or fix a Kotlin
+  class. Never use grep/rg for Kotlin identity.
 ---
 
 # Kast
