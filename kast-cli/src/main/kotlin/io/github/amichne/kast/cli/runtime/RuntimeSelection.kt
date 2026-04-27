@@ -10,4 +10,5 @@ internal data class RuntimeSelection(
     val workspaceRoot: Path,
     val backendName: String?,
     val waitTimeoutMillis: Long,
+    val noAutoStart: Boolean = false,
 )

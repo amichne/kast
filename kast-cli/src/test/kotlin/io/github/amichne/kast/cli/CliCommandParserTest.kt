@@ -72,7 +72,7 @@ class CliCommandParserTest {
 
         assertTrue(command is CliCommand.CallHierarchy)
         val hierarchyCommand = command as CliCommand.CallHierarchy
-        assertEquals(tempDir, hierarchyCommand.options.workspaceRoot)
+        assertEquals(tempDir, hierarchyCommand.runtime.workspaceRoot)
         assertEquals(io.github.amichne.kast.api.contract.CallDirection.INCOMING, hierarchyCommand.query.direction)
         assertEquals(0, hierarchyCommand.query.depth)
         assertEquals(32, hierarchyCommand.query.maxTotalCalls)
@@ -93,7 +93,7 @@ class CliCommandParserTest {
 
         assertTrue(command is CliCommand.WorkspaceRefresh)
         val refreshCommand = command as CliCommand.WorkspaceRefresh
-        assertEquals(tempDir, refreshCommand.options.workspaceRoot)
+        assertEquals(tempDir, refreshCommand.request.selection.workspaceRoot)
         assertEquals(
             RefreshQuery(
                 filePaths = listOf(
@@ -118,7 +118,7 @@ class CliCommandParserTest {
 
         assertTrue(command is CliCommand.WorkspaceEnsure)
         val ensureCommand = command as CliCommand.WorkspaceEnsure
-        assertTrue(ensureCommand.options.acceptIndexing)
+        assertTrue(ensureCommand.request.acceptIndexing)
     }
 
     @Test
@@ -135,7 +135,7 @@ class CliCommandParserTest {
 
         assertTrue(command is CliCommand.ResolveSymbol)
         val resolveCommand = command as CliCommand.ResolveSymbol
-        assertTrue(resolveCommand.options.noAutoStart)
+        assertTrue(resolveCommand.runtime.noAutoStart)
     }
 
     @Test
@@ -154,7 +154,7 @@ class CliCommandParserTest {
 
         assertTrue(command is CliCommand.TypeHierarchy)
         val hierarchyCommand = command as CliCommand.TypeHierarchy
-        assertEquals(tempDir, hierarchyCommand.options.workspaceRoot)
+        assertEquals(tempDir, hierarchyCommand.runtime.workspaceRoot)
         assertEquals(TypeHierarchyDirection.BOTH, hierarchyCommand.query.direction)
         assertEquals(2, hierarchyCommand.query.depth)
         assertEquals(24, hierarchyCommand.query.maxResults)
@@ -174,7 +174,7 @@ class CliCommandParserTest {
 
         assertTrue(command is CliCommand.SemanticInsertionPoint)
         val insertionCommand = command as CliCommand.SemanticInsertionPoint
-        assertEquals(tempDir, insertionCommand.options.workspaceRoot)
+        assertEquals(tempDir, insertionCommand.runtime.workspaceRoot)
         assertEquals(SemanticInsertionTarget.AFTER_IMPORTS, insertionCommand.query.target)
     }
 
