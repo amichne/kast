@@ -54,7 +54,12 @@ import io.github.amichne.kast.api.wrapper.KastWriteAndValidateReplaceRangeReques
 import io.github.amichne.kast.api.wrapper.KastWriteAndValidateRequest
 import io.github.amichne.kast.api.wrapper.KastWriteAndValidateSuccessResponse
 import io.github.amichne.kast.api.wrapper.KastCandidate
+import io.github.amichne.kast.api.wrapper.KastMetricsQuery
+import io.github.amichne.kast.api.wrapper.KastMetricsRequest
+import io.github.amichne.kast.api.wrapper.KastMetricsSuccessResponse
+import io.github.amichne.kast.api.wrapper.WrapperMetric
 import io.github.amichne.kast.api.wrapper.WrapperScaffoldMode
+import io.github.amichne.kast.indexstore.MetricsEngine
 import io.github.amichne.kast.api.contract.ReferencesQuery
 import io.github.amichne.kast.api.contract.RenameQuery
 import io.github.amichne.kast.api.contract.SemanticInsertionQuery
@@ -93,6 +98,7 @@ internal class SkillWrapperExecutor(
             SkillWrapperName.RENAME -> executeRename(rawJson)
             SkillWrapperName.SCAFFOLD -> executeScaffold(rawJson)
             SkillWrapperName.WRITE_AND_VALIDATE -> executeWriteAndValidate(rawJson)
+            SkillWrapperName.METRICS -> executeMetrics(rawJson)
         }
     }
 
@@ -725,6 +731,58 @@ internal class SkillWrapperExecutor(
         throw CliFailure(
             code = "SKILL_VALIDATION",
             message = "Either 'content' or 'contentFile' must be provided",
+        )
+    }
+
+    // endregion
+
+    // region metrics
+
+    private fun executeMetrics(rawJson: String): Any {
+        val request = json.decodeFromString<KastMetricsRequest>(rawJson)
+        val workspaceRoot = requireWorkspaceRoot(request.workspaceRoot)
+        val query = KastMetricsQuery(
+            workspaceRoot = workspaceRoot,
+            metric = request.metric,
+            limit = request.limit,
+            symbol = request.symbol,
+            depth = request.depth,
+        )
+        val resultsJson = MetricsEngine(Path.of(workspaceRoot)).use { engine ->
+            when (request.metric) {
+                WrapperMetric.FAN_IN -> json.encodeToJsonElement(
+                    kotlinx.serialization.builtins.ListSerializer(io.github.amichne.kast.indexstore.FanInMetric.serializer()),
+                    engine.fanInRanking(request.limit),
+                )
+                WrapperMetric.FAN_OUT -> json.encodeToJsonElement(
+                    kotlinx.serialization.builtins.ListSerializer(io.github.amichne.kast.indexstore.FanOutMetric.serializer()),
+                    engine.fanOutRanking(request.limit),
+                )
+                WrapperMetric.COUPLING -> json.encodeToJsonElement(
+                    kotlinx.serialization.builtins.ListSerializer(io.github.amichne.kast.indexstore.ModuleCouplingMetric.serializer()),
+                    engine.moduleCouplingMatrix(),
+                )
+                WrapperMetric.DEAD_CODE -> json.encodeToJsonElement(
+                    kotlinx.serialization.builtins.ListSerializer(io.github.amichne.kast.indexstore.DeadCodeCandidate.serializer()),
+                    engine.deadCodeCandidates(),
+                )
+                WrapperMetric.IMPACT -> json.encodeToJsonElement(
+                    kotlinx.serialization.builtins.ListSerializer(io.github.amichne.kast.indexstore.ChangeImpactNode.serializer()),
+                    engine.changeImpactRadius(
+                        fqName = request.symbol ?: throw CliFailure(
+                            code = "SKILL_VALIDATION",
+                            message = "'symbol' is required for impact metric",
+                        ),
+                        depth = request.depth,
+                    ),
+                )
+            }
+        }
+        return KastMetricsSuccessResponse(
+            ok = true,
+            query = query,
+            results = resultsJson,
+            logFile = SkillLogFile.placeholder(),
         )
     }
 

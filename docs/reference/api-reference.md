@@ -83,6 +83,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
             | `#!kotlin warnings: List<String>` :material-information-outline:{ title="Default: emptyList()" } | Active warning messages about the runtime environment. |
             | `#!kotlin sourceModuleNames: List<String>` :material-information-outline:{ title="Default: emptyList()" } | Names of source modules discovered in the workspace. |
             | `#!kotlin dependentModuleNamesBySourceModuleName: Map<String, List<String>>` :material-information-outline:{ title="Default: emptyMap()" } | Map from source module name to its dependency module names. |
+            | `#!kotlin referenceIndexReady: Boolean?` | True when the symbol reference index is fully populated. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
         === "CLI"
 
@@ -113,6 +114,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     "warnings": [],
                     "sourceModuleNames": [],
                     "dependentModuleNamesBySourceModuleName": {},
+                    "referenceIndexReady": false,
                     "schemaVersion": 3
                 },
                 "id": 1,

@@ -49,6 +49,67 @@ enum class WrapperScaffoldMode {
 }
 
 @Serializable
+enum class WrapperMetric {
+    @SerialName("fan-in")
+    FAN_IN,
+
+    @SerialName("fan-out")
+    FAN_OUT,
+
+    @SerialName("coupling")
+    COUPLING,
+
+    @SerialName("dead-code")
+    DEAD_CODE,
+
+    @SerialName("impact")
+    IMPACT,
+}
+
+@Serializable
+data class KastMetricsRequest(
+    val workspaceRoot: String? = null,
+    val metric: WrapperMetric,
+    val limit: Int = 50,
+    val symbol: String? = null,
+    val depth: Int = 3,
+)
+
+@Serializable
+data class KastMetricsQuery(
+    @SerialName("workspace_root")
+    val workspaceRoot: String,
+    val metric: WrapperMetric,
+    val limit: Int = 50,
+    val symbol: String? = null,
+    val depth: Int = 3,
+)
+
+@Serializable
+sealed interface KastMetricsResponse
+
+@Serializable
+@SerialName("METRICS_SUCCESS")
+data class KastMetricsSuccessResponse(
+    val ok: Boolean = true,
+    val query: KastMetricsQuery,
+    val results: kotlinx.serialization.json.JsonElement,
+    @SerialName("log_file")
+    val logFile: String,
+) : KastMetricsResponse
+
+@Serializable
+@SerialName("METRICS_FAILURE")
+data class KastMetricsFailureResponse(
+    val ok: Boolean = false,
+    val stage: String,
+    val message: String,
+    val query: KastMetricsQuery,
+    @SerialName("log_file")
+    val logFile: String,
+) : KastMetricsResponse
+
+@Serializable
 data class KastResolveRequest(
     val workspaceRoot: String? = null,
     val symbol: String,

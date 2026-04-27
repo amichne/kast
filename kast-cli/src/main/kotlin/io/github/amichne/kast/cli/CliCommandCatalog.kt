@@ -30,6 +30,10 @@ internal enum class CliCommandGroup(
         title = "CLI management",
         overview = "Install and manage local Kast CLI instances.",
     ),
+    METRICS(
+        title = "Metrics",
+        overview = "Read-only workspace metrics computed directly from the local SQLite reference index — no running daemon required.",
+    ),
 }
 
 internal enum class CliOptionCompletionKind {
@@ -309,6 +313,21 @@ internal object CliCommandCatalog {
         key = "format",
         usage = "--format=json",
         description = "Render the smoke report as json or markdown. Defaults to json.",
+    )
+    private val metricsLimitOption = CliOptionMetadata(
+        key = "limit",
+        usage = "--limit=50",
+        description = "Maximum number of result rows. Defaults to 50.",
+    )
+    private val metricsSymbolOption = CliOptionMetadata(
+        key = "symbol",
+        usage = "--symbol=com.example.MyClass",
+        description = "Fully qualified symbol name for impact analysis.",
+    )
+    private val metricsDepthOption = CliOptionMetadata(
+        key = "depth",
+        usage = "--depth=3",
+        description = "Maximum edge depth for impact traversal. Defaults to 3.",
     )
 
     private val commands: List<CliCommandMetadata> = listOf(
@@ -822,6 +841,83 @@ internal object CliCommandCatalog {
             summary = "Skill wrapper: list workspace modules and source files.",
             description = "Hidden native skill command. Accepts one JSON request argument.",
             usages = listOf("$CLI_EXECUTABLE_NAME skill workspace-files '{\"workspace_root\":\"/ws\"}'"),
+            visible = false,
+        ),
+        CliCommandMetadata(
+            path = listOf("metrics", "fan-in"),
+            group = CliCommandGroup.METRICS,
+            summary = "Show symbols ranked by incoming reference count (coupling hotspots).",
+            description = "Queries the local SQLite reference index without a running daemon. Returns symbols with the highest inbound reference counts.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME metrics fan-in --workspace-root=/absolute/path/to/workspace [--limit=50]",
+            ),
+            options = listOf(workspaceRootOption, metricsLimitOption),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME metrics fan-in --workspace-root=/absolute/path/to/workspace",
+                "$CLI_EXECUTABLE_NAME metrics fan-in --workspace-root=/absolute/path/to/workspace --limit=20",
+            ),
+        ),
+        CliCommandMetadata(
+            path = listOf("metrics", "fan-out"),
+            group = CliCommandGroup.METRICS,
+            summary = "Show files ranked by outgoing reference count (complexity hotspots).",
+            description = "Queries the local SQLite reference index without a running daemon. Returns files with the highest outbound reference counts.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME metrics fan-out --workspace-root=/absolute/path/to/workspace [--limit=50]",
+            ),
+            options = listOf(workspaceRootOption, metricsLimitOption),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME metrics fan-out --workspace-root=/absolute/path/to/workspace",
+                "$CLI_EXECUTABLE_NAME metrics fan-out --workspace-root=/absolute/path/to/workspace --limit=20",
+            ),
+        ),
+        CliCommandMetadata(
+            path = listOf("metrics", "coupling"),
+            group = CliCommandGroup.METRICS,
+            summary = "Show cross-module reference counts.",
+            description = "Queries the local SQLite reference index without a running daemon. Returns module pairs with cross-module reference counts.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME metrics coupling --workspace-root=/absolute/path/to/workspace",
+            ),
+            options = listOf(workspaceRootOption),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME metrics coupling --workspace-root=/absolute/path/to/workspace",
+            ),
+        ),
+        CliCommandMetadata(
+            path = listOf("metrics", "dead-code"),
+            group = CliCommandGroup.METRICS,
+            summary = "Show symbols with zero incoming references.",
+            description = "Queries the local SQLite reference index without a running daemon. Returns indexed identifiers that have no inbound symbol references.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME metrics dead-code --workspace-root=/absolute/path/to/workspace",
+            ),
+            options = listOf(workspaceRootOption),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME metrics dead-code --workspace-root=/absolute/path/to/workspace",
+            ),
+        ),
+        CliCommandMetadata(
+            path = listOf("metrics", "impact"),
+            group = CliCommandGroup.METRICS,
+            summary = "Show transitive change impact radius for a symbol.",
+            description = "Queries the local SQLite reference index without a running daemon. Walks incoming reference edges up to --depth levels to estimate which files are transitively affected by a change to --symbol.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME metrics impact --workspace-root=/absolute/path/to/workspace --symbol=com.example.MyClass [--depth=3]",
+            ),
+            options = listOf(workspaceRootOption, metricsSymbolOption, metricsDepthOption),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME metrics impact --workspace-root=/absolute/path/to/workspace --symbol=com.example.MyClass",
+                "$CLI_EXECUTABLE_NAME metrics impact --workspace-root=/absolute/path/to/workspace --symbol=com.example.MyClass --depth=5",
+            ),
+        ),
+        // Skill wrapper: metrics — hidden, called by agent shell scripts
+        CliCommandMetadata(
+            path = listOf("skill", "metrics"),
+            group = CliCommandGroup.METRICS,
+            summary = "Skill wrapper: query workspace metrics from the local reference index.",
+            description = "Hidden native skill command. Accepts one JSON request argument.",
+            usages = listOf("$CLI_EXECUTABLE_NAME skill metrics '{\"workspaceRoot\":\"/ws\",\"metric\":\"fan-in\"}'"),
             visible = false,
         ),
         CliCommandMetadata(

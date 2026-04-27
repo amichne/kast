@@ -40,6 +40,18 @@ class ReferenceIndexer(
         }
     }
 
+    fun reindexFiles(
+        changedPaths: Set<String>,
+        referenceScanner: (String) -> List<SymbolReferenceRow>,
+        isCancelled: () -> Boolean = { Thread.currentThread().isInterrupted },
+    ) {
+        indexReferences(
+            filePaths = changedPaths,
+            referenceScanner = referenceScanner,
+            isCancelled = isCancelled,
+        )
+    }
+
     private fun Throwable.isCancellation(): Boolean =
         this is CancellationException ||
             this is InterruptedException ||

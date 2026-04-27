@@ -2,6 +2,7 @@ package io.github.amichne.kast.cli.skill
 
 import io.github.amichne.kast.api.wrapper.KastCallersResponse
 import io.github.amichne.kast.api.wrapper.KastDiagnosticsResponse
+import io.github.amichne.kast.api.wrapper.KastMetricsResponse
 import io.github.amichne.kast.api.wrapper.KastReferencesResponse
 import io.github.amichne.kast.api.wrapper.KastRenameResponse
 import io.github.amichne.kast.api.wrapper.KastResolveResponse
@@ -37,5 +38,7 @@ internal object SkillWrapperSerializer {
             json.encodeToString(KastWorkspaceFilesResponse.serializer(), response as KastWorkspaceFilesResponse)
         SkillWrapperName.WRITE_AND_VALIDATE ->
             json.encodeToString(KastWriteAndValidateResponse.serializer(), response as KastWriteAndValidateResponse)
+        SkillWrapperName.METRICS ->
+            json.encodeToString(KastMetricsResponse.serializer(), response as KastMetricsResponse)
     }
 }

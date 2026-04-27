@@ -69,6 +69,7 @@ Agents must use native `kast skill ...` subcommands for Kotlin semantic operatio
 | Scaffold context      | `kast skill scaffold`                   | None     |
 | Write and validate    | `kast skill write-and-validate`         | None     |
 | List workspace files  | `kast skill workspace-files`            | None     |
+| Workspace metrics     | `kast skill metrics`                    | None     |
 
 **Prohibited substitutions:** `grep`, `rg`, `ast-grep`, `cat` + manual
 parsing must NOT be used for symbol identity, reference finding, or call

@@ -10,6 +10,7 @@
         "warnings": [],
         "sourceModuleNames": [],
         "dependentModuleNamesBySourceModuleName": {},
+        "referenceIndexReady": false,
         "schemaVersion": 3
     },
     "id": 1,

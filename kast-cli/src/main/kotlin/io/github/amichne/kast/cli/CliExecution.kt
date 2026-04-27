@@ -2,6 +2,7 @@ package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.cli.skill.SkillWrapperExecutor
 import io.github.amichne.kast.cli.skill.SkillWrapperSerializer
+import io.github.amichne.kast.indexstore.MetricsEngine
 import kotlinx.serialization.json.Json
 import java.nio.file.Path
 
@@ -235,6 +236,22 @@ internal class DefaultCliCommandExecutor(
             is CliCommand.EvalSkill -> {
                 val result = EvalSkillExecutor(json).execute(command.options)
                 CliExecutionResult(output = result)
+            }
+
+            is CliCommand.Metrics -> {
+                MetricsEngine(command.workspaceRoot).use { engine ->
+                    val result = when (command.subcommand) {
+                        MetricsSubcommand.FAN_IN -> engine.fanInRanking(command.limit)
+                        MetricsSubcommand.FAN_OUT -> engine.fanOutRanking(command.limit)
+                        MetricsSubcommand.COUPLING -> engine.moduleCouplingMatrix()
+                        MetricsSubcommand.DEAD_CODE -> engine.deadCodeCandidates()
+                        MetricsSubcommand.IMPACT -> engine.changeImpactRadius(
+                            fqName = requireNotNull(command.symbol) { "--symbol is required for impact" },
+                            depth = command.depth,
+                        )
+                    }
+                    CliExecutionResult(output = CliOutput.JsonValue(result))
+                }
             }
         }
     }

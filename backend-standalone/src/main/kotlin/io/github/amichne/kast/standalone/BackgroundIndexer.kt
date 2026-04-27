@@ -140,10 +140,14 @@ internal class BackgroundIndexer(
     /**
      * Re-indexes a set of changed file paths incrementally. Skips files that
      * no longer exist on disk (deleted between discovery and read).
+     *
+     * When [referenceScanner] is provided, also triggers an incremental Phase 2
+     * re-scan for the same changed paths after the Phase 1 update completes.
      */
     fun reindexFiles(
         index: MutableSourceIdentifierIndex,
         paths: Set<NormalizedPath>,
+        referenceScanner: ((String) -> List<SymbolReferenceRow>)? = null,
     ) {
         paths.forEach { normalizedPath ->
             val filePath = normalizedPath.toJavaPath()
@@ -160,6 +164,14 @@ internal class BackgroundIndexer(
                 )
                 sourceIndexCache.saveFileIndex(index, normalizedPath)
             }
+        }
+        if (referenceScanner != null) {
+            val changedPathStrings = paths.map { it.value }.toSet()
+            ReferenceIndexer(store, batchSize = PHASE2_BATCH_SIZE).reindexFiles(
+                changedPaths = changedPathStrings,
+                referenceScanner = referenceScanner,
+                isCancelled = { cancelled || Thread.currentThread().isInterrupted },
+            )
         }
     }
 

@@ -128,6 +128,45 @@ class ReferenceIndexerTest {
         }
     }
 
+    @Test
+    fun `reindexFiles replaces references for changed paths only`() {
+        val filePaths = listOf("/src/A.kt", "/src/B.kt")
+        storeWithManifest(*filePaths.toTypedArray()).use { store ->
+            ReferenceIndexer(store).indexReferences(filePaths, referenceScanner = { path ->
+                listOf(
+                    SymbolReferenceRow(
+                        sourcePath = path,
+                        sourceOffset = 0,
+                        targetFqName = "original.Target",
+                        targetPath = null,
+                        targetOffset = null,
+                    ),
+                )
+            })
+            assertEquals(2, store.referencesToSymbol("original.Target").size)
+
+            ReferenceIndexer(store).reindexFiles(
+                changedPaths = setOf("/src/A.kt"),
+                referenceScanner = { path ->
+                    listOf(
+                        SymbolReferenceRow(
+                            sourcePath = path,
+                            sourceOffset = 0,
+                            targetFqName = "updated.Target",
+                            targetPath = null,
+                            targetOffset = null,
+                        ),
+                    )
+                },
+            )
+
+            assertEquals(1, store.referencesToSymbol("original.Target").size)
+            assertEquals("/src/B.kt", store.referencesToSymbol("original.Target").single().sourcePath)
+            assertEquals(1, store.referencesToSymbol("updated.Target").size)
+            assertEquals("/src/A.kt", store.referencesToSymbol("updated.Target").single().sourcePath)
+        }
+    }
+
     private fun storeWithManifest(vararg filePaths: String): SqliteSourceIndexStore {
         val store = SqliteSourceIndexStore(workspaceRoot.toAbsolutePath().normalize())
         store.ensureSchema()

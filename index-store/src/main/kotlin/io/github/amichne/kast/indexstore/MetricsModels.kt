@@ -1,5 +1,8 @@
 package io.github.amichne.kast.indexstore
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class FanInMetric(
     val targetFqName: String,
     val targetPath: String?,
@@ -9,6 +12,7 @@ data class FanInMetric(
     val sourceModuleCount: Int,
 )
 
+@Serializable
 data class FanOutMetric(
     val sourcePath: String,
     val sourceModuleName: String?,
@@ -19,12 +23,14 @@ data class FanOutMetric(
     val externalTargetCount: Int,
 )
 
+@Serializable
 data class ModuleCouplingMetric(
     val sourceModuleName: String,
     val targetModuleName: String,
     val referenceCount: Int,
 )
 
+@Serializable
 data class DeadCodeCandidate(
     val identifier: String,
     val path: String,
@@ -34,6 +40,7 @@ data class DeadCodeCandidate(
     val reason: String,
 )
 
+@Serializable
 data class ChangeImpactNode(
     val sourcePath: String,
     val depth: Int,
@@ -42,10 +49,12 @@ data class ChangeImpactNode(
     val semantics: ImpactSemantics,
 )
 
+@Serializable
 enum class MetricsConfidence {
     LOW,
 }
 
+@Serializable
 enum class ImpactSemantics {
     FILE_LEVEL_APPROXIMATION,
 }

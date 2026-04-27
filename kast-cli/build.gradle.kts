@@ -25,6 +25,7 @@ application {
 
 dependencies {
     api(project(":analysis-api"))
+    implementation(project(":index-store"))
     implementation(libs.coroutines.core)
     implementation(libs.mordant)
     implementation(libs.serialization.json)

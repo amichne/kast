@@ -47,6 +47,21 @@ internal sealed interface CliCommand {
     data class Smoke(val options: SmokeOptions) : CliCommand
     data class Skill(val name: SkillWrapperName, val rawInput: String) : CliCommand
     data class EvalSkill(val options: EvalSkillOptions) : CliCommand
+    data class Metrics(
+        val subcommand: MetricsSubcommand,
+        val workspaceRoot: java.nio.file.Path,
+        val limit: Int = 50,
+        val symbol: String? = null,
+        val depth: Int = 3,
+    ) : CliCommand
+}
+
+internal enum class MetricsSubcommand {
+    FAN_IN,
+    FAN_OUT,
+    COUPLING,
+    DEAD_CODE,
+    IMPACT,
 }
 
 internal data class EvalSkillOptions(

@@ -659,6 +659,8 @@ components:
             type: array
             items:
               type: string
+        referenceIndexReady:
+          type: boolean
         schemaVersion:
           type: integer
           format: int32

@@ -119,6 +119,33 @@ internal class CliCommandParser(
                 listOf("install", "skill") -> CliCommand.InstallSkill(parsed.installSkillOptions())
                 listOf("smoke") -> CliCommand.Smoke(parsed.smokeOptions())
                 listOf("eval", "skill") -> CliCommand.EvalSkill(parsed.evalSkillOptions())
+                listOf("metrics", "fan-in") -> CliCommand.Metrics(
+                    subcommand = MetricsSubcommand.FAN_IN,
+                    workspaceRoot = parsed.requireWorkspaceRootPath(),
+                    limit = parsed.optionalInt("limit") ?: 50,
+                )
+                listOf("metrics", "fan-out") -> CliCommand.Metrics(
+                    subcommand = MetricsSubcommand.FAN_OUT,
+                    workspaceRoot = parsed.requireWorkspaceRootPath(),
+                    limit = parsed.optionalInt("limit") ?: 50,
+                )
+                listOf("metrics", "coupling") -> CliCommand.Metrics(
+                    subcommand = MetricsSubcommand.COUPLING,
+                    workspaceRoot = parsed.requireWorkspaceRootPath(),
+                )
+                listOf("metrics", "dead-code") -> CliCommand.Metrics(
+                    subcommand = MetricsSubcommand.DEAD_CODE,
+                    workspaceRoot = parsed.requireWorkspaceRootPath(),
+                )
+                listOf("metrics", "impact") -> CliCommand.Metrics(
+                    subcommand = MetricsSubcommand.IMPACT,
+                    workspaceRoot = parsed.requireWorkspaceRootPath(),
+                    symbol = parsed.options["symbol"] ?: throw CliFailure(
+                        code = "CLI_USAGE",
+                        message = "--symbol is required for metrics impact",
+                    ),
+                    depth = parsed.optionalInt("depth") ?: 3,
+                )
                 else -> throw CliFailure(
                     code = "CLI_USAGE",
                     message = "Unknown command: ${metadata.commandText}",
@@ -623,6 +650,17 @@ internal data class ParsedArguments(
     ): Boolean = options[key]?.toBooleanStrictOrNull() ?: default
 
     private fun absoluteFilePath(value: String): String = Path.of(value).toAbsolutePath().normalize().toString()
+
+    fun requireWorkspaceRootPath(): Path {
+        val raw = options["workspace-root"]
+            ?: throw CliFailure(
+                code = "CLI_USAGE",
+                message = "Missing required option --workspace-root",
+            )
+        return Path.of(raw).toAbsolutePath().normalize()
+    }
+
+    fun optionalInt(key: String): Int? = options[key]?.toIntOrNull()
 }
 
 private fun ParsedArguments.parseBool(key: String): Boolean = when (options[key]?.lowercase()) {

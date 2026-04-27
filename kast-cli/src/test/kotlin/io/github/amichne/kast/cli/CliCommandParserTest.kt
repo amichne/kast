@@ -577,4 +577,90 @@ class CliCommandParserTest {
         assertEquals(7, completionsCommand.query.maxResults)
         assertEquals(setOf(SymbolKind.FUNCTION, SymbolKind.CLASS), completionsCommand.query.kindFilter)
     }
+
+    @Test
+    fun `metrics fan-in parses with defaults`() {
+        val command = parser.parse(
+            arrayOf("metrics", "fan-in", "--workspace-root=$tempDir"),
+        )
+
+        assertTrue(command is CliCommand.Metrics)
+        val metrics = command as CliCommand.Metrics
+        assertEquals(MetricsSubcommand.FAN_IN, metrics.subcommand)
+        assertEquals(tempDir.toAbsolutePath().normalize(), metrics.workspaceRoot)
+        assertEquals(50, metrics.limit)
+    }
+
+    @Test
+    fun `metrics fan-out parses with custom limit`() {
+        val command = parser.parse(
+            arrayOf("metrics", "fan-out", "--workspace-root=$tempDir", "--limit=20"),
+        )
+
+        assertTrue(command is CliCommand.Metrics)
+        val metrics = command as CliCommand.Metrics
+        assertEquals(MetricsSubcommand.FAN_OUT, metrics.subcommand)
+        assertEquals(20, metrics.limit)
+    }
+
+    @Test
+    fun `metrics coupling parses`() {
+        val command = parser.parse(
+            arrayOf("metrics", "coupling", "--workspace-root=$tempDir"),
+        )
+
+        assertTrue(command is CliCommand.Metrics)
+        assertEquals(MetricsSubcommand.COUPLING, (command as CliCommand.Metrics).subcommand)
+    }
+
+    @Test
+    fun `metrics dead-code parses`() {
+        val command = parser.parse(
+            arrayOf("metrics", "dead-code", "--workspace-root=$tempDir"),
+        )
+
+        assertTrue(command is CliCommand.Metrics)
+        assertEquals(MetricsSubcommand.DEAD_CODE, (command as CliCommand.Metrics).subcommand)
+    }
+
+    @Test
+    fun `metrics impact parses with required symbol`() {
+        val command = parser.parse(
+            arrayOf("metrics", "impact", "--workspace-root=$tempDir", "--symbol=com.example.Foo"),
+        )
+
+        assertTrue(command is CliCommand.Metrics)
+        val metrics = command as CliCommand.Metrics
+        assertEquals(MetricsSubcommand.IMPACT, metrics.subcommand)
+        assertEquals("com.example.Foo", metrics.symbol)
+        assertEquals(3, metrics.depth)
+    }
+
+    @Test
+    fun `metrics impact with custom depth`() {
+        val command = parser.parse(
+            arrayOf("metrics", "impact", "--workspace-root=$tempDir", "--symbol=com.example.Foo", "--depth=5"),
+        )
+
+        val metrics = command as CliCommand.Metrics
+        assertEquals(5, metrics.depth)
+    }
+
+    @Test
+    fun `metrics impact fails without symbol`() {
+        assertThrows<CliFailure> {
+            parser.parse(
+                arrayOf("metrics", "impact", "--workspace-root=$tempDir"),
+            )
+        }
+    }
+
+    @Test
+    fun `metrics fails without workspace-root`() {
+        assertThrows<CliFailure> {
+            parser.parse(
+                arrayOf("metrics", "fan-in"),
+            )
+        }
+    }
 }

@@ -176,6 +176,7 @@ internal class StandaloneAnalysisBackend internal constructor(
             dependentModuleNamesBySourceModuleName = moduleGraph.entries.associate { (module, dependents) ->
                 module.value to dependents.map { it.value }.sorted()
             },
+            referenceIndexReady = session.isReferenceIndexReady(),
         )
     }
 

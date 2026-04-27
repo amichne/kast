@@ -13,6 +13,7 @@ internal enum class SkillWrapperName(val cliName: String) {
     SCAFFOLD("scaffold"),
     WRITE_AND_VALIDATE("write-and-validate"),
     WORKSPACE_FILES("workspace-files"),
+    METRICS("metrics"),
     ;
 
     companion object {
