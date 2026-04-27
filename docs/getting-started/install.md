@@ -87,7 +87,7 @@ components.
     install it from disk in IntelliJ: **Settings → Plugins → ⚙️ →
     Install Plugin from Disk**. This path does not require the `kast` CLI.
 
-=== "Both"
+=== "CLI and IntelliJ plugin"
 
     ```console title="Install CLI and IntelliJ plugin"
     ./kast.sh install --components=cli,intellij --non-interactive

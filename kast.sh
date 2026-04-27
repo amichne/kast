@@ -820,7 +820,7 @@ _install_standalone_backend() {
   mv "${staging_dir}/kast-standalone-extracted" "$backend_release_dir"
 
   local launcher="${backend_release_dir}/kast-standalone"
-  [[ -f "$launcher" ]] || die "Installed backend archive did not contain kast-standalone launcher"
+  [[ -f "$launcher" ]] || die "Installed backend archive did not contain kast-standalone launcher at expected path: ${launcher}"
   chmod +x "$launcher"
 
   local current_link="${backend_dir}/current"
@@ -837,6 +837,27 @@ _install_standalone_backend() {
   log_success "Standalone backend installed to ${backend_release_dir}"
   log_note "Start with: kast-standalone --workspace-root=/absolute/path/to/workspace"
   return 0
+}
+
+_install_resolve_release_tag() {
+  local release_repo="$1" known_tag="${2:-}"
+  if [[ -n "$known_tag" ]]; then
+    printf '%s\n' "$known_tag"
+    return
+  fi
+  local version="${KAST_VERSION:-}"
+  if [[ -n "$version" ]]; then
+    printf '%s\n' "$version"
+    return
+  fi
+  local meta_path="${tmp_dir}/latest-release-tag.json"
+  curl \
+    --fail --location --retry 3 --retry-delay 2 --silent --show-error \
+    --header "$GITHUB_API_ACCEPT" \
+    --header "$GITHUB_API_VERSION" \
+    --output "$meta_path" \
+    "https://api.github.com/repos/${release_repo}/releases/latest"
+  python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['tag_name'])" "$meta_path"
 }
 
 _install_prompt_components() {
@@ -1070,38 +1091,12 @@ USAGE
   fi
 
   if [[ "$install_intellij" == "true" ]]; then
-    local resolved_tag="${release_tag:-}"
-    if [[ -z "$resolved_tag" ]]; then
-      resolved_tag="${KAST_VERSION:-}"
-      if [[ -z "$resolved_tag" ]]; then
-        local latest_meta="${tmp_dir}/latest-release.json"
-        curl \
-          --fail --location --retry 3 --retry-delay 2 --silent --show-error \
-          --header "$GITHUB_API_ACCEPT" \
-          --header "$GITHUB_API_VERSION" \
-          --output "$latest_meta" \
-          "https://api.github.com/repos/${release_repo}/releases/latest"
-        resolved_tag="$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['tag_name'])" "$latest_meta")"
-      fi
-    fi
+    local resolved_tag; resolved_tag="$(_install_resolve_release_tag "$release_repo" "${release_tag:-}")"
     _install_intellij_plugin "$release_repo" "$resolved_tag" "$install_root" "$local_plugin_archive" || true
   fi
 
   if [[ "$install_standalone" == "true" ]]; then
-    local resolved_tag="${release_tag:-}"
-    if [[ -z "$resolved_tag" ]]; then
-      resolved_tag="${KAST_VERSION:-}"
-      if [[ -z "$resolved_tag" ]]; then
-        local latest_meta="${tmp_dir}/latest-standalone-release.json"
-        curl \
-          --fail --location --retry 3 --retry-delay 2 --silent --show-error \
-          --header "$GITHUB_API_ACCEPT" \
-          --header "$GITHUB_API_VERSION" \
-          --output "$latest_meta" \
-          "https://api.github.com/repos/${release_repo}/releases/latest"
-        resolved_tag="$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['tag_name'])" "$latest_meta")"
-      fi
-    fi
+    local resolved_tag; resolved_tag="$(_install_resolve_release_tag "$release_repo" "${release_tag:-}")"
     _install_standalone_backend "$release_repo" "$resolved_tag" "$install_root" "$local_backend_archive" "$bin_dir" || true
   fi
 
