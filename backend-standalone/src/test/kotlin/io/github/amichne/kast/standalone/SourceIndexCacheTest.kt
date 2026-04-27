@@ -2,6 +2,10 @@ package io.github.amichne.kast.standalone
 
 import io.github.amichne.kast.api.contract.ModuleName
 import io.github.amichne.kast.api.contract.NormalizedPath
+import io.github.amichne.kast.indexstore.kastCacheDirectory
+import io.github.amichne.kast.standalone.cache.GitDeltaCandidateDetector
+import io.github.amichne.kast.standalone.cache.GitDeltaCandidates
+import io.github.amichne.kast.standalone.cache.SourceIndexCache
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
@@ -14,8 +18,6 @@ import java.nio.file.attribute.FileTime
 import java.sql.DriverManager
 import kotlin.io.path.createDirectories
 import kotlin.io.path.writeText
-import io.github.amichne.kast.indexstore.kastCacheDirectory
-import io.github.amichne.kast.standalone.cache.SourceIndexCache
 
 class SourceIndexCacheTest {
     @TempDir
@@ -198,6 +200,145 @@ class SourceIndexCacheTest {
 
         val loaded = requireNotNull(cache.load(sourceRoots()))
         assertEquals(listOf(normalizeStandalonePath(file).toString()), loaded.deletedPaths)
+    }
+
+    @Test
+    fun `git delta cache load stats only candidate and new files`() {
+        val appFile = writeSourceFile(
+            relativePath = "sample/App.kt",
+            content = "package sample\n\nfun welcome(): String = \"hi\"\n",
+        )
+        val helperFile = writeSourceFile(
+            relativePath = "sample/Helper.kt",
+            content = "package sample\n\nfun helper(): String = \"ok\"\n",
+        )
+        val normalizedRoot = normalizeStandalonePath(workspaceRoot)
+        val normalizedApp = normalizeStandalonePath(appFile).toString()
+        val normalizedHelper = normalizeStandalonePath(helperFile).toString()
+        val detector = FakeGitDeltaCandidateDetector(headCommit = "head-1")
+        detector.trackedPaths = setOf(normalizedApp, normalizedHelper)
+        val cache = SourceIndexCache(normalizedRoot, gitDeltaChangeDetector = detector)
+        cache.save(
+            index = MutableSourceIdentifierIndex.fromCandidatePathsByIdentifier(
+                mapOf("welcome" to listOf(normalizedApp), "helper" to listOf(normalizedHelper)),
+            ),
+            sourceRoots = sourceRoots(),
+        )
+
+        appFile.writeText("package sample\n\nfun welcome(): String = \"hello\"\n")
+        bumpLastModified(appFile)
+        val newFile = writeSourceFile(
+            relativePath = "sample/NewFile.kt",
+            content = "package sample\n\nfun newcomer(): String = \"new\"\n",
+        )
+        bumpLastModified(newFile)
+        val stattedPaths = mutableListOf<String>()
+        detector.candidates = setOf(normalizedApp)
+        val loadingCache = SourceIndexCache(
+            workspaceRoot = normalizedRoot,
+            gitDeltaChangeDetector = detector,
+            lastModifiedMillis = { path ->
+                stattedPaths += normalizeStandalonePath(path).toString()
+                Files.getLastModifiedTime(path).toMillis()
+            },
+        )
+
+        val loaded = requireNotNull(loadingCache.load(sourceRoots()))
+
+        assertEquals(listOf(normalizedApp), loaded.modifiedPaths)
+        assertEquals(listOf(normalizeStandalonePath(newFile).toString()), loaded.newPaths)
+        assertEquals(
+            setOf(normalizedApp, normalizeStandalonePath(newFile).toString()),
+            stattedPaths.toSet(),
+        )
+        assertFalse(stattedPaths.contains(normalizedHelper))
+    }
+
+    @Test
+    fun `source index cache save records current git head`() {
+        val file = writeSourceFile(
+            relativePath = "sample/App.kt",
+            content = "package sample\n\nfun welcome(): String = \"hi\"\n",
+        )
+        val normalizedFile = normalizeStandalonePath(file).toString()
+        val cache = SourceIndexCache(
+            workspaceRoot = normalizeStandalonePath(workspaceRoot),
+            gitDeltaChangeDetector = FakeGitDeltaCandidateDetector(headCommit = "head-2"),
+        )
+
+        cache.save(
+            index = MutableSourceIdentifierIndex.fromCandidatePathsByIdentifier(
+                mapOf("welcome" to listOf(normalizedFile)),
+            ),
+            sourceRoots = sourceRoots(),
+        )
+
+        assertEquals("head-2", cache.store.readHeadCommit())
+    }
+
+    @Test
+    fun `partial file saves do not advance workspace git head baseline`() {
+        val file = writeSourceFile(
+            relativePath = "sample/App.kt",
+            content = "package sample\n\nfun welcome(): String = \"hi\"\n",
+        )
+        val normalizedFile = normalizeStandalonePath(file).toString()
+        val detector = FakeGitDeltaCandidateDetector(headCommit = "head-1")
+        val cache = SourceIndexCache(
+            workspaceRoot = normalizeStandalonePath(workspaceRoot),
+            gitDeltaChangeDetector = detector,
+        )
+        val index = MutableSourceIdentifierIndex.fromCandidatePathsByIdentifier(
+            mapOf("welcome" to listOf(normalizedFile)),
+        )
+        cache.save(index = index, sourceRoots = sourceRoots())
+
+        detector.headCommit = "head-2"
+        index.updateFile(normalizedFile, "package sample\n\nfun renamed(): String = \"hi\"\n")
+        cache.saveFileIndex(index, NormalizedPath.ofNormalized(normalizedFile))
+
+        assertEquals("head-1", cache.store.readHeadCommit())
+    }
+
+    @Test
+    fun `git delta cache load stats cached untracked files`() {
+        val trackedFile = writeSourceFile(
+            relativePath = "sample/Tracked.kt",
+            content = "package sample\n\nfun tracked(): String = \"hi\"\n",
+        )
+        val untrackedFile = writeSourceFile(
+            relativePath = "sample/Generated.kt",
+            content = "package sample\n\nfun generated(): String = \"old\"\n",
+        )
+        val normalizedRoot = normalizeStandalonePath(workspaceRoot)
+        val normalizedTracked = normalizeStandalonePath(trackedFile).toString()
+        val normalizedUntracked = normalizeStandalonePath(untrackedFile).toString()
+        val detector = FakeGitDeltaCandidateDetector(headCommit = "head-1")
+        detector.trackedPaths = setOf(normalizedTracked)
+        val cache = SourceIndexCache(normalizedRoot, gitDeltaChangeDetector = detector)
+        cache.save(
+            index = MutableSourceIdentifierIndex.fromCandidatePathsByIdentifier(
+                mapOf("tracked" to listOf(normalizedTracked), "generated" to listOf(normalizedUntracked)),
+            ),
+            sourceRoots = sourceRoots(),
+        )
+
+        untrackedFile.writeText("package sample\n\nfun generated(): String = \"new\"\n")
+        bumpLastModified(untrackedFile)
+        val stattedPaths = mutableListOf<String>()
+        val loadingCache = SourceIndexCache(
+            workspaceRoot = normalizedRoot,
+            gitDeltaChangeDetector = detector,
+            lastModifiedMillis = { path ->
+                stattedPaths += normalizeStandalonePath(path).toString()
+                Files.getLastModifiedTime(path).toMillis()
+            },
+        )
+
+        val loaded = requireNotNull(loadingCache.load(sourceRoots()))
+
+        assertEquals(listOf(normalizedUntracked), loaded.modifiedPaths)
+        assertEquals(setOf(normalizedUntracked), stattedPaths.toSet())
     }
 
     @Test
@@ -422,5 +563,26 @@ class SourceIndexCacheTest {
             Thread.sleep(pollMillis)
         }
         error("Condition was not met within ${timeoutMillis}ms")
+    }
+
+    private class FakeGitDeltaCandidateDetector(
+        var headCommit: String,
+    ) : GitDeltaCandidateDetector {
+        var candidates: Set<String>? = null
+        var trackedPaths: Set<String> = emptySet()
+
+        override fun detectCandidatePaths(
+            storedHeadCommit: String?,
+            sourceRoots: List<Path>,
+        ): GitDeltaCandidates? =
+            storedHeadCommit?.let {
+                GitDeltaCandidates(
+                    headCommit = headCommit,
+                    paths = candidates.orEmpty(),
+                    trackedPaths = trackedPaths,
+                )
+            }
+
+        override fun currentHeadCommit(): String = headCommit
     }
 }

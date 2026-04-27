@@ -8,6 +8,7 @@ import kotlin.io.path.extension
 internal data class FileManifestSnapshot(
     val currentPathsByLastModifiedMillis: Map<String, Long>,
     val changes: FileChangeSet,
+    val headCommit: String?,
 ) {
     val newPaths: List<String> get() = changes.added
     val modifiedPaths: List<String> get() = changes.modified
@@ -15,6 +16,12 @@ internal data class FileManifestSnapshot(
 }
 
 internal fun scanTrackedKotlinFileTimestamps(sourceRoots: List<Path>): Map<String, Long> = buildMap {
+    scanTrackedKotlinFilePaths(sourceRoots).forEach { path ->
+        put(path, Files.getLastModifiedTime(Path.of(path)).toMillis())
+    }
+}
+
+internal fun scanTrackedKotlinFilePaths(sourceRoots: List<Path>): Set<String> = buildSet {
     sourceRoots
         .distinct()
         .sorted()
@@ -27,10 +34,7 @@ internal fun scanTrackedKotlinFileTimestamps(sourceRoots: List<Path>): Map<Strin
                 paths
                     .filter { path -> Files.isRegularFile(path) && path.extension == "kt" }
                     .forEach { file ->
-                        put(
-                            normalizeStandalonePath(file).toString(),
-                            Files.getLastModifiedTime(file).toMillis(),
-                        )
+                        add(normalizeStandalonePath(file).toString())
                     }
             }
         }

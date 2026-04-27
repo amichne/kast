@@ -12,6 +12,11 @@ import java.nio.file.Path
 internal class SourceIndexCache(
     workspaceRoot: Path,
     private val enabled: Boolean = true,
+    private val gitDeltaChangeDetector: GitDeltaCandidateDetector = GitDeltaChangeDetector(workspaceRoot),
+    private val lastModifiedMillis: (Path) -> Long = { path ->
+        java.nio.file.Files.getLastModifiedTime(path)
+            .toMillis()
+    },
 ) : AutoCloseable {
     internal val store = SqliteSourceIndexStore(workspaceRoot)
 
@@ -19,11 +24,13 @@ internal class SourceIndexCache(
     fun save(
         index: MutableSourceIdentifierIndex,
         sourceRoots: List<Path>,
+        headCommit: String? = gitDeltaChangeDetector.currentHeadCommit(),
     ) {
         if (!enabled) return
         store.ensureSchema()
         val manifest = scanTrackedKotlinFileTimestamps(sourceRoots)
         store.saveFullIndex(updates = indexToUpdates(index), manifest = manifest)
+        (headCommit ?: gitDeltaChangeDetector.currentHeadCommit())?.let(store::writeHeadCommit)
     }
 
     /**
@@ -43,6 +50,7 @@ internal class SourceIndexCache(
             IncrementalIndexResult(
                 index = MutableSourceIdentifierIndex.fromSourceIndexSnapshot(store.loadSourceIndexSnapshot()),
                 changes = manifestSnapshot.changes,
+                headCommit = manifestSnapshot.headCommit,
             )
         } catch (_: Exception) {
             null
@@ -70,13 +78,19 @@ internal class SourceIndexCache(
                     wildcardImports = index.wildcardImportsForPath(normalizedPath).map { it.value }.toSet(),
                 ),
             )
+            val filePath = normalizedPath.toJavaPath()
+            if (java.nio.file.Files.isRegularFile(filePath)) {
+                store.updateManifestEntry(normalizedPath.value, lastModifiedMillis(filePath))
+            }
         }
     }
 
     /** Incrementally removes a single file's rows from all SQLite tables. */
     fun saveRemovedFile(path: String) {
         if (!enabled || !store.dbExists()) return
-        runCatching { store.removeFile(path) }
+        runCatching {
+            store.removeFile(path)
+        }
     }
 
     override fun close() {
@@ -88,12 +102,32 @@ internal class SourceIndexCache(
     // -------------------------------------------------------------------------
 
     private fun makeManifestSnapshot(sourceRoots: List<Path>): FileManifestSnapshot {
-        val current = scanTrackedKotlinFileTimestamps(sourceRoots)
         val previous = store.loadManifest().orEmpty()
+        val candidates = gitDeltaChangeDetector.detectCandidatePaths(store.readHeadCommit(), sourceRoots)
+        val current = candidates
+                          ?.let { scanCandidateTimestamps(sourceRoots, previous, it) }
+                      ?: scanTrackedKotlinFileTimestamps(sourceRoots)
         return FileManifestSnapshot(
             currentPathsByLastModifiedMillis = current,
             changes = buildChangeSet(current = current, previous = previous),
+            headCommit = candidates?.headCommit,
         )
+    }
+
+    private fun scanCandidateTimestamps(
+        sourceRoots: List<Path>,
+        previous: Map<String, Long>,
+        candidates: GitDeltaCandidates,
+    ): Map<String, Long> {
+        val currentPaths = scanTrackedKotlinFilePaths(sourceRoots)
+        val pathsToStat = candidates.paths + (currentPaths - previous.keys) + (previous.keys - candidates.trackedPaths)
+        return currentPaths.associateWith { path ->
+            if (path in pathsToStat) {
+                lastModifiedMillis(Path.of(path))
+            } else {
+                previous.getValue(path)
+            }
+        }
     }
 
     private fun buildChangeSet(
@@ -132,6 +166,7 @@ internal class SourceIndexCache(
 internal data class IncrementalIndexResult(
     val index: MutableSourceIdentifierIndex,
     val changes: FileChangeSet,
+    val headCommit: String?,
 ) {
     val newPaths: List<String> get() = changes.added
     val modifiedPaths: List<String> get() = changes.modified

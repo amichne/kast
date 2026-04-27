@@ -16,12 +16,11 @@ import com.intellij.psi.PsiManager
 import com.intellij.psi.compiled.ClassFileDecompilers
 import com.intellij.psi.impl.PsiManagerEx
 import io.github.amichne.kast.api.contract.FqName
-import io.github.amichne.kast.api.contract.KotlinIdentifier
 import io.github.amichne.kast.api.contract.ModuleName
 import io.github.amichne.kast.api.contract.NormalizedPath
-import io.github.amichne.kast.api.protocol.NotFoundException
 import io.github.amichne.kast.api.contract.PackageName
 import io.github.amichne.kast.api.contract.RefreshResult
+import io.github.amichne.kast.api.protocol.NotFoundException
 import io.github.amichne.kast.indexstore.SqliteSourceIndexStore
 import io.github.amichne.kast.shared.analysis.PsiReferenceScanner
 import io.github.amichne.kast.standalone.cache.CacheManager
@@ -903,7 +902,7 @@ internal class StandaloneAnalysisSession(
                         cancelled = { closed },
                     ),
                 )
-                backgroundIndexer.startPhase2(scanner::scanFileReferences)
+                backgroundIndexer.startPhase2(referenceScanner = scanner::scanFileReferences)
             }
         }
     }

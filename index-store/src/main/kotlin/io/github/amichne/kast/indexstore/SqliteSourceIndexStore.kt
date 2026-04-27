@@ -107,6 +107,9 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
 
     private fun additiveMigration(conn: Connection) {
         conn.createStatement().use { stmt ->
+            if (!columnExists(conn, tableName = "schema_version", columnName = "head_commit")) {
+                stmt.execute("ALTER TABLE schema_version ADD COLUMN head_commit TEXT")
+            }
             stmt.execute(
                 """CREATE TABLE IF NOT EXISTS symbol_references (
                     source_path TEXT NOT NULL,
@@ -128,6 +131,19 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
             )
         }
     }
+
+    private fun columnExists(
+        conn: Connection,
+        tableName: String,
+        columnName: String,
+    ): Boolean =
+        conn.prepareStatement("PRAGMA table_info($tableName)").use { stmt ->
+            val rs = stmt.executeQuery()
+            while (rs.next()) {
+                if (rs.getString("name") == columnName) return true
+            }
+            false
+        }
 
     private fun readSchemaVersion(conn: Connection): Int? = try {
         conn.prepareStatement("SELECT version FROM schema_version LIMIT 1").use { stmt ->
@@ -153,10 +169,11 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
             stmt.execute(
                 """CREATE TABLE IF NOT EXISTS schema_version (
                     version INTEGER NOT NULL,
-                    generation INTEGER NOT NULL DEFAULT 0
+                    generation INTEGER NOT NULL DEFAULT 0,
+                    head_commit TEXT
                 )""",
             )
-            stmt.execute("INSERT INTO schema_version (version, generation) VALUES ($SOURCE_INDEX_SCHEMA_VERSION, 0)")
+            stmt.execute("INSERT INTO schema_version (version, generation, head_commit) VALUES ($SOURCE_INDEX_SCHEMA_VERSION, 0, NULL)")
 
             stmt.execute(
                 """CREATE TABLE IF NOT EXISTS identifier_paths (
@@ -218,7 +235,6 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
             conn.autoCommit = false
             try {
                 conn.createStatement().use { stmt ->
-                    stmt.execute("DELETE FROM symbol_references")
                     stmt.execute("DELETE FROM identifier_paths")
                     stmt.execute("DELETE FROM file_metadata")
                     stmt.execute("DELETE FROM file_manifest")
@@ -227,6 +243,7 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
                     insertFileDataInTransaction(conn, update)
                 }
                 insertManifestInTransaction(conn, manifest)
+                pruneReferencesOutsideManifestInTransaction(conn, manifest.keys)
                 conn.commit()
             } catch (e: Exception) {
                 conn.rollback()
@@ -337,6 +354,22 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
                 throw e
             } finally {
                 conn.autoCommit = true
+            }
+        }
+    }
+
+    fun updateManifestEntry(
+        path: String,
+        lastModifiedMillis: Long,
+    ) {
+        synchronized(writeLock) {
+            connection().prepareStatement(
+                """INSERT OR REPLACE INTO file_manifest (path, last_modified_millis)
+                   VALUES (?, ?)""",
+            ).use { stmt ->
+                stmt.setString(1, path)
+                stmt.setLong(2, lastModifiedMillis)
+                stmt.executeUpdate()
             }
         }
     }
@@ -556,6 +589,29 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
         }
     }
 
+    fun readHeadCommit(): String? {
+        synchronized(writeLock) {
+            val conn = connection()
+            return try {
+                conn.prepareStatement("SELECT head_commit FROM schema_version LIMIT 1").use { stmt ->
+                    val rs = stmt.executeQuery()
+                    if (rs.next()) rs.getString(1) else null
+                }
+            } catch (_: Exception) {
+                null
+            }
+        }
+    }
+
+    fun writeHeadCommit(sha: String) {
+        synchronized(writeLock) {
+            connection().prepareStatement("UPDATE schema_version SET head_commit = ?").use { stmt ->
+                stmt.setString(1, sha)
+                stmt.executeUpdate()
+            }
+        }
+    }
+
     private fun insertFileDataInTransaction(
         conn: Connection,
         update: FileIndexUpdate,
@@ -604,6 +660,30 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
                 stmt.addBatch()
             }
             stmt.executeBatch()
+        }
+    }
+
+    private fun pruneReferencesOutsideManifestInTransaction(
+        conn: Connection,
+        manifestPaths: Set<String>,
+    ) {
+        if (manifestPaths.isEmpty()) {
+            conn.createStatement().use { stmt -> stmt.execute("DELETE FROM symbol_references") }
+            return
+        }
+        conn.createStatement().use { stmt ->
+            stmt.execute(
+                """DELETE FROM symbol_references
+                   WHERE NOT EXISTS (
+                       SELECT 1 FROM file_manifest manifest WHERE manifest.path = symbol_references.source_path
+                   )
+                      OR (
+                          target_path IS NOT NULL
+                          AND NOT EXISTS (
+                              SELECT 1 FROM file_manifest manifest WHERE manifest.path = symbol_references.target_path
+                          )
+                      )""",
+            )
         }
     }
 

@@ -41,6 +41,7 @@ internal class BackgroundIndexer(
 
     private val generation = AtomicInteger(0)
     private val indexRef = AtomicReference<MutableSourceIdentifierIndex?>(null)
+    private val phase1HeadCommit = AtomicReference<String?>(null)
 
     @Volatile
     private var cancelled = false
@@ -75,7 +76,13 @@ internal class BackgroundIndexer(
             }.onSuccess { index ->
                 if (cancelled || generation.get() != gen) return@onSuccess
                 indexRef.set(index)
-                runCatching { sourceIndexCache.save(index = index, sourceRoots = sourceRoots) }
+                runCatching {
+                    sourceIndexCache.save(
+                        index = index,
+                        sourceRoots = sourceRoots,
+                        headCommit = phase1HeadCommit.get()
+                    )
+                }
                 // Publish the index synchronously before completing the future, so any
                 // waiter on identifierIndexReady is guaranteed to see the updated state.
                 onIndexBuilt?.invoke(index)
@@ -94,7 +101,10 @@ internal class BackgroundIndexer(
      * and returns a list of [SymbolReferenceRow]s. It is called inside the
      * caller-provided read-access context (e.g., K2 analysis session).
      */
-    fun startPhase2(referenceScanner: (String) -> List<SymbolReferenceRow>) {
+    fun startPhase2(
+        changedPaths: Set<String>? = null,
+        referenceScanner: (String) -> List<SymbolReferenceRow>,
+    ) {
         phase2Thread = thread(
             start = true,
             isDaemon = true,
@@ -102,7 +112,7 @@ internal class BackgroundIndexer(
         ) {
             runCatching {
                 if (cancelled) return@thread
-                val allPaths = store.loadManifest()?.keys ?: return@thread
+                val allPaths = changedPaths ?: store.loadManifest()?.keys ?: return@thread
                 generation.incrementAndGet()
                 ReferenceIndexer(store, batchSize = PHASE2_BATCH_SIZE).indexReferences(
                     filePaths = allPaths,
@@ -187,7 +197,8 @@ internal class BackgroundIndexer(
         val incrementalResult = runCatching {
             sourceIndexCache.load(sourceRoots)
         }.getOrNull()
-        val index = incrementalResult?.index ?: return buildFullIndex()
+        val index = incrementalResult?.index ?: return buildFullIndex().also { phase1HeadCommit.set(null) }
+        phase1HeadCommit.set(incrementalResult.headCommit)
         incrementalResult.deletedPaths.forEach(index::removeFile)
         (incrementalResult.newPaths + incrementalResult.modifiedPaths).forEach { pathString ->
             if (cancelled || Thread.currentThread().isInterrupted) return index

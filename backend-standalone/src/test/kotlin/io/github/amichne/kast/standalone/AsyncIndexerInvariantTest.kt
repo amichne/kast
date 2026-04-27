@@ -364,6 +364,62 @@ class AsyncIndexerInvariantTest {
     }
 
     @Test
+    fun `phase 2 scans only provided changed paths`() {
+        val changedPath = writeSourceFile(
+            relativePath = "sample/Changed.kt",
+            content = "package sample\n\nfun changed() = stable()\n",
+        ).toString()
+        val stablePath = writeSourceFile(
+            relativePath = "sample/Stable.kt",
+            content = "package sample\n\nfun stable() = 1\n",
+        ).toString()
+        val normalized = normalizeStandalonePath(workspaceRoot)
+        val cache = SourceIndexCache(normalized)
+        val store = cache.store
+        store.ensureSchema()
+        store.saveManifest(mapOf(changedPath to System.currentTimeMillis(), stablePath to System.currentTimeMillis()))
+        store.upsertSymbolReference(
+            sourcePath = stablePath,
+            sourceOffset = 1,
+            targetFqName = "sample.previous",
+            targetPath = null,
+            targetOffset = null,
+        )
+        val scannedPaths = mutableListOf<String>()
+
+        val indexer = BackgroundIndexer(
+            sourceRoots = sourceRoots(),
+            sourceIndexFileReader = { Files.readString(it) },
+            sourceModuleNameResolver = { null },
+            sourceIndexCache = cache,
+            store = store,
+        )
+        indexer.use {
+            indexer.startPhase2(
+                changedPaths = setOf(changedPath),
+                referenceScanner = { path ->
+                    scannedPaths += path
+                    listOf(
+                        SymbolReferenceRow(
+                            sourcePath = path,
+                            sourceOffset = 10,
+                            targetFqName = "sample.changedTarget",
+                            targetPath = null,
+                            targetOffset = null,
+                        ),
+                    )
+                },
+            )
+            indexer.referenceIndexReady.get(10, TimeUnit.SECONDS)
+        }
+
+        assertEquals(listOf(changedPath), scannedPaths)
+        assertEquals(1, store.referencesToSymbol("sample.changedTarget").size)
+        assertEquals(1, store.referencesToSymbol("sample.previous").size)
+        cache.close()
+    }
+
+    @Test
     fun `phase 2 completes referenceIndexReady future on success`() {
         val filePath = writeSourceFile(
             relativePath = "sample/Empty.kt",

@@ -51,6 +51,62 @@ class SqliteSourceIndexStoreTest {
     }
 
     @Test
+    fun `head commit round-trips through schema version table`() {
+        val normalized = workspaceRoot.toAbsolutePath().normalize()
+        SqliteSourceIndexStore(normalized).use { store ->
+            store.ensureSchema()
+
+            store.writeHeadCommit("abc123")
+
+            assertEquals("abc123", store.readHeadCommit())
+        }
+    }
+
+    @Test
+    fun `schema migration adds missing head commit column`() {
+        val normalized = workspaceRoot.toAbsolutePath().normalize()
+        val cacheDir = kastCacheDirectory(normalized)
+        Files.createDirectories(cacheDir)
+        val dbPath = cacheDir.resolve("source-index.db")
+
+        DriverManager.getConnection("jdbc:sqlite:$dbPath").use { conn ->
+            conn.createStatement().use { stmt ->
+                stmt.execute("CREATE TABLE schema_version (version INTEGER NOT NULL, generation INTEGER NOT NULL DEFAULT 0)")
+                stmt.execute("INSERT INTO schema_version (version, generation) VALUES (3, 0)")
+                stmt.execute(
+                    """CREATE TABLE identifier_paths (
+                        identifier TEXT NOT NULL,
+                        path TEXT NOT NULL,
+                        PRIMARY KEY (identifier, path)
+                    )""",
+                )
+                stmt.execute(
+                    """CREATE TABLE file_metadata (
+                        path TEXT PRIMARY KEY,
+                        package_name TEXT,
+                        module_name TEXT,
+                        imports TEXT,
+                        wildcard_imports TEXT
+                    )""",
+                )
+                stmt.execute(
+                    """CREATE TABLE file_manifest (
+                        path TEXT PRIMARY KEY,
+                        last_modified_millis INTEGER NOT NULL
+                    )""",
+                )
+            }
+        }
+
+        SqliteSourceIndexStore(normalized).use { store ->
+            assertTrue(store.ensureSchema())
+            store.writeHeadCommit("def456")
+
+            assertEquals("def456", store.readHeadCommit())
+        }
+    }
+
+    @Test
     fun `source index snapshot round-trips identifiers and metadata`() {
         val normalized = workspaceRoot.toAbsolutePath().normalize()
         SqliteSourceIndexStore(normalized).use { store ->
