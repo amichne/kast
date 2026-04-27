@@ -833,7 +833,9 @@ _install_standalone_backend() {
       local tmp_rc; tmp_rc="$(mktemp)"
       grep -v "KAST_STANDALONE_RUNTIME_LIBS" "$rc_file" > "$tmp_rc" || true
       printf 'export KAST_STANDALONE_RUNTIME_LIBS="%s"\n' "$runtime_libs_dir" >> "$tmp_rc"
-      mv "$tmp_rc" "$rc_file"
+      # Use cat+redirect to handle cross-filesystem moves safely; clean up temp file
+      cat "$tmp_rc" > "$rc_file"
+      rm -f "$tmp_rc"
       log_step "Updated KAST_STANDALONE_RUNTIME_LIBS in ${rc_file}"
     else
       printf '\nexport KAST_STANDALONE_RUNTIME_LIBS="%s"\n' "$runtime_libs_dir" >> "$rc_file"

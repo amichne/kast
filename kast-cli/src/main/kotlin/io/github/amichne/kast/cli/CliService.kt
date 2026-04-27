@@ -277,7 +277,9 @@ internal class CliService(
             )
         }
 
-        val entries = classpathFile.toFile().readLines().filter(String::isNotBlank)
+        val entries = classpathFile.toFile().useLines { lines ->
+            lines.filter(String::isNotBlank).toList()
+        }
         if (entries.isEmpty()) {
             throw CliFailure(
                 code = "DAEMON_START_ERROR",
@@ -297,7 +299,8 @@ internal class CliService(
 
         val command = buildList {
             add(javaExec)
-            System.getenv("JAVA_OPTS")?.takeIf(String::isNotBlank)?.let { addAll(it.split(" ")) }
+            // JAVA_OPTS is treated as whitespace-separated tokens (no support for quoted spaces)
+            System.getenv("JAVA_OPTS")?.takeIf(String::isNotBlank)?.let { addAll(it.trim().split(Regex("\\s+"))) }
             add("-cp")
             add(classpath)
             add("io.github.amichne.kast.standalone.StandaloneMainKt")
