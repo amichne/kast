@@ -2,7 +2,13 @@ package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.cli.skill.SkillWrapperExecutor
 import io.github.amichne.kast.cli.skill.SkillWrapperSerializer
+import io.github.amichne.kast.indexstore.ChangeImpactNode
+import io.github.amichne.kast.indexstore.DeadCodeCandidate
+import io.github.amichne.kast.indexstore.FanInMetric
+import io.github.amichne.kast.indexstore.FanOutMetric
 import io.github.amichne.kast.indexstore.MetricsEngine
+import io.github.amichne.kast.indexstore.ModuleCouplingMetric
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import java.nio.file.Path
 
@@ -239,19 +245,30 @@ internal class DefaultCliCommandExecutor(
             }
 
             is CliCommand.Metrics -> {
-                MetricsEngine(command.workspaceRoot).use { engine ->
-                    val result = when (command.subcommand) {
-                        MetricsSubcommand.FAN_IN -> engine.fanInRanking(command.limit)
-                        MetricsSubcommand.FAN_OUT -> engine.fanOutRanking(command.limit)
-                        MetricsSubcommand.COUPLING -> engine.moduleCouplingMatrix()
-                        MetricsSubcommand.DEAD_CODE -> engine.deadCodeCandidates()
-                        MetricsSubcommand.IMPACT -> engine.changeImpactRadius(
-                            fqName = requireNotNull(command.symbol) { "--symbol is required for impact" },
-                            depth = command.depth,
+                val encoded = MetricsEngine(command.workspaceRoot).use { engine ->
+                    when (command.subcommand) {
+                        MetricsSubcommand.FAN_IN -> json.encodeToString(
+                            ListSerializer(FanInMetric.serializer()), engine.fanInRanking(command.limit),
+                        )
+                        MetricsSubcommand.FAN_OUT -> json.encodeToString(
+                            ListSerializer(FanOutMetric.serializer()), engine.fanOutRanking(command.limit),
+                        )
+                        MetricsSubcommand.COUPLING -> json.encodeToString(
+                            ListSerializer(ModuleCouplingMetric.serializer()), engine.moduleCouplingMatrix(),
+                        )
+                        MetricsSubcommand.DEAD_CODE -> json.encodeToString(
+                            ListSerializer(DeadCodeCandidate.serializer()), engine.deadCodeCandidates(),
+                        )
+                        MetricsSubcommand.IMPACT -> json.encodeToString(
+                            ListSerializer(ChangeImpactNode.serializer()),
+                            engine.changeImpactRadius(
+                                fqName = requireNotNull(command.symbol) { "--symbol is required for impact" },
+                                depth = command.depth,
+                            ),
                         )
                     }
-                    CliExecutionResult(output = CliOutput.JsonValue(result))
                 }
+                CliExecutionResult(output = CliOutput.Text(encoded))
             }
         }
     }
