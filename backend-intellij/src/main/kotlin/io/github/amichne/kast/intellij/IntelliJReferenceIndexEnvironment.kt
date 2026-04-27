@@ -39,5 +39,10 @@ internal class IntelliJReferenceIndexEnvironment(
     override fun <T> withReadAccess(action: () -> T): T =
         ApplicationManager.getApplication().runReadAction<T>(action)
 
+    // The IntelliJ threading model only requires read access for PSI traversal and
+    // reference resolution; the platform serializes write actions against readers.
+    override fun <T> withExclusiveAccess(action: () -> T): T =
+        ApplicationManager.getApplication().runReadAction<T>(action)
+
     override fun isCancelled(): Boolean = cancelled()
 }

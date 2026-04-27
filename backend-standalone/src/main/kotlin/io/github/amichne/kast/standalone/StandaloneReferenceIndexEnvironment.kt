@@ -16,5 +16,9 @@ internal class StandaloneReferenceIndexEnvironment(
 
     override fun <T> withReadAccess(action: () -> T): T = session.withReadAccess(action)
 
+    // Standalone Phase 2 must hold the session write lock so K2 FIR resolution does
+    // not run concurrently with foreground read operations on the same session.
+    override fun <T> withExclusiveAccess(action: () -> T): T = session.withExclusiveAccess(action)
+
     override fun isCancelled(): Boolean = cancelled()
 }

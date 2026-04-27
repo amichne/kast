@@ -446,6 +446,16 @@ internal class StandaloneAnalysisSession(
 
     internal inline fun <T> withReadAccess(crossinline action: () -> T): T = analysisSessionLock.read { action() }
 
+    /**
+     * Acquires the session write lock for the duration of [action].
+     *
+     * Required for Phase 2 reference scanning: the K2 FIR lazy declaration resolver is
+     * not thread-safe for concurrent resolution within a single standalone session, so
+     * resolution must serialize against foreground read operations (rename, findReferences,
+     * etc.) that also acquire the session lock. See commit 02c933a.
+     */
+    internal inline fun <T> withExclusiveAccess(crossinline action: () -> T): T = analysisSessionLock.write { action() }
+
     internal fun candidateKotlinFilePaths(identifier: String): List<String> {
         return candidateKotlinFilePaths(identifier = identifier, anchorFilePath = null)
     }

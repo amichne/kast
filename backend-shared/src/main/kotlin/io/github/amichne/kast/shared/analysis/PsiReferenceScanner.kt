@@ -12,8 +12,11 @@ class PsiReferenceScanner(
 ) {
     fun scanFileReferences(filePath: String): List<SymbolReferenceRow> {
         val rows = mutableListOf<SymbolReferenceRow>()
-        environment.withReadAccess {
-            val psiFile = environment.findPsiFile(filePath) ?: return@withReadAccess
+        // Exclusive access required: the standalone backend's K2 FIR lazy declaration
+        // resolver is not thread-safe for concurrent resolution within a single session.
+        // The IntelliJ backend implements this as a plain read action.
+        environment.withExclusiveAccess {
+            val psiFile = environment.findPsiFile(filePath) ?: return@withExclusiveAccess
             val sourceFilePath = runCatching { psiFile.resolvedFilePath().value }.getOrElse { filePath }
 
             psiFile.accept(
