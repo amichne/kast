@@ -46,6 +46,7 @@ internal fun writeCliJson(
         is RefreshResult -> json.encodeToString(value)
         is CallHierarchyResult -> json.encodeToString(value)
         is TypeHierarchyResult -> json.encodeToString(value)
+        is SmokeReport -> json.encodeToString(value)
         is CliErrorResponse -> json.encodeToString(value)
         else -> error("Unsupported CLI output type: ${value::class.java.name}")
     }
