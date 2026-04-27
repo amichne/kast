@@ -1,6 +1,6 @@
 package io.github.amichne.kast.standalone.cache
 
-import io.github.amichne.kast.standalone.normalizeStandalonePath
+import io.github.amichne.kast.standalone.normalizePath
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.extension
@@ -34,7 +34,7 @@ internal fun scanTrackedKotlinFilePaths(sourceRoots: List<Path>): Set<String> = 
                 paths
                     .filter { path -> Files.isRegularFile(path) && path.extension == "kt" }
                     .forEach { file ->
-                        add(normalizeStandalonePath(file).toString())
+                        add(normalizePath(file).toString())
                     }
             }
         }

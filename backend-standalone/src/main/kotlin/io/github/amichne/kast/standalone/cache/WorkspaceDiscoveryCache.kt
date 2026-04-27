@@ -3,7 +3,7 @@ package io.github.amichne.kast.standalone.cache
 import io.github.amichne.kast.api.contract.ModuleName
 import io.github.amichne.kast.indexstore.SqliteSourceIndexStore
 import io.github.amichne.kast.indexstore.defaultCacheJson
-import io.github.amichne.kast.standalone.normalizeStandalonePath
+import io.github.amichne.kast.standalone.normalizePath
 import io.github.amichne.kast.standalone.workspace.GradleWorkspaceDiscovery
 import io.github.amichne.kast.standalone.workspace.GradleWorkspaceDiscoveryResult
 import kotlinx.serialization.Serializable
@@ -43,7 +43,7 @@ internal class WorkspaceDiscoveryCache(
 
     fun read(workspaceRoot: Path): CachedWorkspaceDiscovery? {
         if (!enabled) return null
-        val normalizedWorkspaceRoot = normalizeStandalonePath(workspaceRoot)
+        val normalizedWorkspaceRoot = normalizePath(workspaceRoot)
         val cacheKey = computeWorkspaceDiscoveryCacheKey(normalizedWorkspaceRoot)
         return withStore(normalizedWorkspaceRoot) { s ->
             val payload = s.readWorkspaceDiscovery(cacheKey) ?: return@withStore null
@@ -65,7 +65,7 @@ internal class WorkspaceDiscoveryCache(
         result: GradleWorkspaceDiscoveryResult,
     ) {
         if (!enabled) return
-        val normalizedWorkspaceRoot = normalizeStandalonePath(workspaceRoot)
+        val normalizedWorkspaceRoot = normalizePath(workspaceRoot)
         val cacheKey = computeWorkspaceDiscoveryCacheKey(normalizedWorkspaceRoot)
         val dependentModuleNamesBySourceModuleName = GradleWorkspaceDiscovery
             .buildStandaloneWorkspaceLayout(

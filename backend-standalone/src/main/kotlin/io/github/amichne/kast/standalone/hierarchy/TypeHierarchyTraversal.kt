@@ -7,12 +7,12 @@ import io.github.amichne.kast.shared.analysis.typeHierarchyDeclaration
 import io.github.amichne.kast.shared.hierarchy.ReadAccessScope
 import io.github.amichne.kast.shared.hierarchy.TypeHierarchyBudget
 import io.github.amichne.kast.shared.hierarchy.TypeHierarchyEngine
-import io.github.amichne.kast.standalone.StandaloneAnalysisSession
+import io.github.amichne.kast.standalone.AnalysisSession
 
 internal class TypeHierarchyTraversal(
-    private val session: StandaloneAnalysisSession,
+    private val session: AnalysisSession,
 ) {
-    private val resolver = StandaloneTypeEdgeResolver(session)
+    private val resolver = TypeEdgeResolver(session)
     private val engine = TypeHierarchyEngine(edgeResolver = resolver, readAccess = ReadAccessScope.IDENTITY)
 
     fun build(query: TypeHierarchyQuery): TypeHierarchyResult {

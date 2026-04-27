@@ -8,14 +8,14 @@ import io.github.amichne.kast.shared.analysis.referenceSearchIdentifier
 import io.github.amichne.kast.shared.analysis.resolvedFilePath
 import io.github.amichne.kast.shared.analysis.targetFqNameAndPackage
 import io.github.amichne.kast.shared.analysis.visibility
-import io.github.amichne.kast.standalone.StandaloneAnalysisSession
-import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetry
-import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetryScope
+import io.github.amichne.kast.standalone.AnalysisSession
+import io.github.amichne.kast.standalone.telemetry.Telemetry
+import io.github.amichne.kast.standalone.telemetry.TelemetryScope
 import org.jetbrains.kotlin.psi.KtFile
 
 internal class CandidateFileResolver(
-    private val session: StandaloneAnalysisSession,
-    private val telemetry: StandaloneTelemetry = StandaloneTelemetry.disabled(),
+    private val session: AnalysisSession,
+    private val telemetry: Telemetry = Telemetry.disabled(),
 ) {
     fun resolve(target: PsiElement): CandidateSearchResult {
         val visibility = target.visibility()
@@ -111,7 +111,7 @@ internal class CandidateFileResolver(
         candidateCountBefore: Int,
     ) {
         telemetry.inSpan(
-            scope = StandaloneTelemetryScope.REFERENCES,
+            scope = TelemetryScope.REFERENCES,
             name = "kast.candidateFileResolver",
             attributes = mapOf(
                 "kast.resolver.searchIdentifier" to searchIdentifier,

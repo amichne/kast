@@ -127,7 +127,7 @@ class WorkspaceDiscoveryCacheTest {
         assertEquals(0, toolingApiLoaderCalls)
         assertEquals(
             setOf(ModuleName(":app[main]"), ModuleName(":app[test]"), ModuleName(":lib[main]")),
-            layout.sourceModules.map(StandaloneSourceModuleSpec::name).toSet(),
+            layout.sourceModules.map(SourceModuleSpec::name).toSet(),
         )
     }
 
@@ -194,7 +194,7 @@ class WorkspaceDiscoveryCacheTest {
                         scope = GradleDependencyScope.COMPILE,
                     ),
                     GradleDependency.LibraryDependency(
-                        binaryRoot = normalizeStandalonePath(workspaceRoot.resolve("app/libs/runtime.jar")),
+                        binaryRoot = normalizePath(workspaceRoot.resolve("app/libs/runtime.jar")),
                         scope = GradleDependencyScope.RUNTIME,
                     ),
                 ),
@@ -222,12 +222,12 @@ class WorkspaceDiscoveryCacheTest {
     ): GradleModuleModel = GradleModuleModel(
         gradlePath = gradlePath,
         ideaModuleName = gradlePath,
-        mainSourceRoots = mainSourceRoots.map(::normalizeStandalonePath),
-        testSourceRoots = testSourceRoots.map(::normalizeStandalonePath),
-        testFixturesSourceRoots = testFixturesSourceRoots.map(::normalizeStandalonePath),
-        mainOutputRoots = mainOutputRoots.map(::normalizeStandalonePath),
-        testOutputRoots = testOutputRoots.map(::normalizeStandalonePath),
-        testFixturesOutputRoots = testFixturesOutputRoots.map(::normalizeStandalonePath),
+        mainSourceRoots = mainSourceRoots.map(::normalizePath),
+        testSourceRoots = testSourceRoots.map(::normalizePath),
+        testFixturesSourceRoots = testFixturesSourceRoots.map(::normalizePath),
+        mainOutputRoots = mainOutputRoots.map(::normalizePath),
+        testOutputRoots = testOutputRoots.map(::normalizePath),
+        testFixturesOutputRoots = testFixturesOutputRoots.map(::normalizePath),
         dependencies = dependencies,
     )
 

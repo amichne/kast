@@ -91,7 +91,7 @@ class GradleWorkspaceDiscoveryTest {
             gradleModules = listOf(app, lib, generated),
             extraClasspathRoots = listOf(Path.of("/deps/shared.jar"), Path.of("/deps/shared.jar")),
         )
-        val modulesByName = layout.sourceModules.associateBy(StandaloneSourceModuleSpec::name)
+        val modulesByName = layout.sourceModules.associateBy(SourceModuleSpec::name)
 
         assertEquals(setOf(":app[main]", ":app[testFixtures]", ":app[test]", ":lib[main]").map(::ModuleName).toSet(), modulesByName.keys)
         assertEquals(
@@ -169,7 +169,7 @@ class GradleWorkspaceDiscoveryTest {
             gradleModules = listOf(app, lib),
             extraClasspathRoots = emptyList(),
         )
-        val modulesByName = layout.sourceModules.associateBy(StandaloneSourceModuleSpec::name)
+        val modulesByName = layout.sourceModules.associateBy(SourceModuleSpec::name)
 
         assertEquals(emptyList<ModuleName>(), modulesByName.getValue(ModuleName(":app[main]")).dependencyModuleNames)
         assertEquals(emptyList<Path>(), modulesByName.getValue(ModuleName(":app[main]")).binaryRoots)
@@ -244,7 +244,7 @@ class GradleWorkspaceDiscoveryTest {
             gradleModules = listOf(app, lib),
             extraClasspathRoots = emptyList(),
         )
-        val modulesByName = layout.sourceModules.associateBy(StandaloneSourceModuleSpec::name)
+        val modulesByName = layout.sourceModules.associateBy(SourceModuleSpec::name)
 
         assertEquals(
             listOf(ModuleName(":core:lib[main]")),
@@ -482,7 +482,7 @@ class GradleWorkspaceDiscoveryTest {
         )
 
         val enrichedLayout = checkNotNull(result.enrichmentFuture).get(1, TimeUnit.SECONDS)
-        val modulesByName = enrichedLayout.sourceModules.associateBy(StandaloneSourceModuleSpec::name)
+        val modulesByName = enrichedLayout.sourceModules.associateBy(SourceModuleSpec::name)
 
         assertEquals(listOf(ModuleName(":lib[main]")), modulesByName.getValue(ModuleName(":app[main]")).dependencyModuleNames)
         assertTrue(modulesByName.getValue(ModuleName(":app[main]")).binaryRoots.contains(Path.of("/deps/runtime.jar")))

@@ -7,7 +7,7 @@ import io.github.amichne.kast.api.contract.SymbolQuery
 import io.github.amichne.kast.api.wrapper.WrapperNamedSymbolKind
 import io.github.amichne.kast.api.contract.WorkspaceSymbolQuery
 import io.github.amichne.kast.cli.CliService
-import io.github.amichne.kast.cli.RuntimeCommandOptions
+import io.github.amichne.kast.cli.runtime.RuntimeSelection
 
 /**
  * Resolves a named symbol (e.g. "MyClass", "doStuff") to a [FilePosition] + [Symbol]
@@ -40,14 +40,14 @@ internal class NamedSymbolResolver(
      * @return the resolved symbol, or null if no matching symbol was found
      */
     suspend fun resolve(
-        options: RuntimeCommandOptions,
+        runtime: RuntimeSelection,
         symbolName: String,
         fileHint: String? = null,
         kind: WrapperNamedSymbolKind? = null,
         containingType: String? = null,
     ): ResolvedSymbol? {
         val searchResult = cliService.workspaceSymbolSearch(
-            options,
+            runtime,
             WorkspaceSymbolQuery(pattern = symbolName, maxResults = 100),
         )
         var candidates = searchResult.payload.symbols
@@ -88,7 +88,7 @@ internal class NamedSymbolResolver(
             offset = best.location.startOffset,
         )
         val resolveResult = cliService.resolveSymbol(
-            options,
+            runtime,
             SymbolQuery(position = position),
         )
 

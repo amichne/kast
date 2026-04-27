@@ -183,9 +183,9 @@ class ImportAnalysisTest {
     }
 
     private suspend fun withSession(
-        block: suspend (StandaloneAnalysisSession) -> Unit,
+        block: suspend (AnalysisSession) -> Unit,
     ) {
-        val session = StandaloneAnalysisSession(
+        val session = AnalysisSession(
             workspaceRoot = workspaceRoot,
             sourceRoots = emptyList(),
             classpathRoots = emptyList(),

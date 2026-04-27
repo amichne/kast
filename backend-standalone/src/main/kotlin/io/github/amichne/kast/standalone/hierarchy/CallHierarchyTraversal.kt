@@ -6,20 +6,20 @@ import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.shared.analysis.resolveTarget
 import io.github.amichne.kast.shared.hierarchy.CallHierarchyEngine
 import io.github.amichne.kast.shared.hierarchy.TraversalBudget
-import io.github.amichne.kast.standalone.StandaloneAnalysisSession
+import io.github.amichne.kast.standalone.AnalysisSession
 import io.github.amichne.kast.standalone.analysis.CandidateFileResolver
-import io.github.amichne.kast.standalone.normalizeStandalonePath
-import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetry
-import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetryScope
+import io.github.amichne.kast.standalone.normalizePath
+import io.github.amichne.kast.standalone.telemetry.Telemetry
+import io.github.amichne.kast.standalone.telemetry.TelemetryScope
 import java.nio.file.Path
 
 internal class CallHierarchyTraversal(
     private val workspaceRoot: Path,
     private val limits: ServerLimits,
-    private val session: StandaloneAnalysisSession,
-    private val telemetry: StandaloneTelemetry,
+    private val session: AnalysisSession,
+    private val telemetry: Telemetry,
 ) {
-    private val normalizedWorkspaceRoot = normalizeStandalonePath(workspaceRoot)
+    private val normalizedWorkspaceRoot = normalizePath(workspaceRoot)
     private val candidateFileResolver = CandidateFileResolver(session = session)
 
     fun build(query: CallHierarchyQuery): CallHierarchyResult {
@@ -27,7 +27,7 @@ internal class CallHierarchyTraversal(
         val rootTarget = resolveTarget(file, query.position.offset)
 
         return telemetry.inSpan(
-            scope = StandaloneTelemetryScope.CALL_HIERARCHY,
+            scope = TelemetryScope.CALL_HIERARCHY,
             name = "kast.callHierarchy",
             attributes = mapOf(
                 "kast.callHierarchy.direction" to query.direction.name,
@@ -42,7 +42,7 @@ internal class CallHierarchyTraversal(
                 maxChildrenPerNode = query.maxChildrenPerNode,
                 timeoutMillis = query.timeoutMillis ?: limits.requestTimeoutMillis,
             )
-            val resolver = StandaloneCallEdgeResolver(
+            val resolver = CallEdgeResolver(
                 candidateFileResolver = candidateFileResolver,
                 normalizedWorkspaceRoot = normalizedWorkspaceRoot,
             )

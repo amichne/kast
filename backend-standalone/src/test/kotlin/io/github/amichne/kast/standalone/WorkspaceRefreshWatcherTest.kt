@@ -40,7 +40,7 @@ class WorkspaceRefreshWatcherTest {
         val initialRoot = workspaceRoot.resolve("app/src/main/kotlin")
         val refreshedRoot = workspaceRoot.resolve("generated/src/main/kotlin")
 
-        val session = StandaloneAnalysisSession(
+        val session = AnalysisSession(
             workspaceRoot = workspaceRoot,
             sourceRoots = listOf(initialRoot),
             classpathRoots = emptyList(),
@@ -73,7 +73,7 @@ class WorkspaceRefreshWatcherTest {
         var fullRefreshCount = 0
         val sourceRoot = workspaceRoot.resolve("app/src/main/kotlin")
 
-        val session = StandaloneAnalysisSession(
+        val session = AnalysisSession(
             workspaceRoot = workspaceRoot,
             sourceRoots = listOf(sourceRoot),
             classpathRoots = emptyList(),
@@ -123,7 +123,7 @@ class WorkspaceRefreshWatcherTest {
             """.trimIndent() + "\n",
         ).parent.parent.parent
 
-        val session = StandaloneAnalysisSession(
+        val session = AnalysisSession(
             workspaceRoot = workspaceRoot,
             sourceRoots = listOf(initialRoot),
             classpathRoots = emptyList(),

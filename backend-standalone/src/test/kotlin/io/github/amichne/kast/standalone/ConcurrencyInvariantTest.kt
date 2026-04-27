@@ -17,7 +17,7 @@ import kotlin.system.measureTimeMillis
 /**
  * Capstone test suite that uses the injectable [SessionLock], [Clock], and
  * `identifierIndexWaitMillis` to assert on the concurrency model of
- * [StandaloneAnalysisSession].
+ * [AnalysisSession].
  *
  * These tests verify that:
  * - write-lock hold time during `rebuildWorkspaceLayout` is bounded
@@ -49,7 +49,7 @@ class ConcurrencyInvariantTest {
         writeSourceFiles(20)
         val lock = InstrumentedSessionLock()
 
-        StandaloneAnalysisSession(
+        AnalysisSession(
             workspaceRoot = workspaceRoot,
             sourceRoots = sourceRoots(),
             classpathRoots = emptyList(),
@@ -105,7 +105,7 @@ class ConcurrencyInvariantTest {
         writeSourceFiles(50)
 
         val elapsed = measureTimeMillis {
-            StandaloneAnalysisSession(
+            AnalysisSession(
                 workspaceRoot = workspaceRoot,
                 sourceRoots = sourceRoots(),
                 classpathRoots = emptyList(),
@@ -135,7 +135,7 @@ class ConcurrencyInvariantTest {
         writeSourceFiles(50)
         val lock = InstrumentedSessionLock()
 
-        StandaloneAnalysisSession(
+        AnalysisSession(
             workspaceRoot = workspaceRoot,
             sourceRoots = sourceRoots(),
             classpathRoots = emptyList(),
@@ -161,7 +161,7 @@ class ConcurrencyInvariantTest {
         writeSourceFiles(50)
         val lock = InstrumentedSessionLock()
 
-        StandaloneAnalysisSession(
+        AnalysisSession(
             workspaceRoot = workspaceRoot,
             sourceRoots = sourceRoots(),
             classpathRoots = emptyList(),
@@ -206,7 +206,7 @@ class ConcurrencyInvariantTest {
         val clock = TestClock()
         writeSourceFiles(5)
 
-        StandaloneAnalysisSession(
+        AnalysisSession(
             workspaceRoot = workspaceRoot,
             sourceRoots = sourceRoots(),
             classpathRoots = emptyList(),
@@ -223,7 +223,7 @@ class ConcurrencyInvariantTest {
     }
 
     private fun sourceRoots(): List<Path> =
-        listOf(normalizeStandalonePath(workspaceRoot.resolve("src/main/kotlin")))
+        listOf(normalizePath(workspaceRoot.resolve("src/main/kotlin")))
 
     private fun writeSourceFiles(count: Int) {
         repeat(count) { index ->

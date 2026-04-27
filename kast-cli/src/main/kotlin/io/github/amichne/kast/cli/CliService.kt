@@ -38,6 +38,8 @@ import io.github.amichne.kast.api.contract.WorkspaceSymbolQuery
 import io.github.amichne.kast.api.contract.WorkspaceSymbolResult
 import io.github.amichne.kast.cli.runtime.DaemonStopResult
 import io.github.amichne.kast.cli.runtime.RuntimeCandidateStatus
+import io.github.amichne.kast.cli.runtime.RuntimeLifecycleRequest
+import io.github.amichne.kast.cli.runtime.RuntimeSelection
 import io.github.amichne.kast.cli.runtime.WorkspaceEnsureResult
 import io.github.amichne.kast.cli.runtime.WorkspaceRuntimeManager
 import io.github.amichne.kast.cli.runtime.WorkspaceStatusResult
@@ -52,17 +54,17 @@ internal class CliService(
     private val rpcClient = KastRpcClient(json)
     private val runtimeManager = WorkspaceRuntimeManager(rpcClient)
 
-    suspend fun workspaceStatus(options: RuntimeCommandOptions): WorkspaceStatusResult =
-        runtimeManager.workspaceStatus(options.toLifecycleRequest())
+    suspend fun workspaceStatus(request: RuntimeLifecycleRequest): WorkspaceStatusResult =
+        runtimeManager.workspaceStatus(request)
 
-    suspend fun workspaceEnsure(options: RuntimeCommandOptions): WorkspaceEnsureResult =
-        runtimeManager.workspaceEnsure(options.toLifecycleRequest())
+    suspend fun workspaceEnsure(request: RuntimeLifecycleRequest): WorkspaceEnsureResult =
+        runtimeManager.workspaceEnsure(request)
 
     suspend fun workspaceRefresh(
-        options: RuntimeCommandOptions,
+        request: RuntimeLifecycleRequest,
         query: RefreshQuery,
     ): RuntimeAttachedResult<RefreshResult> {
-        val runtime = runtimeManager.ensureRuntime(options.toLifecycleRequest())
+        val runtime = runtimeManager.ensureRuntime(request)
         requireMutationCapability(runtime.selected, MutationCapability.REFRESH_WORKSPACE)
         return attachedResult(
             payload = rpcClient.post(runtime.selected.descriptor, "workspace/refresh", query),
@@ -70,185 +72,185 @@ internal class CliService(
         )
     }
 
-    suspend fun workspaceStop(options: RuntimeCommandOptions): DaemonStopResult =
-        runtimeManager.workspaceStop(options.toLifecycleRequest())
+    suspend fun workspaceStop(request: RuntimeLifecycleRequest): DaemonStopResult =
+        runtimeManager.workspaceStop(request)
 
-    suspend fun capabilities(options: RuntimeCommandOptions): RuntimeAttachedResult<BackendCapabilities> {
-        val runtime = runtimeManager.ensureRuntime(options.toLifecycleRequest())
-        val capabilities = checkNotNull(runtime.selected.capabilities) {
-            "Runtime capabilities were not loaded after ensure for ${runtime.selected.descriptor.backendName}"
+    suspend fun capabilities(runtime: RuntimeSelection): RuntimeAttachedResult<BackendCapabilities> {
+        val ensuredRuntime = runtimeManager.ensureRuntime(lifecycleRequest(runtime))
+        val capabilities = checkNotNull(ensuredRuntime.selected.capabilities) {
+            "Runtime capabilities were not loaded after ensure for ${ensuredRuntime.selected.descriptor.backendName}"
         }
         return attachedResult(
             payload = capabilities,
-            runtime = runtime,
+            runtime = ensuredRuntime,
         )
     }
 
     suspend fun resolveSymbol(
-        options: RuntimeCommandOptions,
+        runtime: RuntimeSelection,
         query: SymbolQuery,
     ): RuntimeAttachedResult<SymbolResult> {
-        val runtime = runtimeManager.ensureRuntime(options.toLifecycleRequest())
-        requireReadCapability(runtime.selected, ReadCapability.RESOLVE_SYMBOL)
+        val ensuredRuntime = runtimeManager.ensureRuntime(lifecycleRequest(runtime))
+        requireReadCapability(ensuredRuntime.selected, ReadCapability.RESOLVE_SYMBOL)
         return attachedResult(
-            payload = rpcClient.post(runtime.selected.descriptor, "symbol/resolve", query),
-            runtime = runtime,
+            payload = rpcClient.post(ensuredRuntime.selected.descriptor, "symbol/resolve", query),
+            runtime = ensuredRuntime,
         )
     }
 
     suspend fun findReferences(
-        options: RuntimeCommandOptions,
+        runtime: RuntimeSelection,
         query: ReferencesQuery,
     ): RuntimeAttachedResult<ReferencesResult> {
-        val runtime = runtimeManager.ensureRuntime(options.toLifecycleRequest())
-        requireReadCapability(runtime.selected, ReadCapability.FIND_REFERENCES)
+        val ensuredRuntime = runtimeManager.ensureRuntime(lifecycleRequest(runtime))
+        requireReadCapability(ensuredRuntime.selected, ReadCapability.FIND_REFERENCES)
         return attachedResult(
-            payload = rpcClient.post(runtime.selected.descriptor, "references", query),
-            runtime = runtime,
+            payload = rpcClient.post(ensuredRuntime.selected.descriptor, "references", query),
+            runtime = ensuredRuntime,
         )
     }
 
     suspend fun callHierarchy(
-        options: RuntimeCommandOptions,
+        runtime: RuntimeSelection,
         query: CallHierarchyQuery,
     ): RuntimeAttachedResult<CallHierarchyResult> {
-        val runtime = runtimeManager.ensureRuntime(options.toLifecycleRequest())
-        requireReadCapability(runtime.selected, ReadCapability.CALL_HIERARCHY)
+        val ensuredRuntime = runtimeManager.ensureRuntime(lifecycleRequest(runtime))
+        requireReadCapability(ensuredRuntime.selected, ReadCapability.CALL_HIERARCHY)
         return attachedResult(
-            payload = rpcClient.post(runtime.selected.descriptor, "call-hierarchy", query),
-            runtime = runtime,
+            payload = rpcClient.post(ensuredRuntime.selected.descriptor, "call-hierarchy", query),
+            runtime = ensuredRuntime,
         )
     }
 
     suspend fun typeHierarchy(
-        options: RuntimeCommandOptions,
+        runtime: RuntimeSelection,
         query: TypeHierarchyQuery,
     ): RuntimeAttachedResult<TypeHierarchyResult> {
-        val runtime = runtimeManager.ensureRuntime(options.toLifecycleRequest())
-        requireReadCapability(runtime.selected, ReadCapability.TYPE_HIERARCHY)
+        val ensuredRuntime = runtimeManager.ensureRuntime(lifecycleRequest(runtime))
+        requireReadCapability(ensuredRuntime.selected, ReadCapability.TYPE_HIERARCHY)
         return attachedResult(
-            payload = rpcClient.post(runtime.selected.descriptor, "type-hierarchy", query),
-            runtime = runtime,
+            payload = rpcClient.post(ensuredRuntime.selected.descriptor, "type-hierarchy", query),
+            runtime = ensuredRuntime,
         )
     }
 
     suspend fun diagnostics(
-        options: RuntimeCommandOptions,
+        runtime: RuntimeSelection,
         query: DiagnosticsQuery,
     ): RuntimeAttachedResult<DiagnosticsResult> {
-        val runtime = runtimeManager.ensureRuntime(options.toLifecycleRequest())
-        requireReadCapability(runtime.selected, ReadCapability.DIAGNOSTICS)
+        val ensuredRuntime = runtimeManager.ensureRuntime(lifecycleRequest(runtime))
+        requireReadCapability(ensuredRuntime.selected, ReadCapability.DIAGNOSTICS)
         return attachedResult(
-            payload = rpcClient.post(runtime.selected.descriptor, "diagnostics", query),
-            runtime = runtime,
+            payload = rpcClient.post(ensuredRuntime.selected.descriptor, "diagnostics", query),
+            runtime = ensuredRuntime,
         )
     }
 
     suspend fun fileOutline(
-        options: RuntimeCommandOptions,
+        runtime: RuntimeSelection,
         query: FileOutlineQuery,
     ): RuntimeAttachedResult<FileOutlineResult> {
-        val runtime = runtimeManager.ensureRuntime(options.toLifecycleRequest())
-        requireReadCapability(runtime.selected, ReadCapability.FILE_OUTLINE)
+        val ensuredRuntime = runtimeManager.ensureRuntime(lifecycleRequest(runtime))
+        requireReadCapability(ensuredRuntime.selected, ReadCapability.FILE_OUTLINE)
         return attachedResult(
-            payload = rpcClient.post(runtime.selected.descriptor, "file-outline", query),
-            runtime = runtime,
+            payload = rpcClient.post(ensuredRuntime.selected.descriptor, "file-outline", query),
+            runtime = ensuredRuntime,
         )
     }
 
     suspend fun workspaceSymbolSearch(
-        options: RuntimeCommandOptions,
+        runtime: RuntimeSelection,
         query: WorkspaceSymbolQuery,
     ): RuntimeAttachedResult<WorkspaceSymbolResult> {
-        val runtime = runtimeManager.ensureRuntime(options.toLifecycleRequest())
-        requireReadCapability(runtime.selected, ReadCapability.WORKSPACE_SYMBOL_SEARCH)
+        val ensuredRuntime = runtimeManager.ensureRuntime(lifecycleRequest(runtime))
+        requireReadCapability(ensuredRuntime.selected, ReadCapability.WORKSPACE_SYMBOL_SEARCH)
         return attachedResult(
-            payload = rpcClient.post(runtime.selected.descriptor, "workspace-symbol", query),
-            runtime = runtime,
+            payload = rpcClient.post(ensuredRuntime.selected.descriptor, "workspace-symbol", query),
+            runtime = ensuredRuntime,
         )
     }
 
     suspend fun workspaceFiles(
-        options: RuntimeCommandOptions,
+        runtime: RuntimeSelection,
         query: WorkspaceFilesQuery,
     ): RuntimeAttachedResult<WorkspaceFilesResult> {
-        val runtime = runtimeManager.ensureRuntime(options.toLifecycleRequest())
-        requireReadCapability(runtime.selected, ReadCapability.WORKSPACE_FILES)
+        val ensuredRuntime = runtimeManager.ensureRuntime(lifecycleRequest(runtime))
+        requireReadCapability(ensuredRuntime.selected, ReadCapability.WORKSPACE_FILES)
         return attachedResult(
-            payload = rpcClient.post(runtime.selected.descriptor, "workspace/files", query),
-            runtime = runtime,
+            payload = rpcClient.post(ensuredRuntime.selected.descriptor, "workspace/files", query),
+            runtime = ensuredRuntime,
         )
     }
 
     suspend fun implementations(
-        options: RuntimeCommandOptions,
+        runtime: RuntimeSelection,
         query: ImplementationsQuery,
     ): RuntimeAttachedResult<ImplementationsResult> {
-        val runtime = runtimeManager.ensureRuntime(options.toLifecycleRequest())
-        requireReadCapability(runtime.selected, ReadCapability.IMPLEMENTATIONS)
+        val ensuredRuntime = runtimeManager.ensureRuntime(lifecycleRequest(runtime))
+        requireReadCapability(ensuredRuntime.selected, ReadCapability.IMPLEMENTATIONS)
         return attachedResult(
-            payload = rpcClient.post(runtime.selected.descriptor, "implementations", query),
-            runtime = runtime,
+            payload = rpcClient.post(ensuredRuntime.selected.descriptor, "implementations", query),
+            runtime = ensuredRuntime,
         )
     }
 
     suspend fun codeActions(
-        options: RuntimeCommandOptions,
+        runtime: RuntimeSelection,
         query: CodeActionsQuery,
     ): RuntimeAttachedResult<CodeActionsResult> {
-        val runtime = runtimeManager.ensureRuntime(options.toLifecycleRequest())
-        requireReadCapability(runtime.selected, ReadCapability.CODE_ACTIONS)
+        val ensuredRuntime = runtimeManager.ensureRuntime(lifecycleRequest(runtime))
+        requireReadCapability(ensuredRuntime.selected, ReadCapability.CODE_ACTIONS)
         return attachedResult(
-            payload = rpcClient.post(runtime.selected.descriptor, "code-actions", query),
-            runtime = runtime,
+            payload = rpcClient.post(ensuredRuntime.selected.descriptor, "code-actions", query),
+            runtime = ensuredRuntime,
         )
     }
 
     suspend fun completions(
-        options: RuntimeCommandOptions,
+        runtime: RuntimeSelection,
         query: CompletionsQuery,
     ): RuntimeAttachedResult<CompletionsResult> {
-        val runtime = runtimeManager.ensureRuntime(options.toLifecycleRequest())
-        requireReadCapability(runtime.selected, ReadCapability.COMPLETIONS)
+        val ensuredRuntime = runtimeManager.ensureRuntime(lifecycleRequest(runtime))
+        requireReadCapability(ensuredRuntime.selected, ReadCapability.COMPLETIONS)
         return attachedResult(
-            payload = rpcClient.post(runtime.selected.descriptor, "completions", query),
-            runtime = runtime,
+            payload = rpcClient.post(ensuredRuntime.selected.descriptor, "completions", query),
+            runtime = ensuredRuntime,
         )
     }
 
     suspend fun semanticInsertionPoint(
-        options: RuntimeCommandOptions,
+        runtime: RuntimeSelection,
         query: SemanticInsertionQuery,
     ): RuntimeAttachedResult<SemanticInsertionResult> {
-        val runtime = runtimeManager.ensureRuntime(options.toLifecycleRequest())
-        requireReadCapability(runtime.selected, ReadCapability.SEMANTIC_INSERTION_POINT)
+        val ensuredRuntime = runtimeManager.ensureRuntime(lifecycleRequest(runtime))
+        requireReadCapability(ensuredRuntime.selected, ReadCapability.SEMANTIC_INSERTION_POINT)
         return attachedResult(
-            payload = rpcClient.post(runtime.selected.descriptor, "semantic-insertion-point", query),
-            runtime = runtime,
+            payload = rpcClient.post(ensuredRuntime.selected.descriptor, "semantic-insertion-point", query),
+            runtime = ensuredRuntime,
         )
     }
 
     suspend fun rename(
-        options: RuntimeCommandOptions,
+        runtime: RuntimeSelection,
         query: RenameQuery,
     ): RuntimeAttachedResult<RenameResult> {
-        val runtime = runtimeManager.ensureRuntime(options.toLifecycleRequest())
-        requireMutationCapability(runtime.selected, MutationCapability.RENAME)
+        val ensuredRuntime = runtimeManager.ensureRuntime(lifecycleRequest(runtime))
+        requireMutationCapability(ensuredRuntime.selected, MutationCapability.RENAME)
         return attachedResult(
-            payload = rpcClient.post(runtime.selected.descriptor, "rename", query),
-            runtime = runtime,
+            payload = rpcClient.post(ensuredRuntime.selected.descriptor, "rename", query),
+            runtime = ensuredRuntime,
         )
     }
 
     suspend fun optimizeImports(
-        options: RuntimeCommandOptions,
+        runtime: RuntimeSelection,
         query: ImportOptimizeQuery,
     ): RuntimeAttachedResult<ImportOptimizeResult> {
-        val runtime = runtimeManager.ensureRuntime(options.toLifecycleRequest())
-        requireMutationCapability(runtime.selected, MutationCapability.OPTIMIZE_IMPORTS)
+        val ensuredRuntime = runtimeManager.ensureRuntime(lifecycleRequest(runtime))
+        requireMutationCapability(ensuredRuntime.selected, MutationCapability.OPTIMIZE_IMPORTS)
         return attachedResult(
-            payload = rpcClient.post(runtime.selected.descriptor, "imports/optimize", query),
-            runtime = runtime,
+            payload = rpcClient.post(ensuredRuntime.selected.descriptor, "imports/optimize", query),
+            runtime = ensuredRuntime,
         )
     }
 
@@ -259,19 +261,22 @@ internal class CliService(
     fun smoke(options: SmokeOptions): CliExternalProcess = smokeCommandSupport.plan(options)
 
     suspend fun applyEdits(
-        options: RuntimeCommandOptions,
+        runtime: RuntimeSelection,
         query: ApplyEditsQuery,
     ): RuntimeAttachedResult<ApplyEditsResult> {
-        val runtime = runtimeManager.ensureRuntime(options.toLifecycleRequest())
-        requireMutationCapability(runtime.selected, MutationCapability.APPLY_EDITS)
+        val ensuredRuntime = runtimeManager.ensureRuntime(lifecycleRequest(runtime))
+        requireMutationCapability(ensuredRuntime.selected, MutationCapability.APPLY_EDITS)
         if (query.fileOperations.isNotEmpty()) {
-            requireMutationCapability(runtime.selected, MutationCapability.FILE_OPERATIONS)
+            requireMutationCapability(ensuredRuntime.selected, MutationCapability.FILE_OPERATIONS)
         }
         return attachedResult(
-            payload = rpcClient.post(runtime.selected.descriptor, "edits/apply", query),
-            runtime = runtime,
+            payload = rpcClient.post(ensuredRuntime.selected.descriptor, "edits/apply", query),
+            runtime = ensuredRuntime,
         )
     }
+
+    private fun lifecycleRequest(runtime: RuntimeSelection): RuntimeLifecycleRequest =
+        RuntimeLifecycleRequest(selection = runtime)
 
     private fun <T> attachedResult(
         payload: T,

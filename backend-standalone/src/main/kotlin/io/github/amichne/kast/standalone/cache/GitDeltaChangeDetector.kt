@@ -1,6 +1,6 @@
 package io.github.amichne.kast.standalone.cache
 
-import io.github.amichne.kast.standalone.normalizeStandalonePath
+import io.github.amichne.kast.standalone.normalizePath
 import java.nio.file.Path
 import kotlin.io.path.extension
 
@@ -29,7 +29,7 @@ internal class GitDeltaChangeDetector(
     ): GitDeltaCandidates? {
         val stored = storedHeadCommit?.takeIf { it.isNotBlank() } ?: return null
         val head = currentHeadCommit() ?: return null
-        val sourceRootSet = sourceRoots.mapTo(mutableSetOf()) { normalizeStandalonePath(it) }
+        val sourceRootSet = sourceRoots.mapTo(mutableSetOf()) { normalizePath(it) }
         val committedDelta = gitRunner.run("diff", "$stored..HEAD", "--name-only", "--", "*.kt")
         val workingTreeDelta = gitRunner.run("diff", "HEAD", "--name-only", "--", "*.kt")
         val trackedFiles = gitRunner.run("ls-files", "--", "*.kt")
@@ -51,7 +51,7 @@ internal class GitDeltaChangeDetector(
         sourceRoots: Set<Path>,
     ): String? {
         if (relativePath.isBlank()) return null
-        val normalizedPath = normalizeStandalonePath(workspaceRoot.resolve(relativePath))
+        val normalizedPath = normalizePath(workspaceRoot.resolve(relativePath))
         if (normalizedPath.extension != "kt") return null
         if (sourceRoots.none(normalizedPath::startsWith)) return null
         return normalizedPath.toString()

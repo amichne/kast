@@ -23,7 +23,7 @@ class SqliteCacheInvariantTest {
 
     @Test
     fun `SQLite database is created under gradle kast cache directory`() {
-        val normalized = normalizeStandalonePath(workspaceRoot)
+        val normalized = normalizePath(workspaceRoot)
         SqliteSourceIndexStore(normalized).use { store ->
             store.ensureSchema()
         }
@@ -37,7 +37,7 @@ class SqliteCacheInvariantTest {
 
     @Test
     fun `schema version mismatch triggers full rebuild`() {
-        val normalized = normalizeStandalonePath(workspaceRoot)
+        val normalized = normalizePath(workspaceRoot)
         val cacheDir = kastCacheDirectory(normalized)
         Files.createDirectories(cacheDir)
         val dbPath = cacheDir.resolve("source-index.db")
@@ -71,7 +71,7 @@ class SqliteCacheInvariantTest {
 
     @Test
     fun `identifier to path mappings round-trip correctly`() {
-        val normalized = normalizeStandalonePath(workspaceRoot)
+        val normalized = normalizePath(workspaceRoot)
         SqliteSourceIndexStore(normalized).use { store ->
             store.ensureSchema()
 
@@ -103,7 +103,7 @@ class SqliteCacheInvariantTest {
 
     @Test
     fun `bidirectional symbol reference links`() {
-        val normalized = normalizeStandalonePath(workspaceRoot)
+        val normalized = normalizePath(workspaceRoot)
         SqliteSourceIndexStore(normalized).use { store ->
             store.ensureSchema()
         }
@@ -152,7 +152,7 @@ class SqliteCacheInvariantTest {
 
     @Test
     fun `concurrent reads during writes do not block WAL mode`() {
-        val normalized = normalizeStandalonePath(workspaceRoot)
+        val normalized = normalizePath(workspaceRoot)
         SqliteSourceIndexStore(normalized).use { store ->
             store.ensureSchema()
             store.saveFullIndex(
@@ -227,7 +227,7 @@ class SqliteCacheInvariantTest {
 
     @Test
     fun `database integrity after simulated crash`() {
-        val normalized = normalizeStandalonePath(workspaceRoot)
+        val normalized = normalizePath(workspaceRoot)
         SqliteSourceIndexStore(normalized).use { store ->
             store.ensureSchema()
         }
@@ -272,7 +272,7 @@ class SqliteCacheInvariantTest {
 
     @Test
     fun `removing a file cascades to identifiers and metadata`() {
-        val normalized = normalizeStandalonePath(workspaceRoot)
+        val normalized = normalizePath(workspaceRoot)
         SqliteSourceIndexStore(normalized).use { store ->
             store.ensureSchema()
 
@@ -341,7 +341,7 @@ class SqliteCacheInvariantTest {
 
     @Test
     fun `upsertSymbolReference round-trips through referencesToSymbol`() {
-        val normalized = normalizeStandalonePath(workspaceRoot)
+        val normalized = normalizePath(workspaceRoot)
         SqliteSourceIndexStore(normalized).use { store ->
             store.ensureSchema()
 
@@ -381,7 +381,7 @@ class SqliteCacheInvariantTest {
 
     @Test
     fun `referencesFromFile returns all outgoing references`() {
-        val normalized = normalizeStandalonePath(workspaceRoot)
+        val normalized = normalizePath(workspaceRoot)
         SqliteSourceIndexStore(normalized).use { store ->
             store.ensureSchema()
 
@@ -417,7 +417,7 @@ class SqliteCacheInvariantTest {
 
     @Test
     fun `clearReferencesFromFile removes only that file references`() {
-        val normalized = normalizeStandalonePath(workspaceRoot)
+        val normalized = normalizePath(workspaceRoot)
         SqliteSourceIndexStore(normalized).use { store ->
             store.ensureSchema()
 
@@ -451,7 +451,7 @@ class SqliteCacheInvariantTest {
 
     @Test
     fun `upsert replaces existing reference at same source location`() {
-        val normalized = normalizeStandalonePath(workspaceRoot)
+        val normalized = normalizePath(workspaceRoot)
         SqliteSourceIndexStore(normalized).use { store ->
             store.ensureSchema()
 
@@ -482,7 +482,7 @@ class SqliteCacheInvariantTest {
 
     @Test
     fun `referencesToSymbol returns empty list for unknown symbol`() {
-        val normalized = normalizeStandalonePath(workspaceRoot)
+        val normalized = normalizePath(workspaceRoot)
         SqliteSourceIndexStore(normalized).use { store ->
             store.ensureSchema()
             val result = store.referencesToSymbol("does.not.Exist")
@@ -494,7 +494,7 @@ class SqliteCacheInvariantTest {
 
     @Test
     fun `generation counter tracks index rebuilds`() {
-        val normalized = normalizeStandalonePath(workspaceRoot)
+        val normalized = normalizePath(workspaceRoot)
 
         SqliteSourceIndexStore(normalized).use { store ->
             store.ensureSchema()
@@ -516,7 +516,7 @@ class SqliteCacheInvariantTest {
 
     @Test
     fun `ensureSchema creates missing symbol_references in stale v2 database`() {
-        val normalized = normalizeStandalonePath(workspaceRoot)
+        val normalized = normalizePath(workspaceRoot)
         val cacheDir = kastCacheDirectory(normalized)
         Files.createDirectories(cacheDir)
         val dbPath = cacheDir.resolve("source-index.db")
@@ -564,7 +564,7 @@ class SqliteCacheInvariantTest {
 
     @Test
     fun `referencesToSymbol returns empty gracefully when DB is deleted at runtime`() {
-        val normalized = normalizeStandalonePath(workspaceRoot)
+        val normalized = normalizePath(workspaceRoot)
         val cacheDir = kastCacheDirectory(normalized)
         val dbPath = cacheDir.resolve("source-index.db")
 

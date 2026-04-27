@@ -1,13 +1,13 @@
 package io.github.amichne.kast.standalone.workspace
 
 import io.github.amichne.kast.api.contract.ModuleName
-import io.github.amichne.kast.standalone.StandaloneSourceModuleSpec
-import io.github.amichne.kast.standalone.StandaloneWorkspaceLayout
+import io.github.amichne.kast.standalone.SourceModuleSpec
+import io.github.amichne.kast.standalone.WorkspaceLayout
 import io.github.amichne.kast.standalone.buildDependentModuleNamesBySourceModuleName
 import io.github.amichne.kast.standalone.cache.WorkspaceDiscoveryCache
-import io.github.amichne.kast.standalone.normalizeStandaloneModelPath
-import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetry
-import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetryScope
+import io.github.amichne.kast.standalone.normalizeModelPath
+import io.github.amichne.kast.standalone.telemetry.Telemetry
+import io.github.amichne.kast.standalone.telemetry.TelemetryScope
 import org.gradle.tooling.GradleConnector
 import org.gradle.tooling.model.idea.IdeaDependency
 import org.gradle.tooling.model.idea.IdeaModule
@@ -45,7 +45,7 @@ internal object GradleWorkspaceDiscovery {
             loadModulesWithToolingApi(root, timeoutMillis)
         },
         warningSink: (String) -> Unit = ::logWorkspaceDiscoveryWarning,
-    ): StandaloneWorkspaceLayout {
+    ): WorkspaceLayout {
         cachedWorkspaceLayout(
             workspaceRoot = workspaceRoot,
             extraClasspathRoots = extraClasspathRoots,
@@ -238,9 +238,9 @@ internal object GradleWorkspaceDiscovery {
             loadModulesWithToolingApi(root, loaderTimeoutMillis)
         },
         warningSink: (String) -> Unit = ::logWorkspaceDiscoveryWarning,
-        telemetry: StandaloneTelemetry = StandaloneTelemetry.disabled(),
+        telemetry: Telemetry = Telemetry.disabled(),
     ): GradleWorkspaceDiscoveryResult = telemetry.inSpan(
-        scope = StandaloneTelemetryScope.WORKSPACE_DISCOVERY,
+        scope = TelemetryScope.WORKSPACE_DISCOVERY,
         name = "kast.workspaceDiscovery.enrichStaticModules",
         attributes = mapOf(
             "kast.discovery.staticModuleCount" to staticModules.size,
@@ -289,7 +289,7 @@ internal object GradleWorkspaceDiscovery {
         extraClasspathRoots: List<Path>,
         diagnostics: WorkspaceDiscoveryDiagnostics = WorkspaceDiscoveryDiagnostics(),
         dependentModuleNamesBySourceModuleName: Map<ModuleName, Set<ModuleName>>? = null,
-    ): StandaloneWorkspaceLayout {
+    ): WorkspaceLayout {
         val moduleModelsByIdeaName = buildMap {
             gradleModules.forEach { module ->
                 putIfAbsent(module.ideaModuleName, module)
@@ -308,7 +308,7 @@ internal object GradleWorkspaceDiscovery {
             )
         }.mergeDuplicateSourceModules()
 
-        return StandaloneWorkspaceLayout(
+        return WorkspaceLayout(
             sourceModules = sourceModules,
             diagnostics = diagnostics,
             dependentModuleNamesBySourceModuleName = dependentModuleNamesBySourceModuleName
@@ -320,7 +320,7 @@ internal object GradleWorkspaceDiscovery {
         module: IdeaModule,
         pathNormalizer: ToolingApiPathNormalizer,
     ): GradleModuleModel {
-        val projectDirectory = normalizeStandaloneModelPath(module.gradleProject.projectDirectory.toPath())
+        val projectDirectory = normalizeModelPath(module.gradleProject.projectDirectory.toPath())
         val contentRoots = module.contentRoots
         val normalizedMainSourceRoots = pathNormalizer.normalizeExistingSourceRoots(
             contentRoots
@@ -344,15 +344,15 @@ internal object GradleWorkspaceDiscovery {
             ).distinct().sorted()
         val dependencies = module.dependencies.mapNotNull(::toGradleDependency)
         val compilerOutput = module.compilerOutput
-        val normalizedOutputDir = compilerOutput.outputDir?.toPath()?.let(::normalizeStandaloneModelPath)
-        val normalizedTestOutputDir = compilerOutput.testOutputDir?.toPath()?.let(::normalizeStandaloneModelPath)
+        val normalizedOutputDir = compilerOutput.outputDir?.toPath()?.let(::normalizeModelPath)
+        val normalizedTestOutputDir = compilerOutput.testOutputDir?.toPath()?.let(::normalizeModelPath)
         val testFixturesOutputRoots = (
             listOfNotNull(normalizedOutputDir, normalizedTestOutputDir)
                 .filter { outputRoot -> outputRoot.matchesGradleOutputRoot(GradleSourceSet.TEST_FIXTURES) } +
                 conventionalGradleOutputRootCandidates(
                     projectDirectory = projectDirectory,
                     sourceSet = GradleSourceSet.TEST_FIXTURES,
-                ).filter(Files::isDirectory).map(::normalizeStandaloneModelPath)
+                ).filter(Files::isDirectory).map(::normalizeModelPath)
             ).distinct().sorted()
         return GradleModuleModel(
             gradlePath = module.gradleProject.path,
@@ -380,7 +380,7 @@ internal object GradleWorkspaceDiscovery {
             )
             is IdeaSingleEntryLibraryDependency -> dependency.file
                 ?.toPath()
-                ?.let(::normalizeStandaloneModelPath)
+                ?.let(::normalizeModelPath)
                 ?.let { file -> GradleDependency.LibraryDependency(binaryRoot = file, scope = scope) }
             else -> null
         }
@@ -390,7 +390,7 @@ internal object GradleWorkspaceDiscovery {
 private fun cachedWorkspaceLayout(
     workspaceRoot: Path,
     extraClasspathRoots: List<Path>,
-): StandaloneWorkspaceLayout? {
+): WorkspaceLayout? {
     val cachedDiscovery = runCatching {
         WorkspaceDiscoveryCache().read(workspaceRoot)
     }.getOrNull() ?: return null
@@ -510,14 +510,14 @@ private fun GradleModuleModel.mergeWithStaticModule(staticModule: GradleModuleMo
     testFixturesOutputRoots = (testFixturesOutputRoots + staticModule.testFixturesOutputRoots).distinct().sorted(),
 )
 
-private fun List<StandaloneSourceModuleSpec>.mergeDuplicateSourceModules(): List<StandaloneSourceModuleSpec> {
-    val mergedModules = linkedMapOf<ModuleName, StandaloneSourceModuleSpec>()
+private fun List<SourceModuleSpec>.mergeDuplicateSourceModules(): List<SourceModuleSpec> {
+    val mergedModules = linkedMapOf<ModuleName, SourceModuleSpec>()
     forEach { module ->
         val existing = mergedModules[module.name]
         mergedModules[module.name] = if (existing == null) {
             module
         } else {
-            StandaloneSourceModuleSpec(
+            SourceModuleSpec(
                 name = module.name,
                 sourceRoots = (existing.sourceRoots + module.sourceRoots).distinct().sorted(),
                 binaryRoots = (existing.binaryRoots + module.binaryRoots).distinct().sorted(),
@@ -529,12 +529,12 @@ private fun List<StandaloneSourceModuleSpec>.mergeDuplicateSourceModules(): List
 }
 
 private fun Path.matchesGradleSourceSet(sourceSet: GradleSourceSet): Boolean {
-    val normalizedPath = normalizeStandaloneModelPath(this).toString().replace('\\', '/')
+    val normalizedPath = normalizeModelPath(this).toString().replace('\\', '/')
     return normalizedPath.contains("/src/${sourceSet.id}/")
 }
 
 private fun Path.matchesGradleOutputRoot(sourceSet: GradleSourceSet): Boolean {
-    val normalizedPath = normalizeStandaloneModelPath(this).toString().replace('\\', '/')
+    val normalizedPath = normalizeModelPath(this).toString().replace('\\', '/')
     return listOf(
         "/build/classes/${sourceSet.id}",
         "/build/classes/java/${sourceSet.id}",

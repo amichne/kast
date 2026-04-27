@@ -16,32 +16,34 @@ import io.github.amichne.kast.api.contract.SymbolQuery
 import io.github.amichne.kast.api.contract.TypeHierarchyQuery
 import io.github.amichne.kast.api.contract.WorkspaceFilesQuery
 import io.github.amichne.kast.api.contract.WorkspaceSymbolQuery
+import io.github.amichne.kast.cli.runtime.RuntimeLifecycleRequest
+import io.github.amichne.kast.cli.runtime.RuntimeSelection
 import io.github.amichne.kast.cli.skill.SkillWrapperName
 
 internal sealed interface CliCommand {
     data class Help(val topic: List<String> = emptyList()) : CliCommand
     data object Version : CliCommand
     data class Completion(val shell: CliCompletionShell) : CliCommand
-    data class WorkspaceStatus(val options: RuntimeCommandOptions) : CliCommand
-    data class WorkspaceEnsure(val options: RuntimeCommandOptions) : CliCommand
-    data class WorkspaceRefresh(val options: RuntimeCommandOptions, val query: RefreshQuery) : CliCommand
-    data class WorkspaceStop(val options: RuntimeCommandOptions) : CliCommand
-    data class Capabilities(val options: RuntimeCommandOptions) : CliCommand
-    data class ResolveSymbol(val options: RuntimeCommandOptions, val query: SymbolQuery) : CliCommand
-    data class FindReferences(val options: RuntimeCommandOptions, val query: ReferencesQuery) : CliCommand
-    data class CallHierarchy(val options: RuntimeCommandOptions, val query: CallHierarchyQuery) : CliCommand
-    data class TypeHierarchy(val options: RuntimeCommandOptions, val query: TypeHierarchyQuery) : CliCommand
-    data class SemanticInsertionPoint(val options: RuntimeCommandOptions, val query: SemanticInsertionQuery) : CliCommand
-    data class Diagnostics(val options: RuntimeCommandOptions, val query: DiagnosticsQuery) : CliCommand
-    data class FileOutline(val options: RuntimeCommandOptions, val query: FileOutlineQuery) : CliCommand
-    data class WorkspaceSymbol(val options: RuntimeCommandOptions, val query: WorkspaceSymbolQuery) : CliCommand
-    data class WorkspaceFiles(val options: RuntimeCommandOptions, val query: WorkspaceFilesQuery) : CliCommand
-    data class Implementations(val options: RuntimeCommandOptions, val query: ImplementationsQuery) : CliCommand
-    data class CodeActions(val options: RuntimeCommandOptions, val query: CodeActionsQuery) : CliCommand
-    data class Completions(val options: RuntimeCommandOptions, val query: CompletionsQuery) : CliCommand
-    data class Rename(val options: RuntimeCommandOptions, val query: RenameQuery) : CliCommand
-    data class ImportOptimize(val options: RuntimeCommandOptions, val query: ImportOptimizeQuery) : CliCommand
-    data class ApplyEdits(val options: RuntimeCommandOptions, val query: ApplyEditsQuery) : CliCommand
+    data class WorkspaceStatus(val request: RuntimeLifecycleRequest) : CliCommand
+    data class WorkspaceEnsure(val request: RuntimeLifecycleRequest) : CliCommand
+    data class WorkspaceRefresh(val request: RuntimeLifecycleRequest, val query: RefreshQuery) : CliCommand
+    data class WorkspaceStop(val request: RuntimeLifecycleRequest) : CliCommand
+    data class Capabilities(val runtime: RuntimeSelection) : CliCommand
+    data class ResolveSymbol(val runtime: RuntimeSelection, val query: SymbolQuery) : CliCommand
+    data class FindReferences(val runtime: RuntimeSelection, val query: ReferencesQuery) : CliCommand
+    data class CallHierarchy(val runtime: RuntimeSelection, val query: CallHierarchyQuery) : CliCommand
+    data class TypeHierarchy(val runtime: RuntimeSelection, val query: TypeHierarchyQuery) : CliCommand
+    data class SemanticInsertionPoint(val runtime: RuntimeSelection, val query: SemanticInsertionQuery) : CliCommand
+    data class Diagnostics(val runtime: RuntimeSelection, val query: DiagnosticsQuery) : CliCommand
+    data class FileOutline(val runtime: RuntimeSelection, val query: FileOutlineQuery) : CliCommand
+    data class WorkspaceSymbol(val runtime: RuntimeSelection, val query: WorkspaceSymbolQuery) : CliCommand
+    data class WorkspaceFiles(val runtime: RuntimeSelection, val query: WorkspaceFilesQuery) : CliCommand
+    data class Implementations(val runtime: RuntimeSelection, val query: ImplementationsQuery) : CliCommand
+    data class CodeActions(val runtime: RuntimeSelection, val query: CodeActionsQuery) : CliCommand
+    data class Completions(val runtime: RuntimeSelection, val query: CompletionsQuery) : CliCommand
+    data class Rename(val runtime: RuntimeSelection, val query: RenameQuery) : CliCommand
+    data class ImportOptimize(val runtime: RuntimeSelection, val query: ImportOptimizeQuery) : CliCommand
+    data class ApplyEdits(val runtime: RuntimeSelection, val query: ApplyEditsQuery) : CliCommand
     data class Install(val options: InstallOptions) : CliCommand
     data class InstallSkill(val options: InstallSkillOptions) : CliCommand
     data class Smoke(val options: SmokeOptions) : CliCommand

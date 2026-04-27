@@ -23,6 +23,8 @@ import io.github.amichne.kast.api.contract.TypeHierarchyQuery
 import io.github.amichne.kast.api.contract.WorkspaceFilesQuery
 import io.github.amichne.kast.api.contract.WorkspaceSymbolQuery
 import io.github.amichne.kast.cli.skill.SkillWrapperName
+import io.github.amichne.kast.cli.runtime.RuntimeLifecycleRequest
+import io.github.amichne.kast.cli.runtime.RuntimeSelection
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import java.nio.file.Path
@@ -84,37 +86,37 @@ internal class CliCommandParser(
     ): CliCommand {
         return try {
             when (metadata.path) {
-                listOf("workspace", "status") -> CliCommand.WorkspaceStatus(parsed.runtimeOptions())
-                listOf("workspace", "ensure") -> CliCommand.WorkspaceEnsure(parsed.runtimeOptions())
-                listOf("workspace", "refresh") -> CliCommand.WorkspaceRefresh(parsed.runtimeOptions(), parsed.refreshQuery(json))
-                listOf("workspace", "stop") -> CliCommand.WorkspaceStop(parsed.runtimeOptions())
-                listOf("workspace", "files") -> CliCommand.WorkspaceFiles(parsed.runtimeOptions(), parsed.workspaceFilesQuery(json))
+                listOf("workspace", "status") -> CliCommand.WorkspaceStatus(parsed.runtimeLifecycleRequest())
+                listOf("workspace", "ensure") -> CliCommand.WorkspaceEnsure(parsed.runtimeLifecycleRequest())
+                listOf("workspace", "refresh") -> CliCommand.WorkspaceRefresh(parsed.runtimeLifecycleRequest(), parsed.refreshQuery(json))
+                listOf("workspace", "stop") -> CliCommand.WorkspaceStop(parsed.runtimeLifecycleRequest())
+                listOf("workspace", "files") -> CliCommand.WorkspaceFiles(parsed.runtimeSelection(), parsed.workspaceFilesQuery(json))
                 listOf("completion", "bash") -> CliCommand.Completion(CliCompletionShell.BASH)
                 listOf("completion", "zsh") -> CliCommand.Completion(CliCompletionShell.ZSH)
-                listOf("capabilities") -> CliCommand.Capabilities(parsed.runtimeOptions())
-                listOf("resolve") -> CliCommand.ResolveSymbol(parsed.runtimeOptions(), parsed.symbolQuery(json))
-                listOf("references") -> CliCommand.FindReferences(parsed.runtimeOptions(), parsed.referencesQuery(json))
-                listOf("call-hierarchy") -> CliCommand.CallHierarchy(parsed.runtimeOptions(), parsed.callHierarchyQuery(json))
+                listOf("capabilities") -> CliCommand.Capabilities(parsed.runtimeSelection())
+                listOf("resolve") -> CliCommand.ResolveSymbol(parsed.runtimeSelection(), parsed.symbolQuery(json))
+                listOf("references") -> CliCommand.FindReferences(parsed.runtimeSelection(), parsed.referencesQuery(json))
+                listOf("call-hierarchy") -> CliCommand.CallHierarchy(parsed.runtimeSelection(), parsed.callHierarchyQuery(json))
                 listOf("type-hierarchy") -> CliCommand.TypeHierarchy(
-                    parsed.withoutOption("max-results").runtimeOptions(),
+                    parsed.withoutOption("max-results").runtimeSelection(),
                     parsed.typeHierarchyQuery(json),
                 )
                 listOf("insertion-point") -> CliCommand.SemanticInsertionPoint(
-                    parsed.runtimeOptions(),
+                    parsed.runtimeSelection(),
                     parsed.semanticInsertionQuery(json),
                 )
-                listOf("diagnostics") -> CliCommand.Diagnostics(parsed.runtimeOptions(), parsed.diagnosticsQuery(json))
-                listOf("outline") -> CliCommand.FileOutline(parsed.runtimeOptions(), parsed.fileOutlineQuery(json))
-                listOf("workspace-symbol") -> CliCommand.WorkspaceSymbol(parsed.withoutOption("max-results").runtimeOptions(), parsed.workspaceSymbolQuery(json))
-                listOf("implementations") -> CliCommand.Implementations(parsed.withoutOption("max-results").runtimeOptions(), parsed.implementationsQuery(json))
-                listOf("code-actions") -> CliCommand.CodeActions(parsed.runtimeOptions(), parsed.codeActionsQuery(json))
-                listOf("completions") -> CliCommand.Completions(parsed.withoutOption("max-results").runtimeOptions(), parsed.completionsQuery(json))
-                listOf("rename") -> CliCommand.Rename(parsed.runtimeOptions(), parsed.renameQuery(json))
+                listOf("diagnostics") -> CliCommand.Diagnostics(parsed.runtimeSelection(), parsed.diagnosticsQuery(json))
+                listOf("outline") -> CliCommand.FileOutline(parsed.runtimeSelection(), parsed.fileOutlineQuery(json))
+                listOf("workspace-symbol") -> CliCommand.WorkspaceSymbol(parsed.withoutOption("max-results").runtimeSelection(), parsed.workspaceSymbolQuery(json))
+                listOf("implementations") -> CliCommand.Implementations(parsed.withoutOption("max-results").runtimeSelection(), parsed.implementationsQuery(json))
+                listOf("code-actions") -> CliCommand.CodeActions(parsed.runtimeSelection(), parsed.codeActionsQuery(json))
+                listOf("completions") -> CliCommand.Completions(parsed.withoutOption("max-results").runtimeSelection(), parsed.completionsQuery(json))
+                listOf("rename") -> CliCommand.Rename(parsed.runtimeSelection(), parsed.renameQuery(json))
                 listOf("optimize-imports") -> CliCommand.ImportOptimize(
-                    parsed.runtimeOptions(),
+                    parsed.runtimeSelection(),
                     parsed.importOptimizeQuery(json),
                 )
-                listOf("apply-edits") -> CliCommand.ApplyEdits(parsed.runtimeOptions(), parsed.applyEditsQuery(json))
+                listOf("apply-edits") -> CliCommand.ApplyEdits(parsed.runtimeSelection(), parsed.applyEditsQuery(json))
                 listOf("install") -> CliCommand.Install(parsed.installOptions())
                 listOf("install", "skill") -> CliCommand.InstallSkill(parsed.installSkillOptions())
                 listOf("smoke") -> CliCommand.Smoke(parsed.smokeOptions())
@@ -210,7 +212,7 @@ internal data class ParsedArguments(
         }
     }
 
-    fun runtimeOptions(backendName: String? = options["backend-name"]): RuntimeCommandOptions {
+    fun runtimeSelection(backendName: String? = options["backend-name"]): RuntimeSelection {
         val standaloneOptions = StandaloneServerOptions.fromValues(options)
         val requestedBackendName = backendName
             ?.trim()
@@ -222,15 +224,19 @@ internal data class ParsedArguments(
                     "Valid values: ${VALID_BACKEND_NAMES.joinToString()}",
             )
         }
-        return RuntimeCommandOptions(
+        return RuntimeSelection(
             workspaceRoot = standaloneOptions.workspaceRoot,
             backendName = requestedBackendName,
             waitTimeoutMillis = options["wait-timeout-ms"]?.toLongOrNull() ?: 60_000L,
-            standaloneOptions = standaloneOptions,
-            acceptIndexing = optionalBoolean("accept-indexing", false),
             noAutoStart = optionalBoolean("no-auto-start", false),
         )
     }
+
+    fun runtimeLifecycleRequest(backendName: String? = options["backend-name"]): RuntimeLifecycleRequest =
+        RuntimeLifecycleRequest(
+            selection = runtimeSelection(backendName),
+            acceptIndexing = optionalBoolean("accept-indexing", false),
+        )
 
     fun symbolQuery(json: Json): SymbolQuery = requestOrFile(
         serializer = SymbolQuery.serializer(),

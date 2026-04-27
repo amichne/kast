@@ -17,7 +17,7 @@ import kotlin.io.path.writeText
 /**
  * Validates backend-side invariants for the daemon consolidation into `workspace ensure`.
  *
- * The daemon's core contract is that creating a [StandaloneAnalysisSession] eagerly starts
+ * The daemon's core contract is that creating a [AnalysisSession] eagerly starts
  * indexing and that descriptor uniqueness prevents multiple daemons per workspace root.
  * CLI-side routing (`workspace stop`) is tested in kast-cli.
  */
@@ -29,7 +29,7 @@ class DaemonConsolidationInvariantTest {
     fun `session eagerly starts indexing on creation`() {
         writeSourceFiles(count = 5)
 
-        StandaloneAnalysisSession(
+        AnalysisSession(
             workspaceRoot = workspaceRoot,
             sourceRoots = sourceRoots(),
             classpathRoots = emptyList(),
@@ -47,7 +47,7 @@ class DaemonConsolidationInvariantTest {
     fun `session index is ready before enrichment completes`() {
         writeSourceFiles(count = 5)
 
-        StandaloneAnalysisSession(
+        AnalysisSession(
             workspaceRoot = workspaceRoot,
             sourceRoots = sourceRoots(),
             classpathRoots = emptyList(),
@@ -77,7 +77,7 @@ class DaemonConsolidationInvariantTest {
         writeSourceFiles(count = 100)
 
         assertTimeout(Duration.ofSeconds(5)) {
-            StandaloneAnalysisSession(
+            AnalysisSession(
                 workspaceRoot = workspaceRoot,
                 sourceRoots = sourceRoots(),
                 classpathRoots = emptyList(),
@@ -87,7 +87,7 @@ class DaemonConsolidationInvariantTest {
 
         // A new session for the same workspace must initialize without error
         assertDoesNotThrow {
-            StandaloneAnalysisSession(
+            AnalysisSession(
                 workspaceRoot = workspaceRoot,
                 sourceRoots = sourceRoots(),
                 classpathRoots = emptyList(),
@@ -103,7 +103,7 @@ class DaemonConsolidationInvariantTest {
     fun `session caches are under workspace gradle directory`() {
         writeSourceFiles(count = 3)
 
-        StandaloneAnalysisSession(
+        AnalysisSession(
             workspaceRoot = workspaceRoot,
             sourceRoots = sourceRoots(),
             classpathRoots = emptyList(),
@@ -112,7 +112,7 @@ class DaemonConsolidationInvariantTest {
             session.awaitInitialSourceIndex()
         }
 
-        val cacheDir = kastCacheDirectory(normalizeStandalonePath(workspaceRoot))
+        val cacheDir = kastCacheDirectory(normalizePath(workspaceRoot))
         val expectedDb = cacheDir.resolve("source-index.db")
         assertTrue(Files.isDirectory(cacheDir)) {
             "Cache directory should exist at ${workspaceRoot.resolve(".gradle/kast/cache")}"
@@ -130,7 +130,7 @@ class DaemonConsolidationInvariantTest {
     }
 
     private fun sourceRoots(): List<Path> =
-        listOf(normalizeStandalonePath(workspaceRoot.resolve("src/main/kotlin")))
+        listOf(normalizePath(workspaceRoot.resolve("src/main/kotlin")))
 
     private fun writeSourceFiles(count: Int) {
         repeat(count) { index ->

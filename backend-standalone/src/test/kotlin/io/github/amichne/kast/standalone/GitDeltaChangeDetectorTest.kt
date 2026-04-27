@@ -38,15 +38,15 @@ class GitDeltaChangeDetectorTest {
 
         assertEquals(
             setOf(
-                normalizeStandalonePath(workspaceRoot.resolve("src/main/kotlin/sample/A.kt")).toString(),
-                normalizeStandalonePath(workspaceRoot.resolve("src/main/kotlin/sample/B.kt")).toString(),
+                normalizePath(workspaceRoot.resolve("src/main/kotlin/sample/A.kt")).toString(),
+                normalizePath(workspaceRoot.resolve("src/main/kotlin/sample/B.kt")).toString(),
             ),
             requireNotNull(candidates).paths,
         )
         assertEquals(
             setOf(
-                normalizeStandalonePath(workspaceRoot.resolve("src/main/kotlin/sample/A.kt")).toString(),
-                normalizeStandalonePath(workspaceRoot.resolve("src/main/kotlin/sample/B.kt")).toString(),
+                normalizePath(workspaceRoot.resolve("src/main/kotlin/sample/A.kt")).toString(),
+                normalizePath(workspaceRoot.resolve("src/main/kotlin/sample/B.kt")).toString(),
             ),
             candidates.trackedPaths,
         )

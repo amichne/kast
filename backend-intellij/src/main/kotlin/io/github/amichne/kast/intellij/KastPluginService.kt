@@ -52,7 +52,7 @@ internal class KastPluginService(
             project = project,
             workspaceRoot = workspaceRoot,
             limits = limits,
-            telemetry = IntelliJBackendTelemetry.fromEnvironment(workspaceRoot),
+            telemetry = BackendTelemetry.fromEnvironment(workspaceRoot),
         )
 
         val socketPath = defaultSocketPath(workspaceRoot)
@@ -92,7 +92,7 @@ internal class KastPluginService(
                 isDaemon = true,
                 name = "kast-intellij-reference-indexer",
             ) {
-                val environment = IntelliJReferenceIndexEnvironment(
+                val environment = ReferenceIndexEnvironment(
                     project = project,
                     workspaceRoot = workspaceRoot,
                     cancelled = { indexingCancelled.get() || Thread.currentThread().isInterrupted || project.isDisposed },

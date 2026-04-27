@@ -35,7 +35,7 @@ class AsyncIndexerInvariantTest {
             )
         }
 
-        StandaloneAnalysisSession(
+        AnalysisSession(
             workspaceRoot = workspaceRoot,
             sourceRoots = sourceRoots(),
             classpathRoots = emptyList(),
@@ -64,7 +64,7 @@ class AsyncIndexerInvariantTest {
             )
         }
 
-        StandaloneAnalysisSession(
+        AnalysisSession(
             workspaceRoot = workspaceRoot,
             sourceRoots = sourceRoots(),
             classpathRoots = emptyList(),
@@ -97,7 +97,7 @@ class AsyncIndexerInvariantTest {
         }
 
         assertTimeout(Duration.ofSeconds(5)) {
-            val session = StandaloneAnalysisSession(
+            val session = AnalysisSession(
                 workspaceRoot = workspaceRoot,
                 sourceRoots = sourceRoots(),
                 classpathRoots = emptyList(),
@@ -125,7 +125,7 @@ class AsyncIndexerInvariantTest {
         }
 
         assertTimeout(Duration.ofSeconds(5)) {
-            val session = StandaloneAnalysisSession(
+            val session = AnalysisSession(
                 workspaceRoot = workspaceRoot,
                 sourceRoots = sourceRoots(),
                 classpathRoots = emptyList(),
@@ -158,7 +158,7 @@ class AsyncIndexerInvariantTest {
             Files.delete(file)
         }
 
-        StandaloneAnalysisSession(
+        AnalysisSession(
             workspaceRoot = workspaceRoot,
             sourceRoots = sourceRoots(),
             classpathRoots = emptyList(),
@@ -191,7 +191,7 @@ class AsyncIndexerInvariantTest {
             )
         }
 
-        StandaloneAnalysisSession(
+        AnalysisSession(
             workspaceRoot = workspaceRoot,
             sourceRoots = sourceRoots(),
             classpathRoots = emptyList(),
@@ -224,7 +224,7 @@ class AsyncIndexerInvariantTest {
         }
 
         // First session: build the full index and persist the cache
-        StandaloneAnalysisSession(
+        AnalysisSession(
             workspaceRoot = workspaceRoot,
             sourceRoots = sourceRoots(),
             classpathRoots = emptyList(),
@@ -247,7 +247,7 @@ class AsyncIndexerInvariantTest {
 
         // Second session: track how many files the reader touches
         val readCount = AtomicInteger(0)
-        StandaloneAnalysisSession(
+        AnalysisSession(
             workspaceRoot = workspaceRoot,
             sourceRoots = sourceRoots(),
             classpathRoots = emptyList(),
@@ -271,7 +271,7 @@ class AsyncIndexerInvariantTest {
             relativePath = "sample/Greeter.kt",
             content = "package sample\n\nfun greet(): String = \"hi\"\n",
         ).toString()
-        val normalized = normalizeStandalonePath(workspaceRoot)
+        val normalized = normalizePath(workspaceRoot)
         val cache = SourceIndexCache(normalized)
         val store = cache.store
         store.ensureSchema()
@@ -316,7 +316,7 @@ class AsyncIndexerInvariantTest {
             relativePath = "sample/Caller.kt",
             content = "package sample\n\nfun call() = greet()\n",
         ).toString()
-        val normalized = normalizeStandalonePath(workspaceRoot)
+        val normalized = normalizePath(workspaceRoot)
         val cache = SourceIndexCache(normalized)
         val store = cache.store
         store.ensureSchema()
@@ -373,7 +373,7 @@ class AsyncIndexerInvariantTest {
             relativePath = "sample/Stable.kt",
             content = "package sample\n\nfun stable() = 1\n",
         ).toString()
-        val normalized = normalizeStandalonePath(workspaceRoot)
+        val normalized = normalizePath(workspaceRoot)
         val cache = SourceIndexCache(normalized)
         val store = cache.store
         store.ensureSchema()
@@ -425,7 +425,7 @@ class AsyncIndexerInvariantTest {
             relativePath = "sample/Empty.kt",
             content = "package sample\n",
         ).toString()
-        val normalized = normalizeStandalonePath(workspaceRoot)
+        val normalized = normalizePath(workspaceRoot)
         val cache = SourceIndexCache(normalized)
         val store = cache.store
         store.ensureSchema()
@@ -458,7 +458,7 @@ class AsyncIndexerInvariantTest {
         }
         val failingPath = filePaths[2]
 
-        val normalized = normalizeStandalonePath(workspaceRoot)
+        val normalized = normalizePath(workspaceRoot)
         val cache = SourceIndexCache(normalized)
         val store = cache.store
         store.ensureSchema()
@@ -503,7 +503,7 @@ class AsyncIndexerInvariantTest {
                 content = "package sample\n\nfun func$i() = $i\n",
             ).toString()
         }
-        val normalized = normalizeStandalonePath(workspaceRoot)
+        val normalized = normalizePath(workspaceRoot)
         val cache = SourceIndexCache(normalized)
         val store = cache.store
         store.ensureSchema()
@@ -531,7 +531,7 @@ class AsyncIndexerInvariantTest {
     // -- helpers --
 
     private fun sourceRoots(): List<Path> =
-        listOf(normalizeStandalonePath(workspaceRoot.resolve("src/main/kotlin")))
+        listOf(normalizePath(workspaceRoot.resolve("src/main/kotlin")))
 
     private fun writeSourceFile(
         relativePath: String,

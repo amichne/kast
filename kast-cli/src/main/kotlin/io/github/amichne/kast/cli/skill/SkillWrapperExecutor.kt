@@ -68,7 +68,7 @@ import io.github.amichne.kast.api.contract.WorkspaceFilesQuery
 import io.github.amichne.kast.cli.CliCommand
 import io.github.amichne.kast.cli.CliFailure
 import io.github.amichne.kast.cli.CliService
-import io.github.amichne.kast.cli.RuntimeCommandOptions
+import io.github.amichne.kast.cli.runtime.RuntimeSelection
 import kotlinx.serialization.json.Json
 import java.nio.file.Path
 
@@ -101,12 +101,12 @@ internal class SkillWrapperExecutor(
     private suspend fun executeWorkspaceFiles(rawJson: String): Any {
         val request = json.decodeFromString<KastWorkspaceFilesRequest>(rawJson)
         val workspaceRoot = requireWorkspaceRoot(request.workspaceRoot)
-        val options = runtimeOptionsFor(workspaceRoot)
+        val runtime = runtimeSelectionFor(workspaceRoot)
         val query = WorkspaceFilesQuery(
             moduleName = request.moduleName,
             includeFiles = request.includeFiles,
         )
-        val result = cliService.workspaceFiles(options, query)
+        val result = cliService.workspaceFiles(runtime, query)
         return KastWorkspaceFilesSuccessResponse(
             ok = true,
             query = KastWorkspaceFilesQuery(
@@ -127,11 +127,11 @@ internal class SkillWrapperExecutor(
     private suspend fun executeDiagnostics(rawJson: String): Any {
         val request = json.decodeFromString<KastDiagnosticsRequest>(rawJson)
         val workspaceRoot = requireWorkspaceRoot(request.workspaceRoot)
-        val options = runtimeOptionsFor(workspaceRoot)
+        val runtime = runtimeSelectionFor(workspaceRoot)
         val filePaths = request.filePaths.map { path ->
             Path.of(path).toAbsolutePath().normalize().toString()
         }
-        val diagnosticsResult = cliService.diagnostics(options, DiagnosticsQuery(filePaths = filePaths)).payload
+        val diagnosticsResult = cliService.diagnostics(runtime, DiagnosticsQuery(filePaths = filePaths)).payload
         return KastDiagnosticsSuccessResponse(
             ok = true,
             query = KastDiagnosticsQuery(
@@ -154,7 +154,7 @@ internal class SkillWrapperExecutor(
     private suspend fun executeResolve(rawJson: String): Any {
         val request = json.decodeFromString<KastResolveRequest>(rawJson)
         val workspaceRoot = requireWorkspaceRoot(request.workspaceRoot)
-        val options = runtimeOptionsFor(workspaceRoot)
+        val runtime = runtimeSelectionFor(workspaceRoot)
         val query = KastResolveQuery(
             workspaceRoot = workspaceRoot,
             symbol = request.symbol,
@@ -164,7 +164,7 @@ internal class SkillWrapperExecutor(
         )
 
         val resolved = symbolResolver.resolve(
-            options = options,
+            runtime = runtime,
             symbolName = request.symbol,
             fileHint = request.fileHint,
             kind = request.kind,
@@ -198,7 +198,7 @@ internal class SkillWrapperExecutor(
     private suspend fun executeReferences(rawJson: String): Any {
         val request = json.decodeFromString<KastReferencesRequest>(rawJson)
         val workspaceRoot = requireWorkspaceRoot(request.workspaceRoot)
-        val options = runtimeOptionsFor(workspaceRoot)
+        val runtime = runtimeSelectionFor(workspaceRoot)
         val query = KastReferencesQuery(
             workspaceRoot = workspaceRoot,
             symbol = request.symbol,
@@ -209,7 +209,7 @@ internal class SkillWrapperExecutor(
         )
 
         val resolved = symbolResolver.resolve(
-            options = options,
+            runtime = runtime,
             symbolName = request.symbol,
             fileHint = request.fileHint,
             kind = request.kind,
@@ -222,7 +222,7 @@ internal class SkillWrapperExecutor(
         )
 
         val refsResult = cliService.findReferences(
-            options,
+            runtime,
             ReferencesQuery(
                 position = FilePosition(filePath = resolved.filePath, offset = resolved.offset),
                 includeDeclaration = request.includeDeclaration,
@@ -249,7 +249,7 @@ internal class SkillWrapperExecutor(
     private suspend fun executeCallers(rawJson: String): Any {
         val request = json.decodeFromString<KastCallersRequest>(rawJson)
         val workspaceRoot = requireWorkspaceRoot(request.workspaceRoot)
-        val options = runtimeOptionsFor(workspaceRoot)
+        val runtime = runtimeSelectionFor(workspaceRoot)
         val query = KastCallersQuery(
             workspaceRoot = workspaceRoot,
             symbol = request.symbol,
@@ -264,7 +264,7 @@ internal class SkillWrapperExecutor(
         )
 
         val resolved = symbolResolver.resolve(
-            options = options,
+            runtime = runtime,
             symbolName = request.symbol,
             fileHint = request.fileHint,
             kind = request.kind,
@@ -282,7 +282,7 @@ internal class SkillWrapperExecutor(
         }
 
         val hierarchyResult = cliService.callHierarchy(
-            options,
+            runtime,
             CallHierarchyQuery(
                 position = FilePosition(filePath = resolved.filePath, offset = resolved.offset),
                 direction = direction,
@@ -319,10 +319,10 @@ internal class SkillWrapperExecutor(
 
     private suspend fun executeRenameBySymbol(request: KastRenameBySymbolRequest): Any {
         val workspaceRoot = requireWorkspaceRoot(request.workspaceRoot)
-        val options = runtimeOptionsFor(workspaceRoot)
+        val runtime = runtimeSelectionFor(workspaceRoot)
 
         val resolved = symbolResolver.resolve(
-            options = options,
+            runtime = runtime,
             symbolName = request.symbol,
             fileHint = request.fileHint,
             kind = request.kind,
@@ -342,7 +342,7 @@ internal class SkillWrapperExecutor(
         )
 
         return performRename(
-            options = options,
+            runtime = runtime,
             filePath = resolved.filePath,
             offset = resolved.offset,
             newName = request.newName,
@@ -373,11 +373,11 @@ internal class SkillWrapperExecutor(
 
     private suspend fun executeRenameByOffset(request: KastRenameByOffsetRequest): Any {
         val workspaceRoot = requireWorkspaceRoot(request.workspaceRoot)
-        val options = runtimeOptionsFor(workspaceRoot)
+        val runtime = runtimeSelectionFor(workspaceRoot)
         val filePath = Path.of(request.filePath).toAbsolutePath().normalize().toString()
 
         return performRename(
-            options = options,
+            runtime = runtime,
             filePath = filePath,
             offset = request.offset,
             newName = request.newName,
@@ -401,7 +401,7 @@ internal class SkillWrapperExecutor(
     }
 
     private suspend fun performRename(
-        options: RuntimeCommandOptions,
+        runtime: RuntimeSelection,
         filePath: String,
         offset: Int,
         newName: String,
@@ -410,7 +410,7 @@ internal class SkillWrapperExecutor(
     ): Any {
         // Dry-run rename to get edits
         val renameResult = cliService.rename(
-            options,
+            runtime,
             RenameQuery(
                 position = FilePosition(filePath = filePath, offset = offset),
                 newName = newName,
@@ -420,7 +420,7 @@ internal class SkillWrapperExecutor(
 
         // Apply the edits
         val applyResult = cliService.applyEdits(
-            options,
+            runtime,
             ApplyEditsQuery(
                 edits = renameResult.edits,
                 fileHashes = renameResult.fileHashes,
@@ -430,7 +430,7 @@ internal class SkillWrapperExecutor(
         // Run diagnostics on affected files
         val affectedFiles = renameResult.affectedFiles
         val diagnosticsPayload = if (affectedFiles.isNotEmpty()) {
-            cliService.diagnostics(options, DiagnosticsQuery(filePaths = affectedFiles)).payload
+            cliService.diagnostics(runtime, DiagnosticsQuery(filePaths = affectedFiles)).payload
         } else {
             null
         }
@@ -461,19 +461,19 @@ internal class SkillWrapperExecutor(
     private suspend fun executeScaffold(rawJson: String): Any {
         val request = json.decodeFromString<KastScaffoldRequest>(rawJson)
         val workspaceRoot = requireWorkspaceRoot(request.workspaceRoot)
-        val options = runtimeOptionsFor(workspaceRoot)
+        val runtime = runtimeSelectionFor(workspaceRoot)
         val targetFile = Path.of(request.targetFile).toAbsolutePath().normalize().toString()
 
         // File outline
         val outlineResult = cliService.fileOutline(
-            options,
+            runtime,
             FileOutlineQuery(filePath = targetFile),
         ).payload
 
         // Optional: resolve target symbol if specified
         val resolvedSymbol = request.targetSymbol?.let { symbolName ->
             symbolResolver.resolve(
-                options = options,
+                runtime = runtime,
                 symbolName = symbolName,
                 fileHint = request.targetFile,
                 kind = request.kind,
@@ -483,7 +483,7 @@ internal class SkillWrapperExecutor(
         // Optional: references if we have a resolved symbol
         val references = resolvedSymbol?.let { sym ->
             val refsPayload = cliService.findReferences(
-                options,
+                runtime,
                 ReferencesQuery(
                     position = FilePosition(filePath = sym.filePath, offset = sym.offset),
                     includeDeclaration = true,
@@ -506,7 +506,7 @@ internal class SkillWrapperExecutor(
             )
         }?.let { sym ->
             val thPayload = cliService.typeHierarchy(
-                options,
+                runtime,
                 TypeHierarchyQuery(
                     position = FilePosition(filePath = sym.filePath, offset = sym.offset),
                 ),
@@ -526,7 +526,7 @@ internal class SkillWrapperExecutor(
                 WrapperScaffoldMode.EXTRACT -> SemanticInsertionTarget.AFTER_IMPORTS
             }
             cliService.semanticInsertionPoint(
-                options,
+                runtime,
                 SemanticInsertionQuery(
                     position = FilePosition(filePath = sym.filePath, offset = sym.offset),
                     target = target,
@@ -571,7 +571,7 @@ internal class SkillWrapperExecutor(
 
     private suspend fun executeWriteAndValidateCreate(request: KastWriteAndValidateCreateFileRequest): Any {
         val workspaceRoot = requireWorkspaceRoot(request.workspaceRoot)
-        val options = runtimeOptionsFor(workspaceRoot)
+        val runtime = runtimeSelectionFor(workspaceRoot)
         val filePath = Path.of(request.filePath).toAbsolutePath().normalize().toString()
         val content = resolveContent(request.content, request.contentFile)
 
@@ -582,7 +582,7 @@ internal class SkillWrapperExecutor(
 
         // Apply via file operation (create)
         val applyResult = cliService.applyEdits(
-            options,
+            runtime,
             ApplyEditsQuery(
                 edits = emptyList(),
                 fileHashes = emptyList(),
@@ -598,13 +598,13 @@ internal class SkillWrapperExecutor(
         // Optimize imports + diagnostics
         val importResult = runCatching {
             cliService.optimizeImports(
-                options,
+                runtime,
                 ImportOptimizeQuery(filePaths = listOf(filePath)),
             ).payload
         }.getOrNull()
 
         val diagnosticsPayload = cliService.diagnostics(
-            options,
+            runtime,
             DiagnosticsQuery(filePaths = listOf(filePath)),
         ).payload
 
@@ -627,7 +627,7 @@ internal class SkillWrapperExecutor(
 
     private suspend fun executeWriteAndValidateInsert(request: KastWriteAndValidateInsertAtOffsetRequest): Any {
         val workspaceRoot = requireWorkspaceRoot(request.workspaceRoot)
-        val options = runtimeOptionsFor(workspaceRoot)
+        val runtime = runtimeSelectionFor(workspaceRoot)
         val filePath = Path.of(request.filePath).toAbsolutePath().normalize().toString()
         val content = resolveContent(request.content, request.contentFile)
 
@@ -644,12 +644,12 @@ internal class SkillWrapperExecutor(
             newText = content,
         )
 
-        return applyEditsAndValidate(options, listOf(edit), filePath, query)
+        return applyEditsAndValidate(runtime, listOf(edit), filePath, query)
     }
 
     private suspend fun executeWriteAndValidateReplace(request: KastWriteAndValidateReplaceRangeRequest): Any {
         val workspaceRoot = requireWorkspaceRoot(request.workspaceRoot)
-        val options = runtimeOptionsFor(workspaceRoot)
+        val runtime = runtimeSelectionFor(workspaceRoot)
         val filePath = Path.of(request.filePath).toAbsolutePath().normalize().toString()
         val content = resolveContent(request.content, request.contentFile)
 
@@ -667,29 +667,29 @@ internal class SkillWrapperExecutor(
             newText = content,
         )
 
-        return applyEditsAndValidate(options, listOf(edit), filePath, query)
+        return applyEditsAndValidate(runtime, listOf(edit), filePath, query)
     }
 
     private suspend fun applyEditsAndValidate(
-        options: RuntimeCommandOptions,
+        runtime: RuntimeSelection,
         edits: List<TextEdit>,
         filePath: String,
         query: KastWriteAndValidateQuery,
     ): Any {
         val applyResult = cliService.applyEdits(
-            options,
+            runtime,
             ApplyEditsQuery(edits = edits, fileHashes = emptyList()),
         ).payload
 
         val importResult = runCatching {
             cliService.optimizeImports(
-                options,
+                runtime,
                 ImportOptimizeQuery(filePaths = listOf(filePath)),
             ).payload
         }.getOrNull()
 
         val diagnosticsPayload = cliService.diagnostics(
-            options,
+            runtime,
             DiagnosticsQuery(filePaths = listOf(filePath)),
         ).payload
 
@@ -743,7 +743,7 @@ internal class SkillWrapperExecutor(
         return resolved
     }
 
-    private fun runtimeOptionsFor(workspaceRoot: String): RuntimeCommandOptions = RuntimeCommandOptions(
+    private fun runtimeSelectionFor(workspaceRoot: String): RuntimeSelection = RuntimeSelection(
         workspaceRoot = Path.of(workspaceRoot).toAbsolutePath().normalize(),
         backendName = null,
         waitTimeoutMillis = 60_000L,

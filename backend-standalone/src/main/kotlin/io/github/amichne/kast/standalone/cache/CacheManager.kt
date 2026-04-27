@@ -1,7 +1,7 @@
 package io.github.amichne.kast.standalone.cache
 
 import io.github.amichne.kast.indexstore.kastCacheDirectory
-import io.github.amichne.kast.standalone.normalizeStandalonePath
+import io.github.amichne.kast.standalone.normalizePath
 import java.nio.file.Path
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledFuture
@@ -19,7 +19,7 @@ internal class CacheManager(
             isDaemon = true
         }
     }
-    private val cacheDirectory = kastCacheDirectory(normalizeStandalonePath(workspaceRoot))
+    private val cacheDirectory = kastCacheDirectory(normalizePath(workspaceRoot))
     private val enabled = !isCacheDisabled(envReader)
     private val pendingWrites = linkedMapOf<String, PendingCacheWrite>()
 

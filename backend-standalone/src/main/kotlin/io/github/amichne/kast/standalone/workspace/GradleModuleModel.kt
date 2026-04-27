@@ -2,7 +2,7 @@ package io.github.amichne.kast.standalone.workspace
 
 import io.github.amichne.kast.api.contract.ModuleName
 import io.github.amichne.kast.standalone.analysis.PathListAsStringSerializer
-import io.github.amichne.kast.standalone.StandaloneSourceModuleSpec
+import io.github.amichne.kast.standalone.SourceModuleSpec
 import java.nio.file.Path
 import kotlinx.serialization.Serializable
 
@@ -30,7 +30,7 @@ internal data class GradleModuleModel(
         moduleModelsByIdeaName: Map<String, GradleModuleModel>,
         availableMainSourceModuleNames: Set<ModuleName>,
         extraClasspathRoots: List<Path>,
-    ): List<StandaloneSourceModuleSpec> {
+    ): List<SourceModuleSpec> {
         val resolvedDependencies = resolveSourceSetDependencies(
             moduleModelsByIdeaName = moduleModelsByIdeaName,
             availableMainSourceModuleNames = availableMainSourceModuleNames,
@@ -38,7 +38,7 @@ internal data class GradleModuleModel(
         return buildList {
             mainSourceRoots.takeIf(List<Path>::isNotEmpty)?.let { sourceRoots ->
                 add(
-                    StandaloneSourceModuleSpec(
+                    SourceModuleSpec(
                         name = analysisModuleName(GradleSourceSet.MAIN),
                         sourceRoots = sourceRoots,
                         binaryRoots = (resolvedDependencies.mainBinaryRoots + extraClasspathRoots).distinct().sorted(),
@@ -48,7 +48,7 @@ internal data class GradleModuleModel(
             }
             testFixturesSourceRoots.takeIf(List<Path>::isNotEmpty)?.let { sourceRoots ->
                 add(
-                    StandaloneSourceModuleSpec(
+                    SourceModuleSpec(
                         name = analysisModuleName(GradleSourceSet.TEST_FIXTURES),
                         sourceRoots = sourceRoots,
                         binaryRoots = (resolvedDependencies.testFixturesBinaryRoots + extraClasspathRoots).distinct().sorted(),
@@ -58,7 +58,7 @@ internal data class GradleModuleModel(
             }
             testSourceRoots.takeIf(List<Path>::isNotEmpty)?.let { sourceRoots ->
                 add(
-                    StandaloneSourceModuleSpec(
+                    SourceModuleSpec(
                         name = analysisModuleName(GradleSourceSet.TEST),
                         sourceRoots = sourceRoots,
                         binaryRoots = (resolvedDependencies.testBinaryRoots + extraClasspathRoots).distinct().sorted(),

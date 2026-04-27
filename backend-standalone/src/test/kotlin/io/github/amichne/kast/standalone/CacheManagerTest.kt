@@ -31,7 +31,7 @@ class CacheManagerTest {
     @Test
     fun `cache manager debounces writes`() {
         val cacheManager = CacheManager(workspaceRoot)
-        val cacheFile = kastCacheDirectory(normalizeStandalonePath(workspaceRoot)).resolve("debounce.txt")
+        val cacheFile = kastCacheDirectory(normalizePath(workspaceRoot)).resolve("debounce.txt")
         val writeCount = AtomicInteger(0)
         val debounceDelayMillis = 100L
 
@@ -50,7 +50,7 @@ class CacheManagerTest {
     @Test
     fun `cache manager writes atomically`() {
         val cacheManager = CacheManager(workspaceRoot)
-        val cacheFile = kastCacheDirectory(normalizeStandalonePath(workspaceRoot)).resolve("atomic.txt")
+        val cacheFile = kastCacheDirectory(normalizePath(workspaceRoot)).resolve("atomic.txt")
         val oldPayload = "old"
         val newPayload = "new".repeat(8_192)
         val observedPayloads = linkedSetOf<String>()
@@ -88,12 +88,12 @@ class CacheManagerTest {
 
         val sourceFile = writeSourceFile("sample/App.kt", "package sample\n\nfun welcome(): String = \"hi\"\n")
         val sourceIndexCache = SourceIndexCache(
-            workspaceRoot = normalizeStandalonePath(workspaceRoot),
+            workspaceRoot = normalizePath(workspaceRoot),
             enabled = disabledCacheManager.isEnabled(),
         )
         sourceIndexCache.save(
             index = MutableSourceIdentifierIndex.fromCandidatePathsByIdentifier(
-                mapOf("welcome" to listOf(normalizeStandalonePath(sourceFile).toString())),
+                mapOf("welcome" to listOf(normalizePath(sourceFile).toString())),
             ),
             sourceRoots = sourceRoots(),
         )
@@ -102,7 +102,7 @@ class CacheManagerTest {
             result = workspaceDiscoveryResult(),
         )
 
-        assertFalse(Files.exists(kastCacheDirectory(normalizeStandalonePath(workspaceRoot))))
+        assertFalse(Files.exists(kastCacheDirectory(normalizePath(workspaceRoot))))
         assertNull(sourceIndexCache.load(sourceRoots()))
         assertNull(WorkspaceDiscoveryCache(enabled = disabledCacheManager.isEnabled()).read(workspaceRoot))
         disabledCacheManager.close()
@@ -112,7 +112,7 @@ class CacheManagerTest {
     fun `workspace refresh invalidates all caches`() = runBlocking {
         createGradleWorkspace()
         writeSourceFile("sample/App.kt", "package sample\n\nfun welcome(): String = \"hi\"\n")
-        val session = StandaloneAnalysisSession(
+        val session = AnalysisSession(
             workspaceRoot = workspaceRoot,
             sourceRoots = sourceRoots(),
             classpathRoots = emptyList(),
@@ -121,10 +121,10 @@ class CacheManagerTest {
         session.use { session ->
             session.awaitInitialSourceIndex()
             WorkspaceDiscoveryCache().write(workspaceRoot, workspaceDiscoveryResult())
-            val cacheDirectory = kastCacheDirectory(normalizeStandalonePath(workspaceRoot))
+            val cacheDirectory = kastCacheDirectory(normalizePath(workspaceRoot))
             assertTrue(Files.isRegularFile(cacheDirectory.resolve("source-index.db")))
 
-            val backend = StandaloneAnalysisBackend(
+            val backend = AnalysisBackend(
                 workspaceRoot = workspaceRoot,
                 limits = ServerLimits(
                     maxResults = 100,
@@ -157,7 +157,7 @@ class CacheManagerTest {
             GradleModuleModel(
                 gradlePath = ":app",
                 ideaModuleName = ":app",
-                mainSourceRoots = listOf(normalizeStandalonePath(workspaceRoot.resolve("src/main/kotlin"))),
+                mainSourceRoots = listOf(normalizePath(workspaceRoot.resolve("src/main/kotlin"))),
                 testSourceRoots = emptyList(),
                 mainOutputRoots = emptyList(),
                 testOutputRoots = emptyList(),
@@ -166,7 +166,7 @@ class CacheManagerTest {
         ),
     )
 
-    private fun sourceRoots(): List<Path> = listOf(normalizeStandalonePath(workspaceRoot.resolve("src/main/kotlin")))
+    private fun sourceRoots(): List<Path> = listOf(normalizePath(workspaceRoot.resolve("src/main/kotlin")))
 
     private fun writeSourceFile(
         relativePath: String,

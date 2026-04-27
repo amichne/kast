@@ -14,7 +14,7 @@ import kotlin.concurrent.thread
 import kotlin.io.path.extension
 
 internal class WorkspaceRefreshWatcher(
-    private val session: StandaloneAnalysisSession,
+    private val session: AnalysisSession,
     private val debounceMillis: Long = 200,
     private val contentRefresh: (Set<String>) -> RefreshResult = session::refreshFileContents,
     private val fullRefresh: () -> RefreshResult = session::refreshWorkspace,

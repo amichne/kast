@@ -1,6 +1,6 @@
 package io.github.amichne.kast.standalone.workspace
 
-import io.github.amichne.kast.standalone.normalizeStandaloneModelPath
+import io.github.amichne.kast.standalone.normalizeModelPath
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -10,7 +10,7 @@ internal class ToolingApiPathNormalizer(
     private val pathExistsCache = linkedMapOf<Path, Boolean>()
 
     fun normalizeExistingSourceRoots(paths: Sequence<Path>): List<Path> = paths
-        .map(::normalizeStandaloneModelPath)
+        .map(::normalizeModelPath)
         .distinct()
         .filter(::exists)
         .toList()

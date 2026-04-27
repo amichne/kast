@@ -1,6 +1,6 @@
 package io.github.amichne.kast.standalone.workspace
 
-import io.github.amichne.kast.standalone.normalizeStandalonePath
+import io.github.amichne.kast.standalone.normalizePath
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.exists
@@ -155,7 +155,7 @@ internal object StaticGradleWorkspaceDiscovery {
 
     private fun existingPathOrNull(path: Path): Path? = path
         .takeIf(Path::exists)
-        ?.let(::normalizeStandalonePath)
+        ?.let(::normalizePath)
 
     private fun resolveRelativeBinaryRoot(
         rawPath: String,
@@ -180,7 +180,7 @@ internal object StaticGradleWorkspaceDiscovery {
         sourceSet: GradleSourceSet,
     ): List<Path> = conventionalGradleSourceRootCandidates(projectDirectory, sourceSet)
         .filter(Path::isDirectory)
-        .map(::normalizeStandalonePath)
+        .map(::normalizePath)
         .distinct()
         .sorted()
 
@@ -189,7 +189,7 @@ internal object StaticGradleWorkspaceDiscovery {
         sourceSet: GradleSourceSet,
     ): List<Path> = conventionalGradleOutputRootCandidates(projectDirectory, sourceSet)
         .filter(Path::isDirectory)
-        .map(::normalizeStandalonePath)
+        .map(::normalizePath)
         .distinct()
         .sorted()
 
@@ -201,7 +201,7 @@ internal object StaticGradleWorkspaceDiscovery {
             return workspaceRoot
         }
         val relativePath = projectPath.removePrefix(":").replace(':', '/')
-        return normalizeStandalonePath(workspaceRoot.resolve(relativePath))
+        return normalizePath(workspaceRoot.resolve(relativePath))
     }
 
     private fun buildFileCandidates(projectDirectory: Path): List<Path> = listOf(

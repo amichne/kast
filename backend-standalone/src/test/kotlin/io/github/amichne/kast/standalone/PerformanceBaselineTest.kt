@@ -45,7 +45,7 @@ class PerformanceBaselineTest {
         writeSourceFiles(fileCount)
 
         val elapsed = measureTimeMillis {
-            StandaloneAnalysisSession(
+            AnalysisSession(
                 workspaceRoot = workspaceRoot,
                 sourceRoots = sourceRoots(),
                 classpathRoots = emptyList(),
@@ -68,7 +68,7 @@ class PerformanceBaselineTest {
         val changedFiles = 10
         writeSourceFiles(totalFiles)
 
-        StandaloneAnalysisSession(
+        AnalysisSession(
             workspaceRoot = workspaceRoot,
             sourceRoots = sourceRoots(),
             classpathRoots = emptyList(),
@@ -92,7 +92,7 @@ class PerformanceBaselineTest {
             val elapsed = measureTimeMillis {
                 session.refreshFiles(
                     (0 until changedFiles).map {
-                        normalizeStandalonePath(
+                        normalizePath(
                             workspaceRoot.resolve("src/main/kotlin/perf/File$it.kt"),
                         ).toString()
                     }.toSet(),
@@ -109,7 +109,7 @@ class PerformanceBaselineTest {
     @Test
     fun `candidate file resolution time p95`() {
         val fileCount = 500
-        val normalized = normalizeStandalonePath(workspaceRoot)
+        val normalized = normalizePath(workspaceRoot)
 
         SqliteSourceIndexStore(normalized).use { store ->
             store.ensureSchema()
@@ -159,7 +159,7 @@ class PerformanceBaselineTest {
     @Test
     fun `SQLite round-trip save and load for 500 files`() {
         val fileCount = 500
-        val normalized = normalizeStandalonePath(workspaceRoot)
+        val normalized = normalizePath(workspaceRoot)
 
         val elapsed = measureTimeMillis {
             SqliteSourceIndexStore(normalized).use { store ->
@@ -205,7 +205,7 @@ class PerformanceBaselineTest {
         writeSourceFiles(100)
 
         val elapsed = measureTimeMillis {
-            StandaloneAnalysisSession(
+            AnalysisSession(
                 workspaceRoot = workspaceRoot,
                 sourceRoots = sourceRoots(),
                 classpathRoots = emptyList(),
@@ -227,7 +227,7 @@ class PerformanceBaselineTest {
     fun `concurrent queries during indexing do not block excessively`() {
         writeSourceFiles(500)
 
-        StandaloneAnalysisSession(
+        AnalysisSession(
             workspaceRoot = workspaceRoot,
             sourceRoots = sourceRoots(),
             classpathRoots = emptyList(),
@@ -261,7 +261,7 @@ class PerformanceBaselineTest {
     fun `symbol reference lookup via SQLite`() {
         val fileCount = 100
         val refsPerFile = 20
-        val normalized = normalizeStandalonePath(workspaceRoot)
+        val normalized = normalizePath(workspaceRoot)
 
         SqliteSourceIndexStore(normalized).use { store ->
             store.ensureSchema()
@@ -304,7 +304,7 @@ class PerformanceBaselineTest {
     fun `candidate resolution uses memory index when available`() {
         writeSourceFiles(100)
 
-        StandaloneAnalysisSession(
+        AnalysisSession(
             workspaceRoot = workspaceRoot,
             sourceRoots = sourceRoots(),
             classpathRoots = emptyList(),
@@ -335,7 +335,7 @@ class PerformanceBaselineTest {
         writeSourceFiles(100)
 
         val elapsed = measureTimeMillis {
-            StandaloneAnalysisSession(
+            AnalysisSession(
                 workspaceRoot = workspaceRoot,
                 sourceRoots = sourceRoots(),
                 classpathRoots = emptyList(),
@@ -360,7 +360,7 @@ class PerformanceBaselineTest {
     }
 
     private fun sourceRoots(): List<Path> =
-        listOf(normalizeStandalonePath(workspaceRoot.resolve("src/main/kotlin")))
+        listOf(normalizePath(workspaceRoot.resolve("src/main/kotlin")))
 
     private fun writeSourceFiles(count: Int) {
         repeat(count) { index ->

@@ -317,9 +317,9 @@ class WorkspaceRuntimeManagerTest {
             workspaceRoot = workspaceRoot,
             backendName = backendName,
             waitTimeoutMillis = 2_000L,
+            noAutoStart = noAutoStart,
         ),
         acceptIndexing = acceptIndexing,
-        noAutoStart = noAutoStart,
     )
 
     private fun descriptor(

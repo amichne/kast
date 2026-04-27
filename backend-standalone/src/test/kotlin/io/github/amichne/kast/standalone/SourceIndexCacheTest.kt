@@ -26,8 +26,8 @@ class SourceIndexCacheTest {
     @Test
     fun `source index cache lives under gradle cache directory`() {
         assertEquals(
-            normalizeStandalonePath(workspaceRoot.resolve(".gradle/kast/cache")),
-            kastCacheDirectory(normalizeStandalonePath(workspaceRoot)),
+            normalizePath(workspaceRoot.resolve(".gradle/kast/cache")),
+            kastCacheDirectory(normalizePath(workspaceRoot)),
         )
     }
 
@@ -49,15 +49,15 @@ class SourceIndexCacheTest {
                 fun helper(): String = "hi"
             """.trimIndent() + "\n",
         )
-        val cache = SourceIndexCache(normalizeStandalonePath(workspaceRoot))
+        val cache = SourceIndexCache(normalizePath(workspaceRoot))
 
         cache.save(
             index = MutableSourceIdentifierIndex.fromCandidatePathsByIdentifier(
                 mapOf(
-                    "welcome" to listOf(normalizeStandalonePath(appFile).toString()),
+                    "welcome" to listOf(normalizePath(appFile).toString()),
                     "helper" to listOf(
-                        normalizeStandalonePath(appFile).toString(),
-                        normalizeStandalonePath(helperFile).toString(),
+                        normalizePath(appFile).toString(),
+                        normalizePath(helperFile).toString(),
                     ),
                 ),
             ),
@@ -65,11 +65,11 @@ class SourceIndexCacheTest {
         )
 
         val loaded = requireNotNull(cache.load(sourceRoots()))
-        assertEquals(listOf(normalizeStandalonePath(appFile).toString()), loaded.index.candidatePathsFor("welcome"))
+        assertEquals(listOf(normalizePath(appFile).toString()), loaded.index.candidatePathsFor("welcome"))
         assertEquals(
             listOf(
-                normalizeStandalonePath(appFile).toString(),
-                normalizeStandalonePath(helperFile).toString(),
+                normalizePath(appFile).toString(),
+                normalizePath(helperFile).toString(),
             ),
             loaded.index.candidatePathsFor("helper"),
         )
@@ -98,15 +98,15 @@ class SourceIndexCacheTest {
                 fun Foo() = "shadow"
             """.trimIndent() + "\n",
         )
-        val cache = SourceIndexCache(normalizeStandalonePath(workspaceRoot))
+        val cache = SourceIndexCache(normalizePath(workspaceRoot))
         val index = MutableSourceIdentifierIndex.fromCandidatePathsByIdentifier(emptyMap())
         index.updateFile(
-            normalizeStandalonePath(callerFile).toString(),
+            normalizePath(callerFile).toString(),
             Files.readString(callerFile),
             moduleName = ModuleName(":consumer[main]"),
         )
         index.updateFile(
-            normalizeStandalonePath(bystanderFile).toString(),
+            normalizePath(bystanderFile).toString(),
             Files.readString(bystanderFile),
             moduleName = ModuleName(":other[main]"),
         )
@@ -118,7 +118,7 @@ class SourceIndexCacheTest {
 
         val loaded = requireNotNull(cache.load(sourceRoots()))
         assertEquals(
-            listOf(normalizeStandalonePath(callerFile).toString()),
+            listOf(normalizePath(callerFile).toString()),
             loaded.index.candidatePathsForFqName(
                 identifier = "Foo",
                 targetPackage = "lib",
@@ -126,7 +126,7 @@ class SourceIndexCacheTest {
             ),
         )
         assertEquals(
-            listOf(normalizeStandalonePath(callerFile).toString()),
+            listOf(normalizePath(callerFile).toString()),
             loaded.index.candidatePathsForModule(
                 identifier = "Foo",
                 allowedModuleNames = setOf(ModuleName(":consumer[main]")),
@@ -156,7 +156,7 @@ class SourceIndexCacheTest {
         bumpLastModified(file)
 
         val loaded = requireNotNull(cache.load(sourceRoots()))
-        assertEquals(listOf(normalizeStandalonePath(file).toString()), loaded.modifiedPaths)
+        assertEquals(listOf(normalizePath(file).toString()), loaded.modifiedPaths)
     }
 
     @Test
@@ -181,7 +181,7 @@ class SourceIndexCacheTest {
         bumpLastModified(newFile)
 
         val loaded = requireNotNull(cache.load(sourceRoots()))
-        assertEquals(listOf(normalizeStandalonePath(newFile).toString()), loaded.newPaths)
+        assertEquals(listOf(normalizePath(newFile).toString()), loaded.newPaths)
     }
 
     @Test
@@ -199,7 +199,7 @@ class SourceIndexCacheTest {
         Files.delete(file)
 
         val loaded = requireNotNull(cache.load(sourceRoots()))
-        assertEquals(listOf(normalizeStandalonePath(file).toString()), loaded.deletedPaths)
+        assertEquals(listOf(normalizePath(file).toString()), loaded.deletedPaths)
     }
 
     @Test
@@ -212,9 +212,9 @@ class SourceIndexCacheTest {
             relativePath = "sample/Helper.kt",
             content = "package sample\n\nfun helper(): String = \"ok\"\n",
         )
-        val normalizedRoot = normalizeStandalonePath(workspaceRoot)
-        val normalizedApp = normalizeStandalonePath(appFile).toString()
-        val normalizedHelper = normalizeStandalonePath(helperFile).toString()
+        val normalizedRoot = normalizePath(workspaceRoot)
+        val normalizedApp = normalizePath(appFile).toString()
+        val normalizedHelper = normalizePath(helperFile).toString()
         val detector = FakeGitDeltaCandidateDetector(headCommit = "head-1")
         detector.trackedPaths = setOf(normalizedApp, normalizedHelper)
         val cache = SourceIndexCache(normalizedRoot, gitDeltaChangeDetector = detector)
@@ -238,7 +238,7 @@ class SourceIndexCacheTest {
             workspaceRoot = normalizedRoot,
             gitDeltaChangeDetector = detector,
             lastModifiedMillis = { path ->
-                stattedPaths += normalizeStandalonePath(path).toString()
+                stattedPaths += normalizePath(path).toString()
                 Files.getLastModifiedTime(path).toMillis()
             },
         )
@@ -246,9 +246,9 @@ class SourceIndexCacheTest {
         val loaded = requireNotNull(loadingCache.load(sourceRoots()))
 
         assertEquals(listOf(normalizedApp), loaded.modifiedPaths)
-        assertEquals(listOf(normalizeStandalonePath(newFile).toString()), loaded.newPaths)
+        assertEquals(listOf(normalizePath(newFile).toString()), loaded.newPaths)
         assertEquals(
-            setOf(normalizedApp, normalizeStandalonePath(newFile).toString()),
+            setOf(normalizedApp, normalizePath(newFile).toString()),
             stattedPaths.toSet(),
         )
         assertFalse(stattedPaths.contains(normalizedHelper))
@@ -260,9 +260,9 @@ class SourceIndexCacheTest {
             relativePath = "sample/App.kt",
             content = "package sample\n\nfun welcome(): String = \"hi\"\n",
         )
-        val normalizedFile = normalizeStandalonePath(file).toString()
+        val normalizedFile = normalizePath(file).toString()
         val cache = SourceIndexCache(
-            workspaceRoot = normalizeStandalonePath(workspaceRoot),
+            workspaceRoot = normalizePath(workspaceRoot),
             gitDeltaChangeDetector = FakeGitDeltaCandidateDetector(headCommit = "head-2"),
         )
 
@@ -282,10 +282,10 @@ class SourceIndexCacheTest {
             relativePath = "sample/App.kt",
             content = "package sample\n\nfun welcome(): String = \"hi\"\n",
         )
-        val normalizedFile = normalizeStandalonePath(file).toString()
+        val normalizedFile = normalizePath(file).toString()
         val detector = FakeGitDeltaCandidateDetector(headCommit = "head-1")
         val cache = SourceIndexCache(
-            workspaceRoot = normalizeStandalonePath(workspaceRoot),
+            workspaceRoot = normalizePath(workspaceRoot),
             gitDeltaChangeDetector = detector,
         )
         val index = MutableSourceIdentifierIndex.fromCandidatePathsByIdentifier(
@@ -310,9 +310,9 @@ class SourceIndexCacheTest {
             relativePath = "sample/Generated.kt",
             content = "package sample\n\nfun generated(): String = \"old\"\n",
         )
-        val normalizedRoot = normalizeStandalonePath(workspaceRoot)
-        val normalizedTracked = normalizeStandalonePath(trackedFile).toString()
-        val normalizedUntracked = normalizeStandalonePath(untrackedFile).toString()
+        val normalizedRoot = normalizePath(workspaceRoot)
+        val normalizedTracked = normalizePath(trackedFile).toString()
+        val normalizedUntracked = normalizePath(untrackedFile).toString()
         val detector = FakeGitDeltaCandidateDetector(headCommit = "head-1")
         detector.trackedPaths = setOf(normalizedTracked)
         val cache = SourceIndexCache(normalizedRoot, gitDeltaChangeDetector = detector)
@@ -330,7 +330,7 @@ class SourceIndexCacheTest {
             workspaceRoot = normalizedRoot,
             gitDeltaChangeDetector = detector,
             lastModifiedMillis = { path ->
-                stattedPaths += normalizeStandalonePath(path).toString()
+                stattedPaths += normalizePath(path).toString()
                 Files.getLastModifiedTime(path).toMillis()
             },
         )
@@ -354,7 +354,7 @@ class SourceIndexCacheTest {
             )
         }
 
-        StandaloneAnalysisSession(
+        AnalysisSession(
             workspaceRoot = workspaceRoot,
             sourceRoots = sourceRoots(),
             classpathRoots = emptyList(),
@@ -374,7 +374,7 @@ class SourceIndexCacheTest {
         bumpLastModified(changedFile)
 
         var readCount = 0
-        StandaloneAnalysisSession(
+        AnalysisSession(
             workspaceRoot = workspaceRoot,
             sourceRoots = sourceRoots(),
             classpathRoots = emptyList(),
@@ -400,10 +400,10 @@ class SourceIndexCacheTest {
                 fun welcome(): String = "hi"
             """.trimIndent() + "\n",
         )
-        val normalizedFile = normalizeStandalonePath(file).toString()
-        val cache = SourceIndexCache(normalizeStandalonePath(workspaceRoot))
+        val normalizedFile = normalizePath(file).toString()
+        val cache = SourceIndexCache(normalizePath(workspaceRoot))
 
-        StandaloneAnalysisSession(
+        AnalysisSession(
             workspaceRoot = workspaceRoot,
             sourceRoots = sourceRoots(),
             classpathRoots = emptyList(),
@@ -439,15 +439,15 @@ class SourceIndexCacheTest {
             relativePath = "sample/App.kt",
             content = "package sample\n\nfun welcome(): String = \"hi\"\n",
         )
-        val cache = SourceIndexCache(normalizeStandalonePath(workspaceRoot))
+        val cache = SourceIndexCache(normalizePath(workspaceRoot))
         cache.save(
             index = MutableSourceIdentifierIndex.fromCandidatePathsByIdentifier(
-                mapOf("welcome" to listOf(normalizeStandalonePath(appFile).toString())),
+                mapOf("welcome" to listOf(normalizePath(appFile).toString())),
             ),
             sourceRoots = sourceRoots(),
         )
 
-        val cacheDir = kastCacheDirectory(normalizeStandalonePath(workspaceRoot))
+        val cacheDir = kastCacheDirectory(normalizePath(workspaceRoot))
         assertTrue(Files.isRegularFile(cacheDir.resolve("source-index.db")))
         assertFalse(Files.exists(cacheDir.resolve("source-identifier-index.json")))
         assertFalse(Files.exists(cacheDir.resolve("file-manifest.json")))
@@ -463,10 +463,10 @@ class SourceIndexCacheTest {
             relativePath = "sample/Helper.kt",
             content = "package sample\n\nfun helper(): String = \"ok\"\n",
         )
-        val normalizedApp = normalizeStandalonePath(appFile).toString()
-        val normalizedHelper = normalizeStandalonePath(helperFile).toString()
+        val normalizedApp = normalizePath(appFile).toString()
+        val normalizedHelper = normalizePath(helperFile).toString()
 
-        val cache = SourceIndexCache(normalizeStandalonePath(workspaceRoot))
+        val cache = SourceIndexCache(normalizePath(workspaceRoot))
         val index = MutableSourceIdentifierIndex.fromCandidatePathsByIdentifier(
             mapOf(
                 "welcome" to listOf(normalizedApp),
@@ -492,20 +492,20 @@ class SourceIndexCacheTest {
             relativePath = "sample/App.kt",
             content = "package sample\n\nfun welcome(): String = \"hi\"\n",
         )
-        val cacheDir = kastCacheDirectory(normalizeStandalonePath(workspaceRoot))
+        val cacheDir = kastCacheDirectory(normalizePath(workspaceRoot))
         Files.createDirectories(cacheDir)
         Files.writeString(
             cacheDir.resolve("source-identifier-index.json"),
-            """{"schemaVersion":3,"candidatePathsByIdentifier":{"welcome":["${normalizeStandalonePath(appFile)}"]}}""",
+            """{"schemaVersion":3,"candidatePathsByIdentifier":{"welcome":["${normalizePath(appFile)}"]}}""",
         )
 
-        val cache = SourceIndexCache(normalizeStandalonePath(workspaceRoot))
+        val cache = SourceIndexCache(normalizePath(workspaceRoot))
         assertNull(cache.load(sourceRoots()))
     }
 
     @Test
     fun `source index cache returns null on SQLite schema version mismatch`() {
-        val cacheDir = kastCacheDirectory(normalizeStandalonePath(workspaceRoot))
+        val cacheDir = kastCacheDirectory(normalizePath(workspaceRoot))
         Files.createDirectories(cacheDir)
         val dbPath = cacheDir.resolve("source-index.db")
         // Manually write a DB with an unknown schema version
@@ -516,22 +516,22 @@ class SourceIndexCacheTest {
             }
         }
 
-        val cache = SourceIndexCache(normalizeStandalonePath(workspaceRoot))
+        val cache = SourceIndexCache(normalizePath(workspaceRoot))
         assertNull(cache.load(sourceRoots()))
     }
 
     private fun saveSimpleCache(file: Path): SourceIndexCache {
-        val cache = SourceIndexCache(normalizeStandalonePath(workspaceRoot))
+        val cache = SourceIndexCache(normalizePath(workspaceRoot))
         cache.save(
             index = MutableSourceIdentifierIndex.fromCandidatePathsByIdentifier(
-                mapOf("welcome" to listOf(normalizeStandalonePath(file).toString())),
+                mapOf("welcome" to listOf(normalizePath(file).toString())),
             ),
             sourceRoots = sourceRoots(),
         )
         return cache
     }
 
-    private fun sourceRoots(): List<Path> = listOf(normalizeStandalonePath(workspaceRoot.resolve("src/main/kotlin")))
+    private fun sourceRoots(): List<Path> = listOf(normalizePath(workspaceRoot.resolve("src/main/kotlin")))
 
     private fun writeSourceFile(
         relativePath: String,
