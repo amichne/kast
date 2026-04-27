@@ -40,7 +40,7 @@ internal data class SmokeReport(
                 SmokeCheckStatus.FAIL -> "❌ FAIL"
                 SmokeCheckStatus.SKIP -> "⏭ SKIP"
             }
-            appendLine("| ${check.name} | $statusIcon | ${check.message.orEmpty()} |")
+            appendLine("| ${check.name} | $statusIcon | ${check.message.orEmpty().replace("|", "\\|")} |")
         }
     }.trimEnd()
 }
