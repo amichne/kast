@@ -2,6 +2,7 @@ package io.github.amichne.kast.cli
 
 internal class SmokeCommandSupport(
     private val runtimeManager: WorkspaceRuntimeManager? = null,
+    private val runtimeWaitTimeoutMillis: Long = 10_000L,
 ) {
     suspend fun run(options: SmokeOptions): SmokeReport {
         val checks = mutableListOf<SmokeCheck>()
@@ -59,7 +60,7 @@ internal class SmokeCommandSupport(
         val runtimeOptions = RuntimeCommandOptions(
             workspaceRoot = options.workspaceRoot,
             backendName = null,
-            waitTimeoutMillis = 10_000L,
+            waitTimeoutMillis = runtimeWaitTimeoutMillis,
             acceptIndexing = true,
         )
 
@@ -87,7 +88,7 @@ internal class SmokeCommandSupport(
         checks += SmokeCheck(
             name = "workspace-ensure",
             status = SmokeCheckStatus.PASS,
-            message = "Backend '$backend' is running for ${options.workspaceRoot} (state: ${ensured.selected.runtimeStatus?.state ?: "unknown"})",
+            message = "Backend '$backend' is running for ${options.workspaceRoot} (state: ${ensured.selected.currentStateLabel()})",
         )
 
         val caps = ensured.selected.capabilities

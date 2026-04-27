@@ -258,6 +258,44 @@ class SmokeCommandSupportTest {
         assertTrue(markdown.contains("❌"), "Failed report should show ❌ icon in header")
     }
 
+    @Test
+    fun `smoke produces FAIL for workspace-ensure when backend stays in STARTING state`() {
+        // Uses runBlocking so real time passes and the RUNTIME_TIMEOUT fires after 500ms.
+        // RUNTIME_TIMEOUT code != NO_BACKEND_AVAILABLE, so SmokeCommandSupport maps it to FAIL.
+        kotlinx.coroutines.runBlocking {
+            val workspace = tempDir.resolve("workspace-starting")
+            val startingStatus = RuntimeStatusResponse(
+                state = RuntimeState.STARTING,
+                healthy = true,
+                active = true,
+                indexing = false,
+                backendName = "standalone",
+                backendVersion = "0.1.0-SNAPSHOT",
+                workspaceRoot = workspace.toString(),
+                message = "starting",
+            )
+            val descriptor = writeDescriptor(descriptor(workspaceRoot = workspace, pid = 999))
+            val startingClient = object : RuntimeRpcClient {
+                override fun runtimeStatus(descriptor: ServerInstanceDescriptor): RuntimeStatusResponse = startingStatus
+                override fun capabilities(descriptor: ServerInstanceDescriptor): BackendCapabilities =
+                    throw CliFailure(code = "NOT_READY", message = "backend still starting")
+            }
+            val manager = WorkspaceRuntimeManager(
+                rpcClient = startingClient,
+                processLivenessChecker = { pid -> pid == 999L },
+                envLookup = envLookup,
+            )
+            val support = SmokeCommandSupport(runtimeManager = manager, runtimeWaitTimeoutMillis = 500L)
+
+            val report = support.run(smokeOptions(workspaceRoot = workspace))
+
+            assertFalse(report.ok, "Report should not be ok when backend stays in STARTING state")
+            assertTrue(report.failCount >= 1, "Expected at least one FAIL")
+            val ensureCheck = report.checks.first { it.name == "workspace-ensure" }
+            assertEquals(SmokeCheckStatus.FAIL, ensureCheck.status)
+        }
+    }
+
     // ---------------------------------------------------------------------------
     // KastCli integration — kast smoke routes through KastCli correctly
     // ---------------------------------------------------------------------------
