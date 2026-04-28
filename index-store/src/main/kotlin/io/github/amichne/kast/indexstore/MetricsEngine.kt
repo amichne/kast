@@ -95,7 +95,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
                 mapRow = {
                     FanOutMetric(
                         sourcePath = path(FanOutField.SOURCE_DIR, FanOutField.SOURCE_FILENAME),
-                        sourceModuleName = string(FanOutField.SOURCE_MODULE_NAME),
+                        sourceModuleName = nullableString(FanOutField.SOURCE_MODULE_NAME),
                         occurrenceCount = int(FanOutField.OCCURRENCE_COUNT),
                         targetSymbolCount = int(FanOutField.TARGET_SYMBOL_COUNT),
                         targetFileCount = int(FanOutField.TARGET_FILE_COUNT),
