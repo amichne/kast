@@ -10,6 +10,7 @@ import kotlinx.serialization.json.put
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
@@ -143,6 +144,71 @@ class PackagedSkillJsonContractTest {
         }
     }
 
+    @Test
+    @Disabled
+    fun `diagnostics stay clean for repo wrapper executor file`() {
+        val repoRoot = findRepoRoot(Path.of("").toAbsolutePath())
+        val targetFile = repoRoot.resolve(
+            "kast-cli/src/main/kotlin/io/github/amichne/kast/cli/skill/SkillWrapperExecutor.kt",
+        )
+        val kastBinary = checkNotNull(System.getProperty("kast.wrapper")) {
+            "kast.wrapper system property is missing"
+        }
+        val configHome = tempDir.resolve("kast-config-repo")
+        val wrapperEnv = mapOf(
+            "KAST_CLI_PATH" to kastBinary,
+            "KAST_CONFIG_HOME" to configHome.toString(),
+            "KAST_WORKSPACE_ROOT" to repoRoot.toString(),
+        )
+
+        val daemon = startRealBackend(repoRoot, wrapperEnv)
+        try {
+            val ensureResult = runCommand(
+                command = listOf(kastBinary, "workspace", "ensure", "--workspace-root=$repoRoot"),
+                env = wrapperEnv,
+            )
+            assertEquals(0, ensureResult.exitCode, "stderr: ${ensureResult.stderr}")
+
+            val diagnosticsRequest = buildJsonObject {
+                put("workspaceRoot", repoRoot.toString())
+                put(
+                    "filePaths",
+                    buildJsonArray {
+                        add(JsonPrimitive(targetFile.toString()))
+                    },
+                )
+            }
+
+            val diagnosticsResult = runCommand(
+                command = listOf(
+                    kastBinary,
+                    "skill",
+                    "diagnostics",
+                    defaultCliJson().encodeToString(JsonObject.serializer(), diagnosticsRequest),
+                ),
+                env = wrapperEnv,
+            )
+
+            assertEquals(0, diagnosticsResult.exitCode, "stderr: ${diagnosticsResult.stderr}")
+            val diagnosticsPayload = defaultCliJson()
+                .parseToJsonElement(diagnosticsResult.stdout)
+                .jsonObject
+            assertEquals(true, diagnosticsPayload["ok"]?.toString()?.toBooleanStrictOrNull())
+            assertEquals("DIAGNOSTICS_SUCCESS", diagnosticsPayload["type"]?.jsonPrimitive?.content)
+            assertEquals(true, diagnosticsPayload["clean"]?.toString()?.toBooleanStrictOrNull(), diagnosticsResult.stdout)
+            assertEquals(0, diagnosticsPayload["errorCount"]?.jsonPrimitive?.content?.toInt())
+            assertEquals(0, diagnosticsPayload["warningCount"]?.jsonPrimitive?.content?.toInt())
+            assertEquals(0, diagnosticsPayload["infoCount"]?.jsonPrimitive?.content?.toInt())
+            assertTrue(diagnosticsPayload["diagnostics"]?.toString() == "[]")
+        } finally {
+            runCommand(
+                command = listOf(kastBinary, "workspace", "stop", "--workspace-root=$repoRoot"),
+                env = wrapperEnv,
+            )
+            daemon.destroyForcibly()
+        }
+    }
+
     private fun startRealBackend(
         workspace: Path,
         env: Map<String, String>,
@@ -195,6 +261,10 @@ class PackagedSkillJsonContractTest {
         val stdout: String,
         val stderr: String,
     )
+
+    private fun findRepoRoot(start: Path): Path = generateSequence(start.normalize()) { it.parent }
+        .firstOrNull { candidate -> Files.isRegularFile(candidate.resolve(".github/hooks/session-end.sh")) }
+        ?: error("Could not locate repo root from $start")
 
     private fun Path.createDirectoriesForParent(): Path {
         Files.createDirectories(checkNotNull(parent))

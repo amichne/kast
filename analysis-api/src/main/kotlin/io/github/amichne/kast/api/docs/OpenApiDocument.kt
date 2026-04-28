@@ -551,16 +551,16 @@ internal class SchemaRegistry {
     private fun manualUnionSchema(componentName: String): Map<String, Any?>? =
         when (componentName) {
             "FileOperation" -> discriminatedUnion(
-                "create" to "FileOperation.CreateFile",
-                "delete" to "FileOperation.DeleteFile",
+                "CREATE_FILE" to "FileOperation.CreateFile",
+                "DELETE_FILE" to "FileOperation.DeleteFile",
             )
             "FileOperation.CreateFile" -> subtypeWithDiscriminator(
                 FileOperation.CreateFile.serializer(),
-                discriminatorValue = "create",
+                discriminatorValue = "CREATE_FILE",
             )
             "FileOperation.DeleteFile" -> subtypeWithDiscriminator(
                 FileOperation.DeleteFile.serializer(),
-                discriminatorValue = "delete",
+                discriminatorValue = "DELETE_FILE",
             )
             else -> null
         }

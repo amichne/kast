@@ -16,7 +16,7 @@ import java.nio.file.SimpleFileVisitor
 import java.nio.file.attribute.BasicFileAttributes
 import java.security.MessageDigest
 
-private const val workspaceDiscoveryCacheSchemaVersion = 1
+private const val workspaceDiscoveryCacheSchemaVersion = 2
 
 private val trackedGradleBuildFileNames = setOf(
     "settings.gradle",

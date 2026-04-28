@@ -24,7 +24,7 @@ class FileOperationTest {
             ),
         )
 
-        assertTrue(encoded.contains(""""type":"create""""))
+        assertTrue(encoded.contains(""""type":"CREATE_FILE""""))
     }
 
     @Test
@@ -36,7 +36,7 @@ class FileOperationTest {
             ),
         )
 
-        assertTrue(encoded.contains(""""type":"delete""""))
+        assertTrue(encoded.contains(""""type":"DELETE_FILE""""))
     }
 
     @Test

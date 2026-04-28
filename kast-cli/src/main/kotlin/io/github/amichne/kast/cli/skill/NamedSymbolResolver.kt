@@ -24,6 +24,8 @@ internal class NamedSymbolResolver(
         val symbol: Symbol,
         val filePath: String,
         val offset: Int,
+        val candidateCount: Int = 1,
+        val alternativeFqNames: List<String> = emptyList(),
     )
 
     /**
@@ -80,7 +82,15 @@ internal class NamedSymbolResolver(
         }
         if (exactMatches.isNotEmpty()) candidates = exactMatches
 
+        val candidateCount = candidates.size
         val best = candidates.firstOrNull() ?: return null
+        val alternativeFqNames = candidates
+            .asSequence()
+            .map(Symbol::fqName)
+            .filter { it != best.fqName }
+            .distinct()
+            .take(3)
+            .toList()
 
         // Confirm via resolve to get enriched symbol info
         val position = FilePosition(
@@ -96,6 +106,8 @@ internal class NamedSymbolResolver(
             symbol = resolveResult.payload.symbol,
             filePath = best.location.filePath,
             offset = best.location.startOffset,
+            candidateCount = candidateCount,
+            alternativeFqNames = alternativeFqNames,
         )
     }
 }

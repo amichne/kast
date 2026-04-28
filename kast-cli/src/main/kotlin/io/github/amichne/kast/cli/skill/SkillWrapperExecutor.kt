@@ -9,14 +9,26 @@ import io.github.amichne.kast.api.contract.FileOperation
 import io.github.amichne.kast.api.contract.FileOutlineQuery
 import io.github.amichne.kast.api.contract.FilePosition
 import io.github.amichne.kast.api.contract.ImportOptimizeQuery
+import io.github.amichne.kast.api.contract.ReferencesQuery
+import io.github.amichne.kast.api.contract.RenameQuery
+import io.github.amichne.kast.api.contract.SemanticInsertionQuery
+import io.github.amichne.kast.api.contract.SemanticInsertionTarget
+import io.github.amichne.kast.api.contract.SymbolKind
+import io.github.amichne.kast.api.contract.TextEdit
+import io.github.amichne.kast.api.contract.TypeHierarchyQuery
+import io.github.amichne.kast.api.contract.WorkspaceFilesQuery
 import io.github.amichne.kast.api.wrapper.KastCallersFailureResponse
 import io.github.amichne.kast.api.wrapper.KastCallersQuery
 import io.github.amichne.kast.api.wrapper.KastCallersRequest
 import io.github.amichne.kast.api.wrapper.KastCallersSuccessResponse
+import io.github.amichne.kast.api.wrapper.KastCandidate
 import io.github.amichne.kast.api.wrapper.KastDiagnosticsQuery
 import io.github.amichne.kast.api.wrapper.KastDiagnosticsRequest
 import io.github.amichne.kast.api.wrapper.KastDiagnosticsSuccessResponse
 import io.github.amichne.kast.api.wrapper.KastDiagnosticsSummary
+import io.github.amichne.kast.api.wrapper.KastMetricsQuery
+import io.github.amichne.kast.api.wrapper.KastMetricsRequest
+import io.github.amichne.kast.api.wrapper.KastMetricsSuccessResponse
 import io.github.amichne.kast.api.wrapper.KastReferencesFailureResponse
 import io.github.amichne.kast.api.wrapper.KastReferencesQuery
 import io.github.amichne.kast.api.wrapper.KastReferencesRequest
@@ -34,46 +46,31 @@ import io.github.amichne.kast.api.wrapper.KastResolveFailureResponse
 import io.github.amichne.kast.api.wrapper.KastResolveQuery
 import io.github.amichne.kast.api.wrapper.KastResolveRequest
 import io.github.amichne.kast.api.wrapper.KastResolveSuccessResponse
-import io.github.amichne.kast.api.wrapper.KastScaffoldReferences
 import io.github.amichne.kast.api.wrapper.KastScaffoldQuery
+import io.github.amichne.kast.api.wrapper.KastScaffoldReferences
 import io.github.amichne.kast.api.wrapper.KastScaffoldRequest
 import io.github.amichne.kast.api.wrapper.KastScaffoldSuccessResponse
 import io.github.amichne.kast.api.wrapper.KastScaffoldTypeHierarchy
 import io.github.amichne.kast.api.wrapper.KastWorkspaceFilesQuery
 import io.github.amichne.kast.api.wrapper.KastWorkspaceFilesRequest
 import io.github.amichne.kast.api.wrapper.KastWorkspaceFilesSuccessResponse
-import io.github.amichne.kast.api.wrapper.KastWriteAndValidateQuery
 import io.github.amichne.kast.api.wrapper.KastWriteAndValidateCreateFileQuery
 import io.github.amichne.kast.api.wrapper.KastWriteAndValidateCreateFileRequest
-import io.github.amichne.kast.api.wrapper.KastWriteAndValidateFailureQuery
-import io.github.amichne.kast.api.wrapper.KastWriteAndValidateFailureResponse
 import io.github.amichne.kast.api.wrapper.KastWriteAndValidateInsertAtOffsetQuery
 import io.github.amichne.kast.api.wrapper.KastWriteAndValidateInsertAtOffsetRequest
+import io.github.amichne.kast.api.wrapper.KastWriteAndValidateQuery
 import io.github.amichne.kast.api.wrapper.KastWriteAndValidateReplaceRangeQuery
 import io.github.amichne.kast.api.wrapper.KastWriteAndValidateReplaceRangeRequest
 import io.github.amichne.kast.api.wrapper.KastWriteAndValidateRequest
 import io.github.amichne.kast.api.wrapper.KastWriteAndValidateSuccessResponse
-import io.github.amichne.kast.api.wrapper.KastCandidate
-import io.github.amichne.kast.api.wrapper.KastMetricsQuery
-import io.github.amichne.kast.api.wrapper.KastMetricsRequest
-import io.github.amichne.kast.api.wrapper.KastMetricsSuccessResponse
+import io.github.amichne.kast.api.wrapper.WrapperCallDirection
 import io.github.amichne.kast.api.wrapper.WrapperMetric
 import io.github.amichne.kast.api.wrapper.WrapperScaffoldMode
-import io.github.amichne.kast.indexstore.MetricsEngine
-import io.github.amichne.kast.api.contract.ReferencesQuery
-import io.github.amichne.kast.api.contract.RenameQuery
-import io.github.amichne.kast.api.contract.SemanticInsertionQuery
-import io.github.amichne.kast.api.contract.SemanticInsertionTarget
-import io.github.amichne.kast.api.contract.SymbolKind
-import io.github.amichne.kast.api.contract.SymbolQuery
-import io.github.amichne.kast.api.contract.TextEdit
-import io.github.amichne.kast.api.contract.TypeHierarchyQuery
-import io.github.amichne.kast.api.wrapper.WrapperCallDirection
-import io.github.amichne.kast.api.contract.WorkspaceFilesQuery
 import io.github.amichne.kast.cli.CliCommand
 import io.github.amichne.kast.cli.CliFailure
 import io.github.amichne.kast.cli.CliService
 import io.github.amichne.kast.cli.RuntimeCommandOptions
+import io.github.amichne.kast.indexstore.MetricsEngine
 import kotlinx.serialization.json.Json
 import java.nio.file.Path
 
@@ -193,6 +190,8 @@ internal class SkillWrapperExecutor(
                 column = resolved.symbol.location.startColumn,
                 context = resolved.symbol.location.preview,
             ),
+            candidateCount = resolved.candidateCount.takeIf { it > 1 },
+            alternatives = resolved.alternativeFqNames.takeIf { it.isNotEmpty() },
             logFile = SkillLogFile.placeholder(),
         )
     }
@@ -244,6 +243,8 @@ internal class SkillWrapperExecutor(
             references = refsResult.references,
             searchScope = refsResult.searchScope,
             declaration = refsResult.declaration,
+            candidateCount = resolved.candidateCount.takeIf { it > 1 },
+            alternatives = resolved.alternativeFqNames.takeIf { it.isNotEmpty() },
             logFile = SkillLogFile.placeholder(),
         )
     }
@@ -307,6 +308,8 @@ internal class SkillWrapperExecutor(
             offset = resolved.offset,
             root = hierarchyResult.root,
             stats = hierarchyResult.stats,
+            candidateCount = resolved.candidateCount.takeIf { it > 1 },
+            alternatives = resolved.alternativeFqNames.takeIf { it.isNotEmpty() },
             logFile = SkillLogFile.placeholder(),
         )
     }
@@ -750,24 +753,12 @@ internal class SkillWrapperExecutor(
         )
         val resultsJson = MetricsEngine(Path.of(workspaceRoot)).use { engine ->
             when (request.metric) {
-                WrapperMetric.FAN_IN -> json.encodeToJsonElement(
-                    kotlinx.serialization.builtins.ListSerializer(io.github.amichne.kast.indexstore.FanInMetric.serializer()),
-                    engine.fanInRanking(request.limit),
-                )
-                WrapperMetric.FAN_OUT -> json.encodeToJsonElement(
-                    kotlinx.serialization.builtins.ListSerializer(io.github.amichne.kast.indexstore.FanOutMetric.serializer()),
-                    engine.fanOutRanking(request.limit),
-                )
-                WrapperMetric.COUPLING -> json.encodeToJsonElement(
-                    kotlinx.serialization.builtins.ListSerializer(io.github.amichne.kast.indexstore.ModuleCouplingMetric.serializer()),
-                    engine.moduleCouplingMatrix(),
-                )
-                WrapperMetric.DEAD_CODE -> json.encodeToJsonElement(
-                    kotlinx.serialization.builtins.ListSerializer(io.github.amichne.kast.indexstore.DeadCodeCandidate.serializer()),
-                    engine.deadCodeCandidates(),
-                )
-                WrapperMetric.IMPACT -> json.encodeToJsonElement(
-                    kotlinx.serialization.builtins.ListSerializer(io.github.amichne.kast.indexstore.ChangeImpactNode.serializer()),
+                WrapperMetric.FAN_IN -> encodeFanInMetrics(json, engine.fanInRanking(request.limit))
+                WrapperMetric.FAN_OUT -> encodeFanOutMetrics(json, engine.fanOutRanking(request.limit))
+                WrapperMetric.COUPLING -> encodeModuleCouplingMetrics(json, engine.moduleCouplingMatrix())
+                WrapperMetric.DEAD_CODE -> encodeDeadCodeCandidates(json, engine.deadCodeCandidates())
+                WrapperMetric.IMPACT -> encodeChangeImpactNodes(
+                    json,
                     engine.changeImpactRadius(
                         fqName = request.symbol ?: throw CliFailure(
                             code = "SKILL_VALIDATION",
@@ -790,16 +781,7 @@ internal class SkillWrapperExecutor(
 
     // region shared
 
-    private fun requireWorkspaceRoot(explicit: String?): String {
-        val resolved = SkillWrapperInput.resolveWorkspaceRoot(explicit)
-        if (resolved.isEmpty()) {
-            throw CliFailure(
-                code = "SKILL_VALIDATION",
-                message = "workspaceRoot is required: set it in the request body or export KAST_WORKSPACE_ROOT.",
-            )
-        }
-        return resolved
-    }
+    private fun requireWorkspaceRoot(explicit: String?): String = SkillWrapperInput.resolveWorkspaceRoot(explicit)
 
     private fun runtimeOptionsFor(workspaceRoot: String): RuntimeCommandOptions = RuntimeCommandOptions(
         workspaceRoot = Path.of(workspaceRoot).toAbsolutePath().normalize(),

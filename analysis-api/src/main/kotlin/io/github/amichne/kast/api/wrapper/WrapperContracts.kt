@@ -50,16 +50,16 @@ enum class WrapperScaffoldMode {
 
 @Serializable
 enum class WrapperMetric {
-    @SerialName("fan-in")
+    @SerialName("fanIn")
     FAN_IN,
 
-    @SerialName("fan-out")
+    @SerialName("fanOut")
     FAN_OUT,
 
     @SerialName("coupling")
     COUPLING,
 
-    @SerialName("dead-code")
+    @SerialName("deadCode")
     DEAD_CODE,
 
     @SerialName("impact")
@@ -77,7 +77,6 @@ data class KastMetricsRequest(
 
 @Serializable
 data class KastMetricsQuery(
-    @SerialName("workspace_root")
     val workspaceRoot: String,
     val metric: WrapperMetric,
     val limit: Int = 50,
@@ -94,7 +93,6 @@ data class KastMetricsSuccessResponse(
     val ok: Boolean = true,
     val query: KastMetricsQuery,
     val results: kotlinx.serialization.json.JsonElement,
-    @SerialName("log_file")
     val logFile: String,
 ) : KastMetricsResponse
 
@@ -105,7 +103,6 @@ data class KastMetricsFailureResponse(
     val stage: String,
     val message: String,
     val query: KastMetricsQuery,
-    @SerialName("log_file")
     val logFile: String,
 ) : KastMetricsResponse
 
@@ -222,73 +219,53 @@ data class KastWriteAndValidateReplaceRangeRequest(
 
 @Serializable
 data class KastResolveQuery(
-    @SerialName("workspace_root")
     val workspaceRoot: String,
     val symbol: String,
-    @SerialName("file_hint")
     val fileHint: String? = null,
     val kind: WrapperNamedSymbolKind? = null,
-    @SerialName("containing_type")
     val containingType: String? = null,
 )
 
 @Serializable
 data class KastReferencesQuery(
-    @SerialName("workspace_root")
     val workspaceRoot: String,
     val symbol: String,
-    @SerialName("file_hint")
     val fileHint: String? = null,
     val kind: WrapperNamedSymbolKind? = null,
-    @SerialName("containing_type")
     val containingType: String? = null,
-    @SerialName("include_declaration")
     val includeDeclaration: Boolean = true,
 )
 
 @Serializable
 data class KastCallersQuery(
-    @SerialName("workspace_root")
     val workspaceRoot: String,
     val symbol: String,
-    @SerialName("file_hint")
     val fileHint: String? = null,
     val kind: WrapperNamedSymbolKind? = null,
-    @SerialName("containing_type")
     val containingType: String? = null,
     val direction: WrapperCallDirection = WrapperCallDirection.INCOMING,
     val depth: Int = 2,
-    @SerialName("max_total_calls")
     val maxTotalCalls: Int? = null,
-    @SerialName("max_children_per_node")
     val maxChildrenPerNode: Int? = null,
-    @SerialName("timeout_millis")
     val timeoutMillis: Int? = null,
 )
 
 @Serializable
 data class KastDiagnosticsQuery(
-    @SerialName("workspace_root")
     val workspaceRoot: String,
-    @SerialName("file_paths")
     val filePaths: List<String>,
 )
 
 @Serializable
 data class KastRenameFailureQuery(
     val type: String? = null,
-    @SerialName("workspace_root")
     val workspaceRoot: String,
     val symbol: String? = null,
-    @SerialName("file_hint")
     val fileHint: String? = null,
     val kind: WrapperNamedSymbolKind? = null,
-    @SerialName("containing_type")
     val containingType: String? = null,
-    @SerialName("file_path")
     val filePath: String? = null,
     val offset: Int? = null,
-    @SerialName("new_name")
     val newName: String,
 )
 
@@ -298,17 +275,12 @@ sealed interface KastRenameQuery
 @Serializable
 @SerialName("RENAME_BY_SYMBOL_REQUEST")
 data class KastRenameBySymbolQuery(
-    @SerialName("workspace_root")
     val workspaceRoot: String,
     val symbol: String,
-    @SerialName("new_name")
     val newName: String,
-    @SerialName("file_hint")
     val fileHint: String? = null,
     val kind: WrapperNamedSymbolKind? = null,
-    @SerialName("containing_type")
     val containingType: String? = null,
-    @SerialName("file_path")
     val filePath: String,
     val offset: Int,
 ) : KastRenameQuery
@@ -316,22 +288,16 @@ data class KastRenameBySymbolQuery(
 @Serializable
 @SerialName("RENAME_BY_OFFSET_REQUEST")
 data class KastRenameByOffsetQuery(
-    @SerialName("workspace_root")
     val workspaceRoot: String,
-    @SerialName("file_path")
     val filePath: String,
     val offset: Int,
-    @SerialName("new_name")
     val newName: String,
 ) : KastRenameQuery
 
 @Serializable
 data class KastScaffoldQuery(
-    @SerialName("workspace_root")
     val workspaceRoot: String,
-    @SerialName("target_file")
     val targetFile: String,
-    @SerialName("target_symbol")
     val targetSymbol: String? = null,
     val mode: WrapperScaffoldMode = WrapperScaffoldMode.IMPLEMENT,
     val kind: WrapperNamedSymbolKind? = null,
@@ -339,20 +305,15 @@ data class KastScaffoldQuery(
 
 @Serializable
 data class KastWorkspaceFilesQuery(
-    @SerialName("workspace_root")
     val workspaceRoot: String,
-    @SerialName("module_name")
     val moduleName: String? = null,
-    @SerialName("include_files")
     val includeFiles: Boolean = false,
 )
 
 @Serializable
 data class KastWriteAndValidateFailureQuery(
     val type: String? = null,
-    @SerialName("workspace_root")
     val workspaceRoot: String,
-    @SerialName("file_path")
     val filePath: String,
 )
 
@@ -362,18 +323,14 @@ sealed interface KastWriteAndValidateQuery
 @Serializable
 @SerialName("CREATE_FILE_REQUEST")
 data class KastWriteAndValidateCreateFileQuery(
-    @SerialName("workspace_root")
     val workspaceRoot: String,
-    @SerialName("file_path")
     val filePath: String,
 ) : KastWriteAndValidateQuery
 
 @Serializable
 @SerialName("INSERT_AT_OFFSET_REQUEST")
 data class KastWriteAndValidateInsertAtOffsetQuery(
-    @SerialName("workspace_root")
     val workspaceRoot: String,
-    @SerialName("file_path")
     val filePath: String,
     val offset: Int,
 ) : KastWriteAndValidateQuery
@@ -381,13 +338,9 @@ data class KastWriteAndValidateInsertAtOffsetQuery(
 @Serializable
 @SerialName("REPLACE_RANGE_REQUEST")
 data class KastWriteAndValidateReplaceRangeQuery(
-    @SerialName("workspace_root")
     val workspaceRoot: String,
-    @SerialName("file_path")
     val filePath: String,
-    @SerialName("start_offset")
     val startOffset: Int,
-    @SerialName("end_offset")
     val endOffset: Int,
 ) : KastWriteAndValidateQuery
 
@@ -402,7 +355,6 @@ data class KastCandidate(
 data class KastScaffoldReferences(
     val locations: List<Location>,
     val count: Int,
-    @SerialName("search_scope")
     val searchScope: SearchScope? = null,
     val declaration: Symbol? = null,
 )
@@ -416,9 +368,7 @@ data class KastScaffoldTypeHierarchy(
 @Serializable
 data class KastDiagnosticsSummary(
     val clean: Boolean,
-    @SerialName("error_count")
     val errorCount: Int,
-    @SerialName("warning_count")
     val warningCount: Int,
     val errors: List<Diagnostic> = emptyList(),
 )
@@ -432,11 +382,11 @@ data class KastResolveSuccessResponse(
     val ok: Boolean = true,
     val query: KastResolveQuery,
     val symbol: Symbol,
-    @SerialName("file_path")
     val filePath: String,
     val offset: Int,
     val candidate: KastCandidate,
-    @SerialName("log_file")
+    val candidateCount: Int? = null,
+    val alternatives: List<String>? = null,
     val logFile: String,
 ) : KastResolveResponse
 
@@ -447,10 +397,8 @@ data class KastResolveFailureResponse(
     val stage: String,
     val message: String,
     val query: KastResolveQuery,
-    @SerialName("log_file")
     val logFile: String,
     val error: ApiErrorResponse? = null,
-    @SerialName("error_text")
     val errorText: String? = null,
 ) : KastResolveResponse
 
@@ -463,14 +411,13 @@ data class KastReferencesSuccessResponse(
     val ok: Boolean = true,
     val query: KastReferencesQuery,
     val symbol: Symbol,
-    @SerialName("file_path")
     val filePath: String,
     val offset: Int,
     val references: List<Location>,
-    @SerialName("search_scope")
     val searchScope: SearchScope? = null,
     val declaration: Symbol? = null,
-    @SerialName("log_file")
+    val candidateCount: Int? = null,
+    val alternatives: List<String>? = null,
     val logFile: String,
 ) : KastReferencesResponse
 
@@ -481,10 +428,8 @@ data class KastReferencesFailureResponse(
     val stage: String,
     val message: String,
     val query: KastReferencesQuery,
-    @SerialName("log_file")
     val logFile: String,
     val error: ApiErrorResponse? = null,
-    @SerialName("error_text")
     val errorText: String? = null,
 ) : KastReferencesResponse
 
@@ -497,12 +442,12 @@ data class KastCallersSuccessResponse(
     val ok: Boolean = true,
     val query: KastCallersQuery,
     val symbol: Symbol,
-    @SerialName("file_path")
     val filePath: String,
     val offset: Int,
     val root: CallNode,
     val stats: CallHierarchyStats,
-    @SerialName("log_file")
+    val candidateCount: Int? = null,
+    val alternatives: List<String>? = null,
     val logFile: String,
 ) : KastCallersResponse
 
@@ -513,10 +458,8 @@ data class KastCallersFailureResponse(
     val stage: String,
     val message: String,
     val query: KastCallersQuery,
-    @SerialName("log_file")
     val logFile: String,
     val error: ApiErrorResponse? = null,
-    @SerialName("error_text")
     val errorText: String? = null,
 ) : KastCallersResponse
 
@@ -529,14 +472,10 @@ data class KastDiagnosticsSuccessResponse(
     val ok: Boolean = true,
     val query: KastDiagnosticsQuery,
     val clean: Boolean,
-    @SerialName("error_count")
     val errorCount: Int,
-    @SerialName("warning_count")
     val warningCount: Int,
-    @SerialName("info_count")
     val infoCount: Int,
     val diagnostics: List<Diagnostic>,
-    @SerialName("log_file")
     val logFile: String,
 ) : KastDiagnosticsResponse
 
@@ -547,10 +486,8 @@ data class KastDiagnosticsFailureResponse(
     val stage: String,
     val message: String,
     val query: KastDiagnosticsQuery,
-    @SerialName("log_file")
     val logFile: String,
     val error: ApiErrorResponse? = null,
-    @SerialName("error_text")
     val errorText: String? = null,
 ) : KastDiagnosticsResponse
 
@@ -562,14 +499,10 @@ sealed interface KastRenameResponse
 data class KastRenameSuccessResponse(
     val ok: Boolean,
     val query: KastRenameQuery,
-    @SerialName("edit_count")
     val editCount: Int,
-    @SerialName("affected_files")
     val affectedFiles: List<String>,
-    @SerialName("apply_result")
     val applyResult: ApplyEditsResult,
     val diagnostics: KastDiagnosticsSummary,
-    @SerialName("log_file")
     val logFile: String,
 ) : KastRenameResponse
 
@@ -580,10 +513,8 @@ data class KastRenameFailureResponse(
     val stage: String,
     val message: String,
     val query: KastRenameFailureQuery,
-    @SerialName("log_file")
     val logFile: String,
     val error: ApiErrorResponse? = null,
-    @SerialName("error_text")
     val errorText: String? = null,
 ) : KastRenameResponse
 
@@ -596,15 +527,11 @@ data class KastScaffoldSuccessResponse(
     val ok: Boolean = true,
     val query: KastScaffoldQuery,
     val outline: List<OutlineSymbol>,
-    @SerialName("file_content")
     val fileContent: String? = null,
     val symbol: Symbol? = null,
     val references: KastScaffoldReferences? = null,
-    @SerialName("type_hierarchy")
     val typeHierarchy: KastScaffoldTypeHierarchy? = null,
-    @SerialName("insertion_point")
     val insertionPoint: SemanticInsertionResult? = null,
-    @SerialName("log_file")
     val logFile: String,
 ) : KastScaffoldResponse
 
@@ -615,10 +542,8 @@ data class KastScaffoldFailureResponse(
     val stage: String,
     val message: String,
     val query: KastScaffoldQuery,
-    @SerialName("log_file")
     val logFile: String,
     val error: ApiErrorResponse? = null,
-    @SerialName("error_text")
     val errorText: String? = null,
 ) : KastScaffoldResponse
 
@@ -631,9 +556,7 @@ data class KastWorkspaceFilesSuccessResponse(
     val ok: Boolean = true,
     val query: KastWorkspaceFilesQuery,
     val modules: List<WorkspaceModule>,
-    @SerialName("schema_version")
     val schemaVersion: Int,
-    @SerialName("log_file")
     val logFile: String,
 ) : KastWorkspaceFilesResponse
 
@@ -644,10 +567,8 @@ data class KastWorkspaceFilesFailureResponse(
     val stage: String,
     val message: String,
     val query: KastWorkspaceFilesQuery,
-    @SerialName("log_file")
     val logFile: String,
     val error: ApiErrorResponse? = null,
-    @SerialName("error_text")
     val errorText: String? = null,
 ) : KastWorkspaceFilesResponse
 
@@ -659,13 +580,10 @@ sealed interface KastWriteAndValidateResponse
 data class KastWriteAndValidateSuccessResponse(
     val ok: Boolean,
     val query: KastWriteAndValidateQuery,
-    @SerialName("applied_edits")
     val appliedEdits: Int,
-    @SerialName("import_changes")
     val importChanges: Int,
     val diagnostics: KastDiagnosticsSummary,
     val message: String? = null,
-    @SerialName("log_file")
     val logFile: String,
 ) : KastWriteAndValidateResponse
 
@@ -676,9 +594,7 @@ data class KastWriteAndValidateFailureResponse(
     val stage: String,
     val message: String,
     val query: KastWriteAndValidateFailureQuery,
-    @SerialName("log_file")
     val logFile: String,
     val error: ApiErrorResponse? = null,
-    @SerialName("error_text")
     val errorText: String? = null,
 ) : KastWriteAndValidateResponse

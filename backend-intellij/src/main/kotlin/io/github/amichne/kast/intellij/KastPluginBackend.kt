@@ -470,7 +470,8 @@ internal class KastPluginBackend(
                                 val file = findKtFile(filePath)
                                 analyze(file) {
                                     file.collectDiagnostics(KaDiagnosticCheckerFilter.EXTENDED_AND_COMMON_CHECKERS)
-                                }.flatMap { diagnostic -> diagnostic.toApiDiagnostics() }
+                                        .flatMap { diagnostic -> diagnostic.toApiDiagnostics() }
+                                }
                             }
                         }.getOrElse { ex ->
                             listOf(

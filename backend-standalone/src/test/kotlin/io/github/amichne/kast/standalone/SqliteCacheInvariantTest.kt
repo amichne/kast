@@ -57,12 +57,12 @@ class SqliteCacheInvariantTest {
             }
         }
 
-        // After rebuild the version should be the current one (3)
+        // After rebuild the version should be the current one.
         DriverManager.getConnection("jdbc:sqlite:$dbPath").use { conn ->
             conn.prepareStatement("SELECT version FROM schema_version LIMIT 1").use { stmt ->
                 val rs = stmt.executeQuery()
                 assertTrue(rs.next())
-                assertEquals(3, rs.getInt(1))
+                assertEquals(4, rs.getInt(1))
             }
         }
     }
@@ -109,42 +109,18 @@ class SqliteCacheInvariantTest {
         }
         val dbPath = kastCacheDirectory(normalized).resolve("source-index.db")
 
-        DriverManager.getConnection("jdbc:sqlite:$dbPath").use { conn ->
-            // Insert into the not-yet-existing symbol_references table
-            conn.createStatement().use { stmt ->
-                stmt.execute(
-                    """INSERT INTO symbol_references
-                       (source_path, source_offset, target_fq_name, target_path, target_offset)
-                       VALUES
-                       ('/src/Caller.kt', 42, 'com.example.Foo', '/src/Foo.kt', 10),
-                       ('/src/Caller.kt', 99, 'com.example.Bar', '/src/Bar.kt', 5),
-                       ('/src/Other.kt',  7,  'com.example.Foo', '/src/Foo.kt', 10)""",
-                )
-            }
+        SqliteSourceIndexStore(normalized).use { store ->
+            store.upsertSymbolReference("/src/Caller.kt", 42, "com.example.Foo", "/src/Foo.kt", 10)
+            store.upsertSymbolReference("/src/Caller.kt", 99, "com.example.Bar", "/src/Bar.kt", 5)
+            store.upsertSymbolReference("/src/Other.kt", 7, "com.example.Foo", "/src/Foo.kt", 10)
 
-            // Query references TO a target
-            conn.prepareStatement(
-                "SELECT source_path, source_offset FROM symbol_references WHERE target_fq_name = ?",
-            ).use { stmt ->
-                stmt.setString(1, "com.example.Foo")
-                val rs = stmt.executeQuery()
-                val sources = mutableListOf<String>()
-                while (rs.next()) sources.add(rs.getString(1))
-                assertEquals(2, sources.size)
-                assertTrue(sources.containsAll(listOf("/src/Caller.kt", "/src/Other.kt")))
-            }
+            val sources = store.referencesToSymbol("com.example.Foo").map { it.sourcePath }
+            assertEquals(2, sources.size)
+            assertTrue(sources.containsAll(listOf("/src/Caller.kt", "/src/Other.kt")))
 
-            // Query references FROM a source
-            conn.prepareStatement(
-                "SELECT target_fq_name FROM symbol_references WHERE source_path = ?",
-            ).use { stmt ->
-                stmt.setString(1, "/src/Caller.kt")
-                val rs = stmt.executeQuery()
-                val targets = mutableListOf<String>()
-                while (rs.next()) targets.add(rs.getString(1))
-                assertEquals(2, targets.size)
-                assertTrue(targets.containsAll(listOf("com.example.Foo", "com.example.Bar")))
-            }
+            val targets = store.referencesFromFile("/src/Caller.kt").map { it.targetFqName }
+            assertEquals(2, targets.size)
+            assertTrue(targets.containsAll(listOf("com.example.Foo", "com.example.Bar")))
         }
     }
 
@@ -180,11 +156,23 @@ class SqliteCacheInvariantTest {
             DriverManager.getConnection(dbUrl).use { conn ->
                 conn.createStatement().use { s -> s.execute("PRAGMA journal_mode=WAL") }
                 conn.autoCommit = false
+                conn.prepareStatement("INSERT OR IGNORE INTO path_prefixes (dir_path) VALUES (?)").use { stmt ->
+                    stmt.setString(1, "writer")
+                    stmt.executeUpdate()
+                }
+                val prefixId = conn.prepareStatement("SELECT prefix_id FROM path_prefixes WHERE dir_path = ?")
+                    .use { stmt ->
+                        stmt.setString(1, "writer")
+                        val rs = stmt.executeQuery()
+                        assertTrue(rs.next())
+                        rs.getInt(1)
+                    }
                 conn.prepareStatement(
-                    "INSERT OR IGNORE INTO identifier_paths (identifier, path) VALUES (?, ?)",
+                    "INSERT OR IGNORE INTO identifier_paths (identifier, prefix_id, filename) VALUES (?, ?, ?)",
                 ).use { stmt ->
                     stmt.setString(1, "WriterIdent")
-                    stmt.setString(2, "/src/Writer.kt")
+                    stmt.setInt(2, prefixId)
+                    stmt.setString(3, "Writer.kt")
                     stmt.executeUpdate()
                 }
                 // Signal that the write txn is open
@@ -237,11 +225,22 @@ class SqliteCacheInvariantTest {
         // Begin a transaction, insert data, then close WITHOUT committing
         val conn = DriverManager.getConnection(dbUrl)
         conn.autoCommit = false
+        conn.prepareStatement("INSERT OR IGNORE INTO path_prefixes (dir_path) VALUES (?)").use { stmt ->
+            stmt.setString(1, "crash")
+            stmt.executeUpdate()
+        }
+        val prefixId = conn.prepareStatement("SELECT prefix_id FROM path_prefixes WHERE dir_path = ?").use { stmt ->
+            stmt.setString(1, "crash")
+            val rs = stmt.executeQuery()
+            assertTrue(rs.next())
+            rs.getInt(1)
+        }
         conn.prepareStatement(
-            "INSERT OR IGNORE INTO identifier_paths (identifier, path) VALUES (?, ?)",
+            "INSERT OR IGNORE INTO identifier_paths (identifier, prefix_id, filename) VALUES (?, ?, ?)",
         ).use { stmt ->
             stmt.setString(1, "Orphan")
-            stmt.setString(2, "/src/Orphan.kt")
+            stmt.setInt(2, prefixId)
+            stmt.setString(3, "Orphan.kt")
             stmt.executeUpdate()
         }
         // Simulate crash — close the connection without commit
@@ -308,8 +307,8 @@ class SqliteCacheInvariantTest {
         val dbUrl = "jdbc:sqlite:${kastCacheDirectory(normalized).resolve("source-index.db")}"
         DriverManager.getConnection(dbUrl).use { conn ->
             fun countRowsForPath(table: String): Int {
-                conn.prepareStatement("SELECT COUNT(*) FROM $table WHERE path = ?").use { stmt ->
-                    stmt.setString(1, "/src/Target.kt")
+                conn.prepareStatement("SELECT COUNT(*) FROM $table WHERE filename = ?").use { stmt ->
+                    stmt.setString(1, "Target.kt")
                     val rs = stmt.executeQuery()
                     rs.next()
                     return rs.getInt(1)
@@ -329,7 +328,7 @@ class SqliteCacheInvariantTest {
             // Other file should still be intact
             conn.createStatement().use { stmt ->
                 val rs = stmt.executeQuery(
-                    "SELECT COUNT(*) FROM identifier_paths WHERE path = '/src/Other.kt'",
+                    "SELECT COUNT(*) FROM identifier_paths WHERE filename = 'Other.kt'",
                 )
                 rs.next()
                 assertTrue(rs.getInt(1) > 0) { "Other file's identifiers should remain" }
@@ -543,7 +542,7 @@ class SqliteCacheInvariantTest {
 
         SqliteSourceIndexStore(normalized).use { store ->
             val wasValid = store.ensureSchema()
-            assertTrue(wasValid) { "ensureSchema() should return true when schema_version matches" }
+            assertFalse(wasValid) { "ensureSchema() should rebuild old schema versions" }
 
             // Additive uplift: symbol_references must be queryable after ensureSchema()
             val refs = store.referencesToSymbol("io.example.Foo")
