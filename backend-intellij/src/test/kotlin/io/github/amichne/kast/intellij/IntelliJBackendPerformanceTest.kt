@@ -319,7 +319,7 @@ class IntelliJBackendOperationPerformanceTest {
                     includeDeclaration = false,
                 ),
             )
-            assertEquals(SearchScopeKind.DEPENDENT_MODULES, result.searchScope.scope)
+            assertEquals(SearchScopeKind.DEPENDENT_MODULES, result.searchScope?.scope)
         }
 
         println("findReferences_internal_ms: $elapsed")
