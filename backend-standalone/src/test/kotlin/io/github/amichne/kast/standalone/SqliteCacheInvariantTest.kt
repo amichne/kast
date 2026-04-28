@@ -530,12 +530,12 @@ class SqliteCacheInvariantTest {
                 stmt.execute(
                     "CREATE TABLE schema_version (version INTEGER NOT NULL, generation INTEGER NOT NULL DEFAULT 0)",
                 )
-                stmt.execute("INSERT INTO schema_version (version, generation) VALUES (4, 0)")
+                stmt.execute("INSERT INTO schema_version (version, generation) VALUES (3, 0)")
                 stmt.execute(
                     "CREATE TABLE identifier_paths (identifier TEXT NOT NULL, path TEXT NOT NULL, PRIMARY KEY (identifier, path))",
                 )
                 stmt.execute(
-                    "CREATE TABLE file_metadata (path TEXT PRIMARY KEY, package_name TEXT, module_path TEXT, source_set TEXT, imports TEXT, wildcard_imports TEXT)",
+                    "CREATE TABLE file_metadata (path TEXT PRIMARY KEY, package_name TEXT, module_name TEXT, imports TEXT, wildcard_imports TEXT)",
                 )
                 stmt.execute(
                     "CREATE TABLE file_manifest (path TEXT PRIMARY KEY, last_modified_millis INTEGER NOT NULL)",

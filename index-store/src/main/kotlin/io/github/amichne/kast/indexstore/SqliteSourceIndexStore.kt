@@ -965,9 +965,8 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
         fqCodec.batchEnsure(conn, update.imports + update.wildcardImports)
         conn.prepareStatement(
             """INSERT OR REPLACE INTO file_metadata
-
                (prefix_id, filename, package_fq_id, module_path, source_set)
-               VALUES (?, ?, ?, ?, ?)",
+               VALUES (?, ?, ?, ?, ?)""",
         ).use { stmt ->
             stmt.setInt(1, prefixId)
             stmt.setString(2, filename)
@@ -1183,7 +1182,8 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
                     path = path,
                     identifiers = payload.identifiers.toSet(),
                     packageName = payload.packageName,
-                    moduleName = payload.moduleName,
+                    modulePath = payload.modulePath,
+                    sourceSet = payload.sourceSet,
                     imports = payload.imports.toSet(),
                     wildcardImports = payload.wildcardImports.toSet(),
                 )
@@ -1314,7 +1314,8 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
     private data class PendingFilePayload(
         val identifiers: List<String> = emptyList(),
         val packageName: String? = null,
-        val moduleName: String? = null,
+        val modulePath: String? = null,
+        val sourceSet: String? = null,
         val imports: List<String> = emptyList(),
         val wildcardImports: List<String> = emptyList(),
     )

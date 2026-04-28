@@ -88,7 +88,8 @@ class MetricsEngineTest {
             assertEquals(
                 FanOutMetric(
                     sourcePath = "/app/B.kt",
-                    sourceModuleName = ":app[main]",
+                    sourceModulePath = ":app",
+                    sourceSourceSet = "main",
                     occurrenceCount = 3,
                     targetSymbolCount = 3,
                     targetFileCount = 2,
