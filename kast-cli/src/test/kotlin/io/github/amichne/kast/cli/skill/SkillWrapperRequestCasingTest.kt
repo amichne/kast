@@ -23,6 +23,7 @@ import kotlinx.serialization.descriptors.PolymorphicKind
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
+import org.junit.jupiter.api.Assertions.assertDoesNotThrow
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -48,6 +49,29 @@ class SkillWrapperRequestCasingTest {
         }
     }
 
+    /**
+     * Round-trips every documented usage JSON through the actual request serializer used at
+     * runtime. This catches stale `@SerialName` values on enums (e.g. `WrapperMetric.fanIn`)
+     * and stale sealed-class discriminators (e.g. `RENAME_BY_SYMBOL_REQUEST`) that the
+     * key-only check above does not validate.
+     */
+    @Test
+    fun `skill usage examples deserialize cleanly into their request types`() {
+        skillCommands().forEach { command ->
+            val name = SkillWrapperName.fromCliName(command.path[1])
+                ?: error("Unknown skill wrapper ${command.path[1]}")
+            val serializer = rootRequestSerializer(name)
+            command.usages.map(::extractJson).forEach { usage ->
+                assertDoesNotThrow(
+                    {
+                        json.decodeFromString(serializer, usage)
+                    },
+                    "Usage example for ${command.commandText} failed to deserialize: $usage",
+                )
+            }
+        }
+    }
+
     private fun skillCommands(): List<CliCommandMetadata> {
         val field = CliCommandCatalog::class.java.getDeclaredField("commands")
         field.isAccessible = true
@@ -57,6 +81,18 @@ class SkillWrapperRequestCasingTest {
     }
 
     private fun extractJson(usage: String): String = usage.substringAfter('\'').substringBeforeLast('\'')
+
+    private fun rootRequestSerializer(name: SkillWrapperName): KSerializer<*> = when (name) {
+        SkillWrapperName.RESOLVE -> KastResolveRequest.serializer()
+        SkillWrapperName.REFERENCES -> KastReferencesRequest.serializer()
+        SkillWrapperName.CALLERS -> KastCallersRequest.serializer()
+        SkillWrapperName.DIAGNOSTICS -> KastDiagnosticsRequest.serializer()
+        SkillWrapperName.RENAME -> KastRenameRequest.serializer()
+        SkillWrapperName.SCAFFOLD -> KastScaffoldRequest.serializer()
+        SkillWrapperName.WRITE_AND_VALIDATE -> KastWriteAndValidateRequest.serializer()
+        SkillWrapperName.WORKSPACE_FILES -> KastWorkspaceFilesRequest.serializer()
+        SkillWrapperName.METRICS -> KastMetricsRequest.serializer()
+    }
 
     private fun requestKeyMapping(name: SkillWrapperName): Set<String> = when (name) {
         SkillWrapperName.RESOLVE -> serializedKeys(KastResolveRequest.serializer())

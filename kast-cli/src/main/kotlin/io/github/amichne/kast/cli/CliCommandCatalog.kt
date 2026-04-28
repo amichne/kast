@@ -980,7 +980,7 @@ internal object CliCommandCatalog {
             group = CliCommandGroup.METRICS,
             summary = "Skill wrapper: query workspace metrics from the local reference index.",
             description = "Hidden native skill command. Accepts one JSON request argument.",
-            usages = listOf("$CLI_EXECUTABLE_NAME skill metrics '{\"workspaceRoot\":\"/ws\",\"metric\":\"fan-in\"}'"),
+            usages = listOf("$CLI_EXECUTABLE_NAME skill metrics '{\"workspaceRoot\":\"/ws\",\"metric\":\"fanIn\"}'"),
             visible = false,
         ),
         CliCommandMetadata(
