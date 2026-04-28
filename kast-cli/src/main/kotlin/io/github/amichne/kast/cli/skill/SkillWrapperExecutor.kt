@@ -764,16 +764,10 @@ internal class SkillWrapperExecutor(
                     kotlinx.serialization.builtins.ListSerializer(io.github.amichne.kast.indexstore.FanOutMetric.serializer()),
                     engine.fanOutRanking(request.limit),
                 )
-                WrapperMetric.COUPLING -> json.encodeToJsonElement(
-                    kotlinx.serialization.builtins.ListSerializer(io.github.amichne.kast.indexstore.ModuleCouplingMetric.serializer()),
-                    engine.moduleCouplingMatrix(),
-                )
-                WrapperMetric.DEAD_CODE -> json.encodeToJsonElement(
-                    kotlinx.serialization.builtins.ListSerializer(io.github.amichne.kast.indexstore.DeadCodeCandidate.serializer()),
-                    engine.deadCodeCandidates(),
-                )
-                WrapperMetric.IMPACT -> json.encodeToJsonElement(
-                    kotlinx.serialization.builtins.ListSerializer(io.github.amichne.kast.indexstore.ChangeImpactNode.serializer()),
+                WrapperMetric.COUPLING -> encodeModuleCouplingMetrics(json, engine.moduleCouplingMatrix())
+                WrapperMetric.DEAD_CODE -> encodeDeadCodeCandidates(json, engine.deadCodeCandidates())
+                WrapperMetric.IMPACT -> encodeChangeImpactNodes(
+                    json,
                     engine.changeImpactRadius(
                         fqName = request.symbol ?: throw CliFailure(
                             code = "SKILL_VALIDATION",
