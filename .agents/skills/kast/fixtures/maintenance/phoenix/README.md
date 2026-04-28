@@ -14,7 +14,7 @@ history failures.
 | `acknowledges_ok_false` | code | failure_response_ignored, mutation_abandonment |
 | `routing_correct` | LLM | trigger_miss, routing_bypass |
 | `recovery_quality` | LLM | initialization_friction |
-| `schema_correct` | LLM | schema_request (filePaths→targetFile, workspaceRoot) |
+| `schema_correct` | LLM | schema_request, relative_path, ambiguous_symbol |
 | `failure_handling_correct` | LLM | failure_response_ignored, mutation_abandonment |
 
 ## Failure taxonomy (from session history)
@@ -26,15 +26,17 @@ Derived from sessions `803057da`, `dbda65ca`, `fe3aa9ad`, `431e7b1e`:
 - **initialization_friction** — `KAST_CLI_PATH` empty; agent searches filesystem instead of running bootstrap
 - **maintenance_thrash** — agent reads `.kast-version` / `fixtures/maintenance/` / `wrapper-openapi.yaml` before any useful work
 - **schema_request** — wrong request fields: `filePaths` instead of `targetFile`, missing `workspaceRoot`, probes `{}`
-- **schema_response** — abandons kast after jq projection fails (snake_case wrapper vs camelCase nested model)
+- **relative_path** — agent passes relative paths where wrapper request fields require absolute paths
+- **ambiguous_symbol** — agent keeps moving after a broad symbol lookup without using `kind`, `containingType`, or `fileHint` to disambiguate
+- **schema_response** — abandons kast after a bad jq projection instead of inspecting the actual response shape
 - **mutation_abandonment** — falls back to `sed`/manual edit after `write-and-validate` returns `ok=false`
 - **failure_response_ignored** — treats `ok=false` as success or abandons kast entirely
 
 ## Dataset
 
-30 examples total:
-- 13 from `evals/evals.json` (behavior evals)
-- 17 from `evals/routing.json` (routing evals)
+39 examples total:
+- 17 from `evals/evals.json` (behavior evals)
+- 22 from `evals/routing.json` (routing evals)
 
 The checked-in native corpora are now the source of truth for both `kast eval skill`
 and the Phoenix experiment. The Phoenix script no longer carries a separate

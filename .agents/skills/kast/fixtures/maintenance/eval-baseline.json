@@ -1,0 +1,210 @@
+{
+    "schemaVersion": 1,
+    "target": {
+        "kind": "skill",
+        "name": "kast",
+        "path": "/Users/amichne/code/kast/.agents/skills/kast"
+    },
+    "summary": {
+        "score": 99,
+        "grade": "A",
+        "deductions": [
+            {
+                "checkId": "completeness-wrapper-metrics",
+                "points": 1,
+                "reason": "Wrapper metrics: skillMd=false, openApi=false"
+            }
+        ],
+        "checkCounts": {
+            "pass": 16,
+            "fail": 0,
+            "warn": 1,
+            "total": 17
+        },
+        "whyBullets": [
+            "16 checks passed"
+        ],
+        "fixFirst": "completeness-wrapper-metrics: Wrapper metrics: skillMd=false, openApi=false",
+        "watchNext": "completeness-wrapper-metrics: Wrapper metrics: skillMd=false, openApi=false"
+    },
+    "budgets": {
+        "triggerTokens": 987,
+        "triggerBand": "FAIR",
+        "invokeTokens": 0,
+        "invokeBand": "GOOD",
+        "deferredTokens": 1116,
+        "deferredBand": "GOOD"
+    },
+    "checks": [
+        {
+            "id": "structural-skill-md-exists",
+            "category": "structural",
+            "severity": "ERROR",
+            "status": "PASS",
+            "message": "SKILL.md found"
+        },
+        {
+            "id": "structural-legacy-artifacts-removed",
+            "category": "structural",
+            "severity": "WARNING",
+            "status": "PASS",
+            "message": "Legacy shell-wrapper and sub-agent artifacts are absent"
+        },
+        {
+            "id": "structural-trigger-phrases",
+            "category": "structural",
+            "severity": "WARNING",
+            "status": "PASS",
+            "message": "SKILL.md contains trigger/description metadata"
+        },
+        {
+            "id": "structural-openapi-exists",
+            "category": "structural",
+            "severity": "WARNING",
+            "status": "PASS",
+            "message": "wrapper-openapi.yaml found"
+        },
+        {
+            "id": "structural-routing-improvement-assets",
+            "category": "structural",
+            "severity": "WARNING",
+            "status": "PASS",
+            "message": "behavior-evals=true, routing-evals=true, routing-script=true, routing-reference=true"
+        },
+        {
+            "id": "corpus-behavior-evals-valid",
+            "category": "corpus",
+            "severity": "ERROR",
+            "status": "PASS",
+            "message": "behavior eval corpus valid (17 cases)"
+        },
+        {
+            "id": "corpus-routing-evals-valid",
+            "category": "corpus",
+            "severity": "ERROR",
+            "status": "PASS",
+            "message": "routing eval corpus valid (22 cases)"
+        },
+        {
+            "id": "corpus-failure-mode-coverage",
+            "category": "corpus",
+            "severity": "WARNING",
+            "status": "PASS",
+            "message": "Failure-mode coverage spans 10/10 required categories"
+        },
+        {
+            "id": "completeness-wrapper-resolve",
+            "category": "completeness",
+            "severity": "INFO",
+            "status": "PASS",
+            "message": "Wrapper resolve: skillMd=true, openApi=true"
+        },
+        {
+            "id": "completeness-wrapper-references",
+            "category": "completeness",
+            "severity": "INFO",
+            "status": "PASS",
+            "message": "Wrapper references: skillMd=true, openApi=true"
+        },
+        {
+            "id": "completeness-wrapper-callers",
+            "category": "completeness",
+            "severity": "INFO",
+            "status": "PASS",
+            "message": "Wrapper callers: skillMd=true, openApi=true"
+        },
+        {
+            "id": "completeness-wrapper-diagnostics",
+            "category": "completeness",
+            "severity": "INFO",
+            "status": "PASS",
+            "message": "Wrapper diagnostics: skillMd=true, openApi=true"
+        },
+        {
+            "id": "completeness-wrapper-rename",
+            "category": "completeness",
+            "severity": "INFO",
+            "status": "PASS",
+            "message": "Wrapper rename: skillMd=true, openApi=true"
+        },
+        {
+            "id": "completeness-wrapper-scaffold",
+            "category": "completeness",
+            "severity": "INFO",
+            "status": "PASS",
+            "message": "Wrapper scaffold: skillMd=true, openApi=true"
+        },
+        {
+            "id": "completeness-wrapper-write-and-validate",
+            "category": "completeness",
+            "severity": "INFO",
+            "status": "PASS",
+            "message": "Wrapper write-and-validate: skillMd=true, openApi=true"
+        },
+        {
+            "id": "completeness-wrapper-workspace-files",
+            "category": "completeness",
+            "severity": "INFO",
+            "status": "PASS",
+            "message": "Wrapper workspace-files: skillMd=true, openApi=true"
+        },
+        {
+            "id": "completeness-wrapper-metrics",
+            "category": "completeness",
+            "severity": "INFO",
+            "status": "WARN",
+            "message": "Wrapper metrics: skillMd=false, openApi=false",
+            "remediation": "Document `kast skill metrics` in both SKILL.md and fixtures/maintenance/references/wrapper-openapi.yaml"
+        }
+    ],
+    "metrics": [
+        {
+            "id": "budget-trigger-tokens",
+            "category": "budget",
+            "value": 987.0,
+            "unit": "tokens"
+        },
+        {
+            "id": "budget-invoke-tokens",
+            "category": "budget",
+            "value": 0.0,
+            "unit": "tokens"
+        },
+        {
+            "id": "budget-deferred-tokens",
+            "category": "budget",
+            "value": 1116.0,
+            "unit": "tokens"
+        },
+        {
+            "id": "corpus-behavior-eval-count",
+            "category": "corpus",
+            "value": 17.0,
+            "unit": "cases"
+        },
+        {
+            "id": "corpus-routing-eval-count",
+            "category": "corpus",
+            "value": 22.0,
+            "unit": "cases"
+        },
+        {
+            "id": "corpus-failure-mode-count",
+            "category": "corpus",
+            "value": 10.0,
+            "unit": "categories"
+        }
+    ],
+    "improvementBrief": {
+        "findings": [
+            "completeness-wrapper-metrics: Wrapper metrics: skillMd=false, openApi=false (-1)"
+        ],
+        "suggestedPrompt": "Fix 1 issue(s): completeness-wrapper-metrics: Wrapper metrics: skillMd=false, openApi=false"
+    },
+    "measurementPlan": {
+        "steps": [
+            "Run kast eval skill --compare=baseline.json to track regression",
+            "Verify CI passes with updated score"
+        ]
+    }
+}

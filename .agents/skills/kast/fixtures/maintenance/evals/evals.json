@@ -89,14 +89,14 @@
     },
     {
       "id": 8,
-      "prompt": "A Kast `references` response parsed oddly: top-level fields like `log_file` are snake_case, but my jq query for `.references[].file_path` was empty. Inspect the response shape and continue finding the Kotlin usages semantically.",
-      "expected_output": "A schema-recovery flow that distinguishes wrapper metadata from nested API model fields and resumes semantic traversal.",
+      "prompt": "A Kast `references` response parsed oddly and my jq query for `.references[].filePath` was empty. Inspect the response shape and continue finding the Kotlin usages semantically.",
+      "expected_output": "A schema-recovery flow that inspects the real response shape and resumes semantic traversal.",
       "files": [],
       "expectations": [
         "Checks top-level `ok` and `type` before assuming the command failed.",
-        "Recognizes that nested symbol/location fields can be camelCase, such as `location.filePath` or `symbol.fqName`.",
+        "Recognizes fields such as `location.filePath` or `symbol.fqName` after inspecting the response shape.",
         "Continues with `references`, `resolve`, `callers`, or `scaffold` after fixing the projection.",
-        "Does not fall back to grep/rg because a snake_case projection was wrong."
+        "Does not fall back to grep/rg because an initial projection was wrong."
       ],
       "failure_mode": "schema_response"
     },
@@ -128,7 +128,7 @@
     },
     {
       "id": 11,
-      "prompt": "A Kast command returned a failure response with `ok:false`, `stage`, `message`, `error_text`, and `log_file`. Use that output to decide the next step without abandoning Kast.",
+      "prompt": "A Kast command returned a failure response with `ok:false`, `stage`, `message`, `errorText`, and `logFile`. Use that output to decide the next step without abandoning Kast.",
       "expected_output": "A response-handling flow that surfaces the failure stage/message, retries or narrows only when appropriate, and does not ignore `ok:false`.",
       "files": [],
       "expectations": [
@@ -164,6 +164,54 @@
         "Does not use grep/rg to trace the interaction between files."
       ],
       "failure_mode": "schema_request"
+    },
+    {
+      "id": 14,
+      "prompt": "Rename the Kotlin symbol `DescriptorRegistry` to `WorkspaceDescriptorRegistry` with Kast. The request must use the wrapper schema the first time instead of trial-and-error.",
+      "expected_output": "A rename flow that includes the required request discriminator up front and keeps the request in the documented wrapper shape.",
+      "files": [],
+      "expectations": [
+        "Uses `kast skill rename` with `\"type\":\"RENAME_BY_SYMBOL_REQUEST\"` in the request body.",
+        "Keeps request field names camelCase, including `workspaceRoot`, `newName`, `fileHint`, and `containingType` when used.",
+        "Does not probe the schema by sending `{}` or omitting the discriminator to learn what the wrapper accepts."
+      ],
+      "failure_mode": "schema_request"
+    },
+    {
+      "id": 15,
+      "prompt": "Use `kast skill write-and-validate` to replace a Kotlin function body in `/abs/path/src/Main.kt`. Send the documented request shape on the first try.",
+      "expected_output": "A write-and-validate flow that supplies the correct request discriminator and documented camelCase request keys without schema probing.",
+      "files": [],
+      "expectations": [
+        "Uses `kast skill write-and-validate` with `\"type\":\"REPLACE_RANGE_REQUEST\"` in the request body.",
+        "Uses camelCase request fields such as `workspaceRoot`, `filePath`, `startOffset`, `endOffset`, and `content`.",
+        "Does not omit the discriminator or send placeholder `{}` requests to discover the schema."
+      ],
+      "failure_mode": "schema_request"
+    },
+    {
+      "id": 16,
+      "prompt": "I only know the file as `src/main/kotlin/io/github/amichne/kast/cli/CliCommandCatalog.kt`. Use Kast to scaffold it and then run diagnostics on that file, but make sure every request field that carries a path is absolute.",
+      "expected_output": "A schema-correct flow that normalizes relative paths to absolute ones before passing them to Kast skill requests.",
+      "files": [],
+      "expectations": [
+        "Converts the relative file path to an absolute path before using it as `targetFile` or `filePath`.",
+        "Keeps `workspaceRoot` and all `filePath`/`targetFile` request fields absolute.",
+        "Does not pass the relative path directly through to `kast skill scaffold` or `kast skill diagnostics`."
+      ],
+      "failure_mode": "relative_path"
+    },
+    {
+      "id": 17,
+      "prompt": "Trace callers of the Kotlin symbol `process` with Kast. If there are multiple candidates, disambiguate the request before treating one as the answer.",
+      "expected_output": "A disambiguated caller-tracing flow that narrows an ambiguous symbol with resolver hints before continuing.",
+      "files": [],
+      "expectations": [
+        "Treats a broad symbol like `process` as potentially ambiguous and resolves it with `kind`, `containingType`, or `fileHint` before tracing callers.",
+        "Uses the ambiguity signal from Kast responses when multiple candidates remain.",
+        "Does not silently choose one ambiguous candidate and continue without disambiguation."
+      ],
+      "failure_mode": "ambiguous_symbol"
     }
   ]
 }

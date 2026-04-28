@@ -263,12 +263,12 @@ class SkillEvalEngineTest {
     // --- JSON serialization ---
 
     @Test
-    fun `EvalResult serializes with schema version`() {
+    fun `EvalResult serializes with schemaVersion`() {
         val descriptor = descriptorWith(checks = listOf(passingCheck("c1")))
         val result = SkillEvalEngine.evaluate(descriptor)
         val json = io.github.amichne.kast.cli.defaultCliJson()
         val encoded = json.encodeToString(EvalResult.serializer(), result)
-        assertTrue(encoded.contains("schema_version"))
+        assertTrue(encoded.contains("schemaVersion"))
         assertTrue(encoded.contains("summary"))
         assertTrue(encoded.contains("budgets"))
     }

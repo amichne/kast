@@ -32,18 +32,19 @@ instead of switching to non-semantic Kotlin search.
 ## Request and response shape
 
 - Request JSON uses camelCase.
-- Top-level wrapper response metadata uses snake_case.
-- Nested API model fields may keep camelCase. Common examples are
+- Wrapper responses also use camelCase.
+- Nested API model fields use the same camelCase names. Common examples are
   `symbol.fqName`, `symbol.location.filePath`, `symbol.location.startOffset`,
   and `references[].location.filePath`.
 - Any field ending in `filePath`, `filePaths`, or `contentFile` should be an
   absolute path.
 - Check `ok` and `type` first. Failure responses include `stage`, `message`,
-  optional `error` or `error_text`, and `log_file`.
+  optional `error` or `errorText`, and `logFile`.
 - `rename` and `write-and-validate` requests require a `type` discriminator:
   `RENAME_BY_SYMBOL_REQUEST`, `RENAME_BY_OFFSET_REQUEST`,
   `CREATE_FILE_REQUEST`, `INSERT_AT_OFFSET_REQUEST`, or
   `REPLACE_RANGE_REQUEST`.
+- `workspaceRoot` defaults to the current working directory when omitted.
 
 ## Common requests
 
@@ -74,16 +75,16 @@ instead of switching to non-semantic Kotlin search.
 }'
 ```
 
-If a projection such as `.references[].file_path` returns nothing, inspect one
+If a projection such as `.references[].location.filePath` returns nothing, inspect one
 item before assuming the command failed:
 
 ```bash
 "$KAST_CLI_PATH" skill references '{"symbol":"EventBean","includeDeclaration":true}' \
-  | jq '{ok,type,first_reference:.references[0]}'
+  | jq '{ok,type,firstReference:.references[0]}'
 ```
 
-Wrapper metadata is snake_case, but nested locations use fields such as
-`location.filePath`.
+Wrapper metadata and nested API fields both use camelCase, including
+`logFile`, `filePath`, and `location.filePath`.
 
 ### Trace callers
 
@@ -108,8 +109,9 @@ Wrapper metadata is snake_case, but nested locations use fields such as
 }'
 ```
 
-`targetFile` is singular (not `filePaths`). Always include `workspaceRoot` in
-the request body. Run one `scaffold` call per file; there is no batch variant.
+`targetFile` is singular (not `filePaths`). `workspaceRoot` defaults to the
+current working directory when omitted. Run one `scaffold` call per file; there
+is no batch variant.
 
 ### Rename
 
@@ -150,8 +152,7 @@ than applying a manual edit.
 ## Recovery
 
 - If a `jq` projection is wrong, inspect one item first, for example
-  `.references[0]`, before assuming field names. Remember that nested API model
-  fields may be camelCase even when wrapper metadata is snake_case.
+  `.references[0]`, before assuming field names.
 - If a symbol name is broad, add `kind`, `containingType`, or `fileHint`.
 - For large result sets, narrow the query before post-processing.
 - Never pivot to `grep` or `rg` for Kotlin identity.

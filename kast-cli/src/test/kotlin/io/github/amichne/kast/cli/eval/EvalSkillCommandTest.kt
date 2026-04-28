@@ -23,12 +23,12 @@ class EvalSkillCommandTest {
     private val json = defaultCliJson()
 
     @Test
-    fun `eval skill produces JSON with schema_version`() {
+    fun `eval skill produces JSON with schemaVersion`() {
         val skillDir = createMinimalSkill()
         val executor = EvalSkillExecutor(json)
         val output = executor.execute(EvalSkillOptions(skillDir = skillDir))
         val text = (output as CliOutput.Text).value
-        assertTrue(text.contains("schema_version"))
+        assertTrue(text.contains("schemaVersion"))
         assertTrue(text.contains("summary"))
         assertTrue(text.contains("budgets"))
     }
@@ -186,6 +186,8 @@ class EvalSkillCommandTest {
             "initialization_friction",
             "maintenance_thrash",
             "schema_request",
+            "relative_path",
+            "ambiguous_symbol",
             "schema_response",
             "mutation_abandonment",
             "failure_response_ignored",

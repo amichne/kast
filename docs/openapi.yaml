@@ -1670,8 +1670,8 @@ components:
       discriminator:
         propertyName: type
         mapping:
-          create: "#/components/schemas/FileOperation.CreateFile"
-          delete: "#/components/schemas/FileOperation.DeleteFile"
+          CREATE_FILE: "#/components/schemas/FileOperation.CreateFile"
+          DELETE_FILE: "#/components/schemas/FileOperation.DeleteFile"
     ApplyEditsResult:
       type: object
       properties:
@@ -1731,7 +1731,7 @@ components:
       properties:
         type:
           type: string
-          const: create
+          const: CREATE_FILE
         filePath:
           type: string
         content:
@@ -1746,7 +1746,7 @@ components:
       properties:
         type:
           type: string
-          const: delete
+          const: DELETE_FILE
         filePath:
           type: string
         expectedHash:

@@ -17,10 +17,13 @@ internal object SkillWrapperInput {
     fun resolveWorkspaceRoot(
         explicit: String?,
         env: Map<String, String> = System.getenv(),
+        currentWorkingDirectory: Path = Path.of("").toAbsolutePath().normalize(),
     ): String {
         val trimmed = explicit?.trim()?.takeIf(String::isNotEmpty)
-        if (trimmed != null) return trimmed
-        return env["KAST_WORKSPACE_ROOT"]?.trim()?.takeIf(String::isNotEmpty) ?: ""
+        if (trimmed != null) return Path.of(trimmed).toAbsolutePath().normalize().toString()
+        val envRoot = env["KAST_WORKSPACE_ROOT"]?.trim()?.takeIf(String::isNotEmpty)
+        if (envRoot != null) return Path.of(envRoot).toAbsolutePath().normalize().toString()
+        return currentWorkingDirectory.toString()
     }
 
     /**

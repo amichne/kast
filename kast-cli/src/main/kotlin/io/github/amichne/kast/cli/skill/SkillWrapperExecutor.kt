@@ -193,6 +193,8 @@ internal class SkillWrapperExecutor(
                 column = resolved.symbol.location.startColumn,
                 context = resolved.symbol.location.preview,
             ),
+            candidateCount = resolved.candidateCount.takeIf { it > 1 },
+            alternatives = resolved.alternativeFqNames.takeIf { it.isNotEmpty() },
             logFile = SkillLogFile.placeholder(),
         )
     }
@@ -244,6 +246,8 @@ internal class SkillWrapperExecutor(
             references = refsResult.references,
             searchScope = refsResult.searchScope,
             declaration = refsResult.declaration,
+            candidateCount = resolved.candidateCount.takeIf { it > 1 },
+            alternatives = resolved.alternativeFqNames.takeIf { it.isNotEmpty() },
             logFile = SkillLogFile.placeholder(),
         )
     }
@@ -307,6 +311,8 @@ internal class SkillWrapperExecutor(
             offset = resolved.offset,
             root = hierarchyResult.root,
             stats = hierarchyResult.stats,
+            candidateCount = resolved.candidateCount.takeIf { it > 1 },
+            alternatives = resolved.alternativeFqNames.takeIf { it.isNotEmpty() },
             logFile = SkillLogFile.placeholder(),
         )
     }
@@ -751,23 +757,23 @@ internal class SkillWrapperExecutor(
         val resultsJson = MetricsEngine(Path.of(workspaceRoot)).use { engine ->
             when (request.metric) {
                 WrapperMetric.FAN_IN -> json.encodeToJsonElement(
-                    kotlinx.serialization.builtins.ListSerializer(io.github.amichne.kast.indexstore.FanInMetric.serializer()),
+                    kotlinx.serialization.serializer<List<io.github.amichne.kast.indexstore.FanInMetric>>(),
                     engine.fanInRanking(request.limit),
                 )
                 WrapperMetric.FAN_OUT -> json.encodeToJsonElement(
-                    kotlinx.serialization.builtins.ListSerializer(io.github.amichne.kast.indexstore.FanOutMetric.serializer()),
+                    kotlinx.serialization.serializer<List<io.github.amichne.kast.indexstore.FanOutMetric>>(),
                     engine.fanOutRanking(request.limit),
                 )
                 WrapperMetric.COUPLING -> json.encodeToJsonElement(
-                    kotlinx.serialization.builtins.ListSerializer(io.github.amichne.kast.indexstore.ModuleCouplingMetric.serializer()),
+                    kotlinx.serialization.serializer<List<io.github.amichne.kast.indexstore.ModuleCouplingMetric>>(),
                     engine.moduleCouplingMatrix(),
                 )
                 WrapperMetric.DEAD_CODE -> json.encodeToJsonElement(
-                    kotlinx.serialization.builtins.ListSerializer(io.github.amichne.kast.indexstore.DeadCodeCandidate.serializer()),
+                    kotlinx.serialization.serializer<List<io.github.amichne.kast.indexstore.DeadCodeCandidate>>(),
                     engine.deadCodeCandidates(),
                 )
                 WrapperMetric.IMPACT -> json.encodeToJsonElement(
-                    kotlinx.serialization.builtins.ListSerializer(io.github.amichne.kast.indexstore.ChangeImpactNode.serializer()),
+                    kotlinx.serialization.serializer<List<io.github.amichne.kast.indexstore.ChangeImpactNode>>(),
                     engine.changeImpactRadius(
                         fqName = request.symbol ?: throw CliFailure(
                             code = "SKILL_VALIDATION",
@@ -790,16 +796,7 @@ internal class SkillWrapperExecutor(
 
     // region shared
 
-    private fun requireWorkspaceRoot(explicit: String?): String {
-        val resolved = SkillWrapperInput.resolveWorkspaceRoot(explicit)
-        if (resolved.isEmpty()) {
-            throw CliFailure(
-                code = "SKILL_VALIDATION",
-                message = "workspaceRoot is required: set it in the request body or export KAST_WORKSPACE_ROOT.",
-            )
-        }
-        return resolved
-    }
+    private fun requireWorkspaceRoot(explicit: String?): String = SkillWrapperInput.resolveWorkspaceRoot(explicit)
 
     private fun runtimeOptionsFor(workspaceRoot: String): RuntimeCommandOptions = RuntimeCommandOptions(
         workspaceRoot = Path.of(workspaceRoot).toAbsolutePath().normalize(),
