@@ -74,6 +74,29 @@ class MetricsEngineTest {
     }
 
     @Test
+    fun `tracks external fan out targets without changing indexed counts`() {
+        val root = seededWorkspace()
+        SqliteSourceIndexStore(root).use { store ->
+            store.upsertSymbolReference("/app/B.kt", 30, "external.LibrarySymbol", null, null)
+        }
+
+        MetricsEngine(root).use { metrics ->
+            assertEquals(
+                FanOutMetric(
+                    sourcePath = "/app/B.kt",
+                    sourceModuleName = ":app[main]",
+                    occurrenceCount = 3,
+                    targetSymbolCount = 3,
+                    targetFileCount = 2,
+                    targetModuleCount = 2,
+                    externalTargetCount = 1,
+                ),
+                metrics.fanOutRanking(limit = 2).single { it.sourcePath == "/app/B.kt" },
+            )
+        }
+    }
+
+    @Test
     fun `counts cross-module reference pairs`() {
         val root = seededWorkspace()
 

@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardCopyOption
 import java.sql.DriverManager
 
 class SqliteSourceIndexStoreTest {
@@ -45,7 +46,7 @@ class SqliteSourceIndexStoreTest {
             conn.prepareStatement("SELECT version FROM schema_version LIMIT 1").use { stmt ->
                 val rs = stmt.executeQuery()
                 assertTrue(rs.next())
-                assertEquals(3, rs.getInt(1))
+                assertEquals(4, rs.getInt(1))
             }
         }
     }
@@ -72,7 +73,7 @@ class SqliteSourceIndexStoreTest {
         DriverManager.getConnection("jdbc:sqlite:$dbPath").use { conn ->
             conn.createStatement().use { stmt ->
                 stmt.execute("CREATE TABLE schema_version (version INTEGER NOT NULL, generation INTEGER NOT NULL DEFAULT 0)")
-                stmt.execute("INSERT INTO schema_version (version, generation) VALUES (3, 0)")
+                stmt.execute("INSERT INTO schema_version (version, generation) VALUES (4, 0)")
                 stmt.execute(
                     """CREATE TABLE identifier_paths (
                         identifier TEXT NOT NULL,
@@ -95,6 +96,14 @@ class SqliteSourceIndexStoreTest {
                         last_modified_millis INTEGER NOT NULL
                     )""",
                 )
+                stmt.execute(
+                    """CREATE TABLE workspace_discovery (
+                        cache_key TEXT PRIMARY KEY,
+                        schema_version INTEGER NOT NULL,
+                        payload TEXT NOT NULL
+                    )""",
+                )
+                stmt.execute("INSERT INTO workspace_discovery (cache_key, schema_version, payload) VALUES ('modules', 1, '{}')")
             }
         }
 
@@ -103,18 +112,21 @@ class SqliteSourceIndexStoreTest {
             store.writeHeadCommit("def456")
 
             assertEquals("def456", store.readHeadCommit())
+            assertEquals("{}", store.readWorkspaceDiscovery("modules"))
+            assertSchemaUsesInternedPaths(dbPath)
         }
     }
 
     @Test
     fun `source index snapshot round-trips identifiers and metadata`() {
         val normalized = workspaceRoot.toAbsolutePath().normalize()
+        val callerPath = normalized.resolve("src/Caller.kt").toString()
         SqliteSourceIndexStore(normalized).use { store ->
             store.ensureSchema()
             store.saveFullIndex(
                 updates = listOf(
                     FileIndexUpdate(
-                        path = "/src/Caller.kt",
+                        path = callerPath,
                         identifiers = setOf("Caller", "call"),
                         packageName = "consumer",
                         moduleName = ":app[main]",
@@ -122,17 +134,213 @@ class SqliteSourceIndexStoreTest {
                         wildcardImports = setOf("lib.internal"),
                     ),
                 ),
-                manifest = mapOf("/src/Caller.kt" to 123L),
+                manifest = mapOf(callerPath to 123L),
             )
 
             val snapshot = store.loadSourceIndexSnapshot()
 
-            assertEquals(listOf("/src/Caller.kt"), snapshot.candidatePathsByIdentifier.getValue("Caller"))
-            assertEquals(":app[main]", snapshot.moduleNameByPath.getValue("/src/Caller.kt"))
-            assertEquals("consumer", snapshot.packageByPath.getValue("/src/Caller.kt"))
-            assertEquals(listOf("lib.Foo"), snapshot.importsByPath.getValue("/src/Caller.kt"))
-            assertEquals(listOf("lib.internal"), snapshot.wildcardImportPackagesByPath.getValue("/src/Caller.kt"))
-            assertEquals(mapOf("/src/Caller.kt" to 123L), store.loadManifest())
+            assertEquals(listOf(callerPath), snapshot.candidatePathsByIdentifier.getValue("Caller"))
+            assertEquals(":app[main]", snapshot.moduleNameByPath.getValue(callerPath))
+            assertEquals("consumer", snapshot.packageByPath.getValue(callerPath))
+            assertEquals(listOf("lib.Foo"), snapshot.importsByPath.getValue(callerPath))
+            assertEquals(listOf("lib.internal"), snapshot.wildcardImportPackagesByPath.getValue(callerPath))
+            assertEquals(mapOf(callerPath to 123L), store.loadManifest())
+        }
+    }
+
+    @Test
+    fun `source index stores interned directory prefixes while returning absolute paths`() {
+        val normalized = workspaceRoot.toAbsolutePath().normalize()
+        val callerPath = normalized.resolve("src/main/Caller.kt").toString()
+        val targetPath = normalized.resolve("src/test/Target.kt").toString()
+
+        SqliteSourceIndexStore(normalized).use { store ->
+            store.ensureSchema()
+            store.saveFullIndex(
+                updates = listOf(
+                    fileUpdate(callerPath, "Caller"),
+                    fileUpdate(targetPath, "Target"),
+                ),
+                manifest = mapOf(callerPath to 1L, targetPath to 2L),
+            )
+
+            val snapshot = store.loadSourceIndexSnapshot()
+
+            assertEquals(listOf(callerPath), snapshot.candidatePathsByIdentifier.getValue("Caller"))
+            assertEquals(listOf(targetPath), snapshot.candidatePathsByIdentifier.getValue("Target"))
+            assertEquals(mapOf(callerPath to 1L, targetPath to 2L), store.loadManifest())
+        }
+
+        DriverManager.getConnection("jdbc:sqlite:${sourceIndexDatabasePath(normalized)}").use { conn ->
+            conn.prepareStatement("SELECT dir_path FROM path_prefixes ORDER BY dir_path").use { stmt ->
+                val rs = stmt.executeQuery()
+                val prefixes = buildList {
+                    while (rs.next()) add(rs.getString(1))
+                }
+                assertEquals(listOf("src/main", "src/test"), prefixes)
+            }
+            conn.prepareStatement("PRAGMA table_info(identifier_paths)").use { stmt ->
+                val rs = stmt.executeQuery()
+                val columns = buildList {
+                    while (rs.next()) add(rs.getString("name"))
+                }
+                assertFalse("path" in columns)
+                assertTrue("prefix_id" in columns)
+                assertTrue("filename" in columns)
+            }
+        }
+    }
+
+    @Test
+    fun `source index stores FQ names and imports in interned relational tables`() {
+        val normalized = workspaceRoot.toAbsolutePath().normalize()
+        val callerPath = normalized.resolve("src/Caller.kt").toString()
+        val targetPath = normalized.resolve("src/Foo.kt").toString()
+
+        SqliteSourceIndexStore(normalized).use { store ->
+            store.ensureSchema()
+            store.saveFullIndex(
+                updates = listOf(
+                    FileIndexUpdate(
+                        path = callerPath,
+                        identifiers = setOf("Caller"),
+                        packageName = "consumer",
+                        moduleName = ":app[main]",
+                        imports = setOf("lib.Foo", "kotlin.collections.List"),
+                        wildcardImports = setOf("lib.internal"),
+                    ),
+                ),
+                manifest = mapOf(callerPath to 1L),
+            )
+            store.upsertSymbolReference(callerPath, 42, "lib.Foo", targetPath, 10)
+
+            val snapshot = store.loadSourceIndexSnapshot()
+
+            assertEquals("consumer", snapshot.packageByPath.getValue(callerPath))
+            assertEquals(listOf("kotlin.collections.List", "lib.Foo"), snapshot.importsByPath.getValue(callerPath))
+            assertEquals(listOf("lib.internal"), snapshot.wildcardImportPackagesByPath.getValue(callerPath))
+            assertEquals("lib.Foo", store.referencesToSymbol("lib.Foo").single().targetFqName)
+        }
+
+        DriverManager.getConnection("jdbc:sqlite:${sourceIndexDatabasePath(normalized)}").use { conn ->
+            assertTableColumns(
+                conn = conn,
+                tableName = "file_metadata",
+                present = setOf("prefix_id", "filename", "package_fq_id", "module_name"),
+                absent = setOf("path", "package_name", "imports", "wildcard_imports"),
+            )
+            assertTableColumns(
+                conn = conn,
+                tableName = "symbol_references",
+                present = setOf("src_prefix_id", "src_filename", "target_fq_id"),
+                absent = setOf("source_path", "target_path", "target_fq_name"),
+            )
+            conn.prepareStatement(
+                """SELECT fq.fq_name
+                   FROM file_imports imports
+                   JOIN fq_names fq ON fq.fq_id = imports.fq_id
+                   ORDER BY fq.fq_name""",
+            ).use { stmt ->
+                val rs = stmt.executeQuery()
+                val imports = buildList {
+                    while (rs.next()) add(rs.getString(1))
+                }
+                assertEquals(listOf("kotlin.collections.List", "lib.Foo"), imports)
+            }
+            conn.prepareStatement(
+                """SELECT fq.fq_name
+                   FROM file_wildcard_imports imports
+                   JOIN fq_names fq ON fq.fq_id = imports.fq_id""",
+            ).use { stmt ->
+                val rs = stmt.executeQuery()
+                assertTrue(rs.next())
+                assertEquals("lib.internal", rs.getString(1))
+            }
+        }
+    }
+
+    @Test
+    fun `restored source index decodes workspace paths under current workspace root`() {
+        val originalRoot = workspaceRoot.resolve("original").toAbsolutePath().normalize()
+        val restoredRoot = workspaceRoot.resolve("restored").toAbsolutePath().normalize()
+        val originalPath = originalRoot.resolve("src/Portable.kt").toString()
+        val restoredPath = restoredRoot.resolve("src/Portable.kt").toString()
+
+        SqliteSourceIndexStore(originalRoot).use { store ->
+            store.ensureSchema()
+            store.saveFullIndex(
+                updates = listOf(fileUpdate(originalPath, "Portable")),
+                manifest = mapOf(originalPath to 9L),
+            )
+        }
+        copySourceIndexDatabase(originalRoot, restoredRoot)
+
+        SqliteSourceIndexStore(restoredRoot).use { store ->
+            assertTrue(store.ensureSchema())
+
+            assertEquals(
+                listOf(restoredPath),
+                store.loadSourceIndexSnapshot().candidatePathsByIdentifier.getValue("Portable")
+            )
+            assertEquals(mapOf(restoredPath to 9L), store.loadManifest())
+        }
+    }
+
+    @Test
+    fun `paths outside workspace root round-trip through absolute sentinel prefix`() {
+        val normalized = workspaceRoot.toAbsolutePath().normalize()
+        val externalPath = normalized.parent.resolve("external/Outside.kt").normalize().toString()
+
+        SqliteSourceIndexStore(normalized).use { store ->
+            store.ensureSchema()
+            store.saveFullIndex(
+                updates = listOf(fileUpdate(externalPath, "Outside")),
+                manifest = mapOf(externalPath to 4L),
+            )
+
+            assertEquals(
+                listOf(externalPath),
+                store.loadSourceIndexSnapshot().candidatePathsByIdentifier.getValue("Outside")
+            )
+            assertEquals(mapOf(externalPath to 4L), store.loadManifest())
+        }
+
+        DriverManager.getConnection("jdbc:sqlite:${sourceIndexDatabasePath(normalized)}").use { conn ->
+            conn.prepareStatement("SELECT dir_path FROM path_prefixes").use { stmt ->
+                val rs = stmt.executeQuery()
+                val prefixes = buildList {
+                    while (rs.next()) add(rs.getString(1))
+                }
+                assertTrue(prefixes.any { it.startsWith("__kast_abs__/") })
+            }
+        }
+    }
+
+    @Test
+    fun `incremental file indexing adds new prefixes to table and cache`() {
+        val normalized = workspaceRoot.toAbsolutePath().normalize()
+        val firstPath = normalized.resolve("first/One.kt").toString()
+        val secondPath = normalized.resolve("second/Two.kt").toString()
+
+        SqliteSourceIndexStore(normalized).use { store ->
+            store.ensureSchema()
+            store.saveFileIndex(fileUpdate(firstPath, "One"))
+            store.saveFileIndex(fileUpdate(secondPath, "Two"))
+
+            val snapshot = store.loadSourceIndexSnapshot()
+
+            assertEquals(listOf(firstPath), snapshot.candidatePathsByIdentifier.getValue("One"))
+            assertEquals(listOf(secondPath), snapshot.candidatePathsByIdentifier.getValue("Two"))
+        }
+
+        DriverManager.getConnection("jdbc:sqlite:${sourceIndexDatabasePath(normalized)}").use { conn ->
+            conn.prepareStatement("SELECT dir_path FROM path_prefixes ORDER BY dir_path").use { stmt ->
+                val rs = stmt.executeQuery()
+                val prefixes = buildList {
+                    while (rs.next()) add(rs.getString(1))
+                }
+                assertEquals(listOf("first", "second"), prefixes)
+            }
         }
     }
 
@@ -161,6 +369,45 @@ class SqliteSourceIndexStoreTest {
 
             assertTrue(store.referencesFromFile("/src/Caller.kt").isEmpty())
             assertEquals(1, store.referencesToSymbol("lib.Foo").size)
+        }
+    }
+
+    @Test
+    fun `pending update reconciliation applies only latest file state and marks prior rows applied`() {
+        val normalized = workspaceRoot.toAbsolutePath().normalize()
+        val path = normalized.resolve("src/Pending.kt").toString()
+
+        SqliteSourceIndexStore(normalized).use { store ->
+            store.ensureSchema()
+            store.appendPendingUpdate(
+                op = "upsert_file",
+                path = path,
+                payload = """{"identifiers":["OldName"],"packageName":"old.pkg","moduleName":":old","imports":["old.Import"],"wildcardImports":[]}""",
+                sessionId = "session-1",
+            )
+            store.appendPendingUpdate(
+                op = "upsert_file",
+                path = path,
+                payload = """{"identifiers":["NewName"],"packageName":"new.pkg","moduleName":":new","imports":["new.Import"],"wildcardImports":["new.wild"]}""",
+                sessionId = "session-2",
+            )
+
+            assertEquals(1, store.reconcilePendingUpdates())
+
+            val snapshot = store.loadSourceIndexSnapshot()
+            assertFalse(snapshot.candidatePathsByIdentifier.containsKey("OldName"))
+            assertEquals(listOf(path), snapshot.candidatePathsByIdentifier.getValue("NewName"))
+            assertEquals("new.pkg", snapshot.packageByPath.getValue(path))
+            assertEquals(listOf("new.Import"), snapshot.importsByPath.getValue(path))
+            assertEquals(listOf("new.wild"), snapshot.wildcardImportPackagesByPath.getValue(path))
+        }
+
+        DriverManager.getConnection("jdbc:sqlite:${sourceIndexDatabasePath(normalized)}").use { conn ->
+            conn.createStatement().use { stmt ->
+                val rs = stmt.executeQuery("SELECT COUNT(*) FROM pending_updates WHERE applied = 1")
+                assertTrue(rs.next())
+                assertEquals(2, rs.getInt(1))
+            }
         }
     }
 
@@ -254,4 +501,58 @@ class SqliteSourceIndexStoreTest {
             imports = emptySet(),
             wildcardImports = emptySet(),
         )
+
+    private fun copySourceIndexDatabase(
+        originalRoot: Path,
+        restoredRoot: Path,
+    ) {
+        val sourcePath = sourceIndexDatabasePath(originalRoot)
+        DriverManager.getConnection("jdbc:sqlite:$sourcePath").use { conn ->
+            conn.createStatement().use { stmt -> stmt.execute("PRAGMA wal_checkpoint(FULL)") }
+        }
+        val restoredPath = sourceIndexDatabasePath(restoredRoot)
+        Files.createDirectories(restoredPath.parent)
+        Files.list(sourcePath.parent).use { files ->
+            files
+                .filter { it.fileName.toString().startsWith(sourcePath.fileName.toString()) }
+                .forEach { file ->
+                    Files.copy(file, restoredPath.parent.resolve(file.fileName), StandardCopyOption.REPLACE_EXISTING)
+                }
+        }
+    }
+
+    private fun assertSchemaUsesInternedPaths(dbPath: Path) {
+        DriverManager.getConnection("jdbc:sqlite:$dbPath").use { conn ->
+            conn.prepareStatement("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'path_prefixes'")
+                .use { stmt ->
+                    val rs = stmt.executeQuery()
+                    assertTrue(rs.next())
+                }
+            conn.prepareStatement("PRAGMA table_info(identifier_paths)").use { stmt ->
+                val rs = stmt.executeQuery()
+                val columns = buildList {
+                    while (rs.next()) add(rs.getString("name"))
+                }
+                assertFalse("path" in columns)
+                assertTrue("prefix_id" in columns)
+                assertTrue("filename" in columns)
+            }
+        }
+    }
+
+    private fun assertTableColumns(
+        conn: java.sql.Connection,
+        tableName: String,
+        present: Set<String>,
+        absent: Set<String>,
+    ) {
+        conn.prepareStatement("PRAGMA table_info($tableName)").use { stmt ->
+            val rs = stmt.executeQuery()
+            val columns = buildSet {
+                while (rs.next()) add(rs.getString("name"))
+            }
+            present.forEach { column -> assertTrue(column in columns) }
+            absent.forEach { column -> assertFalse(column in columns) }
+        }
+    }
 }
