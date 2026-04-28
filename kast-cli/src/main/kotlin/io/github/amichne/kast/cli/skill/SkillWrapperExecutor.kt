@@ -757,23 +757,23 @@ internal class SkillWrapperExecutor(
         val resultsJson = MetricsEngine(Path.of(workspaceRoot)).use { engine ->
             when (request.metric) {
                 WrapperMetric.FAN_IN -> json.encodeToJsonElement(
-                    kotlinx.serialization.serializer<List<io.github.amichne.kast.indexstore.FanInMetric>>(),
+                    kotlinx.serialization.builtins.ListSerializer(io.github.amichne.kast.indexstore.FanInMetric.serializer()),
                     engine.fanInRanking(request.limit),
                 )
                 WrapperMetric.FAN_OUT -> json.encodeToJsonElement(
-                    kotlinx.serialization.serializer<List<io.github.amichne.kast.indexstore.FanOutMetric>>(),
+                    kotlinx.serialization.builtins.ListSerializer(io.github.amichne.kast.indexstore.FanOutMetric.serializer()),
                     engine.fanOutRanking(request.limit),
                 )
                 WrapperMetric.COUPLING -> json.encodeToJsonElement(
-                    kotlinx.serialization.serializer<List<io.github.amichne.kast.indexstore.ModuleCouplingMetric>>(),
+                    kotlinx.serialization.builtins.ListSerializer(io.github.amichne.kast.indexstore.ModuleCouplingMetric.serializer()),
                     engine.moduleCouplingMatrix(),
                 )
                 WrapperMetric.DEAD_CODE -> json.encodeToJsonElement(
-                    kotlinx.serialization.serializer<List<io.github.amichne.kast.indexstore.DeadCodeCandidate>>(),
+                    kotlinx.serialization.builtins.ListSerializer(io.github.amichne.kast.indexstore.DeadCodeCandidate.serializer()),
                     engine.deadCodeCandidates(),
                 )
                 WrapperMetric.IMPACT -> json.encodeToJsonElement(
-                    kotlinx.serialization.serializer<List<io.github.amichne.kast.indexstore.ChangeImpactNode>>(),
+                    kotlinx.serialization.builtins.ListSerializer(io.github.amichne.kast.indexstore.ChangeImpactNode.serializer()),
                     engine.changeImpactRadius(
                         fqName = request.symbol ?: throw CliFailure(
                             code = "SKILL_VALIDATION",
