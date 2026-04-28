@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
 internal const val maxIncludedProjectsForToolingApi = 200
-internal const val defaultToolingApiTimeoutMillis = 30_000L
+internal const val defaultToolingApiTimeoutMillis = 60_000L
 
 internal fun resolveToolingApiTimeoutMillis(
     moduleCount: Int,
@@ -82,10 +82,12 @@ internal object GradleWorkspaceDiscovery {
                 warnings = discoveryResult.diagnostics.warnings,
             ),
         ).also {
-            persistWorkspaceDiscoveryCache(
-                workspaceRoot = workspaceRoot,
-                result = discoveryResult,
-            )
+            if (discoveryResult.toolingApiSucceeded) {
+                persistWorkspaceDiscoveryCache(
+                    workspaceRoot = workspaceRoot,
+                    result = discoveryResult,
+                )
+            }
         }
     }
 
@@ -154,6 +156,7 @@ internal object GradleWorkspaceDiscovery {
                 GradleWorkspaceDiscoveryResult(
                     modules = staticModules,
                     diagnostics = WorkspaceDiscoveryDiagnostics(warnings = listOf(warning)),
+                    toolingApiSucceeded = false,
                 )
             }
             buildStandaloneWorkspaceLayout(
@@ -164,10 +167,12 @@ internal object GradleWorkspaceDiscovery {
                     warnings = enrichedResult.diagnostics.warnings,
                 ),
             ).also {
-                persistWorkspaceDiscoveryCache(
-                    workspaceRoot = workspaceRoot,
-                    result = enrichedResult,
-                )
+                if (enrichedResult.toolingApiSucceeded) {
+                    persistWorkspaceDiscoveryCache(
+                        workspaceRoot = workspaceRoot,
+                        result = enrichedResult,
+                    )
+                }
             }
         }
 
@@ -268,6 +273,7 @@ internal object GradleWorkspaceDiscovery {
             return@inSpan GradleWorkspaceDiscoveryResult(
                 modules = staticModules,
                 diagnostics = WorkspaceDiscoveryDiagnostics(warnings = warnings),
+                toolingApiSucceeded = toolingApiSucceeded,
             )
         }
 
@@ -437,6 +443,7 @@ private fun discoverToolingApiModules(
         ?: return GradleWorkspaceDiscoveryResult(
             modules = staticModules(),
             diagnostics = WorkspaceDiscoveryDiagnostics(warnings = warnings),
+            toolingApiSucceeded = false,
         )
 
     val modules = when {

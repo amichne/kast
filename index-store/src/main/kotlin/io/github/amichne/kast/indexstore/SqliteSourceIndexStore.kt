@@ -216,8 +216,9 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
             stmt.execute("DROP TABLE IF EXISTS file_manifest")
             stmt.execute("DROP TABLE IF EXISTS fq_names")
             stmt.execute("DROP TABLE IF EXISTS path_prefixes")
-            stmt.execute("DROP TABLE IF EXISTS workspace_discovery")
             stmt.execute("DROP TABLE IF EXISTS schema_version")
+            // workspace_discovery is intentionally preserved across source index schema upgrades —
+            // its data is independent of path interning and other source index schema changes.
         }
     }
 
