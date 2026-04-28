@@ -756,14 +756,8 @@ internal class SkillWrapperExecutor(
         )
         val resultsJson = MetricsEngine(Path.of(workspaceRoot)).use { engine ->
             when (request.metric) {
-                WrapperMetric.FAN_IN -> json.encodeToJsonElement(
-                    kotlinx.serialization.builtins.ListSerializer(io.github.amichne.kast.indexstore.FanInMetric.serializer()),
-                    engine.fanInRanking(request.limit),
-                )
-                WrapperMetric.FAN_OUT -> json.encodeToJsonElement(
-                    kotlinx.serialization.builtins.ListSerializer(io.github.amichne.kast.indexstore.FanOutMetric.serializer()),
-                    engine.fanOutRanking(request.limit),
-                )
+                WrapperMetric.FAN_IN -> encodeFanInMetrics(json, engine.fanInRanking(request.limit))
+                WrapperMetric.FAN_OUT -> encodeFanOutMetrics(json, engine.fanOutRanking(request.limit))
                 WrapperMetric.COUPLING -> encodeModuleCouplingMetrics(json, engine.moduleCouplingMatrix())
                 WrapperMetric.DEAD_CODE -> encodeDeadCodeCandidates(json, engine.deadCodeCandidates())
                 WrapperMetric.IMPACT -> encodeChangeImpactNodes(
