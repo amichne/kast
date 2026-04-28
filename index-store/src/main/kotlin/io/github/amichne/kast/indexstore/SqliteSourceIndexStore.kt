@@ -7,7 +7,7 @@ import java.nio.file.Path
 import java.sql.Connection
 import java.sql.DriverManager
 
-internal const val SOURCE_INDEX_SCHEMA_VERSION = 3
+internal const val SOURCE_INDEX_SCHEMA_VERSION = 4
 
 /**
  * SQLite-backed store for the source identifier index, file manifest,
@@ -188,12 +188,15 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
                 """CREATE TABLE IF NOT EXISTS file_metadata (
                     path TEXT PRIMARY KEY,
                     package_name TEXT,
-                    module_name TEXT,
+                    module_path TEXT,
+                    source_set TEXT,
                     imports TEXT,
                     wildcard_imports TEXT
                 )""",
             )
-            stmt.execute("CREATE INDEX IF NOT EXISTS idx_file_metadata_module ON file_metadata(module_name)")
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_file_metadata_module_path ON file_metadata(module_path)")
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_file_metadata_source_set ON file_metadata(source_set)")
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_file_metadata_module_path_source_set ON file_metadata(module_path, source_set)")
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_file_metadata_package ON file_metadata(package_name)")
 
             stmt.execute(
@@ -316,16 +319,21 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
 
             conn.createStatement().use { stmt ->
                 val rs = stmt.executeQuery(
-                    "SELECT path, package_name, module_name, imports, wildcard_imports FROM file_metadata",
+                    "SELECT path, package_name, module_path, source_set, imports, wildcard_imports FROM file_metadata",
                 )
                 while (rs.next()) {
                     val path = rs.getString(1)
                     rs.getString(2)?.let { packageByPath[path] = it }
-                    rs.getString(3)?.let { moduleNameByPath[path] = it }
-                    rs.getString(4)?.decodeJsonArray()
+                    val modulePath = rs.getString(3)
+                    val sourceSet = rs.getString(4)
+                    if (modulePath != null) {
+                        val reconstructed = if (sourceSet != null) "$modulePath[$sourceSet]" else modulePath
+                        moduleNameByPath[path] = reconstructed
+                    }
+                    rs.getString(5)?.decodeJsonArray()
                         ?.takeIf { it.isNotEmpty() }
                         ?.let { importsByPath[path] = it }
-                    rs.getString(5)?.decodeJsonArray()
+                    rs.getString(6)?.decodeJsonArray()
                         ?.takeIf { it.isNotEmpty() }
                         ?.let { wildcardImportPackagesByPath[path] = it }
                 }
@@ -636,14 +644,15 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
         }
         conn.prepareStatement(
             """INSERT OR REPLACE INTO file_metadata
-               (path, package_name, module_name, imports, wildcard_imports)
-               VALUES (?, ?, ?, ?, ?)""",
+               (path, package_name, module_path, source_set, imports, wildcard_imports)
+               VALUES (?, ?, ?, ?, ?, ?)""",
         ).use { stmt ->
             stmt.setString(1, update.path)
             stmt.setString(2, update.packageName)
-            stmt.setString(3, update.moduleName)
-            stmt.setString(4, update.imports.sorted().encodeAsJsonArray())
-            stmt.setString(5, update.wildcardImports.sorted().encodeAsJsonArray())
+            stmt.setString(3, update.modulePath)
+            stmt.setString(4, update.sourceSet)
+            stmt.setString(5, update.imports.sorted().encodeAsJsonArray())
+            stmt.setString(6, update.wildcardImports.sorted().encodeAsJsonArray())
             stmt.executeUpdate()
         }
     }

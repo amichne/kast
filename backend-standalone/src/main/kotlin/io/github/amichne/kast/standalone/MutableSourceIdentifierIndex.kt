@@ -8,6 +8,7 @@ import io.github.amichne.kast.api.contract.PackageName
 import io.github.amichne.kast.indexstore.FileIndexUpdate
 import io.github.amichne.kast.indexstore.SourceIndexSnapshot
 import io.github.amichne.kast.indexstore.SourceIndexWriter
+import io.github.amichne.kast.indexstore.splitModuleName
 import java.util.concurrent.ConcurrentHashMap
 
 internal class MutableSourceIdentifierIndex(
@@ -104,12 +105,14 @@ internal class MutableSourceIdentifierIndex(
 
         backingStore?.let { store ->
             runCatching {
+                val (modPath, srcSet) = splitModuleName(moduleName?.value)
                 store.saveFileIndex(
                     FileIndexUpdate(
                         path = normalizedPath,
                         identifiers = identifiers.mapTo(mutableSetOf()) { it.value },
                         packageName = packageByPath[path]?.value,
-                        moduleName = moduleName?.value,
+                        modulePath = modPath,
+                        sourceSet = srcSet,
                         imports = importsByPath[path]?.mapTo(mutableSetOf()) { it.value }.orEmpty(),
                         wildcardImports = wildcardImportPackagesByPath[path]?.mapTo(mutableSetOf()) { it.value }.orEmpty(),
                     ),

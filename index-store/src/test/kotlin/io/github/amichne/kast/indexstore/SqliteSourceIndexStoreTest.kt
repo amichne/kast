@@ -45,7 +45,7 @@ class SqliteSourceIndexStoreTest {
             conn.prepareStatement("SELECT version FROM schema_version LIMIT 1").use { stmt ->
                 val rs = stmt.executeQuery()
                 assertTrue(rs.next())
-                assertEquals(3, rs.getInt(1))
+                assertEquals(4, rs.getInt(1))
             }
         }
     }
@@ -72,7 +72,7 @@ class SqliteSourceIndexStoreTest {
         DriverManager.getConnection("jdbc:sqlite:$dbPath").use { conn ->
             conn.createStatement().use { stmt ->
                 stmt.execute("CREATE TABLE schema_version (version INTEGER NOT NULL, generation INTEGER NOT NULL DEFAULT 0)")
-                stmt.execute("INSERT INTO schema_version (version, generation) VALUES (3, 0)")
+                stmt.execute("INSERT INTO schema_version (version, generation) VALUES (4, 0)")
                 stmt.execute(
                     """CREATE TABLE identifier_paths (
                         identifier TEXT NOT NULL,
@@ -84,7 +84,8 @@ class SqliteSourceIndexStoreTest {
                     """CREATE TABLE file_metadata (
                         path TEXT PRIMARY KEY,
                         package_name TEXT,
-                        module_name TEXT,
+                        module_path TEXT,
+                        source_set TEXT,
                         imports TEXT,
                         wildcard_imports TEXT
                     )""",
@@ -117,7 +118,8 @@ class SqliteSourceIndexStoreTest {
                         path = "/src/Caller.kt",
                         identifiers = setOf("Caller", "call"),
                         packageName = "consumer",
-                        moduleName = ":app[main]",
+                        modulePath = ":app",
+                        sourceSet = "main",
                         imports = setOf("lib.Foo"),
                         wildcardImports = setOf("lib.internal"),
                     ),
@@ -128,7 +130,7 @@ class SqliteSourceIndexStoreTest {
             val snapshot = store.loadSourceIndexSnapshot()
 
             assertEquals(listOf("/src/Caller.kt"), snapshot.candidatePathsByIdentifier.getValue("Caller"))
-            assertEquals(":app[main]", snapshot.moduleNameByPath.getValue("/src/Caller.kt"))
+            assertEquals(":app[main]", snapshot.moduleNameByPath["/src/Caller.kt"])
             assertEquals("consumer", snapshot.packageByPath.getValue("/src/Caller.kt"))
             assertEquals(listOf("lib.Foo"), snapshot.importsByPath.getValue("/src/Caller.kt"))
             assertEquals(listOf("lib.internal"), snapshot.wildcardImportPackagesByPath.getValue("/src/Caller.kt"))
@@ -250,7 +252,8 @@ class SqliteSourceIndexStoreTest {
             path = path,
             identifiers = setOf(identifier),
             packageName = "demo",
-            moduleName = ":main",
+            modulePath = ":main",
+            sourceSet = null,
             imports = emptySet(),
             wildcardImports = emptySet(),
         )

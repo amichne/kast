@@ -6,7 +6,8 @@ import kotlinx.serialization.Serializable
 data class FanInMetric(
     val targetFqName: String,
     val targetPath: String?,
-    val targetModuleName: String?,
+    val targetModulePath: String?,
+    val targetSourceSet: String?,
     val occurrenceCount: Int,
     val sourceFileCount: Int,
     val sourceModuleCount: Int,
@@ -15,7 +16,8 @@ data class FanInMetric(
 @Serializable
 data class FanOutMetric(
     val sourcePath: String,
-    val sourceModuleName: String?,
+    val sourceModulePath: String?,
+    val sourceSourceSet: String?,
     val occurrenceCount: Int,
     val targetSymbolCount: Int,
     val targetFileCount: Int,
@@ -25,8 +27,10 @@ data class FanOutMetric(
 
 @Serializable
 data class ModuleCouplingMetric(
-    val sourceModuleName: String,
-    val targetModuleName: String,
+    val sourceModulePath: String,
+    val sourceSourceSet: String?,
+    val targetModulePath: String,
+    val targetSourceSet: String?,
     val referenceCount: Int,
 )
 
@@ -34,7 +38,8 @@ data class ModuleCouplingMetric(
 data class DeadCodeCandidate(
     val identifier: String,
     val path: String,
-    val moduleName: String?,
+    val modulePath: String?,
+    val sourceSet: String?,
     val packageName: String?,
     val confidence: MetricsConfidence,
     val reason: String,

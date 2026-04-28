@@ -57,12 +57,12 @@ class SqliteCacheInvariantTest {
             }
         }
 
-        // After rebuild the version should be the current one (3)
+        // After rebuild the version should be the current one (4)
         DriverManager.getConnection("jdbc:sqlite:$dbPath").use { conn ->
             conn.prepareStatement("SELECT version FROM schema_version LIMIT 1").use { stmt ->
                 val rs = stmt.executeQuery()
                 assertTrue(rs.next())
-                assertEquals(3, rs.getInt(1))
+                assertEquals(4, rs.getInt(1))
             }
         }
     }
@@ -80,7 +80,8 @@ class SqliteCacheInvariantTest {
                     path = "/src/file$i.kt",
                     identifiers = setOf("Ident_${i}_a", "Ident_${i}_b"),
                     packageName = "pkg$i",
-                    moduleName = "mod$i",
+                    modulePath = "mod$i",
+                    sourceSet = null,
                     imports = setOf("import.a$i"),
                     wildcardImports = setOf("wild$i"),
                 )
@@ -161,7 +162,8 @@ class SqliteCacheInvariantTest {
                         path = "/src/Seed.kt",
                         identifiers = setOf("Seed"),
                         packageName = "seed",
-                        moduleName = null,
+                        modulePath = null,
+                        sourceSet = null,
                         imports = emptySet(),
                         wildcardImports = emptySet(),
                     ),
@@ -285,7 +287,8 @@ class SqliteCacheInvariantTest {
                         path = targetPath,
                         identifiers = setOf("Alpha", "Beta"),
                         packageName = "target",
-                        moduleName = "modTarget",
+                        modulePath = "modTarget",
+                        sourceSet = null,
                         imports = setOf("import.x"),
                         wildcardImports = emptySet(),
                     ),
@@ -293,7 +296,8 @@ class SqliteCacheInvariantTest {
                         path = otherPath,
                         identifiers = setOf("Gamma"),
                         packageName = "other",
-                        moduleName = "modOther",
+                        modulePath = "modOther",
+                        sourceSet = null,
                         imports = emptySet(),
                         wildcardImports = emptySet(),
                     ),
@@ -527,12 +531,12 @@ class SqliteCacheInvariantTest {
                 stmt.execute(
                     "CREATE TABLE schema_version (version INTEGER NOT NULL, generation INTEGER NOT NULL DEFAULT 0)",
                 )
-                stmt.execute("INSERT INTO schema_version (version, generation) VALUES (3, 0)")
+                stmt.execute("INSERT INTO schema_version (version, generation) VALUES (4, 0)")
                 stmt.execute(
                     "CREATE TABLE identifier_paths (identifier TEXT NOT NULL, path TEXT NOT NULL, PRIMARY KEY (identifier, path))",
                 )
                 stmt.execute(
-                    "CREATE TABLE file_metadata (path TEXT PRIMARY KEY, package_name TEXT, module_name TEXT, imports TEXT, wildcard_imports TEXT)",
+                    "CREATE TABLE file_metadata (path TEXT PRIMARY KEY, package_name TEXT, module_path TEXT, source_set TEXT, imports TEXT, wildcard_imports TEXT)",
                 )
                 stmt.execute(
                     "CREATE TABLE file_manifest (path TEXT PRIMARY KEY, last_modified_millis INTEGER NOT NULL)",

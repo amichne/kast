@@ -7,7 +7,8 @@ data class FileIndexUpdate(
     val path: String,
     val identifiers: Set<String>,
     val packageName: String?,
-    val moduleName: String?,
+    val modulePath: String?,
+    val sourceSet: String?,
     val imports: Set<String>,
     val wildcardImports: Set<String>,
 )
@@ -42,3 +43,10 @@ data class SymbolReferenceRow(
     val targetPath: String?,
     val targetOffset: Int?,
 )
+
+fun splitModuleName(moduleName: String?): Pair<String?, String?> {
+    if (moduleName == null) return null to null
+    val bracketIndex = moduleName.indexOf('[')
+    if (bracketIndex < 0) return moduleName to null
+    return moduleName.substring(0, bracketIndex) to moduleName.substring(bracketIndex + 1, moduleName.length - 1)
+}

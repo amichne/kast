@@ -18,14 +18,15 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
             conn.prepareStatement(
                 """SELECT refs.target_fq_name,
                           refs.target_path,
-                          target_meta.module_name,
+                          target_meta.module_path,
+                          target_meta.source_set,
                           COUNT(*) AS occurrence_count,
                           COUNT(DISTINCT refs.source_path) AS source_file_count,
-                          COUNT(DISTINCT source_meta.module_name) AS source_module_count
+                          COUNT(DISTINCT source_meta.module_path) AS source_module_count
                    FROM symbol_references refs
                    LEFT JOIN file_metadata source_meta ON source_meta.path = refs.source_path
                    LEFT JOIN file_metadata target_meta ON target_meta.path = refs.target_path
-                   GROUP BY refs.target_fq_name, refs.target_path, target_meta.module_name
+                   GROUP BY refs.target_fq_name, refs.target_path, target_meta.module_path, target_meta.source_set
                    ORDER BY occurrence_count DESC, refs.target_fq_name ASC, COALESCE(refs.target_path, '') ASC
                    LIMIT ?""",
             ).use { stmt ->
@@ -37,10 +38,11 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
                             FanInMetric(
                                 targetFqName = rs.getString(1),
                                 targetPath = rs.getString(2),
-                                targetModuleName = rs.getString(3),
-                                occurrenceCount = rs.getInt(4),
-                                sourceFileCount = rs.getInt(5),
-                                sourceModuleCount = rs.getInt(6),
+                                targetModulePath = rs.getString(3),
+                                targetSourceSet = rs.getString(4),
+                                occurrenceCount = rs.getInt(5),
+                                sourceFileCount = rs.getInt(6),
+                                sourceModuleCount = rs.getInt(7),
                             ),
                         )
                     }
@@ -55,17 +57,18 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
         return readMetric(emptyList()) { conn ->
             conn.prepareStatement(
                 """SELECT refs.source_path,
-                          source_meta.module_name,
+                          source_meta.module_path,
+                          source_meta.source_set,
                           COUNT(*) AS occurrence_count,
                           COUNT(DISTINCT refs.target_fq_name) AS target_symbol_count,
                           COUNT(DISTINCT refs.target_path) AS target_file_count,
-                          COUNT(DISTINCT target_meta.module_name) AS target_module_count,
+                          COUNT(DISTINCT target_meta.module_path) AS target_module_count,
                           SUM(CASE WHEN refs.target_path IS NULL OR target_meta.path IS NULL THEN 1 ELSE 0 END)
                               AS external_target_count
                    FROM symbol_references refs
                    LEFT JOIN file_metadata source_meta ON source_meta.path = refs.source_path
                    LEFT JOIN file_metadata target_meta ON target_meta.path = refs.target_path
-                   GROUP BY refs.source_path, source_meta.module_name
+                   GROUP BY refs.source_path, source_meta.module_path, source_meta.source_set
                    ORDER BY occurrence_count DESC, refs.source_path ASC
                    LIMIT ?""",
             ).use { stmt ->
@@ -76,12 +79,13 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
                         add(
                             FanOutMetric(
                                 sourcePath = rs.getString(1),
-                                sourceModuleName = rs.getString(2),
-                                occurrenceCount = rs.getInt(3),
-                                targetSymbolCount = rs.getInt(4),
-                                targetFileCount = rs.getInt(5),
-                                targetModuleCount = rs.getInt(6),
-                                externalTargetCount = rs.getInt(7),
+                                sourceModulePath = rs.getString(2),
+                                sourceSourceSet = rs.getString(3),
+                                occurrenceCount = rs.getInt(4),
+                                targetSymbolCount = rs.getInt(5),
+                                targetFileCount = rs.getInt(6),
+                                targetModuleCount = rs.getInt(7),
+                                externalTargetCount = rs.getInt(8),
                             ),
                         )
                     }
@@ -94,23 +98,27 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
         readMetric(emptyList()) { conn ->
             conn.createStatement().use { stmt ->
                 val rs = stmt.executeQuery(
-                    """SELECT source_meta.module_name, target_meta.module_name, COUNT(*) AS reference_count
+                    """SELECT source_meta.module_path, source_meta.source_set,
+                              target_meta.module_path, target_meta.source_set,
+                              COUNT(*) AS reference_count
                        FROM symbol_references refs
                        JOIN file_metadata source_meta ON source_meta.path = refs.source_path
                        JOIN file_metadata target_meta ON target_meta.path = refs.target_path
-                       WHERE source_meta.module_name IS NOT NULL
-                         AND target_meta.module_name IS NOT NULL
-                         AND source_meta.module_name <> target_meta.module_name
-                       GROUP BY source_meta.module_name, target_meta.module_name
-                       ORDER BY reference_count DESC, source_meta.module_name ASC, target_meta.module_name ASC""",
+                       WHERE source_meta.module_path IS NOT NULL
+                         AND target_meta.module_path IS NOT NULL
+                         AND source_meta.module_path <> target_meta.module_path
+                       GROUP BY source_meta.module_path, source_meta.source_set, target_meta.module_path, target_meta.source_set
+                       ORDER BY reference_count DESC, source_meta.module_path ASC, target_meta.module_path ASC""",
                 )
                 buildList {
                     while (rs.next()) {
                         add(
                             ModuleCouplingMetric(
-                                sourceModuleName = rs.getString(1),
-                                targetModuleName = rs.getString(2),
-                                referenceCount = rs.getInt(3),
+                                sourceModulePath = rs.getString(1),
+                                sourceSourceSet = rs.getString(2),
+                                targetModulePath = rs.getString(3),
+                                targetSourceSet = rs.getString(4),
+                                referenceCount = rs.getInt(5),
                             ),
                         )
                     }
@@ -122,7 +130,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
         readMetric(emptyList()) { conn ->
             conn.createStatement().use { stmt ->
                 val rs = stmt.executeQuery(
-                    """SELECT identifiers.identifier, identifiers.path, metadata.module_name, metadata.package_name
+                    """SELECT identifiers.identifier, identifiers.path, metadata.module_path, metadata.source_set, metadata.package_name
                        FROM identifier_paths identifiers
                        LEFT JOIN file_metadata metadata ON metadata.path = identifiers.path
                        WHERE NOT EXISTS (
@@ -134,7 +142,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
                                  OR refs.target_fq_name LIKE '%.' || identifiers.identifier
                              )
                        )
-                       ORDER BY COALESCE(metadata.module_name, '') ASC,
+                       ORDER BY COALESCE(metadata.module_path, '') ASC,
                                 identifiers.path ASC,
                                 identifiers.identifier ASC""",
                 )
@@ -144,8 +152,9 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
                             DeadCodeCandidate(
                                 identifier = rs.getString(1),
                                 path = rs.getString(2),
-                                moduleName = rs.getString(3),
-                                packageName = rs.getString(4),
+                                modulePath = rs.getString(3),
+                                sourceSet = rs.getString(4),
+                                packageName = rs.getString(5),
                                 confidence = MetricsConfidence.LOW,
                                 reason = "Identifier has no inbound reference rows matching its file and simple name; identifier_paths is lexical, not declaration-only.",
                             ),
