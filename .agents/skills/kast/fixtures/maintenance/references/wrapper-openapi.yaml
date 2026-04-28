@@ -578,13 +578,13 @@ components:
     KastRenameBySymbolQuery:
       type: object
       properties:
-        workspace_root:
+        workspaceRoot:
           type: string
         symbol:
           type: string
-        new_name:
+        newName:
           type: string
-        file_hint:
+        fileHint:
           anyOf:
             -
               type: string
@@ -596,13 +596,13 @@ components:
               $ref: "#/components/schemas/WrapperNamedSymbolKind"
             -
               type: null
-        containing_type:
+        containingType:
           anyOf:
             -
               type: string
             -
               type: null
-        file_path:
+        filePath:
           type: string
         offset:
           type: integer
@@ -612,55 +612,55 @@ components:
           const: RENAME_BY_SYMBOL_REQUEST
       additionalProperties: false
       required:
-        - workspace_root
+        - workspaceRoot
         - symbol
-        - new_name
-        - file_path
+        - newName
+        - filePath
         - offset
         - type
     KastRenameByOffsetQuery:
       type: object
       properties:
-        workspace_root:
+        workspaceRoot:
           type: string
-        file_path:
+        filePath:
           type: string
         offset:
           type: integer
           format: int32
-        new_name:
+        newName:
           type: string
         type:
           type: string
           const: RENAME_BY_OFFSET_REQUEST
       additionalProperties: false
       required:
-        - workspace_root
-        - file_path
+        - workspaceRoot
+        - filePath
         - offset
-        - new_name
+        - newName
         - type
     KastWriteAndValidateCreateFileQuery:
       type: object
       properties:
-        workspace_root:
+        workspaceRoot:
           type: string
-        file_path:
+        filePath:
           type: string
         type:
           type: string
           const: CREATE_FILE_REQUEST
       additionalProperties: false
       required:
-        - workspace_root
-        - file_path
+        - workspaceRoot
+        - filePath
         - type
     KastWriteAndValidateInsertAtOffsetQuery:
       type: object
       properties:
-        workspace_root:
+        workspaceRoot:
           type: string
-        file_path:
+        filePath:
           type: string
         offset:
           type: integer
@@ -670,21 +670,21 @@ components:
           const: INSERT_AT_OFFSET_REQUEST
       additionalProperties: false
       required:
-        - workspace_root
-        - file_path
+        - workspaceRoot
+        - filePath
         - offset
         - type
     KastWriteAndValidateReplaceRangeQuery:
       type: object
       properties:
-        workspace_root:
+        workspaceRoot:
           type: string
-        file_path:
+        filePath:
           type: string
-        start_offset:
+        startOffset:
           type: integer
           format: int32
-        end_offset:
+        endOffset:
           type: integer
           format: int32
         type:
@@ -692,10 +692,10 @@ components:
           const: REPLACE_RANGE_REQUEST
       additionalProperties: false
       required:
-        - workspace_root
-        - file_path
-        - start_offset
-        - end_offset
+        - workspaceRoot
+        - filePath
+        - startOffset
+        - endOffset
         - type
     KastResolveSuccessResponse:
       type: object
@@ -706,14 +706,29 @@ components:
           $ref: "#/components/schemas/KastResolveQuery"
         symbol:
           $ref: "#/components/schemas/Symbol"
-        file_path:
+        filePath:
           type: string
         offset:
           type: integer
           format: int32
         candidate:
           $ref: "#/components/schemas/KastCandidate"
-        log_file:
+        candidateCount:
+          anyOf:
+            -
+              type: integer
+              format: int32
+            -
+              type: null
+        alternatives:
+          anyOf:
+            -
+              type: array
+              items:
+                type: string
+            -
+              type: null
+        logFile:
           type: string
         type:
           type: string
@@ -722,19 +737,19 @@ components:
       required:
         - query
         - symbol
-        - file_path
+        - filePath
         - offset
         - candidate
-        - log_file
+        - logFile
         - type
     KastResolveQuery:
       type: object
       properties:
-        workspace_root:
+        workspaceRoot:
           type: string
         symbol:
           type: string
-        file_hint:
+        fileHint:
           anyOf:
             -
               type: string
@@ -746,7 +761,7 @@ components:
               $ref: "#/components/schemas/WrapperNamedSymbolKind"
             -
               type: null
-        containing_type:
+        containingType:
           anyOf:
             -
               type: string
@@ -754,7 +769,7 @@ components:
               type: null
       additionalProperties: false
       required:
-        - workspace_root
+        - workspaceRoot
         - symbol
     Symbol:
       type: object
@@ -941,7 +956,7 @@ components:
           type: string
         query:
           $ref: "#/components/schemas/KastResolveQuery"
-        log_file:
+        logFile:
           type: string
         error:
           anyOf:
@@ -949,7 +964,7 @@ components:
               $ref: "#/components/schemas/ApiErrorResponse"
             -
               type: null
-        error_text:
+        errorText:
           anyOf:
             -
               type: string
@@ -963,7 +978,7 @@ components:
         - stage
         - message
         - query
-        - log_file
+        - logFile
         - type
     KastResolveResponse:
       oneOf:
@@ -985,7 +1000,7 @@ components:
           $ref: "#/components/schemas/KastReferencesQuery"
         symbol:
           $ref: "#/components/schemas/Symbol"
-        file_path:
+        filePath:
           type: string
         offset:
           type: integer
@@ -994,7 +1009,7 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Location"
-        search_scope:
+        searchScope:
           anyOf:
             -
               $ref: "#/components/schemas/SearchScope"
@@ -1006,7 +1021,22 @@ components:
               $ref: "#/components/schemas/Symbol"
             -
               type: null
-        log_file:
+        candidateCount:
+          anyOf:
+            -
+              type: integer
+              format: int32
+            -
+              type: null
+        alternatives:
+          anyOf:
+            -
+              type: array
+              items:
+                type: string
+            -
+              type: null
+        logFile:
           type: string
         type:
           type: string
@@ -1015,19 +1045,19 @@ components:
       required:
         - query
         - symbol
-        - file_path
+        - filePath
         - offset
         - references
-        - log_file
+        - logFile
         - type
     KastReferencesQuery:
       type: object
       properties:
-        workspace_root:
+        workspaceRoot:
           type: string
         symbol:
           type: string
-        file_hint:
+        fileHint:
           anyOf:
             -
               type: string
@@ -1039,17 +1069,17 @@ components:
               $ref: "#/components/schemas/WrapperNamedSymbolKind"
             -
               type: null
-        containing_type:
+        containingType:
           anyOf:
             -
               type: string
             -
               type: null
-        include_declaration:
+        includeDeclaration:
           type: boolean
       additionalProperties: false
       required:
-        - workspace_root
+        - workspaceRoot
         - symbol
     SearchScope:
       type: object
@@ -1090,7 +1120,7 @@ components:
           type: string
         query:
           $ref: "#/components/schemas/KastReferencesQuery"
-        log_file:
+        logFile:
           type: string
         error:
           anyOf:
@@ -1098,7 +1128,7 @@ components:
               $ref: "#/components/schemas/ApiErrorResponse"
             -
               type: null
-        error_text:
+        errorText:
           anyOf:
             -
               type: string
@@ -1112,7 +1142,7 @@ components:
         - stage
         - message
         - query
-        - log_file
+        - logFile
         - type
     KastReferencesResponse:
       oneOf:
@@ -1134,7 +1164,7 @@ components:
           $ref: "#/components/schemas/KastCallersQuery"
         symbol:
           $ref: "#/components/schemas/Symbol"
-        file_path:
+        filePath:
           type: string
         offset:
           type: integer
@@ -1143,7 +1173,22 @@ components:
           $ref: "#/components/schemas/CallNode"
         stats:
           $ref: "#/components/schemas/CallHierarchyStats"
-        log_file:
+        candidateCount:
+          anyOf:
+            -
+              type: integer
+              format: int32
+            -
+              type: null
+        alternatives:
+          anyOf:
+            -
+              type: array
+              items:
+                type: string
+            -
+              type: null
+        logFile:
           type: string
         type:
           type: string
@@ -1152,20 +1197,20 @@ components:
       required:
         - query
         - symbol
-        - file_path
+        - filePath
         - offset
         - root
         - stats
-        - log_file
+        - logFile
         - type
     KastCallersQuery:
       type: object
       properties:
-        workspace_root:
+        workspaceRoot:
           type: string
         symbol:
           type: string
-        file_hint:
+        fileHint:
           anyOf:
             -
               type: string
@@ -1177,7 +1222,7 @@ components:
               $ref: "#/components/schemas/WrapperNamedSymbolKind"
             -
               type: null
-        containing_type:
+        containingType:
           anyOf:
             -
               type: string
@@ -1188,21 +1233,21 @@ components:
         depth:
           type: integer
           format: int32
-        max_total_calls:
+        maxTotalCalls:
           anyOf:
             -
               type: integer
               format: int32
             -
               type: null
-        max_children_per_node:
+        maxChildrenPerNode:
           anyOf:
             -
               type: integer
               format: int32
             -
               type: null
-        timeout_millis:
+        timeoutMillis:
           anyOf:
             -
               type: integer
@@ -1211,7 +1256,7 @@ components:
               type: null
       additionalProperties: false
       required:
-        - workspace_root
+        - workspaceRoot
         - symbol
     CallNode:
       type: object
@@ -1304,7 +1349,7 @@ components:
           type: string
         query:
           $ref: "#/components/schemas/KastCallersQuery"
-        log_file:
+        logFile:
           type: string
         error:
           anyOf:
@@ -1312,7 +1357,7 @@ components:
               $ref: "#/components/schemas/ApiErrorResponse"
             -
               type: null
-        error_text:
+        errorText:
           anyOf:
             -
               type: string
@@ -1326,7 +1371,7 @@ components:
         - stage
         - message
         - query
-        - log_file
+        - logFile
         - type
     KastCallersResponse:
       oneOf:
@@ -1348,20 +1393,20 @@ components:
           $ref: "#/components/schemas/KastDiagnosticsQuery"
         clean:
           type: boolean
-        error_count:
+        errorCount:
           type: integer
           format: int32
-        warning_count:
+        warningCount:
           type: integer
           format: int32
-        info_count:
+        infoCount:
           type: integer
           format: int32
         diagnostics:
           type: array
           items:
             $ref: "#/components/schemas/Diagnostic"
-        log_file:
+        logFile:
           type: string
         type:
           type: string
@@ -1370,25 +1415,25 @@ components:
       required:
         - query
         - clean
-        - error_count
-        - warning_count
-        - info_count
+        - errorCount
+        - warningCount
+        - infoCount
         - diagnostics
-        - log_file
+        - logFile
         - type
     KastDiagnosticsQuery:
       type: object
       properties:
-        workspace_root:
+        workspaceRoot:
           type: string
-        file_paths:
+        filePaths:
           type: array
           items:
             type: string
       additionalProperties: false
       required:
-        - workspace_root
-        - file_paths
+        - workspaceRoot
+        - filePaths
     Diagnostic:
       type: object
       properties:
@@ -1426,7 +1471,7 @@ components:
           type: string
         query:
           $ref: "#/components/schemas/KastDiagnosticsQuery"
-        log_file:
+        logFile:
           type: string
         error:
           anyOf:
@@ -1434,7 +1479,7 @@ components:
               $ref: "#/components/schemas/ApiErrorResponse"
             -
               type: null
-        error_text:
+        errorText:
           anyOf:
             -
               type: string
@@ -1448,7 +1493,7 @@ components:
         - stage
         - message
         - query
-        - log_file
+        - logFile
         - type
     KastDiagnosticsResponse:
       oneOf:
@@ -1468,18 +1513,18 @@ components:
           type: boolean
         query:
           $ref: "#/components/schemas/KastRenameQuery"
-        edit_count:
+        editCount:
           type: integer
           format: int32
-        affected_files:
+        affectedFiles:
           type: array
           items:
             type: string
-        apply_result:
+        applyResult:
           $ref: "#/components/schemas/ApplyEditsResult"
         diagnostics:
           $ref: "#/components/schemas/KastDiagnosticsSummary"
-        log_file:
+        logFile:
           type: string
         type:
           type: string
@@ -1488,11 +1533,11 @@ components:
       required:
         - ok
         - query
-        - edit_count
-        - affected_files
-        - apply_result
+        - editCount
+        - affectedFiles
+        - applyResult
         - diagnostics
-        - log_file
+        - logFile
         - type
     KastRenameQuery:
       oneOf:
@@ -1555,10 +1600,10 @@ components:
       properties:
         clean:
           type: boolean
-        error_count:
+        errorCount:
           type: integer
           format: int32
-        warning_count:
+        warningCount:
           type: integer
           format: int32
         errors:
@@ -1568,8 +1613,8 @@ components:
       additionalProperties: false
       required:
         - clean
-        - error_count
-        - warning_count
+        - errorCount
+        - warningCount
     KastRenameFailureResponse:
       type: object
       properties:
@@ -1581,7 +1626,7 @@ components:
           type: string
         query:
           $ref: "#/components/schemas/KastRenameFailureQuery"
-        log_file:
+        logFile:
           type: string
         error:
           anyOf:
@@ -1589,7 +1634,7 @@ components:
               $ref: "#/components/schemas/ApiErrorResponse"
             -
               type: null
-        error_text:
+        errorText:
           anyOf:
             -
               type: string
@@ -1603,7 +1648,7 @@ components:
         - stage
         - message
         - query
-        - log_file
+        - logFile
         - type
     KastRenameFailureQuery:
       type: object
@@ -1614,7 +1659,7 @@ components:
               type: string
             -
               type: null
-        workspace_root:
+        workspaceRoot:
           type: string
         symbol:
           anyOf:
@@ -1622,7 +1667,7 @@ components:
               type: string
             -
               type: null
-        file_hint:
+        fileHint:
           anyOf:
             -
               type: string
@@ -1634,13 +1679,13 @@ components:
               $ref: "#/components/schemas/WrapperNamedSymbolKind"
             -
               type: null
-        containing_type:
+        containingType:
           anyOf:
             -
               type: string
             -
               type: null
-        file_path:
+        filePath:
           anyOf:
             -
               type: string
@@ -1653,12 +1698,12 @@ components:
               format: int32
             -
               type: null
-        new_name:
+        newName:
           type: string
       additionalProperties: false
       required:
-        - workspace_root
-        - new_name
+        - workspaceRoot
+        - newName
     KastRenameResponse:
       oneOf:
         -
@@ -1681,7 +1726,7 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/OutlineSymbol"
-        file_content:
+        fileContent:
           anyOf:
             -
               type: string
@@ -1699,19 +1744,19 @@ components:
               $ref: "#/components/schemas/KastScaffoldReferences"
             -
               type: null
-        type_hierarchy:
+        typeHierarchy:
           anyOf:
             -
               $ref: "#/components/schemas/KastScaffoldTypeHierarchy"
             -
               type: null
-        insertion_point:
+        insertionPoint:
           anyOf:
             -
               $ref: "#/components/schemas/SemanticInsertionResult"
             -
               type: null
-        log_file:
+        logFile:
           type: string
         type:
           type: string
@@ -1720,16 +1765,16 @@ components:
       required:
         - query
         - outline
-        - log_file
+        - logFile
         - type
     KastScaffoldQuery:
       type: object
       properties:
-        workspace_root:
+        workspaceRoot:
           type: string
-        target_file:
+        targetFile:
           type: string
-        target_symbol:
+        targetSymbol:
           anyOf:
             -
               type: string
@@ -1745,8 +1790,8 @@ components:
               type: null
       additionalProperties: false
       required:
-        - workspace_root
-        - target_file
+        - workspaceRoot
+        - targetFile
     OutlineSymbol:
       type: object
       properties:
@@ -1769,7 +1814,7 @@ components:
         count:
           type: integer
           format: int32
-        search_scope:
+        searchScope:
           anyOf:
             -
               $ref: "#/components/schemas/SearchScope"
@@ -1876,7 +1921,7 @@ components:
           type: string
         query:
           $ref: "#/components/schemas/KastScaffoldQuery"
-        log_file:
+        logFile:
           type: string
         error:
           anyOf:
@@ -1884,7 +1929,7 @@ components:
               $ref: "#/components/schemas/ApiErrorResponse"
             -
               type: null
-        error_text:
+        errorText:
           anyOf:
             -
               type: string
@@ -1898,7 +1943,7 @@ components:
         - stage
         - message
         - query
-        - log_file
+        - logFile
         - type
     KastScaffoldResponse:
       oneOf:
@@ -1922,10 +1967,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/WorkspaceModule"
-        schema_version:
+        schemaVersion:
           type: integer
           format: int32
-        log_file:
+        logFile:
           type: string
         type:
           type: string
@@ -1934,25 +1979,25 @@ components:
       required:
         - query
         - modules
-        - schema_version
-        - log_file
+        - schemaVersion
+        - logFile
         - type
     KastWorkspaceFilesQuery:
       type: object
       properties:
-        workspace_root:
+        workspaceRoot:
           type: string
-        module_name:
+        moduleName:
           anyOf:
             -
               type: string
             -
               type: null
-        include_files:
+        includeFiles:
           type: boolean
       additionalProperties: false
       required:
-        - workspace_root
+        - workspaceRoot
     WorkspaceModule:
       type: object
       properties:
@@ -1990,7 +2035,7 @@ components:
           type: string
         query:
           $ref: "#/components/schemas/KastWorkspaceFilesQuery"
-        log_file:
+        logFile:
           type: string
         error:
           anyOf:
@@ -1998,7 +2043,7 @@ components:
               $ref: "#/components/schemas/ApiErrorResponse"
             -
               type: null
-        error_text:
+        errorText:
           anyOf:
             -
               type: string
@@ -2012,7 +2057,7 @@ components:
         - stage
         - message
         - query
-        - log_file
+        - logFile
         - type
     KastWorkspaceFilesResponse:
       oneOf:
@@ -2032,10 +2077,10 @@ components:
           type: boolean
         query:
           $ref: "#/components/schemas/KastWriteAndValidateQuery"
-        applied_edits:
+        appliedEdits:
           type: integer
           format: int32
-        import_changes:
+        importChanges:
           type: integer
           format: int32
         diagnostics:
@@ -2046,7 +2091,7 @@ components:
               type: string
             -
               type: null
-        log_file:
+        logFile:
           type: string
         type:
           type: string
@@ -2055,10 +2100,10 @@ components:
       required:
         - ok
         - query
-        - applied_edits
-        - import_changes
+        - appliedEdits
+        - importChanges
         - diagnostics
-        - log_file
+        - logFile
         - type
     KastWriteAndValidateQuery:
       oneOf:
@@ -2085,7 +2130,7 @@ components:
           type: string
         query:
           $ref: "#/components/schemas/KastWriteAndValidateFailureQuery"
-        log_file:
+        logFile:
           type: string
         error:
           anyOf:
@@ -2093,7 +2138,7 @@ components:
               $ref: "#/components/schemas/ApiErrorResponse"
             -
               type: null
-        error_text:
+        errorText:
           anyOf:
             -
               type: string
@@ -2107,7 +2152,7 @@ components:
         - stage
         - message
         - query
-        - log_file
+        - logFile
         - type
     KastWriteAndValidateFailureQuery:
       type: object
@@ -2118,14 +2163,14 @@ components:
               type: string
             -
               type: null
-        workspace_root:
+        workspaceRoot:
           type: string
-        file_path:
+        filePath:
           type: string
       additionalProperties: false
       required:
-        - workspace_root
-        - file_path
+        - workspaceRoot
+        - filePath
     KastWriteAndValidateResponse:
       oneOf:
         -

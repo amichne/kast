@@ -31,6 +31,7 @@ internal class SourceIndexCache(
         store.ensureSchema()
         val manifest = scanTrackedKotlinFileTimestamps(sourceRoots)
         store.saveFullIndex(updates = indexToUpdates(index), manifest = manifest)
+        store.reconcilePendingUpdates()
         (headCommit ?: gitDeltaChangeDetector.currentHeadCommit())?.let(store::writeHeadCommit)
     }
 
@@ -46,6 +47,7 @@ internal class SourceIndexCache(
         val schemaValid = store.ensureSchema()
         if (!schemaValid) return null
 
+        store.reconcilePendingUpdates()
         val manifestSnapshot = makeManifestSnapshot(sourceRoots)
         return try {
             IncrementalIndexResult(

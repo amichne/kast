@@ -91,10 +91,10 @@ class SkillWrapperContractTest {
         assertTrue(parsed["ok"]?.jsonPrimitive?.boolean ?: false)
         assertNotNull(parsed["query"])
         val query = parsed["query"] as JsonObject
-        assertEquals("/tmp/ws", query["workspace_root"]?.jsonPrimitive?.content)
+        assertEquals("/tmp/ws", query["workspaceRoot"]?.jsonPrimitive?.content)
         assertNotNull(parsed["modules"]?.jsonArray)
-        assertEquals(1, parsed["schema_version"]?.jsonPrimitive?.int)
-        assertEquals("/tmp/log.txt", parsed["log_file"]?.jsonPrimitive?.content)
+        assertEquals(1, parsed["schemaVersion"]?.jsonPrimitive?.int)
+        assertEquals("/tmp/log.txt", parsed["logFile"]?.jsonPrimitive?.content)
     }
 
     @Test
@@ -118,7 +118,7 @@ class SkillWrapperContractTest {
         assertEquals("resolve", parsed["stage"]?.jsonPrimitive?.content)
         assertEquals("Symbol not found", parsed["message"]?.jsonPrimitive?.content)
         assertNotNull(parsed["query"])
-        assertEquals("/tmp/log.txt", parsed["log_file"]?.jsonPrimitive?.content)
+        assertEquals("/tmp/log.txt", parsed["logFile"]?.jsonPrimitive?.content)
     }
 
     @Test
@@ -143,8 +143,8 @@ class SkillWrapperContractTest {
         assertEquals("DIAGNOSTICS_SUCCESS", parsed["type"]?.jsonPrimitive?.content)
         assertTrue(parsed["ok"]?.jsonPrimitive?.boolean ?: false)
         assertTrue(parsed["clean"]?.jsonPrimitive?.boolean ?: false)
-        assertEquals(0, parsed["error_count"]?.jsonPrimitive?.int)
-        assertEquals(0, parsed["warning_count"]?.jsonPrimitive?.int)
+        assertEquals(0, parsed["errorCount"]?.jsonPrimitive?.int)
+        assertEquals(0, parsed["warningCount"]?.jsonPrimitive?.int)
     }
 
     @Test
@@ -166,10 +166,10 @@ class SkillWrapperContractTest {
         assertTrue(parsed["ok"]?.jsonPrimitive?.boolean ?: false)
         assertNotNull(parsed["symbol"])
         assertNotNull(parsed["query"])
-        assertNotNull(parsed["file_path"])
+        assertNotNull(parsed["filePath"])
         assertNotNull(parsed["offset"])
         assertNotNull(parsed["candidate"])
-        assertEquals("/tmp/log.txt", parsed["log_file"]?.jsonPrimitive?.content)
+        assertEquals("/tmp/log.txt", parsed["logFile"]?.jsonPrimitive?.content)
     }
 
     @Test
@@ -254,10 +254,10 @@ class SkillWrapperContractTest {
 
         assertEquals("RENAME_SUCCESS", parsed["type"]?.jsonPrimitive?.content)
         assertTrue(parsed["ok"]?.jsonPrimitive?.boolean ?: false)
-        assertEquals(2, parsed["edit_count"]?.jsonPrimitive?.int)
-        assertNotNull(parsed["affected_files"]?.jsonArray)
+        assertEquals(2, parsed["editCount"]?.jsonPrimitive?.int)
+        assertNotNull(parsed["affectedFiles"]?.jsonArray)
         assertNotNull(parsed["diagnostics"])
-        assertNotNull(parsed["apply_result"])
+        assertNotNull(parsed["applyResult"])
     }
 
     @Test
@@ -297,8 +297,8 @@ class SkillWrapperContractTest {
 
         assertEquals("WRITE_AND_VALIDATE_SUCCESS", parsed["type"]?.jsonPrimitive?.content)
         assertTrue(parsed["ok"]?.jsonPrimitive?.boolean ?: false)
-        assertEquals(1, parsed["applied_edits"]?.jsonPrimitive?.int)
-        assertEquals(0, parsed["import_changes"]?.jsonPrimitive?.int)
+        assertEquals(1, parsed["appliedEdits"]?.jsonPrimitive?.int)
+        assertEquals(0, parsed["importChanges"]?.jsonPrimitive?.int)
         assertNotNull(parsed["diagnostics"])
     }
 }

@@ -37,19 +37,19 @@ data class EvalMetric(
 
 @Serializable
 data class RawBudget(
-    @SerialName("trigger_tokens") val triggerTokens: Int,
-    @SerialName("invoke_tokens") val invokeTokens: Int,
-    @SerialName("deferred_tokens") val deferredTokens: Int,
+    val triggerTokens: Int,
+    val invokeTokens: Int,
+    val deferredTokens: Int,
 )
 
 @Serializable
 data class BandedBudget(
-    @SerialName("trigger_tokens") val triggerTokens: Int,
-    @SerialName("trigger_band") val triggerBand: BudgetBand,
-    @SerialName("invoke_tokens") val invokeTokens: Int,
-    @SerialName("invoke_band") val invokeBand: BudgetBand,
-    @SerialName("deferred_tokens") val deferredTokens: Int,
-    @SerialName("deferred_band") val deferredBand: BudgetBand,
+    val triggerTokens: Int,
+    val triggerBand: BudgetBand,
+    val invokeTokens: Int,
+    val invokeBand: BudgetBand,
+    val deferredTokens: Int,
+    val deferredBand: BudgetBand,
 )
 
 @Serializable
@@ -72,15 +72,15 @@ data class EvalSummary(
     val score: Int,
     val grade: EvalGrade,
     val deductions: List<Deduction>,
-    @SerialName("check_counts") val checkCounts: CheckCounts,
-    @SerialName("why_bullets") val whyBullets: List<String> = emptyList(),
-    @SerialName("fix_first") val fixFirst: String? = null,
-    @SerialName("watch_next") val watchNext: String? = null,
+    val checkCounts: CheckCounts,
+    val whyBullets: List<String> = emptyList(),
+    val fixFirst: String? = null,
+    val watchNext: String? = null,
 )
 
 @Serializable
 data class Deduction(
-    @SerialName("check_id") val checkId: String,
+    val checkId: String,
     val points: Int,
     val reason: String,
 )
@@ -96,7 +96,7 @@ data class CheckCounts(
 @Serializable
 data class ImprovementBrief(
     val findings: List<String>,
-    @SerialName("suggested_prompt") val suggestedPrompt: String,
+    val suggestedPrompt: String,
 )
 
 @Serializable
@@ -106,29 +106,29 @@ data class MeasurementPlan(
 
 @Serializable
 data class EvalResult(
-    @SerialName("schema_version") val schemaVersion: Int = 1,
+    val schemaVersion: Int = 1,
     val target: SkillTarget,
     val summary: EvalSummary,
     val budgets: BandedBudget,
     val checks: List<EvalCheck>,
     val metrics: List<EvalMetric>,
-    @SerialName("improvement_brief") val improvementBrief: ImprovementBrief,
-    @SerialName("measurement_plan") val measurementPlan: MeasurementPlan,
+    val improvementBrief: ImprovementBrief,
+    val measurementPlan: MeasurementPlan,
 )
 
 @Serializable
 data class ComparisonResult(
-    @SerialName("score_delta") val scoreDelta: Int,
-    @SerialName("grade_before") val gradeBefore: EvalGrade,
-    @SerialName("grade_after") val gradeAfter: EvalGrade,
-    @SerialName("resolved_failures") val resolvedFailures: List<String>,
-    @SerialName("new_failures") val newFailures: List<String>,
-    @SerialName("budget_delta") val budgetDelta: BudgetDelta,
+    val scoreDelta: Int,
+    val gradeBefore: EvalGrade,
+    val gradeAfter: EvalGrade,
+    val resolvedFailures: List<String>,
+    val newFailures: List<String>,
+    val budgetDelta: BudgetDelta,
 )
 
 @Serializable
 data class BudgetDelta(
-    @SerialName("trigger_delta") val triggerDelta: Int,
-    @SerialName("invoke_delta") val invokeDelta: Int,
-    @SerialName("deferred_delta") val deferredDelta: Int,
+    val triggerDelta: Int,
+    val invokeDelta: Int,
+    val deferredDelta: Int,
 )

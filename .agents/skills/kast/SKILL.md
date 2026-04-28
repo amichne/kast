@@ -35,21 +35,20 @@ projection, or edit attempt is imperfect.
 ## JSON shape rules
 
 - Request JSON uses camelCase.
-- Top-level wrapper responses use snake_case for wrapper metadata such as
-  `log_file`, `error_text`, `file_path`, `applied_edits`, and
-  `import_changes`.
-- Nested API models can keep their model casing. For example, symbols use
-  `fqName` and locations use `location.filePath`, `startOffset`, and
+- Wrapper responses also use camelCase. Examples include `logFile`,
+  `errorText`, `filePath`, `appliedEdits`, and `importChanges`.
+- Nested API models keep the same camelCase field names. For example, symbols
+  use `fqName` and locations use `location.filePath`, `startOffset`, and
   `startLine`.
 - Check `ok` and `type` before projecting a response. Failure responses carry
-  `stage`, `message`, optional `error` or `error_text`, and `log_file`.
+  `stage`, `message`, optional `error` or `errorText`, and `logFile`.
 - `rename` and `write-and-validate` requests require a `type` discriminator
   such as `RENAME_BY_SYMBOL_REQUEST` or `REPLACE_RANGE_REQUEST`.
 - Any request field ending in `filePath`, `filePaths`, or `contentFile` should
   use an absolute path.
 - `scaffold` uses `targetFile` (singular absolute path) as the required field,
-  not `filePaths`. Always include `workspaceRoot` in the request body. Run one
-  `scaffold` call per file; there is no batch variant.
+  not `filePaths`. `workspaceRoot` defaults to the current working directory
+  when omitted. Run one `scaffold` call per file; there is no batch variant.
 
 ## Recovery rules
 

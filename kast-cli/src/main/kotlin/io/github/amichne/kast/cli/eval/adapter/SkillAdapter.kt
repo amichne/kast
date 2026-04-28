@@ -448,6 +448,8 @@ internal class SkillAdapter(private val skillDir: Path) {
             "initialization_friction",
             "maintenance_thrash",
             "schema_request",
+            "relative_path",
+            "ambiguous_symbol",
             "schema_response",
             "mutation_abandonment",
             "failure_response_ignored",

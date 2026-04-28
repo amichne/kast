@@ -847,7 +847,7 @@ internal object CliCommandCatalog {
             group = CliCommandGroup.ANALYSIS,
             summary = "Skill wrapper: resolve a named symbol to a file position.",
             description = "Hidden native skill command. Accepts one JSON request argument.",
-            usages = listOf("$CLI_EXECUTABLE_NAME skill resolve '{\"workspace_root\":\"/ws\",\"symbol\":\"MyClass\"}'"),
+            usages = listOf("$CLI_EXECUTABLE_NAME skill resolve '{\"workspaceRoot\":\"/ws\",\"symbol\":\"MyClass\"}'"),
             visible = false,
         ),
         CliCommandMetadata(
@@ -855,7 +855,7 @@ internal object CliCommandCatalog {
             group = CliCommandGroup.ANALYSIS,
             summary = "Skill wrapper: find references to a named symbol.",
             description = "Hidden native skill command. Accepts one JSON request argument.",
-            usages = listOf("$CLI_EXECUTABLE_NAME skill references '{\"workspace_root\":\"/ws\",\"symbol\":\"myFun\"}'"),
+            usages = listOf("$CLI_EXECUTABLE_NAME skill references '{\"workspaceRoot\":\"/ws\",\"symbol\":\"myFun\"}'"),
             visible = false,
         ),
         CliCommandMetadata(
@@ -863,7 +863,7 @@ internal object CliCommandCatalog {
             group = CliCommandGroup.ANALYSIS,
             summary = "Skill wrapper: find callers of a named symbol.",
             description = "Hidden native skill command. Accepts one JSON request argument.",
-            usages = listOf("$CLI_EXECUTABLE_NAME skill callers '{\"workspace_root\":\"/ws\",\"symbol\":\"myFun\"}'"),
+            usages = listOf("$CLI_EXECUTABLE_NAME skill callers '{\"workspaceRoot\":\"/ws\",\"symbol\":\"myFun\"}'"),
             visible = false,
         ),
         CliCommandMetadata(
@@ -871,7 +871,7 @@ internal object CliCommandCatalog {
             group = CliCommandGroup.ANALYSIS,
             summary = "Skill wrapper: run diagnostics on specified files.",
             description = "Hidden native skill command. Accepts one JSON request argument.",
-            usages = listOf("$CLI_EXECUTABLE_NAME skill diagnostics '{\"workspace_root\":\"/ws\",\"file_paths\":[\"src/Main.kt\"]}'"),
+            usages = listOf("$CLI_EXECUTABLE_NAME skill diagnostics '{\"workspaceRoot\":\"/ws\",\"filePaths\":[\"/ws/src/Main.kt\"]}'"),
             visible = false,
         ),
         CliCommandMetadata(
@@ -879,7 +879,7 @@ internal object CliCommandCatalog {
             group = CliCommandGroup.MUTATION_FLOW,
             summary = "Skill wrapper: rename a symbol with validation.",
             description = "Hidden native skill command. Accepts one JSON request argument.",
-            usages = listOf("$CLI_EXECUTABLE_NAME skill rename '{\"workspace_root\":\"/ws\",\"symbol\":\"old\",\"new_name\":\"new\"}'"),
+            usages = listOf("$CLI_EXECUTABLE_NAME skill rename '{\"workspaceRoot\":\"/ws\",\"type\":\"RENAME_BY_SYMBOL_REQUEST\",\"symbol\":\"old\",\"newName\":\"new\"}'"),
             visible = false,
         ),
         CliCommandMetadata(
@@ -887,7 +887,7 @@ internal object CliCommandCatalog {
             group = CliCommandGroup.ANALYSIS,
             summary = "Skill wrapper: scaffold context for a target file.",
             description = "Hidden native skill command. Accepts one JSON request argument.",
-            usages = listOf("$CLI_EXECUTABLE_NAME skill scaffold '{\"workspace_root\":\"/ws\",\"target_file\":\"/ws/src/Foo.kt\"}'"),
+            usages = listOf("$CLI_EXECUTABLE_NAME skill scaffold '{\"workspaceRoot\":\"/ws\",\"targetFile\":\"/ws/src/Foo.kt\"}'"),
             visible = false,
         ),
         CliCommandMetadata(
@@ -895,7 +895,7 @@ internal object CliCommandCatalog {
             group = CliCommandGroup.MUTATION_FLOW,
             summary = "Skill wrapper: write code and validate with diagnostics.",
             description = "Hidden native skill command. Accepts one JSON request argument.",
-            usages = listOf("$CLI_EXECUTABLE_NAME skill write-and-validate '{\"workspace_root\":\"/ws\",\"file_path\":\"/ws/src/New.kt\"}'"),
+            usages = listOf("$CLI_EXECUTABLE_NAME skill write-and-validate '{\"workspaceRoot\":\"/ws\",\"type\":\"CREATE_FILE_REQUEST\",\"filePath\":\"/ws/src/New.kt\"}'"),
             visible = false,
         ),
         CliCommandMetadata(
@@ -903,7 +903,7 @@ internal object CliCommandCatalog {
             group = CliCommandGroup.ANALYSIS,
             summary = "Skill wrapper: list workspace modules and source files.",
             description = "Hidden native skill command. Accepts one JSON request argument.",
-            usages = listOf("$CLI_EXECUTABLE_NAME skill workspace-files '{\"workspace_root\":\"/ws\"}'"),
+            usages = listOf("$CLI_EXECUTABLE_NAME skill workspace-files '{\"workspaceRoot\":\"/ws\"}'"),
             visible = false,
         ),
         CliCommandMetadata(
@@ -980,7 +980,7 @@ internal object CliCommandCatalog {
             group = CliCommandGroup.METRICS,
             summary = "Skill wrapper: query workspace metrics from the local reference index.",
             description = "Hidden native skill command. Accepts one JSON request argument.",
-            usages = listOf("$CLI_EXECUTABLE_NAME skill metrics '{\"workspaceRoot\":\"/ws\",\"metric\":\"fan-in\"}'"),
+            usages = listOf("$CLI_EXECUTABLE_NAME skill metrics '{\"workspaceRoot\":\"/ws\",\"metric\":\"fanIn\"}'"),
             visible = false,
         ),
         CliCommandMetadata(

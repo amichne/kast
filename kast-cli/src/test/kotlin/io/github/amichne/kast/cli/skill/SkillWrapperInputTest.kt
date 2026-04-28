@@ -15,7 +15,7 @@ class SkillWrapperInputTest {
             explicit = "/explicit/ws",
             env = mapOf("KAST_WORKSPACE_ROOT" to "/env/ws"),
         )
-        assertEquals("/explicit/ws", result)
+        assertEquals(Path.of("/explicit/ws").toAbsolutePath().normalize().toString(), result)
     }
 
     @Test
@@ -24,16 +24,17 @@ class SkillWrapperInputTest {
             explicit = null,
             env = mapOf("KAST_WORKSPACE_ROOT" to "/env/ws"),
         )
-        assertEquals("/env/ws", result)
+        assertEquals(Path.of("/env/ws").toAbsolutePath().normalize().toString(), result)
     }
 
     @Test
-    fun `resolveWorkspaceRoot falls back to empty string when env absent`() {
+    fun `resolveWorkspaceRoot falls back to current working directory when env absent`(@TempDir tempDir: Path) {
         val result = SkillWrapperInput.resolveWorkspaceRoot(
             explicit = null,
             env = emptyMap(),
+            currentWorkingDirectory = tempDir,
         )
-        assertEquals("", result)
+        assertEquals(tempDir.toAbsolutePath().normalize().toString(), result)
     }
 
     @Test
@@ -42,7 +43,7 @@ class SkillWrapperInputTest {
             explicit = "  ",
             env = mapOf("KAST_WORKSPACE_ROOT" to "/env/ws"),
         )
-        assertEquals("/env/ws", result)
+        assertEquals(Path.of("/env/ws").toAbsolutePath().normalize().toString(), result)
     }
 
     @Test

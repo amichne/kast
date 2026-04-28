@@ -192,7 +192,7 @@
     },
     {
       "id": "parse-nested-response-shape",
-      "prompt": "A Kast `references` response has snake_case wrapper fields, but `.references[].file_path` is empty. Inspect the shape and keep tracing the Kotlin usages semantically.",
+      "prompt": "A Kast `references` response parsed oddly and `.references[].filePath` is empty. Inspect the shape and keep tracing the Kotlin usages semantically.",
       "expected_skill": "kast",
       "expected_route": "@kast",
       "allowed_ops": [
@@ -246,7 +246,7 @@
     },
     {
       "id": "respect-failure-response",
-      "prompt": "A Kast command returned `ok:false` with `stage`, `message`, `error_text`, and `log_file`. Use that response to decide the next step without abandoning Kast.",
+      "prompt": "A Kast command returned `ok:false` with `stage`, `message`, `errorText`, and `logFile`. Use that response to decide the next step without abandoning Kast.",
       "expected_skill": "kast",
       "expected_route": "@kast",
       "allowed_ops": [
@@ -295,6 +295,90 @@
         "rg"
       ],
       "failure_mode": "routing_bypass"
+    },
+    {
+      "id": "scaffold-multiple-files-individually",
+      "prompt": "Scaffold `DescriptorRegistry.kt`, `WorkspaceRuntimeManager.kt`, and `KastFileOperations.kt` so I can compare them before a Kotlin refactor.",
+      "expected_skill": "kast",
+      "expected_route": "@kast",
+      "allowed_ops": [
+        "kast skill scaffold"
+      ],
+      "forbidden_ops": [
+        "filePaths",
+        "grep",
+        "rg"
+      ],
+      "failure_mode": "schema_request"
+    },
+    {
+      "id": "write-new-code-via-wrapper",
+      "prompt": "Write new Kotlin code for this file and validate it. Use the supported Kast mutation path instead of editing by hand.",
+      "expected_skill": "kast",
+      "expected_route": "@kast",
+      "allowed_ops": [
+        "kast skill write-and-validate",
+        "kast skill diagnostics"
+      ],
+      "forbidden_ops": [
+        "apply_patch",
+        "sed",
+        "grep",
+        "rg"
+      ],
+      "failure_mode": "mutation_abandonment"
+    },
+    {
+      "id": "unknown-key-consults-quickstart",
+      "prompt": "My first Kast request failed with `Encountered an unknown key`. Recover by consulting the documented request shape instead of probing the wrapper.",
+      "expected_skill": "kast",
+      "expected_route": "@kast",
+      "allowed_ops": [
+        "references/quickstart.md",
+        "kast skill resolve",
+        "kast skill scaffold",
+        "kast skill rename",
+        "kast skill write-and-validate"
+      ],
+      "forbidden_ops": [
+        "{}",
+        "--help",
+        "grep",
+        "rg"
+      ],
+      "failure_mode": "schema_request"
+    },
+    {
+      "id": "absolute-path-wrapper-requests",
+      "prompt": "The Kotlin file is `src/main/kotlin/io/github/amichne/kast/cli/CliCommandCatalog.kt`. Use Kast on it, but normalize the path before you call the wrapper.",
+      "expected_skill": "kast",
+      "expected_route": "@kast",
+      "allowed_ops": [
+        "kast skill scaffold",
+        "kast skill diagnostics"
+      ],
+      "forbidden_ops": [
+        "\"targetFile\":\"src/main/kotlin/io/github/amichne/kast/cli/CliCommandCatalog.kt\"",
+        "\"filePath\":\"src/main/kotlin/io/github/amichne/kast/cli/CliCommandCatalog.kt\"",
+        "grep",
+        "rg"
+      ],
+      "failure_mode": "relative_path"
+    },
+    {
+      "id": "disambiguate-ambiguous-symbol-before-tracing",
+      "prompt": "Trace callers for the Kotlin symbol `handle`. If multiple candidates exist, do not guess which one I meant.",
+      "expected_skill": "kast",
+      "expected_route": "@kast",
+      "allowed_ops": [
+        "kast skill resolve",
+        "kast skill callers"
+      ],
+      "forbidden_ops": [
+        "grep",
+        "rg"
+      ],
+      "failure_mode": "ambiguous_symbol"
     }
   ]
 }

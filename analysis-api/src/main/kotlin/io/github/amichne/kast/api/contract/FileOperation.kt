@@ -13,7 +13,7 @@ sealed interface FileOperation {
     val filePath: String
 
     @Serializable
-    @SerialName("create")
+    @SerialName("CREATE_FILE")
     data class CreateFile(
         @DocField(description = "Absolute path of the file to create.")
         override val filePath: String,
@@ -22,7 +22,7 @@ sealed interface FileOperation {
     ) : FileOperation
 
     @Serializable
-    @SerialName("delete")
+    @SerialName("DELETE_FILE")
     data class DeleteFile(
         @DocField(description = "Absolute path of the file to delete.")
         override val filePath: String,

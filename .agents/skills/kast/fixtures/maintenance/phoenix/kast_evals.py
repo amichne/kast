@@ -62,8 +62,10 @@ QUICKSTART_MD = _SKILL_ROOT / "references" / "quickstart.md"
 #   routing_bypass        - kast loaded, agent uses grep/rg for Kotlin identity
 #   initialization_friction - KAST_CLI_PATH empty, wrong recovery path
 #   maintenance_thrash    - reads .kast-version / fixtures/maintenance / wrapper-openapi first
-#   schema_request        - wrong request fields (filePaths, no workspaceRoot, probes {})
-#   schema_response       - abandons kast after jq/snake_case/camelCase confusion
+#   schema_request        - wrong request fields (filePaths, no workspaceRoot, missing type, probes {})
+#   relative_path         - passes relative paths where wrapper requests require absolute paths
+#   ambiguous_symbol      - keeps going after a broad lookup without resolver disambiguation
+#   schema_response       - abandons kast after a bad jq projection
 #   mutation_abandonment  - falls back to sed/manual edit after write-and-validate ok=false
 #   failure_response_ignored - treats ok=false as success or abandons kast entirely
 
@@ -73,6 +75,8 @@ _REQUIRED_FAILURE_MODES = {
     "initialization_friction",
     "maintenance_thrash",
     "schema_request",
+    "relative_path",
+    "ambiguous_symbol",
     "schema_response",
     "mutation_abandonment",
     "failure_response_ignored",
@@ -269,10 +273,10 @@ You are evaluating whether a developer assistant used correct kast JSON shapes.
 
 Rules:
 - scaffold uses `targetFile` (singular absolute path), NOT `filePaths` array
-- Always include `workspaceRoot` in scaffold requests
+- `workspaceRoot` defaults to the current working directory when omitted
 - One scaffold call per file; no batch variant
 - Request JSON is camelCase
-- Top-level wrapper response metadata is snake_case
+- Wrapper responses are camelCase, including `logFile` and `errorText`
 - Nested API model fields are camelCase (e.g. symbol.fqName, location.filePath)
 - Never probe schema with empty `{}` or `--help`
 - Paths ending in filePath/filePaths/contentFile must be absolute
@@ -281,8 +285,7 @@ Rules:
 <response>{{output}}</response>
 
 "correct"        – all kast request/response handling follows the rules
-"incorrect"      – wrong field names, batched scaffold, omitted workspaceRoot,
-                   or misinterpreted snake_case/camelCase boundaries
+"incorrect"      – wrong field names, batched scaffold, or misread response shape
 "not_applicable" – no kast request JSON shown or constructed
 
 Answer (correct/incorrect/not_applicable):""",
@@ -296,7 +299,7 @@ failure_handling_evaluator = ClassificationEvaluator(
 You are evaluating how a developer assistant handled a kast failure response.
 
 kast failure responses carry: ok=false, type (e.g. WRITE_AND_VALIDATE_FAILURE),
-stage, message, optional error_text and log_file.
+stage, message, optional errorText and logFile.
 
 Correct behavior:
 1. Check `ok` and `type` BEFORE presenting results
