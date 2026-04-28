@@ -177,14 +177,14 @@ jobs:
           echo "=== Eval Result ==="
           cat "$RUNNER_TEMP/eval-result.json" | python3 -c "import sys, json; d=json.load(sys.stdin); print(f'Score: {d[\"summary\"][\"score\"]}/100 ({d[\"summary\"][\"grade\"]})')"
 
-        - name: Compare skill evaluation baseline
-          shell: bash
-          run: |
-            set -euo pipefail
-            "$KAST_BIN" eval skill \
-              --skill-dir="$GITHUB_WORKSPACE/.agents/skills/kast" \
-              --compare="$GITHUB_WORKSPACE/.agents/skills/kast/fixtures/maintenance/eval-baseline.json" \
-              --format=json > "$RUNNER_TEMP/eval-compare.json"
+      - name: Compare skill evaluation baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$KAST_BIN" eval skill \
+            --skill-dir="$GITHUB_WORKSPACE/.agents/skills/kast" \
+            --compare="$GITHUB_WORKSPACE/.agents/skills/kast/fixtures/maintenance/eval-baseline.json" \
+            --format=json > "$RUNNER_TEMP/eval-compare.json"
 
       - name: Upload eval result
         if: always()
