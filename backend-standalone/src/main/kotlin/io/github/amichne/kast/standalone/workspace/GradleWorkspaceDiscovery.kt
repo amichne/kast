@@ -45,10 +45,12 @@ internal object GradleWorkspaceDiscovery {
             loadModulesWithToolingApi(root, timeoutMillis)
         },
         warningSink: (String) -> Unit = ::logWorkspaceDiscoveryWarning,
+        cache: WorkspaceDiscoveryCache = WorkspaceDiscoveryCache(),
     ): StandaloneWorkspaceLayout {
         cachedWorkspaceLayout(
             workspaceRoot = workspaceRoot,
             extraClasspathRoots = extraClasspathRoots,
+            cache = cache,
         )?.let { cachedLayout ->
             return cachedLayout
         }
@@ -86,6 +88,7 @@ internal object GradleWorkspaceDiscovery {
                 persistWorkspaceDiscoveryCache(
                     workspaceRoot = workspaceRoot,
                     result = discoveryResult,
+                    cache = cache,
                 )
             }
         }
@@ -102,10 +105,12 @@ internal object GradleWorkspaceDiscovery {
             loadModulesWithToolingApi(root, timeoutMillis)
         },
         warningSink: (String) -> Unit = ::logWorkspaceDiscoveryWarning,
+        cache: WorkspaceDiscoveryCache = WorkspaceDiscoveryCache(),
     ): PhasedDiscoveryResult {
         cachedWorkspaceLayout(
             workspaceRoot = workspaceRoot,
             extraClasspathRoots = extraClasspathRoots,
+            cache = cache,
         )?.let { cachedLayout ->
             return PhasedDiscoveryResult(
                 initialLayout = cachedLayout,
@@ -122,6 +127,7 @@ internal object GradleWorkspaceDiscovery {
                     staticModulesProvider = staticModulesProvider,
                     toolingApiLoader = toolingApiLoader,
                     warningSink = warningSink,
+                    cache = cache,
                 ),
                 enrichmentFuture = null,
             )
@@ -171,6 +177,7 @@ internal object GradleWorkspaceDiscovery {
                     persistWorkspaceDiscoveryCache(
                         workspaceRoot = workspaceRoot,
                         result = enrichedResult,
+                        cache = cache,
                     )
                 }
             }
@@ -396,9 +403,10 @@ internal object GradleWorkspaceDiscovery {
 private fun cachedWorkspaceLayout(
     workspaceRoot: Path,
     extraClasspathRoots: List<Path>,
+    cache: WorkspaceDiscoveryCache,
 ): StandaloneWorkspaceLayout? {
     val cachedDiscovery = runCatching {
-        WorkspaceDiscoveryCache().read(workspaceRoot)
+        cache.read(workspaceRoot)
     }.getOrNull() ?: return null
 
     return GradleWorkspaceDiscovery.buildStandaloneWorkspaceLayout(
@@ -415,9 +423,10 @@ private fun cachedWorkspaceLayout(
 private fun persistWorkspaceDiscoveryCache(
     workspaceRoot: Path,
     result: GradleWorkspaceDiscoveryResult,
+    cache: WorkspaceDiscoveryCache,
 ) {
     runCatching {
-        WorkspaceDiscoveryCache().write(workspaceRoot, result)
+        cache.write(workspaceRoot, result)
     }
 }
 

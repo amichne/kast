@@ -1,6 +1,7 @@
 package io.github.amichne.kast.standalone
 
 import io.github.amichne.kast.api.contract.ModuleName
+import io.github.amichne.kast.standalone.cache.WorkspaceDiscoveryCache
 import io.github.amichne.kast.standalone.workspace.GradleDependency
 import io.github.amichne.kast.standalone.workspace.GradleDependencyScope
 import io.github.amichne.kast.standalone.workspace.GradleModuleModel
@@ -418,6 +419,7 @@ class GradleWorkspaceDiscoveryTest {
                 unblockToolingApi.await()
                 staticModules
             },
+            cache = WorkspaceDiscoveryCache(enabled = false),
         )
         val elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos)
 
@@ -479,6 +481,7 @@ class GradleWorkspaceDiscoveryTest {
                     ),
                 )
             },
+            cache = WorkspaceDiscoveryCache(enabled = false),
         )
 
         val enrichedLayout = checkNotNull(result.enrichmentFuture).get(1, TimeUnit.SECONDS)
@@ -505,6 +508,7 @@ class GradleWorkspaceDiscoveryTest {
             toolingApiLoader = { _, _ ->
                 throw TimeoutException("tooling api timed out")
             },
+            cache = WorkspaceDiscoveryCache(enabled = false),
         )
 
         val enrichedLayout = checkNotNull(result.enrichmentFuture).get(1, TimeUnit.SECONDS)
@@ -556,12 +560,14 @@ class GradleWorkspaceDiscoveryTest {
             hasCompositeBuilds = false,
         )
 
+        val noCache = WorkspaceDiscoveryCache(enabled = false)
         val phased = GradleWorkspaceDiscovery.discoverPhased(
             workspaceRoot = Path.of("/workspace"),
             extraClasspathRoots = emptyList(),
             settingsSnapshot = settingsSnapshot,
             staticModulesProvider = { staticModules },
             toolingApiLoader = { _, _ -> toolingModules },
+            cache = noCache,
         )
         val direct = GradleWorkspaceDiscovery.discover(
             workspaceRoot = Path.of("/workspace"),
@@ -569,6 +575,7 @@ class GradleWorkspaceDiscoveryTest {
             settingsSnapshot = settingsSnapshot,
             staticModulesProvider = { staticModules },
             toolingApiLoader = { _, _ -> toolingModules },
+            cache = noCache,
         )
 
         assertNull(phased.enrichmentFuture)
