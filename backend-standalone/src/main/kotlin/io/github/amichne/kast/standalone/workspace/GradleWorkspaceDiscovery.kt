@@ -48,8 +48,8 @@ internal object GradleWorkspaceDiscovery {
             loadModulesWithToolingApi(root, timeoutMillis)
         },
         warningSink: (String) -> Unit = ::logWorkspaceDiscoveryWarning,
-        cache: WorkspaceDiscoveryCache = WorkspaceDiscoveryCache(),
         config: KastConfig = KastConfig.load(workspaceRoot),
+        cache: WorkspaceDiscoveryCache = WorkspaceDiscoveryCache(enabled = config.cache.enabled),
     ): StandaloneWorkspaceLayout {
         cachedWorkspaceLayout(
             workspaceRoot = workspaceRoot,
@@ -109,8 +109,8 @@ internal object GradleWorkspaceDiscovery {
             loadModulesWithToolingApi(root, timeoutMillis)
         },
         warningSink: (String) -> Unit = ::logWorkspaceDiscoveryWarning,
-        cache: WorkspaceDiscoveryCache = WorkspaceDiscoveryCache(),
         config: KastConfig = KastConfig.load(workspaceRoot),
+        cache: WorkspaceDiscoveryCache = WorkspaceDiscoveryCache(enabled = config.cache.enabled),
     ): PhasedDiscoveryResult {
         cachedWorkspaceLayout(
             workspaceRoot = workspaceRoot,

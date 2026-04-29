@@ -1093,6 +1093,34 @@ _install_config_write() {
     } > "$config_file"
     log_success "Created ${config_file}"
   fi
+
+  # Write TOML config so the CLI can locate runtime-libs via config.backends.standalone.runtimeLibsDir
+  if [[ -n "$runtime_libs" ]]; then
+    local toml_file="${config_dir}/config.toml"
+    local toml_section="[backends.standalone]"
+    local toml_entry="runtimeLibsDir = \"${runtime_libs}\""
+    if [[ -f "$toml_file" ]]; then
+      # Update existing runtimeLibsDir if present, otherwise append the section
+      if grep -Fq "runtimeLibsDir" "$toml_file"; then
+        local tmp_toml; tmp_toml="$(mktemp)"
+        sed "s|^[[:space:]]*runtimeLibsDir[[:space:]]*=.*|${toml_entry}|" "$toml_file" > "$tmp_toml"
+        cat "$tmp_toml" > "$toml_file"; rm -f "$tmp_toml"
+        log_step "Updated runtimeLibsDir in ${toml_file}"
+      elif grep -Fq "$toml_section" "$toml_file"; then
+        local tmp_toml; tmp_toml="$(mktemp)"
+        sed "/^[[:space:]]*\[backends\.standalone\]/a\\
+${toml_entry}" "$toml_file" > "$tmp_toml"
+        cat "$tmp_toml" > "$toml_file"; rm -f "$tmp_toml"
+        log_step "Added runtimeLibsDir to ${toml_file}"
+      else
+        printf '\n%s\n%s\n' "$toml_section" "$toml_entry" >> "$toml_file"
+        log_step "Appended backends.standalone to ${toml_file}"
+      fi
+    else
+      printf '%s\n%s\n' "$toml_section" "$toml_entry" > "$toml_file"
+      log_success "Created ${toml_file}"
+    fi
+  fi
 }
 
 _install_config_source_in_rc() {

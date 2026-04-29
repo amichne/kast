@@ -1,7 +1,6 @@
 package io.github.amichne.kast.standalone.cache
 
 import io.github.amichne.kast.api.contract.ModuleName
-import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.indexstore.SqliteSourceIndexStore
 import io.github.amichne.kast.indexstore.defaultCacheJson
 import io.github.amichne.kast.standalone.normalizeStandalonePath
@@ -37,7 +36,7 @@ private val trackedGradleBuildSkipDirs = setOf(
 )
 
 internal class WorkspaceDiscoveryCache(
-    private val enabled: Boolean = KastConfig.defaults().cache.enabled,
+    private val enabled: Boolean = true,
     private val json: Json = defaultCacheJson,
     private val store: SqliteSourceIndexStore? = null,
 ) {

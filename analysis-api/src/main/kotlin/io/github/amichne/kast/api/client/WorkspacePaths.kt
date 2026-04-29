@@ -23,7 +23,7 @@ fun defaultDescriptorDirectory(envLookup: (String) -> String? = System::getenv):
 fun kastLogDirectory(workspaceRoot: Path, envLookup: (String) -> String? = System::getenv): Path =
     workspaceDataDirectory(workspaceRoot, envLookup).resolve("logs")
 
-fun defaultSocketPath(workspaceRoot: Path, envLookup: (String) -> String? = System::getenv): Path =
+fun defaultSocketPath(workspaceRoot: Path): Path =
     socketPathForWorkspace(workspaceRoot)
 
 fun workspaceMetadataDirectory(

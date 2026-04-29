@@ -109,9 +109,8 @@ class WorkspacePathsTest {
                 "nested".repeat(12),
                 "workspace".repeat(8),
             )
-            val env = mapOf("KAST_CONFIG_HOME" to tempDir.resolve("config").toString())
 
-            val socketPath = defaultSocketPath(workspaceRoot, env::get)
+            val socketPath = defaultSocketPath(workspaceRoot)
             assertTrue(socketPath.toString().length < 108)
         }
     }
