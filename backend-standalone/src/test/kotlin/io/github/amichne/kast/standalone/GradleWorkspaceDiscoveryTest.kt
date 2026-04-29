@@ -1,5 +1,6 @@
 package io.github.amichne.kast.standalone
 
+import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.contract.ModuleName
 import io.github.amichne.kast.standalone.cache.WorkspaceDiscoveryCache
 import io.github.amichne.kast.standalone.workspace.GradleDependency
@@ -30,13 +31,46 @@ class GradleWorkspaceDiscoveryTest {
     }
 
     @Test
-    fun `resolve tooling api timeout millis respects env var override`() {
+    fun `resolve tooling api timeout millis uses config override`() {
         val timeoutMillis = resolveToolingApiTimeoutMillis(
             moduleCount = 950,
-            envReader = { name -> if (name == "KAST_GRADLE_TOOLING_TIMEOUT_MS") "123456" else null },
+            config = KastConfig.defaults().copy(
+                gradle = KastConfig.defaults().gradle.copy(toolingApiTimeoutMillis = 123_456L),
+            ),
         )
 
         assertEquals(123_456L, timeoutMillis)
+    }
+
+    @Test
+    fun `discover uses configured max included projects threshold`() {
+        val staticModules = listOf(
+            gradleModule(
+                gradlePath = ":app",
+                mainSourceRoots = listOf(Path.of("/workspace/app/src/main/kotlin")),
+            ),
+        )
+        var toolingApiCalled = false
+
+        GradleWorkspaceDiscovery.discover(
+            workspaceRoot = Path.of("/workspace"),
+            extraClasspathRoots = emptyList(),
+            settingsSnapshot = GradleSettingsSnapshot(
+                includedProjectPaths = listOf(":app", ":lib"),
+                hasCompositeBuilds = false,
+            ),
+            staticModulesProvider = { staticModules },
+            toolingApiLoader = { _, _ ->
+                toolingApiCalled = true
+                staticModules
+            },
+            cache = WorkspaceDiscoveryCache(enabled = false),
+            config = KastConfig.defaults().copy(
+                gradle = KastConfig.defaults().gradle.copy(maxIncludedProjects = 1),
+            ),
+        )
+
+        assertTrue(toolingApiCalled)
     }
 
     @Test

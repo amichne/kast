@@ -22,12 +22,12 @@ class SqliteCacheInvariantTest {
     // ── 1. DB location ──────────────────────────────────────────────────
 
     @Test
-    fun `SQLite database is created under gradle kast cache directory`() {
+    fun `SQLite database is created under workspace cache directory`() {
         val normalized = normalizeStandalonePath(workspaceRoot)
         SqliteSourceIndexStore(normalized).use { store ->
             store.ensureSchema()
         }
-        val expected = normalized.resolve(".gradle/kast/cache/source-index.db")
+        val expected = kastCacheDirectory(normalized).resolve("source-index.db")
         assertTrue(Files.isRegularFile(expected)) {
             "Expected DB at $expected but it was not found"
         }
@@ -57,7 +57,7 @@ class SqliteCacheInvariantTest {
             }
         }
 
-        // After rebuild the version should be the current one.
+        // After rebuild the version should be the current one (4)
         DriverManager.getConnection("jdbc:sqlite:$dbPath").use { conn ->
             conn.prepareStatement("SELECT version FROM schema_version LIMIT 1").use { stmt ->
                 val rs = stmt.executeQuery()
@@ -80,7 +80,8 @@ class SqliteCacheInvariantTest {
                     path = "/src/file$i.kt",
                     identifiers = setOf("Ident_${i}_a", "Ident_${i}_b"),
                     packageName = "pkg$i",
-                    moduleName = "mod$i",
+                    modulePath = "mod$i",
+                    sourceSet = null,
                     imports = setOf("import.a$i"),
                     wildcardImports = setOf("wild$i"),
                 )
@@ -137,7 +138,8 @@ class SqliteCacheInvariantTest {
                         path = "/src/Seed.kt",
                         identifiers = setOf("Seed"),
                         packageName = "seed",
-                        moduleName = null,
+                        modulePath = null,
+                        sourceSet = null,
                         imports = emptySet(),
                         wildcardImports = emptySet(),
                     ),
@@ -284,7 +286,8 @@ class SqliteCacheInvariantTest {
                         path = targetPath,
                         identifiers = setOf("Alpha", "Beta"),
                         packageName = "target",
-                        moduleName = "modTarget",
+                        modulePath = "modTarget",
+                        sourceSet = null,
                         imports = setOf("import.x"),
                         wildcardImports = emptySet(),
                     ),
@@ -292,7 +295,8 @@ class SqliteCacheInvariantTest {
                         path = otherPath,
                         identifiers = setOf("Gamma"),
                         packageName = "other",
-                        moduleName = "modOther",
+                        modulePath = "modOther",
+                        sourceSet = null,
                         imports = emptySet(),
                         wildcardImports = emptySet(),
                     ),

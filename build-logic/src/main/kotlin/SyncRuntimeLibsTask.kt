@@ -37,9 +37,6 @@ abstract class SyncRuntimeLibsTask : DefaultTask() {
     abstract val runtimeJars: ConfigurableFileCollection
 
     @get:Input
-    abstract val runtimeJarPathsInOrder: ListProperty<String>
-
-    @get:Input
     abstract val requiredClassEntries: ListProperty<String>
 
     @get:OutputDirectory
@@ -59,10 +56,10 @@ abstract class SyncRuntimeLibsTask : DefaultTask() {
         copyIfChanged(appJarPath, runtimeLibsDirectory.resolve(appJarPath.name))
         copiedEntries += appJarPath.name
 
-        val runtimeJarSources = runtimeJarPathsInOrder.get()
-            .map(Path::of)
-            .filter(Files::isRegularFile)
+        val runtimeJarSources = runtimeJars.files
             .filter { it.name.endsWith(".jar") }
+            .map { it.toPath() }
+            .filter(Files::isRegularFile)
 
         if (inputChanges.isIncremental) {
             inputChanges.getFileChanges(runtimeJars).forEach { change ->

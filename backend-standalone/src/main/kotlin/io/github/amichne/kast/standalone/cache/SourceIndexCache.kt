@@ -3,6 +3,7 @@ package io.github.amichne.kast.standalone.cache
 import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.indexstore.FileIndexUpdate
 import io.github.amichne.kast.indexstore.SqliteSourceIndexStore
+import io.github.amichne.kast.indexstore.splitModuleName
 import io.github.amichne.kast.standalone.MutableSourceIdentifierIndex
 import java.nio.file.Path
 
@@ -70,12 +71,14 @@ internal class SourceIndexCache(
     ) {
         if (!enabled || !store.dbExists()) return
         runCatching {
+            val (modPath, srcSet) = splitModuleName(index.moduleNameForPath(normalizedPath)?.value)
             store.saveFileIndex(
                 FileIndexUpdate(
                     path = normalizedPath.value,
                     identifiers = index.identifiersForPath(normalizedPath).map { it.value }.toSet(),
                     packageName = index.packageNameForPath(normalizedPath)?.value,
-                    moduleName = index.moduleNameForPath(normalizedPath)?.value,
+                    modulePath = modPath,
+                    sourceSet = srcSet,
                     imports = index.importsForPath(normalizedPath).map { it.value }.toSet(),
                     wildcardImports = index.wildcardImportsForPath(normalizedPath).map { it.value }.toSet(),
                 ),
@@ -153,11 +156,13 @@ internal class SourceIndexCache(
         val allPaths = (identifiersByPath.keys + metadata.packageByPath.keys + metadata.moduleNameByPath.keys)
             .toHashSet()
         return allPaths.map { path ->
+            val (modPath, srcSet) = splitModuleName(metadata.moduleNameByPath[path])
             FileIndexUpdate(
                 path = path,
                 identifiers = identifiersByPath[path].orEmpty(),
                 packageName = metadata.packageByPath[path],
-                moduleName = metadata.moduleNameByPath[path],
+                modulePath = modPath,
+                sourceSet = srcSet,
                 imports = metadata.importsByPath[path].orEmpty().toSet(),
                 wildcardImports = metadata.wildcardImportPackagesByPath[path].orEmpty().toSet(),
             )

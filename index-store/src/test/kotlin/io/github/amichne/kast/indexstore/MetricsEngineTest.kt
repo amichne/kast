@@ -23,7 +23,8 @@ class MetricsEngineTest {
                     FanInMetric(
                         targetFqName = "lib.Foo",
                         targetPath = "/lib/Foo.kt",
-                        targetModuleName = ":lib[main]",
+                        targetModulePath = ":lib",
+                        targetSourceSet = "main",
                         occurrenceCount = 3,
                         sourceFileCount = 2,
                         sourceModuleCount = 1,
@@ -31,7 +32,8 @@ class MetricsEngineTest {
                     FanInMetric(
                         targetFqName = "app.A",
                         targetPath = "/app/A.kt",
-                        targetModuleName = ":app[main]",
+                        targetModulePath = ":app",
+                        targetSourceSet = "main",
                         occurrenceCount = 1,
                         sourceFileCount = 1,
                         sourceModuleCount = 1,
@@ -51,7 +53,8 @@ class MetricsEngineTest {
                 listOf(
                     FanOutMetric(
                         sourcePath = "/app/A.kt",
-                        sourceModuleName = ":app[main]",
+                        sourceModulePath = ":app",
+                        sourceSourceSet = "main",
                         occurrenceCount = 3,
                         targetSymbolCount = 2,
                         targetFileCount = 2,
@@ -60,7 +63,8 @@ class MetricsEngineTest {
                     ),
                     FanOutMetric(
                         sourcePath = "/app/B.kt",
-                        sourceModuleName = ":app[main]",
+                        sourceModulePath = ":app",
+                        sourceSourceSet = "main",
                         occurrenceCount = 2,
                         targetSymbolCount = 2,
                         targetFileCount = 2,
@@ -84,7 +88,8 @@ class MetricsEngineTest {
             assertEquals(
                 FanOutMetric(
                     sourcePath = "/app/B.kt",
-                    sourceModuleName = ":app[main]",
+                    sourceModulePath = ":app",
+                    sourceSourceSet = "main",
                     occurrenceCount = 3,
                     targetSymbolCount = 3,
                     targetFileCount = 2,
@@ -104,8 +109,10 @@ class MetricsEngineTest {
             assertEquals(
                 listOf(
                     ModuleCouplingMetric(
-                        sourceModuleName = ":app[main]",
-                        targetModuleName = ":lib[main]",
+                        sourceModulePath = ":app",
+                        sourceSourceSet = "main",
+                        targetModulePath = ":lib",
+                        targetSourceSet = "main",
                         referenceCount = 4,
                     ),
                 ),
@@ -125,7 +132,8 @@ class MetricsEngineTest {
                 candidates.any {
                     it.identifier == "Unused" &&
                         it.path == "/app/Unused.kt" &&
-                        it.moduleName == ":app[main]" &&
+                        it.modulePath == ":app" &&
+                        it.sourceSet == "main" &&
                         it.packageName == "app" &&
                         it.confidence == MetricsConfidence.LOW
                 },
@@ -208,16 +216,17 @@ class MetricsEngineTest {
             store.ensureSchema()
             store.saveFullIndex(
                 updates = listOf(
-                    fileUpdate("/app/A.kt", identifiers = setOf("A"), packageName = "app", moduleName = ":app[main]"),
-                    fileUpdate("/app/B.kt", identifiers = setOf("B"), packageName = "app", moduleName = ":app[main]"),
+                    fileUpdate("/app/A.kt", identifiers = setOf("A"), packageName = "app", modulePath = ":app", sourceSet = "main"),
+                    fileUpdate("/app/B.kt", identifiers = setOf("B"), packageName = "app", modulePath = ":app", sourceSet = "main"),
                     fileUpdate(
                         "/app/Unused.kt",
                         identifiers = setOf("Unused"),
                         packageName = "app",
-                        moduleName = ":app[main]",
+                        modulePath = ":app",
+                        sourceSet = "main",
                     ),
-                    fileUpdate("/lib/Foo.kt", identifiers = setOf("Foo"), packageName = "lib", moduleName = ":lib[main]"),
-                    fileUpdate("/lib/Bar.kt", identifiers = setOf("Bar"), packageName = "lib", moduleName = ":lib[main]"),
+                    fileUpdate("/lib/Foo.kt", identifiers = setOf("Foo"), packageName = "lib", modulePath = ":lib", sourceSet = "main"),
+                    fileUpdate("/lib/Bar.kt", identifiers = setOf("Bar"), packageName = "lib", modulePath = ":lib", sourceSet = "main"),
                 ),
                 manifest = mapOf(
                     "/app/A.kt" to 1L,
@@ -242,13 +251,15 @@ class MetricsEngineTest {
         path: String,
         identifiers: Set<String>,
         packageName: String,
-        moduleName: String,
+        modulePath: String,
+        sourceSet: String?,
     ): FileIndexUpdate =
         FileIndexUpdate(
             path = path,
             identifiers = identifiers,
             packageName = packageName,
-            moduleName = moduleName,
+            modulePath = modulePath,
+            sourceSet = sourceSet,
             imports = emptySet(),
             wildcardImports = emptySet(),
         )

@@ -1,19 +1,19 @@
 package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.api.protocol.AnalysisException
-import io.github.amichne.kast.api.contract.ApplyEditsResult
+import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.contract.BackendCapabilities
-import io.github.amichne.kast.api.contract.DiagnosticsResult
-import io.github.amichne.kast.api.contract.FileOutlineResult
-import io.github.amichne.kast.api.contract.ImportOptimizeResult
-import io.github.amichne.kast.api.contract.RefreshResult
-import io.github.amichne.kast.api.contract.ReferencesResult
-import io.github.amichne.kast.api.contract.RenameResult
-import io.github.amichne.kast.api.contract.CallHierarchyResult
+import io.github.amichne.kast.api.contract.result.DiagnosticsResult
+import io.github.amichne.kast.api.contract.result.FileOutlineResult
+import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
+import io.github.amichne.kast.api.contract.result.RefreshResult
+import io.github.amichne.kast.api.contract.result.ReferencesResult
+import io.github.amichne.kast.api.contract.result.RenameResult
+import io.github.amichne.kast.api.contract.result.CallHierarchyResult
 import io.github.amichne.kast.api.contract.SemanticInsertionResult
-import io.github.amichne.kast.api.contract.SymbolResult
-import io.github.amichne.kast.api.contract.TypeHierarchyResult
-import io.github.amichne.kast.api.contract.WorkspaceSymbolResult
+import io.github.amichne.kast.api.contract.result.SymbolResult
+import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
+import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 import kotlinx.serialization.json.Json
 
 internal fun defaultCliJson(): Json = Json {

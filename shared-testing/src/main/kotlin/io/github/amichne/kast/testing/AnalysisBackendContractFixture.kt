@@ -2,20 +2,20 @@ package io.github.amichne.kast.testing
 
 import io.github.amichne.kast.api.contract.AnalysisBackend
 import io.github.amichne.kast.api.contract.CallDirection
-import io.github.amichne.kast.api.contract.CallHierarchyQuery
+import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
 import io.github.amichne.kast.api.validation.FileHashing
-import io.github.amichne.kast.api.contract.FileOutlineQuery
+import io.github.amichne.kast.api.contract.query.FileOutlineQuery
 import io.github.amichne.kast.api.contract.FilePosition
 import io.github.amichne.kast.api.contract.Location
 import io.github.amichne.kast.api.contract.NormalizedPath
-import io.github.amichne.kast.api.contract.ReferencesQuery
-import io.github.amichne.kast.api.contract.RenameQuery
+import io.github.amichne.kast.api.contract.query.ReferencesQuery
+import io.github.amichne.kast.api.contract.query.RenameQuery
 import io.github.amichne.kast.api.contract.SymbolKind
-import io.github.amichne.kast.api.contract.SymbolQuery
+import io.github.amichne.kast.api.contract.query.SymbolQuery
 import io.github.amichne.kast.api.contract.TextEdit
 import io.github.amichne.kast.api.contract.TypeHierarchyDirection
-import io.github.amichne.kast.api.contract.TypeHierarchyQuery
-import io.github.amichne.kast.api.contract.WorkspaceSymbolQuery
+import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
+import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.readText

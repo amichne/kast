@@ -15,13 +15,14 @@ class SqliteSourceIndexStoreTest {
     lateinit var workspaceRoot: Path
 
     @Test
-    fun `database is created under gradle kast cache directory`() {
+    fun `database is created under workspace cache directory`() {
         val normalized = workspaceRoot.toAbsolutePath().normalize()
         SqliteSourceIndexStore(normalized).use { store ->
             store.ensureSchema()
         }
 
-        assertTrue(Files.isRegularFile(normalized.resolve(".gradle/kast/cache/source-index.db")))
+        assertTrue(Files.isRegularFile(sourceIndexDatabasePath(normalized)))
+        assertTrue(sourceIndexDatabasePath(normalized).startsWith(kastCacheDirectory(normalized)))
     }
 
     @Test
@@ -85,7 +86,8 @@ class SqliteSourceIndexStoreTest {
                     """CREATE TABLE file_metadata (
                         path TEXT PRIMARY KEY,
                         package_name TEXT,
-                        module_name TEXT,
+                        module_path TEXT,
+                        source_set TEXT,
                         imports TEXT,
                         wildcard_imports TEXT
                     )""",
@@ -129,7 +131,8 @@ class SqliteSourceIndexStoreTest {
                         path = callerPath,
                         identifiers = setOf("Caller", "call"),
                         packageName = "consumer",
-                        moduleName = ":app[main]",
+                        modulePath = ":app",
+                        sourceSet = "main",
                         imports = setOf("lib.Foo"),
                         wildcardImports = setOf("lib.internal"),
                     ),
@@ -138,6 +141,7 @@ class SqliteSourceIndexStoreTest {
             )
 
             val snapshot = store.loadSourceIndexSnapshot()
+
 
             assertEquals(listOf(callerPath), snapshot.candidatePathsByIdentifier.getValue("Caller"))
             assertEquals(":app[main]", snapshot.moduleNameByPath.getValue(callerPath))
@@ -205,7 +209,8 @@ class SqliteSourceIndexStoreTest {
                         path = callerPath,
                         identifiers = setOf("Caller"),
                         packageName = "consumer",
-                        moduleName = ":app[main]",
+                        modulePath = ":app",
+                        sourceSet = "main",
                         imports = setOf("lib.Foo", "kotlin.collections.List"),
                         wildcardImports = setOf("lib.internal"),
                     ),
@@ -226,8 +231,8 @@ class SqliteSourceIndexStoreTest {
             assertTableColumns(
                 conn = conn,
                 tableName = "file_metadata",
-                present = setOf("prefix_id", "filename", "package_fq_id", "module_name"),
-                absent = setOf("path", "package_name", "imports", "wildcard_imports"),
+                present = setOf("prefix_id", "filename", "package_fq_id", "module_path", "source_set"),
+                absent = setOf("path", "package_name", "module_name", "imports", "wildcard_imports"),
             )
             assertTableColumns(
                 conn = conn,
@@ -341,6 +346,7 @@ class SqliteSourceIndexStoreTest {
                 }
                 assertEquals(listOf("first", "second"), prefixes)
             }
+
         }
     }
 
@@ -497,7 +503,8 @@ class SqliteSourceIndexStoreTest {
             path = path,
             identifiers = setOf(identifier),
             packageName = "demo",
-            moduleName = ":main",
+            modulePath = ":main",
+            sourceSet = null,
             imports = emptySet(),
             wildcardImports = emptySet(),
         )

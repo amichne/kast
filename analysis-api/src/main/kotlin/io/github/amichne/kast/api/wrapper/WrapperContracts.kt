@@ -1,6 +1,11 @@
 package io.github.amichne.kast.api.wrapper
 
 import io.github.amichne.kast.api.contract.*
+import io.github.amichne.kast.api.contract.result.ApplyEditsResult
+import io.github.amichne.kast.api.contract.result.CallHierarchyStats
+import io.github.amichne.kast.api.contract.result.TypeHierarchyNode
+import io.github.amichne.kast.api.contract.result.TypeHierarchyStats
+import io.github.amichne.kast.api.contract.result.WorkspaceModule
 import io.github.amichne.kast.api.protocol.ApiErrorResponse
 
 import kotlinx.serialization.SerialName

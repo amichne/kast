@@ -1,6 +1,7 @@
 package io.github.amichne.kast.standalone.telemetry
 
-import io.github.amichne.kast.indexstore.kastGradleDirectory
+import io.github.amichne.kast.api.client.KastConfig
+import io.github.amichne.kast.api.client.workspaceDataDirectory
 import io.opentelemetry.api.trace.StatusCode
 import io.opentelemetry.api.trace.Tracer
 import io.opentelemetry.sdk.OpenTelemetrySdk
@@ -86,36 +87,22 @@ internal class StandaloneTelemetry private constructor(
             )
         }
 
-        fun fromEnvironment(
+        fun fromConfig(
             workspaceRoot: Path,
-            envReader: (String) -> String? = System::getenv,
+            config: KastConfig = KastConfig.load(workspaceRoot),
         ): StandaloneTelemetry {
-            val debugMode = envReader("KAST_DEBUG").isTruthy()
-            val legacyRenameEnabled = envReader("KAST_PROFILE_RENAME").isTruthy()
-            val enabled = debugMode || envReader("KAST_OTEL_ENABLED").isTruthy() || legacyRenameEnabled
-            if (!enabled) {
+            if (!config.telemetry.enabled) {
                 return disabled()
             }
 
-            val scopes = if (debugMode) {
+            val scopes = if (config.telemetry.scopes.equals("all", ignoreCase = true)) {
                 StandaloneTelemetryScope.entries.toSet()
             } else {
-                parseScopes(envReader("KAST_OTEL_SCOPES"))
-                    ?: if (legacyRenameEnabled) {
-                        setOf(StandaloneTelemetryScope.RENAME)
-                    } else {
-                        StandaloneTelemetryScope.entries.toSet()
-                    }
+                parseScopes(config.telemetry.scopes) ?: StandaloneTelemetryScope.entries.toSet()
             }
-            val detail = if (debugMode) {
-                StandaloneTelemetryDetail.VERBOSE
-            } else {
-                StandaloneTelemetryDetail.parse(
-                    envReader("KAST_OTEL_DETAIL") ?: if (legacyRenameEnabled) "verbose" else null,
-                )
-            }
+            val detail = StandaloneTelemetryDetail.parse(config.telemetry.detail)
             val outputFile = resolveOutputFile(
-                rawValue = envReader("KAST_OTEL_OUTPUT_FILE") ?: envReader("KAST_PROFILE_RENAME_FILE"),
+                rawValue = config.telemetry.outputFile,
                 workspaceRoot = workspaceRoot,
             )
 
@@ -146,7 +133,7 @@ internal class StandaloneTelemetry private constructor(
                 ?.let(Path::of)
                 ?.let { path -> if (path.isAbsolute) path else workspaceRoot.resolve(path) }
 
-            return (configuredPath ?: kastGradleDirectory(workspaceRoot).resolve("telemetry/standalone-spans.jsonl"))
+            return (configuredPath ?: workspaceDataDirectory(workspaceRoot).resolve("telemetry/standalone-spans.jsonl"))
                 .toAbsolutePath()
                 .normalize()
         }

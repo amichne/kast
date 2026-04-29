@@ -1,6 +1,6 @@
 package io.github.amichne.kast.api.contract
 
-import io.github.amichne.kast.api.protocol.*
+import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
 
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals

@@ -378,6 +378,7 @@ tasks.named<WriteWrapperScriptTask>("writeWrapperScript") {
 
 tasks.named<SyncRuntimeLibsTask>("syncRuntimeLibs") {
     requiredClassEntries.add("io/github/amichne/kast/api/client/StandaloneServerOptions.class")
+    requiredClassEntries.add("com/intellij/openapi/util/Disposer.class")
 }
 
 tasks.named<Sync>("syncPortableDist") {

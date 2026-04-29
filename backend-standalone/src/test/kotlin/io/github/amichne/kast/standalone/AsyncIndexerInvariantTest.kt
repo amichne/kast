@@ -420,6 +420,47 @@ class AsyncIndexerInvariantTest {
     }
 
     @Test
+    fun `phase 2 uses configured reference batch size`() {
+        val filePaths = (0 until 3).map { index ->
+            writeSourceFile(
+                relativePath = "sample/Batch$index.kt",
+                content = "package sample\n\nfun batch$index() = $index\n",
+            ).toString()
+        }
+        val normalized = normalizeStandalonePath(workspaceRoot)
+        val cache = SourceIndexCache(normalized)
+        val store = cache.store
+        store.ensureSchema()
+        store.saveManifest(filePaths.associateWith { System.currentTimeMillis() })
+
+        val indexer = BackgroundIndexer(
+            sourceRoots = sourceRoots(),
+            sourceIndexFileReader = { Files.readString(it) },
+            sourceModuleNameResolver = { null },
+            sourceIndexCache = cache,
+            store = store,
+            referenceBatchSize = 1,
+        )
+        indexer.use {
+            indexer.startPhase2 { path ->
+                listOf(
+                    SymbolReferenceRow(
+                        sourcePath = path,
+                        sourceOffset = 0,
+                        targetFqName = "sample.target",
+                        targetPath = null,
+                        targetOffset = null,
+                    ),
+                )
+            }
+            indexer.referenceIndexReady.get(10, TimeUnit.SECONDS)
+        }
+
+        assertEquals(3, store.referencesToSymbol("sample.target").size)
+        cache.close()
+    }
+
+    @Test
     fun `phase 2 completes referenceIndexReady future on success`() {
         val filePath = writeSourceFile(
             relativePath = "sample/Empty.kt",

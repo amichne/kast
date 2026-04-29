@@ -1,13 +1,13 @@
 package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.api.contract.Location
-import io.github.amichne.kast.api.contract.ImportOptimizeResult
+import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
 import io.github.amichne.kast.api.contract.Symbol
 import io.github.amichne.kast.api.contract.SymbolKind
 import io.github.amichne.kast.api.contract.SemanticInsertionResult
-import io.github.amichne.kast.api.contract.TypeHierarchyNode
-import io.github.amichne.kast.api.contract.TypeHierarchyResult
-import io.github.amichne.kast.api.contract.TypeHierarchyStats
+import io.github.amichne.kast.api.contract.result.TypeHierarchyNode
+import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
+import io.github.amichne.kast.api.contract.result.TypeHierarchyStats
 import io.github.amichne.kast.api.contract.TextEdit
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test

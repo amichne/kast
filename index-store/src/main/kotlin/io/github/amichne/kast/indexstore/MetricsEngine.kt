@@ -17,16 +17,18 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
     fun fanInRanking(limit: Int): List<FanInMetric> {
         require(limit >= 0) { "limit must be non-negative" }
         if (limit == 0) return emptyList()
+
         return readMetricRows(
             MetricQuerySpec(
                 sql = """
                     SELECT target_name.fq_name,
                            target_prefix.dir_path,
                            refs.tgt_filename,
-                           target_meta.module_name,
+                           target_meta.module_path,
+                           target_meta.source_set,
                            COUNT(*) AS occurrence_count,
                            COUNT(DISTINCT refs.src_prefix_id || ':' || refs.src_filename) AS source_file_count,
-                           COUNT(DISTINCT source_meta.module_name) AS source_module_count
+                           COUNT(DISTINCT source_meta.module_path) AS source_module_count
                     FROM symbol_references refs
                     LEFT JOIN file_metadata source_meta
                       ON source_meta.prefix_id = refs.src_prefix_id
@@ -36,7 +38,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
                      AND target_meta.filename = refs.tgt_filename
                     JOIN fq_names target_name ON target_name.fq_id = refs.target_fq_id
                     LEFT JOIN path_prefixes target_prefix ON target_prefix.prefix_id = refs.tgt_prefix_id
-                    GROUP BY refs.target_fq_id, refs.tgt_prefix_id, refs.tgt_filename, target_meta.module_name
+                    GROUP BY refs.target_fq_id, refs.tgt_prefix_id, refs.tgt_filename, target_meta.module_path, target_meta.source_set
                      ORDER BY occurrence_count DESC,
                               target_name.fq_name ASC,
                               COALESCE(target_prefix.dir_path || '/' || refs.tgt_filename, '') ASC
@@ -48,7 +50,8 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
                     FanInMetric(
                         targetFqName = string(FanInField.TARGET_FQ_NAME),
                         targetPath = nullablePath(FanInField.TARGET_DIR, FanInField.TARGET_FILENAME),
-                        targetModuleName = nullableString(FanInField.TARGET_MODULE_NAME),
+                        targetModulePath = nullableString(FanInField.TARGET_MODULE_PATH),
+                        targetSourceSet = nullableString(FanInField.TARGET_SOURCE_SET),
                         occurrenceCount = int(FanInField.OCCURRENCE_COUNT),
                         sourceFileCount = int(FanInField.SOURCE_FILE_COUNT),
                         sourceModuleCount = int(FanInField.SOURCE_MODULE_COUNT),
@@ -56,24 +59,27 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
                 },
             ),
         )
+
     }
 
     fun fanOutRanking(limit: Int): List<FanOutMetric> {
         require(limit >= 0) { "limit must be non-negative" }
         if (limit == 0) return emptyList()
+
         return readMetricRows(
             MetricQuerySpec(
                 sql = """
                     SELECT source_prefix.dir_path,
                            refs.src_filename,
-                           source_meta.module_name,
+                           source_meta.module_path,
+                           source_meta.source_set,
                            COUNT(*) AS occurrence_count,
                            COUNT(DISTINCT refs.target_fq_id) AS target_symbol_count,
                            COUNT(DISTINCT CASE
                                WHEN refs.tgt_prefix_id IS NULL THEN NULL
                                ELSE refs.tgt_prefix_id || ':' || refs.tgt_filename
                            END) AS target_file_count,
-                           COUNT(DISTINCT target_meta.module_name) AS target_module_count,
+                           COUNT(DISTINCT target_meta.module_path) AS target_module_count,
                            SUM(CASE WHEN refs.tgt_prefix_id IS NULL OR target_meta.prefix_id IS NULL THEN 1 ELSE 0 END)
                                 AS external_target_count
                     FROM symbol_references refs
@@ -84,7 +90,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
                     LEFT JOIN file_metadata target_meta
                       ON target_meta.prefix_id = refs.tgt_prefix_id
                      AND target_meta.filename = refs.tgt_filename
-                    GROUP BY refs.src_prefix_id, refs.src_filename, source_meta.module_name
+                    GROUP BY refs.src_prefix_id, refs.src_filename, source_meta.module_path, source_meta.source_set
                     ORDER BY occurrence_count DESC,
                              source_prefix.dir_path ASC,
                              refs.src_filename ASC
@@ -95,7 +101,8 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
                 mapRow = {
                     FanOutMetric(
                         sourcePath = path(FanOutField.SOURCE_DIR, FanOutField.SOURCE_FILENAME),
-                        sourceModuleName = nullableString(FanOutField.SOURCE_MODULE_NAME),
+                        sourceModulePath = nullableString(FanOutField.SOURCE_MODULE_PATH),
+                        sourceSourceSet = nullableString(FanOutField.SOURCE_SOURCE_SET),
                         occurrenceCount = int(FanOutField.OCCURRENCE_COUNT),
                         targetSymbolCount = int(FanOutField.TARGET_SYMBOL_COUNT),
                         targetFileCount = int(FanOutField.TARGET_FILE_COUNT),
@@ -111,7 +118,9 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
         readMetricRows(
             MetricQuerySpec(
                 sql = """
-                    SELECT source_meta.module_name, target_meta.module_name, COUNT(*) AS reference_count
+                    SELECT source_meta.module_path, source_meta.source_set,
+                           target_meta.module_path, target_meta.source_set,
+                           COUNT(*) AS reference_count
                     FROM symbol_references refs
                     JOIN file_metadata source_meta
                       ON source_meta.prefix_id = refs.src_prefix_id
@@ -119,17 +128,19 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
                     JOIN file_metadata target_meta
                       ON target_meta.prefix_id = refs.tgt_prefix_id
                      AND target_meta.filename = refs.tgt_filename
-                    WHERE source_meta.module_name IS NOT NULL
-                      AND target_meta.module_name IS NOT NULL
-                      AND source_meta.module_name <> target_meta.module_name
-                    GROUP BY source_meta.module_name, target_meta.module_name
-                    ORDER BY reference_count DESC, source_meta.module_name ASC, target_meta.module_name ASC
+                    WHERE source_meta.module_path IS NOT NULL
+                      AND target_meta.module_path IS NOT NULL
+                      AND source_meta.module_path <> target_meta.module_path
+                    GROUP BY source_meta.module_path, source_meta.source_set, target_meta.module_path, target_meta.source_set
+                    ORDER BY reference_count DESC, source_meta.module_path ASC, target_meta.module_path ASC
                 """.trimIndent(),
                 fields = ModuleCouplingField.entries,
                 mapRow = {
                     ModuleCouplingMetric(
-                        sourceModuleName = string(ModuleCouplingField.SOURCE_MODULE_NAME),
-                        targetModuleName = string(ModuleCouplingField.TARGET_MODULE_NAME),
+                        sourceModulePath = string(ModuleCouplingField.SOURCE_MODULE_PATH),
+                        sourceSourceSet = nullableString(ModuleCouplingField.SOURCE_SOURCE_SET),
+                        targetModulePath = string(ModuleCouplingField.TARGET_MODULE_PATH),
+                        targetSourceSet = nullableString(ModuleCouplingField.TARGET_SOURCE_SET),
                         referenceCount = int(ModuleCouplingField.REFERENCE_COUNT),
                     )
                 },
@@ -143,7 +154,8 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
                     SELECT identifiers.identifier,
                            identifier_prefix.dir_path,
                            identifiers.filename,
-                           metadata.module_name,
+                           metadata.module_path,
+                           metadata.source_set,
                            package_name.fq_name
                     FROM identifier_paths identifiers
                     JOIN path_prefixes identifier_prefix ON identifier_prefix.prefix_id = identifiers.prefix_id
@@ -162,7 +174,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
                                OR target_name.fq_name LIKE '%.' || identifiers.identifier
                            )
                     )
-                    ORDER BY COALESCE(metadata.module_name, '') ASC,
+                    ORDER BY COALESCE(metadata.module_path, '') ASC,
                              identifier_prefix.dir_path ASC,
                              identifiers.filename ASC,
                              identifiers.identifier ASC
@@ -172,7 +184,8 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
                     DeadCodeCandidate(
                         identifier = string(DeadCodeField.IDENTIFIER),
                         path = path(DeadCodeField.DIR, DeadCodeField.FILENAME),
-                        moduleName = nullableString(DeadCodeField.MODULE_NAME),
+                        modulePath = nullableString(DeadCodeField.MODULE_PATH),
+                        sourceSet = nullableString(DeadCodeField.SOURCE_SET),
                         packageName = nullableString(DeadCodeField.PACKAGE_NAME),
                         confidence = MetricsConfidence.LOW,
                         reason = "Identifier has no inbound reference rows matching its file and simple name; identifier_paths is lexical, not declaration-only.",
@@ -180,6 +193,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
                 },
             ),
         )
+
 
     fun changeImpactRadius(fqName: String, depth: Int): List<ChangeImpactNode> {
         require(depth >= 0) { "depth must be non-negative" }
@@ -372,7 +386,8 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
         TARGET_FQ_NAME,
         TARGET_DIR,
         TARGET_FILENAME,
-        TARGET_MODULE_NAME,
+        TARGET_MODULE_PATH,
+        TARGET_SOURCE_SET,
         OCCURRENCE_COUNT,
         SOURCE_FILE_COUNT,
         SOURCE_MODULE_COUNT,
@@ -381,7 +396,8 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
     private enum class FanOutField {
         SOURCE_DIR,
         SOURCE_FILENAME,
-        SOURCE_MODULE_NAME,
+        SOURCE_MODULE_PATH,
+        SOURCE_SOURCE_SET,
         OCCURRENCE_COUNT,
         TARGET_SYMBOL_COUNT,
         TARGET_FILE_COUNT,
@@ -390,8 +406,10 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
     }
 
     private enum class ModuleCouplingField {
-        SOURCE_MODULE_NAME,
-        TARGET_MODULE_NAME,
+        SOURCE_MODULE_PATH,
+        SOURCE_SOURCE_SET,
+        TARGET_MODULE_PATH,
+        TARGET_SOURCE_SET,
         REFERENCE_COUNT,
     }
 
@@ -399,7 +417,8 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
         IDENTIFIER,
         DIR,
         FILENAME,
-        MODULE_NAME,
+        MODULE_PATH,
+        SOURCE_SET,
         PACKAGE_NAME,
     }
 

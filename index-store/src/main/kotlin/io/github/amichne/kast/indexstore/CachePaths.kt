@@ -1,5 +1,7 @@
 package io.github.amichne.kast.indexstore
 
+import io.github.amichne.kast.api.client.workspaceCacheDirectory
+import io.github.amichne.kast.api.client.workspaceDatabasePath
 import kotlinx.serialization.json.Json
 import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
@@ -14,11 +16,9 @@ val defaultCacheJson: Json = Json {
     ignoreUnknownKeys = true
 }
 
-fun kastGradleDirectory(workspaceRoot: Path): Path = workspaceRoot.resolve(".gradle").resolve("kast")
+fun kastCacheDirectory(workspaceRoot: Path): Path = workspaceCacheDirectory(workspaceRoot)
 
-fun kastCacheDirectory(workspaceRoot: Path): Path = kastGradleDirectory(workspaceRoot).resolve("cache")
-
-fun sourceIndexDatabasePath(workspaceRoot: Path): Path = kastCacheDirectory(workspaceRoot).resolve("source-index.db")
+fun sourceIndexDatabasePath(workspaceRoot: Path): Path = workspaceDatabasePath(workspaceRoot)
 
 fun writeCacheFileAtomically(
     path: Path,

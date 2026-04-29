@@ -38,6 +38,10 @@ internal class BackgroundIndexer(
     private val interBatchYield: (() -> Unit)? = null,
 ) : AutoCloseable {
 
+    init {
+        require(phase2BatchSize > 0) { "Reference index batch size must be positive" }
+    }
+
     val identifierIndexReady = CompletableFuture<Unit>()
     val referenceIndexReady = CompletableFuture<Unit>()
 
@@ -208,6 +212,7 @@ internal class BackgroundIndexer(
         /** Number of files to batch per Phase 2 transaction to reduce SQLite write contention. */
         internal const val PHASE2_BATCH_SIZE_DEFAULT = 50
     }
+
 
     private fun loadOrBuildIndex(): MutableSourceIdentifierIndex {
         val incrementalResult = runCatching {

@@ -155,6 +155,9 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
         columnExists(conn, "file_metadata", "prefix_id") &&
         columnExists(conn, "file_metadata", "filename") &&
         columnExists(conn, "file_metadata", "package_fq_id") &&
+        columnExists(conn, "file_metadata", "module_path") &&
+        columnExists(conn, "file_metadata", "source_set") &&
+        !columnExists(conn, "file_metadata", "module_name") &&
         !columnExists(conn, "file_metadata", "package_name") &&
         !columnExists(conn, "file_metadata", "imports") &&
         !columnExists(conn, "file_metadata", "wildcard_imports") &&
@@ -251,10 +254,12 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
             )
             stmt.execute("INSERT INTO schema_version (version, generation, head_commit) VALUES ($SOURCE_INDEX_SCHEMA_VERSION, 0, NULL)")
 
+
             createPathPrefixTable(stmt)
             createFqNameTable(stmt)
             createSourceIndexTables(stmt)
             createSourceIndexIndexes(stmt)
+
 
             stmt.execute(
                 """CREATE TABLE IF NOT EXISTS workspace_discovery (
@@ -299,7 +304,8 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
                 prefix_id INTEGER NOT NULL,
                 filename TEXT NOT NULL,
                 package_fq_id INTEGER,
-                module_name TEXT,
+                module_path TEXT,
+                source_set TEXT,
                 PRIMARY KEY (prefix_id, filename)
             )""",
         )
@@ -364,7 +370,9 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
 
     private fun createSourceIndexIndexes(stmt: java.sql.Statement) {
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_ip_prefix_file ON identifier_paths(prefix_id, filename)")
-        stmt.execute("CREATE INDEX IF NOT EXISTS idx_file_metadata_module ON file_metadata(module_name)")
+        stmt.execute("CREATE INDEX IF NOT EXISTS idx_file_metadata_module_path ON file_metadata(module_path)")
+        stmt.execute("CREATE INDEX IF NOT EXISTS idx_file_metadata_source_set ON file_metadata(source_set)")
+        stmt.execute("CREATE INDEX IF NOT EXISTS idx_file_metadata_module_path_source_set ON file_metadata(module_path, source_set)")
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_file_metadata_package ON file_metadata(package_fq_id)")
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_file_imports_fq ON file_imports(fq_id)")
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_file_wildcard_imports_fq ON file_wildcard_imports(fq_id)")
@@ -470,12 +478,19 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
 
             conn.createStatement().use { stmt ->
                 val rs = stmt.executeQuery(
-                    "SELECT prefix_id, filename, package_fq_id, module_name FROM file_metadata",
+
+                    "SELECT prefix_id, filename, package_fq_id, module_path, source_set FROM file_metadata",
                 )
                 while (rs.next()) {
                     val path = pathCodec.decode(rs.getInt(1), rs.getString(2))
                     rs.getNullableInt(3)?.let { packageByPath[path] = fqCodec.resolve(it) }
-                    rs.getString(4)?.let { moduleNameByPath[path] = it }
+                    val modulePath = rs.getString(4)
+                    val sourceSet = rs.getString(5)
+                    if (modulePath != null) {
+                        val reconstructed = if (sourceSet != null) "$modulePath[$sourceSet]" else modulePath
+                        moduleNameByPath[path] = reconstructed
+                    }
+
                 }
             }
 
@@ -953,8 +968,8 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
         fqCodec.batchEnsure(conn, update.imports + update.wildcardImports)
         conn.prepareStatement(
             """INSERT OR REPLACE INTO file_metadata
-               (prefix_id, filename, package_fq_id, module_name)
-               VALUES (?, ?, ?, ?)""",
+               (prefix_id, filename, package_fq_id, module_path, source_set)
+               VALUES (?, ?, ?, ?, ?)""",
         ).use { stmt ->
             stmt.setInt(1, prefixId)
             stmt.setString(2, filename)
@@ -962,7 +977,9 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
                 ?.let(fqCodec::idFor)
                 ?.let { stmt.setInt(3, it) }
             ?: stmt.setNull(3, java.sql.Types.INTEGER)
-            stmt.setString(4, update.moduleName)
+            stmt.setString(4, update.modulePath)
+            stmt.setString(5, update.sourceSet)
+
             stmt.executeUpdate()
         }
         insertFileFqNamesInTransaction(conn, tableName = "file_imports", prefixId, filename, update.imports)
@@ -1168,7 +1185,8 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
                     path = path,
                     identifiers = payload.identifiers.toSet(),
                     packageName = payload.packageName,
-                    moduleName = payload.moduleName,
+                    modulePath = payload.modulePath,
+                    sourceSet = payload.sourceSet,
                     imports = payload.imports.toSet(),
                     wildcardImports = payload.wildcardImports.toSet(),
                 )
@@ -1299,7 +1317,8 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
     private data class PendingFilePayload(
         val identifiers: List<String> = emptyList(),
         val packageName: String? = null,
-        val moduleName: String? = null,
+        val modulePath: String? = null,
+        val sourceSet: String? = null,
         val imports: List<String> = emptyList(),
         val wildcardImports: List<String> = emptyList(),
     )

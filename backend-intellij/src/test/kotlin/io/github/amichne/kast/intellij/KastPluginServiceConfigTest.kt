@@ -1,19 +1,18 @@
 package io.github.amichne.kast.intellij
 
+import io.github.amichne.kast.api.client.KastConfig
+import io.github.amichne.kast.api.client.ServerConfig
 import io.github.amichne.kast.api.contract.ServerLimits
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import java.nio.file.Path
 
 class KastPluginServiceConfigTest {
     @Test
-    fun `intellij server limits use defaults when env is missing or invalid`() {
-        val limits = intellijServerLimits(
-            getenv = mapOf(
-                "KAST_INTELLIJ_MAX_CONCURRENT" to "nope",
-                "KAST_INTELLIJ_TIMEOUT_MS" to null,
-                "KAST_INTELLIJ_MAX_RESULTS" to "",
-            )::get,
-        )
+    fun `intellij server limits use config defaults`() {
+        val limits = intellijServerLimits(KastConfig.defaults())
 
         assertEquals(
             ServerLimits(
@@ -26,13 +25,15 @@ class KastPluginServiceConfigTest {
     }
 
     @Test
-    fun `intellij server limits honor valid env overrides`() {
+    fun `intellij server limits honor config overrides`() {
         val limits = intellijServerLimits(
-            getenv = mapOf(
-                "KAST_INTELLIJ_MAX_CONCURRENT" to "9",
-                "KAST_INTELLIJ_TIMEOUT_MS" to "120000",
-                "KAST_INTELLIJ_MAX_RESULTS" to "42",
-            )::get,
+            KastConfig.defaults().copy(
+                server = ServerConfig(
+                    maxResults = 42,
+                    requestTimeoutMillis = 120_000L,
+                    maxConcurrentRequests = 9,
+                ),
+            ),
         )
 
         assertEquals(
@@ -43,5 +44,24 @@ class KastPluginServiceConfigTest {
             ),
             limits,
         )
+    }
+
+    @Test
+    fun `intellij telemetry uses config`() {
+        val telemetry = IntelliJBackendTelemetry.fromConfig(
+            workspaceRoot = Path.of("/tmp/workspace"),
+            config = KastConfig.defaults().copy(
+                telemetry = KastConfig.defaults().telemetry.copy(
+                    enabled = true,
+                    scopes = "references,rename",
+                    detail = "verbose",
+                ),
+            ),
+        )
+
+        assertTrue(telemetry.isEnabled(IntelliJTelemetryScope.REFERENCES))
+        assertTrue(telemetry.isEnabled(IntelliJTelemetryScope.RENAME))
+        assertFalse(telemetry.isEnabled(IntelliJTelemetryScope.CALL_HIERARCHY))
+        assertTrue(telemetry.isVerbose(IntelliJTelemetryScope.REFERENCES))
     }
 }

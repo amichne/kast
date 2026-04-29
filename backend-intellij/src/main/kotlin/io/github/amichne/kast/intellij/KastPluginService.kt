@@ -6,9 +6,10 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
+import io.github.amichne.kast.api.client.KastConfig
+import io.github.amichne.kast.api.client.defaultSocketPath
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.api.contract.ServerLimits
-import io.github.amichne.kast.api.client.defaultSocketPath
 import io.github.amichne.kast.indexstore.ReferenceIndexer
 import io.github.amichne.kast.indexstore.SqliteSourceIndexStore
 import io.github.amichne.kast.server.AnalysisServer
@@ -18,10 +19,6 @@ import io.github.amichne.kast.shared.analysis.PsiReferenceScanner
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.thread
-
-private const val DEFAULT_MAX_RESULTS = 500
-private const val DEFAULT_REQUEST_TIMEOUT_MILLIS = 30_000L
-private const val DEFAULT_MAX_CONCURRENT_REQUESTS = 4
 
 @Service(Service.Level.PROJECT)
 internal class KastPluginService(
@@ -46,13 +43,14 @@ internal class KastPluginService(
 
         LOG.info("Starting kast intellij backend for workspace: $workspaceRoot")
 
-        val limits = intellijServerLimits()
+        val kastConfig = KastConfig.load(workspaceRoot)
+        val limits = intellijServerLimits(kastConfig)
 
         val backend = KastPluginBackend(
             project = project,
             workspaceRoot = workspaceRoot,
             limits = limits,
-            telemetry = IntelliJBackendTelemetry.fromEnvironment(workspaceRoot),
+            telemetry = IntelliJBackendTelemetry.fromConfig(workspaceRoot, kastConfig),
         )
 
         val socketPath = defaultSocketPath(workspaceRoot)
@@ -138,10 +136,8 @@ internal class KastPluginService(
     }
 }
 
-internal fun intellijServerLimits(
-    getenv: (String) -> String? = System::getenv,
-): ServerLimits = ServerLimits(
-    maxConcurrentRequests = (getenv("KAST_INTELLIJ_MAX_CONCURRENT")?.toIntOrNull() ?: DEFAULT_MAX_CONCURRENT_REQUESTS).coerceAtLeast(1),
-    requestTimeoutMillis = getenv("KAST_INTELLIJ_TIMEOUT_MS")?.toLongOrNull() ?: DEFAULT_REQUEST_TIMEOUT_MILLIS,
-    maxResults = getenv("KAST_INTELLIJ_MAX_RESULTS")?.toIntOrNull() ?: DEFAULT_MAX_RESULTS,
+internal fun intellijServerLimits(config: KastConfig): ServerLimits = ServerLimits(
+    maxConcurrentRequests = config.server.maxConcurrentRequests.coerceAtLeast(1),
+    requestTimeoutMillis = config.server.requestTimeoutMillis,
+    maxResults = config.server.maxResults,
 )

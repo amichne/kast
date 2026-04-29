@@ -1,27 +1,27 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.api.contract.ApplyEditsQuery
+import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
 import io.github.amichne.kast.api.contract.CallDirection
-import io.github.amichne.kast.api.contract.CallHierarchyQuery
-import io.github.amichne.kast.api.contract.CodeActionsQuery
-import io.github.amichne.kast.api.contract.CompletionsQuery
-import io.github.amichne.kast.api.contract.DiagnosticsQuery
-import io.github.amichne.kast.api.contract.FileOutlineQuery
+import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
+import io.github.amichne.kast.api.contract.query.CodeActionsQuery
+import io.github.amichne.kast.api.contract.query.CompletionsQuery
+import io.github.amichne.kast.api.contract.query.DiagnosticsQuery
+import io.github.amichne.kast.api.contract.query.FileOutlineQuery
 import io.github.amichne.kast.api.contract.FilePosition
-import io.github.amichne.kast.api.contract.ImportOptimizeQuery
-import io.github.amichne.kast.api.contract.ImplementationsQuery
-import io.github.amichne.kast.api.contract.ReferencesQuery
-import io.github.amichne.kast.api.contract.RefreshQuery
-import io.github.amichne.kast.api.contract.RenameQuery
+import io.github.amichne.kast.api.contract.query.ImportOptimizeQuery
+import io.github.amichne.kast.api.contract.query.ImplementationsQuery
+import io.github.amichne.kast.api.contract.query.ReferencesQuery
+import io.github.amichne.kast.api.contract.query.RefreshQuery
+import io.github.amichne.kast.api.contract.query.RenameQuery
 import io.github.amichne.kast.api.contract.SemanticInsertionQuery
 import io.github.amichne.kast.api.contract.SemanticInsertionTarget
 import io.github.amichne.kast.api.client.StandaloneServerOptions
 import io.github.amichne.kast.api.contract.SymbolKind
-import io.github.amichne.kast.api.contract.SymbolQuery
+import io.github.amichne.kast.api.contract.query.SymbolQuery
 import io.github.amichne.kast.api.contract.TypeHierarchyDirection
-import io.github.amichne.kast.api.contract.TypeHierarchyQuery
-import io.github.amichne.kast.api.contract.WorkspaceFilesQuery
-import io.github.amichne.kast.api.contract.WorkspaceSymbolQuery
+import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
+import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
+import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
 import io.github.amichne.kast.cli.skill.SkillWrapperName
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
@@ -119,6 +119,7 @@ internal class CliCommandParser(
                 listOf("install", "skill") -> CliCommand.InstallSkill(parsed.installSkillOptions())
                 listOf("smoke") -> CliCommand.Smoke(parsed.smokeOptions())
                 listOf("daemon", "start") -> CliCommand.DaemonStart(parsed.daemonStartOptions())
+                listOf("config", "init") -> CliCommand.ConfigInit
                 listOf("eval", "skill") -> CliCommand.EvalSkill(parsed.evalSkillOptions())
                 listOf("metrics", "fan-in") -> CliCommand.Metrics(
                     subcommand = MetricsSubcommand.FAN_IN,
@@ -569,6 +570,10 @@ internal data class ParsedArguments(
         val forwardedArgs = (options - "runtime-libs-dir").map { (key, value) -> "--$key=$value" }
         return DaemonStartOptions(
             standaloneArgs = forwardedArgs,
+            workspaceRoot = options["workspace-root"]
+                ?.takeIf(String::isNotBlank)
+                ?.let { Path.of(it).toAbsolutePath().normalize() }
+                ?: Path.of(System.getProperty("user.dir", ".")).toAbsolutePath().normalize(),
             runtimeLibsDir = runtimeLibsDir,
         )
     }

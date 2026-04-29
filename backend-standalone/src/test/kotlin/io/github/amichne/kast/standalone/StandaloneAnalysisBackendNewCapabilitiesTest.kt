@@ -1,9 +1,9 @@
 package io.github.amichne.kast.standalone
 
-import io.github.amichne.kast.api.contract.CodeActionsQuery
-import io.github.amichne.kast.api.contract.CompletionsQuery
+import io.github.amichne.kast.api.contract.query.CodeActionsQuery
+import io.github.amichne.kast.api.contract.query.CompletionsQuery
 import io.github.amichne.kast.api.contract.FilePosition
-import io.github.amichne.kast.api.contract.ImplementationsQuery
+import io.github.amichne.kast.api.contract.query.ImplementationsQuery
 import io.github.amichne.kast.api.contract.ServerLimits
 import kotlinx.coroutines.test.TestResult
 import kotlinx.coroutines.test.runTest

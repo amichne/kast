@@ -3,9 +3,9 @@ package io.github.amichne.kast.cli.skill
 import io.github.amichne.kast.api.contract.FilePosition
 import io.github.amichne.kast.api.contract.Symbol
 import io.github.amichne.kast.api.contract.SymbolKind
-import io.github.amichne.kast.api.contract.SymbolQuery
+import io.github.amichne.kast.api.contract.query.SymbolQuery
 import io.github.amichne.kast.api.wrapper.WrapperNamedSymbolKind
-import io.github.amichne.kast.api.contract.WorkspaceSymbolQuery
+import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
 import io.github.amichne.kast.cli.CliService
 import io.github.amichne.kast.cli.RuntimeCommandOptions
 

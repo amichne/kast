@@ -36,7 +36,7 @@ private val trackedGradleBuildSkipDirs = setOf(
 )
 
 internal class WorkspaceDiscoveryCache(
-    private val enabled: Boolean = !isCacheDisabled(),
+    private val enabled: Boolean = true,
     private val json: Json = defaultCacheJson,
     private val store: SqliteSourceIndexStore? = null,
 ) {

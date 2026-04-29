@@ -2,10 +2,9 @@ package io.github.amichne.kast.standalone
 
 import io.github.amichne.kast.api.contract.ReadCapability
 import io.github.amichne.kast.api.contract.ServerLimits
-import io.github.amichne.kast.api.contract.WorkspaceFilesQuery
+import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir

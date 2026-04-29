@@ -1,47 +1,51 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.api.contract.ApplyEditsQuery
-import io.github.amichne.kast.api.contract.ApplyEditsResult
+import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
+import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.contract.BackendCapabilities
-import io.github.amichne.kast.api.contract.CallHierarchyQuery
-import io.github.amichne.kast.api.contract.CallHierarchyResult
+import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
+import io.github.amichne.kast.api.contract.result.CallHierarchyResult
 import io.github.amichne.kast.api.protocol.CapabilityNotSupportedException
-import io.github.amichne.kast.api.contract.CodeActionsQuery
-import io.github.amichne.kast.api.contract.CodeActionsResult
-import io.github.amichne.kast.api.contract.CompletionsQuery
-import io.github.amichne.kast.api.contract.CompletionsResult
-import io.github.amichne.kast.api.contract.DiagnosticsQuery
-import io.github.amichne.kast.api.contract.DiagnosticsResult
-import io.github.amichne.kast.api.contract.FileOutlineQuery
-import io.github.amichne.kast.api.contract.FileOutlineResult
-import io.github.amichne.kast.api.contract.ImportOptimizeQuery
-import io.github.amichne.kast.api.contract.ImportOptimizeResult
-import io.github.amichne.kast.api.contract.ImplementationsQuery
-import io.github.amichne.kast.api.contract.ImplementationsResult
+import io.github.amichne.kast.api.contract.query.CodeActionsQuery
+import io.github.amichne.kast.api.contract.result.CodeActionsResult
+import io.github.amichne.kast.api.contract.query.CompletionsQuery
+import io.github.amichne.kast.api.contract.result.CompletionsResult
+import io.github.amichne.kast.api.contract.query.DiagnosticsQuery
+import io.github.amichne.kast.api.contract.result.DiagnosticsResult
+import io.github.amichne.kast.api.contract.query.FileOutlineQuery
+import io.github.amichne.kast.api.contract.result.FileOutlineResult
+import io.github.amichne.kast.api.contract.query.ImportOptimizeQuery
+import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
+import io.github.amichne.kast.api.contract.query.ImplementationsQuery
+import io.github.amichne.kast.api.contract.result.ImplementationsResult
 import io.github.amichne.kast.api.contract.MutationCapability
 import io.github.amichne.kast.api.contract.ReadCapability
-import io.github.amichne.kast.api.contract.RefreshQuery
-import io.github.amichne.kast.api.contract.RefreshResult
-import io.github.amichne.kast.api.contract.ReferencesQuery
-import io.github.amichne.kast.api.contract.ReferencesResult
-import io.github.amichne.kast.api.contract.RenameQuery
-import io.github.amichne.kast.api.contract.RenameResult
+import io.github.amichne.kast.api.contract.query.RefreshQuery
+import io.github.amichne.kast.api.contract.result.RefreshResult
+import io.github.amichne.kast.api.contract.query.ReferencesQuery
+import io.github.amichne.kast.api.contract.result.ReferencesResult
+import io.github.amichne.kast.api.contract.query.RenameQuery
+import io.github.amichne.kast.api.contract.result.RenameResult
 import io.github.amichne.kast.api.contract.SemanticInsertionQuery
 import io.github.amichne.kast.api.contract.SemanticInsertionResult
-import io.github.amichne.kast.api.contract.SymbolQuery
-import io.github.amichne.kast.api.contract.SymbolResult
-import io.github.amichne.kast.api.contract.TypeHierarchyQuery
-import io.github.amichne.kast.api.contract.TypeHierarchyResult
-import io.github.amichne.kast.api.contract.WorkspaceFilesQuery
-import io.github.amichne.kast.api.contract.WorkspaceFilesResult
-import io.github.amichne.kast.api.contract.WorkspaceSymbolQuery
-import io.github.amichne.kast.api.contract.WorkspaceSymbolResult
+import io.github.amichne.kast.api.contract.query.SymbolQuery
+import io.github.amichne.kast.api.contract.result.SymbolResult
+import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
+import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
+import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
+import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
+import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
+import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
+import io.github.amichne.kast.api.client.KastConfig
+import io.github.amichne.kast.api.client.kastConfigHome
 import kotlinx.serialization.json.Json
+import java.nio.file.Files
 
 internal class CliService(
     json: Json,
     private val installService: InstallService = InstallService(),
     private val installSkillService: InstallSkillService = InstallSkillService(),
+    private val configLoader: (java.nio.file.Path) -> KastConfig = KastConfig::load,
 ) {
     private val rpcClient = KastRpcClient(json)
     private val runtimeManager = WorkspaceRuntimeManager(rpcClient)
@@ -254,18 +258,15 @@ internal class CliService(
     suspend fun smoke(options: SmokeOptions): SmokeReport = smokeCommandSupport.run(options)
 
     fun daemonStart(options: DaemonStartOptions): CliOutput {
+        val config = configLoader(options.workspaceRoot)
         val runtimeLibsDir = options.runtimeLibsDir
-            ?: System.getenv("KAST_STANDALONE_RUNTIME_LIBS")
+            ?: config.backends.standalone.runtimeLibsDir
                 ?.takeIf(String::isNotBlank)
-                ?.let { java.nio.file.Path.of(it) }
-            ?: System.getenv("KAST_INSTALL_ROOT")
-                ?.takeIf(String::isNotBlank)
-                ?.let { java.nio.file.Path.of(it).resolve("backends/current/runtime-libs") }
+                ?.let { java.nio.file.Path.of(it).toAbsolutePath().normalize() }
             ?: throw CliFailure(
                 code = "DAEMON_START_ERROR",
                 message = "Cannot locate backend runtime-libs. " +
-                    "Set KAST_STANDALONE_RUNTIME_LIBS=/path/to/runtime-libs or install the backend with " +
-                    "`./kast.sh install --components=backend`.",
+                    "Set backends.standalone.runtimeLibsDir in `kast config init` output or pass --runtime-libs-dir.",
             )
 
         val classpathFile = runtimeLibsDir.resolve("classpath.txt")
@@ -273,7 +274,7 @@ internal class CliService(
             throw CliFailure(
                 code = "DAEMON_START_ERROR",
                 message = "Backend runtime-libs classpath not found at $classpathFile. " +
-                    "Reinstall with `./kast.sh install --components=backend` or set KAST_STANDALONE_RUNTIME_LIBS.",
+                    "Reinstall the backend, update backends.standalone.runtimeLibsDir, or pass --runtime-libs-dir.",
             )
         }
 
@@ -310,6 +311,16 @@ internal class CliService(
         return CliOutput.ExternalProcess(
             CliExternalProcess(command = command),
         )
+    }
+
+    fun configInit(): CliOutput {
+        val configFile = kastConfigHome().resolve("config.toml")
+        Files.createDirectories(configFile.parent)
+        if (!Files.exists(configFile)) {
+            Files.writeString(configFile, defaultConfigTemplate())
+            return CliOutput.Text("Wrote $configFile")
+        }
+        return CliOutput.Text("Config file already exists at $configFile")
     }
 
     suspend fun applyEdits(
@@ -370,3 +381,44 @@ internal class CliService(
         }
     }
 }
+
+private fun defaultConfigTemplate(): String = """
+    # Kast configuration
+    # Uncomment settings to override defaults.
+
+    # [server]
+    # maxResults = 500
+    # requestTimeoutMillis = 30000
+    # maxConcurrentRequests = 4
+
+    # [indexing]
+    # phase2Enabled = true
+    # phase2BatchSize = 50
+    # identifierIndexWaitMillis = 10000
+    # referenceBatchSize = 50
+
+    # [cache]
+    # enabled = true
+    # writeDelayMillis = 5000
+    # sourceIndexSaveDelayMillis = 5000
+
+    # [watcher]
+    # debounceMillis = 200
+
+    # [gradle]
+    # toolingApiTimeoutMillis = 60000
+    # maxIncludedProjects = 200
+
+    # [telemetry]
+    # enabled = false
+    # scopes = "all"
+    # detail = "basic"
+    # outputFile = null
+
+    # [backends.standalone]
+    # enabled = true
+    # runtimeLibsDir = "/absolute/path/to/runtime-libs"
+
+    # [backends.intellij]
+    # enabled = true
+""".trimIndent() + System.lineSeparator()

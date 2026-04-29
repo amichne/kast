@@ -1,5 +1,6 @@
 package io.github.amichne.kast.standalone.workspace
 
+import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.contract.ModuleName
 import io.github.amichne.kast.standalone.StandaloneSourceModuleSpec
 import io.github.amichne.kast.standalone.StandaloneWorkspaceLayout
@@ -27,10 +28,12 @@ internal const val defaultToolingApiTimeoutMillis = 60_000L
 
 internal fun resolveToolingApiTimeoutMillis(
     moduleCount: Int,
-    envReader: (String) -> String? = System::getenv,
+    config: KastConfig = KastConfig.defaults(),
 ): Long {
-    envReader("KAST_GRADLE_TOOLING_TIMEOUT_MS")?.toLongOrNull()?.let { return it }
-    return (moduleCount * 200L).coerceIn(defaultToolingApiTimeoutMillis, 300_000L)
+    if (config.gradle.toolingApiTimeoutMillis != defaultToolingApiTimeoutMillis) {
+        return config.gradle.toolingApiTimeoutMillis
+    }
+    return (moduleCount * 200L).coerceIn(config.gradle.toolingApiTimeoutMillis, 300_000L)
 }
 
 internal object GradleWorkspaceDiscovery {
@@ -45,7 +48,8 @@ internal object GradleWorkspaceDiscovery {
             loadModulesWithToolingApi(root, timeoutMillis)
         },
         warningSink: (String) -> Unit = ::logWorkspaceDiscoveryWarning,
-        cache: WorkspaceDiscoveryCache = WorkspaceDiscoveryCache(),
+        config: KastConfig = KastConfig.load(workspaceRoot),
+        cache: WorkspaceDiscoveryCache = WorkspaceDiscoveryCache(enabled = config.cache.enabled),
     ): StandaloneWorkspaceLayout {
         cachedWorkspaceLayout(
             workspaceRoot = workspaceRoot,
@@ -55,8 +59,8 @@ internal object GradleWorkspaceDiscovery {
             return cachedLayout
         }
 
-        val toolingApiTimeoutMillis = resolveToolingApiTimeoutMillis(settingsSnapshot.includedProjectPaths.size)
-        val discoveryResult = if (settingsSnapshot.shouldPreferStaticDiscovery()) {
+        val toolingApiTimeoutMillis = resolveToolingApiTimeoutMillis(settingsSnapshot.includedProjectPaths.size, config)
+        val discoveryResult = if (settingsSnapshot.shouldPreferStaticDiscovery(config.gradle.maxIncludedProjects)) {
             val resolvedStaticModules = staticModulesProvider()
             enrichStaticModulesWithToolingApiLibraries(
                 workspaceRoot = workspaceRoot,
@@ -105,7 +109,8 @@ internal object GradleWorkspaceDiscovery {
             loadModulesWithToolingApi(root, timeoutMillis)
         },
         warningSink: (String) -> Unit = ::logWorkspaceDiscoveryWarning,
-        cache: WorkspaceDiscoveryCache = WorkspaceDiscoveryCache(),
+        config: KastConfig = KastConfig.load(workspaceRoot),
+        cache: WorkspaceDiscoveryCache = WorkspaceDiscoveryCache(enabled = config.cache.enabled),
     ): PhasedDiscoveryResult {
         cachedWorkspaceLayout(
             workspaceRoot = workspaceRoot,
@@ -118,7 +123,7 @@ internal object GradleWorkspaceDiscovery {
             )
         }
 
-        if (!settingsSnapshot.shouldPreferStaticDiscovery()) {
+        if (!settingsSnapshot.shouldPreferStaticDiscovery(config.gradle.maxIncludedProjects)) {
             return PhasedDiscoveryResult(
                 initialLayout = discover(
                     workspaceRoot = workspaceRoot,
@@ -128,6 +133,7 @@ internal object GradleWorkspaceDiscovery {
                     toolingApiLoader = toolingApiLoader,
                     warningSink = warningSink,
                     cache = cache,
+                    config = config,
                 ),
                 enrichmentFuture = null,
             )
@@ -139,7 +145,7 @@ internal object GradleWorkspaceDiscovery {
             extraClasspathRoots = extraClasspathRoots,
             diagnostics = workspaceDiscoveryDiagnostics(staticModules),
         )
-        val toolingApiTimeoutMillis = resolveToolingApiTimeoutMillis(settingsSnapshot.includedProjectPaths.size)
+        val toolingApiTimeoutMillis = resolveToolingApiTimeoutMillis(settingsSnapshot.includedProjectPaths.size, config)
         val enrichmentFuture = CompletableFuture.supplyAsync {
             val enrichedResult = runCatching {
                 val toolingModules = toolingApiLoader(workspaceRoot, toolingApiTimeoutMillis)

@@ -32,12 +32,15 @@ data class StandaloneServerOptions(
             return fromValues(values)
         }
 
-        fun fromValues(values: Map<String, String>): StandaloneServerOptions {
+        fun fromValues(
+            values: Map<String, String>,
+            config: KastConfig? = null,
+        ): StandaloneServerOptions {
             val workspaceRoot = Path(
                 values["workspace-root"]
-                    ?: System.getenv("KAST_WORKSPACE_ROOT")
                     ?: System.getProperty("user.dir"),
             ).toAbsolutePath().normalize()
+            val resolvedConfig = config ?: KastConfig.load(workspaceRoot)
             return StandaloneServerOptions(
                 workspaceRoot = workspaceRoot,
                 sourceRoots = parsePathList(values["source-roots"]),
@@ -59,9 +62,9 @@ data class StandaloneServerOptions(
                             ?: defaultSocketPath(workspaceRoot),
                     )
                 },
-                requestTimeoutMillis = values["request-timeout-ms"]?.toLong() ?: 30_000L,
-                maxResults = values["max-results"]?.toInt() ?: 500,
-                maxConcurrentRequests = values["max-concurrent-requests"]?.toInt() ?: 4,
+                requestTimeoutMillis = values["request-timeout-ms"]?.toLong() ?: resolvedConfig.server.requestTimeoutMillis,
+                maxResults = values["max-results"]?.toInt() ?: resolvedConfig.server.maxResults,
+                maxConcurrentRequests = values["max-concurrent-requests"]?.toInt() ?: resolvedConfig.server.maxConcurrentRequests,
             )
         }
 

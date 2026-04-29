@@ -1,5 +1,6 @@
 package io.github.amichne.kast.standalone.cache
 
+import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.indexstore.kastCacheDirectory
 import io.github.amichne.kast.standalone.normalizeStandalonePath
 import java.nio.file.Path
@@ -7,11 +8,9 @@ import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 
-internal const val defaultCacheWriteDelayMillis = 5_000L
-
 internal class CacheManager(
     workspaceRoot: Path,
-    envReader: (String) -> String? = System::getenv,
+    config: KastConfig = KastConfig.load(workspaceRoot),
 ) : AutoCloseable {
     private val writeLock = Any()
     private val writeExecutor = Executors.newSingleThreadScheduledExecutor { runnable ->
@@ -20,7 +19,8 @@ internal class CacheManager(
         }
     }
     private val cacheDirectory = kastCacheDirectory(normalizeStandalonePath(workspaceRoot))
-    private val enabled = !isCacheDisabled(envReader)
+    private val enabled = config.cache.enabled
+    private val defaultWriteDelayMillis = config.cache.writeDelayMillis
     private val pendingWrites = linkedMapOf<String, PendingCacheWrite>()
 
     fun isEnabled(): Boolean = enabled
@@ -34,7 +34,7 @@ internal class CacheManager(
 
     fun schedule(
         key: String,
-        delayMillis: Long = defaultCacheWriteDelayMillis,
+        delayMillis: Long = defaultWriteDelayMillis,
         action: () -> Unit,
     ) {
         if (!enabled) {
@@ -86,11 +86,3 @@ private data class PendingCacheWrite(
     val action: () -> Unit,
     val future: ScheduledFuture<*>,
 )
-
-internal fun isCacheDisabled(envReader: (String) -> String? = System::getenv): Boolean =
-    envReader("KAST_CACHE_DISABLED").isTruthy()
-
-private fun String?.isTruthy(): Boolean = when (this?.trim()?.lowercase()) {
-    "1", "true", "yes", "on" -> true
-    else -> false
-}

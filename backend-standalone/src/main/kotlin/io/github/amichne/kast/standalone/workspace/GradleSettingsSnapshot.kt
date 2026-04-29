@@ -8,7 +8,8 @@ internal data class GradleSettingsSnapshot(
     val includedProjectPaths: List<String>,
     val hasCompositeBuilds: Boolean,
 ) {
-    fun shouldPreferStaticDiscovery(): Boolean = includedProjectPaths.size > maxIncludedProjectsForToolingApi
+    fun shouldPreferStaticDiscovery(maxIncludedProjects: Int = maxIncludedProjectsForToolingApi): Boolean =
+        includedProjectPaths.size > maxIncludedProjects
 
     fun projectPathsForStaticDiscovery(): List<String> = buildList {
         add(":")
