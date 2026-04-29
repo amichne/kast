@@ -155,6 +155,9 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
         columnExists(conn, "file_metadata", "prefix_id") &&
         columnExists(conn, "file_metadata", "filename") &&
         columnExists(conn, "file_metadata", "package_fq_id") &&
+        columnExists(conn, "file_metadata", "module_path") &&
+        columnExists(conn, "file_metadata", "source_set") &&
+        !columnExists(conn, "file_metadata", "module_name") &&
         !columnExists(conn, "file_metadata", "package_name") &&
         !columnExists(conn, "file_metadata", "imports") &&
         !columnExists(conn, "file_metadata", "wildcard_imports") &&
