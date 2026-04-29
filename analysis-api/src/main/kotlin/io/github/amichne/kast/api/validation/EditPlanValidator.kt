@@ -1,6 +1,8 @@
 package io.github.amichne.kast.api.validation
 
 import io.github.amichne.kast.api.contract.*
+import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
+import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.io.KastFileOperations
 import io.github.amichne.kast.api.io.LocalDiskFileOperations
 import io.github.amichne.kast.api.protocol.*

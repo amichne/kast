@@ -7,7 +7,7 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiReference
 import io.github.amichne.kast.api.contract.CallDirection
-import io.github.amichne.kast.api.contract.CallHierarchyQuery
+import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
 import io.github.amichne.kast.api.contract.CallNodeTruncationReason
 import io.github.amichne.kast.api.contract.FilePosition
 import io.github.amichne.kast.api.contract.NormalizedPath

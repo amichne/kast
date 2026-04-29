@@ -47,16 +47,12 @@ val shadowJar = tasks.named<ShadowJar>("shadowJar") {
 
 val shadowJarArchive = shadowJar.flatMap(ShadowJar::getArchiveFile)
 
-val runtimeClassPathJars = configurations.runtimeClasspath.map { classpath ->
-    RuntimeJarPathOrdering.inOrder(classpath.files)
-}
 val mainJar = tasks.named<Jar>("jar")
 
 val syncRuntimeLibs by tasks.registering(SyncRuntimeLibsTask::class) {
     dependsOn(mainJar)
     appJar.set(mainJar.flatMap(Jar::getArchiveFile))
     runtimeJars.from(configurations.runtimeClasspath)
-    runtimeJarPathsInOrder.set(runtimeClassPathJars)
     outputDirectory.set(layout.buildDirectory.dir("runtime-libs"))
     classpathFile.set(layout.buildDirectory.file("runtime-libs/classpath.txt"))
 }

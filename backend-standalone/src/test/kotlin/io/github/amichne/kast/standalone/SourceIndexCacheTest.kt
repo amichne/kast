@@ -2,6 +2,7 @@ package io.github.amichne.kast.standalone
 
 import io.github.amichne.kast.api.contract.ModuleName
 import io.github.amichne.kast.api.contract.NormalizedPath
+import io.github.amichne.kast.api.client.workspaceCacheDirectory
 import io.github.amichne.kast.indexstore.kastCacheDirectory
 import io.github.amichne.kast.standalone.cache.GitDeltaCandidateDetector
 import io.github.amichne.kast.standalone.cache.GitDeltaCandidates
@@ -24,9 +25,9 @@ class SourceIndexCacheTest {
     lateinit var workspaceRoot: Path
 
     @Test
-    fun `source index cache lives under gradle cache directory`() {
+    fun `source index cache lives under workspace cache directory`() {
         assertEquals(
-            normalizeStandalonePath(workspaceRoot.resolve(".gradle/kast/cache")),
+            workspaceCacheDirectory(normalizeStandalonePath(workspaceRoot)),
             kastCacheDirectory(normalizeStandalonePath(workspaceRoot)),
         )
     }

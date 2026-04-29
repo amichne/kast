@@ -1,12 +1,12 @@
 package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.api.contract.BackendCapabilities
-import io.github.amichne.kast.api.contract.DiagnosticsResult
+import io.github.amichne.kast.api.contract.result.DiagnosticsResult
 import io.github.amichne.kast.api.protocol.JsonRpcRequest
 import io.github.amichne.kast.api.protocol.JsonRpcSuccessResponse
-import io.github.amichne.kast.api.contract.ReferencesResult
-import io.github.amichne.kast.api.contract.RefreshResult
-import io.github.amichne.kast.api.contract.RenameResult
+import io.github.amichne.kast.api.contract.result.ReferencesResult
+import io.github.amichne.kast.api.contract.result.RefreshResult
+import io.github.amichne.kast.api.contract.result.RenameResult
 import io.github.amichne.kast.api.contract.RuntimeState
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
 import io.github.amichne.kast.api.client.ServerInstanceDescriptor

@@ -1,5 +1,6 @@
 package io.github.amichne.kast.standalone
 
+import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetry
 import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetryConfig
 import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetryDetail
@@ -87,38 +88,34 @@ class StandaloneTelemetryConfigTest {
         assertEquals(StandaloneTelemetryScope.REFERENCES, StandaloneTelemetryScope.parse("References"))
     }
 
-    // --- KAST_DEBUG support ---
+    // --- Config-backed telemetry ---
 
     @Test
-    fun `fromEnvironment with KAST_DEBUG enables all scopes and verbose detail`() {
-        val telemetry = StandaloneTelemetry.fromEnvironment(
+    fun `fromConfig enables configured scopes and verbose detail`() {
+        val telemetry = StandaloneTelemetry.fromConfig(
             workspaceRoot = workspaceRoot,
-            envReader = mapEnvReader("KAST_DEBUG" to "true"),
+            config = KastConfig.defaults().copy(
+                telemetry = KastConfig.defaults().telemetry.copy(
+                    enabled = true,
+                    scopes = "all",
+                    detail = "verbose",
+                ),
+            ),
         )
 
         StandaloneTelemetryScope.entries.forEach { scope ->
-            assertTrue(telemetry.isEnabled(scope), "Expected scope $scope to be enabled with KAST_DEBUG")
-            assertTrue(telemetry.isVerbose(scope), "Expected scope $scope to be verbose with KAST_DEBUG")
+            assertTrue(telemetry.isEnabled(scope), "Expected scope $scope to be enabled")
+            assertTrue(telemetry.isVerbose(scope), "Expected scope $scope to be verbose")
         }
     }
 
     @Test
-    fun `fromEnvironment with KAST_DEBUG=1 enables all scopes`() {
-        val telemetry = StandaloneTelemetry.fromEnvironment(
+    fun `fromConfig with disabled telemetry returns disabled telemetry`() {
+        val telemetry = StandaloneTelemetry.fromConfig(
             workspaceRoot = workspaceRoot,
-            envReader = mapEnvReader("KAST_DEBUG" to "1"),
-        )
-
-        StandaloneTelemetryScope.entries.forEach { scope ->
-            assertTrue(telemetry.isEnabled(scope), "Expected scope $scope to be enabled with KAST_DEBUG=1")
-        }
-    }
-
-    @Test
-    fun `fromEnvironment without any env vars returns disabled telemetry`() {
-        val telemetry = StandaloneTelemetry.fromEnvironment(
-            workspaceRoot = workspaceRoot,
-            envReader = mapEnvReader(),
+            config = KastConfig.defaults().copy(
+                telemetry = KastConfig.defaults().telemetry.copy(enabled = false),
+            ),
         )
 
         StandaloneTelemetryScope.entries.forEach { scope ->
@@ -127,12 +124,14 @@ class StandaloneTelemetryConfigTest {
     }
 
     @Test
-    fun `fromEnvironment with KAST_OTEL_ENABLED and specific scopes`() {
-        val telemetry = StandaloneTelemetry.fromEnvironment(
+    fun `fromConfig enables specific scopes`() {
+        val telemetry = StandaloneTelemetry.fromConfig(
             workspaceRoot = workspaceRoot,
-            envReader = mapEnvReader(
-                "KAST_OTEL_ENABLED" to "true",
-                "KAST_OTEL_SCOPES" to "references,rename",
+            config = KastConfig.defaults().copy(
+                telemetry = KastConfig.defaults().telemetry.copy(
+                    enabled = true,
+                    scopes = "references,rename",
+                ),
             ),
         )
 
@@ -141,36 +140,6 @@ class StandaloneTelemetryConfigTest {
         assertFalse(telemetry.isEnabled(StandaloneTelemetryScope.CALL_HIERARCHY))
         assertFalse(telemetry.isEnabled(StandaloneTelemetryScope.SYMBOL_RESOLVE))
         assertFalse(telemetry.isEnabled(StandaloneTelemetryScope.WORKSPACE_DISCOVERY))
-    }
-
-    @Test
-    fun `fromEnvironment with KAST_DEBUG overrides KAST_OTEL_SCOPES to all`() {
-        val telemetry = StandaloneTelemetry.fromEnvironment(
-            workspaceRoot = workspaceRoot,
-            envReader = mapEnvReader(
-                "KAST_DEBUG" to "true",
-                "KAST_OTEL_SCOPES" to "rename",
-            ),
-        )
-
-        StandaloneTelemetryScope.entries.forEach { scope ->
-            assertTrue(telemetry.isEnabled(scope), "KAST_DEBUG should force all scopes, but $scope was disabled")
-        }
-    }
-
-    @Test
-    fun `fromEnvironment with KAST_DEBUG overrides detail to verbose`() {
-        val telemetry = StandaloneTelemetry.fromEnvironment(
-            workspaceRoot = workspaceRoot,
-            envReader = mapEnvReader(
-                "KAST_DEBUG" to "true",
-                "KAST_OTEL_DETAIL" to "basic",
-            ),
-        )
-
-        StandaloneTelemetryScope.entries.forEach { scope ->
-            assertTrue(telemetry.isVerbose(scope), "KAST_DEBUG should force verbose, but $scope was not verbose")
-        }
     }
 
     // --- Detail parsing ---
@@ -186,8 +155,4 @@ class StandaloneTelemetryConfigTest {
         assertEquals(StandaloneTelemetryDetail.BASIC, StandaloneTelemetryDetail.parse("unknown"))
     }
 
-    private fun mapEnvReader(vararg pairs: Pair<String, String>): (String) -> String? {
-        val env = pairs.toMap()
-        return { key -> env[key] }
-    }
 }

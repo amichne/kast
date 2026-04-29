@@ -72,4 +72,22 @@ class StandaloneServerOptionsTest {
         assertEquals(socketPath, transport.socketPath)
         assertTrue(options.toCliArguments().contains("--socket-path=$socketPath"))
     }
+
+    @Test
+    fun `config supplies default server limits`() {
+        val options = StandaloneServerOptions.fromValues(
+            values = mapOf("workspace-root" to tempDir.toString()),
+            config = KastConfig.defaults().copy(
+                server = ServerConfig(
+                    maxResults = 42,
+                    requestTimeoutMillis = 1234L,
+                    maxConcurrentRequests = 7,
+                ),
+            ),
+        )
+
+        assertEquals(42, options.maxResults)
+        assertEquals(1234L, options.requestTimeoutMillis)
+        assertEquals(7, options.maxConcurrentRequests)
+    }
 }

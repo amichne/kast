@@ -45,6 +45,10 @@ readonly GITHUB_API_VERSION="X-GitHub-Api-Version: 2022-11-28"
 readonly PATH_MARKER="# Added by the Kast installer"
 readonly COMPLETION_START_MARKER="# >>> Kast completion >>>"
 readonly COMPLETION_END_MARKER="# <<< Kast completion <<<"
+readonly KAST_CONFIG_ENV_START_MARKER="# >>> kast config >>>"
+readonly KAST_CONFIG_ENV_END_MARKER="# <<< kast config <<<"
+readonly KAST_ENV_SOURCE_START_MARKER="# >>> kast env >>>"
+readonly KAST_ENV_SOURCE_END_MARKER="# <<< kast env <<<"
 
 # Shared mutable temp dir -- used by both build and install; cleaned on EXIT
 tmp_dir=""
@@ -822,29 +826,6 @@ _install_standalone_backend() {
   local current_link="${backend_dir}/current"
   ln -sfn "$backend_release_dir" "$current_link"
 
-  # Export KAST_STANDALONE_RUNTIME_LIBS so that `kast daemon start` can locate the backend
-  local runtime_libs_dir="${backend_release_dir}/runtime-libs"
-  local rc_file; rc_file="$(_install_resolve_shell_rc_file)"
-  if [[ -n "$rc_file" ]]; then
-    mkdir -p "$(dirname -- "$rc_file")"
-    touch "$rc_file"
-    if grep -q "KAST_STANDALONE_RUNTIME_LIBS" "$rc_file"; then
-      # Replace existing KAST_STANDALONE_RUNTIME_LIBS line
-      local tmp_rc; tmp_rc="$(mktemp)"
-      grep -v "KAST_STANDALONE_RUNTIME_LIBS" "$rc_file" > "$tmp_rc" || true
-      printf 'export KAST_STANDALONE_RUNTIME_LIBS="%s"\n' "$runtime_libs_dir" >> "$tmp_rc"
-      # Use cat+redirect to handle cross-filesystem moves safely; clean up temp file
-      cat "$tmp_rc" > "$rc_file"
-      rm -f "$tmp_rc"
-      log_step "Updated KAST_STANDALONE_RUNTIME_LIBS in ${rc_file}"
-    else
-      printf '\nexport KAST_STANDALONE_RUNTIME_LIBS="%s"\n' "$runtime_libs_dir" >> "$rc_file"
-      log_success "Set KAST_STANDALONE_RUNTIME_LIBS in ${rc_file}"
-    fi
-  else
-    log_note "Set KAST_STANDALONE_RUNTIME_LIBS=${runtime_libs_dir} to use kast daemon start."
-  fi
-
   log_success "Standalone backend installed to ${backend_release_dir}"
   log_note "Start with: kast daemon start --workspace-root=/absolute/path/to/workspace"
   return 0
@@ -892,15 +873,419 @@ _install_prompt_components() {
   esac
 }
 
+# ---------------------------------------------------------------------------
+# Install wizard helpers
+# ---------------------------------------------------------------------------
+
+# Global wizard state (set by _install_detect_env and _install_mode_select)
+_INSTALL_ENV_HAS_JAVA="false"
+_INSTALL_ENV_HAS_FZF="false"
+_INSTALL_ENV_EXISTING_VERSION=""
+_INSTALL_MODE="minimal"
+_INSTALL_INTELLIJ_ACTION="skip"
+declare -a _INSTALL_ENV_INTELLIJ_PIDS=()
+declare -a _INSTALL_ENV_INTELLIJ_APPS=()
+declare -a _INSTALL_ENV_INTELLIJ_LABELS=()
+
+_install_banner() {
+  printf '\n' >&2
+  printf '  %s\n' "$(colorize '1;36' '  ██╗  ██╗ █████╗ ███████╗████████╗')" >&2
+  printf '  %s\n' "$(colorize '1;36' '  ██║ ██╔╝██╔══██╗██╔════╝╚══██╔══╝')" >&2
+  printf '  %s\n' "$(colorize '1;36' '  █████╔╝ ███████║███████╗   ██║   ')" >&2
+  printf '  %s\n' "$(colorize '1;36' '  ██╔═██╗ ██╔══██║╚════██║   ██║   ')" >&2
+  printf '  %s\n' "$(colorize '1;36' '  ██║  ██╗██║  ██║███████║   ██║   ')" >&2
+  printf '  %s\n' "$(colorize '1;36' '  ╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝   ╚═╝  ')" >&2
+  printf '\n' >&2
+  printf '  %s\n' "Kotlin semantic analysis — from your terminal" >&2
+  printf '  %s\n' "$(colorize '2' 'https://github.com/amichne/kast')" >&2
+  printf '\n' >&2
+}
+
+_install_detect_env() {
+  command -v java >/dev/null 2>&1 && _INSTALL_ENV_HAS_JAVA="true"
+  command -v fzf  >/dev/null 2>&1 && _INSTALL_ENV_HAS_FZF="true"
+
+  local existing_kast; existing_kast="$(command -v kast 2>/dev/null || true)"
+  if [[ -n "$existing_kast" ]]; then
+    _INSTALL_ENV_EXISTING_VERSION="$("$existing_kast" --version 2>/dev/null | head -1 || echo "unknown")"
+  fi
+
+  # Running IntelliJ instances (macOS only)
+  [[ "$(uname -s)" != "Darwin" ]] && return
+  local pid app_path
+  while IFS=' ' read -r pid app_path; do
+    [[ -z "$pid" || -z "$app_path" ]] && continue
+    local label="PID ${pid}  $(_install_intellij_product_label "$app_path")"
+    _INSTALL_ENV_INTELLIJ_PIDS+=("$pid")
+    _INSTALL_ENV_INTELLIJ_APPS+=("$app_path")
+    _INSTALL_ENV_INTELLIJ_LABELS+=("$label")
+  done < <(
+    ps aux \
+      | grep -E '/Contents/MacOS/idea$' \
+      | grep -v grep \
+      | awk '{
+          pid = $2
+          for (i = 11; i <= NF; i++) {
+            if ($i ~ /\.app\/Contents\/MacOS\/idea$/) {
+              sub(/\/Contents\/MacOS\/idea$/, "", $i)
+              print pid " " $i
+              break
+            }
+          }
+        }'
+  )
+}
+
+_install_intellij_product_label() {
+  local app_path="$1"
+  local pinfo="${app_path}/Contents/Resources/product-info.json"
+  [[ -f "$pinfo" ]] || { printf '%s' "$(basename "$app_path")"; return; }
+  python3 - "$pinfo" <<'END'
+import json, sys
+d = json.load(open(sys.argv[1]))
+print(f"{d['name']} {d['version']}  [{d['dataDirectoryName']}]")
+END
+}
+
+_install_intellij_plugins_dir() {
+  local pid="$1" app_path="$2"
+  local jvm_args config_path=""
+  jvm_args="$(ps -p "$pid" -o args= 2>/dev/null || true)"
+  config_path="$(printf '%s' "$jvm_args" \
+    | grep -oE '\-Didea\.config\.path=[^ ]+' \
+    | cut -d= -f2- | head -1)"
+  if [[ -n "$config_path" ]]; then
+    printf '%s/plugins' "$config_path"
+    return
+  fi
+  local pinfo="${app_path}/Contents/Resources/product-info.json"
+  [[ -f "$pinfo" ]] || { log_note "Cannot find product-info.json in ${app_path}"; return 1; }
+  local data_dir_name
+  data_dir_name="$(python3 - "$pinfo" <<'EOF'
+import json, sys; print(json.load(open(sys.argv[1]))["dataDirectoryName"])
+EOF
+)"
+  printf '%s/Library/Application Support/JetBrains/%s/plugins' "$HOME" "$data_dir_name"
+}
+
+# _fzf_select <prompt> item1 item2 ...
+# Prints the selected item. Falls back to a numbered menu when fzf is unavailable.
+_fzf_select() {
+  local prompt="$1"; shift
+  local -a items=("$@")
+  local count="${#items[@]}"
+  [[ "$count" -eq 0 ]] && return 1
+  if [[ "$count" -eq 1 ]]; then printf '%s' "${items[0]}"; return 0; fi
+
+  if [[ "$_INSTALL_ENV_HAS_FZF" == "true" ]] && can_prompt; then
+    local selection
+    selection="$(printf '%s\n' "${items[@]}" \
+      | fzf --prompt="${prompt}: " \
+            --height="~40%" \
+            --layout=reverse \
+            --border=rounded \
+            --no-multi \
+            </dev/tty)"
+    printf '%s' "$selection"
+    return 0
+  fi
+
+  local i
+  for i in "${!items[@]}"; do
+    printf '  [%d] %s\n' "$((i + 1))" "${items[$i]}" >/dev/tty
+  done
+  printf '\n' >/dev/tty
+  local choice
+  while true; do
+    log_prompt "${prompt} (1-${count}): "
+    IFS= read -r choice </dev/tty
+    printf '\n' >/dev/tty
+    if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= count )); then
+      printf '%s' "${items[$((choice - 1))]}"; return 0
+    fi
+    log_note "Enter a number between 1 and ${count}"
+  done
+}
+
+# Sets _INSTALL_MODE ("minimal"|"full") and _INSTALL_INTELLIJ_ACTION ("push"|"zip"|"skip")
+_install_mode_select() {
+  local non_interactive="${1:-false}"
+  local intellij_count="${#_INSTALL_ENV_INTELLIJ_PIDS[@]}"
+
+  if [[ "$non_interactive" == "true" ]] || ! can_prompt; then
+    _INSTALL_MODE="minimal"
+    _INSTALL_INTELLIJ_ACTION="skip"
+    return
+  fi
+
+  log_section "Choose install mode"
+  if [[ "$intellij_count" -gt 0 ]]; then
+    log_step "Detected ${intellij_count} running IntelliJ instance(s)"
+    printf '\n' >&2
+    printf '  %-9s %s\n' "$(colorize '1;32' 'minimal')" "CLI + IntelliJ plugin  (recommended — IntelliJ detected)" >&2
+    printf '  %-9s %s\n' "full   " "CLI + standalone JVM backend  (no IntelliJ dependency)" >&2
+  else
+    printf '  %-9s %s\n' "$(colorize '1;32' 'minimal')" "CLI only  (lightweight; add plugin or backend separately)" >&2
+    printf '  %-9s %s\n' "full   " "CLI + standalone JVM backend  (includes analysis engine)" >&2
+  fi
+  printf '\n' >&2
+
+  local mode_choice; mode_choice="$(_fzf_select "Install mode" "minimal" "full")"
+  _INSTALL_MODE="${mode_choice:-minimal}"
+
+  if [[ "$_INSTALL_MODE" == "minimal" ]] && [[ "$intellij_count" -gt 0 ]]; then
+    printf '\n' >&2
+    log_step "How would you like to install the IntelliJ plugin?"
+    printf '\n' >&2
+    printf '  %-9s %s\n' "$(colorize '1;32' 'push')" "Push directly to a running instance (restart IntelliJ after)" >&2
+    printf '  %-9s %s\n' "zip   " "Download zip for manual install from disk" >&2
+    printf '  %-9s %s\n' "skip  " "Skip plugin install" >&2
+    printf '\n' >&2
+    local action_choice; action_choice="$(_fzf_select "Plugin action" "push" "zip" "skip")"
+    _INSTALL_INTELLIJ_ACTION="${action_choice:-push}"
+  elif [[ "$_INSTALL_MODE" == "minimal" ]]; then
+    printf '\n' >&2
+    if prompt_yes_no "Download IntelliJ plugin zip?" "yes"; then
+      _INSTALL_INTELLIJ_ACTION="zip"
+    else
+      _INSTALL_INTELLIJ_ACTION="skip"
+    fi
+  else
+    _INSTALL_INTELLIJ_ACTION="skip"
+  fi
+}
+
+_install_config_write() {
+  local install_root="$1" bin_dir="$2" runtime_libs="${3:-}"
+  local config_dir="${HOME}/.config/kast"
+  local config_file="${config_dir}/env"
+  mkdir -p "$config_dir"
+
+  local in_block="false"
+  if [[ -f "$config_file" ]] && grep -Fq "$KAST_CONFIG_ENV_START_MARKER" "$config_file"; then
+    local tmp_conf; tmp_conf="$(mktemp)"
+    while IFS= read -r cfg_line || [[ -n "$cfg_line" ]]; do
+      if [[ "$cfg_line" == "$KAST_CONFIG_ENV_START_MARKER" ]]; then
+        in_block="true"
+        printf '%s\n' "$KAST_CONFIG_ENV_START_MARKER"
+        printf 'export KAST_INSTALL_ROOT="%s"\n' "$install_root"
+        printf 'export KAST_BIN_DIR="%s"\n' "$bin_dir"
+        [[ -n "$runtime_libs" ]] && printf 'export KAST_STANDALONE_RUNTIME_LIBS="%s"\n' "$runtime_libs"
+        printf '%s\n' "$KAST_CONFIG_ENV_END_MARKER"
+        continue
+      fi
+      if [[ "$in_block" == "true" ]]; then
+        [[ "$cfg_line" == "$KAST_CONFIG_ENV_END_MARKER" ]] && in_block="false"
+        continue
+      fi
+      printf '%s\n' "$cfg_line"
+    done < "$config_file" > "$tmp_conf"
+    cat "$tmp_conf" > "$config_file"; rm -f "$tmp_conf"
+    log_step "Updated ${config_file}"
+  else
+    {
+      printf '# Kast configuration — managed by kast installer (do not edit markers)\n'
+      printf '%s\n' "$KAST_CONFIG_ENV_START_MARKER"
+      printf 'export KAST_INSTALL_ROOT="%s"\n' "$install_root"
+      printf 'export KAST_BIN_DIR="%s"\n' "$bin_dir"
+      [[ -n "$runtime_libs" ]] && printf 'export KAST_STANDALONE_RUNTIME_LIBS="%s"\n' "$runtime_libs"
+      printf '%s\n' "$KAST_CONFIG_ENV_END_MARKER"
+    } > "$config_file"
+    log_success "Created ${config_file}"
+  fi
+
+  # Write TOML config so the CLI can locate runtime-libs via config.backends.standalone.runtimeLibsDir
+  if [[ -n "$runtime_libs" ]]; then
+    local toml_file="${config_dir}/config.toml"
+    local toml_section="[backends.standalone]"
+    local toml_entry="runtimeLibsDir = \"${runtime_libs}\""
+    if [[ -f "$toml_file" ]]; then
+      # Update existing runtimeLibsDir if present, otherwise append the section
+      if grep -Fq "runtimeLibsDir" "$toml_file"; then
+        local tmp_toml; tmp_toml="$(mktemp)"
+        sed "s|^[[:space:]]*runtimeLibsDir[[:space:]]*=.*|${toml_entry}|" "$toml_file" > "$tmp_toml"
+        cat "$tmp_toml" > "$toml_file"; rm -f "$tmp_toml"
+        log_step "Updated runtimeLibsDir in ${toml_file}"
+      elif grep -Fq "$toml_section" "$toml_file"; then
+        local tmp_toml; tmp_toml="$(mktemp)"
+        sed "/^[[:space:]]*\[backends\.standalone\]/a\\
+${toml_entry}" "$toml_file" > "$tmp_toml"
+        cat "$tmp_toml" > "$toml_file"; rm -f "$tmp_toml"
+        log_step "Added runtimeLibsDir to ${toml_file}"
+      else
+        printf '\n%s\n%s\n' "$toml_section" "$toml_entry" >> "$toml_file"
+        log_step "Appended backends.standalone to ${toml_file}"
+      fi
+    else
+      printf '%s\n%s\n' "$toml_section" "$toml_entry" > "$toml_file"
+      log_success "Created ${toml_file}"
+    fi
+  fi
+}
+
+_install_config_source_in_rc() {
+  local rc_file="${1:-}"
+  [[ -n "$rc_file" ]] || return 0
+  mkdir -p "$(dirname -- "$rc_file")"
+  touch "$rc_file"
+  if grep -Fq "$KAST_ENV_SOURCE_START_MARKER" "$rc_file"; then
+    log_step "~/.config/kast/env already sourced from ${rc_file}"
+    return
+  fi
+  {
+    printf '\n%s\n' "$KAST_ENV_SOURCE_START_MARKER"
+    printf '[[ -f "$HOME/.config/kast/env" ]] && source "$HOME/.config/kast/env"\n'
+    printf '%s\n' "$KAST_ENV_SOURCE_END_MARKER"
+  } >> "$rc_file"
+  log_success "Added kast env source to ${rc_file}"
+}
+
+_install_pick_intellij_instance() {
+  local count="${#_INSTALL_ENV_INTELLIJ_LABELS[@]}"
+  [[ "$count" -gt 0 ]] || return 1
+  if [[ "$count" -eq 1 ]]; then printf '0'; return 0; fi
+
+  local selection; selection="$(_fzf_select "Select IntelliJ instance" "${_INSTALL_ENV_INTELLIJ_LABELS[@]}")"
+  [[ -n "$selection" ]] || return 1
+  local i
+  for i in "${!_INSTALL_ENV_INTELLIJ_LABELS[@]}"; do
+    [[ "${_INSTALL_ENV_INTELLIJ_LABELS[$i]}" == "$selection" ]] && { printf '%d' "$i"; return 0; }
+  done
+  return 1
+}
+
+_install_push_plugin_to_intellij() {
+  local release_repo="$1" release_tag="$2"
+  local count="${#_INSTALL_ENV_INTELLIJ_PIDS[@]}"
+  [[ "$count" -gt 0 ]] || { log_note "No running IntelliJ instances to push to"; return 1; }
+
+  log_section "Push plugin to IntelliJ"
+  local idx; idx="$(_install_pick_intellij_instance)" || return 1
+  local selected_pid="${_INSTALL_ENV_INTELLIJ_PIDS[$idx]}"
+  local selected_app="${_INSTALL_ENV_INTELLIJ_APPS[$idx]}"
+  local selected_label="${_INSTALL_ENV_INTELLIJ_LABELS[$idx]}"
+  local plugins_dir; plugins_dir="$(_install_intellij_plugins_dir "$selected_pid" "$selected_app")" || return 1
+
+  log_success "Target: ${selected_label}"
+  log_step    "Plugins dir: ${plugins_dir}"
+
+  local plugin_name="kast-intellij-${release_tag}.zip"
+  local plugin_tmp="${tmp_dir}/${plugin_name}"
+  if [[ ! -f "$plugin_tmp" ]]; then
+    local plugin_url="https://github.com/${release_repo}/releases/download/${release_tag}/${plugin_name}"
+    log_step "Downloading ${plugin_name}"
+    local attempt
+    for attempt in 1 2 3; do
+      if _install_download_file "$plugin_url" "$plugin_tmp"; then break; fi
+      if [[ "$attempt" -eq 3 ]]; then
+        log_note "Failed to download plugin; falling back to zip install"
+        return 1
+      fi
+      sleep 5
+    done
+  fi
+
+  mkdir -p "$plugins_dir"
+  local jar
+  for jar in "${plugins_dir}"/backend-intellij*.jar; do
+    [[ -f "$jar" ]] && { log_note "Removing prior JAR: ${jar}"; rm -f "$jar"; }
+  done
+  unzip -o -q "$plugin_tmp" -d "$plugins_dir"
+  log_success "Plugin pushed to ${plugins_dir}"
+  log_note "Restart IntelliJ IDEA to activate the plugin"
+}
+
+_install_skill_phase() {
+  local bin_dir="$1" non_interactive="${2:-false}"
+  local kast_bin="${bin_dir}/kast"
+  if [[ ! -x "$kast_bin" ]]; then
+    kast_bin="$(command -v kast 2>/dev/null || true)"
+    [[ -x "$kast_bin" ]] || { log_note "kast CLI not found; skipping skill install"; return 0; }
+  fi
+
+  log_section "Install Copilot skill"
+
+  if [[ "$non_interactive" == "true" ]] || ! can_prompt; then
+    log_note "Skipped skill install. Run: kast install skill"
+    return 0
+  fi
+
+  local global_dir="${HOME}/.agents/skills"
+  local local_dir; local_dir="$(pwd)/.agents/skills"
+  printf '\n' >&2
+  printf '  %-9s %s\n' "$(colorize '1;32' 'global')" "Install to ${global_dir}/kast  (all projects)" >&2
+  printf '  %-9s %s\n' "local  " "Install to ${local_dir}/kast  (current directory)" >&2
+  printf '  %-9s %s\n' "both   " "Install to both locations" >&2
+  printf '  %-9s %s\n' "skip   " "Skip skill install" >&2
+  printf '\n' >&2
+
+  local scope_choice; scope_choice="$(_fzf_select "Skill scope" "global" "local" "both" "skip")"
+  scope_choice="${scope_choice:-global}"
+
+  case "$scope_choice" in
+    global)
+      mkdir -p "$global_dir"
+      "$kast_bin" install skill --target-dir="$global_dir" --name=kast --yes=true
+      log_success "Skill installed at ${global_dir}/kast" ;;
+    local)
+      mkdir -p "$local_dir"
+      "$kast_bin" install skill --target-dir="$local_dir" --name=kast --yes=true
+      log_success "Skill installed at ${local_dir}/kast" ;;
+    both)
+      mkdir -p "$global_dir"
+      "$kast_bin" install skill --target-dir="$global_dir" --name=kast --yes=true
+      mkdir -p "$local_dir"
+      "$kast_bin" install skill --target-dir="$local_dir" --name=kast --yes=true
+      log_success "Skill installed globally and locally" ;;
+    skip|*)
+      log_note "Skipped skill install. Run: kast install skill" ;;
+  esac
+}
+
+_install_summary_phase() {
+  local install_root="$1" bin_dir="$2" install_mode="${3:-minimal}"
+  local intellij_action="${4:-skip}" install_standalone="${5:-false}"
+
+  printf '\n' >&2
+  log_section "Installation complete"
+  printf '\n  %s\n'  "$(colorize '1;36' 'Kast install root:')" >&2
+  printf '  %s\n\n' "  ${install_root}" >&2
+  printf '  %s  %s\n' "$(colorize '1;32' 'v')" "CLI binary:  ${bin_dir}/kast" >&2
+  printf '  %s  %s\n' "$(colorize '1;32' 'v')" "Config:      ${HOME}/.config/kast/env" >&2
+  if [[ "$intellij_action" == "push" || "$intellij_action" == "zip" ]]; then
+    printf '  %s  %s\n' "$(colorize '1;32' 'v')" "IntelliJ plugin installed" >&2
+  fi
+  if [[ "$install_standalone" == "true" ]]; then
+    printf '  %s  %s\n' "$(colorize '1;32' 'v')" "Standalone backend: ${install_root}/backends/current" >&2
+  fi
+  printf '\n' >&2
+  printf '  %s\n' "$(colorize '1;33' 'Next steps:')" >&2
+  printf '  %s\n' "  Open a new shell (or: source ~/.config/kast/env)" >&2
+  printf '  %s\n' "  kast --help" >&2
+  if [[ "$intellij_action" == "push" ]]; then
+    printf '  %s\n' "  Restart IntelliJ IDEA to activate the plugin" >&2
+  elif [[ "$intellij_action" == "zip" ]]; then
+    printf '  %s\n' "  IntelliJ: Settings → Plugins → ⚙ → Install from Disk" >&2
+    printf '  %s\n' "  Select: ${install_root}/plugins/" >&2
+  elif [[ "$install_standalone" == "true" ]]; then
+    printf '  %s\n' "  kast daemon start --workspace-root=/absolute/path/to/workspace" >&2
+  fi
+  printf '\n' >&2
+}
+
 cmd_install() {
   local components="" local_build="false" non_interactive="false"
+  local install_mode_flag="" skip_skill="false"
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --components=*) components="${1#--components=}"; shift ;;
       --components)   [[ $# -ge 2 ]] || die "Missing value for --components"; components="$2"; shift 2 ;;
+      --mode=*)       install_mode_flag="${1#--mode=}"; shift ;;
+      --mode)         [[ $# -ge 2 ]] || die "Missing value for --mode"; install_mode_flag="$2"; shift 2 ;;
+      --skip-skill)   skip_skill="true"; shift ;;
       --local)        local_build="true"; shift ;;
-      --non-interactive) non_interactive="true"; shift ;;
+      --non-interactive) non_interactive="true"; skip_skill="true"; shift ;;
       --help|-h)
         cat >&2 << 'USAGE'
 Usage: ./kast.sh install [options]
@@ -909,23 +1294,23 @@ Usage: ./kast.sh install [options]
 Install the Kast CLI and optional components.
 
 Options:
-  --components=<list>   Comma-separated: cli,intellij,backend,all (default: cli)
-                        cli              - Install the kast CLI binary
-                        intellij         - Download IntelliJ plugin zip
-                        backend          - Install standalone backend from releases
-                        all              - cli + intellij + backend
-  --local               Install from local dist/ artifacts built by ./kast.sh build
-  --non-interactive     Skip all interactive prompts
-  --help, -h            Show this help
+  --mode=minimal|full|auto  Drive the install wizard path (default: interactive)
+                              minimal - CLI + optional IntelliJ plugin
+                              full    - CLI + standalone JVM backend
+                              auto    - detect environment and recommend
+  --components=<list>       Expert override: comma-separated cli,intellij,backend,all
+                              Skips the wizard entirely; same as previous behavior
+  --skip-skill              Skip Copilot skill install step
+  --local                   Install from local dist/ artifacts (built by ./kast.sh build)
+  --non-interactive         Skip all interactive prompts (implies --skip-skill)
+  --help, -h                Show this help
 USAGE
-        return 0
-        ;;
+        return 0 ;;
       *) die "Unknown argument: $1" ;;
     esac
   done
 
-  log_section "Kast installer"
-  log "Install the published CLI, wire your shell, and leave the workspace commands ready to run."
+  _install_banner
 
   need_tool curl
   need_tool python3
@@ -939,26 +1324,50 @@ USAGE
   bin_dir="${KAST_BIN_DIR:-${HOME}/.local/bin}"
   shell_name="$(_install_resolve_shell_name)"
 
-  if [[ -z "$components" ]]; then
-    if [[ "$non_interactive" == "true" ]]; then
-      components="cli"
-    else
-      components="$(_install_prompt_components)"
-    fi
-  fi
-  [[ "$components" == "all" ]] && components="cli,intellij,backend"
+  # Phase 1: Detect environment
+  log_section "Detecting environment"
+  _install_detect_env
+  [[ -n "$_INSTALL_ENV_EXISTING_VERSION" ]] && log_step "Existing kast: ${_INSTALL_ENV_EXISTING_VERSION}"
+  [[ "$_INSTALL_ENV_HAS_JAVA" == "true" ]]  && log_step "Java detected"
+  [[ "${#_INSTALL_ENV_INTELLIJ_PIDS[@]}" -gt 0 ]] && \
+    log_step "IntelliJ: ${#_INSTALL_ENV_INTELLIJ_PIDS[@]} instance(s) running"
 
+  # Resolve component set: expert (--components) vs wizard
   local install_cli="false" install_intellij="false" install_standalone="false"
-  IFS=',' read -r -a component_list <<<"$components"
-  for comp in "${component_list[@]}"; do
-    case "$comp" in
-      cli)                      install_cli="true" ;;
-      intellij)                 install_intellij="true" ;;
-      backend|standalone-backend) install_standalone="true" ;;
-      *) die "Unknown component: $comp" ;;
-    esac
-  done
+  local wizard_mode="true"
 
+  if [[ -n "$components" ]]; then
+    # Expert path: --components overrides wizard entirely
+    wizard_mode="false"
+    [[ "$components" == "all" ]] && components="cli,intellij,backend"
+    local comp; IFS=',' read -r -a component_list <<<"$components"
+    for comp in "${component_list[@]}"; do
+      case "$comp" in
+        cli)                        install_cli="true" ;;
+        intellij)                   install_intellij="true" ;;
+        backend|standalone-backend) install_standalone="true" ;;
+        *) die "Unknown component: $comp" ;;
+      esac
+    done
+  else
+    # Phase 2: Mode selection
+    if [[ -n "$install_mode_flag" ]]; then
+      _INSTALL_MODE="$install_mode_flag"
+      [[ "$_INSTALL_MODE" == "auto" ]] && _INSTALL_MODE="minimal"
+      if [[ "$_INSTALL_MODE" == "minimal" && "${#_INSTALL_ENV_INTELLIJ_PIDS[@]}" -gt 0 ]]; then
+        _INSTALL_INTELLIJ_ACTION="push"
+      elif [[ "$_INSTALL_MODE" == "minimal" ]]; then
+        _INSTALL_INTELLIJ_ACTION="zip"
+      fi
+    else
+      _install_mode_select "$non_interactive"
+    fi
+    install_cli="true"
+    [[ "$_INSTALL_MODE" == "full" ]] && install_standalone="true"
+    [[ "$_INSTALL_INTELLIJ_ACTION" == "zip" || "$_INSTALL_INTELLIJ_ACTION" == "push" ]] && install_intellij="true"
+  fi
+
+  # Validate local build sources
   local local_plugin_archive="" local_backend_archive=""
   if [[ "$local_build" == "true" ]]; then
     if [[ "$install_cli" == "true" && -z "${KAST_ARCHIVE_PATH:-}" ]]; then
@@ -978,6 +1387,13 @@ USAGE
 
   tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/kast-install.XXXXXX")"
 
+  # Phase 3: Config file
+  log_section "Configuration"
+  local rc_file; rc_file="$(_install_resolve_shell_rc_file)"
+  _install_config_write "$install_root" "$bin_dir"
+  _install_config_source_in_rc "${rc_file:-}"
+
+  # Phase 4: CLI install
   if [[ "$install_cli" == "true" ]]; then
     if [[ -n "${KAST_ARCHIVE_PATH:-}" ]]; then
       log_section "Resolve release"
@@ -1096,54 +1512,62 @@ USAGE
     chmod +x "$bin_link"
     log_success "Installed ${archive_name} into ${release_dir}"
 
+    # Phase 5: Shell setup
     log_section "Shell setup"
     _install_ensure_bin_dir_on_path "$bin_dir"
     _install_shell_completion "$release_dir" "$install_root" "$shell_name"
   fi
 
+  # Phase 6: IntelliJ plugin
   if [[ "$install_intellij" == "true" ]]; then
     local resolved_tag; resolved_tag="$(_install_resolve_release_tag "$release_repo" "${release_tag:-}")"
-    _install_intellij_plugin "$release_repo" "$resolved_tag" "$install_root" "$local_plugin_archive" || true
-  fi
-
-  if [[ "$install_standalone" == "true" ]]; then
-    local resolved_tag; resolved_tag="$(_install_resolve_release_tag "$release_repo" "${release_tag:-}")"
-    _install_standalone_backend "$release_repo" "$resolved_tag" "$install_root" "$local_backend_archive" "$bin_dir" || true
-  fi
-
-  local rc_file; rc_file="$(_install_resolve_shell_rc_file)"
-
-  log_section "Install summary"
-  log "Install root:   ${install_root}"
-  log "Binary path:    ${bin_dir}/kast"
-  log "Config dir:     ${install_root}/current"
-  log "Components:     ${components}"
-  [[ -n "$rc_file" ]] && log "Shell RC:       ${rc_file}"
-
-  log_section "Ready"
-  if [[ "$install_cli" == "true" ]]; then
-    log_success "Launcher path: ${bin_dir}/kast"
-    if _install_path_contains "$bin_dir"; then
-      log_step "Try: kast --help"
-      log_step "Start a backend before running analysis commands:"
-      log_step "  kast daemon start --workspace-root=/absolute/path/to/workspace  (standalone JVM backend)"
-      log_step "  OR open IntelliJ IDEA with the kast plugin installed"
-      log_step "Then run commands e.g.: kast references ..."
-      if [[ "$install_intellij" != "true" && "$install_standalone" != "true" ]]; then
-        log_note "To also install components: ./kast.sh install --components=intellij,backend"
-      fi
+    if [[ "$wizard_mode" == "true" && "$_INSTALL_INTELLIJ_ACTION" == "push" ]]; then
+      _install_push_plugin_to_intellij "$release_repo" "$resolved_tag" \
+        || _install_intellij_plugin "$release_repo" "$resolved_tag" "$install_root" "$local_plugin_archive" || true
     else
-      log_note "Export PATH=\"${bin_dir}:\$PATH\""
-      log_note "Then run: kast --help"
-      log_note "Start a backend: kast daemon start --workspace-root=<path>"
+      _install_intellij_plugin "$release_repo" "$resolved_tag" "$install_root" "$local_plugin_archive" || true
     fi
   fi
-  if [[ "$install_intellij" == "true" ]]; then
-    log_step "IntelliJ plugin: ${install_root}/plugins/"
-  fi
+
+  # Phase 7: Standalone backend
   if [[ "$install_standalone" == "true" ]]; then
-    log_success "Standalone backend: ${install_root}/backends/current/"
-    log_note "Backends dir: ${install_root}/backends/"
+    local resolved_tag; resolved_tag="$(_install_resolve_release_tag "$release_repo" "${release_tag:-}")"
+    if _install_standalone_backend "$release_repo" "$resolved_tag" "$install_root" "$local_backend_archive" "$bin_dir"; then
+      local runtime_libs_dir="${install_root}/backends/standalone-${resolved_tag}/runtime-libs"
+      _install_config_write "$install_root" "$bin_dir" "$runtime_libs_dir"
+    fi
+  fi
+
+  # Phase 8: Copilot skill
+  if [[ "$skip_skill" != "true" && "$install_cli" == "true" ]]; then
+    _install_skill_phase "$bin_dir" "$non_interactive" || true
+  fi
+
+  # Phase 9: Summary
+  if [[ "$wizard_mode" == "true" ]]; then
+    _install_summary_phase \
+      "$install_root" "$bin_dir" \
+      "${_INSTALL_MODE:-minimal}" \
+      "${_INSTALL_INTELLIJ_ACTION:-skip}" \
+      "$install_standalone"
+  else
+    log_section "Install summary"
+    log "Install root:  ${install_root}"
+    log "Binary:        ${bin_dir}/kast"
+    log "Config:        ${HOME}/.config/kast/env"
+    log "Components:    ${components}"
+    [[ -n "${rc_file:-}" ]] && log "Shell RC:      ${rc_file}"
+    log_section "Ready"
+    if [[ "$install_cli" == "true" ]]; then
+      log_success "Launcher: ${bin_dir}/kast"
+      if _install_path_contains "$bin_dir"; then
+        log_step "Try: kast --help"
+      else
+        log_note "Export PATH=\"${bin_dir}:\$PATH\" then run: kast --help"
+      fi
+    fi
+    [[ "$install_intellij" == "true" ]]  && log_step "IntelliJ plugin: ${install_root}/plugins/"
+    [[ "$install_standalone" == "true" ]] && log_success "Standalone backend: ${install_root}/backends/current/"
   fi
 }
 

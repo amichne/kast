@@ -239,6 +239,10 @@ internal class DefaultCliCommandExecutor(
                 output = cliService.daemonStart(command.options),
             )
 
+            CliCommand.ConfigInit -> CliExecutionResult(
+                output = cliService.configInit(),
+            )
+
             is CliCommand.Skill -> {
                 val executor = SkillWrapperExecutor(cliService, json)
                 val response = executor.execute(command)

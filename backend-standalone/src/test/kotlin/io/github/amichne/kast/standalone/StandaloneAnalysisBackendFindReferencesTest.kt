@@ -4,7 +4,7 @@ import io.github.amichne.kast.api.contract.FilePosition
 import io.github.amichne.kast.api.contract.ModuleName
 import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.ReadCapability
-import io.github.amichne.kast.api.contract.ReferencesQuery
+import io.github.amichne.kast.api.contract.query.ReferencesQuery
 import io.github.amichne.kast.api.contract.SearchScopeKind
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.contract.SymbolVisibility

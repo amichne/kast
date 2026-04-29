@@ -1,33 +1,34 @@
 package io.github.amichne.kast.api.client
 
-import io.github.amichne.kast.api.validation.FileHashing
-
-import io.github.amichne.kast.api.contract.*
-
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
 import kotlin.io.path.Path
 
 class WorkspacePathsTest {
+    @TempDir
+    lateinit var tempDir: Path
+
 
     @Nested
     inner class KastConfigHomeTest {
         @Test
         fun `resolves KAST_CONFIG_HOME when set`() {
-            val env = mapOf("KAST_CONFIG_HOME" to "/custom/kast-config")
+            val configHome = tempDir.resolve("kast-config")
+            val env = mapOf("KAST_CONFIG_HOME" to configHome.toString())
             val result = kastConfigHome(env::get)
-            assertEquals(Path.of("/custom/kast-config").toAbsolutePath().normalize(), result)
+            assertEquals(configHome.toAbsolutePath().normalize(), result)
         }
 
         @Test
         fun `falls back to XDG_CONFIG_HOME when KAST_CONFIG_HOME is absent`() {
-            val env = mapOf("XDG_CONFIG_HOME" to "/custom/xdg")
+            val xdgHome = tempDir.resolve("xdg")
+            val env = mapOf("XDG_CONFIG_HOME" to xdgHome.toString())
             val result = kastConfigHome(env::get)
-            assertEquals(Path.of("/custom/xdg/kast").toAbsolutePath().normalize(), result)
+            assertEquals(xdgHome.resolve("kast").toAbsolutePath().normalize(), result)
         }
 
         @Test
@@ -42,12 +43,13 @@ class WorkspacePathsTest {
 
         @Test
         fun `KAST_CONFIG_HOME takes priority over XDG_CONFIG_HOME`() {
+            val configHome = tempDir.resolve("kast-specific")
             val env = mapOf(
-                "KAST_CONFIG_HOME" to "/kast-specific",
-                "XDG_CONFIG_HOME" to "/xdg-general",
+                "KAST_CONFIG_HOME" to configHome.toString(),
+                "XDG_CONFIG_HOME" to tempDir.resolve("xdg-general").toString(),
             )
             val result = kastConfigHome(env::get)
-            assertEquals(Path.of("/kast-specific").toAbsolutePath().normalize(), result)
+            assertEquals(configHome.toAbsolutePath().normalize(), result)
         }
     }
 
@@ -55,10 +57,11 @@ class WorkspacePathsTest {
     inner class DefaultDescriptorDirectoryTest {
         @Test
         fun `resolves to daemons subdirectory of config home`() {
-            val env = mapOf("KAST_CONFIG_HOME" to "/custom/config")
+            val configHome = tempDir.resolve("config")
+            val env = mapOf("KAST_CONFIG_HOME" to configHome.toString())
             val result = defaultDescriptorDirectory(env::get)
             assertEquals(
-                Path.of("/custom/config/daemons").toAbsolutePath().normalize(),
+                configHome.resolve("daemons").toAbsolutePath().normalize(),
                 result,
             )
         }
@@ -67,22 +70,20 @@ class WorkspacePathsTest {
     @Nested
     inner class KastLogDirectoryTest {
         @Test
-        fun `resolves to logs subdirectory with workspace hash`() {
-            val env = mapOf("KAST_CONFIG_HOME" to "/custom/config")
+        fun `resolves to logs under workspace data directory`() {
+            val env = mapOf("KAST_CONFIG_HOME" to tempDir.resolve("config").toString())
             val workspaceRoot = Path.of("/tmp/workspace")
             val result = kastLogDirectory(workspaceRoot, env::get)
 
-            val normalizedRoot = workspaceRoot.toAbsolutePath().normalize().toString()
-            val expectedHash = FileHashing.sha256(normalizedRoot).take(12)
             assertEquals(
-                Path.of("/custom/config/logs/$expectedHash").toAbsolutePath().normalize(),
+                workspaceDataDirectory(workspaceRoot, env::get).resolve("logs"),
                 result,
             )
         }
 
         @Test
         fun `different workspace roots produce different directories`() {
-            val env = mapOf("KAST_CONFIG_HOME" to "/custom/config")
+            val env = mapOf("KAST_CONFIG_HOME" to tempDir.resolve("config").toString())
             val dir1 = kastLogDirectory(Path.of("/workspace/a"), env::get)
             val dir2 = kastLogDirectory(Path.of("/workspace/b"), env::get)
             assertTrue(dir1 != dir2)
@@ -92,16 +93,17 @@ class WorkspacePathsTest {
     @Nested
     inner class LegacyBehaviorTest {
         @Test
-        fun `workspace metadata directory lives under the workspace root`() {
+        fun `workspace metadata directory resolves to workspace data directory`() {
             val workspaceRoot = Path.of("/tmp/workspace").toAbsolutePath().normalize()
+            val env = mapOf("KAST_CONFIG_HOME" to tempDir.resolve("config").toString())
             assertEquals(
-                workspaceRoot.resolve(".kast"),
-                workspaceMetadataDirectory(workspaceRoot),
+                workspaceDataDirectory(workspaceRoot, env::get),
+                workspaceMetadataDirectory(workspaceRoot, env::get),
             )
         }
 
         @Test
-        fun `default socket path falls back to temp directory for long workspace roots`() {
+        fun `default socket path stays short for long workspace data directories`() {
             val workspaceRoot = Path(
                 "/private/var/folders/test-root",
                 "nested".repeat(12),
@@ -109,15 +111,7 @@ class WorkspacePathsTest {
             )
 
             val socketPath = defaultSocketPath(workspaceRoot)
-            assertTrue(socketPath.toString().length <= 100)
-            assertTrue(
-                socketPath.startsWith(
-                    Path(System.getProperty("java.io.tmpdir"))
-                        .toAbsolutePath()
-                        .normalize(),
-                ),
-            )
-            assertTrue(socketPath.fileName.toString().endsWith(".sock"))
+            assertTrue(socketPath.toString().length < 108)
         }
     }
 }

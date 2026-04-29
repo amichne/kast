@@ -1,7 +1,7 @@
 package io.github.amichne.kast.cli.skill
 
-import io.github.amichne.kast.api.contract.ApplyEditsResult
-import io.github.amichne.kast.api.contract.CallHierarchyStats
+import io.github.amichne.kast.api.contract.result.ApplyEditsResult
+import io.github.amichne.kast.api.contract.result.CallHierarchyStats
 import io.github.amichne.kast.api.contract.CallNode
 import io.github.amichne.kast.api.wrapper.KastCallersQuery
 import io.github.amichne.kast.api.wrapper.KastCallersSuccessResponse
@@ -25,7 +25,7 @@ import io.github.amichne.kast.api.wrapper.KastWriteAndValidateSuccessResponse
 import io.github.amichne.kast.api.contract.Location
 import io.github.amichne.kast.api.contract.Symbol
 import io.github.amichne.kast.api.contract.SymbolKind
-import io.github.amichne.kast.api.contract.WorkspaceModule
+import io.github.amichne.kast.api.contract.result.WorkspaceModule
 import io.github.amichne.kast.cli.defaultCliJson
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject

@@ -1,6 +1,6 @@
 package io.github.amichne.kast.shared.hierarchy
 
-import io.github.amichne.kast.api.contract.CallHierarchyStats
+import io.github.amichne.kast.api.contract.result.CallHierarchyStats
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean

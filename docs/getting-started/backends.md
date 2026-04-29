@@ -51,6 +51,11 @@ can also install the CLI and standalone backend together:
 ./kast.sh install --components=cli,backend --non-interactive
 ```
 
+After installation, run `kast config init` and set
+`backends.standalone.runtimeLibsDir` to the installed `runtime-libs`
+directory. You can also pass `--runtime-libs-dir` to `kast daemon start`
+for one-off runs.
+
 The standalone backend works like this:
 
 1. You run `kast daemon start --workspace-root=<path>` in a terminal or
@@ -100,9 +105,8 @@ The IntelliJ plugin backend works like this:
    interface.
 
 !!! tip
-    To disable the plugin without uninstalling it, set the
-    `KAST_INTELLIJ_DISABLE` environment variable before launching
-    IntelliJ.
+    To disable the plugin without uninstalling it, set
+    `backends.intellij.enabled = false` in your Kast `config.toml`.
 
 ## Capability surface
 

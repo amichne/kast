@@ -3,7 +3,7 @@
     "target": {
         "kind": "skill",
         "name": "kast",
-        "path": "/Users/amichne/code/kast/.agents/skills/kast"
+        "path": "/home/runner/work/kast/kast/.agents/skills/kast"
     },
     "summary": {
         "score": 99,

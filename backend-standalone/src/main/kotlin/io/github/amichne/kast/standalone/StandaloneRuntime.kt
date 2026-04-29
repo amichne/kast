@@ -1,10 +1,12 @@
 package io.github.amichne.kast.standalone
 
 import io.github.amichne.kast.api.contract.ServerLimits
+import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.StandaloneServerOptions
-import io.github.amichne.kast.server.AnalysisServer
 import io.github.amichne.kast.server.AnalysisServerConfig
+import io.github.amichne.kast.server.AnalysisServer
 import io.github.amichne.kast.server.RunningAnalysisServer
+import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetry
 
 internal class RunningStandaloneRuntime(
     val server: RunningAnalysisServer,
@@ -25,11 +27,13 @@ internal class RunningStandaloneRuntime(
 object StandaloneRuntime {
     internal fun start(options: StandaloneServerOptions): RunningStandaloneRuntime {
         System.setProperty("java.awt.headless", "true")
+        val config = KastConfig.load(options.workspaceRoot)
         val phasedDiscoveryResult = discoverStandaloneWorkspaceLayoutPhased(
             workspaceRoot = options.workspaceRoot,
             sourceRoots = options.sourceRoots,
             classpathRoots = options.classpathRoots,
             moduleName = options.moduleName,
+            config = config,
         )
         val session = StandaloneAnalysisSession(
             workspaceRoot = options.workspaceRoot,
@@ -37,7 +41,9 @@ object StandaloneRuntime {
             classpathRoots = options.classpathRoots,
             moduleName = options.moduleName,
             phasedDiscoveryResult = phasedDiscoveryResult,
+            config = config,
         )
+        val telemetry = StandaloneTelemetry.fromConfig(options.workspaceRoot, config)
         val backend = StandaloneAnalysisBackend(
             workspaceRoot = options.workspaceRoot,
             limits = ServerLimits(
@@ -46,8 +52,9 @@ object StandaloneRuntime {
                 maxConcurrentRequests = options.maxConcurrentRequests,
             ),
             session = session,
+            telemetry = telemetry,
         )
-        val watcher = WorkspaceRefreshWatcher(session)
+        val watcher = WorkspaceRefreshWatcher(session, debounceMillis = config.watcher.debounceMillis)
         session.attachWorkspaceRefreshWatcher(watcher)
         val server = AnalysisServer(
             backend = backend,

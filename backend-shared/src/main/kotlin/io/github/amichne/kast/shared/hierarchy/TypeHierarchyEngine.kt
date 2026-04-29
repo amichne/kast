@@ -3,10 +3,10 @@ package io.github.amichne.kast.shared.hierarchy
 import com.intellij.psi.PsiElement
 import io.github.amichne.kast.api.contract.Symbol
 import io.github.amichne.kast.api.contract.TypeHierarchyDirection
-import io.github.amichne.kast.api.contract.TypeHierarchyNode
-import io.github.amichne.kast.api.contract.TypeHierarchyStats
-import io.github.amichne.kast.api.contract.TypeHierarchyTruncation
-import io.github.amichne.kast.api.contract.TypeHierarchyTruncationReason
+import io.github.amichne.kast.api.contract.result.TypeHierarchyNode
+import io.github.amichne.kast.api.contract.result.TypeHierarchyStats
+import io.github.amichne.kast.api.contract.result.TypeHierarchyTruncation
+import io.github.amichne.kast.api.contract.result.TypeHierarchyTruncationReason
 import io.github.amichne.kast.shared.analysis.resolvedFilePath
 
 /**

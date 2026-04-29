@@ -1,7 +1,7 @@
 package io.github.amichne.kast.standalone.hierarchy
 
-import io.github.amichne.kast.api.contract.CallHierarchyQuery
-import io.github.amichne.kast.api.contract.CallHierarchyResult
+import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
+import io.github.amichne.kast.api.contract.result.CallHierarchyResult
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.shared.analysis.resolveTarget
 import io.github.amichne.kast.shared.hierarchy.CallHierarchyEngine

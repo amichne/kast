@@ -1,5 +1,6 @@
 package io.github.amichne.kast.standalone
 
+import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.contract.ModuleName
 import io.github.amichne.kast.standalone.workspace.GradleWorkspaceDiscovery
 import io.github.amichne.kast.standalone.workspace.PhasedDiscoveryResult
@@ -12,6 +13,7 @@ internal fun discoverStandaloneWorkspaceLayout(
     sourceRoots: List<Path>,
     classpathRoots: List<Path>,
     moduleName: String,
+    config: KastConfig = KastConfig.load(workspaceRoot),
 ): StandaloneWorkspaceLayout {
     val normalizedWorkspaceRoot = normalizeStandalonePath(workspaceRoot)
     if (sourceRoots.isNotEmpty()) {
@@ -30,6 +32,7 @@ internal fun discoverStandaloneWorkspaceLayout(
         return GradleWorkspaceDiscovery.discover(
             workspaceRoot = normalizedWorkspaceRoot,
             extraClasspathRoots = normalizeStandalonePaths(classpathRoots),
+            config = config,
         )
     }
 
@@ -50,6 +53,7 @@ internal fun discoverStandaloneWorkspaceLayoutPhased(
     sourceRoots: List<Path>,
     classpathRoots: List<Path>,
     moduleName: String,
+    config: KastConfig = KastConfig.load(workspaceRoot),
 ): PhasedDiscoveryResult {
     val normalizedWorkspaceRoot = normalizeStandalonePath(workspaceRoot)
     if (sourceRoots.isNotEmpty() || !looksLikeGradleWorkspace(normalizedWorkspaceRoot)) {
@@ -59,6 +63,7 @@ internal fun discoverStandaloneWorkspaceLayoutPhased(
                 sourceRoots = sourceRoots,
                 classpathRoots = classpathRoots,
                 moduleName = moduleName,
+                config = config,
             ),
             enrichmentFuture = null,
         )
@@ -67,6 +72,7 @@ internal fun discoverStandaloneWorkspaceLayoutPhased(
     return GradleWorkspaceDiscovery.discoverPhased(
         workspaceRoot = normalizedWorkspaceRoot,
         extraClasspathRoots = normalizeStandalonePaths(classpathRoots),
+        config = config,
     )
 }
 

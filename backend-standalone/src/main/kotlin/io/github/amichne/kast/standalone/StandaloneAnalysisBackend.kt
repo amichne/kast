@@ -3,38 +3,38 @@ package io.github.amichne.kast.standalone
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiRecursiveElementWalkingVisitor
 import io.github.amichne.kast.api.contract.AnalysisBackend
-import io.github.amichne.kast.api.contract.ApplyEditsQuery
-import io.github.amichne.kast.api.contract.ApplyEditsResult
+import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
+import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.contract.BackendCapabilities
-import io.github.amichne.kast.api.contract.CallHierarchyQuery
-import io.github.amichne.kast.api.contract.CallHierarchyResult
-import io.github.amichne.kast.api.contract.CodeActionsQuery
-import io.github.amichne.kast.api.contract.CodeActionsResult
-import io.github.amichne.kast.api.contract.CompletionItem
-import io.github.amichne.kast.api.contract.CompletionsQuery
-import io.github.amichne.kast.api.contract.CompletionsResult
+import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
+import io.github.amichne.kast.api.contract.result.CallHierarchyResult
+import io.github.amichne.kast.api.contract.query.CodeActionsQuery
+import io.github.amichne.kast.api.contract.result.CodeActionsResult
+import io.github.amichne.kast.api.contract.result.CompletionItem
+import io.github.amichne.kast.api.contract.query.CompletionsQuery
+import io.github.amichne.kast.api.contract.result.CompletionsResult
 import io.github.amichne.kast.api.contract.Diagnostic
 import io.github.amichne.kast.api.contract.DiagnosticSeverity
-import io.github.amichne.kast.api.contract.DiagnosticsQuery
-import io.github.amichne.kast.api.contract.DiagnosticsResult
+import io.github.amichne.kast.api.contract.query.DiagnosticsQuery
+import io.github.amichne.kast.api.contract.result.DiagnosticsResult
 import io.github.amichne.kast.api.contract.Location
 import io.github.amichne.kast.api.contract.FileHash
-import io.github.amichne.kast.api.contract.FileOutlineQuery
-import io.github.amichne.kast.api.contract.FileOutlineResult
+import io.github.amichne.kast.api.contract.query.FileOutlineQuery
+import io.github.amichne.kast.api.contract.result.FileOutlineResult
 import io.github.amichne.kast.api.contract.HealthResponse
-import io.github.amichne.kast.api.contract.ImportOptimizeQuery
-import io.github.amichne.kast.api.contract.ImportOptimizeResult
-import io.github.amichne.kast.api.contract.ImplementationsQuery
-import io.github.amichne.kast.api.contract.ImplementationsResult
+import io.github.amichne.kast.api.contract.query.ImportOptimizeQuery
+import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
+import io.github.amichne.kast.api.contract.query.ImplementationsQuery
+import io.github.amichne.kast.api.contract.result.ImplementationsResult
 import io.github.amichne.kast.api.validation.LocalDiskEditApplier
 import io.github.amichne.kast.api.contract.MutationCapability
 import io.github.amichne.kast.api.contract.ReadCapability
-import io.github.amichne.kast.api.contract.ReferencesQuery
-import io.github.amichne.kast.api.contract.ReferencesResult
-import io.github.amichne.kast.api.contract.RefreshQuery
-import io.github.amichne.kast.api.contract.RefreshResult
-import io.github.amichne.kast.api.contract.RenameQuery
-import io.github.amichne.kast.api.contract.RenameResult
+import io.github.amichne.kast.api.contract.query.ReferencesQuery
+import io.github.amichne.kast.api.contract.result.ReferencesResult
+import io.github.amichne.kast.api.contract.query.RefreshQuery
+import io.github.amichne.kast.api.contract.result.RefreshResult
+import io.github.amichne.kast.api.contract.query.RenameQuery
+import io.github.amichne.kast.api.contract.result.RenameResult
 import io.github.amichne.kast.api.contract.RuntimeState
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
 import io.github.amichne.kast.api.contract.SearchScope
@@ -43,22 +43,21 @@ import io.github.amichne.kast.api.contract.SemanticInsertionQuery
 import io.github.amichne.kast.api.contract.SemanticInsertionResult
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.contract.Symbol
-import io.github.amichne.kast.api.contract.SymbolQuery
-import io.github.amichne.kast.api.contract.SymbolResult
+import io.github.amichne.kast.api.contract.query.SymbolQuery
+import io.github.amichne.kast.api.contract.result.SymbolResult
 import io.github.amichne.kast.api.contract.SymbolVisibility
 import io.github.amichne.kast.api.contract.TextEdit
-import io.github.amichne.kast.api.contract.TypeHierarchyQuery
-import io.github.amichne.kast.api.contract.TypeHierarchyResult
-import io.github.amichne.kast.api.contract.WorkspaceFilesQuery
-import io.github.amichne.kast.api.contract.WorkspaceFilesResult
-import io.github.amichne.kast.api.contract.WorkspaceModule
-import io.github.amichne.kast.api.contract.WorkspaceSymbolQuery
-import io.github.amichne.kast.api.contract.WorkspaceSymbolResult
+import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
+import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
+import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
+import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
+import io.github.amichne.kast.api.contract.result.WorkspaceModule
+import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
+import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 import io.github.amichne.kast.shared.analysis.FileOutlineBuilder
 import io.github.amichne.kast.shared.analysis.ImportAnalysis
 import io.github.amichne.kast.shared.analysis.SemanticInsertionPointResolver
 import io.github.amichne.kast.shared.analysis.SymbolSearchMatcher
-import io.github.amichne.kast.shared.analysis.callHierarchyDeclaration
 import io.github.amichne.kast.shared.analysis.declarationEdit
 import io.github.amichne.kast.shared.analysis.referenceSearchIdentifier
 import io.github.amichne.kast.shared.analysis.resolveTarget
@@ -106,7 +105,7 @@ internal class StandaloneAnalysisBackend internal constructor(
         workspaceRoot = workspaceRoot,
         limits = limits,
         session = session,
-        telemetry = StandaloneTelemetry.fromEnvironment(workspaceRoot),
+        telemetry = StandaloneTelemetry.fromConfig(workspaceRoot),
     )
 
     private val readDispatcher = Dispatchers.IO.limitedParallelism(limits.maxConcurrentRequests)

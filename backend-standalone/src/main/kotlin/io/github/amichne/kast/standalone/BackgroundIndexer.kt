@@ -34,7 +34,12 @@ internal class BackgroundIndexer(
     private val sourceIndexCache: SourceIndexCache,
     private val store: SqliteSourceIndexStore,
     private val initialSourceIndexBuilder: (() -> Map<String, List<String>>)? = null,
+    private val referenceBatchSize: Int = 50,
 ) : AutoCloseable {
+
+    init {
+        require(referenceBatchSize > 0) { "Reference index batch size must be positive" }
+    }
 
     val identifierIndexReady = CompletableFuture<Unit>()
     val referenceIndexReady = CompletableFuture<Unit>()
@@ -114,7 +119,7 @@ internal class BackgroundIndexer(
                 if (cancelled) return@thread
                 val allPaths = changedPaths ?: store.loadManifest()?.keys ?: return@thread
                 generation.incrementAndGet()
-                ReferenceIndexer(store, batchSize = PHASE2_BATCH_SIZE).indexReferences(
+                ReferenceIndexer(store, batchSize = referenceBatchSize).indexReferences(
                     filePaths = allPaths,
                     referenceScanner = referenceScanner,
                     isCancelled = { cancelled || Thread.currentThread().isInterrupted },
@@ -167,7 +172,7 @@ internal class BackgroundIndexer(
         }
         if (referenceScanner != null) {
             val changedPathStrings = paths.map { it.value }.toSet()
-            ReferenceIndexer(store, batchSize = PHASE2_BATCH_SIZE).reindexFiles(
+            ReferenceIndexer(store, batchSize = referenceBatchSize).reindexFiles(
                 changedPaths = changedPathStrings,
                 referenceScanner = referenceScanner,
                 isCancelled = { cancelled || Thread.currentThread().isInterrupted },
@@ -199,11 +204,6 @@ internal class BackgroundIndexer(
     // -------------------------------------------------------------------------
     // Phase 1 internals
     // -------------------------------------------------------------------------
-
-    companion object {
-        /** Number of files to batch per Phase 2 transaction to reduce SQLite write contention. */
-        private const val PHASE2_BATCH_SIZE = 50
-    }
 
     private fun loadOrBuildIndex(): MutableSourceIdentifierIndex {
         val incrementalResult = runCatching {
