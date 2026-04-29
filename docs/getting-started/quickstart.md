@@ -6,48 +6,42 @@ icon: lucide/zap
 
 # Quickstart
 
-This page walks you through a first semantic result. By the end, you'll
-know exactly which declaration sits at a cursor position and where that
-declaration is used across your workspace, with structured JSON you can
-hand to a script or agent.
+By the end of this page you'll have asked the daemon two questions —
+"what symbol is this?" and "who uses it?" — and gotten structured JSON
+back, with proof the search finished.
 
-`kast` has two independent runtime modes. This walkthrough uses the
-standalone runtime mode because it works in any terminal, CI job, or
-agent session. If IntelliJ IDEA is already open with the plugin
-installed, skip the standalone startup and shutdown steps, then run the
-resolve and references commands with `--backend-name=intellij` instead.
-That plugin-backed runtime piggybacks on IntelliJ's already-open project
-model, indexes, and analysis session, so there is no separate daemon to
-start or stop.
+The walkthrough uses the standalone backend because it works anywhere:
+your terminal, a CI runner, an agent loop. If IntelliJ is already open
+on the project with the plugin installed, swap `--backend-name=standalone`
+for `--backend-name=intellij` and skip the start/stop steps. The plugin
+reuses the IDE's analysis session — no second daemon to babysit.
 
 ## Before you begin
 
-Make sure you have:
+You need:
 
 - The `kast` CLI installed (see [Install](install.md))
-- A Kotlin workspace on your machine (any Gradle or standalone Kotlin
-  project)
+- A Kotlin workspace on your machine — Gradle or plain
 - The absolute path to that workspace root
 
-For standalone discovery, Gradle files are helpful but not always
-required.
+??? info "About Gradle discovery"
 
-> **Note:** If the workspace root contains `settings.gradle.kts`,
-> `settings.gradle`, `build.gradle.kts`, or `build.gradle`, the
-> standalone backend uses Gradle-aware discovery. Without those files,
-> `kast` still falls back to conventional source roots and source-file
-> scanning. A root `settings.gradle.kts` matters most for multi-module
-> Gradle workspaces.
+    With `settings.gradle(.kts)` or `build.gradle(.kts)` at the root,
+    standalone discovery uses Gradle's project model. Without those
+    files, `kast` falls back to conventional source roots and a
+    source-file scan. The Gradle path matters most for multi-module
+    builds.
 
 ## Step 1: Start the standalone backend
 
-Tell `kast` which workspace to analyze. This starts the standalone
-daemon and waits until it finishes indexing.
+Run every command from your project root. The first call is the slow
+one — the daemon discovers your project and indexes Kotlin files. After
+that, you're hitting a warm session.
 
 ```console linenums="1" title="Start the daemon"
 kast workspace ensure \
   --backend-name=standalone \
-  --workspace-root=/absolute/path/to/workspace
+  --workspace-root=$(pwd)
 ```
 
 ```mermaid
@@ -65,27 +59,30 @@ sequenceDiagram
     CLI-->>You: JSON result with runtime metadata
 ```
 
-The first start takes longer because the daemon discovers your project
-structure and indexes every Kotlin file. Later commands reuse that warm
-state. This command is the one-time setup cost that turns later semantic
-queries into fast lookups.
+The first start indexes every Kotlin file. Later commands reuse the warm
+state — the cost you pay here buys you fast lookups for the rest of the
+session.
 
 !!! tip
-    Pass `--accept-indexing=true` if you want the command to return as
-    soon as the daemon is servable, even if indexing hasn't finished.
-    Queries during indexing may return partial results.
+    Pass `--accept-indexing=true` to return as soon as the daemon can
+    serve requests, even before indexing finishes. Queries during
+    indexing may return partial results.
 
 ## Step 2: Resolve a symbol
 
-Pick any Kotlin file in your workspace and an offset pointing at a
-symbol you want to identify. `kast` returns the fully qualified name,
-kind, parameters, return type, and source location.
+Pick a Kotlin file and a byte offset that lands on a symbol name. `kast`
+returns the fully qualified name, kind, signature, and source location
+of the declaration at that offset.
+
+!!! tip "How to get an offset"
+    The fast way: `grep -bo 'functionName' src/main/kotlin/App.kt`
+    prints the byte offset of every match.
 
 ```console linenums="1" title="Resolve a symbol"
 kast resolve \
   --backend-name=standalone \
-  --workspace-root=/absolute/path/to/workspace \
-  --file-path=/absolute/path/to/workspace/src/main/kotlin/App.kt \
+  --workspace-root=$(pwd) \
+  --file-path=$(pwd)/src/main/kotlin/App.kt \
   --offset=42
 ```
 
@@ -106,22 +103,18 @@ kast resolve \
 }
 ```
 
-This first result answers the question, "What symbol is this, exactly?"
-The `fqName` and `kind` give you compiler identity, not a text match.
-The signature and location tell you what the declaration does and where
-it lives. That is the value of the first result: every later command can
-stay anchored to the same declaration with no ambiguity.
+`fqName` and `kind` are compiler identity, not text matches. Every later
+command can stay anchored to this declaration without ambiguity.
 
 ## Step 3: Find references
 
-Using the same file and offset, ask Kast for every reference to that
-symbol across the workspace.
+Same file, same offset. Ask for every reference across the workspace.
 
 ```console linenums="1" title="Find references"
 kast references \
   --backend-name=standalone \
-  --workspace-root=/absolute/path/to/workspace \
-  --file-path=/absolute/path/to/workspace/src/main/kotlin/App.kt \
+  --workspace-root=$(pwd) \
+  --file-path=$(pwd)/src/main/kotlin/App.kt \
   --offset=42
 ```
 
@@ -148,42 +141,39 @@ kast references \
 }
 ```
 
-Notice `searchScope.exhaustive: true` — this means Kast searched every
-candidate file. The reference list is complete for this workspace, not a
-sample. In one step, you go from "what declaration is this?" to "who
-uses it?" with proof that the search finished.
+`searchScope.exhaustive: true` is the part that matters. `kast` walked
+every candidate file. The reference list is complete for this workspace
+— not a sample, not a best effort.
 
-## Step 4: Optional: stop the daemon
+## Step 4 (optional): stop the daemon
 
-If you used the standalone path for this walkthrough, stop the daemon to
-free resources.
+Free the resources when you're done.
 
 ```console title="Stop the daemon"
 kast workspace stop \
   --backend-name=standalone \
-  --workspace-root=/absolute/path/to/workspace
+  --workspace-root=$(pwd)
 ```
 
 ## What just happened
 
-In four commands, you:
+Four commands. You:
 
-1. **Started a workspace daemon** that indexed your entire Kotlin
-   codebase into a live analysis session.
-2. **Resolved a symbol** to its exact declaration with full type
-   information — not a string match, but a compiler-backed identity.
-3. **Found every reference** with a proof of completeness
-   (`exhaustive: true`).
-4. **Stopped the daemon** cleanly.
+1. Started a daemon that indexed your Kotlin codebase into a live K2
+   session.
+2. Resolved a cursor position to a real declaration with type info — no
+   string match.
+3. Got every reference back, with proof the search was exhaustive.
+4. Shut the daemon down cleanly.
 
-Every command returned structured JSON that a script, agent, or pipeline
-can parse directly. No regex, no guessing, no "might have missed some."
+Every response is structured JSON. No regex, no guessing, no "we might
+have missed some."
 
 ## Next steps
 
 - [Understand symbols](../what-can-kast-do/understand-symbols.md) —
-  everything Kast tells you about a declaration
-- [Trace usage](../what-can-kast-do/trace-usage.md) — references,
-  call hierarchy, and type hierarchy
-- [Kast for agents](../for-agents/index.md) — how LLM agents use
-  these same commands
+  everything `kast` will tell you about a declaration
+- [Trace usage](../what-can-kast-do/trace-usage.md) — references, call
+  hierarchy, type hierarchy
+- [Kast for agents](../for-agents/index.md) — these same commands from
+  an LLM

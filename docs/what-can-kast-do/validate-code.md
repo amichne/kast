@@ -8,41 +8,39 @@ description: >-
 
 # Validate code
 
-These operations help you check code correctness without opening an
-IDE. Run diagnostics to surface errors and warnings, request code
-actions for suggested fixes, and query completions to discover
-available symbols at a position.
+Check correctness without opening an IDE. Diagnostics surface
+errors and warnings; code actions tell you what `kast` can fix;
+completions show what the compiler thinks belongs at a position.
 
 ## Diagnostics
 
 Diagnostics analyze one or more Kotlin files and return compiler
-errors, warnings, and informational messages with precise source
-locations. Use them in CI gates, pre-commit hooks, or agent workflows
-to catch problems before they reach review.
+errors, warnings, and infos with exact source locations. Plug them
+into CI gates, pre-commit hooks, or agent loops to catch problems
+before review.
 
 === "Single file"
 
-    Pass one file path to check a single source file:
+    Pass one file path:
 
     ```console title="Run diagnostics on one file"
     kast diagnostics \
-      --workspace-root=/app \
-      --file-paths=/app/src/main/kotlin/com/shop/OrderService.kt
+      --workspace-root=$(pwd) \
+      --file-paths=$(pwd)/src/main/kotlin/com/shop/OrderService.kt
     ```
 
 === "Multiple files"
 
-    Pass a comma-separated list with `--file-paths` to check
-    several files in one call:
+    Pass a comma-separated list:
 
     ```console title="Run diagnostics on multiple files"
     kast diagnostics \
-      --workspace-root=/app \
-      --file-paths=/app/src/main/kotlin/com/shop/OrderService.kt,/app/src/main/kotlin/com/shop/PaymentGateway.kt
+      --workspace-root=$(pwd) \
+      --file-paths=$(pwd)/src/main/kotlin/com/shop/OrderService.kt,$(pwd)/src/main/kotlin/com/shop/PaymentGateway.kt
     ```
 
-The response contains a `diagnostics` array. Each entry includes the
-file, severity, human-readable message, and exact source range:
+The response is a `diagnostics` array. Each entry carries the file,
+severity, message, and exact range:
 
 ```json title="Example diagnostics response" hl_lines="4 5 6"
 {
@@ -62,28 +60,49 @@ file, severity, human-readable message, and exact source range:
 }
 ```
 
-The highlighted fields — `filePath` and `severity` plus `range` —
-give you everything you need to locate the problem and decide whether
-it blocks a build.
+`filePath`, `severity`, and `range` give you everything to locate
+the problem and decide whether it blocks the build.
 
-!!! tip "Refresh before diagnosing"
+!!! warning "Refresh before diagnosing"
 
-    If you modified files outside the daemon, run
-    `kast workspace refresh` first so diagnostics reflect the latest
-    disk state.
+    Diagnostics reflect the daemon's last view of disk. If you (or
+    your agent, or `git checkout`) modified files outside the
+    daemon's observation window, run `kast workspace refresh`
+    first — otherwise you get a stale answer that looks correct.
+
+### Use diagnostics as a CI gate
+
+Diagnostics return structured JSON, so they drop into a CI pipeline
+next to your normal Kotlin build. Bring up a daemon, diff for
+changed `.kt` files, run diagnostics, fail on errors.
+
+```bash title="Run kast diagnostics in CI"
+kast workspace ensure --workspace-root=$(pwd)
+
+kast diagnostics \
+  --workspace-root=$(pwd) \
+  --file-paths=$(git diff --name-only origin/main -- '*.kt' | sed "s|^|$(pwd)/|" | paste -sd, -) \
+  > diagnostics.json
+
+jq -e '[.diagnostics[] | select(.severity == "ERROR")] | length == 0' diagnostics.json
+```
+
+The `jq` line exits non-zero when any diagnostic is `ERROR`,
+failing the step. Tighten the filter to `WARNING` for a stricter
+gate.
 
 ## Code actions
 
 Code actions return suggested fixes and refactorings available at a
-specific file position. Pair them with diagnostics: first find the
-error, then ask what kast can do about it.
+file position. Pair them with diagnostics: find the error, then ask
+what `kast` can do about it.
 
 === "CLI example"
 
     ```console title="Request code actions at a position"
     kast code-actions \
-      --workspace-root=/app \
-      --file=/app/src/main/kotlin/com/shop/OrderService.kt \
+      --workspace-root=$(pwd) \
+      --file=$(pwd)/src/main/kotlin/com/shop/OrderService.kt \
       --offset=312
     ```
 
@@ -103,8 +122,8 @@ error, then ask what kast can do about it.
     }
     ```
 
-A typical response lists each available action with a title and the
-edits it would apply:
+A typical response lists each available action with a title and
+the edits it would apply:
 
 ```json title="Example code-actions response"
 {
@@ -122,28 +141,26 @@ edits it would apply:
 }
 ```
 
-If no actions apply at the queried position, `actions` returns an
-empty list. Filter to a specific diagnostic with `--diagnostic-code`
-when you want only fixes for one error.
+Empty `actions` means nothing matched at that position. Filter to
+a specific diagnostic with `--diagnostic-code` when you only want
+fixes for one error.
 
 ## Completions
 
 Completions return the symbols, keywords, and snippets the compiler
-suggests at a file position. This is a query-based lookup, not an
-interactive editor sync — you send a position and receive a list of
-candidates in one shot.
+suggests at a position. One-shot lookup, not an editor sync — send
+a position, get back a candidate list.
 
 ```console title="Query completions at a position"
 kast completions \
-  --workspace-root=/app \
-  --file=/app/src/main/kotlin/com/shop/OrderService.kt \
+  --workspace-root=$(pwd) \
+  --file=$(pwd)/src/main/kotlin/com/shop/OrderService.kt \
   --offset=312
 ```
 
-Use `--max-results` to cap the number of returned items and
-`--kind-filter` to restrict candidates to specific symbol kinds.
-The response includes an `exhaustive` flag that tells you whether
-every candidate was returned or results were truncated.
+`--max-results` caps the list; `--kind-filter` narrows to specific
+kinds. The response carries an `exhaustive` flag — `true` means you
+got every candidate, `false` means results were capped.
 
 ```json title="Example completions response"
 {
@@ -166,7 +183,7 @@ every candidate was returned or results were truncated.
 
 ## Next steps
 
-- [Manage workspaces](manage-workspaces.md) — control the daemon
-  lifecycle and workspace configuration.
-- [Troubleshooting](../troubleshooting.md) — solutions for common
-  issues when running kast.
+- [Manage workspaces](manage-workspaces.md) — daemon lifecycle and
+  workspace config
+- [Troubleshooting](../troubleshooting.md) — fixes for common
+  problems

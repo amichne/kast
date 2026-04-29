@@ -901,6 +901,17 @@ _install_banner() {
   printf '\n' >&2
 }
 
+_install_choice_line() {
+  local label="$1" description="$2" accent="${3:-1;36}" badge="${4:-}"
+
+  printf '  %s %s' "$(colorize "$accent" '→')" "$(colorize '1' "$label")" >&2
+  if [[ -n "$badge" ]]; then
+    printf ' %s' "$(colorize '1;32' "[$badge]")" >&2
+  fi
+  printf '\n' >&2
+  printf '    %s\n' "$description" >&2
+}
+
 _install_detect_env() {
   command -v java >/dev/null 2>&1 && _INSTALL_ENV_HAS_JAVA="true"
   command -v fzf  >/dev/null 2>&1 && _INSTALL_ENV_HAS_FZF="true"
@@ -980,12 +991,14 @@ _fzf_select() {
   if [[ "$_INSTALL_ENV_HAS_FZF" == "true" ]] && can_prompt; then
     local selection
     selection="$(printf '%s\n' "${items[@]}" \
-      | fzf --prompt="${prompt}: " \
+      | fzf --prompt="→ ${prompt}: " \
             --height="~40%" \
             --layout=reverse \
             --border=rounded \
-            --no-multi \
-            </dev/tty)"
+            --pointer="→" \
+            --header="enter = select · ctrl-c = cancel" \
+            --color="prompt:blue,pointer:green,info:blue,header:yellow,hl:cyan,hl+:cyan,border:blue" \
+            --no-multi)"
     printf '%s' "$selection"
     return 0
   fi
@@ -1022,11 +1035,11 @@ _install_mode_select() {
   if [[ "$intellij_count" -gt 0 ]]; then
     log_step "Detected ${intellij_count} running IntelliJ instance(s)"
     printf '\n' >&2
-    printf '  %-9s %s\n' "$(colorize '1;32' 'minimal')" "CLI + IntelliJ plugin  (recommended — IntelliJ detected)" >&2
-    printf '  %-9s %s\n' "full   " "CLI + standalone JVM backend  (no IntelliJ dependency)" >&2
+    _install_choice_line "minimal" "CLI + IntelliJ plugin (recommended — IntelliJ detected)" "1;32" "recommended"
+    _install_choice_line "full" "CLI + standalone JVM backend (no IntelliJ dependency)" "1;36"
   else
-    printf '  %-9s %s\n' "$(colorize '1;32' 'minimal')" "CLI only  (lightweight; add plugin or backend separately)" >&2
-    printf '  %-9s %s\n' "full   " "CLI + standalone JVM backend  (includes analysis engine)" >&2
+    _install_choice_line "minimal" "CLI only (lightweight; add plugin or backend separately)" "1;32" "quick start"
+    _install_choice_line "full" "CLI + standalone JVM backend (includes analysis engine)" "1;36"
   fi
   printf '\n' >&2
 
@@ -1037,9 +1050,9 @@ _install_mode_select() {
     printf '\n' >&2
     log_step "How would you like to install the IntelliJ plugin?"
     printf '\n' >&2
-    printf '  %-9s %s\n' "$(colorize '1;32' 'push')" "Push directly to a running instance (restart IntelliJ after)" >&2
-    printf '  %-9s %s\n' "zip   " "Download zip for manual install from disk" >&2
-    printf '  %-9s %s\n' "skip  " "Skip plugin install" >&2
+    _install_choice_line "push" "Push directly to a running instance (restart IntelliJ after)" "1;32" "recommended"
+    _install_choice_line "zip" "Download zip for manual install from disk" "1;36"
+    _install_choice_line "skip" "Skip plugin install" "33"
     printf '\n' >&2
     local action_choice; action_choice="$(_fzf_select "Plugin action" "push" "zip" "skip")"
     _INSTALL_INTELLIJ_ACTION="${action_choice:-push}"

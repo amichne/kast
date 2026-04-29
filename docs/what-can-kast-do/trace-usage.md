@@ -5,25 +5,27 @@ description: Trace references, call graphs, and type hierarchies
 icon: lucide/git-branch
 ---
 
-This page covers the operations that trace how symbols are used
-across your workspace: finding every reference to a declaration,
-expanding incoming or outgoing call trees, and walking type
-hierarchies up to supertypes or down to subtypes.
+Once you can name a symbol, the next questions are: who touches it,
+who calls it, and what sits above or below it in the type tree.
+These three operations — `references`, `call-hierarchy`, and
+`type-hierarchy` — answer those questions and tell you whether the
+answer is complete.
 
 ## Find references
 
-The `references` command returns every usage of a resolved symbol
-inside the workspace. Kast narrows the file search based on the
-symbol's Kotlin visibility, so a `private` function only searches
-its declaring file while a `public` function searches dependent
-modules through the identifier index.
+`references` returns every usage of a resolved symbol in the
+workspace. `kast` narrows the file search based on the symbol's
+Kotlin visibility: a `private` function searches its declaring file,
+an `internal` function searches its module, a `public` function
+searches every dependent module via the identifier index. You only
+pay for the scope the language actually requires.
 
 === "CLI"
 
     ```console title="Find all references to a symbol"
     kast references \
-      --workspace-root=/workspace \
-      --file-path=/workspace/src/main/kotlin/com/shop/OrderService.kt \
+      --workspace-root=$(pwd) \
+      --file-path=$(pwd)/src/main/kotlin/com/shop/OrderService.kt \
       --offset=42 \
       --include-declaration=true
     ```
@@ -52,8 +54,9 @@ modules through the identifier index.
     OrderService.kt. Include the declaration itself.
     ```
 
-The response includes a `searchScope` object that tells you
-exactly how Kast searched and whether the results are complete:
+Every response carries a `searchScope` object. It tells you exactly
+how `kast` searched and whether the result is complete — read it
+before you trust the list.
 
 ```json title="references response" hl_lines="12 13 14 15 16 17 18"
 {
@@ -100,23 +103,26 @@ exactly how Kast searched and whether the results are complete:
 
 ### Read `searchScope` before you trust completeness
 
+The five fields tell you what `kast` did and whether you should
+believe the answer:
+
 | Field | Meaning |
 |-------|---------|
-| `visibility` | Kotlin visibility Kast resolved: `PUBLIC`, `INTERNAL`, `PROTECTED`, `PRIVATE`, `LOCAL`, or `UNKNOWN`. |
+| `visibility` | Kotlin visibility `kast` resolved: `PUBLIC`, `INTERNAL`, `PROTECTED`, `PRIVATE`, `LOCAL`, or `UNKNOWN`. |
 | `scope` | Breadth of the search: `FILE`, `MODULE`, or `DEPENDENT_MODULES`. |
-| `exhaustive` | `true` when every candidate file was searched. Treat results as partial when `false`. |
-| `candidateFileCount` | Files the index identified as possible reference holders. |
-| `searchedFileCount` | Files Kast actually analyzed. |
+| `exhaustive` | `true` when every candidate file was searched. Treat as partial when `false`. |
+| `candidateFileCount` | Files the index flagged as possible reference holders. |
+| `searchedFileCount` | Files `kast` actually analyzed. |
 
-When `exhaustive` is `false`, the index was incomplete or the
-scope could not cover all candidates. Widen the search or
-refresh the workspace before claiming the reference list is
-final.
+When `exhaustive` is `false`, the index was incomplete or the scope
+couldn't cover every candidate. Widen the search or refresh the
+workspace before claiming the list is final.
 
 ### How visibility drives scope
 
-Kast uses the resolved visibility to pick the smallest search
-scope that still covers every possible reference:
+`kast` uses the resolved visibility to pick the smallest scope that
+still covers every possible reference. Tighter visibility means a
+faster search:
 
 ```mermaid
 flowchart TD
@@ -129,23 +135,24 @@ flowchart TD
     E --> F
 ```
 
-This scoping means private renames touch only one file, while
-public renames fan out across every module that depends on the
-declaring module.
+A private rename touches one file. A public rename fans out across
+every module that depends on the declaring module. Same operation,
+different blast radius — and `kast` knows which is which.
 
 ## Expand the call hierarchy
 
-The `call-hierarchy` command builds a bounded call tree from a
-function or method. Set `direction` to `INCOMING` to find callers
-or `OUTGOING` to find callees. The tree is never unbounded — Kast
-enforces depth, total node, per-node child, and timeout limits.
+`call-hierarchy` builds a bounded call tree from a function or
+method. `INCOMING` finds callers, `OUTGOING` finds callees. The
+tree is never unbounded — `kast` enforces depth, total nodes,
+per-node children, and a timeout. Every limit is reported back in
+`stats`, so you always know whether you got the whole picture.
 
 === "CLI"
 
     ```console title="Find incoming callers two levels deep"
     kast call-hierarchy \
-      --workspace-root=/workspace \
-      --file-path=/workspace/src/main/kotlin/com/shop/OrderService.kt \
+      --workspace-root=$(pwd) \
+      --file-path=$(pwd)/src/main/kotlin/com/shop/OrderService.kt \
       --offset=42 \
       --direction=INCOMING \
       --depth=3 \
@@ -180,8 +187,8 @@ enforces depth, total node, per-node child, and timeout limits.
     three levels deep.
     ```
 
-The response contains the tree and a `stats` object that reports
-whether any bound stopped expansion early:
+The response is the tree plus a `stats` object that reports whether
+any bound stopped expansion early:
 
 ```json title="call-hierarchy response" hl_lines="36 37 38 39 40 41 42 43"
 {
@@ -240,9 +247,9 @@ whether any bound stopped expansion early:
 
 ### How truncation works
 
-Kast stops expanding the tree whenever it hits a configured bound.
-This conceptual tree shows every truncation reason you can
-encounter:
+`kast` stops expanding the tree the moment it hits a configured
+bound. The conceptual tree below shows every reason a branch can
+stop:
 
 ```mermaid
 graph TD
@@ -259,43 +266,39 @@ graph TD
     style I stroke-dasharray: 5 5
 ```
 
-Each truncated node carries a `truncation` object with a `reason`
-field. These are the possible values:
+Each truncated node carries a `truncation` object with a `reason`:
 
 | Reason | Meaning |
 |--------|---------|
-| `CYCLE` | The symbol already appears on the current path. Kast stops that branch to keep the tree finite. This is not an error. |
-| `MAX_CHILDREN_PER_NODE` | The node had more direct callers or callees than `maxChildrenPerNode` allows. The result is partial at that node. |
-| `MAX_TOTAL_CALLS` | The total number of nodes reached `maxTotalCalls`. Remaining branches are not expanded. |
-| `TIMEOUT` | The traversal exceeded `timeoutMillis`. Remaining branches are not expanded. |
+| `CYCLE` | The symbol already appears on the current path. `kast` cuts the branch to keep the tree finite. Not an error. |
+| `MAX_CHILDREN_PER_NODE` | More direct callers or callees than `maxChildrenPerNode` allows. The node is partial. |
+| `MAX_TOTAL_CALLS` | Total node count hit `maxTotalCalls`. Remaining branches are not expanded. |
+| `TIMEOUT` | Traversal exceeded `timeoutMillis`. Remaining branches are not expanded. |
 
 Depth-limited leaves stop because the configured `depth` ran out.
 They do not carry a `truncation` object — read
-`stats.maxDepthReached` to see the deepest level the tree
-reached.
+`stats.maxDepthReached` to see how far the tree went.
 
 !!! tip
-    Always read `stats` before you claim a call tree is complete.
-    If any boolean flag is `true` or `truncatedNodes` is greater
-    than zero, the tree is partial. Increase the relevant bound
-    and re-run the query to see further.
+    Read `stats` before you claim a call tree is complete. Any
+    boolean flag set to `true`, or `truncatedNodes > 0`, means the
+    tree is partial. Raise the relevant bound and re-run.
 
 ## Walk the type hierarchy
 
-The `type-hierarchy` command expands supertypes and subtypes from
-a class or interface. Use `direction` to control which direction
-to walk:
+`type-hierarchy` expands supertypes and subtypes from a class or
+interface. `direction` picks the way:
 
-- `SUPERTYPES` — parents, interfaces, and their ancestors.
-- `SUBTYPES` — direct and transitive subclasses or implementors.
-- `BOTH` — expand in both directions from the root.
+- `SUPERTYPES` — parents, interfaces, their ancestors
+- `SUBTYPES` — direct and transitive subclasses or implementors
+- `BOTH` — expand both ways from the root
 
 === "CLI"
 
     ```console title="Get supertypes and subtypes"
     kast type-hierarchy \
-      --workspace-root=/workspace \
-      --file-path=/workspace/src/main/kotlin/com/shop/Greeter.kt \
+      --workspace-root=$(pwd) \
+      --file-path=$(pwd)/src/main/kotlin/com/shop/Greeter.kt \
       --offset=45 \
       --direction=BOTH \
       --depth=3
@@ -327,9 +330,9 @@ to walk:
     supertypes and subtypes.
     ```
 
-The response contains a tree rooted at the queried symbol.
-Supertypes appear in the `supertypes` array on each node, and
-subtypes appear as `children`:
+The response is a tree rooted at the queried symbol. Supertypes
+sit in the `supertypes` array on each node; subtypes appear as
+`children`:
 
 ```json title="type-hierarchy response" hl_lines="8 27 28 29"
 {
@@ -393,13 +396,12 @@ subtypes appear as `children`:
 }
 ```
 
-The `stats.truncated` flag tells you whether the tree is
-complete. When it is `true`, increase `depth` or `maxResults`
-and re-run the query.
+`stats.truncated` is the one flag to watch. `true` means the tree
+is partial — raise `depth` or `maxResults` and re-run.
 
 ## Next steps
 
-- [Refactor safely](refactor-safely.md) — plan and apply
-  renames with conflict detection.
-- [For agents](../for-agents/index.md) — integrate these
-  operations into LLM agent workflows.
+- [Refactor safely](refactor-safely.md) — plan and apply renames
+  with conflict detection
+- [For agents](../for-agents/index.md) — wire these operations into
+  LLM agent workflows

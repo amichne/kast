@@ -18,14 +18,6 @@ nav = [
   { "Getting started" = [
     { "Install" = "getting-started/install.md" },
     { "Quickstart" = "getting-started/quickstart.md" },
-    { "Backends" = "getting-started/backends.md" },
-  ]},
-  { "What can Kast do?" = [
-    { "Understand symbols" = "what-can-kast-do/understand-symbols.md" },
-    { "Trace usage" = "what-can-kast-do/trace-usage.md" },
-    { "Refactor safely" = "what-can-kast-do/refactor-safely.md" },
-    { "Validate code" = "what-can-kast-do/validate-code.md" },
-    { "Manage workspaces" = "what-can-kast-do/manage-workspaces.md" },
   ]},
   { "For agents" = [
     { "Overview" = "for-agents/index.md" },
@@ -33,17 +25,27 @@ nav = [
     { "Install the skill" = "for-agents/install-the-skill.md" },
     { "Direct CLI usage" = "for-agents/direct-cli.md" },
   ]},
-  { "Architecture" = [
-    { "How Kast works" = "architecture/how-it-works.md" },
-    { "Behavioral model" = "architecture/behavioral-model.md" },
-    { "Kast vs LSP" = "architecture/kast-vs-lsp.md" },
+  { "Recipes" = "recipes.md" },
+  { "What can Kast do?" = [
+    { "Understand symbols" = "what-can-kast-do/understand-symbols.md" },
+    { "Trace usage" = "what-can-kast-do/trace-usage.md" },
+    { "Refactor safely" = "what-can-kast-do/refactor-safely.md" },
+    { "Validate code" = "what-can-kast-do/validate-code.md" },
+    { "Manage workspaces" = "what-can-kast-do/manage-workspaces.md" },
   ]},
+  { "CLI cheat sheet" = "cli-cheat-sheet.md" },
+  { "Backends" = "getting-started/backends.md" },
+  { "Kast vs LSP" = "architecture/kast-vs-lsp.md" },
   { "Reference" = [
     { "API reference" = "reference/api-reference.md" },
     { "API specification" = "reference/api-specification.md" },
     { "Error codes" = "reference/error-codes.md" },
   ]},
   { "Troubleshooting" = "troubleshooting.md" },
+  { "Architecture" = [
+    { "How Kast works" = "architecture/how-it-works.md" },
+    { "Limits and boundaries" = "architecture/behavioral-model.md" },
+  ]},
   { "Changelog" = "changelog.md" },
 ]
 

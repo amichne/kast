@@ -7,146 +7,119 @@ icon: lucide/server
 
 # Backends
 
-`kast` supports two fully independent runtime modes for Kotlin analysis.
-Both backends expose the same JSON-RPC contract, but they start
-differently, depend on different runtime state, and give you different
-operational advantages.
+Two ways to run the analysis engine. Both speak the same JSON-RPC, so
+your scripts and prompts don't change when you switch.
 
-## Compare the two runtime modes
+## Pick the one that matches where you work
 
-Use this table to decide which runtime mode matches your environment.
-
-| Runtime mode | What runs | Best for | What you gain | How it starts |
-|------|-----------|----------|---------------|---------------|
-| Standalone CLI + daemon | `kast` CLI plus a separate JVM daemon | Terminal work, CI, agents, or machines without IntelliJ | A self-managed headless path with explicit lifecycle control | The CLI starts or reuses the daemon |
-| IntelliJ plugin-backed runtime | A `kast` server inside an open IntelliJ project | Local work when IntelliJ is already open | Reuse IntelliJ's already-open project model and indexes without a second analysis JVM | The plugin starts when IntelliJ opens the project |
+| Runtime           | What runs                            | Best for                              | How it starts                        |
+|-------------------|--------------------------------------|---------------------------------------|--------------------------------------|
+| Standalone        | `kast` CLI plus a JVM daemon         | Terminal, CI, agents, no-IDE machines | `kast workspace ensure`              |
+| IntelliJ plugin   | A `kast` server inside an open IDE   | Local work with IntelliJ already open | Boots when IntelliJ opens the project |
 
 ## Standalone backend
 
-The standalone backend runs as an independent JVM process outside the
-IDE. You start it explicitly with `kast daemon start`, and it keeps
-semantic state warm for subsequent `kast` commands.
+A separate JVM process. You start it explicitly with
+`kast workspace ensure` (or `kast daemon start` for the lower-level
+control), and it stays warm for everything you run after.
 
-Use this path when you want:
+Reach for it when:
 
-- Terminal workflows and shell scripts
-- CI pipelines where no IDE is running
-- LLM agents operating headless
-- Any machine where IntelliJ is not installed
+- You're in a terminal, a CI runner, or an agent loop
+- IntelliJ isn't installed on this machine
+- You want to control the lifecycle yourself
 
-What you gain from this path is operational independence. You can run
-the same compiler-backed queries anywhere Java 21 is available, even if
-no editor is open.
-
-Install the standalone backend from releases with:
+Install:
 
 ```console title="Install the standalone backend"
 ./kast.sh install --components=backend
 ```
 
-This places the standalone backend in your install root. You
-can also install the CLI and standalone backend together:
+Or pull the CLI and the backend together:
 
 ```console title="Install CLI and standalone backend"
 ./kast.sh install --components=cli,backend --non-interactive
 ```
 
-After installation, run `kast config init` and set
-`backends.standalone.runtimeLibsDir` to the installed `runtime-libs`
-directory. You can also pass `--runtime-libs-dir` to `kast daemon start`
-for one-off runs.
+After install, run `kast config init` and point
+`backends.standalone.runtimeLibsDir` at the installed `runtime-libs`
+directory. For one-off runs, pass `--runtime-libs-dir` to
+`kast daemon start`.
 
-The standalone backend works like this:
+How a session unfolds:
 
-1. You run `kast daemon start --workspace-root=<path>` in a terminal or
-   background process. It starts, discovers the project, and prints
-   `READY` when the analysis session is warm.
-2. You run `kast` commands from another shell, targeting the same
-   workspace root. The CLI finds the running backend automatically.
-3. The backend stays alive and warm. Later commands reuse the warm
-   session without a cold-start penalty.
+1. You run `kast workspace ensure --workspace-root=$(pwd)` somewhere. It
+   starts the daemon, discovers the project, and waits until the
+   analysis session is warm.
+2. You run more `kast` commands against the same workspace. The CLI
+   finds the running backend and reuses it.
+3. The daemon stays alive. No cold starts between commands.
 
-For workspace discovery, `kast` treats the workspace root as
-Gradle-aware when it contains `settings.gradle.kts`, `settings.gradle`,
-`build.gradle.kts`, or `build.gradle`. In that case, it uses Gradle
-discovery for modules, source roots, and classpath information. Without
-those files, it falls back to conventional source roots such as
-`src/main/kotlin`, `src/main/java`, `src/test/kotlin`, and
-`src/test/java`, then scans for directories that contain `.kt`, `.kts`,
-or `.java` files.
+??? info "How standalone discovers your project"
 
-> **Note:** A root `settings.gradle.kts` or `settings.gradle` matters
-> most when you want accurate multi-module Gradle discovery.
+    With `settings.gradle(.kts)` or `build.gradle(.kts)` at the root,
+    `kast` uses Gradle's project model — modules, source roots,
+    classpath. Without those files, it falls back to conventional roots
+    (`src/main/kotlin`, `src/main/java`, `src/test/kotlin`,
+    `src/test/java`) and scans for directories with `.kt`, `.kts`, or
+    `.java` files. The Gradle path matters most for multi-module builds.
 
 ## IntelliJ plugin backend
 
-The IntelliJ plugin backend runs inside a running IntelliJ IDEA
-instance. It piggybacks on the IDE's already-open K2 analysis
-session, project model, and indexes.
+The plugin runs inside a running IntelliJ IDEA instance. It reuses the
+IDE's K2 analysis session, project model, and indexes — no second JVM,
+no second indexing pass.
 
-Use this path when:
+Reach for it when:
 
-- You already have IntelliJ open on the project
-- You want `kast` analysis without a second JVM process
-- You want the IDE's richer project model and index state
+- IntelliJ is already open on the project
+- You'd rather not run a second analysis JVM
+- You want the IDE's richer project model
 
-What you gain from this path is reuse. `kast` does not need to build a
-second analysis environment because IntelliJ already has the workspace
-open and indexed.
+How a session unfolds:
 
-The IntelliJ plugin backend works like this:
-
-1. IntelliJ opens a project.
-2. The plugin starts a `kast` server automatically on a Unix domain
-   socket.
-3. It writes a descriptor file so external clients can discover the
-   socket path.
-4. External tools connect through the socket and get the same JSON-RPC
-   interface.
+1. You open the project in IntelliJ.
+2. The plugin starts a `kast` server on a Unix domain socket.
+3. It drops a descriptor file so other tools can find the socket.
+4. External tools connect and speak the same JSON-RPC.
 
 !!! tip
-    To disable the plugin without uninstalling it, set
-    `backends.intellij.enabled = false` in your Kast `config.toml`.
+    Set `backends.intellij.enabled = false` in `config.toml` to disable
+    the plugin without uninstalling it.
 
 ## Capability surface
 
-Both backends advertise the same capability surface today. Use
-`kast capabilities` when you want to confirm what a specific running
-backend supports.
+Today, both backends advertise the same capabilities. Run
+`kast capabilities` to confirm what's supported on the backend you're
+talking to.
 
-## How the CLI chooses
+## How the CLI picks a backend
 
-When you run a `kast` command without `--backend-name`, the CLI uses
-these rules:
+Without `--backend-name`, the CLI uses these rules in order:
 
-1. If a servable IntelliJ backend is already running for that workspace,
-   the CLI prefers it.
-2. Otherwise, if a servable standalone backend exists
-   for that workspace, the CLI reuses it.
-3. Otherwise, the CLI returns an error: no backend is available.
+1. A servable IntelliJ backend for the workspace? Use it.
+2. A servable standalone backend for the workspace? Use it.
+3. Neither? Error out — no backend available.
 
-The CLI never starts a backend for you. You must run `kast daemon start`
-yourself (or have IntelliJ open with the plugin) before running analysis
-commands.
+`kast workspace ensure` is the only command that starts a backend for
+you. It boots the standalone daemon and blocks until indexing finishes.
+Read commands like `resolve` and `references` never start a backend
+implicitly — they fail fast. So: run `workspace ensure` first, or open
+the project in IntelliJ with the plugin installed.
 
-`kast workspace status` reports the current backend state and helps
-diagnose connection problems. To use the standalone path, start the
-backend with `kast daemon start --workspace-root=<path>` before running
-commands. To use the plugin path, open the project in IntelliJ IDEA with
-the plugin installed.
+`kast workspace status` reports backend state and helps you debug
+connection issues.
 
-## Using both
+## Running both
 
-You can install and use both paths for the same workspace. This is often
-the most practical setup: the standalone path covers headless work, and
-the IntelliJ path is ready when the IDE is already open.
+Nothing stops you from installing both. It's the most practical setup —
+standalone for headless, IntelliJ for when the IDE is already open.
 
-If both backends are available, pin the command with
-`--backend-name=standalone` or `--backend-name=intellij` when you want
-an explicit choice.
+When both are running, pin a command with `--backend-name=standalone` or
+`--backend-name=intellij` to be explicit.
 
 ## Next steps
 
-- [How Kast works](../architecture/how-it-works.md) — the full
-  architecture story
 - [Quickstart](quickstart.md) — run your first analysis command
+- [Manage workspaces](../what-can-kast-do/manage-workspaces.md) —
+  start, refresh, and stop backends

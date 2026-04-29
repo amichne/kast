@@ -7,17 +7,26 @@ icon: lucide/layers
 
 # How Kast works
 
-This page explains the architecture behind Kast — what each module
-owns, how a request flows from your terminal to the K2 engine and back,
-and why the system is designed the way it is. Read this when you want to
-understand the "why" behind the behavior you see, including how Kast can
-run on its own or piggyback on a warm IntelliJ session while exposing the
-same protocol surface.
+!!! note "You don't need to read this to use kast"
+
+    This is a deep dive: modules, request flow, daemon lifecycle,
+    why decisions came out the way they did. It exists for
+    contributors and for anyone hitting a behavior they want to
+    understand from first principles. If you're trying to *do*
+    something, start with the
+    [Quickstart](../getting-started/quickstart.md) or jump to
+    [Recipes](../recipes.md).
+
+This page explains the architecture: what each module owns, how a
+request flows from your terminal to the K2 engine and back, and why
+the system is shaped this way. It also covers how `kast` runs
+either on its own or piggybacks on a warm IntelliJ session, exposing
+the same protocol surface either way.
 
 ## High-level architecture
 
-Kast follows a client-daemon design with a shared contract layer and two
-runtime modes. The CLI is a lightweight control plane. The backend keeps
+`kast` is a client-daemon design with a shared contract and two
+runtime modes. The CLI is a thin control plane. The backend keeps
 Kotlin semantic state warm across requests.
 
 ```mermaid
@@ -45,46 +54,48 @@ flowchart LR
     IDEA --> SHARED
 ```
 
-The core design decision: isolate semantic runtime cost in long-lived
-backends so repeat queries reuse session state instead of rebuilding
-compiler context on every command.
+The core decision: isolate semantic runtime cost in long-lived
+backends so repeat queries reuse session state instead of
+rebuilding compiler context on every command.
 
 ## One protocol, two runtime modes
 
-Kast keeps the JSON-RPC contract stable and swaps only the runtime that
-holds semantic state. Both backends expose the same method surface,
-capability reporting, and result shapes. The practical difference is where
-the warm Kotlin state lives.
+The JSON-RPC contract stays stable. The runtime that holds
+semantic state is the part that swaps. Both backends expose the
+same method surface, the same capability reporting, the same result
+shapes. The practical difference: where the warm Kotlin state
+lives.
 
 | Runtime mode | Where semantic state lives | Who keeps it warm | Best fit |
 |---|---|---|---|
-| Standalone | In a standalone daemon process with its own analysis session and caches | `kast` workspace lifecycle | Terminals, CI, remote machines, and cloud agents |
-| IntelliJ plugin | Inside an already-open IntelliJ project, reusing the IDE's project model, PSI, and indexes | IntelliJ project lifecycle | Local tools when the IDE is already open |
+| Standalone | A standalone daemon process with its own analysis session and caches | `kast` workspace lifecycle | Terminals, CI, remote machines, cloud agents |
+| IntelliJ plugin | An already-open IntelliJ project, reusing the IDE's project model, PSI, and indexes | IntelliJ project lifecycle | Local tools when the IDE is already open |
 
-If IntelliJ is already warm, external tools can connect to the plugin
-backend and immediately benefit from that state. If no IDE is running, the
-standalone backend exposes the same JSON-RPC surface independently.
+If IntelliJ is warm, external tools connect to the plugin backend
+and inherit that state for free. If no IDE is running, the
+standalone backend exposes the same surface independently.
 
 ## Module ownership
 
-Each module has a clear boundary. Changes belong in the narrowest module
-that owns the behavior.
+??? info "Module ownership table (for contributors)"
 
-| Module | Owns | Why it exists |
-|--------|------|---------------|
-| `analysis-api` | Shared contract, serializable models, capability flags, edit validation | Keeps protocol semantics stable across all consumers |
-| `kast-cli` | Command parsing, lifecycle orchestration, native entrypoint, distribution | Centralizes user-facing workflows |
-| `analysis-server` | JSON-RPC transport, dispatch, descriptor lifecycle | Isolates transport concerns from semantic logic |
-| `backend-standalone` | Headless runtime, workspace discovery, K2 session bootstrap | Concentrates stateful analysis in one runtime |
-| `backend-intellij` | IDE-hosted runtime, plugin lifecycle, project service | Reuses IntelliJ project model when IDE is running |
-| `backend-shared` | Shared analysis helpers for both runtimes | Avoids duplicate semantic utility code |
-| `shared-testing` | Contract fixtures and fake backend infrastructure | Pins behavior consistency across implementations |
-| `build-logic` | Gradle conventions, wrapper generation, runtime-lib sync | Keeps build and packaging rules centralized |
+    Each module has a clear boundary. Changes belong in the narrowest
+    module that owns the behavior.
+
+    | Module | Owns | Why it exists |
+    |--------|------|---------------|
+    | `analysis-api` | Shared contract, serializable models, capability flags, edit validation | Keeps protocol semantics stable across all consumers |
+    | `kast-cli` | Command parsing, lifecycle orchestration, native entrypoint, distribution | Centralizes user-facing workflows |
+    | `analysis-server` | JSON-RPC transport, dispatch, descriptor lifecycle | Isolates transport concerns from semantic logic |
+    | `backend-standalone` | Headless runtime, workspace discovery, K2 session bootstrap | Concentrates stateful analysis in one runtime |
+    | `backend-intellij` | IDE-hosted runtime, plugin lifecycle, project service | Reuses IntelliJ project model when IDE is running |
+    | `backend-shared` | Shared analysis helpers for both runtimes | Avoids duplicate semantic utility code |
+    | `shared-testing` | Contract fixtures and fake backend infrastructure | Pins behavior consistency across implementations |
+    | `build-logic` | Gradle conventions, wrapper generation, runtime-lib sync | Keeps build and packaging rules centralized |
 
 ## End-to-end request flow
 
-This sequence shows how a single command moves from your terminal through
-every layer and back.
+This sequence walks one command from terminal to engine and back.
 
 ```mermaid
 sequenceDiagram
@@ -104,84 +115,81 @@ sequenceDiagram
     CLI-->>User: Structured JSON on stdout
 ```
 
-Every step returns structured data. There is no string scraping or
-regex parsing anywhere in the pipeline.
+Every step returns structured data. No string scraping. No regex
+parsing. Anywhere.
 
-In standalone mode, the "Backend runtime" in that sequence is the
-standalone daemon process and its own analysis session. In IntelliJ plugin
-mode, that runtime is the plugin service inside IntelliJ, answering through
-the same transport while reusing the IDE's warm project state.
+In standalone mode, "Backend runtime" is the standalone daemon and
+its own analysis session. In IntelliJ mode, it's the plugin service
+inside IntelliJ — same transport, but answering from the IDE's
+warm project state.
 
 ## Why a daemon?
 
-Starting a Kotlin analysis session is the expensive part. It involves
-discovering the workspace layout, resolving classpaths, and building
-compiler indexes. Kast pays that cost once per workspace and keeps the
+Starting a Kotlin analysis session is the expensive part:
+discovering the workspace, resolving classpaths, building compiler
+indexes. `kast` pays that cost once per workspace and keeps the
 session warm.
 
-- **First command is slower** — workspace discovery, session startup,
-  and initial indexing happen up front.
-- **Later commands are fast** — the backend reuses loaded state.
-- **One long-lived host holds the analysis context** — caches and indexes
-  stay with the workspace until the host stops.
+- **First command is slower** — workspace discovery, session
+  startup, initial indexing all happen up front
+- **Later commands are fast** — the backend reuses loaded state
+- **One long-lived host owns the analysis context** — caches and
+  indexes stay with the workspace until the host stops
 
-In standalone mode, that host is the kast daemon. In IntelliJ plugin mode,
-that host is IntelliJ itself. The plugin starts the Kast server as part of
-the IDE lifecycle, so tools can piggyback on the IDE's already-open
-project model, indexes, and analysis session instead of building a
-second warm session.
+In standalone mode, that host is the `kast` daemon. In IntelliJ
+mode, it's IntelliJ itself. The plugin starts the `kast` server as
+part of the IDE lifecycle, so external tools piggyback on the IDE's
+already-open project model, indexes, and analysis session instead
+of bringing up a second warm session.
 
 ## Why two runtimes?
 
-Kast supports both runtimes because the same protocol serves two different
-operating environments.
+Same protocol, two operating environments.
 
-- **Standalone favors independence** — it works without any IDE, so the
-  same semantic operations are available in terminals, CI jobs, remote
-  machines, and cloud agents.
-- **IntelliJ plugin favors reuse** — it lets external tools benefit from an
-  IDE session that is already open, indexed, and ready to answer semantic
-  queries.
+- **Standalone favors independence** — works without any IDE, so
+  the same semantic operations run in terminals, CI jobs, remote
+  machines, and cloud agents
+- **IntelliJ plugin favors reuse** — lets external tools tap into
+  an IDE session that's already open, indexed, and ready
 
-This split keeps the contract stable for clients while letting the semantic
-state live in the place that is already natural for the workflow.
+The split keeps the contract stable for clients while letting the
+semantic state live wherever the workflow already keeps it.
 
 ## Design decisions
 
-These choices shape everyday behavior. Understanding them helps you
-predict what Kast will and won't do.
+These choices shape everyday behavior. Knowing them helps you
+predict what `kast` will and won't do.
 
 ### JSON-RPC contract as the stable center
 
 The wire protocol is explicit and capability-gated. Clients check
-`capabilities` before assuming an operation exists. This keeps the
-contract honest and backends from advertising work they can't perform.
+`capabilities` before assuming an operation exists. That keeps the
+contract honest and stops backends from advertising work they can't
+do.
 
 ### Bounded traversals
 
-Operations like `call-hierarchy` are intentionally bounded by depth,
-fan-out, total edges, and time limits. Every result includes truncation
-metadata so callers can distinguish "the tree is complete" from "Kast
+Operations like `call-hierarchy` are bounded on purpose: depth,
+fan-out, total edges, time. Every result carries truncation
+metadata so callers can tell "the tree is complete" from "`kast`
 stopped on purpose."
 
 ### Planned mutation over blind rewrite
 
-Rename and edit application use plan-and-apply semantics with SHA-256
-file hashes. You plan, review, and then apply. If any file changed
-between planning and applying, Kast rejects the apply with a clear
-conflict error. This protects against stale plans and reduces
-accidental drift.
+Rename and edit application use plan-and-apply with SHA-256 file
+hashes. You plan, review, apply. If any file changed in between,
+`kast` rejects the apply with a clear conflict error. Stale plans
+can't slip through.
 
 ### Workspace-scoped analysis
 
-Kast attaches one daemon to one workspace root and builds one analysis
-session for that workspace. All results — references, call hierarchy,
-diagnostics, edits — are scoped to files inside that session. Code
-outside the workspace root is invisible.
+One daemon, one workspace root, one analysis session. All results
+— references, call hierarchy, diagnostics, edits — are scoped to
+files inside that session. Code outside the root is invisible.
 
 ## Workspace discovery
 
-How the daemon finds your project structure depends on your environment.
+How the daemon finds your project depends on what's there.
 
 ```mermaid
 flowchart TD
@@ -193,47 +201,22 @@ flowchart TD
     E --> F["Index workspace → READY"]
 ```
 
-For Gradle projects, Kast uses the Gradle Tooling API to discover
-modules, source roots, and classpath information. This gives it full
-visibility into multi-module workspaces. For non-Gradle projects, it
-falls back to conventional source root directories.
+Gradle projects use the Tooling API for full visibility into
+multi-module layouts. Everything else falls back to conventional
+source roots.
 
 ## Command tiers
 
-Not every command targets the same audience. Kast organizes its surface
-into two tiers.
-
-### Tier 1: primary commands
-
-The default operational path for most users and agents.
-
-- **Workspace lifecycle:** `workspace ensure`, `workspace status`,
-  `workspace stop`
-- **Runtime check:** `capabilities`
-- **Core reads:** `resolve`, `references`, `diagnostics`
-- **Controlled mutation:** `rename`, `apply-edits`
-
-### Tier 2: advanced primitives
-
-Powerful building blocks for expert workflows, agent automation, and
-deep analysis.
-
-- `call-hierarchy`, `type-hierarchy`
-- `outline`, `workspace-symbol`
-- `insertion-point`
-- `workspace refresh`, `optimize-imports`
-
-Tier 2 commands are fully supported. They appear as a separate tier
-because they address specialized needs, not because they're less
-stable.
+Every CLI command is documented in the
+[CLI cheat sheet](../cli-cheat-sheet.md), which also explains the
+two-tier organization: a primary path of everyday commands and a
+set of advanced primitives for expert workflows and agent
+automation.
 
 ## Next steps
 
-Use these pages to go deeper into runtime behavior and positioning:
-
-- [Backends](../getting-started/backends.md) — choose between the
-  standalone daemon and the IntelliJ plugin in day-to-day use
-- [Behavioral model](behavioral-model.md) — the rules and limits
-  behind Kast results
-- [Kast vs LSP](kast-vs-lsp.md) — why Kast exists alongside the
-  Language Server Protocol
+- [Backends](../getting-started/backends.md) — pick between the
+  standalone daemon and the IntelliJ plugin
+- [Limits and boundaries](behavioral-model.md) — the rules and
+  limits behind `kast` results
+- [Kast vs LSP](kast-vs-lsp.md) — why `kast` exists alongside LSP

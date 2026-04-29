@@ -6,67 +6,67 @@ icon: lucide/download
 
 # Install
 
-`kast` is split into two independently managed pieces: the **CLI** (the
-`kast` command you type) and a **backend** (the analysis process that does
-the work). You install and start them separately.
-
-## Choose your setup
-
-| What you want | Recommended mode | How the backend starts |
-|---------------|-----------------|----------------------|
-| IDE-backed runtime (IntelliJ already open) | `minimal` | Plugin starts automatically with IntelliJ |
-| Terminal, CI, or agent work | `full` | `kast daemon start --workspace-root=<path>` |
-| Both | `full` + separate plugin install | Pick the backend you want per session |
-
-The CLI alone does not run analysis. It routes commands to a running backend.
-You must have at least one backend running before `kast` analysis commands
-will work.
+`kast` is two pieces: the **CLI** (the `kast` you type) and a **backend**
+(the analysis process that does the work). The CLI on its own analyzes
+nothing — it routes commands to a backend. Get one running before you
+start asking questions.
 
 ## Prerequisites
 
-Before you install, confirm these are in place:
-
-- **Java 21 or newer** available through `JAVA_HOME` or your shell
-  `PATH`. The standalone backend runs on the JVM.
-- **macOS, Linux, or Windows** — the installer covers all three.
+- **Java 21 or newer** on your `PATH` or `JAVA_HOME`. The standalone
+  backend is a JVM process; without Java it won't start.
+- **macOS, Linux, or Windows.** The installer covers all three.
 
 ## One-line install
 
-Run this from any directory to launch the interactive install wizard.
+Run from any directory. The wizard handles the rest.
 
 ```console linenums="1" title="Install kast (interactive)"
 /bin/bash -c "$(curl -fsSL \
   https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh)"
 ```
 
-Or via pipe:
+Or piped:
 
 ```console title="Install via pipe"
 curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh | bash
 ```
 
-The wizard detects your environment (running IntelliJ instances, existing
-tools, Java), lets you choose an install mode, writes configuration to
-`~/.config/kast/env`, and offers to install the Copilot skill.
+The wizard sniffs your environment (running IntelliJ, existing tools,
+Java version), lets you pick an install mode, writes config to
+`~/.config/kast/env`, and offers to drop in the Copilot skill.
 
-## Install wizard
+??? info "What the wizard does, step by step"
 
-Running the installer without flags opens a step-by-step wizard:
+    Most people answer the prompts and move on. If you want the receipts:
 
-1. **Environment detection** — scans for running IntelliJ instances, checks
-   for Java and fzf.
-2. **Mode selection** — choose `minimal` (CLI + optional IntelliJ plugin) or
-   `full` (CLI + standalone JVM backend). If IntelliJ is running, the wizard
-   offers to push the plugin directly.
-3. **Configuration** — writes `~/.config/kast/env` with `KAST_INSTALL_ROOT`
-   and `KAST_BIN_DIR`. Your shell RC file gets a single idempotent source line.
-4. **CLI install** — downloads and installs the native `kast` launcher.
-5. **Shell completions** — offers to enable tab completion for Bash or Zsh.
-6. **Plugin install** — push to running IntelliJ, or download the zip for
-   manual install.
-7. **Copilot skill** — install the kast skill globally (`~/.agents/skills/kast`),
-   locally, or both. Uses fzf if available, otherwise a numbered menu.
-8. **Summary** — shows install root, binary path, and next steps.
+    1. **Detect.** Scans for running IntelliJ instances, checks for
+       Java and `fzf`.
+    2. **Choose mode.** `minimal` (CLI plus optional plugin) or `full`
+       (CLI plus standalone backend). If IntelliJ is running, the wizard
+       offers to push the plugin straight in.
+    3. **Configure.** Writes `~/.config/kast/env` with
+       `KAST_INSTALL_ROOT` and `KAST_BIN_DIR`. Your shell RC gets one
+       idempotent source line — no per-shell sprawl.
+    4. **Install the CLI.** Downloads the native launcher.
+    5. **Shell completions.** Bash or Zsh, your call.
+    6. **IntelliJ plugin.** Push to the running IDE, or download the zip
+       for manual install.
+    7. **Copilot skill.** Install globally
+       (`~/.agents/skills/kast`), per-repo, or both. Uses `fzf` if
+       available, falls back to a numbered menu.
+    8. **Summary.** Install root, binary path, next steps.
+
+## Choose your setup
+
+Run the one-liner first. Come back here only if you want to pick a path
+explicitly.
+
+| What you want                              | Mode                            | How the backend starts                            |
+|--------------------------------------------|---------------------------------|---------------------------------------------------|
+| IntelliJ already open on the project       | `minimal`                       | Plugin starts with the IDE                        |
+| Terminal, CI, or agent work                | `full`                          | `kast workspace ensure --workspace-root=$(pwd)`   |
+| Both                                       | `full` + plugin install         | Pin per session with `--backend-name`             |
 
 ## Install modes
 
@@ -76,9 +76,9 @@ Running the installer without flags opens a step-by-step wizard:
     ./kast.sh install --mode=minimal
     ```
 
-    Installs the `kast` CLI. The wizard also offers to install the IntelliJ
-    plugin (push to running instance or download zip). Ideal if IntelliJ is
-    your primary analysis backend.
+    Installs the `kast` CLI. The wizard also offers the IntelliJ plugin
+    (push to a running IDE, or download the zip). Pick this if IntelliJ
+    is your primary backend.
 
 === "Full"
 
@@ -86,12 +86,8 @@ Running the installer without flags opens a step-by-step wizard:
     ./kast.sh install --mode=full
     ```
 
-    Installs the `kast` CLI and the standalone JVM backend. Start the backend
-    with:
-
-    ```console title="Start the standalone backend"
-    kast daemon start --workspace-root=/absolute/path/to/workspace
-    ```
+    Installs the CLI and the standalone JVM backend. Pick this for
+    headless work — CI, agents, machines without an IDE.
 
 === "Non-interactive (CI)"
 
@@ -99,8 +95,8 @@ Running the installer without flags opens a step-by-step wizard:
     ./kast.sh install --non-interactive
     ```
 
-    Installs the CLI silently, skips all prompts, and skips the Copilot skill
-    install. Safe for CI and scripted environments.
+    CLI only. No prompts, no skill install. Safe for CI and automated
+    images.
 
 === "Expert (--components)"
 
@@ -108,82 +104,62 @@ Running the installer without flags opens a step-by-step wizard:
     ./kast.sh install --components=cli,intellij,backend
     ```
 
-    Skips the wizard entirely and installs exactly the specified components.
-    Valid values: `cli`, `intellij`, `backend`, `all`.
+    Skips the wizard entirely. Valid components: `cli`, `intellij`,
+    `backend`, `all`.
 
-## Configuration file
+??? info "Where kast stores configuration"
 
-The installer writes all paths to `~/.config/kast/env` (never inline into
-`.zshrc`/`.bashrc`). Your RC file gets a single block that sources it:
+    The installer writes paths to `~/.config/kast/env` instead of inlining
+    them into `.zshrc`/`.bashrc`. Your RC file gets one block that
+    sources it:
 
-```bash title="~/.zshrc — added by installer"
-# >>> kast env >>>
-[[ -f "$HOME/.config/kast/env" ]] && source "$HOME/.config/kast/env"
-# <<< kast env <<<
-```
+    ```bash title="~/.zshrc — added by installer"
+    # >>> kast env >>>
+    [[ -f "$HOME/.config/kast/env" ]] && source "$HOME/.config/kast/env"
+    # <<< kast env <<<
+    ```
 
-The config file itself looks like:
+    The config file itself looks like:
 
-```bash title="~/.config/kast/env"
-# >>> kast config >>>
-export KAST_INSTALL_ROOT="~/.local/share/kast"
-export KAST_BIN_DIR="~/.local/bin"
-# export KAST_STANDALONE_RUNTIME_LIBS="..."  (present after full install)
-# <<< kast config <<<
-```
+    ```bash title="~/.config/kast/env"
+    # >>> kast config >>>
+    export KAST_INSTALL_ROOT="~/.local/share/kast"
+    export KAST_BIN_DIR="~/.local/bin"
+    # export KAST_STANDALONE_RUNTIME_LIBS="..."  (present after full install)
+    # <<< kast config <<<
+    ```
 
-You can re-run the installer at any time; the config block is updated
-in place rather than appended.
-
-## Starting the standalone backend
-
-After a `full` install, start the standalone backend before running
-analysis commands:
-
-```console title="Start the standalone backend"
-kast daemon start --workspace-root=/absolute/path/to/your/workspace
-```
-
-Keep this running in a background terminal or as a background process.
-Once it prints `READY`, the `kast` CLI will find it automatically for any
-command targeting the same workspace root.
-
-To stop it:
-
-```console title="Stop the standalone backend"
-kast daemon stop --workspace-root=/absolute/path/to/your/workspace
-```
+    Re-run the installer any time. The block is updated in place, not
+    appended.
 
 ## Installer flags
 
-| Flag | What it does |
-|------|--------------|
-| `--mode=minimal\|full\|auto` | Drive the install wizard path (default: interactive) |
-| `--components=<list>` | Expert override: `cli`, `intellij`, `backend`, `all` — skips wizard |
-| `--skip-skill` | Skip Copilot skill install step |
-| `--non-interactive` | Skip all prompts; implies `--skip-skill` |
-| `--local` | Install from local `dist/` artifacts (built by `./kast.sh build`) |
+| Flag                          | What it does                                                          |
+|-------------------------------|-----------------------------------------------------------------------|
+| `--mode=minimal\|full\|auto`  | Drive the install wizard path (default: interactive)                  |
+| `--components=<list>`         | Expert override: `cli`, `intellij`, `backend`, `all` — skips wizard   |
+| `--skip-skill`                | Skip Copilot skill install step                                       |
+| `--non-interactive`           | Skip all prompts; implies `--skip-skill`                              |
+| `--local`                     | Install from local `dist/` artifacts (built by `./kast.sh build`)     |
 
 ## Install the IntelliJ plugin manually
 
-If you prefer to install the plugin without the wizard:
+Skip the wizard if you'd rather install from disk:
 
 1. Download `kast-intellij-<version>.zip` from the
    [latest release](https://github.com/amichne/kast/releases/latest).
-2. In IntelliJ, open **Settings → Plugins → ⚙️ → Install Plugin from
-   Disk** and select the zip.
+2. In IntelliJ: **Settings → Plugins → ⚙️ → Install Plugin from Disk** →
+   pick the zip.
 3. Restart IntelliJ when prompted.
 
 !!! note
-    The IntelliJ plugin does not require the standalone CLI. It reuses
-    the IDE's already-open K2 analysis session, project model, and
-    indexes. Install the standalone CLI separately if you also want
-    terminal access.
+    The IntelliJ plugin doesn't need the standalone CLI. It reuses the
+    IDE's K2 analysis session, project model, and indexes. Install the
+    CLI separately if you also want a terminal entry point.
 
 ## Enable shell completion
 
-The installer prompts to set up completion during install. To enable it
-manually after the fact:
+The installer offers this during setup. To enable it after the fact:
 
 === "Bash"
 
@@ -199,15 +175,16 @@ manually after the fact:
 
 ## Verify the install
 
-Open a new shell session so the updated `PATH` takes effect, then run:
+Open a fresh shell so the updated `PATH` takes effect, then:
 
 ```console title="Verify kast is on PATH"
 kast --help
 ```
 
-You should see the grouped help page with available commands.
+You should see the grouped help page. If not, the binary isn't on your
+`PATH` — see [troubleshooting](../troubleshooting.md).
 
 ## Next steps
 
-- [Quickstart](quickstart.md) — run your first analysis command
-- [Backends](backends.md) — understand standalone vs IntelliJ plugin
+- [Quickstart](quickstart.md) — start a backend, run your first query
+- [Backends](backends.md) — standalone vs IntelliJ, when each one wins
