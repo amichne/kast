@@ -44,13 +44,18 @@ class WorkspaceDirectoryResolver(
     private fun localWorkspaceId(workspaceRoot: Path): String {
         val registryPath = configHome().resolve("local-workspaces.json").toAbsolutePath().normalize()
         val workspaceKey = workspaceRoot.toString()
-        val registry = readRegistry(registryPath).toMutableMap()
-        registry[workspaceKey]?.let { return it }
-
-        val id = uuidGenerator().toString()
-        registry[workspaceKey] = id
-        writeRegistry(registryPath, registry)
-        return id
+        val lockPath = registryPath.resolveSibling("local-workspaces.json.lock")
+        registryPath.parent?.let(Files::createDirectories)
+        java.io.RandomAccessFile(lockPath.toFile(), "rw").use { raf ->
+            raf.channel.lock().use {
+                val registry = readRegistry(registryPath).toMutableMap()
+                registry[workspaceKey]?.let { return it }
+                val id = uuidGenerator().toString()
+                registry[workspaceKey] = id
+                writeRegistry(registryPath, registry)
+                return id
+            }
+        }
     }
 
     private fun readRegistry(registryPath: Path): Map<String, String> {

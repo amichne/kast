@@ -318,8 +318,9 @@ internal class CliService(
         Files.createDirectories(configFile.parent)
         if (!Files.exists(configFile)) {
             Files.writeString(configFile, defaultConfigTemplate())
+            return CliOutput.Text("Wrote $configFile")
         }
-        return CliOutput.Text("Wrote $configFile")
+        return CliOutput.Text("Config file already exists at $configFile")
     }
 
     suspend fun applyEdits(

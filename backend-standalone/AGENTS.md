@@ -7,13 +7,22 @@ standalone-specific PSI/K2 helper code.
 
 Use this unit for headless host concerns and nowhere else.
 
-- Keep host bootstrapping here: standalone server options, environment
-  fallbacks, runtime startup, shutdown hooks, and the internal daemon
-  entrypoint.
-- Preserve the current runtime contract: `--key=value` arguments,
-  `KAST_WORKSPACE_ROOT` fallback, normalized absolute workspace roots, default
-  Unix domain socket transport under `<workspace>/.kast`, and `--stdio` only
-  for direct foreground serving.
+- Keep host bootstrapping here: standalone server options, runtime
+  startup, shutdown hooks, and the internal daemon entrypoint.
+- Preserve the current runtime contract: `--key=value` arguments (the
+  `--workspace-root=` flag is the sole source of the workspace root and
+  defaults to the JVM working directory), normalized absolute workspace
+  roots, default Unix domain socket transport at
+  `$TMPDIR/kast-<workspace-hash>.sock`, and `--stdio` only for direct
+  foreground serving.
+- Runtime configuration is sourced from `KastConfig` (TOML at
+  `$KAST_CONFIG_HOME/config.toml` plus per-workspace overrides). Do not
+  reintroduce Kast-specific environment variables (`KAST_DEBUG`,
+  `KAST_OTEL_*`, `KAST_CACHE_DISABLED`, `KAST_WORKSPACE_ROOT`,
+  `KAST_INTELLIJ_DISABLE`, `KAST_STANDALONE_RUNTIME_LIBS`,
+  `KAST_GRADLE_TOOLING_TIMEOUT_MS`, etc.); add a typed config field
+  instead. Standard JVM/terminal env vars (`JAVA_HOME`, `JAVA_OPTS`,
+  `NO_COLOR`, `XDG_CONFIG_HOME`) are still respected.
 - Keep Gradle workspace discovery here. `GradleWorkspaceDiscovery` and
   `StaticGradleWorkspaceDiscovery` must stay aligned on module names, source
   roots, dependency edges, and large or composite-build fallbacks.
