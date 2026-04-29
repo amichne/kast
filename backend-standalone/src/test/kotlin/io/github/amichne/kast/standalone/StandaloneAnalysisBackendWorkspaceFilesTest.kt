@@ -68,6 +68,43 @@ class StandaloneAnalysisBackendWorkspaceFilesTest {
     }
 
     @Test
+    fun `workspace files caps included files per module and reports truncation`() = runTest {
+        writeFile("src/main/kotlin/sample/A.kt", "package sample\n")
+        writeFile("src/main/kotlin/sample/B.kt", "package sample\n")
+        writeFile("src/main/kotlin/sample/C.kt", "package sample\n")
+
+        withBackend { backend ->
+            val result = backend.workspaceFiles(
+                WorkspaceFilesQuery(
+                    includeFiles = true,
+                    maxFilesPerModule = 2,
+                ),
+            )
+            val module = result.modules.first()
+
+            assertEquals(3, module.fileCount)
+            assertEquals(2, module.files.size)
+            assertTrue(module.filesTruncated)
+        }
+    }
+
+    @Test
+    fun `workspace files defaults included file cap to server max results`() = runTest {
+        writeFile("src/main/kotlin/sample/A.kt", "package sample\n")
+        writeFile("src/main/kotlin/sample/B.kt", "package sample\n")
+        writeFile("src/main/kotlin/sample/C.kt", "package sample\n")
+
+        withBackend(maxResults = 2) { backend ->
+            val result = backend.workspaceFiles(WorkspaceFilesQuery(includeFiles = true))
+            val module = result.modules.first()
+
+            assertEquals(3, module.fileCount)
+            assertEquals(2, module.files.size)
+            assertTrue(module.filesTruncated)
+        }
+    }
+
+    @Test
     fun `workspace files filtered by existing module name returns that module`() = runTest {
         writeFile("src/main/kotlin/sample/A.kt", "package sample\n")
         withBackend { backend ->
@@ -86,7 +123,10 @@ class StandaloneAnalysisBackendWorkspaceFilesTest {
         }
     }
 
-    private suspend fun withBackend(block: suspend (StandaloneAnalysisBackend) -> Unit) {
+    private suspend fun withBackend(
+        maxResults: Int = 100,
+        block: suspend (StandaloneAnalysisBackend) -> Unit,
+    ) {
         val session = StandaloneAnalysisSession(
             workspaceRoot = workspaceRoot,
             sourceRoots = emptyList(),
@@ -97,7 +137,7 @@ class StandaloneAnalysisBackendWorkspaceFilesTest {
             val backend = StandaloneAnalysisBackend(
                 workspaceRoot = workspaceRoot,
                 limits = ServerLimits(
-                    maxResults = 100,
+                    maxResults = maxResults,
                     requestTimeoutMillis = 30_000,
                     maxConcurrentRequests = 4,
                 ),

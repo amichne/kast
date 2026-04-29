@@ -22,6 +22,7 @@ import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.contract.query.SymbolQuery
 import io.github.amichne.kast.api.contract.TypeHierarchyDirection
 import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
+import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -130,6 +131,28 @@ class KastPluginBackendContractTest {
         val status = backend().runtimeStatus()
 
         assertEquals(listOf("main", "secondary"), status.sourceModuleNames)
+    }
+
+    @Test
+    fun `workspace files caps included files per module and reports truncation`() = runBlocking {
+        ensureProjectReady()
+        val workspaceRoot = readAction {
+            commonWorkspaceRoot(sampleFile.virtualFile.path, hierarchyFile.virtualFile.path)
+        }
+
+        val result = backend(workspaceRoot).workspaceFiles(
+            WorkspaceFilesQuery(
+                moduleName = "main",
+                includeFiles = true,
+                maxFilesPerModule = 1,
+            ),
+        )
+
+        val module = result.modules.single()
+        assertEquals("main", module.name)
+        assertEquals(1, module.files.size)
+        assertTrue(module.fileCount > module.files.size)
+        assertTrue(module.filesTruncated)
     }
 
     @Test

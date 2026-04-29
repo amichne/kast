@@ -413,6 +413,57 @@ class AnalysisDispatcherTest {
     }
 
     @Test
+    fun `workspace files rejects blank module name`() {
+        val response = dispatchRaw(
+            method = "workspace/files",
+            params = json.encodeToJsonElement(
+                WorkspaceFilesQuery.serializer(),
+                WorkspaceFilesQuery(moduleName = "  "),
+            ),
+        )
+
+        val error = json.decodeFromJsonElement(
+            JsonRpcErrorResponse.serializer(),
+            response,
+        )
+        assertEquals("VALIDATION_ERROR", error.error.data?.code)
+    }
+
+    @Test
+    fun `workspace files rejects non positive file cap`() {
+        val response = dispatchRaw(
+            method = "workspace/files",
+            params = json.encodeToJsonElement(
+                WorkspaceFilesQuery.serializer(),
+                WorkspaceFilesQuery(includeFiles = true, maxFilesPerModule = 0),
+            ),
+        )
+
+        val error = json.decodeFromJsonElement(
+            JsonRpcErrorResponse.serializer(),
+            response,
+        )
+        assertEquals("VALIDATION_ERROR", error.error.data?.code)
+    }
+
+    @Test
+    fun `workspace files rejects file cap above server max results`() {
+        val response = dispatchRaw(
+            method = "workspace/files",
+            params = json.encodeToJsonElement(
+                WorkspaceFilesQuery.serializer(),
+                WorkspaceFilesQuery(includeFiles = true, maxFilesPerModule = 501),
+            ),
+        )
+
+        val error = json.decodeFromJsonElement(
+            JsonRpcErrorResponse.serializer(),
+            response,
+        )
+        assertEquals("VALIDATION_ERROR", error.error.data?.code)
+    }
+
+    @Test
     fun `workspace symbol dispatches without HTTP`() {
         val result = dispatchSuccess<WorkspaceSymbolResult>(
             method = "workspace-symbol",

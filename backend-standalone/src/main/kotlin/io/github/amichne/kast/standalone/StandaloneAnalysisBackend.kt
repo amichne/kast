@@ -781,50 +781,44 @@ internal class StandaloneAnalysisBackend internal constructor(
     }
 
     override suspend fun workspaceFiles(query: WorkspaceFilesQuery): WorkspaceFilesResult = withContext(readDispatcher) {
-        session.withReadAccess {
-            val specs = session.moduleSpecs()
-            val filtered = if (query.moduleName != null) {
-                specs.filter { it.name.value == query.moduleName }
-            } else {
-                specs
-            }
-            val modules = filtered.map { spec ->
-                val sourceRootStrings = spec.sourceRoots.map { it.toString() }
-                val files = if (query.includeFiles) {
-                    spec.sourceRoots
-                        .flatMap { root ->
-                            Files.walk(root).use { stream ->
-                                stream
-                                    .filter { Files.isRegularFile(it) && it.toString().endsWith(".kt") }
-                                    .map { it.toRealPath().toString() }
-                                    .toList()
-                            }
-                        }
-                        .sorted()
+        val fileLimit = query.maxFilesPerModule ?: limits.maxResults
+        telemetry.inSpan(
+            scope = StandaloneTelemetryScope.WORKSPACE_FILES,
+            name = "kast.workspaceFiles",
+            attributes = mapOf(
+                "kast.workspaceFiles.moduleName" to query.moduleName,
+                "kast.workspaceFiles.includeFiles" to query.includeFiles,
+                "kast.workspaceFiles.maxFilesPerModule" to fileLimit,
+            ),
+        ) { span ->
+            session.withReadAccess {
+                val specs = session.moduleSpecs()
+                val filtered = if (query.moduleName != null) {
+                    specs.filter { it.name.value == query.moduleName }
                 } else {
-                    emptyList()
+                    specs
                 }
-                val fileCount = if (query.includeFiles) {
-                    files.size
-                } else {
-                    spec.sourceRoots.sumOf { root ->
-                        Files.walk(root).use { stream ->
-                            stream
-                                .filter { Files.isRegularFile(it) && it.toString().endsWith(".kt") }
-                                .count()
-                                .toInt()
-                        }
-                    }
+                val modules = filtered.map { spec ->
+                    val listing = collectWorkspaceFiles(
+                        sourceRoots = spec.sourceRoots,
+                        includeFiles = query.includeFiles,
+                        maxFiles = fileLimit,
+                    )
+                    WorkspaceModule(
+                        name = spec.name.value,
+                        sourceRoots = spec.sourceRoots.map { it.toString() },
+                        dependencyModuleNames = spec.dependencyModuleNames.map { it.value },
+                        files = listing.files,
+                        filesTruncated = listing.filesTruncated,
+                        fileCount = listing.fileCount,
+                    )
                 }
-                WorkspaceModule(
-                    name = spec.name.value,
-                    sourceRoots = sourceRootStrings,
-                    dependencyModuleNames = spec.dependencyModuleNames.map { it.value },
-                    files = files,
-                    fileCount = fileCount,
-                )
+                span.setAttribute("kast.workspaceFiles.moduleCount", modules.size)
+                span.setAttribute("kast.workspaceFiles.totalFileCount", modules.sumOf { it.fileCount })
+                span.setAttribute("kast.workspaceFiles.returnedFileCount", modules.sumOf { it.files.size })
+                span.setAttribute("kast.workspaceFiles.truncatedModuleCount", modules.count { it.filesTruncated })
+                WorkspaceFilesResult(modules = modules)
             }
-            WorkspaceFilesResult(modules = modules)
         }
     }
 
@@ -834,6 +828,38 @@ internal class StandaloneAnalysisBackend internal constructor(
                 .getResource("/kast-backend-version.txt")
                 ?.readText()?.trim()
                 ?: "unknown"
+    }
+
+    private data class WorkspaceFileListing(
+        val files: List<String>,
+        val fileCount: Int,
+        val filesTruncated: Boolean,
+    )
+
+    private fun collectWorkspaceFiles(
+        sourceRoots: List<Path>,
+        includeFiles: Boolean,
+        maxFiles: Int,
+    ): WorkspaceFileListing {
+        val files = mutableListOf<String>()
+        var fileCount = 0
+        sourceRoots.forEach { root ->
+            Files.walk(root).use { stream ->
+                stream
+                    .filter { Files.isRegularFile(it) && it.toString().endsWith(".kt") }
+                    .forEach { file ->
+                        fileCount += 1
+                        if (includeFiles && files.size < maxFiles) {
+                            files += file.toRealPath().toString()
+                        }
+                    }
+            }
+        }
+        return WorkspaceFileListing(
+            files = files.sorted(),
+            fileCount = fileCount,
+            filesTruncated = includeFiles && fileCount > files.size,
+        )
     }
 
     private fun isConcreteType(type: PsiElement): Boolean = when (type) {

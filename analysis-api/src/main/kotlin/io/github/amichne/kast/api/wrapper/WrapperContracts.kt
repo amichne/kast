@@ -187,6 +187,7 @@ data class KastWorkspaceFilesRequest(
     val workspaceRoot: String? = null,
     val moduleName: String? = null,
     val includeFiles: Boolean = false,
+    val maxFilesPerModule: Int? = null,
 )
 
 @Serializable
@@ -313,6 +314,7 @@ data class KastWorkspaceFilesQuery(
     val workspaceRoot: String,
     val moduleName: String? = null,
     val includeFiles: Boolean = false,
+    val maxFilesPerModule: Int? = null,
 )
 
 @Serializable
