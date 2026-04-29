@@ -7,6 +7,7 @@ import io.github.amichne.kast.api.contract.query.ReferencesQuery
 import io.github.amichne.kast.api.contract.query.RenameQuery
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.contract.query.SymbolQuery
+import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
 import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetry
 import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetryConfig
 import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetryDetail
@@ -182,8 +183,45 @@ class StandaloneAnalysisBackendTelemetryTest {
         )
     }
 
+    @Test
+    fun `workspaceFiles emits WORKSPACE_FILES span with scope and truncation counts`() = runTest {
+        writeFile("src/main/kotlin/sample/A.kt", "package sample\n")
+        writeFile("src/main/kotlin/sample/B.kt", "package sample\n")
+        val telemetryFile = workspaceRoot.resolve("build/telemetry/workspace-files-spans.jsonl")
+        val telemetry = StandaloneTelemetry.create(
+            StandaloneTelemetryConfig(
+                enabled = true,
+                scopes = setOf(StandaloneTelemetryScope.WORKSPACE_FILES),
+                detail = StandaloneTelemetryDetail.BASIC,
+                outputFile = telemetryFile,
+            ),
+        )
+
+        withBackend(telemetry, maxResults = 1) { backend ->
+            backend.workspaceFiles(WorkspaceFilesQuery(includeFiles = true))
+        }
+
+        val exportedSpans = telemetryFile.readText()
+            .lineSequence()
+            .filter(String::isNotBlank)
+            .map { line -> Json.parseToJsonElement(line).jsonObject }
+            .toList()
+
+        val workspaceFilesSpan = exportedSpans.find { span -> span["name"]?.toString() == "\"kast.workspaceFiles\"" }
+        assertTrue(
+            workspaceFilesSpan != null,
+            "Expected a kast.workspaceFiles span but found: ${exportedSpans.map { it["name"] }}",
+        )
+        val attributes = workspaceFilesSpan!!["attributes"]?.jsonObject
+        assertTrue(
+            attributes?.containsKey("kast.workspaceFiles.truncatedModuleCount") == true,
+            "Expected truncatedModuleCount attribute in span attributes: $attributes",
+        )
+    }
+
     private suspend fun withBackend(
         telemetry: StandaloneTelemetry,
+        maxResults: Int = 100,
         block: suspend (StandaloneAnalysisBackend) -> Unit,
     ) {
         val session = StandaloneAnalysisSession(
@@ -196,7 +234,7 @@ class StandaloneAnalysisBackendTelemetryTest {
             val backend = StandaloneAnalysisBackend(
                 workspaceRoot = workspaceRoot,
                 limits = ServerLimits(
-                    maxResults = 100,
+                    maxResults = maxResults,
                     requestTimeoutMillis = 30_000,
                     maxConcurrentRequests = 4,
                 ),

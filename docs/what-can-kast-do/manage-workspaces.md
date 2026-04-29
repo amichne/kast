@@ -107,7 +107,9 @@ kast workspace refresh \
 
 `workspace/files` returns the modules, source roots, and files the
 daemon found. Run it when you want to verify the daemon sees what
-you think it sees.
+you think it sees. File-path enumeration is capped per module so large workspaces
+can inspect scope without forcing the daemon to materialize every path in
+one response.
 
 === "CLI"
 
@@ -121,22 +123,27 @@ you think it sees.
     ```json title="JSON-RPC request"
     {
       "method": "workspace/files",
-      "params": {},
+      "params": {
+        "includeFiles": true,
+        "maxFilesPerModule": 500
+      },
       "id": 1, "jsonrpc": "2.0"
     }
     ```
 
-```json hl_lines="2-3" title="Response — module structure"
+```json hl_lines="6-8" title="Response — module structure"
 {
-  "sourceModuleNames": ["app", "lib-core", "lib-api"],
-  "dependentModuleNamesBySourceModuleName": {
-    "app": ["lib-core", "lib-api"],
-    "lib-api": ["lib-core"]
-  },
-  "files": [
-    "/workspace/app/src/main/kotlin/com/example/App.kt",
-    "/workspace/lib-core/src/main/kotlin/com/example/Core.kt"
-  ]
+  "modules": [
+    {
+      "name": "app",
+      "sourceRoots": ["/workspace/app/src/main/kotlin"],
+      "dependencyModuleNames": ["lib-core", "lib-api"],
+      "files": ["/workspace/app/src/main/kotlin/com/example/App.kt"],
+      "filesTruncated": false,
+      "fileCount": 1
+    }
+  ],
+  "schemaVersion": 3
 }
 ```
 

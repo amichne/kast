@@ -26,6 +26,8 @@ data class WorkspaceModule(
     val dependencyModuleNames: List<String>,
     @DocField(description = "Individual source file paths, populated when includeFiles is true.", defaultValue = "emptyList()")
     val files: List<String> = emptyList(),
+    @DocField(description = "True when the files list was capped before every source file path could be returned.", defaultValue = "false")
+    val filesTruncated: Boolean = false,
     @DocField(description = "Total number of source files in this module.")
     val fileCount: Int,
 )

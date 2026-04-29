@@ -216,6 +216,11 @@ internal object CliCommandCatalog {
         description = "Enumerate individual file paths per module. Defaults to false.",
         completionKind = CliOptionCompletionKind.BOOLEAN,
     )
+    private val maxFilesPerModuleOption = CliOptionMetadata(
+        key = "max-files-per-module",
+        usage = "--max-files-per-module=500",
+        description = "Maximum file paths to return per module when --include-files=true. Defaults to the daemon maxResults limit.",
+    )
     private val dryRunOption = CliOptionMetadata(
         key = "dry-run",
         usage = "--dry-run=true",
@@ -406,16 +411,25 @@ internal object CliCommandCatalog {
             group = CliCommandGroup.WORKSPACE_LIFECYCLE,
             summary = "List workspace modules and their Kotlin source files.",
             description = "Returns the module layout discovered by the backend, including source roots and " +
-                "dependency relationships. Pass --include-files to enumerate individual .kt file paths per module.",
+                "dependency relationships. Pass --include-files to enumerate capped individual .kt file paths per module.",
             usages = listOf(
                 "$CLI_EXECUTABLE_NAME workspace files --workspace-root=/absolute/path/to/workspace",
-                "$CLI_EXECUTABLE_NAME workspace files --workspace-root=/absolute/path/to/workspace --include-files=true [--module-name=app]",
+                "$CLI_EXECUTABLE_NAME workspace files --workspace-root=/absolute/path/to/workspace --include-files=true [--module-name=app] [--max-files-per-module=500]",
             ),
-            options = listOf(workspaceRootOption, backendNameOption, waitTimeoutOption, noAutoStartOption, requestFileOption, moduleNameOption, includeFilesOption),
+            options = listOf(
+                workspaceRootOption,
+                backendNameOption,
+                waitTimeoutOption,
+                noAutoStartOption,
+                requestFileOption,
+                moduleNameOption,
+                includeFilesOption,
+                maxFilesPerModuleOption,
+            ),
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME workspace files --workspace-root=/absolute/path/to/workspace",
                 "$CLI_EXECUTABLE_NAME workspace files --workspace-root=/absolute/path/to/workspace --include-files=true",
-                "$CLI_EXECUTABLE_NAME workspace files --workspace-root=/absolute/path/to/workspace --module-name=app --include-files=true",
+                "$CLI_EXECUTABLE_NAME workspace files --workspace-root=/absolute/path/to/workspace --module-name=app --include-files=true --max-files-per-module=200",
             ),
         ),
         CliCommandMetadata(

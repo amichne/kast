@@ -999,6 +999,8 @@ components:
           type: array
           items:
             type: string
+        filesTruncated:
+          type: boolean
         fileCount:
           type: integer
           format: int32
@@ -1421,6 +1423,11 @@ components:
             - type: "null"
         includeFiles:
           type: boolean
+        maxFilesPerModule:
+          anyOf:
+            - type: integer
+              format: int32
+            - type: "null"
       additionalProperties: false
     WorkspaceFilesResult:
       type: object

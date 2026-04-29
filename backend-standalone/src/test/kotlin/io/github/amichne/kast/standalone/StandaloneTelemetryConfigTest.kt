@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Files
 import java.nio.file.Path
 
 class StandaloneTelemetryConfigTest {
@@ -52,6 +53,13 @@ class StandaloneTelemetryConfigTest {
         assertEquals(StandaloneTelemetryScope.WORKSPACE_DISCOVERY, StandaloneTelemetryScope.parse("workspace_discovery"))
         assertEquals(StandaloneTelemetryScope.WORKSPACE_DISCOVERY, StandaloneTelemetryScope.parse("workspacediscovery"))
         assertEquals(StandaloneTelemetryScope.WORKSPACE_DISCOVERY, StandaloneTelemetryScope.parse("discovery"))
+    }
+
+    @Test
+    fun `parse recognizes workspace-files scope variants`() {
+        assertEquals(StandaloneTelemetryScope.WORKSPACE_FILES, StandaloneTelemetryScope.parse("workspace-files"))
+        assertEquals(StandaloneTelemetryScope.WORKSPACE_FILES, StandaloneTelemetryScope.parse("workspace_files"))
+        assertEquals(StandaloneTelemetryScope.WORKSPACE_FILES, StandaloneTelemetryScope.parse("workspacefiles"))
     }
 
     @Test
@@ -140,6 +148,26 @@ class StandaloneTelemetryConfigTest {
         assertFalse(telemetry.isEnabled(StandaloneTelemetryScope.CALL_HIERARCHY))
         assertFalse(telemetry.isEnabled(StandaloneTelemetryScope.SYMBOL_RESOLVE))
         assertFalse(telemetry.isEnabled(StandaloneTelemetryScope.WORKSPACE_DISCOVERY))
+    }
+
+    @Test
+    fun `fromConfig writes default telemetry output under config directory`() {
+        val configHome = workspaceRoot.resolve("config-home")
+        val telemetry = StandaloneTelemetry.fromConfig(
+            workspaceRoot = workspaceRoot,
+            config = KastConfig.defaults().copy(
+                telemetry = KastConfig.defaults().telemetry.copy(
+                    enabled = true,
+                    scopes = "workspace-files",
+                ),
+            ),
+            configHome = { configHome },
+        )
+
+        telemetry.inSpan(StandaloneTelemetryScope.WORKSPACE_FILES, "kast.workspaceFiles") {}
+
+        val telemetryFile = configHome.resolve("telemetry/standalone-spans.jsonl")
+        assertTrue(Files.isRegularFile(telemetryFile), "Expected telemetry at $telemetryFile")
     }
 
     // --- Detail parsing ---
