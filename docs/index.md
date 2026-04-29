@@ -13,26 +13,25 @@ know which declaration it resolves to, which callers are real, or whether an
 edit plan is safe to apply.
 
 Choose the entry point that fits your workflow:
-
 <div class="grid cards" markdown>
 
-- **Install the CLI**
+-   :material-console:{ .lg .bottom } __Install the CLI__
 
-  ---
+    ---
 
-  Start a fully independent standalone daemon for terminal work, CI, and
-  agent automation.
+    Start a fully independent standalone daemon for terminal work, CI, and
+    agent automation.
 
-  [Open the CLI install guide →](getting-started/install.md#one-line-install)
+    [:octicons-arrow-right-16: CLI install guide](getting-started/install.md#one-line-install)
 
-- **Install the IntelliJ plugin**
+-   :octicons-plug-16:{ .lg .left } __Install the IntelliJ plugin__
 
-  ---
+    ---
 
-  Connect to the IntelliJ-backed runtime and reuse the IDE's
-  already-open project model, indexes, and analysis session.
+    Connect to the IntelliJ-backed runtime and reuse the IDE's
+    already-open project model, indexes, and analysis session.
 
-  [Open the plugin install guide →](getting-started/install.md#install-the-intellij-plugin-manually)
+    [:octicons-arrow-right-16: Plugin install guide](getting-started/install.md#install-the-intellij-plugin-manually)
 
 </div>
 
@@ -42,10 +41,10 @@ Choose the entry point that fits your workflow:
 contract, so your scripts, agents, and integrations do not need a different
 API when you switch between them.
 
-| Runtime mode | What runs | Best when | Why it shines |
-| --- | --- | --- | --- |
-| **Standalone CLI + daemon** | The `kast` CLI starts a separate backend process outside IntelliJ | You need terminal automation, CI, or a headless agent | It is fully independent, needs no IDE session, and gives you explicit daemon lifecycle control |
-| **IntelliJ plugin-backed runtime** | The plugin starts `kast` inside a running IntelliJ project | IntelliJ is already open on the workspace | It piggybacks on the IDE's already-open project model, indexes, and analysis session |
+| Runtime mode                       | What runs                                                         | Best when                                             | Why it shines                                                                                  |
+|------------------------------------|-------------------------------------------------------------------|-------------------------------------------------------|------------------------------------------------------------------------------------------------|
+| **Standalone CLI + daemon**        | The `kast` CLI starts a separate backend process outside IntelliJ | You need terminal automation, CI, or a headless agent | It is fully independent, needs no IDE session, and gives you explicit daemon lifecycle control |
+| **IntelliJ plugin-backed runtime** | The plugin starts `kast` inside a running IntelliJ project        | IntelliJ is already open on the workspace             | It piggybacks on the IDE's already-open project model, indexes, and analysis session           |
 
 For a deeper comparison, read [Backends](getting-started/backends.md).
 
@@ -76,11 +75,9 @@ answers instead of string matches.
 
 Install the CLI, start a backend, then run your first query.
 
-```console linenums="1" title="From zero to first result"
+```console linenums="1" title="Download, start, query" hl_lines="1 2 3"
 # 1. Install the kast CLI
-/bin/bash -c "$(curl -fsSL \
-  https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh)"
-# Or: curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh | bash
+curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh | bash
 
 # 2. Start the standalone backend (keep it running in background / separate terminal)
 kast daemon start --workspace-root=/path/to/your/project
@@ -101,37 +98,37 @@ If IntelliJ with the plugin is already open on the project, skip step 2 —
 
 <div class="grid cards" markdown>
 
-- **Get started**
+-   :octicons-download-24:{ .lg .middle } **Get started**
 
-  ---
+    ---
 
-  Install `kast`, run your first query, and understand the two backends.
+    Install `kast`, run your first query, and understand the two backends.
 
-  [Install →](getting-started/install.md)
+    [:octicons-arrow-right-24: Install](getting-started/install.md)
 
-- **See what `kast` can do**
+-   :octicons-zap-24:{ .lg .middle } **See what `kast` can do**
 
-  ---
+    ---
 
-  Explore every capability with real examples and content tabs.
+    Explore every capability with real examples and content tabs.
 
-  [Understand symbols →](what-can-kast-do/understand-symbols.md)
+    [:octicons-arrow-right-24: Understand symbols](what-can-kast-do/understand-symbols.md)
 
-- **Use `kast` from an agent**
+-   :octicons-copilot-24:{ .lg .middle } **Use `kast` from an agent**
 
-  ---
+    ---
 
-  Give your LLM agent semantic code intelligence it can't get from grep.
+    Give your LLM agent semantic code intelligence it can't get from grep.
 
-  [For agents →](for-agents/index.md)
+    [:octicons-arrow-right-24: For agents](for-agents/index.md)
 
-- **Dive into the architecture**
+-   :octicons-gear-24:{ .lg .middle } **Dive into the architecture**
 
-  ---
+    ---
 
-  Learn how the daemon, JSON-RPC transport, and K2 Analysis API fit
-  together.
+    Learn how the daemon, JSON-RPC transport, and K2 Analysis API fit
+    together.
 
-  [How it works →](architecture/how-it-works.md)
+    [:octicons-arrow-right-24: How it works](architecture/how-it-works.md)
 
 </div>

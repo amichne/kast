@@ -15,6 +15,7 @@ gradle-tooling-api = "9.4.0"
 opentelemetry = "1.49.0"
 sqlite-jdbc = "3.45.3.0"
 mordant = "3.0.2"
+hoplite = "2.9.0"
 
 [libraries]
 coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
@@ -42,6 +43,8 @@ opentelemetry-api = { module = "io.opentelemetry:opentelemetry-api", version.ref
 opentelemetry-sdk = { module = "io.opentelemetry:opentelemetry-sdk", version.ref = "opentelemetry" }
 sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version.ref = "sqlite-jdbc" }
 mordant = { module = "com.github.ajalt.mordant:mordant", version.ref = "mordant" }
+hoplite-core = { module = "com.sksamuel.hoplite:hoplite-core", version.ref = "hoplite" }
+hoplite-toml = { module = "com.sksamuel.hoplite:hoplite-toml", version.ref = "hoplite" }
 
 [bundles]
 ktor-server = [

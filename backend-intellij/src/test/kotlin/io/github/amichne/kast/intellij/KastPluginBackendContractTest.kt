@@ -16,12 +16,12 @@ import com.intellij.testFramework.junit5.fixture.projectFixture
 import com.intellij.testFramework.junit5.fixture.psiFileFixture
 import com.intellij.testFramework.junit5.fixture.sourceRootFixture
 import io.github.amichne.kast.api.contract.FilePosition
-import io.github.amichne.kast.api.contract.ReferencesQuery
+import io.github.amichne.kast.api.contract.query.ReferencesQuery
 import io.github.amichne.kast.api.contract.SearchScopeKind
 import io.github.amichne.kast.api.contract.ServerLimits
-import io.github.amichne.kast.api.contract.SymbolQuery
+import io.github.amichne.kast.api.contract.query.SymbolQuery
 import io.github.amichne.kast.api.contract.TypeHierarchyDirection
-import io.github.amichne.kast.api.contract.TypeHierarchyQuery
+import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull

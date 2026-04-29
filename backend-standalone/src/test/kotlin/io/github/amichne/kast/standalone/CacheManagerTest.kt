@@ -1,7 +1,8 @@
 package io.github.amichne.kast.standalone
 
-import io.github.amichne.kast.api.contract.RefreshQuery
+import io.github.amichne.kast.api.contract.query.RefreshQuery
 import io.github.amichne.kast.api.contract.ServerLimits
+import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.indexstore.kastCacheDirectory
 import io.github.amichne.kast.indexstore.writeCacheFileAtomically
 import kotlinx.coroutines.runBlocking
@@ -78,11 +79,13 @@ class CacheManagerTest {
     }
 
     @Test
-    fun `KAST_CACHE_DISABLED prevents cache reads and writes`() {
+    fun `disabled cache config prevents cache reads and writes`() {
         createGradleWorkspace()
         val disabledCacheManager = CacheManager(
             workspaceRoot = workspaceRoot,
-            envReader = { name -> if (name == "KAST_CACHE_DISABLED") "true" else null },
+            config = KastConfig.defaults().copy(
+                cache = KastConfig.defaults().cache.copy(enabled = false),
+            ),
         )
         assertFalse(disabledCacheManager.isEnabled())
 

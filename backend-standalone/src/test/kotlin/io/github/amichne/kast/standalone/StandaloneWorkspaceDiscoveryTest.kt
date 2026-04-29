@@ -6,7 +6,7 @@ import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.RuntimeState
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.contract.SymbolKind
-import io.github.amichne.kast.api.contract.SymbolQuery
+import io.github.amichne.kast.api.contract.query.SymbolQuery
 import io.github.amichne.kast.standalone.workspace.GradleDependency
 import io.github.amichne.kast.standalone.workspace.GradleDependencyScope
 import io.github.amichne.kast.standalone.workspace.GradleModuleModel

@@ -1,7 +1,7 @@
 package io.github.amichne.kast.standalone.hierarchy
 
-import io.github.amichne.kast.api.contract.TypeHierarchyQuery
-import io.github.amichne.kast.api.contract.TypeHierarchyResult
+import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
+import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
 import io.github.amichne.kast.shared.analysis.resolveTarget
 import io.github.amichne.kast.shared.analysis.typeHierarchyDeclaration
 import io.github.amichne.kast.shared.hierarchy.ReadAccessScope
@@ -34,4 +34,3 @@ internal class TypeHierarchyTraversal(
         )
     }
 }
-

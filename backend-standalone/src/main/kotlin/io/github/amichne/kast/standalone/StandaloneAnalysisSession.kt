@@ -15,11 +15,12 @@ import com.intellij.platform.syntax.psi.ElementTypeConverters
 import com.intellij.psi.PsiManager
 import com.intellij.psi.compiled.ClassFileDecompilers
 import com.intellij.psi.impl.PsiManagerEx
+import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.contract.FqName
 import io.github.amichne.kast.api.contract.ModuleName
 import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.PackageName
-import io.github.amichne.kast.api.contract.RefreshResult
+import io.github.amichne.kast.api.contract.result.RefreshResult
 import io.github.amichne.kast.api.protocol.NotFoundException
 import io.github.amichne.kast.indexstore.SqliteSourceIndexStore
 import io.github.amichne.kast.shared.analysis.PsiReferenceScanner
@@ -55,15 +56,16 @@ internal class StandaloneAnalysisSession(
     private val initialSourceIndexBuilder: (() -> Map<String, List<String>>)? = null,
     phasedDiscoveryResult: PhasedDiscoveryResult? = null,
     private val sourceIndexFileReader: (Path) -> String = Files::readString,
-    private val sourceIndexCacheSaveDelayMillis: Long = defaultSourceIndexCacheSaveDelayMillis,
-    cacheEnvReader: (String) -> String? = System::getenv,
+    config: KastConfig = KastConfig.load(workspaceRoot),
+    private val sourceIndexCacheSaveDelayMillis: Long = config.cache.sourceIndexSaveDelayMillis,
     private val clock: Clock = Clock.SYSTEM,
     private val analysisSessionLock: SessionLock = ReentrantSessionLock(),
-    private val identifierIndexWaitMillis: Long = defaultIdentifierIndexWaitMillis,
+    private val identifierIndexWaitMillis: Long = config.indexing.identifierIndexWaitMillis,
     internal val telemetry: StandaloneTelemetry = StandaloneTelemetry.disabled(),
-    private val enablePhase2Indexing: Boolean = true,
+    private val enablePhase2Indexing: Boolean = config.indexing.phase2Enabled,
+    private val referenceBatchSize: Int = config.indexing.referenceBatchSize,
 ) : AutoCloseable {
-    private val normalizedWorkspaceRoot = normalizeStandalonePath(workspaceRoot)
+    val workspaceRoot: Path = normalizeStandalonePath(workspaceRoot)
     private val disposable: Disposable = Disposer.newDisposable("kast-standalone")
     private val ktFilesByPath = ConcurrentHashMap<NormalizedPath, KtFile>()
     private val targetedKtFilesByPath = ConcurrentHashMap<NormalizedPath, KtFile>()
@@ -78,9 +80,9 @@ internal class StandaloneAnalysisSession(
     private lateinit var backgroundIndexer: BackgroundIndexer
     private val enrichmentReady = CompletableFuture<Unit>()
     private val fullKtFileMapLoadLock = Any()
-    private val cacheManager = CacheManager(normalizedWorkspaceRoot, envReader = cacheEnvReader)
+    private val cacheManager = CacheManager(this.workspaceRoot, config = config)
     private val sourceIndexCache = SourceIndexCache(
-        workspaceRoot = normalizedWorkspaceRoot,
+        workspaceRoot = this.workspaceRoot,
         enabled = cacheManager.isEnabled(),
     )
 
@@ -136,13 +138,14 @@ internal class StandaloneAnalysisSession(
 
     init {
         val workspaceLayout = phasedDiscoveryResult?.initialLayout ?: discoverStandaloneWorkspaceLayout(
-            workspaceRoot = normalizedWorkspaceRoot,
+            workspaceRoot = this.workspaceRoot,
             sourceRoots = sourceRoots,
             classpathRoots = classpathRoots,
             moduleName = moduleName,
+            config = config,
         )
         require(workspaceLayout.sourceModules.isNotEmpty()) {
-            "No source roots were found under $normalizedWorkspaceRoot"
+            "No source roots were found under ${this.workspaceRoot}"
         }
         applyWorkspaceLayout(workspaceLayout)
 
@@ -889,6 +892,7 @@ internal class StandaloneAnalysisSession(
             sourceIndexCache = sourceIndexCache,
             store = sourceIndexCache.store,
             initialSourceIndexBuilder = initialSourceIndexBuilder,
+            referenceBatchSize = referenceBatchSize,
         )
         val generation = sourceIndexGeneration.incrementAndGet()
         // Publish the index synchronously in the Phase 1 thread before identifierIndexReady
@@ -1155,7 +1159,3 @@ private data class CandidateLookupKey(
     val identifier: String,
     val anchorSourceModuleName: ModuleName?,
 )
-
-private const val defaultSourceIndexCacheSaveDelayMillis = 5_000L
-
-private const val defaultIdentifierIndexWaitMillis = 10_000L

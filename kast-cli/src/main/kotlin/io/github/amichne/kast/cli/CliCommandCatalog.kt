@@ -28,7 +28,7 @@ internal enum class CliCommandGroup(
     ),
     CLI_MANAGEMENT(
         title = "CLI management",
-        overview = "Install and manage local Kast CLI instances.",
+        overview = "Install and manage local Kast CLI instances and configuration.",
     ),
     METRICS(
         title = "Metrics",
@@ -94,8 +94,7 @@ internal object CliCommandCatalog {
         description = "Pin the command to a specific backend. " +
             "When omitted, intellij is preferred if running for that workspace; standalone is used if already running. " +
             "If no backend is running, the command fails with NO_BACKEND_AVAILABLE. " +
-            "Start a backend first with `kast daemon start --workspace-root=<path>` or open the project in IntelliJ with the Kast plugin installed. " +
-            "Set KAST_INTELLIJ_DISABLE=1 to prevent the plugin from starting inside IntelliJ IDEA.",
+            "Start a backend first with `kast daemon start --workspace-root=<path>` or open the project in IntelliJ with the Kast plugin installed.",
     )
     private val workspaceRootOption = CliOptionMetadata(
         key = "workspace-root",
@@ -319,7 +318,7 @@ internal object CliCommandCatalog {
         key = "runtime-libs-dir",
         usage = "--runtime-libs-dir=/absolute/path/to/runtime-libs",
         description = "Override the directory containing the backend runtime classpath. " +
-            "Defaults to KAST_STANDALONE_RUNTIME_LIBS env var, then \$KAST_INSTALL_ROOT/backends/current/runtime-libs.",
+            "Defaults to backends.standalone.runtimeLibsDir in config.toml.",
         completionKind = CliOptionCompletionKind.DIRECTORY,
     )
     private val metricsLimitOption = CliOptionMetadata(
@@ -425,9 +424,8 @@ internal object CliCommandCatalog {
             summary = "Start the standalone JVM backend for a workspace.",
             description = "Launches the standalone JVM backend process for the given workspace. " +
                 "The process runs in the foreground; use a terminal multiplexer or background shell job to keep it alive. " +
-                "The backend runtime-libs are located from the KAST_STANDALONE_RUNTIME_LIBS environment variable or " +
-                "from \$KAST_INSTALL_ROOT/backends/current/runtime-libs. " +
-                "Pass --runtime-libs-dir to override both. " +
+                "The backend runtime-libs are located from backends.standalone.runtimeLibsDir in config.toml. " +
+                "Pass --runtime-libs-dir to override the configured path. " +
                 "All other options are forwarded verbatim to the backend process. " +
                 "Once running, send analysis commands with `$CLI_EXECUTABLE_NAME workspace ensure --workspace-root=<path>` to verify it is ready.",
             usages = listOf(
@@ -471,6 +469,18 @@ internal object CliCommandCatalog {
                 "$CLI_EXECUTABLE_NAME daemon start --workspace-root=/absolute/path/to/workspace",
                 "$CLI_EXECUTABLE_NAME daemon start --workspace-root=/absolute/path/to/workspace --module-name=myApp",
                 "$CLI_EXECUTABLE_NAME daemon start --workspace-root=/absolute/path/to/workspace --runtime-libs-dir=/path/to/runtime-libs",
+            ),
+        ),
+        CliCommandMetadata(
+            path = listOf("config", "init"),
+            group = CliCommandGroup.CLI_MANAGEMENT,
+            summary = "Write a default Kast config file.",
+            description = "Creates config.toml under the Kast config home with all supported options documented and commented out.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME config init",
+            ),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME config init",
             ),
         ),
         CliCommandMetadata(

@@ -22,12 +22,12 @@ class SqliteCacheInvariantTest {
     // ── 1. DB location ──────────────────────────────────────────────────
 
     @Test
-    fun `SQLite database is created under gradle kast cache directory`() {
+    fun `SQLite database is created under workspace cache directory`() {
         val normalized = normalizeStandalonePath(workspaceRoot)
         SqliteSourceIndexStore(normalized).use { store ->
             store.ensureSchema()
         }
-        val expected = normalized.resolve(".gradle/kast/cache/source-index.db")
+        val expected = kastCacheDirectory(normalized).resolve("source-index.db")
         assertTrue(Files.isRegularFile(expected)) {
             "Expected DB at $expected but it was not found"
         }

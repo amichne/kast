@@ -12,11 +12,11 @@ the work). You install and start them separately.
 
 ## Choose your setup
 
-| What you want | Install this | How you start the backend |
-|---------------|--------------|---------------------------|
-| Terminal, CI, or agent work | `kast` CLI + standalone backend | `kast daemon start --workspace-root=<path>` |
-| IDE-backed runtime (IntelliJ already open) | IntelliJ plugin | The plugin starts automatically when IntelliJ opens the project |
-| Both | CLI + plugin + standalone backend | Pick the backend you want for each session |
+| What you want | Recommended mode | How the backend starts |
+|---------------|-----------------|----------------------|
+| IDE-backed runtime (IntelliJ already open) | `minimal` | Plugin starts automatically with IntelliJ |
+| Terminal, CI, or agent work | `full` | `kast daemon start --workspace-root=<path>` |
+| Both | `full` + separate plugin install | Pick the backend you want per session |
 
 The CLI alone does not run analysis. It routes commands to a running backend.
 You must have at least one backend running before `kast` analysis commands
@@ -32,9 +32,9 @@ Before you install, confirm these are in place:
 
 ## One-line install
 
-Run this from any directory to install the `kast` CLI.
+Run this from any directory to launch the interactive install wizard.
 
-```console linenums="1" title="Install the kast CLI"
+```console linenums="1" title="Install kast (interactive)"
 /bin/bash -c "$(curl -fsSL \
   https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh)"
 ```
@@ -45,68 +45,99 @@ Or via pipe:
 curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh | bash
 ```
 
-The installer prints a config summary at the end showing the install
-root, binary path, and shell RC file path.
+The wizard detects your environment (running IntelliJ instances, existing
+tools, Java), lets you choose an install mode, writes configuration to
+`~/.config/kast/env`, and offers to install the Copilot skill.
 
-## Install options
+## Install wizard
 
-Use these install commands when you want a specific combination of
-components.
+Running the installer without flags opens a step-by-step wizard:
 
-=== "CLI only (default)"
+1. **Environment detection** — scans for running IntelliJ instances, checks
+   for Java and fzf.
+2. **Mode selection** — choose `minimal` (CLI + optional IntelliJ plugin) or
+   `full` (CLI + standalone JVM backend). If IntelliJ is running, the wizard
+   offers to push the plugin directly.
+3. **Configuration** — writes `~/.config/kast/env` with `KAST_INSTALL_ROOT`
+   and `KAST_BIN_DIR`. Your shell RC file gets a single idempotent source line.
+4. **CLI install** — downloads and installs the native `kast` launcher.
+5. **Shell completions** — offers to enable tab completion for Bash or Zsh.
+6. **Plugin install** — push to running IntelliJ, or download the zip for
+   manual install.
+7. **Copilot skill** — install the kast skill globally (`~/.agents/skills/kast`),
+   locally, or both. Uses fzf if available, otherwise a numbered menu.
+8. **Summary** — shows install root, binary path, and next steps.
 
-    ```console title="Default — kast CLI"
-    ./kast.sh install
+## Install modes
+
+=== "Minimal (interactive default)"
+
+    ```console title="Minimal install — CLI only"
+    ./kast.sh install --mode=minimal
     ```
 
-    Installs the native `kast` launcher. You still need a backend running
-    before analysis commands work. Start the backend separately with
-    `kast daemon start`, or open the project in IntelliJ with the plugin installed.
+    Installs the `kast` CLI. The wizard also offers to install the IntelliJ
+    plugin (push to running instance or download zip). Ideal if IntelliJ is
+    your primary analysis backend.
 
-=== "Standalone backend"
+=== "Full"
 
-    ```console title="Install CLI and standalone backend"
-    ./kast.sh install --components=cli,backend --non-interactive
+    ```console title="Full install — CLI and standalone backend"
+    ./kast.sh install --mode=full
     ```
 
-    Installs the `kast` CLI and the standalone JVM backend. Start
-    the backend with:
+    Installs the `kast` CLI and the standalone JVM backend. Start the backend
+    with:
 
     ```console title="Start the standalone backend"
     kast daemon start --workspace-root=/absolute/path/to/workspace
     ```
 
-=== "IntelliJ plugin only"
+=== "Non-interactive (CI)"
 
-    ```console title="Install the IntelliJ plugin"
-    ./kast.sh install --components=intellij
+    ```console title="Non-interactive — CLI only, no prompts"
+    ./kast.sh install --non-interactive
     ```
 
-    Downloads the plugin zip to `$KAST_INSTALL_ROOT/plugins/`. Then
-    install it from disk in IntelliJ: **Settings → Plugins → ⚙️ →
-    Install Plugin from Disk**. This path does not require the `kast` CLI.
+    Installs the CLI silently, skips all prompts, and skips the Copilot skill
+    install. Safe for CI and scripted environments.
 
-=== "CLI and IntelliJ plugin"
+=== "Expert (--components)"
 
-    ```console title="Install CLI and IntelliJ plugin"
-    ./kast.sh install --components=cli,intellij --non-interactive
+    ```console title="Expert — explicit component list"
+    ./kast.sh install --components=cli,intellij,backend
     ```
 
-    Installs the `kast` CLI and downloads the IntelliJ plugin zip
-    in one step. Add `--non-interactive` to skip prompts.
+    Skips the wizard entirely and installs exactly the specified components.
+    Valid values: `cli`, `intellij`, `backend`, `all`.
 
-=== "All three"
+## Configuration file
 
-    ```console title="Install CLI, IntelliJ plugin, and standalone backend"
-    ./kast.sh install --components=all --non-interactive
-    ```
+The installer writes all paths to `~/.config/kast/env` (never inline into
+`.zshrc`/`.bashrc`). Your RC file gets a single block that sources it:
 
-    Installs the `kast` CLI, the IntelliJ plugin zip, and the standalone
-    backend in one step.
+```bash title="~/.zshrc — added by installer"
+# >>> kast env >>>
+[[ -f "$HOME/.config/kast/env" ]] && source "$HOME/.config/kast/env"
+# <<< kast env <<<
+```
+
+The config file itself looks like:
+
+```bash title="~/.config/kast/env"
+# >>> kast config >>>
+export KAST_INSTALL_ROOT="~/.local/share/kast"
+export KAST_BIN_DIR="~/.local/bin"
+# export KAST_STANDALONE_RUNTIME_LIBS="..."  (present after full install)
+# <<< kast config <<<
+```
+
+You can re-run the installer at any time; the config block is updated
+in place rather than appended.
 
 ## Starting the standalone backend
 
-After installing the CLI, start the standalone backend before running
+After a `full` install, start the standalone backend before running
 analysis commands:
 
 ```console title="Start the standalone backend"
@@ -117,7 +148,7 @@ Keep this running in a background terminal or as a background process.
 Once it prints `READY`, the `kast` CLI will find it automatically for any
 command targeting the same workspace root.
 
-To stop it, send `SIGTERM` or use:
+To stop it:
 
 ```console title="Stop the standalone backend"
 kast daemon stop --workspace-root=/absolute/path/to/your/workspace
@@ -127,24 +158,15 @@ kast daemon stop --workspace-root=/absolute/path/to/your/workspace
 
 | Flag | What it does |
 |------|--------------|
-| `--components=<list>` | Comma-separated: `cli`, `intellij`, `backend`, `all`. Default: `cli` |
-| `--non-interactive` | Skip all interactive prompts |
-
-## When Gradle files matter
-
-The installer itself does not require Gradle files. They matter later,
-when the standalone backend discovers a workspace.
-
-> **Note:** If your workspace root contains `settings.gradle.kts`,
-> `settings.gradle`, `build.gradle.kts`, or `build.gradle`, the
-> standalone backend uses Gradle-aware discovery. Without those files,
-> `kast` still falls back to conventional source roots and source-file
-> scanning. A root `settings.gradle.kts` matters most for multi-module
-> Gradle workspaces.
+| `--mode=minimal\|full\|auto` | Drive the install wizard path (default: interactive) |
+| `--components=<list>` | Expert override: `cli`, `intellij`, `backend`, `all` — skips wizard |
+| `--skip-skill` | Skip Copilot skill install step |
+| `--non-interactive` | Skip all prompts; implies `--skip-skill` |
+| `--local` | Install from local `dist/` artifacts (built by `./kast.sh build`) |
 
 ## Install the IntelliJ plugin manually
 
-If you prefer to install the plugin without the unified installer:
+If you prefer to install the plugin without the wizard:
 
 1. Download `kast-intellij-<version>.zip` from the
    [latest release](https://github.com/amichne/kast/releases/latest).
@@ -160,8 +182,8 @@ If you prefer to install the plugin without the unified installer:
 
 ## Enable shell completion
 
-The installer can set up completion in your shell init file. If you
-skip the prompt or want to enable it manually:
+The installer prompts to set up completion during install. To enable it
+manually after the fact:
 
 === "Bash"
 

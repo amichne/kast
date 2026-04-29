@@ -15,13 +15,14 @@ class SqliteSourceIndexStoreTest {
     lateinit var workspaceRoot: Path
 
     @Test
-    fun `database is created under gradle kast cache directory`() {
+    fun `database is created under workspace cache directory`() {
         val normalized = workspaceRoot.toAbsolutePath().normalize()
         SqliteSourceIndexStore(normalized).use { store ->
             store.ensureSchema()
         }
 
-        assertTrue(Files.isRegularFile(normalized.resolve(".gradle/kast/cache/source-index.db")))
+        assertTrue(Files.isRegularFile(sourceIndexDatabasePath(normalized)))
+        assertTrue(sourceIndexDatabasePath(normalized).startsWith(kastCacheDirectory(normalized)))
     }
 
     @Test

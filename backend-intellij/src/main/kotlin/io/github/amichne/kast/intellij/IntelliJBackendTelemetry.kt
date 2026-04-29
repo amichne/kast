@@ -1,5 +1,7 @@
 package io.github.amichne.kast.intellij
 
+import io.github.amichne.kast.api.client.KastConfig
+import io.github.amichne.kast.api.client.workspaceDataDirectory
 import io.opentelemetry.api.common.AttributeKey
 import io.opentelemetry.api.common.Attributes
 import io.opentelemetry.api.trace.Span
@@ -206,29 +208,22 @@ internal class IntelliJBackendTelemetry private constructor(
             )
         }
 
-        fun fromEnvironment(
+        fun fromConfig(
             workspaceRoot: Path,
-            envReader: (String) -> String? = System::getenv,
+            config: KastConfig = KastConfig.load(workspaceRoot),
         ): IntelliJBackendTelemetry {
-            val debugMode = envReader("KAST_DEBUG").isTruthy()
-            val enabled = debugMode || envReader("KAST_OTEL_ENABLED").isTruthy()
-            if (!enabled) {
+            if (!config.telemetry.enabled) {
                 return disabled()
             }
 
-            val scopes = if (debugMode) {
+            val scopes = if (config.telemetry.scopes.equals("all", ignoreCase = true)) {
                 IntelliJTelemetryScope.entries.toSet()
             } else {
-                parseScopes(envReader("KAST_OTEL_SCOPES"))
-                    ?: IntelliJTelemetryScope.entries.toSet()
+                parseScopes(config.telemetry.scopes) ?: IntelliJTelemetryScope.entries.toSet()
             }
-            val detail = if (debugMode) {
-                IntelliJTelemetryDetail.VERBOSE
-            } else {
-                IntelliJTelemetryDetail.parse(envReader("KAST_OTEL_DETAIL"))
-            }
+            val detail = IntelliJTelemetryDetail.parse(config.telemetry.detail)
             val outputFile = resolveOutputFile(
-                rawValue = envReader("KAST_OTEL_OUTPUT_FILE"),
+                rawValue = config.telemetry.outputFile,
                 workspaceRoot = workspaceRoot,
             )
 
@@ -256,15 +251,9 @@ internal class IntelliJBackendTelemetry private constructor(
                 ?.let(Path::of)
                 ?.let { path -> if (path.isAbsolute) path else workspaceRoot.resolve(path) }
 
-            val kastGradleDir = workspaceRoot.resolve(".gradle").resolve("kast")
-            return (configuredPath ?: kastGradleDir.resolve("telemetry/intellij-spans.jsonl"))
+            return (configuredPath ?: workspaceDataDirectory(workspaceRoot).resolve("telemetry/intellij-spans.jsonl"))
                 .toAbsolutePath()
                 .normalize()
-        }
-
-        private fun String?.isTruthy(): Boolean = when (this?.trim()?.lowercase()) {
-            "1", "true", "yes", "on" -> true
-            else -> false
         }
     }
 }

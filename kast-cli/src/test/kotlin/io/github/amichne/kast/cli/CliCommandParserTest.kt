@@ -1,11 +1,10 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.api.contract.RefreshQuery
+import io.github.amichne.kast.api.contract.query.RefreshQuery
 import io.github.amichne.kast.api.contract.SemanticInsertionTarget
 import io.github.amichne.kast.api.contract.SymbolKind
 import io.github.amichne.kast.api.contract.TypeHierarchyDirection
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -369,6 +368,7 @@ class CliCommandParserTest {
             ),
         ) as CliCommand.DaemonStart
 
+        assertEquals(tempDir, command.options.workspaceRoot)
         assertTrue(command.options.standaloneArgs.any { it.contains("workspace-root") })
         assertNull(command.options.runtimeLibsDir)
     }
@@ -387,6 +387,13 @@ class CliCommandParserTest {
 
         assertEquals(runtimeLibsDir, command.options.runtimeLibsDir)
         assertTrue(command.options.standaloneArgs.none { it.contains("runtime-libs-dir") })
+    }
+
+    @Test
+    fun `config init parses`() {
+        val command = parser.parse(arrayOf("config", "init"))
+
+        assertEquals(CliCommand.ConfigInit, command)
     }
 
     @Test

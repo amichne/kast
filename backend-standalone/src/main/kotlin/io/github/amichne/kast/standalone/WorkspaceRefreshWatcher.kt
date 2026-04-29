@@ -1,6 +1,7 @@
 package io.github.amichne.kast.standalone
 
-import io.github.amichne.kast.api.contract.RefreshResult
+import io.github.amichne.kast.api.client.KastConfig
+import io.github.amichne.kast.api.contract.result.RefreshResult
 import java.nio.file.ClosedWatchServiceException
 import java.nio.file.FileSystems
 import java.nio.file.Files
@@ -15,7 +16,7 @@ import kotlin.io.path.extension
 
 internal class WorkspaceRefreshWatcher(
     private val session: StandaloneAnalysisSession,
-    private val debounceMillis: Long = 200,
+    private val debounceMillis: Long = KastConfig.load(session.workspaceRoot).watcher.debounceMillis,
     private val contentRefresh: (Set<String>) -> RefreshResult = session::refreshFileContents,
     private val fullRefresh: () -> RefreshResult = session::refreshWorkspace,
     private val clock: Clock = Clock.SYSTEM,

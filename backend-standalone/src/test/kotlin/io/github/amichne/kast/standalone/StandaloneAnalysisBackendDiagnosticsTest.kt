@@ -2,8 +2,8 @@ package io.github.amichne.kast.standalone
 
 import io.github.amichne.kast.api.contract.DiagnosticSeverity
 import io.github.amichne.kast.api.contract.NormalizedPath
-import io.github.amichne.kast.api.contract.DiagnosticsQuery
-import io.github.amichne.kast.api.contract.RefreshQuery
+import io.github.amichne.kast.api.contract.query.DiagnosticsQuery
+import io.github.amichne.kast.api.contract.query.RefreshQuery
 import io.github.amichne.kast.api.contract.ReadCapability
 import io.github.amichne.kast.api.contract.ServerLimits
 import kotlinx.coroutines.test.TestResult

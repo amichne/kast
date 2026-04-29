@@ -1,5 +1,9 @@
 package io.github.amichne.kast.api.contract
 
+import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
+import io.github.amichne.kast.api.contract.result.TypeHierarchyNode
+import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
+import io.github.amichne.kast.api.contract.result.TypeHierarchyStats
 import io.github.amichne.kast.api.protocol.*
 
 import kotlinx.serialization.json.Json

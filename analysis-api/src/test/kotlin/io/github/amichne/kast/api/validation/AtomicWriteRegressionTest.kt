@@ -1,8 +1,8 @@
 package io.github.amichne.kast.api.validation
 
 import io.github.amichne.kast.api.contract.*
+import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
 import io.github.amichne.kast.api.io.KastFileOperations
-import io.github.amichne.kast.api.protocol.*
 import io.github.amichne.kast.testing.inMemoryFileOperations
 
 import org.junit.jupiter.api.Assertions.*

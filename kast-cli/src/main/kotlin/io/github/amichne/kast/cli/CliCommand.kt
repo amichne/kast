@@ -1,21 +1,21 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.api.contract.ApplyEditsQuery
-import io.github.amichne.kast.api.contract.CallHierarchyQuery
-import io.github.amichne.kast.api.contract.CodeActionsQuery
-import io.github.amichne.kast.api.contract.CompletionsQuery
-import io.github.amichne.kast.api.contract.DiagnosticsQuery
-import io.github.amichne.kast.api.contract.FileOutlineQuery
-import io.github.amichne.kast.api.contract.ImportOptimizeQuery
-import io.github.amichne.kast.api.contract.ImplementationsQuery
-import io.github.amichne.kast.api.contract.ReferencesQuery
-import io.github.amichne.kast.api.contract.RefreshQuery
-import io.github.amichne.kast.api.contract.RenameQuery
+import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
+import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
+import io.github.amichne.kast.api.contract.query.CodeActionsQuery
+import io.github.amichne.kast.api.contract.query.CompletionsQuery
+import io.github.amichne.kast.api.contract.query.DiagnosticsQuery
+import io.github.amichne.kast.api.contract.query.FileOutlineQuery
+import io.github.amichne.kast.api.contract.query.ImportOptimizeQuery
+import io.github.amichne.kast.api.contract.query.ImplementationsQuery
+import io.github.amichne.kast.api.contract.query.ReferencesQuery
+import io.github.amichne.kast.api.contract.query.RefreshQuery
+import io.github.amichne.kast.api.contract.query.RenameQuery
 import io.github.amichne.kast.api.contract.SemanticInsertionQuery
-import io.github.amichne.kast.api.contract.SymbolQuery
-import io.github.amichne.kast.api.contract.TypeHierarchyQuery
-import io.github.amichne.kast.api.contract.WorkspaceFilesQuery
-import io.github.amichne.kast.api.contract.WorkspaceSymbolQuery
+import io.github.amichne.kast.api.contract.query.SymbolQuery
+import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
+import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
+import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
 import io.github.amichne.kast.cli.skill.SkillWrapperName
 
 internal sealed interface CliCommand {
@@ -46,6 +46,7 @@ internal sealed interface CliCommand {
     data class InstallSkill(val options: InstallSkillOptions) : CliCommand
     data class Smoke(val options: SmokeOptions) : CliCommand
     data class DaemonStart(val options: DaemonStartOptions) : CliCommand
+    data object ConfigInit : CliCommand
     data class Skill(val name: SkillWrapperName, val rawInput: String) : CliCommand
     data class EvalSkill(val options: EvalSkillOptions) : CliCommand
     data class Metrics(
