@@ -5,22 +5,22 @@ description: Compiler-backed Kotlin analysis for your terminal, CI, agent,
 icon: lucide/network
 ---
 
-# IDE-grade Kotlin code intelligence — anywhere you need it
+# Compiler-backed Kotlin answers — outside the IDE
 
-`kast` gives you compiler-backed Kotlin answers outside plain text search.
-Use it when `grep` or `rg` can show you where a name appears, but you need to
-know which declaration it resolves to, which callers are real, or whether an
-edit plan is safe to apply.
+`grep` finds where a name appears. `kast` tells you which declaration it
+resolves to, who actually calls it, and whether the rename you're about to
+apply still matches what's on disk. Same K2 engine your IDE uses, exposed
+as a daemon you can drive from a shell, a CI job, or an LLM agent.
 
-Choose the entry point that fits your workflow:
+Pick your entry point:
 <div class="grid cards" markdown>
 
 -   :material-console:{ .lg .bottom } __Install the CLI__
 
     ---
 
-    Start a fully independent standalone daemon for terminal work, CI, and
-    agent automation.
+    A standalone JVM daemon you start from a terminal. Works in CI, in a
+    container, on a server with no editor in sight.
 
     [:octicons-arrow-right-16: CLI install guide](getting-started/install.md#one-line-install)
 
@@ -28,107 +28,102 @@ Choose the entry point that fits your workflow:
 
     ---
 
-    Connect to the IntelliJ-backed runtime and reuse the IDE's
-    already-open project model, indexes, and analysis session.
+    Reuse the analysis session IntelliJ already has open. No second JVM,
+    no second cold start, same JSON-RPC over a socket.
 
     [:octicons-arrow-right-16: Plugin install guide](getting-started/install.md#install-the-intellij-plugin-manually)
 
 </div>
 
-## Two independent runtime modes, one contract
+## Two runtimes, one wire format
 
-`kast` ships two independent runtime modes. Both expose the same JSON-RPC
-contract, so your scripts, agents, and integrations do not need a different
-API when you switch between them.
+The standalone daemon and the IntelliJ plugin speak the same JSON-RPC.
+Switch backends without changing a single script or prompt.
+[Compare backends →](getting-started/backends.md)
 
-| Runtime mode                       | What runs                                                         | Best when                                             | Why it shines                                                                                  |
-|------------------------------------|-------------------------------------------------------------------|-------------------------------------------------------|------------------------------------------------------------------------------------------------|
-| **Standalone CLI + daemon**        | The `kast` CLI starts a separate backend process outside IntelliJ | You need terminal automation, CI, or a headless agent | It is fully independent, needs no IDE session, and gives you explicit daemon lifecycle control |
-| **IntelliJ plugin-backed runtime** | The plugin starts `kast` inside a running IntelliJ project        | IntelliJ is already open on the workspace             | It piggybacks on the IDE's already-open project model, indexes, and analysis session           |
+## What `kast` does that text search can't
 
-For a deeper comparison, read [Backends](getting-started/backends.md).
+- **Resolves the symbol, not the string.** Two functions named `process`
+  in different classes are two different `fqName`s. Overloaded calls
+  resolve to the right overload because the compiler picked it.
+  [How resolve works →](what-can-kast-do/understand-symbols.md)
+- **Proves the reference list is complete.** Every `references` response
+  carries `searchScope.exhaustive`. When it's `true`, every candidate
+  file in the workspace was actually searched — not sampled, not
+  truncated. [Trace usage →](what-can-kast-do/trace-usage.md)
+- **Tells you where the call tree stopped, and why.** Depth, fan-out,
+  total edges, timeout — all configurable, all reported back. No silent
+  truncation. [Bounded hierarchies →](what-can-kast-do/trace-usage.md#expand-the-call-hierarchy)
+- **Refuses to apply a stale edit.** Rename returns SHA-256 hashes of
+  every file it read. If anything drifted before you apply, the daemon
+  rejects the write instead of corrupting your tree.
+  [Plan-then-apply →](what-can-kast-do/refactor-safely.md)
 
-## Why `kast` matters
-
-`kast` replaces guesswork with compiler-backed answers. These capabilities make
-it useful when text search is not enough:
-
-- **Symbol identity, not text matching** — `kast` resolves the exact compiler
-  declaration at a position and returns its fully qualified name, kind, and
-  location. [Learn more →](what-can-kast-do/understand-symbols.md)
-- **Exhaustive reference search** — Every reference result includes
-  `searchScope.exhaustive`, proving whether every candidate file was
-  searched. [Learn more →](what-can-kast-do/trace-usage.md)
-- **Bounded call hierarchy** — Call trees include explicit depth, fan-out,
-  and timeout limits with truncation metadata on every node.
-  [Learn more →](what-can-kast-do/trace-usage.md#expand-the-call-hierarchy)
-- **Safe mutations** — Rename uses a two-phase plan→apply flow with
-  SHA-256 file hashes for conflict detection.
-  [Learn more →](what-can-kast-do/refactor-safely.md)
-
-`kast` complements your editor's LSP and your usual text search. Use it when
-the workflow happens outside the editor or when you need compiler-backed
-answers instead of string matches.
+Your editor's LSP is still better for keystroke feedback. `kast` is for
+the work that happens outside the editor — CI gates, scripted refactors,
+agents that need to answer "is this list complete?" with a yes or no.
 [Full comparison →](architecture/kast-vs-lsp.md)
 
-## Get running in 60 seconds
+## 60 seconds to a real answer
 
-Install the CLI, start a backend, then run your first query.
+Three commands, run from the root of any Kotlin project. Requires Java 21+.
 
-```console linenums="1" title="Download, start, query" hl_lines="1 2 3"
+```console linenums="1" title="Install, start, query" hl_lines="1 2 3"
 # 1. Install the kast CLI
 curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh | bash
 
-# 2. Start the standalone backend (keep it running in background / separate terminal)
-kast daemon start --workspace-root=/path/to/your/project
+# 2. Start a backend for this workspace (waits until indexing is READY)
+kast workspace ensure --backend-name=standalone --workspace-root=$(pwd)
 
-# 3. Resolve a symbol (in another shell, once the backend is READY)
+# 3. Resolve a symbol — point at any .kt file and any byte offset on a name
 kast resolve \
-  --workspace-root=/path/to/your/project \
-  --file-path=/path/to/your/project/src/main/kotlin/App.kt \
+  --workspace-root=$(pwd) \
+  --file-path=$(pwd)/src/main/kotlin/App.kt \
   --offset=42
 ```
 
-Three steps: install, start backend, query. The backend stays warm for
-subsequent commands, so everything after the first start is fast.
-If IntelliJ with the plugin is already open on the project, skip step 2 —
-`kast` connects to the IDE's backend automatically.
+The first `workspace ensure` is the slow command — the daemon discovers
+your project and indexes it. Everything after that hits a warm session.
+Already running IntelliJ with the plugin? Skip step 2; `kast` finds the
+IDE's backend on its own.
 
 ## Next steps
 
 <div class="grid cards" markdown>
 
--   :octicons-download-24:{ .lg .middle } **Get started**
+-   :octicons-download-24:{ .lg .middle } **Install**
 
     ---
 
-    Install `kast`, run your first query, and understand the two backends.
+    Pick a backend, get the binary on your `PATH`, verify it answers.
 
     [:octicons-arrow-right-24: Install](getting-started/install.md)
 
--   :octicons-zap-24:{ .lg .middle } **See what `kast` can do**
+-   :octicons-zap-24:{ .lg .middle } **What `kast` actually does**
 
     ---
 
-    Explore every capability with real examples and content tabs.
+    Every capability with real CLI calls, real JSON, and the gotchas
+    that bite first-time users.
 
     [:octicons-arrow-right-24: Understand symbols](what-can-kast-do/understand-symbols.md)
 
--   :octicons-copilot-24:{ .lg .middle } **Use `kast` from an agent**
+-   :octicons-copilot-24:{ .lg .middle } **From an agent**
 
     ---
 
-    Give your LLM agent semantic code intelligence it can't get from grep.
+    Give your LLM something stronger than `grep` and a file system —
+    bounded answers it can quote with proof.
 
     [:octicons-arrow-right-24: For agents](for-agents/index.md)
 
--   :octicons-gear-24:{ .lg .middle } **Dive into the architecture**
+-   :octicons-rocket-24:{ .lg .middle } **Recipes**
 
     ---
 
-    Learn how the daemon, JSON-RPC transport, and K2 Analysis API fit
-    together.
+    Copy-paste workflows for the things you actually do: find callers,
+    rename a symbol, gate CI on diagnostics.
 
-    [:octicons-arrow-right-24: How it works](architecture/how-it-works.md)
+    [:octicons-arrow-right-24: Recipes](recipes.md)
 
 </div>

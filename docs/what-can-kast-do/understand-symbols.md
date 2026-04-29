@@ -7,35 +7,31 @@ icon: lucide/search
 
 # Understand symbols
 
-This page covers the operations that answer identity questions about
-your Kotlin code. Each operation takes a position or a name and returns
-structured JSON describing exactly what the compiler knows about the
-symbol at that location. Together they let you resolve a symbol to its
-unique identity, browse the declaration tree of a file, discover
-symbols across the workspace by name, and enumerate every concrete
-implementation of an interface or abstract class.
+These are the operations that answer "what is this?" Each one takes a
+position or a name and returns structured JSON about the declaration
+the compiler sees there. Together they let you pin a symbol to a
+unique identity, walk a file's declaration tree, search the workspace
+by name, and list every concrete implementation of an interface.
 
 ## Resolve a symbol
 
-When you point kast at a byte offset in a Kotlin file, it doesn't grep
-for a name. It resolves the exact declaration the compiler sees at that
-position and returns three fields that uniquely identify the symbol:
-`fqName`, `kind`, and `location`. Every other field — return type,
-parameters, containing declaration — is context that builds on that
-identity triple.
+Point `kast` at a byte offset in a Kotlin file. It doesn't grep — it
+resolves the declaration the compiler sees at that position. Three
+fields uniquely identify the symbol: `fqName`, `kind`, `location`.
+Everything else (return type, parameters, containing declaration)
+hangs off that triple.
 
-Position-based resolution is what makes kast different from text
-matching. Two functions named `process` in different classes produce
-two distinct `fqName` values. Overloads at the same call site resolve
-to the correct overload based on the compiler's type analysis, not a
-string match.
+This is what makes `kast` different from text matching. Two functions
+named `process` in different classes get two different `fqName`s.
+Overloads at a call site resolve to the right overload because the
+compiler picked it.
 
 === "CLI"
 
     ```console title="Resolve the symbol at a specific file position"
     kast resolve \
-      --workspace-root=/app \
-      --file-path=/app/src/main/kotlin/com/example/OrderService.kt \
+      --workspace-root=$(pwd) \
+      --file-path=$(pwd)/src/main/kotlin/com/example/OrderService.kt \
       --offset=142
     ```
 
@@ -80,31 +76,28 @@ string match.
 }
 ```
 
-The `--offset` value is a zero-based byte offset into the file. You
-can get it from your editor's cursor position or compute it from a
-line and column. kast resolves through references, so pointing at a
-call site returns the declaration the call resolves to, not the call
-itself.
+`--offset` is a zero-based byte offset. Get it from your editor's
+cursor or compute it from a line and column. `kast` resolves through
+references — point at a call site and you get the declaration the
+call resolves to, not the call itself.
 
 ## Outline a file
 
-The `outline` command returns a nested declaration tree for a single
-Kotlin file. Each node carries the same `Symbol` shape you see in a
-`resolve` response, and child declarations nest inside their parent.
-The tree excludes function parameters, anonymous elements, and local
-declarations — it shows only the named declarations that form the
-file's public and internal structure.
+`outline` returns a nested declaration tree for one file. Each node
+is the same `Symbol` shape as `resolve`. Children nest inside their
+parent. Function parameters, anonymous elements, and local
+declarations are excluded — what you get is the file's named
+structure.
 
-Use `outline` when you need a quick map of a file's contents without
-reading the full source. Agents use it to decide which offset to pass
-to `resolve` or `references`.
+Use it for a quick map of a file without reading the source. Agents
+use it to pick which offset to feed `resolve` or `references`.
 
 === "CLI"
 
     ```console title="Get the declaration tree for a file"
     kast outline \
-      --workspace-root=/app \
-      --file-path=/app/src/main/kotlin/com/example/OrderService.kt
+      --workspace-root=$(pwd) \
+      --file-path=$(pwd)/src/main/kotlin/com/example/OrderService.kt
     ```
 
 === "JSON-RPC"
@@ -175,33 +168,31 @@ to `resolve` or `references`.
 }
 ```
 
-The `children` array nests recursively. A top-level class contains its
-member functions and properties, an inner class contains its own
-members, and so on. Empty `children` means the declaration has no
-nested named declarations.
+`children` nests recursively. A class contains its members, an inner
+class contains its own, and so on. Empty `children` means no nested
+named declarations.
 
-## Search for workspace symbols
+## Search the workspace by name
 
-The `workspace-symbol` command finds declarations across your entire
-workspace by name. By default it runs a substring match against symbol
-names. You can narrow results with `--kind` to filter by symbol kind,
-or switch to `--regex=true` for regular expression patterns.
+`workspace-symbol` finds declarations across the workspace by name.
+Substring match by default; narrow with `--kind`, switch to regex
+with `--regex=true`.
 
-Use this when you know a name (or part of one) but don't know which
-file contains it. Agents use it as a discovery step before calling
-`resolve` on a specific match.
+Reach for it when you know the name (or part of it) but not the file.
+Agents use it as a discovery step before calling `resolve` on a
+specific match.
 
 === "CLI"
 
     ```console title="Find all classes matching a pattern"
     kast workspace-symbol \
-      --workspace-root=/app \
+      --workspace-root=$(pwd) \
       --pattern=OrderService
     ```
 
     ```console title="Regex search filtered to classes"
     kast workspace-symbol \
-      --workspace-root=/app \
+      --workspace-root=$(pwd) \
       --pattern=".*Service" \
       --regex=true \
       --kind=CLASS
@@ -257,25 +248,24 @@ file contains it. Agents use it as a discovery step before calling
 }
 ```
 
-When results exceed `maxResults`, the `page` object reports
-`"truncated": true` and includes a `nextPageToken` you can pass in a
-follow-up request. Always check `page.truncated` before assuming you
-have every match.
+When results exceed `maxResults`, `page.truncated` flips to `true`
+and you get a `nextPageToken`. Always check `page.truncated` before
+claiming you have every match.
 
 ## Find implementations
 
-The `implementations` command takes a position on an interface or
-abstract class and returns every concrete implementation in the
-workspace. Each result carries its `supertypes` chain so you can see
-the full inheritance path, and the `exhaustive` flag tells you whether
-kast found every implementation within the result cap.
+`implementations` takes a position on an interface or abstract class
+and returns every concrete implementation in the workspace. Each
+result carries its `supertypes` chain so you can see the full
+inheritance path. The `exhaustive` flag tells you whether `kast`
+found every implementation within the result cap.
 
 === "CLI"
 
     ```console title="Find all implementations of an interface"
     kast implementations \
-      --workspace-root=/app \
-      --file-path=/app/src/main/kotlin/sample/Greeter.kt \
+      --workspace-root=$(pwd) \
+      --file-path=$(pwd)/src/main/kotlin/sample/Greeter.kt \
       --offset=28
     ```
 
@@ -319,20 +309,19 @@ kast found every implementation within the result cap.
 }
 ```
 
-When `exhaustive` is `true`, kast found every implementation within
-the `maxResults` limit. When it's `false`, more implementations exist
-than the cap allowed — increase `maxResults` or paginate to get the
-full set. The `supertypes` array shows the immediate supertypes of
-each implementation, which is useful for understanding intermediate
-abstract classes or mixins in the inheritance chain.
+`exhaustive: true` means `kast` found every implementation within
+the `maxResults` limit. `false` means more exist than the cap allowed
+— raise `maxResults` or paginate. `supertypes` lists the immediate
+supertypes of each implementation, which is what you want when an
+inheritance chain runs through intermediate abstract classes or
+mixins.
 
 ## Next steps
 
-Now that you can identify symbols and browse the declaration
-landscape, move on to tracing how those symbols are used and changing
-them safely.
+You can identify symbols and browse the declaration landscape. Now
+trace how they're used and change them safely.
 
-- [Trace usage](trace-usage.md) — find every reference to a symbol
-  and walk call hierarchies with exhaustiveness proof.
+- [Trace usage](trace-usage.md) — every reference, with exhaustiveness
+  proof, plus call hierarchies
 - [Refactor safely](refactor-safely.md) — plan and apply renames with
-  hash-based conflict detection.
+  hash-based conflict detection

@@ -7,15 +7,15 @@ icon: lucide/folder-open
 
 # Manage workspaces
 
-Kast runs a long-lived daemon per workspace. These operations let you start
-the daemon, check its state, inspect the workspace structure it discovered,
-and stop it when you're done. Understanding the lifecycle helps you write
-automation that starts clean and exits clean.
+`kast` runs a long-lived daemon per workspace. These operations
+start it, check its state, inspect what it discovered, and stop it
+cleanly. Knowing the lifecycle is the difference between automation
+that runs reliably and automation that leaks zombie processes.
 
 ## Daemon lifecycle
 
-The daemon moves through a predictable set of states. Knowing these states
-helps you decide when to send queries and when to wait.
+The daemon moves through a predictable set of states. Knowing them
+tells you when to send queries and when to wait.
 
 ```mermaid
 stateDiagram-v2
@@ -28,51 +28,45 @@ stateDiagram-v2
     DEGRADED --> [*]: workspace stop
 ```
 
-- **STARTING** — the daemon process launched but hasn't bootstrapped the
-  analysis session yet.
-- **INDEXING** — the K2 session is active and scanning source files. Semantic
-  queries can return partial results during this state.
-- **READY** — indexing is complete. All queries return full results.
-- **DEGRADED** — a fatal error occurred during indexing. Stop the daemon
-  and investigate.
+- **STARTING** — process launched, analysis session not yet up
+- **INDEXING** — K2 session is active, scanning sources. Semantic
+  queries may return partial results
+- **READY** — indexing done. Every query returns full results
+- **DEGRADED** — fatal error during indexing. Stop and investigate
 
 ### Start the daemon
 
-Use `workspace ensure` to start the daemon and block until it reaches a
-servable state.
+`workspace ensure` starts the daemon and blocks until it's
+servable.
 
 ```console title="Start the daemon and wait for READY"
 kast workspace ensure \
-  --workspace-root=/absolute/path/to/workspace
+  --workspace-root=$(pwd)
 ```
 
-Pass `--accept-indexing=true` when you only need the daemon to be
-servable and can tolerate partial results while indexing finishes.
+Pass `--accept-indexing=true` when partial results during indexing
+are acceptable.
 
 ### Check daemon state
 
-Use `workspace status` to see whether the daemon is running and what
-state it's in.
-
 ```console title="Check daemon state"
 kast workspace status \
-  --workspace-root=/absolute/path/to/workspace
+  --workspace-root=$(pwd)
 ```
 
 ### Stop the daemon
 
-Use `workspace stop` when you're done. This keeps the lifecycle explicit
-and avoids leaving orphaned processes.
+Stop explicitly when you're done. Don't leave orphans behind.
 
 ```console title="Stop the daemon cleanly"
 kast workspace stop \
-  --workspace-root=/absolute/path/to/workspace
+  --workspace-root=$(pwd)
 ```
 
 ## Workspace discovery
 
-When the daemon starts, it discovers your project structure automatically.
-The discovery strategy depends on what's in your workspace root.
+When the daemon starts, it discovers the project automatically. The
+strategy depends on what's in your workspace root.
 
 ```mermaid
 flowchart TD
@@ -84,44 +78,44 @@ flowchart TD
     E --> F["INDEXING → READY"]
 ```
 
-For Gradle projects, Kast uses the Gradle Tooling API to discover
-modules, source roots, and classpath information. For non-Gradle projects,
-it falls back to conventional Kotlin source root directories.
+For Gradle projects, `kast` uses the Tooling API to discover
+modules, source roots, and classpath. For non-Gradle projects, it
+falls back to the conventional Kotlin layout (`src/main/kotlin`,
+`src/test/kotlin`).
 
 ## Refresh the workspace
 
-Kast watches source roots for `.kt` file changes and refreshes
-automatically. `apply-edits` also triggers an immediate refresh for the
-files it modified. Use `workspace refresh` only as a manual recovery path
-when an external change was missed.
+`kast` watches source roots for `.kt` changes and refreshes
+automatically. `apply-edits` triggers an immediate refresh for the
+files it touched. Use `workspace refresh` only as a manual recovery
+when an external change slipped past the watcher.
 
 ```console title="Full workspace refresh"
 kast workspace refresh \
-  --workspace-root=/absolute/path/to/workspace
+  --workspace-root=$(pwd)
 ```
 
-For a targeted refresh of specific files, pass `--file-paths`:
+Targeted refresh:
 
 ```console title="Targeted refresh"
 kast workspace refresh \
-  --workspace-root=/absolute/path/to/workspace \
-  --file-paths=/absolute/path/to/src/main/kotlin/App.kt
+  --workspace-root=$(pwd) \
+  --file-paths=$(pwd)/src/main/kotlin/App.kt
 ```
 
 ## Inspect workspace files
 
-Use `workspace/files` to see the modules and source roots the daemon
-discovered. File-path enumeration is capped per module so large workspaces
+`workspace/files` returns the modules, source roots, and files the
+daemon found. Run it when you want to verify the daemon sees what
+you think it sees. File-path enumeration is capped per module so large workspaces
 can inspect scope without forcing the daemon to materialize every path in
 one response.
 
 === "CLI"
 
     ```console title="List workspace files"
-    kast workspace files \
-      --workspace-root=/absolute/path/to/workspace \
-      --include-files=true \
-      --max-files-per-module=500
+    kast workspace-files \
+      --workspace-root=$(pwd)
     ```
 
 === "JSON-RPC"
@@ -155,27 +149,27 @@ one response.
 
 ## Check capabilities
 
-Use `capabilities` to see which operations the current backend supports.
-This is especially important in automation where you need to confirm
-support before calling an operation.
+`capabilities` returns the operations the active backend supports.
+Run it before calling something the standalone backend doesn't yet
+implement.
 
 ```console title="Query supported capabilities"
 kast capabilities \
-  --workspace-root=/absolute/path/to/workspace
+  --workspace-root=$(pwd)
 ```
 
 ## Check runtime health
 
-Use `health` for a lightweight liveness check and `runtime/status` for
-detailed runtime metadata.
+`health` is a lightweight liveness check; `runtime/status` returns
+full runtime metadata.
 
 ```console title="Liveness check"
-kast health --workspace-root=/absolute/path/to/workspace
+kast health --workspace-root=$(pwd)
 ```
 
 ## Next steps
 
-- [Backends](../getting-started/backends.md) — understand when to use
-  standalone vs IntelliJ plugin
-- [How Kast works](../architecture/how-it-works.md) — the full
-  architecture story
+- [Backends](../getting-started/backends.md) — when to pick
+  standalone vs IntelliJ
+- [Troubleshooting](../troubleshooting.md) — daemon won't start,
+  stuck indexing, stale results after edits
