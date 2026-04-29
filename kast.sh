@@ -984,8 +984,7 @@ _fzf_select() {
             --height="~40%" \
             --layout=reverse \
             --border=rounded \
-            --no-multi \
-            </dev/tty)"
+            --no-multi)"
     printf '%s' "$selection"
     return 0
   fi

@@ -137,6 +137,10 @@ jobs:
           unzip -q kast-cli/build/distributions/kast-cli-*-portable.zip -d "$dist_dir"
           "$dist_dir/kast-cli/kast-cli" --help
 
+      - name: Test installer selector
+        shell: bash
+        run: ./.github/scripts/test-installer-selector.sh
+
       - name: Smoke installer
         shell: bash
         run: ./.github/scripts/smoke-installer.sh
