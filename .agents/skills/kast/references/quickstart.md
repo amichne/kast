@@ -51,8 +51,12 @@ instead of switching to non-semantic Kotlin search.
 ### List workspace files
 
 ```bash
-"$KAST_CLI_PATH" skill workspace-files '{"includeFiles":true}'
+"$KAST_CLI_PATH" skill workspace-files '{"includeFiles":true,"maxFilesPerModule":500}'
 ```
+
+`includeFiles` returns a capped file list for each module. If a module has more
+files than the cap, the response marks that module with `filesTruncated:true`
+while keeping `fileCount` as the total discovered source file count.
 
 ### Resolve an ambiguous property
 

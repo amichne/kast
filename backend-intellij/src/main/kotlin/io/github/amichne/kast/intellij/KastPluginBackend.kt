@@ -405,7 +405,16 @@ internal class KastPluginBackend(
     }
 
     override suspend fun workspaceFiles(query: WorkspaceFilesQuery): WorkspaceFilesResult = withContext(readDispatcher) {
-        telemetry.inSpan(IntelliJTelemetryScope.WORKSPACE_FILES, "kast.intellij.workspaceFiles") {
+        val fileLimit = query.maxFilesPerModule ?: limits.maxResults
+        telemetry.inSpan(
+            IntelliJTelemetryScope.WORKSPACE_FILES,
+            "kast.intellij.workspaceFiles",
+            attributes = mapOf(
+                "kast.workspaceFiles.moduleName" to query.moduleName,
+                "kast.workspaceFiles.includeFiles" to query.includeFiles,
+                "kast.workspaceFiles.maxFilesPerModule" to fileLimit,
+            ),
+        ) { span ->
             val allModules = timedReadAction(telemetry, IntelliJTelemetryScope.WORKSPACE_FILES, "kast.intellij.workspaceFiles.listModules") {
                 ModuleManager.getInstance(project).modules.toList()
             }
@@ -423,27 +432,31 @@ internal class KastPluginBackend(
                 val depNames = rootManager.dependencies.map { it.name }
                 val moduleScope = GlobalSearchScope.moduleScope(module)
                 val kotlinFiles = FileTypeIndex.getFiles(KotlinFileType.INSTANCE, moduleScope)
-                val filteredPaths = if (query.includeFiles) {
-                    kotlinFiles
-                        .map { it.path }
-                        .filter { it.startsWith(workspacePrefix) }
-                        .sorted()
-                } else {
-                    emptyList()
+                val filteredPaths = mutableListOf<String>()
+                var fileCount = 0
+                kotlinFiles.forEach { file ->
+                    val path = file.path
+                    if (path.startsWith(workspacePrefix)) {
+                        fileCount += 1
+                        if (query.includeFiles && filteredPaths.size < fileLimit) {
+                            filteredPaths += path
+                        }
+                    }
                 }
                 WorkspaceModule(
                     name = module.name,
                     sourceRoots = sourceRoots,
                     dependencyModuleNames = depNames,
-                    files = filteredPaths,
-                    fileCount = if (query.includeFiles) {
-                        filteredPaths.size
-                    } else {
-                        kotlinFiles.count { it.path.startsWith(workspacePrefix) }
-                    },
+                    files = filteredPaths.sorted(),
+                    filesTruncated = query.includeFiles && fileCount > filteredPaths.size,
+                    fileCount = fileCount,
                 )
             }
             }
+            span.setAttribute("kast.workspaceFiles.moduleCount", modules.size)
+            span.setAttribute("kast.workspaceFiles.totalFileCount", modules.sumOf { it.fileCount })
+            span.setAttribute("kast.workspaceFiles.returnedFileCount", modules.sumOf { it.files.size })
+            span.setAttribute("kast.workspaceFiles.truncatedModuleCount", modules.count { it.filesTruncated })
             WorkspaceFilesResult(modules = modules)
         }
     }

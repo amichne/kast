@@ -7,6 +7,7 @@ internal enum class StandaloneTelemetryScope {
     SYMBOL_RESOLVE,
     FILE_OUTLINE,
     WORKSPACE_SYMBOL_SEARCH,
+    WORKSPACE_FILES,
     WORKSPACE_DISCOVERY,
     SESSION_LOCK,
     SESSION_LIFECYCLE,
@@ -21,6 +22,7 @@ internal enum class StandaloneTelemetryScope {
             "symbol-resolve", "symbol_resolve", "symbolresolve", "resolve" -> SYMBOL_RESOLVE
             "file-outline", "file_outline", "fileoutline", "outline" -> FILE_OUTLINE
             "workspace-symbol", "workspace_symbol", "workspacesymbol" -> WORKSPACE_SYMBOL_SEARCH
+            "workspace-files", "workspace_files", "workspacefiles" -> WORKSPACE_FILES
             "workspace-discovery", "workspace_discovery", "workspacediscovery", "discovery" -> WORKSPACE_DISCOVERY
             "session-lock", "session_lock", "sessionlock", "lock" -> SESSION_LOCK
             "session-lifecycle", "session_lifecycle", "sessionlifecycle", "lifecycle" -> SESSION_LIFECYCLE

@@ -347,16 +347,20 @@ class FakeAnalysisBackend private constructor(
     }
 
     override suspend fun workspaceFiles(query: WorkspaceFilesQuery): WorkspaceFilesResult {
+        val allFiles = availableFiles.filter { it.endsWith(".kt") }.sorted()
+        val fileLimit = query.maxFilesPerModule ?: allFiles.size
+        val files = if (query.includeFiles) {
+            allFiles.take(fileLimit)
+        } else {
+            emptyList()
+        }
         val module = WorkspaceModule(
             name = "fake-module",
             sourceRoots = listOf(workspaceRoot.resolve("src").toString()),
             dependencyModuleNames = emptyList(),
-            files = if (query.includeFiles) {
-                availableFiles.filter { it.endsWith(".kt") }.sorted()
-            } else {
-                emptyList()
-            },
-            fileCount = availableFiles.count { it.endsWith(".kt") },
+            files = files,
+            filesTruncated = query.includeFiles && allFiles.size > files.size,
+            fileCount = allFiles.size,
         )
         val modules = if (query.moduleName == null || query.moduleName == "fake-module") {
             listOf(module)

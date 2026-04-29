@@ -108,6 +108,7 @@ internal class SkillWrapperExecutor(
         val query = WorkspaceFilesQuery(
             moduleName = request.moduleName,
             includeFiles = request.includeFiles,
+            maxFilesPerModule = request.maxFilesPerModule,
         )
         val result = cliService.workspaceFiles(options, query)
         return KastWorkspaceFilesSuccessResponse(
@@ -116,6 +117,7 @@ internal class SkillWrapperExecutor(
                 workspaceRoot = workspaceRoot,
                 moduleName = request.moduleName,
                 includeFiles = request.includeFiles,
+                maxFilesPerModule = request.maxFilesPerModule,
             ),
             modules = result.payload.modules,
             schemaVersion = result.payload.schemaVersion,

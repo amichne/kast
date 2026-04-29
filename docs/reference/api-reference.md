@@ -958,6 +958,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
             |-----------|-------------|
             | `#!kotlin moduleName: String?` | Filter to a single module by name. Omit to list all modules. |
             | `#!kotlin includeFiles: Boolean` :material-information-outline:{ title="Default: false" } | When true, includes individual file paths for each module. |
+            | `#!kotlin maxFilesPerModule: Int?` :material-information-outline:{ title="Default: null" } | Maximum file paths to return per module when includeFiles is true. Omit to use the server maxResults limit. |
         === "Output: WorkspaceFilesResult"
 
             | Signature | Description |
@@ -994,6 +995,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                             ],
                             "dependencyModuleNames": [],
                             "files": [],
+                            "filesTruncated": false,
                             "fileCount": 2
                         }
                     ],

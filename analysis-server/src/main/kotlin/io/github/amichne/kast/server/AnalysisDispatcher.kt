@@ -315,7 +315,20 @@ class AnalysisDispatcher(
             "workspace/files" -> encode(
                 WorkspaceFilesResult.serializer(),
                 backend.workspaceFiles(
-                    decodeParams(WorkspaceFilesQuery.serializer(), params).also {
+                    decodeParams(WorkspaceFilesQuery.serializer(), params).also { query ->
+                        val moduleName = query.moduleName
+                        val maxFilesPerModule = query.maxFilesPerModule
+                        if (moduleName != null && moduleName.isBlank()) {
+                            throw ValidationException("Workspace files moduleName must not be blank when provided")
+                        }
+                        if (maxFilesPerModule != null && maxFilesPerModule < 1) {
+                            throw ValidationException("Workspace files maxFilesPerModule must be greater than zero")
+                        }
+                        if (maxFilesPerModule != null && maxFilesPerModule > config.maxResults) {
+                            throw ValidationException(
+                                "Workspace files maxFilesPerModule must be less than or equal to server maxResults (${config.maxResults})",
+                            )
+                        }
                         requireReadCapability(ReadCapability.WORKSPACE_FILES)
                     },
                 ),

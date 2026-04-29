@@ -400,6 +400,7 @@ internal data class ParsedArguments(
         WorkspaceFilesQuery(
             moduleName = options["module-name"],
             includeFiles = optionalBoolean("include-files", false),
+            maxFilesPerModule = options["max-files-per-module"]?.toIntOrNull(),
         )
     }
 

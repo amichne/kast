@@ -1,7 +1,7 @@
 package io.github.amichne.kast.standalone.telemetry
 
 import io.github.amichne.kast.api.client.KastConfig
-import io.github.amichne.kast.api.client.workspaceDataDirectory
+import io.github.amichne.kast.api.client.kastConfigHome
 import io.opentelemetry.api.trace.StatusCode
 import io.opentelemetry.api.trace.Tracer
 import io.opentelemetry.sdk.OpenTelemetrySdk
@@ -90,6 +90,7 @@ internal class StandaloneTelemetry private constructor(
         fun fromConfig(
             workspaceRoot: Path,
             config: KastConfig = KastConfig.load(workspaceRoot),
+            configHome: () -> Path = { kastConfigHome() },
         ): StandaloneTelemetry {
             if (!config.telemetry.enabled) {
                 return disabled()
@@ -104,6 +105,7 @@ internal class StandaloneTelemetry private constructor(
             val outputFile = resolveOutputFile(
                 rawValue = config.telemetry.outputFile,
                 workspaceRoot = workspaceRoot,
+                configHome = configHome,
             )
 
             return create(
@@ -127,13 +129,17 @@ internal class StandaloneTelemetry private constructor(
             return scopes.ifEmpty { null }
         }
 
-        private fun resolveOutputFile(rawValue: String?, workspaceRoot: Path): Path {
+        private fun resolveOutputFile(
+            rawValue: String?,
+            workspaceRoot: Path,
+            configHome: () -> Path,
+        ): Path {
             val configuredPath = rawValue
                 ?.takeIf(String::isNotBlank)
                 ?.let(Path::of)
                 ?.let { path -> if (path.isAbsolute) path else workspaceRoot.resolve(path) }
 
-            return (configuredPath ?: workspaceDataDirectory(workspaceRoot).resolve("telemetry/standalone-spans.jsonl"))
+            return (configuredPath ?: configHome().resolve("telemetry/standalone-spans.jsonl"))
                 .toAbsolutePath()
                 .normalize()
         }

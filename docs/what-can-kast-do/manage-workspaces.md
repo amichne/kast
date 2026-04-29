@@ -110,15 +110,18 @@ kast workspace refresh \
 
 ## Inspect workspace files
 
-Use `workspace/files` to see the modules, source roots, and files the
-daemon discovered. This is useful for verifying that the daemon sees the
-structure you expect.
+Use `workspace/files` to see the modules and source roots the daemon
+discovered. File-path enumeration is capped per module so large workspaces
+can inspect scope without forcing the daemon to materialize every path in
+one response.
 
 === "CLI"
 
     ```console title="List workspace files"
-    kast workspace-files \
-      --workspace-root=/absolute/path/to/workspace
+    kast workspace files \
+      --workspace-root=/absolute/path/to/workspace \
+      --include-files=true \
+      --max-files-per-module=500
     ```
 
 === "JSON-RPC"
@@ -126,22 +129,27 @@ structure you expect.
     ```json title="JSON-RPC request"
     {
       "method": "workspace/files",
-      "params": {},
+      "params": {
+        "includeFiles": true,
+        "maxFilesPerModule": 500
+      },
       "id": 1, "jsonrpc": "2.0"
     }
     ```
 
-```json hl_lines="2-3" title="Response — module structure"
+```json hl_lines="6-8" title="Response — module structure"
 {
-  "sourceModuleNames": ["app", "lib-core", "lib-api"],
-  "dependentModuleNamesBySourceModuleName": {
-    "app": ["lib-core", "lib-api"],
-    "lib-api": ["lib-core"]
-  },
-  "files": [
-    "/workspace/app/src/main/kotlin/com/example/App.kt",
-    "/workspace/lib-core/src/main/kotlin/com/example/Core.kt"
-  ]
+  "modules": [
+    {
+      "name": "app",
+      "sourceRoots": ["/workspace/app/src/main/kotlin"],
+      "dependencyModuleNames": ["lib-core", "lib-api"],
+      "files": ["/workspace/app/src/main/kotlin/com/example/App.kt"],
+      "filesTruncated": false,
+      "fileCount": 1
+    }
+  ],
+  "schemaVersion": 3
 }
 ```
 
