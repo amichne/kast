@@ -5,96 +5,109 @@ description: What Kast gives your LLM agent that grep, ripgrep, and text
 icon: lucide/bot
 ---
 
-# What Kast gives your agent
+# What your agent gets
 
-LLM agents can already search files and rewrite text. What they usually
-lack is a semantic runtime that understands Kotlin the way a compiler does.
-Kast fills that gap with four capabilities that text search can never
-provide: stable symbol identity, exhaustive evidence, conflict-safe edits,
-and workspace-aware results.
+Your agent already knows how to grep a repo and rewrite text. What it
+can't do alone is read Kotlin the way the compiler does. `kast` plugs
+that hole. Four things text search will never give you: stable symbol
+identity, exhaustive evidence, conflict-safe edits, workspace-aware
+results.
 
-Agents reach those capabilities through the same JSON-RPC surface in two
-runtime modes. The standalone runtime keeps semantic state in an
-independent daemon that works in terminals, CI, remote machines, and
-cloud agents. The IntelliJ plugin-backed runtime exposes the same
-protocol from inside a running IntelliJ project, so tools can piggyback
-on the IDE's already-open project model, indexes, and analysis session.
+## Zero to agent in three commands
 
-| Practical value | What Kast returns | Why it matters to an agent |
-|---|---|---|
-| Semantic identity | Exact declaration, fully qualified name, kind, and location | The agent can talk about one symbol instead of guessing from matching text |
-| Exhaustive evidence | Reference results with `searchScope.exhaustive` plus bounded hierarchies with truncation metadata | The agent can say what is complete, what is bounded, and where evidence stops |
-| Safe edits | Plan-then-apply mutations with SHA-256 conflict detection | The agent can review changes before apply and detect stale plans |
-| Workspace-aware results | Analysis scoped to one Gradle workspace, including module boundaries and visibility | The answer reflects the project structure instead of file-by-file guesses |
+```console title="Set up Kast for your agent"
+# 1. Drop the kast skill into this repo (writes to .agents/skills/kast)
+kast install skill
 
-## Symbol identity — not string matching
+# 2. Start a backend so the agent has something to talk to
+kast workspace ensure --workspace-root=$(pwd)
 
-Kast resolves the exact declaration at a position instead of matching
-text, so your agent can refer to a symbol by its fully qualified name for
-the rest of the conversation.
+# 3. Hand off — your agent now has the kast skill loaded
+```
+
+Done. The skill teaches the workflow and the resolve-first pattern. The
+backend keeps Kotlin state warm. The rest of this page is what your
+agent picks up from that.
+
+The agent talks to either runtime over the same JSON-RPC. Standalone
+runs as an independent daemon — terminals, CI, remote machines, cloud
+agents. The IntelliJ plugin exposes the same protocol from inside an
+open IntelliJ project, reusing the IDE's project model, indexes, and
+analysis session.
+
+| What it gets         | What `kast` returns                                                                       | Why your agent cares                                                            |
+|----------------------|-------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
+| Semantic identity    | Exact declaration, fully qualified name, kind, location                                   | Talks about one symbol, not "anything matching this string"                     |
+| Exhaustive evidence  | References with `searchScope.exhaustive`, hierarchies with truncation metadata            | Says what's complete, what's bounded, where evidence stops                      |
+| Safe edits           | Plan-then-apply mutations with SHA-256 conflict detection                                 | Reviews changes before applying; rejects stale plans instead of corrupting code |
+| Workspace awareness  | Analysis scoped to one Gradle workspace, with module boundaries and visibility            | Answers reflect the project, not file-by-file guesses                           |
+
+## Symbol identity, not string matching
+
+`kast` resolves the declaration at a position. Your agent gets a fully
+qualified name it can keep using for the rest of the conversation
+without ambiguity.
 [Understand symbols →](../what-can-kast-do/understand-symbols.md)
 
-## Exhaustive evidence — not line matches
+## Exhaustive evidence, not line matches
 
-Kast returns bounded call hierarchies and reference lists with
-`searchScope.exhaustive`, so your agent knows exactly which functions are
-callers and whether a usage search was complete.
+References come back with `searchScope.exhaustive`. Hierarchies come
+back with explicit depth, fan-out, and truncation metadata. The agent
+can quote both.
 [Trace usage →](../what-can-kast-do/trace-usage.md)
 
-## Safe edits — not find-and-replace
+## Safe edits, not find-and-replace
 
-Kast's two-phase plan→apply flow with SHA-256 file hashes lets your agent
-review edits before touching disk and detects conflicts if files change
-in between.
+Plan→apply with SHA-256 file hashes. The agent shows the plan, then
+applies it. If anything drifted between the two, the apply fails — no
+silent corruption.
 [Refactor safely →](../what-can-kast-do/refactor-safely.md)
 
-## Workspace awareness — not file-by-file
+## Workspace awareness, not file-by-file
 
-Kast analyzes entire Gradle workspaces as a single session, giving your
-agent module boundaries and visibility-scoped results rather than
-per-file guesses.
+`kast` analyzes the whole Gradle workspace as one session. Module
+boundaries and visibility shape the results — your agent doesn't need
+to reason about them itself.
 [Manage workspaces →](../what-can-kast-do/manage-workspaces.md)
 
-## Same protocol, two runtime modes
+## Same protocol, two runtimes
 
-The contract stays the same across both backends. What changes is where
-semantic state lives and who keeps it warm.
+The contract is identical. What changes is where the analysis state
+lives and who keeps it warm.
 
-| Runtime mode | Where semantic state lives | Best fit |
-|---|---|---|
-| Standalone | In a long-lived kast daemon outside any IDE | Terminals, CI, remote machines, and cloud agents |
-| IntelliJ plugin | Inside the running IntelliJ project, reusing its model and indexes | Local tools and agents when the IDE is already open |
+| Runtime         | Where semantic state lives                       | Best fit                                              |
+|-----------------|--------------------------------------------------|-------------------------------------------------------|
+| Standalone      | A long-lived `kast` daemon outside any IDE       | Terminals, CI, remote machines, cloud agents          |
+| IntelliJ plugin | Inside a running IntelliJ project                | Local agents when the IDE is already open and warm    |
 
-If IntelliJ is already open, agents and tools can connect to the plugin
-backend and benefit from the IDE already being warm. If no IDE is running,
-the standalone backend exposes the same JSON-RPC surface independently.
+If IntelliJ is open, agents can connect to the plugin and ride the IDE's
+warmth. If not, the standalone backend exposes the same surface on its
+own.
 
-## What your agent can do with Kast
+## What your agent can actually do
 
-These tasks become reliable once your agent has semantic code intelligence,
-regardless of which runtime mode is serving the request:
+Once `kast` is wired in, these stop being approximations:
 
-- **Resolve a symbol** before summarizing usage — the agent knows exactly
-  which declaration it's talking about.
-- **Find all references** and report whether the search was complete —
-  the agent doesn't have to guess.
-- **Walk a call graph** with explicit bounds — the agent can explain
-  where the tree was truncated and why.
-- **Plan a rename** with conflict detection — the agent can verify edits
-  before touching disk.
-- **Find implementations** of an interface — the agent gets concrete
-  subclasses, not string matches.
-- **Check diagnostics** to verify code compiles after changes — the agent
-  catches errors without running the build.
+- **Resolve a symbol** before summarizing usage — no ambiguity about
+  which declaration is in play.
+- **Find all references** and report whether the search was exhaustive
+  — no guessing.
+- **Walk a call graph** with explicit bounds — and say where it was
+  truncated and why.
+- **Plan a rename** with conflict detection — verify the plan, then
+  apply.
+- **Find implementations** of an interface — concrete subclasses, not
+  string matches.
+- **Check diagnostics** to confirm code still compiles — without
+  running the full build.
 
 ## Next steps
 
-Use these pages to go deeper:
-
-- [Understand the backends](../getting-started/backends.md) — see how the
-  standalone daemon and IntelliJ plugin expose the same protocol
-- [Talk to your agent](talk-to-your-agent.md) — how to prompt your agent
-  to use Kast effectively
-- [Install the skill](install-the-skill.md) — get the packaged Kast
-  skill into your workspace
-- [Direct CLI usage](direct-cli.md) — when agents call the CLI directly
+- [Understand the backends](../getting-started/backends.md) — same
+  protocol, two daemons
+- [Talk to your agent](talk-to-your-agent.md) — prompts that get the
+  most out of `kast`
+- [Install the skill](install-the-skill.md) — drop the packaged skill
+  into your workspace
+- [Direct CLI usage](direct-cli.md) — when the agent calls `kast`
+  itself

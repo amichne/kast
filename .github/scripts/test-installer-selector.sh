@@ -20,6 +20,7 @@ set --
 
 test_tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/kast-installer-selector.XXXXXX")"
 capture_file="${test_tmp_dir}/fzf-input"
+args_file="${test_tmp_dir}/fzf-args"
 
 cleanup_selector_test() {
   rm -rf "$test_tmp_dir"
@@ -31,16 +32,14 @@ can_prompt() { return 0; }
 _INSTALL_ENV_HAS_FZF="true"
 
 fzf() {
-  local line input=""
-  if IFS= read -r -t 1 line; then
-    input="$line"
-    while IFS= read -r -t 0.1 line; do
-      input="${input}"$'\n'"${line}"
-    done
+  local input=""
+  if input="$(cat)"; then
+    [[ -n "$input" ]] || input="__NO_INPUT__"
   else
     input="__NO_INPUT__"
   fi
   printf '%s' "$input" > "$capture_file"
+  printf '%s\n' "$@" > "$args_file"
   printf '%s\n' "full"
 }
 
@@ -50,5 +49,11 @@ selection="$(_fzf_select "Install mode" "minimal" "full")"
 expected_input=$'minimal\nfull'
 actual_input="$(<"$capture_file")"
 [[ "$actual_input" == "$expected_input" ]] || die "fzf did not receive selector items; got '${actual_input}'"
+
+actual_args="$(<"$args_file")"
+[[ "$actual_args" == *"--prompt=→ Install mode: "* ]] || die "expected decorated fzf prompt, got '${actual_args}'"
+[[ "$actual_args" == *"--pointer=→"* ]] || die "expected arrow pointer styling, got '${actual_args}'"
+[[ "$actual_args" == *"--header=enter = select · ctrl-c = cancel"* ]] || die "expected helpful selector header, got '${actual_args}'"
+[[ "$actual_args" == *"--color=prompt:blue,pointer:green,info:blue,header:yellow,hl:cyan,hl+:cyan,border:blue"* ]] || die "expected colorized fzf styling, got '${actual_args}'"
 
 printf '%s\n' "Installer selector test passed"

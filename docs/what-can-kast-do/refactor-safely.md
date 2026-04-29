@@ -5,18 +5,17 @@ description: Use Kast's guarded mutation model to plan renames, review
 icon: lucide/pencil
 ---
 
-Kast never writes code behind your back. Every mutation follows a
-**plan → hash → apply** model: you ask for a change, Kast returns an
-edit plan together with content hashes of the files it read, and you
-review the plan before sending it back for application. If any file
-changed on disk between those two steps, the hashes won't match and
-the daemon rejects the apply. This keeps refactors conflict-aware and
-fully auditable.
+`kast` never writes code behind your back. Every mutation follows
+**plan → hash → apply**: you ask for a change, `kast` returns an
+edit plan plus content hashes of the files it read, you eyeball the
+plan, then send it back for application. If any file changed on
+disk in between, the hashes won't match and the daemon refuses to
+write. Conflict-aware, fully auditable, no surprises.
 
 ## The plan → hash → apply flow
 
-The sequence below shows the full round-trip for a guarded rename.
-The same flow applies to any mutation that returns `fileHashes`.
+The sequence below is the full round-trip for a guarded rename. The
+same flow applies to any mutation that returns `fileHashes`.
 
 
 ```mermaid
@@ -43,17 +42,16 @@ sequenceDiagram
 
 ## Rename a symbol
 
-The `rename` command computes every text edit needed to rename a
-symbol across the workspace, without writing anything to disk. The
-response includes `fileHashes` so you can feed the plan straight into
-`apply-edits` with conflict detection.
+`rename` computes every text edit needed to rename a symbol across
+the workspace — without writing anything. The response carries
+`fileHashes` you can pipe straight into `apply-edits`.
 
 === "CLI"
 
     ```console title="Plan a rename"
     kast rename \
-      --workspace-root=/workspace \
-      --file-path=/workspace/src/Sample.kt \
+      --workspace-root=$(pwd) \
+      --file-path=$(pwd)/src/Sample.kt \
       --offset=20 \
       --new-name=welcome
     ```
@@ -113,31 +111,30 @@ The response contains the full edit plan:
 ```
 
 `fileHashes` captures the content hash of every affected file at
-plan time. Keep these hashes — you will send them back when you
-apply the edits.
+plan time. Hold onto these — you'll send them back when you apply.
 
 !!! tip
     Rename defaults to `dryRun: true`. Set `dryRun: false` in the
-    JSON-RPC request to compute **and** apply in a single call. The
-    CLI always uses dry-run mode so you can review before applying.
+    JSON-RPC request to compute and apply in one call. The CLI
+    always uses dry-run so you can review before writing.
 
 ## Apply edits
 
-Once you have reviewed the plan, send it back to the daemon with the
-same `fileHashes`. The daemon re-reads each file, computes the
-current hash, and rejects the request if any hash has diverged.
+Once you've reviewed the plan, send it back with the same
+`fileHashes`. The daemon re-reads each file, recomputes the hash,
+and rejects the request if anything drifted.
 
 === "CLI"
 
     ```console title="Apply the rename plan"
     kast apply-edits \
-      --workspace-root=/workspace \
+      --workspace-root=$(pwd) \
       --request-file=rename-plan.json
     ```
 
-    Write the rename response into `rename-plan.json` and pass it
-    with `--request-file`. The CLI forwards the `edits` and
-    `fileHashes` fields to the daemon.
+    Save the rename response into `rename-plan.json` and pass it
+    with `--request-file`. The CLI forwards `edits` and `fileHashes`
+    to the daemon.
 
 === "JSON-RPC"
 
@@ -199,22 +196,49 @@ When the hashes match, the daemon writes the edits and responds:
 }
 ```
 
-If a file changed between the plan and the apply, the daemon returns
-an error instead of writing partial edits. Re-run the rename to get a
-fresh plan with updated hashes.
+If a file changed between plan and apply, the daemon returns an
+error instead of writing partial edits. Re-run the rename to get a
+fresh plan with current hashes.
+
+## Verify the result
+
+Conflict detection guarantees the edits `kast` wrote match the
+edits `kast` planned. It does *not* guarantee the result still
+compiles. After any non-trivial refactor, run diagnostics on the
+affected files — or re-resolve the renamed symbol to confirm
+identity survived.
+
+```console title="Confirm the workspace still compiles"
+kast diagnostics \
+  --workspace-root=$(pwd) \
+  --file-paths=$(pwd)/src/Sample.kt
+```
+
+```console title="Or re-resolve the renamed symbol"
+kast resolve \
+  --workspace-root=$(pwd) \
+  --file-path=$(pwd)/src/Sample.kt \
+  --offset=20
+```
+
+If diagnostics surface an unexpected error — or resolve returns a
+different symbol — read the [stale-results troubleshooting
+entry](../troubleshooting.md) before trying another rename. The
+daemon may need a `workspace refresh` to pick up edits made outside
+its observation window.
 
 ## Optimize imports
 
-The `optimize-imports` command removes unused imports and sorts the
-remainder for the files you specify. Like rename, it returns an edit
-plan with `fileHashes` that you can review and apply.
+`optimize-imports` removes unused imports and sorts the rest for
+the files you name. Same plan-and-apply shape as rename: you get an
+edit plan with `fileHashes`, you review, you apply.
 
 === "CLI"
 
     ```console title="Optimize imports"
     kast optimize-imports \
-      --workspace-root=/workspace \
-      --file-paths=/workspace/src/Sample.kt
+      --workspace-root=$(pwd) \
+      --file-paths=$(pwd)/src/Sample.kt
     ```
 
 === "JSON-RPC"
@@ -237,14 +261,12 @@ plan with `fileHashes` that you can review and apply.
     /workspace/src/Sample.kt.
     ```
 
-The response follows the same shape as rename — an `edits` array,
-`fileHashes`, and `affectedFiles`. Send the result to `apply-edits`
-when you are ready to write the changes.
+Same shape as rename — `edits`, `fileHashes`, `affectedFiles`.
+Send to `apply-edits` when ready.
 
 ## Next steps
 
 - [Validate code](validate-code.md) — run diagnostics after your
-  refactor to confirm the workspace compiles cleanly.
-- [Behavioral model](../architecture/behavioral-model.md) — learn
-  how the daemon manages state, hashing, and conflict detection under
-  the hood.
+  refactor to confirm the workspace compiles cleanly
+- [Conflict-rejected apply](../troubleshooting.md) — what to do
+  when the daemon refuses to write because hashes drifted

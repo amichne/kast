@@ -5,31 +5,32 @@ description: Machine-readable OpenAPI 3.1 specification for the Kast analysis
 icon: lucide/file-code
 ---
 
-This page describes the OpenAPI specification that documents the Kast analysis
-daemon's JSON-RPC protocol. The spec is generated from the Kotlin serialization
-models in `analysis-api` and stays in sync via automated tests.
+The OpenAPI spec documents the `kast` analysis daemon's JSON-RPC
+protocol. It's generated from the Kotlin serialization models in
+`analysis-api` and stays in sync via automated tests.
 
-For human-readable documentation of every operation including schemas, examples,
-and behavioral notes, see the [API reference](api-reference.md).
+For human-readable documentation of every operation — schemas,
+examples, behavioral notes — see the [API reference](api-reference.md).
 
 ## Transport note
 
-The actual transport is **line-delimited JSON-RPC 2.0** over Unix domain
-sockets, stdio pipes, or TCP — not HTTP. The OpenAPI spec is a logical
-projection for documentation, client codegen, and schema validation. Batch
-requests and JSON-RPC notifications are not supported.
+Real transport is **line-delimited JSON-RPC 2.0** over Unix domain
+sockets, stdio pipes, or TCP — not HTTP. The OpenAPI spec is a
+logical projection for docs, client codegen, and schema validation.
+Batch requests and JSON-RPC notifications aren't supported.
 
 ## Capability gating
 
-Read and mutation operations require the daemon to advertise the corresponding
-capability via the `capabilities` method. Each operation in the spec includes
-an `x-kast-required-capability` extension that names the required capability
-enum value (e.g. `RESOLVE_SYMBOL`, `RENAME`). System methods have no
-capability requirement.
+Read and mutation operations require the daemon to advertise the
+matching capability via the `capabilities` method. Each operation
+in the spec includes an `x-kast-required-capability` extension
+naming the required capability enum value (e.g. `RESOLVE_SYMBOL`,
+`RENAME`). System methods have no capability requirement.
 
-The `edits/apply` method additionally requires the `FILE_OPERATIONS` capability
-when the request includes non-empty `fileOperations`. This conditional
-requirement is documented with the `x-kast-conditional-capability` extension.
+`edits/apply` additionally needs the `FILE_OPERATIONS` capability
+when the request carries non-empty `fileOperations`. This
+conditional requirement is documented with the
+`x-kast-conditional-capability` extension.
 
 ## View the spec
 
@@ -49,24 +50,25 @@ plugin artifacts when you run `./kast.sh build`. You can also generate it direct
 
 ## Import into tools
 
-The spec is valid OpenAPI 3.1 and can be imported into tools like Swagger UI,
-Redoc, Stoplight, or used for client code generation with openapi-generator.
-Note that the `jsonrpc://localhost` server URL is a logical placeholder — you
-will need to configure your client to use the actual transport.
+Valid OpenAPI 3.1. Import into Swagger UI, Redoc, or Stoplight, or
+use it for client codegen with openapi-generator. The
+`jsonrpc://localhost` server URL is a logical placeholder —
+configure your client for the real transport.
 
 ## Schema version
 
-The spec version tracks the analysis API schema version (`SCHEMA_VERSION`),
-currently **3**. The OpenAPI `info.version` field is set to `3.0.0` to reflect
-this.
+The spec version tracks the analysis API schema version
+(`SCHEMA_VERSION`), currently **3**. OpenAPI `info.version` is set
+to `3.0.0` to reflect this.
 
-## Regenerating the spec
+??? info "For contributors: regenerating the spec"
 
-To regenerate the checked-in YAML after changing analysis-api models:
+    To regenerate the checked-in YAML after changing analysis-api models:
 
-```console
-./gradlew :analysis-api:generateOpenApiSpec
-```
+    ```console
+    ./gradlew :analysis-api:generateOpenApiSpec
+    ```
 
-The `AnalysisOpenApiDocumentTest` will fail if the checked-in file drifts from
-the generated output, ensuring the spec stays in sync with the Kotlin models.
+    The `AnalysisOpenApiDocumentTest` will fail if the checked-in file drifts
+    from the generated output, ensuring the spec stays in sync with the Kotlin
+    models.

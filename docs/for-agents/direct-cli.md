@@ -7,32 +7,29 @@ icon: lucide/terminal
 
 # Direct CLI usage for agents
 
-Most agents use the packaged Kast skill, which bridges conversational
-references into the exact file and offset Kast needs. Sometimes an agent
-needs to call the CLI directly — when it already knows the file position,
-when it's building structured automation, or when it needs a capability
-the skill doesn't expose.
+Most agents go through the packaged skill — it turns conversational
+references into the file path and offset `kast` needs. Sometimes the
+agent has the position already, or wants behavior the skill doesn't
+expose. Then it calls the CLI directly.
 
-## When to use direct CLI calls
+## When to call the CLI directly
 
-Direct CLI calls make sense when your agent:
+- The agent already has a file path and offset from a previous response
+- It's chaining operations in a script or pipeline
+- It needs non-default traversal bounds on `call-hierarchy`
+- It needs `--request-file` for structured payloads like `apply-edits`
+- It needs an operation the skill doesn't surface
 
-- Already has an exact file path and offset from a previous Kast result
-- Needs to chain multiple operations in a script or pipeline
-- Needs to pass non-default traversal bounds to `call-hierarchy`
-- Needs to use `--request-file` for complex payloads like `apply-edits`
-- Needs operations the skill doesn't directly surface
+## `workspace-symbol` as the bridge when there's no offset
 
-## Use workspace-symbol as an alternative bridge
-
-When the agent doesn't have a file offset, `workspace-symbol` provides
-a semantic alternative to text search for locating declarations.
+No offset? Use `workspace-symbol` instead of grepping. It's a semantic
+declaration search.
 
 === "Basic search"
 
     ```console title="Find declarations by name"
     kast workspace-symbol \
-      --workspace-root=/absolute/path/to/workspace \
+      --workspace-root=$(pwd) \
       --pattern=HealthCheckService
     ```
 
@@ -40,7 +37,7 @@ a semantic alternative to text search for locating declarations.
 
     ```console title="Narrow results to classes only"
     kast workspace-symbol \
-      --workspace-root=/absolute/path/to/workspace \
+      --workspace-root=$(pwd) \
       --pattern=HealthCheckService \
       --kind=CLASS
     ```
@@ -49,7 +46,7 @@ a semantic alternative to text search for locating declarations.
 
     ```console title="Pattern-based matching"
     kast workspace-symbol \
-      --workspace-root=/absolute/path/to/workspace \
+      --workspace-root=$(pwd) \
       --pattern=".*Service$" \
       --regex=true
     ```
@@ -71,52 +68,48 @@ a semantic alternative to text search for locating declarations.
 }
 ```
 
-The agent can then feed the `filePath` and `startOffset` from a match
-directly into `resolve`, `references`, or `call-hierarchy` without an
-intermediate text search step.
+Feed `filePath` and `startOffset` from a match straight into `resolve`,
+`references`, or `call-hierarchy` — no intermediate text search.
 
-## Choose inline flags or request files
+## Inline flags or request files
 
-For most operations, the agent can pass parameters as inline flags:
+Most operations take inline flags:
 
 ```console title="Inline flags for ad hoc queries"
 kast resolve \
-  --workspace-root=/absolute/path/to/workspace \
-  --file-path=/absolute/path/to/src/main/kotlin/App.kt \
+  --workspace-root=$(pwd) \
+  --file-path=$(pwd)/src/main/kotlin/App.kt \
   --offset=42
 ```
 
-For complex payloads — especially `apply-edits` which requires a
-structured edit plan — use `--request-file` to pass a JSON file:
+Complex payloads — especially `apply-edits`, which needs a structured
+edit plan — go through `--request-file`:
 
 ```console title="Request file for structured payloads"
 kast apply-edits \
-  --workspace-root=/absolute/path/to/workspace \
+  --workspace-root=$(pwd) \
   --request-file=/path/to/edits.json
 ```
 
-## Read structured JSON output
+## Reading the JSON
 
-Every Kast command returns a single JSON object on stdout. The agent
-can parse this directly. Stderr carries human-readable notes (like
-daemon startup messages) that the agent can safely ignore.
+Every command returns a single JSON object on stdout. Stderr is
+human-readable noise (daemon startup, progress) that the agent can
+ignore.
 
-Key patterns for agents parsing Kast output:
+Things to check before claiming an answer:
 
-- **Check `result` for the payload.** Every successful response wraps
-  the data in a `result` field.
-- **Check `searchScope.exhaustive`** on reference results before
-  claiming the list is complete.
-- **Check `stats.truncatedNodes`** on call hierarchy results before
-  claiming the tree is complete.
-- **Check `page.truncated`** on workspace-symbol results before
-  treating the list as exhaustive.
+- **`result`** — every successful response wraps payload here
+- **`searchScope.exhaustive`** on `references` — was the search
+  complete?
+- **`stats.truncatedNodes`** on `call-hierarchy` — was the tree cut
+  off?
+- **`page.truncated`** on `workspace-symbol` — were results capped?
 
 ## Next steps
 
-- [Talk to your agent](talk-to-your-agent.md) — the conversational
-  approach through the packaged skill
+- [Talk to your agent](talk-to-your-agent.md) — the skill-driven path
 - [Understand symbols](../what-can-kast-do/understand-symbols.md) —
-  all the identity operations in detail
+  identity operations in depth
 - [API reference](../reference/api-reference.md) — full schemas and
   examples
