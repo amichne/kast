@@ -295,12 +295,12 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
                 """
                 SELECT names.fq_name
                 FROM fq_names names
-                WHERE LOWER(names.fq_name) LIKE ?
+                WHERE LOWER(names.fq_name) LIKE ? ESCAPE '\'
                 ORDER BY
                     CASE
                         WHEN LOWER(names.fq_name) = ? THEN 0
-                        WHEN LOWER(names.fq_name) LIKE ? THEN 1
-                        WHEN LOWER(names.fq_name) LIKE ? THEN 2
+                        WHEN LOWER(names.fq_name) LIKE ? ESCAPE '\' THEN 1
+                        WHEN LOWER(names.fq_name) LIKE ? ESCAPE '\' THEN 2
                         ELSE 3
                     END,
                     LENGTH(names.fq_name) ASC,
