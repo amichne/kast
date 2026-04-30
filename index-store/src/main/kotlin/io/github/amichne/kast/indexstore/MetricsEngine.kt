@@ -344,7 +344,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
                 add(targetFileNode(targetPath, focal, childIdsByParent))
             }
             impactBySourcePath.forEach { (_, nodesForPath) ->
-                val representative = nodesForPath.minByOrNull { it.depth } ?: nodesForPath.first()
+                val representative = nodesForPath.minBy { it.depth }
                 add(sourceFileNode(nodesForPath, childIdsByParent, parentIdFor(representative, impact, fqName)))
                 nodesForPath.forEach { node -> add(referenceEdgeNode(node)) }
             }
@@ -360,7 +360,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
                 )
             }
             impactBySourcePath.forEach { (_, nodesForPath) ->
-                val representative = nodesForPath.minByOrNull { it.depth } ?: nodesForPath.first()
+                val representative = nodesForPath.minBy { it.depth }
                 add(
                     MetricsGraphEdge(
                         from = parentIdFor(representative, impact, fqName),
@@ -532,7 +532,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
         childIdsByParent: Map<String, List<String>>,
         parentId: String,
     ): MetricsGraphNode {
-        val representative = nodes.minByOrNull { it.depth } ?: nodes.first()
+        val representative = nodes.minBy { it.depth }
         return MetricsGraphNode(
             id = sourceFileNodeId(representative.sourcePath),
             name = representative.sourcePath,
