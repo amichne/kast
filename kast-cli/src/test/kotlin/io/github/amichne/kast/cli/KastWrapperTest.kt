@@ -11,6 +11,9 @@ import io.github.amichne.kast.api.contract.RuntimeState
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
 import io.github.amichne.kast.api.client.ServerInstanceDescriptor
 import io.github.amichne.kast.api.contract.ServerLimits
+import io.github.amichne.kast.cli.results.WorkspaceEnsureResult
+import io.github.amichne.kast.cli.results.WorkspaceStatusResult
+import io.github.amichne.kast.cli.tty.defaultCliJson
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue

@@ -1,4 +1,4 @@
-package io.github.amichne.kast.cli
+package io.github.amichne.kast.cli.tty
 
 import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
 import io.github.amichne.kast.api.contract.result.ApplyEditsResult
@@ -38,14 +38,32 @@ import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.kastConfigHome
+import io.github.amichne.kast.cli.options.DaemonStartOptions
+import io.github.amichne.kast.cli.results.DaemonStopResult
+import io.github.amichne.kast.cli.options.InstallOptions
+import io.github.amichne.kast.cli.results.InstallResult
+import io.github.amichne.kast.cli.InstallService
+import io.github.amichne.kast.cli.options.InstallSkillOptions
+import io.github.amichne.kast.cli.skill.InstallSkillResult
+import io.github.amichne.kast.cli.InstallSkillService
+import io.github.amichne.kast.cli.KastRpcClient
+import io.github.amichne.kast.cli.RuntimeCandidateStatus
+import io.github.amichne.kast.cli.options.RuntimeCommandOptions
+import io.github.amichne.kast.cli.SmokeCommandSupport
+import io.github.amichne.kast.cli.options.SmokeOptions
+import io.github.amichne.kast.cli.SmokeReport
+import io.github.amichne.kast.cli.results.WorkspaceEnsureResult
+import io.github.amichne.kast.cli.WorkspaceRuntimeManager
+import io.github.amichne.kast.cli.results.WorkspaceStatusResult
 import kotlinx.serialization.json.Json
 import java.nio.file.Files
+import java.nio.file.Path
 
 internal class CliService(
     json: Json,
     private val installService: InstallService = InstallService(),
     private val installSkillService: InstallSkillService = InstallSkillService(),
-    private val configLoader: (java.nio.file.Path) -> KastConfig = KastConfig::load,
+    private val configLoader: (Path) -> KastConfig = KastConfig::load,
 ) {
     private val rpcClient = KastRpcClient(json)
     private val runtimeManager = WorkspaceRuntimeManager(rpcClient)
@@ -262,7 +280,7 @@ internal class CliService(
         val runtimeLibsDir = options.runtimeLibsDir
             ?: config.backends.standalone.runtimeLibsDir
                 ?.takeIf(String::isNotBlank)
-                ?.let { java.nio.file.Path.of(it).toAbsolutePath().normalize() }
+                ?.let { Path.of(it).toAbsolutePath().normalize() }
             ?: throw CliFailure(
                 code = "DAEMON_START_ERROR",
                 message = "Cannot locate backend runtime-libs. " +
@@ -270,7 +288,7 @@ internal class CliService(
             )
 
         val classpathFile = runtimeLibsDir.resolve("classpath.txt")
-        if (!java.nio.file.Files.isRegularFile(classpathFile)) {
+        if (!Files.isRegularFile(classpathFile)) {
             throw CliFailure(
                 code = "DAEMON_START_ERROR",
                 message = "Backend runtime-libs classpath not found at $classpathFile. " +

@@ -1,4 +1,4 @@
-package io.github.amichne.kast.cli
+package io.github.amichne.kast.cli.options
 
 import java.nio.file.Path
 

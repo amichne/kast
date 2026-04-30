@@ -5,6 +5,11 @@ import io.github.amichne.kast.api.client.RegisteredDescriptor
 import io.github.amichne.kast.api.contract.RuntimeState
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
 import io.github.amichne.kast.api.client.defaultDescriptorDirectory
+import io.github.amichne.kast.cli.options.RuntimeCommandOptions
+import io.github.amichne.kast.cli.results.DaemonStopResult
+import io.github.amichne.kast.cli.results.WorkspaceEnsureResult
+import io.github.amichne.kast.cli.results.WorkspaceStatusResult
+import io.github.amichne.kast.cli.tty.CliFailure
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -75,7 +80,7 @@ internal class WorkspaceRuntimeManager(
             throw CliFailure(
                 code = "INTELLIJ_NOT_RUNNING",
                 message = "No IntelliJ backend is available for ${options.workspaceRoot}. " +
-                    "Open the project in IntelliJ IDEA with the Kast plugin installed.",
+                          "Open the project in IntelliJ IDEA with the Kast plugin installed.",
             )
         }
 
@@ -99,7 +104,7 @@ internal class WorkspaceRuntimeManager(
         throw CliFailure(
             code = "NO_BACKEND_AVAILABLE",
             message = "No backend is running for ${options.workspaceRoot}. " +
-                "Start with: kast daemon start --workspace-root=${options.workspaceRoot}",
+                      "Start with: kast daemon start --workspace-root=${options.workspaceRoot}",
         )
     }
 

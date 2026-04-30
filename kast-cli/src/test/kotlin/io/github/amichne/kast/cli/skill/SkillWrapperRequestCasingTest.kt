@@ -14,9 +14,9 @@ import io.github.amichne.kast.api.wrapper.KastWriteAndValidateCreateFileRequest
 import io.github.amichne.kast.api.wrapper.KastWriteAndValidateInsertAtOffsetRequest
 import io.github.amichne.kast.api.wrapper.KastWriteAndValidateReplaceRangeRequest
 import io.github.amichne.kast.api.wrapper.KastWriteAndValidateRequest
-import io.github.amichne.kast.cli.CliCommandCatalog
-import io.github.amichne.kast.cli.CliCommandMetadata
-import io.github.amichne.kast.cli.defaultCliJson
+import io.github.amichne.kast.cli.tty.CliCommandCatalog
+import io.github.amichne.kast.cli.tty.CliCommandMetadata
+import io.github.amichne.kast.cli.tty.defaultCliJson
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.descriptors.PolymorphicKind

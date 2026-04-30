@@ -66,10 +66,10 @@ import io.github.amichne.kast.api.wrapper.KastWriteAndValidateSuccessResponse
 import io.github.amichne.kast.api.wrapper.WrapperCallDirection
 import io.github.amichne.kast.api.wrapper.WrapperMetric
 import io.github.amichne.kast.api.wrapper.WrapperScaffoldMode
-import io.github.amichne.kast.cli.CliCommand
-import io.github.amichne.kast.cli.CliFailure
-import io.github.amichne.kast.cli.CliService
-import io.github.amichne.kast.cli.RuntimeCommandOptions
+import io.github.amichne.kast.cli.tty.CliCommand
+import io.github.amichne.kast.cli.tty.CliFailure
+import io.github.amichne.kast.cli.tty.CliService
+import io.github.amichne.kast.cli.options.RuntimeCommandOptions
 import io.github.amichne.kast.indexstore.MetricsEngine
 import kotlinx.serialization.json.Json
 import java.nio.file.Path

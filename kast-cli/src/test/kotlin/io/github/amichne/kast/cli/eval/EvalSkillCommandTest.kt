@@ -1,11 +1,11 @@
 package io.github.amichne.kast.cli.eval
 
-import io.github.amichne.kast.cli.CliFailure
-import io.github.amichne.kast.cli.CliOutput
-import io.github.amichne.kast.cli.EvalOutputFormat
+import io.github.amichne.kast.cli.tty.CliFailure
+import io.github.amichne.kast.cli.tty.CliOutput
+import io.github.amichne.kast.cli.tty.EvalOutputFormat
 import io.github.amichne.kast.cli.EvalSkillExecutor
-import io.github.amichne.kast.cli.EvalSkillOptions
-import io.github.amichne.kast.cli.defaultCliJson
+import io.github.amichne.kast.cli.tty.EvalSkillOptions
+import io.github.amichne.kast.cli.tty.defaultCliJson
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test

@@ -1,5 +1,6 @@
 package io.github.amichne.kast.cli.eval
 
+import io.github.amichne.kast.cli.tty.defaultCliJson
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -266,7 +267,7 @@ class SkillEvalEngineTest {
     fun `EvalResult serializes with schemaVersion`() {
         val descriptor = descriptorWith(checks = listOf(passingCheck("c1")))
         val result = SkillEvalEngine.evaluate(descriptor)
-        val json = io.github.amichne.kast.cli.defaultCliJson()
+        val json = defaultCliJson()
         val encoded = json.encodeToString(EvalResult.serializer(), result)
         assertTrue(encoded.contains("schemaVersion"))
         assertTrue(encoded.contains("summary"))

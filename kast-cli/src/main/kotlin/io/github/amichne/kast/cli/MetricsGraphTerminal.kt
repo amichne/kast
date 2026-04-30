@@ -13,7 +13,7 @@ internal class MetricsGraphTerminal(private val graph: MetricsGraph) {
         output: PrintStream,
     ): Int {
         val rawMode = TerminalRawMode.enter()
-        try {
+        rawMode.use { rawMode ->
             var current = nodesById.getValue(graph.focalNodeId)
             var showAttributes = true
             render(output, current, showAttributes)
@@ -32,8 +32,6 @@ internal class MetricsGraphTerminal(private val graph: MetricsGraph) {
                     render(output, current, showAttributes)
                 }
             }
-        } finally {
-            rawMode.close()
         }
         return 0
     }

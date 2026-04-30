@@ -1,5 +1,7 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.cli.options.InstallSkillOptions
+import io.github.amichne.kast.cli.tty.CliFailure
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue

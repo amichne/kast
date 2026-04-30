@@ -4,6 +4,10 @@ import io.github.amichne.kast.cli.eval.ComparisonResult
 import io.github.amichne.kast.cli.eval.EvalResult
 import io.github.amichne.kast.cli.eval.SkillEvalEngine
 import io.github.amichne.kast.cli.eval.adapter.SkillAdapter
+import io.github.amichne.kast.cli.tty.CliFailure
+import io.github.amichne.kast.cli.tty.CliOutput
+import io.github.amichne.kast.cli.tty.EvalOutputFormat
+import io.github.amichne.kast.cli.tty.EvalSkillOptions
 import kotlinx.serialization.json.Json
 import kotlin.io.path.readText
 
@@ -59,8 +63,8 @@ internal class EvalSkillExecutor(private val json: Json) {
             throw CliFailure(
                 code = "EVAL_SKILL_REGRESSION",
                 message = "Score regressed by ${-comparison.scoreDelta} points " +
-                    "(${baseline.summary.grade} → ${result.summary.grade}). " +
-                    "New failures: ${comparison.newFailures.joinToString()}",
+                          "(${baseline.summary.grade} → ${result.summary.grade}). " +
+                          "New failures: ${comparison.newFailures.joinToString()}",
             )
         }
 

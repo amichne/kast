@@ -1,5 +1,10 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.cli.options.RuntimeCommandOptions
+import io.github.amichne.kast.cli.options.SmokeOptions
+import io.github.amichne.kast.cli.tty.CliFailure
+import io.github.amichne.kast.cli.tty.currentCliVersion
+
 internal class SmokeCommandSupport(
     private val runtimeManager: WorkspaceRuntimeManager? = null,
     private val runtimeWaitTimeoutMillis: Long = 10_000L,

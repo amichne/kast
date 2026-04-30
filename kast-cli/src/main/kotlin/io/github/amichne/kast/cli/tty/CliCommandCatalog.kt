@@ -1,4 +1,6 @@
-package io.github.amichne.kast.cli
+package io.github.amichne.kast.cli.tty
+
+import io.github.amichne.kast.cli.KastCli
 
 internal const val CLI_EXECUTABLE_NAME = "kast"
 
@@ -1317,8 +1319,8 @@ internal object CliCommandCatalog {
 
 internal fun currentCliVersion(): String {
     return KastCli::class.java.`package`.implementationVersion
-        ?: System.getProperty("io.github.amichne.kast.version")
-        ?: "dev"
+           ?: System.getProperty("io.github.amichne.kast.version")
+           ?: "dev"
 }
 
 private fun List<String>.isPrefixOf(other: List<String>): Boolean {

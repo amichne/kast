@@ -1,5 +1,6 @@
-package io.github.amichne.kast.cli
+package io.github.amichne.kast.cli.options
 
+import io.github.amichne.kast.cli.SmokeOutputFormat
 import java.nio.file.Path
 
 internal data class SmokeOptions(

@@ -6,8 +6,8 @@ import io.github.amichne.kast.api.contract.SymbolKind
 import io.github.amichne.kast.api.contract.query.SymbolQuery
 import io.github.amichne.kast.api.wrapper.WrapperNamedSymbolKind
 import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
-import io.github.amichne.kast.cli.CliService
-import io.github.amichne.kast.cli.RuntimeCommandOptions
+import io.github.amichne.kast.cli.tty.CliService
+import io.github.amichne.kast.cli.options.RuntimeCommandOptions
 
 /**
  * Resolves a named symbol (e.g. "MyClass", "doStuff") to a [FilePosition] + [Symbol]

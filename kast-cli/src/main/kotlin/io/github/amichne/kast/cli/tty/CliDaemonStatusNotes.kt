@@ -1,4 +1,9 @@
-package io.github.amichne.kast.cli
+package io.github.amichne.kast.cli.tty
+
+import io.github.amichne.kast.cli.results.DaemonStopResult
+import io.github.amichne.kast.cli.RuntimeCandidateStatus
+import io.github.amichne.kast.cli.results.WorkspaceEnsureResult
+import io.github.amichne.kast.cli.results.WorkspaceStatusResult
 
 internal fun daemonNoteFor(result: WorkspaceStatusResult): String? {
     if (result.candidates.isEmpty()) {

@@ -26,7 +26,7 @@ import io.github.amichne.kast.api.contract.Location
 import io.github.amichne.kast.api.contract.Symbol
 import io.github.amichne.kast.api.contract.SymbolKind
 import io.github.amichne.kast.api.contract.result.WorkspaceModule
-import io.github.amichne.kast.cli.defaultCliJson
+import io.github.amichne.kast.cli.tty.defaultCliJson
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.boolean

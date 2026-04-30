@@ -1,9 +1,9 @@
 package io.github.amichne.kast.cli.skill
 
-import io.github.amichne.kast.cli.CliCommand
-import io.github.amichne.kast.cli.CliCommandParser
-import io.github.amichne.kast.cli.CliFailure
-import io.github.amichne.kast.cli.defaultCliJson
+import io.github.amichne.kast.cli.tty.CliCommand
+import io.github.amichne.kast.cli.tty.CliCommandParser
+import io.github.amichne.kast.cli.tty.CliFailure
+import io.github.amichne.kast.cli.tty.defaultCliJson
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Test

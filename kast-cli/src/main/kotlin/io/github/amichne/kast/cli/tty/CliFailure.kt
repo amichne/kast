@@ -1,4 +1,4 @@
-package io.github.amichne.kast.cli
+package io.github.amichne.kast.cli.tty
 
 internal class CliFailure(
     val code: String,

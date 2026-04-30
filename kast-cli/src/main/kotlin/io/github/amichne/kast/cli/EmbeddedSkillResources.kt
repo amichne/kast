@@ -1,5 +1,7 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.cli.tty.CliFailure
+import io.github.amichne.kast.cli.tty.currentCliVersion
 import java.io.InputStream
 import java.nio.file.Files
 import java.nio.file.Path

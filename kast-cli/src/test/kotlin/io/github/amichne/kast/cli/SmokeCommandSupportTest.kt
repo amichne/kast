@@ -9,6 +9,9 @@ import io.github.amichne.kast.api.contract.RuntimeState
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.client.defaultDescriptorDirectory
+import io.github.amichne.kast.cli.options.SmokeOptions
+import io.github.amichne.kast.cli.tty.CliFailure
+import io.github.amichne.kast.cli.tty.defaultCliJson
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -436,4 +439,3 @@ class SmokeCommandSupportTest {
         )
     }
 }
-

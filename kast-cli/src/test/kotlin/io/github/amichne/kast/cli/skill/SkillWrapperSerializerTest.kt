@@ -43,7 +43,7 @@ import io.github.amichne.kast.api.wrapper.KastWriteAndValidateFailureResponse
 import io.github.amichne.kast.api.wrapper.KastWriteAndValidateSuccessResponse
 import io.github.amichne.kast.api.wrapper.WrapperCallDirection
 import io.github.amichne.kast.api.wrapper.WrapperMetric
-import io.github.amichne.kast.cli.defaultCliJson
+import io.github.amichne.kast.cli.tty.defaultCliJson
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive

@@ -9,6 +9,10 @@ import io.github.amichne.kast.api.contract.result.TypeHierarchyNode
 import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
 import io.github.amichne.kast.api.contract.result.TypeHierarchyStats
 import io.github.amichne.kast.api.contract.TextEdit
+import io.github.amichne.kast.cli.results.InstallResult
+import io.github.amichne.kast.cli.skill.InstallSkillResult
+import io.github.amichne.kast.cli.tty.defaultCliJson
+import io.github.amichne.kast.cli.tty.writeCliJson
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 

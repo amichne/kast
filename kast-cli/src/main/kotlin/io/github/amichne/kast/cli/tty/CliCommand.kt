@@ -1,4 +1,4 @@
-package io.github.amichne.kast.cli
+package io.github.amichne.kast.cli.tty
 
 import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
 import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
@@ -16,7 +16,13 @@ import io.github.amichne.kast.api.contract.query.SymbolQuery
 import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
+import io.github.amichne.kast.cli.options.DaemonStartOptions
+import io.github.amichne.kast.cli.options.InstallOptions
+import io.github.amichne.kast.cli.options.InstallSkillOptions
+import io.github.amichne.kast.cli.options.RuntimeCommandOptions
+import io.github.amichne.kast.cli.options.SmokeOptions
 import io.github.amichne.kast.cli.skill.SkillWrapperName
+import java.nio.file.Path
 
 internal sealed interface CliCommand {
     data class Help(val topic: List<String> = emptyList()) : CliCommand
@@ -51,7 +57,7 @@ internal sealed interface CliCommand {
     data class EvalSkill(val options: EvalSkillOptions) : CliCommand
     data class Metrics(
         val subcommand: MetricsSubcommand,
-        val workspaceRoot: java.nio.file.Path,
+        val workspaceRoot: Path,
         val limit: Int = 50,
         val symbol: String? = null,
         val depth: Int = 3,
@@ -69,8 +75,8 @@ internal enum class MetricsSubcommand {
 }
 
 internal data class EvalSkillOptions(
-    val skillDir: java.nio.file.Path,
-    val compareBaseline: java.nio.file.Path? = null,
+    val skillDir: Path,
+    val compareBaseline: Path? = null,
     val format: EvalOutputFormat = EvalOutputFormat.JSON,
 )
 

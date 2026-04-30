@@ -1,4 +1,4 @@
-package io.github.amichne.kast.cli
+package io.github.amichne.kast.cli.tty
 
 import io.github.amichne.kast.api.protocol.AnalysisException
 import io.github.amichne.kast.api.contract.result.ApplyEditsResult
@@ -14,6 +14,12 @@ import io.github.amichne.kast.api.contract.SemanticInsertionResult
 import io.github.amichne.kast.api.contract.result.SymbolResult
 import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
+import io.github.amichne.kast.cli.results.DaemonStopResult
+import io.github.amichne.kast.cli.results.InstallResult
+import io.github.amichne.kast.cli.skill.InstallSkillResult
+import io.github.amichne.kast.cli.SmokeReport
+import io.github.amichne.kast.cli.results.WorkspaceEnsureResult
+import io.github.amichne.kast.cli.results.WorkspaceStatusResult
 import kotlinx.serialization.json.Json
 
 internal fun defaultCliJson(): Json = Json {

@@ -1,4 +1,4 @@
-package io.github.amichne.kast.cli
+package io.github.amichne.kast.cli.tty
 
 import io.github.amichne.kast.api.contract.SymbolKind
 

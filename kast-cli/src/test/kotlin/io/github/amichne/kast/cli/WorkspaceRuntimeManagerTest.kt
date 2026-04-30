@@ -9,6 +9,8 @@ import io.github.amichne.kast.api.contract.RuntimeStatusResponse
 import io.github.amichne.kast.api.client.ServerInstanceDescriptor
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.client.defaultDescriptorDirectory
+import io.github.amichne.kast.cli.options.RuntimeCommandOptions
+import io.github.amichne.kast.cli.tty.CliFailure
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -357,7 +359,10 @@ class WorkspaceRuntimeManagerTest {
 
         override fun runtimeStatus(descriptor: ServerInstanceDescriptor): RuntimeStatusResponse {
             val queue = statusQueues[descriptor.socketPath]
-                ?: throw CliFailure(code = "DAEMON_UNREACHABLE", message = "No runtime status for ${descriptor.socketPath}")
+                ?: throw CliFailure(
+                    code = "DAEMON_UNREACHABLE",
+                    message = "No runtime status for ${descriptor.socketPath}"
+                )
             if (queue.size > 1) {
                 return queue.removeFirst()
             }
@@ -380,4 +385,3 @@ class WorkspaceRuntimeManagerTest {
     }
 
 }
-
