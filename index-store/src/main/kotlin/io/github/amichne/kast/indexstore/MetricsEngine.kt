@@ -412,7 +412,8 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
                     put(parentId, children.map { sourceFileNodeId(it.sourcePath) }.distinct())
                 }
             impact.forEach { node ->
-                put(sourceFileNodeId(node.sourcePath), listOf(referenceEdgeNodeId(node)))
+                val parentId = sourceFileNodeId(node.sourcePath)
+                put(parentId, getOrDefault(parentId, emptyList()) + referenceEdgeNodeId(node))
             }
         }
 

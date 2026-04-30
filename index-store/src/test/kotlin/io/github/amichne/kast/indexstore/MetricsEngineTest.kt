@@ -228,7 +228,7 @@ class MetricsEngineTest {
                             name = "/app/B.kt",
                             type = MetricsGraphNodeType.FILE,
                             parentId = "symbol:lib.Foo",
-                            children = listOf("via:lib.Foo:/app/B.kt"),
+                            children = listOf("source-file:/app/C.kt", "via:lib.Foo:/app/B.kt"),
                             attributes = listOf("incomingDepth=1", "references=1", "via=lib.Foo"),
                         ),
                         MetricsGraphNode(
