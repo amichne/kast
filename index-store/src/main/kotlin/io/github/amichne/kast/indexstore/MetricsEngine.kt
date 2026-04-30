@@ -480,6 +480,8 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
                 .forEach { (parentId, children) ->
                     put(parentId, children.map { sourceFileNodeId(it.sourcePath) }.distinct())
                 }
+            // Append reference-edge children to existing source-file entries; do not overwrite the
+            // source-file → source-file links established above.
             impact.forEach { node ->
                 val parentId = sourceFileNodeId(node.sourcePath)
                 put(parentId, getOrDefault(parentId, emptyList()) + referenceEdgeNodeId(node))
@@ -567,8 +569,12 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
     ): String =
         impact
             .firstOrNull { candidate ->
+                // Match the candidate's filename against the simple (last-segment) name of the via FQ
+                // name to avoid false positives where the FQ name merely *ends with* the filename
+                // (e.g. "com.example.CB" should not match a file "B.kt").
                 candidate.depth == node.depth - 1 &&
-                    node.viaTargetFqName.endsWith(candidate.sourcePath.substringAfterLast('/').removeSuffix(".kt"))
+                    node.viaTargetFqName.substringAfterLast('.') ==
+                    candidate.sourcePath.substringAfterLast('/').removeSuffix(".kt")
             }
             ?.sourcePath
             ?.let(::sourceFileNodeId)

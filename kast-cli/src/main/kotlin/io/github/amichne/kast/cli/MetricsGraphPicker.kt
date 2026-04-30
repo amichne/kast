@@ -24,11 +24,11 @@ internal class MetricsGraphPicker(
         MetricsGraphTerminal(graph).run()
     },
 ) {
-    private val state = PickerState(query = initialQuery)
+    private var state = PickerState(query = initialQuery)
 
     fun run(): Int {
         engineFactory().use { engine ->
-            refreshResults(engine)
+            state = refreshResults(state, engine)
             val animation = terminal.animation<PickerState> { snapshot -> render(snapshot) }
             terminal.cursor.hide(showOnExit = true)
             animation.update(state)
@@ -46,20 +46,19 @@ internal class MetricsGraphPicker(
                         }
                     }
 
-                    PickerAction.Up -> state.selection = (state.selection - 1).coerceAtLeast(0)
-                    PickerAction.Down -> state.selection =
-                        (state.selection + 1).coerceAtMost((state.results.size - 1).coerceAtLeast(0))
+                    PickerAction.Up -> state = state.copy(selection = (state.selection - 1).coerceAtLeast(0))
+                    PickerAction.Down -> state = state.copy(
+                        selection = (state.selection + 1).coerceAtMost((state.results.size - 1).coerceAtLeast(0)),
+                    )
 
                     PickerAction.Backspace -> {
                         if (state.query.isNotEmpty()) {
-                            state.query = state.query.dropLast(1)
-                            refreshResults(engine)
+                            state = refreshResults(state.copy(query = state.query.dropLast(1)), engine)
                         }
                     }
 
                     is PickerAction.Type -> {
-                        state.query += action.char
-                        refreshResults(engine)
+                        state = refreshResults(state.copy(query = state.query + action.char), engine)
                     }
 
                     null -> Unit
@@ -76,10 +75,8 @@ internal class MetricsGraphPicker(
         }
     }
 
-    private fun refreshResults(engine: MetricsEngine) {
-        state.results = engine.searchSymbols(state.query, limit = MAX_RESULTS)
-        state.selection = state.selection.coerceIn(0, (state.results.size - 1).coerceAtLeast(0))
-    }
+    private fun refreshResults(state: PickerState, engine: MetricsEngine): PickerState =
+        reduceRefresh(state, engine.searchSymbols(state.query, limit = MAX_RESULTS))
 
     private fun render(snapshot: PickerState): Widget {
         val header = Panel(
@@ -144,10 +141,10 @@ internal class MetricsGraphPicker(
     private fun simpleName(fqName: String): String =
         fqName.substringAfterLast('.').ifBlank { fqName }
 
-    private data class PickerState(
-        var query: String = "",
-        var results: List<String> = emptyList(),
-        var selection: Int = 0,
+    internal data class PickerState(
+        val query: String = "",
+        val results: List<String> = emptyList(),
+        val selection: Int = 0,
     )
 
     private sealed interface PickerAction {
@@ -180,5 +177,16 @@ internal class MetricsGraphPicker(
     companion object {
         private const val MAX_RESULTS = 25
         private val PRINTABLE_PICKER_CHARS = setOf('.', '_', '-', '$', ':', '/', '<', '>')
+
+        /**
+         * Pure reducer for applying a fresh search result set to a [PickerState]. Exposed for
+         * unit testing so the selection-clamping and copy semantics can be verified without a
+         * live [MetricsEngine] or terminal.
+         */
+        internal fun reduceRefresh(state: PickerState, results: List<String>): PickerState =
+            state.copy(
+                results = results,
+                selection = state.selection.coerceIn(0, (results.size - 1).coerceAtLeast(0)),
+            )
     }
 }
