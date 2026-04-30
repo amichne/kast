@@ -23,9 +23,10 @@ internal class MetricsGraphTerminal(private val graph: MetricsGraph) {
         animation.update(cursor)
 
         terminal.receiveKeyEvents { event ->
+            if (event.isCtrlC) return@receiveKeyEvents InputReceiver.Status.Finished
             val action = event.toGraphAction() ?: return@receiveKeyEvents InputReceiver.Status.Continue
 
-            if (action == GraphAction.Quit || event.isCtrlC) {
+            if (action == GraphAction.Quit) {
                 return@receiveKeyEvents InputReceiver.Status.Finished
             }
 
