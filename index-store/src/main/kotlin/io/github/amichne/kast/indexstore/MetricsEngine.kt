@@ -476,7 +476,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
             focal?.targetPath?.let { targetPath ->
                 put(fileNodeId(targetPath), listOf(symbolNodeId(focal.targetFqName)))
             }
-            impact.groupBy { parentIdFor(it, impact, focal?.targetFqName ?: it.viaTargetFqName) }
+            impact.groupBy { parentIdFor(it, impact, focal?.targetFqName ?: focalFqNameFallback) }
                 .forEach { (parentId, children) ->
                     put(parentId, children.map { sourceFileNodeId(it.sourcePath) }.distinct())
                 }
