@@ -64,10 +64,23 @@ tasks.named<ProcessResources>("processResources") {
     from(syncPackagedSkillResources)
 }
 
-tasks.named<Sync>("syncPortableDist") {
-    dependsOn(":backend-standalone:syncRuntimeLibs")
-    from(project(":backend-standalone").layout.buildDirectory.dir("runtime-libs")) {
-        into("runtime-libs")
+val shrinkRuntimeEnabled = providers.gradleProperty("kast.shrinkRuntime")
+    .map(String::toBoolean)
+    .getOrElse(false)
+
+if (shrinkRuntimeEnabled) {
+    tasks.named<Sync>("syncPortableDist") {
+        dependsOn(":backend-standalone:shrinkRuntimeLibs")
+        from(project(":backend-standalone").layout.buildDirectory.dir("shrunk-runtime-libs")) {
+            into("runtime-libs")
+        }
+    }
+} else {
+    tasks.named<Sync>("syncPortableDist") {
+        dependsOn(":backend-standalone:syncRuntimeLibs")
+        from(project(":backend-standalone").layout.buildDirectory.dir("runtime-libs")) {
+            into("runtime-libs")
+        }
     }
 }
 
