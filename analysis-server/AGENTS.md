@@ -17,9 +17,6 @@ Keep this unit focused on transport concerns around the backend interface.
   backend responses.
 - Do not move PSI logic, workspace discovery, or CLI parsing into this unit.
   Those belong in `backend-standalone` or `kast`.
-- `AnalysisApplication.kt` is the remaining Ktor compatibility surface. If you
-  touch it, keep its auth, validation, and error semantics aligned with the
-  JSON-RPC dispatcher instead of letting the transports drift.
 
 ## Verification
 
