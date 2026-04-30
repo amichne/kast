@@ -1,5 +1,6 @@
 import org.gradle.jvm.tasks.Jar
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import ShrinkRuntimeLibsTask
 import WriteWrapperScriptTask
 import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
@@ -105,6 +106,165 @@ private fun extractedIdeaFiles(
     },
 ).builtBy(extractIdeaDistribution)
 
+// Absent from a standalone class-loading audit that exercised diagnostics, resolve,
+// references, and callers against this Gradle workspace.
+private val auditedHeadlessIdeaLibExcludes = listOf(
+    "**/lib/groovy.jar",
+    "**/lib/app-backend.jar",
+    "**/lib/lib.jar",
+    "**/lib/module-intellij.libraries.bouncy.castle.pgp.jar",
+    "**/lib/module-intellij.libraries.cglib.jar",
+    "**/lib/module-intellij.libraries.classgraph.jar",
+    "**/lib/module-intellij.libraries.commons.io.jar",
+    "**/lib/module-intellij.libraries.commons.lang3.jar",
+    "**/lib/module-intellij.libraries.commons.compress.jar",
+    "**/lib/module-intellij.libraries.jackson.databind.jar",
+    "**/lib/module-intellij.libraries.jackson.dataformat.yaml.jar",
+    "**/lib/module-intellij.libraries.jackson.jar",
+    "**/lib/module-intellij.libraries.jackson.jr.objects.jar",
+    "**/lib/module-intellij.libraries.jackson.module.kotlin.jar",
+    "**/lib/module-intellij.libraries.jsonpath.jar",
+    "**/lib/module-intellij.libraries.kryo5.jar",
+    "**/lib/module-intellij.libraries.lz4.jar",
+    "**/lib/module-intellij.libraries.markdown.jar",
+    "**/lib/module-intellij.libraries.bouncy.castle.provider.jar",
+    "**/lib/module-intellij.libraries.commons.imaging.jar",
+    "**/lib/module-intellij.libraries.http.client.jar",
+    "**/lib/module-intellij.libraries.icu4j.jar",
+    "**/lib/module-intellij.libraries.jcef.jar",
+    "**/lib/module-intellij.libraries.jsvg.jar",
+    "**/lib/module-intellij.libraries.ktor.client.cio.jar",
+    "**/lib/module-intellij.libraries.ktor.client.jar",
+    "**/lib/module-intellij.libraries.ktor.io.jar",
+    "**/lib/module-intellij.libraries.ktor.network.tls.jar",
+    "**/lib/module-intellij.libraries.kotlinx.datetime.jar",
+    "**/lib/module-intellij.libraries.kotlinx.html.jar",
+    "**/lib/module-intellij.libraries.rhino.jar",
+    "**/lib/module-intellij.libraries.snakeyaml.engine.jar",
+    "**/lib/module-intellij.libraries.snakeyaml.jar",
+    "**/lib/module-intellij.libraries.sshj.jar",
+    "**/lib/module-intellij.libraries.velocity.jar",
+    "**/lib/module-intellij.libraries.xstream.jar",
+    "**/lib/module-intellij.libraries.xerces.jar",
+    "**/lib/module-intellij.platform.debugger.impl.rpc.jar",
+    "**/lib/module-intellij.platform.debugger.impl.shared.jar",
+    "**/lib/module-intellij.platform.eel.impl.jar",
+    "**/lib/module-intellij.platform.polySymbols.backend.jar",
+    "**/lib/module-intellij.platform.polySymbols.jar",
+    "**/lib/module-intellij.platform.vcs.core.jar",
+    "**/lib/module-intellij.platform.vcs.jar",
+    "**/lib/module-intellij.platform.vcs.shared.jar",
+    "**/lib/module-intellij.regexp.jar",
+    "**/lib/module-intellij.xml.analysis.impl.jar",
+    "**/lib/module-intellij.xml.analysis.jar",
+    "**/lib/module-intellij.xml.dom.impl.jar",
+    "**/lib/module-intellij.xml.dom.jar",
+    "**/lib/module-intellij.xml.impl.jar",
+    "**/lib/module-intellij.xml.parser.jar",
+    "**/lib/module-intellij.xml.psi.impl.jar",
+    "**/lib/module-intellij.xml.psi.jar",
+    "**/lib/module-intellij.xml.structureView.impl.jar",
+    "**/lib/module-intellij.xml.structureView.jar",
+    "**/lib/module-intellij.xml.syntax.jar",
+    "**/lib/module-intellij.xml.ui.common.jar",
+    "**/lib/jaxb-api.jar",
+    "**/lib/jaxb-runtime.jar",
+    "**/lib/jps-model.jar",
+    "**/lib/protobuf.jar",
+    "**/lib/rd.jar",
+    "**/lib/rhino.jar",
+    "**/lib/stats.jar",
+    "**/lib/modules/intellij.debugger.streams.backend.jar",
+    "**/lib/modules/intellij.debugger.streams.core.jar",
+    "**/lib/modules/intellij.debugger.streams.shared.jar",
+    "**/lib/modules/intellij.emojipicker.jar",
+    "**/lib/modules/intellij.grid.core.impl.jar",
+    "**/lib/modules/intellij.grid.impl.jar",
+    "**/lib/modules/intellij.ide.startup.importSettings.jar",
+    "**/lib/modules/intellij.libraries.coil.jar",
+    "**/lib/modules/intellij.libraries.grpc.jar",
+    "**/lib/modules/intellij.libraries.grpc.netty.shaded.jar",
+    "**/lib/modules/intellij.libraries.lucene.common.jar",
+    "**/lib/modules/intellij.libraries.compose.foundation.desktop.jar",
+    "**/lib/modules/intellij.libraries.compose.runtime.desktop.jar",
+    "**/lib/modules/intellij.libraries.skiko.jar",
+    "**/lib/modules/intellij.platform.collaborationTools.jar",
+    "**/lib/modules/intellij.platform.compose.jar",
+    "**/lib/modules/intellij.platform.compose.markdown.jar",
+    "**/lib/modules/intellij.platform.coverage.agent.jar",
+    "**/lib/modules/intellij.platform.coverage.jar",
+    "**/lib/modules/intellij.platform.debugger.impl.backend.jar",
+    "**/lib/modules/intellij.platform.debugger.impl.frontend.jar",
+    "**/lib/modules/intellij.platform.eel.impl.jar",
+    "**/lib/modules/intellij.platform.execution.dashboard.jar",
+    "**/lib/modules/intellij.platform.ide.newUiOnboarding.jar",
+    "**/lib/modules/intellij.platform.ide.newUsersOnboarding.jar",
+    "**/lib/modules/intellij.platform.jewel.foundation.jar",
+    "**/lib/modules/intellij.platform.jewel.ideLafBridge.jar",
+    "**/lib/modules/intellij.platform.jewel.markdown.core.jar",
+    "**/lib/modules/intellij.platform.jewel.markdown.ideLafBridgeStyling.jar",
+    "**/lib/modules/intellij.platform.jewel.ui.jar",
+    "**/lib/modules/intellij.platform.lvcs.impl.jar",
+    "**/lib/modules/intellij.platform.langInjection.backend.jar",
+    "**/lib/modules/intellij.platform.langInjection.jar",
+    "**/lib/modules/intellij.platform.scriptDebugger.backend.jar",
+    "**/lib/modules/intellij.platform.scriptDebugger.protocolReaderRuntime.jar",
+    "**/lib/modules/intellij.platform.scriptDebugger.ui.jar",
+    "**/lib/modules/intellij.platform.smRunner.vcs.jar",
+    "**/lib/modules/intellij.platform.searchEverywhere.frontend.jar",
+    "**/lib/modules/intellij.platform.searchEverywhere.jar",
+    "**/lib/modules/intellij.platform.vcs.dvcs.impl.jar",
+    "**/lib/modules/intellij.platform.vcs.dvcs.impl.shared.jar",
+    "**/lib/modules/intellij.platform.vcs.dvcs.jar",
+    "**/lib/modules/intellij.platform.vcs.impl.exec.jar",
+    "**/lib/modules/intellij.platform.vcs.impl.frontend.jar",
+    "**/lib/modules/intellij.platform.vcs.impl.jar",
+    "**/lib/modules/intellij.platform.vcs.impl.lang.actions.jar",
+    "**/lib/modules/intellij.platform.vcs.impl.lang.jar",
+    "**/lib/modules/intellij.platform.vcs.impl.shared.jar",
+    "**/lib/modules/intellij.platform.vcs.log.graph.impl.jar",
+    "**/lib/modules/intellij.platform.vcs.log.graph.jar",
+    "**/lib/modules/intellij.platform.vcs.log.impl.jar",
+    "**/lib/modules/intellij.platform.vcs.log.jar",
+    "**/lib/modules/intellij.relaxng.jar",
+    "**/lib/modules/intellij.libraries.xml.rpc.jar",
+    "**/lib/modules/intellij.settingsSync.core.jar",
+    "**/lib/modules/intellij.spellchecker.xml.jar",
+    "**/lib/modules/intellij.xml.langInjection.jar",
+    "**/lib/modules/intellij.xml.langInjection.xpath.jar",
+    "**/lib/modules/intellij.xml.xmlbeans.jar",
+)
+
+private val auditedHeadlessKotlinPluginExcludes = listOf(
+    "**/plugins/Kotlin/lib/kotlinc.compose-compiler-plugin.jar",
+    "**/plugins/Kotlin/lib/kotlinc.kotlin-dataframe-compiler-plugin.jar",
+    "**/plugins/Kotlin/lib/kotlinc.kotlin-jps-common.jar",
+    "**/plugins/Kotlin/lib/kotlinc.scripting-compiler-plugin.jar",
+    "**/plugins/Kotlin/lib/kotlinc.kotlinx-serialization-compiler-plugin.jar",
+    "**/plugins/Kotlin/lib/kotlin-gradle-tooling.jar",
+    "**/plugins/Kotlin/lib/kotlin-base-jps.jar",
+    "**/plugins/Kotlin/lib/kotlin-plugin-shared.jar",
+    "**/plugins/Kotlin/lib/jackson-dataformat-toml.jar",
+    "**/plugins/Kotlin/lib/vavr.jar",
+)
+
+private val auditedHeadlessJavaPluginExcludes = listOf(
+    "**/plugins/java/lib/debugger-memory-agent.jar",
+    "**/plugins/java/lib/ecj/eclipse.jar",
+    "**/plugins/java/lib/jps-builders-6.jar",
+    "**/plugins/java/lib/jps-builders.jar",
+    "**/plugins/java/lib/jps-javac-extension.jar",
+    "**/plugins/java/lib/jps-launcher.jar",
+    "**/plugins/java/lib/jb-jdi.jar",
+    "**/plugins/java/lib/modules/intellij.java.langInjection.jar",
+    "**/plugins/java/lib/modules/intellij.java.langInjection.jps.jar",
+    "**/plugins/java/lib/modules/intellij.java.vcs.jar",
+    "**/plugins/java/lib/modules/intellij.jvm.analysis.impl.jar",
+    "**/plugins/java/lib/kotlin-metadata.jar",
+    "**/plugins/java/lib/rt/debugger-agent.jar",
+    "**/plugins/java/lib/rt/netty-jps.jar",
+)
+
 private val kotlinCompilerJar = extractedIdeaFiles {
     include("**/plugins/Kotlin/kotlinc/lib/kotlin-compiler.jar")
 }
@@ -117,6 +277,17 @@ private val compatCompileLibs: ConfigurableFileCollection = extractedIdeaFiles {
     // Linux CI can pick the IntelliJ-bundled serialization jars ahead of the
     // Gradle-resolved runtime, which breaks the Kotlin serialization plugin's
     // version detection for @Serializable declarations in this module.
+    exclude("**/module-intellij.libraries.kotlinx.serialization.core.jar")
+    exclude("**/module-intellij.libraries.kotlinx.serialization.json.jar")
+}
+
+private val ideaRuntimeLibs: ConfigurableFileCollection = extractedIdeaFiles {
+    include("**/lib/**/*.jar")
+    exclude(auditedHeadlessIdeaLibExcludes)
+    exclude("**/plugins/**")
+    exclude("**/testFramework.jar")
+    exclude("**/testFramework-k1.jar")
+    // Keep the Gradle-resolved serialization runtime ahead of IntelliJ-bundled copies.
     exclude("**/module-intellij.libraries.kotlinx.serialization.core.jar")
     exclude("**/module-intellij.libraries.kotlinx.serialization.json.jar")
 }
@@ -244,15 +415,17 @@ val buildIdeCompatJar: TaskProvider<Jar> by tasks.registering(Jar::class) {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
-val ideaLibs: ConfigurableFileCollection = compatCompileLibs
+val ideaLibs: ConfigurableFileCollection = ideaRuntimeLibs
 val kotlinPluginLibs: ConfigurableFileCollection = extractedIdeaFiles {
     include("**/plugins/Kotlin/lib/**/*.jar")
+    exclude(auditedHeadlessKotlinPluginExcludes)
     // kotlin-jps-plugin.jar ships an old Java CompilerConfiguration (no Kotlin companion)
     // that shadows the correct version in kotlin-compiler-common.jar → NoSuchFieldError.
     exclude("**/plugins/Kotlin/lib/jps/**")
 }
 val javaPluginLibs: ConfigurableFileCollection = extractedIdeaFiles {
     include("**/plugins/java/lib/**/*.jar")
+    exclude(auditedHeadlessJavaPluginExcludes)
 }
 
 application {
@@ -379,13 +552,46 @@ tasks.named<WriteWrapperScriptTask>("writeWrapperScript") {
 tasks.named<SyncRuntimeLibsTask>("syncRuntimeLibs") {
     requiredClassEntries.add("io/github/amichne/kast/api/client/StandaloneServerOptions.class")
     requiredClassEntries.add("com/intellij/openapi/util/Disposer.class")
+    requiredClassEntries.add("com/intellij/openapi/application/ApplicationManager.class")
+    requiredClassEntries.add("com/intellij/openapi/vfs/VirtualFileManager.class")
+    requiredClassEntries.add("com/intellij/psi/PsiManager.class")
+    requiredClassEntries.add("com/intellij/psi/PsiClass.class")
+    requiredClassEntries.add("com/intellij/lang/LanguageParserDefinitions.class")
+    requiredClassEntries.add("com/intellij/lang/java/JavaParserDefinition.class")
+    requiredClassEntries.add("com/intellij/platform/syntax/psi/ElementTypeConverters.class")
+    requiredClassEntries.add("org/jetbrains/kotlin/psi/KtFile.class")
+    requiredClassEntries.add("org/jetbrains/kotlin/idea/references/KtReference.class")
+    requiredClassEntries.add("org/jetbrains/kotlin/analysis/api/standalone/StandaloneAnalysisAPISession.class")
 }
 
-tasks.named<Sync>("syncPortableDist") {
-    from(layout.buildDirectory.dir("runtime-libs")) {
-        into("runtime-libs")
+val shrinkRuntimeEnabled = providers.gradleProperty("kast.shrinkRuntime")
+    .map(String::toBoolean)
+    .getOrElse(false)
+
+if (shrinkRuntimeEnabled) {
+    val shrinkRuntimeLibs by tasks.registering(ShrinkRuntimeLibsTask::class) {
+        dependsOn("syncRuntimeLibs")
+        // The output path of syncRuntimeLibs is fixed by the convention plugin.
+        inputDirectory.set(layout.buildDirectory.dir("runtime-libs"))
+        libraryJars.from(ideaLibs, kotlinPluginLibs, javaPluginLibs)
+        proguardRules.set(layout.projectDirectory.file("src/main/proguard/standalone-rules.pro"))
+        outputDirectory.set(layout.buildDirectory.dir("shrunk-runtime-libs"))
+        outputClasspathFile.set(layout.buildDirectory.file("shrunk-runtime-libs/classpath.txt"))
     }
-    dependsOn("syncRuntimeLibs")
+
+    tasks.named<Sync>("syncPortableDist") {
+        from(layout.buildDirectory.dir("shrunk-runtime-libs")) {
+            into("runtime-libs")
+        }
+        dependsOn(shrinkRuntimeLibs)
+    }
+} else {
+    tasks.named<Sync>("syncPortableDist") {
+        from(layout.buildDirectory.dir("runtime-libs")) {
+            into("runtime-libs")
+        }
+        dependsOn("syncRuntimeLibs")
+    }
 }
 
 tasks.named<Zip>("portableDistZip") {

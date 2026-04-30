@@ -185,7 +185,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ./kast.sh release --tag "${{ needs.prepare-release.outputs.release_tag }}" --platform-id "${{ matrix.asset_id }}"
+          ./kast.sh release --tag "${{ needs.prepare-release.outputs.release_tag }}" --platform-id "${{ matrix.asset_id }}" --shrink
 
       - name: Smoke portable Kast distribution
         shell: bash
@@ -343,7 +343,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Build standalone backend
-        run: ./kast.sh build backend
+        run: ./kast.sh build backend --shrink
 
       - name: Upload standalone backend asset
         shell: bash

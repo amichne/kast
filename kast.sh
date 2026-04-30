@@ -233,8 +233,10 @@ _build_select_targets_interactive() {
   fi
 }
 
+_GRADLE_EXTRA_ARGS=()
+
 _build_run_gradle_tasks() {
-  ( cd "$REPO_ROOT"; "$GRADLEW" "$@" )
+  ( cd "$REPO_ROOT"; "$GRADLEW" "${_GRADLE_EXTRA_ARGS[@]}" "$@" )
 }
 
 _build_run_gradle_tasks_with_retry() {
@@ -382,6 +384,7 @@ _build_clean_stale_outputs() {
 
 cmd_build() {
   _build_selected_targets=()
+  _GRADLE_EXTRA_ARGS=()
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -389,6 +392,8 @@ cmd_build() {
         _build_selected_targets+=("$1"); shift ;;
       --all)
         _build_selected_targets=("${_BUILD_ALL_TARGETS[@]}"); shift ;;
+      --shrink)
+        _GRADLE_EXTRA_ARGS+=("-Pkast.shrinkRuntime=true"); shift ;;
       --help|-h)
         cat >&2 << 'USAGE'
 Usage: ./kast.sh build [target...] [options]
@@ -402,6 +407,7 @@ Targets (positional, repeatable):
 
 Options:
   --all            Build all targets.
+  --shrink         Run ProGuard on the assembled runtime-libs before packaging.
   --help, -h       Show this help.
 
 When no targets are supplied and a TTY is available, fzf is used for
@@ -453,6 +459,7 @@ cmd_release() {
   [[ -n "$REPO_ROOT" && -d "$REPO_ROOT" ]] || die "Release requires a local checkout (not valid when curl-piped)"
 
   local tag="" platform_id="" skip_build="false"
+  _GRADLE_EXTRA_ARGS=()
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -461,6 +468,7 @@ cmd_release() {
       --platform-id=*) platform_id="${1#*=}"; shift ;;
       --platform-id)   [[ $# -ge 2 ]] || die "Missing value for --platform-id"; platform_id="$2"; shift 2 ;;
       --skip-build)    skip_build="true"; shift ;;
+      --shrink)        _GRADLE_EXTRA_ARGS+=("-Pkast.shrinkRuntime=true"); shift ;;
       --help|-h)
         cat >&2 << 'USAGE'
 Usage: ./kast.sh release --tag <version> --platform-id <id> [options]
@@ -471,6 +479,7 @@ Options:
   --tag <version>       Release tag (e.g. v1.2.3). Required.
   --platform-id <id>    Platform identifier (e.g. linux-x64, macos-arm64). Required.
   --skip-build          Skip the Gradle build (use existing portable zip).
+  --shrink              Run ProGuard on the assembled runtime-libs before packaging.
   --help, -h            Show this help.
 
 Examples:
@@ -489,10 +498,10 @@ USAGE
 
   if [[ "$skip_build" != "true" ]]; then
     log_section "Building portable distribution"
-    if ! ( cd "$REPO_ROOT"; "$GRADLEW" :kast-cli:portableDistZip ); then
+    if ! ( cd "$REPO_ROOT"; "$GRADLEW" "${_GRADLE_EXTRA_ARGS[@]}" :kast-cli:portableDistZip ); then
       log_note "Gradle build failed; stopping daemon and retrying with --no-daemon"
       "$GRADLEW" --stop >/dev/null 2>&1 || true
-      ( cd "$REPO_ROOT"; "$GRADLEW" --no-daemon :kast-cli:portableDistZip )
+      ( cd "$REPO_ROOT"; "$GRADLEW" --no-daemon "${_GRADLE_EXTRA_ARGS[@]}" :kast-cli:portableDistZip )
     fi
   fi
 
