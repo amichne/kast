@@ -55,6 +55,7 @@ internal sealed interface CliCommand {
         val limit: Int = 50,
         val symbol: String? = null,
         val depth: Int = 3,
+        val interactive: Boolean = false,
     ) : CliCommand
 }
 
@@ -64,6 +65,7 @@ internal enum class MetricsSubcommand {
     COUPLING,
     DEAD_CODE,
     IMPACT,
+    GRAPH,
 }
 
 internal data class EvalSkillOptions(

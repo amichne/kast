@@ -148,6 +148,16 @@ internal class CliCommandParser(
                     ),
                     depth = parsed.optionalInt("depth") ?: 3,
                 )
+                listOf("metrics", "graph") -> CliCommand.Metrics(
+                    subcommand = MetricsSubcommand.GRAPH,
+                    workspaceRoot = parsed.requireWorkspaceRootPath(),
+                    symbol = parsed.options["symbol"] ?: throw CliFailure(
+                        code = "CLI_USAGE",
+                        message = "--symbol is required for metrics graph",
+                    ),
+                    depth = parsed.optionalInt("depth") ?: 3,
+                    interactive = parsed.parseBool("interactive"),
+                )
                 else -> throw CliFailure(
                     code = "CLI_USAGE",
                     message = "Unknown command: ${metadata.commandText}",
@@ -679,15 +689,16 @@ internal data class ParsedArguments(
     }
 
     fun optionalInt(key: String): Int? = options[key]?.toIntOrNull()
-}
 
-private fun ParsedArguments.parseBool(key: String): Boolean = when (options[key]?.lowercase()) {
-    null, "", "true", "on", "yes", "1" -> options.containsKey(key)
-    "false", "off", "no", "0" -> false
-    else -> throw CliFailure(
-        code = "CLI_USAGE",
-        message = "Unknown value for --$key: ${options[key]}. Valid values: true, false.",
-    )
+    fun parseBool(key: String): Boolean = when (options[key]?.lowercase()) {
+        null -> false
+        "", "true", "on", "yes", "1" -> true
+        "false", "off", "no", "0" -> false
+        else -> throw CliFailure(
+            code = "CLI_USAGE",
+            message = "Unknown value for --$key: ${options[key]}. Valid values: true, false.",
+        )
+    }
 }
 
 private val VALID_BACKEND_NAMES = setOf("standalone", "intellij")

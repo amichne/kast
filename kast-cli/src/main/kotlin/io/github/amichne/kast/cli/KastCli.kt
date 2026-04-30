@@ -76,8 +76,26 @@ class KastCli private constructor(
                 0
             }
 
+            is CliOutput.InteractiveGraph -> writeInteractiveGraph(output.graph, stdout)
             is CliOutput.ExternalProcess -> runExternalProcess(output.process, stdout, stderr)
             CliOutput.None -> 0
+        }
+    }
+
+    private suspend fun writeInteractiveGraph(
+        graph: io.github.amichne.kast.indexstore.MetricsGraph,
+        stdout: Appendable,
+    ): Int {
+        if (stdout !== System.out) {
+            val rendered = MetricsGraphShell.render(graph)
+            stdout.append(rendered)
+            if (!rendered.endsWith('\n')) {
+                stdout.append('\n')
+            }
+            return 0
+        }
+        return withContext(Dispatchers.IO) {
+            MetricsGraphTerminal(graph).run(System.`in`, System.out)
         }
     }
 

@@ -3,6 +3,7 @@ package io.github.amichne.kast.indexstore
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
+import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
@@ -173,6 +174,117 @@ class MetricsEngineTest {
                 ),
                 metrics.changeImpactRadius(fqName = "lib.Foo", depth = 2),
             )
+        }
+    }
+
+    @Test
+    fun `builds visual graph around focal indexed symbol`() {
+        val root = seededWorkspace()
+
+        MetricsEngine(root).use { metrics ->
+            assertEquals(
+                MetricsGraph(
+                    focalNodeId = "symbol:lib.Foo",
+                    nodes = listOf(
+                        MetricsGraphNode(
+                            id = "symbol:lib.Foo",
+                            name = "lib.Foo",
+                            type = MetricsGraphNodeType.SYMBOL,
+                            parentId = "file:/lib/Foo.kt",
+                            children = listOf("source-file:/app/A.kt", "source-file:/app/B.kt"),
+                            attributes = listOf(
+                                "path=/lib/Foo.kt",
+                                "module=:lib",
+                                "sourceSet=main",
+                                "incomingReferences=3",
+                                "sourceFiles=2",
+                                "sourceModules=1",
+                            ),
+                        ),
+                        MetricsGraphNode(
+                            id = "file:/lib/Foo.kt",
+                            name = "/lib/Foo.kt",
+                            type = MetricsGraphNodeType.FILE,
+                            children = listOf("symbol:lib.Foo"),
+                            attributes = listOf("role=target", "module=:lib", "sourceSet=main"),
+                        ),
+                        MetricsGraphNode(
+                            id = "source-file:/app/A.kt",
+                            name = "/app/A.kt",
+                            type = MetricsGraphNodeType.FILE,
+                            parentId = "symbol:lib.Foo",
+                            children = listOf("via:lib.Foo:/app/A.kt"),
+                            attributes = listOf("incomingDepth=1", "references=2", "via=lib.Foo"),
+                        ),
+                        MetricsGraphNode(
+                            id = "via:lib.Foo:/app/A.kt",
+                            name = "lib.Foo",
+                            type = MetricsGraphNodeType.REFERENCE_EDGE,
+                            parentId = "source-file:/app/A.kt",
+                            attributes = listOf("from=/app/A.kt", "to=lib.Foo", "references=2"),
+                        ),
+                        MetricsGraphNode(
+                            id = "source-file:/app/B.kt",
+                            name = "/app/B.kt",
+                            type = MetricsGraphNodeType.FILE,
+                            parentId = "symbol:lib.Foo",
+                            children = listOf("via:lib.Foo:/app/B.kt"),
+                            attributes = listOf("incomingDepth=1", "references=1", "via=lib.Foo"),
+                        ),
+                        MetricsGraphNode(
+                            id = "via:lib.Foo:/app/B.kt",
+                            name = "lib.Foo",
+                            type = MetricsGraphNodeType.REFERENCE_EDGE,
+                            parentId = "source-file:/app/B.kt",
+                            attributes = listOf("from=/app/B.kt", "to=lib.Foo", "references=1"),
+                        ),
+                        MetricsGraphNode(
+                            id = "source-file:/app/C.kt",
+                            name = "/app/C.kt",
+                            type = MetricsGraphNodeType.FILE,
+                            parentId = "source-file:/app/B.kt",
+                            children = listOf("via:app.B:/app/C.kt"),
+                            attributes = listOf("incomingDepth=2", "references=1", "via=app.B"),
+                        ),
+                        MetricsGraphNode(
+                            id = "via:app.B:/app/C.kt",
+                            name = "app.B",
+                            type = MetricsGraphNodeType.REFERENCE_EDGE,
+                            parentId = "source-file:/app/C.kt",
+                            attributes = listOf("from=/app/C.kt", "to=app.B", "references=1"),
+                        ),
+                    ),
+                    edges = listOf(
+                        MetricsGraphEdge("file:/lib/Foo.kt", "symbol:lib.Foo", MetricsGraphEdgeType.CONTAINS),
+                        MetricsGraphEdge("symbol:lib.Foo", "source-file:/app/A.kt", MetricsGraphEdgeType.REFERENCED_BY, 2),
+                        MetricsGraphEdge("source-file:/app/A.kt", "via:lib.Foo:/app/A.kt", MetricsGraphEdgeType.REFERENCES, 2),
+                        MetricsGraphEdge("symbol:lib.Foo", "source-file:/app/B.kt", MetricsGraphEdgeType.REFERENCED_BY, 1),
+                        MetricsGraphEdge("source-file:/app/B.kt", "via:lib.Foo:/app/B.kt", MetricsGraphEdgeType.REFERENCES, 1),
+                        MetricsGraphEdge("source-file:/app/B.kt", "source-file:/app/C.kt", MetricsGraphEdgeType.REFERENCED_BY, 1),
+                        MetricsGraphEdge("source-file:/app/C.kt", "via:app.B:/app/C.kt", MetricsGraphEdgeType.REFERENCES, 1),
+                    ),
+                    index = MetricsGraphIndex(
+                        symbolCount = 2,
+                        fileCount = 4,
+                        referenceCount = 4,
+                        maxDepth = 2,
+                    ),
+                ),
+                metrics.graph(fqName = "lib.Foo", depth = 2),
+            )
+        }
+    }
+
+    @Test
+    fun `serializes graph with stable node type names`() {
+        val root = seededWorkspace()
+
+        MetricsEngine(root).use { metrics ->
+            val encoded = Json.encodeToString(MetricsGraph.serializer(), metrics.graph(fqName = "lib.Foo", depth = 1))
+
+            assertTrue(encoded.contains("\"type\":\"SYMBOL\""))
+            assertTrue(encoded.contains("\"edgeType\":\"REFERENCED_BY\""))
+            assertTrue(encoded.contains("\"focalNodeId\":\"symbol:lib.Foo\""))
         }
     }
 

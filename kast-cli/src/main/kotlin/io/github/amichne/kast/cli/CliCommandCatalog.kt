@@ -341,6 +341,11 @@ internal object CliCommandCatalog {
         usage = "--depth=3",
         description = "Maximum edge depth for impact traversal. Defaults to 3.",
     )
+    private val metricsInteractiveOption = CliOptionMetadata(
+        key = "interactive",
+        usage = "--interactive=true",
+        description = "Render an interactive shell graph view instead of JSON.",
+    )
 
     private val commands: List<CliCommandMetadata> = listOf(
         CliCommandMetadata(
@@ -996,6 +1001,20 @@ internal object CliCommandCatalog {
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME metrics impact --workspace-root=/absolute/path/to/workspace --symbol=com.example.MyClass",
                 "$CLI_EXECUTABLE_NAME metrics impact --workspace-root=/absolute/path/to/workspace --symbol=com.example.MyClass --depth=5",
+            ),
+        ),
+        CliCommandMetadata(
+            path = listOf("metrics", "graph"),
+            group = CliCommandGroup.METRICS,
+            summary = "Show a navigable symbol graph from the local reference index.",
+            description = "Queries the local SQLite reference index without a running daemon. Builds a focal symbol graph with target file, incoming source files, reference edges, and index summary. Add --interactive=true for a keyboard-navigable shell view.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME metrics graph --workspace-root=/absolute/path/to/workspace --symbol=com.example.MyClass [--depth=3] [--interactive=true]",
+            ),
+            options = listOf(workspaceRootOption, metricsSymbolOption, metricsDepthOption, metricsInteractiveOption),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME metrics graph --workspace-root=/absolute/path/to/workspace --symbol=com.example.MyClass",
+                "$CLI_EXECUTABLE_NAME metrics graph --workspace-root=/absolute/path/to/workspace --symbol=com.example.MyClass --depth=5 --interactive=true",
             ),
         ),
         // Skill wrapper: metrics — hidden, called by agent shell scripts

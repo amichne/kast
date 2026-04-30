@@ -55,6 +55,54 @@ data class ChangeImpactNode(
 )
 
 @Serializable
+data class MetricsGraph(
+    val focalNodeId: String,
+    val nodes: List<MetricsGraphNode>,
+    val edges: List<MetricsGraphEdge>,
+    val index: MetricsGraphIndex,
+)
+
+@Serializable
+data class MetricsGraphNode(
+    val id: String,
+    val name: String,
+    val type: MetricsGraphNodeType,
+    val parentId: String? = null,
+    val children: List<String> = emptyList(),
+    val attributes: List<String> = emptyList(),
+)
+
+@Serializable
+data class MetricsGraphEdge(
+    val from: String,
+    val to: String,
+    val edgeType: MetricsGraphEdgeType,
+    val weight: Int = 1,
+)
+
+@Serializable
+data class MetricsGraphIndex(
+    val symbolCount: Int,
+    val fileCount: Int,
+    val referenceCount: Int,
+    val maxDepth: Int,
+)
+
+@Serializable
+enum class MetricsGraphNodeType {
+    SYMBOL,
+    FILE,
+    REFERENCE_EDGE,
+}
+
+@Serializable
+enum class MetricsGraphEdgeType {
+    CONTAINS,
+    REFERENCED_BY,
+    REFERENCES,
+}
+
+@Serializable
 enum class MetricsConfidence {
     LOW,
 }

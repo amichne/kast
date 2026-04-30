@@ -6,6 +6,7 @@ import io.github.amichne.kast.indexstore.ChangeImpactNode
 import io.github.amichne.kast.indexstore.DeadCodeCandidate
 import io.github.amichne.kast.indexstore.FanInMetric
 import io.github.amichne.kast.indexstore.FanOutMetric
+import io.github.amichne.kast.indexstore.MetricsGraph
 import io.github.amichne.kast.indexstore.MetricsEngine
 import io.github.amichne.kast.indexstore.ModuleCouplingMetric
 import kotlinx.serialization.builtins.ListSerializer
@@ -15,6 +16,7 @@ import java.nio.file.Path
 internal sealed interface CliOutput {
     data class JsonValue(val value: Any) : CliOutput
     data class Text(val value: String) : CliOutput
+    data class InteractiveGraph(val graph: MetricsGraph) : CliOutput
     data class ExternalProcess(val process: CliExternalProcess) : CliOutput
     data object None : CliOutput
 }
@@ -258,6 +260,15 @@ internal class DefaultCliCommandExecutor(
             }
 
             is CliCommand.Metrics -> {
+                if (command.subcommand == MetricsSubcommand.GRAPH && command.interactive) {
+                    val graph = MetricsEngine(command.workspaceRoot).use { engine ->
+                        engine.graph(
+                            fqName = requireNotNull(command.symbol) { "--symbol is required for graph" },
+                            depth = command.depth,
+                        )
+                    }
+                    return CliExecutionResult(output = CliOutput.InteractiveGraph(graph))
+                }
                 val encoded = MetricsEngine(command.workspaceRoot).use { engine ->
                     when (command.subcommand) {
                         MetricsSubcommand.FAN_IN -> json.encodeToString(
@@ -276,6 +287,13 @@ internal class DefaultCliCommandExecutor(
                             ListSerializer(ChangeImpactNode.serializer()),
                             engine.changeImpactRadius(
                                 fqName = requireNotNull(command.symbol) { "--symbol is required for impact" },
+                                depth = command.depth,
+                            ),
+                        )
+                        MetricsSubcommand.GRAPH -> json.encodeToString(
+                            MetricsGraph.serializer(),
+                            engine.graph(
+                                fqName = requireNotNull(command.symbol) { "--symbol is required for graph" },
                                 depth = command.depth,
                             ),
                         )

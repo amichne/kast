@@ -670,6 +670,20 @@ class CliCommandParserTest {
     }
 
     @Test
+    fun `metrics graph parses interactive option`() {
+        val command = parser.parse(
+            arrayOf("metrics", "graph", "--workspace-root=$tempDir", "--symbol=com.example.Foo", "--depth=2", "--interactive=true"),
+        )
+
+        assertTrue(command is CliCommand.Metrics)
+        val metrics = command as CliCommand.Metrics
+        assertEquals(MetricsSubcommand.GRAPH, metrics.subcommand)
+        assertEquals("com.example.Foo", metrics.symbol)
+        assertEquals(2, metrics.depth)
+        assertTrue(metrics.interactive)
+    }
+
+    @Test
     fun `metrics impact fails without symbol`() {
         assertThrows<CliFailure> {
             parser.parse(

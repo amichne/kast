@@ -266,6 +266,65 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
         )
     }
 
+    fun graph(fqName: String, depth: Int): MetricsGraph {
+        require(depth >= 0) { "depth must be non-negative" }
+
+        val focal = fanInMetric(fqName)
+        val impact = changeImpactRadius(fqName = fqName, depth = depth)
+        val directReferences = impact.filter { it.depth == 1 && it.viaTargetFqName == fqName }
+        val childIdsByParent = buildChildIdsByParent(focal, impact)
+        val nodes = buildList {
+            add(focalSymbolNode(fqName, focal, directReferences, childIdsByParent))
+            focal?.targetPath?.let { targetPath ->
+                add(targetFileNode(targetPath, focal, childIdsByParent))
+            }
+            impact.forEach { node ->
+                add(sourceFileNode(node, childIdsByParent, parentIdFor(node, impact, fqName)))
+                add(referenceEdgeNode(node))
+            }
+        }
+        val edges = buildList {
+            focal?.targetPath?.let { targetPath ->
+                add(
+                    MetricsGraphEdge(
+                        from = fileNodeId(targetPath),
+                        to = symbolNodeId(fqName),
+                        edgeType = MetricsGraphEdgeType.CONTAINS,
+                    ),
+                )
+            }
+            impact.forEach { node ->
+                add(
+                    MetricsGraphEdge(
+                        from = parentIdFor(node, impact, fqName),
+                        to = sourceFileNodeId(node.sourcePath),
+                        edgeType = MetricsGraphEdgeType.REFERENCED_BY,
+                        weight = node.occurrenceCount,
+                    ),
+                )
+                add(
+                    MetricsGraphEdge(
+                        from = sourceFileNodeId(node.sourcePath),
+                        to = referenceEdgeNodeId(node),
+                        edgeType = MetricsGraphEdgeType.REFERENCES,
+                        weight = node.occurrenceCount,
+                    ),
+                )
+            }
+        }
+        return MetricsGraph(
+            focalNodeId = symbolNodeId(fqName),
+            nodes = nodes,
+            edges = edges,
+            index = MetricsGraphIndex(
+                symbolCount = 1 + impact.map(ChangeImpactNode::viaTargetFqName).filterNot { it == fqName }.distinct().size,
+                fileCount = listOfNotNull(focal?.targetPath).plus(impact.map(ChangeImpactNode::sourcePath)).distinct().size,
+                referenceCount = impact.sumOf(ChangeImpactNode::occurrenceCount),
+                maxDepth = impact.maxOfOrNull(ChangeImpactNode::depth) ?: 0,
+            ),
+        )
+    }
+
     override fun close() {
         cachedConnection?.let { conn ->
             if (!conn.isClosed) conn.close()
@@ -294,6 +353,162 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
                 }
             }
         }
+
+    private fun fanInMetric(fqName: String): FanInMetric? =
+        readMetric(null) { conn ->
+            conn.prepareStatement(
+                """
+                    SELECT target_name.fq_name,
+                           target_prefix.dir_path,
+                           refs.tgt_filename,
+                           target_meta.module_path,
+                           target_meta.source_set,
+                           COUNT(*) AS occurrence_count,
+                           COUNT(DISTINCT refs.src_prefix_id || ':' || refs.src_filename) AS source_file_count,
+                           COUNT(DISTINCT source_meta.module_path) AS source_module_count
+                    FROM symbol_references refs
+                    LEFT JOIN file_metadata source_meta
+                      ON source_meta.prefix_id = refs.src_prefix_id
+                     AND source_meta.filename = refs.src_filename
+                    LEFT JOIN file_metadata target_meta
+                      ON target_meta.prefix_id = refs.tgt_prefix_id
+                     AND target_meta.filename = refs.tgt_filename
+                    JOIN fq_names target_name ON target_name.fq_id = refs.target_fq_id
+                    LEFT JOIN path_prefixes target_prefix ON target_prefix.prefix_id = refs.tgt_prefix_id
+                    WHERE target_name.fq_name = ?
+                    GROUP BY refs.target_fq_id, refs.tgt_prefix_id, refs.tgt_filename, target_meta.module_path, target_meta.source_set
+                """.trimIndent(),
+            ).use { stmt ->
+                stmt.setString(1, fqName)
+                stmt.executeQuery().use { rs ->
+                    val row = MetricResultRow(resultSet = rs, fields = FanInField.entries)
+                    if (!rs.next()) {
+                        null
+                    } else {
+                        FanInMetric(
+                            targetFqName = row.string(FanInField.TARGET_FQ_NAME),
+                            targetPath = row.nullablePath(FanInField.TARGET_DIR, FanInField.TARGET_FILENAME),
+                            targetModulePath = row.nullableString(FanInField.TARGET_MODULE_PATH),
+                            targetSourceSet = row.nullableString(FanInField.TARGET_SOURCE_SET),
+                            occurrenceCount = row.int(FanInField.OCCURRENCE_COUNT),
+                            sourceFileCount = row.int(FanInField.SOURCE_FILE_COUNT),
+                            sourceModuleCount = row.int(FanInField.SOURCE_MODULE_COUNT),
+                        )
+                    }
+                }
+            }
+        }
+
+    private fun buildChildIdsByParent(
+        focal: FanInMetric?,
+        impact: List<ChangeImpactNode>,
+    ): Map<String, List<String>> =
+        buildMap {
+            focal?.targetPath?.let { targetPath ->
+                put(fileNodeId(targetPath), listOf(symbolNodeId(focal.targetFqName)))
+            }
+            impact.groupBy { parentIdFor(it, impact, focal?.targetFqName ?: it.viaTargetFqName) }
+                .forEach { (parentId, children) ->
+                    put(parentId, children.map { sourceFileNodeId(it.sourcePath) }.distinct())
+                }
+            impact.forEach { node ->
+                put(sourceFileNodeId(node.sourcePath), listOf(referenceEdgeNodeId(node)))
+            }
+        }
+
+    private fun focalSymbolNode(
+        fqName: String,
+        focal: FanInMetric?,
+        directReferences: List<ChangeImpactNode>,
+        childIdsByParent: Map<String, List<String>>,
+    ): MetricsGraphNode {
+        val attributes = buildList {
+            focal?.targetPath?.let { add("path=$it") }
+            focal?.targetModulePath?.let { add("module=$it") }
+            focal?.targetSourceSet?.let { add("sourceSet=$it") }
+            add("incomingReferences=${focal?.occurrenceCount ?: directReferences.sumOf(ChangeImpactNode::occurrenceCount)}")
+            add("sourceFiles=${focal?.sourceFileCount ?: directReferences.map(ChangeImpactNode::sourcePath).distinct().size}")
+            focal?.sourceModuleCount?.let { add("sourceModules=$it") }
+        }
+        return MetricsGraphNode(
+            id = symbolNodeId(fqName),
+            name = fqName,
+            type = MetricsGraphNodeType.SYMBOL,
+            parentId = focal?.targetPath?.let(::fileNodeId),
+            children = childIdsByParent[symbolNodeId(fqName)].orEmpty(),
+            attributes = attributes,
+        )
+    }
+
+    private fun targetFileNode(
+        targetPath: String,
+        focal: FanInMetric,
+        childIdsByParent: Map<String, List<String>>,
+    ): MetricsGraphNode =
+        MetricsGraphNode(
+            id = fileNodeId(targetPath),
+            name = targetPath,
+            type = MetricsGraphNodeType.FILE,
+            children = childIdsByParent[fileNodeId(targetPath)].orEmpty(),
+            attributes = listOfNotNull(
+                "role=target",
+                focal.targetModulePath?.let { "module=$it" },
+                focal.targetSourceSet?.let { "sourceSet=$it" },
+            ),
+        )
+
+    private fun sourceFileNode(
+        node: ChangeImpactNode,
+        childIdsByParent: Map<String, List<String>>,
+        parentId: String,
+    ): MetricsGraphNode =
+        MetricsGraphNode(
+            id = sourceFileNodeId(node.sourcePath),
+            name = node.sourcePath,
+            type = MetricsGraphNodeType.FILE,
+            parentId = parentId,
+            children = childIdsByParent[sourceFileNodeId(node.sourcePath)].orEmpty(),
+            attributes = listOf(
+                "incomingDepth=${node.depth}",
+                "references=${node.occurrenceCount}",
+                "via=${node.viaTargetFqName}",
+            ),
+        )
+
+    private fun referenceEdgeNode(node: ChangeImpactNode): MetricsGraphNode =
+        MetricsGraphNode(
+            id = referenceEdgeNodeId(node),
+            name = node.viaTargetFqName,
+            type = MetricsGraphNodeType.REFERENCE_EDGE,
+            parentId = sourceFileNodeId(node.sourcePath),
+            attributes = listOf(
+                "from=${node.sourcePath}",
+                "to=${node.viaTargetFqName}",
+                "references=${node.occurrenceCount}",
+            ),
+        )
+
+    private fun parentIdFor(
+        node: ChangeImpactNode,
+        impact: List<ChangeImpactNode>,
+        fqName: String,
+    ): String =
+        impact
+            .firstOrNull { candidate ->
+                candidate.depth == node.depth - 1 &&
+                    node.viaTargetFqName.endsWith(candidate.sourcePath.substringAfterLast('/').removeSuffix(".kt"))
+            }
+            ?.sourcePath
+            ?.let(::sourceFileNodeId)
+            ?: symbolNodeId(fqName)
+
+    private fun symbolNodeId(fqName: String): String = "symbol:$fqName"
+
+    private fun fileNodeId(path: String): String = "file:$path"
+
+    private fun sourceFileNodeId(path: String): String = "source-file:$path"
+
+    private fun referenceEdgeNodeId(node: ChangeImpactNode): String = "via:${node.viaTargetFqName}:${node.sourcePath}"
 
     private fun schemaIsCurrent(conn: Connection): Boolean = try {
         val version = conn.prepareStatement("SELECT version FROM schema_version LIMIT 1").use { stmt ->
