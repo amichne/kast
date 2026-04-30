@@ -337,14 +337,16 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
         val impact = changeImpactRadius(fqName = fqName, depth = depth)
         val directReferences = impact.filter { it.depth == 1 && it.viaTargetFqName == fqName }
         val childIdsByParent = buildChildIdsByParent(focal, impact)
+        val impactBySourcePath = impact.groupBy { it.sourcePath }
         val nodes = buildList {
             add(focalSymbolNode(fqName, focal, directReferences, childIdsByParent))
             focal?.targetPath?.let { targetPath ->
                 add(targetFileNode(targetPath, focal, childIdsByParent))
             }
-            impact.forEach { node ->
-                add(sourceFileNode(node, childIdsByParent, parentIdFor(node, impact, fqName)))
-                add(referenceEdgeNode(node))
+            impactBySourcePath.forEach { (_, nodesForPath) ->
+                val representative = nodesForPath.minByOrNull { it.depth } ?: nodesForPath.first()
+                add(sourceFileNode(nodesForPath, childIdsByParent, parentIdFor(representative, impact, fqName)))
+                nodesForPath.forEach { node -> add(referenceEdgeNode(node)) }
             }
         }
         val edges = buildList {
@@ -357,23 +359,26 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
                     ),
                 )
             }
-            impact.forEach { node ->
+            impactBySourcePath.forEach { (_, nodesForPath) ->
+                val representative = nodesForPath.minByOrNull { it.depth } ?: nodesForPath.first()
                 add(
                     MetricsGraphEdge(
-                        from = parentIdFor(node, impact, fqName),
-                        to = sourceFileNodeId(node.sourcePath),
+                        from = parentIdFor(representative, impact, fqName),
+                        to = sourceFileNodeId(representative.sourcePath),
                         edgeType = MetricsGraphEdgeType.REFERENCED_BY,
-                        weight = node.occurrenceCount,
+                        weight = nodesForPath.sumOf(ChangeImpactNode::occurrenceCount),
                     ),
                 )
-                add(
-                    MetricsGraphEdge(
-                        from = sourceFileNodeId(node.sourcePath),
-                        to = referenceEdgeNodeId(node),
-                        edgeType = MetricsGraphEdgeType.REFERENCES,
-                        weight = node.occurrenceCount,
-                    ),
-                )
+                nodesForPath.forEach { node ->
+                    add(
+                        MetricsGraphEdge(
+                            from = sourceFileNodeId(node.sourcePath),
+                            to = referenceEdgeNodeId(node),
+                            edgeType = MetricsGraphEdgeType.REFERENCES,
+                            weight = node.occurrenceCount,
+                        ),
+                    )
+                }
             }
         }
         return MetricsGraph(
@@ -523,22 +528,24 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
         )
 
     private fun sourceFileNode(
-        node: ChangeImpactNode,
+        nodes: List<ChangeImpactNode>,
         childIdsByParent: Map<String, List<String>>,
         parentId: String,
-    ): MetricsGraphNode =
-        MetricsGraphNode(
-            id = sourceFileNodeId(node.sourcePath),
-            name = node.sourcePath,
+    ): MetricsGraphNode {
+        val representative = nodes.minByOrNull { it.depth } ?: nodes.first()
+        return MetricsGraphNode(
+            id = sourceFileNodeId(representative.sourcePath),
+            name = representative.sourcePath,
             type = MetricsGraphNodeType.FILE,
             parentId = parentId,
-            children = childIdsByParent[sourceFileNodeId(node.sourcePath)].orEmpty(),
+            children = childIdsByParent[sourceFileNodeId(representative.sourcePath)].orEmpty(),
             attributes = listOf(
-                "incomingDepth=${node.depth}",
-                "references=${node.occurrenceCount}",
-                "via=${node.viaTargetFqName}",
+                "incomingDepth=${representative.depth}",
+                "references=${nodes.sumOf(ChangeImpactNode::occurrenceCount)}",
+                "via=${representative.viaTargetFqName}",
             ),
         )
+    }
 
     private fun referenceEdgeNode(node: ChangeImpactNode): MetricsGraphNode =
         MetricsGraphNode(

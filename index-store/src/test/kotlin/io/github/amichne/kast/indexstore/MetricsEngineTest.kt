@@ -364,6 +364,62 @@ class MetricsEngineTest {
         }
     }
 
+    @Test
+    fun `graph deduplicates sourceFileNodes when same path appears with multiple viaTargetFqNames`() {
+        val root = workspaceRoot.toAbsolutePath().normalize()
+        SqliteSourceIndexStore(root).use { store ->
+            store.ensureSchema()
+            store.saveFullIndex(
+                updates = listOf(
+                    fileUpdate("/lib/Root.kt", identifiers = setOf("Root"), packageName = "lib", modulePath = ":lib", sourceSet = "main"),
+                    fileUpdate("/app/A.kt", identifiers = setOf("A"), packageName = "app", modulePath = ":app", sourceSet = "main"),
+                    fileUpdate("/app/B.kt", identifiers = setOf("B"), packageName = "app", modulePath = ":app", sourceSet = "main"),
+                    fileUpdate("/app/D.kt", identifiers = setOf("D"), packageName = "app", modulePath = ":app", sourceSet = "main"),
+                ),
+                manifest = mapOf(
+                    "/lib/Root.kt" to 1L,
+                    "/app/A.kt" to 1L,
+                    "/app/B.kt" to 1L,
+                    "/app/D.kt" to 1L,
+                ),
+            )
+            // A.kt and B.kt each reference lib.Root (depth=1 callers)
+            store.upsertSymbolReference("/app/A.kt", 10, "lib.Root", "/lib/Root.kt", 1)
+            store.upsertSymbolReference("/app/B.kt", 10, "lib.Root", "/lib/Root.kt", 1)
+            // D.kt references both A.kt and B.kt symbols — two different viaTargetFqNames at depth=2
+            store.upsertSymbolReference("/app/D.kt", 10, "app.A", "/app/A.kt", 1)
+            store.upsertSymbolReference("/app/D.kt", 20, "app.B", "/app/B.kt", 1)
+        }
+
+        MetricsEngine(root).use { metrics ->
+            val graph = metrics.graph(fqName = "lib.Root", depth = 2)
+
+            val nodeIds = graph.nodes.map { it.id }
+            // Each sourcePath must appear exactly once as a source-file node
+            assertEquals(nodeIds.distinct(), nodeIds, "graph must not contain duplicate node IDs")
+
+            val sourceFileNodes = graph.nodes.filter { it.type == MetricsGraphNodeType.FILE && it.id.startsWith("source-file:") }
+            val sourceFilePaths = sourceFileNodes.map { it.name }
+            assertEquals(sourceFilePaths.distinct(), sourceFilePaths, "duplicate sourceFileNodes found for same path")
+
+            // /app/D.kt appears via both app.A and app.B — must produce exactly one source-file node
+            assertEquals(1, sourceFileNodes.count { it.name == "/app/D.kt" })
+
+            // both reference edge nodes for D.kt must still be present
+            val dReferenceEdges = graph.nodes.filter { it.type == MetricsGraphNodeType.REFERENCE_EDGE && it.parentId == "source-file:/app/D.kt" }
+            assertEquals(2, dReferenceEdges.size)
+            assertTrue(dReferenceEdges.any { it.id == "via:app.A:/app/D.kt" })
+            assertTrue(dReferenceEdges.any { it.id == "via:app.B:/app/D.kt" })
+
+            // aggregated REFERENCED_BY edge weight for D.kt must be sum of both occurrences (1+1=2)
+            val referencedByDEdge = graph.edges.filter {
+                it.edgeType == MetricsGraphEdgeType.REFERENCED_BY && it.to == "source-file:/app/D.kt"
+            }
+            assertEquals(1, referencedByDEdge.size)
+            assertEquals(2, referencedByDEdge.single().weight)
+        }
+    }
+
     private fun seededWorkspace(): Path {
         val root = workspaceRoot.toAbsolutePath().normalize()
         SqliteSourceIndexStore(root).use { store ->
