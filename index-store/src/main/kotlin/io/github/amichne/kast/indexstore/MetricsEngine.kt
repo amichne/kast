@@ -312,9 +312,9 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
                 if (trimmed.isEmpty()) {
                     stmt.setInt(1, limit)
                 } else {
-                    val needle = trimmed.lowercase()
+                    val needle = trimmed.lowercase().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
                     stmt.setString(1, "%$needle%")
-                    stmt.setString(2, needle)
+                    stmt.setString(2, trimmed.lowercase())
                     stmt.setString(3, "%.$needle")
                     stmt.setString(4, "$needle%")
                     stmt.setInt(5, limit)
