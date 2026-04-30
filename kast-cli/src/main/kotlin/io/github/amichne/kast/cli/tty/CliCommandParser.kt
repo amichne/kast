@@ -154,16 +154,23 @@ internal class CliCommandParser(
                     ),
                     depth = parsed.optionalInt("depth") ?: 3,
                 )
-                listOf("metrics", "graph") -> CliCommand.Metrics(
-                    subcommand = MetricsSubcommand.GRAPH,
-                    workspaceRoot = parsed.requireWorkspaceRootPath(),
-                    symbol = parsed.options["symbol"] ?: throw CliFailure(
-                        code = "CLI_USAGE",
-                        message = "--symbol is required for metrics graph",
-                    ),
-                    depth = parsed.optionalInt("depth") ?: 3,
-                    interactive = parsed.parseBool("interactive"),
-                )
+                listOf("metrics", "graph") -> {
+                    val symbol = parsed.options["symbol"]
+                    val interactive = parsed.parseBool("interactive")
+                    if (symbol == null && !interactive) {
+                        throw CliFailure(
+                            code = "CLI_USAGE",
+                            message = "--symbol is required for metrics graph (or pass --interactive=true to pick one)",
+                        )
+                    }
+                    CliCommand.Metrics(
+                        subcommand = MetricsSubcommand.GRAPH,
+                        workspaceRoot = parsed.requireWorkspaceRootPath(),
+                        symbol = symbol,
+                        depth = parsed.optionalInt("depth") ?: 3,
+                        interactive = interactive,
+                    )
+                }
                 else -> throw CliFailure(
                     code = "CLI_USAGE",
                     message = "Unknown command: ${metadata.commandText}",

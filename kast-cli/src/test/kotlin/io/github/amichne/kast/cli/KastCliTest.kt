@@ -173,6 +173,30 @@ class KastCliTest {
         assertEquals("shell stderr\n", stderr.toString())
     }
 
+    @Test
+    fun `interactive graph falls back to shell rendering when stdout is redirected`() {
+        val stdout = StringBuilder()
+        val stderr = StringBuilder()
+        val graph = sampleMetricsGraph()
+        val cli = KastCli.testInstance(
+            commandExecutorFactory = { _ ->
+                object : CliCommandExecutor {
+                    override suspend fun execute(command: CliCommand): CliExecutionResult {
+                        return CliExecutionResult(
+                            output = CliOutput.InteractiveGraph(graph),
+                        )
+                    }
+                }
+            },
+        )
+
+        val exitCode = cli.run(arrayOf("--help"), stdout, stderr)
+
+        assertEquals(0, exitCode)
+        assertEquals(MetricsGraphShell.render(graph), stdout.toString())
+        assertEquals("", stderr.toString())
+    }
+
     private fun sampleCapabilities(): BackendCapabilities {
         return BackendCapabilities(
             backendName = "standalone",

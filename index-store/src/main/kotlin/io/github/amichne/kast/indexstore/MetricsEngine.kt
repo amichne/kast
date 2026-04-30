@@ -266,6 +266,70 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
         )
     }
 
+    /**
+     * Fuzzy search the source index for symbol fully-qualified names that match [query].
+     *
+     * The matcher is case-insensitive and substring-based against `fq_names.fq_name`. Results
+     * are ordered so that exact matches and short, simple-name matches rank first; remaining
+     * matches are returned alphabetically. An empty or blank [query] returns the most-frequently
+     * referenced symbols up to [limit].
+     *
+     * Returns an empty list when the workspace has not been indexed yet or the schema is stale,
+     * mirroring the safe defaults used by the metrics queries.
+     */
+    fun searchSymbols(query: String, limit: Int = 25): List<String> {
+        require(limit >= 0) { "limit must be non-negative" }
+        if (limit == 0) return emptyList()
+        val trimmed = query.trim()
+        return readMetric(emptyList()) { conn ->
+            val sql = if (trimmed.isEmpty()) {
+                """
+                SELECT names.fq_name
+                FROM fq_names names
+                JOIN symbol_references refs ON refs.target_fq_id = names.fq_id
+                GROUP BY names.fq_id
+                ORDER BY COUNT(*) DESC, names.fq_name ASC
+                LIMIT ?
+                """.trimIndent()
+            } else {
+                """
+                SELECT names.fq_name
+                FROM fq_names names
+                WHERE LOWER(names.fq_name) LIKE ?
+                ORDER BY
+                    CASE
+                        WHEN LOWER(names.fq_name) = ? THEN 0
+                        WHEN LOWER(names.fq_name) LIKE ? THEN 1
+                        WHEN LOWER(names.fq_name) LIKE ? THEN 2
+                        ELSE 3
+                    END,
+                    LENGTH(names.fq_name) ASC,
+                    names.fq_name ASC
+                LIMIT ?
+                """.trimIndent()
+            }
+            conn.prepareStatement(sql).use { stmt ->
+                if (trimmed.isEmpty()) {
+                    stmt.setInt(1, limit)
+                } else {
+                    val needle = trimmed.lowercase()
+                    stmt.setString(1, "%$needle%")
+                    stmt.setString(2, needle)
+                    stmt.setString(3, "%.$needle")
+                    stmt.setString(4, "$needle%")
+                    stmt.setInt(5, limit)
+                }
+                stmt.executeQuery().use { rs ->
+                    buildList {
+                        while (rs.next()) {
+                            add(rs.getString(1))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     fun graph(fqName: String, depth: Int): MetricsGraph {
         require(depth >= 0) { "depth must be non-negative" }
 

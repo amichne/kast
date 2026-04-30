@@ -302,6 +302,48 @@ class MetricsEngineTest {
     }
 
     @Test
+    fun `searchSymbols returns empty when database is missing`() {
+        val root = workspaceRoot.toAbsolutePath().normalize()
+        MetricsEngine(root).use { metrics ->
+            assertTrue(metrics.searchSymbols("foo").isEmpty())
+        }
+    }
+
+    @Test
+    fun `searchSymbols ranks popular symbols when query is blank`() {
+        val root = seededWorkspace()
+        MetricsEngine(root).use { metrics ->
+            val results = metrics.searchSymbols(query = "  ", limit = 5)
+            assertEquals("lib.Foo", results.first())
+            assertTrue(results.contains("lib.Bar"))
+            assertTrue(results.contains("app.A"))
+        }
+    }
+
+    @Test
+    fun `searchSymbols matches case-insensitively and ranks exact match first`() {
+        val root = seededWorkspace()
+        MetricsEngine(root).use { metrics ->
+            val results = metrics.searchSymbols(query = "FOO", limit = 5)
+            assertEquals("lib.Foo", results.first())
+        }
+    }
+
+    @Test
+    fun `searchSymbols rejects negative limit and returns empty for zero`() {
+        val root = seededWorkspace()
+        MetricsEngine(root).use { metrics ->
+            assertTrue(metrics.searchSymbols("foo", limit = 0).isEmpty())
+            try {
+                metrics.searchSymbols("foo", limit = -1)
+                assertTrue(false, "expected IllegalArgumentException")
+            } catch (_: IllegalArgumentException) {
+                // expected
+            }
+        }
+    }
+
+    @Test
     fun `returns empty metrics when database schema is not current`() {
         val root = workspaceRoot.toAbsolutePath().normalize()
         val dbPath = sourceIndexDatabasePath(root)

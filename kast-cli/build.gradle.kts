@@ -20,7 +20,7 @@ val embeddedSkillFiles = listOf(
 )
 
 application {
-    mainClass = "io.github.amichne.kast.cli.CliMainKt"
+    mainClass = "io.github.amichne.kast.cli.tty.CliMainKt"
 }
 
 dependencies {
@@ -38,12 +38,13 @@ graalvmNative {
     binaries {
         named("main") {
             imageName.set("kast")
-            mainClass.set("io.github.amichne.kast.cli.CliMainKt")
+            mainClass.set("io.github.amichne.kast.cli.tty.CliMainKt")
             sharedLibrary.set(false)
             configurationFileDirectories.from(nativeConfigDir)
             buildArgs.addAll(
                 "--no-fallback",
                 "--initialize-at-build-time=kotlin.DeprecationLevel",
+                "--enable-native-access=ALL-UNNAMED",
                 "-H:+ReportExceptionStackTraces",
             )
         }

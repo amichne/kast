@@ -86,6 +86,7 @@ class KastCli private constructor(
             }
 
             is CliOutput.InteractiveGraph -> writeInteractiveGraph(output.graph, stdout)
+            is CliOutput.InteractiveGraphPicker -> writeInteractiveGraphPicker(output, stdout, stderr)
             is CliOutput.ExternalProcess -> runExternalProcess(output.process, stdout, stderr)
             CliOutput.None -> 0
         }
@@ -104,7 +105,27 @@ class KastCli private constructor(
             return 0
         }
         return withContext(Dispatchers.IO) {
-            MetricsGraphTerminal(graph).run(System.`in`, System.out)
+            MetricsGraphTerminal(graph).run()
+        }
+    }
+
+    private suspend fun writeInteractiveGraphPicker(
+        spec: CliOutput.InteractiveGraphPicker,
+        stdout: Appendable,
+        stderr: Appendable,
+    ): Int {
+        if (stdout !== System.out) {
+            stderr.append(
+                "Interactive symbol picker requires a TTY. Pass --symbol=<fqName> to render the graph as JSON.\n",
+            )
+            return 2
+        }
+        return withContext(Dispatchers.IO) {
+            MetricsGraphPicker(
+                workspaceRoot = spec.workspaceRoot,
+                depth = spec.depth,
+                initialQuery = spec.initialQuery.orEmpty(),
+            ).run()
         }
     }
 

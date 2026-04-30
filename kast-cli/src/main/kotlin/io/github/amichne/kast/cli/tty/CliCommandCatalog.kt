@@ -1009,14 +1009,16 @@ internal object CliCommandCatalog {
             path = listOf("metrics", "graph"),
             group = CliCommandGroup.METRICS,
             summary = "Show a navigable symbol graph from the local reference index.",
-            description = "Queries the local SQLite reference index without a running daemon. Builds a focal symbol graph with target file, incoming source files, reference edges, and index summary. Add --interactive=true for a keyboard-navigable shell view.",
+            description = "Queries the local SQLite reference index without a running daemon. Builds a focal symbol graph with target file, incoming source files, reference edges, and index summary. Add --interactive=true for a keyboard-navigable shell view; with --interactive you may omit --symbol to fuzzy-pick one from the index.",
             usages = listOf(
                 "$CLI_EXECUTABLE_NAME metrics graph --workspace-root=/absolute/path/to/workspace --symbol=com.example.MyClass [--depth=3] [--interactive=true]",
+                "$CLI_EXECUTABLE_NAME metrics graph --workspace-root=/absolute/path/to/workspace --interactive=true",
             ),
             options = listOf(workspaceRootOption, metricsSymbolOption, metricsDepthOption, metricsInteractiveOption),
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME metrics graph --workspace-root=/absolute/path/to/workspace --symbol=com.example.MyClass",
                 "$CLI_EXECUTABLE_NAME metrics graph --workspace-root=/absolute/path/to/workspace --symbol=com.example.MyClass --depth=5 --interactive=true",
+                "$CLI_EXECUTABLE_NAME metrics graph --workspace-root=/absolute/path/to/workspace --interactive=true",
             ),
         ),
         // Skill wrapper: metrics — hidden, called by agent shell scripts

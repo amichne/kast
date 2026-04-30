@@ -20,6 +20,11 @@ internal sealed interface CliOutput {
     data class JsonValue(val value: Any) : CliOutput
     data class Text(val value: String) : CliOutput
     data class InteractiveGraph(val graph: MetricsGraph) : CliOutput
+    data class InteractiveGraphPicker(
+        val workspaceRoot: Path,
+        val depth: Int,
+        val initialQuery: String? = null,
+    ) : CliOutput
     data class ExternalProcess(val process: CliExternalProcess) : CliOutput
     data object None : CliOutput
 }
@@ -264,9 +269,17 @@ internal class DefaultCliCommandExecutor(
 
             is CliCommand.Metrics -> {
                 if (command.subcommand == MetricsSubcommand.GRAPH && command.interactive) {
+                    if (command.symbol == null) {
+                        return CliExecutionResult(
+                            output = CliOutput.InteractiveGraphPicker(
+                                workspaceRoot = command.workspaceRoot,
+                                depth = command.depth,
+                            ),
+                        )
+                    }
                     val graph = MetricsEngine(command.workspaceRoot).use { engine ->
                         engine.graph(
-                            fqName = requireNotNull(command.symbol) { "--symbol is required for graph" },
+                            fqName = command.symbol,
                             depth = command.depth,
                         )
                     }
