@@ -10,12 +10,10 @@ import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.defaultSocketPath
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.api.contract.ServerLimits
-import io.github.amichne.kast.indexstore.ReferenceIndexer
 import io.github.amichne.kast.indexstore.SqliteSourceIndexStore
 import io.github.amichne.kast.server.AnalysisServer
 import io.github.amichne.kast.server.AnalysisServerConfig
 import io.github.amichne.kast.server.RunningAnalysisServer
-import io.github.amichne.kast.shared.analysis.PsiReferenceScanner
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.thread
@@ -63,13 +61,13 @@ internal class KastPluginService(
 
         val server = AnalysisServer(backend, config)
         runningServer = server.start()
-        startReferenceIndexing(workspaceRoot)
+        startProjectIndexing(workspaceRoot, kastConfig)
 
         LOG.info("Kast intellij backend started on socket: $socketPath")
     }
 
     override fun dispose() {
-        cancelReferenceIndexing()
+        cancelProjectIndexing()
         runningServer?.let { server ->
             LOG.info("Shutting down kast intellij backend")
             runCatching { server.close() }
@@ -78,46 +76,47 @@ internal class KastPluginService(
         }
     }
 
-    private fun startReferenceIndexing(workspaceRoot: Path) {
+    private fun startProjectIndexing(
+        workspaceRoot: Path,
+        kastConfig: KastConfig,
+    ) {
         if (indexingThread != null) return
         indexingCancelled.set(false)
-        val store = SqliteSourceIndexStore(workspaceRoot)
-        indexStore = store
         DumbService.getInstance(project).runWhenSmart {
             if (indexingCancelled.get() || project.isDisposed) return@runWhenSmart
             indexingThread = thread(
                 start = true,
                 isDaemon = true,
-                name = "kast-intellij-reference-indexer",
+                name = "kast-intellij-project-indexer",
             ) {
-                val environment = IntelliJReferenceIndexEnvironment(
-                    project = project,
-                    workspaceRoot = workspaceRoot,
-                    cancelled = { indexingCancelled.get() || Thread.currentThread().isInterrupted || project.isDisposed },
-                )
                 runCatching {
-                    store.ensureSchema()
-                    val currentFilePaths = environment.allFilePaths()
-                    store.removeReferencesOutsideSources(currentFilePaths)
-                    ReferenceIndexer(store).indexReferences(
-                        filePaths = currentFilePaths,
-                        referenceScanner = PsiReferenceScanner(environment)::scanFileReferences,
-                        isCancelled = environment::isCancelled,
-                    )
+                    runCatching {
+                        SourceIndexHydrator().hydrate(workspaceRoot, kastConfig.indexing.remote)
+                    }.onFailure { error ->
+                        LOG.warn("Kast IntelliJ remote source index hydration failed", error)
+                    }
+                    val store = SqliteSourceIndexStore(workspaceRoot)
+                    indexStore = store
+                    IntelliJProjectIndexer(
+                        project = project,
+                        workspaceRoot = workspaceRoot,
+                        store = store,
+                        cancelled = { indexingCancelled.get() || Thread.currentThread().isInterrupted || project.isDisposed },
+                    ).indexProject(kastConfig)
                 }.onSuccess {
                     if (!indexingCancelled.get()) {
-                        LOG.info("Kast IntelliJ reference index completed")
+                        LOG.info("Kast IntelliJ project index completed")
                     }
                 }.onFailure { error ->
                     if (!indexingCancelled.get()) {
-                        LOG.warn("Kast IntelliJ reference index failed", error)
+                        LOG.warn("Kast IntelliJ project index failed", error)
                     }
                 }
             }
         }
     }
 
-    private fun cancelReferenceIndexing() {
+    private fun cancelProjectIndexing() {
         indexingCancelled.set(true)
         indexingThread?.interrupt()
         if (!ApplicationManager.getApplication().isDispatchThread) {
@@ -126,7 +125,7 @@ internal class KastPluginService(
         indexingThread = null
         indexStore?.let { store ->
             runCatching { store.close() }
-                .onFailure { LOG.warn("Error closing kast reference index store", it) }
+                .onFailure { LOG.warn("Error closing kast project index store", it) }
         }
         indexStore = null
     }

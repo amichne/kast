@@ -8,7 +8,7 @@ import io.github.amichne.kast.api.contract.PackageName
 import io.github.amichne.kast.indexstore.FileIndexUpdate
 import io.github.amichne.kast.indexstore.SourceIndexSnapshot
 import io.github.amichne.kast.indexstore.SourceIndexWriter
-import io.github.amichne.kast.indexstore.splitModuleName
+import io.github.amichne.kast.indexstore.parseSourceFileIndex
 import java.util.concurrent.ConcurrentHashMap
 
 internal class MutableSourceIdentifierIndex(
@@ -99,23 +99,19 @@ internal class MutableSourceIdentifierIndex(
         moduleName: ModuleName? = null,
     ) {
         val path = NormalizedPath.ofNormalized(normalizedPath)
-        val identifiers = identifierRegex.findAll(newContent).map { match -> KotlinIdentifier(match.value) }.toSet()
+        val fileIndex = parseSourceFileIndex(
+            path = normalizedPath,
+            content = newContent,
+            moduleName = moduleName?.value,
+        )
+        val identifiers = fileIndex.identifiers.mapTo(mutableSetOf()) { KotlinIdentifier(it) }
         replaceIdentifiers(normalizedPath = path, identifiers = identifiers)
-        extractFileMetadata(path, newContent, moduleName)
+        replaceFileMetadata(path, fileIndex, moduleName)
 
         backingStore?.let { store ->
             runCatching {
-                val (modPath, srcSet) = splitModuleName(moduleName?.value)
                 store.saveFileIndex(
-                    FileIndexUpdate(
-                        path = normalizedPath,
-                        identifiers = identifiers.mapTo(mutableSetOf()) { it.value },
-                        packageName = packageByPath[path]?.value,
-                        modulePath = modPath,
-                        sourceSet = srcSet,
-                        imports = importsByPath[path]?.mapTo(mutableSetOf()) { it.value }.orEmpty(),
-                        wildcardImports = wildcardImportPackagesByPath[path]?.mapTo(mutableSetOf()) { it.value }.orEmpty(),
-                    ),
+                    fileIndex,
                 )
             }
         }
@@ -150,12 +146,20 @@ internal class MutableSourceIdentifierIndex(
         content: String,
         moduleName: ModuleName? = null,
     ) {
-        extractFileMetadata(NormalizedPath.ofNormalized(normalizedPath), content, moduleName)
+        replaceFileMetadata(
+            normalizedPath = NormalizedPath.ofNormalized(normalizedPath),
+            fileIndex = parseSourceFileIndex(
+                path = normalizedPath,
+                content = content,
+                moduleName = moduleName?.value,
+            ),
+            moduleName = moduleName,
+        )
     }
 
-    private fun extractFileMetadata(
+    private fun replaceFileMetadata(
         normalizedPath: NormalizedPath,
-        content: String,
+        fileIndex: FileIndexUpdate,
         moduleName: ModuleName?,
     ) {
         if (moduleName != null) {
@@ -163,20 +167,12 @@ internal class MutableSourceIdentifierIndex(
         } else {
             moduleNameByPath.remove(normalizedPath)
         }
-        packageRegex.find(content)?.groupValues?.getOrNull(1)
+        fileIndex.packageName
             ?.let { packageByPath[normalizedPath] = PackageName(it) }
         ?: packageByPath.remove(normalizedPath)
 
-        val imports = mutableSetOf<FqName>()
-        val wildcardPackages = mutableSetOf<PackageName>()
-        importRegex.findAll(content).forEach { match ->
-            val fqn = match.groupValues[1]
-            if (match.groupValues[2] == ".*") {
-                wildcardPackages += PackageName(fqn)
-            } else {
-                imports += FqName(fqn)
-            }
-        }
+        val imports = fileIndex.imports.mapTo(mutableSetOf()) { FqName(it) }
+        val wildcardPackages = fileIndex.wildcardImports.mapTo(mutableSetOf()) { PackageName(it) }
 
         if (imports.isNotEmpty()) importsByPath[normalizedPath] = imports
         else importsByPath.remove(normalizedPath)
@@ -222,9 +218,6 @@ internal class MutableSourceIdentifierIndex(
     }
 
     companion object {
-        private val packageRegex = Regex("""^package\s+([\w]+(?:\.[\w]+)*)""", RegexOption.MULTILINE)
-        private val importRegex = Regex("""^import\s+([\w]+(?:\.[\w]+)*)(\.\*)?""", RegexOption.MULTILINE)
-
         /**
          * Computes intermediate FQ name prefixes between [targetPackage] (exclusive)
          * and [targetFqName] (exclusive). For example, given

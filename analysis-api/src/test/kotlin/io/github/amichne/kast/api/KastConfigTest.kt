@@ -94,6 +94,10 @@ class KastConfigTest {
 
                 [cache]
                 enabled = false
+
+                [indexing.remote]
+                enabled = true
+                source-index-url = "file:///tmp/kast/source-index.db"
                 """.trimIndent(),
             )
         }
@@ -108,6 +112,8 @@ class KastConfigTest {
         assertEquals(45_000L, config.server.requestTimeoutMillis)
         assertEquals(KastConfig.defaults().server.maxConcurrentRequests, config.server.maxConcurrentRequests)
         assertEquals(false, config.cache.enabled)
+        assertEquals(true, config.indexing.remote.enabled)
+        assertEquals("file:///tmp/kast/source-index.db", config.indexing.remote.sourceIndexUrl)
         assertEquals(true, config.telemetry.enabled)
         assertEquals("references,rename", config.telemetry.scopes)
         assertEquals(config.server.maxResults, config.toServerLimits().maxResults)
