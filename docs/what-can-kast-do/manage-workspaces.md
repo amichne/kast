@@ -114,8 +114,11 @@ one response.
 === "CLI"
 
     ```console title="List workspace files"
-    kast workspace-files \
-      --workspace-root=$(pwd)
+    kast workspace files \
+      --workspace-root=$(pwd) \
+
+      --include-files=true \
+      --max-files-per-module=500
     ```
 
 === "JSON-RPC"
