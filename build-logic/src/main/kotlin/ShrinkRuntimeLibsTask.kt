@@ -48,7 +48,7 @@ abstract class ShrinkRuntimeLibsTask : DefaultTask() {
     @get:OutputDirectory
     abstract val outputDirectory: DirectoryProperty
 
-    @get:OutputFile
+    @get:Internal
     abstract val outputClasspathFile: RegularFileProperty
 
     @TaskAction
