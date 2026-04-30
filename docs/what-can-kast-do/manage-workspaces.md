@@ -115,7 +115,8 @@ one response.
 
     ```console title="List workspace files"
     kast workspace files \
-      --workspace-root=$(pwd)
+      --workspace-root=$(pwd) \
+
       --include-files=true \
       --max-files-per-module=500
     ```
