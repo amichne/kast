@@ -100,14 +100,14 @@ class EvalSkillCommandTest {
             """
             description: test
             Trigger phrases: resolve, analyze
-            kast skill resolve
-            kast skill references
-            kast skill callers
-            kast skill diagnostics
-            kast skill rename
-            kast skill scaffold
-            kast skill write-and-validate
-            kast skill workspace-files
+            kast_resolve
+            kast_references
+            kast_callers
+            kast_diagnostics
+            kast_rename
+            kast_scaffold
+            kast_write_and_validate
+            kast_workspace_files
             """.trimIndent(),
         )
 
@@ -170,7 +170,7 @@ class EvalSkillCommandTest {
                     if (index > 0) append(",")
                     append(
                         """
-                        {"id":"routing-${index + 1}","prompt":"Routing prompt ${index + 1}","expected_skill":"kast","expected_route":"@kast","allowed_ops":["kast skill resolve"],"forbidden_ops":["grep"],"failure_mode":"$failureMode"}
+                        {"id":"routing-${index + 1}","prompt":"Routing prompt ${index + 1}","expected_skill":"kast","expected_route":"native-kast-tools","allowed_ops":["kast_resolve"],"forbidden_ops":["grep","view"],"measurement_dimensions":["discoverability"],"failure_mode":"$failureMode"}
                         """.trimIndent(),
                     )
                 }

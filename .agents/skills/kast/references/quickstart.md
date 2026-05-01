@@ -25,6 +25,7 @@ instead of switching to non-semantic Kotlin search.
 | Resolve an exact declaration | `kast skill resolve` |
 | Find usages or constructor call sites | `kast skill references` |
 | Trace incoming/outgoing flow | `kast skill callers` |
+| Query indexed metrics | `kast skill metrics` |
 | Rename safely | `kast skill rename` |
 | Apply code and validate it | `kast skill write-and-validate` |
 | Re-check touched files | `kast skill diagnostics` |
@@ -102,6 +103,22 @@ Wrapper metadata and nested API fields both use camelCase, including
 }'
 ```
 
+### Query indexed metrics
+
+```bash
+"$KAST_CLI_PATH" skill metrics '{
+  "workspaceRoot":"/abs/path/project",
+  "metric":"impact",
+  "symbol":"com.example.EventBean",
+  "depth":2,
+  "limit":100
+}'
+```
+
+Use metrics for fan-in, fan-out, coupling, dead-code, and impact questions.
+Treat results as advisory when the response says the reference index is missing,
+stale, or not ready.
+
 ### Understand a file quickly
 
 ```bash
@@ -159,4 +176,6 @@ than applying a manual edit.
   `.references[0]`, before assuming field names.
 - If a symbol name is broad, add `kind`, `containingType`, or `fileHint`.
 - For large result sets, narrow the query before post-processing.
+- If `workspace-files` returns `filesTruncated:true`, raise the cap only when a
+  wider file list is necessary.
 - Never pivot to `grep` or `rg` for Kotlin identity.

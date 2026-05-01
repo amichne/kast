@@ -92,7 +92,7 @@ Once the eval corpus captures the recurring miss, update the narrowest
 surface that explains the behavior:
 
 1. `SKILL.md` for portable, standards-based skill behavior
-2. `.github/agents/*.md` for GitHub Copilot-specific routing and invocation hints
+2. `.github/extensions/kast/extension.mjs` and repo instructions for GitHub Copilot-specific routing and invocation hints
 3. `.github/hooks/*` for enforcement and compatibility drift
 4. optional vendor-specific metadata only when a host actually requires it
 

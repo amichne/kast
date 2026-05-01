@@ -10,18 +10,16 @@ from Gradle builds, JUnit tests, JaCoCo coverage, and Kotlin build reports.
 
 The `.agent-workflow/` directory also holds log files from script executions.
 
-## Copilot session-end validation
+## Session-end validation
 
-The repository-level Copilot hook manifest at `.github/hooks/hooks.json`
-tracks session-owned file edits via `postToolUse` and invokes a `sessionEnd`
-validation command for completed sessions. When the recorded edits include
-code or Gradle build inputs, that command runs the Gradle build-health check
-via `.agents/skills/kotlin-gradle-loop/scripts/gradle/run_gradle_hook.sh`
-when `state.json` is present and falls back to `check` otherwise.
+If the repository has command hooks, the repository hook manifest owns
+session-end validation. When recorded edits include code or Gradle build inputs,
+the validation command should run the Gradle build-health check through this
+skill's `scripts/gradle/run_gradle_hook.sh` when `state.json` is present and
+fall back to the repository's default high-signal task otherwise.
 
 `project.gradleHook` remains a required discovery output for projects that
-want the session-end build-health hook to use a project-specific high-signal
-Gradle task.
+want build-health validation to use a project-specific high-signal Gradle task.
 
 ## Schema
 

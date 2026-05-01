@@ -3,7 +3,7 @@
     "target": {
         "kind": "skill",
         "name": "kast",
-        "path": "/home/runner/work/kast/kast/.agents/skills/kast"
+        "path": "/Users/amichne/code/kast/.agents/skills/kast"
     },
     "summary": {
         "score": 99,
@@ -12,27 +12,27 @@
             {
                 "checkId": "completeness-wrapper-metrics",
                 "points": 1,
-                "reason": "Wrapper metrics: skillMd=false, openApi=false"
+                "reason": "Wrapper metrics: skillMd=true, openApi=false"
             }
         ],
         "checkCounts": {
-            "pass": 16,
+            "pass": 17,
             "fail": 0,
             "warn": 1,
-            "total": 17
+            "total": 18
         },
         "whyBullets": [
-            "16 checks passed"
+            "17 checks passed"
         ],
-        "fixFirst": "completeness-wrapper-metrics: Wrapper metrics: skillMd=false, openApi=false",
-        "watchNext": "completeness-wrapper-metrics: Wrapper metrics: skillMd=false, openApi=false"
+        "fixFirst": "completeness-wrapper-metrics: Wrapper metrics: skillMd=true, openApi=false",
+        "watchNext": "completeness-wrapper-metrics: Wrapper metrics: skillMd=true, openApi=false"
     },
     "budgets": {
-        "triggerTokens": 987,
-        "triggerBand": "FAIR",
+        "triggerTokens": 1703,
+        "triggerBand": "POOR",
         "invokeTokens": 0,
         "invokeBand": "GOOD",
-        "deferredTokens": 1116,
+        "deferredTokens": 1314,
         "deferredBand": "GOOD"
     },
     "checks": [
@@ -91,6 +91,13 @@
             "severity": "WARNING",
             "status": "PASS",
             "message": "Failure-mode coverage spans 10/10 required categories"
+        },
+        {
+            "id": "corpus-cost-measurement-coverage",
+            "category": "corpus",
+            "severity": "WARNING",
+            "status": "PASS",
+            "message": "Cost-of-insight coverage spans 4/4 criteria; native-route=22/22, native-ops=21/22, guardrails=22/22"
         },
         {
             "id": "completeness-wrapper-resolve",
@@ -153,15 +160,15 @@
             "category": "completeness",
             "severity": "INFO",
             "status": "WARN",
-            "message": "Wrapper metrics: skillMd=false, openApi=false",
-            "remediation": "Document `kast skill metrics` in both SKILL.md and fixtures/maintenance/references/wrapper-openapi.yaml"
+            "message": "Wrapper metrics: skillMd=true, openApi=false",
+            "remediation": "Document `kast_metrics` (or `kast skill metrics`) in SKILL.md and `kast skill metrics` in fixtures/maintenance/references/wrapper-openapi.yaml"
         }
     ],
     "metrics": [
         {
             "id": "budget-trigger-tokens",
             "category": "budget",
-            "value": 987.0,
+            "value": 1703.0,
             "unit": "tokens"
         },
         {
@@ -173,7 +180,7 @@
         {
             "id": "budget-deferred-tokens",
             "category": "budget",
-            "value": 1116.0,
+            "value": 1314.0,
             "unit": "tokens"
         },
         {
@@ -193,13 +200,37 @@
             "category": "corpus",
             "value": 10.0,
             "unit": "categories"
+        },
+        {
+            "id": "corpus-cost-measurement-dimension-count",
+            "category": "corpus",
+            "value": 4.0,
+            "unit": "criteria"
+        },
+        {
+            "id": "corpus-routing-native-route-count",
+            "category": "corpus",
+            "value": 22.0,
+            "unit": "cases"
+        },
+        {
+            "id": "corpus-routing-native-op-count",
+            "category": "corpus",
+            "value": 21.0,
+            "unit": "cases"
+        },
+        {
+            "id": "corpus-routing-generic-guardrail-count",
+            "category": "corpus",
+            "value": 22.0,
+            "unit": "cases"
         }
     ],
     "improvementBrief": {
         "findings": [
-            "completeness-wrapper-metrics: Wrapper metrics: skillMd=false, openApi=false (-1)"
+            "completeness-wrapper-metrics: Wrapper metrics: skillMd=true, openApi=false (-1)"
         ],
-        "suggestedPrompt": "Fix 1 issue(s): completeness-wrapper-metrics: Wrapper metrics: skillMd=false, openApi=false"
+        "suggestedPrompt": "Fix 1 issue(s): completeness-wrapper-metrics: Wrapper metrics: skillMd=true, openApi=false"
     },
     "measurementPlan": {
         "steps": [
@@ -208,3 +239,4 @@
         ]
     }
 }
+
