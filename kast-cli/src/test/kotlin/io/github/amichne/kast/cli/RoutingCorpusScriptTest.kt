@@ -84,7 +84,8 @@ class RoutingCorpusScriptTest {
 
         val promotions = outputPromotions.readText()
         assertTrue(promotions.contains("\"expected_skill\": \"kast\""))
-        assertTrue(promotions.contains("\"expected_route\": \"@kast\""))
+        assertTrue(promotions.contains("\"expected_route\": \"native-kast-tools\""))
+        assertTrue(promotions.contains("\"kast_resolve\""))
     }
 
     private fun findRepoRoot(start: Path): Path = generateSequence(start.normalize()) { it.parent }

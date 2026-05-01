@@ -41,6 +41,7 @@ internal class SkillAdapter(private val skillDir: Path) {
         val metrics = mutableListOf<EvalMetric>()
         val behaviorCorpus = validateBehaviorCorpus()
         val routingCorpus = validateRoutingCorpus()
+        val routingMeasurements = analyzeRoutingMeasurements()
 
         checks += checkSkillMdExists()
         checks += checkLegacyWrappersRemoved()
@@ -50,11 +51,12 @@ internal class SkillAdapter(private val skillDir: Path) {
         checks += checkBehaviorEvalCorpus(behaviorCorpus)
         checks += checkRoutingEvalCorpus(routingCorpus)
         checks += checkFailureModeCoverage(behaviorCorpus, routingCorpus)
+        checks += checkCostMeasurementCoverage(routingMeasurements)
         checks += checkWrapperCompleteness()
 
         val budget = estimateBudget()
         metrics += budgetMetrics(budget)
-        metrics += corpusMetrics(behaviorCorpus, routingCorpus)
+        metrics += corpusMetrics(behaviorCorpus, routingCorpus, routingMeasurements)
 
         return SkillDescriptor(
             target = SkillTarget(kind = "skill", name = skillDir.name, path = skillDir.toString()),
@@ -118,7 +120,7 @@ internal class SkillAdapter(private val skillDir: Path) {
                 "Legacy artifacts still present: ${present.joinToString()}"
             },
             remediation = if (present.isNotEmpty()) {
-                "Remove the legacy artifacts and rely on native `kast skill` subcommands invoked via \$KAST_CLI_PATH"
+                "Remove the legacy artifacts and rely on native `kast_*` tools, keeping `kast skill` only as an explicit fallback path"
             } else {
                 null
             },
@@ -213,6 +215,43 @@ internal class SkillAdapter(private val skillDir: Path) {
         )
     }
 
+    private fun checkCostMeasurementCoverage(measurements: RoutingMeasurements): EvalCheck {
+        if (!measurements.isParseable) {
+            return EvalCheck(
+                id = "corpus-cost-measurement-coverage",
+                category = "corpus",
+                severity = EvalSeverity.WARNING,
+                status = EvalStatus.WARN,
+                message = "Cost-of-insight coverage unavailable until routing evals parse cleanly",
+                remediation = "Fix routing eval parse errors before relying on discoverability or haystack-reduction measurements",
+            )
+        }
+        val missing = REQUIRED_MEASUREMENT_DIMENSIONS - measurements.measurementDimensions
+        return EvalCheck(
+            id = "corpus-cost-measurement-coverage",
+            category = "corpus",
+            severity = EvalSeverity.WARNING,
+            status = if (missing.isEmpty()) EvalStatus.PASS else EvalStatus.WARN,
+            message = buildString {
+                if (missing.isEmpty()) {
+                    append("Cost-of-insight coverage spans ")
+                    append("${measurements.measurementDimensions.size}/${REQUIRED_MEASUREMENT_DIMENSIONS.size} criteria")
+                } else {
+                    append("Cost-of-insight coverage missing ${missing.joinToString()} ")
+                    append("(${measurements.measurementDimensions.size}/${REQUIRED_MEASUREMENT_DIMENSIONS.size} covered)")
+                }
+                append("; native-route=${measurements.nativeRouteCount}/${measurements.entryCount}")
+                append(", native-ops=${measurements.nativeAllowedOpCount}/${measurements.entryCount}")
+                append(", guardrails=${measurements.genericGuardrailCount}/${measurements.entryCount}")
+            },
+            remediation = if (missing.isEmpty()) {
+                null
+            } else {
+                "Tag routing evals with measurement_dimensions covering discoverability, iteration_reduction, haystack_reduction, and generic_tool_avoidance."
+            },
+        )
+    }
+
     private fun checkSkillMdHasTriggerPhrases(): EvalCheck {
         val skillMd = skillDir.resolve("SKILL.md")
         if (!skillMd.exists()) {
@@ -260,7 +299,8 @@ internal class SkillAdapter(private val skillDir: Path) {
         val openApiText = wrapperOpenApiPath.takeIf(Path::exists)?.readText().orEmpty()
         return SkillWrapperName.entries.map { wrapper ->
             val command = "kast skill ${wrapper.cliName}"
-            val documentedInSkillMd = skillMdText.contains(command)
+            val nativeTool = wrapper.nativeToolName
+            val documentedInSkillMd = skillMdText.contains(command) || skillMdText.contains(nativeTool)
             val documentedInOpenApi = openApiText.contains(command)
             EvalCheck(
                 id = "completeness-wrapper-${wrapper.cliName}",
@@ -271,7 +311,7 @@ internal class SkillAdapter(private val skillDir: Path) {
                 remediation = if (documentedInSkillMd && documentedInOpenApi) {
                     null
                 } else {
-                    "Document `$command` in both SKILL.md and fixtures/maintenance/references/wrapper-openapi.yaml"
+                    "Document `$nativeTool` (or `$command`) in SKILL.md and `$command` in fixtures/maintenance/references/wrapper-openapi.yaml"
                 },
             )
         }
@@ -300,6 +340,7 @@ internal class SkillAdapter(private val skillDir: Path) {
     private fun corpusMetrics(
         behaviorCorpus: CorpusValidation,
         routingCorpus: CorpusValidation,
+        routingMeasurements: RoutingMeasurements,
     ): List<EvalMetric> {
         val failureModeCount = (behaviorCorpus.failureModes + routingCorpus.failureModes).size
         return listOf(
@@ -320,6 +361,30 @@ internal class SkillAdapter(private val skillDir: Path) {
                 category = "corpus",
                 value = failureModeCount.toDouble(),
                 unit = "categories",
+            ),
+            EvalMetric(
+                id = "corpus-cost-measurement-dimension-count",
+                category = "corpus",
+                value = routingMeasurements.measurementDimensions.size.toDouble(),
+                unit = "criteria",
+            ),
+            EvalMetric(
+                id = "corpus-routing-native-route-count",
+                category = "corpus",
+                value = routingMeasurements.nativeRouteCount.toDouble(),
+                unit = "cases",
+            ),
+            EvalMetric(
+                id = "corpus-routing-native-op-count",
+                category = "corpus",
+                value = routingMeasurements.nativeAllowedOpCount.toDouble(),
+                unit = "cases",
+            ),
+            EvalMetric(
+                id = "corpus-routing-generic-guardrail-count",
+                category = "corpus",
+                value = routingMeasurements.genericGuardrailCount.toDouble(),
+                unit = "cases",
             ),
         )
     }
@@ -362,12 +427,23 @@ internal class SkillAdapter(private val skillDir: Path) {
                     if (expectedSkill != null && expectedSkill != "kast") {
                         add("entry ${index + 1} expected_skill must be `kast`")
                     }
-                    if (expectedRoute != null && expectedRoute != "@kast") {
-                        add("entry ${index + 1} expected_route must be `@kast`")
+                    if (expectedRoute != null && expectedRoute != REQUIRED_EXPECTED_ROUTE) {
+                        add("entry ${index + 1} expected_route must be `$REQUIRED_EXPECTED_ROUTE`")
+                    }
+                    val legacyAllowedOps = allowedOps.filter { it.startsWith("kast skill ") }
+                    if (legacyAllowedOps.isNotEmpty()) {
+                        add("entry ${index + 1} uses legacy allowed_ops: ${legacyAllowedOps.joinToString()}")
                     }
                     val overlap = allowedOps intersect forbiddenOps
                     if (overlap.isNotEmpty()) {
                         add("entry ${index + 1} overlaps allowed_ops and forbidden_ops: ${overlap.joinToString()}")
+                    }
+                    val measurementDimensions = entry.stringArrayField("measurement_dimensions").toSet()
+                    val unknownMeasurementDimensions = measurementDimensions - REQUIRED_MEASUREMENT_DIMENSIONS
+                    if (unknownMeasurementDimensions.isNotEmpty()) {
+                        add(
+                            "entry ${index + 1} has unknown measurement_dimensions ${unknownMeasurementDimensions.joinToString()}",
+                        )
                     }
                     if (failureMode == null) {
                         add("entry ${index + 1} missing failure_mode")
@@ -377,6 +453,48 @@ internal class SkillAdapter(private val skillDir: Path) {
                 }
             },
         )
+
+    private fun analyzeRoutingMeasurements(): RoutingMeasurements {
+        if (!routingEvalPath.exists()) {
+            return RoutingMeasurements(parseError = "${skillDir.relativize(routingEvalPath)} missing")
+        }
+        val root = try {
+            json.parseToJsonElement(routingEvalPath.readText()).jsonObject
+        } catch (exception: Exception) {
+            return RoutingMeasurements(parseError = "${skillDir.relativize(routingEvalPath)} invalid JSON: ${exception.message}")
+        }
+        val entries = try {
+            root["evals"]?.jsonArray ?: JsonArray(emptyList())
+        } catch (_: Exception) {
+            return RoutingMeasurements(parseError = "${skillDir.relativize(routingEvalPath)} has non-array `evals`")
+        }
+        val measurementDimensions = mutableSetOf<String>()
+        var nativeRouteCount = 0
+        var nativeAllowedOpCount = 0
+        var genericGuardrailCount = 0
+        entries.forEach { entry ->
+            val obj = entry as? JsonObject ?: return@forEach
+            val allowedOps = obj.stringArrayField("allowed_ops")
+            val forbiddenOps = obj.stringArrayField("forbidden_ops")
+            measurementDimensions += obj.stringArrayField("measurement_dimensions")
+            if (obj.stringField("expected_route") == REQUIRED_EXPECTED_ROUTE) {
+                nativeRouteCount += 1
+            }
+            if (allowedOps.any(::isNativeToolOp)) {
+                nativeAllowedOpCount += 1
+            }
+            if (forbiddenOps.any(::isGenericKotlinGuardrail)) {
+                genericGuardrailCount += 1
+            }
+        }
+        return RoutingMeasurements(
+            entryCount = entries.size,
+            measurementDimensions = measurementDimensions,
+            nativeRouteCount = nativeRouteCount,
+            nativeAllowedOpCount = nativeAllowedOpCount,
+            genericGuardrailCount = genericGuardrailCount,
+        )
+    }
 
     private fun validateCorpus(
         path: Path,
@@ -441,7 +559,23 @@ internal class SkillAdapter(private val skillDir: Path) {
         }
     }
 
+    private data class RoutingMeasurements(
+        val entryCount: Int = 0,
+        val measurementDimensions: Set<String> = emptySet(),
+        val nativeRouteCount: Int = 0,
+        val nativeAllowedOpCount: Int = 0,
+        val genericGuardrailCount: Int = 0,
+        val parseError: String? = null,
+    ) {
+        val isParseable: Boolean get() = parseError == null
+    }
+
+    private fun isNativeToolOp(operation: String): Boolean = operation in REQUIRED_NATIVE_TOOL_NAMES
+
+    private fun isGenericKotlinGuardrail(operation: String): Boolean = operation in GENERIC_KOTLIN_TOOL_OPS
+
     private companion object {
+        private const val REQUIRED_EXPECTED_ROUTE = "native-kast-tools"
         private val REQUIRED_FAILURE_MODES = setOf(
             "trigger_miss",
             "routing_bypass",
@@ -454,5 +588,13 @@ internal class SkillAdapter(private val skillDir: Path) {
             "mutation_abandonment",
             "failure_response_ignored",
         )
+        private val REQUIRED_MEASUREMENT_DIMENSIONS = setOf(
+            "discoverability",
+            "iteration_reduction",
+            "haystack_reduction",
+            "generic_tool_avoidance",
+        )
+        private val REQUIRED_NATIVE_TOOL_NAMES = SkillWrapperName.entries.map { it.nativeToolName }.toSet()
+        private val GENERIC_KOTLIN_TOOL_OPS = setOf("grep", "rg", "view", "edit", "create", "apply_patch", "sed")
     }
 }

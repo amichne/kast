@@ -45,6 +45,7 @@ nav = [
   { "Architecture" = [
     { "How Kast works" = "architecture/how-it-works.md" },
     { "Limits and boundaries" = "architecture/behavioral-model.md" },
+    { "ADT boundaries" = "architecture/adt-boundaries.md" },
   ]},
   { "Changelog" = "changelog.md" },
 ]

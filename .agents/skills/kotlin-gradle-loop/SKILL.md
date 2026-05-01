@@ -1,15 +1,10 @@
 ---
 name: kotlin-gradle-loop
 description: >
-  Autonomous CLI workflow for iterating on Kotlin/Gradle/JVM projects. Covers the full
-  loop: codebase discovery, Gradle task execution, JUnit/JaCoCo report parsing, Kotlin
-  incremental compilation analysis, and continuous goal-oriented validation. Use this skill
-  whenever the user asks to run and analyze Gradle builds, fix failing tests, improve code
-  coverage, diagnose compilation performance, analyze JUnit or JaCoCo results, or iterate
-  on any Kotlin/Gradle project toward a defined goal. Also trigger when the user references
-  build reports, test results, coverage reports, incremental compilation, or asks to "get
-  the build green" or "fix the tests." This skill manages persistent state across iterations
-  and determines the next action autonomously based on script output.
+  Use when the user asks to run or analyze Gradle builds, fix failing
+  Kotlin/JVM tests, improve coverage, diagnose compilation performance, parse
+  JUnit or JaCoCo reports, inspect Kotlin build reports, get the build green, or
+  iterate on a Kotlin/Gradle project toward a validation goal.
 ---
 
 # Kotlin/Gradle Agentic Workflow
@@ -17,17 +12,23 @@ description: >
 ## Core Principle
 
 **Never interact with raw terminal output.** Every interaction with Gradle, JUnit,
-JaCoCo, or the Kotlin compiler goes through a script in `scripts/`. Every script
-produces structured JSON on stdout. Raw output goes to log files. The agent reads
-only the JSON. If the JSON indicates a failure, the agent reads the `log_file` path
-for diagnostics — it never parses Gradle console output directly.
+JaCoCo, or the Kotlin compiler goes through a script in this skill's `scripts/`
+directory. Every script produces structured JSON on stdout. Raw output goes to
+log files. Read only the JSON first. If the JSON is insufficient, read the
+returned `log_file` path for diagnostics instead of parsing Gradle console output
+directly.
+
+Set a skill-directory variable before running examples from a project root:
+
+```console
+SKILL_DIR=/path/to/kotlin-gradle-loop
+```
 
 ## Directory Layout
 
 ```
 kotlin-gradle-loop/
 ├── SKILL.md                              # This file
-├── hooks.json                            # Mandatory completion-hook manifest
 ├── scripts/
 │   ├── state/
 │   │   ├── init_state.py                 # Initialize .agent-workflow/state.json
@@ -51,8 +52,8 @@ kotlin-gradle-loop/
 On first invocation, initialize the state file, then check status:
 
 ```console
-python3 scripts/state/init_state.py /path/to/project
-python3 scripts/state/get_state.py /path/to/project --summary
+python3 "$SKILL_DIR/scripts/state/init_state.py" /path/to/project
+python3 "$SKILL_DIR/scripts/state/get_state.py" /path/to/project --summary
 ```
 
 If `project_discovered` is `false`, discover the project before anything else.
@@ -82,7 +83,7 @@ Never retry the same action more than 3 times without changing something.
 ### Setting a Goal
 
 ```console
-python3 scripts/state/update_state.py /project goal \
+python3 "$SKILL_DIR/scripts/state/update_state.py" /project goal \
   '{"description":"Get all tests passing and line coverage above 80%",
     "constraints":["do not delete tests","do not reduce coverage"],
     "acceptance_criteria":["tests.failed == 0","coverage.line_percent >= 80"]}'
@@ -122,7 +123,7 @@ For each subproject, read its `build.gradle.kts` to determine:
 ### Recording Discovery
 
 ```console
-python3 scripts/state/update_state.py /project project '{
+python3 "$SKILL_DIR/scripts/state/update_state.py" /project project '{
   "status": "complete",
   "boot_module": ":app",
   "app_modules": [":app", ":core", ":feature-users", ":feature-payments"],
@@ -139,23 +140,23 @@ python3 scripts/state/update_state.py /project project '{
   "gradleHook": "check"
 }'
 
-python3 scripts/state/record_action.py /project discovered_project \
+python3 "$SKILL_DIR/scripts/state/record_action.py" /project discovered_project \
   '{"modules":4,"leaf_modules":2}' \
   "Discovered 4 modules, 2 leaf modules, JDK 21, Kotlin 2.0.0"
 ```
 
 ## Running Gradle Tasks
 
-All Gradle invocations go through `scripts/gradle/run_task.sh`:
+All Gradle invocations go through `$SKILL_DIR/scripts/gradle/run_task.sh`:
 
 ```console
-bash scripts/gradle/run_task.sh /project test
-bash scripts/gradle/run_task.sh /project :feature-users:test
-bash scripts/gradle/run_task.sh /project :feature-users:test --tests "com.example.UserServiceTest"
-bash scripts/gradle/run_task.sh /project compileKotlin
-bash scripts/gradle/run_task.sh /project test --configuration-cache
-bash scripts/gradle/run_task.sh /project test -Pkotlin.build.report.output=file
-bash scripts/gradle/run_gradle_hook.sh /project
+bash "$SKILL_DIR/scripts/gradle/run_task.sh" /project test
+bash "$SKILL_DIR/scripts/gradle/run_task.sh" /project :feature-users:test
+bash "$SKILL_DIR/scripts/gradle/run_task.sh" /project :feature-users:test --tests "com.example.UserServiceTest"
+bash "$SKILL_DIR/scripts/gradle/run_task.sh" /project compileKotlin
+bash "$SKILL_DIR/scripts/gradle/run_task.sh" /project test --configuration-cache
+bash "$SKILL_DIR/scripts/gradle/run_task.sh" /project test -Pkotlin.build.report.output=file
+bash "$SKILL_DIR/scripts/gradle/run_gradle_hook.sh" /project
 ```
 
 Returns JSON with `ok`, `exit_code`, `duration_ms`, `tasks_executed`,
@@ -165,7 +166,7 @@ Returns JSON with `ok`, `exit_code`, `duration_ms`, `tasks_executed`,
 After running, update the state:
 
 ```console
-python3 scripts/state/update_state.py /project gradle.last_build \
+python3 "$SKILL_DIR/scripts/state/update_state.py" /project gradle.last_build \
   '{"task":"test","exit_code":0,"duration_ms":12000,"build_successful":true}'
 ```
 
@@ -173,23 +174,20 @@ Use `run_gradle_hook.sh` for the mandatory final build-health check. It reads
 the configured `project.gradleHook` from `.agent-workflow/state.json` and then
 delegates to `run_task.sh`, so it returns the same structured JSON shape.
 
-## Mandatory Copilot hooks
+## Project hooks
 
-The repo-level Copilot hook manifest lives at `.github/hooks/hooks.json`.
-That file is the authoritative source for GitHub Copilot command hooks in this
-repository. This skill must not redeclare those hooks.
+If a repository has command hooks, treat the repository hook manifest as
+authoritative. This skill must not redeclare repository-specific hooks.
 
-The current standard-hook migration keeps three repository hooks:
+For repositories that use the standard Copilot hook schema, the usual command
+hooks are:
 
 - `sessionStart`: bootstraps `kast workspace ensure` and resets hook state
 - `postToolUse`: records successful session-owned file edits
 - `sessionEnd`: runs the command-based subset of the old completion gates
 
-The `sessionEnd` hook runs `build-health`, `run-tests`, and
-`kast-diagnostics` when the session-recorded file edits warrant those checks.
-Skill-only workflows such as `docs-writer` or `refresh-affected-agents`
-remain guidance in agent instructions rather than hook entries, because
-Copilot hooks only execute commands.
+Final build health still belongs in this loop: run the configured Gradle hook
+before claiming the build is green, even when repository hooks also exist.
 
 ## Parsing Results
 
@@ -198,8 +196,8 @@ Copilot hooks only execute commands.
 After any test task:
 
 ```console
-python3 scripts/parse/junit_results.py /project
-python3 scripts/parse/junit_results.py /project --module :feature-users
+python3 "$SKILL_DIR/scripts/parse/junit_results.py" /project
+python3 "$SKILL_DIR/scripts/parse/junit_results.py" /project --module :feature-users
 ```
 
 Returns `total`, `passed`, `failed`, `skipped`, `duration_seconds`, and `failures`
@@ -210,9 +208,9 @@ Returns `total`, `passed`, `failed`, `skipped`, `duration_seconds`, and `failure
 After `jacocoTestReport`:
 
 ```console
-python3 scripts/parse/jacoco_report.py /project
-python3 scripts/parse/jacoco_report.py /project --threshold 80.0
-python3 scripts/parse/jacoco_report.py /project --module :feature-users
+python3 "$SKILL_DIR/scripts/parse/jacoco_report.py" /project
+python3 "$SKILL_DIR/scripts/parse/jacoco_report.py" /project --threshold 80.0
+python3 "$SKILL_DIR/scripts/parse/jacoco_report.py" /project --module :feature-users
 ```
 
 Returns `aggregate` (line/branch/class/method percentages), `modules`,
@@ -223,7 +221,7 @@ Returns `aggregate` (line/branch/class/method percentages), `modules`,
 After any compilation:
 
 ```console
-python3 scripts/parse/kotlin_build_report.py /project
+python3 "$SKILL_DIR/scripts/parse/kotlin_build_report.py" /project
 ```
 
 Returns `compilations` (per-module incremental status), `non_incremental_modules`,
@@ -233,13 +231,16 @@ and `non_incremental_reasons`.
 
 ### Get Tests Passing
 
+Treat the existing failing test as the RED signal. If no failing test covers the
+suspected bug, add a tracer-bullet test before changing production code.
+
 ```
-1. bash scripts/gradle/run_task.sh /project test
-2. python3 scripts/parse/junit_results.py /project
+1. bash "$SKILL_DIR/scripts/gradle/run_task.sh" /project test
+2. python3 "$SKILL_DIR/scripts/parse/junit_results.py" /project
 3. For each failure: read stacktrace_head, read source, determine fix
 4. Apply fix
-5. bash scripts/gradle/run_task.sh /project :module:test --tests "FailingTest"
-6. python3 scripts/parse/junit_results.py /project --module :module
+5. bash "$SKILL_DIR/scripts/gradle/run_task.sh" /project :module:test --tests "FailingTest"
+6. python3 "$SKILL_DIR/scripts/parse/junit_results.py" /project --module :module
 7. If still failing → go to 3
 8. When targeted tests pass → run full suite (step 1)
 9. If new failures appeared (regression) → go to 3
@@ -249,8 +250,8 @@ and `non_incremental_reasons`.
 ### Improve Coverage
 
 ```
-1. bash scripts/gradle/run_task.sh /project jacocoTestReport
-2. python3 scripts/parse/jacoco_report.py /project --threshold 80.0
+1. bash "$SKILL_DIR/scripts/gradle/run_task.sh" /project jacocoTestReport
+2. python3 "$SKILL_DIR/scripts/parse/jacoco_report.py" /project --threshold 80.0
 3. If below threshold: examine lowest_coverage_classes
 4. Read each low-coverage class, identify untested paths, write tests
 5. Repeat from step 1 until threshold met
@@ -259,8 +260,8 @@ and `non_incremental_reasons`.
 ### Diagnose Build Performance
 
 ```
-1. bash scripts/gradle/run_task.sh /project compileKotlin -Pkotlin.build.report.output=file
-2. python3 scripts/parse/kotlin_build_report.py /project
+1. bash "$SKILL_DIR/scripts/gradle/run_task.sh" /project compileKotlin -Pkotlin.build.report.output=file
+2. python3 "$SKILL_DIR/scripts/parse/kotlin_build_report.py" /project
 3. If non_incremental_modules non-empty: examine reasons
 4. Common fixes: change api() to implementation(), fix annotation processor config
 5. Record findings in compilation state
@@ -271,12 +272,12 @@ and `non_incremental_reasons`.
 When `run_task.sh` returns `{"ok": false, ...}`:
 
 1. Read `failure_summary` for quick diagnosis.
-2. If more detail needed, read `log_file` with the `view` tool. Search for
+2. If more detail is needed, read `log_file` with the file-reading tool. Search for
    `FAILURE:`, `BUILD FAILED`, or error class names.
 3. Categorize: compilation error, test failure, configuration error, infrastructure error.
 4. Record in history:
    ```console
-   python3 scripts/state/record_action.py /project gradle_failed \
+python3 "$SKILL_DIR/scripts/state/record_action.py" /project gradle_failed \
      '{"task":"test","exit_code":1}' "Compilation error in UserService.kt"
    ```
 5. Fix and retry, or report if not recoverable.
@@ -285,7 +286,7 @@ When `run_task.sh` returns `{"ok": false, ...}`:
 
 Before considering any change complete:
 
-1. Run `bash scripts/gradle/run_gradle_hook.sh /project`. This is the required
+1. Run `bash "$SKILL_DIR/scripts/gradle/run_gradle_hook.sh" /project`. This is the required
    final build-health hook.
 2. If the hook includes test tasks, parse JUnit and compare
    `total`/`passed`/`failed` against previous state. If `failed` increased, the

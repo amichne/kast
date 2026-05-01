@@ -15,8 +15,13 @@ construct, keep core logic pure, and prove behavior with focused tests.
 ## Operating Rules
 
 - Prefer types over comments, conventions, nullable flags, and repeated checks.
+- Encode validation outcomes as sealed ADTs so parse/validate/derive steps
+  are explicit, composable, and portable across layers.
 - Parse untrusted input at boundaries, then pass trusted domain models inward.
 - Keep side effects at the edge; keep the important rules pure and state-free.
+- Treat background work, caches, filesystem cleanup, and clocks as lifecycle
+  dependencies that need explicit ownership in production and deterministic
+  control in tests.
 - Preserve local public behavior unless the task explicitly asks for a break.
 - Follow the nearest established repository pattern before introducing a new
   abstraction.
@@ -51,8 +56,38 @@ For detailed layout heuristics, read
 - Prefer typed outcomes for expected failures. Use the repository's existing
   result/error pattern when one is present; otherwise prefer Kotlin standard
   `Result` before inventing a wrapper.
+- Use a sealed error type when callers branch on failure reasons. Use
+  accumulation when a boundary must report multiple independent input problems.
+  Use `Result` for a single expected success/failure value with no typed recovery
+  branches.
 - Reserve exceptions for exceptional conditions or established API contracts.
 - Keep public APIs small, coherent, and hard to misuse.
+
+## Boundary Modeling Rules
+
+- Keep transport models separate from domain models. JSON, CLI, database, and
+  wire annotations belong at the boundary unless the type is truly a public wire
+  contract.
+- Decide the unknown-field policy at the boundary: reject for strict commands,
+  ignore for forward-compatible inputs, or preserve for audit/pass-through. Test
+  the chosen policy.
+- Collapse conflicting optional fields into one domain concept. Prefer sealed
+  intent such as `Schedule.Now` or `Schedule.At(time)` over nullable fields plus
+  boolean flags.
+- Normalize once while parsing, then stop trimming, lowercasing, splitting, or
+  re-validating the same primitive inside core logic.
+
+## Concurrency And Lifecycle Rules
+
+- Assume compiler sessions, parsers, mutable caches, and lazy indexes are not
+  thread-safe until the owning API documents concurrency guarantees.
+- Serialize access around non-thread-safe resources with the narrowest lock that
+  preserves correctness. Prefer per-item or per-session critical sections over a
+  process-wide lock.
+- Make background workers cancellable and joinable. Tests should disable,
+  replace, or await background work before cleanup.
+- Do not share mutable collections across coroutines without ownership or
+  synchronization. Snapshot at boundaries when readers and writers overlap.
 
 ## Style Rules
 
@@ -93,6 +128,8 @@ Mark each dimension `Pass`, `Concern`, or `Fail` before finishing:
   prefixes.
 - Error design: expected failures are explicit and testable.
 - State safety: core code is immutable or intentionally confined.
+- Lifecycle safety: background work, locks, caches, and cleanup have explicit
+  ownership and deterministic tests.
 - Test value: tests verify correctness themes and boundary failures through
   public behavior.
 - Kotlin idiom: code reads as Kotlin, not Java with Kotlin syntax.
