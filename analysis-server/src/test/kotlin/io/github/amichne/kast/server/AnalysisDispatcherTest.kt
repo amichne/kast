@@ -55,9 +55,11 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 import kotlin.io.path.readText
 
@@ -85,6 +87,14 @@ class AnalysisDispatcherTest {
 
         assertTrue(result.readCapabilities.contains(ReadCapability.RESOLVE_SYMBOL))
         assertEquals("fake", result.backendName)
+    }
+
+    @Test
+    fun `dispatcher bytecode avoids kotlin Duration ABI coupling`() {
+        val classFileText = classFileText(AnalysisDispatcher::class.java)
+
+        assertFalse(classFileText.contains("kotlin/time/Duration"))
+        assertFalse(classFileText.contains("fromRawValue-UwyO8pc"))
     }
 
     @Test
@@ -663,4 +673,11 @@ class AnalysisDispatcherTest {
         }
         return json.parseToJsonElement(raw).jsonObject
     }
+
+    private fun classFileText(clazz: Class<*>): String =
+        checkNotNull(clazz.getResourceAsStream("${clazz.simpleName}.class")) {
+            "Missing class file resource for ${clazz.name}"
+        }.use { input ->
+            String(input.readBytes(), StandardCharsets.ISO_8859_1)
+        }
 }

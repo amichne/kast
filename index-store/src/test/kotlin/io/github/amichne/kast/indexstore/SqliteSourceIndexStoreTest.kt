@@ -26,6 +26,19 @@ class SqliteSourceIndexStoreTest {
     }
 
     @Test
+    fun `ensureSchema bootstraps sqlite driver when DriverManager registry is empty`() {
+        val normalized = workspaceRoot.toAbsolutePath().normalize()
+
+        withSqliteDriversDeregistered {
+            SqliteSourceIndexStore(normalized).use { store ->
+                assertTrue(store.ensureSchema())
+            }
+        }
+
+        assertTrue(Files.isRegularFile(sourceIndexDatabasePath(normalized)))
+    }
+
+    @Test
     fun `schema version mismatch triggers full rebuild`() {
         val normalized = workspaceRoot.toAbsolutePath().normalize()
         val cacheDir = kastCacheDirectory(normalized)

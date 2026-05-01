@@ -19,6 +19,7 @@ hoplite = "2.9.0"
 [libraries]
 coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
+coroutines-jdk8 = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-jdk8", version.ref = "coroutines" }
 serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
 junit-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit-jupiter" }
@@ -42,6 +43,16 @@ hoplite-toml = { module = "com.sksamuel.hoplite:hoplite-toml", version.ref = "ho
 test = [
     "junit-jupiter",
     "coroutines-test",
+]
+
+coroutines = [
+    "coroutines-core",
+    "coroutines-jdk8",
+]
+
+hoplite = [
+    "hoplite-core",
+    "hoplite-toml",
 ]
 
 [plugins]

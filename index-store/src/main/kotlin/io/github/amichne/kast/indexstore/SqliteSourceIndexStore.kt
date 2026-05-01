@@ -46,6 +46,7 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
                 cachedConnection = null
             }
             Files.createDirectories(dbPath.parent)
+            SqliteJdbcDriverBootstrap.ensureRegistered()
             val conn = DriverManager.getConnection("jdbc:sqlite:$dbPath")
             conn.createStatement().use { stmt ->
                 stmt.execute("PRAGMA journal_mode=WAL")

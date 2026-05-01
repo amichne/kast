@@ -1,10 +1,13 @@
 package io.github.amichne.kast.api.client
 
+import java.io.ByteArrayOutputStream
+import java.io.PrintStream
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import java.net.URLClassLoader
 import java.nio.file.Path
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
@@ -118,5 +121,92 @@ class KastConfigTest {
         assertEquals("references,rename", config.telemetry.scopes)
         assertEquals(config.server.maxResults, config.toServerLimits().maxResults)
         assertEquals(config.server.requestTimeoutMillis, config.toServerLimits().requestTimeoutMillis)
+    }
+
+    @Test
+    fun `config loader uses Kast classloader instead of thread context loader for default Hoplite services`() {
+        val configHome = tempDir.resolve("config-home")
+        val workspaceRoot = tempDir.resolve("workspace")
+        val resolver = WorkspaceDirectoryResolver(
+            configHome = { configHome },
+            gitRemoteResolver = { GitRemote(host = "github.com", owner = "amichne", repo = "kast") },
+        )
+        configHome.resolve("config.toml").apply {
+            parent.toFile().mkdirs()
+            writeText(
+                """
+                [server]
+                max-results = 321
+                """.trimIndent(),
+            )
+        }
+
+        val config = URLClassLoader(emptyArray(), null).use { emptyContextClassLoader ->
+            withContextClassLoader(emptyContextClassLoader) {
+                KastConfig.load(
+                    workspaceRoot = workspaceRoot,
+                    configHome = { configHome },
+                    workspaceDirectoryResolver = resolver,
+                )
+            }
+        }
+
+        assertEquals(321, config.server.maxResults)
+    }
+
+    @Test
+    fun `config loader does not write Hoplite warnings to stdout`() {
+        val configHome = tempDir.resolve("config-home")
+        val workspaceRoot = tempDir.resolve("workspace")
+        val resolver = WorkspaceDirectoryResolver(
+            configHome = { configHome },
+            gitRemoteResolver = { GitRemote(host = "github.com", owner = "amichne", repo = "kast") },
+        )
+        configHome.resolve("config.toml").apply {
+            parent.toFile().mkdirs()
+            writeText(
+                """
+                [server]
+                max-results = 321
+                """.trimIndent(),
+            )
+        }
+
+        val stdout = captureStandardOut {
+            val config = KastConfig.load(
+                workspaceRoot = workspaceRoot,
+                configHome = { configHome },
+                workspaceDirectoryResolver = resolver,
+            )
+            assertEquals(321, config.server.maxResults)
+        }
+
+        assertTrue(stdout.isBlank(), "Expected KastConfig.load to keep stdout clean, but got: $stdout")
+    }
+
+    private fun <T> withContextClassLoader(
+        classLoader: ClassLoader,
+        block: () -> T,
+    ): T {
+        val thread = Thread.currentThread()
+        val previous = thread.contextClassLoader
+        thread.contextClassLoader = classLoader
+        return try {
+            block()
+        } finally {
+            thread.contextClassLoader = previous
+        }
+    }
+
+    private fun <T> captureStandardOut(block: () -> T): String {
+        val original = System.out
+        val output = ByteArrayOutputStream()
+        System.setOut(PrintStream(output, true, Charsets.UTF_8))
+        return try {
+            block()
+            output.toString(Charsets.UTF_8)
+        } finally {
+            System.setOut(original)
+        }
     }
 }

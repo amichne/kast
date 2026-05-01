@@ -85,12 +85,9 @@ plugins {
 
 repositories {
     mavenCentral()
-    maven("https://packages.jetbrains.team/maven/p/ij/intellij-dependencies")
-    maven("https://www.jetbrains.com/intellij-repository/releases")
-    maven("https://cache-redirector.jetbrains.com/intellij-dependencies")
+
     intellijPlatform {
         defaultRepositories()
-        localPlatformArtifacts()
     }
 }
 
@@ -107,11 +104,10 @@ dependencies {
     implementation(libs.opentelemetry.sdk)
 
     intellijPlatform {
-        intellijIdea("2025.3")
-//        jetbrainsRuntime()
+        local("/Users/amichn/Applications/idea.app")
         bundledPlugin("org.jetbrains.kotlin")
         bundledPlugin("com.intellij.java")
-        testFramework(TestFrameworkType.Platform)
+//        testFramework(TestFrameworkType.Platform)
         testFramework(TestFrameworkType.JUnit5)
     }
 

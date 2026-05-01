@@ -13,6 +13,10 @@ Keep this unit small, stable, and reusable across every runtime host.
   `AnalysisTransport`, JSON-RPC wire models, descriptor discovery helpers,
   `StandaloneServerOptions`, shared error types, capability enums,
   `ServerInstanceDescriptor`, and edit-plan validation semantics.
+- Keep shared startup helpers quiet for callers. `KastConfig.load`,
+  descriptor discovery, and similar shared entry points must not emit
+  incidental stdout or stderr because CLI JSON commands and IntelliJ startup
+  use these APIs inside machine-readable or UI-sensitive flows.
 - Keep file-path rules explicit. Edit queries, rename hashes, workspace roots,
   and descriptor socket paths must stay absolute and normalized.
 - Treat `SCHEMA_VERSION`, serialized field changes, and descriptor transport
@@ -29,3 +33,6 @@ Validate the contract locally before you rely on downstream failures.
 - Run `./gradlew :analysis-api:test` for local changes.
 - If you change public models, capabilities, or descriptor schema, also run
   `./gradlew :analysis-server:test :kast-cli:test`.
+- If you change shared config loading, descriptor discovery, or other
+  startup-facing helpers, also run `./gradlew :backend-intellij:test` when the
+  IntelliJ Platform artifacts for the pinned IDE version are available.
