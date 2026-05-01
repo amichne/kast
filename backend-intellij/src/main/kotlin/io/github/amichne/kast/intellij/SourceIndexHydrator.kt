@@ -18,7 +18,8 @@ private const val REMOTE_INDEX_MAX_BYTES = 50L * 1024L * 1024L
 
 private fun openRemoteSourceIndex(uri: URI): InputStream =
     when (uri.scheme?.lowercase()) {
-        null, "", "file" -> Files.newInputStream(Path.of(uri))
+        null, "" -> Files.newInputStream(Path.of(uri.path))
+        "file" -> Files.newInputStream(Path.of(uri))
         "http", "https" -> openHttpRemoteSourceIndex(uri)
         else -> error("Unsupported remote source index URI scheme: ${uri.scheme}")
     }
