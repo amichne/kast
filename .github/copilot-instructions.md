@@ -32,8 +32,8 @@ Background threads, daemons, and resource cleanup must use explicit timeouts. In
 Before modifying `EmbeddedSkillResources`, `WrapperOpenApiDocument`,
 `AnalysisBackend`, or any packaged artifact manifest, enumerate all
 consumers: `docs/openapi.yaml`, `.agents/skills/kast/SKILL.md`,
-`.agents/skills/kast/references/*.md`,
-`.agents/skills/kast/fixtures/maintenance/**/*`, `.agents/skills/kast/scripts/*`,
+`.agents/skills/kast/evals/**/*`, `.agents/skills/kast/history/**/*`,
+`.agents/skills/kast/references/*`, `.agents/skills/kast/scripts/*`,
 `.github/extensions/kast/extension.mjs`,
 `kast-cli/build.gradle.kts`, and `kast.sh`/`install.sh`. These are contract
 surfaces — a change without updating all consumers silently breaks the

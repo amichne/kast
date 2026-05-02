@@ -10,7 +10,7 @@ class WrapperOpenApiDocumentTest {
     @Test
     fun `checked in wrapper openapi matches generated document`() {
         val expected = repoRoot()
-            .resolve(".agents/skills/kast/fixtures/maintenance/references/wrapper-openapi.yaml")
+            .resolve(".agents/skills/kast/references/wrapper-openapi.yaml")
             .readText()
         val generated = WrapperOpenApiDocument.renderYaml()
 

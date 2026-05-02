@@ -53,15 +53,23 @@ kast install skill --target-dir=/absolute/path/to/skills --yes=true
 
     - **`SKILL.md`** — the instruction file: workflow, triggers, when to
       use what
-    - **`references/quickstart.md`** — request snippets and recovery
-      guidance for bootstrap and navigation
+    - **`evals/catalog.json`** and **`evals/pain_points.jsonl`** —
+      durable maintenance cases plus the intake queue for new misses
+    - **`history/progression.json`** — promotion and progression ledger
+      for the durable suite
+    - **`references/quickstart.md`**, **`references/routing-improvement.md`**,
+      and **`references/wrapper-openapi.yaml`** — request shapes,
+      routing-maintenance guidance, and checked-in wrapper contract
     - **`scripts/resolve-kast.sh`** — portable helper that finds the
       `kast` binary without repo-local hook paths
     - **`scripts/kast-session-start.sh`** — compatibility helper that
       prints `export KAST_CLI_PATH=...`
+    - **`scripts/build-routing-corpus.py`** — maintenance helper that
+      turns shared logs and session exports into routing candidate cases
 
-    Maintenance fixtures sit under `fixtures/maintenance/` so normal
-    agents don't load them as active context.
+    Durable eval assets now live in `evals/` and `history/`. Keep
+    transient benchmark outputs in a separate workspace, not in the
+    installed skill tree.
 
 ??? info "How the agent finds the kast binary"
 

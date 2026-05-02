@@ -11,11 +11,14 @@ val nativeConfigDir = layout.projectDirectory.dir(
 val packagedSkillSourceDir = rootProject.layout.projectDirectory.dir(".agents/skills/kast")
 val embeddedSkillFiles = listOf(
     "SKILL.md",
-    "fixtures/maintenance/evals/evals.json",
-    "fixtures/maintenance/evals/routing.json",
-    "fixtures/maintenance/references/routing-improvement.md",
-    "fixtures/maintenance/references/wrapper-openapi.yaml",
-    "fixtures/maintenance/scripts/build-routing-corpus.py",
+    "evals/catalog.json",
+    "evals/pain_points.jsonl",
+    "evals/files/.gitkeep",
+    "history/progression.json",
+    "history/eval-baseline.json",
+    "references/routing-improvement.md",
+    "references/wrapper-openapi.yaml",
+    "scripts/build-routing-corpus.py",
     "references/quickstart.md",
     "scripts/kast-session-start.sh",
     "scripts/resolve-kast.sh",
@@ -106,7 +109,7 @@ tasks.register<JavaExec>("generateWrapperOpenApiSchema") {
     mainClass.set("io.github.amichne.kast.cli.WrapperOpenApiDocumentKt")
     args(
         rootProject.layout.projectDirectory
-            .file(".agents/skills/kast/fixtures/maintenance/references/wrapper-openapi.yaml")
+            .file(".agents/skills/kast/references/wrapper-openapi.yaml")
             .asFile.absolutePath,
     )
 }
