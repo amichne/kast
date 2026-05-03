@@ -126,3 +126,5 @@ copilot-session-*.html
 copilot-session-*.md
 dist/
 .agents/skills/kast/.kast-version
+__pycache__/
+*.py[cod]
