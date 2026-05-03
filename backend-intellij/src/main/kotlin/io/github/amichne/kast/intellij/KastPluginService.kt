@@ -3,6 +3,7 @@ package io.github.amichne.kast.intellij
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
+import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
@@ -67,6 +68,15 @@ internal class KastPluginService(
     }
 
     override fun dispose() {
+        stopServer()
+    }
+
+    fun restartServer() {
+        stopServer()
+        startServer()
+    }
+
+    private fun stopServer() {
         cancelProjectIndexing()
         runningServer?.let { server ->
             LOG.info("Shutting down kast intellij backend")
@@ -131,6 +141,8 @@ internal class KastPluginService(
     }
 
     companion object {
+        fun getInstance(project: Project): KastPluginService = project.service()
+
         private val LOG = Logger.getInstance(KastPluginService::class.java)
     }
 }

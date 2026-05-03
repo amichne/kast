@@ -1,7 +1,6 @@
 package io.github.amichne.kast.intellij
 
 import com.intellij.openapi.project.Project
-import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.junit5.fixture.TestFixture
 import com.intellij.testFramework.junit5.fixture.moduleFixture
@@ -99,7 +98,7 @@ class KastProjectOpenAutoIndexingTest {
         val project = projectFixture.get()
         val targetFile = targetFileFixture.get()
         val callerFile = callerFileFixture.get()
-        IndexingTestUtil.waitUntilIndexesAreReady(project)
+        waitUntilIndexesAreReady(project)
         val workspaceRoot = Path.of(callerFile.virtualFile.path).parent.toAbsolutePath().normalize()
         val callerPath = Path.of(callerFile.virtualFile.path).toAbsolutePath().normalize().toString()
         val targetPath = Path.of(targetFile.virtualFile.path).toAbsolutePath().normalize().toString()

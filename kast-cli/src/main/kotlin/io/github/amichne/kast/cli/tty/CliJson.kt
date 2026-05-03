@@ -15,6 +15,7 @@ import io.github.amichne.kast.api.contract.result.SymbolResult
 import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 import io.github.amichne.kast.cli.results.DaemonStopResult
+import io.github.amichne.kast.cli.results.InstallCopilotExtensionResult
 import io.github.amichne.kast.cli.results.InstallResult
 import io.github.amichne.kast.cli.skill.InstallSkillResult
 import io.github.amichne.kast.cli.SmokeReport
@@ -39,6 +40,7 @@ internal fun writeCliJson(
         is DaemonStopResult -> json.encodeToString(value)
         is InstallResult -> json.encodeToString(value)
         is InstallSkillResult -> json.encodeToString(value)
+        is InstallCopilotExtensionResult -> json.encodeToString(value)
         is BackendCapabilities -> json.encodeToString(value)
         is SymbolResult -> json.encodeToString(value)
         is ReferencesResult -> json.encodeToString(value)

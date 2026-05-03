@@ -5,7 +5,6 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiDirectory
 import com.intellij.psi.PsiFile
-import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.junit5.fixture.TestFixture
 import com.intellij.testFramework.junit5.fixture.moduleFixture
@@ -247,7 +246,7 @@ class IntelliJBackendOperationPerformanceTest {
         diagAFixture.get()
         diagBFixture.get()
         diagCFixture.get()
-        IndexingTestUtil.waitUntilIndexesAreReady(project)
+        waitUntilIndexesAreReady(project)
     }
 
     @Test

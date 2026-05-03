@@ -9,6 +9,8 @@ val nativeConfigDir = layout.projectDirectory.dir(
     "src/main/resources/META-INF/native-image/io.github.amichne.kast/kast-cli",
 )
 val packagedSkillSourceDir = rootProject.layout.projectDirectory.dir(".agents/skills/kast")
+val packagedCopilotAgentsSourceDir = rootProject.layout.projectDirectory.dir(".github/agents")
+val packagedCopilotHooksSourceDir = rootProject.layout.projectDirectory.dir(".github/hooks")
 val embeddedSkillFiles = listOf(
     "SKILL.md",
     "evals/catalog.json",
@@ -22,6 +24,21 @@ val embeddedSkillFiles = listOf(
     "references/quickstart.md",
     "scripts/kast-session-start.sh",
     "scripts/resolve-kast.sh",
+)
+val embeddedCopilotAgentFiles = listOf(
+    "kast.md",
+    "explore.md",
+    "plan.md",
+    "edit.md",
+)
+val embeddedCopilotHookFiles = listOf(
+    "hooks.json",
+    "hook-state.sh",
+    "session-start.sh",
+    "record-paths.sh",
+    "require-skills.sh",
+    "session-end.sh",
+    "resolve-kast-cli-path.sh",
 )
 
 application {
@@ -65,8 +82,22 @@ val syncPackagedSkillResources by tasks.registering(Sync::class) {
     includeEmptyDirs = false
 }
 
+val syncPackagedCopilotExtensionResources by tasks.registering(Sync::class) {
+    from(packagedCopilotAgentsSourceDir) {
+        include(embeddedCopilotAgentFiles)
+        into("packaged-copilot-extension/agents")
+    }
+    from(packagedCopilotHooksSourceDir) {
+        include(embeddedCopilotHookFiles)
+        into("packaged-copilot-extension/hooks")
+    }
+    into(layout.buildDirectory.dir("generated/packaged-copilot-extension-resources"))
+    includeEmptyDirs = false
+}
+
 tasks.named<ProcessResources>("processResources") {
     from(syncPackagedSkillResources)
+    from(syncPackagedCopilotExtensionResources)
 }
 
 val shrinkRuntimeEnabled = providers.gradleProperty("kast.shrinkRuntime")

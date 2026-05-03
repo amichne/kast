@@ -2,7 +2,7 @@
     <id>io.github.amichne.kast</id>
     <name>Kast Analysis Backend</name>
     <vendor url="https://github.com/amichne/kast">amichne</vendor>
-    <description>Kast Kotlin analysis backend running inside IntelliJ IDEA</description>
+    <description>Kast Kotlin analysis backend for IntelliJ-based IDEs (IntelliJ IDEA, Android Studio)</description>
 
     <depends>com.intellij.modules.platform</depends>
     <depends>org.jetbrains.kotlin</depends>
@@ -14,7 +14,28 @@
 
     <extensions defaultExtensionNs="com.intellij">
         <projectService serviceImplementation="io.github.amichne.kast.intellij.KastPluginService"/>
+        <projectService serviceImplementation="io.github.amichne.kast.intellij.KastSettingsState"/>
         <postStartupActivity implementation="io.github.amichne.kast.intellij.KastStartupActivity"/>
+        <projectConfigurable
+                instance="io.github.amichne.kast.intellij.KastSettingsConfigurable"
+                id="io.github.amichne.kast.settings"
+                displayName="Kast"
+                parentId="tools"/>
+        <notificationGroup id="Kast" displayType="BALLOON"/>
         <supportsKotlinPluginMode supportsK1="false" supportsK2="true" />
     </extensions>
+
+    <actions>
+        <group id="io.github.amichne.kast.actions" text="Kast" popup="true">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+            <action id="io.github.amichne.kast.installSkill"
+                    class="io.github.amichne.kast.intellij.actions.InstallSkillAction"
+                    text="Install Kast Skill"
+                    description="Install the kast agent skill into this project"/>
+            <action id="io.github.amichne.kast.installCopilotExtension"
+                    class="io.github.amichne.kast.intellij.actions.InstallCopilotExtensionAction"
+                    text="Install Copilot Extension"
+                    description="Install kast Copilot agents and hooks into this project"/>
+        </group>
+    </actions>
 </idea-plugin>

@@ -1,5 +1,6 @@
 package io.github.amichne.kast.intellij
 
+import com.intellij.openapi.application.ApplicationInfo
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.module.ModuleManager
@@ -120,7 +121,10 @@ internal class KastPluginBackend(
     }
 
     override suspend fun capabilities(): BackendCapabilities = BackendCapabilities(
-        backendName = "intellij",
+        backendName = when (ApplicationInfo.getInstance().build.productCode) {
+            "AI" -> "android-studio"
+            else -> "intellij"
+        },
         backendVersion = BACKEND_VERSION,
         workspaceRoot = workspaceRoot.toString(),
         readCapabilities = setOf(

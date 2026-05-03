@@ -93,6 +93,24 @@ GitHub Copilot custom agents are a separate surface. Personas and tool
 restrictions for Copilot belong in `.github/agents/*.md` — not in the
 portable Agent Skills bundle.
 
+## Install the Copilot extension files
+
+Use `install copilot-extension` when you want the packaged GitHub Copilot
+agent and hook files in the current repository:
+
+```console title="Install Copilot agents and hooks"
+kast install copilot-extension
+```
+
+The command writes into `<cwd>/.github` by default and records the installed
+CLI version in `.github/.kast-copilot-version`. Pass `--target-dir` to point at
+another workspace `.github` directory, and `--yes=true` to replace an older
+installed copy:
+
+```console title="Force reinstall Copilot extension files"
+kast install copilot-extension --target-dir=/absolute/path/to/repo/.github --yes=true
+```
+
 ## Next steps
 
 - [Talk to your agent](talk-to-your-agent.md) — prompts that get the

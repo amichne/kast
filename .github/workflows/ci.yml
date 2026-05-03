@@ -34,7 +34,8 @@ jobs:
 
       - uses: actions/cache@v4
         with:
-          path: ~/.gradle/kast/intellij-distributions
+          path: |
+            ~/.gradle/kast/intellij-distributions
           key: idea-dist-${{ hashFiles('gradle/libs.versions.toml') }}
 
       - name: Test and build portable distribution
@@ -80,7 +81,9 @@ jobs:
 
       - uses: actions/cache@v4
         with:
-          path: ~/.gradle/kast/intellij-distributions
+          path: |
+            ~/.gradle/kast/intellij-distributions
+            ~/.cache/pluginVerifier/ides
           key: idea-dist-${{ hashFiles('gradle/libs.versions.toml') }}
 
       - name: Test and verify IntelliJ plugin
@@ -91,6 +94,7 @@ jobs:
           :backend-intellij:buildPlugin
           :backend-intellij:verifyPluginStructure
           :backend-intellij:verifyPluginXmlPresent
+          :backend-intellij:verifyPlugin
 
       - name: Upload IntelliJ plugin artifact
         uses: actions/upload-artifact@v4

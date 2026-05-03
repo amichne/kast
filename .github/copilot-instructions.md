@@ -17,7 +17,7 @@
 
 ## Backend parity
 
-Any change to an `AnalysisBackend` operation must be applied to **both** `backend-standalone` and `backend-intellij`. Never implement a feature on one backend without auditing the other for corresponding callsites. After changes, verify `parity-tests/` covers the modified operation.
+Any change to an `AnalysisBackend` operation must be applied to **both** `backend-standalone` and `backend-intellij`. The `backend-intellij` module targets one ZIP for both IntelliJ IDEA and Android Studio; plugin compatibility changes must be verified against both via `:backend-intellij:verifyPlugin`. Never implement a feature on one backend without auditing the other for corresponding callsites. After changes, verify `parity-tests/` covers the modified operation.
 
 ## Resource lifecycle
 
@@ -29,15 +29,15 @@ Background threads, daemons, and resource cleanup must use explicit timeouts. In
 
 ## Contract surface inventory
 
-Before modifying `EmbeddedSkillResources`, `WrapperOpenApiDocument`,
-`AnalysisBackend`, or any packaged artifact manifest, enumerate all
-consumers: `docs/openapi.yaml`, `.agents/skills/kast/SKILL.md`,
+Before modifying `EmbeddedSkillResources`, `EmbeddedCopilotExtensionResources`,
+`WrapperOpenApiDocument`, `AnalysisBackend`, or any packaged artifact manifest,
+enumerate all consumers: `docs/openapi.yaml`, `.agents/skills/kast/SKILL.md`,
 `.agents/skills/kast/evals/**/*`, `.agents/skills/kast/history/**/*`,
 `.agents/skills/kast/references/*`, `.agents/skills/kast/scripts/*`,
 `.github/extensions/kast/extension.mjs`,
-`kast-cli/build.gradle.kts`, and `kast.sh`/`install.sh`. These are contract
-surfaces — a change without updating all consumers silently breaks the
-distribution.
+`.github/agents/**/*`, `.github/hooks/**/*`, `kast-cli/build.gradle.kts`, and
+`kast.sh`/`install.sh`. These are contract surfaces — a change without updating
+all consumers silently breaks the distribution.
 
 ## Test path safety and CI cross-platform concerns
 
