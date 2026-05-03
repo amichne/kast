@@ -126,6 +126,15 @@ contract remains in
 
 Apply these rules across the repo before local unit rules add more detail.
 
+- Preserve the L0-L6 dependency layer direction recorded in
+  `.github/architecture-layers.json`: production dependencies point to the same
+  or a lower layer, L0/L1 production external dependencies require an
+  allow-list entry, and L5 test fixtures never leak into production code.
+- Run `check_architecture_layers` or `./gradlew checkArchitectureLayers` after
+  changing Gradle project dependencies, layer placement, or architecture
+  instructions. The Copilot extension lives at
+  `.github/extensions/architecture-layers/extension.mjs`; the docs entry point
+  is `docs/architecture/dependency-layers.md`.
 - Change the smallest unit that owns the behavior. Pull shared semantics down
   into `analysis-api` only when multiple hosts or transports need them.
 - Keep host-specific dependencies out of shared units. `analysis-api` and

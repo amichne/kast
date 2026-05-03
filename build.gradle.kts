@@ -49,3 +49,19 @@ tasks.register<Copy>("stageOpenApiSpec") {
     from(layout.projectDirectory.file("docs/openapi.yaml"))
     into(layout.projectDirectory.dir("dist"))
 }
+
+tasks.register<Exec>("checkArchitectureLayers") {
+    group = "verification"
+    description = "Validates static architecture layer dependency rules."
+    workingDir = layout.projectDirectory.asFile
+    commandLine(
+        "python3",
+        ".github/extensions/architecture-layers/check-architecture-layers.py",
+        "--repo",
+        layout.projectDirectory.asFile.absolutePath,
+    )
+}
+
+tasks.named("check") {
+    dependsOn("checkArchitectureLayers")
+}

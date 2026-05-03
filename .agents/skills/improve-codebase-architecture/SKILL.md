@@ -26,13 +26,14 @@ Key principles (see [LANGUAGE.md](LANGUAGE.md) for the full list):
 - **The interface is the test surface.**
 - **One adapter = hypothetical seam. Two adapters = real seam.**
 
-This skill is _informed_ by the project's domain model. The domain language gives names to good seams; ADRs record decisions the skill should not re-litigate.
+This skill is _informed_ by the project's domain model. The domain language gives names to good seams; ADRs record decisions the skill should not re-litigate. In repositories with a checked-in dependency layer model, also read the layer reference before recommending new modules or dependencies; deepening chooses the **seam**, while layers constrain which direction dependencies may point.
 
 ## Process
 
 ### 1. Explore
 
 Read the project's domain glossary and any ADRs in the area you're touching first.
+If the repository has a layer reference such as [references/dependency-layers.md](references/dependency-layers.md), read it before proposing new modules or dependency moves.
 
 Then use the Agent tool with `subagent_type=Explore` to walk the codebase. Don't follow rigid heuristics — explore organically and note where you experience friction:
 

@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 1,
+  "description": "Static architecture strata for kast. Project dependencies must point to the same or a lower layer; low layers must keep production external dependencies allow-listed.",
+  "rules": {
+    "projectDependencyDirection": "same-or-lower-layer",
+    "productionConfigurations": ["api", "implementation", "compileOnly", "runtimeOnly"],
+    "testConfigurationsIgnored": true,
+    "lowLayerExternalPolicy": "L0 and L1 production external dependencies must be allow-listed with rationale. L2 and above may use external libraries, but core logic must stay in lower layers."
+  },
+  "layers": {
+    "L0": {
+      "name": "Pure Types",
+      "ordinal": 0,
+      "purpose": "Kotlin interfaces, ADTs, value classes, enums, type aliases, validation results, derivation states, error types, and pure functions over those types.",
+      "externalDependencies": "allow-listed-only"
+    },
+    "L1": {
+      "name": "Internal Libraries",
+      "ordinal": 1,
+      "purpose": "Owned side-effect-free computation, data transformation, and domain logic that depends only on L0.",
+      "externalDependencies": "allow-listed-only"
+    },
+    "L2": {
+      "name": "External Libraries",
+      "ordinal": 2,
+      "purpose": "Quarantined adapters around essential third-party libraries so callers do not couple to replaceable implementation details.",
+      "externalDependencies": "allowed"
+    },
+    "L3": {
+      "name": "Host-Specific Code",
+      "ordinal": 3,
+      "purpose": "Host runtime concerns such as filesystem access, workspace discovery, background work, lifecycle, and PSI/K2 helpers.",
+      "externalDependencies": "allowed"
+    },
+    "L4": {
+      "name": "Integration and Adapters",
+      "ordinal": 4,
+      "purpose": "CLI, JSON-RPC, IntelliJ plugin, Gradle/build, and other adapters that translate between external systems and lower-layer semantics.",
+      "externalDependencies": "allowed"
+    },
+    "L5": {
+      "name": "Tests and Fixtures",
+      "ordinal": 5,
+      "purpose": "Test-only fixtures, contract assertions, parity tests, and utilities that verify observable behavior.",
+      "externalDependencies": "allowed"
+    },
+    "L6": {
+      "name": "Documentation and Site",
+      "ordinal": 6,
+      "purpose": "Source documentation, architecture notes, published guidance, and generated site output.",
+      "externalDependencies": "not-applicable"
+    }
+  },
+  "gradleProjects": {
+    ":analysis-api": {
+      "layer": "L0",
+      "rationale": "Shared contract models and typed request/response surfaces are the current pure-type seam. Existing config/docs helpers live here until they can be split behind narrower seams.",
+      "externalAllowlist": [
+        "libs.bundles.coroutines",
+        "libs.bundles.hoplite"
+      ]
+    },
+    ":index-store": {
+      "layer": "L2",
+      "rationale": "SQLite persistence is an owned quarantine around an external storage library."
+    },
+    ":backend-shared": {
+      "layer": "L3",
+      "rationale": "Shared host-runtime analysis helpers compile against PSI/K2 APIs supplied by the runtime host."
+    },
+    ":backend-standalone": {
+      "layer": "L4",
+      "rationale": "The standalone backend currently combines host lifecycle with server integration and daemon adapter concerns."
+    },
+    ":analysis-server": {
+      "layer": "L4",
+      "rationale": "JSON-RPC transport and descriptor dispatch adapt protocol requests to lower-layer semantics."
+    },
+    ":backend-intellij": {
+      "layer": "L4",
+      "rationale": "The IntelliJ plugin adapts IDE lifecycle, project services, and plugin packaging to the shared contract."
+    },
+    ":kast-cli": {
+      "layer": "L4",
+      "rationale": "The CLI is the operator-facing adapter for command parsing, lifecycle orchestration, and distribution."
+    },
+    ":shared-testing": {
+      "layer": "L5",
+      "rationale": "Fake backend fixtures and shared contract assertions are test-only surfaces."
+    },
+    ":parity-tests": {
+      "layer": "L5",
+      "rationale": "Parity tests verify behavior across implementations without production ownership."
+    }
+  },
+  "pathLayers": [
+    {
+      "layer": "L4",
+      "paths": [".github/extensions/**", ".github/hooks/**"],
+      "rationale": "Copilot extensions and hooks adapt repository rules into the agent runtime."
+    },
+    {
+      "layer": "L6",
+      "paths": ["docs/**", "zensical.toml", "site/**"],
+      "rationale": "Documentation source and generated site output live outside production code."
+    },
+    {
+      "layer": "L5",
+      "paths": ["**/src/test/**", "**/src/testFixtures/**"],
+      "rationale": "Tests and fixtures may depend on all production layers."
+    }
+  ]
+}
