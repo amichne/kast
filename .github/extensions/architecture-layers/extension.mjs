@@ -107,7 +107,7 @@ function execFileAsync(file, args, options = {}) {
 
 async function runPythonScript(scriptPath, args, options = {}) {
   const candidates =
-    process.platform === "win32" ? ["py", "python", "python3"] : ["python3", "python"];
+    process.platform === "win32" ? ["python3", "python", "py"] : ["python3", "python"];
   let missingInterpreterResult = null;
 
   for (const candidate of candidates) {

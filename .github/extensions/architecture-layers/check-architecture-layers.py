@@ -19,15 +19,11 @@ from typing import Iterable
 MANIFEST_RELATIVE = Path(".github/architecture-layers.json")
 SETTINGS_RELATIVE = Path("settings.gradle.kts")
 BUILD_FILE = "build.gradle.kts"
-PROJECT_DEPENDENCY_RE = re.compile(
+CONFIGURATION_CALL_RE = re.compile(
     r"\b(?P<configuration>api|implementation|compileOnly|runtimeOnly|"
-    r"testImplementation|testApi|testCompileOnly|testRuntimeOnly)\s*\(\s*"
-    r"project\(\s*\"(?P<project>:[^\"]+)\"\s*\)"
+    r"testImplementation|testApi|testCompileOnly|testRuntimeOnly)\s*\("
 )
-EXTERNAL_DEPENDENCY_RE = re.compile(
-    r"\b(?P<configuration>api|implementation|compileOnly|runtimeOnly)\s*\(\s*"
-    r"(?P<dependency>[^\n)]+)"
-)
+PROJECT_ARGUMENT_RE = re.compile(r"^\s*project\(\s*\"(?P<project>:[^\"]+)\"\s*\)")
 INCLUDE_RE = re.compile(r"include\((?P<body>.*?)\)", re.DOTALL)
 PROJECT_PATH_RE = re.compile(r"\"(:[^\"]+)\"")
 
@@ -101,10 +97,47 @@ def line_number(text: str, offset: int) -> int:
     return text.count("\n", 0, offset) + 1
 
 
+def iter_dependency_calls(text: str) -> Iterable[tuple[str, str, int]]:
+    for match in CONFIGURATION_CALL_RE.finditer(text):
+        argument = extract_call_argument(text, match.end() - 1)
+        if argument is not None:
+            yield match.group("configuration"), argument, match.start()
+
+
+def extract_call_argument(text: str, open_paren_offset: int) -> str | None:
+    depth = 0
+    quote: str | None = None
+    escaped = False
+    for index in range(open_paren_offset, len(text)):
+        char = text[index]
+        if quote:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = None
+            continue
+        if char in ("'", '"'):
+            quote = char
+            continue
+        if char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+            if depth == 0:
+                return text[open_paren_offset + 1 : index]
+    return None
+
+
 def dependency_token(raw: str) -> str:
     token = raw.strip()
     if token.startswith('"') or token.startswith("'"):
-        return token[1:].split(token[0], 1)[0]
+        quote = token[0]
+        closing_quote = token.find(quote, 1)
+        if closing_quote == -1:
+            return token
+        return token[1:closing_quote]
     return token.split("{")[0].strip().rstrip(",")
 
 
@@ -163,17 +196,19 @@ def validate_dependencies(
             continue
         text = build_file.read_text(encoding="utf-8")
 
-        for match in PROJECT_DEPENDENCY_RE.finditer(text):
-            configuration = match.group("configuration")
+        for configuration, argument, offset in iter_dependency_calls(text):
             if configuration not in production_configurations:
                 continue
-            target_path = match.group("project")
+            project_match = PROJECT_ARGUMENT_RE.match(argument)
+            if not project_match:
+                continue
+            target_path = project_match.group("project")
             target_rule = rules.get(target_path)
             if target_rule is None:
                 findings.append(
                     Finding(
                         build_file,
-                        line_number(text, match.start()),
+                        line_number(text, offset),
                         f"{source_path} depends on unclassified project {target_path}",
                     )
                 )
@@ -182,7 +217,7 @@ def validate_dependencies(
                 findings.append(
                     Finding(
                         build_file,
-                        line_number(text, match.start()),
+                        line_number(text, offset),
                         f"{source_path} ({source_rule.layer}) must not depend on "
                         f"{target_path} ({target_rule.layer}); dependencies must point "
                         "to the same or a lower layer",
@@ -192,18 +227,19 @@ def validate_dependencies(
         external_policy = layers[source_rule.layer].get("externalDependencies")
         if external_policy != "allow-listed-only":
             continue
-        for match in EXTERNAL_DEPENDENCY_RE.finditer(text):
-            raw = match.group("dependency")
-            if "project(" in raw:
+        for configuration, argument, offset in iter_dependency_calls(text):
+            if configuration not in production_configurations:
                 continue
-            token = dependency_token(raw)
+            if PROJECT_ARGUMENT_RE.match(argument):
+                continue
+            token = dependency_token(argument)
             if token.startswith("files(") or token.startswith("fileTree("):
                 continue
             if not is_allowlisted(token, source_rule.external_allowlist):
                 findings.append(
                     Finding(
                         build_file,
-                        line_number(text, match.start()),
+                        line_number(text, offset),
                         f"{source_path} ({source_rule.layer}) uses production external "
                         f"dependency {token!r} without an externalAllowlist entry",
                     )
