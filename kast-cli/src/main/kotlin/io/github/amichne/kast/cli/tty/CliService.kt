@@ -414,6 +414,10 @@ private fun defaultConfigTemplate(): String = """
     # phase2BatchSize = 50
     # identifierIndexWaitMillis = 10000
     # referenceBatchSize = 50
+    #
+    # [indexing.remote]
+    # enabled = false
+    # sourceIndexUrl = "file:///absolute/path/to/source-index.db"
 
     # [cache]
     # enabled = true

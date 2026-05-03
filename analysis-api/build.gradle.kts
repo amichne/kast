@@ -4,9 +4,8 @@ plugins {
 }
 
 dependencies {
-    implementation(libs.coroutines.core)
-    implementation(libs.hoplite.core)
-    implementation(libs.hoplite.toml)
+    implementation(libs.bundles.coroutines)
+    implementation(libs.bundles.hoplite)
     testImplementation(project(":shared-testing"))
 }
 

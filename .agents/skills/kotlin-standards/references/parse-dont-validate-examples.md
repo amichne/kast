@@ -31,3 +31,6 @@ uses `Result` only as a standard-library fallback.
 - Raw input should not flow past the boundary.
 - Failure should be observable and testable.
 - Parsing should normalize once, not repeatedly re-check the same invariant.
+- Unknown fields should follow an explicit policy: reject, ignore, or preserve.
+- Conflicting optional fields should parse into one domain concept or fail before
+  core logic sees them.

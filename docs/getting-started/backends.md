@@ -80,12 +80,25 @@ How a session unfolds:
 
 1. You open the project in IntelliJ.
 2. The plugin starts a `kast` server on a Unix domain socket.
-3. It drops a descriptor file so other tools can find the socket.
-4. External tools connect and speak the same JSON-RPC.
+3. It hydrates a configured remote source index when one is available.
+4. It prepopulates the local SQLite source index from IntelliJ PSI files.
+5. It indexes resolved references while the IDE is in smart mode.
+6. It drops a descriptor file so other tools can find the socket.
+7. External tools connect and speak the same JSON-RPC.
 
 !!! tip
     Set `backends.intellij.enabled = false` in `config.toml` to disable
     the plugin without uninstalling it.
+
+To hydrate a remote SQLite source index before local indexing starts, add an
+`indexing.remote` block. `sourceIndexUrl` accepts `file://`, `http://`, and
+`https://` URLs that point to a `source-index.db` snapshot:
+
+```toml
+[indexing.remote]
+enabled = true
+sourceIndexUrl = "file:///absolute/path/to/source-index.db"
+```
 
 ## Capability surface
 

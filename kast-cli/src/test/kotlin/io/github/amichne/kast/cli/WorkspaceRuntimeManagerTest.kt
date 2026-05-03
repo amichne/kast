@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 
 class WorkspaceRuntimeManagerTest {
@@ -52,6 +53,14 @@ class WorkspaceRuntimeManagerTest {
 
         assertFalse(result.started)
         assertEquals(RuntimeState.INDEXING, result.selected.runtimeStatus?.state)
+    }
+
+    @Test
+    fun `workspace runtime manager bytecode avoids kotlin Duration ABI coupling`() {
+        val classFileText = classFileText(WorkspaceRuntimeManager::class.java)
+
+        assertFalse(classFileText.contains("kotlin/time/Duration"))
+        assertFalse(classFileText.contains("fromRawValue-UwyO8pc"))
     }
 
     @Test
@@ -351,6 +360,13 @@ class WorkspaceRuntimeManagerTest {
         DescriptorRegistry(daemonsFile).register(descriptor)
         return descriptor
     }
+
+    private fun classFileText(clazz: Class<*>): String =
+        checkNotNull(clazz.getResourceAsStream("${clazz.simpleName}.class")) {
+            "Missing class file resource for ${clazz.name}"
+        }.use { input ->
+            String(input.readBytes(), StandardCharsets.ISO_8859_1)
+        }
 
     private class FakeRuntimeRpcClient(
         runtimeStatuses: Map<String, List<RuntimeStatusResponse>>,

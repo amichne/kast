@@ -14,7 +14,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.nio.file.Path
-import kotlin.time.Duration.Companion.milliseconds
 
 internal class WorkspaceRuntimeManager(
     private val rpcClient: RuntimeRpcClient,
@@ -122,7 +121,7 @@ internal class WorkspaceRuntimeManager(
                 acceptIndexing = acceptIndexing,
             )?.let { return it }
 
-            delay(250.milliseconds)
+            delay(250)
         }
 
         val targetState = if (acceptIndexing) "servable" else "ready"
@@ -215,7 +214,7 @@ internal class WorkspaceRuntimeManager(
                 if (!processHandle.isAlive) {
                     return@repeat
                 }
-                delay(250.milliseconds)
+                delay(250)
             }
             if (processHandle.isAlive) {
                 processHandle.destroyForcibly()

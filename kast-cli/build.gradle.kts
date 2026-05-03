@@ -1,3 +1,5 @@
+import org.gradle.internal.execution.caching.CachingState.enabled
+
 plugins {
     id("kast.standalone-serialization-app")
     alias(libs.plugins.graalvm.native)
@@ -26,7 +28,7 @@ application {
 dependencies {
     api(project(":analysis-api"))
     implementation(project(":index-store"))
-    implementation(libs.coroutines.core)
+    implementation(libs.bundles.coroutines)
     implementation(libs.mordant)
     implementation(libs.serialization.json)
 }

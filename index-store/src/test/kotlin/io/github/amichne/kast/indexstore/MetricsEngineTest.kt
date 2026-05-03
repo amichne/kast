@@ -46,6 +46,17 @@ class MetricsEngineTest {
     }
 
     @Test
+    fun `metrics bootstrap sqlite driver when DriverManager registry is empty`() {
+        val root = seededWorkspace()
+
+        withSqliteDriversDeregistered {
+            MetricsEngine(root).use { metrics ->
+                assertEquals("lib.Foo", metrics.fanInRanking(limit = 1).single().targetFqName)
+            }
+        }
+    }
+
+    @Test
     fun `ranks files by outgoing references`() {
         val root = seededWorkspace()
 

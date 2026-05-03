@@ -1,6 +1,7 @@
 package io.github.amichne.kast.api.client
 
 import com.sksamuel.hoplite.ConfigLoaderBuilder
+import com.sksamuel.hoplite.ExperimentalHoplite
 import io.github.amichne.kast.api.contract.ServerLimits
 import java.nio.file.Files
 import java.nio.file.Path
@@ -32,6 +33,10 @@ data class KastConfig(
                 phase2BatchSize = 50,
                 identifierIndexWaitMillis = 10_000L,
                 referenceBatchSize = 50,
+                remote = RemoteIndexConfig(
+                    enabled = false,
+                    sourceIndexUrl = null,
+                ),
             ),
             cache = CacheConfig(
                 enabled = true,
@@ -58,6 +63,7 @@ data class KastConfig(
             ),
         )
 
+        @OptIn(ExperimentalHoplite::class)
         fun load(
             workspaceRoot: Path,
             configHome: () -> Path = { kastConfigHome() },
@@ -72,11 +78,13 @@ data class KastConfig(
                 KastConfigOverride()
             } else {
                 ConfigLoaderBuilder.empty()
+                    .withClassLoader(KastConfig::class.java.classLoader)
                     .addDefaultDecoders()
                     .addDefaultPreprocessors()
                     .addDefaultNodeTransformers()
                     .addDefaultParamMappers()
                     .addDefaultParsers()
+                    .withExplicitSealedTypes()
                     .allowEmptyConfigFiles()
                     .build()
                     .loadConfigOrThrow<KastConfigOverride>(configFiles)
@@ -97,6 +105,12 @@ data class IndexingConfig(
     val phase2BatchSize: Int,
     val identifierIndexWaitMillis: Long,
     val referenceBatchSize: Int,
+    val remote: RemoteIndexConfig,
+)
+
+data class RemoteIndexConfig(
+    val enabled: Boolean,
+    val sourceIndexUrl: String?,
 )
 
 data class CacheConfig(
@@ -156,6 +170,12 @@ data class IndexingConfigOverride(
     val phase2BatchSize: Int? = null,
     val identifierIndexWaitMillis: Long? = null,
     val referenceBatchSize: Int? = null,
+    val remote: RemoteIndexConfigOverride? = null,
+)
+
+data class RemoteIndexConfigOverride(
+    val enabled: Boolean? = null,
+    val sourceIndexUrl: String? = null,
 )
 
 data class CacheConfigOverride(
@@ -215,6 +235,12 @@ private fun IndexingConfig.merge(override: IndexingConfigOverride?): IndexingCon
     phase2BatchSize = override?.phase2BatchSize ?: phase2BatchSize,
     identifierIndexWaitMillis = override?.identifierIndexWaitMillis ?: identifierIndexWaitMillis,
     referenceBatchSize = override?.referenceBatchSize ?: referenceBatchSize,
+    remote = remote.merge(override?.remote),
+)
+
+private fun RemoteIndexConfig.merge(override: RemoteIndexConfigOverride?): RemoteIndexConfig = copy(
+    enabled = override?.enabled ?: enabled,
+    sourceIndexUrl = override?.sourceIndexUrl ?: sourceIndexUrl,
 )
 
 private fun CacheConfig.merge(override: CacheConfigOverride?): CacheConfig = copy(

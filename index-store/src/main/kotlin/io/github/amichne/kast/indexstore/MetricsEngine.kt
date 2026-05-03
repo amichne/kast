@@ -623,6 +623,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
         cachedConnection?.let { conn ->
             if (!conn.isClosed) return conn
         }
+        SqliteJdbcDriverBootstrap.ensureRegistered()
         val conn = DriverManager.getConnection("jdbc:sqlite:$dbPath")
         conn.createStatement().use { stmt ->
             stmt.execute("PRAGMA busy_timeout=5000")

@@ -4,7 +4,7 @@ site_description = """
 IDE-grade Kotlin code intelligence for terminals, CI, and IDEs.
 """
 site_author = "amichne"
-site_url = "https://amichne.github.io/kast/"
+site_url = "https://kast.michne.com/"
 repo_url = "https://github.com/amichne/kast"
 repo_name = "amichne/kast"
 edit_uri = "edit/main/docs"
@@ -45,6 +45,7 @@ nav = [
   { "Architecture" = [
     { "How Kast works" = "architecture/how-it-works.md" },
     { "Limits and boundaries" = "architecture/behavioral-model.md" },
+    { "ADT boundaries" = "architecture/adt-boundaries.md" },
   ]},
   { "Changelog" = "changelog.md" },
 ]

@@ -24,8 +24,8 @@ Pick the entry point you want first:
 
 | Runtime mode | Best when | Install |
 | --- | --- | --- |
-| **Standalone CLI + backend** | You want an independent runtime for terminal work, CI, or agents | [Install guide](https://amichne.github.io/kast/getting-started/install/) |
-| **IntelliJ plugin-backed runtime** | IntelliJ is already open and you want to reuse its already-open project model and indexes | [Plugin install guide](https://amichne.github.io/kast/getting-started/install/#install-the-intellij-plugin-manually) · [Latest plugin zip](https://github.com/amichne/kast/releases/latest) |
+| **Standalone CLI + backend** | You want an independent runtime for terminal work, CI, or agents | [Install guide](https://kast.michne.com/getting-started/install/) |
+| **IntelliJ plugin-backed runtime** | IntelliJ is already open and you want to reuse its already-open project model and indexes | [Plugin install guide](https://kast.michne.com/getting-started/install/#install-the-intellij-plugin-manually) · [Latest plugin zip](https://github.com/amichne/kast/releases/latest) |
 
 Install the `kast` CLI from any shell:
 
@@ -66,10 +66,10 @@ the project open and you want `kast` to piggyback on the IDE's existing
 project model and index.
 
 For the full comparison, see
-[Backends](https://amichne.github.io/kast/getting-started/backends/).
+[Backends](https://kast.michne.com/getting-started/backends/).
 
 ## Documentation
 
-- Documentation site: <https://amichne.github.io/kast/>
-- Install guide: <https://amichne.github.io/kast/getting-started/install/>
-- Backend comparison: <https://amichne.github.io/kast/getting-started/backends/>
+- Documentation site: <https://kast.michne.com/>
+- Install guide: <https://kast.michne.com/getting-started/install/>
+- Backend comparison: <https://kast.michne.com/getting-started/backends/>

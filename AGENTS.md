@@ -56,20 +56,23 @@ Use this map to choose the narrowest unit that owns a change.
 
 ## Mandatory tool routing
 
-Agents must use native `kast skill ...` subcommands for Kotlin semantic operations.
+Agents must use the native `kast_*` Copilot tools registered by the
+`.github/extensions/kast/` extension for Kotlin semantic operations.
+The extension also resolves `KAST_CLI_PATH` at session start, so the same
+commands are available as a `kast skill <name>` bash fallback.
 
-| Operation             | Tool                          | Fallback |
-|-----------------------|-------------------------------|----------|
-| Resolve symbol        | `kast skill resolve`                    | None     |
-| Find references       | `kast skill references`                 | None     |
-| Call hierarchy        | `kast skill callers`                    | None     |
-| Impact analysis       | `kast skill references` + `kast skill callers` | None |
-| Diagnostics           | `kast skill diagnostics`                | None     |
-| Rename symbol         | `kast skill rename`                     | None     |
-| Scaffold context      | `kast skill scaffold`                   | None     |
-| Write and validate    | `kast skill write-and-validate`         | None     |
-| List workspace files  | `kast skill workspace-files`            | None     |
-| Workspace metrics     | `kast skill metrics`                    | None     |
+| Operation             | Native tool                 | Bash fallback                          |
+|-----------------------|-----------------------------|----------------------------------------|
+| Resolve symbol        | `kast_resolve`              | `kast skill resolve`                   |
+| Find references       | `kast_references`           | `kast skill references`                |
+| Call hierarchy        | `kast_callers`              | `kast skill callers`                   |
+| Impact analysis       | `kast_references` + `kast_callers` | `kast skill references` + `kast skill callers` |
+| Diagnostics           | `kast_diagnostics`          | `kast skill diagnostics`               |
+| Rename symbol         | `kast_rename`               | `kast skill rename`                    |
+| Scaffold context      | `kast_scaffold`             | `kast skill scaffold`                  |
+| Write and validate    | `kast_write_and_validate`   | `kast skill write-and-validate`        |
+| List workspace files  | `kast_workspace_files`      | `kast skill workspace-files`           |
+| Workspace metrics     | `kast_metrics`              | `kast skill metrics`                   |
 
 **Prohibited substitutions:** `grep`, `rg`, `ast-grep`, `cat` + manual
 parsing must NOT be used for symbol identity, reference finding, or call
@@ -90,25 +93,18 @@ edits, then run final command-based validation from `sessionEnd`. Workflow
 guidance that depends on skills, such as `refresh-affected-agents` or docs
 refresh, belongs in agent instructions rather than in the hook manifest.
 
-## Copilot agents
+## Copilot extension
 
-The `.github/agents/` directory contains four GitHub Copilot custom agents
-([spec](https://code.visualstudio.com/docs/copilot/customization/custom-agents#_custom-agent-file-structure))
-that are the primary entry points for Copilot-assisted Kotlin work:
+`.github/extensions/kast/extension.mjs` is the primary entry point for
+Copilot-assisted Kotlin work. It
 
-| Agent | File | Role |
-|-------|------|------|
-| `@kast` | `kast.md` | Orchestrator — routes to sub-agents and validates with diagnostics |
-| `@explore` | `explore.md` | Navigate and understand code via kast semantic tools |
-| `@plan` | `plan.md` | Assess change scope and produce a structured change plan |
-| `@edit` | `edit.md` | Make code changes with `kast skill write-and-validate` or `kast skill rename` |
+- resolves `KAST_CLI_PATH` once at session start (no bootstrap turn),
+- registers the `kast_*` tools listed under **Mandatory tool routing**, and
+- soft-warns once per session when generic `view`/`grep`/`edit`/`create`
+  targets a `.kt`/`.kts` path, suggesting the semantic equivalent.
 
-All four agents route Kotlin semantic operations through the native
-`kast skill` subcommands documented in `.agents/skills/kast/SKILL.md`. A
-companion hook sets `KAST_CLI_PATH` to the kast binary before the agent
-runs, and every command is invoked as
-`"$KAST_CLI_PATH" skill <command> <json>`. Agents never use
-`grep`/`rg`/`ast-grep` for symbol operations.
+Agents follow `.agents/skills/kast/SKILL.md` for command shape and recovery
+rules, and never use `grep`/`rg`/`ast-grep` for symbol operations.
 
 ## Skill composition
 

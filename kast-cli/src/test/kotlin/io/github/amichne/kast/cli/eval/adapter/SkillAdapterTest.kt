@@ -63,9 +63,11 @@ class SkillAdapterTest {
         val behavior = descriptor.checks.first { it.id == "corpus-behavior-evals-valid" }
         val routing = descriptor.checks.first { it.id == "corpus-routing-evals-valid" }
         val coverage = descriptor.checks.first { it.id == "corpus-failure-mode-coverage" }
+        val measurementCoverage = descriptor.checks.first { it.id == "corpus-cost-measurement-coverage" }
         assertEquals(EvalStatus.PASS, behavior.status)
         assertEquals(EvalStatus.PASS, routing.status)
         assertEquals(EvalStatus.PASS, coverage.status)
+        assertEquals(EvalStatus.PASS, measurementCoverage.status)
     }
 
     @Test
@@ -84,7 +86,7 @@ class SkillAdapterTest {
         skillDir.resolve("fixtures/maintenance/evals/routing.json").writeText(
             """
             {"skill_name":"kast","suite":"routing","evals":[
-              {"id":"bad-routing","prompt":"Trace this Kotlin flow","expected_skill":"ksat","expected_route":"kast","allowed_ops":["kast skill resolve","grep"],"forbidden_ops":["grep"],"failure_mode":"trigger_miss"}
+              {"id":"bad-routing","prompt":"Trace this Kotlin flow","expected_skill":"ksat","expected_route":"kast","allowed_ops":["kast skill resolve","grep"],"forbidden_ops":["grep"],"measurement_dimensions":["bogus_dimension"],"failure_mode":"trigger_miss"}
             ]}
             """.trimIndent(),
         )
@@ -178,6 +180,10 @@ class SkillAdapterTest {
         assertTrue(metricIds.contains("corpus-behavior-eval-count"))
         assertTrue(metricIds.contains("corpus-routing-eval-count"))
         assertTrue(metricIds.contains("corpus-failure-mode-count"))
+        assertTrue(metricIds.contains("corpus-cost-measurement-dimension-count"))
+        assertTrue(metricIds.contains("corpus-routing-native-route-count"))
+        assertTrue(metricIds.contains("corpus-routing-native-op-count"))
+        assertTrue(metricIds.contains("corpus-routing-generic-guardrail-count"))
     }
 
     @Test
@@ -205,15 +211,15 @@ class SkillAdapterTest {
             """
             description: test
             Trigger phrases: resolve, analyze
-            kast skill resolve
-            kast skill references
-            kast skill callers
-            kast skill diagnostics
-            kast skill rename
-            kast skill scaffold
-            kast skill write-and-validate
-            kast skill workspace-files
-            kast skill metrics
+            kast_resolve
+            kast_references
+            kast_callers
+            kast_diagnostics
+            kast_rename
+            kast_scaffold
+            kast_write_and_validate
+            kast_workspace_files
+            kast_metrics
             """.trimIndent(),
         )
 
@@ -277,7 +283,7 @@ class SkillAdapterTest {
                     if (index > 0) append(",")
                     append(
                         """
-                        {"id":"routing-${index + 1}","prompt":"Routing prompt ${index + 1}","expected_skill":"kast","expected_route":"@kast","allowed_ops":["kast skill resolve"],"forbidden_ops":["grep"],"failure_mode":"$failureMode"}
+                        {"id":"routing-${index + 1}","prompt":"Routing prompt ${index + 1}","expected_skill":"kast","expected_route":"native-kast-tools","allowed_ops":["kast_resolve"],"forbidden_ops":["grep","view"],"measurement_dimensions":["${REQUIRED_MEASUREMENT_DIMENSIONS[index % REQUIRED_MEASUREMENT_DIMENSIONS.size]}"],"failure_mode":"$failureMode"}
                         """.trimIndent(),
                     )
                 }
@@ -298,6 +304,12 @@ class SkillAdapterTest {
             "schema_response",
             "mutation_abandonment",
             "failure_response_ignored",
+        )
+        private val REQUIRED_MEASUREMENT_DIMENSIONS = listOf(
+            "discoverability",
+            "iteration_reduction",
+            "haystack_reduction",
+            "generic_tool_avoidance",
         )
     }
 }

@@ -6,34 +6,41 @@
       "id": "understand-kotlin-file",
       "prompt": "Help me understand this Kotlin file and how it is wired into the rest of the project.",
       "expected_skill": "kast",
-      "expected_route": "@kast",
+      "expected_route": "native-kast-tools",
       "allowed_ops": [
-        "kast skill workspace-files",
-        "kast skill scaffold",
-        "kast skill resolve",
-        "kast skill references",
-        "kast skill callers"
+        "kast_workspace_files",
+        "kast_scaffold",
+        "kast_resolve",
+        "kast_references",
+        "kast_callers"
       ],
       "forbidden_ops": [
         "grep",
-        "rg"
+        "rg",
+        "view"
       ],
-      "failure_mode": "trigger_miss"
+      "failure_mode": "trigger_miss",
+      "measurement_dimensions": [
+        "discoverability",
+        "haystack_reduction",
+        "generic_tool_avoidance"
+      ]
     },
     {
       "id": "trace-kotlin-flow",
       "prompt": "Trace this Kotlin flow from the controller down to the implementation and show me what calls what.",
       "expected_skill": "kast",
-      "expected_route": "@kast",
+      "expected_route": "native-kast-tools",
       "allowed_ops": [
-        "kast skill scaffold",
-        "kast skill resolve",
-        "kast skill callers",
-        "kast skill references"
+        "kast_scaffold",
+        "kast_resolve",
+        "kast_callers",
+        "kast_references"
       ],
       "forbidden_ops": [
         "grep",
-        "rg"
+        "rg",
+        "view"
       ],
       "failure_mode": "trigger_miss"
     },
@@ -41,15 +48,16 @@
       "id": "find-kotlin-usages",
       "prompt": "Where is this Kotlin symbol used, and what code depends on it?",
       "expected_skill": "kast",
-      "expected_route": "@kast",
+      "expected_route": "native-kast-tools",
       "allowed_ops": [
-        "kast skill resolve",
-        "kast skill references",
-        "kast skill callers"
+        "kast_resolve",
+        "kast_references",
+        "kast_callers"
       ],
       "forbidden_ops": [
         "grep",
-        "rg"
+        "rg",
+        "view"
       ],
       "failure_mode": "routing_bypass"
     },
@@ -57,16 +65,18 @@
       "id": "rename-kotlin-symbol",
       "prompt": "Rename this Kotlin symbol safely across the workspace and tell me what changed.",
       "expected_skill": "kast",
-      "expected_route": "@kast",
+      "expected_route": "native-kast-tools",
       "allowed_ops": [
-        "kast skill resolve",
-        "kast skill rename",
-        "kast skill diagnostics"
+        "kast_resolve",
+        "kast_rename",
+        "kast_diagnostics"
       ],
       "forbidden_ops": [
+        "edit",
         "grep",
         "rg",
-        "sed"
+        "sed",
+        "view"
       ],
       "failure_mode": "trigger_miss"
     },
@@ -74,18 +84,19 @@
       "id": "fix-kotlin-test",
       "prompt": "Fix this failing Kotlin test by tracing the relevant production code and validating the edit.",
       "expected_skill": "kast",
-      "expected_route": "@kast",
+      "expected_route": "native-kast-tools",
       "allowed_ops": [
-        "kast skill scaffold",
-        "kast skill resolve",
-        "kast skill references",
-        "kast skill callers",
-        "kast skill write-and-validate",
-        "kast skill diagnostics"
+        "kast_scaffold",
+        "kast_resolve",
+        "kast_references",
+        "kast_callers",
+        "kast_write_and_validate",
+        "kast_diagnostics"
       ],
       "forbidden_ops": [
         "grep",
-        "rg"
+        "rg",
+        "view"
       ],
       "failure_mode": "trigger_miss"
     },
@@ -93,17 +104,18 @@
       "id": "audit-eventbean-field-writes",
       "prompt": "Audit the Kotlin `EventBean` model and show where `actionTitle`, `actionType`, `date`, and `headerActionTitle` are set across the timeline processors.",
       "expected_skill": "kast",
-      "expected_route": "@kast",
+      "expected_route": "native-kast-tools",
       "allowed_ops": [
-        "kast skill workspace-files",
-        "kast skill scaffold",
-        "kast skill resolve",
-        "kast skill references",
-        "kast skill callers"
+        "kast_workspace_files",
+        "kast_scaffold",
+        "kast_resolve",
+        "kast_references",
+        "kast_callers"
       ],
       "forbidden_ops": [
         "grep",
-        "rg"
+        "rg",
+        "view"
       ],
       "failure_mode": "routing_bypass"
     },
@@ -111,17 +123,18 @@
       "id": "recover-kast-bootstrap",
       "prompt": "I tried using Kast and the first command failed with `bash: : command not found` because `KAST_CLI_PATH` is empty. Bootstrap Kast for this workspace and keep tracing the Kotlin symbol semantically.",
       "expected_skill": "kast",
-      "expected_route": "@kast",
+      "expected_route": "native-kast-tools",
       "allowed_ops": [
         "bash .agents/skills/kast/scripts/kast-session-start.sh",
-        "kast skill scaffold",
-        "kast skill resolve",
-        "kast skill references"
+        "kast_scaffold",
+        "kast_resolve",
+        "kast_references"
       ],
       "forbidden_ops": [
         "find /usr -name kast",
         "grep",
-        "rg"
+        "rg",
+        "view"
       ],
       "failure_mode": "initialization_friction"
     },
@@ -129,16 +142,17 @@
       "id": "stay-semantic-after-parse-friction",
       "prompt": "The first `kast skill references` result was huge and my `jq` projection came back empty. Keep tracing the same Kotlin symbol semantically and do not switch to grep.",
       "expected_skill": "kast",
-      "expected_route": "@kast",
+      "expected_route": "native-kast-tools",
       "allowed_ops": [
-        "kast skill resolve",
-        "kast skill references",
-        "kast skill scaffold",
-        "kast skill callers"
+        "kast_resolve",
+        "kast_references",
+        "kast_scaffold",
+        "kast_callers"
       ],
       "forbidden_ops": [
         "grep",
-        "rg"
+        "rg",
+        "view"
       ],
       "failure_mode": "schema_response"
     },
@@ -146,15 +160,16 @@
       "id": "disambiguate-member-property",
       "prompt": "Find usages of the `date` property on `EventBean`, not every `date` symbol in the repo. I need the exact Kotlin member.",
       "expected_skill": "kast",
-      "expected_route": "@kast",
+      "expected_route": "native-kast-tools",
       "allowed_ops": [
-        "kast skill resolve",
-        "kast skill references",
-        "kast skill scaffold"
+        "kast_resolve",
+        "kast_references",
+        "kast_scaffold"
       ],
       "forbidden_ops": [
         "grep",
-        "rg"
+        "rg",
+        "view"
       ],
       "failure_mode": "routing_bypass"
     },
@@ -162,31 +177,37 @@
       "id": "map-workspace-before-trace",
       "prompt": "I only know the feature name. List the relevant Kotlin files for the timeline module, then trace how `EventBean` gets built.",
       "expected_skill": "kast",
-      "expected_route": "@kast",
+      "expected_route": "native-kast-tools",
       "allowed_ops": [
-        "kast skill workspace-files",
-        "kast skill scaffold",
-        "kast skill resolve",
-        "kast skill references",
-        "kast skill callers"
+        "kast_workspace_files",
+        "kast_scaffold",
+        "kast_resolve",
+        "kast_references",
+        "kast_callers"
       ],
       "forbidden_ops": [
         "grep",
-        "rg"
+        "rg",
+        "view"
       ],
-      "failure_mode": "maintenance_thrash"
+      "failure_mode": "maintenance_thrash",
+      "measurement_dimensions": [
+        "discoverability",
+        "haystack_reduction"
+      ]
     },
     {
       "id": "demo-generate-basic",
       "prompt": "Generate a synthetic demo comparing grep vs kast for a git repository.",
       "expected_skill": "kast",
-      "expected_route": "@kast",
+      "expected_route": "native-kast-tools",
       "allowed_ops": [
         "kast demo generate"
       ],
       "forbidden_ops": [
         "grep",
-        "rg"
+        "rg",
+        "view"
       ],
       "failure_mode": "trigger_miss"
     },
@@ -194,16 +215,17 @@
       "id": "parse-nested-response-shape",
       "prompt": "A Kast `references` response parsed oddly and `.references[].filePath` is empty. Inspect the shape and keep tracing the Kotlin usages semantically.",
       "expected_skill": "kast",
-      "expected_route": "@kast",
+      "expected_route": "native-kast-tools",
       "allowed_ops": [
-        "kast skill references",
-        "kast skill resolve",
-        "kast skill scaffold",
-        "kast skill callers"
+        "kast_references",
+        "kast_resolve",
+        "kast_scaffold",
+        "kast_callers"
       ],
       "forbidden_ops": [
         "grep",
-        "rg"
+        "rg",
+        "view"
       ],
       "failure_mode": "schema_response"
     },
@@ -211,15 +233,16 @@
       "id": "write-validate-hash-failure",
       "prompt": "Use `kast skill write-and-validate` for a Kotlin replacement, but if it returns `VALIDATION_ERROR: Missing expected hash for edited file`, recover safely and tell me whether the edit landed.",
       "expected_skill": "kast",
-      "expected_route": "@kast",
+      "expected_route": "native-kast-tools",
       "allowed_ops": [
-        "kast skill write-and-validate",
-        "kast skill diagnostics"
+        "kast_write_and_validate",
+        "kast_diagnostics"
       ],
       "forbidden_ops": [
-        "sed",
         "grep",
-        "rg"
+        "rg",
+        "sed",
+        "view"
       ],
       "failure_mode": "mutation_abandonment"
     },
@@ -227,38 +250,43 @@
       "id": "selected-skill-no-maintenance-thrash",
       "prompt": "The Kast skill is already selected for a Kotlin flow-tracing task. Start with the first useful semantic command instead of reading `.kast-version`, maintenance evals, or the OpenAPI fixture.",
       "expected_skill": "kast",
-      "expected_route": "@kast",
+      "expected_route": "native-kast-tools",
       "allowed_ops": [
-        "bash .agents/skills/kast/scripts/kast-session-start.sh",
-        "kast skill workspace-files",
-        "kast skill scaffold",
-        "kast skill resolve",
-        "kast skill references",
-        "kast skill callers"
+        "kast_workspace_files",
+        "kast_scaffold",
+        "kast_resolve",
+        "kast_references",
+        "kast_callers"
       ],
       "forbidden_ops": [
         ".agents/skills/kast/.kast-version",
         ".agents/skills/kast/fixtures/maintenance/references/wrapper-openapi.yaml",
         "grep",
-        "rg"
+        "rg",
+        "view"
       ],
-      "failure_mode": "maintenance_thrash"
+      "failure_mode": "maintenance_thrash",
+      "measurement_dimensions": [
+        "discoverability",
+        "iteration_reduction"
+      ]
     },
     {
       "id": "respect-failure-response",
       "prompt": "A Kast command returned `ok:false` with `stage`, `message`, `errorText`, and `logFile`. Use that response to decide the next step without abandoning Kast.",
       "expected_skill": "kast",
-      "expected_route": "@kast",
+      "expected_route": "native-kast-tools",
       "allowed_ops": [
-        "kast skill resolve",
-        "kast skill references",
-        "kast skill callers",
-        "kast skill scaffold",
-        "kast skill diagnostics"
+        "kast_resolve",
+        "kast_references",
+        "kast_callers",
+        "kast_scaffold",
+        "kast_diagnostics"
       ],
       "forbidden_ops": [
         "grep",
-        "rg"
+        "rg",
+        "view"
       ],
       "failure_mode": "failure_response_ignored"
     },
@@ -266,17 +294,19 @@
       "id": "trigger-fix-kotlin-class",
       "prompt": "Fix the broken method in this Kotlin class and validate the change instead of patching the file by hand.",
       "expected_skill": "kast",
-      "expected_route": "@kast",
+      "expected_route": "native-kast-tools",
       "allowed_ops": [
-        "kast skill scaffold",
-        "kast skill resolve",
-        "kast skill write-and-validate",
-        "kast skill diagnostics"
+        "kast_scaffold",
+        "kast_resolve",
+        "kast_write_and_validate",
+        "kast_diagnostics"
       ],
       "forbidden_ops": [
+        "edit",
         "grep",
         "rg",
-        "sed"
+        "sed",
+        "view"
       ],
       "failure_mode": "trigger_miss"
     },
@@ -284,30 +314,36 @@
       "id": "loaded-but-bypassed",
       "prompt": "The kast skill is already active. Show me every place `AnalysisBackend` is referenced in this Kotlin project without switching to grep.",
       "expected_skill": "kast",
-      "expected_route": "@kast",
+      "expected_route": "native-kast-tools",
       "allowed_ops": [
-        "kast skill resolve",
-        "kast skill references",
-        "kast skill callers"
+        "kast_resolve",
+        "kast_references",
+        "kast_callers"
       ],
       "forbidden_ops": [
         "grep",
-        "rg"
+        "rg",
+        "view"
       ],
-      "failure_mode": "routing_bypass"
+      "failure_mode": "routing_bypass",
+      "measurement_dimensions": [
+        "haystack_reduction",
+        "generic_tool_avoidance"
+      ]
     },
     {
       "id": "scaffold-multiple-files-individually",
       "prompt": "Scaffold `DescriptorRegistry.kt`, `WorkspaceRuntimeManager.kt`, and `KastFileOperations.kt` so I can compare them before a Kotlin refactor.",
       "expected_skill": "kast",
-      "expected_route": "@kast",
+      "expected_route": "native-kast-tools",
       "allowed_ops": [
-        "kast skill scaffold"
+        "kast_scaffold"
       ],
       "forbidden_ops": [
         "filePaths",
         "grep",
-        "rg"
+        "rg",
+        "view"
       ],
       "failure_mode": "schema_request"
     },
@@ -315,36 +351,44 @@
       "id": "write-new-code-via-wrapper",
       "prompt": "Write new Kotlin code for this file and validate it. Use the supported Kast mutation path instead of editing by hand.",
       "expected_skill": "kast",
-      "expected_route": "@kast",
+      "expected_route": "native-kast-tools",
       "allowed_ops": [
-        "kast skill write-and-validate",
-        "kast skill diagnostics"
+        "kast_write_and_validate",
+        "kast_diagnostics"
       ],
       "forbidden_ops": [
         "apply_patch",
-        "sed",
+        "create",
+        "edit",
         "grep",
-        "rg"
+        "rg",
+        "sed",
+        "view"
       ],
-      "failure_mode": "mutation_abandonment"
+      "failure_mode": "mutation_abandonment",
+      "measurement_dimensions": [
+        "generic_tool_avoidance",
+        "iteration_reduction"
+      ]
     },
     {
       "id": "unknown-key-consults-quickstart",
       "prompt": "My first Kast request failed with `Encountered an unknown key`. Recover by consulting the documented request shape instead of probing the wrapper.",
       "expected_skill": "kast",
-      "expected_route": "@kast",
+      "expected_route": "native-kast-tools",
       "allowed_ops": [
         "references/quickstart.md",
-        "kast skill resolve",
-        "kast skill scaffold",
-        "kast skill rename",
-        "kast skill write-and-validate"
+        "kast_resolve",
+        "kast_scaffold",
+        "kast_rename",
+        "kast_write_and_validate"
       ],
       "forbidden_ops": [
-        "{}",
         "--help",
         "grep",
-        "rg"
+        "rg",
+        "view",
+        "{}"
       ],
       "failure_mode": "schema_request"
     },
@@ -352,16 +396,17 @@
       "id": "absolute-path-wrapper-requests",
       "prompt": "The Kotlin file is `src/main/kotlin/io/github/amichne/kast/cli/CliCommandCatalog.kt`. Use Kast on it, but normalize the path before you call the wrapper.",
       "expected_skill": "kast",
-      "expected_route": "@kast",
+      "expected_route": "native-kast-tools",
       "allowed_ops": [
-        "kast skill scaffold",
-        "kast skill diagnostics"
+        "kast_scaffold",
+        "kast_diagnostics"
       ],
       "forbidden_ops": [
-        "\"targetFile\":\"src/main/kotlin/io/github/amichne/kast/cli/CliCommandCatalog.kt\"",
         "\"filePath\":\"src/main/kotlin/io/github/amichne/kast/cli/CliCommandCatalog.kt\"",
+        "\"targetFile\":\"src/main/kotlin/io/github/amichne/kast/cli/CliCommandCatalog.kt\"",
         "grep",
-        "rg"
+        "rg",
+        "view"
       ],
       "failure_mode": "relative_path"
     },
@@ -369,14 +414,15 @@
       "id": "disambiguate-ambiguous-symbol-before-tracing",
       "prompt": "Trace callers for the Kotlin symbol `handle`. If multiple candidates exist, do not guess which one I meant.",
       "expected_skill": "kast",
-      "expected_route": "@kast",
+      "expected_route": "native-kast-tools",
       "allowed_ops": [
-        "kast skill resolve",
-        "kast skill callers"
+        "kast_resolve",
+        "kast_callers"
       ],
       "forbidden_ops": [
         "grep",
-        "rg"
+        "rg",
+        "view"
       ],
       "failure_mode": "ambiguous_symbol"
     }
