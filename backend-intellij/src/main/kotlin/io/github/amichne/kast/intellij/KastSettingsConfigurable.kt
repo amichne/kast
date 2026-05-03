@@ -4,7 +4,7 @@ import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.options.ConfigurationException
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.api.client.KastConfig
-import io.github.amichne.kast.api.client.WorkspaceDirectoryResolver
+import io.github.amichne.kast.api.client.KAST_CONFIG_PATH
 import java.nio.file.Files
 import java.nio.file.Path
 import javax.swing.JCheckBox
@@ -80,15 +80,13 @@ internal class KastSettingsConfigurable(
     }
 
     override fun apply() {
-        val workspaceRoot = workspaceRoot() ?: return
+        if (workspaceRoot() == null) return
         val state = KastSettingsState.getInstance(project)
         val previousServer = state.toOverride().server
         val previousBackends = state.toOverride().backends
         updateStateFromFields(state)
 
-        val configPath = WorkspaceDirectoryResolver()
-            .workspaceDataDirectory(workspaceRoot)
-            .resolve("config.toml")
+        val configPath = configPath()
         Files.createDirectories(configPath.parent)
         Files.writeString(configPath, state.toWorkspaceToml())
 
@@ -97,6 +95,12 @@ internal class KastSettingsConfigurable(
             KastPluginService.getInstance(project).restartServer()
         }
     }
+
+    private fun configPath(): Path =
+        System.getenv(KAST_CONFIG_PATH)
+            ?.takeIf(String::isNotBlank)
+            ?.let { Path.of(it).toAbsolutePath().normalize() }
+            ?: throw ConfigurationException("$KAST_CONFIG_PATH must point to the TOML config file before Kast settings can be saved.")
 
     private fun buildPanel(): JPanel = JPanel().apply {
         layout = javax.swing.BoxLayout(this, javax.swing.BoxLayout.Y_AXIS)

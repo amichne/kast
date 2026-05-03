@@ -37,6 +37,7 @@ import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
 import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 import io.github.amichne.kast.api.client.KastConfig
+import io.github.amichne.kast.api.client.KAST_CONFIG_PATH
 import io.github.amichne.kast.api.client.kastConfigHome
 import io.github.amichne.kast.cli.options.DaemonStartOptions
 import io.github.amichne.kast.cli.results.DaemonStopResult
@@ -67,7 +68,8 @@ internal class CliService(
     private val installService: InstallService = InstallService(),
     private val installSkillService: InstallSkillService = InstallSkillService(),
     private val installCopilotExtensionService: InstallCopilotExtensionService = InstallCopilotExtensionService(),
-    private val configLoader: (Path) -> KastConfig = KastConfig::load,
+    private val envLookup: (String) -> String? = System::getenv,
+    private val configLoader: (Path) -> KastConfig = { workspaceRoot -> KastConfig.load(workspaceRoot, envReader = envLookup) },
 ) {
     private val rpcClient = KastRpcClient(json)
     private val runtimeManager = WorkspaceRuntimeManager(rpcClient)
@@ -339,13 +341,18 @@ internal class CliService(
     }
 
     fun configInit(): CliOutput {
-        val configFile = kastConfigHome().resolve("config.toml")
+        val configFile = envLookup(KAST_CONFIG_PATH)
+            ?.takeIf(String::isNotBlank)
+            ?.let { Path.of(it).toAbsolutePath().normalize() }
+            ?: kastConfigHome().resolve("config.toml")
         Files.createDirectories(configFile.parent)
-        if (!Files.exists(configFile)) {
+        val status = if (!Files.exists(configFile)) {
             Files.writeString(configFile, defaultConfigTemplate())
-            return CliOutput.Text("Wrote $configFile")
+            "Wrote $configFile"
+        } else {
+            "Config file already exists at $configFile"
         }
-        return CliOutput.Text("Config file already exists at $configFile")
+        return CliOutput.Text("$status\nSet $KAST_CONFIG_PATH=$configFile for commands to load this file.")
     }
 
     suspend fun applyEdits(

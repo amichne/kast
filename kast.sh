@@ -1081,6 +1081,7 @@ _install_config_write() {
   local install_root="$1" bin_dir="$2" runtime_libs="${3:-}"
   local config_dir="${HOME}/.config/kast"
   local config_file="${config_dir}/env"
+  local toml_file="${config_dir}/config.toml"
   mkdir -p "$config_dir"
 
   local in_block="false"
@@ -1092,7 +1093,7 @@ _install_config_write() {
         printf '%s\n' "$KAST_CONFIG_ENV_START_MARKER"
         printf 'export KAST_INSTALL_ROOT="%s"\n' "$install_root"
         printf 'export KAST_BIN_DIR="%s"\n' "$bin_dir"
-        [[ -n "$runtime_libs" ]] && printf 'export KAST_STANDALONE_RUNTIME_LIBS="%s"\n' "$runtime_libs"
+        printf 'export KAST_CONFIG_PATH="%s"\n' "$toml_file"
         printf '%s\n' "$KAST_CONFIG_ENV_END_MARKER"
         continue
       fi
@@ -1110,7 +1111,7 @@ _install_config_write() {
       printf '%s\n' "$KAST_CONFIG_ENV_START_MARKER"
       printf 'export KAST_INSTALL_ROOT="%s"\n' "$install_root"
       printf 'export KAST_BIN_DIR="%s"\n' "$bin_dir"
-      [[ -n "$runtime_libs" ]] && printf 'export KAST_STANDALONE_RUNTIME_LIBS="%s"\n' "$runtime_libs"
+      printf 'export KAST_CONFIG_PATH="%s"\n' "$toml_file"
       printf '%s\n' "$KAST_CONFIG_ENV_END_MARKER"
     } > "$config_file"
     log_success "Created ${config_file}"
@@ -1118,7 +1119,6 @@ _install_config_write() {
 
   # Write TOML config so the CLI can locate runtime-libs via config.backends.standalone.runtimeLibsDir
   if [[ -n "$runtime_libs" ]]; then
-    local toml_file="${config_dir}/config.toml"
     local toml_section="[backends.standalone]"
     local toml_entry="runtimeLibsDir = \"${runtime_libs}\""
     if [[ -f "$toml_file" ]]; then

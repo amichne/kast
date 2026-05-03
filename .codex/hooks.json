@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"import json; print(json.dumps({'systemMessage': 'Before finishing this session, review the changes made and update .agents/wiki/ accordingly: update entity/concept/source/analysis pages that are affected, then append a dated ## [YYYY-MM-DD] entry to .agents/wiki/log.md summarising what changed and which pages now hold the synthesis. Skip only if no wiki-relevant changes were made.'}))\"",
+            "statusMessage": "Checking wiki update..."
+          }
+        ]
+      }
+    ]
+  }
+}

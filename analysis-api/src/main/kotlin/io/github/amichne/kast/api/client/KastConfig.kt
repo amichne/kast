@@ -5,15 +5,36 @@ import com.sksamuel.hoplite.ExperimentalHoplite
 import io.github.amichne.kast.api.contract.ServerLimits
 import java.nio.file.Files
 import java.nio.file.Path
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
+
+const val KAST_CONFIG_PATH = "KAST_CONFIG_PATH"
+
+interface Toggleable {
+    val enabled: Boolean
+
+    object Enabled : Toggleable {
+        override val enabled: Boolean = true
+    }
+
+    object Disabled : Toggleable {
+        override val enabled: Boolean = false
+    }
+}
+
+interface Timeout {
+    val timeout: Duration
+}
 
 data class KastConfig(
-    val server: ServerConfig,
-    val indexing: IndexingConfig,
-    val cache: CacheConfig,
-    val watcher: WatcherConfig,
-    val gradle: GradleConfig,
-    val telemetry: TelemetryConfig,
-    val backends: BackendsConfig,
+    val server: ServerConfig = ServerConfig(),
+    val indexing: IndexingConfig = IndexingConfig(),
+    val cache: CacheConfig = CacheConfig(),
+    val watcher: WatcherConfig = WatcherConfig(),
+    val gradle: GradleConfig = GradleConfig(),
+    val telemetry: TelemetryConfig = TelemetryConfig(),
+    val backends: BackendsConfig = BackendsConfig(),
 ) {
     fun toServerLimits(): ServerLimits = ServerLimits(
         maxResults = server.maxResults,
@@ -22,132 +43,106 @@ data class KastConfig(
     )
 
     companion object {
-        fun defaults(): KastConfig = KastConfig(
-            server = ServerConfig(
-                maxResults = 500,
-                requestTimeoutMillis = 30_000L,
-                maxConcurrentRequests = 4,
-            ),
-            indexing = IndexingConfig(
-                phase2Enabled = true,
-                phase2BatchSize = 50,
-                identifierIndexWaitMillis = 10_000L,
-                referenceBatchSize = 50,
-                remote = RemoteIndexConfig(
-                    enabled = false,
-                    sourceIndexUrl = null,
-                ),
-            ),
-            cache = CacheConfig(
-                enabled = true,
-                writeDelayMillis = 5_000L,
-                sourceIndexSaveDelayMillis = 5_000L,
-            ),
-            watcher = WatcherConfig(debounceMillis = 200L),
-            gradle = GradleConfig(
-                toolingApiTimeoutMillis = 60_000L,
-                maxIncludedProjects = 200,
-            ),
-            telemetry = TelemetryConfig(
-                enabled = false,
-                scopes = "all",
-                detail = "basic",
-                outputFile = null,
-            ),
-            backends = BackendsConfig(
-                standalone = StandaloneBackendConfig(
-                    enabled = true,
-                    runtimeLibsDir = null,
-                ),
-                intellij = IntellijBackendConfig(enabled = true),
-            ),
-        )
+        fun defaults(): KastConfig = KastConfig()
 
-        @OptIn(ExperimentalHoplite::class)
+        @Suppress("UNUSED_PARAMETER")
         fun load(
             workspaceRoot: Path,
             configHome: () -> Path = { kastConfigHome() },
             workspaceDirectoryResolver: WorkspaceDirectoryResolver = WorkspaceDirectoryResolver(configHome = configHome),
             overrides: KastConfigOverride = KastConfigOverride(),
+            envReader: (String) -> String? = System::getenv,
+            configPath: Path? = configPathFromEnvironment(envReader),
         ): KastConfig {
-            val configFiles = listOf(
-                workspaceDirectoryResolver.workspaceDataDirectory(workspaceRoot).resolve("config.toml"),
-                configHome().resolve("config.toml"),
-            ).filter(Files::isRegularFile).map(Path::toString)
-            val loaded = if (configFiles.isEmpty()) {
-                KastConfigOverride()
-            } else {
-                ConfigLoaderBuilder.empty()
-                    .withClassLoader(KastConfig::class.java.classLoader)
-                    .addDefaultDecoders()
-                    .addDefaultPreprocessors()
-                    .addDefaultNodeTransformers()
-                    .addDefaultParamMappers()
-                    .addDefaultParsers()
-                    .withExplicitSealedTypes()
-                    .allowEmptyConfigFiles()
-                    .build()
-                    .loadConfigOrThrow<KastConfigOverride>(configFiles)
-            }
+            val loaded = configPath?.let(::loadConfigFile) ?: KastConfigOverride()
             return defaults().merge(loaded).merge(overrides)
+        }
+
+        private fun configPathFromEnvironment(envReader: (String) -> String?): Path? =
+            envReader(KAST_CONFIG_PATH)
+                ?.takeIf(String::isNotBlank)
+                ?.let { Path.of(it).toAbsolutePath().normalize() }
+
+        @OptIn(ExperimentalHoplite::class)
+        private fun loadConfigFile(configPath: Path): KastConfigOverride {
+            require(Files.isRegularFile(configPath)) {
+                "$KAST_CONFIG_PATH must point to a regular file: $configPath"
+            }
+            return ConfigLoaderBuilder.empty()
+                .withClassLoader(KastConfig::class.java.classLoader)
+                .addDefaultDecoders()
+                .addDefaultPreprocessors()
+                .addDefaultNodeTransformers()
+                .addDefaultParamMappers()
+                .addDefaultParsers()
+                .withExplicitSealedTypes()
+                .allowEmptyConfigFiles()
+                .build()
+                .loadConfigOrThrow<KastConfigOverride>(listOf(configPath.toString()))
         }
     }
 }
 
 data class ServerConfig(
-    val maxResults: Int,
-    val requestTimeoutMillis: Long,
-    val maxConcurrentRequests: Int,
-)
+    val maxResults: Int = 500,
+    val requestTimeoutMillis: Long = 30.seconds.inWholeMilliseconds,
+    val maxConcurrentRequests: Int = 4,
+) : Timeout {
+    override val timeout: Duration
+        get() = requestTimeoutMillis.milliseconds
+}
 
 data class IndexingConfig(
-    val phase2Enabled: Boolean,
-    val phase2BatchSize: Int,
-    val identifierIndexWaitMillis: Long,
-    val referenceBatchSize: Int,
-    val remote: RemoteIndexConfig,
+    val phase2Enabled: Boolean = true,
+    val phase2BatchSize: Int = 50,
+    val identifierIndexWaitMillis: Long = 10.seconds.inWholeMilliseconds,
+    val referenceBatchSize: Int = 50,
+    val remote: RemoteIndexConfig = RemoteIndexConfig(),
 )
 
 data class RemoteIndexConfig(
-    val enabled: Boolean,
-    val sourceIndexUrl: String?,
-)
+    override val enabled: Boolean = Toggleable.Disabled.enabled,
+    val sourceIndexUrl: String? = null,
+) : Toggleable
 
 data class CacheConfig(
-    val enabled: Boolean,
-    val writeDelayMillis: Long,
-    val sourceIndexSaveDelayMillis: Long,
-)
+    override val enabled: Boolean = Toggleable.Enabled.enabled,
+    val writeDelayMillis: Long = 5.seconds.inWholeMilliseconds,
+    val sourceIndexSaveDelayMillis: Long = 5.seconds.inWholeMilliseconds,
+) : Toggleable
 
 data class WatcherConfig(
-    val debounceMillis: Long,
+    val debounceMillis: Long = 200L,
 )
 
 data class GradleConfig(
-    val toolingApiTimeoutMillis: Long,
-    val maxIncludedProjects: Int,
-)
+    val toolingApiTimeoutMillis: Long = 60.seconds.inWholeMilliseconds,
+    val maxIncludedProjects: Int = 200,
+) : Timeout {
+    override val timeout: Duration
+        get() = toolingApiTimeoutMillis.milliseconds
+}
 
 data class TelemetryConfig(
-    val enabled: Boolean,
-    val scopes: String,
-    val detail: String,
-    val outputFile: String?,
-)
+    override val enabled: Boolean = Toggleable.Disabled.enabled,
+    val scopes: String = "all",
+    val detail: String = "basic",
+    val outputFile: String? = null,
+) : Toggleable
 
 data class BackendsConfig(
-    val standalone: StandaloneBackendConfig,
-    val intellij: IntellijBackendConfig,
+    val standalone: StandaloneBackendConfig = StandaloneBackendConfig(),
+    val intellij: IntellijBackendConfig = IntellijBackendConfig(),
 )
 
 data class StandaloneBackendConfig(
-    val enabled: Boolean,
-    val runtimeLibsDir: String?,
-)
+    override val enabled: Boolean = Toggleable.Enabled.enabled,
+    val runtimeLibsDir: String? = null,
+) : Toggleable
 
 data class IntellijBackendConfig(
-    val enabled: Boolean,
-)
+    override val enabled: Boolean = Toggleable.Enabled.enabled,
+) : Toggleable
 
 data class KastConfigOverride(
     val server: ServerConfigOverride? = null,

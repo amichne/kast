@@ -15,8 +15,8 @@ Use this unit for headless host concerns and nowhere else.
   roots, default Unix domain socket transport at
   `$TMPDIR/kast-<workspace-hash>.sock`, and `--stdio` only for direct
   foreground serving.
-- Runtime configuration is sourced from `KastConfig` (TOML at
-  `$KAST_CONFIG_HOME/config.toml` plus per-workspace overrides). Do not
+- Runtime configuration is sourced from `KastConfig` (the TOML file pointed at
+  by `KAST_CONFIG_PATH`). Do not
   reintroduce Kast-specific environment variables (`KAST_DEBUG`,
   `KAST_OTEL_*`, `KAST_CACHE_DISABLED`, `KAST_WORKSPACE_ROOT`,
   `KAST_INTELLIJ_DISABLE`, `KAST_STANDALONE_RUNTIME_LIBS`,

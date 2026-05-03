@@ -9,6 +9,13 @@
 - Read `.agents/skills/kast/SKILL.md` for command shape and recovery rules.
   The bash `kast skill <name>` form remains as a fallback; `KAST_CLI_PATH`
   is announced in session-start context.
+- For AGENTS maintenance after repository changes, prefer the
+  `refresh_affected_agents` tool registered by the
+  `.github/extensions/refresh-affected-agents/extension.mjs` extension. It
+  wraps the diff helper in `.agents/skills/refresh-affected-agents/scripts/`
+  and the hook reminds you when local `AGENTS.md` files enter scope. Read
+  `.agents/skills/refresh-affected-agents/references/agents-update-contract.md`
+  before editing any targeted `AGENTS.md`.
 - TDD: write failing unit tests first. Every change must include tests that prove behavior and regressions are covered.
 - Kotlin standards: follow Kotlin style, apply formatting and lints (ktlint/detekt/spotless), avoid platform-specific APIs in shared modules.
 - Constitutional code: treat API/model changes as contract changes; preserve schema compatibility and capability advertising unless intentionally changing.

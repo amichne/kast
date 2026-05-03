@@ -1,5 +1,4 @@
 # Kast agent guide
-ALways TDD with tracer bullets, use the skill
 
 Kast is a Kotlin analysis tool with one line-delimited JSON-RPC contract and
 two supported operator paths: the repo-local `kast` CLI manages a standalone
@@ -90,8 +89,8 @@ configuration in this repository. Use the standard Copilot hook schema:
 `{"version":1,"hooks":{...}}` with command hooks only. The repo-level hooks
 use `sessionStart` plus `postToolUse` state capture to track session-owned file
 edits, then run final command-based validation from `sessionEnd`. Workflow
-guidance that depends on skills, such as `refresh-affected-agents` or docs
-refresh, belongs in agent instructions rather than in the hook manifest.
+guidance that depends on skills, such as docs refresh, belongs in agent
+instructions or Copilot extensions rather than in the hook manifest.
 
 ## Copilot extension
 
@@ -105,6 +104,13 @@ Copilot-assisted Kotlin work. It
 
 Agents follow `.agents/skills/kast/SKILL.md` for command shape and recovery
 rules, and never use `grep`/`rg`/`ast-grep` for symbol operations.
+
+`.github/extensions/refresh-affected-agents/extension.mjs` wraps
+`.agents/skills/refresh-affected-agents/scripts/find_affected_agents.py` as the
+native `refresh_affected_agents` tool and injects a one-time post-edit reminder
+when the current git diff puts local `AGENTS.md` files in scope. The drafting
+contract remains in
+`.agents/skills/refresh-affected-agents/references/agents-update-contract.md`.
 
 ## Skill composition
 

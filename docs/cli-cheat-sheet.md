@@ -12,7 +12,8 @@ Common flags only; run `kast <command> --help` for the full set.
 
 Every command takes `--workspace-root` (absolute path to your
 project root) and `--backend-name=standalone` by default. Both
-can be set in `kast.toml` so you don't have to repeat them.
+can be set in the TOML file pointed at by `KAST_CONFIG_PATH` so
+you don't have to repeat them.
 
 ## Workspace lifecycle
 

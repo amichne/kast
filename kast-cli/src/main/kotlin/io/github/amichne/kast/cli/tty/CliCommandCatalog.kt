@@ -331,7 +331,7 @@ internal object CliCommandCatalog {
         key = "runtime-libs-dir",
         usage = "--runtime-libs-dir=/absolute/path/to/runtime-libs",
         description = "Override the directory containing the backend runtime classpath. " +
-            "Defaults to backends.standalone.runtimeLibsDir in config.toml.",
+            "Defaults to backends.standalone.runtimeLibsDir in the file pointed at by KAST_CONFIG_PATH.",
         completionKind = CliOptionCompletionKind.DIRECTORY,
     )
     private val metricsLimitOption = CliOptionMetadata(
@@ -451,7 +451,7 @@ internal object CliCommandCatalog {
             summary = "Start the standalone JVM backend for a workspace.",
             description = "Launches the standalone JVM backend process for the given workspace. " +
                 "The process runs in the foreground; use a terminal multiplexer or background shell job to keep it alive. " +
-                "The backend runtime-libs are located from backends.standalone.runtimeLibsDir in config.toml. " +
+                "The backend runtime-libs are located from backends.standalone.runtimeLibsDir in the file pointed at by KAST_CONFIG_PATH. " +
                 "Pass --runtime-libs-dir to override the configured path. " +
                 "All other options are forwarded verbatim to the backend process. " +
                 "Once running, send analysis commands with `$CLI_EXECUTABLE_NAME workspace ensure --workspace-root=<path>` to verify it is ready.",
@@ -502,7 +502,7 @@ internal object CliCommandCatalog {
             path = listOf("config", "init"),
             group = CliCommandGroup.CLI_MANAGEMENT,
             summary = "Write a default Kast config file.",
-            description = "Creates config.toml under the Kast config home with all supported options documented and commented out.",
+            description = "Creates the file pointed at by KAST_CONFIG_PATH, or config.toml under the Kast config home when the pointer is unset, with all supported options documented and commented out.",
             usages = listOf(
                 "$CLI_EXECUTABLE_NAME config init",
             ),

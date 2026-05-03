@@ -11,6 +11,7 @@ import java.net.URLClassLoader
 import java.nio.file.Path
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
+import kotlin.time.Duration.Companion.seconds
 
 class KastConfigTest {
     @TempDir
@@ -67,7 +68,7 @@ class KastConfigTest {
     }
 
     @Test
-    fun `config loader merges hardcoded defaults global config and workspace config`() {
+    fun `config loader reads only the config pointed at by KAST_CONFIG_PATH`() {
         val configHome = tempDir.resolve("config-home")
         val workspaceRoot = tempDir.resolve("workspace")
         val resolver = WorkspaceDirectoryResolver(
@@ -88,12 +89,25 @@ class KastConfigTest {
                 """.trimIndent(),
             )
         }
-        resolver.workspaceDataDirectory(workspaceRoot).resolve("config.toml").apply {
+        val workspaceConfig = resolver.workspaceDataDirectory(workspaceRoot).resolve("config.toml").apply {
+            parent.toFile().mkdirs()
+            writeText(
+                """
+                [server]
+                max-results = 125
+
+                [cache]
+                enabled = false
+                """.trimIndent(),
+            )
+        }
+        val pointedConfig = tempDir.resolve("pointed-config.toml").apply {
             parent.toFile().mkdirs()
             writeText(
                 """
                 [server]
                 max-results = 75
+                request-timeout-millis = 45000
 
                 [cache]
                 enabled = false
@@ -107,6 +121,12 @@ class KastConfigTest {
 
         val config = KastConfig.load(
             workspaceRoot = workspaceRoot,
+            envReader = { name ->
+                when (name) {
+                    "KAST_CONFIG_PATH" -> pointedConfig.toString()
+                    else -> null
+                }
+            },
             configHome = { configHome },
             workspaceDirectoryResolver = resolver,
         )
@@ -117,21 +137,31 @@ class KastConfigTest {
         assertEquals(false, config.cache.enabled)
         assertEquals(true, config.indexing.remote.enabled)
         assertEquals("file:///tmp/kast/source-index.db", config.indexing.remote.sourceIndexUrl)
-        assertEquals(true, config.telemetry.enabled)
-        assertEquals("references,rename", config.telemetry.scopes)
+        assertEquals(false, config.telemetry.enabled)
+        assertEquals(KastConfig.defaults().telemetry.scopes, config.telemetry.scopes)
         assertEquals(config.server.maxResults, config.toServerLimits().maxResults)
         assertEquals(config.server.requestTimeoutMillis, config.toServerLimits().requestTimeoutMillis)
+        assertTrue(workspaceConfig.toFile().isFile)
+    }
+
+    @Test
+    fun `default config is encoded in models and common traits`() {
+        val config = KastConfig()
+
+        assertEquals(KastConfig.defaults(), config)
+        assertEquals(30.seconds, config.server.timeout)
+        assertEquals(60.seconds, config.gradle.timeout)
+        assertEquals(Toggleable.Enabled.enabled, config.cache.enabled)
+        assertEquals(Toggleable.Disabled.enabled, config.telemetry.enabled)
+        assertEquals(Toggleable.Enabled.enabled, config.backends.standalone.enabled)
+        assertEquals(Toggleable.Enabled.enabled, config.backends.intellij.enabled)
     }
 
     @Test
     fun `config loader uses Kast classloader instead of thread context loader for default Hoplite services`() {
         val configHome = tempDir.resolve("config-home")
         val workspaceRoot = tempDir.resolve("workspace")
-        val resolver = WorkspaceDirectoryResolver(
-            configHome = { configHome },
-            gitRemoteResolver = { GitRemote(host = "github.com", owner = "amichne", repo = "kast") },
-        )
-        configHome.resolve("config.toml").apply {
+        val configPath = configHome.resolve("config.toml").apply {
             parent.toFile().mkdirs()
             writeText(
                 """
@@ -145,8 +175,7 @@ class KastConfigTest {
             withContextClassLoader(emptyContextClassLoader) {
                 KastConfig.load(
                     workspaceRoot = workspaceRoot,
-                    configHome = { configHome },
-                    workspaceDirectoryResolver = resolver,
+                    configPath = configPath,
                 )
             }
         }
@@ -158,11 +187,7 @@ class KastConfigTest {
     fun `config loader does not write Hoplite warnings to stdout`() {
         val configHome = tempDir.resolve("config-home")
         val workspaceRoot = tempDir.resolve("workspace")
-        val resolver = WorkspaceDirectoryResolver(
-            configHome = { configHome },
-            gitRemoteResolver = { GitRemote(host = "github.com", owner = "amichne", repo = "kast") },
-        )
-        configHome.resolve("config.toml").apply {
+        val configPath = configHome.resolve("config.toml").apply {
             parent.toFile().mkdirs()
             writeText(
                 """
@@ -175,8 +200,7 @@ class KastConfigTest {
         val stdout = captureStandardOut {
             val config = KastConfig.load(
                 workspaceRoot = workspaceRoot,
-                configHome = { configHome },
-                workspaceDirectoryResolver = resolver,
+                configPath = configPath,
             )
             assertEquals(321, config.server.maxResults)
         }

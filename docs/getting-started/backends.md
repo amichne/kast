@@ -87,8 +87,8 @@ How a session unfolds:
 7. External tools connect and speak the same JSON-RPC.
 
 !!! tip
-    Set `backends.intellij.enabled = false` in `config.toml` to disable
-    the plugin without uninstalling it.
+    Set `backends.intellij.enabled = false` in the TOML file pointed at by
+    `KAST_CONFIG_PATH` to disable the plugin without uninstalling it.
 
 To hydrate a remote SQLite source index before local indexing starts, add an
 `indexing.remote` block. `sourceIndexUrl` accepts `file://`, `http://`, and

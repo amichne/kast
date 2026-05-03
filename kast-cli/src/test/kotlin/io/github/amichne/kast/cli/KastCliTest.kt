@@ -11,6 +11,7 @@ import io.github.amichne.kast.cli.tty.CliErrorResponse
 import io.github.amichne.kast.cli.tty.CliExecutionResult
 import io.github.amichne.kast.cli.tty.CliExternalProcess
 import io.github.amichne.kast.cli.tty.CliOutput
+import io.github.amichne.kast.cli.tty.CliService
 import io.github.amichne.kast.cli.tty.CliTextTheme
 import io.github.amichne.kast.cli.tty.defaultCliJson
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -20,6 +21,7 @@ import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
 import kotlin.io.path.createFile
 import kotlin.io.path.createDirectories
+import kotlin.io.path.isRegularFile
 import kotlin.io.path.setPosixFilePermissions
 
 class KastCliTest {
@@ -78,6 +80,20 @@ class KastCliTest {
 
         assertTrue(help.contains("skill"))
         assertTrue(help.contains("copilot-extension"))
+    }
+
+    @Test
+    fun `config init writes to KAST_CONFIG_PATH when provided`() {
+        val configPath = tempDir.resolve("custom/kast.toml")
+        val service = CliService(
+            json = defaultCliJson(),
+            envLookup = mapOf("KAST_CONFIG_PATH" to configPath.toString())::get,
+        )
+
+        val output = service.configInit()
+
+        assertTrue(configPath.isRegularFile())
+        assertTrue((output as CliOutput.Text).value.contains("KAST_CONFIG_PATH=$configPath"))
     }
 
     @Test

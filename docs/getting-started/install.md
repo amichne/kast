@@ -132,7 +132,7 @@ explicitly.
     # >>> kast config >>>
     export KAST_INSTALL_ROOT="~/.local/share/kast"
     export KAST_BIN_DIR="~/.local/bin"
-    # export KAST_STANDALONE_RUNTIME_LIBS="..."  (present after full install)
+    export KAST_CONFIG_PATH="$HOME/.config/kast/config.toml"
     # <<< kast config <<<
     ```
 

@@ -10,6 +10,14 @@ re-auditing an entire repository. Compute the affected `AGENTS.md` set first,
 then inspect only the covered paths and nearby manifests before making minimal
 updates.
 
+The Copilot CLI extension at
+`.github/extensions/refresh-affected-agents/extension.mjs` exposes a native
+`refresh_affected_agents` tool and a hook-backed reminder that re-checks the
+current git diff after successful file mutations. The extension stays thin on
+purpose: it reuses `scripts/find_affected_agents.py` for scope discovery and
+`references/agents-update-contract.md` for drafting rules instead of
+re-implementing either contract in JavaScript.
+
 ## Quick start
 
 Start with the diff-derived target set so the edit scope stays explicit and
