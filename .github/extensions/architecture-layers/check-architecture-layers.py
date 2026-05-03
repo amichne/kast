@@ -20,8 +20,7 @@ MANIFEST_RELATIVE = Path(".github/architecture-layers.json")
 SETTINGS_RELATIVE = Path("settings.gradle.kts")
 BUILD_FILE = "build.gradle.kts"
 CONFIGURATION_CALL_RE = re.compile(
-    r"\b(?P<configuration>api|implementation|compileOnly|runtimeOnly|"
-    r"testImplementation|testApi|testCompileOnly|testRuntimeOnly)\s*\("
+    r"\b(?P<configuration>[A-Za-z][A-Za-z0-9_]*)\s*\("
 )
 PROJECT_ARGUMENT_RE = re.compile(r"^\s*project\(\s*\"(?P<project>:[^\"]+)\"\s*\)")
 INCLUDE_RE = re.compile(r"include\((?P<body>.*?)\)", re.DOTALL)

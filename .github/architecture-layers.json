@@ -54,7 +54,7 @@
   "gradleProjects": {
     ":analysis-api": {
       "layer": "L0",
-      "rationale": "Shared contract models and typed request/response surfaces are the current pure-type seam. Existing config/docs helpers live here until they can be split behind narrower seams.",
+      "rationale": "Shared contract models and typed request/response surfaces are the current pure-type seam. Coroutines and Hoplite are allow-listed because existing client/config helpers still live beside contract types until they can be split behind narrower seams.",
       "externalAllowlist": [
         "libs.bundles.coroutines",
         "libs.bundles.hoplite"

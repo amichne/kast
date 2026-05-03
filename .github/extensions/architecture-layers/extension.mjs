@@ -33,7 +33,10 @@ const MUTATING_TOOLS = new Set([
   "kast_rename",
   "kast_write_and_validate",
 ]);
-const LAYER_AFFECTING_PATH = /(^|\/)(settings\.gradle\.kts|build\.gradle\.kts|AGENTS\.md|zensical\.toml)$|^\.github\/architecture-layers\.json$|^\.github\/extensions\/architecture-layers\//;
+const BUILD_OR_INSTRUCTION_PATH =
+  /(^|\/)(settings\.gradle\.kts|build\.gradle\.kts|AGENTS\.md|zensical\.toml)$/;
+const LAYER_MANIFEST_PATH = /^\.github\/architecture-layers\.json$/;
+const LAYER_EXTENSION_PATH = /^\.github\/extensions\/architecture-layers\//;
 
 let cachedWorkspaceRoot = null;
 let resolveError = null;
@@ -193,7 +196,12 @@ async function changedFiles(cwd = process.cwd()) {
 }
 
 function layerRelevant(paths) {
-  return paths.some((path) => LAYER_AFFECTING_PATH.test(path));
+  return paths.some(
+    (path) =>
+      BUILD_OR_INSTRUCTION_PATH.test(path) ||
+      LAYER_MANIFEST_PATH.test(path) ||
+      LAYER_EXTENSION_PATH.test(path),
+  );
 }
 
 function failureFingerprint(payload) {

@@ -20,7 +20,7 @@ pulling host, framework, or test concerns into core code.
 
 | Layer | Name | Owns | Dependency rule |
 | --- | --- | --- | --- |
-| L0 | Pure Types | Kotlin interfaces, ADTs, value classes, enums, type aliases, validation results, derivation states, error types, and pure functions over those types | No production project dependencies; production external dependencies require an explicit allow-list entry |
+| L0 | Pure Types | Contract types, ADTs, value classes, errors, and pure functions | No production project dependencies; production external dependencies require an explicit allow-list entry |
 | L1 | Internal Libraries | Owned side-effect-free computation, data transformation, and domain logic | May depend on L0; production external dependencies require an explicit allow-list entry |
 | L2 | External Libraries | Quarantined wrappers around third-party libraries such as persistence, logging, configuration, and utility libraries | May depend on L0-L1 and external libraries |
 | L3 | Host-Specific Code | File I/O, workspace discovery, background work, lifecycle, and standalone PSI/K2 helpers | May depend on L0-L2 |
@@ -28,10 +28,12 @@ pulling host, framework, or test concerns into core code.
 | L5 | Tests and Fixtures | Unit tests, integration tests, parity tests, fakes, and shared test utilities | May depend on all production layers |
 | L6 | Documentation and Site | Source docs, published usage guidance, implementation notes, and generated site output | Documents all layers; does not own executable production logic |
 
-The checker treats L0 and L1 as stricter than the current Gradle module shape.
-Existing exceptions are recorded in `.github/architecture-layers.json` with a
-rationale so future work can split them deliberately instead of adding hidden
-coupling.
+L0 includes Kotlin interfaces, ADTs, value classes, enums, type aliases,
+validation results, derivation states, error types, and pure functions over
+those types. The checker treats L0 and L1 as stricter than the current Gradle
+module shape. Existing exceptions are recorded in
+`.github/architecture-layers.json` with a rationale so future work can split
+them deliberately instead of adding hidden coupling.
 
 ## Current Gradle project placement
 
