@@ -18,7 +18,8 @@ The documentation is organized into six sections:
   examples.
 - `docs/for-agents/` — agent-facing content (overview, talk-to-agent,
   install-skill, direct-cli)
-- `docs/architecture/` — how-it-works, behavioral-model, kast-vs-lsp
+- `docs/architecture/` — how-it-works, behavioral-model, kast-vs-lsp,
+  adt-boundaries, dependency-layers
 - `docs/reference/` — generated pages. `api-reference` and
   `api-specification` appear in the nav, plus `error-codes`.
   `capabilities.md` is generated but intentionally excluded from the
