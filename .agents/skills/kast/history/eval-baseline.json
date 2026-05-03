@@ -3,7 +3,7 @@
     "target": {
         "kind": "skill",
         "name": "kast",
-        "path": "/home/runner/code/kast/.agents/skills/kast"
+        "path": "/Users/amichne/code/kast/.agents/skills/kast"
     },
     "summary": {
         "score": 99,
@@ -28,12 +28,12 @@
         "watchNext": "completeness-wrapper-metrics: Wrapper metrics: skillMd=true, openApi=false"
     },
     "budgets": {
-        "triggerTokens": 1703,
+        "triggerTokens": 1855,
         "triggerBand": "POOR",
         "invokeTokens": 0,
         "invokeBand": "GOOD",
-        "deferredTokens": 1314,
-        "deferredBand": "GOOD"
+        "deferredTokens": 15553,
+        "deferredBand": "FAIR"
     },
     "checks": [
         {
@@ -69,7 +69,7 @@
             "category": "structural",
             "severity": "WARNING",
             "status": "PASS",
-            "message": "behavior-evals=true, routing-evals=true, routing-script=true, routing-reference=true"
+            "message": "catalog=true, pain-points=true, eval-files=true, progression=true, routing-script=true, routing-reference=true"
         },
         {
             "id": "corpus-behavior-evals-valid",
@@ -161,14 +161,14 @@
             "severity": "INFO",
             "status": "WARN",
             "message": "Wrapper metrics: skillMd=true, openApi=false",
-            "remediation": "Document `kast_metrics` (or `kast skill metrics`) in SKILL.md and `kast skill metrics` in fixtures/maintenance/references/wrapper-openapi.yaml"
+            "remediation": "Document `kast_metrics` (or `kast skill metrics`) in SKILL.md and `kast skill metrics` in references/wrapper-openapi.yaml"
         }
     ],
     "metrics": [
         {
             "id": "budget-trigger-tokens",
             "category": "budget",
-            "value": 1703.0,
+            "value": 1855.0,
             "unit": "tokens"
         },
         {
@@ -180,7 +180,7 @@
         {
             "id": "budget-deferred-tokens",
             "category": "budget",
-            "value": 1314.0,
+            "value": 15553.0,
             "unit": "tokens"
         },
         {
@@ -239,4 +239,3 @@
         ]
     }
 }
-

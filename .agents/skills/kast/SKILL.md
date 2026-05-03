@@ -128,5 +128,15 @@ the variable on the same line.
 ## Maintenance
 
 - `references/quickstart.md` — request snippets and per-command field shapes.
-- `fixtures/maintenance/` — eval corpora for skill maintenance work; do not
-  load during normal Kotlin navigation.
+- `evals/catalog.json` — canonical behavior and routing cases; use `suite` to
+  distinguish the routing subset from the behavior subset.
+- `evals/pain_points.jsonl` — intake queue for newly observed regressions or
+  misses before promotion.
+- `evals/files/` — reusable fixtures referenced by catalog cases.
+- `history/progression.json` — progression and promotion ledger for durable eval
+  maintenance.
+- `references/routing-improvement.md` — routing corpus workflow and promotion
+  guidance.
+- `references/wrapper-openapi.yaml` — checked-in wrapper contract snapshot.
+- `scripts/build-routing-corpus.py` — sanitize shared logs and session exports
+  into routing candidate cases; do not load during normal Kotlin navigation.

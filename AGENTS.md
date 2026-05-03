@@ -146,3 +146,15 @@ Apply these rules across the repo before local unit rules add more detail.
   plugin zip.
 - Verify with the narrowest Gradle task that proves the change. Broaden the
   scope when you touch shared contracts, build logic, or cross-module behavior.
+
+## Contract surface inventory
+
+Before modifying `EmbeddedSkillResources`, `EmbeddedCopilotExtensionResources`,
+`WrapperOpenApiDocument`, `AnalysisBackend`, or any packaged artifact manifest,
+enumerate all consumers: `docs/openapi.yaml`, `.agents/skills/kast/SKILL.md`,
+`.agents/skills/kast/evals/**/*`, `.agents/skills/kast/history/**/*`,
+`.agents/skills/kast/references/*`, `.agents/skills/kast/scripts/*`,
+`.github/extensions/kast/extension.mjs`, `.github/agents/**/*`,
+`.github/hooks/**/*`, `kast-cli/build.gradle.kts`, and `kast.sh`/`install.sh`.
+These are contract surfaces — a change without updating all consumers silently
+breaks the distribution.

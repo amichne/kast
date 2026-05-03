@@ -1,6 +1,7 @@
 package io.github.amichne.kast.api.client
 
 import com.sksamuel.hoplite.ConfigLoaderBuilder
+import com.sksamuel.hoplite.ExperimentalHoplite
 import io.github.amichne.kast.api.contract.ServerLimits
 import java.nio.file.Files
 import java.nio.file.Path
@@ -62,6 +63,7 @@ data class KastConfig(
             ),
         )
 
+        @OptIn(ExperimentalHoplite::class)
         fun load(
             workspaceRoot: Path,
             configHome: () -> Path = { kastConfigHome() },
@@ -76,11 +78,13 @@ data class KastConfig(
                 KastConfigOverride()
             } else {
                 ConfigLoaderBuilder.empty()
+                    .withClassLoader(KastConfig::class.java.classLoader)
                     .addDefaultDecoders()
                     .addDefaultPreprocessors()
                     .addDefaultNodeTransformers()
                     .addDefaultParamMappers()
                     .addDefaultParsers()
+                    .withExplicitSealedTypes()
                     .allowEmptyConfigFiles()
                     .build()
                     .loadConfigOrThrow<KastConfigOverride>(configFiles)

@@ -1,3 +1,5 @@
+import org.gradle.internal.execution.caching.CachingState.enabled
+
 plugins {
     id("kast.standalone-serialization-app")
     alias(libs.plugins.graalvm.native)
@@ -7,16 +9,36 @@ val nativeConfigDir = layout.projectDirectory.dir(
     "src/main/resources/META-INF/native-image/io.github.amichne.kast/kast-cli",
 )
 val packagedSkillSourceDir = rootProject.layout.projectDirectory.dir(".agents/skills/kast")
+val packagedCopilotAgentsSourceDir = rootProject.layout.projectDirectory.dir(".github/agents")
+val packagedCopilotHooksSourceDir = rootProject.layout.projectDirectory.dir(".github/hooks")
 val embeddedSkillFiles = listOf(
     "SKILL.md",
-    "fixtures/maintenance/evals/evals.json",
-    "fixtures/maintenance/evals/routing.json",
-    "fixtures/maintenance/references/routing-improvement.md",
-    "fixtures/maintenance/references/wrapper-openapi.yaml",
-    "fixtures/maintenance/scripts/build-routing-corpus.py",
+    "evals/catalog.json",
+    "evals/pain_points.jsonl",
+    "evals/files/.gitkeep",
+    "history/progression.json",
+    "history/eval-baseline.json",
+    "references/routing-improvement.md",
+    "references/wrapper-openapi.yaml",
+    "scripts/build-routing-corpus.py",
     "references/quickstart.md",
     "scripts/kast-session-start.sh",
     "scripts/resolve-kast.sh",
+)
+val embeddedCopilotAgentFiles = listOf(
+    "kast.md",
+    "explore.md",
+    "plan.md",
+    "edit.md",
+)
+val embeddedCopilotHookFiles = listOf(
+    "hooks.json",
+    "hook-state.sh",
+    "session-start.sh",
+    "record-paths.sh",
+    "require-skills.sh",
+    "session-end.sh",
+    "resolve-kast-cli-path.sh",
 )
 
 application {
@@ -26,7 +48,7 @@ application {
 dependencies {
     api(project(":analysis-api"))
     implementation(project(":index-store"))
-    implementation(libs.coroutines.core)
+    implementation(libs.bundles.coroutines)
     implementation(libs.mordant)
     implementation(libs.serialization.json)
 }
@@ -60,8 +82,22 @@ val syncPackagedSkillResources by tasks.registering(Sync::class) {
     includeEmptyDirs = false
 }
 
+val syncPackagedCopilotExtensionResources by tasks.registering(Sync::class) {
+    from(packagedCopilotAgentsSourceDir) {
+        include(embeddedCopilotAgentFiles)
+        into("packaged-copilot-extension/agents")
+    }
+    from(packagedCopilotHooksSourceDir) {
+        include(embeddedCopilotHookFiles)
+        into("packaged-copilot-extension/hooks")
+    }
+    into(layout.buildDirectory.dir("generated/packaged-copilot-extension-resources"))
+    includeEmptyDirs = false
+}
+
 tasks.named<ProcessResources>("processResources") {
     from(syncPackagedSkillResources)
+    from(syncPackagedCopilotExtensionResources)
 }
 
 val shrinkRuntimeEnabled = providers.gradleProperty("kast.shrinkRuntime")
@@ -104,7 +140,7 @@ tasks.register<JavaExec>("generateWrapperOpenApiSchema") {
     mainClass.set("io.github.amichne.kast.cli.WrapperOpenApiDocumentKt")
     args(
         rootProject.layout.projectDirectory
-            .file(".agents/skills/kast/fixtures/maintenance/references/wrapper-openapi.yaml")
+            .file(".agents/skills/kast/references/wrapper-openapi.yaml")
             .asFile.absolutePath,
     )
 }

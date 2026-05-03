@@ -56,7 +56,7 @@ class RoutingCorpusScriptTest {
         val outputPromotions = tempDir.resolve("promotion-candidates.json")
 
         val repoRoot = findRepoRoot(Path.of("").toAbsolutePath())
-        val scriptPath = repoRoot.resolve(".agents/skills/kast/fixtures/maintenance/scripts/build-routing-corpus.py")
+        val scriptPath = repoRoot.resolve(".agents/skills/kast/scripts/build-routing-corpus.py")
         val process = ProcessBuilder(
             "python3",
             scriptPath.toString(),
@@ -83,15 +83,17 @@ class RoutingCorpusScriptTest {
         assertTrue(markdown.contains("config-drift"))
 
         val promotions = outputPromotions.readText()
+        assertTrue(promotions.contains("\"cases\""))
         assertTrue(promotions.contains("\"expected_skill\": \"kast\""))
         assertTrue(promotions.contains("\"expected_route\": \"native-kast-tools\""))
+        assertTrue(promotions.contains("\"stage\": \"candidate\""))
         assertTrue(promotions.contains("\"kast_resolve\""))
     }
 
     private fun findRepoRoot(start: Path): Path = generateSequence(start.normalize()) { it.parent }
         .firstOrNull { candidate ->
             Files.isRegularFile(
-                candidate.resolve(".agents/skills/kast/fixtures/maintenance/scripts/build-routing-corpus.py"),
+                candidate.resolve(".agents/skills/kast/scripts/build-routing-corpus.py"),
             )
         }
         ?: error("Could not locate repo root from ${start}")

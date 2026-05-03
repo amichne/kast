@@ -43,6 +43,9 @@ import io.github.amichne.kast.cli.results.DaemonStopResult
 import io.github.amichne.kast.cli.options.InstallOptions
 import io.github.amichne.kast.cli.results.InstallResult
 import io.github.amichne.kast.cli.InstallService
+import io.github.amichne.kast.cli.InstallCopilotExtensionService
+import io.github.amichne.kast.cli.options.InstallCopilotExtensionOptions
+import io.github.amichne.kast.cli.results.InstallCopilotExtensionResult
 import io.github.amichne.kast.cli.options.InstallSkillOptions
 import io.github.amichne.kast.cli.skill.InstallSkillResult
 import io.github.amichne.kast.cli.InstallSkillService
@@ -63,6 +66,7 @@ internal class CliService(
     json: Json,
     private val installService: InstallService = InstallService(),
     private val installSkillService: InstallSkillService = InstallSkillService(),
+    private val installCopilotExtensionService: InstallCopilotExtensionService = InstallCopilotExtensionService(),
     private val configLoader: (Path) -> KastConfig = KastConfig::load,
 ) {
     private val rpcClient = KastRpcClient(json)
@@ -272,6 +276,9 @@ internal class CliService(
     fun install(options: InstallOptions): InstallResult = installService.install(options)
 
     fun installSkill(options: InstallSkillOptions): InstallSkillResult = installSkillService.install(options)
+
+    fun installCopilotExtension(options: InstallCopilotExtensionOptions): InstallCopilotExtensionResult =
+        installCopilotExtensionService.install(options)
 
     suspend fun smoke(options: SmokeOptions): SmokeReport = smokeCommandSupport.run(options)
 

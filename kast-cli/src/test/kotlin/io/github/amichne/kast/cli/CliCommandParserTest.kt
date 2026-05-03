@@ -301,6 +301,23 @@ class CliCommandParserTest {
     }
 
     @Test
+    fun `install copilot extension parses target and force options`() {
+        val command = parser.parse(
+            arrayOf(
+                "install",
+                "copilot-extension",
+                "--target-dir=$tempDir",
+                "--yes=true",
+            ),
+        )
+
+        assertTrue(command is CliCommand.InstallCopilotExtension)
+        val installCommand = command as CliCommand.InstallCopilotExtension
+        assertEquals(tempDir, installCommand.options.targetDir)
+        assertTrue(installCommand.options.force)
+    }
+
+    @Test
     fun `runtimeOptions accepts intellij backend name`() {
         val command = parser.parse(
             arrayOf(

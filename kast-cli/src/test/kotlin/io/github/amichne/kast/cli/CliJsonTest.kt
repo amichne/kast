@@ -9,6 +9,7 @@ import io.github.amichne.kast.api.contract.result.TypeHierarchyNode
 import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
 import io.github.amichne.kast.api.contract.result.TypeHierarchyStats
 import io.github.amichne.kast.api.contract.TextEdit
+import io.github.amichne.kast.cli.results.InstallCopilotExtensionResult
 import io.github.amichne.kast.cli.results.InstallResult
 import io.github.amichne.kast.cli.skill.InstallSkillResult
 import io.github.amichne.kast.cli.tty.defaultCliJson
@@ -55,6 +56,27 @@ class CliJsonTest {
         val result = defaultCliJson().decodeFromString<InstallSkillResult>(output.toString())
 
         assertEquals("/tmp/workspace/.agents/skills/kast", result.installedAt)
+        assertEquals("0.1.1-SNAPSHOT", result.version)
+        assertEquals(false, result.skipped)
+    }
+
+    @Test
+    fun `writeCliJson serializes install copilot extension results`() {
+        val output = StringBuilder()
+
+        writeCliJson(
+            output = output,
+            value = InstallCopilotExtensionResult(
+                installedAt = "/tmp/workspace/.github",
+                version = "0.1.1-SNAPSHOT",
+                skipped = false,
+            ),
+            json = defaultCliJson(),
+        )
+
+        val result = defaultCliJson().decodeFromString<InstallCopilotExtensionResult>(output.toString())
+
+        assertEquals("/tmp/workspace/.github", result.installedAt)
         assertEquals("0.1.1-SNAPSHOT", result.version)
         assertEquals(false, result.skipped)
     }

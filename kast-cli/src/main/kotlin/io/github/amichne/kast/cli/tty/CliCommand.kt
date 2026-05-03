@@ -17,6 +17,7 @@ import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
 import io.github.amichne.kast.cli.options.DaemonStartOptions
+import io.github.amichne.kast.cli.options.InstallCopilotExtensionOptions
 import io.github.amichne.kast.cli.options.InstallOptions
 import io.github.amichne.kast.cli.options.InstallSkillOptions
 import io.github.amichne.kast.cli.options.RuntimeCommandOptions
@@ -50,6 +51,7 @@ internal sealed interface CliCommand {
     data class ApplyEdits(val options: RuntimeCommandOptions, val query: ApplyEditsQuery) : CliCommand
     data class Install(val options: InstallOptions) : CliCommand
     data class InstallSkill(val options: InstallSkillOptions) : CliCommand
+    data class InstallCopilotExtension(val options: InstallCopilotExtensionOptions) : CliCommand
     data class Smoke(val options: SmokeOptions) : CliCommand
     data class DaemonStart(val options: DaemonStartOptions) : CliCommand
     data object ConfigInit : CliCommand

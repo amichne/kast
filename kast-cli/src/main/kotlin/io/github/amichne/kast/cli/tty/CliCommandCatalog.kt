@@ -284,6 +284,12 @@ internal object CliCommandCatalog {
         description = "Directory to install the packaged skill in. Auto-detected from CWD when omitted.",
         completionKind = CliOptionCompletionKind.DIRECTORY,
     )
+    private val copilotTargetDirOption = CliOptionMetadata(
+        key = "target-dir",
+        usage = "--target-dir=/absolute/path/to/workspace/.github",
+        description = "Workspace .github directory to install the packaged Copilot agents and hooks into. Defaults to <cwd>/.github.",
+        completionKind = CliOptionCompletionKind.DIRECTORY,
+    )
     private val skillNameOption = CliOptionMetadata(
         key = "name",
         usage = "--name=kast",
@@ -858,6 +864,21 @@ internal object CliCommandCatalog {
             ),
         ),
         CliCommandMetadata(
+            path = listOf("install", "copilot-extension"),
+            group = CliCommandGroup.CLI_MANAGEMENT,
+            summary = "Install the kast Copilot agents and hooks into the current workspace.",
+            description = "Copies the bundled Copilot agent and hook files into .github, or the path given by --target-dir. Installed extension trees include a .kast-copilot-version marker so matching installs can be skipped safely.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME install copilot-extension [--target-dir=/absolute/path/to/workspace/.github] [--yes=true]",
+            ),
+            options = listOf(copilotTargetDirOption, yesOption),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME install copilot-extension",
+                "$CLI_EXECUTABLE_NAME install copilot-extension --target-dir=/my/project/.github",
+                "$CLI_EXECUTABLE_NAME install copilot-extension --yes=true",
+            ),
+        ),
+        CliCommandMetadata(
             path = listOf("smoke"),
             group = CliCommandGroup.VALIDATION,
             summary = "Run the portable smoke workflow and emit an aggregated readiness report.",
@@ -1205,6 +1226,8 @@ internal object CliCommandCatalog {
         version: String,
         theme: CliTextTheme,
     ): String = buildString {
+        val subcommands = commandsUnder(metadata.path)
+            .filter { command -> command.path.size > metadata.path.size }
         appendLine(theme.title("Kast CLI $version"))
         appendLine()
         appendLine(theme.command("$CLI_EXECUTABLE_NAME ${metadata.commandText}"))
@@ -1225,6 +1248,15 @@ internal object CliCommandCatalog {
                 theme = theme,
             ) {
                 append(renderOptionTable(metadata.options, theme))
+            }
+        }
+        if (subcommands.isNotEmpty()) {
+            appendLine()
+            appendSection(
+                title = "Subcommands",
+                theme = theme,
+            ) {
+                append(renderCommandTable(subcommands, theme, metadata.path.size))
             }
         }
         if (metadata.examples.isNotEmpty()) {

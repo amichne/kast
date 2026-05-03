@@ -10,6 +10,7 @@ private val intellijIdeaVersion = catalog.findVersion("intellij-idea").get().req
 private val intellijDistRoot = gradle.gradleUserHomeDir.resolve("kast/intellij-distributions/$intellijIdeaVersion")
 
 dependencies {
+    implementation(libs.bundles.coroutines)
     api(project(":analysis-api"))
     api(project(":index-store"))
     // K2 Analysis API standalone bootstrap classes (compileOnly — host provides at runtime).

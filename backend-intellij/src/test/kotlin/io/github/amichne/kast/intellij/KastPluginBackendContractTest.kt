@@ -8,7 +8,6 @@ import com.intellij.openapi.roots.DependencyScope
 import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.psi.PsiDirectory
 import com.intellij.psi.PsiFile
-import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.junit5.fixture.TestFixture
 import com.intellij.testFramework.junit5.fixture.moduleFixture
@@ -102,7 +101,7 @@ class KastPluginBackendContractTest {
         secondaryModuleFixture.get()
         sampleFileFixture.get()
         hierarchyFileFixture.get()
-        IndexingTestUtil.waitUntilIndexesAreReady(project)
+        waitUntilIndexesAreReady(project)
     }
 
     private suspend fun ensureInternalVisibilityProjectReady() {
@@ -121,7 +120,7 @@ class KastPluginBackendContractTest {
                 )
             }
         }
-        IndexingTestUtil.waitUntilIndexesAreReady(project)
+        waitUntilIndexesAreReady(project)
     }
 
     @Test

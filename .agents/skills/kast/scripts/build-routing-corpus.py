@@ -166,6 +166,23 @@ def sanitize_text(value: str, *, limit: int = 280) -> str:
     return value
 
 
+def iso_timestamp() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def normalize_failure_mode(classification: str) -> str:
+    return {
+        "trigger-miss": "trigger_miss",
+        "loaded-but-bypassed": "routing_bypass",
+        "route-via-subagent": "routing_bypass",
+        "semantic-abandonment": "routing_bypass",
+        "schema-friction": "schema_response",
+        "mutation-validation-friction": "mutation_abandonment",
+        "initialization-friction": "initialization_friction",
+        "maintenance-thrash": "maintenance_thrash",
+    }.get(classification, "routing_bypass")
+
+
 def looks_semantic(prompt: str) -> bool:
     lowered = prompt.lower()
     return any(hint in lowered for hint in SEMANTIC_HINTS)
@@ -356,7 +373,13 @@ def parse_html_export(path: Path) -> list[RoutingCase]:
             grep_like_commands += 1
         if tool_name == "view" and any(
             marker in content_text
-            for marker in (".kast-version", "wrapper-openapi.yaml")
+            for marker in (
+                ".kast-version",
+                "evals/catalog.json",
+                "evals/pain_points.jsonl",
+                "history/progression.json",
+                "wrapper-openapi.yaml",
+            )
         ):
             contract_reference_reads += 1
         if tool_name != "bash" and SCHEMA_FRICTION_RE.search(content_text) and "kast" in loaded_skills:
@@ -521,7 +544,8 @@ def write_jsonl(path: Path, rows: Iterable[RoutingCase]) -> None:
 
 
 def build_promotion_candidates(cases: list[RoutingCase]) -> dict[str, object]:
-    evals = []
+    generated_at = iso_timestamp()
+    catalog_cases = []
     seen_ids: set[str] = set()
     for case in cases:
         if case.classification not in PROMOTION_CLASSIFICATIONS or not case.prompt:
@@ -534,10 +558,23 @@ def build_promotion_candidates(cases: list[RoutingCase]) -> dict[str, object]:
             suffix += 1
             candidate_id = f"{slug}-{suffix}"
         seen_ids.add(candidate_id)
-        evals.append(
+        failure_mode = normalize_failure_mode(case.classification)
+        catalog_cases.append(
             {
                 "id": candidate_id,
+                "title": f"Promoted routing case: {candidate_id}",
                 "prompt": case.prompt,
+                "files": [],
+                "expected_output": "A routing decision that selects the Kast skill, stays on the native-kast-tools route, and avoids the forbidden generic Kotlin operations for this prompt.",
+                "expectations": [
+                    "Routes through the Kast skill on the native-kast-tools path.",
+                    "Uses the native kast tools needed for the task.",
+                    "Avoids grep, rg, and other forbidden generic Kotlin operations.",
+                ],
+                "labels": ["routing", "promotion-candidate", failure_mode],
+                "stage": "candidate",
+                "suite": "routing",
+                "failure_mode": failure_mode,
                 "expected_skill": "kast",
                 "expected_route": "native-kast-tools",
                 "allowed_ops": [
@@ -548,18 +585,23 @@ def build_promotion_candidates(cases: list[RoutingCase]) -> dict[str, object]:
                     "kast_callers",
                 ],
                 "forbidden_ops": ["grep", "rg"],
-                "derived_from": {
+                "source": {
+                    "kind": "routing_corpus_builder",
                     "source_type": case.source_type,
                     "source_name": case.source_name,
-                    "classification": case.classification,
+                    "summary": f"Promoted from routing corpus classification {case.classification}",
+                },
+                "promotion": {
+                    "required_pass_rate": 1.0,
+                    "required_benchmarks": 2,
                 },
             },
         )
     return {
         "skill_name": "kast",
-        "suite": "routing-promotion-candidates",
-        "generated_at": datetime.now(timezone.utc).isoformat(),
-        "evals": evals,
+        "version": 1,
+        "generated_at": generated_at,
+        "cases": catalog_cases,
     }
 
 
@@ -571,7 +613,7 @@ def render_summary(cases: list[RoutingCase], issues: list[SystemIssue]) -> str:
     lines = [
         "# Kast routing corpus summary",
         "",
-        f"- Generated at: {datetime.now(timezone.utc).isoformat()}",
+        f"- Generated at: {iso_timestamp()}",
         f"- Routing cases: {len(cases)}",
         f"- Systemic issues: {len(issues)}",
         "",

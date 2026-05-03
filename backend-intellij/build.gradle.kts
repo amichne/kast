@@ -10,6 +10,7 @@ import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
+import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
 abstract class WriteBackendVersionTask : DefaultTask() {
@@ -68,6 +69,10 @@ abstract class VerifyPluginXmlPresentTask : DefaultTask() {
         val rejectedIdTag = "<id>${rejectedPluginId.get()}</id>"
         check("KastPluginService" in content) { "plugin.xml is missing KastPluginService extension" }
         check("KastStartupActivity" in content) { "plugin.xml is missing KastStartupActivity extension" }
+        check("KastSettingsConfigurable" in content) { "plugin.xml is missing KastSettingsConfigurable" }
+        check("KastSettingsState" in content) { "plugin.xml is missing KastSettingsState" }
+        check("InstallSkillAction" in content) { "plugin.xml is missing InstallSkillAction" }
+        check("InstallCopilotExtensionAction" in content) { "plugin.xml is missing InstallCopilotExtensionAction" }
         check("org.jetbrains.kotlin" in content) { "plugin.xml is missing Kotlin plugin dependency" }
         check(expectedIdTag in content) {
             "plugin.xml must keep production plugin ID ${expectedPluginId.get()}"
@@ -88,9 +93,9 @@ repositories {
     maven("https://packages.jetbrains.team/maven/p/ij/intellij-dependencies")
     maven("https://www.jetbrains.com/intellij-repository/releases")
     maven("https://cache-redirector.jetbrains.com/intellij-dependencies")
+
     intellijPlatform {
         defaultRepositories()
-        localPlatformArtifacts()
     }
 }
 
@@ -108,7 +113,6 @@ dependencies {
 
     intellijPlatform {
         intellijIdea("2025.3")
-//        jetbrainsRuntime()
         bundledPlugin("org.jetbrains.kotlin")
         bundledPlugin("com.intellij.java")
         testFramework(TestFrameworkType.Platform)
@@ -125,10 +129,17 @@ intellijPlatform {
         id = "io.github.amichne.kast"
         name = "Kast Analysis Backend"
         version = project.version.toString()
-        description = "Kast Kotlin analysis backend for IntelliJ IDEA"
+        description = "Kast Kotlin analysis backend for IntelliJ-based IDEs"
 
         ideaVersion {
             sinceBuild = "253"   // IntelliJ 2025.3
+        }
+    }
+
+    pluginVerification {
+        ides {
+            create(IntelliJPlatformType.IntellijIdea, "2025.3")
+            create(IntelliJPlatformType.AndroidStudio, "2025.3.1.7")
         }
     }
 }
@@ -181,7 +192,6 @@ tasks.withType<Test>().configureEach {
             includeTags(*includedTags.toTypedArray())
         }
     }
-    systemProperty("idea.home.path", layout.buildDirectory.dir("idea-sandbox").get().asFile.absolutePath)
 }
 
 configurations.matching { it.name == "testRuntimeClasspath" }.configureEach {

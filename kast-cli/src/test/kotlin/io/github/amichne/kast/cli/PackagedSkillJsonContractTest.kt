@@ -62,17 +62,21 @@ class PackagedSkillJsonContractTest {
 
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/scripts/resolve-kast.sh")))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/scripts/kast-session-start.sh")))
+        assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/evals/catalog.json")))
+        assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/evals/pain_points.jsonl")))
+        assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/evals/files/.gitkeep")))
+        assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/history/progression.json")))
         assertTrue(
             Files.isRegularFile(
-                installedSkillDir.resolve("kast/fixtures/maintenance/scripts/build-routing-corpus.py"),
+                installedSkillDir.resolve("kast/scripts/build-routing-corpus.py"),
             ),
         )
-        assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/fixtures/maintenance/evals/routing.json")))
         assertTrue(
             Files.isRegularFile(
-                installedSkillDir.resolve("kast/fixtures/maintenance/references/routing-improvement.md"),
+                installedSkillDir.resolve("kast/references/routing-improvement.md"),
             ),
         )
+        assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/references/wrapper-openapi.yaml")))
 
         val daemon = startRealBackend(workspaceRoot, wrapperEnv)
         try {

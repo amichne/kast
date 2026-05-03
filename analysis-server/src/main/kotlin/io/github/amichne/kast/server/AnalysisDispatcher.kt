@@ -60,7 +60,6 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import java.nio.file.Path
 import java.util.UUID
-import kotlin.time.Duration.Companion.milliseconds
 
 class AnalysisDispatcher(
     private val backend: AnalysisBackend,
@@ -85,7 +84,7 @@ class AnalysisDispatcher(
         }
 
         return try {
-            val result = withTimeout(config.requestTimeoutMillis.milliseconds) {
+            val result = withTimeout(config.requestTimeoutMillis) {
                 dispatchMethod(request.method, request.params)
             }
             json.encodeToString(

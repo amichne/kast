@@ -28,12 +28,15 @@ import kotlin.math.ceil
  * budget estimates, structural checks, and completeness metrics.
  */
 internal class SkillAdapter(private val skillDir: Path) {
-    private val maintenanceDir = skillDir.resolve("fixtures/maintenance")
-    private val behaviorEvalPath = maintenanceDir.resolve("evals/evals.json")
-    private val wrapperOpenApiPath = maintenanceDir.resolve("references/wrapper-openapi.yaml")
-    private val routingEvalPath = maintenanceDir.resolve("evals/routing.json")
-    private val routingScriptPath = maintenanceDir.resolve("scripts/build-routing-corpus.py")
-    private val routingReferencePath = maintenanceDir.resolve("references/routing-improvement.md")
+    private val evalsDir = skillDir.resolve("evals")
+    private val historyDir = skillDir.resolve("history")
+    private val catalogPath = evalsDir.resolve("catalog.json")
+    private val painPointsPath = evalsDir.resolve("pain_points.jsonl")
+    private val evalFilesDir = evalsDir.resolve("files")
+    private val progressionPath = historyDir.resolve("progression.json")
+    private val wrapperOpenApiPath = skillDir.resolve("references/wrapper-openapi.yaml")
+    private val routingScriptPath = skillDir.resolve("scripts/build-routing-corpus.py")
+    private val routingReferencePath = skillDir.resolve("references/routing-improvement.md")
     private val json = Json { ignoreUnknownKeys = true }
 
     fun scan(): SkillDescriptor {
@@ -128,27 +131,31 @@ internal class SkillAdapter(private val skillDir: Path) {
     }
 
     private fun checkRoutingImprovementAssets(): EvalCheck {
-        val behaviorEvalExists = behaviorEvalPath.exists()
-        val routingEvalExists = routingEvalPath.exists()
+        val catalogExists = catalogPath.exists()
+        val painPointsExists = painPointsPath.exists()
+        val evalFilesExist = evalFilesDir.exists()
+        val progressionExists = progressionPath.exists()
         val routingScriptExists = routingScriptPath.exists()
         val routingReferenceExists = routingReferencePath.exists()
-        val allPresent = behaviorEvalExists && routingEvalExists && routingScriptExists && routingReferenceExists
+        val allPresent = catalogExists && painPointsExists && evalFilesExist &&
+            progressionExists && routingScriptExists && routingReferenceExists
         return EvalCheck(
             id = "structural-routing-improvement-assets",
             category = "structural",
             severity = EvalSeverity.WARNING,
             status = if (allPresent) EvalStatus.PASS else EvalStatus.WARN,
             message = listOf(
-                "behavior-evals=$behaviorEvalExists",
-                "routing-evals=$routingEvalExists",
+                "catalog=$catalogExists",
+                "pain-points=$painPointsExists",
+                "eval-files=$evalFilesExist",
+                "progression=$progressionExists",
                 "routing-script=$routingScriptExists",
                 "routing-reference=$routingReferenceExists",
             ).joinToString(),
             remediation = if (!allPresent) {
-                "Add fixtures/maintenance/evals/evals.json, " +
-                    "fixtures/maintenance/evals/routing.json, " +
-                    "fixtures/maintenance/scripts/build-routing-corpus.py, and " +
-                    "fixtures/maintenance/references/routing-improvement.md"
+                "Add evals/catalog.json, evals/pain_points.jsonl, evals/files/, " +
+                    "history/progression.json, scripts/build-routing-corpus.py, and " +
+                    "references/routing-improvement.md"
             } else {
                 null
             },
@@ -164,7 +171,7 @@ internal class SkillAdapter(private val skillDir: Path) {
         remediation = if (corpus.isValid) {
             null
         } else {
-            "Keep fixtures/maintenance/evals/evals.json non-empty and give each eval prompt, expected_output, expectations, and failure_mode."
+            "Keep evals/catalog.json non-empty with suite=`behavior`, and give each behavior case prompt, expected_output, expectations, and failure_mode."
         },
     )
 
@@ -177,7 +184,7 @@ internal class SkillAdapter(private val skillDir: Path) {
         remediation = if (corpus.isValid) {
             null
         } else {
-            "Keep fixtures/maintenance/evals/routing.json non-empty and give each routing eval prompt, expected_skill, expected_route, allowed_ops, forbidden_ops, and failure_mode."
+            "Keep evals/catalog.json non-empty with suite=`routing`, and give each routing case prompt, expected_skill, expected_route, allowed_ops, forbidden_ops, and failure_mode."
         },
     )
 
@@ -210,7 +217,7 @@ internal class SkillAdapter(private val skillDir: Path) {
             remediation = if (missing.isEmpty()) {
                 null
             } else {
-                "Promote durable transcript failures into fixtures/maintenance/evals/evals.json or routing.json and tag them with failure_mode."
+                "Promote durable transcript failures into evals/catalog.json and tag them with suite plus failure_mode."
             },
         )
     }
@@ -287,7 +294,7 @@ internal class SkillAdapter(private val skillDir: Path) {
             status = if (exists) EvalStatus.PASS else EvalStatus.WARN,
             message = if (exists) "wrapper-openapi.yaml found" else "wrapper-openapi.yaml missing",
             remediation = if (!exists) {
-                "Generate fixtures/maintenance/references/wrapper-openapi.yaml from wrapper contracts"
+                "Generate references/wrapper-openapi.yaml from wrapper contracts"
             } else {
                 null
             },
@@ -311,7 +318,7 @@ internal class SkillAdapter(private val skillDir: Path) {
                 remediation = if (documentedInSkillMd && documentedInOpenApi) {
                     null
                 } else {
-                    "Document `$nativeTool` (or `$command`) in SKILL.md and `$command` in fixtures/maintenance/references/wrapper-openapi.yaml"
+                    "Document `$nativeTool` (or `$command`) in SKILL.md and `$command` in references/wrapper-openapi.yaml"
                 },
             )
         }
@@ -390,9 +397,8 @@ internal class SkillAdapter(private val skillDir: Path) {
     }
 
     private fun validateBehaviorCorpus(): CorpusValidation =
-        validateCorpus(
-            path = behaviorEvalPath,
-            arrayField = "evals",
+        validateCatalogSuite(
+            suite = "behavior",
             validator = { entry, index ->
                 buildList {
                     if (entry.stringField("prompt") == null) add("entry ${index + 1} missing prompt")
@@ -409,9 +415,8 @@ internal class SkillAdapter(private val skillDir: Path) {
         )
 
     private fun validateRoutingCorpus(): CorpusValidation =
-        validateCorpus(
-            path = routingEvalPath,
-            arrayField = "evals",
+        validateCatalogSuite(
+            suite = "routing",
             validator = { entry, index ->
                 buildList {
                     if (entry.stringField("prompt") == null) add("entry ${index + 1} missing prompt")
@@ -455,29 +460,23 @@ internal class SkillAdapter(private val skillDir: Path) {
         )
 
     private fun analyzeRoutingMeasurements(): RoutingMeasurements {
-        if (!routingEvalPath.exists()) {
-            return RoutingMeasurements(parseError = "${skillDir.relativize(routingEvalPath)} missing")
+        val catalogLoad = loadCatalogCases()
+        if (catalogLoad.parseError != null) {
+            return RoutingMeasurements(parseError = catalogLoad.parseError)
         }
-        val root = try {
-            json.parseToJsonElement(routingEvalPath.readText()).jsonObject
-        } catch (exception: Exception) {
-            return RoutingMeasurements(parseError = "${skillDir.relativize(routingEvalPath)} invalid JSON: ${exception.message}")
-        }
-        val entries = try {
-            root["evals"]?.jsonArray ?: JsonArray(emptyList())
-        } catch (_: Exception) {
-            return RoutingMeasurements(parseError = "${skillDir.relativize(routingEvalPath)} has non-array `evals`")
+        val entries = catalogLoad.cases.filter { it.stringField("suite") == "routing" }
+        if (entries.isEmpty()) {
+            return RoutingMeasurements(parseError = "${skillDir.relativize(catalogPath)} contains no routing cases")
         }
         val measurementDimensions = mutableSetOf<String>()
         var nativeRouteCount = 0
         var nativeAllowedOpCount = 0
         var genericGuardrailCount = 0
         entries.forEach { entry ->
-            val obj = entry as? JsonObject ?: return@forEach
-            val allowedOps = obj.stringArrayField("allowed_ops")
-            val forbiddenOps = obj.stringArrayField("forbidden_ops")
-            measurementDimensions += obj.stringArrayField("measurement_dimensions")
-            if (obj.stringField("expected_route") == REQUIRED_EXPECTED_ROUTE) {
+            val allowedOps = entry.stringArrayField("allowed_ops")
+            val forbiddenOps = entry.stringArrayField("forbidden_ops")
+            measurementDimensions += entry.stringArrayField("measurement_dimensions")
+            if (entry.stringField("expected_route") == REQUIRED_EXPECTED_ROUTE) {
                 nativeRouteCount += 1
             }
             if (allowedOps.any(::isNativeToolOp)) {
@@ -496,43 +495,57 @@ internal class SkillAdapter(private val skillDir: Path) {
         )
     }
 
-    private fun validateCorpus(
-        path: Path,
-        arrayField: String,
+    private fun validateCatalogSuite(
+        suite: String,
         validator: (JsonObject, Int) -> List<String>,
     ): CorpusValidation {
-        if (!path.exists()) {
-            return CorpusValidation(parseError = "${skillDir.relativize(path)} missing")
+        val catalogLoad = loadCatalogCases()
+        if (catalogLoad.parseError != null) {
+            return CorpusValidation(parseError = catalogLoad.parseError)
         }
-        val root = try {
-            json.parseToJsonElement(path.readText()).jsonObject
-        } catch (exception: Exception) {
-            return CorpusValidation(parseError = "${skillDir.relativize(path)} invalid JSON: ${exception.message}")
-        }
-        val entries = try {
-            root[arrayField]?.jsonArray ?: JsonArray(emptyList())
-        } catch (_: Exception) {
-            return CorpusValidation(parseError = "${skillDir.relativize(path)} has non-array `$arrayField`")
-        }
+        val entries = catalogLoad.cases.filter { it.stringField("suite") == suite }
         if (entries.isEmpty()) {
-            return CorpusValidation(entryCount = 0, issues = listOf("${skillDir.relativize(path)} contains no evals"))
+            return CorpusValidation(
+                entryCount = 0,
+                issues = listOf("${skillDir.relativize(catalogPath)} contains no $suite cases"),
+            )
         }
         val issues = mutableListOf<String>()
         val failureModes = mutableSetOf<String>()
         entries.forEachIndexed { index, entry ->
-            val obj = entry as? JsonObject
-            if (obj == null) {
-                issues.add("entry ${index + 1} is not an object")
-                return@forEachIndexed
-            }
-            issues += validator(obj, index)
-            obj.stringField("failure_mode")?.let(failureModes::add)
+            issues += validator(entry, index)
+            entry.stringField("failure_mode")?.let(failureModes::add)
         }
         return CorpusValidation(
             entryCount = entries.size,
             failureModes = failureModes,
             issues = issues.distinct(),
         )
+    }
+
+    private fun loadCatalogCases(): CatalogLoad {
+        if (!catalogPath.exists()) {
+            return CatalogLoad(parseError = "${skillDir.relativize(catalogPath)} missing")
+        }
+        val root = try {
+            json.parseToJsonElement(catalogPath.readText()).jsonObject
+        } catch (exception: Exception) {
+            return CatalogLoad(parseError = "${skillDir.relativize(catalogPath)} invalid JSON: ${exception.message}")
+        }
+        val rawCases = try {
+            root["cases"]?.jsonArray ?: JsonArray(emptyList())
+        } catch (_: Exception) {
+            return CatalogLoad(parseError = "${skillDir.relativize(catalogPath)} has non-array `cases`")
+        }
+        val cases = mutableListOf<JsonObject>()
+        rawCases.forEachIndexed { index, entry ->
+            val obj = entry as? JsonObject
+            if (obj == null) {
+                return CatalogLoad(parseError = "${skillDir.relativize(catalogPath)} entry ${index + 1} is not an object")
+            }
+            cases += obj
+        }
+        return CatalogLoad(cases = cases)
     }
 
     private fun JsonObject.stringField(name: String): String? =
@@ -558,6 +571,11 @@ internal class SkillAdapter(private val skillDir: Path) {
             else -> "$label eval corpus valid ($entryCount cases)"
         }
     }
+
+    private data class CatalogLoad(
+        val cases: List<JsonObject> = emptyList(),
+        val parseError: String? = null,
+    )
 
     private data class RoutingMeasurements(
         val entryCount: Int = 0,

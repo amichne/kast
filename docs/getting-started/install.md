@@ -36,6 +36,13 @@ The wizard sniffs your environment (running IntelliJ, existing tools,
 Java version), lets you pick an install mode, writes config to
 `~/.config/kast/env`, and offers to drop in the Copilot skill.
 
+For repository-local Copilot setup, the CLI can also install the packaged
+Copilot agents and hooks:
+
+```console title="Install Copilot agents and hooks"
+kast install copilot-extension
+```
+
 ??? info "What the wizard does, step by step"
 
     Most people answer the prompts and move on. If you want the receipts:
@@ -52,7 +59,7 @@ Java version), lets you pick an install mode, writes config to
     5. **Shell completions.** Bash or Zsh, your call.
     6. **IntelliJ plugin.** Push to the running IDE, or download the zip
        for manual install.
-    7. **Copilot skill.** Install globally
+7. **Copilot skill.** Install globally
        (`~/.agents/skills/kast`), per-repo, or both. Uses `fzf` if
        available, falls back to a numbered menu.
     8. **Summary.** Install root, binary path, next steps.

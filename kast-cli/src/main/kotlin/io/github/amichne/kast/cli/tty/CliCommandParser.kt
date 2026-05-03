@@ -23,6 +23,7 @@ import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
 import io.github.amichne.kast.cli.options.DaemonStartOptions
+import io.github.amichne.kast.cli.options.InstallCopilotExtensionOptions
 import io.github.amichne.kast.cli.options.InstallOptions
 import io.github.amichne.kast.cli.options.InstallSkillOptions
 import io.github.amichne.kast.cli.options.RuntimeCommandOptions
@@ -123,6 +124,7 @@ internal class CliCommandParser(
                 listOf("apply-edits") -> CliCommand.ApplyEdits(parsed.runtimeOptions(), parsed.applyEditsQuery(json))
                 listOf("install") -> CliCommand.Install(parsed.installOptions())
                 listOf("install", "skill") -> CliCommand.InstallSkill(parsed.installSkillOptions())
+                listOf("install", "copilot-extension") -> CliCommand.InstallCopilotExtension(parsed.installCopilotExtensionOptions())
                 listOf("smoke") -> CliCommand.Smoke(parsed.smokeOptions())
                 listOf("daemon", "start") -> CliCommand.DaemonStart(parsed.daemonStartOptions())
                 listOf("config", "init") -> CliCommand.ConfigInit
@@ -533,6 +535,11 @@ internal data class ParsedArguments(
         name = options["name"]?.takeIf(String::isNotEmpty)
                ?: options["link-name"]?.takeIf(String::isNotEmpty)
                ?: "kast",
+        force = optionalBoolean("yes", false),
+    )
+
+    fun installCopilotExtensionOptions(): InstallCopilotExtensionOptions = InstallCopilotExtensionOptions(
+        targetDir = options["target-dir"]?.let { Path.of(it).toAbsolutePath().normalize() },
         force = optionalBoolean("yes", false),
     )
 
