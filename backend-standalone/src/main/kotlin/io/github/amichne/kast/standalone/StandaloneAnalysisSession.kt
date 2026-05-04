@@ -64,6 +64,7 @@ internal class StandaloneAnalysisSession(
     internal val telemetry: StandaloneTelemetry = StandaloneTelemetry.disabled(),
     private val enablePhase2Indexing: Boolean = config.indexing.phase2Enabled,
     private val referenceBatchSize: Int = config.indexing.referenceBatchSize,
+    private val phase2YieldMillis: Long = defaultPhase2YieldMillis,
 ) : AutoCloseable {
     val workspaceRoot: Path = normalizeStandalonePath(workspaceRoot)
     private val disposable: Disposable = Disposer.newDisposable("kast-standalone")
@@ -892,7 +893,8 @@ internal class StandaloneAnalysisSession(
             sourceIndexCache = sourceIndexCache,
             store = sourceIndexCache.store,
             initialSourceIndexBuilder = initialSourceIndexBuilder,
-            referenceBatchSize = referenceBatchSize,
+            phase2BatchSize = referenceBatchSize,
+            interBatchYield = buildPhase2YieldCallback(),
         )
         val generation = sourceIndexGeneration.incrementAndGet()
         // Publish the index synchronously in the Phase 1 thread before identifierIndexReady
@@ -917,6 +919,22 @@ internal class StandaloneAnalysisSession(
                     ),
                 )
                 backgroundIndexer.startPhase2(referenceScanner = scanner::scanFileReferences)
+            }
+        }
+    }
+
+    private fun buildPhase2YieldCallback(): (() -> Unit)? {
+        if (phase2YieldMillis <= 0) return null
+        return {
+            if (analysisSessionLock.hasQueuedReaders()) {
+                telemetry.inSpan(
+                    StandaloneTelemetryScope.INDEXING,
+                    "phase2-yield",
+                    attributes = mapOf("yieldMillis" to phase2YieldMillis),
+                    verboseOnly = true,
+                ) {
+                    Thread.sleep(phase2YieldMillis)
+                }
             }
         }
     }
@@ -1159,3 +1177,5 @@ private data class CandidateLookupKey(
     val identifier: String,
     val anchorSourceModuleName: ModuleName?,
 )
+
+private const val defaultPhase2YieldMillis = 100L

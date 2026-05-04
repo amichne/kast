@@ -167,6 +167,32 @@ class ReferenceIndexerTest {
         }
     }
 
+    @Test
+    fun `throttle callback is invoked between batches`() {
+        val filePaths = (0 until 6).map { i -> "/src/File$i.kt" }
+        val throttleCount = java.util.concurrent.atomic.AtomicInteger(0)
+        storeWithManifest(*filePaths.toTypedArray()).use { store ->
+            ReferenceIndexer(store, batchSize = 2).indexReferences(
+                filePaths = filePaths,
+                referenceScanner = { path ->
+                    listOf(
+                        SymbolReferenceRow(
+                            sourcePath = path,
+                            sourceOffset = 0,
+                            targetFqName = "sample.target",
+                            targetPath = null,
+                            targetOffset = null,
+                        ),
+                    )
+                },
+                throttle = { throttleCount.incrementAndGet() },
+            )
+
+            assertEquals(3, throttleCount.get(), "Throttle should be called once per batch")
+            assertEquals(6, store.referencesToSymbol("sample.target").size)
+        }
+    }
+
     private fun storeWithManifest(vararg filePaths: String): SqliteSourceIndexStore {
         val store = SqliteSourceIndexStore(workspaceRoot.toAbsolutePath().normalize())
         store.ensureSchema()

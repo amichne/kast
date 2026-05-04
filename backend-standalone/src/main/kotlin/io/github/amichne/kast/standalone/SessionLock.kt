@@ -14,12 +14,14 @@ import kotlin.concurrent.write
 internal interface SessionLock {
     fun <T> read(action: () -> T): T
     fun <T> write(action: () -> T): T
+    fun hasQueuedReaders(): Boolean
 }
 
 internal class ReentrantSessionLock : SessionLock {
     private val lock = ReentrantReadWriteLock()
     override fun <T> read(action: () -> T): T = lock.read(action)
     override fun <T> write(action: () -> T): T = lock.write(action)
+    override fun hasQueuedReaders(): Boolean = lock.hasQueuedThreads()
 }
 
 /**
@@ -56,6 +58,8 @@ internal class InstrumentedSessionLock(
             _events += LockEvent(LockType.WRITE, Thread.currentThread().name, start, clock.nanoTime())
         }
     }
+
+    override fun hasQueuedReaders(): Boolean = delegate.hasQueuedReaders()
 
     fun maxWriteHoldNanos(): Long = _events
         .filter { it.type == LockType.WRITE }

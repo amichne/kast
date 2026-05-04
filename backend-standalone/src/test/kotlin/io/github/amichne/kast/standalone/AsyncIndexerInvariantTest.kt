@@ -569,6 +569,50 @@ class AsyncIndexerInvariantTest {
         cache.close()
     }
 
+    @Test
+    fun `phase 2 yields when session lock has queued readers`() {
+        val filePaths = (0 until 4).map { i ->
+            writeSourceFile(
+                relativePath = "sample/File$i.kt",
+                content = "package sample\n\nfun func$i() = $i\n",
+            ).toString()
+        }
+        val normalized = normalizeStandalonePath(workspaceRoot)
+        val cache = SourceIndexCache(normalized)
+        val store = cache.store
+        store.ensureSchema()
+        store.saveManifest(filePaths.associateWith { System.currentTimeMillis() })
+
+        val yieldCount = AtomicInteger(0)
+        val indexer = BackgroundIndexer(
+            sourceRoots = sourceRoots(),
+            sourceIndexFileReader = { Files.readString(it) },
+            sourceModuleNameResolver = { null },
+            sourceIndexCache = cache,
+            store = store,
+            phase2BatchSize = 2,
+            interBatchYield = { yieldCount.incrementAndGet() },
+        )
+        indexer.use {
+            indexer.startPhase2 { path ->
+                listOf(
+                    SymbolReferenceRow(
+                        sourcePath = path,
+                        sourceOffset = 0,
+                        targetFqName = "sample.target",
+                        targetPath = null,
+                        targetOffset = null,
+                    ),
+                )
+            }
+            indexer.referenceIndexReady.get(10, TimeUnit.SECONDS)
+        }
+
+        assertEquals(2, yieldCount.get(), "Yield callback should be invoked once per batch")
+        assertEquals(4, store.referencesToSymbol("sample.target").size)
+        cache.close()
+    }
+
     // -- helpers --
 
     private fun sourceRoots(): List<Path> =
