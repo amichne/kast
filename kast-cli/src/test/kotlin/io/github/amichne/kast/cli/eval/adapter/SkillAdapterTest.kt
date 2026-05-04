@@ -73,7 +73,7 @@ class SkillAdapterTest {
     @Test
     fun `scan fails empty behavior eval corpus`() {
         val skillDir = createMinimalSkill()
-        skillDir.resolve("fixtures/maintenance/evals/evals.json").writeText("""{"skill_name":"kast","evals":[]}""")
+        writeCatalog(skillDir, emptyList(), REQUIRED_FAILURE_MODES)
         val descriptor = SkillAdapter(skillDir).scan()
         val check = descriptor.checks.first { it.id == "corpus-behavior-evals-valid" }
         assertEquals(EvalStatus.FAIL, check.status)
@@ -83,10 +83,11 @@ class SkillAdapterTest {
     @Test
     fun `scan fails malformed routing eval entries`() {
         val skillDir = createMinimalSkill()
-        skillDir.resolve("fixtures/maintenance/evals/routing.json").writeText(
+        skillDir.resolve("evals/catalog.json").writeText(
             """
-            {"skill_name":"kast","suite":"routing","evals":[
-              {"id":"bad-routing","prompt":"Trace this Kotlin flow","expected_skill":"ksat","expected_route":"kast","allowed_ops":["kast skill resolve","grep"],"forbidden_ops":["grep"],"measurement_dimensions":["bogus_dimension"],"failure_mode":"trigger_miss"}
+            {"skill_name":"kast","version":1,"cases":[
+              {"id":"behavior-1","title":"Behavior case 1","prompt":"Behavior prompt 1","files":[],"expected_output":"Expected behavior 1","expectations":["Uses kast semantically"],"labels":["behavior","trigger_miss"],"stage":"holdout","suite":"behavior","failure_mode":"trigger_miss","source":{"kind":"test-fixture"},"promotion":{"required_pass_rate":1.0,"required_benchmarks":2}},
+              {"id":"bad-routing","title":"Bad routing","prompt":"Trace this Kotlin flow","files":[],"expected_output":"Routes through native kast tools","expectations":["Uses kast semantically"],"labels":["routing","trigger_miss"],"stage":"holdout","suite":"routing","expected_skill":"ksat","expected_route":"kast","allowed_ops":["kast skill resolve","grep"],"forbidden_ops":["grep"],"measurement_dimensions":["bogus_dimension"],"failure_mode":"trigger_miss","source":{"kind":"test-fixture"},"promotion":{"required_pass_rate":1.0,"required_benchmarks":2}}
             ]}
             """.trimIndent(),
         )
@@ -98,7 +99,7 @@ class SkillAdapterTest {
     @Test
     fun `scan fails unknown failure modes`() {
         val skillDir = createMinimalSkill()
-        writeBehaviorCorpus(skillDir, listOf("trigger_miss", "schema_reponse"))
+        writeCatalog(skillDir, listOf("trigger_miss", "schema_reponse"), REQUIRED_FAILURE_MODES)
         val descriptor = SkillAdapter(skillDir).scan()
         val check = descriptor.checks.first { it.id == "corpus-behavior-evals-valid" }
         assertEquals(EvalStatus.FAIL, check.status)
@@ -108,8 +109,7 @@ class SkillAdapterTest {
     @Test
     fun `scan warns when failure mode coverage is incomplete`() {
         val skillDir = createMinimalSkill()
-        writeBehaviorCorpus(skillDir, listOf("trigger_miss"))
-        writeRoutingCorpus(skillDir, listOf("trigger_miss", "routing_bypass"))
+        writeCatalog(skillDir, listOf("trigger_miss"), listOf("trigger_miss", "routing_bypass"))
         val descriptor = SkillAdapter(skillDir).scan()
         val check = descriptor.checks.first { it.id == "corpus-failure-mode-coverage" }
         assertEquals(EvalStatus.WARN, check.status)
@@ -226,13 +226,21 @@ class SkillAdapterTest {
         val refs = skillDir.resolve("references").createDirectories()
         refs.resolve("quickstart.md").writeText("# Quickstart\n")
 
-        val maintenanceDir = skillDir.resolve("fixtures/maintenance")
-        val maintenanceEvals = maintenanceDir.resolve("evals").createDirectories()
-        writeBehaviorCorpus(skillDir, REQUIRED_FAILURE_MODES.take(4))
-        writeRoutingCorpus(skillDir, REQUIRED_FAILURE_MODES.drop(4))
-        val maintenanceRefs = maintenanceDir.resolve("references").createDirectories()
-        maintenanceRefs.resolve("routing-improvement.md").writeText("# Routing improvement\n")
-        maintenanceRefs.resolve("wrapper-openapi.yaml").writeText(
+        val evalsDir = skillDir.resolve("evals").createDirectories()
+        evalsDir.resolve("files").createDirectories()
+        evalsDir.resolve("files/.gitkeep").writeText("")
+        evalsDir.resolve("pain_points.jsonl").writeText("")
+        writeCatalog(skillDir, REQUIRED_FAILURE_MODES.take(4), REQUIRED_FAILURE_MODES.drop(4))
+
+        val historyDir = skillDir.resolve("history").createDirectories()
+        historyDir.resolve("progression.json").writeText(
+            """
+            {"skill_name":"kast","updated_at":"2026-05-02T00:00:00Z","benchmarks":[],"case_history":{}}
+            """.trimIndent(),
+        )
+
+        refs.resolve("routing-improvement.md").writeText("# Routing improvement\n")
+        refs.resolve("wrapper-openapi.yaml").writeText(
             """
             openapi: '3.0.0'
             x-command: kast skill resolve
@@ -247,8 +255,8 @@ class SkillAdapterTest {
             """.trimIndent(),
         )
 
-        val maintenanceScripts = maintenanceDir.resolve("scripts").createDirectories()
-        maintenanceScripts.resolve("build-routing-corpus.py").writeText(
+        val scriptsDir = skillDir.resolve("scripts").createDirectories()
+        scriptsDir.resolve("build-routing-corpus.py").writeText(
             """
             #!/usr/bin/env python3
             print("ok")
@@ -258,32 +266,26 @@ class SkillAdapterTest {
         return skillDir
     }
 
-    private fun writeBehaviorCorpus(skillDir: Path, failureModes: List<String>) {
-        skillDir.resolve("fixtures/maintenance/evals/evals.json").writeText(
+    private fun writeCatalog(skillDir: Path, behaviorFailureModes: List<String>, routingFailureModes: List<String>) {
+        skillDir.resolve("evals/catalog.json").writeText(
             buildString {
-                append("""{"skill_name":"kast","evals":[""")
-                failureModes.forEachIndexed { index, failureMode ->
-                    if (index > 0) append(",")
+                append("""{"skill_name":"kast","version":1,"cases":[""")
+                var first = true
+                behaviorFailureModes.forEachIndexed { index, failureMode ->
+                    if (!first) append(",")
+                    first = false
                     append(
                         """
-                        {"id":${index + 1},"prompt":"Behavior prompt ${index + 1}","expected_output":"Expected behavior ${index + 1}","files":[],"expectations":["Uses kast semantically"],"failure_mode":"$failureMode"}
+                        {"id":"behavior-${index + 1}","title":"Behavior case ${index + 1}","prompt":"Behavior prompt ${index + 1}","files":[],"expected_output":"Expected behavior ${index + 1}","expectations":["Uses kast semantically"],"labels":["behavior","$failureMode"],"stage":"holdout","suite":"behavior","failure_mode":"$failureMode","source":{"kind":"test-fixture"},"promotion":{"required_pass_rate":1.0,"required_benchmarks":2}}
                         """.trimIndent(),
                     )
                 }
-                append("]}")
-            },
-        )
-    }
-
-    private fun writeRoutingCorpus(skillDir: Path, failureModes: List<String>) {
-        skillDir.resolve("fixtures/maintenance/evals/routing.json").writeText(
-            buildString {
-                append("""{"skill_name":"kast","suite":"routing","evals":[""")
-                failureModes.forEachIndexed { index, failureMode ->
-                    if (index > 0) append(",")
+                routingFailureModes.forEachIndexed { index, failureMode ->
+                    if (!first) append(",")
+                    first = false
                     append(
                         """
-                        {"id":"routing-${index + 1}","prompt":"Routing prompt ${index + 1}","expected_skill":"kast","expected_route":"native-kast-tools","allowed_ops":["kast_resolve"],"forbidden_ops":["grep","view"],"measurement_dimensions":["${REQUIRED_MEASUREMENT_DIMENSIONS[index % REQUIRED_MEASUREMENT_DIMENSIONS.size]}"],"failure_mode":"$failureMode"}
+                        {"id":"routing-${index + 1}","title":"Routing case ${index + 1}","prompt":"Routing prompt ${index + 1}","files":[],"expected_output":"Routes through native kast tools","expectations":["Uses kast semantically"],"labels":["routing","$failureMode"],"stage":"holdout","suite":"routing","failure_mode":"$failureMode","expected_skill":"kast","expected_route":"native-kast-tools","allowed_ops":["kast_resolve"],"forbidden_ops":["grep","view"],"measurement_dimensions":["${REQUIRED_MEASUREMENT_DIMENSIONS[index % REQUIRED_MEASUREMENT_DIMENSIONS.size]}"],"source":{"kind":"test-fixture"},"promotion":{"required_pass_rate":1.0,"required_benchmarks":2}}
                         """.trimIndent(),
                     )
                 }

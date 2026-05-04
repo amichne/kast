@@ -64,21 +64,21 @@ How a session unfolds:
     `src/test/java`) and scans for directories with `.kt`, `.kts`, or
     `.java` files. The Gradle path matters most for multi-module builds.
 
-## IntelliJ plugin backend
+## IntelliJ / Android Studio plugin backend
 
-The plugin runs inside a running IntelliJ IDEA instance. It reuses the
-IDE's K2 analysis session, project model, and indexes — no second JVM,
-no second indexing pass.
+The same plugin ZIP runs inside a running IntelliJ IDEA 2025.3 or Android
+Studio 2025.3.1+ instance. It reuses the IDE's K2 analysis session, project
+model, and indexes — no second JVM, no second indexing pass.
 
 Reach for it when:
 
-- IntelliJ is already open on the project
+- IntelliJ IDEA or Android Studio is already open on the project
 - You'd rather not run a second analysis JVM
 - You want the IDE's richer project model
 
 How a session unfolds:
 
-1. You open the project in IntelliJ.
+1. You open the project in IntelliJ IDEA or Android Studio.
 2. The plugin starts a `kast` server on a Unix domain socket.
 3. It hydrates a configured remote source index when one is available.
 4. It prepopulates the local SQLite source index from IntelliJ PSI files.

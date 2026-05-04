@@ -69,6 +69,18 @@ class KastCliTest {
     }
 
     @Test
+    fun `install help lists install subcommands`() {
+        val help = CliCommandCatalog.helpText(
+            topic = listOf("install"),
+            version = "dev",
+            theme = CliTextTheme.detect(),
+        )
+
+        assertTrue(help.contains("skill"))
+        assertTrue(help.contains("copilot-extension"))
+    }
+
+    @Test
     fun `version prints human friendly text to stdout`() {
         val stdout = StringBuilder()
         val stderr = StringBuilder()
