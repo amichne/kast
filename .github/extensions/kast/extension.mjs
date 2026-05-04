@@ -206,13 +206,13 @@ const tools = [
   {
     name: "kast_metrics",
     description:
-      "Query the indexed source metrics via kast skill metrics: fan-in, fan-out, coupling, dead-code, impact. Treat results as advisory if the response indicates the reference index is missing or stale.",
+      "Query the indexed source metrics via kast skill metrics: fanIn, fanOut, coupling, lowUsage, cycles, moduleDepth, deadCode, impact. Treat results as advisory if the response indicates the reference index is missing or stale.",
     parameters: {
       type: "object",
       properties: {
         metric: {
           type: "string",
-          description: "fan-in | fan-out | coupling | dead-code | impact (or other supported metric).",
+          description: "fanIn | fanOut | coupling | lowUsage | cycles | moduleDepth | deadCode | impact.",
         },
         symbol: { type: "string", description: "FQ name when the metric is symbol-scoped." },
         depth: { type: "integer" },

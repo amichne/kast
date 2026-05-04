@@ -1000,6 +1000,46 @@ internal object CliCommandCatalog {
             ),
         ),
         CliCommandMetadata(
+            path = listOf("metrics", "low-usage"),
+            group = CliCommandGroup.METRICS,
+            summary = "Find symbols referenced from only one file.",
+            description = "Find symbols referenced from only one file — candidates for inlining or removal of unnecessary abstraction.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME metrics low-usage --workspace-root=/absolute/path/to/workspace [--limit=50]",
+            ),
+            options = listOf(workspaceRootOption, metricsLimitOption),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME metrics low-usage --workspace-root=/absolute/path/to/workspace",
+                "$CLI_EXECUTABLE_NAME metrics low-usage --workspace-root=/absolute/path/to/workspace --limit=20",
+            ),
+        ),
+        CliCommandMetadata(
+            path = listOf("metrics", "cycles"),
+            group = CliCommandGroup.METRICS,
+            summary = "Detect transitive dependency cycles between modules.",
+            description = "Detect transitive dependency cycles between modules (A→B→C→A) and identify the weakest edge to break.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME metrics cycles --workspace-root=/absolute/path/to/workspace",
+            ),
+            options = listOf(workspaceRootOption),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME metrics cycles --workspace-root=/absolute/path/to/workspace",
+            ),
+        ),
+        CliCommandMetadata(
+            path = listOf("metrics", "module-depth"),
+            group = CliCommandGroup.METRICS,
+            summary = "Measure internal module cohesion.",
+            description = "Measure internal cohesion of each module to identify shallow modules that are just 'files in a folder'.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME metrics module-depth --workspace-root=/absolute/path/to/workspace",
+            ),
+            options = listOf(workspaceRootOption),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME metrics module-depth --workspace-root=/absolute/path/to/workspace",
+            ),
+        ),
+        CliCommandMetadata(
             path = listOf("metrics", "dead-code"),
             group = CliCommandGroup.METRICS,
             summary = "Show symbols with zero incoming references.",

@@ -758,6 +758,9 @@ internal class SkillWrapperExecutor(
                 WrapperMetric.FAN_IN -> encodeFanInMetrics(json, engine.fanInRanking(request.limit))
                 WrapperMetric.FAN_OUT -> encodeFanOutMetrics(json, engine.fanOutRanking(request.limit))
                 WrapperMetric.COUPLING -> encodeModuleCouplingMetrics(json, engine.moduleCouplingMatrix())
+                WrapperMetric.LOW_USAGE -> encodeLowUsageSymbols(json, engine.lowUsageSymbols(limit = request.limit))
+                WrapperMetric.CYCLES -> encodeModuleCycleMetrics(json, engine.moduleCycles())
+                WrapperMetric.MODULE_DEPTH -> encodeModuleDepthMetrics(json, engine.moduleDepthMetrics())
                 WrapperMetric.DEAD_CODE -> encodeDeadCodeCandidates(json, engine.deadCodeCandidates())
                 WrapperMetric.IMPACT -> encodeChangeImpactNodes(
                     json,

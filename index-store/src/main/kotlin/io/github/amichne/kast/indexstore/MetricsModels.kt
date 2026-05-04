@@ -35,6 +35,36 @@ data class ModuleCouplingMetric(
 )
 
 @Serializable
+data class LowUsageSymbol(
+    val targetFqName: String,
+    val targetPath: String?,
+    val targetModulePath: String?,
+    val occurrenceCount: Int,
+    val sourceFileCount: Int,
+)
+
+@Serializable
+data class ModuleCycleMetric(
+    val cycle: List<String>,
+    val totalReferenceCount: Int,
+    val weakestEdgeSource: String,
+    val weakestEdgeTarget: String,
+    val weakestEdgeReferenceCount: Int,
+)
+
+@Serializable
+data class ModuleDepthMetric(
+    val modulePath: String,
+    val fileCount: Int,
+    val declaredSymbolCount: Int,
+    val internalRefCount: Int,
+    val externalRefCount: Int,
+    val cohesionRatio: Double,
+    val refsPerFile: Double,
+    val diagnosis: ModuleDepthDiagnosis,
+)
+
+@Serializable
 data class DeadCodeCandidate(
     val identifier: String,
     val path: String,
@@ -100,6 +130,14 @@ enum class MetricsGraphEdgeType {
     CONTAINS,
     REFERENCED_BY,
     REFERENCES,
+}
+
+@Serializable
+enum class ModuleDepthDiagnosis {
+    DEEP,
+    SHALLOW,
+    PASS_THROUGH,
+    MONOLITH,
 }
 
 @Serializable

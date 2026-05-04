@@ -113,5 +113,27 @@ class WorkspacePathsTest {
             val socketPath = defaultSocketPath(workspaceRoot)
             assertTrue(socketPath.toString().length < 108)
         }
+
+        @Test
+        fun localWorkspaceDatabasePathUsesIsolatedJunitConfigHomeByDefault() {
+            val workspaceRoot = tempDir.resolve("workspace")
+            val userConfigHome = Path.of(System.getProperty("user.home"))
+                .resolve(".config")
+                .resolve("kast")
+                .toAbsolutePath()
+                .normalize()
+            val normalizedWorkspaceRoot = workspaceRoot.toAbsolutePath().normalize()
+
+            val databasePath = workspaceDatabasePath(workspaceRoot)
+
+            assertTrue(
+                databasePath.startsWith(normalizedWorkspaceRoot),
+                "databasePath=$databasePath workspaceRoot=$normalizedWorkspaceRoot",
+            )
+            assertTrue(
+                !databasePath.startsWith(userConfigHome),
+                "databasePath=$databasePath userConfigHome=$userConfigHome",
+            )
+        }
     }
 }

@@ -30,7 +30,7 @@ validates arguments against a schema — no shell escaping, no JSON-in-bash.
 | Resolve an exact declaration                  | `kast_resolve`             |
 | Find every usage of a symbol                  | `kast_references`          |
 | Trace incoming/outgoing call hierarchy        | `kast_callers`             |
-| Indexed metrics (fan-in/out, dead-code, …)    | `kast_metrics`             |
+| Indexed metrics (fanIn/fanOut, cycles, …)     | `kast_metrics`             |
 | Rename safely (updates every reference)       | `kast_rename`              |
 | Apply an edit and validate it atomically      | `kast_write_and_validate`  |
 | Re-check files after a mutation               | `kast_diagnostics`         |
@@ -98,7 +98,8 @@ them, but a few patterns repeat in every response.
   needs the wider list. Prefer a tighter semantic query.
 - **Stale or missing index.** If `kast_metrics` reports the reference
   index is missing or stale, treat results as advisory and rebuild the
-  index before relying on impact or dead-code answers.
+  index before relying on impact, deadCode, lowUsage, cycles, or moduleDepth
+  answers.
 - **Failed mutation.** `ok:false`, a `*_FAILURE` response type, dirty
   diagnostics, or a hash/validation message such as
   `Missing expected hash` means the edit did not commit. Keep the failure
