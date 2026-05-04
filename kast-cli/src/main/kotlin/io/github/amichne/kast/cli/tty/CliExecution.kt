@@ -9,9 +9,12 @@ import io.github.amichne.kast.indexstore.ChangeImpactNode
 import io.github.amichne.kast.indexstore.DeadCodeCandidate
 import io.github.amichne.kast.indexstore.FanInMetric
 import io.github.amichne.kast.indexstore.FanOutMetric
+import io.github.amichne.kast.indexstore.LowUsageSymbol
 import io.github.amichne.kast.indexstore.MetricsGraph
 import io.github.amichne.kast.indexstore.MetricsEngine
 import io.github.amichne.kast.indexstore.ModuleCouplingMetric
+import io.github.amichne.kast.indexstore.ModuleCycleMetric
+import io.github.amichne.kast.indexstore.ModuleDepthMetric
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import java.nio.file.Path
@@ -299,6 +302,15 @@ internal class DefaultCliCommandExecutor(
                         )
                         MetricsSubcommand.COUPLING -> json.encodeToString(
                             ListSerializer(ModuleCouplingMetric.serializer()), engine.moduleCouplingMatrix(),
+                        )
+                        MetricsSubcommand.LOW_USAGE -> json.encodeToString(
+                            ListSerializer(LowUsageSymbol.serializer()), engine.lowUsageSymbols(limit = command.limit),
+                        )
+                        MetricsSubcommand.CYCLES -> json.encodeToString(
+                            ListSerializer(ModuleCycleMetric.serializer()), engine.moduleCycles(),
+                        )
+                        MetricsSubcommand.MODULE_DEPTH -> json.encodeToString(
+                            ListSerializer(ModuleDepthMetric.serializer()), engine.moduleDepthMetrics(),
                         )
                         MetricsSubcommand.DEAD_CODE -> json.encodeToString(
                             ListSerializer(DeadCodeCandidate.serializer()), engine.deadCodeCandidates(),

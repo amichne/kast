@@ -152,6 +152,24 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/KastWriteAndValidateResponse"
+  "/skill/metrics":
+    post:
+      operationId: kastSkillMetrics
+      summary: Query indexed source metrics
+      x-command: kast skill metrics
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              $ref: "#/components/schemas/KastMetricsRequest"
+      responses:
+        "200":
+          description: Wrapper JSON response
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/KastMetricsResponse"
 components:
   schemas:
     ApiErrorResponse:
@@ -582,6 +600,43 @@ components:
           CREATE_FILE_REQUEST: "#/components/schemas/KastWriteAndValidateCreateFileRequest"
           INSERT_AT_OFFSET_REQUEST: "#/components/schemas/KastWriteAndValidateInsertAtOffsetRequest"
           REPLACE_RANGE_REQUEST: "#/components/schemas/KastWriteAndValidateReplaceRangeRequest"
+    KastMetricsRequest:
+      type: object
+      properties:
+        workspaceRoot:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        metric:
+          $ref: "#/components/schemas/WrapperMetric"
+        limit:
+          type: integer
+          format: int32
+        symbol:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        depth:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - metric
+    WrapperMetric:
+      type: string
+      enum:
+        - fanIn
+        - fanOut
+        - coupling
+        - lowUsage
+        - cycles
+        - moduleDepth
+        - deadCode
+        - impact
     KastRenameBySymbolQuery:
       type: object
       properties:
@@ -704,6 +759,29 @@ components:
         - startOffset
         - endOffset
         - type
+    KastMetricsQuery:
+      type: object
+      properties:
+        workspaceRoot:
+          type: string
+        metric:
+          $ref: "#/components/schemas/WrapperMetric"
+        limit:
+          type: integer
+          format: int32
+        symbol:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        depth:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - workspaceRoot
+        - metric
     KastResolveSuccessResponse:
       type: object
       properties:
@@ -2198,3 +2276,77 @@ components:
         mapping:
           WRITE_AND_VALIDATE_SUCCESS: "#/components/schemas/KastWriteAndValidateSuccessResponse"
           WRITE_AND_VALIDATE_FAILURE: "#/components/schemas/KastWriteAndValidateFailureResponse"
+    KastMetricsSuccessResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        query:
+          $ref: "#/components/schemas/KastMetricsQuery"
+        results:
+          $ref: "#/components/schemas/JsonElement"
+        logFile:
+          type: string
+        type:
+          type: string
+          const: METRICS_SUCCESS
+      additionalProperties: false
+      required:
+        - query
+        - results
+        - logFile
+        - type
+    JsonElement:
+      description: Arbitrary JSON value.
+      anyOf:
+        -
+          type: object
+          additionalProperties: true
+        -
+          type: array
+          items:
+            {}
+        -
+          type: string
+        -
+          type: number
+        -
+          type: integer
+        -
+          type: boolean
+        -
+          type: null
+    KastMetricsFailureResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        stage:
+          type: string
+        message:
+          type: string
+        query:
+          $ref: "#/components/schemas/KastMetricsQuery"
+        logFile:
+          type: string
+        type:
+          type: string
+          const: METRICS_FAILURE
+      additionalProperties: false
+      required:
+        - stage
+        - message
+        - query
+        - logFile
+        - type
+    KastMetricsResponse:
+      oneOf:
+        -
+          $ref: "#/components/schemas/KastMetricsSuccessResponse"
+        -
+          $ref: "#/components/schemas/KastMetricsFailureResponse"
+      discriminator:
+        propertyName: type
+        mapping:
+          METRICS_SUCCESS: "#/components/schemas/KastMetricsSuccessResponse"
+          METRICS_FAILURE: "#/components/schemas/KastMetricsFailureResponse"

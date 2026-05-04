@@ -134,6 +134,145 @@ class MetricsEngineTest {
     }
 
     @Test
+    fun `lowUsageSymbols returns symbols with single-file fan-in`() {
+        val root = seededWorkspace()
+        SqliteSourceIndexStore(root).use { store ->
+            store.upsertSymbolReference("/app/A.kt", 40, "external.OneOff", null, null)
+        }
+
+        MetricsEngine(root).use { metrics ->
+            val lowUsage = metrics.lowUsageSymbols(maxOccurrences = 1)
+
+            assertTrue(
+                lowUsage.any {
+                    it.targetFqName == "app.A" &&
+                        it.targetPath == "/app/A.kt" &&
+                        it.targetModulePath == ":app" &&
+                        it.occurrenceCount == 1 &&
+                        it.sourceFileCount == 1
+                },
+            )
+            assertFalse(lowUsage.any { it.targetFqName == "lib.Foo" })
+            assertFalse(lowUsage.any { it.targetFqName == "external.OneOff" })
+        }
+    }
+
+    @Test
+    fun `moduleCycles detects bidirectional coupling`() {
+        val root = workspaceRoot.toAbsolutePath().normalize()
+        SqliteSourceIndexStore(root).use { store ->
+            store.ensureSchema()
+            store.saveFullIndex(
+                updates = listOf(
+                    fileUpdate("/app/App.kt", identifiers = setOf("App"), packageName = "app", modulePath = ":app", sourceSet = "main"),
+                    fileUpdate("/lib/Lib.kt", identifiers = setOf("Lib"), packageName = "lib", modulePath = ":lib", sourceSet = "main"),
+                ),
+                manifest = mapOf("/app/App.kt" to 1L, "/lib/Lib.kt" to 1L),
+            )
+            store.upsertSymbolReference("/app/App.kt", 10, "lib.Lib", "/lib/Lib.kt", 1)
+            store.upsertSymbolReference("/app/App.kt", 20, "lib.Lib", "/lib/Lib.kt", 1)
+            store.upsertSymbolReference("/lib/Lib.kt", 10, "app.App", "/app/App.kt", 1)
+        }
+
+        MetricsEngine(root).use { metrics ->
+            val cycle = metrics.moduleCycles().single()
+
+            assertEquals(cycle.cycle.first(), cycle.cycle.last())
+            assertEquals(setOf(":app", ":lib"), cycle.cycle.dropLast(1).toSet())
+            assertEquals(3, cycle.totalReferenceCount)
+            assertEquals(":lib", cycle.weakestEdgeSource)
+            assertEquals(":app", cycle.weakestEdgeTarget)
+            assertEquals(1, cycle.weakestEdgeReferenceCount)
+        }
+    }
+
+    @Test
+    fun `moduleCycles detects transitive cycle`() {
+        val root = workspaceRoot.toAbsolutePath().normalize()
+        SqliteSourceIndexStore(root).use { store ->
+            store.ensureSchema()
+            store.saveFullIndex(
+                updates = listOf(
+                    fileUpdate("/a/A.kt", identifiers = setOf("A"), packageName = "a", modulePath = ":a", sourceSet = "main"),
+                    fileUpdate("/b/B.kt", identifiers = setOf("B"), packageName = "b", modulePath = ":b", sourceSet = "main"),
+                    fileUpdate("/c/C.kt", identifiers = setOf("C"), packageName = "c", modulePath = ":c", sourceSet = "main"),
+                ),
+                manifest = mapOf("/a/A.kt" to 1L, "/b/B.kt" to 1L, "/c/C.kt" to 1L),
+            )
+            store.upsertSymbolReference("/a/A.kt", 10, "b.B", "/b/B.kt", 1)
+            store.upsertSymbolReference("/b/B.kt", 10, "c.C", "/c/C.kt", 1)
+            store.upsertSymbolReference("/c/C.kt", 10, "a.A", "/a/A.kt", 1)
+        }
+
+        MetricsEngine(root).use { metrics ->
+            val cycle = metrics.moduleCycles().single()
+
+            assertEquals(cycle.cycle.first(), cycle.cycle.last())
+            assertEquals(setOf(":a", ":b", ":c"), cycle.cycle.dropLast(1).toSet())
+            assertEquals(3, cycle.totalReferenceCount)
+        }
+    }
+
+    @Test
+    fun `moduleDepthMetrics classifies shallow module`() {
+        val root = workspaceRoot.toAbsolutePath().normalize()
+        SqliteSourceIndexStore(root).use { store ->
+            store.ensureSchema()
+            store.saveFullIndex(
+                updates = listOf(
+                    fileUpdate("/shallow/A.kt", identifiers = setOf("A"), packageName = "shallow", modulePath = ":shallow", sourceSet = "main"),
+                    fileUpdate("/shallow/B.kt", identifiers = setOf("B"), packageName = "shallow", modulePath = ":shallow", sourceSet = "main"),
+                    fileUpdate("/shallow/C.kt", identifiers = setOf("C"), packageName = "shallow", modulePath = ":shallow", sourceSet = "main"),
+                ),
+                manifest = mapOf("/shallow/A.kt" to 1L, "/shallow/B.kt" to 1L, "/shallow/C.kt" to 1L),
+            )
+        }
+
+        MetricsEngine(root).use { metrics ->
+            val depth = metrics.moduleDepthMetrics().single()
+
+            assertEquals(":shallow", depth.modulePath)
+            assertEquals(3, depth.fileCount)
+            assertEquals(3, depth.declaredSymbolCount)
+            assertEquals(0, depth.internalRefCount)
+            assertEquals(0, depth.externalRefCount)
+            assertEquals(ModuleDepthDiagnosis.SHALLOW, depth.diagnosis)
+        }
+    }
+
+    @Test
+    fun `moduleDepthMetrics classifies deep module`() {
+        val root = workspaceRoot.toAbsolutePath().normalize()
+        SqliteSourceIndexStore(root).use { store ->
+            store.ensureSchema()
+            store.saveFullIndex(
+                updates = listOf(
+                    fileUpdate("/deep/A.kt", identifiers = setOf("A"), packageName = "deep", modulePath = ":deep", sourceSet = "main"),
+                    fileUpdate("/deep/B.kt", identifiers = setOf("B"), packageName = "deep", modulePath = ":deep", sourceSet = "main"),
+                ),
+                manifest = mapOf("/deep/A.kt" to 1L, "/deep/B.kt" to 1L),
+            )
+            repeat(4) { index ->
+                store.upsertSymbolReference("/deep/A.kt", 10 + index, "deep.B", "/deep/B.kt", 1)
+                store.upsertSymbolReference("/deep/B.kt", 20 + index, "deep.A", "/deep/A.kt", 1)
+            }
+        }
+
+        MetricsEngine(root).use { metrics ->
+            val depth = metrics.moduleDepthMetrics().single()
+
+            assertEquals(":deep", depth.modulePath)
+            assertEquals(2, depth.fileCount)
+            assertEquals(2, depth.declaredSymbolCount)
+            assertEquals(8, depth.internalRefCount)
+            assertEquals(0, depth.externalRefCount)
+            assertEquals(1.0, depth.cohesionRatio)
+            assertEquals(4.0, depth.refsPerFile)
+            assertEquals(ModuleDepthDiagnosis.DEEP, depth.diagnosis)
+        }
+    }
+
+    @Test
     fun `reports indexed identifiers with no inbound references`() {
         val root = seededWorkspace()
 

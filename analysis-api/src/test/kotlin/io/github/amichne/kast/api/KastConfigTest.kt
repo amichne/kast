@@ -52,7 +52,7 @@ class KastConfigTest {
     @Test
     fun `workspace directory resolver persists local workspace ids when origin is unavailable`() {
         val configHome = tempDir.resolve("config-home")
-        val workspaceRoot = tempDir.resolve("not-git")
+        val workspaceRoot = Path.of("/workspace/not-git")
         val resolver = WorkspaceDirectoryResolver(
             configHome = { configHome },
             gitRemoteResolver = { null },

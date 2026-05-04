@@ -4,7 +4,10 @@ import io.github.amichne.kast.indexstore.ChangeImpactNode
 import io.github.amichne.kast.indexstore.DeadCodeCandidate
 import io.github.amichne.kast.indexstore.FanInMetric
 import io.github.amichne.kast.indexstore.FanOutMetric
+import io.github.amichne.kast.indexstore.LowUsageSymbol
 import io.github.amichne.kast.indexstore.ModuleCouplingMetric
+import io.github.amichne.kast.indexstore.ModuleCycleMetric
+import io.github.amichne.kast.indexstore.ModuleDepthMetric
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
@@ -24,6 +27,24 @@ internal fun encodeFanOutMetrics(json: Json, items: List<FanOutMetric>): JsonEle
 internal fun encodeModuleCouplingMetrics(json: Json, items: List<ModuleCouplingMetric>): JsonElement =
     json.encodeToJsonElement(
         ListSerializer(ModuleCouplingMetric.serializer()),
+        items,
+    )
+
+internal fun encodeLowUsageSymbols(json: Json, items: List<LowUsageSymbol>): JsonElement =
+    json.encodeToJsonElement(
+        ListSerializer(LowUsageSymbol.serializer()),
+        items,
+    )
+
+internal fun encodeModuleCycleMetrics(json: Json, items: List<ModuleCycleMetric>): JsonElement =
+    json.encodeToJsonElement(
+        ListSerializer(ModuleCycleMetric.serializer()),
+        items,
+    )
+
+internal fun encodeModuleDepthMetrics(json: Json, items: List<ModuleDepthMetric>): JsonElement =
+    json.encodeToJsonElement(
+        ListSerializer(ModuleDepthMetric.serializer()),
         items,
     )
 

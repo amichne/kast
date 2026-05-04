@@ -9,6 +9,11 @@ import io.github.amichne.kast.api.wrapper.KastDiagnosticsFailureResponse
 import io.github.amichne.kast.api.wrapper.KastDiagnosticsRequest
 import io.github.amichne.kast.api.wrapper.KastDiagnosticsResponse
 import io.github.amichne.kast.api.wrapper.KastDiagnosticsSuccessResponse
+import io.github.amichne.kast.api.wrapper.KastMetricsFailureResponse
+import io.github.amichne.kast.api.wrapper.KastMetricsQuery
+import io.github.amichne.kast.api.wrapper.KastMetricsRequest
+import io.github.amichne.kast.api.wrapper.KastMetricsResponse
+import io.github.amichne.kast.api.wrapper.KastMetricsSuccessResponse
 import io.github.amichne.kast.api.wrapper.KastReferencesFailureResponse
 import io.github.amichne.kast.api.wrapper.KastReferencesRequest
 import io.github.amichne.kast.api.wrapper.KastReferencesResponse
@@ -92,12 +97,14 @@ object WrapperOpenApiDocument {
         registry.register("KastWriteAndValidateInsertAtOffsetRequest", KastWriteAndValidateInsertAtOffsetRequest.serializer())
         registry.register("KastWriteAndValidateReplaceRangeRequest", KastWriteAndValidateReplaceRangeRequest.serializer())
         registry.register("KastWriteAndValidateRequest", KastWriteAndValidateRequest.serializer())
+        registry.register("KastMetricsRequest", KastMetricsRequest.serializer())
 
         registry.register("KastRenameBySymbolQuery", KastRenameBySymbolQuery.serializer())
         registry.register("KastRenameByOffsetQuery", KastRenameByOffsetQuery.serializer())
         registry.register("KastWriteAndValidateCreateFileQuery", KastWriteAndValidateCreateFileQuery.serializer())
         registry.register("KastWriteAndValidateInsertAtOffsetQuery", KastWriteAndValidateInsertAtOffsetQuery.serializer())
         registry.register("KastWriteAndValidateReplaceRangeQuery", KastWriteAndValidateReplaceRangeQuery.serializer())
+        registry.register("KastMetricsQuery", KastMetricsQuery.serializer())
 
         registry.register("KastResolveSuccessResponse", KastResolveSuccessResponse.serializer())
         registry.register("KastResolveFailureResponse", KastResolveFailureResponse.serializer())
@@ -123,6 +130,9 @@ object WrapperOpenApiDocument {
         registry.register("KastWriteAndValidateSuccessResponse", KastWriteAndValidateSuccessResponse.serializer())
         registry.register("KastWriteAndValidateFailureResponse", KastWriteAndValidateFailureResponse.serializer())
         registry.register("KastWriteAndValidateResponse", KastWriteAndValidateResponse.serializer())
+        registry.register("KastMetricsSuccessResponse", KastMetricsSuccessResponse.serializer())
+        registry.register("KastMetricsFailureResponse", KastMetricsFailureResponse.serializer())
+        registry.register("KastMetricsResponse", KastMetricsResponse.serializer())
     }
 
     private fun writePaths(): Map<String, Any?> = linkedMapOf(
@@ -181,6 +191,13 @@ object WrapperOpenApiDocument {
             command = "kast skill write-and-validate",
             requestSchema = "KastWriteAndValidateRequest",
             responseSchema = "KastWriteAndValidateResponse",
+        ),
+        "/skill/metrics" to pathItem(
+            operationId = "kastSkillMetrics",
+            summary = "Query indexed source metrics",
+            command = "kast skill metrics",
+            requestSchema = "KastMetricsRequest",
+            responseSchema = "KastMetricsResponse",
         ),
     )
 
@@ -394,8 +411,32 @@ private class SchemaRegistry {
                 "WRITE_AND_VALIDATE_SUCCESS" to "KastWriteAndValidateSuccessResponse",
                 "WRITE_AND_VALIDATE_FAILURE" to "KastWriteAndValidateFailureResponse",
             )
+            "KastMetricsResponse" -> discriminatedUnion(
+                "METRICS_SUCCESS" to "KastMetricsSuccessResponse",
+                "METRICS_FAILURE" to "KastMetricsFailureResponse",
+            )
+            "JsonElement" -> jsonValueSchema()
             else -> null
         }
+
+    private fun jsonValueSchema(): Map<String, Any?> = linkedMapOf(
+        "description" to "Arbitrary JSON value.",
+        "anyOf" to listOf(
+            linkedMapOf(
+                "type" to "object",
+                "additionalProperties" to true,
+            ),
+            linkedMapOf(
+                "type" to "array",
+                "items" to linkedMapOf<String, Any?>(),
+            ),
+            linkedMapOf("type" to "string"),
+            linkedMapOf("type" to "number"),
+            linkedMapOf("type" to "integer"),
+            linkedMapOf("type" to "boolean"),
+            linkedMapOf("type" to "null"),
+        ),
+    )
 
     private fun discriminatedUnion(vararg mappingEntries: Pair<String, String>): Map<String, Any?> {
         val mapping = linkedMapOf<String, String>()
@@ -441,6 +482,8 @@ private class SchemaRegistry {
             "KastWorkspaceFilesFailureResponse" -> "WORKSPACE_FILES_FAILURE"
             "KastWriteAndValidateSuccessResponse" -> "WRITE_AND_VALIDATE_SUCCESS"
             "KastWriteAndValidateFailureResponse" -> "WRITE_AND_VALIDATE_FAILURE"
+            "KastMetricsSuccessResponse" -> "METRICS_SUCCESS"
+            "KastMetricsFailureResponse" -> "METRICS_FAILURE"
             else -> null
         }
 

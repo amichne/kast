@@ -64,6 +64,15 @@ enum class WrapperMetric {
     @SerialName("coupling")
     COUPLING,
 
+    @SerialName("lowUsage")
+    LOW_USAGE,
+
+    @SerialName("cycles")
+    CYCLES,
+
+    @SerialName("moduleDepth")
+    MODULE_DEPTH,
+
     @SerialName("deadCode")
     DEAD_CODE,
 

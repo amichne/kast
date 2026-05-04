@@ -143,6 +143,19 @@ internal class CliCommandParser(
                     subcommand = MetricsSubcommand.COUPLING,
                     workspaceRoot = parsed.requireWorkspaceRootPath(),
                 )
+                listOf("metrics", "low-usage") -> CliCommand.Metrics(
+                    subcommand = MetricsSubcommand.LOW_USAGE,
+                    workspaceRoot = parsed.requireWorkspaceRootPath(),
+                    limit = parsed.optionalInt("limit") ?: 50,
+                )
+                listOf("metrics", "cycles") -> CliCommand.Metrics(
+                    subcommand = MetricsSubcommand.CYCLES,
+                    workspaceRoot = parsed.requireWorkspaceRootPath(),
+                )
+                listOf("metrics", "module-depth") -> CliCommand.Metrics(
+                    subcommand = MetricsSubcommand.MODULE_DEPTH,
+                    workspaceRoot = parsed.requireWorkspaceRootPath(),
+                )
                 listOf("metrics", "dead-code") -> CliCommand.Metrics(
                     subcommand = MetricsSubcommand.DEAD_CODE,
                     workspaceRoot = parsed.requireWorkspaceRootPath(),

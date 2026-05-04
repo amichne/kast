@@ -115,7 +115,8 @@ Wrapper metadata and nested API fields both use camelCase, including
 }'
 ```
 
-Use metrics for fan-in, fan-out, coupling, dead-code, and impact questions.
+Use metrics for fanIn, fanOut, coupling, lowUsage, cycles, moduleDepth,
+deadCode, and impact questions.
 Treat results as advisory when the response says the reference index is missing,
 stale, or not ready.
 

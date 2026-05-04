@@ -670,6 +670,38 @@ class CliCommandParserTest {
     }
 
     @Test
+    fun `metrics low-usage parses`() {
+        val command = parser.parse(
+            arrayOf("metrics", "low-usage", "--workspace-root=$tempDir", "--limit=10"),
+        )
+
+        assertTrue(command is CliCommand.Metrics)
+        val metrics = command as CliCommand.Metrics
+        assertEquals(MetricsSubcommand.LOW_USAGE, metrics.subcommand)
+        assertEquals(10, metrics.limit)
+    }
+
+    @Test
+    fun `metrics cycles parses`() {
+        val command = parser.parse(
+            arrayOf("metrics", "cycles", "--workspace-root=$tempDir"),
+        )
+
+        assertTrue(command is CliCommand.Metrics)
+        assertEquals(MetricsSubcommand.CYCLES, (command as CliCommand.Metrics).subcommand)
+    }
+
+    @Test
+    fun `metrics module-depth parses`() {
+        val command = parser.parse(
+            arrayOf("metrics", "module-depth", "--workspace-root=$tempDir"),
+        )
+
+        assertTrue(command is CliCommand.Metrics)
+        assertEquals(MetricsSubcommand.MODULE_DEPTH, (command as CliCommand.Metrics).subcommand)
+    }
+
+    @Test
     fun `metrics impact parses with required symbol`() {
         val command = parser.parse(
             arrayOf("metrics", "impact", "--workspace-root=$tempDir", "--symbol=com.example.Foo"),

@@ -25,6 +25,10 @@ class WorkspaceDirectoryResolver(
                 .resolve(remote.owner)
                 .resolve(remote.repo)
                 .resolve(workspaceHash(normalizedRoot))
+        } else if (isEphemeralLocalWorkspace(normalizedRoot)) {
+            normalizedRoot
+                .resolve(".gradle")
+                .resolve("kast")
         } else {
             configHome()
                 .resolve("workspaces")
@@ -40,6 +44,11 @@ class WorkspaceDirectoryResolver(
     fun workspaceHash(workspaceRoot: Path): String = FileHashing.sha256(
         workspaceRoot.toAbsolutePath().normalize().toString(),
     ).take(12)
+
+    private fun isEphemeralLocalWorkspace(workspaceRoot: Path): Boolean {
+        val tempRoot = Path.of(System.getProperty("java.io.tmpdir")).toAbsolutePath().normalize()
+        return workspaceRoot.startsWith(tempRoot)
+    }
 
     private fun localWorkspaceId(workspaceRoot: Path): String {
         val registryPath = configHome().resolve("local-workspaces.json").toAbsolutePath().normalize()
@@ -84,17 +93,26 @@ class WorkspaceDirectoryResolver(
         .take(80)
 }
 
+fun workspaceDataDirectory(workspaceRoot: Path): Path =
+    WorkspaceDirectoryResolver(configHome = { kastConfigHome() }).workspaceDataDirectory(workspaceRoot)
+
 fun workspaceDataDirectory(
     workspaceRoot: Path,
-    envLookup: (String) -> String? = System::getenv,
+    envLookup: (String) -> String?,
 ): Path = WorkspaceDirectoryResolver(configHome = { kastConfigHome(envLookup) }).workspaceDataDirectory(workspaceRoot)
+
+fun workspaceCacheDirectory(workspaceRoot: Path): Path =
+    WorkspaceDirectoryResolver(configHome = { kastConfigHome() }).workspaceCacheDirectory(workspaceRoot)
 
 fun workspaceCacheDirectory(
     workspaceRoot: Path,
-    envLookup: (String) -> String? = System::getenv,
+    envLookup: (String) -> String?,
 ): Path = WorkspaceDirectoryResolver(configHome = { kastConfigHome(envLookup) }).workspaceCacheDirectory(workspaceRoot)
+
+fun workspaceDatabasePath(workspaceRoot: Path): Path =
+    WorkspaceDirectoryResolver(configHome = { kastConfigHome() }).workspaceDatabasePath(workspaceRoot)
 
 fun workspaceDatabasePath(
     workspaceRoot: Path,
-    envLookup: (String) -> String? = System::getenv,
+    envLookup: (String) -> String?,
 ): Path = WorkspaceDirectoryResolver(configHome = { kastConfigHome(envLookup) }).workspaceDatabasePath(workspaceRoot)
