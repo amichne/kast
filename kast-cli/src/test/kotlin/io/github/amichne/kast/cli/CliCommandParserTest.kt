@@ -748,11 +748,11 @@ class CliCommandParserTest {
     }
 
     @Test
-    fun `metrics fails without workspace-root`() {
-        assertThrows<CliFailure> {
-            parser.parse(
-                arrayOf("metrics", "fan-in"),
-            )
-        }
+    fun `metrics fan-in defaults workspace root to current working directory when not provided`() {
+        val command = parser.parse(arrayOf("metrics", "fan-in"))
+        assertTrue(command is CliCommand.Metrics)
+        val metrics = command as CliCommand.Metrics
+        assertEquals(MetricsSubcommand.FAN_IN, metrics.subcommand)
+        assertEquals(Path.of(System.getProperty("user.dir", ".")).toAbsolutePath().normalize(), metrics.workspaceRoot)
     }
 }

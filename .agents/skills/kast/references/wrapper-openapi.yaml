@@ -623,6 +623,18 @@ components:
         depth:
           type: integer
           format: int32
+        fileGlob:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        folderFilter:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
       additionalProperties: false
       required:
         - metric
@@ -778,6 +790,18 @@ components:
         depth:
           type: integer
           format: int32
+        fileGlob:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        folderFilter:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
       additionalProperties: false
       required:
         - workspaceRoot

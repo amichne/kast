@@ -70,6 +70,7 @@ import io.github.amichne.kast.cli.tty.CliCommand
 import io.github.amichne.kast.cli.tty.CliFailure
 import io.github.amichne.kast.cli.tty.CliService
 import io.github.amichne.kast.cli.options.RuntimeCommandOptions
+import io.github.amichne.kast.indexstore.FileFilterSpec
 import io.github.amichne.kast.indexstore.MetricsEngine
 import kotlinx.serialization.json.Json
 import java.nio.file.Path
@@ -752,16 +753,22 @@ internal class SkillWrapperExecutor(
             limit = request.limit,
             symbol = request.symbol,
             depth = request.depth,
+            fileGlob = request.fileGlob,
+            folderFilter = request.folderFilter,
+        )
+        val filter = FileFilterSpec(
+            fileGlob = request.fileGlob,
+            folderPrefix = request.folderFilter,
         )
         val resultsJson = MetricsEngine(Path.of(workspaceRoot)).use { engine ->
             when (request.metric) {
-                WrapperMetric.FAN_IN -> encodeFanInMetrics(json, engine.fanInRanking(request.limit))
-                WrapperMetric.FAN_OUT -> encodeFanOutMetrics(json, engine.fanOutRanking(request.limit))
+                WrapperMetric.FAN_IN -> encodeFanInMetrics(json, engine.fanInRanking(request.limit, filter))
+                WrapperMetric.FAN_OUT -> encodeFanOutMetrics(json, engine.fanOutRanking(request.limit, filter))
                 WrapperMetric.COUPLING -> encodeModuleCouplingMetrics(json, engine.moduleCouplingMatrix())
-                WrapperMetric.LOW_USAGE -> encodeLowUsageSymbols(json, engine.lowUsageSymbols(limit = request.limit))
+                WrapperMetric.LOW_USAGE -> encodeLowUsageSymbols(json, engine.lowUsageSymbols(limit = request.limit, filter = filter))
                 WrapperMetric.CYCLES -> encodeModuleCycleMetrics(json, engine.moduleCycles())
                 WrapperMetric.MODULE_DEPTH -> encodeModuleDepthMetrics(json, engine.moduleDepthMetrics())
-                WrapperMetric.DEAD_CODE -> encodeDeadCodeCandidates(json, engine.deadCodeCandidates())
+                WrapperMetric.DEAD_CODE -> encodeDeadCodeCandidates(json, engine.deadCodeCandidates(filter))
                 WrapperMetric.IMPACT -> encodeChangeImpactNodes(
                     json,
                     engine.changeImpactRadius(
@@ -770,6 +777,7 @@ internal class SkillWrapperExecutor(
                             message = "'symbol' is required for impact metric",
                         ),
                         depth = request.depth,
+                        filter = filter,
                     ),
                 )
             }

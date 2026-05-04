@@ -42,7 +42,7 @@ class KastConfigTest {
         val dataDirectory = resolver.workspaceDataDirectory(workspaceRoot)
 
         assertEquals(
-            configHome.resolve("workspaces/github.com/amichne/kast/${resolver.workspaceHash(workspaceRoot)}"),
+            configHome.resolve("workspaces/github.com/amichne/kast"),
             dataDirectory,
         )
         assertEquals(dataDirectory.resolve("cache"), resolver.workspaceCacheDirectory(workspaceRoot))

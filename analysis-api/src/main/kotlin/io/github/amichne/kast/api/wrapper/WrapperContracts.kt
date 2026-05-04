@@ -87,6 +87,8 @@ data class KastMetricsRequest(
     val limit: Int = 50,
     val symbol: String? = null,
     val depth: Int = 3,
+    val fileGlob: String? = null,
+    val folderFilter: String? = null,
 )
 
 @Serializable
@@ -96,6 +98,8 @@ data class KastMetricsQuery(
     val limit: Int = 50,
     val symbol: String? = null,
     val depth: Int = 3,
+    val fileGlob: String? = null,
+    val folderFilter: String? = null,
 )
 
 @Serializable
