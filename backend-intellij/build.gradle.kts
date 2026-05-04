@@ -115,7 +115,7 @@ dependencies {
         intellijIdea("2025.3")
         bundledPlugin("org.jetbrains.kotlin")
         bundledPlugin("com.intellij.java")
-        testFramework(TestFrameworkType.Platform)
+//        testFramework(TestFrameworkType.Platform)
         testFramework(TestFrameworkType.JUnit5)
     }
 
