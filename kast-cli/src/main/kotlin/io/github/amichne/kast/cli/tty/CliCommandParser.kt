@@ -725,7 +725,7 @@ internal data class ParsedArguments(
         throw CliFailure(
             code = "CLI_USAGE",
             message = "Unsupported --backend-name=$raw. " +
-                "Valid values: ${BackendName.entries.joinToString { backend -> backend.cliName }}",
+                "Valid values: ${BackendName.entries.joinToString { backend -> backend.canonicalName }}",
         )
     }
 

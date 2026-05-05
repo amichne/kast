@@ -169,7 +169,7 @@ class AnalysisDispatcher(
                     decodeParams(ReferencesQuery.serializer(), params).parsed().also {
                         requireReadCapability(ReadCapability.FIND_REFERENCES)
                     },
-                ).withLimit(config.maxResults) { location -> location.startOffset.toString() },
+                ).withLimit(config.maxResults, ::referencePageToken),
             )
 
             "call-hierarchy" -> encode(
@@ -205,7 +205,7 @@ class AnalysisDispatcher(
                     decodeParams(DiagnosticsQuery.serializer(), params).parsed().also {
                         requireReadCapability(ReadCapability.DIAGNOSTICS)
                     },
-                ).withLimit(config.maxResults) { diagnostic -> diagnostic.location.startOffset.toString() },
+                ).withLimit(config.maxResults, ::diagnosticPageToken),
             )
 
             "rename" -> encode(
@@ -262,7 +262,7 @@ class AnalysisDispatcher(
                     decodeParams(WorkspaceSymbolQuery.serializer(), params).parsed().also {
                         requireReadCapability(ReadCapability.WORKSPACE_SYMBOL_SEARCH)
                     },
-                ).withLimit(config.maxResults) { config.maxResults.toString() },
+                ).withLimit(config.maxResults) { workspaceSymbolPageToken(config.maxResults) },
             )
 
             "workspace/files" -> encode(
@@ -364,6 +364,14 @@ private fun requestId(id: JsonElement): String {
         candidate.isNotBlank() && candidate != JsonNull.toString()
     } ?: UUID.randomUUID().toString()
 }
+
+private fun referencePageToken(location: io.github.amichne.kast.api.contract.Location): String =
+    location.startOffset.toString()
+
+private fun diagnosticPageToken(diagnostic: io.github.amichne.kast.api.contract.Diagnostic): String =
+    diagnostic.location.startOffset.toString()
+
+private fun workspaceSymbolPageToken(limit: Int): String = limit.toString()
 
 @Suppress("UNCHECKED_CAST")
 private fun <T, R : PageableResult<T>> R.withLimit(

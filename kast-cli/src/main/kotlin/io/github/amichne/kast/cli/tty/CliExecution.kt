@@ -59,7 +59,7 @@ internal class DefaultCliCommandExecutor(
     private val cliService: CliService,
     private val json: Json = defaultCliJson(),
 ) : CliCommandExecutor {
-    private val backendDispatchers: Map<KClass<out CliCommand.BackendQuery<*>>, suspend (CliCommand.BackendQuery<*>) -> RuntimeAttachedResult<*>> = mapOf(
+    private val backendQueryHandlers: Map<KClass<out CliCommand.BackendQuery<*>>, suspend (CliCommand.BackendQuery<*>) -> RuntimeAttachedResult<*>> = mapOf(
         CliCommand.WorkspaceRefresh::class to { command ->
             command as CliCommand.WorkspaceRefresh
             cliService.workspaceRefresh(command.options, command.query)
@@ -285,14 +285,19 @@ internal class DefaultCliCommandExecutor(
     }
 
     private suspend fun executeBackendQuery(command: CliCommand.BackendQuery<*>): CliExecutionResult {
-        val dispatcher = backendDispatchers[command::class]
+        val dispatcher = backendQueryHandlers[command::class]
             ?: throw CliFailure(
                 code = "CLI_USAGE",
                 message = "Unsupported backend query command: ${command::class.simpleName}",
             )
         val result = dispatcher(command)
         return CliExecutionResult(
-            output = CliOutput.JsonValue(checkNotNull(result.payload)),
+            output = CliOutput.JsonValue(
+                result.payload ?: throw CliFailure(
+                    code = "CLI_EXECUTION",
+                    message = "Backend query ${command::class.simpleName} completed without a payload",
+                ),
+            ),
             daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
         )
     }

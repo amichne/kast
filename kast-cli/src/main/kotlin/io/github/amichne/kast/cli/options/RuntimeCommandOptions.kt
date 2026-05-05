@@ -9,7 +9,7 @@ internal enum class BackendName {
     INTELLIJ,
     ;
 
-    val cliName: String = name.lowercase()
+    val canonicalName: String = name.lowercase()
 }
 
 internal data class RuntimeCommandOptions(

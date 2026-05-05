@@ -42,7 +42,7 @@ internal class WorkspaceRuntimeManager(
             options = options,
             pruneStaleDescriptors = true,
         )
-        val backendFilter = options.backendName?.cliName
+        val backendFilter = options.backendName?.canonicalName
         val candidate = if (backendFilter != null) {
             inspection.candidates.firstOrNull { it.descriptor.backendName == backendFilter }
         } else {
@@ -128,7 +128,7 @@ internal class WorkspaceRuntimeManager(
         val targetState = if (acceptIndexing) "servable" else "ready"
         throw CliFailure(
             code = "RUNTIME_TIMEOUT",
-            message = "Timed out waiting for ${backendName.cliName} runtime to become $targetState for ${options.workspaceRoot}",
+            message = "Timed out waiting for ${backendName.canonicalName} runtime to become $targetState for ${options.workspaceRoot}",
         )
     }
 
@@ -149,7 +149,7 @@ internal class WorkspaceRuntimeManager(
                 compareByDescending(RuntimeCandidateStatus::ready)
                     .thenBy(RuntimeCandidateStatus::descriptorPath),
             ),
-            selected = selectStatusCandidate(candidates, options.backendName?.cliName),
+            selected = selectStatusCandidate(candidates, options.backendName?.canonicalName),
         )
     }
 
@@ -260,7 +260,7 @@ internal fun selectServableCandidate(
     backendName: BackendName?,
     acceptIndexing: Boolean,
 ): RuntimeCandidateStatus? = candidates
-    .filter { candidate -> backendName == null || candidate.descriptor.backendName == backendName.cliName }
+    .filter { candidate -> backendName == null || candidate.descriptor.backendName == backendName.canonicalName }
     .filter { candidate ->
         if (acceptIndexing) {
             candidate.runtimeStatus.isServable()
