@@ -120,6 +120,20 @@ class ParsedModelsTest {
     }
 
     @Test
+    fun `ReferencesQuery parsed keeps usage site scope opt in`() {
+        val position = FilePosition("/workspace/src/Main.kt", 3)
+
+        assertEquals(false, ReferencesQuery(position).parsed().includeUsageSiteScope)
+        assertEquals(
+            true,
+            ReferencesQuery(
+                position = position,
+                includeUsageSiteScope = true,
+            ).parsed().includeUsageSiteScope,
+        )
+    }
+
+    @Test
     fun `position query parsed rejects invalid position`() {
         assertThrows<ValidationException> {
             SymbolQuery(FilePosition("relative.kt", 0)).parsed()

@@ -3,6 +3,7 @@ package io.github.amichne.kast.standalone
 import io.github.amichne.kast.api.contract.ModuleName
 import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.indexstore.ReferenceIndexer
+import io.github.amichne.kast.indexstore.SourceIndexFilePolicy
 import io.github.amichne.kast.indexstore.SqliteSourceIndexStore
 import io.github.amichne.kast.indexstore.SymbolReferenceRow
 import io.github.amichne.kast.standalone.cache.SourceIndexCache
@@ -156,7 +157,7 @@ internal class BackgroundIndexer(
     ) {
         paths.forEach { normalizedPath ->
             val filePath = normalizedPath.toJavaPath()
-            if (!java.nio.file.Files.isRegularFile(filePath)) {
+            if (!java.nio.file.Files.isRegularFile(filePath) || !SourceIndexFilePolicy.isEligible(filePath)) {
                 index.removeFile(normalizedPath.value)
                 sourceIndexCache.saveRemovedFile(normalizedPath.value)
                 return@forEach
@@ -244,7 +245,7 @@ internal class BackgroundIndexer(
         normalizedPath: NormalizedPath,
     ) {
         val filePath = normalizedPath.toJavaPath()
-        if (!java.nio.file.Files.isRegularFile(filePath)) {
+        if (!java.nio.file.Files.isRegularFile(filePath) || !SourceIndexFilePolicy.isEligible(filePath)) {
             index.removeFile(normalizedPath.value)
             return
         }

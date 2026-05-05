@@ -21,4 +21,6 @@ data class Location(
     val startColumn: Int,
     @DocField(description = "Short source text excerpt at the location, typically the containing line.")
     val preview: String,
+    @DocField(description = "Nearest enclosing declaration scope for this usage site, when requested.")
+    val usageSiteScope: DeclarationScope? = null,
 )

@@ -204,6 +204,16 @@ internal class DefaultCliCommandExecutor(
                 CliExecutionResult(output = result)
             }
 
+            is CliCommand.GradleRun -> CliExecutionResult(
+                output = CliOutput.JsonValue(
+                    GradleRunExecutor().run(
+                        workspaceRoot = command.workspaceRoot,
+                        task = command.task,
+                        extraArgs = command.extraArgs,
+                    ),
+                ),
+            )
+
             is CliCommand.Metrics -> {
                 if (command.subcommand == MetricsSubcommand.GRAPH && command.interactive) {
                     if (command.symbol == null) {

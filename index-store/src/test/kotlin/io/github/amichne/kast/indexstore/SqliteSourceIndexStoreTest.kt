@@ -511,6 +511,115 @@ class SqliteSourceIndexStoreTest {
         }
     }
 
+    @Test
+    fun `source index entry points reject Kotlin script paths`() {
+        val normalized = workspaceRoot.toAbsolutePath().normalize()
+        val sourcePath = "/src/Caller.kt"
+        val scriptPath = "/build.gradle.kts"
+
+        SqliteSourceIndexStore(normalized).use { store ->
+            store.ensureSchema()
+            store.saveFullIndex(
+                updates = listOf(
+                    fileUpdate(sourcePath, "Caller"),
+                    fileUpdate(scriptPath, "GradleScript"),
+                ),
+                manifest = mapOf(sourcePath to 1L, scriptPath to 2L),
+            )
+
+            val snapshot = store.loadSourceIndexSnapshot()
+            assertEquals(listOf(sourcePath), snapshot.candidatePathsByIdentifier.getValue("Caller"))
+            assertFalse(snapshot.candidatePathsByIdentifier.containsKey("GradleScript"))
+            assertEquals(mapOf(sourcePath to 1L), store.loadManifest())
+        }
+    }
+
+    @Test
+    fun `symbol reference entry points reject Kotlin script paths`() {
+        val normalized = workspaceRoot.toAbsolutePath().normalize()
+
+        SqliteSourceIndexStore(normalized).use { store ->
+            store.ensureSchema()
+            store.upsertSymbolReference(
+                sourcePath = "/build.gradle.kts",
+                sourceOffset = 1,
+                targetFqName = "demo.Target",
+                targetPath = "/src/Target.kt",
+                targetOffset = 1,
+            )
+            store.upsertSymbolReference(
+                sourcePath = "/src/Caller.kt",
+                sourceOffset = 2,
+                targetFqName = "demo.Script",
+                targetPath = "/build.gradle.kts",
+                targetOffset = 1,
+            )
+
+            assertTrue(store.referencesFromFile("/build.gradle.kts").isEmpty())
+            val scriptReference = store.referencesToSymbol("demo.Script").single()
+            assertEquals("/src/Caller.kt", scriptReference.sourcePath)
+            assertEquals(null, scriptReference.targetPath)
+            assertEquals(null, scriptReference.targetOffset)
+        }
+    }
+
+    @Test
+    fun `ensureSchema removes stale Kotlin script rows from source index tables`() {
+        val normalized = workspaceRoot.toAbsolutePath().normalize()
+        val dbPath = sourceIndexDatabasePath(normalized)
+
+        SqliteSourceIndexStore(normalized).use { store -> store.ensureSchema() }
+
+        DriverManager.getConnection("jdbc:sqlite:$dbPath").use { conn ->
+            conn.createStatement().use { stmt ->
+                stmt.execute("INSERT OR IGNORE INTO path_prefixes (prefix_id, dir_path) VALUES (100, '')")
+                stmt.execute("INSERT OR IGNORE INTO fq_names (fq_id, fq_name) VALUES (100, 'demo.GradleScript')")
+                stmt.execute("INSERT OR IGNORE INTO fq_names (fq_id, fq_name) VALUES (101, 'demo.CaseSensitive')")
+                stmt.execute("INSERT OR IGNORE INTO fq_names (fq_id, fq_name) VALUES (102, 'demo.ScriptTarget')")
+                stmt.execute("INSERT INTO identifier_paths (identifier, prefix_id, filename) VALUES ('GradleScript', 100, 'build.gradle.kts')")
+                stmt.execute("INSERT INTO identifier_paths (identifier, prefix_id, filename) VALUES ('CaseSensitive', 100, 'Foo.KT')")
+                stmt.execute("INSERT INTO file_metadata (prefix_id, filename, package_fq_id, module_path, source_set) VALUES (100, 'build.gradle.kts', 100, ':main', 'main')")
+                stmt.execute("INSERT INTO file_metadata (prefix_id, filename, package_fq_id, module_path, source_set) VALUES (100, 'Foo.KT', 101, ':main', 'main')")
+                stmt.execute("INSERT INTO file_manifest (prefix_id, filename, last_modified_millis) VALUES (100, 'build.gradle.kts', 1)")
+                stmt.execute("INSERT INTO file_manifest (prefix_id, filename, last_modified_millis) VALUES (100, 'Foo.KT', 1)")
+                stmt.execute("INSERT INTO file_imports (prefix_id, filename, fq_id) VALUES (100, 'build.gradle.kts', 100)")
+                stmt.execute("INSERT INTO file_wildcard_imports (prefix_id, filename, fq_id) VALUES (100, 'build.gradle.kts', 100)")
+                stmt.execute(
+                    """INSERT INTO symbol_references
+                       (src_prefix_id, src_filename, source_offset, target_fq_id, tgt_prefix_id, tgt_filename, target_offset)
+                       VALUES (100, 'build.gradle.kts', 1, 100, 100, 'build.gradle.kts', 1)""",
+                )
+                stmt.execute(
+                    """INSERT INTO symbol_references
+                       (src_prefix_id, src_filename, source_offset, target_fq_id, tgt_prefix_id, tgt_filename, target_offset)
+                       VALUES (100, 'Caller.kt', 2, 102, 100, 'build.gradle.kts', 1)""",
+                )
+            }
+        }
+
+        SqliteSourceIndexStore(normalized).use { store ->
+            assertTrue(store.ensureSchema())
+        }
+
+        DriverManager.getConnection("jdbc:sqlite:$dbPath").use { conn ->
+            assertEquals(0, tableCount(conn, "identifier_paths", "filename = 'build.gradle.kts'"))
+            assertEquals(0, tableCount(conn, "identifier_paths", "filename = 'Foo.KT'"))
+            assertEquals(0, tableCount(conn, "file_metadata", "filename = 'build.gradle.kts'"))
+            assertEquals(0, tableCount(conn, "file_metadata", "filename = 'Foo.KT'"))
+            assertEquals(0, tableCount(conn, "file_manifest", "filename = 'build.gradle.kts'"))
+            assertEquals(0, tableCount(conn, "file_manifest", "filename = 'Foo.KT'"))
+            assertEquals(0, tableCount(conn, "file_imports", "filename = 'build.gradle.kts'"))
+            assertEquals(0, tableCount(conn, "file_wildcard_imports", "filename = 'build.gradle.kts'"))
+            assertEquals(0, tableCount(conn, "symbol_references", "src_filename = 'build.gradle.kts' OR tgt_filename = 'build.gradle.kts'"))
+            conn.prepareStatement("SELECT tgt_filename, target_offset FROM symbol_references WHERE src_filename = 'Caller.kt'").use { stmt ->
+                val rs = stmt.executeQuery()
+                assertTrue(rs.next())
+                assertEquals(null, rs.getString("tgt_filename"))
+                assertEquals(null, rs.getObject("target_offset"))
+            }
+        }
+    }
+
     private fun fileUpdate(path: String, identifier: String): FileIndexUpdate =
         FileIndexUpdate(
             path = path,
@@ -559,6 +668,17 @@ class SqliteSourceIndexStoreTest {
             }
         }
     }
+
+    private fun tableCount(
+        conn: java.sql.Connection,
+        tableName: String,
+        whereClause: String,
+    ): Int =
+        conn.prepareStatement("SELECT COUNT(*) FROM $tableName WHERE $whereClause").use { stmt ->
+            val rs = stmt.executeQuery()
+            assertTrue(rs.next())
+            rs.getInt(1)
+        }
 
     private fun assertTableColumns(
         conn: java.sql.Connection,

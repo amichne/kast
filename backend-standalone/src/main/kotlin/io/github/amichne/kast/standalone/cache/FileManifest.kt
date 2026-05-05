@@ -1,9 +1,9 @@
 package io.github.amichne.kast.standalone.cache
 
+import io.github.amichne.kast.indexstore.SourceIndexFilePolicy
 import io.github.amichne.kast.standalone.normalizeStandalonePath
 import java.nio.file.Files
 import java.nio.file.Path
-import kotlin.io.path.extension
 
 internal data class FileManifestSnapshot(
     val currentPathsByLastModifiedMillis: Map<String, Long>,
@@ -32,7 +32,7 @@ internal fun scanTrackedKotlinFilePaths(sourceRoots: List<Path>): Set<String> = 
 
             Files.walk(sourceRoot).use { paths ->
                 paths
-                    .filter { path -> Files.isRegularFile(path) && path.extension == "kt" }
+                    .filter { path -> Files.isRegularFile(path) && SourceIndexFilePolicy.isEligible(path) }
                     .forEach { file ->
                         add(normalizeStandalonePath(file).toString())
                     }

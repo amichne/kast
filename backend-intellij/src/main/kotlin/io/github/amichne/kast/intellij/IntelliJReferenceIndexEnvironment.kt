@@ -8,6 +8,7 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.intellij.psi.search.FileTypeIndex
 import com.intellij.psi.search.GlobalSearchScope
+import io.github.amichne.kast.indexstore.SourceIndexFilePolicy
 import io.github.amichne.kast.shared.analysis.ReferenceIndexEnvironment
 import org.jetbrains.kotlin.idea.KotlinFileType
 import java.nio.file.Path
@@ -24,6 +25,7 @@ internal class IntelliJReferenceIndexEnvironment(
             .filter { file -> file.isValid && FileTypeRegistry.getInstance().isFileOfType(file, KotlinFileType.INSTANCE) }
             .map { file -> Path.of(file.path).toAbsolutePath().normalize() }
             .filter { path -> path.startsWith(workspaceRoot) }
+            .filter(SourceIndexFilePolicy::isEligible)
             .map(Path::toString)
             .sorted()
             .toList()

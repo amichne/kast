@@ -409,53 +409,149 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
         if (limit == 0) return emptyList()
         val trimmed = query.trim()
         return readMetric(emptyList()) { conn ->
-            val sql = if (trimmed.isEmpty()) {
-                """
-                SELECT names.fq_name
-                FROM fq_names names
-                JOIN symbol_references refs ON refs.target_fq_id = names.fq_id
-                GROUP BY names.fq_id
-                ORDER BY COUNT(*) DESC, names.fq_name ASC
-                LIMIT ?
-                """.trimIndent()
+            if (trimmed.isEmpty()) {
+                popularSymbols(conn, limit)
             } else {
-                """
-                SELECT names.fq_name
-                FROM fq_names names
-                WHERE LOWER(names.fq_name) LIKE ? ESCAPE '\'
-                ORDER BY
-                    CASE
-                        WHEN LOWER(names.fq_name) = ? THEN 0
-                        WHEN LOWER(names.fq_name) LIKE ? ESCAPE '\' THEN 1
-                        WHEN LOWER(names.fq_name) LIKE ? ESCAPE '\' THEN 2
-                        ELSE 3
-                    END,
-                    LENGTH(names.fq_name) ASC,
-                    names.fq_name ASC
-                LIMIT ?
-                """.trimIndent()
-            }
-            conn.prepareStatement(sql).use { stmt ->
-                if (trimmed.isEmpty()) {
-                    stmt.setInt(1, limit)
+                val exactAndSubstringMatches = directSymbolMatches(conn, trimmed, limit)
+                if (exactAndSubstringMatches.size == limit) {
+                    exactAndSubstringMatches
                 } else {
-                    val needle = trimmed.lowercase().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-                    stmt.setString(1, "%$needle%")
-                    stmt.setString(2, trimmed.lowercase())
-                    stmt.setString(3, "%.$needle")
-                    stmt.setString(4, "$needle%")
-                    stmt.setInt(5, limit)
-                }
-                stmt.executeQuery().use { rs ->
-                    buildList {
-                        while (rs.next()) {
-                            add(rs.getString(1))
-                        }
-                    }
+                    (exactAndSubstringMatches + fuzzySymbolMatches(conn, trimmed, exactAndSubstringMatches.toSet()))
+                        .distinct()
+                        .take(limit)
                 }
             }
         }
     }
+
+    private fun popularSymbols(conn: Connection, limit: Int): List<String> =
+        conn.prepareStatement(
+            """
+            SELECT names.fq_name
+            FROM fq_names names
+            JOIN symbol_references refs ON refs.target_fq_id = names.fq_id
+            GROUP BY names.fq_id
+            ORDER BY COUNT(*) DESC, names.fq_name ASC
+            LIMIT ?
+            """.trimIndent(),
+        ).use { stmt ->
+            stmt.setInt(1, limit)
+            stmt.stringColumnResults()
+        }
+
+    private fun directSymbolMatches(
+        conn: Connection,
+        query: String,
+        limit: Int,
+    ): List<String> =
+        conn.prepareStatement(
+            """
+            SELECT names.fq_name
+            FROM fq_names names
+            WHERE LOWER(names.fq_name) LIKE ? ESCAPE '\'
+            ORDER BY
+                CASE
+                    WHEN LOWER(names.fq_name) = ? THEN 0
+                    WHEN LOWER(names.fq_name) LIKE ? ESCAPE '\' THEN 1
+                    WHEN LOWER(names.fq_name) LIKE ? ESCAPE '\' THEN 2
+                    ELSE 3
+                END,
+                LENGTH(names.fq_name) ASC,
+                names.fq_name ASC
+            LIMIT ?
+            """.trimIndent(),
+        ).use { stmt ->
+            val needle = escapeLike(query.lowercase())
+            stmt.setString(1, "%$needle%")
+            stmt.setString(2, query.lowercase())
+            stmt.setString(3, "%.$needle")
+            stmt.setString(4, "$needle%")
+            stmt.setInt(5, limit)
+            stmt.stringColumnResults()
+        }
+
+    private fun fuzzySymbolMatches(
+        conn: Connection,
+        query: String,
+        excluded: Set<String>,
+        maxDistance: Int = 2,
+    ): List<String> {
+        val normalizedQuery = query.lowercase()
+        return conn.prepareStatement(
+            """
+            SELECT fq_name
+            FROM fq_names
+            ORDER BY fq_name ASC
+            LIMIT ?
+            """.trimIndent(),
+        ).use { stmt ->
+            stmt.setInt(1, FUZZY_SYMBOL_CANDIDATE_LIMIT)
+            stmt.stringColumnResults()
+        }
+            .asSequence()
+            .filterNot(excluded::contains)
+            .mapNotNull { fqName ->
+                val simpleName = fqName.substringAfterLast('.').lowercase()
+                val fqDistance = levenshteinDistanceAtMost(normalizedQuery, fqName.lowercase(), maxDistance)
+                val simpleDistance = levenshteinDistanceAtMost(normalizedQuery, simpleName, maxDistance)
+                minOfNotNull(fqDistance, simpleDistance)?.let { distance ->
+                    FuzzySymbolMatch(fqName, distance, simpleName.length)
+                }
+            }
+            .sortedWith(compareBy({ it.distance }, { it.simpleNameLength }, { it.fqName }))
+            .map(FuzzySymbolMatch::fqName)
+            .toList()
+    }
+
+    private fun PreparedStatement.stringColumnResults(): List<String> =
+        executeQuery().use { rs ->
+            buildList {
+                while (rs.next()) add(rs.getString(1))
+            }
+        }
+
+    private fun escapeLike(value: String): String =
+        value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+    private fun levenshteinDistanceAtMost(
+        left: String,
+        right: String,
+        maxDistance: Int,
+    ): Int? {
+        if (kotlin.math.abs(left.length - right.length) > maxDistance) return null
+        var previous = IntArray(right.length + 1) { it }
+        var current = IntArray(right.length + 1)
+        left.forEachIndexed { leftIndex, leftChar ->
+            current[0] = leftIndex + 1
+            var rowMinimum = current[0]
+            right.forEachIndexed { rightIndex, rightChar ->
+                val substitutionCost = if (leftChar == rightChar) 0 else 1
+                current[rightIndex + 1] = minOf(
+                    current[rightIndex] + 1,
+                    previous[rightIndex + 1] + 1,
+                    previous[rightIndex] + substitutionCost,
+                )
+                rowMinimum = minOf(rowMinimum, current[rightIndex + 1])
+            }
+            if (rowMinimum > maxDistance) return null
+            val nextPrevious = previous
+            previous = current
+            current = nextPrevious
+        }
+        return previous[right.length].takeIf { it <= maxDistance }
+    }
+
+    private fun minOfNotNull(first: Int?, second: Int?): Int? = when {
+        first == null -> second
+        second == null -> first
+        else -> minOf(first, second)
+    }
+
+    private data class FuzzySymbolMatch(
+        val fqName: String,
+        val distance: Int,
+        val simpleNameLength: Int,
+    )
 
     fun graph(fqName: String, depth: Int): MetricsGraph {
         require(depth >= 0) { "depth must be non-negative" }
@@ -1033,5 +1129,9 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
         DEPTH,
         VIA_TARGET_FQ_NAME,
         OCCURRENCE_COUNT,
+    }
+
+    private companion object {
+        const val FUZZY_SYMBOL_CANDIDATE_LIMIT = 1_000
     }
 }

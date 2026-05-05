@@ -67,6 +67,7 @@ import io.github.amichne.kast.shared.analysis.toApiDiagnostics
 import io.github.amichne.kast.shared.analysis.toKastLocation
 import io.github.amichne.kast.shared.analysis.toSymbolModel
 import io.github.amichne.kast.shared.analysis.typeHierarchyDeclaration
+import io.github.amichne.kast.shared.analysis.usageSiteDeclarationScope
 import io.github.amichne.kast.shared.analysis.visibility
 import io.github.amichne.kast.shared.hierarchy.CallHierarchyEngine
 import io.github.amichne.kast.shared.hierarchy.TypeHierarchyBudget
@@ -217,7 +218,12 @@ internal class KastPluginBackend(
             processItem = { ref ->
                 val element = ref.element
                 if (!element.isValid) return@collectInShortReadActions null
-                val location = element.toKastLocation()
+                val baseLocation = element.toKastLocation()
+                val location = if (query.includeUsageSiteScope) {
+                    baseLocation.copy(usageSiteScope = element.usageSiteDeclarationScope())
+                } else {
+                    baseLocation
+                }
                 if (isWorkspaceFile(location.filePath)) location else null
             },
             runInitialReadAction = { action -> runIntellijReadAction(action) },

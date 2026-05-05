@@ -22,6 +22,7 @@ import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.PackageName
 import io.github.amichne.kast.api.contract.result.RefreshResult
 import io.github.amichne.kast.api.protocol.NotFoundException
+import io.github.amichne.kast.indexstore.SourceIndexFilePolicy
 import io.github.amichne.kast.indexstore.SqliteSourceIndexStore
 import io.github.amichne.kast.shared.analysis.PsiReferenceScanner
 import io.github.amichne.kast.standalone.cache.CacheManager
@@ -45,7 +46,6 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
-import kotlin.io.path.extension
 
 @Suppress("UnstableApiUsage")
 internal class StandaloneAnalysisSession(
@@ -880,9 +880,8 @@ internal class StandaloneAnalysisSession(
         )
     }
 
-    private fun isTrackedKotlinFilePath(filePath: Path): Boolean {
-        return filePath.extension == "kt" && resolvedSourceRoots.any(filePath::startsWith)
-    }
+    private fun isTrackedKotlinFilePath(filePath: Path): Boolean =
+        SourceIndexFilePolicy.isEligible(filePath) && resolvedSourceRoots.any(filePath::startsWith)
 
     private fun startInitialSourceIndex() {
         backgroundIndexer = BackgroundIndexer(
@@ -986,7 +985,7 @@ internal class StandaloneAnalysisSession(
 
                 Files.walk(sourceRoot).use { paths ->
                     paths
-                        .filter { path -> Files.isRegularFile(path) && path.extension == "kt" }
+                        .filter { path -> Files.isRegularFile(path) && SourceIndexFilePolicy.isEligible(path) }
                         .forEach { file ->
                             val content = Files.readString(file)
                             if (content.identifierOccurrenceOffsets(identifier).any()) {

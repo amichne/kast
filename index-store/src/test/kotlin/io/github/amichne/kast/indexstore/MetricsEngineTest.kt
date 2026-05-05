@@ -480,6 +480,19 @@ class MetricsEngineTest {
     }
 
     @Test
+    fun `searchSymbols keeps exact matches ahead of fuzzy typo matches`() {
+        val root = seededWorkspace()
+        MetricsEngine(root).use { metrics ->
+            val exactResults = metrics.searchSymbols(query = "Foo", limit = 5)
+            val typoResults = metrics.searchSymbols(query = "Fooo", limit = 5)
+
+            assertEquals("lib.Foo", exactResults.first())
+            assertEquals("lib.Foo", typoResults.first())
+            assertTrue(typoResults.contains("lib.Foo"))
+        }
+    }
+
+    @Test
     fun `searchSymbols rejects negative limit and returns empty for zero`() {
         val root = seededWorkspace()
         MetricsEngine(root).use { metrics ->

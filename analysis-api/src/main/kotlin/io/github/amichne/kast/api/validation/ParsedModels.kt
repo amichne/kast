@@ -80,6 +80,7 @@ data class ParsedSymbolQuery(
 data class ParsedReferencesQuery(
     override val position: ParsedFilePosition,
     val includeDeclaration: Boolean,
+    val includeUsageSiteScope: Boolean,
 ) : PositionQuery
 
 data class ParsedCallHierarchyQuery(
@@ -221,6 +222,7 @@ fun ReferencesQuery.parsed(): ParsedReferencesQuery = validationBoundary {
     ParsedReferencesQuery(
         position = position.parsed(),
         includeDeclaration = includeDeclaration,
+        includeUsageSiteScope = includeUsageSiteScope,
     )
 }
 

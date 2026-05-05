@@ -975,6 +975,12 @@ components:
           format: int32
         preview:
           type: string
+        usageSiteScope:
+          anyOf:
+            -
+              $ref: "#/components/schemas/DeclarationScope"
+            -
+              type: null
       additionalProperties: false
       required:
         - filePath
@@ -983,6 +989,33 @@ components:
         - startLine
         - startColumn
         - preview
+    DeclarationScope:
+      type: object
+      properties:
+        startOffset:
+          type: integer
+          format: int32
+        endOffset:
+          type: integer
+          format: int32
+        startLine:
+          type: integer
+          format: int32
+        endLine:
+          type: integer
+          format: int32
+        sourceText:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+      additionalProperties: false
+      required:
+        - startOffset
+        - endOffset
+        - startLine
+        - endLine
     ParameterInfo:
       type: object
       properties:
@@ -1011,33 +1044,6 @@ components:
         - PRIVATE
         - LOCAL
         - UNKNOWN
-    DeclarationScope:
-      type: object
-      properties:
-        startOffset:
-          type: integer
-          format: int32
-        endOffset:
-          type: integer
-          format: int32
-        startLine:
-          type: integer
-          format: int32
-        endLine:
-          type: integer
-          format: int32
-        sourceText:
-          anyOf:
-            -
-              type: string
-            -
-              type: null
-      additionalProperties: false
-      required:
-        - startOffset
-        - endOffset
-        - startLine
-        - endLine
     KastCandidate:
       type: object
       properties:
