@@ -25,11 +25,11 @@ data class ReferencesResult(
     val searchScope: SearchScope? = null,
     @DocField(description = "Protocol schema version for forward compatibility.", serverManaged = true)
     val schemaVersion: Int = SCHEMA_VERSION,
-) : PageableResult<Location> {
+) : PageableResult<Location, ReferencesResult> {
     override val items: List<Location>
         get() = references
 
-    override fun withItems(items: List<Location>, page: PageInfo?): PageableResult<Location> = copy(
+    override fun withItems(items: List<Location>, page: PageInfo?): ReferencesResult = copy(
         references = items,
         page = page,
     )

@@ -19,11 +19,11 @@ data class DiagnosticsResult(
     override val page: PageInfo? = null,
     @DocField(description = "Protocol schema version for forward compatibility.", serverManaged = true)
     val schemaVersion: Int = SCHEMA_VERSION,
-) : PageableResult<Diagnostic> {
+) : PageableResult<Diagnostic, DiagnosticsResult> {
     override val items: List<Diagnostic>
         get() = diagnostics
 
-    override fun withItems(items: List<Diagnostic>, page: PageInfo?): PageableResult<Diagnostic> = copy(
+    override fun withItems(items: List<Diagnostic>, page: PageInfo?): DiagnosticsResult = copy(
         diagnostics = items,
         page = page,
     )

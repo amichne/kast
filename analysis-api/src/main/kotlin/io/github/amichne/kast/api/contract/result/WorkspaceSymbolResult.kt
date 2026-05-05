@@ -19,11 +19,11 @@ data class WorkspaceSymbolResult(
     override val page: PageInfo? = null,
     @DocField(description = "Protocol schema version for forward compatibility.", serverManaged = true)
     val schemaVersion: Int = SCHEMA_VERSION,
-) : PageableResult<Symbol> {
+) : PageableResult<Symbol, WorkspaceSymbolResult> {
     override val items: List<Symbol>
         get() = symbols
 
-    override fun withItems(items: List<Symbol>, page: PageInfo?): PageableResult<Symbol> = copy(
+    override fun withItems(items: List<Symbol>, page: PageInfo?): WorkspaceSymbolResult = copy(
         symbols = items,
         page = page,
     )

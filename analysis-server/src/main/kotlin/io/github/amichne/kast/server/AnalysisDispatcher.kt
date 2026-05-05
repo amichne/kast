@@ -373,8 +373,7 @@ private fun diagnosticPageToken(diagnostic: io.github.amichne.kast.api.contract.
 
 private fun workspaceSymbolPageToken(limit: Int): String = limit.toString()
 
-@Suppress("UNCHECKED_CAST")
-private fun <T, R : PageableResult<T>> R.withLimit(
+private fun <T, R : PageableResult<T, R>> R.withLimit(
     limit: Int,
     nextPageToken: (T) -> String,
 ): R {
@@ -388,5 +387,5 @@ private fun <T, R : PageableResult<T>> R.withLimit(
             truncated = true,
             nextPageToken = nextPageToken(items[limit - 1]),
         ),
-    ) as R
+    )
 }

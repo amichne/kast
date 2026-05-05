@@ -15,8 +15,8 @@ data class PageInfo(
     val nextPageToken: String? = null,
 )
 
-interface PageableResult<T> {
+interface PageableResult<T, Self : PageableResult<T, Self>> {
     val items: List<T>
     val page: PageInfo?
-    fun withItems(items: List<T>, page: PageInfo?): PageableResult<T>
+    fun withItems(items: List<T>, page: PageInfo?): Self
 }
