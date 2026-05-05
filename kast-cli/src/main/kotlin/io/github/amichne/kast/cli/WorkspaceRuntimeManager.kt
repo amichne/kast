@@ -206,25 +206,31 @@ internal class WorkspaceRuntimeManager(
         descriptorDirectory: Path,
         candidate: RuntimeCandidateStatus,
     ): DaemonStopResult {
-        val processHandle = ProcessHandle.of(candidate.descriptor.pid)
-            .takeIf { it.isPresent }
-            ?.get()
-        val forced = if (processHandle?.isAlive == true) {
-            processHandle.destroy()
-            repeat(20) {
-                if (!processHandle.isAlive) {
-                    return@repeat
+        val forced = if (candidate.descriptor.backendName == "intellij") {
+            // Never kill the IntelliJ process — only deregister the descriptor so the
+            // plugin can re-register on its next heartbeat or project open.
+            false
+        } else {
+            val processHandle = ProcessHandle.of(candidate.descriptor.pid)
+                .takeIf { it.isPresent }
+                ?.get()
+            if (processHandle?.isAlive == true) {
+                processHandle.destroy()
+                repeat(20) {
+                    if (!processHandle.isAlive) {
+                        return@repeat
+                    }
+                    delay(250)
                 }
-                delay(250)
-            }
-            if (processHandle.isAlive) {
-                processHandle.destroyForcibly()
-                true
+                if (processHandle.isAlive) {
+                    processHandle.destroyForcibly()
+                    true
+                } else {
+                    false
+                }
             } else {
                 false
             }
-        } else {
-            false
         }
 
         DescriptorRegistry(descriptorDirectory.resolve("daemons.json")).delete(candidate.descriptor)
