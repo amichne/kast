@@ -3,12 +3,15 @@ package io.github.amichne.kast.cli
 import io.github.amichne.kast.api.contract.BackendCapabilities
 import io.github.amichne.kast.api.client.DescriptorRegistry
 import io.github.amichne.kast.api.contract.MutationCapability
+import io.github.amichne.kast.api.contract.NormalizedPath
+import io.github.amichne.kast.api.contract.PositiveLong
 import io.github.amichne.kast.api.contract.ReadCapability
 import io.github.amichne.kast.api.contract.RuntimeState
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
 import io.github.amichne.kast.api.client.ServerInstanceDescriptor
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.client.defaultDescriptorDirectory
+import io.github.amichne.kast.cli.options.BackendName
 import io.github.amichne.kast.cli.options.RuntimeCommandOptions
 import io.github.amichne.kast.cli.tty.CliFailure
 import kotlinx.coroutines.test.runTest
@@ -320,9 +323,9 @@ class WorkspaceRuntimeManagerTest {
         workspaceRoot: Path,
         backendName: String? = "standalone",
     ): RuntimeCommandOptions = RuntimeCommandOptions(
-        workspaceRoot = workspaceRoot,
-        backendName = backendName,
-        waitTimeoutMillis = 2_000L,
+        workspaceRoot = NormalizedPath.ofAbsolute(workspaceRoot),
+        backendName = backendName?.let { BackendName.valueOf(it.uppercase()) },
+        waitTimeoutMillis = PositiveLong(2_000L),
     )
 
     private fun descriptor(

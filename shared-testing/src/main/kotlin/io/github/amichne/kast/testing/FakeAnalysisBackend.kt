@@ -1,32 +1,25 @@
 package io.github.amichne.kast.testing
 
 import io.github.amichne.kast.api.contract.AnalysisBackend
-import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
+import io.github.amichne.kast.api.validation.*
 import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.contract.BackendCapabilities
 import io.github.amichne.kast.api.contract.CallDirection
-import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
 import io.github.amichne.kast.api.contract.result.CallHierarchyResult
 import io.github.amichne.kast.api.contract.result.CallHierarchyStats
 import io.github.amichne.kast.api.contract.CallNode
-import io.github.amichne.kast.api.contract.query.CodeActionsQuery
 import io.github.amichne.kast.api.contract.result.CodeActionsResult
 import io.github.amichne.kast.api.contract.result.CompletionItem
-import io.github.amichne.kast.api.contract.query.CompletionsQuery
 import io.github.amichne.kast.api.contract.result.CompletionsResult
 import io.github.amichne.kast.api.contract.Diagnostic
 import io.github.amichne.kast.api.contract.DiagnosticSeverity
-import io.github.amichne.kast.api.contract.query.DiagnosticsQuery
 import io.github.amichne.kast.api.contract.result.DiagnosticsResult
 import io.github.amichne.kast.api.contract.FileHash
 import io.github.amichne.kast.api.validation.FileHashing
-import io.github.amichne.kast.api.contract.query.FileOutlineQuery
 import io.github.amichne.kast.api.contract.result.FileOutlineResult
 import io.github.amichne.kast.api.contract.FilePosition
 import io.github.amichne.kast.api.contract.HealthResponse
-import io.github.amichne.kast.api.contract.query.ImportOptimizeQuery
 import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
-import io.github.amichne.kast.api.contract.query.ImplementationsQuery
 import io.github.amichne.kast.api.contract.result.ImplementationsResult
 import io.github.amichne.kast.api.validation.LocalDiskEditApplier
 import io.github.amichne.kast.api.contract.Location
@@ -35,32 +28,24 @@ import io.github.amichne.kast.api.protocol.NotFoundException
 import io.github.amichne.kast.api.contract.OutlineSymbol
 import io.github.amichne.kast.api.contract.ParameterInfo
 import io.github.amichne.kast.api.contract.ReadCapability
-import io.github.amichne.kast.api.contract.query.RefreshQuery
 import io.github.amichne.kast.api.contract.result.RefreshResult
-import io.github.amichne.kast.api.contract.query.ReferencesQuery
 import io.github.amichne.kast.api.contract.result.ReferencesResult
-import io.github.amichne.kast.api.contract.query.RenameQuery
 import io.github.amichne.kast.api.contract.result.RenameResult
-import io.github.amichne.kast.api.contract.SemanticInsertionQuery
 import io.github.amichne.kast.api.contract.SemanticInsertionResult
 import io.github.amichne.kast.api.contract.SemanticInsertionTarget
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.contract.Symbol
 import io.github.amichne.kast.api.contract.SymbolKind
-import io.github.amichne.kast.api.contract.query.SymbolQuery
 import io.github.amichne.kast.api.contract.result.SymbolResult
 import io.github.amichne.kast.api.contract.TextEdit
 import io.github.amichne.kast.api.contract.TypeHierarchyDirection
 import io.github.amichne.kast.api.contract.result.TypeHierarchyNode
-import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
 import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
 import io.github.amichne.kast.api.contract.result.TypeHierarchyStats
 import io.github.amichne.kast.api.contract.result.TypeHierarchyTruncation
 import io.github.amichne.kast.api.contract.result.TypeHierarchyTruncationReason
-import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
 import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
 import io.github.amichne.kast.api.contract.result.WorkspaceModule
-import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 import java.nio.file.Files
 import java.nio.file.Path
@@ -122,8 +107,8 @@ class FakeAnalysisBackend private constructor(
         )
     }
 
-    override suspend fun resolveSymbol(query: SymbolQuery): SymbolResult {
-        requireKnownFile(query.position.filePath)
+    override suspend fun resolveSymbol(query: ParsedSymbolQuery): SymbolResult {
+        requireKnownFile(query.position.filePath.value)
         return when {
             hasMatchingAnchor(symbolAnchors, query.position) -> SymbolResult(symbol)
             hasMatchingAnchor(typeHierarchyAnchors, query.position) -> SymbolResult(typeHierarchyRootSymbol)
@@ -131,7 +116,7 @@ class FakeAnalysisBackend private constructor(
         }
     }
 
-    override suspend fun findReferences(query: ReferencesQuery): ReferencesResult {
+    override suspend fun findReferences(query: ParsedReferencesQuery): ReferencesResult {
         requireAnchor(query.position)
 
         val declaration = if (query.includeDeclaration) symbol else null
@@ -141,10 +126,10 @@ class FakeAnalysisBackend private constructor(
         )
     }
 
-    override suspend fun callHierarchy(query: CallHierarchyQuery): CallHierarchyResult {
+    override suspend fun callHierarchy(query: ParsedCallHierarchyQuery): CallHierarchyResult {
         requireAnchor(query.position)
         val outgoingReference = referenceLocations.firstOrNull() ?: symbol.location
-        val rootChildren = if (query.depth == 0) {
+        val rootChildren = if (query.depth.value == 0) {
             emptyList()
         } else if (query.direction == CallDirection.OUTGOING) {
             listOf(
@@ -187,15 +172,15 @@ class FakeAnalysisBackend private constructor(
         )
     }
 
-    override suspend fun typeHierarchy(query: TypeHierarchyQuery): TypeHierarchyResult {
+    override suspend fun typeHierarchy(query: ParsedTypeHierarchyQuery): TypeHierarchyResult {
         requireTypeHierarchyAnchor(query.position)
         val directChildren = when (query.direction) {
             TypeHierarchyDirection.SUPERTYPES -> listOf(typeHierarchySupertypeSymbol)
             TypeHierarchyDirection.SUBTYPES -> listOf(typeHierarchySubtypeSymbol)
             TypeHierarchyDirection.BOTH -> listOf(typeHierarchySupertypeSymbol, typeHierarchySubtypeSymbol)
         }
-        val maxChildren = (query.maxResults - 1).coerceAtLeast(0)
-        val children = if (query.depth == 0) {
+        val maxChildren = (query.maxResults.value - 1).coerceAtLeast(0)
+        val children = if (query.depth.value == 0) {
             emptyList()
         } else {
             directChildren.take(maxChildren).map { childSymbol ->
@@ -205,7 +190,7 @@ class FakeAnalysisBackend private constructor(
                 )
             }
         }
-        val truncated = query.depth > 0 && directChildren.size > children.size
+        val truncated = query.depth.value > 0 && directChildren.size > children.size
 
         return TypeHierarchyResult(
             root = TypeHierarchyNode(
@@ -213,7 +198,7 @@ class FakeAnalysisBackend private constructor(
                 truncation = if (truncated) {
                     TypeHierarchyTruncation(
                         reason = TypeHierarchyTruncationReason.MAX_RESULTS,
-                        details = "Reached maxResults=${query.maxResults}",
+                        details = "Reached maxResults=${query.maxResults.value}",
                     )
                 } else {
                     null
@@ -228,9 +213,9 @@ class FakeAnalysisBackend private constructor(
         )
     }
 
-    override suspend fun semanticInsertionPoint(query: SemanticInsertionQuery): SemanticInsertionResult {
-        requireKnownFile(query.position.filePath)
-        val content = Files.readString(Path.of(query.position.filePath))
+    override suspend fun semanticInsertionPoint(query: ParsedSemanticInsertionQuery): SemanticInsertionResult {
+        requireKnownFile(query.position.filePath.value)
+        val content = Files.readString(Path.of(query.position.filePath.value))
         val insertionOffset = when (query.target) {
             SemanticInsertionTarget.CLASS_BODY_START -> content.indexOf('{')
                 .takeIf { it >= 0 }
@@ -247,20 +232,21 @@ class FakeAnalysisBackend private constructor(
         }
         return SemanticInsertionResult(
             insertionOffset = insertionOffset,
-            filePath = query.position.filePath,
+            filePath = query.position.filePath.value,
         )
     }
 
-    override suspend fun diagnostics(query: DiagnosticsQuery): DiagnosticsResult {
-        query.filePaths.forEach(::requireKnownFile)
+    override suspend fun diagnostics(query: ParsedDiagnosticsQuery): DiagnosticsResult {
+        val filePaths = query.filePaths.value.map { it.value }
+        filePaths.forEach(::requireKnownFile)
         return DiagnosticsResult(
-            diagnostics = query.filePaths
+            diagnostics = filePaths
                 .flatMap { filePath -> diagnosticsByFile[filePath].orEmpty() }
                 .sortedWith(compareBy({ it.location.filePath }, { it.location.startOffset })),
         )
     }
 
-    override suspend fun rename(query: RenameQuery): RenameResult {
+    override suspend fun rename(query: ParsedRenameQuery): RenameResult {
         requireAnchor(query.position)
         val edits = symbolAnchors
             .map { anchor ->
@@ -268,7 +254,7 @@ class FakeAnalysisBackend private constructor(
                     filePath = anchor.filePath,
                     startOffset = anchor.startOffset,
                     endOffset = anchor.endOffset,
-                    newText = query.newName,
+                    newText = query.newName.value,
                 )
             }
             .distinctBy { edit -> Triple(edit.filePath, edit.startOffset, edit.endOffset) }
@@ -287,8 +273,8 @@ class FakeAnalysisBackend private constructor(
         )
     }
 
-    override suspend fun optimizeImports(query: ImportOptimizeQuery): ImportOptimizeResult {
-        query.filePaths.forEach(::requireKnownFile)
+    override suspend fun optimizeImports(query: ParsedImportOptimizeQuery): ImportOptimizeResult {
+        query.filePaths.value.map { it.value }.forEach(::requireKnownFile)
         return ImportOptimizeResult(
             edits = emptyList(),
             fileHashes = emptyList(),
@@ -296,10 +282,10 @@ class FakeAnalysisBackend private constructor(
         )
     }
 
-    override suspend fun applyEdits(query: ApplyEditsQuery): ApplyEditsResult = LocalDiskEditApplier.apply(query)
+    override suspend fun applyEdits(query: ParsedApplyEditsQuery): ApplyEditsResult = LocalDiskEditApplier.apply(query.toWire())
 
-    override suspend fun refresh(query: RefreshQuery): RefreshResult {
-        val refreshedFiles = query.filePaths
+    override suspend fun refresh(query: ParsedRefreshQuery): RefreshResult {
+        val refreshedFiles = query.filePaths.map { it.value }
             .ifEmpty { availableFiles.toList() }
             .sorted()
         return RefreshResult(
@@ -309,8 +295,8 @@ class FakeAnalysisBackend private constructor(
         )
     }
 
-    override suspend fun fileOutline(query: FileOutlineQuery): FileOutlineResult {
-        requireKnownFile(query.filePath)
+    override suspend fun fileOutline(query: ParsedFileOutlineQuery): FileOutlineResult {
+        requireKnownFile(query.filePath.value)
         val allSymbols = buildList {
             add(symbol)
             add(typeHierarchyRootSymbol)
@@ -318,19 +304,19 @@ class FakeAnalysisBackend private constructor(
             add(typeHierarchySubtypeSymbol)
         }
         val fileSymbols = allSymbols
-            .filter { it.location.filePath == query.filePath }
+            .filter { it.location.filePath == query.filePath.value }
             .map { OutlineSymbol(symbol = it) }
         return FileOutlineResult(symbols = fileSymbols)
     }
 
-    override suspend fun workspaceSymbolSearch(query: WorkspaceSymbolQuery): WorkspaceSymbolResult {
+    override suspend fun workspaceSymbolSearch(query: ParsedWorkspaceSymbolQuery): WorkspaceSymbolResult {
         val allSymbols = buildList {
             add(symbol)
             add(typeHierarchyRootSymbol)
             add(typeHierarchySupertypeSymbol)
             add(typeHierarchySubtypeSymbol)
         }
-        val pattern = query.pattern
+        val pattern = query.pattern.value
         val matcher: (String) -> Boolean = if (query.regex) {
             val regex = Regex(pattern);
             { name -> regex.containsMatchIn(name) }
@@ -342,13 +328,13 @@ class FakeAnalysisBackend private constructor(
                 val simpleName = sym.fqName.substringAfterLast('.')
                 matcher(simpleName) && (query.kind == null || sym.kind == query.kind)
             }
-            .take(query.maxResults)
+            .take(query.maxResults.value)
         return WorkspaceSymbolResult(symbols = matched)
     }
 
-    override suspend fun workspaceFiles(query: WorkspaceFilesQuery): WorkspaceFilesResult {
+    override suspend fun workspaceFiles(query: ParsedWorkspaceFilesQuery): WorkspaceFilesResult {
         val allFiles = availableFiles.filter { it.endsWith(".kt") }.sorted()
-        val fileLimit = query.maxFilesPerModule ?: allFiles.size
+        val fileLimit = query.maxFilesPerModule?.value ?: allFiles.size
         val files = if (query.includeFiles) {
             allFiles.take(fileLimit)
         } else {
@@ -362,7 +348,7 @@ class FakeAnalysisBackend private constructor(
             filesTruncated = query.includeFiles && allFiles.size > files.size,
             fileCount = allFiles.size,
         )
-        val modules = if (query.moduleName == null || query.moduleName == "fake-module") {
+        val modules = if (query.moduleName?.value == null || query.moduleName?.value == "fake-module") {
             listOf(module)
         } else {
             emptyList()
@@ -370,22 +356,22 @@ class FakeAnalysisBackend private constructor(
         return WorkspaceFilesResult(modules = modules)
     }
 
-    override suspend fun implementations(query: ImplementationsQuery): ImplementationsResult {
+    override suspend fun implementations(query: ParsedImplementationsQuery): ImplementationsResult {
         requireTypeHierarchyAnchor(query.position)
         return ImplementationsResult(
             declaration = typeHierarchySupertypeSymbol,
-            implementations = listOf(typeHierarchySubtypeSymbol).take(query.maxResults.coerceAtLeast(1)),
-            exhaustive = query.maxResults >= 1,
+            implementations = listOf(typeHierarchySubtypeSymbol).take(query.maxResults.value),
+            exhaustive = query.maxResults.value >= 1,
         )
     }
 
-    override suspend fun codeActions(query: CodeActionsQuery): CodeActionsResult {
-        requireKnownFile(query.position.filePath)
+    override suspend fun codeActions(query: ParsedCodeActionsQuery): CodeActionsResult {
+        requireKnownFile(query.position.filePath.value)
         return CodeActionsResult(actions = emptyList())
     }
 
-    override suspend fun completions(query: CompletionsQuery): CompletionsResult {
-        requireKnownFile(query.position.filePath)
+    override suspend fun completions(query: ParsedCompletionsQuery): CompletionsResult {
+        requireKnownFile(query.position.filePath.value)
         val kindFilter = query.kindFilter
         val items = listOf(
             CompletionItem(
@@ -397,22 +383,22 @@ class FakeAnalysisBackend private constructor(
                 documentation = symbol.documentation,
             ),
         ).filter { item -> kindFilter == null || item.kind in kindFilter }
-        val capped = items.take(query.maxResults.coerceAtLeast(1))
+        val capped = items.take(query.maxResults.value)
         return CompletionsResult(
             items = capped,
             exhaustive = items.size <= capped.size,
         )
     }
 
-    private fun requireAnchor(position: FilePosition) {
-        requireKnownFile(position.filePath)
+    private fun requireAnchor(position: ParsedFilePosition) {
+        requireKnownFile(position.filePath.value)
         if (!hasMatchingAnchor(symbolAnchors, position)) {
             throw missingSymbol(position)
         }
     }
 
-    private fun requireTypeHierarchyAnchor(position: FilePosition) {
-        requireKnownFile(position.filePath)
+    private fun requireTypeHierarchyAnchor(position: ParsedFilePosition) {
+        requireKnownFile(position.filePath.value)
         if (!hasMatchingAnchor(typeHierarchyAnchors, position)) {
             throw missingSymbol(position)
         }
@@ -429,17 +415,17 @@ class FakeAnalysisBackend private constructor(
 
     private fun hasMatchingAnchor(
         anchors: List<Location>,
-        position: FilePosition,
+        position: ParsedFilePosition,
     ): Boolean = anchors.any { anchor ->
-        anchor.filePath == position.filePath &&
-            position.offset in anchor.startOffset until anchor.endOffset
+        anchor.filePath == position.filePath.value &&
+            position.offset.value in anchor.startOffset until anchor.endOffset
     }
 
-    private fun missingSymbol(position: FilePosition): NotFoundException = NotFoundException(
+    private fun missingSymbol(position: ParsedFilePosition): NotFoundException = NotFoundException(
         message = "No symbol was found at the requested offset",
         details = mapOf(
-            "filePath" to position.filePath,
-            "offset" to position.offset.toString(),
+            "filePath" to position.filePath.value,
+            "offset" to position.offset.value.toString(),
         ),
     )
 

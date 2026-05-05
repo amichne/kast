@@ -8,6 +8,8 @@ import io.github.amichne.kast.api.contract.query.DiagnosticsQuery
 import io.github.amichne.kast.api.contract.FileOperation
 import io.github.amichne.kast.api.contract.query.FileOutlineQuery
 import io.github.amichne.kast.api.contract.FilePosition
+import io.github.amichne.kast.api.contract.NormalizedPath
+import io.github.amichne.kast.api.contract.PositiveLong
 import io.github.amichne.kast.api.contract.query.ImportOptimizeQuery
 import io.github.amichne.kast.api.contract.query.ReferencesQuery
 import io.github.amichne.kast.api.contract.query.RenameQuery
@@ -797,9 +799,9 @@ internal class SkillWrapperExecutor(
     private fun requireWorkspaceRoot(explicit: String?): String = SkillWrapperInput.resolveWorkspaceRoot(explicit)
 
     private fun runtimeOptionsFor(workspaceRoot: String): RuntimeCommandOptions = RuntimeCommandOptions(
-        workspaceRoot = Path.of(workspaceRoot).toAbsolutePath().normalize(),
+        workspaceRoot = NormalizedPath.ofAbsolute(Path.of(workspaceRoot).toAbsolutePath().normalize()),
         backendName = null,
-        waitTimeoutMillis = 60_000L,
+        waitTimeoutMillis = PositiveLong(60_000L),
     )
 
     // endregion

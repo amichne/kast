@@ -1,20 +1,5 @@
 package io.github.amichne.kast.api.contract
 
-import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
-import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
-import io.github.amichne.kast.api.contract.query.CodeActionsQuery
-import io.github.amichne.kast.api.contract.query.CompletionsQuery
-import io.github.amichne.kast.api.contract.query.DiagnosticsQuery
-import io.github.amichne.kast.api.contract.query.FileOutlineQuery
-import io.github.amichne.kast.api.contract.query.ImplementationsQuery
-import io.github.amichne.kast.api.contract.query.ImportOptimizeQuery
-import io.github.amichne.kast.api.contract.query.ReferencesQuery
-import io.github.amichne.kast.api.contract.query.RefreshQuery
-import io.github.amichne.kast.api.contract.query.RenameQuery
-import io.github.amichne.kast.api.contract.query.SymbolQuery
-import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
-import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
-import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
 import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.contract.result.CallHierarchyResult
 import io.github.amichne.kast.api.contract.result.CodeActionsResult
@@ -31,6 +16,7 @@ import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
 import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 import io.github.amichne.kast.api.protocol.*
+import io.github.amichne.kast.api.validation.*
 
 interface AnalysisBackend {
     suspend fun capabilities(): BackendCapabilities
@@ -57,87 +43,87 @@ interface AnalysisBackend {
         )
     }
 
-    suspend fun resolveSymbol(query: SymbolQuery): SymbolResult
+    suspend fun resolveSymbol(query: ParsedSymbolQuery): SymbolResult
 
-    suspend fun findReferences(query: ReferencesQuery): ReferencesResult
+    suspend fun findReferences(query: ParsedReferencesQuery): ReferencesResult
 
-    suspend fun callHierarchy(query: CallHierarchyQuery): CallHierarchyResult {
+    suspend fun callHierarchy(query: ParsedCallHierarchyQuery): CallHierarchyResult {
         throw CapabilityNotSupportedException(
             capability = "CALL_HIERARCHY",
             message = "Call hierarchy is not available for this backend",
         )
     }
 
-    suspend fun typeHierarchy(query: TypeHierarchyQuery): TypeHierarchyResult {
+    suspend fun typeHierarchy(query: ParsedTypeHierarchyQuery): TypeHierarchyResult {
         throw CapabilityNotSupportedException(
             capability = "TYPE_HIERARCHY",
             message = "Type hierarchy is not available for this backend",
         )
     }
 
-    suspend fun semanticInsertionPoint(query: SemanticInsertionQuery): SemanticInsertionResult {
+    suspend fun semanticInsertionPoint(query: ParsedSemanticInsertionQuery): SemanticInsertionResult {
         throw CapabilityNotSupportedException(
             capability = "SEMANTIC_INSERTION_POINT",
             message = "Semantic insertion point lookup is not available for this backend",
         )
     }
 
-    suspend fun diagnostics(query: DiagnosticsQuery): DiagnosticsResult
+    suspend fun diagnostics(query: ParsedDiagnosticsQuery): DiagnosticsResult
 
-    suspend fun rename(query: RenameQuery): RenameResult
+    suspend fun rename(query: ParsedRenameQuery): RenameResult
 
-    suspend fun applyEdits(query: ApplyEditsQuery): ApplyEditsResult
+    suspend fun applyEdits(query: ParsedApplyEditsQuery): ApplyEditsResult
 
-    suspend fun optimizeImports(query: ImportOptimizeQuery): ImportOptimizeResult {
+    suspend fun optimizeImports(query: ParsedImportOptimizeQuery): ImportOptimizeResult {
         throw CapabilityNotSupportedException(
             capability = "OPTIMIZE_IMPORTS",
             message = "Import optimization is not available for this backend",
         )
     }
 
-    suspend fun refresh(query: RefreshQuery): RefreshResult {
+    suspend fun refresh(query: ParsedRefreshQuery): RefreshResult {
         throw CapabilityNotSupportedException(
             capability = "REFRESH_WORKSPACE",
             message = "Workspace refresh is not available for this backend",
         )
     }
 
-    suspend fun fileOutline(query: FileOutlineQuery): FileOutlineResult {
+    suspend fun fileOutline(query: ParsedFileOutlineQuery): FileOutlineResult {
         throw CapabilityNotSupportedException(
             capability = "FILE_OUTLINE",
             message = "File outline is not available for this backend",
         )
     }
 
-    suspend fun workspaceSymbolSearch(query: WorkspaceSymbolQuery): WorkspaceSymbolResult {
+    suspend fun workspaceSymbolSearch(query: ParsedWorkspaceSymbolQuery): WorkspaceSymbolResult {
         throw CapabilityNotSupportedException(
             capability = "WORKSPACE_SYMBOL_SEARCH",
             message = "Workspace symbol search is not available for this backend",
         )
     }
 
-    suspend fun workspaceFiles(query: WorkspaceFilesQuery): WorkspaceFilesResult {
+    suspend fun workspaceFiles(query: ParsedWorkspaceFilesQuery): WorkspaceFilesResult {
         throw CapabilityNotSupportedException(
             capability = "WORKSPACE_FILES",
             message = "Workspace file listing is not available for this backend",
         )
     }
 
-    suspend fun implementations(query: ImplementationsQuery): ImplementationsResult {
+    suspend fun implementations(query: ParsedImplementationsQuery): ImplementationsResult {
         throw CapabilityNotSupportedException(
             capability = "IMPLEMENTATIONS",
             message = "Go to implementation is not available for this backend",
         )
     }
 
-    suspend fun codeActions(query: CodeActionsQuery): CodeActionsResult {
+    suspend fun codeActions(query: ParsedCodeActionsQuery): CodeActionsResult {
         throw CapabilityNotSupportedException(
             capability = "CODE_ACTIONS",
             message = "Code actions are not available for this backend",
         )
     }
 
-    suspend fun completions(query: CompletionsQuery): CompletionsResult {
+    suspend fun completions(query: ParsedCompletionsQuery): CompletionsResult {
         throw CapabilityNotSupportedException(
             capability = "COMPLETIONS",
             message = "Completions are not available for this backend",

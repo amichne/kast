@@ -8,6 +8,8 @@ import io.github.amichne.kast.api.contract.query.CompletionsQuery
 import io.github.amichne.kast.api.contract.query.DiagnosticsQuery
 import io.github.amichne.kast.api.contract.query.FileOutlineQuery
 import io.github.amichne.kast.api.contract.FilePosition
+import io.github.amichne.kast.api.contract.NormalizedPath
+import io.github.amichne.kast.api.contract.PositiveLong
 import io.github.amichne.kast.api.contract.query.ImportOptimizeQuery
 import io.github.amichne.kast.api.contract.query.ImplementationsQuery
 import io.github.amichne.kast.api.contract.query.ReferencesQuery
@@ -23,6 +25,7 @@ import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
 import io.github.amichne.kast.cli.options.DaemonStartOptions
+import io.github.amichne.kast.cli.options.BackendName
 import io.github.amichne.kast.cli.options.InstallCopilotExtensionOptions
 import io.github.amichne.kast.cli.options.InstallOptions
 import io.github.amichne.kast.cli.options.InstallSkillOptions
@@ -292,17 +295,11 @@ internal data class ParsedArguments(
         val requestedBackendName = backendName
             ?.trim()
             ?.takeIf(String::isNotEmpty)
-        if (requestedBackendName != null && requestedBackendName !in VALID_BACKEND_NAMES) {
-            throw CliFailure(
-                code = "CLI_USAGE",
-                message = "Unsupported --backend-name=$requestedBackendName. " +
-                    "Valid values: ${VALID_BACKEND_NAMES.joinToString()}",
-            )
-        }
+            ?.let(::parseBackendName)
         return RuntimeCommandOptions(
-            workspaceRoot = standaloneOptions.workspaceRoot,
+            workspaceRoot = NormalizedPath.ofAbsolute(standaloneOptions.workspaceRoot),
             backendName = requestedBackendName,
-            waitTimeoutMillis = options["wait-timeout-ms"]?.toLongOrNull() ?: 60_000L,
+            waitTimeoutMillis = PositiveLong(options["wait-timeout-ms"]?.toLongOrNull() ?: 60_000L),
             standaloneOptions = standaloneOptions,
             acceptIndexing = optionalBoolean("accept-indexing", false),
             noAutoStart = optionalBoolean("no-auto-start", false),
@@ -722,6 +719,16 @@ internal data class ParsedArguments(
 
     private fun absoluteFilePath(value: String): String = Path.of(value).toAbsolutePath().normalize().toString()
 
+    private fun parseBackendName(raw: String): BackendName = runCatching {
+        BackendName.valueOf(raw.uppercase())
+    }.getOrElse {
+        throw CliFailure(
+            code = "CLI_USAGE",
+            message = "Unsupported --backend-name=$raw. " +
+                "Valid values: ${BackendName.entries.joinToString { backend -> backend.canonicalName }}",
+        )
+    }
+
     fun requireWorkspaceRootPath(): Path {
         val raw = options["workspace-root"]
             ?: System.getProperty("user.dir", ".")
@@ -740,5 +747,3 @@ internal data class ParsedArguments(
         )
     }
 }
-
-private val VALID_BACKEND_NAMES = setOf("standalone", "intellij")

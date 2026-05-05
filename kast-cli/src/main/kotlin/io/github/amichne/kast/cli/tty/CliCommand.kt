@@ -26,29 +26,34 @@ import io.github.amichne.kast.cli.skill.SkillWrapperName
 import java.nio.file.Path
 
 internal sealed interface CliCommand {
+    interface BackendQuery<Q> : CliCommand {
+        val options: RuntimeCommandOptions
+        val query: Q
+    }
+
     data class Help(val topic: List<String> = emptyList()) : CliCommand
     data object Version : CliCommand
     data class Completion(val shell: CliCompletionShell) : CliCommand
     data class WorkspaceStatus(val options: RuntimeCommandOptions) : CliCommand
     data class WorkspaceEnsure(val options: RuntimeCommandOptions) : CliCommand
-    data class WorkspaceRefresh(val options: RuntimeCommandOptions, val query: RefreshQuery) : CliCommand
+    data class WorkspaceRefresh(override val options: RuntimeCommandOptions, override val query: RefreshQuery) : BackendQuery<RefreshQuery>
     data class WorkspaceStop(val options: RuntimeCommandOptions) : CliCommand
     data class Capabilities(val options: RuntimeCommandOptions) : CliCommand
-    data class ResolveSymbol(val options: RuntimeCommandOptions, val query: SymbolQuery) : CliCommand
-    data class FindReferences(val options: RuntimeCommandOptions, val query: ReferencesQuery) : CliCommand
-    data class CallHierarchy(val options: RuntimeCommandOptions, val query: CallHierarchyQuery) : CliCommand
-    data class TypeHierarchy(val options: RuntimeCommandOptions, val query: TypeHierarchyQuery) : CliCommand
-    data class SemanticInsertionPoint(val options: RuntimeCommandOptions, val query: SemanticInsertionQuery) : CliCommand
-    data class Diagnostics(val options: RuntimeCommandOptions, val query: DiagnosticsQuery) : CliCommand
-    data class FileOutline(val options: RuntimeCommandOptions, val query: FileOutlineQuery) : CliCommand
-    data class WorkspaceSymbol(val options: RuntimeCommandOptions, val query: WorkspaceSymbolQuery) : CliCommand
-    data class WorkspaceFiles(val options: RuntimeCommandOptions, val query: WorkspaceFilesQuery) : CliCommand
-    data class Implementations(val options: RuntimeCommandOptions, val query: ImplementationsQuery) : CliCommand
-    data class CodeActions(val options: RuntimeCommandOptions, val query: CodeActionsQuery) : CliCommand
-    data class Completions(val options: RuntimeCommandOptions, val query: CompletionsQuery) : CliCommand
-    data class Rename(val options: RuntimeCommandOptions, val query: RenameQuery) : CliCommand
-    data class ImportOptimize(val options: RuntimeCommandOptions, val query: ImportOptimizeQuery) : CliCommand
-    data class ApplyEdits(val options: RuntimeCommandOptions, val query: ApplyEditsQuery) : CliCommand
+    data class ResolveSymbol(override val options: RuntimeCommandOptions, override val query: SymbolQuery) : BackendQuery<SymbolQuery>
+    data class FindReferences(override val options: RuntimeCommandOptions, override val query: ReferencesQuery) : BackendQuery<ReferencesQuery>
+    data class CallHierarchy(override val options: RuntimeCommandOptions, override val query: CallHierarchyQuery) : BackendQuery<CallHierarchyQuery>
+    data class TypeHierarchy(override val options: RuntimeCommandOptions, override val query: TypeHierarchyQuery) : BackendQuery<TypeHierarchyQuery>
+    data class SemanticInsertionPoint(override val options: RuntimeCommandOptions, override val query: SemanticInsertionQuery) : BackendQuery<SemanticInsertionQuery>
+    data class Diagnostics(override val options: RuntimeCommandOptions, override val query: DiagnosticsQuery) : BackendQuery<DiagnosticsQuery>
+    data class FileOutline(override val options: RuntimeCommandOptions, override val query: FileOutlineQuery) : BackendQuery<FileOutlineQuery>
+    data class WorkspaceSymbol(override val options: RuntimeCommandOptions, override val query: WorkspaceSymbolQuery) : BackendQuery<WorkspaceSymbolQuery>
+    data class WorkspaceFiles(override val options: RuntimeCommandOptions, override val query: WorkspaceFilesQuery) : BackendQuery<WorkspaceFilesQuery>
+    data class Implementations(override val options: RuntimeCommandOptions, override val query: ImplementationsQuery) : BackendQuery<ImplementationsQuery>
+    data class CodeActions(override val options: RuntimeCommandOptions, override val query: CodeActionsQuery) : BackendQuery<CodeActionsQuery>
+    data class Completions(override val options: RuntimeCommandOptions, override val query: CompletionsQuery) : BackendQuery<CompletionsQuery>
+    data class Rename(override val options: RuntimeCommandOptions, override val query: RenameQuery) : BackendQuery<RenameQuery>
+    data class ImportOptimize(override val options: RuntimeCommandOptions, override val query: ImportOptimizeQuery) : BackendQuery<ImportOptimizeQuery>
+    data class ApplyEdits(override val options: RuntimeCommandOptions, override val query: ApplyEditsQuery) : BackendQuery<ApplyEditsQuery>
     data class Install(val options: InstallOptions) : CliCommand
     data class InstallSkill(val options: InstallSkillOptions) : CliCommand
     data class InstallCopilotExtension(val options: InstallCopilotExtensionOptions) : CliCommand

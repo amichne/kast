@@ -3,6 +3,7 @@
 package io.github.amichne.kast.api.contract.result
 
 import io.github.amichne.kast.api.contract.PageInfo
+import io.github.amichne.kast.api.contract.PageableResult
 import io.github.amichne.kast.api.contract.Symbol
 import io.github.amichne.kast.api.docs.DocField
 import io.github.amichne.kast.api.protocol.*
@@ -15,7 +16,15 @@ data class WorkspaceSymbolResult(
     @DocField(description = "Symbols matching the search pattern.")
     val symbols: List<Symbol>,
     @DocField(description = "Pagination metadata when results are truncated.")
-    val page: PageInfo? = null,
+    override val page: PageInfo? = null,
     @DocField(description = "Protocol schema version for forward compatibility.", serverManaged = true)
     val schemaVersion: Int = SCHEMA_VERSION,
-)
+) : PageableResult<Symbol> {
+    override val items: List<Symbol>
+        get() = symbols
+
+    override fun withItems(items: List<Symbol>, page: PageInfo?): PageableResult<Symbol> = copy(
+        symbols = items,
+        page = page,
+    )
+}

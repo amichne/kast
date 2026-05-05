@@ -3,56 +3,41 @@ package io.github.amichne.kast.standalone
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiRecursiveElementWalkingVisitor
 import io.github.amichne.kast.api.contract.AnalysisBackend
-import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
+import io.github.amichne.kast.api.validation.*
 import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.contract.BackendCapabilities
-import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
 import io.github.amichne.kast.api.contract.result.CallHierarchyResult
-import io.github.amichne.kast.api.contract.query.CodeActionsQuery
 import io.github.amichne.kast.api.contract.result.CodeActionsResult
 import io.github.amichne.kast.api.contract.result.CompletionItem
-import io.github.amichne.kast.api.contract.query.CompletionsQuery
 import io.github.amichne.kast.api.contract.result.CompletionsResult
 import io.github.amichne.kast.api.contract.Diagnostic
 import io.github.amichne.kast.api.contract.DiagnosticSeverity
-import io.github.amichne.kast.api.contract.query.DiagnosticsQuery
 import io.github.amichne.kast.api.contract.result.DiagnosticsResult
 import io.github.amichne.kast.api.contract.Location
 import io.github.amichne.kast.api.contract.FileHash
-import io.github.amichne.kast.api.contract.query.FileOutlineQuery
 import io.github.amichne.kast.api.contract.result.FileOutlineResult
 import io.github.amichne.kast.api.contract.HealthResponse
-import io.github.amichne.kast.api.contract.query.ImportOptimizeQuery
 import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
-import io.github.amichne.kast.api.contract.query.ImplementationsQuery
 import io.github.amichne.kast.api.contract.result.ImplementationsResult
 import io.github.amichne.kast.api.validation.LocalDiskEditApplier
 import io.github.amichne.kast.api.contract.MutationCapability
 import io.github.amichne.kast.api.contract.ReadCapability
-import io.github.amichne.kast.api.contract.query.ReferencesQuery
 import io.github.amichne.kast.api.contract.result.ReferencesResult
-import io.github.amichne.kast.api.contract.query.RefreshQuery
 import io.github.amichne.kast.api.contract.result.RefreshResult
-import io.github.amichne.kast.api.contract.query.RenameQuery
 import io.github.amichne.kast.api.contract.result.RenameResult
 import io.github.amichne.kast.api.contract.RuntimeState
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
 import io.github.amichne.kast.api.contract.SearchScope
 import io.github.amichne.kast.api.contract.SearchScopeKind
-import io.github.amichne.kast.api.contract.SemanticInsertionQuery
 import io.github.amichne.kast.api.contract.SemanticInsertionResult
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.contract.Symbol
-import io.github.amichne.kast.api.contract.query.SymbolQuery
 import io.github.amichne.kast.api.contract.result.SymbolResult
 import io.github.amichne.kast.api.contract.SymbolVisibility
 import io.github.amichne.kast.api.contract.TextEdit
-import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
 import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
-import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
 import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
 import io.github.amichne.kast.api.contract.result.WorkspaceModule
-import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 import io.github.amichne.kast.shared.analysis.FileOutlineBuilder
 import io.github.amichne.kast.shared.analysis.ImportAnalysis
@@ -188,18 +173,18 @@ internal class StandaloneAnalysisBackend internal constructor(
         )
     }
 
-    override suspend fun resolveSymbol(query: SymbolQuery): SymbolResult = withContext(readDispatcher) {
+    override suspend fun resolveSymbol(query: ParsedSymbolQuery): SymbolResult = withContext(readDispatcher) {
         session.withReadAccess {
             telemetry.inSpan(
                 scope = StandaloneTelemetryScope.SYMBOL_RESOLVE,
                 name = "kast.resolveSymbol",
                 attributes = mapOf(
-                    "kast.symbolResolve.filePath" to query.position.filePath,
-                    "kast.symbolResolve.offset" to query.position.offset,
+                    "kast.symbolResolve.filePath" to query.position.filePath.value,
+                    "kast.symbolResolve.offset" to query.position.offset.value,
                 ),
             ) {
-                val file = session.findKtFile(query.position.filePath)
-                val target = resolveTarget(file, query.position.offset)
+                val file = session.findKtFile(query.position.filePath.value)
+                val target = resolveTarget(file, query.position.offset.value)
                 SymbolResult(
                     analyze(file) {
                         target.toSymbolModel(
@@ -214,18 +199,18 @@ internal class StandaloneAnalysisBackend internal constructor(
         }
     }
 
-    override suspend fun findReferences(query: ReferencesQuery): ReferencesResult = withContext(readDispatcher) {
+    override suspend fun findReferences(query: ParsedReferencesQuery): ReferencesResult = withContext(readDispatcher) {
         session.withReadAccess {
             telemetry.inSpan(
                 scope = StandaloneTelemetryScope.REFERENCES,
                 name = "kast.findReferences",
                 attributes = mapOf(
-                    "kast.references.filePath" to query.position.filePath,
-                    "kast.references.offset" to query.position.offset,
+                    "kast.references.filePath" to query.position.filePath.value,
+                    "kast.references.offset" to query.position.offset.value,
                 ),
             ) { span ->
-                val file = session.findKtFile(query.position.filePath)
-                val target = resolveTarget(file, query.position.offset)
+                val file = session.findKtFile(query.position.filePath.value)
+                val target = resolveTarget(file, query.position.offset.value)
                 val (candidateFiles, searchScope) = resolveCandidateFilesForReferences(target, span)
                 span.setAttribute("kast.references.candidateFileCount", candidateFiles.size)
                 span.setAttribute("kast.references.searchScope", searchScope.scope.name)
@@ -244,20 +229,20 @@ internal class StandaloneAnalysisBackend internal constructor(
         }
     }
 
-    override suspend fun callHierarchy(query: CallHierarchyQuery): CallHierarchyResult = withContext(readDispatcher) {
+    override suspend fun callHierarchy(query: ParsedCallHierarchyQuery): CallHierarchyResult = withContext(readDispatcher) {
         session.withReadAccess {
             callHierarchyTraversal.build(query)
         }
     }
 
-    override suspend fun typeHierarchy(query: TypeHierarchyQuery): TypeHierarchyResult = withContext(readDispatcher) {
+    override suspend fun typeHierarchy(query: ParsedTypeHierarchyQuery): TypeHierarchyResult = withContext(readDispatcher) {
         session.withReadAccess {
             telemetry.inSpan(
                 scope = StandaloneTelemetryScope.SYMBOL_RESOLVE,
                 name = "kast.typeHierarchy",
                 attributes = mapOf(
-                    "kast.typeHierarchy.filePath" to query.position.filePath,
-                    "kast.typeHierarchy.offset" to query.position.offset,
+                    "kast.typeHierarchy.filePath" to query.position.filePath.value,
+                    "kast.typeHierarchy.offset" to query.position.offset.value,
                 ),
             ) {
                 typeHierarchyTraversal.build(query)
@@ -265,10 +250,10 @@ internal class StandaloneAnalysisBackend internal constructor(
         }
     }
 
-    override suspend fun implementations(query: ImplementationsQuery): ImplementationsResult = withContext(readDispatcher) {
+    override suspend fun implementations(query: ParsedImplementationsQuery): ImplementationsResult = withContext(readDispatcher) {
         session.withReadAccess {
-            val file = session.findKtFile(query.position.filePath)
-            val resolvedTarget = resolveTarget(file, query.position.offset)
+            val file = session.findKtFile(query.position.filePath.value)
+            val resolvedTarget = resolveTarget(file, query.position.offset.value)
             val declaration = resolvedTarget.typeHierarchyDeclaration() ?: resolvedTarget
             val declarationSymbol = analyze(file) {
                 declaration.toSymbolModel(
@@ -308,7 +293,7 @@ internal class StandaloneAnalysisBackend internal constructor(
                     }
                 }
                 .sortedWith(compareBy({ it.fqName }, { it.location.filePath }, { it.location.startOffset }))
-            val capped = implementations.take(query.maxResults.coerceAtLeast(1))
+            val capped = implementations.take(query.maxResults.value)
             ImplementationsResult(
                 declaration = declarationSymbol,
                 implementations = capped,
@@ -317,16 +302,16 @@ internal class StandaloneAnalysisBackend internal constructor(
         }
     }
 
-    override suspend fun codeActions(query: CodeActionsQuery): CodeActionsResult = withContext(readDispatcher) {
+    override suspend fun codeActions(query: ParsedCodeActionsQuery): CodeActionsResult = withContext(readDispatcher) {
         session.withReadAccess {
-            session.findKtFile(query.position.filePath)
+            session.findKtFile(query.position.filePath.value)
             CodeActionsResult(actions = emptyList())
         }
     }
 
-    override suspend fun completions(query: CompletionsQuery): CompletionsResult = withContext(readDispatcher) {
+    override suspend fun completions(query: ParsedCompletionsQuery): CompletionsResult = withContext(readDispatcher) {
         session.withReadAccess {
-            val file = session.findKtFile(query.position.filePath)
+            val file = session.findKtFile(query.position.filePath.value)
             val kindFilter = query.kindFilter
             val symbols = mutableListOf<CompletionItem>()
             file.accept(object : PsiRecursiveElementWalkingVisitor() {
@@ -334,7 +319,7 @@ internal class StandaloneAnalysisBackend internal constructor(
                     if (element is KtNamedDeclaration &&
                         element !is KtParameter &&
                         element.name != null &&
-                        element.textOffset <= query.position.offset
+                        element.textOffset <= query.position.offset.value
                     ) {
                         val symbol = analyze(file) {
                             element.toSymbolModel(
@@ -359,7 +344,7 @@ internal class StandaloneAnalysisBackend internal constructor(
             val deduped = symbols
                 .distinctBy { Triple(it.fqName, it.kind, it.name) }
                 .sortedWith(compareBy({ it.name }, { it.fqName }))
-            val capped = deduped.take(query.maxResults.coerceAtLeast(1))
+            val capped = deduped.take(query.maxResults.value)
             CompletionsResult(
                 items = capped,
                 exhaustive = deduped.size <= capped.size,
@@ -368,28 +353,29 @@ internal class StandaloneAnalysisBackend internal constructor(
     }
 
     override suspend fun semanticInsertionPoint(
-        query: SemanticInsertionQuery,
+        query: ParsedSemanticInsertionQuery,
     ): SemanticInsertionResult = withContext(readDispatcher) {
         session.withReadAccess {
             telemetry.inSpan(
                 scope = StandaloneTelemetryScope.SYMBOL_RESOLVE,
                 name = "kast.semanticInsertionPoint",
-                attributes = mapOf("kast.insertionPoint.filePath" to query.position.filePath),
+                attributes = mapOf("kast.insertionPoint.filePath" to query.position.filePath.value),
             ) {
-                val file = session.findKtFile(query.position.filePath)
+                val file = session.findKtFile(query.position.filePath.value)
                 SemanticInsertionPointResolver.resolve(file, query)
             }
         }
     }
 
-    override suspend fun diagnostics(query: DiagnosticsQuery): DiagnosticsResult = withContext(readDispatcher) {
+    override suspend fun diagnostics(query: ParsedDiagnosticsQuery): DiagnosticsResult = withContext(readDispatcher) {
         session.withReadAccess {
             telemetry.inSpan(
                 scope = StandaloneTelemetryScope.SYMBOL_RESOLVE,
                 name = "kast.diagnostics",
-                attributes = mapOf("kast.diagnostics.fileCount" to query.filePaths.size),
+                attributes = mapOf("kast.diagnostics.fileCount" to query.filePaths.value.size),
             ) {
-                val diagnostics = query.filePaths
+                val diagnostics = query.filePaths.value
+                    .map { it.value }
                     .sorted()
                     .flatMap { filePath ->
                         runCatching {
@@ -423,27 +409,27 @@ internal class StandaloneAnalysisBackend internal constructor(
         }
     }
 
-    override suspend fun rename(query: RenameQuery): RenameResult = withContext(readDispatcher) {
+    override suspend fun rename(query: ParsedRenameQuery): RenameResult = withContext(readDispatcher) {
         session.withReadAccess {
             telemetry.inSpan(
                 scope = StandaloneTelemetryScope.RENAME,
                 name = "kast.rename",
                 attributes = mapOf(
-                    "kast.rename.filePath" to query.position.filePath,
-                    "kast.rename.newName" to query.newName,
+                    "kast.rename.filePath" to query.position.filePath.value,
+                    "kast.rename.newName" to query.newName.value,
                 ),
             ) { renameSpan ->
                 val file = traceRenamePhase(
                     phaseName = "findKtFile",
-                    attributes = mapOf("kast.rename.filePath" to query.position.filePath),
+                    attributes = mapOf("kast.rename.filePath" to query.position.filePath.value),
                 ) {
-                    session.findKtFile(query.position.filePath)
+                    session.findKtFile(query.position.filePath.value)
                 }
                 val target = traceRenamePhase(
                     phaseName = "resolveTarget",
-                    attributes = mapOf("kast.rename.offset" to query.position.offset),
+                    attributes = mapOf("kast.rename.offset" to query.position.offset.value),
                 ) {
-                    resolveTarget(file, query.position.offset)
+                    resolveTarget(file, query.position.offset.value)
                 }
                 val searchIdentifier = target.referenceSearchIdentifier()
                 val candidateSearch = traceRenamePhase(
@@ -468,16 +454,16 @@ internal class StandaloneAnalysisBackend internal constructor(
                 )
 
                 val edits = traceRenamePhase("collectReferenceEdits") {
-                    val referenceEdits = (listOf(target.declarationEdit(query.newName)) + candidateFiles
+                    val referenceEdits = (listOf(target.declarationEdit(query.newName.value)) + candidateFiles
                         .parallelMapFlat { candidateFile ->
-                            candidateFile.referenceEdits(target, query.newName, searchIdentifier)
+                            candidateFile.referenceEdits(target, query.newName.value, searchIdentifier)
                         })
 
                     val importEdits = run {
                         val oldFqn = target.targetFqNameAndPackage()?.first?.value
                         if (oldFqn != null && oldFqn.isNotBlank()) {
                             val lastDot = oldFqn.lastIndexOf('.')
-                            val newFqn = if (lastDot < 0) query.newName else "${oldFqn.substring(0, lastDot)}.${query.newName}"
+                            val newFqn = if (lastDot < 0) query.newName.value else "${oldFqn.substring(0, lastDot)}.${query.newName.value}"
                             candidateFiles.flatMap { candidateFile ->
                                 candidateFile.importDirectives.mapNotNull { directive ->
                                     ImportAnalysis.renameImportFqnEdit(directive, oldFqn, newFqn)
@@ -507,14 +493,15 @@ internal class StandaloneAnalysisBackend internal constructor(
         }
     }
 
-    override suspend fun optimizeImports(query: ImportOptimizeQuery): ImportOptimizeResult = withContext(readDispatcher) {
+    override suspend fun optimizeImports(query: ParsedImportOptimizeQuery): ImportOptimizeResult = withContext(readDispatcher) {
         session.withReadAccess {
             telemetry.inSpan(
                 scope = StandaloneTelemetryScope.SYMBOL_RESOLVE,
                 name = "kast.optimizeImports",
-                attributes = mapOf("kast.imports.fileCount" to query.filePaths.size),
+                attributes = mapOf("kast.imports.fileCount" to query.filePaths.value.size),
             ) {
-                val edits = query.filePaths
+                val edits = query.filePaths.value
+                    .map { it.value }
                     .distinct()
                     .sorted()
                     .flatMap { filePath ->
@@ -531,12 +518,12 @@ internal class StandaloneAnalysisBackend internal constructor(
         }
     }
 
-    override suspend fun applyEdits(query: ApplyEditsQuery): ApplyEditsResult {
+    override suspend fun applyEdits(query: ParsedApplyEditsQuery): ApplyEditsResult {
         return telemetry.inSpan(
             scope = StandaloneTelemetryScope.SESSION_LIFECYCLE,
             name = "kast.applyEdits",
         ) {
-            val result = LocalDiskEditApplier.apply(query)
+            val result = LocalDiskEditApplier.apply(query.toWire())
             if (result.createdFiles.isNotEmpty() || result.deletedFiles.isNotEmpty()) {
                 session.refreshWorkspace()
             } else {
@@ -546,16 +533,17 @@ internal class StandaloneAnalysisBackend internal constructor(
         }
     }
 
-    override suspend fun refresh(query: RefreshQuery): RefreshResult {
+    override suspend fun refresh(query: ParsedRefreshQuery): RefreshResult {
         return telemetry.inSpan(
             scope = StandaloneTelemetryScope.SESSION_LIFECYCLE,
             name = "kast.refresh",
             attributes = mapOf("kast.refresh.fileCount" to query.filePaths.size),
         ) {
-            if (query.filePaths.isEmpty()) {
+            val filePaths = query.filePaths.map { it.value }
+            if (filePaths.isEmpty()) {
                 session.refreshWorkspace(invalidateCaches = true)
             } else {
-                session.refreshTargetedPaths(query.filePaths.toSet())
+                session.refreshTargetedPaths(filePaths.toSet())
             }
         }
     }
@@ -709,31 +697,31 @@ internal class StandaloneAnalysisBackend internal constructor(
         block = action,
     )
 
-    override suspend fun fileOutline(query: FileOutlineQuery): FileOutlineResult = withContext(readDispatcher) {
+    override suspend fun fileOutline(query: ParsedFileOutlineQuery): FileOutlineResult = withContext(readDispatcher) {
         session.withReadAccess {
             telemetry.inSpan(
                 scope = StandaloneTelemetryScope.FILE_OUTLINE,
                 name = "kast.fileOutline",
-                attributes = mapOf("kast.fileOutline.filePath" to query.filePath),
+                attributes = mapOf("kast.fileOutline.filePath" to query.filePath.value),
             ) {
-                val file = session.findKtFile(query.filePath)
+                val file = session.findKtFile(query.filePath.value)
                 FileOutlineResult(symbols = FileOutlineBuilder.build(file))
             }
         }
     }
 
-    override suspend fun workspaceSymbolSearch(query: WorkspaceSymbolQuery): WorkspaceSymbolResult = withContext(readDispatcher) {
+    override suspend fun workspaceSymbolSearch(query: ParsedWorkspaceSymbolQuery): WorkspaceSymbolResult = withContext(readDispatcher) {
         session.withReadAccess {
             telemetry.inSpan(
                 scope = StandaloneTelemetryScope.WORKSPACE_SYMBOL_SEARCH,
                 name = "kast.workspaceSymbolSearch",
                 attributes = mapOf(
-                    "kast.workspaceSymbol.pattern" to query.pattern,
+                    "kast.workspaceSymbol.pattern" to query.pattern.value,
                     "kast.workspaceSymbol.regex" to query.regex,
                     "kast.workspaceSymbol.kind" to (query.kind?.name ?: "ALL"),
                 ),
             ) { span ->
-                val matcher = SymbolSearchMatcher.create(query.pattern, query.regex)
+                val matcher = SymbolSearchMatcher.create(query.pattern.value, query.regex)
                 val files = session.allKtFiles()
                 span.setAttribute("kast.workspaceSymbol.fileCount", files.size)
 
@@ -741,7 +729,7 @@ internal class StandaloneAnalysisBackend internal constructor(
                 for (file in files) {
                     file.accept(object : PsiRecursiveElementWalkingVisitor() {
                         override fun visitElement(element: PsiElement) {
-                            if (symbols.size >= query.maxResults) {
+                            if (symbols.size >= query.maxResults.value) {
                                 stopWalking()
                                 return
                             }
@@ -763,7 +751,7 @@ internal class StandaloneAnalysisBackend internal constructor(
                             super.visitElement(element)
                         }
                     })
-                    if (symbols.size >= query.maxResults) break
+                    if (symbols.size >= query.maxResults.value) break
                 }
                 span.setAttribute("kast.workspaceSymbol.resultCount", symbols.size)
 
@@ -780,21 +768,21 @@ internal class StandaloneAnalysisBackend internal constructor(
         else -> false
     }
 
-    override suspend fun workspaceFiles(query: WorkspaceFilesQuery): WorkspaceFilesResult = withContext(readDispatcher) {
-        val fileLimit = query.maxFilesPerModule ?: limits.maxResults
+    override suspend fun workspaceFiles(query: ParsedWorkspaceFilesQuery): WorkspaceFilesResult = withContext(readDispatcher) {
+        val fileLimit = query.maxFilesPerModule?.value ?: limits.maxResults
         telemetry.inSpan(
             scope = StandaloneTelemetryScope.WORKSPACE_FILES,
             name = "kast.workspaceFiles",
             attributes = mapOf(
-                "kast.workspaceFiles.moduleName" to query.moduleName,
+                "kast.workspaceFiles.moduleName" to query.moduleName?.value,
                 "kast.workspaceFiles.includeFiles" to query.includeFiles,
                 "kast.workspaceFiles.maxFilesPerModule" to fileLimit,
             ),
         ) { span ->
             session.withReadAccess {
                 val specs = session.moduleSpecs()
-                val filtered = if (query.moduleName != null) {
-                    specs.filter { it.name.value == query.moduleName }
+                val filtered = if (query.moduleName?.value != null) {
+                    specs.filter { it.name.value == query.moduleName?.value }
                 } else {
                     specs
                 }

@@ -4,6 +4,7 @@ package io.github.amichne.kast.api.contract.result
 
 import io.github.amichne.kast.api.contract.Diagnostic
 import io.github.amichne.kast.api.contract.PageInfo
+import io.github.amichne.kast.api.contract.PageableResult
 import io.github.amichne.kast.api.docs.DocField
 import io.github.amichne.kast.api.protocol.*
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -15,7 +16,15 @@ data class DiagnosticsResult(
     @DocField(description = "List of compilation diagnostics found in the requested files.")
     val diagnostics: List<Diagnostic>,
     @DocField(description = "Pagination metadata when results are truncated.")
-    val page: PageInfo? = null,
+    override val page: PageInfo? = null,
     @DocField(description = "Protocol schema version for forward compatibility.", serverManaged = true)
     val schemaVersion: Int = SCHEMA_VERSION,
-)
+) : PageableResult<Diagnostic> {
+    override val items: List<Diagnostic>
+        get() = diagnostics
+
+    override fun withItems(items: List<Diagnostic>, page: PageInfo?): PageableResult<Diagnostic> = copy(
+        diagnostics = items,
+        page = page,
+    )
+}
