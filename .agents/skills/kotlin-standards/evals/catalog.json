@@ -1,0 +1,118 @@
+{
+  "skill_name": "kotlin-standards",
+  "version": 1,
+  "cases": [
+    {
+      "id": "type-system-first-parsed-query",
+      "title": "Prefer parsed query models over raw primitives",
+      "prompt": "Review the Kotlin design in `evals/files/raw-primitives-and-parse-boundary.md`. Recommend how to reshape it so the type system becomes the primary safety mechanism, not comments, booleans, or repeated checks.",
+      "files": [
+        "evals/files/raw-primitives-and-parse-boundary.md"
+      ],
+      "expected_output": "Guidance that introduces meaningful value types or wrappers, parses once at the boundary, and stops raw nullable primitives from leaking inward.",
+      "expectations": [
+        "Recommends meaningful value classes, invariant wrappers, or parsed models for raw primitives that carry domain meaning.",
+        "Pushes normalization and validation to the boundary instead of repeating checks in core logic.",
+        "Collapses invalid nullable or boolean combinations into a typed concept instead of preserving a hidden state machine."
+      ],
+      "labels": [
+        "type-system",
+        "value-classes",
+        "parse-dont-validate"
+      ],
+      "stage": "candidate",
+      "source": {
+        "kind": "manual_skill_improvement",
+        "summary": "Added while uplifting kotlin-standards to emphasize value classes, parsed models, and type-system-first safety."
+      },
+      "promotion": {
+        "required_pass_rate": 1.0,
+        "required_benchmarks": 2
+      }
+    },
+    {
+      "id": "sealed-adt-over-flags-and-mutation",
+      "title": "Prefer ADTs and immutability over flags and ambient mutation",
+      "prompt": "Review the Kotlin design in `evals/files/sealed-adt-and-immutability.md`. Recommend how to model the behavior so callers branch on explicit variants and immutable state instead of booleans, nullable flags, and mutable accumulators.",
+      "files": [
+        "evals/files/sealed-adt-and-immutability.md"
+      ],
+      "expected_output": "Guidance that favors sealed ADTs, exhaustive `when`, immutable data, and confined mutation over ad hoc flags and mutable state.",
+      "expectations": [
+        "Recommends a sealed hierarchy or another explicit ADT for the closed set of states or outcomes.",
+        "Calls for immutable models and confined mutation instead of public or cross-boundary mutable state.",
+        "Uses Kotlin-native expression or higher-order style when it makes the state transition or transformation clearer."
+      ],
+      "labels": [
+        "adt",
+        "immutability",
+        "higher-order-functions"
+      ],
+      "stage": "candidate",
+      "source": {
+        "kind": "manual_skill_improvement",
+        "summary": "Added while uplifting kotlin-standards to emphasize ADTs, immutability, and functional Kotlin patterns."
+      },
+      "promotion": {
+        "required_pass_rate": 1.0,
+        "required_benchmarks": 2
+      }
+    },
+    {
+      "id": "deep-module-over-shallow-workflow",
+      "title": "Prefer deep modules over shallow helper clusters",
+      "prompt": "Review the Kotlin design in `evals/files/deep-module-refactor.md`. Recommend how to restructure it so callers learn a smaller interface and the workflow lives inside one deeper module.",
+      "files": [
+        "evals/files/deep-module-refactor.md"
+      ],
+      "expected_output": "Guidance that pulls orchestration behind a smaller interface, rejects hypothetical seams, and makes the module interface the test surface.",
+      "expectations": [
+        "Names the current problem as a shallow module or helper cluster that leaks workflow coordination into callers.",
+        "Recommends keeping the workflow behind a smaller interface instead of introducing more thin interfaces or pass-through helpers.",
+        "Treats the module interface as the test surface rather than optimizing for helper-level tests."
+      ],
+      "labels": [
+        "module-depth",
+        "architecture",
+        "test-surface"
+      ],
+      "stage": "candidate",
+      "source": {
+        "kind": "manual_skill_improvement",
+        "summary": "Added while uplifting kotlin-standards to incorporate deep-module fundamentals from improve-codebase-architecture."
+      },
+      "promotion": {
+        "required_pass_rate": 1.0,
+        "required_benchmarks": 2
+      }
+    },
+    {
+      "id": "nesting-over-prefix-soup",
+      "title": "Prefer nesting and one root declaration per file",
+      "prompt": "Review the Kotlin design in `evals/files/nesting-over-prefixes.md`. Recommend how to reshape it so names stay short without repeated prefixes, and the file has one root declaration instead of several sibling roots.",
+      "files": [
+        "evals/files/nesting-over-prefixes.md"
+      ],
+      "expected_output": "Guidance that uses a single owning root with nested declarations, rejects repeated disambiguation prefixes, and avoids public top-level helpers when they belong to the owning type.",
+      "expectations": [
+        "Calls out repeated prefixes and several sibling root declarations as the core smell.",
+        "Recommends one owning root declaration with nested variants, helpers, or companion-owned APIs where appropriate.",
+        "Avoids preserving multiple flat root types or public top-level helper functions just because each piece is small."
+      ],
+      "labels": [
+        "layout",
+        "nesting",
+        "naming"
+      ],
+      "stage": "candidate",
+      "source": {
+        "kind": "manual_skill_improvement",
+        "summary": "Added while uplifting kotlin-standards to prefer nesting over prefix soup and one root declaration per file."
+      },
+      "promotion": {
+        "required_pass_rate": 1.0,
+        "required_benchmarks": 2
+      }
+    }
+  ]
+}

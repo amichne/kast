@@ -6,9 +6,11 @@
   `kast_metrics`, `kast_rename`, `kast_write_and_validate`,
   `kast_diagnostics`. They replace `view`/`grep`/`edit`/`create` for
   `.kt`/`.kts` source.
-- Read `.agents/skills/kast/SKILL.md` for command shape and recovery rules.
-  The bash `kast skill <name>` form remains as a fallback; `KAST_CLI_PATH`
-  is announced in session-start context.
+- When `.github/extensions/kast/extension.mjs` loads successfully, treat it as
+  the primary path and skip mandatory reads of `.agents/skills/kast/SKILL.md`.
+  Fall back to the skill doc and the bash `kast skill <name>` form only when
+  the extension is unavailable; `KAST_CLI_PATH` is announced in session-start
+  context.
 - TDD: write failing unit tests first. Every change must include tests that prove behavior and regressions are covered.
 - Kotlin standards: follow Kotlin style, apply formatting and lints (ktlint/detekt/spotless), avoid platform-specific APIs in shared modules.
 - Constitutional code: treat API/model changes as contract changes; preserve schema compatibility and capability advertising unless intentionally changing.

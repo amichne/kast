@@ -7,6 +7,8 @@ expression-style decisions.
 
 - A package is a semantic boundary, not a folder for a technical concern. Name it
   for the domain unit it owns.
+- Favor deep modules with a small interface over helper clusters. If callers
+  still coordinate the workflow, move more logic inward.
 - Avoid broad packages such as `common`, `utils`, `helpers`, `support`, or
   `internal` unless the repository already gives them a precise meaning.
 - Let the package remove prefixes from type names. `workspace.Parser` is usually
@@ -18,14 +20,23 @@ expression-style decisions.
 
 ## File Layout
 
-- One file should usually center on one public interface, class, value class, or
-  sealed root.
+- One file should center on one root declaration. If the file contains a
+  non-nested type, that type owns the file.
+- Prefer nested declarations over multiple sibling root declarations when the
+  names only differ by a repeated prefix.
 - Keep a sealed hierarchy in one file by default. Its variants are part of the
   closed semantic unit unless they become large independent subsystems.
 - Keep an interface and its small library-owned implementations together when
   callers understand them as one abstraction.
+- Do not introduce an interface or helper layer when there is one adapter and
+  no leverage. That seam is probably hypothetical.
+- Do not keep several root types in one file just because they are small. If
+  each root needs a prefix to stay clear, the scope is too flat.
 - Companion factories, parsers, and tightly-owned extensions may live beside the
   type they construct or enrich.
+- Avoid public top-level helpers when they belong to the owning type's
+  vocabulary. Nest them under the type, companion, or sealed root unless the
+  package itself is the real owner.
 - Split a file only when the extracted file has a name that describes a real
   unit: a boundary adapter, policy, parser, renderer, transport, or workflow.
 - Do not split because of extensions alone. A single owning file may contain
@@ -35,6 +46,11 @@ expression-style decisions.
 
 - Name packages and types from the reader's point of view at the call site.
 - Avoid repeating package context in type names.
+- Let scope carry context. Prefer `CliOutput.Text` over `CliTextOutput`, and
+  `Result.Invalid` over `InvalidResult`, when the root already names the idea.
+- Treat repeated prefixes across siblings as a design smell. They usually signal
+  missing nesting or the wrong file boundary.
+- Prefer nesting or separate files over flat disambiguation prefixes.
 - Prefer domain nouns and verbs over implementation roles like `Manager`,
   `Processor`, `Handler`, or `Util`.
 - Use suffixes only when they disambiguate real alternatives: `Parser`,
@@ -61,5 +77,7 @@ expression-style decisions.
 - Add tracer bullets one behavior at a time.
 - Tests should prove correctness through the public API. Do not chase coverage
   for code that has no independent behavior.
+- If tests keep reaching for extracted helpers, the owning module may be too
+  shallow. Prefer a deeper module whose interface is also the test surface.
 - Prefer a few tests that pin invariants over many tests that mirror
   implementation steps.

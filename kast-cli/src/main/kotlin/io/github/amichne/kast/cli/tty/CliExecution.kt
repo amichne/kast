@@ -11,8 +11,8 @@ import io.github.amichne.kast.indexstore.FanInMetric
 import io.github.amichne.kast.indexstore.FanOutMetric
 import io.github.amichne.kast.indexstore.FileFilterSpec
 import io.github.amichne.kast.indexstore.LowUsageSymbol
-import io.github.amichne.kast.indexstore.MetricsGraph
 import io.github.amichne.kast.indexstore.MetricsEngine
+import io.github.amichne.kast.indexstore.MetricsGraph
 import io.github.amichne.kast.indexstore.ModuleCouplingMetric
 import io.github.amichne.kast.indexstore.ModuleCycleMetric
 import io.github.amichne.kast.indexstore.ModuleDepthMetric
@@ -20,19 +20,6 @@ import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import java.nio.file.Path
 import kotlin.reflect.KClass
-
-internal sealed interface CliOutput {
-    data class JsonValue(val value: Any) : CliOutput
-    data class Text(val value: String) : CliOutput
-    data class InteractiveGraph(val graph: MetricsGraph) : CliOutput
-    data class InteractiveGraphPicker(
-        val workspaceRoot: Path,
-        val depth: Int,
-        val initialQuery: String? = null,
-    ) : CliOutput
-    data class ExternalProcess(val process: CliExternalProcess) : CliOutput
-    data object None : CliOutput
-}
 
 internal data class CliExternalProcess(
     val command: List<String>,

@@ -1,0 +1,28 @@
+{
+  "skills": [
+    {
+      "id": "kast",
+      "skillPath": ".agents/skills/kast/SKILL.md",
+      "requireRead": true,
+      "shadowingExtensionId": "kast",
+      "extensionPath": ".github/extensions/kast/extension.mjs"
+    },
+    {
+      "id": "kotlin-gradle-loop",
+      "skillPath": ".agents/skills/kotlin-gradle-loop/SKILL.md",
+      "requireRead": false,
+      "shadowingExtensionId": "kotlin-gradle-loop",
+      "extensionPath": ".github/extensions/kotlin-gradle-loop/extension.mjs"
+    },
+    {
+      "id": "refresh-affected-agents",
+      "skillPath": ".agents/skills/refresh-affected-agents/SKILL.md",
+      "requireRead": true
+    },
+    {
+      "id": "llm-wiki",
+      "skillPath": ".agents/skills/llm-wiki/SKILL.md",
+      "requireRead": true
+    }
+  ]
+}
