@@ -320,7 +320,8 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         "filePath": "/workspace/src/Sample.kt",
                         "offset": 48
                     },
-                    "includeDeclaration": true
+                    "includeDeclaration": true,
+                    "includeUsageSiteScope": false
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
