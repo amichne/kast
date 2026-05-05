@@ -4,6 +4,7 @@ import io.github.amichne.kast.api.contract.AnalysisBackend
 import io.github.amichne.kast.api.contract.CallDirection
 import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
 import io.github.amichne.kast.api.validation.FileHashing
+import io.github.amichne.kast.api.validation.parsed
 import io.github.amichne.kast.api.contract.query.FileOutlineQuery
 import io.github.amichne.kast.api.contract.FilePosition
 import io.github.amichne.kast.api.contract.Location
@@ -245,7 +246,7 @@ object AnalysisBackendContractAssertions {
         backend: AnalysisBackend,
         fixture: AnalysisBackendContractFixture,
     ) {
-        val result = backend.resolveSymbol(fixture.symbolQuery)
+        val result = backend.resolveSymbol(fixture.symbolQuery.parsed())
 
         expectEquals(fixture.symbolFqName, result.symbol.fqName, "resolved symbol fqName")
         expectEquals(SymbolKind.FUNCTION, result.symbol.kind, "resolved symbol kind")
@@ -257,7 +258,7 @@ object AnalysisBackendContractAssertions {
         backend: AnalysisBackend,
         fixture: AnalysisBackendContractFixture,
     ) {
-        val result = backend.findReferences(fixture.referencesQuery)
+        val result = backend.findReferences(fixture.referencesQuery.parsed())
 
         expectEquals(fixture.symbolFqName, result.declaration?.fqName, "references declaration fqName")
         expectEquals(
@@ -276,7 +277,7 @@ object AnalysisBackendContractAssertions {
         backend: AnalysisBackend,
         fixture: AnalysisBackendContractFixture,
     ) {
-        val result = backend.callHierarchy(fixture.callHierarchyQuery)
+        val result = backend.callHierarchy(fixture.callHierarchyQuery.parsed())
 
         expectEquals(fixture.symbolFqName, result.root.symbol.fqName, "call hierarchy root fqName")
         expectEquals(
@@ -298,7 +299,7 @@ object AnalysisBackendContractAssertions {
         backend: AnalysisBackend,
         fixture: AnalysisBackendContractFixture,
     ) {
-        val result = backend.typeHierarchy(fixture.typeHierarchyQuery)
+        val result = backend.typeHierarchy(fixture.typeHierarchyQuery.parsed())
 
         expectEquals(fixture.typeHierarchyRootFqName, result.root.symbol.fqName, "type hierarchy root fqName")
         expectEquals(fixture.typeHierarchyRootSupertypes, result.root.symbol.supertypes, "type hierarchy root supertypes")
@@ -316,7 +317,7 @@ object AnalysisBackendContractAssertions {
         backend: AnalysisBackend,
         fixture: AnalysisBackendContractFixture,
     ) {
-        val result = backend.fileOutline(fixture.fileOutlineQuery)
+        val result = backend.fileOutline(fixture.fileOutlineQuery.parsed())
 
         check(result.symbols.isNotEmpty()) { "file outline should return at least one symbol" }
         val fqNames = result.symbols.map { it.symbol.fqName }
@@ -329,7 +330,7 @@ object AnalysisBackendContractAssertions {
         backend: AnalysisBackend,
         fixture: AnalysisBackendContractFixture,
     ) {
-        val result = backend.workspaceSymbolSearch(fixture.workspaceSymbolQuery)
+        val result = backend.workspaceSymbolSearch(fixture.workspaceSymbolQuery.parsed())
 
         check(result.symbols.isNotEmpty()) { "workspace symbol search should return at least one symbol" }
         val fqNames = result.symbols.map { it.fqName }
@@ -342,7 +343,7 @@ object AnalysisBackendContractAssertions {
         backend: AnalysisBackend,
         fixture: AnalysisBackendContractFixture,
     ) {
-        val result = backend.rename(fixture.renameQuery)
+        val result = backend.rename(fixture.renameQuery.parsed())
 
         expectEquals(
             fixture.renameEdits.map { edit -> edit.filePath to edit.newText },

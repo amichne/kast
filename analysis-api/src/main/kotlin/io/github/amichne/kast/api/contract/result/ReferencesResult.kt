@@ -4,6 +4,7 @@ package io.github.amichne.kast.api.contract.result
 
 import io.github.amichne.kast.api.contract.Location
 import io.github.amichne.kast.api.contract.PageInfo
+import io.github.amichne.kast.api.contract.PageableResult
 import io.github.amichne.kast.api.contract.SearchScope
 import io.github.amichne.kast.api.contract.Symbol
 import io.github.amichne.kast.api.docs.DocField
@@ -19,9 +20,17 @@ data class ReferencesResult(
     @DocField(description = "List of source locations where the symbol is referenced.")
     val references: List<Location>,
     @DocField(description = "Pagination metadata when results are truncated.")
-    val page: PageInfo? = null,
+    override val page: PageInfo? = null,
     @DocField(description = "Describes the scope and exhaustiveness of the search.")
     val searchScope: SearchScope? = null,
     @DocField(description = "Protocol schema version for forward compatibility.", serverManaged = true)
     val schemaVersion: Int = SCHEMA_VERSION,
-)
+) : PageableResult<Location> {
+    override val items: List<Location>
+        get() = references
+
+    override fun withItems(items: List<Location>, page: PageInfo?): PageableResult<Location> = copy(
+        references = items,
+        page = page,
+    )
+}

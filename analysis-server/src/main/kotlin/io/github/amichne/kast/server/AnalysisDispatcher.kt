@@ -34,6 +34,7 @@ import io.github.amichne.kast.api.protocol.JsonRpcRequest
 import io.github.amichne.kast.api.protocol.JsonRpcSuccessResponse
 import io.github.amichne.kast.api.contract.MutationCapability
 import io.github.amichne.kast.api.contract.PageInfo
+import io.github.amichne.kast.api.contract.PageableResult
 import io.github.amichne.kast.api.contract.ReadCapability
 import io.github.amichne.kast.api.contract.query.RefreshQuery
 import io.github.amichne.kast.api.contract.result.RefreshResult
@@ -58,8 +59,8 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
-import java.nio.file.Path
 import java.util.UUID
+import io.github.amichne.kast.api.validation.parsed
 
 class AnalysisDispatcher(
     private val backend: AnalysisBackend,
@@ -156,8 +157,7 @@ class AnalysisDispatcher(
             "symbol/resolve" -> encode(
                 SymbolResult.serializer(),
                 backend.resolveSymbol(
-                    decodeParams(SymbolQuery.serializer(), params).also { query ->
-                        validateFilePosition(query.position.filePath, query.position.offset)
+                    decodeParams(SymbolQuery.serializer(), params).parsed().also {
                         requireReadCapability(ReadCapability.RESOLVE_SYMBOL)
                     },
                 ),
@@ -166,31 +166,16 @@ class AnalysisDispatcher(
             "references" -> encode(
                 ReferencesResult.serializer(),
                 backend.findReferences(
-                    decodeParams(ReferencesQuery.serializer(), params).also { query ->
-                        validateFilePosition(query.position.filePath, query.position.offset)
+                    decodeParams(ReferencesQuery.serializer(), params).parsed().also {
                         requireReadCapability(ReadCapability.FIND_REFERENCES)
                     },
-                ).withLimit(config.maxResults),
+                ).withLimit(config.maxResults) { location -> location.startOffset.toString() },
             )
 
             "call-hierarchy" -> encode(
                 CallHierarchyResult.serializer(),
                 backend.callHierarchy(
-                    decodeParams(CallHierarchyQuery.serializer(), params).also { query ->
-                        validateFilePosition(query.position.filePath, query.position.offset)
-                        if (query.depth < 0) {
-                            throw ValidationException("Call hierarchy depth must be greater than or equal to zero")
-                        }
-                        if (query.maxTotalCalls < 1) {
-                            throw ValidationException("Call hierarchy maxTotalCalls must be greater than zero")
-                        }
-                        if (query.maxChildrenPerNode < 1) {
-                            throw ValidationException("Call hierarchy maxChildrenPerNode must be greater than zero")
-                        }
-                        val timeoutMillis = query.timeoutMillis
-                        if (timeoutMillis != null && timeoutMillis < 1) {
-                            throw ValidationException("Call hierarchy timeoutMillis must be greater than zero when provided")
-                        }
+                    decodeParams(CallHierarchyQuery.serializer(), params).parsed().also {
                         requireReadCapability(ReadCapability.CALL_HIERARCHY)
                     },
                 ),
@@ -199,14 +184,7 @@ class AnalysisDispatcher(
             "type-hierarchy" -> encode(
                 TypeHierarchyResult.serializer(),
                 backend.typeHierarchy(
-                    decodeParams(TypeHierarchyQuery.serializer(), params).also { query ->
-                        validateFilePosition(query.position.filePath, query.position.offset)
-                        if (query.depth < 0) {
-                            throw ValidationException("Type hierarchy depth must be greater than or equal to zero")
-                        }
-                        if (query.maxResults < 1) {
-                            throw ValidationException("Type hierarchy maxResults must be greater than zero")
-                        }
+                    decodeParams(TypeHierarchyQuery.serializer(), params).parsed().also {
                         requireReadCapability(ReadCapability.TYPE_HIERARCHY)
                     },
                 ),
@@ -215,8 +193,7 @@ class AnalysisDispatcher(
             "semantic-insertion-point" -> encode(
                 SemanticInsertionResult.serializer(),
                 backend.semanticInsertionPoint(
-                    decodeParams(SemanticInsertionQuery.serializer(), params).also { query ->
-                        validateFilePosition(query.position.filePath, query.position.offset)
+                    decodeParams(SemanticInsertionQuery.serializer(), params).parsed().also {
                         requireReadCapability(ReadCapability.SEMANTIC_INSERTION_POINT)
                     },
                 ),
@@ -225,24 +202,16 @@ class AnalysisDispatcher(
             "diagnostics" -> encode(
                 DiagnosticsResult.serializer(),
                 backend.diagnostics(
-                    decodeParams(DiagnosticsQuery.serializer(), params).also { query ->
-                        if (query.filePaths.isEmpty()) {
-                            throw ValidationException("At least one file path is required for diagnostics")
-                        }
-                        query.filePaths.forEach(::validateAbsoluteFilePath)
+                    decodeParams(DiagnosticsQuery.serializer(), params).parsed().also {
                         requireReadCapability(ReadCapability.DIAGNOSTICS)
                     },
-                ).withLimit(config.maxResults),
+                ).withLimit(config.maxResults) { diagnostic -> diagnostic.location.startOffset.toString() },
             )
 
             "rename" -> encode(
                 RenameResult.serializer(),
                 backend.rename(
-                    decodeParams(RenameQuery.serializer(), params).also { query ->
-                        validateFilePosition(query.position.filePath, query.position.offset)
-                        if (query.newName.isBlank()) {
-                            throw ValidationException("The new symbol name must not be blank")
-                        }
+                    decodeParams(RenameQuery.serializer(), params).parsed().also {
                         requireMutationCapability(MutationCapability.RENAME)
                     },
                 ),
@@ -251,11 +220,7 @@ class AnalysisDispatcher(
             "imports/optimize" -> encode(
                 ImportOptimizeResult.serializer(),
                 backend.optimizeImports(
-                    decodeParams(ImportOptimizeQuery.serializer(), params).also { query ->
-                        if (query.filePaths.isEmpty()) {
-                            throw ValidationException("At least one file path is required for import optimization")
-                        }
-                        query.filePaths.forEach(::validateAbsoluteFilePath)
+                    decodeParams(ImportOptimizeQuery.serializer(), params).parsed().also {
                         requireMutationCapability(MutationCapability.OPTIMIZE_IMPORTS)
                     },
                 ),
@@ -264,10 +229,7 @@ class AnalysisDispatcher(
             "edits/apply" -> encode(
                 ApplyEditsResult.serializer(),
                 backend.applyEdits(
-                    decodeParams(ApplyEditsQuery.serializer(), params).also { query ->
-                        query.fileOperations.forEach { operation ->
-                            validateAbsoluteFilePath(operation.filePath)
-                        }
+                    decodeParams(ApplyEditsQuery.serializer(), params).parsed().also { query ->
                         requireMutationCapability(MutationCapability.APPLY_EDITS)
                         if (query.fileOperations.isNotEmpty()) {
                             requireMutationCapability(MutationCapability.FILE_OPERATIONS)
@@ -279,8 +241,7 @@ class AnalysisDispatcher(
             "workspace/refresh" -> encode(
                 RefreshResult.serializer(),
                 backend.refresh(
-                    decodeParams(RefreshQuery.serializer(), params).also { query ->
-                        query.filePaths.forEach(::validateAbsoluteFilePath)
+                    decodeParams(RefreshQuery.serializer(), params).parsed().also {
                         requireMutationCapability(MutationCapability.REFRESH_WORKSPACE)
                     },
                 ),
@@ -289,8 +250,7 @@ class AnalysisDispatcher(
             "file-outline" -> encode(
                 FileOutlineResult.serializer(),
                 backend.fileOutline(
-                    decodeParams(FileOutlineQuery.serializer(), params).also { query ->
-                        validateAbsoluteFilePath(query.filePath)
+                    decodeParams(FileOutlineQuery.serializer(), params).parsed().also {
                         requireReadCapability(ReadCapability.FILE_OUTLINE)
                     },
                 ),
@@ -299,48 +259,31 @@ class AnalysisDispatcher(
             "workspace-symbol" -> encode(
                 WorkspaceSymbolResult.serializer(),
                 backend.workspaceSymbolSearch(
-                    decodeParams(WorkspaceSymbolQuery.serializer(), params).also { query ->
-                        if (query.pattern.isBlank()) {
-                            throw ValidationException("Symbol search pattern must not be blank")
-                        }
-                        if (query.maxResults < 1) {
-                            throw ValidationException("Symbol search maxResults must be greater than zero")
-                        }
+                    decodeParams(WorkspaceSymbolQuery.serializer(), params).parsed().also {
                         requireReadCapability(ReadCapability.WORKSPACE_SYMBOL_SEARCH)
                     },
-                ).withLimit(config.maxResults),
+                ).withLimit(config.maxResults) { config.maxResults.toString() },
             )
 
             "workspace/files" -> encode(
                 WorkspaceFilesResult.serializer(),
                 backend.workspaceFiles(
                     decodeParams(WorkspaceFilesQuery.serializer(), params).also { query ->
-                        val moduleName = query.moduleName
                         val maxFilesPerModule = query.maxFilesPerModule
-                        if (moduleName != null && moduleName.isBlank()) {
-                            throw ValidationException("Workspace files moduleName must not be blank when provided")
-                        }
-                        if (maxFilesPerModule != null && maxFilesPerModule < 1) {
-                            throw ValidationException("Workspace files maxFilesPerModule must be greater than zero")
-                        }
                         if (maxFilesPerModule != null && maxFilesPerModule > config.maxResults) {
                             throw ValidationException(
                                 "Workspace files maxFilesPerModule must be less than or equal to server maxResults (${config.maxResults})",
                             )
                         }
                         requireReadCapability(ReadCapability.WORKSPACE_FILES)
-                    },
+                    }.parsed(),
                 ),
             )
 
             "implementations" -> encode(
                 ImplementationsResult.serializer(),
                 backend.implementations(
-                    decodeParams(ImplementationsQuery.serializer(), params).also { query ->
-                        validateFilePosition(query.position.filePath, query.position.offset)
-                        if (query.maxResults < 1) {
-                            throw ValidationException("Implementations maxResults must be greater than zero")
-                        }
+                    decodeParams(ImplementationsQuery.serializer(), params).parsed().also {
                         requireReadCapability(ReadCapability.IMPLEMENTATIONS)
                     },
                 ),
@@ -349,8 +292,7 @@ class AnalysisDispatcher(
             "code-actions" -> encode(
                 CodeActionsResult.serializer(),
                 backend.codeActions(
-                    decodeParams(CodeActionsQuery.serializer(), params).also { query ->
-                        validateFilePosition(query.position.filePath, query.position.offset)
+                    decodeParams(CodeActionsQuery.serializer(), params).parsed().also {
                         requireReadCapability(ReadCapability.CODE_ACTIONS)
                     },
                 ),
@@ -359,11 +301,7 @@ class AnalysisDispatcher(
             "completions" -> encode(
                 CompletionsResult.serializer(),
                 backend.completions(
-                    decodeParams(CompletionsQuery.serializer(), params).also { query ->
-                        validateFilePosition(query.position.filePath, query.position.offset)
-                        if (query.maxResults < 1) {
-                            throw ValidationException("Completions maxResults must be greater than zero")
-                        }
+                    decodeParams(CompletionsQuery.serializer(), params).parsed().also {
                         requireReadCapability(ReadCapability.COMPLETIONS)
                     },
                 ),
@@ -427,64 +365,20 @@ private fun requestId(id: JsonElement): String {
     } ?: UUID.randomUUID().toString()
 }
 
-private fun ReferencesResult.withLimit(limit: Int): ReferencesResult {
-    if (references.size <= limit) {
+@Suppress("UNCHECKED_CAST")
+private fun <T, R : PageableResult<T>> R.withLimit(
+    limit: Int,
+    nextPageToken: (T) -> String,
+): R {
+    if (items.size <= limit) {
         return this
     }
 
-    return copy(
-        references = references.take(limit),
+    return withItems(
+        items = items.take(limit),
         page = PageInfo(
             truncated = true,
-            nextPageToken = references[limit - 1].startOffset.toString(),
+            nextPageToken = nextPageToken(items[limit - 1]),
         ),
-    )
-}
-
-private fun DiagnosticsResult.withLimit(limit: Int): DiagnosticsResult {
-    if (diagnostics.size <= limit) {
-        return this
-    }
-
-    return copy(
-        diagnostics = diagnostics.take(limit),
-        page = PageInfo(
-            truncated = true,
-            nextPageToken = diagnostics[limit - 1].location.startOffset.toString(),
-        ),
-    )
-}
-
-private fun WorkspaceSymbolResult.withLimit(limit: Int): WorkspaceSymbolResult {
-    if (symbols.size <= limit) {
-        return this
-    }
-
-    return copy(
-        symbols = symbols.take(limit),
-        page = PageInfo(
-            truncated = true,
-            nextPageToken = limit.toString(),
-        ),
-    )
-}
-
-private fun validateFilePosition(
-    filePath: String,
-    offset: Int,
-) {
-    validateAbsoluteFilePath(filePath)
-    if (offset < 0) {
-        throw ValidationException("Offsets must be greater than or equal to zero")
-    }
-}
-
-private fun validateAbsoluteFilePath(filePath: String) {
-    val path = Path.of(filePath)
-    if (!path.isAbsolute) {
-        throw ValidationException(
-            message = "File paths must be absolute",
-            details = mapOf("filePath" to filePath),
-        )
-    }
+    ) as R
 }

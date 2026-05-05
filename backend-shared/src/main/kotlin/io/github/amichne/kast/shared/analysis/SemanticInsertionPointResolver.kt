@@ -1,7 +1,7 @@
 package io.github.amichne.kast.shared.analysis
 
 import io.github.amichne.kast.api.protocol.NotFoundException
-import io.github.amichne.kast.api.contract.SemanticInsertionQuery
+import io.github.amichne.kast.api.validation.*
 import io.github.amichne.kast.api.contract.SemanticInsertionResult
 import io.github.amichne.kast.api.contract.SemanticInsertionTarget
 import org.jetbrains.kotlin.psi.KtClassBody
@@ -11,7 +11,7 @@ import org.jetbrains.kotlin.psi.KtFile
 object SemanticInsertionPointResolver {
     fun resolve(
         file: KtFile,
-        query: SemanticInsertionQuery,
+        query: ParsedSemanticInsertionQuery,
     ): SemanticInsertionResult {
         val insertionOffset = when (query.target) {
             SemanticInsertionTarget.CLASS_BODY_START -> classBody(file, query).lBrace?.textRange?.endOffset
@@ -22,7 +22,7 @@ object SemanticInsertionPointResolver {
         } ?: throw NotFoundException(
             message = "The requested semantic insertion point could not be resolved",
             details = mapOf(
-                "filePath" to query.position.filePath,
+                "filePath" to query.position.filePath.value,
                 "target" to query.target.name,
             ),
         )
@@ -35,14 +35,14 @@ object SemanticInsertionPointResolver {
 
     private fun classBody(
         file: KtFile,
-        query: SemanticInsertionQuery,
+        query: ParsedSemanticInsertionQuery,
     ): KtClassBody {
-        val target = resolveTarget(file, query.position.offset)
+        val target = resolveTarget(file, query.position.offset.value)
         val declaration = target.typeHierarchyDeclaration() as? KtClassOrObject
             ?: throw NotFoundException(
                 message = "The requested semantic insertion target requires a class or object declaration",
                 details = mapOf(
-                    "filePath" to query.position.filePath,
+                    "filePath" to query.position.filePath.value,
                     "target" to query.target.name,
                 ),
             )
@@ -50,7 +50,7 @@ object SemanticInsertionPointResolver {
             ?: throw NotFoundException(
                 message = "The requested class or object does not have a body",
                 details = mapOf(
-                    "filePath" to query.position.filePath,
+                    "filePath" to query.position.filePath.value,
                     "target" to query.target.name,
                 ),
             )
