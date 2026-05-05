@@ -1,7 +1,7 @@
 package io.github.amichne.kast.standalone.hierarchy
 
-import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
 import io.github.amichne.kast.api.contract.result.CallHierarchyResult
+import io.github.amichne.kast.api.validation.*
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.shared.analysis.resolveTarget
 import io.github.amichne.kast.shared.hierarchy.CallHierarchyEngine
@@ -22,25 +22,25 @@ internal class CallHierarchyTraversal(
     private val normalizedWorkspaceRoot = normalizeStandalonePath(workspaceRoot)
     private val candidateFileResolver = CandidateFileResolver(session = session)
 
-    fun build(query: CallHierarchyQuery): CallHierarchyResult {
-        val file = session.findKtFile(query.position.filePath)
-        val rootTarget = resolveTarget(file, query.position.offset)
+    fun build(query: ParsedCallHierarchyQuery): CallHierarchyResult {
+        val file = session.findKtFile(query.position.filePath.value)
+        val rootTarget = resolveTarget(file, query.position.offset.value)
 
         return telemetry.inSpan(
             scope = StandaloneTelemetryScope.CALL_HIERARCHY,
             name = "kast.callHierarchy",
             attributes = mapOf(
                 "kast.callHierarchy.direction" to query.direction.name,
-                "kast.callHierarchy.depth" to query.depth,
-                "kast.callHierarchy.maxTotalCalls" to query.maxTotalCalls,
-                "kast.callHierarchy.maxChildrenPerNode" to query.maxChildrenPerNode,
-                "kast.callHierarchy.timeoutMillis" to (query.timeoutMillis ?: limits.requestTimeoutMillis),
+                "kast.callHierarchy.depth" to query.depth.value,
+                "kast.callHierarchy.maxTotalCalls" to query.maxTotalCalls.value,
+                "kast.callHierarchy.maxChildrenPerNode" to query.maxChildrenPerNode.value,
+                "kast.callHierarchy.timeoutMillis" to (query.timeoutMillis?.value ?: limits.requestTimeoutMillis),
             ),
         ) { span ->
             val budget = TraversalBudget(
-                maxTotalCalls = query.maxTotalCalls,
-                maxChildrenPerNode = query.maxChildrenPerNode,
-                timeoutMillis = query.timeoutMillis ?: limits.requestTimeoutMillis,
+                maxTotalCalls = query.maxTotalCalls.value,
+                maxChildrenPerNode = query.maxChildrenPerNode.value,
+                timeoutMillis = query.timeoutMillis?.value ?: limits.requestTimeoutMillis,
             )
             val resolver = StandaloneCallEdgeResolver(
                 candidateFileResolver = candidateFileResolver,
@@ -51,7 +51,7 @@ internal class CallHierarchyTraversal(
                 target = rootTarget,
                 parentCallSite = null,
                 direction = query.direction,
-                depthRemaining = query.depth,
+                depthRemaining = query.depth.value,
                 pathKeys = emptySet(),
                 budget = budget,
                 currentDepth = 0,

@@ -225,6 +225,62 @@ class CoreTypesTest {
         }
     }
 
+    @Test
+    fun `PositiveInt accepts positive values`() {
+        assertEquals(1, PositiveInt(1).value)
+        assertEquals(42, PositiveInt(42).value)
+    }
+
+    @Test
+    fun `PositiveInt rejects zero and negative values`() {
+        assertThrows<IllegalArgumentException> { PositiveInt(0) }
+        assertThrows<IllegalArgumentException> { PositiveInt(-1) }
+    }
+
+    @Test
+    fun `NonNegativeInt accepts zero and positive values`() {
+        assertEquals(0, NonNegativeInt(0).value)
+        assertEquals(42, NonNegativeInt(42).value)
+    }
+
+    @Test
+    fun `NonNegativeInt rejects negative values`() {
+        assertThrows<IllegalArgumentException> { NonNegativeInt(-1) }
+    }
+
+    @Test
+    fun `PositiveLong accepts positive values`() {
+        assertEquals(1L, PositiveLong(1L).value)
+        assertEquals(42L, PositiveLong(42L).value)
+    }
+
+    @Test
+    fun `PositiveLong rejects zero and negative values`() {
+        assertThrows<IllegalArgumentException> { PositiveLong(0L) }
+        assertThrows<IllegalArgumentException> { PositiveLong(-1L) }
+    }
+
+    @Test
+    fun `NonBlankString accepts content`() {
+        assertEquals("name", NonBlankString("name").value)
+    }
+
+    @Test
+    fun `NonBlankString rejects blank content`() {
+        assertThrows<IllegalArgumentException> { NonBlankString("") }
+        assertThrows<IllegalArgumentException> { NonBlankString("   ") }
+    }
+
+    @Test
+    fun `NonEmptyList accepts non-empty list`() {
+        assertEquals(listOf("file.kt"), NonEmptyList(listOf("file.kt")).value)
+    }
+
+    @Test
+    fun `NonEmptyList rejects empty list`() {
+        assertThrows<IllegalArgumentException> { NonEmptyList(emptyList<String>()) }
+    }
+
     // --- ShaHash ---
 
     @Test

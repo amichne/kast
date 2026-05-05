@@ -174,6 +174,66 @@ value class ColumnNumber(val value: Int) {
 }
 
 /**
+ * An integer that must be at least one.
+ */
+@JvmInline
+value class PositiveInt(val value: Int) {
+    init {
+        require(value >= 1) { "PositiveInt must be >= 1, was $value" }
+    }
+
+    override fun toString(): String = value.toString()
+}
+
+/**
+ * An integer that may be zero but not negative.
+ */
+@JvmInline
+value class NonNegativeInt(val value: Int) {
+    init {
+        require(value >= 0) { "NonNegativeInt must be >= 0, was $value" }
+    }
+
+    override fun toString(): String = value.toString()
+}
+
+/**
+ * A long that must be at least one.
+ */
+@JvmInline
+value class PositiveLong(val value: Long) {
+    init {
+        require(value >= 1L) { "PositiveLong must be >= 1, was $value" }
+    }
+
+    override fun toString(): String = value.toString()
+}
+
+/**
+ * A string that must contain non-whitespace content.
+ */
+@JvmInline
+value class NonBlankString(val value: String) {
+    init {
+        require(value.isNotBlank()) { "NonBlankString must not be blank" }
+    }
+
+    override fun toString(): String = value
+}
+
+/**
+ * A list that must contain at least one element.
+ */
+@JvmInline
+value class NonEmptyList<T>(val value: List<T>) {
+    init {
+        require(value.isNotEmpty()) { "NonEmptyList must not be empty" }
+    }
+
+    override fun toString(): String = value.toString()
+}
+
+/**
  * A hex-encoded SHA-256 hash string.
  */
 @JvmInline

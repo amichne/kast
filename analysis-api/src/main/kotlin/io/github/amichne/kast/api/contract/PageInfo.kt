@@ -14,3 +14,9 @@ data class PageInfo(
     @DocField(description = "Opaque token to pass in the next request for the next page of results.")
     val nextPageToken: String? = null,
 )
+
+interface PageableResult<T> {
+    val items: List<T>
+    val page: PageInfo?
+    fun withItems(items: List<T>, page: PageInfo?): PageableResult<T>
+}
