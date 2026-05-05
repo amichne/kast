@@ -37,6 +37,7 @@ import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
 import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 import io.github.amichne.kast.api.client.KastConfig
+import io.github.amichne.kast.api.client.defaultStandaloneRuntimeLibsDirectory
 import io.github.amichne.kast.api.client.kastConfigHome
 import io.github.amichne.kast.cli.options.DaemonStartOptions
 import io.github.amichne.kast.cli.results.DaemonStopResult
@@ -68,6 +69,7 @@ internal class CliService(
     private val installSkillService: InstallSkillService = InstallSkillService(),
     private val installCopilotExtensionService: InstallCopilotExtensionService = InstallCopilotExtensionService(),
     private val configLoader: (Path) -> KastConfig = KastConfig::load,
+    private val envLookup: (String) -> String? = System::getenv,
 ) {
     private val rpcClient = KastRpcClient(json)
     private val runtimeManager = WorkspaceRuntimeManager(rpcClient)
@@ -288,10 +290,13 @@ internal class CliService(
             ?: config.backends.standalone.runtimeLibsDir
                 ?.takeIf(String::isNotBlank)
                 ?.let { Path.of(it).toAbsolutePath().normalize() }
+            ?: defaultStandaloneRuntimeLibsDirectory(envLookup)
+                ?.takeIf { Files.isRegularFile(it.resolve("classpath.txt")) }
             ?: throw CliFailure(
                 code = "DAEMON_START_ERROR",
                 message = "Cannot locate backend runtime-libs. " +
-                    "Set backends.standalone.runtimeLibsDir in `kast config init` output or pass --runtime-libs-dir.",
+                    "Set KAST_HOME to a self-contained install root, " +
+                    "set backends.standalone.runtimeLibsDir in `kast config init` output, or pass --runtime-libs-dir.",
             )
 
         val classpathFile = runtimeLibsDir.resolve("classpath.txt")
@@ -339,7 +344,7 @@ internal class CliService(
     }
 
     fun configInit(): CliOutput {
-        val configFile = kastConfigHome().resolve("config.toml")
+        val configFile = kastConfigHome(envLookup).resolve("config.toml")
         Files.createDirectories(configFile.parent)
         if (!Files.exists(configFile)) {
             Files.writeString(configFile, defaultConfigTemplate())
@@ -447,6 +452,8 @@ private fun defaultConfigTemplate(): String = """
     # [backends.standalone]
     # enabled = true
     # runtimeLibsDir = "/absolute/path/to/runtime-libs"
+    # When KAST_HOME is set, daemon start also checks:
+    # ${'$'}KAST_HOME/install/backends/current/runtime-libs
 
     # [backends.intellij]
     # enabled = true

@@ -41,10 +41,11 @@ Or pull the CLI and the backend together:
 ./kast.sh install --components=cli,backend --non-interactive
 ```
 
-After install, run `kast config init` and point
+When installed with `KAST_HOME`, `kast daemon start` derives standalone
+runtime libraries from `$KAST_HOME/install/backends/current/runtime-libs`.
+Without `KAST_HOME`, run `kast config init` and point
 `backends.standalone.runtimeLibsDir` at the installed `runtime-libs`
-directory. For one-off runs, pass `--runtime-libs-dir` to
-`kast daemon start`.
+directory, or pass `--runtime-libs-dir` to `kast daemon start`.
 
 How a session unfolds:
 

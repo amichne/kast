@@ -121,7 +121,6 @@ html = [
 
 pending_tools = {}
 turn_counter = 0
-current_interaction: str | None = None
 
 for ev in events:
     etype = ev.get("type", "")
@@ -159,7 +158,10 @@ if [[ ! -f "${PATH_STATE_FILE}" ]]; then
     exit 0
 fi
 
-mapfile -t CHANGED_FILES < "${PATH_STATE_FILE}"
+CHANGED_FILES=()
+while IFS= read -r changed_file || [[ -n "$changed_file" ]]; do
+    CHANGED_FILES+=("$changed_file")
+done < "${PATH_STATE_FILE}"
 rm -f "${PATH_STATE_FILE}"
 
 if [[ "${#CHANGED_FILES[@]}" -eq 0 ]]; then

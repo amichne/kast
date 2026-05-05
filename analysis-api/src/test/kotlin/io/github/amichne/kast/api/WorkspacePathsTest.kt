@@ -32,6 +32,14 @@ class WorkspacePathsTest {
         }
 
         @Test
+        fun `falls back to config directory under KAST_HOME when KAST_CONFIG_HOME is absent`() {
+            val kastHome = tempDir.resolve("kast-home")
+            val env = mapOf("KAST_HOME" to kastHome.toString())
+            val result = kastConfigHome(env::get)
+            assertEquals(kastHome.resolve("config").toAbsolutePath().normalize(), result)
+        }
+
+        @Test
         fun `falls back to home dot config kast when both env vars are absent`() {
             val env = emptyMap<String, String>()
             val result = kastConfigHome(env::get)
@@ -50,6 +58,64 @@ class WorkspacePathsTest {
             )
             val result = kastConfigHome(env::get)
             assertEquals(configHome.toAbsolutePath().normalize(), result)
+        }
+
+        @Test
+        fun `KAST_CONFIG_HOME takes priority over KAST_HOME`() {
+            val configHome = tempDir.resolve("kast-specific")
+            val env = mapOf(
+                "KAST_CONFIG_HOME" to configHome.toString(),
+                "KAST_HOME" to tempDir.resolve("kast-home").toString(),
+            )
+            val result = kastConfigHome(env::get)
+            assertEquals(configHome.toAbsolutePath().normalize(), result)
+        }
+    }
+
+    @Nested
+    inner class KastHomeLayoutTest {
+        @Test
+        fun `install root resolves under KAST_HOME unless explicitly overridden`() {
+            val kastHome = tempDir.resolve("kast-home")
+            val env = mapOf("KAST_HOME" to kastHome.toString())
+
+            assertEquals(
+                kastHome.resolve("install").toAbsolutePath().normalize(),
+                defaultInstallRoot(env::get),
+            )
+        }
+
+        @Test
+        fun `bin directory resolves under KAST_HOME unless explicitly overridden`() {
+            val kastHome = tempDir.resolve("kast-home")
+            val env = mapOf("KAST_HOME" to kastHome.toString())
+
+            assertEquals(
+                kastHome.resolve("bin").toAbsolutePath().normalize(),
+                defaultBinDirectory(env::get),
+            )
+        }
+
+        @Test
+        fun `standalone runtime libs resolve from installed backend under KAST_HOME`() {
+            val kastHome = tempDir.resolve("kast-home")
+            val env = mapOf("KAST_HOME" to kastHome.toString())
+
+            assertEquals(
+                kastHome.resolve("install/backends/current/runtime-libs").toAbsolutePath().normalize(),
+                defaultStandaloneRuntimeLibsDirectory(env::get),
+            )
+        }
+
+        @Test
+        fun `standalone runtime libs resolve from explicit install root`() {
+            val installRoot = tempDir.resolve("install-root")
+            val env = mapOf("KAST_INSTALL_ROOT" to installRoot.toString())
+
+            assertEquals(
+                installRoot.resolve("backends/current/runtime-libs").toAbsolutePath().normalize(),
+                defaultStandaloneRuntimeLibsDirectory(env::get),
+            )
         }
     }
 
