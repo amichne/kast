@@ -4,8 +4,19 @@ import io.github.amichne.kast.api.contract.*
 import io.github.amichne.kast.api.contract.query.*
 import io.github.amichne.kast.api.protocol.*
 
+/**
+ * Parsed query contract for requests anchored at a validated source position.
+ */
 interface PositionQuery { val position: ParsedFilePosition }
+
+/**
+ * Parsed query contract for requests whose result count is bounded by a positive limit.
+ */
 interface BoundedQuery { val maxResults: PositiveInt }
+
+/**
+ * Parsed query contract for traversal requests whose depth is zero or greater.
+ */
 interface DepthBoundedQuery { val depth: NonNegativeInt }
 
 /**

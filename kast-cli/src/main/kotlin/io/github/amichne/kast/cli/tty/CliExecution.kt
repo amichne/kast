@@ -292,7 +292,7 @@ internal class DefaultCliCommandExecutor(
             )
         val result = dispatcher(command)
         return CliExecutionResult(
-            output = CliOutput.JsonValue(result.payload as Any),
+            output = CliOutput.JsonValue(checkNotNull(result.payload)),
             daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
         )
     }
