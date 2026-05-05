@@ -56,6 +56,8 @@ that matches what you're seeing.
 
     - Check the install root is on `PATH`:
       `echo $PATH | tr ':' '\n' | grep kast`
+    - If you installed with an isolated root, source its env file:
+      `source "$KAST_HOME/config/env"`
     - Point `KAST_CLI_PATH` at the binary:
       `export KAST_CLI_PATH=/absolute/path/to/kast`
 

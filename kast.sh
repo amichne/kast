@@ -1079,7 +1079,7 @@ _install_mode_select() {
 
 _install_config_write() {
   local install_root="$1" bin_dir="$2" runtime_libs="${3:-}"
-  local config_dir="${HOME}/.config/kast"
+  local config_dir; config_dir="$(_install_config_dir)"
   local config_file="${config_dir}/env"
   mkdir -p "$config_dir"
 
@@ -1090,9 +1090,7 @@ _install_config_write() {
       if [[ "$cfg_line" == "$KAST_CONFIG_ENV_START_MARKER" ]]; then
         in_block="true"
         printf '%s\n' "$KAST_CONFIG_ENV_START_MARKER"
-        printf 'export KAST_INSTALL_ROOT="%s"\n' "$install_root"
-        printf 'export KAST_BIN_DIR="%s"\n' "$bin_dir"
-        [[ -n "$runtime_libs" ]] && printf 'export KAST_STANDALONE_RUNTIME_LIBS="%s"\n' "$runtime_libs"
+        _install_print_config_env "$config_dir" "$install_root" "$bin_dir" "$runtime_libs"
         printf '%s\n' "$KAST_CONFIG_ENV_END_MARKER"
         continue
       fi
@@ -1108,9 +1106,7 @@ _install_config_write() {
     {
       printf '# Kast configuration — managed by kast installer (do not edit markers)\n'
       printf '%s\n' "$KAST_CONFIG_ENV_START_MARKER"
-      printf 'export KAST_INSTALL_ROOT="%s"\n' "$install_root"
-      printf 'export KAST_BIN_DIR="%s"\n' "$bin_dir"
-      [[ -n "$runtime_libs" ]] && printf 'export KAST_STANDALONE_RUNTIME_LIBS="%s"\n' "$runtime_libs"
+      _install_print_config_env "$config_dir" "$install_root" "$bin_dir" "$runtime_libs"
       printf '%s\n' "$KAST_CONFIG_ENV_END_MARKER"
     } > "$config_file"
     log_success "Created ${config_file}"
@@ -1143,6 +1139,28 @@ ${toml_entry}" "$toml_file" > "$tmp_toml"
       log_success "Created ${toml_file}"
     fi
   fi
+  return 0
+}
+
+_install_config_dir() {
+  if [[ -n "${KAST_CONFIG_HOME:-}" ]]; then
+    printf '%s\n' "${KAST_CONFIG_HOME%/}"
+  elif [[ -n "${KAST_HOME:-}" ]]; then
+    printf '%s/config\n' "${KAST_HOME%/}"
+  else
+    printf '%s/.config/kast\n' "$HOME"
+  fi
+}
+
+_install_print_config_env() {
+  local config_dir="$1" install_root="$2" bin_dir="$3" runtime_libs="${4:-}"
+  [[ -n "${KAST_HOME:-}" ]] && printf 'export KAST_HOME="%s"\n' "${KAST_HOME%/}"
+  printf 'export KAST_CONFIG_HOME="%s"\n' "$config_dir"
+  printf 'export KAST_INSTALL_ROOT="%s"\n' "$install_root"
+  printf 'export KAST_BIN_DIR="%s"\n' "$bin_dir"
+  printf 'export KAST_CLI_PATH="%s/kast"\n' "$bin_dir"
+  [[ -n "$runtime_libs" ]] && printf 'export KAST_STANDALONE_RUNTIME_LIBS="%s"\n' "$runtime_libs"
+  return 0
 }
 
 _install_config_source_in_rc() {
@@ -1150,13 +1168,30 @@ _install_config_source_in_rc() {
   [[ -n "$rc_file" ]] || return 0
   mkdir -p "$(dirname -- "$rc_file")"
   touch "$rc_file"
+  local config_file; config_file="$(_install_config_dir)/env"
   if grep -Fq "$KAST_ENV_SOURCE_START_MARKER" "$rc_file"; then
-    log_step "~/.config/kast/env already sourced from ${rc_file}"
+    local tmp_rc in_block="false"; tmp_rc="$(mktemp)"
+    while IFS= read -r rc_line || [[ -n "$rc_line" ]]; do
+      if [[ "$rc_line" == "$KAST_ENV_SOURCE_START_MARKER" ]]; then
+        in_block="true"
+        printf '%s\n' "$KAST_ENV_SOURCE_START_MARKER"
+        printf '[[ -f "%s" ]] && source "%s"\n' "$config_file" "$config_file"
+        printf '%s\n' "$KAST_ENV_SOURCE_END_MARKER"
+        continue
+      fi
+      if [[ "$in_block" == "true" ]]; then
+        [[ "$rc_line" == "$KAST_ENV_SOURCE_END_MARKER" ]] && in_block="false"
+        continue
+      fi
+      printf '%s\n' "$rc_line"
+    done < "$rc_file" > "$tmp_rc"
+    cat "$tmp_rc" > "$rc_file"; rm -f "$tmp_rc"
+    log_step "Updated kast env source in ${rc_file}"
     return
   fi
   {
     printf '\n%s\n' "$KAST_ENV_SOURCE_START_MARKER"
-    printf '[[ -f "$HOME/.config/kast/env" ]] && source "$HOME/.config/kast/env"\n'
+    printf '[[ -f "%s" ]] && source "%s"\n' "$config_file" "$config_file"
     printf '%s\n' "$KAST_ENV_SOURCE_END_MARKER"
   } >> "$rc_file"
   log_success "Added kast env source to ${rc_file}"
@@ -1267,13 +1302,14 @@ _install_skill_phase() {
 _install_summary_phase() {
   local install_root="$1" bin_dir="$2" install_mode="${3:-minimal}"
   local intellij_action="${4:-skip}" install_standalone="${5:-false}"
+  local config_file; config_file="$(_install_config_dir)/env"
 
   printf '\n' >&2
   log_section "Installation complete"
   printf '\n  %s\n'  "$(colorize '1;36' 'Kast install root:')" >&2
   printf '  %s\n\n' "  ${install_root}" >&2
   printf '  %s  %s\n' "$(colorize '1;32' 'v')" "CLI binary:  ${bin_dir}/kast" >&2
-  printf '  %s  %s\n' "$(colorize '1;32' 'v')" "Config:      ${HOME}/.config/kast/env" >&2
+  printf '  %s  %s\n' "$(colorize '1;32' 'v')" "Config:      ${config_file}" >&2
   if [[ "$intellij_action" == "push" || "$intellij_action" == "zip" ]]; then
     printf '  %s  %s\n' "$(colorize '1;32' 'v')" "IntelliJ plugin installed" >&2
   fi
@@ -1282,7 +1318,7 @@ _install_summary_phase() {
   fi
   printf '\n' >&2
   printf '  %s\n' "$(colorize '1;33' 'Next steps:')" >&2
-  printf '  %s\n' "  Open a new shell (or: source ~/.config/kast/env)" >&2
+  printf '  %s\n' "  Open a new shell (or: source ${config_file})" >&2
   printf '  %s\n' "  kast --help" >&2
   if [[ "$intellij_action" == "push" ]]; then
     printf '  %s\n' "  Restart IntelliJ IDEA to activate the plugin" >&2
@@ -1342,8 +1378,20 @@ USAGE
 
   release_repo="$(_install_resolve_release_repo)"
   platform_id="$(_install_detect_platform_id)"
-  install_root="${KAST_INSTALL_ROOT:-${HOME}/.local/share/kast}"
-  bin_dir="${KAST_BIN_DIR:-${HOME}/.local/bin}"
+  if [[ -n "${KAST_INSTALL_ROOT:-}" ]]; then
+    install_root="${KAST_INSTALL_ROOT%/}"
+  elif [[ -n "${KAST_HOME:-}" ]]; then
+    install_root="${KAST_HOME%/}/install"
+  else
+    install_root="${HOME}/.local/share/kast"
+  fi
+  if [[ -n "${KAST_BIN_DIR:-}" ]]; then
+    bin_dir="${KAST_BIN_DIR%/}"
+  elif [[ -n "${KAST_HOME:-}" ]]; then
+    bin_dir="${KAST_HOME%/}/bin"
+  else
+    bin_dir="${HOME}/.local/bin"
+  fi
   shell_name="$(_install_resolve_shell_name)"
 
   # Phase 1: Detect environment
@@ -1576,7 +1624,7 @@ USAGE
     log_section "Install summary"
     log "Install root:  ${install_root}"
     log "Binary:        ${bin_dir}/kast"
-    log "Config:        ${HOME}/.config/kast/env"
+    log "Config:        $(_install_config_dir)/env"
     log "Components:    ${components}"
     [[ -n "${rc_file:-}" ]] && log "Shell RC:      ${rc_file}"
     log_section "Ready"

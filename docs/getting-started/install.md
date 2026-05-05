@@ -53,7 +53,8 @@ kast install copilot-extension
        (CLI plus standalone backend). If IntelliJ is running, the wizard
        offers to push the plugin straight in.
     3. **Configure.** Writes `~/.config/kast/env` with
-       `KAST_INSTALL_ROOT` and `KAST_BIN_DIR`. Your shell RC gets one
+       `KAST_HOME`, `KAST_CONFIG_HOME`, `KAST_INSTALL_ROOT`, `KAST_BIN_DIR`,
+       and `KAST_CLI_PATH`. Your shell RC gets one
        idempotent source line — no per-shell sprawl.
     4. **Install the CLI.** Downloads the native launcher.
     5. **Shell completions.** Bash or Zsh, your call.
@@ -130,11 +131,23 @@ explicitly.
 
     ```bash title="~/.config/kast/env"
     # >>> kast config >>>
+    export KAST_CONFIG_HOME="~/.config/kast"
     export KAST_INSTALL_ROOT="~/.local/share/kast"
     export KAST_BIN_DIR="~/.local/bin"
+    export KAST_CLI_PATH="~/.local/bin/kast"
     # export KAST_STANDALONE_RUNTIME_LIBS="..."  (present after full install)
     # <<< kast config <<<
     ```
+
+    For a fully isolated install, set a single root before installing:
+
+    ```bash title="Self-contained install root"
+    KAST_HOME="$HOME/.local/share/kast-dev" ./kast.sh install --components=cli,backend --non-interactive
+    ```
+
+    With `KAST_HOME`, Kast derives config from `$KAST_HOME/config`, the launcher
+    from `$KAST_HOME/bin/kast`, installed archives from `$KAST_HOME/install`, and
+    standalone runtime libraries from `$KAST_HOME/install/backends/current/runtime-libs`.
 
     Re-run the installer any time. The block is updated in place, not
     appended.
