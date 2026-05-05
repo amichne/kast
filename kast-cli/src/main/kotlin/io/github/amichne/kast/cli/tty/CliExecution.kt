@@ -19,6 +19,7 @@ import io.github.amichne.kast.indexstore.ModuleDepthMetric
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import java.nio.file.Path
+import kotlin.reflect.KClass
 
 internal sealed interface CliOutput {
     data class JsonValue(val value: Any) : CliOutput
@@ -58,6 +59,73 @@ internal class DefaultCliCommandExecutor(
     private val cliService: CliService,
     private val json: Json = defaultCliJson(),
 ) : CliCommandExecutor {
+    private val backendDispatchers: Map<KClass<out CliCommand.BackendQuery<*>>, suspend (CliCommand.BackendQuery<*>) -> RuntimeAttachedResult<*>> = mapOf(
+        CliCommand.WorkspaceRefresh::class to { command ->
+            command as CliCommand.WorkspaceRefresh
+            cliService.workspaceRefresh(command.options, command.query)
+        },
+        CliCommand.ResolveSymbol::class to { command ->
+            command as CliCommand.ResolveSymbol
+            cliService.resolveSymbol(command.options, command.query)
+        },
+        CliCommand.FindReferences::class to { command ->
+            command as CliCommand.FindReferences
+            cliService.findReferences(command.options, command.query)
+        },
+        CliCommand.CallHierarchy::class to { command ->
+            command as CliCommand.CallHierarchy
+            cliService.callHierarchy(command.options, command.query)
+        },
+        CliCommand.TypeHierarchy::class to { command ->
+            command as CliCommand.TypeHierarchy
+            cliService.typeHierarchy(command.options, command.query)
+        },
+        CliCommand.SemanticInsertionPoint::class to { command ->
+            command as CliCommand.SemanticInsertionPoint
+            cliService.semanticInsertionPoint(command.options, command.query)
+        },
+        CliCommand.Diagnostics::class to { command ->
+            command as CliCommand.Diagnostics
+            cliService.diagnostics(command.options, command.query)
+        },
+        CliCommand.FileOutline::class to { command ->
+            command as CliCommand.FileOutline
+            cliService.fileOutline(command.options, command.query)
+        },
+        CliCommand.WorkspaceSymbol::class to { command ->
+            command as CliCommand.WorkspaceSymbol
+            cliService.workspaceSymbolSearch(command.options, command.query)
+        },
+        CliCommand.WorkspaceFiles::class to { command ->
+            command as CliCommand.WorkspaceFiles
+            cliService.workspaceFiles(command.options, command.query)
+        },
+        CliCommand.Implementations::class to { command ->
+            command as CliCommand.Implementations
+            cliService.implementations(command.options, command.query)
+        },
+        CliCommand.CodeActions::class to { command ->
+            command as CliCommand.CodeActions
+            cliService.codeActions(command.options, command.query)
+        },
+        CliCommand.Completions::class to { command ->
+            command as CliCommand.Completions
+            cliService.completions(command.options, command.query)
+        },
+        CliCommand.Rename::class to { command ->
+            command as CliCommand.Rename
+            cliService.rename(command.options, command.query)
+        },
+        CliCommand.ImportOptimize::class to { command ->
+            command as CliCommand.ImportOptimize
+            cliService.optimizeImports(command.options, command.query)
+        },
+        CliCommand.ApplyEdits::class to { command ->
+            command as CliCommand.ApplyEdits
+            cliService.applyEdits(command.options, command.query)
+        },
+    )
+
     override suspend fun execute(command: CliCommand): CliExecutionResult {
         return when (command) {
             is CliCommand.Help -> CliExecutionResult(
@@ -88,13 +156,7 @@ internal class DefaultCliCommandExecutor(
                 )
             }
 
-            is CliCommand.WorkspaceRefresh -> {
-                val result = cliService.workspaceRefresh(command.options, command.query)
-                CliExecutionResult(
-                    output = CliOutput.JsonValue(result.payload),
-                    daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
-                )
-            }
+            is CliCommand.BackendQuery<*> -> executeBackendQuery(command)
 
             is CliCommand.WorkspaceStop -> {
                 val result = cliService.workspaceStop(command.options)
@@ -106,126 +168,6 @@ internal class DefaultCliCommandExecutor(
 
             is CliCommand.Capabilities -> {
                 val result = cliService.capabilities(command.options)
-                CliExecutionResult(
-                    output = CliOutput.JsonValue(result.payload),
-                    daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
-                )
-            }
-
-            is CliCommand.ResolveSymbol -> {
-                val result = cliService.resolveSymbol(command.options, command.query)
-                CliExecutionResult(
-                    output = CliOutput.JsonValue(result.payload),
-                    daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
-                )
-            }
-
-            is CliCommand.FindReferences -> {
-                val result = cliService.findReferences(command.options, command.query)
-                CliExecutionResult(
-                    output = CliOutput.JsonValue(result.payload),
-                    daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
-                )
-            }
-
-            is CliCommand.CallHierarchy -> {
-                val result = cliService.callHierarchy(command.options, command.query)
-                CliExecutionResult(
-                    output = CliOutput.JsonValue(result.payload),
-                    daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
-                )
-            }
-
-            is CliCommand.TypeHierarchy -> {
-                val result = cliService.typeHierarchy(command.options, command.query)
-                CliExecutionResult(
-                    output = CliOutput.JsonValue(result.payload),
-                    daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
-                )
-            }
-
-            is CliCommand.WorkspaceFiles -> {
-                val result = cliService.workspaceFiles(command.options, command.query)
-                CliExecutionResult(
-                    output = CliOutput.JsonValue(result.payload),
-                    daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
-                )
-            }
-
-            is CliCommand.Implementations -> {
-                val result = cliService.implementations(command.options, command.query)
-                CliExecutionResult(
-                    output = CliOutput.JsonValue(result.payload),
-                    daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
-                )
-            }
-
-            is CliCommand.CodeActions -> {
-                val result = cliService.codeActions(command.options, command.query)
-                CliExecutionResult(
-                    output = CliOutput.JsonValue(result.payload),
-                    daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
-                )
-            }
-
-            is CliCommand.Completions -> {
-                val result = cliService.completions(command.options, command.query)
-                CliExecutionResult(
-                    output = CliOutput.JsonValue(result.payload),
-                    daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
-                )
-            }
-
-            is CliCommand.SemanticInsertionPoint -> {
-                val result = cliService.semanticInsertionPoint(command.options, command.query)
-                CliExecutionResult(
-                    output = CliOutput.JsonValue(result.payload),
-                    daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
-                )
-            }
-
-            is CliCommand.Diagnostics -> {
-                val result = cliService.diagnostics(command.options, command.query)
-                CliExecutionResult(
-                    output = CliOutput.JsonValue(result.payload),
-                    daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
-                )
-            }
-
-            is CliCommand.FileOutline -> {
-                val result = cliService.fileOutline(command.options, command.query)
-                CliExecutionResult(
-                    output = CliOutput.JsonValue(result.payload),
-                    daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
-                )
-            }
-
-            is CliCommand.WorkspaceSymbol -> {
-                val result = cliService.workspaceSymbolSearch(command.options, command.query)
-                CliExecutionResult(
-                    output = CliOutput.JsonValue(result.payload),
-                    daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
-                )
-            }
-
-            is CliCommand.Rename -> {
-                val result = cliService.rename(command.options, command.query)
-                CliExecutionResult(
-                    output = CliOutput.JsonValue(result.payload),
-                    daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
-                )
-            }
-
-            is CliCommand.ImportOptimize -> {
-                val result = cliService.optimizeImports(command.options, command.query)
-                CliExecutionResult(
-                    output = CliOutput.JsonValue(result.payload),
-                    daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
-                )
-            }
-
-            is CliCommand.ApplyEdits -> {
-                val result = cliService.applyEdits(command.options, command.query)
                 CliExecutionResult(
                     output = CliOutput.JsonValue(result.payload),
                     daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
@@ -340,5 +282,18 @@ internal class DefaultCliCommandExecutor(
                 CliExecutionResult(output = CliOutput.Text(encoded))
             }
         }
+    }
+
+    private suspend fun executeBackendQuery(command: CliCommand.BackendQuery<*>): CliExecutionResult {
+        val dispatcher = backendDispatchers[command::class]
+            ?: throw CliFailure(
+                code = "CLI_USAGE",
+                message = "Unsupported backend query command: ${command::class.simpleName}",
+            )
+        val result = dispatcher(command)
+        return CliExecutionResult(
+            output = CliOutput.JsonValue(result.payload as Any),
+            daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
+        )
     }
 }

@@ -6,6 +6,7 @@ import io.github.amichne.kast.api.contract.RuntimeState
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
 import io.github.amichne.kast.api.client.defaultDescriptorDirectory
 import io.github.amichne.kast.cli.options.RuntimeCommandOptions
+import io.github.amichne.kast.cli.options.BackendName
 import io.github.amichne.kast.cli.results.DaemonStopResult
 import io.github.amichne.kast.cli.results.WorkspaceEnsureResult
 import io.github.amichne.kast.cli.results.WorkspaceStatusResult
@@ -41,7 +42,7 @@ internal class WorkspaceRuntimeManager(
             options = options,
             pruneStaleDescriptors = true,
         )
-        val backendFilter = options.backendName
+        val backendFilter = options.backendName?.cliName
         val candidate = if (backendFilter != null) {
             inspection.candidates.firstOrNull { it.descriptor.backendName == backendFilter }
         } else {
@@ -75,7 +76,7 @@ internal class WorkspaceRuntimeManager(
             )
         }
 
-        if (options.backendName == "intellij") {
+        if (options.backendName == BackendName.INTELLIJ) {
             throw CliFailure(
                 code = "INTELLIJ_NOT_RUNNING",
                 message = "No IntelliJ backend is available for ${options.workspaceRoot}. " +
@@ -92,8 +93,8 @@ internal class WorkspaceRuntimeManager(
                     workspaceRoot = options.workspaceRoot.toString(),
                     started = false,
                     selected = waitForServable(
-                        options = options.copy(backendName = "standalone"),
-                        backendName = "standalone",
+                        options = options.copy(backendName = BackendName.STANDALONE),
+                        backendName = BackendName.STANDALONE,
                         acceptIndexing = !requireReady,
                     ),
                 )
@@ -109,10 +110,10 @@ internal class WorkspaceRuntimeManager(
 
     private suspend fun waitForServable(
         options: RuntimeCommandOptions,
-        backendName: String,
+        backendName: BackendName,
         acceptIndexing: Boolean,
     ): RuntimeCandidateStatus {
-        val deadline = System.nanoTime() + options.waitTimeoutMillis * 1_000_000
+        val deadline = System.nanoTime() + options.waitTimeoutMillis.value * 1_000_000
         while (System.nanoTime() < deadline) {
             val inspection = inspectWorkspace(options, pruneStaleDescriptors = true)
             selectServableCandidate(
@@ -127,7 +128,7 @@ internal class WorkspaceRuntimeManager(
         val targetState = if (acceptIndexing) "servable" else "ready"
         throw CliFailure(
             code = "RUNTIME_TIMEOUT",
-            message = "Timed out waiting for $backendName runtime to become $targetState for ${options.workspaceRoot}",
+            message = "Timed out waiting for ${backendName.cliName} runtime to become $targetState for ${options.workspaceRoot}",
         )
     }
 
@@ -137,7 +138,7 @@ internal class WorkspaceRuntimeManager(
     ): WorkspaceInspection {
         val descriptorDirectory = defaultDescriptorDirectory(envLookup)
         val registry = DescriptorRegistry(descriptorDirectory.resolve("daemons.json"))
-        val registeredDescriptors = registry.findByWorkspaceRoot(options.workspaceRoot)
+        val registeredDescriptors = registry.findByWorkspaceRoot(options.workspaceRoot.toJavaPath())
         val candidates = registeredDescriptors.map { registered ->
             inspectDescriptor(registry, registered, pruneStaleDescriptors)
         }
@@ -148,7 +149,7 @@ internal class WorkspaceRuntimeManager(
                 compareByDescending(RuntimeCandidateStatus::ready)
                     .thenBy(RuntimeCandidateStatus::descriptorPath),
             ),
-            selected = selectStatusCandidate(candidates, options.backendName),
+            selected = selectStatusCandidate(candidates, options.backendName?.cliName),
         )
     }
 
@@ -256,10 +257,10 @@ internal fun RuntimeStatusResponse?.isReady(): Boolean = this != null &&
 
 internal fun selectServableCandidate(
     candidates: List<RuntimeCandidateStatus>,
-    backendName: String?,
+    backendName: BackendName?,
     acceptIndexing: Boolean,
 ): RuntimeCandidateStatus? = candidates
-    .filter { candidate -> backendName == null || candidate.descriptor.backendName == backendName }
+    .filter { candidate -> backendName == null || candidate.descriptor.backendName == backendName.cliName }
     .filter { candidate ->
         if (acceptIndexing) {
             candidate.runtimeStatus.isServable()

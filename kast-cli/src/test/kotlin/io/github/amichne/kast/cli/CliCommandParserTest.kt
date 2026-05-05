@@ -4,6 +4,7 @@ import io.github.amichne.kast.api.contract.query.RefreshQuery
 import io.github.amichne.kast.api.contract.SemanticInsertionTarget
 import io.github.amichne.kast.api.contract.SymbolKind
 import io.github.amichne.kast.api.contract.TypeHierarchyDirection
+import io.github.amichne.kast.cli.options.BackendName
 import io.github.amichne.kast.cli.tty.CliCommand
 import io.github.amichne.kast.cli.tty.CliCommandParser
 import io.github.amichne.kast.cli.tty.CliCompletionShell
@@ -78,7 +79,7 @@ class CliCommandParserTest {
 
         assertTrue(command is CliCommand.CallHierarchy)
         val hierarchyCommand = command as CliCommand.CallHierarchy
-        assertEquals(tempDir, hierarchyCommand.options.workspaceRoot)
+        assertEquals(tempDir, hierarchyCommand.options.workspaceRoot.toJavaPath())
         assertEquals(io.github.amichne.kast.api.contract.CallDirection.INCOMING, hierarchyCommand.query.direction)
         assertEquals(0, hierarchyCommand.query.depth)
         assertEquals(32, hierarchyCommand.query.maxTotalCalls)
@@ -99,7 +100,7 @@ class CliCommandParserTest {
 
         assertTrue(command is CliCommand.WorkspaceRefresh)
         val refreshCommand = command as CliCommand.WorkspaceRefresh
-        assertEquals(tempDir, refreshCommand.options.workspaceRoot)
+        assertEquals(tempDir, refreshCommand.options.workspaceRoot.toJavaPath())
         assertEquals(
             RefreshQuery(
                 filePaths = listOf(
@@ -160,7 +161,7 @@ class CliCommandParserTest {
 
         assertTrue(command is CliCommand.TypeHierarchy)
         val hierarchyCommand = command as CliCommand.TypeHierarchy
-        assertEquals(tempDir, hierarchyCommand.options.workspaceRoot)
+        assertEquals(tempDir, hierarchyCommand.options.workspaceRoot.toJavaPath())
         assertEquals(TypeHierarchyDirection.BOTH, hierarchyCommand.query.direction)
         assertEquals(2, hierarchyCommand.query.depth)
         assertEquals(24, hierarchyCommand.query.maxResults)
@@ -180,7 +181,7 @@ class CliCommandParserTest {
 
         assertTrue(command is CliCommand.SemanticInsertionPoint)
         val insertionCommand = command as CliCommand.SemanticInsertionPoint
-        assertEquals(tempDir, insertionCommand.options.workspaceRoot)
+        assertEquals(tempDir, insertionCommand.options.workspaceRoot.toJavaPath())
         assertEquals(SemanticInsertionTarget.AFTER_IMPORTS, insertionCommand.query.target)
     }
 
@@ -196,7 +197,7 @@ class CliCommandParserTest {
 
         assertTrue(command is CliCommand.ImportOptimize)
         val optimizeCommand = command as CliCommand.ImportOptimize
-        assertEquals(tempDir, optimizeCommand.options.workspaceRoot)
+        assertEquals(tempDir, optimizeCommand.options.workspaceRoot.toJavaPath())
         assertEquals(
             listOf(
                 tempDir.resolve("A.kt").toString(),
@@ -330,7 +331,7 @@ class CliCommandParserTest {
 
         assertTrue(command is CliCommand.WorkspaceStatus)
         val statusCommand = command as CliCommand.WorkspaceStatus
-        assertEquals("intellij", statusCommand.options.backendName)
+        assertEquals(BackendName.INTELLIJ, statusCommand.options.backendName)
     }
 
     @Test
@@ -378,7 +379,7 @@ class CliCommandParserTest {
 
         assertTrue(command is CliCommand.WorkspaceStop)
         val stopCommand = command as CliCommand.WorkspaceStop
-        assertEquals(tempDir, stopCommand.options.workspaceRoot)
+        assertEquals(tempDir, stopCommand.options.workspaceRoot.toJavaPath())
     }
 
     @Test
@@ -462,7 +463,7 @@ class CliCommandParserTest {
 
         assertTrue(command is CliCommand.FileOutline)
         val outlineCommand = command as CliCommand.FileOutline
-        assertEquals(tempDir, outlineCommand.options.workspaceRoot)
+        assertEquals(tempDir, outlineCommand.options.workspaceRoot.toJavaPath())
         assertEquals(tempDir.resolve("Sample.kt").toString(), outlineCommand.query.filePath)
     }
 
@@ -478,7 +479,7 @@ class CliCommandParserTest {
 
         assertTrue(command is CliCommand.WorkspaceSymbol)
         val symbolCommand = command as CliCommand.WorkspaceSymbol
-        assertEquals(tempDir, symbolCommand.options.workspaceRoot)
+        assertEquals(tempDir, symbolCommand.options.workspaceRoot.toJavaPath())
         assertEquals("MyClass", symbolCommand.query.pattern)
         assertEquals(false, symbolCommand.query.regex)
         assertEquals(100, symbolCommand.query.maxResults)

@@ -1,5 +1,7 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.api.contract.NormalizedPath
+import io.github.amichne.kast.api.contract.PositiveLong
 import io.github.amichne.kast.cli.options.RuntimeCommandOptions
 import io.github.amichne.kast.cli.options.SmokeOptions
 import io.github.amichne.kast.cli.tty.CliFailure
@@ -63,9 +65,9 @@ internal class SmokeCommandSupport(
         }
 
         val runtimeOptions = RuntimeCommandOptions(
-            workspaceRoot = options.workspaceRoot,
+            workspaceRoot = NormalizedPath.ofAbsolute(options.workspaceRoot),
             backendName = null,
-            waitTimeoutMillis = runtimeWaitTimeoutMillis,
+            waitTimeoutMillis = PositiveLong(runtimeWaitTimeoutMillis),
             acceptIndexing = true,
         )
 
