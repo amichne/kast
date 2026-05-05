@@ -146,6 +146,23 @@ class CliCommandParserTest {
     }
 
     @Test
+    fun `references parses usage site scope option`() {
+        val command = parser.parse(
+            arrayOf(
+                "references",
+                "--workspace-root=$tempDir",
+                "--file-path=$tempDir/Sample.kt",
+                "--offset=12",
+                "--include-usage-site-scope=true",
+            ),
+        )
+
+        assertTrue(command is CliCommand.FindReferences)
+        val referencesCommand = command as CliCommand.FindReferences
+        assertTrue(referencesCommand.query.includeUsageSiteScope)
+    }
+
+    @Test
     fun `type hierarchy parses from inline options`() {
         val command = parser.parse(
             arrayOf(
@@ -234,6 +251,40 @@ class CliCommandParserTest {
         assertEquals(":kast-cli:test", smokeCommand.options.sourceSetFilter)
         assertEquals("KastCli", smokeCommand.options.symbolFilter)
         assertEquals(SmokeOutputFormat.MARKDOWN, smokeCommand.options.format)
+    }
+
+    @Test
+    fun `gradle run parses task positional and extra args`() {
+        val command = parser.parse(
+            arrayOf(
+                "gradle",
+                "run",
+                ":kast-cli:test",
+                "--workspace-root=$tempDir",
+                "--args=--stacktrace,--info",
+            ),
+        )
+
+        assertTrue(command is CliCommand.GradleRun)
+        val gradleCommand = command as CliCommand.GradleRun
+        assertEquals(tempDir, gradleCommand.workspaceRoot)
+        assertEquals(":kast-cli:test", gradleCommand.task)
+        assertEquals(listOf("--stacktrace", "--info"), gradleCommand.extraArgs)
+    }
+
+    @Test
+    fun `gradle run parses task option`() {
+        val command = parser.parse(
+            arrayOf(
+                "gradle",
+                "run",
+                "--workspace-root=$tempDir",
+                "--task=:index-store:test",
+            ),
+        )
+
+        assertTrue(command is CliCommand.GradleRun)
+        assertEquals(":index-store:test", (command as CliCommand.GradleRun).task)
     }
 
     @Test

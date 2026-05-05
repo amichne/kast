@@ -74,6 +74,7 @@ internal class CliCommandParser(
         }
 
         val metadata = CliCommandCatalog.find(parsed.positionals)
+            ?: parsed.variableArityMetadata()
         if (metadata != null) {
             return parseKnownCommand(metadata, parsed)
         }
@@ -132,6 +133,7 @@ internal class CliCommandParser(
                 listOf("daemon", "start") -> CliCommand.DaemonStart(parsed.daemonStartOptions())
                 listOf("config", "init") -> CliCommand.ConfigInit
                 listOf("eval", "skill") -> CliCommand.EvalSkill(parsed.evalSkillOptions())
+                listOf("gradle", "run") -> parsed.gradleRunCommand()
                 listOf("metrics", "fan-in") -> CliCommand.Metrics(
                     subcommand = MetricsSubcommand.FAN_IN,
                     workspaceRoot = parsed.requireWorkspaceRootPath(),
@@ -326,14 +328,15 @@ internal data class ParsedArguments(
         requestFileKey = "request-file",
         json = json,
     ) {
-        ReferencesQuery(
-            position = FilePosition(
-                filePath = absoluteFilePath(requireOption("file-path")),
-                offset = requireInt("offset"),
-            ),
-            includeDeclaration = optionalBoolean("include-declaration", false),
-        )
-    }
+            ReferencesQuery(
+                position = FilePosition(
+                    filePath = absoluteFilePath(requireOption("file-path")),
+                    offset = requireInt("offset"),
+                ),
+                includeDeclaration = optionalBoolean("include-declaration", false),
+                includeUsageSiteScope = optionalBoolean("include-usage-site-scope", false),
+            )
+        }
 
     fun diagnosticsQuery(json: Json): DiagnosticsQuery = requestOrFile(
         serializer = DiagnosticsQuery.serializer(),
@@ -653,6 +656,31 @@ internal data class ParsedArguments(
         )
     }
 
+    fun gradleRunCommand(): CliCommand.GradleRun {
+        val task = positionals.getOrNull(2)
+            ?: options["task"]?.takeIf(String::isNotBlank)
+            ?: throw CliFailure(
+                code = "CLI_USAGE",
+                message = "`kast gradle run` requires a Gradle task name",
+            )
+        if (positionals.size > 3) {
+            throw CliFailure(
+                code = "CLI_USAGE",
+                message = "`kast gradle run` accepts one task positional; pass extra Gradle arguments with --args=a,b",
+            )
+        }
+        val extraArgs = options["args"]
+            ?.split(",")
+            ?.map(String::trim)
+            ?.filter(String::isNotEmpty)
+            .orEmpty()
+        return CliCommand.GradleRun(
+            workspaceRoot = requireWorkspaceRootPath(),
+            task = task,
+            extraArgs = extraArgs,
+        )
+    }
+
     private fun <T> requestOrFile(
         serializer: KSerializer<T>,
         requestFileKey: String,
@@ -734,6 +762,14 @@ internal data class ParsedArguments(
             ?: System.getProperty("user.dir", ".")
         return Path.of(raw).toAbsolutePath().normalize()
     }
+
+    fun variableArityMetadata(): CliCommandMetadata? =
+        if (positionals.size > 2) {
+            CliCommandCatalog.find(positionals.take(2))
+                ?.takeIf { metadata -> metadata.path == listOf("gradle", "run") }
+        } else {
+            null
+        }
 
     fun optionalInt(key: String): Int? = options[key]?.toIntOrNull()
 

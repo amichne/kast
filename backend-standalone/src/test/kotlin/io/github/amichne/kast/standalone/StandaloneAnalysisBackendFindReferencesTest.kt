@@ -89,6 +89,23 @@ class StandaloneAnalysisBackendFindReferencesTest {
                 listOf("fun useAgain(): String = greet(\"again\")", "fun use(): String = greet(\"kast\")"),
                 result.references.map { reference -> reference.preview },
             )
+            assertTrue(result.references.all { reference -> reference.usageSiteScope == null })
+
+            val scopedResult = backend.findReferences(
+                ReferencesQuery(
+                    position = FilePosition(
+                        filePath = firstUsageFile.toString(),
+                        offset = queryOffset,
+                    ),
+                    includeDeclaration = true,
+                    includeUsageSiteScope = true,
+                ),
+            )
+
+            assertEquals(
+                listOf("fun useAgain(): String = greet(\"again\")", "fun use(): String = greet(\"kast\")"),
+                scopedResult.references.map { reference -> reference.usageSiteScope?.sourceText },
+            )
         }
     }
 

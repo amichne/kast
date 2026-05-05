@@ -46,6 +46,12 @@ class KastPluginBackendContractTest {
             fun greet(name: String): String = "Hello, ${'$'}name"
         """
 
+        private const val sampleUsageSource = """
+            package demo
+
+            fun useGreeting(): String = greet("idea")
+        """
+
         private const val hierarchySource = """
             package demo.hierarchy
 
@@ -75,6 +81,8 @@ class KastPluginBackendContractTest {
     private val secondarySourceRootFixture: TestFixture<PsiDirectory> =
         secondaryModuleFixture.sourceRootFixture(isTestSource = true)
     private val sampleFileFixture: TestFixture<PsiFile> = mainSourceRootFixture.psiFileFixture("Sample.kt", sampleSource)
+    private val sampleUsageFileFixture: TestFixture<PsiFile> =
+        mainSourceRootFixture.psiFileFixture("SampleUsage.kt", sampleUsageSource)
     private val hierarchyFileFixture: TestFixture<PsiFile> = mainSourceRootFixture.psiFileFixture("Hierarchy.kt", hierarchySource)
     private val internalDeclarationFileFixture: TestFixture<PsiFile> =
         mainSourceRootFixture.psiFileFixture("InternalDeclaration.kt", internalDeclarationSource)
@@ -100,6 +108,7 @@ class KastPluginBackendContractTest {
         mainModuleFixture.get()
         secondaryModuleFixture.get()
         sampleFileFixture.get()
+        sampleUsageFileFixture.get()
         hierarchyFileFixture.get()
         waitUntilIndexesAreReady(project)
     }
@@ -174,6 +183,33 @@ class KastPluginBackendContractTest {
         val declarationScope = result.symbol.declarationScope
         assertNotNull(declarationScope)
         assertTrue(declarationScope?.sourceText.orEmpty().contains("fun greet"))
+    }
+
+    @Test
+    fun `find references includes usage site scope when requested`() = runBlocking {
+        ensureProjectReady()
+
+        val (workspaceRoot, filePath, offset) = readAction {
+            val usageFile = sampleUsageFileFixture.get()
+            Triple(
+                commonWorkspaceRoot(sampleFile.virtualFile.path, usageFile.virtualFile.path),
+                sampleFile.virtualFile.path,
+                sampleFile.text.indexOf("greet"),
+            )
+        }
+
+        val result = backend(workspaceRoot).findReferences(
+            ReferencesQuery(
+                position = FilePosition(filePath = filePath, offset = offset),
+                includeUsageSiteScope = true,
+            ),
+        )
+
+        val usageScope = result.references
+            .single { reference -> reference.preview.contains("greet(\"idea\")") }
+            .usageSiteScope
+        assertNotNull(usageScope)
+        assertTrue(usageScope?.sourceText.orEmpty().contains("fun useGreeting"))
     }
 
     @Test

@@ -295,6 +295,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
             |-----------|-------------|
             | `#!kotlin position: FilePosition` | File position identifying the symbol whose references to find. |
             | `#!kotlin includeDeclaration: Boolean` :material-information-outline:{ title="Default: false" } | When true, includes the symbol's own declaration in the results. |
+            | `#!kotlin includeUsageSiteScope: Boolean` :material-information-outline:{ title="Default: false" } | When true, includes the nearest enclosing declaration scope for each reference usage site. |
         === "Output: ReferencesResult"
 
             | Signature | Description |

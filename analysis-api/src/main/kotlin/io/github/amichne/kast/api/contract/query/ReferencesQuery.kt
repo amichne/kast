@@ -14,4 +14,9 @@ data class ReferencesQuery(
     val position: FilePosition,
     @DocField(description = "When true, includes the symbol's own declaration in the results.", defaultValue = "false")
     val includeDeclaration: Boolean = false,
+    @DocField(
+        description = "When true, includes the nearest enclosing declaration scope for each reference usage site.",
+        defaultValue = "false",
+    )
+    val includeUsageSiteScope: Boolean = false,
 )

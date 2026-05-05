@@ -134,6 +134,7 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
         } else {
             createSourceIndexIndexes(conn)
         }
+        removeIneligibleSourceIndexRows(conn)
     }
 
     private fun sourceIndexTablesAreCompatible(conn: Connection): Boolean =
@@ -387,12 +388,14 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
         updates: List<FileIndexUpdate>,
         manifest: Map<String, Long>,
     ) {
+        val eligibleUpdates = updates.filter { update -> SourceIndexFilePolicy.isEligible(update.path) }
+        val eligibleManifest = manifest.filterKeys(SourceIndexFilePolicy::isEligible)
         synchronized(writeLock) {
             val conn = connection()
             conn.autoCommit = false
             try {
-                internPathsInTransaction(conn, updates.map { it.path } + manifest.keys)
-                internFqNamesInTransaction(conn, updates.flatMapTo(mutableSetOf()) { update ->
+                internPathsInTransaction(conn, eligibleUpdates.map { it.path } + eligibleManifest.keys)
+                internFqNamesInTransaction(conn, eligibleUpdates.flatMapTo(mutableSetOf()) { update ->
                     buildList {
                         update.packageName?.let(::add)
                         addAll(update.imports)
@@ -406,11 +409,12 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
                     stmt.execute("DELETE FROM file_metadata")
                     stmt.execute("DELETE FROM file_manifest")
                 }
-                for (update in updates) {
+                for (update in eligibleUpdates) {
                     insertFileDataInTransaction(conn, update)
                 }
-                insertManifestInTransaction(conn, manifest)
-                pruneReferencesOutsideManifestInTransaction(conn, manifest.keys)
+                insertManifestInTransaction(conn, eligibleManifest)
+                pruneReferencesOutsideManifestInTransaction(conn, eligibleManifest.keys)
+                removeIneligibleSourceIndexRows(conn)
                 conn.createStatement().use { stmt -> stmt.execute("DELETE FROM pending_updates") }
                 conn.commit()
             } catch (e: Exception) {
@@ -423,6 +427,10 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
     }
 
     override fun saveFileIndex(update: FileIndexUpdate) {
+        if (!SourceIndexFilePolicy.isEligible(update.path)) {
+            removeFile(update.path)
+            return
+        }
         synchronized(writeLock) {
             val conn = connection()
             conn.autoCommit = false
@@ -509,13 +517,15 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
     }
 
     fun saveManifest(entries: Map<String, Long>) {
+        val eligibleEntries = entries.filterKeys(SourceIndexFilePolicy::isEligible)
         synchronized(writeLock) {
             val conn = connection()
             conn.autoCommit = false
             try {
-                internPathsInTransaction(conn, entries.keys)
+                internPathsInTransaction(conn, eligibleEntries.keys)
                 conn.createStatement().use { stmt -> stmt.execute("DELETE FROM file_manifest") }
-                insertManifestInTransaction(conn, entries)
+                insertManifestInTransaction(conn, eligibleEntries)
+                removeIneligibleSourceIndexRows(conn)
                 conn.commit()
             } catch (e: Exception) {
                 rollbackAndReloadPrefixes(conn)
@@ -530,6 +540,10 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
         path: String,
         lastModifiedMillis: Long,
     ) {
+        if (!SourceIndexFilePolicy.isEligible(path)) {
+            removeFile(path)
+            return
+        }
         synchronized(writeLock) {
             val conn = connection()
             conn.autoCommit = false
@@ -580,19 +594,24 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
         targetPath: String?,
         targetOffset: Int?,
     ) {
+        if (!SourceIndexFilePolicy.isEligible(sourcePath)) {
+            removeFile(sourcePath)
+            return
+        }
+        val eligibleTargetPath = targetPath?.takeIf(SourceIndexFilePolicy::isEligible)
         synchronized(writeLock) {
             val conn = connection()
             conn.autoCommit = false
             try {
-                internPathsInTransaction(conn, listOfNotNull(sourcePath, targetPath))
+                internPathsInTransaction(conn, listOfNotNull(sourcePath, eligibleTargetPath))
                 internFqNamesInTransaction(conn, setOf(targetFqName))
                 upsertSymbolReferenceInTransaction(
                     conn = conn,
                     sourcePath = sourcePath,
                     sourceOffset = sourceOffset,
                     targetFqName = targetFqName,
-                    targetPath = targetPath,
-                    targetOffset = targetOffset,
+                    targetPath = eligibleTargetPath,
+                    targetOffset = eligibleTargetPath?.let { targetOffset },
                 )
                 conn.commit()
             } catch (e: Exception) {
@@ -770,11 +789,24 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
     }
 
     fun replaceReferencesFromFiles(referencesBySource: List<Pair<String, List<SymbolReferenceRow>>>) {
+        val eligibleReferencesBySource = referencesBySource
+            .filter { (filePath, _) -> SourceIndexFilePolicy.isEligible(filePath) }
+            .map { (filePath, refs) ->
+                filePath to refs
+                    .filter { ref -> SourceIndexFilePolicy.isEligible(ref.sourcePath) }
+                    .map { ref ->
+                        if (ref.targetPath?.let(SourceIndexFilePolicy::isEligible) != false) {
+                            ref
+                        } else {
+                            ref.copy(targetPath = null, targetOffset = null)
+                        }
+                    }
+            }
         synchronized(writeLock) {
             val conn = connection()
             conn.autoCommit = false
             try {
-                val pathsToIntern = referencesBySource.flatMap { (filePath, refs) ->
+                val pathsToIntern = eligibleReferencesBySource.flatMap { (filePath, refs) ->
                     buildList {
                         add(filePath)
                         refs.forEach { ref ->
@@ -784,10 +816,10 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
                     }
                 }
                 internPathsInTransaction(conn, pathsToIntern)
-                internFqNamesInTransaction(conn, referencesBySource.flatMapTo(mutableSetOf()) { (_, refs) ->
+                internFqNamesInTransaction(conn, eligibleReferencesBySource.flatMapTo(mutableSetOf()) { (_, refs) ->
                     refs.map { it.targetFqName }
                 })
-                for ((filePath, refs) in referencesBySource) {
+                for ((filePath, refs) in eligibleReferencesBySource) {
                     clearReferencesFromFileInTransaction(conn, filePath)
                     refs.forEach { ref ->
                         upsertSymbolReferenceInTransaction(
@@ -800,6 +832,7 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
                         )
                     }
                 }
+                removeIneligibleSourceIndexRows(conn)
                 conn.commit()
             } catch (e: Exception) {
                 rollbackAndReloadPrefixes(conn)
@@ -1176,6 +1209,10 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
         update: PendingUpdateRow,
     ) {
         val path = pathCodec.decode(update.prefixId, update.filename)
+        if (!SourceIndexFilePolicy.isEligible(path)) {
+            deleteFileRowsInTransaction(conn, update.prefixId, update.filename)
+            return
+        }
         when (update.op) {
             "upsert_file" -> {
                 val payload = defaultCacheJson.decodeFromString(
@@ -1202,6 +1239,7 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
                     requireNotNull(update.payload)
                 )
                 val targetPath = payload.targetPath?.let(::normalizePendingPayloadPath)
+                    ?.takeIf(SourceIndexFilePolicy::isEligible)
                 internPathsInTransaction(conn, listOfNotNull(path, targetPath))
                 internFqNamesInTransaction(conn, setOf(payload.targetFqName))
                 upsertSymbolReferenceInTransaction(
@@ -1210,7 +1248,7 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
                     sourceOffset = payload.sourceOffset,
                     targetFqName = payload.targetFqName,
                     targetPath = targetPath,
-                    targetOffset = payload.targetOffset,
+                    targetOffset = targetPath?.let { payload.targetOffset },
                 )
             }
 
@@ -1305,6 +1343,33 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
 
     private fun java.sql.ResultSet.getNullableInt(column: Int): Int? =
         getObject(column)?.let { (it as Number).toInt() }
+
+    private fun removeIneligibleSourceIndexRows(conn: Connection) {
+        conn.createStatement().use { stmt ->
+            stmt.execute(
+                """DELETE FROM symbol_references
+                   WHERE src_filename NOT GLOB '*.kt'""",
+            )
+            stmt.execute(
+                """UPDATE symbol_references
+                   SET tgt_prefix_id = NULL,
+                       tgt_filename = NULL,
+                       target_offset = NULL
+                   WHERE tgt_filename IS NOT NULL
+                     AND tgt_filename NOT GLOB '*.kt'""",
+            )
+            for (table in listOf(
+                "identifier_paths",
+                "file_metadata",
+                "file_imports",
+                "file_wildcard_imports",
+                "file_manifest",
+                "pending_updates",
+            )) {
+                stmt.execute("DELETE FROM $table WHERE filename NOT GLOB '*.kt'")
+            }
+        }
+    }
 
     private data class PendingUpdateRow(
         val seq: Long,

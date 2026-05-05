@@ -53,6 +53,7 @@ import io.github.amichne.kast.shared.analysis.toApiDiagnostics
 import io.github.amichne.kast.shared.analysis.toKastLocation
 import io.github.amichne.kast.shared.analysis.toSymbolModel
 import io.github.amichne.kast.shared.analysis.typeHierarchyDeclaration
+import io.github.amichne.kast.shared.analysis.usageSiteDeclarationScope
 import io.github.amichne.kast.standalone.analysis.CandidateFileResolver
 import io.github.amichne.kast.standalone.analysis.CandidateSearchResult
 import io.github.amichne.kast.standalone.hierarchy.CallHierarchyTraversal
@@ -216,7 +217,12 @@ internal class StandaloneAnalysisBackend internal constructor(
                 span.setAttribute("kast.references.searchScope", searchScope.scope.name)
 
                 val references = candidateFiles
-                    .parallelMapFlat { candidateFile -> candidateFile.findReferenceLocations(target) }
+                    .parallelMapFlat { candidateFile ->
+                        candidateFile.findReferenceLocations(
+                            target = target,
+                            includeUsageSiteScope = query.includeUsageSiteScope,
+                        )
+                    }
                     .sortedWith(compareBy({ it.filePath }, { it.startOffset }))
                 span.setAttribute("kast.references.resultCount", references.size)
 
@@ -585,7 +591,10 @@ internal class StandaloneAnalysisBackend internal constructor(
         return candidateFileResolver.resolve(target)
     }
 
-    private fun KtFile.findReferenceLocations(target: PsiElement): List<Location> {
+    private fun KtFile.findReferenceLocations(
+        target: PsiElement,
+        includeUsageSiteScope: Boolean,
+    ): List<Location> {
         val references = mutableListOf<Location>()
 
         // The standalone Analysis API session does not register the ReferencesSearch extension point,
@@ -596,12 +605,17 @@ internal class StandaloneAnalysisBackend internal constructor(
                     element.references.forEach { reference ->
                         val resolved = reference.resolve()
                         if (resolved == target || resolved?.isEquivalentTo(target) == true) {
-                            references += reference.element.toKastLocation(
+                            val location = reference.element.toKastLocation(
                                 com.intellij.openapi.util.TextRange(
                                     reference.element.textRange.startOffset + reference.rangeInElement.startOffset,
                                     reference.element.textRange.startOffset + reference.rangeInElement.endOffset,
-                                )
+                                ),
                             )
+                            references += if (includeUsageSiteScope) {
+                                location.copy(usageSiteScope = reference.element.usageSiteDeclarationScope())
+                            } else {
+                                location
+                            }
                         }
                     }
                     super.visitElement(element)

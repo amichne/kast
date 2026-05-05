@@ -36,6 +36,10 @@ internal enum class CliCommandGroup(
         title = "Metrics",
         overview = "Read-only workspace metrics computed directly from the local SQLite reference index — no running daemon required.",
     ),
+    GRADLE(
+        title = "Gradle",
+        overview = "Run Gradle tasks with structured JSON output and raw build logs kept on disk.",
+    ),
 }
 
 internal enum class CliOptionCompletionKind {
@@ -153,6 +157,12 @@ internal object CliCommandCatalog {
         key = "include-declaration",
         usage = "--include-declaration=true",
         description = "Include the declaration alongside reference results. Defaults to false.",
+        completionKind = CliOptionCompletionKind.BOOLEAN,
+    )
+    private val includeUsageSiteScopeOption = CliOptionMetadata(
+        key = "include-usage-site-scope",
+        usage = "--include-usage-site-scope=true",
+        description = "Include the nearest enclosing declaration scope for each reference usage site. Defaults to false.",
         completionKind = CliOptionCompletionKind.BOOLEAN,
     )
     private val includeBodyOption = CliOptionMetadata(
@@ -354,6 +364,11 @@ internal object CliCommandCatalog {
         usage = "--interactive=true",
         description = "Render an interactive shell graph view instead of JSON.",
     )
+    private val gradleArgsOption = CliOptionMetadata(
+        key = "args",
+        usage = "--args=--stacktrace,--info",
+        description = "Optional comma-separated Gradle arguments forwarded after the task name.",
+    )
 
     private val commands: List<CliCommandMetadata> = listOf(
         CliCommandMetadata(
@@ -511,6 +526,28 @@ internal object CliCommandCatalog {
             ),
         ),
         CliCommandMetadata(
+            path = listOf("gradle", "run"),
+            group = CliCommandGroup.GRADLE,
+            summary = "Run a Gradle task and print structured JSON.",
+            description = "Runs one Gradle task from the workspace root, writes raw Gradle output to a log file, and prints a stable JSON summary.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME gradle run :module:test --workspace-root=/absolute/path/to/workspace",
+                "$CLI_EXECUTABLE_NAME gradle run --task=:module:test --workspace-root=/absolute/path/to/workspace [--args=--stacktrace,--info]",
+            ),
+            options = listOf(
+                workspaceRootOption,
+                CliOptionMetadata(
+                    key = "task",
+                    usage = "--task=:module:test",
+                    description = "Gradle task to run when not passed as a positional argument.",
+                ),
+                gradleArgsOption,
+            ),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME gradle run :kast-cli:test --workspace-root=/absolute/path/to/workspace",
+            ),
+        ),
+        CliCommandMetadata(
             path = listOf("capabilities"),
             group = CliCommandGroup.ANALYSIS,
             summary = "Print the advertised capabilities for the workspace backend.",
@@ -556,7 +593,7 @@ internal object CliCommandCatalog {
             description = "Accepts either an absolute request file or inline position arguments with an optional declaration toggle.",
             usages = listOf(
                 "$CLI_EXECUTABLE_NAME references --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
-                "$CLI_EXECUTABLE_NAME references --workspace-root=/absolute/path/to/workspace --file-path=/absolute/path/to/File.kt --offset=123 [--include-declaration=true]",
+                "$CLI_EXECUTABLE_NAME references --workspace-root=/absolute/path/to/workspace --file-path=/absolute/path/to/File.kt --offset=123 [--include-declaration=true] [--include-usage-site-scope=true]",
             ),
             options = listOf(
                 workspaceRootOption,
@@ -567,6 +604,7 @@ internal object CliCommandCatalog {
                 filePathOption,
                 offsetOption,
                 includeDeclarationOption,
+                includeUsageSiteScopeOption,
             ),
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME references --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",

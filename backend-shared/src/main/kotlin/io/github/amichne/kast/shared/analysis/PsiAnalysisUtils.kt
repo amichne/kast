@@ -308,6 +308,9 @@ fun PsiElement.callHierarchyDeclaration(): PsiElement? = parentsWithSelf().first
     }
 }
 
+fun PsiElement.usageSiteDeclarationScope(includeSourceText: Boolean = true): DeclarationScope? =
+    callHierarchyDeclaration()?.toDeclarationScope(includeSourceText)
+
 fun PsiElement.typeHierarchyDeclaration(): PsiElement? = parentsWithSelf().firstOrNull { element ->
     when (element) {
         is KtClassOrObject,

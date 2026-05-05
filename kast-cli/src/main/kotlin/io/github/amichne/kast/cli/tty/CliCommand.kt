@@ -62,6 +62,11 @@ internal sealed interface CliCommand {
     data object ConfigInit : CliCommand
     data class Skill(val name: SkillWrapperName, val rawInput: String) : CliCommand
     data class EvalSkill(val options: EvalSkillOptions) : CliCommand
+    data class GradleRun(
+        val workspaceRoot: Path,
+        val task: String,
+        val extraArgs: List<String> = emptyList(),
+    ) : CliCommand
     data class Metrics(
         val subcommand: MetricsSubcommand,
         val workspaceRoot: Path,
