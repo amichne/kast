@@ -42,6 +42,25 @@ class InstallCopilotExtensionServiceTest {
         assertTrue(Files.isRegularFile(targetDir.resolve("hooks/require-skills.sh")))
         assertTrue(Files.isRegularFile(targetDir.resolve("hooks/session-end.sh")))
         assertTrue(Files.isRegularFile(targetDir.resolve("hooks/resolve-kast-cli-path.sh")))
+        assertTrue(Files.isRegularFile(targetDir.resolve("extensions/_shared/shadowed-skill-state.mjs")))
+        assertTrue(Files.isRegularFile(targetDir.resolve("extensions/kast/extension.mjs")))
+        assertTrue(Files.isRegularFile(targetDir.resolve("extensions/kast/scripts/resolve-kast.sh")))
+        assertTrue(Files.isRegularFile(targetDir.resolve("extensions/kotlin-gradle-loop/extension.mjs")))
+        assertTrue(Files.isRegularFile(targetDir.resolve("extensions/kotlin-gradle-loop/scripts/gradle/run_task.sh")))
+        assertTrue(Files.isRegularFile(targetDir.resolve("extensions/kotlin-gradle-loop/scripts/gradle/run_gradle_hook.sh")))
+        assertTrue(Files.isRegularFile(targetDir.resolve("extensions/kotlin-gradle-loop/scripts/parse/junit_results.py")))
+        assertTrue(Files.isRegularFile(targetDir.resolve("extensions/kotlin-gradle-loop/scripts/parse/jacoco_report.py")))
+        assertTrue(
+            Files.isRegularFile(
+                targetDir.resolve("extensions/kotlin-gradle-loop/scripts/parse/kotlin_build_report.py"),
+            ),
+        )
+        assertTrue(Files.isRegularFile(targetDir.resolve("extensions/kotlin-gradle-loop/scripts/state/init_state.py")))
+        assertTrue(Files.isRegularFile(targetDir.resolve("extensions/kotlin-gradle-loop/scripts/state/get_state.py")))
+        assertTrue(Files.isRegularFile(targetDir.resolve("extensions/kotlin-gradle-loop/scripts/state/update_state.py")))
+        assertTrue(Files.isRegularFile(targetDir.resolve("extensions/kotlin-gradle-loop/scripts/state/record_action.py")))
+        assertFalse(Files.readString(targetDir.resolve("extensions/kast/extension.mjs")).contains(".agents"))
+        assertFalse(Files.readString(targetDir.resolve("extensions/kotlin-gradle-loop/extension.mjs")).contains(".agents"))
         assertEquals("1.2.3", Files.readString(targetDir.resolve(".kast-copilot-version")).trim())
     }
 

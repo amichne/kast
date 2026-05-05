@@ -1,6 +1,6 @@
 // Kast extension for Copilot CLI.
 //
-// Goals (see .agents/skills/kast/SKILL.md and AGENTS.md):
+// Goals:
 //   1. Eliminate the KAST_CLI_PATH bootstrap round-trip — resolve once at
 //      session start, cache, and use that path for every kast_* tool call.
 //   2. Expose `kast skill` commands as first-class native tools so the agent
@@ -20,14 +20,7 @@ import {markShadowedExtensionLoaded} from "../_shared/shadowed-skill-state.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(HERE, "..", "..", "..");
-const RESOLVE_SCRIPT = join(
-  REPO_ROOT,
-  ".agents",
-  "skills",
-  "kast",
-  "scripts",
-  "resolve-kast.sh",
-);
+const RESOLVE_SCRIPT = join(HERE, "scripts", "resolve-kast.sh");
 
 let kastBinary = null;
 let resolveError = null;

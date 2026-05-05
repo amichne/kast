@@ -77,7 +77,10 @@ for entry in configured_skills:
     skill_path = entry.get("skillPath")
     if not isinstance(skill_path, str) or not skill_path:
         continue
-    required_skill_set.add(normalize_path(skill_path))
+    normalized_skill_path = normalize_path(skill_path)
+    if not Path(normalized_skill_path).exists():
+        continue
+    required_skill_set.add(normalized_skill_path)
 
 if tool_name in {"read_file", "mcp_idea_read_file", "mcp_idea2_read_file"}:
     candidates = []
