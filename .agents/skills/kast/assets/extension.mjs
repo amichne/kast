@@ -1,6 +1,6 @@
 // Kast extension for Copilot CLI.
 //
-// Goals (see .agents/skills/kast/SKILL.md and AGENTS.md):
+// Goals:
 //   1. Eliminate the KAST_CLI_PATH bootstrap round-trip — resolve once at
 //      session start, cache, and use that path for every kast_* tool call.
 //   2. Expose `kast skill` commands as first-class native tools so the agent
@@ -11,22 +11,16 @@
 //      and produces structured results. Soft (not deny) so genuinely
 //      non-semantic work (comments, formatting, generated files) still flows.
 
-import { execFile } from "node:child_process";
-import { existsSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-import { joinSession } from "@github/copilot-sdk/extension";
+import {execFile} from "node:child_process";
+import {createHash} from "node:crypto";
+import {existsSync, mkdirSync, readFileSync, writeFileSync} from "node:fs";
+import {dirname, join, resolve} from "node:path";
+import {fileURLToPath} from "node:url";
+import {joinSession} from "@github/copilot-sdk/extension";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = resolve(HERE, "..", "..", "..");
-const RESOLVE_SCRIPT = join(
-  REPO_ROOT,
-  ".agents",
-  "skills",
-  "kast",
-  "scripts",
-  "resolve-kast.sh",
-);
+const REPO_ROOT = resolve(HERE, "..", "..", "..", "..");
+const RESOLVE_SCRIPT = join(HERE, "..", "scripts", "resolve-kast.sh");
 
 let kastBinary = null;
 let resolveError = null;
@@ -47,6 +41,29 @@ function execBash(command, env = process.env) {
       },
     );
   });
+}
+
+function shadowedExtensionStateFile(repoRoot) {
+  const sessionKey = createHash("sha256").update(repoRoot).digest("hex");
+  return join(process.env.TMPDIR || "/tmp", `copilot-hook-shadowed-extensions-${sessionKey}.txt`);
+}
+
+function markShadowedExtensionLoaded(repoRoot, extensionId) {
+  const stateFile = shadowedExtensionStateFile(repoRoot);
+  const parentDir = dirname(stateFile);
+  if (!existsSync(parentDir)) {
+    mkdirSync(parentDir, {recursive: true});
+  }
+  const loaded = existsSync(stateFile)
+    ? new Set(
+        readFileSync(stateFile, "utf8")
+          .split("\n")
+          .map((entry) => entry.trim())
+          .filter(Boolean),
+      )
+    : new Set();
+  loaded.add(extensionId);
+  writeFileSync(stateFile, [...loaded].sort().join("\n") + "\n", "utf8");
 }
 
 async function resolveKastBinary() {
@@ -347,6 +364,7 @@ const session = await joinSession({
         );
         return {};
       }
+      markShadowedExtensionLoaded(REPO_ROOT, "kast");
       await session.log(`kast extension ready (binary: ${bin})`, { ephemeral: true });
       return {
         additionalContext:

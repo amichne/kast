@@ -6,7 +6,7 @@ import {markShadowedExtensionLoaded} from "../_shared/shadowed-skill-state.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(HERE, "..", "..", "..");
-const SKILL_DIR = join(REPO_ROOT, ".agents", "skills", "kotlin-gradle-loop");
+const SCRIPT_DIR = join(HERE, "scripts");
 
 function execBash(command) {
   return new Promise((res) => {
@@ -34,6 +34,10 @@ function shellArg(value) {
   return JSON.stringify(String(value));
 }
 
+function scriptPath(...segments) {
+  return join(SCRIPT_DIR, ...segments);
+}
+
 const tools = [
   {
     name: "gradle_run_task",
@@ -49,7 +53,7 @@ const tools = [
     },
     handler: (args) => {
       const extra = (args.args ?? []).map(shellArg).join(" ");
-      const cmd = `bash ${shellArg(join(SKILL_DIR, "scripts", "gradle", "run_task.sh"))} ${shellArg(args.projectRoot)} ${shellArg(args.task)}${extra ? ` ${extra}` : ""}`;
+      const cmd = `bash ${shellArg(scriptPath("gradle", "run_task.sh"))} ${shellArg(args.projectRoot)} ${shellArg(args.task)}${extra ? ` ${extra}` : ""}`;
       return runJsonCommand("gradle_run_task", cmd);
     },
   },
@@ -58,7 +62,7 @@ const tools = [
     description: "Run project.gradleHook via kotlin-gradle-loop and return structured JSON.",
     parameters: { type: "object", properties: { projectRoot: { type: "string" } }, required: ["projectRoot"] },
     handler: (args) =>
-      runJsonCommand("gradle_run_hook", `bash ${shellArg(join(SKILL_DIR, "scripts", "gradle", "run_gradle_hook.sh"))} ${shellArg(args.projectRoot)}`),
+      runJsonCommand("gradle_run_hook", `bash ${shellArg(scriptPath("gradle", "run_gradle_hook.sh"))} ${shellArg(args.projectRoot)}`),
   },
   {
     name: "gradle_parse_junit",
@@ -73,7 +77,7 @@ const tools = [
     },
     handler: (args) => {
       const mod = args.module ? ` --module ${shellArg(args.module)}` : "";
-      return runJsonCommand("gradle_parse_junit", `python3 ${shellArg(join(SKILL_DIR, "scripts", "parse", "junit_results.py"))} ${shellArg(args.projectRoot)}${mod}`);
+      return runJsonCommand("gradle_parse_junit", `python3 ${shellArg(scriptPath("parse", "junit_results.py"))} ${shellArg(args.projectRoot)}${mod}`);
     },
   },
 ];

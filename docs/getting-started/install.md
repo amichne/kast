@@ -37,9 +37,9 @@ Java version), lets you pick an install mode, writes config to
 `~/.config/kast/env`, and offers to drop in the Copilot skill.
 
 For repository-local Copilot setup, the CLI can also install the packaged
-Copilot agents and hooks:
+Copilot agents, hooks, and native extensions:
 
-```console title="Install Copilot agents and hooks"
+```console title="Install Copilot agents, hooks, and extensions"
 kast install copilot-extension
 ```
 

@@ -11,6 +11,7 @@ val nativeConfigDir = layout.projectDirectory.dir(
 val packagedSkillSourceDir = rootProject.layout.projectDirectory.dir(".agents/skills/kast")
 val packagedCopilotAgentsSourceDir = rootProject.layout.projectDirectory.dir(".github/agents")
 val packagedCopilotHooksSourceDir = rootProject.layout.projectDirectory.dir(".github/hooks")
+val packagedCopilotExtensionsSourceDir = rootProject.layout.projectDirectory.dir(".github/extensions")
 val embeddedSkillFiles = listOf(
     "SKILL.md",
     "evals/catalog.json",
@@ -39,6 +40,21 @@ val embeddedCopilotHookFiles = listOf(
     "require-skills.sh",
     "session-end.sh",
     "resolve-kast-cli-path.sh",
+)
+val embeddedCopilotExtensionFiles = listOf(
+    "_shared/shadowed-skill-state.mjs",
+    "kast/extension.mjs",
+    "kast/scripts/resolve-kast.sh",
+    "kotlin-gradle-loop/extension.mjs",
+    "kotlin-gradle-loop/scripts/gradle/run_gradle_hook.sh",
+    "kotlin-gradle-loop/scripts/gradle/run_task.sh",
+    "kotlin-gradle-loop/scripts/parse/jacoco_report.py",
+    "kotlin-gradle-loop/scripts/parse/junit_results.py",
+    "kotlin-gradle-loop/scripts/parse/kotlin_build_report.py",
+    "kotlin-gradle-loop/scripts/state/get_state.py",
+    "kotlin-gradle-loop/scripts/state/init_state.py",
+    "kotlin-gradle-loop/scripts/state/record_action.py",
+    "kotlin-gradle-loop/scripts/state/update_state.py",
 )
 
 application {
@@ -90,6 +106,10 @@ val syncPackagedCopilotExtensionResources by tasks.registering(Sync::class) {
     from(packagedCopilotHooksSourceDir) {
         include(embeddedCopilotHookFiles)
         into("packaged-copilot-extension/hooks")
+    }
+    from(packagedCopilotExtensionsSourceDir) {
+        include(embeddedCopilotExtensionFiles)
+        into("packaged-copilot-extension/extensions")
     }
     into(layout.buildDirectory.dir("generated/packaged-copilot-extension-resources"))
     includeEmptyDirs = false

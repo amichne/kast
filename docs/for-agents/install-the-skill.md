@@ -96,13 +96,14 @@ portable Agent Skills bundle.
 ## Install the Copilot extension files
 
 Use `install copilot-extension` when you want the packaged GitHub Copilot
-agent and hook files in the current repository:
+agent, hook, and native extension files in the current repository:
 
-```console title="Install Copilot agents and hooks"
+```console title="Install Copilot agents, hooks, and extensions"
 kast install copilot-extension
 ```
 
-The command writes into `<cwd>/.github` by default and records the installed
+The command writes into `<cwd>/.github` by default, including self-contained
+native extension scripts under `.github/extensions`, and records the installed
 CLI version in `.github/.kast-copilot-version`. Pass `--target-dir` to point at
 another workspace `.github` directory, and `--yes=true` to replace an older
 installed copy:

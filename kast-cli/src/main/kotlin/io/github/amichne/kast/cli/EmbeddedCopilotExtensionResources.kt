@@ -36,6 +36,19 @@ internal class EmbeddedCopilotExtensionResources(
             "hooks/require-skills.sh",
             "hooks/session-end.sh",
             "hooks/resolve-kast-cli-path.sh",
+            "extensions/_shared/shadowed-skill-state.mjs",
+            "extensions/kast/extension.mjs",
+            "extensions/kast/scripts/resolve-kast.sh",
+            "extensions/kotlin-gradle-loop/extension.mjs",
+            "extensions/kotlin-gradle-loop/scripts/gradle/run_gradle_hook.sh",
+            "extensions/kotlin-gradle-loop/scripts/gradle/run_task.sh",
+            "extensions/kotlin-gradle-loop/scripts/parse/jacoco_report.py",
+            "extensions/kotlin-gradle-loop/scripts/parse/junit_results.py",
+            "extensions/kotlin-gradle-loop/scripts/parse/kotlin_build_report.py",
+            "extensions/kotlin-gradle-loop/scripts/state/get_state.py",
+            "extensions/kotlin-gradle-loop/scripts/state/init_state.py",
+            "extensions/kotlin-gradle-loop/scripts/state/record_action.py",
+            "extensions/kotlin-gradle-loop/scripts/state/update_state.py",
         )
     }
 }
