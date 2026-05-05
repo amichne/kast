@@ -6,11 +6,13 @@ source "${SCRIPT_DIR}/hook-state.sh"
 
 REPO_ROOT="$(git -C "${SCRIPT_DIR}" rev-parse --show-toplevel)"
 SKILL_STATE_FILE="$(hook_skill_state_file "${REPO_ROOT}")"
+SHADOWED_EXTENSION_STATE_FILE="$(hook_shadowed_extension_state_file "${REPO_ROOT}")"
+SKILL_CONFIG_FILE="${REPO_ROOT}/.github/hooks/skill-shadowing.json"
 
 HOOK_INPUT="$(cat || true)"
 export HOOK_INPUT
 
-python3 - "${REPO_ROOT}" "${SKILL_STATE_FILE}" <<'PY'
+python3 - "${REPO_ROOT}" "${SKILL_STATE_FILE}" "${SHADOWED_EXTENSION_STATE_FILE}" "${SKILL_CONFIG_FILE}" <<'PY'
 import json
 import os
 import sys
@@ -18,13 +20,11 @@ from pathlib import Path
 
 repo_root = Path(sys.argv[1]).resolve()
 state_file = Path(sys.argv[2])
+shadow_state_file = Path(sys.argv[3])
+config_file = Path(sys.argv[4])
 
-required_skills = [
-    (repo_root / ".agents/skills/kast/SKILL.md").resolve(),
-    (repo_root / ".agents/skills/refresh-affected-agents/SKILL.md").resolve(),
-    (repo_root / ".agents/skills/llm-wiki/SKILL.md").resolve(),
-]
-required_skill_set = {str(path) for path in required_skills}
+config = json.loads(config_file.read_text(encoding="utf-8"))
+configured_skills = config.get("skills", [])
 
 raw = os.environ.get("HOOK_INPUT", "").strip()
 if not raw:
@@ -51,6 +51,14 @@ if state_file.exists():
         if line.strip()
     }
 
+loaded_extensions = set()
+if shadow_state_file.exists():
+    loaded_extensions = {
+        line.strip()
+        for line in shadow_state_file.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    }
+
 def normalize_path(value: str) -> str | None:
     path = Path(value)
     if not path.is_absolute():
@@ -58,6 +66,18 @@ def normalize_path(value: str) -> str | None:
     else:
         path = path.resolve()
     return str(path)
+
+required_skill_set = set()
+for entry in configured_skills:
+    if not entry.get("requireRead", False):
+        continue
+    shadowing_extension_id = entry.get("shadowingExtensionId")
+    if shadowing_extension_id and shadowing_extension_id in loaded_extensions:
+        continue
+    skill_path = entry.get("skillPath")
+    if not isinstance(skill_path, str) or not skill_path:
+        continue
+    required_skill_set.add(normalize_path(skill_path))
 
 if tool_name in {"read_file", "mcp_idea_read_file", "mcp_idea2_read_file"}:
     candidates = []

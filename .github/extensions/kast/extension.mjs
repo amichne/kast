@@ -11,11 +11,12 @@
 //      and produces structured results. Soft (not deny) so genuinely
 //      non-semantic work (comments, formatting, generated files) still flows.
 
-import { execFile } from "node:child_process";
-import { existsSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-import { joinSession } from "@github/copilot-sdk/extension";
+import {execFile} from "node:child_process";
+import {existsSync} from "node:fs";
+import {dirname, join, resolve} from "node:path";
+import {fileURLToPath} from "node:url";
+import {joinSession} from "@github/copilot-sdk/extension";
+import {markShadowedExtensionLoaded} from "../_shared/shadowed-skill-state.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(HERE, "..", "..", "..");
@@ -347,6 +348,7 @@ const session = await joinSession({
         );
         return {};
       }
+      markShadowedExtensionLoaded(REPO_ROOT, "kast");
       await session.log(`kast extension ready (binary: ${bin})`, { ephemeral: true });
       return {
         additionalContext:

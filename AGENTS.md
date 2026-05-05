@@ -1,4 +1,5 @@
 # Kast agent guide
+
 ALways TDD with tracer bullets, use the skill
 
 Kast is a Kotlin analysis tool with one line-delimited JSON-RPC contract and
@@ -61,18 +62,18 @@ Agents must use the native `kast_*` Copilot tools registered by the
 The extension also resolves `KAST_CLI_PATH` at session start, so the same
 commands are available as a `kast skill <name>` bash fallback.
 
-| Operation             | Native tool                 | Bash fallback                          |
-|-----------------------|-----------------------------|----------------------------------------|
-| Resolve symbol        | `kast_resolve`              | `kast skill resolve`                   |
-| Find references       | `kast_references`           | `kast skill references`                |
-| Call hierarchy        | `kast_callers`              | `kast skill callers`                   |
-| Impact analysis       | `kast_references` + `kast_callers` | `kast skill references` + `kast skill callers` |
-| Diagnostics           | `kast_diagnostics`          | `kast skill diagnostics`               |
-| Rename symbol         | `kast_rename`               | `kast skill rename`                    |
-| Scaffold context      | `kast_scaffold`             | `kast skill scaffold`                  |
-| Write and validate    | `kast_write_and_validate`   | `kast skill write-and-validate`        |
-| List workspace files  | `kast_workspace_files`      | `kast skill workspace-files`           |
-| Workspace metrics     | `kast_metrics`              | `kast skill metrics`                   |
+| Operation            | Native tool                        | Bash fallback                                  |
+|----------------------|------------------------------------|------------------------------------------------|
+| Resolve symbol       | `kast_resolve`                     | `kast skill resolve`                           |
+| Find references      | `kast_references`                  | `kast skill references`                        |
+| Call hierarchy       | `kast_callers`                     | `kast skill callers`                           |
+| Impact analysis      | `kast_references` + `kast_callers` | `kast skill references` + `kast skill callers` |
+| Diagnostics          | `kast_diagnostics`                 | `kast skill diagnostics`                       |
+| Rename symbol        | `kast_rename`                      | `kast skill rename`                            |
+| Scaffold context     | `kast_scaffold`                    | `kast skill scaffold`                          |
+| Write and validate   | `kast_write_and_validate`          | `kast skill write-and-validate`                |
+| List workspace files | `kast_workspace_files`             | `kast skill workspace-files`                   |
+| Workspace metrics    | `kast_metrics`                     | `kast skill metrics`                           |
 
 **Prohibited substitutions:** `grep`, `rg`, `ast-grep`, `cat` + manual
 parsing must NOT be used for symbol identity, reference finding, or call
@@ -103,18 +104,20 @@ Copilot-assisted Kotlin work. It
 - soft-warns once per session when generic `view`/`grep`/`edit`/`create`
   targets a `.kt`/`.kts` path, suggesting the semantic equivalent.
 
-Agents follow `.agents/skills/kast/SKILL.md` for command shape and recovery
-rules, and never use `grep`/`rg`/`ast-grep` for symbol operations.
+When the extension loads successfully, it shadows `.agents/skills/kast/SKILL.md`
+for routine routing. Fall back to the skill doc only when the extension is
+unavailable or when you need deeper command-shape or recovery guidance, and
+never use `grep`/`rg`/`ast-grep` for symbol operations.
 
 ## Skill composition
 
-| Phase                | Primary skill                  | Supporting skill     |
-|---------------------|-------------------------------|---------------------|
-| Understand the code | `kast` (scaffold, explore)     | —                   |
-| Plan a change       | `kast` (impact, scaffold)      | —                   |
-| Make the change     | `kast` (write-and-validate)    | `kotlin-standards`  |
-| Validate the change | `kast` (diagnostics)           | `kotlin-gradle-loop`|
-| Document the change | `docs-writer`                  | —                   |
+| Phase               | Primary skill               | Supporting skill     |
+|---------------------|-----------------------------|----------------------|
+| Understand the code | `kast` (scaffold, explore)  | —                    |
+| Plan a change       | `kast` (impact, scaffold)   | —                    |
+| Make the change     | `kast` (write-and-validate) | `kotlin-standards`   |
+| Validate the change | `kast` (diagnostics)        | `kotlin-gradle-loop` |
+| Document the change | `docs-writer`               | —                    |
 
 ## Working rules
 

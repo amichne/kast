@@ -7,6 +7,8 @@ source "${SCRIPT_DIR}/hook-state.sh"
 REPO_ROOT="$(git -C "${SCRIPT_DIR}" rev-parse --show-toplevel)"
 STATE_FILE="$(hook_state_file "${REPO_ROOT}")"
 SKILL_STATE_FILE="$(hook_skill_state_file "${REPO_ROOT}")"
+SHADOWED_EXTENSION_STATE_FILE="$(hook_shadowed_extension_state_file "${REPO_ROOT}")"
 
 : > "${STATE_FILE}"
 : > "${SKILL_STATE_FILE}"
+: > "${SHADOWED_EXTENSION_STATE_FILE}"
