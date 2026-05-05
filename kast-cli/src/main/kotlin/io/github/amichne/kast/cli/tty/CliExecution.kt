@@ -9,6 +9,7 @@ import io.github.amichne.kast.indexstore.ChangeImpactNode
 import io.github.amichne.kast.indexstore.DeadCodeCandidate
 import io.github.amichne.kast.indexstore.FanInMetric
 import io.github.amichne.kast.indexstore.FanOutMetric
+import io.github.amichne.kast.indexstore.FileFilterSpec
 import io.github.amichne.kast.indexstore.LowUsageSymbol
 import io.github.amichne.kast.indexstore.MetricsGraph
 import io.github.amichne.kast.indexstore.MetricsEngine
@@ -292,19 +293,23 @@ internal class DefaultCliCommandExecutor(
                     }
                     return CliExecutionResult(output = CliOutput.InteractiveGraph(graph))
                 }
+                val filter = FileFilterSpec(
+                    fileGlob = command.fileGlob,
+                    folderPrefix = command.folderFilter,
+                )
                 val encoded = MetricsEngine(command.workspaceRoot).use { engine ->
                     when (command.subcommand) {
                         MetricsSubcommand.FAN_IN -> json.encodeToString(
-                            ListSerializer(FanInMetric.serializer()), engine.fanInRanking(command.limit),
+                            ListSerializer(FanInMetric.serializer()), engine.fanInRanking(command.limit, filter),
                         )
                         MetricsSubcommand.FAN_OUT -> json.encodeToString(
-                            ListSerializer(FanOutMetric.serializer()), engine.fanOutRanking(command.limit),
+                            ListSerializer(FanOutMetric.serializer()), engine.fanOutRanking(command.limit, filter),
                         )
                         MetricsSubcommand.COUPLING -> json.encodeToString(
                             ListSerializer(ModuleCouplingMetric.serializer()), engine.moduleCouplingMatrix(),
                         )
                         MetricsSubcommand.LOW_USAGE -> json.encodeToString(
-                            ListSerializer(LowUsageSymbol.serializer()), engine.lowUsageSymbols(limit = command.limit),
+                            ListSerializer(LowUsageSymbol.serializer()), engine.lowUsageSymbols(limit = command.limit, filter = filter),
                         )
                         MetricsSubcommand.CYCLES -> json.encodeToString(
                             ListSerializer(ModuleCycleMetric.serializer()), engine.moduleCycles(),
@@ -313,13 +318,14 @@ internal class DefaultCliCommandExecutor(
                             ListSerializer(ModuleDepthMetric.serializer()), engine.moduleDepthMetrics(),
                         )
                         MetricsSubcommand.DEAD_CODE -> json.encodeToString(
-                            ListSerializer(DeadCodeCandidate.serializer()), engine.deadCodeCandidates(),
+                            ListSerializer(DeadCodeCandidate.serializer()), engine.deadCodeCandidates(filter),
                         )
                         MetricsSubcommand.IMPACT -> json.encodeToString(
                             ListSerializer(ChangeImpactNode.serializer()),
                             engine.changeImpactRadius(
                                 fqName = requireNotNull(command.symbol) { "--symbol is required for impact" },
                                 depth = command.depth,
+                                filter = filter,
                             ),
                         )
                         MetricsSubcommand.GRAPH -> json.encodeToString(

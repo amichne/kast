@@ -570,6 +570,45 @@ class MetricsEngineTest {
         }
     }
 
+    @Test
+    fun `fanInRanking filters by folder prefix`() {
+        val root = seededWorkspace()
+        MetricsEngine(root).use { metrics ->
+            val results = metrics.fanInRanking(limit = 10, filter = FileFilterSpec(folderPrefix = "/lib"))
+            assertTrue(results.all { it.targetPath?.startsWith("/lib/") == true })
+            assertTrue(results.any { it.targetFqName == "lib.Foo" })
+            assertTrue(results.none { it.targetPath?.startsWith("/app/") == true })
+        }
+    }
+
+    @Test
+    fun `fanInRanking filters by glob pattern`() {
+        val root = seededWorkspace()
+        MetricsEngine(root).use { metrics ->
+            val results = metrics.fanInRanking(limit = 10, filter = FileFilterSpec(fileGlob = "**/Foo.kt"))
+            assertTrue(results.isNotEmpty())
+            assertTrue(results.all { it.targetPath?.endsWith("Foo.kt") == true })
+        }
+    }
+
+    @Test
+    fun `fanOutRanking filters by folder prefix`() {
+        val root = seededWorkspace()
+        MetricsEngine(root).use { metrics ->
+            val results = metrics.fanOutRanking(limit = 10, filter = FileFilterSpec(folderPrefix = "/app"))
+            assertTrue(results.all { it.sourcePath.startsWith("/app/") })
+        }
+    }
+
+    @Test
+    fun `deadCodeCandidates filters by folder prefix`() {
+        val root = seededWorkspace()
+        MetricsEngine(root).use { metrics ->
+            val results = metrics.deadCodeCandidates(filter = FileFilterSpec(folderPrefix = "/app"))
+            assertTrue(results.all { it.path.startsWith("/app/") })
+        }
+    }
+
     private fun seededWorkspace(): Path {
         val root = workspaceRoot.toAbsolutePath().normalize()
         SqliteSourceIndexStore(root).use { store ->

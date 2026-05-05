@@ -14,7 +14,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
     @Volatile
     private var cachedConnection: Connection? = null
 
-    fun fanInRanking(limit: Int): List<FanInMetric> {
+    fun fanInRanking(limit: Int, filter: FileFilterSpec = FileFilterSpec()): List<FanInMetric> {
         require(limit >= 0) { "limit must be non-negative" }
         if (limit == 0) return emptyList()
 
@@ -58,11 +58,11 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
                     )
                 },
             ),
-        )
+        ).filterByPath(filter) { it.targetPath }
 
     }
 
-    fun fanOutRanking(limit: Int): List<FanOutMetric> {
+    fun fanOutRanking(limit: Int, filter: FileFilterSpec = FileFilterSpec()): List<FanOutMetric> {
         require(limit >= 0) { "limit must be non-negative" }
         if (limit == 0) return emptyList()
 
@@ -111,7 +111,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
                     )
                 },
             ),
-        )
+        ).filterByPath(filter) { it.sourcePath }
     }
 
     fun moduleCouplingMatrix(): List<ModuleCouplingMetric> =
@@ -147,7 +147,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
             ),
         )
 
-    fun lowUsageSymbols(maxOccurrences: Int = 2, limit: Int = 50): List<LowUsageSymbol> {
+    fun lowUsageSymbols(maxOccurrences: Int = 2, limit: Int = 50, filter: FileFilterSpec = FileFilterSpec()): List<LowUsageSymbol> {
         require(maxOccurrences >= 0) { "maxOccurrences must be non-negative" }
         require(limit >= 0) { "limit must be non-negative" }
         if (maxOccurrences == 0 || limit == 0) return emptyList()
@@ -189,7 +189,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
                     )
                 },
             ),
-        )
+        ).filterByPath(filter) { it.targetPath }
     }
 
     fun moduleCycles(): List<ModuleCycleMetric> {
@@ -274,7 +274,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
                 }
         }
 
-    fun deadCodeCandidates(): List<DeadCodeCandidate> =
+    fun deadCodeCandidates(filter: FileFilterSpec = FileFilterSpec()): List<DeadCodeCandidate> =
         readMetricRows(
             MetricQuerySpec(
                 sql = """
@@ -319,10 +319,10 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
                     )
                 },
             ),
-        )
+        ).filterByPath(filter) { it.path }
 
 
-    fun changeImpactRadius(fqName: String, depth: Int): List<ChangeImpactNode> {
+    fun changeImpactRadius(fqName: String, depth: Int, filter: FileFilterSpec = FileFilterSpec()): List<ChangeImpactNode> {
         require(depth >= 0) { "depth must be non-negative" }
         if (depth == 0) return emptyList()
         return readMetricRows(
@@ -390,7 +390,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
                     )
                 },
             ),
-        )
+        ).filterByPath(filter) { it.sourcePath }
     }
 
     /**

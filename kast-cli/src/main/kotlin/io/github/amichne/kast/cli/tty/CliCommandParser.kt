@@ -133,11 +133,15 @@ internal class CliCommandParser(
                     subcommand = MetricsSubcommand.FAN_IN,
                     workspaceRoot = parsed.requireWorkspaceRootPath(),
                     limit = parsed.optionalInt("limit") ?: 50,
+                    fileGlob = parsed.options["file-glob"]?.takeIf(String::isNotBlank),
+                    folderFilter = parsed.options["folder"]?.takeIf(String::isNotBlank),
                 )
                 listOf("metrics", "fan-out") -> CliCommand.Metrics(
                     subcommand = MetricsSubcommand.FAN_OUT,
                     workspaceRoot = parsed.requireWorkspaceRootPath(),
                     limit = parsed.optionalInt("limit") ?: 50,
+                    fileGlob = parsed.options["file-glob"]?.takeIf(String::isNotBlank),
+                    folderFilter = parsed.options["folder"]?.takeIf(String::isNotBlank),
                 )
                 listOf("metrics", "coupling") -> CliCommand.Metrics(
                     subcommand = MetricsSubcommand.COUPLING,
@@ -147,6 +151,8 @@ internal class CliCommandParser(
                     subcommand = MetricsSubcommand.LOW_USAGE,
                     workspaceRoot = parsed.requireWorkspaceRootPath(),
                     limit = parsed.optionalInt("limit") ?: 50,
+                    fileGlob = parsed.options["file-glob"]?.takeIf(String::isNotBlank),
+                    folderFilter = parsed.options["folder"]?.takeIf(String::isNotBlank),
                 )
                 listOf("metrics", "cycles") -> CliCommand.Metrics(
                     subcommand = MetricsSubcommand.CYCLES,
@@ -159,6 +165,8 @@ internal class CliCommandParser(
                 listOf("metrics", "dead-code") -> CliCommand.Metrics(
                     subcommand = MetricsSubcommand.DEAD_CODE,
                     workspaceRoot = parsed.requireWorkspaceRootPath(),
+                    fileGlob = parsed.options["file-glob"]?.takeIf(String::isNotBlank),
+                    folderFilter = parsed.options["folder"]?.takeIf(String::isNotBlank),
                 )
                 listOf("metrics", "impact") -> CliCommand.Metrics(
                     subcommand = MetricsSubcommand.IMPACT,
@@ -168,6 +176,8 @@ internal class CliCommandParser(
                         message = "--symbol is required for metrics impact",
                     ),
                     depth = parsed.optionalInt("depth") ?: 3,
+                    fileGlob = parsed.options["file-glob"]?.takeIf(String::isNotBlank),
+                    folderFilter = parsed.options["folder"]?.takeIf(String::isNotBlank),
                 )
                 listOf("metrics", "graph") -> {
                     val symbol = parsed.options["symbol"]
@@ -714,10 +724,7 @@ internal data class ParsedArguments(
 
     fun requireWorkspaceRootPath(): Path {
         val raw = options["workspace-root"]
-            ?: throw CliFailure(
-                code = "CLI_USAGE",
-                message = "Missing required option --workspace-root",
-            )
+            ?: System.getProperty("user.dir", ".")
         return Path.of(raw).toAbsolutePath().normalize()
     }
 

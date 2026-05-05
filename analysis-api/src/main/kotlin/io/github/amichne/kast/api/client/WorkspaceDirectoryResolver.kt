@@ -24,7 +24,6 @@ class WorkspaceDirectoryResolver(
                 .resolve(remote.host)
                 .resolve(remote.owner)
                 .resolve(remote.repo)
-                .resolve(workspaceHash(normalizedRoot))
         } else if (isEphemeralLocalWorkspace(normalizedRoot)) {
             normalizedRoot
                 .resolve(".gradle")

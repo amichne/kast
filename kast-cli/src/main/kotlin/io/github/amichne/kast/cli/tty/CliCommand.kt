@@ -64,6 +64,8 @@ internal sealed interface CliCommand {
         val symbol: String? = null,
         val depth: Int = 3,
         val interactive: Boolean = false,
+        val fileGlob: String? = null,
+        val folderFilter: String? = null,
     ) : CliCommand
 }
 
