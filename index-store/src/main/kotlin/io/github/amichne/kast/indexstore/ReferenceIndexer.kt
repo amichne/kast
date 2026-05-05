@@ -22,9 +22,11 @@ class ReferenceIndexer(
         filePaths: Collection<String>,
         referenceScanner: (String) -> List<SymbolReferenceRow>,
         isCancelled: () -> Boolean = { Thread.currentThread().isInterrupted },
+        throttle: (() -> Unit)? = null,
     ) {
         for (batch in filePaths.toList().chunked(batchSize)) {
             if (isCancelled()) break
+            throttle?.invoke()
             val batchResults = batch.mapNotNull { filePath ->
                 if (isCancelled()) return@mapNotNull null
                 try {
@@ -44,11 +46,13 @@ class ReferenceIndexer(
         changedPaths: Set<String>,
         referenceScanner: (String) -> List<SymbolReferenceRow>,
         isCancelled: () -> Boolean = { Thread.currentThread().isInterrupted },
+        throttle: (() -> Unit)? = null,
     ) {
         indexReferences(
             filePaths = changedPaths,
             referenceScanner = referenceScanner,
             isCancelled = isCancelled,
+            throttle = throttle,
         )
     }
 

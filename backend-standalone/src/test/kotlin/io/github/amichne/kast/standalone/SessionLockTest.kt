@@ -139,4 +139,45 @@ class SessionLockTest {
         val result = lock.write { "hello" }
         assertEquals("hello", result)
     }
+
+    @Test
+    fun `hasQueuedReaders returns false when lock is idle`() {
+        val lock = ReentrantSessionLock()
+        assertTrue(!lock.hasQueuedReaders(), "No threads should be queued on an idle lock")
+    }
+
+    @Test
+    fun `hasQueuedReaders returns true when readers are blocked by a writer`() {
+        val lock = ReentrantSessionLock()
+        val writeLatch = CountDownLatch(1)
+        val writeHeld = CountDownLatch(1)
+        val readerStarted = CountDownLatch(1)
+
+        val writer = thread {
+            lock.write {
+                writeHeld.countDown()
+                writeLatch.await()
+            }
+        }
+        writeHeld.await()
+
+        val reader = thread {
+            readerStarted.countDown()
+            lock.read { }
+        }
+        readerStarted.await()
+        Thread.sleep(100)
+
+        assertTrue(lock.hasQueuedReaders(), "Reader should be queued while writer holds the lock")
+
+        writeLatch.countDown()
+        reader.join(5_000)
+        writer.join(5_000)
+    }
+
+    @Test
+    fun `InstrumentedSessionLock hasQueuedReaders delegates to underlying lock`() {
+        val lock = InstrumentedSessionLock()
+        assertTrue(!lock.hasQueuedReaders(), "No threads should be queued on an idle instrumented lock")
+    }
 }
