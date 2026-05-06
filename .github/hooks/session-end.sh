@@ -203,7 +203,7 @@ PY
 
 if [[ "${#KOTLIN_FILES[@]}" -gt 0 ]]; then
     if ! KAST_BIN="$(bash "${SCRIPT_DIR}/resolve-kast-cli-path.sh")"; then
-        echo "session-end: unable to resolve kast binary; cannot run kast skill diagnostics" >&2
+        echo "session-end: unable to resolve kast binary; cannot run kast diagnostics" >&2
         exit 1
     fi
     DIAGNOSTICS_REQUEST="$(
@@ -216,7 +216,7 @@ file_paths = sys.argv[2:]
 print(json.dumps({"workspaceRoot": workspace_root, "filePaths": file_paths}))
 PY
     )"
-    DIAGNOSTICS_OUTPUT="$("${KAST_BIN}" skill diagnostics "${DIAGNOSTICS_REQUEST}")"
+    DIAGNOSTICS_OUTPUT="$("${KAST_BIN}" diagnostics "${DIAGNOSTICS_REQUEST}")"
     python3 - <<'PY' <<<"${DIAGNOSTICS_OUTPUT}"
 import json
 import sys
@@ -226,7 +226,7 @@ if payload.get("ok") and payload.get("clean"):
     sys.exit(0)
 
 message = payload.get("message") or f"Diagnostics reported {payload.get('error_count', 'unknown')} errors"
-print(f"kast skill diagnostics failed: {message}", file=sys.stderr)
+print(f"kast diagnostics failed: {message}", file=sys.stderr)
 sys.exit(1)
 PY
 fi

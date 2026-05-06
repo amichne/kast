@@ -66,13 +66,13 @@ object WrapperOpenApiDocument {
         return buildString {
             appendLine("openapi: 3.1.0")
             appendLine("info:")
-            appendLine("  title: kast skill contracts")
+            appendLine("  title: kast wrapper contracts")
             appendLine("  version: 1.1.0")
             appendLine("  description: >")
-            appendLine("    Generated from the native kast skill request and response serializers.")
+            appendLine("    Generated from the native kast wrapper request and response serializers.")
             appendLine("servers:")
             appendLine("  - url: kast://skill")
-            appendLine("    description: Native kast skill command surface")
+            appendLine("    description: Native kast wrapper command surface")
             appendLine("paths:")
             append(renderYaml(writePaths(), 2))
             appendLine("components:")
@@ -139,63 +139,63 @@ object WrapperOpenApiDocument {
         "/skill/resolve" to pathItem(
             operationId = "kastSkillResolve",
             summary = "Resolve a symbol by name",
-            command = "kast skill resolve",
+            command = "kast resolve",
             requestSchema = "KastResolveRequest",
             responseSchema = "KastResolveResponse",
         ),
         "/skill/references" to pathItem(
             operationId = "kastSkillReferences",
             summary = "Find references for a named symbol",
-            command = "kast skill references",
+            command = "kast references",
             requestSchema = "KastReferencesRequest",
             responseSchema = "KastReferencesResponse",
         ),
         "/skill/callers" to pathItem(
             operationId = "kastSkillCallers",
             summary = "Expand an incoming or outgoing call hierarchy",
-            command = "kast skill callers",
+            command = "kast callers",
             requestSchema = "KastCallersRequest",
             responseSchema = "KastCallersResponse",
         ),
         "/skill/diagnostics" to pathItem(
             operationId = "kastSkillDiagnostics",
             summary = "Run diagnostics on Kotlin files",
-            command = "kast skill diagnostics",
+            command = "kast diagnostics",
             requestSchema = "KastDiagnosticsRequest",
             responseSchema = "KastDiagnosticsResponse",
         ),
         "/skill/rename" to pathItem(
             operationId = "kastSkillRename",
             summary = "Resolve or target a symbol and apply a rename",
-            command = "kast skill rename",
+            command = "kast rename",
             requestSchema = "KastRenameRequest",
             responseSchema = "KastRenameResponse",
         ),
         "/skill/scaffold" to pathItem(
             operationId = "kastSkillScaffold",
             summary = "Gather structural generation context",
-            command = "kast skill scaffold",
+            command = "kast scaffold",
             requestSchema = "KastScaffoldRequest",
             responseSchema = "KastScaffoldResponse",
         ),
         "/skill/workspace-files" to pathItem(
             operationId = "kastSkillWorkspaceFiles",
             summary = "List workspace modules and optional file paths",
-            command = "kast skill workspace-files",
+            command = "kast workspace-files",
             requestSchema = "KastWorkspaceFilesRequest",
             responseSchema = "KastWorkspaceFilesResponse",
         ),
         "/skill/write-and-validate" to pathItem(
             operationId = "kastSkillWriteAndValidate",
             summary = "Apply generated Kotlin code and validate the result",
-            command = "kast skill write-and-validate",
+            command = "kast write-and-validate",
             requestSchema = "KastWriteAndValidateRequest",
             responseSchema = "KastWriteAndValidateResponse",
         ),
         "/skill/metrics" to pathItem(
             operationId = "kastSkillMetrics",
             summary = "Query indexed source metrics",
-            command = "kast skill metrics",
+            command = "kast metrics",
             requestSchema = "KastMetricsRequest",
             responseSchema = "KastMetricsResponse",
         ),

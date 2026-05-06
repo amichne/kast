@@ -16,7 +16,7 @@ internal class EmbeddedSkillResources(
     versionMarkerFileName = VERSION_MARKER_FILE_NAME,
     resourceReader = resourceReader,
     missingResourceErrorCode = "INSTALL_SKILL_ERROR",
-    resourceDescription = "kast skill",
+    resourceDescription = "kast packaged skill",
 ) {
     fun writeSkillTree(targetDir: Path) = writeTree(targetDir)
 

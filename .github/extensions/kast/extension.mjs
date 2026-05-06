@@ -3,7 +3,7 @@
 // Goals:
 //   1. Resolve the kast binary once at
 //      session start, cache, and use that path for every kast_* tool call.
-//   2. Expose hidden `kast skill` commands as first-class native tools so the agent
+//   2. Expose direct `kast <wrapper>` commands as first-class native tools so the agent
 //      sees them in its tool list (discoverability) and the CLI runtime
 //      validates arguments against the schema (no JSON-in-bash brittleness).
 //   3. Soft-warn when the agent reaches for generic view/grep/edit/create on
@@ -17,7 +17,7 @@ import {homedir} from "node:os";
 import {dirname, join, resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {joinSession} from "@github/copilot-sdk/extension";
-import {markShadowedExtensionLoaded} from "../_shared/shadowed-skill-state.mjs";
+import {markShadowedExtensionLoaded} from "../_shared/lib.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(HERE, "..", "..", "..");
@@ -80,7 +80,7 @@ async function resolveKastBinary() {
   };
 
   // Prefer repo-local artifacts over PATH: a globally installed CLI can be older than
-  // this extension and may not support the hidden `kast skill` wrapper surface.
+  // this extension and may not support the direct `kast <wrapper>` surface.
   addCandidate(join(REPO_ROOT, "kast-cli", "build", "scripts", "kast-cli"));
   addCandidate(join(REPO_ROOT, "dist", "cli", "kast-cli"));
 
@@ -97,7 +97,7 @@ async function resolveKastBinary() {
 
   const rejected = [];
   for (const candidate of candidates) {
-    if (await supportsSkillWrappers(candidate)) {
+    if (await supportsWrapperCommands(candidate)) {
       kastBinary = candidate;
       return candidate;
     }
@@ -105,15 +105,21 @@ async function resolveKastBinary() {
   }
 
   resolveError = rejected.length
-    ? `no resolved Kast CLI supports hidden skill wrappers; rejected: ${rejected.join(", ")}`
+    ? `no resolved Kast CLI supports direct wrapper commands; rejected: ${rejected.join(", ")}`
     : "no Kast CLI candidate found; build the repo-local CLI or install a matching Kast release";
   return null;
 }
 
-async function supportsSkillWrappers(path) {
-  const {ok, stdout} = await execBash(`${JSON.stringify(path)} help skill`);
+async function supportsWrapperCommands(path) {
+  const probe = JSON.stringify({ workspaceRoot: REPO_ROOT });
+  const {ok, stdout} = await execBash(`${JSON.stringify(path)} workspace-files ${JSON.stringify(probe)}`);
   if (!ok) return false;
-  return !stdout.includes("Unknown command topic: skill");
+  try {
+    const parsed = JSON.parse(stdout.trim());
+    return parsed && typeof parsed === "object" && parsed.ok === true;
+  } catch {
+    return false;
+  }
 }
 
 async function callKastSkill(command, args) {
@@ -126,7 +132,7 @@ async function callKastSkill(command, args) {
     });
   }
   const json = JSON.stringify(args ?? {});
-  const cmd = `${JSON.stringify(bin)} skill ${command} ${JSON.stringify(json)}`;
+  const cmd = `${JSON.stringify(bin)} ${command} ${JSON.stringify(json)}`;
   const { ok, stdout, stderr, code } = await execBash(cmd);
   // kast prints JSON to stdout; surface any stderr if the JSON parse would fail.
   const out = stdout.trim();
@@ -134,7 +140,7 @@ async function callKastSkill(command, args) {
     return JSON.stringify({
       ok: false,
       stage: "extension.exec",
-      message: `kast skill ${command} produced no output (exit ${code})`,
+      message: `kast ${command} produced no output (exit ${code})`,
       errorText: stderr.trim() || null,
     });
   }
@@ -145,7 +151,7 @@ async function callKastSkill(command, args) {
     return JSON.stringify({
       ok: false,
       stage: "extension.parse",
-      message: `kast skill ${command} returned non-JSON (exit ${code})`,
+      message: `kast ${command} returned non-JSON (exit ${code})`,
       raw: out,
       errorText: stderr.trim() || null,
     });
@@ -153,7 +159,7 @@ async function callKastSkill(command, args) {
 }
 
 // ---------------------------------------------------------------------------
-// Tool definitions — one per `kast skill` command.
+// Tool definitions — one per direct `kast <wrapper>` command.
 // Schemas mirror references/quickstart.md; required fields enforce contract.
 
 const ABS_PATH = "Absolute filesystem path.";
@@ -162,7 +168,7 @@ const tools = [
   {
     name: "kast_workspace_files",
     description:
-      "List Kotlin workspace modules and (optionally) their source files via kast skill workspace-files. Use to discover scope before scaffolding or resolving symbols. Far cheaper than recursive directory listings; truncation is reported per-module.",
+      "List Kotlin workspace modules and (optionally) their source files via kast workspace-files. Use to discover scope before scaffolding or resolving symbols. Far cheaper than recursive directory listings; truncation is reported per-module.",
     parameters: {
       type: "object",
       properties: {
@@ -182,7 +188,7 @@ const tools = [
   {
     name: "kast_scaffold",
     description:
-      "Summarize a Kotlin file/type structure (declarations, signatures, imports, key call sites) via kast skill scaffold. ALWAYS prefer this over reading a .kt file with `view` — scaffold returns a semantic skeleton at a fraction of the token cost.",
+      "Summarize a Kotlin file/type structure (declarations, signatures, imports, key call sites) via kast scaffold. ALWAYS prefer this over reading a .kt file with `view` — scaffold returns a semantic skeleton at a fraction of the token cost.",
     parameters: {
       type: "object",
       properties: {
@@ -201,7 +207,7 @@ const tools = [
   {
     name: "kast_resolve",
     description:
-      "Resolve a Kotlin symbol to its declaration via kast skill resolve. Use first whenever a name might be overloaded, inherited, or shadowed — disambiguate with kind/containingType/fileHint before tracing references or callers.",
+      "Resolve a Kotlin symbol to its declaration via kast resolve. Use first whenever a name might be overloaded, inherited, or shadowed — disambiguate with kind/containingType/fileHint before tracing references or callers.",
     parameters: {
       type: "object",
       properties: {
@@ -218,7 +224,7 @@ const tools = [
   {
     name: "kast_references",
     description:
-      "Find every usage of a Kotlin symbol via kast skill references. ALWAYS prefer this over `grep` for Kotlin identity — grep cannot disambiguate overloads, inherited members, or imports vs aliases.",
+      "Find every usage of a Kotlin symbol via kast references. ALWAYS prefer this over `grep` for Kotlin identity — grep cannot disambiguate overloads, inherited members, or imports vs aliases.",
     parameters: {
       type: "object",
       properties: {
@@ -236,7 +242,7 @@ const tools = [
   {
     name: "kast_callers",
     description:
-      "Trace incoming or outgoing call hierarchy for a Kotlin function via kast skill callers. Use to understand flow, blast radius, or to find the entry points reaching a target.",
+      "Trace incoming or outgoing call hierarchy for a Kotlin function via kast callers. Use to understand flow, blast radius, or to find the entry points reaching a target.",
     parameters: {
       type: "object",
       properties: {
@@ -256,7 +262,7 @@ const tools = [
   {
     name: "kast_metrics",
     description:
-      "Query the indexed source metrics via kast skill metrics: fanIn, fanOut, coupling, lowUsage, cycles, moduleDepth, deadCode, impact. Treat results as advisory if the response indicates the reference index is missing or stale.",
+      "Query the indexed source metrics via kast metrics: fanIn, fanOut, coupling, lowUsage, cycles, moduleDepth, deadCode, impact. Treat results as advisory if the response indicates the reference index is missing or stale.",
     parameters: {
       type: "object",
       properties: {
@@ -276,7 +282,7 @@ const tools = [
   {
     name: "kast_diagnostics",
     description:
-      "Run Kotlin diagnostics on the listed files via kast skill diagnostics. Run after any mutation that did not already validate; treat dirty results as a failed change.",
+      "Run Kotlin diagnostics on the listed files via kast diagnostics. Run after any mutation that did not already validate; treat dirty results as a failed change.",
     parameters: {
       type: "object",
       properties: {
@@ -294,7 +300,7 @@ const tools = [
   {
     name: "kast_rename",
     description:
-      "Rename a Kotlin symbol safely (updates every reference) via kast skill rename. Pass the `type` discriminator (RENAME_BY_SYMBOL_REQUEST or RENAME_BY_OFFSET_REQUEST) plus the request fields. Validation runs automatically — non-clean responses mean the rename did not commit.",
+      "Rename a Kotlin symbol safely (updates every reference) via kast rename. Pass the `type` discriminator (RENAME_BY_SYMBOL_REQUEST or RENAME_BY_OFFSET_REQUEST) plus the request fields. Validation runs automatically — non-clean responses mean the rename did not commit.",
     parameters: {
       type: "object",
       properties: {
@@ -318,7 +324,7 @@ const tools = [
   {
     name: "kast_write_and_validate",
     description:
-      "Apply a Kotlin edit and validate it in one call via kast skill write-and-validate. Pass the `type` discriminator (CREATE_FILE_REQUEST, INSERT_AT_OFFSET_REQUEST, or REPLACE_RANGE_REQUEST). ALWAYS prefer this over the generic `edit`/`create` tools for .kt/.kts changes — it guards against compile breakage and import drift.",
+      "Apply a Kotlin edit and validate it in one call via kast write-and-validate. Pass the `type` discriminator (CREATE_FILE_REQUEST, INSERT_AT_OFFSET_REQUEST, or REPLACE_RANGE_REQUEST). ALWAYS prefer this over the generic `edit`/`create` tools for .kt/.kts changes — it guards against compile breakage and import drift.",
     parameters: {
       type: "object",
       properties: {
@@ -403,7 +409,7 @@ const session = await joinSession({
         additionalContext:
           `Kast tools available natively: kast_workspace_files, kast_scaffold, kast_resolve, kast_references, kast_callers, kast_metrics, kast_diagnostics, kast_rename, kast_write_and_validate. ` +
           `Use these for ALL Kotlin semantic work — they are far cheaper than view/grep/edit on .kt source. ` +
-          `If a bash fallback is genuinely necessary, run ${bin} skill ... directly; do not rely on exported shell state across tool calls.`,
+          `If a bash fallback is genuinely necessary, run ${bin} <wrapper> '<json>' directly; do not rely on exported shell state across tool calls.`,
       };
     },
     onPreToolUse: async (input) => {

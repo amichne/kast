@@ -3,13 +3,13 @@
 ## Bootstrap once
 
 1. Try the real Kast command you need.
-2. If the shell reports `command not found`, resolve the local binary:
+2. If `KAST_CLI_PATH` is empty or the shell reports `command not found`, run:
 
    ```bash
-   KAST_BIN="$(bash .agents/skills/kast/scripts/resolve-kast.sh)"
+   eval "$(bash .agents/skills/kast/scripts/kast-session-start.sh)"
    ```
 
-3. Retry the same command with `"$KAST_BIN"` or after adding kast to PATH.
+3. Retry the same command.
 4. Only then inspect the binary path or maintenance fixtures.
 
 Do not start by reading `.kast-version` or the full OpenAPI fixture.
@@ -20,15 +20,14 @@ instead of switching to non-semantic Kotlin search.
 
 | Task | Command |
 | --- | --- |
-| List modules or source files | `kast skill workspace-files` |
-| Understand a file or type | `kast skill scaffold` |
-| Resolve an exact declaration | `kast skill resolve` |
-| Find usages or constructor call sites | `kast skill references` |
-| Trace incoming/outgoing flow | `kast skill callers` |
-| Query indexed metrics | `kast skill metrics` |
-| Rename safely | `kast skill rename` |
-| Apply code and validate it | `kast skill write-and-validate` |
-| Re-check touched files | `kast skill diagnostics` |
+| List modules or source files | `kast workspace-files` |
+| Understand a file or type | `kast scaffold` |
+| Resolve an exact declaration | `kast resolve` |
+| Find usages or constructor call sites | `kast references` |
+| Trace incoming/outgoing flow | `kast callers` |
+| Rename safely | `kast rename` |
+| Apply code and validate it | `kast write-and-validate` |
+| Re-check touched files | `kast diagnostics` |
 
 ## Request and response shape
 
@@ -52,7 +51,7 @@ instead of switching to non-semantic Kotlin search.
 ### List workspace files
 
 ```bash
-kast skill workspace-files '{"includeFiles":true,"maxFilesPerModule":500}'
+"$KAST_CLI_PATH" workspace-files '{"includeFiles":true,"maxFilesPerModule":500}'
 ```
 
 `includeFiles` returns a capped file list for each module. If a module has more
@@ -62,7 +61,7 @@ while keeping `fileCount` as the total discovered source file count.
 ### Resolve an ambiguous property
 
 ```bash
-kast skill resolve '{
+"$KAST_CLI_PATH" resolve '{
   "symbol":"date",
   "kind":"property",
   "containingType":"com.example.EventBean",
@@ -73,7 +72,7 @@ kast skill resolve '{
 ### Find usages of a type or property
 
 ```bash
-kast skill references '{
+"$KAST_CLI_PATH" references '{
   "symbol":"EventBean",
   "fileHint":"/abs/path/EventBean.kt",
   "includeDeclaration":true
@@ -84,7 +83,7 @@ If a projection such as `.references[].location.filePath` returns nothing, inspe
 item before assuming the command failed:
 
 ```bash
-kast skill references '{"symbol":"EventBean","includeDeclaration":true}' \
+"$KAST_CLI_PATH" references '{"symbol":"EventBean","includeDeclaration":true}' \
   | jq '{ok,type,firstReference:.references[0]}'
 ```
 
@@ -94,7 +93,7 @@ Wrapper metadata and nested API fields both use camelCase, including
 ### Trace callers
 
 ```bash
-kast skill callers '{
+"$KAST_CLI_PATH" callers '{
   "symbol":"process",
   "direction":"incoming",
   "depth":3,
@@ -103,27 +102,10 @@ kast skill callers '{
 }'
 ```
 
-### Query indexed metrics
-
-```bash
-kast skill metrics '{
-  "workspaceRoot":"/abs/path/project",
-  "metric":"impact",
-  "symbol":"com.example.EventBean",
-  "depth":2,
-  "limit":100
-}'
-```
-
-Use metrics for fanIn, fanOut, coupling, lowUsage, cycles, moduleDepth,
-deadCode, and impact questions.
-Treat results as advisory when the response says the reference index is missing,
-stale, or not ready.
-
 ### Understand a file quickly
 
 ```bash
-kast skill scaffold '{
+"$KAST_CLI_PATH" scaffold '{
   "targetFile":"/abs/path/EventBean.kt",
   "targetSymbol":"EventBean",
   "workspaceRoot":"/abs/path/project",
@@ -138,7 +120,7 @@ is no batch variant.
 ### Rename
 
 ```bash
-kast skill rename '{
+"$KAST_CLI_PATH" rename '{
   "type":"RENAME_BY_SYMBOL_REQUEST",
   "symbol":"OldName",
   "newName":"NewName"
@@ -148,7 +130,7 @@ kast skill rename '{
 ### Write and validate
 
 ```bash
-kast skill write-and-validate '{
+"$KAST_CLI_PATH" write-and-validate '{
   "type":"REPLACE_RANGE_REQUEST",
   "filePath":"/abs/path/File.kt",
   "startOffset":120,
@@ -166,7 +148,7 @@ than applying a manual edit.
 ### Validate touched files
 
 ```bash
-kast skill diagnostics '{
+"$KAST_CLI_PATH" diagnostics '{
   "filePaths":["/abs/path/File.kt"]
 }'
 ```
@@ -177,6 +159,4 @@ kast skill diagnostics '{
   `.references[0]`, before assuming field names.
 - If a symbol name is broad, add `kind`, `containingType`, or `fileHint`.
 - For large result sets, narrow the query before post-processing.
-- If `workspace-files` returns `filesTruncated:true`, raise the cap only when a
-  wider file list is necessary.
 - Never pivot to `grep` or `rg` for Kotlin identity.
