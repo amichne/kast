@@ -52,4 +52,13 @@ class KastSettingsConfigurableTest {
         assertEquals("/tmp/spans.jsonl", override.telemetry?.outputFile?.value?.orNull)
         assertEquals(null, override.cache)
     }
+
+    @Test
+    fun `telemetry detail level maps config values for settings UI`() {
+        assertEquals(KastTelemetryDetailLevel.BASIC, KastTelemetryDetailLevel.fromConfigValue(null))
+        assertEquals(KastTelemetryDetailLevel.BASIC, KastTelemetryDetailLevel.fromConfigValue(" "))
+        assertEquals(KastTelemetryDetailLevel.BASIC, KastTelemetryDetailLevel.fromConfigValue("unexpected"))
+        assertEquals(KastTelemetryDetailLevel.BASIC, KastTelemetryDetailLevel.fromConfigValue("BaSiC"))
+        assertEquals(KastTelemetryDetailLevel.VERBOSE, KastTelemetryDetailLevel.fromConfigValue(" verbose "))
+    }
 }

@@ -1,52 +1,62 @@
+@file:Suppress("UnstableApiUsage")
+
 package io.github.amichne.kast.intellij
 
+import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.options.ConfigurationException
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.ComboBox
+import com.intellij.openapi.ui.DialogPanel
+import com.intellij.openapi.ui.TextFieldWithBrowseButton
+import com.intellij.ui.components.JBCheckBox
+import com.intellij.ui.components.JBTextField
+import com.intellij.ui.dsl.builder.Cell
+import com.intellij.ui.dsl.builder.Row
+import com.intellij.ui.dsl.builder.panel
+import com.intellij.ui.dsl.builder.selected
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.WorkspaceDirectoryResolver
 import java.nio.file.Files
 import java.nio.file.Path
-import javax.swing.JCheckBox
 import javax.swing.JComponent
-import javax.swing.JLabel
-import javax.swing.JPanel
 import javax.swing.JTextField
-import javax.swing.border.TitledBorder
 
 internal class KastSettingsConfigurable(
     private val project: Project,
 ) : Configurable {
-    private var panel: JPanel? = null
+    private var panel: DialogPanel? = null
 
-    private val serverMaxResults = JTextField()
-    private val serverRequestTimeoutMillis = JTextField()
-    private val serverMaxConcurrentRequests = JTextField()
-    private val indexingPhase2Enabled = JCheckBox()
-    private val indexingPhase2BatchSize = JTextField()
-    private val indexingIdentifierIndexWaitMillis = JTextField()
-    private val indexingReferenceBatchSize = JTextField()
-    private val indexingRemoteEnabled = JCheckBox()
-    private val indexingRemoteSourceIndexUrl = JTextField()
-    private val cacheEnabled = JCheckBox()
-    private val cacheWriteDelayMillis = JTextField()
-    private val cacheSourceIndexSaveDelayMillis = JTextField()
-    private val watcherDebounceMillis = JTextField()
-    private val gradleToolingApiTimeoutMillis = JTextField()
-    private val gradleMaxIncludedProjects = JTextField()
-    private val telemetryEnabled = JCheckBox()
-    private val telemetryScopes = JTextField()
-    private val telemetryDetail = JTextField()
-    private val telemetryOutputFile = JTextField()
-    private val backendsStandaloneEnabled = JCheckBox()
-    private val backendsStandaloneRuntimeLibsDir = JTextField()
-    private val backendsIntellijEnabled = JCheckBox()
+    private lateinit var serverMaxResults: JBTextField
+    private lateinit var serverRequestTimeoutMillis: JBTextField
+    private lateinit var serverMaxConcurrentRequests: JBTextField
+    private lateinit var indexingPhase2Enabled: JBCheckBox
+    private lateinit var indexingPhase2BatchSize: JBTextField
+    private lateinit var indexingIdentifierIndexWaitMillis: JBTextField
+    private lateinit var indexingReferenceBatchSize: JBTextField
+    private lateinit var indexingRemoteEnabled: JBCheckBox
+    private lateinit var indexingRemoteSourceIndexUrl: JBTextField
+    private lateinit var cacheEnabled: JBCheckBox
+    private lateinit var cacheWriteDelayMillis: JBTextField
+    private lateinit var cacheSourceIndexSaveDelayMillis: JBTextField
+    private lateinit var watcherDebounceMillis: JBTextField
+    private lateinit var gradleToolingApiTimeoutMillis: JBTextField
+    private lateinit var gradleMaxIncludedProjects: JBTextField
+    private lateinit var telemetryEnabled: JBCheckBox
+    private lateinit var telemetryScopes: JBTextField
+    private lateinit var telemetryDetail: ComboBox<KastTelemetryDetailLevel>
+    private lateinit var telemetryOutputFile: TextFieldWithBrowseButton
+    private lateinit var backendsStandaloneEnabled: JBCheckBox
+    private lateinit var backendsStandaloneRuntimeLibsDir: TextFieldWithBrowseButton
+    private lateinit var backendsIntellijEnabled: JBCheckBox
+    private var loadedTelemetryDetailRaw: String? = null
 
     override fun getDisplayName(): String = "Kast"
 
-    override fun createComponent(): JComponent = panel ?: buildPanel().also { panel = it }
+    override fun createComponent(): JComponent = ensurePanel()
 
     override fun isModified(): Boolean {
+        ensurePanel()
         val state = KastSettingsState.getInstance(project)
         return serverMaxResults.text != state.serverMaxResults.display() ||
             serverRequestTimeoutMillis.text != state.serverRequestTimeoutMillis.display() ||
@@ -65,7 +75,7 @@ internal class KastSettingsConfigurable(
             gradleMaxIncludedProjects.text != state.gradleMaxIncludedProjects.display() ||
             telemetryEnabled.isSelected != (state.telemetryEnabled ?: false) ||
             telemetryScopes.text != state.telemetryScopes.orEmpty() ||
-            telemetryDetail.text != state.telemetryDetail.orEmpty() ||
+            selectedTelemetryDetailConfigValue(state) != state.telemetryDetail ||
             telemetryOutputFile.text != state.telemetryOutputFile.orEmpty() ||
             backendsStandaloneEnabled.isSelected != (state.backendsStandaloneEnabled ?: false) ||
             backendsStandaloneRuntimeLibsDir.text != state.backendsStandaloneRuntimeLibsDir.orEmpty() ||
@@ -73,6 +83,7 @@ internal class KastSettingsConfigurable(
     }
 
     override fun reset() {
+        ensurePanel()
         val workspaceRoot = workspaceRoot()
         val config = workspaceRoot?.let(KastConfig::load) ?: KastConfig.defaults()
         KastSettingsState.getInstance(project).loadFromConfig(config)
@@ -80,6 +91,7 @@ internal class KastSettingsConfigurable(
     }
 
     override fun apply() {
+        ensurePanel()
         val workspaceRoot = workspaceRoot() ?: return
         val state = KastSettingsState.getInstance(project)
         val previousServer = state.toOverride().server
@@ -98,43 +110,132 @@ internal class KastSettingsConfigurable(
         }
     }
 
-    private fun buildPanel(): JPanel = JPanel().apply {
-        layout = javax.swing.BoxLayout(this, javax.swing.BoxLayout.Y_AXIS)
-        add(section("Server") {
-            row("Max results", serverMaxResults)
-            row("Request timeout millis", serverRequestTimeoutMillis)
-            row("Max concurrent requests", serverMaxConcurrentRequests)
-        })
-        add(section("Indexing") {
-            row("Phase 2 enabled", indexingPhase2Enabled)
-            row("Phase 2 batch size", indexingPhase2BatchSize)
-            row("Identifier index wait millis", indexingIdentifierIndexWaitMillis)
-            row("Reference batch size", indexingReferenceBatchSize)
-            row("Remote index enabled", indexingRemoteEnabled)
-            row("Remote source index URL", indexingRemoteSourceIndexUrl)
-        })
-        add(section("Cache") {
-            row("Enabled", cacheEnabled)
-            row("Write delay millis", cacheWriteDelayMillis)
-            row("Source index save delay millis", cacheSourceIndexSaveDelayMillis)
-        })
-        add(section("Watcher") { row("Debounce millis", watcherDebounceMillis) })
-        add(section("Gradle") {
-            row("Tooling API timeout millis", gradleToolingApiTimeoutMillis)
-            row("Max included projects", gradleMaxIncludedProjects)
-        })
-        add(section("Telemetry") {
-            row("Enabled", telemetryEnabled)
-            row("Scopes", telemetryScopes)
-            row("Detail", telemetryDetail)
-            row("Output file", telemetryOutputFile)
-        })
-        add(section("Backends") {
-            row("Standalone enabled", backendsStandaloneEnabled)
-            row("Standalone runtime libs dir", backendsStandaloneRuntimeLibsDir)
-            row("IntelliJ enabled", backendsIntellijEnabled)
-        })
+    override fun disposeUIResources() {
+        panel = null
     }
+
+    private fun ensurePanel(): DialogPanel = panel ?: buildPanel().also { panel = it }
+
+    private fun buildPanel(): DialogPanel = panel {
+        collapsibleGroup("Server") {
+            row("Max results:") {
+                serverMaxResults = requiredIntegerTextField("Server max results").component
+            }
+            row("Request timeout (ms):") {
+                serverRequestTimeoutMillis = requiredLongTextField("Server request timeout millis").component
+            }
+            row("Max concurrent requests:") {
+                serverMaxConcurrentRequests = requiredIntegerTextField("Server max concurrent requests").component
+            }
+        }
+
+        collapsibleGroup("Indexing") {
+            row {
+                indexingPhase2Enabled = checkBox("Phase 2 enabled").component
+            }
+            row("Phase 2 batch size:") {
+                indexingPhase2BatchSize = requiredIntegerTextField("Indexing phase 2 batch size").component
+            }
+            row("Identifier index wait (ms):") {
+                indexingIdentifierIndexWaitMillis = requiredLongTextField("Identifier index wait millis").component
+            }
+            row("Reference batch size:") {
+                indexingReferenceBatchSize = requiredIntegerTextField("Indexing reference batch size").component
+            }
+            lateinit var remoteEnabledCell: Cell<JBCheckBox>
+            row {
+                remoteEnabledCell = checkBox("Remote index enabled").also { indexingRemoteEnabled = it.component }
+            }
+            row("Remote source index URL:") {
+                indexingRemoteSourceIndexUrl = textField()
+                    .enabledIf(remoteEnabledCell.selected)
+                    .component
+            }
+        }
+
+        collapsibleGroup("Cache") {
+            row {
+                cacheEnabled = checkBox("Enabled").component
+            }
+            row("Write delay (ms):") {
+                cacheWriteDelayMillis = requiredLongTextField("Cache write delay millis").component
+            }
+            row("Source index save delay (ms):") {
+                cacheSourceIndexSaveDelayMillis = requiredLongTextField("Cache source index save delay millis").component
+            }
+        }
+
+        collapsibleGroup("Watcher") {
+            row("Debounce (ms):") {
+                watcherDebounceMillis = requiredLongTextField("Watcher debounce millis").component
+            }
+        }
+
+        collapsibleGroup("Gradle") {
+            row("Tooling API timeout (ms):") {
+                gradleToolingApiTimeoutMillis = requiredLongTextField("Gradle tooling API timeout millis").component
+            }
+            row("Max included projects:") {
+                gradleMaxIncludedProjects = requiredIntegerTextField("Gradle max included projects").component
+            }
+        }
+
+        collapsibleGroup("Telemetry") {
+            lateinit var telemetryEnabledCell: Cell<JBCheckBox>
+            row {
+                telemetryEnabledCell = checkBox("Enabled").also { telemetryEnabled = it.component }
+            }
+            row("Scopes:") {
+                telemetryScopes = textField()
+                    .enabledIf(telemetryEnabledCell.selected)
+                    .comment("Comma-separated list, or \"all\". Valid scopes: ${canonicalTelemetryScopes()}.")
+                    .component
+            }
+            row("Detail:") {
+                telemetryDetail = comboBox(KastTelemetryDetailLevel.entries.toList())
+                    .enabledIf(telemetryEnabledCell.selected)
+                    .component
+            }
+            row("Output file:") {
+                telemetryOutputFile = textFieldWithBrowseButton(
+                    FileChooserDescriptorFactory.createSingleFileNoJarsDescriptor()
+                        .withTitle("Select Telemetry Output File"),
+                    project,
+                ) { it.path }
+                    .enabledIf(telemetryEnabledCell.selected)
+                    .component
+            }
+        }
+
+        collapsibleGroup("Backends") {
+            lateinit var standaloneEnabledCell: Cell<JBCheckBox>
+            row {
+                standaloneEnabledCell = checkBox("Standalone enabled").also { backendsStandaloneEnabled = it.component }
+            }
+            row("Runtime libs directory:") {
+                backendsStandaloneRuntimeLibsDir = textFieldWithBrowseButton(
+                    FileChooserDescriptorFactory.createSingleFolderDescriptor()
+                        .withTitle("Select Runtime Libs Directory"),
+                    project,
+                ) { it.path }
+                    .enabledIf(standaloneEnabledCell.selected)
+                    .component
+            }
+            row {
+                backendsIntellijEnabled = checkBox("IntelliJ enabled").component
+            }
+        }
+    }
+
+    private fun Row.requiredIntegerTextField(label: String): Cell<JBTextField> =
+        textField()
+            .validationOnInput { field -> field.integerValidationMessage(label)?.let { error(it) } }
+            .validationOnApply { field -> field.integerValidationMessage(label)?.let { error(it) } }
+
+    private fun Row.requiredLongTextField(label: String): Cell<JBTextField> =
+        textField()
+            .validationOnInput { field -> field.longValidationMessage(label)?.let { error(it) } }
+            .validationOnApply { field -> field.longValidationMessage(label)?.let { error(it) } }
 
     private fun loadFieldsFromState() {
         val state = KastSettingsState.getInstance(project)
@@ -155,7 +256,8 @@ internal class KastSettingsConfigurable(
         gradleMaxIncludedProjects.text = state.gradleMaxIncludedProjects.display()
         telemetryEnabled.isSelected = state.telemetryEnabled ?: false
         telemetryScopes.text = state.telemetryScopes.orEmpty()
-        telemetryDetail.text = state.telemetryDetail.orEmpty()
+        loadedTelemetryDetailRaw = state.telemetryDetail
+        telemetryDetail.selectedItem = KastTelemetryDetailLevel.fromConfigValue(state.telemetryDetail)
         telemetryOutputFile.text = state.telemetryOutputFile.orEmpty()
         backendsStandaloneEnabled.isSelected = state.backendsStandaloneEnabled ?: false
         backendsStandaloneRuntimeLibsDir.text = state.backendsStandaloneRuntimeLibsDir.orEmpty()
@@ -163,56 +265,61 @@ internal class KastSettingsConfigurable(
     }
 
     private fun updateStateFromFields(state: KastSettingsState) {
-        state.serverMaxResults = serverMaxResults.parseInt("Server max results")
-        state.serverRequestTimeoutMillis = serverRequestTimeoutMillis.parseLong("Server request timeout millis")
-        state.serverMaxConcurrentRequests = serverMaxConcurrentRequests.parseInt("Server max concurrent requests")
+        state.serverMaxResults = serverMaxResults.readRequiredInt("Server max results")
+        state.serverRequestTimeoutMillis = serverRequestTimeoutMillis.readRequiredLong("Server request timeout millis")
+        state.serverMaxConcurrentRequests = serverMaxConcurrentRequests.readRequiredInt("Server max concurrent requests")
         state.indexingPhase2Enabled = indexingPhase2Enabled.isSelected
-        state.indexingPhase2BatchSize = indexingPhase2BatchSize.parseInt("Indexing phase 2 batch size")
-        state.indexingIdentifierIndexWaitMillis = indexingIdentifierIndexWaitMillis.parseLong("Identifier index wait millis")
-        state.indexingReferenceBatchSize = indexingReferenceBatchSize.parseInt("Indexing reference batch size")
+        state.indexingPhase2BatchSize = indexingPhase2BatchSize.readRequiredInt("Indexing phase 2 batch size")
+        state.indexingIdentifierIndexWaitMillis = indexingIdentifierIndexWaitMillis.readRequiredLong("Identifier index wait millis")
+        state.indexingReferenceBatchSize = indexingReferenceBatchSize.readRequiredInt("Indexing reference batch size")
         state.indexingRemoteEnabled = indexingRemoteEnabled.isSelected
         state.indexingRemoteSourceIndexUrl = indexingRemoteSourceIndexUrl.text.takeIf(String::isNotBlank)
         state.cacheEnabled = cacheEnabled.isSelected
-        state.cacheWriteDelayMillis = cacheWriteDelayMillis.parseLong("Cache write delay millis")
-        state.cacheSourceIndexSaveDelayMillis = cacheSourceIndexSaveDelayMillis.parseLong("Cache source index save delay millis")
-        state.watcherDebounceMillis = watcherDebounceMillis.parseLong("Watcher debounce millis")
-        state.gradleToolingApiTimeoutMillis = gradleToolingApiTimeoutMillis.parseLong("Gradle tooling API timeout millis")
-        state.gradleMaxIncludedProjects = gradleMaxIncludedProjects.parseInt("Gradle max included projects")
+        state.cacheWriteDelayMillis = cacheWriteDelayMillis.readRequiredLong("Cache write delay millis")
+        state.cacheSourceIndexSaveDelayMillis = cacheSourceIndexSaveDelayMillis.readRequiredLong("Cache source index save delay millis")
+        state.watcherDebounceMillis = watcherDebounceMillis.readRequiredLong("Watcher debounce millis")
+        state.gradleToolingApiTimeoutMillis = gradleToolingApiTimeoutMillis.readRequiredLong("Gradle tooling API timeout millis")
+        state.gradleMaxIncludedProjects = gradleMaxIncludedProjects.readRequiredInt("Gradle max included projects")
         state.telemetryEnabled = telemetryEnabled.isSelected
         state.telemetryScopes = telemetryScopes.text.takeIf(String::isNotBlank)
-        state.telemetryDetail = telemetryDetail.text.takeIf(String::isNotBlank)
+        state.telemetryDetail = selectedTelemetryDetailConfigValue(state)?.takeIf(String::isNotBlank)
         state.telemetryOutputFile = telemetryOutputFile.text.takeIf(String::isNotBlank)
         state.backendsStandaloneEnabled = backendsStandaloneEnabled.isSelected
         state.backendsStandaloneRuntimeLibsDir = backendsStandaloneRuntimeLibsDir.text.takeIf(String::isNotBlank)
         state.backendsIntellijEnabled = backendsIntellijEnabled.isSelected
+        loadedTelemetryDetailRaw = state.telemetryDetail
     }
+
+    private fun selectedTelemetryDetailConfigValue(state: KastSettingsState): String? {
+        val selected = selectedTelemetryDetail()
+        return if (state.telemetryDetail == loadedTelemetryDetailRaw &&
+            selected == KastTelemetryDetailLevel.fromConfigValue(state.telemetryDetail)
+        ) {
+            state.telemetryDetail
+        } else {
+            selected.configValue
+        }
+    }
+
+    private fun selectedTelemetryDetail(): KastTelemetryDetailLevel =
+        telemetryDetail.selectedItem as? KastTelemetryDetailLevel ?: KastTelemetryDetailLevel.BASIC
 
     private fun workspaceRoot(): Path? = project.basePath?.let { Path.of(it).toAbsolutePath().normalize() }
 }
 
-private fun section(
-    title: String,
-    body: JPanel.() -> Unit,
-): JPanel = JPanel().apply {
-    layout = java.awt.GridLayout(0, 2, 8, 4)
-    border = TitledBorder(title)
-    body()
-}
-
-private fun JPanel.row(
-    label: String,
-    component: JComponent,
-) {
-    add(JLabel(label))
-    add(component)
-}
-
 private fun Number?.display(): String = this?.toString().orEmpty()
 
-private fun JTextField.parseInt(label: String): Int? =
-    text.takeIf(String::isNotBlank)?.toIntOrNull()
-        ?: throw ConfigurationException("$label must be an integer")
+private fun canonicalTelemetryScopes(): String =
+    IntelliJTelemetryScope.entries.joinToString(", ") { it.name.lowercase().replace('_', '-') }
 
-private fun JTextField.parseLong(label: String): Long? =
-    text.takeIf(String::isNotBlank)?.toLongOrNull()
-        ?: throw ConfigurationException("$label must be a long integer")
+private fun JTextField.integerValidationMessage(label: String): String? =
+    if (text.toIntOrNull() == null) "$label must be an integer" else null
+
+private fun JTextField.longValidationMessage(label: String): String? =
+    if (text.toLongOrNull() == null) "$label must be a long integer" else null
+
+private fun JTextField.readRequiredInt(label: String): Int =
+    text.toIntOrNull() ?: throw ConfigurationException("$label must be an integer")
+
+private fun JTextField.readRequiredLong(label: String): Long =
+    text.toLongOrNull() ?: throw ConfigurationException("$label must be a long integer")
