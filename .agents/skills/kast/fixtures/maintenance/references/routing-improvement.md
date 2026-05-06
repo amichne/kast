@@ -35,7 +35,7 @@ user prompts, loaded skills, and tool usage.
 Run the corpus builder on one or more directories of exports and logs:
 
 ```console title="Build routing cases"
-python3 .agents/skills/kast/scripts/build-routing-corpus.py \
+python3 .agents/skills/kast/fixtures/maintenance/scripts/build-routing-corpus.py \
   --session-dir=/absolute/path/to/session-exports \
   --logs-dir=/absolute/path/to/copilot/logs \
   --output-jsonl=build/skill-routing/routing-cases.jsonl \
@@ -65,14 +65,13 @@ case. This is where you decide whether a miss is durable enough to become a
 checked-in eval.
 
 Finally review `promotion-candidates.json`. These are suggested additions to
-`evals/catalog.json` with `suite: "routing"`, not auto-approved changes.
+`fixtures/maintenance/evals/routing.json`, not auto-approved changes.
 
 ## Promote durable misses
 
 When a prompt pattern recurs, add a sanitized entry to
-`evals/catalog.json` and mark it with `suite: "routing"`.
-Use the existing routing-tagged examples in that catalog as the canonical
-schema.
+`fixtures/maintenance/evals/routing.json`.
+Use the existing examples in that file as the canonical schema.
 
 Good routing evals:
 
@@ -93,7 +92,7 @@ Once the eval corpus captures the recurring miss, update the narrowest
 surface that explains the behavior:
 
 1. `SKILL.md` for portable, standards-based skill behavior
-2. `.github/extensions/kast/extension.mjs` and repo instructions for GitHub Copilot-specific routing and invocation hints
+2. `.github/agents/*.md` for GitHub Copilot-specific routing and invocation hints
 3. `.github/hooks/*` for enforcement and compatibility drift
 4. optional vendor-specific metadata only when a host actually requires it
 
@@ -106,7 +105,7 @@ After any routing change:
 
 1. Re-run `kast eval skill`
 2. Compare against the previous baseline with
-   `kast eval skill --compare=history/eval-baseline.json`
+   `kast eval skill --compare=baseline.json`
 3. Re-run the corpus builder on fresh sessions
 
 The goal is not only a better static score. The goal is fewer fresh cases in

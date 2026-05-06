@@ -30,7 +30,7 @@ HTML_DURATION_RE = re.compile(r"^(?:\d+h\s+)?(?:\d+m\s+)?\d+s$")
 HTML_STYLE_OR_SCRIPT_RE = re.compile(r"<(?:style|script)\b.*?</(?:style|script)>", re.IGNORECASE | re.DOTALL)
 HTML_TAG_RE = re.compile(r"<[^>]+>")
 INIT_FRICTION_RE = re.compile(
-    r"(?:command not found|bash:\s*:\s*command not found|Unable to resolve Kast CLI path)",
+    r"(?:KAST_CLI_PATH\s*(?:=|is empty)|command not found|bash:\s*:\s*command not found|Unable to resolve Kast CLI path)",
     re.IGNORECASE,
 )
 SCHEMA_FRICTION_RE = re.compile(
@@ -42,7 +42,7 @@ MUTATION_VALIDATION_RE = re.compile(
     re.IGNORECASE,
 )
 KAST_COMMAND_RE = re.compile(
-    r'(?:(?:(?:[^\s"\']+/)?kast)\s+skill\s+'
+    r'(?:(?:"?\$KAST_CLI_PATH"?|(?:[^\s"\']+/)?kast)\s+skill\s+'
     r'(?:resolve|references|callers|diagnostics|rename|scaffold|write-and-validate|workspace-files))'
 )
 ABS_PATH_RE = re.compile(
@@ -164,23 +164,6 @@ def sanitize_text(value: str, *, limit: int = 280) -> str:
     if len(value) > limit:
         return value[: limit - 1].rstrip() + "…"
     return value
-
-
-def iso_timestamp() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
-
-
-def normalize_failure_mode(classification: str) -> str:
-    return {
-        "trigger-miss": "trigger_miss",
-        "loaded-but-bypassed": "routing_bypass",
-        "route-via-subagent": "routing_bypass",
-        "semantic-abandonment": "routing_bypass",
-        "schema-friction": "schema_response",
-        "mutation-validation-friction": "mutation_abandonment",
-        "initialization-friction": "initialization_friction",
-        "maintenance-thrash": "maintenance_thrash",
-    }.get(classification, "routing_bypass")
 
 
 def looks_semantic(prompt: str) -> bool:
@@ -373,13 +356,7 @@ def parse_html_export(path: Path) -> list[RoutingCase]:
             grep_like_commands += 1
         if tool_name == "view" and any(
             marker in content_text
-            for marker in (
-                ".kast-version",
-                "evals/catalog.json",
-                "evals/pain_points.jsonl",
-                "history/progression.json",
-                "wrapper-openapi.yaml",
-            )
+            for marker in (".kast-version", "wrapper-openapi.yaml")
         ):
             contract_reference_reads += 1
         if tool_name != "bash" and SCHEMA_FRICTION_RE.search(content_text) and "kast" in loaded_skills:
@@ -544,8 +521,7 @@ def write_jsonl(path: Path, rows: Iterable[RoutingCase]) -> None:
 
 
 def build_promotion_candidates(cases: list[RoutingCase]) -> dict[str, object]:
-    generated_at = iso_timestamp()
-    catalog_cases = []
+    evals = []
     seen_ids: set[str] = set()
     for case in cases:
         if case.classification not in PROMOTION_CLASSIFICATIONS or not case.prompt:
@@ -558,50 +534,32 @@ def build_promotion_candidates(cases: list[RoutingCase]) -> dict[str, object]:
             suffix += 1
             candidate_id = f"{slug}-{suffix}"
         seen_ids.add(candidate_id)
-        failure_mode = normalize_failure_mode(case.classification)
-        catalog_cases.append(
+        evals.append(
             {
                 "id": candidate_id,
-                "title": f"Promoted routing case: {candidate_id}",
                 "prompt": case.prompt,
-                "files": [],
-                "expected_output": "A routing decision that selects the Kast skill, stays on the native-kast-tools route, and avoids the forbidden generic Kotlin operations for this prompt.",
-                "expectations": [
-                    "Routes through the Kast skill on the native-kast-tools path.",
-                    "Uses the native kast tools needed for the task.",
-                    "Avoids grep, rg, and other forbidden generic Kotlin operations.",
-                ],
-                "labels": ["routing", "promotion-candidate", failure_mode],
-                "stage": "candidate",
-                "suite": "routing",
-                "failure_mode": failure_mode,
                 "expected_skill": "kast",
-                "expected_route": "native-kast-tools",
+                "expected_route": "@kast",
                 "allowed_ops": [
-                    "kast_workspace_files",
-                    "kast_scaffold",
-                    "kast_resolve",
-                    "kast_references",
-                    "kast_callers",
+                    "kast workspace-files",
+                    "kast scaffold",
+                    "kast resolve",
+                    "kast references",
+                    "kast callers",
                 ],
                 "forbidden_ops": ["grep", "rg"],
-                "source": {
-                    "kind": "routing_corpus_builder",
+                "derived_from": {
                     "source_type": case.source_type,
                     "source_name": case.source_name,
-                    "summary": f"Promoted from routing corpus classification {case.classification}",
-                },
-                "promotion": {
-                    "required_pass_rate": 1.0,
-                    "required_benchmarks": 2,
+                    "classification": case.classification,
                 },
             },
         )
     return {
         "skill_name": "kast",
-        "version": 1,
-        "generated_at": generated_at,
-        "cases": catalog_cases,
+        "suite": "routing-promotion-candidates",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "evals": evals,
     }
 
 
@@ -613,7 +571,7 @@ def render_summary(cases: list[RoutingCase], issues: list[SystemIssue]) -> str:
     lines = [
         "# Kast routing corpus summary",
         "",
-        f"- Generated at: {iso_timestamp()}",
+        f"- Generated at: {datetime.now(timezone.utc).isoformat()}",
         f"- Routing cases: {len(cases)}",
         f"- Systemic issues: {len(issues)}",
         "",

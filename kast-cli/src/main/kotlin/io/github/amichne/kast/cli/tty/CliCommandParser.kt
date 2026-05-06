@@ -72,6 +72,7 @@ internal class CliCommandParser(
         if (parsed.positionals.firstOrNull() == "skill") {
             return parseSkillCommand(parsed)
         }
+        parseDirectSkillWrapperCommand(parsed)?.let { return it }
 
         val metadata = CliCommandCatalog.find(parsed.positionals)
             ?: parsed.variableArityMetadata()
@@ -239,6 +240,21 @@ internal class CliCommandParser(
         }
         val rawInput = positionals[2]
         return CliCommand.Skill(name = wrapperName, rawInput = rawInput)
+    }
+
+    private fun parseDirectSkillWrapperCommand(parsed: ParsedArguments): CliCommand? {
+        val positionals = parsed.positionals
+        if (positionals.size != 2 || parsed.options.isNotEmpty()) {
+            return null
+        }
+        val wrapperName = SkillWrapperName.fromCliName(positionals[0]) ?: return null
+        val nextToken = positionals[1]
+        val collidesWithVisibleSubcommand = CliCommandCatalog.commandsUnder(listOf(wrapperName.cliName))
+            .any { it.path.getOrNull(1) == nextToken }
+        if (collidesWithVisibleSubcommand) {
+            return null
+        }
+        return CliCommand.Skill(name = wrapperName, rawInput = nextToken)
     }
 
     private companion object {

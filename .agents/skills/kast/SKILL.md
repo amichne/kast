@@ -1,92 +1,75 @@
 ---
 name: kast
 description: >
-  Use whenever a task touches Kotlin/JVM symbol identity, class or service
-  understanding, feature tracing, usages, ambiguous members, source metrics,
-  failing Kotlin tests, renames, diagnostics, or validated Kotlin edits — even
-  if the user only says "understand this Kotlin class" or "fix this test".
-  Kast is the heart of all Kotlin code insight in this repository; reach for
-  it before `view`, `grep`, or generic file edits on `.kt`/`.kts` source.
+  Semantic Kotlin/JVM navigation and safe refactoring via direct `kast`
+  wrapper commands. Use this whenever a task involves Kotlin/JVM symbol identity,
+  class or service understanding, feature tracing, usages, ambiguous members,
+  failing Kotlin tests, renames, or validated Kotlin edits, even if the user
+  does not explicitly say "Kast" and only asks to understand or fix a Kotlin
+  class. Never use grep/rg for Kotlin identity.
 ---
 
 # Kast
 
-Kast turns Kotlin code into structured, semantic answers at a fraction of the
-token cost of reading source. The Copilot CLI extension at
-`.github/extensions/kast/extension.mjs` registers native tools that map 1:1 to
-the hidden `kast skill` wrapper commands, resolves a compatible binary once at
-session start, and warns when generic `view`/`grep`/`edit`/`create` reaches for
-`.kt`/`.kts` source.
+Use Kast for Kotlin identity, cross-file navigation, and validated edits. The
+goal is to keep semantic work moving even when the first command, JSON
+projection, or edit attempt is imperfect.
 
-## Native tools (preferred path)
+## Fast path
 
-Each tool runs the corresponding hidden `kast skill` command, returns its JSON,
-and validates arguments against a schema — no shell escaping, no JSON-in-bash.
+1. Try the smallest semantic operation that can answer the request:
+   `workspace-files` to find scope, `scaffold` to understand a file/type,
+   `resolve` to pin a declaration, `references` for usages, and `callers` for
+   flow.
+2. If `KAST_CLI_PATH` is empty or the shell says `command not found`, run
+   `eval "$(bash .agents/skills/kast/scripts/kast-session-start.sh)"`, retry the
+   same command once, and then continue. Do not start by reading
+   `.kast-version`, the wrapper OpenAPI fixture, or maintenance evals.
+3. Navigate only with `kast workspace-files`, `kast scaffold`,
+   `kast resolve`, `kast references`, and `kast callers`.
+4. Mutate only with `kast rename`,
+   `kast write-and-validate`, and `kast diagnostics`.
+5. For ambiguous names or member properties, resolve first with `kind`,
+   `containingType`, or `fileHint`, then trace usages/callers.
 
-| Need                                          | Tool                       |
-| --------------------------------------------- | -------------------------- |
-| List modules / source files                   | `kast_workspace_files`     |
-| Understand a file or type (semantic skeleton) | `kast_scaffold`            |
-| Resolve an exact declaration                  | `kast_resolve`             |
-| Find every usage of a symbol                  | `kast_references`          |
-| Trace incoming/outgoing call hierarchy        | `kast_callers`             |
-| Indexed metrics (fanIn/fanOut, cycles, …)     | `kast_metrics`             |
-| Rename safely (updates every reference)       | `kast_rename`              |
-| Apply an edit and validate it atomically      | `kast_write_and_validate`  |
-| Re-check files after a mutation               | `kast_diagnostics`         |
+## JSON shape rules
 
-The extension caches the resolved binary path the first time a tool runs and
-reuses it for the rest of the session. There is no bootstrap step to perform
-manually.
+- Request JSON uses camelCase.
+- Wrapper responses also use camelCase. Examples include `logFile`,
+  `errorText`, `filePath`, `appliedEdits`, and `importChanges`.
+- Nested API models keep the same camelCase field names. For example, symbols
+  use `fqName` and locations use `location.filePath`, `startOffset`, and
+  `startLine`.
+- Check `ok` and `type` before projecting a response. Failure responses carry
+  `stage`, `message`, optional `error` or `errorText`, and `logFile`.
+- `rename` and `write-and-validate` requests require a `type` discriminator
+  such as `RENAME_BY_SYMBOL_REQUEST` or `REPLACE_RANGE_REQUEST`.
+- Any request field ending in `filePath`, `filePaths`, or `contentFile` should
+  use an absolute path.
+- `scaffold` uses `targetFile` (singular absolute path) as the required field,
+  not `filePaths`. `workspaceRoot` defaults to the current working directory
+  when omitted. Run one `scaffold` call per file; there is no batch variant.
 
-If a tool or shell fallback reports `Unknown command topic: skill` or
-`Unknown skill wrapper`, the resolved CLI is stale for this skill bundle. Build
-or install the repo-local CLI, then retry with a binary whose `kast help skill`
-does not report an unknown topic. The extension intentionally rejects stale
-global binaries on `PATH` and prefers repo-local artifacts that support the
-hidden skill wrappers.
+## Recovery rules
 
-## When to reach for which tool
+- If parsing a result fails, inspect the top-level object or one sample element,
+  then adjust the projection. Do not switch to text search because of JSON
+  friction.
+- If a result set is too large, narrow the same semantic query with `kind`,
+  `containingType`, `fileHint`, depth, or result limits.
+- If a mutation returns `ok=false`, a `*_FAILURE` response type, dirty
+  diagnostics, or a validation/hash message such as "Missing expected hash",
+  treat the edit as failed. Keep the failure visible, run diagnostics on the
+  intended/touched file when useful, and report the blocker instead of claiming
+  success or applying a hand edit.
+- Never replace a failed semantic query with `grep`, `rg`, `sed`, or manual
+  parsing for Kotlin identity. Raw search is only acceptable for non-semantic
+  file-path discovery, comments, string literals, or maintenance work.
+- If a request fails with `Encountered an unknown key`, a field name is wrong.
+  Consult `references/quickstart.md` for the correct shape. Wrapper commands
+  do not accept `--help`; probing with `{}` to discover required fields wastes
+  turns when the quickstart already lists every command's required fields.
 
-1. **Discover scope.** `kast_workspace_files` (omit `includeFiles` for the
-   module map; set `includeFiles:true` only when you need a per-module file
-   list, and raise `maxFilesPerModule` only when truncation matters).
-2. **Read a Kotlin file.** Always start with `kast_scaffold` — declarations,
-   signatures, imports, and key call sites in a fraction of the tokens of
-   `view`. Read the raw `.kt` only for non-semantic concerns (comments,
-   formatting, generated headers).
-3. **Pin an ambiguous name.** `kast_resolve` with `kind`, `containingType`,
-   or `fileHint` to disambiguate overloads, inherited members, and
-   shadowed names before tracing references or callers.
-4. **Find usages.** `kast_references` — never `grep` for Kotlin identity.
-   Grep cannot tell an overload from a sibling, an alias from an import,
-   or a property from a getter.
-5. **Trace flow.** `kast_callers` (`direction:incoming` for blast-radius
-   questions; `outgoing` for "what does this call?"). Bound depth and
-   `maxTotalCalls` to keep results scannable.
-6. **Mutate.** `kast_rename` for symbol renames; `kast_write_and_validate`
-   for content edits. Both run validation atomically; treat any non-clean
-   response as a failed change. Do not fall back to the generic `edit`/
-   `create` tool on `.kt`/`.kts` source — it bypasses the validator.
-7. **Validate.** `kast_diagnostics` after any mutation that did not already
-   validate the touched files.
-
-See `references/recovery.md` for binary resolution order, bash fallback
-invocations, and semantic query recovery guidance. See `references/quickstart.md`
-for request/response field shapes and common request snippets.
-
-## Maintenance
-
-- `references/quickstart.md` — request snippets and per-command field shapes.
-- `evals/catalog.json` — canonical behavior and routing cases; use `suite` to
-  distinguish the routing subset from the behavior subset.
-- `evals/pain_points.jsonl` — intake queue for newly observed regressions or
-  misses before promotion.
-- `evals/files/` — reusable fixtures referenced by catalog cases.
-- `history/progression.json` — progression and promotion ledger for durable eval
-  maintenance.
-- `references/routing-improvement.md` — routing corpus workflow and promotion
-  guidance.
-- `references/wrapper-openapi.yaml` — checked-in wrapper contract snapshot.
-- `scripts/build-routing-corpus.py` — sanitize shared logs and session exports
-  into routing candidate cases; do not load during normal Kotlin navigation.
+Read `references/quickstart.md` for request snippets and recovery tips. Skill
+maintenance fixtures live under `fixtures/maintenance`; do not load them during
+normal Kotlin navigation.
