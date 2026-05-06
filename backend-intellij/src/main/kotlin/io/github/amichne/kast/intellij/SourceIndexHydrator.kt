@@ -105,8 +105,8 @@ internal class SourceIndexHydrator(
         workspaceRoot: Path,
         remote: RemoteIndexConfig,
     ): Boolean {
-        val remoteUrl = remote.sourceIndexUrl?.takeIf(String::isNotBlank) ?: return false
-        if (!remote.enabled) return false
+        val remoteUrl = remote.sourceIndexUrl.value.orNull?.takeIf(String::isNotBlank) ?: return false
+        if (!remote.enabled.value) return false
 
         val target = sourceIndexDatabasePath(workspaceRoot)
         if (Files.isRegularFile(target)) return false

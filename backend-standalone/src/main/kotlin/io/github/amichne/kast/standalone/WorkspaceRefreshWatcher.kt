@@ -16,7 +16,7 @@ import kotlin.io.path.extension
 
 internal class WorkspaceRefreshWatcher(
     private val session: StandaloneAnalysisSession,
-    private val debounceMillis: Long = KastConfig.load(session.workspaceRoot).watcher.debounceMillis,
+    private val debounceMillis: Long = KastConfig.load(session.workspaceRoot).watcher.debounceMillis.value,
     private val contentRefresh: (Set<String>) -> RefreshResult = session::refreshFileContents,
     private val fullRefresh: () -> RefreshResult = session::refreshWorkspace,
     private val clock: Clock = Clock.SYSTEM,

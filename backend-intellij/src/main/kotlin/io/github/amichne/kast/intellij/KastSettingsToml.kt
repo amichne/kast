@@ -7,60 +7,60 @@ internal fun KastSettingsState.toWorkspaceToml(defaults: KastConfig = KastConfig
         add(
             tomlSection(
                 "server",
-                "maxResults" to serverMaxResults.changedFrom(defaults.server.maxResults),
-                "requestTimeoutMillis" to serverRequestTimeoutMillis.changedFrom(defaults.server.requestTimeoutMillis),
-                "maxConcurrentRequests" to serverMaxConcurrentRequests.changedFrom(defaults.server.maxConcurrentRequests),
+                "maxResults" to serverMaxResults.changedFrom(defaults.server.maxResults.value),
+                "requestTimeoutMillis" to serverRequestTimeoutMillis.changedFrom(defaults.server.requestTimeoutMillis.value),
+                "maxConcurrentRequests" to serverMaxConcurrentRequests.changedFrom(defaults.server.maxConcurrentRequests.value),
             ),
         )
         add(
             tomlSection(
                 "indexing",
-                "phase2Enabled" to indexingPhase2Enabled.changedFrom(defaults.indexing.phase2Enabled),
-                "phase2BatchSize" to indexingPhase2BatchSize.changedFrom(defaults.indexing.phase2BatchSize),
-                "identifierIndexWaitMillis" to indexingIdentifierIndexWaitMillis.changedFrom(defaults.indexing.identifierIndexWaitMillis),
-                "referenceBatchSize" to indexingReferenceBatchSize.changedFrom(defaults.indexing.referenceBatchSize),
+                "phase2Enabled" to indexingPhase2Enabled.changedFrom(defaults.indexing.phase2Enabled.value),
+                "phase2BatchSize" to indexingPhase2BatchSize.changedFrom(defaults.indexing.phase2BatchSize.value),
+                "identifierIndexWaitMillis" to indexingIdentifierIndexWaitMillis.changedFrom(defaults.indexing.identifierIndexWaitMillis.value),
+                "referenceBatchSize" to indexingReferenceBatchSize.changedFrom(defaults.indexing.referenceBatchSize.value),
             ),
         )
         add(
             tomlSection(
                 "indexing.remote",
-                "enabled" to indexingRemoteEnabled.changedFrom(defaults.indexing.remote.enabled),
-                "sourceIndexUrl" to indexingRemoteSourceIndexUrl.changedFrom(defaults.indexing.remote.sourceIndexUrl),
+                "enabled" to indexingRemoteEnabled.changedFrom(defaults.indexing.remote.enabled.value),
+                "sourceIndexUrl" to indexingRemoteSourceIndexUrl.changedFrom(defaults.indexing.remote.sourceIndexUrl.value.orNull),
             ),
         )
         add(
             tomlSection(
                 "cache",
-                "enabled" to cacheEnabled.changedFrom(defaults.cache.enabled),
-                "writeDelayMillis" to cacheWriteDelayMillis.changedFrom(defaults.cache.writeDelayMillis),
-                "sourceIndexSaveDelayMillis" to cacheSourceIndexSaveDelayMillis.changedFrom(defaults.cache.sourceIndexSaveDelayMillis),
+                "enabled" to cacheEnabled.changedFrom(defaults.cache.enabled.value),
+                "writeDelayMillis" to cacheWriteDelayMillis.changedFrom(defaults.cache.writeDelayMillis.value),
+                "sourceIndexSaveDelayMillis" to cacheSourceIndexSaveDelayMillis.changedFrom(defaults.cache.sourceIndexSaveDelayMillis.value),
             ),
         )
-        add(tomlSection("watcher", "debounceMillis" to watcherDebounceMillis.changedFrom(defaults.watcher.debounceMillis)))
+        add(tomlSection("watcher", "debounceMillis" to watcherDebounceMillis.changedFrom(defaults.watcher.debounceMillis.value)))
         add(
             tomlSection(
                 "gradle",
-                "toolingApiTimeoutMillis" to gradleToolingApiTimeoutMillis.changedFrom(defaults.gradle.toolingApiTimeoutMillis),
-                "maxIncludedProjects" to gradleMaxIncludedProjects.changedFrom(defaults.gradle.maxIncludedProjects),
+                "toolingApiTimeoutMillis" to gradleToolingApiTimeoutMillis.changedFrom(defaults.gradle.toolingApiTimeoutMillis.value),
+                "maxIncludedProjects" to gradleMaxIncludedProjects.changedFrom(defaults.gradle.maxIncludedProjects.value),
             ),
         )
         add(
             tomlSection(
                 "telemetry",
-                "enabled" to telemetryEnabled.changedFrom(defaults.telemetry.enabled),
-                "scopes" to telemetryScopes.changedFrom(defaults.telemetry.scopes),
-                "detail" to telemetryDetail.changedFrom(defaults.telemetry.detail),
-                "outputFile" to telemetryOutputFile.changedFrom(defaults.telemetry.outputFile),
+                "enabled" to telemetryEnabled.changedFrom(defaults.telemetry.enabled.value),
+                "scopes" to telemetryScopes.changedFrom(defaults.telemetry.scopes.value),
+                "detail" to telemetryDetail.changedFrom(defaults.telemetry.detail.value),
+                "outputFile" to telemetryOutputFile.changedFrom(defaults.telemetry.outputFile.value.orNull),
             ),
         )
         add(
             tomlSection(
                 "backends.standalone",
-                "enabled" to backendsStandaloneEnabled.changedFrom(defaults.backends.standalone.enabled),
-                "runtimeLibsDir" to backendsStandaloneRuntimeLibsDir.changedFrom(defaults.backends.standalone.runtimeLibsDir),
+                "enabled" to backendsStandaloneEnabled.changedFrom(defaults.backends.standalone.enabled.value),
+                "runtimeLibsDir" to backendsStandaloneRuntimeLibsDir.changedFrom(defaults.backends.standalone.runtimeLibsDir.value.orNull),
             ),
         )
-        add(tomlSection("backends.intellij", "enabled" to backendsIntellijEnabled.changedFrom(defaults.backends.intellij.enabled)))
+        add(tomlSection("backends.intellij", "enabled" to backendsIntellijEnabled.changedFrom(defaults.backends.intellij.enabled.value)))
     }.filter(String::isNotBlank)
 
     if (sections.isEmpty()) return ""

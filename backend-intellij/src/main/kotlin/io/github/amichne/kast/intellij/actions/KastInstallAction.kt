@@ -6,6 +6,7 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
+import io.github.amichne.kast.api.client.KastConfig
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
@@ -18,41 +19,24 @@ internal abstract class KastInstallAction : AnAction() {
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
         val workspaceRoot = project.basePath?.let { Path.of(it).toAbsolutePath().normalize() } ?: return
-        val kastBinary = resolveKastBinary() ?: run {
-            notify(project, "kast binary not found. Set KAST_CLI_PATH or ensure kast is on PATH.", NotificationType.ERROR)
-            return
+        val kastBinary = when (val resolution = resolveConfiguredKastBinary(workspaceRoot)) {
+            is KastBinaryResolution.Found -> resolution.path
+            is KastBinaryResolution.NotExecutable -> {
+                notify(project, resolution.message, NotificationType.ERROR)
+                return
+            }
         }
 
         ApplicationManager.getApplication().executeOnPooledThread {
-            val process = ProcessBuilder(listOf(kastBinary.toString()) + buildArgs(workspaceRoot))
-                .directory(workspaceRoot.toFile())
-                .redirectErrorStream(true)
-                .start()
-            val completed = process.waitFor(2, TimeUnit.MINUTES)
-            when {
-                !completed -> {
-                    process.destroyForcibly()
-                    notify(project, "kast command timed out", NotificationType.ERROR)
+            when (val result = runKastInstallCommand(kastBinary, workspaceRoot, buildArgs(workspaceRoot))) {
+                is KastInstallCommandResult.Success -> notify(project, successMessage(workspaceRoot), NotificationType.INFORMATION)
+                is KastInstallCommandResult.TimedOut -> notify(project, "kast command timed out", NotificationType.ERROR)
+                is KastInstallCommandResult.Failed -> {
+                    notify(project, "kast command failed (exit ${result.exitCode})", NotificationType.ERROR)
                 }
-                process.exitValue() == 0 -> notify(project, successMessage(workspaceRoot), NotificationType.INFORMATION)
-                else -> notify(project, "kast command failed (exit ${process.exitValue()})", NotificationType.ERROR)
             }
         }
     }
-
-    private fun resolveKastBinary(): Path? =
-        System.getenv("KAST_CLI_PATH")
-            ?.takeIf(String::isNotBlank)
-            ?.let(Path::of)
-            ?.takeIf(Files::isExecutable)
-            ?: findOnPath("kast")
-
-    private fun findOnPath(command: String): Path? =
-        System.getenv("PATH")
-            ?.split(java.io.File.pathSeparator)
-            ?.asSequence()
-            ?.map { Path.of(it).resolve(command) }
-            ?.firstOrNull(Files::isExecutable)
 
     private fun notify(
         project: Project,
@@ -65,5 +49,67 @@ internal abstract class KastInstallAction : AnAction() {
                 .createNotification(message, type)
                 .notify(project)
         }
+    }
+}
+
+internal sealed interface KastBinaryResolution {
+    data class Found(val path: Path) : KastBinaryResolution
+
+    data class NotExecutable(val path: Path) : KastBinaryResolution {
+        val message: String =
+            "kast binary configured at $path is missing or not executable. " +
+                "Set [cli] binaryPath in config.toml to an executable kast binary."
+    }
+}
+
+internal sealed interface KastInstallCommandResult {
+    data object Success : KastInstallCommandResult
+
+    data object TimedOut : KastInstallCommandResult
+
+    data class Failed(
+        val exitCode: Int,
+        val output: String,
+    ) : KastInstallCommandResult
+}
+
+internal fun resolveConfiguredKastBinary(
+    workspaceRoot: Path,
+    configLoader: (Path) -> KastConfig = KastConfig::load,
+): KastBinaryResolution {
+    val binaryPath = Path.of(configLoader(workspaceRoot).cli.binaryPath.value).toAbsolutePath().normalize()
+    return if (Files.isExecutable(binaryPath)) {
+        KastBinaryResolution.Found(binaryPath)
+    } else {
+        KastBinaryResolution.NotExecutable(binaryPath)
+    }
+}
+
+internal fun runKastInstallCommand(
+    kastBinary: Path,
+    workspaceRoot: Path,
+    args: List<String>,
+    timeout: Long = 2,
+    timeoutUnit: TimeUnit = TimeUnit.MINUTES,
+): KastInstallCommandResult {
+    val process = ProcessBuilder(listOf(kastBinary.toString()) + args)
+        .directory(workspaceRoot.toFile())
+        .redirectErrorStream(true)
+        .start()
+    val completed = process.waitFor(timeout, timeoutUnit)
+    if (!completed) {
+        process.destroyForcibly()
+        process.waitFor(5, TimeUnit.SECONDS)
+        return KastInstallCommandResult.TimedOut
+    }
+
+    val output = process.inputStream.readAllBytes().toString(Charsets.UTF_8).trim()
+    return if (process.exitValue() == 0) {
+        KastInstallCommandResult.Success
+    } else {
+        KastInstallCommandResult.Failed(
+            exitCode = process.exitValue(),
+            output = output,
+        )
     }
 }

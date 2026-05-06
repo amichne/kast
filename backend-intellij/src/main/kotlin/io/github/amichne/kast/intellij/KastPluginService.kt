@@ -148,7 +148,7 @@ internal class KastPluginService(
 }
 
 internal fun intellijServerLimits(config: KastConfig): ServerLimits = ServerLimits(
-    maxConcurrentRequests = config.server.maxConcurrentRequests.coerceAtLeast(1),
-    requestTimeoutMillis = config.server.requestTimeoutMillis,
-    maxResults = config.server.maxResults,
+    maxConcurrentRequests = config.server.maxConcurrentRequests.value.coerceAtLeast(1),
+    requestTimeoutMillis = config.server.requestTimeoutMillis.value,
+    maxResults = config.server.maxResults.value,
 )

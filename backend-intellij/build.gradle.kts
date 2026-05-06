@@ -73,6 +73,7 @@ abstract class VerifyPluginXmlPresentTask : DefaultTask() {
         check("KastSettingsState" in content) { "plugin.xml is missing KastSettingsState" }
         check("InstallSkillAction" in content) { "plugin.xml is missing InstallSkillAction" }
         check("InstallCopilotExtensionAction" in content) { "plugin.xml is missing InstallCopilotExtensionAction" }
+        check("UninstallCopilotExtensionAction" in content) { "plugin.xml is missing UninstallCopilotExtensionAction" }
         check("org.jetbrains.kotlin" in content) { "plugin.xml is missing Kotlin plugin dependency" }
         check(expectedIdTag in content) {
             "plugin.xml must keep production plugin ID ${expectedPluginId.get()}"
@@ -192,6 +193,14 @@ tasks.withType<Test>().configureEach {
             includeTags(*includedTags.toTypedArray())
         }
     }
+}
+
+tasks.named<Test>("test") {
+    dependsOn(":kast-cli:writeWrapperScript")
+    systemProperty(
+        "kast.wrapper",
+        project(":kast-cli").layout.buildDirectory.file("scripts/kast-cli").get().asFile.absolutePath,
+    )
 }
 
 configurations.matching { it.name == "testRuntimeClasspath" }.configureEach {

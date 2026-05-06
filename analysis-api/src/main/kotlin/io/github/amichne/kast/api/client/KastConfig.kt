@@ -1,5 +1,6 @@
 package io.github.amichne.kast.api.client
 
+import io.github.amichne.kast.api.client.fields.*
 import com.sksamuel.hoplite.ConfigLoaderBuilder
 import com.sksamuel.hoplite.ExperimentalHoplite
 import io.github.amichne.kast.api.contract.ServerLimits
@@ -14,54 +15,71 @@ data class KastConfig(
     val gradle: GradleConfig,
     val telemetry: TelemetryConfig,
     val backends: BackendsConfig,
+    val paths: PathsConfig,
+    val cli: CliConfig,
 ) {
     fun toServerLimits(): ServerLimits = ServerLimits(
-        maxResults = server.maxResults,
-        requestTimeoutMillis = server.requestTimeoutMillis,
-        maxConcurrentRequests = server.maxConcurrentRequests,
+        maxResults = server.maxResults.value,
+        requestTimeoutMillis = server.requestTimeoutMillis.value,
+        maxConcurrentRequests = server.maxConcurrentRequests.value,
     )
 
     companion object {
-        fun defaults(): KastConfig = KastConfig(
-            server = ServerConfig(
-                maxResults = 500,
-                requestTimeoutMillis = 30_000L,
-                maxConcurrentRequests = 4,
-            ),
-            indexing = IndexingConfig(
-                phase2Enabled = true,
-                phase2BatchSize = 50,
-                identifierIndexWaitMillis = 10_000L,
-                referenceBatchSize = 50,
-                remote = RemoteIndexConfig(
-                    enabled = false,
-                    sourceIndexUrl = null,
+        fun defaults(): KastConfig {
+            val paths = PathsConfig(
+                installRoot = PathsInstallRoot(defaultConfigInstallRoot().toString()),
+                binDir = PathsBinDir(defaultConfigBinDir().toString()),
+                libDir = PathsLibDir(defaultConfigLibDir().toString()),
+                cacheDir = PathsCacheDir(defaultConfigCacheDir().toString()),
+                logsDir = PathsLogsDir(defaultConfigLogsDir().toString()),
+                descriptorDir = PathsDescriptorDir(defaultConfigDescriptorDir().toString()),
+                socketDir = PathsSocketDir(defaultConfigSocketDir()),
+            )
+            return KastConfig(
+                server = ServerConfig(
+                    maxResults = ServerMaxResults(500),
+                    requestTimeoutMillis = ServerRequestTimeoutMillis(30_000L),
+                    maxConcurrentRequests = ServerMaxConcurrentRequests(4),
                 ),
-            ),
-            cache = CacheConfig(
-                enabled = true,
-                writeDelayMillis = 5_000L,
-                sourceIndexSaveDelayMillis = 5_000L,
-            ),
-            watcher = WatcherConfig(debounceMillis = 200L),
-            gradle = GradleConfig(
-                toolingApiTimeoutMillis = 60_000L,
-                maxIncludedProjects = 200,
-            ),
-            telemetry = TelemetryConfig(
-                enabled = false,
-                scopes = "all",
-                detail = "basic",
-                outputFile = null,
-            ),
-            backends = BackendsConfig(
-                standalone = StandaloneBackendConfig(
-                    enabled = true,
-                    runtimeLibsDir = null,
+                indexing = IndexingConfig(
+                    phase2Enabled = IndexingPhase2Enabled(true),
+                    phase2BatchSize = IndexingPhase2BatchSize(50),
+                    identifierIndexWaitMillis = IndexingIdentifierIndexWaitMillis(10_000L),
+                    referenceBatchSize = IndexingReferenceBatchSize(50),
+                    remote = RemoteIndexConfig(
+                        enabled = IndexingRemoteEnabled(false),
+                        sourceIndexUrl = IndexingRemoteSourceIndexUrl(OptionalConfigString.Unset),
+                    ),
                 ),
-                intellij = IntellijBackendConfig(enabled = true),
-            ),
-        )
+                cache = CacheConfig(
+                    enabled = CacheEnabled(true),
+                    writeDelayMillis = CacheWriteDelayMillis(5_000L),
+                    sourceIndexSaveDelayMillis = CacheSourceIndexSaveDelayMillis(5_000L),
+                ),
+                watcher = WatcherConfig(debounceMillis = WatcherDebounceMillis(200L)),
+                gradle = GradleConfig(
+                    toolingApiTimeoutMillis = GradleToolingApiTimeoutMillis(60_000L),
+                    maxIncludedProjects = GradleMaxIncludedProjects(200),
+                ),
+                telemetry = TelemetryConfig(
+                    enabled = TelemetryEnabled(false),
+                    scopes = TelemetryScopes("all"),
+                    detail = TelemetryDetail("basic"),
+                    outputFile = TelemetryOutputFile(OptionalConfigString.Unset),
+                ),
+                backends = BackendsConfig(
+                    standalone = StandaloneBackendConfig(
+                        enabled = StandaloneBackendEnabled(true),
+                        runtimeLibsDir = StandaloneRuntimeLibsDir(
+                            OptionalConfigString(defaultConfigStandaloneRuntimeLibsDir(paths.libDir.value).toString()),
+                        ),
+                    ),
+                    intellij = IntellijBackendConfig(enabled = IntellijBackendEnabled(true)),
+                ),
+                paths = paths,
+                cli = CliConfig(binaryPath = CliBinaryPath(defaultConfigCliBinaryPath(paths.binDir.value).toString())),
+            )
+        }
 
         @OptIn(ExperimentalHoplite::class)
         fun load(
@@ -95,44 +113,44 @@ data class KastConfig(
 }
 
 data class ServerConfig(
-    val maxResults: Int,
-    val requestTimeoutMillis: Long,
-    val maxConcurrentRequests: Int,
+    val maxResults: ServerMaxResults,
+    val requestTimeoutMillis: ServerRequestTimeoutMillis,
+    val maxConcurrentRequests: ServerMaxConcurrentRequests,
 )
 
 data class IndexingConfig(
-    val phase2Enabled: Boolean,
-    val phase2BatchSize: Int,
-    val identifierIndexWaitMillis: Long,
-    val referenceBatchSize: Int,
+    val phase2Enabled: IndexingPhase2Enabled,
+    val phase2BatchSize: IndexingPhase2BatchSize,
+    val identifierIndexWaitMillis: IndexingIdentifierIndexWaitMillis,
+    val referenceBatchSize: IndexingReferenceBatchSize,
     val remote: RemoteIndexConfig,
 )
 
 data class RemoteIndexConfig(
-    val enabled: Boolean,
-    val sourceIndexUrl: String?,
+    val enabled: IndexingRemoteEnabled,
+    val sourceIndexUrl: IndexingRemoteSourceIndexUrl,
 )
 
 data class CacheConfig(
-    val enabled: Boolean,
-    val writeDelayMillis: Long,
-    val sourceIndexSaveDelayMillis: Long,
+    val enabled: CacheEnabled,
+    val writeDelayMillis: CacheWriteDelayMillis,
+    val sourceIndexSaveDelayMillis: CacheSourceIndexSaveDelayMillis,
 )
 
 data class WatcherConfig(
-    val debounceMillis: Long,
+    val debounceMillis: WatcherDebounceMillis,
 )
 
 data class GradleConfig(
-    val toolingApiTimeoutMillis: Long,
-    val maxIncludedProjects: Int,
+    val toolingApiTimeoutMillis: GradleToolingApiTimeoutMillis,
+    val maxIncludedProjects: GradleMaxIncludedProjects,
 )
 
 data class TelemetryConfig(
-    val enabled: Boolean,
-    val scopes: String,
-    val detail: String,
-    val outputFile: String?,
+    val enabled: TelemetryEnabled,
+    val scopes: TelemetryScopes,
+    val detail: TelemetryDetail,
+    val outputFile: TelemetryOutputFile,
 )
 
 data class BackendsConfig(
@@ -141,12 +159,26 @@ data class BackendsConfig(
 )
 
 data class StandaloneBackendConfig(
-    val enabled: Boolean,
-    val runtimeLibsDir: String?,
+    val enabled: StandaloneBackendEnabled,
+    val runtimeLibsDir: StandaloneRuntimeLibsDir,
 )
 
 data class IntellijBackendConfig(
-    val enabled: Boolean,
+    val enabled: IntellijBackendEnabled,
+)
+
+data class PathsConfig(
+    val installRoot: PathsInstallRoot,
+    val binDir: PathsBinDir,
+    val libDir: PathsLibDir,
+    val cacheDir: PathsCacheDir,
+    val logsDir: PathsLogsDir,
+    val descriptorDir: PathsDescriptorDir,
+    val socketDir: PathsSocketDir,
+)
+
+data class CliConfig(
+    val binaryPath: CliBinaryPath,
 )
 
 data class KastConfigOverride(
@@ -157,47 +189,49 @@ data class KastConfigOverride(
     val gradle: GradleConfigOverride? = null,
     val telemetry: TelemetryConfigOverride? = null,
     val backends: BackendsConfigOverride? = null,
+    val paths: PathsConfigOverride? = null,
+    val cli: CliConfigOverride? = null,
 )
 
 data class ServerConfigOverride(
-    val maxResults: Int? = null,
-    val requestTimeoutMillis: Long? = null,
-    val maxConcurrentRequests: Int? = null,
+    val maxResults: ServerMaxResults? = null,
+    val requestTimeoutMillis: ServerRequestTimeoutMillis? = null,
+    val maxConcurrentRequests: ServerMaxConcurrentRequests? = null,
 )
 
 data class IndexingConfigOverride(
-    val phase2Enabled: Boolean? = null,
-    val phase2BatchSize: Int? = null,
-    val identifierIndexWaitMillis: Long? = null,
-    val referenceBatchSize: Int? = null,
+    val phase2Enabled: IndexingPhase2Enabled? = null,
+    val phase2BatchSize: IndexingPhase2BatchSize? = null,
+    val identifierIndexWaitMillis: IndexingIdentifierIndexWaitMillis? = null,
+    val referenceBatchSize: IndexingReferenceBatchSize? = null,
     val remote: RemoteIndexConfigOverride? = null,
 )
 
 data class RemoteIndexConfigOverride(
-    val enabled: Boolean? = null,
-    val sourceIndexUrl: String? = null,
+    val enabled: IndexingRemoteEnabled? = null,
+    val sourceIndexUrl: IndexingRemoteSourceIndexUrl? = null,
 )
 
 data class CacheConfigOverride(
-    val enabled: Boolean? = null,
-    val writeDelayMillis: Long? = null,
-    val sourceIndexSaveDelayMillis: Long? = null,
+    val enabled: CacheEnabled? = null,
+    val writeDelayMillis: CacheWriteDelayMillis? = null,
+    val sourceIndexSaveDelayMillis: CacheSourceIndexSaveDelayMillis? = null,
 )
 
 data class WatcherConfigOverride(
-    val debounceMillis: Long? = null,
+    val debounceMillis: WatcherDebounceMillis? = null,
 )
 
 data class GradleConfigOverride(
-    val toolingApiTimeoutMillis: Long? = null,
-    val maxIncludedProjects: Int? = null,
+    val toolingApiTimeoutMillis: GradleToolingApiTimeoutMillis? = null,
+    val maxIncludedProjects: GradleMaxIncludedProjects? = null,
 )
 
 data class TelemetryConfigOverride(
-    val enabled: Boolean? = null,
-    val scopes: String? = null,
-    val detail: String? = null,
-    val outputFile: String? = null,
+    val enabled: TelemetryEnabled? = null,
+    val scopes: TelemetryScopes? = null,
+    val detail: TelemetryDetail? = null,
+    val outputFile: TelemetryOutputFile? = null,
 )
 
 data class BackendsConfigOverride(
@@ -206,23 +240,42 @@ data class BackendsConfigOverride(
 )
 
 data class StandaloneBackendConfigOverride(
-    val enabled: Boolean? = null,
-    val runtimeLibsDir: String? = null,
+    val enabled: StandaloneBackendEnabled? = null,
+    val runtimeLibsDir: StandaloneRuntimeLibsDir? = null,
 )
 
 data class IntellijBackendConfigOverride(
-    val enabled: Boolean? = null,
+    val enabled: IntellijBackendEnabled? = null,
 )
 
-private fun KastConfig.merge(override: KastConfigOverride): KastConfig = copy(
-    server = server.merge(override.server),
-    indexing = indexing.merge(override.indexing),
-    cache = cache.merge(override.cache),
-    watcher = watcher.merge(override.watcher),
-    gradle = gradle.merge(override.gradle),
-    telemetry = telemetry.merge(override.telemetry),
-    backends = backends.merge(override.backends),
+data class PathsConfigOverride(
+    val installRoot: PathsInstallRoot? = null,
+    val binDir: PathsBinDir? = null,
+    val libDir: PathsLibDir? = null,
+    val cacheDir: PathsCacheDir? = null,
+    val logsDir: PathsLogsDir? = null,
+    val descriptorDir: PathsDescriptorDir? = null,
+    val socketDir: PathsSocketDir? = null,
 )
+
+data class CliConfigOverride(
+    val binaryPath: CliBinaryPath? = null,
+)
+
+private fun KastConfig.merge(override: KastConfigOverride): KastConfig {
+    val mergedPaths = paths.merge(override.paths)
+    return copy(
+        server = server.merge(override.server),
+        indexing = indexing.merge(override.indexing),
+        cache = cache.merge(override.cache),
+        watcher = watcher.merge(override.watcher),
+        gradle = gradle.merge(override.gradle),
+        telemetry = telemetry.merge(override.telemetry),
+        backends = backends.merge(override.backends, mergedPaths),
+        paths = mergedPaths,
+        cli = cli.merge(override.cli, mergedPaths),
+    )
+}
 
 private fun ServerConfig.merge(override: ServerConfigOverride?): ServerConfig = copy(
     maxResults = override?.maxResults ?: maxResults,
@@ -265,16 +318,46 @@ private fun TelemetryConfig.merge(override: TelemetryConfigOverride?): Telemetry
     outputFile = override?.outputFile ?: outputFile,
 )
 
-private fun BackendsConfig.merge(override: BackendsConfigOverride?): BackendsConfig = copy(
-    standalone = standalone.merge(override?.standalone),
+private fun BackendsConfig.merge(
+    override: BackendsConfigOverride?,
+    paths: PathsConfig,
+): BackendsConfig = copy(
+    standalone = standalone.merge(override?.standalone, paths),
     intellij = intellij.merge(override?.intellij),
 )
 
-private fun StandaloneBackendConfig.merge(override: StandaloneBackendConfigOverride?): StandaloneBackendConfig = copy(
+private fun StandaloneBackendConfig.merge(
+    override: StandaloneBackendConfigOverride?,
+    paths: PathsConfig,
+): StandaloneBackendConfig = copy(
     enabled = override?.enabled ?: enabled,
     runtimeLibsDir = override?.runtimeLibsDir ?: runtimeLibsDir,
 )
 
 private fun IntellijBackendConfig.merge(override: IntellijBackendConfigOverride?): IntellijBackendConfig = copy(
     enabled = override?.enabled ?: enabled,
+)
+
+private fun PathsConfig.merge(override: PathsConfigOverride?): PathsConfig {
+    val mergedInstallRoot = override?.installRoot ?: installRoot
+    val mergedBinDir = override?.binDir ?: PathsBinDir(defaultConfigBinDir(mergedInstallRoot.value).toString())
+    val mergedLibDir = override?.libDir ?: PathsLibDir(defaultConfigLibDir(mergedInstallRoot.value).toString())
+    val mergedCacheDir = override?.cacheDir ?: PathsCacheDir(defaultConfigCacheDir(mergedInstallRoot.value).toString())
+    return copy(
+        installRoot = mergedInstallRoot,
+        binDir = mergedBinDir,
+        libDir = mergedLibDir,
+        cacheDir = mergedCacheDir,
+        logsDir = override?.logsDir ?: PathsLogsDir(defaultConfigLogsDir(mergedInstallRoot.value).toString()),
+        descriptorDir = override?.descriptorDir
+                        ?: PathsDescriptorDir(defaultConfigDescriptorDir(mergedCacheDir.value).toString()),
+        socketDir = override?.socketDir ?: socketDir,
+    )
+}
+
+private fun CliConfig.merge(
+    override: CliConfigOverride?,
+    paths: PathsConfig,
+): CliConfig = copy(
+    binaryPath = override?.binaryPath ?: CliBinaryPath(defaultConfigCliBinaryPath(paths.binDir.value).toString()),
 )

@@ -13,10 +13,6 @@ resolve_absolute_path() {
     printf '%s/%s\n' "${dir}" "${base}"
 }
 
-if [[ -n "${KAST_CLI_PATH:-}" && -x "${KAST_CLI_PATH}" ]]; then
-    resolve_absolute_path "${KAST_CLI_PATH}"
-    exit 0
-fi
 
 if command -v kast >/dev/null 2>&1; then
     resolve_absolute_path "$(command -v kast)"
@@ -32,5 +28,5 @@ for candidate in \
     fi
 done
 
-echo "Unable to resolve Kast CLI path. Set KAST_CLI_PATH or build/install kast first." >&2
+echo "Unable to resolve Kast CLI path. Build/install kast first or add it to PATH." >&2
 exit 1

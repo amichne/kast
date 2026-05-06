@@ -16,13 +16,11 @@ Use this unit for headless host concerns and nowhere else.
   `$TMPDIR/kast-<workspace-hash>.sock`, and `--stdio` only for direct
   foreground serving.
 - Runtime configuration is sourced from `KastConfig` (TOML at
-  `$KAST_CONFIG_HOME/config.toml` plus per-workspace overrides). Do not
-  reintroduce Kast-specific environment variables (`KAST_DEBUG`,
-  `KAST_OTEL_*`, `KAST_CACHE_DISABLED`, `KAST_WORKSPACE_ROOT`,
-  `KAST_INTELLIJ_DISABLE`, `KAST_STANDALONE_RUNTIME_LIBS`,
-  `KAST_GRADLE_TOOLING_TIMEOUT_MS`, etc.); add a typed config field
-  instead. Standard JVM/terminal env vars (`JAVA_HOME`, `JAVA_OPTS`,
-  `NO_COLOR`, `XDG_CONFIG_HOME`) are still respected.
+  `$HOME/.config/kast/config.toml`, or `$KAST_CONFIG_HOME/config.toml` when
+  that single override is set, plus per-workspace overrides). Do not
+  reintroduce Kast-specific environment variables beyond `KAST_CONFIG_HOME`;
+  add a typed config field instead. Standard JVM/terminal env vars such as
+  `JAVA_HOME`, `JAVA_OPTS`, and `NO_COLOR` are still respected.
 - Keep Gradle workspace discovery here. `GradleWorkspaceDiscovery` and
   `StaticGradleWorkspaceDiscovery` must stay aligned on module names, source
   roots, dependency edges, and large or composite-build fallbacks.

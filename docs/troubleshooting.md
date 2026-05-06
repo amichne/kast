@@ -51,15 +51,46 @@ that matches what you're seeing.
 
 ??? question "Shell can't find kast after install"
 
-    Open a fresh shell so the updated `PATH` takes effect. If
-    that doesn't help:
+    Open a fresh shell so the updated `PATH` takes effect. If that doesn't
+    help:
 
-    - Check the install root is on `PATH`:
-      `echo $PATH | tr ':' '\n' | grep kast`
-    - If you installed with an isolated root, source its env file:
-      `source "$KAST_HOME/config/env"`
-    - Point `KAST_CLI_PATH` at the binary:
-      `export KAST_CLI_PATH=/absolute/path/to/kast`
+    - Check that `$HOME/.kast/bin/kast` exists and is executable:
+      `test -x "$HOME/.kast/bin/kast"`
+    - Check that `$HOME/.kast/bin` is on `PATH`:
+      `echo "$PATH" | tr ':' '\n' | grep "$HOME/.kast/bin"`
+    - If you keep config outside the default directory, set
+      `KAST_CONFIG_HOME` to the directory that contains `config.toml`.
+    - If the binary lives somewhere else, set `[cli] binaryPath` in
+      `$HOME/.config/kast/config.toml` to the executable path.
+
+??? question "IntelliJ can't install the Copilot extension"
+
+    **Symptoms:** **Tools → Kast → Install Copilot Extension** fails with a
+    message about `config.toml`, `cli.binaryPath`, or a non-executable CLI.
+
+    The IDE action reads the CLI path from `[cli] binaryPath`; it doesn't
+    search your shell `PATH`. Add an executable path to the user config:
+
+    ```toml title="$HOME/.config/kast/config.toml"
+    [cli]
+    binaryPath = "/Users/alex/.kast/bin/kast"
+    ```
+
+    Then run **Tools → Kast → Install Copilot Extension** again.
+
+??? question "Copilot extension uninstall leaves files behind"
+
+    `kast install copilot-extension --uninstall=true` removes only files
+    listed in the packaged manifest plus `.github/.kast-copilot-version`.
+    Files you created under `.github` are preserved.
+
+    To inspect the managed set, reinstall with `--yes=true`, then uninstall
+    again:
+
+    ```console
+    kast install copilot-extension --yes=true
+    kast install copilot-extension --uninstall=true
+    ```
 
 ## Analysis results
 

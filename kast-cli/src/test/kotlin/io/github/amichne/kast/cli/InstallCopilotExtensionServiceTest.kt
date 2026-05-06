@@ -32,14 +32,12 @@ class InstallCopilotExtensionServiceTest {
         assertEquals(targetDir.toAbsolutePath().normalize().toString(), result.installedAt)
         assertEquals("1.2.3", result.version)
         assertFalse(result.skipped)
-        assertTrue(Files.isRegularFile(targetDir.resolve("agents/kast.md")))
-        assertTrue(Files.isRegularFile(targetDir.resolve("agents/explore.md")))
-        assertTrue(Files.isRegularFile(targetDir.resolve("agents/plan.md")))
-        assertTrue(Files.isRegularFile(targetDir.resolve("agents/edit.md")))
+        assertTrue(Files.isRegularFile(targetDir.resolve("agents/kast-orchestrator.md")))
         assertTrue(Files.isRegularFile(targetDir.resolve("hooks/hooks.json")))
         assertTrue(Files.isRegularFile(targetDir.resolve("hooks/session-start.sh")))
         assertTrue(Files.isRegularFile(targetDir.resolve("hooks/record-paths.sh")))
         assertTrue(Files.isRegularFile(targetDir.resolve("hooks/require-skills.sh")))
+        assertTrue(Files.isRegularFile(targetDir.resolve("hooks/skill-shadowing.json")))
         assertTrue(Files.isRegularFile(targetDir.resolve("hooks/session-end.sh")))
         assertTrue(Files.isRegularFile(targetDir.resolve("hooks/resolve-kast-cli-path.sh")))
         assertTrue(Files.isRegularFile(targetDir.resolve("extensions/_shared/shadowed-skill-state.mjs")))
@@ -62,6 +60,84 @@ class InstallCopilotExtensionServiceTest {
         assertFalse(Files.readString(targetDir.resolve("extensions/kast/extension.mjs")).contains(".agents"))
         assertFalse(Files.readString(targetDir.resolve("extensions/kotlin-gradle-loop/extension.mjs")).contains(".agents"))
         assertEquals("1.2.3", Files.readString(targetDir.resolve(".kast-copilot-version")).trim())
+    }
+
+    @Test
+    fun installMarksPackagedExecutableResourcesExecutableOnPosix() {
+        org.junit.jupiter.api.Assumptions.assumeTrue(
+            Files.getFileStore(tempDir).supportsFileAttributeView("posix"),
+            "POSIX executable bits are not supported",
+        )
+        val targetDir = tempDir.resolve(".github")
+        val service = InstallCopilotExtensionService(
+            embeddedCopilotExtensionResources = EmbeddedCopilotExtensionResources(version = "1.2.3"),
+        )
+
+        service.install(InstallCopilotExtensionOptions(targetDir = targetDir, force = false))
+
+        listOf(
+            "hooks/session-start.sh",
+            "extensions/kast/extension.mjs",
+            "extensions/kotlin-gradle-loop/extension.mjs",
+            "extensions/kotlin-gradle-loop/scripts/parse/junit_results.py",
+        ).forEach { relativePath ->
+            assertTrue(
+                Files.isExecutable(targetDir.resolve(relativePath)),
+                "Expected installed resource $relativePath to be executable",
+            )
+        }
+    }
+
+    @Test
+    fun uninstallRemovesPackagedCopilotExtensionFilesAndLeavesForeignFiles() {
+        val targetDir = tempDir.resolve(".github")
+        val service = InstallCopilotExtensionService(
+            embeddedCopilotExtensionResources = EmbeddedCopilotExtensionResources(version = "1.2.3"),
+        )
+        service.install(InstallCopilotExtensionOptions(targetDir = targetDir, force = false))
+        val foreignFile = targetDir.resolve("hooks/foreign.txt")
+        Files.writeString(foreignFile, "keep")
+
+        val result = service.install(
+            InstallCopilotExtensionOptions(
+                targetDir = targetDir,
+                force = false,
+                uninstall = true,
+            ),
+        )
+
+        assertEquals(targetDir.toAbsolutePath().normalize().toString(), result.installedAt)
+        assertEquals("1.2.3", result.version)
+        assertFalse(result.skipped)
+        assertFalse(Files.exists(targetDir.resolve(".kast-copilot-version")))
+        EmbeddedCopilotExtensionResources.MANIFEST.forEach { relativePath ->
+            assertFalse(
+                Files.exists(targetDir.resolve(relativePath)),
+                "Expected uninstall to remove packaged resource $relativePath",
+            )
+        }
+        assertTrue(Files.isRegularFile(foreignFile))
+        assertEquals("keep", Files.readString(foreignFile))
+    }
+
+    @Test
+    fun uninstallSkipsWhenTargetDoesNotExist() {
+        val targetDir = tempDir.resolve(".github")
+        val service = InstallCopilotExtensionService(
+            embeddedCopilotExtensionResources = EmbeddedCopilotExtensionResources(version = "1.2.3"),
+        )
+
+        val result = service.install(
+            InstallCopilotExtensionOptions(
+                targetDir = targetDir,
+                force = false,
+                uninstall = true,
+            ),
+        )
+
+        assertTrue(result.skipped)
+        assertEquals("1.2.3", result.version)
+        assertFalse(Files.exists(targetDir))
     }
 
     @Test
@@ -136,4 +212,5 @@ class InstallCopilotExtensionServiceTest {
         assertEquals(cwd.resolve(".github").toAbsolutePath().normalize().toString(), result.installedAt)
         assertTrue(Files.isRegularFile(cwd.resolve(".github/.kast-copilot-version")))
     }
+
 }

@@ -19,6 +19,7 @@ internal class InstallCopilotExtensionService(
     ): InstallEmbeddedResourceRequest = InstallEmbeddedResourceRequest(
         targetPath = options.targetDir ?: cwd.resolve(".github"),
         force = options.force,
+        uninstall = options.uninstall,
     )
 
     override fun result(

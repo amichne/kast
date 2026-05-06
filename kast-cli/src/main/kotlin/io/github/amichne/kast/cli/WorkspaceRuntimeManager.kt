@@ -1,10 +1,10 @@
 package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.api.client.DescriptorRegistry
+import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.RegisteredDescriptor
 import io.github.amichne.kast.api.contract.RuntimeState
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
-import io.github.amichne.kast.api.client.defaultDescriptorDirectory
 import io.github.amichne.kast.cli.options.RuntimeCommandOptions
 import io.github.amichne.kast.cli.options.BackendName
 import io.github.amichne.kast.cli.results.DaemonStopResult
@@ -19,8 +19,15 @@ import java.nio.file.Path
 internal class WorkspaceRuntimeManager(
     private val rpcClient: RuntimeRpcClient,
     private val processLivenessChecker: (Long) -> Boolean = ::isProcessAlive,
-    private val envLookup: (String) -> String? = System::getenv,
+    private val descriptorDirectory: (RuntimeCommandOptions) -> Path = ::configuredDescriptorDirectory,
 ) {
+    private companion object {
+        fun configuredDescriptorDirectory(options: RuntimeCommandOptions): Path =
+            Path.of(KastConfig.load(options.workspaceRoot.toJavaPath()).paths.descriptorDir.value)
+                .toAbsolutePath()
+                .normalize()
+    }
+
     suspend fun workspaceStatus(options: RuntimeCommandOptions): WorkspaceStatusResult {
         val inspection = inspectWorkspace(options, pruneStaleDescriptors = false)
         return WorkspaceStatusResult(
@@ -136,7 +143,7 @@ internal class WorkspaceRuntimeManager(
         options: RuntimeCommandOptions,
         pruneStaleDescriptors: Boolean,
     ): WorkspaceInspection {
-        val descriptorDirectory = defaultDescriptorDirectory(envLookup)
+        val descriptorDirectory = descriptorDirectory(options)
         val registry = DescriptorRegistry(descriptorDirectory.resolve("daemons.json"))
         val registeredDescriptors = registry.findByWorkspaceRoot(options.workspaceRoot.toJavaPath())
         val candidates = registeredDescriptors.map { registered ->

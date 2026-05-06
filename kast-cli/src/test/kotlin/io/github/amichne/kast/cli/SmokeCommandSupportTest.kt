@@ -8,7 +8,6 @@ import io.github.amichne.kast.api.contract.ReadCapability
 import io.github.amichne.kast.api.contract.RuntimeState
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
 import io.github.amichne.kast.api.contract.ServerLimits
-import io.github.amichne.kast.api.client.defaultDescriptorDirectory
 import io.github.amichne.kast.cli.options.SmokeOptions
 import io.github.amichne.kast.cli.tty.CliFailure
 import io.github.amichne.kast.cli.tty.defaultCliJson
@@ -28,12 +27,12 @@ class SmokeCommandSupportTest {
     lateinit var tempDir: Path
 
     private lateinit var configHome: Path
-    private lateinit var envLookup: (String) -> String?
+    private lateinit var descriptorDirectory: Path
 
     @BeforeEach
     fun setUp() {
         configHome = tempDir.resolve("config-home")
-        envLookup = mapOf("KAST_CONFIG_HOME" to configHome.toString())::get
+        descriptorDirectory = configHome.resolve("daemons")
     }
 
     // ---------------------------------------------------------------------------
@@ -286,7 +285,7 @@ class SmokeCommandSupportTest {
             val manager = WorkspaceRuntimeManager(
                 rpcClient = startingClient,
                 processLivenessChecker = { pid -> pid == 999L },
-                envLookup = envLookup,
+                descriptorDirectory = { _ -> descriptorDirectory },
             )
             val support = SmokeCommandSupport(runtimeManager = manager, runtimeWaitTimeoutMillis = 500L)
 
@@ -355,7 +354,7 @@ class SmokeCommandSupportTest {
     ) = WorkspaceRuntimeManager(
         rpcClient = FakeSmokeRpcClient(runtimeStatuses),
         processLivenessChecker = processLivenessChecker,
-        envLookup = envLookup,
+        descriptorDirectory = { descriptorDirectory },
     )
 
     private fun descriptor(
@@ -395,7 +394,7 @@ class SmokeCommandSupportTest {
         )
 
     private fun writeDescriptor(descriptor: ServerInstanceDescriptor): ServerInstanceDescriptor {
-        val daemonsFile = defaultDescriptorDirectory(envLookup).resolve("daemons.json")
+        val daemonsFile = descriptorDirectory.resolve("daemons.json")
         DescriptorRegistry(daemonsFile).register(descriptor)
         return descriptor
     }

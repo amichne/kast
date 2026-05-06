@@ -287,7 +287,7 @@ internal class CliService(
     fun daemonStart(options: DaemonStartOptions): CliOutput {
         val config = configLoader(options.workspaceRoot)
         val runtimeLibsDir = options.runtimeLibsDir
-            ?: config.backends.standalone.runtimeLibsDir
+            ?: config.backends.standalone.runtimeLibsDir.value.orNull
                 ?.takeIf(String::isNotBlank)
                 ?.let { Path.of(it).toAbsolutePath().normalize() }
             ?: defaultStandaloneRuntimeLibsDirectory(envLookup)
@@ -295,8 +295,7 @@ internal class CliService(
             ?: throw CliFailure(
                 code = "DAEMON_START_ERROR",
                 message = "Cannot locate backend runtime-libs. " +
-                    "Set KAST_HOME to a self-contained install root, " +
-                    "set backends.standalone.runtimeLibsDir in `kast config init` output, or pass --runtime-libs-dir.",
+                    "Set backends.standalone.runtimeLibsDir in `kast config init` output, or pass --runtime-libs-dir.",
             )
 
         val classpathFile = runtimeLibsDir.resolve("classpath.txt")
@@ -452,9 +451,10 @@ private fun defaultConfigTemplate(): String = """
     # [backends.standalone]
     # enabled = true
     # runtimeLibsDir = "/absolute/path/to/runtime-libs"
-    # When KAST_HOME is set, daemon start also checks:
-    # ${'$'}KAST_HOME/install/backends/current/runtime-libs
 
     # [backends.intellij]
     # enabled = true
+
+    # [cli]
+    # binaryPath = "/absolute/path/to/kast"
 """.trimIndent() + System.lineSeparator()

@@ -41,11 +41,16 @@ Or pull the CLI and the backend together:
 ./kast.sh install --components=cli,backend --non-interactive
 ```
 
-When installed with `KAST_HOME`, `kast daemon start` derives standalone
-runtime libraries from `$KAST_HOME/install/backends/current/runtime-libs`.
-Without `KAST_HOME`, run `kast config init` and point
-`backends.standalone.runtimeLibsDir` at the installed `runtime-libs`
-directory, or pass `--runtime-libs-dir` to `kast daemon start`.
+By default, `kast daemon start` derives standalone runtime libraries from
+`$HOME/.kast/lib/backends/current/runtime-libs`. To use a different
+installation, point `backends.standalone.runtimeLibsDir` at the installed
+`runtime-libs` directory in `config.toml`, or pass `--runtime-libs-dir` to
+`kast daemon start`:
+
+```toml title="$HOME/.config/kast/config.toml"
+[backends.standalone]
+runtimeLibsDir = "/Users/alex/.kast/lib/backends/current/runtime-libs"
+```
 
 How a session unfolds:
 
@@ -90,6 +95,17 @@ How a session unfolds:
 !!! tip
     Set `backends.intellij.enabled = false` in `config.toml` to disable
     the plugin without uninstalling it.
+
+The plugin actions that shell out to `kast`, including
+**Tools → Kast → Install Copilot Extension** and
+**Tools → Kast → Uninstall Copilot Extension**, read the executable path from
+`[cli] binaryPath` in `config.toml`. They don't search `PATH`, so the value
+must point at an executable CLI binary:
+
+```toml title="$HOME/.config/kast/config.toml"
+[cli]
+binaryPath = "/Users/alex/.kast/bin/kast"
+```
 
 To hydrate a remote SQLite source index before local indexing starts, add an
 `indexing.remote` block. `sourceIndexUrl` accepts `file://`, `http://`, and

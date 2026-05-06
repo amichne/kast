@@ -36,6 +36,10 @@ tasks.named<Jar>("jar") {
 val shadowJar = tasks.named<ShadowJar>("shadowJar") {
     archiveClassifier.set("all")
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    filesMatching("META-INF/services/**") {
+        duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    }
+    mergeServiceFiles()
 
     manifest {
         attributes["Main-Class"] = application.mainClass.get()

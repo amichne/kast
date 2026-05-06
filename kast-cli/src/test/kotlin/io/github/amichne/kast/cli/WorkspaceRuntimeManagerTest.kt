@@ -10,7 +10,6 @@ import io.github.amichne.kast.api.contract.RuntimeState
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
 import io.github.amichne.kast.api.client.ServerInstanceDescriptor
 import io.github.amichne.kast.api.contract.ServerLimits
-import io.github.amichne.kast.api.client.defaultDescriptorDirectory
 import io.github.amichne.kast.cli.options.BackendName
 import io.github.amichne.kast.cli.options.RuntimeCommandOptions
 import io.github.amichne.kast.cli.tty.CliFailure
@@ -29,12 +28,12 @@ class WorkspaceRuntimeManagerTest {
     lateinit var tempDir: Path
 
     private lateinit var configHome: Path
-    private lateinit var envLookup: (String) -> String?
+    private lateinit var descriptorDirectory: Path
 
     @BeforeEach
     fun setUp() {
         configHome = tempDir.resolve("config-home")
-        envLookup = mapOf("KAST_CONFIG_HOME" to configHome.toString())::get
+        descriptorDirectory = configHome.resolve("daemons")
     }
 
     @Test
@@ -316,7 +315,7 @@ class WorkspaceRuntimeManagerTest {
     ) = WorkspaceRuntimeManager(
         rpcClient = FakeRuntimeRpcClient(runtimeStatuses),
         processLivenessChecker = processLivenessChecker,
-        envLookup = envLookup,
+        descriptorDirectory = { _ -> descriptorDirectory },
     )
 
     private fun runtimeOptions(
@@ -359,7 +358,7 @@ class WorkspaceRuntimeManagerTest {
     private fun writeDescriptor(
         descriptor: ServerInstanceDescriptor,
     ): ServerInstanceDescriptor {
-        val daemonsFile = defaultDescriptorDirectory(envLookup).resolve("daemons.json")
+        val daemonsFile = descriptorDirectory.resolve("daemons.json")
         DescriptorRegistry(daemonsFile).register(descriptor)
         return descriptor
     }

@@ -64,67 +64,9 @@ manually.
 7. **Validate.** `kast_diagnostics` after any mutation that did not already
    validate the touched files.
 
-## JSON shape rules
-
-These come straight from the wire contract; the tool schemas enforce most of
-them, but a few patterns repeat in every response.
-
-- Every request and response uses **camelCase** field names — wrapper
-  metadata (`logFile`, `errorText`, `filePath`, `appliedEdits`) and nested
-  API models (`symbol.fqName`, `location.filePath`, `startOffset`).
-- Always check `ok` and `type` before projecting. Failure responses carry
-  `stage`, `message`, optional `error` or `errorText`, and `logFile`.
-- File path fields (`filePath`, `filePaths`, `contentFile`) require absolute
-  paths.
-- `kast_rename` and `kast_write_and_validate` need a `type` discriminator
-  (`RENAME_BY_SYMBOL_REQUEST`, `RENAME_BY_OFFSET_REQUEST`,
-  `CREATE_FILE_REQUEST`, `INSERT_AT_OFFSET_REQUEST`, or
-  `REPLACE_RANGE_REQUEST`). Required fields per discriminator are listed in
-  `references/quickstart.md`.
-- `kast_scaffold` uses `targetFile` (singular absolute path), not
-  `filePaths`. There is no batch variant; one call per file.
-- `workspaceRoot` defaults to the current working directory when omitted.
-
-## Recovery
-
-- **Wrong projection.** Inspect one element of the response (e.g.
-  `references[0]`) before assuming a field name is missing. Adjust the
-  projection — never switch to text search because of JSON friction.
-- **Result set too large.** Narrow the same semantic query with `kind`,
-  `containingType`, `fileHint`, lower `depth`, or smaller limits. Don't
-  post-filter unindexed text.
-- **Truncated workspace files.** If `kast_workspace_files` marks a module
-  with `filesTruncated:true`, raise the cap only when the task genuinely
-  needs the wider list. Prefer a tighter semantic query.
-- **Stale or missing index.** If `kast_metrics` reports the reference
-  index is missing or stale, treat results as advisory and rebuild the
-  index before relying on impact, deadCode, lowUsage, cycles, or moduleDepth
-  answers.
-- **Failed mutation.** `ok:false`, a `*_FAILURE` response type, dirty
-  diagnostics, or a hash/validation message such as
-  `Missing expected hash` means the edit did not commit. Keep the failure
-  visible, run `kast_diagnostics` if it clarifies the state, and report
-  the blocker — do not silently retry with a hand edit.
-- **Unknown field error.** A request key is wrong. Consult
-  `references/quickstart.md` for the correct shape; do not probe with
-  `{}`.
-- **Never** replace a failed semantic query with `grep`, `rg`, `sed`, or
-  manual parsing for Kotlin identity. Raw search is acceptable only for
-  non-semantic work: file-path discovery in non-Kotlin files, comments,
-  string literals, and maintenance scripts.
-
-## Bash fallback
-
-If you ever need to run `kast skill` directly (debugging the extension,
-custom shell pipelines), the `KAST_CLI_PATH` env var is announced in the
-session-start context. Pass it inline per command:
-
-```bash
-KAST_CLI_PATH=/abs/path/kast "$KAST_CLI_PATH" skill workspace-files '{}'
-```
-
-`export` does not persist across bash tool calls in this environment, so set
-the variable on the same line.
+See `references/recovery.md` for binary resolution order, bash fallback
+invocations, and semantic query recovery guidance. See `references/quickstart.md`
+for request/response field shapes and common request snippets.
 
 ## Maintenance
 

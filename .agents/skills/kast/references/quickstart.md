@@ -3,13 +3,13 @@
 ## Bootstrap once
 
 1. Try the real Kast command you need.
-2. If `KAST_CLI_PATH` is empty or the shell reports `command not found`, run:
+2. If the shell reports `command not found`, resolve the local binary:
 
    ```bash
-   eval "$(bash .agents/skills/kast/scripts/kast-session-start.sh)"
+   KAST_BIN="$(bash .agents/skills/kast/scripts/resolve-kast.sh)"
    ```
 
-3. Retry the same command.
+3. Retry the same command with `"$KAST_BIN"` or after adding kast to PATH.
 4. Only then inspect the binary path or maintenance fixtures.
 
 Do not start by reading `.kast-version` or the full OpenAPI fixture.
@@ -52,7 +52,7 @@ instead of switching to non-semantic Kotlin search.
 ### List workspace files
 
 ```bash
-"$KAST_CLI_PATH" skill workspace-files '{"includeFiles":true,"maxFilesPerModule":500}'
+kast skill workspace-files '{"includeFiles":true,"maxFilesPerModule":500}'
 ```
 
 `includeFiles` returns a capped file list for each module. If a module has more
@@ -62,7 +62,7 @@ while keeping `fileCount` as the total discovered source file count.
 ### Resolve an ambiguous property
 
 ```bash
-"$KAST_CLI_PATH" skill resolve '{
+kast skill resolve '{
   "symbol":"date",
   "kind":"property",
   "containingType":"com.example.EventBean",
@@ -73,7 +73,7 @@ while keeping `fileCount` as the total discovered source file count.
 ### Find usages of a type or property
 
 ```bash
-"$KAST_CLI_PATH" skill references '{
+kast skill references '{
   "symbol":"EventBean",
   "fileHint":"/abs/path/EventBean.kt",
   "includeDeclaration":true
@@ -84,7 +84,7 @@ If a projection such as `.references[].location.filePath` returns nothing, inspe
 item before assuming the command failed:
 
 ```bash
-"$KAST_CLI_PATH" skill references '{"symbol":"EventBean","includeDeclaration":true}' \
+kast skill references '{"symbol":"EventBean","includeDeclaration":true}' \
   | jq '{ok,type,firstReference:.references[0]}'
 ```
 
@@ -94,7 +94,7 @@ Wrapper metadata and nested API fields both use camelCase, including
 ### Trace callers
 
 ```bash
-"$KAST_CLI_PATH" skill callers '{
+kast skill callers '{
   "symbol":"process",
   "direction":"incoming",
   "depth":3,
@@ -106,7 +106,7 @@ Wrapper metadata and nested API fields both use camelCase, including
 ### Query indexed metrics
 
 ```bash
-"$KAST_CLI_PATH" skill metrics '{
+kast skill metrics '{
   "workspaceRoot":"/abs/path/project",
   "metric":"impact",
   "symbol":"com.example.EventBean",
@@ -123,7 +123,7 @@ stale, or not ready.
 ### Understand a file quickly
 
 ```bash
-"$KAST_CLI_PATH" skill scaffold '{
+kast skill scaffold '{
   "targetFile":"/abs/path/EventBean.kt",
   "targetSymbol":"EventBean",
   "workspaceRoot":"/abs/path/project",
@@ -138,7 +138,7 @@ is no batch variant.
 ### Rename
 
 ```bash
-"$KAST_CLI_PATH" skill rename '{
+kast skill rename '{
   "type":"RENAME_BY_SYMBOL_REQUEST",
   "symbol":"OldName",
   "newName":"NewName"
@@ -148,7 +148,7 @@ is no batch variant.
 ### Write and validate
 
 ```bash
-"$KAST_CLI_PATH" skill write-and-validate '{
+kast skill write-and-validate '{
   "type":"REPLACE_RANGE_REQUEST",
   "filePath":"/abs/path/File.kt",
   "startOffset":120,
@@ -166,7 +166,7 @@ than applying a manual edit.
 ### Validate touched files
 
 ```bash
-"$KAST_CLI_PATH" skill diagnostics '{
+kast skill diagnostics '{
   "filePaths":["/abs/path/File.kt"]
 }'
 ```

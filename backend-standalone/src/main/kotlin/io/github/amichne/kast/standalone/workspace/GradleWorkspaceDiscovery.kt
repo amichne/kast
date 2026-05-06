@@ -30,10 +30,10 @@ internal fun resolveToolingApiTimeoutMillis(
     moduleCount: Int,
     config: KastConfig = KastConfig.defaults(),
 ): Long {
-    if (config.gradle.toolingApiTimeoutMillis != defaultToolingApiTimeoutMillis) {
-        return config.gradle.toolingApiTimeoutMillis
+    if (config.gradle.toolingApiTimeoutMillis.value != defaultToolingApiTimeoutMillis) {
+        return config.gradle.toolingApiTimeoutMillis.value
     }
-    return (moduleCount * 200L).coerceIn(config.gradle.toolingApiTimeoutMillis, 300_000L)
+    return (moduleCount * 200L).coerceIn(config.gradle.toolingApiTimeoutMillis.value, 300_000L)
 }
 
 internal object GradleWorkspaceDiscovery {
@@ -49,7 +49,7 @@ internal object GradleWorkspaceDiscovery {
         },
         warningSink: (String) -> Unit = ::logWorkspaceDiscoveryWarning,
         config: KastConfig = KastConfig.load(workspaceRoot),
-        cache: WorkspaceDiscoveryCache = WorkspaceDiscoveryCache(enabled = config.cache.enabled),
+        cache: WorkspaceDiscoveryCache = WorkspaceDiscoveryCache(enabled = config.cache.enabled.value),
     ): StandaloneWorkspaceLayout {
         cachedWorkspaceLayout(
             workspaceRoot = workspaceRoot,
@@ -60,7 +60,7 @@ internal object GradleWorkspaceDiscovery {
         }
 
         val toolingApiTimeoutMillis = resolveToolingApiTimeoutMillis(settingsSnapshot.includedProjectPaths.size, config)
-        val discoveryResult = if (settingsSnapshot.shouldPreferStaticDiscovery(config.gradle.maxIncludedProjects)) {
+        val discoveryResult = if (settingsSnapshot.shouldPreferStaticDiscovery(config.gradle.maxIncludedProjects.value)) {
             val resolvedStaticModules = staticModulesProvider()
             enrichStaticModulesWithToolingApiLibraries(
                 workspaceRoot = workspaceRoot,
@@ -110,7 +110,7 @@ internal object GradleWorkspaceDiscovery {
         },
         warningSink: (String) -> Unit = ::logWorkspaceDiscoveryWarning,
         config: KastConfig = KastConfig.load(workspaceRoot),
-        cache: WorkspaceDiscoveryCache = WorkspaceDiscoveryCache(enabled = config.cache.enabled),
+        cache: WorkspaceDiscoveryCache = WorkspaceDiscoveryCache(enabled = config.cache.enabled.value),
     ): PhasedDiscoveryResult {
         cachedWorkspaceLayout(
             workspaceRoot = workspaceRoot,
@@ -123,7 +123,7 @@ internal object GradleWorkspaceDiscovery {
             )
         }
 
-        if (!settingsSnapshot.shouldPreferStaticDiscovery(config.gradle.maxIncludedProjects)) {
+        if (!settingsSnapshot.shouldPreferStaticDiscovery(config.gradle.maxIncludedProjects.value)) {
             return PhasedDiscoveryResult(
                 initialLayout = discover(
                     workspaceRoot = workspaceRoot,

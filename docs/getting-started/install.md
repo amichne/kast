@@ -33,15 +33,9 @@ curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh | bash
 ```
 
 The wizard sniffs your environment (running IntelliJ, existing tools,
-Java version), lets you pick an install mode, writes config to
-`~/.config/kast/env`, and offers to drop in the Copilot skill.
-
-For repository-local Copilot setup, the CLI can also install the packaged
-Copilot agents, hooks, and native extensions:
-
-```console title="Install Copilot agents, hooks, and extensions"
-kast install copilot-extension
-```
+Java version), lets you pick an install mode, writes
+`$HOME/.config/kast/config.toml`, installs runtime files under
+`$HOME/.kast`, and offers to drop in the Copilot skill.
 
 ??? info "What the wizard does, step by step"
 
@@ -52,15 +46,13 @@ kast install copilot-extension
     2. **Choose mode.** `minimal` (CLI plus optional plugin) or `full`
        (CLI plus standalone backend). If IntelliJ is running, the wizard
        offers to push the plugin straight in.
-    3. **Configure.** Writes `~/.config/kast/env` with
-       `KAST_HOME`, `KAST_CONFIG_HOME`, `KAST_INSTALL_ROOT`, `KAST_BIN_DIR`,
-       and `KAST_CLI_PATH`. Your shell RC gets one
-       idempotent source line — no per-shell sprawl.
+    3. **Configure.** Writes `$HOME/.config/kast/config.toml` with the
+       install paths, the CLI binary path, and backend runtime paths.
     4. **Install the CLI.** Downloads the native launcher.
     5. **Shell completions.** Bash or Zsh, your call.
     6. **IntelliJ plugin.** Push to the running IDE, or download the zip
        for manual install.
-7. **Copilot skill.** Install globally
+    7. **Copilot skill.** Install globally
        (`~/.agents/skills/kast`), per-repo, or both. Uses `fzf` if
        available, falls back to a numbered menu.
     8. **Summary.** Install root, binary path, next steps.
@@ -117,40 +109,43 @@ explicitly.
 
 ??? info "Where kast stores configuration"
 
-    The installer writes paths to `~/.config/kast/env` instead of inlining
-    them into `.zshrc`/`.bashrc`. Your RC file gets one block that
-    sources it:
+    By default, `kast` reads user configuration from
+    `$HOME/.config/kast/config.toml`. Runtime and install files live under
+    `$HOME/.kast`:
 
-    ```bash title="~/.zshrc — added by installer"
-    # >>> kast env >>>
-    [[ -f "$HOME/.config/kast/env" ]] && source "$HOME/.config/kast/env"
-    # <<< kast env <<<
+    - `$HOME/.kast/bin`
+    - `$HOME/.kast/lib`
+    - `$HOME/.kast/cache`
+    - `$HOME/.kast/logs`
+
+    The only `kast`-specific environment variable is `KAST_CONFIG_HOME`.
+    Set it only when you need to move the directory that contains
+    `config.toml`:
+
+    ```bash title="Use a non-default config directory"
+    export KAST_CONFIG_HOME="$HOME/.config/kast-dev"
     ```
 
-    The config file itself looks like:
+    Most installs don't need a custom config file because the defaults
+    already point at `$HOME/.kast`. When you override paths, write absolute
+    paths in TOML:
 
-    ```bash title="~/.config/kast/env"
-    # >>> kast config >>>
-    export KAST_CONFIG_HOME="~/.config/kast"
-    export KAST_INSTALL_ROOT="~/.local/share/kast"
-    export KAST_BIN_DIR="~/.local/bin"
-    export KAST_CLI_PATH="~/.local/bin/kast"
-    # export KAST_STANDALONE_RUNTIME_LIBS="..."  (present after full install)
-    # <<< kast config <<<
+    ```toml title="$HOME/.config/kast/config.toml"
+    [paths]
+    installRoot = "/Users/alex/.kast"
+    binDir = "/Users/alex/.kast/bin"
+    libDir = "/Users/alex/.kast/lib"
+    cacheDir = "/Users/alex/.kast/cache"
+    logsDir = "/Users/alex/.kast/logs"
+
+    [cli]
+    binaryPath = "/Users/alex/.kast/bin/kast"
+
+    [backends.standalone]
+    runtimeLibsDir = "/Users/alex/.kast/lib/backends/current/runtime-libs"
     ```
 
-    For a fully isolated install, set a single root before installing:
-
-    ```bash title="Self-contained install root"
-    KAST_HOME="$HOME/.local/share/kast-dev" ./kast.sh install --components=cli,backend --non-interactive
-    ```
-
-    With `KAST_HOME`, Kast derives config from `$KAST_HOME/config`, the launcher
-    from `$KAST_HOME/bin/kast`, installed archives from `$KAST_HOME/install`, and
-    standalone runtime libraries from `$KAST_HOME/install/backends/current/runtime-libs`.
-
-    Re-run the installer any time. The block is updated in place, not
-    appended.
+    Re-run the installer any time. It updates managed files in place.
 
 ## Installer flags
 
@@ -161,6 +156,62 @@ explicitly.
 | `--skip-skill`                | Skip Copilot skill install step                                       |
 | `--non-interactive`           | Skip all prompts; implies `--skip-skill`                              |
 | `--local`                     | Install from local `dist/` artifacts (built by `./kast.sh build`)     |
+
+## Install the Copilot extension
+
+Install the Copilot extension when you want the repository-local GitHub
+Copilot files that ship with `kast`. The command copies packaged agents,
+hooks, and native extensions into `.github`, marks scripts executable, and
+writes `.github/.kast-copilot-version` so matching installs can be skipped.
+
+From the repository root, run:
+
+```console title="Install Copilot agents, hooks, and extensions"
+kast install copilot-extension
+```
+
+The install writes these packaged trees:
+
+- `.github/agents`
+- `.github/hooks`
+- `.github/extensions`
+
+Pass `--target-dir` when you need to install into another workspace's
+`.github` directory. Pass `--yes=true` to replace an older managed copy:
+
+```console title="Install into another workspace"
+kast install copilot-extension --target-dir=/Users/alex/work/project/.github --yes=true
+```
+
+To remove only packaged files, pass `--uninstall=true`:
+
+```console title="Uninstall Copilot agents, hooks, and extensions"
+kast install copilot-extension --uninstall=true
+```
+
+Uninstall removes the packaged manifest entries and the version marker. It
+preserves foreign files that you created under `.github`.
+
+### Install from IntelliJ or Android Studio
+
+The IntelliJ plugin exposes the same install and uninstall flow from the
+IDE. The action calls the CLI path from `[cli] binaryPath` in
+`config.toml`; it doesn't search `PATH`.
+
+Before using the action, confirm the configured binary exists and is
+executable:
+
+```toml title="$HOME/.config/kast/config.toml"
+[cli]
+binaryPath = "/Users/alex/.kast/bin/kast"
+```
+
+Then use the IDE menu:
+
+1. Open the project in IntelliJ IDEA or Android Studio.
+2. Choose **Tools → Kast → Install Copilot Extension**.
+3. To remove managed files later, choose
+   **Tools → Kast → Uninstall Copilot Extension**.
 
 ## Install the IntelliJ plugin manually
 

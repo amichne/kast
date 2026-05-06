@@ -1,7 +1,7 @@
 // Kast extension for Copilot CLI.
 //
 // Goals:
-//   1. Eliminate the KAST_CLI_PATH bootstrap round-trip — resolve once at
+//   1. Resolve the kast binary once at
 //      session start, cache, and use that path for every kast_* tool call.
 //   2. Expose `kast skill` commands as first-class native tools so the agent
 //      sees them in its tool list (discoverability) and the CLI runtime
@@ -12,7 +12,8 @@
 //      non-semantic work (comments, formatting, generated files) still flows.
 
 import {execFile} from "node:child_process";
-import {existsSync} from "node:fs";
+import {existsSync, readFileSync} from "node:fs";
+import {homedir} from "node:os";
 import {dirname, join, resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {joinSession} from "@github/copilot-sdk/extension";
@@ -24,6 +25,31 @@ const RESOLVE_SCRIPT = join(HERE, "scripts", "resolve-kast.sh");
 
 let kastBinary = null;
 let resolveError = null;
+
+// Minimal TOML reader — handles only the subset written by the kast installer.
+function readTomlKey(filePath, section, key) {
+  try {
+    let inSection = false;
+    for (const line of readFileSync(filePath, "utf8").split("\n")) {
+      const t = line.trim();
+      if (t === `[${section}]`) {
+        inSection = true;
+        continue;
+      }
+      if (inSection && t.startsWith("[")) {
+        break;
+      }
+      if (inSection) {
+        const m = t.match(/^(\w+)\s*=\s*"(.*)"/);
+        if (m && m[1] === key) {
+          return m[2];
+        }
+      }
+    }
+  } catch { /* file absent or unreadable */
+  }
+  return null;
+}
 
 function execBash(command, env = process.env) {
   return new Promise((res) => {
@@ -45,18 +71,35 @@ function execBash(command, env = process.env) {
 
 async function resolveKastBinary() {
   if (kastBinary) return kastBinary;
-  if (!existsSync(RESOLVE_SCRIPT)) {
-    resolveError = `resolver script missing: ${RESOLVE_SCRIPT}`;
-    return null;
+
+  // Primary: delegate to the resolve script (handles PATH + local build artifacts).
+  if (existsSync(RESOLVE_SCRIPT)) {
+    const {ok, stdout} = await execBash(`bash ${JSON.stringify(RESOLVE_SCRIPT)}`);
+    const path = stdout.trim();
+    if (ok && path) {
+      kastBinary = path;
+      return path;
+    }
   }
-  const { ok, stdout, stderr } = await execBash(`bash ${JSON.stringify(RESOLVE_SCRIPT)}`);
-  const path = stdout.trim();
-  if (!ok || !path) {
-    resolveError = stderr.trim() || "resolve-kast.sh produced no output";
-    return null;
+
+  // Recovery: read binaryPath from the kast config.toml (written by the installer).
+  // Respects KAST_CONFIG_HOME; falls back to the XDG default.
+  const configDir = process.env.KAST_CONFIG_HOME ?? join(homedir(), ".config", "kast");
+  const configBin = readTomlKey(join(configDir, "config.toml"), "cli", "binaryPath");
+  if (configBin && existsSync(configBin)) {
+    kastBinary = configBin;
+    return configBin;
   }
-  kastBinary = path;
-  return path;
+
+  // Recovery: common manual install location not always on PATH in non-interactive shells.
+  const localBin = join(homedir(), ".local", "bin", "kast");
+  if (existsSync(localBin)) {
+    kastBinary = localBin;
+    return localBin;
+  }
+
+  resolveError = `resolve-kast.sh missing or failed; config.toml binaryPath absent; ${localBin} not found`;
+  return null;
 }
 
 async function callKastSkill(command, args) {
@@ -69,9 +112,8 @@ async function callKastSkill(command, args) {
     });
   }
   const json = JSON.stringify(args ?? {});
-  const env = { ...process.env, KAST_CLI_PATH: bin };
   const cmd = `${JSON.stringify(bin)} skill ${command} ${JSON.stringify(json)}`;
-  const { ok, stdout, stderr, code } = await execBash(cmd, env);
+  const { ok, stdout, stderr, code } = await execBash(cmd);
   // kast prints JSON to stdout; surface any stderr if the JSON parse would fail.
   const out = stdout.trim();
   if (!out) {
@@ -336,7 +378,7 @@ const session = await joinSession({
       const bin = await resolveKastBinary();
       if (!bin) {
         await session.log(
-          `kast extension: failed to resolve kast binary (${resolveError}). Native kast_* tools will return errors until the binary is on PATH or KAST_CLI_PATH is set.`,
+          `kast extension: failed to resolve kast binary (${resolveError}). Native kast_* tools will return errors until the binary is on PATH or built in this workspace.`,
           { level: "warning" },
         );
         return {};
@@ -347,7 +389,7 @@ const session = await joinSession({
         additionalContext:
           `Kast tools available natively: kast_workspace_files, kast_scaffold, kast_resolve, kast_references, kast_callers, kast_metrics, kast_diagnostics, kast_rename, kast_write_and_validate. ` +
           `Use these for ALL Kotlin semantic work — they are far cheaper than view/grep/edit on .kt source. ` +
-          `If a bash fallback is genuinely necessary, KAST_CLI_PATH=${bin} (set this in the bash command's env, not via export which doesn't persist across calls).`,
+          `If a bash fallback is genuinely necessary, run ${bin} skill ... directly; do not rely on exported shell state across tool calls.`,
       };
     },
     onPreToolUse: async (input) => {

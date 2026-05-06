@@ -27,10 +27,7 @@ val embeddedSkillFiles = listOf(
     "scripts/resolve-kast.sh",
 )
 val embeddedCopilotAgentFiles = listOf(
-    "kast.md",
-    "explore.md",
-    "plan.md",
-    "edit.md",
+    "kast-orchestrator.md",
 )
 val embeddedCopilotHookFiles = listOf(
     "hooks.json",
@@ -38,6 +35,7 @@ val embeddedCopilotHookFiles = listOf(
     "session-start.sh",
     "record-paths.sh",
     "require-skills.sh",
+    "skill-shadowing.json",
     "session-end.sh",
     "resolve-kast-cli-path.sh",
 )

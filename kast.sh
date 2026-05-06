@@ -793,7 +793,7 @@ _install_intellij_plugin() {
 }
 
 _install_standalone_backend() {
-  local release_repo="$1" release_tag="$2" install_root="$3" local_archive="${4:-}" bin_dir="${5:-${KAST_BIN_DIR:-${HOME}/.local/bin}}"
+  local release_repo="$1" release_tag="$2" install_root="$3" local_archive="${4:-}" bin_dir="${5:-${HOME}/.kast/bin}"
 
   log_section "Install standalone backend"
   local backend_dir="${install_root}/backends"
@@ -1112,32 +1112,12 @@ _install_config_write() {
     log_success "Created ${config_file}"
   fi
 
-  # Write TOML config so the CLI can locate runtime-libs via config.backends.standalone.runtimeLibsDir
+  local toml_file="${config_dir}/config.toml"
+  _install_toml_set_value "$toml_file" "paths" "installRoot" "$install_root"
+  _install_toml_set_value "$toml_file" "paths" "binDir" "$bin_dir"
+  _install_toml_set_value "$toml_file" "cli" "binaryPath" "${bin_dir}/kast"
   if [[ -n "$runtime_libs" ]]; then
-    local toml_file="${config_dir}/config.toml"
-    local toml_section="[backends.standalone]"
-    local toml_entry="runtimeLibsDir = \"${runtime_libs}\""
-    if [[ -f "$toml_file" ]]; then
-      # Update existing runtimeLibsDir if present, otherwise append the section
-      if grep -Fq "runtimeLibsDir" "$toml_file"; then
-        local tmp_toml; tmp_toml="$(mktemp)"
-        sed "s|^[[:space:]]*runtimeLibsDir[[:space:]]*=.*|${toml_entry}|" "$toml_file" > "$tmp_toml"
-        cat "$tmp_toml" > "$toml_file"; rm -f "$tmp_toml"
-        log_step "Updated runtimeLibsDir in ${toml_file}"
-      elif grep -Fq "$toml_section" "$toml_file"; then
-        local tmp_toml; tmp_toml="$(mktemp)"
-        sed "/^[[:space:]]*\[backends\.standalone\]/a\\
-${toml_entry}" "$toml_file" > "$tmp_toml"
-        cat "$tmp_toml" > "$toml_file"; rm -f "$tmp_toml"
-        log_step "Added runtimeLibsDir to ${toml_file}"
-      else
-        printf '\n%s\n%s\n' "$toml_section" "$toml_entry" >> "$toml_file"
-        log_step "Appended backends.standalone to ${toml_file}"
-      fi
-    else
-      printf '%s\n%s\n' "$toml_section" "$toml_entry" > "$toml_file"
-      log_success "Created ${toml_file}"
-    fi
+    _install_toml_set_value "$toml_file" "backends.standalone" "runtimeLibsDir" "$runtime_libs"
   fi
   return 0
 }
@@ -1145,8 +1125,6 @@ ${toml_entry}" "$toml_file" > "$tmp_toml"
 _install_config_dir() {
   if [[ -n "${KAST_CONFIG_HOME:-}" ]]; then
     printf '%s\n' "${KAST_CONFIG_HOME%/}"
-  elif [[ -n "${KAST_HOME:-}" ]]; then
-    printf '%s/config\n' "${KAST_HOME%/}"
   else
     printf '%s/.config/kast\n' "$HOME"
   fi
@@ -1154,13 +1132,46 @@ _install_config_dir() {
 
 _install_print_config_env() {
   local config_dir="$1" install_root="$2" bin_dir="$3" runtime_libs="${4:-}"
-  [[ -n "${KAST_HOME:-}" ]] && printf 'export KAST_HOME="%s"\n' "${KAST_HOME%/}"
+  : "$install_root" "$bin_dir" "$runtime_libs"
   printf 'export KAST_CONFIG_HOME="%s"\n' "$config_dir"
-  printf 'export KAST_INSTALL_ROOT="%s"\n' "$install_root"
-  printf 'export KAST_BIN_DIR="%s"\n' "$bin_dir"
-  printf 'export KAST_CLI_PATH="%s/kast"\n' "$bin_dir"
-  [[ -n "$runtime_libs" ]] && printf 'export KAST_STANDALONE_RUNTIME_LIBS="%s"\n' "$runtime_libs"
   return 0
+}
+
+_install_toml_set_value() {
+  local toml_file="$1" section="$2" key="$3" value="$4"
+  mkdir -p "$(dirname -- "$toml_file")"
+  python3 - "$toml_file" "$section" "$key" "$value" <<'PYTOML'
+import sys
+from pathlib import Path
+
+toml_file = Path(sys.argv[1])
+section = sys.argv[2]
+key = sys.argv[3]
+value = sys.argv[4]
+entry = f'{key} = "{value}"'
+header = f'[{section}]'
+lines = toml_file.read_text(encoding="utf-8").splitlines() if toml_file.exists() else []
+
+section_start = next((idx for idx, line in enumerate(lines) if line.strip() == header), None)
+if section_start is None:
+    if lines and lines[-1].strip():
+        lines.append("")
+    lines.extend([header, entry])
+else:
+    section_end = next(
+        (idx for idx in range(section_start + 1, len(lines)) if lines[idx].strip().startswith("[") and lines[idx].strip().endswith("]")),
+        len(lines),
+    )
+    for idx in range(section_start + 1, section_end):
+        stripped = lines[idx].strip()
+        if stripped.startswith(f"{key} ") or stripped.startswith(f"{key}="):
+            lines[idx] = entry
+            break
+    else:
+        lines.insert(section_end, entry)
+
+toml_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
+PYTOML
 }
 
 _install_config_source_in_rc() {
@@ -1378,20 +1389,8 @@ USAGE
 
   release_repo="$(_install_resolve_release_repo)"
   platform_id="$(_install_detect_platform_id)"
-  if [[ -n "${KAST_INSTALL_ROOT:-}" ]]; then
-    install_root="${KAST_INSTALL_ROOT%/}"
-  elif [[ -n "${KAST_HOME:-}" ]]; then
-    install_root="${KAST_HOME%/}/install"
-  else
-    install_root="${HOME}/.local/share/kast"
-  fi
-  if [[ -n "${KAST_BIN_DIR:-}" ]]; then
-    bin_dir="${KAST_BIN_DIR%/}"
-  elif [[ -n "${KAST_HOME:-}" ]]; then
-    bin_dir="${KAST_HOME%/}/bin"
-  else
-    bin_dir="${HOME}/.local/bin"
-  fi
+  install_root="${HOME}/.kast"
+  bin_dir="${install_root}/bin"
   shell_name="$(_install_resolve_shell_name)"
 
   # Phase 1: Detect environment

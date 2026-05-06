@@ -34,7 +34,7 @@
     {
       "id": "behavior-bootstrap-and-resume",
       "title": "Bootstrap Kast and resume tracing",
-      "prompt": "I tried a Kotlin symbol lookup with Kast and the first shell command failed because `KAST_CLI_PATH` was empty. Bootstrap Kast for this workspace, then continue tracing the symbol and its usages.",
+      "prompt": "I tried a Kotlin symbol lookup with Kast and the first shell command failed because the kast binary was not on PATH. Bootstrap Kast for this workspace, then continue tracing the symbol and its usages.",
       "files": [],
       "expected_output": "A bootstrap-and-resume flow that repairs the environment quickly and gets back to semantic navigation.",
       "expectations": [
@@ -749,7 +749,7 @@
     {
       "id": "recover-kast-bootstrap",
       "title": "Recover Kast Bootstrap",
-      "prompt": "I tried using Kast and the first command failed with `bash: : command not found` because `KAST_CLI_PATH` is empty. Bootstrap Kast for this workspace and keep tracing the Kotlin symbol semantically.",
+      "prompt": "I tried using Kast and the first command failed with `bash: : command not found` because the kast binary is not on PATH. Bootstrap Kast for this workspace and keep tracing the Kotlin symbol semantically.",
       "files": [],
       "expected_output": "A routing decision that selects the Kast skill, stays on the native kast-tools route, and respects the allowed and forbidden operation guardrails for this prompt.",
       "expectations": [

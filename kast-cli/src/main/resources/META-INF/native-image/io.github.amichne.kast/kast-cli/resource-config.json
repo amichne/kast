@@ -3,6 +3,9 @@
     "includes": [
       {
         "pattern": "packaged-skill/.*"
+      },
+      {
+        "pattern": "\\QMETA-INF/services/com.sksamuel.hoplite.decoder.Decoder\\E"
       }
     ]
   }

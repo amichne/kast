@@ -1,5 +1,8 @@
 package io.github.amichne.kast.api.client
 
+import io.github.amichne.kast.api.client.fields.*
+import com.sksamuel.hoplite.ConfigLoaderBuilder
+import com.sksamuel.hoplite.ExperimentalHoplite
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -15,6 +18,94 @@ import kotlin.io.path.writeText
 class KastConfigTest {
     @TempDir
     lateinit var tempDir: Path
+
+    @Test
+    fun serverMaxResultsExposesSectionKeyAndTypedDefault() {
+        val maxResults = KastConfig.defaults().server.maxResults
+
+        assertEquals("server", maxResults.section)
+        assertEquals("maxResults", maxResults.key)
+        assertEquals(ConfigurationDefault(500), maxResults.default)
+        assertEquals(500, maxResults.value)
+    }
+
+    @Test
+    fun `defaults expose paths and cli sections`() {
+        val configFields = KastConfig::class.java.declaredFields.map { it.name }.toSet()
+
+        assertTrue("paths" in configFields)
+        assertTrue("cli" in configFields)
+    }
+
+    @Test
+    fun `defaults expose path and cli field defaults`() {
+        val config = KastConfig.defaults()
+        val installRoot = Path.of(System.getProperty("user.home")).resolve(".kast")
+        val binDir = installRoot.resolve("bin")
+        val libDir = installRoot.resolve("lib")
+        val cacheDir = installRoot.resolve("cache")
+        val logsDir = installRoot.resolve("logs")
+        val descriptorDir = cacheDir.resolve("daemons")
+        val socketDir = System.getProperty("java.io.tmpdir")
+        val binaryPath = binDir.resolve("kast")
+        val runtimeLibsDir = libDir.resolve("backends/current/runtime-libs")
+
+        assertEquals("paths", config.paths.installRoot.section)
+        assertEquals("installRoot", config.paths.installRoot.key)
+        assertEquals(ConfigurationDefault(installRoot.toString()), config.paths.installRoot.default)
+        assertEquals(installRoot.toString(), config.paths.installRoot.value)
+        assertEquals(binDir.toString(), config.paths.binDir.value)
+        assertEquals(libDir.toString(), config.paths.libDir.value)
+        assertEquals(cacheDir.toString(), config.paths.cacheDir.value)
+        assertEquals(logsDir.toString(), config.paths.logsDir.value)
+        assertEquals(descriptorDir.toString(), config.paths.descriptorDir.value)
+        assertEquals(socketDir, config.paths.socketDir.value)
+
+        assertEquals("cli", config.cli.binaryPath.section)
+        assertEquals("binaryPath", config.cli.binaryPath.key)
+        assertEquals(binaryPath.toString(), config.cli.binaryPath.value)
+        assertEquals(runtimeLibsDir.toString(), config.backends.standalone.runtimeLibsDir.value.orNull)
+    }
+
+    @Test
+    fun `configuration field section key pairs are unique and complete`() {
+        val expectedFields = setOf(
+            "server" to "maxResults",
+            "server" to "requestTimeoutMillis",
+            "server" to "maxConcurrentRequests",
+            "indexing" to "phase2Enabled",
+            "indexing" to "phase2BatchSize",
+            "indexing" to "identifierIndexWaitMillis",
+            "indexing" to "referenceBatchSize",
+            "indexing.remote" to "enabled",
+            "indexing.remote" to "sourceIndexUrl",
+            "cache" to "enabled",
+            "cache" to "writeDelayMillis",
+            "cache" to "sourceIndexSaveDelayMillis",
+            "watcher" to "debounceMillis",
+            "gradle" to "toolingApiTimeoutMillis",
+            "gradle" to "maxIncludedProjects",
+            "telemetry" to "enabled",
+            "telemetry" to "scopes",
+            "telemetry" to "detail",
+            "telemetry" to "outputFile",
+            "backends.standalone" to "enabled",
+            "backends.standalone" to "runtimeLibsDir",
+            "backends.intellij" to "enabled",
+            "paths" to "installRoot",
+            "paths" to "binDir",
+            "paths" to "libDir",
+            "paths" to "cacheDir",
+            "paths" to "logsDir",
+            "paths" to "descriptorDir",
+            "paths" to "socketDir",
+            "cli" to "binaryPath",
+        )
+        val actualFields = ConfigurationField.defaultFields().map { it.section to it.key }
+
+        assertEquals(expectedFields, actualFields.toSet())
+        assertEquals(actualFields.size, actualFields.toSet().size)
+    }
 
     @Test
     fun `git remote parser supports ssh and https origin urls`() {
@@ -63,7 +154,11 @@ class KastConfigTest {
 
         assertEquals(first, second)
         assertTrue(first.startsWith(configHome.resolve("workspaces/local")))
-        assertTrue(configHome.resolve("local-workspaces.json").readText().contains(workspaceRoot.toAbsolutePath().normalize().toString()))
+        assertTrue(
+            configHome.resolve("local-workspaces.json")
+                .readText()
+                .contains(workspaceRoot.toAbsolutePath().normalize().toString())
+        )
     }
 
     @Test
@@ -111,16 +206,19 @@ class KastConfigTest {
             workspaceDirectoryResolver = resolver,
         )
 
-        assertEquals(75, config.server.maxResults)
-        assertEquals(45_000L, config.server.requestTimeoutMillis)
-        assertEquals(KastConfig.defaults().server.maxConcurrentRequests, config.server.maxConcurrentRequests)
-        assertEquals(false, config.cache.enabled)
-        assertEquals(true, config.indexing.remote.enabled)
-        assertEquals("file:///tmp/kast/source-index.db", config.indexing.remote.sourceIndexUrl)
-        assertEquals(true, config.telemetry.enabled)
-        assertEquals("references,rename", config.telemetry.scopes)
-        assertEquals(config.server.maxResults, config.toServerLimits().maxResults)
-        assertEquals(config.server.requestTimeoutMillis, config.toServerLimits().requestTimeoutMillis)
+        assertEquals(75, config.server.maxResults.value)
+        assertEquals(45_000L, config.server.requestTimeoutMillis.value)
+        assertEquals(
+            KastConfig.defaults().server.maxConcurrentRequests.value,
+            config.server.maxConcurrentRequests.value
+        )
+        assertEquals(false, config.cache.enabled.value)
+        assertEquals(true, config.indexing.remote.enabled.value)
+        assertEquals("file:///tmp/kast/source-index.db", config.indexing.remote.sourceIndexUrl.value.orNull)
+        assertEquals(true, config.telemetry.enabled.value)
+        assertEquals("references,rename", config.telemetry.scopes.value)
+        assertEquals(config.server.maxResults.value, config.toServerLimits().maxResults)
+        assertEquals(config.server.requestTimeoutMillis.value, config.toServerLimits().requestTimeoutMillis)
     }
 
     @Test
@@ -151,7 +249,7 @@ class KastConfigTest {
             }
         }
 
-        assertEquals(321, config.server.maxResults)
+        assertEquals(321, config.server.maxResults.value)
     }
 
     @Test
@@ -178,10 +276,68 @@ class KastConfigTest {
                 configHome = { configHome },
                 workspaceDirectoryResolver = resolver,
             )
-            assertEquals(321, config.server.maxResults)
+            assertEquals(321, config.server.maxResults.value)
         }
 
         assertTrue(stdout.isBlank(), "Expected KastConfig.load to keep stdout clean, but got: $stdout")
+    }
+
+    @Test
+    @OptIn(ExperimentalHoplite::class)
+    fun hopliteDecodesReadableTomlDirectlyIntoConfigurationFieldOverrideLeaves() {
+        val installRoot = tempDir.resolve("install-root")
+        val sourceIndexUrl = "file:///private/var/kast/source-index.db"
+        val configFile = tempDir.resolve("field-overrides.toml").apply {
+            writeText(
+                """
+                [server]
+                maxResults = 123
+
+                [paths]
+                installRoot = "$installRoot"
+
+                [indexing.remote]
+                sourceIndexUrl = "$sourceIndexUrl"
+                """.trimIndent(),
+            )
+        }
+
+        val loaded = ConfigLoaderBuilder.empty()
+            .withClassLoader(KastConfig::class.java.classLoader)
+            .addDefaultDecoders()
+            .addDefaultPreprocessors()
+            .addDefaultNodeTransformers()
+            .addDefaultParamMappers()
+            .addDefaultParsers()
+            .withExplicitSealedTypes()
+            .allowEmptyConfigFiles()
+            .build()
+            .loadConfigOrThrow<KastConfigOverride>(listOf(configFile.toString()))
+
+        val maxResults: Any? = loaded.server?.maxResults
+        val decodedInstallRoot: Any? = loaded.paths?.installRoot
+        val decodedSourceIndexUrl: Any? = loaded.indexing?.remote?.sourceIndexUrl
+
+        assertTrue(
+            maxResults is ServerMaxResults,
+            "Expected server.maxResults to decode into ServerMaxResults, got $maxResults"
+        )
+        assertEquals(ServerMaxResults(123), maxResults)
+        assertEquals("server", (maxResults as ServerMaxResults).section)
+        assertEquals("maxResults", maxResults.key)
+        assertEquals(500, maxResults.default.unwrap)
+
+        assertTrue(
+            decodedInstallRoot is PathsInstallRoot,
+            "Expected paths.installRoot to decode into PathsInstallRoot, got $decodedInstallRoot"
+        )
+        assertEquals(PathsInstallRoot(installRoot.toString()), decodedInstallRoot)
+
+        assertTrue(
+            decodedSourceIndexUrl is IndexingRemoteSourceIndexUrl,
+            "Expected indexing.remote.sourceIndexUrl to decode into IndexingRemoteSourceIndexUrl, got $decodedSourceIndexUrl",
+        )
+        assertEquals(IndexingRemoteSourceIndexUrl(OptionalConfigString(sourceIndexUrl)), decodedSourceIndexUrl)
     }
 
     private fun <T> withContextClassLoader(

@@ -1,5 +1,7 @@
 package io.github.amichne.kast.standalone
 
+import io.github.amichne.kast.api.client.fields.GradleToolingApiTimeoutMillis
+import io.github.amichne.kast.api.client.fields.GradleMaxIncludedProjects
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.contract.ModuleName
 import io.github.amichne.kast.standalone.cache.WorkspaceDiscoveryCache
@@ -35,7 +37,7 @@ class GradleWorkspaceDiscoveryTest {
         val timeoutMillis = resolveToolingApiTimeoutMillis(
             moduleCount = 950,
             config = KastConfig.defaults().copy(
-                gradle = KastConfig.defaults().gradle.copy(toolingApiTimeoutMillis = 123_456L),
+                gradle = KastConfig.defaults().gradle.copy(toolingApiTimeoutMillis = GradleToolingApiTimeoutMillis(123_456L)),
             ),
         )
 
@@ -66,7 +68,7 @@ class GradleWorkspaceDiscoveryTest {
             },
             cache = WorkspaceDiscoveryCache(enabled = false),
             config = KastConfig.defaults().copy(
-                gradle = KastConfig.defaults().gradle.copy(maxIncludedProjects = 1),
+                gradle = KastConfig.defaults().gradle.copy(maxIncludedProjects = GradleMaxIncludedProjects(1)),
             ),
         )
 

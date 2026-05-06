@@ -112,25 +112,23 @@ installer_content="$(cat "${repo_root}/kast.sh")"
 HOME="${tmp_dir}/home" \
 SHELL=/bin/bash \
 KAST_RELEASE_METADATA_URL="$metadata_url" \
-KAST_HOME="${tmp_dir}/kast-home" \
-KAST_CONFIG_HOME= \
-KAST_INSTALL_ROOT= \
-KAST_BIN_DIR= \
-KAST_STANDALONE_RUNTIME_LIBS= \
+KAST_CONFIG_HOME="${tmp_dir}/config" \
 KAST_SKIP_PATH_UPDATE=true \
 KAST_INSTALL_COMPLETIONS=false \
 /bin/bash -c "$installer_content" bash install --non-interactive
 
-installed_launcher="${tmp_dir}/kast-home/bin/kast"
-installed_root="${tmp_dir}/kast-home/install/current"
-installed_env="${tmp_dir}/kast-home/config/env"
+installed_launcher="${tmp_dir}/home/.kast/bin/kast"
+installed_root="${tmp_dir}/home/.kast/current"
+installed_env="${tmp_dir}/config/env"
+installed_config="${tmp_dir}/config/config.toml"
 
 [[ -x "$installed_launcher" ]] || die "Installed launcher is not executable: $installed_launcher"
 [[ -L "$installed_root" ]] || die "Current install symlink was not created: $installed_root"
 [[ -x "${installed_root}/kast-cli" ]] || die "Installed kast-cli launcher is missing from ${installed_root}"
-[[ -f "$installed_env" ]] || die "KAST_HOME env file was not created: $installed_env"
-grep -Fq "export KAST_HOME=\"${tmp_dir}/kast-home\"" "$installed_env" || die "KAST_HOME missing from env file"
-grep -Fq "export KAST_CLI_PATH=\"${installed_launcher}\"" "$installed_env" || die "KAST_CLI_PATH missing from env file"
+[[ -f "$installed_env" ]] || die "Config env file was not created: $installed_env"
+grep -Fq "export KAST_CONFIG_HOME=\"${tmp_dir}/config\"" "$installed_env" || die "KAST_CONFIG_HOME missing from env file"
+[[ -f "$installed_config" ]] || die "config.toml was not created: $installed_config"
+grep -Fq "binaryPath = \"${installed_launcher}\"" "$installed_config" || die "cli.binaryPath missing from config.toml"
 
 "$installed_launcher" --help >/dev/null
 

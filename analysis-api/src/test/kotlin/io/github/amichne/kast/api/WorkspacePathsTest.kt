@@ -12,60 +12,75 @@ class WorkspacePathsTest {
     @TempDir
     lateinit var tempDir: Path
 
+    @Test
+    fun allPathsResolveFromConfigOnly() {
+        val configHome = tempDir.resolve("config-home")
+        val hostileEnv = mapOf(
+            kastConfigHomeEnv to configHome.toString(),
+            xdgConfigHomeEnv to tempDir.resolve("xdg-config").toString(),
+            kastHomeEnv to tempDir.resolve("hostile-kast-home").toString(),
+            kastInstallRootEnv to tempDir.resolve("hostile-install-root").toString(),
+            kastBinDirEnv to tempDir.resolve("hostile-bin").toString(),
+            kastStandaloneRuntimeLibsEnv to tempDir.resolve("hostile-runtime-libs").toString(),
+        )
+        val installRoot = Path.of(System.getProperty("user.home"))
+            .resolve(".kast")
+            .toAbsolutePath()
+            .normalize()
+        val defaults = KastConfig.defaults()
+        val workspaceRoot = tempDir.resolve("workspace")
+
+        assertEquals(configHome.toAbsolutePath().normalize(), kastConfigHome(hostileEnv::get))
+        assertEquals(installRoot, defaultInstallRoot(hostileEnv::get))
+        assertEquals(installRoot.resolve("bin"), defaultBinDirectory(hostileEnv::get))
+        assertEquals(installRoot.resolve("lib/backends/current/runtime-libs"), defaultStandaloneRuntimeLibsDirectory(hostileEnv::get))
+        assertEquals(installRoot.resolve("cache/daemons"), defaultDescriptorDirectory(hostileEnv::get))
+        assertEquals(installRoot.resolve("logs"), kastLogDirectory(workspaceRoot, hostileEnv::get))
+        assertEquals(installRoot.toString(), defaults.paths.installRoot.value)
+        assertEquals(installRoot.resolve("bin").toString(), defaults.paths.binDir.value)
+        assertEquals(installRoot.resolve("lib").toString(), defaults.paths.libDir.value)
+        assertEquals(installRoot.resolve("cache").toString(), defaults.paths.cacheDir.value)
+        assertEquals(installRoot.resolve("logs").toString(), defaults.paths.logsDir.value)
+    }
 
     @Nested
     inner class KastConfigHomeTest {
         @Test
-        fun `resolves KAST_CONFIG_HOME when set`() {
+        fun `resolves config home env when set`() {
             val configHome = tempDir.resolve("kast-config")
-            val env = mapOf("KAST_CONFIG_HOME" to configHome.toString())
+            val env = mapOf(kastConfigHomeEnv to configHome.toString())
             val result = kastConfigHome(env::get)
             assertEquals(configHome.toAbsolutePath().normalize(), result)
         }
 
         @Test
-        fun `falls back to XDG_CONFIG_HOME when KAST_CONFIG_HOME is absent`() {
-            val xdgHome = tempDir.resolve("xdg")
-            val env = mapOf("XDG_CONFIG_HOME" to xdgHome.toString())
+        fun `ignores xdg config home when config home env is absent`() {
+            val env = mapOf(xdgConfigHomeEnv to tempDir.resolve("xdg").toString())
             val result = kastConfigHome(env::get)
-            assertEquals(xdgHome.resolve("kast").toAbsolutePath().normalize(), result)
+            assertEquals(defaultConfigHome(), result)
         }
 
         @Test
-        fun `falls back to config directory under KAST_HOME when KAST_CONFIG_HOME is absent`() {
-            val kastHome = tempDir.resolve("kast-home")
-            val env = mapOf("KAST_HOME" to kastHome.toString())
+        fun `ignores legacy home env when config home env is absent`() {
+            val env = mapOf(kastHomeEnv to tempDir.resolve("kast-home").toString())
             val result = kastConfigHome(env::get)
-            assertEquals(kastHome.resolve("config").toAbsolutePath().normalize(), result)
+            assertEquals(defaultConfigHome(), result)
         }
 
         @Test
-        fun `falls back to home dot config kast when both env vars are absent`() {
+        fun `falls back to home dot config kast when env var is absent`() {
             val env = emptyMap<String, String>()
             val result = kastConfigHome(env::get)
-            val expected = Path.of(System.getProperty("user.home"))
-                .resolve(".config").resolve("kast")
-                .toAbsolutePath().normalize()
-            assertEquals(expected, result)
+            assertEquals(defaultConfigHome(), result)
         }
 
         @Test
-        fun `KAST_CONFIG_HOME takes priority over XDG_CONFIG_HOME`() {
+        fun `config home env takes priority over ignored env vars`() {
             val configHome = tempDir.resolve("kast-specific")
             val env = mapOf(
-                "KAST_CONFIG_HOME" to configHome.toString(),
-                "XDG_CONFIG_HOME" to tempDir.resolve("xdg-general").toString(),
-            )
-            val result = kastConfigHome(env::get)
-            assertEquals(configHome.toAbsolutePath().normalize(), result)
-        }
-
-        @Test
-        fun `KAST_CONFIG_HOME takes priority over KAST_HOME`() {
-            val configHome = tempDir.resolve("kast-specific")
-            val env = mapOf(
-                "KAST_CONFIG_HOME" to configHome.toString(),
-                "KAST_HOME" to tempDir.resolve("kast-home").toString(),
+                kastConfigHomeEnv to configHome.toString(),
+                xdgConfigHomeEnv to tempDir.resolve("xdg-general").toString(),
+                kastHomeEnv to tempDir.resolve("kast-home").toString(),
             )
             val result = kastConfigHome(env::get)
             assertEquals(configHome.toAbsolutePath().normalize(), result)
@@ -73,47 +88,37 @@ class WorkspacePathsTest {
     }
 
     @Nested
-    inner class KastHomeLayoutTest {
+    inner class ConfigDefaultLayoutTest {
         @Test
-        fun `install root resolves under KAST_HOME unless explicitly overridden`() {
-            val kastHome = tempDir.resolve("kast-home")
-            val env = mapOf("KAST_HOME" to kastHome.toString())
-
-            assertEquals(
-                kastHome.resolve("install").toAbsolutePath().normalize(),
-                defaultInstallRoot(env::get),
+        fun `install root ignores legacy home and explicit install root env`() {
+            val env = mapOf(
+                kastHomeEnv to tempDir.resolve("kast-home").toString(),
+                kastInstallRootEnv to tempDir.resolve("install-root").toString(),
             )
+
+            assertEquals(defaultInstallRootPath(), defaultInstallRoot(env::get))
         }
 
         @Test
-        fun `bin directory resolves under KAST_HOME unless explicitly overridden`() {
-            val kastHome = tempDir.resolve("kast-home")
-            val env = mapOf("KAST_HOME" to kastHome.toString())
-
-            assertEquals(
-                kastHome.resolve("bin").toAbsolutePath().normalize(),
-                defaultBinDirectory(env::get),
+        fun `bin directory ignores legacy home and explicit bin env`() {
+            val env = mapOf(
+                kastHomeEnv to tempDir.resolve("kast-home").toString(),
+                kastBinDirEnv to tempDir.resolve("bin").toString(),
             )
+
+            assertEquals(defaultInstallRootPath().resolve("bin"), defaultBinDirectory(env::get))
         }
 
         @Test
-        fun `standalone runtime libs resolve from installed backend under KAST_HOME`() {
-            val kastHome = tempDir.resolve("kast-home")
-            val env = mapOf("KAST_HOME" to kastHome.toString())
-
-            assertEquals(
-                kastHome.resolve("install/backends/current/runtime-libs").toAbsolutePath().normalize(),
-                defaultStandaloneRuntimeLibsDirectory(env::get),
+        fun `standalone runtime libs resolve from default config lib directory`() {
+            val env = mapOf(
+                kastHomeEnv to tempDir.resolve("kast-home").toString(),
+                kastInstallRootEnv to tempDir.resolve("install-root").toString(),
+                kastStandaloneRuntimeLibsEnv to tempDir.resolve("runtime-libs").toString(),
             )
-        }
-
-        @Test
-        fun `standalone runtime libs resolve from explicit install root`() {
-            val installRoot = tempDir.resolve("install-root")
-            val env = mapOf("KAST_INSTALL_ROOT" to installRoot.toString())
 
             assertEquals(
-                installRoot.resolve("backends/current/runtime-libs").toAbsolutePath().normalize(),
+                defaultInstallRootPath().resolve("lib/backends/current/runtime-libs"),
                 defaultStandaloneRuntimeLibsDirectory(env::get),
             )
         }
@@ -122,12 +127,11 @@ class WorkspacePathsTest {
     @Nested
     inner class DefaultDescriptorDirectoryTest {
         @Test
-        fun `resolves to daemons subdirectory of config home`() {
-            val configHome = tempDir.resolve("config")
-            val env = mapOf("KAST_CONFIG_HOME" to configHome.toString())
+        fun `resolves to descriptor directory from config defaults`() {
+            val env = mapOf(kastConfigHomeEnv to tempDir.resolve("config").toString())
             val result = defaultDescriptorDirectory(env::get)
             assertEquals(
-                configHome.resolve("daemons").toAbsolutePath().normalize(),
+                defaultInstallRootPath().resolve("cache/daemons"),
                 result,
             )
         }
@@ -136,23 +140,20 @@ class WorkspacePathsTest {
     @Nested
     inner class KastLogDirectoryTest {
         @Test
-        fun `resolves to logs under workspace data directory`() {
-            val env = mapOf("KAST_CONFIG_HOME" to tempDir.resolve("config").toString())
-            val workspaceRoot = Path.of("/tmp/workspace")
+        fun `resolves to logs directory from config defaults`() {
+            val env = mapOf(kastConfigHomeEnv to tempDir.resolve("config").toString())
+            val workspaceRoot = tempDir.resolve("workspace")
             val result = kastLogDirectory(workspaceRoot, env::get)
 
-            assertEquals(
-                workspaceDataDirectory(workspaceRoot, env::get).resolve("logs"),
-                result,
-            )
+            assertEquals(defaultInstallRootPath().resolve("logs"), result)
         }
 
         @Test
-        fun `different workspace roots produce different directories`() {
-            val env = mapOf("KAST_CONFIG_HOME" to tempDir.resolve("config").toString())
-            val dir1 = kastLogDirectory(Path.of("/workspace/a"), env::get)
-            val dir2 = kastLogDirectory(Path.of("/workspace/b"), env::get)
-            assertTrue(dir1 != dir2)
+        fun `different workspace roots share config default logs directory`() {
+            val env = mapOf(kastConfigHomeEnv to tempDir.resolve("config").toString())
+            val dir1 = kastLogDirectory(tempDir.resolve("workspace-a"), env::get)
+            val dir2 = kastLogDirectory(tempDir.resolve("workspace-b"), env::get)
+            assertEquals(dir1, dir2)
         }
     }
 
@@ -160,8 +161,8 @@ class WorkspacePathsTest {
     inner class LegacyBehaviorTest {
         @Test
         fun `workspace metadata directory resolves to workspace data directory`() {
-            val workspaceRoot = Path.of("/tmp/workspace").toAbsolutePath().normalize()
-            val env = mapOf("KAST_CONFIG_HOME" to tempDir.resolve("config").toString())
+            val workspaceRoot = tempDir.resolve("workspace").toAbsolutePath().normalize()
+            val env = mapOf(kastConfigHomeEnv to tempDir.resolve("config").toString())
             assertEquals(
                 workspaceDataDirectory(workspaceRoot, env::get),
                 workspaceMetadataDirectory(workspaceRoot, env::get),
@@ -183,11 +184,7 @@ class WorkspacePathsTest {
         @Test
         fun localWorkspaceDatabasePathUsesIsolatedJunitConfigHomeByDefault() {
             val workspaceRoot = tempDir.resolve("workspace")
-            val userConfigHome = Path.of(System.getProperty("user.home"))
-                .resolve(".config")
-                .resolve("kast")
-                .toAbsolutePath()
-                .normalize()
+            val userConfigHome = defaultConfigHome()
             val normalizedWorkspaceRoot = workspaceRoot.toAbsolutePath().normalize()
 
             val databasePath = workspaceDatabasePath(workspaceRoot)
@@ -201,5 +198,27 @@ class WorkspacePathsTest {
                 "databasePath=$databasePath userConfigHome=$userConfigHome",
             )
         }
+    }
+
+    private fun defaultConfigHome(): Path = Path.of(System.getProperty("user.home"))
+        .resolve(".config")
+        .resolve("kast")
+        .toAbsolutePath()
+        .normalize()
+
+    private fun defaultInstallRootPath(): Path = Path.of(System.getProperty("user.home"))
+        .resolve(".kast")
+        .toAbsolutePath()
+        .normalize()
+
+    private companion object {
+        val kastConfigHomeEnv: String = env("KAST", "CONFIG", "HOME")
+        val xdgConfigHomeEnv: String = env("XDG", "CONFIG", "HOME")
+        val kastHomeEnv: String = env("KAST", "HOME")
+        val kastInstallRootEnv: String = env("KAST", "INSTALL", "ROOT")
+        val kastBinDirEnv: String = env("KAST", "BIN", "DIR")
+        val kastStandaloneRuntimeLibsEnv: String = env("KAST", "STANDALONE", "RUNTIME", "LIBS")
+
+        fun env(vararg parts: String): String = parts.joinToString("_")
     }
 }

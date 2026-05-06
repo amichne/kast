@@ -113,6 +113,34 @@
         "required_pass_rate": 1.0,
         "required_benchmarks": 2
       }
+    },
+    {
+      "id": "field-family-package-split",
+      "title": "Split public field families into a semantic package",
+      "prompt": "Review the Kotlin design in `evals/files/field-family-package-split.md`. Recommend how to reorganize it so the field vocabulary is easy to browse and each public field type has a discoverable file.",
+      "files": [
+        "evals/files/field-family-package-split.md"
+      ],
+      "expected_output": "Guidance that moves the public field family into a named subpackage, splits each primary class into its own file, and clusters only tightly owned helper functions when appropriate.",
+      "expectations": [
+        "Calls out the many public root-level field classes in one file as the core readability and discoverability problem.",
+        "Recommends a semantic subpackage such as `config.fields` for the field vocabulary instead of leaving the types flat in the parent package.",
+        "Requires one file per primary public class/interface/object while allowing focused helper functions or extensions to cluster only when they do not deserve independent discovery."
+      ],
+      "labels": [
+        "layout",
+        "package-boundary",
+        "file-organization"
+      ],
+      "stage": "candidate",
+      "source": {
+        "kind": "user_reported_pain_point",
+        "summary": "Added after a ConfigurationField.kt refactor exposed repeated frustration with litany files containing many public Kotlin declarations."
+      },
+      "promotion": {
+        "required_pass_rate": 1.0,
+        "required_benchmarks": 2
+      }
     }
   ]
 }

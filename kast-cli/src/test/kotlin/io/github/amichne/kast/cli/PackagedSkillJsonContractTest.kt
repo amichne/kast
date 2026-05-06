@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
@@ -54,11 +55,7 @@ class PackagedSkillJsonContractTest {
             "kast.wrapper system property is missing"
         }
         val configHome = tempDir.resolve("kast-config")
-        val wrapperEnv = mapOf(
-            "KAST_CLI_PATH" to kastBinary,
-            "KAST_CONFIG_HOME" to configHome.toString(),
-            "KAST_WORKSPACE_ROOT" to workspaceRoot.toString(),
-        )
+        val wrapperEnv = wrapperEnv(kastBinary, configHome, workspaceRoot)
 
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/scripts/resolve-kast.sh")))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/scripts/kast-session-start.sh")))
@@ -78,70 +75,70 @@ class PackagedSkillJsonContractTest {
         )
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/references/wrapper-openapi.yaml")))
 
-        val daemon = startRealBackend(workspaceRoot, wrapperEnv)
+        val daemon = startRealBackend(workspaceRoot, wrapperEnv, kastBinary)
         try {
-        val resolveScriptResult = runCommand(
-            command = listOf(
-                "bash",
-                installedSkillDir.resolve("kast/scripts/resolve-kast.sh").toString(),
-            ),
-            env = wrapperEnv,
-        )
-        assertEquals(0, resolveScriptResult.exitCode, "stderr: ${resolveScriptResult.stderr}")
-        assertTrue(resolveScriptResult.stdout.contains("kast-cli"))
-        assertFalse(resolveScriptResult.stdout.contains(" "))
-
-        val resolveRequest = buildJsonObject {
-            put("workspaceRoot", workspaceRoot.toString())
-            put("symbol", "greet")
-            put("fileHint", sourceFile.toString())
-        }
-        val resolveResult = runCommand(
-            command = listOf(
-                kastBinary,
-                "skill",
-                "resolve",
-                defaultCliJson().encodeToString(JsonObject.serializer(), resolveRequest),
-            ),
-            env = wrapperEnv,
-        )
-        assertEquals(0, resolveResult.exitCode, "stderr: ${resolveResult.stderr}")
-        val resolvedPayload = defaultCliJson()
-            .parseToJsonElement(resolveResult.stdout)
-            .jsonObject
-        assertEquals(true, resolvedPayload["ok"]?.toString()?.toBooleanStrictOrNull())
-        assertEquals("RESOLVE_SUCCESS", resolvedPayload["type"]?.jsonPrimitive?.content)
-        assertTrue(resolveResult.stderr.isBlank())
-
-        val diagnosticsRequestFile = tempDir.resolve("diagnostics-request.json")
-        val diagnosticsRequest = buildJsonObject {
-            put("workspaceRoot", workspaceRoot.toString())
-            put(
-                "filePaths",
-                buildJsonArray {
-                    add(JsonPrimitive(sourceFile.toString()))
-                },
+            val resolveScriptResult = runCommand(
+                command = listOf(
+                    "bash",
+                    installedSkillDir.resolve("kast/scripts/resolve-kast.sh").toString(),
+                ),
+                env = wrapperEnv,
             )
-        }
-        diagnosticsRequestFile.writeText(
-            defaultCliJson().encodeToString(JsonObject.serializer(), diagnosticsRequest),
-        )
+            assertEquals(0, resolveScriptResult.exitCode, "stderr: ${resolveScriptResult.stderr}")
+            assertTrue(Files.isExecutable(Path.of(resolveScriptResult.stdout)))
+            assertFalse(resolveScriptResult.stdout.contains(" "))
 
-        val diagnosticsResult = runCommand(
-            command = listOf(
-                kastBinary,
-                "skill",
-                "diagnostics",
-                diagnosticsRequestFile.toString(),
-            ),
-            env = wrapperEnv,
-        )
-        assertEquals(0, diagnosticsResult.exitCode, "stderr: ${diagnosticsResult.stderr}")
-        val diagnosticsPayload = defaultCliJson()
-            .parseToJsonElement(diagnosticsResult.stdout)
-            .jsonObject
-        assertEquals(true, diagnosticsPayload["ok"]?.toString()?.toBooleanStrictOrNull())
-        assertEquals("DIAGNOSTICS_SUCCESS", diagnosticsPayload["type"]?.jsonPrimitive?.content)
+            val resolveRequest = buildJsonObject {
+                put("workspaceRoot", workspaceRoot.toString())
+                put("symbol", "greet")
+                put("fileHint", sourceFile.toString())
+            }
+            val resolveResult = runCommand(
+                command = listOf(
+                    kastBinary,
+                    "skill",
+                    "resolve",
+                    defaultCliJson().encodeToString(JsonObject.serializer(), resolveRequest),
+                ),
+                env = wrapperEnv,
+            )
+            assertEquals(0, resolveResult.exitCode, "stderr: ${resolveResult.stderr}")
+            val resolvedPayload = defaultCliJson()
+                .parseToJsonElement(resolveResult.stdout)
+                .jsonObject
+            assertEquals(true, resolvedPayload["ok"]?.toString()?.toBooleanStrictOrNull())
+            assertEquals("RESOLVE_SUCCESS", resolvedPayload["type"]?.jsonPrimitive?.content)
+            assertTrue(resolveResult.stderr.isBlank())
+
+            val diagnosticsRequestFile = tempDir.resolve("diagnostics-request.json")
+            val diagnosticsRequest = buildJsonObject {
+                put("workspaceRoot", workspaceRoot.toString())
+                put(
+                    "filePaths",
+                    buildJsonArray {
+                        add(JsonPrimitive(sourceFile.toString()))
+                    },
+                )
+            }
+            diagnosticsRequestFile.writeText(
+                defaultCliJson().encodeToString(JsonObject.serializer(), diagnosticsRequest),
+            )
+
+            val diagnosticsResult = runCommand(
+                command = listOf(
+                    kastBinary,
+                    "skill",
+                    "diagnostics",
+                    diagnosticsRequestFile.toString(),
+                ),
+                env = wrapperEnv,
+            )
+            assertEquals(0, diagnosticsResult.exitCode, "stderr: ${diagnosticsResult.stderr}")
+            val diagnosticsPayload = defaultCliJson()
+                .parseToJsonElement(diagnosticsResult.stdout)
+                .jsonObject
+            assertEquals(true, diagnosticsPayload["ok"]?.toString()?.toBooleanStrictOrNull())
+            assertEquals("DIAGNOSTICS_SUCCESS", diagnosticsPayload["type"]?.jsonPrimitive?.content)
         } finally {
             runCommand(
                 command = listOf(kastBinary, "workspace", "stop", "--workspace-root=$workspaceRoot"),
@@ -162,13 +159,9 @@ class PackagedSkillJsonContractTest {
             "kast.wrapper system property is missing"
         }
         val configHome = tempDir.resolve("kast-config-repo")
-        val wrapperEnv = mapOf(
-            "KAST_CLI_PATH" to kastBinary,
-            "KAST_CONFIG_HOME" to configHome.toString(),
-            "KAST_WORKSPACE_ROOT" to repoRoot.toString(),
-        )
+        val wrapperEnv = wrapperEnv(kastBinary, configHome, repoRoot)
 
-        val daemon = startRealBackend(repoRoot, wrapperEnv)
+        val daemon = startRealBackend(repoRoot, wrapperEnv, kastBinary)
         try {
             val ensureResult = runCommand(
                 command = listOf(kastBinary, "workspace", "ensure", "--workspace-root=$repoRoot"),
@@ -216,35 +209,46 @@ class PackagedSkillJsonContractTest {
         }
     }
 
+    private fun wrapperEnv(
+        kastBinary: String,
+        configHome: Path,
+        workspaceRoot: Path,
+    ): Map<String, String> = mapOf(
+        "PATH" to listOfNotNull(
+            Path.of(kastBinary).parent?.toString(),
+            System.getenv("PATH"),
+        ).joinToString(File.pathSeparator),
+        "KAST_CONFIG_HOME" to configHome.toString(),
+        "KAST_WORKSPACE_ROOT" to workspaceRoot.toString(),
+    )
+
     private fun startRealBackend(
         workspace: Path,
         env: Map<String, String>,
+        kastBinary: String,
         timeoutMillis: Long = 120_000,
-    ): Process {
-        val kastBinary = checkNotNull(env["KAST_CLI_PATH"]) { "KAST_CLI_PATH missing from env" }
-        return startStandaloneBackendForTest(
-            workspace = workspace,
-            env = env,
-            timeoutMillis = timeoutMillis,
-            statusProbe = {
-                val statusResult = runCommand(
-                    command = listOf(kastBinary, "workspace", "status", "--workspace-root=$workspace"),
-                    env = env,
-                )
-                BackendStatusProbeSnapshot(
-                    exitCode = statusResult.exitCode,
-                    stdout = statusResult.stdout,
-                    stderr = statusResult.stderr,
-                )
-            },
-            isReady = { probe ->
-                probe.exitCode == 0 &&
-                    runCatching {
-                        defaultCliJson().decodeFromString<WorkspaceStatusResult>(probe.stdout)
-                    }.getOrNull()?.selected?.ready == true
-            },
-        )
-    }
+    ): Process = startStandaloneBackendForTest(
+        workspace = workspace,
+        env = env,
+        timeoutMillis = timeoutMillis,
+        statusProbe = {
+            val statusResult = runCommand(
+                command = listOf(kastBinary, "workspace", "status", "--workspace-root=$workspace"),
+                env = env,
+            )
+            BackendStatusProbeSnapshot(
+                exitCode = statusResult.exitCode,
+                stdout = statusResult.stdout,
+                stderr = statusResult.stderr,
+            )
+        },
+        isReady = { probe ->
+            probe.exitCode == 0 &&
+                runCatching {
+                    defaultCliJson().decodeFromString<WorkspaceStatusResult>(probe.stdout)
+                }.getOrNull()?.selected?.ready == true
+        },
+    )
 
     private fun runCommand(
         command: List<String>,

@@ -57,13 +57,13 @@ internal class StandaloneAnalysisSession(
     phasedDiscoveryResult: PhasedDiscoveryResult? = null,
     private val sourceIndexFileReader: (Path) -> String = Files::readString,
     config: KastConfig = KastConfig.load(workspaceRoot),
-    private val sourceIndexCacheSaveDelayMillis: Long = config.cache.sourceIndexSaveDelayMillis,
+    private val sourceIndexCacheSaveDelayMillis: Long = config.cache.sourceIndexSaveDelayMillis.value,
     private val clock: Clock = Clock.SYSTEM,
     private val analysisSessionLock: SessionLock = ReentrantSessionLock(),
-    private val identifierIndexWaitMillis: Long = config.indexing.identifierIndexWaitMillis,
+    private val identifierIndexWaitMillis: Long = config.indexing.identifierIndexWaitMillis.value,
     internal val telemetry: StandaloneTelemetry = StandaloneTelemetry.disabled(),
-    private val enablePhase2Indexing: Boolean = config.indexing.phase2Enabled,
-    private val referenceBatchSize: Int = config.indexing.referenceBatchSize,
+    private val enablePhase2Indexing: Boolean = config.indexing.phase2Enabled.value,
+    private val referenceBatchSize: Int = config.indexing.referenceBatchSize.value,
 ) : AutoCloseable {
     val workspaceRoot: Path = normalizeStandalonePath(workspaceRoot)
     private val disposable: Disposable = Disposer.newDisposable("kast-standalone")
@@ -377,12 +377,13 @@ internal class StandaloneAnalysisSession(
             scope = StandaloneTelemetryScope.SESSION_LIFECYCLE,
             name = "kast.session.rebuildAnalysisSession",
         ) {
-            analysisSessionLock.write {
+            val previousDisposable = analysisSessionLock.write {
                 val previousDisposable = sessionStateDisposable
                 buildAnalysisStateAndCache()
                 fullKtFileMapLoaded = false
-                Disposer.dispose(previousDisposable)
+                previousDisposable
             }
+            Disposer.dispose(previousDisposable)
         }
     }
 
@@ -581,7 +582,9 @@ internal class StandaloneAnalysisSession(
         if (!enrichmentReady.isDone) {
             enrichmentReady.complete(Unit)
         }
-        Disposer.dispose(disposable)
+        analysisSessionLock.write {
+            Disposer.dispose(disposable)
+        }
     }
 
     private fun applyWorkspaceLayout(workspaceLayout: StandaloneWorkspaceLayout) {
@@ -651,7 +654,7 @@ internal class StandaloneAnalysisSession(
             }
 
             // Short write lock: swap state atomically.
-            telemetry.inSpan(
+            val (previousIndexer, previousSessionDisposable) = telemetry.inSpan(
                 scope = StandaloneTelemetryScope.SESSION_LOCK,
                 name = "kast.lock.acquire",
                 attributes = mapOf("kast.lock.type" to "WRITE", "kast.lock.caller" to "rebuildWorkspaceLayout"),
@@ -667,10 +670,11 @@ internal class StandaloneAnalysisSession(
                     checkpointKnownPaths = emptySet()
                     fullKtFileMapLoaded = false
                     startInitialSourceIndex()
-                    previousIndexer.close()
-                    Disposer.dispose(previousSessionDisposable)
+                    previousIndexer to previousSessionDisposable
                 }
             }
+            previousIndexer.close()
+            Disposer.dispose(previousSessionDisposable)
         }
     }
 

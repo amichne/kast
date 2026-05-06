@@ -360,6 +360,7 @@ class CliCommandParserTest {
                 "copilot-extension",
                 "--target-dir=$tempDir",
                 "--yes=true",
+                "--uninstall=true",
             ),
         )
 
@@ -367,6 +368,7 @@ class CliCommandParserTest {
         val installCommand = command as CliCommand.InstallCopilotExtension
         assertEquals(tempDir, installCommand.options.targetDir)
         assertTrue(installCommand.options.force)
+        assertTrue(installCommand.options.uninstall)
     }
 
     @Test

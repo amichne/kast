@@ -1,5 +1,6 @@
 package io.github.amichne.kast.standalone
 
+import io.github.amichne.kast.api.client.fields.CacheEnabled
 import io.github.amichne.kast.api.contract.query.RefreshQuery
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.client.KastConfig
@@ -84,7 +85,7 @@ class CacheManagerTest {
         val disabledCacheManager = CacheManager(
             workspaceRoot = workspaceRoot,
             config = KastConfig.defaults().copy(
-                cache = KastConfig.defaults().cache.copy(enabled = false),
+                cache = KastConfig.defaults().cache.copy(enabled = CacheEnabled(false)),
             ),
         )
         assertFalse(disabledCacheManager.isEnabled())

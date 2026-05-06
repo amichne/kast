@@ -564,6 +564,7 @@ internal data class ParsedArguments(
     fun installCopilotExtensionOptions(): InstallCopilotExtensionOptions = InstallCopilotExtensionOptions(
         targetDir = options["target-dir"]?.let { Path.of(it).toAbsolutePath().normalize() },
         force = optionalBoolean("yes", false),
+        uninstall = optionalBoolean("uninstall", false),
     )
 
     fun installOptions(): InstallOptions {

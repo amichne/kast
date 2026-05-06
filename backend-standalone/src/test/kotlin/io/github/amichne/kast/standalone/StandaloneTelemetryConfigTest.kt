@@ -1,5 +1,8 @@
 package io.github.amichne.kast.standalone
 
+import io.github.amichne.kast.api.client.fields.TelemetryScopes
+import io.github.amichne.kast.api.client.fields.TelemetryEnabled
+import io.github.amichne.kast.api.client.fields.TelemetryDetail
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetry
 import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetryConfig
@@ -104,9 +107,9 @@ class StandaloneTelemetryConfigTest {
             workspaceRoot = workspaceRoot,
             config = KastConfig.defaults().copy(
                 telemetry = KastConfig.defaults().telemetry.copy(
-                    enabled = true,
-                    scopes = "all",
-                    detail = "verbose",
+                    enabled = TelemetryEnabled(true),
+                    scopes = TelemetryScopes("all"),
+                    detail = TelemetryDetail("verbose"),
                 ),
             ),
         )
@@ -122,7 +125,7 @@ class StandaloneTelemetryConfigTest {
         val telemetry = StandaloneTelemetry.fromConfig(
             workspaceRoot = workspaceRoot,
             config = KastConfig.defaults().copy(
-                telemetry = KastConfig.defaults().telemetry.copy(enabled = false),
+                telemetry = KastConfig.defaults().telemetry.copy(enabled = TelemetryEnabled(false)),
             ),
         )
 
@@ -137,8 +140,8 @@ class StandaloneTelemetryConfigTest {
             workspaceRoot = workspaceRoot,
             config = KastConfig.defaults().copy(
                 telemetry = KastConfig.defaults().telemetry.copy(
-                    enabled = true,
-                    scopes = "references,rename",
+                    enabled = TelemetryEnabled(true),
+                    scopes = TelemetryScopes("references,rename"),
                 ),
             ),
         )
@@ -157,8 +160,8 @@ class StandaloneTelemetryConfigTest {
             workspaceRoot = workspaceRoot,
             config = KastConfig.defaults().copy(
                 telemetry = KastConfig.defaults().telemetry.copy(
-                    enabled = true,
-                    scopes = "workspace-files",
+                    enabled = TelemetryEnabled(true),
+                    scopes = TelemetryScopes("workspace-files"),
                 ),
             ),
             configHome = { configHome },

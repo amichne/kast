@@ -30,7 +30,7 @@ HTML_DURATION_RE = re.compile(r"^(?:\d+h\s+)?(?:\d+m\s+)?\d+s$")
 HTML_STYLE_OR_SCRIPT_RE = re.compile(r"<(?:style|script)\b.*?</(?:style|script)>", re.IGNORECASE | re.DOTALL)
 HTML_TAG_RE = re.compile(r"<[^>]+>")
 INIT_FRICTION_RE = re.compile(
-    r"(?:KAST_CLI_PATH\s*(?:=|is empty)|command not found|bash:\s*:\s*command not found|Unable to resolve Kast CLI path)",
+    r"(?:command not found|bash:\s*:\s*command not found|Unable to resolve Kast CLI path)",
     re.IGNORECASE,
 )
 SCHEMA_FRICTION_RE = re.compile(
@@ -42,7 +42,7 @@ MUTATION_VALIDATION_RE = re.compile(
     re.IGNORECASE,
 )
 KAST_COMMAND_RE = re.compile(
-    r'(?:(?:"?\$KAST_CLI_PATH"?|(?:[^\s"\']+/)?kast)\s+skill\s+'
+    r'(?:(?:(?:[^\s"\']+/)?kast)\s+skill\s+'
     r'(?:resolve|references|callers|diagnostics|rename|scaffold|write-and-validate|workspace-files))'
 )
 ABS_PATH_RE = re.compile(

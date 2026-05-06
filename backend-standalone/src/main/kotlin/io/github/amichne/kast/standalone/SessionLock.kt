@@ -17,7 +17,10 @@ internal interface SessionLock {
 }
 
 internal class ReentrantSessionLock : SessionLock {
-    private val lock = ReentrantReadWriteLock()
+    /**
+     * Fair mode keeps background Phase 2 writes from starving behind continuous foreground reads.
+     */
+    private val lock = ReentrantReadWriteLock(/* fair = */ true)
     override fun <T> read(action: () -> T): T = lock.read(action)
     override fun <T> write(action: () -> T): T = lock.write(action)
 }
