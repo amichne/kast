@@ -5,9 +5,9 @@
 Both the Copilot extension (`extension.mjs`) and the Claude Code skill resolve
 the kast binary in this order, stopping at the first hit:
 
-1. **`resolve-kast.sh`** — checks `$PATH` via `command -v kast`, then walks up
-   the directory tree looking for `kast-cli/build/scripts/kast-cli` and
-   `dist/cli/kast-cli`.
+1. **`resolve-kast.sh`** — checks `$PATH` via `command -v kast` and
+   `command -v kast-cli`, then walks up the directory tree looking for
+   `kast-cli/build/scripts/kast-cli` and `dist/cli/kast-cli`.
 2. **`$KAST_CONFIG_HOME/config.toml`** (or `$HOME/.config/kast/config.toml`
    when `KAST_CONFIG_HOME` is unset) — reads `[cli] binaryPath` written by the
    installer. Covers non-interactive shells where `$HOME/.kast/bin` was never

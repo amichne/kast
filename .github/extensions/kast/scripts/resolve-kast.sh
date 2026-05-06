@@ -12,11 +12,28 @@ resolve_absolute_path() {
     printf '%s/%s\n' "${dir}" "${base}"
 }
 
+read_config_binary_path() {
+    local config_file="$1"
+    [[ -f "${config_file}" ]] || return 1
+    awk '
+        /^[[:space:]]*\[cli\][[:space:]]*$/ { in_cli = 1; next }
+        /^[[:space:]]*\[/ { in_cli = 0 }
+        in_cli && /^[[:space:]]*binaryPath[[:space:]]*=/ {
+            line = $0
+            sub(/^[^"]*"/, "", line)
+            sub(/".*$/, "", line)
+            print line
+            exit
+        }
+    ' "${config_file}"
+}
 
-if command -v kast >/dev/null 2>&1; then
-    resolve_absolute_path "$(command -v kast)"
-    exit 0
-fi
+for command_name in kast kast-cli; do
+    if command -v "${command_name}" >/dev/null 2>&1; then
+        resolve_absolute_path "$(command -v "${command_name}")"
+        exit 0
+    fi
+done
 
 search_dir="${SCRIPT_DIR}"
 for _ in 1 2 3 4 5 6; do
@@ -30,6 +47,13 @@ for _ in 1 2 3 4 5 6; do
     done
     search_dir="$(cd -- "${search_dir}/.." && pwd)"
 done
+
+config_dir="${KAST_CONFIG_HOME:-${HOME}/.config/kast}"
+config_binary="$(read_config_binary_path "${config_dir}/config.toml" || true)"
+if [[ -n "${config_binary}" && -x "${config_binary}" ]]; then
+    resolve_absolute_path "${config_binary}"
+    exit 0
+fi
 
 # Recovery: standard user install location may not be on PATH in non-interactive shells
 if [[ -x "${HOME}/.local/bin/kast" ]]; then

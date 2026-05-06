@@ -25,10 +25,7 @@ internal class EmbeddedCopilotExtensionResources(
         const val VERSION_MARKER_FILE_NAME: String = ".kast-copilot-version"
 
         val MANIFEST: List<String> = listOf(
-            "agents/kast.md",
-            "agents/explore.md",
-            "agents/plan.md",
-            "agents/edit.md",
+            "agents/kast-orchestrator.md",
             "hooks/hooks.json",
             "hooks/hook-state.sh",
             "hooks/session-start.sh",

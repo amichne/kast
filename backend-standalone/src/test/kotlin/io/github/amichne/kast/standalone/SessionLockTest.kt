@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.CyclicBarrier
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.thread
 
 class SessionLockTest {
@@ -88,7 +90,7 @@ class SessionLockTest {
         val lock = ReentrantSessionLock()
         val writeLatch = CountDownLatch(1)
         val writeHeld = CountDownLatch(1)
-        val readCompleted = java.util.concurrent.atomic.AtomicBoolean(false)
+        val readCompleted = AtomicBoolean(false)
 
         val writer = thread {
             lock.write {
@@ -113,6 +115,16 @@ class SessionLockTest {
         assertTrue(readCompleted.get(), "Read should complete after write releases")
 
         writer.join(5_000)
+    }
+
+    @Test
+    fun `ReentrantSessionLock uses fair read write lock`() {
+        val delegateField = ReentrantSessionLock::class.java.getDeclaredField("lock").apply {
+            isAccessible = true
+        }
+        val delegate = delegateField.get(ReentrantSessionLock()) as ReentrantReadWriteLock
+
+        assertTrue(delegate.isFair, "Session lock must be fair so queued writers are not starved by new readers")
     }
 
     @Test
