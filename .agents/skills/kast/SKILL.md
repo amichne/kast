@@ -1,75 +1,87 @@
 ---
 name: kast
 description: >
-  Semantic Kotlin/JVM navigation and safe refactoring via direct `kast`
-  wrapper commands. Use this whenever a task involves Kotlin/JVM symbol identity,
-  class or service understanding, feature tracing, usages, ambiguous members,
-  failing Kotlin tests, renames, or validated Kotlin edits, even if the user
-  does not explicitly say "Kast" and only asks to understand or fix a Kotlin
-  class. Never use grep/rg for Kotlin identity.
+  Semantic Kotlin/JVM navigation and validated refactoring through direct
+  `kast` commands. Use this whenever a task involves Kotlin symbol identity,
+  ambiguous declarations, feature tracing, references, callers, failing Kotlin
+  tests, renames, diagnostics, or safe edits, even when the user only asks to
+  understand or fix a Kotlin class. Never use grep, rg, sed, or manual parsing
+  for Kotlin identity.
+metadata:
+  short-description: Semantic Kotlin navigation and validated edits
 ---
 
 # Kast
 
-Use Kast for Kotlin identity, cross-file navigation, and validated edits. The
-goal is to keep semantic work moving even when the first command, JSON
-projection, or edit attempt is imperfect.
+Use Kast when Kotlin work depends on declaration identity, usage scope, call
+flow, or validated edits. The skill should move quickly to semantic evidence
+without loading maintenance fixtures into normal code work.
 
-## Fast path
+## Start here
 
-1. Try the smallest semantic operation that can answer the request:
-   `workspace-files` to find scope, `scaffold` to understand a file/type,
-   `resolve` to pin a declaration, `references` for usages, and `callers` for
-   flow.
-2. If `KAST_CLI_PATH` is empty or the shell says `command not found`, run
-   `eval "$(bash .agents/skills/kast/scripts/kast-session-start.sh)"`, retry the
-   same command once, and then continue. Do not start by reading
-   `.kast-version`, the wrapper OpenAPI fixture, or maintenance evals.
-3. Navigate only with `kast workspace-files`, `kast scaffold`,
-   `kast resolve`, `kast references`, and `kast callers`.
-4. Mutate only with `kast rename`,
-   `kast write-and-validate`, and `kast diagnostics`.
-5. For ambiguous names or member properties, resolve first with `kind`,
-   `containingType`, or `fileHint`, then trace usages/callers.
+For routine navigation, run the smallest useful semantic command first. Read
+`references/quickstart.md` only when you need request examples, JSON shape, or
+recovery guidance. Do not load `.kast-version`, `fixtures/maintenance`,
+`value-proof`, or `references/wrapper-openapi.yaml` during normal navigation.
 
-## JSON shape rules
+For skill maintenance, use `value-proof/README.md`. Its benchmark loop is the
+source of truth for proving whether a skill iteration beats its baseline.
 
-- Request JSON uses camelCase.
-- Wrapper responses also use camelCase. Examples include `logFile`,
-  `errorText`, `filePath`, `appliedEdits`, and `importChanges`.
-- Nested API models keep the same camelCase field names. For example, symbols
-  use `fqName` and locations use `location.filePath`, `startOffset`, and
-  `startLine`.
-- Check `ok` and `type` before projecting a response. Failure responses carry
-  `stage`, `message`, optional `error` or `errorText`, and `logFile`.
-- `rename` and `write-and-validate` requests require a `type` discriminator
-  such as `RENAME_BY_SYMBOL_REQUEST` or `REPLACE_RANGE_REQUEST`.
-- Any request field ending in `filePath`, `filePaths`, or `contentFile` should
-  use an absolute path.
-- `scaffold` uses `targetFile` (singular absolute path) as the required field,
-  not `filePaths`. `workspaceRoot` defaults to the current working directory
-  when omitted. Run one `scaffold` call per file; there is no batch variant.
+## Workflow
 
-## Recovery rules
+1. Choose the narrowest operation:
+   - `workspace-files` for module/file scope;
+   - `scaffold` for file or type structure;
+   - `resolve` for an exact declaration;
+   - `references` for usages;
+   - `callers` for flow or impact;
+   - `rename`, `write-and-validate`, and `diagnostics` for mutations.
+2. If `KAST_CLI_PATH` is empty or `kast` is missing, run
+   `eval "$(bash .agents/skills/kast/scripts/kast-session-start.sh)"`, retry
+   the same command once, then report a setup blocker if it still fails.
+3. Resolve ambiguous names before tracing. Use `kind`, `containingType`, and
+   `fileHint` before `references`, `callers`, `rename`, or impact analysis.
+4. Treat `ok=false`, `*_FAILURE`, dirty diagnostics, or validation/hash
+   failures as failed operations. Keep the response visible and use
+   diagnostics when useful; do not claim success after a failed mutation.
 
-- If parsing a result fails, inspect the top-level object or one sample element,
-  then adjust the projection. Do not switch to text search because of JSON
-  friction.
-- If a result set is too large, narrow the same semantic query with `kind`,
-  `containingType`, `fileHint`, depth, or result limits.
-- If a mutation returns `ok=false`, a `*_FAILURE` response type, dirty
-  diagnostics, or a validation/hash message such as "Missing expected hash",
-  treat the edit as failed. Keep the failure visible, run diagnostics on the
-  intended/touched file when useful, and report the blocker instead of claiming
-  success or applying a hand edit.
-- Never replace a failed semantic query with `grep`, `rg`, `sed`, or manual
-  parsing for Kotlin identity. Raw search is only acceptable for non-semantic
-  file-path discovery, comments, string literals, or maintenance work.
-- If a request fails with `Encountered an unknown key`, a field name is wrong.
-  Consult `references/quickstart.md` for the correct shape. Wrapper commands
-  do not accept `--help`; probing with `{}` to discover required fields wastes
-  turns when the quickstart already lists every command's required fields.
+## Source of truth
 
-Read `references/quickstart.md` for request snippets and recovery tips. Skill
-maintenance fixtures live under `fixtures/maintenance`; do not load them during
-normal Kotlin navigation.
+- `references/quickstart.md`: command snippets, request shape, response shape,
+  and recovery examples.
+- `references/wrapper-openapi.yaml`: generated wrapper contract for contract
+  changes only.
+- `scripts/kast-session-start.sh`: session bootstrap.
+- `value-proof/catalog.json` and `value-proof/README.md`: behavior evals and
+  benchmark workflow.
+- `fixtures/maintenance`: routing corpora and older eval support; keep out of
+  routine navigation context.
+
+## Command rules
+
+- Requests and responses use camelCase.
+- Check `ok` and `type` before projecting results.
+- Path fields such as `filePath`, `filePaths`, `targetFile`, and
+  `contentFile` must be absolute.
+- `scaffold` takes one `targetFile`; run one call per file.
+- `rename` and `write-and-validate` require a `type` discriminator such as
+  `RENAME_BY_SYMBOL_REQUEST` or `REPLACE_RANGE_REQUEST`.
+- If a projection fails, inspect one sample object and fix the projection.
+- If a result set is too large, narrow the semantic query instead of switching
+  to text search.
+- Use `grep` or `rg` only for file-path discovery, comments, string literals,
+  generated text, or skill maintenance.
+
+## Benchmark rule
+
+When rewriting this skill, snapshot the baseline, run the value-proof or native
+skill benchmark, aggregate `benchmark.json`, generate the `eval-viewer` review
+artifact, and report score, pass-rate, token, and timing deltas. Record
+progression only after real benchmark evidence exists.
+
+## Output expectations
+
+Report the Kast command family used, the declaration/file/module scope that
+anchored the answer, validation evidence before claiming success, and any
+failed response or unverified assumption. For skill rewrites, also report the
+benchmark path and deltas.
