@@ -92,18 +92,18 @@ internal class StandaloneTelemetry private constructor(
             config: KastConfig = KastConfig.load(workspaceRoot),
             configHome: () -> Path = { kastConfigHome() },
         ): StandaloneTelemetry {
-            if (!config.telemetry.enabled) {
+            if (!config.telemetry.enabled.value) {
                 return disabled()
             }
 
-            val scopes = if (config.telemetry.scopes.equals("all", ignoreCase = true)) {
+            val scopes = if (config.telemetry.scopes.value.equals("all", ignoreCase = true)) {
                 StandaloneTelemetryScope.entries.toSet()
             } else {
-                parseScopes(config.telemetry.scopes) ?: StandaloneTelemetryScope.entries.toSet()
+                parseScopes(config.telemetry.scopes.value) ?: StandaloneTelemetryScope.entries.toSet()
             }
-            val detail = StandaloneTelemetryDetail.parse(config.telemetry.detail)
+            val detail = StandaloneTelemetryDetail.parse(config.telemetry.detail.value)
             val outputFile = resolveOutputFile(
-                rawValue = config.telemetry.outputFile,
+                rawValue = config.telemetry.outputFile.value.orNull,
                 workspaceRoot = workspaceRoot,
                 configHome = configHome,
             )

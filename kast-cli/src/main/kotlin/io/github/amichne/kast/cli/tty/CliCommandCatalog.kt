@@ -316,6 +316,12 @@ internal object CliCommandCatalog {
         description = "Overwrite an existing installed skill directory without prompting. Defaults to false.",
         completionKind = CliOptionCompletionKind.BOOLEAN,
     )
+    private val uninstallOption = CliOptionMetadata(
+        key = "uninstall",
+        usage = "--uninstall=true",
+        description = "Remove packaged files and the version marker instead of installing. Defaults to false.",
+        completionKind = CliOptionCompletionKind.BOOLEAN,
+    )
     private val smokeFileOption = CliOptionMetadata(
         key = "file",
         usage = "--file=CliCommandCatalog.kt",
@@ -907,13 +913,14 @@ internal object CliCommandCatalog {
             summary = "Install the kast Copilot agents and hooks into the current workspace.",
             description = "Copies the bundled Copilot agent and hook files into .github, or the path given by --target-dir. Installed extension trees include a .kast-copilot-version marker so matching installs can be skipped safely.",
             usages = listOf(
-                "$CLI_EXECUTABLE_NAME install copilot-extension [--target-dir=/absolute/path/to/workspace/.github] [--yes=true]",
+                "$CLI_EXECUTABLE_NAME install copilot-extension [--target-dir=/absolute/path/to/workspace/.github] [--yes=true] [--uninstall=true]",
             ),
-            options = listOf(copilotTargetDirOption, yesOption),
+            options = listOf(copilotTargetDirOption, yesOption, uninstallOption),
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME install copilot-extension",
                 "$CLI_EXECUTABLE_NAME install copilot-extension --target-dir=/my/project/.github",
                 "$CLI_EXECUTABLE_NAME install copilot-extension --yes=true",
+                "$CLI_EXECUTABLE_NAME install copilot-extension --uninstall=true",
             ),
         ),
         CliCommandMetadata(

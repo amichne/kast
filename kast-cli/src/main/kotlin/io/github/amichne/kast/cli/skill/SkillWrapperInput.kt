@@ -11,18 +11,16 @@ import kotlin.io.path.readText
 internal object SkillWrapperInput {
 
     /**
-     * Resolves the workspace root from the hierarchy:
-     * explicit request value → KAST_WORKSPACE_ROOT env → empty string (caller decides error).
+     * Resolves the workspace root from an explicit request value or the current working directory.
      */
+    @Suppress("UNUSED_PARAMETER")
     fun resolveWorkspaceRoot(
         explicit: String?,
-        env: Map<String, String> = System.getenv(),
+        env: Map<String, String> = emptyMap(),
         currentWorkingDirectory: Path = Path.of("").toAbsolutePath().normalize(),
     ): String {
         val trimmed = explicit?.trim()?.takeIf(String::isNotEmpty)
         if (trimmed != null) return Path.of(trimmed).toAbsolutePath().normalize().toString()
-        val envRoot = env["KAST_WORKSPACE_ROOT"]?.trim()?.takeIf(String::isNotEmpty)
-        if (envRoot != null) return Path.of(envRoot).toAbsolutePath().normalize().toString()
         return currentWorkingDirectory.toString()
     }
 

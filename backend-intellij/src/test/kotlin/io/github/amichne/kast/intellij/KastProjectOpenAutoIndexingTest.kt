@@ -1,5 +1,9 @@
 package io.github.amichne.kast.intellij
 
+import io.github.amichne.kast.api.client.fields.OptionalConfigString
+import io.github.amichne.kast.api.client.fields.IntellijBackendEnabled
+import io.github.amichne.kast.api.client.fields.IndexingRemoteSourceIndexUrl
+import io.github.amichne.kast.api.client.fields.IndexingRemoteEnabled
 import com.intellij.openapi.project.Project
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.junit5.fixture.TestFixture
@@ -78,7 +82,7 @@ class KastProjectOpenAutoIndexingTest {
         val disabledConfig = KastConfig.defaults().let { config ->
             config.copy(
                 backends = config.backends.copy(
-                    intellij = config.backends.intellij.copy(enabled = false),
+                    intellij = config.backends.intellij.copy(enabled = IntellijBackendEnabled(false)),
                 ),
             )
         }
@@ -149,8 +153,8 @@ class KastProjectOpenAutoIndexingTest {
         val hydrated = SourceIndexHydrator().hydrate(
             workspaceRoot = localWorkspaceRoot,
             remote = RemoteIndexConfig(
-                enabled = true,
-                sourceIndexUrl = remoteDbPath.toUri().toString(),
+                enabled = IndexingRemoteEnabled(true),
+                sourceIndexUrl = IndexingRemoteSourceIndexUrl(OptionalConfigString(remoteDbPath.toUri().toString())),
             ),
         )
 

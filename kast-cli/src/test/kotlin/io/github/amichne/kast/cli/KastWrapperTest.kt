@@ -375,6 +375,7 @@ class KastWrapperTest {
         val workspace = tempDir.resolve("workspace-large-rename")
         val sanitizedWorkspaceRoot = "/workspace/sample-app"
         val configHome = tempDir.resolve("config-home")
+        val home = tempDir.resolve("home")
         val socketPath = tempDir.resolve("fake.sock")
         Files.deleteIfExists(socketPath)
         val keepAliveProcess = ProcessBuilder("/bin/sh", "-c", "sleep 60").start()
@@ -387,7 +388,17 @@ class KastWrapperTest {
         )
         val daemonsDir = configHome.resolve("daemons")
         Files.createDirectories(daemonsDir)
+        Files.createDirectories(configHome)
+        configHome.resolve("config.toml").writeText(
+            """
+            [paths]
+            descriptorDir = "$daemonsDir"
+            """.trimIndent(),
+        )
         io.github.amichne.kast.api.client.DescriptorRegistry(daemonsDir.resolve("daemons.json")).register(descriptor)
+        val defaultDaemonsDir = home.resolve(".kast/cache/daemons")
+        Files.createDirectories(defaultDaemonsDir)
+        io.github.amichne.kast.api.client.DescriptorRegistry(defaultDaemonsDir.resolve("daemons.json")).register(descriptor)
 
         val runtimeStatus = RuntimeStatusResponse(
             state = RuntimeState.READY,
@@ -442,7 +453,7 @@ class KastWrapperTest {
                 "--file-path=${workspace.resolve("src/main/kotlin/example/Sample.kt")}",
                 "--offset=0",
                 "--new-name=RenamedSymbol",
-                env = mapOf("KAST_CONFIG_HOME" to configHome.toString()),
+                env = mapOf("KAST_CONFIG_HOME" to configHome.toString(), "JAVA_OPTS" to "-Duser.home=$home"),
             )
 
             val renameOutput = defaultCliJson().decodeFromString<RenameResult>(rename.stdout)

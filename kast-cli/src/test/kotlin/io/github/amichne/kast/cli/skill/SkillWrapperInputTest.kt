@@ -10,7 +10,7 @@ import kotlin.io.path.createDirectories
 class SkillWrapperInputTest {
 
     @Test
-    fun `resolveWorkspaceRoot uses explicit value when present`() {
+    fun resolveWorkspaceRootUsesExplicitValueWhenPresent() {
         val result = SkillWrapperInput.resolveWorkspaceRoot(
             explicit = "/explicit/ws",
             env = mapOf("KAST_WORKSPACE_ROOT" to "/env/ws"),
@@ -19,16 +19,17 @@ class SkillWrapperInputTest {
     }
 
     @Test
-    fun `resolveWorkspaceRoot falls back to KAST_WORKSPACE_ROOT env`() {
+    fun resolveWorkspaceRootIgnoresWorkspaceRootEnvWhenExplicitValueIsAbsent(@TempDir tempDir: Path) {
         val result = SkillWrapperInput.resolveWorkspaceRoot(
             explicit = null,
             env = mapOf("KAST_WORKSPACE_ROOT" to "/env/ws"),
+            currentWorkingDirectory = tempDir,
         )
-        assertEquals(Path.of("/env/ws").toAbsolutePath().normalize().toString(), result)
+        assertEquals(tempDir.toAbsolutePath().normalize().toString(), result)
     }
 
     @Test
-    fun `resolveWorkspaceRoot falls back to current working directory when env absent`(@TempDir tempDir: Path) {
+    fun resolveWorkspaceRootFallsBackToCurrentWorkingDirectoryWhenEnvAbsent(@TempDir tempDir: Path) {
         val result = SkillWrapperInput.resolveWorkspaceRoot(
             explicit = null,
             env = emptyMap(),
@@ -38,23 +39,24 @@ class SkillWrapperInputTest {
     }
 
     @Test
-    fun `resolveWorkspaceRoot treats blank explicit as absent`() {
+    fun resolveWorkspaceRootTreatsBlankExplicitAsAbsent(@TempDir tempDir: Path) {
         val result = SkillWrapperInput.resolveWorkspaceRoot(
             explicit = "  ",
             env = mapOf("KAST_WORKSPACE_ROOT" to "/env/ws"),
+            currentWorkingDirectory = tempDir,
         )
-        assertEquals(Path.of("/env/ws").toAbsolutePath().normalize().toString(), result)
+        assertEquals(tempDir.toAbsolutePath().normalize().toString(), result)
     }
 
     @Test
-    fun `parseJsonInput reads literal JSON`() {
+    fun parseJsonInputReadsLiteralJson() {
         val input = """{"symbol":"foo"}"""
         val result = SkillWrapperInput.parseJsonInput(input)
         assertEquals(input, result)
     }
 
     @Test
-    fun `parseJsonInput reads JSON from file`(@TempDir tempDir: Path) {
+    fun parseJsonInputReadsJsonFromFile(@TempDir tempDir: Path) {
         val jsonFile = tempDir.resolve("request.json")
         val content = """{"symbol":"bar"}"""
         jsonFile.toFile().writeText(content)
@@ -63,7 +65,7 @@ class SkillWrapperInputTest {
     }
 
     @Test
-    fun `parseJsonInput fails on non-JSON non-file input`() {
+    fun parseJsonInputFailsOnNonJsonNonFileInput() {
         assertThrows<IllegalArgumentException> {
             SkillWrapperInput.parseJsonInput("not-json-and-not-a-file")
         }

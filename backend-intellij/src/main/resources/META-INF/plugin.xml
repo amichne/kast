@@ -36,6 +36,10 @@
                     class="io.github.amichne.kast.intellij.actions.InstallCopilotExtensionAction"
                     text="Install Copilot Extension"
                     description="Install kast Copilot agents and hooks into this project"/>
+            <action id="io.github.amichne.kast.uninstallCopilotExtension"
+                    class="io.github.amichne.kast.intellij.actions.UninstallCopilotExtensionAction"
+                    text="Uninstall Copilot Extension"
+                    description="Remove kast Copilot agents and hooks from this project"/>
         </group>
     </actions>
 </idea-plugin>

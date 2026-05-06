@@ -512,11 +512,11 @@ tasks.named<WriteWrapperScriptTask>("writeWrapperScript") {
 
         script_dir="$(cd -- "$(dirname -- "${dollar}{BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
         main_class="io.github.amichne.kast.standalone.StandaloneMainKt"
-        runtime_libs_dir="${dollar}{KAST_STANDALONE_RUNTIME_LIBS:-${dollar}{script_dir}/runtime-libs}"
+        runtime_libs_dir="${dollar}{script_dir}/runtime-libs"
 
         if [[ ! -d "${dollar}{runtime_libs_dir}" ]]; then
           echo "kast-standalone: runtime-libs directory not found: ${dollar}{runtime_libs_dir}" >&2
-          echo "hint: reinstall with kast.sh or set KAST_STANDALONE_RUNTIME_LIBS=/path/to/runtime-libs" >&2
+          echo "hint: reinstall with kast.sh to restore the packaged runtime libraries" >&2
           exit 1
         fi
 

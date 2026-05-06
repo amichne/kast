@@ -212,18 +212,18 @@ internal class IntelliJBackendTelemetry private constructor(
             workspaceRoot: Path,
             config: KastConfig = KastConfig.load(workspaceRoot),
         ): IntelliJBackendTelemetry {
-            if (!config.telemetry.enabled) {
+            if (!config.telemetry.enabled.value) {
                 return disabled()
             }
 
-            val scopes = if (config.telemetry.scopes.equals("all", ignoreCase = true)) {
+            val scopes = if (config.telemetry.scopes.value.equals("all", ignoreCase = true)) {
                 IntelliJTelemetryScope.entries.toSet()
             } else {
-                parseScopes(config.telemetry.scopes) ?: IntelliJTelemetryScope.entries.toSet()
+                parseScopes(config.telemetry.scopes.value) ?: IntelliJTelemetryScope.entries.toSet()
             }
-            val detail = IntelliJTelemetryDetail.parse(config.telemetry.detail)
+            val detail = IntelliJTelemetryDetail.parse(config.telemetry.detail.value)
             val outputFile = resolveOutputFile(
-                rawValue = config.telemetry.outputFile,
+                rawValue = config.telemetry.outputFile.value.orNull,
                 workspaceRoot = workspaceRoot,
             )
 

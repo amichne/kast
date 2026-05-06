@@ -34,6 +34,7 @@ internal class EmbeddedCopilotExtensionResources(
             "hooks/session-start.sh",
             "hooks/record-paths.sh",
             "hooks/require-skills.sh",
+            "hooks/skill-shadowing.json",
             "hooks/session-end.sh",
             "hooks/resolve-kast-cli-path.sh",
             "extensions/_shared/shadowed-skill-state.mjs",
@@ -49,6 +50,11 @@ internal class EmbeddedCopilotExtensionResources(
             "extensions/kotlin-gradle-loop/scripts/state/init_state.py",
             "extensions/kotlin-gradle-loop/scripts/state/record_action.py",
             "extensions/kotlin-gradle-loop/scripts/state/update_state.py",
+        )
+
+        val EXCLUDED_SOURCE_FILES: Set<String> = setOf(
+            "hooks/export-session.py",
+            "extensions/skill-creator-interview/extension.mjs",
         )
     }
 }

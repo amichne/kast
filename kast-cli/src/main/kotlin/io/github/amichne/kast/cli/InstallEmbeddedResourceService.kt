@@ -2,6 +2,7 @@ package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.cli.tty.CliFailure
 import java.io.IOException
+import java.nio.file.DirectoryNotEmptyException
 import java.nio.file.FileVisitResult
 import java.nio.file.Files
 import java.nio.file.Path
@@ -18,6 +19,15 @@ internal abstract class InstallEmbeddedResourceService<O, R>(
         val request = installRequest(options, cwdProvider())
         val targetPath = request.targetPath.toAbsolutePath().normalize()
         val currentVersion = bundle.version
+
+        if (request.uninstall) {
+            val removed = uninstallPackagedResources(targetPath)
+            return result(
+                installedAt = targetPath.toString(),
+                version = currentVersion,
+                skipped = !removed,
+            )
+        }
 
         targetPath.parent?.let(Files::createDirectories)
         when {
@@ -86,6 +96,50 @@ internal abstract class InstallEmbeddedResourceService<O, R>(
             message = "Packaged $installedDescription already exists at $targetPath; rerun with --yes=true to overwrite it",
         )
 
+    private fun uninstallPackagedResources(targetPath: Path): Boolean {
+        if (!Files.isDirectory(targetPath) || Files.isSymbolicLink(targetPath)) {
+            return false
+        }
+
+        var removed = false
+        bundle.manifest.forEach { relativePath ->
+            val packagedPath = targetPath.resolve(relativePath)
+            if (Files.isRegularFile(packagedPath) || Files.isSymbolicLink(packagedPath)) {
+                removed = Files.deleteIfExists(packagedPath) || removed
+            }
+        }
+
+        val versionMarkerPath = targetPath.resolve(bundle.versionMarkerFileName)
+        if (Files.isRegularFile(versionMarkerPath) || Files.isSymbolicLink(versionMarkerPath)) {
+            removed = Files.deleteIfExists(versionMarkerPath) || removed
+        }
+
+        deleteEmptyPackagedDirectories(targetPath)
+        return removed
+    }
+
+    private fun deleteEmptyPackagedDirectories(targetPath: Path) {
+        bundle.manifest
+            .mapNotNull { relativePath -> targetPath.resolve(relativePath).parent }
+            .distinct()
+            .sortedByDescending(Path::getNameCount)
+            .forEach { directory -> deleteEmptyDirectoryUpTo(directory, targetPath) }
+    }
+
+    private fun deleteEmptyDirectoryUpTo(directory: Path, boundary: Path) {
+        var current: Path? = directory
+        while (current != null && current != boundary && current.startsWith(boundary)) {
+            val candidate = current
+            if (!Files.isDirectory(candidate) || Files.isSymbolicLink(candidate)) return
+            try {
+                Files.delete(candidate)
+            } catch (_: DirectoryNotEmptyException) {
+                return
+            }
+            current = candidate.parent
+        }
+    }
+
     private fun deletePathRecursively(path: Path) {
         if (Files.isSymbolicLink(path) || Files.isRegularFile(path)) {
             Files.deleteIfExists(path)
@@ -115,4 +169,5 @@ internal abstract class InstallEmbeddedResourceService<O, R>(
 internal data class InstallEmbeddedResourceRequest(
     val targetPath: Path,
     val force: Boolean,
+    val uninstall: Boolean = false,
 )

@@ -19,8 +19,8 @@ internal class CacheManager(
         }
     }
     private val cacheDirectory = kastCacheDirectory(normalizeStandalonePath(workspaceRoot))
-    private val enabled = config.cache.enabled
-    private val defaultWriteDelayMillis = config.cache.writeDelayMillis
+    private val enabled = config.cache.enabled.value
+    private val defaultWriteDelayMillis = config.cache.writeDelayMillis.value
     private val pendingWrites = linkedMapOf<String, PendingCacheWrite>()
 
     fun isEnabled(): Boolean = enabled

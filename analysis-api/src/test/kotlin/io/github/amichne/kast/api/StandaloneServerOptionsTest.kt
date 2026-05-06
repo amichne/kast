@@ -1,5 +1,8 @@
 package io.github.amichne.kast.api.client
 
+import io.github.amichne.kast.api.client.fields.ServerMaxConcurrentRequests
+import io.github.amichne.kast.api.client.fields.ServerMaxResults
+import io.github.amichne.kast.api.client.fields.ServerRequestTimeoutMillis
 import io.github.amichne.kast.api.contract.*
 
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -79,9 +82,9 @@ class StandaloneServerOptionsTest {
             values = mapOf("workspace-root" to tempDir.toString()),
             config = KastConfig.defaults().copy(
                 server = ServerConfig(
-                    maxResults = 42,
-                    requestTimeoutMillis = 1234L,
-                    maxConcurrentRequests = 7,
+                    maxResults = ServerMaxResults(42),
+                    requestTimeoutMillis = ServerRequestTimeoutMillis(1234L),
+                    maxConcurrentRequests = ServerMaxConcurrentRequests(7),
                 ),
             ),
         )

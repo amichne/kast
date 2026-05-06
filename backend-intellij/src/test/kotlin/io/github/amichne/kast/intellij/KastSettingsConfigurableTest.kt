@@ -1,3 +1,5 @@
+@file:Suppress("INVISIBLE_REFERENCE")
+
 package io.github.amichne.kast.intellij
 
 import io.github.amichne.kast.api.client.KastConfig
@@ -45,9 +47,9 @@ class KastSettingsConfigurableTest {
         }
         val override = state.toOverride()
 
-        assertEquals(42, override.server?.maxResults)
-        assertEquals(true, override.indexing?.remote?.enabled)
-        assertEquals("/tmp/spans.jsonl", override.telemetry?.outputFile)
+        assertEquals(42, override.server?.maxResults?.value)
+        assertEquals(true, override.indexing?.remote?.enabled?.value)
+        assertEquals("/tmp/spans.jsonl", override.telemetry?.outputFile?.value?.orNull)
         assertEquals(null, override.cache)
     }
 }

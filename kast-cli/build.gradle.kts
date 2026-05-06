@@ -38,6 +38,7 @@ val embeddedCopilotHookFiles = listOf(
     "session-start.sh",
     "record-paths.sh",
     "require-skills.sh",
+    "skill-shadowing.json",
     "session-end.sh",
     "resolve-kast-cli-path.sh",
 )

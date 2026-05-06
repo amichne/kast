@@ -62,8 +62,8 @@ kast install skill --target-dir=/absolute/path/to/skills --yes=true
       routing-maintenance guidance, and checked-in wrapper contract
     - **`scripts/resolve-kast.sh`** — portable helper that finds the
       `kast` binary without repo-local hook paths
-    - **`scripts/kast-session-start.sh`** — compatibility helper that
-      prints `export KAST_CLI_PATH=...`
+    - **`scripts/kast-session-start.sh`** — compatibility helper for
+      agents that still need a shell bootstrap
     - **`scripts/build-routing-corpus.py`** — maintenance helper that
       turns shared logs and session exports into routing candidate cases
 
@@ -73,20 +73,14 @@ kast install skill --target-dir=/absolute/path/to/skills --yes=true
 
 ??? info "How the agent finds the kast binary"
 
-    The skill assumes a companion hook sets `KAST_CLI_PATH` to an
-    absolute path before the skill runs. Every command in `SKILL.md`
-    runs as `"$KAST_CLI_PATH" skill <command> <json>`.
+    The packaged Copilot extension registers native `kast_*` tools that
+    resolve the CLI through the installed extension files. For portable
+    skill-only installs, set `[cli] binaryPath` in `config.toml` when the
+    default `$HOME/.kast/bin/kast` path doesn't match your machine:
 
-    Inside this repo, use `.github/hooks/resolve-kast-cli-path.sh`:
-
-    ```bash
-    export KAST_CLI_PATH="$(bash .github/hooks/resolve-kast-cli-path.sh)"
-    ```
-
-    Outside the repo, the installed skill ships its own helpers:
-
-    ```console title="Use the installed compatibility helpers"
-    eval "$(bash .agents/skills/kast/scripts/kast-session-start.sh)"
+    ```toml title="$HOME/.config/kast/config.toml"
+    [cli]
+    binaryPath = "/Users/alex/.kast/bin/kast"
     ```
 
 GitHub Copilot custom agents are a separate surface. Personas and tool
@@ -102,15 +96,25 @@ agent, hook, and native extension files in the current repository:
 kast install copilot-extension
 ```
 
-The command writes into `<cwd>/.github` by default, including self-contained
-native extension scripts under `.github/extensions`, and records the installed
-CLI version in `.github/.kast-copilot-version`. Pass `--target-dir` to point at
-another workspace `.github` directory, and `--yes=true` to replace an older
-installed copy:
+The command writes into `<cwd>/.github` by default, including packaged
+`.github/agents`, `.github/hooks`, and self-contained native extension scripts
+under `.github/extensions`. Packaged scripts are installed executable, and the
+command records the installed CLI version in `.github/.kast-copilot-version`.
+Pass `--target-dir` to point at another workspace `.github` directory, and
+`--yes=true` to replace an older installed copy:
 
 ```console title="Force reinstall Copilot extension files"
 kast install copilot-extension --target-dir=/absolute/path/to/repo/.github --yes=true
 ```
+
+To remove only packaged Copilot files, pass `--uninstall=true`:
+
+```console title="Uninstall Copilot extension files"
+kast install copilot-extension --uninstall=true
+```
+
+Uninstall removes the packaged manifest files and the version marker. It
+preserves foreign files you created under `.github`.
 
 ## Next steps
 

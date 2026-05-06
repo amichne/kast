@@ -1,1 +1,130 @@
-[]
+[
+  {
+    "name": "io.github.amichne.kast.api.client.fields.ConfigurationField",
+    "queryAllDeclaredMethods": true
+  },
+  {
+    "name": "io.github.amichne.kast.api.client.ConfigurationFieldDecoder",
+    "allPublicConstructors": true
+  },
+  {
+    "name": "io.github.amichne.kast.api.client.fields.CacheEnabled",
+    "allPublicConstructors": true
+  },
+  {
+    "name": "io.github.amichne.kast.api.client.fields.CacheSourceIndexSaveDelayMillis",
+    "allPublicConstructors": true
+  },
+  {
+    "name": "io.github.amichne.kast.api.client.fields.CacheWriteDelayMillis",
+    "allPublicConstructors": true
+  },
+  {
+    "name": "io.github.amichne.kast.api.client.fields.CliBinaryPath",
+    "allPublicConstructors": true
+  },
+  {
+    "name": "io.github.amichne.kast.api.client.fields.GradleMaxIncludedProjects",
+    "allPublicConstructors": true
+  },
+  {
+    "name": "io.github.amichne.kast.api.client.fields.GradleToolingApiTimeoutMillis",
+    "allPublicConstructors": true
+  },
+  {
+    "name": "io.github.amichne.kast.api.client.fields.IndexingIdentifierIndexWaitMillis",
+    "allPublicConstructors": true
+  },
+  {
+    "name": "io.github.amichne.kast.api.client.fields.IndexingPhase2BatchSize",
+    "allPublicConstructors": true
+  },
+  {
+    "name": "io.github.amichne.kast.api.client.fields.IndexingPhase2Enabled",
+    "allPublicConstructors": true
+  },
+  {
+    "name": "io.github.amichne.kast.api.client.fields.IndexingReferenceBatchSize",
+    "allPublicConstructors": true
+  },
+  {
+    "name": "io.github.amichne.kast.api.client.fields.IndexingRemoteEnabled",
+    "allPublicConstructors": true
+  },
+  {
+    "name": "io.github.amichne.kast.api.client.fields.IndexingRemoteSourceIndexUrl",
+    "allPublicConstructors": true
+  },
+  {
+    "name": "io.github.amichne.kast.api.client.fields.IntellijBackendEnabled",
+    "allPublicConstructors": true
+  },
+  {
+    "name": "io.github.amichne.kast.api.client.fields.PathsBinDir",
+    "allPublicConstructors": true
+  },
+  {
+    "name": "io.github.amichne.kast.api.client.fields.PathsCacheDir",
+    "allPublicConstructors": true
+  },
+  {
+    "name": "io.github.amichne.kast.api.client.fields.PathsDescriptorDir",
+    "allPublicConstructors": true
+  },
+  {
+    "name": "io.github.amichne.kast.api.client.fields.PathsInstallRoot",
+    "allPublicConstructors": true
+  },
+  {
+    "name": "io.github.amichne.kast.api.client.fields.PathsLibDir",
+    "allPublicConstructors": true
+  },
+  {
+    "name": "io.github.amichne.kast.api.client.fields.PathsLogsDir",
+    "allPublicConstructors": true
+  },
+  {
+    "name": "io.github.amichne.kast.api.client.fields.PathsSocketDir",
+    "allPublicConstructors": true
+  },
+  {
+    "name": "io.github.amichne.kast.api.client.fields.ServerMaxConcurrentRequests",
+    "allPublicConstructors": true
+  },
+  {
+    "name": "io.github.amichne.kast.api.client.fields.ServerMaxResults",
+    "allPublicConstructors": true
+  },
+  {
+    "name": "io.github.amichne.kast.api.client.fields.ServerRequestTimeoutMillis",
+    "allPublicConstructors": true
+  },
+  {
+    "name": "io.github.amichne.kast.api.client.fields.StandaloneBackendEnabled",
+    "allPublicConstructors": true
+  },
+  {
+    "name": "io.github.amichne.kast.api.client.fields.StandaloneRuntimeLibsDir",
+    "allPublicConstructors": true
+  },
+  {
+    "name": "io.github.amichne.kast.api.client.fields.TelemetryDetail",
+    "allPublicConstructors": true
+  },
+  {
+    "name": "io.github.amichne.kast.api.client.fields.TelemetryEnabled",
+    "allPublicConstructors": true
+  },
+  {
+    "name": "io.github.amichne.kast.api.client.fields.TelemetryOutputFile",
+    "allPublicConstructors": true
+  },
+  {
+    "name": "io.github.amichne.kast.api.client.fields.TelemetryScopes",
+    "allPublicConstructors": true
+  },
+  {
+    "name": "io.github.amichne.kast.api.client.fields.WatcherDebounceMillis",
+    "allPublicConstructors": true
+  }
+]

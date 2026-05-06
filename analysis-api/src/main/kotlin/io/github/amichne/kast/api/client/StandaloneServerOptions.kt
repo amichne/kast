@@ -62,9 +62,9 @@ data class StandaloneServerOptions(
                             ?: defaultSocketPath(workspaceRoot),
                     )
                 },
-                requestTimeoutMillis = values["request-timeout-ms"]?.toLong() ?: resolvedConfig.server.requestTimeoutMillis,
-                maxResults = values["max-results"]?.toInt() ?: resolvedConfig.server.maxResults,
-                maxConcurrentRequests = values["max-concurrent-requests"]?.toInt() ?: resolvedConfig.server.maxConcurrentRequests,
+                requestTimeoutMillis = values["request-timeout-ms"]?.toLong() ?: resolvedConfig.server.requestTimeoutMillis.value,
+                maxResults = values["max-results"]?.toInt() ?: resolvedConfig.server.maxResults.value,
+                maxConcurrentRequests = values["max-concurrent-requests"]?.toInt() ?: resolvedConfig.server.maxConcurrentRequests.value,
             )
         }
 

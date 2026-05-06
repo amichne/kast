@@ -59,8 +59,8 @@ Use this map to choose the narrowest unit that owns a change.
 
 Agents must use the native `kast_*` Copilot tools registered by the
 `.github/extensions/kast/` extension for Kotlin semantic operations.
-The extension also resolves `KAST_CLI_PATH` at session start, so the same
-commands are available as a `kast skill <name>` bash fallback.
+The extension also resolves the repo-local `kast` CLI at session start, so
+the same commands are available as a `kast skill <name>` bash fallback.
 
 | Operation            | Native tool                        | Bash fallback                                  |
 |----------------------|------------------------------------|------------------------------------------------|
@@ -99,7 +99,7 @@ refresh, belongs in agent instructions rather than in the hook manifest.
 `.github/extensions/kast/extension.mjs` is the primary entry point for
 Copilot-assisted Kotlin work. It
 
-- resolves `KAST_CLI_PATH` once at session start (no bootstrap turn),
+- resolves the `kast` CLI path once at session start (no bootstrap turn),
 - registers the `kast_*` tools listed under **Mandatory tool routing**, and
 - soft-warns once per session when generic `view`/`grep`/`edit`/`create`
   targets a `.kt`/`.kts` path, suggesting the semantic equivalent.

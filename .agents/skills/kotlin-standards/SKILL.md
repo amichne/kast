@@ -53,6 +53,10 @@ focused tests.
 - Prefer one root declaration per file whenever the file contains a non-nested
   type. If more names want to live at the top level, nest them under the owning
   root or move them into their own files.
+- When a family of public classes grows into a litany file, create a named
+  semantic subpackage and split each primary class, interface, or object into
+  its own file. Keep only tightly owned helper functions or extensions clustered
+  when they do not deserve independent discovery.
 - Use nesting to remove prefixes and ambiguity. Prefer `CliOutput.Text` or
   `ParseResult.Invalid` over flat names like `CliTextOutput` or
   `InvalidParseResult` when the enclosing type already carries the context.

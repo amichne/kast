@@ -17,16 +17,24 @@ class CliServiceRuntimePathTest {
     lateinit var tempDir: Path
 
     @Test
-    fun `daemon start finds standalone runtime libs from KAST_HOME install layout`() {
-        val kastHome = tempDir.resolve("kast-home")
-        val runtimeLibs = kastHome.resolve("install/backends/current/runtime-libs")
+    fun daemonStartFindsStandaloneRuntimeLibsFromConfig() {
+        val runtimeLibs = tempDir.resolve("runtime-libs")
         Files.createDirectories(runtimeLibs)
         Files.writeString(runtimeLibs.resolve("classpath.txt"), "standalone.jar\n")
+        val defaults = KastConfig.defaults()
+        val config = defaults.copy(
+            backends = defaults.backends.copy(
+                standalone = defaults.backends.standalone.copy(
+                    runtimeLibsDir = io.github.amichne.kast.api.client.fields.StandaloneRuntimeLibsDir(
+                        io.github.amichne.kast.api.client.fields.OptionalConfigString(runtimeLibs.toString()),
+                    ),
+                ),
+            ),
+        )
 
         val service = CliService(
             json = defaultCliJson(),
-            configLoader = { KastConfig.defaults() },
-            envLookup = mapOf("KAST_HOME" to kastHome.toString())::get,
+            configLoader = { config },
         )
 
         val output = service.daemonStart(

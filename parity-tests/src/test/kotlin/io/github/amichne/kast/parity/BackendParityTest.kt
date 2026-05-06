@@ -1,5 +1,6 @@
 package io.github.amichne.kast.parity
 
+import io.github.amichne.kast.api.client.kastConfigHome
 import io.github.amichne.kast.api.contract.query.DiagnosticsQuery
 import io.github.amichne.kast.api.contract.FilePosition
 import io.github.amichne.kast.api.contract.query.ReferencesQuery
@@ -12,6 +13,8 @@ import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
+import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertNull
 
@@ -19,9 +22,8 @@ import org.junit.jupiter.api.Assertions.assertNull
  * Parity tests that run the same queries against two live backends
  * (standalone and IntelliJ) and compare their responses structurally.
  *
- * Requires two environment variables:
- *   KAST_STANDALONE_SOCKET — path to the standalone backend UDS
- *   KAST_INTELLIJ_SOCKET   — path to the IntelliJ backend UDS
+ * Reads parity inputs from a temp-scoped config.toml fixture. To run against
+ * live backends, add a [parity] section to the configured Kast config home.
  *
  * Both backends must be serving the same workspace for results to be comparable.
  *
@@ -34,18 +36,23 @@ class BackendParityTest {
 
     private lateinit var standalone: ParityRpcClient
     private lateinit var intellij: ParityRpcClient
+    private lateinit var parityConfig: BackendParityConfig
+    private lateinit var parityConfigFile: Path
     private val json = Json { ignoreUnknownKeys = true }
 
     @BeforeAll
-    fun setUp() {
-        val standalonePath = System.getenv("KAST_STANDALONE_SOCKET")
-        val intellijPath = System.getenv("KAST_INTELLIJ_SOCKET")
-        assumeTrue(
-            standalonePath != null && intellijPath != null,
-            "Parity tests require KAST_STANDALONE_SOCKET and KAST_INTELLIJ_SOCKET env vars",
+    fun setUp(@TempDir tempConfigHome: Path) {
+        parityConfigFile = BackendParityConfigFixture.materialize(
+            configHome = tempConfigHome,
+            sourceConfigHome = kastConfigHome(),
         )
-        standalone = ParityRpcClient(Path.of(standalonePath), json)
-        intellij = ParityRpcClient(Path.of(intellijPath), json)
+        parityConfig = BackendParityConfigFixture.load(tempConfigHome)
+        assumeTrue(
+            Files.exists(parityConfig.standaloneSocket) && Files.exists(parityConfig.intellijSocket),
+            "Parity tests require live backend socket paths configured in $parityConfigFile",
+        )
+        standalone = ParityRpcClient(parityConfig.standaloneSocket, json)
+        intellij = ParityRpcClient(parityConfig.intellijSocket, json)
     }
 
     // --- Read-only operations ---
@@ -98,9 +105,12 @@ class BackendParityTest {
 
     @Test
     fun `diagnostics - structural parity with unordered diagnostics`() {
-        val brokenFile = System.getenv("KAST_PARITY_BROKEN_FILE")
-        assumeTrue(brokenFile != null, "KAST_PARITY_BROKEN_FILE env var required")
-        val query = DiagnosticsQuery(filePaths = listOf(brokenFile!!))
+        val brokenFile = parityConfig.brokenFile
+        assumeTrue(
+            brokenFile != null && Files.isRegularFile(brokenFile),
+            "diagnostics parity requires broken-file in $parityConfigFile",
+        )
+        val query = DiagnosticsQuery(filePaths = listOf(brokenFile.toString()))
         val comparator = ParityComparator.Structural(
             unorderedArrayKeys = setOf("diagnostics"),
         )
@@ -140,14 +150,12 @@ class BackendParityTest {
     }
 
     private fun fixtureFilePosition(): FilePosition {
-        val filePath = requireEnv("KAST_PARITY_USAGE_FILE")
-        val offset = requireEnv("KAST_PARITY_USAGE_OFFSET").toInt()
-        return FilePosition(filePath = filePath, offset = offset)
-    }
-
-    private fun requireEnv(name: String): String {
-        val value = System.getenv(name)
-        assumeTrue(value != null, "$name env var required for parity tests")
-        return value!!
+        val usageFile = parityConfig.usageFile
+        val usageOffset = parityConfig.usageOffset
+        assumeTrue(
+            usageFile != null && Files.isRegularFile(usageFile) && usageOffset != null,
+            "symbol parity requires usage-file and usage-offset in $parityConfigFile",
+        )
+        return FilePosition(filePath = requireNotNull(usageFile).toString(), offset = requireNotNull(usageOffset))
     }
 }

@@ -54,7 +54,7 @@ object StandaloneRuntime {
             session = session,
             telemetry = telemetry,
         )
-        val watcher = WorkspaceRefreshWatcher(session, debounceMillis = config.watcher.debounceMillis)
+        val watcher = WorkspaceRefreshWatcher(session, debounceMillis = config.watcher.debounceMillis.value)
         session.attachWorkspaceRefreshWatcher(watcher)
         val server = AnalysisServer(
             backend = backend,

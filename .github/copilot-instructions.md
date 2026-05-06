@@ -9,8 +9,8 @@
 - When `.github/extensions/kast/extension.mjs` loads successfully, treat it as
   the primary path and skip mandatory reads of `.agents/skills/kast/SKILL.md`.
   Fall back to the skill doc and the bash `kast skill <name>` form only when
-  the extension is unavailable; `KAST_CLI_PATH` is announced in session-start
-  context.
+  the extension is unavailable; use `kast skill <name>` from PATH or the
+  resolver script.
 - TDD: write failing unit tests first. Every change must include tests that prove behavior and regressions are covered.
 - Kotlin standards: follow Kotlin style, apply formatting and lints (ktlint/detekt/spotless), avoid platform-specific APIs in shared modules.
 - Constitutional code: treat API/model changes as contract changes; preserve schema compatibility and capability advertising unless intentionally changing.

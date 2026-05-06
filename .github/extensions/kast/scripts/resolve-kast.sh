@@ -12,10 +12,6 @@ resolve_absolute_path() {
     printf '%s/%s\n' "${dir}" "${base}"
 }
 
-if [[ -n "${KAST_CLI_PATH:-}" && -x "${KAST_CLI_PATH}" ]]; then
-    resolve_absolute_path "${KAST_CLI_PATH}"
-    exit 0
-fi
 
 if command -v kast >/dev/null 2>&1; then
     resolve_absolute_path "$(command -v kast)"
@@ -35,5 +31,5 @@ for _ in 1 2 3 4 5 6; do
     search_dir="$(cd -- "${search_dir}/.." && pwd)"
 done
 
-echo "Unable to resolve Kast CLI path. Set KAST_CLI_PATH or install kast on PATH." >&2
+echo "Unable to resolve Kast CLI path. Install kast on PATH or build the local wrapper first." >&2
 exit 1

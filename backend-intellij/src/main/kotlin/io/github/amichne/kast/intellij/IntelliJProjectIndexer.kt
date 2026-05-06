@@ -28,8 +28,8 @@ internal class IntelliJProjectIndexer(
     fun indexProject(config: KastConfig) {
         store.ensureSchema()
         val currentFilePaths = indexSourceIdentifiers()
-        if (config.indexing.phase2Enabled && !environment.isCancelled()) {
-            indexReferences(currentFilePaths, config.indexing.referenceBatchSize)
+        if (config.indexing.phase2Enabled.value && !environment.isCancelled()) {
+            indexReferences(currentFilePaths, config.indexing.referenceBatchSize.value)
         }
     }
 

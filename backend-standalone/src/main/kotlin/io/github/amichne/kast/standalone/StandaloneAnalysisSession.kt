@@ -57,13 +57,13 @@ internal class StandaloneAnalysisSession(
     phasedDiscoveryResult: PhasedDiscoveryResult? = null,
     private val sourceIndexFileReader: (Path) -> String = Files::readString,
     config: KastConfig = KastConfig.load(workspaceRoot),
-    private val sourceIndexCacheSaveDelayMillis: Long = config.cache.sourceIndexSaveDelayMillis,
+    private val sourceIndexCacheSaveDelayMillis: Long = config.cache.sourceIndexSaveDelayMillis.value,
     private val clock: Clock = Clock.SYSTEM,
     private val analysisSessionLock: SessionLock = ReentrantSessionLock(),
-    private val identifierIndexWaitMillis: Long = config.indexing.identifierIndexWaitMillis,
+    private val identifierIndexWaitMillis: Long = config.indexing.identifierIndexWaitMillis.value,
     internal val telemetry: StandaloneTelemetry = StandaloneTelemetry.disabled(),
-    private val enablePhase2Indexing: Boolean = config.indexing.phase2Enabled,
-    private val referenceBatchSize: Int = config.indexing.referenceBatchSize,
+    private val enablePhase2Indexing: Boolean = config.indexing.phase2Enabled.value,
+    private val referenceBatchSize: Int = config.indexing.referenceBatchSize.value,
 ) : AutoCloseable {
     val workspaceRoot: Path = normalizeStandalonePath(workspaceRoot)
     private val disposable: Disposable = Disposer.newDisposable("kast-standalone")

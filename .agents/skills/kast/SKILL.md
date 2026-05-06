@@ -116,15 +116,16 @@ them, but a few patterns repeat in every response.
 ## Bash fallback
 
 If you ever need to run `kast skill` directly (debugging the extension,
-custom shell pipelines), the `KAST_CLI_PATH` env var is announced in the
-session-start context. Pass it inline per command:
+custom shell pipelines), prefer the `kast` binary on PATH. When PATH is not
+ready, resolve the binary once and invoke the returned path directly:
 
 ```bash
-KAST_CLI_PATH=/abs/path/kast "$KAST_CLI_PATH" skill workspace-files '{}'
+KAST_BIN="$(bash .agents/skills/kast/scripts/resolve-kast.sh)"
+"$KAST_BIN" skill workspace-files '{}'
 ```
 
-`export` does not persist across bash tool calls in this environment, so set
-the variable on the same line.
+`export` does not persist across bash tool calls in this environment, so keep
+the resolved path in the same command.
 
 ## Maintenance
 

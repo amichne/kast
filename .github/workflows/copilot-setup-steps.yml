@@ -46,6 +46,5 @@ jobs:
       - name: Export kast environment
         run: |
           KAST_DIST_DIR="$GITHUB_WORKSPACE/kast-cli/build/portable-dist/kast-cli"
-          echo "KAST_CLI_PATH=${KAST_DIST_DIR}/kast-cli" >> "$GITHUB_ENV"
           echo "KAST_STANDALONE_PATH=${KAST_DIST_DIR}/kast-standalone" >> "$GITHUB_ENV"
           echo "${KAST_DIST_DIR}" >> "$GITHUB_PATH"

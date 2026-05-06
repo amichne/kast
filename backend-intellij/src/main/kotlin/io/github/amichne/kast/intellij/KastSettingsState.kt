@@ -14,6 +14,29 @@ import io.github.amichne.kast.api.client.IndexingConfigOverride
 import io.github.amichne.kast.api.client.IntellijBackendConfigOverride
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.KastConfigOverride
+import io.github.amichne.kast.api.client.fields.CacheEnabled
+import io.github.amichne.kast.api.client.fields.CacheSourceIndexSaveDelayMillis
+import io.github.amichne.kast.api.client.fields.CacheWriteDelayMillis
+import io.github.amichne.kast.api.client.fields.GradleMaxIncludedProjects
+import io.github.amichne.kast.api.client.fields.GradleToolingApiTimeoutMillis
+import io.github.amichne.kast.api.client.fields.IndexingIdentifierIndexWaitMillis
+import io.github.amichne.kast.api.client.fields.IndexingPhase2BatchSize
+import io.github.amichne.kast.api.client.fields.IndexingPhase2Enabled
+import io.github.amichne.kast.api.client.fields.IndexingReferenceBatchSize
+import io.github.amichne.kast.api.client.fields.IndexingRemoteEnabled
+import io.github.amichne.kast.api.client.fields.IndexingRemoteSourceIndexUrl
+import io.github.amichne.kast.api.client.fields.IntellijBackendEnabled
+import io.github.amichne.kast.api.client.fields.OptionalConfigString
+import io.github.amichne.kast.api.client.fields.ServerMaxConcurrentRequests
+import io.github.amichne.kast.api.client.fields.ServerMaxResults
+import io.github.amichne.kast.api.client.fields.ServerRequestTimeoutMillis
+import io.github.amichne.kast.api.client.fields.StandaloneBackendEnabled
+import io.github.amichne.kast.api.client.fields.StandaloneRuntimeLibsDir
+import io.github.amichne.kast.api.client.fields.TelemetryDetail
+import io.github.amichne.kast.api.client.fields.TelemetryEnabled
+import io.github.amichne.kast.api.client.fields.TelemetryOutputFile
+import io.github.amichne.kast.api.client.fields.TelemetryScopes
+import io.github.amichne.kast.api.client.fields.WatcherDebounceMillis
 import io.github.amichne.kast.api.client.RemoteIndexConfigOverride
 import io.github.amichne.kast.api.client.ServerConfigOverride
 import io.github.amichne.kast.api.client.StandaloneBackendConfigOverride
@@ -51,68 +74,72 @@ internal class KastSettingsState : PersistentStateComponent<KastSettingsState> {
     override fun loadState(state: KastSettingsState) = XmlSerializerUtil.copyBean(state, this)
 
     fun loadFromConfig(config: KastConfig) {
-        serverMaxResults = config.server.maxResults
-        serverRequestTimeoutMillis = config.server.requestTimeoutMillis
-        serverMaxConcurrentRequests = config.server.maxConcurrentRequests
-        indexingPhase2Enabled = config.indexing.phase2Enabled
-        indexingPhase2BatchSize = config.indexing.phase2BatchSize
-        indexingIdentifierIndexWaitMillis = config.indexing.identifierIndexWaitMillis
-        indexingReferenceBatchSize = config.indexing.referenceBatchSize
-        indexingRemoteEnabled = config.indexing.remote.enabled
-        indexingRemoteSourceIndexUrl = config.indexing.remote.sourceIndexUrl
-        cacheEnabled = config.cache.enabled
-        cacheWriteDelayMillis = config.cache.writeDelayMillis
-        cacheSourceIndexSaveDelayMillis = config.cache.sourceIndexSaveDelayMillis
-        watcherDebounceMillis = config.watcher.debounceMillis
-        gradleToolingApiTimeoutMillis = config.gradle.toolingApiTimeoutMillis
-        gradleMaxIncludedProjects = config.gradle.maxIncludedProjects
-        telemetryEnabled = config.telemetry.enabled
-        telemetryScopes = config.telemetry.scopes
-        telemetryDetail = config.telemetry.detail
-        telemetryOutputFile = config.telemetry.outputFile
-        backendsStandaloneEnabled = config.backends.standalone.enabled
-        backendsStandaloneRuntimeLibsDir = config.backends.standalone.runtimeLibsDir
-        backendsIntellijEnabled = config.backends.intellij.enabled
+        serverMaxResults = config.server.maxResults.value
+        serverRequestTimeoutMillis = config.server.requestTimeoutMillis.value
+        serverMaxConcurrentRequests = config.server.maxConcurrentRequests.value
+        indexingPhase2Enabled = config.indexing.phase2Enabled.value
+        indexingPhase2BatchSize = config.indexing.phase2BatchSize.value
+        indexingIdentifierIndexWaitMillis = config.indexing.identifierIndexWaitMillis.value
+        indexingReferenceBatchSize = config.indexing.referenceBatchSize.value
+        indexingRemoteEnabled = config.indexing.remote.enabled.value
+        indexingRemoteSourceIndexUrl = config.indexing.remote.sourceIndexUrl.value.orNull
+        cacheEnabled = config.cache.enabled.value
+        cacheWriteDelayMillis = config.cache.writeDelayMillis.value
+        cacheSourceIndexSaveDelayMillis = config.cache.sourceIndexSaveDelayMillis.value
+        watcherDebounceMillis = config.watcher.debounceMillis.value
+        gradleToolingApiTimeoutMillis = config.gradle.toolingApiTimeoutMillis.value
+        gradleMaxIncludedProjects = config.gradle.maxIncludedProjects.value
+        telemetryEnabled = config.telemetry.enabled.value
+        telemetryScopes = config.telemetry.scopes.value
+        telemetryDetail = config.telemetry.detail.value
+        telemetryOutputFile = config.telemetry.outputFile.value.orNull
+        backendsStandaloneEnabled = config.backends.standalone.enabled.value
+        backendsStandaloneRuntimeLibsDir = config.backends.standalone.runtimeLibsDir.value.orNull
+        backendsIntellijEnabled = config.backends.intellij.enabled.value
     }
 
     fun toOverride(): KastConfigOverride = KastConfigOverride(
         server = ServerConfigOverride(
-            maxResults = serverMaxResults,
-            requestTimeoutMillis = serverRequestTimeoutMillis,
-            maxConcurrentRequests = serverMaxConcurrentRequests,
+            maxResults = serverMaxResults?.let(::ServerMaxResults),
+            requestTimeoutMillis = serverRequestTimeoutMillis?.let(::ServerRequestTimeoutMillis),
+            maxConcurrentRequests = serverMaxConcurrentRequests?.let(::ServerMaxConcurrentRequests),
         ).takeIfAny(),
         indexing = IndexingConfigOverride(
-            phase2Enabled = indexingPhase2Enabled,
-            phase2BatchSize = indexingPhase2BatchSize,
-            identifierIndexWaitMillis = indexingIdentifierIndexWaitMillis,
-            referenceBatchSize = indexingReferenceBatchSize,
+            phase2Enabled = indexingPhase2Enabled?.let(::IndexingPhase2Enabled),
+            phase2BatchSize = indexingPhase2BatchSize?.let(::IndexingPhase2BatchSize),
+            identifierIndexWaitMillis = indexingIdentifierIndexWaitMillis?.let(::IndexingIdentifierIndexWaitMillis),
+            referenceBatchSize = indexingReferenceBatchSize?.let(::IndexingReferenceBatchSize),
             remote = RemoteIndexConfigOverride(
-                enabled = indexingRemoteEnabled,
-                sourceIndexUrl = indexingRemoteSourceIndexUrl?.takeIf(String::isNotBlank),
+                enabled = indexingRemoteEnabled?.let(::IndexingRemoteEnabled),
+                sourceIndexUrl = indexingRemoteSourceIndexUrl?.takeIf(String::isNotBlank)?.let {
+                    IndexingRemoteSourceIndexUrl(OptionalConfigString(it))
+                },
             ).takeIfAny(),
         ).takeIfAny(),
         cache = CacheConfigOverride(
-            enabled = cacheEnabled,
-            writeDelayMillis = cacheWriteDelayMillis,
-            sourceIndexSaveDelayMillis = cacheSourceIndexSaveDelayMillis,
+            enabled = cacheEnabled?.let(::CacheEnabled),
+            writeDelayMillis = cacheWriteDelayMillis?.let(::CacheWriteDelayMillis),
+            sourceIndexSaveDelayMillis = cacheSourceIndexSaveDelayMillis?.let(::CacheSourceIndexSaveDelayMillis),
         ).takeIfAny(),
-        watcher = WatcherConfigOverride(debounceMillis = watcherDebounceMillis).takeIfAny(),
+        watcher = WatcherConfigOverride(debounceMillis = watcherDebounceMillis?.let(::WatcherDebounceMillis)).takeIfAny(),
         gradle = GradleConfigOverride(
-            toolingApiTimeoutMillis = gradleToolingApiTimeoutMillis,
-            maxIncludedProjects = gradleMaxIncludedProjects,
+            toolingApiTimeoutMillis = gradleToolingApiTimeoutMillis?.let(::GradleToolingApiTimeoutMillis),
+            maxIncludedProjects = gradleMaxIncludedProjects?.let(::GradleMaxIncludedProjects),
         ).takeIfAny(),
         telemetry = TelemetryConfigOverride(
-            enabled = telemetryEnabled,
-            scopes = telemetryScopes?.takeIf(String::isNotBlank),
-            detail = telemetryDetail?.takeIf(String::isNotBlank),
-            outputFile = telemetryOutputFile?.takeIf(String::isNotBlank),
+            enabled = telemetryEnabled?.let(::TelemetryEnabled),
+            scopes = telemetryScopes?.takeIf(String::isNotBlank)?.let(::TelemetryScopes),
+            detail = telemetryDetail?.takeIf(String::isNotBlank)?.let(::TelemetryDetail),
+            outputFile = telemetryOutputFile?.takeIf(String::isNotBlank)?.let { TelemetryOutputFile(OptionalConfigString(it)) },
         ).takeIfAny(),
         backends = BackendsConfigOverride(
             standalone = StandaloneBackendConfigOverride(
-                enabled = backendsStandaloneEnabled,
-                runtimeLibsDir = backendsStandaloneRuntimeLibsDir?.takeIf(String::isNotBlank),
+                enabled = backendsStandaloneEnabled?.let(::StandaloneBackendEnabled),
+                runtimeLibsDir = backendsStandaloneRuntimeLibsDir?.takeIf(String::isNotBlank)?.let {
+                    StandaloneRuntimeLibsDir(OptionalConfigString(it))
+                },
             ).takeIfAny(),
-            intellij = IntellijBackendConfigOverride(enabled = backendsIntellijEnabled).takeIfAny(),
+            intellij = IntellijBackendConfigOverride(enabled = backendsIntellijEnabled?.let(::IntellijBackendEnabled)).takeIfAny(),
         ).takeIfAny(),
     )
 

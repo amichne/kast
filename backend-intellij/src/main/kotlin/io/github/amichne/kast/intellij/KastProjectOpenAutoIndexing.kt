@@ -18,7 +18,7 @@ internal object KastProjectOpenAutoIndexing {
         }
 
         val config = loadConfig(workspaceRoot)
-        if (!config.backends.intellij.enabled) {
+        if (!config.backends.intellij.enabled.value) {
             LOG.info("Kast intellij backend disabled by config")
             return false
         }
