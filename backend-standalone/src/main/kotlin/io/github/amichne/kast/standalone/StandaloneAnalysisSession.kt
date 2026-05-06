@@ -64,6 +64,7 @@ internal class StandaloneAnalysisSession(
     internal val telemetry: StandaloneTelemetry = StandaloneTelemetry.disabled(),
     private val enablePhase2Indexing: Boolean = config.indexing.phase2Enabled.value,
     private val referenceBatchSize: Int = config.indexing.referenceBatchSize.value,
+    private val referenceParallelism: Int = config.indexing.phase2Parallelism.value,
 ) : AutoCloseable {
     val workspaceRoot: Path = normalizeStandalonePath(workspaceRoot)
     private val disposable: Disposable = Disposer.newDisposable("kast-standalone")
@@ -459,6 +460,21 @@ internal class StandaloneAnalysisSession(
      * etc.) that also acquire the session lock. See commit 02c933a.
      */
     internal inline fun <T> withExclusiveAccess(crossinline action: () -> T): T = analysisSessionLock.write { action() }
+
+    /**
+     * Attempts to acquire the session write lock within [timeoutMillis] milliseconds and, if
+     * successful, executes [action] under the lock.
+     *
+     * Returns the result of [action] on success, or `null` on timeout.
+     *
+     * Used by [StandaloneReferenceIndexEnvironment.withExclusiveAccess] to avoid becoming a
+     * persistent pending write waiter in Java's fair [java.util.concurrent.locks.ReentrantReadWriteLock],
+     * which would starve subsequent foreground reads.
+     *
+     * **Caller contract**: [T] must be non-nullable; `null` always means "lock not acquired".
+     */
+    internal fun <T> tryWrite(timeoutMillis: Long, action: () -> T): T? =
+        analysisSessionLock.tryWrite(timeoutMillis) { action() }
 
     internal fun candidateKotlinFilePaths(identifier: String): List<String> {
         return candidateKotlinFilePaths(identifier = identifier, anchorFilePath = null)
@@ -896,6 +912,7 @@ internal class StandaloneAnalysisSession(
             store = sourceIndexCache.store,
             initialSourceIndexBuilder = initialSourceIndexBuilder,
             referenceBatchSize = referenceBatchSize,
+            referenceParallelism = referenceParallelism,
         )
         val generation = sourceIndexGeneration.incrementAndGet()
         // Publish the index synchronously in the Phase 1 thread before identifierIndexReady

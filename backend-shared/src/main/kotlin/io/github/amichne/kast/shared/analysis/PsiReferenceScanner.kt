@@ -119,6 +119,14 @@ class PsiReferenceScanner(
             declarationOffset = declaration.nameIdentifier?.textRange?.startOffset ?: declaration.textRange?.startOffset,
             modulePath = modulePath,
             sourceSet = sourceSet,
+            supertypes = (declaration as? KtClassOrObject)?.superTypeListEntries
+                ?.mapNotNull { entry ->
+                    entry.typeReference?.references?.firstOrNull()
+                        ?.resolve()?.let { resolved ->
+                            (resolved as? KtNamedDeclaration)?.targetFqNameAndPackage()?.first?.value
+                        }
+                }
+                ?: emptyList(),
         )
     }
 

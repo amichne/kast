@@ -37,10 +37,12 @@ internal class BackgroundIndexer(
     private val store: SqliteSourceIndexStore,
     private val initialSourceIndexBuilder: (() -> Map<String, List<String>>)? = null,
     private val referenceBatchSize: Int = 50,
+    private val referenceParallelism: Int = 1,
 ) : AutoCloseable {
 
     init {
         require(referenceBatchSize > 0) { "Reference index batch size must be positive" }
+        require(referenceParallelism > 0) { "Reference parallelism must be positive" }
     }
 
     val identifierIndexReady = CompletableFuture<Unit>()
@@ -122,7 +124,7 @@ internal class BackgroundIndexer(
                 if (cancelled) return@thread
                 val allPaths = changedPaths ?: store.loadManifest()?.keys ?: return@thread
                 generation.incrementAndGet()
-                ReferenceIndexer(store, batchSize = referenceBatchSize).indexReferences(
+                ReferenceIndexer(store, batchSize = referenceBatchSize, parallelism = referenceParallelism).indexReferences(
                     filePaths = allPaths,
                     referenceScanner = referenceScanner,
                     declarationScanner = declarationScanner,
@@ -177,7 +179,7 @@ internal class BackgroundIndexer(
         }
         if (referenceScanner != null) {
             val changedPathStrings = paths.map { it.value }.toSet()
-            ReferenceIndexer(store, batchSize = referenceBatchSize).reindexFiles(
+            ReferenceIndexer(store, batchSize = referenceBatchSize, parallelism = referenceParallelism).reindexFiles(
                 changedPaths = changedPathStrings,
                 referenceScanner = referenceScanner,
                 declarationScanner = declarationScanner,

@@ -13,6 +13,7 @@ sealed class ConfigurationField<T> {
             ServerMaxConcurrentRequests(4),
             IndexingPhase2Enabled(true),
             IndexingPhase2BatchSize(50),
+            IndexingPhase2Parallelism(2),
             IndexingIdentifierIndexWaitMillis(10_000L),
             IndexingReferenceBatchSize(50),
             IndexingRemoteEnabled(false),
