@@ -451,8 +451,6 @@ private fun defaultConfigTemplate(): String = """
     # [backends.standalone]
     # enabled = true
     # runtimeLibsDir = "/absolute/path/to/runtime-libs"
-    # When KAST_HOME is set, daemon start also checks:
-    # ${'$'}KAST_HOME/install/backends/current/runtime-libs
 
     # [backends.intellij]
     # enabled = true
