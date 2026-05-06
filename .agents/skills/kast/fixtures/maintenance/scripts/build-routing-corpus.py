@@ -539,15 +539,16 @@ def build_promotion_candidates(cases: list[RoutingCase]) -> dict[str, object]:
                 "id": candidate_id,
                 "prompt": case.prompt,
                 "expected_skill": "kast",
-                "expected_route": "@kast",
+                "expected_route": "native-kast-tools",
                 "allowed_ops": [
-                    "kast workspace-files",
-                    "kast scaffold",
-                    "kast resolve",
-                    "kast references",
-                    "kast callers",
+                    "kast_workspace_files",
+                    "kast_scaffold",
+                    "kast_resolve",
+                    "kast_references",
+                    "kast_callers",
                 ],
                 "forbidden_ops": ["grep", "rg"],
+                "stage": "candidate",
                 "derived_from": {
                     "source_type": case.source_type,
                     "source_name": case.source_name,
@@ -559,7 +560,8 @@ def build_promotion_candidates(cases: list[RoutingCase]) -> dict[str, object]:
         "skill_name": "kast",
         "suite": "routing-promotion-candidates",
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "evals": evals,
+        "version": 1,
+        "cases": evals,
     }
 
 

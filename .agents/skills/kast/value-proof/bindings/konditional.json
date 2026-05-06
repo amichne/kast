@@ -1,0 +1,49 @@
+{
+  "target_repo": "konditional",
+  "workspace_root": "/absolute/path/to/konditional",
+  "slots": {
+    "SEALED_HIERARCHY": {
+      "symbol": "Konstrained",
+      "fqName": "io.amichne.konditional.core.types.Konstrained",
+      "file": "konditional-types/src/main/kotlin/io/amichne/konditional/core/types/Konstrained.kt",
+      "description": "A sealed interface with 3+ subtypes, ideally cross-module"
+    },
+    "DISAMBIGUATE_MEMBER": {
+      "symbol": "key",
+      "containingType": "Feature",
+      "fqName": "io.amichne.konditional.core.features.Feature.key",
+      "file": "konditional-engine/src/main/kotlin/io/amichne/konditional/core/features/Feature.kt",
+      "description": "A property name that appears on many unrelated types — grep returns false positives"
+    },
+    "CROSS_MODULE_CLASS": {
+      "symbol": "FlagValue",
+      "fqName": "io.amichne.konditional.internal.serialization.models.FlagValue",
+      "file": "konditional-json/src/main/kotlin/io/amichne/konditional/internal/serialization/models/FlagValue.kt",
+      "description": "A class referenced across module boundaries"
+    },
+    "OVERLOADED_OR_COMMON_FUNCTION": {
+      "symbol": "resolve",
+      "containingType": "ConditionalValue",
+      "fqName": "io.amichne.konditional.rules.ConditionalValue.resolve",
+      "file": "konditional-engine/src/main/kotlin/io/amichne/konditional/rules/ConditionalValue.kt",
+      "description": "A function name that appears in many classes — disambiguation required"
+    },
+    "RENAME_TARGET": {
+      "symbol": "NamespaceRegistry",
+      "fqName": "io.amichne.konditional.core.registry.NamespaceRegistry",
+      "newName": "FeatureRegistry",
+      "file": "konditional-engine/src/main/kotlin/io/amichne/konditional/core/registry/NamespaceRegistry.kt",
+      "description": "An interface referenced across multiple modules — rename touches many files"
+    },
+    "LARGE_CLASS": {
+      "symbol": "EvaluationDiagnostics",
+      "fqName": "io.amichne.konditional.internal.evaluation.EvaluationDiagnostics",
+      "file": "konditional-engine/src/main/kotlin/io/amichne/konditional/internal/evaluation/EvaluationDiagnostics.kt",
+      "description": "A 200+ line class with nested types — scaffold vs raw read shows token savings"
+    },
+    "MODULE_LIST": {
+      "modules": ["konditional-types", "konditional-engine", "konditional-json"],
+      "description": "The modules in the target project"
+    }
+  }
+}

@@ -1,0 +1,176 @@
+{
+  "skill_name": "kast-value-proof",
+  "version": 1,
+  "cases": [
+    {
+      "id": "vp-disambiguate-member",
+      "title": "Disambiguate a common member name",
+      "prompt": "Find all usages of the {{DISAMBIGUATE_MEMBER.symbol}} property on {{DISAMBIGUATE_MEMBER.containingType}}, not every {{DISAMBIGUATE_MEMBER.symbol}} in the repo. List each call site with file path and line number.",
+      "files": [],
+      "expected_output": "A usage list scoped to the exact member identity.",
+      "expectations": [
+        "Resolves the member with containingType or fileHint before scanning usages",
+        "Result set is scoped to {{DISAMBIGUATE_MEMBER.containingType}}.{{DISAMBIGUATE_MEMBER.symbol}} — does not include unrelated types",
+        "Does not use raw text search (grep/rg) as the primary identity mechanism",
+        "Reports at least 3 distinct usage sites with file paths"
+      ],
+      "labels": ["symbol-disambiguation", "identity-precision"],
+      "stage": "candidate",
+      "source": {"kind": "manual", "summary": "Value-proof plan case for member identity precision"},
+      "promotion": {"required_pass_rate": 1.0, "required_benchmarks": 2}
+    },
+    {
+      "id": "vp-disambiguate-function",
+      "title": "Disambiguate callers of a common function name",
+      "prompt": "Find callers of {{OVERLOADED_OR_COMMON_FUNCTION.containingType}}.{{OVERLOADED_OR_COMMON_FUNCTION.symbol}}(), not every function named {{OVERLOADED_OR_COMMON_FUNCTION.symbol}} in the project. Show the call hierarchy.",
+      "files": [],
+      "expected_output": "A call hierarchy rooted at the exact function identity.",
+      "expectations": [
+        "Disambiguates the function using containingType, kind, or fileHint",
+        "Does not silently pick one of multiple candidates without disambiguation",
+        "Reports callers specific to the target class, not unrelated resolve() calls"
+      ],
+      "labels": ["symbol-disambiguation", "call-hierarchy"],
+      "stage": "candidate",
+      "source": {"kind": "manual", "summary": "Value-proof plan case for function caller precision"},
+      "promotion": {"required_pass_rate": 1.0, "required_benchmarks": 2}
+    },
+    {
+      "id": "vp-exhaustive-references",
+      "title": "Prove exhaustive cross-workspace references",
+      "prompt": "Find every reference to {{CROSS_MODULE_CLASS.symbol}} across the entire workspace. Tell me whether the search was exhaustive — did it cover every candidate file, or was it sampled/truncated?",
+      "files": [],
+      "expected_output": "A complete reference report with explicit search completeness metadata.",
+      "expectations": [
+        "Reports searchScope.exhaustive status or equivalent completeness metadata",
+        "Lists references grouped by file",
+        "Does not claim completeness without structural proof from the tool",
+        "Finds references in at least 2 different modules"
+      ],
+      "labels": ["exhaustive-evidence", "references"],
+      "stage": "candidate",
+      "source": {"kind": "manual", "summary": "Value-proof plan case for completeness evidence"},
+      "promotion": {"required_pass_rate": 1.0, "required_benchmarks": 2}
+    },
+    {
+      "id": "vp-sealed-hierarchy-trace",
+      "title": "Trace every sealed hierarchy implementation",
+      "prompt": "List every implementation of the sealed interface {{SEALED_HIERARCHY.symbol}}. For each implementation, show its file location and which module it belongs to.",
+      "files": [],
+      "expected_output": "A semantic subtype report with module attribution.",
+      "expectations": [
+        "Uses semantic resolution (not grep for 'class.*Konstrained') to find implementations",
+        "Lists all sealed subtypes with their file paths",
+        "Correctly identifies which module each implementation lives in",
+        "Does not miss implementations in other modules"
+      ],
+      "labels": ["exhaustive-evidence", "sealed-hierarchy"],
+      "stage": "candidate",
+      "source": {"kind": "manual", "summary": "Value-proof plan case for sealed hierarchy completeness"},
+      "promotion": {"required_pass_rate": 1.0, "required_benchmarks": 2}
+    },
+    {
+      "id": "vp-multi-file-rename",
+      "title": "Safely rename a symbol across files",
+      "prompt": "Rename {{RENAME_TARGET.symbol}} to {{RENAME_TARGET.newName}} across the entire workspace. Show me the edit plan before applying. After applying, confirm no compile errors were introduced.",
+      "files": [],
+      "expected_output": "A multi-file rename plan and validated post-edit status.",
+      "expectations": [
+        "Uses kast_rename (not find-and-replace or sed)",
+        "Shows an edit plan listing all affected files before applying",
+        "Updates import statements, not just the declaration",
+        "Runs diagnostics or reports compile status after the rename",
+        "Does not leave broken references in any module"
+      ],
+      "labels": ["safe-mutations", "rename"],
+      "stage": "candidate",
+      "source": {"kind": "manual", "summary": "Value-proof plan case for safe rename mutation"},
+      "promotion": {"required_pass_rate": 1.0, "required_benchmarks": 2}
+    },
+    {
+      "id": "vp-edit-and-validate",
+      "title": "Edit and validate atomically",
+      "prompt": "Add a @Deprecated annotation with message 'Use {{RENAME_TARGET.newName}} instead' to the {{RENAME_TARGET.symbol}} interface declaration. Confirm the file still compiles after the edit.",
+      "files": [],
+      "expected_output": "A validated edit report with diagnostics evidence.",
+      "expectations": [
+        "Uses kast_write_and_validate (not raw edit/create tool)",
+        "Runs diagnostics atomically as part of the write",
+        "Reports clean or dirty compile state after the edit",
+        "Does not claim success without validation evidence"
+      ],
+      "labels": ["safe-mutations", "write-and-validate"],
+      "stage": "candidate",
+      "source": {"kind": "manual", "summary": "Value-proof plan case for atomic edit validation"},
+      "promotion": {"required_pass_rate": 1.0, "required_benchmarks": 2}
+    },
+    {
+      "id": "vp-scaffold-large-class",
+      "title": "Summarize a large class structurally",
+      "prompt": "Summarize the public API of {{LARGE_CLASS.symbol}} — list every public type, interface, enum, and data class it contains, with their member signatures.",
+      "files": [],
+      "expected_output": "A scaffold-rooted API summary for a large class.",
+      "expectations": [
+        "Uses kast_scaffold (not raw file read) as the primary information source",
+        "Lists all nested sealed interfaces and enums accurately",
+        "Does not hallucinate members that don't exist",
+        "Produces the summary in fewer tokens than reading the raw file would require"
+      ],
+      "labels": ["token-efficiency", "scaffold"],
+      "stage": "candidate",
+      "source": {"kind": "manual", "summary": "Value-proof plan case for structural token efficiency"},
+      "promotion": {"required_pass_rate": 1.0, "required_benchmarks": 2}
+    },
+    {
+      "id": "vp-workspace-discovery",
+      "title": "Discover modules in one semantic call",
+      "prompt": "List every module in this workspace and how many Kotlin source files each contains.",
+      "files": [],
+      "expected_output": "A module inventory with Kotlin source file counts.",
+      "expectations": [
+        "Uses kast_workspace_files (not recursive ls/find)",
+        "Reports the correct module names: {{MODULE_LIST.modules}}",
+        "Reports file counts for each module",
+        "Completes in a single tool call (not iterative directory traversal)"
+      ],
+      "labels": ["token-efficiency", "workspace-discovery"],
+      "stage": "candidate",
+      "source": {"kind": "manual", "summary": "Value-proof plan case for workspace discovery efficiency"},
+      "promotion": {"required_pass_rate": 1.0, "required_benchmarks": 2}
+    },
+    {
+      "id": "vp-impact-analysis",
+      "title": "Trace two-level deletion impact",
+      "prompt": "I want to delete {{OVERLOADED_OR_COMMON_FUNCTION.containingType}}.{{OVERLOADED_OR_COMMON_FUNCTION.symbol}}(). Show me every direct caller, then for each caller show its callers (depth 2). Identify which of those callers are in test files vs production code.",
+      "files": [],
+      "expected_output": "A bounded depth-2 caller impact report with production/test classification.",
+      "expectations": [
+        "Resolves the exact function before tracing callers",
+        "Shows a 2-level call hierarchy",
+        "Distinguishes test files from production files",
+        "Reports truncation metadata if the hierarchy was bounded"
+      ],
+      "labels": ["multi-step-workflow", "impact-analysis"],
+      "stage": "candidate",
+      "source": {"kind": "manual", "summary": "Value-proof plan case for compound impact analysis"},
+      "promotion": {"required_pass_rate": 1.0, "required_benchmarks": 2}
+    },
+    {
+      "id": "vp-cross-module-flow",
+      "title": "Trace cross-module symbol flow",
+      "prompt": "Trace how {{CROSS_MODULE_CLASS.symbol}} flows from its definition in {{CROSS_MODULE_CLASS.file}} to its consumers in other modules. Show the cross-module dependency chain.",
+      "files": [],
+      "expected_output": "A concrete file-to-file flow report across module boundaries.",
+      "expectations": [
+        "Uses scaffold + references + callers in sequence (not grep)",
+        "Identifies consumers in at least one other module",
+        "Shows concrete file-to-file relationships, not just module names",
+        "Does not miss cross-module references"
+      ],
+      "labels": ["multi-step-workflow", "cross-module-flow"],
+      "stage": "candidate",
+      "source": {"kind": "manual", "summary": "Value-proof plan case for compound cross-module tracing"},
+      "promotion": {"required_pass_rate": 1.0, "required_benchmarks": 2}
+    }
+  ]
+}

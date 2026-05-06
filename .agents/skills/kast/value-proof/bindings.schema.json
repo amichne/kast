@@ -1,0 +1,167 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/amichne/kast/.agents/skills/kast/value-proof/bindings.schema.json",
+  "title": "Kast value-proof codebase bindings",
+  "description": "Maps abstract eval slots to concrete symbols in a target Kotlin codebase.",
+  "type": "object",
+  "required": ["target_repo", "workspace_root", "slots"],
+  "additionalProperties": false,
+  "properties": {
+    "_comment": {
+      "type": "string"
+    },
+    "target_repo": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Target Kotlin repository name or path label."
+    },
+    "workspace_root": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Absolute path to the target repository checkout."
+    },
+    "slots": {
+      "type": "object",
+      "required": [
+        "SEALED_HIERARCHY",
+        "DISAMBIGUATE_MEMBER",
+        "CROSS_MODULE_CLASS",
+        "OVERLOADED_OR_COMMON_FUNCTION",
+        "RENAME_TARGET",
+        "LARGE_CLASS",
+        "MODULE_LIST"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "SEALED_HIERARCHY": {
+          "$ref": "#/$defs/symbol_slot"
+        },
+        "DISAMBIGUATE_MEMBER": {
+          "$ref": "#/$defs/member_slot"
+        },
+        "CROSS_MODULE_CLASS": {
+          "$ref": "#/$defs/symbol_slot"
+        },
+        "OVERLOADED_OR_COMMON_FUNCTION": {
+          "$ref": "#/$defs/member_slot"
+        },
+        "RENAME_TARGET": {
+          "$ref": "#/$defs/rename_slot"
+        },
+        "LARGE_CLASS": {
+          "$ref": "#/$defs/symbol_slot"
+        },
+        "MODULE_LIST": {
+          "type": "object",
+          "required": ["modules", "description"],
+          "additionalProperties": false,
+          "properties": {
+            "_comment": {
+              "type": "string"
+            },
+            "modules": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "description": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "symbol_slot": {
+      "type": "object",
+      "required": ["symbol", "fqName", "file", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "_comment": {
+          "type": "string"
+        },
+        "symbol": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fqName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "file": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "member_slot": {
+      "type": "object",
+      "required": ["symbol", "containingType", "fqName", "file", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "_comment": {
+          "type": "string"
+        },
+        "symbol": {
+          "type": "string",
+          "minLength": 1
+        },
+        "containingType": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fqName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "file": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "rename_slot": {
+      "type": "object",
+      "required": ["symbol", "fqName", "newName", "file", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "_comment": {
+          "type": "string"
+        },
+        "symbol": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fqName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "newName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "file": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

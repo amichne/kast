@@ -26,17 +26,25 @@ internal class EmbeddedSkillResources(
 
         val MANIFEST: List<String> = listOf(
             "SKILL.md",
-            "evals/catalog.json",
-            "evals/pain_points.jsonl",
-            "evals/files/.gitkeep",
-            "history/progression.json",
+            "fixtures/maintenance/evals/evals.json",
+            "fixtures/maintenance/evals/routing.json",
+            "fixtures/maintenance/references/routing-improvement.md",
+            "fixtures/maintenance/references/wrapper-openapi.yaml",
+            "fixtures/maintenance/scripts/build-routing-corpus.py",
             "history/eval-baseline.json",
-            "references/routing-improvement.md",
-            "references/wrapper-openapi.yaml",
-            "scripts/build-routing-corpus.py",
             "references/quickstart.md",
+            "references/wrapper-openapi.yaml",
             "scripts/kast-session-start.sh",
             "scripts/resolve-kast.sh",
+            "value-proof/README.md",
+            "value-proof/bindings.schema.json",
+            "value-proof/bindings/konditional.json",
+            "value-proof/bindings/template.json",
+            "value-proof/catalog.json",
+            "value-proof/history/progression.json",
+            "value-proof/scripts/generate_executive_summary.py",
+            "value-proof/scripts/render_prompts.py",
+            "value-proof/scripts/run_value_proof.py",
         )
     }
 }
