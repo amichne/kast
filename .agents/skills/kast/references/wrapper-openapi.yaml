@@ -1,18 +1,18 @@
 openapi: 3.1.0
 info:
-  title: kast skill contracts
+  title: kast wrapper contracts
   version: 1.1.0
   description: >
-    Generated from the native kast skill request and response serializers.
+    Generated from the native kast wrapper request and response serializers.
 servers:
   - url: kast://skill
-    description: Native kast skill command surface
+    description: Native kast wrapper command surface
 paths:
   "/skill/resolve":
     post:
       operationId: kastSkillResolve
       summary: Resolve a symbol by name
-      x-command: kast skill resolve
+      x-command: kast resolve
       requestBody:
         required: true
         content:
@@ -30,7 +30,7 @@ paths:
     post:
       operationId: kastSkillReferences
       summary: Find references for a named symbol
-      x-command: kast skill references
+      x-command: kast references
       requestBody:
         required: true
         content:
@@ -48,7 +48,7 @@ paths:
     post:
       operationId: kastSkillCallers
       summary: Expand an incoming or outgoing call hierarchy
-      x-command: kast skill callers
+      x-command: kast callers
       requestBody:
         required: true
         content:
@@ -66,7 +66,7 @@ paths:
     post:
       operationId: kastSkillDiagnostics
       summary: Run diagnostics on Kotlin files
-      x-command: kast skill diagnostics
+      x-command: kast diagnostics
       requestBody:
         required: true
         content:
@@ -84,7 +84,7 @@ paths:
     post:
       operationId: kastSkillRename
       summary: Resolve or target a symbol and apply a rename
-      x-command: kast skill rename
+      x-command: kast rename
       requestBody:
         required: true
         content:
@@ -102,7 +102,7 @@ paths:
     post:
       operationId: kastSkillScaffold
       summary: Gather structural generation context
-      x-command: kast skill scaffold
+      x-command: kast scaffold
       requestBody:
         required: true
         content:
@@ -120,7 +120,7 @@ paths:
     post:
       operationId: kastSkillWorkspaceFiles
       summary: List workspace modules and optional file paths
-      x-command: kast skill workspace-files
+      x-command: kast workspace-files
       requestBody:
         required: true
         content:
@@ -138,7 +138,7 @@ paths:
     post:
       operationId: kastSkillWriteAndValidate
       summary: Apply generated Kotlin code and validate the result
-      x-command: kast skill write-and-validate
+      x-command: kast write-and-validate
       requestBody:
         required: true
         content:
@@ -156,7 +156,7 @@ paths:
     post:
       operationId: kastSkillMetrics
       summary: Query indexed source metrics
-      x-command: kast skill metrics
+      x-command: kast metrics
       requestBody:
         required: true
         content:
@@ -641,6 +641,9 @@ components:
     WrapperMetric:
       type: string
       enum:
+        - apiSurface
+        - moduleBoundary
+        - declarations
         - fanIn
         - fanOut
         - coupling

@@ -5,10 +5,10 @@ import io.github.amichne.kast.api.contract.KotlinIdentifier
 import io.github.amichne.kast.api.contract.ModuleName
 import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.PackageName
-import io.github.amichne.kast.indexstore.FileIndexUpdate
-import io.github.amichne.kast.indexstore.SourceIndexSnapshot
-import io.github.amichne.kast.indexstore.SourceIndexWriter
-import io.github.amichne.kast.indexstore.parseSourceFileIndex
+import io.github.amichne.kast.indexstore.api.index.FileIndexUpdate
+import io.github.amichne.kast.indexstore.api.index.SourceIndexSnapshot
+import io.github.amichne.kast.indexstore.api.index.SourceIndexWriter
+import io.github.amichne.kast.indexstore.api.index.parseSourceFileIndex
 import java.util.concurrent.ConcurrentHashMap
 
 internal class MutableSourceIdentifierIndex(

@@ -1,1 +1,36 @@
-../../../../.github/extensions/kast/scripts/resolve-kast.sh
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+
+resolve_absolute_path() {
+    local path="$1"
+    local dir
+    local base
+    dir="$(cd -- "$(dirname -- "${path}")" && pwd)"
+    base="$(basename -- "${path}")"
+    printf '%s/%s\n' "${dir}" "${base}"
+}
+
+for command_name in kast kast-cli; do
+    if command -v "${command_name}" >/dev/null 2>&1; then
+        resolve_absolute_path "$(command -v "${command_name}")"
+        exit 0
+    fi
+done
+
+search_dir="${SCRIPT_DIR}"
+for _ in 1 2 3 4 5 6; do
+    for candidate in \
+        "${search_dir}/kast-cli/build/scripts/kast-cli" \
+        "${search_dir}/dist/cli/kast-cli"; do
+        if [[ -x "${candidate}" ]]; then
+            resolve_absolute_path "${candidate}"
+            exit 0
+        fi
+    done
+    search_dir="$(cd -- "${search_dir}/.." && pwd)"
+done
+
+echo "Unable to resolve Kast CLI path. Install kast on PATH or build the local wrapper first." >&2
+exit 1

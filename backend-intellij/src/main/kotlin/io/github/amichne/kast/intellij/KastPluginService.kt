@@ -11,7 +11,7 @@ import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.defaultSocketPath
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.api.contract.ServerLimits
-import io.github.amichne.kast.indexstore.SqliteSourceIndexStore
+import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.server.AnalysisServer
 import io.github.amichne.kast.server.AnalysisServerConfig
 import io.github.amichne.kast.server.RunningAnalysisServer

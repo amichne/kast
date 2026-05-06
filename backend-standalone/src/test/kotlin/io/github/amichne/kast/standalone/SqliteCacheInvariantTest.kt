@@ -1,8 +1,8 @@
 package io.github.amichne.kast.standalone
 
-import io.github.amichne.kast.indexstore.FileIndexUpdate
-import io.github.amichne.kast.indexstore.SqliteSourceIndexStore
-import io.github.amichne.kast.indexstore.kastCacheDirectory
+import io.github.amichne.kast.indexstore.api.index.FileIndexUpdate
+import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
+import io.github.amichne.kast.indexstore.store.cache.kastCacheDirectory
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -57,12 +57,12 @@ class SqliteCacheInvariantTest {
             }
         }
 
-        // After rebuild the version should be the current one (4)
+        // After rebuild the version should be the current one (5)
         DriverManager.getConnection("jdbc:sqlite:$dbPath").use { conn ->
             conn.prepareStatement("SELECT version FROM schema_version LIMIT 1").use { stmt ->
                 val rs = stmt.executeQuery()
                 assertTrue(rs.next())
-                assertEquals(4, rs.getInt(1))
+                assertEquals(5, rs.getInt(1))
             }
         }
     }

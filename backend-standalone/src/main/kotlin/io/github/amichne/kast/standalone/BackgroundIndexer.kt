@@ -2,10 +2,11 @@ package io.github.amichne.kast.standalone
 
 import io.github.amichne.kast.api.contract.ModuleName
 import io.github.amichne.kast.api.contract.NormalizedPath
-import io.github.amichne.kast.indexstore.ReferenceIndexer
-import io.github.amichne.kast.indexstore.SourceIndexFilePolicy
-import io.github.amichne.kast.indexstore.SqliteSourceIndexStore
-import io.github.amichne.kast.indexstore.SymbolReferenceRow
+import io.github.amichne.kast.indexstore.indexing.ReferenceIndexer
+import io.github.amichne.kast.indexstore.api.index.SourceIndexFilePolicy
+import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
+import io.github.amichne.kast.indexstore.api.reference.DeclarationRow
+import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
 import io.github.amichne.kast.standalone.cache.SourceIndexCache
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
@@ -109,6 +110,7 @@ internal class BackgroundIndexer(
      */
     fun startPhase2(
         changedPaths: Set<String>? = null,
+        declarationScanner: ((String) -> List<DeclarationRow>)? = null,
         referenceScanner: (String) -> List<SymbolReferenceRow>,
     ) {
         phase2Thread = thread(
@@ -123,6 +125,7 @@ internal class BackgroundIndexer(
                 ReferenceIndexer(store, batchSize = referenceBatchSize).indexReferences(
                     filePaths = allPaths,
                     referenceScanner = referenceScanner,
+                    declarationScanner = declarationScanner,
                     isCancelled = { cancelled || Thread.currentThread().isInterrupted },
                 )
                 if (!cancelled) {
@@ -154,6 +157,7 @@ internal class BackgroundIndexer(
         index: MutableSourceIdentifierIndex,
         paths: Set<NormalizedPath>,
         referenceScanner: ((String) -> List<SymbolReferenceRow>)? = null,
+        declarationScanner: ((String) -> List<DeclarationRow>)? = null,
     ) {
         paths.forEach { normalizedPath ->
             val filePath = normalizedPath.toJavaPath()
@@ -176,6 +180,7 @@ internal class BackgroundIndexer(
             ReferenceIndexer(store, batchSize = referenceBatchSize).reindexFiles(
                 changedPaths = changedPathStrings,
                 referenceScanner = referenceScanner,
+                declarationScanner = declarationScanner,
                 isCancelled = { cancelled || Thread.currentThread().isInterrupted },
             )
         }

@@ -1,7 +1,7 @@
 package io.github.amichne.kast.standalone
 
 import com.intellij.psi.PsiFile
-import io.github.amichne.kast.indexstore.SqliteSourceIndexStore
+import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.shared.analysis.ReferenceIndexEnvironment
 import java.util.concurrent.CancellationException
 

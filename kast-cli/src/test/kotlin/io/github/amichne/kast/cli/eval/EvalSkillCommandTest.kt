@@ -131,14 +131,14 @@ class EvalSkillCommandTest {
         refs.resolve("wrapper-openapi.yaml").writeText(
             """
             openapi: '3.0.0'
-            x-command: kast skill resolve
-            x-command: kast skill references
-            x-command: kast skill callers
-            x-command: kast skill diagnostics
-            x-command: kast skill rename
-            x-command: kast skill scaffold
-            x-command: kast skill write-and-validate
-            x-command: kast skill workspace-files
+            x-command: kast resolve
+            x-command: kast references
+            x-command: kast callers
+            x-command: kast diagnostics
+            x-command: kast rename
+            x-command: kast scaffold
+            x-command: kast write-and-validate
+            x-command: kast workspace-files
             """.trimIndent(),
         )
 

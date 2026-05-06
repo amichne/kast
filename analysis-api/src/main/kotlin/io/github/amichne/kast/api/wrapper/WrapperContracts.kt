@@ -55,6 +55,15 @@ enum class WrapperScaffoldMode {
 
 @Serializable
 enum class WrapperMetric {
+    @SerialName("apiSurface")
+    API_SURFACE,
+
+    @SerialName("moduleBoundary")
+    MODULE_BOUNDARY,
+
+    @SerialName("declarations")
+    DECLARATIONS,
+
     @SerialName("fanIn")
     FAN_IN,
 

@@ -60,20 +60,20 @@ Use this map to choose the narrowest unit that owns a change.
 Agents must use the native `kast_*` Copilot tools registered by the
 `.github/extensions/kast/` extension for Kotlin semantic operations.
 The extension also resolves the repo-local `kast` CLI at session start, so
-the same commands are available as a `kast skill <name>` bash fallback.
+the same commands are available as a `kast <name>` bash fallback.
 
 | Operation            | Native tool                        | Bash fallback                                  |
 |----------------------|------------------------------------|------------------------------------------------|
-| Resolve symbol       | `kast_resolve`                     | `kast skill resolve`                           |
-| Find references      | `kast_references`                  | `kast skill references`                        |
-| Call hierarchy       | `kast_callers`                     | `kast skill callers`                           |
-| Impact analysis      | `kast_references` + `kast_callers` | `kast skill references` + `kast skill callers` |
-| Diagnostics          | `kast_diagnostics`                 | `kast skill diagnostics`                       |
-| Rename symbol        | `kast_rename`                      | `kast skill rename`                            |
-| Scaffold context     | `kast_scaffold`                    | `kast skill scaffold`                          |
-| Write and validate   | `kast_write_and_validate`          | `kast skill write-and-validate`                |
-| List workspace files | `kast_workspace_files`             | `kast skill workspace-files`                   |
-| Workspace metrics    | `kast_metrics`                     | `kast skill metrics`                           |
+| Resolve symbol       | `kast_resolve`                     | `kast resolve`                                 |
+| Find references      | `kast_references`                  | `kast references`                              |
+| Call hierarchy       | `kast_callers`                     | `kast callers`                                 |
+| Impact analysis      | `kast_references` + `kast_callers` | `kast references` + `kast callers`             |
+| Diagnostics          | `kast_diagnostics`                 | `kast diagnostics`                             |
+| Rename symbol        | `kast_rename`                      | `kast rename`                                  |
+| Scaffold context     | `kast_scaffold`                    | `kast scaffold`                                |
+| Write and validate   | `kast_write_and_validate`          | `kast write-and-validate`                      |
+| List workspace files | `kast_workspace_files`             | `kast workspace-files`                         |
+| Workspace metrics    | `kast_metrics`                     | `kast metrics`                                 |
 
 **Prohibited substitutions:** `grep`, `rg`, `ast-grep`, `cat` + manual
 parsing must NOT be used for symbol identity, reference finding, or call

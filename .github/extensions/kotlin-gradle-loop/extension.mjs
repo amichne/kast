@@ -2,7 +2,7 @@ import {execFile} from "node:child_process";
 import {dirname, join, resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {joinSession} from "@github/copilot-sdk/extension";
-import {markShadowedExtensionLoaded} from "../_shared/shadowed-skill-state.mjs";
+import {markShadowedExtensionLoaded} from "../_shared/lib.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(HERE, "..", "..", "..");

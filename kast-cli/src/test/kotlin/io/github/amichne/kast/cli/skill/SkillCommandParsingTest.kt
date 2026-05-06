@@ -3,6 +3,7 @@ package io.github.amichne.kast.cli.skill
 import io.github.amichne.kast.cli.tty.CliCommand
 import io.github.amichne.kast.cli.tty.CliCommandParser
 import io.github.amichne.kast.cli.tty.CliFailure
+import io.github.amichne.kast.cli.tty.MetricsSubcommand
 import io.github.amichne.kast.cli.tty.defaultCliJson
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -17,18 +18,28 @@ class SkillCommandParsingTest {
     fun `skill workspace-files parses with JSON literal`() {
         val json = """{"workspaceRoot":"/tmp/ws"}"""
         val command = parser.parse(arrayOf("skill", "workspace-files", json))
-        val skill = command as CliCommand.Skill
-        assertEquals(SkillWrapperName.WORKSPACE_FILES, skill.name)
-        assertEquals(json, skill.rawInput)
+        assertSkillCommand(command, SkillWrapperName.WORKSPACE_FILES, json)
+    }
+
+    @Test
+    fun `workspace-files parses with JSON literal`() {
+        val json = """{"workspaceRoot":"/tmp/ws"}"""
+        val command = parser.parse(arrayOf("workspace-files", json))
+        assertSkillCommand(command, SkillWrapperName.WORKSPACE_FILES, json)
     }
 
     @Test
     fun `skill resolve parses with JSON literal`() {
         val json = """{"symbol":"MyClass","kind":"class"}"""
         val command = parser.parse(arrayOf("skill", "resolve", json))
-        val skill = command as CliCommand.Skill
-        assertEquals(SkillWrapperName.RESOLVE, skill.name)
-        assertEquals(json, skill.rawInput)
+        assertSkillCommand(command, SkillWrapperName.RESOLVE, json)
+    }
+
+    @Test
+    fun `resolve parses with JSON literal`() {
+        val json = """{"symbol":"MyClass","kind":"class"}"""
+        val command = parser.parse(arrayOf("resolve", json))
+        assertSkillCommand(command, SkillWrapperName.RESOLVE, json)
     }
 
     @Test
@@ -75,8 +86,21 @@ class SkillCommandParsingTest {
     fun `skill write-and-validate parses with JSON literal`() {
         val json = """{"filePath":"src/New.kt","content":"class New"}"""
         val command = parser.parse(arrayOf("skill", "write-and-validate", json))
-        val skill = command as CliCommand.Skill
-        assertEquals(SkillWrapperName.WRITE_AND_VALIDATE, skill.name)
+        assertSkillCommand(command, SkillWrapperName.WRITE_AND_VALIDATE, json)
+    }
+
+    @Test
+    fun `metrics parses JSON literal as wrapper`() {
+        val json = """{"metric":"fanIn","workspaceRoot":"/tmp/ws"}"""
+        val command = parser.parse(arrayOf("metrics", json))
+        assertSkillCommand(command, SkillWrapperName.METRICS, json)
+    }
+
+    @Test
+    fun `metrics subcommand still parses as human cli command`() {
+        val command = parser.parse(arrayOf("metrics", "fan-in", "--workspace-root=/tmp/ws"))
+        val metrics = command as CliCommand.Metrics
+        assertEquals(MetricsSubcommand.FAN_IN, metrics.subcommand)
     }
 
     @Test
@@ -99,5 +123,11 @@ class SkillCommandParsingTest {
             parser.parse(arrayOf("skill", "resolve"))
         }
         assertEquals("CLI_USAGE", ex.code)
+    }
+
+    private fun assertSkillCommand(command: CliCommand, expectedName: SkillWrapperName, expectedRawInput: String) {
+        val skill = command as CliCommand.Skill
+        assertEquals(expectedName, skill.name)
+        assertEquals(expectedRawInput, skill.rawInput)
     }
 }

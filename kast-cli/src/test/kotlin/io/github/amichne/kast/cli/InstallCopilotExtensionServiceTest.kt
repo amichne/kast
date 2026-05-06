@@ -40,7 +40,7 @@ class InstallCopilotExtensionServiceTest {
         assertTrue(Files.isRegularFile(targetDir.resolve("hooks/skill-shadowing.json")))
         assertTrue(Files.isRegularFile(targetDir.resolve("hooks/session-end.sh")))
         assertTrue(Files.isRegularFile(targetDir.resolve("hooks/resolve-kast-cli-path.sh")))
-        assertTrue(Files.isRegularFile(targetDir.resolve("extensions/_shared/shadowed-skill-state.mjs")))
+        assertTrue(Files.isRegularFile(targetDir.resolve("extensions/_shared/lib.mjs")))
         assertTrue(Files.isRegularFile(targetDir.resolve("extensions/kast/extension.mjs")))
         assertTrue(Files.isRegularFile(targetDir.resolve("extensions/kast/scripts/resolve-kast.sh")))
         assertTrue(Files.isRegularFile(targetDir.resolve("extensions/kotlin-gradle-loop/extension.mjs")))

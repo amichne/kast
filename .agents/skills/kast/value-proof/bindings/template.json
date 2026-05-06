@@ -1,0 +1,57 @@
+{
+  "_comment": "Copy this file to bindings/<your-project>.json, remove _comment fields if desired, and replace every placeholder with a representative symbol from your Kotlin workspace.",
+  "target_repo": "your-project",
+  "workspace_root": "/absolute/path/to/your/project",
+  "slots": {
+    "SEALED_HIERARCHY": {
+      "_comment": "A sealed interface/class with multiple implementations.",
+      "symbol": "YourSealedRoot",
+      "fqName": "com.example.YourSealedRoot",
+      "file": "module/src/main/kotlin/com/example/YourSealedRoot.kt",
+      "description": "Why this hierarchy proves semantic subtype discovery"
+    },
+    "DISAMBIGUATE_MEMBER": {
+      "_comment": "A member name that appears on unrelated types.",
+      "symbol": "key",
+      "containingType": "Feature",
+      "fqName": "com.example.Feature.key",
+      "file": "module/src/main/kotlin/com/example/Feature.kt",
+      "description": "Why raw text search would over-match"
+    },
+    "CROSS_MODULE_CLASS": {
+      "_comment": "A type referenced from more than one module.",
+      "symbol": "SharedModel",
+      "fqName": "com.example.shared.SharedModel",
+      "file": "shared/src/main/kotlin/com/example/shared/SharedModel.kt",
+      "description": "Why this proves cross-module reference coverage"
+    },
+    "OVERLOADED_OR_COMMON_FUNCTION": {
+      "_comment": "A common function name that needs containingType or fileHint.",
+      "symbol": "resolve",
+      "containingType": "Resolver",
+      "fqName": "com.example.Resolver.resolve",
+      "file": "engine/src/main/kotlin/com/example/Resolver.kt",
+      "description": "Why this proves disambiguated caller tracing"
+    },
+    "RENAME_TARGET": {
+      "_comment": "A symbol with references/imports in multiple files.",
+      "symbol": "OldRegistry",
+      "fqName": "com.example.OldRegistry",
+      "newName": "NewRegistry",
+      "file": "engine/src/main/kotlin/com/example/OldRegistry.kt",
+      "description": "Why this rename proves safe multi-file mutation"
+    },
+    "LARGE_CLASS": {
+      "_comment": "A large class where scaffold should be cheaper than raw reads.",
+      "symbol": "LargeWorkflow",
+      "fqName": "com.example.LargeWorkflow",
+      "file": "engine/src/main/kotlin/com/example/LargeWorkflow.kt",
+      "description": "Why this proves structural summaries"
+    },
+    "MODULE_LIST": {
+      "_comment": "The modules expected in workspace discovery output.",
+      "modules": ["module-a", "module-b"],
+      "description": "The modules in the target project"
+    }
+  }
+}

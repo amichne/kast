@@ -93,7 +93,7 @@ class KastCli private constructor(
     }
 
     private suspend fun writeInteractiveGraph(
-        graph: io.github.amichne.kast.indexstore.MetricsGraph,
+        graph: io.github.amichne.kast.indexstore.api.graph.MetricsGraph,
         stdout: Appendable,
     ): Int {
         if (stdout !== System.out) {

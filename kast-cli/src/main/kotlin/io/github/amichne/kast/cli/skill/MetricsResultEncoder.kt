@@ -1,13 +1,16 @@
 package io.github.amichne.kast.cli.skill
 
-import io.github.amichne.kast.indexstore.ChangeImpactNode
-import io.github.amichne.kast.indexstore.DeadCodeCandidate
-import io.github.amichne.kast.indexstore.FanInMetric
-import io.github.amichne.kast.indexstore.FanOutMetric
-import io.github.amichne.kast.indexstore.LowUsageSymbol
-import io.github.amichne.kast.indexstore.ModuleCouplingMetric
-import io.github.amichne.kast.indexstore.ModuleCycleMetric
-import io.github.amichne.kast.indexstore.ModuleDepthMetric
+import io.github.amichne.kast.indexstore.api.metrics.impact.ChangeImpactNode
+import io.github.amichne.kast.indexstore.api.metrics.impact.DeadCodeCandidate
+import io.github.amichne.kast.indexstore.api.metrics.module.ApiSurfaceMetric
+import io.github.amichne.kast.indexstore.api.metrics.general.DeclarationInfo
+import io.github.amichne.kast.indexstore.api.metrics.impact.FanInMetric
+import io.github.amichne.kast.indexstore.api.metrics.impact.FanOutMetric
+import io.github.amichne.kast.indexstore.api.metrics.impact.LowUsageSymbol
+import io.github.amichne.kast.indexstore.api.metrics.module.ModuleBoundaryMetric
+import io.github.amichne.kast.indexstore.api.metrics.module.ModuleCouplingMetric
+import io.github.amichne.kast.indexstore.api.metrics.module.ModuleCycleMetric
+import io.github.amichne.kast.indexstore.api.metrics.module.ModuleDepthMetric
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
@@ -15,6 +18,24 @@ import kotlinx.serialization.json.JsonElement
 internal fun encodeFanInMetrics(json: Json, items: List<FanInMetric>): JsonElement =
     json.encodeToJsonElement(
         ListSerializer(FanInMetric.serializer()),
+        items,
+    )
+
+internal fun encodeApiSurfaceMetrics(json: Json, items: List<ApiSurfaceMetric>): JsonElement =
+    json.encodeToJsonElement(
+        ListSerializer(ApiSurfaceMetric.serializer()),
+        items,
+    )
+
+internal fun encodeModuleBoundaryMetrics(json: Json, items: List<ModuleBoundaryMetric>): JsonElement =
+    json.encodeToJsonElement(
+        ListSerializer(ModuleBoundaryMetric.serializer()),
+        items,
+    )
+
+internal fun encodeDeclarations(json: Json, items: List<DeclarationInfo>): JsonElement =
+    json.encodeToJsonElement(
+        ListSerializer(DeclarationInfo.serializer()),
         items,
     )
 

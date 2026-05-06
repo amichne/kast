@@ -12,7 +12,7 @@ internal class InstallSkillService(
 ) : InstallEmbeddedResourceService<InstallSkillOptions, InstallSkillResult>(
     bundle = embeddedSkillResources,
     errorCode = "INSTALL_SKILL_ERROR",
-    installedDescription = "kast skill",
+    installedDescription = "kast packaged skill",
     cwdProvider = cwdProvider,
 ) {
     override fun installRequest(

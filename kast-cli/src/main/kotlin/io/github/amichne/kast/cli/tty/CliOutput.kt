@@ -1,6 +1,6 @@
 package io.github.amichne.kast.cli.tty
 
-import io.github.amichne.kast.indexstore.MetricsGraph
+import io.github.amichne.kast.indexstore.api.graph.MetricsGraph
 import java.nio.file.Path
 
 internal sealed interface CliOutput {

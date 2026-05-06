@@ -1,7 +1,7 @@
 package io.github.amichne.kast.standalone.cache
 
 import io.github.amichne.kast.api.client.KastConfig
-import io.github.amichne.kast.indexstore.kastCacheDirectory
+import io.github.amichne.kast.indexstore.store.cache.kastCacheDirectory
 import io.github.amichne.kast.standalone.normalizeStandalonePath
 import java.nio.file.Path
 import java.util.concurrent.Executors

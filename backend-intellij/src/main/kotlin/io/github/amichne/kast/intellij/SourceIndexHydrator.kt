@@ -1,7 +1,7 @@
 package io.github.amichne.kast.intellij
 
 import io.github.amichne.kast.api.client.RemoteIndexConfig
-import io.github.amichne.kast.indexstore.sourceIndexDatabasePath
+import io.github.amichne.kast.indexstore.store.cache.sourceIndexDatabasePath
 import java.io.FilterInputStream
 import java.io.InputStream
 import java.net.HttpURLConnection

@@ -123,7 +123,7 @@ internal class SkillAdapter(private val skillDir: Path) {
                 "Legacy artifacts still present: ${present.joinToString()}"
             },
             remediation = if (present.isNotEmpty()) {
-                "Remove the legacy artifacts and rely on native `kast_*` tools, keeping `kast skill` only as an explicit fallback path"
+                "Remove the legacy artifacts and rely on native `kast_*` tools, keeping direct `kast <wrapper>` commands only as an explicit fallback path"
             } else {
                 null
             },
@@ -305,7 +305,7 @@ internal class SkillAdapter(private val skillDir: Path) {
         val skillMdText = skillDir.resolve("SKILL.md").takeIf(Path::exists)?.readText().orEmpty()
         val openApiText = wrapperOpenApiPath.takeIf(Path::exists)?.readText().orEmpty()
         return SkillWrapperName.entries.map { wrapper ->
-            val command = "kast skill ${wrapper.cliName}"
+            val command = "kast ${wrapper.cliName}"
             val nativeTool = wrapper.nativeToolName
             val documentedInSkillMd = skillMdText.contains(command) || skillMdText.contains(nativeTool)
             val documentedInOpenApi = openApiText.contains(command)
@@ -435,7 +435,7 @@ internal class SkillAdapter(private val skillDir: Path) {
                     if (expectedRoute != null && expectedRoute != REQUIRED_EXPECTED_ROUTE) {
                         add("entry ${index + 1} expected_route must be `$REQUIRED_EXPECTED_ROUTE`")
                     }
-                    val legacyAllowedOps = allowedOps.filter { it.startsWith("kast skill ") }
+                    val legacyAllowedOps = allowedOps.filter { it.startsWith("kast ") }
                     if (legacyAllowedOps.isNotEmpty()) {
                         add("entry ${index + 1} uses legacy allowed_ops: ${legacyAllowedOps.joinToString()}")
                     }

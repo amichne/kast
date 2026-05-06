@@ -2,8 +2,8 @@ package io.github.amichne.kast.shared.analysis
 
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiFile
-import io.github.amichne.kast.indexstore.FileIndexUpdate
-import io.github.amichne.kast.indexstore.parseSourceFileIndex
+import io.github.amichne.kast.indexstore.api.index.FileIndexUpdate
+import io.github.amichne.kast.indexstore.api.index.parseSourceFileIndex
 
 class PsiSourceIndexScanner(
     private val environment: ReferenceIndexEnvironment,

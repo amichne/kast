@@ -6,8 +6,8 @@ import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.psi.PsiFile
 import io.github.amichne.kast.api.client.KastConfig
-import io.github.amichne.kast.indexstore.ReferenceIndexer
-import io.github.amichne.kast.indexstore.SqliteSourceIndexStore
+import io.github.amichne.kast.indexstore.indexing.ReferenceIndexer
+import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.shared.analysis.PsiReferenceScanner
 import io.github.amichne.kast.shared.analysis.PsiSourceIndexScanner
 import java.nio.file.Files
@@ -52,9 +52,16 @@ internal class IntelliJProjectIndexer(
         referenceBatchSize: Int,
     ) {
         store.removeReferencesOutsideSources(currentFilePaths)
+        val scanner = PsiReferenceScanner(
+            environment = environment,
+            moduleNameForFile = { path ->
+                environment.findPsiFile(path)?.let(::moduleNameForFile)
+            },
+        )
         ReferenceIndexer(store, batchSize = referenceBatchSize).indexReferences(
             filePaths = currentFilePaths,
-            referenceScanner = PsiReferenceScanner(environment)::scanFileReferences,
+            referenceScanner = scanner::scanFileReferences,
+            declarationScanner = scanner::scanFileDeclarations,
             isCancelled = environment::isCancelled,
         )
     }

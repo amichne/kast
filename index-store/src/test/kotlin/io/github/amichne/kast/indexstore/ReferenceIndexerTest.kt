@@ -1,5 +1,13 @@
 package io.github.amichne.kast.indexstore
 
+import io.github.amichne.kast.indexstore.api.metrics.general.DeclarationInfo
+import io.github.amichne.kast.indexstore.api.reference.DeclarationKind
+import io.github.amichne.kast.indexstore.api.reference.DeclarationRow
+import io.github.amichne.kast.indexstore.api.reference.DeclarationVisibility
+import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
+import io.github.amichne.kast.indexstore.indexing.ReferenceIndexer
+import io.github.amichne.kast.indexstore.metrics.MetricsEngine
+import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -32,6 +40,47 @@ class ReferenceIndexerTest {
             assertEquals(1, refs.size)
             assertEquals(filePath, refs.single().sourcePath)
             assertEquals(20, refs.single().sourceOffset)
+        }
+    }
+
+    @Test
+    fun `populates declarations from declaration scanner output`() {
+        val filePath = "/src/Greeter.kt"
+        val root = workspaceRoot.toAbsolutePath().normalize()
+        storeWithManifest(filePath).use { store ->
+            ReferenceIndexer(store).indexReferences(
+                filePaths = listOf(filePath),
+                referenceScanner = { emptyList() },
+                declarationScanner = { path ->
+                    listOf(
+                        DeclarationRow(
+                            fqName = "sample.Greeter",
+                            kind = DeclarationKind.CLASS,
+                            visibility = DeclarationVisibility.PUBLIC,
+                            filePath = path,
+                            declarationOffset = 10,
+                            modulePath = ":sample",
+                            sourceSet = "main",
+                        ),
+                    )
+                },
+            )
+        }
+
+        MetricsEngine(root).use { metrics ->
+            assertEquals(
+                listOf(
+                    DeclarationInfo(
+                        fqName = "sample.Greeter",
+                        kind = "CLASS",
+                        visibility = "PUBLIC",
+                        path = filePath,
+                        modulePath = ":sample",
+                        sourceSet = "main",
+                    ),
+                ),
+                metrics.declarations(),
+            )
         }
     }
 

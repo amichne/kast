@@ -87,7 +87,7 @@ class SkillAdapterTest {
             """
             {"skill_name":"kast","version":1,"cases":[
               {"id":"behavior-1","title":"Behavior case 1","prompt":"Behavior prompt 1","files":[],"expected_output":"Expected behavior 1","expectations":["Uses kast semantically"],"labels":["behavior","trigger_miss"],"stage":"holdout","suite":"behavior","failure_mode":"trigger_miss","source":{"kind":"test-fixture"},"promotion":{"required_pass_rate":1.0,"required_benchmarks":2}},
-              {"id":"bad-routing","title":"Bad routing","prompt":"Trace this Kotlin flow","files":[],"expected_output":"Routes through native kast tools","expectations":["Uses kast semantically"],"labels":["routing","trigger_miss"],"stage":"holdout","suite":"routing","expected_skill":"ksat","expected_route":"kast","allowed_ops":["kast skill resolve","grep"],"forbidden_ops":["grep"],"measurement_dimensions":["bogus_dimension"],"failure_mode":"trigger_miss","source":{"kind":"test-fixture"},"promotion":{"required_pass_rate":1.0,"required_benchmarks":2}}
+              {"id":"bad-routing","title":"Bad routing","prompt":"Trace this Kotlin flow","files":[],"expected_output":"Routes through native kast tools","expectations":["Uses kast semantically"],"labels":["routing","trigger_miss"],"stage":"holdout","suite":"routing","expected_skill":"ksat","expected_route":"kast","allowed_ops":["kast resolve","grep"],"forbidden_ops":["grep"],"measurement_dimensions":["bogus_dimension"],"failure_mode":"trigger_miss","source":{"kind":"test-fixture"},"promotion":{"required_pass_rate":1.0,"required_benchmarks":2}}
             ]}
             """.trimIndent(),
         )
@@ -243,15 +243,15 @@ class SkillAdapterTest {
         refs.resolve("wrapper-openapi.yaml").writeText(
             """
             openapi: '3.0.0'
-            x-command: kast skill resolve
-            x-command: kast skill references
-            x-command: kast skill callers
-            x-command: kast skill diagnostics
-            x-command: kast skill rename
-            x-command: kast skill scaffold
-            x-command: kast skill write-and-validate
-            x-command: kast skill workspace-files
-            x-command: kast skill metrics
+            x-command: kast resolve
+            x-command: kast references
+            x-command: kast callers
+            x-command: kast diagnostics
+            x-command: kast rename
+            x-command: kast scaffold
+            x-command: kast write-and-validate
+            x-command: kast workspace-files
+            x-command: kast metrics
             """.trimIndent(),
         )
 

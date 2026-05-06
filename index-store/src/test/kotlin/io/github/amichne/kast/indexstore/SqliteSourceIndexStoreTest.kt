@@ -1,5 +1,9 @@
 package io.github.amichne.kast.indexstore
 
+import io.github.amichne.kast.indexstore.api.index.FileIndexUpdate
+import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
+import io.github.amichne.kast.indexstore.store.cache.kastCacheDirectory
+import io.github.amichne.kast.indexstore.store.cache.sourceIndexDatabasePath
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -60,7 +64,7 @@ class SqliteSourceIndexStoreTest {
             conn.prepareStatement("SELECT version FROM schema_version LIMIT 1").use { stmt ->
                 val rs = stmt.executeQuery()
                 assertTrue(rs.next())
-                assertEquals(4, rs.getInt(1))
+                assertEquals(5, rs.getInt(1))
             }
         }
     }
@@ -78,7 +82,7 @@ class SqliteSourceIndexStoreTest {
     }
 
     @Test
-    fun `schema migration adds missing head commit column`() {
+    fun `version 4 schema rebuilds while preserving workspace discovery`() {
         val normalized = workspaceRoot.toAbsolutePath().normalize()
         val cacheDir = kastCacheDirectory(normalized)
         Files.createDirectories(cacheDir)
@@ -123,7 +127,7 @@ class SqliteSourceIndexStoreTest {
         }
 
         SqliteSourceIndexStore(normalized).use { store ->
-            assertTrue(store.ensureSchema())
+            assertFalse(store.ensureSchema())
             store.writeHeadCommit("def456")
 
             assertEquals("def456", store.readHeadCommit())

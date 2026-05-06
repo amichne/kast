@@ -14,17 +14,25 @@ val packagedCopilotHooksSourceDir = rootProject.layout.projectDirectory.dir(".gi
 val packagedCopilotExtensionsSourceDir = rootProject.layout.projectDirectory.dir(".github/extensions")
 val embeddedSkillFiles = listOf(
     "SKILL.md",
-    "evals/catalog.json",
-    "evals/pain_points.jsonl",
-    "evals/files/.gitkeep",
-    "history/progression.json",
+    "fixtures/maintenance/evals/evals.json",
+    "fixtures/maintenance/evals/routing.json",
+    "fixtures/maintenance/references/routing-improvement.md",
+    "fixtures/maintenance/references/wrapper-openapi.yaml",
+    "fixtures/maintenance/scripts/build-routing-corpus.py",
     "history/eval-baseline.json",
-    "references/routing-improvement.md",
-    "references/wrapper-openapi.yaml",
-    "scripts/build-routing-corpus.py",
     "references/quickstart.md",
+    "references/wrapper-openapi.yaml",
     "scripts/kast-session-start.sh",
     "scripts/resolve-kast.sh",
+    "value-proof/README.md",
+    "value-proof/bindings.schema.json",
+    "value-proof/bindings/konditional.json",
+    "value-proof/bindings/template.json",
+    "value-proof/catalog.json",
+    "value-proof/history/progression.json",
+    "value-proof/scripts/generate_executive_summary.py",
+    "value-proof/scripts/render_prompts.py",
+    "value-proof/scripts/run_value_proof.py",
 )
 val embeddedCopilotAgentFiles = listOf(
     "kast-orchestrator.md",
@@ -40,7 +48,7 @@ val embeddedCopilotHookFiles = listOf(
     "resolve-kast-cli-path.sh",
 )
 val embeddedCopilotExtensionFiles = listOf(
-    "_shared/shadowed-skill-state.mjs",
+    "_shared/lib.mjs",
     "kast/extension.mjs",
     "kast/scripts/resolve-kast.sh",
     "kotlin-gradle-loop/extension.mjs",

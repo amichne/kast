@@ -34,7 +34,7 @@ internal class EmbeddedCopilotExtensionResources(
             "hooks/skill-shadowing.json",
             "hooks/session-end.sh",
             "hooks/resolve-kast-cli-path.sh",
-            "extensions/_shared/shadowed-skill-state.mjs",
+            "extensions/_shared/lib.mjs",
             "extensions/kast/extension.mjs",
             "extensions/kast/scripts/resolve-kast.sh",
             "extensions/kotlin-gradle-loop/extension.mjs",
