@@ -37,6 +37,7 @@ import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
 import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 import io.github.amichne.kast.api.client.KastConfig
+import io.github.amichne.kast.api.client.defaultStandaloneRuntimeLibsDirectory
 import io.github.amichne.kast.api.client.kastConfigHome
 import io.github.amichne.kast.cli.options.DaemonStartOptions
 import io.github.amichne.kast.cli.results.DaemonStopResult
@@ -68,6 +69,7 @@ internal class CliService(
     private val installSkillService: InstallSkillService = InstallSkillService(),
     private val installCopilotExtensionService: InstallCopilotExtensionService = InstallCopilotExtensionService(),
     private val configLoader: (Path) -> KastConfig = KastConfig::load,
+    private val envLookup: (String) -> String? = System::getenv,
 ) {
     private val rpcClient = KastRpcClient(json)
     private val runtimeManager = WorkspaceRuntimeManager(rpcClient)
@@ -288,6 +290,8 @@ internal class CliService(
             ?: config.backends.standalone.runtimeLibsDir.value.orNull
                 ?.takeIf(String::isNotBlank)
                 ?.let { Path.of(it).toAbsolutePath().normalize() }
+            ?: defaultStandaloneRuntimeLibsDirectory(envLookup)
+                ?.takeIf { Files.isRegularFile(it.resolve("classpath.txt")) }
             ?: throw CliFailure(
                 code = "DAEMON_START_ERROR",
                 message = "Cannot locate backend runtime-libs. " +
@@ -339,7 +343,7 @@ internal class CliService(
     }
 
     fun configInit(): CliOutput {
-        val configFile = kastConfigHome().resolve("config.toml")
+        val configFile = kastConfigHome(envLookup).resolve("config.toml")
         Files.createDirectories(configFile.parent)
         if (!Files.exists(configFile)) {
             Files.writeString(configFile, defaultConfigTemplate())

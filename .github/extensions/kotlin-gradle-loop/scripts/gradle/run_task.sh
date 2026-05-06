@@ -11,6 +11,7 @@ fi
 PROJECT_ROOT="$(cd "$1" && pwd)"
 TASK_NAME="$2"
 shift 2
+EXTRA_ARGS=("$@")
 
 LOGS_DIR="$PROJECT_ROOT/.agent-workflow/logs"
 mkdir -p "$LOGS_DIR"
@@ -26,7 +27,7 @@ GRADLE_CMD="./gradlew"
 [ ! -f "./gradlew" ] && GRADLE_CMD="gradle"
 
 EXIT_CODE=0
-$GRADLE_CMD "$TASK_NAME" "$@" --console=plain > "$LOG_FILE" 2>&1 || EXIT_CODE=$?
+$GRADLE_CMD "$TASK_NAME" "${EXTRA_ARGS[@]}" --console=plain > "$LOG_FILE" 2>&1 || EXIT_CODE=$?
 
 END_MS=$(python3 -c "import time; print(int(time.time()*1000))")
 DURATION_MS=$((END_MS - START_MS))
