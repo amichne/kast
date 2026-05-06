@@ -4,11 +4,32 @@ import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiRecursiveElementWalkingVisitor
+import io.github.amichne.kast.api.contract.SymbolVisibility
+import io.github.amichne.kast.indexstore.DeclarationKind
+import io.github.amichne.kast.indexstore.DeclarationRow
+import io.github.amichne.kast.indexstore.DeclarationVisibility
+import io.github.amichne.kast.indexstore.EdgeKind
+import io.github.amichne.kast.indexstore.splitModuleName
 import io.github.amichne.kast.indexstore.SymbolReferenceRow
+import org.jetbrains.kotlin.psi.KtAnnotationEntry
+import org.jetbrains.kotlin.psi.KtCallExpression
+import org.jetbrains.kotlin.psi.KtClass
+import org.jetbrains.kotlin.psi.KtClassOrObject
+import org.jetbrains.kotlin.psi.KtConstructor
+import org.jetbrains.kotlin.psi.KtEnumEntry
+import org.jetbrains.kotlin.psi.KtImportDirective
+import org.jetbrains.kotlin.psi.KtNamedDeclaration
+import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.kotlin.psi.KtObjectDeclaration
+import org.jetbrains.kotlin.psi.KtProperty
+import org.jetbrains.kotlin.psi.KtSuperTypeListEntry
+import org.jetbrains.kotlin.psi.KtTypeAlias
+import org.jetbrains.kotlin.psi.KtTypeReference
 import java.util.concurrent.CancellationException
 
 class PsiReferenceScanner(
     private val environment: ReferenceIndexEnvironment,
+    private val moduleNameForFile: (String) -> String? = { null },
 ) {
     fun scanFileReferences(filePath: String): List<SymbolReferenceRow> {
         val rows = mutableListOf<SymbolReferenceRow>()
@@ -38,9 +59,11 @@ class PsiReferenceScanner(
                                 rows += SymbolReferenceRow(
                                     sourcePath = sourceFilePath,
                                     sourceOffset = sourceOffset,
+                                    sourceFqName = reference.element.enclosingDeclarationFqName(),
                                     targetFqName = fqName.value,
                                     targetPath = targetPath,
                                     targetOffset = targetOffset,
+                                    edgeKind = reference.element.edgeKind(),
                                 )
                             } catch (error: ProcessCanceledException) {
                                 throw error
@@ -56,5 +79,88 @@ class PsiReferenceScanner(
             )
         }
         return rows
+    }
+
+    fun scanFileDeclarations(filePath: String): List<DeclarationRow> {
+        val rows = mutableListOf<DeclarationRow>()
+        environment.withExclusiveAccess {
+            val psiFile = environment.findPsiFile(filePath) ?: return@withExclusiveAccess
+            val sourceFilePath = runCatching { psiFile.resolvedFilePath().value }.getOrElse { filePath }
+            val (modulePath, sourceSet) = splitModuleName(moduleNameForFile(sourceFilePath))
+            psiFile.accept(
+                object : PsiRecursiveElementWalkingVisitor() {
+                    override fun visitElement(element: PsiElement) {
+                        if (environment.isCancelled()) {
+                            stopWalking()
+                            return
+                        }
+                        ProgressManager.checkCanceled()
+                        element.declarationRow(sourceFilePath, modulePath, sourceSet)?.let(rows::add)
+                        super.visitElement(element)
+                    }
+                },
+            )
+        }
+        return rows
+    }
+
+    private fun PsiElement.declarationRow(
+        sourceFilePath: String,
+        modulePath: String?,
+        sourceSet: String?,
+    ): DeclarationRow? {
+        val declaration = this as? KtNamedDeclaration ?: return null
+        val fqName = declaration.targetFqNameAndPackage()?.first?.value ?: return null
+        return DeclarationRow(
+            fqName = fqName,
+            kind = declaration.declarationKind() ?: return null,
+            visibility = declaration.visibility().toDeclarationVisibility(),
+            filePath = sourceFilePath,
+            declarationOffset = declaration.nameIdentifier?.textRange?.startOffset ?: declaration.textRange?.startOffset,
+            modulePath = modulePath,
+            sourceSet = sourceSet,
+        )
+    }
+
+    private fun KtNamedDeclaration.declarationKind(): DeclarationKind? = when (this) {
+        is KtEnumEntry -> DeclarationKind.ENUM_ENTRY
+        is KtClass -> when {
+            isEnum() -> DeclarationKind.ENUM_CLASS
+            isInterface() -> DeclarationKind.INTERFACE
+            else -> DeclarationKind.CLASS
+        }
+        is KtObjectDeclaration -> DeclarationKind.OBJECT
+        is KtNamedFunction -> DeclarationKind.FUNCTION
+        is KtProperty -> DeclarationKind.PROPERTY
+        is KtTypeAlias -> DeclarationKind.TYPEALIAS
+        is KtConstructor<*> -> DeclarationKind.CONSTRUCTOR
+        is KtClassOrObject -> DeclarationKind.CLASS
+        else -> null
+    }
+
+    private fun SymbolVisibility.toDeclarationVisibility(): DeclarationVisibility = when (this) {
+        SymbolVisibility.PUBLIC -> DeclarationVisibility.PUBLIC
+        SymbolVisibility.INTERNAL -> DeclarationVisibility.INTERNAL
+        SymbolVisibility.PROTECTED -> DeclarationVisibility.PROTECTED
+        SymbolVisibility.PRIVATE -> DeclarationVisibility.PRIVATE
+        SymbolVisibility.LOCAL -> DeclarationVisibility.LOCAL
+        SymbolVisibility.UNKNOWN -> DeclarationVisibility.LOCAL
+    }
+
+    private fun PsiElement.enclosingDeclarationFqName(): String? =
+        generateSequence(this as PsiElement?) { it.parent }
+            .filterIsInstance<KtNamedDeclaration>()
+            .firstNotNullOfOrNull { declaration -> declaration.targetFqNameAndPackage()?.first?.value }
+
+    private fun PsiElement.edgeKind(): EdgeKind {
+        val parents = generateSequence(this as PsiElement?) { it.parent }.take(8).toList()
+        return when {
+            parents.any { it is KtImportDirective } -> EdgeKind.IMPORT
+            parents.any { it is KtAnnotationEntry } -> EdgeKind.ANNOTATION
+            parents.any { it is KtSuperTypeListEntry } -> EdgeKind.INHERITANCE
+            parents.any { it is KtTypeReference } -> EdgeKind.TYPE_REF
+            parents.any { it is KtCallExpression } -> EdgeKind.CALL
+            else -> EdgeKind.UNKNOWN
+        }
     }
 }

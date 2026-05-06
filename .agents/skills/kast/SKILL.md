@@ -14,14 +14,14 @@ description: >
 Kast turns Kotlin code into structured, semantic answers at a fraction of the
 token cost of reading source. The Copilot CLI extension at
 `.github/extensions/kast/extension.mjs` registers native tools that map 1:1 to
-the underlying `kast skill` commands, resolves the binary once at session
-start, and warns when generic `view`/`grep`/`edit`/`create` reaches for
+the hidden `kast skill` wrapper commands, resolves a compatible binary once at
+session start, and warns when generic `view`/`grep`/`edit`/`create` reaches for
 `.kt`/`.kts` source.
 
 ## Native tools (preferred path)
 
-Each tool runs the corresponding `kast skill` command, returns its JSON, and
-validates arguments against a schema — no shell escaping, no JSON-in-bash.
+Each tool runs the corresponding hidden `kast skill` command, returns its JSON,
+and validates arguments against a schema — no shell escaping, no JSON-in-bash.
 
 | Need                                          | Tool                       |
 | --------------------------------------------- | -------------------------- |
@@ -38,6 +38,13 @@ validates arguments against a schema — no shell escaping, no JSON-in-bash.
 The extension caches the resolved binary path the first time a tool runs and
 reuses it for the rest of the session. There is no bootstrap step to perform
 manually.
+
+If a tool or shell fallback reports `Unknown command topic: skill` or
+`Unknown skill wrapper`, the resolved CLI is stale for this skill bundle. Build
+or install the repo-local CLI, then retry with a binary whose `kast help skill`
+does not report an unknown topic. The extension intentionally rejects stale
+global binaries on `PATH` and prefers repo-local artifacts that support the
+hidden skill wrappers.
 
 ## When to reach for which tool
 

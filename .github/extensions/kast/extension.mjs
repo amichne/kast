@@ -3,7 +3,7 @@
 // Goals:
 //   1. Resolve the kast binary once at
 //      session start, cache, and use that path for every kast_* tool call.
-//   2. Expose `kast skill` commands as first-class native tools so the agent
+//   2. Expose hidden `kast skill` commands as first-class native tools so the agent
 //      sees them in its tool list (discoverability) and the CLI runtime
 //      validates arguments against the schema (no JSON-in-bash brittleness).
 //   3. Soft-warn when the agent reaches for generic view/grep/edit/create on
@@ -72,34 +72,48 @@ function execBash(command, env = process.env) {
 async function resolveKastBinary() {
   if (kastBinary) return kastBinary;
 
-  // Primary: delegate to the resolve script (handles PATH + local build artifacts).
+  const candidates = [];
+  const addCandidate = (path) => {
+    if (path && existsSync(path) && !candidates.includes(path)) {
+      candidates.push(path);
+    }
+  };
+
+  // Prefer repo-local artifacts over PATH: a globally installed CLI can be older than
+  // this extension and may not support the hidden `kast skill` wrapper surface.
+  addCandidate(join(REPO_ROOT, "kast-cli", "build", "scripts", "kast-cli"));
+  addCandidate(join(REPO_ROOT, "dist", "cli", "kast-cli"));
+
+  const configDir = process.env.KAST_CONFIG_HOME ?? join(homedir(), ".config", "kast");
+  addCandidate(readTomlKey(join(configDir, "config.toml"), "cli", "binaryPath"));
+  addCandidate(join(homedir(), ".local", "bin", "kast"));
+
+  // Keep the shell resolver as a final compatibility source; validate its result
+  // below instead of trusting that PATH points at a matching CLI.
   if (existsSync(RESOLVE_SCRIPT)) {
     const {ok, stdout} = await execBash(`bash ${JSON.stringify(RESOLVE_SCRIPT)}`);
-    const path = stdout.trim();
-    if (ok && path) {
-      kastBinary = path;
-      return path;
+    if (ok) addCandidate(stdout.trim());
+  }
+
+  const rejected = [];
+  for (const candidate of candidates) {
+    if (await supportsSkillWrappers(candidate)) {
+      kastBinary = candidate;
+      return candidate;
     }
+    rejected.push(candidate);
   }
 
-  // Recovery: read binaryPath from the kast config.toml (written by the installer).
-  // Respects KAST_CONFIG_HOME; falls back to the XDG default.
-  const configDir = process.env.KAST_CONFIG_HOME ?? join(homedir(), ".config", "kast");
-  const configBin = readTomlKey(join(configDir, "config.toml"), "cli", "binaryPath");
-  if (configBin && existsSync(configBin)) {
-    kastBinary = configBin;
-    return configBin;
-  }
-
-  // Recovery: common manual install location not always on PATH in non-interactive shells.
-  const localBin = join(homedir(), ".local", "bin", "kast");
-  if (existsSync(localBin)) {
-    kastBinary = localBin;
-    return localBin;
-  }
-
-  resolveError = `resolve-kast.sh missing or failed; config.toml binaryPath absent; ${localBin} not found`;
+  resolveError = rejected.length
+    ? `no resolved Kast CLI supports hidden skill wrappers; rejected: ${rejected.join(", ")}`
+    : "no Kast CLI candidate found; build the repo-local CLI or install a matching Kast release";
   return null;
+}
+
+async function supportsSkillWrappers(path) {
+  const {ok, stdout} = await execBash(`${JSON.stringify(path)} help skill`);
+  if (!ok) return false;
+  return !stdout.includes("Unknown command topic: skill");
 }
 
 async function callKastSkill(command, args) {

@@ -6,7 +6,7 @@ import java.nio.file.Path
 import java.sql.Connection
 import java.sql.DriverManager
 
-internal const val SOURCE_INDEX_SCHEMA_VERSION = 4
+internal const val SOURCE_INDEX_SCHEMA_VERSION = 5
 
 /**
  * SQLite-backed store for the source identifier index, file manifest,
@@ -146,6 +146,7 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
         tableExists(conn, "file_wildcard_imports") &&
         tableExists(conn, "file_manifest") &&
         tableExists(conn, "symbol_references") &&
+        tableExists(conn, "declarations") &&
         tableExists(conn, "pending_updates") &&
         columnExists(conn, "path_prefixes", "prefix_id") &&
         columnExists(conn, "path_prefixes", "dir_path") &&
@@ -169,9 +170,11 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
         !columnExists(conn, "file_manifest", "path") &&
         columnExists(conn, "symbol_references", "src_prefix_id") &&
         columnExists(conn, "symbol_references", "src_filename") &&
+        columnExists(conn, "symbol_references", "source_fq_id") &&
         columnExists(conn, "symbol_references", "target_fq_id") &&
         columnExists(conn, "symbol_references", "tgt_prefix_id") &&
         columnExists(conn, "symbol_references", "tgt_filename") &&
+        columnExists(conn, "symbol_references", "edge_kind") &&
         !columnExists(conn, "symbol_references", "target_fq_name") &&
         !columnExists(conn, "symbol_references", "source_path") &&
         !columnExists(conn, "symbol_references", "target_path")
@@ -213,6 +216,7 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
     private fun dropAllTables(conn: Connection) {
         conn.createStatement().use { stmt ->
             stmt.execute("DROP TABLE IF EXISTS pending_updates")
+            stmt.execute("DROP TABLE IF EXISTS declarations")
             stmt.execute("DROP TABLE IF EXISTS symbol_references")
             stmt.execute("DROP TABLE IF EXISTS file_wildcard_imports")
             stmt.execute("DROP TABLE IF EXISTS file_imports")
@@ -230,6 +234,7 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
     private fun rebuildDerivedIndexTables(conn: Connection) {
         conn.createStatement().use { stmt ->
             stmt.execute("DROP TABLE IF EXISTS pending_updates")
+            stmt.execute("DROP TABLE IF EXISTS declarations")
             stmt.execute("DROP TABLE IF EXISTS symbol_references")
             stmt.execute("DROP TABLE IF EXISTS file_wildcard_imports")
             stmt.execute("DROP TABLE IF EXISTS file_imports")
@@ -344,11 +349,27 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
                 src_prefix_id INTEGER NOT NULL,
                 src_filename TEXT NOT NULL,
                 source_offset INTEGER NOT NULL,
+                source_fq_id INTEGER,
                 target_fq_id INTEGER NOT NULL,
                 tgt_prefix_id INTEGER,
                 tgt_filename TEXT,
                 target_offset INTEGER,
+                edge_kind TEXT NOT NULL DEFAULT 'UNKNOWN' CHECK(edge_kind IN ('CALL','TYPE_REF','INHERITANCE','OVERRIDE','IMPORT','ANNOTATION','UNKNOWN')),
                 PRIMARY KEY (src_prefix_id, src_filename, source_offset, target_fq_id)
+            )""",
+        )
+
+        stmt.execute(
+            """CREATE TABLE IF NOT EXISTS declarations (
+                fq_id INTEGER NOT NULL,
+                kind TEXT NOT NULL CHECK(kind IN ('CLASS','INTERFACE','OBJECT','FUNCTION','PROPERTY','TYPEALIAS','ENUM_CLASS','ENUM_ENTRY','CONSTRUCTOR')),
+                visibility TEXT NOT NULL CHECK(visibility IN ('PUBLIC','INTERNAL','PROTECTED','PRIVATE','LOCAL')),
+                prefix_id INTEGER NOT NULL,
+                filename TEXT NOT NULL,
+                declaration_offset INTEGER,
+                module_path TEXT,
+                source_set TEXT,
+                PRIMARY KEY (fq_id, prefix_id, filename)
             )""",
         )
 
@@ -380,7 +401,13 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_file_wildcard_imports_fq ON file_wildcard_imports(fq_id)")
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_symref_target ON symbol_references(target_fq_id)")
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_symref_source ON symbol_references(src_prefix_id, src_filename)")
+        stmt.execute("CREATE INDEX IF NOT EXISTS idx_symref_source_fq ON symbol_references(source_fq_id)")
+        stmt.execute("CREATE INDEX IF NOT EXISTS idx_symref_edge_kind ON symbol_references(edge_kind)")
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_symref_target_file ON symbol_references(tgt_prefix_id, tgt_filename)")
+        stmt.execute("CREATE INDEX IF NOT EXISTS idx_declarations_module ON declarations(module_path)")
+        stmt.execute("CREATE INDEX IF NOT EXISTS idx_declarations_visibility ON declarations(visibility)")
+        stmt.execute("CREATE INDEX IF NOT EXISTS idx_declarations_kind ON declarations(kind)")
+        stmt.execute("CREATE INDEX IF NOT EXISTS idx_declarations_file ON declarations(prefix_id, filename)")
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_pending_updates_unapplied ON pending_updates(applied, seq)")
     }
 
@@ -593,6 +620,8 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
         targetFqName: String,
         targetPath: String?,
         targetOffset: Int?,
+        sourceFqName: String? = null,
+        edgeKind: EdgeKind = EdgeKind.UNKNOWN,
     ) {
         if (!SourceIndexFilePolicy.isEligible(sourcePath)) {
             removeFile(sourcePath)
@@ -604,14 +633,16 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
             conn.autoCommit = false
             try {
                 internPathsInTransaction(conn, listOfNotNull(sourcePath, eligibleTargetPath))
-                internFqNamesInTransaction(conn, setOf(targetFqName))
+                internFqNamesInTransaction(conn, listOfNotNull(targetFqName, sourceFqName).toSet())
                 upsertSymbolReferenceInTransaction(
                     conn = conn,
                     sourcePath = sourcePath,
                     sourceOffset = sourceOffset,
+                    sourceFqName = sourceFqName,
                     targetFqName = targetFqName,
                     targetPath = eligibleTargetPath,
                     targetOffset = eligibleTargetPath?.let { targetOffset },
+                    edgeKind = edgeKind,
                 )
                 conn.commit()
             } catch (e: Exception) {
@@ -627,30 +658,35 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
         conn: Connection,
         sourcePath: String,
         sourceOffset: Int,
+        sourceFqName: String?,
         targetFqName: String,
         targetPath: String?,
         targetOffset: Int?,
+        edgeKind: EdgeKind,
     ) {
         val (sourcePrefixId, sourceFilename) = pathCodec.encode(sourcePath)
         val targetPathParts = targetPath?.let { pathCodec.encode(it) }
+        val sourceFqId = sourceFqName?.let { fqCodec.getOrCreate(conn, it) }
         val targetFqId = fqCodec.getOrCreate(conn, targetFqName)
         conn.prepareStatement(
             """INSERT OR REPLACE INTO symbol_references
-               (src_prefix_id, src_filename, source_offset, target_fq_id, tgt_prefix_id, tgt_filename, target_offset)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+               (src_prefix_id, src_filename, source_offset, source_fq_id, target_fq_id, tgt_prefix_id, tgt_filename, target_offset, edge_kind)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         ).use { stmt ->
             stmt.setInt(1, sourcePrefixId)
             stmt.setString(2, sourceFilename)
             stmt.setInt(3, sourceOffset)
-            stmt.setInt(4, targetFqId)
+            if (sourceFqId != null) stmt.setInt(4, sourceFqId) else stmt.setNull(4, java.sql.Types.INTEGER)
+            stmt.setInt(5, targetFqId)
             if (targetPathParts != null) {
-                stmt.setInt(5, targetPathParts.first)
-                stmt.setString(6, targetPathParts.second)
+                stmt.setInt(6, targetPathParts.first)
+                stmt.setString(7, targetPathParts.second)
             } else {
-                stmt.setNull(5, java.sql.Types.INTEGER)
-                stmt.setNull(6, java.sql.Types.VARCHAR)
+                stmt.setNull(6, java.sql.Types.INTEGER)
+                stmt.setNull(7, java.sql.Types.VARCHAR)
             }
-            if (targetOffset != null) stmt.setInt(7, targetOffset) else stmt.setNull(7, java.sql.Types.INTEGER)
+            if (targetOffset != null) stmt.setInt(8, targetOffset) else stmt.setNull(8, java.sql.Types.INTEGER)
+            stmt.setString(9, edgeKind.name)
             stmt.executeUpdate()
         }
     }
@@ -661,8 +697,8 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
             loadInterningTables(conn)
             val targetFqId = fqCodec.idFor(targetFqName) ?: return emptyList()
             return conn.prepareStatement(
-                """SELECT src_prefix_id, src_filename, source_offset, target_fq_id,
-                          tgt_prefix_id, tgt_filename, target_offset
+                """SELECT src_prefix_id, src_filename, source_offset, source_fq_id, target_fq_id,
+                          tgt_prefix_id, tgt_filename, target_offset, edge_kind
                    FROM symbol_references
                    WHERE target_fq_id = ?""",
             ).use { stmt ->
@@ -670,14 +706,17 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
                 val rs = stmt.executeQuery()
                 buildList {
                     while (rs.next()) {
-                        val rowTargetFqId = rs.getInt(4)
+                        val rowSourceFqId = rs.getNullableInt(4)
+                        val rowTargetFqId = rs.getInt(5)
                         add(
                             SymbolReferenceRow(
                                 sourcePath = pathCodec.decode(rs.getInt(1), rs.getString(2)),
                                 sourceOffset = rs.getInt(3),
+                                sourceFqName = rowSourceFqId?.let(fqCodec::resolve),
                                 targetFqName = fqCodec.resolve(rowTargetFqId),
-                                targetPath = decodeNullablePath(rs, prefixColumn = 5, filenameColumn = 6),
-                                targetOffset = rs.getNullableInt(7),
+                                targetPath = decodeNullablePath(rs, prefixColumn = 6, filenameColumn = 7),
+                                targetOffset = rs.getNullableInt(8),
+                                edgeKind = EdgeKind.valueOf(rs.getString(9)),
                             ),
                         )
                     }
@@ -692,8 +731,8 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
             loadInterningTables(conn)
             val (prefixId, filename) = pathCodec.encodeIfInterned(sourcePath) ?: return emptyList()
             return conn.prepareStatement(
-                """SELECT src_prefix_id, src_filename, source_offset, target_fq_id,
-                          tgt_prefix_id, tgt_filename, target_offset
+                """SELECT src_prefix_id, src_filename, source_offset, source_fq_id, target_fq_id,
+                          tgt_prefix_id, tgt_filename, target_offset, edge_kind
                    FROM symbol_references
                    WHERE src_prefix_id = ? AND src_filename = ?""",
             ).use { stmt ->
@@ -702,14 +741,17 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
                 val rs = stmt.executeQuery()
                 buildList {
                     while (rs.next()) {
-                        val rowTargetFqId = rs.getInt(4)
+                        val rowSourceFqId = rs.getNullableInt(4)
+                        val rowTargetFqId = rs.getInt(5)
                         add(
                             SymbolReferenceRow(
                                 sourcePath = pathCodec.decode(rs.getInt(1), rs.getString(2)),
                                 sourceOffset = rs.getInt(3),
+                                sourceFqName = rowSourceFqId?.let(fqCodec::resolve),
                                 targetFqName = fqCodec.resolve(rowTargetFqId),
-                                targetPath = decodeNullablePath(rs, prefixColumn = 5, filenameColumn = 6),
-                                targetOffset = rs.getNullableInt(7),
+                                targetPath = decodeNullablePath(rs, prefixColumn = 6, filenameColumn = 7),
+                                targetOffset = rs.getNullableInt(8),
+                                edgeKind = EdgeKind.valueOf(rs.getString(9)),
                             ),
                         )
                     }
@@ -816,9 +858,12 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
                     }
                 }
                 internPathsInTransaction(conn, pathsToIntern)
-                internFqNamesInTransaction(conn, eligibleReferencesBySource.flatMapTo(mutableSetOf()) { (_, refs) ->
-                    refs.map { it.targetFqName }
-                })
+                internFqNamesInTransaction(
+                    conn,
+                    eligibleReferencesBySource.flatMapTo(mutableSetOf()) { (_, refs) ->
+                        refs.flatMap { ref -> listOfNotNull(ref.targetFqName, ref.sourceFqName) }
+                    },
+                )
                 for ((filePath, refs) in eligibleReferencesBySource) {
                     clearReferencesFromFileInTransaction(conn, filePath)
                     refs.forEach { ref ->
@@ -826,11 +871,54 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
                             conn = conn,
                             sourcePath = ref.sourcePath,
                             sourceOffset = ref.sourceOffset,
+                            sourceFqName = ref.sourceFqName,
                             targetFqName = ref.targetFqName,
                             targetPath = ref.targetPath,
                             targetOffset = ref.targetOffset,
+                            edgeKind = ref.edgeKind,
                         )
                     }
+                }
+                removeIneligibleSourceIndexRows(conn)
+                conn.commit()
+            } catch (e: Exception) {
+                rollbackAndReloadPrefixes(conn)
+                throw e
+            } finally {
+                conn.autoCommit = true
+            }
+        }
+    }
+
+    fun replaceDeclarationsFromFile(
+        filePath: String,
+        declarations: List<DeclarationRow>,
+    ) {
+        replaceDeclarationsFromFiles(listOf(filePath to declarations))
+    }
+
+    fun replaceDeclarationsFromFiles(declarationsBySource: List<Pair<String, List<DeclarationRow>>>) {
+        val eligibleDeclarationsBySource = declarationsBySource
+            .filter { (filePath, _) -> SourceIndexFilePolicy.isEligible(filePath) }
+            .map { (filePath, declarations) ->
+                filePath to declarations.filter { declaration ->
+                    declaration.filePath == filePath && SourceIndexFilePolicy.isEligible(declaration.filePath)
+                }
+            }
+        synchronized(writeLock) {
+            val conn = connection()
+            conn.autoCommit = false
+            try {
+                internPathsInTransaction(conn, eligibleDeclarationsBySource.map { it.first })
+                internFqNamesInTransaction(
+                    conn,
+                    eligibleDeclarationsBySource.flatMapTo(mutableSetOf()) { (_, declarations) ->
+                        declarations.map { it.fqName }
+                    },
+                )
+                for ((filePath, declarations) in eligibleDeclarationsBySource) {
+                    clearDeclarationsFromFileInTransaction(conn, filePath)
+                    declarations.forEach { declaration -> insertDeclarationInTransaction(conn, declaration) }
                 }
                 removeIneligibleSourceIndexRows(conn)
                 conn.commit()
@@ -1049,7 +1137,10 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
         manifestPaths: Set<String>,
     ) {
         if (manifestPaths.isEmpty()) {
-            conn.createStatement().use { stmt -> stmt.execute("DELETE FROM symbol_references") }
+            conn.createStatement().use { stmt ->
+                stmt.execute("DELETE FROM symbol_references")
+                stmt.execute("DELETE FROM declarations")
+            }
             return
         }
         conn.createStatement().use { stmt ->
@@ -1070,6 +1161,15 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
                                 AND manifest.filename = symbol_references.tgt_filename
                           )
                       )""",
+            )
+            stmt.execute(
+                """DELETE FROM declarations
+                   WHERE NOT EXISTS (
+                       SELECT 1
+                       FROM file_manifest manifest
+                       WHERE manifest.prefix_id = declarations.prefix_id
+                         AND manifest.filename = declarations.filename
+                   )""",
             )
         }
     }
@@ -1151,6 +1251,7 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
         filename: String,
     ) {
         for (table in listOf(
+            "declarations",
             "identifier_paths",
             "file_metadata",
             "file_imports",
@@ -1246,9 +1347,11 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
                     conn = conn,
                     sourcePath = path,
                     sourceOffset = payload.sourceOffset,
+                    sourceFqName = payload.sourceFqName,
                     targetFqName = payload.targetFqName,
                     targetPath = targetPath,
                     targetOffset = targetPath?.let { payload.targetOffset },
+                    edgeKind = payload.edgeKind,
                 )
             }
 
@@ -1289,6 +1392,46 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
             stmt.setString(2, sourceFilename)
             stmt.setInt(3, sourceOffset)
             stmt.setInt(4, targetFqId)
+            stmt.executeUpdate()
+        }
+    }
+
+    private fun clearDeclarationsFromFileInTransaction(
+        conn: Connection,
+        filePath: String,
+    ) {
+        loadInterningTables(conn)
+        val (prefixId, filename) = pathCodec.encodeIfInterned(filePath) ?: return
+        conn.prepareStatement("DELETE FROM declarations WHERE prefix_id = ? AND filename = ?").use { stmt ->
+            stmt.setInt(1, prefixId)
+            stmt.setString(2, filename)
+            stmt.executeUpdate()
+        }
+    }
+
+    private fun insertDeclarationInTransaction(
+        conn: Connection,
+        declaration: DeclarationRow,
+    ) {
+        val (prefixId, filename) = pathCodec.encode(declaration.filePath)
+        val fqId = fqCodec.getOrCreate(conn, declaration.fqName)
+        conn.prepareStatement(
+            """INSERT OR REPLACE INTO declarations
+               (fq_id, kind, visibility, prefix_id, filename, declaration_offset, module_path, source_set)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+        ).use { stmt ->
+            stmt.setInt(1, fqId)
+            stmt.setString(2, declaration.kind.name)
+            stmt.setString(3, declaration.visibility.name)
+            stmt.setInt(4, prefixId)
+            stmt.setString(5, filename)
+            if (declaration.declarationOffset != null) {
+                stmt.setInt(6, declaration.declarationOffset)
+            } else {
+                stmt.setNull(6, java.sql.Types.INTEGER)
+            }
+            stmt.setString(7, declaration.modulePath)
+            stmt.setString(8, declaration.sourceSet)
             stmt.executeUpdate()
         }
     }
@@ -1359,6 +1502,7 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
                      AND tgt_filename NOT GLOB '*.kt'""",
             )
             for (table in listOf(
+                "declarations",
                 "identifier_paths",
                 "file_metadata",
                 "file_imports",
@@ -1392,9 +1536,11 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
     @Serializable
     private data class PendingReferencePayload(
         val sourceOffset: Int,
+        val sourceFqName: String? = null,
         val targetFqName: String,
         val targetPath: String? = null,
         val targetOffset: Int? = null,
+        val edgeKind: EdgeKind = EdgeKind.UNKNOWN,
     )
 
     @Serializable

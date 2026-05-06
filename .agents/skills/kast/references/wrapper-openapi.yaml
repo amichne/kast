@@ -641,6 +641,9 @@ components:
     WrapperMetric:
       type: string
       enum:
+        - apiSurface
+        - moduleBoundary
+        - declarations
         - fanIn
         - fanOut
         - coupling

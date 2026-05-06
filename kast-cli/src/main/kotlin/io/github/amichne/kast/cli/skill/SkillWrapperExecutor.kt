@@ -764,6 +764,9 @@ internal class SkillWrapperExecutor(
         )
         val resultsJson = MetricsEngine(Path.of(workspaceRoot)).use { engine ->
             when (request.metric) {
+                WrapperMetric.API_SURFACE -> encodeApiSurfaceMetrics(json, engine.apiSurface(modulePath = request.symbol))
+                WrapperMetric.MODULE_BOUNDARY -> encodeModuleBoundaryMetrics(json, engine.moduleBoundary(modulePath = request.symbol))
+                WrapperMetric.DECLARATIONS -> encodeDeclarations(json, engine.declarations(filter))
                 WrapperMetric.FAN_IN -> encodeFanInMetrics(json, engine.fanInRanking(request.limit, filter))
                 WrapperMetric.FAN_OUT -> encodeFanOutMetrics(json, engine.fanOutRanking(request.limit, filter))
                 WrapperMetric.COUPLING -> encodeModuleCouplingMetrics(json, engine.moduleCouplingMatrix())

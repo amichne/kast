@@ -36,6 +36,47 @@ class ReferenceIndexerTest {
     }
 
     @Test
+    fun `populates declarations from declaration scanner output`() {
+        val filePath = "/src/Greeter.kt"
+        val root = workspaceRoot.toAbsolutePath().normalize()
+        storeWithManifest(filePath).use { store ->
+            ReferenceIndexer(store).indexReferences(
+                filePaths = listOf(filePath),
+                referenceScanner = { emptyList() },
+                declarationScanner = { path ->
+                    listOf(
+                        DeclarationRow(
+                            fqName = "sample.Greeter",
+                            kind = DeclarationKind.CLASS,
+                            visibility = DeclarationVisibility.PUBLIC,
+                            filePath = path,
+                            declarationOffset = 10,
+                            modulePath = ":sample",
+                            sourceSet = "main",
+                        ),
+                    )
+                },
+            )
+        }
+
+        MetricsEngine(root).use { metrics ->
+            assertEquals(
+                listOf(
+                    DeclarationInfo(
+                        fqName = "sample.Greeter",
+                        kind = "CLASS",
+                        visibility = "PUBLIC",
+                        path = filePath,
+                        modulePath = ":sample",
+                        sourceSet = "main",
+                    ),
+                ),
+                metrics.declarations(),
+            )
+        }
+    }
+
+    @Test
     fun `clears stale references before writing rescanned file`() {
         val filePath = "/src/Caller.kt"
         storeWithManifest(filePath).use { store ->

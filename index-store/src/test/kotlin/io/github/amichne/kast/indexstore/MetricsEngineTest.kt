@@ -1,9 +1,9 @@
 package io.github.amichne.kast.indexstore
 
+import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
-import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
@@ -15,418 +15,149 @@ class MetricsEngineTest {
     lateinit var workspaceRoot: Path
 
     @Test
-    fun `ranks symbols by incoming references`() {
+    fun `lists declarations from the declaration registry`() {
         val root = seededWorkspace()
 
         MetricsEngine(root).use { metrics ->
-            assertEquals(
-                listOf(
-                    FanInMetric(
-                        targetFqName = "lib.Foo",
-                        targetPath = "/lib/Foo.kt",
-                        targetModulePath = ":lib",
-                        targetSourceSet = "main",
-                        occurrenceCount = 3,
-                        sourceFileCount = 2,
-                        sourceModuleCount = 1,
-                    ),
-                    FanInMetric(
-                        targetFqName = "app.A",
-                        targetPath = "/app/A.kt",
-                        targetModulePath = ":app",
-                        targetSourceSet = "main",
-                        occurrenceCount = 1,
-                        sourceFileCount = 1,
-                        sourceModuleCount = 1,
-                    ),
-                ),
-                metrics.fanInRanking(limit = 2),
-            )
+            val declarations = metrics.declarations()
+
+            assertTrue(declarations.any { it.fqName == "app.A" && it.kind == "CLASS" && it.visibility == "PUBLIC" })
+            assertTrue(declarations.any { it.fqName == "app.unusedPrivate" && it.path == "/app/UnusedPrivate.kt" })
         }
     }
 
     @Test
-    fun `metrics bootstrap sqlite driver when DriverManager registry is empty`() {
-        val root = seededWorkspace()
-
-        withSqliteDriversDeregistered {
-            MetricsEngine(root).use { metrics ->
-                assertEquals("lib.Foo", metrics.fanInRanking(limit = 1).single().targetFqName)
-            }
-        }
-    }
-
-    @Test
-    fun `ranks files by outgoing references`() {
+    fun `ranks symbols by incoming references with edge kind breakdown`() {
         val root = seededWorkspace()
 
         MetricsEngine(root).use { metrics ->
-            assertEquals(
-                listOf(
-                    FanOutMetric(
-                        sourcePath = "/app/A.kt",
-                        sourceModulePath = ":app",
-                        sourceSourceSet = "main",
-                        occurrenceCount = 3,
-                        targetSymbolCount = 2,
-                        targetFileCount = 2,
-                        targetModuleCount = 1,
-                        externalTargetCount = 0,
-                    ),
-                    FanOutMetric(
-                        sourcePath = "/app/B.kt",
-                        sourceModulePath = ":app",
-                        sourceSourceSet = "main",
-                        occurrenceCount = 2,
-                        targetSymbolCount = 2,
-                        targetFileCount = 2,
-                        targetModuleCount = 2,
-                        externalTargetCount = 0,
-                    ),
-                ),
-                metrics.fanOutRanking(limit = 2),
-            )
+            val foo = metrics.fanInRanking(limit = 2).first()
+
+            assertEquals("lib.Foo", foo.targetFqName)
+            assertEquals("/lib/Foo.kt", foo.targetPath)
+            assertEquals(3, foo.occurrenceCount)
+            assertEquals(mapOf("CALL" to 3), foo.byEdgeKind)
+            assertEquals(SemanticBasis.K2_RESOLVED, foo.confidence.semanticBasis)
         }
     }
 
     @Test
-    fun `tracks external fan out targets without changing indexed counts`() {
-        val root = seededWorkspace()
-        SqliteSourceIndexStore(root).use { store ->
-            store.upsertSymbolReference("/app/B.kt", 30, "external.LibrarySymbol", null, null)
-        }
-
-        MetricsEngine(root).use { metrics ->
-            assertEquals(
-                FanOutMetric(
-                    sourcePath = "/app/B.kt",
-                    sourceModulePath = ":app",
-                    sourceSourceSet = "main",
-                    occurrenceCount = 3,
-                    targetSymbolCount = 3,
-                    targetFileCount = 2,
-                    targetModuleCount = 2,
-                    externalTargetCount = 1,
-                ),
-                metrics.fanOutRanking(limit = 2).single { it.sourcePath == "/app/B.kt" },
-            )
-        }
-    }
-
-    @Test
-    fun `counts cross-module reference pairs`() {
+    fun `ranks files by outgoing references with edge kind breakdown`() {
         val root = seededWorkspace()
 
         MetricsEngine(root).use { metrics ->
-            assertEquals(
-                listOf(
-                    ModuleCouplingMetric(
-                        sourceModulePath = ":app",
-                        sourceSourceSet = "main",
-                        targetModulePath = ":lib",
-                        targetSourceSet = "main",
-                        referenceCount = 4,
-                    ),
-                ),
-                metrics.moduleCouplingMatrix(),
-            )
+            val a = metrics.fanOutRanking(limit = 2).first()
+
+            assertEquals("/app/A.kt", a.sourcePath)
+            assertEquals(4, a.occurrenceCount)
+            assertEquals(mapOf("CALL" to 3, "TYPE_REF" to 1), a.byEdgeKind)
         }
     }
 
     @Test
-    fun `lowUsageSymbols returns symbols with single-file fan-in`() {
+    fun `module coupling distinguishes public API references from internal leaks`() {
         val root = seededWorkspace()
-        SqliteSourceIndexStore(root).use { store ->
-            store.upsertSymbolReference("/app/A.kt", 40, "external.OneOff", null, null)
-        }
 
         MetricsEngine(root).use { metrics ->
-            val lowUsage = metrics.lowUsageSymbols(maxOccurrences = 1)
+            val coupling = metrics.moduleCouplingMatrix().single()
 
-            assertTrue(
-                lowUsage.any {
-                    it.targetFqName == "app.A" &&
-                        it.targetPath == "/app/A.kt" &&
-                        it.targetModulePath == ":app" &&
-                        it.occurrenceCount == 1 &&
-                        it.sourceFileCount == 1
-                },
-            )
-            assertFalse(lowUsage.any { it.targetFqName == "lib.Foo" })
-            assertFalse(lowUsage.any { it.targetFqName == "external.OneOff" })
+            assertEquals(":app", coupling.sourceModulePath)
+            assertEquals(":lib", coupling.targetModulePath)
+            assertEquals(5, coupling.referenceCount)
+            assertEquals(3, coupling.publicApiCount)
+            assertEquals(2, coupling.internalLeakCount)
+            assertEquals(mapOf("CALL" to 4, "TYPE_REF" to 1), coupling.byEdgeKind)
         }
     }
 
     @Test
-    fun `moduleCycles detects bidirectional coupling`() {
-        val root = workspaceRoot.toAbsolutePath().normalize()
-        SqliteSourceIndexStore(root).use { store ->
-            store.ensureSchema()
-            store.saveFullIndex(
-                updates = listOf(
-                    fileUpdate("/app/App.kt", identifiers = setOf("App"), packageName = "app", modulePath = ":app", sourceSet = "main"),
-                    fileUpdate("/lib/Lib.kt", identifiers = setOf("Lib"), packageName = "lib", modulePath = ":lib", sourceSet = "main"),
-                ),
-                manifest = mapOf("/app/App.kt" to 1L, "/lib/Lib.kt" to 1L),
-            )
-            store.upsertSymbolReference("/app/App.kt", 10, "lib.Lib", "/lib/Lib.kt", 1)
-            store.upsertSymbolReference("/app/App.kt", 20, "lib.Lib", "/lib/Lib.kt", 1)
-            store.upsertSymbolReference("/lib/Lib.kt", 10, "app.App", "/app/App.kt", 1)
-        }
+    fun `module boundary reports exported and consumed symbols`() {
+        val root = seededWorkspace()
 
         MetricsEngine(root).use { metrics ->
-            val cycle = metrics.moduleCycles().single()
+            val boundary = metrics.moduleBoundary(":app").single()
 
-            assertEquals(cycle.cycle.first(), cycle.cycle.last())
-            assertEquals(setOf(":app", ":lib"), cycle.cycle.dropLast(1).toSet())
-            assertEquals(3, cycle.totalReferenceCount)
-            assertEquals(":lib", cycle.weakestEdgeSource)
-            assertEquals(":app", cycle.weakestEdgeTarget)
-            assertEquals(1, cycle.weakestEdgeReferenceCount)
+            assertEquals(":app", boundary.modulePath)
+            assertEquals(4, boundary.exportedSymbolCount)
+            assertEquals(3, boundary.consumedSymbolCount)
+            assertEquals(3, boundary.publicApiReferences)
+            assertEquals(2, boundary.internalLeakReferences)
         }
     }
 
     @Test
-    fun `moduleCycles detects transitive cycle`() {
-        val root = workspaceRoot.toAbsolutePath().normalize()
-        SqliteSourceIndexStore(root).use { store ->
-            store.ensureSchema()
-            store.saveFullIndex(
-                updates = listOf(
-                    fileUpdate("/a/A.kt", identifiers = setOf("A"), packageName = "a", modulePath = ":a", sourceSet = "main"),
-                    fileUpdate("/b/B.kt", identifiers = setOf("B"), packageName = "b", modulePath = ":b", sourceSet = "main"),
-                    fileUpdate("/c/C.kt", identifiers = setOf("C"), packageName = "c", modulePath = ":c", sourceSet = "main"),
-                ),
-                manifest = mapOf("/a/A.kt" to 1L, "/b/B.kt" to 1L, "/c/C.kt" to 1L),
-            )
-            store.upsertSymbolReference("/a/A.kt", 10, "b.B", "/b/B.kt", 1)
-            store.upsertSymbolReference("/b/B.kt", 10, "c.C", "/c/C.kt", 1)
-            store.upsertSymbolReference("/c/C.kt", 10, "a.A", "/a/A.kt", 1)
-        }
+    fun `api surface aggregates declarations per module`() {
+        val root = seededWorkspace()
 
         MetricsEngine(root).use { metrics ->
-            val cycle = metrics.moduleCycles().single()
+            val app = metrics.apiSurface(":app").single()
 
-            assertEquals(cycle.cycle.first(), cycle.cycle.last())
-            assertEquals(setOf(":a", ":b", ":c"), cycle.cycle.dropLast(1).toSet())
-            assertEquals(3, cycle.totalReferenceCount)
+            assertEquals(4, app.publicSymbolCount)
+            assertEquals(0, app.internalSymbolCount)
+            assertEquals(1, app.privateSymbolCount)
+            assertEquals(5, app.totalSymbolCount)
+            assertEquals(0.2, app.encapsulationRatio)
         }
     }
 
     @Test
-    fun `moduleDepthMetrics classifies shallow module`() {
-        val root = workspaceRoot.toAbsolutePath().normalize()
-        SqliteSourceIndexStore(root).use { store ->
-            store.ensureSchema()
-            store.saveFullIndex(
-                updates = listOf(
-                    fileUpdate("/shallow/A.kt", identifiers = setOf("A"), packageName = "shallow", modulePath = ":shallow", sourceSet = "main"),
-                    fileUpdate("/shallow/B.kt", identifiers = setOf("B"), packageName = "shallow", modulePath = ":shallow", sourceSet = "main"),
-                    fileUpdate("/shallow/C.kt", identifiers = setOf("C"), packageName = "shallow", modulePath = ":shallow", sourceSet = "main"),
-                ),
-                manifest = mapOf("/shallow/A.kt" to 1L, "/shallow/B.kt" to 1L, "/shallow/C.kt" to 1L),
-            )
-        }
-
-        MetricsEngine(root).use { metrics ->
-            val depth = metrics.moduleDepthMetrics().single()
-
-            assertEquals(":shallow", depth.modulePath)
-            assertEquals(3, depth.fileCount)
-            assertEquals(3, depth.declaredSymbolCount)
-            assertEquals(0, depth.internalRefCount)
-            assertEquals(0, depth.externalRefCount)
-            assertEquals(ModuleDepthDiagnosis.SHALLOW, depth.diagnosis)
-        }
-    }
-
-    @Test
-    fun `moduleDepthMetrics classifies deep module`() {
-        val root = workspaceRoot.toAbsolutePath().normalize()
-        SqliteSourceIndexStore(root).use { store ->
-            store.ensureSchema()
-            store.saveFullIndex(
-                updates = listOf(
-                    fileUpdate("/deep/A.kt", identifiers = setOf("A"), packageName = "deep", modulePath = ":deep", sourceSet = "main"),
-                    fileUpdate("/deep/B.kt", identifiers = setOf("B"), packageName = "deep", modulePath = ":deep", sourceSet = "main"),
-                ),
-                manifest = mapOf("/deep/A.kt" to 1L, "/deep/B.kt" to 1L),
-            )
-            repeat(4) { index ->
-                store.upsertSymbolReference("/deep/A.kt", 10 + index, "deep.B", "/deep/B.kt", 1)
-                store.upsertSymbolReference("/deep/B.kt", 20 + index, "deep.A", "/deep/A.kt", 1)
-            }
-        }
-
-        MetricsEngine(root).use { metrics ->
-            val depth = metrics.moduleDepthMetrics().single()
-
-            assertEquals(":deep", depth.modulePath)
-            assertEquals(2, depth.fileCount)
-            assertEquals(2, depth.declaredSymbolCount)
-            assertEquals(8, depth.internalRefCount)
-            assertEquals(0, depth.externalRefCount)
-            assertEquals(1.0, depth.cohesionRatio)
-            assertEquals(4.0, depth.refsPerFile)
-            assertEquals(ModuleDepthDiagnosis.DEEP, depth.diagnosis)
-        }
-    }
-
-    @Test
-    fun `reports indexed identifiers with no inbound references`() {
+    fun `dead code candidates use declaration visibility for confidence`() {
         val root = seededWorkspace()
 
         MetricsEngine(root).use { metrics ->
             val candidates = metrics.deadCodeCandidates()
+            val privateCandidate = candidates.single { it.fqName == "app.unusedPrivate" }
+            val publicCandidate = candidates.single { it.fqName == "app.PublicUnused" }
 
-            assertTrue(
-                candidates.any {
-                    it.identifier == "Unused" &&
-                        it.path == "/app/Unused.kt" &&
-                        it.modulePath == ":app" &&
-                        it.sourceSet == "main" &&
-                        it.packageName == "app" &&
-                        it.confidence == MetricsConfidence.LOW
-                },
-            )
-            assertFalse(candidates.any { it.identifier == "Foo" && it.path == "/lib/Foo.kt" })
+            assertEquals(ConfidenceLevel.HIGH, privateCandidate.confidence.level)
+            assertEquals(ConfidenceLevel.MEDIUM, publicCandidate.confidence.level)
+            assertEquals("PRIVATE", privateCandidate.visibility)
+            assertFalse(candidates.any { it.fqName == "lib.Foo" })
         }
     }
 
     @Test
-    fun `walks impact radius through files that reference impacted files`() {
+    fun `impact radius walks symbol level edges when source symbols are available`() {
         val root = seededWorkspace()
 
         MetricsEngine(root).use { metrics ->
-            assertEquals(
-                listOf(
-                    ChangeImpactNode(
-                        sourcePath = "/app/A.kt",
-                        depth = 1,
-                        viaTargetFqName = "lib.Foo",
-                        occurrenceCount = 2,
-                        semantics = ImpactSemantics.FILE_LEVEL_APPROXIMATION,
-                    ),
-                    ChangeImpactNode(
-                        sourcePath = "/app/B.kt",
-                        depth = 1,
-                        viaTargetFqName = "lib.Foo",
-                        occurrenceCount = 1,
-                        semantics = ImpactSemantics.FILE_LEVEL_APPROXIMATION,
-                    ),
-                    ChangeImpactNode(
-                        sourcePath = "/app/C.kt",
-                        depth = 2,
-                        viaTargetFqName = "app.B",
-                        occurrenceCount = 1,
-                        semantics = ImpactSemantics.FILE_LEVEL_APPROXIMATION,
-                    ),
-                ),
-                metrics.changeImpactRadius(fqName = "lib.Foo", depth = 2),
-            )
+            val impact = metrics.changeImpactRadius(fqName = "lib.Foo", depth = 2)
+
+            assertTrue(impact.any { it.sourcePath == "/app/A.kt" && it.depth == 1 && it.viaTargetFqName == "lib.Foo" && it.occurrenceCount == 2 })
+            assertTrue(impact.any { it.sourcePath == "/app/B.kt" && it.depth == 1 && it.viaTargetFqName == "lib.Foo" && it.occurrenceCount == 1 })
+            assertTrue(impact.any { it.sourcePath == "/app/C.kt" && it.depth == 2 && it.viaTargetFqName == "app.B" })
         }
     }
 
     @Test
-    fun `builds visual graph around focal indexed symbol`() {
+    fun `confidence envelope reflects declaration basis and index completeness`() {
         val root = seededWorkspace()
 
         MetricsEngine(root).use { metrics ->
-            assertEquals(
-                MetricsGraph(
-                    focalNodeId = "symbol:lib.Foo",
-                    nodes = listOf(
-                        MetricsGraphNode(
-                            id = "symbol:lib.Foo",
-                            name = "lib.Foo",
-                            type = MetricsGraphNodeType.SYMBOL,
-                            parentId = "file:/lib/Foo.kt",
-                            children = listOf("source-file:/app/A.kt", "source-file:/app/B.kt"),
-                            attributes = listOf(
-                                "path=/lib/Foo.kt",
-                                "module=:lib",
-                                "sourceSet=main",
-                                "incomingReferences=3",
-                                "sourceFiles=2",
-                                "sourceModules=1",
-                            ),
-                        ),
-                        MetricsGraphNode(
-                            id = "file:/lib/Foo.kt",
-                            name = "/lib/Foo.kt",
-                            type = MetricsGraphNodeType.FILE,
-                            children = listOf("symbol:lib.Foo"),
-                            attributes = listOf("role=target", "module=:lib", "sourceSet=main"),
-                        ),
-                        MetricsGraphNode(
-                            id = "source-file:/app/A.kt",
-                            name = "/app/A.kt",
-                            type = MetricsGraphNodeType.FILE,
-                            parentId = "symbol:lib.Foo",
-                            children = listOf("via:lib.Foo:/app/A.kt"),
-                            attributes = listOf("incomingDepth=1", "references=2", "via=lib.Foo"),
-                        ),
-                        MetricsGraphNode(
-                            id = "via:lib.Foo:/app/A.kt",
-                            name = "lib.Foo",
-                            type = MetricsGraphNodeType.REFERENCE_EDGE,
-                            parentId = "source-file:/app/A.kt",
-                            attributes = listOf("from=/app/A.kt", "to=lib.Foo", "references=2"),
-                        ),
-                        MetricsGraphNode(
-                            id = "source-file:/app/B.kt",
-                            name = "/app/B.kt",
-                            type = MetricsGraphNodeType.FILE,
-                            parentId = "symbol:lib.Foo",
-                            children = listOf("source-file:/app/C.kt", "via:lib.Foo:/app/B.kt"),
-                            attributes = listOf("incomingDepth=1", "references=1", "via=lib.Foo"),
-                        ),
-                        MetricsGraphNode(
-                            id = "via:lib.Foo:/app/B.kt",
-                            name = "lib.Foo",
-                            type = MetricsGraphNodeType.REFERENCE_EDGE,
-                            parentId = "source-file:/app/B.kt",
-                            attributes = listOf("from=/app/B.kt", "to=lib.Foo", "references=1"),
-                        ),
-                        MetricsGraphNode(
-                            id = "source-file:/app/C.kt",
-                            name = "/app/C.kt",
-                            type = MetricsGraphNodeType.FILE,
-                            parentId = "source-file:/app/B.kt",
-                            children = listOf("via:app.B:/app/C.kt"),
-                            attributes = listOf("incomingDepth=2", "references=1", "via=app.B"),
-                        ),
-                        MetricsGraphNode(
-                            id = "via:app.B:/app/C.kt",
-                            name = "app.B",
-                            type = MetricsGraphNodeType.REFERENCE_EDGE,
-                            parentId = "source-file:/app/C.kt",
-                            attributes = listOf("from=/app/C.kt", "to=app.B", "references=1"),
-                        ),
-                    ),
-                    edges = listOf(
-                        MetricsGraphEdge("file:/lib/Foo.kt", "symbol:lib.Foo", MetricsGraphEdgeType.CONTAINS),
-                        MetricsGraphEdge("symbol:lib.Foo", "source-file:/app/A.kt", MetricsGraphEdgeType.REFERENCED_BY, 2),
-                        MetricsGraphEdge("source-file:/app/A.kt", "via:lib.Foo:/app/A.kt", MetricsGraphEdgeType.REFERENCES, 2),
-                        MetricsGraphEdge("symbol:lib.Foo", "source-file:/app/B.kt", MetricsGraphEdgeType.REFERENCED_BY, 1),
-                        MetricsGraphEdge("source-file:/app/B.kt", "via:lib.Foo:/app/B.kt", MetricsGraphEdgeType.REFERENCES, 1),
-                        MetricsGraphEdge("source-file:/app/B.kt", "source-file:/app/C.kt", MetricsGraphEdgeType.REFERENCED_BY, 1),
-                        MetricsGraphEdge("source-file:/app/C.kt", "via:app.B:/app/C.kt", MetricsGraphEdgeType.REFERENCES, 1),
-                    ),
-                    index = MetricsGraphIndex(
-                        symbolCount = 2,
-                        fileCount = 4,
-                        referenceCount = 4,
-                        maxDepth = 2,
-                    ),
-                ),
-                metrics.graph(fqName = "lib.Foo", depth = 2),
-            )
+            val confidence = metrics.fanInRanking(limit = 1).single().confidence
+
+            assertEquals(SemanticBasis.K2_RESOLVED, confidence.semanticBasis)
+            assertEquals(ConfidenceLevel.SPECULATIVE, confidence.level)
+            assertEquals(3.0 / 7.0, confidence.indexCompleteness)
         }
     }
 
     @Test
-    fun `serializes graph with stable node type names`() {
+    fun `module depth uses declarations for declared symbol count`() {
+        val root = seededWorkspace()
+
+        MetricsEngine(root).use { metrics ->
+            val app = metrics.moduleDepthMetrics().single { it.modulePath == ":app" }
+
+            assertEquals(5, app.fileCount)
+            assertEquals(5, app.declaredSymbolCount)
+            assertEquals(2, app.internalRefCount)
+            assertEquals(5, app.externalRefCount)
+        }
+    }
+
+    @Test
+    fun `graph keeps stable serialized node type names`() {
         val root = seededWorkspace()
 
         MetricsEngine(root).use { metrics ->
@@ -439,70 +170,27 @@ class MetricsEngineTest {
     }
 
     @Test
+    fun `searchSymbols ranks popular symbols when query is blank`() {
+        val root = seededWorkspace()
+
+        MetricsEngine(root).use { metrics ->
+            val results = metrics.searchSymbols(query = "  ", limit = 5)
+
+            assertEquals("lib.Foo", results.first())
+            assertTrue(results.contains("lib.Bar"))
+            assertTrue(results.contains("lib.InternalApi"))
+        }
+    }
+
+    @Test
     fun `returns empty metrics when index database does not exist`() {
         val root = workspaceRoot.toAbsolutePath().normalize()
 
         MetricsEngine(root).use { metrics ->
             assertTrue(metrics.fanInRanking(limit = 10).isEmpty())
-            assertTrue(metrics.fanOutRanking(limit = 10).isEmpty())
-            assertTrue(metrics.moduleCouplingMatrix().isEmpty())
+            assertTrue(metrics.declarations().isEmpty())
             assertTrue(metrics.deadCodeCandidates().isEmpty())
             assertTrue(metrics.changeImpactRadius(fqName = "lib.Foo", depth = 2).isEmpty())
-        }
-    }
-
-    @Test
-    fun `searchSymbols returns empty when database is missing`() {
-        val root = workspaceRoot.toAbsolutePath().normalize()
-        MetricsEngine(root).use { metrics ->
-            assertTrue(metrics.searchSymbols("foo").isEmpty())
-        }
-    }
-
-    @Test
-    fun `searchSymbols ranks popular symbols when query is blank`() {
-        val root = seededWorkspace()
-        MetricsEngine(root).use { metrics ->
-            val results = metrics.searchSymbols(query = "  ", limit = 5)
-            assertEquals("lib.Foo", results.first())
-            assertTrue(results.contains("lib.Bar"))
-            assertTrue(results.contains("app.A"))
-        }
-    }
-
-    @Test
-    fun `searchSymbols matches case-insensitively and ranks exact match first`() {
-        val root = seededWorkspace()
-        MetricsEngine(root).use { metrics ->
-            val results = metrics.searchSymbols(query = "FOO", limit = 5)
-            assertEquals("lib.Foo", results.first())
-        }
-    }
-
-    @Test
-    fun `searchSymbols keeps exact matches ahead of fuzzy typo matches`() {
-        val root = seededWorkspace()
-        MetricsEngine(root).use { metrics ->
-            val exactResults = metrics.searchSymbols(query = "Foo", limit = 5)
-            val typoResults = metrics.searchSymbols(query = "Fooo", limit = 5)
-
-            assertEquals("lib.Foo", exactResults.first())
-            assertEquals("lib.Foo", typoResults.first())
-            assertTrue(typoResults.contains("lib.Foo"))
-        }
-    }
-
-    @Test
-    fun `searchSymbols rejects negative limit and returns empty for zero`() {
-        val root = seededWorkspace()
-        MetricsEngine(root).use { metrics ->
-            assertTrue(metrics.searchSymbols("foo", limit = 0).isEmpty())
-            try {
-                metrics.searchSymbols("foo", limit = -1)
-                assertTrue(false, "expected IllegalArgumentException")
-            } catch (_: IllegalArgumentException) {
-                // expected
-            }
         }
     }
 
@@ -520,105 +208,9 @@ class MetricsEngineTest {
 
         MetricsEngine(root).use { metrics ->
             assertTrue(metrics.fanInRanking(limit = 10).isEmpty())
-            assertTrue(metrics.fanOutRanking(limit = 10).isEmpty())
-            assertTrue(metrics.moduleCouplingMatrix().isEmpty())
+            assertTrue(metrics.apiSurface().isEmpty())
+            assertTrue(metrics.moduleBoundary().isEmpty())
             assertTrue(metrics.deadCodeCandidates().isEmpty())
-            assertTrue(metrics.changeImpactRadius(fqName = "lib.Foo", depth = 2).isEmpty())
-        }
-    }
-
-    @Test
-    fun `graph deduplicates sourceFileNodes when same path appears with multiple viaTargetFqNames`() {
-        val root = workspaceRoot.toAbsolutePath().normalize()
-        SqliteSourceIndexStore(root).use { store ->
-            store.ensureSchema()
-            store.saveFullIndex(
-                updates = listOf(
-                    fileUpdate("/lib/Root.kt", identifiers = setOf("Root"), packageName = "lib", modulePath = ":lib", sourceSet = "main"),
-                    fileUpdate("/app/A.kt", identifiers = setOf("A"), packageName = "app", modulePath = ":app", sourceSet = "main"),
-                    fileUpdate("/app/B.kt", identifiers = setOf("B"), packageName = "app", modulePath = ":app", sourceSet = "main"),
-                    fileUpdate("/app/D.kt", identifiers = setOf("D"), packageName = "app", modulePath = ":app", sourceSet = "main"),
-                ),
-                manifest = mapOf(
-                    "/lib/Root.kt" to 1L,
-                    "/app/A.kt" to 1L,
-                    "/app/B.kt" to 1L,
-                    "/app/D.kt" to 1L,
-                ),
-            )
-            // A.kt and B.kt each reference lib.Root (depth=1 callers)
-            store.upsertSymbolReference("/app/A.kt", 10, "lib.Root", "/lib/Root.kt", 1)
-            store.upsertSymbolReference("/app/B.kt", 10, "lib.Root", "/lib/Root.kt", 1)
-            // D.kt references both A.kt and B.kt symbols — two different viaTargetFqNames at depth=2
-            store.upsertSymbolReference("/app/D.kt", 10, "app.A", "/app/A.kt", 1)
-            store.upsertSymbolReference("/app/D.kt", 20, "app.B", "/app/B.kt", 1)
-        }
-
-        MetricsEngine(root).use { metrics ->
-            val graph = metrics.graph(fqName = "lib.Root", depth = 2)
-
-            val nodeIds = graph.nodes.map { it.id }
-            // Each sourcePath must appear exactly once as a source-file node
-            assertEquals(nodeIds.distinct(), nodeIds, "graph must not contain duplicate node IDs")
-
-            val sourceFileNodes = graph.nodes.filter { it.type == MetricsGraphNodeType.FILE && it.id.startsWith("source-file:") }
-            val sourceFilePaths = sourceFileNodes.map { it.name }
-            assertEquals(sourceFilePaths.distinct(), sourceFilePaths, "duplicate sourceFileNodes found for same path")
-
-            // /app/D.kt appears via both app.A and app.B — must produce exactly one source-file node
-            assertEquals(1, sourceFileNodes.count { it.name == "/app/D.kt" })
-
-            // both reference edge nodes for D.kt must still be present
-            val dReferenceEdges = graph.nodes.filter { it.type == MetricsGraphNodeType.REFERENCE_EDGE && it.parentId == "source-file:/app/D.kt" }
-            assertEquals(2, dReferenceEdges.size)
-            assertTrue(dReferenceEdges.any { it.id == "via:app.A:/app/D.kt" })
-            assertTrue(dReferenceEdges.any { it.id == "via:app.B:/app/D.kt" })
-
-            // aggregated REFERENCED_BY edge weight for D.kt must be sum of both occurrences (1+1=2)
-            val referencedByDEdge = graph.edges.filter {
-                it.edgeType == MetricsGraphEdgeType.REFERENCED_BY && it.to == "source-file:/app/D.kt"
-            }
-            assertEquals(1, referencedByDEdge.size)
-            assertEquals(2, referencedByDEdge.single().weight)
-        }
-    }
-
-    @Test
-    fun `fanInRanking filters by folder prefix`() {
-        val root = seededWorkspace()
-        MetricsEngine(root).use { metrics ->
-            val results = metrics.fanInRanking(limit = 10, filter = FileFilterSpec(folderPrefix = "/lib"))
-            assertTrue(results.all { it.targetPath?.startsWith("/lib/") == true })
-            assertTrue(results.any { it.targetFqName == "lib.Foo" })
-            assertTrue(results.none { it.targetPath?.startsWith("/app/") == true })
-        }
-    }
-
-    @Test
-    fun `fanInRanking filters by glob pattern`() {
-        val root = seededWorkspace()
-        MetricsEngine(root).use { metrics ->
-            val results = metrics.fanInRanking(limit = 10, filter = FileFilterSpec(fileGlob = "**/Foo.kt"))
-            assertTrue(results.isNotEmpty())
-            assertTrue(results.all { it.targetPath?.endsWith("Foo.kt") == true })
-        }
-    }
-
-    @Test
-    fun `fanOutRanking filters by folder prefix`() {
-        val root = seededWorkspace()
-        MetricsEngine(root).use { metrics ->
-            val results = metrics.fanOutRanking(limit = 10, filter = FileFilterSpec(folderPrefix = "/app"))
-            assertTrue(results.all { it.sourcePath.startsWith("/app/") })
-        }
-    }
-
-    @Test
-    fun `deadCodeCandidates filters by folder prefix`() {
-        val root = seededWorkspace()
-        MetricsEngine(root).use { metrics ->
-            val results = metrics.deadCodeCandidates(filter = FileFilterSpec(folderPrefix = "/app"))
-            assertTrue(results.all { it.path.startsWith("/app/") })
         }
     }
 
@@ -628,33 +220,59 @@ class MetricsEngineTest {
             store.ensureSchema()
             store.saveFullIndex(
                 updates = listOf(
-                    fileUpdate("/app/A.kt", identifiers = setOf("A"), packageName = "app", modulePath = ":app", sourceSet = "main"),
-                    fileUpdate("/app/B.kt", identifiers = setOf("B"), packageName = "app", modulePath = ":app", sourceSet = "main"),
-                    fileUpdate(
-                        "/app/Unused.kt",
-                        identifiers = setOf("Unused"),
-                        packageName = "app",
-                        modulePath = ":app",
-                        sourceSet = "main",
-                    ),
-                    fileUpdate("/lib/Foo.kt", identifiers = setOf("Foo"), packageName = "lib", modulePath = ":lib", sourceSet = "main"),
-                    fileUpdate("/lib/Bar.kt", identifiers = setOf("Bar"), packageName = "lib", modulePath = ":lib", sourceSet = "main"),
+                    fileUpdate("/app/A.kt", identifiers = setOf("A"), packageName = "app", modulePath = ":app"),
+                    fileUpdate("/app/B.kt", identifiers = setOf("B"), packageName = "app", modulePath = ":app"),
+                    fileUpdate("/app/C.kt", identifiers = setOf("C"), packageName = "app", modulePath = ":app"),
+                    fileUpdate("/app/UnusedPrivate.kt", identifiers = setOf("unusedPrivate"), packageName = "app", modulePath = ":app"),
+                    fileUpdate("/app/PublicUnused.kt", identifiers = setOf("PublicUnused"), packageName = "app", modulePath = ":app"),
+                    fileUpdate("/lib/Foo.kt", identifiers = setOf("Foo"), packageName = "lib", modulePath = ":lib"),
+                    fileUpdate("/lib/Bar.kt", identifiers = setOf("Bar"), packageName = "lib", modulePath = ":lib"),
                 ),
                 manifest = mapOf(
                     "/app/A.kt" to 1L,
                     "/app/B.kt" to 1L,
-                    "/app/Unused.kt" to 1L,
+                    "/app/C.kt" to 1L,
+                    "/app/UnusedPrivate.kt" to 1L,
+                    "/app/PublicUnused.kt" to 1L,
                     "/lib/Foo.kt" to 1L,
                     "/lib/Bar.kt" to 1L,
                 ),
             )
-
-            store.upsertSymbolReference("/app/A.kt", 10, "lib.Foo", "/lib/Foo.kt", 1)
-            store.upsertSymbolReference("/app/A.kt", 20, "lib.Foo", "/lib/Foo.kt", 1)
-            store.upsertSymbolReference("/app/A.kt", 30, "lib.Bar", "/lib/Bar.kt", 1)
-            store.upsertSymbolReference("/app/B.kt", 10, "lib.Foo", "/lib/Foo.kt", 1)
-            store.upsertSymbolReference("/app/B.kt", 20, "app.A", "/app/A.kt", 1)
-            store.upsertSymbolReference("/app/C.kt", 10, "app.B", "/app/B.kt", 1)
+            store.replaceDeclarationsFromFiles(
+                listOf(
+                    "/app/A.kt" to listOf(declaration("app.A", DeclarationKind.CLASS, DeclarationVisibility.PUBLIC, "/app/A.kt", ":app")),
+                    "/app/B.kt" to listOf(declaration("app.B", DeclarationKind.CLASS, DeclarationVisibility.PUBLIC, "/app/B.kt", ":app")),
+                    "/app/C.kt" to listOf(declaration("app.C", DeclarationKind.CLASS, DeclarationVisibility.PUBLIC, "/app/C.kt", ":app")),
+                    "/app/UnusedPrivate.kt" to listOf(
+                        declaration("app.unusedPrivate", DeclarationKind.PROPERTY, DeclarationVisibility.PRIVATE, "/app/UnusedPrivate.kt", ":app"),
+                    ),
+                    "/app/PublicUnused.kt" to listOf(
+                        declaration("app.PublicUnused", DeclarationKind.FUNCTION, DeclarationVisibility.PUBLIC, "/app/PublicUnused.kt", ":app"),
+                    ),
+                    "/lib/Foo.kt" to listOf(declaration("lib.Foo", DeclarationKind.CLASS, DeclarationVisibility.PUBLIC, "/lib/Foo.kt", ":lib")),
+                    "/lib/Bar.kt" to listOf(
+                        declaration("lib.Bar", DeclarationKind.FUNCTION, DeclarationVisibility.INTERNAL, "/lib/Bar.kt", ":lib"),
+                        declaration("lib.InternalApi", DeclarationKind.FUNCTION, DeclarationVisibility.INTERNAL, "/lib/Bar.kt", ":lib"),
+                    ),
+                ),
+            )
+            store.replaceReferencesFromFiles(
+                listOf(
+                    "/app/A.kt" to listOf(
+                        reference("/app/A.kt", 10, "app.A", "lib.Foo", "/lib/Foo.kt", EdgeKind.CALL),
+                        reference("/app/A.kt", 20, "app.A", "lib.Foo", "/lib/Foo.kt", EdgeKind.CALL),
+                        reference("/app/A.kt", 30, "app.A", "lib.Bar", "/lib/Bar.kt", EdgeKind.TYPE_REF),
+                        reference("/app/A.kt", 40, "app.A", "lib.InternalApi", "/lib/Bar.kt", EdgeKind.CALL),
+                    ),
+                    "/app/B.kt" to listOf(
+                        reference("/app/B.kt", 10, "app.B", "lib.Foo", "/lib/Foo.kt", EdgeKind.CALL),
+                        reference("/app/B.kt", 20, "app.B", "app.A", "/app/A.kt", EdgeKind.CALL),
+                    ),
+                    "/app/C.kt" to listOf(
+                        reference("/app/C.kt", 10, "app.C", "app.B", "/app/B.kt", EdgeKind.CALL),
+                    ),
+                ),
+            )
         }
         return root
     }
@@ -664,15 +282,49 @@ class MetricsEngineTest {
         identifiers: Set<String>,
         packageName: String,
         modulePath: String,
-        sourceSet: String?,
     ): FileIndexUpdate =
         FileIndexUpdate(
             path = path,
             identifiers = identifiers,
             packageName = packageName,
             modulePath = modulePath,
-            sourceSet = sourceSet,
+            sourceSet = "main",
             imports = emptySet(),
             wildcardImports = emptySet(),
+        )
+
+    private fun declaration(
+        fqName: String,
+        kind: DeclarationKind,
+        visibility: DeclarationVisibility,
+        filePath: String,
+        modulePath: String,
+    ): DeclarationRow =
+        DeclarationRow(
+            fqName = fqName,
+            kind = kind,
+            visibility = visibility,
+            filePath = filePath,
+            declarationOffset = 1,
+            modulePath = modulePath,
+            sourceSet = "main",
+        )
+
+    private fun reference(
+        sourcePath: String,
+        sourceOffset: Int,
+        sourceFqName: String,
+        targetFqName: String,
+        targetPath: String,
+        edgeKind: EdgeKind,
+    ): SymbolReferenceRow =
+        SymbolReferenceRow(
+            sourcePath = sourcePath,
+            sourceOffset = sourceOffset,
+            sourceFqName = sourceFqName,
+            targetFqName = targetFqName,
+            targetPath = targetPath,
+            targetOffset = 1,
+            edgeKind = edgeKind,
         )
 }

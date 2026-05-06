@@ -52,9 +52,16 @@ internal class IntelliJProjectIndexer(
         referenceBatchSize: Int,
     ) {
         store.removeReferencesOutsideSources(currentFilePaths)
+        val scanner = PsiReferenceScanner(
+            environment = environment,
+            moduleNameForFile = { path ->
+                environment.findPsiFile(path)?.let(::moduleNameForFile)
+            },
+        )
         ReferenceIndexer(store, batchSize = referenceBatchSize).indexReferences(
             filePaths = currentFilePaths,
-            referenceScanner = PsiReferenceScanner(environment)::scanFileReferences,
+            referenceScanner = scanner::scanFileReferences,
+            declarationScanner = scanner::scanFileDeclarations,
             isCancelled = environment::isCancelled,
         )
     }

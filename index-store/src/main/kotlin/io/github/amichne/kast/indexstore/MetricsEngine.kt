@@ -4,7 +4,6 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.sql.Connection
 import java.sql.DriverManager
-import java.sql.PreparedStatement
 import java.sql.ResultSet
 
 class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
@@ -14,185 +13,377 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
     @Volatile
     private var cachedConnection: Connection? = null
 
+    fun declarations(filter: FileFilterSpec = FileFilterSpec()): List<DeclarationInfo> =
+        readMetric(emptyList()) { conn ->
+            conn.prepareStatement(
+                """
+                SELECT names.fq_name,
+                       declarations.kind,
+                       declarations.visibility,
+                       prefixes.dir_path,
+                       declarations.filename,
+                       declarations.module_path,
+                       declarations.source_set
+                FROM declarations
+                JOIN fq_names names ON names.fq_id = declarations.fq_id
+                JOIN path_prefixes prefixes ON prefixes.prefix_id = declarations.prefix_id
+                ORDER BY names.fq_name ASC, prefixes.dir_path ASC, declarations.filename ASC
+                """.trimIndent(),
+            ).use { stmt ->
+                stmt.executeQuery().use { rs ->
+                    buildList {
+                        while (rs.next()) {
+                            add(
+                                DeclarationInfo(
+                                    fqName = rs.getString(1),
+                                    kind = rs.getString(2),
+                                    visibility = rs.getString(3),
+                                    path = codec.compose(rs.getString(4), rs.getString(5)),
+                                    modulePath = rs.getString(6),
+                                    sourceSet = rs.getString(7),
+                                ),
+                            )
+                        }
+                    }
+                }
+            }.filterByPath(filter) { it.path }
+        }
+
+    fun apiSurface(modulePath: String? = null): List<ApiSurfaceMetric> =
+        readMetric(emptyList()) { conn ->
+            conn.prepareStatement(
+                """
+                SELECT module_path,
+                       SUM(CASE WHEN visibility = 'PUBLIC' THEN 1 ELSE 0 END) AS public_count,
+                       SUM(CASE WHEN visibility = 'INTERNAL' THEN 1 ELSE 0 END) AS internal_count,
+                       SUM(CASE WHEN visibility IN ('PRIVATE', 'LOCAL') THEN 1 ELSE 0 END) AS private_count,
+                       COUNT(*) AS total_count
+                FROM declarations
+                WHERE module_path IS NOT NULL
+                  AND (? IS NULL OR module_path = ?)
+                GROUP BY module_path
+                ORDER BY module_path ASC
+                """.trimIndent(),
+            ).use { stmt ->
+                stmt.setString(1, modulePath)
+                stmt.setString(2, modulePath)
+                stmt.executeQuery().use { rs ->
+                    buildList {
+                        while (rs.next()) {
+                            val privateCount = rs.getInt(4)
+                            val totalCount = rs.getInt(5)
+                            add(
+                                ApiSurfaceMetric(
+                                    modulePath = rs.getString(1),
+                                    publicSymbolCount = rs.getInt(2),
+                                    internalSymbolCount = rs.getInt(3),
+                                    privateSymbolCount = privateCount,
+                                    totalSymbolCount = totalCount,
+                                    encapsulationRatio = ratio(privateCount, totalCount),
+                                ),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+    fun symbolEdges(
+        fqName: String? = null,
+        edgeKinds: Set<EdgeKind> = emptySet(),
+    ): List<SymbolEdgeMetric> =
+        readMetric(emptyList()) { conn ->
+            val kindFilter = edgeKinds.map(EdgeKind::name).toSet()
+            conn.prepareStatement(
+                """
+                SELECT source_names.fq_name,
+                       target_names.fq_name,
+                       refs.edge_kind,
+                       source_prefix.dir_path,
+                       refs.src_filename,
+                       target_prefix.dir_path,
+                       refs.tgt_filename,
+                       COUNT(*) AS reference_count
+                FROM symbol_references refs
+                LEFT JOIN fq_names source_names ON source_names.fq_id = refs.source_fq_id
+                JOIN fq_names target_names ON target_names.fq_id = refs.target_fq_id
+                JOIN path_prefixes source_prefix ON source_prefix.prefix_id = refs.src_prefix_id
+                LEFT JOIN path_prefixes target_prefix ON target_prefix.prefix_id = refs.tgt_prefix_id
+                WHERE (? IS NULL OR source_names.fq_name = ? OR target_names.fq_name = ?)
+                GROUP BY refs.source_fq_id, refs.target_fq_id, refs.edge_kind,
+                         refs.src_prefix_id, refs.src_filename, refs.tgt_prefix_id, refs.tgt_filename
+                ORDER BY reference_count DESC, target_names.fq_name ASC, source_prefix.dir_path ASC, refs.src_filename ASC
+                """.trimIndent(),
+            ).use { stmt ->
+                stmt.setString(1, fqName)
+                stmt.setString(2, fqName)
+                stmt.setString(3, fqName)
+                stmt.executeQuery().use { rs ->
+                    buildList {
+                        while (rs.next()) {
+                            val edgeKind = rs.getString(3)
+                            if (kindFilter.isEmpty() || edgeKind in kindFilter) {
+                                add(
+                                    SymbolEdgeMetric(
+                                        sourceFqName = rs.getString(1),
+                                        targetFqName = rs.getString(2),
+                                        edgeKind = edgeKind,
+                                        sourcePath = codec.compose(rs.getString(4), rs.getString(5)),
+                                        targetPath = nullablePath(rs, 6, 7),
+                                        count = rs.getInt(8),
+                                    ),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+    fun moduleBoundary(modulePath: String? = null): List<ModuleBoundaryMetric> =
+        readMetric(emptyList()) { conn ->
+            val confidence = currentConfidence(conn)
+            val exported = exportedSymbolsByModule(conn)
+            val consumed = consumedTargetsByModule(conn)
+            val apiRefs = crossModuleReferencesByVisibility(conn, "PUBLIC")
+            val internalLeaks = crossModuleReferencesByVisibility(conn, "INTERNAL")
+            exported.keys
+                .plus(consumed.keys)
+                .filter { modulePath == null || it == modulePath }
+                .sorted()
+                .map { module ->
+                    ModuleBoundaryMetric(
+                        modulePath = module,
+                        exportedSymbolCount = exported[module] ?: 0,
+                        consumedSymbolCount = consumed[module] ?: 0,
+                        publicApiReferences = apiRefs[module] ?: 0,
+                        internalLeakReferences = internalLeaks[module] ?: 0,
+                        confidence = confidence,
+                    )
+                }
+        }
+
     fun fanInRanking(limit: Int, filter: FileFilterSpec = FileFilterSpec()): List<FanInMetric> {
         require(limit >= 0) { "limit must be non-negative" }
         if (limit == 0) return emptyList()
-
-        return readMetricRows(
-            MetricQuerySpec(
-                sql = """
-                    SELECT target_name.fq_name,
-                           target_prefix.dir_path,
-                           refs.tgt_filename,
-                           target_meta.module_path,
-                           target_meta.source_set,
-                           COUNT(*) AS occurrence_count,
-                           COUNT(DISTINCT refs.src_prefix_id || ':' || refs.src_filename) AS source_file_count,
-                           COUNT(DISTINCT source_meta.module_path) AS source_module_count
-                    FROM symbol_references refs
-                    LEFT JOIN file_metadata source_meta
-                      ON source_meta.prefix_id = refs.src_prefix_id
-                     AND source_meta.filename = refs.src_filename
-                    LEFT JOIN file_metadata target_meta
-                      ON target_meta.prefix_id = refs.tgt_prefix_id
-                     AND target_meta.filename = refs.tgt_filename
-                    JOIN fq_names target_name ON target_name.fq_id = refs.target_fq_id
-                    LEFT JOIN path_prefixes target_prefix ON target_prefix.prefix_id = refs.tgt_prefix_id
-                    GROUP BY refs.target_fq_id, refs.tgt_prefix_id, refs.tgt_filename, target_meta.module_path, target_meta.source_set
-                     ORDER BY occurrence_count DESC,
-                              target_name.fq_name ASC,
-                              COALESCE(target_prefix.dir_path || '/' || refs.tgt_filename, '') ASC
-                    LIMIT ?
+        return readMetric(emptyList()) { conn ->
+            val confidence = currentConfidence(conn)
+            val byEdgeKind = edgeBreakdownsByTarget(conn)
+            conn.prepareStatement(
+                """
+                SELECT target_name.fq_name,
+                       target_prefix.dir_path,
+                       refs.tgt_filename,
+                       target_meta.module_path,
+                       target_meta.source_set,
+                       COUNT(*) AS occurrence_count,
+                       COUNT(DISTINCT refs.src_prefix_id || ':' || refs.src_filename) AS source_file_count,
+                       COUNT(DISTINCT source_meta.module_path) AS source_module_count
+                FROM symbol_references refs
+                LEFT JOIN file_metadata source_meta
+                  ON source_meta.prefix_id = refs.src_prefix_id
+                 AND source_meta.filename = refs.src_filename
+                LEFT JOIN file_metadata target_meta
+                  ON target_meta.prefix_id = refs.tgt_prefix_id
+                 AND target_meta.filename = refs.tgt_filename
+                JOIN fq_names target_name ON target_name.fq_id = refs.target_fq_id
+                LEFT JOIN path_prefixes target_prefix ON target_prefix.prefix_id = refs.tgt_prefix_id
+                GROUP BY refs.target_fq_id, refs.tgt_prefix_id, refs.tgt_filename, target_meta.module_path, target_meta.source_set
+                ORDER BY occurrence_count DESC,
+                         target_name.fq_name ASC,
+                         COALESCE(target_prefix.dir_path || '/' || refs.tgt_filename, '') ASC
+                LIMIT ?
                 """.trimIndent(),
-                fields = FanInField.entries,
-                bind = { setInt(1, limit) },
-                mapRow = {
-                    FanInMetric(
-                        targetFqName = string(FanInField.TARGET_FQ_NAME),
-                        targetPath = nullablePath(FanInField.TARGET_DIR, FanInField.TARGET_FILENAME),
-                        targetModulePath = nullableString(FanInField.TARGET_MODULE_PATH),
-                        targetSourceSet = nullableString(FanInField.TARGET_SOURCE_SET),
-                        occurrenceCount = int(FanInField.OCCURRENCE_COUNT),
-                        sourceFileCount = int(FanInField.SOURCE_FILE_COUNT),
-                        sourceModuleCount = int(FanInField.SOURCE_MODULE_COUNT),
-                    )
-                },
-            ),
-        ).filterByPath(filter) { it.targetPath }
-
+            ).use { stmt ->
+                stmt.setInt(1, limit)
+                stmt.executeQuery().use { rs ->
+                    buildList {
+                        while (rs.next()) {
+                            val targetFqName = rs.getString(1)
+                            add(
+                                FanInMetric(
+                                    targetFqName = targetFqName,
+                                    targetPath = nullablePath(rs, 2, 3),
+                                    targetModulePath = rs.getString(4),
+                                    targetSourceSet = rs.getString(5),
+                                    occurrenceCount = rs.getInt(6),
+                                    sourceFileCount = rs.getInt(7),
+                                    sourceModuleCount = rs.getInt(8),
+                                    byEdgeKind = byEdgeKind[targetFqName].orEmpty(),
+                                    confidence = confidence,
+                                ),
+                            )
+                        }
+                    }
+                }
+            }.filterByPath(filter) { it.targetPath }
+        }
     }
 
     fun fanOutRanking(limit: Int, filter: FileFilterSpec = FileFilterSpec()): List<FanOutMetric> {
         require(limit >= 0) { "limit must be non-negative" }
         if (limit == 0) return emptyList()
-
-        return readMetricRows(
-            MetricQuerySpec(
-                sql = """
-                    SELECT source_prefix.dir_path,
-                           refs.src_filename,
-                           source_meta.module_path,
-                           source_meta.source_set,
-                           COUNT(*) AS occurrence_count,
-                           COUNT(DISTINCT refs.target_fq_id) AS target_symbol_count,
-                           COUNT(DISTINCT CASE
-                               WHEN refs.tgt_prefix_id IS NULL THEN NULL
-                               ELSE refs.tgt_prefix_id || ':' || refs.tgt_filename
-                           END) AS target_file_count,
-                           COUNT(DISTINCT target_meta.module_path) AS target_module_count,
-                           SUM(CASE WHEN refs.tgt_prefix_id IS NULL OR target_meta.prefix_id IS NULL THEN 1 ELSE 0 END)
-                                AS external_target_count
-                    FROM symbol_references refs
-                    JOIN path_prefixes source_prefix ON source_prefix.prefix_id = refs.src_prefix_id
-                    LEFT JOIN file_metadata source_meta
-                      ON source_meta.prefix_id = refs.src_prefix_id
-                     AND source_meta.filename = refs.src_filename
-                    LEFT JOIN file_metadata target_meta
-                      ON target_meta.prefix_id = refs.tgt_prefix_id
-                     AND target_meta.filename = refs.tgt_filename
-                    GROUP BY refs.src_prefix_id, refs.src_filename, source_meta.module_path, source_meta.source_set
-                    ORDER BY occurrence_count DESC,
-                             source_prefix.dir_path ASC,
-                             refs.src_filename ASC
-                    LIMIT ?
+        return readMetric(emptyList()) { conn ->
+            val confidence = currentConfidence(conn)
+            val byEdgeKind = edgeBreakdownsBySource(conn)
+            conn.prepareStatement(
+                """
+                SELECT source_prefix.dir_path,
+                       refs.src_filename,
+                       source_meta.module_path,
+                       source_meta.source_set,
+                       COUNT(*) AS occurrence_count,
+                       COUNT(DISTINCT refs.target_fq_id) AS target_symbol_count,
+                       COUNT(DISTINCT CASE
+                           WHEN refs.tgt_prefix_id IS NULL THEN NULL
+                           ELSE refs.tgt_prefix_id || ':' || refs.tgt_filename
+                       END) AS target_file_count,
+                       COUNT(DISTINCT target_meta.module_path) AS target_module_count,
+                       SUM(CASE WHEN refs.tgt_prefix_id IS NULL OR target_meta.prefix_id IS NULL THEN 1 ELSE 0 END)
+                            AS external_target_count
+                FROM symbol_references refs
+                JOIN path_prefixes source_prefix ON source_prefix.prefix_id = refs.src_prefix_id
+                LEFT JOIN file_metadata source_meta
+                  ON source_meta.prefix_id = refs.src_prefix_id
+                 AND source_meta.filename = refs.src_filename
+                LEFT JOIN file_metadata target_meta
+                  ON target_meta.prefix_id = refs.tgt_prefix_id
+                 AND target_meta.filename = refs.tgt_filename
+                GROUP BY refs.src_prefix_id, refs.src_filename, source_meta.module_path, source_meta.source_set
+                ORDER BY occurrence_count DESC,
+                         source_prefix.dir_path ASC,
+                         refs.src_filename ASC
+                LIMIT ?
                 """.trimIndent(),
-                fields = FanOutField.entries,
-                bind = { setInt(1, limit) },
-                mapRow = {
-                    FanOutMetric(
-                        sourcePath = path(FanOutField.SOURCE_DIR, FanOutField.SOURCE_FILENAME),
-                        sourceModulePath = nullableString(FanOutField.SOURCE_MODULE_PATH),
-                        sourceSourceSet = nullableString(FanOutField.SOURCE_SOURCE_SET),
-                        occurrenceCount = int(FanOutField.OCCURRENCE_COUNT),
-                        targetSymbolCount = int(FanOutField.TARGET_SYMBOL_COUNT),
-                        targetFileCount = int(FanOutField.TARGET_FILE_COUNT),
-                        targetModuleCount = int(FanOutField.TARGET_MODULE_COUNT),
-                        externalTargetCount = int(FanOutField.EXTERNAL_TARGET_COUNT),
-                    )
-                },
-            ),
-        ).filterByPath(filter) { it.sourcePath }
+            ).use { stmt ->
+                stmt.setInt(1, limit)
+                stmt.executeQuery().use { rs ->
+                    buildList {
+                        while (rs.next()) {
+                            val sourcePath = codec.compose(rs.getString(1), rs.getString(2))
+                            add(
+                                FanOutMetric(
+                                    sourcePath = sourcePath,
+                                    sourceModulePath = rs.getString(3),
+                                    sourceSourceSet = rs.getString(4),
+                                    occurrenceCount = rs.getInt(5),
+                                    targetSymbolCount = rs.getInt(6),
+                                    targetFileCount = rs.getInt(7),
+                                    targetModuleCount = rs.getInt(8),
+                                    externalTargetCount = rs.getInt(9),
+                                    byEdgeKind = byEdgeKind[sourcePath].orEmpty(),
+                                    confidence = confidence,
+                                ),
+                            )
+                        }
+                    }
+                }
+            }.filterByPath(filter) { it.sourcePath }
+        }
     }
 
     fun moduleCouplingMatrix(): List<ModuleCouplingMetric> =
-        readMetricRows(
-            MetricQuerySpec(
-                sql = """
-                    SELECT source_meta.module_path, source_meta.source_set,
-                           target_meta.module_path, target_meta.source_set,
-                           COUNT(*) AS reference_count
-                    FROM symbol_references refs
-                    JOIN file_metadata source_meta
-                      ON source_meta.prefix_id = refs.src_prefix_id
-                     AND source_meta.filename = refs.src_filename
-                    JOIN file_metadata target_meta
-                      ON target_meta.prefix_id = refs.tgt_prefix_id
-                     AND target_meta.filename = refs.tgt_filename
-                    WHERE source_meta.module_path IS NOT NULL
-                      AND target_meta.module_path IS NOT NULL
-                      AND source_meta.module_path <> target_meta.module_path
-                    GROUP BY source_meta.module_path, source_meta.source_set, target_meta.module_path, target_meta.source_set
-                    ORDER BY reference_count DESC, source_meta.module_path ASC, target_meta.module_path ASC
+        readMetric(emptyList()) { conn ->
+            val confidence = currentConfidence(conn)
+            val byEdgeKind = edgeBreakdownsByModulePair(conn)
+            conn.prepareStatement(
+                """
+                SELECT source_meta.module_path, source_meta.source_set,
+                       target_meta.module_path, target_meta.source_set,
+                       COUNT(*) AS reference_count,
+                       SUM(CASE WHEN declarations.visibility = 'PUBLIC' THEN 1 ELSE 0 END) AS public_api_count,
+                       SUM(CASE WHEN declarations.visibility = 'INTERNAL' THEN 1 ELSE 0 END) AS internal_leak_count
+                FROM symbol_references refs
+                JOIN file_metadata source_meta
+                  ON source_meta.prefix_id = refs.src_prefix_id
+                 AND source_meta.filename = refs.src_filename
+                JOIN file_metadata target_meta
+                  ON target_meta.prefix_id = refs.tgt_prefix_id
+                 AND target_meta.filename = refs.tgt_filename
+                LEFT JOIN declarations ON declarations.fq_id = refs.target_fq_id
+                WHERE source_meta.module_path IS NOT NULL
+                  AND target_meta.module_path IS NOT NULL
+                  AND source_meta.module_path <> target_meta.module_path
+                GROUP BY source_meta.module_path, source_meta.source_set, target_meta.module_path, target_meta.source_set
+                ORDER BY reference_count DESC, source_meta.module_path ASC, target_meta.module_path ASC
                 """.trimIndent(),
-                fields = ModuleCouplingField.entries,
-                mapRow = {
-                    ModuleCouplingMetric(
-                        sourceModulePath = string(ModuleCouplingField.SOURCE_MODULE_PATH),
-                        sourceSourceSet = nullableString(ModuleCouplingField.SOURCE_SOURCE_SET),
-                        targetModulePath = string(ModuleCouplingField.TARGET_MODULE_PATH),
-                        targetSourceSet = nullableString(ModuleCouplingField.TARGET_SOURCE_SET),
-                        referenceCount = int(ModuleCouplingField.REFERENCE_COUNT),
-                    )
-                },
-            ),
-        )
+            ).use { stmt ->
+                stmt.executeQuery().use { rs ->
+                    buildList {
+                        while (rs.next()) {
+                            val sourceModule = rs.getString(1)
+                            val targetModule = rs.getString(3)
+                            add(
+                                ModuleCouplingMetric(
+                                    sourceModulePath = sourceModule,
+                                    sourceSourceSet = rs.getString(2),
+                                    targetModulePath = targetModule,
+                                    targetSourceSet = rs.getString(4),
+                                    referenceCount = rs.getInt(5),
+                                    publicApiCount = rs.getInt(6),
+                                    internalLeakCount = rs.getInt(7),
+                                    byEdgeKind = byEdgeKind[sourceModule to targetModule].orEmpty(),
+                                    confidence = confidence,
+                                ),
+                            )
+                        }
+                    }
+                }
+            }
+        }
 
     fun lowUsageSymbols(maxOccurrences: Int = 2, limit: Int = 50, filter: FileFilterSpec = FileFilterSpec()): List<LowUsageSymbol> {
         require(maxOccurrences >= 0) { "maxOccurrences must be non-negative" }
         require(limit >= 0) { "limit must be non-negative" }
         if (maxOccurrences == 0 || limit == 0) return emptyList()
-
-        return readMetricRows(
-            MetricQuerySpec(
-                sql = """
-                    SELECT target_name.fq_name,
-                           target_prefix.dir_path,
-                           refs.tgt_filename,
-                           target_meta.module_path,
-                           COUNT(*) AS occurrence_count,
-                           COUNT(DISTINCT refs.src_prefix_id || ':' || refs.src_filename) AS source_file_count
-                    FROM symbol_references refs
-                    JOIN fq_names target_name ON target_name.fq_id = refs.target_fq_id
-                    JOIN path_prefixes target_prefix ON target_prefix.prefix_id = refs.tgt_prefix_id
-                    JOIN file_metadata target_meta
-                      ON target_meta.prefix_id = refs.tgt_prefix_id
-                     AND target_meta.filename = refs.tgt_filename
-                    GROUP BY refs.target_fq_id, refs.tgt_prefix_id, refs.tgt_filename, target_meta.module_path
-                    HAVING source_file_count = 1
-                       AND occurrence_count <= ?
-                    ORDER BY COALESCE(target_meta.module_path, '') ASC,
-                             target_name.fq_name ASC
-                    LIMIT ?
+        return readMetric(emptyList()) { conn ->
+            val confidence = currentConfidence(conn)
+            conn.prepareStatement(
+                """
+                SELECT target_name.fq_name,
+                       target_prefix.dir_path,
+                       refs.tgt_filename,
+                       target_meta.module_path,
+                       COUNT(*) AS occurrence_count,
+                       COUNT(DISTINCT refs.src_prefix_id || ':' || refs.src_filename) AS source_file_count
+                FROM symbol_references refs
+                JOIN fq_names target_name ON target_name.fq_id = refs.target_fq_id
+                JOIN path_prefixes target_prefix ON target_prefix.prefix_id = refs.tgt_prefix_id
+                JOIN file_metadata target_meta
+                  ON target_meta.prefix_id = refs.tgt_prefix_id
+                 AND target_meta.filename = refs.tgt_filename
+                GROUP BY refs.target_fq_id, refs.tgt_prefix_id, refs.tgt_filename, target_meta.module_path
+                HAVING source_file_count = 1
+                   AND occurrence_count <= ?
+                ORDER BY COALESCE(target_meta.module_path, '') ASC,
+                         target_name.fq_name ASC
+                LIMIT ?
                 """.trimIndent(),
-                fields = LowUsageField.entries,
-                bind = {
-                    setInt(1, maxOccurrences)
-                    setInt(2, limit)
-                },
-                mapRow = {
-                    LowUsageSymbol(
-                        targetFqName = string(LowUsageField.TARGET_FQ_NAME),
-                        targetPath = nullablePath(LowUsageField.TARGET_DIR, LowUsageField.TARGET_FILENAME),
-                        targetModulePath = nullableString(LowUsageField.TARGET_MODULE_PATH),
-                        occurrenceCount = int(LowUsageField.OCCURRENCE_COUNT),
-                        sourceFileCount = int(LowUsageField.SOURCE_FILE_COUNT),
-                    )
-                },
-            ),
-        ).filterByPath(filter) { it.targetPath }
+            ).use { stmt ->
+                stmt.setInt(1, maxOccurrences)
+                stmt.setInt(2, limit)
+                stmt.executeQuery().use { rs ->
+                    buildList {
+                        while (rs.next()) {
+                            add(
+                                LowUsageSymbol(
+                                    targetFqName = rs.getString(1),
+                                    targetPath = nullablePath(rs, 2, 3),
+                                    targetModulePath = rs.getString(4),
+                                    occurrenceCount = rs.getInt(5),
+                                    sourceFileCount = rs.getInt(6),
+                                    confidence = confidence,
+                                ),
+                            )
+                        }
+                    }
+                }
+            }.filterByPath(filter) { it.targetPath }
+        }
     }
 
     fun moduleCycles(): List<ModuleCycleMetric> {
+        val confidence = readMetric(SPECULATIVE_CONFIDENCE, ::currentConfidence)
         val edgeWeights = moduleCouplingMatrix()
             .fold(mutableMapOf<Pair<String, String>, Int>()) { weights, edge ->
                 val key = edge.sourceModulePath to edge.targetModulePath
@@ -233,6 +424,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
                         weakestEdgeSource = weakestEdge.first,
                         weakestEdgeTarget = weakestEdge.second,
                         weakestEdgeReferenceCount = checkNotNull(edgeWeights[weakestEdge]),
+                        confidence = confidence,
                     )
                 }
             }
@@ -241,9 +433,9 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
 
     fun moduleDepthMetrics(): List<ModuleDepthMetric> =
         readMetric(emptyList()) { conn ->
+            val confidence = currentConfidence(conn)
             val declarations = moduleDeclarationStats(conn)
             val references = moduleReferenceStats(conn)
-
             declarations.values
                 .sortedBy { it.modulePath }
                 .map { declaration ->
@@ -253,8 +445,8 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
                         externalRefCount = 0,
                     )
                     val totalRefs = reference.internalRefCount + reference.externalRefCount
-                    val cohesionRatio = if (totalRefs == 0) 0.0 else reference.internalRefCount / totalRefs.toDouble()
-                    val refsPerFile = if (declaration.fileCount == 0) 0.0 else reference.internalRefCount / declaration.fileCount.toDouble()
+                    val cohesionRatio = ratio(reference.internalRefCount, totalRefs)
+                    val refsPerFile = ratio(reference.internalRefCount, declaration.fileCount)
                     ModuleDepthMetric(
                         modulePath = declaration.modulePath,
                         fileCount = declaration.fileCount,
@@ -270,140 +462,72 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
                             cohesionRatio = cohesionRatio,
                             refsPerFile = refsPerFile,
                         ),
+                        confidence = confidence,
                     )
                 }
         }
 
     fun deadCodeCandidates(filter: FileFilterSpec = FileFilterSpec()): List<DeadCodeCandidate> =
-        readMetricRows(
-            MetricQuerySpec(
-                sql = """
-                    SELECT identifiers.identifier,
-                           identifier_prefix.dir_path,
-                           identifiers.filename,
-                           metadata.module_path,
-                           metadata.source_set,
-                           package_name.fq_name
-                    FROM identifier_paths identifiers
-                    JOIN path_prefixes identifier_prefix ON identifier_prefix.prefix_id = identifiers.prefix_id
-                     LEFT JOIN file_metadata metadata
-                       ON metadata.prefix_id = identifiers.prefix_id
-                      AND metadata.filename = identifiers.filename
-                     LEFT JOIN fq_names package_name ON package_name.fq_id = metadata.package_fq_id
-                     WHERE NOT EXISTS (
-                         SELECT 1
-                         FROM symbol_references refs
-                         JOIN fq_names target_name ON target_name.fq_id = refs.target_fq_id
-                         WHERE refs.tgt_prefix_id = identifiers.prefix_id
-                           AND refs.tgt_filename = identifiers.filename
-                           AND (
-                               target_name.fq_name = identifiers.identifier
-                               OR target_name.fq_name LIKE '%.' || identifiers.identifier
-                           )
-                    )
-                    ORDER BY COALESCE(metadata.module_path, '') ASC,
-                             identifier_prefix.dir_path ASC,
-                             identifiers.filename ASC,
-                             identifiers.identifier ASC
+        readMetric(emptyList()) { conn ->
+            val confidence = currentConfidence(conn)
+            conn.prepareStatement(
+                """
+                SELECT names.fq_name,
+                       declarations.kind,
+                       declarations.visibility,
+                       prefixes.dir_path,
+                       declarations.filename,
+                       declarations.module_path,
+                       declarations.source_set
+                FROM declarations
+                JOIN fq_names names ON names.fq_id = declarations.fq_id
+                JOIN path_prefixes prefixes ON prefixes.prefix_id = declarations.prefix_id
+                WHERE NOT EXISTS (
+                    SELECT 1
+                    FROM symbol_references refs
+                    WHERE refs.target_fq_id = declarations.fq_id
+                )
+                ORDER BY COALESCE(declarations.module_path, '') ASC,
+                         prefixes.dir_path ASC,
+                         declarations.filename ASC,
+                         names.fq_name ASC
                 """.trimIndent(),
-                fields = DeadCodeField.entries,
-                mapRow = {
-                    DeadCodeCandidate(
-                        identifier = string(DeadCodeField.IDENTIFIER),
-                        path = path(DeadCodeField.DIR, DeadCodeField.FILENAME),
-                        modulePath = nullableString(DeadCodeField.MODULE_PATH),
-                        sourceSet = nullableString(DeadCodeField.SOURCE_SET),
-                        packageName = nullableString(DeadCodeField.PACKAGE_NAME),
-                        confidence = MetricsConfidence.LOW,
-                        reason = "Identifier has no inbound reference rows matching its file and simple name; identifier_paths is lexical, not declaration-only.",
-                    )
-                },
-            ),
-        ).filterByPath(filter) { it.path }
-
+            ).use { stmt ->
+                stmt.executeQuery().use { rs ->
+                    buildList {
+                        while (rs.next()) {
+                            val visibility = rs.getString(3)
+                            add(
+                                DeadCodeCandidate(
+                                    fqName = rs.getString(1),
+                                    kind = rs.getString(2),
+                                    visibility = visibility,
+                                    path = nullablePath(rs, 4, 5),
+                                    modulePath = rs.getString(6),
+                                    sourceSet = rs.getString(7),
+                                    confidence = confidence.forDeadCodeVisibility(visibility),
+                                    reason = deadCodeReason(visibility),
+                                ),
+                            )
+                        }
+                    }
+                }
+            }.filterByPath(filter) { it.path }
+        }
 
     fun changeImpactRadius(fqName: String, depth: Int, filter: FileFilterSpec = FileFilterSpec()): List<ChangeImpactNode> {
         require(depth >= 0) { "depth must be non-negative" }
         if (depth == 0) return emptyList()
-        return readMetricRows(
-            MetricQuerySpec(
-                sql = """
-                    WITH RECURSIVE impacted_files(depth, src_prefix_id, src_filename, via_target_fq_id) AS (
-                        SELECT 1, src_prefix_id, src_filename, target_fq_id
-                        FROM symbol_references
-                        WHERE target_fq_id = (SELECT fq_id FROM fq_names WHERE fq_name = ?)
-                        UNION
-                        SELECT impacted_files.depth + 1,
-                               refs.src_prefix_id,
-                               refs.src_filename,
-                               refs.target_fq_id
-                        FROM impacted_files
-                        JOIN symbol_references refs
-                          ON refs.tgt_prefix_id = impacted_files.src_prefix_id
-                         AND refs.tgt_filename = impacted_files.src_filename
-                        WHERE impacted_files.depth < ?
-                    ),
-                    first_hits AS (
-                        SELECT src_prefix_id, src_filename, MIN(depth) AS depth
-                        FROM impacted_files
-                        GROUP BY src_prefix_id, src_filename
-                    )
-                    SELECT source_prefix.dir_path,
-                           first_hits.src_filename,
-                           first_hits.depth,
-                           via_target_name.fq_name,
-                           COUNT(refs.source_offset) AS reference_count
-                    FROM first_hits
-                    JOIN impacted_files
-                      ON impacted_files.src_prefix_id = first_hits.src_prefix_id
-                     AND impacted_files.src_filename = first_hits.src_filename
-                     AND impacted_files.depth = first_hits.depth
-                     JOIN symbol_references refs
-                       ON refs.src_prefix_id = impacted_files.src_prefix_id
-                      AND refs.src_filename = impacted_files.src_filename
-                      AND refs.target_fq_id = impacted_files.via_target_fq_id
-                    JOIN fq_names via_target_name ON via_target_name.fq_id = impacted_files.via_target_fq_id
-                     JOIN path_prefixes source_prefix ON source_prefix.prefix_id = first_hits.src_prefix_id
-                    GROUP BY first_hits.src_prefix_id,
-                             first_hits.src_filename,
-                             first_hits.depth,
-                              impacted_files.via_target_fq_id,
-                              via_target_name.fq_name
-                    ORDER BY first_hits.depth ASC,
-                              reference_count DESC,
-                              source_prefix.dir_path ASC,
-                              first_hits.src_filename ASC,
-                              via_target_name.fq_name ASC
-                """.trimIndent(),
-                fields = ChangeImpactField.entries,
-                bind = {
-                    setString(1, fqName)
-                    setInt(2, depth)
-                },
-                mapRow = {
-                    ChangeImpactNode(
-                        sourcePath = path(ChangeImpactField.SOURCE_DIR, ChangeImpactField.SOURCE_FILENAME),
-                        depth = int(ChangeImpactField.DEPTH),
-                        viaTargetFqName = string(ChangeImpactField.VIA_TARGET_FQ_NAME),
-                        occurrenceCount = int(ChangeImpactField.OCCURRENCE_COUNT),
-                        semantics = ImpactSemantics.FILE_LEVEL_APPROXIMATION,
-                    )
-                },
-            ),
-        ).filterByPath(filter) { it.sourcePath }
+        return readMetric(emptyList()) { conn ->
+            val confidence = currentConfidence(conn)
+            if (hasSourceSymbolEdges(conn)) {
+                symbolLevelImpact(conn, fqName, depth, confidence)
+            } else {
+                fileLevelImpact(conn, fqName, depth, confidence)
+            }
+        }.filterByPath(filter) { it.sourcePath }
     }
 
-    /**
-     * Fuzzy search the source index for symbol fully-qualified names that match [query].
-     *
-     * The matcher is case-insensitive and substring-based against `fq_names.fq_name`. Results
-     * are ordered so that exact matches and short, simple-name matches rank first; remaining
-     * matches are returned alphabetically. An empty or blank [query] returns the most-frequently
-     * referenced symbols up to [limit].
-     *
-     * Returns an empty list when the workspace has not been indexed yet or the schema is stale,
-     * mirroring the safe defaults used by the metrics queries.
-     */
     fun searchSymbols(query: String, limit: Int = 25): List<String> {
         require(limit >= 0) { "limit must be non-negative" }
         if (limit == 0) return emptyList()
@@ -424,138 +548,8 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
         }
     }
 
-    private fun popularSymbols(conn: Connection, limit: Int): List<String> =
-        conn.prepareStatement(
-            """
-            SELECT names.fq_name
-            FROM fq_names names
-            JOIN symbol_references refs ON refs.target_fq_id = names.fq_id
-            GROUP BY names.fq_id
-            ORDER BY COUNT(*) DESC, names.fq_name ASC
-            LIMIT ?
-            """.trimIndent(),
-        ).use { stmt ->
-            stmt.setInt(1, limit)
-            stmt.stringColumnResults()
-        }
-
-    private fun directSymbolMatches(
-        conn: Connection,
-        query: String,
-        limit: Int,
-    ): List<String> =
-        conn.prepareStatement(
-            """
-            SELECT names.fq_name
-            FROM fq_names names
-            WHERE LOWER(names.fq_name) LIKE ? ESCAPE '\'
-            ORDER BY
-                CASE
-                    WHEN LOWER(names.fq_name) = ? THEN 0
-                    WHEN LOWER(names.fq_name) LIKE ? ESCAPE '\' THEN 1
-                    WHEN LOWER(names.fq_name) LIKE ? ESCAPE '\' THEN 2
-                    ELSE 3
-                END,
-                LENGTH(names.fq_name) ASC,
-                names.fq_name ASC
-            LIMIT ?
-            """.trimIndent(),
-        ).use { stmt ->
-            val needle = escapeLike(query.lowercase())
-            stmt.setString(1, "%$needle%")
-            stmt.setString(2, query.lowercase())
-            stmt.setString(3, "%.$needle")
-            stmt.setString(4, "$needle%")
-            stmt.setInt(5, limit)
-            stmt.stringColumnResults()
-        }
-
-    private fun fuzzySymbolMatches(
-        conn: Connection,
-        query: String,
-        excluded: Set<String>,
-        maxDistance: Int = 2,
-    ): List<String> {
-        val normalizedQuery = query.lowercase()
-        return conn.prepareStatement(
-            """
-            SELECT fq_name
-            FROM fq_names
-            ORDER BY fq_name ASC
-            LIMIT ?
-            """.trimIndent(),
-        ).use { stmt ->
-            stmt.setInt(1, FUZZY_SYMBOL_CANDIDATE_LIMIT)
-            stmt.stringColumnResults()
-        }
-            .asSequence()
-            .filterNot(excluded::contains)
-            .mapNotNull { fqName ->
-                val simpleName = fqName.substringAfterLast('.').lowercase()
-                val fqDistance = levenshteinDistanceAtMost(normalizedQuery, fqName.lowercase(), maxDistance)
-                val simpleDistance = levenshteinDistanceAtMost(normalizedQuery, simpleName, maxDistance)
-                minOfNotNull(fqDistance, simpleDistance)?.let { distance ->
-                    FuzzySymbolMatch(fqName, distance, simpleName.length)
-                }
-            }
-            .sortedWith(compareBy({ it.distance }, { it.simpleNameLength }, { it.fqName }))
-            .map(FuzzySymbolMatch::fqName)
-            .toList()
-    }
-
-    private fun PreparedStatement.stringColumnResults(): List<String> =
-        executeQuery().use { rs ->
-            buildList {
-                while (rs.next()) add(rs.getString(1))
-            }
-        }
-
-    private fun escapeLike(value: String): String =
-        value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-
-    private fun levenshteinDistanceAtMost(
-        left: String,
-        right: String,
-        maxDistance: Int,
-    ): Int? {
-        if (kotlin.math.abs(left.length - right.length) > maxDistance) return null
-        var previous = IntArray(right.length + 1) { it }
-        var current = IntArray(right.length + 1)
-        left.forEachIndexed { leftIndex, leftChar ->
-            current[0] = leftIndex + 1
-            var rowMinimum = current[0]
-            right.forEachIndexed { rightIndex, rightChar ->
-                val substitutionCost = if (leftChar == rightChar) 0 else 1
-                current[rightIndex + 1] = minOf(
-                    current[rightIndex] + 1,
-                    previous[rightIndex + 1] + 1,
-                    previous[rightIndex] + substitutionCost,
-                )
-                rowMinimum = minOf(rowMinimum, current[rightIndex + 1])
-            }
-            if (rowMinimum > maxDistance) return null
-            val nextPrevious = previous
-            previous = current
-            current = nextPrevious
-        }
-        return previous[right.length].takeIf { it <= maxDistance }
-    }
-
-    private fun minOfNotNull(first: Int?, second: Int?): Int? = when {
-        first == null -> second
-        second == null -> first
-        else -> minOf(first, second)
-    }
-
-    private data class FuzzySymbolMatch(
-        val fqName: String,
-        val distance: Int,
-        val simpleNameLength: Int,
-    )
-
     fun graph(fqName: String, depth: Int): MetricsGraph {
         require(depth >= 0) { "depth must be non-negative" }
-
         val focal = fanInMetric(fqName)
         val impact = changeImpactRadius(fqName = fqName, depth = depth)
         val directReferences = impact.filter { it.depth == 1 && it.viaTargetFqName == fqName }
@@ -563,9 +557,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
         val impactBySourcePath = impact.groupBy { it.sourcePath }
         val nodes = buildList {
             add(focalSymbolNode(fqName, focal, directReferences, childIdsByParent))
-            focal?.targetPath?.let { targetPath ->
-                add(targetFileNode(targetPath, focal, childIdsByParent))
-            }
+            focal?.targetPath?.let { targetPath -> add(targetFileNode(targetPath, focal, childIdsByParent)) }
             impactBySourcePath.forEach { (_, nodesForPath) ->
                 val representative = nodesForPath.minBy { it.depth }
                 add(sourceFileNode(nodesForPath, childIdsByParent, parentIdFor(representative, impact, fqName)))
@@ -574,13 +566,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
         }
         val edges = buildList {
             focal?.targetPath?.let { targetPath ->
-                add(
-                    MetricsGraphEdge(
-                        from = fileNodeId(targetPath),
-                        to = symbolNodeId(fqName),
-                        edgeType = MetricsGraphEdgeType.CONTAINS,
-                    ),
-                )
+                add(MetricsGraphEdge(from = fileNodeId(targetPath), to = symbolNodeId(fqName), edgeType = MetricsGraphEdgeType.CONTAINS))
             }
             impactBySourcePath.forEach { (_, nodesForPath) ->
                 val representative = nodesForPath.minBy { it.depth }
@@ -617,169 +603,6 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
         )
     }
 
-    private fun moduleDeclarationStats(conn: Connection): Map<String, ModuleDeclarationStats> =
-        conn.prepareStatement(
-            """
-                SELECT metadata.module_path,
-                       COUNT(DISTINCT metadata.prefix_id || ':' || metadata.filename) AS file_count,
-                       COUNT(identifiers.identifier) AS declared_symbol_count
-                FROM file_metadata metadata
-                LEFT JOIN identifier_paths identifiers
-                  ON identifiers.prefix_id = metadata.prefix_id
-                 AND identifiers.filename = metadata.filename
-                WHERE metadata.module_path IS NOT NULL
-                GROUP BY metadata.module_path
-            """.trimIndent(),
-        ).use { stmt ->
-            stmt.executeQuery().use { rs ->
-                buildMap {
-                    while (rs.next()) {
-                        val modulePath = rs.getString(1)
-                        put(
-                            modulePath,
-                            ModuleDeclarationStats(
-                                modulePath = modulePath,
-                                fileCount = rs.getInt(2),
-                                declaredSymbolCount = rs.getInt(3),
-                            ),
-                        )
-                    }
-                }
-            }
-        }
-
-    private fun moduleReferenceStats(conn: Connection): Map<String, ModuleReferenceStats> =
-        conn.prepareStatement(
-            """
-                SELECT source_meta.module_path,
-                       SUM(
-                           CASE
-                               WHEN target_meta.module_path = source_meta.module_path
-                                AND (refs.src_prefix_id <> refs.tgt_prefix_id OR refs.src_filename <> refs.tgt_filename)
-                               THEN 1
-                               ELSE 0
-                           END
-                       ) AS internal_ref_count,
-                       SUM(
-                           CASE
-                               WHEN target_meta.module_path IS NULL OR target_meta.module_path <> source_meta.module_path
-                               THEN 1
-                               ELSE 0
-                           END
-                       ) AS external_ref_count
-                FROM symbol_references refs
-                JOIN file_metadata source_meta
-                  ON source_meta.prefix_id = refs.src_prefix_id
-                 AND source_meta.filename = refs.src_filename
-                LEFT JOIN file_metadata target_meta
-                  ON target_meta.prefix_id = refs.tgt_prefix_id
-                 AND target_meta.filename = refs.tgt_filename
-                WHERE source_meta.module_path IS NOT NULL
-                GROUP BY source_meta.module_path
-            """.trimIndent(),
-        ).use { stmt ->
-            stmt.executeQuery().use { rs ->
-                buildMap {
-                    while (rs.next()) {
-                        val modulePath = rs.getString(1)
-                        put(
-                            modulePath,
-                            ModuleReferenceStats(
-                                modulePath = modulePath,
-                                internalRefCount = rs.getInt(2),
-                                externalRefCount = rs.getInt(3),
-                            ),
-                        )
-                    }
-                }
-            }
-        }
-
-    private fun moduleDepthDiagnosis(
-        fileCount: Int,
-        internalRefCount: Int,
-        externalRefCount: Int,
-        cohesionRatio: Double,
-        refsPerFile: Double,
-    ): ModuleDepthDiagnosis =
-        when {
-            fileCount > 50 && cohesionRatio > 0.8 -> ModuleDepthDiagnosis.MONOLITH
-            cohesionRatio > 0.5 && refsPerFile > 3.0 -> ModuleDepthDiagnosis.DEEP
-            internalRefCount == 0 && externalRefCount > 0 -> ModuleDepthDiagnosis.PASS_THROUGH
-            cohesionRatio < 0.3 || refsPerFile < 1.0 -> ModuleDepthDiagnosis.SHALLOW
-            else -> ModuleDepthDiagnosis.DEEP
-        }
-
-    private fun stronglyConnectedComponents(adjacency: Map<String, List<String>>): List<Set<String>> {
-        var nextIndex = 0
-        val indexByNode = mutableMapOf<String, Int>()
-        val lowLinkByNode = mutableMapOf<String, Int>()
-        val stack = ArrayDeque<String>()
-        val onStack = mutableSetOf<String>()
-        val components = mutableListOf<Set<String>>()
-
-        fun connect(node: String) {
-            indexByNode[node] = nextIndex
-            lowLinkByNode[node] = nextIndex
-            nextIndex += 1
-            stack.addLast(node)
-            onStack += node
-
-            adjacency[node].orEmpty().forEach { target ->
-                if (target !in indexByNode) {
-                    connect(target)
-                    lowLinkByNode[node] = minOf(
-                        checkNotNull(lowLinkByNode[node]),
-                        checkNotNull(lowLinkByNode[target]),
-                    )
-                } else if (target in onStack) {
-                    lowLinkByNode[node] = minOf(
-                        checkNotNull(lowLinkByNode[node]),
-                        checkNotNull(indexByNode[target]),
-                    )
-                }
-            }
-
-            if (lowLinkByNode[node] == indexByNode[node]) {
-                val component = buildSet {
-                    do {
-                        val member = stack.removeLast()
-                        onStack -= member
-                        add(member)
-                    } while (member != node)
-                }
-                components += component
-            }
-        }
-
-        adjacency.keys.sorted().forEach { node ->
-            if (node !in indexByNode) connect(node)
-        }
-        return components
-    }
-
-    private fun shortestCycle(
-        component: Set<String>,
-        adjacency: Map<String, List<String>>,
-    ): List<String>? =
-        component.sorted().mapNotNull { start ->
-            val queue = ArrayDeque<List<String>>()
-            queue.add(listOf(start))
-            var found: List<String>? = null
-            while (queue.isNotEmpty() && found == null) {
-                val path = queue.removeFirst()
-                adjacency[path.last()].orEmpty()
-                    .filter { it in component }
-                    .forEach { next ->
-                        when {
-                            next == start && path.size > 1 -> found = path + start
-                            next !in path -> queue.add(path + next)
-                        }
-                    }
-            }
-            found
-        }.minWithOrNull(compareBy<List<String>>({ it.size }, { it.joinToString(" -> ") }))
-
     override fun close() {
         cachedConnection?.let { conn ->
             if (!conn.isClosed) conn.close()
@@ -787,87 +610,483 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
         cachedConnection = null
     }
 
-    private inline fun <T> readMetric(defaultValue: T, query: (Connection) -> T): T {
-        if (!Files.isRegularFile(dbPath)) return defaultValue
-        val conn = connection()
-        if (!schemaIsCurrent(conn)) return defaultValue
-        return query(conn)
+    private fun fanInMetric(fqName: String): FanInMetric? =
+        fanInRanking(Int.MAX_VALUE).firstOrNull { it.targetFqName == fqName }
+
+    private fun currentConfidence(conn: Connection): Confidence {
+        val declarationsCount = countRows(conn, "declarations")
+        val identifiersCount = countRows(conn, "identifier_paths")
+        val manifestCount = countRows(conn, "file_manifest")
+        val indexedFileCount = conn.createStatement().use { stmt ->
+            stmt.executeQuery("SELECT COUNT(DISTINCT src_prefix_id || ':' || src_filename) FROM symbol_references").use { rs ->
+                if (rs.next()) rs.getInt(1) else 0
+            }
+        }
+        val completeness = if (manifestCount == 0) 0.0 else indexedFileCount.coerceAtMost(manifestCount) / manifestCount.toDouble()
+        val basis = when {
+            declarationsCount > 0 -> SemanticBasis.K2_RESOLVED
+            identifiersCount > 0 -> SemanticBasis.LEXICAL
+            else -> SemanticBasis.HEURISTIC
+        }
+        val level = when {
+            basis == SemanticBasis.K2_RESOLVED && completeness > 0.95 -> ConfidenceLevel.HIGH
+            basis == SemanticBasis.K2_RESOLVED && completeness > 0.5 -> ConfidenceLevel.MEDIUM
+            basis == SemanticBasis.LEXICAL -> ConfidenceLevel.LOW
+            else -> ConfidenceLevel.SPECULATIVE
+        }
+        return Confidence(level = level, indexCompleteness = completeness, semanticBasis = basis)
     }
 
-    private fun <Field, Row> readMetricRows(spec: MetricQuerySpec<Field, Row>): List<Row> =
-        readMetric(emptyList()) { conn ->
-            conn.prepareStatement(spec.sql).use { stmt ->
-                spec.bind(stmt)
-                stmt.executeQuery().use { rs ->
-                    val row = MetricResultRow(resultSet = rs, fields = spec.fields)
-                    buildList {
-                        while (rs.next()) {
-                            add(spec.mapRow(row))
-                        }
+    private fun countRows(conn: Connection, tableName: String): Int =
+        conn.createStatement().use { stmt ->
+            stmt.executeQuery("SELECT COUNT(*) FROM $tableName").use { rs -> if (rs.next()) rs.getInt(1) else 0 }
+        }
+
+    private fun Confidence.forDeadCodeVisibility(visibility: String): Confidence =
+        when {
+            semanticBasis != SemanticBasis.K2_RESOLVED -> this
+            visibility == "PUBLIC" -> copy(level = ConfidenceLevel.MEDIUM)
+            visibility == "INTERNAL" || visibility == "PROTECTED" -> copy(level = ConfidenceLevel.MEDIUM)
+            else -> copy(level = ConfidenceLevel.HIGH)
+        }
+
+    private fun deadCodeReason(visibility: String): String =
+        if (visibility == "PUBLIC") {
+            "Declaration has no inbound reference rows; public declarations may still be used externally."
+        } else {
+            "Declaration has no inbound reference rows in the K2 declaration registry."
+        }
+
+    private fun moduleDeclarationStats(conn: Connection): Map<String, ModuleDeclarationStats> {
+        val declarationRows = countRows(conn, "declarations")
+        val declarationSource = if (declarationRows > 0) {
+            "COUNT(declarations.fq_id)"
+        } else {
+            "COUNT(identifiers.identifier)"
+        }
+        val declarationJoin = if (declarationRows > 0) {
+            """
+            LEFT JOIN declarations
+              ON declarations.prefix_id = metadata.prefix_id
+             AND declarations.filename = metadata.filename
+            """.trimIndent()
+        } else {
+            """
+            LEFT JOIN identifier_paths identifiers
+              ON identifiers.prefix_id = metadata.prefix_id
+             AND identifiers.filename = metadata.filename
+            """.trimIndent()
+        }
+        return conn.prepareStatement(
+            """
+            SELECT metadata.module_path,
+                   COUNT(DISTINCT metadata.prefix_id || ':' || metadata.filename) AS file_count,
+                   $declarationSource AS declared_symbol_count
+            FROM file_metadata metadata
+            $declarationJoin
+            WHERE metadata.module_path IS NOT NULL
+            GROUP BY metadata.module_path
+            """.trimIndent(),
+        ).use { stmt ->
+            stmt.executeQuery().use { rs ->
+                buildMap {
+                    while (rs.next()) {
+                        val modulePath = rs.getString(1)
+                        put(modulePath, ModuleDeclarationStats(modulePath, rs.getInt(2), rs.getInt(3)))
+                    }
+                }
+            }
+        }
+    }
+
+    private fun moduleReferenceStats(conn: Connection): Map<String, ModuleReferenceStats> =
+        conn.prepareStatement(
+            """
+            SELECT source_meta.module_path,
+                   SUM(
+                       CASE
+                           WHEN target_meta.module_path = source_meta.module_path
+                            AND (refs.src_prefix_id <> refs.tgt_prefix_id OR refs.src_filename <> refs.tgt_filename)
+                           THEN 1
+                           ELSE 0
+                       END
+                   ) AS internal_ref_count,
+                   SUM(
+                       CASE
+                           WHEN target_meta.module_path IS NULL OR target_meta.module_path <> source_meta.module_path
+                           THEN 1
+                           ELSE 0
+                       END
+                   ) AS external_ref_count
+            FROM symbol_references refs
+            JOIN file_metadata source_meta
+              ON source_meta.prefix_id = refs.src_prefix_id
+             AND source_meta.filename = refs.src_filename
+            LEFT JOIN file_metadata target_meta
+              ON target_meta.prefix_id = refs.tgt_prefix_id
+             AND target_meta.filename = refs.tgt_filename
+            WHERE source_meta.module_path IS NOT NULL
+            GROUP BY source_meta.module_path
+            """.trimIndent(),
+        ).use { stmt ->
+            stmt.executeQuery().use { rs ->
+                buildMap {
+                    while (rs.next()) {
+                        val modulePath = rs.getString(1)
+                        put(modulePath, ModuleReferenceStats(modulePath, rs.getInt(2), rs.getInt(3)))
                     }
                 }
             }
         }
 
-    private fun fanInMetric(fqName: String): FanInMetric? =
-        readMetric(null) { conn ->
-            conn.prepareStatement(
-                """
-                    SELECT target_name.fq_name,
-                           target_prefix.dir_path,
-                           refs.tgt_filename,
-                           target_meta.module_path,
-                           target_meta.source_set,
-                           COUNT(*) AS occurrence_count,
-                           COUNT(DISTINCT refs.src_prefix_id || ':' || refs.src_filename) AS source_file_count,
-                           COUNT(DISTINCT source_meta.module_path) AS source_module_count
-                    FROM symbol_references refs
-                    LEFT JOIN file_metadata source_meta
-                      ON source_meta.prefix_id = refs.src_prefix_id
-                     AND source_meta.filename = refs.src_filename
-                    LEFT JOIN file_metadata target_meta
-                      ON target_meta.prefix_id = refs.tgt_prefix_id
-                     AND target_meta.filename = refs.tgt_filename
-                    JOIN fq_names target_name ON target_name.fq_id = refs.target_fq_id
-                    LEFT JOIN path_prefixes target_prefix ON target_prefix.prefix_id = refs.tgt_prefix_id
-                    WHERE target_name.fq_name = ?
-                    GROUP BY refs.target_fq_id, refs.tgt_prefix_id, refs.tgt_filename, target_meta.module_path, target_meta.source_set
-                """.trimIndent(),
-            ).use { stmt ->
-                stmt.setString(1, fqName)
-                stmt.executeQuery().use { rs ->
-                    val row = MetricResultRow(resultSet = rs, fields = FanInField.entries)
-                    if (!rs.next()) {
-                        null
-                    } else {
-                        FanInMetric(
-                            targetFqName = row.string(FanInField.TARGET_FQ_NAME),
-                            targetPath = row.nullablePath(FanInField.TARGET_DIR, FanInField.TARGET_FILENAME),
-                            targetModulePath = row.nullableString(FanInField.TARGET_MODULE_PATH),
-                            targetSourceSet = row.nullableString(FanInField.TARGET_SOURCE_SET),
-                            occurrenceCount = row.int(FanInField.OCCURRENCE_COUNT),
-                            sourceFileCount = row.int(FanInField.SOURCE_FILE_COUNT),
-                            sourceModuleCount = row.int(FanInField.SOURCE_MODULE_COUNT),
-                        )
-                    }
-                }
-            }
+    private fun exportedSymbolsByModule(conn: Connection): Map<String, Int> =
+        groupedCount(conn, "SELECT module_path, COUNT(*) FROM declarations WHERE module_path IS NOT NULL AND visibility IN ('PUBLIC', 'INTERNAL') GROUP BY module_path")
+
+    private fun consumedTargetsByModule(conn: Connection): Map<String, Int> =
+        groupedCount(
+            conn,
+            """
+            SELECT source_meta.module_path, COUNT(DISTINCT refs.target_fq_id)
+            FROM symbol_references refs
+            JOIN file_metadata source_meta
+              ON source_meta.prefix_id = refs.src_prefix_id
+             AND source_meta.filename = refs.src_filename
+            JOIN file_metadata target_meta
+              ON target_meta.prefix_id = refs.tgt_prefix_id
+             AND target_meta.filename = refs.tgt_filename
+            WHERE source_meta.module_path IS NOT NULL
+              AND target_meta.module_path IS NOT NULL
+              AND source_meta.module_path <> target_meta.module_path
+            GROUP BY source_meta.module_path
+            """.trimIndent(),
+        )
+
+    private fun crossModuleReferencesByVisibility(conn: Connection, visibility: String): Map<String, Int> =
+        conn.prepareStatement(
+            """
+            SELECT source_meta.module_path, COUNT(*)
+            FROM symbol_references refs
+            JOIN file_metadata source_meta
+              ON source_meta.prefix_id = refs.src_prefix_id
+             AND source_meta.filename = refs.src_filename
+            JOIN file_metadata target_meta
+              ON target_meta.prefix_id = refs.tgt_prefix_id
+             AND target_meta.filename = refs.tgt_filename
+            JOIN declarations ON declarations.fq_id = refs.target_fq_id
+            WHERE source_meta.module_path IS NOT NULL
+              AND target_meta.module_path IS NOT NULL
+              AND source_meta.module_path <> target_meta.module_path
+              AND declarations.visibility = ?
+            GROUP BY source_meta.module_path
+            """.trimIndent(),
+        ).use { stmt ->
+            stmt.setString(1, visibility)
+            stmt.executeQuery().use { rs -> rs.stringIntMap() }
         }
 
-    private fun buildChildIdsByParent(
-        focal: FanInMetric?,
-        impact: List<ChangeImpactNode>,
-    ): Map<String, List<String>> =
+    private fun groupedCount(conn: Connection, sql: String): Map<String, Int> =
+        conn.createStatement().use { stmt -> stmt.executeQuery(sql).use { rs -> rs.stringIntMap() } }
+
+    private fun ResultSet.stringIntMap(): Map<String, Int> =
         buildMap {
-            focal?.targetPath?.let { targetPath ->
-                put(fileNodeId(targetPath), listOf(symbolNodeId(focal.targetFqName)))
-            }
-            impact.groupBy { parentIdFor(it, impact, focal?.targetFqName ?: it.viaTargetFqName) }
-                .forEach { (parentId, children) ->
-                    put(parentId, children.map { sourceFileNodeId(it.sourcePath) }.distinct())
+            while (next()) put(getString(1), getInt(2))
+        }
+
+    private fun edgeBreakdownsByTarget(conn: Connection): Map<String, Map<String, Int>> =
+        conn.createStatement().use { stmt ->
+            stmt.executeQuery(
+                """
+                SELECT names.fq_name, refs.edge_kind, COUNT(*)
+                FROM symbol_references refs
+                JOIN fq_names names ON names.fq_id = refs.target_fq_id
+                GROUP BY names.fq_name, refs.edge_kind
+                """.trimIndent(),
+            ).use { rs -> nestedEdgeMap(rs) }
+        }
+
+    private fun edgeBreakdownsBySource(conn: Connection): Map<String, Map<String, Int>> =
+        conn.createStatement().use { stmt ->
+            stmt.executeQuery(
+                """
+                SELECT prefixes.dir_path, refs.src_filename, refs.edge_kind, COUNT(*)
+                FROM symbol_references refs
+                JOIN path_prefixes prefixes ON prefixes.prefix_id = refs.src_prefix_id
+                GROUP BY refs.src_prefix_id, refs.src_filename, refs.edge_kind
+                """.trimIndent(),
+            ).use { rs ->
+                buildMap<String, MutableMap<String, Int>> {
+                    while (rs.next()) {
+                        val key = codec.compose(rs.getString(1), rs.getString(2))
+                        getOrPut(key) { mutableMapOf() }[rs.getString(3)] = rs.getInt(4)
+                    }
                 }
-            // Append reference-edge children to existing source-file entries; do not overwrite the
-            // source-file → source-file links established above.
+            }
+        }
+
+    private fun edgeBreakdownsByModulePair(conn: Connection): Map<Pair<String, String>, Map<String, Int>> =
+        conn.createStatement().use { stmt ->
+            stmt.executeQuery(
+                """
+                SELECT source_meta.module_path, target_meta.module_path, refs.edge_kind, COUNT(*)
+                FROM symbol_references refs
+                JOIN file_metadata source_meta
+                  ON source_meta.prefix_id = refs.src_prefix_id
+                 AND source_meta.filename = refs.src_filename
+                JOIN file_metadata target_meta
+                  ON target_meta.prefix_id = refs.tgt_prefix_id
+                 AND target_meta.filename = refs.tgt_filename
+                WHERE source_meta.module_path IS NOT NULL
+                  AND target_meta.module_path IS NOT NULL
+                  AND source_meta.module_path <> target_meta.module_path
+                GROUP BY source_meta.module_path, target_meta.module_path, refs.edge_kind
+                """.trimIndent(),
+            ).use { rs ->
+                buildMap<Pair<String, String>, MutableMap<String, Int>> {
+                    while (rs.next()) {
+                        val key = rs.getString(1) to rs.getString(2)
+                        getOrPut(key) { mutableMapOf() }[rs.getString(3)] = rs.getInt(4)
+                    }
+                }
+            }
+        }
+
+    private fun nestedEdgeMap(rs: ResultSet): Map<String, Map<String, Int>> =
+        buildMap<String, MutableMap<String, Int>> {
+            while (rs.next()) {
+                val key = rs.getString(1)
+                getOrPut(key) { mutableMapOf() }[rs.getString(2)] = rs.getInt(3)
+            }
+        }
+
+    private fun hasSourceSymbolEdges(conn: Connection): Boolean =
+        conn.createStatement().use { stmt ->
+            stmt.executeQuery("SELECT 1 FROM symbol_references WHERE source_fq_id IS NOT NULL LIMIT 1").use(ResultSet::next)
+        }
+
+    private fun symbolLevelImpact(conn: Connection, fqName: String, depth: Int, confidence: Confidence): List<ChangeImpactNode> =
+        conn.prepareStatement(
+            """
+            WITH RECURSIVE impacted(depth, source_fq_id, src_prefix_id, src_filename, via_target_fq_id, edge_kind) AS (
+                SELECT 1, refs.source_fq_id, refs.src_prefix_id, refs.src_filename, refs.target_fq_id, refs.edge_kind
+                FROM symbol_references refs
+                WHERE refs.target_fq_id = (SELECT fq_id FROM fq_names WHERE fq_name = ?)
+                  AND refs.source_fq_id IS NOT NULL
+                UNION ALL
+                SELECT impacted.depth + 1, refs.source_fq_id, refs.src_prefix_id, refs.src_filename, refs.target_fq_id, refs.edge_kind
+                FROM impacted
+                JOIN symbol_references refs ON refs.target_fq_id = impacted.source_fq_id
+                WHERE impacted.depth < ?
+                  AND refs.source_fq_id IS NOT NULL
+            )
+            SELECT source_prefix.dir_path,
+                   impacted.src_filename,
+                   impacted.depth,
+                   via_target_name.fq_name,
+                   impacted.edge_kind,
+                   COUNT(*) AS reference_count
+            FROM impacted
+            JOIN path_prefixes source_prefix ON source_prefix.prefix_id = impacted.src_prefix_id
+            JOIN fq_names via_target_name ON via_target_name.fq_id = impacted.via_target_fq_id
+            GROUP BY impacted.src_prefix_id, impacted.src_filename, impacted.depth, impacted.via_target_fq_id, impacted.edge_kind
+            ORDER BY impacted.depth ASC, reference_count DESC, source_prefix.dir_path ASC, impacted.src_filename ASC, via_target_name.fq_name ASC
+            """.trimIndent(),
+        ).use { stmt ->
+            stmt.setString(1, fqName)
+            stmt.setInt(2, depth)
+            impactRows(stmt.executeQuery(), confidence)
+        }
+
+    private fun fileLevelImpact(conn: Connection, fqName: String, depth: Int, confidence: Confidence): List<ChangeImpactNode> =
+        conn.prepareStatement(
+            """
+            WITH RECURSIVE impacted_files(depth, src_prefix_id, src_filename, via_target_fq_id, edge_kind) AS (
+                SELECT 1, src_prefix_id, src_filename, target_fq_id, edge_kind
+                FROM symbol_references
+                WHERE target_fq_id = (SELECT fq_id FROM fq_names WHERE fq_name = ?)
+                UNION ALL
+                SELECT impacted_files.depth + 1,
+                       refs.src_prefix_id,
+                       refs.src_filename,
+                       refs.target_fq_id,
+                       refs.edge_kind
+                FROM impacted_files
+                JOIN symbol_references refs
+                  ON refs.tgt_prefix_id = impacted_files.src_prefix_id
+                 AND refs.tgt_filename = impacted_files.src_filename
+                WHERE impacted_files.depth < ?
+            ),
+            first_hits AS (
+                SELECT src_prefix_id, src_filename, MIN(depth) AS depth
+                FROM impacted_files
+                GROUP BY src_prefix_id, src_filename
+            )
+            SELECT source_prefix.dir_path,
+                   first_hits.src_filename,
+                   first_hits.depth,
+                   via_target_name.fq_name,
+                   impacted_files.edge_kind,
+                   COUNT(refs.source_offset) AS reference_count
+            FROM first_hits
+            JOIN impacted_files
+              ON impacted_files.src_prefix_id = first_hits.src_prefix_id
+             AND impacted_files.src_filename = first_hits.src_filename
+             AND impacted_files.depth = first_hits.depth
+            JOIN symbol_references refs
+              ON refs.src_prefix_id = impacted_files.src_prefix_id
+             AND refs.src_filename = impacted_files.src_filename
+             AND refs.target_fq_id = impacted_files.via_target_fq_id
+             AND refs.edge_kind = impacted_files.edge_kind
+            JOIN fq_names via_target_name ON via_target_name.fq_id = impacted_files.via_target_fq_id
+            JOIN path_prefixes source_prefix ON source_prefix.prefix_id = first_hits.src_prefix_id
+            GROUP BY first_hits.src_prefix_id,
+                     first_hits.src_filename,
+                     first_hits.depth,
+                     impacted_files.via_target_fq_id,
+                     via_target_name.fq_name,
+                     impacted_files.edge_kind
+            ORDER BY first_hits.depth ASC,
+                     reference_count DESC,
+                     source_prefix.dir_path ASC,
+                     first_hits.src_filename ASC,
+                     via_target_name.fq_name ASC
+            """.trimIndent(),
+        ).use { stmt ->
+            stmt.setString(1, fqName)
+            stmt.setInt(2, depth)
+            impactRows(stmt.executeQuery(), confidence)
+        }
+
+    private fun impactRows(rs: ResultSet, confidence: Confidence): List<ChangeImpactNode> =
+        rs.use {
+            buildList {
+                while (rs.next()) {
+                    add(
+                        ChangeImpactNode(
+                            sourcePath = codec.compose(rs.getString(1), rs.getString(2)),
+                            depth = rs.getInt(3),
+                            viaTargetFqName = rs.getString(4),
+                            edgeKind = rs.getString(5),
+                            occurrenceCount = rs.getInt(6),
+                            confidence = confidence,
+                        ),
+                    )
+                }
+            }
+        }
+
+    private fun popularSymbols(conn: Connection, limit: Int): List<String> =
+        conn.prepareStatement(
+            """
+            SELECT names.fq_name
+            FROM fq_names names
+            JOIN symbol_references refs ON refs.target_fq_id = names.fq_id
+            GROUP BY names.fq_id
+            ORDER BY COUNT(*) DESC, names.fq_name ASC
+            LIMIT ?
+            """.trimIndent(),
+        ).use { stmt ->
+            stmt.setInt(1, limit)
+            stmt.stringColumnResults()
+        }
+
+    private fun directSymbolMatches(conn: Connection, query: String, limit: Int): List<String> =
+        conn.prepareStatement(
+            """
+            SELECT names.fq_name
+            FROM fq_names names
+            WHERE LOWER(names.fq_name) LIKE ? ESCAPE '\'
+            ORDER BY
+                CASE
+                    WHEN LOWER(names.fq_name) = ? THEN 0
+                    WHEN LOWER(names.fq_name) LIKE ? ESCAPE '\' THEN 1
+                    WHEN LOWER(names.fq_name) LIKE ? ESCAPE '\' THEN 2
+                    ELSE 3
+                END,
+                LENGTH(names.fq_name) ASC,
+                names.fq_name ASC
+            LIMIT ?
+            """.trimIndent(),
+        ).use { stmt ->
+            val needle = escapeLike(query.lowercase())
+            stmt.setString(1, "%$needle%")
+            stmt.setString(2, query.lowercase())
+            stmt.setString(3, "%.$needle")
+            stmt.setString(4, "$needle%")
+            stmt.setInt(5, limit)
+            stmt.stringColumnResults()
+        }
+
+    private fun fuzzySymbolMatches(conn: Connection, query: String, excluded: Set<String>, maxDistance: Int = 2): List<String> {
+        val normalizedQuery = query.lowercase()
+        return conn.prepareStatement(
+            """
+            SELECT fq_name
+            FROM fq_names
+            ORDER BY fq_name ASC
+            LIMIT ?
+            """.trimIndent(),
+        ).use { stmt ->
+            stmt.setInt(1, FUZZY_SYMBOL_CANDIDATE_LIMIT)
+            stmt.stringColumnResults()
+        }
+            .asSequence()
+            .filterNot(excluded::contains)
+            .mapNotNull { fqName ->
+                val simpleName = fqName.substringAfterLast('.').lowercase()
+                val fqDistance = levenshteinDistanceAtMost(normalizedQuery, fqName.lowercase(), maxDistance)
+                val simpleDistance = levenshteinDistanceAtMost(normalizedQuery, simpleName, maxDistance)
+                minOfNotNull(fqDistance, simpleDistance)?.let { distance -> FuzzySymbolMatch(fqName, distance, simpleName.length) }
+            }
+            .sortedWith(compareBy({ it.distance }, { it.simpleNameLength }, { it.fqName }))
+            .map(FuzzySymbolMatch::fqName)
+            .toList()
+    }
+
+    private fun java.sql.PreparedStatement.stringColumnResults(): List<String> =
+        executeQuery().use { rs ->
+            buildList {
+                while (rs.next()) add(rs.getString(1))
+            }
+        }
+
+    private fun escapeLike(value: String): String =
+        value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+    private fun levenshteinDistanceAtMost(left: String, right: String, maxDistance: Int): Int? {
+        if (kotlin.math.abs(left.length - right.length) > maxDistance) return null
+        var previous = IntArray(right.length + 1) { it }
+        var current = IntArray(right.length + 1)
+        left.forEachIndexed { leftIndex, leftChar ->
+            current[0] = leftIndex + 1
+            var rowMinimum = current[0]
+            right.forEachIndexed { rightIndex, rightChar ->
+                val substitutionCost = if (leftChar == rightChar) 0 else 1
+                current[rightIndex + 1] = minOf(
+                    current[rightIndex] + 1,
+                    previous[rightIndex + 1] + 1,
+                    previous[rightIndex] + substitutionCost,
+                )
+                rowMinimum = minOf(rowMinimum, current[rightIndex + 1])
+            }
+            if (rowMinimum > maxDistance) return null
+            val nextPrevious = previous
+            previous = current
+            current = nextPrevious
+        }
+        return previous[right.length].takeIf { it <= maxDistance }
+    }
+
+    private fun minOfNotNull(first: Int?, second: Int?): Int? = when {
+        first == null -> second
+        second == null -> first
+        else -> minOf(first, second)
+    }
+
+    private fun buildChildIdsByParent(focal: FanInMetric?, impact: List<ChangeImpactNode>): Map<String, List<String>> =
+        buildMap {
+            focal?.targetPath?.let { targetPath -> put(fileNodeId(targetPath), listOf(symbolNodeId(focal.targetFqName))) }
+            impact.groupBy { parentIdFor(it, impact, focal?.targetFqName ?: it.viaTargetFqName) }
+                .forEach { (parentId, children) -> put(parentId, children.map { sourceFileNodeId(it.sourcePath) }.distinct()) }
             impact.forEach { node ->
                 val parentId = sourceFileNodeId(node.sourcePath)
                 put(parentId, getOrDefault(parentId, emptyList()) + referenceEdgeNodeId(node))
@@ -898,28 +1117,16 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
         )
     }
 
-    private fun targetFileNode(
-        targetPath: String,
-        focal: FanInMetric,
-        childIdsByParent: Map<String, List<String>>,
-    ): MetricsGraphNode =
+    private fun targetFileNode(targetPath: String, focal: FanInMetric, childIdsByParent: Map<String, List<String>>): MetricsGraphNode =
         MetricsGraphNode(
             id = fileNodeId(targetPath),
             name = targetPath,
             type = MetricsGraphNodeType.FILE,
             children = childIdsByParent[fileNodeId(targetPath)].orEmpty(),
-            attributes = listOfNotNull(
-                "role=target",
-                focal.targetModulePath?.let { "module=$it" },
-                focal.targetSourceSet?.let { "sourceSet=$it" },
-            ),
+            attributes = listOfNotNull("role=target", focal.targetModulePath?.let { "module=$it" }, focal.targetSourceSet?.let { "sourceSet=$it" }),
         )
 
-    private fun sourceFileNode(
-        nodes: List<ChangeImpactNode>,
-        childIdsByParent: Map<String, List<String>>,
-        parentId: String,
-    ): MetricsGraphNode {
+    private fun sourceFileNode(nodes: List<ChangeImpactNode>, childIdsByParent: Map<String, List<String>>, parentId: String): MetricsGraphNode {
         val representative = nodes.minBy { it.depth }
         return MetricsGraphNode(
             id = sourceFileNodeId(representative.sourcePath),
@@ -941,26 +1148,14 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
             name = node.viaTargetFqName,
             type = MetricsGraphNodeType.REFERENCE_EDGE,
             parentId = sourceFileNodeId(node.sourcePath),
-            attributes = listOf(
-                "from=${node.sourcePath}",
-                "to=${node.viaTargetFqName}",
-                "references=${node.occurrenceCount}",
-            ),
+            attributes = listOf("from=${node.sourcePath}", "to=${node.viaTargetFqName}", "references=${node.occurrenceCount}"),
         )
 
-    private fun parentIdFor(
-        node: ChangeImpactNode,
-        impact: List<ChangeImpactNode>,
-        fqName: String,
-    ): String =
+    private fun parentIdFor(node: ChangeImpactNode, impact: List<ChangeImpactNode>, fqName: String): String =
         impact
             .firstOrNull { candidate ->
-                // Match the candidate's filename against the simple (last-segment) name of the via FQ
-                // name to avoid false positives where the FQ name merely *ends with* the filename
-                // (e.g. "com.example.CB" should not match a file "B.kt").
                 candidate.depth == node.depth - 1 &&
-                    node.viaTargetFqName.substringAfterLast('.') ==
-                    candidate.sourcePath.substringAfterLast('/').removeSuffix(".kt")
+                    node.viaTargetFqName.substringAfterLast('.') == candidate.sourcePath.substringAfterLast('/').removeSuffix(".kt")
             }
             ?.sourcePath
             ?.let(::sourceFileNodeId)
@@ -974,6 +1169,86 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
 
     private fun referenceEdgeNodeId(node: ChangeImpactNode): String = "via:${node.viaTargetFqName}:${node.sourcePath}"
 
+    private fun moduleDepthDiagnosis(
+        fileCount: Int,
+        internalRefCount: Int,
+        externalRefCount: Int,
+        cohesionRatio: Double,
+        refsPerFile: Double,
+    ): ModuleDepthDiagnosis =
+        when {
+            fileCount > 50 && cohesionRatio > 0.8 -> ModuleDepthDiagnosis.MONOLITH
+            cohesionRatio > 0.5 && refsPerFile > 3.0 -> ModuleDepthDiagnosis.DEEP
+            internalRefCount == 0 && externalRefCount > 0 -> ModuleDepthDiagnosis.PASS_THROUGH
+            cohesionRatio < 0.3 || refsPerFile < 1.0 -> ModuleDepthDiagnosis.SHALLOW
+            else -> ModuleDepthDiagnosis.DEEP
+        }
+
+    private fun stronglyConnectedComponents(adjacency: Map<String, List<String>>): List<Set<String>> {
+        var nextIndex = 0
+        val indexByNode = mutableMapOf<String, Int>()
+        val lowLinkByNode = mutableMapOf<String, Int>()
+        val stack = ArrayDeque<String>()
+        val onStack = mutableSetOf<String>()
+        val components = mutableListOf<Set<String>>()
+
+        fun connect(node: String) {
+            indexByNode[node] = nextIndex
+            lowLinkByNode[node] = nextIndex
+            nextIndex += 1
+            stack.addLast(node)
+            onStack += node
+            adjacency[node].orEmpty().forEach { target ->
+                if (target !in indexByNode) {
+                    connect(target)
+                    lowLinkByNode[node] = minOf(checkNotNull(lowLinkByNode[node]), checkNotNull(lowLinkByNode[target]))
+                } else if (target in onStack) {
+                    lowLinkByNode[node] = minOf(checkNotNull(lowLinkByNode[node]), checkNotNull(indexByNode[target]))
+                }
+            }
+            if (lowLinkByNode[node] == indexByNode[node]) {
+                val component = buildSet {
+                    do {
+                        val member = stack.removeLast()
+                        onStack -= member
+                        add(member)
+                    } while (member != node)
+                }
+                components += component
+            }
+        }
+        adjacency.keys.sorted().forEach { node ->
+            if (node !in indexByNode) connect(node)
+        }
+        return components
+    }
+
+    private fun shortestCycle(component: Set<String>, adjacency: Map<String, List<String>>): List<String>? =
+        component.sorted().mapNotNull { start ->
+            val queue = ArrayDeque<List<String>>()
+            queue.add(listOf(start))
+            var found: List<String>? = null
+            while (queue.isNotEmpty() && found == null) {
+                val path = queue.removeFirst()
+                adjacency[path.last()].orEmpty()
+                    .filter { it in component }
+                    .forEach { next ->
+                        when {
+                            next == start && path.size > 1 -> found = path + start
+                            next !in path -> queue.add(path + next)
+                        }
+                    }
+            }
+            found
+        }.minWithOrNull(compareBy<List<String>>({ it.size }, { it.joinToString(" -> ") }))
+
+    private inline fun <T> readMetric(defaultValue: T, query: (Connection) -> T): T {
+        if (!Files.isRegularFile(dbPath)) return defaultValue
+        val conn = connection()
+        if (!schemaIsCurrent(conn)) return defaultValue
+        return query(conn)
+    }
+
     private fun schemaIsCurrent(conn: Connection): Boolean = try {
         val version = conn.prepareStatement("SELECT version FROM schema_version LIMIT 1").use { stmt ->
             val rs = stmt.executeQuery()
@@ -985,13 +1260,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
     }
 
     private fun requiredTablesExist(conn: Connection): Boolean {
-        val requiredTables = setOf(
-            "path_prefixes",
-            "fq_names",
-            "symbol_references",
-            "identifier_paths",
-            "file_metadata"
-        )
+        val requiredTables = setOf("path_prefixes", "fq_names", "symbol_references", "identifier_paths", "file_metadata", "file_manifest", "declarations")
         val existingTables = conn.prepareStatement(
             """SELECT name FROM sqlite_master
                WHERE type = 'table' AND name IN (${requiredTables.joinToString(",") { "?" }})""",
@@ -1019,12 +1288,13 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
         return conn
     }
 
-    private data class MetricQuerySpec<Field, Row>(
-        val sql: String,
-        val fields: List<Field>,
-        val bind: PreparedStatement.() -> Unit = {},
-        val mapRow: MetricResultRow<Field>.() -> Row,
-    )
+    private fun nullablePath(rs: ResultSet, dirColumn: Int, filenameColumn: Int): String? {
+        val filename = rs.getString(filenameColumn) ?: return null
+        return codec.compose(rs.getString(dirColumn), filename)
+    }
+
+    private fun ratio(numerator: Int, denominator: Int): Double =
+        if (denominator == 0) 0.0 else numerator / denominator.toDouble()
 
     private data class ModuleDeclarationStats(
         val modulePath: String,
@@ -1038,100 +1308,19 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
         val externalRefCount: Int,
     )
 
-    private inner class MetricResultRow<Field>(
-        private val resultSet: ResultSet,
-        fields: List<Field>,
-    ) {
-        private val columnIndexes = fields.withIndex().associate { indexed -> indexed.value to indexed.index + 1 }
-
-        fun string(field: Field): String = resultSet.getString(columnIndex(field))
-
-        fun nullableString(field: Field): String? = resultSet.getString(columnIndex(field))
-
-        fun int(field: Field): Int = resultSet.getInt(columnIndex(field))
-
-        fun path(
-            dirField: Field,
-            filenameField: Field,
-        ): String =
-            checkNotNull(nullablePath(dirField, filenameField)) {
-                "Metric row is missing a path for $dirField/$filenameField"
-            }
-
-        fun nullablePath(
-            dirField: Field,
-            filenameField: Field,
-        ): String? {
-            val filename = nullableString(filenameField) ?: return null
-            val dir = checkNotNull(nullableString(dirField)) {
-                "Metric row is missing a path prefix for $dirField/$filenameField"
-            }
-            return codec.compose(dir, filename)
-        }
-
-        private fun columnIndex(field: Field): Int = checkNotNull(columnIndexes[field]) {
-            "Unknown metric field: $field"
-        }
-    }
-
-    private enum class FanInField {
-        TARGET_FQ_NAME,
-        TARGET_DIR,
-        TARGET_FILENAME,
-        TARGET_MODULE_PATH,
-        TARGET_SOURCE_SET,
-        OCCURRENCE_COUNT,
-        SOURCE_FILE_COUNT,
-        SOURCE_MODULE_COUNT,
-    }
-
-    private enum class FanOutField {
-        SOURCE_DIR,
-        SOURCE_FILENAME,
-        SOURCE_MODULE_PATH,
-        SOURCE_SOURCE_SET,
-        OCCURRENCE_COUNT,
-        TARGET_SYMBOL_COUNT,
-        TARGET_FILE_COUNT,
-        TARGET_MODULE_COUNT,
-        EXTERNAL_TARGET_COUNT,
-    }
-
-    private enum class ModuleCouplingField {
-        SOURCE_MODULE_PATH,
-        SOURCE_SOURCE_SET,
-        TARGET_MODULE_PATH,
-        TARGET_SOURCE_SET,
-        REFERENCE_COUNT,
-    }
-
-    private enum class LowUsageField {
-        TARGET_FQ_NAME,
-        TARGET_DIR,
-        TARGET_FILENAME,
-        TARGET_MODULE_PATH,
-        OCCURRENCE_COUNT,
-        SOURCE_FILE_COUNT,
-    }
-
-    private enum class DeadCodeField {
-        IDENTIFIER,
-        DIR,
-        FILENAME,
-        MODULE_PATH,
-        SOURCE_SET,
-        PACKAGE_NAME,
-    }
-
-    private enum class ChangeImpactField {
-        SOURCE_DIR,
-        SOURCE_FILENAME,
-        DEPTH,
-        VIA_TARGET_FQ_NAME,
-        OCCURRENCE_COUNT,
-    }
+    private data class FuzzySymbolMatch(
+        val fqName: String,
+        val distance: Int,
+        val simpleNameLength: Int,
+    )
 
     private companion object {
         const val FUZZY_SYMBOL_CANDIDATE_LIMIT = 1_000
+
+        val SPECULATIVE_CONFIDENCE = Confidence(
+            level = ConfidenceLevel.SPECULATIVE,
+            indexCompleteness = 0.0,
+            semanticBasis = SemanticBasis.HEURISTIC,
+        )
     }
 }

@@ -913,13 +913,17 @@ internal class StandaloneAnalysisSession(
             backgroundIndexer.identifierIndexReady.thenRun {
                 if (closed || sourceIndexGeneration.get() != generation) return@thenRun
                 val scanner = PsiReferenceScanner(
-                    StandaloneReferenceIndexEnvironment(
+                    environment = StandaloneReferenceIndexEnvironment(
                         session = this,
                         store = sourceIndexCache.store,
                         cancelled = { closed },
                     ),
+                    moduleNameForFile = { path -> sourceModuleNameForFile(path)?.value },
                 )
-                backgroundIndexer.startPhase2(referenceScanner = scanner::scanFileReferences)
+                backgroundIndexer.startPhase2(
+                    declarationScanner = scanner::scanFileDeclarations,
+                    referenceScanner = scanner::scanFileReferences,
+                )
             }
         }
     }

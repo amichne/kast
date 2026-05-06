@@ -21,11 +21,12 @@ class ReferenceIndexer(
     fun indexReferences(
         filePaths: Collection<String>,
         referenceScanner: (String) -> List<SymbolReferenceRow>,
+        declarationScanner: ((String) -> List<DeclarationRow>)? = null,
         isCancelled: () -> Boolean = { Thread.currentThread().isInterrupted },
     ) {
         for (batch in filePaths.toList().chunked(batchSize)) {
             if (isCancelled()) break
-            val batchResults = batch.mapNotNull { filePath ->
+            val referenceResults = batch.mapNotNull { filePath ->
                 if (isCancelled()) return@mapNotNull null
                 try {
                     filePath to referenceScanner(filePath)
@@ -36,18 +37,36 @@ class ReferenceIndexer(
             }
             if (isCancelled()) break
 
-            store.replaceReferencesFromFiles(batchResults)
+            val declarationResults = declarationScanner?.let { scanner ->
+                batch.mapNotNull { filePath ->
+                    if (isCancelled()) return@mapNotNull null
+                    try {
+                        filePath to scanner(filePath)
+                    } catch (error: Exception) {
+                        if (error.isCancellation()) throw error
+                        null
+                    }
+                }
+            }
+            if (isCancelled()) break
+
+            store.replaceReferencesFromFiles(referenceResults)
+            if (declarationResults != null) {
+                store.replaceDeclarationsFromFiles(declarationResults)
+            }
         }
     }
 
     fun reindexFiles(
         changedPaths: Set<String>,
         referenceScanner: (String) -> List<SymbolReferenceRow>,
+        declarationScanner: ((String) -> List<DeclarationRow>)? = null,
         isCancelled: () -> Boolean = { Thread.currentThread().isInterrupted },
     ) {
         indexReferences(
             filePaths = changedPaths,
             referenceScanner = referenceScanner,
+            declarationScanner = declarationScanner,
             isCancelled = isCancelled,
         )
     }
