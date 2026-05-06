@@ -12,7 +12,8 @@
 //      non-semantic work (comments, formatting, generated files) still flows.
 
 import {execFile} from "node:child_process";
-import {existsSync} from "node:fs";
+import {existsSync, readFileSync} from "node:fs";
+import {homedir} from "node:os";
 import {dirname, join, resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {joinSession} from "@github/copilot-sdk/extension";
@@ -24,6 +25,31 @@ const RESOLVE_SCRIPT = join(HERE, "scripts", "resolve-kast.sh");
 
 let kastBinary = null;
 let resolveError = null;
+
+// Minimal TOML reader — handles only the subset written by the kast installer.
+function readTomlKey(filePath, section, key) {
+  try {
+    let inSection = false;
+    for (const line of readFileSync(filePath, "utf8").split("\n")) {
+      const t = line.trim();
+      if (t === `[${section}]`) {
+        inSection = true;
+        continue;
+      }
+      if (inSection && t.startsWith("[")) {
+        break;
+      }
+      if (inSection) {
+        const m = t.match(/^(\w+)\s*=\s*"(.*)"/);
+        if (m && m[1] === key) {
+          return m[2];
+        }
+      }
+    }
+  } catch { /* file absent or unreadable */
+  }
+  return null;
+}
 
 function execBash(command, env = process.env) {
   return new Promise((res) => {
@@ -45,18 +71,35 @@ function execBash(command, env = process.env) {
 
 async function resolveKastBinary() {
   if (kastBinary) return kastBinary;
-  if (!existsSync(RESOLVE_SCRIPT)) {
-    resolveError = `resolver script missing: ${RESOLVE_SCRIPT}`;
-    return null;
+
+  // Primary: delegate to the resolve script (handles PATH + local build artifacts).
+  if (existsSync(RESOLVE_SCRIPT)) {
+    const {ok, stdout} = await execBash(`bash ${JSON.stringify(RESOLVE_SCRIPT)}`);
+    const path = stdout.trim();
+    if (ok && path) {
+      kastBinary = path;
+      return path;
+    }
   }
-  const { ok, stdout, stderr } = await execBash(`bash ${JSON.stringify(RESOLVE_SCRIPT)}`);
-  const path = stdout.trim();
-  if (!ok || !path) {
-    resolveError = stderr.trim() || "resolve-kast.sh produced no output";
-    return null;
+
+  // Recovery: read binaryPath from the kast config.toml (written by the installer).
+  // Respects KAST_CONFIG_HOME; falls back to the XDG default.
+  const configDir = process.env.KAST_CONFIG_HOME ?? join(homedir(), ".config", "kast");
+  const configBin = readTomlKey(join(configDir, "config.toml"), "cli", "binaryPath");
+  if (configBin && existsSync(configBin)) {
+    kastBinary = configBin;
+    return configBin;
   }
-  kastBinary = path;
-  return path;
+
+  // Recovery: common manual install location not always on PATH in non-interactive shells.
+  const localBin = join(homedir(), ".local", "bin", "kast");
+  if (existsSync(localBin)) {
+    kastBinary = localBin;
+    return localBin;
+  }
+
+  resolveError = `resolve-kast.sh missing or failed; config.toml binaryPath absent; ${localBin} not found`;
+  return null;
 }
 
 async function callKastSkill(command, args) {

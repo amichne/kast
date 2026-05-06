@@ -1,5 +1,7 @@
 package io.github.amichne.kast.standalone
 
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
@@ -8,8 +10,10 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.CancellationException
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.io.path.createDirectories
 import kotlin.io.path.writeText
 import kotlin.system.measureTimeMillis
@@ -198,6 +202,159 @@ class ConcurrencyInvariantTest {
             val writeCount = lock.events.count { it.type == InstrumentedSessionLock.LockType.WRITE }
             assertTrue(readCount > 0) { "Expected read events but found none" }
             assertTrue(writeCount > 0) { "Expected write events but found none" }
+        }
+    }
+
+    @Test
+    fun `close waits for in-flight reads before disposing`() {
+        writeSourceFiles(5)
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = sourceRoots(),
+            classpathRoots = emptyList(),
+            moduleName = "concmod",
+            sourceIndexFileReader = { path -> Files.readString(path) },
+            enablePhase2Indexing = false,
+        )
+        val executor = Executors.newFixedThreadPool(2)
+        val readStarted = CountDownLatch(1)
+        val releaseRead = CountDownLatch(1)
+        val readCompleted = AtomicBoolean(false)
+        var closeCompleted = false
+
+        try {
+            session.awaitInitialSourceIndex()
+            val readFuture = CompletableFuture.runAsync(
+                {
+                    session.withReadAccess {
+                        readStarted.countDown()
+                        releaseRead.await()
+                        session.candidateKotlinFilePaths("File0", null)
+                        readCompleted.set(true)
+                    }
+                },
+                executor,
+            )
+            assertTrue(readStarted.await(5, TimeUnit.SECONDS), "Read did not acquire the session lock")
+
+            val closeFuture = CompletableFuture.runAsync({ session.close() }, executor)
+            Thread.sleep(200)
+
+            assertFalse(closeFuture.isDone, "close() must wait for active read operations before disposal")
+
+            releaseRead.countDown()
+            readFuture.get(5, TimeUnit.SECONDS)
+            closeFuture.get(5, TimeUnit.SECONDS)
+            closeCompleted = true
+            assertTrue(readCompleted.get(), "Read should complete before close() disposes resources")
+        } finally {
+            releaseRead.countDown()
+            executor.shutdownNow()
+            if (!closeCompleted) {
+                runCatching { session.close() }
+            }
+        }
+    }
+
+    @Test
+    fun `cancelled reference index exclusive access does not wait for session lock`() {
+        writeSourceFiles(1)
+
+        StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = sourceRoots(),
+            classpathRoots = emptyList(),
+            moduleName = "concmod",
+            sourceIndexFileReader = { path -> Files.readString(path) },
+            enablePhase2Indexing = false,
+        ).use { session ->
+            val executor = Executors.newFixedThreadPool(2)
+            val readStarted = CountDownLatch(1)
+            val releaseRead = CountDownLatch(1)
+            val readFuture = CompletableFuture.runAsync(
+                {
+                    session.withReadAccess {
+                        readStarted.countDown()
+                        releaseRead.await()
+                    }
+                },
+                executor,
+            )
+
+            try {
+                assertTrue(readStarted.await(5, TimeUnit.SECONDS), "Read did not acquire the session lock")
+                val environment = StandaloneReferenceIndexEnvironment(
+                    session = session,
+                    store = session.sqliteStore,
+                    cancelled = { true },
+                )
+
+                val cancelledAccess = CompletableFuture.runAsync(
+                    {
+                        assertThrows(CancellationException::class.java) {
+                            environment.withExclusiveAccess { Unit }
+                        }
+                    },
+                    executor,
+                )
+
+                cancelledAccess.get(500, TimeUnit.MILLISECONDS)
+            } finally {
+                releaseRead.countDown()
+                readFuture.get(5, TimeUnit.SECONDS)
+                executor.shutdownNow()
+            }
+        }
+    }
+
+    @Test
+    fun `cancelled reference index read access does not wait for session lock`() {
+        writeSourceFiles(1)
+
+        StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = sourceRoots(),
+            classpathRoots = emptyList(),
+            moduleName = "concmod",
+            sourceIndexFileReader = { path -> Files.readString(path) },
+            enablePhase2Indexing = false,
+        ).use { session ->
+            val executor = Executors.newFixedThreadPool(2)
+            val writeStarted = CountDownLatch(1)
+            val releaseWrite = CountDownLatch(1)
+            val writeFuture = CompletableFuture.runAsync(
+                {
+                    session.withExclusiveAccess {
+                        writeStarted.countDown()
+                        releaseWrite.await()
+                    }
+                },
+                executor,
+            )
+
+            try {
+                assertTrue(writeStarted.await(5, TimeUnit.SECONDS), "Write did not acquire the session lock")
+                val environment = StandaloneReferenceIndexEnvironment(
+                    session = session,
+                    store = session.sqliteStore,
+                    cancelled = { true },
+                )
+
+                val cancelledAccess = CompletableFuture.runAsync(
+                    {
+                        assertThrows(CancellationException::class.java) {
+                            environment.withReadAccess { Unit }
+                        }
+                    },
+                    executor,
+                )
+
+                cancelledAccess.get(500, TimeUnit.MILLISECONDS)
+            } finally {
+                releaseWrite.countDown()
+                writeFuture.get(5, TimeUnit.SECONDS)
+                executor.shutdownNow()
+            }
         }
     }
 
