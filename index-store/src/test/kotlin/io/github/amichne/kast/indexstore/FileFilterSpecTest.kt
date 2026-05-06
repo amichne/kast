@@ -1,5 +1,7 @@
 package io.github.amichne.kast.indexstore
 
+import io.github.amichne.kast.indexstore.api.metrics.general.FileFilterSpec
+import io.github.amichne.kast.indexstore.api.metrics.general.filterByPath
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 

@@ -11,7 +11,7 @@ import com.github.ajalt.mordant.rendering.Widget
 import com.github.ajalt.mordant.table.verticalLayout
 import com.github.ajalt.mordant.terminal.Terminal
 import com.github.ajalt.mordant.widgets.Panel
-import io.github.amichne.kast.indexstore.MetricsEngine
+import io.github.amichne.kast.indexstore.metrics.MetricsEngine
 import java.nio.file.Path
 
 internal class MetricsGraphPicker(
@@ -20,7 +20,7 @@ internal class MetricsGraphPicker(
     initialQuery: String = "",
     private val terminal: Terminal = Terminal(),
     private val engineFactory: () -> MetricsEngine = { MetricsEngine(workspaceRoot) },
-    private val graphRunner: (io.github.amichne.kast.indexstore.MetricsGraph) -> Int = { graph ->
+    private val graphRunner: (io.github.amichne.kast.indexstore.api.graph.MetricsGraph) -> Int = { graph ->
         MetricsGraphTerminal(graph).run()
     },
 ) {

@@ -4,8 +4,8 @@ import io.github.amichne.kast.api.client.fields.CacheEnabled
 import io.github.amichne.kast.api.contract.query.RefreshQuery
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.client.KastConfig
-import io.github.amichne.kast.indexstore.kastCacheDirectory
-import io.github.amichne.kast.indexstore.writeCacheFileAtomically
+import io.github.amichne.kast.indexstore.store.cache.kastCacheDirectory
+import io.github.amichne.kast.indexstore.store.cache.writeCacheFileAtomically
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse

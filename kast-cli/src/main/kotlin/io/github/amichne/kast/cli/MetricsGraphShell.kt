@@ -1,7 +1,7 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.indexstore.MetricsGraph
-import io.github.amichne.kast.indexstore.MetricsGraphNode
+import io.github.amichne.kast.indexstore.api.graph.MetricsGraph
+import io.github.amichne.kast.indexstore.api.graph.MetricsGraphNode
 
 internal object MetricsGraphShell {
     fun render(graph: MetricsGraph): String {

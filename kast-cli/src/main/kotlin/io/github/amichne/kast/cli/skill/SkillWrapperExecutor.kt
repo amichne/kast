@@ -72,8 +72,8 @@ import io.github.amichne.kast.cli.tty.CliCommand
 import io.github.amichne.kast.cli.tty.CliFailure
 import io.github.amichne.kast.cli.tty.CliService
 import io.github.amichne.kast.cli.options.RuntimeCommandOptions
-import io.github.amichne.kast.indexstore.FileFilterSpec
-import io.github.amichne.kast.indexstore.MetricsEngine
+import io.github.amichne.kast.indexstore.api.metrics.general.FileFilterSpec
+import io.github.amichne.kast.indexstore.metrics.MetricsEngine
 import kotlinx.serialization.json.Json
 import java.nio.file.Path
 

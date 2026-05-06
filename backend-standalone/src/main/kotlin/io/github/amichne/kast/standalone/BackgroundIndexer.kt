@@ -2,11 +2,11 @@ package io.github.amichne.kast.standalone
 
 import io.github.amichne.kast.api.contract.ModuleName
 import io.github.amichne.kast.api.contract.NormalizedPath
-import io.github.amichne.kast.indexstore.ReferenceIndexer
-import io.github.amichne.kast.indexstore.SourceIndexFilePolicy
-import io.github.amichne.kast.indexstore.SqliteSourceIndexStore
-import io.github.amichne.kast.indexstore.DeclarationRow
-import io.github.amichne.kast.indexstore.SymbolReferenceRow
+import io.github.amichne.kast.indexstore.indexing.ReferenceIndexer
+import io.github.amichne.kast.indexstore.api.index.SourceIndexFilePolicy
+import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
+import io.github.amichne.kast.indexstore.api.reference.DeclarationRow
+import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
 import io.github.amichne.kast.standalone.cache.SourceIndexCache
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture

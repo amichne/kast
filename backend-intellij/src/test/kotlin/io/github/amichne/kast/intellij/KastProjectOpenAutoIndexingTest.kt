@@ -13,9 +13,9 @@ import com.intellij.testFramework.junit5.fixture.psiFileFixture
 import com.intellij.testFramework.junit5.fixture.sourceRootFixture
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.RemoteIndexConfig
-import io.github.amichne.kast.indexstore.FileIndexUpdate
-import io.github.amichne.kast.indexstore.SqliteSourceIndexStore
-import io.github.amichne.kast.indexstore.sourceIndexDatabasePath
+import io.github.amichne.kast.indexstore.api.index.FileIndexUpdate
+import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
+import io.github.amichne.kast.indexstore.store.cache.sourceIndexDatabasePath
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull

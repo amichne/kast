@@ -8,7 +8,7 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.intellij.psi.search.FileTypeIndex
 import com.intellij.psi.search.GlobalSearchScope
-import io.github.amichne.kast.indexstore.SourceIndexFilePolicy
+import io.github.amichne.kast.indexstore.api.index.SourceIndexFilePolicy
 import io.github.amichne.kast.shared.analysis.ReferenceIndexEnvironment
 import org.jetbrains.kotlin.idea.KotlinFileType
 import java.nio.file.Path

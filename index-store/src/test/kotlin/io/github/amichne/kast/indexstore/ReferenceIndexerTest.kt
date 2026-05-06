@@ -1,5 +1,13 @@
 package io.github.amichne.kast.indexstore
 
+import io.github.amichne.kast.indexstore.api.metrics.general.DeclarationInfo
+import io.github.amichne.kast.indexstore.api.reference.DeclarationKind
+import io.github.amichne.kast.indexstore.api.reference.DeclarationRow
+import io.github.amichne.kast.indexstore.api.reference.DeclarationVisibility
+import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
+import io.github.amichne.kast.indexstore.indexing.ReferenceIndexer
+import io.github.amichne.kast.indexstore.metrics.MetricsEngine
+import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue

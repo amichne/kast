@@ -1,6 +1,6 @@
 package io.github.amichne.kast.standalone.cache
 
-import io.github.amichne.kast.indexstore.SourceIndexFilePolicy
+import io.github.amichne.kast.indexstore.api.index.SourceIndexFilePolicy
 import io.github.amichne.kast.standalone.normalizeStandalonePath
 import java.nio.file.Files
 import java.nio.file.Path

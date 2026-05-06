@@ -1,11 +1,11 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.indexstore.MetricsGraph
-import io.github.amichne.kast.indexstore.MetricsGraphEdge
-import io.github.amichne.kast.indexstore.MetricsGraphEdgeType
-import io.github.amichne.kast.indexstore.MetricsGraphIndex
-import io.github.amichne.kast.indexstore.MetricsGraphNode
-import io.github.amichne.kast.indexstore.MetricsGraphNodeType
+import io.github.amichne.kast.indexstore.api.graph.MetricsGraph
+import io.github.amichne.kast.indexstore.api.graph.MetricsGraphEdge
+import io.github.amichne.kast.indexstore.api.graph.MetricsGraphEdgeType
+import io.github.amichne.kast.indexstore.api.graph.MetricsGraphIndex
+import io.github.amichne.kast.indexstore.api.graph.MetricsGraphNode
+import io.github.amichne.kast.indexstore.api.graph.MetricsGraphNodeType
 
 internal fun sampleMetricsGraph(): MetricsGraph {
     return MetricsGraph(

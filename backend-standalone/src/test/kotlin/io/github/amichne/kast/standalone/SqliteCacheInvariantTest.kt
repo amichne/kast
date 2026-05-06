@@ -1,8 +1,8 @@
 package io.github.amichne.kast.standalone
 
-import io.github.amichne.kast.indexstore.FileIndexUpdate
-import io.github.amichne.kast.indexstore.SqliteSourceIndexStore
-import io.github.amichne.kast.indexstore.kastCacheDirectory
+import io.github.amichne.kast.indexstore.api.index.FileIndexUpdate
+import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
+import io.github.amichne.kast.indexstore.store.cache.kastCacheDirectory
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue

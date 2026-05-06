@@ -17,7 +17,7 @@ import {homedir} from "node:os";
 import {dirname, join, resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {joinSession} from "@github/copilot-sdk/extension";
-import {markShadowedExtensionLoaded} from "../_shared/shadowed-skill-state.mjs";
+import {markShadowedExtensionLoaded} from "../_shared/extension.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(HERE, "..", "..", "..");
@@ -126,7 +126,7 @@ async function callKastSkill(command, args) {
     });
   }
   const json = JSON.stringify(args ?? {});
-  const cmd = `${JSON.stringify(bin)} skill ${command} ${JSON.stringify(json)}`;
+  const cmd = `${JSON.stringify(bin)} ${command} ${JSON.stringify(json)}`;
   const { ok, stdout, stderr, code } = await execBash(cmd);
   // kast prints JSON to stdout; surface any stderr if the JSON parse would fail.
   const out = stdout.trim();

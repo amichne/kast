@@ -1,5 +1,17 @@
 package io.github.amichne.kast.indexstore
 
+import io.github.amichne.kast.indexstore.api.graph.MetricsGraph
+import io.github.amichne.kast.indexstore.api.index.FileIndexUpdate
+import io.github.amichne.kast.indexstore.api.metrics.general.ConfidenceLevel
+import io.github.amichne.kast.indexstore.api.metrics.general.SemanticBasis
+import io.github.amichne.kast.indexstore.api.reference.DeclarationKind
+import io.github.amichne.kast.indexstore.api.reference.DeclarationRow
+import io.github.amichne.kast.indexstore.api.reference.DeclarationVisibility
+import io.github.amichne.kast.indexstore.api.reference.EdgeKind
+import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
+import io.github.amichne.kast.indexstore.metrics.MetricsEngine
+import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
+import io.github.amichne.kast.indexstore.store.cache.sourceIndexDatabasePath
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse

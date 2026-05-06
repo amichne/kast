@@ -22,8 +22,8 @@ import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.PackageName
 import io.github.amichne.kast.api.contract.result.RefreshResult
 import io.github.amichne.kast.api.protocol.NotFoundException
-import io.github.amichne.kast.indexstore.SourceIndexFilePolicy
-import io.github.amichne.kast.indexstore.SqliteSourceIndexStore
+import io.github.amichne.kast.indexstore.api.index.SourceIndexFilePolicy
+import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.shared.analysis.PsiReferenceScanner
 import io.github.amichne.kast.standalone.cache.CacheManager
 import io.github.amichne.kast.standalone.cache.SourceIndexCache

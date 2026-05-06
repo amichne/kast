@@ -1,5 +1,6 @@
 package io.github.amichne.kast.indexstore
 
+import io.github.amichne.kast.indexstore.api.index.SourceIndexFilePolicy
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test

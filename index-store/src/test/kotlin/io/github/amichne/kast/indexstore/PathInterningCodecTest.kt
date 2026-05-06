@@ -1,5 +1,6 @@
 package io.github.amichne.kast.indexstore
 
+import io.github.amichne.kast.indexstore.store.codec.PathInterningCodec
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir

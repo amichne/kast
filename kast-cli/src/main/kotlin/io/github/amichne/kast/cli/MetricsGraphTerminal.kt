@@ -6,8 +6,8 @@ import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.input.isCtrlC
 import com.github.ajalt.mordant.input.receiveKeyEvents
 import com.github.ajalt.mordant.terminal.Terminal
-import io.github.amichne.kast.indexstore.MetricsGraph
-import io.github.amichne.kast.indexstore.MetricsGraphNode
+import io.github.amichne.kast.indexstore.api.graph.MetricsGraph
+import io.github.amichne.kast.indexstore.api.graph.MetricsGraphNode
 
 internal class MetricsGraphTerminal(private val graph: MetricsGraph) {
     fun run(): Int {
