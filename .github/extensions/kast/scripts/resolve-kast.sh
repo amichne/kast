@@ -31,5 +31,11 @@ for _ in 1 2 3 4 5 6; do
     search_dir="$(cd -- "${search_dir}/.." && pwd)"
 done
 
+# Recovery: standard user install location may not be on PATH in non-interactive shells
+if [[ -x "${HOME}/.local/bin/kast" ]]; then
+    resolve_absolute_path "${HOME}/.local/bin/kast"
+    exit 0
+fi
+
 echo "Unable to resolve Kast CLI path. Install kast on PATH or build the local wrapper first." >&2
 exit 1
