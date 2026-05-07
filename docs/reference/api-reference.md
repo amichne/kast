@@ -186,7 +186,8 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     "limits": {
                         "maxResults": 100,
                         "requestTimeoutMillis": 30000,
-                        "maxConcurrentRequests": 4
+                        "maxConcurrentRequests": 4,
+                        "perFileScanBudgetMillis": 5000
                     },
                     "schemaVersion": 3
                 },

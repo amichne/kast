@@ -39,6 +39,7 @@ import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
 import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
 import io.github.amichne.kast.api.contract.result.WorkspaceModule
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
+import io.github.amichne.kast.indexstore.api.reference.DeclarationRow
 import io.github.amichne.kast.shared.analysis.FileOutlineBuilder
 import io.github.amichne.kast.shared.analysis.ImportAnalysis
 import io.github.amichne.kast.shared.analysis.SemanticInsertionPointResolver
@@ -75,6 +76,9 @@ import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtFile
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.Callable
+import java.util.concurrent.ForkJoinPool
+import java.util.stream.Collectors
 
 @OptIn(KaExperimentalApi::class)
 internal class StandaloneAnalysisBackend internal constructor(
@@ -82,7 +86,7 @@ internal class StandaloneAnalysisBackend internal constructor(
     private val limits: ServerLimits,
     private val session: StandaloneAnalysisSession,
     private val telemetry: StandaloneTelemetry,
-) : AnalysisBackend {
+) : AnalysisBackend, AutoCloseable {
     constructor(
         workspaceRoot: Path,
         limits: ServerLimits,
@@ -95,6 +99,30 @@ internal class StandaloneAnalysisBackend internal constructor(
     )
 
     private val readDispatcher = Dispatchers.IO.limitedParallelism(limits.maxConcurrentRequests)
+
+    /**
+     * Dedicated [ForkJoinPool] for parallel file scanning. Bounded to
+     * [ServerLimits.maxConcurrentRequests] threads, named with the `kast-parallel-` prefix
+     * so they are identifiable in JVM thread dumps and heap profiles.
+     *
+     * Using a dedicated pool instead of [ForkJoinPool.commonPool] ensures that long-running
+     * PSI walks cannot starve library code (e.g. coroutines, Compose) that also relies on
+     * the common pool.
+     */
+    private val parallelPool = ForkJoinPool(
+        limits.maxConcurrentRequests,
+        ForkJoinPool.ForkJoinWorkerThreadFactory { pool ->
+            ForkJoinPool.defaultForkJoinWorkerThreadFactory.newThread(pool).also {
+                it.name = "kast-parallel-${it.poolIndex}"
+            }
+        },
+        null,
+        false,
+    )
+
+    override fun close() {
+        parallelPool.shutdown()
+    }
     private val callHierarchyTraversal = CallHierarchyTraversal(
         workspaceRoot = workspaceRoot,
         limits = limits,
@@ -216,15 +244,31 @@ internal class StandaloneAnalysisBackend internal constructor(
                 span.setAttribute("kast.references.candidateFileCount", candidateFiles.size)
                 span.setAttribute("kast.references.searchScope", searchScope.scope.name)
 
+                val skippedFiles = java.util.concurrent.ConcurrentLinkedQueue<String>()
                 val references = candidateFiles
                     .parallelMapFlat { candidateFile ->
-                        candidateFile.findReferenceLocations(
+                        val fileResult = candidateFile.findReferenceLocations(
                             target = target,
                             includeUsageSiteScope = query.includeUsageSiteScope,
+                            budgetMillis = limits.perFileScanBudgetMillis,
                         )
+                        if (fileResult.timedOut) {
+                            skippedFiles.add(candidateFile.virtualFile?.path ?: candidateFile.name)
+                        }
+                        fileResult.locations
                     }
                     .sortedWith(compareBy({ it.filePath }, { it.startOffset }))
                 span.setAttribute("kast.references.resultCount", references.size)
+                span.setAttribute("kast.references.skippedFileCount", skippedFiles.size)
+                if (skippedFiles.isNotEmpty()) {
+                    span.addEvent(
+                        name = "file-scan-timeout",
+                        attributes = mapOf(
+                            "count" to skippedFiles.size,
+                            "files" to skippedFiles.joinToString("|"),
+                        ),
+                    )
+                }
 
                 ReferencesResult(
                     declaration = if (query.includeDeclaration) analyze(file) { target.toSymbolModel(containingDeclaration = null) } else null,
@@ -267,44 +311,88 @@ internal class StandaloneAnalysisBackend internal constructor(
                     supertypes = supertypeNames(declaration),
                 )
             }
-            val allTypes = session.allKtFiles().flatMap(KtFile::namedTypeDeclarations)
-            val directSupertypesByType = allTypes.associateWith { type ->
-                analyze(type.containingKtFile) { supertypeNames(type).orEmpty() }
-            }
-            val discovered = linkedSetOf(declarationSymbol.fqName)
-            var changed = true
-            while (changed) {
-                changed = false
-                for ((type, supertypes) in directSupertypesByType) {
-                    if (type.fqName?.asString() in discovered) continue
-                    if (supertypes.any(discovered::contains)) {
-                        val fqName = type.fqName?.asString() ?: continue
-                        if (discovered.add(fqName)) changed = true
+            val targetFqName = declarationSymbol.fqName
+            if (session.isReferenceIndexReady() && targetFqName != null) {
+                // Fast path: O(k) transitive expansion via declaration index
+                val discoveredFqNames = mutableSetOf(targetFqName)
+                val discoveredRows = mutableListOf<DeclarationRow>()
+                var frontier = setOf(targetFqName)
+                while (frontier.isNotEmpty()) {
+                    val newRows = frontier
+                        .flatMap { fqn -> session.sqliteStore.declarationsWithSupertype(fqn) }
+                        .filter { it.fqName !in discoveredFqNames }
+                    discoveredRows += newRows
+                    val newFrontier = newRows.map { it.fqName }.toSet()
+                    discoveredFqNames += newFrontier
+                    frontier = newFrontier
+                }
+                val subtypeFqNames = discoveredRows.map { it.fqName }.toSet()
+                val relevantFilePaths = discoveredRows.map { it.filePath }.toSet()
+                val relevantKtFiles = relevantFilePaths.mapNotNull { path ->
+                    try { session.findKtFile(path) } catch (_: Exception) { null }
+                }
+                val implementations = relevantKtFiles
+                    .flatMap { ktFile -> ktFile.namedTypeDeclarations() }
+                    .filter { type ->
+                        val fqName = type.fqName?.asString() ?: return@filter false
+                        fqName in subtypeFqNames && isConcreteType(type)
+                    }
+                    .map { type ->
+                        analyze(type.containingKtFile) {
+                            type.toSymbolModel(
+                                containingDeclaration = null,
+                                supertypes = supertypeNames(type),
+                            )
+                        }
+                    }
+                    .sortedWith(compareBy({ it.fqName }, { it.location.filePath }, { it.location.startOffset }))
+                val capped = implementations.take(query.maxResults.value)
+                ImplementationsResult(
+                    declaration = declarationSymbol,
+                    implementations = capped,
+                    exhaustive = implementations.size <= capped.size,
+                )
+            } else {
+                // Slow path: scan all KtFiles (fallback when index not yet ready)
+                val allTypes = session.allKtFiles().flatMap(KtFile::namedTypeDeclarations)
+                val directSupertypesByType = allTypes.associateWith { type ->
+                    analyze(type.containingKtFile) { supertypeNames(type).orEmpty() }
+                }
+                val discovered = linkedSetOf(declarationSymbol.fqName)
+                var changed = true
+                while (changed) {
+                    changed = false
+                    for ((type, supertypes) in directSupertypesByType) {
+                        if (type.fqName?.asString() in discovered) continue
+                        if (supertypes.any(discovered::contains)) {
+                            val fqName = type.fqName?.asString() ?: continue
+                            if (discovered.add(fqName)) changed = true
+                        }
                     }
                 }
-            }
-            val implementations = allTypes
-                .filter { type ->
-                    val fqName = type.fqName?.asString() ?: return@filter false
-                    fqName != declarationSymbol.fqName &&
-                        fqName in discovered &&
-                        isConcreteType(type)
-                }
-                .map { type ->
-                    analyze(type.containingKtFile) {
-                        type.toSymbolModel(
-                            containingDeclaration = null,
-                            supertypes = supertypeNames(type),
-                        )
+                val implementations = allTypes
+                    .filter { type ->
+                        val fqName = type.fqName?.asString() ?: return@filter false
+                        fqName != declarationSymbol.fqName &&
+                            fqName in discovered &&
+                            isConcreteType(type)
                     }
-                }
-                .sortedWith(compareBy({ it.fqName }, { it.location.filePath }, { it.location.startOffset }))
-            val capped = implementations.take(query.maxResults.value)
-            ImplementationsResult(
-                declaration = declarationSymbol,
-                implementations = capped,
-                exhaustive = implementations.size <= capped.size,
-            )
+                    .map { type ->
+                        analyze(type.containingKtFile) {
+                            type.toSymbolModel(
+                                containingDeclaration = null,
+                                supertypes = supertypeNames(type),
+                            )
+                        }
+                    }
+                    .sortedWith(compareBy({ it.fqName }, { it.location.filePath }, { it.location.startOffset }))
+                val capped = implementations.take(query.maxResults.value)
+                ImplementationsResult(
+                    declaration = declarationSymbol,
+                    implementations = capped,
+                    exhaustive = implementations.size <= capped.size,
+                )
+            }
         }
     }
 
@@ -594,14 +682,25 @@ internal class StandaloneAnalysisBackend internal constructor(
     private fun KtFile.findReferenceLocations(
         target: PsiElement,
         includeUsageSiteScope: Boolean,
-    ): List<Location> {
+        budgetMillis: Long,
+    ): FileReferenceResult {
         val references = mutableListOf<Location>()
+        val deadlineNano = System.nanoTime() + budgetMillis * 1_000_000L
+        var elementCount = 0
+        var timedOut = false
 
         // The standalone Analysis API session does not register the ReferencesSearch extension point,
         // so resolve references directly across the loaded PSI files.
+        // Every 100 elements we check the per-file scan budget; if the deadline has
+        // passed we stop the walk early and mark the file as timed-out.
         accept(
             object : PsiRecursiveElementWalkingVisitor() {
                 override fun visitElement(element: PsiElement) {
+                    if (++elementCount % 100 == 0 && System.nanoTime() >= deadlineNano) {
+                        timedOut = true
+                        stopWalking()
+                        return
+                    }
                     element.references.forEach { reference ->
                         val resolved = reference.resolve()
                         if (resolved == target || resolved?.isEquivalentTo(target) == true) {
@@ -623,7 +722,10 @@ internal class StandaloneAnalysisBackend internal constructor(
             },
         )
 
-        return references
+        return FileReferenceResult(
+            locations = if (timedOut) emptyList() else references,
+            timedOut = timedOut,
+        )
     }
 
     private fun KtFile.referenceEdits(
@@ -869,19 +971,30 @@ internal class StandaloneAnalysisBackend internal constructor(
         is KtObjectDeclaration -> !type.isCompanion()
         else -> false
     }
+
+    /**
+     * Parallel `flatMap` over a list using [parallelPool] (a dedicated [ForkJoinPool]).
+     * Safe to call while the caller holds [StandaloneAnalysisSession.withReadAccess] —
+     * the parent thread's read lock prevents any writer from acquiring the write lock,
+     * so fork-join pool threads read PSI safely without their own lock acquisition.
+     */
+    private fun <T, R> List<T>.parallelMapFlat(transform: (T) -> List<R>): List<R> =
+        if (size <= 1) {
+            flatMap(transform)
+        } else {
+            parallelPool.submit(Callable {
+                parallelStream()
+                    .flatMap { element -> transform(element).stream() }
+                    .collect(Collectors.toList())
+            }).get()
+        }
 }
 
 /**
- * Parallel `flatMap` over a list using Java parallel streams.
- * Safe to call while the caller holds [StandaloneAnalysisSession.withReadAccess] —
- * the parent thread's read lock prevents any writer from acquiring the write lock,
- * so fork-join pool threads read PSI safely without their own lock acquisition.
+ * Holds the result of a per-file PSI reference walk, including whether the walk was
+ * terminated early because it exceeded [ServerLimits.perFileScanBudgetMillis].
  */
-private inline fun <T, R> List<T>.parallelMapFlat(crossinline transform: (T) -> List<R>): List<R> =
-    if (size <= 1) {
-        flatMap(transform)
-    } else {
-        parallelStream()
-            .flatMap { element -> transform(element).stream() }
-            .collect(java.util.stream.Collectors.toList())
-    }
+private data class FileReferenceResult(
+    val locations: List<Location>,
+    val timedOut: Boolean,
+)

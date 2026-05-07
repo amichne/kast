@@ -85,7 +85,7 @@ class AnalysisDispatcher(
         }
 
         return try {
-            val result = withTimeout(config.requestTimeoutMillis) {
+            val result = withTimeout(config.effectiveRequestTimeoutMillis) {
                 dispatchMethod(request.method, request.params)
             }
             json.encodeToString(

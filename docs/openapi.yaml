@@ -745,6 +745,9 @@ components:
         maxConcurrentRequests:
           type: integer
           format: int32
+        perFileScanBudgetMillis:
+          type: integer
+          format: int64
       additionalProperties: false
       required:
         - maxResults

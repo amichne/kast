@@ -63,6 +63,13 @@ object StandaloneRuntime {
                 requestTimeoutMillis = options.requestTimeoutMillis,
                 maxResults = options.maxResults,
                 maxConcurrentRequests = options.maxConcurrentRequests,
+                workspaceFileCount = phasedDiscoveryResult.initialLayout.sourceModules
+                    .flatMap { it.sourceRoots }
+                    .sumOf { root ->
+                        root.toFile().walkTopDown()
+                            .filter { it.isFile && it.extension == "kt" }
+                            .count()
+                    },
             ),
         ).start()
 

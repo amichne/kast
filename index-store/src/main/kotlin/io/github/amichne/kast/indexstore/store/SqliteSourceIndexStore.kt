@@ -4,7 +4,9 @@ import io.github.amichne.kast.indexstore.api.index.FileIndexUpdate
 import io.github.amichne.kast.indexstore.api.index.SourceIndexFilePolicy
 import io.github.amichne.kast.indexstore.api.index.SourceIndexSnapshot
 import io.github.amichne.kast.indexstore.api.index.SourceIndexWriter
+import io.github.amichne.kast.indexstore.api.reference.DeclarationKind
 import io.github.amichne.kast.indexstore.api.reference.DeclarationRow
+import io.github.amichne.kast.indexstore.api.reference.DeclarationVisibility
 import io.github.amichne.kast.indexstore.api.reference.EdgeKind
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
 import io.github.amichne.kast.indexstore.store.cache.defaultCacheJson
@@ -159,6 +161,7 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
         tableExists(conn, "file_manifest") &&
         tableExists(conn, "symbol_references") &&
         tableExists(conn, "declarations") &&
+        tableExists(conn, "declaration_supertypes") &&
         tableExists(conn, "pending_updates") &&
         columnExists(conn, "path_prefixes", "prefix_id") &&
         columnExists(conn, "path_prefixes", "dir_path") &&
@@ -228,6 +231,7 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
     private fun dropAllTables(conn: Connection) {
         conn.createStatement().use { stmt ->
             stmt.execute("DROP TABLE IF EXISTS pending_updates")
+            stmt.execute("DROP TABLE IF EXISTS declaration_supertypes")
             stmt.execute("DROP TABLE IF EXISTS declarations")
             stmt.execute("DROP TABLE IF EXISTS symbol_references")
             stmt.execute("DROP TABLE IF EXISTS file_wildcard_imports")
@@ -246,6 +250,7 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
     private fun rebuildDerivedIndexTables(conn: Connection) {
         conn.createStatement().use { stmt ->
             stmt.execute("DROP TABLE IF EXISTS pending_updates")
+            stmt.execute("DROP TABLE IF EXISTS declaration_supertypes")
             stmt.execute("DROP TABLE IF EXISTS declarations")
             stmt.execute("DROP TABLE IF EXISTS symbol_references")
             stmt.execute("DROP TABLE IF EXISTS file_wildcard_imports")
@@ -386,6 +391,14 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
         )
 
         stmt.execute(
+            """CREATE TABLE IF NOT EXISTS declaration_supertypes (
+                declaration_fq_id INTEGER NOT NULL,
+                supertype_fq_id INTEGER NOT NULL,
+                PRIMARY KEY (declaration_fq_id, supertype_fq_id)
+            )""",
+        )
+
+        stmt.execute(
             """CREATE TABLE IF NOT EXISTS pending_updates (
                 seq INTEGER PRIMARY KEY AUTOINCREMENT,
                 op TEXT NOT NULL CHECK(op IN ('upsert_file','remove_file','upsert_ref','remove_ref')),
@@ -420,6 +433,7 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_declarations_visibility ON declarations(visibility)")
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_declarations_kind ON declarations(kind)")
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_declarations_file ON declarations(prefix_id, filename)")
+        stmt.execute("CREATE INDEX IF NOT EXISTS idx_decl_supertypes_supertype ON declaration_supertypes(supertype_fq_id)")
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_pending_updates_unapplied ON pending_updates(applied, seq)")
     }
 
@@ -943,6 +957,40 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
         }
     }
 
+    fun declarationsWithSupertype(supertypeFqName: String): List<DeclarationRow> {
+        synchronized(writeLock) {
+            val conn = connection()
+            loadInterningTables(conn)
+            val supertypeFqId = fqCodec.idFor(supertypeFqName) ?: return emptyList()
+            return conn.prepareStatement(
+                """SELECT fn_decl.fq_name, d.kind, d.visibility, d.prefix_id, d.filename,
+                          d.declaration_offset, d.module_path, d.source_set
+                   FROM declarations d
+                   JOIN declaration_supertypes ds ON ds.declaration_fq_id = d.fq_id
+                   JOIN fq_names fn_decl ON fn_decl.fq_id = d.fq_id
+                   WHERE ds.supertype_fq_id = ?""",
+            ).use { stmt ->
+                stmt.setInt(1, supertypeFqId)
+                val rs = stmt.executeQuery()
+                buildList {
+                    while (rs.next()) {
+                        add(
+                            DeclarationRow(
+                                fqName = rs.getString(1),
+                                kind = DeclarationKind.valueOf(rs.getString(2)),
+                                visibility = DeclarationVisibility.valueOf(rs.getString(3)),
+                                filePath = pathCodec.decode(rs.getInt(4), rs.getString(5)),
+                                declarationOffset = rs.getNullableInt(6),
+                                modulePath = rs.getString(7),
+                                sourceSet = rs.getString(8),
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
     fun appendPendingUpdate(
         op: String,
         path: String,
@@ -1414,6 +1462,15 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
     ) {
         loadInterningTables(conn)
         val (prefixId, filename) = pathCodec.encodeIfInterned(filePath) ?: return
+        // Delete supertypes for all declarations in this file first (FK-safe order)
+        conn.prepareStatement(
+            """DELETE FROM declaration_supertypes WHERE declaration_fq_id IN
+               (SELECT fq_id FROM declarations WHERE prefix_id = ? AND filename = ?)""",
+        ).use { stmt ->
+            stmt.setInt(1, prefixId)
+            stmt.setString(2, filename)
+            stmt.executeUpdate()
+        }
         conn.prepareStatement("DELETE FROM declarations WHERE prefix_id = ? AND filename = ?").use { stmt ->
             stmt.setInt(1, prefixId)
             stmt.setString(2, filename)
@@ -1445,6 +1502,19 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
             stmt.setString(7, declaration.modulePath)
             stmt.setString(8, declaration.sourceSet)
             stmt.executeUpdate()
+        }
+        // Insert supertype edges (re-creating them since declarations uses INSERT OR REPLACE)
+        if (declaration.supertypes.isNotEmpty()) {
+            conn.prepareStatement(
+                "INSERT OR REPLACE INTO declaration_supertypes (declaration_fq_id, supertype_fq_id) VALUES (?, ?)",
+            ).use { stmt ->
+                for (supertype in declaration.supertypes) {
+                    val supertypeFqId = fqCodec.getOrCreate(conn, supertype)
+                    stmt.setInt(1, fqId)
+                    stmt.setInt(2, supertypeFqId)
+                    stmt.executeUpdate()
+                }
+            }
         }
     }
 
