@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/amichne/kast/.agents/skills/kast/value-proof/grading.schema.json",
+  "title": "Kast value-proof grading result",
+  "description": "Contract for per-run grading.json files produced by value-proof graders.",
+  "type": "object",
+  "required": ["expectations", "summary", "execution_metrics", "timing"],
+  "properties": {
+    "status": {
+      "type": "string"
+    },
+    "expectations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["text", "passed", "evidence"],
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "passed": {
+            "type": "boolean"
+          },
+          "evidence": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["passed", "failed", "total", "pass_rate"],
+      "properties": {
+        "passed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "pass_rate": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0
+        }
+      }
+    },
+    "execution_metrics": {
+      "type": "object",
+      "required": [
+        "tool_calls",
+        "total_tool_calls",
+        "total_steps",
+        "errors_encountered",
+        "output_chars",
+        "transcript_chars"
+      ],
+      "properties": {
+        "tool_calls": {
+          "type": "object"
+        },
+        "total_tool_calls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "total_steps": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "errors_encountered": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "output_chars": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "transcript_chars": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "timing": {
+      "type": "object",
+      "required": [
+        "executor_duration_seconds",
+        "grader_duration_seconds",
+        "total_duration_seconds"
+      ],
+      "properties": {
+        "executor_duration_seconds": {
+          "type": "number",
+          "minimum": 0.0
+        },
+        "grader_duration_seconds": {
+          "type": "number",
+          "minimum": 0.0
+        },
+        "total_duration_seconds": {
+          "type": "number",
+          "minimum": 0.0
+        }
+      }
+    }
+  }
+}

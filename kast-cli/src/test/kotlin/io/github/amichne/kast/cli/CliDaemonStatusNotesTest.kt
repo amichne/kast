@@ -70,6 +70,7 @@ class CliDaemonStatusNotesTest {
         val note = daemonNoteFor(
             WorkspaceEnsureResult(
                 workspaceRoot = "/tmp/workspace",
+                descriptorDirectory = "/tmp/.config/kast/daemons",
                 started = true,
                 logFile = "/tmp/.config/kast/logs/a1b2c3d4e5f6/standalone-daemon.log",
                 selected = candidate(pid = 61),
@@ -78,6 +79,7 @@ class CliDaemonStatusNotesTest {
 
         assertTrue(checkNotNull(note).contains("started"))
         assertTrue(note.contains("standalone-daemon.log"))
+        assertTrue(note.contains("/tmp/.config/kast/daemons"))
     }
 
     @Test
@@ -85,6 +87,7 @@ class CliDaemonStatusNotesTest {
         val note = daemonNoteFor(
             WorkspaceEnsureResult(
                 workspaceRoot = "/tmp/workspace",
+                descriptorDirectory = "/tmp/.config/kast/daemons",
                 started = true,
                 logFile = "/tmp/.config/kast/logs/a1b2c3d4e5f6/standalone-daemon.log",
                 selected = candidate(pid = 71),

@@ -13,9 +13,11 @@ if str(SCRIPT_DIR) not in sys.path:
 
 from prove_consolidation import build_consolidation_report
 from validation import (
+    GRADING_SCHEMA_PATH,
     build_overlap_report,
     load_pain_point_source,
     validate_benchmark_data,
+    validate_grading_data,
     validate_skill_directory,
 )
 
@@ -187,6 +189,58 @@ class ValidationTests(unittest.TestCase):
         report = validate_benchmark_data(benchmark, path=Path("benchmark.json"))
         self.assertFalse(report.is_valid)
         self.assertIn("expectations[0].evidence", "\n".join(report.errors))
+
+    def test_grading_contract_schema_is_the_validation_source_of_truth(self) -> None:
+        self.assertTrue(GRADING_SCHEMA_PATH.exists())
+        schema = json.loads(GRADING_SCHEMA_PATH.read_text())
+        self.assertEqual(
+            {"expectations", "summary", "execution_metrics", "timing"},
+            set(schema["required"]),
+        )
+
+        grading = {
+            "expectations": [{"text": "Met expectation", "passed": True, "evidence": "Transcript quote."}],
+            "summary": {"passed": 1, "failed": 0, "total": 1, "pass_rate": 1.0},
+            "execution_metrics": {
+                "tool_calls": {"kast_scaffold": 1},
+                "total_tool_calls": 1,
+                "total_steps": 2,
+                "errors_encountered": 0,
+                "output_chars": 200,
+                "transcript_chars": 500,
+            },
+            "timing": {
+                "executor_duration_seconds": 1.0,
+                "grader_duration_seconds": 0.5,
+                "total_duration_seconds": 1.5,
+            },
+        }
+
+        report = validate_grading_data(grading, path=Path("grading.json"))
+        self.assertTrue(report.is_valid, report.errors)
+
+    def test_grading_contract_rejects_negative_schema_values(self) -> None:
+        grading = {
+            "expectations": [{"text": "Met expectation", "passed": True, "evidence": "Transcript quote."}],
+            "summary": {"passed": 1, "failed": 0, "total": 1, "pass_rate": 1.0},
+            "execution_metrics": {
+                "tool_calls": {},
+                "total_tool_calls": -1,
+                "total_steps": 0,
+                "errors_encountered": 0,
+                "output_chars": 0,
+                "transcript_chars": 0,
+            },
+            "timing": {
+                "executor_duration_seconds": 0.0,
+                "grader_duration_seconds": 0.0,
+                "total_duration_seconds": 0.0,
+            },
+        }
+
+        report = validate_grading_data(grading, path=Path("grading.json"))
+        self.assertFalse(report.is_valid)
+        self.assertIn("execution_metrics.total_tool_calls", "\n".join(report.errors))
 
     def test_overlap_audit_warns_for_similar_sibling_skills(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

@@ -23,9 +23,7 @@ internal class WorkspaceRuntimeManager(
 ) {
     private companion object {
         fun configuredDescriptorDirectory(options: RuntimeCommandOptions): Path =
-            Path.of(KastConfig.load(options.workspaceRoot.toJavaPath()).paths.descriptorDir.value)
-                .toAbsolutePath()
-                .normalize()
+            KastConfig.load(options.workspaceRoot.toJavaPath()).paths.descriptorDir.toPath()
     }
 
     suspend fun workspaceStatus(options: RuntimeCommandOptions): WorkspaceStatusResult {
@@ -54,11 +52,10 @@ internal class WorkspaceRuntimeManager(
             inspection.candidates.firstOrNull { it.descriptor.backendName == backendFilter }
         } else {
             inspection.candidates.firstOrNull()
-        }
-            ?: return DaemonStopResult(
-                workspaceRoot = options.workspaceRoot.toString(),
-                stopped = false,
-            )
+        } ?: return DaemonStopResult(
+            workspaceRoot = options.workspaceRoot.toString(),
+            stopped = false,
+        )
 
         return stopCandidate(
             descriptorDirectory = inspection.descriptorDirectory,
@@ -78,6 +75,7 @@ internal class WorkspaceRuntimeManager(
         )?.let { selected ->
             return WorkspaceEnsureResult(
                 workspaceRoot = options.workspaceRoot.toString(),
+                descriptorDirectory = inspection.descriptorDirectory.toString(),
                 started = false,
                 selected = selected,
             )
@@ -98,6 +96,7 @@ internal class WorkspaceRuntimeManager(
             } else {
                 return WorkspaceEnsureResult(
                     workspaceRoot = options.workspaceRoot.toString(),
+                    descriptorDirectory = inspection.descriptorDirectory.toString(),
                     started = false,
                     selected = waitForServable(
                         options = options.copy(backendName = BackendName.STANDALONE),
@@ -257,16 +256,18 @@ internal data class WorkspaceInspection(
     val selected: RuntimeCandidateStatus?,
 )
 
-internal fun RuntimeStatusResponse?.isServable(): Boolean = this != null &&
-    (state == RuntimeState.READY || state == RuntimeState.INDEXING) &&
-    healthy &&
-    active
+internal fun RuntimeStatusResponse?.isServable(): Boolean =
+    this != null &&
+        (state == RuntimeState.READY || state == RuntimeState.INDEXING) &&
+        healthy &&
+        active
 
-internal fun RuntimeStatusResponse?.isReady(): Boolean = this != null &&
-    state == RuntimeState.READY &&
-    healthy &&
-    active &&
-    !indexing
+internal fun RuntimeStatusResponse?.isReady(): Boolean =
+    this != null &&
+        state == RuntimeState.READY &&
+        healthy &&
+        active &&
+        !indexing
 
 internal fun selectServableCandidate(
     candidates: List<RuntimeCandidateStatus>,
@@ -308,8 +309,9 @@ internal fun RuntimeCandidateStatus.currentStateLabel(): String = when {
     else -> "STOPPED"
 }
 
-private fun isProcessAlive(pid: Long): Boolean = ProcessHandle.of(pid)
-    .takeIf { it.isPresent }
-    ?.get()
-    ?.isAlive
-    ?: false
+private fun isProcessAlive(pid: Long): Boolean =
+    ProcessHandle.of(pid)
+        .takeIf { it.isPresent }
+        ?.get()
+        ?.isAlive
+        ?: false

@@ -83,6 +83,7 @@
         "Does not leave broken references in any module"
       ],
       "labels": ["safe-mutations", "rename"],
+      "chain_id": "safe-mutations-chain",
       "stage": "candidate",
       "source": {"kind": "manual", "summary": "Value-proof plan case for safe rename mutation"},
       "promotion": {"required_pass_rate": 1.0, "required_benchmarks": 2}
@@ -100,6 +101,7 @@
         "Does not claim success without validation evidence"
       ],
       "labels": ["safe-mutations", "write-and-validate"],
+      "chain_id": "safe-mutations-chain",
       "stage": "candidate",
       "source": {"kind": "manual", "summary": "Value-proof plan case for atomic edit validation"},
       "promotion": {"required_pass_rate": 1.0, "required_benchmarks": 2}

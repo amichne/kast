@@ -924,6 +924,19 @@ internal object CliCommandCatalog {
             ),
         ),
         CliCommandMetadata(
+            path = listOf("verify-extension"),
+            group = CliCommandGroup.VALIDATION,
+            summary = "Verify the installed Copilot extension version matches this CLI.",
+            description = "Reads .github/.kast-copilot-version from the current workspace and compares it with " +
+                "the running kast CLI version. Emits JSON and exits non-zero when the versions drift.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME verify-extension",
+            ),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME verify-extension",
+            ),
+        ),
+        CliCommandMetadata(
             path = listOf("smoke"),
             group = CliCommandGroup.VALIDATION,
             summary = "Run the portable smoke workflow and emit an aggregated readiness report.",

@@ -21,6 +21,7 @@ import io.github.amichne.kast.cli.skill.InstallSkillResult
 import io.github.amichne.kast.cli.SmokeReport
 import io.github.amichne.kast.cli.results.WorkspaceEnsureResult
 import io.github.amichne.kast.cli.results.WorkspaceStatusResult
+import io.github.amichne.kast.cli.results.VerifyExtensionResult
 import kotlinx.serialization.json.Json
 
 internal fun defaultCliJson(): Json = Json {
@@ -56,6 +57,7 @@ internal fun writeCliJson(
         is TypeHierarchyResult -> json.encodeToString(value)
         is SmokeReport -> json.encodeToString(value)
         is GradleRunResult -> json.encodeToString(value)
+        is VerifyExtensionResult -> json.encodeToString(value)
         is CliErrorResponse -> json.encodeToString(value)
         else -> error("Unsupported CLI output type: ${value::class.java.name}")
     }

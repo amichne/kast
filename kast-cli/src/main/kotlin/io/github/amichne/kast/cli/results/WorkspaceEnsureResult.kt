@@ -7,6 +7,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 internal data class WorkspaceEnsureResult(
     val workspaceRoot: String,
+    val descriptorDirectory: String,
     val started: Boolean,
     val logFile: String? = null,
     val selected: RuntimeCandidateStatus,

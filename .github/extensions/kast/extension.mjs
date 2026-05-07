@@ -22,6 +22,7 @@ import {markShadowedExtensionLoaded} from "../_shared/lib.mjs";
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(HERE, "..", "..", "..");
 const RESOLVE_SCRIPT = join(HERE, "scripts", "resolve-kast.sh");
+const COPILOT_VERSION_MARKER = join(HERE, "..", "..", ".kast-copilot-version");
 
 let kastBinary = null;
 let kastVersion = null;
@@ -68,6 +69,35 @@ function execBash(command, env = process.env) {
       },
     );
   });
+}
+
+function cliVersionFromStdout(stdout) {
+  const text = String(stdout ?? "").trim();
+  const prefixed = text.match(/^Kast CLI\s+(.+)$/i);
+  return (prefixed ? prefixed[1] : text).trim();
+}
+
+function looksLikeKastCliVersion(stdout) {
+  const text = String(stdout ?? "").trim();
+  if (/^Kast CLI\s+\S+/i.test(text)) return true;
+  const version = cliVersionFromStdout(text);
+  return version === "dev" || /\d+\.\d+/.test(version) || /^[0-9a-f]{7,40}(?:[+-].*)?$/i.test(version);
+}
+
+async function readCliVersion(path) {
+  const {ok, stdout} = await execBash(`${JSON.stringify(path)} --version`);
+  if (!ok) return null;
+  if (!looksLikeKastCliVersion(stdout)) return null;
+  const version = cliVersionFromStdout(stdout);
+  return version || null;
+}
+
+function readInstalledExtensionVersion() {
+  try {
+    return readFileSync(COPILOT_VERSION_MARKER, "utf8").trim() || null;
+  } catch {
+    return null;
+  }
 }
 
 async function resolveKastBinary() {
@@ -128,15 +158,7 @@ function readInstalledVersion() {
 }
 
 async function supportsWrapperCommands(path) {
-  const probe = JSON.stringify({ workspaceRoot: REPO_ROOT });
-  const {ok, stdout} = await execBash(`${JSON.stringify(path)} workspace-files ${JSON.stringify(probe)}`);
-  if (!ok) return false;
-  try {
-    const parsed = JSON.parse(stdout.trim());
-    return parsed && typeof parsed === "object" && parsed.ok === true;
-  } catch {
-    return false;
-  }
+  return (await readCliVersion(path)) !== null;
 }
 
 async function callKastSkill(command, args) {
@@ -422,8 +444,8 @@ const session = await joinSession({
       }
 
       // Version parity: compare CLI version against the installed extension marker.
-      const cliVersion = await queryCliVersion(bin);
-      const installedVersion = readInstalledVersion();
+      const cliVersion = await readCliVersion(bin);
+      const installedVersion = readInstalledExtensionVersion();
       if (cliVersion && installedVersion && cliVersion !== installedVersion) {
         const msg =
           `kast version mismatch: CLI reports ${cliVersion} but the installed extension was written by ${installedVersion}. ` +
