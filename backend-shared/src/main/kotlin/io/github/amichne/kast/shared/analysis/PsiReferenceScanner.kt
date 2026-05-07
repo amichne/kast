@@ -48,13 +48,16 @@ class PsiReferenceScanner(
                             return
                         }
                         ProgressManager.checkCanceled()
-                        element.references.forEach { reference ->
+                        recoverRuntimePsiFailure { element.references }.orEmpty().forEach { reference ->
                             try {
                                 val resolved = reference.resolve() ?: return@forEach
                                 val (fqName, _) = resolved.targetFqNameAndPackage() ?: return@forEach
-                                val targetPath = runCatching { resolved.resolvedFilePath().value }.getOrNull()
-                                val targetOffset = resolved.textRange?.startOffset
-                                val sourceOffset = reference.element.textRange.startOffset +
+                                val targetPath = recoverRuntimePsiFailure { resolved.resolvedFilePath().value }
+                                val targetOffset = recoverRuntimePsiFailure { resolved.textRange?.startOffset }
+                                val sourceElementStart = recoverRuntimePsiFailure {
+                                    reference.element.textRange.startOffset
+                                } ?: return@forEach
+                                val sourceOffset = sourceElementStart +
                                     reference.rangeInElement.startOffset
                                 rows += SymbolReferenceRow(
                                     sourcePath = sourceFilePath,
@@ -69,11 +72,11 @@ class PsiReferenceScanner(
                                 throw error
                             } catch (error: CancellationException) {
                                 throw error
-                            } catch (_: Exception) {
+                            } catch (_: RuntimeException) {
                                 // Skip one bad reference while continuing to index the file.
                             }
                         }
-                        super.visitElement(element)
+                        recoverRuntimePsiFailure { super.visitElement(element) }
                     }
                 },
             )
@@ -171,4 +174,15 @@ class PsiReferenceScanner(
             else -> EdgeKind.UNKNOWN
         }
     }
+
+    private inline fun <T> recoverRuntimePsiFailure(action: () -> T): T? =
+        try {
+            action()
+        } catch (error: ProcessCanceledException) {
+            throw error
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: RuntimeException) {
+            null
+        }
 }

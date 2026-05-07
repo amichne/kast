@@ -75,6 +75,7 @@ class KastConfigTest {
             "server" to "maxConcurrentRequests",
             "indexing" to "phase2Enabled",
             "indexing" to "phase2BatchSize",
+            "indexing" to "phase2Parallelism",
             "indexing" to "identifierIndexWaitMillis",
             "indexing" to "referenceBatchSize",
             "indexing.remote" to "enabled",
