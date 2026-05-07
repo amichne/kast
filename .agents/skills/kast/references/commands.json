@@ -1,0 +1,518 @@
+{
+  "version": "0.1.1-SNAPSHOT",
+  "commands": {
+    "workspace-files": {
+      "summary": "List workspace modules and optional file paths",
+      "request": {
+        "fields": {
+          "workspaceRoot": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "moduleName": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "includeFiles": {
+            "type": "boolean",
+            "optional": true
+          },
+          "maxFilesPerModule": {
+            "type": "integer",
+            "optional": true,
+            "nullable": true
+          }
+        }
+      },
+      "successType": "WORKSPACE_FILES_SUCCESS",
+      "failureType": "WORKSPACE_FILES_FAILURE"
+    },
+    "scaffold": {
+      "summary": "Gather structural generation context for a Kotlin file",
+      "request": {
+        "fields": {
+          "workspaceRoot": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "targetFile": {
+            "type": "string"
+          },
+          "targetSymbol": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "mode": {
+            "type": "string",
+            "optional": true,
+            "enum": [
+              "implement",
+              "replace",
+              "consolidate",
+              "extract"
+            ]
+          },
+          "kind": {
+            "type": "string",
+            "optional": true,
+            "nullable": true,
+            "enum": [
+              "class",
+              "interface",
+              "object",
+              "function",
+              "property"
+            ]
+          }
+        },
+        "required": [
+          "targetFile"
+        ]
+      },
+      "successType": "SCAFFOLD_SUCCESS",
+      "failureType": "SCAFFOLD_FAILURE"
+    },
+    "resolve": {
+      "summary": "Resolve a symbol by name to its declaration",
+      "request": {
+        "fields": {
+          "workspaceRoot": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "symbol": {
+            "type": "string"
+          },
+          "fileHint": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "kind": {
+            "type": "string",
+            "optional": true,
+            "nullable": true,
+            "enum": [
+              "class",
+              "interface",
+              "object",
+              "function",
+              "property"
+            ]
+          },
+          "containingType": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          }
+        },
+        "required": [
+          "symbol"
+        ]
+      },
+      "successType": "RESOLVE_SUCCESS",
+      "failureType": "RESOLVE_FAILURE",
+      "notes": [
+        "The 'symbol' field takes simple names only (e.g. 'key'), never fully-qualified names.",
+        "Use 'containingType' for scoping and 'fileHint' for disambiguation."
+      ]
+    },
+    "references": {
+      "summary": "Find every usage of a Kotlin symbol",
+      "request": {
+        "fields": {
+          "workspaceRoot": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "symbol": {
+            "type": "string"
+          },
+          "fileHint": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "kind": {
+            "type": "string",
+            "optional": true,
+            "nullable": true,
+            "enum": [
+              "class",
+              "interface",
+              "object",
+              "function",
+              "property"
+            ]
+          },
+          "containingType": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "includeDeclaration": {
+            "type": "boolean",
+            "optional": true
+          }
+        },
+        "required": [
+          "symbol"
+        ]
+      },
+      "successType": "REFERENCES_SUCCESS",
+      "failureType": "REFERENCES_FAILURE",
+      "notes": [
+        "The 'symbol' field takes simple names only.",
+        "Resolve ambiguous names first with 'kind', 'containingType', or 'fileHint'."
+      ]
+    },
+    "callers": {
+      "summary": "Expand an incoming or outgoing call hierarchy",
+      "request": {
+        "fields": {
+          "workspaceRoot": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "symbol": {
+            "type": "string"
+          },
+          "fileHint": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "kind": {
+            "type": "string",
+            "optional": true,
+            "nullable": true,
+            "enum": [
+              "class",
+              "interface",
+              "object",
+              "function",
+              "property"
+            ]
+          },
+          "containingType": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "direction": {
+            "type": "string",
+            "optional": true,
+            "enum": [
+              "incoming",
+              "outgoing"
+            ]
+          },
+          "depth": {
+            "type": "integer",
+            "optional": true
+          },
+          "maxTotalCalls": {
+            "type": "integer",
+            "optional": true,
+            "nullable": true
+          },
+          "maxChildrenPerNode": {
+            "type": "integer",
+            "optional": true,
+            "nullable": true
+          },
+          "timeoutMillis": {
+            "type": "integer",
+            "optional": true,
+            "nullable": true
+          }
+        },
+        "required": [
+          "symbol"
+        ]
+      },
+      "successType": "CALLERS_SUCCESS",
+      "failureType": "CALLERS_FAILURE",
+      "notes": [
+        "The 'symbol' field takes simple names only."
+      ]
+    },
+    "diagnostics": {
+      "summary": "Run Kotlin diagnostics on listed files",
+      "request": {
+        "fields": {
+          "workspaceRoot": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "filePaths": {
+            "type": "array",
+            "items": "string"
+          }
+        },
+        "required": [
+          "filePaths"
+        ]
+      },
+      "successType": "DIAGNOSTICS_SUCCESS",
+      "failureType": "DIAGNOSTICS_FAILURE"
+    },
+    "rename": {
+      "summary": "Resolve or target a symbol and apply a rename",
+      "request": {
+        "fields": {
+          "type": {
+            "type": "string"
+          },
+          "value": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "type",
+          "value"
+        ]
+      },
+      "successType": "RENAME_SUCCESS",
+      "failureType": "RENAME_FAILURE",
+      "variants": {
+        "RENAME_BY_SYMBOL_REQUEST": {
+          "fields": {
+            "workspaceRoot": {
+              "type": "string",
+              "optional": true,
+              "nullable": true
+            },
+            "symbol": {
+              "type": "string"
+            },
+            "newName": {
+              "type": "string"
+            },
+            "fileHint": {
+              "type": "string",
+              "optional": true,
+              "nullable": true
+            },
+            "kind": {
+              "type": "string",
+              "optional": true,
+              "nullable": true,
+              "enum": [
+                "class",
+                "interface",
+                "object",
+                "function",
+                "property"
+              ]
+            },
+            "containingType": {
+              "type": "string",
+              "optional": true,
+              "nullable": true
+            }
+          },
+          "required": [
+            "symbol",
+            "newName"
+          ]
+        },
+        "RENAME_BY_OFFSET_REQUEST": {
+          "fields": {
+            "workspaceRoot": {
+              "type": "string",
+              "optional": true,
+              "nullable": true
+            },
+            "filePath": {
+              "type": "string"
+            },
+            "offset": {
+              "type": "integer"
+            },
+            "newName": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "filePath",
+            "offset",
+            "newName"
+          ]
+        }
+      }
+    },
+    "write-and-validate": {
+      "summary": "Apply generated Kotlin code and validate the result",
+      "request": {
+        "fields": {
+          "type": {
+            "type": "string"
+          },
+          "value": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "type",
+          "value"
+        ]
+      },
+      "successType": "WRITE_AND_VALIDATE_SUCCESS",
+      "failureType": "WRITE_AND_VALIDATE_FAILURE",
+      "variants": {
+        "CREATE_FILE_REQUEST": {
+          "fields": {
+            "workspaceRoot": {
+              "type": "string",
+              "optional": true,
+              "nullable": true
+            },
+            "filePath": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string",
+              "optional": true,
+              "nullable": true
+            },
+            "contentFile": {
+              "type": "string",
+              "optional": true,
+              "nullable": true
+            }
+          },
+          "required": [
+            "filePath"
+          ]
+        },
+        "INSERT_AT_OFFSET_REQUEST": {
+          "fields": {
+            "workspaceRoot": {
+              "type": "string",
+              "optional": true,
+              "nullable": true
+            },
+            "filePath": {
+              "type": "string"
+            },
+            "offset": {
+              "type": "integer"
+            },
+            "content": {
+              "type": "string",
+              "optional": true,
+              "nullable": true
+            },
+            "contentFile": {
+              "type": "string",
+              "optional": true,
+              "nullable": true
+            }
+          },
+          "required": [
+            "filePath",
+            "offset"
+          ]
+        },
+        "REPLACE_RANGE_REQUEST": {
+          "fields": {
+            "workspaceRoot": {
+              "type": "string",
+              "optional": true,
+              "nullable": true
+            },
+            "filePath": {
+              "type": "string"
+            },
+            "startOffset": {
+              "type": "integer"
+            },
+            "endOffset": {
+              "type": "integer"
+            },
+            "content": {
+              "type": "string",
+              "optional": true,
+              "nullable": true
+            },
+            "contentFile": {
+              "type": "string",
+              "optional": true,
+              "nullable": true
+            }
+          },
+          "required": [
+            "filePath",
+            "startOffset",
+            "endOffset"
+          ]
+        }
+      }
+    },
+    "metrics": {
+      "summary": "Query indexed source metrics",
+      "request": {
+        "fields": {
+          "workspaceRoot": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "metric": {
+            "type": "string",
+            "enum": [
+              "apiSurface",
+              "moduleBoundary",
+              "declarations",
+              "fanIn",
+              "fanOut",
+              "coupling",
+              "lowUsage",
+              "cycles",
+              "moduleDepth",
+              "deadCode",
+              "impact"
+            ]
+          },
+          "limit": {
+            "type": "integer",
+            "optional": true
+          },
+          "symbol": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "depth": {
+            "type": "integer",
+            "optional": true
+          },
+          "fileGlob": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "folderFilter": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          }
+        },
+        "required": [
+          "metric"
+        ]
+      },
+      "successType": "METRICS_SUCCESS",
+      "failureType": "METRICS_FAILURE"
+    }
+  }
+}

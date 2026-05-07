@@ -24,6 +24,7 @@ const REPO_ROOT = resolve(HERE, "..", "..", "..");
 const RESOLVE_SCRIPT = join(HERE, "scripts", "resolve-kast.sh");
 
 let kastBinary = null;
+let kastVersion = null;
 let resolveError = null;
 
 // Minimal TOML reader — handles only the subset written by the kast installer.
@@ -108,6 +109,22 @@ async function resolveKastBinary() {
     ? `no resolved Kast CLI supports direct wrapper commands; rejected: ${rejected.join(", ")}`
     : "no Kast CLI candidate found; build the repo-local CLI or install a matching Kast release";
   return null;
+}
+
+async function queryCliVersion(path) {
+  const {ok, stdout} = await execBash(`${JSON.stringify(path)} --version`);
+  if (!ok) return null;
+  const match = stdout.trim().replace(/\x1b\[[0-9;]*m/g, "").match(/Kast CLI (.+)/);
+  return match ? match[1].trim() : null;
+}
+
+function readInstalledVersion() {
+  const markerPath = join(REPO_ROOT, ".github", ".kast-copilot-version");
+  try {
+    return readFileSync(markerPath, "utf8").trim();
+  } catch {
+    return null;
+  }
 }
 
 async function supportsWrapperCommands(path) {
@@ -403,8 +420,21 @@ const session = await joinSession({
         );
         return {};
       }
+
+      // Version parity: compare CLI version against the installed extension marker.
+      const cliVersion = await queryCliVersion(bin);
+      const installedVersion = readInstalledVersion();
+      if (cliVersion && installedVersion && cliVersion !== installedVersion) {
+        const msg =
+          `kast version mismatch: CLI reports ${cliVersion} but the installed extension was written by ${installedVersion}. ` +
+          `Run \`kast install copilot-extension\` to reinstall from the current CLI, then restart the session.`;
+        await session.log(`kast extension: ${msg}`, { level: "error" });
+        return { additionalContext: `KAST EXTENSION BLOCKED — ${msg}` };
+      }
+      kastVersion = cliVersion;
+
       markShadowedExtensionLoaded(REPO_ROOT, "kast");
-      await session.log(`kast extension ready (binary: ${bin})`, { ephemeral: true });
+      await session.log(`kast extension ready (binary: ${bin}, version: ${cliVersion ?? "unknown"})`, { ephemeral: true });
       return {
         additionalContext:
           `Kast tools available natively: kast_workspace_files, kast_scaffold, kast_resolve, kast_references, kast_callers, kast_metrics, kast_diagnostics, kast_rename, kast_write_and_validate. ` +

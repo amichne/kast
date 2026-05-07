@@ -33,6 +33,7 @@ internal class EmbeddedSkillResources(
             "fixtures/maintenance/scripts/build-routing-corpus.py",
             "history/eval-baseline.json",
             "references/quickstart.md",
+            "references/commands.json",
             "references/wrapper-openapi.yaml",
             "scripts/kast-session-start.sh",
             "scripts/resolve-kast.sh",
