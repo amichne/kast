@@ -45,6 +45,18 @@ source of truth for proving whether a skill iteration beats its baseline.
    failures as failed operations. Keep the response visible and use
    diagnostics when useful; do not claim success after a failed mutation.
 
+Use the native wrappers when the host exposes them:
+
+- `kast_workspace_files` or `kast workspace-files`
+- `kast_scaffold` or `kast scaffold`
+- `kast_resolve` or `kast resolve`
+- `kast_references` or `kast references`
+- `kast_callers` or `kast callers`
+- `kast_diagnostics` or `kast diagnostics`
+- `kast_rename` or `kast rename`
+- `kast_write_and_validate` or `kast write-and-validate`
+- `kast_metrics` or `kast metrics`
+
 ## Source of truth
 
 - `references/quickstart.md`: command snippets, request shape, response shape,
