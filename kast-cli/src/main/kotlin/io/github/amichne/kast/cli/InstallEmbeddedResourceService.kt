@@ -50,7 +50,7 @@ internal abstract class InstallEmbeddedResourceService<O, R>(
                 if (!request.force) {
                     throw existingTargetFailure(targetPath)
                 }
-                uninstallPackagedResources(targetPath)
+                deletePathRecursively(targetPath)
             }
 
             Files.exists(targetPath) -> {
