@@ -980,6 +980,9 @@ _install_intellij_plugin() {
   if [[ -n "$local_archive" ]]; then
     log_step "Copying local plugin archive ${local_archive}"
     cp "$local_archive" "$plugin_path"
+  elif [[ "$release_tag" == "local" ]]; then
+    log_note "Local install: no plugin archive available; skipping IntelliJ plugin"
+    return 1
   else
     local plugin_url="https://github.com/${release_repo}/releases/download/${release_tag}/${plugin_name}"
     log_step "Downloading IntelliJ plugin ${plugin_name}"
@@ -1434,7 +1437,7 @@ _install_pick_intellij_instance() {
 }
 
 _install_push_plugin_to_intellij() {
-  local release_repo="$1" release_tag="$2"
+  local release_repo="$1" release_tag="$2" local_archive="${3:-}"
   local count="${#_INSTALL_ENV_INTELLIJ_PIDS[@]}"
   [[ "$count" -gt 0 ]] || { log_note "No running IntelliJ instances to push to"; return 1; }
 
@@ -1451,17 +1454,25 @@ _install_push_plugin_to_intellij() {
   local plugin_name="kast-intellij-${release_tag}.zip"
   local plugin_tmp="${tmp_dir}/${plugin_name}"
   if [[ ! -f "$plugin_tmp" ]]; then
-    local plugin_url="https://github.com/${release_repo}/releases/download/${release_tag}/${plugin_name}"
-    log_step "Downloading ${plugin_name}"
-    local attempt
-    for attempt in 1 2 3; do
-      if _install_download_file "$plugin_url" "$plugin_tmp"; then break; fi
-      if [[ "$attempt" -eq 3 ]]; then
-        log_note "Failed to download plugin; falling back to zip install"
-        return 1
-      fi
-      sleep 5
-    done
+    if [[ -n "$local_archive" ]]; then
+      log_step "Copying local plugin archive ${local_archive}"
+      cp "$local_archive" "$plugin_tmp"
+    elif [[ "$release_tag" == "local" ]]; then
+      log_note "Local install: no plugin archive available; falling back to zip install"
+      return 1
+    else
+      local plugin_url="https://github.com/${release_repo}/releases/download/${release_tag}/${plugin_name}"
+      log_step "Downloading ${plugin_name}"
+      local attempt
+      for attempt in 1 2 3; do
+        if _install_download_file "$plugin_url" "$plugin_tmp"; then break; fi
+        if [[ "$attempt" -eq 3 ]]; then
+          log_note "Failed to download plugin; falling back to zip install"
+          return 1
+        fi
+        sleep 5
+      done
+    fi
   fi
 
   mkdir -p "$plugins_dir"
@@ -1861,7 +1872,7 @@ USAGE
   if [[ "$install_intellij" == "true" ]]; then
     local resolved_tag; resolved_tag="$(_install_resolve_release_tag "$release_repo" "${release_tag:-}")"
     if [[ "$wizard_mode" == "true" && "$_INSTALL_INTELLIJ_ACTION" == "push" ]]; then
-      _install_push_plugin_to_intellij "$release_repo" "$resolved_tag" \
+      _install_push_plugin_to_intellij "$release_repo" "$resolved_tag" "$local_plugin_archive" \
         || _install_intellij_plugin "$release_repo" "$resolved_tag" "$install_root" "$local_plugin_archive" || true
     else
       _install_intellij_plugin "$release_repo" "$resolved_tag" "$install_root" "$local_plugin_archive" || true
