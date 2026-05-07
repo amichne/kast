@@ -1,0 +1,10 @@
+{
+  "executor_duration_seconds": 158,
+  "tool_call_count": 6,
+  "kast_tool_calls": 2,
+  "bash_or_grep_calls": 4,
+  "errors_encountered": [
+    "kast_references MCP tool: Schema validation error - unknown key 'includeUsageSiteScope'",
+    "Daemon path resolution issue: /tmp resolves to /private/tmp on macOS causing connection mismatch"
+  ]
+}

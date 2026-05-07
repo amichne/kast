@@ -1,0 +1,12 @@
+{
+  "start_iso": "2026-05-07T02:36:04Z",
+  "end_iso": "2026-05-07T02:41:24Z",
+  "duration_seconds": 320,
+  "tools_used": [
+    "kast_resolve",
+    "kast_references",
+    "kast_references",
+    "kast_backend_jsonrpc_references_fallback"
+  ],
+  "notes": "kast_references wrapper failed because the running backend rejected includeUsageSiteScope; final call sites were retrieved from the same Kast backend references JSON-RPC method using the resolved declaration position."
+}

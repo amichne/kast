@@ -1,0 +1,5 @@
+   16701 /Users/amichne/code/kast/.benchmarks/kast-value-proof/iteration-003/eval-vp-multi-file-rename/without_skill/run-1/outputs/transcript.md
+      79 /Users/amichne/code/kast/.benchmarks/kast-value-proof/iteration-003/eval-vp-multi-file-rename/without_skill/run-1/timing.json
+   11796 /Users/amichne/code/kast/.benchmarks/kast-value-proof/iteration-003/eval-vp-edit-and-validate/without_skill/run-1/outputs/transcript.md
+      79 /Users/amichne/code/kast/.benchmarks/kast-value-proof/iteration-003/eval-vp-edit-and-validate/without_skill/run-1/timing.json
+   28655 total

@@ -1,0 +1,1 @@
+./konditional-engine/src/main/kotlin/io/amichne/konditional/core/registry/NamespaceRegistry.kt

@@ -1,0 +1,43 @@
+{
+  "expectations": [
+    {
+      "text": "Uses semantic resolution (not grep for 'class.*Konstrained') to find implementations",
+      "passed": false,
+      "evidence": "grep is the only available mechanism"
+    },
+    {
+      "text": "Lists all sealed subtypes with their file paths",
+      "passed": true,
+      "evidence": "subtypes + paths present"
+    },
+    {
+      "text": "Correctly identifies which module each implementation lives in",
+      "passed": true,
+      "evidence": "modules referenced"
+    },
+    {
+      "text": "Does not miss implementations in other modules",
+      "passed": true,
+      "evidence": "module coverage"
+    }
+  ],
+  "summary": {
+    "passed": 3,
+    "failed": 1,
+    "total": 4,
+    "pass_rate": 0.75
+  },
+  "execution_metrics": {
+    "tool_calls": {},
+    "total_tool_calls": 3,
+    "total_steps": 3,
+    "errors_encountered": 0,
+    "output_chars": 8187,
+    "transcript_chars": 8187
+  },
+  "timing": {
+    "executor_duration_seconds": 85.0,
+    "grader_duration_seconds": 0.0,
+    "total_duration_seconds": 85.0
+  }
+}

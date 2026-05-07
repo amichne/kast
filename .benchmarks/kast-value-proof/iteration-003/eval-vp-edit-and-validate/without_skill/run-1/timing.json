@@ -1,0 +1,11 @@
+{
+  "eval": "eval-vp-edit-and-validate",
+  "mode": "without_skill",
+  "run": 1,
+  "start_iso": "2026-05-07T02:45:46Z",
+  "end_iso": "2026-05-07T02:45:50Z",
+  "workspace": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/_workspaces/konditional-without",
+  "transcript": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/iteration-003/eval-vp-edit-and-validate/without_skill/run-1/outputs/transcript.md",
+  "compile_exit_code_reported": "0",
+  "notes": "Benchmark sub-agent run without Kast skill/tools; timing captured from UTC wall-clock timestamps in transcript."
+}

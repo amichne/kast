@@ -1,0 +1,7 @@
+interface:
+  display_name: "Kast"
+  short_description: "Kotlin semantic code intelligence via the kast daemon"
+  default_prompt: >
+    Discover the kast CLI using resolve-kast.sh, then run the requested
+    command. Always run workspace ensure before any analysis command.
+    Use --key=value syntax and absolute paths throughout.

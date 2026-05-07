@@ -1,0 +1,841 @@
+{
+  "metadata": {
+    "skill_name": "kast-value-proof",
+    "skill_path": "/Users/amichne/code/kast/.agents/skills/kast/value-proof",
+    "executor_model": "<model-name>",
+    "analyzer_model": "<model-name>",
+    "timestamp": "2026-05-07T01:05:18Z",
+    "evals_run": [
+      "vp-cross-module-flow",
+      "vp-disambiguate-function",
+      "vp-disambiguate-member",
+      "vp-edit-and-validate",
+      "vp-exhaustive-references",
+      "vp-impact-analysis",
+      "vp-multi-file-rename",
+      "vp-scaffold-large-class",
+      "vp-sealed-hierarchy-trace",
+      "vp-workspace-discovery"
+    ],
+    "runs_per_configuration": 1
+  },
+  "runs": [
+    {
+      "eval_id": "vp-cross-module-flow",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.25,
+        "passed": 1,
+        "failed": 3,
+        "total": 4,
+        "time_seconds": 9.0,
+        "tokens": 3254,
+        "tool_calls": 6,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Uses scaffold + references + callers in sequence (not grep)",
+          "passed": false,
+          "evidence": "Transcript major steps list `kast_resolve`, `kast_references`, and `kast_workspace_files`; there is no `kast_scaffold` or `kast_callers` step."
+        },
+        {
+          "text": "Identifies consumers in at least one other module",
+          "passed": false,
+          "evidence": "Final answer says, 'I found no direct references to `FlagValue` in any other module' and stops the chain at `konditional.konditional-json.main`."
+        },
+        {
+          "text": "Shows concrete file-to-file relationships, not just module names",
+          "passed": true,
+          "evidence": "Final answer ties `FlagValue.kt:40` to concrete consuming files: `FlagValueAdapter.kt`, `SerializableFlag.kt`, and `SerializableRule.kt`."
+        },
+        {
+          "text": "Does not miss cross-module references",
+          "passed": false,
+          "evidence": "The run only proved exhaustive direct type references (`19/19` candidate files) and did not use callers/scaffold to establish a broader cross-module flow, so this stronger claim is not proven."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "vp-disambiguate-function",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 3,
+        "failed": 0,
+        "total": 3,
+        "time_seconds": 7.0,
+        "tokens": 1953,
+        "tool_calls": 6,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Disambiguates the function using containingType, kind, or fileHint",
+          "passed": true,
+          "evidence": "Transcript major steps say `kast_resolve` was called with `containingType=io.amichne.konditional.rules.ConditionalValue.ContextualResolver`."
+        },
+        {
+          "text": "Does not silently pick one of multiple candidates without disambiguation",
+          "passed": true,
+          "evidence": "Final answer explicitly excludes the sibling candidates `StaticResolver.resolve` and `Resolver.resolve`."
+        },
+        {
+          "text": "Reports callers specific to the target class, not unrelated resolve() calls",
+          "passed": true,
+          "evidence": "Final answer reports only `ConditionalValue.ContextualResolver.resolve` and states that no incoming callers were found; no unrelated `resolve()` calls are listed."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "vp-disambiguate-member",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 4,
+        "failed": 0,
+        "total": 4,
+        "time_seconds": 8.0,
+        "tokens": 2661,
+        "tool_calls": 6,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Resolves the member with containingType or fileHint before scanning usages",
+          "passed": true,
+          "evidence": "Transcript says the run resolved `Feature.key` first and then used `kast_references` with the declaring file as `fileHint`."
+        },
+        {
+          "text": "Result set is scoped to Feature.key \u2014 does not include unrelated types",
+          "passed": true,
+          "evidence": "Final answer says it resolved the exact property `io.amichne.konditional.core.features.Feature.key` first, \"so this excludes unrelated `key` symbols.\""
+        },
+        {
+          "text": "Does not use raw text search (grep/rg) as the primary identity mechanism",
+          "passed": true,
+          "evidence": "Transcript only reports semantic steps (`kast_resolve` and `kast_references`); it does not mention grep/rg."
+        },
+        {
+          "text": "Reports at least 3 distinct usage sites with file paths",
+          "passed": true,
+          "evidence": "Final answer lists 8 call sites with file paths, including `FeatureEvaluation.kt:100`, `FlagDefinition.kt:158`, and `Namespace.kt:61`."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "vp-edit-and-validate",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.25,
+        "passed": 1,
+        "failed": 3,
+        "total": 4,
+        "time_seconds": 25.0,
+        "tokens": 10735,
+        "tool_calls": 6,
+        "errors": 3
+      },
+      "expectations": [
+        {
+          "text": "Uses kast_write_and_validate (not raw edit/create tool)",
+          "passed": false,
+          "evidence": "Transcript says the run used Kast CLI `apply-edits` and then reran diagnostics; the output artifacts are `deprecate_apply.json` and `deprecate_diagnostics.json`, not a single write-and-validate result."
+        },
+        {
+          "text": "Runs diagnostics atomically as part of the write",
+          "passed": false,
+          "evidence": "Diagnostics were produced in a separate `deprecate_diagnostics.json` file after the corrected edit rather than as part of the edit response itself."
+        },
+        {
+          "text": "Reports clean or dirty compile state after the edit",
+          "passed": false,
+          "evidence": "Final answer says compile confirmation is blocked because `:konditional-engine:compileKotlin --offline` fails before task execution with `What went wrong: 25` on both the original and disposable workspaces."
+        },
+        {
+          "text": "Does not claim success without validation evidence",
+          "passed": true,
+          "evidence": "Final answer cites `deprecate_diagnostics.json` (`\"diagnostics\": []`) for file-level validation and explicitly refuses to claim repo-level compile success because of the pre-existing Gradle failure."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "vp-exhaustive-references",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.75,
+        "passed": 3,
+        "failed": 1,
+        "total": 4,
+        "time_seconds": 9.0,
+        "tokens": 2910,
+        "tool_calls": 7,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Reports searchScope.exhaustive status or equivalent completeness metadata",
+          "passed": true,
+          "evidence": "Final answer reports `candidateFileCount=19`, `searchedFileCount=19`, and `exhaustive=true`."
+        },
+        {
+          "text": "Lists references grouped by file",
+          "passed": true,
+          "evidence": "Final answer groups the references under four file bullets: `FlagValueAdapter.kt`, `FlagValue.kt`, `SerializableFlag.kt`, and `SerializableRule.kt`."
+        },
+        {
+          "text": "Does not claim completeness without structural proof from the tool",
+          "passed": true,
+          "evidence": "The completeness claim is paired with explicit search-scope metadata (`19/19`, `exhaustive=true`)."
+        },
+        {
+          "text": "Finds references in at least 2 different modules",
+          "passed": false,
+          "evidence": "Both the run output and grading-time `kast_references` show every reference under `konditional-json/...`; no references appear in another module."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "vp-impact-analysis",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.75,
+        "passed": 3,
+        "failed": 1,
+        "total": 4,
+        "time_seconds": 7.0,
+        "tokens": 1927,
+        "tool_calls": 6,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Resolves the exact function before tracing callers",
+          "passed": true,
+          "evidence": "Transcript major steps say the run used `kast_resolve` to pin the exact `ContextualResolver.resolve` override before tracing callers."
+        },
+        {
+          "text": "Shows a 2-level call hierarchy",
+          "passed": false,
+          "evidence": "Final answer says `Direct callers (depth 1): none found. Second hop ... none`, so no 2-level hierarchy is actually shown."
+        },
+        {
+          "text": "Distinguishes test files from production files",
+          "passed": true,
+          "evidence": "Final answer explicitly reports `test callers: 0` and `production callers: 0`."
+        },
+        {
+          "text": "Reports truncation metadata if the hierarchy was bounded",
+          "passed": true,
+          "evidence": "The run reports the exact-symbol search as exhaustive over `583/583` candidate files, which is evidence that the result was not truncated by file sampling."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "vp-multi-file-rename",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.8,
+        "passed": 4,
+        "failed": 1,
+        "total": 5,
+        "time_seconds": 35.0,
+        "tokens": 130679,
+        "tool_calls": 5,
+        "errors": 3
+      },
+      "expectations": [
+        {
+          "text": "Uses kast_rename (not find-and-replace or sed)",
+          "passed": true,
+          "evidence": "Transcript says the run used Kast CLI fallback `kast rename --dry-run=true` to produce the semantic rename plan; there is no evidence of grep/sed/find-and-replace."
+        },
+        {
+          "text": "Shows an edit plan listing all affected files before applying",
+          "passed": true,
+          "evidence": "Final answer lists the 8 affected files before stating that the rename was applied, and `rename_plan.json` includes an exhaustive `affectedFiles` list."
+        },
+        {
+          "text": "Updates import statements, not just the declaration",
+          "passed": true,
+          "evidence": "`rename_plan.json` and `rename_apply.json` include edits replacing fully-qualified `NamespaceRegistry` imports, and the renamed workspace contains `import io.amichne.konditional.core.registry.FeatureRegistry` in multiple files such as `FeatureEvaluation.kt` and `FeatureEvaluationMetrics.kt`."
+        },
+        {
+          "text": "Runs diagnostics or reports compile status after the rename",
+          "passed": true,
+          "evidence": "Transcript says the run tried `:konditional-engine:compileKotlin --offline`, compared against the untouched repo, and also ran clone-local diagnostics."
+        },
+        {
+          "text": "Does not leave broken references in any module",
+          "passed": false,
+          "evidence": "The run could not prove this: compile confirmation was blocked by the pre-existing Gradle failure, and `rename_diagnostics.json` contains many `OPT_IN_USAGE_ERROR` diagnostics, which the transcript itself says are not trustworthy enough to confirm cleanliness."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "vp-scaffold-large-class",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 4,
+        "failed": 0,
+        "total": 4,
+        "time_seconds": 12.0,
+        "tokens": 5927,
+        "tool_calls": 3,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Uses kast_scaffold (not raw file read) as the primary information source",
+          "passed": true,
+          "evidence": "Transcript major steps say the run used `kast_scaffold` on the file/type and extracted the API surface from the scaffold output."
+        },
+        {
+          "text": "Lists all nested sealed interfaces and enums accurately",
+          "passed": true,
+          "evidence": "The answer lists `Decision`, `RuleDetails`, `TargetingNode`, `ExtensionType`, and `ConditionalContextType`; those same nested sealed interfaces/enums are present in `EvaluationDiagnostics.kt`."
+        },
+        {
+          "text": "Does not hallucinate members that don't exist",
+          "passed": true,
+          "evidence": "Spot-checking `EvaluationDiagnostics.kt` confirms the reported constructor/member signatures (for example `Rule`, `Default`, `RuleMatch`, `ExtensionNode`, and `RuleExplanation`) match real declarations in the source file."
+        },
+        {
+          "text": "Produces the summary in fewer tokens than reading the raw file would require",
+          "passed": true,
+          "evidence": "`EvaluationDiagnostics.kt` is 9395 characters raw, while `final_answer.md` is 2557 characters."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "vp-sealed-hierarchy-trace",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 4,
+        "failed": 0,
+        "total": 4,
+        "time_seconds": 10.0,
+        "tokens": 4749,
+        "tool_calls": 4,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Uses semantic resolution (not grep for 'class.*Konstrained') to find implementations",
+          "passed": true,
+          "evidence": "Transcript major steps show `kast_resolve`, `kast_scaffold`, and `kast_workspace_files`; grep is not mentioned."
+        },
+        {
+          "text": "Lists all sealed subtypes with their file paths",
+          "passed": true,
+          "evidence": "The answer enumerates every subtype declared in `Konstrained.kt` (Primitive, its four nested primitive interfaces, Object, Array, Encoder, Decoder, AsString, AsInt, AsBoolean, AsDouble) and gives the `Konstrained.kt` path/line plus the external `TestFixtures.kt:47` implementation."
+        },
+        {
+          "text": "Correctly identifies which module each implementation lives in",
+          "passed": true,
+          "evidence": "The source-declared subtypes are mapped to `konditional.konditional-types.main`, and the external `RetryPolicy` implementation is mapped to `konditional.konditional-engine.testFixtures`, which matches the workspace module/source-root layout."
+        },
+        {
+          "text": "Does not miss implementations in other modules",
+          "passed": true,
+          "evidence": "The run surfaced the cross-module `RetryPolicy` implementation in `konditional-engine/src/testFixtures/.../TestFixtures.kt:47`, and grading-time search found that same external implementation."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "vp-workspace-discovery",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 4,
+        "failed": 0,
+        "total": 4,
+        "time_seconds": 4.0,
+        "tokens": 2165,
+        "tool_calls": 3,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Uses kast_workspace_files (not recursive ls/find)",
+          "passed": true,
+          "evidence": "Transcript major steps say the run used `kast_workspace_files` with `includeFiles=false`."
+        },
+        {
+          "text": "Reports the correct module names: konditional-types, konditional-engine, konditional-json",
+          "passed": true,
+          "evidence": "Final answer includes `konditional.konditional-types`, `konditional.konditional-engine`, and `konditional.konditional-json`, matching the workspace discovery result."
+        },
+        {
+          "text": "Reports file counts for each module",
+          "passed": true,
+          "evidence": "Each listed module has a numeric count (for example `konditional.konditional-engine.main \u2014 65`, `konditional.konditional-json.main \u2014 16`, `konditional.konditional-types.main \u2014 74`)."
+        },
+        {
+          "text": "Completes in a single tool call (not iterative directory traversal)",
+          "passed": true,
+          "evidence": "Transcript major steps show a single `kast_workspace_files` inventory call and explicitly say no text search was needed."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "vp-cross-module-flow",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.5,
+        "passed": 2,
+        "failed": 2,
+        "total": 4,
+        "time_seconds": 6.40011,
+        "tokens": 5284,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Uses scaffold + references + callers in sequence (not grep)",
+          "passed": false,
+          "evidence": "Transcript only documents raw file reads plus `rg -n '\\bFlagValue\\b'`; it never mentions scaffold, references, or callers."
+        },
+        {
+          "text": "Identifies consumers in at least one other module",
+          "passed": true,
+          "evidence": "Final answer names `smoke-test/src/test/kotlin/SmokeTest.kt:33-37` as the downstream consumer exercising `toJson()` / `fromJson()` from another module."
+        },
+        {
+          "text": "Shows concrete file-to-file relationships, not just module names",
+          "passed": true,
+          "evidence": "Final answer traces `FlagValue.kt` -> `SerializableRule.kt` / `SerializableFlag.kt` -> `SerializableSnapshot.kt` -> `ConfigurationCodec.kt` -> `NamespaceExtensions.kt` -> `SmokeTest.kt`."
+        },
+        {
+          "text": "Does not miss cross-module references",
+          "passed": false,
+          "evidence": "The only search evidence is raw `rg -n '\\bFlagValue\\b'`, which proves direct text matches only; the run gives no structural proof that all cross-module flow edges were found."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "vp-disambiguate-function",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.6666666666666666,
+        "passed": 2,
+        "failed": 1,
+        "total": 3,
+        "time_seconds": 5.100102,
+        "tokens": 2916,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Disambiguates the function using containingType, kind, or fileHint",
+          "passed": false,
+          "evidence": "Transcript says it located the method by reading `ConditionalValue.kt` and then used targeted `rg` searches; it never uses `containingType`, `kind`, or `fileHint` style disambiguation."
+        },
+        {
+          "text": "Does not silently pick one of multiple candidates without disambiguation",
+          "passed": true,
+          "evidence": "Final answer repeatedly names the specific nested method `ConditionalValue.ContextualResolver.resolve()` and ends with \u201cnot other unrelated `resolve` methods in the repo.\u201d"
+        },
+        {
+          "text": "Reports callers specific to the target class, not unrelated resolve() calls",
+          "passed": true,
+          "evidence": "Reported callers are `ConditionalValue.resolve(...)`, `FlagDefinition.evaluateCandidate(...)`, `FlagDefinition.evaluateTrace(...)`, `FlagDefinition.evaluate(...)`, and `Feature.createRuleDiagnostics(...)` \u2014 all on the target path, with no unrelated `resolve()` methods included."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "vp-disambiguate-member",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.5,
+        "passed": 2,
+        "failed": 2,
+        "total": 4,
+        "time_seconds": 4.200094,
+        "tokens": 3457,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Resolves the member with containingType or fileHint before scanning usages",
+          "passed": false,
+          "evidence": "Transcript says it read `Feature.kt` and then used `rg`; it never resolves the member with `containingType` or `fileHint` first."
+        },
+        {
+          "text": "Result set is scoped to Feature.key \u2014 does not include unrelated types",
+          "passed": true,
+          "evidence": "Transcript says it verified each match was a `Feature.key` usage, and the final answer only lists the three explicit production reads plus the five implicit `Feature<T, C, M>` extension-property reads."
+        },
+        {
+          "text": "Does not use raw text search (grep/rg) as the primary identity mechanism",
+          "passed": false,
+          "evidence": "Transcript explicitly says the search used `rg -n '\\.key\\b'` and a focused `rg -n '\\bkey\\b' FeatureEvaluation.kt` as the primary mechanism."
+        },
+        {
+          "text": "Reports at least 3 distinct usage sites with file paths",
+          "passed": true,
+          "evidence": "Final answer reports 8 distinct usage sites, each with file paths and line numbers."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "vp-edit-and-validate",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.5,
+        "passed": 2,
+        "failed": 2,
+        "total": 4,
+        "time_seconds": 6.500183,
+        "tokens": 2542,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Uses kast_write_and_validate (not raw edit/create tool)",
+          "passed": false,
+          "evidence": "Transcript describes a disposable copy plus a manual source edit; it never mentions `kast_write_and_validate`."
+        },
+        {
+          "text": "Runs diagnostics atomically as part of the write",
+          "passed": false,
+          "evidence": "The run inserted the annotation first and only then ran a separate Gradle compile, so validation was not atomic with the write."
+        },
+        {
+          "text": "Reports clean or dirty compile state after the edit",
+          "passed": true,
+          "evidence": "Final answer includes the compile command and reports `Result: **BUILD SUCCESSFUL**`."
+        },
+        {
+          "text": "Does not claim success without validation evidence",
+          "passed": true,
+          "evidence": "The success claim is paired with explicit validation evidence: `JAVA_HOME=... ./gradlew --offline :konditional-engine:compileKotlin` and `BUILD SUCCESSFUL`."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "vp-exhaustive-references",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.25,
+        "passed": 1,
+        "failed": 3,
+        "total": 4,
+        "time_seconds": 3.800234,
+        "tokens": 2703,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Reports searchScope.exhaustive status or equivalent completeness metadata",
+          "passed": true,
+          "evidence": "Final answer explicitly states: \u201cThe search was exhaustive: it covered the whole workspace and the result set was not sampled or truncated.\u201d"
+        },
+        {
+          "text": "Lists references grouped by file",
+          "passed": false,
+          "evidence": "The output is grouped by file, but it is incomplete: repo-wide verification also finds `konditional-json/.../ConfigurationCodec.kt`, which the run omitted, so the grouped list is not a genuine complete result."
+        },
+        {
+          "text": "Does not claim completeness without structural proof from the tool",
+          "passed": false,
+          "evidence": "The run claims completeness from plain `rg` output only; it provides no structural tool metadata such as candidate/searched file counts or a semantic `searchScope.exhaustive` result."
+        },
+        {
+          "text": "Finds references in at least 2 different modules",
+          "passed": false,
+          "evidence": "Verified matches are confined to `konditional-json`; neither the run output nor repo verification finds a second module with `FlagValue` references."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "vp-impact-analysis",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.75,
+        "passed": 3,
+        "failed": 1,
+        "total": 4,
+        "time_seconds": 5.000091,
+        "tokens": 2869,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Resolves the exact function before tracing callers",
+          "passed": false,
+          "evidence": "Transcript says it located the method by reading `ConditionalValue.kt` and then used `rg`; it never resolves the exact symbol before tracing callers."
+        },
+        {
+          "text": "Shows a 2-level call hierarchy",
+          "passed": true,
+          "evidence": "Final answer is explicitly split into `Depth 1: direct callers` and `Depth 2: callers of that direct caller`."
+        },
+        {
+          "text": "Distinguishes test files from production files",
+          "passed": true,
+          "evidence": "The output classifies both reported callers as `production` and explicitly states \u201cWithin depth 2, I found no test-file callers.\u201d"
+        },
+        {
+          "text": "Reports truncation metadata if the hierarchy was bounded",
+          "passed": true,
+          "evidence": "The hierarchy is bounded to depth 2, and the answer explicitly notes broader context \u201coutside the requested depth-2 set,\u201d which signals that the reported tree is intentionally truncated/bounded."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "vp-multi-file-rename",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.8,
+        "passed": 4,
+        "failed": 1,
+        "total": 5,
+        "time_seconds": 9.000067,
+        "tokens": 4185,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Uses kast_rename (not find-and-replace or sed)",
+          "passed": false,
+          "evidence": "Transcript describes a manual plan plus manual rename/update work in a disposable workspace; it never mentions `kast_rename`."
+        },
+        {
+          "text": "Shows an edit plan listing all affected files before applying",
+          "passed": true,
+          "evidence": "Final answer begins with an `Edit plan:` and lists the renamed file plus the affected Kotlin files before the \u201cApplied in disposable workspace\u201d section."
+        },
+        {
+          "text": "Updates import statements, not just the declaration",
+          "passed": true,
+          "evidence": "Workspace verification finds `import io.amichne.konditional.core.registry.FeatureRegistry` in six updated files, so the rename changed imports as well as the declaration."
+        },
+        {
+          "text": "Runs diagnostics or reports compile status after the rename",
+          "passed": true,
+          "evidence": "Final answer includes `./gradlew --offline compileKotlin` with `Result: **BUILD SUCCESSFUL**`."
+        },
+        {
+          "text": "Does not leave broken references in any module",
+          "passed": true,
+          "evidence": "Exact-symbol verification finds no `\\bNamespaceRegistry\\b` matches left in the disposable workspace, and rerunning `./gradlew --offline compileKotlin --quiet` exited 0."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "vp-scaffold-large-class",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.75,
+        "passed": 3,
+        "failed": 1,
+        "total": 4,
+        "time_seconds": 5.800066,
+        "tokens": 6848,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Uses kast_scaffold (not raw file read) as the primary information source",
+          "passed": false,
+          "evidence": "Transcript explicitly says it read `EvaluationDiagnostics.kt` from top to bottom; it never mentions `kast_scaffold`."
+        },
+        {
+          "text": "Lists all nested sealed interfaces and enums accurately",
+          "passed": true,
+          "evidence": "Source inspection confirms the file defines sealed interfaces `Decision`, `RuleDetails`, and `TargetingNode`, plus enums `ExtensionType` and `ConditionalContextType`, exactly as the summary reports."
+        },
+        {
+          "text": "Does not hallucinate members that don't exist",
+          "passed": true,
+          "evidence": "Cross-checking the summary against `EvaluationDiagnostics.kt` shows the listed nested members and signatures exist; I did not find invented declarations."
+        },
+        {
+          "text": "Produces the summary in fewer tokens than reading the raw file would require",
+          "passed": true,
+          "evidence": "The final summary is 2918 characters, while the raw `EvaluationDiagnostics.kt` file is 9395 characters, so the delivered summary is materially shorter than the source it summarizes."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "vp-sealed-hierarchy-trace",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.75,
+        "passed": 3,
+        "failed": 1,
+        "total": 4,
+        "time_seconds": 4.60008,
+        "tokens": 2911,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Uses semantic resolution (not grep for 'class.*Konstrained') to find implementations",
+          "passed": false,
+          "evidence": "Transcript says it inspected `Konstrained.kt` and then used `rg -n ': Konstrained|Konstrained\\.'` across the workspace; no semantic resolution step is documented."
+        },
+        {
+          "text": "Lists all sealed subtypes with their file paths",
+          "passed": true,
+          "evidence": "Final answer enumerates the nested `Konstrained` family from `Konstrained.kt` and the external `RetryPolicy` implementation with concrete file paths/line numbers."
+        },
+        {
+          "text": "Correctly identifies which module each implementation lives in",
+          "passed": true,
+          "evidence": "The output assigns the nested family to module `konditional-types` and `RetryPolicy` to `konditional-engine` testFixtures; source inspection matches those module paths."
+        },
+        {
+          "text": "Does not miss implementations in other modules",
+          "passed": true,
+          "evidence": "Repo-wide verification of concrete `Konstrained.*` implementation patterns found only one external implementation line: `RetryPolicy` in `konditional-engine/src/testFixtures/.../TestFixtures.kt:52`, which the run included."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "vp-workspace-discovery",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.5,
+        "passed": 2,
+        "failed": 2,
+        "total": 4,
+        "time_seconds": 2.500068,
+        "tokens": 1503,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Uses kast_workspace_files (not recursive ls/find)",
+          "passed": false,
+          "evidence": "Transcript says it read Gradle settings files and then counted `src/**/*.kt` with a Python script; it never uses `kast_workspace_files`."
+        },
+        {
+          "text": "Reports the correct module names: konditional-types, konditional-engine, konditional-json",
+          "passed": true,
+          "evidence": "Final answer reports `konditional-types`, `konditional-engine`, and `konditional-json` exactly."
+        },
+        {
+          "text": "Reports file counts for each module",
+          "passed": true,
+          "evidence": "Final answer gives counts for `konditional-types` (84), `konditional-engine` (70), `konditional-json` (18), `smoke-test` (1), and `build-logic` (3); repo verification matches those totals."
+        },
+        {
+          "text": "Completes in a single tool call (not iterative directory traversal)",
+          "passed": false,
+          "evidence": "Transcript documents three separate major steps (read root settings, read build-logic settings, then count files with Python), so this was not a single tool call."
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {
+        "mean": 0.78,
+        "stddev": 0.2993,
+        "min": 0.25,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 12.6,
+        "stddev": 9.6977,
+        "min": 4.0,
+        "max": 35.0
+      },
+      "tokens": {
+        "mean": 16696.0,
+        "stddev": 40139.6337,
+        "min": 1927,
+        "max": 130679
+      }
+    },
+    "without_skill": {
+      "pass_rate": {
+        "mean": 0.5967,
+        "stddev": 0.1746,
+        "min": 0.25,
+        "max": 0.8
+      },
+      "time_seconds": {
+        "mean": 5.2901,
+        "stddev": 1.7798,
+        "min": 2.5001,
+        "max": 9.0001
+      },
+      "tokens": {
+        "mean": 3521.8,
+        "stddev": 1545.0711,
+        "min": 1503,
+        "max": 6848
+      }
+    },
+    "delta": {
+      "pass_rate": "+0.18",
+      "time_seconds": "+7.3",
+      "tokens": "+13174"
+    }
+  },
+  "notes": [
+    "Skill gains are concentrated in semantic navigation/discovery evals: with_skill scores 1.0 on vp-disambiguate-function, vp-disambiguate-member, vp-scaffold-large-class, vp-sealed-hierarchy-trace, and vp-workspace-discovery, while without_skill ranges from 0.5 to 0.75 on those same runs.",
+    "Two evals regress with the skill: vp-cross-module-flow drops to 0.25 vs 0.5 without_skill, and vp-edit-and-validate drops to 0.25 vs 0.5; the misses are specific expectations around scaffold/callers coverage and atomic write+validate behavior.",
+    "vp-impact-analysis and vp-multi-file-rename tie on pass rate (0.75 and 0.8), but for different reasons: with_skill satisfies the semantic-tool expectations, while without_skill is the side that shows a depth-2 call tree / clean compile confirmation.",
+    "Some expectations never differentiate because both configs miss them: cross-module-flow 'Uses scaffold + references + callers in sequence', edit-and-validate 'Runs diagnostics atomically as part of the write', and exhaustive-references 'Finds references in at least 2 different modules' all fail in both runs.",
+    "Some expectations are effectively baseline checks rather than skill differentiators: both configs pass the scaffold-large-class accuracy assertions, workspace-discovery module names/file counts, and impact-analysis test-vs-production classification.",
+    "Resource cost is dominated by vp-multi-file-rename with_skill: 35.0s, 130679 tokens, and 3 errors versus 9.0s, 4185 tokens, and 0 errors without_skill; that single run explains most of the overall token variance.",
+    "vp-edit-and-validate with_skill is the other clear cost outlier: 25.0s and 10735 tokens for a 0.25 pass rate, versus 6.5s and 2542 tokens for the 0.5 without_skill run.",
+    "The overall token delta is not uniform: with_skill is actually cheaper on 5/10 evals (cross-module-flow, both disambiguation evals, impact-analysis, scaffold-large-class), so the mean increase is driven mostly by the rename and edit-validation outliers rather than every skill-assisted run."
+  ]
+}

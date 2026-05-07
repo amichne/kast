@@ -1,0 +1,87 @@
+{
+  "expectations": [
+    {
+      "text": "Uses kast_rename (not find-and-replace or sed)",
+      "passed": true,
+      "evidence": "Transcript says the run used Kast CLI fallback `kast rename --dry-run=true` to produce the semantic rename plan; there is no evidence of grep/sed/find-and-replace."
+    },
+    {
+      "text": "Shows an edit plan listing all affected files before applying",
+      "passed": true,
+      "evidence": "Final answer lists the 8 affected files before stating that the rename was applied, and `rename_plan.json` includes an exhaustive `affectedFiles` list."
+    },
+    {
+      "text": "Updates import statements, not just the declaration",
+      "passed": true,
+      "evidence": "`rename_plan.json` and `rename_apply.json` include edits replacing fully-qualified `NamespaceRegistry` imports, and the renamed workspace contains `import io.amichne.konditional.core.registry.FeatureRegistry` in multiple files such as `FeatureEvaluation.kt` and `FeatureEvaluationMetrics.kt`."
+    },
+    {
+      "text": "Runs diagnostics or reports compile status after the rename",
+      "passed": true,
+      "evidence": "Transcript says the run tried `:konditional-engine:compileKotlin --offline`, compared against the untouched repo, and also ran clone-local diagnostics."
+    },
+    {
+      "text": "Does not leave broken references in any module",
+      "passed": false,
+      "evidence": "The run could not prove this: compile confirmation was blocked by the pre-existing Gradle failure, and `rename_diagnostics.json` contains many `OPT_IN_USAGE_ERROR` diagnostics, which the transcript itself says are not trustworthy enough to confirm cleanliness."
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 1,
+    "total": 5,
+    "pass_rate": 0.8
+  },
+  "execution_metrics": {
+    "tool_calls": {
+      "/Users/amichne/code/konditional": 1,
+      "kast": 2,
+      "NamespaceRegistry": 1,
+      "gradle_run_task(:konditional-engine:compileKotlin": 1
+    },
+    "total_tool_calls": 5,
+    "total_steps": 5,
+    "errors_encountered": 3,
+    "output_chars": 130679,
+    "transcript_chars": 3009
+  },
+  "timing": {
+    "executor_duration_seconds": 35.0,
+    "grader_duration_seconds": 0.0,
+    "total_duration_seconds": 35.0
+  },
+  "claims": [
+    {
+      "claim": "The planned rename was exhaustive across 8 candidate files.",
+      "type": "factual",
+      "verified": true,
+      "evidence": "`rename_plan.json` reports `searchScope.exhaustive=true` with `candidateFileCount=8` and `searchedFileCount=8`."
+    },
+    {
+      "claim": "The applied rename updated imports and type uses to FeatureRegistry.",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Grading-time `rg` over the disposable workspace finds `import io.amichne.konditional.core.registry.FeatureRegistry` and `registry: FeatureRegistry` in multiple Kotlin files."
+    },
+    {
+      "claim": "No compile errors were introduced by the rename.",
+      "type": "quality",
+      "verified": false,
+      "evidence": "Compile confirmation is blocked by the same pre-existing `What went wrong: 25` failure, and the diagnostics output is noisy/unreliable for proving broken-reference absence."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "assertion": "Does not leave broken references in any module",
+        "reason": "This is the right outcome to test, but the fixture needs a reliable post-rename proof path (clean diagnostics or working compile) to make the assertion gradeable."
+      }
+    ],
+    "overall": "The rename-plan and import-update assertions are strong; the cleanliness assertion is currently blocked by fixture/environment health."
+  }
+}

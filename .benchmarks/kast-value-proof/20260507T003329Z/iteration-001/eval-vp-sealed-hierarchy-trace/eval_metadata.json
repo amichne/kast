@@ -1,0 +1,17 @@
+{
+  "eval_id": "vp-sealed-hierarchy-trace",
+  "eval_name": "Trace every sealed hierarchy implementation",
+  "prompt": "List every implementation of the sealed interface Konstrained. For each implementation, show its file location and which module it belongs to.",
+  "assertions": [
+    "Uses semantic resolution (not grep for 'class.*Konstrained') to find implementations",
+    "Lists all sealed subtypes with their file paths",
+    "Correctly identifies which module each implementation lives in",
+    "Does not miss implementations in other modules"
+  ],
+  "expected_output": "A semantic subtype report with module attribution.",
+  "labels": [
+    "exhaustive-evidence",
+    "sealed-hierarchy"
+  ],
+  "stage": "candidate"
+}

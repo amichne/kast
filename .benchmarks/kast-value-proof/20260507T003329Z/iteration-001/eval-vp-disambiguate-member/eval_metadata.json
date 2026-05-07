@@ -1,0 +1,17 @@
+{
+  "eval_id": "vp-disambiguate-member",
+  "eval_name": "Disambiguate a common member name",
+  "prompt": "Find all usages of the key property on Feature, not every key in the repo. List each call site with file path and line number.",
+  "assertions": [
+    "Resolves the member with containingType or fileHint before scanning usages",
+    "Result set is scoped to Feature.key \u2014 does not include unrelated types",
+    "Does not use raw text search (grep/rg) as the primary identity mechanism",
+    "Reports at least 3 distinct usage sites with file paths"
+  ],
+  "expected_output": "A usage list scoped to the exact member identity.",
+  "labels": [
+    "symbol-disambiguation",
+    "identity-precision"
+  ],
+  "stage": "candidate"
+}

@@ -1,0 +1,74 @@
+/* Sharper heading weight */
+.md-typeset h1,
+.md-typeset h2 {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+/* Tighter code block radius */
+.md-typeset pre > code {
+  border-radius: 6px;
+}
+
+/* Softer admonition borders */
+.md-typeset .admonition,
+.md-typeset details {
+  border-radius: 6px;
+  border-left-width: 3px;
+}
+
+/* Content max-width bump for readability */
+.md-grid {
+  max-width: 1400px;
+}
+
+/* ── Sticky footer nav with scroll-aware autohide ── */
+.md-footer__inner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 4;
+  background-color: var(--md-default-bg-color);
+  border-top: .05rem solid var(--md-default-fg-color--lightest);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: transform 250ms cubic-bezier(0.4, 0, 0.2, 1),
+              opacity   250ms cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 0 .4rem;
+}
+
+.md-footer__link {
+  margin-top: .25rem;
+  margin-bottom: .25rem;
+}
+
+.md-footer__title {
+  font-size: .7rem;
+  margin-bottom: .2rem;
+}
+
+.md-footer__direction {
+  font-size: .55rem;
+}
+
+.md-footer__button {
+  padding: .2rem;
+  margin: .1rem;
+}
+
+.md-footer__button svg {
+  width: .9rem;
+  height: .9rem;
+}
+
+.md-footer__inner--hidden {
+  transform: translateY(100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Push page content up so sticky footer doesn't cover it */
+.md-content {
+  padding-bottom: 3rem;
+}

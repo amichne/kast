@@ -1,0 +1,16 @@
+{
+  "eval_id": "vp-exhaustive-references",
+  "title": "Prove exhaustive cross-workspace references",
+  "prompt": "Find every reference to Feature across the entire workspace. Tell me whether the search was exhaustive \u2014 did it cover every candidate file, or was it sampled/truncated?",
+  "expectations": [
+    "Reports searchScope.exhaustive status or equivalent completeness metadata",
+    "Lists references grouped by file",
+    "Does not claim completeness without structural proof from the tool",
+    "Finds references in at least 2 different modules"
+  ],
+  "labels": [
+    "exhaustive-evidence",
+    "references"
+  ],
+  "workspace_root": "/tmp/kast-vp-rebench/konditional-with"
+}

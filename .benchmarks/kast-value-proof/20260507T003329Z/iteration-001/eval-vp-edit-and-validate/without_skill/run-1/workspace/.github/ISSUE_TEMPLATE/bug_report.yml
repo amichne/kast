@@ -1,0 +1,60 @@
+name: Bug report
+description: Report a defect in Konditional
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a bug.
+        Please provide enough detail for us to reproduce the issue.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Describe the bug and impact.
+      placeholder: What happened, and why is it a problem?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: Describe what you expected to happen.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction steps
+      description: Provide deterministic steps or a minimal reproducible snippet.
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Konditional version
+      description: Include the artifact version or commit SHA.
+      placeholder: 0.1.0 / abc1234
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: JDK, Kotlin, OS.
+      placeholder: JDK 21, Kotlin 2.x, macOS 15
+    validations:
+      required: true
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Confirmation
+      options:
+        - label: I have searched existing issues for duplicates.
+          required: true

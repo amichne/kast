@@ -1,0 +1,16 @@
+{
+  "eval_id": "vp-workspace-discovery",
+  "title": "Discover modules in one semantic call",
+  "prompt": "List every module in this workspace and how many Kotlin source files each contains.",
+  "expectations": [
+    "Uses kast_workspace_files (not recursive ls/find)",
+    "Reports the correct module names: konditional-types, konditional-engine, konditional-json",
+    "Reports file counts for each module",
+    "Completes in a single tool call (not iterative directory traversal)"
+  ],
+  "labels": [
+    "token-efficiency",
+    "workspace-discovery"
+  ],
+  "workspace_root": "/tmp/kast-vp-rebench/konditional-without"
+}

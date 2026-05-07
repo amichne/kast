@@ -1,0 +1,30 @@
+{
+  "iteration": "iteration-002",
+  "started_at": "2026-05-07T01:33:32.788440Z",
+  "konditional_ref": "f191bc264fb18b65d54f228233d7630589fbaf37",
+  "with_skill_workspace": "/tmp/kast-vp-rebench/konditional-with",
+  "without_skill_workspace": "/tmp/kast-vp-rebench/konditional-without",
+  "with_skill_backend": "standalone (pid 5128, READY) \u2014 kast standalone JVM with BackgroundIndexer",
+  "without_skill_backend": "none \u2014 sub-agent forbidden from kast_*",
+  "runs_per_cell": 1,
+  "isolation": "ephemeral clones + fresh sub-agent context per run",
+  "limitations": [
+    "n=1 per cell \u2014 no within-cell variance, treat absolute deltas as point estimates",
+    "without_skill is sub-agent prompted to refrain from kast_*; not sandbox-enforced",
+    "grader is a separate sub-agent (Haiku) \u2014 same model family as candidates"
+  ],
+  "total_runs": 20,
+  "intellij_finding": {
+    "summary": "IntelliJ-hosted kast plugin built its source index ~1s after backend startup, before Gradle module import completed; the plugin never re-indexes and `workspace refresh` only handles file deltas. Result: empty symbol index, all kast_* queries fail with 'No symbol matching ...' or IndexNotReadyException.",
+    "evidence": {
+      "intellij_log": "~/Library/Logs/JetBrains/IntelliJIdea2026.1/idea.log",
+      "kast_index_completed_at": "2026-05-06 21:27:03,353",
+      "kast_backend_started_at": "2026-05-06 21:27:02,082",
+      "elapsed_before_index_completed": "1.27 seconds (insufficient for Gradle import)",
+      "gradle_import_completed_at": "2026-05-06 21:32:01,706 (5 minutes later)",
+      "kast_did_not_reindex_after_gradle_import": true,
+      "workspace_refresh_response": "{\"refreshedFiles\":[],\"removedFiles\":[],\"fullRefresh\":true}"
+    },
+    "implication": "Forced fallback to standalone backend for the with_skill runs to obtain meaningful kast_* responses."
+  }
+}

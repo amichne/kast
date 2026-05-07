@@ -1,0 +1,78 @@
+{
+  "status": "graded",
+  "expectations": [
+    {
+      "text": "Reports searchScope.exhaustive status or equivalent completeness metadata",
+      "passed": true,
+      "evidence": "Final answer explicitly states: \u201cThe search was exhaustive: it covered the whole workspace and the result set was not sampled or truncated.\u201d"
+    },
+    {
+      "text": "Lists references grouped by file",
+      "passed": false,
+      "evidence": "The output is grouped by file, but it is incomplete: repo-wide verification also finds `konditional-json/.../ConfigurationCodec.kt`, which the run omitted, so the grouped list is not a genuine complete result."
+    },
+    {
+      "text": "Does not claim completeness without structural proof from the tool",
+      "passed": false,
+      "evidence": "The run claims completeness from plain `rg` output only; it provides no structural tool metadata such as candidate/searched file counts or a semantic `searchScope.exhaustive` result."
+    },
+    {
+      "text": "Finds references in at least 2 different modules",
+      "passed": false,
+      "evidence": "Verified matches are confined to `konditional-json`; neither the run output nor repo verification finds a second module with `FlagValue` references."
+    }
+  ],
+  "summary": {
+    "passed": 1,
+    "failed": 3,
+    "total": 4,
+    "pass_rate": 0.25
+  },
+  "execution_metrics": {
+    "tool_calls": {},
+    "total_tool_calls": 0,
+    "total_steps": 3,
+    "errors_encountered": 0,
+    "output_chars": 2703,
+    "transcript_chars": 1789
+  },
+  "timing": {
+    "executor_duration_seconds": 3.8,
+    "grader_duration_seconds": 0.000234,
+    "total_duration_seconds": 3.800234
+  },
+  "claims": [
+    {
+      "claim": "The run searched the entire workspace with `rg -n '\\bFlagValue\\b'` from the repo root.",
+      "type": "process",
+      "verified": true,
+      "evidence": "Transcript Major tool calls / steps explicitly records that command."
+    },
+    {
+      "claim": "There are four matching files total.",
+      "type": "factual",
+      "verified": false,
+      "evidence": "Repo verification finds five matching files: the reported four plus `konditional-json/src/main/kotlin/io/amichne/konditional/serialization/snapshot/ConfigurationCodec.kt`."
+    },
+    {
+      "claim": "The search was exhaustive.",
+      "type": "quality",
+      "verified": false,
+      "evidence": "The output gives only a narrative claim from `rg`; it omits structural completeness metadata and even misses `ConfigurationCodec.kt`, so the claim is not justified."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "assertion": "Lists references grouped by file",
+        "reason": "A grouped list can still be incomplete. Consider asserting the exact expected file set or exact file count so omissions like `ConfigurationCodec.kt` fail decisively."
+      }
+    ],
+    "overall": "Good direction, but one omitted reference file still slips past the current grouped-by-file assertion."
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "eval_id": "vp-edit-and-validate",
+  "title": "Edit and validate atomically",
+  "prompt": "Add a @Deprecated annotation with message 'Use FeatureRegistry instead' to the NamespaceRegistry interface declaration. Confirm the file still compiles after the edit.",
+  "expectations": [
+    "Uses kast_write_and_validate (not raw edit/create tool)",
+    "Runs diagnostics atomically as part of the write",
+    "Reports clean or dirty compile state after the edit",
+    "Does not claim success without validation evidence"
+  ],
+  "labels": [
+    "safe-mutations",
+    "write-and-validate"
+  ],
+  "workspace_root": "/tmp/kast-vp-rebench/konditional-with"
+}

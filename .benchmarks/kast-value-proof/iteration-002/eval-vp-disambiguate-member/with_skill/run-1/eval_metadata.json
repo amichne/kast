@@ -1,0 +1,16 @@
+{
+  "eval_id": "vp-disambiguate-member",
+  "title": "Disambiguate a common member name",
+  "prompt": "Find all usages of the key property on Feature, not every key in the repo. List each call site with file path and line number.",
+  "expectations": [
+    "Resolves the member with containingType or fileHint before scanning usages",
+    "Result set is scoped to Feature.key \u2014 does not include unrelated types",
+    "Does not use raw text search (grep/rg) as the primary identity mechanism",
+    "Reports at least 3 distinct usage sites with file paths"
+  ],
+  "labels": [
+    "symbol-disambiguation",
+    "identity-precision"
+  ],
+  "workspace_root": "/tmp/kast-vp-rebench/konditional-with"
+}
