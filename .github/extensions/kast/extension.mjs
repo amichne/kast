@@ -141,6 +141,22 @@ async function resolveKastBinary() {
   return null;
 }
 
+async function queryCliVersion(path) {
+  const {ok, stdout} = await execBash(`${JSON.stringify(path)} --version`);
+  if (!ok) return null;
+  const match = stdout.trim().replace(/\x1b\[[0-9;]*m/g, "").match(/Kast CLI (.+)/);
+  return match ? match[1].trim() : null;
+}
+
+function readInstalledVersion() {
+  const markerPath = join(REPO_ROOT, ".github", ".kast-copilot-version");
+  try {
+    return readFileSync(markerPath, "utf8").trim();
+  } catch {
+    return null;
+  }
+}
+
 async function supportsWrapperCommands(path) {
   return (await readCliVersion(path)) !== null;
 }
