@@ -21,6 +21,7 @@ val embeddedSkillFiles = listOf(
     "fixtures/maintenance/scripts/build-routing-corpus.py",
     "history/eval-baseline.json",
     "references/quickstart.md",
+    "references/commands.json",
     "references/wrapper-openapi.yaml",
     "scripts/kast-session-start.sh",
     "scripts/resolve-kast.sh",
@@ -169,4 +170,16 @@ tasks.register<JavaExec>("generateWrapperOpenApiSchema") {
             .file(".agents/skills/kast/references/wrapper-openapi.yaml")
             .asFile.absolutePath,
     )
+}
+
+tasks.register<JavaExec>("generateVersionedCommandSpec") {
+    group = "documentation"
+    description = "Generate the versioned command spec JSON from serialized model shapes."
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("io.github.amichne.kast.cli.VersionedCommandSpecKt")
+    val versionValue = providers.gradleProperty("VERSION").orElse("dev")
+    val targetFile = rootProject.layout.projectDirectory
+        .file(".agents/skills/kast/references/commands.json")
+        .asFile.absolutePath
+    args(versionValue.get(), targetFile)
 }
