@@ -58,6 +58,10 @@ internal sealed interface CliCommand {
     data class Install(val options: InstallOptions) : CliCommand
     data class InstallSkill(val options: InstallSkillOptions) : CliCommand
     data class InstallCopilotExtension(val options: InstallCopilotExtensionOptions) : CliCommand
+    data object SelfStatus : CliCommand
+    data object SelfDoctor : CliCommand
+    data object SelfUninstall : CliCommand
+    data object SelfUpgrade : CliCommand
     data class Smoke(val options: SmokeOptions) : CliCommand
     data class DaemonStart(val options: DaemonStartOptions) : CliCommand
     data object ConfigInit : CliCommand

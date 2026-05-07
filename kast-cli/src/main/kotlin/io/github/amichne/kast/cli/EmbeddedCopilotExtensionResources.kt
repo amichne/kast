@@ -32,6 +32,7 @@ internal class EmbeddedCopilotExtensionResources(
             "hooks/record-paths.sh",
             "hooks/require-skills.sh",
             "hooks/skill-shadowing.json",
+            "hooks/export-session.py",
             "hooks/session-end.sh",
             "hooks/resolve-kast-cli-path.sh",
             "extensions/_shared/lib.mjs",
@@ -50,7 +51,6 @@ internal class EmbeddedCopilotExtensionResources(
         )
 
         val EXCLUDED_SOURCE_FILES: Set<String> = setOf(
-            "hooks/export-session.py",
             "extensions/skill-creator-interview/extension.mjs",
         )
     }

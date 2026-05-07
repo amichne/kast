@@ -9,6 +9,7 @@ import io.github.amichne.kast.api.contract.ReadCapability
 import io.github.amichne.kast.api.contract.RuntimeState
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
 import io.github.amichne.kast.api.client.ServerInstanceDescriptor
+import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.cli.options.BackendName
 import io.github.amichne.kast.cli.options.RuntimeCommandOptions
@@ -21,6 +22,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.charset.StandardCharsets
+import java.nio.file.Files
 import java.nio.file.Path
 
 class WorkspaceRuntimeManagerTest {
@@ -109,6 +111,45 @@ class WorkspaceRuntimeManagerTest {
 
         assertFalse(result.started)
         assertEquals(RuntimeState.INDEXING, result.selected.runtimeStatus?.state)
+    }
+
+    @Test
+    fun `ensureRuntime auto starts standalone daemon from configured runtime libs`() = runTest {
+        val workspaceRoot = tempDir.resolve("workspace-autostart-success")
+        val runtimeLibsDir = tempDir.resolve("runtime-libs")
+        Files.createDirectories(runtimeLibsDir)
+        val descriptor = descriptor(workspaceRoot = workspaceRoot, pid = 71)
+        var startedRuntimeLibsDir: Path? = null
+        val config = KastConfig.defaults().copy(
+            backends = KastConfig.defaults().backends.copy(
+                standalone = KastConfig.defaults().backends.standalone.copy(
+                    runtimeLibsDir = io.github.amichne.kast.api.client.fields.StandaloneRuntimeLibsDir(
+                        io.github.amichne.kast.api.client.fields.OptionalConfigString(runtimeLibsDir.toString()),
+                    ),
+                ),
+            ),
+        )
+        val manager = managerWith(
+            runtimeStatuses = mapOf(
+                descriptor.socketPath to listOf(
+                    runtimeStatus(workspaceRoot = workspaceRoot, state = RuntimeState.READY, indexing = false),
+                ),
+            ),
+            processLivenessChecker = { pid -> pid == 71L },
+            configLoader = { config },
+            standaloneDaemonStarter = { options, configuredRuntimeLibsDir ->
+                startedRuntimeLibsDir = configuredRuntimeLibsDir
+                writeDescriptor(descriptor)
+                StandaloneDaemonLaunch(logFile = tempDir.resolve("standalone-daemon.log"))
+            },
+        )
+
+        val result = manager.ensureRuntime(options = runtimeOptions(workspaceRoot))
+
+        assertTrue(result.started)
+        assertEquals(runtimeLibsDir, startedRuntimeLibsDir)
+        assertEquals(tempDir.resolve("standalone-daemon.log").toString(), result.logFile)
+        assertEquals("standalone", result.selected.descriptor.backendName)
     }
 
     @Test
@@ -314,10 +355,16 @@ class WorkspaceRuntimeManagerTest {
     private fun managerWith(
         runtimeStatuses: Map<String, List<RuntimeStatusResponse>>,
         processLivenessChecker: (Long) -> Boolean = { false },
+        configLoader: (Path) -> KastConfig = { KastConfig.defaults() },
+        standaloneDaemonStarter: suspend (RuntimeCommandOptions, Path) -> StandaloneDaemonLaunch = { _, _ ->
+            error("standaloneDaemonStarter was not expected")
+        },
     ) = WorkspaceRuntimeManager(
         rpcClient = FakeRuntimeRpcClient(runtimeStatuses),
         processLivenessChecker = processLivenessChecker,
         descriptorDirectory = { _ -> descriptorDirectory },
+        configLoader = configLoader,
+        standaloneDaemonStarter = standaloneDaemonStarter,
     )
 
     private fun runtimeOptions(

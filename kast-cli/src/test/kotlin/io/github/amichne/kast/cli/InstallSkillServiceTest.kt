@@ -10,6 +10,7 @@ import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.TimeUnit
 
 class InstallSkillServiceTest {
     @TempDir
@@ -63,6 +64,60 @@ class InstallSkillServiceTest {
         assertFalse(Files.exists(installedSkillDir.resolve("agents/kast.md")))
         assertFalse(Files.exists(installedSkillDir.resolve("references/cloud-setup.md")))
         assertEquals("1.2.3", Files.readString(installedSkillDir.resolve(".kast-version")).trim())
+        val resolveScript = Files.readString(installedSkillDir.resolve("scripts/resolve-kast.sh"))
+        assertTrue(resolveScript.contains("read_config_binary_path"))
+        assertTrue(resolveScript.contains("\${HOME}/.kast/bin/kast"))
+        assertFalse(resolveScript.contains(".local/bin/kast"))
+    }
+
+    @Test
+    fun `installed resolver script prefers config binary path before home fallback`() {
+        val targetDir = tempDir.resolve("skills")
+        InstallSkillService(embeddedSkillResources = EmbeddedSkillResources(version = "1.2.3")).install(
+            InstallSkillOptions(
+                targetDir = targetDir,
+                name = "kast",
+                force = false,
+            ),
+        )
+        val installedSkillDir = targetDir.resolve("kast")
+        val resolverScript = installedSkillDir.resolve("scripts/resolve-kast.sh")
+        val home = tempDir.resolve("home")
+        val configHome = tempDir.resolve("config-home")
+        val emptyPath = tempDir.resolve("empty-path").also(Files::createDirectories)
+        val configBinary = writeExecutable(tempDir.resolve("configured-kast"))
+        val homeBinary = writeExecutable(home.resolve(".kast/bin/kast"))
+        Files.createDirectories(configHome)
+        Files.writeString(
+            configHome.resolve("config.toml"),
+            """
+            [cli]
+            binaryPath = "${configBinary.toAbsolutePath().normalize()}"
+            """.trimIndent() + "\n",
+        )
+
+        val configured = runResolverScript(
+            resolverScript = resolverScript,
+            env = mapOf(
+                "HOME" to home.toString(),
+                "KAST_CONFIG_HOME" to configHome.toString(),
+                "PATH" to listOf("/usr/bin", "/bin", emptyPath.toString()).joinToString(":"),
+            ),
+        )
+        assertEquals(0, configured.exitCode, configured.stderr)
+        assertEquals(configBinary.toAbsolutePath().normalize().toString(), configured.stdout)
+
+        Files.delete(configHome.resolve("config.toml"))
+        val fallback = runResolverScript(
+            resolverScript = resolverScript,
+            env = mapOf(
+                "HOME" to home.toString(),
+                "KAST_CONFIG_HOME" to configHome.toString(),
+                "PATH" to listOf("/usr/bin", "/bin", emptyPath.toString()).joinToString(":"),
+            ),
+        )
+        assertEquals(0, fallback.exitCode, fallback.stderr)
+        assertEquals(homeBinary.toAbsolutePath().normalize().toString(), fallback.stdout)
     }
 
     @Test
@@ -83,7 +138,76 @@ class InstallSkillServiceTest {
     }
 
     @Test
-    fun `install overwrites an existing skill directory when forced`() {
+    fun `install prefers agents skills when multiple workspace skill directories exist`() {
+        Files.createDirectories(tempDir.resolve(".agents/skills"))
+        Files.createDirectories(tempDir.resolve(".github/skills"))
+        Files.createDirectories(tempDir.resolve(".claude/skills"))
+        val service = InstallSkillService(
+            embeddedSkillResources = EmbeddedSkillResources(version = "1.2.3"),
+            cwdProvider = { tempDir },
+            homeDirectoryProvider = { tempDir.resolve("home") },
+        )
+
+        val result = service.install(
+            InstallSkillOptions(
+                targetDir = null,
+                name = "kast",
+                force = false,
+            ),
+        )
+
+        assertEquals(tempDir.resolve(".agents/skills/kast").toString(), result.installedAt)
+        assertTrue(Files.isDirectory(tempDir.resolve(".agents/skills/kast")))
+        assertFalse(Files.exists(tempDir.resolve(".github/skills/kast")))
+        assertFalse(Files.exists(tempDir.resolve(".claude/skills/kast")))
+    }
+
+    @Test
+    fun `install prefers github skills before claude when agents skills are absent`() {
+        Files.createDirectories(tempDir.resolve(".github/skills"))
+        Files.createDirectories(tempDir.resolve(".claude/skills"))
+        val service = InstallSkillService(
+            embeddedSkillResources = EmbeddedSkillResources(version = "1.2.3"),
+            cwdProvider = { tempDir },
+            homeDirectoryProvider = { tempDir.resolve("home") },
+        )
+
+        val result = service.install(
+            InstallSkillOptions(
+                targetDir = null,
+                name = "kast",
+                force = false,
+            ),
+        )
+
+        assertEquals(tempDir.resolve(".github/skills/kast").toString(), result.installedAt)
+        assertTrue(Files.isDirectory(tempDir.resolve(".github/skills/kast")))
+        assertFalse(Files.exists(tempDir.resolve(".claude/skills/kast")))
+    }
+
+    @Test
+    fun `install falls back to global kast lib skills when no workspace skill directory exists`() {
+        val home = tempDir.resolve("home")
+        val service = InstallSkillService(
+            embeddedSkillResources = EmbeddedSkillResources(version = "1.2.3"),
+            cwdProvider = { tempDir },
+            homeDirectoryProvider = { home },
+        )
+
+        val result = service.install(
+            InstallSkillOptions(
+                targetDir = null,
+                name = "kast",
+                force = false,
+            ),
+        )
+
+        assertEquals(home.resolve(".kast/lib/skills/kast").toString(), result.installedAt)
+        assertTrue(Files.isDirectory(home.resolve(".kast/lib/skills/kast")))
+    }
+
+    @Test
+    fun `install preserves unrelated files when forced`() {
         val targetDir = tempDir.resolve("skills")
         val initialService = InstallSkillService(embeddedSkillResources = EmbeddedSkillResources(version = "1.0.0"))
         val updatedService = InstallSkillService(embeddedSkillResources = EmbeddedSkillResources(version = "2.0.0"))
@@ -108,7 +232,8 @@ class InstallSkillServiceTest {
 
         assertFalse(result.skipped)
         assertEquals("2.0.0", Files.readString(targetPath.resolve(".kast-version")).trim())
-        assertFalse(Files.exists(targetPath.resolve("stale.txt")))
+        assertTrue(Files.exists(targetPath.resolve("stale.txt")))
+        assertEquals("old", Files.readString(targetPath.resolve("stale.txt")))
     }
 
     @Test
@@ -190,4 +315,42 @@ class InstallSkillServiceTest {
 
         assertEquals("INSTALL_SKILL_ERROR", failure.code)
     }
+
+    private fun writeExecutable(path: Path): Path {
+        Files.createDirectories(path.parent)
+        Files.writeString(
+            path,
+            """
+            #!/usr/bin/env bash
+            exit 0
+            """.trimIndent() + "\n",
+        )
+        path.toFile().setExecutable(true)
+        return path
+    }
+
+    private fun runResolverScript(
+        resolverScript: Path,
+        env: Map<String, String>,
+    ): CommandResult {
+        val process = ProcessBuilder("/bin/bash", resolverScript.toString())
+            .directory(tempDir.toFile())
+            .apply {
+                environment().clear()
+                environment().putAll(env)
+            }
+            .start()
+        process.waitFor(10, TimeUnit.SECONDS)
+        return CommandResult(
+            exitCode = process.exitValue(),
+            stdout = process.inputStream.bufferedReader().readText().trim(),
+            stderr = process.errorStream.bufferedReader().readText().trim(),
+        )
+    }
+
+    private data class CommandResult(
+        val exitCode: Int,
+        val stdout: String,
+        val stderr: String,
+    )
 }
