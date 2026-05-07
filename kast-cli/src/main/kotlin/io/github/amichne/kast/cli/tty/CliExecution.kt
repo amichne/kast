@@ -45,6 +45,9 @@ internal interface CliCommandExecutor {
 internal class DefaultCliCommandExecutor(
     private val cliService: CliService,
     private val json: Json = defaultCliJson(),
+    private val cwdProvider: () -> Path = {
+        Path.of(System.getProperty("user.dir", ".")).toAbsolutePath().normalize()
+    },
 ) : CliCommandExecutor {
     private val backendQueryHandlers: Map<KClass<out CliCommand.BackendQuery<*>>, suspend (CliCommand.BackendQuery<*>) -> RuntimeAttachedResult<*>> = mapOf(
         CliCommand.WorkspaceRefresh::class to { command ->
@@ -122,6 +125,16 @@ internal class DefaultCliCommandExecutor(
             CliCommand.Version -> CliExecutionResult(
                 output = CliOutput.Text(CliCommandCatalog.versionText()),
             )
+
+            CliCommand.VerifyExtension -> {
+                val result = verifyCopilotExtension(cwdProvider())
+                CliExecutionResult(
+                    output = CliOutput.JsonValueWithExitCode(
+                        value = result,
+                        exitCode = if (result.ok) 0 else 1,
+                    ),
+                )
+            }
 
             is CliCommand.Completion -> CliExecutionResult(
                 output = CliOutput.Text(CliCompletionScripts.render(command.shell)),

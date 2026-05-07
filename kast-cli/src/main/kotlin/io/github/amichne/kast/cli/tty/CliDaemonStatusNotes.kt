@@ -32,7 +32,7 @@ internal fun daemonNoteFor(result: WorkspaceStatusResult): String? {
 internal fun daemonNoteFor(result: WorkspaceEnsureResult): String? {
     result.note?.let { return it }
     val action = if (result.started) "started" else "using"
-    val summary = "daemon: $action ${result.selected.describeDaemon()}"
+    val summary = "daemon: $action ${result.selected.describeDaemon()} (descriptors: ${result.descriptorDirectory})"
     return if (result.started && result.logFile != null) {
         "$summary (log: ${result.logFile})"
     } else {

@@ -54,6 +54,7 @@ class WorkspaceRuntimeManagerTest {
         val result = manager.ensureRuntime(options = runtimeOptions(workspaceRoot), requireReady = false)
 
         assertFalse(result.started)
+        assertEquals(descriptorDirectory.toString(), result.descriptorDirectory)
         assertEquals(RuntimeState.INDEXING, result.selected.runtimeStatus?.state)
     }
 
@@ -84,6 +85,7 @@ class WorkspaceRuntimeManagerTest {
         val result = manager.ensureRuntime(options = runtimeOptions(workspaceRoot), requireReady = true)
 
         assertFalse(result.started)
+        assertEquals(descriptorDirectory.toString(), result.descriptorDirectory)
         assertTrue(result.selected.ready)
         assertEquals(RuntimeState.READY, result.selected.runtimeStatus?.state)
     }
@@ -377,10 +379,10 @@ class WorkspaceRuntimeManagerTest {
 
         override fun runtimeStatus(descriptor: ServerInstanceDescriptor): RuntimeStatusResponse {
             val queue = statusQueues[descriptor.socketPath]
-                ?: throw CliFailure(
-                    code = "DAEMON_UNREACHABLE",
-                    message = "No runtime status for ${descriptor.socketPath}"
-                )
+                        ?: throw CliFailure(
+                            code = "DAEMON_UNREACHABLE",
+                            message = "No runtime status for ${descriptor.socketPath}"
+                        )
             if (queue.size > 1) {
                 return queue.removeFirst()
             }
@@ -401,5 +403,4 @@ class WorkspaceRuntimeManagerTest {
                 ),
             )
     }
-
 }

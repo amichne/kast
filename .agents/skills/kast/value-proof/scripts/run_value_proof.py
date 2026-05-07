@@ -8,6 +8,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+GRADING_SCHEMA_PATH = Path(__file__).resolve().parents[1] / "grading.schema.json"
+
 
 def load_catalog(path: Path) -> dict[str, Any]:
     try:
@@ -18,6 +20,16 @@ def load_catalog(path: Path) -> dict[str, Any]:
         raise ValueError(f"{path} must contain a JSON object.")
     if not isinstance(payload.get("cases"), list):
         raise ValueError(f"{path} must contain a cases array.")
+    return payload
+
+
+def load_grading_schema() -> dict[str, Any]:
+    try:
+        payload = json.loads(GRADING_SCHEMA_PATH.read_text())
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Invalid JSON in {GRADING_SCHEMA_PATH}: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise ValueError(f"{GRADING_SCHEMA_PATH} must contain a JSON object.")
     return payload
 
 
@@ -56,10 +68,12 @@ def metadata_for_case(case: dict[str, Any]) -> dict[str, Any]:
         "expected_output": case.get("expected_output", ""),
         "labels": case.get("labels", []),
         "stage": case.get("stage", "candidate"),
+        "chain_id": case.get("chain_id"),
     }
 
 
 def write_placeholder_grading(path: Path) -> None:
+    schema = load_grading_schema()
     payload = {
         "status": "pending_grading",
         "expectations": [],
@@ -78,6 +92,9 @@ def write_placeholder_grading(path: Path) -> None:
             "total_duration_seconds": 0.0,
         },
     }
+    missing = sorted(set(schema.get("required", [])) - set(payload))
+    if missing:
+        raise ValueError(f"Placeholder grading is missing schema fields: {', '.join(missing)}")
     path.write_text(json.dumps(payload, indent=2) + "\n")
 
 
@@ -111,12 +128,17 @@ def scaffold_workspace(
     iteration_dir = workspace_dir / iteration
     iteration_dir.mkdir(parents=True, exist_ok=True)
     instruction_paths: list[Path] = []
+    eval_manifest: dict[str, dict[str, str | None]] = {}
 
     for case in catalog["cases"]:
         case_id = case["id"]
         eval_dir = iteration_dir / f"eval-{case_id}"
         eval_dir.mkdir(parents=True, exist_ok=True)
         (eval_dir / "eval_metadata.json").write_text(json.dumps(metadata_for_case(case), indent=2) + "\n")
+        eval_manifest[case_id] = {
+            "dir": eval_dir.name,
+            "chain_id": case.get("chain_id"),
+        }
 
         for config in selected_configs:
             for run_number in range(1, runs_per_config + 1):
@@ -132,6 +154,7 @@ def scaffold_workspace(
                 write_placeholder_timing(run_dir / "timing.json")
 
     write_run_manifest(iteration_dir, instruction_paths)
+    write_iteration_manifest(iteration_dir, eval_manifest)
     print(f"Run instructions written for {len(instruction_paths)} runs:")
     for path in instruction_paths:
         print(f"  {path}")
@@ -151,6 +174,13 @@ def write_run_manifest(iteration_dir: Path, instruction_paths: list[Path]) -> No
         ],
     }
     (iteration_dir / "run_manifest.json").write_text(json.dumps(payload, indent=2) + "\n")
+
+
+def write_iteration_manifest(iteration_dir: Path, eval_manifest: dict[str, dict[str, str | None]]) -> None:
+    payload = {
+        "evals": eval_manifest,
+    }
+    (iteration_dir / "manifest.json").write_text(json.dumps(payload, indent=2) + "\n")
 
 
 def grading_is_complete(path: Path) -> bool:

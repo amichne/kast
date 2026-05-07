@@ -232,6 +232,13 @@ class CliCommandParserTest {
     }
 
     @Test
+    fun `verify extension parses`() {
+        val command = parser.parse(arrayOf("verify-extension"))
+
+        assertSame(CliCommand.VerifyExtension, command)
+    }
+
+    @Test
     fun `smoke parses workspace root filters and format`() {
         val command = parser.parse(
             arrayOf(

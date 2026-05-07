@@ -17,6 +17,7 @@ use `without_skill` only when no previous skill exists.
 
 Every completed iteration must produce:
 
+- `manifest.json` mapping durable eval ids to on-disk `eval-*` directories;
 - `eval_metadata.json` for each eval case;
 - one run directory per configuration and run number;
 - `outputs/transcript.md` for each run;
@@ -56,14 +57,23 @@ changed.
      --iteration iteration-001
    ```
 
-3. Execute each run from its `run_instructions.md`.
+3. Dispatch each run from its `run_instructions.md`.
 
-   `run_manifest.json` lists every generated instruction file for the
-   iteration.
+   `manifest.json` maps eval ids to their generated directories, including
+   any `chain_id` that must execute serially. `run_manifest.json` still lists
+   every generated instruction file for manual inspection.
 
-   For candidate runs, use the candidate Kast skill. For baseline runs on an
-   existing skill rewrite, use a snapshot of the old skill. Save the complete
-   transcript to `outputs/transcript.md`.
+   ```bash
+   python3 scripts/dispatch_runs.py \
+     ../kast-value-proof-workspace/iteration-001 \
+     --command-template 'your-runner --instructions {instructions} --transcript {transcript}'
+   ```
+
+   The dispatcher parallelizes independent runs, serializes runs that share a
+   `chain_id`, records parent-side timing, and retries missing or empty
+   transcripts. For candidate runs, use the candidate Kast skill. For baseline
+   runs on an existing skill rewrite, use a snapshot of the old skill. Save the
+   complete transcript to `outputs/transcript.md`.
 
 4. Capture timing and token data in each run's `timing.json`.
 
@@ -134,7 +144,9 @@ large structural files, and safe rename targets.
 - `catalog.json`: Parameterized value-proof eval cases.
 - `scripts/render_prompts.py`: Hydrates `{{SLOT.field}}` template variables.
 - `scripts/run_value_proof.py`: Creates iteration workspaces,
-  `run_manifest.json`, and per-run instructions.
+  `manifest.json`, `run_manifest.json`, and per-run instructions.
+- `scripts/dispatch_runs.py`: Dispatches scaffolded runs with concurrency,
+  chain serialization, parent-side timing, and transcript guards.
 - `scripts/generate_executive_summary.py`: Creates Markdown and HTML
   executive summaries from `benchmark.json`.
 - `history/progression.json`: Non-regression ledger for promoted cases and

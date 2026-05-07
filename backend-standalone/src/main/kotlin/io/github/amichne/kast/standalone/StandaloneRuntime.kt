@@ -56,21 +56,16 @@ object StandaloneRuntime {
         )
         val watcher = WorkspaceRefreshWatcher(session, debounceMillis = config.watcher.debounceMillis.value)
         session.attachWorkspaceRefreshWatcher(watcher)
+        val workspaceFileCount = phasedDiscoveryResult.initialLayout.sourceModules
+            .flatMap { it.sourceRoots }
+            .sumOf { root ->
+                root.toFile().walkTopDown()
+                    .filter { it.isFile && it.extension == "kt" }
+                    .count()
+            }
         val server = AnalysisServer(
             backend = backend,
-            config = AnalysisServerConfig(
-                transport = options.transport,
-                requestTimeoutMillis = options.requestTimeoutMillis,
-                maxResults = options.maxResults,
-                maxConcurrentRequests = options.maxConcurrentRequests,
-                workspaceFileCount = phasedDiscoveryResult.initialLayout.sourceModules
-                    .flatMap { it.sourceRoots }
-                    .sumOf { root ->
-                        root.toFile().walkTopDown()
-                            .filter { it.isFile && it.extension == "kt" }
-                            .count()
-                    },
-            ),
+            config = standaloneAnalysisServerConfig(options, config, workspaceFileCount),
         ).start()
 
         return RunningStandaloneRuntime(
@@ -98,3 +93,16 @@ object StandaloneRuntime {
         runtime.await()
     }
 }
+
+internal fun standaloneAnalysisServerConfig(
+    options: StandaloneServerOptions,
+    config: KastConfig,
+    workspaceFileCount: Int,
+): AnalysisServerConfig = AnalysisServerConfig(
+    transport = options.transport,
+    requestTimeoutMillis = options.requestTimeoutMillis,
+    maxResults = options.maxResults,
+    maxConcurrentRequests = options.maxConcurrentRequests,
+    descriptorDirectory = config.paths.descriptorDir.toPath(),
+    workspaceFileCount = workspaceFileCount,
+)

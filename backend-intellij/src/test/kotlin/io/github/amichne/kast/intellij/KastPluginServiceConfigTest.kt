@@ -3,10 +3,12 @@ package io.github.amichne.kast.intellij
 import io.github.amichne.kast.api.client.fields.TelemetryScopes
 import io.github.amichne.kast.api.client.fields.TelemetryEnabled
 import io.github.amichne.kast.api.client.fields.TelemetryDetail
+import io.github.amichne.kast.api.client.fields.PathsDescriptorDir
 import io.github.amichne.kast.api.client.fields.ServerRequestTimeoutMillis
 import io.github.amichne.kast.api.client.fields.ServerMaxConcurrentRequests
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.ServerConfig
+import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.api.client.fields.ServerMaxResults
 import io.github.amichne.kast.api.contract.ServerLimits
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -69,5 +71,26 @@ class KastPluginServiceConfigTest {
         assertTrue(telemetry.isEnabled(IntelliJTelemetryScope.RENAME))
         assertFalse(telemetry.isEnabled(IntelliJTelemetryScope.CALL_HIERARCHY))
         assertTrue(telemetry.isVerbose(IntelliJTelemetryScope.REFERENCES))
+    }
+
+    @Test
+    fun `intellij server writes descriptors to configured descriptor directory`() {
+        val descriptorDirectory = Path.of("build/kast-test/workspace-daemons")
+        val socketPath = Path.of("build/kast-test/kast.sock")
+        val limits = ServerLimits(
+            maxResults = 42,
+            requestTimeoutMillis = 120_000L,
+            maxConcurrentRequests = 2,
+        )
+        val config = KastConfig.defaults().copy(
+            paths = KastConfig.defaults().paths.copy(
+                descriptorDir = PathsDescriptorDir(descriptorDirectory.toString()),
+            ),
+        )
+
+        val serverConfig = intellijAnalysisServerConfig(socketPath, limits, config)
+
+        assertEquals(AnalysisTransport.UnixDomainSocket(socketPath), serverConfig.transport)
+        assertEquals(descriptorDirectory.toAbsolutePath().normalize(), serverConfig.descriptorDirectory)
     }
 }

@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import html
 import json
+import sys
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
@@ -186,23 +187,68 @@ def generate_summary_documents(*, benchmark_path: Path, bindings_path: Path, out
     return html_path
 
 
-def main() -> None:
+def default_bindings_path(iteration_dir: Path) -> Path:
+    default_path = iteration_dir / "bindings.json"
+    if default_path.exists():
+        return default_path
+
+    parent_bindings_dir = iteration_dir.parent / "bindings"
+    if not parent_bindings_dir.exists():
+        return default_path
+    candidates = sorted(parent_bindings_dir.glob("*.json"))
+    if len(candidates) == 1:
+        return candidates[0]
+    return default_path
+
+
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Generate enterprise-facing Kast value-proof summary documents.")
-    parser.add_argument("--benchmark", required=True, type=Path, help="Path to benchmark.json")
-    parser.add_argument("--bindings", required=True, type=Path, help="Path to bindings JSON")
-    parser.add_argument("--output", required=True, type=Path, help="Markdown output path")
-    parser.add_argument("--html-output", type=Path, help="Optional HTML output path")
-    args = parser.parse_args()
+    parser.add_argument("iteration_dir", nargs="?", type=Path, help="Iteration directory containing benchmark.json and bindings.json")
+    parser.add_argument("--benchmark", type=Path, help="Path to benchmark.json; defaults to ITERATION_DIR/benchmark.json")
+    parser.add_argument("--bindings", type=Path, help="Path to bindings JSON; defaults to ITERATION_DIR/bindings.json")
+    parser.add_argument("--output", type=Path, help="Markdown output path; defaults to ITERATION_DIR/executive_summary.md")
+    parser.add_argument("--html-output", type=Path, help="HTML output path; defaults to ITERATION_DIR/executive_summary.html")
+    return parser
+
+
+def resolved_paths(args: argparse.Namespace, parser: argparse.ArgumentParser) -> tuple[Path, Path, Path, Path | None]:
+    if args.iteration_dir is None:
+        missing = [
+            flag
+            for flag, value in (
+                ("--benchmark", args.benchmark),
+                ("--bindings", args.bindings),
+                ("--output", args.output),
+            )
+            if value is None
+        ]
+        if missing:
+            parser.error("iteration_dir is required unless --benchmark, --bindings, and --output are provided.")
+        return args.benchmark, args.bindings, args.output, args.html_output
+
+    iteration_dir = args.iteration_dir
+    return (
+        args.benchmark or iteration_dir / "benchmark.json",
+        args.bindings or default_bindings_path(iteration_dir),
+        args.output or iteration_dir / "executive_summary.md",
+        args.html_output or iteration_dir / "executive_summary.html",
+    )
+
+
+def main(argv: list[str] | None = None) -> None:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    benchmark_path, bindings_path, output_path, html_output_path = resolved_paths(args, parser)
 
     html_path = generate_summary_documents(
-        benchmark_path=args.benchmark,
-        bindings_path=args.bindings,
-        output_path=args.output,
-        html_output_path=args.html_output,
+        benchmark_path=benchmark_path,
+        bindings_path=bindings_path,
+        output_path=output_path,
+        html_output_path=html_output_path,
     )
-    print(f"Generated: {args.output}")
+    print(f"Generated: {output_path}")
     print(f"Generated: {html_path}")
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])

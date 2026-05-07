@@ -77,6 +77,11 @@ class KastCli private constructor(
                 0
             }
 
+            is CliOutput.JsonValueWithExitCode -> {
+                writeCliJson(stdout, output.value, json)
+                output.exitCode
+            }
+
             is CliOutput.Text -> {
                 stdout.append(output.value)
                 if (!output.value.endsWith('\n')) {

@@ -33,6 +33,7 @@ internal sealed interface CliCommand {
 
     data class Help(val topic: List<String> = emptyList()) : CliCommand
     data object Version : CliCommand
+    data object VerifyExtension : CliCommand
     data class Completion(val shell: CliCompletionShell) : CliCommand
     data class WorkspaceStatus(val options: RuntimeCommandOptions) : CliCommand
     data class WorkspaceEnsure(val options: RuntimeCommandOptions) : CliCommand

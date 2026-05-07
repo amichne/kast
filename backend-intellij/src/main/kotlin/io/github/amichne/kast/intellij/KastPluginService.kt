@@ -53,12 +53,7 @@ internal class KastPluginService(
         )
 
         val socketPath = defaultSocketPath(workspaceRoot)
-        val config = AnalysisServerConfig(
-            transport = AnalysisTransport.UnixDomainSocket(socketPath),
-            requestTimeoutMillis = limits.requestTimeoutMillis,
-            maxResults = limits.maxResults,
-            maxConcurrentRequests = limits.maxConcurrentRequests,
-        )
+        val config = intellijAnalysisServerConfig(socketPath, limits, kastConfig)
 
         val server = AnalysisServer(backend, config)
         runningServer = server.start()
@@ -151,4 +146,16 @@ internal fun intellijServerLimits(config: KastConfig): ServerLimits = ServerLimi
     maxConcurrentRequests = config.server.maxConcurrentRequests.value.coerceAtLeast(1),
     requestTimeoutMillis = config.server.requestTimeoutMillis.value,
     maxResults = config.server.maxResults.value,
+)
+
+internal fun intellijAnalysisServerConfig(
+    socketPath: Path,
+    limits: ServerLimits,
+    config: KastConfig,
+): AnalysisServerConfig = AnalysisServerConfig(
+    transport = AnalysisTransport.UnixDomainSocket(socketPath),
+    requestTimeoutMillis = limits.requestTimeoutMillis,
+    maxResults = limits.maxResults,
+    maxConcurrentRequests = limits.maxConcurrentRequests,
+    descriptorDirectory = config.paths.descriptorDir.toPath(),
 )

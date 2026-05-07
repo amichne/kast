@@ -45,6 +45,7 @@ TRANSIENT_ROOT_FILES = {
     "consolidation_report.md",
     "overlap_report.json",
 }
+GRADING_SCHEMA_PATH = Path(__file__).resolve().parents[2] / "kast" / "value-proof" / "grading.schema.json"
 MISPLACED_ARTIFACTS = {
     "catalog.json": ("evals", "catalog.json"),
     "pain_points.jsonl": ("evals", "pain_points.jsonl"),
@@ -975,8 +976,36 @@ def _validate_expectation_objects(value: Any, context: str, report: ValidationRe
         _require_string(entry.get("evidence"), f"{context}[{index}].evidence", report)
 
 
+def _validate_with_json_schema(data: Any, *, schema_path: Path, path: Path, report: ValidationReport) -> None:
+    try:
+        import jsonschema
+    except ImportError:
+        return
+
+    try:
+        schema = _load_json(schema_path)
+    except ValueError as exc:
+        report.error(str(exc))
+        return
+
+    validator_class = jsonschema.validators.validator_for(schema)
+    try:
+        validator_class.check_schema(schema)
+    except jsonschema.SchemaError as exc:
+        report.error(f"{schema_path}: invalid JSON Schema: {exc.message}")
+        return
+
+    validator = validator_class(schema)
+    for error in sorted(validator.iter_errors(data), key=lambda item: list(item.path)):
+        location = ".".join(str(part) for part in error.path)
+        suffix = f".{location}" if location else ""
+        report.error(f"{path}{suffix}: {error.message}")
+
+
 def validate_grading_data(data: Any, *, path: Path) -> ValidationReport:
     report = ValidationReport()
+    # Keep this validator in sync with the published contract at GRADING_SCHEMA_PATH.
+    _validate_with_json_schema(data, schema_path=GRADING_SCHEMA_PATH, path=path, report=report)
     item = _require_object(data, f"{path}", report)
     if item is None:
         return report
