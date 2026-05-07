@@ -23,6 +23,7 @@ This suite proves the practical value of native Kast tools against a baseline th
    ```
 
 3. Execute each run by following `run_instructions.md` in each run directory.
+   `run_manifest.json` lists every generated instruction file for the iteration.
 
 4. Grade each run using `../skill-creator/agents/grader.md`.
 
@@ -65,6 +66,6 @@ This suite proves the practical value of native Kast tools against a baseline th
 - `bindings/konditional.json`: default bindings for the konditional repository.
 - `catalog.json`: ten parameterized value-proof eval cases.
 - `scripts/render_prompts.py`: hydrates `{{SLOT.field}}` template variables.
-- `scripts/run_value_proof.py`: creates the run workspace and per-run instructions.
+- `scripts/run_value_proof.py`: creates the run workspace, `run_manifest.json`, and per-run instructions.
 - `scripts/generate_executive_summary.py`: creates Markdown and HTML executive summaries from `benchmark.json`.
 - `history/progression.json`: empty progression ledger for future non-regression tracking.

@@ -23,8 +23,8 @@
     },
     "OVERLOADED_OR_COMMON_FUNCTION": {
       "symbol": "resolve",
-      "containingType": "ConditionalValue",
-      "fqName": "io.amichne.konditional.rules.ConditionalValue.resolve",
+      "containingType": "ConditionalValue.ContextualResolver",
+      "fqName": "io.amichne.konditional.rules.ConditionalValue.ContextualResolver.resolve",
       "file": "konditional-engine/src/main/kotlin/io/amichne/konditional/rules/ConditionalValue.kt",
       "description": "A function name that appears in many classes — disambiguation required"
     },
