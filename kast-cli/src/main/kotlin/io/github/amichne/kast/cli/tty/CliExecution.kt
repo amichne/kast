@@ -182,9 +182,13 @@ internal class DefaultCliCommandExecutor(
                 output = CliOutput.JsonValue(cliService.installSkill(command.options)),
             )
 
-            is CliCommand.InstallCopilotExtension -> CliExecutionResult(
-                output = CliOutput.JsonValue(cliService.installCopilotExtension(command.options)),
-            )
+            is CliCommand.InstallCopilotExtension -> {
+                val result = cliService.installCopilotExtension(command.options)
+                CliExecutionResult(
+                    output = CliOutput.JsonValue(result),
+                    daemonNote = result.warnings.joinToString("\n").takeIf { it.isNotBlank() },
+                )
+            }
 
             CliCommand.SelfStatus -> CliExecutionResult(
                 output = CliOutput.JsonValue(cliService.selfStatus()),

@@ -271,25 +271,9 @@ internal class SelfManagementService(
 
         private fun verifyResolveScript(repoRoot: Path, relativePath: String): String? {
             val script = repoRoot.resolve(relativePath).normalize()
-            if (!Files.isRegularFile(script)) {
-                return "Resolve script is missing: $relativePath"
-            }
-            if (!Files.isExecutable(script)) {
-                return "Resolve script is not executable: $relativePath"
-            }
-            return runCatching {
-                val process = ProcessBuilder("bash", script.toString())
-                    .directory(repoRoot.toFile())
-                    .start()
-                val stdout = process.inputStream.bufferedReader().readText().trim()
-                val stderr = process.errorStream.bufferedReader().readText().trim()
-                val exitCode = process.waitFor()
-                when {
-                    exitCode != 0 -> "$relativePath failed: ${if (stderr.isNotBlank()) stderr else "exit $exitCode"}"
-                    stdout.isBlank() -> "$relativePath did not print a resolved kast path"
-                    else -> null
-                }
-            }.getOrElse { error -> "$relativePath failed: ${error.message}" }
+            if (!Files.isRegularFile(script)) return "Resolve script is missing: $relativePath"
+            if (!Files.isExecutable(script)) return "Resolve script is not executable: $relativePath"
+            return null
         }
     }
 }

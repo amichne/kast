@@ -5,10 +5,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(git -C "${SCRIPT_DIR}" rev-parse --show-toplevel 2>/dev/null || (cd -- "${SCRIPT_DIR}/../.." && pwd))"
 RESOLVE_SCRIPT="${REPO_ROOT}/.github/extensions/kast/scripts/resolve-kast.sh"
 if [[ -x "${RESOLVE_SCRIPT}" ]]; then
-    if resolved_path="$(bash "${RESOLVE_SCRIPT}")"; then
-        printf '%s\n' "${resolved_path}"
-        exit 0
-    fi
+    exec bash "${RESOLVE_SCRIPT}"
 fi
 
 resolve_absolute_path() {
