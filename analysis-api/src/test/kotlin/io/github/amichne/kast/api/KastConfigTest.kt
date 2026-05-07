@@ -125,16 +125,18 @@ class KastConfigTest {
     @Test
     fun `workspace directory resolver uses git remote hierarchy when origin is parseable`() {
         val configHome = tempDir.resolve("config-home")
+        val installRoot = tempDir.resolve("install-root")
         val workspaceRoot = tempDir.resolve("workspace")
         val resolver = WorkspaceDirectoryResolver(
             configHome = { configHome },
+            installRoot = { installRoot },
             gitRemoteResolver = { GitRemote(host = "github.com", owner = "amichne", repo = "kast") },
         )
 
         val dataDirectory = resolver.workspaceDataDirectory(workspaceRoot)
 
         assertEquals(
-            configHome.resolve("workspaces/github.com/amichne/kast"),
+            installRoot.resolve("workspaces/github.com/amichne/kast"),
             dataDirectory,
         )
         assertEquals(dataDirectory.resolve("cache"), resolver.workspaceCacheDirectory(workspaceRoot))
@@ -144,9 +146,11 @@ class KastConfigTest {
     @Test
     fun `workspace directory resolver persists local workspace ids when origin is unavailable`() {
         val configHome = tempDir.resolve("config-home")
+        val installRoot = tempDir.resolve("install-root")
         val workspaceRoot = Path.of("/workspace/not-git")
         val resolver = WorkspaceDirectoryResolver(
             configHome = { configHome },
+            installRoot = { installRoot },
             gitRemoteResolver = { null },
         )
 
@@ -154,9 +158,9 @@ class KastConfigTest {
         val second = resolver.workspaceDataDirectory(workspaceRoot)
 
         assertEquals(first, second)
-        assertTrue(first.startsWith(configHome.resolve("workspaces/local")))
+        assertTrue(first.startsWith(installRoot.resolve("workspaces/local")))
         assertTrue(
-            configHome.resolve("local-workspaces.json")
+            installRoot.resolve("workspaces/local-workspaces.json")
                 .readText()
                 .contains(workspaceRoot.toAbsolutePath().normalize().toString())
         )
@@ -165,9 +169,11 @@ class KastConfigTest {
     @Test
     fun `config loader merges hardcoded defaults global config and workspace config`() {
         val configHome = tempDir.resolve("config-home")
+        val installRoot = tempDir.resolve("install-root")
         val workspaceRoot = tempDir.resolve("workspace")
         val resolver = WorkspaceDirectoryResolver(
             configHome = { configHome },
+            installRoot = { installRoot },
             gitRemoteResolver = { GitRemote(host = "github.com", owner = "amichne", repo = "kast") },
         )
         configHome.resolve("config.toml").apply {
@@ -225,9 +231,11 @@ class KastConfigTest {
     @Test
     fun `config loader uses Kast classloader instead of thread context loader for default Hoplite services`() {
         val configHome = tempDir.resolve("config-home")
+        val installRoot = tempDir.resolve("install-root")
         val workspaceRoot = tempDir.resolve("workspace")
         val resolver = WorkspaceDirectoryResolver(
             configHome = { configHome },
+            installRoot = { installRoot },
             gitRemoteResolver = { GitRemote(host = "github.com", owner = "amichne", repo = "kast") },
         )
         configHome.resolve("config.toml").apply {
@@ -256,9 +264,11 @@ class KastConfigTest {
     @Test
     fun `config loader does not write Hoplite warnings to stdout`() {
         val configHome = tempDir.resolve("config-home")
+        val installRoot = tempDir.resolve("install-root")
         val workspaceRoot = tempDir.resolve("workspace")
         val resolver = WorkspaceDirectoryResolver(
             configHome = { configHome },
+            installRoot = { installRoot },
             gitRemoteResolver = { GitRemote(host = "github.com", owner = "amichne", repo = "kast") },
         )
         configHome.resolve("config.toml").apply {

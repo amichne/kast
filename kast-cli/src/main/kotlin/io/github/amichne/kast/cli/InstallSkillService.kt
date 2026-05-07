@@ -9,6 +9,7 @@ import java.nio.file.Path
 internal class InstallSkillService(
     embeddedSkillResources: EmbeddedSkillResources = EmbeddedSkillResources(),
     cwdProvider: () -> Path = { Path.of(System.getProperty("user.dir", ".")) },
+    private val homeDirectoryProvider: () -> Path = { Path.of(System.getProperty("user.home")) },
 ) : InstallEmbeddedResourceService<InstallSkillOptions, InstallSkillResult>(
     bundle = embeddedSkillResources,
     errorCode = "INSTALL_SKILL_ERROR",
@@ -53,18 +54,15 @@ internal class InstallSkillService(
     }
 
     private fun resolveDefaultTargetDir(cwd: Path): Path {
-        val agentsSkill = cwd.resolve(".agents/skill")
-        if (Files.isDirectory(agentsSkill)) return agentsSkill
-
         val agentsSkills = cwd.resolve(".agents/skills")
-        if (Files.isDirectory(agentsSkills) || Files.isDirectory(cwd.resolve(".agents"))) return agentsSkills
+        if (Files.isDirectory(agentsSkills)) return agentsSkills
 
         val githubSkills = cwd.resolve(".github/skills")
-        if (Files.isDirectory(githubSkills) || Files.isDirectory(cwd.resolve(".github"))) return githubSkills
+        if (Files.isDirectory(githubSkills)) return githubSkills
 
         val claudeSkills = cwd.resolve(".claude/skills")
-        if (Files.isDirectory(claudeSkills) || Files.isDirectory(cwd.resolve(".claude"))) return claudeSkills
+        if (Files.isDirectory(claudeSkills)) return claudeSkills
 
-        return agentsSkills
+        return homeDirectoryProvider().resolve(".kast/lib/skills")
     }
 }

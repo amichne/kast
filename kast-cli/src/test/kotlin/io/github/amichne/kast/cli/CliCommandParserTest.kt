@@ -238,6 +238,35 @@ class CliCommandParserTest {
         assertSame(CliCommand.VerifyExtension, command)
     }
 
+
+
+    @Test
+    fun `self status parses`() {
+        val command = parser.parse(arrayOf("self", "status"))
+
+        assertSame(CliCommand.SelfStatus, command)
+    }
+
+    @Test
+    fun `self doctor parses`() {
+        val command = parser.parse(arrayOf("self", "doctor"))
+
+        assertSame(CliCommand.SelfDoctor, command)
+    }
+
+    @Test
+    fun `self uninstall parses`() {
+        val command = parser.parse(arrayOf("self", "uninstall"))
+
+        assertSame(CliCommand.SelfUninstall, command)
+    }
+
+    @Test
+    fun `self upgrade parses`() {
+        val command = parser.parse(arrayOf("self", "upgrade"))
+
+        assertSame(CliCommand.SelfUpgrade, command)
+    }
     @Test
     fun `smoke parses workspace root filters and format`() {
         val command = parser.parse(
@@ -322,6 +351,24 @@ class CliCommandParserTest {
 
         assertEquals("CLI_USAGE", failure.code)
         assertTrue(failure.message.contains("json or markdown"))
+    }
+
+    @Test
+    fun `install parses kast home defaults for releases and bin`() {
+        val archivePath = tempDir.resolve("kast-portable.zip")
+
+        val command = parser.parse(
+            arrayOf(
+                "install",
+                "--archive=$archivePath",
+            ),
+        )
+
+        assertTrue(command is CliCommand.Install)
+        val installCommand = command as CliCommand.Install
+        val home = Path.of(System.getProperty("user.home")).toAbsolutePath().normalize()
+        assertEquals(home.resolve(".kast/releases"), installCommand.options.instancesRoot)
+        assertEquals(home.resolve(".kast/bin"), installCommand.options.binDir)
     }
 
     @Test

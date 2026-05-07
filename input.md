@@ -1,148 +1,437 @@
-Execute these four workstreams in parallel. They touch disjoint file sets.
+This is the single authoritative plan combining all changes needed to go from "curl install → fully usable by an LLM agent" with zero manual steps after the initial installer.
 
 ---
 
-### Workstream A: Extension probe + version parity (Items 2, 3, 4)
+## Phase 1: Consolidate On-Disk Layout Under `$HOME/.kast`
 
-**Goal:** Make the extension resolve the kast binary without requiring a running daemon, and add a CLI/extension version parity check.
+### 1A. Fix CLI `installOptions()` path defaults
 
-**A1 — Make the probe daemon-free (Item 2, fixes Item 3 for free)**
+File: `kast-cli/src/main/kotlin/io/github/amichne/kast/cli/tty/CliCommandParser.kt` (lines 586-598)
 
-File: `.github/extensions/kast/extension.mjs`
+Change the defaults in `installOptions()`:
+- `instancesRoot`: `home.resolve(".local/share/kast/instances")` → `home.resolve(".kast/releases")`
+- `binDir`: `home.resolve(".local/bin")` → `home.resolve(".kast/bin")`
 
-In `supportsWrapperCommands()` (lines 113-123), replace the `workspace-files` RPC probe with a daemon-free command. The current code runs:
-```js
-const {ok, stdout} = await execBash(`${JSON.stringify(path)} workspace-files ${JSON.stringify(probe)}`);
+This aligns the CLI's `install` command with what `kast.sh` already does (`install_root="${HOME}/.kast"`, `bin_dir="${install_root}/bin"`).
+
+### 1B. Move workspace data from config home to install root
+
+File: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/client/WorkspaceDirectoryResolver.kt` (lines 18-36)
+
+Currently `workspaceDataDirectory()` resolves under `configHome()/workspaces/...`. Change it to resolve under `$HOME/.kast/workspaces/...`:
+- Git remote repos: `$HOME/.kast/workspaces/<host>/<owner>/<repo>`
+- Local repos: `$HOME/.kast/workspaces/local/<sanitized>--<uuid>`
+- Ephemeral (under /tmp): `<workspace>/.gradle/kast` (unchanged)
+
+Add a `kastInstallRoot()` helper that returns `Path.of(System.getProperty("user.home")).resolve(".kast")` and use it as the base for workspace directories instead of `configHome()`.
+
+Move `local-workspaces.json` to `$HOME/.kast/workspaces/local-workspaces.json`.
+
+Update tests in `analysis-api/src/test/kotlin/io/github/amichne/kast/api/KastConfigTest.kt` and any `WorkspacePathsTest.kt`.
+
+### 1C. Move global skill install location
+
+File: `kast.sh` (around line 1281 where `global_dir` is set)
+
+Change `global_dir` from `"${HOME}/.agents/skills"` to `"${HOME}/.kast/lib/skills"`.
+
+File: `kast-cli/src/main/kotlin/io/github/amichne/kast/cli/InstallSkillService.kt` (or wherever the default skill target-dir is resolved)
+
+Update the default skill target directory resolution to prefer:
+1. If `.agents/skills` exists in cwd → use it (backward compat for per-repo)
+2. If `.github/skills` exists in cwd → use it (backward compat for per-repo)
+3. If `.claude/skills` exists in cwd → use it
+4. Otherwise → `$HOME/.kast/lib/skills` (global default)
+
+### 1D. Proposed final directory structure
+
 ```
-This requires a running daemon for `REPO_ROOT`. Change it to:
-```js
-const {ok, stdout} = await execBash(`${JSON.stringify(path)} --version`);
+$HOME/.config/kast/
+├── config.toml                          # sole user-editable config
+└── env                                  # shell env snippet
+
+$HOME/.kast/                             # KAST_HOME — single deletable tree
+├── bin/
+│   └── kast                             # launcher script
+├── current -> releases/v1.2.3/platform  # active release symlink
+├── releases/
+│   └── v1.2.3/<platform>/
+├── backends/
+│   ├── current -> standalone-v1.2.3
+│   └── standalone-v1.2.3/
+├── plugins/
+│   └── kast-intellij-v1.2.3.zip
+├── lib/                                 # global AI primitives
+│   ├── skills/
+│   │   └── kast/
+│   ├── hooks/
+│   ├── extensions/
+│   └── agents/
+├── workspaces/
+│   ├── github.com/<owner>/<repo>/
+│   ├── local/<sanitized>--<uuid>/
+│   └── local-workspaces.json
+├── sessions/
+├── cache/
+│   └── daemons/
+├── logs/
+└── .manifest.json                       # global install manifest
 ```
-And validate that `stdout` contains a version string (e.g., matches `/\d+\.\d+/` or is non-empty). This proves the binary exists and is a kast CLI without needing any daemon.
-
-This also eliminates the "item 3" problem — the only reason re-probing kept failing was because `supportsWrapperCommands` kept hitting the daemon-dependent path. With `--version`, re-probing will succeed as soon as the binary is on disk.
-
-**A2 — Version parity check in extension (Item 4)**
-
-File: `.github/extensions/kast/extension.mjs`
-
-In the `onSessionStart` handler (lines 396-407), after resolving the binary, read the `.kast-copilot-version` marker file from the extension's install directory. Compare it against the output of `kast --version`. If they differ, log a warning via `session.log()` with level "warning" indicating CLI/extension version drift.
-
-The marker file name is defined in `kast-cli/src/main/kotlin/io/github/amichne/kast/cli/EmbeddedCopilotExtensionResources.kt` line 25 as `.kast-copilot-version`. The extension should look for this file relative to its own directory (i.e., `path.join(EXTENSION_DIR, '..', '..', '.kast-copilot-version')` or similar, depending on the install layout).
-
-**A3 — CLI `verify-extension` subcommand (Item 4)**
-
-Files to modify:
-- `kast-cli/src/main/kotlin/io/github/amichne/kast/cli/tty/CliCommandParser.kt` — add a `listOf("verify-extension")` case in `parseKnownCommand()` (around line 98-210)
-- `kast-cli/src/main/kotlin/io/github/amichne/kast/cli/tty/CliCommand.kt` — add a `VerifyExtension` variant
-- `kast-cli/src/main/kotlin/io/github/amichne/kast/cli/tty/CliCommandCatalog.kt` — register the new command
-- `kast-cli/src/main/kotlin/io/github/amichne/kast/cli/tty/CliCommandExecutor.kt` (or `DefaultCliCommandExecutor`) — handle the new command
-
-The command should:
-1. Read the `.kast-copilot-version` marker from the current working directory's `.github/` tree
-2. Compare it to `currentCliVersion()` (from `tty/currentCliVersion`)
-3. Output JSON `{"ok": true/false, "cli_version": "...", "extension_version": "..."}` 
-4. Exit non-zero if versions don't match
-
-Add a test in `kast-cli/src/test/kotlin/io/github/amichne/kast/cli/CliCommandParserTest.kt`.
 
 ---
 
-### Workstream B: Descriptor path audit (Item 1)
+## Phase 2: Unify All Binary Resolution (5 Entry Points)
 
-**Goal:** Investigate and fix the actual root cause of the descriptor path mismatch.
+The goal: every resolution path checks the same candidates in the same order:
+1. `config.toml` `[cli] binaryPath` (explicit override, written by installer)
+2. `$HOME/.kast/bin/kast` (canonical hardcoded fallback)
+3. PATH lookup for `kast` or `kast-cli` (works in interactive/login shells)
+4. Repo-local build artifacts (development only)
 
-**Important context:** The writeup's diagnosis was wrong. Both CLI and runtime-libs resolve the descriptor directory through `KastConfig.load().paths.descriptorDir`, which defaults to `~/.kast/cache/daemons` via `defaultConfigDescriptorDir()` in `analysis-api/src/main/kotlin/io/github/amichne/kast/api/client/fields/ConfigurationDefaults.kt` line 13. The writeup's proposed fix file (`WorkspaceDirectoryResolver.kt`) is incorrect — that handles workspace data directories, not daemon descriptors.
+### 2A. Simplify `.github/extensions/kast/scripts/resolve-kast.sh`
 
-Steps:
-1. Trace every code path that writes daemon descriptors. Start from `WorkspaceRuntimeManager.kt` line 25-28 (`configuredDescriptorDirectory`) and find all callers. Also search for `descriptorDir` and `daemons` across the codebase.
-2. Trace every code path that reads daemon descriptors. The runtime-libs side reads via `KastConfig.load()` → `PathsDescriptorDir` → `defaultConfigDescriptorDir()`.
-3. Check if `kast workspace ensure` writes the descriptor to a different path than what `KastConfig.load()` resolves. The most likely cause is a stale or workspace-specific `config.toml` overriding `descriptorDir` for one consumer but not the other.
-4. If a genuine divergence is found, unify it in `ConfigurationDefaults.kt` and `PathsDescriptorDir.kt`. If it's a config-loading issue, add a diagnostic to `kast workspace ensure` that prints the resolved descriptor directory so users can verify it.
-5. Consider adding a `kast workspace ensure` post-check that verifies the descriptor file is readable from the path that runtime-libs would resolve.
+File: `.github/extensions/kast/scripts/resolve-kast.sh` (lines 31-65)
+
+Replace the current logic with the 4-step order above. Remove the 6-level parent directory walk. Remove the `$HOME/.local/bin/kast` fallback (line 59). Add `$HOME/.kast/bin/kast` as an explicit check before the error exit. Keep the `read_config_binary_path` function for reading config.toml.
+
+### 2B. Replace `.github/hooks/resolve-kast-cli-path.sh` with delegation
+
+File: `.github/hooks/resolve-kast-cli-path.sh` (lines 17-31)
+
+Replace the body with a delegation to the canonical resolve script:
+```bash
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(git -C "${SCRIPT_DIR}" rev-parse --show-toplevel 2>/dev/null || echo "${SCRIPT_DIR}/../..")"
+RESOLVE_SCRIPT="${REPO_ROOT}/.github/extensions/kast/scripts/resolve-kast.sh"
+if [[ -x "${RESOLVE_SCRIPT}" ]]; then
+    exec bash "${RESOLVE_SCRIPT}"
+fi
+# Inline fallback: config.toml → ~/.kast/bin/kast → PATH → error
+config_dir="${KAST_CONFIG_HOME:-${HOME}/.config/kast}"
+# ... minimal inline fallback using the same 4-step order ...
+```
+
+### 2C. Unify `.agents/skills/kast/scripts/resolve-kast.sh`
+
+File: `.agents/skills/kast/scripts/resolve-kast.sh` (lines 15-36)
+
+This is the weakest resolver — it only checks PATH and walks parent dirs. It does NOT check config.toml or `$HOME/.kast/bin/kast`. Add:
+1. The `read_config_binary_path()` function (copy from the extension's resolve script)
+2. config.toml check after the PATH check
+3. `$HOME/.kast/bin/kast` hardcoded fallback before the error exit
+
+Since this skill is packaged as an embedded resource via `syncPackagedCopilotExtensionResources`, the source file that gets synced into the CLI's resources must also be updated.
+
+### 2D. Fix `extension.mjs` hardcoded fallback path
+
+File: `.github/extensions/kast/extension.mjs` (line 120)
+
+Change:
+```javascript
+addCandidate(join(homedir(), ".local", "bin", "kast"));
+```
+to:
+```javascript
+addCandidate(join(homedir(), ".kast", "bin", "kast"));
+```
+
+### 2E. IntelliJ plugin resolution (no change needed)
+
+File: `backend-intellij/src/main/kotlin/io/github/amichne/kast/intellij/actions/KastInstallAction.kt` (lines 76-86)
+
+The IntelliJ plugin reads `config.toml` `[cli] binaryPath` which the installer writes. This is sufficient since IntelliJ always runs in a user session where config.toml is available. No change needed.
 
 ---
 
-### Workstream C: Dispatch, timing, and path naming (Items 5, 6, 7, 8, 9)
+## Phase 3: Auto-Indexing on Session Start
 
-**Goal:** Create a centralized run dispatcher that replaces manual wave bookkeeping, captures timing from the parent, guards against empty transcripts, supports serial chains, and normalizes path naming.
+### 3A. Add `workspace ensure` call to `extension.mjs` `onSessionStart`
 
-**C1 — Create `dispatch_runs.py` (Items 5, 6, 7, 8)**
+File: `.github/extensions/kast/extension.mjs` (around line 435, in the `onSessionStart` handler)
 
-New file: `.agents/skills/kast/value-proof/scripts/dispatch_runs.py`
+After successfully resolving the binary and passing the version check, add a fire-and-forget call to start the backend:
 
-This script should:
-1. Accept a scaffolded iteration directory (from `run_value_proof.py`) as input
-2. Discover all `run_instructions.md` files to build a run manifest
-3. Support a `--concurrency` flag (default 4) for parallel sub-agent dispatch
-4. Support a `chain_id` field: runs with the same `chain_id` execute serially in one sub-agent; different chains parallelize freely
-5. For each run:
-   - Record `start_ts` before dispatch
-   - Dispatch the sub-agent (invoke whatever execution mechanism is used)
-   - Record `end_ts` after completion
-   - Write `timing.json` with wall-clock `executor_duration_seconds = end_ts - start_ts` (parent-side timing, not self-reported)
-   - Assert `os.path.getsize(outputs/transcript.md) > 0` after completion; if empty, mark the run as failed and optionally re-dispatch (up to `--max-retries`, default 1)
-6. Stream completion status to stdout as runs finish
-7. Exit with a summary: N succeeded, M failed, K retried
-
-**C2 — Add `chain_id` to catalog schema (Item 8)**
-
-File: `.agents/skills/kast/value-proof/catalog.json`
-
-Add an optional `chain_id` field to cases that must run serially in the same workspace. For example, `vp-multi-file-rename` and `vp-edit-and-validate` both mutate the workspace and should share a chain:
-```json
-"chain_id": "safe-mutations-chain"
+```javascript
+// After version parity check, before the return statement:
+const repoRoot = REPO_ROOT;
+execBash(
+  `${JSON.stringify(bin)} workspace ensure --workspace-root=${JSON.stringify(repoRoot)} --accept-indexing=true`
+).then(({ok, stderr}) => {
+  if (!ok) {
+    session.log(
+      `kast extension: workspace ensure failed for ${repoRoot}. stderr: ${stderr.trim().slice(0, 200)}`,
+      { level: "warning" },
+    );
+  } else {
+    session.log(`kast extension: backend ready for ${repoRoot}`, { ephemeral: true });
+  }
+}).catch(() => {});
 ```
-Update `run_value_proof.py` to propagate `chain_id` into `eval_metadata.json` so `dispatch_runs.py` can read it.
 
-**C3 — Fix path naming (Item 9)**
+Key: use `--accept-indexing=true` so the daemon is servable immediately (partial results during indexing). Fire-and-forget so session start isn't blocked.
 
-File: `.agents/skills/kast/value-proof/scripts/run_value_proof.py`, line 116
+### 3B. Make `workspace ensure` auto-start the standalone daemon
 
-Currently: `eval_dir = iteration_dir / f"eval-{case_id}"` where `case_id` is e.g. `vp-disambiguate-member`, producing `eval-vp-disambiguate-member`.
+File: `kast-cli/src/main/kotlin/io/github/amichne/kast/cli/WorkspaceRuntimeManager.kt` (lines 66-115)
 
-Two options (pick one):
-- **Option A (preferred):** Have `run_value_proof.py` emit a `manifest.json` at scaffold time that maps `eval_id → on-disk directory name`. All downstream tools (dispatch, grader, aggregator) read from this manifest instead of guessing paths.
-- **Option B:** Drop the `eval-` prefix: `eval_dir = iteration_dir / case_id`. Simpler but requires updating any existing iteration directories.
+Currently `ensureRuntime()` throws `NO_BACKEND_AVAILABLE` when no daemon exists. Before the `throw`, add auto-start logic:
 
-Go with Option A. After scaffolding, write `manifest.json` to `iteration_dir` with structure:
-```json
-{
-  "evals": {
-    "vp-disambiguate-member": {"dir": "eval-vp-disambiguate-member", "chain_id": null},
-    "vp-multi-file-rename": {"dir": "eval-vp-multi-file-rename", "chain_id": "safe-mutations-chain"}
+```kotlin
+// Before the final throw CliFailure(NO_BACKEND_AVAILABLE):
+if (!options.noAutoStart) {
+    val config = KastConfig.load(options.workspaceRoot.toJavaPath())
+    val runtimeLibsDir = Path.of(config.backends.standalone.runtimeLibsDir.value)
+    if (Files.isDirectory(runtimeLibsDir)) {
+        startStandaloneDaemon(options, runtimeLibsDir)
+        return WorkspaceEnsureResult(
+            workspaceRoot = options.workspaceRoot.toString(),
+            descriptorDirectory = inspection.descriptorDirectory.toString(),
+            started = true,
+            selected = waitForServable(
+                options = options.copy(backendName = BackendName.STANDALONE),
+                backendName = BackendName.STANDALONE,
+                acceptIndexing = !requireReady,
+            ),
+        )
+    }
+}
+```
+
+Implement `startStandaloneDaemon()` to launch `kast daemon start` as a background process. The existing `--no-auto-start=true` flag should bypass this to preserve fail-fast behavior for users who want it.
+
+---
+
+## Phase 4: Version Mismatch Auto-Recovery
+
+File: `.github/extensions/kast/extension.mjs` (lines 447-455)
+
+Currently, when CLI version != extension version, the extension returns `KAST EXTENSION BLOCKED`. Replace with auto-recovery:
+
+```javascript
+if (cliVersion && installedVersion && cliVersion !== installedVersion) {
+  const syncResult = await execBash(
+    `${JSON.stringify(bin)} install copilot-extension --target-dir=${JSON.stringify(join(REPO_ROOT, ".github"))} --yes=true`
+  );
+  if (syncResult.ok) {
+    await session.log(
+      `kast extension: auto-synced copilot extension from ${installedVersion} to ${cliVersion}`,
+      { level: "info" },
+    );
+    // Continue normally — don't block
+  } else {
+    const msg = `kast version mismatch: CLI=${cliVersion}, extension=${installedVersion}. Auto-sync failed. Run \`kast install copilot-extension\` manually.`;
+    await session.log(`kast extension: ${msg}`, { level: "error" });
+    return { additionalContext: `KAST EXTENSION WARNING — ${msg}` };
   }
 }
 ```
 
+Change from BLOCKED to WARNING so tools still attempt to work even if sync fails.
+
 ---
 
-### Workstream D: CLI ergonomics + grading schema (Items 10, 11)
+## Phase 5: Installer Hardening
 
-**D1 — Default args for `generate_executive_summary.py` (Item 10)**
+### 5A. Fix PATH propagation for non-interactive shells
 
-File: `.agents/skills/kast/value-proof/scripts/generate_executive_summary.py`, lines 189-195
+File: `kast.sh` (function `_install_ensure_bin_dir_on_path`, around line 661)
 
-Change the argument parser to:
-- Accept a single positional `iteration_dir` argument (the iteration directory path)
-- Default `--benchmark` to `{iteration_dir}/benchmark.json`
-- Default `--bindings` to `{iteration_dir}/bindings.json` (or search for `bindings/*.json` in the parent)
-- Default `--output` to `{iteration_dir}/executive_summary.md`
-- Default `--html-output` to `{iteration_dir}/executive_summary.html`
-- Keep the explicit flags as overrides for CI use
+The installer writes PATH to one rc file (e.g., `.bashrc`), but `extension.mjs` uses `bash -lc` (login shell) which sources `.bash_profile`/`.profile` but NOT `.bashrc`. Update the function to:
+1. Write the PATH export to the chosen rc file (existing behavior)
+2. If the user's shell is bash AND the chosen file is `.bashrc`, ALSO write the PATH block to `.bash_profile` (or `.profile` if `.bash_profile` doesn't exist)
 
-This makes the 90% case a single command: `python generate_executive_summary.py path/to/iteration-001`
+This ensures `bash -lc` in extension.mjs will have kast on PATH.
 
-**D2 — Publish `grading.schema.json` (Item 11)**
+### 5B. Add copilot-extension as an installer phase
 
-New file: `.agents/skills/kast/value-proof/grading.schema.json` (or `.agents/skills/skill-creator/scripts/grading.schema.json` next to `validation.py`)
+File: `kast.sh` (around line 1610, after Phase 8 skill install)
 
-Extract the schema from `validate_grading_data()` in `.agents/skills/skill-creator/scripts/validation.py` (lines 978-1061) into a JSON Schema document. The schema should define:
-- `expectations`: array of objects with `text` (string), `passed` (boolean), `evidence` (string)
-- `summary`: object with `passed` (int >= 0), `failed` (int >= 0), `total` (int >= 0), `pass_rate` (number 0.0-1.0)
-- `execution_metrics`: object with `tool_calls` (object), `total_tool_calls` (int >= 0), `total_steps` (int >= 0), `errors_encountered` (int >= 0), `output_chars` (int >= 0), `transcript_chars` (int >= 0)
-- `timing`: object with `executor_duration_seconds` (number >= 0), `grader_duration_seconds` (number >= 0), `total_duration_seconds` (number >= 0)
+Add a new phase between skill install and summary:
+- Detect if cwd is inside a git repo (`git rev-parse --show-toplevel`)
+- If so, prompt (interactive) or auto-install (non-interactive with `--yes`) the copilot extension
+- Add `--skip-copilot-extension` flag to bypass
+- Call `"$kast_bin" install copilot-extension --target-dir="$repo_root/.github" --yes=true`
 
-Then update `validate_grading_data()` in `validation.py` to load and validate against this schema file (using `jsonschema` or by keeping the current logic but referencing the schema as the source of truth). At minimum, add a comment pointing to the schema file so future developers know where the contract is defined.
+### 5C. Add `kast workspace ensure` to installer summary
 
-Also update `write_placeholder_grading()` in `run_value_proof.py` (line 62-81) to reference or import the schema to stay in sync.
+File: `kast.sh` (in `_install_summary_phase`, around line 1321, and the non-wizard summary around line 1623)
+
+Add to the "Next steps" output:
+```
+  cd /your/kotlin/project && kast workspace ensure
+```
+
+### 5D. Add global install manifest
+
+Create: `kast-cli/src/main/kotlin/io/github/amichne/kast/cli/InstallManifest.kt`
+
+```kotlin
+@Serializable
+data class InstallManifest(
+    val version: String,
+    val installedAt: String,  // ISO-8601
+    val platform: String,
+    val components: List<String>,
+    val managedPaths: List<String>,  // relative to ~/.kast
+    val shellRcPatches: List<ShellRcPatch>,
+    val repos: List<ManagedRepo>,
+)
+
+@Serializable
+data class ShellRcPatch(val file: String, val marker: String)
+
+@Serializable
+data class ManagedRepo(val path: String, val copilotExtensionVersion: String)
+```
+
+File: `kast.sh` — after the summary phase, write `$HOME/.kast/.manifest.json` with version, platform, components, managedPaths, and shellRcPatches. Use a python3 heredoc to write JSON.
+
+File: `kast-cli/src/main/kotlin/io/github/amichne/kast/cli/InstallCopilotExtensionService.kt` — after a successful copilot-extension install, update the manifest's `repos` list.
+
+### 5E. Fix destructive upgrade in `InstallEmbeddedResourceService`
+
+File: `kast-cli/src/main/kotlin/io/github/amichne/kast/cli/InstallEmbeddedResourceService.kt` (lines 40-54)
+
+When upgrading with `--yes=true`, the service calls `deletePathRecursively(targetPath)` which nukes the entire `.github` directory including user files (workflows, CODEOWNERS, etc.).
+
+Change the upgrade logic to:
+- Instead of deleting the entire target directory, iterate over `bundle.manifest` and delete only the managed files (same approach as `uninstallPackagedResources`)
+- Then call `bundle.writeTree(targetPath)` to write the new versions
+- Update the version marker
+
+---
+
+## Phase 6: Add `kast self` Subcommand Group
+
+### 6A. Add CLI parsing
+
+File: `kast-cli/src/main/kotlin/io/github/amichne/kast/cli/tty/CliCommandParser.kt`
+
+Add parsing for `self status`, `self doctor`, `self uninstall`, `self upgrade` subcommands.
+
+### 6B. Implement `SelfManagementService`
+
+Create: `kast-cli/src/main/kotlin/io/github/amichne/kast/cli/SelfManagementService.kt`
+
+- `status()`: Read `$HOME/.kast/.manifest.json`, print version, components, paths, managed repos
+- `doctor()`: Verify binary exists and is executable, config.toml is valid TOML, all managedPaths exist, resolve scripts can find the binary, python3 is available (for hooks), standalone backend runtime libs exist (if installed)
+- `uninstall()`: Read manifest, remove all managedPaths under `$HOME/.kast`, clean shell RC patches (remove the `# Added by the Kast installer` blocks), remove `$HOME/.kast` if empty, print summary
+- `upgrade()`: For now, print instructions to re-run the curl one-liner. Future: download latest release, swap symlinks, re-sync AI primitives, update manifest.
+
+Wire into `CliService.kt`'s command dispatch.
+
+---
+
+## Phase 7: Reduce `python3` Dependency in Hooks
+
+### 7A. Replace python3 SHA-256 in `hook-state.sh`
+
+File: `.github/hooks/hook-state.sh` (lines 4-16)
+
+Replace the python3 heredoc with `shasum`/`sha256sum`:
+```bash
+hook_state_file() {
+    local repo_root="$1"
+    local session_key
+    if command -v sha256sum >/dev/null 2>&1; then
+        session_key="$(printf '%s' "${repo_root}" | sha256sum | awk '{print $1}')"
+    elif command -v shasum >/dev/null 2>&1; then
+        session_key="$(printf '%s' "${repo_root}" | shasum -a 256 | awk '{print $1}')"
+    else
+        session_key="$(printf '%s' "${repo_root}" | python3 -c 'import hashlib,sys; print(hashlib.sha256(sys.stdin.read().encode()).hexdigest())')"
+    fi
+    printf '%s/copilot-hook-paths-%s.txt\n' "${TMPDIR:-/tmp}" "${session_key}"
+}
+```
+
+Apply the same pattern to `hook_skill_state_file` and `hook_shadowed_extension_state_file` in the same file.
+
+### 7B. Promote `export-session.py` into the packaged manifest
+
+File: `kast-cli/src/main/kotlin/io/github/amichne/kast/cli/EmbeddedCopilotExtensionResources.kt` (lines 52-55)
+
+Remove `"hooks/export-session.py"` from `EXCLUDED_SOURCE_FILES` and add it to `MANIFEST`.
+
+File: `kast-cli/build.gradle.kts` — update `embeddedCopilotHookFiles` to include `export-session.py`.
+
+File: `.github/hooks/session-end.sh` (lines 38-155) — replace the inline session export block with a call to `python3 "${SCRIPT_DIR}/export-session.py"`, passing hook input via environment.
+
+---
+
+## Phase 8: Make `skill-shadowing.json` Portable
+
+File: `.github/hooks/skill-shadowing.json` (lines 1-27)
+
+The packaged version references skills (`refresh-affected-agents`, `llm-wiki`) that only exist in the kast repo. For the embedded/packaged version:
+
+In `kast-cli/build.gradle.kts`, add a Gradle task that reads the source `skill-shadowing.json`, filters to only entries where `shadowingExtensionId` is present (i.e., `kast` and `kotlin-gradle-loop`), and writes the filtered version to the generated resources directory. Wire this into `syncPackagedCopilotExtensionResources`.
+
+The kast repo's own `.github/hooks/skill-shadowing.json` keeps all entries unchanged.
+
+---
+
+## Phase 9: Post-Install Verification
+
+File: `kast-cli/src/main/kotlin/io/github/amichne/kast/cli/InstallCopilotExtensionService.kt`
+
+After a successful copilot-extension install, add verification:
+- Check that `hooks.json` is valid JSON
+- Check that all shell scripts referenced in `hooks.json` exist and are executable
+- Run `resolve-kast-cli-path.sh` to verify binary resolution works
+- Check that `python3` is available (warn if not)
+
+Add a `warnings: List<String>` field to `InstallCopilotExtensionResult` (in `kast-cli/src/main/kotlin/io/github/amichne/kast/cli/results/InstallCopilotExtensionResult.kt`) and populate it with any verification failures.
+
+---
+
+## Phase 10: Documentation Updates
+
+Files:
+- `docs/getting-started/install.md` — update "Where kast stores configuration" to reflect new `$HOME/.kast` layout
+- `docs/troubleshooting.md` — update path references
+- `docs/for-agents/install-the-skill.md` — update global skill path from `~/.agents/skills/kast` to `~/.kast/lib/skills/kast`
+- `docs/getting-started/backends.md` — update to mention auto-start behavior of `workspace ensure`
+
+---
+
+## Phase 11: Test Updates
+
+- `analysis-api/src/test/kotlin/io/github/amichne/kast/api/WorkspacePathsTest.kt` — workspace data now resolves under `$HOME/.kast/workspaces`, not config home
+- `analysis-api/src/test/kotlin/io/github/amichne/kast/api/KastConfigTest.kt` — workspace directory resolver tests
+- `kast-cli/src/test/kotlin/io/github/amichne/kast/cli/CliServiceRuntimePathTest.kt` — verify new `installOptions()` defaults
+- `kast-cli/src/test/kotlin/io/github/amichne/kast/cli/EmbeddedCopilotExtensionResourcesTest.kt` — manifest audit catches `export-session.py` inclusion and `skill-shadowing.json` filtering
+- `kast-cli/src/test/kotlin/io/github/amichne/kast/cli/InstallCopilotExtensionServiceTest.kt`:
+  - Assert `export-session.py` exists after install
+  - Add test: install into `.github` that already has `workflows/` subdirectory, upgrade with `--yes=true`, verify `workflows/` is preserved (non-destructive upgrade)
+  - Add test: verification warnings are populated when `hooks.json` references missing scripts
+- `.github/scripts/smoke-installer.sh` — update assertions for new manifest file and paths
+
+---
+
+## Phase 12: Migration for Existing Users
+
+File: `kast.sh` (at the start of `cmd_install()`)
+
+Add a one-time migration function that runs when the installer detects the old layout:
+1. Detect old paths: `~/.local/bin/kast`, `~/.local/share/kast/instances`, `~/.agents/skills/kast`
+2. Move/symlink them to new locations under `~/.kast`
+3. Update config.toml paths if they reference old locations (e.g., `binaryPath = ~/.local/bin/kast` → `~/.kast/bin/kast`)
+4. Print a migration summary showing what was moved
+
+---
+
+## Execution Order
+
+The phases should be implemented roughly in this order due to dependencies:
+
+1. **Phase 1** (on-disk layout) — foundational, everything else depends on canonical paths
+2. **Phase 2** (resolve unification) — depends on Phase 1 for canonical path
+3. **Phase 5A-5B** (PATH propagation + copilot-extension phase) — depends on Phase 1
+4. **Phase 3** (auto-indexing) — depends on Phase 2 for reliable resolution
+5. **Phase 4** (version mismatch recovery) — depends on Phase 2
+6. **Phase 5C-5E** (manifest, summary, non-destructive upgrade) — can be parallel with 3-4
+7. **Phase 6** (self commands) — depends on Phase 5D (manifest)
+8. **Phase 7-8** (python3 reduction, portable skill-shadowing) — independent
+9. **Phase 9** (post-install verification) — depends on Phase 2
+10. **Phase 10-11** (docs, tests) — after all code changes
+11. **Phase 12** (migration) — last, after new layout is stable

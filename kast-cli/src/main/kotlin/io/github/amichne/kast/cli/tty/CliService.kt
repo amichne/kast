@@ -43,8 +43,13 @@ import io.github.amichne.kast.cli.options.DaemonStartOptions
 import io.github.amichne.kast.cli.results.DaemonStopResult
 import io.github.amichne.kast.cli.options.InstallOptions
 import io.github.amichne.kast.cli.results.InstallResult
+import io.github.amichne.kast.cli.results.SelfDoctorResult
+import io.github.amichne.kast.cli.results.SelfStatusResult
+import io.github.amichne.kast.cli.results.SelfUninstallResult
+import io.github.amichne.kast.cli.results.SelfUpgradeResult
 import io.github.amichne.kast.cli.InstallService
 import io.github.amichne.kast.cli.InstallCopilotExtensionService
+import io.github.amichne.kast.cli.SelfManagementService
 import io.github.amichne.kast.cli.options.InstallCopilotExtensionOptions
 import io.github.amichne.kast.cli.results.InstallCopilotExtensionResult
 import io.github.amichne.kast.cli.options.InstallSkillOptions
@@ -68,6 +73,7 @@ internal class CliService(
     private val installService: InstallService = InstallService(),
     private val installSkillService: InstallSkillService = InstallSkillService(),
     private val installCopilotExtensionService: InstallCopilotExtensionService = InstallCopilotExtensionService(),
+    private val selfManagementService: SelfManagementService = SelfManagementService(),
     private val configLoader: (Path) -> KastConfig = KastConfig::load,
     private val envLookup: (String) -> String? = System::getenv,
 ) {
@@ -281,6 +287,14 @@ internal class CliService(
 
     fun installCopilotExtension(options: InstallCopilotExtensionOptions): InstallCopilotExtensionResult =
         installCopilotExtensionService.install(options)
+
+    fun selfStatus(): SelfStatusResult = selfManagementService.status()
+
+    fun selfDoctor(): SelfDoctorResult = selfManagementService.doctor()
+
+    fun selfUninstall(): SelfUninstallResult = selfManagementService.uninstall()
+
+    fun selfUpgrade(): SelfUpgradeResult = selfManagementService.upgrade()
 
     suspend fun smoke(options: SmokeOptions): SmokeReport = smokeCommandSupport.run(options)
 

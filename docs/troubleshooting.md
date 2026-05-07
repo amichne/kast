@@ -29,13 +29,16 @@ that matches what you're seeing.
         ```
 
     3. Look for a stale socket file. If the daemon crashed without
-       cleanup, the socket may still exist:
+       cleanup, the socket may still exist in the configured socket
+       directory. By default, that is your platform temp directory, not
+       always `/tmp`:
 
         ```console
-        ls /tmp/kast-*.sock
+        find "${TMPDIR:-/tmp}" -maxdepth 1 -name 'kast-*.sock'
         ```
 
-        Remove any stale sockets and retry.
+        On macOS, `TMPDIR` is often under `/var/folders/...`. Remove any
+        stale sockets and retry.
 
 ??? question "Indexing takes too long"
 
@@ -82,10 +85,11 @@ that matches what you're seeing.
 
     `kast install copilot-extension --uninstall=true` removes only files
     listed in the packaged manifest plus `.github/.kast-copilot-version`.
-    Files you created under `.github` are preserved.
+    Files you created under `.github` are preserved, and the installer's
+    global inventory in `~/.kast/.manifest.json` drops the repo entry.
 
-    To inspect the managed set, reinstall with `--yes=true`, then uninstall
-    again:
+    To inspect the managed set, read `~/.kast/.manifest.json`, or reinstall
+    with `--yes=true`, then uninstall again:
 
     ```console
     kast install copilot-extension --yes=true

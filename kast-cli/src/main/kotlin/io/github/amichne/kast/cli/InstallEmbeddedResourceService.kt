@@ -50,7 +50,7 @@ internal abstract class InstallEmbeddedResourceService<O, R>(
                 if (!request.force) {
                     throw existingTargetFailure(targetPath)
                 }
-                deletePathRecursively(targetPath)
+                uninstallPackagedResources(targetPath)
             }
 
             Files.exists(targetPath) -> {
@@ -62,12 +62,17 @@ internal abstract class InstallEmbeddedResourceService<O, R>(
         }
 
         bundle.writeTree(targetPath)
-        return result(
-            installedAt = targetPath.toString(),
-            version = currentVersion,
-            skipped = false,
+        return postInstall(
+            targetPath,
+            result(
+                installedAt = targetPath.toString(),
+                version = currentVersion,
+                skipped = false,
+            ),
         )
     }
+
+    protected open fun postInstall(targetPath: Path, result: R): R = result
 
     protected abstract fun installRequest(
         options: O,

@@ -34,8 +34,9 @@ curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh | bash
 
 The wizard sniffs your environment (running IntelliJ, existing tools,
 Java version), lets you pick an install mode, writes
-`$HOME/.config/kast/config.toml`, installs runtime files under
-`$HOME/.kast`, and offers to drop in the Copilot skill.
+`$HOME/.config/kast/config.toml`, installs managed files under
+`$HOME/.kast`, records the install in `~/.kast/.manifest.json`, and can
+install the packaged Copilot surfaces you use next.
 
 ??? info "What the wizard does, step by step"
 
@@ -53,9 +54,13 @@ Java version), lets you pick an install mode, writes
     6. **IntelliJ plugin.** Push to the running IDE, or download the zip
        for manual install.
     7. **Copilot skill.** Install globally
-       (`~/.agents/skills/kast`), per-repo, or both. Uses `fzf` if
+       (`~/.kast/lib/skills/kast`), per-repo, or both. Uses `fzf` if
        available, falls back to a numbered menu.
-    8. **Summary.** Install root, binary path, next steps.
+    8. **Copilot extension.** When you're inside a Git repo, install the
+       packaged `.github` agents, hooks, and native extensions for that
+       workspace.
+    9. **Summary.** Install root, binary path, managed manifest, next
+       steps.
 
 ## Choose your setup
 
@@ -95,8 +100,8 @@ explicitly.
     ./kast.sh install --non-interactive
     ```
 
-    CLI only. No prompts, no skill install. Safe for CI and automated
-    images.
+    CLI only. No prompts, no skill install, and no Copilot extension
+    install. Safe for CI and automated images.
 
 === "Expert (--components)"
 
@@ -110,13 +115,20 @@ explicitly.
 ??? info "Where kast stores configuration"
 
     By default, `kast` reads user configuration from
-    `$HOME/.config/kast/config.toml`. Runtime and install files live under
-    `$HOME/.kast`:
+    `$HOME/.config/kast/config.toml`. The installer also writes
+    `$HOME/.config/kast/env`, which your shell sources to set
+    `KAST_CONFIG_HOME`. Managed runtime files live under `$HOME/.kast`:
 
-    - `$HOME/.kast/bin`
-    - `$HOME/.kast/lib`
-    - `$HOME/.kast/cache`
-    - `$HOME/.kast/logs`
+    - `$HOME/.kast/bin` — the `kast` launcher
+    - `$HOME/.kast/releases` and `$HOME/.kast/current` — installed CLI
+      releases and the active symlink
+    - `$HOME/.kast/backends` and `$HOME/.kast/plugins` — standalone
+      backend bits and IntelliJ plugin zips
+    - `$HOME/.kast/lib/skills` — global packaged skills
+    - `$HOME/.kast/workspaces` — per-workspace metadata and caches
+    - `$HOME/.kast/cache` and `$HOME/.kast/logs` — daemon caches and logs
+    - `$HOME/.kast/.manifest.json` — installer-managed inventory,
+      including shell patches and repo-local Copilot installs
 
     The only `kast`-specific environment variable is `KAST_CONFIG_HOME`.
     Set it only when you need to move the directory that contains
@@ -153,16 +165,19 @@ explicitly.
 |-------------------------------|-----------------------------------------------------------------------|
 | `--mode=minimal\|full\|auto`  | Drive the install wizard path (default: interactive)                  |
 | `--components=<list>`         | Expert override: `cli`, `intellij`, `backend`, `all` — skips wizard   |
-| `--skip-skill`                | Skip Copilot skill install step                                       |
-| `--non-interactive`           | Skip all prompts; implies `--skip-skill`                              |
+| `--skip-skill`                | Skip the Copilot skill install step                                   |
+| `--skip-copilot-extension`    | Skip the repo-local Copilot extension install step                    |
+| `--yes`                       | Auto-install the Copilot extension into `.github` when inside a Git repo |
+| `--non-interactive`           | Skip all prompts; implies `--skip-skill` and `--skip-copilot-extension` |
 | `--local`                     | Install from local `dist/` artifacts (built by `./kast.sh build`)     |
 
 ## Install the Copilot extension
 
 Install the Copilot extension when you want the repository-local GitHub
 Copilot files that ship with `kast`. The command copies packaged agents,
-hooks, and native extensions into `.github`, marks scripts executable, and
-writes `.github/.kast-copilot-version` so matching installs can be skipped.
+hooks, and native extensions into `.github`, marks scripts executable,
+writes `.github/.kast-copilot-version`, and records the managed repo in
+`~/.kast/.manifest.json`.
 
 From the repository root, run:
 
@@ -191,6 +206,10 @@ kast install copilot-extension --uninstall=true
 
 Uninstall removes the packaged manifest entries and the version marker. It
 preserves foreign files that you created under `.github`.
+
+When you run `./kast.sh install` from a Git repository, the installer offers
+this step for the current repo. Pass `--yes` to auto-install it, or
+`--skip-copilot-extension` to skip it.
 
 ### Install from IntelliJ or Android Studio
 

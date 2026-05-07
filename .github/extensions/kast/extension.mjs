@@ -110,17 +110,16 @@ async function resolveKastBinary() {
     }
   };
 
-  // Prefer repo-local artifacts over PATH: a globally installed CLI can be older than
-  // this extension and may not support the direct `kast <wrapper>` surface.
+  const configDir = process.env.KAST_CONFIG_HOME ?? join(homedir(), ".config", "kast");
+  addCandidate(readTomlKey(join(configDir, "config.toml"), "cli", "binaryPath"));
+  addCandidate(join(homedir(), ".kast", "bin", "kast"));
+
+  const pathResult = await execBash("command -v kast 2>/dev/null || command -v kast-cli 2>/dev/null || true");
+  if (pathResult.ok) addCandidate(pathResult.stdout.trim());
+
   addCandidate(join(REPO_ROOT, "kast-cli", "build", "scripts", "kast-cli"));
   addCandidate(join(REPO_ROOT, "dist", "cli", "kast-cli"));
 
-  const configDir = process.env.KAST_CONFIG_HOME ?? join(homedir(), ".config", "kast");
-  addCandidate(readTomlKey(join(configDir, "config.toml"), "cli", "binaryPath"));
-  addCandidate(join(homedir(), ".local", "bin", "kast"));
-
-  // Keep the shell resolver as a final compatibility source; validate its result
-  // below instead of trusting that PATH points at a matching CLI.
   if (existsSync(RESOLVE_SCRIPT)) {
     const {ok, stdout} = await execBash(`bash ${JSON.stringify(RESOLVE_SCRIPT)}`);
     if (ok) addCandidate(stdout.trim());
@@ -446,22 +445,46 @@ const session = await joinSession({
       // Version parity: compare CLI version against the installed extension marker.
       const cliVersion = await readCliVersion(bin);
       const installedVersion = readInstalledExtensionVersion();
+      let warningContext = null;
       if (cliVersion && installedVersion && cliVersion !== installedVersion) {
-        const msg =
-          `kast version mismatch: CLI reports ${cliVersion} but the installed extension was written by ${installedVersion}. ` +
-          `Run \`kast install copilot-extension\` to reinstall from the current CLI, then restart the session.`;
-        await session.log(`kast extension: ${msg}`, { level: "error" });
-        return { additionalContext: `KAST EXTENSION BLOCKED — ${msg}` };
+        const syncResult = await execBash(
+          `${JSON.stringify(bin)} install copilot-extension --target-dir=${JSON.stringify(join(REPO_ROOT, ".github"))} --yes=true`,
+        );
+        if (syncResult.ok) {
+          await session.log(
+            `kast extension: auto-synced copilot extension from ${installedVersion} to ${cliVersion}`,
+            { level: "info" },
+          );
+        } else {
+          const msg =
+            `kast version mismatch: CLI=${cliVersion}, extension=${installedVersion}. ` +
+            "Auto-sync failed. Run `kast install copilot-extension` manually.";
+          warningContext = `KAST EXTENSION WARNING — ${msg}`;
+          await session.log(`kast extension: ${msg}`, { level: "warning" });
+        }
       }
       kastVersion = cliVersion;
 
       markShadowedExtensionLoaded(REPO_ROOT, "kast");
       await session.log(`kast extension ready (binary: ${bin}, version: ${cliVersion ?? "unknown"})`, { ephemeral: true });
+      execBash(
+        `${JSON.stringify(bin)} workspace ensure --workspace-root=${JSON.stringify(REPO_ROOT)} --accept-indexing=true`,
+      ).then(({ok, stderr}) => {
+        if (!ok) {
+          session.log(
+            `kast extension: workspace ensure failed for ${REPO_ROOT}. stderr: ${stderr.trim().slice(0, 200)}`,
+            { level: "warning" },
+          );
+        } else {
+          session.log(`kast extension: backend ready for ${REPO_ROOT}`, { ephemeral: true });
+        }
+      }).catch(() => {});
+      const toolContext =
+        `Kast tools available natively: kast_workspace_files, kast_scaffold, kast_resolve, kast_references, kast_callers, kast_metrics, kast_diagnostics, kast_rename, kast_write_and_validate. ` +
+        `Use these for ALL Kotlin semantic work — they are far cheaper than view/grep/edit on .kt source. ` +
+        `If a bash fallback is genuinely necessary, run ${bin} <wrapper> '<json>' directly; do not rely on exported shell state across tool calls.`;
       return {
-        additionalContext:
-          `Kast tools available natively: kast_workspace_files, kast_scaffold, kast_resolve, kast_references, kast_callers, kast_metrics, kast_diagnostics, kast_rename, kast_write_and_validate. ` +
-          `Use these for ALL Kotlin semantic work — they are far cheaper than view/grep/edit on .kt source. ` +
-          `If a bash fallback is genuinely necessary, run ${bin} <wrapper> '<json>' directly; do not rely on exported shell state across tool calls.`,
+        additionalContext: warningContext ? `${warningContext}\n${toolContext}` : toolContext,
       };
     },
     onPreToolUse: async (input) => {

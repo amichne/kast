@@ -8,5 +8,6 @@ internal data class InstallCopilotExtensionResult(
     val installedAt: String,
     val version: String,
     val skipped: Boolean,
+    val warnings: List<String> = emptyList(),
     val schemaVersion: Int = SCHEMA_VERSION,
 )

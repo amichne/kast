@@ -7,14 +7,15 @@ icon: lucide/download
 
 # Install the packaged skill
 
-The packaged Kast skill is a directory of files that lives in your
-repo and tells your LLM agent how to drive `kast`. Installing it copies
-the files into your workspace and writes a `.kast-version` marker so
-the same CLI version can skip reinstall.
+The packaged `kast` skill is a directory of files that tells your LLM
+agent how to drive `kast`. Installing it copies the files into either a
+repo-local skill directory or the global default at
+`~/.kast/lib/skills/kast`, then writes a `.kast-version` marker so the
+same CLI version can skip reinstall.
 
 ## Prerequisites
 
-You need the Kast CLI on your machine first. If you don't have it, see
+You need the `kast` CLI on your machine first. If you don't have it, see
 [Install](../getting-started/install.md).
 
 ## Install the skill
@@ -33,6 +34,9 @@ From the workspace root:
     - `.agents/skills/kast`
     - `.github/skills/kast`
     - `.claude/skills/kast`
+
+   If none of those directories exist, it installs globally at
+   `~/.kast/lib/skills/kast`.
 
 3. Confirm — look for `.kast-version` in the target directory. If the
    same CLI version was already installed, the JSON output shows

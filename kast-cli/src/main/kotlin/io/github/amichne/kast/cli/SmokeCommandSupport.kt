@@ -69,6 +69,7 @@ internal class SmokeCommandSupport(
             backendName = null,
             waitTimeoutMillis = PositiveLong(runtimeWaitTimeoutMillis),
             acceptIndexing = true,
+            noAutoStart = true,
         )
 
         val ensureResult = runCatching {

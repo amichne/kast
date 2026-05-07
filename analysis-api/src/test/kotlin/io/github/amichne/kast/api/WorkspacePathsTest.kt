@@ -13,6 +13,11 @@ class WorkspacePathsTest {
     lateinit var tempDir: Path
 
     @Test
+    fun `kast install root uses home dot kast`() {
+        assertEquals(defaultInstallRootPath(), kastInstallRoot())
+    }
+
+    @Test
     fun allPathsResolveFromConfigOnly() {
         val configHome = tempDir.resolve("config-home")
         val hostileEnv = mapOf(
@@ -41,6 +46,21 @@ class WorkspacePathsTest {
         assertEquals(installRoot.resolve("lib").toString(), defaults.paths.libDir.value)
         assertEquals(installRoot.resolve("cache").toString(), defaults.paths.cacheDir.value)
         assertEquals(installRoot.resolve("logs").toString(), defaults.paths.logsDir.value)
+    }
+
+    @Test
+    fun `workspace data directory uses install root for git remotes`() {
+        val installRoot = tempDir.resolve("install-root")
+        val workspaceRoot = tempDir.resolve("workspace")
+        val resolver = WorkspaceDirectoryResolver(
+            installRoot = { installRoot },
+            gitRemoteResolver = { GitRemote(host = "github.com", owner = "amichne", repo = "kast") },
+        )
+
+        assertEquals(
+            installRoot.resolve("workspaces/github.com/amichne/kast"),
+            resolver.workspaceDataDirectory(workspaceRoot),
+        )
     }
 
     @Nested
