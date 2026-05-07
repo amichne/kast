@@ -197,6 +197,7 @@ internal class SelfManagementService(
                         removed = true
                         return@forEach
                     }
+                    filtered += line
                 }
                 skipUntil != null -> {
                     if (line == skipUntil) {

@@ -207,7 +207,7 @@ class InstallSkillServiceTest {
     }
 
     @Test
-    fun `install overwrites an existing skill directory when forced`() {
+    fun `install preserves unrelated files when forced`() {
         val targetDir = tempDir.resolve("skills")
         val initialService = InstallSkillService(embeddedSkillResources = EmbeddedSkillResources(version = "1.0.0"))
         val updatedService = InstallSkillService(embeddedSkillResources = EmbeddedSkillResources(version = "2.0.0"))
@@ -232,7 +232,8 @@ class InstallSkillServiceTest {
 
         assertFalse(result.skipped)
         assertEquals("2.0.0", Files.readString(targetPath.resolve(".kast-version")).trim())
-        assertFalse(Files.exists(targetPath.resolve("stale.txt")))
+        assertTrue(Files.exists(targetPath.resolve("stale.txt")))
+        assertEquals("old", Files.readString(targetPath.resolve("stale.txt")))
     }
 
     @Test

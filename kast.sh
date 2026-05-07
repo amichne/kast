@@ -652,13 +652,13 @@ _install_array_contains() {
 _install_record_shell_patch() {
   local rc_file="$1" marker="$2"
   local entry="${rc_file}|${marker}"
-  _install_array_contains "$entry" "${_INSTALL_SHELL_PATCHES[@]}" || _INSTALL_SHELL_PATCHES+=("$entry")
+  _install_array_contains "$entry" "${_INSTALL_SHELL_PATCHES[@]:-}" || _INSTALL_SHELL_PATCHES+=("$entry")
 }
 
 _install_record_repo() {
   local repo_path="$1" version="$2"
   local entry="${repo_path}|${version}"
-  _install_array_contains "$entry" "${_INSTALL_MANAGED_REPOS[@]}" || _INSTALL_MANAGED_REPOS+=("$entry")
+  _install_array_contains "$entry" "${_INSTALL_MANAGED_REPOS[@]:-}" || _INSTALL_MANAGED_REPOS+=("$entry")
 }
 
 _install_update_config_references() {
@@ -743,7 +743,7 @@ _install_migrate_legacy_layout() {
   if [[ "$migrated" == "true" ]]; then
     log_section "Legacy migration"
     local line
-    for line in "${_INSTALL_MIGRATION_SUMMARY[@]}"; do
+    for line in "${_INSTALL_MIGRATION_SUMMARY[@]:-}"; do
       log_success "$line"
     done
   fi
@@ -753,8 +753,8 @@ _install_write_manifest() {
   local install_root="$1" version="$2" platform_id="$3"
   local manifest_file="${install_root}/.manifest.json"
   local shell_patches repo_entries
-  shell_patches="$(printf '%s\n' "${_INSTALL_SHELL_PATCHES[@]}")"
-  repo_entries="$(printf '%s\n' "${_INSTALL_MANAGED_REPOS[@]}")"
+  shell_patches="$(printf '%s\n' "${_INSTALL_SHELL_PATCHES[@]:-}")"
+  repo_entries="$(printf '%s\n' "${_INSTALL_MANAGED_REPOS[@]:-}")"
   INSTALL_SHELL_PATCHES="$shell_patches" INSTALL_REPOS="$repo_entries" python3 - "$manifest_file" "$install_root" "$version" "$platform_id" <<'PYMANIFEST'
 import json
 import os
@@ -933,6 +933,7 @@ _install_shell_completion() {
   touch "$rc_file"
 
   if grep -Fq "$COMPLETION_START_MARKER" "$rc_file"; then
+    _install_record_shell_patch "$rc_file" "$COMPLETION_START_MARKER"
     log_step "Shell completion is already configured in ${rc_file}"
     return
   fi
@@ -963,6 +964,7 @@ _install_shell_completion() {
     printf 'fi\n'
     printf '%s\n' "$COMPLETION_END_MARKER"
   } >> "$rc_file"
+  _install_record_shell_patch "$rc_file" "$COMPLETION_START_MARKER"
   log_success "Enabled ${shell_name} completions in ${rc_file}"
 }
 
@@ -1404,6 +1406,7 @@ _install_config_source_in_rc() {
       printf '%s\n' "$rc_line"
     done < "$rc_file" > "$tmp_rc"
     cat "$tmp_rc" > "$rc_file"; rm -f "$tmp_rc"
+    _install_record_shell_patch "$rc_file" "$KAST_ENV_SOURCE_START_MARKER"
     log_step "Updated kast env source in ${rc_file}"
     return
   fi
@@ -1412,6 +1415,7 @@ _install_config_source_in_rc() {
     printf '[[ -f "%s" ]] && source "%s"\n' "$config_file" "$config_file"
     printf '%s\n' "$KAST_ENV_SOURCE_END_MARKER"
   } >> "$rc_file"
+  _install_record_shell_patch "$rc_file" "$KAST_ENV_SOURCE_START_MARKER"
   log_success "Added kast env source to ${rc_file}"
 }
 
@@ -1518,7 +1522,7 @@ _install_skill_phase() {
 }
 
 _install_copilot_extension_phase() {
-  local bin_dir="$1" non_interactive="${2:-false}"
+  local bin_dir="$1" non_interactive="${2:-false}" assume_yes="${3:-false}" install_version="${4:-unknown}"
   local kast_bin="${bin_dir}/kast"
   if [[ ! -x "$kast_bin" ]]; then
     kast_bin="$(command -v kast 2>/dev/null || true)"
@@ -1527,15 +1531,22 @@ _install_copilot_extension_phase() {
 
   log_section "Install Copilot extension"
 
-  if [[ "$non_interactive" == "true" ]] || ! can_prompt; then
-    log_note "Skipped copilot-extension install. Run: kast install copilot-extension"
-    return 0
-  fi
-
   local repo_root
   repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
   if [[ -z "$repo_root" ]]; then
     log_note "Not inside a git repository; skipping copilot-extension install"
+    return 0
+  fi
+
+  if [[ "$assume_yes" == "true" ]]; then
+    "$kast_bin" install copilot-extension --target-dir="${repo_root}/.github" --yes=true
+    _install_record_repo "$repo_root" "$install_version"
+    log_success "Copilot extension installed at ${repo_root}/.github"
+    return 0
+  fi
+
+  if [[ "$non_interactive" == "true" ]] || ! can_prompt; then
+    log_note "Skipped copilot-extension install. Run: kast install copilot-extension"
     return 0
   fi
 
@@ -1551,6 +1562,7 @@ _install_copilot_extension_phase() {
   case "$ext_choice" in
     yes)
       "$kast_bin" install copilot-extension --target-dir="${repo_root}/.github" --yes=true
+      _install_record_repo "$repo_root" "$install_version"
       log_success "Copilot extension installed at ${repo_root}/.github" ;;
     no|*)
       log_note "Skipped copilot-extension install. Run: kast install copilot-extension" ;;
@@ -1578,6 +1590,7 @@ _install_summary_phase() {
   printf '  %s\n' "$(colorize '1;33' 'Next steps:')" >&2
   printf '  %s\n' "  Open a new shell (or: source ${config_file})" >&2
   printf '  %s\n' "  kast --help" >&2
+  printf '  %s\n' "  cd /your/kotlin/project && kast workspace ensure" >&2
   if [[ "$intellij_action" == "push" ]]; then
     printf '  %s\n' "  Restart IntelliJ IDEA to activate the plugin" >&2
   elif [[ "$intellij_action" == "zip" ]]; then
@@ -1590,7 +1603,7 @@ _install_summary_phase() {
 }
 
 cmd_install() {
-  local components="" local_build="false" non_interactive="false"
+  local components="" local_build="false" non_interactive="false" assume_yes="false"
   local install_mode_flag="" skip_skill="false" skip_copilot_extension="false"
 
   while [[ $# -gt 0 ]]; do
@@ -1601,6 +1614,7 @@ cmd_install() {
       --mode)         [[ $# -ge 2 ]] || die "Missing value for --mode"; install_mode_flag="$2"; shift 2 ;;
       --skip-skill)   skip_skill="true"; shift ;;
       --skip-copilot-extension) skip_copilot_extension="true"; shift ;;
+      --yes)          assume_yes="true"; shift ;;
       --local)        local_build="true"; shift ;;
       --non-interactive) non_interactive="true"; skip_skill="true"; skip_copilot_extension="true"; shift ;;
       --help|-h)
@@ -1619,6 +1633,7 @@ Options:
                               Skips the wizard entirely; same as previous behavior
   --skip-skill              Skip Copilot skill install step
   --skip-copilot-extension  Skip Copilot extension install step
+  --yes                     Auto-install the Copilot extension when inside a git repo
   --local                   Install from local dist/ artifacts (built by ./kast.sh build)
   --non-interactive         Skip all interactive prompts (implies --skip-skill, --skip-copilot-extension)
   --help, -h                Show this help
@@ -1627,6 +1642,10 @@ USAGE
       *) die "Unknown argument: $1" ;;
     esac
   done
+
+  _INSTALL_SHELL_PATCHES=()
+  _INSTALL_MANAGED_REPOS=()
+  _INSTALL_MIGRATION_SUMMARY=()
 
   _install_banner
 
@@ -1641,6 +1660,8 @@ USAGE
   install_root="${HOME}/.kast"
   bin_dir="${install_root}/bin"
   shell_name="$(_install_resolve_shell_name)"
+
+  _install_migrate_legacy_layout "$install_root" "$bin_dir"
 
   # Phase 1: Detect environment
   log_section "Detecting environment"
@@ -1863,7 +1884,7 @@ USAGE
 
   # Phase 8.5: Copilot extension
   if [[ "$skip_copilot_extension" != "true" && "$install_cli" == "true" ]]; then
-    _install_copilot_extension_phase "$bin_dir" "$non_interactive" || true
+    _install_copilot_extension_phase "$bin_dir" "$non_interactive" "$assume_yes" "${release_tag:-${KAST_VERSION:-unknown}}" || true
   fi
 
   # Phase 9: Summary
@@ -1880,6 +1901,7 @@ USAGE
     log "Config:        $(_install_config_dir)/env"
     log "Components:    ${components}"
     [[ -n "${rc_file:-}" ]] && log "Shell RC:      ${rc_file}"
+    log "Next:          cd /your/kotlin/project && kast workspace ensure"
     log_section "Ready"
     if [[ "$install_cli" == "true" ]]; then
       log_success "Launcher: ${bin_dir}/kast"
@@ -1892,6 +1914,9 @@ USAGE
     [[ "$install_intellij" == "true" ]]  && log_step "IntelliJ plugin: ${install_root}/plugins/"
     [[ "$install_standalone" == "true" ]] && log_success "Standalone backend: ${install_root}/backends/current/"
   fi
+
+  local manifest_version="${release_tag:-${KAST_VERSION:-unknown}}"
+  _install_write_manifest "$install_root" "$manifest_version" "$platform_id"
 }
 
 # ===========================================================================
