@@ -76,18 +76,18 @@ class DynamicTimeoutScalingTest {
      * Verifies that [AnalysisDispatcher] uses [AnalysisServerConfig.effectiveRequestTimeoutMillis]
      * rather than raw [AnalysisServerConfig.requestTimeoutMillis].
      *
-     * With workspaceFileCount=20_000 and base=50ms:
-     *   effectiveTimeout ≈ 50 * log2(20) ≈ 216ms
+     * With workspaceFileCount=50_000 and base=100ms:
+     *   effectiveTimeout ≈ 100 * log2(50) ≈ 564ms
      *
-     * The backend deliberately takes 120ms. If the dispatcher used the raw 50ms timeout the
+     * The backend deliberately takes 200ms. If the dispatcher used the raw 100ms timeout the
      * request would always time out; because the dispatcher must use effectiveRequestTimeoutMillis
-     * (≈216ms > 120ms) the request must complete successfully.
+     * (≈564ms > 200ms) the request must complete successfully.
      */
     @Test
     fun dispatcherUsesEffectiveTimeoutAllowingSlowRequestsForLargeWorkspaces() = runBlocking {
-        val config = AnalysisServerConfig(requestTimeoutMillis = 50, workspaceFileCount = 20_000)
+        val config = AnalysisServerConfig(requestTimeoutMillis = 100, workspaceFileCount = 50_000)
         val dispatcher = AnalysisDispatcher(
-            backend = SlowHealthBackend(delayMs = 120),
+            backend = SlowHealthBackend(delayMs = 200),
             config = config,
         )
 
