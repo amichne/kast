@@ -10,6 +10,20 @@ inside a running IntelliJ IDEA instance.
 Subdirectory `AGENTS.md` files narrow these rules for their own units. When a
 rule exists in both places, follow the deeper file.
 
+## Agent skills
+
+### Issue tracker
+
+Issues and PRDs are tracked in GitHub Issues for `amichne/kast` using the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Triage uses the canonical label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+This is a single-context repo: use root `CONTEXT.md` and `docs/adr/` when they exist. See `docs/agents/domain.md`.
+
 ## North stars
 
 Carry these principles into every change in this repository.

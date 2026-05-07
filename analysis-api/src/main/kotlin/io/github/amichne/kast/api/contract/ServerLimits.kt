@@ -15,4 +15,6 @@ data class ServerLimits(
     val requestTimeoutMillis: Long,
     @DocField(description = "Maximum number of requests the server will process concurrently.")
     val maxConcurrentRequests: Int,
+    @DocField(description = "Maximum time in milliseconds to spend walking a single candidate file during reference search. Files whose PSI walk exceeds this budget are skipped.")
+    val perFileScanBudgetMillis: Long = 5_000,
 )

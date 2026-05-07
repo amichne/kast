@@ -44,6 +44,10 @@
     "allPublicConstructors": true
   },
   {
+    "name": "io.github.amichne.kast.api.client.fields.IndexingPhase2Parallelism",
+    "allPublicConstructors": true
+  },
+  {
     "name": "io.github.amichne.kast.api.client.fields.IndexingReferenceBatchSize",
     "allPublicConstructors": true
   },

@@ -61,6 +61,12 @@
       "source": "/Users/amichne/.codex/skills/llm-wiki",
       "sourceType": "local",
       "computedHash": "3f532658613c7f9be060089c9549d6ae9926f895fdc352baf34b5cf9e40e60b2"
+    },
+    "setup-matt-pocock-skills": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/setup-matt-pocock-skills/SKILL.md",
+      "computedHash": "3a32f8f1ed8160c9d286a2aabe88ee9b884c6f3f88a7a6c47b7d5d552c959587"
     }
   }
 }

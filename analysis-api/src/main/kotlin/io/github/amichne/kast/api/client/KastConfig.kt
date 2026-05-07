@@ -44,6 +44,7 @@ data class KastConfig(
                 indexing = IndexingConfig(
                     phase2Enabled = IndexingPhase2Enabled(true),
                     phase2BatchSize = IndexingPhase2BatchSize(50),
+                    phase2Parallelism = IndexingPhase2Parallelism(2),
                     identifierIndexWaitMillis = IndexingIdentifierIndexWaitMillis(10_000L),
                     referenceBatchSize = IndexingReferenceBatchSize(50),
                     remote = RemoteIndexConfig(
@@ -121,6 +122,7 @@ data class ServerConfig(
 data class IndexingConfig(
     val phase2Enabled: IndexingPhase2Enabled,
     val phase2BatchSize: IndexingPhase2BatchSize,
+    val phase2Parallelism: IndexingPhase2Parallelism,
     val identifierIndexWaitMillis: IndexingIdentifierIndexWaitMillis,
     val referenceBatchSize: IndexingReferenceBatchSize,
     val remote: RemoteIndexConfig,
@@ -202,6 +204,7 @@ data class ServerConfigOverride(
 data class IndexingConfigOverride(
     val phase2Enabled: IndexingPhase2Enabled? = null,
     val phase2BatchSize: IndexingPhase2BatchSize? = null,
+    val phase2Parallelism: IndexingPhase2Parallelism? = null,
     val identifierIndexWaitMillis: IndexingIdentifierIndexWaitMillis? = null,
     val referenceBatchSize: IndexingReferenceBatchSize? = null,
     val remote: RemoteIndexConfigOverride? = null,
@@ -286,6 +289,7 @@ private fun ServerConfig.merge(override: ServerConfigOverride?): ServerConfig = 
 private fun IndexingConfig.merge(override: IndexingConfigOverride?): IndexingConfig = copy(
     phase2Enabled = override?.phase2Enabled ?: phase2Enabled,
     phase2BatchSize = override?.phase2BatchSize ?: phase2BatchSize,
+    phase2Parallelism = override?.phase2Parallelism ?: phase2Parallelism,
     identifierIndexWaitMillis = override?.identifierIndexWaitMillis ?: identifierIndexWaitMillis,
     referenceBatchSize = override?.referenceBatchSize ?: referenceBatchSize,
     remote = remote.merge(override?.remote),

@@ -1,6 +1,7 @@
 package io.github.amichne.kast.standalone
 
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
@@ -14,6 +15,18 @@ import kotlin.concurrent.write
 internal interface SessionLock {
     fun <T> read(action: () -> T): T
     fun <T> write(action: () -> T): T
+
+    /**
+     * Attempts to acquire the write lock within [timeoutMillis] milliseconds.
+     *
+     * Returns the result of [action] when the lock was acquired, or `null` when the
+     * acquisition timed out.  The lock is always released if it was acquired, even if
+     * [action] throws.
+     *
+     * **Caller contract**: [T] must be non-nullable.  A `null` return always means
+     * "timeout"; a non-null return always means the action completed under the lock.
+     */
+    fun <T> tryWrite(timeoutMillis: Long, action: () -> T): T?
 }
 
 internal class ReentrantSessionLock : SessionLock {
@@ -23,6 +36,19 @@ internal class ReentrantSessionLock : SessionLock {
     private val lock = ReentrantReadWriteLock(/* fair = */ true)
     override fun <T> read(action: () -> T): T = lock.read(action)
     override fun <T> write(action: () -> T): T = lock.write(action)
+
+    /**
+     * Attempts to acquire the write lock within [timeoutMillis] milliseconds.
+     * Returns `null` on timeout; propagates any exception thrown by [action].
+     */
+    override fun <T> tryWrite(timeoutMillis: Long, action: () -> T): T? {
+        if (!lock.writeLock().tryLock(timeoutMillis, TimeUnit.MILLISECONDS)) return null
+        return try {
+            action()
+        } finally {
+            lock.writeLock().unlock()
+        }
+    }
 }
 
 /**
@@ -56,6 +82,17 @@ internal class InstrumentedSessionLock(
     override fun <T> write(action: () -> T): T {
         val start = clock.nanoTime()
         return delegate.write(action).also {
+            _events += LockEvent(LockType.WRITE, Thread.currentThread().name, start, clock.nanoTime())
+        }
+    }
+
+    /**
+     * Delegates to [ReentrantSessionLock.tryWrite].  Records a [LockType.WRITE] event only
+     * when the lock was successfully acquired (i.e., the return value is non-null).
+     */
+    override fun <T> tryWrite(timeoutMillis: Long, action: () -> T): T? {
+        val start = clock.nanoTime()
+        return delegate.tryWrite(timeoutMillis, action)?.also {
             _events += LockEvent(LockType.WRITE, Thread.currentThread().name, start, clock.nanoTime())
         }
     }

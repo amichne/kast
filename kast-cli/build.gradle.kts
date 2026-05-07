@@ -9,7 +9,7 @@ val nativeConfigDir = layout.projectDirectory.dir(
     "src/main/resources/META-INF/native-image/io.github.amichne.kast/kast-cli",
 )
 val packagedSkillSourceDir = rootProject.layout.projectDirectory.dir(".agents/skills/kast")
-val packagedCopilotAgentsSourceDir = rootProject.layout.projectDirectory.dir(".github/agents")
+val packagedCopilotAgentsSourceDir = rootProject.layout.projectDirectory.dir(".agents/agents")
 val packagedCopilotHooksSourceDir = rootProject.layout.projectDirectory.dir(".github/hooks")
 val packagedCopilotExtensionsSourceDir = rootProject.layout.projectDirectory.dir(".github/extensions")
 val embeddedSkillFiles = listOf(
