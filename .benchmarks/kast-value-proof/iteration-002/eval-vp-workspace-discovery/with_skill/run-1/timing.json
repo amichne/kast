@@ -1,7 +1,0 @@
-{
-  "executor_duration_seconds": 46,
-  "tool_call_count": 1,
-  "errors_encountered": 0,
-  "kast_tool_calls": 1,
-  "bash_or_grep_calls": 2
-}

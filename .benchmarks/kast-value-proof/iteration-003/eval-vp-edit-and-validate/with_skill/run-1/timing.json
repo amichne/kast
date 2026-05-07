@@ -1,8 +1,0 @@
-{
-  "start_iso": "2026-05-07T02:48:01Z",
-  "end_iso": "2026-05-07T02:49:27Z",
-  "eval": "eval-vp-edit-and-validate",
-  "run": "with_skill/run-1",
-  "workspace": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/_workspaces/konditional-with",
-  "notes": "start recorded before kast_resolve; end recorded after kast_diagnostics and compile validation; edit inserted annotation at offset 538"
-}
