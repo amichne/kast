@@ -25,6 +25,7 @@ const RESOLVE_SCRIPT = join(HERE, "scripts", "resolve-kast.sh");
 const COPILOT_VERSION_MARKER = join(HERE, "..", "..", ".kast-copilot-version");
 
 let kastBinary = null;
+let kastVersion = null;
 let resolveError = null;
 
 // Minimal TOML reader — handles only the subset written by the kast installer.
@@ -425,16 +426,21 @@ const session = await joinSession({
         );
         return {};
       }
-      markShadowedExtensionLoaded(REPO_ROOT, "kast");
-      const extensionVersion = readInstalledExtensionVersion();
-      const cliVersion = extensionVersion ? await readCliVersion(bin) : null;
-      if (extensionVersion && cliVersion && extensionVersion !== cliVersion) {
-        await session.log(
-          `kast extension: CLI/extension version drift detected (cli: ${cliVersion}, extension: ${extensionVersion}). Reinstall with 'kast install copilot-extension --yes=true'.`,
-          { level: "warning" },
-        );
+
+      // Version parity: compare CLI version against the installed extension marker.
+      const cliVersion = await readCliVersion(bin);
+      const installedVersion = readInstalledExtensionVersion();
+      if (cliVersion && installedVersion && cliVersion !== installedVersion) {
+        const msg =
+          `kast version mismatch: CLI reports ${cliVersion} but the installed extension was written by ${installedVersion}. ` +
+          `Run \`kast install copilot-extension\` to reinstall from the current CLI, then restart the session.`;
+        await session.log(`kast extension: ${msg}`, { level: "error" });
+        return { additionalContext: `KAST EXTENSION BLOCKED — ${msg}` };
       }
-      await session.log(`kast extension ready (binary: ${bin})`, { ephemeral: true });
+      kastVersion = cliVersion;
+
+      markShadowedExtensionLoaded(REPO_ROOT, "kast");
+      await session.log(`kast extension ready (binary: ${bin}, version: ${cliVersion ?? "unknown"})`, { ephemeral: true });
       return {
         additionalContext:
           `Kast tools available natively: kast_workspace_files, kast_scaffold, kast_resolve, kast_references, kast_callers, kast_metrics, kast_diagnostics, kast_rename, kast_write_and_validate. ` +

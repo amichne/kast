@@ -1,9 +1,0 @@
-interface:
-  display_name: "Kast"
-  short_description: "Structured Kotlin semantic analysis via packaged kast wrappers"
-  default_prompt: >
-    Locate the packaged kast skill root, then use the wrapper scripts in
-    scripts/ for resolve, references, callers, diagnostics, impact, and rename
-    workflows. Trust the wrapper JSON on stdout and inspect log_file only when
-    ok=false or daemon notes matter. Use raw kast CLI only when a wrapper does
-    not exist.
