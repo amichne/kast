@@ -279,19 +279,19 @@ internal object CliCommandCatalog {
     private val instancesRootOption = CliOptionMetadata(
         key = "instances-root",
         usage = "--instances-root=/absolute/path/to/instances",
-        description = "Root directory for instances. Defaults to ~/.local/share/kast/instances.",
+        description = "Root directory for instances. Defaults to ~/.kast/releases.",
         completionKind = CliOptionCompletionKind.DIRECTORY,
     )
     private val binDirOption = CliOptionMetadata(
         key = "bin-dir",
         usage = "--bin-dir=/absolute/path/to/bin",
-        description = "Directory for launcher scripts. Defaults to ~/.local/bin.",
+        description = "Directory for launcher scripts. Defaults to ~/.kast/bin.",
         completionKind = CliOptionCompletionKind.DIRECTORY,
     )
     private val skillTargetDirOption = CliOptionMetadata(
         key = "target-dir",
         usage = "--target-dir=/absolute/path/to/skills",
-        description = "Directory to install the packaged skill in. Auto-detected from CWD when omitted.",
+        description = "Directory to install the packaged skill in. Auto-detected from CWD when omitted, or ~/.kast/lib/skills when no workspace skills directory exists.",
         completionKind = CliOptionCompletionKind.DIRECTORY,
     )
     private val copilotTargetDirOption = CliOptionMetadata(
@@ -883,7 +883,7 @@ internal object CliCommandCatalog {
             summary = "Install a portable Kast archive as a named local instance.",
             description = "Extracts a portable zip archive, wires up the instance under the instances root, and creates a launcher script in the bin directory.",
             usages = listOf(
-                "$CLI_EXECUTABLE_NAME install --archive=/absolute/path/to/kast-portable.zip [--instance=<name>] [--bin-dir=~/.local/bin] [--instances-root=~/.local/share/kast/instances]",
+                "$CLI_EXECUTABLE_NAME install --archive=/absolute/path/to/kast-portable.zip [--instance=<name>] [--bin-dir=~/.kast/bin] [--instances-root=~/.kast/releases]",
             ),
             options = listOf(archiveOption, instanceNameOption, binDirOption, instancesRootOption),
             examples = listOf(
@@ -895,7 +895,7 @@ internal object CliCommandCatalog {
             path = listOf("install", "skill"),
             group = CliCommandGroup.CLI_MANAGEMENT,
             summary = "Install the packaged kast into the current workspace.",
-            description = "Copies the bundled kast into the nearest recognised skills directory (.agents/skills, .github/skills, or .claude/skills), or the path given by --target-dir. Installed skill trees include a .kast-version marker so matching installs can be skipped safely.",
+            description = "Copies the bundled kast into the nearest recognised skills directory (.agents/skills, .github/skills, or .claude/skills), otherwise ~/.kast/lib/skills, or the path given by --target-dir. Installed skill trees include a .kast-version marker so matching installs can be skipped safely.",
             usages = listOf(
                 "$CLI_EXECUTABLE_NAME install skill [--target-dir=/absolute/path/to/skills] [--name=kast] [--yes=true]",
             ),

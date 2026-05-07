@@ -591,10 +591,10 @@ internal data class ParsedArguments(
             instanceName = options["instance"]?.takeIf(String::isNotEmpty),
             instancesRoot = options["instances-root"]
                                 ?.let { Path.of(it).toAbsolutePath().normalize() }
-                            ?: home.resolve(".local/share/kast/instances"),
+                            ?: home.resolve(".kast/releases"),
             binDir = options["bin-dir"]
                          ?.let { Path.of(it).toAbsolutePath().normalize() }
-                     ?: home.resolve(".local/bin"),
+                     ?: home.resolve(".kast/bin"),
         )
     }
 

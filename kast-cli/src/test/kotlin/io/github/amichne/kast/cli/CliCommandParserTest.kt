@@ -325,6 +325,24 @@ class CliCommandParserTest {
     }
 
     @Test
+    fun `install parses kast home defaults for releases and bin`() {
+        val archivePath = tempDir.resolve("kast-portable.zip")
+
+        val command = parser.parse(
+            arrayOf(
+                "install",
+                "--archive=$archivePath",
+            ),
+        )
+
+        assertTrue(command is CliCommand.Install)
+        val installCommand = command as CliCommand.Install
+        val home = Path.of(System.getProperty("user.home")).toAbsolutePath().normalize()
+        assertEquals(home.resolve(".kast/releases"), installCommand.options.instancesRoot)
+        assertEquals(home.resolve(".kast/bin"), installCommand.options.binDir)
+    }
+
+    @Test
     fun `install skill parses the primary name option`() {
         val command = parser.parse(
             arrayOf(

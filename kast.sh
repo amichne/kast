@@ -1278,7 +1278,7 @@ _install_skill_phase() {
     return 0
   fi
 
-  local global_dir="${HOME}/.agents/skills"
+  local global_dir="${HOME}/.kast/lib/skills"
   local local_dir; local_dir="$(pwd)/.agents/skills"
   printf '\n' >&2
   printf '  %-9s %s\n' "$(colorize '1;32' 'global')" "Install to ${global_dir}/kast  (all projects)" >&2

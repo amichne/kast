@@ -83,6 +83,75 @@ class InstallSkillServiceTest {
     }
 
     @Test
+    fun `install prefers agents skills when multiple workspace skill directories exist`() {
+        Files.createDirectories(tempDir.resolve(".agents/skills"))
+        Files.createDirectories(tempDir.resolve(".github/skills"))
+        Files.createDirectories(tempDir.resolve(".claude/skills"))
+        val service = InstallSkillService(
+            embeddedSkillResources = EmbeddedSkillResources(version = "1.2.3"),
+            cwdProvider = { tempDir },
+            homeDirectoryProvider = { tempDir.resolve("home") },
+        )
+
+        val result = service.install(
+            InstallSkillOptions(
+                targetDir = null,
+                name = "kast",
+                force = false,
+            ),
+        )
+
+        assertEquals(tempDir.resolve(".agents/skills/kast").toString(), result.installedAt)
+        assertTrue(Files.isDirectory(tempDir.resolve(".agents/skills/kast")))
+        assertFalse(Files.exists(tempDir.resolve(".github/skills/kast")))
+        assertFalse(Files.exists(tempDir.resolve(".claude/skills/kast")))
+    }
+
+    @Test
+    fun `install prefers github skills before claude when agents skills are absent`() {
+        Files.createDirectories(tempDir.resolve(".github/skills"))
+        Files.createDirectories(tempDir.resolve(".claude/skills"))
+        val service = InstallSkillService(
+            embeddedSkillResources = EmbeddedSkillResources(version = "1.2.3"),
+            cwdProvider = { tempDir },
+            homeDirectoryProvider = { tempDir.resolve("home") },
+        )
+
+        val result = service.install(
+            InstallSkillOptions(
+                targetDir = null,
+                name = "kast",
+                force = false,
+            ),
+        )
+
+        assertEquals(tempDir.resolve(".github/skills/kast").toString(), result.installedAt)
+        assertTrue(Files.isDirectory(tempDir.resolve(".github/skills/kast")))
+        assertFalse(Files.exists(tempDir.resolve(".claude/skills/kast")))
+    }
+
+    @Test
+    fun `install falls back to global kast lib skills when no workspace skill directory exists`() {
+        val home = tempDir.resolve("home")
+        val service = InstallSkillService(
+            embeddedSkillResources = EmbeddedSkillResources(version = "1.2.3"),
+            cwdProvider = { tempDir },
+            homeDirectoryProvider = { home },
+        )
+
+        val result = service.install(
+            InstallSkillOptions(
+                targetDir = null,
+                name = "kast",
+                force = false,
+            ),
+        )
+
+        assertEquals(home.resolve(".kast/lib/skills/kast").toString(), result.installedAt)
+        assertTrue(Files.isDirectory(home.resolve(".kast/lib/skills/kast")))
+    }
+
+    @Test
     fun `install overwrites an existing skill directory when forced`() {
         val targetDir = tempDir.resolve("skills")
         val initialService = InstallSkillService(embeddedSkillResources = EmbeddedSkillResources(version = "1.0.0"))

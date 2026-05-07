@@ -11,7 +11,8 @@ import java.nio.file.Path
 import java.util.UUID
 
 class WorkspaceDirectoryResolver(
-    private val configHome: () -> Path = { kastConfigHome() },
+    configHome: () -> Path = { kastConfigHome() },
+    private val installRoot: () -> Path = ::kastInstallRoot,
     private val gitRemoteResolver: (Path) -> GitRemote? = GitRemoteParser::origin,
     private val uuidGenerator: () -> UUID = UUID::randomUUID,
 ) {
@@ -19,8 +20,7 @@ class WorkspaceDirectoryResolver(
         val normalizedRoot = workspaceRoot.toAbsolutePath().normalize()
         val remote = gitRemoteResolver(normalizedRoot)
         return if (remote != null) {
-            configHome()
-                .resolve("workspaces")
+            workspacesRoot()
                 .resolve(remote.host)
                 .resolve(remote.owner)
                 .resolve(remote.repo)
@@ -29,8 +29,7 @@ class WorkspaceDirectoryResolver(
                 .resolve(".gradle")
                 .resolve("kast")
         } else {
-            configHome()
-                .resolve("workspaces")
+            workspacesRoot()
                 .resolve("local")
                 .resolve("${sanitizedPath(normalizedRoot)}--${localWorkspaceId(normalizedRoot)}")
         }.toAbsolutePath().normalize()
@@ -49,8 +48,10 @@ class WorkspaceDirectoryResolver(
         return workspaceRoot.startsWith(tempRoot)
     }
 
+    private fun workspacesRoot(): Path = installRoot().resolve("workspaces").toAbsolutePath().normalize()
+
     private fun localWorkspaceId(workspaceRoot: Path): String {
-        val registryPath = configHome().resolve("local-workspaces.json").toAbsolutePath().normalize()
+        val registryPath = workspacesRoot().resolve("local-workspaces.json").toAbsolutePath().normalize()
         val workspaceKey = workspaceRoot.toString()
         val lockPath = registryPath.resolveSibling("local-workspaces.json.lock")
         registryPath.parent?.let(Files::createDirectories)
@@ -91,6 +92,8 @@ class WorkspaceDirectoryResolver(
         .ifBlank { "workspace" }
         .take(80)
 }
+
+fun kastInstallRoot(): Path = Path.of(System.getProperty("user.home")).resolve(".kast").toAbsolutePath().normalize()
 
 fun workspaceDataDirectory(workspaceRoot: Path): Path =
     WorkspaceDirectoryResolver(configHome = { kastConfigHome() }).workspaceDataDirectory(workspaceRoot)

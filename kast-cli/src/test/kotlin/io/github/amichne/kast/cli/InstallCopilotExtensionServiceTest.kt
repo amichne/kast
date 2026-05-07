@@ -2,6 +2,10 @@ package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.cli.options.InstallCopilotExtensionOptions
 import io.github.amichne.kast.cli.tty.CliFailure
+import io.github.amichne.kast.cli.tty.defaultCliJson
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -60,6 +64,10 @@ class InstallCopilotExtensionServiceTest {
         assertTrue(Files.isRegularFile(targetDir.resolve("extensions/kotlin-gradle-loop/scripts/state/record_action.py")))
         assertFalse(Files.readString(targetDir.resolve("extensions/kast/extension.mjs")).contains(".agents"))
         assertFalse(Files.readString(targetDir.resolve("extensions/kotlin-gradle-loop/extension.mjs")).contains(".agents"))
+        assertEquals(
+            listOf("kast", "kotlin-gradle-loop"),
+            readShadowedSkillIds(targetDir.resolve("hooks/skill-shadowing.json")),
+        )
         assertEquals("1.2.3", Files.readString(targetDir.resolve(".kast-copilot-version")).trim())
     }
 
@@ -237,5 +245,12 @@ class InstallCopilotExtensionServiceTest {
         assertEquals(cwd.resolve(".github").toAbsolutePath().normalize().toString(), result.installedAt)
         assertTrue(Files.isRegularFile(cwd.resolve(".github/.kast-copilot-version")))
     }
+
+    private fun readShadowedSkillIds(path: Path): List<String> = defaultCliJson()
+        .parseToJsonElement(Files.readString(path))
+        .jsonObject
+        .getValue("skills")
+        .jsonArray
+        .map { skill -> skill.jsonObject.getValue("id").jsonPrimitive.content }
 
 }
