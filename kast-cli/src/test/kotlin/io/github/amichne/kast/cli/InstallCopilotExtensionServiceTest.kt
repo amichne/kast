@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
+import java.io.ByteArrayInputStream
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -69,6 +70,22 @@ class InstallCopilotExtensionServiceTest {
             readShadowedSkillIds(targetDir.resolve("hooks/skill-shadowing.json")),
         )
         assertEquals("1.2.3", Files.readString(targetDir.resolve(".kast-copilot-version")).trim())
+        val resolveScript = Files.readString(targetDir.resolve("extensions/kast/scripts/resolve-kast.sh"))
+        assertTrue(resolveScript.contains("\${HOME}/.kast/bin/kast"))
+        assertFalse(resolveScript.contains(".local/bin/kast"))
+        assertFalse(resolveScript.contains("for _ in 1 2 3 4 5 6"))
+
+        val hookResolver = Files.readString(targetDir.resolve("hooks/resolve-kast-cli-path.sh"))
+        assertTrue(hookResolver.contains("extensions/kast/scripts/resolve-kast.sh"))
+        assertTrue(hookResolver.contains("read_config_binary_path"))
+        assertTrue(hookResolver.contains("\${HOME}/.kast/bin/kast"))
+        assertFalse(hookResolver.contains(".local/bin/kast"))
+
+        val extensionSource = Files.readString(targetDir.resolve("extensions/kast/extension.mjs"))
+        assertTrue(extensionSource.contains("""join(homedir(), ".kast", "bin", "kast")"""))
+        assertTrue(extensionSource.contains("workspace ensure --workspace-root="))
+        assertTrue(extensionSource.contains("install copilot-extension --target-dir="))
+        assertFalse(extensionSource.contains("KAST EXTENSION BLOCKED"))
     }
 
     @Test
@@ -252,5 +269,76 @@ class InstallCopilotExtensionServiceTest {
         .getValue("skills")
         .jsonArray
         .map { skill -> skill.jsonObject.getValue("id").jsonPrimitive.content }
+
+
+    @Test
+    fun installRecordsManagedRepoInGlobalManifest() {
+        val installRoot = tempDir.resolve("home/.kast")
+        val workspace = tempDir.resolve("workspace")
+        val targetDir = workspace.resolve(".github")
+        Files.createDirectories(workspace)
+        val manifestStore = InstallManifestStore(installRootProvider = { installRoot })
+        val service = InstallCopilotExtensionService(
+            embeddedCopilotExtensionResources = EmbeddedCopilotExtensionResources(version = "1.2.3"),
+            manifestStore = manifestStore,
+            resolveScriptVerifier = { null },
+            commandAvailability = { true },
+        )
+
+        service.install(InstallCopilotExtensionOptions(targetDir = targetDir, force = false))
+
+        val manifest = requireNotNull(manifestStore.read())
+        assertEquals(
+            listOf(
+                ManagedRepo(
+                    path = workspace.toAbsolutePath().normalize().toString(),
+                    copilotExtensionVersion = "1.2.3",
+                ),
+            ),
+            manifest.repos,
+        )
+    }
+
+    @Test
+    fun installCollectsWarningsFromPostInstallVerification() {
+        val hooksJson = """
+            {
+              "version": 1,
+              "hooks": {
+                "sessionStart": [
+                  {
+                    "type": "command",
+                    "bash": "bash .github/hooks/missing.sh",
+                    "cwd": ".",
+                    "timeoutSec": 30
+                  }
+                ]
+              }
+            }
+        """.trimIndent()
+        val targetDir = tempDir.resolve("workspace/.github")
+        Files.createDirectories(targetDir.parent)
+        val service = InstallCopilotExtensionService(
+            embeddedCopilotExtensionResources = EmbeddedCopilotExtensionResources(
+                version = "1.2.3",
+                resourceReader = { relativePath ->
+                    when (relativePath) {
+                        "hooks/hooks.json" -> ByteArrayInputStream(hooksJson.toByteArray())
+                        else -> EmbeddedCopilotExtensionResources::class.java.getResourceAsStream(
+                            "/${EmbeddedCopilotExtensionResources.RESOURCE_ROOT}/$relativePath",
+                        )
+                    }
+                },
+            ),
+            resolveScriptVerifier = { "resolve-kast-cli-path.sh could not resolve kast" },
+            commandAvailability = { false },
+        )
+
+        val result = service.install(InstallCopilotExtensionOptions(targetDir = targetDir, force = false))
+
+        assertTrue(result.warnings.any { it.contains(".github/hooks/missing.sh") })
+        assertTrue(result.warnings.any { it.contains("resolve-kast-cli-path.sh could not resolve kast") })
+        assertTrue(result.warnings.any { it.contains("python3") })
+    }
 
 }

@@ -130,6 +130,10 @@ internal class CliCommandParser(
                 listOf("install") -> CliCommand.Install(parsed.installOptions())
                 listOf("install", "skill") -> CliCommand.InstallSkill(parsed.installSkillOptions())
                 listOf("install", "copilot-extension") -> CliCommand.InstallCopilotExtension(parsed.installCopilotExtensionOptions())
+                listOf("self", "status") -> CliCommand.SelfStatus
+                listOf("self", "doctor") -> CliCommand.SelfDoctor
+                listOf("self", "uninstall") -> CliCommand.SelfUninstall
+                listOf("self", "upgrade") -> CliCommand.SelfUpgrade
                 listOf("verify-extension") -> CliCommand.VerifyExtension
                 listOf("smoke") -> CliCommand.Smoke(parsed.smokeOptions())
                 listOf("daemon", "start") -> CliCommand.DaemonStart(parsed.daemonStartOptions())

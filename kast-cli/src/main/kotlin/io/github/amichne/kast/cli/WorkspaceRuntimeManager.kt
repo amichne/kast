@@ -14,12 +14,16 @@ import io.github.amichne.kast.cli.tty.CliFailure
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import java.nio.file.Files
 import java.nio.file.Path
+import java.time.Instant
 
 internal class WorkspaceRuntimeManager(
     private val rpcClient: RuntimeRpcClient,
     private val processLivenessChecker: (Long) -> Boolean = ::isProcessAlive,
     private val descriptorDirectory: (RuntimeCommandOptions) -> Path = ::configuredDescriptorDirectory,
+    private val configLoader: (Path) -> KastConfig = KastConfig::load,
+    private val standaloneDaemonStarter: suspend (RuntimeCommandOptions, Path) -> StandaloneDaemonLaunch = ::startStandaloneDaemon,
 ) {
     private companion object {
         fun configuredDescriptorDirectory(options: RuntimeCommandOptions): Path =
@@ -98,6 +102,30 @@ internal class WorkspaceRuntimeManager(
                     workspaceRoot = options.workspaceRoot.toString(),
                     descriptorDirectory = inspection.descriptorDirectory.toString(),
                     started = false,
+                    selected = waitForServable(
+                        options = options.copy(backendName = BackendName.STANDALONE),
+                        backendName = BackendName.STANDALONE,
+                        acceptIndexing = !requireReady,
+                    ),
+                )
+            }
+        }
+
+        if (!options.noAutoStart) {
+            val config = configLoader(options.workspaceRoot.toJavaPath())
+            val runtimeLibsDir = config.backends.standalone.runtimeLibsDir.value.orNull
+                ?.takeIf(String::isNotBlank)
+                ?.let { configured -> Path.of(configured).toAbsolutePath().normalize() }
+            if (runtimeLibsDir != null && Files.isDirectory(runtimeLibsDir)) {
+                val launch = standaloneDaemonStarter(
+                    options.copy(backendName = BackendName.STANDALONE),
+                    runtimeLibsDir,
+                )
+                return WorkspaceEnsureResult(
+                    workspaceRoot = options.workspaceRoot.toString(),
+                    descriptorDirectory = inspection.descriptorDirectory.toString(),
+                    started = true,
+                    logFile = launch.logFile?.toString(),
                     selected = waitForServable(
                         options = options.copy(backendName = BackendName.STANDALONE),
                         backendName = BackendName.STANDALONE,
@@ -250,6 +278,10 @@ internal class WorkspaceRuntimeManager(
     }
 }
 
+internal data class StandaloneDaemonLaunch(
+    val logFile: Path? = null,
+)
+
 internal data class WorkspaceInspection(
     val descriptorDirectory: Path,
     val candidates: List<RuntimeCandidateStatus>,
@@ -315,3 +347,96 @@ private fun isProcessAlive(pid: Long): Boolean =
         ?.get()
         ?.isAlive
         ?: false
+
+private suspend fun startStandaloneDaemon(
+    options: RuntimeCommandOptions,
+    runtimeLibsDir: Path,
+): StandaloneDaemonLaunch {
+    val workspaceRoot = options.workspaceRoot.toJavaPath()
+    val kastBinary = resolveKastBinary(workspaceRoot)
+        ?: throw CliFailure(
+            code = "DAEMON_START_ERROR",
+            message = "Cannot locate the kast launcher needed to auto-start the standalone backend for $workspaceRoot.",
+        )
+    val logFile = daemonLogFile(KastConfig.load(workspaceRoot), workspaceRoot)
+    Files.createDirectories(checkNotNull(logFile.parent))
+    val command = buildList {
+        add(kastBinary.toString())
+        add("daemon")
+        add("start")
+        addAll(
+            options.standaloneOptions?.toCliArguments()
+                ?: listOf("--workspace-root=$workspaceRoot"),
+        )
+        add("--runtime-libs-dir=$runtimeLibsDir")
+    }
+    runCatching {
+        ProcessBuilder(command)
+            .directory(workspaceRoot.toFile())
+            .redirectErrorStream(true)
+            .redirectOutput(logFile.toFile())
+            .start()
+    }.getOrElse { error ->
+        throw CliFailure(
+            code = "DAEMON_START_ERROR",
+            message = "Failed to auto-start the standalone backend for $workspaceRoot: ${error.message ?: error::class.simpleName}",
+        )
+    }
+    return StandaloneDaemonLaunch(logFile = logFile)
+}
+
+private fun resolveKastBinary(workspaceRoot: Path): Path? {
+    val configBinary = KastConfig.load(workspaceRoot).cli.binaryPath.value
+        .trim()
+        .takeIf(String::isNotEmpty)
+        ?.let { configured -> Path.of(configured).toAbsolutePath().normalize() }
+        ?.takeIf(Files::isExecutable)
+    if (configBinary != null) {
+        return configBinary
+    }
+
+    val installedBinary = Path.of(System.getProperty("user.home"))
+        .resolve(".kast")
+        .resolve("bin")
+        .resolve("kast")
+        .toAbsolutePath()
+        .normalize()
+        .takeIf(Files::isExecutable)
+    if (installedBinary != null) {
+        return installedBinary
+    }
+
+    findExecutableOnPath("kast")
+        ?.let { return it }
+    findExecutableOnPath("kast-cli")
+        ?.let { return it }
+
+    val cwd = Path.of(System.getProperty("user.dir", ".")).toAbsolutePath().normalize()
+    return listOf(
+        workspaceRoot.resolve("kast-cli/build/scripts/kast-cli"),
+        workspaceRoot.resolve("dist/cli/kast-cli"),
+        cwd.resolve("kast-cli/build/scripts/kast-cli"),
+        cwd.resolve("dist/cli/kast-cli"),
+    ).firstOrNull(Files::isExecutable)
+}
+
+private fun findExecutableOnPath(commandName: String): Path? {
+    val pathEntries = System.getenv("PATH")
+        ?.split(System.getProperty("path.separator", ":"))
+        ?.map(String::trim)
+        ?.filter(String::isNotEmpty)
+        ?: return null
+    return pathEntries.asSequence()
+        .map { entry -> Path.of(entry).resolve(commandName) }
+        .map { candidate -> candidate.toAbsolutePath().normalize() }
+        .firstOrNull(Files::isExecutable)
+}
+
+private fun daemonLogFile(
+    config: KastConfig,
+    workspaceRoot: Path,
+): Path {
+    val workspaceName = workspaceRoot.fileName?.toString()?.ifBlank { "workspace" } ?: "workspace"
+    return Path.of(config.paths.logsDir.value).toAbsolutePath().normalize()
+        .resolve("$workspaceName-${Instant.now().epochSecond}-standalone-daemon.log")
+}

@@ -238,6 +238,35 @@ class CliCommandParserTest {
         assertSame(CliCommand.VerifyExtension, command)
     }
 
+
+
+    @Test
+    fun `self status parses`() {
+        val command = parser.parse(arrayOf("self", "status"))
+
+        assertSame(CliCommand.SelfStatus, command)
+    }
+
+    @Test
+    fun `self doctor parses`() {
+        val command = parser.parse(arrayOf("self", "doctor"))
+
+        assertSame(CliCommand.SelfDoctor, command)
+    }
+
+    @Test
+    fun `self uninstall parses`() {
+        val command = parser.parse(arrayOf("self", "uninstall"))
+
+        assertSame(CliCommand.SelfUninstall, command)
+    }
+
+    @Test
+    fun `self upgrade parses`() {
+        val command = parser.parse(arrayOf("self", "upgrade"))
+
+        assertSame(CliCommand.SelfUpgrade, command)
+    }
     @Test
     fun `smoke parses workspace root filters and format`() {
         val command = parser.parse(

@@ -398,7 +398,8 @@ internal object CliCommandCatalog {
         description = "Ensures a healthy backend exists for the workspace. " +
                 "When the IntelliJ plugin is running it is used automatically; otherwise the standalone backend is used if already running. " +
                 "Use --backend-name=standalone or --backend-name=intellij to pin to a specific backend. " +
-                "If no backend is running, the command fails — start one first with `kast daemon start --workspace-root=<path>` or open IntelliJ with the plugin installed. " +
+                "If no standalone backend is running, the CLI auto-starts one from the configured runtime libs unless `--no-auto-start=true`. " +
+                "Open IntelliJ with the plugin installed when you want the IntelliJ backend instead. " +
                 "Use this command to pre-warm the runtime or check readiness ahead of analysis commands.",
             usages = listOf(
                 "$CLI_EXECUTABLE_NAME workspace ensure --workspace-root=/absolute/path/to/workspace [--backend-name=intellij|standalone] [--wait-timeout-ms=60000] [--accept-indexing=true]",
@@ -921,6 +922,54 @@ internal object CliCommandCatalog {
                 "$CLI_EXECUTABLE_NAME install copilot-extension --target-dir=/my/project/.github",
                 "$CLI_EXECUTABLE_NAME install copilot-extension --yes=true",
                 "$CLI_EXECUTABLE_NAME install copilot-extension --uninstall=true",
+            ),
+        ),
+        CliCommandMetadata(
+            path = listOf("self", "status"),
+            group = CliCommandGroup.CLI_MANAGEMENT,
+            summary = "Report the recorded global Kast install manifest.",
+            description = "Reads ~/.kast/.manifest.json and returns the installed version, components, managed paths, shell patches, and managed repositories.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME self status",
+            ),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME self status",
+            ),
+        ),
+        CliCommandMetadata(
+            path = listOf("self", "doctor"),
+            group = CliCommandGroup.CLI_MANAGEMENT,
+            summary = "Verify the global Kast install is still healthy.",
+            description = "Checks the install manifest, binary, config.toml, managed paths, Copilot resolve scripts, python3 availability, and runtime libs when the backend is installed.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME self doctor",
+            ),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME self doctor",
+            ),
+        ),
+        CliCommandMetadata(
+            path = listOf("self", "uninstall"),
+            group = CliCommandGroup.CLI_MANAGEMENT,
+            summary = "Remove manifest-managed files from the global Kast install.",
+            description = "Deletes manifest-managed paths under ~/.kast, removes recorded shell RC patches, and removes the install root when it becomes empty.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME self uninstall",
+            ),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME self uninstall",
+            ),
+        ),
+        CliCommandMetadata(
+            path = listOf("self", "upgrade"),
+            group = CliCommandGroup.CLI_MANAGEMENT,
+            summary = "Print reinstall instructions for upgrading Kast.",
+            description = "For now this prints the supported reinstall command instead of performing an in-place upgrade.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME self upgrade",
+            ),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME self upgrade",
             ),
         ),
         CliCommandMetadata(

@@ -186,6 +186,22 @@ internal class DefaultCliCommandExecutor(
                 output = CliOutput.JsonValue(cliService.installCopilotExtension(command.options)),
             )
 
+            CliCommand.SelfStatus -> CliExecutionResult(
+                output = CliOutput.JsonValue(cliService.selfStatus()),
+            )
+
+            CliCommand.SelfDoctor -> CliExecutionResult(
+                output = CliOutput.JsonValue(cliService.selfDoctor()),
+            )
+
+            CliCommand.SelfUninstall -> CliExecutionResult(
+                output = CliOutput.JsonValue(cliService.selfUninstall()),
+            )
+
+            CliCommand.SelfUpgrade -> CliExecutionResult(
+                output = CliOutput.JsonValue(cliService.selfUpgrade()),
+            )
+
             is CliCommand.Smoke -> {
                 val report = cliService.smoke(command.options)
                 val output = when (command.options.format) {
