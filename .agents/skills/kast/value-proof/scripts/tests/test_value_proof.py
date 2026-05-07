@@ -2,12 +2,15 @@
 from __future__ import annotations
 
 import json
+import io
 import tempfile
 import unittest
 from pathlib import Path
 import sys
+from contextlib import redirect_stdout
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1]
+VALUE_PROOF_DIR = SCRIPT_DIR.parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
@@ -22,6 +25,52 @@ def write_json(path: Path, payload: object) -> None:
 
 
 class ValueProofScriptTests(unittest.TestCase):
+    def test_checked_in_assets_match_value_proof_contract(self) -> None:
+        catalog = json.loads((VALUE_PROOF_DIR / "catalog.json").read_text())
+        bindings_schema = json.loads((VALUE_PROOF_DIR / "bindings.schema.json").read_text())
+        konditional = json.loads((VALUE_PROOF_DIR / "bindings" / "konditional.json").read_text())
+
+        self.assertEqual("kast-value-proof", catalog["skill_name"])
+        self.assertEqual(10, len(catalog["cases"]))
+        self.assertEqual(
+            [
+                "vp-disambiguate-member",
+                "vp-disambiguate-function",
+                "vp-exhaustive-references",
+                "vp-sealed-hierarchy-trace",
+                "vp-multi-file-rename",
+                "vp-edit-and-validate",
+                "vp-scaffold-large-class",
+                "vp-workspace-discovery",
+                "vp-impact-analysis",
+                "vp-cross-module-flow",
+            ],
+            [case["id"] for case in catalog["cases"]],
+        )
+        self.assertEqual("Kast value-proof codebase bindings", bindings_schema["title"])
+        self.assertEqual("konditional", konditional["target_repo"])
+        self.assertEqual("Konstrained", konditional["slots"]["SEALED_HIERARCHY"]["symbol"])
+
+    def test_checked_in_catalog_renders_with_konditional_bindings(self) -> None:
+        catalog = json.loads((VALUE_PROOF_DIR / "catalog.json").read_text())
+        bindings = json.loads((VALUE_PROOF_DIR / "bindings" / "konditional.json").read_text())
+
+        rendered = render_catalog(catalog, bindings)
+
+        prompts = [case["prompt"] for case in rendered["cases"]]
+        expectations = [
+            expectation
+            for case in rendered["cases"]
+            for expectation in case.get("expectations", [])
+        ]
+        self.assertTrue(all("{{" not in prompt and "}}" not in prompt for prompt in prompts))
+        self.assertIn("key property on Feature", prompts[0])
+        self.assertIn(
+            "Result set is scoped to Feature.key — does not include unrelated types",
+            expectations,
+        )
+        self.assertIn("NamespaceRegistry to FeatureRegistry", prompts[4])
+
     def test_render_catalog_hydrates_nested_slot_fields(self) -> None:
         catalog = {
             "skill_name": "kast-value-proof",
@@ -101,14 +150,16 @@ class ValueProofScriptTests(unittest.TestCase):
                 },
             )
 
-            iteration_dir = scaffold_workspace(
-                catalog_path=catalog_path,
-                workspace_dir=root / "workspace",
-                runs_per_config=2,
-                configs=["with_skill", "without_skill"],
-                iteration="iteration-001",
-                aggregate=False,
-            )
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                iteration_dir = scaffold_workspace(
+                    catalog_path=catalog_path,
+                    workspace_dir=root / "workspace",
+                    runs_per_config=2,
+                    configs=["with_skill", "without_skill"],
+                    iteration="iteration-001",
+                    aggregate=False,
+                )
 
             eval_dir = iteration_dir / "eval-vp-disambiguate-member"
             metadata = json.loads((eval_dir / "eval_metadata.json").read_text())
@@ -116,9 +167,12 @@ class ValueProofScriptTests(unittest.TestCase):
             run_dir = eval_dir / "with_skill" / "run-1"
             self.assertTrue((run_dir / "outputs").is_dir())
             self.assertTrue((run_dir / "grading.json").is_file())
+            manifest = json.loads((iteration_dir / "run_manifest.json").read_text())
+            self.assertEqual(4, manifest["run_count"])
             instructions = (run_dir / "run_instructions.md").read_text()
             self.assertIn("Kast skill loaded", instructions)
             self.assertIn("Find Feature.key.", instructions)
+            self.assertIn("run_instructions.md", stdout.getvalue())
 
     def test_generate_summary_documents_reports_category_breakdown(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

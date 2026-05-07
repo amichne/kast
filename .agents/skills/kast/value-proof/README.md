@@ -58,6 +58,9 @@ changed.
 
 3. Execute each run from its `run_instructions.md`.
 
+   `run_manifest.json` lists every generated instruction file for the
+   iteration.
+
    For candidate runs, use the candidate Kast skill. For baseline runs on an
    existing skill rewrite, use a snapshot of the old skill. Save the complete
    transcript to `outputs/transcript.md`.
@@ -130,8 +133,8 @@ large structural files, and safe rename targets.
   repository.
 - `catalog.json`: Parameterized value-proof eval cases.
 - `scripts/render_prompts.py`: Hydrates `{{SLOT.field}}` template variables.
-- `scripts/run_value_proof.py`: Creates iteration workspaces and per-run
-  instructions.
+- `scripts/run_value_proof.py`: Creates iteration workspaces,
+  `run_manifest.json`, and per-run instructions.
 - `scripts/generate_executive_summary.py`: Creates Markdown and HTML
   executive summaries from `benchmark.json`.
 - `history/progression.json`: Non-regression ledger for promoted cases and

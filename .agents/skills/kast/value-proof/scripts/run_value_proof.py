@@ -110,6 +110,7 @@ def scaffold_workspace(
     catalog = load_catalog(catalog_path)
     iteration_dir = workspace_dir / iteration
     iteration_dir.mkdir(parents=True, exist_ok=True)
+    instruction_paths: list[Path] = []
 
     for case in catalog["cases"]:
         case_id = case["id"]
@@ -123,15 +124,33 @@ def scaffold_workspace(
                 outputs_dir = run_dir / "outputs"
                 outputs_dir.mkdir(parents=True, exist_ok=True)
                 (run_dir / "run_instructions.md").write_text(run_instruction_text(config, case["prompt"]))
+                instruction_paths.append(run_dir / "run_instructions.md")
                 transcript = outputs_dir / "transcript.md"
                 if not transcript.exists():
                     transcript.write_text("")
                 write_placeholder_grading(run_dir / "grading.json")
                 write_placeholder_timing(run_dir / "timing.json")
 
+    write_run_manifest(iteration_dir, instruction_paths)
+    print(f"Run instructions written for {len(instruction_paths)} runs:")
+    for path in instruction_paths:
+        print(f"  {path}")
+
     if aggregate:
         aggregate_if_graded(iteration_dir, catalog.get("skill_name", "kast-value-proof"))
     return iteration_dir
+
+
+def write_run_manifest(iteration_dir: Path, instruction_paths: list[Path]) -> None:
+    payload = {
+        "iteration": iteration_dir.name,
+        "run_count": len(instruction_paths),
+        "instructions": [
+            str(path.relative_to(iteration_dir))
+            for path in instruction_paths
+        ],
+    }
+    (iteration_dir / "run_manifest.json").write_text(json.dumps(payload, indent=2) + "\n")
 
 
 def grading_is_complete(path: Path) -> bool:
