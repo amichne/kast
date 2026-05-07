@@ -13,6 +13,16 @@
             "requireRead": false,
             "shadowingExtensionId": "kotlin-gradle-loop",
             "extensionPath": ".github/extensions/kotlin-gradle-loop/extension.mjs"
+        },
+        {
+            "id": "refresh-affected-agents",
+            "skillPath": ".agents/skills/refresh-affected-agents/SKILL.md",
+            "requireRead": true
+        },
+        {
+            "id": "llm-wiki",
+            "skillPath": ".agents/skills/llm-wiki/SKILL.md",
+            "requireRead": true
         }
     ]
 }
