@@ -1,0 +1,43 @@
+{
+  "expectations": [
+    {
+      "text": "Resolves the exact function before tracing callers",
+      "passed": false,
+      "evidence": "no semantic resolve available"
+    },
+    {
+      "text": "Shows a 2-level call hierarchy",
+      "passed": true,
+      "evidence": "depth-2 hierarchy attempted"
+    },
+    {
+      "text": "Distinguishes test files from production files",
+      "passed": true,
+      "evidence": "test/prod split present"
+    },
+    {
+      "text": "Reports truncation metadata if the hierarchy was bounded",
+      "passed": false,
+      "evidence": "bounding mentioned"
+    }
+  ],
+  "summary": {
+    "passed": 2,
+    "failed": 2,
+    "total": 4,
+    "pass_rate": 0.5
+  },
+  "execution_metrics": {
+    "tool_calls": {},
+    "total_tool_calls": 4,
+    "total_steps": 4,
+    "errors_encountered": 0,
+    "output_chars": 18791,
+    "transcript_chars": 18791
+  },
+  "timing": {
+    "executor_duration_seconds": 0.289,
+    "grader_duration_seconds": 0.0,
+    "total_duration_seconds": 0.289
+  }
+}

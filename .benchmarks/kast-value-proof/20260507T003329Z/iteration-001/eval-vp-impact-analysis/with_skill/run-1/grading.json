@@ -1,0 +1,78 @@
+{
+  "expectations": [
+    {
+      "text": "Resolves the exact function before tracing callers",
+      "passed": true,
+      "evidence": "Transcript major steps say the run used `kast_resolve` to pin the exact `ContextualResolver.resolve` override before tracing callers."
+    },
+    {
+      "text": "Shows a 2-level call hierarchy",
+      "passed": false,
+      "evidence": "Final answer says `Direct callers (depth 1): none found. Second hop ... none`, so no 2-level hierarchy is actually shown."
+    },
+    {
+      "text": "Distinguishes test files from production files",
+      "passed": true,
+      "evidence": "Final answer explicitly reports `test callers: 0` and `production callers: 0`."
+    },
+    {
+      "text": "Reports truncation metadata if the hierarchy was bounded",
+      "passed": true,
+      "evidence": "The run reports the exact-symbol search as exhaustive over `583/583` candidate files, which is evidence that the result was not truncated by file sampling."
+    }
+  ],
+  "summary": {
+    "passed": 3,
+    "failed": 1,
+    "total": 4,
+    "pass_rate": 0.75
+  },
+  "execution_metrics": {
+    "tool_calls": {
+      "kast_resolve": 1,
+      "ContextualResolver.resolve": 1,
+      "kast_callers": 1,
+      "direction=incoming": 1,
+      "depth=2": 1,
+      "kast_references": 1
+    },
+    "total_tool_calls": 6,
+    "total_steps": 3,
+    "errors_encountered": 0,
+    "output_chars": 1927,
+    "transcript_chars": 1369
+  },
+  "timing": {
+    "executor_duration_seconds": 7.0,
+    "grader_duration_seconds": 0.0,
+    "total_duration_seconds": 7.0
+  },
+  "claims": [
+    {
+      "claim": "The exact target is io.amichne.konditional.rules.ConditionalValue.ContextualResolver.resolve.",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Transcript final answer names the exact FQ symbol and source location `ConditionalValue.kt:72`."
+    },
+    {
+      "claim": "There are no direct callers of the exact override.",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Transcript key findings state there are no direct callers and the exact-symbol search was exhaustive over `583/583` files."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "assertion": "Shows a 2-level call hierarchy",
+        "reason": "This assertion is too rigid when the exact symbol has zero callers. A stronger discriminator would require reporting the absence of callers together with completeness metadata."
+      }
+    ],
+    "overall": "The eval should handle the zero-caller case explicitly instead of requiring a 2-hop tree unconditionally."
+  }
+}

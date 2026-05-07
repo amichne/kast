@@ -1,0 +1,71 @@
+{
+  "expectations": [
+    {
+      "text": "Uses semantic resolution (not grep for 'class.*Konstrained') to find implementations",
+      "passed": true,
+      "evidence": "Transcript major steps show `kast_resolve`, `kast_scaffold`, and `kast_workspace_files`; grep is not mentioned."
+    },
+    {
+      "text": "Lists all sealed subtypes with their file paths",
+      "passed": true,
+      "evidence": "The answer enumerates every subtype declared in `Konstrained.kt` (Primitive, its four nested primitive interfaces, Object, Array, Encoder, Decoder, AsString, AsInt, AsBoolean, AsDouble) and gives the `Konstrained.kt` path/line plus the external `TestFixtures.kt:47` implementation."
+    },
+    {
+      "text": "Correctly identifies which module each implementation lives in",
+      "passed": true,
+      "evidence": "The source-declared subtypes are mapped to `konditional.konditional-types.main`, and the external `RetryPolicy` implementation is mapped to `konditional.konditional-engine.testFixtures`, which matches the workspace module/source-root layout."
+    },
+    {
+      "text": "Does not miss implementations in other modules",
+      "passed": true,
+      "evidence": "The run surfaced the cross-module `RetryPolicy` implementation in `konditional-engine/src/testFixtures/.../TestFixtures.kt:47`, and grading-time search found that same external implementation."
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 0,
+    "total": 4,
+    "pass_rate": 1.0
+  },
+  "execution_metrics": {
+    "tool_calls": {
+      "kast_resolve": 1,
+      "kast_scaffold": 1,
+      "Konstrained.kt": 1,
+      "kast_workspace_files": 1
+    },
+    "total_tool_calls": 4,
+    "total_steps": 3,
+    "errors_encountered": 0,
+    "output_chars": 4749,
+    "transcript_chars": 2773
+  },
+  "timing": {
+    "executor_duration_seconds": 10.0,
+    "grader_duration_seconds": 0.0,
+    "total_duration_seconds": 10.0
+  },
+  "claims": [
+    {
+      "claim": "All direct Konstrained subtypes are declared in Konstrained.kt.",
+      "type": "factual",
+      "verified": true,
+      "evidence": "`Konstrained.kt` contains the direct nested subtypes `Primitive`, `Object`, `Array`, `Encoder`, `Decoder`, `AsString`, `AsInt`, `AsBoolean`, and `AsDouble`."
+    },
+    {
+      "claim": "RetryPolicy is a concrete external Konstrained implementation in testFixtures.",
+      "type": "factual",
+      "verified": true,
+      "evidence": "`TestFixtures.kt` contains `data class RetryPolicy(...) : Konstrained.Object` at line 47."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [],
+    "overall": "No suggestions, evals look solid."
+  }
+}

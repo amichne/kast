@@ -1,0 +1,88 @@
+{
+  "expectations": [
+    {
+      "text": "Uses scaffold + references + callers in sequence (not grep)",
+      "passed": false,
+      "evidence": "Transcript major steps list `kast_resolve`, `kast_references`, and `kast_workspace_files`; there is no `kast_scaffold` or `kast_callers` step."
+    },
+    {
+      "text": "Identifies consumers in at least one other module",
+      "passed": false,
+      "evidence": "Final answer says, 'I found no direct references to `FlagValue` in any other module' and stops the chain at `konditional.konditional-json.main`."
+    },
+    {
+      "text": "Shows concrete file-to-file relationships, not just module names",
+      "passed": true,
+      "evidence": "Final answer ties `FlagValue.kt:40` to concrete consuming files: `FlagValueAdapter.kt`, `SerializableFlag.kt`, and `SerializableRule.kt`."
+    },
+    {
+      "text": "Does not miss cross-module references",
+      "passed": false,
+      "evidence": "The run only proved exhaustive direct type references (`19/19` candidate files) and did not use callers/scaffold to establish a broader cross-module flow, so this stronger claim is not proven."
+    }
+  ],
+  "summary": {
+    "passed": 1,
+    "failed": 3,
+    "total": 4,
+    "pass_rate": 0.25
+  },
+  "execution_metrics": {
+    "tool_calls": {
+      "kast_resolve": 1,
+      "FlagValue": 1,
+      "konditional-json": 1,
+      "kast_references": 1,
+      "includeDeclaration=true": 1,
+      "kast_workspace_files": 1
+    },
+    "total_tool_calls": 6,
+    "total_steps": 3,
+    "errors_encountered": 0,
+    "output_chars": 3254,
+    "transcript_chars": 2073
+  },
+  "timing": {
+    "executor_duration_seconds": 9.0,
+    "grader_duration_seconds": 0.0,
+    "total_duration_seconds": 9.0
+  },
+  "claims": [
+    {
+      "claim": "FlagValue resolves to io.amichne.konditional.internal.serialization.models.FlagValue at FlagValue.kt:40.",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Transcript final answer and grading-time `kast_resolve` both identify `FlagValue.kt:40`."
+    },
+    {
+      "claim": "There are no direct FlagValue references outside konditional-json.",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Grading-time `kast_references` returned only `konditional-json` file paths and reported `exhaustive=true`, `candidateFileCount=19`, `searchedFileCount=19`."
+    },
+    {
+      "claim": "The run established the full cross-module dependency chain.",
+      "type": "quality",
+      "verified": false,
+      "evidence": "The transcript never shows callers-based flow tracing; it only reports direct exact-type references."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "assertion": "Identifies consumers in at least one other module",
+        "reason": "Current bindings appear to target a symbol whose exact-type references stay inside `konditional-json`, making the assertion unsatisfiable for a correct run."
+      },
+      {
+        "assertion": "Uses scaffold + references + callers in sequence (not grep)",
+        "reason": "The prompt only requires tracing flow; if direct references are enough to conclude there is no downstream consumer, forcing both scaffold and callers may overconstrain otherwise-correct runs."
+      }
+    ],
+    "overall": "This eval currently assumes a cross-module hit and a specific tool sequence that the chosen symbol does not require or support."
+  }
+}

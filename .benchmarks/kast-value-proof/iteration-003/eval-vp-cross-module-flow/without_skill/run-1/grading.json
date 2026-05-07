@@ -1,0 +1,43 @@
+{
+  "expectations": [
+    {
+      "text": "Uses scaffold + references + callers in sequence (not grep)",
+      "passed": false,
+      "evidence": "kast forbidden \u2014 grep used"
+    },
+    {
+      "text": "Identifies consumers in at least one other module",
+      "passed": true,
+      "evidence": "modules = {'konditional-json', 'konditional-engine', 'konditional-without', 'konditional-types'}"
+    },
+    {
+      "text": "Shows concrete file-to-file relationships, not just module names",
+      "passed": true,
+      "evidence": ".kt files referenced"
+    },
+    {
+      "text": "Does not miss cross-module references",
+      "passed": true,
+      "evidence": "FlagValue traced"
+    }
+  ],
+  "summary": {
+    "passed": 3,
+    "failed": 1,
+    "total": 4,
+    "pass_rate": 0.75
+  },
+  "execution_metrics": {
+    "tool_calls": {},
+    "total_tool_calls": 4,
+    "total_steps": 4,
+    "errors_encountered": 0,
+    "output_chars": 10514,
+    "transcript_chars": 10514
+  },
+  "timing": {
+    "executor_duration_seconds": 165.0,
+    "grader_duration_seconds": 0.0,
+    "total_duration_seconds": 165.0
+  }
+}

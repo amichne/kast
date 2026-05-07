@@ -1,0 +1,38 @@
+{
+  "expectations": [
+    {
+      "text": "Disambiguates the function using containingType, kind, or fileHint",
+      "passed": true,
+      "evidence": "disambiguation params used"
+    },
+    {
+      "text": "Does not silently pick one of multiple candidates without disambiguation",
+      "passed": true,
+      "evidence": "ContextualResolver scoping present"
+    },
+    {
+      "text": "Reports callers specific to the target class, not unrelated resolve() calls",
+      "passed": true,
+      "evidence": "kast_callers/references used"
+    }
+  ],
+  "summary": {
+    "passed": 3,
+    "failed": 0,
+    "total": 3,
+    "pass_rate": 1.0
+  },
+  "execution_metrics": {
+    "tool_calls": {},
+    "total_tool_calls": 0,
+    "total_steps": 0,
+    "errors_encountered": 0,
+    "output_chars": 4848,
+    "transcript_chars": 4848
+  },
+  "timing": {
+    "executor_duration_seconds": 0.0,
+    "grader_duration_seconds": 0.0,
+    "total_duration_seconds": 0.0
+  }
+}

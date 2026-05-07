@@ -1,0 +1,88 @@
+{
+  "expectations": [
+    {
+      "text": "Uses kast_write_and_validate (not raw edit/create tool)",
+      "passed": false,
+      "evidence": "Transcript says the run used Kast CLI `apply-edits` and then reran diagnostics; the output artifacts are `deprecate_apply.json` and `deprecate_diagnostics.json`, not a single write-and-validate result."
+    },
+    {
+      "text": "Runs diagnostics atomically as part of the write",
+      "passed": false,
+      "evidence": "Diagnostics were produced in a separate `deprecate_diagnostics.json` file after the corrected edit rather than as part of the edit response itself."
+    },
+    {
+      "text": "Reports clean or dirty compile state after the edit",
+      "passed": false,
+      "evidence": "Final answer says compile confirmation is blocked because `:konditional-engine:compileKotlin --offline` fails before task execution with `What went wrong: 25` on both the original and disposable workspaces."
+    },
+    {
+      "text": "Does not claim success without validation evidence",
+      "passed": true,
+      "evidence": "Final answer cites `deprecate_diagnostics.json` (`\"diagnostics\": []`) for file-level validation and explicitly refuses to claim repo-level compile success because of the pre-existing Gradle failure."
+    }
+  ],
+  "summary": {
+    "passed": 1,
+    "failed": 3,
+    "total": 4,
+    "pass_rate": 0.25
+  },
+  "execution_metrics": {
+    "tool_calls": {
+      "kast apply-edits": 1,
+      "interface": 1,
+      "kast": 1,
+      "NamespaceRegistry.kt": 1,
+      "kast diagnostics": 1,
+      "gradle_run_task(:konditional-engine:compileKotlin": 1
+    },
+    "total_tool_calls": 6,
+    "total_steps": 5,
+    "errors_encountered": 3,
+    "output_chars": 10735,
+    "transcript_chars": 2185
+  },
+  "timing": {
+    "executor_duration_seconds": 25.0,
+    "grader_duration_seconds": 0.0,
+    "total_duration_seconds": 25.0
+  },
+  "claims": [
+    {
+      "claim": "The final edit adds `@Deprecated(\"Use FeatureRegistry instead\")` above `interface NamespaceRegistry`.",
+      "type": "factual",
+      "verified": true,
+      "evidence": "`deprecate_fix_apply.json` records `newText` as `@Deprecated(\"Use FeatureRegistry instead\")\ninterface NamespaceRegistry {`."
+    },
+    {
+      "claim": "Follow-up diagnostics returned zero issues for NamespaceRegistry.kt.",
+      "type": "factual",
+      "verified": true,
+      "evidence": "`deprecate_diagnostics.json` contains `{ \"diagnostics\": [] }`."
+    },
+    {
+      "claim": "The run confirmed the file still compiles.",
+      "type": "quality",
+      "verified": false,
+      "evidence": "The transcript explicitly says trustworthy Gradle compile confirmation was not possible because of the pre-existing `What went wrong: 25` failure."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "assertion": "Reports clean or dirty compile state after the edit",
+        "reason": "This fixture currently produces an environment-level Gradle failure before task execution. The eval should either accept a documented blocker state or use a compile-capable fixture."
+      },
+      {
+        "assertion": "Uses kast_write_and_validate (not raw edit/create tool)",
+        "reason": "This assertion is discriminating and useful, but the current run shows why the grading should keep atomic write-and-validate separate from an apply-edits + diagnostics fallback."
+      }
+    ],
+    "overall": "The eval correctly penalizes the non-atomic edit path, but compile confirmation is currently blocked by fixture/environment health rather than the edit itself."
+  }
+}

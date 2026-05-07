@@ -1,0 +1,16 @@
+{
+  "eval_id": "vp-cross-module-flow",
+  "title": "Trace cross-module symbol flow",
+  "prompt": "Trace how Feature flows from its definition in konditional-engine/src/main/kotlin/io/amichne/konditional/core/features/Feature.kt to its consumers in other modules. Show the cross-module dependency chain.",
+  "expectations": [
+    "Uses scaffold + references + callers in sequence (not grep)",
+    "Identifies consumers in at least one other module",
+    "Shows concrete file-to-file relationships, not just module names",
+    "Does not miss cross-module references"
+  ],
+  "labels": [
+    "multi-step-workflow",
+    "cross-module-flow"
+  ],
+  "workspace_root": "/tmp/kast-vp-rebench/konditional-with"
+}

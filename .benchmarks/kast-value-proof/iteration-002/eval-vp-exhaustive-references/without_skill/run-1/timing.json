@@ -1,0 +1,21 @@
+{
+  "executor_duration_seconds": 15.226783,
+  "tool_call_count": 7,
+  "errors_encountered": 0,
+  "kast_tool_calls": 0,
+  "bash_or_grep_calls": 6,
+  "search_exhaustiveness": "exhaustive",
+  "total_candidate_files": 360,
+  "total_references_found": 252,
+  "file_extensions_searched": [
+    ".kt",
+    ".kts",
+    ".java",
+    ".gradle",
+    ".txt",
+    ".md",
+    ".json",
+    ".yaml",
+    ".yml"
+  ]
+}

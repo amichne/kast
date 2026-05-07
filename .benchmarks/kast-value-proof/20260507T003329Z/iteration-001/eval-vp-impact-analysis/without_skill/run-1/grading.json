@@ -1,0 +1,73 @@
+{
+  "status": "graded",
+  "expectations": [
+    {
+      "text": "Resolves the exact function before tracing callers",
+      "passed": false,
+      "evidence": "Transcript says it located the method by reading `ConditionalValue.kt` and then used `rg`; it never resolves the exact symbol before tracing callers."
+    },
+    {
+      "text": "Shows a 2-level call hierarchy",
+      "passed": true,
+      "evidence": "Final answer is explicitly split into `Depth 1: direct callers` and `Depth 2: callers of that direct caller`."
+    },
+    {
+      "text": "Distinguishes test files from production files",
+      "passed": true,
+      "evidence": "The output classifies both reported callers as `production` and explicitly states \u201cWithin depth 2, I found no test-file callers.\u201d"
+    },
+    {
+      "text": "Reports truncation metadata if the hierarchy was bounded",
+      "passed": true,
+      "evidence": "The hierarchy is bounded to depth 2, and the answer explicitly notes broader context \u201coutside the requested depth-2 set,\u201d which signals that the reported tree is intentionally truncated/bounded."
+    }
+  ],
+  "summary": {
+    "passed": 3,
+    "failed": 1,
+    "total": 4,
+    "pass_rate": 0.75
+  },
+  "execution_metrics": {
+    "tool_calls": {},
+    "total_tool_calls": 0,
+    "total_steps": 3,
+    "errors_encountered": 0,
+    "output_chars": 2869,
+    "transcript_chars": 1892
+  },
+  "timing": {
+    "executor_duration_seconds": 5.0,
+    "grader_duration_seconds": 9.1e-05,
+    "total_duration_seconds": 5.000091
+  },
+  "claims": [
+    {
+      "claim": "There is exactly one direct caller of `ConditionalValue.ContextualResolver.resolve()`: `ConditionalValue.resolve(...)`.",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Source inspection shows the only `resolver.resolve(` use at `ConditionalValue.kt:39`, inside `ConditionalValue.resolve(...)`."
+    },
+    {
+      "claim": "Within depth 2, the only caller above `ConditionalValue.resolve(...)` is `FlagDefinition.evaluateCandidate(...)`.",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Source inspection confirms `candidate.resolve(...)` at `FlagDefinition.kt:165`; the next broader callers (`evaluateTrace`, `evaluate`, `createRuleDiagnostics`) are depth 3+ context."
+    },
+    {
+      "claim": "The executor classified the depth-1 and depth-2 callers as production code.",
+      "type": "process",
+      "verified": true,
+      "evidence": "Final answer labels both reported nodes as `production` and lists only `src/main/kotlin` paths for them."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [],
+    "overall": "No suggestions, evals look solid."
+  }
+}

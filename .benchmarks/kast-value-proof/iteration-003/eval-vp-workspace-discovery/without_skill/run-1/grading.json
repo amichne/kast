@@ -1,0 +1,43 @@
+{
+  "expectations": [
+    {
+      "text": "Uses kast_workspace_files (not recursive ls/find)",
+      "passed": false,
+      "evidence": "kast forbidden"
+    },
+    {
+      "text": "Reports the correct module names",
+      "passed": true,
+      "evidence": "modules present"
+    },
+    {
+      "text": "Reports file counts for each module",
+      "passed": false,
+      "evidence": "counts present"
+    },
+    {
+      "text": "Completes in a single tool call (not iterative directory traversal)",
+      "passed": false,
+      "evidence": "iterative find/ls required"
+    }
+  ],
+  "summary": {
+    "passed": 1,
+    "failed": 3,
+    "total": 4,
+    "pass_rate": 0.25
+  },
+  "execution_metrics": {
+    "tool_calls": {},
+    "total_tool_calls": 4,
+    "total_steps": 4,
+    "errors_encountered": 0,
+    "output_chars": 1804,
+    "transcript_chars": 1804
+  },
+  "timing": {
+    "executor_duration_seconds": 0.0,
+    "grader_duration_seconds": 0.0,
+    "total_duration_seconds": 0.0
+  }
+}

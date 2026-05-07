@@ -1,0 +1,73 @@
+{
+  "status": "graded",
+  "expectations": [
+    {
+      "text": "Uses kast_write_and_validate (not raw edit/create tool)",
+      "passed": false,
+      "evidence": "Transcript describes a disposable copy plus a manual source edit; it never mentions `kast_write_and_validate`."
+    },
+    {
+      "text": "Runs diagnostics atomically as part of the write",
+      "passed": false,
+      "evidence": "The run inserted the annotation first and only then ran a separate Gradle compile, so validation was not atomic with the write."
+    },
+    {
+      "text": "Reports clean or dirty compile state after the edit",
+      "passed": true,
+      "evidence": "Final answer includes the compile command and reports `Result: **BUILD SUCCESSFUL**`."
+    },
+    {
+      "text": "Does not claim success without validation evidence",
+      "passed": true,
+      "evidence": "The success claim is paired with explicit validation evidence: `JAVA_HOME=... ./gradlew --offline :konditional-engine:compileKotlin` and `BUILD SUCCESSFUL`."
+    }
+  ],
+  "summary": {
+    "passed": 2,
+    "failed": 2,
+    "total": 4,
+    "pass_rate": 0.5
+  },
+  "execution_metrics": {
+    "tool_calls": {},
+    "total_tool_calls": 0,
+    "total_steps": 3,
+    "errors_encountered": 0,
+    "output_chars": 2542,
+    "transcript_chars": 1807
+  },
+  "timing": {
+    "executor_duration_seconds": 6.5,
+    "grader_duration_seconds": 0.000183,
+    "total_duration_seconds": 6.500183
+  },
+  "claims": [
+    {
+      "claim": "A `@Deprecated(\"Use FeatureRegistry instead\")` annotation was added above the `NamespaceRegistry` interface declaration in the disposable workspace.",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Workspace file inspection shows `@Deprecated(\"Use FeatureRegistry instead\")` at `NamespaceRegistry.kt:16` immediately above `interface NamespaceRegistry`."
+    },
+    {
+      "claim": "The edited workspace still compiles.",
+      "type": "quality",
+      "verified": true,
+      "evidence": "I reran `JAVA_HOME=/Users/amichne/.sdkman/candidates/java/21.0.8-graal ./gradlew --offline :konditional-engine:compileKotlin --quiet` in the disposable workspace and it exited 0."
+    },
+    {
+      "claim": "The executor used a disposable workspace copy rather than editing the original checkout.",
+      "type": "process",
+      "verified": true,
+      "evidence": "Transcript explicitly says it created a disposable copy inside the run directory, and the edited file exists under that run-local `workspace/` tree."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [],
+    "overall": "No suggestions, evals look solid."
+  }
+}

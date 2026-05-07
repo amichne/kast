@@ -1,0 +1,254 @@
+{
+    "edits": [
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/api/FeatureEvaluation.kt",
+            "startOffset": 433,
+            "endOffset": 487,
+            "newText": "io.amichne.konditional.core.registry.FeatureRegistry"
+        },
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/api/FeatureEvaluation.kt",
+            "startOffset": 470,
+            "endOffset": 487,
+            "newText": "FeatureRegistry"
+        },
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/api/FeatureEvaluation.kt",
+            "startOffset": 1839,
+            "endOffset": 1856,
+            "newText": "FeatureRegistry"
+        },
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/api/FeatureEvaluation.kt",
+            "startOffset": 2595,
+            "endOffset": 2612,
+            "newText": "FeatureRegistry"
+        },
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/api/FeatureEvaluation.kt",
+            "startOffset": 2873,
+            "endOffset": 2890,
+            "newText": "FeatureRegistry"
+        },
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/api/FeatureEvaluation.kt",
+            "startOffset": 3221,
+            "endOffset": 3238,
+            "newText": "FeatureRegistry"
+        },
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/api/FeatureEvaluation.kt",
+            "startOffset": 3705,
+            "endOffset": 3722,
+            "newText": "FeatureRegistry"
+        },
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/api/FeatureEvaluation.kt",
+            "startOffset": 5133,
+            "endOffset": 5150,
+            "newText": "FeatureRegistry"
+        },
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/api/FeatureEvaluationMetrics.kt",
+            "startOffset": 134,
+            "endOffset": 188,
+            "newText": "io.amichne.konditional.core.registry.FeatureRegistry"
+        },
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/api/FeatureEvaluationMetrics.kt",
+            "startOffset": 171,
+            "endOffset": 188,
+            "newText": "FeatureRegistry"
+        },
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/api/FeatureEvaluationMetrics.kt",
+            "startOffset": 385,
+            "endOffset": 402,
+            "newText": "FeatureRegistry"
+        },
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/api/FeatureEvaluationMetrics.kt",
+            "startOffset": 884,
+            "endOffset": 901,
+            "newText": "FeatureRegistry"
+        },
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/core/FlagDefinition.kt",
+            "startOffset": 361,
+            "endOffset": 415,
+            "newText": "io.amichne.konditional.core.registry.FeatureRegistry"
+        },
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/core/FlagDefinition.kt",
+            "startOffset": 398,
+            "endOffset": 415,
+            "newText": "FeatureRegistry"
+        },
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/core/FlagDefinition.kt",
+            "startOffset": 3915,
+            "endOffset": 3932,
+            "newText": "FeatureRegistry"
+        },
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/core/FlagDefinition.kt",
+            "startOffset": 5462,
+            "endOffset": 5479,
+            "newText": "FeatureRegistry"
+        },
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/core/Namespace.kt",
+            "startOffset": 769,
+            "endOffset": 823,
+            "newText": "io.amichne.konditional.core.registry.FeatureRegistry"
+        },
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/core/Namespace.kt",
+            "startOffset": 806,
+            "endOffset": 823,
+            "newText": "FeatureRegistry"
+        },
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/core/Namespace.kt",
+            "startOffset": 1323,
+            "endOffset": 1340,
+            "newText": "FeatureRegistry"
+        },
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/core/Namespace.kt",
+            "startOffset": 1475,
+            "endOffset": 1492,
+            "newText": "FeatureRegistry"
+        },
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/core/Namespace.kt",
+            "startOffset": 10630,
+            "endOffset": 10647,
+            "newText": "FeatureRegistry"
+        },
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/core/dsl/rules/RuleValueScope.kt",
+            "startOffset": 390,
+            "endOffset": 444,
+            "newText": "io.amichne.konditional.core.registry.FeatureRegistry"
+        },
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/core/dsl/rules/RuleValueScope.kt",
+            "startOffset": 427,
+            "endOffset": 444,
+            "newText": "FeatureRegistry"
+        },
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/core/dsl/rules/RuleValueScope.kt",
+            "startOffset": 877,
+            "endOffset": 894,
+            "newText": "FeatureRegistry"
+        },
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/core/registry/InMemoryNamespaceRegistry.kt",
+            "startOffset": 375,
+            "endOffset": 392,
+            "newText": "FeatureRegistry"
+        },
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/core/registry/InMemoryNamespaceRegistry.kt",
+            "startOffset": 1206,
+            "endOffset": 1223,
+            "newText": "FeatureRegistry"
+        },
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/core/registry/NamespaceRegistry.kt",
+            "startOffset": 548,
+            "endOffset": 565,
+            "newText": "FeatureRegistry"
+        },
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/rules/ConditionalValue.kt",
+            "startOffset": 316,
+            "endOffset": 370,
+            "newText": "io.amichne.konditional.core.registry.FeatureRegistry"
+        },
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/rules/ConditionalValue.kt",
+            "startOffset": 353,
+            "endOffset": 370,
+            "newText": "FeatureRegistry"
+        },
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/rules/ConditionalValue.kt",
+            "startOffset": 1316,
+            "endOffset": 1333,
+            "newText": "FeatureRegistry"
+        },
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/rules/ConditionalValue.kt",
+            "startOffset": 1705,
+            "endOffset": 1722,
+            "newText": "FeatureRegistry"
+        },
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/rules/ConditionalValue.kt",
+            "startOffset": 2004,
+            "endOffset": 2021,
+            "newText": "FeatureRegistry"
+        },
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/rules/ConditionalValue.kt",
+            "startOffset": 2364,
+            "endOffset": 2381,
+            "newText": "FeatureRegistry"
+        }
+    ],
+    "fileHashes": [
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/api/FeatureEvaluation.kt",
+            "hash": "604008f235a3d595208548a2c1a15020d5767679c7aaca79786a2e26f6f082bf"
+        },
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/api/FeatureEvaluationMetrics.kt",
+            "hash": "ef4ee2741eb3977f5a965d3e9d0f6a4bd7353bf979201cca7787c7ca2acefa16"
+        },
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/core/FlagDefinition.kt",
+            "hash": "2cacd184fc1cc806111675e220afb417e79a9b58833968619df61760bda7f79e"
+        },
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/core/Namespace.kt",
+            "hash": "2169f659ab088b4069971ed13cfdbae842e169ae3e5de8619f03de808e92fae5"
+        },
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/core/dsl/rules/RuleValueScope.kt",
+            "hash": "3d60e0c02fa026adb9b6d12af7c88373a88eac9d6287b0f21e34c51d4c6ec1c2"
+        },
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/core/registry/InMemoryNamespaceRegistry.kt",
+            "hash": "2d1d550e9816ae2834a52892a03efd5e514face65f805431caf2be4d13161c9d"
+        },
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/core/registry/NamespaceRegistry.kt",
+            "hash": "7b85abcef7b10b9e658a19e141cf4629f73b7cf637c7dd0e508d41ed2e4854f4"
+        },
+        {
+            "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/rules/ConditionalValue.kt",
+            "hash": "11813609de1bd4a314e95950912d272c11e2d2fa5008772901dec178624dfc89"
+        }
+    ],
+    "affectedFiles": [
+        "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/api/FeatureEvaluation.kt",
+        "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/api/FeatureEvaluationMetrics.kt",
+        "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/core/FlagDefinition.kt",
+        "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/core/Namespace.kt",
+        "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/core/dsl/rules/RuleValueScope.kt",
+        "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/core/registry/InMemoryNamespaceRegistry.kt",
+        "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/core/registry/NamespaceRegistry.kt",
+        "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/rules/ConditionalValue.kt"
+    ],
+    "searchScope": {
+        "visibility": "PUBLIC",
+        "scope": "DEPENDENT_MODULES",
+        "exhaustive": true,
+        "candidateFileCount": 8,
+        "searchedFileCount": 8
+    },
+    "schemaVersion": 3
+}

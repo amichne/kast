@@ -1,0 +1,16 @@
+{
+  "edits": [
+    {
+      "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-edit-and-validate/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/core/registry/NamespaceRegistry.kt",
+      "startOffset": 538,
+      "endOffset": 610,
+      "newText": "@Deprecated(\"Use FeatureRegistry instead\")\ninterface NamespaceRegistry {"
+    }
+  ],
+  "fileHashes": [
+    {
+      "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-edit-and-validate/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/core/registry/NamespaceRegistry.kt",
+      "hash": "b844e31d649f20fe60720820397a970a7dc1b12c4678a3fbda445f069ce16b59"
+    }
+  ]
+}

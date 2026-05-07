@@ -1,0 +1,73 @@
+{
+  "expectations": [
+    {
+      "text": "Resolves the member with containingType or fileHint before scanning usages",
+      "passed": true,
+      "evidence": "Transcript says the run resolved `Feature.key` first and then used `kast_references` with the declaring file as `fileHint`."
+    },
+    {
+      "text": "Result set is scoped to Feature.key \u2014 does not include unrelated types",
+      "passed": true,
+      "evidence": "Final answer says it resolved the exact property `io.amichne.konditional.core.features.Feature.key` first, \"so this excludes unrelated `key` symbols.\""
+    },
+    {
+      "text": "Does not use raw text search (grep/rg) as the primary identity mechanism",
+      "passed": true,
+      "evidence": "Transcript only reports semantic steps (`kast_resolve` and `kast_references`); it does not mention grep/rg."
+    },
+    {
+      "text": "Reports at least 3 distinct usage sites with file paths",
+      "passed": true,
+      "evidence": "Final answer lists 8 call sites with file paths, including `FeatureEvaluation.kt:100`, `FlagDefinition.kt:158`, and `Namespace.kt:61`."
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 0,
+    "total": 4,
+    "pass_rate": 1.0
+  },
+  "execution_metrics": {
+    "tool_calls": {
+      "kast_resolve": 1,
+      "Feature.key": 1,
+      "io.amichne.konditional.core.features.Feature.key": 1,
+      "kast_references": 1,
+      "fileHint": 1,
+      "searchScope": 1
+    },
+    "total_tool_calls": 6,
+    "total_steps": 3,
+    "errors_encountered": 0,
+    "output_chars": 2661,
+    "transcript_chars": 1675
+  },
+  "timing": {
+    "executor_duration_seconds": 8.0,
+    "grader_duration_seconds": 0.0,
+    "total_duration_seconds": 8.0
+  },
+  "claims": [
+    {
+      "claim": "There are 8 exact usages of Feature.key.",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Transcript key findings state \"There are 8 exact usages of `Feature.key`\" and the final answer enumerates eight file/line entries."
+    },
+    {
+      "claim": "The usage search was exhaustive.",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Final answer reports `candidateFileCount=583`, `searchedFileCount=583`, `exhaustive=true`."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [],
+    "overall": "No suggestions, evals look solid."
+  }
+}

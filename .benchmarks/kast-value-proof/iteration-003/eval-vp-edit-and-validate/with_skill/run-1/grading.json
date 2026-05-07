@@ -1,0 +1,43 @@
+{
+  "expectations": [
+    {
+      "text": "Uses kast_write_and_validate (not raw edit/create tool)",
+      "passed": true,
+      "evidence": "kast_write_and_validate used"
+    },
+    {
+      "text": "Runs diagnostics atomically as part of the write",
+      "passed": true,
+      "evidence": "validation present"
+    },
+    {
+      "text": "Reports clean or dirty compile state after the edit",
+      "passed": true,
+      "evidence": "compile state reported"
+    },
+    {
+      "text": "Does not claim success without validation evidence",
+      "passed": true,
+      "evidence": "evidence present"
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 0,
+    "total": 4,
+    "pass_rate": 1.0
+  },
+  "execution_metrics": {
+    "tool_calls": {},
+    "total_tool_calls": 0,
+    "total_steps": 0,
+    "errors_encountered": 0,
+    "output_chars": 2147,
+    "transcript_chars": 2147
+  },
+  "timing": {
+    "executor_duration_seconds": 0.0,
+    "grader_duration_seconds": 0.0,
+    "total_duration_seconds": 0.0
+  }
+}

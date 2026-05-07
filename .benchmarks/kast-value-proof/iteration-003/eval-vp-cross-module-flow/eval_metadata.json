@@ -1,0 +1,17 @@
+{
+  "eval_id": "vp-cross-module-flow",
+  "eval_name": "Trace cross-module symbol flow",
+  "prompt": "Trace how FlagValue flows from its definition in konditional-json/src/main/kotlin/io/amichne/konditional/internal/serialization/models/FlagValue.kt to its consumers in other modules. Show the cross-module dependency chain.",
+  "assertions": [
+    "Uses scaffold + references + callers in sequence (not grep)",
+    "Identifies consumers in at least one other module",
+    "Shows concrete file-to-file relationships, not just module names",
+    "Does not miss cross-module references"
+  ],
+  "expected_output": "A concrete file-to-file flow report across module boundaries.",
+  "labels": [
+    "multi-step-workflow",
+    "cross-module-flow"
+  ],
+  "stage": "candidate"
+}

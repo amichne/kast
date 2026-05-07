@@ -1,0 +1,78 @@
+{
+  "status": "graded",
+  "expectations": [
+    {
+      "text": "Uses kast_rename (not find-and-replace or sed)",
+      "passed": false,
+      "evidence": "Transcript describes a manual plan plus manual rename/update work in a disposable workspace; it never mentions `kast_rename`."
+    },
+    {
+      "text": "Shows an edit plan listing all affected files before applying",
+      "passed": true,
+      "evidence": "Final answer begins with an `Edit plan:` and lists the renamed file plus the affected Kotlin files before the \u201cApplied in disposable workspace\u201d section."
+    },
+    {
+      "text": "Updates import statements, not just the declaration",
+      "passed": true,
+      "evidence": "Workspace verification finds `import io.amichne.konditional.core.registry.FeatureRegistry` in six updated files, so the rename changed imports as well as the declaration."
+    },
+    {
+      "text": "Runs diagnostics or reports compile status after the rename",
+      "passed": true,
+      "evidence": "Final answer includes `./gradlew --offline compileKotlin` with `Result: **BUILD SUCCESSFUL**`."
+    },
+    {
+      "text": "Does not leave broken references in any module",
+      "passed": true,
+      "evidence": "Exact-symbol verification finds no `\\bNamespaceRegistry\\b` matches left in the disposable workspace, and rerunning `./gradlew --offline compileKotlin --quiet` exited 0."
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 1,
+    "total": 5,
+    "pass_rate": 0.8
+  },
+  "execution_metrics": {
+    "tool_calls": {},
+    "total_tool_calls": 0,
+    "total_steps": 3,
+    "errors_encountered": 0,
+    "output_chars": 4185,
+    "transcript_chars": 2715
+  },
+  "timing": {
+    "executor_duration_seconds": 9.0,
+    "grader_duration_seconds": 6.7e-05,
+    "total_duration_seconds": 9.000067
+  },
+  "claims": [
+    {
+      "claim": "`FeatureRegistry.kt` exists in the disposable workspace and declares `interface FeatureRegistry`.",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Workspace file inspection shows `interface FeatureRegistry` at `FeatureRegistry.kt:16`."
+    },
+    {
+      "claim": "Import statements were updated to the renamed symbol.",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Repo-copy verification finds `import ...FeatureRegistry` in `FeatureEvaluation.kt`, `FeatureEvaluationMetrics.kt`, `ConditionalValue.kt`, `FlagDefinition.kt`, `Namespace.kt`, and `RuleValueScope.kt`."
+    },
+    {
+      "claim": "The renamed disposable workspace still compiles.",
+      "type": "quality",
+      "verified": true,
+      "evidence": "I reran `JAVA_HOME=/Users/amichne/.sdkman/candidates/java/21.0.8-graal ./gradlew --offline compileKotlin --quiet` in the disposable workspace and it exited 0."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [],
+    "overall": "No suggestions, evals look solid."
+  }
+}

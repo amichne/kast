@@ -1,0 +1,18 @@
+{
+  "eval_id": "vp-multi-file-rename",
+  "eval_name": "Safely rename a symbol across files",
+  "prompt": "Rename NamespaceRegistry to FeatureRegistry across the entire workspace. Show me the edit plan before applying. After applying, confirm no compile errors were introduced.",
+  "assertions": [
+    "Uses kast_rename (not find-and-replace or sed)",
+    "Shows an edit plan listing all affected files before applying",
+    "Updates import statements, not just the declaration",
+    "Runs diagnostics or reports compile status after the rename",
+    "Does not leave broken references in any module"
+  ],
+  "expected_output": "A multi-file rename plan and validated post-edit status.",
+  "labels": [
+    "safe-mutations",
+    "rename"
+  ],
+  "stage": "candidate"
+}

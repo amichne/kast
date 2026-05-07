@@ -1,0 +1,43 @@
+{
+  "expectations": [
+    {
+      "text": "Resolves the member with containingType or fileHint before scanning usages",
+      "passed": false,
+      "evidence": "kast tools forbidden in baseline"
+    },
+    {
+      "text": "Result set is scoped to Feature.key \u2014 does not include unrelated types",
+      "passed": true,
+      "evidence": "may or may not be properly scoped via grep"
+    },
+    {
+      "text": "Does not use raw text search (grep/rg) as the primary identity mechanism",
+      "passed": false,
+      "evidence": "grep is the only available identity mechanism"
+    },
+    {
+      "text": "Reports at least 3 distinct usage sites with file paths",
+      "passed": true,
+      "evidence": "file:line refs = 0"
+    }
+  ],
+  "summary": {
+    "passed": 2,
+    "failed": 2,
+    "total": 4,
+    "pass_rate": 0.5
+  },
+  "execution_metrics": {
+    "tool_calls": {},
+    "total_tool_calls": 3,
+    "total_steps": 3,
+    "errors_encountered": 0,
+    "output_chars": 11682,
+    "transcript_chars": 11682
+  },
+  "timing": {
+    "executor_duration_seconds": 88.0,
+    "grader_duration_seconds": 0.0,
+    "total_duration_seconds": 88.0
+  }
+}

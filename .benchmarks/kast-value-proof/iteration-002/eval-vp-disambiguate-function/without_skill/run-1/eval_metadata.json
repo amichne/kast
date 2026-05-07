@@ -1,0 +1,15 @@
+{
+  "eval_id": "vp-disambiguate-function",
+  "title": "Disambiguate callers of a common function name",
+  "prompt": "Find callers of ConditionalValue.ContextualResolver.resolve(), not every function named resolve in the project. Show the call hierarchy.",
+  "expectations": [
+    "Disambiguates the function using containingType, kind, or fileHint",
+    "Does not silently pick one of multiple candidates without disambiguation",
+    "Reports callers specific to the target class, not unrelated resolve() calls"
+  ],
+  "labels": [
+    "symbol-disambiguation",
+    "call-hierarchy"
+  ],
+  "workspace_root": "/tmp/kast-vp-rebench/konditional-without"
+}

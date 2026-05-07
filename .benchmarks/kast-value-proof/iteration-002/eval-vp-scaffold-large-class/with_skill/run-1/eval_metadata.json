@@ -1,0 +1,16 @@
+{
+  "eval_id": "vp-scaffold-large-class",
+  "title": "Summarize a large class structurally",
+  "prompt": "Summarize the public API of EvaluationDiagnostics \u2014 list every public type, interface, enum, and data class it contains, with their member signatures.",
+  "expectations": [
+    "Uses kast_scaffold (not raw file read) as the primary information source",
+    "Lists all nested sealed interfaces and enums accurately",
+    "Does not hallucinate members that don't exist",
+    "Produces the summary in fewer tokens than reading the raw file would require"
+  ],
+  "labels": [
+    "token-efficiency",
+    "scaffold"
+  ],
+  "workspace_root": "/tmp/kast-vp-rebench/konditional-with"
+}

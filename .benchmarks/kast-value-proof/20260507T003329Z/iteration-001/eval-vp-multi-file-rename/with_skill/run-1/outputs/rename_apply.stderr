@@ -1,0 +1,8 @@
+{
+    "code": "VALIDATION_ERROR",
+    "message": "Overlapping text edits are not allowed",
+    "details": {
+        "filePath": "/Users/amichne/code/kast/.benchmarks/kast-value-proof/20260507T003329Z/iteration-001/eval-vp-multi-file-rename/with_skill/run-1/workspace/konditional-engine/src/main/kotlin/io/amichne/konditional/api/FeatureEvaluation.kt"
+    },
+    "schemaVersion": 3
+}

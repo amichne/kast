@@ -1,0 +1,16 @@
+{
+  "eval_id": "vp-impact-analysis",
+  "title": "Trace two-level deletion impact",
+  "prompt": "I want to delete ConditionalValue.ContextualResolver.resolve(). Show me every direct caller, then for each caller show its callers (depth 2). Identify which of those callers are in test files vs production code.",
+  "expectations": [
+    "Resolves the exact function before tracing callers",
+    "Shows a 2-level call hierarchy",
+    "Distinguishes test files from production files",
+    "Reports truncation metadata if the hierarchy was bounded"
+  ],
+  "labels": [
+    "multi-step-workflow",
+    "impact-analysis"
+  ],
+  "workspace_root": "/tmp/kast-vp-rebench/konditional-with"
+}

@@ -1,0 +1,39 @@
+# Kast Value Proof: konditional
+
+## Headline metrics
+
+| Metric | with_skill | without_skill | Delta |
+| --- | ---: | ---: | ---: |
+| Pass rate | 78% | 60% | +0.18 |
+| Tokens | 16696 | 3522 | +13174 |
+| Tool calls | 5 | 0 | +5 |
+| Time | 12.6s | 5.3s | +7.3 |
+
+## Per-category breakdown
+
+| Category | Pass rate | Enterprise value |
+| --- | ---: | --- |
+| Disambiguation | 100% | correctness -> fewer bugs shipped from symbol mix-ups |
+| Completeness | 88% | completeness -> audit confidence and fewer missed call sites |
+| Safe Mutations | 52% | validated edits -> fewer broken builds after refactors |
+| Token Efficiency | 100% | structural summaries -> lower API cost and faster reviews |
+| Multi-Step | 50% | compound workflows -> clearer blast-radius analysis before changes |
+
+## Key findings
+
+- Skill gains are concentrated in semantic navigation/discovery evals: with_skill scores 1.0 on vp-disambiguate-function, vp-disambiguate-member, vp-scaffold-large-class, vp-sealed-hierarchy-trace, and vp-workspace-discovery, while without_skill ranges from 0.5 to 0.75 on those same runs.
+- Two evals regress with the skill: vp-cross-module-flow drops to 0.25 vs 0.5 without_skill, and vp-edit-and-validate drops to 0.25 vs 0.5; the misses are specific expectations around scaffold/callers coverage and atomic write+validate behavior.
+- vp-impact-analysis and vp-multi-file-rename tie on pass rate (0.75 and 0.8), but for different reasons: with_skill satisfies the semantic-tool expectations, while without_skill is the side that shows a depth-2 call tree / clean compile confirmation.
+- Some expectations never differentiate because both configs miss them: cross-module-flow 'Uses scaffold + references + callers in sequence', edit-and-validate 'Runs diagnostics atomically as part of the write', and exhaustive-references 'Finds references in at least 2 different modules' all fail in both runs.
+- Some expectations are effectively baseline checks rather than skill differentiators: both configs pass the scaffold-large-class accuracy assertions, workspace-discovery module names/file counts, and impact-analysis test-vs-production classification.
+- Resource cost is dominated by vp-multi-file-rename with_skill: 35.0s, 130679 tokens, and 3 errors versus 9.0s, 4185 tokens, and 0 errors without_skill; that single run explains most of the overall token variance.
+- vp-edit-and-validate with_skill is the other clear cost outlier: 25.0s and 10735 tokens for a 0.25 pass rate, versus 6.5s and 2542 tokens for the 0.5 without_skill run.
+- The overall token delta is not uniform: with_skill is actually cheaper on 5/10 evals (cross-module-flow, both disambiguation evals, impact-analysis, scaffold-large-class), so the mean increase is driven mostly by the rename and edit-validation outliers rather than every skill-assisted run.
+
+## What this means
+
+- **Disambiguation**: correctness -> fewer bugs shipped from symbol mix-ups.
+- **Completeness**: completeness -> audit confidence and fewer missed call sites.
+- **Safe Mutations**: validated edits -> fewer broken builds after refactors.
+- **Token Efficiency**: structural summaries -> lower API cost and faster reviews.
+- **Multi-Step**: compound workflows -> clearer blast-radius analysis before changes.

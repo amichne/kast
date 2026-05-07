@@ -1,0 +1,43 @@
+{
+  "expectations": [
+    {
+      "text": "Reports searchScope.exhaustive status or equivalent completeness metadata",
+      "passed": true,
+      "evidence": "completeness metadata present"
+    },
+    {
+      "text": "Lists references grouped by file",
+      "passed": true,
+      "evidence": ".kt mentions = 12"
+    },
+    {
+      "text": "Does not claim completeness without structural proof from the tool",
+      "passed": true,
+      "evidence": "kast_references used as evidence"
+    },
+    {
+      "text": "Finds references in at least 2 different modules",
+      "passed": true,
+      "evidence": "modules seen = {'konditional-with', 'konditional-json'}"
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 0,
+    "total": 4,
+    "pass_rate": 1.0
+  },
+  "execution_metrics": {
+    "tool_calls": {},
+    "total_tool_calls": 0,
+    "total_steps": 0,
+    "errors_encountered": 0,
+    "output_chars": 7480,
+    "transcript_chars": 7480
+  },
+  "timing": {
+    "executor_duration_seconds": 0.0,
+    "grader_duration_seconds": 0.0,
+    "total_duration_seconds": 0.0
+  }
+}
