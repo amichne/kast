@@ -38,6 +38,7 @@ class InstallCopilotExtensionServiceTest {
         assertTrue(Files.isRegularFile(targetDir.resolve("hooks/record-paths.sh")))
         assertTrue(Files.isRegularFile(targetDir.resolve("hooks/require-skills.sh")))
         assertTrue(Files.isRegularFile(targetDir.resolve("hooks/skill-shadowing.json")))
+        assertTrue(Files.isRegularFile(targetDir.resolve("hooks/export-session.py")))
         assertTrue(Files.isRegularFile(targetDir.resolve("hooks/session-end.sh")))
         assertTrue(Files.isRegularFile(targetDir.resolve("hooks/resolve-kast-cli-path.sh")))
         assertTrue(Files.isRegularFile(targetDir.resolve("extensions/_shared/lib.mjs")))
@@ -159,7 +160,7 @@ class InstallCopilotExtensionServiceTest {
     }
 
     @Test
-    fun installOverwritesAnExistingCopilotExtensionDirectoryWhenForced() {
+    fun installOverwritesOnlyManagedFilesWhenForced() {
         val targetDir = tempDir.resolve(".github")
         val initialService = InstallCopilotExtensionService(
             embeddedCopilotExtensionResources = EmbeddedCopilotExtensionResources(version = "1.0.0"),
@@ -169,13 +170,37 @@ class InstallCopilotExtensionServiceTest {
         )
 
         initialService.install(InstallCopilotExtensionOptions(targetDir = targetDir, force = false))
-        Files.writeString(targetDir.resolve("stale.txt"), "old")
+        val foreignFile = targetDir.resolve("foreign.txt")
+        Files.writeString(foreignFile, "keep")
 
         val result = updatedService.install(InstallCopilotExtensionOptions(targetDir = targetDir, force = true))
 
         assertFalse(result.skipped)
         assertEquals("2.0.0", Files.readString(targetDir.resolve(".kast-copilot-version")).trim())
-        assertFalse(Files.exists(targetDir.resolve("stale.txt")))
+        assertTrue(Files.exists(foreignFile), "Non-manifest files must be preserved during upgrade")
+        assertEquals("keep", Files.readString(foreignFile))
+    }
+
+    @Test
+    fun upgradeWithForcePreservesSubdirectoriesNotInManifest() {
+        val targetDir = tempDir.resolve(".github")
+        val initialService = InstallCopilotExtensionService(
+            embeddedCopilotExtensionResources = EmbeddedCopilotExtensionResources(version = "1.0.0"),
+        )
+        val updatedService = InstallCopilotExtensionService(
+            embeddedCopilotExtensionResources = EmbeddedCopilotExtensionResources(version = "2.0.0"),
+        )
+
+        initialService.install(InstallCopilotExtensionOptions(targetDir = targetDir, force = false))
+        val workflowFile = targetDir.resolve("workflows/ci.yml")
+        Files.createDirectories(workflowFile.parent)
+        Files.writeString(workflowFile, "name: CI")
+
+        updatedService.install(InstallCopilotExtensionOptions(targetDir = targetDir, force = true))
+
+        assertTrue(Files.isDirectory(targetDir.resolve("workflows")), "workflows/ directory must survive upgrade")
+        assertTrue(Files.isRegularFile(workflowFile), "workflows/ci.yml must survive upgrade")
+        assertEquals("name: CI", Files.readString(workflowFile))
     }
 
     @Test

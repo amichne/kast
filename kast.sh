@@ -1310,6 +1310,46 @@ _install_skill_phase() {
   esac
 }
 
+_install_copilot_extension_phase() {
+  local bin_dir="$1" non_interactive="${2:-false}"
+  local kast_bin="${bin_dir}/kast"
+  if [[ ! -x "$kast_bin" ]]; then
+    kast_bin="$(command -v kast 2>/dev/null || true)"
+    [[ -x "$kast_bin" ]] || { log_note "kast CLI not found; skipping copilot-extension install"; return 0; }
+  fi
+
+  log_section "Install Copilot extension"
+
+  if [[ "$non_interactive" == "true" ]] || ! can_prompt; then
+    log_note "Skipped copilot-extension install. Run: kast install copilot-extension"
+    return 0
+  fi
+
+  local repo_root
+  repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+  if [[ -z "$repo_root" ]]; then
+    log_note "Not inside a git repository; skipping copilot-extension install"
+    return 0
+  fi
+
+  printf '\n' >&2
+  printf '  Install the kast Copilot extension into %s/.github?\n' "$repo_root" >&2
+  printf '  %-9s %s\n' "$(colorize '1;32' 'yes')" "Install into ${repo_root}/.github" >&2
+  printf '  %-9s %s\n' "no     " "Skip (run: kast install copilot-extension later)" >&2
+  printf '\n' >&2
+
+  local ext_choice; ext_choice="$(_fzf_select "Install copilot-extension" "yes" "no")"
+  ext_choice="${ext_choice:-no}"
+
+  case "$ext_choice" in
+    yes)
+      "$kast_bin" install copilot-extension --target-dir="${repo_root}/.github" --yes=true
+      log_success "Copilot extension installed at ${repo_root}/.github" ;;
+    no|*)
+      log_note "Skipped copilot-extension install. Run: kast install copilot-extension" ;;
+  esac
+}
+
 _install_summary_phase() {
   local install_root="$1" bin_dir="$2" install_mode="${3:-minimal}"
   local intellij_action="${4:-skip}" install_standalone="${5:-false}"
@@ -1344,7 +1384,7 @@ _install_summary_phase() {
 
 cmd_install() {
   local components="" local_build="false" non_interactive="false"
-  local install_mode_flag="" skip_skill="false"
+  local install_mode_flag="" skip_skill="false" skip_copilot_extension="false"
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -1353,8 +1393,9 @@ cmd_install() {
       --mode=*)       install_mode_flag="${1#--mode=}"; shift ;;
       --mode)         [[ $# -ge 2 ]] || die "Missing value for --mode"; install_mode_flag="$2"; shift 2 ;;
       --skip-skill)   skip_skill="true"; shift ;;
+      --skip-copilot-extension) skip_copilot_extension="true"; shift ;;
       --local)        local_build="true"; shift ;;
-      --non-interactive) non_interactive="true"; skip_skill="true"; shift ;;
+      --non-interactive) non_interactive="true"; skip_skill="true"; skip_copilot_extension="true"; shift ;;
       --help|-h)
         cat >&2 << 'USAGE'
 Usage: ./kast.sh install [options]
@@ -1370,8 +1411,9 @@ Options:
   --components=<list>       Expert override: comma-separated cli,intellij,backend,all
                               Skips the wizard entirely; same as previous behavior
   --skip-skill              Skip Copilot skill install step
+  --skip-copilot-extension  Skip Copilot extension install step
   --local                   Install from local dist/ artifacts (built by ./kast.sh build)
-  --non-interactive         Skip all interactive prompts (implies --skip-skill)
+  --non-interactive         Skip all interactive prompts (implies --skip-skill, --skip-copilot-extension)
   --help, -h                Show this help
 USAGE
         return 0 ;;
@@ -1610,6 +1652,11 @@ USAGE
   # Phase 8: Copilot skill
   if [[ "$skip_skill" != "true" && "$install_cli" == "true" ]]; then
     _install_skill_phase "$bin_dir" "$non_interactive" || true
+  fi
+
+  # Phase 8.5: Copilot extension
+  if [[ "$skip_copilot_extension" != "true" && "$install_cli" == "true" ]]; then
+    _install_copilot_extension_phase "$bin_dir" "$non_interactive" || true
   fi
 
   # Phase 9: Summary

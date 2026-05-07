@@ -44,7 +44,7 @@ val embeddedCopilotHookFiles = listOf(
     "session-start.sh",
     "record-paths.sh",
     "require-skills.sh",
-    "skill-shadowing.json",
+    "export-session.py",
     "session-end.sh",
     "resolve-kast-cli-path.sh",
 )
@@ -105,6 +105,27 @@ val syncPackagedSkillResources by tasks.registering(Sync::class) {
     includeEmptyDirs = false
 }
 
+val generateFilteredSkillShadowing by tasks.registering {
+    val sourceFile = packagedCopilotHooksSourceDir.file("skill-shadowing.json").asFile
+    val outputFile = layout.buildDirectory.file(
+        "generated/filtered-skill-shadowing/packaged-copilot-extension/hooks/skill-shadowing.json",
+    )
+    inputs.file(sourceFile)
+    outputs.file(outputFile)
+    doLast {
+        @Suppress("UNCHECKED_CAST")
+        val parsed = groovy.json.JsonSlurper().parse(sourceFile) as Map<String, Any>
+        @Suppress("UNCHECKED_CAST")
+        val allSkills = parsed["skills"] as List<Map<String, Any>>
+        val portableSkills = allSkills.filter { it.containsKey("shadowingExtensionId") }
+        val filtered = mapOf("skills" to portableSkills)
+        outputFile.get().asFile.let { out ->
+            out.parentFile.mkdirs()
+            out.writeText(groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(filtered)))
+        }
+    }
+}
+
 val syncPackagedCopilotExtensionResources by tasks.registering(Sync::class) {
     from(packagedCopilotAgentsSourceDir) {
         include(embeddedCopilotAgentFiles)
@@ -112,6 +133,9 @@ val syncPackagedCopilotExtensionResources by tasks.registering(Sync::class) {
     }
     from(packagedCopilotHooksSourceDir) {
         include(embeddedCopilotHookFiles)
+        into("packaged-copilot-extension/hooks")
+    }
+    from(generateFilteredSkillShadowing.map { it.outputs.files }) {
         into("packaged-copilot-extension/hooks")
     }
     from(packagedCopilotExtensionsSourceDir) {

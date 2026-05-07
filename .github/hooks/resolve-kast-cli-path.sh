@@ -3,7 +3,12 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(git -C "${SCRIPT_DIR}" rev-parse --show-toplevel)"
+RESOLVE_SCRIPT="${REPO_ROOT}/.github/extensions/kast/scripts/resolve-kast.sh"
+if [[ -x "${RESOLVE_SCRIPT}" ]]; then
+    exec bash "${RESOLVE_SCRIPT}"
+fi
 
+# Inline fallback if extension script is missing
 resolve_absolute_path() {
     local path="$1"
     local dir
@@ -12,7 +17,6 @@ resolve_absolute_path() {
     base="$(basename -- "${path}")"
     printf '%s/%s\n' "${dir}" "${base}"
 }
-
 
 if command -v kast >/dev/null 2>&1; then
     resolve_absolute_path "$(command -v kast)"
