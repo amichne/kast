@@ -109,13 +109,14 @@ class ParsedModelsTest {
             RefreshQuery(filePaths).parsed(),
             FileOutlineQuery("/workspace/src/Main.kt").parsed(),
             WorkspaceSymbolQuery("Main").parsed(),
+            WorkspaceSearchQuery("Hello").parsed(),
             WorkspaceFilesQuery(moduleName = "main", maxFilesPerModule = 1).parsed(),
             ImplementationsQuery(position).parsed(),
             CodeActionsQuery(position).parsed(),
             CompletionsQuery(position).parsed(),
         )
 
-        assertEquals(16, parsedQueries.size)
+        assertEquals(17, parsedQueries.size)
         assertEquals(PositiveInt(100), (parsedQueries.last() as ParsedCompletionsQuery).maxResults)
     }
 
@@ -151,6 +152,7 @@ class ParsedModelsTest {
         assertThrows<ValidationException> { TypeHierarchyQuery(position, maxResults = 0).parsed() }
         assertThrows<ValidationException> { ImplementationsQuery(position, maxResults = 0).parsed() }
         assertThrows<ValidationException> { WorkspaceSymbolQuery("Main", maxResults = 0).parsed() }
+        assertThrows<ValidationException> { WorkspaceSearchQuery("Main", maxResults = 0).parsed() }
         assertThrows<ValidationException> { WorkspaceFilesQuery(maxFilesPerModule = 0).parsed() }
     }
 
@@ -192,6 +194,7 @@ class ParsedModelsTest {
 
         assertThrows<ValidationException> { RenameQuery(position, " ").parsed() }
         assertThrows<ValidationException> { WorkspaceSymbolQuery(" ").parsed() }
+        assertThrows<ValidationException> { WorkspaceSearchQuery(" ").parsed() }
         assertThrows<ValidationException> { WorkspaceFilesQuery(moduleName = " ").parsed() }
     }
 

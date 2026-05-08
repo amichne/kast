@@ -49,6 +49,31 @@ Tests run on both ubuntu and macOS in CI — local pass on one OS is not suffici
 
 **Resource race conditions (macOS-specific):** Parallel streams and Java I/O operations can race with JUnit `@TempDir` cleanup on macOS. If a test uses background threads or parallel streams touching filesystem, ensure proper `join()` and cleanup in `close()` — see Resource Lifecycle section below.
 
+## Benchmark and Copilot-extension parity
+
+For development runs and value-proof / benchmarking work, keep ephemeral
+workspaces under `.benchmarks/` inside this repo, not `/tmp/`; IntelliJ opening
+and indexing from `/tmp/` has been unreliable on this host.
+
+When a run depends on `kast install copilot-extension`, treat the checked-out
+`kast` CLI version as the source of truth. Verify the installed
+`.kast-copilot-version` marker in the target workspace matches `kast --version`
+before treating the run as a valid "with tool" result, and prefer references to
+that live marker / CLI output over duplicating version strings in prompts or
+docs.
+
+## kast_* recovery checklist
+
+If native `kast_*` tools fail with `extension.resolve`, `descriptor not found`,
+or stale startup state:
+
+1. Verify the resolved CLI first with `kast --version`.
+2. Check for descriptor-dir drift between `~/.config/kast/daemons` and
+   `~/.kast/cache/daemons`.
+3. Fix the environment or daemon state before retrying semantic calls.
+4. Run `extensions_reload` after fixing resolution state so the Copilot
+   extension drops cached failures.
+
 ## Indexer semantics
 
 "Indexing" in this codebase means **real K2/Analysis API/PSI traversal**, not file enumeration or simple walking. The SQLite source-index store (`.gradle/kast/cache/source-index.db`) is populated from actual K2 compiler symbols and PSI nodes via the `BackgroundIndexer`, not from filename lists. Distinguish between:
@@ -62,6 +87,20 @@ Tests run on both ubuntu and macOS in CI — local pass on one OS is not suffici
 2. Assess impact with `kast_references` + `kast_callers` — but default to **executing changes when intent is clear**. Reserve planning-only for genuinely ambiguous scope. The user will review before merge.
 3. Make the change with `kast_write_and_validate` or `kast_rename`.
 4. `kast_diagnostics` must return `clean=true` before completing.
-5. Run the narrowest Gradle task that proves the change.
+5. Run the narrowest Gradle task that proves the change. For packaged Copilot
+   extension or hook-resource changes under `.github/`, `EmbeddedCopilotExtensionResources`,
+   or related manifests, run `./gradlew :kast-cli:processResources :kast-cli:test --offline`
+   and inspect `kast-cli/build/resources/main/`. For focused regressions, use
+   single-test commands like `./gradlew :kast-cli:test --tests io.github.amichne.kast.cli.EmbeddedCopilotExtensionResourcesTest --offline`
+   or `./gradlew :kast-cli:test --tests io.github.amichne.kast.cli.InstallCopilotExtensionServiceTest --offline`.
 6. Update `AGENTS.md`/docs when behavioral or contract rules change.
 7. After committing, verify remote CI is green on **both ubuntu and macOS** using `gh pr checks --watch` or the `gh-fix-ci` skill. If `gh-fix-ci` is unavailable, use `gh run list --branch <branch>` + `gh run view <id> --log-failed` directly. Do not declare a task complete with CI red or unverified — local test pass is not sufficient.
+
+## Packaged Copilot resource split
+
+Keep the source repo and the packaged Copilot extension distinct where
+portability requires it. In particular, source `.github/hooks/skill-shadowing.json`
+may keep repo-local skills, but the packaged Copilot extension must filter that
+file down to portable entries backed by `shadowingExtensionId`. Verify the
+generated artifact shape in `kast-cli/build/resources/main/` instead of
+assuming the source `.github/` tree and packaged bundle are identical.

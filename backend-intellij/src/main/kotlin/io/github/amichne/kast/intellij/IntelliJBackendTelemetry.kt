@@ -35,6 +35,7 @@ internal enum class IntelliJTelemetryScope {
     RESOLVE,
     WORKSPACE_FILES,
     WORKSPACE_SYMBOL_SEARCH,
+    WORKSPACE_SEARCH,
     READ_ACTION,
     FILE_OUTLINE,
     APPLY_EDITS,
@@ -55,6 +56,7 @@ internal enum class IntelliJTelemetryScope {
             "resolve", "symbol-resolve", "symbol_resolve" -> RESOLVE
             "workspace-files", "workspace_files", "workspacefiles" -> WORKSPACE_FILES
             "workspace-symbol-search", "workspace_symbol_search", "workspacesymbolsearch" -> WORKSPACE_SYMBOL_SEARCH
+            "workspace-search", "workspace_search", "workspacesearch" -> WORKSPACE_SEARCH
             "read-action", "read_action", "readaction" -> READ_ACTION
             "file-outline", "file_outline", "fileoutline", "outline" -> FILE_OUTLINE
             "apply-edits", "apply_edits", "applyedits" -> APPLY_EDITS

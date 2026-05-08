@@ -52,6 +52,8 @@ import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
 import io.github.amichne.kast.api.protocol.ValidationException
 import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
 import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
+import io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery
+import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
 import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 import kotlinx.coroutines.withTimeout
@@ -263,6 +265,15 @@ class AnalysisDispatcher(
                         requireReadCapability(ReadCapability.WORKSPACE_SYMBOL_SEARCH)
                     },
                 ).withLimit(config.maxResults) { workspaceSymbolPageToken(config.maxResults) },
+            )
+
+            "workspace/search" -> encode(
+                WorkspaceSearchResult.serializer(),
+                backend.workspaceSearch(
+                    decodeParams(WorkspaceSearchQuery.serializer(), params).parsed().also {
+                        requireReadCapability(ReadCapability.WORKSPACE_SEARCH)
+                    },
+                ),
             )
 
             "workspace/files" -> encode(

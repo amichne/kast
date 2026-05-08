@@ -79,11 +79,14 @@ the same commands are available as a `kast <name>` bash fallback.
 | Operation            | Native tool                        | Bash fallback                                  |
 |----------------------|------------------------------------|------------------------------------------------|
 | Resolve symbol       | `kast_resolve`                     | `kast resolve`                                 |
+| Search symbols       | `kast_workspace_symbol`            | `kast workspace-symbol`                        |
+| Search file contents | `kast_workspace_search`            | `kast workspace-search`                        |
 | Find references      | `kast_references`                  | `kast references`                              |
 | Call hierarchy       | `kast_callers`                     | `kast callers`                                 |
 | Impact analysis      | `kast_references` + `kast_callers` | `kast references` + `kast callers`             |
 | Diagnostics          | `kast_diagnostics`                 | `kast diagnostics`                             |
 | Rename symbol        | `kast_rename`                      | `kast rename`                                  |
+| File outline         | `kast_file_outline`                | `kast file-outline`                            |
 | Scaffold context     | `kast_scaffold`                    | `kast scaffold`                                |
 | Write and validate   | `kast_write_and_validate`          | `kast write-and-validate`                      |
 | List workspace files | `kast_workspace_files`             | `kast workspace-files`                         |
@@ -95,8 +98,10 @@ hierarchy. These tools lack semantic understanding and produce incorrect
 results for overloaded symbols, inherited members, and cross-module
 references.
 
-**Text search whitelist:** `grep`/`rg` may be used for finding file paths,
-searching non-Kotlin files, and searching string literals or comments.
+**Text search whitelist:** `grep`/`rg` may be used for finding file paths and
+searching non-Kotlin files. For Kotlin source, use
+`kast_workspace_symbol` for symbol-name searches and
+`kast_workspace_search` for string, comment, and arbitrary content searches.
 
 ## Agent hooks
 
@@ -115,7 +120,7 @@ Copilot-assisted Kotlin work. It
 
 - resolves the `kast` CLI path once at session start (no bootstrap turn),
 - registers the `kast_*` tools listed under **Mandatory tool routing**, and
-- soft-warns once per session when generic `view`/`grep`/`edit`/`create`
+- soft-warns once per session when generic `view`/`grep`/`rg`/`edit`/`create`
   targets a `.kt`/`.kts` path, suggesting the semantic equivalent.
 
 When the extension loads successfully, it shadows `.agents/skills/kast/SKILL.md`

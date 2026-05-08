@@ -15,6 +15,7 @@ import io.github.amichne.kast.api.contract.SemanticInsertionQuery
 import io.github.amichne.kast.api.contract.query.SymbolQuery
 import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
+import io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
 import io.github.amichne.kast.cli.options.DaemonStartOptions
 import io.github.amichne.kast.cli.options.InstallCopilotExtensionOptions
@@ -48,6 +49,7 @@ internal sealed interface CliCommand {
     data class Diagnostics(override val options: RuntimeCommandOptions, override val query: DiagnosticsQuery) : BackendQuery<DiagnosticsQuery>
     data class FileOutline(override val options: RuntimeCommandOptions, override val query: FileOutlineQuery) : BackendQuery<FileOutlineQuery>
     data class WorkspaceSymbol(override val options: RuntimeCommandOptions, override val query: WorkspaceSymbolQuery) : BackendQuery<WorkspaceSymbolQuery>
+    data class WorkspaceSearch(override val options: RuntimeCommandOptions, override val query: WorkspaceSearchQuery) : BackendQuery<WorkspaceSearchQuery>
     data class WorkspaceFiles(override val options: RuntimeCommandOptions, override val query: WorkspaceFilesQuery) : BackendQuery<WorkspaceFilesQuery>
     data class Implementations(override val options: RuntimeCommandOptions, override val query: ImplementationsQuery) : BackendQuery<ImplementationsQuery>
     data class CodeActions(override val options: RuntimeCommandOptions, override val query: CodeActionsQuery) : BackendQuery<CodeActionsQuery>

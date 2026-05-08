@@ -22,6 +22,7 @@ import io.github.amichne.kast.api.contract.query.SymbolQuery
 import io.github.amichne.kast.api.contract.TypeHierarchyDirection
 import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
+import io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -161,6 +162,24 @@ class KastPluginBackendContractTest {
         assertEquals(1, module.files.size)
         assertTrue(module.fileCount > module.files.size)
         assertTrue(module.filesTruncated)
+    }
+
+    @Test
+    fun `workspace search returns content matches from project files`() = runBlocking {
+        ensureProjectReady()
+        val workspaceRoot = readAction {
+            commonWorkspaceRoot(sampleFile.virtualFile.path, sampleUsageFileFixture.get().virtualFile.path)
+        }
+
+        val result = backend(workspaceRoot).workspaceSearch(
+            WorkspaceSearchQuery(
+                pattern = "greet",
+            ),
+        )
+
+        assertTrue(result.matches.isNotEmpty())
+        assertTrue(result.matches.any { match -> match.preview.contains("fun greet") })
+        assertTrue(result.matches.all { match -> match.filePath.endsWith(".kt") })
     }
 
     @Test

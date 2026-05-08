@@ -224,9 +224,65 @@ const tools = [
     handler: (args) => callKastSkill("workspace-files", args),
   },
   {
+    name: "kast_workspace_symbol",
+    description:
+      "Search the workspace for Kotlin symbols by name pattern via kast workspace-symbol. Supports substring matching (default) and regex. Use to find declarations across the codebase — far more precise than grep/rg for symbol names because it understands Kotlin semantics (overloads, inherited members, cross-module references).",
+    parameters: {
+      type: "object",
+      properties: {
+        pattern: { type: "string", description: "Search pattern to match against symbol names." },
+        kind: {
+          type: "string",
+          description: "Filter to symbols of this kind: CLASS, INTERFACE, OBJECT, FUNCTION, PROPERTY, ENUM_CLASS, ENUM_ENTRY, TYPE_ALIAS.",
+        },
+        maxResults: { type: "integer", description: "Maximum number of symbols to return. Default 100." },
+        regex: { type: "boolean", description: "When true, treats pattern as a regular expression." },
+        includeDeclarationScope: {
+          type: "boolean",
+          description: "When true, includes the declaration body text for each symbol.",
+        },
+        workspaceRoot: { type: "string", description: ABS_PATH + " Defaults to cwd." },
+      },
+      required: ["pattern"],
+    },
+    handler: (args) => callKastSkill("workspace-symbol", args),
+  },
+  {
+    name: "kast_workspace_search",
+    description:
+      "Search file contents across the workspace for text patterns via kast workspace-search. Supports substring and regex matching with optional file glob filtering. Use this instead of grep/rg for searching string literals, comments, and arbitrary text in Kotlin source files.",
+    parameters: {
+      type: "object",
+      properties: {
+        pattern: { type: "string", description: "Search pattern (substring or regex)." },
+        regex: { type: "boolean", description: "When true, treats pattern as a regular expression." },
+        maxResults: { type: "integer", description: "Maximum number of matches to return. Default 100." },
+        fileGlob: { type: "string", description: "Optional glob to restrict search (e.g., '*.kt')." },
+        caseSensitive: { type: "boolean", description: "Case-sensitive matching. Default true." },
+        workspaceRoot: { type: "string", description: ABS_PATH + " Defaults to cwd." },
+      },
+      required: ["pattern"],
+    },
+    handler: (args) => callKastSkill("workspace-search", args),
+  },
+  {
+    name: "kast_file_outline",
+    description:
+      "Get a hierarchical symbol outline for a Kotlin file via kast file-outline. Returns nested declarations (classes, functions, properties) with their signatures and locations. Lighter than scaffold — use when you only need the structural overview without references, type hierarchy, or file content.",
+    parameters: {
+      type: "object",
+      properties: {
+        filePath: { type: "string", description: ABS_PATH + " Required." },
+        workspaceRoot: { type: "string", description: ABS_PATH + " Defaults to cwd." },
+      },
+      required: ["filePath"],
+    },
+    handler: (args) => callKastSkill("file-outline", args),
+  },
+  {
     name: "kast_scaffold",
     description:
-      "Summarize a Kotlin file/type structure (declarations, signatures, imports, key call sites) via kast scaffold. ALWAYS prefer this over reading a .kt file with `view` — scaffold returns a semantic skeleton at a fraction of the token cost.",
+      "Summarize a Kotlin file/type structure (declarations, signatures, imports, key call sites) via kast scaffold. Returns the full file content alongside the semantic skeleton — no separate `view` call needed for .kt files. ALWAYS prefer this over `view` for .kt/.kts files.",
     parameters: {
       type: "object",
       properties: {
@@ -395,6 +451,7 @@ const FILE_TOOL_KEYS = {
   edit: ["path", "filePath", "file_path"],
   create: ["path", "filePath", "file_path"],
   grep: ["paths", "path"],
+  rg: ["paths", "path"],
 };
 // Per-tool one-time nag — fire once per session per tool name.
 const warned = new Set();
@@ -417,9 +474,10 @@ function extractKotlinPath(toolName, toolArgs) {
 function suggestionFor(toolName) {
   switch (toolName) {
     case "view":
-      return "Prefer `kast_scaffold` (semantic skeleton: declarations, signatures, key call sites) over `view` for .kt/.kts files. Scaffold returns a fraction of the tokens with structured meaning. Use `view` only for non-semantic concerns (comments, formatting, generated files).";
+      return "Prefer `kast_scaffold` over `view` for .kt/.kts files. Scaffold returns the semantic skeleton and full file content, so a separate `view` call is usually unnecessary. If you only need the declaration tree, use `kast_file_outline`. Reserve `view` for non-semantic concerns such as formatting or generated files.";
     case "grep":
-      return "Prefer `kast_references` / `kast_resolve` / `kast_callers` over `grep` for Kotlin identity — grep cannot disambiguate overloads, inherited members, or imports vs aliases. Reserve `grep` for non-semantic searches (string literals, comments, build files).";
+    case "rg":
+      return "Prefer `kast_workspace_symbol` for Kotlin symbol-name discovery, `kast_workspace_search` for Kotlin content search, and `kast_references` / `kast_resolve` / `kast_callers` for semantic identity work. Reserve grep/rg for non-Kotlin files or simple literal searches outside Kotlin source.";
     case "edit":
     case "create":
       return "Prefer `kast_write_and_validate` over the generic `edit`/`create` tool for .kt/.kts files. write-and-validate runs diagnostics atomically and protects against import drift and compile breakage.";
@@ -480,8 +538,8 @@ const session = await joinSession({
         }
       }).catch(() => {});
       const toolContext =
-        `Kast tools available natively: kast_workspace_files, kast_scaffold, kast_resolve, kast_references, kast_callers, kast_metrics, kast_diagnostics, kast_rename, kast_write_and_validate. ` +
-        `Use these for ALL Kotlin semantic work — they are far cheaper than view/grep/edit on .kt source. ` +
+        `Kast tools available natively: kast_workspace_files, kast_workspace_symbol, kast_workspace_search, kast_file_outline, kast_scaffold, kast_resolve, kast_references, kast_callers, kast_metrics, kast_diagnostics, kast_rename, kast_write_and_validate. ` +
+        `Use these for ALL Kotlin semantic work and Kotlin source search — they are far cheaper than view/grep/rg/edit on .kt source. ` +
         `If a bash fallback is genuinely necessary, run ${bin} <wrapper> '<json>' directly; do not rely on exported shell state across tool calls.`;
       return {
         additionalContext: warningContext ? `${warningContext}\n${toolContext}` : toolContext,

@@ -3,11 +3,15 @@ package io.github.amichne.kast.cli.skill
 import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.contract.result.CallHierarchyStats
 import io.github.amichne.kast.api.contract.CallNode
+import io.github.amichne.kast.api.contract.PageInfo
+import io.github.amichne.kast.api.contract.result.SearchMatch
 import io.github.amichne.kast.api.wrapper.KastCallersQuery
 import io.github.amichne.kast.api.wrapper.KastCallersSuccessResponse
 import io.github.amichne.kast.api.wrapper.KastCandidate
 import io.github.amichne.kast.api.wrapper.KastDiagnosticsQuery
 import io.github.amichne.kast.api.wrapper.KastDiagnosticsSuccessResponse
+import io.github.amichne.kast.api.wrapper.KastFileOutlineQuery
+import io.github.amichne.kast.api.wrapper.KastFileOutlineSuccessResponse
 import io.github.amichne.kast.api.wrapper.KastDiagnosticsSummary
 import io.github.amichne.kast.api.wrapper.KastReferencesQuery
 import io.github.amichne.kast.api.wrapper.KastReferencesSuccessResponse
@@ -19,10 +23,15 @@ import io.github.amichne.kast.api.wrapper.KastResolveSuccessResponse
 import io.github.amichne.kast.api.wrapper.KastScaffoldQuery
 import io.github.amichne.kast.api.wrapper.KastScaffoldSuccessResponse
 import io.github.amichne.kast.api.wrapper.KastWorkspaceFilesQuery
+import io.github.amichne.kast.api.wrapper.KastWorkspaceSearchQuery
+import io.github.amichne.kast.api.wrapper.KastWorkspaceSearchSuccessResponse
+import io.github.amichne.kast.api.wrapper.KastWorkspaceSymbolQuery
+import io.github.amichne.kast.api.wrapper.KastWorkspaceSymbolSuccessResponse
 import io.github.amichne.kast.api.wrapper.KastWorkspaceFilesSuccessResponse
 import io.github.amichne.kast.api.wrapper.KastWriteAndValidateCreateFileQuery
 import io.github.amichne.kast.api.wrapper.KastWriteAndValidateSuccessResponse
 import io.github.amichne.kast.api.contract.Location
+import io.github.amichne.kast.api.contract.OutlineSymbol
 import io.github.amichne.kast.api.contract.Symbol
 import io.github.amichne.kast.api.contract.SymbolKind
 import io.github.amichne.kast.api.contract.result.WorkspaceModule
@@ -32,6 +41,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -95,6 +105,39 @@ class SkillWrapperContractTest {
         assertNotNull(parsed["modules"]?.jsonArray)
         assertEquals(1, parsed["schemaVersion"]?.jsonPrimitive?.int)
         assertEquals("/tmp/log.txt", parsed["logFile"]?.jsonPrimitive?.content)
+    }
+
+    @Test
+    fun `workspace-search success response has correct JSON shape`() {
+        val response = KastWorkspaceSearchSuccessResponse(
+            ok = true,
+            query = KastWorkspaceSearchQuery(
+                workspaceRoot = "/tmp/ws",
+                pattern = "greet",
+                fileGlob = "src/**/*.kt",
+            ),
+            matches = listOf(
+                SearchMatch(
+                    filePath = "/tmp/ws/src/Foo.kt",
+                    lineNumber = 3,
+                    columnNumber = 5,
+                    preview = "fun greet() = \"hi\"",
+                ),
+            ),
+            truncated = false,
+            schemaVersion = 1,
+            logFile = "/tmp/log.txt",
+        )
+
+        val encoded = SkillWrapperSerializer.encode(json, SkillWrapperName.WORKSPACE_SEARCH, response)
+        val parsed = json.parseToJsonElement(encoded) as JsonObject
+
+        assertEquals("WORKSPACE_SEARCH_SUCCESS", parsed["type"]?.jsonPrimitive?.content)
+        assertTrue(parsed["ok"]?.jsonPrimitive?.boolean ?: false)
+        assertEquals("greet", parsed["query"]?.jsonObject?.get("pattern")?.jsonPrimitive?.content)
+        assertEquals(1, parsed["matches"]?.jsonArray?.size)
+        assertEquals(false, parsed["truncated"]?.jsonPrimitive?.boolean)
+        assertEquals(1, parsed["schemaVersion"]?.jsonPrimitive?.int)
     }
 
     @Test
@@ -276,6 +319,59 @@ class SkillWrapperContractTest {
         assertEquals("SCAFFOLD_SUCCESS", parsed["type"]?.jsonPrimitive?.content)
         assertTrue(parsed["ok"]?.jsonPrimitive?.boolean ?: false)
         assertNotNull(parsed["outline"]?.jsonArray)
+    }
+
+    @Test
+    fun `file-outline success response has correct JSON shape`() {
+        val response = KastFileOutlineSuccessResponse(
+            ok = true,
+            query = KastFileOutlineQuery(
+                workspaceRoot = "/tmp/ws",
+                filePath = "/tmp/ws/src/Foo.kt",
+            ),
+            symbols = listOf(
+                OutlineSymbol(symbol = testSymbol()),
+            ),
+            logFile = "/tmp/log.txt",
+        )
+
+        val encoded = SkillWrapperSerializer.encode(json, SkillWrapperName.FILE_OUTLINE, response)
+        val parsed = json.parseToJsonElement(encoded) as JsonObject
+
+        assertEquals("FILE_OUTLINE_SUCCESS", parsed["type"]?.jsonPrimitive?.content)
+        assertTrue(parsed["ok"]?.jsonPrimitive?.boolean ?: false)
+        assertEquals("/tmp/ws/src/Foo.kt", parsed["query"]?.jsonObject?.get("filePath")?.jsonPrimitive?.content)
+        assertNotNull(parsed["symbols"]?.jsonArray)
+        assertEquals("/tmp/log.txt", parsed["logFile"]?.jsonPrimitive?.content)
+    }
+
+    @Test
+    fun `workspace-symbol success response has correct JSON shape`() {
+        val response = KastWorkspaceSymbolSuccessResponse(
+            ok = true,
+            query = KastWorkspaceSymbolQuery(
+                workspaceRoot = "/tmp/ws",
+                pattern = "Foo",
+                kind = "CLASS",
+                maxResults = 25,
+                regex = false,
+                includeDeclarationScope = true,
+            ),
+            symbols = listOf(testSymbol()),
+            page = PageInfo(truncated = true, nextPageToken = "page-2"),
+            logFile = "/tmp/log.txt",
+        )
+
+        val encoded = SkillWrapperSerializer.encode(json, SkillWrapperName.WORKSPACE_SYMBOL, response)
+        val parsed = json.parseToJsonElement(encoded) as JsonObject
+
+        assertEquals("WORKSPACE_SYMBOL_SUCCESS", parsed["type"]?.jsonPrimitive?.content)
+        assertTrue(parsed["ok"]?.jsonPrimitive?.boolean ?: false)
+        assertEquals("Foo", parsed["query"]?.jsonObject?.get("pattern")?.jsonPrimitive?.content)
+        assertEquals("CLASS", parsed["query"]?.jsonObject?.get("kind")?.jsonPrimitive?.content)
+        assertEquals("page-2", parsed["page"]?.jsonObject?.get("nextPageToken")?.jsonPrimitive?.content)
+        assertNotNull(parsed["symbols"]?.jsonArray)
+        assertEquals("/tmp/log.txt", parsed["logFile"]?.jsonPrimitive?.content)
     }
 
     @Test

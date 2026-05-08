@@ -23,6 +23,7 @@ import io.github.amichne.kast.api.contract.query.SymbolQuery
 import io.github.amichne.kast.api.contract.TypeHierarchyDirection
 import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
+import io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
 import io.github.amichne.kast.cli.options.DaemonStartOptions
 import io.github.amichne.kast.cli.options.BackendName
@@ -118,6 +119,7 @@ internal class CliCommandParser(
                 listOf("diagnostics") -> CliCommand.Diagnostics(parsed.runtimeOptions(), parsed.diagnosticsQuery(json))
                 listOf("outline") -> CliCommand.FileOutline(parsed.runtimeOptions(), parsed.fileOutlineQuery(json))
                 listOf("workspace-symbol") -> CliCommand.WorkspaceSymbol(parsed.withoutOption("max-results").runtimeOptions(), parsed.workspaceSymbolQuery(json))
+                listOf("workspace-search") -> CliCommand.WorkspaceSearch(parsed.withoutOption("max-results").runtimeOptions(), parsed.workspaceSearchQuery(json))
                 listOf("implementations") -> CliCommand.Implementations(parsed.withoutOption("max-results").runtimeOptions(), parsed.implementationsQuery(json))
                 listOf("code-actions") -> CliCommand.CodeActions(parsed.runtimeOptions(), parsed.codeActionsQuery(json))
                 listOf("completions") -> CliCommand.Completions(parsed.withoutOption("max-results").runtimeOptions(), parsed.completionsQuery(json))
@@ -571,6 +573,20 @@ internal data class ParsedArguments(
             maxResults = optionalInt("max-results", 100),
             regex = optionalBoolean("regex", false),
             includeDeclarationScope = optionalBoolean("include-body", false),
+        )
+    }
+
+    fun workspaceSearchQuery(json: Json): WorkspaceSearchQuery = requestOrFile(
+        serializer = WorkspaceSearchQuery.serializer(),
+        requestFileKey = "request-file",
+        json = json,
+    ) {
+        WorkspaceSearchQuery(
+            pattern = requireOption("pattern"),
+            regex = optionalBoolean("regex", false),
+            maxResults = optionalInt("max-results", 100),
+            fileGlob = options["file-glob"]?.takeIf(String::isNotBlank),
+            caseSensitive = optionalBoolean("case-sensitive", false),
         )
     }
 

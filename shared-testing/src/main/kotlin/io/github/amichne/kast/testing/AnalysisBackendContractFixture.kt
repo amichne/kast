@@ -16,6 +16,7 @@ import io.github.amichne.kast.api.contract.query.SymbolQuery
 import io.github.amichne.kast.api.contract.TextEdit
 import io.github.amichne.kast.api.contract.TypeHierarchyDirection
 import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
+import io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
 import java.nio.file.Files
 import java.nio.file.Path
@@ -83,6 +84,10 @@ data class AnalysisBackendContractFixture(
     )
 
     val workspaceSymbolQuery: WorkspaceSymbolQuery = WorkspaceSymbolQuery(
+        pattern = "greet",
+    )
+
+    val workspaceSearchQuery: WorkspaceSearchQuery = WorkspaceSearchQuery(
         pattern = "greet",
     )
 
@@ -239,6 +244,7 @@ object AnalysisBackendContractAssertions {
         assertTypeHierarchy(backend, fixture)
         assertFileOutline(backend, fixture)
         assertWorkspaceSymbolSearch(backend, fixture)
+        assertWorkspaceSearch(backend, fixture)
         assertRename(backend, fixture)
     }
 
@@ -337,6 +343,23 @@ object AnalysisBackendContractAssertions {
         check(fixture.symbolFqName in fqNames) {
             "workspace symbol search expected to contain <${fixture.symbolFqName}> but had <$fqNames>"
         }
+    }
+
+    private suspend fun assertWorkspaceSearch(
+        backend: AnalysisBackend,
+        fixture: AnalysisBackendContractFixture,
+    ) {
+        val result = backend.workspaceSearch(fixture.workspaceSearchQuery.parsed())
+
+        check(result.matches.isNotEmpty()) { "workspace search should return at least one match" }
+        val matchedFiles = result.matches.map { match -> NormalizedPath.of(Path.of(match.filePath)).value }
+        check(fixture.declarationFile.toString() in matchedFiles) {
+            "workspace search expected to include <${fixture.declarationFile}> but had <$matchedFiles>"
+        }
+        check(result.matches.any { match -> match.preview.contains("greet") }) {
+            "workspace search expected a preview containing greet but had <${result.matches.map { it.preview }}>"
+        }
+        expectEquals(false, result.truncated, "workspace search truncated")
     }
 
     private suspend fun assertRename(

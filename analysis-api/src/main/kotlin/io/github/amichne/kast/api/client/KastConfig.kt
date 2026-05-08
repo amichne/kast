@@ -44,7 +44,7 @@ data class KastConfig(
                 indexing = IndexingConfig(
                     phase2Enabled = IndexingPhase2Enabled(true),
                     phase2BatchSize = IndexingPhase2BatchSize(50),
-                    phase2Parallelism = IndexingPhase2Parallelism(2),
+                    phase2Parallelism = IndexingPhase2Parallelism(4),
                     identifierIndexWaitMillis = IndexingIdentifierIndexWaitMillis(10_000L),
                     referenceBatchSize = IndexingReferenceBatchSize(50),
                     remote = RemoteIndexConfig(

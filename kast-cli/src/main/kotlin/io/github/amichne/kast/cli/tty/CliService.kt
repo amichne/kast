@@ -34,6 +34,8 @@ import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
 import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
 import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
 import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
+import io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery
+import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
 import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 import io.github.amichne.kast.api.client.KastConfig
@@ -205,6 +207,18 @@ internal class CliService(
         requireReadCapability(runtime.selected, ReadCapability.WORKSPACE_FILES)
         return attachedResult(
             payload = rpcClient.post(runtime.selected.descriptor, "workspace/files", query),
+            runtime = runtime,
+        )
+    }
+
+    suspend fun workspaceSearch(
+        options: RuntimeCommandOptions,
+        query: WorkspaceSearchQuery,
+    ): RuntimeAttachedResult<WorkspaceSearchResult> {
+        val runtime = runtimeManager.ensureRuntime(options)
+        requireReadCapability(runtime.selected, ReadCapability.WORKSPACE_SEARCH)
+        return attachedResult(
+            payload = rpcClient.post(runtime.selected.descriptor, "workspace/search", query),
             runtime = runtime,
         )
     }

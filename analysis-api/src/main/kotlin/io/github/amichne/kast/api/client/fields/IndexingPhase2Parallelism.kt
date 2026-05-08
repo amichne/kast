@@ -5,5 +5,5 @@ data class IndexingPhase2Parallelism(
 ) : ConfigurationField<Int>() {
     override val section: String get() = "indexing"
     override val key: String get() = "phase2Parallelism"
-    override val default: ConfigurationDefault<Int> get() = ConfigurationDefault(2)
+    override val default: ConfigurationDefault<Int> get() = ConfigurationDefault(4)
 }

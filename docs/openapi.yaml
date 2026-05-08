@@ -302,6 +302,33 @@ paths:
             "application/json":
               schema:
                 "$ref": "#/components/schemas/JsonRpcErrorResponse"
+  "/rpc/workspace/search":
+    post:
+      operationId: workspaceSearch
+      summary: Search workspace file contents for text patterns
+      tags:
+        - read
+      x-jsonrpc-method: workspace/search
+      x-kast-required-capability: WORKSPACE_SEARCH
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/WorkspaceSearchQuery"
+      responses:
+        200:
+          description: JSON-RPC success result
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/WorkspaceSearchResult"
+        default:
+          description: JSON-RPC error response
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/JsonRpcErrorResponse"
   "/rpc/workspace/files":
     post:
       operationId: workspaceFiles
@@ -1423,6 +1450,60 @@ components:
       additionalProperties: false
       required:
         - symbols
+    WorkspaceSearchQuery:
+      type: object
+      properties:
+        pattern:
+          type: string
+        regex:
+          type: boolean
+        maxResults:
+          type: integer
+          format: int32
+        fileGlob:
+          anyOf:
+            - type: string
+            - type: "null"
+        caseSensitive:
+          type: boolean
+      additionalProperties: false
+      required:
+        - pattern
+    SearchMatch:
+      type: object
+      properties:
+        filePath:
+          type: string
+        lineNumber:
+          type: integer
+          format: int32
+        columnNumber:
+          type: integer
+          format: int32
+        preview:
+          type: string
+      additionalProperties: false
+      required:
+        - filePath
+        - lineNumber
+        - columnNumber
+        - preview
+    WorkspaceSearchResult:
+      type: object
+      properties:
+        matches:
+          type: array
+          items:
+            "$ref": "#/components/schemas/SearchMatch"
+        truncated:
+          type: boolean
+        schemaVersion:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - matches
+        - truncated
     WorkspaceFilesQuery:
       type: object
       properties:

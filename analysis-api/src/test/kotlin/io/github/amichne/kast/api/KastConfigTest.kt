@@ -30,6 +30,16 @@ class KastConfigTest {
     }
 
     @Test
+    fun phase2ParallelismExposesRaisedTypedDefault() {
+        val phase2Parallelism = KastConfig.defaults().indexing.phase2Parallelism
+
+        assertEquals("indexing", phase2Parallelism.section)
+        assertEquals("phase2Parallelism", phase2Parallelism.key)
+        assertEquals(ConfigurationDefault(4), phase2Parallelism.default)
+        assertEquals(4, phase2Parallelism.value)
+    }
+
+    @Test
     fun `defaults expose paths and cli sections`() {
         val configFields = KastConfig::class.java.declaredFields.map { it.name }.toSet()
 

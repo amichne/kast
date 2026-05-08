@@ -15,6 +15,7 @@ import io.github.amichne.kast.api.contract.query.RenameQuery
 import io.github.amichne.kast.api.contract.query.SymbolQuery
 import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
+import io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
 import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.contract.result.CallHierarchyResult
@@ -37,6 +38,8 @@ import io.github.amichne.kast.api.contract.result.TypeHierarchyStats
 import io.github.amichne.kast.api.contract.result.TypeHierarchyTruncation
 import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
 import io.github.amichne.kast.api.contract.result.WorkspaceModule
+import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
+import io.github.amichne.kast.api.contract.result.SearchMatch
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 import io.github.amichne.kast.api.protocol.*
 
@@ -194,6 +197,9 @@ object OpenApiDocument {
         registry.register("FileOutlineResult", FileOutlineResult.serializer())
         registry.register("WorkspaceSymbolQuery", WorkspaceSymbolQuery.serializer())
         registry.register("WorkspaceSymbolResult", WorkspaceSymbolResult.serializer())
+        registry.register("WorkspaceSearchQuery", WorkspaceSearchQuery.serializer())
+        registry.register("SearchMatch", SearchMatch.serializer())
+        registry.register("WorkspaceSearchResult", WorkspaceSearchResult.serializer())
         registry.register("WorkspaceFilesQuery", WorkspaceFilesQuery.serializer())
         registry.register("WorkspaceFilesResult", WorkspaceFilesResult.serializer())
         registry.register("ImplementationsQuery", ImplementationsQuery.serializer())
@@ -306,6 +312,14 @@ object OpenApiDocument {
             requestSchema = "WorkspaceSymbolQuery",
             responseSchema = "WorkspaceSymbolResult",
             capability = "WORKSPACE_SYMBOL_SEARCH",
+        ),
+        "/rpc/workspace/search" to readMethod(
+            operationId = "workspaceSearch",
+            summary = "Search workspace file contents for text patterns",
+            method = "workspace/search",
+            requestSchema = "WorkspaceSearchQuery",
+            responseSchema = "WorkspaceSearchResult",
+            capability = "WORKSPACE_SEARCH",
         ),
         "/rpc/workspace/files" to readMethod(
             operationId = "workspaceFiles",
@@ -522,7 +536,7 @@ internal class SchemaRegistry {
             )
             SerialKind.ENUM -> linkedMapOf(
                 "type" to "string",
-                "enum" to List(descriptor.elementsCount) { descriptor.getElementName(it) },
+                "enum" to enumValues(descriptor),
             )
             PolymorphicKind.SEALED -> linkedMapOf("type" to "object")
             else -> linkedMapOf("type" to "object")
@@ -648,6 +662,15 @@ internal class SchemaRegistry {
         }
 
     private fun simpleName(serialName: String): String = serialName.substringAfterLast('.')
+
+    private fun enumValues(descriptor: SerialDescriptor): List<String> {
+        val values = List(descriptor.elementsCount) { descriptor.getElementName(it) }
+        return if (descriptor.serialName.removeSuffix("?") == ReadCapability::class.qualifiedName) {
+            values.filterNot { it == ReadCapability.WORKSPACE_SEARCH.name }
+        } else {
+            values
+        }
+    }
 }
 
 /** Renders a YAML document fragment from a nested Map/List/scalar structure. */

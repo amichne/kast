@@ -134,6 +134,60 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/KastWorkspaceFilesResponse"
+  "/skill/workspace-search":
+    post:
+      operationId: kastSkillWorkspaceSearch
+      summary: Search Kotlin workspace file contents by text or regex
+      x-command: kast workspace-search
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              $ref: "#/components/schemas/KastWorkspaceSearchRequest"
+      responses:
+        "200":
+          description: Wrapper JSON response
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/KastWorkspaceSearchResponse"
+  "/skill/file-outline":
+    post:
+      operationId: kastSkillFileOutline
+      summary: Produce a hierarchical outline for a Kotlin file
+      x-command: kast file-outline
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              $ref: "#/components/schemas/KastFileOutlineRequest"
+      responses:
+        "200":
+          description: Wrapper JSON response
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/KastFileOutlineResponse"
+  "/skill/workspace-symbol":
+    post:
+      operationId: kastSkillWorkspaceSymbol
+      summary: Search workspace symbols by name or regex
+      x-command: kast workspace-symbol
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              $ref: "#/components/schemas/KastWorkspaceSymbolRequest"
+      responses:
+        "200":
+          description: Wrapper JSON response
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/KastWorkspaceSymbolResponse"
   "/skill/write-and-validate":
     post:
       operationId: kastSkillWriteAndValidate
@@ -484,6 +538,74 @@ components:
             -
               type: null
       additionalProperties: false
+    KastWorkspaceSearchRequest:
+      type: object
+      properties:
+        workspaceRoot:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        pattern:
+          type: string
+        regex:
+          type: boolean
+        maxResults:
+          type: integer
+          format: int32
+        fileGlob:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        caseSensitive:
+          type: boolean
+      additionalProperties: false
+      required:
+        - pattern
+    KastFileOutlineRequest:
+      type: object
+      properties:
+        workspaceRoot:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        filePath:
+          type: string
+      additionalProperties: false
+      required:
+        - filePath
+    KastWorkspaceSymbolRequest:
+      type: object
+      properties:
+        workspaceRoot:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        pattern:
+          type: string
+        kind:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        maxResults:
+          type: integer
+          format: int32
+        regex:
+          type: boolean
+        includeDeclarationScope:
+          type: boolean
+      additionalProperties: false
+      required:
+        - pattern
     KastWriteAndValidateCreateFileRequest:
       type: object
       properties:
@@ -2197,6 +2319,273 @@ components:
         mapping:
           WORKSPACE_FILES_SUCCESS: "#/components/schemas/KastWorkspaceFilesSuccessResponse"
           WORKSPACE_FILES_FAILURE: "#/components/schemas/KastWorkspaceFilesFailureResponse"
+    KastWorkspaceSearchSuccessResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        query:
+          $ref: "#/components/schemas/KastWorkspaceSearchQuery"
+        matches:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchMatch"
+        truncated:
+          type: boolean
+        schemaVersion:
+          type: integer
+          format: int32
+        logFile:
+          type: string
+        type:
+          type: string
+          const: WORKSPACE_SEARCH_SUCCESS
+      additionalProperties: false
+      required:
+        - query
+        - matches
+        - truncated
+        - schemaVersion
+        - logFile
+        - type
+    KastWorkspaceSearchQuery:
+      type: object
+      properties:
+        workspaceRoot:
+          type: string
+        pattern:
+          type: string
+        regex:
+          type: boolean
+        maxResults:
+          type: integer
+          format: int32
+        fileGlob:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        caseSensitive:
+          type: boolean
+      additionalProperties: false
+      required:
+        - workspaceRoot
+        - pattern
+    SearchMatch:
+      type: object
+      properties:
+        filePath:
+          type: string
+        lineNumber:
+          type: integer
+          format: int32
+        columnNumber:
+          type: integer
+          format: int32
+        preview:
+          type: string
+      additionalProperties: false
+      required:
+        - filePath
+        - lineNumber
+        - columnNumber
+        - preview
+    KastWorkspaceSearchFailureResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        stage:
+          type: string
+        message:
+          type: string
+        query:
+          $ref: "#/components/schemas/KastWorkspaceSearchQuery"
+        logFile:
+          type: string
+        error:
+          anyOf:
+            -
+              $ref: "#/components/schemas/ApiErrorResponse"
+            -
+              type: null
+        errorText:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        type:
+          type: string
+          const: WORKSPACE_SEARCH_FAILURE
+      additionalProperties: false
+      required:
+        - stage
+        - message
+        - query
+        - logFile
+        - type
+    KastWorkspaceSearchResponse:
+      oneOf:
+        -
+          $ref: "#/components/schemas/KastWorkspaceSearchSuccessResponse"
+        -
+          $ref: "#/components/schemas/KastWorkspaceSearchFailureResponse"
+      discriminator:
+        propertyName: type
+        mapping:
+          WORKSPACE_SEARCH_SUCCESS: "#/components/schemas/KastWorkspaceSearchSuccessResponse"
+          WORKSPACE_SEARCH_FAILURE: "#/components/schemas/KastWorkspaceSearchFailureResponse"
+    KastFileOutlineSuccessResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        query:
+          $ref: "#/components/schemas/KastFileOutlineQuery"
+        symbols:
+          type: array
+          items:
+            $ref: "#/components/schemas/OutlineSymbol"
+        logFile:
+          type: string
+        type:
+          type: string
+          const: FILE_OUTLINE_SUCCESS
+      additionalProperties: false
+      required:
+        - query
+        - symbols
+        - logFile
+        - type
+    KastFileOutlineQuery:
+      type: object
+      properties:
+        workspaceRoot:
+          type: string
+        filePath:
+          type: string
+      additionalProperties: false
+      required:
+        - workspaceRoot
+        - filePath
+    KastFileOutlineFailureResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        stage:
+          type: string
+        message:
+          type: string
+        query:
+          $ref: "#/components/schemas/KastFileOutlineQuery"
+        logFile:
+          type: string
+        type:
+          type: string
+          const: FILE_OUTLINE_FAILURE
+      additionalProperties: false
+      required:
+        - stage
+        - message
+        - query
+        - logFile
+        - type
+    KastFileOutlineResponse:
+      type: object
+    KastWorkspaceSymbolSuccessResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        query:
+          $ref: "#/components/schemas/KastWorkspaceSymbolQuery"
+        symbols:
+          type: array
+          items:
+            $ref: "#/components/schemas/Symbol"
+        page:
+          anyOf:
+            -
+              $ref: "#/components/schemas/PageInfo"
+            -
+              type: null
+        logFile:
+          type: string
+        type:
+          type: string
+          const: WORKSPACE_SYMBOL_SUCCESS
+      additionalProperties: false
+      required:
+        - query
+        - symbols
+        - logFile
+        - type
+    KastWorkspaceSymbolQuery:
+      type: object
+      properties:
+        workspaceRoot:
+          type: string
+        pattern:
+          type: string
+        kind:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+        maxResults:
+          type: integer
+          format: int32
+        regex:
+          type: boolean
+        includeDeclarationScope:
+          type: boolean
+      additionalProperties: false
+      required:
+        - workspaceRoot
+        - pattern
+    PageInfo:
+      type: object
+      properties:
+        truncated:
+          type: boolean
+        nextPageToken:
+          anyOf:
+            -
+              type: string
+            -
+              type: null
+      additionalProperties: false
+      required:
+        - truncated
+    KastWorkspaceSymbolFailureResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        stage:
+          type: string
+        message:
+          type: string
+        query:
+          $ref: "#/components/schemas/KastWorkspaceSymbolQuery"
+        logFile:
+          type: string
+        type:
+          type: string
+          const: WORKSPACE_SYMBOL_FAILURE
+      additionalProperties: false
+      required:
+        - stage
+        - message
+        - query
+        - logFile
+        - type
+    KastWorkspaceSymbolResponse:
+      type: object
     KastWriteAndValidateSuccessResponse:
       type: object
       properties:

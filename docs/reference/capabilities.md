@@ -230,6 +230,27 @@ category. Expand any operation to see its input and output schemas.
             | `#!kotlin page: PageInfo?` | Pagination metadata when results are truncated. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
+    ??? info "workspace/search — Search workspace file contents for text patterns"
+
+        **Capability** &nbsp;·&nbsp; `WORKSPACE_SEARCH`
+
+        === "Input: WorkspaceSearchQuery"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin pattern: String` | Search pattern to match as a substring or regex. |
+            | `#!kotlin regex: Boolean` :material-information-outline:{ title="Default: false" } | When true, treats the pattern as a regular expression. |
+            | `#!kotlin maxResults: Int` :material-information-outline:{ title="Default: 100" } | Maximum number of matches to return. |
+            | `#!kotlin fileGlob: String?` | Optional glob that restricts which files are searched. |
+            | `#!kotlin caseSensitive: Boolean` :material-information-outline:{ title="Default: true" } | When true, matches text with case sensitivity. |
+        === "Output: WorkspaceSearchResult"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin matches: List<SearchMatch>` | Matched lines with absolute file path, line, column, and preview text. |
+            | `#!kotlin truncated: Boolean` :material-information-outline:{ title="Default: false" } | True when the result stopped at `maxResults`. |
+            | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
+
     ??? info "workspace/files — List workspace modules and source files"
 
         **Capability** &nbsp;·&nbsp; `WORKSPACE_FILES`

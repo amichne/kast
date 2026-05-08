@@ -15,6 +15,7 @@ import io.github.amichne.kast.api.contract.query.RenameQuery
 import io.github.amichne.kast.api.contract.query.SymbolQuery
 import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
+import io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
 import io.github.amichne.kast.api.validation.parsed
 
@@ -30,6 +31,7 @@ internal suspend fun KastPluginBackend.optimizeImports(query: ImportOptimizeQuer
 internal suspend fun KastPluginBackend.refresh(query: RefreshQuery) = refresh(query.parsed())
 internal suspend fun KastPluginBackend.fileOutline(query: FileOutlineQuery) = fileOutline(query.parsed())
 internal suspend fun KastPluginBackend.workspaceSymbolSearch(query: WorkspaceSymbolQuery) = workspaceSymbolSearch(query.parsed())
+internal suspend fun KastPluginBackend.workspaceSearch(query: WorkspaceSearchQuery) = workspaceSearch(query.parsed())
 internal suspend fun KastPluginBackend.workspaceFiles(query: WorkspaceFilesQuery) = workspaceFiles(query.parsed())
 internal suspend fun KastPluginBackend.implementations(query: ImplementationsQuery) = implementations(query.parsed())
 internal suspend fun KastPluginBackend.codeActions(query: CodeActionsQuery) = codeActions(query.parsed())

@@ -9,6 +9,10 @@ import io.github.amichne.kast.api.contract.result.RefreshResult
 import io.github.amichne.kast.api.contract.result.RenameResult
 import io.github.amichne.kast.api.contract.RuntimeState
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
+import io.github.amichne.kast.api.wrapper.KastFileOutlineResponse
+import io.github.amichne.kast.api.wrapper.KastFileOutlineSuccessResponse
+import io.github.amichne.kast.api.wrapper.KastWorkspaceSymbolResponse
+import io.github.amichne.kast.api.wrapper.KastWorkspaceSymbolSuccessResponse
 import io.github.amichne.kast.api.client.ServerInstanceDescriptor
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.cli.results.WorkspaceEnsureResult
@@ -102,6 +106,99 @@ class KastWrapperTest {
             val diagnosticsResult = defaultCliJson().decodeFromString<DiagnosticsResult>(diagnostics.stdout)
             assertTrue(diagnosticsResult.diagnostics.isEmpty())
             assertTrue(diagnostics.stderr.contains("daemon:"))
+        } finally {
+            runCli(
+                "daemon",
+                "stop",
+                "--workspace-root=$workspace",
+                allowFailure = true,
+            )
+            daemon.destroyForcibly()
+        }
+    }
+
+    @Test
+    fun `workspace-symbol wrapper searches symbols through launcher`() {
+        val workspace = createIsolatedTestWorkspace("workspace-symbol-wrapper")
+        val sourceFile = standaloneSourceRoot(workspace)
+            .resolve("example/Sample.kt")
+            .createDirectoriesForParent()
+        sourceFile.writeText(
+            """
+            package example
+
+            fun greet(): String = \"hi\"
+            """.trimIndent() + "\n",
+        )
+
+        val daemon = startIsolatedRealBackend(workspace)
+        try {
+            runCli(
+                "workspace",
+                "ensure",
+                "--workspace-root=$workspace",
+            )
+
+            val search = runCli(
+                "workspace-symbol",
+                "{" +
+                    "\"workspaceRoot\":\"$workspace\"," +
+                    "\"pattern\":\"greet\"" +
+                    "}",
+            )
+            val result = defaultCliJson().decodeFromString<KastWorkspaceSymbolResponse>(search.stdout)
+            val success = result as KastWorkspaceSymbolSuccessResponse
+
+            assertEquals("greet", success.query.pattern)
+            assertTrue(success.symbols.any { symbol -> symbol.fqName == "example.greet" })
+        } finally {
+            runCli(
+                "daemon",
+                "stop",
+                "--workspace-root=$workspace",
+                allowFailure = true,
+            )
+            daemon.destroyForcibly()
+        }
+    }
+
+    @Test
+    fun `file-outline wrapper returns nested declarations through launcher`() {
+        val workspace = createIsolatedTestWorkspace("file-outline-wrapper")
+        val sourceFile = standaloneSourceRoot(workspace)
+            .resolve("example/Greeter.kt")
+            .createDirectoriesForParent()
+        sourceFile.writeText(
+            """
+            package example
+
+            class Greeter {
+                fun greet(): String = \"hi\"
+            }
+            """.trimIndent() + "\n",
+        )
+
+        val daemon = startIsolatedRealBackend(workspace)
+        try {
+            runCli(
+                "workspace",
+                "ensure",
+                "--workspace-root=$workspace",
+            )
+
+            val outline = runCli(
+                "file-outline",
+                "{" +
+                    "\"workspaceRoot\":\"$workspace\"," +
+                    "\"filePath\":\"$sourceFile\"" +
+                    "}",
+            )
+            val result = defaultCliJson().decodeFromString<KastFileOutlineResponse>(outline.stdout)
+            val success = result as KastFileOutlineSuccessResponse
+
+            assertTrue(success.symbols.any { symbol -> symbol.symbol.fqName == "example.Greeter" })
+            val greeter = success.symbols.first { symbol -> symbol.symbol.fqName == "example.Greeter" }
+            assertTrue(greeter.children.any { child -> child.symbol.fqName == "example.Greeter.greet" })
         } finally {
             runCli(
                 "daemon",

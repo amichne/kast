@@ -19,6 +19,8 @@ import io.github.amichne.kast.api.contract.SymbolKind
 import io.github.amichne.kast.api.contract.TextEdit
 import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
+import io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery
+import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
 import io.github.amichne.kast.api.wrapper.KastCallersFailureResponse
 import io.github.amichne.kast.api.wrapper.KastCallersQuery
 import io.github.amichne.kast.api.wrapper.KastCallersRequest
@@ -26,6 +28,9 @@ import io.github.amichne.kast.api.wrapper.KastCallersSuccessResponse
 import io.github.amichne.kast.api.wrapper.KastCandidate
 import io.github.amichne.kast.api.wrapper.KastDiagnosticsQuery
 import io.github.amichne.kast.api.wrapper.KastDiagnosticsRequest
+import io.github.amichne.kast.api.wrapper.KastFileOutlineQuery
+import io.github.amichne.kast.api.wrapper.KastFileOutlineRequest
+import io.github.amichne.kast.api.wrapper.KastFileOutlineSuccessResponse
 import io.github.amichne.kast.api.wrapper.KastDiagnosticsSuccessResponse
 import io.github.amichne.kast.api.wrapper.KastDiagnosticsSummary
 import io.github.amichne.kast.api.wrapper.KastMetricsQuery
@@ -56,6 +61,12 @@ import io.github.amichne.kast.api.wrapper.KastScaffoldTypeHierarchy
 import io.github.amichne.kast.api.wrapper.KastWorkspaceFilesQuery
 import io.github.amichne.kast.api.wrapper.KastWorkspaceFilesRequest
 import io.github.amichne.kast.api.wrapper.KastWorkspaceFilesSuccessResponse
+import io.github.amichne.kast.api.wrapper.KastWorkspaceSearchQuery
+import io.github.amichne.kast.api.wrapper.KastWorkspaceSearchRequest
+import io.github.amichne.kast.api.wrapper.KastWorkspaceSearchSuccessResponse
+import io.github.amichne.kast.api.wrapper.KastWorkspaceSymbolQuery
+import io.github.amichne.kast.api.wrapper.KastWorkspaceSymbolRequest
+import io.github.amichne.kast.api.wrapper.KastWorkspaceSymbolSuccessResponse
 import io.github.amichne.kast.api.wrapper.KastWriteAndValidateCreateFileQuery
 import io.github.amichne.kast.api.wrapper.KastWriteAndValidateCreateFileRequest
 import io.github.amichne.kast.api.wrapper.KastWriteAndValidateInsertAtOffsetQuery
@@ -91,6 +102,9 @@ internal class SkillWrapperExecutor(
         val rawJson = SkillWrapperInput.parseJsonInput(command.rawInput)
         return when (command.name) {
             SkillWrapperName.WORKSPACE_FILES -> executeWorkspaceFiles(rawJson)
+            SkillWrapperName.WORKSPACE_SEARCH -> executeWorkspaceSearch(rawJson)
+            SkillWrapperName.FILE_OUTLINE -> executeFileOutline(rawJson)
+            SkillWrapperName.WORKSPACE_SYMBOL -> executeWorkspaceSymbol(rawJson)
             SkillWrapperName.DIAGNOSTICS -> executeDiagnostics(rawJson)
             SkillWrapperName.RESOLVE -> executeResolve(rawJson)
             SkillWrapperName.REFERENCES -> executeReferences(rawJson)
@@ -124,6 +138,83 @@ internal class SkillWrapperExecutor(
             ),
             modules = result.payload.modules,
             schemaVersion = result.payload.schemaVersion,
+            logFile = SkillLogFile.placeholder(),
+        )
+    }
+
+    private suspend fun executeFileOutline(rawJson: String): Any {
+        val request = json.decodeFromString<KastFileOutlineRequest>(rawJson)
+        val workspaceRoot = requireWorkspaceRoot(request.workspaceRoot)
+        val options = runtimeOptionsFor(workspaceRoot)
+        val filePath = Path.of(request.filePath).toAbsolutePath().normalize().toString()
+        val result = cliService.fileOutline(options, FileOutlineQuery(filePath = filePath))
+        return KastFileOutlineSuccessResponse(
+            ok = true,
+            query = KastFileOutlineQuery(
+                workspaceRoot = workspaceRoot,
+                filePath = filePath,
+            ),
+            symbols = result.payload.symbols,
+            logFile = SkillLogFile.placeholder(),
+        )
+    }
+
+    private suspend fun executeWorkspaceSearch(rawJson: String): Any {
+        val request = json.decodeFromString<KastWorkspaceSearchRequest>(rawJson)
+        val workspaceRoot = requireWorkspaceRoot(request.workspaceRoot)
+        val options = runtimeOptionsFor(workspaceRoot)
+        val query = WorkspaceSearchQuery(
+            pattern = request.pattern,
+            regex = request.regex,
+            maxResults = request.maxResults,
+            fileGlob = request.fileGlob,
+            caseSensitive = request.caseSensitive,
+        )
+        val result = cliService.workspaceSearch(options, query)
+        return KastWorkspaceSearchSuccessResponse(
+            ok = true,
+            query = KastWorkspaceSearchQuery(
+                workspaceRoot = workspaceRoot,
+                pattern = request.pattern,
+                regex = request.regex,
+                maxResults = request.maxResults,
+                fileGlob = request.fileGlob,
+                caseSensitive = request.caseSensitive,
+            ),
+            matches = result.payload.matches,
+            truncated = result.payload.truncated,
+            schemaVersion = result.payload.schemaVersion,
+            logFile = SkillLogFile.placeholder(),
+        )
+    }
+
+    private suspend fun executeWorkspaceSymbol(rawJson: String): Any {
+        val request = json.decodeFromString<KastWorkspaceSymbolRequest>(rawJson)
+        val workspaceRoot = requireWorkspaceRoot(request.workspaceRoot)
+        val options = runtimeOptionsFor(workspaceRoot)
+        val kind = request.kind?.let { raw ->
+            SymbolKind.entries.firstOrNull { it.name.equals(raw, ignoreCase = true) }
+        }
+        val query = WorkspaceSymbolQuery(
+            pattern = request.pattern,
+            kind = kind,
+            maxResults = request.maxResults,
+            regex = request.regex,
+            includeDeclarationScope = request.includeDeclarationScope,
+        )
+        val result = cliService.workspaceSymbolSearch(options, query)
+        return KastWorkspaceSymbolSuccessResponse(
+            ok = true,
+            query = KastWorkspaceSymbolQuery(
+                workspaceRoot = workspaceRoot,
+                pattern = request.pattern,
+                kind = request.kind,
+                maxResults = request.maxResults,
+                regex = request.regex,
+                includeDeclarationScope = request.includeDeclarationScope,
+            ),
+            symbols = result.payload.symbols,
+            page = result.payload.page,
             logFile = SkillLogFile.placeholder(),
         )
     }

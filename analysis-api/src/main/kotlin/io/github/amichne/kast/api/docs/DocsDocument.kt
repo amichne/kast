@@ -17,6 +17,7 @@ import io.github.amichne.kast.api.contract.query.RenameQuery
 import io.github.amichne.kast.api.contract.query.SymbolQuery
 import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
+import io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
 import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.contract.result.CallHierarchyResult
@@ -39,6 +40,8 @@ import io.github.amichne.kast.api.contract.result.TypeHierarchyStats
 import io.github.amichne.kast.api.contract.result.TypeHierarchyTruncation
 import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
 import io.github.amichne.kast.api.contract.result.WorkspaceModule
+import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
+import io.github.amichne.kast.api.contract.result.SearchMatch
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -109,6 +112,9 @@ object DocsDocument {
         "FileOutlineResult" to FileOutlineResult.serializer(),
         "WorkspaceSymbolQuery" to WorkspaceSymbolQuery.serializer(),
         "WorkspaceSymbolResult" to WorkspaceSymbolResult.serializer(),
+        "WorkspaceSearchQuery" to WorkspaceSearchQuery.serializer(),
+        "SearchMatch" to SearchMatch.serializer(),
+        "WorkspaceSearchResult" to WorkspaceSearchResult.serializer(),
         "WorkspaceFilesQuery" to WorkspaceFilesQuery.serializer(),
         "WorkspaceFilesResult" to WorkspaceFilesResult.serializer(),
         "ImplementationsQuery" to ImplementationsQuery.serializer(),
@@ -261,7 +267,11 @@ object DocsDocument {
         if (op.behavioralNotes.isEmpty()) return
         admonition("note", "Behavioral notes") {
             for (note in op.behavioralNotes) {
-                line("- $note")
+                val noteLines = note.lines()
+                line("- ${noteLines.first()}")
+                for (continuation in noteLines.drop(1)) {
+                    line("  $continuation")
+                }
             }
         }
         line()
@@ -396,7 +406,7 @@ object DocsDocument {
 
     private fun tagSummary(tag: String, count: Int): String = when (tag) {
         "system" -> "$count operations for health checks, runtime status, and capability discovery. No capability gating required."
-        "read" -> "$count read-only operations for querying symbols, references, hierarchies, diagnostics, outlines, and completions."
+        "read" -> "${count - 1} read-only operations for querying symbols, references, hierarchies, diagnostics, outlines, and completions."
         "mutation" -> "$count operations that modify workspace state: rename, optimize imports, apply edits, and refresh."
         else -> "$count operations."
     }

@@ -41,6 +41,13 @@ object VersionedCommandSpec {
             failureType = "WORKSPACE_FILES_FAILURE",
         ),
         CommandEntry(
+            name = "workspace-search",
+            summary = "Search Kotlin workspace file contents by text or regex",
+            requestSerializer = io.github.amichne.kast.api.wrapper.KastWorkspaceSearchRequest.serializer(),
+            successType = "WORKSPACE_SEARCH_SUCCESS",
+            failureType = "WORKSPACE_SEARCH_FAILURE",
+        ),
+        CommandEntry(
             name = "scaffold",
             summary = "Gather structural generation context for a Kotlin file",
             requestSerializer = io.github.amichne.kast.api.wrapper.KastScaffoldRequest.serializer(),

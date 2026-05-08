@@ -9,6 +9,10 @@ import io.github.amichne.kast.api.wrapper.KastDiagnosticsFailureResponse
 import io.github.amichne.kast.api.wrapper.KastDiagnosticsRequest
 import io.github.amichne.kast.api.wrapper.KastDiagnosticsResponse
 import io.github.amichne.kast.api.wrapper.KastDiagnosticsSuccessResponse
+import io.github.amichne.kast.api.wrapper.KastFileOutlineFailureResponse
+import io.github.amichne.kast.api.wrapper.KastFileOutlineRequest
+import io.github.amichne.kast.api.wrapper.KastFileOutlineResponse
+import io.github.amichne.kast.api.wrapper.KastFileOutlineSuccessResponse
 import io.github.amichne.kast.api.wrapper.KastMetricsFailureResponse
 import io.github.amichne.kast.api.wrapper.KastMetricsQuery
 import io.github.amichne.kast.api.wrapper.KastMetricsRequest
@@ -38,6 +42,14 @@ import io.github.amichne.kast.api.wrapper.KastWorkspaceFilesFailureResponse
 import io.github.amichne.kast.api.wrapper.KastWorkspaceFilesRequest
 import io.github.amichne.kast.api.wrapper.KastWorkspaceFilesResponse
 import io.github.amichne.kast.api.wrapper.KastWorkspaceFilesSuccessResponse
+import io.github.amichne.kast.api.wrapper.KastWorkspaceSearchFailureResponse
+import io.github.amichne.kast.api.wrapper.KastWorkspaceSearchRequest
+import io.github.amichne.kast.api.wrapper.KastWorkspaceSearchResponse
+import io.github.amichne.kast.api.wrapper.KastWorkspaceSearchSuccessResponse
+import io.github.amichne.kast.api.wrapper.KastWorkspaceSymbolFailureResponse
+import io.github.amichne.kast.api.wrapper.KastWorkspaceSymbolRequest
+import io.github.amichne.kast.api.wrapper.KastWorkspaceSymbolResponse
+import io.github.amichne.kast.api.wrapper.KastWorkspaceSymbolSuccessResponse
 import io.github.amichne.kast.api.wrapper.KastWriteAndValidateCreateFileQuery
 import io.github.amichne.kast.api.wrapper.KastWriteAndValidateCreateFileRequest
 import io.github.amichne.kast.api.wrapper.KastWriteAndValidateFailureResponse
@@ -93,6 +105,9 @@ object WrapperOpenApiDocument {
         registry.register("KastRenameRequest", KastRenameRequest.serializer())
         registry.register("KastScaffoldRequest", KastScaffoldRequest.serializer())
         registry.register("KastWorkspaceFilesRequest", KastWorkspaceFilesRequest.serializer())
+        registry.register("KastWorkspaceSearchRequest", KastWorkspaceSearchRequest.serializer())
+        registry.register("KastFileOutlineRequest", KastFileOutlineRequest.serializer())
+        registry.register("KastWorkspaceSymbolRequest", KastWorkspaceSymbolRequest.serializer())
         registry.register("KastWriteAndValidateCreateFileRequest", KastWriteAndValidateCreateFileRequest.serializer())
         registry.register("KastWriteAndValidateInsertAtOffsetRequest", KastWriteAndValidateInsertAtOffsetRequest.serializer())
         registry.register("KastWriteAndValidateReplaceRangeRequest", KastWriteAndValidateReplaceRangeRequest.serializer())
@@ -127,6 +142,15 @@ object WrapperOpenApiDocument {
         registry.register("KastWorkspaceFilesSuccessResponse", KastWorkspaceFilesSuccessResponse.serializer())
         registry.register("KastWorkspaceFilesFailureResponse", KastWorkspaceFilesFailureResponse.serializer())
         registry.register("KastWorkspaceFilesResponse", KastWorkspaceFilesResponse.serializer())
+        registry.register("KastWorkspaceSearchSuccessResponse", KastWorkspaceSearchSuccessResponse.serializer())
+        registry.register("KastWorkspaceSearchFailureResponse", KastWorkspaceSearchFailureResponse.serializer())
+        registry.register("KastWorkspaceSearchResponse", KastWorkspaceSearchResponse.serializer())
+        registry.register("KastFileOutlineSuccessResponse", KastFileOutlineSuccessResponse.serializer())
+        registry.register("KastFileOutlineFailureResponse", KastFileOutlineFailureResponse.serializer())
+        registry.register("KastFileOutlineResponse", KastFileOutlineResponse.serializer())
+        registry.register("KastWorkspaceSymbolSuccessResponse", KastWorkspaceSymbolSuccessResponse.serializer())
+        registry.register("KastWorkspaceSymbolFailureResponse", KastWorkspaceSymbolFailureResponse.serializer())
+        registry.register("KastWorkspaceSymbolResponse", KastWorkspaceSymbolResponse.serializer())
         registry.register("KastWriteAndValidateSuccessResponse", KastWriteAndValidateSuccessResponse.serializer())
         registry.register("KastWriteAndValidateFailureResponse", KastWriteAndValidateFailureResponse.serializer())
         registry.register("KastWriteAndValidateResponse", KastWriteAndValidateResponse.serializer())
@@ -184,6 +208,27 @@ object WrapperOpenApiDocument {
             command = "kast workspace-files",
             requestSchema = "KastWorkspaceFilesRequest",
             responseSchema = "KastWorkspaceFilesResponse",
+        ),
+        "/skill/workspace-search" to pathItem(
+            operationId = "kastSkillWorkspaceSearch",
+            summary = "Search Kotlin workspace file contents by text or regex",
+            command = "kast workspace-search",
+            requestSchema = "KastWorkspaceSearchRequest",
+            responseSchema = "KastWorkspaceSearchResponse",
+        ),
+        "/skill/file-outline" to pathItem(
+            operationId = "kastSkillFileOutline",
+            summary = "Produce a hierarchical outline for a Kotlin file",
+            command = "kast file-outline",
+            requestSchema = "KastFileOutlineRequest",
+            responseSchema = "KastFileOutlineResponse",
+        ),
+        "/skill/workspace-symbol" to pathItem(
+            operationId = "kastSkillWorkspaceSymbol",
+            summary = "Search workspace symbols by name or regex",
+            command = "kast workspace-symbol",
+            requestSchema = "KastWorkspaceSymbolRequest",
+            responseSchema = "KastWorkspaceSymbolResponse",
         ),
         "/skill/write-and-validate" to pathItem(
             operationId = "kastSkillWriteAndValidate",
@@ -407,6 +452,10 @@ private class SchemaRegistry {
                 "WORKSPACE_FILES_SUCCESS" to "KastWorkspaceFilesSuccessResponse",
                 "WORKSPACE_FILES_FAILURE" to "KastWorkspaceFilesFailureResponse",
             )
+            "KastWorkspaceSearchResponse" -> discriminatedUnion(
+                "WORKSPACE_SEARCH_SUCCESS" to "KastWorkspaceSearchSuccessResponse",
+                "WORKSPACE_SEARCH_FAILURE" to "KastWorkspaceSearchFailureResponse",
+            )
             "KastWriteAndValidateResponse" -> discriminatedUnion(
                 "WRITE_AND_VALIDATE_SUCCESS" to "KastWriteAndValidateSuccessResponse",
                 "WRITE_AND_VALIDATE_FAILURE" to "KastWriteAndValidateFailureResponse",
@@ -480,6 +529,12 @@ private class SchemaRegistry {
             "KastScaffoldFailureResponse" -> "SCAFFOLD_FAILURE"
             "KastWorkspaceFilesSuccessResponse" -> "WORKSPACE_FILES_SUCCESS"
             "KastWorkspaceFilesFailureResponse" -> "WORKSPACE_FILES_FAILURE"
+            "KastWorkspaceSearchSuccessResponse" -> "WORKSPACE_SEARCH_SUCCESS"
+            "KastWorkspaceSearchFailureResponse" -> "WORKSPACE_SEARCH_FAILURE"
+            "KastFileOutlineSuccessResponse" -> "FILE_OUTLINE_SUCCESS"
+            "KastFileOutlineFailureResponse" -> "FILE_OUTLINE_FAILURE"
+            "KastWorkspaceSymbolSuccessResponse" -> "WORKSPACE_SYMBOL_SUCCESS"
+            "KastWorkspaceSymbolFailureResponse" -> "WORKSPACE_SYMBOL_FAILURE"
             "KastWriteAndValidateSuccessResponse" -> "WRITE_AND_VALIDATE_SUCCESS"
             "KastWriteAndValidateFailureResponse" -> "WRITE_AND_VALIDATE_FAILURE"
             "KastMetricsSuccessResponse" -> "METRICS_SUCCESS"
