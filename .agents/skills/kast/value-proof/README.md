@@ -18,19 +18,31 @@ use `without_skill` only when no previous skill exists.
 Every completed iteration must produce:
 
 - `manifest.json` mapping durable eval ids to on-disk `eval-*` directories;
-- `eval_metadata.json` for each eval case;
-- one run directory per configuration and run number;
+- `eval_metadata.json` for each eval case (carrying the catalog's structured
+  expectations: `id`, `kind`, `applicability`, `graded_by`, `oracle`);
+- one run directory per configuration and run number (default: 5 runs);
 - `outputs/transcript.md` for each run;
-- `timing.json` with duration and token data when available;
-- `grading.json` using the skill-creator fields `text`, `passed`, and
-  `evidence` for each expectation;
-- `benchmark.json` and `benchmark.md`;
+- `outputs/tool_calls.jsonl` produced by `parse_tool_calls.py` (deterministic;
+  do NOT trust the LLM grader's tool counts);
+- `timing.json` with dispatcher-recorded executor duration and attempt count;
+- `grading.json` v2 — produced by the LLM grader and then **always**
+  finalised with `finalize_grading.py`, which merges authoritative timing,
+  injects deterministic tool-call counts, marks non-applicable expectations
+  as `skipped`, computes `outcome_pass_rate` (the only fair cross-config
+  metric), and records `integrity.contradictions` /
+  `integrity.baseline_isolation_violation` / `integrity.attempts`;
+- `benchmark.json` and `benchmark.md` produced by `value_proof_aggregate.py`,
+  which adds paired Wilcoxon p-values, Tukey outlier flags, and per-eval
+  deltas;
+- a row appended to `history/progression.json` for cross-iteration trend;
 - an analyzer note set that calls out discriminating assertions, weak
   assertions, variance, and token or timing tradeoffs;
 - a generated `eval-viewer` HTML review artifact before the next rewrite.
 
 Do not record a promoted case in `history/progression.json` until the benchmark
-has real transcripts, grading, and aggregation evidence.
+has real transcripts, grading, and aggregation evidence — and never with
+`integrity.contradictions` or `integrity.baseline_isolation_violation`
+non-empty.
 
 ## Quick start with the default binding
 
@@ -47,13 +59,14 @@ changed.
      --output rendered-catalog.json
    ```
 
-2. Scaffold the iteration workspace:
+2. Scaffold the iteration workspace (5 runs per config is the default —
+   keep it; 3 is too few for paired Wilcoxon to discriminate):
 
    ```bash
    python3 scripts/run_value_proof.py \
      --catalog rendered-catalog.json \
      --workspace ../kast-value-proof-workspace \
-     --runs-per-config 3 \
+     --runs-per-config 5 \
      --iteration iteration-001
    ```
 
@@ -81,20 +94,43 @@ changed.
    immediately. Missing timing is acceptable only when the executor did not
    expose it; mark that explicitly in the file.
 
-5. Grade each run with the skill-creator grading schema.
+5. Grade each run with the skill-creator grading schema, then finalise:
 
    Use `/Users/amichne/.agents/skills/skill-creator/agents/grader.md` as the
-   grading guide. Programmatic checks are preferred when an expectation can be
-   verified from the transcript or output files.
-
-6. Aggregate the benchmark:
+   grading guide. After grading lands its raw `grading.json`, run:
 
    ```bash
-   python3 /Users/amichne/.agents/skills/skill-creator/scripts/aggregate_benchmark.py \
-     ../kast-value-proof-workspace/iteration-001 \
-     --skill-name kast \
-     --skill-path /Users/amichne/code/kast/.agents/skills/kast
+   python3 scripts/finalize_grading.py \
+     --run-dir ../kast-value-proof-workspace/iteration-001/eval-XYZ/with_skill/run-1 \
+     --workspace-root /absolute/path/to/target/checkout \
+     --strict
    ```
+
+   This step is mandatory — it merges authoritative dispatcher timing,
+   injects the deterministic tool-call counts produced by
+   `parse_tool_calls.py`, marks `with_skill_only` expectations as `skipped`
+   in `without_skill` runs (so the headline pass-rate is fair), and rejects
+   self-contradictory verdicts. `--strict` fails the script when integrity
+   issues are detected; remove it only if you want to inspect the issues
+   first.
+
+6. Aggregate the benchmark with the value-proof-aware aggregator:
+
+   ```bash
+   python3 scripts/value_proof_aggregate.py \
+     ../kast-value-proof-workspace/iteration-001 \
+     --skill-name kast-value-proof \
+     --bindings bindings/konditional.json \
+     --catalog ../kast-value-proof-workspace/iteration-001/rendered-catalog.json
+   ```
+
+   Use this rather than `aggregate_benchmark.py` from skill-creator. The
+   value-proof aggregator splits process vs outcome assertions, restricts
+   the cross-config delta to `applicability='both'` outcome assertions
+   (kills the tautology-inflated headline), runs paired Wilcoxon, flags
+   Tukey outliers, surfaces baseline-isolation violations and grading
+   contradictions, and appends to `history/progression.json` so iteration
+   trends are persisted.
 
 7. Run the analyzer pass against `benchmark.json`.
 
@@ -138,16 +174,40 @@ large structural files, and safe rename targets.
 ## Files
 
 - `bindings.schema.json`: Schema for mapping abstract eval slots to concrete
-  codebase symbols.
+  codebase symbols. Each slot supports an optional `expected` ground-truth
+  block (recall/precision oracles, expected file lists, compile commands,
+  module file counts).
 - `bindings/konditional.json`: Default binding for the `konditional`
-  repository.
-- `catalog.json`: Parameterized value-proof eval cases.
-- `scripts/render_prompts.py`: Hydrates `{{SLOT.field}}` template variables.
+  repository, with populated ground truth.
+- `catalog.json`: Parameterized eval cases. Each expectation declares
+  `kind` (`outcome` | `process`), `applicability`
+  (`both` | `with_skill_only` | `without_skill_only`), `graded_by`
+  (`script` | `llm`), and an optional `oracle` reference into the bindings
+  ground truth.
+- `grading.schema.json`: v2 grading contract. Adds `outcome_pass_rate` (the
+  fair cross-config metric), structured `tool_calls`, `kast_calls`,
+  `grep_or_find_calls`, and an `integrity` block.
+- `scripts/render_prompts.py`: Hydrates `{{SLOT.field}}` template variables;
+  fails loud on any unresolved placeholder.
 - `scripts/run_value_proof.py`: Creates iteration workspaces,
-  `manifest.json`, `run_manifest.json`, and per-run instructions.
+  `manifest.json`, `run_manifest.json`, and per-run instructions. Default
+  runs-per-config is 5.
 - `scripts/dispatch_runs.py`: Dispatches scaffolded runs with concurrency,
-  chain serialization, parent-side timing, and transcript guards.
+  chain serialization, parent-side timing, transcript guards, and an
+  automatic `parse_tool_calls.py` step on each successful run.
+- `scripts/parse_tool_calls.py`: Deterministic transcript → JSONL tool-call
+  log. Counts kast tool invocations and grep/find/ls invocations by
+  inspecting fenced JSON tool blocks, XML tool blocks, inline call markers,
+  and fenced bash blocks. Pure prose mentions are explicitly NOT counted.
+- `scripts/finalize_grading.py`: Normalises a raw grader output by merging
+  authoritative dispatcher timing, replacing grader-reported tool counts
+  with deterministic counts, marking non-applicable expectations as
+  skipped, computing the outcome pass-rate, and detecting contradictions
+  + baseline-isolation violations.
+- `scripts/value_proof_aggregate.py`: Iteration aggregator with paired
+  Wilcoxon, applicability-aware pass-rate, Tukey outlier detection, and
+  history append.
 - `scripts/generate_executive_summary.py`: Creates Markdown and HTML
   executive summaries from `benchmark.json`.
-- `history/progression.json`: Non-regression ledger for promoted cases and
-  benchmark history.
+- `history/progression.json`: Non-regression ledger; the aggregator appends
+  one row per iteration with `outcome_pass_rate` deltas and Wilcoxon p.

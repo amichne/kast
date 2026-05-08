@@ -208,6 +208,25 @@ def write_timing(run: Run, *, start: float, end: float, attempts: int, status: s
     timing_path.write_text(json.dumps(payload, indent=2) + "\n")
 
 
+PARSE_TOOL_CALLS_SCRIPT = Path(__file__).resolve().parent / "parse_tool_calls.py"
+
+
+def _parse_tool_calls(run: Run) -> None:
+    """Run the deterministic transcript parser. Failures are logged but
+    non-fatal — we never want a parser bug to mark a real run as failed."""
+    if not PARSE_TOOL_CALLS_SCRIPT.exists():
+        return
+    try:
+        subprocess.run(
+            [sys.executable, str(PARSE_TOOL_CALLS_SCRIPT), "--run-dir", str(run.run_dir)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        return
+
+
 def execute_run(run: Run, options: DispatchOptions) -> RunResult:
     start = time.time()
     last_exit_code: int | None = None
@@ -236,6 +255,7 @@ def execute_run(run: Run, options: DispatchOptions) -> RunResult:
                 exit_code=last_exit_code,
                 message="completed",
             )
+            _parse_tool_calls(run)
             return RunResult(run, True, attempts, end - start, "completed")
 
         transcript_status = "non-empty" if transcript_is_non_empty(run) else "missing-or-empty"

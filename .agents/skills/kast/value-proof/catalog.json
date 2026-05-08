@@ -1,6 +1,11 @@
 {
   "skill_name": "kast-value-proof",
-  "version": 1,
+  "version": 2,
+  "schema_notes": [
+    "Each expectation has: text, kind ('outcome'|'process'), applicability ('both'|'with_skill_only'|'without_skill_only'), and optional oracle ref.",
+    "Outcome expectations are graded for both configs and contribute to the headline pass-rate delta. Process expectations record HOW the work was done and are reported separately; they do not pollute the comparison.",
+    "An 'oracle' references a slot expected field. Mechanically verifiable assertions are graded by scripts/finalize_grading.py from transcript + ground truth, not by the LLM grader."
+  ],
   "cases": [
     {
       "id": "vp-disambiguate-member",
@@ -9,14 +14,15 @@
       "files": [],
       "expected_output": "A usage list scoped to the exact member identity.",
       "expectations": [
-        "Resolves the member with containingType or fileHint before scanning usages",
-        "Result set is scoped to {{DISAMBIGUATE_MEMBER.containingType}}.{{DISAMBIGUATE_MEMBER.symbol}} — does not include unrelated types",
-        "Does not use raw text search (grep/rg) as the primary identity mechanism",
-        "Reports at least 3 distinct usage sites with file paths"
+        { "id": "om-recall", "text": "Reports usages in every expected file (recall vs DISAMBIGUATE_MEMBER.expected.expectedFiles)", "kind": "outcome", "applicability": "both", "oracle": "DISAMBIGUATE_MEMBER.expected.expectedFiles", "graded_by": "script" },
+        { "id": "om-precision", "text": "Does not report any decoy file as a usage (precision vs DISAMBIGUATE_MEMBER.expected.decoyFiles)", "kind": "outcome", "applicability": "both", "oracle": "DISAMBIGUATE_MEMBER.expected.decoyFiles", "graded_by": "script" },
+        { "id": "om-min-sites", "text": "Reports at least DISAMBIGUATE_MEMBER.expected.minimumUsageSites distinct file:line citations", "kind": "outcome", "applicability": "both", "oracle": "DISAMBIGUATE_MEMBER.expected.minimumUsageSites", "graded_by": "script" },
+        { "id": "om-citations-resolve", "text": "Every reported file:line citation resolves to a real line on disk", "kind": "outcome", "applicability": "both", "graded_by": "script" },
+        { "id": "pm-uses-resolve", "text": "Resolves the member with containingType or fileHint before scanning usages", "kind": "process", "applicability": "with_skill_only", "graded_by": "script" }
       ],
       "labels": ["symbol-disambiguation", "identity-precision"],
       "stage": "candidate",
-      "source": {"kind": "manual", "summary": "Value-proof plan case for member identity precision"},
+      "source": {"kind": "manual", "summary": "Member identity precision under grep-noisy names"},
       "promotion": {"required_pass_rate": 1.0, "required_benchmarks": 2}
     },
     {
@@ -26,13 +32,14 @@
       "files": [],
       "expected_output": "A call hierarchy rooted at the exact function identity.",
       "expectations": [
-        "Disambiguates the function using containingType, kind, or fileHint",
-        "Does not silently pick one of multiple candidates without disambiguation",
-        "Reports callers specific to the target class, not unrelated resolve() calls"
+        { "id": "of-callers-recall", "text": "Lists every expected caller fqName", "kind": "outcome", "applicability": "both", "oracle": "OVERLOADED_OR_COMMON_FUNCTION.expected.expectedCallerFqNames", "graded_by": "script" },
+        { "id": "of-min-callers", "text": "Reports at least OVERLOADED_OR_COMMON_FUNCTION.expected.minimumCallers callers", "kind": "outcome", "applicability": "both", "oracle": "OVERLOADED_OR_COMMON_FUNCTION.expected.minimumCallers", "graded_by": "script" },
+        { "id": "of-no-cross-class", "text": "Does not report callers of unrelated functions named the same as the target symbol (precision: every reported caller actually invokes the target containingType)", "kind": "outcome", "applicability": "both", "graded_by": "llm" },
+        { "id": "pf-disambiguates", "text": "Disambiguates the function using containingType, kind, or fileHint", "kind": "process", "applicability": "with_skill_only", "graded_by": "script" }
       ],
       "labels": ["symbol-disambiguation", "call-hierarchy"],
       "stage": "candidate",
-      "source": {"kind": "manual", "summary": "Value-proof plan case for function caller precision"},
+      "source": {"kind": "manual", "summary": "Function caller precision under overloaded names"},
       "promotion": {"required_pass_rate": 1.0, "required_benchmarks": 2}
     },
     {
@@ -42,14 +49,15 @@
       "files": [],
       "expected_output": "A complete reference report with explicit search completeness metadata.",
       "expectations": [
-        "Reports searchScope.exhaustive status or equivalent completeness metadata",
-        "Lists references grouped by file",
-        "Does not claim completeness without structural proof from the tool",
-        "Finds references in at least 2 different modules"
+        { "id": "or-min-refs", "text": "Reports at least CROSS_MODULE_CLASS.expected.minimumReferences references", "kind": "outcome", "applicability": "both", "oracle": "CROSS_MODULE_CLASS.expected.minimumReferences", "graded_by": "script" },
+        { "id": "or-consumer-files", "text": "Names every expected consumer file at least once", "kind": "outcome", "applicability": "both", "oracle": "CROSS_MODULE_CLASS.expected.expectedConsumerFiles", "graded_by": "script" },
+        { "id": "or-consumer-modules", "text": "Names every expected consumer module", "kind": "outcome", "applicability": "both", "oracle": "CROSS_MODULE_CLASS.expected.expectedConsumerModules", "graded_by": "script" },
+        { "id": "or-completeness", "text": "States the search completeness (exhaustive vs truncated/sampled) explicitly, not implicitly", "kind": "outcome", "applicability": "both", "graded_by": "llm" },
+        { "id": "pr-completeness-evidence", "text": "Backs the completeness claim with structural metadata from the tool, not narrative assertion", "kind": "process", "applicability": "with_skill_only", "graded_by": "llm" }
       ],
       "labels": ["exhaustive-evidence", "references"],
       "stage": "candidate",
-      "source": {"kind": "manual", "summary": "Value-proof plan case for completeness evidence"},
+      "source": {"kind": "manual", "summary": "Cross-workspace reference completeness"},
       "promotion": {"required_pass_rate": 1.0, "required_benchmarks": 2}
     },
     {
@@ -57,16 +65,16 @@
       "title": "Trace every sealed hierarchy implementation",
       "prompt": "List every implementation of the sealed interface {{SEALED_HIERARCHY.symbol}}. For each implementation, show its file location and which module it belongs to.",
       "files": [],
-      "expected_output": "A semantic subtype report with module attribution.",
+      "expected_output": "A complete subtype report with module attribution.",
       "expectations": [
-        "Uses semantic resolution (not grep for 'class.*Konstrained') to find implementations",
-        "Lists all sealed subtypes with their file paths",
-        "Correctly identifies which module each implementation lives in",
-        "Does not miss implementations in other modules"
+        { "id": "os-recall", "text": "Lists every expected implementation by fqName (recall)", "kind": "outcome", "applicability": "both", "oracle": "SEALED_HIERARCHY.expected.implementations", "graded_by": "script" },
+        { "id": "os-no-hallucination", "text": "Does not report any subtype that is not in the expected set (precision)", "kind": "outcome", "applicability": "both", "oracle": "SEALED_HIERARCHY.expected.implementations", "graded_by": "script" },
+        { "id": "os-modules", "text": "Correctly attributes each implementation to its host module", "kind": "outcome", "applicability": "both", "oracle": "SEALED_HIERARCHY.expected.implementations", "graded_by": "script" },
+        { "id": "ps-semantic", "text": "Uses semantic resolution (not regex over `class.*Konstrained`) to discover subtypes", "kind": "process", "applicability": "with_skill_only", "graded_by": "script" }
       ],
       "labels": ["exhaustive-evidence", "sealed-hierarchy"],
       "stage": "candidate",
-      "source": {"kind": "manual", "summary": "Value-proof plan case for sealed hierarchy completeness"},
+      "source": {"kind": "manual", "summary": "Sealed hierarchy completeness"},
       "promotion": {"required_pass_rate": 1.0, "required_benchmarks": 2}
     },
     {
@@ -76,16 +84,16 @@
       "files": [],
       "expected_output": "A multi-file rename plan and validated post-edit status.",
       "expectations": [
-        "Uses kast_rename (not find-and-replace or sed)",
-        "Shows an edit plan listing all affected files before applying",
-        "Updates import statements, not just the declaration",
-        "Runs diagnostics or reports compile status after the rename",
-        "Does not leave broken references in any module"
+        { "id": "or-files-touched", "text": "Edit plan lists every file in RENAME_TARGET.expected.affectedFiles (recall)", "kind": "outcome", "applicability": "both", "oracle": "RENAME_TARGET.expected.affectedFiles", "graded_by": "script" },
+        { "id": "or-files-extra", "text": "Edit plan does not list extra files outside the expected set (precision)", "kind": "outcome", "applicability": "both", "oracle": "RENAME_TARGET.expected.affectedFiles", "graded_by": "script" },
+        { "id": "or-compiles", "text": "Post-rename compile status is reported, captured from the build (oracle: RENAME_TARGET.expected.compileCommand)", "kind": "outcome", "applicability": "both", "oracle": "RENAME_TARGET.expected.compileCommand", "graded_by": "script" },
+        { "id": "or-imports-updated", "text": "Import statements are updated, not just the declaration site", "kind": "outcome", "applicability": "both", "graded_by": "script" },
+        { "id": "pr-uses-kast-rename", "text": "Uses kast_rename (not find-and-replace, sed, or manual edits)", "kind": "process", "applicability": "with_skill_only", "graded_by": "script" }
       ],
       "labels": ["safe-mutations", "rename"],
       "chain_id": "safe-mutations-chain",
       "stage": "candidate",
-      "source": {"kind": "manual", "summary": "Value-proof plan case for safe rename mutation"},
+      "source": {"kind": "manual", "summary": "Safe multi-file rename"},
       "promotion": {"required_pass_rate": 1.0, "required_benchmarks": 2}
     },
     {
@@ -95,15 +103,15 @@
       "files": [],
       "expected_output": "A validated edit report with diagnostics evidence.",
       "expectations": [
-        "Uses kast_write_and_validate (not raw edit/create tool)",
-        "Runs diagnostics atomically as part of the write",
-        "Reports clean or dirty compile state after the edit",
-        "Does not claim success without validation evidence"
+        { "id": "oe-annotation-present", "text": "After the run, the target file actually contains @Deprecated with the expected message string", "kind": "outcome", "applicability": "both", "graded_by": "script" },
+        { "id": "oe-compiles", "text": "Post-edit compile status is reported, captured from the build", "kind": "outcome", "applicability": "both", "oracle": "RENAME_TARGET.expected.compileCommand", "graded_by": "script" },
+        { "id": "oe-no-orphan-edits", "text": "No unrelated files were modified by this run", "kind": "outcome", "applicability": "both", "graded_by": "script" },
+        { "id": "pe-uses-kast-write-validate", "text": "Uses kast_write_and_validate (not raw edit/create tool)", "kind": "process", "applicability": "with_skill_only", "graded_by": "script" }
       ],
       "labels": ["safe-mutations", "write-and-validate"],
       "chain_id": "safe-mutations-chain",
       "stage": "candidate",
-      "source": {"kind": "manual", "summary": "Value-proof plan case for atomic edit validation"},
+      "source": {"kind": "manual", "summary": "Atomic edit validation"},
       "promotion": {"required_pass_rate": 1.0, "required_benchmarks": 2}
     },
     {
@@ -113,14 +121,15 @@
       "files": [],
       "expected_output": "A scaffold-rooted API summary for a large class.",
       "expectations": [
-        "Uses kast_scaffold (not raw file read) as the primary information source",
-        "Lists all nested sealed interfaces and enums accurately",
-        "Does not hallucinate members that don't exist",
-        "Produces the summary in fewer tokens than reading the raw file would require"
+        { "id": "ol-members-recall", "text": "Lists every member in LARGE_CLASS.expected.publicMembers (recall)", "kind": "outcome", "applicability": "both", "oracle": "LARGE_CLASS.expected.publicMembers", "graded_by": "script" },
+        { "id": "ol-nested-recall", "text": "Lists every type in LARGE_CLASS.expected.nestedTypes (recall)", "kind": "outcome", "applicability": "both", "oracle": "LARGE_CLASS.expected.nestedTypes", "graded_by": "script" },
+        { "id": "ol-no-hallucination", "text": "Does not list any member or nested type not in the expected sets (precision)", "kind": "outcome", "applicability": "both", "graded_by": "script" },
+        { "id": "ol-token-savings", "text": "Transcript output is at least 50% smaller than the raw file content (oracle: LARGE_CLASS.expected.rawFileLineCount)", "kind": "outcome", "applicability": "both", "oracle": "LARGE_CLASS.expected.rawFileLineCount", "graded_by": "script" },
+        { "id": "pl-uses-scaffold", "text": "Uses kast_scaffold (not raw file read) as the primary information source", "kind": "process", "applicability": "with_skill_only", "graded_by": "script" }
       ],
       "labels": ["token-efficiency", "scaffold"],
       "stage": "candidate",
-      "source": {"kind": "manual", "summary": "Value-proof plan case for structural token efficiency"},
+      "source": {"kind": "manual", "summary": "Structural token efficiency"},
       "promotion": {"required_pass_rate": 1.0, "required_benchmarks": 2}
     },
     {
@@ -130,14 +139,14 @@
       "files": [],
       "expected_output": "A module inventory with Kotlin source file counts.",
       "expectations": [
-        "Uses kast_workspace_files (not recursive ls/find)",
-        "Reports the correct module names: {{MODULE_LIST.modules}}",
-        "Reports file counts for each module",
-        "Completes in a single tool call (not iterative directory traversal)"
+        { "id": "ow-modules-correct", "text": "Names every module in MODULE_LIST.modules", "kind": "outcome", "applicability": "both", "oracle": "MODULE_LIST.modules", "graded_by": "script" },
+        { "id": "ow-counts-accurate", "text": "Reported file count for each module matches MODULE_LIST.expected.moduleFileCounts within tolerance", "kind": "outcome", "applicability": "both", "oracle": "MODULE_LIST.expected.moduleFileCounts", "graded_by": "script" },
+        { "id": "ow-no-extra-modules", "text": "Does not report modules outside MODULE_LIST.modules", "kind": "outcome", "applicability": "both", "graded_by": "script" },
+        { "id": "pw-single-call", "text": "Completes in a single semantic tool call (kast_workspace_files), not iterative directory traversal", "kind": "process", "applicability": "with_skill_only", "graded_by": "script" }
       ],
       "labels": ["token-efficiency", "workspace-discovery"],
       "stage": "candidate",
-      "source": {"kind": "manual", "summary": "Value-proof plan case for workspace discovery efficiency"},
+      "source": {"kind": "manual", "summary": "Workspace discovery efficiency"},
       "promotion": {"required_pass_rate": 1.0, "required_benchmarks": 2}
     },
     {
@@ -147,14 +156,15 @@
       "files": [],
       "expected_output": "A bounded depth-2 caller impact report with production/test classification.",
       "expectations": [
-        "Resolves the exact function before tracing callers",
-        "Shows a 2-level call hierarchy",
-        "Distinguishes test files from production files",
-        "Reports truncation metadata if the hierarchy was bounded"
+        { "id": "oi-depth-2", "text": "Output shows a 2-level call hierarchy (direct callers + callers-of-callers)", "kind": "outcome", "applicability": "both", "graded_by": "llm" },
+        { "id": "oi-test-prod-split", "text": "Every reported caller is classified as test or production based on its file path", "kind": "outcome", "applicability": "both", "graded_by": "script" },
+        { "id": "oi-direct-callers-recall", "text": "Direct callers list includes every expectedCallerFqName", "kind": "outcome", "applicability": "both", "oracle": "OVERLOADED_OR_COMMON_FUNCTION.expected.expectedCallerFqNames", "graded_by": "script" },
+        { "id": "oi-truncation-flagged", "text": "If the depth-2 result was bounded (e.g., max-depth or max-callers cap reached), the bound is reported in the output", "kind": "outcome", "applicability": "both", "graded_by": "llm" },
+        { "id": "pi-resolve-first", "text": "Resolves the exact function (containingType disambiguation) before tracing callers", "kind": "process", "applicability": "with_skill_only", "graded_by": "script" }
       ],
       "labels": ["multi-step-workflow", "impact-analysis"],
       "stage": "candidate",
-      "source": {"kind": "manual", "summary": "Value-proof plan case for compound impact analysis"},
+      "source": {"kind": "manual", "summary": "Compound impact analysis"},
       "promotion": {"required_pass_rate": 1.0, "required_benchmarks": 2}
     },
     {
@@ -164,14 +174,14 @@
       "files": [],
       "expected_output": "A concrete file-to-file flow report across module boundaries.",
       "expectations": [
-        "Uses scaffold + references + callers in sequence (not grep)",
-        "Identifies consumers in at least one other module",
-        "Shows concrete file-to-file relationships, not just module names",
-        "Does not miss cross-module references"
+        { "id": "oc-consumer-files", "text": "Names at least one expected consumer file from CROSS_MODULE_CLASS.expected.expectedConsumerFiles", "kind": "outcome", "applicability": "both", "oracle": "CROSS_MODULE_CLASS.expected.expectedConsumerFiles", "graded_by": "script" },
+        { "id": "oc-concrete-paths", "text": "Output contains concrete file:line citations, not just module names", "kind": "outcome", "applicability": "both", "graded_by": "script" },
+        { "id": "oc-flow-direction", "text": "Output makes the direction of the flow explicit (definition → consumer), not just an unordered set", "kind": "outcome", "applicability": "both", "graded_by": "llm" },
+        { "id": "pc-trio", "text": "Uses scaffold + references + callers in sequence (rather than grep) to assemble the flow", "kind": "process", "applicability": "with_skill_only", "graded_by": "script" }
       ],
       "labels": ["multi-step-workflow", "cross-module-flow"],
       "stage": "candidate",
-      "source": {"kind": "manual", "summary": "Value-proof plan case for compound cross-module tracing"},
+      "source": {"kind": "manual", "summary": "Compound cross-module tracing"},
       "promotion": {"required_pass_rate": 1.0, "required_benchmarks": 2}
     }
   ]
