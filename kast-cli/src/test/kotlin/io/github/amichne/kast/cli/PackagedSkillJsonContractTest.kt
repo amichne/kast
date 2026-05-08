@@ -59,6 +59,9 @@ class PackagedSkillJsonContractTest {
 
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/scripts/resolve-kast.sh")))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/scripts/kast-session-start.sh")))
+        assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/evals/catalog.json")))
+        assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/evals/pain_points.jsonl")))
+        assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/evals/files/.gitkeep")))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/fixtures/maintenance/evals/evals.json")))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/fixtures/maintenance/evals/routing.json")))
         assertTrue(
@@ -72,7 +75,10 @@ class PackagedSkillJsonContractTest {
             ),
         )
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/references/wrapper-openapi.yaml")))
+        assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/references/routing-improvement.md")))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/history/eval-baseline.json")))
+        assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/history/progression.json")))
+        assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/scripts/build-routing-corpus.py")))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/value-proof/catalog.json")))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/value-proof/scripts/render_prompts.py")))
 

@@ -41,7 +41,10 @@ Pick the narrowest command for the task:
 | When you need to… | Command |
 | --- | --- |
 | Discover modules or source files | `workspace-files` |
+| Search Kotlin workspace text or regex | `workspace-search` |
+| Find symbols by name across the workspace | `workspace-symbol` |
 | Understand a file or type structure | `scaffold` |
+| Get a lightweight file outline | `file-outline` |
 | Find the exact declaration of a symbol | `resolve` |
 | Find every usage of a symbol | `references` |
 | Trace incoming/outgoing call flow | `callers` |
@@ -53,7 +56,10 @@ Pick the narrowest command for the task:
 Use the native wrappers when the host exposes them:
 
 - `kast_workspace_files` or `kast workspace-files`
+- `kast_workspace_search` or `kast workspace-search`
+- `kast_workspace_symbol` or `kast workspace-symbol`
 - `kast_scaffold` or `kast scaffold`
+- `kast_file_outline` or `kast file-outline`
 - `kast_resolve` or `kast resolve`
 - `kast_references` or `kast references`
 - `kast_callers` or `kast callers`
