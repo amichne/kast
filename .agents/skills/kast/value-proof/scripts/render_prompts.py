@@ -67,6 +67,9 @@ def render_value(value: Any, bindings: dict[str, Any]) -> Any:
     return value
 
 
+UNRESOLVED_PATTERN = re.compile(r"\{\{[^{}]+\}\}")
+
+
 def render_catalog(catalog: dict[str, Any], bindings: dict[str, Any]) -> dict[str, Any]:
     cases = catalog.get("cases")
     if not isinstance(cases, list):
@@ -75,8 +78,29 @@ def render_catalog(catalog: dict[str, Any], bindings: dict[str, Any]) -> dict[st
     rendered["bindings"] = {
         "target_repo": bindings.get("target_repo", ""),
         "workspace_root": bindings.get("workspace_root", ""),
+        "git_sha": bindings.get("git_sha", ""),
     }
+    leftovers = _find_unresolved(rendered)
+    if leftovers:
+        sample = ", ".join(sorted(leftovers)[:5])
+        raise ValueError(
+            f"Rendered catalog still contains {len(leftovers)} unresolved template placeholder(s): {sample}. "
+            "Add the missing slot/field to the bindings file before continuing."
+        )
     return rendered
+
+
+def _find_unresolved(payload: Any) -> set[str]:
+    found: set[str] = set()
+    if isinstance(payload, str):
+        found.update(UNRESOLVED_PATTERN.findall(payload))
+    elif isinstance(payload, list):
+        for item in payload:
+            found.update(_find_unresolved(item))
+    elif isinstance(payload, dict):
+        for value in payload.values():
+            found.update(_find_unresolved(value))
+    return found
 
 
 def main() -> None:

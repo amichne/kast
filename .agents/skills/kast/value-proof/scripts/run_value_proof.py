@@ -60,11 +60,14 @@ def run_instruction_text(config: str, prompt: str) -> str:
 
 
 def metadata_for_case(case: dict[str, Any]) -> dict[str, Any]:
+    """Embed the full structured expectation list (with kind/applicability/oracle/graded_by)
+    so finalize_grading.py can normalize raw grader output without re-loading the catalog."""
+    expectations = case.get("expectations", []) or []
     return {
         "eval_id": case["id"],
         "eval_name": case.get("title", case["id"]),
         "prompt": case["prompt"],
-        "assertions": case.get("expectations", []),
+        "assertions": expectations,
         "expected_output": case.get("expected_output", ""),
         "labels": case.get("labels", []),
         "stage": case.get("stage", "candidate"),
@@ -75,21 +78,42 @@ def metadata_for_case(case: dict[str, Any]) -> dict[str, Any]:
 def write_placeholder_grading(path: Path) -> None:
     schema = load_grading_schema()
     payload = {
+        "schema_version": 2,
         "status": "pending_grading",
         "expectations": [],
-        "summary": {"passed": 0, "failed": 0, "total": 0, "pass_rate": 0.0},
+        "summary": {
+            "passed": 0,
+            "failed": 0,
+            "total": 0,
+            "pass_rate": 0.0,
+            "outcome_passed": 0,
+            "outcome_total": 0,
+            "outcome_pass_rate": 0.0,
+            "process_pass_rate": 0.0,
+            "skipped": 0,
+        },
         "execution_metrics": {
             "tool_calls": {},
+            "tool_call_log": "outputs/tool_calls.jsonl",
             "total_tool_calls": 0,
             "total_steps": 0,
             "errors_encountered": 0,
             "output_chars": 0,
             "transcript_chars": 0,
+            "kast_calls": 0,
+            "grep_or_find_calls": 0,
         },
         "timing": {
             "executor_duration_seconds": 0.0,
             "grader_duration_seconds": 0.0,
             "total_duration_seconds": 0.0,
+            "executor_duration_source": "missing",
+        },
+        "integrity": {
+            "contradictions": [],
+            "baseline_isolation_violation": False,
+            "attempts": 1,
+            "flaky": False,
         },
     }
     missing = sorted(set(schema.get("required", [])) - set(payload))
@@ -113,7 +137,7 @@ def scaffold_workspace(
     *,
     catalog_path: Path,
     workspace_dir: Path,
-    runs_per_config: int = 3,
+    runs_per_config: int = 5,
     configs: list[str] | None = None,
     iteration: str = "iteration-001",
     aggregate: bool = True,
@@ -202,21 +226,22 @@ def aggregate_if_graded(iteration_dir: Path, skill_name: str) -> None:
         return
 
     value_proof_dir = Path(__file__).resolve().parents[1]
-    skill_dir = value_proof_dir.parent
-    skills_root = skill_dir.parent
-    aggregate_script = skills_root / "skill-creator" / "scripts" / "aggregate_benchmark.py"
-    subprocess.run(
-        [
-            sys.executable,
-            str(aggregate_script),
-            str(iteration_dir),
-            "--skill-name",
-            skill_name,
-            "--skill-path",
-            str(value_proof_dir),
-        ],
-        check=True,
-    )
+    aggregate_script = value_proof_dir / "scripts" / "value_proof_aggregate.py"
+    catalog_path = iteration_dir / "rendered-catalog.json"
+    bindings_candidates = sorted((value_proof_dir / "bindings").glob("*.json"))
+    bindings_path = bindings_candidates[0] if len(bindings_candidates) == 1 else None
+    cmd = [
+        sys.executable,
+        str(aggregate_script),
+        str(iteration_dir),
+        "--skill-name",
+        skill_name,
+    ]
+    if catalog_path.exists():
+        cmd.extend(["--catalog", str(catalog_path)])
+    if bindings_path and bindings_path.exists():
+        cmd.extend(["--bindings", str(bindings_path)])
+    subprocess.run(cmd, check=True)
 
 
 def parse_configs(value: str) -> list[str]:
@@ -230,7 +255,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Scaffold a Kast value-proof benchmark workspace.")
     parser.add_argument("--catalog", required=True, type=Path, help="Rendered catalog JSON")
     parser.add_argument("--workspace", required=True, type=Path, help="Workspace root to create")
-    parser.add_argument("--runs-per-config", type=int, default=3, help="Runs per eval/configuration")
+    parser.add_argument("--runs-per-config", type=int, default=5, help="Runs per eval/configuration. Defaults to 5 so paired Wilcoxon has signal — 3 is insufficient for stddev estimates.")
     parser.add_argument("--configs", type=parse_configs, default=["with_skill", "without_skill"], help="Comma-separated configurations")
     parser.add_argument("--iteration", default="iteration-001", help="Iteration directory name")
     parser.add_argument("--no-aggregate", action="store_true", help="Skip aggregation even when grading files are complete")
