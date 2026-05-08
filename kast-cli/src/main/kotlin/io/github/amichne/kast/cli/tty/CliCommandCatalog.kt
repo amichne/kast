@@ -14,7 +14,7 @@ internal enum class CliCommandGroup(
     ),
     ANALYSIS(
         title = "Analysis",
-        overview = "Read-only commands for capabilities, symbols, references, hierarchy traversal, semantic insertion, diagnostics, outlines, workspace symbol search, implementations, code actions, and completions.",
+        overview = "Read-only commands for capabilities, symbols, references, hierarchy traversal, semantic insertion, diagnostics, outlines, workspace symbol and content search, implementations, code actions, and completions.",
     ),
     MUTATION_FLOW(
         title = "Mutation flow",
@@ -74,6 +74,11 @@ internal data class CliCommandMetadata(
 ) {
     val commandText: String = path.joinToString(" ")
 }
+
+private const val KAST_ROOT_DIR = "~/.kast"
+
+private const val MANIFEST_FILE = ".manifest.json"
+private const val KAST_COPILOT_VERSION = ".kast-copilot-version"
 
 internal object CliCommandCatalog {
     private val builtins: List<CliBuiltinMetadata> = listOf(
@@ -250,6 +255,17 @@ internal object CliCommandCatalog {
         description = "Treat the pattern as a regular expression. Defaults to false.",
         completionKind = CliOptionCompletionKind.BOOLEAN,
     )
+    private val fileGlobOption = CliOptionMetadata(
+        key = "file-glob",
+        usage = "--file-glob=**/*.kt",
+        description = "Optional glob filter applied to relative Kotlin file paths before matching.",
+    )
+    private val caseSensitiveOption = CliOptionMetadata(
+        key = "case-sensitive",
+        usage = "--case-sensitive=true",
+        description = "Match plain-text or regex searches with exact case. Defaults to false.",
+        completionKind = CliOptionCompletionKind.BOOLEAN,
+    )
     private val kindOption = CliOptionMetadata(
         key = "kind",
         usage = "--kind=CLASS",
@@ -279,19 +295,19 @@ internal object CliCommandCatalog {
     private val instancesRootOption = CliOptionMetadata(
         key = "instances-root",
         usage = "--instances-root=/absolute/path/to/instances",
-        description = "Root directory for instances. Defaults to ~/.kast/releases.",
+        description = "Root directory for instances. Defaults to $KAST_ROOT_DIR/releases.",
         completionKind = CliOptionCompletionKind.DIRECTORY,
     )
     private val binDirOption = CliOptionMetadata(
         key = "bin-dir",
         usage = "--bin-dir=/absolute/path/to/bin",
-        description = "Directory for launcher scripts. Defaults to ~/.kast/bin.",
+        description = "Directory for launcher scripts. Defaults to $KAST_ROOT_DIR/bin.",
         completionKind = CliOptionCompletionKind.DIRECTORY,
     )
     private val skillTargetDirOption = CliOptionMetadata(
         key = "target-dir",
         usage = "--target-dir=/absolute/path/to/skills",
-        description = "Directory to install the packaged skill in. Auto-detected from CWD when omitted, or ~/.kast/lib/skills when no workspace skills directory exists.",
+        description = "Directory to install the packaged skill in. Auto-detected from CWD when omitted, or $KAST_ROOT_DIR/lib/skills when no workspace skills directory exists.",
         completionKind = CliOptionCompletionKind.DIRECTORY,
     )
     private val copilotTargetDirOption = CliOptionMetadata(
@@ -734,6 +750,30 @@ internal object CliCommandCatalog {
             ),
         ),
         CliCommandMetadata(
+            path = listOf("workspace-search"),
+            group = CliCommandGroup.ANALYSIS,
+            summary = "Search Kotlin workspace file contents by text or regex.",
+            description = "Returns line-oriented content matches from Kotlin workspace files. Substring search is the default; pass --regex=true for regular expression matching.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME workspace-search --workspace-root=/absolute/path/to/workspace --pattern=greet",
+                "$CLI_EXECUTABLE_NAME workspace-search --workspace-root=/absolute/path/to/workspace --pattern=.*Service --regex=true --file-glob=src/**/*.kt --max-results=25",
+            ),
+            options = listOf(
+                workspaceRootOption,
+                backendNameOption,
+                waitTimeoutOption,
+                noAutoStartOption,
+                patternOption,
+                regexOption,
+                fileGlobOption,
+                caseSensitiveOption,
+                maxResultsOption,
+            ),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME workspace-search --workspace-root=/absolute/path/to/workspace --pattern=greet",
+            ),
+        ),
+        CliCommandMetadata(
             path = listOf("implementations"),
             group = CliCommandGroup.ANALYSIS,
             summary = "Find concrete implementations/subclasses for the declaration at a file position.",
@@ -884,7 +924,7 @@ internal object CliCommandCatalog {
             summary = "Install a portable Kast archive as a named local instance.",
             description = "Extracts a portable zip archive, wires up the instance under the instances root, and creates a launcher script in the bin directory.",
             usages = listOf(
-                "$CLI_EXECUTABLE_NAME install --archive=/absolute/path/to/kast-portable.zip [--instance=<name>] [--bin-dir=~/.kast/bin] [--instances-root=~/.kast/releases]",
+                "$CLI_EXECUTABLE_NAME install --archive=/absolute/path/to/kast-portable.zip [--instance=<name>] [--bin-dir=$KAST_ROOT_DIR/bin] [--instances-root=~/.kast/releases]",
             ),
             options = listOf(archiveOption, instanceNameOption, binDirOption, instancesRootOption),
             examples = listOf(
@@ -896,7 +936,7 @@ internal object CliCommandCatalog {
             path = listOf("install", "skill"),
             group = CliCommandGroup.CLI_MANAGEMENT,
             summary = "Install the packaged kast into the current workspace.",
-            description = "Copies the bundled kast into the nearest recognised skills directory (.agents/skills, .github/skills, or .claude/skills), otherwise ~/.kast/lib/skills, or the path given by --target-dir. Installed skill trees include a .kast-version marker so matching installs can be skipped safely.",
+            description = "Copies the bundled kast into the nearest recognised skills directory (.agents/skills, .github/skills, or .claude/skills), otherwise $KAST_ROOT_DIR/lib/skills, or the path given by --target-dir. Installed skill trees include a .kast-version marker so matching installs can be skipped safely.",
             usages = listOf(
                 "$CLI_EXECUTABLE_NAME install skill [--target-dir=/absolute/path/to/skills] [--name=kast] [--yes=true]",
             ),
@@ -912,7 +952,7 @@ internal object CliCommandCatalog {
             path = listOf("install", "copilot-extension"),
             group = CliCommandGroup.CLI_MANAGEMENT,
             summary = "Install the kast Copilot agents and hooks into the current workspace.",
-            description = "Copies the bundled Copilot agent and hook files into .github, or the path given by --target-dir. Installed extension trees include a .kast-copilot-version marker so matching installs can be skipped safely.",
+            description = "Copies the bundled Copilot agent and hook files into .github, or the path given by --target-dir. Installed extension trees include a $KAST_COPILOT_VERSION marker so matching installs can be skipped safely.",
             usages = listOf(
                 "$CLI_EXECUTABLE_NAME install copilot-extension [--target-dir=/absolute/path/to/workspace/.github] [--yes=true] [--uninstall=true]",
             ),
@@ -928,7 +968,7 @@ internal object CliCommandCatalog {
             path = listOf("self", "status"),
             group = CliCommandGroup.CLI_MANAGEMENT,
             summary = "Report the recorded global Kast install manifest.",
-            description = "Reads ~/.kast/.manifest.json and returns the installed version, components, managed paths, shell patches, and managed repositories.",
+            description = "Reads $KAST_ROOT_DIR/$MANIFEST_FILE and returns the installed version, components, managed paths, shell patches, and managed repositories.",
             usages = listOf(
                 "$CLI_EXECUTABLE_NAME self status",
             ),
@@ -952,7 +992,7 @@ internal object CliCommandCatalog {
             path = listOf("self", "uninstall"),
             group = CliCommandGroup.CLI_MANAGEMENT,
             summary = "Remove manifest-managed files from the global Kast install.",
-            description = "Deletes manifest-managed paths under ~/.kast, removes recorded shell RC patches, and removes the install root when it becomes empty.",
+            description = "Deletes manifest-managed paths under $KAST_ROOT_DIR, removes recorded shell RC patches, and removes the install root when it becomes empty.",
             usages = listOf(
                 "$CLI_EXECUTABLE_NAME self uninstall",
             ),
@@ -976,8 +1016,8 @@ internal object CliCommandCatalog {
             path = listOf("verify-extension"),
             group = CliCommandGroup.VALIDATION,
             summary = "Verify the installed Copilot extension version matches this CLI.",
-            description = "Reads .github/.kast-copilot-version from the current workspace and compares it with " +
-                "the running kast CLI version. Emits JSON and exits non-zero when the versions drift.",
+            description = "Reads .github/$KAST_COPILOT_VERSION from the current workspace and compares it with " +
+                          "the running kast CLI version. Emits JSON and exits non-zero when the versions drift.",
             usages = listOf(
                 "$CLI_EXECUTABLE_NAME verify-extension",
             ),
@@ -1063,6 +1103,30 @@ internal object CliCommandCatalog {
             summary = "Skill wrapper: list workspace modules and source files.",
             description = "Hidden native wrapper command. Accepts one JSON request argument.",
             usages = listOf("$CLI_EXECUTABLE_NAME workspace-files '{\"workspaceRoot\":\"/ws\"}'"),
+            visible = false,
+        ),
+        CliCommandMetadata(
+            path = listOf("skill", "workspace-search"),
+            group = CliCommandGroup.ANALYSIS,
+            summary = "Skill wrapper: search Kotlin workspace file contents.",
+            description = "Hidden native wrapper command. Accepts one JSON request argument.",
+            usages = listOf("$CLI_EXECUTABLE_NAME workspace-search '{\"workspaceRoot\":\"/ws\",\"pattern\":\"greet\"}'"),
+            visible = false,
+        ),
+        CliCommandMetadata(
+            path = listOf("skill", "file-outline"),
+            group = CliCommandGroup.ANALYSIS,
+            summary = "Skill wrapper: get a hierarchical outline for a Kotlin file.",
+            description = "Hidden native wrapper command. Accepts one JSON request argument.",
+            usages = listOf("$CLI_EXECUTABLE_NAME file-outline '{\"workspaceRoot\":\"/ws\",\"filePath\":\"/ws/src/Foo.kt\"}'"),
+            visible = false,
+        ),
+        CliCommandMetadata(
+            path = listOf("skill", "workspace-symbol"),
+            group = CliCommandGroup.ANALYSIS,
+            summary = "Skill wrapper: search workspace symbols by name.",
+            description = "Hidden native wrapper command. Accepts one JSON request argument.",
+            usages = listOf("$CLI_EXECUTABLE_NAME workspace-symbol '{\"workspaceRoot\":\"/ws\",\"pattern\":\"MyClass\",\"kind\":\"CLASS\"}'"),
             visible = false,
         ),
         CliCommandMetadata(

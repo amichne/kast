@@ -171,6 +171,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         "DIAGNOSTICS",
                         "FILE_OUTLINE",
                         "WORKSPACE_SYMBOL_SEARCH",
+                        "WORKSPACE_SEARCH",
                         "WORKSPACE_FILES",
                         "IMPLEMENTATIONS",
                         "CODE_ACTIONS",
@@ -946,6 +947,85 @@ daemon, including input/output schemas, examples, and behavioral notes.
             - The search is case-insensitive by default for substring matching.
             - Set `regex` to true for regular expression patterns.
             - Results are bounded by `maxResults`. Set `kind` to filter by symbol type.
+
+        **Error codes** &nbsp;·&nbsp; `CAPABILITY_NOT_SUPPORTED`
+
+    ??? example "workspace/search — Search workspace file contents for text patterns"
+
+        Searches workspace file contents for literal text or regex patterns.
+        Use this for Kotlin comments, string literals, and other non-symbol
+        content.
+
+        **Capability** &nbsp;·&nbsp; `WORKSPACE_SEARCH`
+
+        === "Input: WorkspaceSearchQuery"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin pattern: String` | Search pattern to match as a substring or regex. |
+            | `#!kotlin regex: Boolean` :material-information-outline:{ title="Default: false" } | When true, treats the pattern as a regular expression. |
+            | `#!kotlin maxResults: Int` :material-information-outline:{ title="Default: 100" } | Maximum number of matches to return. |
+            | `#!kotlin fileGlob: String?` | Optional glob that restricts which files are searched. |
+            | `#!kotlin caseSensitive: Boolean` :material-information-outline:{ title="Default: true" } | When true, matches text with case sensitivity. |
+        === "Output: WorkspaceSearchResult"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin matches: List<SearchMatch>` | Matched lines with absolute file path, line, column, and preview text. |
+            | `#!kotlin truncated: Boolean` :material-information-outline:{ title="Default: false" } | True when the result stopped at `maxResults`. |
+            | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
+        === "CLI"
+
+            ```bash
+            kast workspace-search --workspace-root=/path/to/project --pattern=TODO --file-glob='*.kt'
+            ```
+        === "Request"
+
+            ```json
+            {
+                "method": "workspace/search",
+                "params": {
+                    "pattern": "greet",
+                    "regex": false,
+                    "maxResults": 100,
+                    "caseSensitive": true
+                },
+                "id": 1,
+                "jsonrpc": "2.0"
+            }
+            ```
+        === "Response"
+
+            ```json
+            {
+                "result": {
+                    "matches": [
+                        {
+                            "filePath": "/workspace/src/Sample.kt",
+                            "lineNumber": 3,
+                            "columnNumber": 5,
+                            "preview": "fun greet() = \"hi\""
+                        },
+                        {
+                            "filePath": "/workspace/src/Sample.kt",
+                            "lineNumber": 5,
+                            "columnNumber": 13,
+                            "preview": "fun use() = greet()"
+                        }
+                    ],
+                    "truncated": false,
+                    "schemaVersion": 3
+                },
+                "id": 1,
+                "jsonrpc": "2.0"
+            }
+            ```
+        !!! note "Behavioral notes"
+
+            - Use `fileGlob` to narrow the search to specific source sets or
+              file types.
+            - Set `regex` to true for regular expression patterns.
+            - `caseSensitive` applies only to the content matching step.
 
         **Error codes** &nbsp;·&nbsp; `CAPABILITY_NOT_SUPPORTED`
 

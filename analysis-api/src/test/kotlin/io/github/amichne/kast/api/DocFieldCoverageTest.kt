@@ -17,6 +17,7 @@ import io.github.amichne.kast.api.contract.query.RenameQuery
 import io.github.amichne.kast.api.contract.query.SymbolQuery
 import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
+import io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
 import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.contract.result.CallHierarchyResult
@@ -39,6 +40,8 @@ import io.github.amichne.kast.api.contract.result.TypeHierarchyStats
 import io.github.amichne.kast.api.contract.result.TypeHierarchyTruncation
 import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
 import io.github.amichne.kast.api.contract.result.WorkspaceModule
+import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
+import io.github.amichne.kast.api.contract.result.SearchMatch
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 import io.github.amichne.kast.api.protocol.*
 
@@ -108,6 +111,9 @@ class DocFieldCoverageTest {
         "FileOutlineResult" to FileOutlineResult.serializer(),
         "WorkspaceSymbolQuery" to WorkspaceSymbolQuery.serializer(),
         "WorkspaceSymbolResult" to WorkspaceSymbolResult.serializer(),
+        "WorkspaceSearchQuery" to WorkspaceSearchQuery.serializer(),
+        "WorkspaceSearchResult" to WorkspaceSearchResult.serializer(),
+        "SearchMatch" to SearchMatch.serializer(),
         "WorkspaceFilesQuery" to WorkspaceFilesQuery.serializer(),
         "WorkspaceFilesResult" to WorkspaceFilesResult.serializer(),
         "ImplementationsQuery" to ImplementationsQuery.serializer(),

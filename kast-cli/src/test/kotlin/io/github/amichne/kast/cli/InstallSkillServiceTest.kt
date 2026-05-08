@@ -35,6 +35,9 @@ class InstallSkillServiceTest {
         assertFalse(result.skipped)
         assertTrue(Files.isDirectory(installedSkillDir))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("SKILL.md")))
+        assertTrue(Files.isRegularFile(installedSkillDir.resolve("evals/catalog.json")))
+        assertTrue(Files.isRegularFile(installedSkillDir.resolve("evals/pain_points.jsonl")))
+        assertTrue(Files.isRegularFile(installedSkillDir.resolve("evals/files/.gitkeep")))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("fixtures/maintenance/evals/evals.json")))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("fixtures/maintenance/evals/routing.json")))
         assertTrue(
@@ -53,8 +56,11 @@ class InstallSkillServiceTest {
             ),
         )
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("history/eval-baseline.json")))
+        assertTrue(Files.isRegularFile(installedSkillDir.resolve("history/progression.json")))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("references/quickstart.md")))
+        assertTrue(Files.isRegularFile(installedSkillDir.resolve("references/routing-improvement.md")))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("references/wrapper-openapi.yaml")))
+        assertTrue(Files.isRegularFile(installedSkillDir.resolve("scripts/build-routing-corpus.py")))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("scripts/kast-session-start.sh")))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("scripts/resolve-kast.sh")))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("value-proof/catalog.json")))

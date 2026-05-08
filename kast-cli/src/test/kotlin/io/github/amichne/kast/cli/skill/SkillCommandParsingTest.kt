@@ -90,6 +90,27 @@ class SkillCommandParsingTest {
     }
 
     @Test
+    fun `workspace-symbol parses JSON literal as wrapper`() {
+        val json = """{"pattern":"MyClass"}"""
+        val command = parser.parse(arrayOf("workspace-symbol", json))
+        assertSkillCommand(command, SkillWrapperName.WORKSPACE_SYMBOL, json)
+    }
+
+    @Test
+    fun `workspace-search parses JSON literal as wrapper`() {
+        val json = """{"pattern":"greet","fileGlob":"src/**/*.kt"}"""
+        val command = parser.parse(arrayOf("workspace-search", json))
+        assertSkillCommand(command, SkillWrapperName.WORKSPACE_SEARCH, json)
+    }
+
+    @Test
+    fun `file-outline parses JSON literal as wrapper`() {
+        val json = """{"filePath":"/tmp/ws/src/Foo.kt"}"""
+        val command = parser.parse(arrayOf("file-outline", json))
+        assertSkillCommand(command, SkillWrapperName.FILE_OUTLINE, json)
+    }
+
+    @Test
     fun `metrics parses JSON literal as wrapper`() {
         val json = """{"metric":"fanIn","workspaceRoot":"/tmp/ws"}"""
         val command = parser.parse(arrayOf("metrics", json))

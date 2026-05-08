@@ -14,6 +14,7 @@ import io.github.amichne.kast.api.contract.result.RenameResult
 import io.github.amichne.kast.api.contract.result.SymbolResult
 import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
 import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
+import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 import io.github.amichne.kast.api.protocol.*
 import io.github.amichne.kast.api.validation.*
@@ -99,6 +100,13 @@ interface AnalysisBackend {
         throw CapabilityNotSupportedException(
             capability = "WORKSPACE_SYMBOL_SEARCH",
             message = "Workspace symbol search is not available for this backend",
+        )
+    }
+
+    suspend fun workspaceSearch(query: ParsedWorkspaceSearchQuery): WorkspaceSearchResult {
+        throw CapabilityNotSupportedException(
+            capability = "WORKSPACE_SEARCH",
+            message = "Workspace content search is not available for this backend",
         )
     }
 

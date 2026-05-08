@@ -3,6 +3,7 @@ package io.github.amichne.kast.api.validation
 import io.github.amichne.kast.api.contract.*
 import io.github.amichne.kast.api.contract.query.*
 import io.github.amichne.kast.api.protocol.*
+import java.nio.file.FileSystems
 
 /**
  * Parsed query contract for requests anchored at a validated source position.
@@ -138,6 +139,14 @@ data class ParsedWorkspaceSymbolQuery(
     override val maxResults: PositiveInt,
     val regex: Boolean,
     val includeDeclarationScope: Boolean,
+) : BoundedQuery
+
+data class ParsedWorkspaceSearchQuery(
+    val pattern: NonBlankString,
+    override val maxResults: PositiveInt,
+    val regex: Boolean,
+    val fileGlob: NonBlankString?,
+    val caseSensitive: Boolean,
 ) : BoundedQuery
 
 data class ParsedWorkspaceFilesQuery(
@@ -296,6 +305,27 @@ fun WorkspaceSymbolQuery.parsed(): ParsedWorkspaceSymbolQuery = validationBounda
         maxResults = PositiveInt(maxResults),
         regex = regex,
         includeDeclarationScope = includeDeclarationScope,
+    )
+}
+
+fun WorkspaceSearchQuery.parsed(): ParsedWorkspaceSearchQuery = validationBoundary {
+    val parsedPattern = NonBlankString(pattern)
+    val parsedFileGlob = fileGlob?.let(::NonBlankString)
+    if (regex) {
+        Regex(
+            parsedPattern.value,
+            if (caseSensitive) emptySet() else setOf(RegexOption.IGNORE_CASE),
+        )
+    }
+    parsedFileGlob?.value?.let { glob ->
+        FileSystems.getDefault().getPathMatcher("glob:$glob")
+    }
+    ParsedWorkspaceSearchQuery(
+        pattern = parsedPattern,
+        maxResults = PositiveInt(maxResults),
+        regex = regex,
+        fileGlob = parsedFileGlob,
+        caseSensitive = caseSensitive,
     )
 }
 

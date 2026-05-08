@@ -72,7 +72,7 @@ class PsiReferenceScanner(
                                 throw error
                             } catch (error: CancellationException) {
                                 throw error
-                            } catch (_: RuntimeException) {
+                            } catch (_: Exception) {
                                 // Skip one bad reference while continuing to index the file.
                             }
                         }
@@ -182,7 +182,7 @@ class PsiReferenceScanner(
             throw error
         } catch (error: CancellationException) {
             throw error
-        } catch (_: RuntimeException) {
+        } catch (_: Exception) {
             null
         }
 }

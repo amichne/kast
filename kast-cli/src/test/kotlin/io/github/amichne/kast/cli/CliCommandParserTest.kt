@@ -614,6 +614,29 @@ class CliCommandParserTest {
     }
 
     @Test
+    fun `workspace search parses regex and glob options`() {
+        val command = parser.parse(
+            arrayOf(
+                "workspace-search",
+                "--workspace-root=$tempDir",
+                "--pattern=.*Service",
+                "--regex=true",
+                "--file-glob=src/**/*.kt",
+                "--case-sensitive=true",
+                "--max-results=25",
+            ),
+        )
+
+        assertTrue(command is CliCommand.WorkspaceSearch)
+        val searchCommand = command as CliCommand.WorkspaceSearch
+        assertEquals(".*Service", searchCommand.query.pattern)
+        assertEquals(true, searchCommand.query.regex)
+        assertEquals("src/**/*.kt", searchCommand.query.fileGlob)
+        assertEquals(true, searchCommand.query.caseSensitive)
+        assertEquals(25, searchCommand.query.maxResults)
+    }
+
+    @Test
     fun `resolve parses include-body option`() {
         val command = parser.parse(
             arrayOf(

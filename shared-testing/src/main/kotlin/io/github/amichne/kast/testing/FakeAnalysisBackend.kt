@@ -46,8 +46,11 @@ import io.github.amichne.kast.api.contract.result.TypeHierarchyTruncation
 import io.github.amichne.kast.api.contract.result.TypeHierarchyTruncationReason
 import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
 import io.github.amichne.kast.api.contract.result.WorkspaceModule
+import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
+import io.github.amichne.kast.api.contract.result.SearchMatch
 import java.nio.file.Files
+import java.nio.file.FileSystems
 import java.nio.file.Path
 import kotlin.io.path.writeText
 
@@ -83,6 +86,7 @@ class FakeAnalysisBackend private constructor(
             ReadCapability.DIAGNOSTICS,
             ReadCapability.FILE_OUTLINE,
             ReadCapability.WORKSPACE_SYMBOL_SEARCH,
+            ReadCapability.WORKSPACE_SEARCH,
             ReadCapability.WORKSPACE_FILES,
             ReadCapability.IMPLEMENTATIONS,
             ReadCapability.CODE_ACTIONS,
@@ -332,6 +336,34 @@ class FakeAnalysisBackend private constructor(
         return WorkspaceSymbolResult(symbols = matched)
     }
 
+    override suspend fun workspaceSearch(query: ParsedWorkspaceSearchQuery): WorkspaceSearchResult {
+        val regex = compileWorkspaceSearchRegex(query)
+        val fileGlob = query.fileGlob?.value
+        val matches = mutableListOf<SearchMatch>()
+        var truncated = false
+
+        outer@ for (filePath in availableFiles.filter { it.endsWith(".kt") }.sorted()) {
+            if (fileGlob != null && !matchesFileGlob(filePath, fileGlob)) continue
+            val content = runCatching { Files.readString(Path.of(filePath)) }.getOrElse { continue }
+            for ((lineIndex, line) in content.lineSequence().withIndex()) {
+                for (column in searchColumns(line, query, regex)) {
+                    if (matches.size >= query.maxResults.value) {
+                        truncated = true
+                        break@outer
+                    }
+                    matches += SearchMatch(
+                        filePath = filePath,
+                        lineNumber = lineIndex + 1,
+                        columnNumber = column + 1,
+                        preview = line.trimEnd(),
+                    )
+                }
+            }
+        }
+
+        return WorkspaceSearchResult(matches = matches, truncated = truncated)
+    }
+
     override suspend fun workspaceFiles(query: ParsedWorkspaceFilesQuery): WorkspaceFilesResult {
         val allFiles = availableFiles.filter { it.endsWith(".kt") }.sorted()
         val fileLimit = query.maxFilesPerModule?.value ?: allFiles.size
@@ -428,6 +460,46 @@ class FakeAnalysisBackend private constructor(
             "offset" to position.offset.value.toString(),
         ),
     )
+
+    private fun compileWorkspaceSearchRegex(query: ParsedWorkspaceSearchQuery): Regex? =
+        if (query.regex) {
+            Regex(
+                query.pattern.value,
+                if (query.caseSensitive) emptySet() else setOf(RegexOption.IGNORE_CASE),
+            )
+        } else {
+            null
+        }
+
+    private fun searchColumns(
+        line: String,
+        query: ParsedWorkspaceSearchQuery,
+        regex: Regex?,
+    ): Sequence<Int> = sequence {
+        if (regex != null) {
+            regex.findAll(line).forEach { match -> yield(match.range.first) }
+            return@sequence
+        }
+
+        var searchFrom = 0
+        while (true) {
+            val occurrence = line.indexOf(
+                query.pattern.value,
+                startIndex = searchFrom,
+                ignoreCase = !query.caseSensitive,
+            )
+            if (occurrence < 0) break
+            yield(occurrence)
+            searchFrom = occurrence + query.pattern.value.length.coerceAtLeast(1)
+        }
+    }
+
+    private fun matchesFileGlob(filePath: String, fileGlob: String): Boolean {
+        val matcher = FileSystems.getDefault().getPathMatcher("glob:$fileGlob")
+        val path = Path.of(filePath)
+        val relative = runCatching { workspaceRoot.relativize(path) }.getOrNull()
+        return listOfNotNull(relative, relative?.fileName, path.fileName).any(matcher::matches)
+    }
 
     companion object {
         fun sample(

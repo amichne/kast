@@ -13,6 +13,9 @@ internal enum class SkillWrapperName(val cliName: String, val nativeToolName: St
     SCAFFOLD("scaffold", "kast_scaffold"),
     WRITE_AND_VALIDATE("write-and-validate", "kast_write_and_validate"),
     WORKSPACE_FILES("workspace-files", "kast_workspace_files"),
+    WORKSPACE_SEARCH("workspace-search", "kast_workspace_search"),
+    FILE_OUTLINE("file-outline", "kast_file_outline"),
+    WORKSPACE_SYMBOL("workspace-symbol", "kast_workspace_symbol"),
     METRICS("metrics", "kast_metrics"),
     ;
 

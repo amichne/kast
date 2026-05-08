@@ -17,6 +17,7 @@ class VersionedCommandSpecTest {
 
         val expectedCommands = listOf(
             "workspace-files",
+            "workspace-search",
             "scaffold",
             "resolve",
             "references",

@@ -37,7 +37,7 @@ internal class BackgroundIndexer(
     private val store: SqliteSourceIndexStore,
     private val initialSourceIndexBuilder: (() -> Map<String, List<String>>)? = null,
     private val referenceBatchSize: Int = 50,
-    private val referenceParallelism: Int = 1,
+    private val referenceParallelism: Int = 2,
 ) : AutoCloseable {
 
     init {

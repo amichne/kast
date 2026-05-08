@@ -54,6 +54,8 @@ import io.github.amichne.kast.api.contract.TextEdit
 import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
 import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
 import io.github.amichne.kast.api.contract.result.WorkspaceModule
+import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
+import io.github.amichne.kast.api.contract.result.SearchMatch
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 import io.github.amichne.kast.shared.analysis.FileOutlineBuilder
 import io.github.amichne.kast.shared.analysis.ImportAnalysis
@@ -89,6 +91,7 @@ import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtObjectDeclaration
 import org.jetbrains.kotlin.psi.KtParameter
+import java.nio.file.FileSystems
 import java.nio.file.Path
 
 @OptIn(KaExperimentalApi::class)
@@ -122,6 +125,7 @@ internal class KastPluginBackend(
             ReadCapability.DIAGNOSTICS,
             ReadCapability.FILE_OUTLINE,
             ReadCapability.WORKSPACE_SYMBOL_SEARCH,
+            ReadCapability.WORKSPACE_SEARCH,
             ReadCapability.WORKSPACE_FILES,
             ReadCapability.IMPLEMENTATIONS,
             ReadCapability.CODE_ACTIONS,
@@ -658,6 +662,58 @@ internal class KastPluginBackend(
         }
     }
 
+    override suspend fun workspaceSearch(query: ParsedWorkspaceSearchQuery): WorkspaceSearchResult = withContext(readDispatcher) {
+        telemetry.inSpan(IntelliJTelemetryScope.WORKSPACE_SEARCH, "kast.intellij.workspaceSearch") { span ->
+            val candidateFiles = timedReadAction(
+                telemetry,
+                IntelliJTelemetryScope.WORKSPACE_SEARCH,
+                "kast.intellij.workspaceSearch.listFiles",
+            ) {
+                val scope = GlobalSearchScope.projectScope(project)
+                val fileGlob = query.fileGlob?.value
+                FileTypeIndex.getFiles(KotlinFileType.INSTANCE, scope)
+                    .asSequence()
+                    .filter { file -> isWorkspaceFile(file.path) }
+                    .filter { file -> fileGlob == null || matchesFileGlob(file.path, fileGlob) }
+                    .sortedBy { it.path }
+                    .toList()
+            }
+            span.setAttribute("kast.workspaceSearch.candidateFileCount", candidateFiles.size)
+            val regex = compileWorkspaceSearchRegex(query)
+            val matches = mutableListOf<SearchMatch>()
+            var truncated = false
+
+            outer@ for (file in candidateFiles) {
+                ProgressManager.checkCanceled()
+                val content = timedReadAction(
+                    telemetry,
+                    IntelliJTelemetryScope.WORKSPACE_SEARCH,
+                    "kast.intellij.workspaceSearch.readFile",
+                ) {
+                    String(file.contentsToByteArray(), file.charset)
+                }
+                for ((lineIndex, line) in content.lineSequence().withIndex()) {
+                    for (column in searchColumns(line, query, regex)) {
+                        if (matches.size >= query.maxResults.value) {
+                            truncated = true
+                            break@outer
+                        }
+                        matches += SearchMatch(
+                            filePath = file.path,
+                            lineNumber = lineIndex + 1,
+                            columnNumber = column + 1,
+                            preview = line.trimEnd(),
+                        )
+                    }
+                }
+            }
+
+            span.setAttribute("kast.workspaceSearch.resultCount", matches.size)
+            span.setAttribute("kast.workspaceSearch.truncated", truncated)
+            WorkspaceSearchResult(matches = matches, truncated = truncated)
+        }
+    }
+
     private fun <T : PsiElement> collectMatchingSymbols(
         scope: GlobalSearchScope,
         matcher: SymbolSearchMatcher,
@@ -687,6 +743,46 @@ internal class KastPluginBackend(
 
     private fun isWorkspaceFile(filePath: String): Boolean =
         filePath.startsWith(workspacePrefix) || filePath == workspaceRoot.toString()
+
+    private fun compileWorkspaceSearchRegex(query: ParsedWorkspaceSearchQuery): Regex? =
+        if (query.regex) {
+            Regex(
+                query.pattern.value,
+                if (query.caseSensitive) emptySet() else setOf(RegexOption.IGNORE_CASE),
+            )
+        } else {
+            null
+        }
+
+    private fun searchColumns(
+        line: String,
+        query: ParsedWorkspaceSearchQuery,
+        regex: Regex?,
+    ): Sequence<Int> = sequence {
+        if (regex != null) {
+            regex.findAll(line).forEach { match -> yield(match.range.first) }
+            return@sequence
+        }
+
+        var searchFrom = 0
+        while (true) {
+            val occurrence = line.indexOf(
+                query.pattern.value,
+                startIndex = searchFrom,
+                ignoreCase = !query.caseSensitive,
+            )
+            if (occurrence < 0) break
+            yield(occurrence)
+            searchFrom = occurrence + query.pattern.value.length.coerceAtLeast(1)
+        }
+    }
+
+    private fun matchesFileGlob(filePath: String, fileGlob: String): Boolean {
+        val matcher = FileSystems.getDefault().getPathMatcher("glob:$fileGlob")
+        val path = Path.of(filePath)
+        val relative = runCatching { workspaceRoot.relativize(path) }.getOrNull()
+        return listOfNotNull(relative, relative?.fileName, path.fileName).any(matcher::matches)
+    }
 
     private fun isConcreteType(target: PsiElement): Boolean = when (target) {
         is KtClass -> !target.isInterface() && !target.hasModifier(KtTokens.ABSTRACT_KEYWORD)

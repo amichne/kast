@@ -2,10 +2,13 @@ package io.github.amichne.kast.cli.skill
 
 import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.contract.result.CallHierarchyStats
+import io.github.amichne.kast.api.contract.result.SearchMatch
 import io.github.amichne.kast.api.contract.CallNode
 import io.github.amichne.kast.api.contract.Diagnostic
 import io.github.amichne.kast.api.contract.DiagnosticSeverity
 import io.github.amichne.kast.api.contract.Location
+import io.github.amichne.kast.api.contract.OutlineSymbol
+import io.github.amichne.kast.api.contract.PageInfo
 import io.github.amichne.kast.api.contract.Symbol
 import io.github.amichne.kast.api.contract.SymbolKind
 import io.github.amichne.kast.api.contract.result.WorkspaceModule
@@ -17,6 +20,9 @@ import io.github.amichne.kast.api.wrapper.KastCandidate
 import io.github.amichne.kast.api.wrapper.KastDiagnosticsFailureResponse
 import io.github.amichne.kast.api.wrapper.KastDiagnosticsQuery
 import io.github.amichne.kast.api.wrapper.KastDiagnosticsSuccessResponse
+import io.github.amichne.kast.api.wrapper.KastFileOutlineFailureResponse
+import io.github.amichne.kast.api.wrapper.KastFileOutlineQuery
+import io.github.amichne.kast.api.wrapper.KastFileOutlineSuccessResponse
 import io.github.amichne.kast.api.wrapper.KastDiagnosticsSummary
 import io.github.amichne.kast.api.wrapper.KastMetricsFailureResponse
 import io.github.amichne.kast.api.wrapper.KastMetricsQuery
@@ -37,6 +43,12 @@ import io.github.amichne.kast.api.wrapper.KastScaffoldSuccessResponse
 import io.github.amichne.kast.api.wrapper.KastWorkspaceFilesFailureResponse
 import io.github.amichne.kast.api.wrapper.KastWorkspaceFilesQuery
 import io.github.amichne.kast.api.wrapper.KastWorkspaceFilesSuccessResponse
+import io.github.amichne.kast.api.wrapper.KastWorkspaceSearchFailureResponse
+import io.github.amichne.kast.api.wrapper.KastWorkspaceSearchQuery
+import io.github.amichne.kast.api.wrapper.KastWorkspaceSearchSuccessResponse
+import io.github.amichne.kast.api.wrapper.KastWorkspaceSymbolFailureResponse
+import io.github.amichne.kast.api.wrapper.KastWorkspaceSymbolQuery
+import io.github.amichne.kast.api.wrapper.KastWorkspaceSymbolSuccessResponse
 import io.github.amichne.kast.api.wrapper.KastWriteAndValidateCreateFileQuery
 import io.github.amichne.kast.api.wrapper.KastWriteAndValidateFailureQuery
 import io.github.amichne.kast.api.wrapper.KastWriteAndValidateFailureResponse
@@ -328,6 +340,91 @@ class SkillWrapperSerializerTest {
                     parsed["modules"]?.jsonArray?.firstOrNull()?.jsonObject
                         ?.get("dependencyModuleNames")?.jsonArray?.map { it.jsonPrimitive.content },
                 )
+            },
+        ),
+        WrapperCase(
+            name = SkillWrapperName.WORKSPACE_SEARCH,
+            success = KastWorkspaceSearchSuccessResponse(
+                query = KastWorkspaceSearchQuery(workspaceRoot = "/tmp/ws", pattern = "greet"),
+                matches = listOf(
+                    SearchMatch(
+                        filePath = "/tmp/ws/src/Foo.kt",
+                        lineNumber = 3,
+                        columnNumber = 5,
+                        preview = "fun greet() = \"hi\"",
+                    ),
+                ),
+                truncated = false,
+                schemaVersion = 1,
+                logFile = "/tmp/log.txt",
+            ),
+            failure = KastWorkspaceSearchFailureResponse(
+                stage = "workspace-search",
+                message = "failed",
+                query = KastWorkspaceSearchQuery(workspaceRoot = "/tmp/ws", pattern = "greet"),
+                logFile = "/tmp/log.txt",
+            ),
+            successType = "WORKSPACE_SEARCH_SUCCESS",
+            failureType = "WORKSPACE_SEARCH_FAILURE",
+            successAssertions = { parsed ->
+                assertEquals(
+                    "/tmp/ws/src/Foo.kt",
+                    parsed["matches"]?.jsonArray?.firstOrNull()?.jsonObject?.get("filePath")?.jsonPrimitive?.content,
+                )
+            },
+        ),
+        WrapperCase(
+            name = SkillWrapperName.FILE_OUTLINE,
+            success = KastFileOutlineSuccessResponse(
+                query = KastFileOutlineQuery(workspaceRoot = "/tmp/ws", filePath = "/tmp/ws/src/Foo.kt"),
+                symbols = listOf(
+                    OutlineSymbol(
+                        symbol = testSymbol(),
+                        children = listOf(OutlineSymbol(symbol = testSymbol("com.example.Foo.greet"))),
+                    ),
+                ),
+                logFile = "/tmp/log.txt",
+            ),
+            failure = KastFileOutlineFailureResponse(
+                stage = "file-outline",
+                message = "failed",
+                query = KastFileOutlineQuery(workspaceRoot = "/tmp/ws", filePath = "/tmp/ws/src/Foo.kt"),
+                logFile = "/tmp/log.txt",
+            ),
+            successType = "FILE_OUTLINE_SUCCESS",
+            failureType = "FILE_OUTLINE_FAILURE",
+            successAssertions = { parsed ->
+                assertEquals(
+                    "com.example.Foo.greet",
+                    parsed["symbols"]?.jsonArray?.firstOrNull()?.jsonObject
+                        ?.get("children")?.jsonArray?.firstOrNull()?.jsonObject
+                        ?.get("symbol")?.jsonObject?.get("fqName")?.jsonPrimitive?.content,
+                )
+            },
+        ),
+        WrapperCase(
+            name = SkillWrapperName.WORKSPACE_SYMBOL,
+            success = KastWorkspaceSymbolSuccessResponse(
+                query = KastWorkspaceSymbolQuery(
+                    workspaceRoot = "/tmp/ws",
+                    pattern = "Foo",
+                    kind = "CLASS",
+                    includeDeclarationScope = true,
+                ),
+                symbols = listOf(testSymbol()),
+                page = PageInfo(truncated = true, nextPageToken = "page-2"),
+                logFile = "/tmp/log.txt",
+            ),
+            failure = KastWorkspaceSymbolFailureResponse(
+                stage = "workspace-symbol",
+                message = "failed",
+                query = KastWorkspaceSymbolQuery(workspaceRoot = "/tmp/ws", pattern = "Foo"),
+                logFile = "/tmp/log.txt",
+            ),
+            successType = "WORKSPACE_SYMBOL_SUCCESS",
+            failureType = "WORKSPACE_SYMBOL_FAILURE",
+            successAssertions = { parsed ->
+                assertEquals("page-2", parsed["page"]?.jsonObject?.get("nextPageToken")?.jsonPrimitive?.content)
             },
         ),
         WrapperCase(

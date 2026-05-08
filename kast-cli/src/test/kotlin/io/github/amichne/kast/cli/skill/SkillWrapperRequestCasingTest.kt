@@ -2,14 +2,17 @@ package io.github.amichne.kast.cli.skill
 
 import io.github.amichne.kast.api.wrapper.KastCallersRequest
 import io.github.amichne.kast.api.wrapper.KastDiagnosticsRequest
+import io.github.amichne.kast.api.wrapper.KastFileOutlineRequest
 import io.github.amichne.kast.api.wrapper.KastMetricsRequest
 import io.github.amichne.kast.api.wrapper.KastReferencesRequest
+import io.github.amichne.kast.api.wrapper.KastWorkspaceSearchRequest
 import io.github.amichne.kast.api.wrapper.KastRenameByOffsetRequest
 import io.github.amichne.kast.api.wrapper.KastRenameBySymbolRequest
 import io.github.amichne.kast.api.wrapper.KastRenameRequest
 import io.github.amichne.kast.api.wrapper.KastResolveRequest
 import io.github.amichne.kast.api.wrapper.KastScaffoldRequest
 import io.github.amichne.kast.api.wrapper.KastWorkspaceFilesRequest
+import io.github.amichne.kast.api.wrapper.KastWorkspaceSymbolRequest
 import io.github.amichne.kast.api.wrapper.KastWriteAndValidateCreateFileRequest
 import io.github.amichne.kast.api.wrapper.KastWriteAndValidateInsertAtOffsetRequest
 import io.github.amichne.kast.api.wrapper.KastWriteAndValidateReplaceRangeRequest
@@ -91,6 +94,9 @@ class SkillWrapperRequestCasingTest {
         SkillWrapperName.SCAFFOLD -> KastScaffoldRequest.serializer()
         SkillWrapperName.WRITE_AND_VALIDATE -> KastWriteAndValidateRequest.serializer()
         SkillWrapperName.WORKSPACE_FILES -> KastWorkspaceFilesRequest.serializer()
+        SkillWrapperName.WORKSPACE_SEARCH -> KastWorkspaceSearchRequest.serializer()
+        SkillWrapperName.FILE_OUTLINE -> KastFileOutlineRequest.serializer()
+        SkillWrapperName.WORKSPACE_SYMBOL -> KastWorkspaceSymbolRequest.serializer()
         SkillWrapperName.METRICS -> KastMetricsRequest.serializer()
     }
 
@@ -112,6 +118,9 @@ class SkillWrapperRequestCasingTest {
             KastWriteAndValidateReplaceRangeRequest.serializer(),
         )
         SkillWrapperName.WORKSPACE_FILES -> serializedKeys(KastWorkspaceFilesRequest.serializer())
+        SkillWrapperName.WORKSPACE_SEARCH -> serializedKeys(KastWorkspaceSearchRequest.serializer())
+        SkillWrapperName.FILE_OUTLINE -> serializedKeys(KastFileOutlineRequest.serializer())
+        SkillWrapperName.WORKSPACE_SYMBOL -> serializedKeys(KastWorkspaceSymbolRequest.serializer())
         SkillWrapperName.METRICS -> serializedKeys(KastMetricsRequest.serializer())
     }
 

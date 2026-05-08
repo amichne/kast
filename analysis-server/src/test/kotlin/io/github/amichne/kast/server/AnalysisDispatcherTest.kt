@@ -44,6 +44,8 @@ import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
 import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
 import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
 import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
+import io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery
+import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
 import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 import io.github.amichne.kast.testing.FakeAnalysisBackend
@@ -511,6 +513,37 @@ class AnalysisDispatcherTest {
             params = json.encodeToJsonElement(
                 WorkspaceSymbolQuery.serializer(),
                 WorkspaceSymbolQuery(pattern = "greet", maxResults = 0),
+            ),
+        )
+
+        val error = json.decodeFromJsonElement(
+            JsonRpcErrorResponse.serializer(),
+            response,
+        )
+        assertEquals("VALIDATION_ERROR", error.error.data?.code)
+    }
+
+    @Test
+    fun `workspace search dispatches without HTTP`() {
+        val result = dispatchSuccess<WorkspaceSearchResult>(
+            method = "workspace/search",
+            params = json.encodeToJsonElement(
+                WorkspaceSearchQuery.serializer(),
+                WorkspaceSearchQuery(pattern = "greet"),
+            ),
+        )
+
+        assertTrue(result.matches.isNotEmpty())
+        assertTrue(result.matches.first().preview.contains("greet"))
+    }
+
+    @Test
+    fun `workspace search rejects blank pattern`() {
+        val response = dispatchRaw(
+            method = "workspace/search",
+            params = json.encodeToJsonElement(
+                WorkspaceSearchQuery.serializer(),
+                WorkspaceSearchQuery(pattern = "  "),
             ),
         )
 

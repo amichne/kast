@@ -3,6 +3,7 @@ package io.github.amichne.kast.api.wrapper
 import io.github.amichne.kast.api.contract.*
 import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.contract.result.CallHierarchyStats
+import io.github.amichne.kast.api.contract.result.SearchMatch
 import io.github.amichne.kast.api.contract.result.TypeHierarchyNode
 import io.github.amichne.kast.api.contract.result.TypeHierarchyStats
 import io.github.amichne.kast.api.contract.result.WorkspaceModule
@@ -213,6 +214,32 @@ data class KastWorkspaceFilesRequest(
 )
 
 @Serializable
+data class KastWorkspaceSearchRequest(
+    val workspaceRoot: String? = null,
+    val pattern: String,
+    val regex: Boolean = false,
+    val maxResults: Int = 100,
+    val fileGlob: String? = null,
+    val caseSensitive: Boolean = false,
+)
+
+@Serializable
+data class KastFileOutlineRequest(
+    val workspaceRoot: String? = null,
+    val filePath: String,
+)
+
+@Serializable
+data class KastWorkspaceSymbolRequest(
+    val workspaceRoot: String? = null,
+    val pattern: String,
+    val kind: String? = null,
+    val maxResults: Int = 100,
+    val regex: Boolean = false,
+    val includeDeclarationScope: Boolean = false,
+)
+
+@Serializable
 sealed interface KastWriteAndValidateRequest
 
 @Serializable
@@ -337,6 +364,32 @@ data class KastWorkspaceFilesQuery(
     val moduleName: String? = null,
     val includeFiles: Boolean = false,
     val maxFilesPerModule: Int? = null,
+)
+
+@Serializable
+data class KastWorkspaceSearchQuery(
+    val workspaceRoot: String,
+    val pattern: String,
+    val regex: Boolean = false,
+    val maxResults: Int = 100,
+    val fileGlob: String? = null,
+    val caseSensitive: Boolean = false,
+)
+
+@Serializable
+data class KastFileOutlineQuery(
+    val workspaceRoot: String,
+    val filePath: String,
+)
+
+@Serializable
+data class KastWorkspaceSymbolQuery(
+    val workspaceRoot: String,
+    val pattern: String,
+    val kind: String? = null,
+    val maxResults: Int = 100,
+    val regex: Boolean = false,
+    val includeDeclarationScope: Boolean = false,
 )
 
 @Serializable
@@ -600,6 +653,77 @@ data class KastWorkspaceFilesFailureResponse(
     val error: ApiErrorResponse? = null,
     val errorText: String? = null,
 ) : KastWorkspaceFilesResponse
+
+@Serializable
+sealed interface KastFileOutlineResponse
+
+@Serializable
+@SerialName("FILE_OUTLINE_SUCCESS")
+data class KastFileOutlineSuccessResponse(
+    val ok: Boolean = true,
+    val query: KastFileOutlineQuery,
+    val symbols: List<OutlineSymbol>,
+    val logFile: String,
+) : KastFileOutlineResponse
+
+@Serializable
+@SerialName("FILE_OUTLINE_FAILURE")
+data class KastFileOutlineFailureResponse(
+    val ok: Boolean = false,
+    val stage: String,
+    val message: String,
+    val query: KastFileOutlineQuery,
+    val logFile: String,
+) : KastFileOutlineResponse
+
+@Serializable
+sealed interface KastWorkspaceSearchResponse
+
+@Serializable
+@SerialName("WORKSPACE_SEARCH_SUCCESS")
+data class KastWorkspaceSearchSuccessResponse(
+    val ok: Boolean = true,
+    val query: KastWorkspaceSearchQuery,
+    val matches: List<SearchMatch>,
+    val truncated: Boolean,
+    val schemaVersion: Int,
+    val logFile: String,
+) : KastWorkspaceSearchResponse
+
+@Serializable
+@SerialName("WORKSPACE_SEARCH_FAILURE")
+data class KastWorkspaceSearchFailureResponse(
+    val ok: Boolean = false,
+    val stage: String,
+    val message: String,
+    val query: KastWorkspaceSearchQuery,
+    val logFile: String,
+    val error: ApiErrorResponse? = null,
+    val errorText: String? = null,
+) : KastWorkspaceSearchResponse
+
+@Serializable
+sealed interface KastWorkspaceSymbolResponse
+
+@Serializable
+@SerialName("WORKSPACE_SYMBOL_SUCCESS")
+data class KastWorkspaceSymbolSuccessResponse(
+    val ok: Boolean = true,
+    val query: KastWorkspaceSymbolQuery,
+    val symbols: List<Symbol>,
+    val page: PageInfo? = null,
+    val logFile: String,
+) : KastWorkspaceSymbolResponse
+
+@Serializable
+@SerialName("WORKSPACE_SYMBOL_FAILURE")
+data class KastWorkspaceSymbolFailureResponse(
+    val ok: Boolean = false,
+    val stage: String,
+    val message: String,
+    val query: KastWorkspaceSymbolQuery,
+    val logFile: String,
+) : KastWorkspaceSymbolResponse
 
 @Serializable
 sealed interface KastWriteAndValidateResponse

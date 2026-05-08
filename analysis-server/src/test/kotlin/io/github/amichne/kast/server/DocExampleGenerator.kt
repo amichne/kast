@@ -23,6 +23,7 @@ import io.github.amichne.kast.api.contract.TextEdit
 import io.github.amichne.kast.api.contract.TypeHierarchyDirection
 import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
+import io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
 import io.github.amichne.kast.testing.FakeAnalysisBackend
 import kotlinx.coroutines.runBlocking
@@ -183,6 +184,13 @@ object DocExampleGenerator {
             json.encodeToJsonElement(
                 WorkspaceFilesQuery.serializer(),
                 WorkspaceFilesQuery(),
+            ),
+        )
+        ops += "workspaceSearch" to request(
+            "workspace/search",
+            json.encodeToJsonElement(
+                WorkspaceSearchQuery.serializer(),
+                WorkspaceSearchQuery(pattern = "greet"),
             ),
         )
         ops += "implementations" to request(

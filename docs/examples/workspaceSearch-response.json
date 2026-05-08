@@ -1,0 +1,22 @@
+{
+    "result": {
+        "matches": [
+            {
+                "filePath": "/workspace/src/Sample.kt",
+                "lineNumber": 3,
+                "columnNumber": 5,
+                "preview": "fun greet() = \"hi\""
+            },
+            {
+                "filePath": "/workspace/src/Sample.kt",
+                "lineNumber": 5,
+                "columnNumber": 13,
+                "preview": "fun use() = greet()"
+            }
+        ],
+        "truncated": false,
+        "schemaVersion": 3
+    },
+    "id": 1,
+    "jsonrpc": "2.0"
+}

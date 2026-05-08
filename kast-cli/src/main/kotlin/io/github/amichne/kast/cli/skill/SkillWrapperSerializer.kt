@@ -2,12 +2,15 @@ package io.github.amichne.kast.cli.skill
 
 import io.github.amichne.kast.api.wrapper.KastCallersResponse
 import io.github.amichne.kast.api.wrapper.KastDiagnosticsResponse
+import io.github.amichne.kast.api.wrapper.KastFileOutlineResponse
 import io.github.amichne.kast.api.wrapper.KastMetricsResponse
 import io.github.amichne.kast.api.wrapper.KastReferencesResponse
 import io.github.amichne.kast.api.wrapper.KastRenameResponse
 import io.github.amichne.kast.api.wrapper.KastResolveResponse
 import io.github.amichne.kast.api.wrapper.KastScaffoldResponse
 import io.github.amichne.kast.api.wrapper.KastWorkspaceFilesResponse
+import io.github.amichne.kast.api.wrapper.KastWorkspaceSearchResponse
+import io.github.amichne.kast.api.wrapper.KastWorkspaceSymbolResponse
 import io.github.amichne.kast.api.wrapper.KastWriteAndValidateResponse
 import kotlinx.serialization.json.Json
 
@@ -36,6 +39,12 @@ internal object SkillWrapperSerializer {
             json.encodeToString(KastScaffoldResponse.serializer(), response as KastScaffoldResponse)
         SkillWrapperName.WORKSPACE_FILES ->
             json.encodeToString(KastWorkspaceFilesResponse.serializer(), response as KastWorkspaceFilesResponse)
+        SkillWrapperName.WORKSPACE_SEARCH ->
+            json.encodeToString(KastWorkspaceSearchResponse.serializer(), response as KastWorkspaceSearchResponse)
+        SkillWrapperName.FILE_OUTLINE ->
+            json.encodeToString(KastFileOutlineResponse.serializer(), response as KastFileOutlineResponse)
+        SkillWrapperName.WORKSPACE_SYMBOL ->
+            json.encodeToString(KastWorkspaceSymbolResponse.serializer(), response as KastWorkspaceSymbolResponse)
         SkillWrapperName.WRITE_AND_VALIDATE ->
             json.encodeToString(KastWriteAndValidateResponse.serializer(), response as KastWriteAndValidateResponse)
         SkillWrapperName.METRICS ->

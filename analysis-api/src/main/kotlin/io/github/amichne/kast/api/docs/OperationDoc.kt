@@ -239,6 +239,25 @@ object OperationDocRegistry {
             errorCodes = listOf("CAPABILITY_NOT_SUPPORTED"),
         ),
         OperationDoc(
+            operationId = "workspaceSearch",
+            jsonRpcMethod = "workspace/search",
+            summary = "Search workspace file contents for text patterns",
+            tag = "read",
+            capability = "WORKSPACE_SEARCH",
+            requestSchema = "WorkspaceSearchQuery",
+            responseSchema = "WorkspaceSearchResult",
+            description = "Searches workspace file contents for literal text or regex patterns.\n" +
+                "Use this for Kotlin comments, string literals, and other non-symbol\ncontent.",
+            behavioralNotes = listOf(
+                "Use `fileGlob` to narrow the search to specific source sets or\nfile types.",
+                "Set `regex` to true for regular expression patterns.",
+                "`caseSensitive` applies only to the content matching step.",
+            ),
+            cliExample = "kast workspace-search --workspace-root=/path/to/project " +
+                "--pattern=TODO --file-glob='*.kt'",
+            errorCodes = listOf("CAPABILITY_NOT_SUPPORTED"),
+        ),
+        OperationDoc(
             operationId = "workspaceFiles",
             jsonRpcMethod = "workspace/files",
             summary = "List workspace modules and source files",

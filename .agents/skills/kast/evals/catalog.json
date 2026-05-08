@@ -1,0 +1,724 @@
+{
+  "skill_name": "kast",
+  "version": 1,
+  "cases": [
+    {
+      "id": "behavior-disambiguate-member",
+      "title": "Disambiguate a common member name",
+      "prompt": "Find all usages of the `date` property on `EventBean`, not every `date` symbol in the repo. List each call site with file path and line number.",
+      "files": [],
+      "expected_output": "A usage list scoped to the exact member identity.",
+      "expectations": [
+        "Resolves the member with containingType or fileHint before scanning usages",
+        "Scopes the result to the requested Kotlin member instead of unrelated `date` symbols",
+        "Does not use raw text search as the primary identity mechanism"
+      ],
+      "labels": [
+        "behavior",
+        "identity-precision",
+        "ambiguous_symbol"
+      ],
+      "stage": "holdout",
+      "suite": "behavior",
+      "failure_mode": "ambiguous_symbol",
+      "source": {
+        "kind": "manual",
+        "summary": "Adapted from the value-proof member disambiguation case"
+      },
+      "promotion": {
+        "required_pass_rate": 1.0,
+        "required_benchmarks": 2
+      }
+    },
+    {
+      "id": "behavior-disambiguate-callers",
+      "title": "Disambiguate callers of a common function name",
+      "prompt": "Find callers of `StandaloneAnalysisBackend.handle()` rather than every `handle()` function in the project. Show the call hierarchy rooted at the exact function.",
+      "files": [],
+      "expected_output": "A call hierarchy rooted at the exact function identity.",
+      "expectations": [
+        "Disambiguates the function using containingType, kind, or fileHint",
+        "Does not silently pick one of multiple candidates without disambiguation",
+        "Reports callers specific to the target class"
+      ],
+      "labels": [
+        "behavior",
+        "call-hierarchy",
+        "trigger_miss"
+      ],
+      "stage": "holdout",
+      "suite": "behavior",
+      "failure_mode": "trigger_miss",
+      "source": {
+        "kind": "manual",
+        "summary": "Adapted from the value-proof caller disambiguation case"
+      },
+      "promotion": {
+        "required_pass_rate": 1.0,
+        "required_benchmarks": 2
+      }
+    },
+    {
+      "id": "behavior-exhaustive-references",
+      "title": "Prove exhaustive cross-workspace references",
+      "prompt": "Find every reference to `AnalysisBackend` across the entire workspace and state whether the search was exhaustive or truncated.",
+      "files": [],
+      "expected_output": "A complete reference report with explicit search completeness metadata.",
+      "expectations": [
+        "Reports completeness metadata for the reference search",
+        "Lists references grouped by file",
+        "Does not claim completeness without evidence from the tool"
+      ],
+      "labels": [
+        "behavior",
+        "references",
+        "routing_bypass"
+      ],
+      "stage": "holdout",
+      "suite": "behavior",
+      "failure_mode": "routing_bypass",
+      "source": {
+        "kind": "manual",
+        "summary": "Adapted from the value-proof exhaustive references case"
+      },
+      "promotion": {
+        "required_pass_rate": 1.0,
+        "required_benchmarks": 2
+      }
+    },
+    {
+      "id": "behavior-sealed-hierarchy-trace",
+      "title": "Trace every sealed hierarchy implementation",
+      "prompt": "List every implementation of the sealed interface `AnalysisBackend`. For each implementation, show its file location and module.",
+      "files": [],
+      "expected_output": "A semantic subtype report with module attribution.",
+      "expectations": [
+        "Uses semantic resolution instead of text search",
+        "Lists all sealed subtypes with file paths",
+        "Identifies which module each implementation lives in"
+      ],
+      "labels": [
+        "behavior",
+        "sealed-hierarchy",
+        "initialization_friction"
+      ],
+      "stage": "holdout",
+      "suite": "behavior",
+      "failure_mode": "initialization_friction",
+      "source": {
+        "kind": "manual",
+        "summary": "Adapted from the value-proof sealed hierarchy case"
+      },
+      "promotion": {
+        "required_pass_rate": 1.0,
+        "required_benchmarks": 2
+      }
+    },
+    {
+      "id": "behavior-multi-file-rename",
+      "title": "Safely rename a symbol across files",
+      "prompt": "Rename `resolveKastCliPath` to `locateKastCliPath` across the workspace. Show the edit plan before applying and confirm the workspace is still clean afterward.",
+      "files": [],
+      "expected_output": "A multi-file rename plan and validated post-edit status.",
+      "expectations": [
+        "Uses the semantic rename path instead of find-and-replace",
+        "Shows an edit plan before applying",
+        "Reports clean diagnostics after the rename"
+      ],
+      "labels": [
+        "behavior",
+        "rename",
+        "schema_request"
+      ],
+      "stage": "holdout",
+      "suite": "behavior",
+      "failure_mode": "schema_request",
+      "source": {
+        "kind": "manual",
+        "summary": "Adapted from the value-proof rename case"
+      },
+      "promotion": {
+        "required_pass_rate": 1.0,
+        "required_benchmarks": 2
+      }
+    },
+    {
+      "id": "behavior-edit-and-validate",
+      "title": "Edit and validate atomically",
+      "prompt": "Add a `@Deprecated(\"Use locateKastCliPath instead\")` annotation to the `resolveKastCliPath` declaration and confirm the file still compiles after the edit.",
+      "files": [],
+      "expected_output": "A validated edit report with diagnostics evidence.",
+      "expectations": [
+        "Uses `kast_write_and_validate` rather than a raw edit tool",
+        "Validates the edit atomically",
+        "Does not claim success without reporting compile cleanliness"
+      ],
+      "labels": [
+        "behavior",
+        "write-and-validate",
+        "mutation_abandonment"
+      ],
+      "stage": "holdout",
+      "suite": "behavior",
+      "failure_mode": "mutation_abandonment",
+      "source": {
+        "kind": "manual",
+        "summary": "Adapted from the value-proof atomic edit case"
+      },
+      "promotion": {
+        "required_pass_rate": 1.0,
+        "required_benchmarks": 2
+      }
+    },
+    {
+      "id": "behavior-scaffold-large-class",
+      "title": "Summarize a large class structurally",
+      "prompt": "Summarize the public API of `CliCommandCatalog` and list every public type, enum, and data class it contains with their member signatures.",
+      "files": [],
+      "expected_output": "A scaffold-rooted API summary for a large class.",
+      "expectations": [
+        "Uses `kast_scaffold` as the primary information source",
+        "Lists nested types accurately",
+        "Does not hallucinate members that do not exist"
+      ],
+      "labels": [
+        "behavior",
+        "scaffold",
+        "schema_response"
+      ],
+      "stage": "holdout",
+      "suite": "behavior",
+      "failure_mode": "schema_response",
+      "source": {
+        "kind": "manual",
+        "summary": "Adapted from the value-proof scaffold case"
+      },
+      "promotion": {
+        "required_pass_rate": 1.0,
+        "required_benchmarks": 2
+      }
+    },
+    {
+      "id": "behavior-workspace-discovery",
+      "title": "Discover modules in one semantic call",
+      "prompt": "List every module in this workspace and how many Kotlin source files each contains.",
+      "files": [],
+      "expected_output": "A module inventory with Kotlin source file counts.",
+      "expectations": [
+        "Uses `kast_workspace_files` instead of recursive directory traversal",
+        "Reports module names and file counts",
+        "Completes without iterative file-system crawling"
+      ],
+      "labels": [
+        "behavior",
+        "workspace-discovery",
+        "maintenance_thrash"
+      ],
+      "stage": "holdout",
+      "suite": "behavior",
+      "failure_mode": "maintenance_thrash",
+      "source": {
+        "kind": "manual",
+        "summary": "Adapted from the value-proof workspace discovery case"
+      },
+      "promotion": {
+        "required_pass_rate": 1.0,
+        "required_benchmarks": 2
+      }
+    },
+    {
+      "id": "behavior-impact-analysis",
+      "title": "Trace two-level deletion impact",
+      "prompt": "I want to delete `CliService.readFile()`. Show every direct caller, then for each caller show its callers at depth 2 and note which ones live in test files.",
+      "files": [],
+      "expected_output": "A bounded depth-2 caller impact report with production and test classification.",
+      "expectations": [
+        "Resolves the exact function before tracing callers",
+        "Shows a depth-2 call hierarchy",
+        "Distinguishes test files from production files"
+      ],
+      "labels": [
+        "behavior",
+        "impact-analysis",
+        "relative_path"
+      ],
+      "stage": "holdout",
+      "suite": "behavior",
+      "failure_mode": "relative_path",
+      "source": {
+        "kind": "manual",
+        "summary": "Adapted from the value-proof impact analysis case"
+      },
+      "promotion": {
+        "required_pass_rate": 1.0,
+        "required_benchmarks": 2
+      }
+    },
+    {
+      "id": "behavior-cross-module-flow",
+      "title": "Trace cross-module symbol flow",
+      "prompt": "Trace how `AnalysisBackend` flows from its declaration to its consumers in other modules and show the file-to-file dependency chain.",
+      "files": [],
+      "expected_output": "A concrete file-to-file flow report across module boundaries.",
+      "expectations": [
+        "Uses semantic analysis rather than grep",
+        "Identifies consumers in at least one other module",
+        "Shows concrete file-to-file relationships"
+      ],
+      "labels": [
+        "behavior",
+        "cross-module-flow",
+        "failure_response_ignored"
+      ],
+      "stage": "holdout",
+      "suite": "behavior",
+      "failure_mode": "failure_response_ignored",
+      "source": {
+        "kind": "manual",
+        "summary": "Adapted from the value-proof cross-module flow case"
+      },
+      "promotion": {
+        "required_pass_rate": 1.0,
+        "required_benchmarks": 2
+      }
+    },
+    {
+      "id": "routing-understand-kotlin-file",
+      "title": "Understand a Kotlin file semantically",
+      "prompt": "Help me understand this Kotlin file and how it is wired into the rest of the project.",
+      "files": [],
+      "expected_output": "A semantic summary rooted in the Kotlin file and its call graph.",
+      "expectations": [
+        "Starts with native Kast semantic tools",
+        "Uses the scaffold and follow-up semantic tracing rather than raw file reads",
+        "Avoids generic text search for Kotlin identity"
+      ],
+      "labels": [
+        "routing",
+        "discoverability",
+        "trigger_miss"
+      ],
+      "stage": "holdout",
+      "suite": "routing",
+      "failure_mode": "trigger_miss",
+      "expected_skill": "kast",
+      "expected_route": "native-kast-tools",
+      "allowed_ops": [
+        "kast_workspace_files",
+        "kast_scaffold",
+        "kast_resolve",
+        "kast_references",
+        "kast_callers"
+      ],
+      "forbidden_ops": [
+        "grep",
+        "rg",
+        "view"
+      ],
+      "measurement_dimensions": [
+        "discoverability"
+      ],
+      "source": {
+        "kind": "manual",
+        "summary": "Canonical Kotlin understanding route"
+      },
+      "promotion": {
+        "required_pass_rate": 1.0,
+        "required_benchmarks": 2
+      }
+    },
+    {
+      "id": "routing-find-kotlin-usages",
+      "title": "Find Kotlin usages semantically",
+      "prompt": "Where is this Kotlin symbol used, and what code depends on it?",
+      "files": [],
+      "expected_output": "A reference report for the exact symbol and its callers.",
+      "expectations": [
+        "Resolves the symbol before finding usages",
+        "Uses semantic reference and caller tools",
+        "Does not fall back to grep or rg"
+      ],
+      "labels": [
+        "routing",
+        "generic-tool-avoidance",
+        "routing_bypass"
+      ],
+      "stage": "holdout",
+      "suite": "routing",
+      "failure_mode": "routing_bypass",
+      "expected_skill": "kast",
+      "expected_route": "native-kast-tools",
+      "allowed_ops": [
+        "kast_resolve",
+        "kast_references",
+        "kast_callers"
+      ],
+      "forbidden_ops": [
+        "grep",
+        "rg",
+        "view"
+      ],
+      "measurement_dimensions": [
+        "generic_tool_avoidance"
+      ],
+      "source": {
+        "kind": "manual",
+        "summary": "Canonical usage-tracing route"
+      },
+      "promotion": {
+        "required_pass_rate": 1.0,
+        "required_benchmarks": 2
+      }
+    },
+    {
+      "id": "routing-recover-bootstrap",
+      "title": "Recover from missing Kast bootstrap",
+      "prompt": "I tried using Kast and the first command failed because `KAST_CLI_PATH` is empty. Bootstrap Kast for this workspace and keep tracing the Kotlin symbol semantically.",
+      "files": [],
+      "expected_output": "A successful bootstrap followed by semantic tracing with Kast.",
+      "expectations": [
+        "Recovers by using the Kast bootstrap path",
+        "Keeps the workflow in native Kast tools afterward",
+        "Does not abandon the semantic workflow"
+      ],
+      "labels": [
+        "routing",
+        "iteration-reduction",
+        "initialization_friction"
+      ],
+      "stage": "holdout",
+      "suite": "routing",
+      "failure_mode": "initialization_friction",
+      "expected_skill": "kast",
+      "expected_route": "native-kast-tools",
+      "allowed_ops": [
+        "kast_workspace_files",
+        "kast_scaffold",
+        "kast_resolve",
+        "kast_references"
+      ],
+      "forbidden_ops": [
+        "grep",
+        "rg",
+        "view"
+      ],
+      "measurement_dimensions": [
+        "iteration_reduction"
+      ],
+      "source": {
+        "kind": "manual",
+        "summary": "Bootstrap recovery route"
+      },
+      "promotion": {
+        "required_pass_rate": 1.0,
+        "required_benchmarks": 2
+      }
+    },
+    {
+      "id": "routing-selected-skill-no-thrash",
+      "title": "Stay productive when the skill is already selected",
+      "prompt": "The Kast skill is already selected for a Kotlin flow-tracing task. Start with the first useful semantic command instead of reading maintenance fixtures or unrelated reference files.",
+      "files": [],
+      "expected_output": "A semantic command sequence that begins with the task itself.",
+      "expectations": [
+        "Starts with a useful semantic command",
+        "Avoids maintenance thrash",
+        "Keeps the flow on native Kast tools"
+      ],
+      "labels": [
+        "routing",
+        "haystack-reduction",
+        "maintenance_thrash"
+      ],
+      "stage": "holdout",
+      "suite": "routing",
+      "failure_mode": "maintenance_thrash",
+      "expected_skill": "kast",
+      "expected_route": "native-kast-tools",
+      "allowed_ops": [
+        "kast_workspace_files",
+        "kast_scaffold",
+        "kast_resolve",
+        "kast_references",
+        "kast_callers"
+      ],
+      "forbidden_ops": [
+        "grep",
+        "rg",
+        "view"
+      ],
+      "measurement_dimensions": [
+        "haystack_reduction"
+      ],
+      "source": {
+        "kind": "manual",
+        "summary": "Avoid maintenance thrash after skill selection"
+      },
+      "promotion": {
+        "required_pass_rate": 1.0,
+        "required_benchmarks": 2
+      }
+    },
+    {
+      "id": "routing-unknown-key-consults-shape",
+      "title": "Recover from a request-shape error",
+      "prompt": "My first Kast request failed with `Encountered an unknown key`. Recover by consulting the documented request shape instead of probing the wrapper blindly.",
+      "files": [],
+      "expected_output": "A corrected semantic request that keeps the workflow in Kast.",
+      "expectations": [
+        "Uses the documented command shape to recover",
+        "Keeps using native Kast tools after the correction",
+        "Does not switch to manual parsing or shell probing"
+      ],
+      "labels": [
+        "routing",
+        "discoverability",
+        "schema_request"
+      ],
+      "stage": "holdout",
+      "suite": "routing",
+      "failure_mode": "schema_request",
+      "expected_skill": "kast",
+      "expected_route": "native-kast-tools",
+      "allowed_ops": [
+        "kast_resolve",
+        "kast_scaffold",
+        "kast_write_and_validate"
+      ],
+      "forbidden_ops": [
+        "grep",
+        "rg",
+        "view"
+      ],
+      "measurement_dimensions": [
+        "discoverability"
+      ],
+      "source": {
+        "kind": "manual",
+        "summary": "Schema-request recovery route"
+      },
+      "promotion": {
+        "required_pass_rate": 1.0,
+        "required_benchmarks": 2
+      }
+    },
+    {
+      "id": "routing-absolute-path-wrapper-requests",
+      "title": "Normalize relative file paths before wrapper use",
+      "prompt": "The Kotlin file is `src/main/kotlin/io/github/amichne/kast/cli/CliCommandCatalog.kt`. Use Kast on it, but normalize the path before you call the wrapper.",
+      "files": [],
+      "expected_output": "A wrapper request that uses an absolute path and succeeds semantically.",
+      "expectations": [
+        "Uses an absolute path for Kotlin wrapper requests",
+        "Keeps the workflow in native Kast tools",
+        "Does not switch to grep or raw file reads"
+      ],
+      "labels": [
+        "routing",
+        "iteration-reduction",
+        "relative_path"
+      ],
+      "stage": "holdout",
+      "suite": "routing",
+      "failure_mode": "relative_path",
+      "expected_skill": "kast",
+      "expected_route": "native-kast-tools",
+      "allowed_ops": [
+        "kast_scaffold",
+        "kast_diagnostics",
+        "kast_file_outline"
+      ],
+      "forbidden_ops": [
+        "grep",
+        "rg",
+        "view"
+      ],
+      "measurement_dimensions": [
+        "iteration_reduction"
+      ],
+      "source": {
+        "kind": "manual",
+        "summary": "Absolute-path routing guardrail"
+      },
+      "promotion": {
+        "required_pass_rate": 1.0,
+        "required_benchmarks": 2
+      }
+    },
+    {
+      "id": "routing-disambiguate-ambiguous-symbol",
+      "title": "Disambiguate before tracing callers",
+      "prompt": "Trace callers for the Kotlin symbol `handle`. If multiple candidates exist, do not guess which one I meant.",
+      "files": [],
+      "expected_output": "A disambiguated semantic trace or a request for precise symbol identity.",
+      "expectations": [
+        "Resolves the symbol before tracing callers",
+        "Does not guess among ambiguous candidates",
+        "Avoids grep and rg"
+      ],
+      "labels": [
+        "routing",
+        "haystack-reduction",
+        "ambiguous_symbol"
+      ],
+      "stage": "holdout",
+      "suite": "routing",
+      "failure_mode": "ambiguous_symbol",
+      "expected_skill": "kast",
+      "expected_route": "native-kast-tools",
+      "allowed_ops": [
+        "kast_resolve",
+        "kast_callers",
+        "kast_workspace_symbol"
+      ],
+      "forbidden_ops": [
+        "grep",
+        "rg",
+        "view"
+      ],
+      "measurement_dimensions": [
+        "haystack_reduction"
+      ],
+      "source": {
+        "kind": "manual",
+        "summary": "Ambiguous-symbol routing guardrail"
+      },
+      "promotion": {
+        "required_pass_rate": 1.0,
+        "required_benchmarks": 2
+      }
+    },
+    {
+      "id": "routing-parse-nested-response-shape",
+      "title": "Stay semantic after a parse mismatch",
+      "prompt": "A Kast `references` response parsed oddly and `.references[].filePath` is empty. Inspect the shape and keep tracing the Kotlin usages semantically.",
+      "files": [],
+      "expected_output": "A corrected semantic projection and continued Kotlin tracing.",
+      "expectations": [
+        "Uses the Kast response shape to recover",
+        "Keeps tracing with semantic tools after the inspection",
+        "Does not abandon the workflow for text search"
+      ],
+      "labels": [
+        "routing",
+        "generic-tool-avoidance",
+        "schema_response"
+      ],
+      "stage": "holdout",
+      "suite": "routing",
+      "failure_mode": "schema_response",
+      "expected_skill": "kast",
+      "expected_route": "native-kast-tools",
+      "allowed_ops": [
+        "kast_references",
+        "kast_resolve",
+        "kast_scaffold",
+        "kast_callers"
+      ],
+      "forbidden_ops": [
+        "grep",
+        "rg",
+        "view"
+      ],
+      "measurement_dimensions": [
+        "generic_tool_avoidance"
+      ],
+      "source": {
+        "kind": "manual",
+        "summary": "Schema-response recovery route"
+      },
+      "promotion": {
+        "required_pass_rate": 1.0,
+        "required_benchmarks": 2
+      }
+    },
+    {
+      "id": "routing-write-validate-hash-failure",
+      "title": "Recover safely from a write-and-validate hash error",
+      "prompt": "Use `kast write-and-validate` for a Kotlin replacement, but if it returns `VALIDATION_ERROR: Missing expected hash for edited file`, recover safely and tell me whether the edit landed.",
+      "files": [],
+      "expected_output": "A safe mutation recovery that reports whether the edit landed.",
+      "expectations": [
+        "Keeps using the supported mutation path",
+        "Runs diagnostics after the mutation path succeeds",
+        "Does not abandon the edit on the first failure"
+      ],
+      "labels": [
+        "routing",
+        "iteration-reduction",
+        "mutation_abandonment"
+      ],
+      "stage": "holdout",
+      "suite": "routing",
+      "failure_mode": "mutation_abandonment",
+      "expected_skill": "kast",
+      "expected_route": "native-kast-tools",
+      "allowed_ops": [
+        "kast_write_and_validate",
+        "kast_diagnostics"
+      ],
+      "forbidden_ops": [
+        "apply_patch",
+        "sed",
+        "grep",
+        "rg"
+      ],
+      "measurement_dimensions": [
+        "iteration_reduction"
+      ],
+      "source": {
+        "kind": "manual",
+        "summary": "Mutation recovery route"
+      },
+      "promotion": {
+        "required_pass_rate": 1.0,
+        "required_benchmarks": 2
+      }
+    },
+    {
+      "id": "routing-respect-failure-response",
+      "title": "Use structured failures to choose the next step",
+      "prompt": "A Kast command returned `ok:false` with `stage`, `message`, `errorText`, and `logFile`. Use that response to decide the next step without abandoning Kast.",
+      "files": [],
+      "expected_output": "A follow-up step chosen from the structured failure response.",
+      "expectations": [
+        "Reads and respects the structured failure payload",
+        "Keeps the next step inside native Kast tools",
+        "Does not abandon the semantic workflow"
+      ],
+      "labels": [
+        "routing",
+        "discoverability",
+        "failure_response_ignored"
+      ],
+      "stage": "holdout",
+      "suite": "routing",
+      "failure_mode": "failure_response_ignored",
+      "expected_skill": "kast",
+      "expected_route": "native-kast-tools",
+      "allowed_ops": [
+        "kast_resolve",
+        "kast_references",
+        "kast_callers",
+        "kast_scaffold",
+        "kast_diagnostics"
+      ],
+      "forbidden_ops": [
+        "grep",
+        "rg",
+        "view"
+      ],
+      "measurement_dimensions": [
+        "discoverability"
+      ],
+      "source": {
+        "kind": "manual",
+        "summary": "Failure-response recovery route"
+      },
+      "promotion": {
+        "required_pass_rate": 1.0,
+        "required_benchmarks": 2
+      }
+    }
+  ]
+}

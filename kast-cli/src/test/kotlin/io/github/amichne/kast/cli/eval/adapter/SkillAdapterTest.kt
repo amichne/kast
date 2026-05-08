@@ -191,7 +191,7 @@ class SkillAdapterTest {
         val skillDir = createMinimalSkill()
         val descriptor = SkillAdapter(skillDir).scan()
         val completenessChecks = descriptor.checks.filter { it.category == "completeness" }
-        assertEquals(9, completenessChecks.size, "Should have one completeness check per wrapper")
+        assertEquals(12, completenessChecks.size, "Should have one completeness check per wrapper")
         assertTrue(completenessChecks.all { it.status == EvalStatus.PASS })
     }
 
@@ -219,6 +219,9 @@ class SkillAdapterTest {
             kast_scaffold
             kast_write_and_validate
             kast_workspace_files
+            kast_workspace_symbol
+            kast_file_outline
+            kast_workspace_search
             kast_metrics
             """.trimIndent(),
         )
@@ -251,6 +254,9 @@ class SkillAdapterTest {
             x-command: kast scaffold
             x-command: kast write-and-validate
             x-command: kast workspace-files
+            x-command: kast workspace-symbol
+            x-command: kast file-outline
+            x-command: kast workspace-search
             x-command: kast metrics
             """.trimIndent(),
         )

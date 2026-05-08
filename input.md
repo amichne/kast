@@ -1,437 +1,527 @@
-This is the single authoritative plan combining all changes needed to go from "curl install → fully usable by an LLM agent" with zero manual steps after the initial installer.
+This plan delivers 5 implementation initiatives and creates 2 GitHub issues for deferred work.
 
 ---
 
-## Phase 1: Consolidate On-Disk Layout Under `$HOME/.kast`
+## PART A: Create GitHub Issues for deferred work
 
-### 1A. Fix CLI `installOptions()` path defaults
+Use `gh issue create` to create two issues in the `amichne/kast` repository:
 
-File: `kast-cli/src/main/kotlin/io/github/amichne/kast/cli/tty/CliCommandParser.kt` (lines 586-598)
+### Issue 1: CI remote index snapshots
 
-Change the defaults in `installOptions()`:
-- `instancesRoot`: `home.resolve(".local/share/kast/instances")` → `home.resolve(".kast/releases")`
-- `binDir`: `home.resolve(".local/bin")` → `home.resolve(".kast/bin")`
+Title: `feat: CI-generated remote index snapshots for zero cold-start indexing`
 
-This aligns the CLI's `install` command with what `kast.sh` already does (`install_root="${HOME}/.kast"`, `bin_dir="${install_root}/bin"`).
-
-### 1B. Move workspace data from config home to install root
-
-File: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/client/WorkspaceDirectoryResolver.kt` (lines 18-36)
-
-Currently `workspaceDataDirectory()` resolves under `configHome()/workspaces/...`. Change it to resolve under `$HOME/.kast/workspaces/...`:
-- Git remote repos: `$HOME/.kast/workspaces/<host>/<owner>/<repo>`
-- Local repos: `$HOME/.kast/workspaces/local/<sanitized>--<uuid>`
-- Ephemeral (under /tmp): `<workspace>/.gradle/kast` (unchanged)
-
-Add a `kastInstallRoot()` helper that returns `Path.of(System.getProperty("user.home")).resolve(".kast")` and use it as the base for workspace directories instead of `configHome()`.
-
-Move `local-workspaces.json` to `$HOME/.kast/workspaces/local-workspaces.json`.
-
-Update tests in `analysis-api/src/test/kotlin/io/github/amichne/kast/api/KastConfigTest.kt` and any `WorkspacePathsTest.kt`.
-
-### 1C. Move global skill install location
-
-File: `kast.sh` (around line 1281 where `global_dir` is set)
-
-Change `global_dir` from `"${HOME}/.agents/skills"` to `"${HOME}/.kast/lib/skills"`.
-
-File: `kast-cli/src/main/kotlin/io/github/amichne/kast/cli/InstallSkillService.kt` (or wherever the default skill target-dir is resolved)
-
-Update the default skill target directory resolution to prefer:
-1. If `.agents/skills` exists in cwd → use it (backward compat for per-repo)
-2. If `.github/skills` exists in cwd → use it (backward compat for per-repo)
-3. If `.claude/skills` exists in cwd → use it
-4. Otherwise → `$HOME/.kast/lib/skills` (global default)
-
-### 1D. Proposed final directory structure
-
+Body:
 ```
-$HOME/.config/kast/
-├── config.toml                          # sole user-editable config
-└── env                                  # shell env snippet
+## Summary
+Add a CI workflow that generates and publishes `source-index.db` snapshots so new sessions can hydrate from a pre-built index instead of rebuilding from scratch.
 
-$HOME/.kast/                             # KAST_HOME — single deletable tree
-├── bin/
-│   └── kast                             # launcher script
-├── current -> releases/v1.2.3/platform  # active release symlink
-├── releases/
-│   └── v1.2.3/<platform>/
-├── backends/
-│   ├── current -> standalone-v1.2.3
-│   └── standalone-v1.2.3/
-├── plugins/
-│   └── kast-intellij-v1.2.3.zip
-├── lib/                                 # global AI primitives
-│   ├── skills/
-│   │   └── kast/
-│   ├── hooks/
-│   ├── extensions/
-│   └── agents/
-├── workspaces/
-│   ├── github.com/<owner>/<repo>/
-│   ├── local/<sanitized>--<uuid>/
-│   └── local-workspaces.json
-├── sessions/
-├── cache/
-│   └── daemons/
-├── logs/
-└── .manifest.json                       # global install manifest
+## Context
+- `SourceIndexHydrator` in `backend-intellij/src/main/kotlin/io/github/amichne/kast/intellij/SourceIndexHydrator.kt` already supports downloading and atomically placing a `source-index.db` from `file://`, `http://`, or `https://` URLs.
+- The standalone backend's `KastConfig` already has `indexing.remote` config support (`enabled` + `sourceIndexUrl`).
+- First-start indexing on big multi-module projects takes 30-60 seconds (see `docs/troubleshooting.md`).
+
+## Deliverables
+1. New CI workflow (`.github/workflows/index-snapshot.yml` or job in existing workflow) that:
+   - Checks out the repo, sets up JDK 21 + Gradle
+   - Runs `kast workspace ensure --accept-indexing=true` and waits for `state: READY`
+   - Locates `source-index.db` under the kast cache directory
+   - Uploads it as a workflow artifact or release asset
+2. Verify standalone backend hydration works end-to-end (port `SourceIndexHydrator` logic if needed)
+3. Document the workflow in `docs/getting-started/backends.md`
 ```
+
+Labels: `enhancement`, `performance`
+
+### Issue 2: Persistent JSON-RPC connection from Copilot extension
+
+Title: `feat: persistent JSON-RPC socket connection from Copilot extension`
+
+Body:
+```
+## Summary
+Replace per-tool-call process spawning in the Copilot extension with a persistent Unix domain socket connection to the kast daemon.
+
+## Context
+Currently, every `kast_*` tool call in `.github/extensions/kast/extension.mjs` spawns a new process via `execFile("bash", ["-lc", command])` (line 56-72). This means: Node.js → bash → kast CLI → JSON-RPC to daemon → response → stdout parse. For rapid interactive use, this per-call overhead adds up.
+
+The daemon already speaks JSON-RPC over Unix domain sockets. The extension could open a persistent `net.Socket` connection at session start and send requests directly.
+
+## Deliverables
+1. In `onSessionStart`, after resolving the kast binary:
+   - Run `kast workspace status` to get the daemon's socket path from the descriptor file
+   - Open a persistent `net.Socket` (Node.js `net` module) connection
+   - Store the socket as a module-level variable
+2. Create `callKastDirect(method, params)` that sends JSON-RPC over the socket
+3. Fall back to `callKastSkill` (process spawn) if socket is unavailable
+4. Handle reconnection on daemon restart
+```
+
+Labels: `enhancement`, `performance`
 
 ---
 
-## Phase 2: Unify All Binary Resolution (5 Entry Points)
+## PART B: Phase 1a — Add `kast_workspace_symbol` to the Copilot extension
 
-The goal: every resolution path checks the same candidates in the same order:
-1. `config.toml` `[cli] binaryPath` (explicit override, written by installer)
-2. `$HOME/.kast/bin/kast` (canonical hardcoded fallback)
-3. PATH lookup for `kast` or `kast-cli` (works in interactive/login shells)
-4. Repo-local build artifacts (development only)
+The `workspace-symbol` API is fully implemented in both backends and the CLI already supports `kast workspace-symbol --pattern=X`. What's missing is the skill wrapper path (the `kast workspace-symbol '<json>'` direct invocation used by the extension).
 
-### 2A. Simplify `.github/extensions/kast/scripts/resolve-kast.sh`
+### Step 1: Add enum entry
 
-File: `.github/extensions/kast/scripts/resolve-kast.sh` (lines 31-65)
+File: `kast-cli/src/main/kotlin/io/github/amichne/kast/cli/skill/SkillWrapperName.kt`
 
-Replace the current logic with the 4-step order above. Remove the 6-level parent directory walk. Remove the `$HOME/.local/bin/kast` fallback (line 59). Add `$HOME/.kast/bin/kast` as an explicit check before the error exit. Keep the `read_config_binary_path` function for reading config.toml.
+Add `WORKSPACE_SYMBOL("workspace-symbol", "kast_workspace_symbol")` to the enum, after `METRICS`. The `when` expressions in `SkillWrapperExecutor` and `SkillWrapperSerializer` are exhaustive, so the compiler will guide you to add the missing branches.
 
-### 2B. Replace `.github/hooks/resolve-kast-cli-path.sh` with delegation
+### Step 2: Add wrapper contract types
 
-File: `.github/hooks/resolve-kast-cli-path.sh` (lines 17-31)
+File: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/wrapper/WrapperContracts.kt`
 
-Replace the body with a delegation to the canonical resolve script:
-```bash
-SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(git -C "${SCRIPT_DIR}" rev-parse --show-toplevel 2>/dev/null || echo "${SCRIPT_DIR}/../..")"
-RESOLVE_SCRIPT="${REPO_ROOT}/.github/extensions/kast/scripts/resolve-kast.sh"
-if [[ -x "${RESOLVE_SCRIPT}" ]]; then
-    exec bash "${RESOLVE_SCRIPT}"
-fi
-# Inline fallback: config.toml → ~/.kast/bin/kast → PATH → error
-config_dir="${KAST_CONFIG_HOME:-${HOME}/.config/kast}"
-# ... minimal inline fallback using the same 4-step order ...
-```
-
-### 2C. Unify `.agents/skills/kast/scripts/resolve-kast.sh`
-
-File: `.agents/skills/kast/scripts/resolve-kast.sh` (lines 15-36)
-
-This is the weakest resolver — it only checks PATH and walks parent dirs. It does NOT check config.toml or `$HOME/.kast/bin/kast`. Add:
-1. The `read_config_binary_path()` function (copy from the extension's resolve script)
-2. config.toml check after the PATH check
-3. `$HOME/.kast/bin/kast` hardcoded fallback before the error exit
-
-Since this skill is packaged as an embedded resource via `syncPackagedCopilotExtensionResources`, the source file that gets synced into the CLI's resources must also be updated.
-
-### 2D. Fix `extension.mjs` hardcoded fallback path
-
-File: `.github/extensions/kast/extension.mjs` (line 120)
-
-Change:
-```javascript
-addCandidate(join(homedir(), ".local", "bin", "kast"));
-```
-to:
-```javascript
-addCandidate(join(homedir(), ".kast", "bin", "kast"));
-```
-
-### 2E. IntelliJ plugin resolution (no change needed)
-
-File: `backend-intellij/src/main/kotlin/io/github/amichne/kast/intellij/actions/KastInstallAction.kt` (lines 76-86)
-
-The IntelliJ plugin reads `config.toml` `[cli] binaryPath` which the installer writes. This is sufficient since IntelliJ always runs in a user session where config.toml is available. No change needed.
-
----
-
-## Phase 3: Auto-Indexing on Session Start
-
-### 3A. Add `workspace ensure` call to `extension.mjs` `onSessionStart`
-
-File: `.github/extensions/kast/extension.mjs` (around line 435, in the `onSessionStart` handler)
-
-After successfully resolving the binary and passing the version check, add a fire-and-forget call to start the backend:
-
-```javascript
-// After version parity check, before the return statement:
-const repoRoot = REPO_ROOT;
-execBash(
-  `${JSON.stringify(bin)} workspace ensure --workspace-root=${JSON.stringify(repoRoot)} --accept-indexing=true`
-).then(({ok, stderr}) => {
-  if (!ok) {
-    session.log(
-      `kast extension: workspace ensure failed for ${repoRoot}. stderr: ${stderr.trim().slice(0, 200)}`,
-      { level: "warning" },
-    );
-  } else {
-    session.log(`kast extension: backend ready for ${repoRoot}`, { ephemeral: true });
-  }
-}).catch(() => {});
-```
-
-Key: use `--accept-indexing=true` so the daemon is servable immediately (partial results during indexing). Fire-and-forget so session start isn't blocked.
-
-### 3B. Make `workspace ensure` auto-start the standalone daemon
-
-File: `kast-cli/src/main/kotlin/io/github/amichne/kast/cli/WorkspaceRuntimeManager.kt` (lines 66-115)
-
-Currently `ensureRuntime()` throws `NO_BACKEND_AVAILABLE` when no daemon exists. Before the `throw`, add auto-start logic:
-
-```kotlin
-// Before the final throw CliFailure(NO_BACKEND_AVAILABLE):
-if (!options.noAutoStart) {
-    val config = KastConfig.load(options.workspaceRoot.toJavaPath())
-    val runtimeLibsDir = Path.of(config.backends.standalone.runtimeLibsDir.value)
-    if (Files.isDirectory(runtimeLibsDir)) {
-        startStandaloneDaemon(options, runtimeLibsDir)
-        return WorkspaceEnsureResult(
-            workspaceRoot = options.workspaceRoot.toString(),
-            descriptorDirectory = inspection.descriptorDirectory.toString(),
-            started = true,
-            selected = waitForServable(
-                options = options.copy(backendName = BackendName.STANDALONE),
-                backendName = BackendName.STANDALONE,
-                acceptIndexing = !requireReady,
-            ),
-        )
-    }
-}
-```
-
-Implement `startStandaloneDaemon()` to launch `kast daemon start` as a background process. The existing `--no-auto-start=true` flag should bypass this to preserve fail-fast behavior for users who want it.
-
----
-
-## Phase 4: Version Mismatch Auto-Recovery
-
-File: `.github/extensions/kast/extension.mjs` (lines 447-455)
-
-Currently, when CLI version != extension version, the extension returns `KAST EXTENSION BLOCKED`. Replace with auto-recovery:
-
-```javascript
-if (cliVersion && installedVersion && cliVersion !== installedVersion) {
-  const syncResult = await execBash(
-    `${JSON.stringify(bin)} install copilot-extension --target-dir=${JSON.stringify(join(REPO_ROOT, ".github"))} --yes=true`
-  );
-  if (syncResult.ok) {
-    await session.log(
-      `kast extension: auto-synced copilot extension from ${installedVersion} to ${cliVersion}`,
-      { level: "info" },
-    );
-    // Continue normally — don't block
-  } else {
-    const msg = `kast version mismatch: CLI=${cliVersion}, extension=${installedVersion}. Auto-sync failed. Run \`kast install copilot-extension\` manually.`;
-    await session.log(`kast extension: ${msg}`, { level: "error" });
-    return { additionalContext: `KAST EXTENSION WARNING — ${msg}` };
-  }
-}
-```
-
-Change from BLOCKED to WARNING so tools still attempt to work even if sync fails.
-
----
-
-## Phase 5: Installer Hardening
-
-### 5A. Fix PATH propagation for non-interactive shells
-
-File: `kast.sh` (function `_install_ensure_bin_dir_on_path`, around line 661)
-
-The installer writes PATH to one rc file (e.g., `.bashrc`), but `extension.mjs` uses `bash -lc` (login shell) which sources `.bash_profile`/`.profile` but NOT `.bashrc`. Update the function to:
-1. Write the PATH export to the chosen rc file (existing behavior)
-2. If the user's shell is bash AND the chosen file is `.bashrc`, ALSO write the PATH block to `.bash_profile` (or `.profile` if `.bash_profile` doesn't exist)
-
-This ensures `bash -lc` in extension.mjs will have kast on PATH.
-
-### 5B. Add copilot-extension as an installer phase
-
-File: `kast.sh` (around line 1610, after Phase 8 skill install)
-
-Add a new phase between skill install and summary:
-- Detect if cwd is inside a git repo (`git rev-parse --show-toplevel`)
-- If so, prompt (interactive) or auto-install (non-interactive with `--yes`) the copilot extension
-- Add `--skip-copilot-extension` flag to bypass
-- Call `"$kast_bin" install copilot-extension --target-dir="$repo_root/.github" --yes=true`
-
-### 5C. Add `kast workspace ensure` to installer summary
-
-File: `kast.sh` (in `_install_summary_phase`, around line 1321, and the non-wizard summary around line 1623)
-
-Add to the "Next steps" output:
-```
-  cd /your/kotlin/project && kast workspace ensure
-```
-
-### 5D. Add global install manifest
-
-Create: `kast-cli/src/main/kotlin/io/github/amichne/kast/cli/InstallManifest.kt`
+Add these types following the existing pattern (e.g., `KastReferencesRequest`/`KastReferencesSuccessResponse`):
 
 ```kotlin
 @Serializable
-data class InstallManifest(
-    val version: String,
-    val installedAt: String,  // ISO-8601
-    val platform: String,
-    val components: List<String>,
-    val managedPaths: List<String>,  // relative to ~/.kast
-    val shellRcPatches: List<ShellRcPatch>,
-    val repos: List<ManagedRepo>,
+data class KastWorkspaceSymbolRequest(
+    val workspaceRoot: String? = null,
+    val pattern: String,
+    val kind: String? = null,
+    val maxResults: Int = 100,
+    val regex: Boolean = false,
+    val includeDeclarationScope: Boolean = false,
 )
 
 @Serializable
-data class ShellRcPatch(val file: String, val marker: String)
+data class KastWorkspaceSymbolQuery(
+    val workspaceRoot: String,
+    val pattern: String,
+    val kind: String? = null,
+    val maxResults: Int = 100,
+    val regex: Boolean = false,
+    val includeDeclarationScope: Boolean = false,
+)
 
 @Serializable
-data class ManagedRepo(val path: String, val copilotExtensionVersion: String)
+sealed interface KastWorkspaceSymbolResponse
+
+@Serializable
+@SerialName("WORKSPACE_SYMBOL_SUCCESS")
+data class KastWorkspaceSymbolSuccessResponse(
+    val ok: Boolean = true,
+    val query: KastWorkspaceSymbolQuery,
+    val symbols: List<Symbol>,
+    val page: PageInfo? = null,
+    val logFile: String,
+) : KastWorkspaceSymbolResponse
+
+@Serializable
+@SerialName("WORKSPACE_SYMBOL_FAILURE")
+data class KastWorkspaceSymbolFailureResponse(
+    val ok: Boolean = false,
+    val stage: String,
+    val message: String,
+    val query: KastWorkspaceSymbolQuery,
+    val logFile: String,
+) : KastWorkspaceSymbolResponse
 ```
 
-File: `kast.sh` — after the summary phase, write `$HOME/.kast/.manifest.json` with version, platform, components, managedPaths, and shellRcPatches. Use a python3 heredoc to write JSON.
+Make sure to import `Symbol` and `PageInfo` from the contract package.
 
-File: `kast-cli/src/main/kotlin/io/github/amichne/kast/cli/InstallCopilotExtensionService.kt` — after a successful copilot-extension install, update the manifest's `repos` list.
+### Step 3: Add executor handler
 
-### 5E. Fix destructive upgrade in `InstallEmbeddedResourceService`
+File: `kast-cli/src/main/kotlin/io/github/amichne/kast/cli/skill/SkillWrapperExecutor.kt`
 
-File: `kast-cli/src/main/kotlin/io/github/amichne/kast/cli/InstallEmbeddedResourceService.kt` (lines 40-54)
+Add `SkillWrapperName.WORKSPACE_SYMBOL -> executeWorkspaceSymbol(rawJson)` to the `when` block in `execute()` (around line 92-102).
 
-When upgrading with `--yes=true`, the service calls `deletePathRecursively(targetPath)` which nukes the entire `.github` directory including user files (workflows, CODEOWNERS, etc.).
+Add the handler method following the `executeWorkspaceFiles` pattern (lines 107-129):
 
-Change the upgrade logic to:
-- Instead of deleting the entire target directory, iterate over `bundle.manifest` and delete only the managed files (same approach as `uninstallPackagedResources`)
-- Then call `bundle.writeTree(targetPath)` to write the new versions
-- Update the version marker
-
----
-
-## Phase 6: Add `kast self` Subcommand Group
-
-### 6A. Add CLI parsing
-
-File: `kast-cli/src/main/kotlin/io/github/amichne/kast/cli/tty/CliCommandParser.kt`
-
-Add parsing for `self status`, `self doctor`, `self uninstall`, `self upgrade` subcommands.
-
-### 6B. Implement `SelfManagementService`
-
-Create: `kast-cli/src/main/kotlin/io/github/amichne/kast/cli/SelfManagementService.kt`
-
-- `status()`: Read `$HOME/.kast/.manifest.json`, print version, components, paths, managed repos
-- `doctor()`: Verify binary exists and is executable, config.toml is valid TOML, all managedPaths exist, resolve scripts can find the binary, python3 is available (for hooks), standalone backend runtime libs exist (if installed)
-- `uninstall()`: Read manifest, remove all managedPaths under `$HOME/.kast`, clean shell RC patches (remove the `# Added by the Kast installer` blocks), remove `$HOME/.kast` if empty, print summary
-- `upgrade()`: For now, print instructions to re-run the curl one-liner. Future: download latest release, swap symlinks, re-sync AI primitives, update manifest.
-
-Wire into `CliService.kt`'s command dispatch.
-
----
-
-## Phase 7: Reduce `python3` Dependency in Hooks
-
-### 7A. Replace python3 SHA-256 in `hook-state.sh`
-
-File: `.github/hooks/hook-state.sh` (lines 4-16)
-
-Replace the python3 heredoc with `shasum`/`sha256sum`:
-```bash
-hook_state_file() {
-    local repo_root="$1"
-    local session_key
-    if command -v sha256sum >/dev/null 2>&1; then
-        session_key="$(printf '%s' "${repo_root}" | sha256sum | awk '{print $1}')"
-    elif command -v shasum >/dev/null 2>&1; then
-        session_key="$(printf '%s' "${repo_root}" | shasum -a 256 | awk '{print $1}')"
-    else
-        session_key="$(printf '%s' "${repo_root}" | python3 -c 'import hashlib,sys; print(hashlib.sha256(sys.stdin.read().encode()).hexdigest())')"
-    fi
-    printf '%s/copilot-hook-paths-%s.txt\n' "${TMPDIR:-/tmp}" "${session_key}"
+```kotlin
+private suspend fun executeWorkspaceSymbol(rawJson: String): Any {
+    val request = json.decodeFromString<KastWorkspaceSymbolRequest>(rawJson)
+    val workspaceRoot = requireWorkspaceRoot(request.workspaceRoot)
+    val options = runtimeOptionsFor(workspaceRoot)
+    val kind = request.kind?.let { raw ->
+        SymbolKind.entries.firstOrNull { it.name.equals(raw, ignoreCase = true) }
+    }
+    val query = WorkspaceSymbolQuery(
+        pattern = request.pattern,
+        kind = kind,
+        maxResults = request.maxResults,
+        regex = request.regex,
+        includeDeclarationScope = request.includeDeclarationScope,
+    )
+    val result = cliService.workspaceSymbolSearch(options, query)
+    return KastWorkspaceSymbolSuccessResponse(
+        ok = true,
+        query = KastWorkspaceSymbolQuery(
+            workspaceRoot = workspaceRoot,
+            pattern = request.pattern,
+            kind = request.kind,
+            maxResults = request.maxResults,
+            regex = request.regex,
+            includeDeclarationScope = request.includeDeclarationScope,
+        ),
+        symbols = result.payload.symbols,
+        page = result.payload.page,
+        logFile = SkillLogFile.placeholder(),
+    )
 }
 ```
 
-Apply the same pattern to `hook_skill_state_file` and `hook_shadowed_extension_state_file` in the same file.
+Add the necessary import for `WorkspaceSymbolQuery` and the new wrapper types.
 
-### 7B. Promote `export-session.py` into the packaged manifest
+### Step 4: Add serializer branch
 
-File: `kast-cli/src/main/kotlin/io/github/amichne/kast/cli/EmbeddedCopilotExtensionResources.kt` (lines 52-55)
+File: `kast-cli/src/main/kotlin/io/github/amichne/kast/cli/skill/SkillWrapperSerializer.kt`
 
-Remove `"hooks/export-session.py"` from `EXCLUDED_SOURCE_FILES` and add it to `MANIFEST`.
+Add to the `when` block in `encode()`:
+```kotlin
+SkillWrapperName.WORKSPACE_SYMBOL ->
+    json.encodeToString(KastWorkspaceSymbolResponse.serializer(), response as KastWorkspaceSymbolResponse)
+```
 
-File: `kast-cli/build.gradle.kts` — update `embeddedCopilotHookFiles` to include `export-session.py`.
+Import `KastWorkspaceSymbolResponse`.
 
-File: `.github/hooks/session-end.sh` (lines 38-155) — replace the inline session export block with a call to `python3 "${SCRIPT_DIR}/export-session.py"`, passing hook input via environment.
+### Step 5: Add extension tool
+
+File: `.github/extensions/kast/extension.mjs`
+
+Add to the `tools` array (after `kast_workspace_files`):
+```javascript
+{
+  name: "kast_workspace_symbol",
+  description:
+    "Search the workspace for Kotlin symbols by name pattern via kast workspace-symbol. Supports substring matching (default) and regex. Use to find declarations across the entire codebase — far more precise than grep/rg for symbol names because it understands Kotlin semantics (overloads, inherited members, cross-module references).",
+  parameters: {
+    type: "object",
+    properties: {
+      pattern: { type: "string", description: "Search pattern to match against symbol names." },
+      kind: { type: "string", description: "Filter to symbols of this kind: CLASS, INTERFACE, OBJECT, FUNCTION, PROPERTY, ENUM_CLASS, ENUM_ENTRY, TYPE_ALIAS." },
+      maxResults: { type: "integer", description: "Maximum number of symbols to return. Default 100." },
+      regex: { type: "boolean", description: "When true, treats pattern as a regular expression." },
+      includeDeclarationScope: { type: "boolean", description: "When true, includes the declaration body text for each symbol." },
+      workspaceRoot: { type: "string", description: ABS_PATH + " Defaults to cwd." },
+    },
+    required: ["pattern"],
+  },
+  handler: (args) => callKastSkill("workspace-symbol", args),
+},
+```
+
+Update the `additionalContext` string (line 462) to include `kast_workspace_symbol` in the tool list.
+
+### Step 6: Update AGENTS.md
+
+File: `AGENTS.md`
+
+Add row to the tool routing table (around line 90):
+```
+| Search symbols       | `kast_workspace_symbol`            | `kast workspace-symbol`                        |
+```
+
+Update the text search whitelist (line 98-99) to mention that `kast_workspace_symbol` should be preferred for symbol name searches over `grep`/`rg`.
+
+### Step 7: Add tests
+
+Add test cases to the existing test files:
+- `kast-cli/src/test/kotlin/io/github/amichne/kast/cli/skill/SkillWrapperContractTest.kt` — add WORKSPACE_SYMBOL contract test
+- `kast-cli/src/test/kotlin/io/github/amichne/kast/cli/skill/SkillWrapperRequestCasingTest.kt` — add WORKSPACE_SYMBOL casing test
+- `kast-cli/src/test/kotlin/io/github/amichne/kast/cli/skill/SkillCommandParsingTest.kt` — add parsing test for `kast workspace-symbol '{"pattern":"MyClass"}'`
+
+Follow the exact patterns used by existing wrappers in each test file.
 
 ---
 
-## Phase 8: Make `skill-shadowing.json` Portable
+## PART C: Phase 1b — Add `kast_file_outline` to the Copilot extension
 
-File: `.github/hooks/skill-shadowing.json` (lines 1-27)
+Identical pattern to Phase 1a but for the `file-outline` capability.
 
-The packaged version references skills (`refresh-affected-agents`, `llm-wiki`) that only exist in the kast repo. For the embedded/packaged version:
+### Step 1: Add enum entry
 
-In `kast-cli/build.gradle.kts`, add a Gradle task that reads the source `skill-shadowing.json`, filters to only entries where `shadowingExtensionId` is present (i.e., `kast` and `kotlin-gradle-loop`), and writes the filtered version to the generated resources directory. Wire this into `syncPackagedCopilotExtensionResources`.
+File: `kast-cli/src/main/kotlin/io/github/amichne/kast/cli/skill/SkillWrapperName.kt`
 
-The kast repo's own `.github/hooks/skill-shadowing.json` keeps all entries unchanged.
+Add `FILE_OUTLINE("file-outline", "kast_file_outline")` to the enum.
+
+### Step 2: Add wrapper contract types
+
+File: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/wrapper/WrapperContracts.kt`
+
+```kotlin
+@Serializable
+data class KastFileOutlineRequest(
+    val workspaceRoot: String? = null,
+    val filePath: String,
+)
+
+@Serializable
+data class KastFileOutlineQuery(
+    val workspaceRoot: String,
+    val filePath: String,
+)
+
+@Serializable
+sealed interface KastFileOutlineResponse
+
+@Serializable
+@SerialName("FILE_OUTLINE_SUCCESS")
+data class KastFileOutlineSuccessResponse(
+    val ok: Boolean = true,
+    val query: KastFileOutlineQuery,
+    val symbols: List<OutlineSymbol>,
+    val logFile: String,
+) : KastFileOutlineResponse
+
+@Serializable
+@SerialName("FILE_OUTLINE_FAILURE")
+data class KastFileOutlineFailureResponse(
+    val ok: Boolean = false,
+    val stage: String,
+    val message: String,
+    val query: KastFileOutlineQuery,
+    val logFile: String,
+) : KastFileOutlineResponse
+```
+
+### Step 3: Add executor handler
+
+File: `kast-cli/src/main/kotlin/io/github/amichne/kast/cli/skill/SkillWrapperExecutor.kt`
+
+Add `SkillWrapperName.FILE_OUTLINE -> executeFileOutline(rawJson)` to the `when` block.
+
+```kotlin
+private suspend fun executeFileOutline(rawJson: String): Any {
+    val request = json.decodeFromString<KastFileOutlineRequest>(rawJson)
+    val workspaceRoot = requireWorkspaceRoot(request.workspaceRoot)
+    val options = runtimeOptionsFor(workspaceRoot)
+    val filePath = Path.of(request.filePath).toAbsolutePath().normalize().toString()
+    val query = FileOutlineQuery(filePath = filePath)
+    val result = cliService.fileOutline(options, query)
+    return KastFileOutlineSuccessResponse(
+        ok = true,
+        query = KastFileOutlineQuery(
+            workspaceRoot = workspaceRoot,
+            filePath = filePath,
+        ),
+        symbols = result.payload.symbols,
+        logFile = SkillLogFile.placeholder(),
+    )
+}
+```
+
+### Step 4: Add serializer branch
+
+File: `kast-cli/src/main/kotlin/io/github/amichne/kast/cli/skill/SkillWrapperSerializer.kt`
+
+```kotlin
+SkillWrapperName.FILE_OUTLINE ->
+    json.encodeToString(KastFileOutlineResponse.serializer(), response as KastFileOutlineResponse)
+```
+
+### Step 5: Add extension tool
+
+File: `.github/extensions/kast/extension.mjs`
+
+```javascript
+{
+  name: "kast_file_outline",
+  description:
+    "Get a hierarchical symbol outline for a Kotlin file via kast file-outline. Returns nested declarations (classes, functions, properties) with their signatures and locations. Lighter than scaffold — use when you only need the structural overview without references, type hierarchy, or file content.",
+  parameters: {
+    type: "object",
+    properties: {
+      filePath: { type: "string", description: ABS_PATH + " Required." },
+      workspaceRoot: { type: "string", description: ABS_PATH + " Defaults to cwd." },
+    },
+    required: ["filePath"],
+  },
+  handler: (args) => callKastSkill("file-outline", args),
+},
+```
+
+Update `additionalContext` to include `kast_file_outline`.
+
+### Step 6: Update AGENTS.md
+
+Add row: `| File outline          | `kast_file_outline`                | `kast file-outline`                            |`
+
+### Step 7: Add tests
+
+Same pattern as 1a — add to `SkillWrapperContractTest.kt`, `SkillWrapperRequestCasingTest.kt`, `SkillCommandParsingTest.kt`.
 
 ---
 
-## Phase 9: Post-Install Verification
+## PART D: Phase 1c — Update scaffold tool description
 
-File: `kast-cli/src/main/kotlin/io/github/amichne/kast/cli/InstallCopilotExtensionService.kt`
+File: `.github/extensions/kast/extension.mjs` (line 229-230)
 
-After a successful copilot-extension install, add verification:
-- Check that `hooks.json` is valid JSON
-- Check that all shell scripts referenced in `hooks.json` exist and are executable
-- Run `resolve-kast-cli-path.sh` to verify binary resolution works
-- Check that `python3` is available (warn if not)
+Change the `kast_scaffold` description from:
+```
+"Summarize a Kotlin file/type structure (declarations, signatures, imports, key call sites) via kast scaffold. ALWAYS prefer this over reading a .kt file with `view` — scaffold returns a semantic skeleton at a fraction of the token cost."
+```
+to:
+```
+"Summarize a Kotlin file/type structure (declarations, signatures, imports, key call sites) via kast scaffold. Returns the full file content alongside the semantic skeleton — no separate `view` call needed for .kt files. ALWAYS prefer this over `view` for .kt/.kts files."
+```
 
-Add a `warnings: List<String>` field to `InstallCopilotExtensionResult` (in `kast-cli/src/main/kotlin/io/github/amichne/kast/cli/results/InstallCopilotExtensionResult.kt`) and populate it with any verification failures.
+Also update the `suggestionFor("view")` message (around line 421) to mention that scaffold returns file content.
 
 ---
 
-## Phase 10: Documentation Updates
+## PART E: Phase 1d — Raise Phase 2 indexing parallelism defaults
+
+File: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/client/KastConfig.kt` (line 47)
+- Change `IndexingPhase2Parallelism(2)` to `IndexingPhase2Parallelism(4)`
+
+File: `backend-standalone/src/main/kotlin/io/github/amichne/kast/standalone/BackgroundIndexer.kt` (line 40)
+- Change `private val referenceParallelism: Int = 1` to `private val referenceParallelism: Int = 2`
+
+The config value of 4 will override this default when config is loaded; this just makes the unconfigured path faster too.
+
+---
+
+## PART F: Phase 3 — Content search endpoint (replaces rg for string/comment search)
+
+This is a new capability end-to-end. It's the last remaining reason to shell out to `rg`.
+
+### Step 1: Define query and result types
+
+File: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/query/WorkspaceSearchQuery.kt` (new file)
+
+```kotlin
+@Serializable
+data class WorkspaceSearchQuery(
+    val pattern: String,
+    val regex: Boolean = false,
+    val maxResults: Int = 100,
+    val fileGlob: String? = null,
+    val caseSensitive: Boolean = true,
+)
+```
+
+File: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/WorkspaceSearchResult.kt` (new file)
+
+```kotlin
+@Serializable
+data class WorkspaceSearchResult(
+    val matches: List<SearchMatch>,
+    val truncated: Boolean = false,
+    override val schemaVersion: Int = CURRENT_SCHEMA_VERSION,
+) : VersionedResult
+
+@Serializable
+data class SearchMatch(
+    val filePath: String,
+    val lineNumber: Int,
+    val columnNumber: Int,
+    val preview: String,
+)
+```
+
+### Step 2: Add to AnalysisBackend interface
+
+File: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/AnalysisBackend.kt`
+
+Add: `suspend fun workspaceSearch(query: ParsedWorkspaceSearchQuery): WorkspaceSearchResult`
+
+Add the corresponding `ReadCapability.WORKSPACE_SEARCH` entry.
+
+### Step 3: Implement in standalone backend
+
+File: `backend-standalone/src/main/kotlin/io/github/amichne/kast/standalone/StandaloneAnalysisBackend.kt`
+
+Implement `workspaceSearch()` that:
+1. Gets all source file paths from the session
+2. If the search pattern contains identifiers, uses the `MutableSourceIdentifierIndex.candidatePathsFor()` to narrow candidate files (the identifier index in `index-store/src/main/kotlin/io/github/amichne/kast/indexstore/api/index/SourceFileIndexParser.kt` already extracts identifiers via regex)
+3. Reads each candidate file and applies regex/substring matching line by line
+4. Returns matches up to `maxResults`
+
+### Step 4: Implement in IntelliJ plugin backend
+
+File: `backend-intellij/src/main/kotlin/io/github/amichne/kast/intellij/KastPluginBackend.kt`
+
+Similar implementation using IntelliJ's VFS for file reading.
+
+### Step 5: Implement in FakeAnalysisBackend
+
+File: `shared-testing/src/main/kotlin/io/github/amichne/kast/testing/FakeAnalysisBackend.kt`
+
+Add a stub implementation.
+
+### Step 6: Add JSON-RPC dispatch
+
+File: `analysis-server/src/main/kotlin/io/github/amichne/kast/server/AnalysisDispatcher.kt`
+
+Add a `"workspace/search"` case following the pattern of `"workspace-symbol"` (around line 259-266).
+
+### Step 7: Add CLI command
 
 Files:
-- `docs/getting-started/install.md` — update "Where kast stores configuration" to reflect new `$HOME/.kast` layout
-- `docs/troubleshooting.md` — update path references
-- `docs/for-agents/install-the-skill.md` — update global skill path from `~/.agents/skills/kast` to `~/.kast/lib/skills/kast`
-- `docs/getting-started/backends.md` — update to mention auto-start behavior of `workspace ensure`
+- `kast-cli/src/main/kotlin/io/github/amichne/kast/cli/tty/CliCommandCatalog.kt` — add `workspace-search` command metadata
+- `kast-cli/src/main/kotlin/io/github/amichne/kast/cli/tty/CliCommandParser.kt` — add `workspaceSearchQuery()` parser
+- `kast-cli/src/main/kotlin/io/github/amichne/kast/cli/tty/CliCommand.kt` — add `WorkspaceSearch` command class
+- `kast-cli/src/main/kotlin/io/github/amichne/kast/cli/tty/CliExecution.kt` — add handler in `backendQueryHandlers`
+
+### Step 8: Add skill wrapper
+
+Same pattern as Phase 1a/1b:
+- `SkillWrapperName.kt` — add `WORKSPACE_SEARCH("workspace-search", "kast_workspace_search")`
+- `WrapperContracts.kt` — add `KastWorkspaceSearchRequest`, `KastWorkspaceSearchQuery`, `KastWorkspaceSearchSuccessResponse`, sealed `KastWorkspaceSearchResponse`
+- `SkillWrapperExecutor.kt` — add `executeWorkspaceSearch()` handler
+- `SkillWrapperSerializer.kt` — add serializer branch
+
+### Step 9: Add extension tool
+
+File: `.github/extensions/kast/extension.mjs`
+
+```javascript
+{
+  name: "kast_workspace_search",
+  description:
+    "Search file contents across the workspace for text patterns via kast workspace-search. Supports substring and regex matching with optional file glob filtering. Use this instead of grep/rg for searching string literals, comments, and arbitrary text in Kotlin source files.",
+  parameters: {
+    type: "object",
+    properties: {
+      pattern: { type: "string", description: "Search pattern (substring or regex)." },
+      regex: { type: "boolean", description: "When true, treats pattern as a regular expression." },
+      maxResults: { type: "integer", description: "Maximum number of matches to return. Default 100." },
+      fileGlob: { type: "string", description: "Optional glob to restrict search (e.g., '*.kt')." },
+      caseSensitive: { type: "boolean", description: "Case-sensitive matching. Default true." },
+      workspaceRoot: { type: "string", description: ABS_PATH + " Defaults to cwd." },
+    },
+    required: ["pattern"],
+  },
+  handler: (args) => callKastSkill("workspace-search", args),
+},
+```
+
+Update `additionalContext` to include `kast_workspace_search`.
+
+### Step 10: Update AGENTS.md
+
+Add row: `| Search file contents  | `kast_workspace_search`            | `kast workspace-search`                        |`
+
+Update the text search whitelist (lines 98-99) to narrow `grep`/`rg` allowance to non-Kotlin files only, since `kast_workspace_search` now covers Kotlin content search.
+
+### Step 11: Add OpenAPI spec entry
+
+File: `docs/openapi.yaml` — add `/rpc/workspace/search` endpoint following the pattern of `/rpc/workspace-symbol`.
+
+### Step 12: Add documentation
+
+- `docs/reference/capabilities.md` — add `workspace/search` capability entry
+- `docs/reference/api-reference.md` — add example request/response
+
+### Step 13: Add tests
+
+- Unit tests for the backend implementation
+- Skill wrapper tests (contract, casing, parsing)
+- CLI command parsing test
 
 ---
 
-## Phase 11: Test Updates
+## Verification
 
-- `analysis-api/src/test/kotlin/io/github/amichne/kast/api/WorkspacePathsTest.kt` — workspace data now resolves under `$HOME/.kast/workspaces`, not config home
-- `analysis-api/src/test/kotlin/io/github/amichne/kast/api/KastConfigTest.kt` — workspace directory resolver tests
-- `kast-cli/src/test/kotlin/io/github/amichne/kast/cli/CliServiceRuntimePathTest.kt` — verify new `installOptions()` defaults
-- `kast-cli/src/test/kotlin/io/github/amichne/kast/cli/EmbeddedCopilotExtensionResourcesTest.kt` — manifest audit catches `export-session.py` inclusion and `skill-shadowing.json` filtering
-- `kast-cli/src/test/kotlin/io/github/amichne/kast/cli/InstallCopilotExtensionServiceTest.kt`:
-  - Assert `export-session.py` exists after install
-  - Add test: install into `.github` that already has `workflows/` subdirectory, upgrade with `--yes=true`, verify `workflows/` is preserved (non-destructive upgrade)
-  - Add test: verification warnings are populated when `hooks.json` references missing scripts
-- `.github/scripts/smoke-installer.sh` — update assertions for new manifest file and paths
+After all changes, run:
+```bash
+./gradlew check
+```
 
----
+This will compile all modules (catching any missing `when` branches), run all tests (including the skill wrapper contract/casing/parsing tests), and validate the build.
 
-## Phase 12: Migration for Existing Users
-
-File: `kast.sh` (at the start of `cmd_install()`)
-
-Add a one-time migration function that runs when the installer detects the old layout:
-1. Detect old paths: `~/.local/bin/kast`, `~/.local/share/kast/instances`, `~/.agents/skills/kast`
-2. Move/symlink them to new locations under `~/.kast`
-3. Update config.toml paths if they reference old locations (e.g., `binaryPath = ~/.local/bin/kast` → `~/.kast/bin/kast`)
-4. Print a migration summary showing what was moved
-
----
-
-## Execution Order
-
-The phases should be implemented roughly in this order due to dependencies:
-
-1. **Phase 1** (on-disk layout) — foundational, everything else depends on canonical paths
-2. **Phase 2** (resolve unification) — depends on Phase 1 for canonical path
-3. **Phase 5A-5B** (PATH propagation + copilot-extension phase) — depends on Phase 1
-4. **Phase 3** (auto-indexing) — depends on Phase 2 for reliable resolution
-5. **Phase 4** (version mismatch recovery) — depends on Phase 2
-6. **Phase 5C-5E** (manifest, summary, non-destructive upgrade) — can be parallel with 3-4
-7. **Phase 6** (self commands) — depends on Phase 5D (manifest)
-8. **Phase 7-8** (python3 reduction, portable skill-shadowing) — independent
-9. **Phase 9** (post-install verification) — depends on Phase 2
-10. **Phase 10-11** (docs, tests) — after all code changes
-11. **Phase 12** (migration) — last, after new layout is stable
+Also manually verify the extension loads correctly by checking that `kast workspace-symbol '{"pattern":"MyClass"}'` and `kast file-outline '{"filePath":"/path/to/File.kt"}'` produce valid JSON output.

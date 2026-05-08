@@ -86,6 +86,10 @@ internal class DefaultCliCommandExecutor(
             command as CliCommand.WorkspaceSymbol
             cliService.workspaceSymbolSearch(command.options, command.query)
         },
+        CliCommand.WorkspaceSearch::class to { command ->
+            command as CliCommand.WorkspaceSearch
+            cliService.workspaceSearch(command.options, command.query)
+        },
         CliCommand.WorkspaceFiles::class to { command ->
             command as CliCommand.WorkspaceFiles
             cliService.workspaceFiles(command.options, command.query)
