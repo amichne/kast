@@ -171,6 +171,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         "DIAGNOSTICS",
                         "FILE_OUTLINE",
                         "WORKSPACE_SYMBOL_SEARCH",
+                        "WORKSPACE_SEARCH",
                         "WORKSPACE_FILES",
                         "IMPLEMENTATIONS",
                         "CODE_ACTIONS",
@@ -984,10 +985,9 @@ daemon, including input/output schemas, examples, and behavioral notes.
             {
                 "method": "workspace/search",
                 "params": {
-                    "pattern": "TODO",
+                    "pattern": "greet",
                     "regex": false,
                     "maxResults": 100,
-                    "fileGlob": "*.kt",
                     "caseSensitive": true
                 },
                 "id": 1,
@@ -1002,9 +1002,15 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     "matches": [
                         {
                             "filePath": "/workspace/src/Sample.kt",
-                            "lineNumber": 12,
-                            "columnNumber": 8,
-                            "preview": "        // TODO: replace stub implementation"
+                            "lineNumber": 3,
+                            "columnNumber": 5,
+                            "preview": "fun greet() = \"hi\""
+                        },
+                        {
+                            "filePath": "/workspace/src/Sample.kt",
+                            "lineNumber": 5,
+                            "columnNumber": 13,
+                            "preview": "fun use() = greet()"
                         }
                     ],
                     "truncated": false,
