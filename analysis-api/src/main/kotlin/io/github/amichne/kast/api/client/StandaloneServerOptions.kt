@@ -1,5 +1,10 @@
 package io.github.amichne.kast.api.client
 
+import io.github.amichne.kast.api.client.fields.OptionalConfigString
+import io.github.amichne.kast.api.client.fields.ProfilingDurationSeconds
+import io.github.amichne.kast.api.client.fields.ProfilingEnabled
+import io.github.amichne.kast.api.client.fields.ProfilingModes
+import io.github.amichne.kast.api.client.fields.ProfilingOtlpEndpoint
 import io.github.amichne.kast.api.contract.AnalysisTransport
 
 import java.nio.file.Path
@@ -14,6 +19,7 @@ data class StandaloneServerOptions(
     val requestTimeoutMillis: Long,
     val maxResults: Int,
     val maxConcurrentRequests: Int,
+    val profilingOverride: ProfilingConfigOverride? = null,
 ) {
     companion object {
         fun parse(args: Array<String>): StandaloneServerOptions {
@@ -21,6 +27,10 @@ data class StandaloneServerOptions(
             args.forEach { argument ->
                 if (argument == "--stdio") {
                     values["transport"] = "stdio"
+                    return@forEach
+                }
+                if (argument == "--profile") {
+                    values["profile"] = "true"
                     return@forEach
                 }
                 val parts = argument.removePrefix("--").split("=", limit = 2)
@@ -65,6 +75,25 @@ data class StandaloneServerOptions(
                 requestTimeoutMillis = values["request-timeout-ms"]?.toLong() ?: resolvedConfig.server.requestTimeoutMillis.value,
                 maxResults = values["max-results"]?.toInt() ?: resolvedConfig.server.maxResults.value,
                 maxConcurrentRequests = values["max-concurrent-requests"]?.toInt() ?: resolvedConfig.server.maxConcurrentRequests.value,
+                profilingOverride = parseProfilingOverride(values),
+            )
+        }
+
+        private fun parseProfilingOverride(values: Map<String, String>): ProfilingConfigOverride? {
+            val enabled = values["profile"]?.let { ProfilingEnabled(it.toBoolean()) }
+            val modes = values["profile-modes"]?.let(::ProfilingModes)
+            val durationSeconds = values["profile-duration"]?.toLongOrNull()?.let(::ProfilingDurationSeconds)
+            val otlpEndpoint = values["profile-otlp-endpoint"]
+                ?.takeIf(String::isNotBlank)
+                ?.let { ProfilingOtlpEndpoint(OptionalConfigString(it)) }
+            if (enabled == null && modes == null && durationSeconds == null && otlpEndpoint == null) {
+                return null
+            }
+            return ProfilingConfigOverride(
+                enabled = enabled,
+                modes = modes,
+                durationSeconds = durationSeconds,
+                otlpEndpoint = otlpEndpoint,
             )
         }
 
@@ -97,5 +126,11 @@ data class StandaloneServerOptions(
         add("--request-timeout-ms=$requestTimeoutMillis")
         add("--max-results=$maxResults")
         add("--max-concurrent-requests=$maxConcurrentRequests")
+        if (profilingOverride?.enabled?.value == true) {
+            add("--profile")
+        }
+        profilingOverride?.modes?.value?.let { add("--profile-modes=$it") }
+        profilingOverride?.durationSeconds?.value?.let { add("--profile-duration=$it") }
+        profilingOverride?.otlpEndpoint?.value?.orNull?.let { add("--profile-otlp-endpoint=$it") }
     }
 }

@@ -7,4 +7,5 @@ internal data class StandaloneTelemetryConfig(
     val scopes: Set<StandaloneTelemetryScope>,
     val detail: StandaloneTelemetryDetail,
     val outputFile: Path,
+    val otlpEndpoint: String? = null,
 )

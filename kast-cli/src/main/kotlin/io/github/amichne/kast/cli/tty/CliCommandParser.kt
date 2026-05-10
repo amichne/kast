@@ -284,6 +284,8 @@ internal data class ParsedArguments(
                 when (argument) {
                     "--help", "-h" -> flags += "help"
                     "--version", "-V" -> flags += "version"
+                    "--profile" -> flags += "profile"
+                    "--stdio" -> flags += "stdio"
                     else -> {
                         if (argument.startsWith("--")) {
                             val parts = argument.removePrefix("--").split("=", limit = 2)
@@ -659,7 +661,15 @@ internal data class ParsedArguments(
         val runtimeLibsDir = options["runtime-libs-dir"]
             ?.takeIf(String::isNotBlank)
             ?.let { Path.of(it).toAbsolutePath().normalize() }
-        val forwardedArgs = (options - "runtime-libs-dir").map { (key, value) -> "--$key=$value" }
+        val forwardedArgs = buildList {
+            if ("stdio" in flags) {
+                add("--stdio")
+            }
+            if ("profile" in flags) {
+                add("--profile")
+            }
+            addAll((options - "runtime-libs-dir").map { (key, value) -> "--$key=$value" })
+        }
         return DaemonStartOptions(
             standaloneArgs = forwardedArgs,
             workspaceRoot = options["workspace-root"]

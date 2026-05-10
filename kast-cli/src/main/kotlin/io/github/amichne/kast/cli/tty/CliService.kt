@@ -476,6 +476,14 @@ private fun defaultConfigTemplate(): String = """
     # detail = "basic"
     # outputFile = null
 
+    # [profiling]
+    # enabled = false
+    # modes = "cpu"
+    # durationSeconds = 30
+    # outputDir = "{logsDir}/profiling"
+    # otlpEndpoint = null
+    # emitManifest = true
+
     # [backends.standalone]
     # enabled = true
     # runtimeLibsDir = "/absolute/path/to/runtime-libs"

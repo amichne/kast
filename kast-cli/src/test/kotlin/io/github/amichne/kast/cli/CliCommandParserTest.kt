@@ -521,6 +521,26 @@ class CliCommandParserTest {
     }
 
     @Test
+    fun `daemon start forwards profile flags to backend`() {
+        val command = parser.parse(
+            arrayOf(
+                "daemon",
+                "start",
+                "--workspace-root=$tempDir",
+                "--profile",
+                "--profile-modes=cpu,alloc",
+                "--profile-duration=45",
+                "--profile-otlp-endpoint=http://localhost:4317",
+            ),
+        ) as CliCommand.DaemonStart
+
+        assertTrue(command.options.standaloneArgs.contains("--profile"))
+        assertTrue(command.options.standaloneArgs.contains("--profile-modes=cpu,alloc"))
+        assertTrue(command.options.standaloneArgs.contains("--profile-duration=45"))
+        assertTrue(command.options.standaloneArgs.contains("--profile-otlp-endpoint=http://localhost:4317"))
+    }
+
+    @Test
     fun `config init parses`() {
         val command = parser.parse(arrayOf("config", "init"))
 

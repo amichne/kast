@@ -1,106 +1,87 @@
 # Copilot instructions
 
-- For any Kotlin work, prefer the `kast_*` tools registered by the
-  `.github/extensions/kast/` extension: `kast_workspace_files`,
-  `kast_scaffold`, `kast_resolve`, `kast_references`, `kast_callers`,
-  `kast_metrics`, `kast_rename`, `kast_write_and_validate`,
-  `kast_diagnostics`. They replace `view`/`grep`/`edit`/`create` for
-  `.kt`/`.kts` source.
-- When `.github/extensions/kast/extension.mjs` loads successfully, treat it as
-  the primary path and skip mandatory reads of `.agents/skills/kast/SKILL.md`.
-  Fall back to the skill doc and the bash `kast <name>` form only when
-  the extension is unavailable; use `kast <name>` from PATH or the
-  resolver script.
-- TDD: write failing unit tests first. Every change must include tests that prove behavior and regressions are covered.
-- Kotlin standards: follow Kotlin style, apply formatting and lints (ktlint/detekt/spotless), avoid platform-specific APIs in shared modules.
-- Constitutional code: treat API/model changes as contract changes; preserve schema compatibility and capability advertising unless intentionally changing.
-- Clean code: prefer small, single-responsibility units, clear names, and minimal surface area.
-- Run all gradle scripts with `--offline` (falling back to normal if issues)
+## Repo-specific tooling
 
-## Backend parity
+- For Kotlin code, search, references, callers, diagnostics, or edits, use the native `kast_*` tools first. If a bash
+  fallback is genuinely necessary, call
+  `/Users/amichne/.kast/bin/kast <wrapper> '<json>'` directly instead of relying on exported shell state across tool
+  calls.
+- `.github/extensions/kast/extension.mjs` is the primary Copilot extension entrypoint. It resolves the `kast` CLI once
+  per session, exposes the native
+  `kast_*` tools, and soft-warns when generic tools target `.kt` or `.kts`
+  files.
+- Read `AGENTS.md` at the repo root first, then any deeper `AGENTS.md` in the module you touch. The narrower file
+  overrides the root guide.
 
-Any change to an `AnalysisBackend` operation must be applied to **both** `backend-standalone` and `backend-intellij`. The `backend-intellij` module targets one ZIP for both IntelliJ IDEA and Android Studio; plugin compatibility changes must be verified against both via `:backend-intellij:verifyPlugin`. Never implement a feature on one backend without auditing the other for corresponding callsites. After changes, verify `parity-tests/` covers the modified operation.
+## Build, test, package, and docs commands
 
-## Resource lifecycle
+| Task                                                     | Command                                                                                                    |
+|----------------------------------------------------------|------------------------------------------------------------------------------------------------------------|
+| Full repo build/test                                     | `./gradlew build --offline`                                                                                |
+| Run one module's tests                                   | `./gradlew :kast-cli:test --offline`                                                                       |
+| Run a single test class                                  | `./gradlew :analysis-server:test --tests io.github.amichne.kast.server.AnalysisServerSocketTest --offline` |
+| Run a single build-logic test                            | `./gradlew -p build-logic test --tests DefaultTestTagSelectionTest --offline`                              |
+| Validate `.github/` or packaged Copilot resource changes | `./gradlew :kast-cli:processResources :kast-cli:test --offline`                                            |
+| Build the CLI portable zip                               | `./gradlew buildCliPortableZip --offline`                                                                  |
+| Build the IntelliJ plugin zip                            | `./gradlew buildIntellijPlugin --offline`                                                                  |
+| Verify plugin compatibility                              | `./gradlew :backend-intellij:verifyPlugin --offline`                                                       |
+| Build shipped artifacts via the repo wrapper             | `./kast.sh build`                                                                                          |
+| Regenerate API reference pages                           | `./gradlew :analysis-api:generateDocPages --offline`                                                       |
+| Build the docs site                                      | `pip install -r requirements-docs.txt && zensical build --clean`                                           |
 
-Background threads, daemons, and resource cleanup must use explicit timeouts. In any `close()`, `shutdown()`, or cleanup method:
-- Call `interrupt()` on background threads first
-- Then call `join(timeoutMs)` to wait for them to actually terminate — **do not omit the join**
-- JUnit `@TempDir` cleanup races with surviving daemon threads on macOS, causing `IOException at ForEachOps.java:184`. The join() ensures threads stop before the test method returns and temp dir is deleted.
-- Example: `phase1Thread?.join(2000); phase2Thread?.join(2000)` after `interrupt()` calls.
+Focused reruns follow the normal Gradle pattern:
+`./gradlew :<module>:test --tests <fully.qualified.ClassName>[.<methodName>] --offline`.
 
-## Contract surface inventory
+Default test runs exclude the `concurrency`, `performance`, and `parity` tags unless you opt in with
+`-PincludeTags=...`.
 
-Before modifying `EmbeddedSkillResources`, `EmbeddedCopilotExtensionResources`,
-`WrapperOpenApiDocument`, `AnalysisBackend`, or any packaged artifact manifest,
-enumerate all consumers: `docs/openapi.yaml`, `.agents/skills/kast/SKILL.md`,
-`.agents/skills/kast/evals/**/*`, `.agents/skills/kast/history/**/*`,
-`.agents/skills/kast/references/*`, `.agents/skills/kast/scripts/*`,
-`.github/extensions/kast/extension.mjs`,
-`.github/agents/**/*`, `.github/hooks/**/*`, `kast-cli/build.gradle.kts`, and
-`kast.sh`/`install.sh`. These are contract surfaces — a change without updating
-all consumers silently breaks the distribution.
+## High-level architecture
 
-## Test path safety and CI cross-platform concerns
+- `analysis-api` is the host-agnostic contract layer. It defines
+  `AnalysisBackend`, request/response models, capability enums, descriptor types, and edit-plan semantics shared by
+  every runtime.
+- `analysis-server` wraps `AnalysisBackend` in the line-delimited JSON-RPC transport. `AnalysisDispatcher` is the method
+  router that enforces capability checks, pagination limits, and request decoding for socket and stdio servers.
+- `kast-cli` is the operator-facing control plane. `WorkspaceRuntimeManager`
+  inspects descriptor files, reports workspace status, starts or stops the standalone daemon, and packages the CLI,
+  wrapper metadata, and embedded Copilot resources.
+- `backend-standalone` is the headless runtime for terminal, CI, and agent use.
+  `StandaloneAnalysisSession` owns Gradle workspace discovery, PSI/K2 session lifecycle, workspace refresh, and
+  background indexing.
+- `backend-intellij` is the IDE-hosted runtime. `KastPluginService` starts a local server inside IntelliJ or Android
+  Studio, reuses the IDE project model, and coordinates indexing against the shared SQLite store.
+- `index-store` owns the SQLite-backed source index and workspace cache.
+  `SqliteSourceIndexStore` persists declarations, references, manifest state, generations, and workspace-discovery
+  snapshots used by both runtimes.
+- `shared-testing` provides fake backends and reusable fixtures. `parity-tests`
+  check that standalone and IntelliJ backends stay behaviorally aligned.
+  `build-logic` owns the shared Gradle conventions and wrapper/runtime-lib packaging tasks.
 
-Tests run on both ubuntu and macOS in CI — local pass on one OS is not sufficient. Never declare a task complete without verifying CI is green on both platforms.
+Operationally, the CLI and both backends speak the same JSON-RPC contract. The CLI prefers a servable IntelliJ backend
+for the workspace, otherwise a servable standalone backend; only `kast workspace ensure` will auto-start the standalone
+runtime.
 
-**Path handling (Linux-specific):** Never compare file paths using `project.basePath` string operations. Use `GlobalSearchScope.projectScope(project)` for IntelliJ scope filtering. `@TempDir` paths in Linux CI do not equal `project.basePath` — tests that pass on macOS will fail in CI.
+## Key conventions
 
-**Resource race conditions (macOS-specific):** Parallel streams and Java I/O operations can race with JUnit `@TempDir` cleanup on macOS. If a test uses background threads or parallel streams touching filesystem, ensure proper `join()` and cleanup in `close()` — see Resource Lifecycle section below.
-
-## Benchmark and Copilot-extension parity
-
-For development runs and value-proof / benchmarking work, keep ephemeral
-workspaces under `.benchmarks/` inside this repo, not `/tmp/`; IntelliJ opening
-and indexing from `/tmp/` has been unreliable on this host.
-
-When a run depends on `kast install copilot-extension`, treat the checked-out
-`kast` CLI version as the source of truth. Verify the installed
-`.kast-copilot-version` marker in the target workspace matches `kast --version`
-before treating the run as a valid "with tool" result, and prefer references to
-that live marker / CLI output over duplicating version strings in prompts or
-docs.
-
-## kast_* recovery checklist
-
-If native `kast_*` tools fail with `extension.resolve`, `descriptor not found`,
-or stale startup state:
-
-1. Verify the resolved CLI first with `kast --version`.
-2. Check for descriptor-dir drift between `~/.config/kast/daemons` and
-   `~/.kast/cache/daemons`.
-3. Fix the environment or daemon state before retrying semantic calls.
-4. Run `extensions_reload` after fixing resolution state so the Copilot
-   extension drops cached failures.
-
-## Indexer semantics
-
-"Indexing" in this codebase means **real K2/Analysis API/PSI traversal**, not file enumeration or simple walking. The SQLite source-index store (`.gradle/kast/cache/source-index.db`) is populated from actual K2 compiler symbols and PSI nodes via the `BackgroundIndexer`, not from filename lists. Distinguish between:
-- **Indexing** — K2 compiler + PSI symbol extraction, async background thread, stores in SQLite
-- **File listing** — simple enumeration, not indexing
-- **Gradle workspace discovery** — project structure discovery from `settings.gradle.kts` and source sets
-
-## Process
-
-1. Use `kast_workspace_files` and `kast_scaffold` to understand the target code.
-2. Assess impact with `kast_references` + `kast_callers` — but default to **executing changes when intent is clear**. Reserve planning-only for genuinely ambiguous scope. The user will review before merge.
-3. Make the change with `kast_write_and_validate` or `kast_rename`.
-4. `kast_diagnostics` must return `clean=true` before completing.
-5. Run the narrowest Gradle task that proves the change. For packaged Copilot
-   extension or hook-resource changes under `.github/`, `EmbeddedCopilotExtensionResources`,
-   or related manifests, run `./gradlew :kast-cli:processResources :kast-cli:test --offline`
-   and inspect `kast-cli/build/resources/main/`. For focused regressions, use
-   single-test commands like `./gradlew :kast-cli:test --tests io.github.amichne.kast.cli.EmbeddedCopilotExtensionResourcesTest --offline`
-   or `./gradlew :kast-cli:test --tests io.github.amichne.kast.cli.InstallCopilotExtensionServiceTest --offline`.
-6. Update `AGENTS.md`/docs when behavioral or contract rules change.
-7. After committing, verify remote CI is green on **both ubuntu and macOS** using `gh pr checks --watch` or the `gh-fix-ci` skill. If `gh-fix-ci` is unavailable, use `gh run list --branch <branch>` + `gh run view <id> --log-failed` directly. Do not declare a task complete with CI red or unverified — local test pass is not sufficient.
-
-## Packaged Copilot resource split
-
-Keep the source repo and the packaged Copilot extension distinct where
-portability requires it. In particular, source `.github/hooks/skill-shadowing.json`
-may keep repo-local skills, but the packaged Copilot extension must filter that
-file down to portable entries backed by `shadowingExtensionId`. Verify the
-generated artifact shape in `kast-cli/build/resources/main/` instead of
-assuming the source `.github/` tree and packaged bundle are identical.
+- Treat `AnalysisBackend`, wrapper/OpenAPI docs, embedded skill resources, and packaged Copilot-extension resources as
+  contract surfaces. If one changes, update its consumers together: `docs/openapi.yaml`, `.agents/skills/kast/**`,
+  `.github/extensions/kast/**`, `.github/hooks/**`, `kast.sh`/`install.sh`, and the related tests.
+- Any `AnalysisBackend` operation change must land in **both**
+  `backend-standalone` and `backend-intellij`. Update `parity-tests` and keep advertised capabilities honest.
+- In this repo, "indexing" means real K2/PSI-backed symbol extraction into the SQLite source index, not file walking.
+  The standalone runtime does this in two phases: a fast identifier index followed by a deeper reference index.
+- Runtime cleanup must be explicit. When code owns background threads or daemons, call `interrupt()` first and then
+  `join(timeout)` in `close()` or shutdown paths; otherwise macOS `@TempDir` cleanup races show up in tests.
+- `docs/` plus `zensical.toml` are the documentation source of truth. `site/`
+  and generated `docs/reference/*.md` output are build artifacts and should not be hand-edited.
+- `.github/hooks/hooks.json` is the authoritative hook manifest. For Copilot packaging work, inspect
+  `kast-cli/build/resources/main/` rather than assuming the packaged bundle exactly matches the source `.github/` tree.
+- Source `.github/hooks/skill-shadowing.json` intentionally keeps repo-local entries, while the packaged Copilot bundle
+  filters it down to portable entries backed by `shadowingExtensionId`.
+- Use `kast` terminology in commands, docs, and packaging targets. `analysis-cli`
+  is legacy naming and should not receive new references.
+- CI runs on both ubuntu and macOS. IntelliJ path filtering should use
+  `GlobalSearchScope.projectScope(project)` instead of `project.basePath`
+  string comparisons.
+- Keep ephemeral benchmark and value-proof workspaces under `.benchmarks/`
+  inside the repo rather than `/tmp/`.

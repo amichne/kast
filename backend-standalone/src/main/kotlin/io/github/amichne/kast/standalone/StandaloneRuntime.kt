@@ -2,10 +2,13 @@ package io.github.amichne.kast.standalone
 
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.client.KastConfig
+import io.github.amichne.kast.api.client.KastConfigOverride
 import io.github.amichne.kast.api.client.StandaloneServerOptions
 import io.github.amichne.kast.server.AnalysisServerConfig
 import io.github.amichne.kast.server.AnalysisServer
 import io.github.amichne.kast.server.RunningAnalysisServer
+import io.github.amichne.kast.standalone.profiling.ProfilingConfig
+import io.github.amichne.kast.standalone.profiling.ProfilingManager
 import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetry
 import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetryScope
 
@@ -13,10 +16,12 @@ internal class RunningStandaloneRuntime(
     val server: RunningAnalysisServer,
     private val session: StandaloneAnalysisSession,
     private val watcher: AutoCloseable,
+    private val profiling: AutoCloseable? = null,
 ) : AutoCloseable {
     override fun close() {
         watcher.close()
         server.close()
+        profiling?.close()
         session.close()
     }
 
@@ -28,7 +33,10 @@ internal class RunningStandaloneRuntime(
 object StandaloneRuntime {
     internal fun start(options: StandaloneServerOptions): RunningStandaloneRuntime {
         System.setProperty("java.awt.headless", "true")
-        val config = KastConfig.load(options.workspaceRoot)
+        val config = KastConfig.load(
+            workspaceRoot = options.workspaceRoot,
+            overrides = KastConfigOverride(profiling = options.profilingOverride),
+        )
         val phasedDiscoveryResult = discoverStandaloneWorkspaceLayoutPhased(
             workspaceRoot = options.workspaceRoot,
             sourceRoots = options.sourceRoots,
@@ -37,6 +45,7 @@ object StandaloneRuntime {
             config = config,
         )
         val telemetry = StandaloneTelemetry.fromConfig(options.workspaceRoot, config)
+        val profiling = ProfilingManager(ProfilingConfig.fromConfig(config)).also { it.start() }
         val sessionLock: SessionLock = if (telemetry.isEnabled(StandaloneTelemetryScope.SESSION_LOCK)) {
             TelemetrySessionLock(telemetry)
         } else {
@@ -80,6 +89,7 @@ object StandaloneRuntime {
             server = server,
             session = session,
             watcher = watcher,
+            profiling = profiling,
         )
     }
 

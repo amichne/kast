@@ -78,10 +78,9 @@ internal class StandaloneTelemetry private constructor(
             val tracerProviderBuilder = SdkTracerProvider.builder()
                 .addSpanProcessor(SimpleSpanProcessor.create(jsonlExporter))
 
-            val otlpEndpoint = System.getenv("KAST_OTLP_ENDPOINT")
-            if (!otlpEndpoint.isNullOrBlank()) {
+            if (!config.otlpEndpoint.isNullOrBlank()) {
                 val otlpExporter = OtlpGrpcSpanExporter.builder()
-                    .setEndpoint(otlpEndpoint)
+                    .setEndpoint(config.otlpEndpoint)
                     .build()
                 tracerProviderBuilder.addSpanProcessor(SimpleSpanProcessor.create(otlpExporter))
             }
@@ -101,9 +100,24 @@ internal class StandaloneTelemetry private constructor(
             workspaceRoot: Path,
             config: KastConfig = KastConfig.load(workspaceRoot),
             configHome: () -> Path = { kastConfigHome() },
+            envLookup: (String) -> String? = System::getenv,
         ): StandaloneTelemetry {
+            return configFrom(
+                workspaceRoot = workspaceRoot,
+                config = config,
+                configHome = configHome,
+                envLookup = envLookup,
+            )?.let(::create) ?: disabled()
+        }
+
+        internal fun configFrom(
+            workspaceRoot: Path,
+            config: KastConfig,
+            configHome: () -> Path = { kastConfigHome() },
+            envLookup: (String) -> String? = System::getenv,
+        ): StandaloneTelemetryConfig? {
             if (!config.telemetry.enabled.value) {
-                return disabled()
+                return null
             }
 
             val scopes = if (config.telemetry.scopes.value.equals("all", ignoreCase = true)) {
@@ -117,14 +131,16 @@ internal class StandaloneTelemetry private constructor(
                 workspaceRoot = workspaceRoot,
                 configHome = configHome,
             )
+            val otlpEndpoint = envLookup("KAST_OTLP_ENDPOINT")
+                ?.takeIf(String::isNotBlank)
+                ?: config.profiling.otlpEndpoint.value.orNull?.takeIf(String::isNotBlank)
 
-            return create(
-                StandaloneTelemetryConfig(
-                    enabled = true,
-                    scopes = scopes,
-                    detail = detail,
-                    outputFile = outputFile,
-                ),
+            return StandaloneTelemetryConfig(
+                enabled = true,
+                scopes = scopes,
+                detail = detail,
+                outputFile = outputFile,
+                otlpEndpoint = otlpEndpoint,
             )
         }
 
