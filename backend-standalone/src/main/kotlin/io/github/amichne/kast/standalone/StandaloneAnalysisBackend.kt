@@ -164,7 +164,11 @@ internal class StandaloneAnalysisBackend internal constructor(
         limits = limits,
     )
 
-    override suspend fun runtimeStatus(): RuntimeStatusResponse {
+    override suspend fun runtimeStatus(): RuntimeStatusResponse = telemetry.inSpan(
+        scope = StandaloneTelemetryScope.SESSION_LIFECYCLE,
+        name = "kast.runtimeStatus",
+        attributes = session.memorySnapshot(),
+    ) {
         val capabilities = capabilities()
         val warnings = session.workspaceDiagnostics
         val isIndexing = !session.isEnrichmentComplete() || !session.isInitialSourceIndexReady()
@@ -175,7 +179,7 @@ internal class StandaloneAnalysisBackend internal constructor(
             "Standalone analysis session is initialized"
         }
         val moduleGraph = session.dependentModuleGraph
-        return RuntimeStatusResponse(
+        RuntimeStatusResponse(
             state = state,
             healthy = true,
             active = true,

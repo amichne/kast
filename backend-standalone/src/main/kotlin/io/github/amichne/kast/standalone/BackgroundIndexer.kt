@@ -8,6 +8,8 @@ import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.indexstore.api.reference.DeclarationRow
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
 import io.github.amichne.kast.standalone.cache.SourceIndexCache
+import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetry
+import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetryScope
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicInteger
@@ -38,6 +40,7 @@ internal class BackgroundIndexer(
     private val initialSourceIndexBuilder: (() -> Map<String, List<String>>)? = null,
     private val referenceBatchSize: Int = 50,
     private val referenceParallelism: Int = 2,
+    private val telemetry: StandaloneTelemetry = StandaloneTelemetry.disabled(),
 ) : AutoCloseable {
 
     init {
@@ -213,27 +216,42 @@ internal class BackgroundIndexer(
     // Phase 1 internals
     // -------------------------------------------------------------------------
 
-    private fun loadOrBuildIndex(): MutableSourceIdentifierIndex {
+    private fun loadOrBuildIndex(): MutableSourceIdentifierIndex = telemetry.inSpan(
+        scope = StandaloneTelemetryScope.INDEXING,
+        name = "kast.indexer.phase1.loadOrBuild",
+    ) { span ->
         val incrementalResult = runCatching {
             sourceIndexCache.load(sourceRoots)
         }.getOrNull()
-        val index = incrementalResult?.index ?: return buildFullIndex().also { phase1HeadCommit.set(null) }
+        val index = incrementalResult?.index
+        if (index == null) {
+            span.setAttribute("kast.indexer.cacheHit", false)
+            return@inSpan buildFullIndex().also { phase1HeadCommit.set(null) }
+        }
+        span.setAttribute("kast.indexer.cacheHit", true)
         phase1HeadCommit.set(incrementalResult.headCommit)
         incrementalResult.deletedPaths.forEach(index::removeFile)
         (incrementalResult.newPaths + incrementalResult.modifiedPaths).forEach { pathString ->
-            if (cancelled || Thread.currentThread().isInterrupted) return index
+            if (cancelled || Thread.currentThread().isInterrupted) return@inSpan index
             refreshFileIndex(index, NormalizedPath.ofNormalized(pathString))
         }
-        return index
+        index
     }
 
-    private fun buildFullIndex(): MutableSourceIdentifierIndex {
+    private fun buildFullIndex(): MutableSourceIdentifierIndex = telemetry.inSpan(
+        scope = StandaloneTelemetryScope.INDEXING,
+        name = "kast.indexer.phase1.fullBuild",
+    ) { span ->
         val index = MutableSourceIdentifierIndex(
             pathsByIdentifier = java.util.concurrent.ConcurrentHashMap(),
             identifiersByPath = java.util.concurrent.ConcurrentHashMap(),
         )
+        var filesScanned = 0
         allTrackedKotlinSourcePaths().forEach { normalizedFilePath ->
-            if (cancelled || Thread.currentThread().isInterrupted) return index
+            if (cancelled || Thread.currentThread().isInterrupted) {
+                span.setAttribute("kast.indexer.filesScanned", filesScanned)
+                return@inSpan index
+            }
             val normalizedPath = NormalizedPath.ofNormalized(normalizedFilePath)
             runCatching {
                 index.updateFile(
@@ -241,10 +259,11 @@ internal class BackgroundIndexer(
                     newContent = sourceIndexFileReader(normalizedPath.toJavaPath()),
                     moduleName = sourceModuleNameResolver(normalizedPath),
                 )
+                filesScanned++
             }
-            // Skip files that fail to read (e.g., deleted between discovery and read)
         }
-        return index
+        span.setAttribute("kast.indexer.filesScanned", filesScanned)
+        index
     }
 
     private fun refreshFileIndex(

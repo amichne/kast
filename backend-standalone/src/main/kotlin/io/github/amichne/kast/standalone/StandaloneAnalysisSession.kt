@@ -39,6 +39,7 @@ import org.jetbrains.kotlin.analysis.project.structure.builder.buildKtSdkModule
 import org.jetbrains.kotlin.analysis.project.structure.builder.buildKtSourceModule
 import org.jetbrains.kotlin.platform.jvm.JvmPlatforms
 import org.jetbrains.kotlin.psi.KtFile
+import java.lang.management.ManagementFactory
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
@@ -82,6 +83,26 @@ internal class StandaloneAnalysisSession(
     private val enrichmentReady = CompletableFuture<Unit>()
     private val fullKtFileMapLoadLock = Any()
     private val cacheManager = CacheManager(this.workspaceRoot, config = config)
+    private val instrumentedSourceIndexFileReader: (Path) -> String = if (telemetry.isEnabled(StandaloneTelemetryScope.IO)) {
+        { path ->
+            val startNanos = System.nanoTime()
+            val content = sourceIndexFileReader(path)
+            val durationNanos = System.nanoTime() - startNanos
+            telemetry.inSpan(
+                scope = StandaloneTelemetryScope.IO,
+                name = "kast.io.readSourceFile",
+                attributes = mapOf(
+                    "kast.io.filePath" to path.toString(),
+                    "kast.io.bytesRead" to content.length.toLong(),
+                    "kast.io.durationNanos" to durationNanos,
+                ),
+            ) { /* attributes already attached */ }
+            content
+        }
+    } else {
+        sourceIndexFileReader
+    }
+
     private val sourceIndexCache = SourceIndexCache(
         workspaceRoot = this.workspaceRoot,
         enabled = cacheManager.isEnabled(),
@@ -166,6 +187,44 @@ internal class StandaloneAnalysisSession(
     fun allKtFiles(): List<KtFile> = analysisSessionLock.read {
         ensureFullKtFileMapLoaded(session)
         ktFilesByPath.values.sortedBy(::normalizeFileLookupPath)
+    }
+
+    /**
+     * Captures a point-in-time snapshot of in-memory session caches and JVM heap usage.
+     *
+     * Emits a `kast.session.memorySnapshot` span under the [StandaloneTelemetryScope.MEMORY]
+     * scope when telemetry is enabled, with every entry of the returned map exposed as a
+     * span attribute. The map is also returned to callers (e.g. the runtime status handler)
+     * so the same data can be surfaced through diagnostics endpoints.
+     *
+     * Values are intentionally typed as [Any] so this can carry both [Int] and [Long]
+     * counters without boxing tax in callers.
+     */
+    fun memorySnapshot(): Map<String, Any> {
+        val runtime = Runtime.getRuntime()
+        val heapUsage = ManagementFactory.getMemoryMXBean().heapMemoryUsage
+        val identifierIndexPathCount = sourceIdentifierIndex.get()?.knownPaths()?.size ?: 0
+        val snapshot = linkedMapOf<String, Any>(
+            "kast.session.ktFilesByPath.size" to ktFilesByPath.size,
+            "kast.session.targetedKtFilesByPath.size" to targetedKtFilesByPath.size,
+            "kast.session.sourceModuleNamesByPath.size" to sourceModuleNamesByPath.size,
+            "kast.session.targetedCandidatePathsByLookupKey.size" to targetedCandidatePathsByLookupKey.size,
+            "kast.session.sourceIdentifierIndex.knownPaths.size" to identifierIndexPathCount,
+            "kast.memory.runtime.totalBytes" to runtime.totalMemory(),
+            "kast.memory.runtime.freeBytes" to runtime.freeMemory(),
+            "kast.memory.runtime.maxBytes" to runtime.maxMemory(),
+            "kast.memory.heap.usedBytes" to heapUsage.used,
+            "kast.memory.heap.committedBytes" to heapUsage.committed,
+            "kast.memory.heap.maxBytes" to heapUsage.max,
+        )
+
+        telemetry.inSpan(
+            scope = StandaloneTelemetryScope.MEMORY,
+            name = "kast.session.memorySnapshot",
+            attributes = snapshot,
+        ) { /* attributes already attached */ }
+
+        return snapshot
     }
 
     fun moduleSpecs(): List<StandaloneSourceModuleSpec> = sourceModuleSpecs
@@ -780,12 +839,18 @@ internal class StandaloneAnalysisSession(
                 return
             }
 
-            val loadedFiles = loadKtFilesByPath(analysisSession)
-            ktFilesByPath.clear()
-            ktFilesByPath.putAll(loadedFiles)
-            targetedKtFilesByPath.clear()
-            targetedKtFilesByPath.putAll(loadedFiles)
-            fullKtFileMapLoaded = true
+            telemetry.inSpan(
+                scope = StandaloneTelemetryScope.IO,
+                name = "kast.io.loadAllKtFiles",
+            ) { span ->
+                val loadedFiles = loadKtFilesByPath(analysisSession)
+                span.setAttribute("kast.io.fileCount", loadedFiles.size)
+                ktFilesByPath.clear()
+                ktFilesByPath.putAll(loadedFiles)
+                targetedKtFilesByPath.clear()
+                targetedKtFilesByPath.putAll(loadedFiles)
+                fullKtFileMapLoaded = true
+            }
         }
     }
 
@@ -824,17 +889,21 @@ internal class StandaloneAnalysisSession(
     private fun loadKtFileByPath(
         normalizedPath: NormalizedPath,
         analysisSession: StandaloneAnalysisAPISession,
-    ): KtFile? {
+    ): KtFile? = telemetry.inSpan(
+        scope = StandaloneTelemetryScope.IO,
+        name = "kast.io.loadKtFile",
+        attributes = mapOf("kast.io.filePath" to normalizedPath.value),
+    ) {
         val filePath = normalizedPath.toJavaPath()
         if (!isTrackedKotlinFilePath(filePath) || !Files.isRegularFile(filePath)) {
-            return null
+            return@inSpan null
         }
 
         val virtualFile = VirtualFileManager.getInstance().findFileByNioPath(filePath)
                           ?: VirtualFileManager.getInstance().refreshAndFindFileByNioPath(filePath)
-                          ?: return null
+                          ?: return@inSpan null
 
-        return (PsiManager.getInstance(analysisSession.project)
+        (PsiManager.getInstance(analysisSession.project)
             .findFile(virtualFile) as? KtFile)
             ?.also { ktFileLastModifiedMillisByPath[normalizedPath] = Files.getLastModifiedTime(filePath).toMillis() }
     }
@@ -906,13 +975,14 @@ internal class StandaloneAnalysisSession(
     private fun startInitialSourceIndex() {
         backgroundIndexer = BackgroundIndexer(
             sourceRoots = resolvedSourceRoots,
-            sourceIndexFileReader = sourceIndexFileReader,
+            sourceIndexFileReader = instrumentedSourceIndexFileReader,
             sourceModuleNameResolver = ::sourceModuleNameForFile,
             sourceIndexCache = sourceIndexCache,
             store = sourceIndexCache.store,
             initialSourceIndexBuilder = initialSourceIndexBuilder,
             referenceBatchSize = referenceBatchSize,
             referenceParallelism = referenceParallelism,
+            telemetry = telemetry,
         )
         val generation = sourceIndexGeneration.incrementAndGet()
         // Publish the index synchronously in the Phase 1 thread before identifierIndexReady
@@ -969,7 +1039,7 @@ internal class StandaloneAnalysisSession(
 
         index.updateFile(
             normalizedPath = normalizedPath.value,
-            newContent = sourceIndexFileReader(filePath),
+            newContent = instrumentedSourceIndexFileReader(filePath),
             moduleName = sourceModuleNameForFile(normalizedPath),
         )
         if (persistIncrementally) {

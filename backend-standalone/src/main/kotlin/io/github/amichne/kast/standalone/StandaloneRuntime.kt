@@ -7,6 +7,7 @@ import io.github.amichne.kast.server.AnalysisServerConfig
 import io.github.amichne.kast.server.AnalysisServer
 import io.github.amichne.kast.server.RunningAnalysisServer
 import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetry
+import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetryScope
 
 internal class RunningStandaloneRuntime(
     val server: RunningAnalysisServer,
@@ -35,6 +36,12 @@ object StandaloneRuntime {
             moduleName = options.moduleName,
             config = config,
         )
+        val telemetry = StandaloneTelemetry.fromConfig(options.workspaceRoot, config)
+        val sessionLock: SessionLock = if (telemetry.isEnabled(StandaloneTelemetryScope.SESSION_LOCK)) {
+            TelemetrySessionLock(telemetry)
+        } else {
+            ReentrantSessionLock()
+        }
         val session = StandaloneAnalysisSession(
             workspaceRoot = options.workspaceRoot,
             sourceRoots = options.sourceRoots,
@@ -42,8 +49,9 @@ object StandaloneRuntime {
             moduleName = options.moduleName,
             phasedDiscoveryResult = phasedDiscoveryResult,
             config = config,
+            analysisSessionLock = sessionLock,
+            telemetry = telemetry,
         )
-        val telemetry = StandaloneTelemetry.fromConfig(options.workspaceRoot, config)
         val backend = StandaloneAnalysisBackend(
             workspaceRoot = options.workspaceRoot,
             limits = ServerLimits(

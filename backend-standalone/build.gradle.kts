@@ -475,6 +475,7 @@ dependencies {
     implementation(libs.logback.classic)
     implementation(libs.opentelemetry.api)
     implementation(libs.opentelemetry.sdk)
+    implementation(libs.opentelemetry.exporter.otlp)
 
     testImplementation(project(":shared-testing"))
     // IJ platform Logger.setFactory() references junit.rules.TestRule at class-init time.
