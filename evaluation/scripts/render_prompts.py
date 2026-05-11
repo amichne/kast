@@ -104,7 +104,7 @@ def _find_unresolved(payload: Any) -> set[str]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Render a value-proof catalog with concrete codebase bindings.")
+    parser = argparse.ArgumentParser(description="Render an evaluation catalog with concrete codebase bindings.")
     parser.add_argument("--catalog", required=True, type=Path, help="Path to catalog.json")
     parser.add_argument("--bindings", required=True, type=Path, help="Path to bindings JSON")
     parser.add_argument("--output", required=True, type=Path, help="Path to rendered catalog output")

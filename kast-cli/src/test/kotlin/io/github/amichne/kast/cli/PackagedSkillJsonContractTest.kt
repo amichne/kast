@@ -79,8 +79,10 @@ class PackagedSkillJsonContractTest {
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/history/eval-baseline.json")))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/history/progression.json")))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/scripts/build-routing-corpus.py")))
-        assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/value-proof/catalog.json")))
-        assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/value-proof/scripts/render_prompts.py")))
+        assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/evaluation/catalog.json")))
+        assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/evaluation/catalog.schema.json")))
+        assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/evaluation/scripts/render_prompts.py")))
+        assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/evaluation/scripts/run_evaluation.py")))
 
         val daemon = startRealBackend(workspaceRoot, wrapperEnv, kastBinary)
         try {

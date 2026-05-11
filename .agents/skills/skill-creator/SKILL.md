@@ -201,6 +201,7 @@ Use the existing evaluation helpers:
 - `agents/comparator.md` for blind A/B review
 - `agents/analyzer.md` for benchmark pattern analysis
 - `scripts/aggregate_benchmark.py` for summary statistics
+- `../../evaluation/scripts/value_proof_aggregate.py` for Kast's repo-level value-justification benchmark, including applicability-aware outcome metrics and paired Wilcoxon analysis
 - `scripts/prove_consolidation.py` when a merged skill needs to prove it matched or beat the legacy sibling envelope
 - `eval-viewer/generate_review.py` for human review
 

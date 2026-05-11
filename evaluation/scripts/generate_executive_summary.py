@@ -85,16 +85,16 @@ def metric_rows(benchmark: dict[str, Any], primary: str, baseline: str) -> list[
     delta = benchmark.get("run_summary", {}).get("delta", {})
     rows = []
     for label, metric in [
-        ("Pass rate", "pass_rate"),
-        ("Tokens", "tokens"),
+        ("Outcome pass rate", "outcome_pass_rate"),
+        ("Transcript chars", "transcript_chars"),
         ("Tool calls", "tool_calls"),
-        ("Time", "time_seconds"),
+        ("Time", "executor_duration_seconds"),
     ]:
         primary_value = mean_from_summary(benchmark, primary, metric)
         baseline_value = mean_from_summary(benchmark, baseline, metric)
-        if metric == "pass_rate":
+        if metric == "outcome_pass_rate":
             rows.append((label, percent(primary_value), percent(baseline_value), str(delta.get(metric, f"{primary_value - baseline_value:+.2f}"))))
-        elif metric == "time_seconds":
+        elif metric == "executor_duration_seconds":
             rows.append((label, f"{primary_value:.1f}s", f"{baseline_value:.1f}s", str(delta.get(metric, f"{primary_value - baseline_value:+.1f}"))))
         else:
             rows.append((label, f"{primary_value:.0f}", f"{baseline_value:.0f}", str(delta.get(metric, f"{primary_value - baseline_value:+.0f}"))))
@@ -140,6 +140,9 @@ def build_markdown(benchmark: dict[str, Any], bindings: dict[str, Any]) -> str:
     ]
     for label, primary_value, baseline_value, delta_value in metric_rows(benchmark, primary, baseline):
         lines.append(f"| {label} | {primary_value} | {baseline_value} | {delta_value} |")
+    significance = benchmark.get("run_summary", {}).get("delta", {}).get("outcome_pass_rate_significance")
+    if significance:
+        lines.extend(["", f"Outcome pass-rate significance: `{significance}`"])
 
     lines.extend(["", "## Per-category breakdown", "", "| Category | Pass rate | Enterprise value |", "| --- | ---: | --- |"])
     for category in CATEGORIES:
@@ -202,12 +205,12 @@ def default_bindings_path(iteration_dir: Path) -> Path:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Generate enterprise-facing Kast value-proof summary documents.")
+    parser = argparse.ArgumentParser(description="Generate enterprise-facing evaluation summary documents.")
     parser.add_argument("iteration_dir", nargs="?", type=Path, help="Iteration directory containing benchmark.json and bindings.json")
     parser.add_argument("--benchmark", type=Path, help="Path to benchmark.json; defaults to ITERATION_DIR/benchmark.json")
     parser.add_argument("--bindings", type=Path, help="Path to bindings JSON; defaults to ITERATION_DIR/bindings.json")
-    parser.add_argument("--output", type=Path, help="Markdown output path; defaults to ITERATION_DIR/executive_summary.md")
-    parser.add_argument("--html-output", type=Path, help="HTML output path; defaults to ITERATION_DIR/executive_summary.html")
+    parser.add_argument("--output", type=Path, help="Markdown output path; defaults to ITERATION_DIR/executive-summary.md")
+    parser.add_argument("--html-output", type=Path, help="HTML output path; defaults to ITERATION_DIR/executive-summary.html")
     return parser
 
 
@@ -230,8 +233,8 @@ def resolved_paths(args: argparse.Namespace, parser: argparse.ArgumentParser) ->
     return (
         args.benchmark or iteration_dir / "benchmark.json",
         args.bindings or default_bindings_path(iteration_dir),
-        args.output or iteration_dir / "executive_summary.md",
-        args.html_output or iteration_dir / "executive_summary.html",
+        args.output or iteration_dir / "executive-summary.md",
+        args.html_output or iteration_dir / "executive-summary.html",
     )
 
 

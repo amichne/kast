@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/amichne/kast/.agents/skills/kast/value-proof/bindings.schema.json",
-  "title": "Kast value-proof codebase bindings",
+  "$id": "https://github.com/amichne/kast/evaluation/bindings.schema.json",
+  "title": "Kast evaluation codebase bindings",
   "description": "Maps abstract eval slots to concrete symbols in a target Kotlin codebase, plus optional ground-truth oracles used for outcome grading.",
   "type": "object",
   "required": ["target_repo", "workspace_root", "slots"],

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Value-proof aggregator with applicability-aware pass-rate and paired stats.
+"""Evaluation aggregator with applicability-aware pass-rate and paired stats.
 
 Replaces the headline numbers in the standard skill-creator benchmark.json
 with a fairer comparison and a paired-test significance estimate.
@@ -20,11 +20,6 @@ Outputs:
        paired_stats.baseline_violations              [{eval_id, run, kast_calls}]
        paired_stats.contradictions                   [{eval_id, configuration, run, count}]
   iteration_dir/benchmark.md     — Markdown rollup including the above.
-  iteration_dir/../history/progression.json
-                                — appends a row {iteration, target_repo, git_sha,
-                                  outcome_pass_rate_with, outcome_pass_rate_without,
-                                  delta, p_value}.
-
 The Wilcoxon signed-rank statistic is implemented in pure Python (no SciPy
 required) using the exact distribution for n <= 20 and a normal approximation
 for n > 20. Good enough for the 10-eval, 5-run regime we're in.
@@ -375,7 +370,7 @@ def aggregate(iteration_dir: Path, *, skill_name: str, bindings_path: Path | Non
     benchmark = {
         "metadata": {
             "skill_name": skill_name,
-            "skill_path": ".agents/skills/kast/value-proof",
+            "skill_path": "evaluation",
             "timestamp": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             "iteration_dir": str(iteration_dir),
             "target_repo": (bindings or {}).get("target_repo", ""),
@@ -462,41 +457,12 @@ def write_outputs(iteration_dir: Path, benchmark: dict[str, Any]) -> None:
     (iteration_dir / "benchmark.md").write_text("\n".join(md_lines) + "\n")
 
 
-def append_progression(iteration_dir: Path, benchmark: dict[str, Any]) -> None:
-    skill_dir = iteration_dir
-    while skill_dir.parent != skill_dir and skill_dir.name != "value-proof":
-        skill_dir = skill_dir.parent
-    if skill_dir.name != "value-proof":
-        # Fall back to skill path from metadata.
-        skill_dir = Path(benchmark["metadata"].get("skill_path", "."))
-    history_path = skill_dir / "history" / "progression.json"
-    history = _read_json(history_path) or {"skill_name": benchmark["metadata"]["skill_name"], "benchmarks": [], "case_history": {}}
-    history.setdefault("benchmarks", [])
-    delta = benchmark["run_summary"].get("delta", {})
-    paired = benchmark.get("paired_stats", {}).get("outcome_pass_rate_paired", {})
-    history["benchmarks"].append({
-        "iteration": Path(benchmark["metadata"]["iteration_dir"]).name,
-        "timestamp": benchmark["metadata"]["timestamp"],
-        "target_repo": benchmark["metadata"].get("target_repo", ""),
-        "git_sha_target": benchmark["metadata"].get("git_sha_target", ""),
-        "with_skill_outcome_pass_rate": benchmark["run_summary"].get("with_skill", {}).get("outcome_pass_rate", {}).get("mean", 0.0),
-        "without_skill_outcome_pass_rate": benchmark["run_summary"].get("without_skill", {}).get("outcome_pass_rate", {}).get("mean", 0.0),
-        "delta_outcome_pass_rate": delta.get("outcome_pass_rate", "?"),
-        "p_value": paired.get("p_value"),
-        "n_pairs": paired.get("n_pairs"),
-    })
-    history["updated_at"] = benchmark["metadata"]["timestamp"]
-    history_path.parent.mkdir(parents=True, exist_ok=True)
-    history_path.write_text(json.dumps(history, indent=2) + "\n")
-
-
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Aggregate value-proof results with paired statistics.")
+    parser = argparse.ArgumentParser(description="Aggregate evaluation results with paired statistics.")
     parser.add_argument("iteration_dir", type=Path)
     parser.add_argument("--skill-name", default="kast-value-proof")
     parser.add_argument("--bindings", type=Path, default=None)
     parser.add_argument("--catalog", type=Path, default=None)
-    parser.add_argument("--no-progression", action="store_true")
     args = parser.parse_args()
 
     if not args.iteration_dir.exists():
@@ -510,8 +476,6 @@ def main() -> int:
         catalog_path=args.catalog,
     )
     write_outputs(args.iteration_dir, benchmark)
-    if not args.no_progression:
-        append_progression(args.iteration_dir, benchmark)
     print(f"wrote {args.iteration_dir / 'benchmark.json'}")
     print(f"wrote {args.iteration_dir / 'benchmark.md'}")
     return 0

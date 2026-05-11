@@ -176,7 +176,8 @@ Before modifying `EmbeddedSkillResources`, `EmbeddedCopilotExtensionResources`,
 enumerate all consumers: `docs/openapi.yaml`, `.agents/skills/kast/SKILL.md`,
 `.agents/skills/kast/evals/**/*`, `.agents/skills/kast/history/**/*`,
 `.agents/skills/kast/references/*`, `.agents/skills/kast/scripts/*`,
-`.github/extensions/kast/extension.mjs`, `.github/agents/**/*`,
-`.github/hooks/**/*`, `kast-cli/build.gradle.kts`, and `kast.sh`/`install.sh`.
+`evaluation/**/*`, `.github/extensions/kast/extension.mjs`,
+`.github/agents/**/*`, `.github/hooks/**/*`, `kast-cli/build.gradle.kts`,
+and `kast.sh`.
 These are contract surfaces — a change without updating all consumers silently
 breaks the distribution.

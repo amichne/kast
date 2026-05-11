@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic tool-call extractor for value-proof transcripts.
+"""Deterministic tool-call extractor for evaluation transcripts.
 
 Replaces LLM-grader-based tool counting (which silently regressed to 0 in
 iteration-003). Reads `outputs/transcript.md` and emits
@@ -237,7 +237,7 @@ def parse_run_dir(run_dir: Path) -> dict:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Parse a value-proof transcript into a structured tool-call log.")
+    parser = argparse.ArgumentParser(description="Parse an evaluation transcript into a structured tool-call log.")
     parser.add_argument("--run-dir", type=Path, required=True, help="Run directory containing outputs/transcript.md")
     parser.add_argument("--print-summary", action="store_true")
     args = parser.parse_args()

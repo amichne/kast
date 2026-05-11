@@ -9,6 +9,7 @@ val nativeConfigDir = layout.projectDirectory.dir(
     "src/main/resources/META-INF/native-image/io.github.amichne.kast/kast-cli",
 )
 val packagedSkillSourceDir = rootProject.layout.projectDirectory.dir(".agents/skills/kast")
+val packagedEvaluationSourceDir = rootProject.layout.projectDirectory.dir("evaluation")
 val packagedCopilotAgentsSourceDir = rootProject.layout.projectDirectory.dir(".agents/agents")
 val packagedCopilotHooksSourceDir = rootProject.layout.projectDirectory.dir(".github/hooks")
 val packagedCopilotExtensionsSourceDir = rootProject.layout.projectDirectory.dir(".github/extensions")
@@ -31,15 +32,24 @@ val embeddedSkillFiles = listOf(
     "scripts/build-routing-corpus.py",
     "scripts/kast-session-start.sh",
     "scripts/resolve-kast.sh",
-    "value-proof/README.md",
-    "value-proof/bindings.schema.json",
-    "value-proof/bindings/konditional.json",
-    "value-proof/bindings/template.json",
-    "value-proof/catalog.json",
-    "value-proof/history/progression.json",
-    "value-proof/scripts/generate_executive_summary.py",
-    "value-proof/scripts/render_prompts.py",
-    "value-proof/scripts/run_value_proof.py",
+)
+val embeddedEvaluationFiles = listOf(
+    "README.md",
+    "bindings.schema.json",
+    "bindings/konditional.json",
+    "bindings/template.json",
+    "catalog.json",
+    "catalog.schema.json",
+    "fixtures/.gitkeep",
+    "grading.schema.json",
+    "scripts/dispatch_runs.py",
+    "scripts/finalize_grading.py",
+    "scripts/generate_executive_summary.py",
+    "scripts/parse_tool_calls.py",
+    "scripts/render_prompts.py",
+    "scripts/run_evaluation.py",
+    "scripts/run_value_proof.py",
+    "scripts/value_proof_aggregate.py",
 )
 val embeddedCopilotAgentFiles = listOf(
     "kast-orchestrator.md",
@@ -106,6 +116,10 @@ val syncPackagedSkillResources by tasks.registering(Sync::class) {
     from(packagedSkillSourceDir) {
         include(embeddedSkillFiles)
         into("packaged-skill")
+    }
+    from(packagedEvaluationSourceDir) {
+        include(embeddedEvaluationFiles)
+        into("packaged-skill/evaluation")
     }
     into(layout.buildDirectory.dir("generated/packaged-skill-resources"))
     includeEmptyDirs = false

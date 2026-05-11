@@ -151,6 +151,7 @@ def scaffold_workspace(
     catalog = load_catalog(catalog_path)
     iteration_dir = workspace_dir / iteration
     iteration_dir.mkdir(parents=True, exist_ok=True)
+    persist_iteration_inputs(iteration_dir=iteration_dir, catalog_path=catalog_path, catalog=catalog)
     instruction_paths: list[Path] = []
     eval_manifest: dict[str, dict[str, str | None]] = {}
 
@@ -186,6 +187,20 @@ def scaffold_workspace(
     if aggregate:
         aggregate_if_graded(iteration_dir, catalog.get("skill_name", "kast-value-proof"))
     return iteration_dir
+
+
+def persist_iteration_inputs(
+    *,
+    iteration_dir: Path,
+    catalog_path: Path,
+    catalog: dict[str, Any],
+) -> None:
+    rendered_catalog_path = iteration_dir / "rendered-catalog.json"
+    rendered_catalog_path.write_text(json.dumps(catalog, indent=2) + "\n")
+
+    bindings = catalog.get("bindings")
+    if isinstance(bindings, dict):
+        (iteration_dir / "bindings.json").write_text(json.dumps(bindings, indent=2) + "\n")
 
 
 def write_run_manifest(iteration_dir: Path, instruction_paths: list[Path]) -> None:
@@ -225,11 +240,10 @@ def aggregate_if_graded(iteration_dir: Path, skill_name: str) -> None:
         print(f"Workspace scaffolded at {iteration_dir}; skipping aggregation until all grading.json files are complete.")
         return
 
-    value_proof_dir = Path(__file__).resolve().parents[1]
-    aggregate_script = value_proof_dir / "scripts" / "value_proof_aggregate.py"
+    evaluation_dir = Path(__file__).resolve().parents[1]
+    aggregate_script = evaluation_dir / "scripts" / "value_proof_aggregate.py"
     catalog_path = iteration_dir / "rendered-catalog.json"
-    bindings_candidates = sorted((value_proof_dir / "bindings").glob("*.json"))
-    bindings_path = bindings_candidates[0] if len(bindings_candidates) == 1 else None
+    bindings_path = iteration_dir / "bindings.json"
     cmd = [
         sys.executable,
         str(aggregate_script),
@@ -239,7 +253,7 @@ def aggregate_if_graded(iteration_dir: Path, skill_name: str) -> None:
     ]
     if catalog_path.exists():
         cmd.extend(["--catalog", str(catalog_path)])
-    if bindings_path and bindings_path.exists():
+    if bindings_path.exists():
         cmd.extend(["--bindings", str(bindings_path)])
     subprocess.run(cmd, check=True)
 
@@ -252,7 +266,7 @@ def parse_configs(value: str) -> list[str]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Scaffold a Kast value-proof benchmark workspace.")
+    parser = argparse.ArgumentParser(description="Scaffold an evaluation benchmark workspace.")
     parser.add_argument("--catalog", required=True, type=Path, help="Rendered catalog JSON")
     parser.add_argument("--workspace", required=True, type=Path, help="Workspace root to create")
     parser.add_argument("--runs-per-config", type=int, default=5, help="Runs per eval/configuration. Defaults to 5 so paired Wilcoxon has signal — 3 is insufficient for stddev estimates.")
@@ -269,7 +283,7 @@ def main() -> None:
         iteration=args.iteration,
         aggregate=not args.no_aggregate,
     )
-    print(f"Created value-proof workspace: {iteration_dir}")
+    print(f"Created evaluation workspace: {iteration_dir}")
 
 
 if __name__ == "__main__":

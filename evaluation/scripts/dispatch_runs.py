@@ -142,13 +142,16 @@ def shell_value(value: str | int | None) -> str:
 
 
 def render_command(command_template: str, run: Run, attempt: int) -> str:
-    transcript_path = run.run_dir / "outputs" / "transcript.md"
+    iteration_dir = run.eval_dir.parent.resolve()
+    eval_dir = run.eval_dir.resolve()
+    run_dir = run.run_dir.resolve()
+    transcript_path = (run.run_dir / "outputs" / "transcript.md").resolve()
     values = {
-        "iteration_dir": shell_value(run.eval_dir.parent),
-        "eval_dir": shell_value(run.eval_dir),
+        "iteration_dir": shell_value(iteration_dir),
+        "eval_dir": shell_value(eval_dir),
         "eval_id": shell_value(run.eval_id),
-        "run_dir": shell_value(run.run_dir),
-        "instructions": shell_value(run.instructions_path),
+        "run_dir": shell_value(run_dir),
+        "instructions": shell_value(run.instructions_path.resolve()),
         "transcript": shell_value(transcript_path),
         "configuration": shell_value(run.configuration),
         "run_number": shell_value(run.run_number),
@@ -331,7 +334,7 @@ def dispatch_iteration(iteration_dir: Path, options: DispatchOptions) -> Dispatc
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Dispatch value-proof runs from a scaffolded iteration directory.")
+    parser = argparse.ArgumentParser(description="Dispatch evaluation runs from a scaffolded iteration directory.")
     parser.add_argument("iteration_dir", type=Path, help="Iteration directory created by run_value_proof.py")
     parser.add_argument("--concurrency", type=int, default=4, help="Parallel worker count; default: 4")
     parser.add_argument("--max-retries", type=int, default=1, help="Retries for failed or empty transcript runs; default: 1")
