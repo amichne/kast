@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/amichne/kast/.agents/skills/kast/value-proof/grading.schema.json",
-  "title": "Kast value-proof grading result",
+  "$id": "https://github.com/amichne/kast/evaluation/grading.schema.json",
+  "title": "Kast evaluation grading result",
   "description": "Per-run grading.json contract. v2 adds: per-expectation kind + applicability + graded_by; structured tool_calls; outcome vs process pass rates separated.",
   "type": "object",
   "required": ["expectations", "summary", "execution_metrics", "timing"],

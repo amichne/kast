@@ -29,10 +29,11 @@ exists in the spec it exists in the CLI, and vice versa.
 Run the smallest useful semantic command first. Load `references/commands.json`
 only when you need request field names, types, or discriminator values.
 
-Do not load `.kast-version`, `fixtures/maintenance`, `value-proof`, or
+Do not load `.kast-version`, `fixtures/maintenance`, the repo-level
+`evaluation/` framework, or
 `references/wrapper-openapi.yaml` during normal navigation.
 
-For skill maintenance, use `value-proof/README.md`.
+For skill maintenance, use `evaluation/README.md`.
 
 ## Routing
 
@@ -100,11 +101,11 @@ Retry the same command once, then report a setup blocker if it still fails.
 - `references/commands.json`: version-keyed command spec with full request
   schemas, response types, discriminated variants, and usage notes.
 - `scripts/kast-session-start.sh`: session bootstrap.
-- `value-proof/catalog.json` and `value-proof/README.md`: behavior evals and
+- `evaluation/catalog.json` and `evaluation/README.md`: behavior evals and
   benchmark workflow.
 
 ## Benchmark rule
 
-When rewriting this skill, snapshot the baseline, run the value-proof or native
+When rewriting this skill, snapshot the baseline, run the evaluation or native
 skill benchmark, aggregate `benchmark.json`, generate the `eval-viewer` review
 artifact, and report score, pass-rate, token, and timing deltas.

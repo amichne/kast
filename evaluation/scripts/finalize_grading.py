@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Finalize a value-proof run's grading.json.
+"""Finalize an evaluation run's grading.json.
 
 Loads:
 - run_dir/grading.json          (raw output from the LLM grader, schema v1 or partial v2)
@@ -307,7 +307,7 @@ def finalize(run_dir: Path, *, workspace_root: Path | None = None) -> dict[str, 
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Finalize a value-proof run's grading.json.")
+    parser = argparse.ArgumentParser(description="Finalize an evaluation run's grading.json.")
     parser.add_argument("--run-dir", type=Path, required=True)
     parser.add_argument("--workspace-root", type=Path, default=None, help="Target Kotlin workspace; used to record git SHA + dirty state.")
     parser.add_argument("--strict", action="store_true", help="Exit non-zero when contradictions or isolation violations are detected.")

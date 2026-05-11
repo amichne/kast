@@ -50,7 +50,7 @@ Use configuration names that describe the comparison clearly:
 The benchmark scripts do not require hard-coded names.
 
 Run `python3 scripts/quick_validate.py /path/to/skill` before packaging or promotion so malformed durable eval assets fail early.
-Run `python3 scripts/aggregate_benchmark.py <benchmark_dir>` only against workspaces that include `eval_metadata.json` and valid `grading.json` artifacts for every run.
+Run `python3 scripts/aggregate_benchmark.py <benchmark_dir>` only against workspaces that include `eval_metadata.json` and valid `grading.json` artifacts for every run. For Kast's consolidated repo-level value evaluation, use `evaluation/scripts/value_proof_aggregate.py` instead.
 If the benchmark is for a consolidation, follow the aggregate step with `python3 scripts/prove_consolidation.py --benchmark <benchmark.json> --candidate-config consolidated_skill --baseline-config legacy_alpha --baseline-config legacy_beta`.
 
 ## Eval case lifecycle
@@ -103,7 +103,7 @@ For each configuration:
 
 1. save the outputs
 2. grade them with `agents/grader.md`
-3. aggregate results with `scripts/aggregate_benchmark.py`
+3. aggregate results with `scripts/aggregate_benchmark.py` (or `evaluation/scripts/value_proof_aggregate.py` for Kast's repo-level value evaluation)
 4. analyze the benchmark with `agents/analyzer.md`
 5. open or export the viewer with `eval-viewer/generate_review.py`
 

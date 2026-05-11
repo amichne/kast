@@ -21,9 +21,7 @@
         { "id": "pm-uses-resolve", "text": "Resolves the member with containingType or fileHint before scanning usages", "kind": "process", "applicability": "with_skill_only", "graded_by": "script" }
       ],
       "labels": ["symbol-disambiguation", "identity-precision"],
-      "stage": "candidate",
-      "source": {"kind": "manual", "summary": "Member identity precision under grep-noisy names"},
-      "promotion": {"required_pass_rate": 1.0, "required_benchmarks": 2}
+      "source": {"kind": "manual", "summary": "Member identity precision under grep-noisy names"}
     },
     {
       "id": "vp-disambiguate-function",
@@ -38,9 +36,7 @@
         { "id": "pf-disambiguates", "text": "Disambiguates the function using containingType, kind, or fileHint", "kind": "process", "applicability": "with_skill_only", "graded_by": "script" }
       ],
       "labels": ["symbol-disambiguation", "call-hierarchy"],
-      "stage": "candidate",
-      "source": {"kind": "manual", "summary": "Function caller precision under overloaded names"},
-      "promotion": {"required_pass_rate": 1.0, "required_benchmarks": 2}
+      "source": {"kind": "manual", "summary": "Function caller precision under overloaded names"}
     },
     {
       "id": "vp-exhaustive-references",
@@ -56,9 +52,7 @@
         { "id": "pr-completeness-evidence", "text": "Backs the completeness claim with structural metadata from the tool, not narrative assertion", "kind": "process", "applicability": "with_skill_only", "graded_by": "llm" }
       ],
       "labels": ["exhaustive-evidence", "references"],
-      "stage": "candidate",
-      "source": {"kind": "manual", "summary": "Cross-workspace reference completeness"},
-      "promotion": {"required_pass_rate": 1.0, "required_benchmarks": 2}
+      "source": {"kind": "manual", "summary": "Cross-workspace reference completeness"}
     },
     {
       "id": "vp-sealed-hierarchy-trace",
@@ -73,9 +67,7 @@
         { "id": "ps-semantic", "text": "Uses semantic resolution (not regex over `class.*Konstrained`) to discover subtypes", "kind": "process", "applicability": "with_skill_only", "graded_by": "script" }
       ],
       "labels": ["exhaustive-evidence", "sealed-hierarchy"],
-      "stage": "candidate",
-      "source": {"kind": "manual", "summary": "Sealed hierarchy completeness"},
-      "promotion": {"required_pass_rate": 1.0, "required_benchmarks": 2}
+      "source": {"kind": "manual", "summary": "Sealed hierarchy completeness"}
     },
     {
       "id": "vp-multi-file-rename",
@@ -92,9 +84,7 @@
       ],
       "labels": ["safe-mutations", "rename"],
       "chain_id": "safe-mutations-chain",
-      "stage": "candidate",
-      "source": {"kind": "manual", "summary": "Safe multi-file rename"},
-      "promotion": {"required_pass_rate": 1.0, "required_benchmarks": 2}
+      "source": {"kind": "manual", "summary": "Safe multi-file rename"}
     },
     {
       "id": "vp-edit-and-validate",
@@ -110,9 +100,7 @@
       ],
       "labels": ["safe-mutations", "write-and-validate"],
       "chain_id": "safe-mutations-chain",
-      "stage": "candidate",
-      "source": {"kind": "manual", "summary": "Atomic edit validation"},
-      "promotion": {"required_pass_rate": 1.0, "required_benchmarks": 2}
+      "source": {"kind": "manual", "summary": "Atomic edit validation"}
     },
     {
       "id": "vp-scaffold-large-class",
@@ -128,9 +116,7 @@
         { "id": "pl-uses-scaffold", "text": "Uses kast_scaffold (not raw file read) as the primary information source", "kind": "process", "applicability": "with_skill_only", "graded_by": "script" }
       ],
       "labels": ["token-efficiency", "scaffold"],
-      "stage": "candidate",
-      "source": {"kind": "manual", "summary": "Structural token efficiency"},
-      "promotion": {"required_pass_rate": 1.0, "required_benchmarks": 2}
+      "source": {"kind": "manual", "summary": "Structural token efficiency"}
     },
     {
       "id": "vp-workspace-discovery",
@@ -145,9 +131,7 @@
         { "id": "pw-single-call", "text": "Completes in a single semantic tool call (kast_workspace_files), not iterative directory traversal", "kind": "process", "applicability": "with_skill_only", "graded_by": "script" }
       ],
       "labels": ["token-efficiency", "workspace-discovery"],
-      "stage": "candidate",
-      "source": {"kind": "manual", "summary": "Workspace discovery efficiency"},
-      "promotion": {"required_pass_rate": 1.0, "required_benchmarks": 2}
+      "source": {"kind": "manual", "summary": "Workspace discovery efficiency"}
     },
     {
       "id": "vp-impact-analysis",
@@ -163,9 +147,7 @@
         { "id": "pi-resolve-first", "text": "Resolves the exact function (containingType disambiguation) before tracing callers", "kind": "process", "applicability": "with_skill_only", "graded_by": "script" }
       ],
       "labels": ["multi-step-workflow", "impact-analysis"],
-      "stage": "candidate",
-      "source": {"kind": "manual", "summary": "Compound impact analysis"},
-      "promotion": {"required_pass_rate": 1.0, "required_benchmarks": 2}
+      "source": {"kind": "manual", "summary": "Compound impact analysis"}
     },
     {
       "id": "vp-cross-module-flow",
@@ -180,9 +162,7 @@
         { "id": "pc-trio", "text": "Uses scaffold + references + callers in sequence (rather than grep) to assemble the flow", "kind": "process", "applicability": "with_skill_only", "graded_by": "script" }
       ],
       "labels": ["multi-step-workflow", "cross-module-flow"],
-      "stage": "candidate",
-      "source": {"kind": "manual", "summary": "Compound cross-module tracing"},
-      "promotion": {"required_pass_rate": 1.0, "required_benchmarks": 2}
+      "source": {"kind": "manual", "summary": "Compound cross-module tracing"}
     }
   ]
 }

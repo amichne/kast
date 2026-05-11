@@ -7,13 +7,13 @@ Only use this on the first run for a repository that does not already have a bin
 Create:
 
 ```text
-.agents/skills/kast/value-proof/bindings/<repo-name>.json
+evaluation/bindings/<repo-name>.json
 ```
 
 Start from:
 
 ```text
-.agents/skills/kast/value-proof/bindings/template.json
+evaluation/bindings/template.json
 ```
 
 ## Slot selection rules
@@ -35,9 +35,9 @@ Prefer stable, non-generated symbols and avoid tests unless the slot explicitly 
 After writing the bindings file, prove it is usable by rendering the catalog:
 
 ```bash
-python3 .agents/skills/kast/value-proof/scripts/render_prompts.py \
-  --catalog .agents/skills/kast/value-proof/catalog.json \
-  --bindings .agents/skills/kast/value-proof/bindings/<repo-name>.json \
+python3 evaluation/scripts/render_prompts.py \
+  --catalog evaluation/catalog.json \
+  --bindings evaluation/bindings/<repo-name>.json \
   --output /tmp/<repo-name>-rendered-catalog.json
 ```
 

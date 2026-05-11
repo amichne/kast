@@ -45,7 +45,7 @@ TRANSIENT_ROOT_FILES = {
     "consolidation_report.md",
     "overlap_report.json",
 }
-GRADING_SCHEMA_PATH = Path(__file__).resolve().parents[2] / "kast" / "value-proof" / "grading.schema.json"
+GRADING_SCHEMA_PATH = Path(__file__).resolve().parents[1] / "schemas" / "grading.schema.json"
 MISPLACED_ARTIFACTS = {
     "catalog.json": ("evals", "catalog.json"),
     "pain_points.jsonl": ("evals", "pain_points.jsonl"),

@@ -83,5 +83,5 @@ runtime.
 - CI runs on both ubuntu and macOS. IntelliJ path filtering should use
   `GlobalSearchScope.projectScope(project)` instead of `project.basePath`
   string comparisons.
-- Keep ephemeral benchmark and value-proof workspaces under `.benchmarks/`
+- Keep ephemeral benchmark and evaluation workspaces under `.benchmarks/`
   inside the repo rather than `/tmp/`.

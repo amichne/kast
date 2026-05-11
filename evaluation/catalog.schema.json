@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/amichne/kast/evaluation/catalog.schema.json",
+  "title": "Kast evaluation catalog",
+  "description": "Catalog for repo-level value-justification evaluations. Focuses on durable prompts, outcome/process expectations, and oracle-backed grading rather than progression gates.",
+  "type": "object",
+  "required": ["skill_name", "version", "cases"],
+  "additionalProperties": false,
+  "properties": {
+    "skill_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "schema_notes": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/case" }
+    }
+  },
+  "$defs": {
+    "expectation": {
+      "type": "object",
+      "required": ["id", "text", "kind", "applicability", "graded_by"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "text": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["outcome", "process"] },
+        "applicability": { "enum": ["both", "with_skill_only", "without_skill_only"] },
+        "graded_by": { "enum": ["script", "llm"] },
+        "oracle": { "type": "string", "minLength": 1 }
+      }
+    },
+    "case": {
+      "type": "object",
+      "required": ["id", "title", "prompt", "expected_output", "expectations", "labels", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1 },
+        "prompt": { "type": "string", "minLength": 1 },
+        "files": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "expected_output": { "type": "string", "minLength": 1 },
+        "expectations": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/expectation" }
+        },
+        "labels": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "chain_id": { "type": "string", "minLength": 1 },
+        "source": {
+          "type": "object",
+          "required": ["kind", "summary"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "type": "string", "minLength": 1 },
+            "summary": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    }
+  }
+}

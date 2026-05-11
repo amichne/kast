@@ -2,6 +2,10 @@
 """
 Aggregate individual run results into benchmark summary statistics.
 
+This remains the generic skill-creator aggregator. For Kast's consolidated
+repo-level value benchmark, use `evaluation/scripts/value_proof_aggregate.py`
+instead; it understands applicability-aware outcome metrics and paired stats.
+
 Reads grading.json files from run directories and produces:
 - run_summary with mean, stddev, min, max for each metric
 - delta between with_skill and without_skill configurations

@@ -9,9 +9,9 @@ import unittest
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1]
-VALUE_PROOF_DIR = SCRIPT_DIR.parent
-SKILLS_ROOT = VALUE_PROOF_DIR.parent.parent
-SKILL_CREATOR_SCRIPT_DIR = SKILLS_ROOT / "skill-creator" / "scripts"
+EVALUATION_DIR = SCRIPT_DIR.parent
+REPO_ROOT = EVALUATION_DIR.parent
+SKILL_CREATOR_SCRIPT_DIR = REPO_ROOT / ".agents" / "skills" / "skill-creator" / "scripts"
 SCRATCH_DIR = Path(__file__).resolve().parent / ".workstream-d-scratch"
 
 for path in (SCRIPT_DIR, SKILL_CREATOR_SCRIPT_DIR):
@@ -62,9 +62,9 @@ class WorkstreamDTests(unittest.TestCase):
         )
 
         self.assertEqual(0, result.returncode, result.stderr)
-        self.assertTrue((iteration_dir / "executive_summary.md").exists())
-        self.assertTrue((iteration_dir / "executive_summary.html").exists())
-        self.assertIn("Kast Value Proof: demo-repo", (iteration_dir / "executive_summary.md").read_text())
+        self.assertTrue((iteration_dir / "executive-summary.md").exists())
+        self.assertTrue((iteration_dir / "executive-summary.html").exists())
+        self.assertIn("Kast Value Proof: demo-repo", (iteration_dir / "executive-summary.md").read_text())
 
     def test_generate_executive_summary_respects_explicit_overrides(self) -> None:
         iteration_dir = SCRATCH_DIR / "iteration-002"
@@ -110,7 +110,7 @@ class WorkstreamDTests(unittest.TestCase):
         )
 
         self.assertEqual(0, result.returncode, result.stderr)
-        self.assertFalse((iteration_dir / "executive_summary.md").exists())
+        self.assertFalse((iteration_dir / "executive-summary.md").exists())
         self.assertTrue((override_dir / "summary.md").exists())
         self.assertTrue((override_dir / "summary.html").exists())
 
