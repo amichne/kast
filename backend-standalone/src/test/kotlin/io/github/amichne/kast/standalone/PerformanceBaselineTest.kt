@@ -9,6 +9,7 @@ import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlin.io.path.createDirectories
@@ -36,6 +37,8 @@ class PerformanceBaselineTest {
         private const val SQLITE_ROUND_TRIP_500_MS = 2_000L
         private const val STARTUP_TO_READY_MS = 15_000L
         private const val CONCURRENT_QUERY_MAX_MS = 10_000L
+        private const val HEAP_BASELINE_500_FILES_MB = 512L
+        private const val MAX_WRITE_HOLD_NANOS = 2_000_000_000L // 2 seconds
         private const val TOLERANCE = 1.2
     }
 
@@ -358,6 +361,89 @@ class PerformanceBaselineTest {
         println("non_blocking_candidate_10_queries_ms: $elapsed")
         assertTrue(elapsed < STARTUP_TO_READY_MS) {
             "Non-blocking candidate queries took ${elapsed}ms, expected fast return"
+        }
+    }
+
+    @Test
+    fun `memory footprint for 500 files`() {
+        val fileCount = 500
+        writeSourceFiles(fileCount)
+
+        StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = sourceRoots(),
+            classpathRoots = emptyList(),
+            moduleName = "perfmod",
+            sourceIndexFileReader = { path -> Files.readString(path) },
+        ).use { session ->
+            session.awaitInitialSourceIndex()
+
+            Runtime.getRuntime().gc()
+            Thread.sleep(200)
+            val runtime = Runtime.getRuntime()
+            val heapUsedBytes = runtime.totalMemory() - runtime.freeMemory()
+            val heapUsedMb = heapUsedBytes / (1024 * 1024)
+
+            println("heap_after_index_${fileCount}_files_mb: $heapUsedMb")
+            assertTrue(heapUsedMb <= HEAP_BASELINE_500_FILES_MB) {
+                "Heap usage after indexing $fileCount files was ${heapUsedMb}MB, " +
+                    "exceeds baseline ${HEAP_BASELINE_500_FILES_MB}MB"
+            }
+        }
+    }
+
+    @Test
+    fun `lock contention during concurrent reads and Phase 2 writes`() {
+        writeSourceFiles(100)
+        val lock = InstrumentedSessionLock()
+
+        StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = sourceRoots(),
+            classpathRoots = emptyList(),
+            moduleName = "perfmod",
+            sourceIndexFileReader = { path -> Files.readString(path) },
+            analysisSessionLock = lock,
+        ).use { session ->
+            session.awaitInitialSourceIndex()
+
+            val readerCount = 5
+            val queriesPerReader = 20
+            val readyLatch = CountDownLatch(readerCount)
+            val startLatch = CountDownLatch(1)
+            val executor = Executors.newFixedThreadPool(readerCount)
+
+            val futures = (0 until readerCount).map { i ->
+                CompletableFuture.supplyAsync(
+                    {
+                        readyLatch.countDown()
+                        startLatch.await()
+                        repeat(queriesPerReader) { q ->
+                            session.withReadAccess {
+                                session.candidateKotlinFilePaths("File${(i * queriesPerReader + q) % 100}", null)
+                            }
+                        }
+                    },
+                    executor,
+                )
+            }
+
+            readyLatch.await()
+            startLatch.countDown()
+            futures.forEach { it.get(CONCURRENT_QUERY_MAX_MS, TimeUnit.MILLISECONDS) }
+            executor.shutdown()
+
+            val maxWriteHold = lock.maxWriteHoldNanos()
+            println("max_write_hold_nanos: $maxWriteHold")
+            assertTrue(maxWriteHold <= MAX_WRITE_HOLD_NANOS) {
+                "Max write hold was ${maxWriteHold}ns, exceeds ${MAX_WRITE_HOLD_NANOS}ns"
+            }
+
+            val overlapping = lock.writeEventsOverlappingReads()
+            println("write_events_overlapping_reads: ${overlapping.size}")
+            assertTrue(overlapping.size <= readerCount * queriesPerReader) {
+                "Write events overlapping reads (${overlapping.size}) is unreasonably high"
+            }
         }
     }
 

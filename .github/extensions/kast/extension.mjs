@@ -17,7 +17,6 @@ import {homedir} from "node:os";
 import {dirname, join, resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {joinSession} from "@github/copilot-sdk/extension";
-import {markShadowedExtensionLoaded} from "../_shared/lib.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(HERE, "..", "..", "..");
@@ -488,6 +487,7 @@ function suggestionFor(toolName) {
 
 const session = await joinSession({
   tools,
+  disabledSkills: ["kast"],
   hooks: {
     onSessionStart: async () => {
       warned.clear();
@@ -523,7 +523,6 @@ const session = await joinSession({
       }
       kastVersion = cliVersion;
 
-      markShadowedExtensionLoaded(REPO_ROOT, "kast");
       await session.log(`kast extension ready (binary: ${bin}, version: ${cliVersion ?? "unknown"})`, { ephemeral: true });
       execBash(
         `${JSON.stringify(bin)} workspace ensure --workspace-root=${JSON.stringify(REPO_ROOT)} --accept-indexing=true`,

@@ -78,6 +78,20 @@ class KastConfigTest {
     }
 
     @Test
+    fun `defaults expose profiling field defaults`() {
+        val config = KastConfig.defaults()
+
+        assertEquals("profiling", config.profiling.enabled.section)
+        assertEquals("enabled", config.profiling.enabled.key)
+        assertEquals(false, config.profiling.enabled.value)
+        assertEquals("cpu", config.profiling.modes.value)
+        assertEquals(30L, config.profiling.durationSeconds.value)
+        assertEquals("{logsDir}/profiling", config.profiling.outputDir.value)
+        assertEquals(OptionalConfigString.Unset, config.profiling.otlpEndpoint.value)
+        assertEquals(true, config.profiling.emitManifest.value)
+    }
+
+    @Test
     fun `configuration field section key pairs are unique and complete`() {
         val expectedFields = setOf(
             "server" to "maxResults",
@@ -100,6 +114,12 @@ class KastConfigTest {
             "telemetry" to "scopes",
             "telemetry" to "detail",
             "telemetry" to "outputFile",
+            "profiling" to "enabled",
+            "profiling" to "modes",
+            "profiling" to "durationSeconds",
+            "profiling" to "outputDir",
+            "profiling" to "otlpEndpoint",
+            "profiling" to "emitManifest",
             "backends.standalone" to "enabled",
             "backends.standalone" to "runtimeLibsDir",
             "backends.intellij" to "enabled",

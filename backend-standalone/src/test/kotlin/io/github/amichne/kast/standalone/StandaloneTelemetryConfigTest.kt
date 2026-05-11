@@ -3,6 +3,8 @@ package io.github.amichne.kast.standalone
 import io.github.amichne.kast.api.client.fields.TelemetryScopes
 import io.github.amichne.kast.api.client.fields.TelemetryEnabled
 import io.github.amichne.kast.api.client.fields.TelemetryDetail
+import io.github.amichne.kast.api.client.fields.OptionalConfigString
+import io.github.amichne.kast.api.client.fields.ProfilingOtlpEndpoint
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetry
 import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetryConfig
@@ -171,6 +173,44 @@ class StandaloneTelemetryConfigTest {
 
         val telemetryFile = configHome.resolve("telemetry/standalone-spans.jsonl")
         assertTrue(Files.isRegularFile(telemetryFile), "Expected telemetry at $telemetryFile")
+    }
+
+    @Test
+    fun `configFrom uses profiling otlp endpoint when env is unset`() {
+        val telemetryConfig = StandaloneTelemetry.configFrom(
+            workspaceRoot = workspaceRoot,
+            config = KastConfig.defaults().copy(
+                telemetry = KastConfig.defaults().telemetry.copy(
+                    enabled = TelemetryEnabled(true),
+                    scopes = TelemetryScopes("workspace-files"),
+                ),
+                profiling = KastConfig.defaults().profiling.copy(
+                    otlpEndpoint = ProfilingOtlpEndpoint(OptionalConfigString("http://config:4317")),
+                ),
+            ),
+            envLookup = { null },
+        )
+
+        assertEquals("http://config:4317", telemetryConfig?.otlpEndpoint)
+    }
+
+    @Test
+    fun `configFrom prefers environment otlp endpoint over profiling config`() {
+        val telemetryConfig = StandaloneTelemetry.configFrom(
+            workspaceRoot = workspaceRoot,
+            config = KastConfig.defaults().copy(
+                telemetry = KastConfig.defaults().telemetry.copy(
+                    enabled = TelemetryEnabled(true),
+                    scopes = TelemetryScopes("workspace-files"),
+                ),
+                profiling = KastConfig.defaults().profiling.copy(
+                    otlpEndpoint = ProfilingOtlpEndpoint(OptionalConfigString("http://config:4317")),
+                ),
+            ),
+            envLookup = mapOf("KAST_OTLP_ENDPOINT" to "http://env:4317")::get,
+        )
+
+        assertEquals("http://env:4317", telemetryConfig?.otlpEndpoint)
     }
 
     // --- Detail parsing ---

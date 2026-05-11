@@ -14,6 +14,7 @@ data class KastConfig(
     val watcher: WatcherConfig,
     val gradle: GradleConfig,
     val telemetry: TelemetryConfig,
+    val profiling: ProfilingConfig,
     val backends: BackendsConfig,
     val paths: PathsConfig,
     val cli: CliConfig,
@@ -67,6 +68,14 @@ data class KastConfig(
                     scopes = TelemetryScopes("all"),
                     detail = TelemetryDetail("basic"),
                     outputFile = TelemetryOutputFile(OptionalConfigString.Unset),
+                ),
+                profiling = ProfilingConfig(
+                    enabled = ProfilingEnabled(false),
+                    modes = ProfilingModes("cpu"),
+                    durationSeconds = ProfilingDurationSeconds(30L),
+                    outputDir = ProfilingOutputDir("{logsDir}/profiling"),
+                    otlpEndpoint = ProfilingOtlpEndpoint(OptionalConfigString.Unset),
+                    emitManifest = ProfilingEmitManifest(true),
                 ),
                 backends = BackendsConfig(
                     standalone = StandaloneBackendConfig(
@@ -155,6 +164,15 @@ data class TelemetryConfig(
     val outputFile: TelemetryOutputFile,
 )
 
+data class ProfilingConfig(
+    val enabled: ProfilingEnabled,
+    val modes: ProfilingModes,
+    val durationSeconds: ProfilingDurationSeconds,
+    val outputDir: ProfilingOutputDir,
+    val otlpEndpoint: ProfilingOtlpEndpoint,
+    val emitManifest: ProfilingEmitManifest,
+)
+
 data class BackendsConfig(
     val standalone: StandaloneBackendConfig,
     val intellij: IntellijBackendConfig,
@@ -190,6 +208,7 @@ data class KastConfigOverride(
     val watcher: WatcherConfigOverride? = null,
     val gradle: GradleConfigOverride? = null,
     val telemetry: TelemetryConfigOverride? = null,
+    val profiling: ProfilingConfigOverride? = null,
     val backends: BackendsConfigOverride? = null,
     val paths: PathsConfigOverride? = null,
     val cli: CliConfigOverride? = null,
@@ -237,6 +256,15 @@ data class TelemetryConfigOverride(
     val outputFile: TelemetryOutputFile? = null,
 )
 
+data class ProfilingConfigOverride(
+    val enabled: ProfilingEnabled? = null,
+    val modes: ProfilingModes? = null,
+    val durationSeconds: ProfilingDurationSeconds? = null,
+    val outputDir: ProfilingOutputDir? = null,
+    val otlpEndpoint: ProfilingOtlpEndpoint? = null,
+    val emitManifest: ProfilingEmitManifest? = null,
+)
+
 data class BackendsConfigOverride(
     val standalone: StandaloneBackendConfigOverride? = null,
     val intellij: IntellijBackendConfigOverride? = null,
@@ -274,6 +302,7 @@ private fun KastConfig.merge(override: KastConfigOverride): KastConfig {
         watcher = watcher.merge(override.watcher),
         gradle = gradle.merge(override.gradle),
         telemetry = telemetry.merge(override.telemetry),
+        profiling = profiling.merge(override.profiling),
         backends = backends.merge(override.backends, mergedPaths),
         paths = mergedPaths,
         cli = cli.merge(override.cli, mergedPaths),
@@ -320,6 +349,15 @@ private fun TelemetryConfig.merge(override: TelemetryConfigOverride?): Telemetry
     scopes = override?.scopes ?: scopes,
     detail = override?.detail ?: detail,
     outputFile = override?.outputFile ?: outputFile,
+)
+
+private fun ProfilingConfig.merge(override: ProfilingConfigOverride?): ProfilingConfig = copy(
+    enabled = override?.enabled ?: enabled,
+    modes = override?.modes ?: modes,
+    durationSeconds = override?.durationSeconds ?: durationSeconds,
+    outputDir = override?.outputDir ?: outputDir,
+    otlpEndpoint = override?.otlpEndpoint ?: otlpEndpoint,
+    emitManifest = override?.emitManifest ?: emitManifest,
 )
 
 private fun BackendsConfig.merge(

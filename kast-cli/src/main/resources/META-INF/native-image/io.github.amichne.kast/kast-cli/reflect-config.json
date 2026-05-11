@@ -92,6 +92,30 @@
     "allPublicConstructors": true
   },
   {
+    "name": "io.github.amichne.kast.api.client.fields.ProfilingDurationSeconds",
+    "allPublicConstructors": true
+  },
+  {
+    "name": "io.github.amichne.kast.api.client.fields.ProfilingEnabled",
+    "allPublicConstructors": true
+  },
+  {
+    "name": "io.github.amichne.kast.api.client.fields.ProfilingEmitManifest",
+    "allPublicConstructors": true
+  },
+  {
+    "name": "io.github.amichne.kast.api.client.fields.ProfilingModes",
+    "allPublicConstructors": true
+  },
+  {
+    "name": "io.github.amichne.kast.api.client.fields.ProfilingOtlpEndpoint",
+    "allPublicConstructors": true
+  },
+  {
+    "name": "io.github.amichne.kast.api.client.fields.ProfilingOutputDir",
+    "allPublicConstructors": true
+  },
+  {
     "name": "io.github.amichne.kast.api.client.fields.ServerMaxConcurrentRequests",
     "allPublicConstructors": true
   },

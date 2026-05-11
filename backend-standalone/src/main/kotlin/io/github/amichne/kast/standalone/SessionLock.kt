@@ -1,5 +1,7 @@
 package io.github.amichne.kast.standalone
 
+import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetry
+import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetryScope
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.locks.ReentrantReadWriteLock
@@ -48,6 +50,93 @@ internal class ReentrantSessionLock : SessionLock {
         } finally {
             lock.writeLock().unlock()
         }
+    }
+}
+
+/**
+ * Production lock wrapper that emits telemetry spans for lock wait and hold
+ * durations. Only emits spans when the wait time exceeds [waitThresholdNanos]
+ * to avoid flooding the trace output for uncontended acquisitions.
+ */
+internal class TelemetrySessionLock(
+    private val telemetry: StandaloneTelemetry,
+    private val waitThresholdNanos: Long = 1_000_000L, // 1 ms
+) : SessionLock {
+    private val delegate = ReentrantSessionLock()
+
+    override fun <T> read(action: () -> T): T {
+        val entryNanos = System.nanoTime()
+        return delegate.read {
+            val acquiredNanos = System.nanoTime()
+            val result = action()
+            val releaseNanos = System.nanoTime()
+            emitSpan(
+                name = "kast.lock.read",
+                waitNanos = acquiredNanos - entryNanos,
+                holdNanos = releaseNanos - acquiredNanos,
+            )
+            result
+        }
+    }
+
+    override fun <T> write(action: () -> T): T {
+        val entryNanos = System.nanoTime()
+        return delegate.write {
+            val acquiredNanos = System.nanoTime()
+            val result = action()
+            val releaseNanos = System.nanoTime()
+            emitSpan(
+                name = "kast.lock.write",
+                waitNanos = acquiredNanos - entryNanos,
+                holdNanos = releaseNanos - acquiredNanos,
+            )
+            result
+        }
+    }
+
+    override fun <T> tryWrite(timeoutMillis: Long, action: () -> T): T? {
+        val entryNanos = System.nanoTime()
+        return delegate.tryWrite(timeoutMillis) {
+            val acquiredNanos = System.nanoTime()
+            val result = action()
+            val releaseNanos = System.nanoTime()
+            emitSpan(
+                name = "kast.lock.write",
+                waitNanos = acquiredNanos - entryNanos,
+                holdNanos = releaseNanos - acquiredNanos,
+                acquired = true,
+            )
+            result
+        }.also { outcome ->
+            if (outcome == null) {
+                val waitNanos = System.nanoTime() - entryNanos
+                emitSpan(
+                    name = "kast.lock.write",
+                    waitNanos = waitNanos,
+                    holdNanos = 0L,
+                    acquired = false,
+                )
+            }
+        }
+    }
+
+    private fun emitSpan(
+        name: String,
+        waitNanos: Long,
+        holdNanos: Long,
+        acquired: Boolean = true,
+    ) {
+        if (waitNanos < waitThresholdNanos) return
+        telemetry.inSpan(
+            scope = StandaloneTelemetryScope.SESSION_LOCK,
+            name = name,
+            attributes = mapOf(
+                "kast.lock.waitNanos" to waitNanos,
+                "kast.lock.holdNanos" to holdNanos,
+                "kast.lock.caller" to Thread.currentThread().name,
+                "kast.lock.acquired" to acquired,
+            ),
+        ) { /* attributes already attached */ }
     }
 }
 

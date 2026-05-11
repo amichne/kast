@@ -11,6 +11,7 @@ import io.opentelemetry.sdk.trace.data.EventData
 import io.opentelemetry.sdk.trace.data.SpanData
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor
 import io.opentelemetry.sdk.trace.export.SpanExporter
+import io.opentelemetry.exporter.otlp.trace.OtlpGrpcSpanExporter
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -70,13 +71,21 @@ internal class StandaloneTelemetry private constructor(
                 return disabled()
             }
 
-            val exporter = JsonLineSpanExporter(
+            val jsonlExporter = JsonLineSpanExporter(
                 outputFile = config.outputFile,
                 detail = config.detail,
             )
-            val tracerProvider = SdkTracerProvider.builder()
-                .addSpanProcessor(SimpleSpanProcessor.create(exporter))
-                .build()
+            val tracerProviderBuilder = SdkTracerProvider.builder()
+                .addSpanProcessor(SimpleSpanProcessor.create(jsonlExporter))
+
+            if (!config.otlpEndpoint.isNullOrBlank()) {
+                val otlpExporter = OtlpGrpcSpanExporter.builder()
+                    .setEndpoint(config.otlpEndpoint)
+                    .build()
+                tracerProviderBuilder.addSpanProcessor(SimpleSpanProcessor.create(otlpExporter))
+            }
+
+            val tracerProvider = tracerProviderBuilder.build()
             val openTelemetry = OpenTelemetrySdk.builder()
                 .setTracerProvider(tracerProvider)
                 .build()
@@ -91,9 +100,24 @@ internal class StandaloneTelemetry private constructor(
             workspaceRoot: Path,
             config: KastConfig = KastConfig.load(workspaceRoot),
             configHome: () -> Path = { kastConfigHome() },
+            envLookup: (String) -> String? = System::getenv,
         ): StandaloneTelemetry {
+            return configFrom(
+                workspaceRoot = workspaceRoot,
+                config = config,
+                configHome = configHome,
+                envLookup = envLookup,
+            )?.let(::create) ?: disabled()
+        }
+
+        internal fun configFrom(
+            workspaceRoot: Path,
+            config: KastConfig,
+            configHome: () -> Path = { kastConfigHome() },
+            envLookup: (String) -> String? = System::getenv,
+        ): StandaloneTelemetryConfig? {
             if (!config.telemetry.enabled.value) {
-                return disabled()
+                return null
             }
 
             val scopes = if (config.telemetry.scopes.value.equals("all", ignoreCase = true)) {
@@ -107,14 +131,16 @@ internal class StandaloneTelemetry private constructor(
                 workspaceRoot = workspaceRoot,
                 configHome = configHome,
             )
+            val otlpEndpoint = envLookup("KAST_OTLP_ENDPOINT")
+                ?.takeIf(String::isNotBlank)
+                ?: config.profiling.otlpEndpoint.value.orNull?.takeIf(String::isNotBlank)
 
-            return create(
-                StandaloneTelemetryConfig(
-                    enabled = true,
-                    scopes = scopes,
-                    detail = detail,
-                    outputFile = outputFile,
-                ),
+            return StandaloneTelemetryConfig(
+                enabled = true,
+                scopes = scopes,
+                detail = detail,
+                outputFile = outputFile,
+                otlpEndpoint = otlpEndpoint,
             )
         }
 

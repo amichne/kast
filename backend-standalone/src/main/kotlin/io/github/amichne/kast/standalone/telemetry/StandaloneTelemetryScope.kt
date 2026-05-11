@@ -13,6 +13,8 @@ internal enum class StandaloneTelemetryScope {
     SESSION_LOCK,
     SESSION_LIFECYCLE,
     INDEXING,
+    MEMORY,
+    IO,
     ;
 
     companion object {
@@ -29,6 +31,8 @@ internal enum class StandaloneTelemetryScope {
             "session-lock", "session_lock", "sessionlock", "lock" -> SESSION_LOCK
             "session-lifecycle", "session_lifecycle", "sessionlifecycle", "lifecycle" -> SESSION_LIFECYCLE
             "indexing", "index" -> INDEXING
+            "memory", "mem" -> MEMORY
+            "io", "file-io", "file_io", "fileio" -> IO
             else -> null
         }
     }

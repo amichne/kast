@@ -50,14 +50,12 @@ class EmbeddedCopilotExtensionResourcesTest {
     }
 
     @Test
-    fun packagedSkillShadowingJsonKeepsOnlyPortableEntries() {
+    fun skillShadowingJsonTracksExtensionBackedSkills() {
         val repoRoot = findRepoRoot(Path.of("").toAbsolutePath())
         val sourceSkills = parseSkillShadowing(repoRoot.resolve(".github/hooks/skill-shadowing.json"))
 
-        assertTrue(
-            sourceSkills.any { it.shadowingExtensionId == null },
-            "Source skill-shadowing.json should keep repo-local entries for the kast repo",
-        )
+        assertEquals(listOf("kast", "kotlin-gradle-loop"), sourceSkills.map(ShadowedSkill::id))
+        assertTrue(sourceSkills.all { it.shadowingExtensionId != null })
 
         val targetDir = tempDir.resolve(".github")
         EmbeddedCopilotExtensionResources(version = "test").writeCopilotExtensionTree(targetDir)

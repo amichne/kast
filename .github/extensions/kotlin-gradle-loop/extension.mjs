@@ -1,11 +1,9 @@
 import {execFile} from "node:child_process";
-import {dirname, join, resolve} from "node:path";
+import {dirname, join} from "node:path";
 import {fileURLToPath} from "node:url";
 import {joinSession} from "@github/copilot-sdk/extension";
-import {markShadowedExtensionLoaded} from "../_shared/lib.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = resolve(HERE, "..", "..", "..");
 const SCRIPT_DIR = join(HERE, "scripts");
 
 function execBash(command) {
@@ -82,6 +80,8 @@ const tools = [
   },
 ];
 
-const session = await joinSession({ tools });
-markShadowedExtensionLoaded(REPO_ROOT, "kotlin-gradle-loop");
+const session = await joinSession({
+  tools,
+  disabledSkills: ["kotlin-gradle-loop"],
+});
 await session.log("gradle-suite extension ready", { ephemeral: true });

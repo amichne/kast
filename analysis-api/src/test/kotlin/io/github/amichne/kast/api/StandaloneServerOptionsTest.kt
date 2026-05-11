@@ -2,6 +2,7 @@ package io.github.amichne.kast.api.client
 
 import io.github.amichne.kast.api.client.fields.ServerMaxConcurrentRequests
 import io.github.amichne.kast.api.client.fields.ServerMaxResults
+import io.github.amichne.kast.api.client.fields.OptionalConfigString
 import io.github.amichne.kast.api.client.fields.ServerRequestTimeoutMillis
 import io.github.amichne.kast.api.contract.*
 
@@ -92,5 +93,30 @@ class StandaloneServerOptionsTest {
         assertEquals(42, options.maxResults)
         assertEquals(1234L, options.requestTimeoutMillis)
         assertEquals(7, options.maxConcurrentRequests)
+    }
+
+    @Test
+    fun `profiling flags survive round trip`() {
+        val options = StandaloneServerOptions.parse(
+            arrayOf(
+                "--workspace-root=$tempDir",
+                "--profile",
+                "--profile-modes=cpu,alloc",
+                "--profile-duration=45",
+                "--profile-otlp-endpoint=http://localhost:4317",
+            ),
+        )
+
+        assertEquals(true, options.profilingOverride?.enabled?.value)
+        assertEquals("cpu,alloc", options.profilingOverride?.modes?.value)
+        assertEquals(45L, options.profilingOverride?.durationSeconds?.value)
+        assertEquals(
+            OptionalConfigString("http://localhost:4317"),
+            options.profilingOverride?.otlpEndpoint?.value,
+        )
+        assertTrue(options.toCliArguments().contains("--profile"))
+        assertTrue(options.toCliArguments().contains("--profile-modes=cpu,alloc"))
+        assertTrue(options.toCliArguments().contains("--profile-duration=45"))
+        assertTrue(options.toCliArguments().contains("--profile-otlp-endpoint=http://localhost:4317"))
     }
 }

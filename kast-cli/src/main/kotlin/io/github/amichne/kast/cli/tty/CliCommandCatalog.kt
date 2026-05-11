@@ -491,10 +491,11 @@ internal object CliCommandCatalog {
                 "The process runs in the foreground; use a terminal multiplexer or background shell job to keep it alive. " +
                 "The backend runtime-libs are located from backends.standalone.runtimeLibsDir in config.toml. " +
                 "Pass --runtime-libs-dir to override the configured path. " +
+                "Pass profiling options to temporarily override the profiling config for this daemon process. " +
                 "All other options are forwarded verbatim to the backend process. " +
                 "Once running, send analysis commands with `$CLI_EXECUTABLE_NAME workspace ensure --workspace-root=<path>` to verify it is ready.",
             usages = listOf(
-                "$CLI_EXECUTABLE_NAME daemon start --workspace-root=/absolute/path/to/workspace [--socket-path=...] [--runtime-libs-dir=...]",
+                "$CLI_EXECUTABLE_NAME daemon start --workspace-root=/absolute/path/to/workspace [--socket-path=...] [--runtime-libs-dir=...] [--profile] [--profile-modes=cpu,alloc]",
             ),
             options = listOf(
                 workspaceRootOption,
@@ -529,11 +530,32 @@ internal object CliCommandCatalog {
                     usage = "--max-results=500",
                     description = "Maximum results the backend returns per request. Defaults to 500.",
                 ),
+                CliOptionMetadata(
+                    key = "profile",
+                    usage = "--profile",
+                    description = "Enable profiling for this daemon process using the configured or overridden profiling settings.",
+                ),
+                CliOptionMetadata(
+                    key = "profile-modes",
+                    usage = "--profile-modes=cpu,alloc",
+                    description = "Comma-separated profiling modes to enable for this daemon process.",
+                ),
+                CliOptionMetadata(
+                    key = "profile-duration",
+                    usage = "--profile-duration=45",
+                    description = "Profiling duration in seconds for each requested mode.",
+                ),
+                CliOptionMetadata(
+                    key = "profile-otlp-endpoint",
+                    usage = "--profile-otlp-endpoint=http://localhost:4317",
+                    description = "OTLP endpoint override for telemetry export while profiling is enabled.",
+                ),
             ),
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME daemon start --workspace-root=/absolute/path/to/workspace",
                 "$CLI_EXECUTABLE_NAME daemon start --workspace-root=/absolute/path/to/workspace --module-name=myApp",
                 "$CLI_EXECUTABLE_NAME daemon start --workspace-root=/absolute/path/to/workspace --runtime-libs-dir=/path/to/runtime-libs",
+                "$CLI_EXECUTABLE_NAME daemon start --workspace-root=/absolute/path/to/workspace --profile --profile-modes=cpu,alloc --profile-duration=45",
             ),
         ),
         CliCommandMetadata(

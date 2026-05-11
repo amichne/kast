@@ -83,9 +83,15 @@ class InstallCopilotExtensionServiceTest {
 
         val extensionSource = Files.readString(targetDir.resolve("extensions/kast/extension.mjs"))
         assertTrue(extensionSource.contains("""join(homedir(), ".kast", "bin", "kast")"""))
+        assertTrue(extensionSource.contains("""disabledSkills: ["kast"]"""))
         assertTrue(extensionSource.contains("workspace ensure --workspace-root="))
         assertTrue(extensionSource.contains("install copilot-extension --target-dir="))
         assertFalse(extensionSource.contains("KAST EXTENSION BLOCKED"))
+        assertFalse(extensionSource.contains("markShadowedExtensionLoaded"))
+
+        val gradleExtensionSource = Files.readString(targetDir.resolve("extensions/kotlin-gradle-loop/extension.mjs"))
+        assertTrue(gradleExtensionSource.contains("""disabledSkills: ["kotlin-gradle-loop"]"""))
+        assertFalse(gradleExtensionSource.contains("markShadowedExtensionLoaded"))
     }
 
     @Test
