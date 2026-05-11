@@ -25,10 +25,3 @@ hook_skill_state_file() {
     session_key="$(_sha256_hex "${repo_root}")"
     printf '%s/copilot-hook-required-skills-%s.txt\n' "${TMPDIR:-/tmp}" "${session_key}"
 }
-
-hook_shadowed_extension_state_file() {
-    local repo_root="$1"
-    local session_key
-    session_key="$(_sha256_hex "${repo_root}")"
-    printf '%s/copilot-hook-shadowed-extensions-%s.txt\n' "${TMPDIR:-/tmp}" "${session_key}"
-}
