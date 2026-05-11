@@ -1,48 +1,61 @@
-Create a unified evaluation framework at the repository root level in michne/kast:
+Move four inline Gradle task classes from module build scripts into build-logic/src/main/kotlin/ to reduce build script complexity and follow the established pattern.
 
-1. **Create new top-level directory structure:**
-   - Create `evaluation/` directory
-   - Create `evaluation/bindings/` directory
-   - Create `evaluation/scripts/` directory
-   - Create `evaluation/fixtures/` directory
+## Tasks to move
 
-2. **Migrate scripts from value-proof:**
-   - Move all files from `.agents/skills/kast/value-proof/scripts/` to `evaluation/scripts/`
-   - Keep `value_proof_aggregate.py` as the primary aggregator (it has paired Wilcoxon and applicability-aware logic)
-   - Remove or deprecate `.agents/skills/skill-creator/scripts/aggregate_benchmark.py` (it lacks value-proof specific features)
-   - Create `evaluation/scripts/run_evaluation.py` that orchestrates the full value-proof workflow (render, dispatch, grade, aggregate)
+From `backend-standalone/build.gradle.kts`:
+1. `ExtractIdeaDistributionTask` (lines 32-91) - extracts IntelliJ IDEA distribution zip with version caching
+2. `ExtractLegacyPluginClassesTask` (lines 295-361) - extracts specific plugin classes from kotlin-compiler.jar
 
-3. **Create unified catalog:**
-   - Create `evaluation/catalog.json` based on `.agents/skills/kast/value-proof/catalog.json`
-   - Use the value-proof catalog schema as the base (with applicability, outcome/process expectations, oracle refs)
-   - Remove progression gate concepts (stage, promotion requirements) - focus on value demonstration
-   - Create `evaluation/catalog.schema.json` that defines the schema for value-proof evaluation
+From `backend-intellij/build.gradle.kts`:
+3. `WriteBackendVersionTask` (lines 16-30) - writes backend version to a file
+4. `VerifyPluginXmlPresentTask` (lines 32-85) - verifies plugin.xml content in built plugin zip
 
-4. **Update skill references:**
-   - Update `.agents/skills/kast-value-proof-runner/SKILL.md` to point to new `evaluation/` location instead of `.agents/skills/kast/value-proof/`
-   - Update `.agents/skills/skill-creator/SKILL.md` to reference the consolidated evaluation framework for value justification
-   - Update any references in `.agents/skills/kast/value-proof/` to point to the new `evaluation/` location
+## Implementation steps
 
-5. **Update CI workflows:**
-   - Update `.github/workflows/` files that reference value-proof scripts to use `evaluation/scripts/` instead
-   - Update any workflow steps that reference `.agents/skills/kast/value-proof/` to use `evaluation/`
+### Step 1: Move ExtractIdeaDistributionTask
+Create `build-logic/src/main/kotlin/ExtractIdeaDistributionTask.kt`:
+- Copy the task class from `backend-standalone/build.gradle.kts` lines 32-91
+- Add necessary imports at the top
+- Keep the `@CacheableTask` annotation and all input/output properties
 
-6. **Update AGENTS.md:**
-   - Update the contract surface inventory in AGENTS.md (around lines 172-182) to reflect the new evaluation structure
-   - Replace references to `.agents/skills/kast/value-proof/` with `evaluation/`
+Update `backend-standalone/build.gradle.kts`:
+- Remove the task class definition (lines 32-91)
+- Remove the import for `java.nio.file.AtomicMoveNotSupportedException`, `java.nio.file.Files`, `java.nio.file.StandardCopyOption`, `java.util.zip.ZipFile` if no longer needed
+- Add import for the moved task class from build-logic
+- Keep the task registration and configuration (lines 93-97) unchanged
 
-7. **Create documentation:**
-   - Create `evaluation/README.md` as the single source of truth for:
-     - How to run value-proof evaluations
-     - How to add new eval cases focused on value demonstration
-     - How to interpret results (outcome_pass_rate, Wilcoxon significance, integrity checks)
-     - The value proposition framework (why this evaluation proves value)
-   - Include migration guide from the old scattered structure
-   - Emphasize that this is for value justification, not iterative progression
+### Step 2: Move ExtractLegacyPluginClassesTask
+Create `build-logic/src/main/kotlin/ExtractLegacyPluginClassesTask.kt`:
+- Copy the task class from `backend-standalone/build.gradle.kts` lines 295-361
+- Add necessary imports
+- Keep the `@CacheableTask` annotation
 
-8. **Clean up old structure:**
-   - Remove `.agents/skills/kast/value-proof/` directory after migration (or leave as deprecated with pointer to new location)
-   - Do NOT move `.agents/skills/kast/value-proof/history/` - do not preserve progression data
-   - Leave `parity-tests/` in place as a separate Gradle module for backend development (not part of value justification)
+Update `backend-standalone/build.gradle.kts`:
+- Remove the task class definition (lines 295-361)
+- Remove the import for `java.util.zip.ZipFile` if no longer needed
+- Add import for the moved task class
+- Keep the task registration and configuration (lines 363-369) unchanged
 
-The goal is to have one place (`evaluation/`) where anyone can go to understand, run, and extend the evaluation framework for value justification, with clear separation between the evaluation infrastructure and the agent-facing skills.
+### Step 3: Move WriteBackendVersionTask
+Create `build-logic/src/main/kotlin/WriteBackendVersionTask.kt`:
+- Copy the task class from `backend-intellij/build.gradle.kts` lines 16-30
+- Add necessary imports
+
+Update `backend-intellij/build.gradle.kts`:
+- Remove the task class definition (lines 16-30)
+- Add import for the moved task class
+- Keep the task registration and configuration (lines 149-152) unchanged
+
+### Step 4: Move VerifyPluginXmlPresentTask
+Create `build-logic/src/main/kotlin/VerifyPluginXmlPresentTask.kt`:
+- Copy the task class from `backend-intellij/build.gradle.kts` lines 32-85
+- Add necessary imports
+
+Update `backend-intellij/build.gradle.kts`:
+- Remove the task class definition (lines 32-85)
+- Remove imports for `java.util.zip.ZipFile`, `java.util.jar.JarInputStream`, and Gradle task annotation imports if no longer needed
+- Add import for the moved task class
+- Keep the task registration and configuration (lines 173-178) unchanged
+
+## Verification
+After each step, run `./gradlew :backend-standalone:build` or `./gradlew :backend-intellij:build` to ensure the build still works correctly. The tasks should behave identically since only their location changes, not their logic.
