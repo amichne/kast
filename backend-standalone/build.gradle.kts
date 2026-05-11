@@ -1,11 +1,9 @@
 import org.gradle.jvm.tasks.Jar
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import ExtractIdeaDistributionTask
+import ExtractLegacyPluginClassesTask
 import ShrinkRuntimeLibsTask
 import WriteWrapperScriptTask
-import java.nio.file.AtomicMoveNotSupportedException
-import java.nio.file.Files
-import java.nio.file.StandardCopyOption
-import java.util.zip.ZipFile
 
 plugins {
     id("kast.standalone-serialization-app")
@@ -27,67 +25,6 @@ val ideaDistribution: Configuration by configurations.creating {
 
 private val extractedIdeaDistributionDirectory = objects.directoryProperty().apply {
     set(file(gradle.gradleUserHomeDir.resolve("kast/intellij-distributions/$intellijIdeaVersion")))
-}
-
-@CacheableTask
-abstract class ExtractIdeaDistributionTask : DefaultTask() {
-    @get:InputFiles
-    @get:PathSensitive(PathSensitivity.NONE)
-    abstract val archives: ConfigurableFileCollection
-
-    @get:Input
-    abstract val ideaVersion: Property<String>
-
-    @get:OutputDirectory
-    abstract val outputDirectory: DirectoryProperty
-
-    @TaskAction
-    fun extract() {
-        val archiveFile = archives.singleFile
-        val outputRoot = outputDirectory.get().asFile.toPath()
-        val versionMarker = outputRoot.resolve(".kast-intellij-version")
-        if (Files.isDirectory(outputRoot) && Files.isRegularFile(versionMarker)) {
-            if (Files.readString(versionMarker).trim() == ideaVersion.get()) {
-                return
-            }
-        }
-
-        val parent = outputRoot.parent
-                     ?: throw GradleException("IntelliJ extraction output must have a parent directory: $outputRoot")
-        Files.createDirectories(parent)
-        val tempRoot = Files.createTempDirectory(parent, "${outputRoot.fileName}.tmp-")
-        try {
-            ZipFile(archiveFile).use { archive ->
-                val entries = archive.entries()
-                while (entries.hasMoreElements()) {
-                    val entry = entries.nextElement()
-                    val target = tempRoot.resolve(entry.name).normalize()
-                    if (!target.startsWith(tempRoot)) {
-                        throw GradleException("Zip-slip attempt detected while extracting ${entry.name} from $archiveFile.")
-                    }
-
-                    if (entry.isDirectory) {
-                        Files.createDirectories(target)
-                        continue
-                    }
-
-                    target.parent?.let(Files::createDirectories)
-                    archive.getInputStream(entry).use { input ->
-                        Files.copy(input, target, StandardCopyOption.REPLACE_EXISTING)
-                    }
-                }
-            }
-            Files.writeString(tempRoot.resolve(".kast-intellij-version"), ideaVersion.get())
-            outputRoot.toFile().deleteRecursively()
-            try {
-                Files.move(tempRoot, outputRoot, StandardCopyOption.ATOMIC_MOVE)
-            } catch (_: AtomicMoveNotSupportedException) {
-                Files.move(tempRoot, outputRoot, StandardCopyOption.REPLACE_EXISTING)
-            }
-        } finally {
-            tempRoot.toFile().deleteRecursively()
-        }
-    }
 }
 
 val extractIdeaDistribution: TaskProvider<ExtractIdeaDistributionTask> by tasks.registering(ExtractIdeaDistributionTask::class) {
@@ -290,74 +227,6 @@ private val ideaRuntimeLibs: ConfigurableFileCollection = extractedIdeaFiles {
     // Keep the Gradle-resolved serialization runtime ahead of IntelliJ-bundled copies.
     exclude("**/module-intellij.libraries.kotlinx.serialization.core.jar")
     exclude("**/module-intellij.libraries.kotlinx.serialization.json.jar")
-}
-
-@CacheableTask
-abstract class ExtractLegacyPluginClassesTask : DefaultTask() {
-    @get:InputDirectory
-    @get:PathSensitive(PathSensitivity.RELATIVE)
-    abstract val ideaDistributionDirectory: DirectoryProperty
-
-    @get:OutputDirectory
-    abstract val outputDirectory: DirectoryProperty
-
-    @TaskAction
-    fun extract() {
-        val distributionRoot = ideaDistributionDirectory.get().asFile
-        val compilerJar = distributionRoot.walkTopDown()
-                              .firstOrNull { file ->
-                                  file.isFile && file.name == "kotlin-compiler.jar" &&
-                                  file.invariantSeparatorsPath.contains("/plugins/Kotlin/kotlinc/lib/")
-                              }
-                          ?: throw GradleException(
-                              "IntelliJ IDEA distribution under $distributionRoot did not contain plugins/Kotlin/kotlinc/lib/kotlin-compiler.jar.",
-                          )
-
-        val excludedEntries = setOf(
-            "com/intellij/ide/plugins/ContainerDescriptor.class",
-            "com/intellij/ide/plugins/IdeaPluginDescriptorImpl.class",
-            "com/intellij/ide/plugins/IdeaPluginDescriptorImplKt.class",
-            "com/intellij/ide/plugins/PluginDescriptorLoader.class",
-            $$"com/intellij/ide/plugins/PluginDescriptorLoader$loadForCoreEnv$1.class",
-            "com/intellij/ide/plugins/DataLoader.class",
-            "com/intellij/ide/plugins/ImmutableZipFileDataLoader.class",
-            "com/intellij/ide/plugins/NonShareableJavaZipFilePool.class",
-        )
-        val excludedPrefixes = listOf(
-            "com/intellij/ide/plugins/ImmutableZipFileDataLoader$",
-            "com/intellij/ide/plugins/NonShareableJavaZipFilePool$",
-        )
-        val outputRoot = outputDirectory.get().asFile
-        outputRoot.deleteRecursively()
-        outputRoot.mkdirs()
-
-        ZipFile(compilerJar).use { archive ->
-            val entries = archive.entries()
-            while (entries.hasMoreElements()) {
-                val entry = entries.nextElement()
-                if (entry.isDirectory) {
-                    continue
-                }
-
-                val name = entry.name
-                val included =
-                    name.startsWith("com/intellij/ide/plugins/") && name.endsWith(".class") ||
-                    name == "com/intellij/util/messages/ListenerDescriptor.class"
-                val excluded = name in excludedEntries || excludedPrefixes.any(name::startsWith)
-                if (!included || excluded) {
-                    continue
-                }
-
-                val target = outputRoot.resolve(name)
-                target.parentFile.mkdirs()
-                archive.getInputStream(entry).use { input ->
-                    target.outputStream().use { output ->
-                        input.copyTo(output)
-                    }
-                }
-            }
-        }
-    }
 }
 
 val extractLegacyPluginClasses: TaskProvider<ExtractLegacyPluginClassesTask> by tasks.registering(
