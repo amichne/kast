@@ -11,12 +11,6 @@ import org.jetbrains.kotlin.psi.KtImportDirective
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.KtPackageDirective
 
-data class ImportAnalysisResult(
-    val usedImports: List<KtImportDirective>,
-    val unusedImports: List<KtImportDirective>,
-    val missingImports: List<String>,
-)
-
 @OptIn(KaIdeApi::class)
 object ImportAnalysis {
     fun analyzeImports(file: KtFile): ImportAnalysisResult {
