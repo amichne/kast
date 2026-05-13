@@ -1,17 +1,31 @@
 # Kast evaluation framework
 
-`evaluation/` is the repo-level source of truth for proving Kast's value on Kotlin/JVM work. It consolidates the catalog, schemas, bindings, scripts, and fixtures needed to run and extend the benchmark workflow without coupling that infrastructure to any one SKILL.md.
+`evaluation/` is the repo-level source of truth for proving Kast's value on Kotlin/JVM work. It consolidates the
+catalog, schemas, bindings, scripts, and fixtures needed to run and extend the benchmark workflow without coupling that
+infrastructure to any one SKILL.md.
 
 ## What this framework proves
 
-The framework is for **value justification**, not progression-gate maintenance. The headline metric is `outcome_pass_rate` over `applicability='both'` outcome assertions, paired between `with_skill` and `without_skill` configurations. That keeps the comparison focused on whether Kast improves results rather than on tautological process assertions like "used kast_*".
+The framework is for **value justification**, not progression-gate maintenance.
+`benchmark.json` is the sole authoritative artifact for system-level evaluation, and `benchmark.schema.json` is its
+contract.
 
-Key signals:
+The benchmark fixes four primary dimensions:
 
-- `outcome_pass_rate`: fair cross-config quality delta
-- paired Wilcoxon p-value: whether the per-eval delta is likely signal rather than noise
-- `kast_calls` and `grep_or_find_calls`: whether the skill changed tool-routing behavior
-- integrity checks: baseline-isolation violations, grading contradictions, retries/flakiness
+- `task_completion` — did the system complete the requested task shape
+- `accuracy` — did it produce the correct answer or edit set
+- `reliability` — did it remain internally consistent and error-free
+- `scope_control` — did it avoid unnecessary changes or over-broad results
+
+Efficiency is required supporting evidence, not the headline ranking surface. It remains part of every run and every
+configuration summary via transcript size, tool counts, search counts, elapsed time, and execution errors.
+
+Headline evidence:
+
+- paired deltas on the four primary dimensions
+- paired Wilcoxon significance objects for each primary dimension
+- invalid-run isolation (baseline contamination, contradictions, ungraded runs)
+- supporting efficiency deltas for cost and scope tradeoffs
 
 ## Layout
 
@@ -20,6 +34,7 @@ Key signals:
 - `bindings/`: repo-specific slot bindings plus templates
 - `bindings.schema.json`: schema for the bindings contract
 - `grading.schema.json`: normalized per-run grading contract
+- `benchmark.schema.json`: authoritative final benchmark contract
 - `scripts/`: render, scaffold, dispatch, finalize, aggregate, and orchestration helpers
 - `fixtures/`: scratch or smoke-test fixture assets used to validate the framework itself
 
@@ -27,7 +42,8 @@ Key signals:
 
 ### One-command workflow
 
-Use `scripts/run_evaluation.py` when you want one orchestrator to render the catalog, scaffold the iteration workspace, dispatch runs, finalize grading, and aggregate the benchmark.
+Use `scripts/run_evaluation.py` when you want one orchestrator to render the catalog, scaffold the iteration workspace,
+dispatch runs, finalize grading, and aggregate the benchmark.
 
 ```bash
 python3 evaluation/scripts/run_evaluation.py \
@@ -40,7 +56,8 @@ python3 evaluation/scripts/run_evaluation.py \
   --grade-command-template 'your-grader --run-dir {run_dir} --output {grading}'
 ```
 
-The command templates are intentionally pluggable. `run_evaluation.py` handles the durable workspace layout; your runner/grader handle transcript production and raw grading.
+The command templates are intentionally pluggable. `run_evaluation.py` handles the durable workspace layout; your
+runner/grader handle transcript production and raw grading.
 
 ### Manual phases
 
@@ -97,21 +114,24 @@ If you want to inspect each step separately:
 ## Adding a new case
 
 1. Add a case to `catalog.json` with:
-   - a durable prompt
-   - explicit `expectations`
-   - `kind`, `applicability`, and `graded_by` on each expectation
-   - oracle paths when script grading can verify the result
+    - a durable prompt
+    - explicit `expectations`
+    - `kind`, `dimension`, `applicability`, and `graded_by` on each expectation
+    - oracle paths when script grading can verify the result
 2. Add or update the slot data in the relevant `bindings/<repo>.json`
 3. Re-render the catalog and run at least one evaluation iteration
-4. Inspect `benchmark.json`, `benchmark.md`, and the executive summary to confirm the new case discriminates between configs
+4. Inspect `benchmark.json`, `benchmark.md`, and the executive summary to confirm the new case discriminates between
+   configs
 
 ## Interpreting results
 
-- Prefer `run_summary.delta.outcome_pass_rate` over raw `pass_rate`
-- Treat any `paired_stats.baseline_violations` or `paired_stats.contradictions` entry as an invalid run
-- Use `paired_stats.eval_deltas` to see which cases actually moved the benchmark
-- Use transcript/time/tool-call deltas to judge tradeoffs, not just wins
+- Prefer `paired_analysis.statistics.score_metrics` over raw counts
+- Treat any entry in `paired_analysis.issues.invalid_runs` as excluded from the headline
+- Use `paired_analysis.pairs` to see which evals moved each primary dimension
+- Use `summary.by_configuration.*.efficiency` and paired efficiency deltas to judge tradeoffs, not just wins
 
 ## Migration note
 
-This framework replaces the old `.agents/skills/kast/value-proof/` tree as the canonical repo-level location for value-justification benchmarking. Durable assets now live in `evaluation/`; transient run workspaces belong under `.benchmarks/`.
+This framework replaces the old `.agents/skills/kast/value-proof/` tree as the canonical repo-level location for
+value-justification benchmarking. Durable assets now live in `evaluation/`; transient run workspaces belong under
+`.benchmarks/`.
