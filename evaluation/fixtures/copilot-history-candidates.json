@@ -1,0 +1,172 @@
+{
+  "skill_name": "kast-history-candidates",
+  "version": 1,
+  "schema_notes": [
+    "These cases are history-derived candidates, not canonical benchmark entries yet.",
+    "They are intentionally llm-graded because the current bindings/oracle surface does not yet encode them cleanly.",
+    "Promote a candidate into evaluation/catalog.json only after adding stable oracle surfaces or agreeing that llm-only grading is acceptable for that task family."
+  ],
+  "cases": [
+    {
+      "id": "history-contract-normalization",
+      "title": "Normalize released JSON contracts coherently",
+      "prompt": "Normalize the released JSON/API surface to camelCase, keep discriminator field names on `type`, and use CAPS_CASE discriminator values consistently across the system. Update the code, fixtures, docs, and eval-facing examples together so the published contract stops drifting.",
+      "files": [
+        "analysis-api/src/main/kotlin/io/github/amichne/kast/api/wrapper/WrapperContracts.kt",
+        "kast-cli/src/main/kotlin/io/github/amichne/kast/cli/eval/EvalModels.kt",
+        ".agents/skills/kast/fixtures/maintenance/evals/evals.json"
+      ],
+      "expected_output": "A coordinated contract reset that leaves the published JSON surface internally consistent.",
+      "expectations": [
+        {
+          "id": "hc-contract-complete",
+          "text": "Updates all affected released contract surfaces together rather than fixing only one serializer hotspot",
+          "kind": "outcome",
+          "dimension": "task_completion",
+          "applicability": "both",
+          "graded_by": "llm"
+        },
+        {
+          "id": "hc-discriminator-consistent",
+          "text": "Uses `type` for discriminators and applies CAPS_CASE discriminator values consistently",
+          "kind": "outcome",
+          "dimension": "accuracy",
+          "applicability": "both",
+          "graded_by": "llm"
+        },
+        {
+          "id": "hc-fixtures-docs-aligned",
+          "text": "Keeps fixtures, examples, and docs aligned with the code changes so the repo does not publish contradictory contract shapes",
+          "kind": "outcome",
+          "dimension": "reliability",
+          "applicability": "both",
+          "graded_by": "llm"
+        },
+        {
+          "id": "hc-no-extra-surface-churn",
+          "text": "Avoids unrelated behavior changes outside the contract normalization scope",
+          "kind": "outcome",
+          "dimension": "scope_control",
+          "applicability": "both",
+          "graded_by": "llm"
+        }
+      ],
+      "labels": [
+        "history-derived",
+        "contract-hardening"
+      ],
+      "source": {
+        "kind": "copilot_history",
+        "summary": "Derived from session 0c18f841-81c5-4904-b449-dc1ff69fd1fe (CamelCase contract reset)."
+      }
+    },
+    {
+      "id": "history-rich-symbol-payloads",
+      "title": "Thread richer declaration payloads through semantic reads",
+      "prompt": "Add a declaration payload that captures the full PSI text range and optional source text for declarations, then thread it through the API, both backends, and the CLI. Make it default-on for outline responses and opt-in for resolve/workspace-symbol body-heavy calls.",
+      "files": [
+        "analysis-api/src/main/kotlin/io/github/amichne/kast/api/Symbol.kt",
+        "analysis-api/src/main/kotlin/io/github/amichne/kast/api/DeclarationScope.kt",
+        "backend-standalone/src/main/kotlin/io/github/amichne/kast/standalone/StandaloneAnalysisBackend.kt",
+        "backend-intellij/src/main/kotlin/io/github/amichne/kast/intellij/KastPluginBackend.kt"
+      ],
+      "expected_output": "A repo-wide implementation of richer declaration payloads without breaking existing semantic read surfaces.",
+      "expectations": [
+        {
+          "id": "hr-declaration-payload-threaded",
+          "text": "Threads the new declaration payload through the shared contract, both backends, and the CLI surface",
+          "kind": "outcome",
+          "dimension": "task_completion",
+          "applicability": "both",
+          "graded_by": "llm"
+        },
+        {
+          "id": "hr-defaults-and-optins-correct",
+          "text": "Enables the payload by default on outline responses while keeping resolve/workspace-symbol body inclusion opt-in",
+          "kind": "outcome",
+          "dimension": "accuracy",
+          "applicability": "both",
+          "graded_by": "llm"
+        },
+        {
+          "id": "hr-backward-compatible-shape",
+          "text": "Preserves wire compatibility expectations for omitted optional fields instead of forcing noisy null payloads",
+          "kind": "outcome",
+          "dimension": "reliability",
+          "applicability": "both",
+          "graded_by": "llm"
+        },
+        {
+          "id": "hr-no-unrelated-surface-expansion",
+          "text": "Avoids broadening unrelated read or mutation surfaces beyond the declaration-payload task",
+          "kind": "outcome",
+          "dimension": "scope_control",
+          "applicability": "both",
+          "graded_by": "llm"
+        }
+      ],
+      "labels": [
+        "history-derived",
+        "rich-symbol-payloads"
+      ],
+      "source": {
+        "kind": "copilot_history",
+        "summary": "Derived from session 4c676c17-454b-4f34-b7fc-cddfbc2304d6 (DeclarationScope support)."
+      }
+    },
+    {
+      "id": "history-portable-skill-wrappers",
+      "title": "Port shell wrappers into typed Kotlin CLI commands",
+      "prompt": "Rewrite the remaining shell-based Kast skill wrappers as typed Kotlin CLI commands inside `kast-cli`, wire them into the evaluation engine and CI, and keep the CLI contract honest so wrapper ergonomics stop drifting from the actual runtime surface.",
+      "files": [
+        "kast-cli/src/main/kotlin/io/github/amichne/kast/cli/CliCommand.kt",
+        "kast-cli/src/main/kotlin/io/github/amichne/kast/cli/skill/SkillWrapperInput.kt",
+        "kast-cli/src/main/kotlin/io/github/amichne/kast/cli/eval/SkillEvalEngine.kt",
+        ".github/workflows/ci.yml"
+      ],
+      "expected_output": "A typed, test-backed wrapper surface in Kotlin with evaluation coverage and CI enforcement.",
+      "expectations": [
+        {
+          "id": "hp-wrapper-surface-ported",
+          "text": "Ports the wrapper behavior into typed Kotlin command structures instead of leaving shell glue as the source of truth",
+          "kind": "outcome",
+          "dimension": "task_completion",
+          "applicability": "both",
+          "graded_by": "llm"
+        },
+        {
+          "id": "hp-contracts-remain-honest",
+          "text": "Keeps CLI parsing and wrapper input contracts aligned with the actual runtime request shapes",
+          "kind": "outcome",
+          "dimension": "accuracy",
+          "applicability": "both",
+          "graded_by": "llm"
+        },
+        {
+          "id": "hp-evals-and-ci-wired",
+          "text": "Adds evaluation and CI backstops so wrapper drift is caught automatically instead of rediscovered by agents",
+          "kind": "outcome",
+          "dimension": "reliability",
+          "applicability": "both",
+          "graded_by": "llm"
+        },
+        {
+          "id": "hp-no-unrelated-cli-rewrite",
+          "text": "Limits changes to the wrapper/eval/CI surfaces rather than turning the task into a broad CLI rewrite",
+          "kind": "outcome",
+          "dimension": "scope_control",
+          "applicability": "both",
+          "graded_by": "llm"
+        }
+      ],
+      "labels": [
+        "history-derived",
+        "wrapper-portability"
+      ],
+      "source": {
+        "kind": "copilot_history",
+        "summary": "Derived from session 431e7b1e-b777-46e8-947f-ad90f0dfbc3c (Port skill wrappers to Kotlin)."
+      }
+    }
+  ]
+}

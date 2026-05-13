@@ -31,12 +31,14 @@ Headline evidence:
 
 - `catalog.json`: canonical value-justification cases
 - `catalog.schema.json`: schema for the catalog contract
+- `provenance.json`: curated history coverage for canonical cases plus adjacent task archetypes
+- `provenance.schema.json`: schema for curated provenance
 - `bindings/`: repo-specific slot bindings plus templates
 - `bindings.schema.json`: schema for the bindings contract
 - `grading.schema.json`: normalized per-run grading contract
 - `benchmark.schema.json`: authoritative final benchmark contract
 - `scripts/`: render, scaffold, dispatch, finalize, aggregate, and orchestration helpers
-- `fixtures/`: scratch or smoke-test fixture assets used to validate the framework itself
+- `fixtures/`: scratch assets plus non-canonical history-derived candidate cases
 
 ## Running an evaluation
 
@@ -122,6 +124,50 @@ If you want to inspect each step separately:
 3. Re-render the catalog and run at least one evaluation iteration
 4. Inspect `benchmark.json`, `benchmark.md`, and the executive summary to confirm the new case discriminates between
    configs
+
+## History-backed provenance
+
+The canonical benchmark still lives in `catalog.json`, but the suite now keeps a separate curated provenance sidecar in
+`provenance.json`.
+
+Why the split:
+
+- `catalog.json` stays runnable and oracle-focused
+- `provenance.json` shows which canonical cases are grounded in real Copilot history
+- raw session exports do **not** belong in git; only sanitized excerpts and rationales do
+
+`provenance.json` covers two things:
+
+1. `case_coverage`: one entry for every canonical `vp-*` case, marked either `matched` with sanitized session evidence
+   or `gap` when history does not yet justify the case cleanly.
+2. `novel_archetypes`: real task families seen in history that are not yet in the canonical catalog.
+
+Validate the history assets with:
+
+```bash
+python3 evaluation/scripts/validate_history_assets.py
+```
+
+That validator checks that:
+
+- every canonical case in `catalog.json` has provenance coverage
+- provenance does not reference unknown canonical ids
+- the staged history-derived candidate catalog in
+  `evaluation/fixtures/copilot-history-candidates.json` stays structurally sound and does not collide with canonical ids
+
+## Seeding candidate cases from history
+
+`evaluation/fixtures/copilot-history-candidates.json` is a staging area for real task shapes mined from history that
+are not yet stable enough to promote into the canonical catalog.
+
+Use it when:
+
+- a history-derived task is clearly valuable
+- the current bindings/oracle surface does not yet support it cleanly
+- you want to preserve the case shape now, then add better grading/oracles later
+
+Promote a candidate into `catalog.json` only after its grading story is durable enough to produce meaningful benchmark
+measurements.
 
 ## Interpreting results
 
