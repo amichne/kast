@@ -43,40 +43,49 @@ class PsiReferenceScanner(
             psiFile.accept(
                 object : PsiRecursiveElementWalkingVisitor() {
                     override fun visitElement(element: PsiElement) {
-                        if (environment.isCancelled()) {
-                            stopWalking()
-                            return
-                        }
-                        ProgressManager.checkCanceled()
-                        recoverRuntimePsiFailure { element.references }.orEmpty().forEach { reference ->
-                            try {
-                                val resolved = reference.resolve() ?: return@forEach
-                                val (fqName, _) = resolved.targetFqNameAndPackage() ?: return@forEach
-                                val targetPath = recoverRuntimePsiFailure { resolved.resolvedFilePath().value }
-                                val targetOffset = recoverRuntimePsiFailure { resolved.textRange?.startOffset }
-                                val sourceElementStart = recoverRuntimePsiFailure {
-                                    reference.element.textRange.startOffset
-                                } ?: return@forEach
-                                val sourceOffset = sourceElementStart +
-                                    reference.rangeInElement.startOffset
-                                rows += SymbolReferenceRow(
-                                    sourcePath = sourceFilePath,
-                                    sourceOffset = sourceOffset,
-                                    sourceFqName = reference.element.enclosingDeclarationFqName(),
-                                    targetFqName = fqName.value,
-                                    targetPath = targetPath,
-                                    targetOffset = targetOffset,
-                                    edgeKind = reference.element.edgeKind(),
-                                )
-                            } catch (error: ProcessCanceledException) {
-                                throw error
-                            } catch (error: CancellationException) {
-                                throw error
-                            } catch (_: Exception) {
-                                // Skip one bad reference while continuing to index the file.
+                        try {
+                            if (environment.isCancelled()) {
+                                stopWalking()
+                                return
                             }
+                            ProgressManager.checkCanceled()
+                            recoverRuntimePsiFailure { element.references }.orEmpty().forEach { reference ->
+                                try {
+                                    val resolved = reference.resolve() ?: return@forEach
+                                    val (fqName, _) = resolved.targetFqNameAndPackage() ?: return@forEach
+                                    val targetPath = recoverRuntimePsiFailure { resolved.resolvedFilePath().value }
+                                    val targetOffset = recoverRuntimePsiFailure { resolved.textRange?.startOffset }
+                                    val sourceElementStart = recoverRuntimePsiFailure {
+                                        reference.element.textRange.startOffset
+                                    } ?: return@forEach
+                                    val sourceOffset = sourceElementStart +
+                                                       reference.rangeInElement.startOffset
+                                    rows += SymbolReferenceRow(
+                                        sourcePath = sourceFilePath,
+                                        sourceOffset = sourceOffset,
+                                        sourceFqName = reference.element.enclosingDeclarationFqName(),
+                                        targetFqName = fqName.value,
+                                        targetPath = targetPath,
+                                        targetOffset = targetOffset,
+                                        edgeKind = reference.element.edgeKind(),
+                                    )
+                                } catch (error: ProcessCanceledException) {
+                                    throw error
+                                } catch (error: CancellationException) {
+                                    throw error
+                                } catch (_: Exception) {
+                                    // Skip one bad reference while continuing to index the file.
+                                }
+                            }
+                            recoverRuntimePsiFailure { super.visitElement(element) }
+                        } catch (error: ProcessCanceledException) {
+                            throw error
+                        } catch (error: CancellationException) {
+                            throw error
+                        } catch (_: Exception) {
+                            // Skip elements with invalid PSI mirrors (e.g., compiled JDK classes)
+                            // and continue walking the tree
                         }
-                        recoverRuntimePsiFailure { super.visitElement(element) }
                     }
                 },
             )
