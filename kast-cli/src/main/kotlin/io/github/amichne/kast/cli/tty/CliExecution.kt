@@ -1,8 +1,11 @@
 package io.github.amichne.kast.cli.tty
 
+import io.github.amichne.kast.api.contract.NormalizedPath
+import io.github.amichne.kast.api.contract.PositiveLong
 import io.github.amichne.kast.cli.EvalSkillExecutor
 import io.github.amichne.kast.cli.RuntimeCandidateStatus
 import io.github.amichne.kast.cli.SmokeOutputFormat
+import io.github.amichne.kast.cli.options.RuntimeCommandOptions
 import io.github.amichne.kast.cli.skill.SkillWrapperExecutor
 import io.github.amichne.kast.cli.skill.SkillWrapperSerializer
 import io.github.amichne.kast.indexstore.api.metrics.impact.ChangeImpactNode
@@ -234,6 +237,41 @@ internal class DefaultCliCommandExecutor(
                 CliExecutionResult(
                     output = CliOutput.Text(encoded),
                 )
+            }
+
+            is CliCommand.Up -> {
+                val result = cliService.workspaceEnsure(command.options)
+                CliExecutionResult(
+                    output = CliOutput.JsonValue(result),
+                    daemonNote = daemonNoteFor(result),
+                )
+            }
+
+            is CliCommand.Status -> {
+                val result = cliService.workspaceStatus(command.options)
+                CliExecutionResult(
+                    output = CliOutput.JsonValue(result),
+                    daemonNote = daemonNoteFor(result),
+                )
+            }
+
+            is CliCommand.Stop -> {
+                val result = cliService.workspaceStop(command.options)
+                CliExecutionResult(
+                    output = CliOutput.JsonValue(result),
+                    daemonNote = daemonNoteFor(result),
+                )
+            }
+
+            is CliCommand.Rpc -> {
+                val workspaceRoot = command.workspaceRootOverride ?: cwdProvider()
+                val options = RuntimeCommandOptions(
+                    workspaceRoot = NormalizedPath.ofAbsolute(workspaceRoot),
+                    backendName = null,
+                    waitTimeoutMillis = PositiveLong(60_000L),
+                )
+                val result = cliService.rpcPassthrough(options, command.rawJson)
+                CliExecutionResult(output = CliOutput.Text(result))
             }
 
             is CliCommand.EvalSkill -> {

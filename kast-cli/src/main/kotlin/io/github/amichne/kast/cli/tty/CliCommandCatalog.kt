@@ -36,6 +36,10 @@ internal enum class CliCommandGroup(
         title = "Metrics",
         overview = "Read-only workspace metrics computed directly from the local SQLite reference index — no running daemon required.",
     ),
+    RPC(
+        title = "RPC",
+        overview = "JSON-RPC passthrough to the workspace daemon. Auto-ensures the daemon on each request.",
+    ),
     GRADLE(
         title = "Gradle",
         overview = "Run Gradle tasks with structured JSON output and raw build logs kept on disk.",
@@ -1283,6 +1287,62 @@ internal object CliCommandCatalog {
             description = "Hidden native wrapper command. Accepts one JSON request argument.",
             usages = listOf("$CLI_EXECUTABLE_NAME metrics '{\"workspaceRoot\":\"/ws\",\"metric\":\"fanIn\"}'"),
             visible = false,
+        ),
+        CliCommandMetadata(
+            path = listOf("rpc"),
+            group = CliCommandGroup.RPC,
+            summary = "Send a raw JSON-RPC request to the workspace daemon.",
+            description = "Forwards a raw JSON-RPC string to the daemon over its Unix domain socket. " +
+                "The daemon is auto-ensured before each request. " +
+                "Pass the JSON as a positional argument or via --request-file.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME rpc '<json>' [--workspace-root=/absolute/path/to/workspace]",
+                "$CLI_EXECUTABLE_NAME rpc --request-file=/absolute/path/to/request.json [--workspace-root=/absolute/path/to/workspace]",
+            ),
+            options = listOf(workspaceRootOption, requestFileOption),
+            examples = listOf(
+                """$CLI_EXECUTABLE_NAME rpc '{"jsonrpc":"2.0","method":"health","id":1}' --workspace-root=/absolute/path/to/workspace""",
+                "$CLI_EXECUTABLE_NAME rpc --request-file=/tmp/request.json --workspace-root=/absolute/path/to/workspace",
+            ),
+        ),
+        CliCommandMetadata(
+            path = listOf("up"),
+            group = CliCommandGroup.WORKSPACE_LIFECYCLE,
+            summary = "Start or warm the workspace daemon.",
+            description = "Alias for `workspace ensure`. Ensures a healthy backend is running for the workspace.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME up --workspace-root=/absolute/path/to/workspace [--backend-name=intellij|standalone]",
+            ),
+            options = listOf(workspaceRootOption, backendNameOption, waitTimeoutOption, acceptIndexingOption, noAutoStartOption),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME up --workspace-root=/absolute/path/to/workspace",
+            ),
+        ),
+        CliCommandMetadata(
+            path = listOf("status"),
+            group = CliCommandGroup.WORKSPACE_LIFECYCLE,
+            summary = "Check what backends are running.",
+            description = "Alias for `workspace status`. Reports the selected daemon plus any additional descriptors registered for the workspace.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME status --workspace-root=/absolute/path/to/workspace [--backend-name=intellij|standalone]",
+            ),
+            options = listOf(workspaceRootOption, backendNameOption),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME status --workspace-root=/absolute/path/to/workspace",
+            ),
+        ),
+        CliCommandMetadata(
+            path = listOf("stop"),
+            group = CliCommandGroup.WORKSPACE_LIFECYCLE,
+            summary = "Stop the workspace daemon.",
+            description = "Alias for `workspace stop`. Stops the selected backend, removes its descriptor, and reports what was stopped.",
+            usages = listOf(
+                "$CLI_EXECUTABLE_NAME stop --workspace-root=/absolute/path/to/workspace [--backend-name=standalone|intellij]",
+            ),
+            options = listOf(workspaceRootOption, backendNameOption),
+            examples = listOf(
+                "$CLI_EXECUTABLE_NAME stop --workspace-root=/absolute/path/to/workspace",
+            ),
         ),
         CliCommandMetadata(
             path = listOf("eval", "skill"),
