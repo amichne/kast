@@ -28,12 +28,12 @@ class HistoryAssetsTests(unittest.TestCase):
 
     def test_cli_fails_when_provenance_misses_canonical_case(self) -> None:
         scratch_eval = SCRATCH_DIR / "evaluation"
-        (scratch_eval / "fixtures").mkdir(parents=True, exist_ok=True)
+        (scratch_eval / "fixtures" / "staging").mkdir(parents=True, exist_ok=True)
         shutil.copy(EVALUATION_DIR / "catalog.json", scratch_eval / "catalog.json")
         shutil.copy(EVALUATION_DIR / "provenance.json", scratch_eval / "provenance.json")
         shutil.copy(
-            EVALUATION_DIR / "fixtures" / "copilot-history-candidates.json",
-            scratch_eval / "fixtures" / "copilot-history-candidates.json",
+            EVALUATION_DIR / "fixtures" / "staging" / "copilot-history-candidates.json",
+            scratch_eval / "fixtures" / "staging" / "copilot-history-candidates.json",
         )
 
         provenance_path = scratch_eval / "provenance.json"
@@ -50,7 +50,7 @@ class HistoryAssetsTests(unittest.TestCase):
                 "--provenance",
                 str(provenance_path),
                 "--candidates",
-                str(scratch_eval / "fixtures" / "copilot-history-candidates.json"),
+                str(scratch_eval / "fixtures" / "staging" / "copilot-history-candidates.json"),
             ],
             text=True,
             capture_output=True,

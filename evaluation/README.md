@@ -153,11 +153,11 @@ That validator checks that:
 - every canonical case in `catalog.json` has provenance coverage
 - provenance does not reference unknown canonical ids
 - the staged history-derived candidate catalog in
-  `evaluation/fixtures/copilot-history-candidates.json` stays structurally sound and does not collide with canonical ids
+  `evaluation/fixtures/staging/copilot-history-candidates.json` stays structurally sound and does not collide with canonical ids
 
 ## Seeding candidate cases from history
 
-`evaluation/fixtures/copilot-history-candidates.json` is a staging area for real task shapes mined from history that
+`evaluation/fixtures/staging/copilot-history-candidates.json` is a staging area for real task shapes mined from history that
 are not yet stable enough to promote into the canonical catalog.
 
 Use it when:
@@ -181,3 +181,25 @@ measurements.
 This framework replaces the old `.agents/skills/kast/value-proof/` tree as the canonical repo-level location for
 value-justification benchmarking. Durable assets now live in `evaluation/`; transient run workspaces belong under
 `.benchmarks/`.
+
+## Authoritative scope
+
+The only artifacts that contribute to benchmark evidence are:
+
+- `evaluation/catalog.json` — the canonical eval cases
+- `evaluation/benchmark.schema.json` — the benchmark contract
+- `evaluation/grading.schema.json` — the per-run grading contract
+- `evaluation/scripts/` — rendering, grading, aggregation, and summary generation
+- `evaluation/bindings/` — repo-specific slot bindings with ground-truth oracles
+
+The following are explicitly **not** benchmark evidence:
+
+- `evaluation/fixtures/staging/` — candidate cases without durable grading
+- `.agents/skills/kast/evals/` — skill-level progression-gate evals (removed)
+- `.agents/skills/kast/fixtures/maintenance/evals/` — old-format maintenance evals (removed)
+- `.agents/skills/skill-creator/scripts/aggregate_benchmark.py` — generic aggregator without paired statistical testing
+- Any file under `.agents/skills/*/history/` — progression-gate tracking artifacts
+
+If an observer examining this repo finds eval-shaped artifacts outside `evaluation/`,
+those artifacts do not participate in the canonical benchmark and their outputs should
+not be cited as system-level performance claims.

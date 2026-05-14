@@ -35,11 +35,8 @@ class InstallSkillServiceTest {
         assertFalse(result.skipped)
         assertTrue(Files.isDirectory(installedSkillDir))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("SKILL.md")))
-        assertTrue(Files.isRegularFile(installedSkillDir.resolve("evals/catalog.json")))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("evals/pain_points.jsonl")))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("evals/files/.gitkeep")))
-        assertTrue(Files.isRegularFile(installedSkillDir.resolve("fixtures/maintenance/evals/evals.json")))
-        assertTrue(Files.isRegularFile(installedSkillDir.resolve("fixtures/maintenance/evals/routing.json")))
         assertTrue(
             Files.isRegularFile(
                 installedSkillDir.resolve("fixtures/maintenance/references/routing-improvement.md"),
@@ -55,8 +52,11 @@ class InstallSkillServiceTest {
                 installedSkillDir.resolve("fixtures/maintenance/scripts/build-routing-corpus.py"),
             ),
         )
-        assertTrue(Files.isRegularFile(installedSkillDir.resolve("history/eval-baseline.json")))
-        assertTrue(Files.isRegularFile(installedSkillDir.resolve("history/progression.json")))
+        assertFalse(Files.exists(installedSkillDir.resolve("evals/catalog.json")))
+        assertFalse(Files.exists(installedSkillDir.resolve("fixtures/maintenance/evals/evals.json")))
+        assertFalse(Files.exists(installedSkillDir.resolve("fixtures/maintenance/evals/routing.json")))
+        assertFalse(Files.exists(installedSkillDir.resolve("history/eval-baseline.json")))
+        assertFalse(Files.exists(installedSkillDir.resolve("history/progression.json")))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("references/quickstart.md")))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("references/routing-improvement.md")))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("references/wrapper-openapi.yaml")))
