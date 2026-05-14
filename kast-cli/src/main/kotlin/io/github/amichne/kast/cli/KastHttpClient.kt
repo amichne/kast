@@ -51,6 +51,9 @@ internal class KastRpcClient(
         params = json.encodeToJsonElement(body),
     )
 
+    fun rawPassthrough(descriptor: ServerInstanceDescriptor, rawRequest: String): String =
+        socketRequestRaw(Path.of(descriptor.socketPath), rawRequest)
+
     inline fun <reified Response> execute(
         descriptor: ServerInstanceDescriptor,
         method: String,
@@ -115,6 +118,34 @@ private fun socketRequest(
             val writer = Channels.newWriter(channel, StandardCharsets.UTF_8.name()).buffered()
             val reader = Channels.newReader(channel, StandardCharsets.UTF_8.name()).buffered()
             writer.write(Json.encodeToString(JsonRpcRequest.serializer(), request))
+            writer.newLine()
+            writer.flush()
+            reader.readLine() ?: throw CliFailure(
+                code = "RPC_RESPONSE_MISSING",
+                message = "The daemon closed the socket without returning a response",
+            )
+        }
+    }.getOrElse { exception ->
+        if (exception is CliFailure) {
+            throw exception
+        }
+        throw CliFailure(
+            code = "DAEMON_UNREACHABLE",
+            message = exception.message ?: "Failed to reach daemon at $socketPath",
+        )
+    }
+}
+
+private fun socketRequestRaw(
+    socketPath: Path,
+    rawRequest: String,
+): String {
+    return runCatching {
+        SocketChannel.open(StandardProtocolFamily.UNIX).use { channel ->
+            channel.connect(UnixDomainSocketAddress.of(socketPath))
+            val writer = Channels.newWriter(channel, StandardCharsets.UTF_8.name()).buffered()
+            val reader = Channels.newReader(channel, StandardCharsets.UTF_8.name()).buffered()
+            writer.write(rawRequest)
             writer.newLine()
             writer.flush()
             reader.readLine() ?: throw CliFailure(

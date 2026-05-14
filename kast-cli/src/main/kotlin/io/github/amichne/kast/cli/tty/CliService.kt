@@ -102,6 +102,11 @@ internal class CliService(
     suspend fun workspaceStop(options: RuntimeCommandOptions): DaemonStopResult =
         runtimeManager.workspaceStop(options)
 
+    suspend fun rpcPassthrough(options: RuntimeCommandOptions, rawJsonRpc: String): String {
+        val runtime = runtimeManager.ensureRuntime(options)
+        return rpcClient.rawPassthrough(runtime.selected.descriptor, rawJsonRpc)
+    }
+
     suspend fun capabilities(options: RuntimeCommandOptions): RuntimeAttachedResult<BackendCapabilities> {
         val runtime = runtimeManager.ensureRuntime(options)
         val capabilities = checkNotNull(runtime.selected.capabilities) {
