@@ -15,16 +15,11 @@ val packagedCopilotHooksSourceDir = rootProject.layout.projectDirectory.dir(".gi
 val packagedCopilotExtensionsSourceDir = rootProject.layout.projectDirectory.dir(".github/extensions")
 val embeddedSkillFiles = listOf(
     "SKILL.md",
-    "evals/catalog.json",
     "evals/pain_points.jsonl",
     "evals/files/.gitkeep",
-    "fixtures/maintenance/evals/evals.json",
-    "fixtures/maintenance/evals/routing.json",
     "fixtures/maintenance/references/routing-improvement.md",
     "fixtures/maintenance/references/wrapper-openapi.yaml",
     "fixtures/maintenance/scripts/build-routing-corpus.py",
-    "history/eval-baseline.json",
-    "history/progression.json",
     "references/quickstart.md",
     "references/commands.json",
     "references/routing-improvement.md",

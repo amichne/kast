@@ -14,13 +14,13 @@ import io.github.amichne.kast.api.contract.DeclarationScope
 import io.github.amichne.kast.api.contract.FqName
 import io.github.amichne.kast.api.contract.Location
 import io.github.amichne.kast.api.contract.NormalizedPath
-import io.github.amichne.kast.api.protocol.NotFoundException
-import io.github.amichne.kast.api.contract.ParameterInfo
 import io.github.amichne.kast.api.contract.PackageName
+import io.github.amichne.kast.api.contract.ParameterInfo
 import io.github.amichne.kast.api.contract.Symbol
 import io.github.amichne.kast.api.contract.SymbolKind
 import io.github.amichne.kast.api.contract.SymbolVisibility
 import io.github.amichne.kast.api.contract.TextEdit
+import io.github.amichne.kast.api.protocol.NotFoundException
 import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.lexer.KtTokens
@@ -49,12 +49,14 @@ fun PsiElement.resolvedFilePath(): NormalizedPath {
  * Walks the PSI element hierarchy up from [offset] until it finds a resolvable reference
  * or a named element, then returns it.
  */
-fun resolveTarget(file: com.intellij.psi.PsiFile, offset: Int): PsiElement {
-    val leaf = file.findElementAt(offset)
-        ?: throw NotFoundException(
-            message = "No PSI element was found at the requested offset",
-            details = mapOf("offset" to offset.toString()),
-        )
+fun resolveTarget(
+    file: com.intellij.psi.PsiFile,
+    offset: Int,
+): PsiElement {
+    val leaf = file.findElementAt(offset) ?: throw NotFoundException(
+        message = "No PSI element was found at the requested offset",
+        details = mapOf("offset" to offset.toString()),
+    )
 
     generateSequence(leaf as PsiElement?) { it.parent }.forEach { element ->
         element.references.firstNotNullOfOrNull { it.resolve() }?.let { return it }
@@ -152,10 +154,9 @@ private fun KtNamedDeclaration.ktVisibility(): SymbolVisibility = when {
     else -> SymbolVisibility.PUBLIC // Kotlin default for top-level and class members
 }
 
-private fun KtNamedDeclaration.isLocalDeclaration(): Boolean =
-    parentsWithSelf().any { parent ->
-        parent !== this && parent is KtDeclarationWithBody
-    }
+private fun KtNamedDeclaration.isLocalDeclaration(): Boolean = parentsWithSelf().any { parent ->
+    parent !== this && parent is KtDeclarationWithBody
+}
 
 private fun PsiClass.javaClassVisibility(): SymbolVisibility = when {
     hasModifierProperty(PsiModifier.PRIVATE) -> SymbolVisibility.PRIVATE
@@ -195,9 +196,8 @@ fun PsiElement.targetFqNameAndPackage(): Pair<FqName, PackageName>? {
     when (this) {
         is KtNamedDeclaration -> {
             fqn = fqName?.asString() ?: return null
-            pkg = (containingFile as? org.jetbrains.kotlin.psi.KtFile)
-                ?.packageFqName?.asString()
-                ?: fqn.substringBeforeLast('.', missingDelimiterValue = "")
+            pkg = (containingFile as? org.jetbrains.kotlin.psi.KtFile)?.packageFqName?.asString()
+                  ?: fqn.substringBeforeLast('.', missingDelimiterValue = "")
         }
         is PsiClass -> {
             fqn = qualifiedName ?: return null
@@ -266,7 +266,6 @@ private fun toParameterInfo(parameter: KtParameter): ParameterInfo = ParameterIn
 private fun toParameterInfo(parameter: PsiParameter): ParameterInfo = ParameterInfo(
     name = parameter.name,
     type = parameter.type.presentableText,
-    defaultValue = null,
     isVararg = parameter.isVarArgs,
 )
 
@@ -302,7 +301,7 @@ fun PsiElement.callHierarchyDeclaration(): PsiElement? = parentsWithSelf().first
         is PsiMethod,
         is PsiField,
         is PsiClass,
-        -> true
+            -> true
 
         else -> false
     }
@@ -315,23 +314,19 @@ fun PsiElement.typeHierarchyDeclaration(): PsiElement? = parentsWithSelf().first
     when (element) {
         is KtClassOrObject,
         is PsiClass,
-        -> true
+            -> true
 
         else -> false
     }
 }
 
 fun KaSession.supertypeNames(target: PsiElement): List<String>? = when (target) {
-    is KtClassOrObject -> target.classSymbol
-        ?.superTypes
-        ?.mapNotNull { type -> (type as? KaClassType)?.classId?.asSingleFqName()?.asString() }
-        ?.distinct()
-        ?.sorted()
+    is KtClassOrObject -> target.classSymbol?.superTypes?.mapNotNull { type ->
+            (type as? KaClassType)?.classId?.asSingleFqName()
+                ?.asString()
+        }?.distinct()?.sorted()
 
-    is PsiClass -> target.supers
-        .mapNotNull(PsiClass::getQualifiedName)
-        .distinct()
-        .sorted()
+    is PsiClass -> target.supers.mapNotNull(PsiClass::getQualifiedName).distinct().sorted()
 
     else -> null
 }
@@ -340,5 +335,4 @@ fun PsiElement.referenceSearchIdentifier(): String? = when (this) {
     is KtNamedFunction -> name.takeUnless { hasModifier(KtTokens.OPERATOR_KEYWORD) }
     is KtNamedDeclaration -> name
     else -> (this as? PsiNamedElement)?.name
-}
-    ?.takeIf { identifier -> identifier.isNotBlank() }
+}?.takeIf { identifier -> identifier.isNotBlank() }

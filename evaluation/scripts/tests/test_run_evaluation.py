@@ -12,6 +12,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parents[1]
 EVALUATION_DIR = SCRIPT_DIR.parent
 SCRATCH_DIR = Path(__file__).resolve().parent / ".run-evaluation-scratch"
+BENCHMARK_SCHEMA_PATH = EVALUATION_DIR / "benchmark.schema.json"
 
 
 def write_json(path: Path, payload: dict[str, object]) -> None:
@@ -53,6 +54,7 @@ class RunEvaluationTests(unittest.TestCase):
                                 "id": "demo-outcome",
                                 "text": "Outcome succeeds",
                                 "kind": "outcome",
+                                "dimension": "accuracy",
                                 "applicability": "both",
                                 "graded_by": "llm",
                             }
@@ -220,8 +222,21 @@ class RunEvaluationTests(unittest.TestCase):
         self.assertEqual(0, result.returncode, result.stderr)
         iteration_dir = SCRATCH_DIR / "benchmarks" / "iteration-001"
         benchmark = json.loads((iteration_dir / "benchmark.json").read_text())
+        schema = json.loads(BENCHMARK_SCHEMA_PATH.read_text())
+        self.assertEqual(
+            "https://json-schema.org/draft/2020-12/schema",
+            schema["$schema"],
+        )
+        self.assertEqual(
+            "https://github.com/amichne/kast/evaluation/benchmark.schema.json",
+            benchmark["$schema"],
+        )
         self.assertEqual("evaluation", benchmark["metadata"]["skill_path"])
-        self.assertEqual("+1.00", benchmark["run_summary"]["delta"]["outcome_pass_rate"])
+        self.assertEqual(1, benchmark["schema_version"])
+        self.assertEqual(
+            "scored",
+            benchmark["paired_analysis"]["statistics"]["score_metrics"]["accuracy"]["status"],
+        )
         self.assertTrue((iteration_dir / "rendered-catalog.json").exists())
         self.assertTrue((iteration_dir / "bindings.json").exists())
 

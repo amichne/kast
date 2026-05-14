@@ -174,7 +174,7 @@ Apply these rules across the repo before local unit rules add more detail.
 Before modifying `EmbeddedSkillResources`, `EmbeddedCopilotExtensionResources`,
 `WrapperOpenApiDocument`, `AnalysisBackend`, or any packaged artifact manifest,
 enumerate all consumers: `docs/openapi.yaml`, `.agents/skills/kast/SKILL.md`,
-`.agents/skills/kast/evals/**/*`, `.agents/skills/kast/history/**/*`,
+`.agents/skills/kast/evals/**/*`,
 `.agents/skills/kast/references/*`, `.agents/skills/kast/scripts/*`,
 `evaluation/**/*`, `.github/extensions/kast/extension.mjs`,
 `.github/agents/**/*`, `.github/hooks/**/*`, `kast-cli/build.gradle.kts`,

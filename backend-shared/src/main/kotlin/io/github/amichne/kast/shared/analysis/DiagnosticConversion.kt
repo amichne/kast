@@ -9,7 +9,6 @@ import org.jetbrains.kotlin.analysis.api.diagnostics.KaSeverity
 /**
  * Converts a K2 Analysis API diagnostic to one or more [Diagnostic] API models.
  */
-@Suppress("UnstableApiUsage")
 fun KaDiagnosticWithPsi<*>.toApiDiagnostics(): List<Diagnostic> {
     val ranges = textRanges.ifEmpty { listOf(TextRange(0, psi.textLength)) }
     return ranges.map { range ->

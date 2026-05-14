@@ -1,0 +1,200 @@
+{
+  "$schema": "https://github.com/amichne/kast/evaluation/provenance.schema.json",
+  "version": 1,
+  "generated_at": "2026-05-13T05:20:02Z",
+  "source": {
+    "repository": "amichne/kast",
+    "method": "Curated from Copilot session_store by mining specific repo sessions and persisting only sanitized excerpts.",
+    "note": "This file is intentionally digested provenance, not a raw session export. It exists to show which canonical cases are grounded in real prior work and which new archetypes emerged from history."
+  },
+  "case_coverage": [
+    {
+      "eval_id": "vp-disambiguate-member",
+      "status": "matched",
+      "entries": [
+        {
+          "session_id": "0c18f841-81c5-4904-b449-dc1ff69fd1fe",
+          "created_at": "2026-04-28T00:46:41.938Z",
+          "summary": "CamelCase contract reset",
+          "excerpt": "Add automated evals and tests ... fix request/example casing drift ... surface ambiguity metadata ... before they reach LLM agents.",
+          "rationale": "This is the same identity-precision problem the member-disambiguation case is meant to catch: a wrapper surface can look plausible while still pointing agents at the wrong field or symbol."
+        }
+      ]
+    },
+    {
+      "eval_id": "vp-disambiguate-function",
+      "status": "matched",
+      "entries": [
+        {
+          "session_id": "b0677360-9bf7-4586-bb25-26f13315293d",
+          "created_at": "2026-04-13T04:36:28.616Z",
+          "summary": "Cache removal and engine extraction planning",
+          "excerpt": "Remove the call hierarchy git-SHA cache ... extract the shared call hierarchy engine into backend-shared so the IntelliJ backend can also implement CALL_HIERARCHY.",
+          "rationale": "This work only makes sense if caller tracing is attached to the exact function identity; that is the same failure mode the function-disambiguation case measures."
+        }
+      ]
+    },
+    {
+      "eval_id": "vp-exhaustive-references",
+      "status": "matched",
+      "entries": [
+        {
+          "session_id": "dcf5385b-9980-496c-8d3d-9853a7326ee5",
+          "created_at": "2026-03-27T04:07:56.412Z",
+          "summary": "Extracting index store",
+          "excerpt": "Extract source-index persistence/reference-indexing into a shared :index-store module used by both standalone and IntelliJ backends.",
+          "rationale": "This session was about making reference indexing real, shared, and exhaustive across hosts rather than ad hoc or backend-local."
+        }
+      ]
+    },
+    {
+      "eval_id": "vp-sealed-hierarchy-trace",
+      "status": "matched",
+      "entries": [
+        {
+          "session_id": "f8234e3e-6b57-4242-9ec2-7f95fb1ccc3a",
+          "created_at": "2026-04-15T03:18:49.096Z",
+          "summary": "Implement Kast backend enhancements",
+          "excerpt": "The user wants four features implemented ... type hierarchy support on the IntelliJ plugin backend ... all changes go through the existing JSON-RPC daemon architecture.",
+          "rationale": "Although this was type hierarchy work rather than sealed-only traversal, it reflects the same real demand for exhaustive subtype discovery instead of text search guesses."
+        }
+      ]
+    },
+    {
+      "eval_id": "vp-multi-file-rename",
+      "status": "matched",
+      "entries": [
+        {
+          "session_id": "f8234e3e-6b57-4242-9ec2-7f95fb1ccc3a",
+          "created_at": "2026-04-15T03:18:49.096Z",
+          "summary": "Implement Kast backend enhancements",
+          "excerpt": "Blocking — alias imports break in Work Item 3 ... `ImportAnalysis.insertImportEdit()` does not preserve `as Alias` ... preserve the alias in the replacement import edit.",
+          "rationale": "This is a concrete history example of why safe rename must be multi-file, import-aware, and validated rather than treated like textual replacement."
+        }
+      ]
+    },
+    {
+      "eval_id": "vp-edit-and-validate",
+      "status": "matched",
+      "entries": [
+        {
+          "session_id": "f8234e3e-6b57-4242-9ec2-7f95fb1ccc3a",
+          "created_at": "2026-04-15T03:18:49.096Z",
+          "summary": "Implement Kast backend enhancements",
+          "excerpt": "The user wants four features implemented: compound \"write a new X\" skill scripts for LLM-driven code generation ... import-aware rename ... a new `workspace/files` endpoint.",
+          "rationale": "This session created the repo's write-and-validate wrapper surface in response to a real need for bounded edits that could be checked immediately instead of orphaned manual file mutations."
+        }
+      ]
+    },
+    {
+      "eval_id": "vp-scaffold-large-class",
+      "status": "matched",
+      "entries": [
+        {
+          "session_id": "fe3aa9ad-0200-41e9-958f-42cea24e52dd",
+          "created_at": "2026-03-25T03:39:23.962Z",
+          "summary": "Improving Kast skill from a real failure log",
+          "excerpt": "Scaffold request shape (the core bug): correct is `targetFile`; wrong is `filePaths`. `workspaceRoot` also must be set explicitly unless exported.",
+          "rationale": "This was a real production failure in scaffold usage. The large-class scaffold case exists to ensure structural summaries are requested through the right semantic surface instead of falling back to raw file reads."
+        },
+        {
+          "session_id": "4c676c17-454b-4f34-b7fc-cddfbc2304d6",
+          "created_at": "2026-04-11T03:32:20.372Z",
+          "summary": "Implementing DeclarationScope model and threading",
+          "excerpt": "Attach `DeclarationScope` as an optional field on `Symbol`. Enable it by default on `outline` responses and make it opt-in on `resolve` and `workspace-symbol`.",
+          "rationale": "This session sharpened the structure-first summary surfaces that scaffold-style workflows depend on."
+        }
+      ]
+    },
+    {
+      "eval_id": "vp-workspace-discovery",
+      "status": "matched",
+      "entries": [
+        {
+          "session_id": "f8234e3e-6b57-4242-9ec2-7f95fb1ccc3a",
+          "created_at": "2026-04-15T03:18:49.096Z",
+          "summary": "Implement Kast backend enhancements",
+          "excerpt": "A new `workspace/files` JSON-RPC endpoint exposing module structure and file lists.",
+          "rationale": "This is the direct history source for the workspace-discovery case: a real request to expose module and file inventory as a first-class semantic operation."
+        }
+      ]
+    },
+    {
+      "eval_id": "vp-impact-analysis",
+      "status": "matched",
+      "entries": [
+        {
+          "session_id": "b0677360-9bf7-4586-bb25-26f13315293d",
+          "created_at": "2026-04-13T04:36:28.616Z",
+          "summary": "Cache removal and engine extraction planning",
+          "excerpt": "Extract the shared call hierarchy engine into `backend-shared` so the IntelliJ backend can also implement `CALL_HIERARCHY`.",
+          "rationale": "The impact-analysis case measures the same real workflow: bounded caller tracing that survives backend boundaries and stays attached to exact call graph edges."
+        }
+      ]
+    },
+    {
+      "eval_id": "vp-cross-module-flow",
+      "status": "matched",
+      "entries": [
+        {
+          "session_id": "dcf5385b-9980-496c-8d3d-9853a7326ee5",
+          "created_at": "2026-03-27T04:07:56.412Z",
+          "summary": "Extracting index store",
+          "excerpt": "Extract source-index persistence/reference-indexing into a shared `:index-store` module used by both standalone and IntelliJ backends.",
+          "rationale": "This session is a direct cross-module flow problem: data and references had to move across module seams without losing semantic meaning."
+        },
+        {
+          "session_id": "b794c27a-9b1e-4d3c-989e-a23c2397e60a",
+          "created_at": "2026-04-09T04:51:22.879Z",
+          "summary": "Backend-shared and multi-backend restructuring",
+          "excerpt": "Extract shared PSI analysis utilities into a new `backend-shared` module ... then create an IntelliJ plugin backend and parity tests.",
+          "rationale": "This is another concrete example of tracing and preserving behavior as symbols and analysis utilities flow across module boundaries."
+        }
+      ]
+    }
+  ],
+  "novel_archetypes": [
+    {
+      "id": "contract-normalization",
+      "title": "Normalize released JSON and discriminator contracts",
+      "summary": "History shows repeated pain around wrapper JSON casing, discriminator consistency, and keeping fixtures/docs aligned with the code. This is broader than any current canonical core case.",
+      "source_entries": [
+        {
+          "session_id": "0c18f841-81c5-4904-b449-dc1ff69fd1fe",
+          "created_at": "2026-04-28T00:46:41.938Z",
+          "summary": "CamelCase contract reset",
+          "excerpt": "Normalize all naming throughout the entire system ... convert everything into camelCase, and all `type` discriminators are on field `type`, with values in CAPS_CASE.",
+          "rationale": "This is a concrete history-derived benchmark candidate around contract coherence rather than just symbol navigation."
+        }
+      ]
+    },
+    {
+      "id": "rich-symbol-payloads",
+      "title": "Thread richer declaration payloads through semantic read surfaces",
+      "summary": "History shows demand not just for symbol names, but for declaration ranges and optional body/source payloads on outline, resolve, and workspace-symbol.",
+      "source_entries": [
+        {
+          "session_id": "4c676c17-454b-4f34-b7fc-cddfbc2304d6",
+          "created_at": "2026-04-11T03:32:20.372Z",
+          "summary": "Add DeclarationScope support",
+          "excerpt": "Capture the full PSI text range and optional source text of any declaration ... enabled by default on `outline` and opt-in on `resolve` and `workspace-symbol`.",
+          "rationale": "This is a genuine history-backed task shape not isolated in the current benchmark catalog."
+        }
+      ]
+    },
+    {
+      "id": "portable-skill-wrappers",
+      "title": "Port shell wrappers into typed Kotlin CLI commands",
+      "summary": "History shows a broader task family around replacing ad hoc shell wrappers with typed Kotlin CLI surfaces, plus evaluation and CI wiring to keep them from drifting.",
+      "source_entries": [
+        {
+          "session_id": "431e7b1e-b777-46e8-947f-ad90f0dfbc3c",
+          "created_at": "2026-04-19T00:57:42.373Z",
+          "summary": "Port skill wrappers to Kotlin",
+          "excerpt": "Rewrite the skill wrappers in Kotlin inside `kast-cli`, build a skill evaluation engine, and wire it into CI for regression tracking.",
+          "rationale": "This is a strong candidate for future benchmark expansion because it couples correctness, scope control, and operator ergonomics in one real task family."
+        }
+      ]
+    }
+  ]
+}
