@@ -140,6 +140,20 @@ internal class CliCommandParser(
                 listOf("smoke") -> CliCommand.Smoke(parsed.smokeOptions())
                 listOf("daemon", "start") -> CliCommand.DaemonStart(parsed.daemonStartOptions())
                 listOf("config", "init") -> CliCommand.ConfigInit
+                listOf("rpc") -> {
+                    val rawJson = parsed.positionals.getOrNull(1)
+                        ?: parsed.options["request-file"]?.let { Path.of(it).readText().trim() }
+                        ?: throw CliFailure(
+                            code = "CLI_USAGE",
+                            message = "rpc requires a JSON-RPC string argument or --request-file",
+                        )
+                    val workspaceRootOverride = parsed.options["workspace-root"]
+                        ?.let { Path.of(it).toAbsolutePath().normalize() }
+                    CliCommand.Rpc(rawJson, workspaceRootOverride)
+                }
+                listOf("up") -> CliCommand.Up(parsed.runtimeOptions())
+                listOf("status") -> CliCommand.Status(parsed.runtimeOptions())
+                listOf("stop") -> CliCommand.Stop(parsed.runtimeOptions())
                 listOf("eval", "skill") -> CliCommand.EvalSkill(parsed.evalSkillOptions())
                 listOf("gradle", "run") -> parsed.gradleRunCommand()
                 listOf("metrics", "fan-in") -> CliCommand.Metrics(
@@ -811,13 +825,12 @@ internal data class ParsedArguments(
         return Path.of(raw).toAbsolutePath().normalize()
     }
 
-    fun variableArityMetadata(): CliCommandMetadata? =
-        if (positionals.size > 2) {
-            CliCommandCatalog.find(positionals.take(2))
-                ?.takeIf { metadata -> metadata.path == listOf("gradle", "run") }
-        } else {
-            null
-        }
+    fun variableArityMetadata(): CliCommandMetadata? = when {
+        positionals.size > 2 -> CliCommandCatalog.find(positionals.take(2))
+            ?.takeIf { metadata -> metadata.path == listOf("gradle", "run") }
+        positionals.size == 2 && positionals[0] == "rpc" -> CliCommandCatalog.find(listOf("rpc"))
+        else -> null
+    }
 
     fun optionalInt(key: String): Int? = options[key]?.toIntOrNull()
 
