@@ -19,11 +19,27 @@ CATEGORIES = {
 
 ENTERPRISE_VALUE = {
     "Disambiguation": "correctness -> fewer bugs shipped from symbol mix-ups",
-    "Completeness": "completeness -> audit confidence and fewer missed call sites",
-    "Safe Mutations": "validated edits -> fewer broken builds after refactors",
-    "Token Efficiency": "structural summaries -> lower API cost and faster reviews",
-    "Multi-Step": "compound workflows -> clearer blast-radius analysis before changes",
+    "Completeness": "coverage -> fewer missed usages and safer audits",
+    "Safe Mutations": "reliability -> fewer broken builds after edits",
+    "Token Efficiency": "scope discipline -> less unnecessary work per task",
+    "Multi-Step": "execution quality -> clearer compound-task outcomes",
 }
+
+PRIMARY_DIMENSIONS = (
+    ("Overall outcome", "overall_outcome", "overall"),
+    ("Task completion", "task_completion", "task_completion"),
+    ("Accuracy", "accuracy", "accuracy"),
+    ("Reliability", "reliability", "reliability"),
+    ("Scope control", "scope_control", "scope_control"),
+)
+
+SUPPORTING_EFFICIENCY = (
+    ("Transcript chars", "transcript_chars"),
+    ("Tool calls", "total_tool_calls"),
+    ("Semantic tool calls", "semantic_tool_calls"),
+    ("Generic search calls", "generic_search_calls"),
+    ("Executor time (s)", "executor_duration_seconds"),
+)
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -36,40 +52,90 @@ def load_json(path: Path) -> dict[str, Any]:
     return payload
 
 
-def config_names(benchmark: dict[str, Any]) -> tuple[str, str]:
-    summary = benchmark.get("run_summary", {})
-    configs = [name for name in summary if name != "delta"]
-    if "with_skill" in configs and "without_skill" in configs:
-        return "with_skill", "without_skill"
-    if len(configs) >= 2:
-        return configs[0], configs[1]
-    if len(configs) == 1:
-        return configs[0], "without_skill"
-    return "with_skill", "without_skill"
+def _summary_score_mean(
+    benchmark: dict[str, Any],
+    config: str,
+    measurement_key: str,
+    kind: str = "outcome",
+) -> float | None:
+    summary = (
+        benchmark.get("summary", {})
+        .get("by_configuration", {})
+        .get(config, {})
+        .get("measurements", {})
+        .get(measurement_key, {})
+        .get(kind, {})
+    )
+    if summary.get("status") != "summarized":
+        return None
+    return float(summary["mean"])
 
 
-def mean_from_summary(benchmark: dict[str, Any], config: str, metric: str) -> float:
-    summary_metric = benchmark.get("run_summary", {}).get(config, {}).get(metric, {})
-    if isinstance(summary_metric, dict) and "mean" in summary_metric:
-        return float(summary_metric["mean"])
+def _summary_efficiency_mean(benchmark: dict[str, Any], config: str, metric: str) -> float | None:
+    summary = (
+        benchmark.get("summary", {})
+        .get("by_configuration", {})
+        .get(config, {})
+        .get("efficiency", {})
+        .get(metric, {})
+    )
+    if summary.get("status") != "summarized":
+        return None
+    return float(summary["mean"])
 
-    values = [
-        float(run.get("result", {}).get(metric, 0.0))
-        for run in benchmark.get("runs", [])
-        if run.get("configuration") == config
-    ]
-    return sum(values) / len(values) if values else 0.0
+
+def _score_delta(benchmark: dict[str, Any], stat_key: str) -> tuple[str, str]:
+    stats = (
+        benchmark.get("paired_analysis", {})
+        .get("statistics", {})
+        .get("score_metrics", {})
+        .get(stat_key, {})
+    )
+    if stats.get("status") != "scored":
+        return "n/a", "n/a"
+    return f"{float(stats['mean_delta']):+.3f}", f"{float(stats['p_value']):.3f}"
+
+
+def _efficiency_delta(benchmark: dict[str, Any], metric: str) -> tuple[str, str]:
+    stats = (
+        benchmark.get("paired_analysis", {})
+        .get("statistics", {})
+        .get("efficiency_metrics", {})
+        .get(metric, {})
+    )
+    if stats.get("status") != "scored":
+        return "n/a", "n/a"
+    return f"{float(stats['mean_delta']):+.3f}", f"{float(stats['p_value']):.3f}"
+
+
+def _format_score(value: float | None) -> str:
+    return "n/a" if value is None else f"{value * 100:.0f}%"
+
+
+def _format_metric(value: float | None, metric: str) -> str:
+    if value is None:
+        return "n/a"
+    if metric == "executor_duration_seconds":
+        return f"{value:.2f}"
+    return f"{value:.0f}" if float(value).is_integer() else f"{value:.2f}"
 
 
 def category_pass_rates(benchmark: dict[str, Any], config: str) -> dict[str, float]:
     grouped: dict[str, list[float]] = defaultdict(list)
     for run in benchmark.get("runs", []):
-        if run.get("configuration") != config:
+        if run.get("configuration") != config or run.get("status") != "valid":
+            continue
+        score = (
+            run.get("measurements", {})
+            .get("overall", {})
+            .get("outcome", {})
+        )
+        if score.get("status") != "scored":
             continue
         eval_id = str(run.get("eval_id", ""))
         for category, ids in CATEGORIES.items():
             if eval_id in ids:
-                grouped[category].append(float(run.get("result", {}).get("pass_rate", 0.0)))
+                grouped[category].append(float(score["score"]))
                 break
     return {
         category: (sum(values) / len(values) if values else 0.0)
@@ -77,84 +143,95 @@ def category_pass_rates(benchmark: dict[str, Any], config: str) -> dict[str, flo
     }
 
 
-def percent(value: float) -> str:
-    return f"{value * 100:.0f}%"
-
-
-def metric_rows(benchmark: dict[str, Any], primary: str, baseline: str) -> list[tuple[str, str, str, str]]:
-    delta = benchmark.get("run_summary", {}).get("delta", {})
-    rows = []
-    for label, metric in [
-        ("Outcome pass rate", "outcome_pass_rate"),
-        ("Transcript chars", "transcript_chars"),
-        ("Tool calls", "tool_calls"),
-        ("Time", "executor_duration_seconds"),
-    ]:
-        primary_value = mean_from_summary(benchmark, primary, metric)
-        baseline_value = mean_from_summary(benchmark, baseline, metric)
-        if metric == "outcome_pass_rate":
-            rows.append((label, percent(primary_value), percent(baseline_value), str(delta.get(metric, f"{primary_value - baseline_value:+.2f}"))))
-        elif metric == "executor_duration_seconds":
-            rows.append((label, f"{primary_value:.1f}s", f"{baseline_value:.1f}s", str(delta.get(metric, f"{primary_value - baseline_value:+.1f}"))))
-        else:
-            rows.append((label, f"{primary_value:.0f}", f"{baseline_value:.0f}", str(delta.get(metric, f"{primary_value - baseline_value:+.0f}"))))
-    return rows
-
-
 def key_findings(benchmark: dict[str, Any]) -> list[str]:
-    findings = [str(note) for note in benchmark.get("notes", []) if str(note).strip()]
-    if findings:
-        return findings
+    findings: list[str] = []
+    issues = benchmark.get("paired_analysis", {}).get("issues", {})
+    invalid_runs = issues.get("invalid_runs", [])
+    flaky_runs = issues.get("flaky_runs", [])
+    if invalid_runs:
+        findings.append(f"{len(invalid_runs)} run(s) were excluded as invalid and do not affect the benchmark headline.")
+    if flaky_runs:
+        findings.append(f"{len(flaky_runs)} run(s) required retries before succeeding.")
 
-    by_expectation: dict[str, dict[str, int]] = defaultdict(lambda: {"passed": 0, "total": 0})
+    by_expectation: dict[str, dict[str, int]] = defaultdict(lambda: {"passed": 0, "eligible": 0})
     for run in benchmark.get("runs", []):
-        if run.get("configuration") != "with_skill":
+        if run.get("configuration") != "with_skill" or run.get("status") != "valid":
             continue
         for expectation in run.get("expectations", []):
+            status = expectation.get("status")
+            if status not in {"passed", "failed"}:
+                continue
             text = str(expectation.get("text", "")).strip()
             if not text:
                 continue
-            by_expectation[text]["total"] += 1
-            if expectation.get("passed") is True:
+            by_expectation[text]["eligible"] += 1
+            if status == "passed":
                 by_expectation[text]["passed"] += 1
 
-    generated = []
-    for text, counts in by_expectation.items():
-        if counts["total"]:
-            generated.append(f"Assertion '{text}' passed in {counts['passed']}/{counts['total']} with-skill runs.")
-    return generated or ["No analyzer notes were present in benchmark.json."]
+    for text, counts in sorted(by_expectation.items()):
+        findings.append(
+            f"Expectation '{text}' passed in {counts['passed']}/{counts['eligible']} with-skill valid runs."
+        )
+        if len(findings) >= 5:
+            break
+
+    return findings or ["No benchmark findings were derivable from the current artifact."]
 
 
 def build_markdown(benchmark: dict[str, Any], bindings: dict[str, Any]) -> str:
-    target_repo = bindings.get("target_repo") or benchmark.get("metadata", {}).get("skill_name", "target repo")
-    primary, baseline = config_names(benchmark)
-    category_rates = category_pass_rates(benchmark, primary)
+    target_repo = bindings.get("target_repo") or benchmark.get("metadata", {}).get("target_repo", "target repo")
+    category_rates = category_pass_rates(benchmark, "with_skill")
 
     lines = [
         f"# Kast Value Proof: {target_repo}",
         "",
-        "## Headline metrics",
+        "## Headline dimensions",
         "",
-        f"| Metric | {primary} | {baseline} | Delta |",
-        "| --- | ---: | ---: | ---: |",
+        "| Dimension | with_skill | without_skill | Delta | p-value |",
+        "| --- | ---: | ---: | ---: | ---: |",
     ]
-    for label, primary_value, baseline_value, delta_value in metric_rows(benchmark, primary, baseline):
-        lines.append(f"| {label} | {primary_value} | {baseline_value} | {delta_value} |")
-    significance = benchmark.get("run_summary", {}).get("delta", {}).get("outcome_pass_rate_significance")
-    if significance:
-        lines.extend(["", f"Outcome pass-rate significance: `{significance}`"])
+    for label, stat_key, measurement_key in PRIMARY_DIMENSIONS:
+        with_value = _summary_score_mean(benchmark, "with_skill", measurement_key)
+        without_value = _summary_score_mean(benchmark, "without_skill", measurement_key)
+        delta, p_value = _score_delta(benchmark, stat_key)
+        lines.append(
+            f"| {label} | {_format_score(with_value)} | {_format_score(without_value)} | {delta} | {p_value} |"
+        )
 
-    lines.extend(["", "## Per-category breakdown", "", "| Category | Pass rate | Enterprise value |", "| --- | ---: | --- |"])
+    lines.extend(
+        [
+            "",
+            "## Supporting efficiency",
+            "",
+            "| Metric | with_skill | without_skill | Delta | p-value |",
+            "| --- | ---: | ---: | ---: | ---: |",
+        ]
+    )
+    for label, metric in SUPPORTING_EFFICIENCY:
+        with_value = _summary_efficiency_mean(benchmark, "with_skill", metric)
+        without_value = _summary_efficiency_mean(benchmark, "without_skill", metric)
+        delta, p_value = _efficiency_delta(benchmark, metric)
+        lines.append(
+            f"| {label} | {_format_metric(with_value, metric)} | {_format_metric(without_value, metric)} | {delta} | {p_value} |"
+        )
+
+    lines.extend(
+        [
+            "",
+            "## Per-category breakdown",
+            "",
+            "| Category | with_skill outcome | Enterprise value |",
+            "| --- | ---: | --- |",
+        ]
+    )
     for category in CATEGORIES:
-        lines.append(f"| {category} | {percent(category_rates.get(category, 0.0))} | {ENTERPRISE_VALUE[category]} |")
+        lines.append(
+            f"| {category} | {_format_score(category_rates.get(category, 0.0))} | {ENTERPRISE_VALUE[category]} |"
+        )
 
     lines.extend(["", "## Key findings", ""])
     for finding in key_findings(benchmark):
         lines.append(f"- {finding}")
-
-    lines.extend(["", "## What this means", ""])
-    for category, value in ENTERPRISE_VALUE.items():
-        lines.append(f"- **{category}**: {value}.")
 
     return "\n".join(lines) + "\n"
 

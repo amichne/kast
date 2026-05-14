@@ -1,40 +1,13 @@
 #!/usr/bin/env python3
-"""Evaluation aggregator with applicability-aware pass-rate and paired stats.
+"""Aggregate evaluation runs into the authoritative benchmark contract."""
 
-Replaces the headline numbers in the standard skill-creator benchmark.json
-with a fairer comparison and a paired-test significance estimate.
-
-Inputs:
-  iteration_dir/eval-*/<config>/run-*/grading.json   (schema v2)
-  iteration_dir/manifest.json                         (eval -> dir/chain map)
-  bindings JSON                                       (optional; for metadata)
-
-Outputs:
-  iteration_dir/benchmark.json   — extended with:
-       run_summary[config].outcome_pass_rate         {mean, stddev, min, max}
-       run_summary.delta.outcome_pass_rate           "+0.NN [N=K runs, p=0.NN]"
-       run_summary.delta.paired_wilcoxon             {statistic, p_value, n_pairs}
-       paired_stats.eval_deltas                      [{eval_id, delta_outcome_pass_rate, delta_tokens, delta_time}]
-       paired_stats.outliers                         [{eval_id, metric, value, fence}]
-       paired_stats.flaky_runs                       [{eval_id, configuration, run, attempts}]
-       paired_stats.baseline_violations              [{eval_id, run, kast_calls}]
-       paired_stats.contradictions                   [{eval_id, configuration, run, count}]
-  iteration_dir/benchmark.md     — Markdown rollup including the above.
-The Wilcoxon signed-rank statistic is implemented in pure Python (no SciPy
-required) using the exact distribution for n <= 20 and a normal approximation
-for n > 20. Good enough for the 10-eval, 5-run regime we're in.
-
-Usage:
-    python3 value_proof_aggregate.py <iteration_dir>           \\
-        --skill-name kast-value-proof                          \\
-        [--bindings <path>]                                    \\
-        [--catalog <path>]
-"""
 from __future__ import annotations
 
 import argparse
 import json
 import math
+import os
+import platform
 import statistics
 import sys
 from collections import defaultdict
@@ -42,16 +15,46 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Iterable
 
-# ---------- IO -------------------------------------------------------------
+PRIMARY_DIMENSIONS = (
+    "task_completion",
+    "accuracy",
+    "reliability",
+    "scope_control",
+)
+MEASUREMENT_DIMENSIONS = PRIMARY_DIMENSIONS + ("efficiency",)
+MEASUREMENT_KEYS = ("overall",) + MEASUREMENT_DIMENSIONS
+MEASUREMENT_KINDS = ("all", "outcome", "process")
+CONFIGURATIONS = ("with_skill", "without_skill")
+EFFICIENCY_METRICS = (
+    "transcript_chars",
+    "total_tool_calls",
+    "semantic_tool_calls",
+    "generic_search_calls",
+    "executor_duration_seconds",
+    "errors_encountered",
+)
+PAIR_SCORE_METRICS = {
+    "overall_outcome": ("overall", "outcome"),
+    "task_completion": ("task_completion", "outcome"),
+    "accuracy": ("accuracy", "outcome"),
+    "reliability": ("reliability", "outcome"),
+    "scope_control": ("scope_control", "outcome"),
+}
+OUTLIER_METRICS = {
+    "overall_outcome_score": ("overall", "outcome"),
+    "transcript_chars": "transcript_chars",
+    "executor_duration_seconds": "executor_duration_seconds",
+}
 
 
-def _read_json(path: Path) -> dict[str, Any]:
-    if not path.exists():
+def _read_json(path: Path | None) -> dict[str, Any]:
+    if path is None or not path.exists():
         return {}
     try:
-        return json.loads(path.read_text())
+        payload = json.loads(path.read_text())
     except json.JSONDecodeError:
         return {}
+    return payload if isinstance(payload, dict) else {}
 
 
 def _iter_runs(iteration_dir: Path) -> Iterable[tuple[str, str, int, Path]]:
@@ -67,398 +70,718 @@ def _iter_runs(iteration_dir: Path) -> Iterable[tuple[str, str, int, Path]]:
         yield eval_id, config_dir.name, run_number, run_dir
 
 
-# ---------- stats ----------------------------------------------------------
+def _build_expectation_index(catalog: dict[str, Any]) -> dict[str, dict[str, dict[str, Any]]]:
+    index: dict[str, dict[str, dict[str, Any]]] = {}
+    for case in catalog.get("cases", []) or []:
+        if not isinstance(case, dict):
+            continue
+        case_id = str(case.get("id", "")).strip()
+        if not case_id:
+            continue
+        entries: dict[str, dict[str, Any]] = {}
+        for expectation in case.get("expectations", []) or []:
+            if not isinstance(expectation, dict):
+                continue
+            expectation_id = str(expectation.get("id", "")).strip()
+            expectation_text = str(expectation.get("text", "")).strip()
+            if expectation_id:
+                entries[expectation_id] = expectation
+            if expectation_text:
+                entries[expectation_text] = expectation
+        index[case_id] = entries
+    return index
 
 
-def _mean_stddev(values: list[float]) -> dict[str, float]:
+def _evidence(entry: dict[str, Any], graded_by: str) -> dict[str, Any]:
+    raw = entry.get("evidence")
+    if isinstance(raw, dict):
+        kind = str(raw.get("kind", "")).strip() or ("automated_check" if graded_by == "script" else "llm_judgment")
+        summary = str(raw.get("summary", "")).strip() or "No evidence provided."
+        citations = raw.get("citations")
+        evidence = {"kind": kind, "summary": summary}
+        if isinstance(citations, list):
+            evidence["citations"] = [str(item) for item in citations if str(item).strip()]
+        return evidence
+    summary = str(raw or "").strip() or "No evidence provided."
+    return {
+        "kind": "automated_check" if graded_by == "script" else "llm_judgment",
+        "summary": summary,
+    }
+
+
+def _normalize_expectation(
+    *,
+    eval_id: str,
+    entry: dict[str, Any],
+    expectation_index: dict[str, dict[str, dict[str, Any]]],
+    configuration: str,
+) -> dict[str, Any]:
+    case_index = expectation_index.get(eval_id, {})
+    info = case_index.get(str(entry.get("id", "")).strip()) or case_index.get(str(entry.get("text", "")).strip()) or {}
+    expectation_id = str(entry.get("id") or info.get("id") or entry.get("text") or "unknown").strip()
+    text = str(entry.get("text") or info.get("text") or expectation_id).strip()
+    kind = str(entry.get("kind") or info.get("kind") or "outcome")
+    dimension = str(entry.get("dimension") or info.get("dimension") or "task_completion")
+    applicability = str(entry.get("applicability") or info.get("applicability") or "both")
+    graded_by = str(entry.get("graded_by") or info.get("graded_by") or "llm")
+
+    normalized: dict[str, Any] = {
+        "id": expectation_id,
+        "text": text,
+        "kind": kind,
+        "dimension": dimension,
+        "applicability": applicability,
+        "graded_by": graded_by,
+    }
+    oracle = entry.get("oracle") or info.get("oracle")
+    if isinstance(oracle, str) and oracle.strip():
+        normalized["oracle"] = oracle.strip()
+
+    if entry.get("skipped") is True or (
+        applicability == "with_skill_only" and configuration != "with_skill"
+    ) or (
+        applicability == "without_skill_only" and configuration != "without_skill"
+    ):
+        normalized["status"] = "not_applicable"
+        normalized["reason"] = "configuration_mismatch"
+        return normalized
+
+    if "passed" in entry:
+        normalized["status"] = "passed" if bool(entry.get("passed")) else "failed"
+        normalized["evidence"] = _evidence(entry, graded_by)
+        return normalized
+
+    normalized["status"] = "ungraded"
+    normalized["error"] = "missing_pass_fail_status"
+    return normalized
+
+
+def _score_group(expectations: list[dict[str, Any]]) -> dict[str, Any]:
+    passed = sum(1 for expectation in expectations if expectation["status"] == "passed")
+    failed = sum(1 for expectation in expectations if expectation["status"] == "failed")
+    not_applicable = sum(1 for expectation in expectations if expectation["status"] == "not_applicable")
+    eligible = passed + failed
+    if eligible == 0:
+        return {
+            "status": "not_applicable",
+            "eligible": 0,
+            "not_applicable": not_applicable,
+        }
+    return {
+        "status": "scored",
+        "eligible": eligible,
+        "passed": passed,
+        "failed": failed,
+        "not_applicable": not_applicable,
+        "score": round(passed / eligible, 4),
+    }
+
+
+def _select_expectations(
+    expectations: list[dict[str, Any]],
+    *,
+    dimension: str | None,
+    kind: str | None,
+) -> list[dict[str, Any]]:
+    selected = expectations
+    if dimension is not None:
+        selected = [expectation for expectation in selected if expectation["dimension"] == dimension]
+    if kind is not None:
+        selected = [expectation for expectation in selected if expectation["kind"] == kind]
+    return selected
+
+
+def _measurement_card(expectations: list[dict[str, Any]], *, dimension: str | None) -> dict[str, Any]:
+    return {
+        "all": _score_group(_select_expectations(expectations, dimension=dimension, kind=None)),
+        "outcome": _score_group(_select_expectations(expectations, dimension=dimension, kind="outcome")),
+        "process": _score_group(_select_expectations(expectations, dimension=dimension, kind="process")),
+    }
+
+
+def _measurements(expectations: list[dict[str, Any]]) -> dict[str, Any]:
+    measurements = {"overall": _measurement_card(expectations, dimension=None)}
+    for dimension in MEASUREMENT_DIMENSIONS:
+        measurements[dimension] = _measurement_card(expectations, dimension=dimension)
+    return measurements
+
+
+def _integrity(grading: dict[str, Any], configuration: str) -> dict[str, Any]:
+    source = grading.get("integrity", {}) or {}
+    contradictions = source.get("contradictions", []) or []
+    baseline_violated = bool(source.get("baseline_isolation_violation"))
+    if configuration == "without_skill":
+        baseline_isolation = "violated" if baseline_violated else "intact"
+    else:
+        baseline_isolation = "not_applicable"
+    return {
+        "attempts": int(source.get("attempts", 1) or 1),
+        "flaky": bool(source.get("flaky", False)),
+        "baseline_isolation": baseline_isolation,
+        "contradiction_count": len(contradictions),
+        "contradiction_samples": [str(item) for item in contradictions[:3] if str(item).strip()],
+        "workspace_dirty_post": bool(source.get("workspace_dirty_post", False)),
+        **({"git_sha_post": str(source["git_sha_post"])} if str(source.get("git_sha_post", "")).strip() else {}),
+    }
+
+
+def _run_efficiency(grading: dict[str, Any]) -> dict[str, Any]:
+    execution = grading.get("execution_metrics", {}) or {}
+    timing = grading.get("timing", {}) or {}
+    return {
+        "transcript_chars": int(execution.get("transcript_chars", 0) or 0),
+        "total_tool_calls": int(execution.get("total_tool_calls", 0) or 0),
+        "semantic_tool_calls": int(execution.get("kast_calls", 0) or 0),
+        "generic_search_calls": int(execution.get("grep_or_find_calls", 0) or 0),
+        "executor_duration_seconds": float(timing.get("executor_duration_seconds", 0.0) or 0.0),
+        "executor_duration_source": str(timing.get("executor_duration_source", "missing") or "missing"),
+        "errors_encountered": int(execution.get("errors_encountered", 0) or 0),
+    }
+
+
+def _invalid_reason(expectations: list[dict[str, Any]], integrity: dict[str, Any]) -> str | None:
+    if any(expectation["status"] == "ungraded" for expectation in expectations):
+        return "ungraded_expectation"
+    if integrity["baseline_isolation"] == "violated":
+        return "baseline_tainted"
+    if integrity["contradiction_count"] > 0:
+        return "contradictory_grading"
+    return None
+
+
+def _distribution(
+    values: list[float],
+    *,
+    lower_bound: float | None = None,
+    upper_bound: float | None = None,
+) -> dict[str, Any]:
     if not values:
-        return {"mean": 0.0, "stddev": 0.0, "min": 0.0, "max": 0.0, "n": 0}
+        return {"status": "no_valid_samples", "n": 0}
     mean = statistics.fmean(values)
     stddev = statistics.pstdev(values) if len(values) > 1 else 0.0
+    if len(values) == 1:
+        ci_lower = ci_upper = mean
+        method = "degenerate_single_sample"
+    else:
+        margin = 1.96 * stddev / math.sqrt(len(values))
+        ci_lower = mean - margin
+        ci_upper = mean + margin
+        method = "normal_approximation"
+    if lower_bound is not None:
+        ci_lower = max(lower_bound, ci_lower)
+    if upper_bound is not None:
+        ci_upper = min(upper_bound, ci_upper)
+    mean = max(lower_bound, mean) if lower_bound is not None else mean
+    mean = min(upper_bound, mean) if upper_bound is not None else mean
+    minimum = min(values)
+    maximum = max(values)
+    if lower_bound is not None:
+        minimum = max(lower_bound, minimum)
+        maximum = max(lower_bound, maximum)
+    if upper_bound is not None:
+        minimum = min(upper_bound, minimum)
+        maximum = min(upper_bound, maximum)
     return {
+        "status": "summarized",
+        "n": len(values),
         "mean": round(mean, 4),
         "stddev": round(stddev, 4),
-        "min": round(min(values), 4),
-        "max": round(max(values), 4),
-        "n": len(values),
+        "min": round(minimum, 4),
+        "max": round(maximum, 4),
+        "confidence_interval_95": {
+            "level": 0.95,
+            "lower": round(ci_lower, 4),
+            "upper": round(ci_upper, 4),
+            "method": method,
+        },
     }
 
 
-def _wilcoxon_signed_rank(diffs: list[float]) -> dict[str, float | int | str]:
-    """Two-sided Wilcoxon signed-rank test on the paired differences.
+def _configuration_summary(runs: list[dict[str, Any]]) -> dict[str, Any]:
+    valid_runs = [run for run in runs if run["status"] == "valid"]
+    measurements: dict[str, Any] = {}
+    for measurement_key in MEASUREMENT_KEYS:
+        measurements[measurement_key] = {}
+        for kind in MEASUREMENT_KINDS:
+            scores = [
+                float(run["measurements"][measurement_key][kind]["score"])
+                for run in valid_runs
+                if run["measurements"][measurement_key][kind]["status"] == "scored"
+            ]
+            measurements[measurement_key][kind] = _distribution(
+                scores,
+                lower_bound=0.0,
+                upper_bound=1.0,
+            )
+    efficiency = {
+        metric: _distribution([float(run["efficiency"][metric]) for run in valid_runs], lower_bound=0.0)
+        for metric in EFFICIENCY_METRICS
+    }
+    return {
+        "run_counts": {
+            "total": len(runs),
+            "valid": len(valid_runs),
+            "invalid": len(runs) - len(valid_runs),
+        },
+        "measurements": measurements,
+        "efficiency": efficiency,
+    }
 
-    Returns {statistic: W, p_value, n_pairs, method}.
-    Drops zero differences (Pratt would keep them; we use the simpler
-    Wilcoxon convention since exact ties are rare on continuous metrics).
-    """
-    nonzero = [d for d in diffs if d != 0]
-    n = len(nonzero)
-    if n == 0:
-        return {"statistic": 0.0, "p_value": 1.0, "n_pairs": 0, "method": "no_signal"}
 
-    abs_vals = sorted(((abs(d), 1 if d > 0 else -1) for d in nonzero), key=lambda t: t[0])
-    # Average ranks for ties.
-    ranks: list[float] = [0.0] * n
-    i = 0
-    while i < n:
-        j = i
-        while j + 1 < n and abs_vals[j + 1][0] == abs_vals[i][0]:
-            j += 1
-        avg_rank = (i + j) / 2.0 + 1.0  # 1-indexed
-        for k in range(i, j + 1):
-            ranks[k] = avg_rank
-        i = j + 1
-    w_plus = sum(r for r, (_, sign) in zip(ranks, abs_vals) if sign > 0)
-    w_minus = sum(r for r, (_, sign) in zip(ranks, abs_vals) if sign < 0)
+def _wilcoxon_signed_rank(deltas: list[float]) -> dict[str, Any]:
+    nonzero = [delta for delta in deltas if delta != 0]
+    n_pairs = len(nonzero)
+    if n_pairs == 0:
+        return {"status": "not_applicable", "n_pairs": 0}
+
+    absolute_values = sorted(
+        ((abs(delta), 1 if delta > 0 else -1) for delta in nonzero),
+        key=lambda item: item[0],
+    )
+    ranks = [0.0] * n_pairs
+    index = 0
+    while index < n_pairs:
+        end = index
+        while end + 1 < n_pairs and absolute_values[end + 1][0] == absolute_values[index][0]:
+            end += 1
+        average_rank = (index + end) / 2.0 + 1.0
+        for rank_index in range(index, end + 1):
+            ranks[rank_index] = average_rank
+        index = end + 1
+
+    w_plus = sum(rank for rank, (_, sign) in zip(ranks, absolute_values) if sign > 0)
+    w_minus = sum(rank for rank, (_, sign) in zip(ranks, absolute_values) if sign < 0)
     statistic = min(w_plus, w_minus)
-
-    if n <= 20:
-        p = _wilcoxon_exact_p(nonzero, statistic)
+    if n_pairs <= 20:
+        p_value = _wilcoxon_exact_p(nonzero, statistic)
         method = "exact"
     else:
-        # Normal approximation with continuity correction.
-        mean = n * (n + 1) / 4.0
-        var = n * (n + 1) * (2 * n + 1) / 24.0
-        if var == 0:
-            return {"statistic": float(statistic), "p_value": 1.0, "n_pairs": n, "method": "no_variance"}
-        z = (statistic - mean + 0.5) / math.sqrt(var)
-        p = 2 * _normal_sf(abs(z))
-        method = "normal_approx"
+        mean = n_pairs * (n_pairs + 1) / 4.0
+        variance = n_pairs * (n_pairs + 1) * (2 * n_pairs + 1) / 24.0
+        if variance == 0:
+            p_value = 1.0
+            method = "no_variance"
+        else:
+            z_score = (statistic - mean + 0.5) / math.sqrt(variance)
+            p_value = 2 * _normal_sf(abs(z_score))
+            method = "normal_approx"
+
+    total_rank = w_plus + w_minus
+    effect_size = 0.0 if total_rank == 0 else (w_plus - w_minus) / total_rank
     return {
+        "status": "scored",
+        "test_name": "wilcoxon_signed_rank",
+        "alternative": "two_sided",
+        "zero_method": "wilcox",
+        "correction": "none",
         "statistic": round(float(statistic), 4),
-        "p_value": round(min(1.0, max(0.0, p)), 4),
-        "n_pairs": n,
+        "p_value": round(min(1.0, max(0.0, p_value)), 4),
+        "n_pairs": n_pairs,
         "method": method,
+        "effect_size_rank_biserial": round(effect_size, 4),
+        "mean_delta": round(statistics.fmean(nonzero), 4),
+        "median_delta": round(statistics.median(nonzero), 4),
     }
 
 
-def _wilcoxon_exact_p(diffs: list[float], statistic: float) -> float:
-    n = len(diffs)
-    # Enumerate all 2^n sign assignments of ranks 1..n; count those with W <= statistic.
-    if n > 20:
+def _wilcoxon_exact_p(deltas: list[float], statistic: float) -> float:
+    count = len(deltas)
+    if count > 20:
         return 1.0
-    abs_sorted = sorted(abs(d) for d in diffs)
-    ranks: list[float] = [0.0] * n
-    i = 0
-    while i < n:
-        j = i
-        while j + 1 < n and abs_sorted[j + 1] == abs_sorted[i]:
-            j += 1
-        avg_rank = (i + j) / 2.0 + 1.0
-        for k in range(i, j + 1):
-            ranks[k] = avg_rank
-        i = j + 1
-    total = 1 << n
-    le_count = 0
+    absolute_values = sorted(abs(delta) for delta in deltas)
+    ranks = [0.0] * count
+    index = 0
+    while index < count:
+        end = index
+        while end + 1 < count and absolute_values[end + 1] == absolute_values[index]:
+            end += 1
+        average_rank = (index + end) / 2.0 + 1.0
+        for rank_index in range(index, end + 1):
+            ranks[rank_index] = average_rank
+        index = end + 1
+    total = 1 << count
+    less_or_equal = 0
     for mask in range(total):
         w_plus = 0.0
-        for k in range(n):
-            if mask & (1 << k):
-                w_plus += ranks[k]
+        for bit in range(count):
+            if mask & (1 << bit):
+                w_plus += ranks[bit]
         w_minus = sum(ranks) - w_plus
-        w = min(w_plus, w_minus)
-        if w <= statistic + 1e-9:
-            le_count += 1
-    return le_count / total
+        if min(w_plus, w_minus) <= statistic + 1e-9:
+            less_or_equal += 1
+    return less_or_equal / total
 
 
-def _normal_sf(z: float) -> float:
-    return 0.5 * math.erfc(z / math.sqrt(2))
+def _normal_sf(value: float) -> float:
+    return 0.5 * math.erfc(value / math.sqrt(2))
+
+
+def _mean_run_score(runs: list[dict[str, Any]], measurement_key: str, kind: str) -> float | None:
+    values = [
+        float(run["measurements"][measurement_key][kind]["score"])
+        for run in runs
+        if run["measurements"][measurement_key][kind]["status"] == "scored"
+    ]
+    return statistics.fmean(values) if values else None
+
+
+def _score_delta(with_runs: list[dict[str, Any]], without_runs: list[dict[str, Any]], measurement_key: str, kind: str) -> dict[str, Any]:
+    with_mean = _mean_run_score(with_runs, measurement_key, kind)
+    without_mean = _mean_run_score(without_runs, measurement_key, kind)
+    if with_mean is None or without_mean is None:
+        return {"status": "not_applicable"}
+    return {
+        "status": "scored",
+        "with_skill_mean": round(with_mean, 4),
+        "without_skill_mean": round(without_mean, 4),
+        "delta": round(with_mean - without_mean, 4),
+    }
+
+
+def _metric_delta(with_runs: list[dict[str, Any]], without_runs: list[dict[str, Any]], metric: str) -> dict[str, Any]:
+    with_mean = statistics.fmean(float(run["efficiency"][metric]) for run in with_runs)
+    without_mean = statistics.fmean(float(run["efficiency"][metric]) for run in without_runs)
+    return {
+        "with_skill_mean": round(with_mean, 4),
+        "without_skill_mean": round(without_mean, 4),
+        "delta": round(with_mean - without_mean, 4),
+    }
 
 
 def _tukey_outliers(values: dict[str, float]) -> list[tuple[str, float, str]]:
-    """Return [(eval_id, value, 'low'|'high'), ...] using 1.5×IQR fences."""
     if len(values) < 4:
         return []
-    sorted_vals = sorted(values.values())
-    q1 = sorted_vals[len(sorted_vals) // 4]
-    q3 = sorted_vals[(3 * len(sorted_vals)) // 4]
+    sorted_values = sorted(values.values())
+    q1 = sorted_values[len(sorted_values) // 4]
+    q3 = sorted_values[(3 * len(sorted_values)) // 4]
     iqr = q3 - q1
     if iqr == 0:
         return []
-    low = q1 - 1.5 * iqr
-    high = q3 + 1.5 * iqr
-    out = []
-    for k, v in values.items():
-        if v < low:
-            out.append((k, v, "low"))
-        elif v > high:
-            out.append((k, v, "high"))
-    return out
+    lower = q1 - 1.5 * iqr
+    upper = q3 + 1.5 * iqr
+    outliers = []
+    for key, value in values.items():
+        if value < lower:
+            outliers.append((key, value, "low"))
+        elif value > upper:
+            outliers.append((key, value, "high"))
+    return outliers
 
 
-# ---------- main aggregation ----------------------------------------------
-
-
-def collect_runs(iteration_dir: Path) -> dict[str, dict[str, list[dict[str, Any]]]]:
-    """eval_id -> config -> list[run grading dict]."""
-    out: dict[str, dict[str, list[dict[str, Any]]]] = defaultdict(lambda: defaultdict(list))
-    for eval_id, config, run_number, run_dir in _iter_runs(iteration_dir):
-        grading = _read_json(run_dir / "grading.json")
-        if not grading:
+def _paired_analysis(runs: list[dict[str, Any]]) -> dict[str, Any]:
+    valid_runs = [run for run in runs if run["status"] == "valid"]
+    by_eval_config: dict[str, dict[str, list[dict[str, Any]]]] = defaultdict(lambda: defaultdict(list))
+    invalid_runs: list[dict[str, Any]] = []
+    flaky_runs: list[dict[str, Any]] = []
+    for run in runs:
+        if run["integrity"]["flaky"]:
+            flaky_runs.append(
+                {
+                    "eval_id": run["eval_id"],
+                    "configuration": run["configuration"],
+                    "run_number": run["run_number"],
+                    "attempts": run["integrity"]["attempts"],
+                }
+            )
+        if run["status"] == "invalid":
+            invalid_runs.append(
+                {
+                    "eval_id": run["eval_id"],
+                    "configuration": run["configuration"],
+                    "run_number": run["run_number"],
+                    "reason": run["invalid_reason"],
+                }
+            )
             continue
-        grading.setdefault("_run_dir", str(run_dir))
-        grading.setdefault("_run_number", run_number)
-        out[eval_id][config].append(grading)
-    return out
+        by_eval_config[run["eval_id"]][run["configuration"]].append(run)
 
-
-def per_config_metrics(runs: list[dict[str, Any]]) -> dict[str, list[float]]:
-    metrics: dict[str, list[float]] = defaultdict(list)
-    for grading in runs:
-        summary = grading.get("summary", {})
-        em = grading.get("execution_metrics", {})
-        timing = grading.get("timing", {})
-        metrics["pass_rate"].append(float(summary.get("pass_rate", 0.0)))
-        metrics["outcome_pass_rate"].append(float(summary.get("outcome_pass_rate", 0.0)))
-        metrics["process_pass_rate"].append(float(summary.get("process_pass_rate", 0.0)))
-        metrics["transcript_chars"].append(float(em.get("transcript_chars", 0)))
-        metrics["tool_calls"].append(float(em.get("total_tool_calls", 0)))
-        metrics["kast_calls"].append(float(em.get("kast_calls", 0)))
-        metrics["grep_or_find_calls"].append(float(em.get("grep_or_find_calls", 0)))
-        metrics["executor_duration_seconds"].append(float(timing.get("executor_duration_seconds", 0.0)))
-    return metrics
-
-
-def aggregate(iteration_dir: Path, *, skill_name: str, bindings_path: Path | None, catalog_path: Path | None) -> dict[str, Any]:
-    runs_by_eval = collect_runs(iteration_dir)
-
-    bindings = _read_json(bindings_path) if bindings_path else {}
-    catalog = _read_json(catalog_path) if catalog_path else {}
-
-    configs = sorted({c for ev in runs_by_eval.values() for c in ev.keys()})
-    eval_ids = sorted(runs_by_eval.keys())
-
-    # Per (eval, config): mean of each metric.
-    eval_means: dict[str, dict[str, dict[str, float]]] = defaultdict(dict)
-    runs_flat: list[dict[str, Any]] = []
-    flaky: list[dict[str, Any]] = []
-    baseline_violations: list[dict[str, Any]] = []
-    contradictions: list[dict[str, Any]] = []
-
-    for eval_id in eval_ids:
-        for config in configs:
-            run_grades = runs_by_eval.get(eval_id, {}).get(config, [])
-            if not run_grades:
-                continue
-            metrics = per_config_metrics(run_grades)
-            eval_means[eval_id][config] = {k: statistics.fmean(v) if v else 0.0 for k, v in metrics.items()}
-            for grading in run_grades:
-                summary = grading.get("summary", {})
-                em = grading.get("execution_metrics", {})
-                timing = grading.get("timing", {})
-                integrity = grading.get("integrity", {}) or {}
-                runs_flat.append({
-                    "eval_id": eval_id,
-                    "configuration": config,
-                    "run_number": grading.get("_run_number"),
-                    "result": {
-                        "pass_rate": summary.get("pass_rate", 0.0),
-                        "outcome_pass_rate": summary.get("outcome_pass_rate", 0.0),
-                        "process_pass_rate": summary.get("process_pass_rate", 0.0),
-                        "passed": summary.get("passed", 0),
-                        "failed": summary.get("failed", 0),
-                        "total": summary.get("total", 0),
-                        "outcome_total": summary.get("outcome_total", 0),
-                        "outcome_passed": summary.get("outcome_passed", 0),
-                        "transcript_chars": em.get("transcript_chars", 0),
-                        "tool_calls": em.get("total_tool_calls", 0),
-                        "kast_calls": em.get("kast_calls", 0),
-                        "grep_or_find_calls": em.get("grep_or_find_calls", 0),
-                        "time_seconds": timing.get("executor_duration_seconds", 0.0),
-                        "executor_duration_source": timing.get("executor_duration_source", "missing"),
-                        "errors": em.get("errors_encountered", 0),
-                    },
-                    "expectations": grading.get("expectations", []),
-                    "integrity": integrity,
-                })
-                if integrity.get("attempts", 1) > 1:
-                    flaky.append({
-                        "eval_id": eval_id,
-                        "configuration": config,
-                        "run_number": grading.get("_run_number"),
-                        "attempts": integrity.get("attempts", 1),
-                    })
-                if integrity.get("baseline_isolation_violation"):
-                    baseline_violations.append({
-                        "eval_id": eval_id,
-                        "run_number": grading.get("_run_number"),
-                        "kast_calls": em.get("kast_calls", 0),
-                    })
-                if integrity.get("contradictions"):
-                    contradictions.append({
-                        "eval_id": eval_id,
-                        "configuration": config,
-                        "run_number": grading.get("_run_number"),
-                        "count": len(integrity["contradictions"]),
-                        "samples": integrity["contradictions"][:3],
-                    })
-
-    # Run-summary across all runs of a configuration.
-    run_summary: dict[str, Any] = {}
-    for config in configs:
-        all_metrics: dict[str, list[float]] = defaultdict(list)
-        for eval_id in eval_ids:
-            run_grades = runs_by_eval.get(eval_id, {}).get(config, [])
-            metrics = per_config_metrics(run_grades)
-            for k, vs in metrics.items():
-                all_metrics[k].extend(vs)
-        run_summary[config] = {k: _mean_stddev(v) for k, v in all_metrics.items()}
-
-    # Paired analysis: per-eval mean delta on outcome_pass_rate, transcript_chars, time.
-    paired_stats: dict[str, Any] = {}
-    if "with_skill" in configs and "without_skill" in configs:
-        outcome_diffs: list[float] = []
-        token_diffs: list[float] = []
-        time_diffs: list[float] = []
-        per_eval = []
-        for eval_id in eval_ids:
-            with_skill_means = eval_means.get(eval_id, {}).get("with_skill")
-            without_skill_means = eval_means.get(eval_id, {}).get("without_skill")
-            if not with_skill_means or not without_skill_means:
-                continue
-            d_outcome = with_skill_means["outcome_pass_rate"] - without_skill_means["outcome_pass_rate"]
-            d_tokens = with_skill_means["transcript_chars"] - without_skill_means["transcript_chars"]
-            d_time = with_skill_means["executor_duration_seconds"] - without_skill_means["executor_duration_seconds"]
-            outcome_diffs.append(d_outcome)
-            token_diffs.append(d_tokens)
-            time_diffs.append(d_time)
-            per_eval.append({
+    pairs: list[dict[str, Any]] = []
+    score_deltas_for_stats: dict[str, list[float]] = {metric: [] for metric in PAIR_SCORE_METRICS}
+    efficiency_deltas_for_stats: dict[str, list[float]] = {
+        metric: [] for metric in EFFICIENCY_METRICS if metric != "errors_encountered"
+    }
+    for eval_id in sorted(by_eval_config):
+        with_runs = sorted(by_eval_config[eval_id].get("with_skill", []), key=lambda run: run["run_number"])
+        without_runs = sorted(by_eval_config[eval_id].get("without_skill", []), key=lambda run: run["run_number"])
+        if not with_runs or not without_runs:
+            continue
+        score_deltas = {
+            metric: _score_delta(with_runs, without_runs, measurement_key, kind)
+            for metric, (measurement_key, kind) in PAIR_SCORE_METRICS.items()
+        }
+        for metric, delta in score_deltas.items():
+            if delta["status"] == "scored":
+                score_deltas_for_stats[metric].append(float(delta["delta"]))
+        efficiency_deltas = {
+            metric: _metric_delta(with_runs, without_runs, metric)
+            for metric in efficiency_deltas_for_stats
+        }
+        for metric, delta in efficiency_deltas.items():
+            efficiency_deltas_for_stats[metric].append(float(delta["delta"]))
+        pairs.append(
+            {
                 "eval_id": eval_id,
-                "delta_outcome_pass_rate": round(d_outcome, 4),
-                "delta_transcript_chars": round(d_tokens, 1),
-                "delta_time_seconds": round(d_time, 3),
-                "with_skill_outcome_pass_rate": round(with_skill_means["outcome_pass_rate"], 4),
-                "without_skill_outcome_pass_rate": round(without_skill_means["outcome_pass_rate"], 4),
-            })
-        paired_stats["eval_deltas"] = per_eval
-        paired_stats["outcome_pass_rate_paired"] = _wilcoxon_signed_rank(outcome_diffs)
-        paired_stats["transcript_chars_paired"] = _wilcoxon_signed_rank(token_diffs)
-        paired_stats["time_seconds_paired"] = _wilcoxon_signed_rank(time_diffs)
+                "with_skill_run_numbers": [run["run_number"] for run in with_runs],
+                "without_skill_run_numbers": [run["run_number"] for run in without_runs],
+                "score_deltas": score_deltas,
+                "efficiency_deltas": efficiency_deltas,
+            }
+        )
 
-        # Outliers across evals (per-config) on outcome_pass_rate and tokens.
-        outliers: list[dict[str, Any]] = []
-        for config in ("with_skill", "without_skill"):
-            for metric in ("outcome_pass_rate", "transcript_chars", "executor_duration_seconds"):
-                series = {ev: eval_means[ev][config][metric] for ev in eval_ids if config in eval_means.get(ev, {})}
-                for eval_id, value, side in _tukey_outliers(series):
-                    outliers.append({
-                        "configuration": config,
-                        "metric": metric,
+    outliers: list[dict[str, Any]] = []
+    for configuration in CONFIGURATIONS:
+        config_runs = [run for run in valid_runs if run["configuration"] == configuration]
+        by_eval: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for run in config_runs:
+            by_eval[run["eval_id"]].append(run)
+        for metric_name, metric_spec in OUTLIER_METRICS.items():
+            series: dict[str, float] = {}
+            for eval_id, eval_runs in by_eval.items():
+                if isinstance(metric_spec, tuple):
+                    mean_score = _mean_run_score(eval_runs, metric_spec[0], metric_spec[1])
+                    if mean_score is not None:
+                        series[eval_id] = mean_score
+                else:
+                    series[eval_id] = statistics.fmean(float(run["efficiency"][metric_spec]) for run in eval_runs)
+            for eval_id, value, side in _tukey_outliers(series):
+                outliers.append(
+                    {
+                        "configuration": configuration,
+                        "metric": metric_name,
                         "eval_id": eval_id,
                         "value": round(value, 4),
                         "side": side,
-                    })
-        paired_stats["outliers"] = outliers
+                    }
+                )
 
-    paired_stats["flaky_runs"] = flaky
-    paired_stats["baseline_violations"] = baseline_violations
-    paired_stats["contradictions"] = contradictions
+    return {
+        "pair_unit": "eval_id",
+        "pairs": pairs,
+        "statistics": {
+            "score_metrics": {
+                metric: _wilcoxon_signed_rank(deltas)
+                for metric, deltas in score_deltas_for_stats.items()
+            },
+            "efficiency_metrics": {
+                metric: _wilcoxon_signed_rank(deltas)
+                for metric, deltas in efficiency_deltas_for_stats.items()
+            },
+        },
+        "issues": {
+            "invalid_runs": invalid_runs,
+            "flaky_runs": flaky_runs,
+            "outliers": outliers,
+        },
+    }
 
-    # Headline delta as a string.
-    delta = {}
-    if "with_skill" in configs and "without_skill" in configs:
-        for metric in ("pass_rate", "outcome_pass_rate", "transcript_chars", "executor_duration_seconds", "tool_calls", "kast_calls", "grep_or_find_calls", "process_pass_rate"):
-            w = run_summary["with_skill"].get(metric, {}).get("mean", 0.0)
-            wo = run_summary["without_skill"].get(metric, {}).get("mean", 0.0)
-            delta[metric] = f"{w - wo:+.2f}"
-        wilcoxon = paired_stats.get("outcome_pass_rate_paired", {})
-        delta["outcome_pass_rate_significance"] = (
-            f"p={wilcoxon.get('p_value', 1.0):.3f} ({wilcoxon.get('method', 'n/a')}, n_pairs={wilcoxon.get('n_pairs', 0)})"
-        )
 
-    benchmark = {
+def aggregate(
+    iteration_dir: Path,
+    *,
+    skill_name: str,
+    bindings_path: Path | None,
+    catalog_path: Path | None,
+) -> dict[str, Any]:
+    bindings = _read_json(bindings_path)
+    catalog = _read_json(catalog_path)
+    expectation_index = _build_expectation_index(catalog)
+    eval_ids = sorted({eval_id for eval_id, _, _, _ in _iter_runs(iteration_dir)})
+
+    runs: list[dict[str, Any]] = []
+    by_configuration: dict[str, list[dict[str, Any]]] = {configuration: [] for configuration in CONFIGURATIONS}
+    for eval_id, configuration, run_number, run_dir in _iter_runs(iteration_dir):
+        grading = _read_json(run_dir / "grading.json")
+        if not grading:
+            continue
+        expectations = [
+            _normalize_expectation(
+                eval_id=eval_id,
+                entry=entry,
+                expectation_index=expectation_index,
+                configuration=configuration,
+            )
+            for entry in grading.get("expectations", []) or []
+            if isinstance(entry, dict)
+        ]
+        integrity = _integrity(grading, configuration)
+        record: dict[str, Any] = {
+            "eval_id": eval_id,
+            "configuration": configuration,
+            "run_number": run_number,
+            "expectations": expectations,
+            "efficiency": _run_efficiency(grading),
+            "integrity": integrity,
+        }
+        invalid_reason = _invalid_reason(expectations, integrity)
+        if invalid_reason is None:
+            record["status"] = "valid"
+            record["measurements"] = _measurements(expectations)
+        else:
+            record["status"] = "invalid"
+            record["invalid_reason"] = invalid_reason
+        runs.append(record)
+        if configuration in by_configuration:
+            by_configuration[configuration].append(record)
+
+    target_repo = str(bindings.get("target_repo", "")).strip()
+    if not target_repo:
+        workspace_root = str(bindings.get("workspace_root", "")).strip()
+        target_repo = Path(workspace_root).name if workspace_root else skill_name
+
+    return {
+        "$schema": "https://github.com/amichne/kast/evaluation/benchmark.schema.json",
+        "schema_version": 1,
+        "benchmark_kind": "kast-system-performance-benchmark",
         "metadata": {
             "skill_name": skill_name,
             "skill_path": "evaluation",
-            "timestamp": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+            "generated_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             "iteration_dir": str(iteration_dir),
-            "target_repo": (bindings or {}).get("target_repo", ""),
-            "workspace_root": (bindings or {}).get("workspace_root", ""),
-            "git_sha_target": (bindings or {}).get("git_sha", ""),
-            "evals_run": eval_ids,
-            "configs": configs,
+            "target_repo": target_repo,
+            "workspace_root": str(bindings.get("workspace_root", "") or iteration_dir),
+            **(
+                {"target_git_sha": str(bindings["git_sha"]).strip()}
+                if str(bindings.get("git_sha", "")).strip()
+                else {}
+            ),
+            "eval_ids": eval_ids,
+            "configurations": list(CONFIGURATIONS),
             "runs_per_eval_per_config": {
-                eval_id: {config: len(runs_by_eval[eval_id].get(config, [])) for config in configs}
+                eval_id: {
+                    configuration: sum(
+                        1
+                        for run in runs
+                        if run["eval_id"] == eval_id and run["configuration"] == configuration
+                    )
+                    for configuration in CONFIGURATIONS
+                }
                 for eval_id in eval_ids
             },
-            "catalog_version": (catalog or {}).get("version", 0),
+            "catalog_version": int(catalog.get("version", 1) or 1),
+            "primary_dimensions": list(PRIMARY_DIMENSIONS),
+            "supporting_metrics": [
+                "efficiency",
+                "transcript_chars",
+                "total_tool_calls",
+                "semantic_tool_calls",
+                "generic_search_calls",
+                "executor_duration_seconds",
+                "errors_encountered",
+            ],
+            "execution_environment": {
+                "platform": platform.platform(),
+                "python_version": platform.python_version(),
+                "cpu_count": int(os.cpu_count() or 1),
+            },
         },
-        "runs": runs_flat,
-        "run_summary": {**run_summary, "delta": delta},
-        "paired_stats": paired_stats,
+        "runs": runs,
+        "summary": {
+            "by_configuration": {
+                configuration: _configuration_summary(by_configuration[configuration])
+                for configuration in CONFIGURATIONS
+            }
+        },
+        "paired_analysis": _paired_analysis(runs),
     }
-    return benchmark
+
+
+def _summary_mean(benchmark: dict[str, Any], configuration: str, measurement_key: str, kind: str) -> float | None:
+    summary = benchmark["summary"]["by_configuration"][configuration]["measurements"][measurement_key][kind]
+    if summary["status"] != "summarized":
+        return None
+    return float(summary["mean"])
+
+
+def _efficiency_mean(benchmark: dict[str, Any], configuration: str, metric: str) -> float | None:
+    summary = benchmark["summary"]["by_configuration"][configuration]["efficiency"][metric]
+    if summary["status"] != "summarized":
+        return None
+    return float(summary["mean"])
 
 
 def write_outputs(iteration_dir: Path, benchmark: dict[str, Any]) -> None:
-    benchmark_path = iteration_dir / "benchmark.json"
-    benchmark_path.write_text(json.dumps(benchmark, indent=2) + "\n")
+    (iteration_dir / "benchmark.json").write_text(json.dumps(benchmark, indent=2) + "\n")
 
-    md_lines: list[str] = []
-    meta = benchmark["metadata"]
-    md_lines.append(f"# Benchmark: {meta['skill_name']} — {meta.get('target_repo', '?')}")
-    md_lines.append("")
-    md_lines.append(f"_iteration: `{Path(meta['iteration_dir']).name}`, evals: {len(meta['evals_run'])}, configs: {meta['configs']}_")
-    md_lines.append("")
-    md_lines.append("## Headline (paired across evals)")
-    delta = benchmark["run_summary"].get("delta", {})
-    md_lines.append("")
-    md_lines.append("| Metric | with_skill | without_skill | Δ (with − without) |")
-    md_lines.append("| --- | ---: | ---: | ---: |")
-    for metric in ("pass_rate", "outcome_pass_rate", "transcript_chars", "executor_duration_seconds", "tool_calls", "kast_calls"):
-        w = benchmark["run_summary"].get("with_skill", {}).get(metric, {}).get("mean", 0.0)
-        wo = benchmark["run_summary"].get("without_skill", {}).get(metric, {}).get("mean", 0.0)
-        md_lines.append(f"| {metric} | {w:.3f} | {wo:.3f} | {delta.get(metric, '?')} |")
-    md_lines.append("")
-    md_lines.append(f"**Outcome pass-rate significance:** {delta.get('outcome_pass_rate_significance', 'n/a')}")
-    md_lines.append("")
+    lines = [
+        f"# Benchmark: {benchmark['metadata']['skill_name']} — {benchmark['metadata']['target_repo']}",
+        "",
+        f"_iteration: `{Path(benchmark['metadata']['iteration_dir']).name}`, evals: {len(benchmark['metadata']['eval_ids'])}_",
+        "",
+        "## Primary dimensions",
+        "",
+        "| Dimension | with_skill | without_skill | Delta | p-value |",
+        "| --- | ---: | ---: | ---: | ---: |",
+    ]
+    paired_scores = benchmark["paired_analysis"]["statistics"]["score_metrics"]
+    for metric, measurement_key in (
+        ("task_completion", "task_completion"),
+        ("accuracy", "accuracy"),
+        ("reliability", "reliability"),
+        ("scope_control", "scope_control"),
+    ):
+        with_mean = _summary_mean(benchmark, "with_skill", measurement_key, "outcome")
+        without_mean = _summary_mean(benchmark, "without_skill", measurement_key, "outcome")
+        stats = paired_scores[metric]
+        delta = "n/a"
+        if with_mean is not None and without_mean is not None:
+            delta = f"{with_mean - without_mean:+.3f}"
+        p_value = f"{stats['p_value']:.3f}" if stats["status"] == "scored" else "n/a"
+        with_value = f"{with_mean:.3f}" if with_mean is not None else "n/a"
+        without_value = f"{without_mean:.3f}" if without_mean is not None else "n/a"
+        lines.append(f"| {metric} | {with_value} | {without_value} | {delta} | {p_value} |")
 
-    paired = benchmark.get("paired_stats", {})
-    if paired.get("eval_deltas"):
-        md_lines.append("## Per-eval deltas (mean across runs)")
-        md_lines.append("")
-        md_lines.append("| eval_id | Δ outcome_pass_rate | Δ transcript_chars | Δ time (s) |")
-        md_lines.append("| --- | ---: | ---: | ---: |")
-        for ed in paired["eval_deltas"]:
-            md_lines.append(f"| {ed['eval_id']} | {ed['delta_outcome_pass_rate']:+.3f} | {ed['delta_transcript_chars']:+,.0f} | {ed['delta_time_seconds']:+.2f} |")
-        md_lines.append("")
+    lines.extend(
+        [
+            "",
+            "## Supporting efficiency",
+            "",
+            "| Metric | with_skill | without_skill | Delta |",
+            "| --- | ---: | ---: | ---: |",
+        ]
+    )
+    for metric in (
+        "transcript_chars",
+        "total_tool_calls",
+        "semantic_tool_calls",
+        "generic_search_calls",
+        "executor_duration_seconds",
+    ):
+        with_mean = _efficiency_mean(benchmark, "with_skill", metric)
+        without_mean = _efficiency_mean(benchmark, "without_skill", metric)
+        delta = "n/a"
+        if with_mean is not None and without_mean is not None:
+            delta = f"{with_mean - without_mean:+.3f}"
+        with_value = f"{with_mean:.3f}" if with_mean is not None else "n/a"
+        without_value = f"{without_mean:.3f}" if without_mean is not None else "n/a"
+        lines.append(f"| {metric} | {with_value} | {without_value} | {delta} |")
 
-    if paired.get("baseline_violations"):
-        md_lines.append("## ⚠ Baseline-isolation violations")
-        md_lines.append("")
-        for v in paired["baseline_violations"]:
-            md_lines.append(f"- `{v['eval_id']}` run {v['run_number']} → kast_calls={v['kast_calls']}")
-        md_lines.append("")
+    issues = benchmark["paired_analysis"]["issues"]
+    if issues["invalid_runs"]:
+        lines.extend(["", "## Invalid runs", ""])
+        for run in issues["invalid_runs"]:
+            lines.append(
+                f"- `{run['eval_id']}` {run['configuration']} run {run['run_number']} → {run['reason']}"
+            )
 
-    if paired.get("contradictions"):
-        md_lines.append("## ⚠ Grading contradictions")
-        md_lines.append("")
-        for c in paired["contradictions"]:
-            md_lines.append(f"- `{c['eval_id']}` ({c['configuration']}, run {c['run_number']}): {c['count']} contradiction(s)")
-            for sample in c.get("samples", []):
-                md_lines.append(f"    - {sample}")
-        md_lines.append("")
+    if issues["flaky_runs"]:
+        lines.extend(["", "## Flaky runs", ""])
+        for run in issues["flaky_runs"]:
+            lines.append(
+                f"- `{run['eval_id']}` {run['configuration']} run {run['run_number']} attempts={run['attempts']}"
+            )
 
-    if paired.get("outliers"):
-        md_lines.append("## Tukey outliers (1.5×IQR)")
-        md_lines.append("")
-        for o in paired["outliers"]:
-            md_lines.append(f"- `{o['eval_id']}` {o['configuration']}: {o['metric']} = {o['value']} ({o['side']})")
-        md_lines.append("")
+    if issues["outliers"]:
+        lines.extend(["", "## Outliers", ""])
+        for outlier in issues["outliers"]:
+            lines.append(
+                f"- `{outlier['eval_id']}` {outlier['configuration']} {outlier['metric']}={outlier['value']} ({outlier['side']})"
+            )
 
-    if paired.get("flaky_runs"):
-        md_lines.append("## Flaky runs (succeeded after retry)")
-        md_lines.append("")
-        for r in paired["flaky_runs"]:
-            md_lines.append(f"- `{r['eval_id']}` {r['configuration']} run {r['run_number']} attempts={r['attempts']}")
-        md_lines.append("")
-
-    (iteration_dir / "benchmark.md").write_text("\n".join(md_lines) + "\n")
+    (iteration_dir / "benchmark.md").write_text("\n".join(lines) + "\n")
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Aggregate evaluation results with paired statistics.")
+    parser = argparse.ArgumentParser(description="Aggregate evaluation results into the benchmark contract.")
     parser.add_argument("iteration_dir", type=Path)
     parser.add_argument("--skill-name", default="kast-value-proof")
     parser.add_argument("--bindings", type=Path, default=None)
