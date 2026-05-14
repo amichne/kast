@@ -2,6 +2,12 @@
 """
 Aggregate individual run results into benchmark summary statistics.
 
+DEPRECATED: This is the generic skill-creator aggregator. For Kast system-level
+value benchmarking, use evaluation/scripts/value_proof_aggregate.py exclusively.
+This script does not understand applicability-aware outcome metrics, paired
+statistical testing, or the four primary dimensions. Do not cite its outputs
+as system-level benchmark evidence.
+
 This remains the generic skill-creator aggregator. For Kast's consolidated
 repo-level value benchmark, use `evaluation/scripts/value_proof_aggregate.py`
 instead; it understands applicability-aware outcome metrics and paired stats.

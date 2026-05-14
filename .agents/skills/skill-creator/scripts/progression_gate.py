@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Apply non-regression gates and promote eval cases through the suite."""
+"""Apply non-regression gates and promote eval cases through the suite.
+
+NOTE: This script implements progression-gate logic (candidate -> holdout -> core
+staging). The canonical Kast evaluation framework in evaluation/ is explicitly
+for value justification, not progression-gate maintenance. Do not use this script's
+outputs as value-justification evidence.
+"""
 
 from __future__ import annotations
 

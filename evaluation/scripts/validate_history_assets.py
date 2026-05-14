@@ -10,7 +10,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CATALOG = ROOT / "catalog.json"
 DEFAULT_PROVENANCE = ROOT / "provenance.json"
-DEFAULT_CANDIDATES = ROOT / "fixtures" / "copilot-history-candidates.json"
+DEFAULT_CANDIDATES = ROOT / "fixtures" / "staging" / "copilot-history-candidates.json"
 
 EXPECTATION_KINDS = {"outcome", "process"}
 MEASUREMENT_DIMENSIONS = {

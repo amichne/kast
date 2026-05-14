@@ -63,6 +63,7 @@
     },
     "measurement_dimension": {
       "type": "string",
+      "description": "All dimensions tracked per expectation. The four primary dimensions (task_completion, accuracy, reliability, scope_control) are the headline ranking surface. efficiency is required supporting evidence only.",
       "enum": [
         "task_completion",
         "accuracy",
@@ -407,7 +408,8 @@
           "$ref": "#/$defs/measurement_card"
         },
         "efficiency": {
-          "$ref": "#/$defs/measurement_card"
+          "$ref": "#/$defs/measurement_card",
+          "description": "Supporting evidence only. Efficiency is not a primary headline dimension — it exists to characterize cost and scope tradeoffs, not to rank system quality. The four primary dimensions (task_completion, accuracy, reliability, scope_control) are the headline ranking surface."
         }
       }
     },
