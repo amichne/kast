@@ -25,4 +25,5 @@ Problems:
 - `includeGenerated = null` means "use default", which creates a hidden third state.
 - Every downstream function repeats normalization and null checks.
 
-The expected guidance should favor meaningful types, parsed models, and a single parsing step at the boundary.
+The expected guidance should favor meaningful types, parsed models, and a
+single parsing step at the boundary.

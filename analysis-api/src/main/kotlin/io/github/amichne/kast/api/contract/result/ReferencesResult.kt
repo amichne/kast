@@ -8,8 +8,9 @@ import io.github.amichne.kast.api.contract.PageableResult
 import io.github.amichne.kast.api.contract.SearchScope
 import io.github.amichne.kast.api.contract.Symbol
 import io.github.amichne.kast.api.docs.DocField
-import io.github.amichne.kast.api.protocol.SCHEMA_VERSION
+import io.github.amichne.kast.api.protocol.*
 import kotlinx.serialization.ExperimentalSerializationApi
+
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -28,10 +29,7 @@ data class ReferencesResult(
     override val items: List<Location>
         get() = references
 
-    override fun withItems(
-        items: List<Location>,
-        page: PageInfo?,
-    ): PageableResult<Location> = copy(
+    override fun withItems(items: List<Location>, page: PageInfo?): PageableResult<Location> = copy(
         references = items,
         page = page,
     )

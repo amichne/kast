@@ -2,22 +2,22 @@ package io.github.amichne.kast.testing
 
 import io.github.amichne.kast.api.contract.AnalysisBackend
 import io.github.amichne.kast.api.contract.CallDirection
+import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
+import io.github.amichne.kast.api.validation.FileHashing
+import io.github.amichne.kast.api.validation.parsed
+import io.github.amichne.kast.api.contract.query.FileOutlineQuery
 import io.github.amichne.kast.api.contract.FilePosition
 import io.github.amichne.kast.api.contract.Location
 import io.github.amichne.kast.api.contract.NormalizedPath
-import io.github.amichne.kast.api.contract.SymbolKind
-import io.github.amichne.kast.api.contract.TextEdit
-import io.github.amichne.kast.api.contract.TypeHierarchyDirection
-import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
-import io.github.amichne.kast.api.contract.query.FileOutlineQuery
 import io.github.amichne.kast.api.contract.query.ReferencesQuery
 import io.github.amichne.kast.api.contract.query.RenameQuery
+import io.github.amichne.kast.api.contract.SymbolKind
 import io.github.amichne.kast.api.contract.query.SymbolQuery
+import io.github.amichne.kast.api.contract.TextEdit
+import io.github.amichne.kast.api.contract.TypeHierarchyDirection
 import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
-import io.github.amichne.kast.api.validation.FileHashing
-import io.github.amichne.kast.api.validation.parsed
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.readText
@@ -93,11 +93,7 @@ data class AnalysisBackendContractFixture(
 
     val referenceLocations: List<Location> = listOf(secondUsageLocation, firstUsageLocation)
 
-    val renameEdits: List<TextEdit> = listOf(
-        declarationLocation,
-        secondUsageLocation,
-        firstUsageLocation
-    ).map { location ->
+    val renameEdits: List<TextEdit> = listOf(declarationLocation, secondUsageLocation, firstUsageLocation).map { location ->
         TextEdit(
             filePath = location.filePath,
             startOffset = location.startOffset,
@@ -261,11 +257,7 @@ object AnalysisBackendContractAssertions {
         expectEquals(fixture.symbolFqName, result.symbol.fqName, "resolved symbol fqName")
         expectEquals(SymbolKind.FUNCTION, result.symbol.kind, "resolved symbol kind")
         expectEquals(fixture.declarationLocation.filePath, result.symbol.location.filePath, "resolved symbol file")
-        expectEquals(
-            fixture.declarationLocation.startOffset,
-            result.symbol.location.startOffset,
-            "resolved symbol start offset"
-        )
+        expectEquals(fixture.declarationLocation.startOffset, result.symbol.location.startOffset, "resolved symbol start offset")
     }
 
     private suspend fun assertFindReferences(
@@ -316,11 +308,7 @@ object AnalysisBackendContractAssertions {
         val result = backend.typeHierarchy(fixture.typeHierarchyQuery.parsed())
 
         expectEquals(fixture.typeHierarchyRootFqName, result.root.symbol.fqName, "type hierarchy root fqName")
-        expectEquals(
-            fixture.typeHierarchyRootSupertypes,
-            result.root.symbol.supertypes,
-            "type hierarchy root supertypes"
-        )
+        expectEquals(fixture.typeHierarchyRootSupertypes, result.root.symbol.supertypes, "type hierarchy root supertypes")
         expectEquals(
             fixture.typeHierarchyChildFqNames,
             result.root.children.map { child -> child.symbol.fqName },

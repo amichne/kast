@@ -107,9 +107,9 @@ internal object CliCommandCatalog {
         key = "backend-name",
         usage = "--backend-name=intellij|standalone",
         description = "Pin the command to a specific backend. " +
-                      "When omitted, intellij is preferred if running for that workspace; standalone is used if already running. " +
-                      "If no backend is running, the command fails with NO_BACKEND_AVAILABLE. " +
-                      "Start a backend first with `kast daemon start --workspace-root=<path>` or open the project in IntelliJ with the Kast plugin installed.",
+            "When omitted, intellij is preferred if running for that workspace; standalone is used if already running. " +
+            "If no backend is running, the command fails with NO_BACKEND_AVAILABLE. " +
+            "Start a backend first with `kast daemon start --workspace-root=<path>` or open the project in IntelliJ with the Kast plugin installed.",
     )
     private val workspaceRootOption = CliOptionMetadata(
         key = "workspace-root",
@@ -367,7 +367,7 @@ internal object CliCommandCatalog {
         key = "runtime-libs-dir",
         usage = "--runtime-libs-dir=/absolute/path/to/runtime-libs",
         description = "Override the directory containing the backend runtime classpath. " +
-                      "Defaults to backends.standalone.runtimeLibsDir in config.toml.",
+            "Defaults to backends.standalone.runtimeLibsDir in config.toml.",
         completionKind = CliOptionCompletionKind.DIRECTORY,
     )
     private val metricsLimitOption = CliOptionMetadata(
@@ -415,22 +415,16 @@ internal object CliCommandCatalog {
             path = listOf("workspace", "ensure"),
             group = CliCommandGroup.WORKSPACE_LIFECYCLE,
             summary = "Ensure a healthy backend is running for the workspace.",
-            description = "Ensures a healthy backend exists for the workspace. " +
-                          "When the IntelliJ plugin is running it is used automatically; otherwise the standalone backend is used if already running. " +
-                          "Use --backend-name=standalone or --backend-name=intellij to pin to a specific backend. " +
-                          "If no standalone backend is running, the CLI auto-starts one from the configured runtime libs unless `--no-auto-start=true`. " +
-                          "Open IntelliJ with the plugin installed when you want the IntelliJ backend instead. " +
-                          "Use this command to pre-warm the runtime or check readiness ahead of analysis commands.",
+        description = "Ensures a healthy backend exists for the workspace. " +
+                "When the IntelliJ plugin is running it is used automatically; otherwise the standalone backend is used if already running. " +
+                "Use --backend-name=standalone or --backend-name=intellij to pin to a specific backend. " +
+                "If no standalone backend is running, the CLI auto-starts one from the configured runtime libs unless `--no-auto-start=true`. " +
+                "Open IntelliJ with the plugin installed when you want the IntelliJ backend instead. " +
+                "Use this command to pre-warm the runtime or check readiness ahead of analysis commands.",
             usages = listOf(
                 "$CLI_EXECUTABLE_NAME workspace ensure --workspace-root=/absolute/path/to/workspace [--backend-name=intellij|standalone] [--wait-timeout-ms=60000] [--accept-indexing=true]",
             ),
-            options = listOf(
-                workspaceRootOption,
-                backendNameOption,
-                waitTimeoutOption,
-                acceptIndexingOption,
-                noAutoStartOption
-            ),
+            options = listOf(workspaceRootOption, backendNameOption, waitTimeoutOption, acceptIndexingOption, noAutoStartOption),
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME workspace ensure --workspace-root=/absolute/path/to/workspace",
                 "$CLI_EXECUTABLE_NAME workspace ensure --workspace-root=/absolute/path/to/workspace --backend-name=standalone",
@@ -446,14 +440,7 @@ internal object CliCommandCatalog {
                 "$CLI_EXECUTABLE_NAME workspace refresh --workspace-root=/absolute/path/to/workspace [--file-paths=/absolute/A.kt,/absolute/B.kt]",
                 "$CLI_EXECUTABLE_NAME workspace refresh --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
             ),
-            options = listOf(
-                workspaceRootOption,
-                backendNameOption,
-                waitTimeoutOption,
-                noAutoStartOption,
-                requestFileOption,
-                filePathsOption
-            ),
+            options = listOf(workspaceRootOption, backendNameOption, waitTimeoutOption, noAutoStartOption, requestFileOption, filePathsOption),
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME workspace refresh --workspace-root=/absolute/path/to/workspace",
                 "$CLI_EXECUTABLE_NAME workspace refresh --workspace-root=/absolute/path/to/workspace --file-paths=/absolute/path/to/File.kt",
@@ -464,7 +451,7 @@ internal object CliCommandCatalog {
             group = CliCommandGroup.WORKSPACE_LIFECYCLE,
             summary = "Stop a running backend for the workspace.",
             description = "Stops the selected backend, removes its descriptor, and reports what was stopped. " +
-                          "Use --backend-name to target a specific backend; otherwise stops the first candidate found.",
+                "Use --backend-name to target a specific backend; otherwise stops the first candidate found.",
             usages = listOf(
                 "$CLI_EXECUTABLE_NAME workspace stop --workspace-root=/absolute/path/to/workspace [--backend-name=standalone|intellij]",
             ),
@@ -479,7 +466,7 @@ internal object CliCommandCatalog {
             group = CliCommandGroup.WORKSPACE_LIFECYCLE,
             summary = "List workspace modules and their Kotlin source files.",
             description = "Returns the module layout discovered by the backend, including source roots and " +
-                          "dependency relationships. Pass --include-files to enumerate capped individual .kt file paths per module.",
+                "dependency relationships. Pass --include-files to enumerate capped individual .kt file paths per module.",
             usages = listOf(
                 "$CLI_EXECUTABLE_NAME workspace files --workspace-root=/absolute/path/to/workspace",
                 "$CLI_EXECUTABLE_NAME workspace files --workspace-root=/absolute/path/to/workspace --include-files=true [--module-name=app] [--max-files-per-module=500]",
@@ -505,12 +492,12 @@ internal object CliCommandCatalog {
             group = CliCommandGroup.WORKSPACE_LIFECYCLE,
             summary = "Start the standalone JVM backend for a workspace.",
             description = "Launches the standalone JVM backend process for the given workspace. " +
-                          "The process runs in the foreground; use a terminal multiplexer or background shell job to keep it alive. " +
-                          "The backend runtime-libs are located from backends.standalone.runtimeLibsDir in config.toml. " +
-                          "Pass --runtime-libs-dir to override the configured path. " +
-                          "Pass profiling options to temporarily override the profiling config for this daemon process. " +
-                          "All other options are forwarded verbatim to the backend process. " +
-                          "Once running, send analysis commands with `$CLI_EXECUTABLE_NAME workspace ensure --workspace-root=<path>` to verify it is ready.",
+                "The process runs in the foreground; use a terminal multiplexer or background shell job to keep it alive. " +
+                "The backend runtime-libs are located from backends.standalone.runtimeLibsDir in config.toml. " +
+                "Pass --runtime-libs-dir to override the configured path. " +
+                "Pass profiling options to temporarily override the profiling config for this daemon process. " +
+                "All other options are forwarded verbatim to the backend process. " +
+                "Once running, send analysis commands with `$CLI_EXECUTABLE_NAME workspace ensure --workspace-root=<path>` to verify it is ready.",
             usages = listOf(
                 "$CLI_EXECUTABLE_NAME daemon start --workspace-root=/absolute/path/to/workspace [--socket-path=...] [--runtime-libs-dir=...] [--profile] [--profile-modes=cpu,alloc]",
             ),
@@ -614,7 +601,7 @@ internal object CliCommandCatalog {
             group = CliCommandGroup.ANALYSIS,
             summary = "Print the advertised capabilities for the workspace backend.",
             description = "Ensures the workspace has a servable backend, then returns its current capability set as JSON. " +
-                          "Use --backend-name to pin to a specific backend.",
+                "Use --backend-name to pin to a specific backend.",
             usages = listOf(
                 "$CLI_EXECUTABLE_NAME capabilities --workspace-root=/absolute/path/to/workspace [--backend-name=intellij|standalone] [--wait-timeout-ms=60000]",
             ),
@@ -756,14 +743,7 @@ internal object CliCommandCatalog {
                 "$CLI_EXECUTABLE_NAME diagnostics --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
                 "$CLI_EXECUTABLE_NAME diagnostics --workspace-root=/absolute/path/to/workspace --file-paths=/absolute/A.kt,/absolute/B.kt",
             ),
-            options = listOf(
-                workspaceRootOption,
-                backendNameOption,
-                waitTimeoutOption,
-                noAutoStartOption,
-                requestFileOption,
-                filePathsOption
-            ),
+            options = listOf(workspaceRootOption, backendNameOption, waitTimeoutOption, noAutoStartOption, requestFileOption, filePathsOption),
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME diagnostics --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
             ),
@@ -776,13 +756,7 @@ internal object CliCommandCatalog {
             usages = listOf(
                 "$CLI_EXECUTABLE_NAME outline --workspace-root=/absolute/path/to/workspace --file-path=/absolute/path/to/File.kt",
             ),
-            options = listOf(
-                workspaceRootOption,
-                backendNameOption,
-                waitTimeoutOption,
-                noAutoStartOption,
-                filePathOption
-            ),
+            options = listOf(workspaceRootOption, backendNameOption, waitTimeoutOption, noAutoStartOption, filePathOption),
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME outline --workspace-root=/absolute/path/to/workspace --file-path=/absolute/path/to/File.kt",
             ),
@@ -796,17 +770,7 @@ internal object CliCommandCatalog {
                 "$CLI_EXECUTABLE_NAME workspace-symbol --workspace-root=/absolute/path/to/workspace --pattern=MyClass",
                 "$CLI_EXECUTABLE_NAME workspace-symbol --workspace-root=/absolute/path/to/workspace --pattern=.*Service --regex=true --kind=CLASS",
             ),
-            options = listOf(
-                workspaceRootOption,
-                backendNameOption,
-                waitTimeoutOption,
-                noAutoStartOption,
-                patternOption,
-                regexOption,
-                kindOption,
-                maxResultsOption,
-                includeBodyOption
-            ),
+            options = listOf(workspaceRootOption, backendNameOption, waitTimeoutOption, noAutoStartOption, patternOption, regexOption, kindOption, maxResultsOption, includeBodyOption),
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME workspace-symbol --workspace-root=/absolute/path/to/workspace --pattern=MyClass",
             ),
@@ -938,14 +902,7 @@ internal object CliCommandCatalog {
                 "$CLI_EXECUTABLE_NAME optimize-imports --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
                 "$CLI_EXECUTABLE_NAME optimize-imports --workspace-root=/absolute/path/to/workspace --file-paths=/absolute/A.kt,/absolute/B.kt",
             ),
-            options = listOf(
-                workspaceRootOption,
-                backendNameOption,
-                waitTimeoutOption,
-                noAutoStartOption,
-                requestFileOption,
-                filePathsOption
-            ),
+            options = listOf(workspaceRootOption, backendNameOption, waitTimeoutOption, noAutoStartOption, requestFileOption, filePathsOption),
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME optimize-imports --workspace-root=/absolute/path/to/workspace --file-paths=/absolute/path/to/File.kt",
             ),
@@ -958,13 +915,7 @@ internal object CliCommandCatalog {
             usages = listOf(
                 "$CLI_EXECUTABLE_NAME apply-edits --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
             ),
-            options = listOf(
-                workspaceRootOption,
-                backendNameOption,
-                waitTimeoutOption,
-                noAutoStartOption,
-                requestFileOption
-            ),
+            options = listOf(workspaceRootOption, backendNameOption, waitTimeoutOption, noAutoStartOption, requestFileOption),
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME apply-edits --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json",
             ),
@@ -1108,13 +1059,7 @@ internal object CliCommandCatalog {
             usages = listOf(
                 "$CLI_EXECUTABLE_NAME smoke [--workspace-root=/absolute/path/to/workspace] [--file=CliCommandCatalog.kt] [--source-set=:kast-cli:test] [--symbol=KastCli] [--format=json]",
             ),
-            options = listOf(
-                workspaceRootOption,
-                smokeFileOption,
-                smokeSourceSetOption,
-                smokeSymbolOption,
-                smokeFormatOption
-            ),
+            options = listOf(workspaceRootOption, smokeFileOption, smokeSourceSetOption, smokeSymbolOption, smokeFormatOption),
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME smoke",
                 "$CLI_EXECUTABLE_NAME smoke --workspace-root=/absolute/path/to/workspace --file=CliCommandCatalog.kt",
@@ -1348,8 +1293,8 @@ internal object CliCommandCatalog {
             group = CliCommandGroup.RPC,
             summary = "Send a raw JSON-RPC request to the workspace daemon.",
             description = "Forwards a raw JSON-RPC string to the daemon over its Unix domain socket. " +
-                          "The daemon is auto-ensured before each request. " +
-                          "Pass the JSON as a positional argument or via --request-file.",
+                "The daemon is auto-ensured before each request. " +
+                "Pass the JSON as a positional argument or via --request-file.",
             usages = listOf(
                 "$CLI_EXECUTABLE_NAME rpc '<json>' [--workspace-root=/absolute/path/to/workspace]",
                 "$CLI_EXECUTABLE_NAME rpc --request-file=/absolute/path/to/request.json [--workspace-root=/absolute/path/to/workspace]",
@@ -1368,13 +1313,7 @@ internal object CliCommandCatalog {
             usages = listOf(
                 "$CLI_EXECUTABLE_NAME up --workspace-root=/absolute/path/to/workspace [--backend-name=intellij|standalone]",
             ),
-            options = listOf(
-                workspaceRootOption,
-                backendNameOption,
-                waitTimeoutOption,
-                acceptIndexingOption,
-                noAutoStartOption
-            ),
+            options = listOf(workspaceRootOption, backendNameOption, waitTimeoutOption, acceptIndexingOption, noAutoStartOption),
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME up --workspace-root=/absolute/path/to/workspace",
             ),
@@ -1410,8 +1349,8 @@ internal object CliCommandCatalog {
             group = CliCommandGroup.VALIDATION,
             summary = "Evaluate the packaged kast for structural quality, budget, and contract compliance.",
             description = "Scans the skill directory, runs structural/contract/completeness checks, estimates token budgets, and produces a scored EvalResult. " +
-                          "Use --compare=baseline.json to compare against a baseline and exit non-zero on regression. " +
-                          "Use --format=markdown for a human-readable report.",
+                "Use --compare=baseline.json to compare against a baseline and exit non-zero on regression. " +
+                "Use --format=markdown for a human-readable report.",
             usages = listOf(
                 "$CLI_EXECUTABLE_NAME eval skill [--skill-dir=/path/to/.agents/skills/kast] [--compare=baseline.json] [--format=json|markdown]",
             ),
@@ -1479,9 +1418,7 @@ internal object CliCommandCatalog {
     fun topLevelUsageDetails(): Map<String, String> = mapOf(
         "usage" to "$CLI_EXECUTABLE_NAME <command> [options]",
         "help" to "$CLI_EXECUTABLE_NAME help",
-        "commands" to (listOf("help", "version") + visibleCommands().map(CliCommandMetadata::commandText)).joinToString(
-            ", "
-        ),
+        "commands" to (listOf("help", "version") + visibleCommands().map(CliCommandMetadata::commandText)).joinToString(", "),
     )
 
     fun unknownCommandDetails(path: List<String>): Map<String, String> {
@@ -1736,5 +1673,8 @@ internal fun currentCliVersion(): String {
 }
 
 private fun List<String>.isPrefixOf(other: List<String>): Boolean {
-    return size <= other.size && indices.all { index -> this[index] == other[index] }
+    if (size > other.size) {
+        return false
+    }
+    return indices.all { index -> this[index] == other[index] }
 }

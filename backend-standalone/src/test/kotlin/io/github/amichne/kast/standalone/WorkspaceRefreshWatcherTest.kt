@@ -169,10 +169,7 @@ class WorkspaceRefreshWatcherTest {
         }
     }
 
-    private fun callRefreshSourceRoots(
-        watcher: WorkspaceRefreshWatcher,
-        sourceRoots: List<Path>,
-    ) {
+    private fun callRefreshSourceRoots(watcher: WorkspaceRefreshWatcher, sourceRoots: List<Path>) {
         val method = WorkspaceRefreshWatcher::class.java.getDeclaredMethod(
             "refreshSourceRoots",
             List::class.java,

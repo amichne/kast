@@ -1,15 +1,15 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.api.client.DescriptorRegistry
-import io.github.amichne.kast.api.client.KastConfig
-import io.github.amichne.kast.api.client.ServerInstanceDescriptor
 import io.github.amichne.kast.api.contract.BackendCapabilities
+import io.github.amichne.kast.api.client.DescriptorRegistry
 import io.github.amichne.kast.api.contract.MutationCapability
 import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.PositiveLong
 import io.github.amichne.kast.api.contract.ReadCapability
 import io.github.amichne.kast.api.contract.RuntimeState
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
+import io.github.amichne.kast.api.client.ServerInstanceDescriptor
+import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.cli.options.BackendName
 import io.github.amichne.kast.cli.options.RuntimeCommandOptions
@@ -53,7 +53,7 @@ class WorkspaceRuntimeManagerTest {
             processLivenessChecker = { pid -> pid == 41L },
         )
 
-        val result = manager.ensureRuntime(options = runtimeOptions(workspaceRoot))
+        val result = manager.ensureRuntime(options = runtimeOptions(workspaceRoot), requireReady = false)
 
         assertFalse(result.started)
         assertEquals(descriptorDirectory.toString(), result.descriptorDirectory)
@@ -224,6 +224,7 @@ class WorkspaceRuntimeManagerTest {
 
         val result = manager.ensureRuntime(
             options = runtimeOptions(workspaceRoot, backendName = "intellij"),
+            requireReady = false,
         )
 
         assertFalse(result.started)
@@ -234,7 +235,7 @@ class WorkspaceRuntimeManagerTest {
     fun `ensureRuntime prefers intellij when both backends available and no explicit backend`() = runTest {
         val workspaceRoot = tempDir.resolve("workspace-both")
         val standaloneDesc = writeDescriptor(
-            descriptor = descriptor(workspaceRoot, pid = 200),
+            descriptor = descriptor(workspaceRoot, pid = 200, backendName = "standalone"),
         )
         val intellijDesc = writeDescriptor(
             descriptor = descriptor(workspaceRoot, pid = 201, backendName = "intellij"),
@@ -242,7 +243,7 @@ class WorkspaceRuntimeManagerTest {
         val manager = managerWith(
             runtimeStatuses = mapOf(
                 standaloneDesc.socketPath to listOf(
-                    runtimeStatus(workspaceRoot, RuntimeState.READY, indexing = false),
+                    runtimeStatus(workspaceRoot, RuntimeState.READY, indexing = false, backendName = "standalone"),
                 ),
                 intellijDesc.socketPath to listOf(
                     runtimeStatus(workspaceRoot, RuntimeState.READY, indexing = false, backendName = "intellij"),
@@ -253,6 +254,7 @@ class WorkspaceRuntimeManagerTest {
 
         val result = manager.ensureRuntime(
             options = runtimeOptions(workspaceRoot, backendName = null),
+            requireReady = false,
         )
 
         assertFalse(result.started)
@@ -302,7 +304,7 @@ class WorkspaceRuntimeManagerTest {
         )
 
         val failure = runCatching {
-            manager.ensureRuntime(options = runtimeOptions(workspaceRoot))
+            manager.ensureRuntime(options = runtimeOptions(workspaceRoot, backendName = "standalone"))
         }.exceptionOrNull() as? CliFailure
 
         checkNotNull(failure) { "Expected NO_BACKEND_AVAILABLE failure" }

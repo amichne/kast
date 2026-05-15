@@ -6,8 +6,9 @@ icon: lucide/life-buoy
 
 # Troubleshooting
 
-When something breaks, start here. Each section names one failure mode, lists symptoms, and walks you to a fix. Open the
-section that matches what you're seeing.
+When something breaks, start here. Each section names one failure
+mode, lists symptoms, and walks you to a fix. Open the section
+that matches what you're seeing.
 
 ## Installation and startup
 
@@ -197,7 +198,8 @@ section that matches what you're seeing.
 
 If nothing here resolves it:
 
-1. Run `kast health` and `kast workspace status` and capture the output
+1. Run `kast health` and `kast workspace status` and capture the
+   output
 2. Check daemon stderr for stack traces
 3. Open an issue at
    [github.com/amichne/kast](https://github.com/amichne/kast/issues)

@@ -1,7 +1,7 @@
 package io.github.amichne.kast.cli.tty
 
-import io.github.amichne.kast.cli.RuntimeCandidateStatus
 import io.github.amichne.kast.cli.results.DaemonStopResult
+import io.github.amichne.kast.cli.RuntimeCandidateStatus
 import io.github.amichne.kast.cli.results.WorkspaceEnsureResult
 import io.github.amichne.kast.cli.results.WorkspaceStatusResult
 
@@ -66,11 +66,11 @@ internal fun RuntimeCandidateStatus.describeDaemon(): String {
         "is $stateText"
     }
     val message = runtimeStatus?.message
-                      ?.trim()
-                      ?.takeIf(String::isNotEmpty)
-                  ?: errorMessage
-                      ?.trim()
-                      ?.takeIf(String::isNotEmpty)
+        ?.trim()
+        ?.takeIf(String::isNotEmpty)
+        ?: errorMessage
+            ?.trim()
+            ?.takeIf(String::isNotEmpty)
 
     return buildString {
         append("${descriptor.backendName} daemon pid=${descriptor.pid} $statusText")

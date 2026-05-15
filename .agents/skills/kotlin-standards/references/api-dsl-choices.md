@@ -8,4 +8,5 @@ Router for API design questions. Prefer the narrowest file:
 - `api-surface-stability.md`: visibility, compatibility, opt-in APIs.
 - `api-review-guides.md`: final API review checklist.
 
-Use a DSL only when structure or staged configuration beats plain named arguments.
+Use a DSL only when structure or staged configuration beats plain named
+arguments.

@@ -37,8 +37,7 @@ class WorkspaceDirectoryResolver(
 
     fun workspaceCacheDirectory(workspaceRoot: Path): Path = workspaceDataDirectory(workspaceRoot).resolve("cache")
 
-    fun workspaceDatabasePath(workspaceRoot: Path): Path =
-        workspaceCacheDirectory(workspaceRoot).resolve("source-index.db")
+    fun workspaceDatabasePath(workspaceRoot: Path): Path = workspaceCacheDirectory(workspaceRoot).resolve("source-index.db")
 
     fun workspaceHash(workspaceRoot: Path): String = FileHashing.sha256(
         workspaceRoot.toAbsolutePath().normalize().toString(),
@@ -80,10 +79,7 @@ class WorkspaceDirectoryResolver(
         }.getOrDefault(emptyMap())
     }
 
-    private fun writeRegistry(
-        registryPath: Path,
-        registry: Map<String, String>,
-    ) {
+    private fun writeRegistry(registryPath: Path, registry: Map<String, String>) {
         registryPath.parent?.let(Files::createDirectories)
         val json = JsonObject(registry.toSortedMap().mapValues { (_, value) -> JsonPrimitive(value) })
         Files.writeString(registryPath, Json.encodeToString(JsonObject.serializer(), json))

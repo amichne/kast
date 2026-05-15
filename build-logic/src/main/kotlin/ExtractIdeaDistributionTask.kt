@@ -39,7 +39,7 @@ abstract class ExtractIdeaDistributionTask : DefaultTask() {
         }
 
         val parent = outputRoot.parent
-                     ?: throw GradleException("IntelliJ extraction output must have a parent directory: $outputRoot")
+            ?: throw GradleException("IntelliJ extraction output must have a parent directory: $outputRoot")
         Files.createDirectories(parent)
         val tempRoot = Files.createTempDirectory(parent, "${outputRoot.fileName}.tmp-")
         try {

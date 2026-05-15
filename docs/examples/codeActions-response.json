@@ -1,8 +1,8 @@
 {
-  "result": {
-    "actions": [],
-    "schemaVersion": 3
-  },
-  "id": 1,
-  "jsonrpc": "2.0"
+    "result": {
+        "actions": [],
+        "schemaVersion": 3
+    },
+    "id": 1,
+    "jsonrpc": "2.0"
 }

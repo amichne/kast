@@ -1,7 +1,7 @@
 # README
 
-This page summarizes the raw note [[README]]. It is the source that indexed the original Kast note set before the
-compiled wiki layer existed.
+This page summarizes the raw note [[README]]. It is the source that indexed the
+original Kast note set before the compiled wiki layer existed.
 
 ## Source
 
@@ -14,11 +14,13 @@ This source is a corpus index note.
 
 ## Summary
 
-This note is a flat content index that links to the original Kast notes. Its main contribution is not new technical
-content, but confirmation of the source corpus boundary and the original reading order before `index.md` and the wiki
+This note is a flat content index that links to the original Kast notes. Its
+main contribution is not new technical content, but confirmation of the source
+corpus boundary and the original reading order before `index.md` and the wiki
 subdirectories were added.
 
-It remains useful as a record of how the raw source layer was organized when the compiled wiki was bootstrapped.
+It remains useful as a record of how the raw source layer was organized when the
+compiled wiki was bootstrapped.
 
 ## Key claims
 
@@ -38,8 +40,8 @@ This source now plays a narrower but still useful role.
 
 This source is intentionally minimal.
 
-- Should the README remain as a historical raw index, or should future work add a note explaining the new compiled
-  layout?
+- Should the README remain as a historical raw index, or should future work add
+  a note explaining the new compiled layout?
 
 ## Pages updated from this source
 

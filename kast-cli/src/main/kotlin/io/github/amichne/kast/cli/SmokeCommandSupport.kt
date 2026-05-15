@@ -73,7 +73,7 @@ internal class SmokeCommandSupport(
         )
 
         val ensureResult = runCatching {
-            manager.ensureRuntime(runtimeOptions)
+            manager.ensureRuntime(runtimeOptions, requireReady = false)
         }
 
         if (ensureResult.isFailure) {
@@ -105,7 +105,7 @@ internal class SmokeCommandSupport(
                 name = "backend-capabilities",
                 status = SmokeCheckStatus.PASS,
                 message = "Backend '$backend' advertises ${caps.readCapabilities.size} read and " +
-                          "${caps.mutationCapabilities.size} mutation capabilities",
+                    "${caps.mutationCapabilities.size} mutation capabilities",
             )
         } else {
             checks += SmokeCheck(

@@ -75,11 +75,8 @@ internal class MetricsGraphPicker(
         }
     }
 
-    private fun refreshResults(
-        state: PickerState,
-        engine: MetricsEngine,
-    ): PickerState =
-        reduceRefresh(state, engine.searchSymbols(state.query))
+    private fun refreshResults(state: PickerState, engine: MetricsEngine): PickerState =
+        reduceRefresh(state, engine.searchSymbols(state.query, limit = MAX_RESULTS))
 
     private fun render(snapshot: PickerState): Widget {
         val header = Panel(
@@ -186,10 +183,7 @@ internal class MetricsGraphPicker(
          * unit testing so the selection-clamping and copy semantics can be verified without a
          * live [MetricsEngine] or terminal.
          */
-        internal fun reduceRefresh(
-            state: PickerState,
-            results: List<String>,
-        ): PickerState =
+        internal fun reduceRefresh(state: PickerState, results: List<String>): PickerState =
             state.copy(
                 results = results,
                 selection = state.selection.coerceIn(0, (results.size - 1).coerceAtLeast(0)),

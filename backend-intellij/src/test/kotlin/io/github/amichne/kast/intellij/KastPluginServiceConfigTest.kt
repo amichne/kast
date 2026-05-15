@@ -1,15 +1,15 @@
 package io.github.amichne.kast.intellij
 
+import io.github.amichne.kast.api.client.fields.TelemetryScopes
+import io.github.amichne.kast.api.client.fields.TelemetryEnabled
+import io.github.amichne.kast.api.client.fields.TelemetryDetail
+import io.github.amichne.kast.api.client.fields.PathsDescriptorDir
+import io.github.amichne.kast.api.client.fields.ServerRequestTimeoutMillis
+import io.github.amichne.kast.api.client.fields.ServerMaxConcurrentRequests
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.ServerConfig
-import io.github.amichne.kast.api.client.fields.PathsDescriptorDir
-import io.github.amichne.kast.api.client.fields.ServerMaxConcurrentRequests
-import io.github.amichne.kast.api.client.fields.ServerMaxResults
-import io.github.amichne.kast.api.client.fields.ServerRequestTimeoutMillis
-import io.github.amichne.kast.api.client.fields.TelemetryDetail
-import io.github.amichne.kast.api.client.fields.TelemetryEnabled
-import io.github.amichne.kast.api.client.fields.TelemetryScopes
 import io.github.amichne.kast.api.contract.AnalysisTransport
+import io.github.amichne.kast.api.client.fields.ServerMaxResults
 import io.github.amichne.kast.api.contract.ServerLimits
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse

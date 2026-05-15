@@ -30,11 +30,11 @@ internal class CandidateFileResolver(
         val declaringFile = target.containingFile as? KtFile
         val anchorFilePath = target.resolvedFilePath().value
         val searchIdentifier = target.referenceSearchIdentifier()
-                               ?: return resolveWithoutIdentifier(
-                                   declaringFile = declaringFile,
-                                   visibility = visibility,
-                                   anchorFilePath = anchorFilePath,
-                               )
+            ?: return resolveWithoutIdentifier(
+                declaringFile = declaringFile,
+                visibility = visibility,
+                anchorFilePath = anchorFilePath,
+            )
 
         val fqNameAndPackage = target.targetFqNameAndPackage()
         val candidatePaths = if (fqNameAndPackage != null) {
@@ -58,11 +58,7 @@ internal class CandidateFileResolver(
             searchIdentifier = searchIdentifier,
             anchorFilePath = anchorFilePath,
             anchorSourceModuleName = anchorSourceModuleName?.value,
-            friendModuleNames = anchorSourceModuleName?.let {
-                session.friendModuleNames(it)
-                    .map { m -> m.value }
-                    .toSet()
-            },
+            friendModuleNames = anchorSourceModuleName?.let { session.friendModuleNames(it).map { m -> m.value }.toSet() },
             candidateCountBefore = candidatePaths.size,
         )
 
@@ -121,8 +117,7 @@ internal class CandidateFileResolver(
                 "kast.resolver.searchIdentifier" to searchIdentifier,
                 "kast.resolver.anchorFilePath" to anchorFilePath,
                 "kast.resolver.anchorSourceModuleName" to (anchorSourceModuleName ?: "null"),
-                "kast.resolver.friendModuleNames" to (friendModuleNames?.joinToString(",")
-                                                      ?: "null — returning all candidates"),
+                "kast.resolver.friendModuleNames" to (friendModuleNames?.joinToString(",") ?: "null — returning all candidates"),
                 "kast.resolver.candidateCountBefore" to candidateCountBefore,
             ),
         ) {}

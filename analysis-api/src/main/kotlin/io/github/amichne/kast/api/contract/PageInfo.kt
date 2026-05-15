@@ -3,6 +3,8 @@
 package io.github.amichne.kast.api.contract
 
 import io.github.amichne.kast.api.docs.DocField
+import io.github.amichne.kast.api.protocol.*
+
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -16,8 +18,5 @@ data class PageInfo(
 interface PageableResult<T> {
     val items: List<T>
     val page: PageInfo?
-    fun withItems(
-        items: List<T>,
-        page: PageInfo?,
-    ): PageableResult<T>
+    fun withItems(items: List<T>, page: PageInfo?): PageableResult<T>
 }

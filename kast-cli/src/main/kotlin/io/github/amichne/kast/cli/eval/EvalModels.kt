@@ -1,5 +1,6 @@
 package io.github.amichne.kast.cli.eval
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable

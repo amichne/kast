@@ -1,7 +1,7 @@
 # Zensical page patterns
 
-Use these page shapes before drafting. The goal is to make the information architecture obvious before the prose gets
-polished.
+Use these page shapes before drafting. The goal is to make the information
+architecture obvious before the prose gets polished.
 
 ## Landing or index page
 
@@ -75,13 +75,14 @@ Suggested structure:
 Use Zensical well:
 
 - Use tables when comparison happens row by row.
-- Use tabs when the content is alternate implementation detail after the decision is already made.
+- Use tabs when the content is alternate implementation detail after the
+  decision is already made.
 - Use warning or info callouts to flag sharp edges.
 
 ## Design or process page
 
-Use this page when the document exists to align people before implementation or to explain how work moves through the
-system.
+Use this page when the document exists to align people before implementation or
+to explain how work moves through the system.
 
 Suggested structure:
 
@@ -96,4 +97,5 @@ Use Zensical well:
 
 - Use Mermaid for sequence, state, or relationship diagrams.
 - Use tables for trade-offs and decision records.
-- Keep links to backlog items, design docs, proposals, or adjacent process pages explicit.
+- Keep links to backlog items, design docs, proposals, or adjacent process
+  pages explicit.

@@ -1,9 +1,9 @@
 package io.github.amichne.kast.shared.analysis
 
+import io.github.amichne.kast.api.protocol.NotFoundException
+import io.github.amichne.kast.api.validation.*
 import io.github.amichne.kast.api.contract.SemanticInsertionResult
 import io.github.amichne.kast.api.contract.SemanticInsertionTarget
-import io.github.amichne.kast.api.protocol.NotFoundException
-import io.github.amichne.kast.api.validation.ParsedSemanticInsertionQuery
 import org.jetbrains.kotlin.psi.KtClassBody
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtFile
@@ -14,18 +14,12 @@ object SemanticInsertionPointResolver {
         query: ParsedSemanticInsertionQuery,
     ): SemanticInsertionResult {
         val insertionOffset = when (query.target) {
-                                  SemanticInsertionTarget.CLASS_BODY_START -> classBody(
-                                      file,
-                                      query
-                                  ).lBrace?.textRange?.endOffset
-                                  SemanticInsertionTarget.CLASS_BODY_END -> classBody(
-                                      file,
-                                      query
-                                  ).rBrace?.textRange?.startOffset
-                                  SemanticInsertionTarget.FILE_TOP -> 0
-                                  SemanticInsertionTarget.FILE_BOTTOM -> file.textLength
-                                  SemanticInsertionTarget.AFTER_IMPORTS -> afterImportsOffset(file)
-                              } ?: throw NotFoundException(
+            SemanticInsertionTarget.CLASS_BODY_START -> classBody(file, query).lBrace?.textRange?.endOffset
+            SemanticInsertionTarget.CLASS_BODY_END -> classBody(file, query).rBrace?.textRange?.startOffset
+            SemanticInsertionTarget.FILE_TOP -> 0
+            SemanticInsertionTarget.FILE_BOTTOM -> file.textLength
+            SemanticInsertionTarget.AFTER_IMPORTS -> afterImportsOffset(file)
+        } ?: throw NotFoundException(
             message = "The requested semantic insertion point could not be resolved",
             details = mapOf(
                 "filePath" to query.position.filePath.value,
@@ -45,21 +39,21 @@ object SemanticInsertionPointResolver {
     ): KtClassBody {
         val target = resolveTarget(file, query.position.offset.value)
         val declaration = target.typeHierarchyDeclaration() as? KtClassOrObject
-                          ?: throw NotFoundException(
-                              message = "The requested semantic insertion target requires a class or object declaration",
-                              details = mapOf(
-                                  "filePath" to query.position.filePath.value,
-                                  "target" to query.target.name,
-                              ),
-                          )
+            ?: throw NotFoundException(
+                message = "The requested semantic insertion target requires a class or object declaration",
+                details = mapOf(
+                    "filePath" to query.position.filePath.value,
+                    "target" to query.target.name,
+                ),
+            )
         return declaration.body
-               ?: throw NotFoundException(
-                   message = "The requested class or object does not have a body",
-                   details = mapOf(
-                       "filePath" to query.position.filePath.value,
-                       "target" to query.target.name,
-                   ),
-               )
+            ?: throw NotFoundException(
+                message = "The requested class or object does not have a body",
+                details = mapOf(
+                    "filePath" to query.position.filePath.value,
+                    "target" to query.target.name,
+                ),
+            )
     }
 
     private fun afterImportsOffset(file: KtFile): Int {

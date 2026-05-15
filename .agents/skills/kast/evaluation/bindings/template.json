@@ -13,19 +13,10 @@
       "expected": {
         "_comment": "Closed set: list every implementation. The grader checks recall (found ⊇ expected) and precision (found ⊆ expected ∪ known-noise).",
         "implementations": [
-          {
-            "fqName": "com.example.YourSealedRoot.Foo",
-            "module": "module-a"
-          },
-          {
-            "fqName": "com.example.YourSealedRoot.Bar",
-            "module": "module-b"
-          }
+          { "fqName": "com.example.YourSealedRoot.Foo", "module": "module-a" },
+          { "fqName": "com.example.YourSealedRoot.Bar", "module": "module-b" }
         ],
-        "modules": [
-          "module-a",
-          "module-b"
-        ]
+        "modules": ["module-a", "module-b"]
       }
     },
     "DISAMBIGUATE_MEMBER": {
@@ -37,12 +28,8 @@
       "description": "Why raw text search would over-match",
       "expected": {
         "minimumUsageSites": 3,
-        "expectedFiles": [
-          "module/src/main/kotlin/com/example/Caller.kt"
-        ],
-        "decoyFiles": [
-          "module/src/main/kotlin/com/example/UnrelatedKey.kt"
-        ]
+        "expectedFiles": ["module/src/main/kotlin/com/example/Caller.kt"],
+        "decoyFiles": ["module/src/main/kotlin/com/example/UnrelatedKey.kt"]
       }
     },
     "CROSS_MODULE_CLASS": {
@@ -53,13 +40,8 @@
       "description": "Why this proves cross-module reference coverage",
       "expected": {
         "minimumReferences": 5,
-        "expectedConsumerModules": [
-          "module-a",
-          "module-b"
-        ],
-        "expectedConsumerFiles": [
-          "module-a/src/main/kotlin/com/example/a/Consumer.kt"
-        ]
+        "expectedConsumerModules": ["module-a", "module-b"],
+        "expectedConsumerFiles": ["module-a/src/main/kotlin/com/example/a/Consumer.kt"]
       }
     },
     "OVERLOADED_OR_COMMON_FUNCTION": {
@@ -71,12 +53,8 @@
       "description": "Why this proves disambiguated caller tracing",
       "expected": {
         "minimumCallers": 2,
-        "expectedCallerFqNames": [
-          "com.example.Engine"
-        ],
-        "expectedCallerModules": [
-          "engine"
-        ]
+        "expectedCallerFqNames": ["com.example.Engine"],
+        "expectedCallerModules": ["engine"]
       }
     },
     "RENAME_TARGET": {
@@ -88,9 +66,7 @@
       "description": "Why this rename proves safe multi-file mutation",
       "expected": {
         "expectedFileCount": 6,
-        "affectedFiles": [
-          "engine/src/main/kotlin/com/example/OldRegistry.kt"
-        ],
+        "affectedFiles": ["engine/src/main/kotlin/com/example/OldRegistry.kt"],
         "compileCommand": "./gradlew --offline compileKotlin"
       }
     },
@@ -102,29 +78,16 @@
       "description": "Why this proves structural summaries",
       "expected": {
         "rawFileLineCount": 200,
-        "publicMembers": [
-          "start",
-          "stop",
-          "status"
-        ],
-        "nestedTypes": [
-          "State",
-          "Event"
-        ]
+        "publicMembers": ["start", "stop", "status"],
+        "nestedTypes": ["State", "Event"]
       }
     },
     "MODULE_LIST": {
       "_comment": "The modules expected in workspace discovery output.",
-      "modules": [
-        "module-a",
-        "module-b"
-      ],
+      "modules": ["module-a", "module-b"],
       "description": "The modules in the target project",
       "expected": {
-        "moduleFileCounts": {
-          "module-a": 42,
-          "module-b": 17
-        },
+        "moduleFileCounts": { "module-a": 42, "module-b": 17 },
         "fileCountTolerance": 2
       }
     }

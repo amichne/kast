@@ -4,8 +4,8 @@ import io.github.amichne.kast.api.contract.FilePosition
 import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.contract.SymbolKind
-import io.github.amichne.kast.api.contract.SymbolVisibility
 import io.github.amichne.kast.api.contract.query.SymbolQuery
+import io.github.amichne.kast.api.contract.SymbolVisibility
 import kotlinx.coroutines.test.TestResult
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals

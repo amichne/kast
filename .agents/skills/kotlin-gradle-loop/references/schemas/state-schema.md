@@ -1,7 +1,8 @@
 # Workflow State Schema
 
-The workflow state is a single JSON file that tracks a Kotlin/Gradle project's structure, the agent's current goal,
-action history, and the latest results from Gradle builds, JUnit tests, JaCoCo coverage, and Kotlin build reports.
+The workflow state is a single JSON file that tracks a Kotlin/Gradle project's
+structure, the agent's current goal, action history, and the latest results
+from Gradle builds, JUnit tests, JaCoCo coverage, and Kotlin build reports.
 
 ## File Location
 
@@ -11,13 +12,14 @@ The `.agent-workflow/` directory also holds log files from script executions.
 
 ## Session-end validation
 
-If the repository has command hooks, the repository hook manifest owns session-end validation. When recorded edits
-include code or Gradle build inputs, the validation command should run the Gradle build-health check through this
-skill's `scripts/gradle/run_gradle_hook.sh` when `state.json` is present and fall back to the repository's default
-high-signal task otherwise.
+If the repository has command hooks, the repository hook manifest owns
+session-end validation. When recorded edits include code or Gradle build inputs,
+the validation command should run the Gradle build-health check through this
+skill's `scripts/gradle/run_gradle_hook.sh` when `state.json` is present and
+fall back to the repository's default high-signal task otherwise.
 
-`project.gradleHook` remains a required discovery output for projects that want build-health validation to use a
-project-specific high-signal Gradle task.
+`project.gradleHook` remains a required discovery output for projects that
+want build-health validation to use a project-specific high-signal Gradle task.
 
 ## Schema
 
@@ -131,16 +133,17 @@ project-specific high-signal Gradle task.
 ## Status Fields
 
 - `project.status`: Whether project discovery is done.
-- `project.gradleHook`: The single existing Gradle task that the build-health hook must run before the agent finishes.
+- `project.gradleHook`: The single existing Gradle task that the build-health
+  hook must run before the agent finishes.
 - `tests.status`: `pending` (never run), `passing` (all pass), `failing` (some fail), `error` (couldn't run).
 - `coverage.status`: `pending` (never run), `measured` (report parsed), `error` (couldn't generate).
-- `compilation.status`: `pending` (never analyzed), `healthy` (all incremental), `degraded` (some non-incremental),
-  `error`.
+- `compilation.status`: `pending` (never analyzed), `healthy` (all incremental), `degraded` (some non-incremental), `error`.
 
 ## History
 
-The `history` array is append-only, bounded to 50 entries. Each entry records what the agent did, what happened, and
-what state transition resulted. This provides context about prior iterations so the agent does not repeat failed
+The `history` array is append-only, bounded to 50 entries. Each entry records
+what the agent did, what happened, and what state transition resulted. This
+provides context about prior iterations so the agent does not repeat failed
 approaches.
 
 ## Error Structure

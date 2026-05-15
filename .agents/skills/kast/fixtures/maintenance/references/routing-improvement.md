@@ -1,15 +1,17 @@
 # Routing improvement workflow
 
-Use this playbook when the Kast skill is loading too rarely, when generic Kotlin requests fall back to raw grep-style
-exploration, or when enterprise teams need a repeatable process for tightening skill routing over time.
+Use this playbook when the Kast skill is loading too rarely, when generic
+Kotlin requests fall back to raw grep-style exploration, or when enterprise
+teams need a repeatable process for tightening skill routing over time.
 
 ## Principles
 
-Keep raw session exports and Copilot process logs immutable. Treat them as evidence, not as a place to edit or normalize
-history.
+Keep raw session exports and Copilot process logs immutable. Treat them as
+evidence, not as a place to edit or normalize history.
 
-Promote only sanitized, durable prompts into checked-in routing evals. Do not commit sensitive code snippets, full
-command output, or local absolute paths from team transcripts.
+Promote only sanitized, durable prompts into checked-in routing evals. Do
+not commit sensitive code snippets, full command output, or local absolute
+paths from team transcripts.
 
 Judge routing with the most concrete signal available:
 
@@ -25,7 +27,8 @@ The routing workflow works best with these inputs:
 - Optional HTML exports when Markdown is missing
 - Copilot process logs such as `process-*.log`
 
-Prefer Markdown exports whenever possible. They contain stable headings for user prompts, loaded skills, and tool usage.
+Prefer Markdown exports whenever possible. They contain stable headings for
+user prompts, loaded skills, and tool usage.
 
 ## Build a routing corpus
 
@@ -53,11 +56,13 @@ The script:
 
 ## Review the output
 
-Start with `routing-summary.md`. It shows the high-level counts, the most common classifications, and the systemic
-issues that need attention before prompt tuning.
+Start with `routing-summary.md`. It shows the high-level counts, the most
+common classifications, and the systemic issues that need attention before
+prompt tuning.
 
-Then inspect `routing-cases.jsonl` to see the sanitized evidence for each case. This is where you decide whether a miss
-is durable enough to become a checked-in eval.
+Then inspect `routing-cases.jsonl` to see the sanitized evidence for each
+case. This is where you decide whether a miss is durable enough to become a
+checked-in eval.
 
 Finally review `promotion-candidates.json`. These are suggested additions to
 `fixtures/maintenance/evals/routing.json`, not auto-approved changes.
@@ -65,30 +70,34 @@ Finally review `promotion-candidates.json`. These are suggested additions to
 ## Promote durable misses
 
 When a prompt pattern recurs, add a sanitized entry to
-`fixtures/maintenance/evals/routing.json`. Use the existing examples in that file as the canonical schema.
+`fixtures/maintenance/evals/routing.json`.
+Use the existing examples in that file as the canonical schema.
 
 Good routing evals:
 
 - keep the prompt phrasing realistic
 - state the expected skill and route
-- encode recovery expectations when the first Kast attempt hits setup friction or a noisy JSON result
-- distinguish top-level wrapper response fields from nested API model fields when the observed failure was
-  schema/projection friction
-- preserve failed mutation responses such as validation/hash errors as failed edits instead of turning them into
-  success-shaped manual edits
+- encode recovery expectations when the first Kast attempt hits setup friction
+  or a noisy JSON result
+- distinguish top-level wrapper response fields from nested API model fields
+  when the observed failure was schema/projection friction
+- preserve failed mutation responses such as validation/hash errors as failed
+  edits instead of turning them into success-shaped manual edits
 - forbid raw `grep` / `rg` for semantic Kotlin work
 - stay generic enough to survive codebase churn
 
 ## Improve the skill after promotion
 
-Once the eval corpus captures the recurring miss, update the narrowest surface that explains the behavior:
+Once the eval corpus captures the recurring miss, update the narrowest
+surface that explains the behavior:
 
 1. `SKILL.md` for portable, standards-based skill behavior
 2. `.github/agents/*.md` for GitHub Copilot-specific routing and invocation hints
 3. `.github/hooks/*` for enforcement and compatibility drift
 4. optional vendor-specific metadata only when a host actually requires it
 
-Do not change several of these at once unless the evidence says they all need to move together.
+Do not change several of these at once unless the evidence says they all
+need to move together.
 
 ## Re-measure
 

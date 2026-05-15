@@ -1,5 +1,6 @@
 package io.github.amichne.kast.parity
 
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -15,17 +16,11 @@ sealed interface ParityComparator {
      * Compare [left] and [right] responses.
      * Returns null on match, or a human-readable diff description on mismatch.
      */
-    fun compare(
-        left: JsonElement,
-        right: JsonElement,
-    ): String?
+    fun compare(left: JsonElement, right: JsonElement): String?
 
     /** Byte-exact JSON equality. */
     data object Exact : ParityComparator {
-        override fun compare(
-            left: JsonElement,
-            right: JsonElement,
-        ): String? =
+        override fun compare(left: JsonElement, right: JsonElement): String? =
             if (left == right) null
             else "Exact mismatch:\n  left:  $left\n  right: $right"
     }
@@ -37,17 +32,10 @@ sealed interface ParityComparator {
     data class Unordered(
         private val unorderedArrayKeys: Set<String>,
     ) : ParityComparator {
-        override fun compare(
-            left: JsonElement,
-            right: JsonElement,
-        ): String? =
+        override fun compare(left: JsonElement, right: JsonElement): String? =
             compareElements(left, right, path = "$")
 
-        private fun compareElements(
-            a: JsonElement,
-            b: JsonElement,
-            path: String,
-        ): String? {
+        private fun compareElements(a: JsonElement, b: JsonElement, path: String): String? {
             if (a::class != b::class) {
                 return "Type mismatch at $path: ${a::class.simpleName} vs ${b::class.simpleName}"
             }
@@ -97,10 +85,7 @@ sealed interface ParityComparator {
         private val ignoredKeys: Set<String> = DEFAULT_IGNORED_KEYS,
         private val unorderedArrayKeys: Set<String> = emptySet(),
     ) : ParityComparator {
-        override fun compare(
-            left: JsonElement,
-            right: JsonElement,
-        ): String? =
+        override fun compare(left: JsonElement, right: JsonElement): String? =
             compareElements(strip(left), strip(right), path = "$")
 
         private fun strip(element: JsonElement): JsonElement = when (element) {
@@ -112,11 +97,7 @@ sealed interface ParityComparator {
             )
         }
 
-        private fun compareElements(
-            a: JsonElement,
-            b: JsonElement,
-            path: String,
-        ): String? {
+        private fun compareElements(a: JsonElement, b: JsonElement, path: String): String? {
             if (a::class != b::class) {
                 return "Type mismatch at $path: ${a::class.simpleName} vs ${b::class.simpleName}"
             }

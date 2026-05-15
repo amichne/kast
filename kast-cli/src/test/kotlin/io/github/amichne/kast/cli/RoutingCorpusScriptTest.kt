@@ -91,10 +91,10 @@ class RoutingCorpusScriptTest {
     }
 
     private fun findRepoRoot(start: Path): Path = generateSequence(start.normalize()) { it.parent }
-                                                      .firstOrNull { candidate ->
-                                                          Files.isRegularFile(
-                                                              candidate.resolve(".agents/skills/kast/fixtures/maintenance/scripts/build-routing-corpus.py"),
-                                                          )
-                                                      }
-                                                  ?: error("Could not locate repo root from ${start}")
+        .firstOrNull { candidate ->
+            Files.isRegularFile(
+                candidate.resolve(".agents/skills/kast/fixtures/maintenance/scripts/build-routing-corpus.py"),
+            )
+        }
+        ?: error("Could not locate repo root from ${start}")
 }

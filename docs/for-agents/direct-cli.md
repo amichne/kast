@@ -6,8 +6,9 @@ icon: lucide/terminal
 
 # Direct CLI usage for agents
 
-Most agents should prefer the packaged skill or native `kast_*` tools. When the host needs a CLI fallback, use
-`kast rpc`: it forwards a raw JSON-RPC request and auto-ensures the daemon for the workspace.
+Most agents should prefer the packaged skill or native `kast_*` tools.
+When the host needs a CLI fallback, use `kast rpc`: it forwards a raw
+JSON-RPC request and auto-ensures the daemon for the workspace.
 
 Humans can still manage the daemon lifecycle explicitly with `kast up`,
 `kast status`, and `kast stop`.
@@ -21,7 +22,8 @@ Humans can still manage the daemon lifecycle explicitly with `kast up`,
 
 ## `workspace-symbol` as the bridge when there's no offset
 
-No offset? Use the `workspace-symbol` JSON-RPC method instead of grepping. It's a semantic declaration search.
+No offset? Use the `workspace-symbol` JSON-RPC method instead of
+grepping. It's a semantic declaration search.
 
 === "Basic search"
 
@@ -56,8 +58,9 @@ No offset? Use the `workspace-symbol` JSON-RPC method instead of grepping. It's 
 }
 ```
 
-Feed `location.filePath` and `location.startOffset` from a match straight into `symbol/resolve`, `references`, or
-`call-hierarchy` — no intermediate text search.
+Feed `location.filePath` and `location.startOffset` from a match
+straight into `symbol/resolve`, `references`, or `call-hierarchy` — no
+intermediate text search.
 
 ## Inline JSON or request files
 
@@ -67,7 +70,8 @@ Small requests fit inline as JSON-RPC payloads:
 kast rpc '{"jsonrpc":"2.0","method":"symbol/resolve","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/App.kt","offset":42},"includeDeclarationScope":false,"includeDocumentation":false},"id":1}' --workspace-root=$(pwd)
 ```
 
-Complex payloads — especially `edits/apply`, which needs a structured edit plan — go through `--request-file`:
+Complex payloads — especially `edits/apply`, which needs a structured
+edit plan — go through `--request-file`:
 
 ```console title="Request file for structured payloads"
 kast rpc --workspace-root=$(pwd) --request-file=/path/to/request.json
@@ -78,8 +82,9 @@ kast rpc --workspace-root=$(pwd) --request-file=/path/to/request.json
 
 ## Reading the JSON
 
-Every `kast rpc` call returns a single JSON object on stdout. Stderr is human-readable noise (daemon startup, progress)
-that the agent can ignore.
+Every `kast rpc` call returns a single JSON object on stdout. Stderr is
+human-readable noise (daemon startup, progress) that the agent can
+ignore.
 
 Things to check before claiming an answer:
 
@@ -91,5 +96,7 @@ Things to check before claiming an answer:
 ## Next steps
 
 - [Talk to your agent](talk-to-your-agent.md) — the skill-driven path
-- [Understand symbols](../what-can-kast-do/understand-symbols.md) — identity operations in depth
-- [API reference](../reference/api-reference.md) — full schemas and examples
+- [Understand symbols](../what-can-kast-do/understand-symbols.md) —
+  identity operations in depth
+- [API reference](../reference/api-reference.md) — full schemas and
+  examples

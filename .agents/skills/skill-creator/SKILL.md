@@ -5,28 +5,27 @@ description: Create new skills, revise existing skills, and build the eval scaff
 
 # Skill Creator
 
-A skill for creating new skills and iteratively improving them — scoped to this repo's Copilot CLI conventions.
+A skill for creating new skills and iteratively improving them — scoped to this repo's
+Copilot CLI conventions.
 
 The overall process:
 
-1. **Interview** — gather intent with `ask_user`, then call `skill_creator_interview` to record answers and unlock
-   editing
+1. **Interview** — gather intent with `ask_user`, then call `skill_creator_interview` to record answers and unlock editing
 2. Understand what the skill should do and how it should work
 3. Write a draft of the skill in `.github/skills/<name>/SKILL.md`
 4. Create a few test prompts, run the skill (via sub-agents), and evaluate results
 5. Revise based on feedback; repeat until satisfied
 
-Jump in wherever the user is in this process. If they say "I want a skill for X", start from the interview. If they hand
-you an existing draft, run the interview then go to testing.
-**Never skip step 1** — the `skill_creator_interview` tool is a hard gate on file editing. Create or improve a skill
-without binding the workflow to one model vendor or one host runtime.
+Jump in wherever the user is in this process. If they say "I want a skill for X", start from
+the interview. If they hand you an existing draft, run the interview then go to testing.
+**Never skip step 1** — the `skill_creator_interview` tool is a hard gate on file editing.
+Create or improve a skill without binding the workflow to one model vendor or one host runtime.
 
 ## Core principles
 
 ### Keep the core lean
 
-Assume the model is already strong. Put only durable, non-obvious guidance in `SKILL.md`. Move long references, schemas,
-and reusable utilities into `references/` and `scripts/`.
+Assume the model is already strong. Put only durable, non-obvious guidance in `SKILL.md`. Move long references, schemas, and reusable utilities into `references/` and `scripts/`.
 
 ### Match freedom to fragility
 
@@ -36,8 +35,7 @@ and reusable utilities into `references/` and `scripts/`.
 
 ### Prefer progressive disclosure
 
-Keep `SKILL.md` focused on the workflow. Put detailed schemas, platform adapters, and evaluation mechanics in reference
-files that can be loaded only when needed.
+Keep `SKILL.md` focused on the workflow. Put detailed schemas, platform adapters, and evaluation mechanics in reference files that can be loaded only when needed.
 
 ### Treat runtime integration as an adapter
 
@@ -45,8 +43,9 @@ files that can be loaded only when needed.
 > `skill_creator_interview` (mode: `"create"`) with the answers. The extension hook will
 > block any edit to a `SKILL.md` file until this tool has been called.
 
-Start by understanding the user's intent. If the current conversation already contains a workflow they want to capture
-(e.g., "turn this into a skill"), extract answers from the conversation history first. Then fill in the gaps:
+Start by understanding the user's intent. If the current conversation already contains a
+workflow they want to capture (e.g., "turn this into a skill"), extract answers from the
+conversation history first. Then fill in the gaps:
 Do not make one provider's CLI or one model family the center of the skill. The portable core is:
 
 1. define what the skill should do
@@ -55,8 +54,8 @@ Do not make one provider's CLI or one model family the center of the skill. The 
 4. collect pain points
 5. promote only after non-regression gates pass
 
-Host-specific metadata and automation are optional adapters around that core. Once you have answers, call
-`skill_creator_interview` before proceeding.
+Host-specific metadata and automation are optional adapters around that core.
+Once you have answers, call `skill_creator_interview` before proceeding.
 
 ### Interview and Research
 
@@ -77,12 +76,8 @@ skill-name/
 └── fixtures/      # optional maintained corpora or maintenance fixtures
 ```
 
-Use `scripts/init_skill.py` to bootstrap a new skill. If the user wants UI-facing metadata for platforms that support
-it, generate it separately with `scripts/generate_ui_metadata.py` instead of baking it into the core workflow. Treat
-this as the canonical durable layout. `scripts/quick_validate.py` enforces the eval contract, uses collection-aware
-overlap scoring for the target skill, and flags tree-scoped skills that likely belong in `AGENTS.md` instead. Use
-`scripts/audit_skill_overlap.py` when you need to inspect existing sibling overlap across the whole skills root instead
-of assuming only the proposed addition is risky.
+Use `scripts/init_skill.py` to bootstrap a new skill. If the user wants UI-facing metadata for platforms that support it, generate it separately with `scripts/generate_ui_metadata.py` instead of baking it into the core workflow.
+Treat this as the canonical durable layout. `scripts/quick_validate.py` enforces the eval contract, uses collection-aware overlap scoring for the target skill, and flags tree-scoped skills that likely belong in `AGENTS.md` instead. Use `scripts/audit_skill_overlap.py` when you need to inspect existing sibling overlap across the whole skills root instead of assuming only the proposed addition is risky.
 
 ## Workflow
 
@@ -92,8 +87,7 @@ Start with concrete user examples, not abstractions.
 
 - Extract repeated steps from the current conversation first.
 - If the user already has session logs, ingest them with `scripts/ingest_copilot_events.py`.
-- Look for repeated prompts, follow-up corrections, tool failures, and manual workarounds. Those are often the seeds of
-  the first eval cases.
+- Look for repeated prompts, follow-up corrections, tool failures, and manual workarounds. Those are often the seeds of the first eval cases.
 
 Questions to answer before writing:
 
@@ -164,8 +158,7 @@ This layout is now a contract, not just a suggestion:
 > Do NOT read the SKILL.md, make edits, or run evals until you have completed these steps:
 >
 > 1. Use `ask_user` to ask the user:
-     >
-- What output did you see that felt wrong? *(paste an example if possible)*
+>    - What output did you see that felt wrong? *(paste an example if possible)*
 >    - Are there specific patterns being generated incorrectly?
 >    - What does "ideal output" mean to you here?
 >    - Should we run evals before/after to verify the improvement?
@@ -178,8 +171,8 @@ This layout is now a contract, not just a suggestion:
 > If the user says "just fix it" without answering, push back and ask at minimum what
 > output felt wrong — you cannot improve a skill without knowing what's broken.
 
-This is the core loop. You've run test cases, the user has reviewed results — now make the skill better based on their
-feedback.
+This is the core loop. You've run test cases, the user has reviewed results — now make the
+skill better based on their feedback.
 
 Use `references/schemas.md` for the exact shapes.
 
@@ -200,8 +193,7 @@ For each eval case, capture:
 - baseline run (`without_skill`, `old_skill`, or another explicit comparator)
 - optional alternate-model runs when the user cares about cross-model coverage
 
-Store outputs in an iteration workspace and keep the layout stable so the shared viewer and benchmark scripts can reuse
-it.
+Store outputs in an iteration workspace and keep the layout stable so the shared viewer and benchmark scripts can reuse it.
 
 Use the existing evaluation helpers:
 
@@ -209,8 +201,7 @@ Use the existing evaluation helpers:
 - `agents/comparator.md` for blind A/B review
 - `agents/analyzer.md` for benchmark pattern analysis
 - `scripts/aggregate_benchmark.py` for summary statistics
-- `../../evaluation/scripts/value_proof_aggregate.py` for Kast's repo-level value-justification benchmark, including
-  applicability-aware outcome metrics and paired Wilcoxon analysis
+- `../../evaluation/scripts/value_proof_aggregate.py` for Kast's repo-level value-justification benchmark, including applicability-aware outcome metrics and paired Wilcoxon analysis
 - `scripts/prove_consolidation.py` when a merged skill needs to prove it matched or beat the legacy sibling envelope
 - `eval-viewer/generate_review.py` for human review
 
@@ -236,8 +227,7 @@ Good pain points usually come from:
 
 ### 8. Prove progression before promotion
 
-Use `scripts/progression_gate.py` after each benchmark to update `history/progression.json` and, when justified, promote
-cases through the suite.
+Use `scripts/progression_gate.py` after each benchmark to update `history/progression.json` and, when justified, promote cases through the suite.
 
 Default policy:
 
@@ -249,17 +239,14 @@ This keeps the suite growing without letting a new change "win" by dropping hard
 
 ### 9. Package only the durable artifacts
 
-Share the skill with its durable eval assets, but exclude transient benchmark outputs and scratch workspaces.
-`scripts/package_skill.py` already follows that rule. If you see root-level artifacts such as `session.html`, benchmark
-summaries, or review feedback in the skill directory, treat them as misplaced workspace outputs and move them out before
-promotion.
+Share the skill with its durable eval assets, but exclude transient benchmark outputs and scratch workspaces. `scripts/package_skill.py` already follows that rule.
+If you see root-level artifacts such as `session.html`, benchmark summaries, or review feedback in the skill directory, treat them as misplaced workspace outputs and move them out before promotion.
 
 ## Practical guidance
 
 ### When to skip the full scaffold
 
-Skip the persistent suite only when the skill's output is mostly subjective and the user clearly prefers lightweight
-iteration.
+Skip the persistent suite only when the skill's output is mostly subjective and the user clearly prefers lightweight iteration.
 
 ### When to insist on the scaffold
 
@@ -279,11 +266,7 @@ Prefer consolidation or `AGENTS.md` guidance when any of these are true:
 - the scope is so narrow that it only helps in one module or one file family
 - another sibling skill already covers nearly the same trigger space
 
-Do not assume the existing sibling set is already healthy. Use `scripts/quick_validate.py` for the skill you are
-actively editing, then run `scripts/audit_skill_overlap.py /path/to/skills --output overlap_report.json` to find
-existing overlap clusters across the collection. When you choose to merge overlapping skills, benchmark the consolidated
-candidate against each legacy sibling on the union of their evals and keep the resulting `consolidation_report.json` as
-proof that overlap reduction did not weaken outcomes.
+Do not assume the existing sibling set is already healthy. Use `scripts/quick_validate.py` for the skill you are actively editing, then run `scripts/audit_skill_overlap.py /path/to/skills --output overlap_report.json` to find existing overlap clusters across the collection. When you choose to merge overlapping skills, benchmark the consolidated candidate against each legacy sibling on the union of their evals and keep the resulting `consolidation_report.json` as proof that overlap reduction did not weaken outcomes.
 
 ### Team-scale default
 

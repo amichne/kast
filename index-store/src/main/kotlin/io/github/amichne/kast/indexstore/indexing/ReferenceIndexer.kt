@@ -146,6 +146,6 @@ class ReferenceIndexer(
 
     private fun Throwable.isCancellation(): Boolean =
         this is CancellationException ||
-        this is InterruptedException ||
-        javaClass.name == "com.intellij.openapi.progress.ProcessCanceledException"
+            this is InterruptedException ||
+            javaClass.name == "com.intellij.openapi.progress.ProcessCanceledException"
 }

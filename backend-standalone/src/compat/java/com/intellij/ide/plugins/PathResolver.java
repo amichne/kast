@@ -39,39 +39,39 @@ public interface PathResolver {
     // ── Old API (called by AA's PluginStructureProvider via kotlin-compiler.jar) ──────────────
 
     boolean loadXIncludeReference(
-        RawPluginDescriptor descriptor,
-        ReadModuleContext context,
-        DataLoader dataLoader,
-        String base,
-        String relativePath);
+            RawPluginDescriptor descriptor,
+            ReadModuleContext context,
+            DataLoader dataLoader,
+            String base,
+            String relativePath);
 
     RawPluginDescriptor resolvePath(
-        ReadModuleContext readContext,
-        DataLoader dataLoader,
-        String relativePath,
-        RawPluginDescriptor descriptor);
+            ReadModuleContext readContext,
+            DataLoader dataLoader,
+            String relativePath,
+            RawPluginDescriptor descriptor);
 
     RawPluginDescriptor resolveModuleFile(
-        ReadModuleContext readContext,
-        DataLoader dataLoader,
-        String relativePath,
-        RawPluginDescriptor descriptor);
+            ReadModuleContext readContext,
+            DataLoader dataLoader,
+            String relativePath,
+            RawPluginDescriptor descriptor);
 
     // ── New API (called by IJ 2025.3 PluginDescriptorLoader from app.jar) ────────────────────
 
     XIncludeLoader.LoadedXIncludeReference loadXIncludeReference(
-        DataLoader dataLoader,
-        String relativePath);
+            DataLoader dataLoader,
+            String relativePath);
 
     PluginDescriptorBuilder resolvePath(
-        PluginDescriptorReaderContext context,
-        DataLoader dataLoader,
-        String relativePath);
+            PluginDescriptorReaderContext context,
+            DataLoader dataLoader,
+            String relativePath);
 
     PluginDescriptorBuilder resolveModuleFile(
-        PluginDescriptorReaderContext context,
-        DataLoader dataLoader,
-        String relativePath);
+            PluginDescriptorReaderContext context,
+            DataLoader dataLoader,
+            String relativePath);
 
     // ── New default method added in IJ 2025.3 ─────────────────────────────────────────────────
 

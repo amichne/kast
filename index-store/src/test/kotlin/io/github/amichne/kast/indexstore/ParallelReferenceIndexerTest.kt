@@ -55,7 +55,7 @@ class ParallelReferenceIndexerTest {
             assertTrue(
                 maxConcurrentScans.get() > 1,
                 "Expected >1 concurrent scans with parallelism=4 and fileCount=$fileCount, " +
-                "but max concurrent was ${maxConcurrentScans.get()}",
+                    "but max concurrent was ${maxConcurrentScans.get()}",
             )
         }
     }
@@ -69,7 +69,7 @@ class ParallelReferenceIndexerTest {
         val filePaths = (0 until 10).map { i -> "/src/File$i.kt" }
 
         val resultsSerial = storeWithManifest(*filePaths.toTypedArray()).use { store ->
-            ReferenceIndexer(store, batchSize = 10).indexReferences(
+            ReferenceIndexer(store, batchSize = 10, parallelism = 1).indexReferences(
                 filePaths = filePaths,
                 referenceScanner = { path ->
                     listOf(

@@ -322,9 +322,9 @@ fun PsiElement.typeHierarchyDeclaration(): PsiElement? = parentsWithSelf().first
 
 fun KaSession.supertypeNames(target: PsiElement): List<String>? = when (target) {
     is KtClassOrObject -> target.classSymbol?.superTypes?.mapNotNull { type ->
-        (type as? KaClassType)?.classId?.asSingleFqName()
-            ?.asString()
-    }?.distinct()?.sorted()
+            (type as? KaClassType)?.classId?.asSingleFqName()
+                ?.asString()
+        }?.distinct()?.sorted()
 
     is PsiClass -> target.supers.mapNotNull(PsiClass::getQualifiedName).distinct().sorted()
 

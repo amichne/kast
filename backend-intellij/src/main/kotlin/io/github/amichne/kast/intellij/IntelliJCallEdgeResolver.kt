@@ -82,10 +82,7 @@ internal class IntelliJCallEdgeResolver(
         onFileVisited: (filePath: String) -> Unit,
     ): List<CallEdge> {
         // Phase 1: Collect call-expression elements and their references in one read action.
-        data class ElementRef(
-            val element: PsiElement,
-            val reference: PsiReference,
-        )
+        data class ElementRef(val element: PsiElement, val reference: PsiReference)
 
         val declaration = ApplicationManager.getApplication().runReadAction<PsiElement?> {
             target.callHierarchyDeclaration()

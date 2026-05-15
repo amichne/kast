@@ -1,36 +1,70 @@
 package io.github.amichne.kast.cli.tty
 
+import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
+import io.github.amichne.kast.api.contract.result.ApplyEditsResult
+import io.github.amichne.kast.api.contract.BackendCapabilities
+import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
+import io.github.amichne.kast.api.contract.result.CallHierarchyResult
+import io.github.amichne.kast.api.protocol.CapabilityNotSupportedException
+import io.github.amichne.kast.api.contract.query.CodeActionsQuery
+import io.github.amichne.kast.api.contract.result.CodeActionsResult
+import io.github.amichne.kast.api.contract.query.CompletionsQuery
+import io.github.amichne.kast.api.contract.result.CompletionsResult
+import io.github.amichne.kast.api.contract.query.DiagnosticsQuery
+import io.github.amichne.kast.api.contract.result.DiagnosticsResult
+import io.github.amichne.kast.api.contract.query.FileOutlineQuery
+import io.github.amichne.kast.api.contract.result.FileOutlineResult
+import io.github.amichne.kast.api.contract.query.ImportOptimizeQuery
+import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
+import io.github.amichne.kast.api.contract.query.ImplementationsQuery
+import io.github.amichne.kast.api.contract.result.ImplementationsResult
+import io.github.amichne.kast.api.contract.MutationCapability
+import io.github.amichne.kast.api.contract.ReadCapability
+import io.github.amichne.kast.api.contract.query.RefreshQuery
+import io.github.amichne.kast.api.contract.result.RefreshResult
+import io.github.amichne.kast.api.contract.query.ReferencesQuery
+import io.github.amichne.kast.api.contract.result.ReferencesResult
+import io.github.amichne.kast.api.contract.query.RenameQuery
+import io.github.amichne.kast.api.contract.result.RenameResult
+import io.github.amichne.kast.api.contract.SemanticInsertionQuery
+import io.github.amichne.kast.api.contract.SemanticInsertionResult
+import io.github.amichne.kast.api.contract.query.SymbolQuery
+import io.github.amichne.kast.api.contract.result.SymbolResult
+import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
+import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
+import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
+import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
+import io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery
+import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
+import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
+import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.defaultStandaloneRuntimeLibsDirectory
 import io.github.amichne.kast.api.client.kastConfigHome
-import io.github.amichne.kast.api.contract.BackendCapabilities
-import io.github.amichne.kast.api.contract.MutationCapability
-import io.github.amichne.kast.api.contract.ReadCapability
-import io.github.amichne.kast.api.protocol.CapabilityNotSupportedException
-import io.github.amichne.kast.cli.InstallCopilotExtensionService
-import io.github.amichne.kast.cli.InstallService
-import io.github.amichne.kast.cli.InstallSkillService
-import io.github.amichne.kast.cli.KastRpcClient
-import io.github.amichne.kast.cli.RuntimeCandidateStatus
-import io.github.amichne.kast.cli.SelfManagementService
-import io.github.amichne.kast.cli.SmokeCommandSupport
-import io.github.amichne.kast.cli.SmokeReport
-import io.github.amichne.kast.cli.WorkspaceRuntimeManager
 import io.github.amichne.kast.cli.options.DaemonStartOptions
-import io.github.amichne.kast.cli.options.InstallCopilotExtensionOptions
-import io.github.amichne.kast.cli.options.InstallOptions
-import io.github.amichne.kast.cli.options.InstallSkillOptions
-import io.github.amichne.kast.cli.options.RuntimeCommandOptions
-import io.github.amichne.kast.cli.options.SmokeOptions
 import io.github.amichne.kast.cli.results.DaemonStopResult
-import io.github.amichne.kast.cli.results.InstallCopilotExtensionResult
+import io.github.amichne.kast.cli.options.InstallOptions
 import io.github.amichne.kast.cli.results.InstallResult
-import io.github.amichne.kast.cli.results.InstallSkillResult
 import io.github.amichne.kast.cli.results.SelfDoctorResult
 import io.github.amichne.kast.cli.results.SelfStatusResult
 import io.github.amichne.kast.cli.results.SelfUninstallResult
 import io.github.amichne.kast.cli.results.SelfUpgradeResult
+import io.github.amichne.kast.cli.InstallService
+import io.github.amichne.kast.cli.InstallCopilotExtensionService
+import io.github.amichne.kast.cli.SelfManagementService
+import io.github.amichne.kast.cli.options.InstallCopilotExtensionOptions
+import io.github.amichne.kast.cli.results.InstallCopilotExtensionResult
+import io.github.amichne.kast.cli.options.InstallSkillOptions
+import io.github.amichne.kast.cli.results.InstallSkillResult
+import io.github.amichne.kast.cli.InstallSkillService
+import io.github.amichne.kast.cli.KastRpcClient
+import io.github.amichne.kast.cli.RuntimeCandidateStatus
+import io.github.amichne.kast.cli.options.RuntimeCommandOptions
+import io.github.amichne.kast.cli.SmokeCommandSupport
+import io.github.amichne.kast.cli.options.SmokeOptions
+import io.github.amichne.kast.cli.SmokeReport
 import io.github.amichne.kast.cli.results.WorkspaceEnsureResult
+import io.github.amichne.kast.cli.WorkspaceRuntimeManager
 import io.github.amichne.kast.cli.results.WorkspaceStatusResult
 import kotlinx.serialization.json.Json
 import java.nio.file.Files
@@ -55,13 +89,11 @@ internal class CliService(
     suspend fun workspaceEnsure(options: RuntimeCommandOptions): WorkspaceEnsureResult =
         runtimeManager.workspaceEnsure(options)
 
+
     suspend fun workspaceStop(options: RuntimeCommandOptions): DaemonStopResult =
         runtimeManager.workspaceStop(options)
 
-    suspend fun rpcPassthrough(
-        options: RuntimeCommandOptions,
-        rawJsonRpc: String,
-    ): String {
+    suspend fun rpcPassthrough(options: RuntimeCommandOptions, rawJsonRpc: String): String {
         val runtime = runtimeManager.ensureRuntime(options)
         return rpcClient.rawPassthrough(runtime.selected.descriptor, rawJsonRpc)
     }
@@ -76,6 +108,21 @@ internal class CliService(
             runtime = runtime,
         )
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     fun install(options: InstallOptions): InstallResult = installService.install(options)
 
@@ -97,23 +144,23 @@ internal class CliService(
     fun daemonStart(options: DaemonStartOptions): CliOutput {
         val config = configLoader(options.workspaceRoot)
         val runtimeLibsDir = options.runtimeLibsDir
-                             ?: config.backends.standalone.runtimeLibsDir.value.orNull
-                                 ?.takeIf(String::isNotBlank)
-                                 ?.let { Path.of(it).toAbsolutePath().normalize() }
-                             ?: defaultStandaloneRuntimeLibsDirectory(envLookup)
-                                 ?.takeIf { Files.isRegularFile(it.resolve("classpath.txt")) }
-                             ?: throw CliFailure(
-                                 code = "DAEMON_START_ERROR",
-                                 message = "Cannot locate backend runtime-libs. " +
-                                           "Set backends.standalone.runtimeLibsDir in `kast config init` output, or pass --runtime-libs-dir.",
-                             )
+            ?: config.backends.standalone.runtimeLibsDir.value.orNull
+                ?.takeIf(String::isNotBlank)
+                ?.let { Path.of(it).toAbsolutePath().normalize() }
+            ?: defaultStandaloneRuntimeLibsDirectory(envLookup)
+                ?.takeIf { Files.isRegularFile(it.resolve("classpath.txt")) }
+            ?: throw CliFailure(
+                code = "DAEMON_START_ERROR",
+                message = "Cannot locate backend runtime-libs. " +
+                    "Set backends.standalone.runtimeLibsDir in `kast config init` output, or pass --runtime-libs-dir.",
+            )
 
         val classpathFile = runtimeLibsDir.resolve("classpath.txt")
         if (!Files.isRegularFile(classpathFile)) {
             throw CliFailure(
                 code = "DAEMON_START_ERROR",
                 message = "Backend runtime-libs classpath not found at $classpathFile. " +
-                          "Reinstall the backend, update backends.standalone.runtimeLibsDir, or pass --runtime-libs-dir.",
+                    "Reinstall the backend, update backends.standalone.runtimeLibsDir, or pass --runtime-libs-dir.",
             )
         }
 
@@ -133,9 +180,9 @@ internal class CliService(
         }
 
         val javaExec = System.getenv("JAVA_HOME")
-                           ?.takeIf(String::isNotBlank)
-                           ?.let { "$it/bin/java" }
-                       ?: "java"
+            ?.takeIf(String::isNotBlank)
+            ?.let { "$it/bin/java" }
+            ?: "java"
 
         val command = buildList {
             add(javaExec)
@@ -162,6 +209,7 @@ internal class CliService(
         return CliOutput.Text("Config file already exists at $configFile")
     }
 
+
     private fun <T> attachedResult(
         payload: T,
         runtime: WorkspaceEnsureResult,
@@ -176,10 +224,10 @@ internal class CliService(
         capability: ReadCapability,
     ) {
         val capabilities = candidate.capabilities
-                           ?: throw CliFailure(
-                               code = "CAPABILITIES_UNAVAILABLE",
-                               message = "Capabilities are unavailable for ${candidate.descriptor.backendName}",
-                           )
+            ?: throw CliFailure(
+                code = "CAPABILITIES_UNAVAILABLE",
+                message = "Capabilities are unavailable for ${candidate.descriptor.backendName}",
+            )
         if (!capabilities.readCapabilities.contains(capability)) {
             throw CapabilityNotSupportedException(
                 capability = capability.name,
@@ -193,10 +241,10 @@ internal class CliService(
         capability: MutationCapability,
     ) {
         val capabilities = candidate.capabilities
-                           ?: throw CliFailure(
-                               code = "CAPABILITIES_UNAVAILABLE",
-                               message = "Capabilities are unavailable for ${candidate.descriptor.backendName}",
-                           )
+            ?: throw CliFailure(
+                code = "CAPABILITIES_UNAVAILABLE",
+                message = "Capabilities are unavailable for ${candidate.descriptor.backendName}",
+            )
         if (!capabilities.mutationCapabilities.contains(capability)) {
             throw CapabilityNotSupportedException(
                 capability = capability.name,

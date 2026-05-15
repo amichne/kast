@@ -1,12 +1,10 @@
 # Interface metadata
 
-Interface metadata is optional. Keep the core skill portable and add UI-facing metadata only when the target platform
-supports it and the user wants it.
+Interface metadata is optional. Keep the core skill portable and add UI-facing metadata only when the target platform supports it and the user wants it.
 
 ## Current adapter
 
-The bundled helper currently emits `agents/openai.yaml`, because some runtimes use that file for skill-list
-presentation.
+The bundled helper currently emits `agents/openai.yaml`, because some runtimes use that file for skill-list presentation.
 
 Generate it with:
 

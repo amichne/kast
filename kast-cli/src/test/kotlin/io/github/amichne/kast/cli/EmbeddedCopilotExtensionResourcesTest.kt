@@ -12,6 +12,7 @@ import org.junit.jupiter.api.io.TempDir
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
+import kotlin.streams.toList
 
 class EmbeddedCopilotExtensionResourcesTest {
     @TempDir
@@ -33,7 +34,7 @@ class EmbeddedCopilotExtensionResourcesTest {
         assertTrue(
             unpackagedFiles.isEmpty(),
             "Add these .github files to EmbeddedCopilotExtensionResources.MANIFEST or EXCLUDED_SOURCE_FILES:\n" +
-            unpackagedFiles.joinToString("\n"),
+                unpackagedFiles.joinToString("\n"),
         )
     }
 
@@ -89,17 +90,12 @@ class EmbeddedCopilotExtensionResourcesTest {
     private fun Path.invariantSeparators(): String = toString().replace(File.separatorChar, '/')
 
     private fun findRepoRoot(start: Path): Path = generateSequence(start.normalize()) { it.parent }
-                                                      .firstOrNull { candidate ->
-                                                          Files.isRegularFile(
-                                                              candidate.resolve(
-                                                                  "kast-cli/build.gradle.kts"
-                                                              )
-                                                          )
-                                                      }
-                                                  ?: error("Could not locate repo root from " + start)
+        .firstOrNull { candidate -> Files.isRegularFile(candidate.resolve("kast-cli/build.gradle.kts")) }
+        ?: error("Could not locate repo root from " + start)
 
     private data class ShadowedSkill(
         val id: String,
         val shadowingExtensionId: String?,
     )
+
 }

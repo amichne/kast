@@ -40,8 +40,5 @@ data class FileFilterSpec(
 }
 
 /** Filters a list retaining only items where [pathExtractor] returns a path that passes [filter]. */
-fun <T> List<T>.filterByPath(
-    filter: FileFilterSpec,
-    pathExtractor: (T) -> String?,
-): List<T> =
+fun <T> List<T>.filterByPath(filter: FileFilterSpec, pathExtractor: (T) -> String?): List<T> =
     if (filter.isEmpty) this else filter { item -> filter.matches(pathExtractor(item)) }

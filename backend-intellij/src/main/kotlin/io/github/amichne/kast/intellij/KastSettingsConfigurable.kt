@@ -59,27 +59,27 @@ internal class KastSettingsConfigurable(
         ensurePanel()
         val state = KastSettingsState.getInstance(project)
         return serverMaxResults.text != state.serverMaxResults.display() ||
-               serverRequestTimeoutMillis.text != state.serverRequestTimeoutMillis.display() ||
-               serverMaxConcurrentRequests.text != state.serverMaxConcurrentRequests.display() ||
-               indexingPhase2Enabled.isSelected != (state.indexingPhase2Enabled ?: false) ||
-               indexingPhase2BatchSize.text != state.indexingPhase2BatchSize.display() ||
-               indexingIdentifierIndexWaitMillis.text != state.indexingIdentifierIndexWaitMillis.display() ||
-               indexingReferenceBatchSize.text != state.indexingReferenceBatchSize.display() ||
-               indexingRemoteEnabled.isSelected != (state.indexingRemoteEnabled ?: false) ||
-               indexingRemoteSourceIndexUrl.text != state.indexingRemoteSourceIndexUrl.orEmpty() ||
-               cacheEnabled.isSelected != (state.cacheEnabled ?: false) ||
-               cacheWriteDelayMillis.text != state.cacheWriteDelayMillis.display() ||
-               cacheSourceIndexSaveDelayMillis.text != state.cacheSourceIndexSaveDelayMillis.display() ||
-               watcherDebounceMillis.text != state.watcherDebounceMillis.display() ||
-               gradleToolingApiTimeoutMillis.text != state.gradleToolingApiTimeoutMillis.display() ||
-               gradleMaxIncludedProjects.text != state.gradleMaxIncludedProjects.display() ||
-               telemetryEnabled.isSelected != (state.telemetryEnabled ?: false) ||
-               telemetryScopes.text != state.telemetryScopes.orEmpty() ||
-               selectedTelemetryDetailConfigValue(state) != state.telemetryDetail ||
-               telemetryOutputFile.text != state.telemetryOutputFile.orEmpty() ||
-               backendsStandaloneEnabled.isSelected != (state.backendsStandaloneEnabled ?: false) ||
-               backendsStandaloneRuntimeLibsDir.text != state.backendsStandaloneRuntimeLibsDir.orEmpty() ||
-               backendsIntellijEnabled.isSelected != (state.backendsIntellijEnabled ?: false)
+            serverRequestTimeoutMillis.text != state.serverRequestTimeoutMillis.display() ||
+            serverMaxConcurrentRequests.text != state.serverMaxConcurrentRequests.display() ||
+            indexingPhase2Enabled.isSelected != (state.indexingPhase2Enabled ?: false) ||
+            indexingPhase2BatchSize.text != state.indexingPhase2BatchSize.display() ||
+            indexingIdentifierIndexWaitMillis.text != state.indexingIdentifierIndexWaitMillis.display() ||
+            indexingReferenceBatchSize.text != state.indexingReferenceBatchSize.display() ||
+            indexingRemoteEnabled.isSelected != (state.indexingRemoteEnabled ?: false) ||
+            indexingRemoteSourceIndexUrl.text != state.indexingRemoteSourceIndexUrl.orEmpty() ||
+            cacheEnabled.isSelected != (state.cacheEnabled ?: false) ||
+            cacheWriteDelayMillis.text != state.cacheWriteDelayMillis.display() ||
+            cacheSourceIndexSaveDelayMillis.text != state.cacheSourceIndexSaveDelayMillis.display() ||
+            watcherDebounceMillis.text != state.watcherDebounceMillis.display() ||
+            gradleToolingApiTimeoutMillis.text != state.gradleToolingApiTimeoutMillis.display() ||
+            gradleMaxIncludedProjects.text != state.gradleMaxIncludedProjects.display() ||
+            telemetryEnabled.isSelected != (state.telemetryEnabled ?: false) ||
+            telemetryScopes.text != state.telemetryScopes.orEmpty() ||
+            selectedTelemetryDetailConfigValue(state) != state.telemetryDetail ||
+            telemetryOutputFile.text != state.telemetryOutputFile.orEmpty() ||
+            backendsStandaloneEnabled.isSelected != (state.backendsStandaloneEnabled ?: false) ||
+            backendsStandaloneRuntimeLibsDir.text != state.backendsStandaloneRuntimeLibsDir.orEmpty() ||
+            backendsIntellijEnabled.isSelected != (state.backendsIntellijEnabled ?: false)
     }
 
     override fun reset() {
@@ -293,7 +293,7 @@ internal class KastSettingsConfigurable(
     private fun selectedTelemetryDetailConfigValue(state: KastSettingsState): String? {
         val selected = selectedTelemetryDetail()
         return if (state.telemetryDetail == loadedTelemetryDetailRaw &&
-                   selected == KastTelemetryDetailLevel.fromConfigValue(state.telemetryDetail)
+            selected == KastTelemetryDetailLevel.fromConfigValue(state.telemetryDetail)
         ) {
             state.telemetryDetail
         } else {

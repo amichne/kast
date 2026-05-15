@@ -11,8 +11,8 @@ import kotlin.io.path.readText
 internal object StaticGradleWorkspaceDiscovery {
     private const val SUPPORTED_DEPENDENCY_CONFIGURATION =
         "api|implementation|compileOnly|runtimeOnly|" +
-        "testApi|testImplementation|testCompileOnly|testRuntimeOnly|" +
-        "testFixturesApi|testFixturesImplementation|testFixturesCompileOnly|testFixturesRuntimeOnly"
+            "testApi|testImplementation|testCompileOnly|testRuntimeOnly|" +
+            "testFixturesApi|testFixturesImplementation|testFixturesCompileOnly|testFixturesRuntimeOnly"
     private val scopedProjectDependencyPattern = Regex(
         """(?s)\b($SUPPORTED_DEPENDENCY_CONFIGURATION)\s*\(\s*project\(\s*(?:path\s*=\s*)?["'](:?[^"')]+)["'][^)]*\)\s*\)""",
     )
@@ -239,10 +239,10 @@ internal fun conventionalGradleSourceRootCandidates(
             projectDirectory.resolve("src/testFixtures/java"),
         )
     } +
-    discoverAdditionalSourceSets(projectDirectory)
-        .filter { (sourceSetName, _) -> mapsToGradleSourceSet(sourceSetName, sourceSet) }
-        .flatMap { (_, roots) -> roots }
-                ).distinct()
+        discoverAdditionalSourceSets(projectDirectory)
+            .filter { (sourceSetName, _) -> mapsToGradleSourceSet(sourceSetName, sourceSet) }
+            .flatMap { (_, roots) -> roots }
+    ).distinct()
 
 internal fun discoverAdditionalSourceSets(projectDirectory: Path): List<Pair<String, List<Path>>> {
     val sourceDirectory = projectDirectory.resolve("src")

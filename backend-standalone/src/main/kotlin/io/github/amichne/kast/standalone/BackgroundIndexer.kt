@@ -2,11 +2,11 @@ package io.github.amichne.kast.standalone
 
 import io.github.amichne.kast.api.contract.ModuleName
 import io.github.amichne.kast.api.contract.NormalizedPath
+import io.github.amichne.kast.indexstore.indexing.ReferenceIndexer
 import io.github.amichne.kast.indexstore.api.index.SourceIndexFilePolicy
+import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.indexstore.api.reference.DeclarationRow
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
-import io.github.amichne.kast.indexstore.indexing.ReferenceIndexer
-import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.standalone.cache.SourceIndexCache
 import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetry
 import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetryScope
@@ -84,7 +84,7 @@ internal class BackgroundIndexer(
                 initialSourceIndexBuilder
                     ?.invoke()
                     ?.let(MutableSourceIdentifierIndex::fromCandidatePathsByIdentifier)
-                ?: loadOrBuildIndex()
+                    ?: loadOrBuildIndex()
             }.onSuccess { index ->
                 if (cancelled || generation.get() != gen) return@onSuccess
                 indexRef.set(index)
@@ -127,11 +127,7 @@ internal class BackgroundIndexer(
                 if (cancelled) return@thread
                 val allPaths = changedPaths ?: store.loadManifest()?.keys ?: return@thread
                 generation.incrementAndGet()
-                ReferenceIndexer(
-                    store,
-                    batchSize = referenceBatchSize,
-                    parallelism = referenceParallelism
-                ).indexReferences(
+                ReferenceIndexer(store, batchSize = referenceBatchSize, parallelism = referenceParallelism).indexReferences(
                     filePaths = allPaths,
                     referenceScanner = referenceScanner,
                     declarationScanner = declarationScanner,

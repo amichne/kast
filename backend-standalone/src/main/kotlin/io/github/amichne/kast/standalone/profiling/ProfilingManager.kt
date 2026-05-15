@@ -2,6 +2,7 @@ package io.github.amichne.kast.standalone.profiling
 
 import io.github.amichne.kast.api.client.fields.ProfilingMode
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.nio.file.Files
 import java.nio.file.Path

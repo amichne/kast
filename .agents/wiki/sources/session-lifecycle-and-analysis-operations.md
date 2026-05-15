@@ -1,7 +1,7 @@
 # Session Lifecycle and Analysis Operations
 
-This page summarizes the raw note [[Session-Lifecycle-and-Analysis-Operations]]. It is the most direct source for how
-the backend executes semantic work.
+This page summarizes the raw note [[Session-Lifecycle-and-Analysis-Operations]].
+It is the most direct source for how the backend executes semantic work.
 
 ## Source
 
@@ -14,11 +14,13 @@ This source is a backend execution note.
 
 ## Summary
 
-This note explains `StandaloneAnalysisSession`, backend locking, refresh versus rebuild behavior, the query-to-result
-data flow, and Java compatibility support. Its main contribution is showing how semantic operations are grounded in a
+This note explains `StandaloneAnalysisSession`, backend locking, refresh versus
+rebuild behavior, the query-to-result data flow, and Java compatibility support.
+Its main contribution is showing how semantic operations are grounded in a
 managed session lifecycle rather than a stateless API call.
 
-It also clarifies that correctness and concurrency are intertwined because the backend is long-lived and shared.
+It also clarifies that correctness and concurrency are intertwined because the
+backend is long-lived and shared.
 
 ## Key claims
 

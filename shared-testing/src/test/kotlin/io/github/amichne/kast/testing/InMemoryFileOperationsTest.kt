@@ -1,9 +1,10 @@
 package io.github.amichne.kast.testing
 
+import io.github.amichne.kast.api.io.KastFileOperations
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Test
 
 /**
  * RED test for in-memory file operations fixture.
@@ -124,10 +125,8 @@ class InMemoryFileOperationsTest {
         // Assert - all paths should be absolute (start with root)
         assertEquals(2, children.size)
         children.forEach { path ->
-            assertTrue(
-                path.startsWith(fixture.root),
-                "Path should be absolute (start with ${fixture.root}), but got: $path"
-            )
+            assertTrue(path.startsWith(fixture.root),
+                "Path should be absolute (start with ${fixture.root}), but got: $path")
         }
     }
 
@@ -225,10 +224,8 @@ class InMemoryFileOperationsTest {
         threadA.start()
 
         // Wait for A to acquire lock
-        assertTrue(
-            aHoldingLock.await(1, java.util.concurrent.TimeUnit.SECONDS),
-            "Thread A should acquire lock promptly"
-        )
+        assertTrue(aHoldingLock.await(1, java.util.concurrent.TimeUnit.SECONDS),
+            "Thread A should acquire lock promptly")
 
         // Act - Thread B attempts to acquire lock on separate fixture
         val threadB = Thread {
@@ -248,10 +245,8 @@ class InMemoryFileOperationsTest {
         threadB.join(1000)
 
         // Assert
-        assertTrue(
-            bAcquired,
+        assertTrue(bAcquired,
             "Fixture B should acquire lock promptly on its own instance. " +
-            "Blocking indicates locks are shared across fixtures (static companion object)."
-        )
+            "Blocking indicates locks are shared across fixtures (static companion object).")
     }
 }
