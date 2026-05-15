@@ -5,7 +5,21 @@ plugins {
 }
 
 group = providers.gradleProperty("GROUP").get()
-version = providers.gradleProperty("VERSION").get()
+version = providers.exec {
+    commandLine("git", "describe", "--tags", "--match", "v*", "--long", "--always")
+    workingDir(rootDir)
+    isIgnoreExitValue = true
+}.standardOutput.asText.map { raw ->
+    // raw: v0.6.3-7-gb8c186d (tag-distance-sha) or a bare sha when no tags exist
+    val trimmed = raw.trim()
+    val regex = Regex("""^v?(\d+\.\d+\.\d+)-(\d+)-g([0-9a-f]+)$""")
+    regex.matchEntire(trimmed)?.let { m ->
+        val base = m.groupValues[1]
+        val distance = m.groupValues[2].toInt()
+        val sha = m.groupValues[3]
+        if (distance == 0) base else "$base-${m.groupValues[2]}-g$sha"
+    } ?: trimmed.removePrefix("v").ifEmpty { "0.0.0-unknown" }
+}.get()
 
 subprojects {
     group = rootProject.group
