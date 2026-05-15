@@ -127,3 +127,13 @@ copilot-session-*.md
 dist/
 .agents/skills/kast/.kast-version
 .benchmarks/
+
+# Agent-tool-specific files (not part of kast product)
+.claude/
+skills-lock.json
+.agents/agents/
+.agents/skills/author-zensical-docs/
+.agents/skills/improve-codebase-architecture/
+.agents/skills/kast-value-proof-runner/
+.agents/skills/kotlin-gradle-loop/
+.agents/skills/kotlin-standards/
