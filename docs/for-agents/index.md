@@ -19,15 +19,17 @@ results.
 # 1. Drop the kast skill into this repo (writes to .agents/skills/kast)
 kast install skill
 
-# 2. Start a backend so the agent has something to talk to
-kast workspace ensure --workspace-root=$(pwd)
+# 2. Warm the workspace daemon for this repo
+kast up --workspace-root=$(pwd)
 
 # 3. Hand off — your agent now has the kast skill loaded
 ```
 
 Done. The skill teaches the workflow and the resolve-first pattern. The
-backend keeps Kotlin state warm. The rest of this page is what your
-agent picks up from that.
+backend keeps Kotlin state warm. Agents should prefer native `kast_*`
+tools and fall back to `kast rpc` when they need the CLI directly;
+humans use `kast up`, `kast status`, and `kast stop` to manage the
+daemon. The rest of this page is what your agent picks up from that.
 
 The agent talks to either runtime over the same JSON-RPC. Standalone
 runs as an independent daemon — terminals, CI, remote machines, cloud
@@ -109,5 +111,5 @@ Once `kast` is wired in, these stop being approximations:
   most out of `kast`
 - [Install the skill](install-the-skill.md) — drop the packaged skill
   into your workspace
-- [Direct CLI usage](direct-cli.md) — when the agent calls `kast`
+- [Direct CLI usage](direct-cli.md) — when the agent calls `kast rpc`
   itself

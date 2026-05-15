@@ -74,23 +74,24 @@ Use this map to choose the narrowest unit that owns a change.
 Agents must use the native `kast_*` Copilot tools registered by the
 `.github/extensions/kast/` extension for Kotlin semantic operations.
 The extension also resolves the repo-local `kast` CLI at session start, so
-the same commands are available as a `kast <name>` bash fallback.
+the same machine contract is available as a `kast rpc '<jsonrpc-request>'`
+bash fallback.
 
-| Operation            | Native tool                        | Bash fallback                                  |
-|----------------------|------------------------------------|------------------------------------------------|
-| Resolve symbol       | `kast_resolve`                     | `kast resolve`                                 |
-| Search symbols       | `kast_workspace_symbol`            | `kast workspace-symbol`                        |
-| Search file contents | `kast_workspace_search`            | `kast workspace-search`                        |
-| Find references      | `kast_references`                  | `kast references`                              |
-| Call hierarchy       | `kast_callers`                     | `kast callers`                                 |
-| Impact analysis      | `kast_references` + `kast_callers` | `kast references` + `kast callers`             |
-| Diagnostics          | `kast_diagnostics`                 | `kast diagnostics`                             |
-| Rename symbol        | `kast_rename`                      | `kast rename`                                  |
-| File outline         | `kast_file_outline`                | `kast file-outline`                            |
-| Scaffold context     | `kast_scaffold`                    | `kast scaffold`                                |
-| Write and validate   | `kast_write_and_validate`          | `kast write-and-validate`                      |
-| List workspace files | `kast_workspace_files`             | `kast workspace-files`                         |
-| Workspace metrics    | `kast_metrics`                     | `kast metrics`                                 |
+| Operation             | Native tool                      | Bash fallback                                            |
+|-----------------------|----------------------------------|----------------------------------------------------------|
+| Any analysis/mutation | `kast_<tool>` (native extension) | `kast rpc '{"method":"<method>","params":{...},"id":1}'` |
+
+The native `kast_*` tools registered by `.github/extensions/kast/extension.mjs`
+remain the preferred interface. The `kast rpc` CLI command is the universal
+fallback — it accepts any JSON-RPC method the daemon supports and auto-ensures
+the daemon.
+
+Native tool names for discoverability: `kast_workspace_files`,
+`kast_workspace_symbol`, `kast_workspace_search`, `kast_file_outline`,
+`kast_scaffold`, `kast_resolve`, `kast_references`, `kast_callers`,
+`kast_metrics`, `kast_diagnostics`, `kast_rename`, and
+`kast_write_and_validate`. These tools remain preferred; use the matching
+JSON-RPC method via `kast rpc` when a CLI fallback is needed.
 
 **Prohibited substitutions:** `grep`, `rg`, `ast-grep`, `cat` + manual
 parsing must NOT be used for symbol identity, reference finding, or call
@@ -172,7 +173,8 @@ Apply these rules across the repo before local unit rules add more detail.
 ## Contract surface inventory
 
 Before modifying `EmbeddedSkillResources`, `EmbeddedCopilotExtensionResources`,
-`WrapperOpenApiDocument`, `AnalysisBackend`, or any packaged artifact manifest,
+`AnalysisBackend`, the `kast rpc` machine contract surface, or any packaged
+artifact manifest,
 enumerate all consumers: `docs/openapi.yaml`, `.agents/skills/kast/SKILL.md`,
 `.agents/skills/kast/evals/**/*`,
 `.agents/skills/kast/references/*`, `.agents/skills/kast/scripts/*`,

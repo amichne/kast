@@ -1,3 +1,4 @@
+# DEPRECATED: This file will be removed. Use kast rpc with JSON-RPC methods instead.
 openapi: 3.1.0
 info:
   title: kast wrapper contracts

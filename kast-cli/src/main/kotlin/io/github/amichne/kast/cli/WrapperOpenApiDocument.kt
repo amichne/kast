@@ -71,11 +71,14 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.LinkedHashMap
 
+private const val WRAPPER_OPENAPI_DEPRECATION_NOTICE = "# DEPRECATED: This file will be removed. Use kast rpc with JSON-RPC methods instead."
+
 object WrapperOpenApiDocument {
     fun renderYaml(): String {
         val registry = SchemaRegistry()
         registerSchemas(registry)
         return buildString {
+            appendLine(WRAPPER_OPENAPI_DEPRECATION_NOTICE)
             appendLine("openapi: 3.1.0")
             appendLine("info:")
             appendLine("  title: kast wrapper contracts")

@@ -61,9 +61,9 @@ kast install skill --target-dir=/absolute/path/to/skills --yes=true
       durable maintenance cases plus the intake queue for new misses
     - **`history/progression.json`** — promotion and progression ledger
       for the durable suite
-    - **`references/quickstart.md`**, **`references/routing-improvement.md`**,
-      and **`references/wrapper-openapi.yaml`** — request shapes,
-      routing-maintenance guidance, and checked-in wrapper contract
+    - **`references/commands.json`**, **`references/quickstart.md`**, and
+      **`references/routing-improvement.md`** — current wrapper request
+      shapes, quick lookup material, and routing-maintenance guidance
     - **`scripts/resolve-kast.sh`** — portable helper that finds the
       `kast` binary without repo-local hook paths
     - **`scripts/kast-session-start.sh`** — compatibility helper for
@@ -79,8 +79,9 @@ kast install skill --target-dir=/absolute/path/to/skills --yes=true
 
     The packaged Copilot extension registers native `kast_*` tools that
     resolve the CLI through the installed extension files. For portable
-    skill-only installs, set `[cli] binaryPath` in `config.toml` when the
-    default `$HOME/.kast/bin/kast` path doesn't match your machine:
+    skill-only installs, use `kast rpc` as the CLI fallback and set
+    `[cli] binaryPath` in `config.toml` when the default
+    `$HOME/.kast/bin/kast` path doesn't match your machine:
 
     ```toml title="$HOME/.config/kast/config.toml"
     [cli]
