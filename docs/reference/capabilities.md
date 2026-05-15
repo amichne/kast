@@ -88,6 +88,8 @@ category. Expand any operation to see its input and output schemas.
             | `#!kotlin position: FilePosition` | File position identifying the symbol to resolve. |
             | `#!kotlin includeDeclarationScope: Boolean` :material-information-outline:{ title="Default: false" } | When true, populates the declarationScope field on the resolved symbol. |
             | `#!kotlin includeDocumentation: Boolean` :material-information-outline:{ title="Default: false" } | When true, populates the documentation field on the resolved symbol. |
+            | `#!kotlin includeSurroundingMembers: Boolean` :material-information-outline:{ title="Default: false" } | When true, populates the surroundingMembers field on the resolved symbol. |
+            | `#!kotlin surroundingLines: Int` :material-information-outline:{ title="Default: 0" } | Number of nearby lines of source context to include around the symbol declaration. |
         === "Output: SymbolResult"
 
             | Signature | Description |

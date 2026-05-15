@@ -299,6 +299,11 @@ class AnalysisDispatcher(
                 skillRpc.resolve(decodeParams(KastResolveRequest.serializer(), params)),
             )
 
+            "skill/discover-symbol" -> encode(
+                KastSymbolDiscoveryResponse.serializer(),
+                skillRpc.discoverSymbol(decodeParams(KastSymbolDiscoveryRequest.serializer(), params)),
+            )
+
             "skill/references" -> encode(
                 KastReferencesResponse.serializer(),
                 skillRpc.references(decodeParams(KastReferencesRequest.serializer(), params)),

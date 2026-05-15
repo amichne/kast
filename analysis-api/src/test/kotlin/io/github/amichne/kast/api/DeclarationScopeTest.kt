@@ -102,6 +102,64 @@ class DeclarationScopeTest {
     }
 
     @Test
+    fun `SourceSnippet round-trips through JSON`() {
+        val snippet = SourceSnippet(
+            startLine = 3,
+            endLine = 5,
+            focusLine = 4,
+            sourceText = "fun greet(name: String) = greeting(name)",
+            truncated = true,
+        )
+
+        val encoded = json.encodeToString(SourceSnippet.serializer(), snippet)
+        val decoded = json.decodeFromString(SourceSnippet.serializer(), encoded)
+
+        assertEquals(snippet, decoded)
+    }
+
+    @Test
+    fun `Symbol with surrounding context round-trips`() {
+        val sibling = Symbol(
+            fqName = "sample.helper",
+            kind = SymbolKind.FUNCTION,
+            location = Location(
+                filePath = "/tmp/Sample.kt",
+                startOffset = 50,
+                endOffset = 56,
+                startLine = 5,
+                startColumn = 5,
+                preview = "fun helper()",
+            ),
+        )
+        val symbol = Symbol(
+            fqName = "sample.greet",
+            kind = SymbolKind.FUNCTION,
+            location = Location(
+                filePath = "/tmp/Sample.kt",
+                startOffset = 15,
+                endOffset = 20,
+                startLine = 2,
+                startColumn = 5,
+                preview = "fun greet()",
+            ),
+            surroundingMembers = listOf(sibling),
+            surroundingLines = SourceSnippet(
+                startLine = 1,
+                endLine = 6,
+                focusLine = 2,
+                sourceText = "package sample\n\nfun greet()\nfun helper()",
+            ),
+        )
+
+        val encoded = json.encodeToString(Symbol.serializer(), symbol)
+        val decoded = json.decodeFromString(Symbol.serializer(), encoded)
+
+        assertEquals(symbol, decoded)
+        assertEquals(1, decoded.surroundingMembers!!.size)
+        assertEquals(2, decoded.surroundingLines!!.focusLine)
+    }
+
+    @Test
     fun `SymbolQuery with includeDeclarationScope round-trips`() {
         val query = SymbolQuery(
             position = FilePosition(filePath = "/tmp/Sample.kt", offset = 42),
@@ -121,6 +179,31 @@ class DeclarationScopeTest {
         )
 
         assertEquals(false, query.includeDeclarationScope)
+    }
+
+    @Test
+    fun `SymbolQuery with surrounding context options round-trips`() {
+        val query = SymbolQuery(
+            position = FilePosition(filePath = "/tmp/Sample.kt", offset = 42),
+            includeSurroundingMembers = true,
+            surroundingLines = 4,
+        )
+
+        val encoded = json.encodeToString(SymbolQuery.serializer(), query)
+        val decoded = json.decodeFromString(SymbolQuery.serializer(), encoded)
+
+        assertEquals(true, decoded.includeSurroundingMembers)
+        assertEquals(4, decoded.surroundingLines)
+    }
+
+    @Test
+    fun `SymbolQuery defaults surrounding context to off`() {
+        val query = SymbolQuery(
+            position = FilePosition(filePath = "/tmp/Sample.kt", offset = 42),
+        )
+
+        assertEquals(false, query.includeSurroundingMembers)
+        assertEquals(0, query.surroundingLines)
     }
 
     @Test

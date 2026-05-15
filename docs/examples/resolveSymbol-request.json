@@ -6,7 +6,9 @@
             "offset": 20
         },
         "includeDeclarationScope": false,
-        "includeDocumentation": false
+        "includeDocumentation": false,
+        "includeSurroundingMembers": false,
+        "surroundingLines": 0
     },
     "id": 1,
     "jsonrpc": "2.0"

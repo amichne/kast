@@ -205,6 +205,32 @@ class KastPluginBackendContractTest {
     }
 
     @Test
+    fun `resolve symbol includes surrounding context when requested`() = runBlocking {
+        ensureInternalVisibilityProjectReady()
+
+        val (workspaceRoot, filePath, offset) = readAction {
+            val declarationFile = internalDeclarationFileFixture.get()
+            Triple(
+                commonWorkspaceRoot(declarationFile.virtualFile.path, internalDependentFileFixture.get().virtualFile.path),
+                declarationFile.virtualFile.path,
+                declarationFile.text.indexOf("internalName"),
+            )
+        }
+
+        val result = backend(workspaceRoot).resolveSymbol(
+            SymbolQuery(
+                position = FilePosition(filePath = filePath, offset = offset),
+                includeSurroundingMembers = true,
+                surroundingLines = 2,
+            ),
+        )
+
+        assertEquals(listOf("demo.internalvisibility.mainUse"), result.symbol.surroundingMembers?.map { it.fqName })
+        assertEquals(4, result.symbol.surroundingLines?.focusLine)
+        assertTrue(result.symbol.surroundingLines?.sourceText.orEmpty().contains("fun mainUse"))
+    }
+
+    @Test
     fun `find references includes usage site scope when requested`() = runBlocking {
         ensureProjectReady()
 

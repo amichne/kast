@@ -229,6 +229,8 @@ internal class StandaloneAnalysisBackend internal constructor(
                             supertypes = supertypeNames(target),
                             includeDeclarationScope = query.includeDeclarationScope,
                             includeDocumentation = query.includeDocumentation,
+                            includeSurroundingMembers = query.includeSurroundingMembers,
+                            surroundingLines = query.surroundingLines.value,
                         )
                     },
                 )

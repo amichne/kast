@@ -11,6 +11,7 @@ import io.github.amichne.kast.api.contract.CallNode
 import io.github.amichne.kast.api.contract.result.CodeActionsResult
 import io.github.amichne.kast.api.contract.result.CompletionItem
 import io.github.amichne.kast.api.contract.result.CompletionsResult
+import io.github.amichne.kast.api.contract.DeclarationScope
 import io.github.amichne.kast.api.contract.Diagnostic
 import io.github.amichne.kast.api.contract.DiagnosticSeverity
 import io.github.amichne.kast.api.contract.result.DiagnosticsResult
@@ -35,6 +36,7 @@ import io.github.amichne.kast.api.contract.SemanticInsertionResult
 import io.github.amichne.kast.api.contract.SemanticInsertionTarget
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.contract.Symbol
+import io.github.amichne.kast.api.contract.SourceSnippet
 import io.github.amichne.kast.api.contract.SymbolKind
 import io.github.amichne.kast.api.contract.result.SymbolResult
 import io.github.amichne.kast.api.contract.TextEdit
@@ -113,11 +115,51 @@ class FakeAnalysisBackend private constructor(
 
     override suspend fun resolveSymbol(query: ParsedSymbolQuery): SymbolResult {
         requireKnownFile(query.position.filePath.value)
-        return when {
-            hasMatchingAnchor(symbolAnchors, query.position) -> SymbolResult(symbol)
-            hasMatchingAnchor(typeHierarchyAnchors, query.position) -> SymbolResult(typeHierarchyRootSymbol)
+        val resolvedSymbol = when {
+            hasMatchingAnchor(symbolAnchors, query.position) -> symbol.copy(
+                declarationScope = if (query.includeDeclarationScope) {
+                    DeclarationScope(
+                        startOffset = symbol.location.startOffset,
+                        endOffset = symbol.location.endOffset + 8,
+                        startLine = symbol.location.startLine,
+                        endLine = symbol.location.startLine,
+                        sourceText = "fun greet() = \"hi\"",
+                    )
+                } else {
+                    null
+                },
+                surroundingMembers = if (query.includeSurroundingMembers) {
+                    listOf(
+                        Symbol(
+                            fqName = "sample.helper",
+                            kind = SymbolKind.FUNCTION,
+                            location = symbol.location.copy(
+                                startOffset = symbol.location.startOffset + 12,
+                                endOffset = symbol.location.endOffset + 18,
+                                preview = "fun helper()",
+                            ),
+                            containingDeclaration = "sample",
+                        ),
+                    )
+                } else {
+                    null
+                },
+                surroundingLines = if (query.surroundingLines.value > 0) {
+                    SourceSnippet(
+                        startLine = 1,
+                        endLine = 3,
+                        focusLine = 2,
+                        sourceText = "package sample\nfun greet() = \"hi\"\nfun helper() = greet()",
+                        truncated = false,
+                    )
+                } else {
+                    null
+                },
+            )
+            hasMatchingAnchor(typeHierarchyAnchors, query.position) -> typeHierarchyRootSymbol
             else -> throw missingSymbol(query.position)
         }
+        return SymbolResult(resolvedSymbol)
     }
 
     override suspend fun findReferences(query: ParsedReferencesQuery): ReferencesResult {

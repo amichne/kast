@@ -216,6 +216,8 @@ daemon, including input/output schemas, examples, and behavioral notes.
             | `#!kotlin position: FilePosition` | File position identifying the symbol to resolve. |
             | `#!kotlin includeDeclarationScope: Boolean` :material-information-outline:{ title="Default: false" } | When true, populates the declarationScope field on the resolved symbol. |
             | `#!kotlin includeDocumentation: Boolean` :material-information-outline:{ title="Default: false" } | When true, populates the documentation field on the resolved symbol. |
+            | `#!kotlin includeSurroundingMembers: Boolean` :material-information-outline:{ title="Default: false" } | When true, populates the surroundingMembers field on the resolved symbol. |
+            | `#!kotlin surroundingLines: Int` :material-information-outline:{ title="Default: 0" } | Number of nearby lines of source context to include around the symbol declaration. |
         === "Output: SymbolResult"
 
             | Signature | Description |
@@ -238,7 +240,9 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         "offset": 20
                     },
                     "includeDeclarationScope": false,
-                    "includeDocumentation": false
+                    "includeDocumentation": false,
+                    "includeSurroundingMembers": false,
+                    "surroundingLines": 0
                 },
                 "id": 1,
                 "jsonrpc": "2.0"

@@ -48,6 +48,17 @@ object VersionedCommandSpec {
             failureType = "WORKSPACE_SEARCH_FAILURE",
         ),
         CommandEntry(
+            name = "discover-symbol",
+            summary = "Rank likely declarations for an ambiguous symbol name",
+            requestSerializer = io.github.amichne.kast.api.contract.skill.KastSymbolDiscoveryRequest.serializer(),
+            successType = "DISCOVER_SYMBOL_SUCCESS",
+            failureType = "DISCOVER_SYMBOL_FAILURE",
+            notes = listOf(
+                "Use this before \"resolve\" when a simple name may match multiple declarations.",
+                "Discovery stays bounded to a single workspace-symbol search and ranks candidates with optional file, line, and code-snippet context.",
+            ),
+        ),
+        CommandEntry(
             name = "scaffold",
             summary = "Gather structural generation context for a Kotlin file",
             requestSerializer = io.github.amichne.kast.api.contract.skill.KastScaffoldRequest.serializer(),

@@ -36,6 +36,12 @@ import io.github.amichne.kast.api.contract.skill.KastCallersRequest
 import io.github.amichne.kast.api.contract.skill.KastCallersResponse
 import io.github.amichne.kast.api.contract.skill.KastCallersSuccessResponse
 import io.github.amichne.kast.api.contract.skill.KastCandidate
+import io.github.amichne.kast.api.contract.skill.KastSymbolDiscoveryCandidate
+import io.github.amichne.kast.api.contract.skill.KastSymbolDiscoveryFailureResponse
+import io.github.amichne.kast.api.contract.skill.KastSymbolDiscoveryQuery
+import io.github.amichne.kast.api.contract.skill.KastSymbolDiscoveryRequest
+import io.github.amichne.kast.api.contract.skill.KastSymbolDiscoveryResponse
+import io.github.amichne.kast.api.contract.skill.KastSymbolDiscoverySuccessResponse
 import io.github.amichne.kast.api.contract.skill.KastDiagnosticsSummary
 import io.github.amichne.kast.api.contract.skill.KastMetricsQuery
 import io.github.amichne.kast.api.contract.skill.KastMetricsRequest
@@ -110,6 +116,78 @@ internal class SkillRpcOrchestrator(
     private val config: AnalysisServerConfig,
     private val json: Json,
 ) {
+    suspend fun discoverSymbol(request: KastSymbolDiscoveryRequest): KastSymbolDiscoveryResponse {
+        if (request.maxResults <= 0) {
+            throw ValidationException("maxResults must be positive")
+        }
+        val workspaceRoot = workspaceRootFor(request.workspaceRoot)
+        val query = KastSymbolDiscoveryQuery(
+            workspaceRoot = workspaceRoot,
+            symbol = request.symbol,
+            filePath = request.filePath,
+            line = request.line,
+            codeSnippet = request.codeSnippet,
+            kind = request.kind,
+            maxResults = request.maxResults,
+        )
+        requireReadCapability(ReadCapability.WORKSPACE_SYMBOL_SEARCH)
+        val cappedMaxResults = minOf(config.maxResults, request.maxResults)
+        val searchResult = backend.workspaceSymbolSearch(
+            WorkspaceSymbolQuery(pattern = request.symbol, maxResults = cappedMaxResults).parsed(),
+        ).withLimit(cappedMaxResults) { workspaceSymbolPageToken(cappedMaxResults) }
+        var candidates = searchResult.symbols
+        if (!request.filePath.isNullOrEmpty()) {
+            val fileMatches = candidates.filter { it.location.filePath == request.filePath }
+            if (fileMatches.isNotEmpty()) {
+                candidates = fileMatches
+            }
+        }
+        val requestedKind = request.kind
+        if (requestedKind != null) {
+            val requestedSymbolKind = requestedKind.toSymbolKind()
+            val kindMatches = candidates.filter { it.kind == requestedSymbolKind }
+            if (kindMatches.isNotEmpty()) {
+                candidates = kindMatches
+            }
+        }
+        val exactMatches = candidates.filter { it.fqName.substringAfterLast('.') == request.symbol }
+        if (exactMatches.isNotEmpty()) {
+            candidates = exactMatches
+        }
+        if (candidates.isEmpty()) {
+            return KastSymbolDiscoveryFailureResponse(
+                stage = "search",
+                message = "No symbol matching '${request.symbol}' found in workspace",
+                query = query,
+                logFile = placeholderLogFile(),
+            )
+        }
+        val rankedCandidates = candidates.map { candidate ->
+            rankDiscoveryCandidate(candidate, request, requestedKind)
+        }.sortedWith(compareByDescending<RankedDiscoveryCandidate> { it.score }.thenBy { it.candidate.location.startLine })
+            .take(cappedMaxResults)
+        return KastSymbolDiscoverySuccessResponse(
+            query = query,
+            candidates = rankedCandidates.map { ranked ->
+                val candidate = ranked.candidate
+                KastSymbolDiscoveryCandidate(
+                    symbol = candidate,
+                    confidence = ranked.confidence,
+                    rankingSignals = ranked.signals,
+                    disambiguation = KastResolveQuery(
+                        workspaceRoot = workspaceRoot,
+                        symbol = request.symbol,
+                        fileHint = candidate.location.filePath,
+                        kind = candidate.kind.toWrapperNamedSymbolKind(),
+                        containingType = candidate.containingDeclaration?.substringAfterLast('.'),
+                    ),
+                    contextSnippets = listOfNotNull(candidate.location.preview),
+                    nextSteps = listOf("Use skill/resolve with the disambiguation query to load declaration context."),
+                )
+            },
+            logFile = placeholderLogFile(),
+        )
+    }
     suspend fun resolve(request: KastResolveRequest): KastResolveResponse {
         val workspaceRoot = workspaceRootFor(request.workspaceRoot)
         val query = KastResolveQuery(
@@ -118,12 +196,20 @@ internal class SkillRpcOrchestrator(
             fileHint = request.fileHint,
             kind = request.kind,
             containingType = request.containingType,
+            includeDeclarationScope = request.includeDeclarationScope,
+            includeDocumentation = request.includeDocumentation,
+            includeSurroundingMembers = request.includeSurroundingMembers,
+            surroundingLines = request.surroundingLines,
         )
         val resolved = resolveNamedSymbol(
             symbolName = request.symbol,
             fileHint = request.fileHint,
             kind = request.kind,
             containingType = request.containingType,
+            includeDeclarationScope = request.includeDeclarationScope,
+            includeDocumentation = request.includeDocumentation,
+            includeSurroundingMembers = request.includeSurroundingMembers,
+            surroundingLines = request.surroundingLines,
         ) ?: return KastResolveFailureResponse(
             stage = "resolve",
             message = "No symbol matching '${request.symbol}' found in workspace",
@@ -579,6 +665,10 @@ internal class SkillRpcOrchestrator(
         fileHint: String? = null,
         kind: WrapperNamedSymbolKind? = null,
         containingType: String? = null,
+        includeDeclarationScope: Boolean = false,
+        includeDocumentation: Boolean = false,
+        includeSurroundingMembers: Boolean = false,
+        surroundingLines: Int = 0,
     ): ResolvedNamedSymbol? {
         requireReadCapability(ReadCapability.WORKSPACE_SYMBOL_SEARCH)
         val searchResult = backend.workspaceSymbolSearch(
@@ -623,6 +713,10 @@ internal class SkillRpcOrchestrator(
                     filePath = best.location.filePath,
                     offset = best.location.startOffset,
                 ),
+                includeDeclarationScope = includeDeclarationScope,
+                includeDocumentation = includeDocumentation,
+                includeSurroundingMembers = includeSurroundingMembers,
+                surroundingLines = surroundingLines,
             ).parsed(),
         )
         return ResolvedNamedSymbol(
@@ -634,6 +728,67 @@ internal class SkillRpcOrchestrator(
         )
     }
 
+    private data class RankedDiscoveryCandidate(
+        val candidate: Symbol,
+        val score: Int,
+        val confidence: Int,
+        val signals: List<String>,
+    )
+
+    private fun rankDiscoveryCandidate(
+        candidate: Symbol,
+        request: KastSymbolDiscoveryRequest,
+        requestedKind: WrapperNamedSymbolKind?,
+    ): RankedDiscoveryCandidate {
+        val snippetTokens = request.codeSnippet
+            ?.lowercase()
+            ?.replace(Regex("[^a-z0-9]+"), " ")
+            ?.split(" ")
+            ?.filter { it.length >= 2 }
+            ?.toSet()
+            .orEmpty()
+        val candidateText = listOf(candidate.location.preview, candidate.containingDeclaration)
+            .filterNotNull()
+            .joinToString(" ")
+            .lowercase()
+            .replace(Regex("[^a-z0-9]+"), " ")
+        val snippetOverlap = snippetTokens.count(candidateText::contains)
+        val lineScore = request.line?.let { requestedLine ->
+            200 - kotlin.math.abs(candidate.location.startLine - requestedLine).coerceAtMost(200)
+        } ?: 0
+        val exactSimpleName = candidate.fqName.substringAfterLast('.') == request.symbol
+        val sameFile = request.filePath != null && candidate.location.filePath == request.filePath
+        val kindMatch = requestedKind != null && candidate.kind == requestedKind.toSymbolKind()
+        val containingDeclarationMatch = request.codeSnippet
+            ?.takeIf(String::isNotBlank)
+            ?.let { snippet ->
+                candidate.containingDeclaration
+                    ?.substringAfterLast('.')
+                    ?.let { containingType -> snippet.contains(containingType, ignoreCase = true) }
+                    ?: false
+            } ?: false
+        val signals = buildList {
+            if (exactSimpleName) add("exact-simple-name")
+            if (sameFile) add("same-file")
+            if (kindMatch) add("kind-match")
+            if (request.line != null) add("nearby-line")
+            if (snippetOverlap > 0) add("snippet-overlap")
+            if (containingDeclarationMatch) add("containing-declaration-match")
+        }
+        val score =
+            (if (exactSimpleName) 1_000 else 0) +
+                (if (sameFile) 500 else 0) +
+                (if (kindMatch) 120 else 0) +
+                lineScore +
+                (snippetOverlap * 80) +
+                (if (containingDeclarationMatch) 40 else 0)
+        return RankedDiscoveryCandidate(
+            candidate = candidate,
+            score = score,
+            confidence = (score / 20).coerceIn(0, 100),
+            signals = signals,
+        )
+    }
     private suspend fun workspaceRootFor(explicit: String?): String =
         explicit?.takeIf(String::isNotBlank)?.normalizedAbsolutePath() ?: backend.runtimeStatus().workspaceRoot
 
@@ -693,6 +848,15 @@ private fun String.normalizedAbsolutePath(): String = Path.of(this).toAbsolutePa
 private fun String.readTextIfPresent(): String? {
     val path = Path.of(this)
     return if (Files.exists(path)) Files.readString(path) else null
+}
+
+private fun SymbolKind.toWrapperNamedSymbolKind(): WrapperNamedSymbolKind? = when (this) {
+    SymbolKind.CLASS -> WrapperNamedSymbolKind.CLASS
+    SymbolKind.INTERFACE -> WrapperNamedSymbolKind.INTERFACE
+    SymbolKind.OBJECT -> WrapperNamedSymbolKind.OBJECT
+    SymbolKind.FUNCTION -> WrapperNamedSymbolKind.FUNCTION
+    SymbolKind.PROPERTY -> WrapperNamedSymbolKind.PROPERTY
+    else -> null
 }
 
 private fun WrapperNamedSymbolKind.toSymbolKind(): SymbolKind = when (this) {

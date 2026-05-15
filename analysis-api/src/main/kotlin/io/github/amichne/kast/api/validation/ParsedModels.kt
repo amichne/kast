@@ -76,6 +76,8 @@ data class ParsedSymbolQuery(
     override val position: ParsedFilePosition,
     val includeDeclarationScope: Boolean,
     val includeDocumentation: Boolean,
+    val includeSurroundingMembers: Boolean,
+    val surroundingLines: NonNegativeInt,
 ) : PositionQuery
 
 data class ParsedReferencesQuery(
@@ -224,6 +226,8 @@ fun SymbolQuery.parsed(): ParsedSymbolQuery = validationBoundary {
         position = position.parsed(),
         includeDeclarationScope = includeDeclarationScope,
         includeDocumentation = includeDocumentation,
+        includeSurroundingMembers = includeSurroundingMembers,
+        surroundingLines = NonNegativeInt(surroundingLines),
     )
 }
 

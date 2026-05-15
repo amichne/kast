@@ -31,8 +31,11 @@ details from this file — defer to the spec.
 # List workspace modules
 "$KAST_CLI_PATH" rpc '{"jsonrpc":"2.0","method":"workspace/files","params":{"includeFiles":true},"id":1}'
 
-# Resolve an ambiguous symbol
-"$KAST_CLI_PATH" rpc '{"jsonrpc":"2.0","method":"skill/resolve","params":{"symbol":"date","kind":"property","containingType":"com.example.EventBean"},"id":1}'
+# Discover likely matches for an ambiguous symbol
+"$KAST_CLI_PATH" rpc '{"jsonrpc":"2.0","method":"skill/discover-symbol","params":{"symbol":"date","filePath":"/abs/path/EventBean.kt","line":42,"codeSnippet":"event.date"},"id":1}'
+
+# Resolve the chosen candidate with richer context
+"$KAST_CLI_PATH" rpc '{"jsonrpc":"2.0","method":"skill/resolve","params":{"symbol":"date","kind":"property","containingType":"com.example.EventBean","includeDeclarationScope":true,"includeDocumentation":true,"includeSurroundingMembers":true,"surroundingLines":2},"id":1}'
 
 # Find usages
 "$KAST_CLI_PATH" rpc '{"jsonrpc":"2.0","method":"skill/references","params":{"symbol":"EventBean","includeDeclaration":true},"id":1}'

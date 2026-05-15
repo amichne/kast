@@ -16,4 +16,8 @@ data class SymbolQuery(
     val includeDeclarationScope: Boolean = false,
     @DocField(description = "When true, populates the documentation field on the resolved symbol.", defaultValue = "false")
     val includeDocumentation: Boolean = false,
+    @DocField(description = "When true, populates the surroundingMembers field on the resolved symbol.", defaultValue = "false")
+    val includeSurroundingMembers: Boolean = false,
+    @DocField(description = "Number of nearby lines of source context to include around the symbol declaration.", defaultValue = "0")
+    val surroundingLines: Int = 0,
 )

@@ -31,4 +31,8 @@ data class Symbol(
     val visibility: SymbolVisibility? = null,
     @DocField(description = "Full text range of the declaration, if requested.")
     val declarationScope: DeclarationScope? = null,
+    @DocField(description = "Sibling declarations near the resolved symbol, if requested.")
+    val surroundingMembers: List<Symbol>? = null,
+    @DocField(description = "Nearby source lines around the resolved symbol declaration, if requested.")
+    val surroundingLines: SourceSnippet? = null,
 )

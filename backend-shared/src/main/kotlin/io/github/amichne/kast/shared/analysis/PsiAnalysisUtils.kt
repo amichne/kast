@@ -4,6 +4,7 @@ import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiField
+import com.intellij.psi.PsiMember
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiModifier
 import com.intellij.psi.PsiModifierListOwner
@@ -16,6 +17,7 @@ import io.github.amichne.kast.api.contract.Location
 import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.PackageName
 import io.github.amichne.kast.api.contract.ParameterInfo
+import io.github.amichne.kast.api.contract.SourceSnippet
 import io.github.amichne.kast.api.contract.Symbol
 import io.github.amichne.kast.api.contract.SymbolKind
 import io.github.amichne.kast.api.contract.SymbolVisibility
@@ -34,6 +36,10 @@ import org.jetbrains.kotlin.psi.KtObjectDeclaration
 import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtProperty
 import java.nio.file.Path
+import kotlin.math.max
+import kotlin.math.min
+
+private const val MAX_SURROUNDING_LINE_CONTEXT = 20
 
 /**
  * Canonical way to extract a [NormalizedPath] from a PSI element's containing file.
@@ -74,6 +80,8 @@ fun PsiElement.toSymbolModel(
     supertypes: List<String>? = null,
     includeDeclarationScope: Boolean = false,
     includeDocumentation: Boolean = false,
+    includeSurroundingMembers: Boolean = false,
+    surroundingLines: Int = 0,
 ): Symbol = Symbol(
     fqName = fqName(),
     kind = kind(),
@@ -86,8 +94,54 @@ fun PsiElement.toSymbolModel(
     supertypes = supertypes,
     visibility = visibility(),
     declarationScope = if (includeDeclarationScope) toDeclarationScope() else null,
+    surroundingMembers = if (includeSurroundingMembers) surroundingMemberSymbols() else null,
+    surroundingLines = surroundingLineSnippet(surroundingLines),
 )
 
+private fun PsiElement.surroundingMemberSymbols(): List<Symbol> {
+    val siblings = when (this) {
+        is KtNamedDeclaration -> parent?.children?.filterIsInstance<KtNamedDeclaration>()
+            ?.filter { sibling -> sibling !== this && sibling !is KtParameter && sibling.name != null }
+            .orEmpty()
+
+        is PsiMember -> containingClass?.children?.filterIsInstance<PsiMember>()
+            ?.filter { sibling -> sibling !== this && sibling.name != null }
+            .orEmpty()
+
+        else -> emptyList()
+    }
+    return siblings
+        .sortedBy(PsiElement::getTextOffset)
+        .map { sibling ->
+            sibling.toSymbolModel(
+                containingDeclaration = sibling.surroundingMemberContainingDeclaration(),
+            )
+        }
+}
+
+private fun PsiElement.surroundingMemberContainingDeclaration(): String? = when (this) {
+    is KtNamedDeclaration -> fqName?.asString()?.substringBeforeLast('.', missingDelimiterValue = "")?.ifBlank { null }
+    is PsiClass -> qualifiedName?.substringBeforeLast('.', missingDelimiterValue = "")?.ifBlank { null }
+    is PsiMethod -> containingClass?.qualifiedName
+    is PsiField -> containingClass?.qualifiedName
+    else -> null
+}
+private fun PsiElement.surroundingLineSnippet(requestedLines: Int): SourceSnippet? {
+    if (requestedLines <= 0) return null
+    val declarationScope = toDeclarationScope(includeSourceText = false)
+    val fileLines = containingFile.viewProvider.contents.toString().split("\n")
+    val boundedLines = min(requestedLines, MAX_SURROUNDING_LINE_CONTEXT)
+    val startLine = max(1, declarationScope.startLine - boundedLines)
+    val endLine = min(fileLines.size, declarationScope.endLine + boundedLines)
+    val sourceText = fileLines.subList(startLine - 1, endLine).joinToString("\n")
+    return SourceSnippet(
+        startLine = startLine,
+        endLine = endLine,
+        focusLine = declarationScope.startLine,
+        sourceText = sourceText,
+        truncated = requestedLines > boundedLines,
+    )
+}
 /**
  * Builds a [DeclarationScope] from this element's full text range (not name range).
  * Line numbers are 1-indexed. [includeSourceText] controls whether the full declaration

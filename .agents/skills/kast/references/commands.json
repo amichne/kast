@@ -29,6 +29,98 @@
       "successType": "WORKSPACE_FILES_SUCCESS",
       "failureType": "WORKSPACE_FILES_FAILURE"
     },
+    "workspace-search": {
+      "summary": "Search Kotlin workspace file contents by text or regex",
+      "request": {
+        "fields": {
+          "workspaceRoot": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "pattern": {
+            "type": "string"
+          },
+          "regex": {
+            "type": "boolean",
+            "optional": true
+          },
+          "maxResults": {
+            "type": "integer",
+            "optional": true
+          },
+          "fileGlob": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "caseSensitive": {
+            "type": "boolean",
+            "optional": true
+          }
+        },
+        "required": [
+          "pattern"
+        ]
+      },
+      "successType": "WORKSPACE_SEARCH_SUCCESS",
+      "failureType": "WORKSPACE_SEARCH_FAILURE"
+    },
+    "discover-symbol": {
+      "summary": "Rank likely declarations for an ambiguous symbol name",
+      "request": {
+        "fields": {
+          "workspaceRoot": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "symbol": {
+            "type": "string"
+          },
+          "filePath": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "line": {
+            "type": "integer",
+            "optional": true,
+            "nullable": true
+          },
+          "codeSnippet": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "kind": {
+            "type": "string",
+            "optional": true,
+            "nullable": true,
+            "enum": [
+              "class",
+              "interface",
+              "object",
+              "function",
+              "property"
+            ]
+          },
+          "maxResults": {
+            "type": "integer",
+            "optional": true
+          }
+        },
+        "required": [
+          "symbol"
+        ]
+      },
+      "successType": "DISCOVER_SYMBOL_SUCCESS",
+      "failureType": "DISCOVER_SYMBOL_FAILURE",
+      "notes": [
+        "Use this before \"resolve\" when a simple name may match multiple declarations.",
+        "Discovery stays bounded to a single workspace-symbol search and ranks candidates with optional file, line, and code-snippet context."
+      ]
+    },
     "scaffold": {
       "summary": "Gather structural generation context for a Kotlin file",
       "request": {
@@ -109,6 +201,22 @@
             "type": "string",
             "optional": true,
             "nullable": true
+          },
+          "includeDeclarationScope": {
+            "type": "boolean",
+            "optional": true
+          },
+          "includeDocumentation": {
+            "type": "boolean",
+            "optional": true
+          },
+          "includeSurroundingMembers": {
+            "type": "boolean",
+            "optional": true
+          },
+          "surroundingLines": {
+            "type": "integer",
+            "optional": true
           }
         },
         "required": [

@@ -92,8 +92,14 @@ class ParsedModelsTest {
         val position = FilePosition("/workspace/src/Main.kt", 3)
         val filePaths = listOf("/workspace/src/Main.kt")
 
+        val parsedSymbolQuery = SymbolQuery(
+            position = position,
+            includeSurroundingMembers = true,
+            surroundingLines = 2,
+        ).parsed()
+
         val parsedQueries = listOf(
-            SymbolQuery(position).parsed(),
+            parsedSymbolQuery,
             ReferencesQuery(position).parsed(),
             CallHierarchyQuery(position, CallDirection.INCOMING).parsed(),
             TypeHierarchyQuery(position).parsed(),
@@ -117,6 +123,8 @@ class ParsedModelsTest {
         )
 
         assertEquals(17, parsedQueries.size)
+        assertEquals(true, parsedSymbolQuery.includeSurroundingMembers)
+        assertEquals(NonNegativeInt(2), parsedSymbolQuery.surroundingLines)
         assertEquals(PositiveInt(100), (parsedQueries.last() as ParsedCompletionsQuery).maxResults)
     }
 
@@ -154,6 +162,15 @@ class ParsedModelsTest {
         assertThrows<ValidationException> { WorkspaceSymbolQuery("Main", maxResults = 0).parsed() }
         assertThrows<ValidationException> { WorkspaceSearchQuery("Main", maxResults = 0).parsed() }
         assertThrows<ValidationException> { WorkspaceFilesQuery(maxFilesPerModule = 0).parsed() }
+    }
+
+    @Test
+    fun `SymbolQuery parsed rejects negative surrounding lines`() {
+        val position = FilePosition("/workspace/src/Main.kt", 0)
+
+        assertThrows<ValidationException> {
+            SymbolQuery(position, surroundingLines = -1).parsed()
+        }
     }
 
     @Test

@@ -215,6 +215,66 @@ class StandaloneAnalysisBackendResolveSymbolTest {
     }
 
     @Test
+    fun `resolve symbol includes surrounding members when requested`(): TestResult = runTest {
+        val declarationFile = writeFile(
+            relativePath = "src/main/kotlin/sample/Greeter.kt",
+            content = $$"""
+                package sample
+
+                fun greet(name: String): String = helper(name)
+
+                private fun helper(name: String): String = "hi $name"
+
+                fun wave(name: String): String = "wave $name"
+            """.trimIndent() + "\n",
+        )
+        val queryOffset = Files.readString(declarationFile).indexOf("greet")
+        withBackend { backend ->
+            val result = backend.resolveSymbol(
+                SymbolQuery(
+                    position = FilePosition(filePath = declarationFile.toString(), offset = queryOffset),
+                    includeSurroundingMembers = true,
+                ),
+            )
+
+            val surroundingMembers = checkNotNull(result.symbol.surroundingMembers)
+            assertEquals(listOf("sample.helper", "sample.wave"), surroundingMembers.map { it.fqName })
+            assertNull(surroundingMembers.first().surroundingMembers)
+            assertNull(surroundingMembers.first().surroundingLines)
+        }
+    }
+    @Test
+    fun `resolve symbol includes surrounding lines when requested`(): TestResult = runTest {
+        val declarationFile = writeFile(
+            relativePath = "src/main/kotlin/sample/Greeter.kt",
+            content = """
+                package sample
+
+                private val prefix = "hi"
+                fun greet(): String = prefix
+                fun wave(): String = "wave"
+            """.trimIndent() + "\n",
+        )
+        val queryOffset = Files.readString(declarationFile).indexOf("greet")
+        withBackend { backend ->
+            val result = backend.resolveSymbol(
+                SymbolQuery(
+                    position = FilePosition(filePath = declarationFile.toString(), offset = queryOffset),
+                    surroundingLines = 1,
+                ),
+            )
+
+            val snippet = checkNotNull(result.symbol.surroundingLines)
+            assertEquals(3, snippet.startLine)
+            assertEquals(5, snippet.endLine)
+            assertEquals(4, snippet.focusLine)
+            assertTrue(snippet.sourceText.contains("private val prefix"))
+            assertTrue(snippet.sourceText.contains("fun wave"))
+            assertEquals(false, snippet.truncated)
+        }
+    }
+
+    @Test
     fun `resolve symbol omits declarationScope by default`(): TestResult = runTest {
         val declarationFile = writeFile(
             relativePath = "src/main/kotlin/sample/Greeter.kt",

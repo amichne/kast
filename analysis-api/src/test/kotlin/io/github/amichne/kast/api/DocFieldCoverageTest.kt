@@ -81,6 +81,7 @@ class DocFieldCoverageTest {
         "PageInfo" to PageInfo.serializer(),
         "SearchScope" to SearchScope.serializer(),
         "DeclarationScope" to DeclarationScope.serializer(),
+        "SourceSnippet" to SourceSnippet.serializer(),
         "ServerLimits" to ServerLimits.serializer(),
         "TextEdit" to TextEdit.serializer(),
         "FileHash" to FileHash.serializer(),

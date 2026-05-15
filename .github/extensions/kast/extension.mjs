@@ -303,6 +303,26 @@ const tools = [
     handler: (args) => callKast("skill/scaffold", args),
   },
   {
+    name: "kast_symbol_discovery",
+    description:
+      "Discover ranked Kotlin declaration candidates for a simple symbol name. Prefer this before kast_resolve when a name may be ambiguous across files, overloads, or containing declarations.",
+    parameters: {
+      type: "object",
+      properties: {
+        symbol: { type: "string", description: "Simple symbol name to disambiguate." },
+        filePath: { type: "string", description: ABS_PATH + " Optional file-context hint to boost nearby declarations." },
+        line: { type: "integer", description: "Optional 1-based line hint near the desired declaration." },
+        codeSnippet: { type: "string", description: "Optional local code snippet used to rank nearby declaration context." },
+        kind: { type: "string", description: "Optional discriminator: class, function, property, etc." },
+        maxResults: { type: "integer", description: "Maximum number of ranked candidates to return. Default 10." },
+        workspaceRoot: { type: "string", description: ABS_PATH + " Defaults to cwd." },
+      },
+      required: ["symbol"],
+    },
+    handler: (args) => callKast("skill/discover-symbol", args),
+  },
+
+  {
     name: "kast_resolve",
     description:
       "Resolve a Kotlin symbol to its declaration. Use first whenever a name might be overloaded, inherited, or shadowed — disambiguate with kind/containingType/fileHint before tracing references or callers.",
@@ -480,7 +500,7 @@ function suggestionFor(toolName) {
       return "Prefer `kast_scaffold` over `view` for .kt/.kts files. Scaffold returns the semantic skeleton and full file content, so a separate `view` call is usually unnecessary. If you only need the declaration tree, use `kast_file_outline`. Reserve `view` for non-semantic concerns such as formatting or generated files.";
     case "grep":
     case "rg":
-      return "Prefer `kast_workspace_symbol` for Kotlin symbol-name discovery, `kast_workspace_search` for Kotlin content search, and `kast_references` / `kast_resolve` / `kast_callers` for semantic identity work. Reserve grep/rg for non-Kotlin files or simple literal searches outside Kotlin source.";
+      return "Prefer `kast_workspace_symbol` for broad Kotlin symbol-name discovery, `kast_symbol_discovery` when a simple name needs ranking and disambiguation, `kast_workspace_search` for Kotlin content search, and `kast_references` / `kast_resolve` / `kast_callers` for semantic identity work. Reserve grep/rg for non-Kotlin files or simple literal searches outside Kotlin source.";
     case "edit":
     case "create":
       return "Prefer `kast_write_and_validate` over the generic `edit`/`create` tool for .kt/.kts files. write-and-validate runs diagnostics atomically and protects against import drift and compile breakage.";
@@ -541,7 +561,7 @@ const session = await joinSession({
         }
       }).catch(() => {});
       const toolContext =
-        `Kast tools available natively: kast_workspace_files, kast_workspace_symbol, kast_workspace_search, kast_file_outline, kast_scaffold, kast_resolve, kast_references, kast_callers, kast_metrics, kast_diagnostics, kast_rename, kast_write_and_validate. ` +
+        `Kast tools available natively: kast_workspace_files, kast_workspace_symbol, kast_workspace_search, kast_file_outline, kast_scaffold, kast_symbol_discovery, kast_resolve, kast_references, kast_callers, kast_metrics, kast_diagnostics, kast_rename, kast_write_and_validate. ` +
         `Use these for ALL Kotlin semantic work and Kotlin source search — they are far cheaper than view/grep/rg/edit on .kt source. ` +
         `If a bash fallback is genuinely necessary, run ${bin} rpc '<jsonrpc-request>' directly; do not rely on exported shell state across tool calls.`;
       return {

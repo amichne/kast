@@ -3,6 +3,7 @@ package io.github.amichne.kast.server
 import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
 import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.contract.BackendCapabilities
+import io.github.amichne.kast.api.contract.AnalysisBackend
 import io.github.amichne.kast.api.contract.CallDirection
 import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
 import io.github.amichne.kast.api.contract.result.CallHierarchyResult
@@ -17,6 +18,9 @@ import io.github.amichne.kast.api.contract.FileOperation
 import io.github.amichne.kast.api.contract.query.FileOutlineQuery
 import io.github.amichne.kast.api.contract.result.FileOutlineResult
 import io.github.amichne.kast.api.contract.FilePosition
+import io.github.amichne.kast.api.contract.Location
+import io.github.amichne.kast.api.contract.Symbol
+import io.github.amichne.kast.api.contract.SymbolKind
 import io.github.amichne.kast.api.contract.query.ImportOptimizeQuery
 import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
 import io.github.amichne.kast.api.contract.query.ImplementationsQuery
@@ -50,6 +54,9 @@ import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
 import io.github.amichne.kast.api.contract.skill.*
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 import io.github.amichne.kast.testing.FakeAnalysisBackend
+import io.github.amichne.kast.api.validation.ParsedSymbolQuery
+import io.github.amichne.kast.api.validation.ParsedWorkspaceSymbolQuery
+import io.github.amichne.kast.api.validation.parsed
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.serializer
 import kotlinx.serialization.json.Json
@@ -174,6 +181,139 @@ class AnalysisDispatcherTest {
         assertEquals("sample.greet", success.symbol.fqName)
         assertEquals(file.toString(), success.filePath)
         assertEquals(true, success.ok)
+    }
+
+    @Test
+    fun `skill discover symbol dispatches ranked candidates`() {
+        val file = sampleFile()
+
+        val result = dispatchSuccess<KastSymbolDiscoveryResponse>(
+            method = "skill/discover-symbol",
+            params = json.encodeToJsonElement(
+                KastSymbolDiscoveryRequest.serializer(),
+                KastSymbolDiscoveryRequest(
+                    workspaceRoot = tempDir.toString(),
+                    symbol = "greet",
+                    filePath = file.toString(),
+                    maxResults = 5,
+                ),
+            ),
+        )
+
+        val success = result as KastSymbolDiscoverySuccessResponse
+        assertEquals(true, success.ok)
+        assertEquals(1, success.candidates.size)
+        assertEquals("sample.greet", success.candidates.first().symbol.fqName)
+        assertEquals(file.toString(), success.candidates.first().disambiguation.fileHint)
+    }
+
+    @Test
+    fun `skill discover symbol prefers hinted file with one search`() {
+        val delegate = FakeAnalysisBackend.sample(tempDir)
+        val primary = runBlocking {
+            delegate.workspaceSymbolSearch(WorkspaceSymbolQuery(pattern = "greet").parsed()).symbols.single { it.fqName == "sample.greet" }
+        }
+        val alternate = primary.copy(
+            fqName = "other.greet",
+            location = Location(
+                filePath = tempDir.resolve("src").resolve("Other.kt").toString(),
+                startOffset = 5,
+                endOffset = 10,
+                startLine = 2,
+                startColumn = 5,
+                preview = "fun greet()",
+            ),
+            containingDeclaration = "other",
+        )
+        val backend = CountingBackend(
+            delegate = delegate,
+            searchSymbols = listOf(alternate, primary),
+        )
+
+        val result = dispatchSuccess<KastSymbolDiscoveryResponse>(
+            method = "skill/discover-symbol",
+            params = json.encodeToJsonElement(
+                KastSymbolDiscoveryRequest.serializer(),
+                KastSymbolDiscoveryRequest(
+                    workspaceRoot = tempDir.toString(),
+                    symbol = "greet",
+                    filePath = sampleFile().toString(),
+                    maxResults = 5,
+                ),
+            ),
+            backend = backend,
+        )
+
+        val success = result as KastSymbolDiscoverySuccessResponse
+        assertEquals(sampleFile().toString(), success.candidates.first().symbol.location.filePath)
+        assertEquals(1, backend.workspaceSymbolSearchCalls)
+        assertEquals(0, backend.resolveSymbolCalls)
+    }
+
+    @Test
+    fun `skill resolve includes requested context fields`() {
+        val file = sampleFile()
+
+        val result = dispatchSuccess<KastResolveResponse>(
+            method = "skill/resolve",
+            params = json.encodeToJsonElement(
+                KastResolveRequest.serializer(),
+                KastResolveRequest(
+                    workspaceRoot = tempDir.toString(),
+                    symbol = "greet",
+                    fileHint = file.toString(),
+                    includeDeclarationScope = true,
+                    includeDocumentation = true,
+                    includeSurroundingMembers = true,
+                    surroundingLines = 2,
+                ),
+            ),
+        )
+
+        val success = result as KastResolveSuccessResponse
+        assertTrue(success.symbol.documentation != null)
+        assertTrue(success.symbol.declarationScope != null)
+        assertEquals(1, success.symbol.surroundingMembers!!.size)
+        assertEquals(2, success.symbol.surroundingLines!!.focusLine)
+    }
+
+    @Test
+    fun `skill discover symbol ranks by line and snippet context`() {
+        val delegate = FakeAnalysisBackend.sample(tempDir)
+        val base = runBlocking {
+            delegate.workspaceSymbolSearch(WorkspaceSymbolQuery(pattern = "greet").parsed()).symbols.single { it.fqName == "sample.greet" }
+        }
+        val backend = CountingBackend(
+            delegate = delegate,
+            searchSymbols = listOf(
+                base.copy(location = base.location.copy(startLine = 12, preview = "fun greet() = \"hi\"")),
+                base.copy(location = base.location.copy(startLine = 30, preview = "fun greet(user: String) = user")),
+                base.copy(location = base.location.copy(startLine = 42, preview = "fun greet(name: String) = name")),
+            ),
+        )
+
+        val result = dispatchSuccess<KastSymbolDiscoveryResponse>(
+            method = "skill/discover-symbol",
+            params = json.encodeToJsonElement(
+                KastSymbolDiscoveryRequest.serializer(),
+                KastSymbolDiscoveryRequest(
+                    workspaceRoot = tempDir.toString(),
+                    symbol = "greet",
+                    filePath = sampleFile().toString(),
+                    line = 30,
+                    codeSnippet = "fun greet(user: String)",
+                    maxResults = 5,
+                ),
+            ),
+            backend = backend,
+        )
+
+        val success = result as KastSymbolDiscoverySuccessResponse
+        assertEquals(30, success.candidates.first().symbol.location.startLine)
+        assertTrue(success.candidates.first().rankingSignals.contains("nearby-line"))
+        assertTrue(success.candidates.first().rankingSignals.contains("snippet-overlap"))
+        assertEquals(1, backend.workspaceSymbolSearchCalls)
+        assertEquals(0, backend.resolveSymbolCalls)
     }
 
     @Test
@@ -718,16 +858,17 @@ class AnalysisDispatcherTest {
 
     private fun sampleTypeFile(): Path = tempDir.resolve("src").resolve("Types.kt")
 
-    private fun dispatcher(): AnalysisDispatcher = AnalysisDispatcher(
-        backend = FakeAnalysisBackend.sample(tempDir),
+    private fun dispatcher(backend: AnalysisBackend = FakeAnalysisBackend.sample(tempDir)): AnalysisDispatcher = AnalysisDispatcher(
+        backend = backend,
         config = AnalysisServerConfig(),
     )
 
     private inline fun <reified T> dispatchSuccess(
         method: String,
         params: JsonElement? = null,
+        backend: AnalysisBackend = FakeAnalysisBackend.sample(tempDir),
     ): T {
-        val response = dispatchRaw(method, params)
+        val response = dispatchRaw(method, params, backend)
         val success = json.decodeFromJsonElement(
             JsonRpcSuccessResponse.serializer(),
             response,
@@ -741,6 +882,7 @@ class AnalysisDispatcherTest {
     private fun dispatchRaw(
         method: String,
         params: JsonElement? = null,
+        backend: AnalysisBackend = FakeAnalysisBackend.sample(tempDir),
     ): JsonObject {
         val request = JsonRpcRequest(
             id = JsonPrimitive(1),
@@ -748,9 +890,27 @@ class AnalysisDispatcherTest {
             params = params,
         )
         val raw = runBlocking {
-            dispatcher().dispatch(request)
+            dispatcher(backend).dispatch(request)
         }
         return json.parseToJsonElement(raw).jsonObject
+    }
+
+    private class CountingBackend(
+        private val delegate: AnalysisBackend,
+        private val searchSymbols: List<Symbol>,
+    ) : AnalysisBackend by delegate {
+        var workspaceSymbolSearchCalls: Int = 0
+        var resolveSymbolCalls: Int = 0
+
+        override suspend fun workspaceSymbolSearch(query: ParsedWorkspaceSymbolQuery): WorkspaceSymbolResult {
+            workspaceSymbolSearchCalls += 1
+            return WorkspaceSymbolResult(symbols = searchSymbols)
+        }
+
+        override suspend fun resolveSymbol(query: ParsedSymbolQuery): SymbolResult {
+            resolveSymbolCalls += 1
+            return delegate.resolveSymbol(query)
+        }
     }
 
     private fun classFileText(clazz: Class<*>): String =

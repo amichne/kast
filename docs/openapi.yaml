@@ -893,6 +893,16 @@ components:
           anyOf:
             - "$ref": "#/components/schemas/DeclarationScope"
             - type: "null"
+        surroundingMembers:
+          anyOf:
+            - type: array
+              items:
+                "$ref": "#/components/schemas/Symbol"
+            - type: "null"
+        surroundingLines:
+          anyOf:
+            - "$ref": "#/components/schemas/SourceSnippet"
+            - type: "null"
       additionalProperties: false
       required:
         - fqName
@@ -934,6 +944,28 @@ components:
         - PRIVATE
         - LOCAL
         - UNKNOWN
+    SourceSnippet:
+      type: object
+      properties:
+        startLine:
+          type: integer
+          format: int32
+        endLine:
+          type: integer
+          format: int32
+        focusLine:
+          type: integer
+          format: int32
+        sourceText:
+          type: string
+        truncated:
+          type: boolean
+      additionalProperties: false
+      required:
+        - startLine
+        - endLine
+        - focusLine
+        - sourceText
     PageInfo:
       type: object
       properties:
@@ -1053,6 +1085,11 @@ components:
           type: boolean
         includeDocumentation:
           type: boolean
+        includeSurroundingMembers:
+          type: boolean
+        surroundingLines:
+          type: integer
+          format: int32
       additionalProperties: false
       required:
         - position

@@ -141,6 +141,21 @@ data class KastResolveRequest(
     val fileHint: String? = null,
     val kind: WrapperNamedSymbolKind? = null,
     val containingType: String? = null,
+    val includeDeclarationScope: Boolean = false,
+    val includeDocumentation: Boolean = false,
+    val includeSurroundingMembers: Boolean = false,
+    val surroundingLines: Int = 0,
+)
+
+@Serializable
+data class KastSymbolDiscoveryRequest(
+    val workspaceRoot: String? = null,
+    val symbol: String,
+    val filePath: String? = null,
+    val line: Int? = null,
+    val codeSnippet: String? = null,
+    val kind: WrapperNamedSymbolKind? = null,
+    val maxResults: Int = 10,
 )
 
 @Serializable
@@ -279,6 +294,21 @@ data class KastResolveQuery(
     val fileHint: String? = null,
     val kind: WrapperNamedSymbolKind? = null,
     val containingType: String? = null,
+    val includeDeclarationScope: Boolean = false,
+    val includeDocumentation: Boolean = false,
+    val includeSurroundingMembers: Boolean = false,
+    val surroundingLines: Int = 0,
+)
+
+@Serializable
+data class KastSymbolDiscoveryQuery(
+    val workspaceRoot: String,
+    val symbol: String,
+    val filePath: String? = null,
+    val line: Int? = null,
+    val codeSnippet: String? = null,
+    val kind: WrapperNamedSymbolKind? = null,
+    val maxResults: Int,
 )
 
 @Serializable
@@ -427,6 +457,16 @@ data class KastWriteAndValidateReplaceRangeQuery(
 ) : KastWriteAndValidateQuery
 
 @Serializable
+data class KastSymbolDiscoveryCandidate(
+    val symbol: Symbol,
+    val confidence: Int,
+    val rankingSignals: List<String>,
+    val disambiguation: KastResolveQuery,
+    val contextSnippets: List<String> = emptyList(),
+    val nextSteps: List<String> = emptyList(),
+)
+
+@Serializable
 data class KastCandidate(
     val line: Int,
     val column: Int,
@@ -454,6 +494,30 @@ data class KastDiagnosticsSummary(
     val warningCount: Int,
     val errors: List<Diagnostic> = emptyList(),
 )
+
+@Serializable
+sealed interface KastSymbolDiscoveryResponse
+
+@Serializable
+@SerialName("DISCOVER_SYMBOL_SUCCESS")
+data class KastSymbolDiscoverySuccessResponse(
+    val ok: Boolean = true,
+    val query: KastSymbolDiscoveryQuery,
+    val candidates: List<KastSymbolDiscoveryCandidate>,
+    val logFile: String,
+) : KastSymbolDiscoveryResponse
+
+@Serializable
+@SerialName("DISCOVER_SYMBOL_FAILURE")
+data class KastSymbolDiscoveryFailureResponse(
+    val ok: Boolean = false,
+    val stage: String,
+    val message: String,
+    val query: KastSymbolDiscoveryQuery,
+    val logFile: String,
+    val error: ApiErrorResponse? = null,
+    val errorText: String? = null,
+) : KastSymbolDiscoveryResponse
 
 @Serializable
 sealed interface KastResolveResponse
