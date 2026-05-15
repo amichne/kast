@@ -73,7 +73,11 @@ class CallHierarchyEngine(
         var truncation: CallNodeTruncation? = null
 
         // Phase 1: Sequentially determine which edges to expand, respecting budget limits.
-        data class PendingChild(val edge: CallEdge, val childKey: String, val isCycle: Boolean)
+        data class PendingChild(
+            val edge: CallEdge,
+            val childKey: String,
+            val isCycle: Boolean,
+        )
 
         val pending = mutableListOf<PendingChild>()
         for (edge in edges) {

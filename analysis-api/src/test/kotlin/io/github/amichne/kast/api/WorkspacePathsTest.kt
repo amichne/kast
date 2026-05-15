@@ -38,7 +38,10 @@ class WorkspacePathsTest {
         assertEquals(configHome.toAbsolutePath().normalize(), kastConfigHome(hostileEnv::get))
         assertEquals(installRoot, defaultInstallRoot(hostileEnv::get))
         assertEquals(installRoot.resolve("bin"), defaultBinDirectory(hostileEnv::get))
-        assertEquals(installRoot.resolve("lib/backends/current/runtime-libs"), defaultStandaloneRuntimeLibsDirectory(hostileEnv::get))
+        assertEquals(
+            installRoot.resolve("lib/backends/current/runtime-libs"),
+            defaultStandaloneRuntimeLibsDirectory(hostileEnv::get)
+        )
         assertEquals(installRoot.resolve("cache/daemons"), defaultDescriptorDirectory(hostileEnv::get))
         assertEquals(installRoot.resolve("logs"), kastLogDirectory(workspaceRoot, hostileEnv::get))
         assertEquals(installRoot.toString(), defaults.paths.installRoot.value)

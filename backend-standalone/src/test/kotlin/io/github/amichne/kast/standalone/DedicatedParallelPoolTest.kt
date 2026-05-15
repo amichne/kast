@@ -42,7 +42,6 @@ class DedicatedParallelPoolTest {
                 maxResults = 100,
                 requestTimeoutMillis = 30_000,
                 maxConcurrentRequests = maxConcurrentRequests,
-                perFileScanBudgetMillis = 5_000,
             ),
             session = StandaloneAnalysisSession(
                 workspaceRoot = workspaceRoot,
@@ -82,8 +81,8 @@ class DedicatedParallelPoolTest {
         assertTrue(
             backend is AutoCloseable,
             "StandaloneAnalysisBackend must implement AutoCloseable so that the dedicated " +
-                "ForkJoinPool can be shut down via close(). " +
-                "Current interfaces: " + backend.javaClass.interfaces.toList(),
+            "ForkJoinPool can be shut down via close(). " +
+            "Current interfaces: " + backend.javaClass.interfaces.toList(),
         )
     }
 
@@ -100,7 +99,7 @@ class DedicatedParallelPoolTest {
         assertNotNull(
             pool,
             "Expected a private field 'parallelPool: ForkJoinPool' on StandaloneAnalysisBackend " +
-                "but it was not found. Has the dedicated pool been added?",
+            "but it was not found. Has the dedicated pool been added?",
         )
     }
 
@@ -115,10 +114,10 @@ class DedicatedParallelPoolTest {
     fun `parallelPool worker threads are named with kast-parallel- prefix`() {
         val backend = makeBackend()
         val pool = getParallelPoolOrNull(backend)
-            ?: error(
-                "parallelPool field not found on StandaloneAnalysisBackend. " +
-                    "Add a private val parallelPool: ForkJoinPool before this test can pass.",
-            )
+                   ?: error(
+                       "parallelPool field not found on StandaloneAnalysisBackend. " +
+                       "Add a private val parallelPool: ForkJoinPool before this test can pass.",
+                   )
 
         // Submit a trivial task that captures the executing thread's name.
         val threadName = pool.submit(Callable { Thread.currentThread().name })
@@ -127,8 +126,8 @@ class DedicatedParallelPoolTest {
         assertTrue(
             threadName.startsWith("kast-parallel-"),
             "Expected parallelPool worker threads to have names starting with " +
-                "'kast-parallel-' but got: '$threadName'. " +
-                "Is the ForkJoinWorkerThreadFactory setting thread names correctly?",
+            "'kast-parallel-' but got: '$threadName'. " +
+            "Is the ForkJoinWorkerThreadFactory setting thread names correctly?",
         )
     }
 
@@ -144,13 +143,13 @@ class DedicatedParallelPoolTest {
         val maxConcurrentRequests = 3
         val backend = makeBackend(maxConcurrentRequests = maxConcurrentRequests)
         val pool = getParallelPoolOrNull(backend)
-            ?: error("parallelPool field not found. Cannot verify parallelism bound.")
+                   ?: error("parallelPool field not found. Cannot verify parallelism bound.")
 
         assertEquals(
             maxConcurrentRequests,
             pool.parallelism,
             "ForkJoinPool.parallelism should equal ServerLimits.maxConcurrentRequests " +
-                "(=$maxConcurrentRequests), but got ${pool.parallelism}.",
+            "(=$maxConcurrentRequests), but got ${pool.parallelism}.",
         )
     }
 
@@ -171,12 +170,12 @@ class DedicatedParallelPoolTest {
         (backend as AutoCloseable).close()
 
         val pool = getParallelPoolOrNull(backend)
-            ?: error("parallelPool field not found. Cannot verify pool shutdown.")
+                   ?: error("parallelPool field not found. Cannot verify pool shutdown.")
 
         assertTrue(
             pool.isShutdown,
             "Expected parallelPool to be shut down after backend.close() was called, " +
-                "but pool.isShutdown == false. Is close() calling parallelPool.shutdown()?",
+            "but pool.isShutdown == false. Is close() calling parallelPool.shutdown()?",
         )
     }
 
@@ -190,7 +189,7 @@ class DedicatedParallelPoolTest {
     fun `parallelPool is not the ForkJoinPool common pool`() {
         val backend = makeBackend()
         val pool = getParallelPoolOrNull(backend)
-            ?: error("parallelPool field not found.")
+                   ?: error("parallelPool field not found.")
 
         assertTrue(
             pool !== ForkJoinPool.commonPool(),

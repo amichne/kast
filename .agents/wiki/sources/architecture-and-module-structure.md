@@ -1,7 +1,7 @@
 # Architecture and Module Structure
 
-This page summarizes the raw note [[Architecture-and-Module-Structure]]. It is
-the source that names the main Gradle modules and their boundaries.
+This page summarizes the raw note [[Architecture-and-Module-Structure]]. It is the source that names the main Gradle
+modules and their boundaries.
 
 ## Source
 
@@ -14,13 +14,11 @@ This source is an architecture note.
 
 ## Summary
 
-This note maps Kast's multi-module Gradle layout and explains how the CLI,
-contract layer, transport layer, backend, packaging, shared tests, and build
-logic work together. Its main contribution is a codebase-level view of the
-system rather than an operator view.
+This note maps Kast's multi-module Gradle layout and explains how the CLI, contract layer, transport layer, backend,
+packaging, shared tests, and build logic work together. Its main contribution is a codebase-level view of the system
+rather than an operator view.
 
-It also reinforces the client-daemon framing by tying concrete modules to that
-high-level design.
+It also reinforces the client-daemon framing by tying concrete modules to that high-level design.
 
 ## Key claims
 

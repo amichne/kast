@@ -14,47 +14,47 @@ copyright = """
 Copyright &copy; 2026 amichne
 """
 nav = [
-  { "Overview" = "index.md" },
-  { "Getting started" = [
-    { "Install" = "getting-started/install.md" },
-    { "Quickstart" = "getting-started/quickstart.md" },
-  ]},
-  { "For agents" = [
-    { "Overview" = "for-agents/index.md" },
-    { "Talk to your agent" = "for-agents/talk-to-your-agent.md" },
-    { "Install the skill" = "for-agents/install-the-skill.md" },
-    { "Direct CLI usage" = "for-agents/direct-cli.md" },
-  ]},
-  { "Recipes" = "recipes.md" },
-  { "What can Kast do?" = [
-    { "Understand symbols" = "what-can-kast-do/understand-symbols.md" },
-    { "Trace usage" = "what-can-kast-do/trace-usage.md" },
-    { "Refactor safely" = "what-can-kast-do/refactor-safely.md" },
-    { "Validate code" = "what-can-kast-do/validate-code.md" },
-    { "Manage workspaces" = "what-can-kast-do/manage-workspaces.md" },
-  ]},
-  { "CLI cheat sheet" = "cli-cheat-sheet.md" },
-  { "Backends" = "getting-started/backends.md" },
-  { "Kast vs LSP" = "architecture/kast-vs-lsp.md" },
-  { "Reference" = [
-    { "API reference" = "reference/api-reference.md" },
-    { "API specification" = "reference/api-specification.md" },
-    { "Error codes" = "reference/error-codes.md" },
-  ]},
-  { "Troubleshooting" = "troubleshooting.md" },
-  { "Architecture" = [
-    { "How Kast works" = "architecture/how-it-works.md" },
-    { "Limits and boundaries" = "architecture/behavioral-model.md" },
-    { "ADT boundaries" = "architecture/adt-boundaries.md" },
-  ]},
-  { "Changelog" = "changelog.md" },
+    { "Overview" = "index.md" },
+    { "Getting started" = [
+        { "Install" = "getting-started/install.md" },
+        { "Quickstart" = "getting-started/quickstart.md" },
+    ] },
+    { "For agents" = [
+        { "Overview" = "for-agents/index.md" },
+        { "Talk to your agent" = "for-agents/talk-to-your-agent.md" },
+        { "Install the skill" = "for-agents/install-the-skill.md" },
+        { "Direct CLI usage" = "for-agents/direct-cli.md" },
+    ] },
+    { "Recipes" = "recipes.md" },
+    { "What can Kast do?" = [
+        { "Understand symbols" = "what-can-kast-do/understand-symbols.md" },
+        { "Trace usage" = "what-can-kast-do/trace-usage.md" },
+        { "Refactor safely" = "what-can-kast-do/refactor-safely.md" },
+        { "Validate code" = "what-can-kast-do/validate-code.md" },
+        { "Manage workspaces" = "what-can-kast-do/manage-workspaces.md" },
+    ] },
+    { "CLI cheat sheet" = "cli-cheat-sheet.md" },
+    { "Backends" = "getting-started/backends.md" },
+    { "Kast vs LSP" = "architecture/kast-vs-lsp.md" },
+    { "Reference" = [
+        { "API reference" = "reference/api-reference.md" },
+        { "API specification" = "reference/api-specification.md" },
+        { "Error codes" = "reference/error-codes.md" },
+    ] },
+    { "Troubleshooting" = "troubleshooting.md" },
+    { "Architecture" = [
+        { "How Kast works" = "architecture/how-it-works.md" },
+        { "Limits and boundaries" = "architecture/behavioral-model.md" },
+        { "ADT boundaries" = "architecture/adt-boundaries.md" },
+    ] },
+    { "Changelog" = "changelog.md" },
 ]
 
 [project.markdown_extensions.admonition]
 [project.markdown_extensions.pymdownx.details]
 [project.markdown_extensions.pymdownx.superfences]
 custom_fences = [
-  { name = "mermaid", class = "mermaid", format = "pymdownx.superfences.fence_code_format" }
+    { name = "mermaid", class = "mermaid", format = "pymdownx.superfences.fence_code_format" }
 ]
 [project.markdown_extensions.pymdownx.tabbed]
 alternate_style = true
@@ -80,19 +80,19 @@ emoji_generator = "material.extensions.emoji.to_svg"
 [project.theme]
 language = "en"
 features = [
-  "content.action.edit",
-  "content.action.view",
-  "content.code.copy",
-  "content.tabs.link",
-  "content.tooltips",
-  "navigation.footer",
-  "navigation.instant",
-  "navigation.instant.prefetch",
-  "navigation.path",
-  "navigation.sections",
-  "navigation.top",
-  "navigation.tracking",
-  "search.highlight",
+    "content.action.edit",
+    "content.action.view",
+    "content.code.copy",
+    "content.tabs.link",
+    "content.tooltips",
+    "navigation.footer",
+    "navigation.instant",
+    "navigation.instant.prefetch",
+    "navigation.path",
+    "navigation.sections",
+    "navigation.top",
+    "navigation.tracking",
+    "search.highlight",
 ]
 
 [project.theme.icon]

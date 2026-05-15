@@ -1,4 +1,3 @@
-
 package io.github.amichne.kast.api.docs
 
 internal class IndentedWriter(private val sb: StringBuilder = StringBuilder()) {
@@ -19,19 +18,30 @@ internal class IndentedWriter(private val sb: StringBuilder = StringBuilder()) {
         depth--
     }
 
-    inline fun tab(title: String, block: IndentedWriter.() -> Unit) {
+    inline fun tab(
+        title: String,
+        block: IndentedWriter.() -> Unit,
+    ) {
         line("=== \"$title\"")
         line()
         indented(block)
     }
 
-    inline fun details(type: String, title: String, block: IndentedWriter.() -> Unit) {
+    inline fun details(
+        type: String,
+        title: String,
+        block: IndentedWriter.() -> Unit,
+    ) {
         line("??? $type \"$title\"")
         line()
         indented(block)
     }
 
-    inline fun admonition(type: String, title: String, block: IndentedWriter.() -> Unit) {
+    inline fun admonition(
+        type: String,
+        title: String,
+        block: IndentedWriter.() -> Unit,
+    ) {
         line("!!! $type \"$title\"")
         line()
         indented(block)

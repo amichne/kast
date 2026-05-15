@@ -1,5 +1,5 @@
 {
-    "method": "capabilities",
-    "id": 1,
-    "jsonrpc": "2.0"
+  "method": "capabilities",
+  "id": 1,
+  "jsonrpc": "2.0"
 }

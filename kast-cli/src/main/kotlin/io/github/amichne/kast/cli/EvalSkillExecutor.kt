@@ -36,7 +36,10 @@ internal class EvalSkillExecutor(private val json: Json) {
         return formatResult(result, options.format)
     }
 
-    private fun executeComparison(result: EvalResult, options: EvalSkillOptions): CliOutput {
+    private fun executeComparison(
+        result: EvalResult,
+        options: EvalSkillOptions,
+    ): CliOutput {
         val baselinePath = options.compareBaseline!!
         if (!baselinePath.toFile().isFile) {
             throw CliFailure(
@@ -71,7 +74,10 @@ internal class EvalSkillExecutor(private val json: Json) {
         return output
     }
 
-    private fun formatResult(result: EvalResult, format: EvalOutputFormat): CliOutput = when (format) {
+    private fun formatResult(
+        result: EvalResult,
+        format: EvalOutputFormat,
+    ): CliOutput = when (format) {
         EvalOutputFormat.JSON -> CliOutput.Text(json.encodeToString(EvalResult.serializer(), result))
         EvalOutputFormat.MARKDOWN -> CliOutput.Text(renderMarkdown(result))
     }
@@ -116,7 +122,10 @@ internal class EvalSkillExecutor(private val json: Json) {
         }
     }
 
-    private fun renderComparisonMarkdown(result: EvalResult, comparison: ComparisonResult): String = buildString {
+    private fun renderComparisonMarkdown(
+        result: EvalResult,
+        comparison: ComparisonResult,
+    ): String = buildString {
         appendLine("# Skill Evaluation Comparison")
         appendLine()
         appendLine("**Score:** ${result.summary.score}/100 (${comparison.gradeBefore} → ${comparison.gradeAfter}, delta: ${comparison.scoreDelta})")

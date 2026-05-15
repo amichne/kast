@@ -1,12 +1,12 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.api.protocol.ApiErrorResponse
+import io.github.amichne.kast.api.client.ServerInstanceDescriptor
 import io.github.amichne.kast.api.contract.BackendCapabilities
+import io.github.amichne.kast.api.contract.RuntimeStatusResponse
+import io.github.amichne.kast.api.protocol.ApiErrorResponse
 import io.github.amichne.kast.api.protocol.JsonRpcErrorResponse
 import io.github.amichne.kast.api.protocol.JsonRpcRequest
 import io.github.amichne.kast.api.protocol.JsonRpcSuccessResponse
-import io.github.amichne.kast.api.contract.RuntimeStatusResponse
-import io.github.amichne.kast.api.client.ServerInstanceDescriptor
 import io.github.amichne.kast.cli.tty.CliFailure
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
@@ -51,8 +51,16 @@ internal class KastRpcClient(
         params = json.encodeToJsonElement(body),
     )
 
-    fun rawPassthrough(descriptor: ServerInstanceDescriptor, rawRequest: String): String =
-        socketRequestRaw(Path.of(descriptor.socketPath), rawRequest)
+    fun rawPassthrough(
+        descriptor: ServerInstanceDescriptor,
+        rawRequest: String,
+    ): String {
+        val normalizedRequest = Json.encodeToString(
+            JsonElement.serializer(),
+            json.parseToJsonElement(rawRequest),
+        )
+        return socketRequestRaw(Path.of(descriptor.socketPath), normalizedRequest)
+    }
 
     inline fun <reified Response> execute(
         descriptor: ServerInstanceDescriptor,

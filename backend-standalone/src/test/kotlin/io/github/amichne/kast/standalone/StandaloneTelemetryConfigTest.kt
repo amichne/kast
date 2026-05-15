@@ -1,13 +1,12 @@
 package io.github.amichne.kast.standalone
 
-import io.github.amichne.kast.api.client.fields.TelemetryScopes
-import io.github.amichne.kast.api.client.fields.TelemetryEnabled
-import io.github.amichne.kast.api.client.fields.TelemetryDetail
+import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.fields.OptionalConfigString
 import io.github.amichne.kast.api.client.fields.ProfilingOtlpEndpoint
-import io.github.amichne.kast.api.client.KastConfig
+import io.github.amichne.kast.api.client.fields.TelemetryDetail
+import io.github.amichne.kast.api.client.fields.TelemetryEnabled
+import io.github.amichne.kast.api.client.fields.TelemetryScopes
 import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetry
-import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetryConfig
 import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetryDetail
 import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetryScope
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -54,8 +53,14 @@ class StandaloneTelemetryConfigTest {
 
     @Test
     fun `parse recognizes workspace-discovery scope variants`() {
-        assertEquals(StandaloneTelemetryScope.WORKSPACE_DISCOVERY, StandaloneTelemetryScope.parse("workspace-discovery"))
-        assertEquals(StandaloneTelemetryScope.WORKSPACE_DISCOVERY, StandaloneTelemetryScope.parse("workspace_discovery"))
+        assertEquals(
+            StandaloneTelemetryScope.WORKSPACE_DISCOVERY,
+            StandaloneTelemetryScope.parse("workspace-discovery")
+        )
+        assertEquals(
+            StandaloneTelemetryScope.WORKSPACE_DISCOVERY,
+            StandaloneTelemetryScope.parse("workspace_discovery")
+        )
         assertEquals(StandaloneTelemetryScope.WORKSPACE_DISCOVERY, StandaloneTelemetryScope.parse("workspacediscovery"))
         assertEquals(StandaloneTelemetryScope.WORKSPACE_DISCOVERY, StandaloneTelemetryScope.parse("discovery"))
     }
@@ -225,5 +230,4 @@ class StandaloneTelemetryConfigTest {
         assertEquals(StandaloneTelemetryDetail.BASIC, StandaloneTelemetryDetail.parse(null))
         assertEquals(StandaloneTelemetryDetail.BASIC, StandaloneTelemetryDetail.parse("unknown"))
     }
-
 }

@@ -19,6 +19,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.sql.Connection
 import java.sql.DriverManager
+import kotlin.collections.filter
 
 internal const val SOURCE_INDEX_SCHEMA_VERSION = 5
 
@@ -552,7 +553,6 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
                         val reconstructed = if (sourceSet != null) "$modulePath[$sourceSet]" else modulePath
                         moduleNameByPath[path] = reconstructed
                     }
-
                 }
             }
 
@@ -802,8 +802,8 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
             .use { stmt ->
                 stmt.setInt(1, prefixId)
                 stmt.setString(2, filename)
-            stmt.executeUpdate()
-        }
+                stmt.executeUpdate()
+            }
     }
 
     fun removeReferencesOutsideSources(sourcePaths: Collection<String>) {
@@ -1051,7 +1051,11 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
         }
     }
 
-    fun writeWorkspaceDiscovery(cacheKey: String, schemaVersion: Int, payload: String) {
+    fun writeWorkspaceDiscovery(
+        cacheKey: String,
+        schemaVersion: Int,
+        payload: String,
+    ) {
         synchronized(writeLock) {
             val conn = connection()
             conn.prepareStatement(
@@ -1137,14 +1141,14 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
         if (update.identifiers.isNotEmpty()) {
             conn.prepareStatement("INSERT OR IGNORE INTO identifier_paths (identifier, prefix_id, filename) VALUES (?, ?, ?)")
                 .use { stmt ->
-                for (identifier in update.identifiers) {
-                    stmt.setString(1, identifier)
-                    stmt.setInt(2, prefixId)
-                    stmt.setString(3, filename)
-                    stmt.addBatch()
+                    for (identifier in update.identifiers) {
+                        stmt.setString(1, identifier)
+                        stmt.setInt(2, prefixId)
+                        stmt.setString(3, filename)
+                        stmt.addBatch()
+                    }
+                    stmt.executeBatch()
                 }
-                stmt.executeBatch()
-            }
         }
         update.packageName?.let { fqCodec.getOrCreate(conn, it) }
         fqCodec.batchEnsure(conn, update.imports + update.wildcardImports)
@@ -1181,15 +1185,15 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
         if (entries.isEmpty()) return
         conn.prepareStatement("INSERT INTO file_manifest (prefix_id, filename, last_modified_millis) VALUES (?, ?, ?)")
             .use { stmt ->
-            entries.forEach { (path, millis) ->
-                val (prefixId, filename) = pathCodec.encode(path)
-                stmt.setInt(1, prefixId)
-                stmt.setString(2, filename)
-                stmt.setLong(3, millis)
-                stmt.addBatch()
+                entries.forEach { (path, millis) ->
+                    val (prefixId, filename) = pathCodec.encode(path)
+                    stmt.setInt(1, prefixId)
+                    stmt.setString(2, filename)
+                    stmt.setLong(3, millis)
+                    stmt.addBatch()
+                }
+                stmt.executeBatch()
             }
-            stmt.executeBatch()
-        }
     }
 
     private fun pruneReferencesOutsideManifestInTransaction(

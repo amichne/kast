@@ -1,5 +1,3 @@
-import org.gradle.internal.execution.caching.CachingState.enabled
-
 plugins {
     id("kast.standalone-serialization-app")
     alias(libs.plugins.graalvm.native)
@@ -18,12 +16,10 @@ val embeddedSkillFiles = listOf(
     "evals/pain_points.jsonl",
     "evals/files/.gitkeep",
     "fixtures/maintenance/references/routing-improvement.md",
-    "fixtures/maintenance/references/wrapper-openapi.yaml",
     "fixtures/maintenance/scripts/build-routing-corpus.py",
     "references/quickstart.md",
     "references/commands.json",
     "references/routing-improvement.md",
-    "references/wrapper-openapi.yaml",
     "scripts/build-routing-corpus.py",
     "scripts/kast-session-start.sh",
     "scripts/resolve-kast.sh",
@@ -130,6 +126,7 @@ val generateFilteredSkillShadowing by tasks.registering {
     doLast {
         @Suppress("UNCHECKED_CAST")
         val parsed = groovy.json.JsonSlurper().parse(sourceFile) as Map<String, Any>
+
         @Suppress("UNCHECKED_CAST")
         val allSkills = parsed["skills"] as List<Map<String, Any>>
         val portableSkills = allSkills.filter { it.containsKey("shadowingExtensionId") }
@@ -196,18 +193,6 @@ tasks.named<Test>("test") {
     systemProperty(
         "kast.runtime-libs",
         project(":backend-standalone").layout.buildDirectory.dir("runtime-libs").get().asFile.absolutePath,
-    )
-}
-
-tasks.register<JavaExec>("generateWrapperOpenApiSchema") {
-    group = "documentation"
-    description = "Generate the packaged kast wrapper OpenAPI document from serialized model shapes."
-    classpath = sourceSets.main.get().runtimeClasspath
-    mainClass.set("io.github.amichne.kast.cli.WrapperOpenApiDocumentKt")
-    args(
-        rootProject.layout.projectDirectory
-            .file(".agents/skills/kast/references/wrapper-openapi.yaml")
-            .asFile.absolutePath,
     )
 }
 

@@ -91,7 +91,10 @@ internal class IntelliJTelemetrySpan internal constructor(
     private val scope: IntelliJTelemetryScope,
     private val span: Span?,
 ) {
-    fun setAttribute(key: String, value: Any?) {
+    fun setAttribute(
+        key: String,
+        value: Any?,
+    ) {
         if (span == null || value == null) return
         setSpanAttribute(span, key, value)
     }
@@ -136,7 +139,8 @@ internal class IntelliJBackendTelemetry private constructor(
 ) {
     fun isEnabled(scope: IntelliJTelemetryScope): Boolean = config != null && scope in config.scopes
 
-    fun isVerbose(scope: IntelliJTelemetryScope): Boolean = isEnabled(scope) && config?.detail == IntelliJTelemetryDetail.VERBOSE
+    fun isVerbose(scope: IntelliJTelemetryScope): Boolean =
+        isEnabled(scope) && config?.detail == IntelliJTelemetryDetail.VERBOSE
 
     inline fun <T> inSpan(
         scope: IntelliJTelemetryScope,
@@ -170,7 +174,12 @@ internal class IntelliJBackendTelemetry private constructor(
         }
     }
 
-    fun recordReadAction(scope: IntelliJTelemetryScope, name: String, waitNanos: Long, holdNanos: Long) {
+    fun recordReadAction(
+        scope: IntelliJTelemetryScope,
+        name: String,
+        waitNanos: Long,
+        holdNanos: Long,
+    ) {
         if (!isEnabled(IntelliJTelemetryScope.READ_ACTION)) return
         inSpan(
             scope = scope,
@@ -247,7 +256,10 @@ internal class IntelliJBackendTelemetry private constructor(
             return scopes.ifEmpty { null }
         }
 
-        private fun resolveOutputFile(rawValue: String?, workspaceRoot: Path): Path {
+        private fun resolveOutputFile(
+            rawValue: String?,
+            workspaceRoot: Path,
+        ): Path {
             val configuredPath = rawValue
                 ?.takeIf(String::isNotBlank)
                 ?.let(Path::of)
@@ -262,7 +274,10 @@ internal class IntelliJBackendTelemetry private constructor(
 
 // --- Shared attribute helpers ---
 
-private fun applySpanAttributes(span: Span, attributes: Map<String, Any?>) {
+private fun applySpanAttributes(
+    span: Span,
+    attributes: Map<String, Any?>,
+) {
     attributes.forEach { (key, value) ->
         if (value != null) setSpanAttribute(span, key, value)
     }
@@ -283,7 +298,11 @@ private fun buildAttributes(attributes: Map<String, Any?>): Attributes {
     return builder.build()
 }
 
-private fun setSpanAttribute(span: Span, key: String, value: Any) {
+private fun setSpanAttribute(
+    span: Span,
+    key: String,
+    value: Any,
+) {
     when (value) {
         is Boolean -> span.setAttribute(AttributeKey.booleanKey(key), value)
         is Double -> span.setAttribute(AttributeKey.doubleKey(key), value)
@@ -337,14 +356,19 @@ private data class IntelliJSerializedSpan(
     val durationNanos: Long = 0L,
 ) {
     companion object {
-        fun from(span: SpanData, detail: IntelliJTelemetryDetail): IntelliJSerializedSpan = IntelliJSerializedSpan(
+        fun from(
+            span: SpanData,
+            detail: IntelliJTelemetryDetail,
+        ): IntelliJSerializedSpan = IntelliJSerializedSpan(
             name = span.name,
             traceId = span.traceId,
             spanId = span.spanId,
             parentSpanId = span.parentSpanContext.spanId.takeUnless { it == "0000000000000000" },
             kind = span.kind.name,
             status = span.status.statusCode.name,
-            attributes = span.attributes.asMap().mapKeys { (key, _) -> key.key }.mapValues { (_, value) -> value.toString() },
+            attributes = span.attributes.asMap()
+                .mapKeys { (key, _) -> key.key }
+                .mapValues { (_, value) -> value.toString() },
             events = if (detail == IntelliJTelemetryDetail.VERBOSE) {
                 span.events.map(IntelliJSerializedEvent::from)
             } else {
@@ -382,7 +406,9 @@ private data class IntelliJSerializedEvent(
     companion object {
         fun from(event: EventData): IntelliJSerializedEvent = IntelliJSerializedEvent(
             name = event.name,
-            attributes = event.attributes.asMap().mapKeys { (key, _) -> key.key }.mapValues { (_, value) -> value.toString() },
+            attributes = event.attributes.asMap()
+                .mapKeys { (key, _) -> key.key }
+                .mapValues { (_, value) -> value.toString() },
         )
     }
 

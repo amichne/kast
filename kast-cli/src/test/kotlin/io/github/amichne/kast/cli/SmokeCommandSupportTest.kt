@@ -41,7 +41,7 @@ class SmokeCommandSupportTest {
 
     @Test
     fun `smoke with no runtime manager passes cli checks and skips backend checks`() = runTest {
-        val support = SmokeCommandSupport(runtimeManager = null)
+        val support = SmokeCommandSupport()
 
         val report = support.run(smokeOptions())
 
@@ -55,7 +55,7 @@ class SmokeCommandSupportTest {
 
     @Test
     fun `smoke report cliVersion is populated`() = runTest {
-        val support = SmokeCommandSupport(runtimeManager = null)
+        val support = SmokeCommandSupport()
 
         val report = support.run(smokeOptions())
 
@@ -65,7 +65,7 @@ class SmokeCommandSupportTest {
 
     @Test
     fun `smoke report workspaceRoot matches options`() = runTest {
-        val support = SmokeCommandSupport(runtimeManager = null)
+        val support = SmokeCommandSupport()
         val workspace = tempDir.resolve("my-workspace")
 
         val report = support.run(smokeOptions(workspaceRoot = workspace))
@@ -200,7 +200,7 @@ class SmokeCommandSupportTest {
 
     @Test
     fun `smoke report is serializable as JSON`() = runTest {
-        val support = SmokeCommandSupport(runtimeManager = null)
+        val support = SmokeCommandSupport()
         val report = support.run(smokeOptions())
 
         val json = defaultCliJson()
@@ -215,7 +215,7 @@ class SmokeCommandSupportTest {
 
     @Test
     fun `smoke markdown report contains expected sections`() = runTest {
-        val support = SmokeCommandSupport(runtimeManager = null)
+        val support = SmokeCommandSupport()
         val report = support.run(smokeOptions())
 
         val markdown = report.toMarkdown()
@@ -229,7 +229,7 @@ class SmokeCommandSupportTest {
 
     @Test
     fun `smoke markdown report shows OK icon when no failures`() = runTest {
-        val support = SmokeCommandSupport(runtimeManager = null)
+        val support = SmokeCommandSupport()
         val report = support.run(smokeOptions())
 
         val markdown = report.toMarkdown()
@@ -369,7 +369,10 @@ class SmokeCommandSupportTest {
         pid = pid,
     )
 
-    private fun readyStatus(workspaceRoot: Path, backendName: String = "standalone") =
+    private fun readyStatus(
+        workspaceRoot: Path,
+        backendName: String = "standalone",
+    ) =
         RuntimeStatusResponse(
             state = RuntimeState.READY,
             healthy = true,
@@ -381,7 +384,10 @@ class SmokeCommandSupportTest {
             message = "ready",
         )
 
-    private fun indexingStatus(workspaceRoot: Path, backendName: String = "standalone") =
+    private fun indexingStatus(
+        workspaceRoot: Path,
+        backendName: String = "standalone",
+    ) =
         RuntimeStatusResponse(
             state = RuntimeState.INDEXING,
             healthy = true,
@@ -399,7 +405,10 @@ class SmokeCommandSupportTest {
         return descriptor
     }
 
-    private fun assertCheckPasses(report: SmokeReport, name: String) {
+    private fun assertCheckPasses(
+        report: SmokeReport,
+        name: String,
+    ) {
         val check = report.checks.firstOrNull { it.name == name }
         assertNotNull(check, "Expected check '$name' in report but it was missing")
         assertEquals(
@@ -408,7 +417,10 @@ class SmokeCommandSupportTest {
         )
     }
 
-    private fun assertCheckSkipped(report: SmokeReport, name: String) {
+    private fun assertCheckSkipped(
+        report: SmokeReport,
+        name: String,
+    ) {
         val check = report.checks.firstOrNull { it.name == name }
         assertNotNull(check, "Expected check '$name' in report but it was missing")
         assertEquals(
@@ -424,7 +436,10 @@ class SmokeCommandSupportTest {
 
         override fun runtimeStatus(descriptor: ServerInstanceDescriptor): RuntimeStatusResponse {
             val queue = queues[descriptor.socketPath]
-                ?: throw CliFailure(code = "DAEMON_UNREACHABLE", message = "No status for ${descriptor.socketPath}")
+                        ?: throw CliFailure(
+                            code = "DAEMON_UNREACHABLE",
+                            message = "No status for ${descriptor.socketPath}"
+                        )
             return if (queue.size > 1) queue.removeFirst() else checkNotNull(queue.firstOrNull())
         }
 

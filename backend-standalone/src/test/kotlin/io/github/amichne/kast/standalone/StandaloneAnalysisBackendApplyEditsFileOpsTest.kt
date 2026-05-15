@@ -1,11 +1,11 @@
 package io.github.amichne.kast.standalone
 
-import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
-import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.FileOperation
-import io.github.amichne.kast.api.validation.FileHashing
-import io.github.amichne.kast.api.protocol.NotFoundException
+import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.ServerLimits
+import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
+import io.github.amichne.kast.api.protocol.NotFoundException
+import io.github.amichne.kast.api.validation.FileHashing
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test

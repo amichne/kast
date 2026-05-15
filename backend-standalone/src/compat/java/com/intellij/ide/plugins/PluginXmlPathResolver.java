@@ -30,9 +30,11 @@ import java.util.Set;
 @SuppressWarnings({"rawtypes", "unchecked", "unused", "RedundantSuppression"})
 public final class PluginXmlPathResolver implements PathResolver {
 
-    /** Singleton used by PluginDescriptorLoader and AA's PluginStructureProvider. */
+    /**
+     * Singleton used by PluginDescriptorLoader and AA's PluginStructureProvider.
+     */
     public static final PathResolver DEFAULT_PATH_RESOLVER =
-            new PluginXmlPathResolver(Collections.emptyList(), null);
+        new PluginXmlPathResolver(Collections.emptyList(), null);
 
     private final List<Path> pluginJarFiles;
     @SuppressWarnings("FieldCanBeLocal")
@@ -51,16 +53,16 @@ public final class PluginXmlPathResolver implements PathResolver {
 
     @Override
     public boolean loadXIncludeReference(
-            RawPluginDescriptor descriptor,
-            ReadModuleContext context,
-            DataLoader dataLoader,
-            String base,
-            String relativePath) {
+        RawPluginDescriptor descriptor,
+        ReadModuleContext context,
+        DataLoader dataLoader,
+        String base,
+        String relativePath) {
         ResolvedResource resource = resolveResource(dataLoader, base, relativePath, /* ignoreNotFound = */ true);
-        if (resource == null) return false;
+        if (resource == null) {return false;}
         try (InputStream stream = resource.stream) {
             com.intellij.ide.plugins.XmlReader.readModuleDescriptor(
-                    stream, context, this, dataLoader, resource.path, descriptor, null);
+                stream, context, this, dataLoader, resource.path, descriptor, null);
             return true;
         } catch (Exception e) {
             return false;
@@ -69,15 +71,15 @@ public final class PluginXmlPathResolver implements PathResolver {
 
     @Override
     public RawPluginDescriptor resolvePath(
-            ReadModuleContext readContext,
-            DataLoader dataLoader,
-            String relativePath,
-            RawPluginDescriptor descriptor) {
+        ReadModuleContext readContext,
+        DataLoader dataLoader,
+        String relativePath,
+        RawPluginDescriptor descriptor) {
         ResolvedResource resource = resolveResource(dataLoader, null, relativePath, /* ignoreNotFound = */ false);
-        if (resource == null) return null;
+        if (resource == null) {return null;}
         try (InputStream stream = resource.stream) {
             return com.intellij.ide.plugins.XmlReader.readModuleDescriptor(
-                    stream, readContext, this, dataLoader, resource.path, descriptor, null);
+                stream, readContext, this, dataLoader, resource.path, descriptor, null);
         } catch (Exception e) {
             return null;
         }
@@ -85,10 +87,10 @@ public final class PluginXmlPathResolver implements PathResolver {
 
     @Override
     public RawPluginDescriptor resolveModuleFile(
-            ReadModuleContext readContext,
-            DataLoader dataLoader,
-            String relativePath,
-            RawPluginDescriptor descriptor) {
+        ReadModuleContext readContext,
+        DataLoader dataLoader,
+        String relativePath,
+        RawPluginDescriptor descriptor) {
         return resolvePath(readContext, dataLoader, relativePath, descriptor);
     }
 
@@ -96,26 +98,26 @@ public final class PluginXmlPathResolver implements PathResolver {
 
     @Override
     public XIncludeLoader.LoadedXIncludeReference loadXIncludeReference(
-            DataLoader dataLoader,
-            String relativePath) {
+        DataLoader dataLoader,
+        String relativePath) {
         ResolvedResource resource = resolveResource(dataLoader, null, relativePath, /* ignoreNotFound = */ true);
         return resource == null ? null : new XIncludeLoader.LoadedXIncludeReference(resource.stream, resource.path);
     }
 
     @Override
     public PluginDescriptorBuilder resolvePath(
-            PluginDescriptorReaderContext context,
-            DataLoader dataLoader,
-            String relativePath) {
+        PluginDescriptorReaderContext context,
+        DataLoader dataLoader,
+        String relativePath) {
         ResolvedResource resource = resolveResource(dataLoader, null, relativePath, /* ignoreNotFound = */ false);
-        if (resource == null) return null;
+        if (resource == null) {return null;}
         try (InputStream stream = resource.stream) {
             XIncludeLoader xil = PathResolverKt.toXIncludeLoader(this, dataLoader);
             PluginDescriptorFromXmlStreamConsumer consumer =
-                    new PluginDescriptorFromXmlStreamConsumer(context, xil);
+                new PluginDescriptorFromXmlStreamConsumer(context, xil);
             XMLStreamReader2 reader = StaxFactory.createXmlStreamReader(stream);
             com.intellij.platform.plugins.parser.impl.XmlReader.readModuleDescriptor(
-                    consumer, reader);
+                consumer, reader);
             return consumer.getBuilder();
         } catch (Exception e) {
             return null;
@@ -124,17 +126,17 @@ public final class PluginXmlPathResolver implements PathResolver {
 
     @Override
     public PluginDescriptorBuilder resolveModuleFile(
-            PluginDescriptorReaderContext context,
-            DataLoader dataLoader,
-            String relativePath) {
+        PluginDescriptorReaderContext context,
+        DataLoader dataLoader,
+        String relativePath) {
         return resolvePath(context, dataLoader, relativePath);
     }
 
     private ResolvedResource resolveResource(
-            DataLoader dataLoader,
-            String base,
-            String relativePath,
-            boolean ignoreNotFound) {
+        DataLoader dataLoader,
+        String base,
+        String relativePath,
+        boolean ignoreNotFound) {
         for (String candidatePath : candidatePaths(base, relativePath)) {
             try {
                 InputStream stream = dataLoader.load(candidatePath, ignoreNotFound);

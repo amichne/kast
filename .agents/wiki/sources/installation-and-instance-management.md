@@ -1,7 +1,7 @@
 # Installation and Instance Management
 
-This page summarizes the raw note [[Installation-and-Instance-Management]]. It
-is the deepest source for installation and version-selection behavior.
+This page summarizes the raw note [[Installation-and-Instance-Management]]. It is the deepest source for installation
+and version-selection behavior.
 
 ## Source
 
@@ -14,13 +14,11 @@ This source is an installation note.
 
 ## Summary
 
-This note explains platform detection, the primary installer, instance
-management, side-by-side versions, the discovery cascade, skill installation,
-and shell completion. Its main contribution is clarifying how Kast remains
-usable across upgrades, local builds, and multiple installed versions.
+This note explains platform detection, the primary installer, instance management, side-by-side versions, the discovery
+cascade, skill installation, and shell completion. Its main contribution is clarifying how Kast remains usable across
+upgrades, local builds, and multiple installed versions.
 
-It also shows that "find the right Kast" is a deliberate product problem with
-explicit scripts and ordering rules.
+It also shows that "find the right Kast" is a deliberate product problem with explicit scripts and ordering rules.
 
 ## Key claims
 
@@ -40,8 +38,7 @@ This source anchors the install-focused concept pages.
 
 This source leaves some operator policy unstated.
 
-- Which selection rule wins when multiple valid local and published instances
-  exist?
+- Which selection rule wins when multiple valid local and published instances exist?
 - How are outdated instances expected to be cleaned up?
 
 ## Pages updated from this source

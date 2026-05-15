@@ -1,11 +1,13 @@
 package io.github.amichne.kast.api.validation
 
-import io.github.amichne.kast.api.contract.*
+import io.github.amichne.kast.api.contract.FileHash
+import io.github.amichne.kast.api.contract.FileOperation
+import io.github.amichne.kast.api.contract.TextEdit
 import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
 import io.github.amichne.kast.api.io.KastFileOperations
 import io.github.amichne.kast.testing.inMemoryFileOperations
-
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 /**
@@ -35,7 +37,10 @@ class AtomicWriteRegressionTest {
             return delegate.readText(path)
         }
 
-        override fun writeText(path: String, content: String) {
+        override fun writeText(
+            path: String,
+            content: String,
+        ) {
             operations += "writeText($path)"
 
             // Detect non-atomic write to existing file
@@ -73,12 +78,18 @@ class AtomicWriteRegressionTest {
             return tempPath
         }
 
-        override fun moveAtomic(sourcePath: String, destPath: String) {
+        override fun moveAtomic(
+            sourcePath: String,
+            destPath: String,
+        ) {
             operations += "moveAtomic($sourcePath, $destPath)"
             delegate.moveAtomic(sourcePath, destPath)
         }
 
-        override fun <T> withLock(path: String, block: () -> T): T {
+        override fun <T> withLock(
+            path: String,
+            block: () -> T,
+        ): T {
             operations += "withLock($path)"
             return delegate.withLock(path, block)
         }

@@ -35,10 +35,10 @@ class BackendParityConfigTest {
             usage-offset = 37
             broken-file = "BROKEN_FILE"
             """.trimIndent()
-            .replace("STANDALONE_SOCKET", config.standaloneSocket.toString())
-            .replace("INTELLIJ_SOCKET", config.intellijSocket.toString())
-            .replace("USAGE_FILE", config.usageFile.toString())
-            .replace("BROKEN_FILE", config.brokenFile.toString()) + "\n"
+                           .replace("STANDALONE_SOCKET", config.standaloneSocket.toString())
+                           .replace("INTELLIJ_SOCKET", config.intellijSocket.toString())
+                           .replace("USAGE_FILE", config.usageFile.toString())
+                           .replace("BROKEN_FILE", config.brokenFile.toString()) + "\n"
         assertEquals(expected, Files.readString(configFile))
     }
 

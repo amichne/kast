@@ -7,9 +7,9 @@ import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiDocumentManager
+import io.github.amichne.kast.api.contract.TextEdit
 import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
 import io.github.amichne.kast.api.contract.result.ApplyEditsResult
-import io.github.amichne.kast.api.contract.TextEdit
 import io.github.amichne.kast.api.protocol.ConflictException
 import io.github.amichne.kast.api.protocol.NotFoundException
 import io.github.amichne.kast.api.protocol.PartialApplyException
@@ -65,10 +65,10 @@ internal class IntelliJEditApplier(private val project: Project) {
         // Check hashes against current IntelliJ state
         validatedEdits.forEach { plan ->
             val virtualFile = vfsManager.findFileByUrl("file://${plan.filePath}")
-                ?: throw NotFoundException(
-                    message = "The requested file does not exist",
-                    details = mapOf("filePath" to plan.filePath),
-                )
+                              ?: throw NotFoundException(
+                                  message = "The requested file does not exist",
+                                  details = mapOf("filePath" to plan.filePath),
+                              )
 
             val currentContent = readAction {
                 val document = fileDocumentManager.getCachedDocument(virtualFile)
@@ -140,7 +140,7 @@ internal class IntelliJEditApplier(private val project: Project) {
                             val parentPath = operation.filePath.substringBeforeLast('/')
                             val fileName = operation.filePath.substringAfterLast('/')
                             val parentFile = vfsManager.findFileByUrl("file://$parentPath")
-                                ?: throw IllegalStateException("Parent directory not found: $parentPath")
+                                             ?: throw IllegalStateException("Parent directory not found: $parentPath")
 
                             if (parentFile.findChild(fileName) != null) {
                                 throw ConflictException(
@@ -157,10 +157,10 @@ internal class IntelliJEditApplier(private val project: Project) {
 
                     is ValidatedFileOperation.DeleteFile -> {
                         val virtualFile = vfsManager.findFileByUrl("file://${operation.filePath}")
-                            ?: throw NotFoundException(
-                                message = "The requested file does not exist",
-                                details = mapOf("filePath" to operation.filePath),
-                            )
+                                          ?: throw NotFoundException(
+                                              message = "The requested file does not exist",
+                                              details = mapOf("filePath" to operation.filePath),
+                                          )
 
                         val currentContent = readAction {
                             String(virtualFile.contentsToByteArray(), StandardCharsets.UTF_8)

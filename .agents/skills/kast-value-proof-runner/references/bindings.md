@@ -23,7 +23,8 @@ Pick concrete symbols from the current repository that satisfy these roles:
 - `SEALED_HIERARCHY`: a sealed class or interface with 3+ implementations, ideally across modules
 - `DISAMBIGUATE_MEMBER`: a property name that appears on unrelated types, so raw text search would over-match
 - `CROSS_MODULE_CLASS`: a type referenced from at least two modules
-- `OVERLOADED_OR_COMMON_FUNCTION`: a common member function name that needs `containingType` or `fileHint` to disambiguate
+- `OVERLOADED_OR_COMMON_FUNCTION`: a common member function name that needs `containingType` or `fileHint` to
+  disambiguate
 - `RENAME_TARGET`: a type or interface with references in multiple files so rename safety is meaningful
 - `LARGE_CLASS`: a large class where scaffolded structure is meaningfully cheaper than raw reads
 - `MODULE_LIST`: the module names expected from workspace discovery

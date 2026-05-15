@@ -1,7 +1,7 @@
 package io.github.amichne.kast.intellij
 
-import io.github.amichne.kast.api.client.fields.CliBinaryPath
 import io.github.amichne.kast.api.client.KastConfig
+import io.github.amichne.kast.api.client.fields.CliBinaryPath
 import io.github.amichne.kast.intellij.actions.KastBinaryResolution
 import io.github.amichne.kast.intellij.actions.KastInstallCommandResult
 import io.github.amichne.kast.intellij.actions.resolveConfiguredKastBinary

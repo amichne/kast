@@ -235,8 +235,18 @@ class MetricsEngineTest {
                     fileUpdate("/app/A.kt", identifiers = setOf("A"), packageName = "app", modulePath = ":app"),
                     fileUpdate("/app/B.kt", identifiers = setOf("B"), packageName = "app", modulePath = ":app"),
                     fileUpdate("/app/C.kt", identifiers = setOf("C"), packageName = "app", modulePath = ":app"),
-                    fileUpdate("/app/UnusedPrivate.kt", identifiers = setOf("unusedPrivate"), packageName = "app", modulePath = ":app"),
-                    fileUpdate("/app/PublicUnused.kt", identifiers = setOf("PublicUnused"), packageName = "app", modulePath = ":app"),
+                    fileUpdate(
+                        "/app/UnusedPrivate.kt",
+                        identifiers = setOf("unusedPrivate"),
+                        packageName = "app",
+                        modulePath = ":app"
+                    ),
+                    fileUpdate(
+                        "/app/PublicUnused.kt",
+                        identifiers = setOf("PublicUnused"),
+                        packageName = "app",
+                        modulePath = ":app"
+                    ),
                     fileUpdate("/lib/Foo.kt", identifiers = setOf("Foo"), packageName = "lib", modulePath = ":lib"),
                     fileUpdate("/lib/Bar.kt", identifiers = setOf("Bar"), packageName = "lib", modulePath = ":lib"),
                 ),
@@ -252,19 +262,75 @@ class MetricsEngineTest {
             )
             store.replaceDeclarationsFromFiles(
                 listOf(
-                    "/app/A.kt" to listOf(declaration("app.A", DeclarationKind.CLASS, DeclarationVisibility.PUBLIC, "/app/A.kt", ":app")),
-                    "/app/B.kt" to listOf(declaration("app.B", DeclarationKind.CLASS, DeclarationVisibility.PUBLIC, "/app/B.kt", ":app")),
-                    "/app/C.kt" to listOf(declaration("app.C", DeclarationKind.CLASS, DeclarationVisibility.PUBLIC, "/app/C.kt", ":app")),
+                    "/app/A.kt" to listOf(
+                        declaration(
+                            "app.A",
+                            DeclarationKind.CLASS,
+                            DeclarationVisibility.PUBLIC,
+                            "/app/A.kt",
+                            ":app"
+                        )
+                    ),
+                    "/app/B.kt" to listOf(
+                        declaration(
+                            "app.B",
+                            DeclarationKind.CLASS,
+                            DeclarationVisibility.PUBLIC,
+                            "/app/B.kt",
+                            ":app"
+                        )
+                    ),
+                    "/app/C.kt" to listOf(
+                        declaration(
+                            "app.C",
+                            DeclarationKind.CLASS,
+                            DeclarationVisibility.PUBLIC,
+                            "/app/C.kt",
+                            ":app"
+                        )
+                    ),
                     "/app/UnusedPrivate.kt" to listOf(
-                        declaration("app.unusedPrivate", DeclarationKind.PROPERTY, DeclarationVisibility.PRIVATE, "/app/UnusedPrivate.kt", ":app"),
+                        declaration(
+                            "app.unusedPrivate",
+                            DeclarationKind.PROPERTY,
+                            DeclarationVisibility.PRIVATE,
+                            "/app/UnusedPrivate.kt",
+                            ":app"
+                        ),
                     ),
                     "/app/PublicUnused.kt" to listOf(
-                        declaration("app.PublicUnused", DeclarationKind.FUNCTION, DeclarationVisibility.PUBLIC, "/app/PublicUnused.kt", ":app"),
+                        declaration(
+                            "app.PublicUnused",
+                            DeclarationKind.FUNCTION,
+                            DeclarationVisibility.PUBLIC,
+                            "/app/PublicUnused.kt",
+                            ":app"
+                        ),
                     ),
-                    "/lib/Foo.kt" to listOf(declaration("lib.Foo", DeclarationKind.CLASS, DeclarationVisibility.PUBLIC, "/lib/Foo.kt", ":lib")),
+                    "/lib/Foo.kt" to listOf(
+                        declaration(
+                            "lib.Foo",
+                            DeclarationKind.CLASS,
+                            DeclarationVisibility.PUBLIC,
+                            "/lib/Foo.kt",
+                            ":lib"
+                        )
+                    ),
                     "/lib/Bar.kt" to listOf(
-                        declaration("lib.Bar", DeclarationKind.FUNCTION, DeclarationVisibility.INTERNAL, "/lib/Bar.kt", ":lib"),
-                        declaration("lib.InternalApi", DeclarationKind.FUNCTION, DeclarationVisibility.INTERNAL, "/lib/Bar.kt", ":lib"),
+                        declaration(
+                            "lib.Bar",
+                            DeclarationKind.FUNCTION,
+                            DeclarationVisibility.INTERNAL,
+                            "/lib/Bar.kt",
+                            ":lib"
+                        ),
+                        declaration(
+                            "lib.InternalApi",
+                            DeclarationKind.FUNCTION,
+                            DeclarationVisibility.INTERNAL,
+                            "/lib/Bar.kt",
+                            ":lib"
+                        ),
                     ),
                 ),
             )

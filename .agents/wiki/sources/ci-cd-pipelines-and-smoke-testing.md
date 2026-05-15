@@ -1,7 +1,7 @@
 # CI/CD Pipelines and Smoke Testing
 
-This page summarizes the raw note [[CI-CD-Pipelines-and-Smoke-Testing]]. It is
-the source that makes release validation explicit.
+This page summarizes the raw note [[CI-CD-Pipelines-and-Smoke-Testing]]. It is the source that makes release validation
+explicit.
 
 ## Source
 
@@ -14,13 +14,11 @@ This source is a CI and smoke-testing note.
 
 ## Summary
 
-This note explains the GitHub Actions workflows, release pipeline, smoke
-scripts, helper scripts, and automated validation hooks that gate builds and
-releases. Its main contribution is showing how Kast validates packaging and
+This note explains the GitHub Actions workflows, release pipeline, smoke scripts, helper scripts, and automated
+validation hooks that gate builds and releases. Its main contribution is showing how Kast validates packaging and
 end-to-end behavior outside local unit and integration tests.
 
-It also shows that smoke coverage is treated as part of product reliability, not
-just CI decoration.
+It also shows that smoke coverage is treated as part of product reliability, not just CI decoration.
 
 ## Key claims
 

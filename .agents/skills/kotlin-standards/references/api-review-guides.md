@@ -7,8 +7,7 @@ Use before finalizing public or shared APIs.
 - Are expected failures typed and testable?
 - Do names repeat package context or expose implementation detail?
 - Is visibility as narrow as it can be?
-- Are mutable collections, `Any`, unchecked casts, `!!`, boolean traps, or
-  nullable flags exposed?
+- Are mutable collections, `Any`, unchecked casts, `!!`, boolean traps, or nullable flags exposed?
 - Do tests prove behavior through the public API?
 
 Fix the smallest API shape that removes the highest-risk invalid state.

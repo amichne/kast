@@ -32,13 +32,13 @@ internal class SelfManagementService(
     fun doctor(): SelfDoctorResult {
         val manifestPath = manifestStore.manifestPath()
         val manifest = manifestStore.read()
-            ?: return SelfDoctorResult(
-                installed = false,
-                manifestPath = manifestPath.toString(),
-                ok = false,
-                issues = listOf("Install manifest not found at $manifestPath"),
-                warnings = emptyList(),
-            )
+                       ?: return SelfDoctorResult(
+                           installed = false,
+                           manifestPath = manifestPath.toString(),
+                           ok = false,
+                           issues = listOf("Install manifest not found at $manifestPath"),
+                           warnings = emptyList(),
+                       )
 
         val installRoot = manifestStore.installRoot()
         val issues = mutableListOf<String>()
@@ -103,13 +103,13 @@ internal class SelfManagementService(
 
     fun uninstall(): SelfUninstallResult {
         val manifest = manifestStore.read()
-            ?: return SelfUninstallResult(
-                skipped = true,
-                removedManagedPaths = emptyList(),
-                cleanedShellRcFiles = emptyList(),
-                removedManifest = false,
-                removedInstallRoot = false,
-            )
+                       ?: return SelfUninstallResult(
+                           skipped = true,
+                           removedManagedPaths = emptyList(),
+                           cleanedShellRcFiles = emptyList(),
+                           removedManifest = false,
+                           removedInstallRoot = false,
+                       )
 
         val installRoot = manifestStore.installRoot()
         val removedManagedPaths = mutableListOf<String>()
@@ -126,7 +126,15 @@ internal class SelfManagementService(
             }
 
         val cleanedShellRcFiles = manifest.shellRcPatches
-            .mapNotNull { patch -> patch.file.takeIf { removeShellPatch(Path.of(it), patch.marker, installRoot.resolve("bin")) } }
+            .mapNotNull { patch ->
+                patch.file.takeIf {
+                    removeShellPatch(
+                        Path.of(it),
+                        patch.marker,
+                        installRoot.resolve("bin")
+                    )
+                }
+            }
             .distinct()
 
         val removedManifest = Files.deleteIfExists(manifestStore.manifestPath())
@@ -145,7 +153,10 @@ internal class SelfManagementService(
         instructions = "Re-run the installer: /bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh)\"",
     )
 
-    private fun deleteEmptyDirectoriesUpTo(directory: Path?, boundary: Path) {
+    private fun deleteEmptyDirectoriesUpTo(
+        directory: Path?,
+        boundary: Path,
+    ) {
         var current = directory
         while (current != null && current != boundary && current.startsWith(boundary)) {
             if (!Files.isDirectory(current) || Files.isSymbolicLink(current)) {
@@ -164,23 +175,20 @@ internal class SelfManagementService(
     }
 
     private fun deleteInstallRootIfEmpty(installRoot: Path): Boolean {
-        if (!Files.isDirectory(installRoot)) {
-            return false
-        }
-        return try {
+        return Files.isDirectory(installRoot) && try {
             Files.newDirectoryStream(installRoot).use { stream ->
-                if (stream.iterator().hasNext()) {
-                    false
-                } else {
-                    Files.deleteIfExists(installRoot)
-                }
+                !stream.iterator().hasNext() && Files.deleteIfExists(installRoot)
             }
         } catch (_: DirectoryNotEmptyException) {
             false
         }
     }
 
-    private fun removeShellPatch(file: Path, marker: String, installBinDir: Path): Boolean {
+    private fun removeShellPatch(
+        file: Path,
+        marker: String,
+        installBinDir: Path,
+    ): Boolean {
         if (!Files.isRegularFile(file)) {
             return false
         }
@@ -229,7 +237,13 @@ internal class SelfManagementService(
             }
         }
         if (removed) {
-            Files.writeString(file, filtered.joinToString(separator = System.lineSeparator(), postfix = System.lineSeparator()))
+            Files.writeString(
+                file,
+                filtered.joinToString(
+                    separator = System.lineSeparator(),
+                    postfix = System.lineSeparator()
+                )
+            )
         }
         return removed
     }
@@ -242,12 +256,18 @@ internal class SelfManagementService(
         Files.walkFileTree(
             path,
             object : SimpleFileVisitor<Path>() {
-                override fun visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult {
+                override fun visitFile(
+                    file: Path,
+                    attrs: BasicFileAttributes,
+                ): FileVisitResult {
                     Files.deleteIfExists(file)
                     return FileVisitResult.CONTINUE
                 }
 
-                override fun postVisitDirectory(dir: Path, exc: IOException?): FileVisitResult {
+                override fun postVisitDirectory(
+                    dir: Path,
+                    exc: IOException?,
+                ): FileVisitResult {
                     exc?.let { throw it }
                     Files.deleteIfExists(dir)
                     return FileVisitResult.CONTINUE
@@ -269,7 +289,10 @@ internal class SelfManagementService(
                 .waitFor() == 0
         }.getOrDefault(false)
 
-        private fun verifyResolveScript(repoRoot: Path, relativePath: String): String? {
+        private fun verifyResolveScript(
+            repoRoot: Path,
+            relativePath: String,
+        ): String? {
             val script = repoRoot.resolve(relativePath).normalize()
             if (!Files.isRegularFile(script)) return "Resolve script is missing: $relativePath"
             if (!Files.isExecutable(script)) return "Resolve script is not executable: $relativePath"

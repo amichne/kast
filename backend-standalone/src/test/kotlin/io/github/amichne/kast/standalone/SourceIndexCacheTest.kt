@@ -1,8 +1,8 @@
 package io.github.amichne.kast.standalone
 
+import io.github.amichne.kast.api.client.workspaceCacheDirectory
 import io.github.amichne.kast.api.contract.ModuleName
 import io.github.amichne.kast.api.contract.NormalizedPath
-import io.github.amichne.kast.api.client.workspaceCacheDirectory
 import io.github.amichne.kast.indexstore.store.cache.kastCacheDirectory
 import io.github.amichne.kast.standalone.cache.GitDeltaCandidateDetector
 import io.github.amichne.kast.standalone.cache.GitDeltaCandidates
@@ -427,9 +427,9 @@ class SourceIndexCacheTest {
             waitUntil {
                 val loaded = cache.load(sourceRoots()) ?: return@waitUntil false
                 loaded.newPaths.isEmpty() &&
-                    loaded.modifiedPaths.isEmpty() &&
-                    loaded.deletedPaths.isEmpty() &&
-                    loaded.index.candidatePathsFor("salute") == listOf(normalizedFile)
+                loaded.modifiedPaths.isEmpty() &&
+                loaded.deletedPaths.isEmpty() &&
+                loaded.index.candidatePathsFor("salute") == listOf(normalizedFile)
             }
         }
     }

@@ -1,5 +1,3 @@
-import VerifyPluginXmlPresentTask
-import WriteBackendVersionTask
 import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
@@ -80,7 +78,7 @@ fun parseTestTags(rawTags: String?): LinkedHashSet<String> =
         ?.map(String::trim)
         ?.filter(String::isNotEmpty)
         ?.toCollection(linkedSetOf())
-        ?: linkedSetOf()
+    ?: linkedSetOf()
 
 sourceSets.main {
     resources.srcDir(generatedResourcesDir)

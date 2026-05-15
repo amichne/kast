@@ -1,6 +1,5 @@
 package io.github.amichne.kast.api.client
 
-import io.github.amichne.kast.api.client.fields.*
 import com.sksamuel.hoplite.ConfigFailure
 import com.sksamuel.hoplite.ConfigResult
 import com.sksamuel.hoplite.DecoderContext
@@ -9,6 +8,8 @@ import com.sksamuel.hoplite.decoder.NullHandlingDecoder
 import com.sksamuel.hoplite.fp.flatMap
 import com.sksamuel.hoplite.fp.invalid
 import com.sksamuel.hoplite.fp.valid
+import io.github.amichne.kast.api.client.fields.ConfigurationField
+import io.github.amichne.kast.api.client.fields.OptionalConfigString
 import kotlin.reflect.KFunction
 import kotlin.reflect.KParameter
 import kotlin.reflect.KType

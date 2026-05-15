@@ -67,7 +67,10 @@ class IntelliJReferenceIndexEnvironmentTest {
 
         val rows = PsiReferenceScanner(environment).scanFileReferences(callerFile.virtualFile.path)
 
-        assertTrue(environment.allFilePaths().contains(Path.of(targetFile.virtualFile.path).toAbsolutePath().normalize().toString()))
+        assertTrue(
+            environment.allFilePaths()
+                .contains(Path.of(targetFile.virtualFile.path).toAbsolutePath().normalize().toString())
+        )
         assertTrue(rows.any { row -> row.targetFqName == "demo.target" && row.sourcePath == callerFile.virtualFile.path })
     }
 

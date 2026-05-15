@@ -1,13 +1,8 @@
 package io.github.amichne.kast.api.contract
 
-import io.github.amichne.kast.api.docs.DocField
-import io.github.amichne.kast.api.protocol.*
-
+import io.github.amichne.kast.api.protocol.ValidationException
 import java.nio.file.Files
 import java.nio.file.Path
-
-
-
 
 /**
  * A file-system path that has been normalized to an absolute, canonical form.
@@ -88,10 +83,10 @@ value class NormalizedPath private constructor(val value: String) : Comparable<N
                 existingAncestor = existingAncestor.parent
             }
             val normalizedAncestor = existingAncestor
-                ?.let { ancestor ->
-                    runCatching { ancestor.toRealPath().normalize() }.getOrDefault(ancestor)
-                }
-                ?: return path
+                                         ?.let { ancestor ->
+                                             runCatching { ancestor.toRealPath().normalize() }.getOrDefault(ancestor)
+                                         }
+                                     ?: return path
             return normalizedAncestor.resolve(existingAncestor.relativize(path)).normalize()
         }
     }

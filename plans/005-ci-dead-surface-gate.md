@@ -1,12 +1,16 @@
 ## Objective
-Add build-time and CI-time checks that guarantee no defunct surface can leak back into the codebase. This is the lock that prevents accidental re-introduction of deleted patterns.
+
+Add build-time and CI-time checks that guarantee no defunct surface can leak back into the codebase. This is the lock
+that prevents accidental re-introduction of deleted patterns.
 
 ## Repository: michne/kast
 
 ## Files to create/modify
 
 ### 1. New file: `kast-cli/src/test/kotlin/io/github/amichne/kast/cli/tty/VisibleSurfaceAuditTest.kt`
+
 A test that asserts the exact set of visible CLI commands:
+
 ```kotlin
 @Test
 fun `visible commands match v1 surface`() {
@@ -31,6 +35,7 @@ fun `visible commands match v1 surface`() {
 ```
 
 Also add a negative assertion:
+
 ```kotlin
 @Test
 fun `no defunct analysis commands are visible`() {
@@ -48,7 +53,9 @@ fun `no defunct analysis commands are visible`() {
 ```
 
 ### 2. New file: `kast-cli/src/test/kotlin/io/github/amichne/kast/cli/tty/NoDefunctImportsTest.kt`
+
 A test that scans main source files for banned import patterns:
+
 ```kotlin
 @Test
 fun `no main sources import deleted wrapper types`() {
@@ -80,7 +87,9 @@ fun `no main sources import deleted wrapper types`() {
 ```
 
 ### 3. New file: `.github/scripts/audit-cli-surface.sh`
+
 A shell script for CI that checks for banned patterns across the entire repo:
+
 ```bash
 #!/usr/bin/env bash
 set -euo pipefail
@@ -113,21 +122,29 @@ echo "CLI surface audit passed."
 ```
 
 ### 4. CI integration
-Add the audit script to the existing CI workflow (likely `.github/workflows/` — find the main CI workflow file and add a step):
+
+Add the audit script to the existing CI workflow (likely `.github/workflows/` — find the main CI workflow file and add a
+step):
+
 ```yaml
 - name: Audit CLI surface
   run: bash .github/scripts/audit-cli-surface.sh
 ```
 
 ### 5. `.github/extensions/kast/extension.mjs` — tool handler audit
+
 Add a comment block at the top of the tools array:
+
 ```js
 // SURFACE AUDIT: All tool handlers MUST use callKast(method, params).
 // Do NOT add callKastSkill — it was removed in the v1 surface cleanup.
 ```
 
 ## Verification gate
+
 - `./gradlew :kast-cli:test` passes including the new audit tests
 - `.github/scripts/audit-cli-surface.sh` exits 0
-- Manually add a test: temporarily re-introduce a `SkillWrapperName` import in a main source file → verify the audit test fails → revert
-- Manually add a test: temporarily add a visible command called "resolve" to the catalog → verify the surface audit test fails → revert
+- Manually add a test: temporarily re-introduce a `SkillWrapperName` import in a main source file → verify the audit
+  test fails → revert
+- Manually add a test: temporarily add a visible command called "resolve" to the catalog → verify the surface audit test
+  fails → revert

@@ -62,7 +62,10 @@ internal object SkillEvalEngine {
         )
     }
 
-    fun compareResults(before: EvalResult, after: EvalResult): ComparisonResult {
+    fun compareResults(
+        before: EvalResult,
+        after: EvalResult,
+    ): ComparisonResult {
         val beforeFailIds = before.checks.filter { it.status == EvalStatus.FAIL }.map { it.id }.toSet()
         val afterFailIds = after.checks.filter { it.status == EvalStatus.FAIL }.map { it.id }.toSet()
 
@@ -108,7 +111,11 @@ internal object SkillEvalEngine {
         deferredBand = tokenBand(budget.deferredTokens, BudgetThresholds.DEFERRED_GOOD, BudgetThresholds.DEFERRED_FAIR),
     )
 
-    private fun tokenBand(tokens: Int, goodMax: Int, fairMax: Int): BudgetBand = when {
+    private fun tokenBand(
+        tokens: Int,
+        goodMax: Int,
+        fairMax: Int,
+    ): BudgetBand = when {
         tokens <= goodMax -> BudgetBand.GOOD
         tokens <= fairMax -> BudgetBand.FAIR
         else -> BudgetBand.POOR
@@ -121,7 +128,10 @@ internal object SkillEvalEngine {
         total = checks.size,
     )
 
-    private fun buildWhyBullets(checks: List<EvalCheck>, deductions: List<Deduction>): List<String> {
+    private fun buildWhyBullets(
+        checks: List<EvalCheck>,
+        deductions: List<Deduction>,
+    ): List<String> {
         val bullets = mutableListOf<String>()
         val failCount = deductions.count { it.points == ERROR_DEDUCTION }
         val warnCount = deductions.count { it.points == WARNING_DEDUCTION }
@@ -132,7 +142,10 @@ internal object SkillEvalEngine {
         return bullets
     }
 
-    private fun findFixFirst(checks: List<EvalCheck>, deductions: List<Deduction>): String? {
+    private fun findFixFirst(
+        checks: List<EvalCheck>,
+        deductions: List<Deduction>,
+    ): String? {
         val worstDeduction = deductions.maxByOrNull { it.points } ?: return null
         return "${worstDeduction.checkId}: ${worstDeduction.reason}"
     }
@@ -140,7 +153,10 @@ internal object SkillEvalEngine {
     private fun findWatchNext(checks: List<EvalCheck>): String? =
         checks.firstOrNull { it.status == EvalStatus.WARN }?.let { "${it.id}: ${it.message}" }
 
-    private fun buildImprovementBrief(checks: List<EvalCheck>, deductions: List<Deduction>): ImprovementBrief {
+    private fun buildImprovementBrief(
+        checks: List<EvalCheck>,
+        deductions: List<Deduction>,
+    ): ImprovementBrief {
         val findings = deductions.map { "${it.checkId}: ${it.reason} (-${it.points})" }
         val prompt = if (findings.isEmpty()) {
             "All checks pass. Consider expanding coverage."

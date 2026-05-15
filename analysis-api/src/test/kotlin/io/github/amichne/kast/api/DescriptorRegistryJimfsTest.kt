@@ -143,7 +143,7 @@ class DescriptorRegistryJimfsTest {
 
         val workspace1 = "${fixture.root}workspace-a"
         val workspace2 = "${fixture.root}workspace-b"
-        val d1 = descriptor(workspaceRoot = workspace1, backendName = "standalone")
+        val d1 = descriptor(workspaceRoot = workspace1)
         val d2 = descriptor(workspaceRoot = workspace2, backendName = "intellij")
 
         registry.register(d1)

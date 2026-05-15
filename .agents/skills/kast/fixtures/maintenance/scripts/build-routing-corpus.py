@@ -356,7 +356,7 @@ def parse_html_export(path: Path) -> list[RoutingCase]:
             grep_like_commands += 1
         if tool_name == "view" and any(
             marker in content_text
-            for marker in (".kast-version", "wrapper-openapi.yaml")
+            for marker in (".kast-version", "commands.json")
         ):
             contract_reference_reads += 1
         if tool_name != "bash" and SCHEMA_FRICTION_RE.search(content_text) and "kast" in loaded_skills:

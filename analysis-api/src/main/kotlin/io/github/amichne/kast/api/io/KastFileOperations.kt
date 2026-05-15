@@ -24,7 +24,10 @@ interface KastFileOperations {
      * @param path String path to the file
      * @param content Text content to write
      */
-    fun writeText(path: String, content: String)
+    fun writeText(
+        path: String,
+        content: String,
+    )
 
     /**
      * Check whether a file or directory exists at the given path.
@@ -91,7 +94,10 @@ interface KastFileOperations {
      *         does not support atomic moves (e.g., moving across filesystem boundaries)
      * @throws java.io.IOException for other I/O errors during the move operation
      */
-    fun moveAtomic(sourcePath: String, destPath: String)
+    fun moveAtomic(
+        sourcePath: String,
+        destPath: String,
+    )
 
     /**
      * Execute a block while holding an exclusive lock on a file path.
@@ -132,7 +138,10 @@ interface KastFileOperations {
      * @param block Code to execute while holding the lock
      * @return Result of the block execution
      */
-    fun <T> withLock(path: String, block: () -> T): T
+    fun <T> withLock(
+        path: String,
+        block: () -> T,
+    ): T
 }
 
 /**
@@ -147,7 +156,10 @@ object LocalDiskFileOperations : KastFileOperations {
         return java.nio.file.Files.readString(pathObj)
     }
 
-    override fun writeText(path: String, content: String) {
+    override fun writeText(
+        path: String,
+        content: String,
+    ) {
         val pathObj = java.nio.file.Path.of(path)
         // Create parent directories if needed
         pathObj.parent?.let { parent ->
@@ -197,7 +209,10 @@ object LocalDiskFileOperations : KastFileOperations {
         return tempFile.toAbsolutePath().toString()
     }
 
-    override fun moveAtomic(sourcePath: String, destPath: String) {
+    override fun moveAtomic(
+        sourcePath: String,
+        destPath: String,
+    ) {
         val sourcePathObj = java.nio.file.Path.of(sourcePath)
         val destPathObj = java.nio.file.Path.of(destPath)
 
@@ -211,7 +226,10 @@ object LocalDiskFileOperations : KastFileOperations {
         )
     }
 
-    override fun <T> withLock(path: String, block: () -> T): T {
+    override fun <T> withLock(
+        path: String,
+        block: () -> T,
+    ): T {
         val lockPath = java.nio.file.Path.of("$path.lock")
 
         // Ensure parent directory exists for lock file

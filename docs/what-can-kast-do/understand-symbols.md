@@ -7,24 +7,19 @@ icon: lucide/search
 
 # Understand symbols
 
-These are the operations that answer "what is this?" Each one takes a
-position or a name and returns structured JSON about the declaration
-the compiler sees there. Together they let you pin a symbol to a
-unique identity, walk a file's declaration tree, search the workspace
-by name, and list every concrete implementation of an interface.
+These are the operations that answer "what is this?" Each one takes a position or a name and returns structured JSON
+about the declaration the compiler sees there. Together they let you pin a symbol to a unique identity, walk a file's
+declaration tree, search the workspace by name, and list every concrete implementation of an interface.
 
 ## Resolve a symbol
 
-Point `kast` at a byte offset in a Kotlin file. It doesn't grep — it
-resolves the declaration the compiler sees at that position. Three
-fields uniquely identify the symbol: `fqName`, `kind`, `location`.
-Everything else (return type, parameters, containing declaration)
+Point `kast` at a byte offset in a Kotlin file. It doesn't grep — it resolves the declaration the compiler sees at that
+position. Three fields uniquely identify the symbol: `fqName`, `kind`, `location`. Everything else (return type,
+parameters, containing declaration)
 hangs off that triple.
 
-This is what makes `kast` different from text matching. Two functions
-named `process` in different classes get two different `fqName`s.
-Overloads at a call site resolve to the right overload because the
-compiler picked it.
+This is what makes `kast` different from text matching. Two functions named `process` in different classes get two
+different `fqName`s. Overloads at a call site resolve to the right overload because the compiler picked it.
 
 === "CLI"
 
@@ -76,21 +71,18 @@ compiler picked it.
 }
 ```
 
-`--offset` is a zero-based byte offset. Get it from your editor's
-cursor or compute it from a line and column. `kast` resolves through
-references — point at a call site and you get the declaration the
-call resolves to, not the call itself.
+`--offset` is a zero-based byte offset. Get it from your editor's cursor or compute it from a line and column. `kast`
+resolves through references — point at a call site and you get the declaration the call resolves to, not the call
+itself.
 
 ## Outline a file
 
-`outline` returns a nested declaration tree for one file. Each node
-is the same `Symbol` shape as `resolve`. Children nest inside their
-parent. Function parameters, anonymous elements, and local
-declarations are excluded — what you get is the file's named
-structure.
+`outline` returns a nested declaration tree for one file. Each node is the same `Symbol` shape as `resolve`. Children
+nest inside their parent. Function parameters, anonymous elements, and local declarations are excluded — what you get is
+the file's named structure.
 
-Use it for a quick map of a file without reading the source. Agents
-use it to pick which offset to feed `resolve` or `references`.
+Use it for a quick map of a file without reading the source. Agents use it to pick which offset to feed `resolve` or
+`references`.
 
 === "CLI"
 
@@ -168,19 +160,16 @@ use it to pick which offset to feed `resolve` or `references`.
 }
 ```
 
-`children` nests recursively. A class contains its members, an inner
-class contains its own, and so on. Empty `children` means no nested
-named declarations.
+`children` nests recursively. A class contains its members, an inner class contains its own, and so on. Empty `children`
+means no nested named declarations.
 
 ## Search the workspace by name
 
-`workspace-symbol` finds declarations across the workspace by name.
-Substring match by default; narrow with `--kind`, switch to regex
-with `--regex=true`.
+`workspace-symbol` finds declarations across the workspace by name. Substring match by default; narrow with `--kind`,
+switch to regex with `--regex=true`.
 
-Reach for it when you know the name (or part of it) but not the file.
-Agents use it as a discovery step before calling `resolve` on a
-specific match.
+Reach for it when you know the name (or part of it) but not the file. Agents use it as a discovery step before calling
+`resolve` on a specific match.
 
 === "CLI"
 
@@ -249,15 +238,13 @@ specific match.
 ```
 
 When results exceed `maxResults`, `page.truncated` flips to `true`
-and you get a `nextPageToken`. Always check `page.truncated` before
-claiming you have every match.
+and you get a `nextPageToken`. Always check `page.truncated` before claiming you have every match.
 
 ## Find implementations
 
-`implementations` takes a position on an interface or abstract class
-and returns every concrete implementation in the workspace. Each
-result carries its `supertypes` chain so you can see the full
-inheritance path. The `exhaustive` flag tells you whether `kast`
+`implementations` takes a position on an interface or abstract class and returns every concrete implementation in the
+workspace. Each result carries its `supertypes` chain so you can see the full inheritance path. The `exhaustive` flag
+tells you whether `kast`
 found every implementation within the result cap.
 
 === "CLI"
@@ -309,19 +296,13 @@ found every implementation within the result cap.
 }
 ```
 
-`exhaustive: true` means `kast` found every implementation within
-the `maxResults` limit. `false` means more exist than the cap allowed
-— raise `maxResults` or paginate. `supertypes` lists the immediate
-supertypes of each implementation, which is what you want when an
-inheritance chain runs through intermediate abstract classes or
-mixins.
+`exhaustive: true` means `kast` found every implementation within the `maxResults` limit. `false` means more exist than
+the cap allowed — raise `maxResults` or paginate. `supertypes` lists the immediate supertypes of each implementation,
+which is what you want when an inheritance chain runs through intermediate abstract classes or mixins.
 
 ## Next steps
 
-You can identify symbols and browse the declaration landscape. Now
-trace how they're used and change them safely.
+You can identify symbols and browse the declaration landscape. Now trace how they're used and change them safely.
 
-- [Trace usage](trace-usage.md) — every reference, with exhaustiveness
-  proof, plus call hierarchies
-- [Refactor safely](refactor-safely.md) — plan and apply renames with
-  hash-based conflict detection
+- [Trace usage](trace-usage.md) — every reference, with exhaustiveness proof, plus call hierarchies
+- [Refactor safely](refactor-safely.md) — plan and apply renames with hash-based conflict detection

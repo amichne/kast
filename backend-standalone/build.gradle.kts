@@ -1,9 +1,5 @@
 import org.gradle.jvm.tasks.Jar
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import ExtractIdeaDistributionTask
-import ExtractLegacyPluginClassesTask
-import ShrinkRuntimeLibsTask
-import WriteWrapperScriptTask
 
 plugins {
     id("kast.standalone-serialization-app")

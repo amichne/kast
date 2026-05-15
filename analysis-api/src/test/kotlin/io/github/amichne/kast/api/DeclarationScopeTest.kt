@@ -2,8 +2,7 @@ package io.github.amichne.kast.api.contract
 
 import io.github.amichne.kast.api.contract.query.SymbolQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
-import io.github.amichne.kast.api.protocol.*
-
+import io.github.amichne.kast.api.protocol.SCHEMA_VERSION
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull

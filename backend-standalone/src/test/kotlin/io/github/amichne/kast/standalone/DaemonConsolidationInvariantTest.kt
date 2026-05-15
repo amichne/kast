@@ -2,7 +2,6 @@ package io.github.amichne.kast.standalone
 
 import io.github.amichne.kast.indexstore.store.cache.kastCacheDirectory
 import org.junit.jupiter.api.Assertions.assertDoesNotThrow
-import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
@@ -38,7 +37,7 @@ class DaemonConsolidationInvariantTest {
             session.awaitInitialSourceIndex()
             assertTrue(session.isInitialSourceIndexReady()) {
                 "Initial source index should be ready after awaiting — " +
-                    "the daemon relies on eager indexing at session creation"
+                "the daemon relies on eager indexing at session creation"
             }
         }
     }
@@ -66,7 +65,7 @@ class DaemonConsolidationInvariantTest {
             if (!session.isEnrichmentComplete()) {
                 assertTrue(session.isInitialSourceIndexReady()) {
                     "Index must be ready before enrichment finishes — " +
-                        "the daemon should be servable while still enriching"
+                    "the daemon should be servable while still enriching"
                 }
             }
         }
@@ -145,7 +144,10 @@ class DaemonConsolidationInvariantTest {
         }
     }
 
-    private fun writeSourceFile(relativePath: String, content: String): Path {
+    private fun writeSourceFile(
+        relativePath: String,
+        content: String,
+    ): Path {
         val file = workspaceRoot.resolve("src/main/kotlin").resolve(relativePath)
         file.parent.createDirectories()
         file.writeText(content)

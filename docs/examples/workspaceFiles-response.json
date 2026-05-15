@@ -1,19 +1,19 @@
 {
-    "result": {
-        "modules": [
-            {
-                "name": "fake-module",
-                "sourceRoots": [
-                    "/workspace/src"
-                ],
-                "dependencyModuleNames": [],
-                "files": [],
-                "filesTruncated": false,
-                "fileCount": 2
-            }
+  "result": {
+    "modules": [
+      {
+        "name": "fake-module",
+        "sourceRoots": [
+          "/workspace/src"
         ],
-        "schemaVersion": 3
-    },
-    "id": 1,
-    "jsonrpc": "2.0"
+        "dependencyModuleNames": [],
+        "files": [],
+        "filesTruncated": false,
+        "fileCount": 2
+      }
+    ],
+    "schemaVersion": 3
+  },
+  "id": 1,
+  "jsonrpc": "2.0"
 }

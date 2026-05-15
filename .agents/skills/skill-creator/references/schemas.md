@@ -2,13 +2,15 @@
 
 These are the durable data shapes used by the model-agnostic evaluation scaffold.
 
-`scripts/quick_validate.py` and the eval helper scripts enforce these shapes programmatically. Treat the file locations below as part of the contract, not loose examples.
+`scripts/quick_validate.py` and the eval helper scripts enforce these shapes programmatically. Treat the file locations
+below as part of the contract, not loose examples.
 
 ## Directory contract
 
 - Durable suite files live in `evals/` and `history/` only.
 - Referenced input fixtures must live under `evals/files/`.
-- Transient benchmark artifacts belong in a separate workspace (or a root `benchmarks/` / `workspaces/` directory), not beside `SKILL.md`.
+- Transient benchmark artifacts belong in a separate workspace (or a root `benchmarks/` / `workspaces/` directory), not
+  beside `SKILL.md`.
 - If a skill has `evals/`, it should also have `history/progression.json`.
 
 ---
@@ -88,8 +90,8 @@ Raw intake queue for new issues. One JSON object per line.
 }
 ```
 
-`scripts/merge_pain_points.py` turns these into `candidate` entries in `evals/catalog.json`.
-Each record should include `source.kind` and a `suggested_eval` payload so the merge step can stay deterministic.
+`scripts/merge_pain_points.py` turns these into `candidate` entries in `evals/catalog.json`. Each record should include
+`source.kind` and a `suggested_eval` payload so the merge step can stay deterministic.
 
 ---
 
@@ -147,7 +149,8 @@ Output from `scripts/ingest_copilot_events.py`.
 }
 ```
 
-Use this as the durable transcript adapter output. It is intentionally richer than the eval catalog so future tooling can derive new views from it.
+Use this as the durable transcript adapter output. It is intentionally richer than the eval catalog so future tooling
+can derive new views from it.
 
 ---
 
@@ -195,7 +198,8 @@ Ledger of accepted and rejected benchmark decisions.
 }
 ```
 
-When a skill has a persistent eval suite, this file is required. It is the non-regression proof trail, not optional bookkeeping.
+When a skill has a persistent eval suite, this file is required. It is the non-regression proof trail, not optional
+bookkeeping.
 
 ---
 
@@ -215,8 +219,8 @@ Per-run metadata kept beside an eval directory.
 }
 ```
 
-Use the same `eval_id` as `catalog.json` so benchmarks can be joined back to the suite.
-Each eval directory in a benchmark workspace should carry this file so the benchmark and viewer can resolve stable eval identity.
+Use the same `eval_id` as `catalog.json` so benchmarks can be joined back to the suite. Each eval directory in a
+benchmark workspace should carry this file so the benchmark and viewer can resolve stable eval identity.
 
 ---
 
@@ -255,8 +259,8 @@ Output from the grader.
 }
 ```
 
-The viewer expects `expectations[].text`, `expectations[].passed`, and `expectations[].evidence`.
-The benchmark and review tooling should reject grading outputs that omit these fields.
+The viewer expects `expectations[].text`, `expectations[].passed`, and `expectations[].evidence`. The benchmark and
+review tooling should reject grading outputs that omit these fields.
 
 ---
 
@@ -318,7 +322,8 @@ Aggregated benchmark output.
 ```
 
 `scripts/progression_gate.py` reads this file and uses the selected primary configuration as the candidate being judged.
-For consolidation work, include the merged candidate and each legacy sibling as separate configurations in the same benchmark so follow-on proof tooling can compare them on the combined eval set.
+For consolidation work, include the merged candidate and each legacy sibling as separate configurations in the same
+benchmark so follow-on proof tooling can compare them on the combined eval set.
 
 ---
 

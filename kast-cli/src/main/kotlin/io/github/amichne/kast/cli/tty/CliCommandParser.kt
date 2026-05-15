@@ -1,43 +1,43 @@
 package io.github.amichne.kast.cli.tty
 
-import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
+import io.github.amichne.kast.api.client.StandaloneServerOptions
 import io.github.amichne.kast.api.contract.CallDirection
+import io.github.amichne.kast.api.contract.FilePosition
+import io.github.amichne.kast.api.contract.NormalizedPath
+import io.github.amichne.kast.api.contract.PositiveLong
+import io.github.amichne.kast.api.contract.SemanticInsertionQuery
+import io.github.amichne.kast.api.contract.SemanticInsertionTarget
+import io.github.amichne.kast.api.contract.SymbolKind
+import io.github.amichne.kast.api.contract.TypeHierarchyDirection
+import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
 import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
 import io.github.amichne.kast.api.contract.query.CodeActionsQuery
 import io.github.amichne.kast.api.contract.query.CompletionsQuery
 import io.github.amichne.kast.api.contract.query.DiagnosticsQuery
 import io.github.amichne.kast.api.contract.query.FileOutlineQuery
-import io.github.amichne.kast.api.contract.FilePosition
-import io.github.amichne.kast.api.contract.NormalizedPath
-import io.github.amichne.kast.api.contract.PositiveLong
-import io.github.amichne.kast.api.contract.query.ImportOptimizeQuery
 import io.github.amichne.kast.api.contract.query.ImplementationsQuery
+import io.github.amichne.kast.api.contract.query.ImportOptimizeQuery
 import io.github.amichne.kast.api.contract.query.ReferencesQuery
 import io.github.amichne.kast.api.contract.query.RefreshQuery
 import io.github.amichne.kast.api.contract.query.RenameQuery
-import io.github.amichne.kast.api.contract.SemanticInsertionQuery
-import io.github.amichne.kast.api.contract.SemanticInsertionTarget
-import io.github.amichne.kast.api.client.StandaloneServerOptions
-import io.github.amichne.kast.api.contract.SymbolKind
 import io.github.amichne.kast.api.contract.query.SymbolQuery
-import io.github.amichne.kast.api.contract.TypeHierarchyDirection
 import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
-import io.github.amichne.kast.cli.options.DaemonStartOptions
+import io.github.amichne.kast.cli.SmokeOutputFormat
 import io.github.amichne.kast.cli.options.BackendName
+import io.github.amichne.kast.cli.options.DaemonStartOptions
 import io.github.amichne.kast.cli.options.InstallCopilotExtensionOptions
 import io.github.amichne.kast.cli.options.InstallOptions
 import io.github.amichne.kast.cli.options.InstallSkillOptions
 import io.github.amichne.kast.cli.options.RuntimeCommandOptions
 import io.github.amichne.kast.cli.options.SmokeOptions
-import io.github.amichne.kast.cli.SmokeOutputFormat
-import io.github.amichne.kast.cli.skill.SkillWrapperName
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import java.nio.file.Path
 import kotlin.io.path.readText
+
 internal class CliCommandParser(
     private val json: Json,
 ) {
@@ -53,7 +53,10 @@ internal class CliCommandParser(
             return CliCommand.Help(parsed.positionals.drop(1))
         }
         if (parsed.flags.contains(VERSION_FLAG) || parsed.positionals == listOf("version")) {
-            if (parsed.options.isNotEmpty() || parsed.positionals.size > 1 || (parsed.positionals.isNotEmpty() && parsed.positionals != listOf("version"))) {
+            if (parsed.options.isNotEmpty() || parsed.positionals.size > 1 || (parsed.positionals.isNotEmpty() && parsed.positionals != listOf(
+                    "version"
+                ))
+            ) {
                 throw CliFailure(
                     code = "CLI_USAGE",
                     message = "--version does not accept additional arguments",
@@ -70,13 +73,8 @@ internal class CliCommandParser(
             )
         }
 
-        if (parsed.positionals.firstOrNull() == "skill") {
-            return parseSkillCommand(parsed)
-        }
-        parseDirectSkillWrapperCommand(parsed)?.let { return it }
-
         val metadata = CliCommandCatalog.find(parsed.positionals)
-            ?: parsed.variableArityMetadata()
+                       ?: parsed.variableArityMetadata()
         if (metadata != null) {
             return parseKnownCommand(metadata, parsed)
         }
@@ -99,39 +97,17 @@ internal class CliCommandParser(
             when (metadata.path) {
                 listOf("workspace", "status") -> CliCommand.WorkspaceStatus(parsed.runtimeOptions())
                 listOf("workspace", "ensure") -> CliCommand.WorkspaceEnsure(parsed.runtimeOptions())
-                listOf("workspace", "refresh") -> CliCommand.WorkspaceRefresh(parsed.runtimeOptions(), parsed.refreshQuery(json))
                 listOf("workspace", "stop") -> CliCommand.WorkspaceStop(parsed.runtimeOptions())
-                listOf("workspace", "files") -> CliCommand.WorkspaceFiles(parsed.runtimeOptions(), parsed.workspaceFilesQuery(json))
                 listOf("completion", "bash") -> CliCommand.Completion(CliCompletionShell.BASH)
                 listOf("completion", "zsh") -> CliCommand.Completion(CliCompletionShell.ZSH)
                 listOf("capabilities") -> CliCommand.Capabilities(parsed.runtimeOptions())
-                listOf("resolve") -> CliCommand.ResolveSymbol(parsed.runtimeOptions(), parsed.symbolQuery(json))
-                listOf("references") -> CliCommand.FindReferences(parsed.runtimeOptions(), parsed.referencesQuery(json))
-                listOf("call-hierarchy") -> CliCommand.CallHierarchy(parsed.runtimeOptions(), parsed.callHierarchyQuery(json))
-                listOf("type-hierarchy") -> CliCommand.TypeHierarchy(
-                    parsed.withoutOption("max-results").runtimeOptions(),
-                    parsed.typeHierarchyQuery(json),
-                )
-                listOf("insertion-point") -> CliCommand.SemanticInsertionPoint(
-                    parsed.runtimeOptions(),
-                    parsed.semanticInsertionQuery(json),
-                )
-                listOf("diagnostics") -> CliCommand.Diagnostics(parsed.runtimeOptions(), parsed.diagnosticsQuery(json))
-                listOf("outline") -> CliCommand.FileOutline(parsed.runtimeOptions(), parsed.fileOutlineQuery(json))
-                listOf("workspace-symbol") -> CliCommand.WorkspaceSymbol(parsed.withoutOption("max-results").runtimeOptions(), parsed.workspaceSymbolQuery(json))
-                listOf("workspace-search") -> CliCommand.WorkspaceSearch(parsed.withoutOption("max-results").runtimeOptions(), parsed.workspaceSearchQuery(json))
-                listOf("implementations") -> CliCommand.Implementations(parsed.withoutOption("max-results").runtimeOptions(), parsed.implementationsQuery(json))
-                listOf("code-actions") -> CliCommand.CodeActions(parsed.runtimeOptions(), parsed.codeActionsQuery(json))
-                listOf("completions") -> CliCommand.Completions(parsed.withoutOption("max-results").runtimeOptions(), parsed.completionsQuery(json))
-                listOf("rename") -> CliCommand.Rename(parsed.runtimeOptions(), parsed.renameQuery(json))
-                listOf("optimize-imports") -> CliCommand.ImportOptimize(
-                    parsed.runtimeOptions(),
-                    parsed.importOptimizeQuery(json),
-                )
-                listOf("apply-edits") -> CliCommand.ApplyEdits(parsed.runtimeOptions(), parsed.applyEditsQuery(json))
                 listOf("install") -> CliCommand.Install(parsed.installOptions())
                 listOf("install", "skill") -> CliCommand.InstallSkill(parsed.installSkillOptions())
-                listOf("install", "copilot-extension") -> CliCommand.InstallCopilotExtension(parsed.installCopilotExtensionOptions())
+                listOf(
+                    "install",
+                    "copilot-extension"
+                ),
+                    -> CliCommand.InstallCopilotExtension(parsed.installCopilotExtensionOptions())
                 listOf("self", "status") -> CliCommand.SelfStatus
                 listOf("self", "doctor") -> CliCommand.SelfDoctor
                 listOf("self", "uninstall") -> CliCommand.SelfUninstall
@@ -142,11 +118,11 @@ internal class CliCommandParser(
                 listOf("config", "init") -> CliCommand.ConfigInit
                 listOf("rpc") -> {
                     val rawJson = parsed.positionals.getOrNull(1)
-                        ?: parsed.options["request-file"]?.let { Path.of(it).readText().trim() }
-                        ?: throw CliFailure(
-                            code = "CLI_USAGE",
-                            message = "rpc requires a JSON-RPC string argument or --request-file",
-                        )
+                                  ?: parsed.options["request-file"]?.let { Path.of(it).readText().trim() }
+                                  ?: throw CliFailure(
+                                      code = "CLI_USAGE",
+                                      message = "rpc requires a JSON-RPC string argument or --request-file",
+                                  )
                     val workspaceRootOverride = parsed.options["workspace-root"]
                         ?.let { Path.of(it).toAbsolutePath().normalize() }
                     CliCommand.Rpc(rawJson, workspaceRootOverride)
@@ -241,43 +217,6 @@ internal class CliCommandParser(
         }
     }
 
-    private fun parseSkillCommand(parsed: ParsedArguments): CliCommand {
-        val positionals = parsed.positionals
-        if (positionals.size < 2) {
-            return CliCommand.Help(listOf("skill"))
-        }
-        val wrapperCliName = positionals[1]
-        val wrapperName = SkillWrapperName.fromCliName(wrapperCliName)
-            ?: throw CliFailure(
-                code = "CLI_USAGE",
-                message = "Unknown skill wrapper: $wrapperCliName. " +
-                    "Valid wrappers: ${SkillWrapperName.entries.joinToString { it.cliName }}",
-            )
-        if (positionals.size < 3) {
-            throw CliFailure(
-                code = "CLI_USAGE",
-                message = "Skill wrapper '$wrapperCliName' requires a JSON argument (literal or file path)",
-            )
-        }
-        val rawInput = positionals[2]
-        return CliCommand.Skill(name = wrapperName, rawInput = rawInput)
-    }
-
-    private fun parseDirectSkillWrapperCommand(parsed: ParsedArguments): CliCommand? {
-        val positionals = parsed.positionals
-        if (positionals.size != 2 || parsed.options.isNotEmpty()) {
-            return null
-        }
-        val wrapperName = SkillWrapperName.fromCliName(positionals[0]) ?: return null
-        val nextToken = positionals[1]
-        val collidesWithVisibleSubcommand = CliCommandCatalog.commandsUnder(listOf(wrapperName.cliName))
-            .any { it.path.getOrNull(1) == nextToken }
-        if (collidesWithVisibleSubcommand) {
-            return null
-        }
-        return CliCommand.Skill(name = wrapperName, rawInput = nextToken)
-    }
-
     private companion object {
         const val HELP_FLAG = "help"
         const val VERSION_FLAG = "version"
@@ -367,15 +306,15 @@ internal data class ParsedArguments(
         requestFileKey = "request-file",
         json = json,
     ) {
-            ReferencesQuery(
-                position = FilePosition(
-                    filePath = absoluteFilePath(requireOption("file-path")),
-                    offset = requireInt("offset"),
-                ),
-                includeDeclaration = optionalBoolean("include-declaration", false),
-                includeUsageSiteScope = optionalBoolean("include-usage-site-scope", false),
-            )
-        }
+        ReferencesQuery(
+            position = FilePosition(
+                filePath = absoluteFilePath(requireOption("file-path")),
+                offset = requireInt("offset"),
+            ),
+            includeDeclaration = optionalBoolean("include-declaration", false),
+            includeUsageSiteScope = optionalBoolean("include-usage-site-scope", false),
+        )
+    }
 
     fun diagnosticsQuery(json: Json): DiagnosticsQuery = requestOrFile(
         serializer = DiagnosticsQuery.serializer(),
@@ -536,11 +475,11 @@ internal data class ParsedArguments(
                 ?.filter(String::isNotBlank)
                 ?.map { raw ->
                     SymbolKind.entries.firstOrNull { it.name.equals(raw, ignoreCase = true) }
-                        ?: throw CliFailure(
-                            code = "CLI_USAGE",
-                            message = "Unknown symbol kind in --kind-filter: $raw. " +
-                                "Valid values: ${SymbolKind.entries.joinToString { it.name }}",
-                        )
+                    ?: throw CliFailure(
+                        code = "CLI_USAGE",
+                        message = "Unknown symbol kind in --kind-filter: $raw. " +
+                                  "Valid values: ${SymbolKind.entries.joinToString { it.name }}",
+                    )
                 }
                 ?.toSet()
                 ?.takeIf { it.isNotEmpty() },
@@ -581,10 +520,10 @@ internal data class ParsedArguments(
             pattern = requireOption("pattern"),
             kind = options["kind"]?.let { raw ->
                 SymbolKind.entries.firstOrNull { it.name.equals(raw, ignoreCase = true) }
-                    ?: throw CliFailure(
-                        code = "CLI_USAGE",
-                        message = "Unknown symbol kind: $raw. Valid values: ${SymbolKind.entries.joinToString { it.name }}",
-                    )
+                ?: throw CliFailure(
+                    code = "CLI_USAGE",
+                    message = "Unknown symbol kind: $raw. Valid values: ${SymbolKind.entries.joinToString { it.name }}",
+                )
             },
             maxResults = optionalInt("max-results", 100),
             regex = optionalBoolean("regex", false),
@@ -648,8 +587,8 @@ internal data class ParsedArguments(
             )
         }
         val format = options["format"]
-            ?.takeIf(String::isNotBlank)
-            ?.let(SmokeOutputFormat.Companion::fromCliValue)
+                         ?.takeIf(String::isNotBlank)
+                         ?.let(SmokeOutputFormat.Companion::fromCliValue)
                      ?: SmokeOutputFormat.JSON
         if (options["format"] != null && SmokeOutputFormat.fromCliValue(checkNotNull(options["format"])) == null) {
             throw CliFailure(
@@ -696,10 +635,10 @@ internal data class ParsedArguments(
 
     fun evalSkillOptions(): EvalSkillOptions {
         val skillDir = options["skill-dir"]
-            ?.takeIf(String::isNotBlank)
-            ?.let { Path.of(it).toAbsolutePath().normalize() }
-            ?: Path.of(System.getProperty("user.dir", ".")).toAbsolutePath().normalize()
-                .resolve(".agents/skills/kast")
+                           ?.takeIf(String::isNotBlank)
+                           ?.let { Path.of(it).toAbsolutePath().normalize() }
+                       ?: Path.of(System.getProperty("user.dir", ".")).toAbsolutePath().normalize()
+                           .resolve(".agents/skills/kast")
         val compareBaseline = options["compare"]
             ?.takeIf(String::isNotBlank)
             ?.let { Path.of(it).toAbsolutePath().normalize() }
@@ -720,11 +659,11 @@ internal data class ParsedArguments(
 
     fun gradleRunCommand(): CliCommand.GradleRun {
         val task = positionals.getOrNull(2)
-            ?: options["task"]?.takeIf(String::isNotBlank)
-            ?: throw CliFailure(
-                code = "CLI_USAGE",
-                message = "`kast gradle run` requires a Gradle task name",
-            )
+                   ?: options["task"]?.takeIf(String::isNotBlank)
+                   ?: throw CliFailure(
+                       code = "CLI_USAGE",
+                       message = "`kast gradle run` requires a Gradle task name",
+                   )
         if (positionals.size > 3) {
             throw CliFailure(
                 code = "CLI_USAGE",
@@ -755,16 +694,16 @@ internal data class ParsedArguments(
     }
 
     private fun requireOption(key: String): String = options[key]
-        ?: throw CliFailure(
-            code = "CLI_USAGE",
-            message = "Missing required option --$key",
-        )
+                                                     ?: throw CliFailure(
+                                                         code = "CLI_USAGE",
+                                                         message = "Missing required option --$key",
+                                                     )
 
     private fun requireInt(key: String): Int = options[key]?.toIntOrNull()
-        ?: throw CliFailure(
-            code = "CLI_USAGE",
-            message = "Missing required integer option --$key",
-        )
+                                               ?: throw CliFailure(
+                                                   code = "CLI_USAGE",
+                                                   message = "Missing required integer option --$key",
+                                               )
 
     private fun optionalInt(
         key: String,
@@ -780,27 +719,29 @@ internal data class ParsedArguments(
         )
     }
 
-    private fun requireTypeHierarchyDirection(key: String): TypeHierarchyDirection = when (requireOption(key).lowercase()) {
-        "supertypes" -> TypeHierarchyDirection.SUPERTYPES
-        "subtypes" -> TypeHierarchyDirection.SUBTYPES
-        "both" -> TypeHierarchyDirection.BOTH
-        else -> throw CliFailure(
-            code = "CLI_USAGE",
-            message = "Invalid value for --$key; expected supertypes, subtypes, or both",
-        )
-    }
+    private fun requireTypeHierarchyDirection(key: String): TypeHierarchyDirection =
+        when (requireOption(key).lowercase()) {
+            "supertypes" -> TypeHierarchyDirection.SUPERTYPES
+            "subtypes" -> TypeHierarchyDirection.SUBTYPES
+            "both" -> TypeHierarchyDirection.BOTH
+            else -> throw CliFailure(
+                code = "CLI_USAGE",
+                message = "Invalid value for --$key; expected supertypes, subtypes, or both",
+            )
+        }
 
-    private fun requireSemanticInsertionTarget(key: String): SemanticInsertionTarget = when (requireOption(key).lowercase()) {
-        "class-body-start" -> SemanticInsertionTarget.CLASS_BODY_START
-        "class-body-end" -> SemanticInsertionTarget.CLASS_BODY_END
-        "file-top" -> SemanticInsertionTarget.FILE_TOP
-        "file-bottom" -> SemanticInsertionTarget.FILE_BOTTOM
-        "after-imports" -> SemanticInsertionTarget.AFTER_IMPORTS
-        else -> throw CliFailure(
-            code = "CLI_USAGE",
-            message = "Invalid value for --$key; expected class-body-start, class-body-end, file-top, file-bottom, or after-imports",
-        )
-    }
+    private fun requireSemanticInsertionTarget(key: String): SemanticInsertionTarget =
+        when (requireOption(key).lowercase()) {
+            "class-body-start" -> SemanticInsertionTarget.CLASS_BODY_START
+            "class-body-end" -> SemanticInsertionTarget.CLASS_BODY_END
+            "file-top" -> SemanticInsertionTarget.FILE_TOP
+            "file-bottom" -> SemanticInsertionTarget.FILE_BOTTOM
+            "after-imports" -> SemanticInsertionTarget.AFTER_IMPORTS
+            else -> throw CliFailure(
+                code = "CLI_USAGE",
+                message = "Invalid value for --$key; expected class-body-start, class-body-end, file-top, file-bottom, or after-imports",
+            )
+        }
 
     private fun optionalBoolean(
         key: String,
@@ -815,13 +756,13 @@ internal data class ParsedArguments(
         throw CliFailure(
             code = "CLI_USAGE",
             message = "Unsupported --backend-name=$raw. " +
-                "Valid values: ${BackendName.entries.joinToString { backend -> backend.canonicalName }}",
+                      "Valid values: ${BackendName.entries.joinToString { backend -> backend.canonicalName }}",
         )
     }
 
     fun requireWorkspaceRootPath(): Path {
         val raw = options["workspace-root"]
-            ?: System.getProperty("user.dir", ".")
+                  ?: System.getProperty("user.dir", ".")
         return Path.of(raw).toAbsolutePath().normalize()
     }
 
