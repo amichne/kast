@@ -10,65 +10,19 @@
       "description": "A sealed interface with 9 nested implementations spanning 4 shape categories. Defined in konditional-types but consumed cross-module.",
       "expected": {
         "implementations": [
-          {
-            "fqName": "io.amichne.konditional.core.types.Konstrained.Primitive",
-            "module": "konditional-types",
-            "file": "konditional-types/src/main/kotlin/io/amichne/konditional/core/types/Konstrained.kt"
-          },
-          {
-            "fqName": "io.amichne.konditional.core.types.Konstrained.Primitive.Int",
-            "module": "konditional-types",
-            "file": "konditional-types/src/main/kotlin/io/amichne/konditional/core/types/Konstrained.kt"
-          },
-          {
-            "fqName": "io.amichne.konditional.core.types.Konstrained.Primitive.String",
-            "module": "konditional-types",
-            "file": "konditional-types/src/main/kotlin/io/amichne/konditional/core/types/Konstrained.kt"
-          },
-          {
-            "fqName": "io.amichne.konditional.core.types.Konstrained.Primitive.Boolean",
-            "module": "konditional-types",
-            "file": "konditional-types/src/main/kotlin/io/amichne/konditional/core/types/Konstrained.kt"
-          },
-          {
-            "fqName": "io.amichne.konditional.core.types.Konstrained.Primitive.Double",
-            "module": "konditional-types",
-            "file": "konditional-types/src/main/kotlin/io/amichne/konditional/core/types/Konstrained.kt"
-          },
-          {
-            "fqName": "io.amichne.konditional.core.types.Konstrained.Object",
-            "module": "konditional-types",
-            "file": "konditional-types/src/main/kotlin/io/amichne/konditional/core/types/Konstrained.kt"
-          },
-          {
-            "fqName": "io.amichne.konditional.core.types.Konstrained.Array",
-            "module": "konditional-types",
-            "file": "konditional-types/src/main/kotlin/io/amichne/konditional/core/types/Konstrained.kt"
-          },
-          {
-            "fqName": "io.amichne.konditional.core.types.Konstrained.AsString",
-            "module": "konditional-types",
-            "file": "konditional-types/src/main/kotlin/io/amichne/konditional/core/types/Konstrained.kt"
-          },
-          {
-            "fqName": "io.amichne.konditional.core.types.Konstrained.AsInt",
-            "module": "konditional-types",
-            "file": "konditional-types/src/main/kotlin/io/amichne/konditional/core/types/Konstrained.kt"
-          },
-          {
-            "fqName": "io.amichne.konditional.core.types.Konstrained.AsBoolean",
-            "module": "konditional-types",
-            "file": "konditional-types/src/main/kotlin/io/amichne/konditional/core/types/Konstrained.kt"
-          },
-          {
-            "fqName": "io.amichne.konditional.core.types.Konstrained.AsDouble",
-            "module": "konditional-types",
-            "file": "konditional-types/src/main/kotlin/io/amichne/konditional/core/types/Konstrained.kt"
-          }
+          { "fqName": "io.amichne.konditional.core.types.Konstrained.Primitive", "module": "konditional-types", "file": "konditional-types/src/main/kotlin/io/amichne/konditional/core/types/Konstrained.kt" },
+          { "fqName": "io.amichne.konditional.core.types.Konstrained.Primitive.Int", "module": "konditional-types", "file": "konditional-types/src/main/kotlin/io/amichne/konditional/core/types/Konstrained.kt" },
+          { "fqName": "io.amichne.konditional.core.types.Konstrained.Primitive.String", "module": "konditional-types", "file": "konditional-types/src/main/kotlin/io/amichne/konditional/core/types/Konstrained.kt" },
+          { "fqName": "io.amichne.konditional.core.types.Konstrained.Primitive.Boolean", "module": "konditional-types", "file": "konditional-types/src/main/kotlin/io/amichne/konditional/core/types/Konstrained.kt" },
+          { "fqName": "io.amichne.konditional.core.types.Konstrained.Primitive.Double", "module": "konditional-types", "file": "konditional-types/src/main/kotlin/io/amichne/konditional/core/types/Konstrained.kt" },
+          { "fqName": "io.amichne.konditional.core.types.Konstrained.Object", "module": "konditional-types", "file": "konditional-types/src/main/kotlin/io/amichne/konditional/core/types/Konstrained.kt" },
+          { "fqName": "io.amichne.konditional.core.types.Konstrained.Array", "module": "konditional-types", "file": "konditional-types/src/main/kotlin/io/amichne/konditional/core/types/Konstrained.kt" },
+          { "fqName": "io.amichne.konditional.core.types.Konstrained.AsString", "module": "konditional-types", "file": "konditional-types/src/main/kotlin/io/amichne/konditional/core/types/Konstrained.kt" },
+          { "fqName": "io.amichne.konditional.core.types.Konstrained.AsInt", "module": "konditional-types", "file": "konditional-types/src/main/kotlin/io/amichne/konditional/core/types/Konstrained.kt" },
+          { "fqName": "io.amichne.konditional.core.types.Konstrained.AsBoolean", "module": "konditional-types", "file": "konditional-types/src/main/kotlin/io/amichne/konditional/core/types/Konstrained.kt" },
+          { "fqName": "io.amichne.konditional.core.types.Konstrained.AsDouble", "module": "konditional-types", "file": "konditional-types/src/main/kotlin/io/amichne/konditional/core/types/Konstrained.kt" }
         ],
-        "modules": [
-          "konditional-types"
-        ]
+        "modules": ["konditional-types"]
       }
     },
     "DISAMBIGUATE_MEMBER": {
@@ -95,9 +49,7 @@
       "description": "FlagValue is declared in konditional-json and consumed across the json module's serialization graph (5 distinct files).",
       "expected": {
         "minimumReferences": 8,
-        "expectedConsumerModules": [
-          "konditional-json"
-        ],
+        "expectedConsumerModules": ["konditional-json"],
         "expectedConsumerFiles": [
           "konditional-json/src/main/kotlin/io/amichne/konditional/serialization/snapshot/ConfigurationCodec.kt",
           "konditional-json/src/main/kotlin/io/amichne/konditional/internal/serialization/models/SerializableFlag.kt",
@@ -117,9 +69,7 @@
         "expectedCallerFqNames": [
           "io.amichne.konditional.core.FlagDefinition"
         ],
-        "expectedCallerModules": [
-          "konditional-engine"
-        ]
+        "expectedCallerModules": ["konditional-engine"]
       }
     },
     "RENAME_TARGET": {
@@ -152,35 +102,18 @@
       "expected": {
         "rawFileLineCount": 265,
         "publicMembers": [
-          "namespaceId",
-          "featureKey",
-          "configVersion",
-          "mode",
-          "durationNanos",
-          "value",
-          "decision"
+          "namespaceId", "featureKey", "configVersion", "mode", "durationNanos", "value", "decision"
         ],
         "nestedTypes": [
-          "Decision",
-          "Decision.Rule",
-          "Decision.Default",
-          "RuleMatch",
-          "RuleDetails",
-          "ExtensionType",
-          "ConditionalContextType",
-          "TargetingNode",
-          "TargetingNode.All",
-          "TargetingNode.AnyOf",
-          "TargetingNode.Locale"
+          "Decision", "Decision.Rule", "Decision.Default",
+          "RuleMatch", "RuleDetails",
+          "ExtensionType", "ConditionalContextType",
+          "TargetingNode", "TargetingNode.All", "TargetingNode.AnyOf", "TargetingNode.Locale"
         ]
       }
     },
     "MODULE_LIST": {
-      "modules": [
-        "konditional-types",
-        "konditional-engine",
-        "konditional-json"
-      ],
+      "modules": ["konditional-types", "konditional-engine", "konditional-json"],
       "description": "Production modules in the konditional workspace. 'smoke-test' is included in settings.gradle.kts but is a fixture, not part of the public surface.",
       "expected": {
         "moduleFileCounts": {

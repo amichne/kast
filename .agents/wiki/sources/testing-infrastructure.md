@@ -1,6 +1,7 @@
 # Testing Infrastructure
 
-This page summarizes the raw note [[Testing-Infrastructure]]. It is the broad source for Kast's testing strategy.
+This page summarizes the raw note [[Testing-Infrastructure]]. It is the broad
+source for Kast's testing strategy.
 
 ## Source
 
@@ -13,11 +14,13 @@ This source is a testing strategy note.
 
 ## Summary
 
-This note explains Kast's testing tiers, including contract testing, integration testing, and performance baselines. Its
-main contribution is showing how the project distributes trust across different levels of realism and cost.
+This note explains Kast's testing tiers, including contract testing, integration
+testing, and performance baselines. Its main contribution is showing how the
+project distributes trust across different levels of realism and cost.
 
-It also clarifies that testing spans both the shared contract and the concrete standalone backend, which matters because
-semantic behavior cannot be proven from one layer alone.
+It also clarifies that testing spans both the shared contract and the concrete
+standalone backend, which matters because semantic behavior cannot be proven from
+one layer alone.
 
 ## Key claims
 

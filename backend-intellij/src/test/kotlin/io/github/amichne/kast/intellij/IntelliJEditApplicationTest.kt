@@ -13,10 +13,10 @@ import com.intellij.testFramework.junit5.fixture.moduleFixture
 import com.intellij.testFramework.junit5.fixture.projectFixture
 import com.intellij.testFramework.junit5.fixture.psiFileFixture
 import com.intellij.testFramework.junit5.fixture.sourceRootFixture
+import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
 import io.github.amichne.kast.api.contract.FileHash
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.contract.TextEdit
-import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
@@ -73,7 +73,7 @@ class IntelliJEditApplicationTest {
         // Modify Document without saving to disk
         writeAction {
             val document = FileDocumentManager.getInstance().getDocument(testFile.virtualFile)!!
-            document.text = unsavedText
+            document.setText(unsavedText)
             // Do NOT save - leave it unsaved
         }
 

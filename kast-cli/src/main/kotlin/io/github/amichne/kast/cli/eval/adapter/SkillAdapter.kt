@@ -135,7 +135,7 @@ internal class SkillAdapter(private val skillDir: Path) {
         val routingScriptExists = routingScriptPath.exists()
         val routingReferenceExists = routingReferencePath.exists()
         val allPresent = catalogExists && painPointsExists && evalFilesExist &&
-                         progressionExists && routingScriptExists && routingReferenceExists
+            progressionExists && routingScriptExists && routingReferenceExists
         return EvalCheck(
             id = "structural-routing-improvement-assets",
             category = "structural",
@@ -151,8 +151,8 @@ internal class SkillAdapter(private val skillDir: Path) {
             ).joinToString(),
             remediation = if (!allPresent) {
                 "Add evals/catalog.json, evals/pain_points.jsonl, evals/files/, " +
-                "history/progression.json, scripts/build-routing-corpus.py, and " +
-                "references/routing-improvement.md"
+                    "history/progression.json, scripts/build-routing-corpus.py, and " +
+                    "references/routing-improvement.md"
             } else {
                 null
             },
@@ -270,8 +270,8 @@ internal class SkillAdapter(private val skillDir: Path) {
         val content = skillMd.readText()
         // Look for a section about triggers or common trigger-phrase patterns
         val hasTriggers = content.contains("trigger", ignoreCase = true) ||
-                          content.contains("Trigger phrases", ignoreCase = true) ||
-                          content.contains("description:", ignoreCase = true)
+            content.contains("Trigger phrases", ignoreCase = true) ||
+            content.contains("description:", ignoreCase = true)
         return EvalCheck(
             id = "structural-trigger-phrases",
             category = "structural",
@@ -281,6 +281,7 @@ internal class SkillAdapter(private val skillDir: Path) {
             remediation = if (!hasTriggers) "Add trigger phrases or a description section to SKILL.md" else null,
         )
     }
+
 
     private fun checkWrapperCompleteness(): List<EvalCheck> {
         val skillMdText = skillDir.resolve("SKILL.md").takeIf(Path::exists)?.readText().orEmpty()
@@ -316,24 +317,9 @@ internal class SkillAdapter(private val skillDir: Path) {
     }
 
     private fun budgetMetrics(budget: RawBudget): List<EvalMetric> = listOf(
-        EvalMetric(
-            id = "budget-trigger-tokens",
-            category = "budget",
-            value = budget.triggerTokens.toDouble(),
-            unit = "tokens"
-        ),
-        EvalMetric(
-            id = "budget-invoke-tokens",
-            category = "budget",
-            value = budget.invokeTokens.toDouble(),
-            unit = "tokens"
-        ),
-        EvalMetric(
-            id = "budget-deferred-tokens",
-            category = "budget",
-            value = budget.deferredTokens.toDouble(),
-            unit = "tokens"
-        ),
+        EvalMetric(id = "budget-trigger-tokens", category = "budget", value = budget.triggerTokens.toDouble(), unit = "tokens"),
+        EvalMetric(id = "budget-invoke-tokens", category = "budget", value = budget.invokeTokens.toDouble(), unit = "tokens"),
+        EvalMetric(id = "budget-deferred-tokens", category = "budget", value = budget.deferredTokens.toDouble(), unit = "tokens"),
     )
 
     private fun corpusMetrics(
@@ -498,6 +484,7 @@ internal class SkillAdapter(private val skillDir: Path) {
         val entries = catalogLoad.cases.filter { it.stringField("suite") == suite }
         if (entries.isEmpty()) {
             return CorpusValidation(
+                entryCount = 0,
                 issues = listOf("${skillDir.relativize(catalogPath)} contains no $suite cases"),
             )
         }

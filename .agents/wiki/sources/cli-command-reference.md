@@ -1,6 +1,7 @@
 # CLI Command Reference
 
-This page summarizes the raw note [[CLI-Command-Reference]]. It is the most direct catalog of Kast's user-facing verbs.
+This page summarizes the raw note [[CLI-Command-Reference]]. It is the most
+direct catalog of Kast's user-facing verbs.
 
 ## Source
 
@@ -13,11 +14,12 @@ This source is a command reference note.
 
 ## Summary
 
-This note enumerates global options, workspace lifecycle commands, read analysis commands, mutation commands, and
-selected JSON output shapes. Its main contribution is to make Kast's operational surface explicit and queryable.
+This note enumerates global options, workspace lifecycle commands, read
+analysis commands, mutation commands, and selected JSON output shapes. Its main
+contribution is to make Kast's operational surface explicit and queryable.
 
-It also clarifies that the CLI serves both humans and automation by documenting structured outputs in addition to
-command syntax.
+It also clarifies that the CLI serves both humans and automation by documenting
+structured outputs in addition to command syntax.
 
 ## Key claims
 

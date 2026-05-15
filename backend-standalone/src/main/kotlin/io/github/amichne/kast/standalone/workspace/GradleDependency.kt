@@ -1,8 +1,8 @@
 package io.github.amichne.kast.standalone.workspace
 
 import io.github.amichne.kast.standalone.analysis.PathAsStringSerializer
-import kotlinx.serialization.Serializable
 import java.nio.file.Path
+import kotlinx.serialization.Serializable
 
 @Serializable
 internal sealed interface GradleDependency {

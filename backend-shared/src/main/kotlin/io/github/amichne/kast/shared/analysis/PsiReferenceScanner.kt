@@ -5,11 +5,11 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiRecursiveElementWalkingVisitor
 import io.github.amichne.kast.api.contract.SymbolVisibility
-import io.github.amichne.kast.indexstore.api.index.splitModuleName
 import io.github.amichne.kast.indexstore.api.reference.DeclarationKind
 import io.github.amichne.kast.indexstore.api.reference.DeclarationRow
 import io.github.amichne.kast.indexstore.api.reference.DeclarationVisibility
 import io.github.amichne.kast.indexstore.api.reference.EdgeKind
+import io.github.amichne.kast.indexstore.api.index.splitModuleName
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
 import org.jetbrains.kotlin.psi.KtCallExpression
@@ -128,18 +128,17 @@ class PsiReferenceScanner(
             kind = declaration.declarationKind() ?: return null,
             visibility = declaration.visibility().toDeclarationVisibility(),
             filePath = sourceFilePath,
-            declarationOffset = declaration.nameIdentifier?.textRange?.startOffset
-                                ?: declaration.textRange?.startOffset,
+            declarationOffset = declaration.nameIdentifier?.textRange?.startOffset ?: declaration.textRange?.startOffset,
             modulePath = modulePath,
             sourceSet = sourceSet,
             supertypes = (declaration as? KtClassOrObject)?.superTypeListEntries
-                             ?.mapNotNull { entry ->
-                                 entry.typeReference?.references?.firstOrNull()
-                                     ?.resolve()?.let { resolved ->
-                                         (resolved as? KtNamedDeclaration)?.targetFqNameAndPackage()?.first?.value
-                                     }
-                             }
-                         ?: emptyList(),
+                ?.mapNotNull { entry ->
+                    entry.typeReference?.references?.firstOrNull()
+                        ?.resolve()?.let { resolved ->
+                            (resolved as? KtNamedDeclaration)?.targetFqNameAndPackage()?.first?.value
+                        }
+                }
+                ?: emptyList(),
         )
     }
 

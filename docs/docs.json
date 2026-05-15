@@ -20,9 +20,7 @@
     "groups": [
       {
         "group": "Overview",
-        "pages": [
-          "index"
-        ]
+        "pages": ["index"]
       },
       {
         "group": "Getting Started",

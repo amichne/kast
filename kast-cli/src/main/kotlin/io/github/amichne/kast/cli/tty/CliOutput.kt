@@ -5,11 +5,7 @@ import java.nio.file.Path
 
 internal sealed interface CliOutput {
     data class JsonValue(val value: Any) : CliOutput
-    data class JsonValueWithExitCode(
-        val value: Any,
-        val exitCode: Int,
-    ) : CliOutput
-
+    data class JsonValueWithExitCode(val value: Any, val exitCode: Int) : CliOutput
     data class Text(val value: String) : CliOutput
     data class InteractiveGraph(val graph: MetricsGraph) : CliOutput
     data class InteractiveGraphPicker(

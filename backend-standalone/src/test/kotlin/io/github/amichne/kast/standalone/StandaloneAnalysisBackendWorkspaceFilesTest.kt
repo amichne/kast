@@ -61,7 +61,7 @@ class StandaloneAnalysisBackendWorkspaceFilesTest {
     fun `workspace files without includeFiles returns empty file list`() = runTest {
         writeFile("src/main/kotlin/sample/A.kt", "package sample\n")
         withBackend { backend ->
-            val result = backend.workspaceFiles(WorkspaceFilesQuery())
+            val result = backend.workspaceFiles(WorkspaceFilesQuery(includeFiles = false))
             assertTrue(result.modules.all { it.files.isEmpty() })
             assertTrue(result.modules.sumOf { it.fileCount } > 0)
         }
@@ -147,10 +147,7 @@ class StandaloneAnalysisBackendWorkspaceFilesTest {
         }
     }
 
-    private fun writeFile(
-        relativePath: String,
-        content: String,
-    ): Path {
+    private fun writeFile(relativePath: String, content: String): Path {
         val path = workspaceRoot.resolve(relativePath)
         Files.createDirectories(path.parent)
         path.writeText(content)

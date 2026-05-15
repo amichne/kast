@@ -1,6 +1,6 @@
 package io.github.amichne.kast.api.client
 
-import io.github.amichne.kast.api.client.fields.defaultConfigStandaloneRuntimeLibsDir
+import io.github.amichne.kast.api.client.fields.*
 import java.nio.file.Path
 import kotlin.io.path.Path
 
@@ -19,7 +19,7 @@ fun kastConfigHome(envLookup: (String) -> String?): Path =
 
 fun kastHome(): Path? = kastHome(System::getenv)
 
-fun kastHome(envLookup: (String) -> String?): Path = defaultInstallRoot(envLookup)
+fun kastHome(envLookup: (String) -> String?): Path? = defaultInstallRoot(envLookup)
 
 fun defaultInstallRoot(): Path = defaultInstallRoot(System::getenv)
 

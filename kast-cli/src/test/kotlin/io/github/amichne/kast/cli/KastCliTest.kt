@@ -18,8 +18,8 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
-import kotlin.io.path.createDirectories
 import kotlin.io.path.createFile
+import kotlin.io.path.createDirectories
 import kotlin.io.path.setPosixFilePermissions
 
 class KastCliTest {

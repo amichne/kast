@@ -1,17 +1,12 @@
 package io.github.amichne.kast.api.validation
 
-import io.github.amichne.kast.api.contract.FileHash
-import io.github.amichne.kast.api.contract.FileOperation
-import io.github.amichne.kast.api.contract.NormalizedPath
-import io.github.amichne.kast.api.contract.TextEdit
+import io.github.amichne.kast.api.contract.*
 import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
 import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.io.KastFileOperations
 import io.github.amichne.kast.api.io.LocalDiskFileOperations
-import io.github.amichne.kast.api.protocol.ConflictException
-import io.github.amichne.kast.api.protocol.NotFoundException
-import io.github.amichne.kast.api.protocol.PartialApplyException
-import io.github.amichne.kast.api.protocol.ValidationException
+import io.github.amichne.kast.api.protocol.*
+
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 
@@ -59,10 +54,10 @@ object EditPlanValidator {
 
         return grouped.entries.sortedBy { it.key }.map { (filePath, fileEdits) ->
             val expectedHash = normalizedHashes[filePath]
-                               ?: throw ValidationException(
-                                   message = "Missing expected hash for edited file",
-                                   details = mapOf("filePath" to filePath),
-                               )
+                ?: throw ValidationException(
+                    message = "Missing expected hash for edited file",
+                    details = mapOf("filePath" to filePath),
+                )
 
             val editsAscending = fileEdits.map {
                 it.copy(filePath = filePath)

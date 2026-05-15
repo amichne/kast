@@ -1,7 +1,7 @@
 # kast-cli: Native CLI Module
 
-This page summarizes the raw note [[kast-cli-Native-CLI-Module]]. It is the deepest source for the CLI's implementation
-role.
+This page summarizes the raw note [[kast-cli-Native-CLI-Module]]. It is the
+deepest source for the CLI's implementation role.
 
 ## Source
 
@@ -14,11 +14,13 @@ This source is a CLI implementation note.
 
 ## Summary
 
-This note explains the CLI entry point, request processing flow, runtime management, transport communication, and
-support utilities such as skill installation and smoke-command helpers. Its main contribution is showing how the
+This note explains the CLI entry point, request processing flow, runtime
+management, transport communication, and support utilities such as skill
+installation and smoke-command helpers. Its main contribution is showing how the
 high-level command surface is implemented.
 
-It also reinforces why the CLI is native and lightweight: it orchestrates rather than hosts semantic state.
+It also reinforces why the CLI is native and lightweight: it orchestrates rather
+than hosts semantic state.
 
 ## Key claims
 
@@ -38,7 +40,8 @@ This source shapes the frontend-facing wiki pages.
 
 This source emphasizes structure more than product policy.
 
-- Which CLI helpers are considered public workflow affordances versus internal support tools?
+- Which CLI helpers are considered public workflow affordances versus internal
+  support tools?
 - How much of the CLI runtime management is visible to callers by design?
 
 ## Pages updated from this source

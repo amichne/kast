@@ -1,10 +1,10 @@
 package io.github.amichne.kast.standalone.workspace
 
 import io.github.amichne.kast.api.contract.ModuleName
-import io.github.amichne.kast.standalone.StandaloneSourceModuleSpec
 import io.github.amichne.kast.standalone.analysis.PathListAsStringSerializer
-import kotlinx.serialization.Serializable
+import io.github.amichne.kast.standalone.StandaloneSourceModuleSpec
 import java.nio.file.Path
+import kotlinx.serialization.Serializable
 
 @Serializable
 internal data class GradleModuleModel(
@@ -51,8 +51,7 @@ internal data class GradleModuleModel(
                     StandaloneSourceModuleSpec(
                         name = analysisModuleName(GradleSourceSet.TEST_FIXTURES),
                         sourceRoots = sourceRoots,
-                        binaryRoots = (resolvedDependencies.testFixturesBinaryRoots + extraClasspathRoots).distinct()
-                            .sorted(),
+                        binaryRoots = (resolvedDependencies.testFixturesBinaryRoots + extraClasspathRoots).distinct().sorted(),
                         dependencyModuleNames = resolvedDependencies.testFixturesDependencyNames,
                     ),
                 )

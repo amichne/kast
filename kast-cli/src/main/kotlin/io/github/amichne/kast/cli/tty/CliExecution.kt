@@ -6,17 +6,17 @@ import io.github.amichne.kast.cli.EvalSkillExecutor
 import io.github.amichne.kast.cli.RuntimeCandidateStatus
 import io.github.amichne.kast.cli.SmokeOutputFormat
 import io.github.amichne.kast.cli.options.RuntimeCommandOptions
-import io.github.amichne.kast.indexstore.api.graph.MetricsGraph
-import io.github.amichne.kast.indexstore.api.metrics.general.FileFilterSpec
 import io.github.amichne.kast.indexstore.api.metrics.impact.ChangeImpactNode
 import io.github.amichne.kast.indexstore.api.metrics.impact.DeadCodeCandidate
 import io.github.amichne.kast.indexstore.api.metrics.impact.FanInMetric
 import io.github.amichne.kast.indexstore.api.metrics.impact.FanOutMetric
+import io.github.amichne.kast.indexstore.api.metrics.general.FileFilterSpec
 import io.github.amichne.kast.indexstore.api.metrics.impact.LowUsageSymbol
+import io.github.amichne.kast.indexstore.metrics.MetricsEngine
+import io.github.amichne.kast.indexstore.api.graph.MetricsGraph
 import io.github.amichne.kast.indexstore.api.metrics.module.ModuleCouplingMetric
 import io.github.amichne.kast.indexstore.api.metrics.module.ModuleCycleMetric
 import io.github.amichne.kast.indexstore.api.metrics.module.ModuleDepthMetric
-import io.github.amichne.kast.indexstore.metrics.MetricsEngine
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import java.nio.file.Path
@@ -90,6 +90,7 @@ internal class DefaultCliCommandExecutor(
                 )
             }
 
+
             is CliCommand.WorkspaceStop -> {
                 val result = cliService.workspaceStop(command.options)
                 CliExecutionResult(
@@ -154,6 +155,7 @@ internal class DefaultCliCommandExecutor(
             CliCommand.ConfigInit -> CliExecutionResult(
                 output = cliService.configInit(),
             )
+
 
             is CliCommand.Up -> {
                 val result = cliService.workspaceEnsure(command.options)
@@ -239,8 +241,7 @@ internal class DefaultCliCommandExecutor(
                             ListSerializer(ModuleCouplingMetric.serializer()), engine.moduleCouplingMatrix(),
                         )
                         MetricsSubcommand.LOW_USAGE -> json.encodeToString(
-                            ListSerializer(LowUsageSymbol.serializer()),
-                            engine.lowUsageSymbols(limit = command.limit, filter = filter),
+                            ListSerializer(LowUsageSymbol.serializer()), engine.lowUsageSymbols(limit = command.limit, filter = filter),
                         )
                         MetricsSubcommand.CYCLES -> json.encodeToString(
                             ListSerializer(ModuleCycleMetric.serializer()), engine.moduleCycles(),
@@ -272,4 +273,5 @@ internal class DefaultCliCommandExecutor(
             }
         }
     }
+
 }

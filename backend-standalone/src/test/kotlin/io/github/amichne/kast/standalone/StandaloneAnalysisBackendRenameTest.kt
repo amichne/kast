@@ -1,14 +1,14 @@
 package io.github.amichne.kast.standalone
 
 import io.github.amichne.kast.api.contract.FilePosition
-import io.github.amichne.kast.api.contract.MutationCapability
 import io.github.amichne.kast.api.contract.NormalizedPath
-import io.github.amichne.kast.api.contract.ServerLimits
+import io.github.amichne.kast.api.validation.FileHashing
+import io.github.amichne.kast.api.contract.MutationCapability
 import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
 import io.github.amichne.kast.api.contract.query.ReferencesQuery
 import io.github.amichne.kast.api.contract.query.RefreshQuery
 import io.github.amichne.kast.api.contract.query.RenameQuery
-import io.github.amichne.kast.api.validation.FileHashing
+import io.github.amichne.kast.api.contract.ServerLimits
 import kotlinx.coroutines.test.TestResult
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals

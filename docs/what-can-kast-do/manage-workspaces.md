@@ -7,13 +7,15 @@ icon: lucide/folder-open
 
 # Manage workspaces
 
-`kast` runs a long-lived daemon per workspace. These operations start it, check its state, inspect what it discovered,
-and stop it cleanly. Knowing the lifecycle is the difference between automation that runs reliably and automation that
-leaks zombie processes.
+`kast` runs a long-lived daemon per workspace. These operations
+start it, check its state, inspect what it discovered, and stop it
+cleanly. Knowing the lifecycle is the difference between automation
+that runs reliably and automation that leaks zombie processes.
 
 ## Daemon lifecycle
 
-The daemon moves through a predictable set of states. Knowing them tells you when to send queries and when to wait.
+The daemon moves through a predictable set of states. Knowing them
+tells you when to send queries and when to wait.
 
 ```mermaid
 stateDiagram-v2
@@ -27,20 +29,23 @@ stateDiagram-v2
 ```
 
 - **STARTING** — process launched, analysis session not yet up
-- **INDEXING** — K2 session is active, scanning sources. Semantic queries may return partial results
+- **INDEXING** — K2 session is active, scanning sources. Semantic
+  queries may return partial results
 - **READY** — indexing done. Every query returns full results
 - **DEGRADED** — fatal error during indexing. Stop and investigate
 
 ### Start the daemon
 
-`workspace ensure` starts the daemon and blocks until it's servable.
+`workspace ensure` starts the daemon and blocks until it's
+servable.
 
 ```console title="Start the daemon and wait for READY"
 kast workspace ensure \
   --workspace-root=$(pwd)
 ```
 
-Pass `--accept-indexing=true` when partial results during indexing are acceptable.
+Pass `--accept-indexing=true` when partial results during indexing
+are acceptable.
 
 ### Check daemon state
 
@@ -60,7 +65,8 @@ kast workspace stop \
 
 ## Workspace discovery
 
-When the daemon starts, it discovers the project automatically. The strategy depends on what's in your workspace root.
+When the daemon starts, it discovers the project automatically. The
+strategy depends on what's in your workspace root.
 
 ```mermaid
 flowchart TD
@@ -72,15 +78,17 @@ flowchart TD
     E --> F["INDEXING → READY"]
 ```
 
-For Gradle projects, `kast` uses the Tooling API to discover modules, source roots, and classpath. For non-Gradle
-projects, it falls back to the conventional Kotlin layout (`src/main/kotlin`,
+For Gradle projects, `kast` uses the Tooling API to discover
+modules, source roots, and classpath. For non-Gradle projects, it
+falls back to the conventional Kotlin layout (`src/main/kotlin`,
 `src/test/kotlin`).
 
 ## Refresh the workspace
 
-`kast` watches source roots for `.kt` changes and refreshes automatically. `apply-edits` triggers an immediate refresh
-for the files it touched. Use `workspace refresh` only as a manual recovery when an external change slipped past the
-watcher.
+`kast` watches source roots for `.kt` changes and refreshes
+automatically. `apply-edits` triggers an immediate refresh for the
+files it touched. Use `workspace refresh` only as a manual recovery
+when an external change slipped past the watcher.
 
 ```console title="Full workspace refresh"
 kast workspace refresh \
@@ -97,9 +105,11 @@ kast workspace refresh \
 
 ## Inspect workspace files
 
-`workspace/files` returns the modules, source roots, and files the daemon found. Run it when you want to verify the
-daemon sees what you think it sees. File-path enumeration is capped per module so large workspaces can inspect scope
-without forcing the daemon to materialize every path in one response.
+`workspace/files` returns the modules, source roots, and files the
+daemon found. Run it when you want to verify the daemon sees what
+you think it sees. File-path enumeration is capped per module so large workspaces
+can inspect scope without forcing the daemon to materialize every path in
+one response.
 
 === "CLI"
 
@@ -142,8 +152,9 @@ without forcing the daemon to materialize every path in one response.
 
 ## Check capabilities
 
-`capabilities` returns the operations the active backend supports. Run it before calling something the standalone
-backend doesn't yet implement.
+`capabilities` returns the operations the active backend supports.
+Run it before calling something the standalone backend doesn't yet
+implement.
 
 ```console title="Query supported capabilities"
 kast capabilities \
@@ -152,7 +163,8 @@ kast capabilities \
 
 ## Check runtime health
 
-`health` is a lightweight liveness check; `runtime/status` returns full runtime metadata.
+`health` is a lightweight liveness check; `runtime/status` returns
+full runtime metadata.
 
 ```console title="Liveness check"
 kast health --workspace-root=$(pwd)
@@ -160,5 +172,7 @@ kast health --workspace-root=$(pwd)
 
 ## Next steps
 
-- [Backends](../getting-started/backends.md) — when to pick standalone vs IntelliJ
-- [Troubleshooting](../troubleshooting.md) — daemon won't start, stuck indexing, stale results after edits
+- [Backends](../getting-started/backends.md) — when to pick
+  standalone vs IntelliJ
+- [Troubleshooting](../troubleshooting.md) — daemon won't start,
+  stuck indexing, stale results after edits

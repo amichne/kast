@@ -28,11 +28,7 @@ internal sealed interface CliCommand {
     data class DaemonStart(val options: DaemonStartOptions) : CliCommand
     data object ConfigInit : CliCommand
     data class EvalSkill(val options: EvalSkillOptions) : CliCommand
-    data class Rpc(
-        val rawJson: String,
-        val workspaceRootOverride: Path?,
-    ) : CliCommand
-
+    data class Rpc(val rawJson: String, val workspaceRootOverride: Path?) : CliCommand
     data class Up(val options: RuntimeCommandOptions) : CliCommand
     data class Status(val options: RuntimeCommandOptions) : CliCommand
     data class Stop(val options: RuntimeCommandOptions) : CliCommand
@@ -41,7 +37,6 @@ internal sealed interface CliCommand {
         val task: String,
         val extraArgs: List<String> = emptyList(),
     ) : CliCommand
-
     data class Metrics(
         val subcommand: MetricsSubcommand,
         val workspaceRoot: Path,

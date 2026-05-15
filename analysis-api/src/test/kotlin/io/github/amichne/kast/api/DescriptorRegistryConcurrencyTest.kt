@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.concurrent.thread
 
@@ -177,7 +178,8 @@ class DescriptorRegistryConcurrencyTest {
         val daemonsPath = "${fixture.root}home/user/.kast/daemons.json"
 
         val sharedDescriptor = descriptor(
-            workspaceRoot = "${fixture.root}workspace"
+            workspaceRoot = "${fixture.root}workspace",
+            pid = 42L
         )
 
         // Act: Register same descriptor 10 times concurrently

@@ -60,8 +60,7 @@ internal class MutableSourceIdentifierIndex(
                 (ancestorWildcardPackages.isNotEmpty() && wildcardImportPackagesByPath[path]?.any { it in ancestorWildcardPackages } == true)
             }
             .let { candidates ->
-                allowedModuleNames?.let { moduleNames -> filterPathsByAllowedModules(candidates, moduleNames) }
-                ?: candidates
+                allowedModuleNames?.let { moduleNames -> filterPathsByAllowedModules(candidates, moduleNames) } ?: candidates
             }
             .map { it.value }
             .sorted()
@@ -225,10 +224,7 @@ internal class MutableSourceIdentifierIndex(
          * `targetFqName = "pkg.Foo.Companion.create"` and `targetPackage = "pkg"`,
          * returns `{FqName("pkg.Foo.Companion"), FqName("pkg.Foo")}`.
          */
-        private fun ancestorFqNamesOf(
-            targetFqName: String,
-            targetPackage: String,
-        ): Set<FqName> {
+        private fun ancestorFqNamesOf(targetFqName: String, targetPackage: String): Set<FqName> {
             if (targetFqName.length <= targetPackage.length + 1) return emptySet()
             return buildSet {
                 var current = targetFqName

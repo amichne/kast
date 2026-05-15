@@ -1,7 +1,7 @@
 # Indexing, Caching, and Reference Search
 
-This page summarizes the raw note [[Indexing,-Caching,-and-Reference-Search]]. It is the source that explains how Kast
-keeps repeat queries fast.
+This page summarizes the raw note [[Indexing,-Caching,-and-Reference-Search]].
+It is the source that explains how Kast keeps repeat queries fast.
 
 ## Source
 
@@ -14,12 +14,13 @@ This source is an indexing note.
 
 ## Summary
 
-This note covers indexing phases, the mutable source identifier index, the SQLite cache schema, incremental startup,
-workspace discovery caching, candidate file resolution, and cache layout. Its main contribution is explaining the
+This note covers indexing phases, the mutable source identifier index, the
+SQLite cache schema, incremental startup, workspace discovery caching, candidate
+file resolution, and cache layout. Its main contribution is explaining the
 performance substrate beneath reference search and repeated semantic work.
 
-It also makes clear that indexing is tied to correctness as well as speed, because stale or incomplete cache state can
-distort later semantic results.
+It also makes clear that indexing is tied to correctness as well as speed,
+because stale or incomplete cache state can distort later semantic results.
 
 ## Key claims
 

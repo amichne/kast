@@ -614,28 +614,17 @@ class SqliteSourceIndexStoreTest {
             assertEquals(0, tableCount(conn, "file_manifest", "filename = 'Foo.KT'"))
             assertEquals(0, tableCount(conn, "file_imports", "filename = 'build.gradle.kts'"))
             assertEquals(0, tableCount(conn, "file_wildcard_imports", "filename = 'build.gradle.kts'"))
-            assertEquals(
-                0,
-                tableCount(
-                    conn,
-                    "symbol_references",
-                    "src_filename = 'build.gradle.kts' OR tgt_filename = 'build.gradle.kts'"
-                )
-            )
-            conn.prepareStatement("SELECT tgt_filename, target_offset FROM symbol_references WHERE src_filename = 'Caller.kt'")
-                .use { stmt ->
-                    val rs = stmt.executeQuery()
-                    assertTrue(rs.next())
-                    assertEquals(null, rs.getString("tgt_filename"))
-                    assertEquals(null, rs.getObject("target_offset"))
-                }
+            assertEquals(0, tableCount(conn, "symbol_references", "src_filename = 'build.gradle.kts' OR tgt_filename = 'build.gradle.kts'"))
+            conn.prepareStatement("SELECT tgt_filename, target_offset FROM symbol_references WHERE src_filename = 'Caller.kt'").use { stmt ->
+                val rs = stmt.executeQuery()
+                assertTrue(rs.next())
+                assertEquals(null, rs.getString("tgt_filename"))
+                assertEquals(null, rs.getObject("target_offset"))
+            }
         }
     }
 
-    private fun fileUpdate(
-        path: String,
-        identifier: String,
-    ): FileIndexUpdate =
+    private fun fileUpdate(path: String, identifier: String): FileIndexUpdate =
         FileIndexUpdate(
             path = path,
             identifiers = setOf(identifier),

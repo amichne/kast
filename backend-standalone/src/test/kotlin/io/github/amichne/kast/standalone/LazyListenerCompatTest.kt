@@ -1,3 +1,4 @@
+
 package io.github.amichne.kast.standalone
 
 import com.intellij.ide.plugins.IdeaPluginDescriptor

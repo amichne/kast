@@ -1,8 +1,8 @@
 package io.github.amichne.kast.cli
 
 import java.io.ByteArrayOutputStream
-import java.io.IOException
 import java.io.InputStream
+import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
@@ -69,13 +69,13 @@ internal fun startStandaloneBackendForTest(
 ): Process {
     Files.createDirectories(workspace)
     val runtimeLibs = System.getProperty("kast.runtime-libs")
-                      ?: failBeforeReadinessPolling(
-                          workspace = workspace,
-                          timeoutMillis = timeoutMillis,
-                          commandSummary = "<not-built>",
-                          runtimeLibsSummary = runtimeLibsSummary(null, null, emptyList()),
-                          failure = "kast.runtime-libs system property is missing",
-                      )
+        ?: failBeforeReadinessPolling(
+            workspace = workspace,
+            timeoutMillis = timeoutMillis,
+            commandSummary = "<not-built>",
+            runtimeLibsSummary = runtimeLibsSummary(null, null, emptyList()),
+            failure = "kast.runtime-libs system property is missing",
+        )
     val classpathFile = Path.of(runtimeLibs).resolve("classpath.txt")
     if (!Files.isRegularFile(classpathFile) || !Files.isReadable(classpathFile)) {
         failBeforeReadinessPolling(
@@ -201,7 +201,7 @@ private fun runtimeLibsSummary(
     val preview = classpathEntries.take(5).joinToString(", ")
     val classpathExists = classpathFile?.let(Files::isRegularFile) ?: false
     return "runtimeLibs=${runtimeLibs ?: "<missing>"}; classpathFile=${classpathFile ?: "<not-built>"}; classpath.txt exists=$classpathExists; " +
-           "entries=${classpathEntries.size}; firstEntries=${preview.ifBlank { "<empty>" }}"
+        "entries=${classpathEntries.size}; firstEntries=${preview.ifBlank { "<empty>" }}"
 }
 
 private class StreamCapture(stream: InputStream) {

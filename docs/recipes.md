@@ -6,12 +6,15 @@ icon: lucide/book-open
 
 # Recipes
 
-Capability pages explain *what `kast` can do*. This page answers the question one step earlier: *what do I run to do the
-thing I want?*
+Capability pages explain *what `kast` can do*. This page answers
+the question one step earlier: *what do I run to do the thing I
+want?*
 
 Every recipe assumes you've started a backend with
-`kast workspace ensure --workspace-root=$(pwd)`. Run that from the root of your Kotlin project, open the recipe that
-matches your task, and copy. Each one ends with a link to the deeper reference if you want the full story.
+`kast workspace ensure --workspace-root=$(pwd)`. Run that from the
+root of your Kotlin project, open the recipe that matches your
+task, and copy. Each one ends with a link to the deeper reference
+if you want the full story.
 
 ## Read operations
 
@@ -188,5 +191,6 @@ matches your task, and copy. Each one ends with a link to the deeper reference i
 ## Troubleshooting recipes
 
 If a command returns an error or a result you didn't expect, the
-[troubleshooting page](troubleshooting.md) has a section for each common failure — daemon won't start, references look
-incomplete, apply-edits rejected with a conflict, and so on.
+[troubleshooting page](troubleshooting.md) has a section for each common
+failure — daemon won't start, references look incomplete, apply-edits
+rejected with a conflict, and so on.

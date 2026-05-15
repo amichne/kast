@@ -6,16 +6,18 @@ tags:
 
 # Code blocks
 
-Code blocks and examples are an essential part of technical project documentation. Zensical provides different ways to
-set up syntax highlighting for code blocks, either during build time using [Pygments] or during runtime using a
-JavaScript syntax highlighter.
+Code blocks and examples are an essential part of technical project
+documentation. Zensical provides different ways to set up syntax highlighting
+for code blocks, either during build time using [Pygments] or during runtime
+using a JavaScript syntax highlighter.
 
 [Pygments]: https://pygments.org
 
 ## Configuration
 
-This configuration enables syntax highlighting on code blocks and inline code blocks, and allows to include source code
-directly from other files. Add the following lines to your configuration:
+This configuration enables syntax highlighting on code blocks and inline code
+blocks, and allows to include source code directly from other files. Add the
+following lines to your configuration:
 
 === "`zensical.toml`"
 
@@ -42,8 +44,9 @@ directly from other files. Add the following lines to your configuration:
       - pymdownx.superfences
     ```
 
-The following sections discuss how to use different syntax highlighting features with [Pygments], the recommended
-highlighter, so they don't apply when using a JavaScript syntax highlighter.
+The following sections discuss how to use different syntax highlighting features
+with [Pygments], the recommended highlighter, so they don't apply when using a
+JavaScript syntax highlighter.
 
 See additional configuration options:
 
@@ -53,17 +56,15 @@ See additional configuration options:
 - [Snippets]
 
   [Highlight]: ../setup/extensions/python-markdown-extensions.md#highlight
-
   [InlineHilite]: ../setup/extensions/python-markdown-extensions.md#inlinehilite
-
   [SuperFences]: ../setup/extensions/python-markdown-extensions.md#superfences
-
   [Snippets]: ../setup/extensions/python-markdown-extensions.md#snippets
 
 ### Code copy button
 
-Code blocks can automatically render a button on the right side to allow the user to copy a code block's contents to the
-clipboard. Add the following to your configuration to enable them globally:
+Code blocks can automatically render a button on the right side to allow the
+user to copy a code block's contents to the clipboard. Add the following to
+your configuration to enable them globally:
 
 === "`zensical.toml`"
 
@@ -109,8 +110,9 @@ clipboard. Add the following to your configuration to enable them globally:
 
 ### Code selection button
 
-Code blocks can include a button to allow for the selection of line ranges by the user, which is perfect for linking to
-a specific subsection of a code block. This allows the user to apply [line highlighting] dynamically. Add the following
+Code blocks can include a button to allow for the selection of line ranges by
+the user, which is perfect for linking to a specific subsection of a code block.
+This allows the user to apply [line highlighting] dynamically. Add the following
 to your configuration to enable it globally:
 
 === "`zensical.toml`"
@@ -121,7 +123,6 @@ to your configuration to enable it globally:
         "content.code.select"
     ]
     ```
-
 === "`mkdocs.yml`"
 
     ``` yaml
@@ -156,9 +157,10 @@ to your configuration to enable it globally:
 
 ### Code annotations
 
-Code annotations offer a comfortable and friendly way to attach arbitrary content to specific sections of code blocks by
-adding numeric markers in block and inline comments in the language of the code block. Add the following to your
-configuration to enable them globally:
+Code annotations offer a comfortable and friendly way to attach arbitrary
+content to specific sections of code blocks by adding numeric markers in block
+and inline comments in the language of the code block. Add the following to
+your configuration to enable them globally:
 
 === "`zensical.toml`"
 
@@ -171,6 +173,7 @@ configuration to enable them globally:
 
     1.  :man_raising_hand: I'm a code annotation! I can contain `code`, __formatted
         text__, images, ... basically anything that can be written in Markdown.
+
 
 === "`mkdocs.yml`"
 
@@ -203,8 +206,9 @@ configuration to enable them globally:
 
 #### Custom selectors
 
-Normally, code annotations can only be [placed in comments], as comments can be considered safe for placement. However,
-sometimes it might be necessary to place annotations in parts of the code block where comments are not allowed, e.g. in
+Normally, code annotations can only be [placed in comments], as comments can be
+considered safe for placement. However, sometimes it might be necessary to place
+annotations in parts of the code block where comments are not allowed, e.g. in
 strings.
 
 Additional selectors can be set per-language:
@@ -242,17 +246,17 @@ Now, code annotations can be used from within strings in JSON:
 }
 ```
 
-1. :man_raising_hand: I'm a code annotation! I can contain `code`, __formatted text__, images, ... basically anything
-   that can be written in Markdown.
+1.  :man_raising_hand: I'm a code annotation! I can contain `code`, __formatted
+    text__, images, ... basically anything that can be written in Markdown.
 
 [placed in comments]: #add-annotations
-
 [s2]: https://github.com/zensical/ui/blob/master/src/assets/stylesheets/modern/main/extensions/pymdownx/_highlight.scss
 
 ## Usage
 
-Code blocks must be enclosed with two separate lines containing three backticks. To add syntax highlighting to those
-blocks, add the language shortcode directly after the opening block. See the [list of available lexers] to find the
+Code blocks must be enclosed with two separate lines containing three backticks.
+To add syntax highlighting to those blocks, add the language shortcode directly
+after the opening block. See the [list of available lexers] to find the
 shortcode for a given language:
 
 ```` markdown title="Code block"
@@ -273,8 +277,9 @@ import tensorflow as tf
 
 ### Add a title
 
-In order to provide additional context, a custom title can be added to a code block by using the
-`title="<custom title>"` option directly after the shortcode, e.g. to display the name of a file:
+In order to provide additional context, a custom title can be added to a code
+block by using the `title="<custom title>"` option directly after the shortcode,
+e.g. to display the name of a file:
 
 ```` markdown title="Code block with title"
 ``` py title="bubble_sort.py"
@@ -300,14 +305,16 @@ def bubble_sort(items):
 
 ### Add annotations
 
-Code annotations can be placed anywhere in a code block where a comment for the language of the block can be placed,
-e.g. for JavaScript in `#!js // ...` and
+Code annotations can be placed anywhere in a code block where a comment for the
+language of the block can be placed, e.g. for JavaScript in `#!js // ...` and
 `#!js /* ... */`, for YAML in `#!yaml # ...`, etc.[^1]:
 
 [^1]:
-Code annotations require syntax highlighting with [Pygments] – they're currently not compatible with JavaScript syntax
-highlighters, or languages that do not have comments in their grammar. However, we're actively working on supporting
-alternate ways of defining code annotations, allowing to always place code annotations at the end of lines.
+Code annotations require syntax highlighting with [Pygments] – they're
+currently not compatible with JavaScript syntax highlighters, or languages
+that do not have comments in their grammar. However, we're actively working
+on supporting alternate ways of defining code annotations, allowing to
+always place code annotations at the end of lines.
 
 ```` markdown title="Code block with annotation"
 ``` toml
@@ -326,15 +333,15 @@ features = ["content.code.annotate"] # (1)!
 features = ["content.code.annotate"] # (1)!
 ```
 
-1. :man_raising_hand: I'm a code annotation! I can contain `code`, __formatted text__, images, ... basically anything
-   that can be written in Markdown.
+1.  :man_raising_hand: I'm a code annotation! I can contain `code`, __formatted
+    text__, images, ... basically anything that can be written in Markdown.
 
 </div>
 
 #### Strip comments
 
-If you wish to strip the comment characters surrounding a code annotation, simply add an `!` after the closing
-parenthesis of the code annotation:
+If you wish to strip the comment characters surrounding a code annotation,
+simply add an `!` after the closing parenthesis of the code annotation:
 
 ```` markdown title="Code block with annotation, stripped"
 ``` yaml
@@ -350,18 +357,20 @@ parenthesis of the code annotation:
 # (1)!
 ```
 
-1. Look ma, less line noise!
+1.  Look ma, less line noise!
 
 </div>
 
-Note that this only allows for a single code annotation to be rendered per comment. If you want to add multiple code
-annotations, comments cannot be stripped for technical reasons.
+Note that this only allows for a single code annotation to be rendered per
+comment. If you want to add multiple code annotations, comments cannot be
+stripped for technical reasons.
 
 ### Add line numbers
 
 Line numbers can be added to a code block by using the `linenums="<start>"`
-option directly after the shortcode, whereas `<start>` represents the starting line number. A code block can start from
-a line number other than `1`, which allows to split large code blocks for readability:
+option directly after the shortcode, whereas `<start>` represents the starting
+line number. A code block can start from a line number other than `1`, which
+allows to split large code blocks for readability:
 
 ```` markdown title="Code block with line numbers"
 ``` py linenums="1"
@@ -388,8 +397,8 @@ def bubble_sort(items):
 ### Highlight specific lines
 
 Specific lines can be highlighted by passing the line numbers to the `hl_lines`
-argument placed right after the language shortcode. Note that line counts start at `1`, regardless of the starting line
-number specified as part of
+argument placed right after the language shortcode. Note that line counts start
+at `1`, regardless of the starting line number specified as part of
 [`linenums`][Adding line numbers]:
 
 === "Lines"
@@ -444,8 +453,9 @@ number specified as part of
 
 ### Highlight inline code blocks
 
-When [InlineHilite] is enabled, syntax highlighting can be applied to inline code blocks by prefixing them with a
-shebang, i.e. `#!`, directly followed by the corresponding [language shortcode][list of available lexers].
+When [InlineHilite] is enabled, syntax highlighting can be applied to inline
+code blocks by prefixing them with a shebang, i.e. `#!`, directly followed by
+the corresponding [language shortcode][list of available lexers].
 
 ``` markdown title="Inline code block"
 The `#!python range()` function is used to generate a sequence of numbers.
@@ -460,7 +470,8 @@ The `#!python range()` function is used to generate a sequence of numbers.
 ### Embed external files
 
 When [Snippets] is enabled, content from other files (including source files)
-can be embedded by using the [`--8<--` notation][Snippets notation] directly from within a code block:
+can be embedded by using the [`--8<--` notation][Snippets notation] directly
+from within a code block:
 
 ```` markdown title="Code block with external content"
 ``` title=".browserslistrc"
@@ -483,30 +494,31 @@ last 4 years
 ### Custom syntax theme
 
 If [Pygments] is used, Zensical provides the [styles for code blocks]
-[colors], which are built with a custom and well-balanced palette that works equally well for both [color schemes]:
+[colors], which are built with a custom and well-balanced palette that works
+equally well for both [color schemes]:
 
-- :material-checkbox-blank-circle:{ style="color: var (--md-code-hl-number-color) " } `--md-code-hl-number-color`
-- :material-checkbox-blank-circle:{ style="color: var (--md-code-hl-special-color) " } `--md-code-hl-special-color`
-- :material-checkbox-blank-circle:{ style="color: var (--md-code-hl-function-color) " } `--md-code-hl-function-color`
-- :material-checkbox-blank-circle:{ style="color: var (--md-code-hl-constant-color) " } `--md-code-hl-constant-color`
-- :material-checkbox-blank-circle:{ style="color: var (--md-code-hl-keyword-color) " } `--md-code-hl-keyword-color`
-- :material-checkbox-blank-circle:{ style="color: var (--md-code-hl-string-color) " } `--md-code-hl-string-color`
-- :material-checkbox-blank-circle:{ style="color: var (--md-code-hl-name-color) " } `--md-code-hl-name-color`
-- :material-checkbox-blank-circle:{ style="color: var (--md-code-hl-operator-color) " } `--md-code-hl-operator-color`
-- :material-checkbox-blank-circle:{ style="color: var (--md-code-hl-punctuation-color) " }
-  `--md-code-hl-punctuation-color`
-- :material-checkbox-blank-circle:{ style="color: var (--md-code-hl-comment-color) " } `--md-code-hl-comment-color`
-- :material-checkbox-blank-circle:{ style="color: var (--md-code-hl-generic-color) " } `--md-code-hl-generic-color`
-- :material-checkbox-blank-circle:{ style="color: var (--md-code-hl-variable-color) " } `--md-code-hl-variable-color`
+- :material-checkbox-blank-circle:{ style="color: var(--md-code-hl-number-color) " } `--md-code-hl-number-color`
+- :material-checkbox-blank-circle:{ style="color: var(--md-code-hl-special-color) " } `--md-code-hl-special-color`
+- :material-checkbox-blank-circle:{ style="color: var(--md-code-hl-function-color) " } `--md-code-hl-function-color`
+- :material-checkbox-blank-circle:{ style="color: var(--md-code-hl-constant-color) " } `--md-code-hl-constant-color`
+- :material-checkbox-blank-circle:{ style="color: var(--md-code-hl-keyword-color) " } `--md-code-hl-keyword-color`
+- :material-checkbox-blank-circle:{ style="color: var(--md-code-hl-string-color) " } `--md-code-hl-string-color`
+- :material-checkbox-blank-circle:{ style="color: var(--md-code-hl-name-color) " } `--md-code-hl-name-color`
+- :material-checkbox-blank-circle:{ style="color: var(--md-code-hl-operator-color) " } `--md-code-hl-operator-color`
+- :material-checkbox-blank-circle:{ style="color: var(--md-code-hl-punctuation-color) " } `--md-code-hl-punctuation-color`
+- :material-checkbox-blank-circle:{ style="color: var(--md-code-hl-comment-color) " } `--md-code-hl-comment-color`
+- :material-checkbox-blank-circle:{ style="color: var(--md-code-hl-generic-color) " } `--md-code-hl-generic-color`
+- :material-checkbox-blank-circle:{ style="color: var(--md-code-hl-variable-color) " } `--md-code-hl-variable-color`
 
 Code block foreground, background, and line highlight colors are defined via:
 
-- :material-checkbox-blank-circle:{ style="color: var (--md-code-fg-color) " } `--md-code-fg-color`
-- :material-checkbox-blank-circle:{ style="color: var (--md-code-bg-color) " } `--md-code-bg-color`
-- :material-checkbox-blank-circle:{ style="color: var (--md-code-hl-color) " } `--md-code-hl-color`
+- :material-checkbox-blank-circle:{ style="color: var(--md-code-fg-color) " } `--md-code-fg-color`
+- :material-checkbox-blank-circle:{ style="color: var(--md-code-bg-color) " } `--md-code-bg-color`
+- :material-checkbox-blank-circle:{ style="color: var(--md-code-hl-color) " } `--md-code-hl-color`
 
-Let's say you want to change the color of `#!js "strings"`. While there are several [types of string tokens], they use
-the same color. You can assign a new color by using an [additional style sheet]:
+Let's say you want to change the color of `#!js "strings"`. While there are
+several [types of string tokens], they use the same color. You can assign
+a new color by using an [additional style sheet]:
 
 === "`docs/stylesheets/extra.css`"
 
@@ -530,8 +542,9 @@ the same color. You can assign a new color by using an [additional style sheet]:
       - stylesheets/extra.css
     ```
 
-If you want to tweak a specific type of string, e.g. ``#!js `backticks` ``, you can lookup the specific CSS class name
-in the [syntax theme definition], and override it as part of your [additional style sheet]:
+If you want to tweak a specific type of string, e.g. ``#!js `backticks` ``, you
+can lookup the specific CSS class name in the [syntax theme definition], and
+override it as part of your [additional style sheet]:
 
 === "`docs/stylesheets/extra.css`"
 
@@ -547,7 +560,6 @@ in the [syntax theme definition], and override it as part of your [additional st
     [project]
     extra_css = ["stylesheets/extra.css"]
     ```
-
 === "`mkdocs.yml`"
 
     ``` yaml
@@ -556,19 +568,16 @@ in the [syntax theme definition], and override it as part of your [additional st
     ```
 
 [colors]: https://github.com/zensical/ui/blob/master/src/assets/stylesheets/modern/main/_colors.scss
-
 [color schemes]: ../setup/colors.md#color-scheme
-
 [types of string tokens]: https://pygments.org/docs/tokens/#literals
-
 [additional style sheet]: ../customization.md#additional-css
-
 [syntax theme definition]: https://github.com/zensical/ui/blob/master/src/assets/stylesheets/modern/main/extensions/pymdownx/_highlight.scss
 
 ### Annotation tooltip width
 
-If you have a lot of content hosted inside your code annotations, it can be a good idea to increase the width of the
-tooltip by adding the following as part of an [additional style sheet]:
+If you have a lot of content hosted inside your code annotations, it can be a
+good idea to increase the width of the tooltip by adding the following as part
+of an [additional style sheet]:
 
 === "`docs/stylesheets/extra.css`"
 
@@ -584,7 +593,6 @@ tooltip by adding the following as part of an [additional style sheet]:
     [project]
     extra_css = ["stylesheets/extra.css"]
     ```
-
 === "`mkdocs.yml`"
 
     ``` yaml

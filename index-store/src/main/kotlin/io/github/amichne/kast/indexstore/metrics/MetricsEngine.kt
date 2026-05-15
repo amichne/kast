@@ -194,10 +194,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
                 }
         }
 
-    fun fanInRanking(
-        limit: Int,
-        filter: FileFilterSpec = FileFilterSpec(),
-    ): List<FanInMetric> {
+    fun fanInRanking(limit: Int, filter: FileFilterSpec = FileFilterSpec()): List<FanInMetric> {
         require(limit >= 0) { "limit must be non-negative" }
         if (limit == 0) return emptyList()
         return readMetric(emptyList()) { conn ->
@@ -254,10 +251,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
         }
     }
 
-    fun fanOutRanking(
-        limit: Int,
-        filter: FileFilterSpec = FileFilterSpec(),
-    ): List<FanOutMetric> {
+    fun fanOutRanking(limit: Int, filter: FileFilterSpec = FileFilterSpec()): List<FanOutMetric> {
         require(limit >= 0) { "limit must be non-negative" }
         if (limit == 0) return emptyList()
         return readMetric(emptyList()) { conn ->
@@ -369,11 +363,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
             }
         }
 
-    fun lowUsageSymbols(
-        maxOccurrences: Int = 2,
-        limit: Int = 50,
-        filter: FileFilterSpec = FileFilterSpec(),
-    ): List<LowUsageSymbol> {
+    fun lowUsageSymbols(maxOccurrences: Int = 2, limit: Int = 50, filter: FileFilterSpec = FileFilterSpec()): List<LowUsageSymbol> {
         require(maxOccurrences >= 0) { "maxOccurrences must be non-negative" }
         require(limit >= 0) { "limit must be non-negative" }
         if (maxOccurrences == 0 || limit == 0) return emptyList()
@@ -556,11 +546,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
             }.filterByPath(filter) { it.path }
         }
 
-    fun changeImpactRadius(
-        fqName: String,
-        depth: Int,
-        filter: FileFilterSpec = FileFilterSpec(),
-    ): List<ChangeImpactNode> {
+    fun changeImpactRadius(fqName: String, depth: Int, filter: FileFilterSpec = FileFilterSpec()): List<ChangeImpactNode> {
         require(depth >= 0) { "depth must be non-negative" }
         if (depth == 0) return emptyList()
         return readMetric(emptyList()) { conn ->
@@ -573,10 +559,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
         }.filterByPath(filter) { it.sourcePath }
     }
 
-    fun searchSymbols(
-        query: String,
-        limit: Int = 25,
-    ): List<String> {
+    fun searchSymbols(query: String, limit: Int = 25): List<String> {
         require(limit >= 0) { "limit must be non-negative" }
         if (limit == 0) return emptyList()
         val trimmed = query.trim()
@@ -596,10 +579,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
         }
     }
 
-    fun graph(
-        fqName: String,
-        depth: Int,
-    ): MetricsGraph {
+    fun graph(fqName: String, depth: Int): MetricsGraph {
         require(depth >= 0) { "depth must be non-negative" }
         val focal = fanInMetric(fqName)
         val impact = changeImpactRadius(fqName = fqName, depth = depth)
@@ -646,11 +626,8 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
             nodes = nodes,
             edges = edges,
             index = Index(
-                symbolCount = 1 + impact.map(ChangeImpactNode::viaTargetFqName)
-                    .filterNot { it == fqName }
-                    .distinct().size,
-                fileCount = listOfNotNull(focal?.targetPath).plus(impact.map(ChangeImpactNode::sourcePath))
-                    .distinct().size,
+                symbolCount = 1 + impact.map(ChangeImpactNode::viaTargetFqName).filterNot { it == fqName }.distinct().size,
+                fileCount = listOfNotNull(focal?.targetPath).plus(impact.map(ChangeImpactNode::sourcePath)).distinct().size,
                 referenceCount = impact.sumOf(ChangeImpactNode::occurrenceCount),
                 maxDepth = impact.maxOfOrNull(ChangeImpactNode::depth) ?: 0,
             ),
@@ -672,10 +649,9 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
         val identifiersCount = countRows(conn, "identifier_paths")
         val manifestCount = countRows(conn, "file_manifest")
         val indexedFileCount = conn.createStatement().use { stmt ->
-            stmt.executeQuery("SELECT COUNT(DISTINCT src_prefix_id || ':' || src_filename) FROM symbol_references")
-                .use { rs ->
-                    if (rs.next()) rs.getInt(1) else 0
-                }
+            stmt.executeQuery("SELECT COUNT(DISTINCT src_prefix_id || ':' || src_filename) FROM symbol_references").use { rs ->
+                if (rs.next()) rs.getInt(1) else 0
+            }
         }
         val completeness = if (manifestCount == 0) 0.0 else indexedFileCount.coerceAtMost(manifestCount) / manifestCount.toDouble()
         val basis = when {
@@ -692,10 +668,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
         return Confidence(level = level, indexCompleteness = completeness, semanticBasis = basis)
     }
 
-    private fun countRows(
-        conn: Connection,
-        tableName: String,
-    ): Int =
+    private fun countRows(conn: Connection, tableName: String): Int =
         conn.createStatement().use { stmt ->
             stmt.executeQuery("SELECT COUNT(*) FROM $tableName").use { rs -> if (rs.next()) rs.getInt(1) else 0 }
         }
@@ -798,10 +771,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
         }
 
     private fun exportedSymbolsByModule(conn: Connection): Map<String, Int> =
-        groupedCount(
-            conn,
-            "SELECT module_path, COUNT(*) FROM declarations WHERE module_path IS NOT NULL AND visibility IN ('PUBLIC', 'INTERNAL') GROUP BY module_path"
-        )
+        groupedCount(conn, "SELECT module_path, COUNT(*) FROM declarations WHERE module_path IS NOT NULL AND visibility IN ('PUBLIC', 'INTERNAL') GROUP BY module_path")
 
     private fun consumedTargetsByModule(conn: Connection): Map<String, Int> =
         groupedCount(
@@ -822,10 +792,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
             """.trimIndent(),
         )
 
-    private fun crossModuleReferencesByVisibility(
-        conn: Connection,
-        visibility: String,
-    ): Map<String, Int> =
+    private fun crossModuleReferencesByVisibility(conn: Connection, visibility: String): Map<String, Int> =
         conn.prepareStatement(
             """
             SELECT source_meta.module_path, COUNT(*)
@@ -848,10 +815,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
             stmt.executeQuery().use { rs -> rs.stringIntMap() }
         }
 
-    private fun groupedCount(
-        conn: Connection,
-        sql: String,
-    ): Map<String, Int> =
+    private fun groupedCount(conn: Connection, sql: String): Map<String, Int> =
         conn.createStatement().use { stmt -> stmt.executeQuery(sql).use { rs -> rs.stringIntMap() } }
 
     private fun ResultSet.stringIntMap(): Map<String, Int> =
@@ -927,16 +891,10 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
 
     private fun hasSourceSymbolEdges(conn: Connection): Boolean =
         conn.createStatement().use { stmt ->
-            stmt.executeQuery("SELECT 1 FROM symbol_references WHERE source_fq_id IS NOT NULL LIMIT 1")
-                .use(ResultSet::next)
+            stmt.executeQuery("SELECT 1 FROM symbol_references WHERE source_fq_id IS NOT NULL LIMIT 1").use(ResultSet::next)
         }
 
-    private fun symbolLevelImpact(
-        conn: Connection,
-        fqName: String,
-        depth: Int,
-        confidence: Confidence,
-    ): List<ChangeImpactNode> =
+    private fun symbolLevelImpact(conn: Connection, fqName: String, depth: Int, confidence: Confidence): List<ChangeImpactNode> =
         conn.prepareStatement(
             """
             WITH RECURSIVE impacted(depth, source_fq_id, src_prefix_id, src_filename, via_target_fq_id, edge_kind) AS (
@@ -969,12 +927,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
             impactRows(stmt.executeQuery(), confidence)
         }
 
-    private fun fileLevelImpact(
-        conn: Connection,
-        fqName: String,
-        depth: Int,
-        confidence: Confidence,
-    ): List<ChangeImpactNode> =
+    private fun fileLevelImpact(conn: Connection, fqName: String, depth: Int, confidence: Confidence): List<ChangeImpactNode> =
         conn.prepareStatement(
             """
             WITH RECURSIVE impacted_files(depth, src_prefix_id, src_filename, via_target_fq_id, edge_kind) AS (
@@ -1034,10 +987,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
             impactRows(stmt.executeQuery(), confidence)
         }
 
-    private fun impactRows(
-        rs: ResultSet,
-        confidence: Confidence,
-    ): List<ChangeImpactNode> =
+    private fun impactRows(rs: ResultSet, confidence: Confidence): List<ChangeImpactNode> =
         rs.use {
             buildList {
                 while (rs.next()) {
@@ -1055,10 +1005,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
             }
         }
 
-    private fun popularSymbols(
-        conn: Connection,
-        limit: Int,
-    ): List<String> =
+    private fun popularSymbols(conn: Connection, limit: Int): List<String> =
         conn.prepareStatement(
             """
             SELECT names.fq_name
@@ -1073,11 +1020,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
             stmt.stringColumnResults()
         }
 
-    private fun directSymbolMatches(
-        conn: Connection,
-        query: String,
-        limit: Int,
-    ): List<String> =
+    private fun directSymbolMatches(conn: Connection, query: String, limit: Int): List<String> =
         conn.prepareStatement(
             """
             SELECT names.fq_name
@@ -1104,12 +1047,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
             stmt.stringColumnResults()
         }
 
-    private fun fuzzySymbolMatches(
-        conn: Connection,
-        query: String,
-        excluded: Set<String>,
-        maxDistance: Int = 2,
-    ): List<String> {
+    private fun fuzzySymbolMatches(conn: Connection, query: String, excluded: Set<String>, maxDistance: Int = 2): List<String> {
         val normalizedQuery = query.lowercase()
         return conn.prepareStatement(
             """
@@ -1128,13 +1066,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
                 val simpleName = fqName.substringAfterLast('.').lowercase()
                 val fqDistance = levenshteinDistanceAtMost(normalizedQuery, fqName.lowercase(), maxDistance)
                 val simpleDistance = levenshteinDistanceAtMost(normalizedQuery, simpleName, maxDistance)
-                minOfNotNull(fqDistance, simpleDistance)?.let { distance ->
-                    FuzzySymbolMatch(
-                        fqName,
-                        distance,
-                        simpleName.length
-                    )
-                }
+                minOfNotNull(fqDistance, simpleDistance)?.let { distance -> FuzzySymbolMatch(fqName, distance, simpleName.length) }
             }
             .sortedWith(compareBy({ it.distance }, { it.simpleNameLength }, { it.fqName }))
             .map(FuzzySymbolMatch::fqName)
@@ -1151,11 +1083,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
     private fun escapeLike(value: String): String =
         value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
-    private fun levenshteinDistanceAtMost(
-        left: String,
-        right: String,
-        maxDistance: Int,
-    ): Int? {
+    private fun levenshteinDistanceAtMost(left: String, right: String, maxDistance: Int): Int? {
         if (kotlin.math.abs(left.length - right.length) > maxDistance) return null
         var previous = IntArray(right.length + 1) { it }
         var current = IntArray(right.length + 1)
@@ -1179,33 +1107,17 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
         return previous[right.length].takeIf { it <= maxDistance }
     }
 
-    private fun minOfNotNull(
-        first: Int?,
-        second: Int?,
-    ): Int? = when {
+    private fun minOfNotNull(first: Int?, second: Int?): Int? = when {
         first == null -> second
         second == null -> first
         else -> minOf(first, second)
     }
 
-    private fun buildChildIdsByParent(
-        focal: FanInMetric?,
-        impact: List<ChangeImpactNode>,
-    ): Map<String, List<String>> =
+    private fun buildChildIdsByParent(focal: FanInMetric?, impact: List<ChangeImpactNode>): Map<String, List<String>> =
         buildMap {
-            focal?.targetPath?.let { targetPath ->
-                put(
-                    fileNodeId(targetPath),
-                    listOf(symbolNodeId(focal.targetFqName))
-                )
-            }
+            focal?.targetPath?.let { targetPath -> put(fileNodeId(targetPath), listOf(symbolNodeId(focal.targetFqName))) }
             impact.groupBy { parentIdFor(it, impact, focal?.targetFqName ?: it.viaTargetFqName) }
-                .forEach { (parentId, children) ->
-                    put(
-                        parentId,
-                        children.map { sourceFileNodeId(it.sourcePath) }.distinct()
-                    )
-                }
+                .forEach { (parentId, children) -> put(parentId, children.map { sourceFileNodeId(it.sourcePath) }.distinct()) }
             impact.forEach { node ->
                 val parentId = sourceFileNodeId(node.sourcePath)
                 put(parentId, getOrDefault(parentId, emptyList()) + referenceEdgeNodeId(node))
@@ -1223,12 +1135,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
             focal?.targetModulePath?.let { add("module=$it") }
             focal?.targetSourceSet?.let { add("sourceSet=$it") }
             add("incomingReferences=${focal?.occurrenceCount ?: directReferences.sumOf(ChangeImpactNode::occurrenceCount)}")
-            add(
-                "sourceFiles=${
-                    focal?.sourceFileCount ?: directReferences.map(ChangeImpactNode::sourcePath)
-                        .distinct().size
-                }"
-            )
+            add("sourceFiles=${focal?.sourceFileCount ?: directReferences.map(ChangeImpactNode::sourcePath).distinct().size}")
             focal?.sourceModuleCount?.let { add("sourceModules=$it") }
         }
         return Node(
@@ -1241,27 +1148,16 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
         )
     }
 
-    private fun targetFileNode(
-        targetPath: String,
-        focal: FanInMetric,
-        childIdsByParent: Map<String, List<String>>,
-    ): Node =
+    private fun targetFileNode(targetPath: String, focal: FanInMetric, childIdsByParent: Map<String, List<String>>): Node =
         Node(
             id = fileNodeId(targetPath),
             name = targetPath,
             type = NodeType.FILE,
             children = childIdsByParent[fileNodeId(targetPath)].orEmpty(),
-            attributes = listOfNotNull(
-                "role=target",
-                focal.targetModulePath?.let { "module=$it" },
-                focal.targetSourceSet?.let { "sourceSet=$it" }),
+            attributes = listOfNotNull("role=target", focal.targetModulePath?.let { "module=$it" }, focal.targetSourceSet?.let { "sourceSet=$it" }),
         )
 
-    private fun sourceFileNode(
-        nodes: List<ChangeImpactNode>,
-        childIdsByParent: Map<String, List<String>>,
-        parentId: String,
-    ): Node {
+    private fun sourceFileNode(nodes: List<ChangeImpactNode>, childIdsByParent: Map<String, List<String>>, parentId: String): Node {
         val representative = nodes.minBy { it.depth }
         return Node(
             id = sourceFileNodeId(representative.sourcePath),
@@ -1283,27 +1179,18 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
             name = node.viaTargetFqName,
             type = NodeType.REFERENCE_EDGE,
             parentId = sourceFileNodeId(node.sourcePath),
-            attributes = listOf(
-                "from=${node.sourcePath}",
-                "to=${node.viaTargetFqName}",
-                "references=${node.occurrenceCount}"
-            ),
+            attributes = listOf("from=${node.sourcePath}", "to=${node.viaTargetFqName}", "references=${node.occurrenceCount}"),
         )
 
-    private fun parentIdFor(
-        node: ChangeImpactNode,
-        impact: List<ChangeImpactNode>,
-        fqName: String,
-    ): String =
+    private fun parentIdFor(node: ChangeImpactNode, impact: List<ChangeImpactNode>, fqName: String): String =
         impact
             .firstOrNull { candidate ->
                 candidate.depth == node.depth - 1 &&
-                node.viaTargetFqName.substringAfterLast('.') == candidate.sourcePath.substringAfterLast('/')
-                    .removeSuffix(".kt")
+                    node.viaTargetFqName.substringAfterLast('.') == candidate.sourcePath.substringAfterLast('/').removeSuffix(".kt")
             }
             ?.sourcePath
             ?.let(::sourceFileNodeId)
-        ?: symbolNodeId(fqName)
+            ?: symbolNodeId(fqName)
 
     private fun symbolNodeId(fqName: String): String = "symbol:$fqName"
 
@@ -1367,10 +1254,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
         return components
     }
 
-    private fun shortestCycle(
-        component: Set<String>,
-        adjacency: Map<String, List<String>>,
-    ): List<String>? =
+    private fun shortestCycle(component: Set<String>, adjacency: Map<String, List<String>>): List<String>? =
         component.sorted().mapNotNull { start ->
             val queue = ArrayDeque<List<String>>()
             queue.add(listOf(start))
@@ -1389,10 +1273,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
             found
         }.minWithOrNull(compareBy<List<String>>({ it.size }, { it.joinToString(" -> ") }))
 
-    private inline fun <T> readMetric(
-        defaultValue: T,
-        query: (Connection) -> T,
-    ): T {
+    private inline fun <T> readMetric(defaultValue: T, query: (Connection) -> T): T {
         if (!Files.isRegularFile(dbPath)) return defaultValue
         val conn = connection()
         if (!schemaIsCurrent(conn)) return defaultValue
@@ -1410,15 +1291,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
     }
 
     private fun requiredTablesExist(conn: Connection): Boolean {
-        val requiredTables = setOf(
-            "path_prefixes",
-            "fq_names",
-            "symbol_references",
-            "identifier_paths",
-            "file_metadata",
-            "file_manifest",
-            "declarations"
-        )
+        val requiredTables = setOf("path_prefixes", "fq_names", "symbol_references", "identifier_paths", "file_metadata", "file_manifest", "declarations")
         val existingTables = conn.prepareStatement(
             """SELECT name FROM sqlite_master
                WHERE type = 'table' AND name IN (${requiredTables.joinToString(",") { "?" }})""",
@@ -1446,19 +1319,12 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
         return conn
     }
 
-    private fun nullablePath(
-        rs: ResultSet,
-        dirColumn: Int,
-        filenameColumn: Int,
-    ): String? {
+    private fun nullablePath(rs: ResultSet, dirColumn: Int, filenameColumn: Int): String? {
         val filename = rs.getString(filenameColumn) ?: return null
         return codec.compose(rs.getString(dirColumn), filename)
     }
 
-    private fun ratio(
-        numerator: Int,
-        denominator: Int,
-    ): Double =
+    private fun ratio(numerator: Int, denominator: Int): Double =
         if (denominator == 0) 0.0 else numerator / denominator.toDouble()
 
     private data class ModuleDeclarationStats(

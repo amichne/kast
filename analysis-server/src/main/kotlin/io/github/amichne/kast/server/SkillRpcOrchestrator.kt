@@ -7,10 +7,11 @@ import io.github.amichne.kast.api.contract.DiagnosticSeverity
 import io.github.amichne.kast.api.contract.FileOperation
 import io.github.amichne.kast.api.contract.FilePosition
 import io.github.amichne.kast.api.contract.Location
-import io.github.amichne.kast.api.contract.MutationCapability
 import io.github.amichne.kast.api.contract.PageInfo
 import io.github.amichne.kast.api.contract.PageableResult
 import io.github.amichne.kast.api.contract.ReadCapability
+import io.github.amichne.kast.api.contract.MutationCapability
+import io.github.amichne.kast.api.contract.SearchScope
 import io.github.amichne.kast.api.contract.SemanticInsertionTarget
 import io.github.amichne.kast.api.contract.Symbol
 import io.github.amichne.kast.api.contract.SymbolKind
@@ -25,6 +26,10 @@ import io.github.amichne.kast.api.contract.query.RenameQuery
 import io.github.amichne.kast.api.contract.query.SymbolQuery
 import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
+import io.github.amichne.kast.api.contract.result.ApplyEditsResult
+import io.github.amichne.kast.api.contract.result.CallHierarchyStats
+import io.github.amichne.kast.api.contract.result.TypeHierarchyNode
+import io.github.amichne.kast.api.contract.result.TypeHierarchyStats
 import io.github.amichne.kast.api.contract.skill.KastCallersFailureResponse
 import io.github.amichne.kast.api.contract.skill.KastCallersQuery
 import io.github.amichne.kast.api.contract.skill.KastCallersRequest
@@ -56,6 +61,7 @@ import io.github.amichne.kast.api.contract.skill.KastResolveQuery
 import io.github.amichne.kast.api.contract.skill.KastResolveRequest
 import io.github.amichne.kast.api.contract.skill.KastResolveResponse
 import io.github.amichne.kast.api.contract.skill.KastResolveSuccessResponse
+import io.github.amichne.kast.api.contract.skill.KastScaffoldFailureResponse
 import io.github.amichne.kast.api.contract.skill.KastScaffoldQuery
 import io.github.amichne.kast.api.contract.skill.KastScaffoldReferences
 import io.github.amichne.kast.api.contract.skill.KastScaffoldRequest
@@ -64,6 +70,7 @@ import io.github.amichne.kast.api.contract.skill.KastScaffoldSuccessResponse
 import io.github.amichne.kast.api.contract.skill.KastScaffoldTypeHierarchy
 import io.github.amichne.kast.api.contract.skill.KastWriteAndValidateCreateFileQuery
 import io.github.amichne.kast.api.contract.skill.KastWriteAndValidateCreateFileRequest
+import io.github.amichne.kast.api.contract.skill.KastWriteAndValidateFailureQuery
 import io.github.amichne.kast.api.contract.skill.KastWriteAndValidateInsertAtOffsetQuery
 import io.github.amichne.kast.api.contract.skill.KastWriteAndValidateInsertAtOffsetRequest
 import io.github.amichne.kast.api.contract.skill.KastWriteAndValidateQuery
@@ -247,6 +254,7 @@ internal class SkillRpcOrchestrator(
                 symbolName = symbolName,
                 fileHint = request.targetFile,
                 kind = request.kind,
+                containingType = null,
             )
         }
         val references = resolvedSymbol?.let { resolved ->
@@ -264,13 +272,7 @@ internal class SkillRpcOrchestrator(
                 declaration = result.declaration,
             )
         }
-        val typeHierarchy = resolvedSymbol?.takeIf {
-            it.symbol.kind in setOf(
-                SymbolKind.CLASS,
-                SymbolKind.INTERFACE,
-                SymbolKind.OBJECT
-            )
-        }?.let { resolved ->
+        val typeHierarchy = resolvedSymbol?.takeIf { it.symbol.kind in setOf(SymbolKind.CLASS, SymbolKind.INTERFACE, SymbolKind.OBJECT) }?.let { resolved ->
             requireReadCapability(ReadCapability.TYPE_HIERARCHY)
             val result = backend.typeHierarchy(
                 TypeHierarchyQuery(
@@ -329,43 +331,16 @@ internal class SkillRpcOrchestrator(
         )
         val results = MetricsEngine(Path.of(workspaceRoot)).use { engine ->
             when (request.metric) {
-                WrapperMetric.API_SURFACE -> json.encodeList(
-                    ApiSurfaceMetric.serializer(),
-                    engine.apiSurface(modulePath = request.symbol)
-                )
-                WrapperMetric.MODULE_BOUNDARY -> json.encodeList(
-                    ModuleBoundaryMetric.serializer(),
-                    engine.moduleBoundary(modulePath = request.symbol)
-                )
+                WrapperMetric.API_SURFACE -> json.encodeList(ApiSurfaceMetric.serializer(), engine.apiSurface(modulePath = request.symbol))
+                WrapperMetric.MODULE_BOUNDARY -> json.encodeList(ModuleBoundaryMetric.serializer(), engine.moduleBoundary(modulePath = request.symbol))
                 WrapperMetric.DECLARATIONS -> json.encodeList(DeclarationInfo.serializer(), engine.declarations(filter))
-                WrapperMetric.FAN_IN -> json.encodeList(
-                    FanInMetric.serializer(),
-                    engine.fanInRanking(request.limit, filter)
-                )
-                WrapperMetric.FAN_OUT -> json.encodeList(
-                    FanOutMetric.serializer(),
-                    engine.fanOutRanking(request.limit, filter)
-                )
-                WrapperMetric.COUPLING -> json.encodeList(
-                    ModuleCouplingMetric.serializer(),
-                    engine.moduleCouplingMatrix()
-                )
-                WrapperMetric.LOW_USAGE -> json.encodeList(
-                    LowUsageSymbol.serializer(),
-                    engine.lowUsageSymbols(
-                        limit = request.limit,
-                        filter = filter
-                    )
-                )
+                WrapperMetric.FAN_IN -> json.encodeList(FanInMetric.serializer(), engine.fanInRanking(request.limit, filter))
+                WrapperMetric.FAN_OUT -> json.encodeList(FanOutMetric.serializer(), engine.fanOutRanking(request.limit, filter))
+                WrapperMetric.COUPLING -> json.encodeList(ModuleCouplingMetric.serializer(), engine.moduleCouplingMatrix())
+                WrapperMetric.LOW_USAGE -> json.encodeList(LowUsageSymbol.serializer(), engine.lowUsageSymbols(limit = request.limit, filter = filter))
                 WrapperMetric.CYCLES -> json.encodeList(ModuleCycleMetric.serializer(), engine.moduleCycles())
-                WrapperMetric.MODULE_DEPTH -> json.encodeList(
-                    ModuleDepthMetric.serializer(),
-                    engine.moduleDepthMetrics()
-                )
-                WrapperMetric.DEAD_CODE -> json.encodeList(
-                    DeadCodeCandidate.serializer(),
-                    engine.deadCodeCandidates(filter)
-                )
+                WrapperMetric.MODULE_DEPTH -> json.encodeList(ModuleDepthMetric.serializer(), engine.moduleDepthMetrics())
+                WrapperMetric.DEAD_CODE -> json.encodeList(DeadCodeCandidate.serializer(), engine.deadCodeCandidates(filter))
                 WrapperMetric.IMPACT -> json.encodeList(
                     ChangeImpactNode.serializer(),
                     engine.changeImpactRadius(
@@ -470,6 +445,7 @@ internal class SkillRpcOrchestrator(
             RenameQuery(
                 position = FilePosition(filePath = filePath, offset = offset),
                 newName = newName,
+                dryRun = true,
             ).parsed(),
         )
         requireMutationCapability(MutationCapability.APPLY_EDITS)
@@ -483,10 +459,7 @@ internal class SkillRpcOrchestrator(
             KastDiagnosticsSummary(clean = true, errorCount = 0, warningCount = 0)
         } else {
             requireReadCapability(ReadCapability.DIAGNOSTICS)
-            diagnosticsSummary(
-                backend.diagnostics(DiagnosticsQuery(filePaths = renameResult.affectedFiles).parsed())
-                    .withLimit(config.maxResults, ::diagnosticPageToken)
-            )
+            diagnosticsSummary(backend.diagnostics(DiagnosticsQuery(filePaths = renameResult.affectedFiles).parsed()).withLimit(config.maxResults, ::diagnosticPageToken))
         }
         return KastRenameSuccessResponse(
             ok = diagnosticsSummary.clean,
@@ -597,8 +570,7 @@ internal class SkillRpcOrchestrator(
     private suspend fun validateFiles(filePaths: List<String>): KastDiagnosticsSummary {
         requireReadCapability(ReadCapability.DIAGNOSTICS)
         return diagnosticsSummary(
-            backend.diagnostics(DiagnosticsQuery(filePaths = filePaths).parsed())
-                .withLimit(config.maxResults, ::diagnosticPageToken),
+            backend.diagnostics(DiagnosticsQuery(filePaths = filePaths).parsed()).withLimit(config.maxResults, ::diagnosticPageToken),
         )
     }
 
@@ -693,10 +665,7 @@ internal class SkillRpcOrchestrator(
             errors = result.diagnostics.filter { it.severity == DiagnosticSeverity.ERROR },
         )
 
-    private fun resolveContent(
-        content: String?,
-        contentFile: String?,
-    ): String {
+    private fun resolveContent(content: String?, contentFile: String?): String {
         if (content != null) {
             return content
         }
@@ -771,8 +740,5 @@ private fun <T, R : PageableResult<T>> R.withLimit(
     ) as R
 }
 
-private fun <T> Json.encodeList(
-    serializer: kotlinx.serialization.KSerializer<T>,
-    items: List<T>,
-): JsonElement =
+private fun <T> Json.encodeList(serializer: kotlinx.serialization.KSerializer<T>, items: List<T>): JsonElement =
     encodeToJsonElement(ListSerializer(serializer), items)

@@ -8,9 +8,9 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.concurrent.CancellationException
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.CancellationException
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -292,7 +292,7 @@ class ConcurrencyInvariantTest {
                 val cancelledAccess = CompletableFuture.runAsync(
                     {
                         assertThrows(CancellationException::class.java) {
-                            environment.withExclusiveAccess { }
+                            environment.withExclusiveAccess { Unit }
                         }
                     },
                     executor,
@@ -343,7 +343,7 @@ class ConcurrencyInvariantTest {
                 val cancelledAccess = CompletableFuture.runAsync(
                     {
                         assertThrows(CancellationException::class.java) {
-                            environment.withReadAccess { }
+                            environment.withReadAccess { Unit }
                         }
                     },
                     executor,
@@ -397,10 +397,7 @@ class ConcurrencyInvariantTest {
         }
     }
 
-    private fun writeSourceFile(
-        relativePath: String,
-        content: String,
-    ): Path {
+    private fun writeSourceFile(relativePath: String, content: String): Path {
         val file = workspaceRoot.resolve("src/main/kotlin").resolve(relativePath)
         file.parent.createDirectories()
         file.writeText(content)

@@ -11,11 +11,11 @@ import com.intellij.testFramework.junit5.fixture.moduleFixture
 import com.intellij.testFramework.junit5.fixture.projectFixture
 import com.intellij.testFramework.junit5.fixture.psiFileFixture
 import com.intellij.testFramework.junit5.fixture.sourceRootFixture
+import io.github.amichne.kast.api.contract.query.DiagnosticsQuery
 import io.github.amichne.kast.api.contract.FilePosition
+import io.github.amichne.kast.api.contract.query.ReferencesQuery
 import io.github.amichne.kast.api.contract.SearchScopeKind
 import io.github.amichne.kast.api.contract.ServerLimits
-import io.github.amichne.kast.api.contract.query.DiagnosticsQuery
-import io.github.amichne.kast.api.contract.query.ReferencesQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -222,18 +222,9 @@ class IntelliJBackendOperationPerformanceTest {
     private val moduleFixture: TestFixture<Module> = projectFixture.moduleFixture("main")
     private val sourceRootFixture: TestFixture<PsiDirectory> = moduleFixture.sourceRootFixture()
 
-    private val publicFileFixture: TestFixture<PsiFile> = sourceRootFixture.psiFileFixture(
-        "PublicHelper.kt",
-        publicFunctionSource
-    )
-    private val privateFileFixture: TestFixture<PsiFile> = sourceRootFixture.psiFileFixture(
-        "PrivateHelper.kt",
-        privateFunctionSource
-    )
-    private val internalFileFixture: TestFixture<PsiFile> = sourceRootFixture.psiFileFixture(
-        "InternalHelper.kt",
-        internalFunctionSource
-    )
+    private val publicFileFixture: TestFixture<PsiFile> = sourceRootFixture.psiFileFixture("PublicHelper.kt", publicFunctionSource)
+    private val privateFileFixture: TestFixture<PsiFile> = sourceRootFixture.psiFileFixture("PrivateHelper.kt", privateFunctionSource)
+    private val internalFileFixture: TestFixture<PsiFile> = sourceRootFixture.psiFileFixture("InternalHelper.kt", internalFunctionSource)
     private val diagAFixture: TestFixture<PsiFile> = sourceRootFixture.psiFileFixture("DiagA.kt", diagnosticsFileA)
     private val diagBFixture: TestFixture<PsiFile> = sourceRootFixture.psiFileFixture("DiagB.kt", diagnosticsFileB)
     private val diagCFixture: TestFixture<PsiFile> = sourceRootFixture.psiFileFixture("DiagC.kt", diagnosticsFileC)
@@ -271,6 +262,7 @@ class IntelliJBackendOperationPerformanceTest {
             val result = backend().findReferences(
                 ReferencesQuery(
                     position = FilePosition(filePath = filePath, offset = offset),
+                    includeDeclaration = false,
                 ),
             )
             assertEquals(SearchScopeKind.FILE, result.searchScope?.scope)
@@ -298,6 +290,7 @@ class IntelliJBackendOperationPerformanceTest {
             val result = backend().findReferences(
                 ReferencesQuery(
                     position = FilePosition(filePath = filePath, offset = offset),
+                    includeDeclaration = false,
                 ),
             )
             assertEquals(SearchScopeKind.DEPENDENT_MODULES, result.searchScope?.scope)
@@ -322,6 +315,7 @@ class IntelliJBackendOperationPerformanceTest {
             val result = backend().findReferences(
                 ReferencesQuery(
                     position = FilePosition(filePath = filePath, offset = offset),
+                    includeDeclaration = false,
                 ),
             )
             assertEquals(SearchScopeKind.DEPENDENT_MODULES, result.searchScope?.scope)
@@ -366,6 +360,7 @@ class IntelliJBackendOperationPerformanceTest {
             val result = backend().workspaceSymbolSearch(
                 WorkspaceSymbolQuery(
                     pattern = "Helper",
+                    maxResults = 100,
                 ),
             )
             assertTrue(result.symbols.isNotEmpty()) {

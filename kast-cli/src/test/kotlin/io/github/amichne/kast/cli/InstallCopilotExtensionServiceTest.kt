@@ -64,10 +64,7 @@ class InstallCopilotExtensionServiceTest {
         assertTrue(Files.isRegularFile(targetDir.resolve("extensions/kotlin-gradle-loop/scripts/state/update_state.py")))
         assertTrue(Files.isRegularFile(targetDir.resolve("extensions/kotlin-gradle-loop/scripts/state/record_action.py")))
         assertFalse(Files.readString(targetDir.resolve("extensions/kast/extension.mjs")).contains(".agents"))
-        assertFalse(
-            Files.readString(targetDir.resolve("extensions/kotlin-gradle-loop/extension.mjs"))
-                .contains(".agents")
-        )
+        assertFalse(Files.readString(targetDir.resolve("extensions/kotlin-gradle-loop/extension.mjs")).contains(".agents"))
         assertEquals(
             listOf("kast", "kotlin-gradle-loop"),
             readShadowedSkillIds(targetDir.resolve("hooks/skill-shadowing.json")),
@@ -295,6 +292,7 @@ class InstallCopilotExtensionServiceTest {
         .jsonArray
         .map { skill -> skill.jsonObject.getValue("id").jsonPrimitive.content }
 
+
     @Test
     fun installRecordsManagedRepoInGlobalManifest() {
         val installRoot = tempDir.resolve("home/.kast")
@@ -364,4 +362,5 @@ class InstallCopilotExtensionServiceTest {
         assertTrue(result.warnings.any { it.contains("resolve-kast-cli-path.sh could not resolve kast") })
         assertTrue(result.warnings.any { it.contains("python3") })
     }
+
 }

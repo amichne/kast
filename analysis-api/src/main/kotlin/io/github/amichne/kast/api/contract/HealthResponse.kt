@@ -3,15 +3,13 @@
 package io.github.amichne.kast.api.contract
 
 import io.github.amichne.kast.api.docs.DocField
-import io.github.amichne.kast.api.protocol.SCHEMA_VERSION
+import io.github.amichne.kast.api.protocol.*
+
 import kotlinx.serialization.Serializable
 
 @Serializable
 data class HealthResponse(
-    @DocField(
-        description = "Health status string, always \"ok\" when the daemon is responsive.",
-        defaultValue = "\"ok\""
-    )
+    @DocField(description = "Health status string, always \"ok\" when the daemon is responsive.", defaultValue = "\"ok\"")
     val status: String = "ok",
     @DocField(description = "Identifier of the analysis backend (e.g. \"standalone\" or \"intellij\").")
     val backendName: String,

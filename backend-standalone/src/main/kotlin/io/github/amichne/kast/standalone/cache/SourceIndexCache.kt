@@ -2,8 +2,8 @@ package io.github.amichne.kast.standalone.cache
 
 import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.indexstore.api.index.FileIndexUpdate
-import io.github.amichne.kast.indexstore.api.index.splitModuleName
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
+import io.github.amichne.kast.indexstore.api.index.splitModuleName
 import io.github.amichne.kast.standalone.MutableSourceIdentifierIndex
 import java.nio.file.Path
 

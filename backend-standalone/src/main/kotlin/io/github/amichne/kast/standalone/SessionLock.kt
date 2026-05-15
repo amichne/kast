@@ -28,10 +28,7 @@ internal interface SessionLock {
      * **Caller contract**: [T] must be non-nullable.  A `null` return always means
      * "timeout"; a non-null return always means the action completed under the lock.
      */
-    fun <T> tryWrite(
-        timeoutMillis: Long,
-        action: () -> T,
-    ): T?
+    fun <T> tryWrite(timeoutMillis: Long, action: () -> T): T?
 }
 
 internal class ReentrantSessionLock : SessionLock {
@@ -46,10 +43,7 @@ internal class ReentrantSessionLock : SessionLock {
      * Attempts to acquire the write lock within [timeoutMillis] milliseconds.
      * Returns `null` on timeout; propagates any exception thrown by [action].
      */
-    override fun <T> tryWrite(
-        timeoutMillis: Long,
-        action: () -> T,
-    ): T? {
+    override fun <T> tryWrite(timeoutMillis: Long, action: () -> T): T? {
         if (!lock.writeLock().tryLock(timeoutMillis, TimeUnit.MILLISECONDS)) return null
         return try {
             action()
@@ -100,10 +94,7 @@ internal class TelemetrySessionLock(
         }
     }
 
-    override fun <T> tryWrite(
-        timeoutMillis: Long,
-        action: () -> T,
-    ): T? {
+    override fun <T> tryWrite(timeoutMillis: Long, action: () -> T): T? {
         val entryNanos = System.nanoTime()
         return delegate.tryWrite(timeoutMillis) {
             val acquiredNanos = System.nanoTime()
@@ -113,6 +104,7 @@ internal class TelemetrySessionLock(
                 name = "kast.lock.write",
                 waitNanos = acquiredNanos - entryNanos,
                 holdNanos = releaseNanos - acquiredNanos,
+                acquired = true,
             )
             result
         }.also { outcome ->
@@ -187,10 +179,7 @@ internal class InstrumentedSessionLock(
      * Delegates to [ReentrantSessionLock.tryWrite].  Records a [LockType.WRITE] event only
      * when the lock was successfully acquired (i.e., the return value is non-null).
      */
-    override fun <T> tryWrite(
-        timeoutMillis: Long,
-        action: () -> T,
-    ): T? {
+    override fun <T> tryWrite(timeoutMillis: Long, action: () -> T): T? {
         val start = clock.nanoTime()
         return delegate.tryWrite(timeoutMillis, action)?.also {
             _events += LockEvent(LockType.WRITE, Thread.currentThread().name, start, clock.nanoTime())
@@ -198,8 +187,8 @@ internal class InstrumentedSessionLock(
     }
 
     fun maxWriteHoldNanos(): Long = _events
-                                        .filter { it.type == LockType.WRITE }
-                                        .maxOfOrNull { it.releasedAtNanos - it.acquiredAtNanos } ?: 0L
+        .filter { it.type == LockType.WRITE }
+        .maxOfOrNull { it.releasedAtNanos - it.acquiredAtNanos } ?: 0L
 
     fun writeEventsOverlappingReads(): List<Pair<LockEvent, LockEvent>> {
         val writes = _events.filter { it.type == LockType.WRITE }

@@ -1,63 +1,24 @@
 package io.github.amichne.kast.api.validation
 
-import io.github.amichne.kast.api.contract.ByteOffset
-import io.github.amichne.kast.api.contract.CallDirection
-import io.github.amichne.kast.api.contract.ColumnNumber
-import io.github.amichne.kast.api.contract.FileHash
-import io.github.amichne.kast.api.contract.FileOperation
-import io.github.amichne.kast.api.contract.FilePosition
-import io.github.amichne.kast.api.contract.LineNumber
-import io.github.amichne.kast.api.contract.Location
-import io.github.amichne.kast.api.contract.NonBlankString
-import io.github.amichne.kast.api.contract.NonEmptyList
-import io.github.amichne.kast.api.contract.NonNegativeInt
-import io.github.amichne.kast.api.contract.NormalizedPath
-import io.github.amichne.kast.api.contract.PositiveInt
-import io.github.amichne.kast.api.contract.PositiveLong
-import io.github.amichne.kast.api.contract.SemanticInsertionQuery
-import io.github.amichne.kast.api.contract.SemanticInsertionTarget
-import io.github.amichne.kast.api.contract.SymbolKind
-import io.github.amichne.kast.api.contract.TextEdit
-import io.github.amichne.kast.api.contract.TypeHierarchyDirection
-import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
-import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
-import io.github.amichne.kast.api.contract.query.CodeActionsQuery
-import io.github.amichne.kast.api.contract.query.CompletionsQuery
-import io.github.amichne.kast.api.contract.query.DiagnosticsQuery
-import io.github.amichne.kast.api.contract.query.FileOutlineQuery
-import io.github.amichne.kast.api.contract.query.ImplementationsQuery
-import io.github.amichne.kast.api.contract.query.ImportOptimizeQuery
-import io.github.amichne.kast.api.contract.query.ReferencesQuery
-import io.github.amichne.kast.api.contract.query.RefreshQuery
-import io.github.amichne.kast.api.contract.query.RenameQuery
-import io.github.amichne.kast.api.contract.query.SymbolQuery
-import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
-import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
-import io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery
-import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
-import io.github.amichne.kast.api.protocol.ValidationException
+import io.github.amichne.kast.api.contract.*
+import io.github.amichne.kast.api.contract.query.*
+import io.github.amichne.kast.api.protocol.*
 import java.nio.file.FileSystems
 
 /**
  * Parsed query contract for requests anchored at a validated source position.
  */
-interface PositionQuery {
-    val position: ParsedFilePosition
-}
+interface PositionQuery { val position: ParsedFilePosition }
 
 /**
  * Parsed query contract for requests whose result count is bounded by a positive limit.
  */
-interface BoundedQuery {
-    val maxResults: PositiveInt
-}
+interface BoundedQuery { val maxResults: PositiveInt }
 
 /**
  * Parsed query contract for traversal requests whose depth is zero or greater.
  */
-interface DepthBoundedQuery {
-    val depth: NonNegativeInt
-}
+interface DepthBoundedQuery { val depth: NonNegativeInt }
 
 /**
  * Validated internal representation of a [FilePosition].

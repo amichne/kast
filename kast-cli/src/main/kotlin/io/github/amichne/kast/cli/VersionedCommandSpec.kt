@@ -176,10 +176,7 @@ private fun descriptorToSchema(descriptor: SerialDescriptor): JsonObject = build
 }
 
 @OptIn(ExperimentalSerializationApi::class)
-private fun fieldSchema(
-    descriptor: SerialDescriptor,
-    optional: Boolean,
-): JsonObject = buildJsonObject {
+private fun fieldSchema(descriptor: SerialDescriptor, optional: Boolean): JsonObject = buildJsonObject {
     put("type", JsonPrimitive(typeNameFor(descriptor)))
     if (optional) {
         put("optional", JsonPrimitive(true))
@@ -235,7 +232,7 @@ private fun JsonElement.toPrettyString(indent: Int = 0): String {
 fun main(args: Array<String>) {
     val version = args.getOrNull(0) ?: currentCliVersion()
     val target = args.getOrNull(1)?.let(Path::of)
-                 ?: Path.of(".agents/skills/kast/references/commands.json")
+        ?: Path.of(".agents/skills/kast/references/commands.json")
     Files.createDirectories(target.parent)
     Files.writeString(target, VersionedCommandSpec.renderJson(version) + "\n")
 }

@@ -4,7 +4,6 @@ import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.kastConfigHome
 import io.opentelemetry.api.trace.StatusCode
 import io.opentelemetry.api.trace.Tracer
-import io.opentelemetry.exporter.otlp.trace.OtlpGrpcSpanExporter
 import io.opentelemetry.sdk.OpenTelemetrySdk
 import io.opentelemetry.sdk.common.CompletableResultCode
 import io.opentelemetry.sdk.trace.SdkTracerProvider
@@ -12,6 +11,7 @@ import io.opentelemetry.sdk.trace.data.EventData
 import io.opentelemetry.sdk.trace.data.SpanData
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor
 import io.opentelemetry.sdk.trace.export.SpanExporter
+import io.opentelemetry.exporter.otlp.trace.OtlpGrpcSpanExporter
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -26,8 +26,7 @@ internal class StandaloneTelemetry private constructor(
 ) {
     fun isEnabled(scope: StandaloneTelemetryScope): Boolean = config != null && scope in config.scopes
 
-    fun isVerbose(scope: StandaloneTelemetryScope): Boolean =
-        isEnabled(scope) && config?.detail == StandaloneTelemetryDetail.VERBOSE
+    fun isVerbose(scope: StandaloneTelemetryScope): Boolean = isEnabled(scope) && config?.detail == StandaloneTelemetryDetail.VERBOSE
 
     inline fun <T> inSpan(
         scope: StandaloneTelemetryScope,
@@ -133,8 +132,8 @@ internal class StandaloneTelemetry private constructor(
                 configHome = configHome,
             )
             val otlpEndpoint = envLookup("KAST_OTLP_ENDPOINT")
-                                   ?.takeIf(String::isNotBlank)
-                               ?: config.profiling.otlpEndpoint.value.orNull?.takeIf(String::isNotBlank)
+                ?.takeIf(String::isNotBlank)
+                ?: config.profiling.otlpEndpoint.value.orNull?.takeIf(String::isNotBlank)
 
             return StandaloneTelemetryConfig(
                 enabled = true,
@@ -225,9 +224,7 @@ private data class SerializedSpan(
             parentSpanId = span.parentSpanContext.spanId.takeUnless { it == "0000000000000000" },
             kind = span.kind.name,
             status = span.status.statusCode.name,
-            attributes = span.attributes.asMap()
-                .mapKeys { (key, _) -> key.key }
-                .mapValues { (_, value) -> value.toString() },
+            attributes = span.attributes.asMap().mapKeys { (key, _) -> key.key }.mapValues { (_, value) -> value.toString() },
             events = if (detail == StandaloneTelemetryDetail.VERBOSE) {
                 span.events.map(SerializedEvent::from)
             } else {
@@ -275,9 +272,7 @@ private data class SerializedEvent(
     companion object {
         fun from(event: EventData): SerializedEvent = SerializedEvent(
             name = event.name,
-            attributes = event.attributes.asMap()
-                .mapKeys { (key, _) -> key.key }
-                .mapValues { (_, value) -> value.toString() },
+            attributes = event.attributes.asMap().mapKeys { (key, _) -> key.key }.mapValues { (_, value) -> value.toString() },
         )
     }
 

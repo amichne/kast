@@ -1,25 +1,25 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.api.client.ServerInstanceDescriptor
 import io.github.amichne.kast.api.contract.BackendCapabilities
 import io.github.amichne.kast.api.contract.FilePosition
-import io.github.amichne.kast.api.contract.RuntimeState
-import io.github.amichne.kast.api.contract.RuntimeStatusResponse
-import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.contract.query.DiagnosticsQuery
 import io.github.amichne.kast.api.contract.query.FileOutlineQuery
 import io.github.amichne.kast.api.contract.query.ReferencesQuery
 import io.github.amichne.kast.api.contract.query.RefreshQuery
 import io.github.amichne.kast.api.contract.query.RenameQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
-import io.github.amichne.kast.api.contract.result.DiagnosticsResult
 import io.github.amichne.kast.api.contract.result.FileOutlineResult
+import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
+import io.github.amichne.kast.api.contract.result.DiagnosticsResult
+import io.github.amichne.kast.api.protocol.JsonRpcRequest
+import io.github.amichne.kast.api.protocol.JsonRpcSuccessResponse
 import io.github.amichne.kast.api.contract.result.ReferencesResult
 import io.github.amichne.kast.api.contract.result.RefreshResult
 import io.github.amichne.kast.api.contract.result.RenameResult
-import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
-import io.github.amichne.kast.api.protocol.JsonRpcRequest
-import io.github.amichne.kast.api.protocol.JsonRpcSuccessResponse
+import io.github.amichne.kast.api.contract.RuntimeState
+import io.github.amichne.kast.api.contract.RuntimeStatusResponse
+import io.github.amichne.kast.api.client.ServerInstanceDescriptor
+import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.cli.results.WorkspaceEnsureResult
 import io.github.amichne.kast.cli.results.WorkspaceStatusResult
 import io.github.amichne.kast.cli.tty.defaultCliJson
@@ -341,6 +341,7 @@ class KastWrapperTest {
                                     offset = sourceFile.readText().indexOf("welcome"),
                                 ),
                                 newName = "salute",
+                                dryRun = true,
                             ),
                         ),
                     ),
@@ -352,7 +353,7 @@ class KastWrapperTest {
                 }
                 val renameResult = decodeRpcResult(rename.stdout, RenameResult.serializer())
                 renameResult.edits.isNotEmpty() &&
-                renameResult.edits.all { edit -> edit.newText == "salute" }
+                    renameResult.edits.all { edit -> edit.newText == "salute" }
             }
         } finally {
             runCli(
@@ -406,6 +407,7 @@ class KastWrapperTest {
                                     offset = sourceFile.readText().indexOf("welcome"),
                                 ),
                                 newName = "salute",
+                                dryRun = true,
                             ),
                         ),
                     ),
@@ -418,10 +420,10 @@ class KastWrapperTest {
 
                 val renameResult = decodeRpcResult(rename.stdout, RenameResult.serializer())
                 renameResult.edits.isNotEmpty() &&
-                renameResult.edits.all { edit ->
-                    edit.newText == "salute" &&
-                    edit.endOffset - edit.startOffset == "welcome".length
-                }
+                    renameResult.edits.all { edit ->
+                        edit.newText == "salute" &&
+                            edit.endOffset - edit.startOffset == "welcome".length
+                    }
             }
         } finally {
             runCli(
@@ -503,6 +505,7 @@ class KastWrapperTest {
                                 filePath = declarationFile.toString(),
                                 offset = declarationFile.readText().indexOf("greet"),
                             ),
+                            includeDeclaration = false,
                         ),
                     ),
                 ),
@@ -553,8 +556,7 @@ class KastWrapperTest {
         io.github.amichne.kast.api.client.DescriptorRegistry(daemonsDir.resolve("daemons.json")).register(descriptor)
         val defaultDaemonsDir = home.resolve(".kast/cache/daemons")
         Files.createDirectories(defaultDaemonsDir)
-        io.github.amichne.kast.api.client.DescriptorRegistry(defaultDaemonsDir.resolve("daemons.json"))
-            .register(descriptor)
+        io.github.amichne.kast.api.client.DescriptorRegistry(defaultDaemonsDir.resolve("daemons.json")).register(descriptor)
 
         val runtimeStatus = RuntimeStatusResponse(
             state = RuntimeState.READY,
@@ -615,6 +617,7 @@ class KastWrapperTest {
                                 offset = 0,
                             ),
                             newName = "RenamedSymbol",
+                            dryRun = true,
                         ),
                     ),
                 ),
@@ -635,19 +638,13 @@ class KastWrapperTest {
         }
     }
 
-    private fun rpcRequest(
-        method: String,
-        params: JsonElement? = null,
-    ): String =
+    private fun rpcRequest(method: String, params: JsonElement? = null): String =
         transportJson.encodeToString(
             JsonRpcRequest.serializer(),
             JsonRpcRequest(method = method, params = params),
         )
 
-    private fun <T> decodeRpcResult(
-        stdout: String,
-        serializer: KSerializer<T>,
-    ): T {
+    private fun <T> decodeRpcResult(stdout: String, serializer: KSerializer<T>): T {
         val envelope = defaultCliJson().decodeFromString(JsonRpcSuccessResponse.serializer(), stdout)
         return defaultCliJson().decodeFromJsonElement(serializer, envelope.result)
     }
@@ -750,9 +747,9 @@ class KastWrapperTest {
             },
             isReady = { probe ->
                 probe.exitCode == 0 &&
-                runCatching {
-                    defaultCliJson().decodeFromString<WorkspaceStatusResult>(probe.stdout)
-                }.getOrNull()?.selected?.ready == true
+                    runCatching {
+                        defaultCliJson().decodeFromString<WorkspaceStatusResult>(probe.stdout)
+                    }.getOrNull()?.selected?.ready == true
             },
         )
     }

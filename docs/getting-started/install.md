@@ -7,13 +7,14 @@ icon: lucide/download
 # Install
 
 `kast` is two pieces: the **CLI** (the `kast` you type) and a **backend**
-(the analysis process that does the work). The CLI on its own analyzes nothing — it routes commands to a backend. Get
-one running before you start asking questions.
+(the analysis process that does the work). The CLI on its own analyzes
+nothing — it routes commands to a backend. Get one running before you
+start asking questions.
 
 ## Prerequisites
 
-- **Java 21 or newer** on your `PATH` or `JAVA_HOME`. The standalone backend is a JVM process; without Java it won't
-  start.
+- **Java 21 or newer** on your `PATH` or `JAVA_HOME`. The standalone
+  backend is a JVM process; without Java it won't start.
 - **macOS, Linux, or Windows.** The installer covers all three.
 
 ## One-line install
@@ -31,11 +32,11 @@ Or piped:
 curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh | bash
 ```
 
-The wizard sniffs your environment (running IntelliJ, existing tools, Java version), lets you pick an install mode,
-writes
+The wizard sniffs your environment (running IntelliJ, existing tools,
+Java version), lets you pick an install mode, writes
 `$HOME/.config/kast/config.toml`, installs managed files under
-`$HOME/.kast`, records the install in `~/.kast/.manifest.json`, and can install the packaged Copilot surfaces you use
-next.
+`$HOME/.kast`, records the install in `~/.kast/.manifest.json`, and can
+install the packaged Copilot surfaces you use next.
 
 ??? info "What the wizard does, step by step"
 
@@ -63,13 +64,14 @@ next.
 
 ## Choose your setup
 
-Run the one-liner first. Come back here only if you want to pick a path explicitly.
+Run the one-liner first. Come back here only if you want to pick a path
+explicitly.
 
-| What you want                        | Mode                    | How the backend starts                          |
-|--------------------------------------|-------------------------|-------------------------------------------------|
-| IntelliJ already open on the project | `minimal`               | Plugin starts with the IDE                      |
-| Terminal, CI, or agent work          | `full`                  | `kast workspace ensure --workspace-root=$(pwd)` |
-| Both                                 | `full` + plugin install | Pin per session with `--backend-name`           |
+| What you want                              | Mode                            | How the backend starts                            |
+|--------------------------------------------|---------------------------------|---------------------------------------------------|
+| IntelliJ already open on the project       | `minimal`                       | Plugin starts with the IDE                        |
+| Terminal, CI, or agent work                | `full`                          | `kast workspace ensure --workspace-root=$(pwd)`   |
+| Both                                       | `full` + plugin install         | Pin per session with `--backend-name`             |
 
 ## Install modes
 
@@ -159,21 +161,22 @@ Run the one-liner first. Come back here only if you want to pick a path explicit
 
 ## Installer flags
 
-| Flag                         | What it does                                                             |
-|------------------------------|--------------------------------------------------------------------------|
-| `--mode=minimal\|full\|auto` | Drive the install wizard path (default: interactive)                     |
-| `--components=<list>`        | Expert override: `cli`, `intellij`, `backend`, `all` — skips wizard      |
-| `--skip-skill`               | Skip the Copilot skill install step                                      |
-| `--skip-copilot-extension`   | Skip the repo-local Copilot extension install step                       |
-| `--yes`                      | Auto-install the Copilot extension into `.github` when inside a Git repo |
-| `--non-interactive`          | Skip all prompts; implies `--skip-skill` and `--skip-copilot-extension`  |
-| `--local`                    | Install from local `dist/` artifacts (built by `./kast.sh build`)        |
+| Flag                          | What it does                                                          |
+|-------------------------------|-----------------------------------------------------------------------|
+| `--mode=minimal\|full\|auto`  | Drive the install wizard path (default: interactive)                  |
+| `--components=<list>`         | Expert override: `cli`, `intellij`, `backend`, `all` — skips wizard   |
+| `--skip-skill`                | Skip the Copilot skill install step                                   |
+| `--skip-copilot-extension`    | Skip the repo-local Copilot extension install step                    |
+| `--yes`                       | Auto-install the Copilot extension into `.github` when inside a Git repo |
+| `--non-interactive`           | Skip all prompts; implies `--skip-skill` and `--skip-copilot-extension` |
+| `--local`                     | Install from local `dist/` artifacts (built by `./kast.sh build`)     |
 
 ## Install the Copilot extension
 
-Install the Copilot extension when you want the repository-local GitHub Copilot files that ship with `kast`. The command
-copies packaged agents, hooks, and native extensions into `.github`, marks scripts executable, writes
-`.github/.kast-copilot-version`, and records the managed repo in
+Install the Copilot extension when you want the repository-local GitHub
+Copilot files that ship with `kast`. The command copies packaged agents,
+hooks, and native extensions into `.github`, marks scripts executable,
+writes `.github/.kast-copilot-version`, and records the managed repo in
 `~/.kast/.manifest.json`.
 
 From the repository root, run:
@@ -201,20 +204,21 @@ To remove only packaged files, pass `--uninstall=true`:
 kast install copilot-extension --uninstall=true
 ```
 
-Uninstall removes the packaged manifest entries and the version marker. It preserves foreign files that you created
-under `.github`.
+Uninstall removes the packaged manifest entries and the version marker. It
+preserves foreign files that you created under `.github`.
 
-When you run `./kast.sh install` from a Git repository, the installer offers this step for the current repo. Pass
-`--yes` to auto-install it, or
+When you run `./kast.sh install` from a Git repository, the installer offers
+this step for the current repo. Pass `--yes` to auto-install it, or
 `--skip-copilot-extension` to skip it.
 
 ### Install from IntelliJ or Android Studio
 
-The IntelliJ plugin exposes the same install and uninstall flow from the IDE. The action calls the CLI path from
-`[cli] binaryPath` in
+The IntelliJ plugin exposes the same install and uninstall flow from the
+IDE. The action calls the CLI path from `[cli] binaryPath` in
 `config.toml`; it doesn't search `PATH`.
 
-Before using the action, confirm the configured binary exists and is executable:
+Before using the action, confirm the configured binary exists and is
+executable:
 
 ```toml title="$HOME/.config/kast/config.toml"
 [cli]
@@ -234,11 +238,14 @@ Skip the wizard if you'd rather install from disk:
 
 1. Download `kast-intellij-<version>.zip` from the
    [latest release](https://github.com/amichne/kast/releases/latest).
-2. In IntelliJ: **Settings → Plugins → ⚙️ → Install Plugin from Disk** → pick the zip.
+2. In IntelliJ: **Settings → Plugins → ⚙️ → Install Plugin from Disk** →
+   pick the zip.
 3. Restart IntelliJ when prompted.
 
-!!! note The IntelliJ plugin doesn't need the standalone CLI. It reuses the IDE's K2 analysis session, project model,
-and indexes. Install the CLI separately if you also want a terminal entry point.
+!!! note
+    The IntelliJ plugin doesn't need the standalone CLI. It reuses the
+    IDE's K2 analysis session, project model, and indexes. Install the
+    CLI separately if you also want a terminal entry point.
 
 ## Enable shell completion
 

@@ -16,24 +16,8 @@ import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
 import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
 import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
-import io.github.amichne.kast.api.protocol.CapabilityNotSupportedException
-import io.github.amichne.kast.api.validation.ParsedApplyEditsQuery
-import io.github.amichne.kast.api.validation.ParsedCallHierarchyQuery
-import io.github.amichne.kast.api.validation.ParsedCodeActionsQuery
-import io.github.amichne.kast.api.validation.ParsedCompletionsQuery
-import io.github.amichne.kast.api.validation.ParsedDiagnosticsQuery
-import io.github.amichne.kast.api.validation.ParsedFileOutlineQuery
-import io.github.amichne.kast.api.validation.ParsedImplementationsQuery
-import io.github.amichne.kast.api.validation.ParsedImportOptimizeQuery
-import io.github.amichne.kast.api.validation.ParsedReferencesQuery
-import io.github.amichne.kast.api.validation.ParsedRefreshQuery
-import io.github.amichne.kast.api.validation.ParsedRenameQuery
-import io.github.amichne.kast.api.validation.ParsedSemanticInsertionQuery
-import io.github.amichne.kast.api.validation.ParsedSymbolQuery
-import io.github.amichne.kast.api.validation.ParsedTypeHierarchyQuery
-import io.github.amichne.kast.api.validation.ParsedWorkspaceFilesQuery
-import io.github.amichne.kast.api.validation.ParsedWorkspaceSearchQuery
-import io.github.amichne.kast.api.validation.ParsedWorkspaceSymbolQuery
+import io.github.amichne.kast.api.protocol.*
+import io.github.amichne.kast.api.validation.*
 
 interface AnalysisBackend {
     suspend fun capabilities(): BackendCapabilities

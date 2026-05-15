@@ -2,13 +2,16 @@ package io.github.amichne.kast.server
 
 import java.net.InetSocketAddress
 import java.net.StandardProtocolFamily
+import java.nio.channels.AsynchronousCloseException
 import java.nio.channels.Channels
+import java.nio.channels.ClosedChannelException
 import java.nio.channels.ServerSocketChannel
 import java.nio.channels.SocketChannel
 import java.nio.charset.StandardCharsets
 import java.util.Collections
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.thread
+import kotlinx.coroutines.runBlocking
 
 internal class TcpRpcServer(
     private val host: String,

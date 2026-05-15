@@ -24,25 +24,25 @@ abstract class VerifyPluginXmlPresentTask : DefaultTask() {
     fun verify() {
         val distDir = distributionsDirectory.get().asFile
         val pluginZip = distDir.listFiles()?.firstOrNull { it.name.endsWith(".zip") }
-                        ?: error("No plugin zip found in $distDir")
+            ?: error("No plugin zip found in $distDir")
 
         val content = ZipFile(pluginZip).use { zipFile ->
             zipFile.entries().asSequence()
                 .firstOrNull { entry -> !entry.isDirectory && entry.name == "META-INF/plugin.xml" }
                 ?.let { entry -> zipFile.getInputStream(entry).bufferedReader().use { reader -> reader.readText() } }
-            ?: zipFile.entries().asSequence()
-                .filter { entry -> !entry.isDirectory && entry.name.endsWith(".jar") }
-                .mapNotNull { jarEntry ->
-                    JarInputStream(zipFile.getInputStream(jarEntry)).use { jarStream ->
-                        generateSequence { jarStream.nextJarEntry }
-                            .firstOrNull { entry -> !entry.isDirectory && entry.name == "META-INF/plugin.xml" }
-                            ?.let {
-                                jarStream.bufferedReader().use { reader -> reader.readText() }
-                            }
+                ?: zipFile.entries().asSequence()
+                    .filter { entry -> !entry.isDirectory && entry.name.endsWith(".jar") }
+                    .mapNotNull { jarEntry ->
+                        JarInputStream(zipFile.getInputStream(jarEntry)).use { jarStream ->
+                            generateSequence { jarStream.nextJarEntry }
+                                .firstOrNull { entry -> !entry.isDirectory && entry.name == "META-INF/plugin.xml" }
+                                ?.let {
+                                    jarStream.bufferedReader().use { reader -> reader.readText() }
+                                }
+                        }
                     }
-                }
-                .firstOrNull()
-            ?: error("plugin.xml not found in ${pluginZip.name}")
+                    .firstOrNull()
+                ?: error("plugin.xml not found in ${pluginZip.name}")
         }
 
         val expectedIdTag = "<id>${expectedPluginId.get()}</id>"

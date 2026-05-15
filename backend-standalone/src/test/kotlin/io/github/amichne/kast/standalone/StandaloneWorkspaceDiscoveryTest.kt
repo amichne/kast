@@ -17,13 +17,13 @@ import io.github.amichne.kast.standalone.workspace.StaticGradleWorkspaceDiscover
 import io.github.amichne.kast.standalone.workspace.defaultToolingApiTimeoutMillis
 import kotlinx.coroutines.test.TestResult
 import kotlinx.coroutines.test.runTest
-import org.jetbrains.kotlin.psi.KtFile
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import org.jetbrains.kotlin.psi.KtFile
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
@@ -53,15 +53,9 @@ class StandaloneWorkspaceDiscoveryTest {
         )
 
         val modulesByName = layout.sourceModules.associateBy(StandaloneSourceModuleSpec::name)
-        assertEquals(
-            setOf(ModuleName(":app[main]"), ModuleName(":app[test]"), ModuleName(":lib[main]")),
-            modulesByName.keys
-        )
+        assertEquals(setOf(ModuleName(":app[main]"), ModuleName(":app[test]"), ModuleName(":lib[main]")), modulesByName.keys)
 
-        assertEquals(
-            listOf(ModuleName(":lib[main]")),
-            modulesByName.getValue(ModuleName(":app[main]")).dependencyModuleNames
-        )
+        assertEquals(listOf(ModuleName(":lib[main]")), modulesByName.getValue(ModuleName(":app[main]")).dependencyModuleNames)
         assertEquals(
             listOf(ModuleName(":app[main]"), ModuleName(":lib[main]")),
             modulesByName.getValue(ModuleName(":app[test]")).dependencyModuleNames,
@@ -216,10 +210,7 @@ class StandaloneWorkspaceDiscoveryTest {
 
         val modulesByName = layout.sourceModules.associateBy(StandaloneSourceModuleSpec::name)
 
-        assertEquals(
-            setOf(ModuleName(":lib[main]"), ModuleName(":lib[testFixtures]"), ModuleName(":lib[test]")),
-            modulesByName.keys
-        )
+        assertEquals(setOf(ModuleName(":lib[main]"), ModuleName(":lib[testFixtures]"), ModuleName(":lib[test]")), modulesByName.keys)
         assertEquals(
             listOf(normalizeStandalonePath(workspaceRoot.resolve("lib/src/testFixtures/kotlin"))),
             modulesByName.getValue(ModuleName(":lib[testFixtures]")).sourceRoots,
@@ -246,15 +237,9 @@ class StandaloneWorkspaceDiscoveryTest {
         )
 
         val modulesByName = layout.sourceModules.associateBy(StandaloneSourceModuleSpec::name)
-        assertEquals(
-            setOf(ModuleName(":app[main]"), ModuleName(":app[test]"), ModuleName(":lib[main]")),
-            modulesByName.keys
-        )
+        assertEquals(setOf(ModuleName(":app[main]"), ModuleName(":app[test]"), ModuleName(":lib[main]")), modulesByName.keys)
 
-        assertEquals(
-            listOf(ModuleName(":lib[main]")),
-            modulesByName.getValue(ModuleName(":app[main]")).dependencyModuleNames
-        )
+        assertEquals(listOf(ModuleName(":lib[main]")), modulesByName.getValue(ModuleName(":app[main]")).dependencyModuleNames)
         assertEquals(
             listOf(ModuleName(":app[main]"), ModuleName(":lib[main]")),
             modulesByName.getValue(ModuleName(":app[test]")).dependencyModuleNames,
@@ -263,18 +248,10 @@ class StandaloneWorkspaceDiscoveryTest {
             modulesByName.getValue(ModuleName(":app[test]")).binaryRoots.any { path -> path.fileName.toString() == "test-support.jar" },
         )
         assertFalse(
-            modulesByName.getValue(ModuleName(":app[main]")).sourceRoots.any { path ->
-                path == normalizeStandalonePath(
-                    workspaceRoot.resolve("app/src/main/java")
-                )
-            },
+            modulesByName.getValue(ModuleName(":app[main]")).sourceRoots.any { path -> path == normalizeStandalonePath(workspaceRoot.resolve("app/src/main/java")) },
         )
         assertTrue(
-            modulesByName.getValue(ModuleName(":app[main]")).sourceRoots.any { path ->
-                path == normalizeStandalonePath(
-                    workspaceRoot.resolve("app/src/customMain/java")
-                )
-            },
+            modulesByName.getValue(ModuleName(":app[main]")).sourceRoots.any { path -> path == normalizeStandalonePath(workspaceRoot.resolve("app/src/customMain/java")) },
         )
     }
 
@@ -815,10 +792,7 @@ class StandaloneWorkspaceDiscoveryTest {
         session.use { session ->
             val friendNames = session.friendModuleNames(ModuleName(":lib[main]"))
 
-            assertEquals(
-                setOf(ModuleName(":lib[main]"), ModuleName(":lib[testFixtures]"), ModuleName(":lib[test]")),
-                friendNames
-            )
+            assertEquals(setOf(ModuleName(":lib[main]"), ModuleName(":lib[testFixtures]"), ModuleName(":lib[test]")), friendNames)
         }
     }
 
@@ -902,43 +876,42 @@ class StandaloneWorkspaceDiscoveryTest {
     }
 
     @Test
-    fun `standalone session resolves Kotlin references to Java declarations in configured gradle source roots`(): TestResult =
-        runTest {
-            createCompositeGradleWorkspace(includeJavaSource = true)
-            val usageFile = workspaceRoot.resolve("app/src/main/kotlin/sample/UseJava.kt")
-            val queryOffset = Files.readString(usageFile).indexOf("legacyGreeting")
-            val declarationFile = workspaceRoot.resolve("app/src/customMain/java/sample/LegacyHelper.java")
-            val session = StandaloneAnalysisSession(
+    fun `standalone session resolves Kotlin references to Java declarations in configured gradle source roots`(): TestResult = runTest {
+        createCompositeGradleWorkspace(includeJavaSource = true)
+        val usageFile = workspaceRoot.resolve("app/src/main/kotlin/sample/UseJava.kt")
+        val queryOffset = Files.readString(usageFile).indexOf("legacyGreeting")
+        val declarationFile = workspaceRoot.resolve("app/src/customMain/java/sample/LegacyHelper.java")
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "ignored",
+        )
+        session.use { session ->
+            val backend = StandaloneAnalysisBackend(
                 workspaceRoot = workspaceRoot,
-                sourceRoots = emptyList(),
-                classpathRoots = emptyList(),
-                moduleName = "ignored",
+                limits = ServerLimits(
+                    maxResults = 100,
+                    requestTimeoutMillis = 30_000,
+                    maxConcurrentRequests = 4,
+                ),
+                session = session,
             )
-            session.use { session ->
-                val backend = StandaloneAnalysisBackend(
-                    workspaceRoot = workspaceRoot,
-                    limits = ServerLimits(
-                        maxResults = 100,
-                        requestTimeoutMillis = 30_000,
-                        maxConcurrentRequests = 4,
-                    ),
-                    session = session,
-                )
 
-                val result = backend.resolveSymbol(
-                    SymbolQuery(
-                        position = FilePosition(
-                            filePath = usageFile.toString(),
-                            offset = queryOffset,
-                        ),
+            val result = backend.resolveSymbol(
+                SymbolQuery(
+                    position = FilePosition(
+                        filePath = usageFile.toString(),
+                        offset = queryOffset,
                     ),
-                )
+                ),
+            )
 
-                assertEquals("sample.LegacyHelper#legacyGreeting", result.symbol.fqName)
-                assertEquals(SymbolKind.FUNCTION, result.symbol.kind)
-                assertEquals(normalizePath(declarationFile), result.symbol.location.filePath)
-            }
+            assertEquals("sample.LegacyHelper#legacyGreeting", result.symbol.fqName)
+            assertEquals(SymbolKind.FUNCTION, result.symbol.kind)
+            assertEquals(normalizePath(declarationFile), result.symbol.location.filePath)
         }
+    }
 
     @Test
     fun `standalone session resolves symbols across discovered gradle modules`(): TestResult = runTest {

@@ -2,15 +2,18 @@
 
 Use when reviewing code for correctness or maintainability risks.
 
-- Type safety: `!!`, unchecked `as`, raw `Any`, star projections in public APIs, stringly typed IDs, and constructors
-  that accept invalid data.
-- Architecture: shallow pass-through modules, public seams with one adapter, workflows spread across callers, and
-  helpers extracted only to make the code look smaller.
-- Layout: `utils`, `common`, cross-cutting `extensions`, redundant type prefixes, multiple non-nested root declarations
-  in one file, public top-level helpers that belong to one owning type, or interfaces split from their only small
-  implementations.
-- State: public `var`s, mutable data classes, mutable collections crossing boundaries, singleton state, ambient context,
-  and unstructured coroutines.
-- APIs: boolean traps, nullable control flags, generic `Manager`/`Helper` names, and expected errors represented by
-  `null` or generic exceptions.
-- Tests: implementation-shaped tests, coverage-only tests, and missing boundary failure tests.
+- Type safety: `!!`, unchecked `as`, raw `Any`, star projections in public APIs,
+  stringly typed IDs, and constructors that accept invalid data.
+- Architecture: shallow pass-through modules, public seams with one adapter,
+  workflows spread across callers, and helpers extracted only to make the code
+  look smaller.
+- Layout: `utils`, `common`, cross-cutting `extensions`, redundant type
+  prefixes, multiple non-nested root declarations in one file, public top-level
+  helpers that belong to one owning type, or interfaces split from their only
+  small implementations.
+- State: public `var`s, mutable data classes, mutable collections crossing
+  boundaries, singleton state, ambient context, and unstructured coroutines.
+- APIs: boolean traps, nullable control flags, generic `Manager`/`Helper` names,
+  and expected errors represented by `null` or generic exceptions.
+- Tests: implementation-shaped tests, coverage-only tests, and missing boundary
+  failure tests.

@@ -57,6 +57,8 @@ class CliCommandParserTest {
         assertEquals(CliCommand.Completion(CliCompletionShell.BASH), command)
     }
 
+
+
     @Test
     fun `workspace ensure parses accept indexing`() {
         val command = parser.parse(
@@ -73,6 +75,11 @@ class CliCommandParserTest {
         assertTrue(ensureCommand.options.acceptIndexing)
     }
 
+
+
+
+
+
     @Test
     fun `version flag returns version command`() {
         val command = parser.parse(arrayOf("--version"))
@@ -86,6 +93,8 @@ class CliCommandParserTest {
 
         assertSame(CliCommand.VerifyExtension, command)
     }
+
+
 
     @Test
     fun `self status parses`() {
@@ -114,7 +123,6 @@ class CliCommandParserTest {
 
         assertSame(CliCommand.SelfUpgrade, command)
     }
-
     @Test
     fun `smoke parses workspace root filters and format`() {
         val command = parser.parse(
@@ -410,6 +418,18 @@ class CliCommandParserTest {
         assertEquals("CLI_USAGE", failure.code)
     }
 
+
+
+
+
+
+
+
+
+
+
+
+
     @Test
     fun `metrics fan-in parses with defaults`() {
         val command = parser.parse(
@@ -513,14 +533,7 @@ class CliCommandParserTest {
     @Test
     fun `metrics graph parses interactive option`() {
         val command = parser.parse(
-            arrayOf(
-                "metrics",
-                "graph",
-                "--workspace-root=$tempDir",
-                "--symbol=com.example.Foo",
-                "--depth=2",
-                "--interactive=true"
-            ),
+            arrayOf("metrics", "graph", "--workspace-root=$tempDir", "--symbol=com.example.Foo", "--depth=2", "--interactive=true"),
         )
 
         assertTrue(command is CliCommand.Metrics)
