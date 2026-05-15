@@ -1380,11 +1380,33 @@ internal object CliCommandCatalog {
         ),
     )
 
-    private val metadataByPath: Map<List<String>, CliCommandMetadata> = commands.associateBy(CliCommandMetadata::path)
+    private val removedCommandPaths: Set<List<String>> = setOf(
+        listOf("workspace", "refresh"),
+        listOf("workspace", "files"),
+        listOf("resolve"),
+        listOf("references"),
+        listOf("call-hierarchy"),
+        listOf("type-hierarchy"),
+        listOf("insertion-point"),
+        listOf("diagnostics"),
+        listOf("outline"),
+        listOf("workspace-symbol"),
+        listOf("workspace-search"),
+        listOf("implementations"),
+        listOf("code-actions"),
+        listOf("completions"),
+        listOf("rename"),
+        listOf("optimize-imports"),
+        listOf("apply-edits"),
+    )
+    private val activeCommands: List<CliCommandMetadata> = commands.filterNot { metadata ->
+        metadata.path in removedCommandPaths || metadata.path.firstOrNull() == "skill"
+    }
+    private val metadataByPath: Map<List<String>, CliCommandMetadata> = activeCommands.associateBy(CliCommandMetadata::path)
 
     fun find(path: List<String>): CliCommandMetadata? = metadataByPath[path]
 
-    fun visibleCommands(): List<CliCommandMetadata> = commands.filter(CliCommandMetadata::visible)
+    fun visibleCommands(): List<CliCommandMetadata> = activeCommands.filter(CliCommandMetadata::visible)
 
     fun topLevelCommandTopics(): List<String> = visibleCommands()
         .map { command -> command.path.first() }
@@ -1508,7 +1530,7 @@ internal object CliCommandCatalog {
             theme = theme,
         ) {
             appendLine(theme.command("  $CLI_EXECUTABLE_NAME workspace ensure --workspace-root=/absolute/path/to/workspace"))
-            appendLine(theme.command("  $CLI_EXECUTABLE_NAME diagnostics --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/query.json"))
+            appendLine(theme.command("  $CLI_EXECUTABLE_NAME rpc --workspace-root=/absolute/path/to/workspace --request-file=/absolute/path/to/request.json"))
             appendLine(theme.command("  $CLI_EXECUTABLE_NAME smoke --workspace-root=/absolute/path/to/workspace --file=CliCommandCatalog.kt"))
             appendLine(theme.command("  source <($CLI_EXECUTABLE_NAME completion bash)"))
         }

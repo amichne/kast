@@ -72,7 +72,7 @@ class EvalSkillCommandTest {
         val baselineFile = tempDir.resolve("baseline.json")
         baselineFile.writeText((baselineOutput as CliOutput.Text).value)
 
-        skillDir.resolve("references/wrapper-openapi.yaml").deleteExisting()
+        skillDir.resolve("references/routing-improvement.md").deleteExisting()
 
         val failure = assertThrows(CliFailure::class.java) {
             executor.execute(
@@ -108,6 +108,10 @@ class EvalSkillCommandTest {
             kast_scaffold
             kast_write_and_validate
             kast_workspace_files
+            kast_workspace_symbol
+            kast_file_outline
+            kast_workspace_search
+            kast_metrics
             """.trimIndent(),
         )
 
@@ -128,19 +132,6 @@ class EvalSkillCommandTest {
         )
 
         refs.resolve("routing-improvement.md").writeText("# Routing improvement\n")
-        refs.resolve("wrapper-openapi.yaml").writeText(
-            """
-            openapi: '3.0.0'
-            x-command: kast resolve
-            x-command: kast references
-            x-command: kast callers
-            x-command: kast diagnostics
-            x-command: kast rename
-            x-command: kast scaffold
-            x-command: kast write-and-validate
-            x-command: kast workspace-files
-            """.trimIndent(),
-        )
 
         val scriptsDir = skillDir.resolve("scripts").createDirectories()
         scriptsDir.resolve("build-routing-corpus.py").writeText(

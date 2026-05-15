@@ -4,8 +4,8 @@
 
 - For Kotlin code, search, references, callers, diagnostics, or edits, use the native `kast_*` tools first. If a bash
   fallback is genuinely necessary, call
-  `/Users/amichne/.kast/bin/kast <wrapper> '<json>'` directly instead of relying on exported shell state across tool
-  calls.
+  `kast rpc '<jsonrpc-request>'` directly instead of relying on
+  exported shell state across tool calls.
 - `.github/extensions/kast/extension.mjs` is the primary Copilot extension entrypoint. It resolves the `kast` CLI once
   per session, exposes the native
   `kast_*` tools, and soft-warns when generic tools target `.kt` or `.kts`
@@ -58,13 +58,13 @@ Default test runs exclude the `concurrency`, `performance`, and `parity` tags un
   `build-logic` owns the shared Gradle conventions and wrapper/runtime-lib packaging tasks.
 
 Operationally, the CLI and both backends speak the same JSON-RPC contract. The CLI prefers a servable IntelliJ backend
-for the workspace, otherwise a servable standalone backend; only `kast workspace ensure` will auto-start the standalone
-runtime.
+for the workspace, otherwise a servable standalone backend. `kast rpc` auto-ensures the selected daemon for machine
+requests, while `kast up`, `kast status`, and `kast stop` are the human lifecycle commands.
 
 ## Key conventions
 
-- Treat `AnalysisBackend`, wrapper/OpenAPI docs, embedded skill resources, and packaged Copilot-extension resources as
-  contract surfaces. If one changes, update its consumers together: `docs/openapi.yaml`, `.agents/skills/kast/**`,
+- Treat `AnalysisBackend`, the `kast rpc` JSON-RPC method surface, embedded skill resources, and packaged
+  Copilot-extension resources as contract surfaces. If one changes, update its consumers together: `docs/openapi.yaml`, `.agents/skills/kast/**`,
   `.github/extensions/kast/**`, `.github/hooks/**`, `kast.sh`/`install.sh`, and the related tests.
 - Any `AnalysisBackend` operation change must land in **both**
   `backend-standalone` and `backend-intellij`. Update `parity-tests` and keep advertised capabilities honest.

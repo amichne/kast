@@ -3,6 +3,7 @@ package io.github.amichne.kast.cli
 import io.github.amichne.kast.cli.options.InstallSkillOptions
 import io.github.amichne.kast.cli.results.WorkspaceStatusResult
 import io.github.amichne.kast.cli.tty.defaultCliJson
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
@@ -25,6 +26,12 @@ import kotlin.io.path.writeText
 class PackagedSkillJsonContractTest {
     @TempDir
     lateinit var tempDir: Path
+
+    private val rpcJson = Json {
+        encodeDefaults = true
+        explicitNulls = false
+        prettyPrint = false
+    }
 
     @Test
     fun `installed skill drives native commands for json literal and file inputs`() {
@@ -71,7 +78,6 @@ class PackagedSkillJsonContractTest {
                 installedSkillDir.resolve("kast/fixtures/maintenance/references/routing-improvement.md"),
             ),
         )
-        assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/references/wrapper-openapi.yaml")))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/references/routing-improvement.md")))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/scripts/build-routing-corpus.py")))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/evaluation/catalog.json")))
@@ -97,26 +103,40 @@ class PackagedSkillJsonContractTest {
                 put("symbol", "greet")
                 put("fileHint", sourceFile.toString())
             }
+            val resolveRpcRequest = buildJsonObject {
+                put("jsonrpc", "2.0")
+                put("method", "skill/resolve")
+                put("params", resolveRequest)
+                put("id", 1)
+            }
             val resolveResult = runCommand(
                 command = listOf(
                     kastBinary,
-                    "skill",
-                    "resolve",
-                    defaultCliJson().encodeToString(JsonObject.serializer(), resolveRequest),
+                    "rpc",
+                    rpcJson.encodeToString(JsonObject.serializer(), resolveRpcRequest),
+                    "--workspace-root=$workspaceRoot",
                 ),
                 env = wrapperEnv,
             )
             assertEquals(0, resolveResult.exitCode, "stderr: ${resolveResult.stderr}")
-            val resolvedPayload = defaultCliJson()
+            val resolvedEnvelope = defaultCliJson()
                 .parseToJsonElement(resolveResult.stdout)
                 .jsonObject
-            assertEquals(true, resolvedPayload["ok"]?.toString()?.toBooleanStrictOrNull())
-            assertEquals("RESOLVE_SUCCESS", resolvedPayload["type"]?.jsonPrimitive?.content)
+            val resolvedPayload = resolvedEnvelope["result"]?.jsonObject ?: resolvedEnvelope
+            assertEquals(
+                true,
+                resolvedPayload["ok"]?.toString()?.toBooleanStrictOrNull(),
+                "stdout: ${resolveResult.stdout}\nstderr: ${resolveResult.stderr}",
+            )
+            assertEquals(
+                "RESOLVE_SUCCESS",
+                resolvedPayload["type"]?.jsonPrimitive?.content,
+                "stdout: ${resolveResult.stdout}\nstderr: ${resolveResult.stderr}",
+            )
             assertTrue(resolveResult.stderr.isBlank())
 
             val diagnosticsRequestFile = tempDir.resolve("diagnostics-request.json")
             val diagnosticsRequest = buildJsonObject {
-                put("workspaceRoot", workspaceRoot.toString())
                 put(
                     "filePaths",
                     buildJsonArray {
@@ -125,24 +145,32 @@ class PackagedSkillJsonContractTest {
                 )
             }
             diagnosticsRequestFile.writeText(
-                defaultCliJson().encodeToString(JsonObject.serializer(), diagnosticsRequest),
+                defaultCliJson().encodeToString(
+                    JsonObject.serializer(),
+                    buildJsonObject {
+                        put("jsonrpc", "2.0")
+                        put("method", "diagnostics")
+                        put("params", diagnosticsRequest)
+                        put("id", 1)
+                    },
+                ),
             )
 
             val diagnosticsResult = runCommand(
                 command = listOf(
                     kastBinary,
-                    "skill",
-                    "diagnostics",
-                    diagnosticsRequestFile.toString(),
+                    "rpc",
+                    "--request-file=${diagnosticsRequestFile}",
+                    "--workspace-root=$workspaceRoot",
                 ),
                 env = wrapperEnv,
             )
             assertEquals(0, diagnosticsResult.exitCode, "stderr: ${diagnosticsResult.stderr}")
-            val diagnosticsPayload = defaultCliJson()
+            val diagnosticsEnvelope = defaultCliJson()
                 .parseToJsonElement(diagnosticsResult.stdout)
                 .jsonObject
-            assertEquals(true, diagnosticsPayload["ok"]?.toString()?.toBooleanStrictOrNull())
-            assertEquals("DIAGNOSTICS_SUCCESS", diagnosticsPayload["type"]?.jsonPrimitive?.content)
+            val diagnosticsPayload = diagnosticsEnvelope["result"]?.jsonObject ?: diagnosticsEnvelope
+            assertEquals(true, diagnosticsPayload?.get("schemaVersion") != null)
         } finally {
             runCommand(
                 command = listOf(kastBinary, "workspace", "stop", "--workspace-root=$workspaceRoot"),
@@ -157,7 +185,7 @@ class PackagedSkillJsonContractTest {
     fun `diagnostics stay clean for repo wrapper executor file`() {
         val repoRoot = findRepoRoot(Path.of("").toAbsolutePath())
         val targetFile = repoRoot.resolve(
-            "kast-cli/src/main/kotlin/io/github/amichne/kast/cli/skill/SkillWrapperExecutor.kt",
+            "analysis-server/src/main/kotlin/io/github/amichne/kast/server/AnalysisDispatcher.kt",
         )
         val kastBinary = checkNotNull(System.getProperty("kast.wrapper")) {
             "kast.wrapper system property is missing"
@@ -174,7 +202,6 @@ class PackagedSkillJsonContractTest {
             assertEquals(0, ensureResult.exitCode, "stderr: ${ensureResult.stderr}")
 
             val diagnosticsRequest = buildJsonObject {
-                put("workspaceRoot", repoRoot.toString())
                 put(
                     "filePaths",
                     buildJsonArray {
@@ -186,24 +213,27 @@ class PackagedSkillJsonContractTest {
             val diagnosticsResult = runCommand(
                 command = listOf(
                     kastBinary,
-                    "skill",
-                    "diagnostics",
-                    defaultCliJson().encodeToString(JsonObject.serializer(), diagnosticsRequest),
+                    "rpc",
+                    defaultCliJson().encodeToString(
+                        JsonObject.serializer(),
+                        buildJsonObject {
+                            put("jsonrpc", "2.0")
+                            put("method", "diagnostics")
+                            put("params", diagnosticsRequest)
+                            put("id", 1)
+                        },
+                    ),
+                    "--workspace-root=$repoRoot",
                 ),
                 env = wrapperEnv,
             )
 
             assertEquals(0, diagnosticsResult.exitCode, "stderr: ${diagnosticsResult.stderr}")
-            val diagnosticsPayload = defaultCliJson()
+            val diagnosticsEnvelope = defaultCliJson()
                 .parseToJsonElement(diagnosticsResult.stdout)
                 .jsonObject
-            assertEquals(true, diagnosticsPayload["ok"]?.toString()?.toBooleanStrictOrNull())
-            assertEquals("DIAGNOSTICS_SUCCESS", diagnosticsPayload["type"]?.jsonPrimitive?.content)
-            assertEquals(true, diagnosticsPayload["clean"]?.toString()?.toBooleanStrictOrNull(), diagnosticsResult.stdout)
-            assertEquals(0, diagnosticsPayload["errorCount"]?.jsonPrimitive?.content?.toInt())
-            assertEquals(0, diagnosticsPayload["warningCount"]?.jsonPrimitive?.content?.toInt())
-            assertEquals(0, diagnosticsPayload["infoCount"]?.jsonPrimitive?.content?.toInt())
-            assertTrue(diagnosticsPayload["diagnostics"]?.toString() == "[]")
+            val diagnosticsPayload = diagnosticsEnvelope["result"]?.jsonObject ?: diagnosticsEnvelope
+            assertEquals(true, diagnosticsPayload?.get("diagnostics")?.toString() == "[]")
         } finally {
             runCommand(
                 command = listOf(kastBinary, "workspace", "stop", "--workspace-root=$repoRoot"),

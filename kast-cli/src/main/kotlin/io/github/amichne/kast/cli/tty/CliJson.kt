@@ -21,7 +21,7 @@ import io.github.amichne.kast.cli.results.SelfDoctorResult
 import io.github.amichne.kast.cli.results.SelfStatusResult
 import io.github.amichne.kast.cli.results.SelfUninstallResult
 import io.github.amichne.kast.cli.results.SelfUpgradeResult
-import io.github.amichne.kast.cli.skill.InstallSkillResult
+import io.github.amichne.kast.cli.results.InstallSkillResult
 import io.github.amichne.kast.cli.SmokeReport
 import io.github.amichne.kast.cli.results.WorkspaceEnsureResult
 import io.github.amichne.kast.cli.results.WorkspaceStatusResult

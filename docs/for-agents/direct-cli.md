@@ -1,109 +1,96 @@
 ---
 title: Direct CLI usage
-description: When and how agents call the Kast CLI directly instead of
-  through the packaged skill.
+description: When and how agents call `kast rpc` directly instead of through the packaged skill.
 icon: lucide/terminal
 ---
 
 # Direct CLI usage for agents
 
-Most agents go through the packaged skill — it turns conversational
-references into the file path and offset `kast` needs. Sometimes the
-agent has the position already, or wants behavior the skill doesn't
-expose. Then it calls the CLI directly.
+Most agents should prefer the packaged skill or native `kast_*` tools.
+When the host needs a CLI fallback, use `kast rpc`: it forwards a raw
+JSON-RPC request and auto-ensures the daemon for the workspace.
+
+Humans can still manage the daemon lifecycle explicitly with `kast up`,
+`kast status`, and `kast stop`.
 
 ## When to call the CLI directly
 
-- The agent already has a file path and offset from a previous response
+- The agent already has absolute paths or offsets from a previous response
 - It's chaining operations in a script or pipeline
-- It needs non-default traversal bounds on `call-hierarchy`
-- It needs `--request-file` for structured payloads like `apply-edits`
-- It needs an operation the skill doesn't surface
+- It wants a JSON-RPC method the packaged skill does not expose directly
+- It needs `--request-file` for a larger structured payload
 
 ## `workspace-symbol` as the bridge when there's no offset
 
-No offset? Use `workspace-symbol` instead of grepping. It's a semantic
-declaration search.
+No offset? Use the `workspace-symbol` JSON-RPC method instead of
+grepping. It's a semantic declaration search.
 
 === "Basic search"
 
     ```console title="Find declarations by name"
-    kast workspace-symbol \
-      --workspace-root=$(pwd) \
-      --pattern=HealthCheckService
-    ```
-
-=== "Filtered by kind"
-
-    ```console title="Narrow results to classes only"
-    kast workspace-symbol \
-      --workspace-root=$(pwd) \
-      --pattern=HealthCheckService \
-      --kind=CLASS
+    kast rpc '{"jsonrpc":"2.0","method":"workspace-symbol","params":{"pattern":"HealthCheckService","maxResults":100,"regex":false,"includeDeclarationScope":false},"id":1}' --workspace-root=$(pwd)
     ```
 
 === "Regex matching"
 
     ```console title="Pattern-based matching"
-    kast workspace-symbol \
-      --workspace-root=$(pwd) \
-      --pattern=".*Service$" \
-      --regex=true
+    kast rpc '{"jsonrpc":"2.0","method":"workspace-symbol","params":{"pattern":".*Service$","maxResults":100,"regex":true,"includeDeclarationScope":false},"id":1}' --workspace-root=$(pwd)
     ```
 
 ```json hl_lines="4-5" title="Response — symbol metadata for each match"
 {
-  "symbols": [
-    {
-      "name": "HealthCheckService",
-      "kind": "CLASS",
-      "filePath": "/workspace/src/.../HealthCheckService.kt",
-      "location": {
-        "startOffset": 42, "startLine": 3,
-        "preview": "class HealthCheckService"
+  "result": {
+    "symbols": [
+      {
+        "name": "HealthCheckService",
+        "kind": "CLASS",
+        "location": {
+          "filePath": "/workspace/src/.../HealthCheckService.kt",
+          "startOffset": 42, "startLine": 3,
+          "preview": "class HealthCheckService"
+        }
       }
-    }
-  ],
-  "page": { "truncated": false }
+    ],
+    "page": { "truncated": false }
+  },
+  "id": 1,
+  "jsonrpc": "2.0"
 }
 ```
 
-Feed `filePath` and `startOffset` from a match straight into `resolve`,
-`references`, or `call-hierarchy` — no intermediate text search.
+Feed `location.filePath` and `location.startOffset` from a match
+straight into `symbol/resolve`, `references`, or `call-hierarchy` — no
+intermediate text search.
 
-## Inline flags or request files
+## Inline JSON or request files
 
-Most operations take inline flags:
+Small requests fit inline as JSON-RPC payloads:
 
-```console title="Inline flags for ad hoc queries"
-kast resolve \
-  --workspace-root=$(pwd) \
-  --file-path=$(pwd)/src/main/kotlin/App.kt \
-  --offset=42
+```console title="Inline JSON for ad hoc queries"
+kast rpc '{"jsonrpc":"2.0","method":"symbol/resolve","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/App.kt","offset":42},"includeDeclarationScope":false,"includeDocumentation":false},"id":1}' --workspace-root=$(pwd)
 ```
 
-Complex payloads — especially `apply-edits`, which needs a structured
+Complex payloads — especially `edits/apply`, which needs a structured
 edit plan — go through `--request-file`:
 
 ```console title="Request file for structured payloads"
-kast apply-edits \
-  --workspace-root=$(pwd) \
-  --request-file=/path/to/edits.json
+kast rpc --workspace-root=$(pwd) --request-file=/path/to/request.json
 ```
+
+`request.json` should contain the full JSON-RPC envelope, including
+`jsonrpc`, `method`, `params`, and `id`.
 
 ## Reading the JSON
 
-Every command returns a single JSON object on stdout. Stderr is
+Every `kast rpc` call returns a single JSON object on stdout. Stderr is
 human-readable noise (daemon startup, progress) that the agent can
 ignore.
 
 Things to check before claiming an answer:
 
 - **`result`** — every successful response wraps payload here
-- **`searchScope.exhaustive`** on `references` — was the search
-  complete?
-- **`stats.truncatedNodes`** on `call-hierarchy` — was the tree cut
-  off?
+- **`searchScope.exhaustive`** on `references` — was the search complete?
+- **`stats.truncatedNodes`** on `call-hierarchy` — was the tree cut off?
 - **`page.truncated`** on `workspace-symbol` — were results capped?
 
 ## Next steps

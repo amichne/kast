@@ -182,7 +182,7 @@ authoritative. This skill must not redeclare repository-specific hooks.
 For repositories that use the standard Copilot hook schema, the usual command
 hooks are:
 
-- `sessionStart`: bootstraps `kast workspace ensure` and resets hook state
+- `sessionStart`: bootstraps `kast up` and resets hook state
 - `postToolUse`: records successful session-owned file edits
 - `sessionEnd`: runs the command-based subset of the old completion gates
 

@@ -1,4 +1,4 @@
-package io.github.amichne.kast.api.wrapper
+package io.github.amichne.kast.api.contract.skill
 
 import io.github.amichne.kast.api.contract.*
 import io.github.amichne.kast.api.contract.result.ApplyEditsResult

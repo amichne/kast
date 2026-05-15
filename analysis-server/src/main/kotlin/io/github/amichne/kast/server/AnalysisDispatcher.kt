@@ -63,6 +63,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import java.util.UUID
 import io.github.amichne.kast.api.validation.parsed
+import io.github.amichne.kast.api.contract.skill.*
 
 class AnalysisDispatcher(
     private val backend: AnalysisBackend,
@@ -73,6 +74,8 @@ class AnalysisDispatcher(
         prettyPrint = false
     },
 ) {
+    private val skillRpc = SkillRpcOrchestrator(backend, config, json)
+
     suspend fun dispatch(request: JsonRpcRequest): String {
         if (request.jsonrpc != JSON_RPC_VERSION || request.method.isBlank()) {
             return json.encodeToString(
@@ -289,6 +292,41 @@ class AnalysisDispatcher(
                         requireReadCapability(ReadCapability.WORKSPACE_FILES)
                     }.parsed(),
                 ),
+            )
+
+            "skill/resolve" -> encode(
+                KastResolveResponse.serializer(),
+                skillRpc.resolve(decodeParams(KastResolveRequest.serializer(), params)),
+            )
+
+            "skill/references" -> encode(
+                KastReferencesResponse.serializer(),
+                skillRpc.references(decodeParams(KastReferencesRequest.serializer(), params)),
+            )
+
+            "skill/callers" -> encode(
+                KastCallersResponse.serializer(),
+                skillRpc.callers(decodeParams(KastCallersRequest.serializer(), params)),
+            )
+
+            "skill/scaffold" -> encode(
+                KastScaffoldResponse.serializer(),
+                skillRpc.scaffold(decodeParams(KastScaffoldRequest.serializer(), params)),
+            )
+
+            "skill/rename" -> encode(
+                KastRenameResponse.serializer(),
+                skillRpc.rename(decodeParams(KastRenameRequest.serializer(), params)),
+            )
+
+            "skill/write-and-validate" -> encode(
+                KastWriteAndValidateResponse.serializer(),
+                skillRpc.writeAndValidate(decodeParams(KastWriteAndValidateRequest.serializer(), params)),
+            )
+
+            "skill/metrics" -> encode(
+                KastMetricsResponse.serializer(),
+                skillRpc.metrics(decodeParams(KastMetricsRequest.serializer(), params)),
             )
 
             "implementations" -> encode(

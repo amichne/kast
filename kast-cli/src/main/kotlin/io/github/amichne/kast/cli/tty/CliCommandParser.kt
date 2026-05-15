@@ -33,7 +33,6 @@ import io.github.amichne.kast.cli.options.InstallSkillOptions
 import io.github.amichne.kast.cli.options.RuntimeCommandOptions
 import io.github.amichne.kast.cli.options.SmokeOptions
 import io.github.amichne.kast.cli.SmokeOutputFormat
-import io.github.amichne.kast.cli.skill.SkillWrapperName
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import java.nio.file.Path
@@ -70,11 +69,6 @@ internal class CliCommandParser(
             )
         }
 
-        if (parsed.positionals.firstOrNull() == "skill") {
-            return parseSkillCommand(parsed)
-        }
-        parseDirectSkillWrapperCommand(parsed)?.let { return it }
-
         val metadata = CliCommandCatalog.find(parsed.positionals)
             ?: parsed.variableArityMetadata()
         if (metadata != null) {
@@ -99,36 +93,10 @@ internal class CliCommandParser(
             when (metadata.path) {
                 listOf("workspace", "status") -> CliCommand.WorkspaceStatus(parsed.runtimeOptions())
                 listOf("workspace", "ensure") -> CliCommand.WorkspaceEnsure(parsed.runtimeOptions())
-                listOf("workspace", "refresh") -> CliCommand.WorkspaceRefresh(parsed.runtimeOptions(), parsed.refreshQuery(json))
                 listOf("workspace", "stop") -> CliCommand.WorkspaceStop(parsed.runtimeOptions())
-                listOf("workspace", "files") -> CliCommand.WorkspaceFiles(parsed.runtimeOptions(), parsed.workspaceFilesQuery(json))
                 listOf("completion", "bash") -> CliCommand.Completion(CliCompletionShell.BASH)
                 listOf("completion", "zsh") -> CliCommand.Completion(CliCompletionShell.ZSH)
                 listOf("capabilities") -> CliCommand.Capabilities(parsed.runtimeOptions())
-                listOf("resolve") -> CliCommand.ResolveSymbol(parsed.runtimeOptions(), parsed.symbolQuery(json))
-                listOf("references") -> CliCommand.FindReferences(parsed.runtimeOptions(), parsed.referencesQuery(json))
-                listOf("call-hierarchy") -> CliCommand.CallHierarchy(parsed.runtimeOptions(), parsed.callHierarchyQuery(json))
-                listOf("type-hierarchy") -> CliCommand.TypeHierarchy(
-                    parsed.withoutOption("max-results").runtimeOptions(),
-                    parsed.typeHierarchyQuery(json),
-                )
-                listOf("insertion-point") -> CliCommand.SemanticInsertionPoint(
-                    parsed.runtimeOptions(),
-                    parsed.semanticInsertionQuery(json),
-                )
-                listOf("diagnostics") -> CliCommand.Diagnostics(parsed.runtimeOptions(), parsed.diagnosticsQuery(json))
-                listOf("outline") -> CliCommand.FileOutline(parsed.runtimeOptions(), parsed.fileOutlineQuery(json))
-                listOf("workspace-symbol") -> CliCommand.WorkspaceSymbol(parsed.withoutOption("max-results").runtimeOptions(), parsed.workspaceSymbolQuery(json))
-                listOf("workspace-search") -> CliCommand.WorkspaceSearch(parsed.withoutOption("max-results").runtimeOptions(), parsed.workspaceSearchQuery(json))
-                listOf("implementations") -> CliCommand.Implementations(parsed.withoutOption("max-results").runtimeOptions(), parsed.implementationsQuery(json))
-                listOf("code-actions") -> CliCommand.CodeActions(parsed.runtimeOptions(), parsed.codeActionsQuery(json))
-                listOf("completions") -> CliCommand.Completions(parsed.withoutOption("max-results").runtimeOptions(), parsed.completionsQuery(json))
-                listOf("rename") -> CliCommand.Rename(parsed.runtimeOptions(), parsed.renameQuery(json))
-                listOf("optimize-imports") -> CliCommand.ImportOptimize(
-                    parsed.runtimeOptions(),
-                    parsed.importOptimizeQuery(json),
-                )
-                listOf("apply-edits") -> CliCommand.ApplyEdits(parsed.runtimeOptions(), parsed.applyEditsQuery(json))
                 listOf("install") -> CliCommand.Install(parsed.installOptions())
                 listOf("install", "skill") -> CliCommand.InstallSkill(parsed.installSkillOptions())
                 listOf("install", "copilot-extension") -> CliCommand.InstallCopilotExtension(parsed.installCopilotExtensionOptions())
@@ -241,42 +209,6 @@ internal class CliCommandParser(
         }
     }
 
-    private fun parseSkillCommand(parsed: ParsedArguments): CliCommand {
-        val positionals = parsed.positionals
-        if (positionals.size < 2) {
-            return CliCommand.Help(listOf("skill"))
-        }
-        val wrapperCliName = positionals[1]
-        val wrapperName = SkillWrapperName.fromCliName(wrapperCliName)
-            ?: throw CliFailure(
-                code = "CLI_USAGE",
-                message = "Unknown skill wrapper: $wrapperCliName. " +
-                    "Valid wrappers: ${SkillWrapperName.entries.joinToString { it.cliName }}",
-            )
-        if (positionals.size < 3) {
-            throw CliFailure(
-                code = "CLI_USAGE",
-                message = "Skill wrapper '$wrapperCliName' requires a JSON argument (literal or file path)",
-            )
-        }
-        val rawInput = positionals[2]
-        return CliCommand.Skill(name = wrapperName, rawInput = rawInput)
-    }
-
-    private fun parseDirectSkillWrapperCommand(parsed: ParsedArguments): CliCommand? {
-        val positionals = parsed.positionals
-        if (positionals.size != 2 || parsed.options.isNotEmpty()) {
-            return null
-        }
-        val wrapperName = SkillWrapperName.fromCliName(positionals[0]) ?: return null
-        val nextToken = positionals[1]
-        val collidesWithVisibleSubcommand = CliCommandCatalog.commandsUnder(listOf(wrapperName.cliName))
-            .any { it.path.getOrNull(1) == nextToken }
-        if (collidesWithVisibleSubcommand) {
-            return null
-        }
-        return CliCommand.Skill(name = wrapperName, rawInput = nextToken)
-    }
 
     private companion object {
         const val HELP_FLAG = "help"

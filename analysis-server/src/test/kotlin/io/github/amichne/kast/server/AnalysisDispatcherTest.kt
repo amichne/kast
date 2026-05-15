@@ -47,6 +47,7 @@ import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
 import io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery
 import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
 import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
+import io.github.amichne.kast.api.contract.skill.*
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 import io.github.amichne.kast.testing.FakeAnalysisBackend
 import kotlinx.coroutines.runBlocking
@@ -151,6 +152,51 @@ class AnalysisDispatcherTest {
 
         assertTrue(result.symbols.isNotEmpty())
         assertEquals("sample.greet", result.symbols.first().symbol.fqName)
+    }
+
+    @Test
+    fun `skill resolve dispatches named-symbol orchestration`() {
+        val file = sampleFile()
+
+        val result = dispatchSuccess<KastResolveResponse>(
+            method = "skill/resolve",
+            params = json.encodeToJsonElement(
+                KastResolveRequest.serializer(),
+                KastResolveRequest(
+                    workspaceRoot = tempDir.toString(),
+                    symbol = "greet",
+                    fileHint = file.toString(),
+                ),
+            ),
+        )
+
+        val success = result as KastResolveSuccessResponse
+        assertEquals("sample.greet", success.symbol.fqName)
+        assertEquals(file.toString(), success.filePath)
+        assertEquals(true, success.ok)
+    }
+
+    @Test
+    fun `skill rename dispatches rename apply and diagnostics`() {
+        val file = sampleFile()
+
+        val result = dispatchSuccess<KastRenameResponse>(
+            method = "skill/rename",
+            params = json.encodeToJsonElement(
+                KastRenameRequest.serializer(),
+                KastRenameBySymbolRequest(
+                    workspaceRoot = tempDir.toString(),
+                    symbol = "greet",
+                    fileHint = file.toString(),
+                    newName = "hello",
+                ),
+            ),
+        )
+
+        val success = result as KastRenameSuccessResponse
+        assertEquals(true, success.ok)
+        assertEquals(1, success.affectedFiles.size)
+        assertTrue(file.readText().contains("fun hello()"))
     }
 
     @Test

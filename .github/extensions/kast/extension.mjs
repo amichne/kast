@@ -201,45 +201,8 @@ async function callKast(method, params) {
   }
 }
 
-async function callKastSkill(command, args) {
-  const bin = await resolveKastBinary();
-  if (!bin) {
-    return JSON.stringify({
-      ok: false,
-      stage: "extension.resolve",
-      message: `kast binary not resolved: ${resolveError ?? "unknown"}`,
-    });
-  }
-  const json = JSON.stringify(args ?? {});
-  const cmd = `${JSON.stringify(bin)} ${command} ${JSON.stringify(json)}`;
-  const { ok, stdout, stderr, code } = await execBash(cmd);
-  // kast prints JSON to stdout; surface any stderr if the JSON parse would fail.
-  const out = stdout.trim();
-  if (!out) {
-    return JSON.stringify({
-      ok: false,
-      stage: "extension.exec",
-      message: `kast ${command} produced no output (exit ${code})`,
-      errorText: stderr.trim() || null,
-    });
-  }
-  try {
-    JSON.parse(out);
-    return out;
-  } catch {
-    return JSON.stringify({
-      ok: false,
-      stage: "extension.parse",
-      message: `kast ${command} returned non-JSON (exit ${code})`,
-      raw: out,
-      errorText: stderr.trim() || null,
-    });
-  }
-}
-
 // ---------------------------------------------------------------------------
-// Tool definitions — use daemon RPC where the method maps 1:1 and keep wrapper
-// orchestration for symbol-name and edit-plan flows.
+// Tool definitions — all kast_* tools route through daemon RPC methods.
 
 const ABS_PATH = "Absolute filesystem path.";
 
@@ -247,7 +210,7 @@ const tools = [
   {
     name: "kast_workspace_files",
     description:
-      "List Kotlin workspace modules and (optionally) their source files via kast workspace-files. Use to discover scope before scaffolding or resolving symbols. Far cheaper than recursive directory listings; truncation is reported per-module.",
+      "List Kotlin workspace modules and (optionally) their source files. Use to discover scope before scaffolding or resolving symbols. Far cheaper than recursive directory listings; truncation is reported per-module.",
     parameters: {
       type: "object",
       properties: {
@@ -270,7 +233,7 @@ const tools = [
   {
     name: "kast_workspace_symbol",
     description:
-      "Search the workspace for Kotlin symbols by name pattern via kast workspace-symbol. Supports substring matching (default) and regex. Use to find declarations across the codebase — far more precise than grep/rg for symbol names because it understands Kotlin semantics (overloads, inherited members, cross-module references).",
+      "Search the workspace for Kotlin symbols by name pattern. Supports substring matching (default) and regex. Use to find declarations across the codebase — far more precise than grep/rg for symbol names because it understands Kotlin semantics (overloads, inherited members, cross-module references).",
     parameters: {
       type: "object",
       properties: {
@@ -293,7 +256,7 @@ const tools = [
   {
     name: "kast_workspace_search",
     description:
-      "Search file contents across the workspace for text patterns via kast workspace-search. Supports substring and regex matching with optional file glob filtering. Use this instead of grep/rg for searching string literals, comments, and arbitrary text in Kotlin source files.",
+      "Search file contents across the workspace for text patterns. Supports substring and regex matching with optional file glob filtering. Use this instead of grep/rg for searching string literals, comments, and arbitrary text in Kotlin source files.",
     parameters: {
       type: "object",
       properties: {
@@ -310,7 +273,7 @@ const tools = [
   {
     name: "kast_file_outline",
     description:
-      "Get a hierarchical symbol outline for a Kotlin file via kast file-outline. Returns nested declarations (classes, functions, properties) with their signatures and locations. Lighter than scaffold — use when you only need the structural overview without references, type hierarchy, or file content.",
+      "Get a hierarchical symbol outline for a Kotlin file. Returns nested declarations (classes, functions, properties) with their signatures and locations. Lighter than scaffold — use when you only need the structural overview without references, type hierarchy, or file content.",
     parameters: {
       type: "object",
       properties: {
@@ -323,12 +286,12 @@ const tools = [
   {
     name: "kast_scaffold",
     description:
-      "Summarize a Kotlin file/type structure (declarations, signatures, imports, key call sites) via kast scaffold. Returns the full file content alongside the semantic skeleton — no separate `view` call needed for .kt files. ALWAYS prefer this over `view` for .kt/.kts files.",
+      "Summarize a Kotlin file/type structure (declarations, signatures, imports, key call sites). Returns the full file content alongside the semantic skeleton — no separate `view` call needed for .kt files. ALWAYS prefer this over `view` for .kt/.kts files.",
     parameters: {
       type: "object",
       properties: {
         targetFile: { type: "string", description: ABS_PATH + " Required. Singular path." },
-        targetSymbol: { type: "string", description: "Optional FQ name or simple name to focus the scaffold." },
+        targetSymbol: { type: "string", description: "Optional simple symbol name to focus the scaffold within targetFile." },
         workspaceRoot: { type: "string", description: ABS_PATH + " Defaults to cwd." },
         mode: {
           type: "string",
@@ -337,16 +300,16 @@ const tools = [
       },
       required: ["targetFile"],
     },
-    handler: (args) => callKastSkill("scaffold", args),
+    handler: (args) => callKast("skill/scaffold", args),
   },
   {
     name: "kast_resolve",
     description:
-      "Resolve a Kotlin symbol to its declaration via kast resolve. Use first whenever a name might be overloaded, inherited, or shadowed — disambiguate with kind/containingType/fileHint before tracing references or callers.",
+      "Resolve a Kotlin symbol to its declaration. Use first whenever a name might be overloaded, inherited, or shadowed — disambiguate with kind/containingType/fileHint before tracing references or callers.",
     parameters: {
       type: "object",
       properties: {
-        symbol: { type: "string", description: "Simple name or FQ name." },
+        symbol: { type: "string", description: "Simple symbol name." },
         kind: { type: "string", description: "Optional discriminator: class, function, property, etc." },
         containingType: { type: "string", description: "FQ name of the enclosing type for member resolution." },
         fileHint: { type: "string", description: ABS_PATH + " Narrows resolution when the same name lives in multiple files." },
@@ -354,12 +317,12 @@ const tools = [
       },
       required: ["symbol"],
     },
-    handler: (args) => callKastSkill("resolve", args),
+    handler: (args) => callKast("skill/resolve", args),
   },
   {
     name: "kast_references",
     description:
-      "Find every usage of a Kotlin symbol via kast references. ALWAYS prefer this over `grep` for Kotlin identity — grep cannot disambiguate overloads, inherited members, or imports vs aliases.",
+      "Find every usage of a Kotlin symbol. ALWAYS prefer this over `grep` for Kotlin identity — grep cannot disambiguate overloads, inherited members, or imports vs aliases.",
     parameters: {
       type: "object",
       properties: {
@@ -372,12 +335,12 @@ const tools = [
       },
       required: ["symbol"],
     },
-    handler: (args) => callKastSkill("references", args),
+    handler: (args) => callKast("skill/references", args),
   },
   {
     name: "kast_callers",
     description:
-      "Trace incoming or outgoing call hierarchy for a Kotlin function via kast callers. Use to understand flow, blast radius, or to find the entry points reaching a target.",
+      "Trace incoming or outgoing call hierarchy for a Kotlin function. Use to understand flow, blast radius, or to find the entry points reaching a target.",
     parameters: {
       type: "object",
       properties: {
@@ -392,12 +355,12 @@ const tools = [
       },
       required: ["symbol"],
     },
-    handler: (args) => callKastSkill("callers", args),
+    handler: (args) => callKast("skill/callers", args),
   },
   {
     name: "kast_metrics",
     description:
-      "Query the indexed source metrics via kast metrics: fanIn, fanOut, coupling, lowUsage, cycles, moduleDepth, deadCode, impact. Treat results as advisory if the response indicates the reference index is missing or stale.",
+      "Query the indexed source metrics: fanIn, fanOut, coupling, lowUsage, cycles, moduleDepth, deadCode, impact. Treat results as advisory if the response indicates the reference index is missing or stale.",
     parameters: {
       type: "object",
       properties: {
@@ -412,12 +375,12 @@ const tools = [
       },
       required: ["metric"],
     },
-    handler: (args) => callKastSkill("metrics", args),
+    handler: (args) => callKast("skill/metrics", args),
   },
   {
     name: "kast_diagnostics",
     description:
-      "Run Kotlin diagnostics on the listed files via kast diagnostics. Run after any mutation that did not already validate; treat dirty results as a failed change.",
+      "Run Kotlin diagnostics on the listed files. Run after any mutation that did not already validate; treat dirty results as a failed change.",
     parameters: {
       type: "object",
       properties: {
@@ -434,7 +397,7 @@ const tools = [
   {
     name: "kast_rename",
     description:
-      "Rename a Kotlin symbol safely (updates every reference) via kast rename. Pass the `type` discriminator (RENAME_BY_SYMBOL_REQUEST or RENAME_BY_OFFSET_REQUEST) plus the request fields. Validation runs automatically — non-clean responses mean the rename did not commit.",
+      "Rename a Kotlin symbol safely (updates every reference). Pass the `type` discriminator (RENAME_BY_SYMBOL_REQUEST or RENAME_BY_OFFSET_REQUEST) plus the request fields. Validation runs automatically — non-clean responses mean the rename did not commit.",
     parameters: {
       type: "object",
       properties: {
@@ -453,12 +416,12 @@ const tools = [
       required: ["type", "newName"],
       additionalProperties: true,
     },
-    handler: (args) => callKastSkill("rename", args),
+    handler: (args) => callKast("skill/rename", args),
   },
   {
     name: "kast_write_and_validate",
     description:
-      "Apply a Kotlin edit and validate it in one call via kast write-and-validate. Pass the `type` discriminator (CREATE_FILE_REQUEST, INSERT_AT_OFFSET_REQUEST, or REPLACE_RANGE_REQUEST). ALWAYS prefer this over the generic `edit`/`create` tools for .kt/.kts changes — it guards against compile breakage and import drift.",
+      "Apply a Kotlin edit and validate it in one call. Pass the `type` discriminator (CREATE_FILE_REQUEST, INSERT_AT_OFFSET_REQUEST, or REPLACE_RANGE_REQUEST). ALWAYS prefer this over the generic `edit`/`create` tools for .kt/.kts changes — it guards against compile breakage and import drift.",
     parameters: {
       type: "object",
       properties: {
@@ -477,7 +440,7 @@ const tools = [
       required: ["type", "filePath"],
       additionalProperties: true,
     },
-    handler: (args) => callKastSkill("write-and-validate", args),
+    handler: (args) => callKast("skill/write-and-validate", args),
   },
 ];
 
@@ -580,7 +543,7 @@ const session = await joinSession({
       const toolContext =
         `Kast tools available natively: kast_workspace_files, kast_workspace_symbol, kast_workspace_search, kast_file_outline, kast_scaffold, kast_resolve, kast_references, kast_callers, kast_metrics, kast_diagnostics, kast_rename, kast_write_and_validate. ` +
         `Use these for ALL Kotlin semantic work and Kotlin source search — they are far cheaper than view/grep/rg/edit on .kt source. ` +
-        `If a bash fallback is genuinely necessary, run ${bin} <wrapper> '<json>' directly; do not rely on exported shell state across tool calls.`;
+        `If a bash fallback is genuinely necessary, run ${bin} rpc '<jsonrpc-request>' directly; do not rely on exported shell state across tool calls.`;
       return {
         additionalContext: warningContext ? `${warningContext}\n${toolContext}` : toolContext,
       };

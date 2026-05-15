@@ -18,20 +18,19 @@ flow, or validated edits.
 
 ## Version contract
 
-The generated spec at `references/commands.json` is the single source of truth
-for every command's request schema, response types, discriminated variants, and
-notes. Read it once per session when you need field-level detail. It is
-regenerated from the Kotlin serialization models at build time — if a field
-exists in the spec it exists in the CLI, and vice versa.
+The generated spec at `references/commands.json` is the current source of truth
+for the native-tool and `skill/*` RPC request schemas, response types, discriminated
+variants, and notes. Read it once per session when you need field-level detail.
+It is regenerated from the Kotlin serialization models at build time — if a
+field exists in the spec it exists in the CLI, and vice versa. This catalog tracks the RPC-facing contract surfaced through `kast rpc`.
 
 ## Start here
 
 Run the smallest useful semantic command first. Load `references/commands.json`
 only when you need request field names, types, or discriminator values.
 
-Do not load `.kast-version`, `fixtures/maintenance`, the repo-level
-`evaluation/` framework, or
-`references/wrapper-openapi.yaml` during normal navigation.
+Do not load `.kast-version`, `fixtures/maintenance`, or the repo-level
+`evaluation/` framework during normal navigation.
 
 For skill maintenance, use `evaluation/README.md`.
 
@@ -54,20 +53,22 @@ Pick the narrowest command for the task:
 | Re-check files after mutation | `diagnostics` |
 | Query indexed source metrics | `metrics` |
 
-Use the native wrappers when the host exposes them:
+Use the native tools when the host exposes them (`kast_workspace_files`,
+`kast_resolve`, etc.). When native tools are unavailable, use `kast rpc`:
 
-- `kast_workspace_files` or `kast workspace-files`
-- `kast_workspace_search` or `kast workspace-search`
-- `kast_workspace_symbol` or `kast workspace-symbol`
-- `kast_scaffold` or `kast scaffold`
-- `kast_file_outline` or `kast file-outline`
-- `kast_resolve` or `kast resolve`
-- `kast_references` or `kast references`
-- `kast_callers` or `kast callers`
-- `kast_diagnostics` or `kast diagnostics`
-- `kast_rename` or `kast rename`
-- `kast_write_and_validate` or `kast write-and-validate`
-- `kast_metrics` or `kast metrics`
+```bash
+kast rpc '{"jsonrpc":"2.0","method":"<method>","params":{...},"id":1}'
+```
+
+The `kast rpc` command auto-ensures the daemon — no explicit
+`workspace ensure` needed.
+
+Native tools currently exposed by the extension: `kast_workspace_files`,
+`kast_workspace_search`, `kast_workspace_symbol`, `kast_scaffold`,
+`kast_file_outline`, `kast_resolve`, `kast_references`, `kast_callers`,
+`kast_diagnostics`, `kast_rename`, `kast_write_and_validate`, and
+`kast_metrics`. They remain preferred; use the matching JSON-RPC method
+via `kast rpc` when a CLI fallback is needed.
 
 ## Session bootstrap
 

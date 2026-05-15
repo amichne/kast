@@ -6,8 +6,6 @@ import io.github.amichne.kast.cli.EvalSkillExecutor
 import io.github.amichne.kast.cli.RuntimeCandidateStatus
 import io.github.amichne.kast.cli.SmokeOutputFormat
 import io.github.amichne.kast.cli.options.RuntimeCommandOptions
-import io.github.amichne.kast.cli.skill.SkillWrapperExecutor
-import io.github.amichne.kast.cli.skill.SkillWrapperSerializer
 import io.github.amichne.kast.indexstore.api.metrics.impact.ChangeImpactNode
 import io.github.amichne.kast.indexstore.api.metrics.impact.DeadCodeCandidate
 import io.github.amichne.kast.indexstore.api.metrics.impact.FanInMetric
@@ -22,7 +20,6 @@ import io.github.amichne.kast.indexstore.api.metrics.module.ModuleDepthMetric
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import java.nio.file.Path
-import kotlin.reflect.KClass
 
 internal data class CliExternalProcess(
     val command: List<String>,
@@ -52,76 +49,6 @@ internal class DefaultCliCommandExecutor(
         Path.of(System.getProperty("user.dir", ".")).toAbsolutePath().normalize()
     },
 ) : CliCommandExecutor {
-    private val backendQueryHandlers: Map<KClass<out CliCommand.BackendQuery<*>>, suspend (CliCommand.BackendQuery<*>) -> RuntimeAttachedResult<*>> = mapOf(
-        CliCommand.WorkspaceRefresh::class to { command ->
-            command as CliCommand.WorkspaceRefresh
-            cliService.workspaceRefresh(command.options, command.query)
-        },
-        CliCommand.ResolveSymbol::class to { command ->
-            command as CliCommand.ResolveSymbol
-            cliService.resolveSymbol(command.options, command.query)
-        },
-        CliCommand.FindReferences::class to { command ->
-            command as CliCommand.FindReferences
-            cliService.findReferences(command.options, command.query)
-        },
-        CliCommand.CallHierarchy::class to { command ->
-            command as CliCommand.CallHierarchy
-            cliService.callHierarchy(command.options, command.query)
-        },
-        CliCommand.TypeHierarchy::class to { command ->
-            command as CliCommand.TypeHierarchy
-            cliService.typeHierarchy(command.options, command.query)
-        },
-        CliCommand.SemanticInsertionPoint::class to { command ->
-            command as CliCommand.SemanticInsertionPoint
-            cliService.semanticInsertionPoint(command.options, command.query)
-        },
-        CliCommand.Diagnostics::class to { command ->
-            command as CliCommand.Diagnostics
-            cliService.diagnostics(command.options, command.query)
-        },
-        CliCommand.FileOutline::class to { command ->
-            command as CliCommand.FileOutline
-            cliService.fileOutline(command.options, command.query)
-        },
-        CliCommand.WorkspaceSymbol::class to { command ->
-            command as CliCommand.WorkspaceSymbol
-            cliService.workspaceSymbolSearch(command.options, command.query)
-        },
-        CliCommand.WorkspaceSearch::class to { command ->
-            command as CliCommand.WorkspaceSearch
-            cliService.workspaceSearch(command.options, command.query)
-        },
-        CliCommand.WorkspaceFiles::class to { command ->
-            command as CliCommand.WorkspaceFiles
-            cliService.workspaceFiles(command.options, command.query)
-        },
-        CliCommand.Implementations::class to { command ->
-            command as CliCommand.Implementations
-            cliService.implementations(command.options, command.query)
-        },
-        CliCommand.CodeActions::class to { command ->
-            command as CliCommand.CodeActions
-            cliService.codeActions(command.options, command.query)
-        },
-        CliCommand.Completions::class to { command ->
-            command as CliCommand.Completions
-            cliService.completions(command.options, command.query)
-        },
-        CliCommand.Rename::class to { command ->
-            command as CliCommand.Rename
-            cliService.rename(command.options, command.query)
-        },
-        CliCommand.ImportOptimize::class to { command ->
-            command as CliCommand.ImportOptimize
-            cliService.optimizeImports(command.options, command.query)
-        },
-        CliCommand.ApplyEdits::class to { command ->
-            command as CliCommand.ApplyEdits
-            cliService.applyEdits(command.options, command.query)
-        },
-    )
 
     override suspend fun execute(command: CliCommand): CliExecutionResult {
         return when (command) {
@@ -163,7 +90,6 @@ internal class DefaultCliCommandExecutor(
                 )
             }
 
-            is CliCommand.BackendQuery<*> -> executeBackendQuery(command)
 
             is CliCommand.WorkspaceStop -> {
                 val result = cliService.workspaceStop(command.options)
@@ -230,14 +156,6 @@ internal class DefaultCliCommandExecutor(
                 output = cliService.configInit(),
             )
 
-            is CliCommand.Skill -> {
-                val executor = SkillWrapperExecutor(cliService, json)
-                val response = executor.execute(command)
-                val encoded = SkillWrapperSerializer.encode(json, command.name, response)
-                CliExecutionResult(
-                    output = CliOutput.Text(encoded),
-                )
-            }
 
             is CliCommand.Up -> {
                 val result = cliService.workspaceEnsure(command.options)
@@ -356,21 +274,4 @@ internal class DefaultCliCommandExecutor(
         }
     }
 
-    private suspend fun executeBackendQuery(command: CliCommand.BackendQuery<*>): CliExecutionResult {
-        val dispatcher = backendQueryHandlers[command::class]
-            ?: throw CliFailure(
-                code = "CLI_USAGE",
-                message = "Unsupported backend query command: ${command::class.simpleName}",
-            )
-        val result = dispatcher(command)
-        return CliExecutionResult(
-            output = CliOutput.JsonValue(
-                result.payload ?: throw CliFailure(
-                    code = "CLI_EXECUTION",
-                    message = "Backend query ${command::class.simpleName} completed without a payload",
-                ),
-            ),
-            daemonNote = result.daemonNote ?: daemonNoteForRuntime(result.runtime),
-        )
-    }
 }
