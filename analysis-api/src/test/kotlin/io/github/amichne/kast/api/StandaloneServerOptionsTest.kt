@@ -1,11 +1,10 @@
 package io.github.amichne.kast.api.client
 
+import io.github.amichne.kast.api.client.fields.OptionalConfigString
 import io.github.amichne.kast.api.client.fields.ServerMaxConcurrentRequests
 import io.github.amichne.kast.api.client.fields.ServerMaxResults
-import io.github.amichne.kast.api.client.fields.OptionalConfigString
 import io.github.amichne.kast.api.client.fields.ServerRequestTimeoutMillis
-import io.github.amichne.kast.api.contract.*
-
+import io.github.amichne.kast.api.contract.AnalysisTransport
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test

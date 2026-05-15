@@ -153,12 +153,13 @@ That validator checks that:
 - every canonical case in `catalog.json` has provenance coverage
 - provenance does not reference unknown canonical ids
 - the staged history-derived candidate catalog in
-  `evaluation/fixtures/staging/copilot-history-candidates.json` stays structurally sound and does not collide with canonical ids
+  `evaluation/fixtures/staging/copilot-history-candidates.json` stays structurally sound and does not collide with
+  canonical ids
 
 ## Seeding candidate cases from history
 
-`evaluation/fixtures/staging/copilot-history-candidates.json` is a staging area for real task shapes mined from history that
-are not yet stable enough to promote into the canonical catalog.
+`evaluation/fixtures/staging/copilot-history-candidates.json` is a staging area for real task shapes mined from history
+that are not yet stable enough to promote into the canonical catalog.
 
 Use it when:
 
@@ -200,6 +201,5 @@ The following are explicitly **not** benchmark evidence:
 - `.agents/skills/skill-creator/scripts/aggregate_benchmark.py` — generic aggregator without paired statistical testing
 - Any file under `.agents/skills/*/history/` — progression-gate tracking artifacts
 
-If an observer examining this repo finds eval-shaped artifacts outside `evaluation/`,
-those artifacts do not participate in the canonical benchmark and their outputs should
-not be cited as system-level performance claims.
+If an observer examining this repo finds eval-shaped artifacts outside `evaluation/`, those artifacts do not participate
+in the canonical benchmark and their outputs should not be cited as system-level performance claims.

@@ -3,7 +3,6 @@ plugins {
     kotlin("plugin.serialization")
 }
 
-
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
 
 dependencies {

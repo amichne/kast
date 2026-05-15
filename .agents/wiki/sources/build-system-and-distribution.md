@@ -1,7 +1,7 @@
 # Build System and Distribution
 
-This page summarizes the raw note [[Build-System-and-Distribution]]. It is the
-source that connects the codebase to release artifacts.
+This page summarizes the raw note [[Build-System-and-Distribution]]. It is the source that connects the codebase to
+release artifacts.
 
 ## Source
 
@@ -14,12 +14,10 @@ This source is a build and packaging note.
 
 ## Summary
 
-This note explains project structure, artifact assembly, CI/CD and release flow,
-distribution components, and versioning. Its main contribution is linking the
-module layout to the concrete binaries and packages users install.
+This note explains project structure, artifact assembly, CI/CD and release flow, distribution components, and
+versioning. Its main contribution is linking the module layout to the concrete binaries and packages users install.
 
-It also shows that release validation is part of the normal build story, not an
-external process.
+It also shows that release validation is part of the normal build story, not an external process.
 
 ## Key claims
 

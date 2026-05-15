@@ -6,9 +6,8 @@ import io.github.amichne.kast.api.contract.PageInfo
 import io.github.amichne.kast.api.contract.PageableResult
 import io.github.amichne.kast.api.contract.Symbol
 import io.github.amichne.kast.api.docs.DocField
-import io.github.amichne.kast.api.protocol.*
+import io.github.amichne.kast.api.protocol.SCHEMA_VERSION
 import kotlinx.serialization.ExperimentalSerializationApi
-
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -23,7 +22,10 @@ data class WorkspaceSymbolResult(
     override val items: List<Symbol>
         get() = symbols
 
-    override fun withItems(items: List<Symbol>, page: PageInfo?): PageableResult<Symbol> = copy(
+    override fun withItems(
+        items: List<Symbol>,
+        page: PageInfo?,
+    ): PageableResult<Symbol> = copy(
         symbols = items,
         page = page,
     )

@@ -49,20 +49,23 @@ Use configuration names that describe the comparison clearly:
 
 The benchmark scripts do not require hard-coded names.
 
-Run `python3 scripts/quick_validate.py /path/to/skill` before packaging or promotion so malformed durable eval assets fail early.
-Run `python3 scripts/aggregate_benchmark.py <benchmark_dir>` only against workspaces that include `eval_metadata.json` and valid `grading.json` artifacts for every run. For Kast's consolidated repo-level value evaluation, use `evaluation/scripts/value_proof_aggregate.py` instead.
-If the benchmark is for a consolidation, follow the aggregate step with `python3 scripts/prove_consolidation.py --benchmark <benchmark.json> --candidate-config consolidated_skill --baseline-config legacy_alpha --baseline-config legacy_beta`.
+Run `python3 scripts/quick_validate.py /path/to/skill` before packaging or promotion so malformed durable eval assets
+fail early. Run `python3 scripts/aggregate_benchmark.py <benchmark_dir>` only against workspaces that include
+`eval_metadata.json` and valid `grading.json` artifacts for every run. For Kast's consolidated repo-level value
+evaluation, use `evaluation/scripts/value_proof_aggregate.py` instead. If the benchmark is for a consolidation, follow
+the aggregate step with
+`python3 scripts/prove_consolidation.py --benchmark <benchmark.json> --candidate-config consolidated_skill --baseline-config legacy_alpha --baseline-config legacy_beta`.
 
 ## Eval case lifecycle
 
 Each case belongs to one stage in `evals/catalog.json`:
 
-| Stage | Purpose |
-| --- | --- |
-| `candidate` | newly added issue; not yet trusted as a gate |
-| `holdout` | trusted enough to block regressions; still proving durability |
-| `core` | permanent non-regression set |
-| `retired` | preserved for history but not active |
+| Stage       | Purpose                                                       |
+|-------------|---------------------------------------------------------------|
+| `candidate` | newly added issue; not yet trusted as a gate                  |
+| `holdout`   | trusted enough to block regressions; still proving durability |
+| `core`      | permanent non-regression set                                  |
+| `retired`   | preserved for history but not active                          |
 
 Recommended flow:
 
@@ -103,11 +106,13 @@ For each configuration:
 
 1. save the outputs
 2. grade them with `agents/grader.md`
-3. aggregate results with `scripts/aggregate_benchmark.py` (or `evaluation/scripts/value_proof_aggregate.py` for Kast's repo-level value evaluation)
+3. aggregate results with `scripts/aggregate_benchmark.py` (or `evaluation/scripts/value_proof_aggregate.py` for Kast's
+   repo-level value evaluation)
 4. analyze the benchmark with `agents/analyzer.md`
 5. open or export the viewer with `eval-viewer/generate_review.py`
 
-Keep the viewer in the loop even when assertions are strong. Human review catches missing expectations and UX regressions that a formal grader can miss.
+Keep the viewer in the loop even when assertions are strong. Human review catches missing expectations and UX
+regressions that a formal grader can miss.
 
 ## Consolidation proof loop
 
@@ -117,9 +122,11 @@ When you are merging overlapping sibling skills, treat "fewer skills" as a maint
 2. run the merged skill and each legacy sibling against the union of their eval cases
 3. aggregate the benchmark workspace with `scripts/aggregate_benchmark.py`
 4. run `scripts/prove_consolidation.py` to compare the merged candidate against the best legacy pass-rate envelope
-5. keep `overlap_report.json` and `consolidation_report.json` with the benchmark workspace or review artifact, not in the skill root
+5. keep `overlap_report.json` and `consolidation_report.json` with the benchmark workspace or review artifact, not in
+   the skill root
 
-The consolidation proof is positive when the merged skill reduces overlap and `consolidation_report.json` shows the candidate matched or exceeded the legacy envelope within the allowed regression tolerance.
+The consolidation proof is positive when the merged skill reduces overlap and `consolidation_report.json` shows the
+candidate matched or exceeded the legacy envelope within the allowed regression tolerance.
 
 ## Progression gate
 
@@ -155,4 +162,5 @@ This avoids two common failure modes:
 - adding lots of new evals that never become reliable gates
 - claiming improvement by silently removing hard cases
 
-It also makes overlap easier to audit: if a proposed skill is mostly path-scoped or duplicates a sibling skill's trigger space, prefer consolidation or local `AGENTS.md` guidance over another niche skill directory.
+It also makes overlap easier to audit: if a proposed skill is mostly path-scoped or duplicates a sibling skill's trigger
+space, prefer consolidation or local `AGENTS.md` guidance over another niche skill directory.

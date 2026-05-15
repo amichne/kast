@@ -50,7 +50,10 @@ internal object BackendParityConfigFixture {
         return write(configHome, config)
     }
 
-    fun write(configHome: Path, config: BackendParityConfig = defaultConfig(configHome)): Path {
+    fun write(
+        configHome: Path,
+        config: BackendParityConfig = defaultConfig(configHome),
+    ): Path {
         Files.createDirectories(configHome)
         val configFile = configHome.resolve(configFileName)
         Files.writeString(configFile, config.toToml())
@@ -74,7 +77,7 @@ internal object BackendParityConfigFixture {
             intellijSocket = intellijSocket,
             usageFile = values.optionalPath(usageFileKey, configHome),
             usageOffset = values[usageOffsetKey]?.toIntOrNull()
-                ?: values[usageOffsetKey]?.let { error("[$paritySection].$usageOffsetKey must be an integer") },
+                          ?: values[usageOffsetKey]?.let { error("[$paritySection].$usageOffsetKey must be an integer") },
             brokenFile = values.optionalPath(brokenFileKey, configHome),
         )
     }
@@ -119,10 +122,16 @@ internal object BackendParityConfigFixture {
         }
     }
 
-    private fun Map<String, String>.requiredPath(key: String, configHome: Path): Path =
+    private fun Map<String, String>.requiredPath(
+        key: String,
+        configHome: Path,
+    ): Path =
         optionalPath(key, configHome) ?: error("Missing [$paritySection].$key in ${configHome.resolve(configFileName)}")
 
-    private fun Map<String, String>.optionalPath(key: String, configHome: Path): Path? =
+    private fun Map<String, String>.optionalPath(
+        key: String,
+        configHome: Path,
+    ): Path? =
         this[key]?.let { value ->
             Path(value).let { path ->
                 if (path.isAbsolute) path.normalize() else configHome.resolve(path).normalize()

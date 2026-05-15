@@ -6,9 +6,8 @@ import io.github.amichne.kast.api.contract.FileHash
 import io.github.amichne.kast.api.contract.SearchScope
 import io.github.amichne.kast.api.contract.TextEdit
 import io.github.amichne.kast.api.docs.DocField
-import io.github.amichne.kast.api.protocol.*
+import io.github.amichne.kast.api.protocol.SCHEMA_VERSION
 import kotlinx.serialization.ExperimentalSerializationApi
-
 import kotlinx.serialization.Serializable
 
 @Serializable

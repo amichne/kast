@@ -57,8 +57,10 @@ class KastFileOperationsTest {
 
         // List directory contents
         val children = ops.list(testDir)
-        assertTrue(children.any { it.endsWith("test.txt") },
-            "Directory listing should include test.txt")
+        assertTrue(
+            children.any { it.endsWith("test.txt") },
+            "Directory listing should include test.txt"
+        )
 
         // Delete file
         val deleted = ops.delete(testFile)
@@ -168,8 +170,10 @@ class KastFileOperationsTest {
         // Verify all returned paths are absolute
         assertTrue(children.isNotEmpty(), "Directory should contain at least one file")
         children.forEach { path ->
-            assertTrue(Path.of(path).isAbsolute,
-                "Path should be absolute, but got: $path")
+            assertTrue(
+                Path.of(path).isAbsolute,
+                "Path should be absolute, but got: $path"
+            )
         }
     }
 

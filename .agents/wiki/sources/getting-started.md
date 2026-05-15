@@ -1,7 +1,7 @@
 # Getting Started
 
-This page summarizes the raw note [[Getting-Started]]. It captures the first-run
-experience and the minimum operational path into Kast.
+This page summarizes the raw note [[Getting-Started]]. It captures the first-run experience and the minimum operational
+path into Kast.
 
 ## Source
 
@@ -14,17 +14,15 @@ This source is an onboarding and setup note.
 
 ## Summary
 
-This note explains prerequisites, published versus local installation paths, the
-CLI discovery cascade, and the basic daemon lifecycle. Its main contribution is
-showing how a caller gets from "Kast is installed" to "the daemon is usable."
+This note explains prerequisites, published versus local installation paths, the CLI discovery cascade, and the basic
+daemon lifecycle. Its main contribution is showing how a caller gets from "Kast is installed" to "the daemon is usable."
 
-It also makes the warm versus cold path visible by distinguishing prewarming,
-first command execution, and daemon shutdown.
+It also makes the warm versus cold path visible by distinguishing prewarming, first command execution, and daemon
+shutdown.
 
 ## Key claims
 
-- Installation and binary discovery are part of the user experience, not hidden
-  implementation details.
+- Installation and binary discovery are part of the user experience, not hidden implementation details.
 - The first command pays setup costs that later commands can avoid.
 - Daemon lifecycle management is an explicit operator concern.
 

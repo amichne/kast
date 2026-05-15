@@ -74,19 +74,19 @@ class Phase2ReadStarvationTest {
 
             // Thread 1: hold READ lock indefinitely, simulating an ongoing foreground operation
             val readHolderFuture = CompletableFuture.runAsync({
-                session.withReadAccess {
-                    readHeld.countDown()
-                    releaseRead.await(10, TimeUnit.SECONDS)
-                }
-            }, executor)
+                                                                  session.withReadAccess {
+                                                                      readHeld.countDown()
+                                                                      releaseRead.await(10, TimeUnit.SECONDS)
+                                                                  }
+                                                              }, executor)
 
             assertTrue(readHeld.await(10, TimeUnit.SECONDS), "Reader did not acquire the lock")
 
             // Thread 2: Phase 2 attempts exclusive access while Thread 1 holds the read lock.
             // With current code it enqueues as a PENDING WRITE WAITER and blocks indefinitely.
             val phase2Future = CompletableFuture.runAsync({
-                environment.withExclusiveAccess { Unit }
-            }, executor)
+                                                              environment.withExclusiveAccess { }
+                                                          }, executor)
 
             // Allow enough time for Phase 2 to become the pending write waiter
             Thread.sleep(200)
@@ -97,7 +97,7 @@ class Phase2ReadStarvationTest {
             //   Thread 3 acquires read lock concurrently with Thread 1 -> ~200 ms -> PASSES.
             val readLatencyMs = measureTimeMillis {
                 val newReadFuture = CompletableFuture.runAsync(
-                    { session.withReadAccess { Unit } },
+                    { session.withReadAccess { } },
                     executor,
                 )
                 try {
@@ -110,7 +110,7 @@ class Phase2ReadStarvationTest {
             assertTrue(
                 readLatencyMs < 500L,
                 "Foreground read took ${readLatencyMs}ms while Phase 2 was a pending write waiter. " +
-                    "Phase 2 must not starve new foreground reads (expected < 500ms).",
+                "Phase 2 must not starve new foreground reads (expected < 500ms).",
             )
 
             releaseRead.countDown()
@@ -151,25 +151,25 @@ class Phase2ReadStarvationTest {
 
             // Thread 1: hold READ lock while Phase 2 attempts to scan
             val readHolderFuture = CompletableFuture.runAsync({
-                session.withReadAccess {
-                    readHeld.countDown()
-                    releaseRead.await(10, TimeUnit.SECONDS)
-                }
-            }, executor)
+                                                                  session.withReadAccess {
+                                                                      readHeld.countDown()
+                                                                      releaseRead.await(10, TimeUnit.SECONDS)
+                                                                  }
+                                                              }, executor)
 
             assertTrue(readHeld.await(10, TimeUnit.SECONDS), "Reader did not acquire the lock")
 
             // Thread 2: Phase 2 with slow per-file scan (100 ms) — becomes pending write waiter
             val phase2Future = CompletableFuture.runAsync({
-                environment.withExclusiveAccess { Thread.sleep(100) }
-            }, executor)
+                                                              environment.withExclusiveAccess { Thread.sleep(100) }
+                                                          }, executor)
 
             Thread.sleep(200)
 
             // Thread 3: new foreground read must not be blocked by Thread 2's write waiter
             val readLatencyMs = measureTimeMillis {
                 val newReadFuture = CompletableFuture.runAsync(
-                    { session.withReadAccess { Unit } },
+                    { session.withReadAccess { } },
                     executor,
                 )
                 try {
@@ -182,7 +182,7 @@ class Phase2ReadStarvationTest {
             assertTrue(
                 readLatencyMs < 500L,
                 "Foreground read took ${readLatencyMs}ms with a slow Phase 2 scan pending " +
-                    "(expected < 500ms).",
+                "(expected < 500ms).",
             )
 
             releaseRead.countDown()
@@ -223,11 +223,11 @@ class Phase2ReadStarvationTest {
 
             // Thread 1: hold READ lock while Phase 2 scans are submitted
             val readHolderFuture = CompletableFuture.runAsync({
-                session.withReadAccess {
-                    readHeld.countDown()
-                    releaseRead.await(10, TimeUnit.SECONDS)
-                }
-            }, executor)
+                                                                  session.withReadAccess {
+                                                                      readHeld.countDown()
+                                                                      releaseRead.await(10, TimeUnit.SECONDS)
+                                                                  }
+                                                              }, executor)
 
             assertTrue(readHeld.await(10, TimeUnit.SECONDS), "Reader did not acquire the lock")
 
@@ -235,11 +235,11 @@ class Phase2ReadStarvationTest {
             val scanned = AtomicInteger(0)
             val phase2Futures = (0 until 3).map {
                 CompletableFuture.runAsync({
-                    environment.withExclusiveAccess {
-                        Thread.sleep(50)
-                        scanned.incrementAndGet()
-                    }
-                }, executor)
+                                               environment.withExclusiveAccess {
+                                                   Thread.sleep(50)
+                                                   scanned.incrementAndGet()
+                                               }
+                                           }, executor)
             }
 
             Thread.sleep(200)
@@ -247,7 +247,7 @@ class Phase2ReadStarvationTest {
             // New foreground read: must not be blocked by the 3 pending write waiters
             val readLatencyMs = measureTimeMillis {
                 val newReadFuture = CompletableFuture.runAsync(
-                    { session.withReadAccess { Unit } },
+                    { session.withReadAccess { } },
                     executor,
                 )
                 try {
@@ -260,7 +260,7 @@ class Phase2ReadStarvationTest {
             assertTrue(
                 readLatencyMs < 500L,
                 "Foreground read took ${readLatencyMs}ms while 3 Phase 2 scans were pending " +
-                    "(expected < 500ms).",
+                "(expected < 500ms).",
             )
 
             releaseRead.countDown()

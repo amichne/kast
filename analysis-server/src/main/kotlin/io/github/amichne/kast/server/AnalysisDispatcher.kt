@@ -1,27 +1,64 @@
 package io.github.amichne.kast.server
 
 import io.github.amichne.kast.api.contract.AnalysisBackend
+import io.github.amichne.kast.api.contract.BackendCapabilities
+import io.github.amichne.kast.api.contract.HealthResponse
+import io.github.amichne.kast.api.contract.MutationCapability
+import io.github.amichne.kast.api.contract.PageInfo
+import io.github.amichne.kast.api.contract.PageableResult
+import io.github.amichne.kast.api.contract.ReadCapability
+import io.github.amichne.kast.api.contract.RuntimeStatusResponse
+import io.github.amichne.kast.api.contract.SemanticInsertionQuery
+import io.github.amichne.kast.api.contract.SemanticInsertionResult
+import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
+import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
+import io.github.amichne.kast.api.contract.query.CodeActionsQuery
+import io.github.amichne.kast.api.contract.query.CompletionsQuery
+import io.github.amichne.kast.api.contract.query.DiagnosticsQuery
+import io.github.amichne.kast.api.contract.query.FileOutlineQuery
+import io.github.amichne.kast.api.contract.query.ImplementationsQuery
+import io.github.amichne.kast.api.contract.query.ImportOptimizeQuery
+import io.github.amichne.kast.api.contract.query.ReferencesQuery
+import io.github.amichne.kast.api.contract.query.RefreshQuery
+import io.github.amichne.kast.api.contract.query.RenameQuery
+import io.github.amichne.kast.api.contract.query.SymbolQuery
+import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
+import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
+import io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery
+import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
+import io.github.amichne.kast.api.contract.result.ApplyEditsResult
+import io.github.amichne.kast.api.contract.result.CallHierarchyResult
+import io.github.amichne.kast.api.contract.result.CodeActionsResult
+import io.github.amichne.kast.api.contract.result.CompletionsResult
+import io.github.amichne.kast.api.contract.result.DiagnosticsResult
+import io.github.amichne.kast.api.contract.result.FileOutlineResult
+import io.github.amichne.kast.api.contract.result.ImplementationsResult
+import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
+import io.github.amichne.kast.api.contract.result.ReferencesResult
+import io.github.amichne.kast.api.contract.result.RefreshResult
+import io.github.amichne.kast.api.contract.result.RenameResult
+import io.github.amichne.kast.api.contract.result.SymbolResult
+import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
+import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
+import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
+import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
+import io.github.amichne.kast.api.contract.skill.KastCallersRequest
+import io.github.amichne.kast.api.contract.skill.KastCallersResponse
+import io.github.amichne.kast.api.contract.skill.KastMetricsRequest
+import io.github.amichne.kast.api.contract.skill.KastMetricsResponse
+import io.github.amichne.kast.api.contract.skill.KastReferencesRequest
+import io.github.amichne.kast.api.contract.skill.KastReferencesResponse
+import io.github.amichne.kast.api.contract.skill.KastRenameRequest
+import io.github.amichne.kast.api.contract.skill.KastRenameResponse
+import io.github.amichne.kast.api.contract.skill.KastResolveRequest
+import io.github.amichne.kast.api.contract.skill.KastResolveResponse
+import io.github.amichne.kast.api.contract.skill.KastScaffoldRequest
+import io.github.amichne.kast.api.contract.skill.KastScaffoldResponse
+import io.github.amichne.kast.api.contract.skill.KastWriteAndValidateRequest
+import io.github.amichne.kast.api.contract.skill.KastWriteAndValidateResponse
 import io.github.amichne.kast.api.protocol.AnalysisException
 import io.github.amichne.kast.api.protocol.ApiErrorResponse
-import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
-import io.github.amichne.kast.api.contract.result.ApplyEditsResult
-import io.github.amichne.kast.api.contract.BackendCapabilities
-import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
-import io.github.amichne.kast.api.contract.result.CallHierarchyResult
 import io.github.amichne.kast.api.protocol.CapabilityNotSupportedException
-import io.github.amichne.kast.api.contract.query.CodeActionsQuery
-import io.github.amichne.kast.api.contract.result.CodeActionsResult
-import io.github.amichne.kast.api.contract.query.CompletionsQuery
-import io.github.amichne.kast.api.contract.result.CompletionsResult
-import io.github.amichne.kast.api.contract.query.DiagnosticsQuery
-import io.github.amichne.kast.api.contract.result.DiagnosticsResult
-import io.github.amichne.kast.api.contract.query.FileOutlineQuery
-import io.github.amichne.kast.api.contract.result.FileOutlineResult
-import io.github.amichne.kast.api.contract.HealthResponse
-import io.github.amichne.kast.api.contract.query.ImportOptimizeQuery
-import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
-import io.github.amichne.kast.api.contract.query.ImplementationsQuery
-import io.github.amichne.kast.api.contract.result.ImplementationsResult
 import io.github.amichne.kast.api.protocol.JSON_RPC_INTERNAL_ERROR
 import io.github.amichne.kast.api.protocol.JSON_RPC_INVALID_REQUEST
 import io.github.amichne.kast.api.protocol.JSON_RPC_METHOD_NOT_FOUND
@@ -32,37 +69,14 @@ import io.github.amichne.kast.api.protocol.JsonRpcErrorObject
 import io.github.amichne.kast.api.protocol.JsonRpcErrorResponse
 import io.github.amichne.kast.api.protocol.JsonRpcRequest
 import io.github.amichne.kast.api.protocol.JsonRpcSuccessResponse
-import io.github.amichne.kast.api.contract.MutationCapability
-import io.github.amichne.kast.api.contract.PageInfo
-import io.github.amichne.kast.api.contract.PageableResult
-import io.github.amichne.kast.api.contract.ReadCapability
-import io.github.amichne.kast.api.contract.query.RefreshQuery
-import io.github.amichne.kast.api.contract.result.RefreshResult
-import io.github.amichne.kast.api.contract.query.ReferencesQuery
-import io.github.amichne.kast.api.contract.result.ReferencesResult
-import io.github.amichne.kast.api.contract.query.RenameQuery
-import io.github.amichne.kast.api.contract.result.RenameResult
-import io.github.amichne.kast.api.contract.RuntimeStatusResponse
-import io.github.amichne.kast.api.contract.SemanticInsertionQuery
-import io.github.amichne.kast.api.contract.SemanticInsertionResult
-import io.github.amichne.kast.api.contract.query.SymbolQuery
-import io.github.amichne.kast.api.contract.result.SymbolResult
-import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
-import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
 import io.github.amichne.kast.api.protocol.ValidationException
-import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
-import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
-import io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery
-import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
-import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
-import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
+import io.github.amichne.kast.api.validation.parsed
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import java.util.UUID
-import io.github.amichne.kast.api.validation.parsed
 
 class AnalysisDispatcher(
     private val backend: AnalysisBackend,
@@ -73,6 +87,8 @@ class AnalysisDispatcher(
         prettyPrint = false
     },
 ) {
+    private val skillRpc = SkillRpcOrchestrator(backend, config, json)
+
     suspend fun dispatch(request: JsonRpcRequest): String {
         if (request.jsonrpc != JSON_RPC_VERSION || request.method.isBlank()) {
             return json.encodeToString(
@@ -291,6 +307,41 @@ class AnalysisDispatcher(
                 ),
             )
 
+            "skill/resolve" -> encode(
+                KastResolveResponse.serializer(),
+                skillRpc.resolve(decodeParams(KastResolveRequest.serializer(), params)),
+            )
+
+            "skill/references" -> encode(
+                KastReferencesResponse.serializer(),
+                skillRpc.references(decodeParams(KastReferencesRequest.serializer(), params)),
+            )
+
+            "skill/callers" -> encode(
+                KastCallersResponse.serializer(),
+                skillRpc.callers(decodeParams(KastCallersRequest.serializer(), params)),
+            )
+
+            "skill/scaffold" -> encode(
+                KastScaffoldResponse.serializer(),
+                skillRpc.scaffold(decodeParams(KastScaffoldRequest.serializer(), params)),
+            )
+
+            "skill/rename" -> encode(
+                KastRenameResponse.serializer(),
+                skillRpc.rename(decodeParams(KastRenameRequest.serializer(), params)),
+            )
+
+            "skill/write-and-validate" -> encode(
+                KastWriteAndValidateResponse.serializer(),
+                skillRpc.writeAndValidate(decodeParams(KastWriteAndValidateRequest.serializer(), params)),
+            )
+
+            "skill/metrics" -> encode(
+                KastMetricsResponse.serializer(),
+                skillRpc.metrics(decodeParams(KastMetricsRequest.serializer(), params)),
+            )
+
             "implementations" -> encode(
                 ImplementationsResult.serializer(),
                 backend.implementations(
@@ -346,7 +397,7 @@ class AnalysisDispatcher(
         serializer: KSerializer<T>,
         params: JsonElement?,
     ): T = params?.let { json.decodeFromJsonElement(serializer, it) }
-        ?: throw ValidationException("The JSON-RPC request is missing params")
+           ?: throw ValidationException("The JSON-RPC request is missing params")
 
     private fun <T> encode(
         serializer: KSerializer<T>,

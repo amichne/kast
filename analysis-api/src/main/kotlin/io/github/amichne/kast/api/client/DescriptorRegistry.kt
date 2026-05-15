@@ -26,7 +26,7 @@ class DescriptorRegistry {
      */
     constructor(
         daemonsPath: String,
-        fileOps: KastFileOperations = LocalDiskFileOperations
+        fileOps: KastFileOperations = LocalDiskFileOperations,
     ) {
         this.daemonsPath = daemonsPath
         this.fileOps = fileOps
@@ -73,7 +73,10 @@ class DescriptorRegistry {
     fun findByWorkspaceRoot(workspaceRoot: String): List<RegisteredDescriptor> {
         val normalizedWorkspaceRoot = Path.of(workspaceRoot).toAbsolutePath().normalize().toString()
         return list().filter { registered ->
-            Path.of(registered.descriptor.workspaceRoot).toAbsolutePath().normalize().toString() == normalizedWorkspaceRoot
+            Path.of(registered.descriptor.workspaceRoot)
+                .toAbsolutePath()
+                .normalize()
+                .toString() == normalizedWorkspaceRoot
         }
     }
 

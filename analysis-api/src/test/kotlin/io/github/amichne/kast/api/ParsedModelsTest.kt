@@ -1,9 +1,31 @@
 package io.github.amichne.kast.api.validation
 
-import io.github.amichne.kast.api.contract.*
-import io.github.amichne.kast.api.contract.query.*
-import io.github.amichne.kast.api.protocol.*
-
+import io.github.amichne.kast.api.contract.CallDirection
+import io.github.amichne.kast.api.contract.FileHash
+import io.github.amichne.kast.api.contract.FileOperation
+import io.github.amichne.kast.api.contract.FilePosition
+import io.github.amichne.kast.api.contract.Location
+import io.github.amichne.kast.api.contract.PositiveInt
+import io.github.amichne.kast.api.contract.SemanticInsertionQuery
+import io.github.amichne.kast.api.contract.SemanticInsertionTarget
+import io.github.amichne.kast.api.contract.TextEdit
+import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
+import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
+import io.github.amichne.kast.api.contract.query.CodeActionsQuery
+import io.github.amichne.kast.api.contract.query.CompletionsQuery
+import io.github.amichne.kast.api.contract.query.DiagnosticsQuery
+import io.github.amichne.kast.api.contract.query.FileOutlineQuery
+import io.github.amichne.kast.api.contract.query.ImplementationsQuery
+import io.github.amichne.kast.api.contract.query.ImportOptimizeQuery
+import io.github.amichne.kast.api.contract.query.ReferencesQuery
+import io.github.amichne.kast.api.contract.query.RefreshQuery
+import io.github.amichne.kast.api.contract.query.RenameQuery
+import io.github.amichne.kast.api.contract.query.SymbolQuery
+import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
+import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
+import io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery
+import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
+import io.github.amichne.kast.api.protocol.ValidationException
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test

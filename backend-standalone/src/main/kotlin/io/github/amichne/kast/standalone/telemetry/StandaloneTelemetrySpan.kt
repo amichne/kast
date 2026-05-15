@@ -7,7 +7,10 @@ internal class StandaloneTelemetrySpan internal constructor(
     private val scope: StandaloneTelemetryScope,
     private val span: Span?,
 ) {
-    fun setAttribute(key: String, value: Any?) {
+    fun setAttribute(
+        key: String,
+        value: Any?,
+    ) {
         if (span == null || value == null) {
             return
         }

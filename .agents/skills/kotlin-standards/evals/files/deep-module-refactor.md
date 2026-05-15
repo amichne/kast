@@ -37,8 +37,7 @@ Problems:
 - Callers still have to understand nearly every step of the workflow.
 - Each interface has one implementation and little independent leverage.
 - Tests target helpers instead of the module interface.
-- The orchestration is broad and shallow rather than concentrated behind a
-  smaller seam.
+- The orchestration is broad and shallow rather than concentrated behind a smaller seam.
 
-The expected guidance should favor a deeper module with a smaller interface,
-internal helpers where needed, and tests that cross the same seam as callers.
+The expected guidance should favor a deeper module with a smaller interface, internal helpers where needed, and tests
+that cross the same seam as callers.

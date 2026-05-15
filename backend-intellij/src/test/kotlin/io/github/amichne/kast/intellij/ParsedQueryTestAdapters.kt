@@ -23,14 +23,18 @@ internal suspend fun KastPluginBackend.resolveSymbol(query: SymbolQuery) = resol
 internal suspend fun KastPluginBackend.findReferences(query: ReferencesQuery) = findReferences(query.parsed())
 internal suspend fun KastPluginBackend.callHierarchy(query: CallHierarchyQuery) = callHierarchy(query.parsed())
 internal suspend fun KastPluginBackend.typeHierarchy(query: TypeHierarchyQuery) = typeHierarchy(query.parsed())
-internal suspend fun KastPluginBackend.semanticInsertionPoint(query: SemanticInsertionQuery) = semanticInsertionPoint(query.parsed())
+internal suspend fun KastPluginBackend.semanticInsertionPoint(query: SemanticInsertionQuery) =
+    semanticInsertionPoint(query.parsed())
+
 internal suspend fun KastPluginBackend.diagnostics(query: DiagnosticsQuery) = diagnostics(query.parsed())
 internal suspend fun KastPluginBackend.rename(query: RenameQuery) = rename(query.parsed())
 internal suspend fun KastPluginBackend.applyEdits(query: ApplyEditsQuery) = applyEdits(query.parsed())
 internal suspend fun KastPluginBackend.optimizeImports(query: ImportOptimizeQuery) = optimizeImports(query.parsed())
 internal suspend fun KastPluginBackend.refresh(query: RefreshQuery) = refresh(query.parsed())
 internal suspend fun KastPluginBackend.fileOutline(query: FileOutlineQuery) = fileOutline(query.parsed())
-internal suspend fun KastPluginBackend.workspaceSymbolSearch(query: WorkspaceSymbolQuery) = workspaceSymbolSearch(query.parsed())
+internal suspend fun KastPluginBackend.workspaceSymbolSearch(query: WorkspaceSymbolQuery) =
+    workspaceSymbolSearch(query.parsed())
+
 internal suspend fun KastPluginBackend.workspaceSearch(query: WorkspaceSearchQuery) = workspaceSearch(query.parsed())
 internal suspend fun KastPluginBackend.workspaceFiles(query: WorkspaceFilesQuery) = workspaceFiles(query.parsed())
 internal suspend fun KastPluginBackend.implementations(query: ImplementationsQuery) = implementations(query.parsed())

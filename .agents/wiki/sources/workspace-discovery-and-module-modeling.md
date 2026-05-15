@@ -1,7 +1,7 @@
 # Workspace Discovery and Module Modeling
 
-This page summarizes the raw note [[Workspace-Discovery-and-Module-Modeling]].
-It is the direct source for how Kast builds analyzable workspace models.
+This page summarizes the raw note [[Workspace-Discovery-and-Module-Modeling]]. It is the direct source for how Kast
+builds analyzable workspace models.
 
 ## Source
 
@@ -14,13 +14,12 @@ This source is a workspace-modeling note.
 
 ## Summary
 
-This note explains explicit roots, static Gradle discovery, Tooling API
-discovery, standalone fallback, phased enrichment, module graphs, and dependency
-resolution. Its main contribution is showing how raw directories become the
+This note explains explicit roots, static Gradle discovery, Tooling API discovery, standalone fallback, phased
+enrichment, module graphs, and dependency resolution. Its main contribution is showing how raw directories become the
 module and classpath structures the backend needs.
 
-It also reveals Kast's consistent tradeoff: prefer fast enough information
-first, then deepen precision when richer build metadata is available.
+It also reveals Kast's consistent tradeoff: prefer fast enough information first, then deepen precision when richer
+build metadata is available.
 
 ## Key claims
 

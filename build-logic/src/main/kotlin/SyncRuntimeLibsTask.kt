@@ -96,8 +96,8 @@ abstract class SyncRuntimeLibsTask : DefaultTask() {
         if (missingRequiredClassEntries.isNotEmpty()) {
             throw GradleException(
                 "runtime-libs classpath is missing required class entries: " +
-                    missingRequiredClassEntries.joinToString() +
-                    ". Ensure the module or jar containing each required class is on runtimeClasspath.",
+                missingRequiredClassEntries.joinToString() +
+                ". Ensure the module or jar containing each required class is on runtimeClasspath.",
             )
         }
     }
@@ -126,13 +126,19 @@ object RuntimeClasspathAssertions {
         }
     }
 
-    private fun jarContainsEntry(jarPath: Path, entryName: String): Boolean =
+    private fun jarContainsEntry(
+        jarPath: Path,
+        entryName: String,
+    ): Boolean =
         ZipFile(jarPath.toFile()).use { archive ->
             archive.getEntry(entryName) != null
         }
 }
 
-private fun copyIfChanged(sourcePath: Path, targetPath: Path) {
+private fun copyIfChanged(
+    sourcePath: Path,
+    targetPath: Path,
+) {
     targetPath.parent?.let(Files::createDirectories)
     if (Files.exists(targetPath) && Files.mismatch(sourcePath, targetPath) == -1L) {
         return

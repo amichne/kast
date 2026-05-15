@@ -1,7 +1,5 @@
 package io.github.amichne.kast.api.client
 
-import io.github.amichne.kast.api.contract.*
-
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -10,7 +8,6 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
 import kotlin.io.path.exists
-import kotlin.io.path.writeText
 
 class DescriptorRegistryTest {
     @TempDir
@@ -95,7 +92,7 @@ class DescriptorRegistryTest {
     fun `registered descriptor id is derived from workspace-backend-pid`() {
         val daemonsFile = tempDir.resolve("daemons.json")
         val registry = DescriptorRegistry(daemonsFile)
-        val d = descriptor(workspaceRoot = "/tmp/ws", backendName = "standalone", pid = 99L)
+        val d = descriptor(workspaceRoot = "/tmp/ws", pid = 99L)
 
         registry.register(d)
         val registered = registry.list().single()

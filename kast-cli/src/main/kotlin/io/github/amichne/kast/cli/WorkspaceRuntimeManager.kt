@@ -5,8 +5,8 @@ import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.RegisteredDescriptor
 import io.github.amichne.kast.api.contract.RuntimeState
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
-import io.github.amichne.kast.cli.options.RuntimeCommandOptions
 import io.github.amichne.kast.cli.options.BackendName
+import io.github.amichne.kast.cli.options.RuntimeCommandOptions
 import io.github.amichne.kast.cli.results.DaemonStopResult
 import io.github.amichne.kast.cli.results.WorkspaceEnsureResult
 import io.github.amichne.kast.cli.results.WorkspaceStatusResult
@@ -290,16 +290,16 @@ internal data class WorkspaceInspection(
 
 internal fun RuntimeStatusResponse?.isServable(): Boolean =
     this != null &&
-        (state == RuntimeState.READY || state == RuntimeState.INDEXING) &&
-        healthy &&
-        active
+    (state == RuntimeState.READY || state == RuntimeState.INDEXING) &&
+    healthy &&
+    active
 
 internal fun RuntimeStatusResponse?.isReady(): Boolean =
     this != null &&
-        state == RuntimeState.READY &&
-        healthy &&
-        active &&
-        !indexing
+    state == RuntimeState.READY &&
+    healthy &&
+    active &&
+    !indexing
 
 internal fun selectServableCandidate(
     candidates: List<RuntimeCandidateStatus>,
@@ -346,7 +346,7 @@ private fun isProcessAlive(pid: Long): Boolean =
         .takeIf { it.isPresent }
         ?.get()
         ?.isAlive
-        ?: false
+    ?: false
 
 private suspend fun startStandaloneDaemon(
     options: RuntimeCommandOptions,
@@ -354,10 +354,10 @@ private suspend fun startStandaloneDaemon(
 ): StandaloneDaemonLaunch {
     val workspaceRoot = options.workspaceRoot.toJavaPath()
     val kastBinary = resolveKastBinary(workspaceRoot)
-        ?: throw CliFailure(
-            code = "DAEMON_START_ERROR",
-            message = "Cannot locate the kast launcher needed to auto-start the standalone backend for $workspaceRoot.",
-        )
+                     ?: throw CliFailure(
+                         code = "DAEMON_START_ERROR",
+                         message = "Cannot locate the kast launcher needed to auto-start the standalone backend for $workspaceRoot.",
+                     )
     val logFile = daemonLogFile(KastConfig.load(workspaceRoot), workspaceRoot)
     Files.createDirectories(checkNotNull(logFile.parent))
     val command = buildList {
@@ -366,7 +366,7 @@ private suspend fun startStandaloneDaemon(
         add("start")
         addAll(
             options.standaloneOptions?.toCliArguments()
-                ?: listOf("--workspace-root=$workspaceRoot"),
+            ?: listOf("--workspace-root=$workspaceRoot"),
         )
         add("--runtime-libs-dir=$runtimeLibsDir")
     }
@@ -422,10 +422,10 @@ private fun resolveKastBinary(workspaceRoot: Path): Path? {
 
 private fun findExecutableOnPath(commandName: String): Path? {
     val pathEntries = System.getenv("PATH")
-        ?.split(System.getProperty("path.separator", ":"))
-        ?.map(String::trim)
-        ?.filter(String::isNotEmpty)
-        ?: return null
+                          ?.split(System.getProperty("path.separator", ":"))
+                          ?.map(String::trim)
+                          ?.filter(String::isNotEmpty)
+                      ?: return null
     return pathEntries.asSequence()
         .map { entry -> Path.of(entry).resolve(commandName) }
         .map { candidate -> candidate.toAbsolutePath().normalize() }

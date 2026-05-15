@@ -292,7 +292,10 @@ class SkillEvalEngineTest {
         status = EvalStatus.PASS, message = "$id passed",
     )
 
-    private fun failingCheck(id: String, severity: EvalSeverity) = EvalCheck(
+    private fun failingCheck(
+        id: String,
+        severity: EvalSeverity,
+    ) = EvalCheck(
         id = id, category = "test", severity = severity,
         status = EvalStatus.FAIL, message = "$id failed",
     )

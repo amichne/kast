@@ -7,8 +7,8 @@ hide:
 
 # Capabilities
 
-Every operation the Kast analysis daemon supports, organized by
-category. Expand any operation to see its input and output schemas.
+Every operation the Kast analysis daemon supports, organized by category. Expand any operation to see its input and
+output schemas.
 
 === "System operations"
 

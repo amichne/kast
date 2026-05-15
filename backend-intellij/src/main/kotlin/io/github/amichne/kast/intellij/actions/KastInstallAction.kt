@@ -29,8 +29,16 @@ internal abstract class KastInstallAction : AnAction() {
 
         ApplicationManager.getApplication().executeOnPooledThread {
             when (val result = runKastInstallCommand(kastBinary, workspaceRoot, buildArgs(workspaceRoot))) {
-                is KastInstallCommandResult.Success -> notify(project, successMessage(workspaceRoot), NotificationType.INFORMATION)
-                is KastInstallCommandResult.TimedOut -> notify(project, "kast command timed out", NotificationType.ERROR)
+                is KastInstallCommandResult.Success -> notify(
+                    project,
+                    successMessage(workspaceRoot),
+                    NotificationType.INFORMATION
+                )
+                is KastInstallCommandResult.TimedOut -> notify(
+                    project,
+                    "kast command timed out",
+                    NotificationType.ERROR
+                )
                 is KastInstallCommandResult.Failed -> {
                     notify(project, "kast command failed (exit ${result.exitCode})", NotificationType.ERROR)
                 }
@@ -58,7 +66,7 @@ internal sealed interface KastBinaryResolution {
     data class NotExecutable(val path: Path) : KastBinaryResolution {
         val message: String =
             "kast binary configured at $path is missing or not executable. " +
-                "Set [cli] binaryPath in config.toml to an executable kast binary."
+            "Set [cli] binaryPath in config.toml to an executable kast binary."
     }
 }
 

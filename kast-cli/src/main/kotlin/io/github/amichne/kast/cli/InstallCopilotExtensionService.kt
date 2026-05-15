@@ -41,7 +41,10 @@ internal class InstallCopilotExtensionService(
         skipped = skipped,
     )
 
-    override fun postInstall(targetPath: Path, result: InstallCopilotExtensionResult): InstallCopilotExtensionResult {
+    override fun postInstall(
+        targetPath: Path,
+        result: InstallCopilotExtensionResult,
+    ): InstallCopilotExtensionResult {
         manifestStore.recordRepo(repoRoot(targetPath), result.version)
         val warnings = verify(targetPath)
         return if (warnings.isEmpty()) result else result.copy(warnings = warnings)

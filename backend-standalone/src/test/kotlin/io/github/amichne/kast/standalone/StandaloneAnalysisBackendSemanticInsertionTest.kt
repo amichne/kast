@@ -1,10 +1,10 @@
 package io.github.amichne.kast.standalone
 
 import io.github.amichne.kast.api.contract.FilePosition
-import io.github.amichne.kast.api.protocol.NotFoundException
 import io.github.amichne.kast.api.contract.SemanticInsertionQuery
 import io.github.amichne.kast.api.contract.SemanticInsertionTarget
 import io.github.amichne.kast.api.contract.ServerLimits
+import io.github.amichne.kast.api.protocol.NotFoundException
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test

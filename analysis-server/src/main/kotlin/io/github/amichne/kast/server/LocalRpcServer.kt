@@ -159,7 +159,7 @@ internal fun isExpectedClientDisconnect(error: Throwable): Boolean {
         when (current) {
             is ClosedChannelException,
             is AsynchronousCloseException,
-            -> return true
+                -> return true
 
             is IOException -> {
                 val message = current.message.orEmpty()

@@ -4,7 +4,10 @@ import io.opentelemetry.api.common.AttributeKey
 import io.opentelemetry.api.common.Attributes
 import io.opentelemetry.api.trace.Span
 
-internal fun applyAttributes(span: Span, attributes: Map<String, Any?>) {
+internal fun applyAttributes(
+    span: Span,
+    attributes: Map<String, Any?>,
+) {
     attributes.forEach { (key, value) ->
         if (value != null) {
             setAttribute(span, key, value)
@@ -27,7 +30,11 @@ internal fun attributesOf(attributes: Map<String, Any?>): Attributes {
     return builder.build()
 }
 
-internal fun setAttribute(span: Span, key: String, value: Any) {
+internal fun setAttribute(
+    span: Span,
+    key: String,
+    value: Any,
+) {
     when (value) {
         is Boolean -> span.setAttribute(AttributeKey.booleanKey(key), value)
         is Double -> span.setAttribute(AttributeKey.doubleKey(key), value)

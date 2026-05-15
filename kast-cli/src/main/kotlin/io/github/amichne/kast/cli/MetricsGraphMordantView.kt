@@ -55,7 +55,11 @@ internal object MetricsGraphMordantView {
         )
     }
 
-    private fun section(title: String, accent: TextStyle, body: String): Widget =
+    private fun section(
+        title: String,
+        accent: TextStyle,
+        body: String,
+    ): Widget =
         Panel(
             content = body,
             title = TextStyles.bold(accent(title)),
@@ -130,11 +134,11 @@ private class MetricsGraphDashboardContext(
     fun neighborhoodBlock(): String {
         val parentName = parent?.let(::displayName)?.let(TextColors.cyan::invoke) ?: TextColors.gray(EMPTY)
         val prevName = siblingAt(-1)?.let(::displayName)?.let(TextColors.gray::invoke)
-            ?: TextColors.gray(EMPTY)
+                       ?: TextColors.gray(EMPTY)
         val nextName = siblingAt(1)?.let(::displayName)?.let(TextColors.gray::invoke)
-            ?: TextColors.gray(EMPTY)
+                       ?: TextColors.gray(EMPTY)
         val firstChildName = children.firstOrNull()?.let(::displayName)?.let(TextColors.yellow::invoke)
-            ?: TextColors.gray(EMPTY)
+                             ?: TextColors.gray(EMPTY)
         val curr = TextStyles.bold(TextColors.brightGreen(displayName(current)))
         val pipe = TextColors.gray("│")
         val arrowLeft = TextColors.gray("←")

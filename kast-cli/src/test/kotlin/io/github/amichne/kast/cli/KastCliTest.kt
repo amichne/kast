@@ -18,8 +18,8 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
-import kotlin.io.path.createFile
 import kotlin.io.path.createDirectories
+import kotlin.io.path.createFile
 import kotlin.io.path.setPosixFilePermissions
 
 class KastCliTest {
@@ -37,7 +37,7 @@ class KastCliTest {
         assertTrue(stdout.toString().contains("Kast CLI"))
         assertTrue(stdout.toString().contains("Workspace lifecycle"))
         assertTrue(stdout.toString().contains("Validation"))
-        assertTrue(stdout.toString().contains("call hierarchy"))
+        assertTrue(stdout.toString().contains("RPC"))
         assertTrue(stdout.toString().contains("smoke"))
         assertTrue(stdout.toString().contains("completion bash"))
         assertEquals("", stderr.toString())
@@ -98,7 +98,7 @@ class KastCliTest {
         val stderr = StringBuilder()
 
         val exitCode = KastCli().run(
-            arrayOf("apply-edits", "--workspace-root=$tempDir"),
+            arrayOf("rpc", "--workspace-root=$tempDir"),
             stdout,
             stderr,
         )
@@ -107,7 +107,7 @@ class KastCliTest {
         assertEquals(1, exitCode)
         assertEquals("", stdout.toString())
         assertEquals("CLI_USAGE", error.code)
-        assertTrue(checkNotNull(error.details["usage"]).contains("apply-edits"))
+        assertTrue(checkNotNull(error.details["usage"]).contains("rpc"))
     }
 
     @Test

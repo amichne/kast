@@ -17,7 +17,7 @@ import com.intellij.util.KeyedLazyInstance;
  */
 public final class BinaryFileTypeDecompilers extends FileTypeExtension<BinaryFileDecompiler> {
     private static final ExtensionPointName<KeyedLazyInstance<BinaryFileDecompiler>> EP_NAME =
-            new ExtensionPointName<>("com.intellij.filetype.decompiler");
+        new ExtensionPointName<>("com.intellij.filetype.decompiler");
     private static final BinaryFileTypeDecompilers FALLBACK_INSTANCE = new BinaryFileTypeDecompilers(false);
 
     public BinaryFileTypeDecompilers() {

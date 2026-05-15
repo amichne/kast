@@ -34,13 +34,14 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  */
 @SuppressWarnings({"rawtypes", "unchecked"})
 public final class LazyListenerKt {
-    private LazyListenerKt() {}
+    private LazyListenerKt() {
+    }
 
     public static void subscribeLazyListeners(
-            Topic<?> topic,
-            Map<String, List<PluginListenerDescriptor>> topicClassToListenerDescriptor,
-            ConcurrentLinkedQueue<MessageBusImpl.MessageHandlerHolder> subscribers,
-            MessageBusOwner owner) {
+        Topic<?> topic,
+        Map<String, List<PluginListenerDescriptor>> topicClassToListenerDescriptor,
+        ConcurrentLinkedQueue<MessageBusImpl.MessageHandlerHolder> subscribers,
+        MessageBusOwner owner) {
         try (AccessToken ignored = Cancellation.withNonCancelableSection()) {
             List<?> descriptors = (List<?>) topicClassToListenerDescriptor.remove(topic.getListenerClass().getName());
             if (descriptors == null) {
@@ -55,19 +56,16 @@ public final class LazyListenerKt {
                 }
 
                 List<Object> handlers = handlersByPlugin.computeIfAbsent(
-                        descriptor.getPluginDescriptor(),
-                        unused -> new ArrayList<>());
+                    descriptor.getPluginDescriptor(),
+                    unused -> new ArrayList<>());
                 try {
                     Object listener = Objects.requireNonNull(owner.createListener(descriptor), "createListener(...)");
                     handlers.add(listener);
-                }
-                catch (ExtensionNotApplicableException ignoredException) {
+                } catch (ExtensionNotApplicableException ignoredException) {
                     // Keep parity with the platform implementation: simply skip this listener.
-                }
-                catch (ProcessCanceledException exception) {
+                } catch (ProcessCanceledException exception) {
                     throw exception;
-                }
-                catch (Throwable exception) {
+                } catch (Throwable exception) {
                     // Standalone mode: MockComponentManager throws UnsupportedOperationException
                     // from createListener. Fall back to direct reflective instantiation so that
                     // K2 FIR session invalidation listeners (and any other lazy listeners) are
@@ -88,12 +86,12 @@ public final class LazyListenerKt {
     }
 
     public static boolean unsubscribeLazyListeners(
-            IdeaPluginDescriptor module,
-            List<ListenerDescriptor> listenerDescriptors,
-            Map<String, List<PluginListenerDescriptor>> topicClassToListenerDescriptor,
-            ConcurrentLinkedQueue<MessageBusImpl.MessageHandlerHolder> subscribers) {
+        IdeaPluginDescriptor module,
+        List<ListenerDescriptor> listenerDescriptors,
+        Map<String, List<PluginListenerDescriptor>> topicClassToListenerDescriptor,
+        ConcurrentLinkedQueue<MessageBusImpl.MessageHandlerHolder> subscribers) {
         Iterator<Map.Entry<String, List<PluginListenerDescriptor>>> mapIterator =
-                topicClassToListenerDescriptor.entrySet().iterator();
+            topicClassToListenerDescriptor.entrySet().iterator();
         while (mapIterator.hasNext()) {
             Map.Entry<String, List<PluginListenerDescriptor>> entry = mapIterator.next();
             List descriptors = entry.getValue();
@@ -109,8 +107,8 @@ public final class LazyListenerKt {
         Map<String, Set<String>> topicClassToListenerClassNames = new HashMap<>();
         for (ListenerDescriptor descriptor : listenerDescriptors) {
             topicClassToListenerClassNames
-                    .computeIfAbsent(descriptor.topicClassName, unused -> new HashSet<>())
-                    .add(descriptor.listenerClassName);
+                .computeIfAbsent(descriptor.topicClassName, unused -> new HashSet<>())
+                .add(descriptor.listenerClassName);
         }
 
         boolean changed = false;
@@ -128,7 +126,7 @@ public final class LazyListenerKt {
             }
 
             Set<String> listenerClassNames =
-                    topicClassToListenerClassNames.get(connection.topic.getListenerClass().getName());
+                topicClassToListenerClassNames.get(connection.topic.getListenerClass().getName());
             if (listenerClassNames == null) {
                 continue;
             }
@@ -144,7 +142,8 @@ public final class LazyListenerKt {
                 if (replacementConnections == null) {
                     replacementConnections = new ArrayList<>();
                 }
-                replacementConnections.add(new DescriptorBasedMessageBusConnection(module, connection.topic, newHandlers));
+                replacementConnections.add(
+                    new DescriptorBasedMessageBusConnection(module, connection.topic, newHandlers));
             }
         }
 
@@ -162,7 +161,8 @@ public final class LazyListenerKt {
             ListenerDescriptor descriptor = (ListenerDescriptor) candidate;
             PluginDescriptor pluginDescriptor = extractPluginDescriptor(descriptor);
             if (pluginDescriptor == null) {
-                MessageBusImpl.LOG.warn("Skipping lazy listener without plugin descriptor: " + descriptor.listenerClassName);
+                MessageBusImpl.LOG.warn(
+                    "Skipping lazy listener without plugin descriptor: " + descriptor.listenerClassName);
                 return null;
             }
             return new PluginListenerDescriptor(descriptor, pluginDescriptor);
@@ -199,8 +199,7 @@ public final class LazyListenerKt {
         try {
             Object value = descriptor.getClass().getField("pluginDescriptor").get(descriptor);
             return value instanceof PluginDescriptor ? (PluginDescriptor) value : null;
-        }
-        catch (NoSuchFieldException | IllegalAccessException ignored) {
+        } catch (NoSuchFieldException | IllegalAccessException ignored) {
             return null;
         }
     }
@@ -212,11 +211,10 @@ public final class LazyListenerKt {
             if (listenerClassNames.contains(handler.getClass().getName())) {
                 if (filteredHandlers == null) {
                     filteredHandlers = index == 0
-                            ? new ArrayList<>()
-                            : new ArrayList<>(handlers.subList(0, index));
+                        ? new ArrayList<>()
+                        : new ArrayList<>(handlers.subList(0, index));
                 }
-            }
-            else if (filteredHandlers != null) {
+            } else if (filteredHandlers != null) {
                 filteredHandlers.add(handler);
             }
         }

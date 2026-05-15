@@ -13,18 +13,14 @@ metadata:
 
 # Kast
 
-Use Kast when Kotlin work depends on declaration identity, usage scope, call
-flow, or validated edits.
+Use Kast when Kotlin work depends on declaration identity, usage scope, call flow, or validated edits.
 
 ## Version contract
 
-The generated spec at `references/commands.json` is the current source of truth
-for the wrapper command request schemas, response types, discriminated
-variants, and notes. Read it once per session when you need field-level detail.
-It is regenerated from the Kotlin serialization models at build time — if a
-field exists in the spec it exists in the CLI, and vice versa. This wrapper
-catalog will be replaced by a JSON-RPC method catalog as the machine contract
-converges on `kast rpc`.
+The generated spec at `references/commands.json` is the current source of truth for the native-tool and `skill/*` RPC
+request schemas, response types, discriminated variants, and notes. Read it once per session when you need field-level
+detail. It is regenerated from the Kotlin serialization models at build time — if a field exists in the spec it exists
+in the CLI, and vice versa. This catalog tracks the RPC-facing contract surfaced through `kast rpc`.
 
 ## Start here
 
@@ -40,20 +36,20 @@ For skill maintenance, use `evaluation/README.md`.
 
 Pick the narrowest command for the task:
 
-| When you need to… | Command |
-| --- | --- |
-| Discover modules or source files | `workspace-files` |
-| Search Kotlin workspace text or regex | `workspace-search` |
-| Find symbols by name across the workspace | `workspace-symbol` |
-| Understand a file or type structure | `scaffold` |
-| Get a lightweight file outline | `file-outline` |
-| Find the exact declaration of a symbol | `resolve` |
-| Find every usage of a symbol | `references` |
-| Trace incoming/outgoing call flow | `callers` |
-| Rename a symbol safely across the project | `rename` |
-| Apply code and validate it compiles | `write-and-validate` |
-| Re-check files after mutation | `diagnostics` |
-| Query indexed source metrics | `metrics` |
+| When you need to…                         | Command              |
+|-------------------------------------------|----------------------|
+| Discover modules or source files          | `workspace-files`    |
+| Search Kotlin workspace text or regex     | `workspace-search`   |
+| Find symbols by name across the workspace | `workspace-symbol`   |
+| Understand a file or type structure       | `scaffold`           |
+| Get a lightweight file outline            | `file-outline`       |
+| Find the exact declaration of a symbol    | `resolve`            |
+| Find every usage of a symbol              | `references`         |
+| Trace incoming/outgoing call flow         | `callers`            |
+| Rename a symbol safely across the project | `rename`             |
+| Apply code and validate it compiles       | `write-and-validate` |
+| Re-check files after mutation             | `diagnostics`        |
+| Query indexed source metrics              | `metrics`            |
 
 Use the native tools when the host exposes them (`kast_workspace_files`,
 `kast_resolve`, etc.). When native tools are unavailable, use `kast rpc`:
@@ -69,8 +65,7 @@ Native tools currently exposed by the extension: `kast_workspace_files`,
 `kast_workspace_search`, `kast_workspace_symbol`, `kast_scaffold`,
 `kast_file_outline`, `kast_resolve`, `kast_references`, `kast_callers`,
 `kast_diagnostics`, `kast_rename`, `kast_write_and_validate`, and
-`kast_metrics`. They remain preferred; use the matching JSON-RPC method
-via `kast rpc` when a CLI fallback is needed.
+`kast_metrics`. They remain preferred; use the matching JSON-RPC method via `kast rpc` when a CLI fallback is needed.
 
 ## Session bootstrap
 
@@ -86,29 +81,24 @@ Retry the same command once, then report a setup blocker if it still fails.
 
 - All request and response JSON uses camelCase.
 - Check `ok` and `type` before projecting results.
-- Path fields (`filePath`, `filePaths`, `targetFile`, `contentFile`) must be
-  absolute.
+- Path fields (`filePath`, `filePaths`, `targetFile`, `contentFile`) must be absolute.
 - `rename` and `write-and-validate` require a `type` discriminator — see
   `references/commands.json` for the exact variant names per command.
 - `scaffold` takes one `targetFile`; run one call per file.
-- Treat `ok=false`, `*_FAILURE`, dirty diagnostics, or validation/hash failures
-  as failed operations. Do not claim success after a failed mutation.
+- Treat `ok=false`, `*_FAILURE`, dirty diagnostics, or validation/hash failures as failed operations. Do not claim
+  success after a failed mutation.
 - If a projection fails, inspect one sample object and fix the projection.
-- If a result set is too large, narrow the semantic query instead of switching
-  to text search.
-- Use `grep` or `rg` only for file-path discovery, comments, string literals,
-  generated text, or skill maintenance.
+- If a result set is too large, narrow the semantic query instead of switching to text search.
+- Use `grep` or `rg` only for file-path discovery, comments, string literals, generated text, or skill maintenance.
 
 ## Source of truth
 
-- `references/commands.json`: version-keyed command spec with full request
-  schemas, response types, discriminated variants, and usage notes.
+- `references/commands.json`: version-keyed command spec with full request schemas, response types, discriminated
+  variants, and usage notes.
 - `scripts/kast-session-start.sh`: session bootstrap.
-- `evaluation/catalog.json` and `evaluation/README.md`: behavior evals and
-  benchmark workflow.
+- `evaluation/catalog.json` and `evaluation/README.md`: behavior evals and benchmark workflow.
 
 ## Benchmark rule
 
-When rewriting this skill, snapshot the baseline, run the evaluation or native
-skill benchmark, aggregate `benchmark.json`, generate the `eval-viewer` review
-artifact, and report score, pass-rate, token, and timing deltas.
+When rewriting this skill, snapshot the baseline, run the evaluation or native skill benchmark, aggregate
+`benchmark.json`, generate the `eval-viewer` review artifact, and report score, pass-rate, token, and timing deltas.

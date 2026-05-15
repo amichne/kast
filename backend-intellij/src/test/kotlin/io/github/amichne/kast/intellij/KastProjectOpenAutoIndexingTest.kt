@@ -1,9 +1,5 @@
 package io.github.amichne.kast.intellij
 
-import io.github.amichne.kast.api.client.fields.OptionalConfigString
-import io.github.amichne.kast.api.client.fields.IntellijBackendEnabled
-import io.github.amichne.kast.api.client.fields.IndexingRemoteSourceIndexUrl
-import io.github.amichne.kast.api.client.fields.IndexingRemoteEnabled
 import com.intellij.openapi.project.Project
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.junit5.fixture.TestFixture
@@ -13,6 +9,10 @@ import com.intellij.testFramework.junit5.fixture.psiFileFixture
 import com.intellij.testFramework.junit5.fixture.sourceRootFixture
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.RemoteIndexConfig
+import io.github.amichne.kast.api.client.fields.IndexingRemoteEnabled
+import io.github.amichne.kast.api.client.fields.IndexingRemoteSourceIndexUrl
+import io.github.amichne.kast.api.client.fields.IntellijBackendEnabled
+import io.github.amichne.kast.api.client.fields.OptionalConfigString
 import io.github.amichne.kast.indexstore.api.index.FileIndexUpdate
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.indexstore.store.cache.sourceIndexDatabasePath

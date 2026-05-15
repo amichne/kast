@@ -11,11 +11,10 @@ description: >
 
 ## Core Principle
 
-**Never interact with raw terminal output.** Every interaction with Gradle, JUnit,
-JaCoCo, or the Kotlin compiler goes through a script in this skill's `scripts/`
-directory. Every script produces structured JSON on stdout. Raw output goes to
-log files. Read only the JSON first. If the JSON is insufficient, read the
-returned `log_file` path for diagnostics instead of parsing Gradle console output
+**Never interact with raw terminal output.** Every interaction with Gradle, JUnit, JaCoCo, or the Kotlin compiler goes
+through a script in this skill's `scripts/`
+directory. Every script produces structured JSON on stdout. Raw output goes to log files. Read only the JSON first. If
+the JSON is insufficient, read the returned `log_file` path for diagnostics instead of parsing Gradle console output
 directly.
 
 Set a skill-directory variable before running examples from a project root:
@@ -56,12 +55,12 @@ python3 "$SKILL_DIR/scripts/state/init_state.py" /path/to/project
 python3 "$SKILL_DIR/scripts/state/get_state.py" /path/to/project --summary
 ```
 
-If `project_discovered` is `false`, discover the project before anything else.
-Discovery is an agent task — search the codebase, then record findings via
+If `project_discovered` is `false`, discover the project before anything else. Discovery is an agent task — search the
+codebase, then record findings via
 `update_state.py`. See the Discovery section below.
 
-Re-run `init_state.py` after skill updates when you need to backfill newly
-introduced defaults such as `project.gradleHook`.
+Re-run `init_state.py` after skill updates when you need to backfill newly introduced defaults such as
+`project.gradleHook`.
 
 ## The Iteration Loop
 
@@ -77,8 +76,8 @@ The agent's core execution pattern is goal-oriented:
 7. Go to 1
 ```
 
-This continues until the goal is met or the agent cannot make further progress.
-Never retry the same action more than 3 times without changing something.
+This continues until the goal is met or the agent cannot make further progress. Never retry the same action more than 3
+times without changing something.
 
 ### Setting a Goal
 
@@ -91,13 +90,13 @@ python3 "$SKILL_DIR/scripts/state/update_state.py" /project goal \
 
 ## Discovery
 
-Discovery is the first task on a new project. It requires reading build files and
-source code directly, then recording findings.
+Discovery is the first task on a new project. It requires reading build files and source code directly, then recording
+findings.
 
 ### What to Discover
 
-Read `settings.gradle.kts` (or `settings.gradle`) for all `include` statements.
-For each subproject, read its `build.gradle.kts` to determine:
+Read `settings.gradle.kts` (or `settings.gradle`) for all `include` statements. For each subproject, read its
+`build.gradle.kts` to determine:
 
 1. **Plugins applied:** `org.springframework.boot` (boot module), `org.jetbrains.kotlin.jvm`
    (Kotlin modules), `kotlin-kapt`/`com.google.devtools.ksp` (annotation processing),
@@ -108,17 +107,14 @@ For each subproject, read its `build.gradle.kts` to determine:
 
 3. **Leaf modules.** Modules nothing depends on — cheapest to change.
 
-4. **Versions.** JDK: `java.toolchain.languageVersion`, `jvmTarget`, `.java-version`.
-   Kotlin: `plugins { kotlin("jvm") version "..." }` or version catalog.
-   Gradle: `gradle/wrapper/gradle-wrapper.properties`.
+4. **Versions.** JDK: `java.toolchain.languageVersion`, `jvmTarget`, `.java-version`. Kotlin:
+   `plugins { kotlin("jvm") version "..." }` or version catalog. Gradle: `gradle/wrapper/gradle-wrapper.properties`.
 
 5. **Source file counts.** Per module, count `.kt`/`.java` files in `src/main` and `src/test`.
 
-6. **High-signal validation task.** Record the single existing Gradle task that
-   gives the strongest health signal for the repo as `project.gradleHook`.
-   Prefer `check` when it meaningfully covers the project. If `check` is too
-   weak or too broad, use the best existing task such as `:app:check`, `build`,
-   or a custom verification task.
+6. **High-signal validation task.** Record the single existing Gradle task that gives the strongest health signal for
+   the repo as `project.gradleHook`. Prefer `check` when it meaningfully covers the project. If `check` is too weak or
+   too broad, use the best existing task such as `:app:check`, `build`, or a custom verification task.
 
 ### Recording Discovery
 
@@ -170,24 +166,22 @@ python3 "$SKILL_DIR/scripts/state/update_state.py" /project gradle.last_build \
   '{"task":"test","exit_code":0,"duration_ms":12000,"build_successful":true}'
 ```
 
-Use `run_gradle_hook.sh` for the mandatory final build-health check. It reads
-the configured `project.gradleHook` from `.agent-workflow/state.json` and then
-delegates to `run_task.sh`, so it returns the same structured JSON shape.
+Use `run_gradle_hook.sh` for the mandatory final build-health check. It reads the configured `project.gradleHook` from
+`.agent-workflow/state.json` and then delegates to `run_task.sh`, so it returns the same structured JSON shape.
 
 ## Project hooks
 
-If a repository has command hooks, treat the repository hook manifest as
-authoritative. This skill must not redeclare repository-specific hooks.
+If a repository has command hooks, treat the repository hook manifest as authoritative. This skill must not redeclare
+repository-specific hooks.
 
-For repositories that use the standard Copilot hook schema, the usual command
-hooks are:
+For repositories that use the standard Copilot hook schema, the usual command hooks are:
 
 - `sessionStart`: bootstraps `kast up` and resets hook state
 - `postToolUse`: records successful session-owned file edits
 - `sessionEnd`: runs the command-based subset of the old completion gates
 
-Final build health still belongs in this loop: run the configured Gradle hook
-before claiming the build is green, even when repository hooks also exist.
+Final build health still belongs in this loop: run the configured Gradle hook before claiming the build is green, even
+when repository hooks also exist.
 
 ## Parsing Results
 
@@ -224,15 +218,14 @@ After any compilation:
 python3 "$SKILL_DIR/scripts/parse/kotlin_build_report.py" /project
 ```
 
-Returns `compilations` (per-module incremental status), `non_incremental_modules`,
-and `non_incremental_reasons`.
+Returns `compilations` (per-module incremental status), `non_incremental_modules`, and `non_incremental_reasons`.
 
 ## Standard Workflows
 
 ### Get Tests Passing
 
-Treat the existing failing test as the RED signal. If no failing test covers the
-suspected bug, add a tracer-bullet test before changing production code.
+Treat the existing failing test as the RED signal. If no failing test covers the suspected bug, add a tracer-bullet test
+before changing production code.
 
 ```
 1. bash "$SKILL_DIR/scripts/gradle/run_task.sh" /project test
@@ -277,8 +270,10 @@ When `run_task.sh` returns `{"ok": false, ...}`:
 3. Categorize: compilation error, test failure, configuration error, infrastructure error.
 4. Record in history:
    ```console
+
 python3 "$SKILL_DIR/scripts/state/record_action.py" /project gradle_failed \
-     '{"task":"test","exit_code":1}' "Compilation error in UserService.kt"
+'{"task":"test","exit_code":1}' "Compilation error in UserService.kt"
+
    ```
 5. Fix and retry, or report if not recoverable.
 

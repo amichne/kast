@@ -387,7 +387,7 @@ class PerformanceBaselineTest {
             println("heap_after_index_${fileCount}_files_mb: $heapUsedMb")
             assertTrue(heapUsedMb <= HEAP_BASELINE_500_FILES_MB) {
                 "Heap usage after indexing $fileCount files was ${heapUsedMb}MB, " +
-                    "exceeds baseline ${HEAP_BASELINE_500_FILES_MB}MB"
+                "exceeds baseline ${HEAP_BASELINE_500_FILES_MB}MB"
             }
         }
     }
@@ -468,7 +468,10 @@ class PerformanceBaselineTest {
         }
     }
 
-    private fun writeSourceFile(relativePath: String, content: String): Path {
+    private fun writeSourceFile(
+        relativePath: String,
+        content: String,
+    ): Path {
         val file = workspaceRoot.resolve("src/main/kotlin").resolve(relativePath)
         file.parent.createDirectories()
         file.writeText(content)

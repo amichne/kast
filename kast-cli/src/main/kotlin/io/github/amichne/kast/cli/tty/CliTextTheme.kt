@@ -19,7 +19,10 @@ internal class CliTextTheme private constructor(
     fun fileHeader(text: String): String = style(text, "38;5;245")
 
     /** Color a symbol-kind label (e.g. "class", "function") consistently across the walker. */
-    fun kind(kind: SymbolKind, text: String): String = style(text, kindCode(kind))
+    fun kind(
+        kind: SymbolKind,
+        text: String,
+    ): String = style(text, kindCode(kind))
 
     /**
      * Return the raw SGR code for a [SymbolKind] so callers can inline the style.
@@ -47,7 +50,7 @@ internal class CliTextTheme private constructor(
     companion object {
         fun detect(): CliTextTheme {
             val forced = System.getenv("CLICOLOR_FORCE") == "1" ||
-                System.getProperty("kast.cli.forceColor") == "true"
+                         System.getProperty("kast.cli.forceColor") == "true"
             if (forced) {
                 return ansi()
             }

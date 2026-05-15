@@ -98,8 +98,8 @@ internal class GradleRunExecutor {
         val failureStart = lines.indexOfFirst { it.startsWith("FAILURE:") }
         if (failureStart >= 0) {
             val failureEnd = lines.indexOfFirst { it.startsWith("BUILD FAILED") }
-                .takeIf { it >= failureStart }
-                ?: (failureStart + 15).coerceAtMost(lines.lastIndex)
+                                 .takeIf { it >= failureStart }
+                             ?: (failureStart + 15).coerceAtMost(lines.lastIndex)
             return lines.subList(failureStart, failureEnd + 1)
                 .joinToString(" ")
                 .take(500)

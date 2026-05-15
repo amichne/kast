@@ -3,9 +3,8 @@
 package io.github.amichne.kast.api.contract.result
 
 import io.github.amichne.kast.api.docs.DocField
-import io.github.amichne.kast.api.protocol.*
+import io.github.amichne.kast.api.protocol.SCHEMA_VERSION
 import kotlinx.serialization.ExperimentalSerializationApi
-
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -24,9 +23,15 @@ data class WorkspaceModule(
     val sourceRoots: List<String>,
     @DocField(description = "Names of other modules this module depends on.")
     val dependencyModuleNames: List<String>,
-    @DocField(description = "Individual source file paths, populated when includeFiles is true.", defaultValue = "emptyList()")
+    @DocField(
+        description = "Individual source file paths, populated when includeFiles is true.",
+        defaultValue = "emptyList()"
+    )
     val files: List<String> = emptyList(),
-    @DocField(description = "True when the files list was capped before every source file path could be returned.", defaultValue = "false")
+    @DocField(
+        description = "True when the files list was capped before every source file path could be returned.",
+        defaultValue = "false"
+    )
     val filesTruncated: Boolean = false,
     @DocField(description = "Total number of source files in this module.")
     val fileCount: Int,

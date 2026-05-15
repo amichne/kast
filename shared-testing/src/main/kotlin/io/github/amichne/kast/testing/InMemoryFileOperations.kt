@@ -24,7 +24,10 @@ class JimfsFileOperations(private val fileSystem: FileSystem) : KastFileOperatio
         return Files.readString(pathObj)
     }
 
-    override fun writeText(path: String, content: String) {
+    override fun writeText(
+        path: String,
+        content: String,
+    ) {
         val pathObj = fileSystem.getPath(path)
         // Create parent directories if needed
         pathObj.parent?.let { parent ->
@@ -74,7 +77,10 @@ class JimfsFileOperations(private val fileSystem: FileSystem) : KastFileOperatio
         return tempFile.toAbsolutePath().toString()
     }
 
-    override fun moveAtomic(sourcePath: String, destPath: String) {
+    override fun moveAtomic(
+        sourcePath: String,
+        destPath: String,
+    ) {
         val sourcePathObj = fileSystem.getPath(sourcePath)
         val destPathObj = fileSystem.getPath(destPath)
 
@@ -88,7 +94,10 @@ class JimfsFileOperations(private val fileSystem: FileSystem) : KastFileOperatio
         )
     }
 
-    override fun <T> withLock(path: String, block: () -> T): T {
+    override fun <T> withLock(
+        path: String,
+        block: () -> T,
+    ): T {
         // For Jimfs, use instance-scoped in-memory lock keyed by path
         // This provides thread-safe access within the same instance while maintaining fixture isolation
         // (Jimfs FileLock may not work as expected since it's in-memory)
@@ -106,12 +115,15 @@ class JimfsFileOperations(private val fileSystem: FileSystem) : KastFileOperatio
 data class InMemoryFileOperationsFixture(
     val fileSystem: FileSystem,
     val fileOps: KastFileOperations,
-    val root: String
+    val root: String,
 ) {
     /**
      * Create a file with content at the given path.
      */
-    fun createFile(path: String, content: String) {
+    fun createFile(
+        path: String,
+        content: String,
+    ) {
         fileOps.writeText(path, content)
     }
 

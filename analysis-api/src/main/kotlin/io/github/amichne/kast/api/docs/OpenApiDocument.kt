@@ -1,6 +1,26 @@
 package io.github.amichne.kast.api.docs
 
-import io.github.amichne.kast.api.contract.*
+import io.github.amichne.kast.api.contract.BackendCapabilities
+import io.github.amichne.kast.api.contract.CallNode
+import io.github.amichne.kast.api.contract.CallNodeTruncation
+import io.github.amichne.kast.api.contract.DeclarationScope
+import io.github.amichne.kast.api.contract.Diagnostic
+import io.github.amichne.kast.api.contract.FileHash
+import io.github.amichne.kast.api.contract.FileOperation
+import io.github.amichne.kast.api.contract.FilePosition
+import io.github.amichne.kast.api.contract.HealthResponse
+import io.github.amichne.kast.api.contract.Location
+import io.github.amichne.kast.api.contract.OutlineSymbol
+import io.github.amichne.kast.api.contract.PageInfo
+import io.github.amichne.kast.api.contract.ParameterInfo
+import io.github.amichne.kast.api.contract.ReadCapability
+import io.github.amichne.kast.api.contract.RuntimeStatusResponse
+import io.github.amichne.kast.api.contract.SearchScope
+import io.github.amichne.kast.api.contract.SemanticInsertionQuery
+import io.github.amichne.kast.api.contract.SemanticInsertionResult
+import io.github.amichne.kast.api.contract.ServerLimits
+import io.github.amichne.kast.api.contract.Symbol
+import io.github.amichne.kast.api.contract.TextEdit
 import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
 import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
 import io.github.amichne.kast.api.contract.query.CodeActionsQuery
@@ -31,6 +51,7 @@ import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
 import io.github.amichne.kast.api.contract.result.ReferencesResult
 import io.github.amichne.kast.api.contract.result.RefreshResult
 import io.github.amichne.kast.api.contract.result.RenameResult
+import io.github.amichne.kast.api.contract.result.SearchMatch
 import io.github.amichne.kast.api.contract.result.SymbolResult
 import io.github.amichne.kast.api.contract.result.TypeHierarchyNode
 import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
@@ -39,10 +60,10 @@ import io.github.amichne.kast.api.contract.result.TypeHierarchyTruncation
 import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
 import io.github.amichne.kast.api.contract.result.WorkspaceModule
 import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
-import io.github.amichne.kast.api.contract.result.SearchMatch
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
-import io.github.amichne.kast.api.protocol.*
-
+import io.github.amichne.kast.api.protocol.ApiErrorResponse
+import io.github.amichne.kast.api.protocol.JsonRpcErrorObject
+import io.github.amichne.kast.api.protocol.SCHEMA_VERSION
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.PolymorphicKind
@@ -509,7 +530,10 @@ internal class SchemaRegistry {
     val schemas = linkedMapOf<String, Any?>()
     private val registeredDescriptors = mutableMapOf<String, String>()
 
-    fun register(name: String, serializer: KSerializer<*>) {
+    fun register(
+        name: String,
+        serializer: KSerializer<*>,
+    ) {
         if (schemas.containsKey(name)) return
         registeredDescriptors[serializer.descriptor.serialName] = name
         schemas[name] = emptyMap<String, Any?>()
@@ -565,7 +589,7 @@ internal class SchemaRegistry {
         ).also { if (required.isNotEmpty()) it["required"] = required }
     }
 
-    private fun inlineSchema(descriptor: SerialDescriptor): Any? =
+    private fun inlineSchema(descriptor: SerialDescriptor): Any =
         when (descriptor.kind) {
             is PrimitiveKind -> schemaFor(descriptor)
             StructureKind.LIST -> schemaFor(descriptor)
@@ -583,7 +607,10 @@ internal class SchemaRegistry {
             else -> linkedMapOf("type" to "object")
         }
 
-    private fun ensureRegistered(descriptor: SerialDescriptor, forceNonNullable: Boolean = false): String {
+    private fun ensureRegistered(
+        descriptor: SerialDescriptor,
+        forceNonNullable: Boolean = false,
+    ): String {
         val serialName = descriptor.serialName.removeSuffix("?")
         registeredDescriptors[serialName]?.let { return it }
         val componentName = simpleName(serialName)
@@ -621,6 +648,7 @@ internal class SchemaRegistry {
         discriminatorValue: String,
     ): Map<String, Any?> {
         val base = objectSchema(serializer.descriptor) as LinkedHashMap<String, Any?>
+
         @Suppress("UNCHECKED_CAST")
         val props = base["properties"] as LinkedHashMap<String, Any?>
         val typeProperty = linkedMapOf<String, Any?>("type" to "string", "const" to discriminatorValue)
@@ -674,7 +702,10 @@ internal class SchemaRegistry {
 }
 
 /** Renders a YAML document fragment from a nested Map/List/scalar structure. */
-internal fun renderYaml(value: Any?, indent: Int = 0): String = when (value) {
+internal fun renderYaml(
+    value: Any?,
+    indent: Int = 0,
+): String = when (value) {
     null -> "${" ".repeat(indent)}null\n"
     is Map<*, *> -> {
         if (value.isEmpty()) {
@@ -769,8 +800,8 @@ private fun renderScalar(value: Any?): String = when (value) {
     is String -> when {
         value.isEmpty() -> "\"\""
         value.startsWith("#") || value.contains(": ") || value.contains("\"") ||
-            value == "true" || value == "false" || value == "null" ||
-            value.contains("{") || value.contains("}") -> "\"${value.replace("\"", "\\\"")}\""
+        value == "true" || value == "false" || value == "null" ||
+        value.contains("{") || value.contains("}") -> "\"${value.replace("\"", "\\\"")}\""
         else -> value
     }
     else -> value.toString()
@@ -781,6 +812,6 @@ private fun renderKey(key: String): String =
 
 fun main(args: Array<String>) {
     val target = args.firstOrNull()?.let(Path::of)
-        ?: Path.of("docs/openapi.yaml")
+                 ?: Path.of("docs/openapi.yaml")
     Files.writeString(target, OpenApiDocument.renderYaml())
 }

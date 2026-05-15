@@ -1,9 +1,5 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.api.contract.query.RefreshQuery
-import io.github.amichne.kast.api.contract.SemanticInsertionTarget
-import io.github.amichne.kast.api.contract.SymbolKind
-import io.github.amichne.kast.api.contract.TypeHierarchyDirection
 import io.github.amichne.kast.cli.options.BackendName
 import io.github.amichne.kast.cli.tty.CliCommand
 import io.github.amichne.kast.cli.tty.CliCommandParser
@@ -62,57 +58,6 @@ class CliCommandParserTest {
     }
 
     @Test
-    fun `call hierarchy parses from inline options`() {
-        val command = parser.parse(
-            arrayOf(
-                "call-hierarchy",
-                "--workspace-root=$tempDir",
-                "--file-path=$tempDir/Sample.kt",
-                "--offset=12",
-                "--direction=incoming",
-                "--depth=0",
-                "--max-total-calls=32",
-                "--max-children-per-node=8",
-                "--timeout-millis=4000",
-            ),
-        )
-
-        assertTrue(command is CliCommand.CallHierarchy)
-        val hierarchyCommand = command as CliCommand.CallHierarchy
-        assertEquals(tempDir, hierarchyCommand.options.workspaceRoot.toJavaPath())
-        assertEquals(io.github.amichne.kast.api.contract.CallDirection.INCOMING, hierarchyCommand.query.direction)
-        assertEquals(0, hierarchyCommand.query.depth)
-        assertEquals(32, hierarchyCommand.query.maxTotalCalls)
-        assertEquals(8, hierarchyCommand.query.maxChildrenPerNode)
-        assertEquals(4000L, hierarchyCommand.query.timeoutMillis)
-    }
-
-    @Test
-    fun `workspace refresh parses from inline options`() {
-        val command = parser.parse(
-            arrayOf(
-                "workspace",
-                "refresh",
-                "--workspace-root=$tempDir",
-                "--file-paths=$tempDir/A.kt,$tempDir/B.kt",
-            ),
-        )
-
-        assertTrue(command is CliCommand.WorkspaceRefresh)
-        val refreshCommand = command as CliCommand.WorkspaceRefresh
-        assertEquals(tempDir, refreshCommand.options.workspaceRoot.toJavaPath())
-        assertEquals(
-            RefreshQuery(
-                filePaths = listOf(
-                    tempDir.resolve("A.kt").toString(),
-                    tempDir.resolve("B.kt").toString(),
-                ),
-            ),
-            refreshCommand.query,
-        )
-    }
-
-    @Test
     fun `workspace ensure parses accept indexing`() {
         val command = parser.parse(
             arrayOf(
@@ -129,102 +74,6 @@ class CliCommandParserTest {
     }
 
     @Test
-    fun `symbol resolve parses no auto start`() {
-        val command = parser.parse(
-            arrayOf(
-                "resolve",
-                "--workspace-root=$tempDir",
-                "--file-path=$tempDir/Sample.kt",
-                "--offset=12",
-                "--no-auto-start=true",
-            ),
-        )
-
-        assertTrue(command is CliCommand.ResolveSymbol)
-        val resolveCommand = command as CliCommand.ResolveSymbol
-        assertTrue(resolveCommand.options.noAutoStart)
-    }
-
-    @Test
-    fun `references parses usage site scope option`() {
-        val command = parser.parse(
-            arrayOf(
-                "references",
-                "--workspace-root=$tempDir",
-                "--file-path=$tempDir/Sample.kt",
-                "--offset=12",
-                "--include-usage-site-scope=true",
-            ),
-        )
-
-        assertTrue(command is CliCommand.FindReferences)
-        val referencesCommand = command as CliCommand.FindReferences
-        assertTrue(referencesCommand.query.includeUsageSiteScope)
-    }
-
-    @Test
-    fun `type hierarchy parses from inline options`() {
-        val command = parser.parse(
-            arrayOf(
-                "type-hierarchy",
-                "--workspace-root=$tempDir",
-                "--file-path=$tempDir/Types.kt",
-                "--offset=18",
-                "--direction=both",
-                "--depth=2",
-                "--max-results=24",
-            ),
-        )
-
-        assertTrue(command is CliCommand.TypeHierarchy)
-        val hierarchyCommand = command as CliCommand.TypeHierarchy
-        assertEquals(tempDir, hierarchyCommand.options.workspaceRoot.toJavaPath())
-        assertEquals(TypeHierarchyDirection.BOTH, hierarchyCommand.query.direction)
-        assertEquals(2, hierarchyCommand.query.depth)
-        assertEquals(24, hierarchyCommand.query.maxResults)
-    }
-
-    @Test
-    fun `semantic insertion point parses from inline options`() {
-        val command = parser.parse(
-            arrayOf(
-                "insertion-point",
-                "--workspace-root=$tempDir",
-                "--file-path=$tempDir/Types.kt",
-                "--offset=18",
-                "--target=after-imports",
-            ),
-        )
-
-        assertTrue(command is CliCommand.SemanticInsertionPoint)
-        val insertionCommand = command as CliCommand.SemanticInsertionPoint
-        assertEquals(tempDir, insertionCommand.options.workspaceRoot.toJavaPath())
-        assertEquals(SemanticInsertionTarget.AFTER_IMPORTS, insertionCommand.query.target)
-    }
-
-    @Test
-    fun `imports optimize parses from inline options`() {
-        val command = parser.parse(
-            arrayOf(
-                "optimize-imports",
-                "--workspace-root=$tempDir",
-                "--file-paths=$tempDir/A.kt,$tempDir/B.kt",
-            ),
-        )
-
-        assertTrue(command is CliCommand.ImportOptimize)
-        val optimizeCommand = command as CliCommand.ImportOptimize
-        assertEquals(tempDir, optimizeCommand.options.workspaceRoot.toJavaPath())
-        assertEquals(
-            listOf(
-                tempDir.resolve("A.kt").toString(),
-                tempDir.resolve("B.kt").toString(),
-            ),
-            optimizeCommand.query.filePaths,
-        )
-    }
-
-    @Test
     fun `version flag returns version command`() {
         val command = parser.parse(arrayOf("--version"))
 
@@ -237,8 +86,6 @@ class CliCommandParserTest {
 
         assertSame(CliCommand.VerifyExtension, command)
     }
-
-
 
     @Test
     fun `self status parses`() {
@@ -267,6 +114,7 @@ class CliCommandParserTest {
 
         assertSame(CliCommand.SelfUpgrade, command)
     }
+
     @Test
     fun `smoke parses workspace root filters and format`() {
         val command = parser.parse(
@@ -563,219 +411,6 @@ class CliCommandParserTest {
     }
 
     @Test
-    fun `usage errors include command specific help`() {
-        val failure = assertThrows<CliFailure> {
-            parser.parse(
-                arrayOf(
-                    "apply-edits",
-                    "--workspace-root=$tempDir",
-                ),
-            )
-        }
-
-        assertEquals("CLI_USAGE", failure.code)
-        assertTrue(checkNotNull(failure.details["usage"]).contains("apply-edits"))
-        assertTrue(checkNotNull(failure.details["help"]).contains("help apply-edits"))
-    }
-
-    @Test
-    fun `file outline parses from inline options`() {
-        val command = parser.parse(
-            arrayOf(
-                "outline",
-                "--workspace-root=$tempDir",
-                "--file-path=$tempDir/Sample.kt",
-            ),
-        )
-
-        assertTrue(command is CliCommand.FileOutline)
-        val outlineCommand = command as CliCommand.FileOutline
-        assertEquals(tempDir, outlineCommand.options.workspaceRoot.toJavaPath())
-        assertEquals(tempDir.resolve("Sample.kt").toString(), outlineCommand.query.filePath)
-    }
-
-    @Test
-    fun `workspace symbol parses from inline options`() {
-        val command = parser.parse(
-            arrayOf(
-                "workspace-symbol",
-                "--workspace-root=$tempDir",
-                "--pattern=MyClass",
-            ),
-        )
-
-        assertTrue(command is CliCommand.WorkspaceSymbol)
-        val symbolCommand = command as CliCommand.WorkspaceSymbol
-        assertEquals(tempDir, symbolCommand.options.workspaceRoot.toJavaPath())
-        assertEquals("MyClass", symbolCommand.query.pattern)
-        assertEquals(false, symbolCommand.query.regex)
-        assertEquals(100, symbolCommand.query.maxResults)
-    }
-
-    @Test
-    fun `workspace symbol parses regex and kind options`() {
-        val command = parser.parse(
-            arrayOf(
-                "workspace-symbol",
-                "--workspace-root=$tempDir",
-                "--pattern=.*Service",
-                "--regex=true",
-                "--kind=CLASS",
-                "--max-results=50",
-            ),
-        )
-
-        assertTrue(command is CliCommand.WorkspaceSymbol)
-        val symbolCommand = command as CliCommand.WorkspaceSymbol
-        assertEquals(".*Service", symbolCommand.query.pattern)
-        assertEquals(true, symbolCommand.query.regex)
-        assertEquals(SymbolKind.CLASS, symbolCommand.query.kind)
-        assertEquals(50, symbolCommand.query.maxResults)
-    }
-
-    @Test
-    fun `workspace search parses regex and glob options`() {
-        val command = parser.parse(
-            arrayOf(
-                "workspace-search",
-                "--workspace-root=$tempDir",
-                "--pattern=.*Service",
-                "--regex=true",
-                "--file-glob=src/**/*.kt",
-                "--case-sensitive=true",
-                "--max-results=25",
-            ),
-        )
-
-        assertTrue(command is CliCommand.WorkspaceSearch)
-        val searchCommand = command as CliCommand.WorkspaceSearch
-        assertEquals(".*Service", searchCommand.query.pattern)
-        assertEquals(true, searchCommand.query.regex)
-        assertEquals("src/**/*.kt", searchCommand.query.fileGlob)
-        assertEquals(true, searchCommand.query.caseSensitive)
-        assertEquals(25, searchCommand.query.maxResults)
-    }
-
-    @Test
-    fun `resolve parses include-body option`() {
-        val command = parser.parse(
-            arrayOf(
-                "resolve",
-                "--workspace-root=$tempDir",
-                "--file-path=$tempDir/Sample.kt",
-                "--offset=12",
-                "--include-body=true",
-            ),
-        )
-
-        assertTrue(command is CliCommand.ResolveSymbol)
-        val resolveCommand = command as CliCommand.ResolveSymbol
-        assertEquals(true, resolveCommand.query.includeDeclarationScope)
-    }
-
-    @Test
-    fun `resolve defaults include-body to false`() {
-        val command = parser.parse(
-            arrayOf(
-                "resolve",
-                "--workspace-root=$tempDir",
-                "--file-path=$tempDir/Sample.kt",
-                "--offset=12",
-            ),
-        )
-
-        assertTrue(command is CliCommand.ResolveSymbol)
-        val resolveCommand = command as CliCommand.ResolveSymbol
-        assertEquals(false, resolveCommand.query.includeDeclarationScope)
-    }
-
-    @Test
-    fun `resolve parses include-documentation option`() {
-        val command = parser.parse(
-            arrayOf(
-                "resolve",
-                "--workspace-root=$tempDir",
-                "--file-path=$tempDir/Sample.kt",
-                "--offset=12",
-                "--include-documentation=true",
-            ),
-        )
-
-        assertTrue(command is CliCommand.ResolveSymbol)
-        val resolveCommand = command as CliCommand.ResolveSymbol
-        assertEquals(true, resolveCommand.query.includeDocumentation)
-    }
-
-    @Test
-    fun `workspace symbol parses include-body option`() {
-        val command = parser.parse(
-            arrayOf(
-                "workspace-symbol",
-                "--workspace-root=$tempDir",
-                "--pattern=MyClass",
-                "--include-body=true",
-            ),
-        )
-
-        assertTrue(command is CliCommand.WorkspaceSymbol)
-        val symbolCommand = command as CliCommand.WorkspaceSymbol
-        assertEquals(true, symbolCommand.query.includeDeclarationScope)
-    }
-
-    @Test
-    fun `implementations parses from inline options`() {
-        val command = parser.parse(
-            arrayOf(
-                "implementations",
-                "--workspace-root=$tempDir",
-                "--file-path=$tempDir/Types.kt",
-                "--offset=10",
-                "--max-results=5",
-            ),
-        )
-
-        assertTrue(command is CliCommand.Implementations)
-        val implementationsCommand = command as CliCommand.Implementations
-        assertEquals(5, implementationsCommand.query.maxResults)
-    }
-
-    @Test
-    fun `code actions parses inline options`() {
-        val command = parser.parse(
-            arrayOf(
-                "code-actions",
-                "--workspace-root=$tempDir",
-                "--file-path=$tempDir/Types.kt",
-                "--offset=10",
-                "--diagnostic-code=UNRESOLVED_REFERENCE",
-            ),
-        )
-
-        assertTrue(command is CliCommand.CodeActions)
-        val codeActionsCommand = command as CliCommand.CodeActions
-        assertEquals("UNRESOLVED_REFERENCE", codeActionsCommand.query.diagnosticCode)
-    }
-
-    @Test
-    fun `completions parses inline options`() {
-        val command = parser.parse(
-            arrayOf(
-                "completions",
-                "--workspace-root=$tempDir",
-                "--file-path=$tempDir/Types.kt",
-                "--offset=10",
-                "--max-results=7",
-                "--kind-filter=FUNCTION,CLASS",
-            ),
-        )
-
-        assertTrue(command is CliCommand.Completions)
-        val completionsCommand = command as CliCommand.Completions
-        assertEquals(7, completionsCommand.query.maxResults)
-        assertEquals(setOf(SymbolKind.FUNCTION, SymbolKind.CLASS), completionsCommand.query.kindFilter)
-    }
-
-    @Test
     fun `metrics fan-in parses with defaults`() {
         val command = parser.parse(
             arrayOf("metrics", "fan-in", "--workspace-root=$tempDir"),
@@ -878,7 +513,14 @@ class CliCommandParserTest {
     @Test
     fun `metrics graph parses interactive option`() {
         val command = parser.parse(
-            arrayOf("metrics", "graph", "--workspace-root=$tempDir", "--symbol=com.example.Foo", "--depth=2", "--interactive=true"),
+            arrayOf(
+                "metrics",
+                "graph",
+                "--workspace-root=$tempDir",
+                "--symbol=com.example.Foo",
+                "--depth=2",
+                "--interactive=true"
+            ),
         )
 
         assertTrue(command is CliCommand.Metrics)

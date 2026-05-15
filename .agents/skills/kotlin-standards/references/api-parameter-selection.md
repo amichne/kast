@@ -8,6 +8,5 @@ Choose the simplest clear call shape:
 4. Overloads for common shapes or Java interop.
 5. Builder for staged, nested, or conditional construction.
 
-Avoid boolean traps, nullable control flags, `Map<String, Any?>`, long mixed
-parameter lists, and overloads that differ only by primitive type. Prefer value
-classes, sealed choices, and domain option objects.
+Avoid boolean traps, nullable control flags, `Map<String, Any?>`, long mixed parameter lists, and overloads that differ
+only by primitive type. Prefer value classes, sealed choices, and domain option objects.

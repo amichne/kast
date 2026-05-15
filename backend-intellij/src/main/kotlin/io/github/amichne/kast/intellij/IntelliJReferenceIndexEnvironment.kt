@@ -22,7 +22,10 @@ internal class IntelliJReferenceIndexEnvironment(
         FileTypeIndex
             .getFiles(KotlinFileType.INSTANCE, GlobalSearchScope.projectScope(project))
             .asSequence()
-            .filter { file -> file.isValid && FileTypeRegistry.getInstance().isFileOfType(file, KotlinFileType.INSTANCE) }
+            .filter { file ->
+                file.isValid && FileTypeRegistry.getInstance()
+                    .isFileOfType(file, KotlinFileType.INSTANCE)
+            }
             .map { file -> Path.of(file.path).toAbsolutePath().normalize() }
             .filter { path -> path.startsWith(workspaceRoot) }
             .filter(SourceIndexFilePolicy::isEligible)

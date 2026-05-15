@@ -6,8 +6,8 @@ hide:
 
 # API reference
 
-Complete reference for every JSON-RPC method in the Kast analysis
-daemon, including input/output schemas, examples, and behavioral notes.
+Complete reference for every JSON-RPC method in the Kast analysis daemon, including input/output schemas, examples, and
+behavioral notes.
 
 === "System operations"
 

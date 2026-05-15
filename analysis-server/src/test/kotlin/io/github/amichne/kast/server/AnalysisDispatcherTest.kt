@@ -1,61 +1,68 @@
 package io.github.amichne.kast.server
 
-import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
-import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.contract.BackendCapabilities
 import io.github.amichne.kast.api.contract.CallDirection
-import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
-import io.github.amichne.kast.api.contract.result.CallHierarchyResult
-import io.github.amichne.kast.api.contract.query.CodeActionsQuery
-import io.github.amichne.kast.api.contract.result.CodeActionsResult
-import io.github.amichne.kast.api.contract.query.CompletionsQuery
-import io.github.amichne.kast.api.contract.result.CompletionsResult
-import io.github.amichne.kast.api.contract.query.DiagnosticsQuery
 import io.github.amichne.kast.api.contract.FileHash
-import io.github.amichne.kast.api.validation.FileHashing
 import io.github.amichne.kast.api.contract.FileOperation
-import io.github.amichne.kast.api.contract.query.FileOutlineQuery
-import io.github.amichne.kast.api.contract.result.FileOutlineResult
 import io.github.amichne.kast.api.contract.FilePosition
-import io.github.amichne.kast.api.contract.query.ImportOptimizeQuery
-import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
-import io.github.amichne.kast.api.contract.query.ImplementationsQuery
-import io.github.amichne.kast.api.contract.result.ImplementationsResult
-import io.github.amichne.kast.api.protocol.JsonRpcErrorResponse
-import io.github.amichne.kast.api.protocol.JsonRpcRequest
-import io.github.amichne.kast.api.protocol.JsonRpcSuccessResponse
 import io.github.amichne.kast.api.contract.ReadCapability
-import io.github.amichne.kast.api.contract.query.RefreshQuery
-import io.github.amichne.kast.api.contract.result.RefreshResult
-import io.github.amichne.kast.api.contract.query.ReferencesQuery
-import io.github.amichne.kast.api.contract.result.ReferencesResult
-import io.github.amichne.kast.api.contract.query.RenameQuery
-import io.github.amichne.kast.api.contract.result.RenameResult
-import io.github.amichne.kast.api.contract.RuntimeStatusResponse
 import io.github.amichne.kast.api.contract.RuntimeState
+import io.github.amichne.kast.api.contract.RuntimeStatusResponse
 import io.github.amichne.kast.api.contract.SemanticInsertionQuery
 import io.github.amichne.kast.api.contract.SemanticInsertionResult
 import io.github.amichne.kast.api.contract.SemanticInsertionTarget
-import io.github.amichne.kast.api.contract.query.SymbolQuery
-import io.github.amichne.kast.api.contract.result.SymbolResult
 import io.github.amichne.kast.api.contract.TextEdit
 import io.github.amichne.kast.api.contract.TypeHierarchyDirection
+import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
+import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
+import io.github.amichne.kast.api.contract.query.CodeActionsQuery
+import io.github.amichne.kast.api.contract.query.CompletionsQuery
+import io.github.amichne.kast.api.contract.query.DiagnosticsQuery
+import io.github.amichne.kast.api.contract.query.FileOutlineQuery
+import io.github.amichne.kast.api.contract.query.ImplementationsQuery
+import io.github.amichne.kast.api.contract.query.ImportOptimizeQuery
+import io.github.amichne.kast.api.contract.query.ReferencesQuery
+import io.github.amichne.kast.api.contract.query.RefreshQuery
+import io.github.amichne.kast.api.contract.query.RenameQuery
+import io.github.amichne.kast.api.contract.query.SymbolQuery
 import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
-import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
 import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
-import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
 import io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery
-import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
 import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
+import io.github.amichne.kast.api.contract.result.ApplyEditsResult
+import io.github.amichne.kast.api.contract.result.CallHierarchyResult
+import io.github.amichne.kast.api.contract.result.CodeActionsResult
+import io.github.amichne.kast.api.contract.result.CompletionsResult
+import io.github.amichne.kast.api.contract.result.FileOutlineResult
+import io.github.amichne.kast.api.contract.result.ImplementationsResult
+import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
+import io.github.amichne.kast.api.contract.result.ReferencesResult
+import io.github.amichne.kast.api.contract.result.RefreshResult
+import io.github.amichne.kast.api.contract.result.RenameResult
+import io.github.amichne.kast.api.contract.result.SymbolResult
+import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
+import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
+import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
+import io.github.amichne.kast.api.contract.skill.KastRenameBySymbolRequest
+import io.github.amichne.kast.api.contract.skill.KastRenameRequest
+import io.github.amichne.kast.api.contract.skill.KastRenameResponse
+import io.github.amichne.kast.api.contract.skill.KastRenameSuccessResponse
+import io.github.amichne.kast.api.contract.skill.KastResolveRequest
+import io.github.amichne.kast.api.contract.skill.KastResolveResponse
+import io.github.amichne.kast.api.contract.skill.KastResolveSuccessResponse
+import io.github.amichne.kast.api.protocol.JsonRpcErrorResponse
+import io.github.amichne.kast.api.protocol.JsonRpcRequest
+import io.github.amichne.kast.api.protocol.JsonRpcSuccessResponse
+import io.github.amichne.kast.api.validation.FileHashing
 import io.github.amichne.kast.testing.FakeAnalysisBackend
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.serializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.serializer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -154,6 +161,51 @@ class AnalysisDispatcherTest {
     }
 
     @Test
+    fun `skill resolve dispatches named-symbol orchestration`() {
+        val file = sampleFile()
+
+        val result = dispatchSuccess<KastResolveResponse>(
+            method = "skill/resolve",
+            params = json.encodeToJsonElement(
+                KastResolveRequest.serializer(),
+                KastResolveRequest(
+                    workspaceRoot = tempDir.toString(),
+                    symbol = "greet",
+                    fileHint = file.toString(),
+                ),
+            ),
+        )
+
+        val success = result as KastResolveSuccessResponse
+        assertEquals("sample.greet", success.symbol.fqName)
+        assertEquals(file.toString(), success.filePath)
+        assertEquals(true, success.ok)
+    }
+
+    @Test
+    fun `skill rename dispatches rename apply and diagnostics`() {
+        val file = sampleFile()
+
+        val result = dispatchSuccess<KastRenameResponse>(
+            method = "skill/rename",
+            params = json.encodeToJsonElement(
+                KastRenameRequest.serializer(),
+                KastRenameBySymbolRequest(
+                    workspaceRoot = tempDir.toString(),
+                    symbol = "greet",
+                    fileHint = file.toString(),
+                    newName = "hello",
+                ),
+            ),
+        )
+
+        val success = result as KastRenameSuccessResponse
+        assertEquals(true, success.ok)
+        assertEquals(1, success.affectedFiles.size)
+        assertTrue(file.readText().contains("fun hello()"))
+    }
+
+    @Test
     fun `references dispatches without HTTP`() {
         val file = sampleFile()
 
@@ -211,7 +263,9 @@ class AnalysisDispatcherTest {
         )
 
         assertEquals("sample.FriendlyGreeter", result.root.symbol.fqName)
-        assertEquals(listOf("sample.Greeter", "sample.LoudGreeter"), result.root.children.map { child -> child.symbol.fqName })
+        assertEquals(
+            listOf("sample.Greeter", "sample.LoudGreeter"),
+            result.root.children.map { child -> child.symbol.fqName })
     }
 
     @Test

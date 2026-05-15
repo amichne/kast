@@ -1,8 +1,8 @@
 package io.github.amichne.kast.standalone
 
-import io.github.amichne.kast.api.client.fields.GradleToolingApiTimeoutMillis
-import io.github.amichne.kast.api.client.fields.GradleMaxIncludedProjects
 import io.github.amichne.kast.api.client.KastConfig
+import io.github.amichne.kast.api.client.fields.GradleMaxIncludedProjects
+import io.github.amichne.kast.api.client.fields.GradleToolingApiTimeoutMillis
 import io.github.amichne.kast.api.contract.ModuleName
 import io.github.amichne.kast.standalone.cache.WorkspaceDiscoveryCache
 import io.github.amichne.kast.standalone.workspace.GradleDependency
@@ -37,7 +37,11 @@ class GradleWorkspaceDiscoveryTest {
         val timeoutMillis = resolveToolingApiTimeoutMillis(
             moduleCount = 950,
             config = KastConfig.defaults().copy(
-                gradle = KastConfig.defaults().gradle.copy(toolingApiTimeoutMillis = GradleToolingApiTimeoutMillis(123_456L)),
+                gradle = KastConfig.defaults().gradle.copy(
+                    toolingApiTimeoutMillis = GradleToolingApiTimeoutMillis(
+                        123_456L
+                    )
+                ),
             ),
         )
 
@@ -130,7 +134,10 @@ class GradleWorkspaceDiscoveryTest {
         )
         val modulesByName = layout.sourceModules.associateBy(StandaloneSourceModuleSpec::name)
 
-        assertEquals(setOf(":app[main]", ":app[testFixtures]", ":app[test]", ":lib[main]").map(::ModuleName).toSet(), modulesByName.keys)
+        assertEquals(
+            setOf(":app[main]", ":app[testFixtures]", ":app[test]", ":lib[main]").map(::ModuleName).toSet(),
+            modulesByName.keys
+        )
         assertEquals(
             listOf(ModuleName(":lib[main]")),
             modulesByName.getValue(ModuleName(":app[main]")).dependencyModuleNames,
@@ -462,7 +469,10 @@ class GradleWorkspaceDiscoveryTest {
         try {
             assertTrue(elapsedMillis < 100, "expected phased discovery to return immediately, took ${elapsedMillis}ms")
             assertEquals(
-                GradleWorkspaceDiscovery.buildStandaloneWorkspaceLayout(staticModules, extraClasspathRoots = emptyList()).sourceModules,
+                GradleWorkspaceDiscovery.buildStandaloneWorkspaceLayout(
+                    staticModules,
+                    extraClasspathRoots = emptyList()
+                ).sourceModules,
                 result.initialLayout.sourceModules,
             )
             assertFalse(checkNotNull(result.enrichmentFuture).isDone)
@@ -523,7 +533,10 @@ class GradleWorkspaceDiscoveryTest {
         val enrichedLayout = checkNotNull(result.enrichmentFuture).get(1, TimeUnit.SECONDS)
         val modulesByName = enrichedLayout.sourceModules.associateBy(StandaloneSourceModuleSpec::name)
 
-        assertEquals(listOf(ModuleName(":lib[main]")), modulesByName.getValue(ModuleName(":app[main]")).dependencyModuleNames)
+        assertEquals(
+            listOf(ModuleName(":lib[main]")),
+            modulesByName.getValue(ModuleName(":app[main]")).dependencyModuleNames
+        )
         assertTrue(modulesByName.getValue(ModuleName(":app[main]")).binaryRoots.contains(Path.of("/deps/runtime.jar")))
     }
 

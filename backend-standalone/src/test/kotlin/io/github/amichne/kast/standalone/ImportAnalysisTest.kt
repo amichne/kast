@@ -52,7 +52,9 @@ class ImportAnalysisTest {
             }
 
             assertEquals(listOf("other.Helper"), result.usedImports.mapNotNull { it.importedFqName?.asString() })
-            assertEquals(listOf("other.UnusedHelper"), result.unusedImports.mapNotNull { it.importedFqName?.asString() })
+            assertEquals(
+                listOf("other.UnusedHelper"),
+                result.unusedImports.mapNotNull { it.importedFqName?.asString() })
             assertTrue(result.missingImports.isEmpty())
         }
     }

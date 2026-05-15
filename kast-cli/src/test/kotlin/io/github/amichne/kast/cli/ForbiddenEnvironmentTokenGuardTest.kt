@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
-import kotlin.streams.toList
 
 class ForbiddenEnvironmentTokenGuardTest {
     @Test
@@ -18,9 +17,9 @@ class ForbiddenEnvironmentTokenGuardTest {
         assertTrue(
             matches.isEmpty(),
             "Removed environment tokens must not reappear in guarded repository surfaces. Matches:\n" +
-                matches.joinToString("\n") { match ->
-                    match.relativePath + ":" + match.lineNumber + ": " + match.token + ": " + match.line.trim()
-                },
+            matches.joinToString("\n") { match ->
+                match.relativePath + ":" + match.lineNumber + ": " + match.token + ": " + match.line.trim()
+            },
         )
     }
 
@@ -71,8 +70,14 @@ class ForbiddenEnvironmentTokenGuardTest {
     private fun Path.invariantSeparators(): String = toString().replace(File.separatorChar, '/')
 
     private fun findRepoRoot(start: Path): Path = generateSequence(start.normalize()) { current -> current.parent }
-        .firstOrNull { candidate -> Files.isRegularFile(candidate.resolve("kast-cli/build.gradle.kts")) }
-        ?: error("Could not locate repo root from " + start)
+                                                      .firstOrNull { candidate ->
+                                                          Files.isRegularFile(
+                                                              candidate.resolve(
+                                                                  "kast-cli/build.gradle.kts"
+                                                              )
+                                                          )
+                                                      }
+                                                  ?: error("Could not locate repo root from " + start)
 
     private data class TokenMatch(
         val relativePath: String,

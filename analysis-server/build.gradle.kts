@@ -4,6 +4,7 @@ plugins {
 
 dependencies {
     api(project(":analysis-api"))
+    implementation(project(":index-store"))
     implementation(libs.coroutines.core)
     implementation(libs.serialization.json)
     implementation(libs.slf4j.api)

@@ -58,12 +58,11 @@ class MetricsGraphNavigatorTest {
             navigator.reduce(MetricsGraphCursor(currentNodeId = "child-2"), GraphAction.ToggleAttributes),
         )
         assertEquals(
-            MetricsGraphCursor(currentNodeId = "child-2", showAttributes = true),
+            MetricsGraphCursor(currentNodeId = "child-2"),
             navigator.reduce(
                 MetricsGraphCursor(currentNodeId = "child-2", showAttributes = false),
                 GraphAction.ToggleAttributes,
             ),
         )
     }
-
 }

@@ -1,8 +1,5 @@
 package io.github.amichne.kast.api.docs
 
-import io.github.amichne.kast.api.contract.*
-import io.github.amichne.kast.api.protocol.*
-
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -15,14 +12,22 @@ class AnalysisDocsDocumentTest {
     fun `checked in capabilities markdown matches generated document`() {
         val expected = repoRoot().resolve("docs/reference/capabilities.md").toFile().readText()
         val generated = DocsDocument.renderCapabilities()
-        assertEquals(expected, generated, "docs/reference/capabilities.md has drifted from the generator — run ./gradlew :analysis-api:generateDocPages")
+        assertEquals(
+            expected,
+            generated,
+            "docs/reference/capabilities.md has drifted from the generator — run ./gradlew :analysis-api:generateDocPages"
+        )
     }
 
     @Test
     fun `checked in api-reference markdown matches generated document`() {
         val expected = repoRoot().resolve("docs/reference/api-reference.md").toFile().readText()
         val generated = DocsDocument.renderApiReference()
-        assertEquals(expected, generated, "docs/reference/api-reference.md has drifted from the generator — run ./gradlew :analysis-api:generateDocPages")
+        assertEquals(
+            expected,
+            generated,
+            "docs/reference/api-reference.md has drifted from the generator — run ./gradlew :analysis-api:generateDocPages"
+        )
     }
 
     @Test
@@ -94,7 +99,10 @@ class AnalysisDocsDocumentTest {
                 }
             }
         }
-        assertTrue(violations.isEmpty(), "Server-managed fields must use @DocField(serverManaged = true):\n${violations.joinToString("\n")}")
+        assertTrue(
+            violations.isEmpty(),
+            "Server-managed fields must use @DocField(serverManaged = true):\n${violations.joinToString("\n")}"
+        )
     }
 
     /**
@@ -115,15 +123,18 @@ class AnalysisDocsDocumentTest {
                 // Enum defaults are legitimately all-caps (e.g. BOTH, SUPERTYPES)
                 if (elementDescriptor.kind == kotlinx.serialization.descriptors.SerialKind.ENUM) continue
                 val docField = descriptor.getElementAnnotations(index)
-                    .filterIsInstance<DocField>()
-                    .firstOrNull() ?: continue
+                                   .filterIsInstance<DocField>()
+                                   .firstOrNull() ?: continue
                 val dv = docField.defaultValue
                 if (dv.isNotBlank() && allCapsConstant.matches(dv)) {
                     violations.add("$schemaName.${descriptor.getElementName(index)}: defaultValue=\"$dv\" looks like a constant — use a literal value or serverManaged = true")
                 }
             }
         }
-        assertTrue(violations.isEmpty(), "Bare constant names in @DocField.defaultValue:\n${violations.joinToString("\n")}")
+        assertTrue(
+            violations.isEmpty(),
+            "Bare constant names in @DocField.defaultValue:\n${violations.joinToString("\n")}"
+        )
     }
 
     private fun repoRoot(): Path =
