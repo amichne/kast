@@ -38,7 +38,7 @@ object FileOutlineBuilder {
         is KtClassOrObject,
         is KtNamedFunction,
         is KtProperty,
-        -> true
+            -> true
         else -> false
     }
 

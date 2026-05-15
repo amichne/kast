@@ -6,9 +6,8 @@ import io.github.amichne.kast.api.contract.Diagnostic
 import io.github.amichne.kast.api.contract.PageInfo
 import io.github.amichne.kast.api.contract.PageableResult
 import io.github.amichne.kast.api.docs.DocField
-import io.github.amichne.kast.api.protocol.*
+import io.github.amichne.kast.api.protocol.SCHEMA_VERSION
 import kotlinx.serialization.ExperimentalSerializationApi
-
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -23,7 +22,10 @@ data class DiagnosticsResult(
     override val items: List<Diagnostic>
         get() = diagnostics
 
-    override fun withItems(items: List<Diagnostic>, page: PageInfo?): PageableResult<Diagnostic> = copy(
+    override fun withItems(
+        items: List<Diagnostic>,
+        page: PageInfo?,
+    ): PageableResult<Diagnostic> = copy(
         diagnostics = items,
         page = page,
     )

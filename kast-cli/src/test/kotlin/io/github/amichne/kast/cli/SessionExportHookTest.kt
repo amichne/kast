@@ -118,7 +118,10 @@ class SessionExportHookTest {
         return HookResult(process.exitValue(), stdout, stderr)
     }
 
-    private fun writeSessionEvents(homeDir: Path, sessionId: String) {
+    private fun writeSessionEvents(
+        homeDir: Path,
+        sessionId: String,
+    ) {
         val sessionDir = homeDir.resolve(".copilot/session-state/$sessionId").createDirectories()
         Files.writeString(
             sessionDir.resolve("events.jsonl"),
@@ -135,10 +138,10 @@ class SessionExportHookTest {
     }
 
     private fun findRepoRoot(start: Path): Path = generateSequence(start.normalize()) { it.parent }
-        .firstOrNull { candidate ->
-            Files.isRegularFile(candidate.resolve(".github/hooks/session-end.sh"))
-        }
-        ?: error("Could not locate repo root from ${start}")
+                                                      .firstOrNull { candidate ->
+                                                          Files.isRegularFile(candidate.resolve(".github/hooks/session-end.sh"))
+                                                      }
+                                                  ?: error("Could not locate repo root from ${start}")
 
     private data class HookResult(
         val exitCode: Int,

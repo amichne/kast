@@ -1,7 +1,7 @@
 package io.github.amichne.kast.cli
 
-import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
@@ -60,7 +60,10 @@ class BackendReadinessDiagnosticsTest {
     }
 
     @Test
-    fun `missing classpath file uses backend readiness diagnostics`(@TempDir workspace: Path, @TempDir runtimeLibs: Path) {
+    fun `missing classpath file uses backend readiness diagnostics`(
+        @TempDir workspace: Path,
+        @TempDir runtimeLibs: Path,
+    ) {
         val error = withSystemProperty("kast.runtime-libs", runtimeLibs.toString()) {
             assertThrows(IllegalStateException::class.java) {
                 startStandaloneBackendForTest(
@@ -86,7 +89,10 @@ class BackendReadinessDiagnosticsTest {
     }
 
     @Test
-    fun `empty classpath file uses backend readiness diagnostics`(@TempDir workspace: Path, @TempDir runtimeLibs: Path) {
+    fun `empty classpath file uses backend readiness diagnostics`(
+        @TempDir workspace: Path,
+        @TempDir runtimeLibs: Path,
+    ) {
         val classpathFile = Files.writeString(runtimeLibs.resolve("classpath.txt"), "\n")
         val error = withSystemProperty("kast.runtime-libs", runtimeLibs.toString()) {
             assertThrows(IllegalStateException::class.java) {
@@ -109,7 +115,10 @@ class BackendReadinessDiagnosticsTest {
     }
 
     @Test
-    fun `process start failure uses backend readiness diagnostics`(@TempDir workspace: Path, @TempDir runtimeLibs: Path) {
+    fun `process start failure uses backend readiness diagnostics`(
+        @TempDir workspace: Path,
+        @TempDir runtimeLibs: Path,
+    ) {
         Files.writeString(runtimeLibs.resolve("classpath.txt"), "backend.jar\n")
         val missingJava = workspace.resolve("missing-java").toString()
         val error = withSystemProperty("kast.runtime-libs", runtimeLibs.toString()) {
@@ -138,7 +147,11 @@ class BackendReadinessDiagnosticsTest {
         assertTrue(message.contains("lastStatusProbe=<none>"))
     }
 
-    private fun <T> withSystemProperty(name: String, value: String?, block: () -> T): T {
+    private fun <T> withSystemProperty(
+        name: String,
+        value: String?,
+        block: () -> T,
+    ): T {
         val previous = System.getProperty(name)
         if (value == null) {
             System.clearProperty(name)

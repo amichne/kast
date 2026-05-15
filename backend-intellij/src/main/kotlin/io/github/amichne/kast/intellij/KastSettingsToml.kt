@@ -36,7 +36,12 @@ internal fun KastSettingsState.toWorkspaceToml(defaults: KastConfig = KastConfig
                 "sourceIndexSaveDelayMillis" to cacheSourceIndexSaveDelayMillis.changedFrom(defaults.cache.sourceIndexSaveDelayMillis.value),
             ),
         )
-        add(tomlSection("watcher", "debounceMillis" to watcherDebounceMillis.changedFrom(defaults.watcher.debounceMillis.value)))
+        add(
+            tomlSection(
+                "watcher",
+                "debounceMillis" to watcherDebounceMillis.changedFrom(defaults.watcher.debounceMillis.value)
+            )
+        )
         add(
             tomlSection(
                 "gradle",
@@ -60,11 +65,19 @@ internal fun KastSettingsState.toWorkspaceToml(defaults: KastConfig = KastConfig
                 "runtimeLibsDir" to backendsStandaloneRuntimeLibsDir.changedFrom(defaults.backends.standalone.runtimeLibsDir.value.orNull),
             ),
         )
-        add(tomlSection("backends.intellij", "enabled" to backendsIntellijEnabled.changedFrom(defaults.backends.intellij.enabled.value)))
+        add(
+            tomlSection(
+                "backends.intellij",
+                "enabled" to backendsIntellijEnabled.changedFrom(defaults.backends.intellij.enabled.value)
+            )
+        )
     }.filter(String::isNotBlank)
 
     if (sections.isEmpty()) return ""
-    return sections.joinToString(separator = System.lineSeparator() + System.lineSeparator(), postfix = System.lineSeparator())
+    return sections.joinToString(
+        separator = System.lineSeparator() + System.lineSeparator(),
+        postfix = System.lineSeparator()
+    )
 }
 
 private fun tomlSection(

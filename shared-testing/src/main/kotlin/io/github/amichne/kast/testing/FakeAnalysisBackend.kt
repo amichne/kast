@@ -1,44 +1,40 @@
 package io.github.amichne.kast.testing
 
 import io.github.amichne.kast.api.contract.AnalysisBackend
-import io.github.amichne.kast.api.validation.*
-import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.contract.BackendCapabilities
 import io.github.amichne.kast.api.contract.CallDirection
-import io.github.amichne.kast.api.contract.result.CallHierarchyResult
-import io.github.amichne.kast.api.contract.result.CallHierarchyStats
 import io.github.amichne.kast.api.contract.CallNode
-import io.github.amichne.kast.api.contract.result.CodeActionsResult
-import io.github.amichne.kast.api.contract.result.CompletionItem
-import io.github.amichne.kast.api.contract.result.CompletionsResult
 import io.github.amichne.kast.api.contract.Diagnostic
 import io.github.amichne.kast.api.contract.DiagnosticSeverity
-import io.github.amichne.kast.api.contract.result.DiagnosticsResult
 import io.github.amichne.kast.api.contract.FileHash
-import io.github.amichne.kast.api.validation.FileHashing
-import io.github.amichne.kast.api.contract.result.FileOutlineResult
-import io.github.amichne.kast.api.contract.FilePosition
 import io.github.amichne.kast.api.contract.HealthResponse
-import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
-import io.github.amichne.kast.api.contract.result.ImplementationsResult
-import io.github.amichne.kast.api.validation.LocalDiskEditApplier
 import io.github.amichne.kast.api.contract.Location
 import io.github.amichne.kast.api.contract.MutationCapability
-import io.github.amichne.kast.api.protocol.NotFoundException
 import io.github.amichne.kast.api.contract.OutlineSymbol
 import io.github.amichne.kast.api.contract.ParameterInfo
 import io.github.amichne.kast.api.contract.ReadCapability
-import io.github.amichne.kast.api.contract.result.RefreshResult
-import io.github.amichne.kast.api.contract.result.ReferencesResult
-import io.github.amichne.kast.api.contract.result.RenameResult
 import io.github.amichne.kast.api.contract.SemanticInsertionResult
 import io.github.amichne.kast.api.contract.SemanticInsertionTarget
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.contract.Symbol
 import io.github.amichne.kast.api.contract.SymbolKind
-import io.github.amichne.kast.api.contract.result.SymbolResult
 import io.github.amichne.kast.api.contract.TextEdit
 import io.github.amichne.kast.api.contract.TypeHierarchyDirection
+import io.github.amichne.kast.api.contract.result.ApplyEditsResult
+import io.github.amichne.kast.api.contract.result.CallHierarchyResult
+import io.github.amichne.kast.api.contract.result.CallHierarchyStats
+import io.github.amichne.kast.api.contract.result.CodeActionsResult
+import io.github.amichne.kast.api.contract.result.CompletionItem
+import io.github.amichne.kast.api.contract.result.CompletionsResult
+import io.github.amichne.kast.api.contract.result.DiagnosticsResult
+import io.github.amichne.kast.api.contract.result.FileOutlineResult
+import io.github.amichne.kast.api.contract.result.ImplementationsResult
+import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
+import io.github.amichne.kast.api.contract.result.ReferencesResult
+import io.github.amichne.kast.api.contract.result.RefreshResult
+import io.github.amichne.kast.api.contract.result.RenameResult
+import io.github.amichne.kast.api.contract.result.SearchMatch
+import io.github.amichne.kast.api.contract.result.SymbolResult
 import io.github.amichne.kast.api.contract.result.TypeHierarchyNode
 import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
 import io.github.amichne.kast.api.contract.result.TypeHierarchyStats
@@ -48,9 +44,30 @@ import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
 import io.github.amichne.kast.api.contract.result.WorkspaceModule
 import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
-import io.github.amichne.kast.api.contract.result.SearchMatch
-import java.nio.file.Files
+import io.github.amichne.kast.api.protocol.NotFoundException
+import io.github.amichne.kast.api.validation.FileHashing
+import io.github.amichne.kast.api.validation.LocalDiskEditApplier
+import io.github.amichne.kast.api.validation.ParsedApplyEditsQuery
+import io.github.amichne.kast.api.validation.ParsedCallHierarchyQuery
+import io.github.amichne.kast.api.validation.ParsedCodeActionsQuery
+import io.github.amichne.kast.api.validation.ParsedCompletionsQuery
+import io.github.amichne.kast.api.validation.ParsedDiagnosticsQuery
+import io.github.amichne.kast.api.validation.ParsedFileOutlineQuery
+import io.github.amichne.kast.api.validation.ParsedFilePosition
+import io.github.amichne.kast.api.validation.ParsedImplementationsQuery
+import io.github.amichne.kast.api.validation.ParsedImportOptimizeQuery
+import io.github.amichne.kast.api.validation.ParsedReferencesQuery
+import io.github.amichne.kast.api.validation.ParsedRefreshQuery
+import io.github.amichne.kast.api.validation.ParsedRenameQuery
+import io.github.amichne.kast.api.validation.ParsedSemanticInsertionQuery
+import io.github.amichne.kast.api.validation.ParsedSymbolQuery
+import io.github.amichne.kast.api.validation.ParsedTypeHierarchyQuery
+import io.github.amichne.kast.api.validation.ParsedWorkspaceFilesQuery
+import io.github.amichne.kast.api.validation.ParsedWorkspaceSearchQuery
+import io.github.amichne.kast.api.validation.ParsedWorkspaceSymbolQuery
+import io.github.amichne.kast.api.validation.toWire
 import java.nio.file.FileSystems
+import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.writeText
 
@@ -171,7 +188,8 @@ class FakeAnalysisBackend private constructor(
                 timeoutReached = false,
                 maxTotalCallsReached = false,
                 maxChildrenPerNodeReached = false,
-                filesVisited = rootChildren.mapNotNull { child -> child.callSite?.filePath }.distinct().size.coerceAtLeast(1),
+                filesVisited = rootChildren.mapNotNull { child -> child.callSite?.filePath }
+                    .distinct().size.coerceAtLeast(1),
             ),
         )
     }
@@ -222,13 +240,13 @@ class FakeAnalysisBackend private constructor(
         val content = Files.readString(Path.of(query.position.filePath.value))
         val insertionOffset = when (query.target) {
             SemanticInsertionTarget.CLASS_BODY_START -> content.indexOf('{')
-                .takeIf { it >= 0 }
-                ?.plus(1)
-                ?: throw missingSymbol(query.position)
+                                                            .takeIf { it >= 0 }
+                                                            ?.plus(1)
+                                                        ?: throw missingSymbol(query.position)
 
             SemanticInsertionTarget.CLASS_BODY_END -> content.lastIndexOf('}')
-                .takeIf { it >= 0 }
-                ?: throw missingSymbol(query.position)
+                                                          .takeIf { it >= 0 }
+                                                      ?: throw missingSymbol(query.position)
 
             SemanticInsertionTarget.FILE_TOP -> 0
             SemanticInsertionTarget.FILE_BOTTOM -> content.length
@@ -286,7 +304,8 @@ class FakeAnalysisBackend private constructor(
         )
     }
 
-    override suspend fun applyEdits(query: ParsedApplyEditsQuery): ApplyEditsResult = LocalDiskEditApplier.apply(query.toWire())
+    override suspend fun applyEdits(query: ParsedApplyEditsQuery): ApplyEditsResult =
+        LocalDiskEditApplier.apply(query.toWire())
 
     override suspend fun refresh(query: ParsedRefreshQuery): RefreshResult {
         val refreshedFiles = query.filePaths.map { it.value }
@@ -450,7 +469,7 @@ class FakeAnalysisBackend private constructor(
         position: ParsedFilePosition,
     ): Boolean = anchors.any { anchor ->
         anchor.filePath == position.filePath.value &&
-            position.offset.value in anchor.startOffset until anchor.endOffset
+        position.offset.value in anchor.startOffset until anchor.endOffset
     }
 
     private fun missingSymbol(position: ParsedFilePosition): NotFoundException = NotFoundException(
@@ -494,7 +513,10 @@ class FakeAnalysisBackend private constructor(
         }
     }
 
-    private fun matchesFileGlob(filePath: String, fileGlob: String): Boolean {
+    private fun matchesFileGlob(
+        filePath: String,
+        fileGlob: String,
+    ): Boolean {
         val matcher = FileSystems.getDefault().getPathMatcher("glob:$fileGlob")
         val path = Path.of(filePath)
         val relative = runCatching { workspaceRoot.relativize(path) }.getOrNull()

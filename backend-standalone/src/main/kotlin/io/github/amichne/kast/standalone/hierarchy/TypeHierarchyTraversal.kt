@@ -1,7 +1,7 @@
 package io.github.amichne.kast.standalone.hierarchy
 
 import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
-import io.github.amichne.kast.api.validation.*
+import io.github.amichne.kast.api.validation.ParsedTypeHierarchyQuery
 import io.github.amichne.kast.shared.analysis.resolveTarget
 import io.github.amichne.kast.shared.analysis.typeHierarchyDeclaration
 import io.github.amichne.kast.shared.hierarchy.ReadAccessScope

@@ -1,8 +1,7 @@
 # Kast Overview
 
-This page summarizes the raw note [[Kast-Overview]]. It is the highest-level
-entry point in the source corpus and establishes the product frame for the rest
-of the wiki.
+This page summarizes the raw note [[Kast-Overview]]. It is the highest-level entry point in the source corpus and
+establishes the product frame for the rest of the wiki.
 
 ## Source
 
@@ -15,14 +14,12 @@ This source is a project overview note.
 
 ## Summary
 
-This note presents Kast as a Kotlin semantic analysis tool built around a
-lightweight client and a long-lived daemon. Its main contribution is the framing
-that Kast exists to keep heavy analysis state resident so later queries and
+This note presents Kast as a Kotlin semantic analysis tool built around a lightweight client and a long-lived daemon.
+Its main contribution is the framing that Kast exists to keep heavy analysis state resident so later queries and
 refactors can remain fast.
 
-It also sketches the major modules and the request flow between them, which
-makes it the shortest path to understanding how the CLI, transport, and backend
-fit together.
+It also sketches the major modules and the request flow between them, which makes it the shortest path to understanding
+how the CLI, transport, and backend fit together.
 
 ## Key claims
 

@@ -7,25 +7,20 @@ icon: lucide/message-circle
 
 # Talk to your agent about Kast
 
-The packaged skill lets you describe Kotlin symbols the way you'd
-describe them to another engineer. No file offsets, no absolute paths,
-no JSON-RPC. Name the symbol, say what you want, the skill turns that
-into the lookup `kast` needs.
+The packaged skill lets you describe Kotlin symbols the way you'd describe them to another engineer. No file offsets, no
+absolute paths, no JSON-RPC. Name the symbol, say what you want, the skill turns that into the lookup `kast` needs.
 
 ## Start with a conversational reference
 
-Name the target naturally — class name, function name, a property on
-its containing type. Then say what to do, then say what the answer
-should include.
+Name the target naturally — class name, function name, a property on its containing type. Then say what to do, then say
+what the answer should include.
 
 Three things every prompt should have:
 
 1. **The symbol** — name it the way you'd say it out loud, e.g. "the
    `processOrder` function on `OrderService`."
-2. **The action** — resolve, find references, show callers, plan a
-   rename.
-3. **The answer shape** — fully qualified name, declaration location,
-   caller summary, truncation status.
+2. **The action** — resolve, find references, show callers, plan a rename.
+3. **The answer shape** — fully qualified name, declaration location, caller summary, truncation status.
 
 ```text title="Example: Resolve a symbol"
 Use the kast skill to resolve the retryDelay property on RetryConfig.
@@ -45,9 +40,8 @@ the top callers and any truncation.
 
 ## Follow the golden path
 
-Resolve first, confirm identity, then expand. This kills the most
-common failure: the agent guesses which symbol you meant and gets it
-wrong.
+Resolve first, confirm identity, then expand. This kills the most common failure: the agent guesses which symbol you
+meant and gets it wrong.
 
 ```mermaid
 sequenceDiagram
@@ -73,15 +67,12 @@ The four steps:
 
 1. Name the target conversationally.
 2. Have the agent resolve the symbol before gathering anything else.
-3. Confirm the kind, `fqName`, and declaration location match what you
-   meant.
-4. Then ask for references, call hierarchy, rename impact, or
-   diagnostics.
+3. Confirm the kind, `fqName`, and declaration location match what you meant.
+4. Then ask for references, call hierarchy, rename impact, or diagnostics.
 
 ## When the name is ambiguous, add context
 
-Some workspaces repeat names. When the skill finds multiple candidates,
-narrow the match:
+Some workspaces repeat names. When the skill finds multiple candidates, narrow the match:
 
 - Containing type: "`retryDelay` on `RetryConfig`."
 - Module or package: "`loadUser` in the API module."
@@ -100,8 +91,7 @@ UserController.
 
 ## Ask for an answer you can act on
 
-"Found it" is not an answer. Ask for the parts that help you decide
-what to do next:
+"Found it" is not an answer. Ask for the parts that help you decide what to do next:
 
 - **`fqName`** — the stable identity
 - **Symbol kind** — CLASS, FUNCTION, PROPERTY, INTERFACE
@@ -116,15 +106,12 @@ When your request is clear, the skill:
 
 - Finds the right `kast` binary via its resolver script
 - Makes sure the workspace daemon is ready
-- Searches for likely declaration sites from your conversational
-  reference
+- Searches for likely declaration sites from your conversational reference
 - Translates the chosen declaration into a file path and byte offset
 - Calls `resolve` first, then expands into `references`,
   `call-hierarchy`, or `rename`
 
 ## Next steps
 
-- [Install the skill](install-the-skill.md) — drop the packaged skill
-  into your workspace
-- [Direct CLI usage](direct-cli.md) — when the agent skips the skill
-  and calls `kast` itself
+- [Install the skill](install-the-skill.md) — drop the packaged skill into your workspace
+- [Direct CLI usage](direct-cli.md) — when the agent skips the skill and calls `kast` itself

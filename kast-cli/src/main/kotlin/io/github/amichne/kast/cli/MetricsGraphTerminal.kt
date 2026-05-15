@@ -56,7 +56,10 @@ internal enum class GraphAction {
 internal class MetricsGraphNavigator(private val graph: MetricsGraph) {
     private val nodesById = graph.nodes.associateBy(MetricsGraphNode::id)
 
-    fun reduce(cursor: MetricsGraphCursor, action: GraphAction): MetricsGraphCursor {
+    fun reduce(
+        cursor: MetricsGraphCursor,
+        action: GraphAction,
+    ): MetricsGraphCursor {
         val current = nodesById.getValue(cursor.currentNodeId)
         return when (action) {
             GraphAction.Parent ->
@@ -78,7 +81,10 @@ internal class MetricsGraphNavigator(private val graph: MetricsGraph) {
         }
     }
 
-    private fun sibling(current: MetricsGraphNode, direction: Int): MetricsGraphNode? {
+    private fun sibling(
+        current: MetricsGraphNode,
+        direction: Int,
+    ): MetricsGraphNode? {
         val parent = current.parentId?.let(nodesById::get) ?: return null
         val siblings = parent.children.mapNotNull(nodesById::get)
         val index = siblings.indexOfFirst { it.id == current.id }

@@ -1,11 +1,11 @@
 package io.github.amichne.kast.standalone
 
 import io.github.amichne.kast.api.contract.CallDirection
-import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
 import io.github.amichne.kast.api.contract.FilePosition
+import io.github.amichne.kast.api.contract.ServerLimits
+import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
 import io.github.amichne.kast.api.contract.query.ReferencesQuery
 import io.github.amichne.kast.api.contract.query.RenameQuery
-import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.contract.query.SymbolQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
 import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetry
@@ -89,7 +89,10 @@ class StandaloneAnalysisBackendTelemetryTest {
             val startNanos = span["startEpochNanos"]?.toString()?.toLongOrNull()
             val endNanos = span["endEpochNanos"]?.toString()?.toLongOrNull()
             assertTrue(durationNanos != null && durationNanos > 0, "Expected durationNanos > 0 in span ${span["name"]}")
-            assertTrue(startNanos != null && endNanos != null && startNanos < endNanos, "Expected startEpochNanos < endEpochNanos in span ${span["name"]}")
+            assertTrue(
+                startNanos != null && endNanos != null && startNanos < endNanos,
+                "Expected startEpochNanos < endEpochNanos in span ${span["name"]}"
+            )
         }
     }
 
@@ -160,7 +163,6 @@ class StandaloneAnalysisBackendTelemetryTest {
             backend.findReferences(
                 ReferencesQuery(
                     position = FilePosition(filePath = file.toString(), offset = queryOffset),
-                    includeDeclaration = false,
                 ),
             )
         }

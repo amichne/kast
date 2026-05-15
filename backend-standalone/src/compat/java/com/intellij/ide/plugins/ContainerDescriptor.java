@@ -39,8 +39,11 @@ public final class ContainerDescriptor {
 
     private int distinctExtensionPointCount;
 
-    /** No-arg constructor from the old API. */
-    public ContainerDescriptor() {}
+    /**
+     * No-arg constructor from the old API.
+     */
+    public ContainerDescriptor() {
+    }
 
     /**
      * 4-arg constructor required by IJ 2025.3's {@code ParserElementsConversionKt.convert()}.
@@ -53,12 +56,16 @@ public final class ContainerDescriptor {
         this.extensionPoints = extensionPoints != null ? extensionPoints : new ArrayList();
     }
 
-    /** Returns the services list. Called by AA's {@code PluginStructureProvider.getServices()}. */
+    /**
+     * Returns the services list. Called by AA's {@code PluginStructureProvider.getServices()}.
+     */
     public List getServices() {
         return services;
     }
 
-    /** Adds a service descriptor. Part of the old API used by some AA initialisation paths. */
+    /**
+     * Adds a service descriptor. Part of the old API used by some AA initialisation paths.
+     */
     public void addService(ServiceDescriptor descriptor) {
         services.add(descriptor);
     }
@@ -74,8 +81,8 @@ public final class ContainerDescriptor {
     @Override
     public String toString() {
         return "ContainerDescriptor(services=" + services
-                + ", components=" + components
-                + ", listeners=" + listeners
-                + ", extensionPoints=" + extensionPoints + ")";
+            + ", components=" + components
+            + ", listeners=" + listeners
+            + ", extensionPoints=" + extensionPoints + ")";
     }
 }

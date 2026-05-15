@@ -1,8 +1,7 @@
 # Shared Testing Fixtures and Contract Tests
 
 This page summarizes the raw note
-[[Shared-Testing-Fixtures-and-Contract-Tests]]. It is the most direct source for
-the shared contract fixture.
+[[Shared-Testing-Fixtures-and-Contract-Tests]]. It is the most direct source for the shared contract fixture.
 
 ## Source
 
@@ -15,13 +14,12 @@ This source is a shared-testing note.
 
 ## Summary
 
-This note explains the `AnalysisBackendContractFixture`, shared assertions, the
-fake backend, and the process for validating new backend implementations. Its
-main contribution is showing how Kast preserves behavioral consistency across
-multiple implementations of the same contract.
+This note explains the `AnalysisBackendContractFixture`, shared assertions, the fake backend, and the process for
+validating new backend implementations. Its main contribution is showing how Kast preserves behavioral consistency
+across multiple implementations of the same contract.
 
-It also makes clear that correctness is defined partly by canonical examples and
-expected outcomes, not just by implementation-specific tests.
+It also makes clear that correctness is defined partly by canonical examples and expected outcomes, not just by
+implementation-specific tests.
 
 ## Key claims
 

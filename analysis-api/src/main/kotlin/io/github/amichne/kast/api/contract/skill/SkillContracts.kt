@@ -1,6 +1,13 @@
-package io.github.amichne.kast.api.wrapper
+package io.github.amichne.kast.api.contract.skill
 
-import io.github.amichne.kast.api.contract.*
+import io.github.amichne.kast.api.contract.CallNode
+import io.github.amichne.kast.api.contract.Diagnostic
+import io.github.amichne.kast.api.contract.Location
+import io.github.amichne.kast.api.contract.OutlineSymbol
+import io.github.amichne.kast.api.contract.PageInfo
+import io.github.amichne.kast.api.contract.SearchScope
+import io.github.amichne.kast.api.contract.SemanticInsertionResult
+import io.github.amichne.kast.api.contract.Symbol
 import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.contract.result.CallHierarchyStats
 import io.github.amichne.kast.api.contract.result.SearchMatch
@@ -8,7 +15,6 @@ import io.github.amichne.kast.api.contract.result.TypeHierarchyNode
 import io.github.amichne.kast.api.contract.result.TypeHierarchyStats
 import io.github.amichne.kast.api.contract.result.WorkspaceModule
 import io.github.amichne.kast.api.protocol.ApiErrorResponse
-
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 

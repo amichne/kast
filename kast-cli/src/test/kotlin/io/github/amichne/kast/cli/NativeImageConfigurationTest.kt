@@ -1,7 +1,7 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.api.client.fields.ConfigurationField
 import io.github.amichne.kast.api.client.ConfigurationFieldDecoder
+import io.github.amichne.kast.api.client.fields.ConfigurationField
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.booleanOrNull

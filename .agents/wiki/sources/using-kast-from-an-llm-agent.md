@@ -1,7 +1,7 @@
 # Using Kast from an LLM Agent
 
-This page summarizes the raw note [[Using-Kast-from-an-LLM-Agent]]. It is the
-main source for agent-specific usage patterns.
+This page summarizes the raw note [[Using-Kast-from-an-LLM-Agent]]. It is the main source for agent-specific usage
+patterns.
 
 ## Source
 
@@ -15,14 +15,12 @@ This source is an agent workflow note.
 ## Summary
 
 This note explains the agent skill, wrapper scripts, helper utilities, and the
-"golden path" that moves from a natural-language symbol description to a precise
-code entity and then into deeper operations. Its main contribution is turning
-Kast into a repeatable agent interface rather than a loose collection of shell
-commands.
+"golden path" that moves from a natural-language symbol description to a precise code entity and then into deeper
+operations. Its main contribution is turning Kast into a repeatable agent interface rather than a loose collection of
+shell commands.
 
-It also emphasizes result bounding, visibility, and conflict detection, which
-shows that agent workflows are designed around safety and reliability concerns
-as much as convenience.
+It also emphasizes result bounding, visibility, and conflict detection, which shows that agent workflows are designed
+around safety and reliability concerns as much as convenience.
 
 ## Key claims
 

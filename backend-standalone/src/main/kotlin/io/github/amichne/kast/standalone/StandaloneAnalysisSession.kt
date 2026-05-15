@@ -379,7 +379,7 @@ internal class StandaloneAnalysisSession(
                         .filterNotNull()
                         .mapNotNull { ktFile -> ktFile.virtualFile }
                 } + refreshedVirtualFiles.asSequence()
-            )
+                                             )
             .distinct()
             .toList()
         if (cachedVirtualFilesToInvalidate.isNotEmpty()) {
@@ -490,7 +490,7 @@ internal class StandaloneAnalysisSession(
     /** True when Phase 2 (symbol reference) indexing has completed successfully (not cancelled). */
     internal fun isReferenceIndexReady(): Boolean =
         backgroundIndexer.referenceIndexReady.isDone &&
-            !backgroundIndexer.referenceIndexReady.isCompletedExceptionally
+        !backgroundIndexer.referenceIndexReady.isCompletedExceptionally
 
     /** The underlying SQLite store for cached symbol reference lookups. */
     internal val sqliteStore: SqliteSourceIndexStore get() = sourceIndexCache.store
@@ -532,7 +532,10 @@ internal class StandaloneAnalysisSession(
      *
      * **Caller contract**: [T] must be non-nullable; `null` always means "lock not acquired".
      */
-    internal fun <T> tryWrite(timeoutMillis: Long, action: () -> T): T? =
+    internal fun <T> tryWrite(
+        timeoutMillis: Long,
+        action: () -> T,
+    ): T? =
         analysisSessionLock.tryWrite(timeoutMillis) { action() }
 
     internal fun candidateKotlinFilePaths(identifier: String): List<String> {
@@ -553,7 +556,15 @@ internal class StandaloneAnalysisSession(
             return@inSpan emptyList()
         }
 
-        val anchorSourceModuleName = anchorFilePath?.let { filePath -> sourceModuleNameForFile(NormalizedPath.of(Path.of(filePath))) }
+        val anchorSourceModuleName = anchorFilePath?.let { filePath ->
+            sourceModuleNameForFile(
+                NormalizedPath.of(
+                    Path.of(
+                        filePath
+                    )
+                )
+            )
+        }
 
         val readyIndex = readySourceIdentifierIndex()
         if (readyIndex != null) {
@@ -666,8 +677,8 @@ internal class StandaloneAnalysisSession(
         sourceModuleSpecs = workspaceLayout.sourceModules
         workspaceDiagnostics = workspaceLayout.diagnostics.warnings
         _dependentModuleNamesBySourceModuleName = workspaceLayout.dependentModuleNamesBySourceModuleName
-                                                     .takeIf { it.isNotEmpty() }
-                                                 ?: buildDependentModuleNamesBySourceModuleName(sourceModuleSpecs)
+                                                      .takeIf { it.isNotEmpty() }
+                                                  ?: buildDependentModuleNamesBySourceModuleName(sourceModuleSpecs)
         resolvedSourceRoots = workspaceLayout.sourceModules
             .flatMap { module -> module.sourceRoots }
             .distinct()
@@ -1100,8 +1111,8 @@ internal class StandaloneAnalysisSession(
         }
 
         val allowedSourceModuleNames = _dependentModuleNamesBySourceModuleName[anchorSourceModuleName]
-            .takeUnless { it.isNullOrEmpty() }
-            ?: return candidatePaths
+                                           .takeUnless { it.isNullOrEmpty() }
+                                       ?: return candidatePaths
         return candidatePaths.filter { candidatePath ->
             sourceModuleNameForFile(candidatePath) in allowedSourceModuleNames
         }
@@ -1112,11 +1123,11 @@ internal class StandaloneAnalysisSession(
 
     private fun sourceModuleNameForFile(normalizedPath: NormalizedPath): ModuleName? =
         sourceModuleNamesByPath[normalizedPath]
-            ?: sourceModuleSpecs.firstOrNull { moduleSpec ->
-                moduleSpec.sourceRoots.any(normalizedPath.toJavaPath()::startsWith)
-            }?.name?.also { moduleName ->
-                sourceModuleNamesByPath[normalizedPath] = moduleName
-            }
+        ?: sourceModuleSpecs.firstOrNull { moduleSpec ->
+            moduleSpec.sourceRoots.any(normalizedPath.toJavaPath()::startsWith)
+        }?.name?.also { moduleName ->
+            sourceModuleNamesByPath[normalizedPath] = moduleName
+        }
 
     /**
      * Returns all source module names that share the same Gradle project as the

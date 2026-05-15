@@ -1,31 +1,31 @@
 package io.github.amichne.kast.parity
 
-import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
-import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.contract.BackendCapabilities
-import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
-import io.github.amichne.kast.api.contract.result.CallHierarchyResult
-import io.github.amichne.kast.api.contract.query.DiagnosticsQuery
-import io.github.amichne.kast.api.contract.result.DiagnosticsResult
 import io.github.amichne.kast.api.contract.HealthResponse
-import io.github.amichne.kast.api.contract.query.ImportOptimizeQuery
-import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
-import io.github.amichne.kast.api.protocol.JsonRpcErrorResponse
-import io.github.amichne.kast.api.protocol.JsonRpcRequest
-import io.github.amichne.kast.api.protocol.JsonRpcSuccessResponse
-import io.github.amichne.kast.api.contract.query.ReferencesQuery
-import io.github.amichne.kast.api.contract.result.ReferencesResult
-import io.github.amichne.kast.api.contract.query.RefreshQuery
-import io.github.amichne.kast.api.contract.result.RefreshResult
-import io.github.amichne.kast.api.contract.query.RenameQuery
-import io.github.amichne.kast.api.contract.result.RenameResult
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
 import io.github.amichne.kast.api.contract.SemanticInsertionQuery
 import io.github.amichne.kast.api.contract.SemanticInsertionResult
+import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
+import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
+import io.github.amichne.kast.api.contract.query.DiagnosticsQuery
+import io.github.amichne.kast.api.contract.query.ImportOptimizeQuery
+import io.github.amichne.kast.api.contract.query.ReferencesQuery
+import io.github.amichne.kast.api.contract.query.RefreshQuery
+import io.github.amichne.kast.api.contract.query.RenameQuery
 import io.github.amichne.kast.api.contract.query.SymbolQuery
-import io.github.amichne.kast.api.contract.result.SymbolResult
 import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
+import io.github.amichne.kast.api.contract.result.ApplyEditsResult
+import io.github.amichne.kast.api.contract.result.CallHierarchyResult
+import io.github.amichne.kast.api.contract.result.DiagnosticsResult
+import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
+import io.github.amichne.kast.api.contract.result.ReferencesResult
+import io.github.amichne.kast.api.contract.result.RefreshResult
+import io.github.amichne.kast.api.contract.result.RenameResult
+import io.github.amichne.kast.api.contract.result.SymbolResult
 import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
+import io.github.amichne.kast.api.protocol.JsonRpcErrorResponse
+import io.github.amichne.kast.api.protocol.JsonRpcRequest
+import io.github.amichne.kast.api.protocol.JsonRpcSuccessResponse
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -57,7 +57,9 @@ class ParityRpcClient(
     fun findReferences(query: ReferencesQuery): ReferencesResult = post("references", query)
     fun callHierarchy(query: CallHierarchyQuery): CallHierarchyResult = post("call-hierarchy", query)
     fun typeHierarchy(query: TypeHierarchyQuery): TypeHierarchyResult = post("type-hierarchy", query)
-    fun semanticInsertionPoint(query: SemanticInsertionQuery): SemanticInsertionResult = post("semantic-insertion-point", query)
+    fun semanticInsertionPoint(query: SemanticInsertionQuery): SemanticInsertionResult =
+        post("semantic-insertion-point", query)
+
     fun diagnostics(query: DiagnosticsQuery): DiagnosticsResult = post("diagnostics", query)
     fun rename(query: RenameQuery): RenameResult = post("rename", query)
     fun applyEdits(query: ApplyEditsQuery): ApplyEditsResult = post("edits/apply", query)
@@ -65,7 +67,10 @@ class ParityRpcClient(
     fun refresh(query: RefreshQuery): RefreshResult = post("workspace/refresh", query)
 
     /** Raw JSON-RPC call returning the result [JsonElement]. */
-    fun rawCall(method: String, params: JsonElement = JsonNull): JsonElement {
+    fun rawCall(
+        method: String,
+        params: JsonElement = JsonNull,
+    ): JsonElement {
         val request = JsonRpcRequest(
             id = JsonPrimitive(requestId.getAndIncrement()),
             method = method,
@@ -89,7 +94,10 @@ class ParityRpcClient(
         return json.decodeFromJsonElement(result)
     }
 
-    private inline fun <reified Q : Any, reified R> post(method: String, query: Q): R {
+    private inline fun <reified Q : Any, reified R> post(
+        method: String,
+        query: Q,
+    ): R {
         val params = json.encodeToJsonElement(query)
         val result = rawCall(method, params)
         return json.decodeFromJsonElement(result)

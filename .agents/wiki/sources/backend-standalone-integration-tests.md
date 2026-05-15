@@ -1,7 +1,7 @@
 # Backend-Standalone Integration Tests
 
-This page summarizes the raw note [[Backend-Standalone-Integration-Tests]]. It
-is the strongest source for backend invariants under realistic conditions.
+This page summarizes the raw note [[Backend-Standalone-Integration-Tests]]. It is the strongest source for backend
+invariants under realistic conditions.
 
 ## Source
 
@@ -14,13 +14,11 @@ This source is an integration-testing note.
 
 ## Summary
 
-This note explains backend integration tests for analysis operations, workspace
-discovery, indexing, cache invariants, performance baselines, daemon
-consolidation, and compatibility shims. Its main contribution is showing how
-Kast validates the real backend under conditions closer to production.
+This note explains backend integration tests for analysis operations, workspace discovery, indexing, cache invariants,
+performance baselines, daemon consolidation, and compatibility shims. Its main contribution is showing how Kast
+validates the real backend under conditions closer to production.
 
-It also reveals where correctness risks cluster: cache persistence, discovery,
-and long-lived daemon behavior.
+It also reveals where correctness risks cluster: cache persistence, discovery, and long-lived daemon behavior.
 
 ## Key claims
 

@@ -7,7 +7,6 @@ import io.github.amichne.kast.cli.eval.EvalStatus
 import io.github.amichne.kast.cli.eval.RawBudget
 import io.github.amichne.kast.cli.eval.SkillDescriptor
 import io.github.amichne.kast.cli.eval.SkillTarget
-import io.github.amichne.kast.cli.skill.SkillWrapperName
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -34,7 +33,6 @@ internal class SkillAdapter(private val skillDir: Path) {
     private val painPointsPath = evalsDir.resolve("pain_points.jsonl")
     private val evalFilesDir = evalsDir.resolve("files")
     private val progressionPath = historyDir.resolve("progression.json")
-    private val wrapperOpenApiPath = skillDir.resolve("references/wrapper-openapi.yaml")
     private val routingScriptPath = skillDir.resolve("scripts/build-routing-corpus.py")
     private val routingReferencePath = skillDir.resolve("references/routing-improvement.md")
     private val json = Json { ignoreUnknownKeys = true }
@@ -49,7 +47,6 @@ internal class SkillAdapter(private val skillDir: Path) {
         checks += checkSkillMdExists()
         checks += checkLegacyWrappersRemoved()
         checks += checkSkillMdHasTriggerPhrases()
-        checks += checkWrapperOpenApiExists()
         checks += checkRoutingImprovementAssets()
         checks += checkBehaviorEvalCorpus(behaviorCorpus)
         checks += checkRoutingEvalCorpus(routingCorpus)
@@ -123,7 +120,7 @@ internal class SkillAdapter(private val skillDir: Path) {
                 "Legacy artifacts still present: ${present.joinToString()}"
             },
             remediation = if (present.isNotEmpty()) {
-                "Remove the legacy artifacts and rely on native `kast_*` tools, keeping direct `kast <wrapper>` commands only as an explicit fallback path"
+                "Remove the legacy artifacts and rely on native `kast_*` tools and `kast rpc` for machine access"
             } else {
                 null
             },
@@ -138,7 +135,7 @@ internal class SkillAdapter(private val skillDir: Path) {
         val routingScriptExists = routingScriptPath.exists()
         val routingReferenceExists = routingReferencePath.exists()
         val allPresent = catalogExists && painPointsExists && evalFilesExist &&
-            progressionExists && routingScriptExists && routingReferenceExists
+                         progressionExists && routingScriptExists && routingReferenceExists
         return EvalCheck(
             id = "structural-routing-improvement-assets",
             category = "structural",
@@ -154,8 +151,8 @@ internal class SkillAdapter(private val skillDir: Path) {
             ).joinToString(),
             remediation = if (!allPresent) {
                 "Add evals/catalog.json, evals/pain_points.jsonl, evals/files/, " +
-                    "history/progression.json, scripts/build-routing-corpus.py, and " +
-                    "references/routing-improvement.md"
+                "history/progression.json, scripts/build-routing-corpus.py, and " +
+                "references/routing-improvement.md"
             } else {
                 null
             },
@@ -273,8 +270,8 @@ internal class SkillAdapter(private val skillDir: Path) {
         val content = skillMd.readText()
         // Look for a section about triggers or common trigger-phrase patterns
         val hasTriggers = content.contains("trigger", ignoreCase = true) ||
-            content.contains("Trigger phrases", ignoreCase = true) ||
-            content.contains("description:", ignoreCase = true)
+                          content.contains("Trigger phrases", ignoreCase = true) ||
+                          content.contains("description:", ignoreCase = true)
         return EvalCheck(
             id = "structural-trigger-phrases",
             category = "structural",
@@ -285,40 +282,20 @@ internal class SkillAdapter(private val skillDir: Path) {
         )
     }
 
-    private fun checkWrapperOpenApiExists(): EvalCheck {
-        val exists = wrapperOpenApiPath.exists()
-        return EvalCheck(
-            id = "structural-openapi-exists",
-            category = "structural",
-            severity = EvalSeverity.WARNING,
-            status = if (exists) EvalStatus.PASS else EvalStatus.WARN,
-            message = if (exists) "wrapper-openapi.yaml found" else "wrapper-openapi.yaml missing",
-            remediation = if (!exists) {
-                "Generate references/wrapper-openapi.yaml from wrapper contracts"
-            } else {
-                null
-            },
-        )
-    }
-
     private fun checkWrapperCompleteness(): List<EvalCheck> {
         val skillMdText = skillDir.resolve("SKILL.md").takeIf(Path::exists)?.readText().orEmpty()
-        val openApiText = wrapperOpenApiPath.takeIf(Path::exists)?.readText().orEmpty()
-        return SkillWrapperName.entries.map { wrapper ->
-            val command = "kast ${wrapper.cliName}"
-            val nativeTool = wrapper.nativeToolName
-            val documentedInSkillMd = skillMdText.contains(command) || skillMdText.contains(nativeTool)
-            val documentedInOpenApi = openApiText.contains(command)
+        return REQUIRED_NATIVE_TOOL_NAMES.toList().sorted().map { nativeTool ->
+            val documentedInSkillMd = skillMdText.contains(nativeTool)
             EvalCheck(
-                id = "completeness-wrapper-${wrapper.cliName}",
+                id = "completeness-native-tool-${nativeTool.removePrefix("kast_")}",
                 category = "completeness",
                 severity = EvalSeverity.INFO,
-                status = if (documentedInSkillMd && documentedInOpenApi) EvalStatus.PASS else EvalStatus.WARN,
-                message = "Wrapper ${wrapper.cliName}: skillMd=$documentedInSkillMd, openApi=$documentedInOpenApi",
-                remediation = if (documentedInSkillMd && documentedInOpenApi) {
+                status = if (documentedInSkillMd) EvalStatus.PASS else EvalStatus.WARN,
+                message = "Native tool $nativeTool documentedInSkillMd=$documentedInSkillMd",
+                remediation = if (documentedInSkillMd) {
                     null
                 } else {
-                    "Document `$nativeTool` (or `$command`) in SKILL.md and `$command` in references/wrapper-openapi.yaml"
+                    "Document `$nativeTool` in SKILL.md"
                 },
             )
         }
@@ -339,9 +316,24 @@ internal class SkillAdapter(private val skillDir: Path) {
     }
 
     private fun budgetMetrics(budget: RawBudget): List<EvalMetric> = listOf(
-        EvalMetric(id = "budget-trigger-tokens", category = "budget", value = budget.triggerTokens.toDouble(), unit = "tokens"),
-        EvalMetric(id = "budget-invoke-tokens", category = "budget", value = budget.invokeTokens.toDouble(), unit = "tokens"),
-        EvalMetric(id = "budget-deferred-tokens", category = "budget", value = budget.deferredTokens.toDouble(), unit = "tokens"),
+        EvalMetric(
+            id = "budget-trigger-tokens",
+            category = "budget",
+            value = budget.triggerTokens.toDouble(),
+            unit = "tokens"
+        ),
+        EvalMetric(
+            id = "budget-invoke-tokens",
+            category = "budget",
+            value = budget.invokeTokens.toDouble(),
+            unit = "tokens"
+        ),
+        EvalMetric(
+            id = "budget-deferred-tokens",
+            category = "budget",
+            value = budget.deferredTokens.toDouble(),
+            unit = "tokens"
+        ),
     )
 
     private fun corpusMetrics(
@@ -506,7 +498,6 @@ internal class SkillAdapter(private val skillDir: Path) {
         val entries = catalogLoad.cases.filter { it.stringField("suite") == suite }
         if (entries.isEmpty()) {
             return CorpusValidation(
-                entryCount = 0,
                 issues = listOf("${skillDir.relativize(catalogPath)} contains no $suite cases"),
             )
         }
@@ -612,7 +603,20 @@ internal class SkillAdapter(private val skillDir: Path) {
             "haystack_reduction",
             "generic_tool_avoidance",
         )
-        private val REQUIRED_NATIVE_TOOL_NAMES = SkillWrapperName.entries.map { it.nativeToolName }.toSet()
+        private val REQUIRED_NATIVE_TOOL_NAMES = setOf(
+            "kast_workspace_files",
+            "kast_workspace_symbol",
+            "kast_workspace_search",
+            "kast_file_outline",
+            "kast_scaffold",
+            "kast_resolve",
+            "kast_references",
+            "kast_callers",
+            "kast_metrics",
+            "kast_diagnostics",
+            "kast_rename",
+            "kast_write_and_validate",
+        )
         private val GENERIC_KOTLIN_TOOL_OPS = setOf("grep", "rg", "view", "edit", "create", "apply_patch", "sed")
     }
 }

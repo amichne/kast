@@ -1,7 +1,7 @@
 package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.cli.options.InstallSkillOptions
-import io.github.amichne.kast.cli.skill.InstallSkillResult
+import io.github.amichne.kast.cli.results.InstallSkillResult
 import io.github.amichne.kast.cli.tty.CliFailure
 import java.nio.file.Files
 import java.nio.file.Path

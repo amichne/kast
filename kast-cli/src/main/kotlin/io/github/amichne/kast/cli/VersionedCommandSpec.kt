@@ -36,28 +36,28 @@ object VersionedCommandSpec {
         CommandEntry(
             name = "workspace-files",
             summary = "List workspace modules and optional file paths",
-            requestSerializer = io.github.amichne.kast.api.wrapper.KastWorkspaceFilesRequest.serializer(),
+            requestSerializer = io.github.amichne.kast.api.contract.skill.KastWorkspaceFilesRequest.serializer(),
             successType = "WORKSPACE_FILES_SUCCESS",
             failureType = "WORKSPACE_FILES_FAILURE",
         ),
         CommandEntry(
             name = "workspace-search",
             summary = "Search Kotlin workspace file contents by text or regex",
-            requestSerializer = io.github.amichne.kast.api.wrapper.KastWorkspaceSearchRequest.serializer(),
+            requestSerializer = io.github.amichne.kast.api.contract.skill.KastWorkspaceSearchRequest.serializer(),
             successType = "WORKSPACE_SEARCH_SUCCESS",
             failureType = "WORKSPACE_SEARCH_FAILURE",
         ),
         CommandEntry(
             name = "scaffold",
             summary = "Gather structural generation context for a Kotlin file",
-            requestSerializer = io.github.amichne.kast.api.wrapper.KastScaffoldRequest.serializer(),
+            requestSerializer = io.github.amichne.kast.api.contract.skill.KastScaffoldRequest.serializer(),
             successType = "SCAFFOLD_SUCCESS",
             failureType = "SCAFFOLD_FAILURE",
         ),
         CommandEntry(
             name = "resolve",
             summary = "Resolve a symbol by name to its declaration",
-            requestSerializer = io.github.amichne.kast.api.wrapper.KastResolveRequest.serializer(),
+            requestSerializer = io.github.amichne.kast.api.contract.skill.KastResolveRequest.serializer(),
             successType = "RESOLVE_SUCCESS",
             failureType = "RESOLVE_FAILURE",
             notes = listOf(
@@ -68,7 +68,7 @@ object VersionedCommandSpec {
         CommandEntry(
             name = "references",
             summary = "Find every usage of a Kotlin symbol",
-            requestSerializer = io.github.amichne.kast.api.wrapper.KastReferencesRequest.serializer(),
+            requestSerializer = io.github.amichne.kast.api.contract.skill.KastReferencesRequest.serializer(),
             successType = "REFERENCES_SUCCESS",
             failureType = "REFERENCES_FAILURE",
             notes = listOf(
@@ -79,7 +79,7 @@ object VersionedCommandSpec {
         CommandEntry(
             name = "callers",
             summary = "Expand an incoming or outgoing call hierarchy",
-            requestSerializer = io.github.amichne.kast.api.wrapper.KastCallersRequest.serializer(),
+            requestSerializer = io.github.amichne.kast.api.contract.skill.KastCallersRequest.serializer(),
             successType = "CALLERS_SUCCESS",
             failureType = "CALLERS_FAILURE",
             notes = listOf(
@@ -89,37 +89,37 @@ object VersionedCommandSpec {
         CommandEntry(
             name = "diagnostics",
             summary = "Run Kotlin diagnostics on listed files",
-            requestSerializer = io.github.amichne.kast.api.wrapper.KastDiagnosticsRequest.serializer(),
+            requestSerializer = io.github.amichne.kast.api.contract.skill.KastDiagnosticsRequest.serializer(),
             successType = "DIAGNOSTICS_SUCCESS",
             failureType = "DIAGNOSTICS_FAILURE",
         ),
         CommandEntry(
             name = "rename",
             summary = "Resolve or target a symbol and apply a rename",
-            requestSerializer = io.github.amichne.kast.api.wrapper.KastRenameRequest.serializer(),
+            requestSerializer = io.github.amichne.kast.api.contract.skill.KastRenameRequest.serializer(),
             successType = "RENAME_SUCCESS",
             failureType = "RENAME_FAILURE",
             discriminatedTypes = mapOf(
-                "RENAME_BY_SYMBOL_REQUEST" to io.github.amichne.kast.api.wrapper.KastRenameBySymbolRequest.serializer(),
-                "RENAME_BY_OFFSET_REQUEST" to io.github.amichne.kast.api.wrapper.KastRenameByOffsetRequest.serializer(),
+                "RENAME_BY_SYMBOL_REQUEST" to io.github.amichne.kast.api.contract.skill.KastRenameBySymbolRequest.serializer(),
+                "RENAME_BY_OFFSET_REQUEST" to io.github.amichne.kast.api.contract.skill.KastRenameByOffsetRequest.serializer(),
             ),
         ),
         CommandEntry(
             name = "write-and-validate",
             summary = "Apply generated Kotlin code and validate the result",
-            requestSerializer = io.github.amichne.kast.api.wrapper.KastWriteAndValidateRequest.serializer(),
+            requestSerializer = io.github.amichne.kast.api.contract.skill.KastWriteAndValidateRequest.serializer(),
             successType = "WRITE_AND_VALIDATE_SUCCESS",
             failureType = "WRITE_AND_VALIDATE_FAILURE",
             discriminatedTypes = mapOf(
-                "CREATE_FILE_REQUEST" to io.github.amichne.kast.api.wrapper.KastWriteAndValidateCreateFileRequest.serializer(),
-                "INSERT_AT_OFFSET_REQUEST" to io.github.amichne.kast.api.wrapper.KastWriteAndValidateInsertAtOffsetRequest.serializer(),
-                "REPLACE_RANGE_REQUEST" to io.github.amichne.kast.api.wrapper.KastWriteAndValidateReplaceRangeRequest.serializer(),
+                "CREATE_FILE_REQUEST" to io.github.amichne.kast.api.contract.skill.KastWriteAndValidateCreateFileRequest.serializer(),
+                "INSERT_AT_OFFSET_REQUEST" to io.github.amichne.kast.api.contract.skill.KastWriteAndValidateInsertAtOffsetRequest.serializer(),
+                "REPLACE_RANGE_REQUEST" to io.github.amichne.kast.api.contract.skill.KastWriteAndValidateReplaceRangeRequest.serializer(),
             ),
         ),
         CommandEntry(
             name = "metrics",
             summary = "Query indexed source metrics",
-            requestSerializer = io.github.amichne.kast.api.wrapper.KastMetricsRequest.serializer(),
+            requestSerializer = io.github.amichne.kast.api.contract.skill.KastMetricsRequest.serializer(),
             successType = "METRICS_SUCCESS",
             failureType = "METRICS_FAILURE",
         ),
@@ -176,7 +176,10 @@ private fun descriptorToSchema(descriptor: SerialDescriptor): JsonObject = build
 }
 
 @OptIn(ExperimentalSerializationApi::class)
-private fun fieldSchema(descriptor: SerialDescriptor, optional: Boolean): JsonObject = buildJsonObject {
+private fun fieldSchema(
+    descriptor: SerialDescriptor,
+    optional: Boolean,
+): JsonObject = buildJsonObject {
     put("type", JsonPrimitive(typeNameFor(descriptor)))
     if (optional) {
         put("optional", JsonPrimitive(true))
@@ -232,7 +235,7 @@ private fun JsonElement.toPrettyString(indent: Int = 0): String {
 fun main(args: Array<String>) {
     val version = args.getOrNull(0) ?: currentCliVersion()
     val target = args.getOrNull(1)?.let(Path::of)
-        ?: Path.of(".agents/skills/kast/references/commands.json")
+                 ?: Path.of(".agents/skills/kast/references/commands.json")
     Files.createDirectories(target.parent)
     Files.writeString(target, VersionedCommandSpec.renderJson(version) + "\n")
 }

@@ -1,13 +1,14 @@
 package io.github.amichne.kast.parity
 
 import io.github.amichne.kast.api.client.kastConfigHome
-import io.github.amichne.kast.api.contract.query.DiagnosticsQuery
 import io.github.amichne.kast.api.contract.FilePosition
+import io.github.amichne.kast.api.contract.query.DiagnosticsQuery
 import io.github.amichne.kast.api.contract.query.ReferencesQuery
 import io.github.amichne.kast.api.contract.query.RenameQuery
 import io.github.amichne.kast.api.contract.query.SymbolQuery
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToJsonElement
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Tag
@@ -16,7 +17,6 @@ import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
-import org.junit.jupiter.api.Assertions.assertNull
 
 /**
  * Parity tests that run the same queries against two live backends

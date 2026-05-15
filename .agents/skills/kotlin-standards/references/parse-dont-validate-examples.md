@@ -4,9 +4,8 @@ Use this when external data enters the system.
 
 ## Boundary Rule
 
-Treat CLI args, files, JSON, database rows, environment variables, network
-payloads, and user input as untrusted. Convert them once into trusted domain
-types, then keep raw primitives out of core logic.
+Treat CLI args, files, JSON, database rows, environment variables, network payloads, and user input as untrusted.
+Convert them once into trusted domain types, then keep raw primitives out of core logic.
 
 ## Shape
 
@@ -23,8 +22,8 @@ value class ProjectName private constructor(val value: String) {
 }
 ```
 
-Use the repository's existing typed error pattern when one exists. The example
-uses `Result` only as a standard-library fallback.
+Use the repository's existing typed error pattern when one exists. The example uses `Result` only as a standard-library
+fallback.
 
 ## Review
 
@@ -32,5 +31,4 @@ uses `Result` only as a standard-library fallback.
 - Failure should be observable and testable.
 - Parsing should normalize once, not repeatedly re-check the same invariant.
 - Unknown fields should follow an explicit policy: reject, ignore, or preserve.
-- Conflicting optional fields should parse into one domain concept or fail before
-  core logic sees them.
+- Conflicting optional fields should parse into one domain concept or fail before core logic sees them.

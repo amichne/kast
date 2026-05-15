@@ -136,11 +136,11 @@ class SkillAdapterTest {
     }
 
     @Test
-    fun `scan checks wrapper openapi`() {
+    fun `scan checks native tool coverage`() {
         val skillDir = createMinimalSkill()
         val descriptor = SkillAdapter(skillDir).scan()
-        val openApi = descriptor.checks.first { it.id == "structural-openapi-exists" }
-        assertEquals(EvalStatus.PASS, openApi.status)
+        val nativeTool = descriptor.checks.first { it.id == "completeness-native-tool-resolve" }
+        assertEquals(EvalStatus.PASS, nativeTool.status)
     }
 
     @Test
@@ -243,23 +243,6 @@ class SkillAdapterTest {
         )
 
         refs.resolve("routing-improvement.md").writeText("# Routing improvement\n")
-        refs.resolve("wrapper-openapi.yaml").writeText(
-            """
-            openapi: '3.0.0'
-            x-command: kast resolve
-            x-command: kast references
-            x-command: kast callers
-            x-command: kast diagnostics
-            x-command: kast rename
-            x-command: kast scaffold
-            x-command: kast write-and-validate
-            x-command: kast workspace-files
-            x-command: kast workspace-symbol
-            x-command: kast file-outline
-            x-command: kast workspace-search
-            x-command: kast metrics
-            """.trimIndent(),
-        )
 
         val scriptsDir = skillDir.resolve("scripts").createDirectories()
         scriptsDir.resolve("build-routing-corpus.py").writeText(
@@ -272,7 +255,11 @@ class SkillAdapterTest {
         return skillDir
     }
 
-    private fun writeCatalog(skillDir: Path, behaviorFailureModes: List<String>, routingFailureModes: List<String>) {
+    private fun writeCatalog(
+        skillDir: Path,
+        behaviorFailureModes: List<String>,
+        routingFailureModes: List<String>,
+    ) {
         skillDir.resolve("evals/catalog.json").writeText(
             buildString {
                 append("""{"skill_name":"kast","version":1,"cases":[""")

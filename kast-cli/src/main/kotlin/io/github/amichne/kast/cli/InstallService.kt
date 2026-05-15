@@ -86,7 +86,10 @@ internal class InstallService(
         }
     }
 
-    private fun extractZip(archivePath: Path, outputDir: Path) {
+    private fun extractZip(
+        archivePath: Path,
+        outputDir: Path,
+    ) {
         ZipFile(archivePath.toFile()).use { zip ->
             zip.entries().asSequence().forEach { entry ->
                 val target = outputDir.resolve(entry.name).normalize()
@@ -120,7 +123,10 @@ private val ANIMALS = listOf(
     "weasel", "wolf", "wren", "yak",
 )
 
-private fun generateUniqueInstanceName(instancesRoot: Path, binDir: Path): String {
+private fun generateUniqueInstanceName(
+    instancesRoot: Path,
+    binDir: Path,
+): String {
     repeat(20) {
         val name = "${ADJECTIVES.random()}-${ANIMALS.random()}"
         if (!Files.exists(instancesRoot.resolve(name)) && !Files.exists(binDir.resolve("kast-$name"))) {

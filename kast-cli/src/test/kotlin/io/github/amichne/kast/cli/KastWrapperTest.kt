@@ -1,24 +1,31 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.api.client.ServerInstanceDescriptor
 import io.github.amichne.kast.api.contract.BackendCapabilities
+import io.github.amichne.kast.api.contract.FilePosition
+import io.github.amichne.kast.api.contract.RuntimeState
+import io.github.amichne.kast.api.contract.RuntimeStatusResponse
+import io.github.amichne.kast.api.contract.ServerLimits
+import io.github.amichne.kast.api.contract.query.DiagnosticsQuery
+import io.github.amichne.kast.api.contract.query.FileOutlineQuery
+import io.github.amichne.kast.api.contract.query.ReferencesQuery
+import io.github.amichne.kast.api.contract.query.RefreshQuery
+import io.github.amichne.kast.api.contract.query.RenameQuery
+import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
 import io.github.amichne.kast.api.contract.result.DiagnosticsResult
-import io.github.amichne.kast.api.protocol.JsonRpcRequest
-import io.github.amichne.kast.api.protocol.JsonRpcSuccessResponse
+import io.github.amichne.kast.api.contract.result.FileOutlineResult
 import io.github.amichne.kast.api.contract.result.ReferencesResult
 import io.github.amichne.kast.api.contract.result.RefreshResult
 import io.github.amichne.kast.api.contract.result.RenameResult
-import io.github.amichne.kast.api.contract.RuntimeState
-import io.github.amichne.kast.api.contract.RuntimeStatusResponse
-import io.github.amichne.kast.api.wrapper.KastFileOutlineResponse
-import io.github.amichne.kast.api.wrapper.KastFileOutlineSuccessResponse
-import io.github.amichne.kast.api.wrapper.KastWorkspaceSymbolResponse
-import io.github.amichne.kast.api.wrapper.KastWorkspaceSymbolSuccessResponse
-import io.github.amichne.kast.api.client.ServerInstanceDescriptor
-import io.github.amichne.kast.api.contract.ServerLimits
+import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
+import io.github.amichne.kast.api.protocol.JsonRpcRequest
+import io.github.amichne.kast.api.protocol.JsonRpcSuccessResponse
 import io.github.amichne.kast.cli.results.WorkspaceEnsureResult
 import io.github.amichne.kast.cli.results.WorkspaceStatusResult
 import io.github.amichne.kast.cli.tty.defaultCliJson
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -99,13 +106,19 @@ class KastWrapperTest {
             assertEquals("standalone", capabilitiesResult.backendName)
 
             val diagnostics = runCli(
-                "diagnostics",
+                "rpc",
+                rpcRequest(
+                    method = "diagnostics",
+                    params = transportJson.encodeToJsonElement(
+                        DiagnosticsQuery.serializer(),
+                        DiagnosticsQuery(filePaths = listOf(sourceFile.toString())),
+                    ),
+                ),
                 "--workspace-root=$workspace",
-                "--file-paths=$sourceFile",
             )
-            val diagnosticsResult = defaultCliJson().decodeFromString<DiagnosticsResult>(diagnostics.stdout)
+            val diagnosticsResult = decodeRpcResult(diagnostics.stdout, DiagnosticsResult.serializer())
             assertTrue(diagnosticsResult.diagnostics.isEmpty())
-            assertTrue(diagnostics.stderr.contains("daemon:"))
+            assertTrue(diagnostics.stderr.isBlank())
         } finally {
             runCli(
                 "daemon",
@@ -140,16 +153,18 @@ class KastWrapperTest {
             )
 
             val search = runCli(
-                "workspace-symbol",
-                "{" +
-                    "\"workspaceRoot\":\"$workspace\"," +
-                    "\"pattern\":\"greet\"" +
-                    "}",
+                "rpc",
+                rpcRequest(
+                    method = "workspace-symbol",
+                    params = transportJson.encodeToJsonElement(
+                        WorkspaceSymbolQuery.serializer(),
+                        WorkspaceSymbolQuery(pattern = "greet"),
+                    ),
+                ),
+                "--workspace-root=$workspace",
             )
-            val result = defaultCliJson().decodeFromString<KastWorkspaceSymbolResponse>(search.stdout)
-            val success = result as KastWorkspaceSymbolSuccessResponse
+            val success = decodeRpcResult(search.stdout, WorkspaceSymbolResult.serializer())
 
-            assertEquals("greet", success.query.pattern)
             assertTrue(success.symbols.any { symbol -> symbol.fqName == "example.greet" })
         } finally {
             runCli(
@@ -187,14 +202,17 @@ class KastWrapperTest {
             )
 
             val outline = runCli(
-                "file-outline",
-                "{" +
-                    "\"workspaceRoot\":\"$workspace\"," +
-                    "\"filePath\":\"$sourceFile\"" +
-                    "}",
+                "rpc",
+                rpcRequest(
+                    method = "file-outline",
+                    params = transportJson.encodeToJsonElement(
+                        FileOutlineQuery.serializer(),
+                        FileOutlineQuery(filePath = sourceFile.toString()),
+                    ),
+                ),
+                "--workspace-root=$workspace",
             )
-            val result = defaultCliJson().decodeFromString<KastFileOutlineResponse>(outline.stdout)
-            val success = result as KastFileOutlineSuccessResponse
+            val success = decodeRpcResult(outline.stdout, FileOutlineResult.serializer())
 
             assertTrue(success.symbols.any { symbol -> symbol.symbol.fqName == "example.Greeter" })
             val greeter = success.symbols.first { symbol -> symbol.symbol.fqName == "example.Greeter" }
@@ -293,12 +311,17 @@ class KastWrapperTest {
             )
 
             val refresh = runCli(
-                "workspace",
-                "refresh",
+                "rpc",
+                rpcRequest(
+                    method = "workspace/refresh",
+                    params = transportJson.encodeToJsonElement(
+                        RefreshQuery.serializer(),
+                        RefreshQuery(filePaths = listOf(sourceFile.toString())),
+                    ),
+                ),
                 "--workspace-root=$workspace",
-                "--file-paths=$sourceFile",
             )
-            val refreshResult = defaultCliJson().decodeFromString<RefreshResult>(refresh.stdout)
+            val refreshResult = decodeRpcResult(refresh.stdout, RefreshResult.serializer())
             assertEquals(listOf(normalizePath(sourceFile)), refreshResult.refreshedFiles)
             assertTrue(refreshResult.removedFiles.isEmpty())
             assertEquals(false, refreshResult.fullRefresh)
@@ -307,19 +330,29 @@ class KastWrapperTest {
             // synchronously on slow CI runners, so poll until rename succeeds.
             waitForCondition("rename after refresh resolves welcome", timeoutMillis = 120_000) {
                 val rename = runCli(
-                    "rename",
+                    "rpc",
+                    rpcRequest(
+                        method = "rename",
+                        params = transportJson.encodeToJsonElement(
+                            RenameQuery.serializer(),
+                            RenameQuery(
+                                position = FilePosition(
+                                    filePath = sourceFile.toString(),
+                                    offset = sourceFile.readText().indexOf("welcome"),
+                                ),
+                                newName = "salute",
+                            ),
+                        ),
+                    ),
                     "--workspace-root=$workspace",
-                    "--file-path=$sourceFile",
-                    "--offset=${sourceFile.readText().indexOf("welcome")}",
-                    "--new-name=salute",
                     allowFailure = true,
                 )
                 if (rename.exitCode != 0) {
                     return@waitForCondition false
                 }
-                val renameResult = defaultCliJson().decodeFromString<RenameResult>(rename.stdout)
+                val renameResult = decodeRpcResult(rename.stdout, RenameResult.serializer())
                 renameResult.edits.isNotEmpty() &&
-                    renameResult.edits.all { edit -> edit.newText == "salute" }
+                renameResult.edits.all { edit -> edit.newText == "salute" }
             }
         } finally {
             runCli(
@@ -362,23 +395,33 @@ class KastWrapperTest {
 
             waitForCondition("watch-driven refresh for welcome", timeoutMillis = 120_000) {
                 val rename = runCli(
-                    "rename",
+                    "rpc",
+                    rpcRequest(
+                        method = "rename",
+                        params = transportJson.encodeToJsonElement(
+                            RenameQuery.serializer(),
+                            RenameQuery(
+                                position = FilePosition(
+                                    filePath = sourceFile.toString(),
+                                    offset = sourceFile.readText().indexOf("welcome"),
+                                ),
+                                newName = "salute",
+                            ),
+                        ),
+                    ),
                     "--workspace-root=$workspace",
-                    "--file-path=$sourceFile",
-                    "--offset=${sourceFile.readText().indexOf("welcome")}",
-                    "--new-name=salute",
                     allowFailure = true,
                 )
                 if (rename.exitCode != 0) {
                     return@waitForCondition false
                 }
 
-                val renameResult = defaultCliJson().decodeFromString<RenameResult>(rename.stdout)
+                val renameResult = decodeRpcResult(rename.stdout, RenameResult.serializer())
                 renameResult.edits.isNotEmpty() &&
-                    renameResult.edits.all { edit ->
-                        edit.newText == "salute" &&
-                            edit.endOffset - edit.startOffset == "welcome".length
-                    }
+                renameResult.edits.all { edit ->
+                    edit.newText == "salute" &&
+                    edit.endOffset - edit.startOffset == "welcome".length
+                }
             }
         } finally {
             runCli(
@@ -433,24 +476,39 @@ class KastWrapperTest {
             )
 
             val refresh = runCli(
-                "workspace",
-                "refresh",
+                "rpc",
+                rpcRequest(
+                    method = "workspace/refresh",
+                    params = transportJson.encodeToJsonElement(
+                        RefreshQuery.serializer(),
+                        RefreshQuery(),
+                    ),
+                ),
                 "--workspace-root=$workspace",
             )
-            val refreshResult = defaultCliJson().decodeFromString<RefreshResult>(refresh.stdout)
+            val refreshResult = decodeRpcResult(refresh.stdout, RefreshResult.serializer())
             assertEquals(true, refreshResult.fullRefresh)
             assertTrue(refreshResult.refreshedFiles.contains(normalizePath(declarationFile)))
             assertTrue(refreshResult.refreshedFiles.contains(normalizePath(newUsageFile)))
             assertTrue(refreshResult.removedFiles.contains(normalizedDeletedUsageFile))
 
             val references = runCli(
-                "references",
+                "rpc",
+                rpcRequest(
+                    method = "references",
+                    params = transportJson.encodeToJsonElement(
+                        ReferencesQuery.serializer(),
+                        ReferencesQuery(
+                            position = FilePosition(
+                                filePath = declarationFile.toString(),
+                                offset = declarationFile.readText().indexOf("greet"),
+                            ),
+                        ),
+                    ),
+                ),
                 "--workspace-root=$workspace",
-                "--file-path=$declarationFile",
-                "--offset=${declarationFile.readText().indexOf("greet")}",
-                "--include-declaration=false",
             )
-            val referencesResult = defaultCliJson().decodeFromString<ReferencesResult>(references.stdout)
+            val referencesResult = decodeRpcResult(references.stdout, ReferencesResult.serializer())
 
             assertEquals(
                 listOf(normalizePath(newUsageFile)),
@@ -495,7 +553,8 @@ class KastWrapperTest {
         io.github.amichne.kast.api.client.DescriptorRegistry(daemonsDir.resolve("daemons.json")).register(descriptor)
         val defaultDaemonsDir = home.resolve(".kast/cache/daemons")
         Files.createDirectories(defaultDaemonsDir)
-        io.github.amichne.kast.api.client.DescriptorRegistry(defaultDaemonsDir.resolve("daemons.json")).register(descriptor)
+        io.github.amichne.kast.api.client.DescriptorRegistry(defaultDaemonsDir.resolve("daemons.json"))
+            .register(descriptor)
 
         val runtimeStatus = RuntimeStatusResponse(
             state = RuntimeState.READY,
@@ -545,25 +604,52 @@ class KastWrapperTest {
 
         try {
             val rename = runCli(
-                "rename",
+                "rpc",
+                rpcRequest(
+                    method = "rename",
+                    params = transportJson.encodeToJsonElement(
+                        RenameQuery.serializer(),
+                        RenameQuery(
+                            position = FilePosition(
+                                filePath = workspace.resolve("src/main/kotlin/example/Sample.kt").toString(),
+                                offset = 0,
+                            ),
+                            newName = "RenamedSymbol",
+                        ),
+                    ),
+                ),
                 "--workspace-root=$workspace",
-                "--file-path=${workspace.resolve("src/main/kotlin/example/Sample.kt")}",
-                "--offset=0",
-                "--new-name=RenamedSymbol",
                 env = mapOf("KAST_CONFIG_HOME" to configHome.toString(), "JAVA_OPTS" to "-Duser.home=$home"),
             )
 
-            val renameOutput = defaultCliJson().decodeFromString<RenameResult>(rename.stdout)
+            val renameOutput = decodeRpcResult(rename.stdout, RenameResult.serializer())
             assertEquals(8, renameOutput.edits.size)
             assertTrue(renameOutput.edits.all { edit -> edit.filePath.startsWith(sanitizedWorkspaceRoot) })
             assertTrue(renameOutput.fileHashes.all { fileHash -> fileHash.filePath.startsWith(sanitizedWorkspaceRoot) })
             assertTrue(renameOutput.affectedFiles.all { filePath -> filePath.startsWith(sanitizedWorkspaceRoot) })
             assertTrue(renameOutput.edits.none { edit -> edit.filePath.contains("/Users/") })
-            assertTrue(rename.stderr.contains("daemon:"))
+            assertTrue(rename.stderr.isBlank())
         } finally {
             keepAliveProcess.destroyForcibly()
             serverThread.join(TimeUnit.SECONDS.toMillis(5))
         }
+    }
+
+    private fun rpcRequest(
+        method: String,
+        params: JsonElement? = null,
+    ): String =
+        transportJson.encodeToString(
+            JsonRpcRequest.serializer(),
+            JsonRpcRequest(method = method, params = params),
+        )
+
+    private fun <T> decodeRpcResult(
+        stdout: String,
+        serializer: KSerializer<T>,
+    ): T {
+        val envelope = defaultCliJson().decodeFromString(JsonRpcSuccessResponse.serializer(), stdout)
+        return defaultCliJson().decodeFromJsonElement(serializer, envelope.result)
     }
 
     private fun runCli(
@@ -664,9 +750,9 @@ class KastWrapperTest {
             },
             isReady = { probe ->
                 probe.exitCode == 0 &&
-                    runCatching {
-                        defaultCliJson().decodeFromString<WorkspaceStatusResult>(probe.stdout)
-                    }.getOrNull()?.selected?.ready == true
+                runCatching {
+                    defaultCliJson().decodeFromString<WorkspaceStatusResult>(probe.stdout)
+                }.getOrNull()?.selected?.ready == true
             },
         )
     }

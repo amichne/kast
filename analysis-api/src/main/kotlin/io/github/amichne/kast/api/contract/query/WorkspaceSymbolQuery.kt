@@ -18,6 +18,9 @@ data class WorkspaceSymbolQuery(
     val maxResults: Int = 100,
     @DocField(description = "When true, treats the pattern as a regular expression.", defaultValue = "false")
     val regex: Boolean = false,
-    @DocField(description = "When true, populates the declarationScope field on each matched symbol.", defaultValue = "false")
+    @DocField(
+        description = "When true, populates the declarationScope field on each matched symbol.",
+        defaultValue = "false"
+    )
     val includeDeclarationScope: Boolean = false,
 )

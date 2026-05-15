@@ -72,7 +72,10 @@ internal abstract class InstallEmbeddedResourceService<O, R>(
         )
     }
 
-    protected open fun postInstall(targetPath: Path, result: R): R = result
+    protected open fun postInstall(
+        targetPath: Path,
+        result: R,
+    ): R = result
 
     protected abstract fun installRequest(
         options: O,
@@ -131,7 +134,10 @@ internal abstract class InstallEmbeddedResourceService<O, R>(
             .forEach { directory -> deleteEmptyDirectoryUpTo(directory, targetPath) }
     }
 
-    private fun deleteEmptyDirectoryUpTo(directory: Path, boundary: Path) {
+    private fun deleteEmptyDirectoryUpTo(
+        directory: Path,
+        boundary: Path,
+    ) {
         var current: Path? = directory
         while (current != null && current != boundary && current.startsWith(boundary)) {
             val candidate = current
@@ -154,12 +160,18 @@ internal abstract class InstallEmbeddedResourceService<O, R>(
         Files.walkFileTree(
             path,
             object : SimpleFileVisitor<Path>() {
-                override fun visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult {
+                override fun visitFile(
+                    file: Path,
+                    attrs: BasicFileAttributes,
+                ): FileVisitResult {
                     Files.delete(file)
                     return FileVisitResult.CONTINUE
                 }
 
-                override fun postVisitDirectory(dir: Path, exc: IOException?): FileVisitResult {
+                override fun postVisitDirectory(
+                    dir: Path,
+                    exc: IOException?,
+                ): FileVisitResult {
                     if (exc != null) {
                         throw exc
                     }

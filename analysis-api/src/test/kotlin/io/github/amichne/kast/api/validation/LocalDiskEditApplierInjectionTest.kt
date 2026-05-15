@@ -1,9 +1,10 @@
 package io.github.amichne.kast.api.validation
 
-import io.github.amichne.kast.api.contract.*
+import io.github.amichne.kast.api.contract.FileHash
+import io.github.amichne.kast.api.contract.FileOperation
+import io.github.amichne.kast.api.contract.TextEdit
 import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
 import io.github.amichne.kast.testing.inMemoryFileOperations
-
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test

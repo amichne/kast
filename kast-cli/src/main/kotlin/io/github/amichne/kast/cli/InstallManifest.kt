@@ -2,7 +2,6 @@ package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.api.protocol.SCHEMA_VERSION
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.nio.file.Files
 import java.nio.file.Path
@@ -69,7 +68,10 @@ internal class InstallManifestStore(
         return updated
     }
 
-    fun recordRepo(repoRoot: Path, version: String): InstallManifest {
+    fun recordRepo(
+        repoRoot: Path,
+        version: String,
+    ): InstallManifest {
         val normalizedPath = repoRoot.toAbsolutePath().normalize().toString()
         return update { existing ->
             val baseline = existing ?: InstallManifest(

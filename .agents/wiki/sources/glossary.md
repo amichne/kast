@@ -1,7 +1,6 @@
 # Glossary
 
-This page summarizes the raw note [[Glossary]]. It is the vocabulary anchor for
-the rest of the Kast corpus.
+This page summarizes the raw note [[Glossary]]. It is the vocabulary anchor for the rest of the Kast corpus.
 
 ## Source
 
@@ -14,20 +13,17 @@ This source is a glossary note.
 
 ## Summary
 
-This note defines core concepts such as workspaces, daemons, analysis sessions,
-code entity mapping, indexing, caching, traversal, and discovery. Its main
-contribution is keeping terminology stable across architecture, operator, and
-testing pages.
+This note defines core concepts such as workspaces, daemons, analysis sessions, code entity mapping, indexing, caching,
+traversal, and discovery. Its main contribution is keeping terminology stable across architecture, operator, and testing
+pages.
 
-It also helps separate overloaded terms that would otherwise drift as the wiki
-grows.
+It also helps separate overloaded terms that would otherwise drift as the wiki grows.
 
 ## Key claims
 
 - Shared vocabulary is necessary for explaining the system accurately.
 - Workspace, daemon, and session are distinct concepts with different roles.
-- Indexing, traversal, and discovery are recurring subsystem terms, not casual
-  synonyms.
+- Indexing, traversal, and discovery are recurring subsystem terms, not casual synonyms.
 
 ## Connections
 

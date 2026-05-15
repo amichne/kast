@@ -14,6 +14,11 @@ import io.github.amichne.kast.api.client.IndexingConfigOverride
 import io.github.amichne.kast.api.client.IntellijBackendConfigOverride
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.KastConfigOverride
+import io.github.amichne.kast.api.client.RemoteIndexConfigOverride
+import io.github.amichne.kast.api.client.ServerConfigOverride
+import io.github.amichne.kast.api.client.StandaloneBackendConfigOverride
+import io.github.amichne.kast.api.client.TelemetryConfigOverride
+import io.github.amichne.kast.api.client.WatcherConfigOverride
 import io.github.amichne.kast.api.client.fields.CacheEnabled
 import io.github.amichne.kast.api.client.fields.CacheSourceIndexSaveDelayMillis
 import io.github.amichne.kast.api.client.fields.CacheWriteDelayMillis
@@ -37,11 +42,6 @@ import io.github.amichne.kast.api.client.fields.TelemetryEnabled
 import io.github.amichne.kast.api.client.fields.TelemetryOutputFile
 import io.github.amichne.kast.api.client.fields.TelemetryScopes
 import io.github.amichne.kast.api.client.fields.WatcherDebounceMillis
-import io.github.amichne.kast.api.client.RemoteIndexConfigOverride
-import io.github.amichne.kast.api.client.ServerConfigOverride
-import io.github.amichne.kast.api.client.StandaloneBackendConfigOverride
-import io.github.amichne.kast.api.client.TelemetryConfigOverride
-import io.github.amichne.kast.api.client.WatcherConfigOverride
 
 @State(name = "KastSettings", storages = [Storage("kast.xml")])
 @Service(Service.Level.PROJECT)
@@ -130,7 +130,8 @@ internal class KastSettingsState : PersistentStateComponent<KastSettingsState> {
             enabled = telemetryEnabled?.let(::TelemetryEnabled),
             scopes = telemetryScopes?.takeIf(String::isNotBlank)?.let(::TelemetryScopes),
             detail = telemetryDetail?.takeIf(String::isNotBlank)?.let(::TelemetryDetail),
-            outputFile = telemetryOutputFile?.takeIf(String::isNotBlank)?.let { TelemetryOutputFile(OptionalConfigString(it)) },
+            outputFile = telemetryOutputFile?.takeIf(String::isNotBlank)
+                ?.let { TelemetryOutputFile(OptionalConfigString(it)) },
         ).takeIfAny(),
         backends = BackendsConfigOverride(
             standalone = StandaloneBackendConfigOverride(
@@ -154,10 +155,10 @@ private fun ServerConfigOverride.takeIfAny(): ServerConfigOverride? =
 private fun IndexingConfigOverride.takeIfAny(): IndexingConfigOverride? =
     takeIf {
         phase2Enabled != null ||
-            phase2BatchSize != null ||
-            identifierIndexWaitMillis != null ||
-            referenceBatchSize != null ||
-            remote != null
+        phase2BatchSize != null ||
+        identifierIndexWaitMillis != null ||
+        referenceBatchSize != null ||
+        remote != null
     }
 
 private fun RemoteIndexConfigOverride.takeIfAny(): RemoteIndexConfigOverride? =

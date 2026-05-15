@@ -31,7 +31,7 @@ private fun openHttpRemoteSourceIndex(uri: URI): InputStream {
         closeConnection(connection)
         error(
             "Remote source index is too large: $declaredLength bytes exceeds limit of " +
-                "$REMOTE_INDEX_MAX_BYTES bytes"
+            "$REMOTE_INDEX_MAX_BYTES bytes"
         )
     }
 
@@ -74,7 +74,11 @@ private class BoundedInputStream(
         return value
     }
 
-    override fun read(b: ByteArray, off: Int, len: Int): Int {
+    override fun read(
+        b: ByteArray,
+        off: Int,
+        len: Int,
+    ): Int {
         val count = super.read(b, off, len)
         if (count > 0) {
             bytesRead += count.toLong()

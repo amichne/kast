@@ -39,7 +39,10 @@ class RuntimeClasspathAssertionsTest {
         assertEquals(listOf("io/github/amichne/kast/api/client/StandaloneServerOptions.class"), missing)
     }
 
-    private fun writeJar(path: Path, entryName: String) {
+    private fun writeJar(
+        path: Path,
+        entryName: String,
+    ) {
         Files.createDirectories(path.parent)
         ZipOutputStream(Files.newOutputStream(path)).use { output ->
             output.putNextEntry(ZipEntry(entryName))
