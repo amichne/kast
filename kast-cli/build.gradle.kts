@@ -10,7 +10,7 @@ val nativeConfigDir = layout.projectDirectory.dir(
 )
 val packagedSkillSourceDir = rootProject.layout.projectDirectory.dir(".agents/skills/kast")
 val packagedEvaluationSourceDir = rootProject.layout.projectDirectory.dir("evaluation")
-val packagedCopilotAgentsSourceDir = rootProject.layout.projectDirectory.dir(".agents/agents")
+val packagedCopilotAgentsSourceDir = rootProject.layout.projectDirectory.dir(".github/agents")
 val packagedCopilotHooksSourceDir = rootProject.layout.projectDirectory.dir(".github/hooks")
 val packagedCopilotExtensionsSourceDir = rootProject.layout.projectDirectory.dir(".github/extensions")
 val embeddedSkillFiles = listOf(
