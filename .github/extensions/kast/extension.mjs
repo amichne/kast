@@ -3,9 +3,8 @@
 // Goals:
 //   1. Resolve the kast binary once at
 //      session start, cache, and use that path for every kast_* tool call.
-//   2. Expose direct `kast <wrapper>` commands as first-class native tools so the agent
-//      sees them in its tool list (discoverability) and the CLI runtime
-//      validates arguments against the schema (no JSON-in-bash brittleness).
+//   2. Expose native kast_* tools backed by `kast rpc` where the daemon method
+//      maps 1:1, while keeping wrapper-backed orchestration for the richer flows.
 //   3. Soft-warn when the agent reaches for generic view/grep/edit/create on
 //      Kotlin source — the kast equivalent is almost always cheaper in tokens
 //      and produces structured results. Soft (not deny) so genuinely
@@ -134,7 +133,7 @@ async function resolveKastBinary() {
   }
 
   resolveError = rejected.length
-    ? `no resolved Kast CLI supports direct wrapper commands; rejected: ${rejected.join(", ")}`
+    ? `no resolved Kast CLI supports kast rpc; rejected: ${rejected.join(", ")}`
     : "no Kast CLI candidate found; build the repo-local CLI or install a matching Kast release";
   return null;
 }
@@ -156,7 +155,50 @@ function readInstalledVersion() {
 }
 
 async function supportsWrapperCommands(path) {
-  return (await readCliVersion(path)) !== null;
+  const cmd = `${JSON.stringify(path)} rpc '{"jsonrpc":"2.0","method":"health","id":1}' --workspace-root=${JSON.stringify(REPO_ROOT)}`;
+  const { ok, stdout } = await execBash(cmd);
+  if (!ok) return false;
+  try {
+    const parsed = JSON.parse(stdout.trim());
+    return parsed?.jsonrpc === "2.0" && Object.prototype.hasOwnProperty.call(parsed, "result");
+  } catch {
+    return false;
+  }
+}
+
+async function callKast(method, params) {
+  const bin = await resolveKastBinary();
+  if (!bin) {
+    return JSON.stringify({
+      ok: false,
+      stage: "extension.resolve",
+      message: `kast binary not resolved: ${resolveError ?? "unknown"}`,
+    });
+  }
+  const request = JSON.stringify({ jsonrpc: "2.0", method, params: params ?? {}, id: 1 });
+  const cmd = `${JSON.stringify(bin)} rpc ${JSON.stringify(request)} --workspace-root=${JSON.stringify(REPO_ROOT)}`;
+  const { ok, stdout, stderr, code } = await execBash(cmd);
+  const out = stdout.trim();
+  if (!out) {
+    return JSON.stringify({
+      ok: false,
+      stage: "extension.exec",
+      message: `kast rpc ${method} produced no output (exit ${code})`,
+      errorText: stderr.trim() || null,
+    });
+  }
+  try {
+    JSON.parse(out);
+    return out;
+  } catch {
+    return JSON.stringify({
+      ok: false,
+      stage: "extension.parse",
+      message: `kast rpc ${method} returned non-JSON (exit ${code})`,
+      raw: out,
+      errorText: stderr.trim() || null,
+    });
+  }
 }
 
 async function callKastSkill(command, args) {
@@ -196,8 +238,8 @@ async function callKastSkill(command, args) {
 }
 
 // ---------------------------------------------------------------------------
-// Tool definitions — one per direct `kast <wrapper>` command.
-// Schemas mirror references/quickstart.md; required fields enforce contract.
+// Tool definitions — use daemon RPC where the method maps 1:1 and keep wrapper
+// orchestration for symbol-name and edit-plan flows.
 
 const ABS_PATH = "Absolute filesystem path.";
 
@@ -209,7 +251,10 @@ const tools = [
     parameters: {
       type: "object",
       properties: {
-        workspaceRoot: { type: "string", description: ABS_PATH + " Defaults to cwd." },
+        moduleName: {
+          type: "string",
+          description: "Optional module name to restrict the listing to one module.",
+        },
         includeFiles: {
           type: "boolean",
           description: "If true, return per-module source file lists.",
@@ -220,7 +265,7 @@ const tools = [
         },
       },
     },
-    handler: (args) => callKastSkill("workspace-files", args),
+    handler: (args) => callKast("workspace/files", args),
   },
   {
     name: "kast_workspace_symbol",
@@ -240,11 +285,10 @@ const tools = [
           type: "boolean",
           description: "When true, includes the declaration body text for each symbol.",
         },
-        workspaceRoot: { type: "string", description: ABS_PATH + " Defaults to cwd." },
       },
       required: ["pattern"],
     },
-    handler: (args) => callKastSkill("workspace-symbol", args),
+    handler: (args) => callKast("workspace-symbol", args),
   },
   {
     name: "kast_workspace_search",
@@ -257,12 +301,11 @@ const tools = [
         regex: { type: "boolean", description: "When true, treats pattern as a regular expression." },
         maxResults: { type: "integer", description: "Maximum number of matches to return. Default 100." },
         fileGlob: { type: "string", description: "Optional glob to restrict search (e.g., '*.kt')." },
-        caseSensitive: { type: "boolean", description: "Case-sensitive matching. Default true." },
-        workspaceRoot: { type: "string", description: ABS_PATH + " Defaults to cwd." },
+        caseSensitive: { type: "boolean", description: "Case-sensitive matching. Default false." },
       },
       required: ["pattern"],
     },
-    handler: (args) => callKastSkill("workspace-search", args),
+    handler: (args) => callKast("workspace/search", { caseSensitive: false, ...(args ?? {}) }),
   },
   {
     name: "kast_file_outline",
@@ -272,11 +315,10 @@ const tools = [
       type: "object",
       properties: {
         filePath: { type: "string", description: ABS_PATH + " Required." },
-        workspaceRoot: { type: "string", description: ABS_PATH + " Defaults to cwd." },
       },
       required: ["filePath"],
     },
-    handler: (args) => callKastSkill("file-outline", args),
+    handler: (args) => callKast("file-outline", args),
   },
   {
     name: "kast_scaffold",
@@ -384,11 +426,10 @@ const tools = [
           items: { type: "string", description: ABS_PATH },
           description: "Absolute paths of files to validate.",
         },
-        workspaceRoot: { type: "string", description: ABS_PATH + " Defaults to cwd." },
       },
       required: ["filePaths"],
     },
-    handler: (args) => callKastSkill("diagnostics", args),
+    handler: (args) => callKast("diagnostics", args),
   },
   {
     name: "kast_rename",
@@ -525,11 +566,11 @@ const session = await joinSession({
 
       await session.log(`kast extension ready (binary: ${bin}, version: ${cliVersion ?? "unknown"})`, { ephemeral: true });
       execBash(
-        `${JSON.stringify(bin)} workspace ensure --workspace-root=${JSON.stringify(REPO_ROOT)} --accept-indexing=true`,
+        `${JSON.stringify(bin)} up --workspace-root=${JSON.stringify(REPO_ROOT)} --accept-indexing=true`,
       ).then(({ok, stderr}) => {
         if (!ok) {
           session.log(
-            `kast extension: workspace ensure failed for ${REPO_ROOT}. stderr: ${stderr.trim().slice(0, 200)}`,
+            `kast extension: up failed for ${REPO_ROOT}. stderr: ${stderr.trim().slice(0, 200)}`,
             { level: "warning" },
           );
         } else {

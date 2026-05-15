@@ -1,0 +1,128 @@
+{
+  "target_repo": "konditional",
+  "workspace_root": "/Users/amichne/code/konditional",
+  "git_sha": "",
+  "slots": {
+    "SEALED_HIERARCHY": {
+      "symbol": "Konstrained",
+      "fqName": "io.amichne.konditional.core.types.Konstrained",
+      "file": "konditional-types/src/main/kotlin/io/amichne/konditional/core/types/Konstrained.kt",
+      "description": "A sealed interface with 9 nested implementations spanning 4 shape categories. Defined in konditional-types but consumed cross-module.",
+      "expected": {
+        "implementations": [
+          { "fqName": "io.amichne.konditional.core.types.Konstrained.Primitive", "module": "konditional-types", "file": "konditional-types/src/main/kotlin/io/amichne/konditional/core/types/Konstrained.kt" },
+          { "fqName": "io.amichne.konditional.core.types.Konstrained.Primitive.Int", "module": "konditional-types", "file": "konditional-types/src/main/kotlin/io/amichne/konditional/core/types/Konstrained.kt" },
+          { "fqName": "io.amichne.konditional.core.types.Konstrained.Primitive.String", "module": "konditional-types", "file": "konditional-types/src/main/kotlin/io/amichne/konditional/core/types/Konstrained.kt" },
+          { "fqName": "io.amichne.konditional.core.types.Konstrained.Primitive.Boolean", "module": "konditional-types", "file": "konditional-types/src/main/kotlin/io/amichne/konditional/core/types/Konstrained.kt" },
+          { "fqName": "io.amichne.konditional.core.types.Konstrained.Primitive.Double", "module": "konditional-types", "file": "konditional-types/src/main/kotlin/io/amichne/konditional/core/types/Konstrained.kt" },
+          { "fqName": "io.amichne.konditional.core.types.Konstrained.Object", "module": "konditional-types", "file": "konditional-types/src/main/kotlin/io/amichne/konditional/core/types/Konstrained.kt" },
+          { "fqName": "io.amichne.konditional.core.types.Konstrained.Array", "module": "konditional-types", "file": "konditional-types/src/main/kotlin/io/amichne/konditional/core/types/Konstrained.kt" },
+          { "fqName": "io.amichne.konditional.core.types.Konstrained.AsString", "module": "konditional-types", "file": "konditional-types/src/main/kotlin/io/amichne/konditional/core/types/Konstrained.kt" },
+          { "fqName": "io.amichne.konditional.core.types.Konstrained.AsInt", "module": "konditional-types", "file": "konditional-types/src/main/kotlin/io/amichne/konditional/core/types/Konstrained.kt" },
+          { "fqName": "io.amichne.konditional.core.types.Konstrained.AsBoolean", "module": "konditional-types", "file": "konditional-types/src/main/kotlin/io/amichne/konditional/core/types/Konstrained.kt" },
+          { "fqName": "io.amichne.konditional.core.types.Konstrained.AsDouble", "module": "konditional-types", "file": "konditional-types/src/main/kotlin/io/amichne/konditional/core/types/Konstrained.kt" }
+        ],
+        "modules": ["konditional-types"]
+      }
+    },
+    "DISAMBIGUATE_MEMBER": {
+      "symbol": "key",
+      "containingType": "Feature",
+      "fqName": "io.amichne.konditional.core.features.Feature.key",
+      "file": "konditional-engine/src/main/kotlin/io/amichne/konditional/core/features/Feature.kt",
+      "description": "Feature.key is a property name shared with map-style 'key' usages on unrelated types (HashMap.key, FlagKey, etc.). Grep over-matches.",
+      "expected": {
+        "minimumUsageSites": 5,
+        "expectedFiles": [
+          "konditional-engine/src/main/kotlin/io/amichne/konditional/core/features/Feature.kt",
+          "konditional-engine/src/main/kotlin/io/amichne/konditional/core/Namespace.kt"
+        ],
+        "decoyFiles": [
+          "konditional-json/src/main/kotlin/io/amichne/konditional/internal/serialization/models/FlagValue.kt"
+        ]
+      }
+    },
+    "CROSS_MODULE_CLASS": {
+      "symbol": "FlagValue",
+      "fqName": "io.amichne.konditional.internal.serialization.models.FlagValue",
+      "file": "konditional-json/src/main/kotlin/io/amichne/konditional/internal/serialization/models/FlagValue.kt",
+      "description": "FlagValue is declared in konditional-json and consumed across the json module's serialization graph (5 distinct files).",
+      "expected": {
+        "minimumReferences": 8,
+        "expectedConsumerModules": ["konditional-json"],
+        "expectedConsumerFiles": [
+          "konditional-json/src/main/kotlin/io/amichne/konditional/serialization/snapshot/ConfigurationCodec.kt",
+          "konditional-json/src/main/kotlin/io/amichne/konditional/internal/serialization/models/SerializableFlag.kt",
+          "konditional-json/src/main/kotlin/io/amichne/konditional/internal/serialization/models/SerializableRule.kt",
+          "konditional-json/src/main/kotlin/io/amichne/konditional/internal/serialization/adapters/FlagValueAdapter.kt"
+        ]
+      }
+    },
+    "OVERLOADED_OR_COMMON_FUNCTION": {
+      "symbol": "resolve",
+      "containingType": "ConditionalValue.ContextualResolver",
+      "fqName": "io.amichne.konditional.rules.ConditionalValue.ContextualResolver.resolve",
+      "file": "konditional-engine/src/main/kotlin/io/amichne/konditional/rules/ConditionalValue.kt",
+      "description": "ContextualResolver.resolve is one of many resolve() functions in the workspace. Disambiguation requires containingType.",
+      "expected": {
+        "minimumCallers": 1,
+        "expectedCallerFqNames": [
+          "io.amichne.konditional.core.FlagDefinition"
+        ],
+        "expectedCallerModules": ["konditional-engine"]
+      }
+    },
+    "RENAME_TARGET": {
+      "symbol": "NamespaceRegistry",
+      "fqName": "io.amichne.konditional.core.registry.NamespaceRegistry",
+      "newName": "FeatureRegistry",
+      "file": "konditional-engine/src/main/kotlin/io/amichne/konditional/core/registry/NamespaceRegistry.kt",
+      "description": "NamespaceRegistry is referenced in 11 files total (9 main + 2 test). Rename must touch declarations, references, and imports.",
+      "expected": {
+        "expectedFileCount": 9,
+        "affectedFiles": [
+          "konditional-engine/src/main/kotlin/io/amichne/konditional/core/registry/NamespaceRegistry.kt",
+          "konditional-engine/src/main/kotlin/io/amichne/konditional/core/registry/InMemoryNamespaceRegistry.kt",
+          "konditional-engine/src/main/kotlin/io/amichne/konditional/core/registry/NamespaceSnapshot.kt",
+          "konditional-engine/src/main/kotlin/io/amichne/konditional/core/Namespace.kt",
+          "konditional-engine/src/main/kotlin/io/amichne/konditional/core/FlagDefinition.kt",
+          "konditional-engine/src/main/kotlin/io/amichne/konditional/core/dsl/rules/RuleValueScope.kt",
+          "konditional-engine/src/main/kotlin/io/amichne/konditional/api/FeatureEvaluation.kt",
+          "konditional-engine/src/main/kotlin/io/amichne/konditional/api/FeatureEvaluationMetrics.kt",
+          "konditional-engine/src/main/kotlin/io/amichne/konditional/rules/ConditionalValue.kt"
+        ],
+        "compileCommand": "./gradlew --offline -q :konditional-engine:compileKotlin"
+      }
+    },
+    "LARGE_CLASS": {
+      "symbol": "EvaluationDiagnostics",
+      "fqName": "io.amichne.konditional.internal.evaluation.EvaluationDiagnostics",
+      "file": "konditional-engine/src/main/kotlin/io/amichne/konditional/internal/evaluation/EvaluationDiagnostics.kt",
+      "description": "265-line data class with nested sealed Decision hierarchy and TargetingNode tree. Scaffold should produce <2KB summary; raw read >8KB.",
+      "expected": {
+        "rawFileLineCount": 265,
+        "publicMembers": [
+          "namespaceId", "featureKey", "configVersion", "mode", "durationNanos", "value", "decision"
+        ],
+        "nestedTypes": [
+          "Decision", "Decision.Rule", "Decision.Default",
+          "RuleMatch", "RuleDetails",
+          "ExtensionType", "ConditionalContextType",
+          "TargetingNode", "TargetingNode.All", "TargetingNode.AnyOf", "TargetingNode.Locale"
+        ]
+      }
+    },
+    "MODULE_LIST": {
+      "modules": ["konditional-types", "konditional-engine", "konditional-json"],
+      "description": "Production modules in the konditional workspace. 'smoke-test' is included in settings.gradle.kts but is a fixture, not part of the public surface.",
+      "expected": {
+        "moduleFileCounts": {
+          "konditional-types": 84,
+          "konditional-engine": 70,
+          "konditional-json": 18
+        },
+        "fileCountTolerance": 5
+      }
+    }
+  }
+}
