@@ -8,24 +8,104 @@ icon: lucide/file-text
 
 ## v1.0.0
 
-Initial public release.
+Initial public release. Kast is a JSON-RPC analysis daemon that gives AI agents
+IDE-grade Kotlin intelligence — symbol resolution, call/type hierarchy,
+references, diagnostics, rename, and more — over a stable, tool-friendly
+protocol.
 
-### Highlights
+### Backends
 
-- **Two backends, one protocol** — standalone CLI daemon and IntelliJ
-  IDEA plugin, both speaking JSON-RPC over Unix domain sockets.
-- **Full Kotlin semantic analysis** — resolve, references, call
-  hierarchy, type hierarchy, outline, workspace symbol, diagnostics,
-  rename, apply-edits, optimize imports.
-- **Completeness metadata** — `searchScope.exhaustive` on every
-  reference result, `stats` and `truncation` on every call hierarchy
-  node.
-- **Plan-and-apply mutations** — SHA-256 hash-based conflict detection
-  on rename and apply-edits.
-- **Packaged skill** — `kast install skill` bundles agent-facing
-  instructions, OpenAPI spec, and resolver script into a
-  repository-local directory.
-- **Native launcher** — GraalVM native-image entrypoint for fast
-  startup with JVM daemon fallback.
-- **Portable distribution** — `./kast.sh build cli` produces a
-  self-contained bundle with launcher and runtime libs.
+Two fully interoperable backends, both speaking the same JSON-RPC protocol
+over Unix domain sockets:
+
+- **Standalone** — GraalVM native-image launcher with JVM daemon fallback.
+  Ships as a self-contained zip produced by `./kast.sh build cli`. Fast startup
+  (~50 ms native) with no IDE dependency.
+- **IntelliJ plugin** — Delegates to the open IDEA instance for analysis.
+  Shares the IDE's already-warm PSI and K2 compiler, so results are
+  semantically identical to what IntelliJ shows. Installed as a standard
+  plugin zip.
+
+### Analysis surface
+
+All operations are available on both backends:
+
+| Operation | Method |
+|-----------|--------|
+| Resolve symbol at position | `resolve` |
+| Find all references | `references` |
+| Incoming / outgoing call hierarchy | `callHierarchy` |
+| Type hierarchy (supertypes & subtypes) | `typeHierarchy` |
+| File outline (declarations) | `outline` |
+| Workspace-wide symbol search | `workspaceSymbol` |
+| Compiler diagnostics | `diagnostics` |
+| Rename symbol (plan + apply) | `rename` |
+| Apply arbitrary edits | `applyEdits` |
+| Optimize imports | `optimizeImports` |
+| Code completions | `completions` |
+| Implementations of interface/abstract | `implementations` |
+| Available code actions | `codeActions` |
+
+### Source index
+
+The standalone backend maintains a SQLite-backed source index that survives
+restarts and enables sub-millisecond workspace-symbol lookup:
+
+- **Phase 1** — file and declaration indexing, populated on workspace open.
+- **Phase 2** — full reference resolution, built incrementally in the
+  background after Phase 1 completes.
+- **Incremental reindex** — file-level delta updates keep the index current
+  as files change, avoiding full rebuilds.
+- **Path interning** — compact on-disk representation with reconciled pending
+  updates for write consistency.
+
+### Completeness metadata
+
+Every result that may be truncated carries explicit metadata so agents know
+when to paginate or bound their queries:
+
+- `searchScope.exhaustive: boolean` on every `references` result.
+- `stats` and `truncation` on every `callHierarchy` node.
+- SHA-256 conflict detection on `rename` and `applyEdits` — mutations are
+  rejected if the file has changed since the plan was computed.
+
+### Distribution
+
+- **`kast install skill`** — bundles the agent skill (SKILL.md), OpenAPI 3.1
+  spec, and resolver script into `.agents/skills/kast/` inside any target
+  repository. One command, no internet access required after the initial
+  install.
+- **Portable CLI zip** — `./kast.sh build cli` produces
+  `kast-cli-<version>-portable.zip`, a self-contained bundle that includes the
+  native launcher, JVM fallback, and all runtime libs.
+- **Portable backend zip** — `./kast.sh build backend --shrink` produces the
+  stripped standalone backend zip used by CI and remote deployments.
+- **OpenAPI spec** — `docs/openapi.yaml` is generated from source annotations
+  and kept in sync with every build.
+
+### CI & release
+
+- GitHub Actions release workflow triggered by `workflow_dispatch` with
+  `release_type: major | minor | patch | beta`. The workflow auto-increments
+  the semver tag, builds native launchers on Linux (x64) and macOS (ARM64),
+  packages the IntelliJ plugin, and publishes a GitHub release with combined
+  build provenance.
+- Upstream sync workflow keeps the standalone backend's bundled IntelliJ
+  distribution current.
+- Copilot setup steps pre-warm Gradle caches and Java 21 for GitHub Copilot
+  coding agents.
+
+### Workspace discovery
+
+The standalone backend auto-discovers Gradle projects by walking the
+filesystem from the workspace root, resolving `settings.gradle.kts` and
+multi-project structures without any configuration.
+
+### Interactive CLI (`kast demo`)
+
+A Kotter-based interactive terminal UI for exploring symbol graphs:
+
+- Tree-shaped call-hierarchy walker with depth limiting.
+- FQCN picker and `fzf`-backed menu for symbol selection.
+- Color-coded phase bars, operation rails, and module cells.
+- Dual-pane layout with fixture replay support for demos.
