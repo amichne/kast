@@ -17,12 +17,13 @@ data class PathsInstallRoot(val value: String) : ConfigurationField<String>()
 data class CliBinaryPath(val value: String) : ConfigurationField<String>()
 ```
 
-The file keeps growing as more configuration fields are added. Each field is a public type that users may search for,
-import, or inspect independently.
+The file keeps growing as more configuration fields are added. Each field is a
+public type that users may search for, import, or inspect independently.
 
 ## Desired review
 
 Recommend moving the field vocabulary into `config.fields`, placing
-`ConfigurationField` and each concrete field class in its own file. Helper functions that compute defaults may share a
-focused `ConfigurationDefaults.kt`
-file, but the primary public classes should not stay bundled in one root-level declaration file.
+`ConfigurationField` and each concrete field class in its own file. Helper
+functions that compute defaults may share a focused `ConfigurationDefaults.kt`
+file, but the primary public classes should not stay bundled in one root-level
+declaration file.

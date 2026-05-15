@@ -25,7 +25,6 @@ internal class WorkspaceRefreshWatcher(
     private val directoriesByWatchKey = ConcurrentHashMap<WatchKey, Path>()
     private val watchKeysByDirectory = ConcurrentHashMap<Path, WatchKey>()
     private val sourceRoots = ConcurrentHashMap.newKeySet<Path>()
-
     @Volatile
     private var closed = false
     private val worker = thread(
@@ -85,13 +84,10 @@ internal class WorkspaceRefreshWatcher(
                                 StandardWatchEventKinds.ENTRY_CREATE,
                                 StandardWatchEventKinds.ENTRY_MODIFY,
                                 StandardWatchEventKinds.ENTRY_DELETE,
-                                    -> {
+                                -> {
                                     val relativePath = event.context() as? Path ?: return@forEach
                                     val absolutePath = directory.resolve(relativePath).toAbsolutePath().normalize()
-                                    if (event.kind() == StandardWatchEventKinds.ENTRY_CREATE && Files.isDirectory(
-                                            absolutePath
-                                        )
-                                    ) {
+                                    if (event.kind() == StandardWatchEventKinds.ENTRY_CREATE && Files.isDirectory(absolutePath)) {
                                         registerDirectoryRecursively(absolutePath)
                                         forceFullRefresh = true
                                         return@forEach
@@ -148,7 +144,7 @@ internal class WorkspaceRefreshWatcher(
         watchKeysByDirectory.entries
             .filter { (directory, _) ->
                 removedSourceRoots.any(directory::startsWith) &&
-                normalizedSourceRoots.none(directory::startsWith)
+                    normalizedSourceRoots.none(directory::startsWith)
             }
             .map { entry -> entry.value }
             .forEach(::unregister)

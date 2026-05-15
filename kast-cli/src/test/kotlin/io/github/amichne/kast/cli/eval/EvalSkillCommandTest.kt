@@ -1,9 +1,9 @@
 package io.github.amichne.kast.cli.eval
 
-import io.github.amichne.kast.cli.EvalSkillExecutor
 import io.github.amichne.kast.cli.tty.CliFailure
 import io.github.amichne.kast.cli.tty.CliOutput
 import io.github.amichne.kast.cli.tty.EvalOutputFormat
+import io.github.amichne.kast.cli.EvalSkillExecutor
 import io.github.amichne.kast.cli.tty.EvalSkillOptions
 import io.github.amichne.kast.cli.tty.defaultCliJson
 import org.junit.jupiter.api.Assertions.assertThrows
@@ -144,11 +144,7 @@ class EvalSkillCommandTest {
         return skillDir
     }
 
-    private fun writeCatalog(
-        skillDir: Path,
-        behaviorFailureModes: List<String>,
-        routingFailureModes: List<String>,
-    ) {
+    private fun writeCatalog(skillDir: Path, behaviorFailureModes: List<String>, routingFailureModes: List<String>) {
         skillDir.resolve("evals/catalog.json").writeText(
             buildString {
                 append("""{"skill_name":"kast","version":1,"cases":[""")

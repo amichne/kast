@@ -1,30 +1,30 @@
 package io.github.amichne.kast.server
 
-import io.github.amichne.kast.api.contract.CallDirection
-import io.github.amichne.kast.api.contract.FileHash
-import io.github.amichne.kast.api.contract.FilePosition
-import io.github.amichne.kast.api.contract.SemanticInsertionQuery
-import io.github.amichne.kast.api.contract.SemanticInsertionTarget
-import io.github.amichne.kast.api.contract.TextEdit
-import io.github.amichne.kast.api.contract.TypeHierarchyDirection
 import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
+import io.github.amichne.kast.api.contract.CallDirection
 import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
 import io.github.amichne.kast.api.contract.query.CodeActionsQuery
 import io.github.amichne.kast.api.contract.query.CompletionsQuery
 import io.github.amichne.kast.api.contract.query.DiagnosticsQuery
+import io.github.amichne.kast.api.contract.FileHash
+import io.github.amichne.kast.api.validation.FileHashing
 import io.github.amichne.kast.api.contract.query.FileOutlineQuery
+import io.github.amichne.kast.api.contract.FilePosition
 import io.github.amichne.kast.api.contract.query.ImplementationsQuery
 import io.github.amichne.kast.api.contract.query.ImportOptimizeQuery
-import io.github.amichne.kast.api.contract.query.ReferencesQuery
+import io.github.amichne.kast.api.protocol.JsonRpcRequest
 import io.github.amichne.kast.api.contract.query.RefreshQuery
+import io.github.amichne.kast.api.contract.query.ReferencesQuery
 import io.github.amichne.kast.api.contract.query.RenameQuery
+import io.github.amichne.kast.api.contract.SemanticInsertionQuery
+import io.github.amichne.kast.api.contract.SemanticInsertionTarget
 import io.github.amichne.kast.api.contract.query.SymbolQuery
+import io.github.amichne.kast.api.contract.TextEdit
+import io.github.amichne.kast.api.contract.TypeHierarchyDirection
 import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
-import io.github.amichne.kast.api.protocol.JsonRpcRequest
-import io.github.amichne.kast.api.validation.FileHashing
 import io.github.amichne.kast.testing.FakeAnalysisBackend
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
@@ -37,10 +37,7 @@ import kotlin.io.path.writeText
 
 object DocExampleGenerator {
 
-    data class ExamplePair(
-        val request: String,
-        val response: String,
-    )
+    data class ExamplePair(val request: String, val response: String)
 
     private val json = Json {
         prettyPrint = true
@@ -100,10 +97,7 @@ object DocExampleGenerator {
     ): List<Pair<String, JsonRpcRequest>> {
         val ops = mutableListOf<Pair<String, JsonRpcRequest>>()
 
-        fun request(
-            method: String,
-            params: JsonElement? = null,
-        ) =
+        fun request(method: String, params: JsonElement? = null) =
             JsonRpcRequest(id = JsonPrimitive(1), method = method, params = params)
 
         // System operations (no params)

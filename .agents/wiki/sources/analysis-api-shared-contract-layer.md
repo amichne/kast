@@ -1,7 +1,7 @@
 # analysis-api: Shared Contract Layer
 
-This page summarizes the raw note [[analysis-api-Shared-Contract-Layer]]. It is the authoritative source for the shared
-backend contract in the current corpus.
+This page summarizes the raw note [[analysis-api-Shared-Contract-Layer]]. It is
+the authoritative source for the shared backend contract in the current corpus.
 
 ## Source
 
@@ -14,12 +14,13 @@ This source is a contract-layer note.
 
 ## Summary
 
-This note explains the `AnalysisBackend` interface, the major request and result types, capability reporting, and the
-file-operation models used by mutation features. Its main contribution is defining what Kast means by a semantic
-backend.
+This note explains the `AnalysisBackend` interface, the major request and
+result types, capability reporting, and the file-operation models used by
+mutation features. Its main contribution is defining what Kast means by a
+semantic backend.
 
-It also makes clear that the contract is a stable shared language between the CLI, transport, and concrete backend
-implementations.
+It also makes clear that the contract is a stable shared language between the
+CLI, transport, and concrete backend implementations.
 
 ## Key claims
 

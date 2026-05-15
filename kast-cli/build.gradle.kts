@@ -1,3 +1,5 @@
+import org.gradle.internal.execution.caching.CachingState.enabled
+
 plugins {
     id("kast.standalone-serialization-app")
     alias(libs.plugins.graalvm.native)
@@ -126,7 +128,6 @@ val generateFilteredSkillShadowing by tasks.registering {
     doLast {
         @Suppress("UNCHECKED_CAST")
         val parsed = groovy.json.JsonSlurper().parse(sourceFile) as Map<String, Any>
-
         @Suppress("UNCHECKED_CAST")
         val allSkills = parsed["skills"] as List<Map<String, Any>>
         val portableSkills = allSkills.filter { it.containsKey("shadowingExtensionId") }

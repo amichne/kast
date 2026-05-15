@@ -12,16 +12,18 @@
 3. Retry the same command.
 4. Only then inspect the binary path or maintenance fixtures.
 
-If the helper cannot resolve a binary, stop and report that setup blocker instead of switching to non-semantic Kotlin
-search.
+If the helper cannot resolve a binary, stop and report that setup blocker
+instead of switching to non-semantic Kotlin search.
 
 ## Contract reference
 
-All request schemas, response types, discriminated variants, and field-level notes live in `references/commands.json`.
-That file is generated from the Kotlin serialization models — it is always in lockstep with the CLI binary.
+All request schemas, response types, discriminated variants, and field-level
+notes live in `references/commands.json`. That file is generated from the
+Kotlin serialization models — it is always in lockstep with the CLI binary.
 
-Read `commands.json` when you need exact field names, types, required vs optional, enum values, or variant
-discriminators. Do not hard-code contract details from this file — defer to the spec.
+Read `commands.json` when you need exact field names, types, required vs
+optional, enum values, or variant discriminators. Do not hard-code contract
+details from this file — defer to the spec.
 
 ## Common patterns
 

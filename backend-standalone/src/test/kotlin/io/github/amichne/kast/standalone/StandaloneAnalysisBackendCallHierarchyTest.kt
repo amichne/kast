@@ -7,17 +7,17 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiReference
 import io.github.amichne.kast.api.contract.CallDirection
+import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
 import io.github.amichne.kast.api.contract.CallNodeTruncationReason
 import io.github.amichne.kast.api.contract.FilePosition
 import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.ReadCapability
 import io.github.amichne.kast.api.contract.ServerLimits
-import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
-import io.github.amichne.kast.standalone.hierarchy.StandaloneCallEdgeResolver
-import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetry
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import io.github.amichne.kast.standalone.hierarchy.StandaloneCallEdgeResolver
+import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetry
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -262,7 +262,7 @@ class StandaloneAnalysisBackendCallHierarchyTest {
         session.use { currentSession ->
             val resolver = StandaloneCallEdgeResolver(
                 candidateFileResolver = io.github.amichne.kast.standalone.analysis.CandidateFileResolver(session = currentSession),
-                normalizedWorkspaceRoot = normalizeStandalonePath(workspaceRoot),
+                normalizedWorkspaceRoot = io.github.amichne.kast.standalone.normalizeStandalonePath(workspaceRoot),
             )
             val syntheticDeclaration = syntheticPsiDeclaration(currentSession.findKtFile(backingFile.toString()))
 

@@ -4,10 +4,10 @@ import io.github.amichne.kast.api.contract.FilePosition
 import io.github.amichne.kast.api.contract.ModuleName
 import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.ReadCapability
+import io.github.amichne.kast.api.contract.query.ReferencesQuery
 import io.github.amichne.kast.api.contract.SearchScopeKind
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.contract.SymbolVisibility
-import io.github.amichne.kast.api.contract.query.ReferencesQuery
 import io.github.amichne.kast.standalone.workspace.PhasedDiscoveryResult
 import kotlinx.coroutines.test.TestResult
 import kotlinx.coroutines.test.runTest
@@ -143,75 +143,74 @@ class StandaloneAnalysisBackendFindReferencesTest {
     }
 
     @Test
-    fun `find references uses indexed candidate files without initializing full Kotlin file map`(): TestResult =
-        runTest {
-            writeFile(
-                relativePath = "src/main/kotlin/sample/Greeter.kt",
-                content = $$"""
+    fun `find references uses indexed candidate files without initializing full Kotlin file map`(): TestResult = runTest {
+        writeFile(
+            relativePath = "src/main/kotlin/sample/Greeter.kt",
+            content = $$"""
                 package sample
 
                 fun greet(name: String): String = "hi $name"
             """.trimIndent() + "\n",
-            )
-            val usageFile = writeFile(
-                relativePath = "src/main/kotlin/sample/Use.kt",
-                content = """
+        )
+        val usageFile = writeFile(
+            relativePath = "src/main/kotlin/sample/Use.kt",
+            content = """
                 package sample
 
                 fun use(): String = greet("kast")
             """.trimIndent() + "\n",
-            )
-            writeFile(
-                relativePath = "src/main/kotlin/sample/SecondaryUse.kt",
-                content = """
+        )
+        writeFile(
+            relativePath = "src/main/kotlin/sample/SecondaryUse.kt",
+            content = """
                 package sample
 
                 fun useAgain(): String = greet("again")
             """.trimIndent() + "\n",
-            )
-            repeat(20) { index ->
-                writeFile(
-                    relativePath = "src/main/kotlin/sample/unrelated/Unrelated$index.kt",
-                    content = """
+        )
+        repeat(20) { index ->
+            writeFile(
+                relativePath = "src/main/kotlin/sample/unrelated/Unrelated$index.kt",
+                content = """
                     package sample.unrelated
 
                     fun unrelated$index(): String = "value$index"
                 """.trimIndent() + "\n",
-                )
-            }
-            val queryOffset = Files.readString(usageFile).indexOf("greet")
-            val session = StandaloneAnalysisSession(
-                workspaceRoot = workspaceRoot,
-                sourceRoots = emptyList(),
-                classpathRoots = emptyList(),
-                moduleName = "sources",
             )
-            session.use { session ->
-                val backend = StandaloneAnalysisBackend(
-                    workspaceRoot = workspaceRoot,
-                    limits = ServerLimits(
-                        maxResults = 100,
-                        requestTimeoutMillis = 30_000,
-                        maxConcurrentRequests = 4,
-                    ),
-                    session = session,
-                )
-
-                assertFalse(session.isFullKtFileMapLoaded())
-
-                backend.findReferences(
-                    ReferencesQuery(
-                        position = FilePosition(
-                            filePath = usageFile.toString(),
-                            offset = queryOffset,
-                        ),
-                        includeDeclaration = true,
-                    ),
-                )
-
-                assertFalse(session.isFullKtFileMapLoaded())
-            }
         }
+        val queryOffset = Files.readString(usageFile).indexOf("greet")
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = "sources",
+        )
+        session.use { session ->
+            val backend = StandaloneAnalysisBackend(
+                workspaceRoot = workspaceRoot,
+                limits = ServerLimits(
+                    maxResults = 100,
+                    requestTimeoutMillis = 30_000,
+                    maxConcurrentRequests = 4,
+                ),
+                session = session,
+            )
+
+            assertFalse(session.isFullKtFileMapLoaded())
+
+            backend.findReferences(
+                ReferencesQuery(
+                    position = FilePosition(
+                        filePath = usageFile.toString(),
+                        offset = queryOffset,
+                    ),
+                    includeDeclaration = true,
+                ),
+            )
+
+            assertFalse(session.isFullKtFileMapLoaded())
+        }
+    }
 
     @Test
     fun `find references keeps cross-module public callers when dependent map is incomplete`(): TestResult = runTest {
@@ -281,13 +280,11 @@ class StandaloneAnalysisBackendFindReferencesTest {
                         filePath = declarationFile.toString(),
                         offset = queryOffset,
                     ),
+                    includeDeclaration = false,
                 ),
             )
 
-            assertEquals(
-                listOf(normalizePath(callerFile)),
-                result.references.map { reference -> reference.filePath }.distinct()
-            )
+            assertEquals(listOf(normalizePath(callerFile)), result.references.map { reference -> reference.filePath }.distinct())
             assertEquals(SearchScopeKind.DEPENDENT_MODULES, result.searchScope?.scope)
         }
     }
@@ -336,6 +333,7 @@ class StandaloneAnalysisBackendFindReferencesTest {
                         filePath = declarationFile.toString(),
                         offset = queryOffset,
                     ),
+                    includeDeclaration = false,
                 ),
             )
 
@@ -397,6 +395,7 @@ class StandaloneAnalysisBackendFindReferencesTest {
                         filePath = declarationFile.toString(),
                         offset = queryOffset,
                     ),
+                    includeDeclaration = false,
                 ),
             )
 
@@ -456,6 +455,7 @@ class StandaloneAnalysisBackendFindReferencesTest {
                         filePath = declarationFile.toString(),
                         offset = queryOffset,
                     ),
+                    includeDeclaration = false,
                 ),
             )
 
@@ -517,6 +517,7 @@ class StandaloneAnalysisBackendFindReferencesTest {
                         filePath = declarationFile.toString(),
                         offset = queryOffset,
                     ),
+                    includeDeclaration = false,
                 ),
             )
 
@@ -578,6 +579,7 @@ class StandaloneAnalysisBackendFindReferencesTest {
                         filePath = declarationFile.toString(),
                         offset = queryOffset,
                     ),
+                    includeDeclaration = false,
                 ),
             )
 
@@ -623,6 +625,7 @@ class StandaloneAnalysisBackendFindReferencesTest {
                         filePath = declarationFile.toString(),
                         offset = queryOffset,
                     ),
+                    includeDeclaration = false,
                 ),
             )
 
@@ -676,6 +679,7 @@ class StandaloneAnalysisBackendFindReferencesTest {
                         filePath = declarationFile.toString(),
                         offset = queryOffset,
                     ),
+                    includeDeclaration = false,
                 ),
             )
 
@@ -761,15 +765,13 @@ class StandaloneAnalysisBackendFindReferencesTest {
                         filePath = declarationFile.toString(),
                         offset = queryOffset,
                     ),
+                    includeDeclaration = false,
                 ),
             )
 
             val referenceFiles = result.references.map { it.filePath }.distinct()
             assertTrue(referenceFiles.any { it.contains("MainUse.kt") }, "expected main source set reference")
-            assertTrue(
-                referenceFiles.any { it.contains("GreeterTest.kt") },
-                "expected test source set reference (friend module)"
-            )
+            assertTrue(referenceFiles.any { it.contains("GreeterTest.kt") }, "expected test source set reference (friend module)")
             assertNotNull(result.searchScope)
             assertEquals(SymbolVisibility.INTERNAL, result.searchScope!!.visibility)
             assertEquals(SearchScopeKind.MODULE, result.searchScope!!.scope)
@@ -849,6 +851,7 @@ class StandaloneAnalysisBackendFindReferencesTest {
                         filePath = declarationFile.toString(),
                         offset = queryOffset,
                     ),
+                    includeDeclaration = false,
                 ),
             )
 
@@ -936,6 +939,7 @@ class StandaloneAnalysisBackendFindReferencesTest {
                         filePath = declarationFile.toString(),
                         offset = queryOffset,
                     ),
+                    includeDeclaration = false,
                 ),
             )
 
@@ -1020,6 +1024,7 @@ class StandaloneAnalysisBackendFindReferencesTest {
                         filePath = usageFile.toString(),
                         offset = queryOffset,
                     ),
+                    includeDeclaration = false,
                 ),
             )
 
@@ -1085,6 +1090,7 @@ class StandaloneAnalysisBackendFindReferencesTest {
                         filePath = usageFile.toString(),
                         offset = queryOffset,
                     ),
+                    includeDeclaration = false,
                 ),
             )
 
@@ -1150,6 +1156,7 @@ class StandaloneAnalysisBackendFindReferencesTest {
                         filePath = usageFile.toString(),
                         offset = queryOffset,
                     ),
+                    includeDeclaration = false,
                 ),
             )
 

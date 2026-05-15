@@ -8,16 +8,14 @@ tags:
 
 # Navigation
 
-A clear and concise navigation structure is an important aspect of good project documentation. Zensical provides several
-options to configure the behavior of navigational elements, including [tabs] and [sections], as well as features such
-as [instant navigation] and [instant previews].
+A clear and concise navigation structure is an important aspect of good project
+documentation. Zensical provides several options to configure the behavior of
+navigational elements, including [tabs] and [sections], as well as features
+such as [instant navigation] and [instant previews].
 
 [tabs]: #navigation-tabs
-
 [sections]: #navigation-sections
-
 [instant navigation]: #instant-navigation
-
 [instant previews]: #instant-previews
 
 Additional navigation can be configured [in the footer].
@@ -26,15 +24,17 @@ Additional navigation can be configured [in the footer].
 
 ## Configuration
 
-By default, Zensical creates the navigation sidebar on the basis of the folder structure and content of the Markdown
-pages. Likewise, it uses a default layout that can be overridden using various feature flags described on this page.
+By default, Zensical creates the navigation sidebar on the basis of the folder
+structure and content of the Markdown pages. Likewise, it uses a default layout
+that can be overridden using various feature flags described on this page.
 
 ### Explicit navigation
 
-If you want to exercise more control over the structure of your navigation, you can create an explicit definition of the
-navigation structure in your configuration file. In the simplest case, you simply list the paths to your content files,
-leaving it to Zensical to extract a title for each of them from the content itself. The paths need to be relative to
-the [`docs_dir`][docs_dir].
+If you want to exercise more control over the structure of your navigation, you
+can create an explicit definition of the navigation structure in your
+configuration file. In the simplest case, you simply list the paths to your
+content files, leaving it to Zensical to extract a title for each of them from
+the content itself. The paths need to be relative to the [`docs_dir`][docs_dir].
 
 [docs_dir]: basics.md#docs_dir
 
@@ -56,8 +56,8 @@ the [`docs_dir`][docs_dir].
       - about.md
     ```
 
-Instead of letting Zensical figure out the title to use for the navigation entry for a page, you can also explicitly
-specify a title:
+Instead of letting Zensical figure out the title to use for the navigation entry
+for a page, you can also explicitly specify a title:
 
 === "`zensical.toml`"
 
@@ -79,8 +79,8 @@ specify a title:
 
 #### Navigation sections
 
-You can define navigation sections to create a navigation hierarchy that guides your users to the information they
-require.
+You can define navigation sections to create a navigation hierarchy that guides
+your users to the information they require.
 
 === "`zensical.toml`"
 
@@ -109,8 +109,8 @@ require.
 
 #### External links
 
-Navigation items typically provide a path to a Markdown page. However, any string that cannot be resolved to a Markdown
-page is treated as a URL.
+Navigation items typically provide a path to a Markdown page. However, any
+string that cannot be resolved to a Markdown page is treated as a URL.
 
 === "`zensical.toml`"
 
@@ -128,12 +128,14 @@ page is treated as a URL.
         - GitHub Repo: https://github.com/zensical/docs
       ```
 
-The "GitHub Repo" navigation entry takes the user to the repository for the Zensical Documentation.
+The "GitHub Repo" navigation entry takes the user to the repository for the
+Zensical Documentation.
 
 ### Instant navigation
 
-When instant navigation is enabled, clicks on all internal links will be intercepted and dispatched via [XHR] without
-fully reloading the page. Add the following lines to your configuration:
+When instant navigation is enabled, clicks on all internal links will be
+intercepted and dispatched via [XHR] without fully reloading the page. Add
+the following lines to your configuration:
 
 === "`zensical.toml`"
 
@@ -143,7 +145,6 @@ fully reloading the page. Add the following lines to your configuration:
         "navigation.instant"
     ]
     ```
-
 === "`mkdocs.yml`"
 
     ``` yaml
@@ -152,9 +153,10 @@ fully reloading the page. Add the following lines to your configuration:
         - navigation.instant
     ```
 
-The resulting page is parsed and injected and all event handlers and components are rebound automatically, i.e., _
-_Zensical now behaves like a Single Page Application__. Also, the search index is persisted through navigation, which is
-especially useful for large documentation sites.
+The resulting page is parsed and injected and all event handlers and components
+are rebound automatically, i.e., __Zensical now behaves like a Single
+Page Application__. Also, the search index is persisted through navigation,
+which is especially useful for large documentation sites.
 
 !!! info "The [`site_url`][site_url] setting must be set"
 
@@ -163,13 +165,13 @@ especially useful for large documentation sites.
     which will be empty if this setting is omitted.
 
 [XHR]: https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest
-
 [site_url]: basics.md#site_url
 
 #### Instant prefetching
 
-Instant prefetching is a new experimental feature that will start to fetch a page once the user hovers over a link. This
-reduces the perceived loading time for the user, especially on slow connections, as the page will be available
+Instant prefetching is a new experimental feature that will start to fetch a
+page once the user hovers over a link. This reduces the perceived loading time
+for the user, especially on slow connections, as the page will be available
 immediately upon navigation. Enable it with:
 
 === "`zensical.toml`"
@@ -181,7 +183,6 @@ immediately upon navigation. Enable it with:
         "navigation.instant.prefetch"
     ]
     ```
-
 === "`mkdocs.yml`"
 
     ``` yaml
@@ -193,12 +194,12 @@ immediately upon navigation. Enable it with:
 
 #### Progress indicator
 
-In order to provide a better user experience on slow connections when using instant navigation, a progress indicator can
-be enabled. It will be shown at the top of the page and will be hidden once the page has fully loaded. You can enable it
-in your configuration with:
+In order to provide a better user experience on slow connections when using
+instant navigation, a progress indicator can be enabled. It will be shown at
+the top of the page and will be hidden once the page has fully loaded. You can
+enable it in your configuration with:
 
 === "`zensical.toml`"
-
 ``` toml
 [project.theme]
 features = [
@@ -208,7 +209,6 @@ features = [
 ```
 
 === "`mkdocs.yml`"
-
 ``` yaml
 theme:
   features:
@@ -216,13 +216,15 @@ theme:
     - navigation.instant.progress
 ```
 
-The progress indicator will only show if the page hasn't finished loading after 400ms, so that fast connections will
-never show it for a better instant experience.
+The progress indicator will only show if the page hasn't finished loading after
+400ms, so that fast connections will never show it for a better instant
+experience.
 
 ### Instant previews
 
-Instant previews allow the user to preview another site of your documentation without navigating to it. They can be very
-helpful to keep the user in context. Instant previews can be enabled on any header link with the `data-preview`
+Instant previews allow the user to preview another site of your documentation
+without navigating to it. They can be very helpful to keep the user in context.
+Instant previews can be enabled on any header link with the `data-preview`
 attribute:
 
 ```` markdown title="Link with instant preview"
@@ -245,8 +247,9 @@ attribute:
 
 #### Automatic previews
 
-The recommended way to work with instant previews is to use the Markdown extension that is included with Zensical, as it
-allows you to enable instant previews on a per-page or per-section level for your documentation:
+The recommended way to work with instant previews is to use the Markdown
+extension that is included with Zensical, as it allows you to enable
+instant previews on a per-page or per-section level for your documentation:
 
 === "`zensical.toml`"
 
@@ -272,8 +275,9 @@ allows you to enable instant previews on a per-page or per-section level for you
                   - setup/extensions/*
     ```
 
-The above configuration is what we use for our documentation. We've enabled instant previews for our changelogs,
-customization guide and for all Markdown extensions in the setup guide.
+The above configuration is what we use for our documentation. We've enabled
+instant previews for our changelogs, customization guide and for all Markdown
+extensions in the setup guide.
 
 ??? example "Full configuration example"
 
@@ -315,7 +319,6 @@ customization guide and for all Markdown extensions in the setup guide.
 
         2.  Targets specify the pages _to_ which instant previews should be enabled.
             This is the recommended way to enable instant previews.
-
 ---
 
 !!! info "The [`site_url`][site_url] setting must be set"
@@ -326,8 +329,9 @@ customization guide and for all Markdown extensions in the setup guide.
 
 ### Anchor tracking
 
-When anchor tracking is enabled, the URL in the address bar is automatically updated with the active anchor as
-highlighted in the table of contents. Add the following lines to your configuration:
+When anchor tracking is enabled, the URL in the address bar is automatically
+updated with the active anchor as highlighted in the table of contents. Add the
+following lines to your configuration:
 
 === "`zensical.toml`"
 
@@ -348,8 +352,9 @@ highlighted in the table of contents. Add the following lines to your configurat
 
 ### Navigation tabs
 
-When tabs are enabled, top-level sections are rendered in a menu layer below the header for viewports above `1220px`,
-but remain as-is on mobile. Add the following lines to your configuration:
+When tabs are enabled, top-level sections are rendered in a menu layer below
+the header for viewports above `1220px`, but remain as-is on mobile. Add the
+following lines to your configuration:
 
 === "`zensical.toml`"
 
@@ -379,17 +384,15 @@ but remain as-is on mobile. Add the following lines to your configuration:
     [![Navigation tabs disabled dark]][Navigation tabs disabled dark]
 
 [Navigation tabs enabled]: ../assets/screenshots/navigation-tabs.png#gh-light-mode-only
-
 [Navigation tabs enabled dark]: ../assets/screenshots/navigation-tabs-dark.png#gh-dark-mode-only
-
 [Navigation tabs disabled]: ../assets/screenshots/navigation.png#gh-light-mode-only
-
 [Navigation tabs disabled dark]: ../assets/screenshots/navigation-dark.png#gh-dark-mode-only
 
 #### Sticky navigation tabs
 
-When sticky tabs are enabled, navigation tabs will lock below the header and always remain visible when scrolling down.
-Just add the following two feature flags to your configuration:
+When sticky tabs are enabled, navigation tabs will lock below the header and
+always remain visible when scrolling down. Just add the following two feature
+flags to your configuration:
 
 === "`zensical.toml`"
 
@@ -412,8 +415,9 @@ Just add the following two feature flags to your configuration:
 
 ### Navigation sections
 
-When sections are enabled, top-level sections are rendered as groups in the sidebar for viewports above `1220px`, but
-remain as-is on mobile. Add the following lines to your configuration:
+When sections are enabled, top-level sections are rendered as groups in the
+sidebar for viewports above `1220px`, but remain as-is on mobile. Add the
+following lines to your configuration:
 
 === "`zensical.toml`"
 
@@ -443,21 +447,19 @@ remain as-is on mobile. Add the following lines to your configuration:
     [![Navigation sections disabled dark]][Navigation sections disabled dark]
 
 [Navigation sections enabled]: ../assets/screenshots/navigation-sections.png#gh-light-mode-only
-
 [Navigation sections enabled dark]: ../assets/screenshots/navigation-sections-dark.png#gh-dark-mode-only
-
 [Navigation sections disabled]: ../assets/screenshots/navigation.png#gh-light-mode-only
-
 [Navigation sections disabled dark]: ../assets/screenshots/navigation-dark.png#gh-dark-mode-only
 
 Both feature flags, [`navigation.tabs`][tabs] and
-[`navigation.sections`][sections], can be combined with each other. If both feature flags are enabled, sections are
-rendered for level 2 navigation items.
+[`navigation.sections`][sections], can be combined with each other. If both
+feature flags are enabled, sections are rendered for level 2 navigation items.
 
 ### Navigation expansion
 
-When expansion is enabled, the left sidebar will expand all collapsible subsections by default, so the user doesn't have
-to open subsections manually. Add the following lines to your configuration:
+When expansion is enabled, the left sidebar will expand all collapsible
+subsections by default, so the user doesn't have to open subsections manually.
+Add the following lines to your configuration:
 
 === "`zensical.toml`"
 
@@ -467,7 +469,6 @@ to open subsections manually. Add the following lines to your configuration:
         "navigation.expand"
     ]
     ```
-
 === "`mkdocs.yml`"
 
     ``` yaml
@@ -487,17 +488,15 @@ to open subsections manually. Add the following lines to your configuration:
     [![Navigation expansion disabled dark]][Navigation expansion disabled dark]
 
 [Navigation expansion enabled]: ../assets/screenshots/navigation-expand.png#gh-light-mode-only
-
 [Navigation expansion enabled dark]: ../assets/screenshots/navigation-expand-dark.png#gh-dark-mode-only
-
 [Navigation expansion disabled]: ../assets/screenshots/navigation.png#gh-light-mode-only
-
 [Navigation expansion disabled dark]: ../assets/screenshots/navigation-dark.png#gh-dark-mode-only
 
 ### Navigation path <small>Breadcrumbs</small> { #navigation-path data-toc-label="Navigation path" }
 
-When navigation paths are activated, a breadcrumb navigation is rendered above the title of each page, which might make
-orientation easier for users visiting your documentation on devices with smaller screens. Add the following lines to
+When navigation paths are activated, a breadcrumb navigation is rendered above
+the title of each page, which might make orientation easier for users visiting your
+documentation on devices with smaller screens. Add the following lines to
 your configuration:
 
 === "`zensical.toml`"
@@ -528,17 +527,15 @@ your configuration:
     [![Navigation path disabled dark]][Navigation path disabled dark]
 
 [Navigation path enabled]: ../assets/screenshots/navigation.png#gh-light-mode-only
-
 [Navigation path enabled dark]: ../assets/screenshots/navigation-dark.png#gh-dark-mode-only
-
 [Navigation path disabled]: ../assets/screenshots/navigation-path.png#gh-light-mode-only
-
 [Navigation path disabled dark]: ../assets/screenshots/navigation-path-dark.png#gh-dark-mode-only
 
 ### Navigation pruning
 
-When pruning is enabled, only the visible navigation items are included in the rendered HTML, __reducing the size of the
-built site by 33% or more__. Add the following lines to your configuration:
+When pruning is enabled, only the visible navigation items are included in the
+rendered HTML, __reducing the size of the built site by 33% or more__. Add the
+following lines to your configuration:
 
 === "`zensical.toml`"
 
@@ -565,16 +562,18 @@ built site by 33% or more__. Add the following lines to your configuration:
         [`navigation.expand`][navigation.expand], as navigation expansion requires
         the complete navigation structure.
 
-This feature flag is especially useful for documentation sites with thousands of pages, as the navigation makes up a
-significant fraction of the HTML. Navigation pruning will replace all expandable sections with links to the first page
-in that section (or the section index page).
+This feature flag is especially useful for documentation sites with thousands of
+pages, as the navigation makes up a significant fraction of the HTML. Navigation
+pruning will replace all expandable sections with links to the first page in
+that section (or the section index page).
 
 [navigation.expand]: #navigation-expansion
 
 ### Section index pages
 
-When section index pages are enabled, documents can be directly attached to sections, which is particularly useful for
-providing overview pages. Add the following lines to your configuration:
+When section index pages are enabled, documents can be directly attached to
+sections, which is particularly useful for providing overview pages. Add the
+following lines to your configuration:
 
 === "`zensical.toml`"
 
@@ -600,7 +599,8 @@ providing overview pages. Add the following lines to your configuration:
         as sections cannot host the table of contents due to missing space.
 
 In order to link a page to a section, create a new document with the name
-`index.md` in the respective folder, and add it to the beginning of your navigation section:
+`index.md` in the respective folder, and add it to the beginning of your
+navigation section:
 
 === "`zensical.toml`"
 
@@ -638,8 +638,9 @@ In order to link a page to a section, create a new document with the name
 
 #### Anchor following
 
-When anchor following for the [table of contents] is enabled, the sidebar is automatically scrolled so that the active
-anchor is always visible. Add the following lines to your configuration:
+When anchor following for the [table of contents] is enabled, the sidebar is
+automatically scrolled so that the active anchor is always visible. Add the
+following lines to your configuration:
 
 === "`zensical.toml`"
 
@@ -649,7 +650,6 @@ anchor is always visible. Add the following lines to your configuration:
         "toc.follow"
     ]
     ```
-
 === "`mkdocs.yml`"
 
     ``` yaml
@@ -660,8 +660,9 @@ anchor is always visible. Add the following lines to your configuration:
 
 #### Navigation integration
 
-When navigation integration for the [table of contents] is enabled, it is always rendered as part of the navigation
-sidebar on the left. Add the following lines to your configuration:
+When navigation integration for the [table of contents] is enabled, it is always
+rendered as part of the navigation sidebar on the left. Add the following lines
+to your configuration:
 
 === "`zensical.toml`"
 
@@ -688,6 +689,7 @@ sidebar on the left. Add the following lines to your configuration:
         [`navigation.indexes`][navigation.indexes], as sections cannot host the
         table of contents due to missing space.
 
+
 ===! "With navigation integration"
 
     [![Navigation integration enabled]][Navigation integration enabled]
@@ -699,21 +701,17 @@ sidebar on the left. Add the following lines to your configuration:
     [![Navigation integration disabled dark]][Navigation integration disabled dark]
 
 [table of contents]: extensions/python-markdown.md#table-of-contents
-
 [Navigation integration enabled]: ../assets/screenshots/toc-integrate.png#gh-light-mode-only
-
 [Navigation integration enabled dark]: ../assets/screenshots/toc-integrate-dark.png#gh-dark-mode-only
-
 [Navigation integration disabled]: ../assets/screenshots/navigation-tabs.png#gh-light-mode-only
-
 [Navigation integration disabled dark]: ../assets/screenshots/navigation-tabs-dark.png#gh-dark-mode-only
-
 [navigation.indexes]: #section-index-pages
 
 ### Back-to-top button
 
-A back-to-top button can be shown when the user, after scrolling down, starts to scroll up again. It's rendered centered
-and at the bottom of the page. Add the following lines to your configuration:
+A back-to-top button can be shown when the user, after scrolling down, starts
+to scroll up again. It's rendered centered and at the bottom of the page. Add the
+following lines to your configuration:
 
 === "`zensical.toml`"
 
@@ -736,8 +734,9 @@ and at the bottom of the page. Add the following lines to your configuration:
 
 ### Hide the sidebars
 
-The navigation and/or table of contents sidebars can be hidden for a document with the front matter `hide` property. Add
-the following lines at the top of a Markdown file:
+The navigation and/or table of contents sidebars can be hidden for a document
+with the front matter `hide` property. Add the following lines at the top of a
+Markdown file:
 
 ``` yaml
 ---
@@ -752,8 +751,9 @@ hide:
 
 ### Hide the navigation path
 
-While the [navigation path] is rendered above the main headline, sometimes, it might be desirable to hide it for a
-specific page, which can be achieved with the front matter `hide` property:
+While the [navigation path] is rendered above the main headline, sometimes, it
+might be desirable to hide it for a specific page, which can be achieved with
+the front matter `hide` property:
 
 ``` yaml
 ---
@@ -771,11 +771,14 @@ hide:
 
 ### Content area width
 
-The width of the content area is set so the length of each line doesn't exceed 80-100 characters, depending on the width
-of the characters. While this is a reasonable default, as longer lines tend to be harder to read, it may be desirable to
-increase the overall width of the content area, or even make it stretch to the entire available space.
+The width of the content area is set so the length of each line doesn't exceed
+80-100 characters, depending on the width of the characters. While this
+is a reasonable default, as longer lines tend to be harder to read, it may be
+desirable to increase the overall width of the content area, or even make it
+stretch to the entire available space.
 
-This can easily be achieved with an [additional style sheet] and a few lines of CSS:
+This can easily be achieved with an [additional style sheet] and a few lines
+of CSS:
 
 === "`docs/stylesheets/extra.css`"
 

@@ -22,13 +22,13 @@ abstract class ExtractLegacyPluginClassesTask : DefaultTask() {
     fun extract() {
         val distributionRoot = ideaDistributionDirectory.get().asFile
         val compilerJar = distributionRoot.walkTopDown()
-                              .firstOrNull { file ->
-                                  file.isFile && file.name == "kotlin-compiler.jar" &&
-                                  file.invariantSeparatorsPath.contains("/plugins/Kotlin/kotlinc/lib/")
-                              }
-                          ?: throw GradleException(
-                              "IntelliJ IDEA distribution under $distributionRoot did not contain plugins/Kotlin/kotlinc/lib/kotlin-compiler.jar.",
-                          )
+            .firstOrNull { file ->
+                file.isFile && file.name == "kotlin-compiler.jar" &&
+                    file.invariantSeparatorsPath.contains("/plugins/Kotlin/kotlinc/lib/")
+            }
+            ?: throw GradleException(
+                "IntelliJ IDEA distribution under $distributionRoot did not contain plugins/Kotlin/kotlinc/lib/kotlin-compiler.jar.",
+            )
 
         val excludedEntries = setOf(
             "com/intellij/ide/plugins/ContainerDescriptor.class",
@@ -59,7 +59,7 @@ abstract class ExtractLegacyPluginClassesTask : DefaultTask() {
                 val name = entry.name
                 val included =
                     name.startsWith("com/intellij/ide/plugins/") && name.endsWith(".class") ||
-                    name == "com/intellij/util/messages/ListenerDescriptor.class"
+                        name == "com/intellij/util/messages/ListenerDescriptor.class"
                 val excluded = name in excludedEntries || excludedPrefixes.any(name::startsWith)
                 if (!included || excluded) {
                     continue

@@ -1,7 +1,8 @@
 # analysis-server: JSON-RPC Transport Layer
 
 This page summarizes the raw note
-[[analysis-server-JSON-RPC-Transport-Layer]]. It is the main source for the transport boundary.
+[[analysis-server-JSON-RPC-Transport-Layer]]. It is the main source for the
+transport boundary.
 
 ## Source
 
@@ -14,12 +15,13 @@ This source is a server-layer note.
 
 ## Summary
 
-This note explains server startup, request dispatch, transport selection, descriptor persistence, configuration, and
-error handling. Its main contribution is showing how Kast exposes a local analysis service rather than an
+This note explains server startup, request dispatch, transport selection,
+descriptor persistence, configuration, and error handling. Its main
+contribution is showing how Kast exposes a local analysis service rather than an
 in-process-only library.
 
-It also clarifies that the server layer owns local operational concerns such as socket paths, stdio mode, and lifecycle
-cleanup.
+It also clarifies that the server layer owns local operational concerns such as
+socket paths, stdio mode, and lifecycle cleanup.
 
 ## Key claims
 

@@ -2,26 +2,7 @@
 
 package io.github.amichne.kast.api.docs
 
-import io.github.amichne.kast.api.contract.BackendCapabilities
-import io.github.amichne.kast.api.contract.CallNode
-import io.github.amichne.kast.api.contract.CallNodeTruncation
-import io.github.amichne.kast.api.contract.DeclarationScope
-import io.github.amichne.kast.api.contract.Diagnostic
-import io.github.amichne.kast.api.contract.FileHash
-import io.github.amichne.kast.api.contract.FileOperation
-import io.github.amichne.kast.api.contract.FilePosition
-import io.github.amichne.kast.api.contract.HealthResponse
-import io.github.amichne.kast.api.contract.Location
-import io.github.amichne.kast.api.contract.OutlineSymbol
-import io.github.amichne.kast.api.contract.PageInfo
-import io.github.amichne.kast.api.contract.ParameterInfo
-import io.github.amichne.kast.api.contract.RuntimeStatusResponse
-import io.github.amichne.kast.api.contract.SearchScope
-import io.github.amichne.kast.api.contract.SemanticInsertionQuery
-import io.github.amichne.kast.api.contract.SemanticInsertionResult
-import io.github.amichne.kast.api.contract.ServerLimits
-import io.github.amichne.kast.api.contract.Symbol
-import io.github.amichne.kast.api.contract.TextEdit
+import io.github.amichne.kast.api.contract.*
 import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
 import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
 import io.github.amichne.kast.api.contract.query.CodeActionsQuery
@@ -52,7 +33,6 @@ import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
 import io.github.amichne.kast.api.contract.result.ReferencesResult
 import io.github.amichne.kast.api.contract.result.RefreshResult
 import io.github.amichne.kast.api.contract.result.RenameResult
-import io.github.amichne.kast.api.contract.result.SearchMatch
 import io.github.amichne.kast.api.contract.result.SymbolResult
 import io.github.amichne.kast.api.contract.result.TypeHierarchyNode
 import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
@@ -61,8 +41,10 @@ import io.github.amichne.kast.api.contract.result.TypeHierarchyTruncation
 import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
 import io.github.amichne.kast.api.contract.result.WorkspaceModule
 import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
+import io.github.amichne.kast.api.contract.result.SearchMatch
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
-import io.github.amichne.kast.api.protocol.ApiErrorResponse
+import io.github.amichne.kast.api.protocol.*
+
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.StructureKind
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -215,10 +197,7 @@ class DocFieldCoverageTest {
         }
     }
 
-    private fun extractSchemaSection(
-        yaml: String,
-        schemaName: String,
-    ): String {
+    private fun extractSchemaSection(yaml: String, schemaName: String): String {
         val lines = yaml.lines()
         val startIdx = lines.indexOfFirst { it.trimStart().startsWith("$schemaName:") && it.startsWith("    ") }
         if (startIdx == -1) return ""

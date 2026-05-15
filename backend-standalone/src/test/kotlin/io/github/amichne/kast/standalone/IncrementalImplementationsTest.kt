@@ -297,7 +297,7 @@ class IncrementalImplementationsTest {
 
                 assertTrue(elapsedMs < 2_000L) {
                     "implementations() with $totalFiles files ($relevantFiles relevant) " +
-                    "took ${elapsedMs}ms, expected < 2000ms"
+                        "took ${elapsedMs}ms, expected < 2000ms"
                 }
             }
         }
@@ -367,10 +367,7 @@ class IncrementalImplementationsTest {
             session = session,
         )
 
-    private fun writeFile(
-        relativePath: String,
-        content: String,
-    ): Path {
+    private fun writeFile(relativePath: String, content: String): Path {
         val path = workspaceRoot.resolve(relativePath)
         Files.createDirectories(path.parent)
         path.writeText(content)

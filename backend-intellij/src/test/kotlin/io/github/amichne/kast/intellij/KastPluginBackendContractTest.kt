@@ -15,11 +15,11 @@ import com.intellij.testFramework.junit5.fixture.projectFixture
 import com.intellij.testFramework.junit5.fixture.psiFileFixture
 import com.intellij.testFramework.junit5.fixture.sourceRootFixture
 import io.github.amichne.kast.api.contract.FilePosition
+import io.github.amichne.kast.api.contract.query.ReferencesQuery
 import io.github.amichne.kast.api.contract.SearchScopeKind
 import io.github.amichne.kast.api.contract.ServerLimits
-import io.github.amichne.kast.api.contract.TypeHierarchyDirection
-import io.github.amichne.kast.api.contract.query.ReferencesQuery
 import io.github.amichne.kast.api.contract.query.SymbolQuery
+import io.github.amichne.kast.api.contract.TypeHierarchyDirection
 import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery
@@ -81,16 +81,10 @@ class KastPluginBackendContractTest {
     private val mainSourceRootFixture: TestFixture<PsiDirectory> = mainModuleFixture.sourceRootFixture()
     private val secondarySourceRootFixture: TestFixture<PsiDirectory> =
         secondaryModuleFixture.sourceRootFixture(isTestSource = true)
-    private val sampleFileFixture: TestFixture<PsiFile> = mainSourceRootFixture.psiFileFixture(
-        "Sample.kt",
-        sampleSource
-    )
+    private val sampleFileFixture: TestFixture<PsiFile> = mainSourceRootFixture.psiFileFixture("Sample.kt", sampleSource)
     private val sampleUsageFileFixture: TestFixture<PsiFile> =
         mainSourceRootFixture.psiFileFixture("SampleUsage.kt", sampleUsageSource)
-    private val hierarchyFileFixture: TestFixture<PsiFile> = mainSourceRootFixture.psiFileFixture(
-        "Hierarchy.kt",
-        hierarchySource
-    )
+    private val hierarchyFileFixture: TestFixture<PsiFile> = mainSourceRootFixture.psiFileFixture("Hierarchy.kt", hierarchySource)
     private val internalDeclarationFileFixture: TestFixture<PsiFile> =
         mainSourceRootFixture.psiFileFixture("InternalDeclaration.kt", internalDeclarationSource)
     private val internalDependentFileFixture: TestFixture<PsiFile> =
@@ -254,6 +248,7 @@ class KastPluginBackendContractTest {
         val result = backend(workspaceRoot).findReferences(
             ReferencesQuery(
                 position = FilePosition(filePath = filePath, offset = offset),
+                includeDeclaration = false,
             ),
         )
 
@@ -269,10 +264,7 @@ class KastPluginBackendContractTest {
         }
     }
 
-    private fun commonWorkspaceRoot(
-        first: String,
-        second: String,
-    ): Path {
+    private fun commonWorkspaceRoot(first: String, second: String): Path {
         val firstPath = Path.of(first).toAbsolutePath().normalize()
         val secondPath = Path.of(second).toAbsolutePath().normalize()
         return generateSequence(firstPath.parent) { it.parent }

@@ -1,20 +1,15 @@
 package io.github.amichne.kast.api.client
 
+import io.github.amichne.kast.api.client.fields.*
 import com.sksamuel.hoplite.ConfigLoaderBuilder
 import com.sksamuel.hoplite.ExperimentalHoplite
-import io.github.amichne.kast.api.client.fields.ConfigurationDefault
-import io.github.amichne.kast.api.client.fields.ConfigurationField
-import io.github.amichne.kast.api.client.fields.IndexingRemoteSourceIndexUrl
-import io.github.amichne.kast.api.client.fields.OptionalConfigString
-import io.github.amichne.kast.api.client.fields.PathsInstallRoot
-import io.github.amichne.kast.api.client.fields.ServerMaxResults
+import java.io.ByteArrayOutputStream
+import java.io.PrintStream
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import java.io.ByteArrayOutputStream
-import java.io.PrintStream
 import java.net.URLClassLoader
 import java.nio.file.Path
 import kotlin.io.path.readText

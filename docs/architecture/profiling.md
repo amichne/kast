@@ -1,11 +1,12 @@
 # Profiling the kast standalone daemon
 
-This guide covers CPU flame graphs, allocation profiling, lock contention analysis, and native memory tracking for the
-headless kast JVM daemon.
+This guide covers CPU flame graphs, allocation profiling, lock contention
+analysis, and native memory tracking for the headless kast JVM daemon.
 
 ## Locating the daemon PID
 
-The daemon PID can be found via `jps` or from the workspace descriptor file that kast writes on startup.
+The daemon PID can be found via `jps` or from the workspace descriptor file
+that kast writes on startup.
 
 ```bash
 jps | grep -i kast
@@ -32,8 +33,8 @@ Captures 30 seconds of CPU samples and writes an interactive HTML flame graph.
 asprof -d 30 -e alloc -f alloc.html <pid>
 ```
 
-Captures object allocation sites. Useful for finding transient garbage or unexpectedly large allocations during
-indexing.
+Captures object allocation sites. Useful for finding transient garbage or
+unexpectedly large allocations during indexing.
 
 ### Lock contention profile
 
@@ -42,7 +43,8 @@ asprof -d 30 -e lock -f lock.html <pid>
 ```
 
 Shows where threads spend time waiting for monitors and
-`ReentrantReadWriteLock` acquisitions. Compare with the `kast.lock.*` telemetry spans for a second perspective.
+`ReentrantReadWriteLock` acquisitions. Compare with the `kast.lock.*` telemetry
+spans for a second perspective.
 
 ### Wall-clock profile (I/O-bound code)
 
@@ -50,19 +52,21 @@ Shows where threads spend time waiting for monitors and
 asprof -d 30 -e wall -f wall.html <pid>
 ```
 
-Samples all threads regardless of CPU state. This is the right mode for diagnosing I/O-bound paths such as Gradle
-tooling API calls, SQLite writes, or VFS file loading.
+Samples all threads regardless of CPU state. This is the right mode for
+diagnosing I/O-bound paths such as Gradle tooling API calls, SQLite writes,
+or VFS file loading.
 
 ## JVM flags for better profiling
 
-Add these flags to the daemon startup command (e.g., via `JAVA_OPTS` or directly in the kast launcher script):
+Add these flags to the daemon startup command (e.g., via `JAVA_OPTS` or
+directly in the kast launcher script):
 
 ```
 -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints
 ```
 
-`DebugNonSafepoints` gives async-profiler accurate frame pointers even inside compiled code that the JIT would normally
-elide.
+`DebugNonSafepoints` gives async-profiler accurate frame pointers even inside
+compiled code that the JIT would normally elide.
 
 ### Native memory tracking
 
@@ -76,25 +80,27 @@ Once enabled, query the JVM's native memory breakdown at any time:
 jcmd <pid> VM.native_memory summary
 ```
 
-This reports class metadata, thread stacks, code cache, and GC overhead separately from the managed heap.
+This reports class metadata, thread stacks, code cache, and GC overhead
+separately from the managed heap.
 
 ## Thread naming conventions
 
 The standalone backend names its threads with recognisable prefixes:
 
-| Prefix                           | Owner                                                    |
-|----------------------------------|----------------------------------------------------------|
-| `kast-parallel-<N>`              | `ForkJoinPool` in `StandaloneAnalysisBackend` (line 119) |
-| `kast-background-indexer-phase1` | Phase 1 identifier index thread                          |
-| `kast-background-indexer-phase2` | Phase 2 symbol reference thread                          |
+| Prefix                              | Owner                        |
+|-------------------------------------|------------------------------|
+| `kast-parallel-<N>`                | `ForkJoinPool` in `StandaloneAnalysisBackend` (line 119) |
+| `kast-background-indexer-phase1`   | Phase 1 identifier index thread |
+| `kast-background-indexer-phase2`   | Phase 2 symbol reference thread |
 
 These names appear in flame graphs, thread dumps (`jstack <pid>`), and the
-`kast.lock.caller` telemetry attribute, making it straightforward to attribute contention to a specific subsystem.
+`kast.lock.caller` telemetry attribute, making it straightforward to attribute
+contention to a specific subsystem.
 
 ## Built-in telemetry
 
-When `telemetry.enabled = true` in `~/.config/kast/config.toml`, the daemon writes JSONL spans to
-`~/.config/kast/telemetry/standalone-spans.jsonl`.
+When `telemetry.enabled = true` in `~/.config/kast/config.toml`, the daemon
+writes JSONL spans to `~/.config/kast/telemetry/standalone-spans.jsonl`.
 
 Analyze the output with the bundled script:
 
@@ -104,7 +110,8 @@ python scripts/analyze-spans.py ~/.config/kast/telemetry/standalone-spans.jsonl
 
 ### OTLP export to Jaeger / Zipkin
 
-Set `KAST_OTLP_ENDPOINT` to send spans to an OTLP-compatible collector in addition to the JSONL file:
+Set `KAST_OTLP_ENDPOINT` to send spans to an OTLP-compatible collector in
+addition to the JSONL file:
 
 ```bash
 # Start Jaeger all-in-one:
@@ -114,7 +121,8 @@ docker run -d -p 16686:16686 -p 4317:4317 jaegertracing/all-in-one
 KAST_OTLP_ENDPOINT=http://localhost:4317 kast daemon start
 ```
 
-Open `http://localhost:16686` to browse traces with parent-child span relationships.
+Open `http://localhost:16686` to browse traces with parent-child span
+relationships.
 
 ## Combining approaches
 

@@ -88,10 +88,7 @@ internal class WorkspaceDiscoveryCache(
         }
     }
 
-    private inline fun <T> withStore(
-        workspaceRoot: Path,
-        block: (SqliteSourceIndexStore) -> T,
-    ): T {
+    private inline fun <T> withStore(workspaceRoot: Path, block: (SqliteSourceIndexStore) -> T): T {
         if (store != null) return block(store)
         return SqliteSourceIndexStore(workspaceRoot).use { s ->
             s.ensureSchema()

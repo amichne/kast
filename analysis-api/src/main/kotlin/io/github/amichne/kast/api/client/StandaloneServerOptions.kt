@@ -48,7 +48,7 @@ data class StandaloneServerOptions(
         ): StandaloneServerOptions {
             val workspaceRoot = Path(
                 values["workspace-root"]
-                ?: System.getProperty("user.dir"),
+                    ?: System.getProperty("user.dir"),
             ).toAbsolutePath().normalize()
             val resolvedConfig = config ?: KastConfig.load(workspaceRoot)
             return StandaloneServerOptions(
@@ -60,23 +60,21 @@ data class StandaloneServerOptions(
                     "stdio" -> AnalysisTransport.Stdio
                     "tcp" -> AnalysisTransport.Tcp(
                         host = values["tcp-host"]
-                               ?: error("tcp-host is required when transport=tcp"),
+                            ?: error("tcp-host is required when transport=tcp"),
                         port = values["tcp-port"]?.toInt()
-                               ?: error("tcp-port is required when transport=tcp"),
+                            ?: error("tcp-port is required when transport=tcp"),
                     )
                     else -> AnalysisTransport.UnixDomainSocket(
                         socketPath = values["socket-path"]
-                                         ?.let(::Path)
-                                         ?.toAbsolutePath()
-                                         ?.normalize()
-                                     ?: defaultSocketPath(workspaceRoot),
+                            ?.let(::Path)
+                            ?.toAbsolutePath()
+                            ?.normalize()
+                            ?: defaultSocketPath(workspaceRoot),
                     )
                 },
-                requestTimeoutMillis = values["request-timeout-ms"]?.toLong()
-                                       ?: resolvedConfig.server.requestTimeoutMillis.value,
+                requestTimeoutMillis = values["request-timeout-ms"]?.toLong() ?: resolvedConfig.server.requestTimeoutMillis.value,
                 maxResults = values["max-results"]?.toInt() ?: resolvedConfig.server.maxResults.value,
-                maxConcurrentRequests = values["max-concurrent-requests"]?.toInt()
-                                        ?: resolvedConfig.server.maxConcurrentRequests.value,
+                maxConcurrentRequests = values["max-concurrent-requests"]?.toInt() ?: resolvedConfig.server.maxConcurrentRequests.value,
                 profilingOverride = parseProfilingOverride(values),
             )
         }
@@ -100,14 +98,11 @@ data class StandaloneServerOptions(
         }
 
         private fun parsePathList(value: String?): List<Path> = value
-                                                                    ?.split(",")
-                                                                    ?.map(String::trim)
-                                                                    ?.filter(String::isNotEmpty)
-                                                                    ?.map { entry ->
-                                                                        Path(entry).toAbsolutePath()
-                                                                            .normalize()
-                                                                    }
-                                                                ?: emptyList()
+            ?.split(",")
+            ?.map(String::trim)
+            ?.filter(String::isNotEmpty)
+            ?.map { entry -> Path(entry).toAbsolutePath().normalize() }
+            ?: emptyList()
     }
 
     fun toCliArguments(): List<String> = buildList {

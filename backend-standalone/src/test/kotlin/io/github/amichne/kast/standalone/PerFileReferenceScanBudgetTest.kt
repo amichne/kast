@@ -1,8 +1,8 @@
 package io.github.amichne.kast.standalone
 
 import io.github.amichne.kast.api.contract.FilePosition
-import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.contract.query.ReferencesQuery
+import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetry
 import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetryConfig
 import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetryDetail
@@ -66,10 +66,7 @@ class PerFileReferenceScanBudgetTest {
         appendLine("fun $callerName(): String = target()")
     }
 
-    private fun writeFile(
-        relativePath: String,
-        content: String,
-    ): Path {
+    private fun writeFile(relativePath: String, content: String): Path {
         val path = workspaceRoot.resolve(relativePath)
         Files.createDirectories(path.parent)
         path.writeText(content)
@@ -128,14 +125,15 @@ class PerFileReferenceScanBudgetTest {
             val result = backendWithBudget(session, budgetMillis = 1L).findReferences(
                 ReferencesQuery(
                     position = FilePosition(filePath = queryFile.toString(), offset = offset),
+                    includeDeclaration = false,
                 ),
             )
             val largeRefs = result.references.count { it.filePath.endsWith("LargeCandidate.kt") }
             assertEquals(
                 0, largeRefs,
                 "Expected LargeCandidate.kt to be skipped (0 refs) because its walk exceeds " +
-                "the 1 ms budget, but found $largeRefs references. " +
-                "Is perFileScanBudgetMillis being enforced?",
+                    "the 1 ms budget, but found $largeRefs references. " +
+                    "Is perFileScanBudgetMillis being enforced?",
             )
         }
     }
@@ -176,6 +174,7 @@ class PerFileReferenceScanBudgetTest {
             val result = backendWithBudget(session, budgetMillis = 1L).findReferences(
                 ReferencesQuery(
                     position = FilePosition(filePath = queryFile.toString(), offset = offset),
+                    includeDeclaration = false,
                 ),
             )
 
@@ -226,6 +225,7 @@ class PerFileReferenceScanBudgetTest {
                 backendWithBudget(session, budgetMillis = 1L).findReferences(
                     ReferencesQuery(
                         position = FilePosition(filePath = queryFile.toString(), offset = offset),
+                        includeDeclaration = false,
                     ),
                 )
             }
@@ -278,6 +278,7 @@ class PerFileReferenceScanBudgetTest {
             backendWithBudget(session, budgetMillis = 1L, telemetry = telemetry).findReferences(
                 ReferencesQuery(
                     position = FilePosition(filePath = queryFile.toString(), offset = offset),
+                    includeDeclaration = false,
                 ),
             )
         }
@@ -298,14 +299,14 @@ class PerFileReferenceScanBudgetTest {
         )
 
         val events = referencesSpan?.get("events")?.jsonArray
-                     ?: error("No 'events' key in span: $referencesSpan")
+            ?: error("No 'events' key in span: $referencesSpan")
         val hasTimeoutEvent = events.any { event ->
             event.jsonObject["name"]?.toString() == "\"file-scan-timeout\""
         }
         assertTrue(
             hasTimeoutEvent,
             "Expected a 'file-scan-timeout' event on the kast.findReferences span but found: " +
-            events.map { it.jsonObject["name"] },
+                events.map { it.jsonObject["name"] },
         )
     }
 }

@@ -37,7 +37,7 @@ internal object IntelliJFileHashComputer {
             .sorted()
             .map { filePath ->
                 val virtualFile = vfsManager.findFileByUrl("file://$filePath")
-                                  ?: throw IllegalStateException("File not found: $filePath")
+                    ?: throw IllegalStateException("File not found: $filePath")
 
                 val content = getFileContent(virtualFile, fileDocumentManager)
                 FileHash(filePath = filePath, hash = FileHashing.sha256(content))

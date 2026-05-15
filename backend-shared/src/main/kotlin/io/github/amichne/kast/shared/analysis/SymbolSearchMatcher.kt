@@ -17,10 +17,7 @@ class SymbolSearchMatcher private constructor(
     fun matches(name: String): Boolean = predicate(name)
 
     companion object {
-        fun create(
-            pattern: String,
-            regex: Boolean,
-        ): SymbolSearchMatcher {
+        fun create(pattern: String, regex: Boolean): SymbolSearchMatcher {
             return if (regex) {
                 val compiled = try {
                     Pattern.compile(pattern)

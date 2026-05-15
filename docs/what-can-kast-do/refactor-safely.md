@@ -6,14 +6,17 @@ icon: lucide/pencil
 ---
 
 `kast` never writes code behind your back. Every mutation follows
-**plan → hash → apply**: you ask for a change, `kast` returns an edit plan plus content hashes of the files it read, you
-eyeball the plan, then send it back for application. If any file changed on disk in between, the hashes won't match and
-the daemon refuses to write. Conflict-aware, fully auditable, no surprises.
+**plan → hash → apply**: you ask for a change, `kast` returns an
+edit plan plus content hashes of the files it read, you eyeball the
+plan, then send it back for application. If any file changed on
+disk in between, the hashes won't match and the daemon refuses to
+write. Conflict-aware, fully auditable, no surprises.
 
 ## The plan → hash → apply flow
 
-The sequence below is the full round-trip for a guarded rename. The same flow applies to any mutation that returns
-`fileHashes`.
+The sequence below is the full round-trip for a guarded rename. The
+same flow applies to any mutation that returns `fileHashes`.
+
 
 ```mermaid
 sequenceDiagram
@@ -39,8 +42,8 @@ sequenceDiagram
 
 ## Rename a symbol
 
-`rename` computes every text edit needed to rename a symbol across the workspace — without writing anything. The
-response carries
+`rename` computes every text edit needed to rename a symbol across
+the workspace — without writing anything. The response carries
 `fileHashes` you can pipe straight into `apply-edits`.
 
 === "CLI"
@@ -107,16 +110,19 @@ The response contains the full edit plan:
 }
 ```
 
-`fileHashes` captures the content hash of every affected file at plan time. Hold onto these — you'll send them back when
-you apply.
+`fileHashes` captures the content hash of every affected file at
+plan time. Hold onto these — you'll send them back when you apply.
 
-!!! tip Rename defaults to `dryRun: true`. Set `dryRun: false` in the JSON-RPC request to compute and apply in one call.
-The CLI always uses dry-run so you can review before writing.
+!!! tip
+    Rename defaults to `dryRun: true`. Set `dryRun: false` in the
+    JSON-RPC request to compute and apply in one call. The CLI
+    always uses dry-run so you can review before writing.
 
 ## Apply edits
 
 Once you've reviewed the plan, send it back with the same
-`fileHashes`. The daemon re-reads each file, recomputes the hash, and rejects the request if anything drifted.
+`fileHashes`. The daemon re-reads each file, recomputes the hash,
+and rejects the request if anything drifted.
 
 === "CLI"
 
@@ -190,14 +196,17 @@ When the hashes match, the daemon writes the edits and responds:
 }
 ```
 
-If a file changed between plan and apply, the daemon returns an error instead of writing partial edits. Re-run the
-rename to get a fresh plan with current hashes.
+If a file changed between plan and apply, the daemon returns an
+error instead of writing partial edits. Re-run the rename to get a
+fresh plan with current hashes.
 
 ## Verify the result
 
-Conflict detection guarantees the edits `kast` wrote match the edits `kast` planned. It does *not* guarantee the result
-still compiles. After any non-trivial refactor, run diagnostics on the affected files — or re-resolve the renamed symbol
-to confirm identity survived.
+Conflict detection guarantees the edits `kast` wrote match the
+edits `kast` planned. It does *not* guarantee the result still
+compiles. After any non-trivial refactor, run diagnostics on the
+affected files — or re-resolve the renamed symbol to confirm
+identity survived.
 
 ```console title="Confirm the workspace still compiles"
 kast diagnostics \
@@ -212,14 +221,17 @@ kast resolve \
   --offset=20
 ```
 
-If diagnostics surface an unexpected error — or resolve returns a different symbol — read
-the [stale-results troubleshooting entry](../troubleshooting.md) before trying another rename. The daemon may need a
-`workspace refresh` to pick up edits made outside its observation window.
+If diagnostics surface an unexpected error — or resolve returns a
+different symbol — read the [stale-results troubleshooting
+entry](../troubleshooting.md) before trying another rename. The
+daemon may need a `workspace refresh` to pick up edits made outside
+its observation window.
 
 ## Optimize imports
 
-`optimize-imports` removes unused imports and sorts the rest for the files you name. Same plan-and-apply shape as
-rename: you get an edit plan with `fileHashes`, you review, you apply.
+`optimize-imports` removes unused imports and sorts the rest for
+the files you name. Same plan-and-apply shape as rename: you get an
+edit plan with `fileHashes`, you review, you apply.
 
 === "CLI"
 
@@ -249,9 +261,12 @@ rename: you get an edit plan with `fileHashes`, you review, you apply.
     /workspace/src/Sample.kt.
     ```
 
-Same shape as rename — `edits`, `fileHashes`, `affectedFiles`. Send to `apply-edits` when ready.
+Same shape as rename — `edits`, `fileHashes`, `affectedFiles`.
+Send to `apply-edits` when ready.
 
 ## Next steps
 
-- [Validate code](validate-code.md) — run diagnostics after your refactor to confirm the workspace compiles cleanly
-- [Conflict-rejected apply](../troubleshooting.md) — what to do when the daemon refuses to write because hashes drifted
+- [Validate code](validate-code.md) — run diagnostics after your
+  refactor to confirm the workspace compiles cleanly
+- [Conflict-rejected apply](../troubleshooting.md) — what to do
+  when the daemon refuses to write because hashes drifted

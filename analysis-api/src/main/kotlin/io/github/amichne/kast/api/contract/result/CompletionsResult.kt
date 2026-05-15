@@ -5,8 +5,9 @@ package io.github.amichne.kast.api.contract.result
 import io.github.amichne.kast.api.contract.ParameterInfo
 import io.github.amichne.kast.api.contract.SymbolKind
 import io.github.amichne.kast.api.docs.DocField
-import io.github.amichne.kast.api.protocol.SCHEMA_VERSION
+import io.github.amichne.kast.api.protocol.*
 import kotlinx.serialization.ExperimentalSerializationApi
+
 import kotlinx.serialization.Serializable
 
 @Serializable

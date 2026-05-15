@@ -278,9 +278,9 @@ class PackagedSkillJsonContractTest {
         },
         isReady = { probe ->
             probe.exitCode == 0 &&
-            runCatching {
-                defaultCliJson().decodeFromString<WorkspaceStatusResult>(probe.stdout)
-            }.getOrNull()?.selected?.ready == true
+                runCatching {
+                    defaultCliJson().decodeFromString<WorkspaceStatusResult>(probe.stdout)
+                }.getOrNull()?.selected?.ready == true
         },
     )
 
@@ -308,14 +308,8 @@ class PackagedSkillJsonContractTest {
     )
 
     private fun findRepoRoot(start: Path): Path = generateSequence(start.normalize()) { it.parent }
-                                                      .firstOrNull { candidate ->
-                                                          Files.isRegularFile(
-                                                              candidate.resolve(
-                                                                  ".github/hooks/session-end.sh"
-                                                              )
-                                                          )
-                                                      }
-                                                  ?: error("Could not locate repo root from $start")
+        .firstOrNull { candidate -> Files.isRegularFile(candidate.resolve(".github/hooks/session-end.sh")) }
+        ?: error("Could not locate repo root from $start")
 
     private fun Path.createDirectoriesForParent(): Path {
         Files.createDirectories(checkNotNull(parent))

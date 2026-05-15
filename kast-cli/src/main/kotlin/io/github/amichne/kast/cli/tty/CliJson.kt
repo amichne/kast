@@ -1,31 +1,31 @@
 package io.github.amichne.kast.cli.tty
 
-import io.github.amichne.kast.api.contract.BackendCapabilities
-import io.github.amichne.kast.api.contract.SemanticInsertionResult
+import io.github.amichne.kast.api.protocol.AnalysisException
 import io.github.amichne.kast.api.contract.result.ApplyEditsResult
-import io.github.amichne.kast.api.contract.result.CallHierarchyResult
+import io.github.amichne.kast.api.contract.BackendCapabilities
 import io.github.amichne.kast.api.contract.result.DiagnosticsResult
 import io.github.amichne.kast.api.contract.result.FileOutlineResult
 import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
-import io.github.amichne.kast.api.contract.result.ReferencesResult
 import io.github.amichne.kast.api.contract.result.RefreshResult
+import io.github.amichne.kast.api.contract.result.ReferencesResult
 import io.github.amichne.kast.api.contract.result.RenameResult
+import io.github.amichne.kast.api.contract.result.CallHierarchyResult
+import io.github.amichne.kast.api.contract.SemanticInsertionResult
 import io.github.amichne.kast.api.contract.result.SymbolResult
 import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
-import io.github.amichne.kast.api.protocol.AnalysisException
-import io.github.amichne.kast.cli.SmokeReport
 import io.github.amichne.kast.cli.results.DaemonStopResult
 import io.github.amichne.kast.cli.results.InstallCopilotExtensionResult
 import io.github.amichne.kast.cli.results.InstallResult
-import io.github.amichne.kast.cli.results.InstallSkillResult
 import io.github.amichne.kast.cli.results.SelfDoctorResult
 import io.github.amichne.kast.cli.results.SelfStatusResult
 import io.github.amichne.kast.cli.results.SelfUninstallResult
 import io.github.amichne.kast.cli.results.SelfUpgradeResult
-import io.github.amichne.kast.cli.results.VerifyExtensionResult
+import io.github.amichne.kast.cli.results.InstallSkillResult
+import io.github.amichne.kast.cli.SmokeReport
 import io.github.amichne.kast.cli.results.WorkspaceEnsureResult
 import io.github.amichne.kast.cli.results.WorkspaceStatusResult
+import io.github.amichne.kast.cli.results.VerifyExtensionResult
 import kotlinx.serialization.json.Json
 
 internal fun defaultCliJson(): Json = Json {

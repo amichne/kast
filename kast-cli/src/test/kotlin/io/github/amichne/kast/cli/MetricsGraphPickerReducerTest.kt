@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test
 class MetricsGraphPickerReducerTest {
     @Test
     fun `reduceRefresh returns a new instance preserving query`() {
-        val initial = MetricsGraphPicker.PickerState(query = "foo")
+        val initial = MetricsGraphPicker.PickerState(query = "foo", selection = 0)
         val results = listOf("io.foo.A", "io.foo.B")
 
         val next = MetricsGraphPicker.reduceRefresh(initial, results)

@@ -29,10 +29,7 @@ internal abstract class EmbeddedResourceBundle(
         Files.writeString(targetDir.resolve(versionMarkerFileName), "$version${System.lineSeparator()}")
     }
 
-    private fun markExecutableIfNeeded(
-        relativePath: String,
-        targetPath: Path,
-    ) {
+    private fun markExecutableIfNeeded(relativePath: String, targetPath: Path) {
         if (!isExecutableResource(relativePath)) return
         if (!targetPath.fileSystem.supportedFileAttributeViews().contains("posix")) return
 
@@ -48,10 +45,10 @@ internal abstract class EmbeddedResourceBundle(
 
     private fun openResource(relativePath: String): InputStream =
         resourceReader(relativePath)
-        ?: throw CliFailure(
-            code = missingResourceErrorCode,
-            message = "Bundled $resourceDescription resource not found: /$resourceRoot/$relativePath",
-        )
+            ?: throw CliFailure(
+                code = missingResourceErrorCode,
+                message = "Bundled $resourceDescription resource not found: /$resourceRoot/$relativePath",
+            )
 
     private companion object {
         val EXECUTABLE_RESOURCE_SUFFIXES: Set<String> = setOf(".sh", ".mjs", ".py")

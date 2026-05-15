@@ -4,7 +4,8 @@
 
 - For Kotlin code, search, references, callers, diagnostics, or edits, use the native `kast_*` tools first. If a bash
   fallback is genuinely necessary, call
-  `kast rpc '<jsonrpc-request>'` directly instead of relying on exported shell state across tool calls.
+  `kast rpc '<jsonrpc-request>'` directly instead of relying on
+  exported shell state across tool calls.
 - `.github/extensions/kast/extension.mjs` is the primary Copilot extension entrypoint. It resolves the `kast` CLI once
   per session, exposes the native
   `kast_*` tools, and soft-warns when generic tools target `.kt` or `.kts`
@@ -63,8 +64,7 @@ requests, while `kast up`, `kast status`, and `kast stop` are the human lifecycl
 ## Key conventions
 
 - Treat `AnalysisBackend`, the `kast rpc` JSON-RPC method surface, embedded skill resources, and packaged
-  Copilot-extension resources as contract surfaces. If one changes, update its consumers together: `docs/openapi.yaml`,
-  `.agents/skills/kast/**`,
+  Copilot-extension resources as contract surfaces. If one changes, update its consumers together: `docs/openapi.yaml`, `.agents/skills/kast/**`,
   `.github/extensions/kast/**`, `.github/hooks/**`, `kast.sh`/`install.sh`, and the related tests.
 - Any `AnalysisBackend` operation change must land in **both**
   `backend-standalone` and `backend-intellij`. Update `parity-tests` and keep advertised capabilities honest.

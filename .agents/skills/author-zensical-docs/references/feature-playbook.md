@@ -1,20 +1,21 @@
 # Zensical feature playbook
 
-Use this file to decide which Zensical feature improves the document instead of just making it busier.
+Use this file to decide which Zensical feature improves the document instead of
+just making it busier.
 
 ## Fast selection matrix
 
-| Need                                                          | Reach for        | Use it well                                                                                                      |
-|---------------------------------------------------------------|------------------|------------------------------------------------------------------------------------------------------------------|
-| Give a page identity in nav and metadata                      | Front matter     | Set `title`, `description`, `icon`, and `status` deliberately. Reach for `template` and `hide` only with intent. |
-| Offer alternative environments, languages, or config dialects | Content tabs     | Keep labels stable so linked tabs remain useful across pages.                                                    |
-| Create an impressive section index or landing page            | Grids            | Keep each card focused on one reader intent or destination.                                                      |
-| Surface warnings, tips, or side constraints                   | Admonitions      | Keep callouts short and secondary to the main narrative.                                                         |
-| Explain exact commands, configs, or source edits              | Code blocks      | Prefer minimal working examples. Enable copy, selection, or annotations only when they improve learning.         |
-| Compare options or provide lookup information                 | Data tables      | Keep cells short. Switch to prose when the table starts carrying paragraphs.                                     |
-| Explain flow, architecture, or state                          | Mermaid diagrams | Keep node labels terse and let the surrounding prose explain stakes and nuance.                                  |
-| Show UI, before/after visuals, or conceptual illustrations    | Images           | Always add alt text. Add captions when the image carries a specific takeaway.                                    |
-| Change branding, layout, or behavior                          | Customization    | Start with theme configuration, then use extra CSS or JS, then use template overrides.                           |
+| Need | Reach for | Use it well |
+| --- | --- | --- |
+| Give a page identity in nav and metadata | Front matter | Set `title`, `description`, `icon`, and `status` deliberately. Reach for `template` and `hide` only with intent. |
+| Offer alternative environments, languages, or config dialects | Content tabs | Keep labels stable so linked tabs remain useful across pages. |
+| Create an impressive section index or landing page | Grids | Keep each card focused on one reader intent or destination. |
+| Surface warnings, tips, or side constraints | Admonitions | Keep callouts short and secondary to the main narrative. |
+| Explain exact commands, configs, or source edits | Code blocks | Prefer minimal working examples. Enable copy, selection, or annotations only when they improve learning. |
+| Compare options or provide lookup information | Data tables | Keep cells short. Switch to prose when the table starts carrying paragraphs. |
+| Explain flow, architecture, or state | Mermaid diagrams | Keep node labels terse and let the surrounding prose explain stakes and nuance. |
+| Show UI, before/after visuals, or conceptual illustrations | Images | Always add alt text. Add captions when the image carries a specific takeaway. |
+| Change branding, layout, or behavior | Customization | Start with theme configuration, then use extra CSS or JS, then use template overrides. |
 
 ## Feature notes
 
@@ -24,14 +25,17 @@ Use this file to decide which Zensical feature improves the document instead of 
 - Use `description` to improve social metadata and page summaries.
 - Use `icon` and `status` when they help navigation scanning.
 - Use `template` for exceptional layouts, not routine pages.
-- Use `hide` sparingly; if readers still need navigation or a table of contents, keep them visible.
+- Use `hide` sparingly; if readers still need navigation or a table of contents,
+  keep them visible.
 
 ### Content tabs
 
 - Use tabs for mutually exclusive choices such as `zensical.toml` vs
   `mkdocs.yml`, or Python vs JavaScript examples.
-- Avoid tabs when readers need to compare options at the same time; use a table instead.
-- Keep tab labels identical across pages when the same choice recurs. This makes linked tabs feel intentional.
+- Avoid tabs when readers need to compare options at the same time; use a table
+  instead.
+- Keep tab labels identical across pages when the same choice recurs. This
+  makes linked tabs feel intentional.
 
 ### Grids
 
@@ -42,7 +46,8 @@ Use this file to decide which Zensical feature improves the document instead of 
 ### Admonitions
 
 - Use `note`, `info`, `tip`, and `warning` to control emphasis.
-- Put the main path in normal prose and steps. Put exceptions or supporting context in admonitions.
+- Put the main path in normal prose and steps. Put exceptions or supporting
+  context in admonitions.
 - Avoid stacking many admonitions back to back.
 
 ### Code blocks
@@ -54,9 +59,11 @@ Use this file to decide which Zensical feature improves the document instead of 
 
 ### Data tables
 
-- Use tables for option matrices, feature comparisons, key mappings, and status overviews.
+- Use tables for option matrices, feature comparisons, key mappings, and status
+  overviews.
 - Keep cells parallel and terse.
-- Consider sortable tables only when readers genuinely benefit from re-ordering.
+- Consider sortable tables only when readers genuinely benefit from
+  re-ordering.
 
 ### Diagrams
 
@@ -67,7 +74,8 @@ Use this file to decide which Zensical feature improves the document instead of 
 ### Images
 
 - Use captions when the image is evidence, not decoration.
-- Use `#only-light` and `#only-dark` variants when the same illustration needs separate light and dark versions.
+- Use `#only-light` and `#only-dark` variants when the same illustration needs
+  separate light and dark versions.
 - Use lazy loading for large screenshots or long pages.
 
 ### Customization
@@ -90,4 +98,5 @@ Use this file to decide which Zensical feature improves the document instead of 
 - Mermaid diagrams: custom `mermaid` fence in `pymdownx.superfences`
 - Tables: `tables`
 
-Note the feature requirements in the doc when readers would otherwise copy a pattern that fails without configuration.
+Note the feature requirements in the doc when readers would otherwise copy a
+pattern that fails without configuration.

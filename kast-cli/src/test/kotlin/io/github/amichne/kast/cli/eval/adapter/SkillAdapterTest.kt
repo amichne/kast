@@ -255,11 +255,7 @@ class SkillAdapterTest {
         return skillDir
     }
 
-    private fun writeCatalog(
-        skillDir: Path,
-        behaviorFailureModes: List<String>,
-        routingFailureModes: List<String>,
-    ) {
+    private fun writeCatalog(skillDir: Path, behaviorFailureModes: List<String>, routingFailureModes: List<String>) {
         skillDir.resolve("evals/catalog.json").writeText(
             buildString {
                 append("""{"skill_name":"kast","version":1,"cases":[""")

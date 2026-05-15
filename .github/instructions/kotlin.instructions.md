@@ -6,19 +6,20 @@ applyTo: "**/kotlin/**/*.kt"
 
 ## Scope
 
-This standard applies to all generated code. The principles are language-agnostic. Kotlin is the primary exemplar
-language; when generating code in other languages, apply the equivalent idioms (e.g., Rust's newtype pattern,
-TypeScript's branded types, Java's sealed classes).
+This standard applies to all generated code. The principles are language-agnostic.
+Kotlin is the primary exemplar language; when generating code in other languages,
+apply the equivalent idioms (e.g., Rust's newtype pattern, TypeScript's branded types,
+Java's sealed classes).
 
 ---
 
 ## Principle 1: Make illegal states unrepresentable
 
-Enumerate all legal variants of a concept using the type system. Every consumer must handle all variants — the compiler,
-not convention, enforces completeness.
+Enumerate all legal variants of a concept using the type system. Every consumer
+must handle all variants — the compiler, not convention, enforces completeness.
 
-Never expose a raw primitive (`String`, `Int`, `Map<String, String>`) where a named type with constrained construction
-would prevent misuse.
+Never expose a raw primitive (`String`, `Int`, `Map<String, String>`) where a
+named type with constrained construction would prevent misuse.
 
 ```kotlin
 // GOOD — sealed hierarchy; exhaustive when is compiler-checked
@@ -44,17 +45,19 @@ else       -> "Unknown"
 }
 ```
 
-**Language-agnostic rule:** If a concept has a finite set of shapes, model them as a sum type (sealed class/interface,
-enum, tagged union, Rust enum, TypeScript discriminated union). Never model them as a string tag + untyped payload.
+**Language-agnostic rule:** If a concept has a finite set of shapes, model them as
+a sum type (sealed class/interface, enum, tagged union, Rust enum, TypeScript
+discriminated union). Never model them as a string tag + untyped payload.
 
 ---
 
 ## Principle 2: Validate at construction, not at use
 
-An invalid instance must never exist. Push all invariant checks into the constructor or factory method. Downstream code
-should never need to re-validate.
+An invalid instance must never exist. Push all invariant checks into the
+constructor or factory method. Downstream code should never need to re-validate.
 
-Layer validation through interface inheritance so each level adds exactly one constraint and delegates upward.
+Layer validation through interface inheritance so each level adds exactly one
+constraint and delegates upward.
 
 ```kotlin
 // Structural contract — every value type implements this
@@ -108,17 +111,18 @@ override fun toString(): String = raw
 }
 ```
 
-**Language-agnostic rule:** The type's constructor is the single gatekeeper of validity. If you can write
-`val x = SomeType(bogusInput)` and get a live instance, the design is broken. Use private constructors + factory
-methods, `init` blocks, or the language's equivalent (Rust `pub fn new() -> Result<Self>`, TypeScript branded types with
-assertion functions).
+**Language-agnostic rule:** The type's constructor is the single gatekeeper of
+validity. If you can write `val x = SomeType(bogusInput)` and get a live instance,
+the design is broken. Use private constructors + factory methods, `init` blocks,
+or the language's equivalent (Rust `pub fn new() -> Result<Self>`, TypeScript
+branded types with assertion functions).
 
 ---
 
 ## Principle 3: Single source of truth for every invariant
 
-If an encoding format, separator, default value, or structural rule exists, exactly one site in the codebase defines it.
-All consumers delegate to that site.
+If an encoding format, separator, default value, or structural rule exists, exactly
+one site in the codebase defines it. All consumers delegate to that site.
 
 ```kotlin
 // GOOD — one object owns the encoding rule
@@ -142,16 +146,18 @@ fun split(encoded: String): List<String> = encoded.split(SEPARATOR)
 // file C: require(!name.contains("::"))
 ```
 
-**Language-agnostic rule:** If changing a rule requires edits in N places, and the compiler/type-checker does not force
-all N, the design is wrong. Extract the rule into a single owner. Constants, encoding logic, and defaults each get
-exactly one definition site.
+**Language-agnostic rule:** If changing a rule requires edits in N places, and the
+compiler/type-checker does not force all N, the design is wrong. Extract the rule
+into a single owner. Constants, encoding logic, and defaults each get exactly one
+definition site.
 
 ---
 
 ## Principle 4: Sealed hierarchies map domain shapes to behavior
 
-Use sealed types with type parameters to enumerate the legal shapes a value can take. Dispatch on the sealed subtypes —
-never on strings, enums-as-tags, or convention.
+Use sealed types with type parameters to enumerate the legal shapes a value can
+take. Dispatch on the sealed subtypes — never on strings, enums-as-tags, or
+convention.
 
 ```kotlin
 // Domain shapes — compiler-enforced exhaustiveness
@@ -178,16 +184,17 @@ is ConfigValue.Composite -> JsonObject(cv.fields.mapValues { serialize(it.value)
 }
 ```
 
-**Language-agnostic rule:** If you have a `when`/`switch`/`match` that branches on a string or integer tag to select
-behavior, replace it with a sum type whose variants carry their own data. The dispatch mechanism should be the type
-system.
+**Language-agnostic rule:** If you have a `when`/`switch`/`match` that branches on
+a string or integer tag to select behavior, replace it with a sum type whose
+variants carry their own data. The dispatch mechanism should be the type system.
 
 ---
 
 ## Principle 5: Metadata belongs to the type, not beside it
 
-If a type has associated metadata (description, help text, default value, display name), that metadata must be derivable
-from or attached to the type — not stored in a parallel data structure connected by string keys.
+If a type has associated metadata (description, help text, default value, display
+name), that metadata must be derivable from or attached to the type — not stored
+in a parallel data structure connected by string keys.
 
 ```kotlin
 // GOOD — each command variant carries its own metadata
@@ -222,16 +229,17 @@ else -> error("unknown")
 }
 ```
 
-**Language-agnostic rule:** If adding a new variant requires synchronized edits in N disconnected locations with no
-compiler enforcement, the metadata is detached. Attach it to the type or use a registry pattern where registration is
-enforced at the type-definition site.
+**Language-agnostic rule:** If adding a new variant requires synchronized edits in
+N disconnected locations with no compiler enforcement, the metadata is detached.
+Attach it to the type or use a registry pattern where registration is enforced at
+the type-definition site.
 
 ---
 
 ## Principle 6: Explicit string representation for wrapper types
 
-Language-specific but critical in Kotlin/Java/Scala: wrapper types that participate in logging, serialization, or string
-interpolation must explicitly override
+Language-specific but critical in Kotlin/Java/Scala: wrapper types that participate
+in logging, serialization, or string interpolation must explicitly override
 `toString()` to return the inner value, not the compiler-generated
 `ClassName(value)` form.
 
@@ -242,21 +250,21 @@ override fun toString(): String = address  // not "Email(alice@example.com)"
 }
 ```
 
-In other languages: ensure `Display`/`__str__`/`toString` produces the domain value, not a debug representation, for
-types used in user-facing or wire contexts.
+In other languages: ensure `Display`/`__str__`/`toString` produces the domain
+value, not a debug representation, for types used in user-facing or wire contexts.
 
 ---
 
 ## Anti-patterns to reject
 
-| # | Anti-pattern                                                                                                 | Fix                                                                   |
-|---|--------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------|
-| 1 | **Parallel metadata structures** — a list/map that mirrors a sealed hierarchy, connected only by string keys | Attach metadata to the type via an abstract property or companion     |
-| 2 | **Bag-of-strings intermediate representations** — `Map<String, String>` indexed by bare string literals      | Define a typed intermediate (data class with named, validated fields) |
-| 3 | **Scattered defaults** — a default value declared in metadata AND separately in a parser/handler             | One definition site; derive everywhere else                           |
-| 4 | **Flat sealed hierarchies** — 15 of 20 variants share a shape but no common sub-interface                    | Extract a sub-interface for the shared shape                          |
-| 5 | **Validation at use-site** — `if (x.isBlank()) throw ...` at the call site instead of in the constructor     | Move the check into the type's `init`/factory                         |
-| 6 | **String-based dispatch** — `when (tag)` / `switch (kind)` where a sealed `when` would compile-check         | Replace the tag with a sealed subtype                                 |
+| # | Anti-pattern | Fix |
+|---|---|---|
+| 1 | **Parallel metadata structures** — a list/map that mirrors a sealed hierarchy, connected only by string keys | Attach metadata to the type via an abstract property or companion |
+| 2 | **Bag-of-strings intermediate representations** — `Map<String, String>` indexed by bare string literals | Define a typed intermediate (data class with named, validated fields) |
+| 3 | **Scattered defaults** — a default value declared in metadata AND separately in a parser/handler | One definition site; derive everywhere else |
+| 4 | **Flat sealed hierarchies** — 15 of 20 variants share a shape but no common sub-interface | Extract a sub-interface for the shared shape |
+| 5 | **Validation at use-site** — `if (x.isBlank()) throw ...` at the call site instead of in the constructor | Move the check into the type's `init`/factory |
+| 6 | **String-based dispatch** — `when (tag)` / `switch (kind)` where a sealed `when` would compile-check | Replace the tag with a sealed subtype |
 
 ---
 
@@ -265,9 +273,10 @@ types used in user-facing or wire contexts.
 After generating code, verify:
 
 - [ ] Can I construct an invalid instance of any type? → Fix the constructor.
-- [ ] Does adding a new sealed variant cause a compile error everywhere it needs handling? → If not, dispatch is
-  string-based; refactor.
-- [ ] Is any string literal used as a lookup key in more than one file? → Extract a constant or, better, a type.
+- [ ] Does adding a new sealed variant cause a compile error everywhere it needs
+handling? → If not, dispatch is string-based; refactor.
+- [ ] Is any string literal used as a lookup key in more than one file? → Extract
+a constant or, better, a type.
 - [ ] Does any `when`/`switch` branch on a string that could branch on a type? → Refactor.
 - [ ] Are defaults defined in exactly one place? → Consolidate.
 - [ ] Does every wrapper type have an explicit `toString()`? → Add it.gg

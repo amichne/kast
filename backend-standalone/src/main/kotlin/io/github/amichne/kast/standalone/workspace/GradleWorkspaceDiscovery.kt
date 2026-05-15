@@ -331,7 +331,7 @@ internal object GradleWorkspaceDiscovery {
             sourceModules = sourceModules,
             diagnostics = diagnostics,
             dependentModuleNamesBySourceModuleName = dependentModuleNamesBySourceModuleName
-                                                     ?: buildDependentModuleNamesBySourceModuleName(sourceModules),
+                ?: buildDependentModuleNamesBySourceModuleName(sourceModules),
         )
     }
 
@@ -344,29 +344,23 @@ internal object GradleWorkspaceDiscovery {
         val normalizedMainSourceRoots = pathNormalizer.normalizeExistingSourceRoots(
             contentRoots
                 .asSequence()
-                .flatMap { contentRoot ->
-                    contentRoot.sourceDirectories.asSequence()
-                        .map { directory -> directory.directory.toPath() }
-                },
+                .flatMap { contentRoot -> contentRoot.sourceDirectories.asSequence().map { directory -> directory.directory.toPath() } },
         )
         val normalizedTestSourceRoots = pathNormalizer.normalizeExistingSourceRoots(
             contentRoots
                 .asSequence()
-                .flatMap { contentRoot ->
-                    contentRoot.testDirectories.asSequence()
-                        .map { directory -> directory.directory.toPath() }
-                },
+                .flatMap { contentRoot -> contentRoot.testDirectories.asSequence().map { directory -> directory.directory.toPath() } },
         )
         val testFixturesSourceRoots = (
             normalizedMainSourceRoots.filter { sourceRoot -> sourceRoot.matchesGradleSourceSet(GradleSourceSet.TEST_FIXTURES) } +
-            normalizedTestSourceRoots.filter { sourceRoot -> sourceRoot.matchesGradleSourceSet(GradleSourceSet.TEST_FIXTURES) } +
-            pathNormalizer.normalizeExistingSourceRoots(
-                conventionalGradleSourceRootCandidates(
-                    projectDirectory = projectDirectory,
-                    sourceSet = GradleSourceSet.TEST_FIXTURES,
-                ).asSequence().filter(Files::isDirectory),
-            )
-                                      ).distinct().sorted()
+                normalizedTestSourceRoots.filter { sourceRoot -> sourceRoot.matchesGradleSourceSet(GradleSourceSet.TEST_FIXTURES) } +
+                pathNormalizer.normalizeExistingSourceRoots(
+                    conventionalGradleSourceRootCandidates(
+                        projectDirectory = projectDirectory,
+                        sourceSet = GradleSourceSet.TEST_FIXTURES,
+                    ).asSequence().filter(Files::isDirectory),
+                )
+            ).distinct().sorted()
         val dependencies = module.dependencies.mapNotNull(::toGradleDependency)
         val compilerOutput = module.compilerOutput
         val normalizedOutputDir = compilerOutput.outputDir?.toPath()?.let(::normalizeStandaloneModelPath)
@@ -374,11 +368,11 @@ internal object GradleWorkspaceDiscovery {
         val testFixturesOutputRoots = (
             listOfNotNull(normalizedOutputDir, normalizedTestOutputDir)
                 .filter { outputRoot -> outputRoot.matchesGradleOutputRoot(GradleSourceSet.TEST_FIXTURES) } +
-            conventionalGradleOutputRootCandidates(
-                projectDirectory = projectDirectory,
-                sourceSet = GradleSourceSet.TEST_FIXTURES,
-            ).filter(Files::isDirectory).map(::normalizeStandaloneModelPath)
-                                      ).distinct().sorted()
+                conventionalGradleOutputRootCandidates(
+                    projectDirectory = projectDirectory,
+                    sourceSet = GradleSourceSet.TEST_FIXTURES,
+                ).filter(Files::isDirectory).map(::normalizeStandaloneModelPath)
+            ).distinct().sorted()
         return GradleModuleModel(
             gradlePath = module.gradleProject.path,
             ideaModuleName = module.name,
@@ -461,11 +455,11 @@ private fun discoverToolingApiModules(
         warnings += warning
         warningSink(warning)
     }.getOrNull()
-                         ?: return GradleWorkspaceDiscoveryResult(
-                             modules = staticModules(),
-                             diagnostics = WorkspaceDiscoveryDiagnostics(warnings = warnings),
-                             toolingApiSucceeded = false,
-                         )
+        ?: return GradleWorkspaceDiscoveryResult(
+            modules = staticModules(),
+            diagnostics = WorkspaceDiscoveryDiagnostics(warnings = warnings),
+            toolingApiSucceeded = false,
+        )
 
     val modules = when {
         toolingModules.isEmpty() -> staticModules()
@@ -496,13 +490,10 @@ internal fun detectIncompleteClasspath(modules: List<GradleModuleModel>): List<S
     }
 
 private fun GradleModuleModel.hasSourceRoots(): Boolean = mainSourceRoots.isNotEmpty() ||
-                                                          testSourceRoots.isNotEmpty() ||
-                                                          testFixturesSourceRoots.isNotEmpty()
+    testSourceRoots.isNotEmpty() ||
+    testFixturesSourceRoots.isNotEmpty()
 
-private fun toolingApiFailureWarning(
-    prefix: String,
-    error: Throwable,
-): String {
+private fun toolingApiFailureWarning(prefix: String, error: Throwable): String {
     val details = error.message?.takeIf(String::isNotBlank) ?: error::class.java.simpleName
     return "$prefix: $details"
 }

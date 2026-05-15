@@ -56,11 +56,7 @@ object ImportAnalysis {
      * the directive does not import [oldFqn] (either as an exact match or as a
      * nested member whose parent FQN starts with [oldFqn]).
      */
-    fun renameImportFqnEdit(
-        directive: KtImportDirective,
-        oldFqn: String,
-        newFqn: String,
-    ): TextEdit? {
+    fun renameImportFqnEdit(directive: KtImportDirective, oldFqn: String, newFqn: String): TextEdit? {
         if (directive.isAllUnder) return null
         val importedFqName = directive.importedFqName?.asString() ?: return null
         val isExact = importedFqName == oldFqn
@@ -78,10 +74,7 @@ object ImportAnalysis {
         )
     }
 
-    fun insertImportEdit(
-        file: KtFile,
-        fqName: String,
-    ): TextEdit? {
+    fun insertImportEdit(file: KtFile, fqName: String): TextEdit? {
         if (fqName.isBlank()) {
             return null
         }
@@ -146,7 +139,7 @@ object ImportAnalysis {
                     when (element) {
                         is KtImportDirective,
                         is KtPackageDirective,
-                            -> return
+                        -> return
 
                         is KtNameReferenceExpression -> referenceExpressions += element
                     }
@@ -167,10 +160,7 @@ object ImportAnalysis {
         }
     }
 
-    private fun offsetAfterTrailingLineBreak(
-        text: String,
-        offset: Int,
-    ): Int = when {
+    private fun offsetAfterTrailingLineBreak(text: String, offset: Int): Int = when {
         offset >= text.length -> offset
         text.startsWith("\r\n", offset) -> offset + 2
         text[offset] == '\n' || text[offset] == '\r' -> offset + 1

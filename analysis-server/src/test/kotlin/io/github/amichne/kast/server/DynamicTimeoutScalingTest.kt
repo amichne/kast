@@ -2,6 +2,8 @@ package io.github.amichne.kast.server
 
 import io.github.amichne.kast.api.contract.AnalysisBackend
 import io.github.amichne.kast.api.contract.BackendCapabilities
+import io.github.amichne.kast.api.contract.MutationCapability
+import io.github.amichne.kast.api.contract.ReadCapability
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.validation.ParsedApplyEditsQuery
 import io.github.amichne.kast.api.validation.ParsedDiagnosticsQuery
@@ -26,13 +28,13 @@ class DynamicTimeoutScalingTest {
 
     @Test
     fun effectiveTimeoutReturnBaseForSmallWorkspace() {
-        val config = AnalysisServerConfig(workspaceFileCount = 500)
+        val config = AnalysisServerConfig(requestTimeoutMillis = 30_000, workspaceFileCount = 500)
         assertEquals(30_000L, config.effectiveRequestTimeoutMillis)
     }
 
     @Test
     fun effectiveTimeoutReturnsBaseForWorkspaceExactlyAtThreshold() {
-        val config = AnalysisServerConfig(workspaceFileCount = 1_000)
+        val config = AnalysisServerConfig(requestTimeoutMillis = 30_000, workspaceFileCount = 1_000)
         assertEquals(30_000L, config.effectiveRequestTimeoutMillis)
     }
 
