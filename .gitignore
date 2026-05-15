@@ -137,3 +137,4 @@ skills-lock.json
 .agents/skills/kast-value-proof-runner/
 .agents/skills/kotlin-gradle-loop/
 .agents/skills/kotlin-standards/
+/.claude/skills/grill-with-docs/**
