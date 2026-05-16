@@ -24,6 +24,31 @@ class RunEvaluationTests(unittest.TestCase):
     def tearDown(self) -> None:
         shutil.rmtree(SCRATCH_DIR, ignore_errors=True)
 
+    def test_orchestrator_forwards_concurrency_and_max_retries(self) -> None:
+        sys.path.insert(0, str(SCRIPT_DIR))
+        try:
+            import run_evaluation
+
+            parser = run_evaluation.build_parser()
+            args = parser.parse_args(
+                [
+                    "--catalog", "c.json",
+                    "--bindings", "b.json",
+                    "--workspace", "w",
+                    "--concurrency", "7",
+                    "--max-retries", "3",
+                ]
+            )
+            self.assertEqual(7, args.concurrency)
+            self.assertEqual(3, args.max_retries)
+            defaults = parser.parse_args(
+                ["--catalog", "c.json", "--bindings", "b.json", "--workspace", "w"]
+            )
+            self.assertEqual(4, defaults.concurrency)
+            self.assertEqual(1, defaults.max_retries)
+        finally:
+            sys.path.remove(str(SCRIPT_DIR))
+
     def test_run_evaluation_orchestrates_end_to_end(self) -> None:
         workspace_root = SCRATCH_DIR / "workspace-root"
         workspace_root.mkdir(parents=True)

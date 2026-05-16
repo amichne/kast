@@ -141,6 +141,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="Shell command template passed to dispatch_runs.py placeholders",
     )
     parser.add_argument(
+        "--concurrency",
+        type=int,
+        default=4,
+        help="Parallel worker count for dispatch; default: 4",
+    )
+    parser.add_argument(
+        "--max-retries",
+        type=int,
+        default=1,
+        help="Retries for failed or empty-transcript runs; default: 1",
+    )
+    parser.add_argument(
         "--grade-command-template",
         help="Shell command template that writes grading.json for each run",
     )
@@ -178,7 +190,11 @@ def main(argv: list[str] | None = None) -> int:
             parser.error("--dispatch-command-template is required unless --skip-dispatch is set.")
         dispatch_iteration(
             iteration_dir,
-            DispatchOptions(command_template=args.dispatch_command_template),
+            DispatchOptions(
+                command_template=args.dispatch_command_template,
+                concurrency=args.concurrency,
+                max_retries=args.max_retries,
+            ),
         )
 
     if not args.skip_grade:
