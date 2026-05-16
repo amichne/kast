@@ -46,17 +46,15 @@ done
 command -v "$COPILOT_BIN" >/dev/null 2>&1 \
   || die "copilot CLI not found on PATH (set COPILOT_BIN to override)"
 
-# Per-run state isolation. The Copilot CLI keeps session/log/auth caches
-# under XDG dirs (falling back to $HOME); concurrent workers that share
-# those will race. Pin them inside the run directory so each worker is
-# self-contained.
-export XDG_CONFIG_HOME="${run_dir}/.copilot-state/config"
+# Per-run state isolation: pin Copilot's data, state, and cache dirs
+# inside the run directory so concurrent workers don't race on shared
+# session/log/cache files. Auth config is intentionally left untouched
+# so all workers reuse the user's existing Copilot login.
 export XDG_DATA_HOME="${run_dir}/.copilot-state/data"
 export XDG_STATE_HOME="${run_dir}/.copilot-state/state"
 export XDG_CACHE_HOME="${run_dir}/.copilot-state/cache"
 mkdir -p \
-  "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" \
-  "$XDG_STATE_HOME" "$XDG_CACHE_HOME" \
+  "$XDG_DATA_HOME" "$XDG_STATE_HOME" "$XDG_CACHE_HOME" \
   "$(dirname "$transcript")"
 
 stderr_log="${run_dir}/outputs/copilot.stderr.log"

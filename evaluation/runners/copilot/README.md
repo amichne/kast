@@ -63,20 +63,11 @@ in `run-one.sh`.
 
 ## Parallel-safety: per-run state isolation
 
-`run-one.sh` pins `XDG_CONFIG_HOME`, `XDG_DATA_HOME`, `XDG_STATE_HOME`,
-and `XDG_CACHE_HOME` inside each `run_dir` (`.copilot-state/…`) so
-concurrent workers cannot collide on Copilot's session/log/auth caches.
-On first run each worker may need to re-authenticate inside its sandbox;
-if you'd rather share an existing global session, override before
-calling the runner, e.g.:
-
-```bash
-export XDG_CONFIG_HOME="$HOME/.copilot-state/config"
-bash evaluation/runners/copilot/run-benchmark.sh ...
-```
-
-This trades isolation for shared auth — only do it when you're confident
-your Copilot CLI version is concurrency-safe.
+`run-one.sh` pins `XDG_DATA_HOME`, `XDG_STATE_HOME`, and `XDG_CACHE_HOME`
+inside each `run_dir` (`.copilot-state/…`) so concurrent workers cannot
+collide on Copilot's session, log, or cache data. Auth/config is
+intentionally **not** isolated — every worker reuses your existing
+Copilot login, so you don't have to re-authenticate per run.
 
 ## Escape hatches
 
