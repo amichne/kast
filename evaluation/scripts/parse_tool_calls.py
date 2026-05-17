@@ -7,22 +7,25 @@ iteration-003). Reads `outputs/transcript.md` and emits
 
 Recognised invocation shapes (in order of priority):
 
-1. Fenced JSON tool blocks emitted by Copilot/Claude harnesses:
+1. Copilot CLI JSONL event streams emitted by `--output-format json`,
+   especially assistant messages with `toolRequests`.
+
+2. Fenced JSON tool blocks emitted by Copilot/Claude harnesses:
        ```tool:call
        {"tool": "kast_resolve", "arguments": { ... }}
        ```
    Variants: ```tool_use, ```tool, ```call.
 
-2. Anthropic-style XML blocks:
+3. Anthropic-style XML blocks:
        <tool_use><name>kast_resolve</name><input>{...}</input></tool_use>
 
-3. Inline named-call markers we emit in run_instructions:
+4. Inline named-call markers we emit in run_instructions:
        [tool_call name="kast_resolve" args="{...}"]
 
-4. Bash invocations of `kast` and `kast_*` commands inside fenced ```bash
+5. Bash invocations of `kast` and `kast_*` commands inside fenced ```bash
    blocks (so the ground-truth grader can also count CLI invocations).
 
-5. Bash invocations of grep/rg/find/ls inside fenced ```bash blocks.
+6. Bash invocations of grep/rg/find/ls inside fenced ```bash blocks.
 
 Pure prose mentions ("I'd run kast_resolve") are NOT counted. The parser
 explicitly distinguishes invocation from narration by requiring either a
@@ -74,8 +77,61 @@ class ToolCall:
         return d
 
 
+def _as_list(value) -> list:
+    if isinstance(value, list):
+        return value
+    if value is None:
+        return []
+    return [value]
+
+
 def _line_of(text: str, offset: int) -> int:
     return text.count("\n", 0, offset) + 1
+
+
+def _extract_jsonl_events(text: str) -> Iterable[ToolCall]:
+    for idx, line in enumerate(text.splitlines(), start=1):
+        stripped = line.strip()
+        if not stripped.startswith("{"):
+            continue
+        try:
+            event = json.loads(stripped)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(event, dict):
+            continue
+        yield from _extract_copilot_event(event, idx)
+
+
+def _extract_copilot_event(event: dict, line: int) -> Iterable[ToolCall]:
+    event_type = str(event.get("type", ""))
+    data = event.get("data")
+    if not isinstance(data, dict):
+        return
+
+    for key in ("toolRequests", "tool_calls", "toolCalls", "toolUse", "tool_uses"):
+        for request in _as_list(data.get(key)):
+            if not isinstance(request, dict):
+                continue
+            tool = _tool_name_from_json(request)
+            if tool:
+                yield ToolCall(
+                    tool=tool,
+                    source="jsonl_tool_request",
+                    line=line,
+                    args_excerpt=_excerpt(json.dumps(request)),
+                )
+
+    if "tool" not in event_type.lower() or event_type.lower().endswith("tools_updated"):
+        return
+    tool = _tool_name_from_json(data)
+    if tool:
+        yield ToolCall(
+            tool=tool,
+            source="jsonl_tool_event",
+            line=line,
+            args_excerpt=_excerpt(json.dumps(data)),
+        )
 
 
 def _extract_fenced_json(text: str) -> Iterable[ToolCall]:
@@ -110,7 +166,7 @@ def _extract_fenced_json(text: str) -> Iterable[ToolCall]:
 
 
 def _tool_name_from_json(payload: dict) -> str | None:
-    for key in ("tool", "name", "tool_name"):
+    for key in ("tool", "name", "tool_name", "toolName"):
         value = payload.get(key)
         if isinstance(value, str) and value:
             return value
@@ -181,6 +237,7 @@ def _excerpt(text: str, limit: int = 240) -> str:
 
 def extract(transcript: str) -> list[ToolCall]:
     calls: list[ToolCall] = []
+    calls.extend(_extract_jsonl_events(transcript))
     calls.extend(_extract_fenced_json(transcript))
     calls.extend(_extract_xml(transcript))
     calls.extend(_extract_markers(transcript))

@@ -29,6 +29,7 @@ Optional:
   --max-retries N            Retry count for failed/empty runs (default: 1)
   --model NAME               Copilot model (default: gpt-5-mini, zero-cost)
   --configs LIST             Comma-separated configs (default: with_skill,without_skill)
+  --grade-command-template T Shell command template for grading
   --skip-grade               Skip grading phase
   --skip-aggregate           Skip aggregation phase
 
@@ -37,6 +38,8 @@ to pass --case repeatedly to restrict to specific case IDs).
 
 Environment:
   COPILOT_MODEL              Override the model (same as --model)
+  COPILOT_OUTPUT_FORMAT      Copilot output format (default: json)
+  COPILOT_EXPERIMENTAL       Set to 0 or false to omit --experimental
   COPILOT_BIN                Absolute path to the copilot binary
   COPILOT_EXTRA_ARGS         Extra args appended to each `copilot --prompt` call
 USAGE
@@ -51,6 +54,7 @@ concurrency="4"
 max_retries="1"
 model=""
 configs="with_skill,without_skill"
+grade_template=""
 skip_grade=""
 skip_aggregate=""
 forwarded=()
@@ -66,6 +70,7 @@ while [[ $# -gt 0 ]]; do
     --max-retries)     max_retries="$2";      shift 2 ;;
     --model)           model="$2";            shift 2 ;;
     --configs)         configs="$2";          shift 2 ;;
+    --grade-command-template) grade_template="$2"; shift 2 ;;
     --skip-grade)      skip_grade="--skip-grade";         shift ;;
     --skip-aggregate)  skip_aggregate="--skip-aggregate"; shift ;;
     -h|--help)         usage; exit 0 ;;
@@ -105,16 +110,38 @@ dispatch_template+=" --configuration {configuration}"
 dispatch_template+=" --run-number {run_number}"
 dispatch_template+=" --attempt {attempt}"
 
-exec python3 "${REPO_ROOT}/evaluation/scripts/run_evaluation.py" \
-  --catalog "$catalog" \
-  --bindings "$bindings" \
-  --workspace "$workspace" \
-  --iteration "$iteration" \
-  --runs-per-config "$runs_per_config" \
-  --configs "$configs" \
-  --concurrency "$concurrency" \
-  --max-retries "$max_retries" \
-  --dispatch-command-template "$dispatch_template" \
-  ${skip_grade} \
-  ${skip_aggregate} \
-  "${forwarded[@]}"
+shell_quote() {
+  python3 -c 'import shlex, sys; print(shlex.quote(sys.argv[1]))' "$1"
+}
+
+if [[ -z "$skip_grade" && -z "$grade_template" ]]; then
+  grader="${REPO_ROOT}/evaluation/scripts/script_grader.py"
+  [[ -f "$grader" ]] || die "script grader not found: $grader"
+  grade_template="python3 $(shell_quote "$grader") --run-dir {run_dir} --bindings $(shell_quote "$bindings")"
+fi
+
+run_args=(
+  python3 "${REPO_ROOT}/evaluation/scripts/run_evaluation.py"
+  --catalog "$catalog"
+  --bindings "$bindings"
+  --workspace "$workspace"
+  --iteration "$iteration"
+  --runs-per-config "$runs_per_config"
+  --configs "$configs"
+  --concurrency "$concurrency"
+  --max-retries "$max_retries"
+  --dispatch-command-template "$dispatch_template"
+)
+
+if [[ -n "$grade_template" ]]; then
+  run_args+=(--grade-command-template "$grade_template")
+fi
+if [[ -n "$skip_grade" ]]; then
+  run_args+=("$skip_grade")
+fi
+if [[ -n "$skip_aggregate" ]]; then
+  run_args+=("$skip_aggregate")
+fi
+run_args+=("${forwarded[@]}")
+
+exec "${run_args[@]}"

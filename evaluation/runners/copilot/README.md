@@ -38,6 +38,12 @@ bash evaluation/runners/copilot/run-benchmark.sh \
 forwarded verbatim to `evaluation/scripts/run_evaluation.py`, which is
 how `--case <id>` (repeatable) gets through.
 
+By default the wrapper also wires `evaluation/scripts/script_grader.py`
+as `run_evaluation.py --grade-command-template`, so expectations marked
+`graded_by: script` are finalized and `benchmark.json` is generated. Pass
+`--grade-command-template` to supply a different grader, or `--skip-grade
+--skip-aggregate` when you only want raw transcripts.
+
 ## Files
 
 | File | Purpose |
@@ -74,15 +80,16 @@ Copilot login, so you don't have to re-authenticate per run.
 | Variable | Effect |
 |----------|--------|
 | `COPILOT_MODEL` | Model name passed to `copilot --model`. Default: `gpt-5-mini`. |
+| `COPILOT_OUTPUT_FORMAT` | Output format passed to `copilot --output-format`. Default: `json`, so transcripts are JSONL event streams. |
+| `COPILOT_EXPERIMENTAL` | Set to `0` or `false` to omit the default `--experimental` flag. |
 | `COPILOT_BIN`   | Absolute path to the `copilot` binary. Default: `copilot` (looked up on `PATH`). |
 | `COPILOT_EXTRA_ARGS` | Extra args appended verbatim to every `copilot --prompt` call (word-split, no quoting). Use sparingly. |
-| `KAST_WORKSPACE_ROOT` | Repo root passed to `copilot --add-dir`. Set automatically by `run-benchmark.sh` from the bindings file; only set this yourself when calling `run-one.sh` directly. |
+| `KAST_WORKSPACE_ROOT` | Repo root passed to `copilot -C` and `--add-dir`. Set automatically by `run-benchmark.sh` from the bindings file; only set this yourself when calling `run-one.sh` directly. |
 
 ## What this runner does *not* do
 
-- Grading. The `--grade-command-template` slot in `run_evaluation.py` is
-  untouched; the framework still falls back to its built-in script-based
-  grader for `graded_by: script` expectations, and LLM-judged
-  expectations remain unscored unless you supply your own grader.
-- Catalog rendering or workspace scaffolding. Those phases live in
-  `evaluation/scripts/` and run unchanged.
+- LLM grading. The default grader only scores expectations marked
+  `graded_by: script`; LLM-judged expectations remain unscored unless you
+  supply your own `--grade-command-template`.
+- Custom rendering or scaffolding. Those phases still live in
+  `evaluation/scripts/`; `run-benchmark.sh` invokes them unchanged.

@@ -38,8 +38,22 @@ done
 [[ -n "$run_dir"      ]] || die "--run-dir is required"
 [[ -f "$instructions" ]] || die "instructions file not found: $instructions"
 
+prompt_text="$(python3 - "$instructions" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+text = Path(sys.argv[1]).read_text()
+match = re.search(r"```text\s*\n(?P<prompt>.*?)\n```", text, re.DOTALL)
+print((match.group("prompt") if match else text).strip())
+PY
+)"
+[[ -n "$prompt_text" ]] || die "instructions file did not contain a prompt: $instructions"
+
 : "${COPILOT_MODEL:=gpt-5-mini}"
 : "${COPILOT_BIN:=copilot}"
+: "${COPILOT_OUTPUT_FORMAT:=json}"
+: "${COPILOT_EXPERIMENTAL:=1}"
 : "${COPILOT_EXTRA_ARGS:=}"
 : "${KAST_WORKSPACE_ROOT:=}"
 
@@ -59,18 +73,27 @@ mkdir -p \
 
 stderr_log="${run_dir}/outputs/copilot.stderr.log"
 
-add_dir_args=()
+workspace_args=()
 if [[ -n "$KAST_WORKSPACE_ROOT" ]]; then
-  add_dir_args=(--add-dir "$KAST_WORKSPACE_ROOT")
+  workspace_args=(-C "$KAST_WORKSPACE_ROOT" --add-dir "$KAST_WORKSPACE_ROOT")
+fi
+
+experimental_args=()
+if [[ "$COPILOT_EXPERIMENTAL" != "0" && "$COPILOT_EXPERIMENTAL" != "false" ]]; then
+  experimental_args=(--experimental)
 fi
 
 # shellcheck disable=SC2086  # COPILOT_EXTRA_ARGS is intentionally word-split
 "$COPILOT_BIN" \
-  --prompt "$(cat "$instructions")" \
+  "${workspace_args[@]}" \
+  --prompt "$prompt_text" \
   --model "$COPILOT_MODEL" \
   --no-color \
-  --allow-all-tools \
-  "${add_dir_args[@]}" \
+  --silent \
+  --stream off \
+  --output-format "$COPILOT_OUTPUT_FORMAT" \
+  --allow-all \
+  "${experimental_args[@]}" \
   ${COPILOT_EXTRA_ARGS} \
   >"$transcript" \
   2>"$stderr_log"
