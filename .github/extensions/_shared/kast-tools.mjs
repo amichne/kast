@@ -11,7 +11,7 @@ const ABS_PATH = "Absolute filesystem path.";
 const TOOL_SPECS = [
   {
     name: "kast_workspace_files",
-    method: "workspace/files",
+    method: "raw/workspace-files",
     description:
       "List Kotlin workspace modules and (optionally) their source files. Use to discover scope before scaffolding or resolving symbols. Far cheaper than recursive directory listings; truncation is reported per-module.",
     parameters: {
@@ -34,7 +34,7 @@ const TOOL_SPECS = [
   },
   {
     name: "kast_workspace_symbol",
-    method: "workspace-symbol",
+    method: "raw/workspace-symbol",
     description:
       "Search the workspace for Kotlin symbols by name pattern. Supports substring matching (default) and regex. Use to find declarations across the codebase — far more precise than grep/rg for symbol names because it understands Kotlin semantics (overloads, inherited members, cross-module references).",
     parameters: {
@@ -57,7 +57,7 @@ const TOOL_SPECS = [
   },
   {
     name: "kast_workspace_search",
-    method: "workspace/search",
+    method: "raw/workspace-search",
     defaultArgs: { caseSensitive: false },
     description:
       "Search file contents across the workspace for text patterns. Supports substring and regex matching with optional file glob filtering. Use this instead of grep/rg for searching string literals, comments, and arbitrary text in Kotlin source files.",
@@ -75,7 +75,7 @@ const TOOL_SPECS = [
   },
   {
     name: "kast_file_outline",
-    method: "file-outline",
+    method: "raw/file-outline",
     description:
       "Get a hierarchical symbol outline for a Kotlin file. Returns nested declarations (classes, functions, properties) with their signatures and locations. Lighter than scaffold — use when you only need the structural overview without references, type hierarchy, or file content.",
     parameters: {
@@ -88,7 +88,7 @@ const TOOL_SPECS = [
   },
   {
     name: "kast_scaffold",
-    method: "skill/scaffold",
+    method: "symbol/scaffold",
     description:
       "Summarize a Kotlin file/type structure (declarations, signatures, imports, key call sites). Returns the full file content alongside the semantic skeleton — no separate `view` call needed for .kt files. ALWAYS prefer this over `view` for .kt/.kts files.",
     parameters: {
@@ -107,7 +107,7 @@ const TOOL_SPECS = [
   },
   {
     name: "kast_resolve",
-    method: "skill/resolve",
+    method: "symbol/resolve",
     description:
       "Resolve a Kotlin symbol to its declaration. Use first whenever a name might be overloaded, inherited, or shadowed — disambiguate with kind/containingType/fileHint before tracing references or callers.",
     parameters: {
@@ -124,7 +124,7 @@ const TOOL_SPECS = [
   },
   {
     name: "kast_references",
-    method: "skill/references",
+    method: "symbol/references",
     description:
       "Find every usage of a Kotlin symbol. ALWAYS prefer this over `grep` for Kotlin identity — grep cannot disambiguate overloads, inherited members, or imports vs aliases.",
     parameters: {
@@ -142,7 +142,7 @@ const TOOL_SPECS = [
   },
   {
     name: "kast_callers",
-    method: "skill/callers",
+    method: "symbol/callers",
     description:
       "Trace incoming or outgoing call hierarchy for a Kotlin function. Use to understand flow, blast radius, or to find the entry points reaching a target.",
     parameters: {
@@ -162,7 +162,7 @@ const TOOL_SPECS = [
   },
   {
     name: "kast_metrics",
-    method: "skill/metrics",
+    method: "database/metrics",
     description:
       "Query the indexed source metrics: fanIn, fanOut, coupling, lowUsage, cycles, moduleDepth, deadCode, impact. Treat results as advisory if the response indicates the reference index is missing or stale.",
     parameters: {
@@ -182,7 +182,7 @@ const TOOL_SPECS = [
   },
   {
     name: "kast_diagnostics",
-    method: "diagnostics",
+    method: "raw/diagnostics",
     description:
       "Run Kotlin diagnostics on the listed files. Run after any mutation that did not already validate; treat dirty results as a failed change.",
     parameters: {
@@ -199,7 +199,7 @@ const TOOL_SPECS = [
   },
   {
     name: "kast_rename",
-    method: "skill/rename",
+    method: "symbol/rename",
     description:
       "Rename a Kotlin symbol safely (updates every reference). Pass the `type` discriminator (RENAME_BY_SYMBOL_REQUEST or RENAME_BY_OFFSET_REQUEST) plus the request fields. Validation runs automatically — non-clean responses mean the rename did not commit.",
     parameters: {
@@ -223,7 +223,7 @@ const TOOL_SPECS = [
   },
   {
     name: "kast_write_and_validate",
-    method: "skill/write-and-validate",
+    method: "symbol/write-and-validate",
     description:
       "Apply a Kotlin edit and validate it in one call. Pass the `type` discriminator (CREATE_FILE_REQUEST, INSERT_AT_OFFSET_REQUEST, or REPLACE_RANGE_REQUEST). ALWAYS prefer this over the generic `edit`/`create` tools for .kt/.kts changes — it guards against compile breakage and import drift.",
     parameters: {
@@ -251,10 +251,10 @@ const TOOL_SPECS = [
 export const KAST_TOOL_NAMES = Object.freeze(new Set(TOOL_SPECS.map((s) => s.name)));
 
 const LOWERCASE_KIND_METHODS = new Set([
-  "skill/resolve",
-  "skill/references",
-  "skill/callers",
-  "skill/rename",
+  "symbol/resolve",
+  "symbol/references",
+  "symbol/callers",
+  "symbol/rename",
 ]);
 
 function normalizeArgs(method, args) {

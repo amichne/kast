@@ -1,5 +1,5 @@
 {
-    "method": "workspace/files",
+    "method": "raw/workspace-files",
     "params": {
         "includeFiles": false
     },

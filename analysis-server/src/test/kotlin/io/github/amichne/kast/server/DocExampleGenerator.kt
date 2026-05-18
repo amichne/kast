@@ -107,14 +107,14 @@ object DocExampleGenerator {
 
         // Read operations
         ops += "resolveSymbol" to request(
-            "symbol/resolve",
+            "raw/resolve",
             json.encodeToJsonElement(
                 SymbolQuery.serializer(),
                 SymbolQuery(position = FilePosition(filePath = sampleFile, offset = greetDeclarationOffset)),
             ),
         )
         ops += "findReferences" to request(
-            "references",
+            "raw/references",
             json.encodeToJsonElement(
                 ReferencesQuery.serializer(),
                 ReferencesQuery(
@@ -124,7 +124,7 @@ object DocExampleGenerator {
             ),
         )
         ops += "callHierarchy" to request(
-            "call-hierarchy",
+            "raw/call-hierarchy",
             json.encodeToJsonElement(
                 CallHierarchyQuery.serializer(),
                 CallHierarchyQuery(
@@ -137,7 +137,7 @@ object DocExampleGenerator {
             ),
         )
         ops += "typeHierarchy" to request(
-            "type-hierarchy",
+            "raw/type-hierarchy",
             json.encodeToJsonElement(
                 TypeHierarchyQuery.serializer(),
                 TypeHierarchyQuery(
@@ -149,7 +149,7 @@ object DocExampleGenerator {
             ),
         )
         ops += "semanticInsertionPoint" to request(
-            "semantic-insertion-point",
+            "raw/semantic-insertion-point",
             json.encodeToJsonElement(
                 SemanticInsertionQuery.serializer(),
                 SemanticInsertionQuery(
@@ -159,42 +159,42 @@ object DocExampleGenerator {
             ),
         )
         ops += "diagnostics" to request(
-            "diagnostics",
+            "raw/diagnostics",
             json.encodeToJsonElement(
                 DiagnosticsQuery.serializer(),
                 DiagnosticsQuery(filePaths = listOf(sampleFile)),
             ),
         )
         ops += "fileOutline" to request(
-            "file-outline",
+            "raw/file-outline",
             json.encodeToJsonElement(
                 FileOutlineQuery.serializer(),
                 FileOutlineQuery(filePath = sampleFile),
             ),
         )
         ops += "workspaceSymbolSearch" to request(
-            "workspace-symbol",
+            "raw/workspace-symbol",
             json.encodeToJsonElement(
                 WorkspaceSymbolQuery.serializer(),
                 WorkspaceSymbolQuery(pattern = "greet"),
             ),
         )
         ops += "workspaceFiles" to request(
-            "workspace/files",
+            "raw/workspace-files",
             json.encodeToJsonElement(
                 WorkspaceFilesQuery.serializer(),
                 WorkspaceFilesQuery(),
             ),
         )
         ops += "workspaceSearch" to request(
-            "workspace/search",
+            "raw/workspace-search",
             json.encodeToJsonElement(
                 WorkspaceSearchQuery.serializer(),
                 WorkspaceSearchQuery(pattern = "greet"),
             ),
         )
         ops += "implementations" to request(
-            "implementations",
+            "raw/implementations",
             json.encodeToJsonElement(
                 ImplementationsQuery.serializer(),
                 ImplementationsQuery(
@@ -204,14 +204,14 @@ object DocExampleGenerator {
             ),
         )
         ops += "codeActions" to request(
-            "code-actions",
+            "raw/code-actions",
             json.encodeToJsonElement(
                 CodeActionsQuery.serializer(),
                 CodeActionsQuery(position = FilePosition(filePath = sampleFile, offset = 0)),
             ),
         )
         ops += "completions" to request(
-            "completions",
+            "raw/completions",
             json.encodeToJsonElement(
                 CompletionsQuery.serializer(),
                 CompletionsQuery(
@@ -223,7 +223,7 @@ object DocExampleGenerator {
 
         // Mutation operations
         ops += "rename" to request(
-            "rename",
+            "raw/rename",
             json.encodeToJsonElement(
                 RenameQuery.serializer(),
                 RenameQuery(
@@ -233,14 +233,14 @@ object DocExampleGenerator {
             ),
         )
         ops += "optimizeImports" to request(
-            "imports/optimize",
+            "raw/optimize-imports",
             json.encodeToJsonElement(
                 ImportOptimizeQuery.serializer(),
                 ImportOptimizeQuery(filePaths = listOf(sampleFile)),
             ),
         )
         ops += "refreshWorkspace" to request(
-            "workspace/refresh",
+            "raw/workspace-refresh",
             json.encodeToJsonElement(
                 RefreshQuery.serializer(),
                 RefreshQuery(filePaths = listOf(sampleFile)),
@@ -249,7 +249,7 @@ object DocExampleGenerator {
 
         // applyEdits MUST be last — it modifies files on disk.
         ops += "applyEdits" to request(
-            "edits/apply",
+            "raw/apply-edits",
             json.encodeToJsonElement(
                 ApplyEditsQuery.serializer(),
                 ApplyEditsQuery(

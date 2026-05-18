@@ -1,5 +1,5 @@
 {
-    "method": "completions",
+    "method": "raw/completions",
     "params": {
         "position": {
             "filePath": "/workspace/src/Sample.kt",

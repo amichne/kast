@@ -20,21 +20,21 @@ Humans can still manage the daemon lifecycle explicitly with `kast up`,
 - It wants a JSON-RPC method the packaged skill does not expose directly
 - It needs `--request-file` for a larger structured payload
 
-## `workspace-symbol` as the bridge when there's no offset
+## `raw/workspace-symbol` as the bridge when there's no offset
 
-No offset? Use the `workspace-symbol` JSON-RPC method instead of
+No offset? Use the `raw/workspace-symbol` JSON-RPC method instead of
 grepping. It's a semantic declaration search.
 
 === "Basic search"
 
     ```console title="Find declarations by name"
-    kast rpc '{"jsonrpc":"2.0","method":"workspace-symbol","params":{"pattern":"HealthCheckService","maxResults":100,"regex":false,"includeDeclarationScope":false},"id":1}' --workspace-root=$(pwd)
+    kast rpc '{"jsonrpc":"2.0","method":"raw/workspace-symbol","params":{"pattern":"HealthCheckService","maxResults":100,"regex":false,"includeDeclarationScope":false},"id":1}' --workspace-root=$(pwd)
     ```
 
 === "Regex matching"
 
     ```console title="Pattern-based matching"
-    kast rpc '{"jsonrpc":"2.0","method":"workspace-symbol","params":{"pattern":".*Service$","maxResults":100,"regex":true,"includeDeclarationScope":false},"id":1}' --workspace-root=$(pwd)
+    kast rpc '{"jsonrpc":"2.0","method":"raw/workspace-symbol","params":{"pattern":".*Service$","maxResults":100,"regex":true,"includeDeclarationScope":false},"id":1}' --workspace-root=$(pwd)
     ```
 
 ```json hl_lines="4-5" title="Response — symbol metadata for each match"
@@ -59,7 +59,7 @@ grepping. It's a semantic declaration search.
 ```
 
 Feed `location.filePath` and `location.startOffset` from a match
-straight into `symbol/resolve`, `references`, or `call-hierarchy` — no
+straight into `raw/resolve`, `raw/references`, or `raw/call-hierarchy` — no
 intermediate text search.
 
 ## Inline JSON or request files
@@ -67,10 +67,10 @@ intermediate text search.
 Small requests fit inline as JSON-RPC payloads:
 
 ```console title="Inline JSON for ad hoc queries"
-kast rpc '{"jsonrpc":"2.0","method":"symbol/resolve","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/App.kt","offset":42},"includeDeclarationScope":false,"includeDocumentation":false},"id":1}' --workspace-root=$(pwd)
+kast rpc '{"jsonrpc":"2.0","method":"raw/resolve","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/App.kt","offset":42},"includeDeclarationScope":false,"includeDocumentation":false},"id":1}' --workspace-root=$(pwd)
 ```
 
-Complex payloads — especially `edits/apply`, which needs a structured
+Complex payloads — especially `raw/apply-edits`, which needs a structured
 edit plan — go through `--request-file`:
 
 ```console title="Request file for structured payloads"
@@ -89,9 +89,9 @@ ignore.
 Things to check before claiming an answer:
 
 - **`result`** — every successful response wraps payload here
-- **`searchScope.exhaustive`** on `references` — was the search complete?
-- **`stats.truncatedNodes`** on `call-hierarchy` — was the tree cut off?
-- **`page.truncated`** on `workspace-symbol` — were results capped?
+- **`searchScope.exhaustive`** on `raw/references` — was the search complete?
+- **`stats.truncatedNodes`** on `raw/call-hierarchy` — was the tree cut off?
+- **`page.truncated`** on `raw/workspace-symbol` — were results capped?
 
 ## Next steps
 

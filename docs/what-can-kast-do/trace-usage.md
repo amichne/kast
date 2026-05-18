@@ -34,7 +34,7 @@ pay for the scope the language actually requires.
 
     ```json title="references request"
     {
-      "method": "references",
+      "method": "raw/references",
       "id": 1,
       "jsonrpc": "2.0",
       "params": {
@@ -164,7 +164,7 @@ per-node children, and a timeout. Every limit is reported back in
 
     ```json title="call-hierarchy request" hl_lines="9 10 11 12"
     {
-      "method": "call-hierarchy",
+      "method": "raw/call-hierarchy",
       "id": 1,
       "jsonrpc": "2.0",
       "params": {
@@ -308,7 +308,7 @@ interface. `direction` picks the way:
 
     ```json title="type-hierarchy request" hl_lines="9 10 11"
     {
-      "method": "type-hierarchy",
+      "method": "raw/type-hierarchy",
       "id": 1,
       "jsonrpc": "2.0",
       "params": {

@@ -1,36 +1,78 @@
 {
-  "version": "0.1.1-SNAPSHOT",
+  "version": "dev",
+  "categories": {
+    "system": [
+      "health",
+      "runtime/status",
+      "capabilities"
+    ],
+    "symbol": [
+      "symbol/scaffold",
+      "symbol/resolve",
+      "symbol/references",
+      "symbol/callers",
+      "symbol/rename",
+      "symbol/write-and-validate"
+    ],
+    "raw": [
+      "raw/resolve",
+      "raw/references",
+      "raw/call-hierarchy",
+      "raw/type-hierarchy",
+      "raw/semantic-insertion-point",
+      "raw/diagnostics",
+      "raw/rename",
+      "raw/optimize-imports",
+      "raw/apply-edits",
+      "raw/workspace-refresh",
+      "raw/file-outline",
+      "raw/workspace-symbol",
+      "raw/workspace-search",
+      "raw/workspace-files",
+      "raw/implementations",
+      "raw/code-actions",
+      "raw/completions"
+    ],
+    "database": [
+      "database/metrics"
+    ]
+  },
   "commands": {
-    "workspace-files": {
-      "summary": "List workspace modules and optional file paths",
+    "health": {
+      "method": "health",
+      "category": "system",
+      "summary": "Basic health check",
+      "dataSource": "backend",
       "request": {
-        "fields": {
-          "workspaceRoot": {
-            "type": "string",
-            "optional": true,
-            "nullable": true
-          },
-          "moduleName": {
-            "type": "string",
-            "optional": true,
-            "nullable": true
-          },
-          "includeFiles": {
-            "type": "boolean",
-            "optional": true
-          },
-          "maxFilesPerModule": {
-            "type": "integer",
-            "optional": true,
-            "nullable": true
-          }
-        }
+        "fields": {}
       },
-      "successType": "WORKSPACE_FILES_SUCCESS",
-      "failureType": "WORKSPACE_FILES_FAILURE"
+      "responseType": "HealthResponse"
     },
-    "scaffold": {
+    "runtime/status": {
+      "method": "runtime/status",
+      "category": "system",
+      "summary": "Detailed runtime state including indexing progress",
+      "dataSource": "backend",
+      "request": {
+        "fields": {}
+      },
+      "responseType": "RuntimeStatusResponse"
+    },
+    "capabilities": {
+      "method": "capabilities",
+      "category": "system",
+      "summary": "Advertised read and mutation capabilities",
+      "dataSource": "backend",
+      "request": {
+        "fields": {}
+      },
+      "responseType": "BackendCapabilities"
+    },
+    "symbol/scaffold": {
+      "method": "symbol/scaffold",
+      "category": "symbol",
       "summary": "Gather structural generation context for a Kotlin file",
+      "dataSource": "backend",
       "request": {
         "fields": {
           "workspaceRoot": {
@@ -73,11 +115,15 @@
           "targetFile"
         ]
       },
+      "responseType": "KastScaffoldResponse",
       "successType": "SCAFFOLD_SUCCESS",
       "failureType": "SCAFFOLD_FAILURE"
     },
-    "resolve": {
+    "symbol/resolve": {
+      "method": "symbol/resolve",
+      "category": "symbol",
       "summary": "Resolve a symbol by name to its declaration",
+      "dataSource": "backend",
       "request": {
         "fields": {
           "workspaceRoot": {
@@ -115,6 +161,7 @@
           "symbol"
         ]
       },
+      "responseType": "KastResolveResponse",
       "successType": "RESOLVE_SUCCESS",
       "failureType": "RESOLVE_FAILURE",
       "notes": [
@@ -122,8 +169,11 @@
         "Use 'containingType' for scoping and 'fileHint' for disambiguation."
       ]
     },
-    "references": {
+    "symbol/references": {
+      "method": "symbol/references",
+      "category": "symbol",
       "summary": "Find every usage of a Kotlin symbol",
+      "dataSource": "backend",
       "request": {
         "fields": {
           "workspaceRoot": {
@@ -165,6 +215,7 @@
           "symbol"
         ]
       },
+      "responseType": "KastReferencesResponse",
       "successType": "REFERENCES_SUCCESS",
       "failureType": "REFERENCES_FAILURE",
       "notes": [
@@ -172,8 +223,11 @@
         "Resolve ambiguous names first with 'kind', 'containingType', or 'fileHint'."
       ]
     },
-    "callers": {
+    "symbol/callers": {
+      "method": "symbol/callers",
+      "category": "symbol",
       "summary": "Expand an incoming or outgoing call hierarchy",
+      "dataSource": "backend",
       "request": {
         "fields": {
           "workspaceRoot": {
@@ -238,35 +292,18 @@
           "symbol"
         ]
       },
+      "responseType": "KastCallersResponse",
       "successType": "CALLERS_SUCCESS",
       "failureType": "CALLERS_FAILURE",
       "notes": [
         "The 'symbol' field takes simple names only."
       ]
     },
-    "diagnostics": {
-      "summary": "Run Kotlin diagnostics on listed files",
-      "request": {
-        "fields": {
-          "workspaceRoot": {
-            "type": "string",
-            "optional": true,
-            "nullable": true
-          },
-          "filePaths": {
-            "type": "array",
-            "items": "string"
-          }
-        },
-        "required": [
-          "filePaths"
-        ]
-      },
-      "successType": "DIAGNOSTICS_SUCCESS",
-      "failureType": "DIAGNOSTICS_FAILURE"
-    },
-    "rename": {
+    "symbol/rename": {
+      "method": "symbol/rename",
+      "category": "symbol",
       "summary": "Resolve or target a symbol and apply a rename",
+      "dataSource": "backend",
       "request": {
         "fields": {
           "type": {
@@ -281,6 +318,7 @@
           "value"
         ]
       },
+      "responseType": "KastRenameResponse",
       "successType": "RENAME_SUCCESS",
       "failureType": "RENAME_FAILURE",
       "variants": {
@@ -350,8 +388,11 @@
         }
       }
     },
-    "write-and-validate": {
+    "symbol/write-and-validate": {
+      "method": "symbol/write-and-validate",
+      "category": "symbol",
       "summary": "Apply generated Kotlin code and validate the result",
+      "dataSource": "backend",
       "request": {
         "fields": {
           "type": {
@@ -366,6 +407,7 @@
           "value"
         ]
       },
+      "responseType": "KastWriteAndValidateResponse",
       "successType": "WRITE_AND_VALIDATE_SUCCESS",
       "failureType": "WRITE_AND_VALIDATE_FAILURE",
       "variants": {
@@ -458,8 +500,459 @@
         }
       }
     },
-    "metrics": {
+    "raw/resolve": {
+      "method": "raw/resolve",
+      "category": "raw",
+      "summary": "Resolve the symbol at a file position",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "position": {
+            "type": "object"
+          },
+          "includeDeclarationScope": {
+            "type": "boolean",
+            "optional": true
+          },
+          "includeDocumentation": {
+            "type": "boolean",
+            "optional": true
+          }
+        },
+        "required": [
+          "position"
+        ]
+      },
+      "responseType": "SymbolResult"
+    },
+    "raw/references": {
+      "method": "raw/references",
+      "category": "raw",
+      "summary": "Find all references to the symbol at a file position",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "position": {
+            "type": "object"
+          },
+          "includeDeclaration": {
+            "type": "boolean",
+            "optional": true
+          },
+          "includeUsageSiteScope": {
+            "type": "boolean",
+            "optional": true
+          }
+        },
+        "required": [
+          "position"
+        ]
+      },
+      "responseType": "ReferencesResult"
+    },
+    "raw/call-hierarchy": {
+      "method": "raw/call-hierarchy",
+      "category": "raw",
+      "summary": "Expand a bounded incoming or outgoing call tree",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "position": {
+            "type": "object"
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "INCOMING",
+              "OUTGOING"
+            ]
+          },
+          "depth": {
+            "type": "integer",
+            "optional": true
+          },
+          "maxTotalCalls": {
+            "type": "integer",
+            "optional": true
+          },
+          "maxChildrenPerNode": {
+            "type": "integer",
+            "optional": true
+          },
+          "timeoutMillis": {
+            "type": "integer",
+            "optional": true,
+            "nullable": true
+          }
+        },
+        "required": [
+          "position",
+          "direction"
+        ]
+      },
+      "responseType": "CallHierarchyResult"
+    },
+    "raw/type-hierarchy": {
+      "method": "raw/type-hierarchy",
+      "category": "raw",
+      "summary": "Expand supertypes and subtypes from a resolved symbol",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "position": {
+            "type": "object"
+          },
+          "direction": {
+            "type": "string",
+            "optional": true,
+            "enum": [
+              "SUPERTYPES",
+              "SUBTYPES",
+              "BOTH"
+            ]
+          },
+          "depth": {
+            "type": "integer",
+            "optional": true
+          },
+          "maxResults": {
+            "type": "integer",
+            "optional": true
+          }
+        },
+        "required": [
+          "position"
+        ]
+      },
+      "responseType": "TypeHierarchyResult"
+    },
+    "raw/semantic-insertion-point": {
+      "method": "raw/semantic-insertion-point",
+      "category": "raw",
+      "summary": "Find the best insertion point for a new declaration",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "position": {
+            "type": "object"
+          },
+          "target": {
+            "type": "string",
+            "enum": [
+              "CLASS_BODY_START",
+              "CLASS_BODY_END",
+              "FILE_TOP",
+              "FILE_BOTTOM",
+              "AFTER_IMPORTS"
+            ]
+          }
+        },
+        "required": [
+          "position",
+          "target"
+        ]
+      },
+      "responseType": "SemanticInsertionResult"
+    },
+    "raw/diagnostics": {
+      "method": "raw/diagnostics",
+      "category": "raw",
+      "summary": "Run Kotlin diagnostics on listed files",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "filePaths": {
+            "type": "array",
+            "items": "string"
+          }
+        },
+        "required": [
+          "filePaths"
+        ]
+      },
+      "responseType": "DiagnosticsResult"
+    },
+    "raw/rename": {
+      "method": "raw/rename",
+      "category": "raw",
+      "summary": "Plan a symbol rename by file position",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "position": {
+            "type": "object"
+          },
+          "newName": {
+            "type": "string"
+          },
+          "dryRun": {
+            "type": "boolean",
+            "optional": true
+          }
+        },
+        "required": [
+          "position",
+          "newName"
+        ]
+      },
+      "responseType": "RenameResult"
+    },
+    "raw/optimize-imports": {
+      "method": "raw/optimize-imports",
+      "category": "raw",
+      "summary": "Optimize imports for one or more files",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "filePaths": {
+            "type": "array",
+            "items": "string"
+          }
+        },
+        "required": [
+          "filePaths"
+        ]
+      },
+      "responseType": "ImportOptimizeResult"
+    },
+    "raw/apply-edits": {
+      "method": "raw/apply-edits",
+      "category": "raw",
+      "summary": "Apply a prepared edit plan with conflict detection",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "edits": {
+            "type": "array",
+            "items": "object"
+          },
+          "fileHashes": {
+            "type": "array",
+            "items": "object"
+          },
+          "fileOperations": {
+            "type": "array",
+            "optional": true,
+            "items": "object"
+          }
+        },
+        "required": [
+          "edits",
+          "fileHashes"
+        ]
+      },
+      "responseType": "ApplyEditsResult"
+    },
+    "raw/workspace-refresh": {
+      "method": "raw/workspace-refresh",
+      "category": "raw",
+      "summary": "Force a targeted or full workspace state refresh",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "filePaths": {
+            "type": "array",
+            "optional": true,
+            "items": "string"
+          }
+        }
+      },
+      "responseType": "RefreshResult"
+    },
+    "raw/file-outline": {
+      "method": "raw/file-outline",
+      "category": "raw",
+      "summary": "Get a hierarchical symbol outline for a file",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "filePath": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "filePath"
+        ]
+      },
+      "responseType": "FileOutlineResult"
+    },
+    "raw/workspace-symbol": {
+      "method": "raw/workspace-symbol",
+      "category": "raw",
+      "summary": "Search the workspace for symbols by name pattern",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "pattern": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "optional": true,
+            "nullable": true,
+            "enum": [
+              "CLASS",
+              "INTERFACE",
+              "OBJECT",
+              "FUNCTION",
+              "PROPERTY",
+              "PARAMETER",
+              "UNKNOWN"
+            ]
+          },
+          "maxResults": {
+            "type": "integer",
+            "optional": true
+          },
+          "regex": {
+            "type": "boolean",
+            "optional": true
+          },
+          "includeDeclarationScope": {
+            "type": "boolean",
+            "optional": true
+          }
+        },
+        "required": [
+          "pattern"
+        ]
+      },
+      "responseType": "WorkspaceSymbolResult"
+    },
+    "raw/workspace-search": {
+      "method": "raw/workspace-search",
+      "category": "raw",
+      "summary": "Search workspace file contents by text or regex",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "pattern": {
+            "type": "string"
+          },
+          "regex": {
+            "type": "boolean",
+            "optional": true
+          },
+          "maxResults": {
+            "type": "integer",
+            "optional": true
+          },
+          "fileGlob": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "caseSensitive": {
+            "type": "boolean",
+            "optional": true
+          }
+        },
+        "required": [
+          "pattern"
+        ]
+      },
+      "responseType": "WorkspaceSearchResult"
+    },
+    "raw/workspace-files": {
+      "method": "raw/workspace-files",
+      "category": "raw",
+      "summary": "List workspace modules and optional file paths",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "moduleName": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "includeFiles": {
+            "type": "boolean",
+            "optional": true
+          },
+          "maxFilesPerModule": {
+            "type": "integer",
+            "optional": true,
+            "nullable": true
+          }
+        }
+      },
+      "responseType": "WorkspaceFilesResult"
+    },
+    "raw/implementations": {
+      "method": "raw/implementations",
+      "category": "raw",
+      "summary": "Find concrete implementations and subclasses for a declaration",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "position": {
+            "type": "object"
+          },
+          "maxResults": {
+            "type": "integer",
+            "optional": true
+          }
+        },
+        "required": [
+          "position"
+        ]
+      },
+      "responseType": "ImplementationsResult"
+    },
+    "raw/code-actions": {
+      "method": "raw/code-actions",
+      "category": "raw",
+      "summary": "Return available code actions at a file position",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "position": {
+            "type": "object"
+          },
+          "diagnosticCode": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          }
+        },
+        "required": [
+          "position"
+        ]
+      },
+      "responseType": "CodeActionsResult"
+    },
+    "raw/completions": {
+      "method": "raw/completions",
+      "category": "raw",
+      "summary": "Return completion candidates available at a file position",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "position": {
+            "type": "object"
+          },
+          "maxResults": {
+            "type": "integer",
+            "optional": true
+          },
+          "kindFilter": {
+            "type": "array",
+            "optional": true,
+            "nullable": true,
+            "items": "string"
+          }
+        },
+        "required": [
+          "position"
+        ]
+      },
+      "responseType": "CompletionsResult"
+    },
+    "database/metrics": {
+      "method": "database/metrics",
+      "category": "database",
       "summary": "Query indexed source metrics",
+      "dataSource": "sqlite",
       "request": {
         "fields": {
           "workspaceRoot": {
@@ -511,6 +1004,7 @@
           "metric"
         ]
       },
+      "responseType": "KastMetricsResponse",
       "successType": "METRICS_SUCCESS",
       "failureType": "METRICS_FAILURE"
     }

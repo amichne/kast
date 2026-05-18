@@ -270,132 +270,132 @@ object OpenApiDocument {
         ),
 
         // Read operations
-        "/rpc/symbol/resolve" to readMethod(
+        "/rpc/raw/resolve" to readMethod(
             operationId = "resolveSymbol",
             summary = "Resolve the symbol at a file position",
-            method = "symbol/resolve",
+            method = "raw/resolve",
             requestSchema = "SymbolQuery",
             responseSchema = "SymbolResult",
             capability = "RESOLVE_SYMBOL",
         ),
-        "/rpc/references" to readMethod(
+        "/rpc/raw/references" to readMethod(
             operationId = "findReferences",
             summary = "Find all references to the symbol at a file position",
-            method = "references",
+            method = "raw/references",
             requestSchema = "ReferencesQuery",
             responseSchema = "ReferencesResult",
             capability = "FIND_REFERENCES",
         ),
-        "/rpc/call-hierarchy" to readMethod(
+        "/rpc/raw/call-hierarchy" to readMethod(
             operationId = "callHierarchy",
             summary = "Expand a bounded incoming or outgoing call tree",
-            method = "call-hierarchy",
+            method = "raw/call-hierarchy",
             requestSchema = "CallHierarchyQuery",
             responseSchema = "CallHierarchyResult",
             capability = "CALL_HIERARCHY",
         ),
-        "/rpc/type-hierarchy" to readMethod(
+        "/rpc/raw/type-hierarchy" to readMethod(
             operationId = "typeHierarchy",
             summary = "Expand supertypes and subtypes from a resolved symbol",
-            method = "type-hierarchy",
+            method = "raw/type-hierarchy",
             requestSchema = "TypeHierarchyQuery",
             responseSchema = "TypeHierarchyResult",
             capability = "TYPE_HIERARCHY",
         ),
-        "/rpc/semantic-insertion-point" to readMethod(
+        "/rpc/raw/semantic-insertion-point" to readMethod(
             operationId = "semanticInsertionPoint",
             summary = "Find the best insertion point for a new declaration",
-            method = "semantic-insertion-point",
+            method = "raw/semantic-insertion-point",
             requestSchema = "SemanticInsertionQuery",
             responseSchema = "SemanticInsertionResult",
             capability = "SEMANTIC_INSERTION_POINT",
         ),
-        "/rpc/diagnostics" to readMethod(
+        "/rpc/raw/diagnostics" to readMethod(
             operationId = "diagnostics",
             summary = "Run compilation diagnostics for one or more files",
-            method = "diagnostics",
+            method = "raw/diagnostics",
             requestSchema = "DiagnosticsQuery",
             responseSchema = "DiagnosticsResult",
             capability = "DIAGNOSTICS",
         ),
-        "/rpc/file-outline" to readMethod(
+        "/rpc/raw/file-outline" to readMethod(
             operationId = "fileOutline",
             summary = "Get a hierarchical symbol outline for a single file",
-            method = "file-outline",
+            method = "raw/file-outline",
             requestSchema = "FileOutlineQuery",
             responseSchema = "FileOutlineResult",
             capability = "FILE_OUTLINE",
         ),
-        "/rpc/workspace-symbol" to readMethod(
+        "/rpc/raw/workspace-symbol" to readMethod(
             operationId = "workspaceSymbolSearch",
             summary = "Search the workspace for symbols by name pattern",
-            method = "workspace-symbol",
+            method = "raw/workspace-symbol",
             requestSchema = "WorkspaceSymbolQuery",
             responseSchema = "WorkspaceSymbolResult",
             capability = "WORKSPACE_SYMBOL_SEARCH",
         ),
-        "/rpc/workspace/search" to readMethod(
+        "/rpc/raw/workspace-search" to readMethod(
             operationId = "workspaceSearch",
             summary = "Search workspace file contents for text patterns",
-            method = "workspace/search",
+            method = "raw/workspace-search",
             requestSchema = "WorkspaceSearchQuery",
             responseSchema = "WorkspaceSearchResult",
             capability = "WORKSPACE_SEARCH",
         ),
-        "/rpc/workspace/files" to readMethod(
+        "/rpc/raw/workspace-files" to readMethod(
             operationId = "workspaceFiles",
             summary = "List workspace modules and their source files",
-            method = "workspace/files",
+            method = "raw/workspace-files",
             requestSchema = "WorkspaceFilesQuery",
             responseSchema = "WorkspaceFilesResult",
             capability = "WORKSPACE_FILES",
         ),
-        "/rpc/implementations" to readMethod(
+        "/rpc/raw/implementations" to readMethod(
             operationId = "implementations",
             summary = "Find concrete implementations and subclasses for a declaration",
-            method = "implementations",
+            method = "raw/implementations",
             requestSchema = "ImplementationsQuery",
             responseSchema = "ImplementationsResult",
             capability = "IMPLEMENTATIONS",
         ),
-        "/rpc/code-actions" to readMethod(
+        "/rpc/raw/code-actions" to readMethod(
             operationId = "codeActions",
             summary = "Return available code actions at a file position",
-            method = "code-actions",
+            method = "raw/code-actions",
             requestSchema = "CodeActionsQuery",
             responseSchema = "CodeActionsResult",
             capability = "CODE_ACTIONS",
         ),
-        "/rpc/completions" to readMethod(
+        "/rpc/raw/completions" to readMethod(
             operationId = "completions",
             summary = "Return completion candidates available at a file position",
-            method = "completions",
+            method = "raw/completions",
             requestSchema = "CompletionsQuery",
             responseSchema = "CompletionsResult",
             capability = "COMPLETIONS",
         ),
 
         // Mutation operations
-        "/rpc/rename" to mutationMethod(
+        "/rpc/raw/rename" to mutationMethod(
             operationId = "rename",
             summary = "Plan a symbol rename (dry-run by default)",
-            method = "rename",
+            method = "raw/rename",
             requestSchema = "RenameQuery",
             responseSchema = "RenameResult",
             capability = "RENAME",
         ),
-        "/rpc/imports/optimize" to mutationMethod(
+        "/rpc/raw/optimize-imports" to mutationMethod(
             operationId = "optimizeImports",
             summary = "Optimize imports for one or more files",
-            method = "imports/optimize",
+            method = "raw/optimize-imports",
             requestSchema = "ImportOptimizeQuery",
             responseSchema = "ImportOptimizeResult",
             capability = "OPTIMIZE_IMPORTS",
         ),
-        "/rpc/edits/apply" to mutationMethod(
+        "/rpc/raw/apply-edits" to mutationMethod(
             operationId = "applyEdits",
             summary = "Apply a prepared edit plan with file-hash conflict detection",
-            method = "edits/apply",
+            method = "raw/apply-edits",
             requestSchema = "ApplyEditsQuery",
             responseSchema = "ApplyEditsResult",
             capability = "APPLY_EDITS",
@@ -403,10 +403,10 @@ object OpenApiDocument {
                 "x-kast-conditional-capability" to "FILE_OPERATIONS — required when fileOperations is non-empty",
             ),
         ),
-        "/rpc/workspace/refresh" to mutationMethod(
+        "/rpc/raw/workspace-refresh" to mutationMethod(
             operationId = "refreshWorkspace",
             summary = "Force a targeted or full workspace state refresh",
-            method = "workspace/refresh",
+            method = "raw/workspace-refresh",
             requestSchema = "RefreshQuery",
             responseSchema = "RefreshResult",
             capability = "REFRESH_WORKSPACE",

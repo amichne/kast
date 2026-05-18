@@ -1,5 +1,5 @@
 {
-    "method": "imports/optimize",
+    "method": "raw/optimize-imports",
     "params": {
         "filePaths": [
             "/workspace/src/Sample.kt"

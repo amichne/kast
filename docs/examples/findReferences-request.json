@@ -1,5 +1,5 @@
 {
-    "method": "references",
+    "method": "raw/references",
     "params": {
         "position": {
             "filePath": "/workspace/src/Sample.kt",

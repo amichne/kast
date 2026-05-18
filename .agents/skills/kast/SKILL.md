@@ -19,8 +19,9 @@ flow, or validated edits.
 ## Version contract
 
 The generated spec at `references/commands.json` is the current source of truth
-for the native-tool and `skill/*` RPC request schemas, response types, discriminated
-variants, and notes. Read it once per session when you need field-level detail.
+for the native-tool and v1 RPC request schemas, response types, discriminated
+variants, and notes across the `system`, `symbol/*`, `raw/*`, and `database/*`
+method families. Read it once per session when you need field-level detail.
 It is regenerated from the Kotlin serialization models at build time — if a
 field exists in the spec it exists in the CLI, and vice versa. This catalog tracks the RPC-facing contract surfaced through `kast rpc`.
 
@@ -40,18 +41,18 @@ Pick the narrowest command for the task:
 
 | When you need to… | Command |
 | --- | --- |
-| Discover modules or source files | `workspace-files` |
-| Search Kotlin workspace text or regex | `workspace-search` |
-| Find symbols by name across the workspace | `workspace-symbol` |
-| Understand a file or type structure | `scaffold` |
-| Get a lightweight file outline | `file-outline` |
-| Find the exact declaration of a symbol | `resolve` |
-| Find every usage of a symbol | `references` |
-| Trace incoming/outgoing call flow | `callers` |
-| Rename a symbol safely across the project | `rename` |
-| Apply code and validate it compiles | `write-and-validate` |
-| Re-check files after mutation | `diagnostics` |
-| Query indexed source metrics | `metrics` |
+| Discover modules or source files | `raw/workspace-files` |
+| Search Kotlin workspace text or regex | `raw/workspace-search` |
+| Find symbols by name across the workspace | `raw/workspace-symbol` |
+| Understand a file or type structure | `symbol/scaffold` |
+| Get a lightweight file outline | `raw/file-outline` |
+| Find the exact declaration of a symbol | `symbol/resolve` |
+| Find every usage of a symbol | `symbol/references` |
+| Trace incoming/outgoing call flow | `symbol/callers` |
+| Rename a symbol safely across the project | `symbol/rename` |
+| Apply code and validate it compiles | `symbol/write-and-validate` |
+| Re-check files after mutation | `raw/diagnostics` |
+| Query indexed source metrics | `database/metrics` |
 
 Use the native tools when the host exposes them (`kast_workspace_files`,
 `kast_resolve`, etc.). When native tools are unavailable, use `kast rpc`:
@@ -86,7 +87,7 @@ Retry the same command once, then report a setup blocker if it still fails.
 - Check `ok` and `type` before projecting results.
 - Path fields (`filePath`, `filePaths`, `targetFile`, `contentFile`) must be
   absolute.
-- `rename` and `write-and-validate` require a `type` discriminator — see
+- `symbol/rename` and `symbol/write-and-validate` require a `type` discriminator — see
   `references/commands.json` for the exact variant names per command.
 - `scaffold` takes one `targetFile`; run one call per file.
 - Treat `ok=false`, `*_FAILURE`, dirty diagnostics, or validation/hash failures

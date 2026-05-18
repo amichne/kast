@@ -37,28 +37,6 @@ internal sealed interface CliCommand {
         val task: String,
         val extraArgs: List<String> = emptyList(),
     ) : CliCommand
-    data class Metrics(
-        val subcommand: MetricsSubcommand,
-        val workspaceRoot: Path,
-        val limit: Int = 50,
-        val symbol: String? = null,
-        val depth: Int = 3,
-        val interactive: Boolean = false,
-        val fileGlob: String? = null,
-        val folderFilter: String? = null,
-    ) : CliCommand
-}
-
-internal enum class MetricsSubcommand {
-    FAN_IN,
-    FAN_OUT,
-    COUPLING,
-    LOW_USAGE,
-    CYCLES,
-    MODULE_DEPTH,
-    DEAD_CODE,
-    IMPACT,
-    GRAPH,
 }
 
 internal data class EvalSkillOptions(

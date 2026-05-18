@@ -110,7 +110,7 @@ what `kast` can do about it.
 
     ```json title="code-actions JSON-RPC request"
     {
-      "method": "code-actions",
+      "method": "raw/code-actions",
       "params": {
         "position": {
           "filePath": "/app/src/main/kotlin/com/shop/OrderService.kt",

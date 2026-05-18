@@ -108,7 +108,7 @@ class KastWrapperTest {
             val diagnostics = runCli(
                 "rpc",
                 rpcRequest(
-                    method = "diagnostics",
+                    method = "raw/diagnostics",
                     params = transportJson.encodeToJsonElement(
                         DiagnosticsQuery.serializer(),
                         DiagnosticsQuery(filePaths = listOf(sourceFile.toString())),
@@ -155,7 +155,7 @@ class KastWrapperTest {
             val search = runCli(
                 "rpc",
                 rpcRequest(
-                    method = "workspace-symbol",
+                    method = "raw/workspace-symbol",
                     params = transportJson.encodeToJsonElement(
                         WorkspaceSymbolQuery.serializer(),
                         WorkspaceSymbolQuery(pattern = "greet"),
@@ -204,7 +204,7 @@ class KastWrapperTest {
             val outline = runCli(
                 "rpc",
                 rpcRequest(
-                    method = "file-outline",
+                    method = "raw/file-outline",
                     params = transportJson.encodeToJsonElement(
                         FileOutlineQuery.serializer(),
                         FileOutlineQuery(filePath = sourceFile.toString()),
@@ -313,7 +313,7 @@ class KastWrapperTest {
             val refresh = runCli(
                 "rpc",
                 rpcRequest(
-                    method = "workspace/refresh",
+                    method = "raw/workspace-refresh",
                     params = transportJson.encodeToJsonElement(
                         RefreshQuery.serializer(),
                         RefreshQuery(filePaths = listOf(sourceFile.toString())),
@@ -332,7 +332,7 @@ class KastWrapperTest {
                 val rename = runCli(
                     "rpc",
                     rpcRequest(
-                        method = "rename",
+                        method = "raw/rename",
                         params = transportJson.encodeToJsonElement(
                             RenameQuery.serializer(),
                             RenameQuery(
@@ -398,7 +398,7 @@ class KastWrapperTest {
                 val rename = runCli(
                     "rpc",
                     rpcRequest(
-                        method = "rename",
+                        method = "raw/rename",
                         params = transportJson.encodeToJsonElement(
                             RenameQuery.serializer(),
                             RenameQuery(
@@ -480,7 +480,7 @@ class KastWrapperTest {
             val refresh = runCli(
                 "rpc",
                 rpcRequest(
-                    method = "workspace/refresh",
+                    method = "raw/workspace-refresh",
                     params = transportJson.encodeToJsonElement(
                         RefreshQuery.serializer(),
                         RefreshQuery(),
@@ -497,7 +497,7 @@ class KastWrapperTest {
             val references = runCli(
                 "rpc",
                 rpcRequest(
-                    method = "references",
+                    method = "raw/references",
                     params = transportJson.encodeToJsonElement(
                         ReferencesQuery.serializer(),
                         ReferencesQuery(
@@ -599,7 +599,7 @@ class KastWrapperTest {
                         result = transportJson.encodeToJsonElement(BackendCapabilities.serializer(), capabilities),
                     ),
                 ),
-                "rename" to renameResponse,
+                "raw/rename" to renameResponse,
             ),
             expectedRequests = 3,
         )
@@ -608,7 +608,7 @@ class KastWrapperTest {
             val rename = runCli(
                 "rpc",
                 rpcRequest(
-                    method = "rename",
+                    method = "raw/rename",
                     params = transportJson.encodeToJsonElement(
                         RenameQuery.serializer(),
                         RenameQuery(

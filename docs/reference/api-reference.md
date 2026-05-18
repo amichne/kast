@@ -34,7 +34,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast health --workspace-root=/path/to/project
+            kast rpc '{"jsonrpc":"2.0","method":"health","id":1}' --workspace-root=/path/to/project
             ```
         === "Request"
 
@@ -88,7 +88,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast workspace status --workspace-root=/path/to/project
+            kast rpc '{"jsonrpc":"2.0","method":"runtime/status","id":1}' --workspace-root=/path/to/project
             ```
         === "Request"
 
@@ -203,7 +203,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         12 read-only operations for querying symbols, references, hierarchies, diagnostics, outlines, and completions.
 
-    ??? example "symbol/resolve — Resolve the symbol at a file position"
+    ??? example "raw/resolve — Resolve the symbol at a file position"
 
         Resolves the symbol at a file position, returning its fully qualified name, kind, location, and optional metadata such as type information and documentation.
 
@@ -225,13 +225,13 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast resolve --workspace-root=/path/to/project --file=/path/to/project/src/main/kotlin/Example.kt --offset=42
+            kast rpc --request-file=docs/examples/resolveSymbol-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
             ```json
             {
-                "method": "symbol/resolve",
+                "method": "raw/resolve",
                 "params": {
                     "position": {
                         "filePath": "/workspace/src/Sample.kt",
@@ -285,7 +285,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         **Error codes** &nbsp;·&nbsp; `NOT_FOUND`
 
-    ??? example "references — Find all references to the symbol at a file position"
+    ??? example "raw/references — Find all references to the symbol at a file position"
 
         Finds all references to the symbol at a file position across the workspace. Optionally includes the declaration itself.
 
@@ -310,13 +310,13 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast references --workspace-root=/path/to/project --file=/path/to/project/src/main/kotlin/Example.kt --offset=42
+            kast rpc --request-file=docs/examples/findReferences-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
             ```json
             {
-                "method": "references",
+                "method": "raw/references",
                 "params": {
                     "position": {
                         "filePath": "/workspace/src/Sample.kt",
@@ -380,7 +380,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         **Error codes** &nbsp;·&nbsp; `NOT_FOUND`
 
-    ??? example "call-hierarchy — Expand a bounded incoming or outgoing call tree"
+    ??? example "raw/call-hierarchy — Expand a bounded incoming or outgoing call tree"
 
         Expands a bounded incoming or outgoing call tree from a function or method. Use incoming to find callers, outgoing to find callees.
 
@@ -406,13 +406,13 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast call-hierarchy --workspace-root=/path/to/project --file=/path/to/project/src/main/kotlin/Example.kt --offset=42 --direction=INCOMING --depth=2
+            kast rpc --request-file=docs/examples/callHierarchy-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
             ```json
             {
-                "method": "call-hierarchy",
+                "method": "raw/call-hierarchy",
                 "params": {
                     "position": {
                         "filePath": "/workspace/src/Sample.kt",
@@ -505,7 +505,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         **Error codes** &nbsp;·&nbsp; `NOT_FOUND`, `CAPABILITY_NOT_SUPPORTED`
 
-    ??? example "type-hierarchy — Expand supertypes and subtypes from a resolved symbol"
+    ??? example "raw/type-hierarchy — Expand supertypes and subtypes from a resolved symbol"
 
         Expands supertypes and subtypes from a resolved symbol. Use this to understand inheritance relationships.
 
@@ -529,13 +529,13 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast type-hierarchy --workspace-root=/path/to/project --file=/path/to/project/src/main/kotlin/Example.kt --offset=42 --direction=BOTH
+            kast rpc --request-file=docs/examples/typeHierarchy-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
             ```json
             {
-                "method": "type-hierarchy",
+                "method": "raw/type-hierarchy",
                 "params": {
                     "position": {
                         "filePath": "/workspace/src/Types.kt",
@@ -627,7 +627,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         **Error codes** &nbsp;·&nbsp; `NOT_FOUND`, `CAPABILITY_NOT_SUPPORTED`
 
-    ??? example "semantic-insertion-point — Find the best insertion point for a new declaration"
+    ??? example "raw/semantic-insertion-point — Find the best insertion point for a new declaration"
 
         Finds the best insertion point for a new declaration relative to a file position. Use this to place generated code at a semantically appropriate location.
 
@@ -649,13 +649,13 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast insertion-point --workspace-root=/path/to/project --file=/path/to/project/src/main/kotlin/Example.kt --offset=42 --target=AFTER_IMPORTS
+            kast rpc --request-file=docs/examples/semanticInsertionPoint-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
             ```json
             {
-                "method": "semantic-insertion-point",
+                "method": "raw/semantic-insertion-point",
                 "params": {
                     "position": {
                         "filePath": "/workspace/src/Sample.kt",
@@ -686,7 +686,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         **Error codes** &nbsp;·&nbsp; `NOT_FOUND`, `CAPABILITY_NOT_SUPPORTED`
 
-    ??? example "diagnostics — Run compilation diagnostics for files"
+    ??? example "raw/diagnostics — Run compilation diagnostics for files"
 
         Runs compilation diagnostics for one or more files, returning errors, warnings, and informational messages with precise source locations.
 
@@ -707,13 +707,13 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast diagnostics --workspace-root=/path/to/project --file=/path/to/project/src/main/kotlin/Example.kt
+            kast rpc --request-file=docs/examples/diagnostics-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
             ```json
             {
-                "method": "diagnostics",
+                "method": "raw/diagnostics",
                 "params": {
                     "filePaths": [
                         "/workspace/src/Sample.kt"
@@ -738,11 +738,11 @@ daemon, including input/output schemas, examples, and behavioral notes.
         !!! note "Behavioral notes"
 
             - Pass one or more absolute file paths. The daemon analyzes each file and returns all diagnostics sorted by location.
-            - Diagnostics reflect the current daemon state. Call `workspace/refresh` first if files were modified outside the daemon.
+            - Diagnostics reflect the current daemon state. Call `raw/workspace-refresh` first if files were modified outside the daemon.
 
         **Error codes** &nbsp;·&nbsp; `NOT_FOUND`
 
-    ??? example "file-outline — Get a hierarchical symbol outline for a file"
+    ??? example "raw/file-outline — Get a hierarchical symbol outline for a file"
 
         Returns a hierarchical symbol outline for a single file, listing all named declarations and their nesting.
 
@@ -762,13 +762,13 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast outline --workspace-root=/path/to/project --file=/path/to/project/src/main/kotlin/Example.kt
+            kast rpc --request-file=docs/examples/fileOutline-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
             ```json
             {
-                "method": "file-outline",
+                "method": "raw/file-outline",
                 "params": {
                     "filePath": "/workspace/src/Sample.kt"
                 },
@@ -820,7 +820,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         **Error codes** &nbsp;·&nbsp; `NOT_FOUND`, `CAPABILITY_NOT_SUPPORTED`
 
-    ??? example "workspace-symbol — Search the workspace for symbols by name pattern"
+    ??? example "raw/workspace-symbol — Search the workspace for symbols by name pattern"
 
         Searches the entire workspace for symbols matching a name pattern. Supports substring matching and optional regex.
 
@@ -845,13 +845,13 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast workspace-symbol --workspace-root=/path/to/project --pattern=UserService
+            kast rpc --request-file=docs/examples/workspaceSymbolSearch-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
             ```json
             {
-                "method": "workspace-symbol",
+                "method": "raw/workspace-symbol",
                 "params": {
                     "pattern": "greet",
                     "maxResults": 100,
@@ -950,7 +950,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         **Error codes** &nbsp;·&nbsp; `CAPABILITY_NOT_SUPPORTED`
 
-    ??? example "workspace/search — Search workspace file contents for text patterns"
+    ??? example "raw/workspace-search — Search workspace file contents for text patterns"
 
         Searches workspace file contents for literal text or regex patterns.
         Use this for Kotlin comments, string literals, and other non-symbol
@@ -977,13 +977,13 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast workspace-search --workspace-root=/path/to/project --pattern=TODO --file-glob='*.kt'
+            kast rpc --request-file=docs/examples/workspaceSearch-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
             ```json
             {
-                "method": "workspace/search",
+                "method": "raw/workspace-search",
                 "params": {
                     "pattern": "greet",
                     "regex": false,
@@ -1029,7 +1029,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         **Error codes** &nbsp;·&nbsp; `CAPABILITY_NOT_SUPPORTED`
 
-    ??? example "workspace/files — List workspace modules and source files"
+    ??? example "raw/workspace-files — List workspace modules and source files"
 
         Lists workspace modules and their source files. Use this to discover the project structure visible to the daemon.
 
@@ -1051,13 +1051,13 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast workspace-files --workspace-root=/path/to/project
+            kast rpc --request-file=docs/examples/workspaceFiles-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
             ```json
             {
-                "method": "workspace/files",
+                "method": "raw/workspace-files",
                 "params": {
                     "includeFiles": false
                 },
@@ -1095,7 +1095,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         **Error codes** &nbsp;·&nbsp; `CAPABILITY_NOT_SUPPORTED`
 
-    ??? example "implementations — Find concrete implementations and subclasses for a declaration"
+    ??? example "raw/implementations — Find concrete implementations and subclasses for a declaration"
 
         Finds concrete implementations and subclasses for an interface or abstract class declaration.
 
@@ -1118,13 +1118,13 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast implementations --workspace-root=/path/to/project --file=/path/to/project/src/main/kotlin/Example.kt --offset=42
+            kast rpc --request-file=docs/examples/implementations-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
             ```json
             {
-                "method": "implementations",
+                "method": "raw/implementations",
                 "params": {
                     "position": {
                         "filePath": "/workspace/src/Types.kt",
@@ -1186,7 +1186,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         **Error codes** &nbsp;·&nbsp; `NOT_FOUND`, `CAPABILITY_NOT_SUPPORTED`
 
-    ??? example "code-actions — Return available code actions at a file position"
+    ??? example "raw/code-actions — Return available code actions at a file position"
 
         Returns available code actions at a file position, such as quick fixes and refactoring suggestions.
 
@@ -1207,13 +1207,13 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast code-actions --workspace-root=/path/to/project --file=/path/to/project/src/main/kotlin/Example.kt --offset=42
+            kast rpc --request-file=docs/examples/codeActions-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
             ```json
             {
-                "method": "code-actions",
+                "method": "raw/code-actions",
                 "params": {
                     "position": {
                         "filePath": "/workspace/src/Sample.kt",
@@ -1242,7 +1242,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         **Error codes** &nbsp;·&nbsp; `NOT_FOUND`, `CAPABILITY_NOT_SUPPORTED`
 
-    ??? example "completions — Return completion candidates available at a file position"
+    ??? example "raw/completions — Return completion candidates available at a file position"
 
         Returns completion candidates available at a file position. Use this to discover what symbols, keywords, or snippets the compiler suggests.
 
@@ -1265,13 +1265,13 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast completions --workspace-root=/path/to/project --file=/path/to/project/src/main/kotlin/Example.kt --offset=42
+            kast rpc --request-file=docs/examples/completions-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
             ```json
             {
-                "method": "completions",
+                "method": "raw/completions",
                 "params": {
                     "position": {
                         "filePath": "/workspace/src/Sample.kt",
@@ -1324,7 +1324,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         4 operations that modify workspace state: rename, optimize imports, apply edits, and refresh.
 
-    ??? example "rename — Plan a symbol rename (dry-run by default)"
+    ??? example "raw/rename — Plan a symbol rename (dry-run by default)"
 
         Plans a symbol rename by computing all text edits needed across the workspace. This is a dry-run by default — it returns edits without applying them.
 
@@ -1349,13 +1349,13 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast rename --workspace-root=/path/to/project --file=/path/to/project/src/main/kotlin/Example.kt --offset=42 --new-name=updatedName
+            kast rpc --request-file=docs/examples/rename-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
             ```json
             {
-                "method": "rename",
+                "method": "raw/rename",
                 "params": {
                     "position": {
                         "filePath": "/workspace/src/Sample.kt",
@@ -1405,11 +1405,11 @@ daemon, including input/output schemas, examples, and behavioral notes.
         !!! note "Behavioral notes"
 
             - The result includes file hashes for conflict detection when applying edits later.
-            - Pair with `edits/apply` to execute the rename after review.
+            - Pair with `raw/apply-edits` to execute the rename after review.
 
         **Error codes** &nbsp;·&nbsp; `NOT_FOUND`
 
-    ??? example "imports/optimize — Optimize imports for one or more files"
+    ??? example "raw/optimize-imports — Optimize imports for one or more files"
 
         Optimizes imports for one or more files, removing unused imports and sorting the remainder.
 
@@ -1431,13 +1431,13 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast optimize-imports --workspace-root=/path/to/project --file=/path/to/project/src/main/kotlin/Example.kt
+            kast rpc --request-file=docs/examples/optimizeImports-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
             ```json
             {
-                "method": "imports/optimize",
+                "method": "raw/optimize-imports",
                 "params": {
                     "filePaths": [
                         "/workspace/src/Sample.kt"
@@ -1467,9 +1467,9 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         **Error codes** &nbsp;·&nbsp; `NOT_FOUND`, `CAPABILITY_NOT_SUPPORTED`
 
-    ??? example "edits/apply — Apply a prepared edit plan with conflict detection"
+    ??? example "raw/apply-edits — Apply a prepared edit plan with conflict detection"
 
-        Applies a prepared edit plan with file-hash conflict detection. Pass the edits and hashes returned by a prior `rename` or other planning operation.
+        Applies a prepared edit plan with file-hash conflict detection. Pass the edits and hashes returned by a prior `raw/rename` or other planning operation.
 
         **Capability** &nbsp;·&nbsp; `APPLY_EDITS`
 
@@ -1492,13 +1492,13 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast apply-edits --workspace-root=/path/to/project --edits-json='{...}'
+            kast rpc --request-file=docs/examples/applyEdits-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
             ```json
             {
-                "method": "edits/apply",
+                "method": "raw/apply-edits",
                 "params": {
                     "edits": [
                         {
@@ -1551,7 +1551,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         **Error codes** &nbsp;·&nbsp; `CONFLICT`, `VALIDATION_ERROR`
 
-    ??? example "workspace/refresh — Force a targeted or full workspace state refresh"
+    ??? example "raw/workspace-refresh — Force a targeted or full workspace state refresh"
 
         Forces the daemon to refresh its workspace state. Use this after external file modifications to ensure the daemon's view is current.
 
@@ -1573,13 +1573,13 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast workspace refresh --workspace-root=/path/to/project
+            kast rpc --request-file=docs/examples/refreshWorkspace-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
             ```json
             {
-                "method": "workspace/refresh",
+                "method": "raw/workspace-refresh",
                 "params": {
                     "filePaths": [
                         "/workspace/src/Sample.kt"

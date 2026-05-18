@@ -104,7 +104,7 @@ use it to pick which offset to feed `resolve` or `references`.
 
     ```json title="JSON-RPC request"
     {
-      "method": "file-outline",
+      "method": "raw/file-outline",
       "params": {
         "filePath": "/app/src/main/kotlin/com/example/OrderService.kt"
       },
@@ -202,7 +202,7 @@ specific match.
 
     ```json title="JSON-RPC request"
     {
-      "method": "workspace-symbol",
+      "method": "raw/workspace-symbol",
       "params": {
         "pattern": ".*Service",
         "regex": true,
@@ -273,7 +273,7 @@ found every implementation within the result cap.
 
     ```json title="JSON-RPC request"
     {
-      "method": "implementations",
+      "method": "raw/implementations",
       "params": {
         "position": {
           "filePath": "/app/src/main/kotlin/sample/Greeter.kt",

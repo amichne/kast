@@ -86,13 +86,13 @@ paths:
             "application/json":
               schema:
                 "$ref": "#/components/schemas/JsonRpcErrorResponse"
-  "/rpc/symbol/resolve":
+  "/rpc/raw/resolve":
     post:
       operationId: resolveSymbol
       summary: Resolve the symbol at a file position
       tags:
         - read
-      x-jsonrpc-method: symbol/resolve
+      x-jsonrpc-method: raw/resolve
       x-kast-required-capability: RESOLVE_SYMBOL
       requestBody:
         required: true
@@ -113,13 +113,13 @@ paths:
             "application/json":
               schema:
                 "$ref": "#/components/schemas/JsonRpcErrorResponse"
-  "/rpc/references":
+  "/rpc/raw/references":
     post:
       operationId: findReferences
       summary: Find all references to the symbol at a file position
       tags:
         - read
-      x-jsonrpc-method: references
+      x-jsonrpc-method: raw/references
       x-kast-required-capability: FIND_REFERENCES
       requestBody:
         required: true
@@ -140,13 +140,13 @@ paths:
             "application/json":
               schema:
                 "$ref": "#/components/schemas/JsonRpcErrorResponse"
-  "/rpc/call-hierarchy":
+  "/rpc/raw/call-hierarchy":
     post:
       operationId: callHierarchy
       summary: Expand a bounded incoming or outgoing call tree
       tags:
         - read
-      x-jsonrpc-method: call-hierarchy
+      x-jsonrpc-method: raw/call-hierarchy
       x-kast-required-capability: CALL_HIERARCHY
       requestBody:
         required: true
@@ -167,13 +167,13 @@ paths:
             "application/json":
               schema:
                 "$ref": "#/components/schemas/JsonRpcErrorResponse"
-  "/rpc/type-hierarchy":
+  "/rpc/raw/type-hierarchy":
     post:
       operationId: typeHierarchy
       summary: Expand supertypes and subtypes from a resolved symbol
       tags:
         - read
-      x-jsonrpc-method: type-hierarchy
+      x-jsonrpc-method: raw/type-hierarchy
       x-kast-required-capability: TYPE_HIERARCHY
       requestBody:
         required: true
@@ -194,13 +194,13 @@ paths:
             "application/json":
               schema:
                 "$ref": "#/components/schemas/JsonRpcErrorResponse"
-  "/rpc/semantic-insertion-point":
+  "/rpc/raw/semantic-insertion-point":
     post:
       operationId: semanticInsertionPoint
       summary: Find the best insertion point for a new declaration
       tags:
         - read
-      x-jsonrpc-method: semantic-insertion-point
+      x-jsonrpc-method: raw/semantic-insertion-point
       x-kast-required-capability: SEMANTIC_INSERTION_POINT
       requestBody:
         required: true
@@ -221,13 +221,13 @@ paths:
             "application/json":
               schema:
                 "$ref": "#/components/schemas/JsonRpcErrorResponse"
-  "/rpc/diagnostics":
+  "/rpc/raw/diagnostics":
     post:
       operationId: diagnostics
       summary: Run compilation diagnostics for one or more files
       tags:
         - read
-      x-jsonrpc-method: diagnostics
+      x-jsonrpc-method: raw/diagnostics
       x-kast-required-capability: DIAGNOSTICS
       requestBody:
         required: true
@@ -248,13 +248,13 @@ paths:
             "application/json":
               schema:
                 "$ref": "#/components/schemas/JsonRpcErrorResponse"
-  "/rpc/file-outline":
+  "/rpc/raw/file-outline":
     post:
       operationId: fileOutline
       summary: Get a hierarchical symbol outline for a single file
       tags:
         - read
-      x-jsonrpc-method: file-outline
+      x-jsonrpc-method: raw/file-outline
       x-kast-required-capability: FILE_OUTLINE
       requestBody:
         required: true
@@ -275,13 +275,13 @@ paths:
             "application/json":
               schema:
                 "$ref": "#/components/schemas/JsonRpcErrorResponse"
-  "/rpc/workspace-symbol":
+  "/rpc/raw/workspace-symbol":
     post:
       operationId: workspaceSymbolSearch
       summary: Search the workspace for symbols by name pattern
       tags:
         - read
-      x-jsonrpc-method: workspace-symbol
+      x-jsonrpc-method: raw/workspace-symbol
       x-kast-required-capability: WORKSPACE_SYMBOL_SEARCH
       requestBody:
         required: true
@@ -302,13 +302,13 @@ paths:
             "application/json":
               schema:
                 "$ref": "#/components/schemas/JsonRpcErrorResponse"
-  "/rpc/workspace/search":
+  "/rpc/raw/workspace-search":
     post:
       operationId: workspaceSearch
       summary: Search workspace file contents for text patterns
       tags:
         - read
-      x-jsonrpc-method: workspace/search
+      x-jsonrpc-method: raw/workspace-search
       x-kast-required-capability: WORKSPACE_SEARCH
       requestBody:
         required: true
@@ -329,13 +329,13 @@ paths:
             "application/json":
               schema:
                 "$ref": "#/components/schemas/JsonRpcErrorResponse"
-  "/rpc/workspace/files":
+  "/rpc/raw/workspace-files":
     post:
       operationId: workspaceFiles
       summary: List workspace modules and their source files
       tags:
         - read
-      x-jsonrpc-method: workspace/files
+      x-jsonrpc-method: raw/workspace-files
       x-kast-required-capability: WORKSPACE_FILES
       requestBody:
         required: true
@@ -356,13 +356,13 @@ paths:
             "application/json":
               schema:
                 "$ref": "#/components/schemas/JsonRpcErrorResponse"
-  "/rpc/implementations":
+  "/rpc/raw/implementations":
     post:
       operationId: implementations
       summary: Find concrete implementations and subclasses for a declaration
       tags:
         - read
-      x-jsonrpc-method: implementations
+      x-jsonrpc-method: raw/implementations
       x-kast-required-capability: IMPLEMENTATIONS
       requestBody:
         required: true
@@ -383,13 +383,13 @@ paths:
             "application/json":
               schema:
                 "$ref": "#/components/schemas/JsonRpcErrorResponse"
-  "/rpc/code-actions":
+  "/rpc/raw/code-actions":
     post:
       operationId: codeActions
       summary: Return available code actions at a file position
       tags:
         - read
-      x-jsonrpc-method: code-actions
+      x-jsonrpc-method: raw/code-actions
       x-kast-required-capability: CODE_ACTIONS
       requestBody:
         required: true
@@ -410,13 +410,13 @@ paths:
             "application/json":
               schema:
                 "$ref": "#/components/schemas/JsonRpcErrorResponse"
-  "/rpc/completions":
+  "/rpc/raw/completions":
     post:
       operationId: completions
       summary: Return completion candidates available at a file position
       tags:
         - read
-      x-jsonrpc-method: completions
+      x-jsonrpc-method: raw/completions
       x-kast-required-capability: COMPLETIONS
       requestBody:
         required: true
@@ -437,13 +437,13 @@ paths:
             "application/json":
               schema:
                 "$ref": "#/components/schemas/JsonRpcErrorResponse"
-  "/rpc/rename":
+  "/rpc/raw/rename":
     post:
       operationId: rename
       summary: Plan a symbol rename (dry-run by default)
       tags:
         - mutation
-      x-jsonrpc-method: rename
+      x-jsonrpc-method: raw/rename
       x-kast-required-capability: RENAME
       requestBody:
         required: true
@@ -464,13 +464,13 @@ paths:
             "application/json":
               schema:
                 "$ref": "#/components/schemas/JsonRpcErrorResponse"
-  "/rpc/imports/optimize":
+  "/rpc/raw/optimize-imports":
     post:
       operationId: optimizeImports
       summary: Optimize imports for one or more files
       tags:
         - mutation
-      x-jsonrpc-method: imports/optimize
+      x-jsonrpc-method: raw/optimize-imports
       x-kast-required-capability: OPTIMIZE_IMPORTS
       requestBody:
         required: true
@@ -491,13 +491,13 @@ paths:
             "application/json":
               schema:
                 "$ref": "#/components/schemas/JsonRpcErrorResponse"
-  "/rpc/edits/apply":
+  "/rpc/raw/apply-edits":
     post:
       operationId: applyEdits
       summary: Apply a prepared edit plan with file-hash conflict detection
       tags:
         - mutation
-      x-jsonrpc-method: edits/apply
+      x-jsonrpc-method: raw/apply-edits
       x-kast-required-capability: APPLY_EDITS
       x-kast-conditional-capability: FILE_OPERATIONS — required when fileOperations is non-empty
       requestBody:
@@ -519,13 +519,13 @@ paths:
             "application/json":
               schema:
                 "$ref": "#/components/schemas/JsonRpcErrorResponse"
-  "/rpc/workspace/refresh":
+  "/rpc/raw/workspace-refresh":
     post:
       operationId: refreshWorkspace
       summary: Force a targeted or full workspace state refresh
       tags:
         - mutation
-      x-jsonrpc-method: workspace/refresh
+      x-jsonrpc-method: raw/workspace-refresh
       x-kast-required-capability: REFRESH_WORKSPACE
       requestBody:
         required: true

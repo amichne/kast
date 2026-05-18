@@ -1,5 +1,5 @@
 {
-    "method": "type-hierarchy",
+    "method": "raw/type-hierarchy",
     "params": {
         "position": {
             "filePath": "/workspace/src/Types.kt",

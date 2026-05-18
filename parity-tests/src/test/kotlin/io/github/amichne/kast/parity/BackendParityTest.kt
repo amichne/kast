@@ -82,8 +82,8 @@ class BackendParityTest {
         val position = fixtureFilePosition()
         val query = SymbolQuery(position = position)
         val comparator = ParityComparator.Structural()
-        assertParity("symbol/resolve", comparator) {
-            it.rawCall("symbol/resolve", json.encodeToJsonElement(query))
+        assertParity("raw/resolve", comparator) {
+            it.rawCall("raw/resolve", json.encodeToJsonElement(query))
         }
     }
 
@@ -94,8 +94,8 @@ class BackendParityTest {
         val comparator = ParityComparator.Structural(
             unorderedArrayKeys = setOf("references"),
         )
-        assertParity("references", comparator) {
-            it.rawCall("references", json.encodeToJsonElement(query))
+        assertParity("raw/references", comparator) {
+            it.rawCall("raw/references", json.encodeToJsonElement(query))
         }
     }
 
@@ -114,8 +114,8 @@ class BackendParityTest {
         val comparator = ParityComparator.Structural(
             unorderedArrayKeys = setOf("diagnostics"),
         )
-        assertParity("diagnostics", comparator) {
-            it.rawCall("diagnostics", json.encodeToJsonElement(query))
+        assertParity("raw/diagnostics", comparator) {
+            it.rawCall("raw/diagnostics", json.encodeToJsonElement(query))
         }
     }
 
@@ -127,8 +127,8 @@ class BackendParityTest {
             ignoredKeys = setOf("schemaVersion", "searchScope", "fileHashes"),
             unorderedArrayKeys = setOf("edits", "affectedFiles"),
         )
-        assertParity("rename", comparator) {
-            it.rawCall("rename", json.encodeToJsonElement(query))
+        assertParity("raw/rename", comparator) {
+            it.rawCall("raw/rename", json.encodeToJsonElement(query))
         }
     }
 

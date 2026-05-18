@@ -1,5 +1,5 @@
 {
-    "method": "implementations",
+    "method": "raw/implementations",
     "params": {
         "position": {
             "filePath": "/workspace/src/Types.kt",

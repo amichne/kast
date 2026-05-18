@@ -1,5 +1,5 @@
 {
-    "method": "symbol/resolve",
+    "method": "raw/resolve",
     "params": {
         "position": {
             "filePath": "/workspace/src/Sample.kt",

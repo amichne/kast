@@ -21,11 +21,21 @@ import java.nio.file.Path
 object VersionedCommandSpec {
 
     fun renderJson(version: String = currentCliVersion()): String {
+        val commands = commands()
         val spec = buildJsonObject {
             put("version", version)
+            put("categories", buildJsonObject {
+                CommandCategory.entries.forEach { category ->
+                    put(category.wireName, buildJsonArray {
+                        commands
+                            .filter { it.category == category }
+                            .forEach { add(JsonPrimitive(it.method)) }
+                    })
+                }
+            })
             put("commands", buildJsonObject {
-                commands().forEach { command ->
-                    put(command.name, command.toJson())
+                commands.forEach { command ->
+                    put(command.method, command.toJson())
                 }
             })
         }
@@ -34,30 +44,38 @@ object VersionedCommandSpec {
 
     private fun commands(): List<CommandEntry> = listOf(
         CommandEntry(
-            name = "workspace-files",
-            summary = "List workspace modules and optional file paths",
-            requestSerializer = io.github.amichne.kast.api.contract.skill.KastWorkspaceFilesRequest.serializer(),
-            successType = "WORKSPACE_FILES_SUCCESS",
-            failureType = "WORKSPACE_FILES_FAILURE",
+            method = "health",
+            category = CommandCategory.SYSTEM,
+            summary = "Basic health check",
+            responseType = "HealthResponse",
         ),
         CommandEntry(
-            name = "workspace-search",
-            summary = "Search Kotlin workspace file contents by text or regex",
-            requestSerializer = io.github.amichne.kast.api.contract.skill.KastWorkspaceSearchRequest.serializer(),
-            successType = "WORKSPACE_SEARCH_SUCCESS",
-            failureType = "WORKSPACE_SEARCH_FAILURE",
+            method = "runtime/status",
+            category = CommandCategory.SYSTEM,
+            summary = "Detailed runtime state including indexing progress",
+            responseType = "RuntimeStatusResponse",
         ),
         CommandEntry(
-            name = "scaffold",
+            method = "capabilities",
+            category = CommandCategory.SYSTEM,
+            summary = "Advertised read and mutation capabilities",
+            responseType = "BackendCapabilities",
+        ),
+        CommandEntry(
+            method = "symbol/scaffold",
+            category = CommandCategory.SYMBOL,
             summary = "Gather structural generation context for a Kotlin file",
             requestSerializer = io.github.amichne.kast.api.contract.skill.KastScaffoldRequest.serializer(),
+            responseType = "KastScaffoldResponse",
             successType = "SCAFFOLD_SUCCESS",
             failureType = "SCAFFOLD_FAILURE",
         ),
         CommandEntry(
-            name = "resolve",
+            method = "symbol/resolve",
+            category = CommandCategory.SYMBOL,
             summary = "Resolve a symbol by name to its declaration",
             requestSerializer = io.github.amichne.kast.api.contract.skill.KastResolveRequest.serializer(),
+            responseType = "KastResolveResponse",
             successType = "RESOLVE_SUCCESS",
             failureType = "RESOLVE_FAILURE",
             notes = listOf(
@@ -66,9 +84,11 @@ object VersionedCommandSpec {
             ),
         ),
         CommandEntry(
-            name = "references",
+            method = "symbol/references",
+            category = CommandCategory.SYMBOL,
             summary = "Find every usage of a Kotlin symbol",
             requestSerializer = io.github.amichne.kast.api.contract.skill.KastReferencesRequest.serializer(),
+            responseType = "KastReferencesResponse",
             successType = "REFERENCES_SUCCESS",
             failureType = "REFERENCES_FAILURE",
             notes = listOf(
@@ -77,9 +97,11 @@ object VersionedCommandSpec {
             ),
         ),
         CommandEntry(
-            name = "callers",
+            method = "symbol/callers",
+            category = CommandCategory.SYMBOL,
             summary = "Expand an incoming or outgoing call hierarchy",
             requestSerializer = io.github.amichne.kast.api.contract.skill.KastCallersRequest.serializer(),
+            responseType = "KastCallersResponse",
             successType = "CALLERS_SUCCESS",
             failureType = "CALLERS_FAILURE",
             notes = listOf(
@@ -87,16 +109,11 @@ object VersionedCommandSpec {
             ),
         ),
         CommandEntry(
-            name = "diagnostics",
-            summary = "Run Kotlin diagnostics on listed files",
-            requestSerializer = io.github.amichne.kast.api.contract.skill.KastDiagnosticsRequest.serializer(),
-            successType = "DIAGNOSTICS_SUCCESS",
-            failureType = "DIAGNOSTICS_FAILURE",
-        ),
-        CommandEntry(
-            name = "rename",
+            method = "symbol/rename",
+            category = CommandCategory.SYMBOL,
             summary = "Resolve or target a symbol and apply a rename",
             requestSerializer = io.github.amichne.kast.api.contract.skill.KastRenameRequest.serializer(),
+            responseType = "KastRenameResponse",
             successType = "RENAME_SUCCESS",
             failureType = "RENAME_FAILURE",
             discriminatedTypes = mapOf(
@@ -105,9 +122,11 @@ object VersionedCommandSpec {
             ),
         ),
         CommandEntry(
-            name = "write-and-validate",
+            method = "symbol/write-and-validate",
+            category = CommandCategory.SYMBOL,
             summary = "Apply generated Kotlin code and validate the result",
             requestSerializer = io.github.amichne.kast.api.contract.skill.KastWriteAndValidateRequest.serializer(),
+            responseType = "KastWriteAndValidateResponse",
             successType = "WRITE_AND_VALIDATE_SUCCESS",
             failureType = "WRITE_AND_VALIDATE_FAILURE",
             discriminatedTypes = mapOf(
@@ -117,29 +136,158 @@ object VersionedCommandSpec {
             ),
         ),
         CommandEntry(
-            name = "metrics",
+            method = "raw/resolve",
+            category = CommandCategory.RAW,
+            summary = "Resolve the symbol at a file position",
+            requestSerializer = io.github.amichne.kast.api.contract.query.SymbolQuery.serializer(),
+            responseType = "SymbolResult",
+        ),
+        CommandEntry(
+            method = "raw/references",
+            category = CommandCategory.RAW,
+            summary = "Find all references to the symbol at a file position",
+            requestSerializer = io.github.amichne.kast.api.contract.query.ReferencesQuery.serializer(),
+            responseType = "ReferencesResult",
+        ),
+        CommandEntry(
+            method = "raw/call-hierarchy",
+            category = CommandCategory.RAW,
+            summary = "Expand a bounded incoming or outgoing call tree",
+            requestSerializer = io.github.amichne.kast.api.contract.query.CallHierarchyQuery.serializer(),
+            responseType = "CallHierarchyResult",
+        ),
+        CommandEntry(
+            method = "raw/type-hierarchy",
+            category = CommandCategory.RAW,
+            summary = "Expand supertypes and subtypes from a resolved symbol",
+            requestSerializer = io.github.amichne.kast.api.contract.query.TypeHierarchyQuery.serializer(),
+            responseType = "TypeHierarchyResult",
+        ),
+        CommandEntry(
+            method = "raw/semantic-insertion-point",
+            category = CommandCategory.RAW,
+            summary = "Find the best insertion point for a new declaration",
+            requestSerializer = io.github.amichne.kast.api.contract.SemanticInsertionQuery.serializer(),
+            responseType = "SemanticInsertionResult",
+        ),
+        CommandEntry(
+            method = "raw/diagnostics",
+            category = CommandCategory.RAW,
+            summary = "Run Kotlin diagnostics on listed files",
+            requestSerializer = io.github.amichne.kast.api.contract.query.DiagnosticsQuery.serializer(),
+            responseType = "DiagnosticsResult",
+        ),
+        CommandEntry(
+            method = "raw/rename",
+            category = CommandCategory.RAW,
+            summary = "Plan a symbol rename by file position",
+            requestSerializer = io.github.amichne.kast.api.contract.query.RenameQuery.serializer(),
+            responseType = "RenameResult",
+        ),
+        CommandEntry(
+            method = "raw/optimize-imports",
+            category = CommandCategory.RAW,
+            summary = "Optimize imports for one or more files",
+            requestSerializer = io.github.amichne.kast.api.contract.query.ImportOptimizeQuery.serializer(),
+            responseType = "ImportOptimizeResult",
+        ),
+        CommandEntry(
+            method = "raw/apply-edits",
+            category = CommandCategory.RAW,
+            summary = "Apply a prepared edit plan with conflict detection",
+            requestSerializer = io.github.amichne.kast.api.contract.query.ApplyEditsQuery.serializer(),
+            responseType = "ApplyEditsResult",
+        ),
+        CommandEntry(
+            method = "raw/workspace-refresh",
+            category = CommandCategory.RAW,
+            summary = "Force a targeted or full workspace state refresh",
+            requestSerializer = io.github.amichne.kast.api.contract.query.RefreshQuery.serializer(),
+            responseType = "RefreshResult",
+        ),
+        CommandEntry(
+            method = "raw/file-outline",
+            category = CommandCategory.RAW,
+            summary = "Get a hierarchical symbol outline for a file",
+            requestSerializer = io.github.amichne.kast.api.contract.query.FileOutlineQuery.serializer(),
+            responseType = "FileOutlineResult",
+        ),
+        CommandEntry(
+            method = "raw/workspace-symbol",
+            category = CommandCategory.RAW,
+            summary = "Search the workspace for symbols by name pattern",
+            requestSerializer = io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery.serializer(),
+            responseType = "WorkspaceSymbolResult",
+        ),
+        CommandEntry(
+            method = "raw/workspace-search",
+            category = CommandCategory.RAW,
+            summary = "Search workspace file contents by text or regex",
+            requestSerializer = io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery.serializer(),
+            responseType = "WorkspaceSearchResult",
+        ),
+        CommandEntry(
+            method = "raw/workspace-files",
+            category = CommandCategory.RAW,
+            summary = "List workspace modules and optional file paths",
+            requestSerializer = io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery.serializer(),
+            responseType = "WorkspaceFilesResult",
+        ),
+        CommandEntry(
+            method = "raw/implementations",
+            category = CommandCategory.RAW,
+            summary = "Find concrete implementations and subclasses for a declaration",
+            requestSerializer = io.github.amichne.kast.api.contract.query.ImplementationsQuery.serializer(),
+            responseType = "ImplementationsResult",
+        ),
+        CommandEntry(
+            method = "raw/code-actions",
+            category = CommandCategory.RAW,
+            summary = "Return available code actions at a file position",
+            requestSerializer = io.github.amichne.kast.api.contract.query.CodeActionsQuery.serializer(),
+            responseType = "CodeActionsResult",
+        ),
+        CommandEntry(
+            method = "raw/completions",
+            category = CommandCategory.RAW,
+            summary = "Return completion candidates available at a file position",
+            requestSerializer = io.github.amichne.kast.api.contract.query.CompletionsQuery.serializer(),
+            responseType = "CompletionsResult",
+        ),
+        CommandEntry(
+            method = "database/metrics",
+            category = CommandCategory.DATABASE,
             summary = "Query indexed source metrics",
             requestSerializer = io.github.amichne.kast.api.contract.skill.KastMetricsRequest.serializer(),
+            responseType = "KastMetricsResponse",
             successType = "METRICS_SUCCESS",
             failureType = "METRICS_FAILURE",
+            dataSource = "sqlite",
         ),
     )
 
     private data class CommandEntry(
-        val name: String,
+        val method: String,
+        val category: CommandCategory,
         val summary: String,
-        val requestSerializer: KSerializer<*>,
-        val successType: String,
-        val failureType: String,
+        val requestSerializer: KSerializer<*>? = null,
+        val responseType: String,
+        val successType: String? = null,
+        val failureType: String? = null,
         val discriminatedTypes: Map<String, KSerializer<*>>? = null,
         val notes: List<String>? = null,
+        val dataSource: String = "backend",
     ) {
         @OptIn(ExperimentalSerializationApi::class)
         fun toJson(): JsonElement = buildJsonObject {
+            put("method", method)
+            put("category", category.wireName)
             put("summary", summary)
-            put("request", descriptorToSchema(requestSerializer.descriptor))
-            put("successType", successType)
-            put("failureType", failureType)
+            put("dataSource", dataSource)
+            put("request", requestSerializer?.let { descriptorToSchema(it.descriptor) } ?: emptyRequestSchema())
+            put("responseType", responseType)
+            successType?.let { put("successType", it) }
+            failureType?.let { put("failureType", it) }
             if (discriminatedTypes != null) {
                 put("variants", buildJsonObject {
                     discriminatedTypes.forEach { (discriminator, serializer) ->
@@ -152,6 +300,17 @@ object VersionedCommandSpec {
             }
         }
     }
+
+    private enum class CommandCategory(val wireName: String) {
+        SYSTEM("system"),
+        SYMBOL("symbol"),
+        RAW("raw"),
+        DATABASE("database"),
+    }
+}
+
+private fun emptyRequestSchema(): JsonObject = buildJsonObject {
+    put("fields", buildJsonObject {})
 }
 
 @OptIn(ExperimentalSerializationApi::class)

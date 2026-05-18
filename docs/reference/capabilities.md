@@ -77,7 +77,7 @@ category. Expand any operation to see its input and output schemas.
 
         12 read-only operations for querying symbols, references, hierarchies, diagnostics, outlines, and completions.
 
-    ??? info "symbol/resolve — Resolve the symbol at a file position"
+    ??? info "raw/resolve — Resolve the symbol at a file position"
 
         **Capability** &nbsp;·&nbsp; `RESOLVE_SYMBOL`
 
@@ -95,7 +95,7 @@ category. Expand any operation to see its input and output schemas.
             | `#!kotlin symbol: Symbol` | The resolved symbol at the queried position. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
-    ??? info "references — Find all references to the symbol at a file position"
+    ??? info "raw/references — Find all references to the symbol at a file position"
 
         **Capability** &nbsp;·&nbsp; `FIND_REFERENCES`
 
@@ -116,7 +116,7 @@ category. Expand any operation to see its input and output schemas.
             | `#!kotlin searchScope: SearchScope?` | Describes the scope and exhaustiveness of the search. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
-    ??? info "call-hierarchy — Expand a bounded incoming or outgoing call tree"
+    ??? info "raw/call-hierarchy — Expand a bounded incoming or outgoing call tree"
 
         **Capability** &nbsp;·&nbsp; `CALL_HIERARCHY`
 
@@ -138,7 +138,7 @@ category. Expand any operation to see its input and output schemas.
             | `#!kotlin stats: CallHierarchyStats` | Traversal statistics including truncation indicators. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
-    ??? info "type-hierarchy — Expand supertypes and subtypes from a resolved symbol"
+    ??? info "raw/type-hierarchy — Expand supertypes and subtypes from a resolved symbol"
 
         **Capability** &nbsp;·&nbsp; `TYPE_HIERARCHY`
 
@@ -158,7 +158,7 @@ category. Expand any operation to see its input and output schemas.
             | `#!kotlin stats: TypeHierarchyStats` | Traversal statistics including truncation indicators. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
-    ??? info "semantic-insertion-point — Find the best insertion point for a new declaration"
+    ??? info "raw/semantic-insertion-point — Find the best insertion point for a new declaration"
 
         **Capability** &nbsp;·&nbsp; `SEMANTIC_INSERTION_POINT`
 
@@ -176,7 +176,7 @@ category. Expand any operation to see its input and output schemas.
             | `#!kotlin filePath: String` | Absolute path of the file containing the insertion point. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
-    ??? info "diagnostics — Run compilation diagnostics for files"
+    ??? info "raw/diagnostics — Run compilation diagnostics for files"
 
         **Capability** &nbsp;·&nbsp; `DIAGNOSTICS`
 
@@ -193,7 +193,7 @@ category. Expand any operation to see its input and output schemas.
             | `#!kotlin page: PageInfo?` | Pagination metadata when results are truncated. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
-    ??? info "file-outline — Get a hierarchical symbol outline for a file"
+    ??? info "raw/file-outline — Get a hierarchical symbol outline for a file"
 
         **Capability** &nbsp;·&nbsp; `FILE_OUTLINE`
 
@@ -209,7 +209,7 @@ category. Expand any operation to see its input and output schemas.
             | `#!kotlin symbols: List<OutlineSymbol>` | Top-level symbols in the file, each containing nested children. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
-    ??? info "workspace-symbol — Search the workspace for symbols by name pattern"
+    ??? info "raw/workspace-symbol — Search the workspace for symbols by name pattern"
 
         **Capability** &nbsp;·&nbsp; `WORKSPACE_SYMBOL_SEARCH`
 
@@ -230,7 +230,7 @@ category. Expand any operation to see its input and output schemas.
             | `#!kotlin page: PageInfo?` | Pagination metadata when results are truncated. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
-    ??? info "workspace/search — Search workspace file contents for text patterns"
+    ??? info "raw/workspace-search — Search workspace file contents for text patterns"
 
         **Capability** &nbsp;·&nbsp; `WORKSPACE_SEARCH`
 
@@ -251,7 +251,7 @@ category. Expand any operation to see its input and output schemas.
             | `#!kotlin truncated: Boolean` :material-information-outline:{ title="Default: false" } | True when the result stopped at `maxResults`. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
-    ??? info "workspace/files — List workspace modules and source files"
+    ??? info "raw/workspace-files — List workspace modules and source files"
 
         **Capability** &nbsp;·&nbsp; `WORKSPACE_FILES`
 
@@ -269,7 +269,7 @@ category. Expand any operation to see its input and output schemas.
             | `#!kotlin modules: List<WorkspaceModule>` | List of workspace modules visible to the daemon. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
-    ??? info "implementations — Find concrete implementations and subclasses for a declaration"
+    ??? info "raw/implementations — Find concrete implementations and subclasses for a declaration"
 
         **Capability** &nbsp;·&nbsp; `IMPLEMENTATIONS`
 
@@ -288,7 +288,7 @@ category. Expand any operation to see its input and output schemas.
             | `#!kotlin exhaustive: Boolean` :material-information-outline:{ title="Default: true" } | True when all implementations were found within maxResults. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
-    ??? info "code-actions — Return available code actions at a file position"
+    ??? info "raw/code-actions — Return available code actions at a file position"
 
         **Capability** &nbsp;·&nbsp; `CODE_ACTIONS`
 
@@ -305,7 +305,7 @@ category. Expand any operation to see its input and output schemas.
             | `#!kotlin actions: List<CodeAction>` | Available code actions at the queried position. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
-    ??? info "completions — Return completion candidates available at a file position"
+    ??? info "raw/completions — Return completion candidates available at a file position"
 
         **Capability** &nbsp;·&nbsp; `COMPLETIONS`
 
@@ -330,7 +330,7 @@ category. Expand any operation to see its input and output schemas.
 
         4 operations that modify workspace state: rename, optimize imports, apply edits, and refresh.
 
-    ??? info "rename — Plan a symbol rename (dry-run by default)"
+    ??? info "raw/rename — Plan a symbol rename (dry-run by default)"
 
         **Capability** &nbsp;·&nbsp; `RENAME`
 
@@ -351,7 +351,7 @@ category. Expand any operation to see its input and output schemas.
             | `#!kotlin searchScope: SearchScope?` | Describes the scope and exhaustiveness of the rename search. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
-    ??? info "imports/optimize — Optimize imports for one or more files"
+    ??? info "raw/optimize-imports — Optimize imports for one or more files"
 
         **Capability** &nbsp;·&nbsp; `OPTIMIZE_IMPORTS`
 
@@ -369,7 +369,7 @@ category. Expand any operation to see its input and output schemas.
             | `#!kotlin affectedFiles: List<String>` | Absolute paths of all files that were modified. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
-    ??? info "edits/apply — Apply a prepared edit plan with conflict detection"
+    ??? info "raw/apply-edits — Apply a prepared edit plan with conflict detection"
 
         **Capability** &nbsp;·&nbsp; `APPLY_EDITS`
 
@@ -390,7 +390,7 @@ category. Expand any operation to see its input and output schemas.
             | `#!kotlin deletedFiles: List<String>` :material-information-outline:{ title="Default: emptyList()" } | Absolute paths of files deleted by file operations. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
-    ??? info "workspace/refresh — Force a targeted or full workspace state refresh"
+    ??? info "raw/workspace-refresh — Force a targeted or full workspace state refresh"
 
         **Capability** &nbsp;·&nbsp; `REFRESH_WORKSPACE`
 
