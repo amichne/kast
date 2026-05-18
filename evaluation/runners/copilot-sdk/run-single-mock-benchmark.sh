@@ -150,7 +150,9 @@ benchmark_cmd=(
 for history_root in "${history_roots[@]}"; do
   benchmark_cmd+=(--history-root "$history_root")
 done
-benchmark_cmd+=("${forwarded[@]}")
+if [[ ${#forwarded[@]} -gt 0 ]]; then
+  benchmark_cmd+=("${forwarded[@]}")
+fi
 
 codex_model="gpt-5.5"
 codex_reasoning_effort="xhigh"

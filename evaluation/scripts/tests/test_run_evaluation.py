@@ -351,6 +351,7 @@ class RunEvaluationTests(unittest.TestCase):
         env = {**os.environ, "KAST_EVAL_SKIP_NPM_CI": "1"}
         result = subprocess.run(
             [
+                "/bin/bash",
                 str(EVALUATION_DIR / "runners" / "copilot-sdk" / "run-benchmark.sh"),
                 "--catalog",
                 str(catalog_path),
@@ -394,6 +395,7 @@ class RunEvaluationTests(unittest.TestCase):
         env["HOME"] = str(home)
         result = subprocess.run(
             [
+                "/bin/bash",
                 str(EVALUATION_DIR / "runners" / "copilot-sdk" / "run-single-mock-benchmark.sh"),
                 "--dry-run",
                 "--workspace",

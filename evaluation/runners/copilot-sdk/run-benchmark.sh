@@ -202,6 +202,8 @@ fi
 if [[ -n "$skip_aggregate" ]]; then
   run_args+=("$skip_aggregate")
 fi
-run_args+=("${forwarded[@]}")
+if [[ ${#forwarded[@]} -gt 0 ]]; then
+  run_args+=("${forwarded[@]}")
+fi
 
 exec "${run_args[@]}"
