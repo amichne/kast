@@ -13,7 +13,7 @@ Writes a normalized grading.json that:
 - Marks expectations skipped=true when applicability does not match the run config.
 - Computes summary.outcome_pass_rate (fair cross-config metric).
 - Detects baseline-isolation violations (without_skill but kast_calls > 0).
-- Detects contradictions (passed=true with evidence "= 0" / "missing" / "no ...").
+- Detects contradictions (passed=true with evidence like "refs found = 0" / "missing" / "no ...").
 - Sets schema_version=2 and integrity.attempts/flaky/git_sha_post if available.
 
 The script is idempotent: running it twice produces the same output, modulo
@@ -31,7 +31,7 @@ from pathlib import Path
 from typing import Any
 
 CONTRADICTION_PATTERNS = [
-    re.compile(r"=\s*0\b"),                    # "file:line refs found = 0"
+    re.compile(r"\b(?:found|present|counts?|refs?|references?|citations?)\s*=\s*0\b", re.IGNORECASE),
     re.compile(r"\bno\s+\w+\s+(found|present)", re.IGNORECASE),
     re.compile(r"\bmissing\b", re.IGNORECASE),
     re.compile(r"\bnot\s+(?:present|found|cited)\b", re.IGNORECASE),

@@ -387,6 +387,11 @@ class RunEvaluationTests(unittest.TestCase):
         self.assertFalse((EVALUATION_DIR / "runners" / "copilot" / "run-benchmark.sh").exists())
 
     def test_single_mock_benchmark_dry_run_shows_mock_codex_and_publish_contract(self) -> None:
+        home = SCRATCH_DIR / "home"
+        default_history = home / ".copilot" / "session-state"
+        default_history.mkdir(parents=True)
+        env = os.environ.copy()
+        env["HOME"] = str(home)
         result = subprocess.run(
             [
                 str(EVALUATION_DIR / "runners" / "copilot-sdk" / "run-single-mock-benchmark.sh"),
@@ -400,6 +405,7 @@ class RunEvaluationTests(unittest.TestCase):
                 "--run-slug",
                 "mock-single-dry-run",
             ],
+            env=env,
             capture_output=True,
             text=True,
             check=False,
@@ -411,6 +417,7 @@ class RunEvaluationTests(unittest.TestCase):
         self.assertIn("--max-retries 0", result.stdout)
         self.assertIn("--kast-backend mock", result.stdout)
         self.assertIn("--model gpt-5-mini", result.stdout)
+        self.assertIn(f"--history-root {default_history}", result.stdout)
         self.assertIn("codex exec", result.stdout)
         self.assertIn("--model gpt-5.5", result.stdout)
         self.assertIn('model_reasoning_effort="xhigh"', result.stdout)

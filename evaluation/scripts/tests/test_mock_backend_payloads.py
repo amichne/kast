@@ -130,6 +130,172 @@ class MockBackendPayloadTests(unittest.TestCase):
         self.assertTrue(any(entry["method"] == "raw/workspace-files" and entry["provenance"]["fallback"] for entry in payload["entries"]))
         self.assertGreater(payload["provenance_summary"]["fallback_entry_count"], 0)
 
+    def test_generator_extracts_copilot_root_events_and_kast_failure_results(self) -> None:
+        history_session = SCRATCH_DIR / "copilot-root" / "session-001"
+        write_jsonl(
+            history_session / "events.jsonl",
+            [
+                {
+                    "type": "tool.execution_start",
+                    "data": {
+                        "toolCallId": "call-success",
+                        "toolName": "kast_callers",
+                        "arguments": {
+                            "symbol": "renderCapabilities",
+                            "containingType": "io.github.amichne.kast.api.docs.DocsDocument",
+                            "fileHint": "/workspace/demo/analysis-api/src/main/kotlin/io/github/amichne/kast/api/docs/DocsDocument.kt",
+                        },
+                    },
+                },
+                {
+                    "type": "tool.execution_complete",
+                    "data": {
+                        "toolCallId": "call-success",
+                        "success": True,
+                        "result": {
+                            "content": json.dumps(
+                                {
+                                    "type": "CALLERS_SUCCESS",
+                                    "ok": True,
+                                    "symbol": {
+                                        "fqName": "io.github.amichne.kast.api.docs.DocsDocument.renderCapabilities",
+                                        "kind": "FUNCTION",
+                                        "location": {
+                                            "filePath": "/workspace/demo/analysis-api/src/main/kotlin/io/github/amichne/kast/api/docs/DocsDocument.kt",
+                                            "startOffset": 0,
+                                            "endOffset": 18,
+                                            "startLine": 12,
+                                            "startColumn": 5,
+                                            "preview": "fun renderCapabilities()",
+                                        },
+                                    },
+                                    "filePath": "/workspace/demo/analysis-api/src/main/kotlin/io/github/amichne/kast/api/docs/DocsDocument.kt",
+                                    "root": {"symbol": {"fqName": "io.github.amichne.kast.api.docs.DocsDocument.renderCapabilities"}, "children": []},
+                                }
+                            )
+                        },
+                    },
+                },
+                {
+                    "type": "tool.execution_start",
+                    "data": {
+                        "toolCallId": "call-failure",
+                        "toolName": "kast_callers",
+                        "arguments": {
+                            "symbol": "generated capabilities page contains a section for every JSON-RPC method",
+                            "fileHint": "/workspace/demo/analysis-api/src/main/kotlin/io/github/amichne/kast/api/docs/DocsDocument.kt",
+                        },
+                    },
+                },
+                {
+                    "type": "tool.execution_complete",
+                    "data": {
+                        "toolCallId": "call-failure",
+                        "success": True,
+                        "result": {
+                            "content": json.dumps(
+                                {
+                                    "type": "CALLERS_FAILURE",
+                                    "ok": False,
+                                    "stage": "resolve",
+                                    "message": "No symbol matching the generated test name found in workspace",
+                                    "query": {
+                                        "symbol": "generated capabilities page contains a section for every JSON-RPC method",
+                                        "fileHint": "/workspace/demo/analysis-api/src/main/kotlin/io/github/amichne/kast/api/docs/DocsDocument.kt",
+                                    },
+                                }
+                            )
+                        },
+                    },
+                },
+            ],
+        )
+        catalog = {"skill_name": "demo", "version": 1, "cases": []}
+        bindings = {
+            "target_repo": "demo",
+            "workspace_root": "/workspace/demo",
+            "slots": {},
+        }
+
+        payload = generate_payload(
+            catalog=catalog,
+            bindings=bindings,
+            history_roots=[SCRATCH_DIR / "copilot-root"],
+            generated_at="2026-01-01T00:00:00Z",
+        )
+
+        history_callers = [
+            entry
+            for entry in payload["entries"]
+            if entry["method"] == "symbol/callers" and entry["provenance"]["source"] == "history"
+        ]
+        self.assertEqual(2, len(history_callers))
+        self.assertTrue(any(entry["result"]["ok"] is True for entry in history_callers))
+        self.assertTrue(any(entry["result"]["ok"] is False for entry in history_callers))
+        self.assertEqual(2, payload["provenance_summary"]["history_entry_count"])
+        self.assertTrue(all(entry["provenance"]["source_file"].endswith("events.jsonl") for entry in history_callers))
+
+    def test_generator_adds_binding_aliases_for_common_agent_tool_variants(self) -> None:
+        catalog = {"skill_name": "demo", "version": 1, "cases": []}
+        bindings = {
+            "target_repo": "demo",
+            "workspace_root": "/workspace/demo",
+            "slots": {
+                "OVERLOADED_OR_COMMON_FUNCTION": {
+                    "symbol": "renderCapabilities",
+                    "fqName": "io.github.amichne.kast.api.docs.DocsDocument.renderCapabilities",
+                    "file": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/docs/DocsDocument.kt",
+                    "containingType": "io.github.amichne.kast.api.docs.DocsDocument",
+                    "expected": {
+                        "expectedCallerFqNames": [
+                            "io.github.amichne.kast.api.docs.main",
+                            "io.github.amichne.kast.api.docs.AnalysisDocsDocumentTest.generated capabilities page contains a section for every JSON-RPC method",
+                        ],
+                    },
+                },
+                "RENAME_TARGET": {
+                    "symbol": "AnalysisDispatcher",
+                    "fqName": "io.github.amichne.kast.server.AnalysisDispatcher",
+                    "file": "analysis-server/src/main/kotlin/io/github/amichne/kast/server/AnalysisDispatcher.kt",
+                    "expected": {
+                        "affectedFiles": [
+                            "analysis-server/src/main/kotlin/io/github/amichne/kast/server/AnalysisDispatcher.kt",
+                            "analysis-server/src/test/kotlin/io/github/amichne/kast/server/AnalysisDispatcherTest.kt",
+                        ],
+                    },
+                },
+            },
+        }
+
+        payload = generate_payload(
+            catalog=catalog,
+            bindings=bindings,
+            history_roots=[],
+            generated_at="2026-01-01T00:00:00Z",
+        )
+
+        references = [
+            entry["matcher"].get("symbol")
+            for entry in payload["entries"]
+            if entry["method"] == "symbol/references"
+        ]
+        callers = [
+            entry["matcher"].get("symbol")
+            for entry in payload["entries"]
+            if entry["method"] == "symbol/callers"
+        ]
+        self.assertIn("renderCapabilities", references)
+        self.assertIn("io.github.amichne.kast.api.docs.DocsDocument.renderCapabilities", references)
+        self.assertIn("io.github.amichne.kast.server.AnalysisDispatcher", references)
+        self.assertIn("renderCapabilities", callers)
+        self.assertIn("io.github.amichne.kast.api.docs.DocsDocument.renderCapabilities", callers)
+        self.assertIn("main", callers)
+        self.assertIn("io.github.amichne.kast.api.docs.main", callers)
+        self.assertIn(
+            "generated capabilities page contains a section for every JSON-RPC method",
+            callers,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

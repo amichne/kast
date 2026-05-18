@@ -127,8 +127,6 @@ def extract_rpc_result(raw_result: Any) -> dict[str, Any] | None:
         return None
     if isinstance(candidate.get("result"), dict):
         candidate = candidate["result"]
-    if candidate.get("ok") is False:
-        return None
     return candidate if isinstance(candidate, dict) else None
 
 
@@ -163,6 +161,15 @@ def read_jsonl(path: Path) -> list[dict[str, Any]]:
     return rows
 
 
+def event_log_paths(root: Path) -> list[Path]:
+    if root.is_file():
+        return [root] if root.name in {"sdk-events.jsonl", "events.jsonl"} else []
+    paths: list[Path] = []
+    for filename in ("sdk-events.jsonl", "events.jsonl"):
+        paths.extend(root.rglob(filename))
+    return sorted(set(paths))
+
+
 def history_entries(history_roots: list[Path], *, workspace_root: Path | None) -> tuple[list[dict[str, Any]], int]:
     entries: list[dict[str, Any]] = []
     rejected = 0
@@ -170,7 +177,7 @@ def history_entries(history_roots: list[Path], *, workspace_root: Path | None) -
     for root in history_roots:
         if not root.exists():
             continue
-        for events_path in sorted(root.rglob("sdk-events.jsonl")):
+        for events_path in event_log_paths(root):
             starts: dict[str, dict[str, Any]] = {}
             for event in read_jsonl(events_path):
                 data = event.get("data") if isinstance(event.get("data"), dict) else {}
@@ -255,6 +262,24 @@ def symbol_from_slot(slot: dict[str, Any], *, kind: str = "CLASS") -> dict[str, 
         "location": location(slot_file(slot), symbol),
         "containingDeclaration": str(slot.get("containingType") or "").rsplit(".", 1)[0] or None,
     }
+
+
+def symbol_name_variants(*values: Any) -> list[str]:
+    names: list[str] = []
+    for value in values:
+        if not isinstance(value, str):
+            continue
+        text = value.strip()
+        if not text:
+            continue
+        names.append(text)
+        if "." in text:
+            names.append(text.rsplit(".", 1)[-1])
+    return list(dict.fromkeys(names))
+
+
+def slot_symbol_variants(slot: dict[str, Any]) -> list[str]:
+    return symbol_name_variants(slot.get("symbol"), slot.get("fqName"))
 
 
 def collect_known_files(slots: dict[str, Any]) -> list[str]:
@@ -343,6 +368,7 @@ def fallback_entries(bindings: dict[str, Any]) -> list[dict[str, Any]]:
     member = slots.get("DISAMBIGUATE_MEMBER") if isinstance(slots.get("DISAMBIGUATE_MEMBER"), dict) else {}
     function = slots.get("OVERLOADED_OR_COMMON_FUNCTION") if isinstance(slots.get("OVERLOADED_OR_COMMON_FUNCTION"), dict) else {}
     large_class = slots.get("LARGE_CLASS") if isinstance(slots.get("LARGE_CLASS"), dict) else {}
+    rename_target = slots.get("RENAME_TARGET") if isinstance(slots.get("RENAME_TARGET"), dict) else {}
     reference_files = (
         cross_module.get("expected", {}).get("expectedConsumerFiles")
         if isinstance(cross_module.get("expected"), dict)
@@ -411,10 +437,16 @@ def fallback_entries(bindings: dict[str, Any]) -> list[dict[str, Any]]:
         }
     ]
     reference_entries = []
-    for slot in (member, cross_module, slots.get("RENAME_TARGET") if isinstance(slots.get("RENAME_TARGET"), dict) else {}):
+    reference_slots = [
+        (member, "PROPERTY"),
+        (cross_module, "CLASS"),
+        (function, "FUNCTION"),
+        (rename_target, "CLASS"),
+    ]
+    for slot, slot_kind in reference_slots:
         if not isinstance(slot, dict) or not slot.get("symbol"):
             continue
-        slot_symbol = symbol_from_slot(slot, kind="PROPERTY" if slot is member else "CLASS")
+        slot_symbol = symbol_from_slot(slot, kind=slot_kind)
         expected = slot.get("expected") if isinstance(slot.get("expected"), dict) else {}
         files = (
             expected.get("expectedFiles")
@@ -424,27 +456,28 @@ def fallback_entries(bindings: dict[str, Any]) -> list[dict[str, Any]]:
         )
         slot_refs = [location(str(file_path), str(slot.get("symbol"))) for file_path in files]
         slot_scope = search_scope(len(slot_refs))
-        reference_entries.append(
-            {
-                "method": "symbol/references",
-                "matcher": {"symbol": str(slot.get("symbol"))},
-                "result": {
-                    "type": "REFERENCES_SUCCESS",
-                    "ok": True,
-                    "query": {"workspaceRoot": ".", "symbol": str(slot.get("symbol")), "fileHint": None, "kind": None, "containingType": slot.get("containingType"), "includeDeclaration": True},
-                    "symbol": slot_symbol,
-                    "filePath": slot_symbol["location"]["filePath"],
-                    "offset": slot_symbol["location"]["startOffset"],
-                    "references": slot_refs,
-                    "searchScope": slot_scope,
-                    "declaration": slot_symbol,
-                    "candidateCount": 1,
-                    "alternatives": [],
-                    "logFile": ".kast/mock-backend.log",
-                },
-                "provenance": {"source": "bindings", "fallback": True},
-            }
-        )
+        for symbol_name in slot_symbol_variants(slot):
+            reference_entries.append(
+                {
+                    "method": "symbol/references",
+                    "matcher": {"symbol": symbol_name},
+                    "result": {
+                        "type": "REFERENCES_SUCCESS",
+                        "ok": True,
+                        "query": {"workspaceRoot": ".", "symbol": symbol_name, "fileHint": None, "kind": None, "containingType": slot.get("containingType"), "includeDeclaration": True},
+                        "symbol": slot_symbol,
+                        "filePath": slot_symbol["location"]["filePath"],
+                        "offset": slot_symbol["location"]["startOffset"],
+                        "references": slot_refs,
+                        "searchScope": slot_scope,
+                        "declaration": slot_symbol,
+                        "candidateCount": 1,
+                        "alternatives": [],
+                        "logFile": ".kast/mock-backend.log",
+                    },
+                    "provenance": {"source": "bindings", "fallback": True},
+                }
+            )
     if not reference_entries:
         reference_entries.append(
             {
@@ -467,35 +500,52 @@ def fallback_entries(bindings: dict[str, Any]) -> list[dict[str, Any]]:
                 "provenance": {"source": "bindings", "fallback": True},
             }
         )
-    caller_entries = [
-        {
-            "method": "symbol/callers",
-            "matcher": {"symbol": str(function.get("symbol"))},
-            "result": {
-                "type": "CALLERS_SUCCESS",
-                "ok": True,
-                "query": {"workspaceRoot": ".", "symbol": str(function.get("symbol")), "direction": "incoming", "depth": 2},
-                "symbol": symbol_from_slot(function, kind="FUNCTION"),
-                "filePath": slot_file(function),
-                "offset": 0,
-                "root": {"symbol": symbol_from_slot(function, kind="FUNCTION"), "callSite": None, "children": caller_nodes},
-                "stats": {
-                    "totalNodes": 1 + len(caller_nodes),
-                    "totalEdges": len(caller_nodes),
-                    "truncatedNodes": 0,
-                    "maxDepthReached": 1 if caller_nodes else 0,
-                    "timeoutReached": False,
-                    "maxTotalCallsReached": False,
-                    "maxChildrenPerNodeReached": False,
-                    "filesVisited": len({node["callSite"]["filePath"] for node in caller_nodes}) if caller_nodes else 1,
-                },
-                "candidateCount": 1,
-                "alternatives": [],
-                "logFile": ".kast/mock-backend.log",
-            },
-            "provenance": {"source": "bindings", "fallback": True},
-        }
-    ] if isinstance(function, dict) and function.get("symbol") else []
+    caller_entries = []
+    if isinstance(function, dict) and function.get("symbol"):
+        function_symbol = symbol_from_slot(function, kind="FUNCTION")
+
+        def append_caller_entry(symbol_name: str, symbol: dict[str, Any], children: list[dict[str, Any]]) -> None:
+            caller_entries.append(
+                {
+                    "method": "symbol/callers",
+                    "matcher": {"symbol": symbol_name},
+                    "result": {
+                        "type": "CALLERS_SUCCESS",
+                        "ok": True,
+                        "query": {"workspaceRoot": ".", "symbol": symbol_name, "direction": "incoming", "depth": 2},
+                        "symbol": symbol,
+                        "filePath": symbol["location"]["filePath"],
+                        "offset": symbol["location"]["startOffset"],
+                        "root": {"symbol": symbol, "callSite": None, "children": children},
+                        "stats": {
+                            "totalNodes": 1 + len(children),
+                            "totalEdges": len(children),
+                            "truncatedNodes": 0,
+                            "maxDepthReached": 1 if children else 0,
+                            "timeoutReached": False,
+                            "maxTotalCallsReached": False,
+                            "maxChildrenPerNodeReached": False,
+                            "filesVisited": len({node["callSite"]["filePath"] for node in children}) if children else 1,
+                        },
+                        "candidateCount": 1,
+                        "alternatives": [],
+                        "logFile": ".kast/mock-backend.log",
+                    },
+                    "provenance": {"source": "bindings", "fallback": True},
+                }
+            )
+
+        for symbol_name in slot_symbol_variants(function):
+            append_caller_entry(symbol_name, function_symbol, caller_nodes)
+        for caller_name in caller_names:
+            caller_symbol = {
+                "fqName": str(caller_name),
+                "kind": "FUNCTION",
+                "location": location(slot_file(function), str(caller_name).rsplit(".", 1)[-1]),
+                "containingDeclaration": str(caller_name).rsplit(".", 1)[0] if "." in str(caller_name) else None,
+            }
+            for symbol_name in symbol_name_variants(caller_name):
+                append_caller_entry(symbol_name, caller_symbol, [])
     return [
         {
             "method": "raw/workspace-files",

@@ -86,8 +86,9 @@ bash evaluation/runners/copilot-sdk/run-benchmark.sh \
 If `--mock-payloads` is omitted, the wrapper generates one at
 `<workspace>/<iteration>-mock-backend.json` using
 `evaluation/scripts/generate_mock_backend_payloads.py`. Add one or more
-`--history-root` values to mine archived `sdk-events.jsonl` outputs first; any
-missing methods are filled from `catalog.json` and `bindings/*.json`.
+`--history-root` values to mine archived `sdk-events.jsonl` outputs or Copilot
+root `events.jsonl` session history first; any missing methods are filled from
+`catalog.json` and `bindings/*.json`.
 
 Mock mode is runner-local only. It does not change `kast rpc`, the standalone
 daemon, or production CLI behavior. Runs record backend mode, payload hash,
@@ -101,6 +102,9 @@ commits compact metrics to `amichne/cast-benchmarks`, use:
 ```bash
 bash evaluation/runners/copilot-sdk/run-single-mock-benchmark.sh
 ```
+
+When `~/.copilot/session-state` exists, the single-run wrapper mines it by
+default. Use `--no-default-history` for a fallback-only mock payload.
 
 Use `--dry-run` to inspect the benchmark, Codex, and publish contract without
 launching Copilot.

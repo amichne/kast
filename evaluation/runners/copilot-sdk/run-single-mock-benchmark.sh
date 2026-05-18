@@ -34,7 +34,8 @@ Options:
   --concurrency N            Parallel workers (default: 3)
   --timeout-ms N             SDK session idle timeout (default: 180000)
   --model NAME               Zero-cost SDK model (default: gpt-5-mini)
-  --history-root PATH        Optional mock payload history root (repeatable)
+  --history-root PATH        Mock payload history root (default: ~/.copilot/session-state when present; repeatable)
+  --no-default-history       Do not auto-mine ~/.copilot/session-state
   --results-repo PATH        Local cast-benchmarks checkout (default: ../cast-benchmarks)
   --results-remote URL       Remote to clone when results repo is absent
   --source-pr N              Source PR number for provenance (auto-detected when possible)
@@ -64,6 +65,7 @@ source_pr=""
 dry_run="0"
 skip_publish="0"
 history_roots=()
+use_default_history="1"
 forwarded=()
 
 while [[ $# -gt 0 ]]; do
@@ -78,6 +80,7 @@ while [[ $# -gt 0 ]]; do
     --timeout-ms)     timeout_ms="$2";     shift 2 ;;
     --model)          sdk_model="$2";      shift 2 ;;
     --history-root)   history_roots+=("$2"); shift 2 ;;
+    --no-default-history) use_default_history="0"; shift ;;
     --results-repo)   results_repo="$2";   shift 2 ;;
     --results-remote) results_remote="$2"; shift 2 ;;
     --source-pr)      source_pr="$2";      shift 2 ;;
@@ -88,6 +91,11 @@ while [[ $# -gt 0 ]]; do
     *) die "unknown argument: $1 (see --help)" ;;
   esac
 done
+
+default_history_root="${HOME}/.copilot/session-state"
+if [[ "$use_default_history" == "1" && ${#history_roots[@]} -eq 0 && -d "$default_history_root" ]]; then
+  history_roots+=("$default_history_root")
+fi
 
 [[ -f "$catalog" ]] || die "catalog file not found: $catalog"
 [[ -f "$bindings" ]] || die "bindings file not found: $bindings"

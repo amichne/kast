@@ -536,6 +536,98 @@ class ValueProofScriptTests(unittest.TestCase):
         self.assertEqual(2, len(finalized["combined"]["expectations"]))
         self.assertEqual(2, finalized["summary"]["passed"])
 
+    def test_finalize_allows_successful_harness_exit_code_evidence(self) -> None:
+        iteration_dir = TEST_WORKSPACE / "iteration-001"
+        eval_dir = iteration_dir / "eval-vp-demo"
+        run_dir = eval_dir / "with_skill" / "run-1"
+        (run_dir / "outputs").mkdir(parents=True)
+        write_json(
+            eval_dir / "eval_metadata.json",
+            {
+                "eval_id": "vp-demo",
+                "eval_name": "vp-demo",
+                "assertions": [
+                    {
+                        "id": "compile-probe",
+                        "text": "Post-edit compile status is reported",
+                        "kind": "outcome",
+                        "graded_by": "script",
+                    }
+                ],
+            },
+        )
+        write_json(
+            run_dir / "mechanical.json",
+            {
+                "status": "graded",
+                "expectations": [
+                    {
+                        "id": "compile-probe",
+                        "text": "Post-edit compile status is reported",
+                        "passed": True,
+                        "evidence": "Harness probe exit code = 0.",
+                        "kind": "outcome",
+                        "graded_by": "script",
+                    }
+                ],
+            },
+        )
+        write_json(run_dir / "llm-grade.json", {"expectations": []})
+        write_json(run_dir / "timing.json", {"attempts": 1})
+        (run_dir / "outputs" / "tool_calls.jsonl").write_text("")
+        (run_dir / "outputs" / "transcript.md").write_text("compile probe passed\n")
+
+        finalized = finalize(run_dir)
+
+        self.assertEqual([], finalized["integrity"]["contradictions"])
+        self.assertEqual(1, finalized["summary"]["passed"])
+
+    def test_finalize_flags_passed_zero_count_evidence_as_contradiction(self) -> None:
+        iteration_dir = TEST_WORKSPACE / "iteration-001"
+        eval_dir = iteration_dir / "eval-vp-demo"
+        run_dir = eval_dir / "with_skill" / "run-1"
+        (run_dir / "outputs").mkdir(parents=True)
+        write_json(
+            eval_dir / "eval_metadata.json",
+            {
+                "eval_id": "vp-demo",
+                "eval_name": "vp-demo",
+                "assertions": [
+                    {
+                        "id": "citations",
+                        "text": "Reports file citations",
+                        "kind": "outcome",
+                        "graded_by": "script",
+                    }
+                ],
+            },
+        )
+        write_json(
+            run_dir / "mechanical.json",
+            {
+                "status": "graded",
+                "expectations": [
+                    {
+                        "id": "citations",
+                        "text": "Reports file citations",
+                        "passed": True,
+                        "evidence": "References found = 0.",
+                        "kind": "outcome",
+                        "graded_by": "script",
+                    }
+                ],
+            },
+        )
+        write_json(run_dir / "llm-grade.json", {"expectations": []})
+        write_json(run_dir / "timing.json", {"attempts": 1})
+        (run_dir / "outputs" / "tool_calls.jsonl").write_text("")
+        (run_dir / "outputs" / "transcript.md").write_text("no citations\n")
+
+        finalized = finalize(run_dir)
+
+        self.assertEqual(1, len(finalized["integrity"]["contradictions"]))
+        self.assertIn("References found = 0", finalized["integrity"]["contradictions"][0])
+
     def test_script_grader_uses_harness_probe_for_compile_expectations(self) -> None:
         worktree = TEST_WORKSPACE / "worktree"
         scripts_dir = worktree / "scripts"
