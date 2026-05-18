@@ -386,6 +386,38 @@ class RunEvaluationTests(unittest.TestCase):
         self.assertEqual(["vp-disambiguate-member"], [case["id"] for case in rendered["cases"]])
         self.assertFalse((EVALUATION_DIR / "runners" / "copilot" / "run-benchmark.sh").exists())
 
+    def test_single_mock_benchmark_dry_run_shows_mock_codex_and_publish_contract(self) -> None:
+        result = subprocess.run(
+            [
+                str(EVALUATION_DIR / "runners" / "copilot-sdk" / "run-single-mock-benchmark.sh"),
+                "--dry-run",
+                "--workspace",
+                str(SCRATCH_DIR / "mock-benchmarks"),
+                "--results-repo",
+                str(SCRATCH_DIR / "cast-benchmarks"),
+                "--iteration",
+                "mock-single",
+                "--run-slug",
+                "mock-single-dry-run",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("run-benchmark.sh", result.stdout)
+        self.assertIn("--runs-per-config 1", result.stdout)
+        self.assertIn("--max-retries 0", result.stdout)
+        self.assertIn("--kast-backend mock", result.stdout)
+        self.assertIn("--model gpt-5-mini", result.stdout)
+        self.assertIn("codex exec", result.stdout)
+        self.assertIn("--model gpt-5.5", result.stdout)
+        self.assertIn('model_reasoning_effort="xhigh"', result.stdout)
+        self.assertIn("--sandbox danger-full-access", result.stdout)
+        self.assertIn("--ask-for-approval never", result.stdout)
+        self.assertIn("cast-benchmarks", result.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -41,6 +41,7 @@ run-N/
 | --- | --- |
 | `run-one.mjs` | Invoked once per eval/config/run by `dispatch_runs.py`; opens a Copilot SDK session, records SDK/telemetry artifacts, and runs in an isolated git worktree. |
 | `run-benchmark.sh` | End-to-end wrapper that prewires `run-one.mjs` into `evaluation/scripts/run_evaluation.py`. |
+| `run-single-mock-benchmark.sh` | One-pass mock-backend wrapper that runs the zero-cost model, asks Codex to summarize aggregate outputs, and publishes compact metrics to `amichne/cast-benchmarks`. |
 | `tests/test-kast-tools.mjs` | Verifies the shared `kast_*` tool contract exported from `.github/extensions/_shared/kast-tools.mjs`. |
 | `tests/test-run-artifacts.mjs` | Verifies SDK event parsing for timing, tokens, tool calls, permissions, and build/test iterations. |
 
@@ -93,6 +94,16 @@ daemon, or production CLI behavior. Runs record backend mode, payload hash,
 history/fallback counts, and mock misses in `inputs.json` and `mechanical.json`.
 Any unmatched mock call is reported as a JSON-RPC error and invalidates the
 aggregate run with `mock_backend_error`.
+
+For a single zero-cost snapshot that also writes a Codex aggregate analysis and
+commits compact metrics to `amichne/cast-benchmarks`, use:
+
+```bash
+bash evaluation/runners/copilot-sdk/run-single-mock-benchmark.sh
+```
+
+Use `--dry-run` to inspect the benchmark, Codex, and publish contract without
+launching Copilot.
 
 The runner intentionally uses the default Copilot home so the SDK can reuse the
 operator's authenticated Copilot session. Per-run benchmark artifacts still
