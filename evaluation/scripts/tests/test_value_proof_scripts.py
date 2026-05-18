@@ -19,6 +19,7 @@ from finalize_grading import finalize
 from parse_tool_calls import parse_run_dir
 from run_value_proof import scaffold_workspace
 from script_grader import grade
+from value_proof_aggregate import _integrity, _invalid_reason
 
 
 def write_json(path: Path, payload: dict) -> None:
@@ -656,6 +657,20 @@ class ValueProofScriptTests(unittest.TestCase):
         result = grade(run_dir, bindings_path)
 
         self.assertTrue(all(expectation["passed"] for expectation in result["expectations"]))
+
+    def test_mock_backend_errors_invalidate_aggregate_runs(self) -> None:
+        integrity = _integrity(
+            {
+                "integrity": {
+                    "mock_backend_error_count": 1,
+                    "mock_backend_error_samples": ["No mock payload matched symbol/resolve."],
+                }
+            },
+            "with_skill",
+        )
+
+        self.assertEqual(1, integrity["mock_backend_error_count"])
+        self.assertEqual("mock_backend_error", _invalid_reason([], integrity))
 
     def create_iteration_fixture(
         self,

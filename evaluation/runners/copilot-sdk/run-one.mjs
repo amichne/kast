@@ -12,6 +12,7 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { CopilotClient, approveAll } from "@github/copilot-sdk";
 import { KAST_TOOL_NAMES, makeKastTools } from "../../../.github/extensions/_shared/kast-tools.mjs";
+import { createMockKastCaller } from "./mock-backend.mjs";
 import { sha256, summarizeSessionEvents } from "./run-artifacts.mjs";
 
 const execFileAsync = promisify(execFile);
@@ -50,6 +51,8 @@ function parseArgs(argv) {
     configuration: "",
     runNumber: "",
     attempt: "",
+    kastBackend: "",
+    mockPayloads: "",
   };
   const mapping = {
     "--instructions": "instructions",
@@ -59,6 +62,8 @@ function parseArgs(argv) {
     "--configuration": "configuration",
     "--run-number": "runNumber",
     "--attempt": "attempt",
+    "--kast-backend": "kastBackend",
+    "--mock-payloads": "mockPayloads",
   };
   let index = 2;
   while (index < argv.length) {
@@ -203,6 +208,14 @@ async function callKastInWorkspace(workspaceRoot, method, params) {
   return stdout;
 }
 
+function resolveKastBackendMode(args) {
+  const mode = String(args.kastBackend || process.env.KAST_EVAL_KAST_BACKEND || "real").trim();
+  if (mode !== "real" && mode !== "mock") {
+    die(`--kast-backend must be real or mock, got ${JSON.stringify(mode)}`);
+  }
+  return mode;
+}
+
 function containsDirectKastShell(commandText) {
   return /\bkast(?:\s|$)/.test(commandText) || /\bkast_[a-z_]+\b/.test(commandText);
 }
@@ -214,6 +227,8 @@ function buildSessionConfig({
   worktreePath,
   policy,
   permissionLog,
+  callKast,
+  kastBackendMode,
 }) {
   const skillRoot = resolve(REPO_ROOT, ".agents/skills");
   const instructionRoot = resolve(REPO_ROOT, ".github/instructions");
@@ -230,7 +245,7 @@ function buildSessionConfig({
     systemMessage: {
       mode: "append",
       content:
-        `Benchmark configuration: ${configuration}. ` +
+        `Benchmark configuration: ${configuration}. Kast backend: ${kastBackendMode}. ` +
         (policy.loadKastSkill
           ? "The real Kast skill directory is loaded."
           : "No Kast skill instructions are loaded."),
@@ -270,7 +285,7 @@ function buildSessionConfig({
     },
   };
   if (policy.registerKastTools) {
-    sessionConfig.tools = makeKastTools((method, params) => callKastInWorkspace(worktreePath, method, params));
+    sessionConfig.tools = makeKastTools((method, params) => callKast(method, params));
   }
   return sessionConfig;
 }
@@ -319,6 +334,7 @@ function buildInputs({
   instructionSources,
   worktreePath,
   copilotCliVersion,
+  kastBackendMetadata,
 }) {
   const caseEntry = Array.isArray(renderedCatalog?.cases)
     ? renderedCatalog.cases.find((candidate) => candidate?.id === args.evalId)
@@ -352,6 +368,7 @@ function buildInputs({
     skill_hash: policy.loadKastSkill ? sha256(readFileSync(actualSkillPath, "utf8")) : null,
     skill_loaded: Boolean(loadedKastSkill),
     tool_set_hash: sha256(JSON.stringify(Array.from(KAST_TOOL_NAMES).sort())),
+    kast_backend: kastBackendMetadata,
     instruction_hash: hashInstructionSources(instructionSources),
     loaded_skill_paths: loadedSkills.map((skill) => skill.path).filter(Boolean),
     instruction_sources: instructionSources.map((source) => source.sourcePath),
@@ -366,6 +383,7 @@ function buildMechanicalCapture({
   transcriptPath,
   finalAnswer,
   args,
+  kastBackendMetadata,
 }) {
   const transcriptText = readFileSync(transcriptPath, "utf8");
   return {
@@ -430,7 +448,13 @@ function buildMechanicalCapture({
       git_sha_post: postState.sha,
       workspace_dirty_pre: preState.dirty,
       workspace_dirty_post: postState.dirty,
+      mock_backend_error_count: kastBackendMetadata?.errors?.length ?? 0,
+      mock_backend_error_samples: (kastBackendMetadata?.errors ?? [])
+        .map((entry) => entry.message)
+        .filter(Boolean)
+        .slice(0, 3),
     },
+    mock_backend: kastBackendMetadata,
     tokens: runtimeMetrics.tokens,
     tool_metrics: runtimeMetrics.tools,
     permission_metrics: runtimeMetrics.permissions,
@@ -455,6 +479,7 @@ function buildMechanicalCapture({
 async function main() {
   const args = parseArgs(process.argv);
   const policy = CONFIG_POLICIES[args.configuration];
+  const kastBackendMode = resolveKastBackendMode(args);
   const prompt = extractPrompt(args.instructions);
   const model = process.env.SDK_MODEL ?? "gpt-5-mini";
   const reasoningEffort = process.env.SDK_REASONING_EFFORT ?? "medium";
@@ -475,12 +500,26 @@ async function main() {
   const targetRoot = String(bindings.workspace_root ?? process.env.KAST_WORKSPACE_ROOT ?? "").trim() || process.cwd();
   const targetSha = String(bindings.git_sha ?? (await execGitAllowFailure(targetRoot, "rev-parse", "HEAD"))).trim();
   const worktreePath = resolve(runDir, "worktree");
+  const mockPayloadPath = String(args.mockPayloads || process.env.KAST_EVAL_MOCK_PAYLOADS || "").trim();
+  if (kastBackendMode === "mock" && !mockPayloadPath) {
+    die("--mock-payloads or KAST_EVAL_MOCK_PAYLOADS is required when --kast-backend=mock");
+  }
   const runStartedAtMs = Date.now();
   mkdirSync(outputsDir, { recursive: true });
   mkdirSync(dirname(sdkEventsPath), { recursive: true });
 
   await createRunWorktree({ targetRoot, targetSha, worktreePath });
   const preState = await gitState(worktreePath);
+  const mockCaller = kastBackendMode === "mock"
+    ? createMockKastCaller({
+      payloadPath: mockPayloadPath,
+      worktreePath,
+      bindings,
+    })
+    : null;
+  const callKast = mockCaller
+    ? (method, params) => mockCaller.call(method, params)
+    : (method, params) => callKastInWorkspace(worktreePath, method, params);
 
   const transcriptStream = createWriteStream(transcriptPath, { flags: "w" });
   const sdkEventsStream = createWriteStream(sdkEventsPath, { flags: "w" });
@@ -514,6 +553,8 @@ async function main() {
     worktreePath,
     policy,
     permissionLog,
+    callKast,
+    kastBackendMode,
   });
   sessionConfig.onEvent = recordEvent;
 
@@ -541,7 +582,7 @@ async function main() {
     const stopListening = session.on(recordEvent);
     try {
       const sources = await readSessionSources(session);
-      const inputs = buildInputs({
+      let inputs = buildInputs({
         args,
         prompt,
         model,
@@ -558,6 +599,17 @@ async function main() {
         instructionSources: sources.instruction_sources,
         worktreePath,
         copilotCliVersion,
+        kastBackendMetadata: mockCaller
+          ? mockCaller.metadata()
+          : {
+            backend_mode: "real",
+            payload_path: null,
+            payload_hash: null,
+            payload_entry_count: 0,
+            provenance_summary: {},
+            misses: [],
+            errors: [],
+          },
       });
       writeJson(inputsPath, inputs);
       const finalMessage = await session.sendAndWait({ prompt }, timeoutMs);
@@ -567,6 +619,19 @@ async function main() {
       writeFileSync(finalAnswerPath, finalAnswer ? `${finalAnswer}\n` : "");
       const runtimeMetrics = summarizeSessionEvents({ events: recordedEvents, runStartedAtMs });
       const postState = await gitState(worktreePath);
+      const kastBackendMetadata = mockCaller
+        ? mockCaller.metadata()
+        : {
+          backend_mode: "real",
+          payload_path: null,
+          payload_hash: null,
+          payload_entry_count: 0,
+          provenance_summary: {},
+          misses: [],
+          errors: [],
+        };
+      inputs = { ...inputs, kast_backend: kastBackendMetadata };
+      writeJson(inputsPath, inputs);
       const mechanical = buildMechanicalCapture({
         inputs,
         runtimeMetrics,
@@ -575,6 +640,7 @@ async function main() {
         transcriptPath,
         finalAnswer: runtimeMetrics.final_answer || finalAnswer,
         args,
+        kastBackendMetadata,
       });
       writeJson(mechanicalPath, mechanical);
       writeJson(timingPath, mechanical.timing);

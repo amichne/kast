@@ -30,6 +30,9 @@ Optional:
   --model NAME               Model name (default: gpt-5-mini)
   --timeout-ms N             SDK session idle timeout in milliseconds (default: 180000)
   --configs LIST             Comma-separated configs (default: with_skill,tool_only,without_skill)
+  --kast-backend real|mock   KAST backend for kast_* tools (default: real)
+  --mock-payloads PATH       Mock backend payload file; generated when omitted in mock mode
+  --history-root PATH        Optional archived iteration/run root for mock payload mining (repeatable)
   --grade-command-template T Shell command template for grading
   --skip-dispatch            Render and scaffold only; do not launch SDK sessions
   --skip-grade               Skip grading phase
@@ -42,6 +45,8 @@ Environment:
   SDK_TIMEOUT_MS        Override the SDK session timeout (same as --timeout-ms)
   KAST_BIN              Path to the kast binary (default: kast)
   KAST_WORKSPACE_ROOT   Workspace root passed to kast rpc calls (extracted from bindings)
+  KAST_EVAL_KAST_BACKEND real or mock backend selection (default: real)
+  KAST_EVAL_MOCK_PAYLOADS Mock payload file path for run-one.mjs
   KAST_EVAL_SKIP_NPM_CI Set to 1 when runner dependencies are already installed
 USAGE
 }
@@ -56,6 +61,9 @@ max_retries="1"
 model=""
 timeout_ms=""
 configs="with_skill,tool_only,without_skill"
+kast_backend="${KAST_EVAL_KAST_BACKEND:-real}"
+mock_payloads="${KAST_EVAL_MOCK_PAYLOADS:-}"
+history_roots=()
 grade_template=""
 skip_dispatch=""
 skip_grade=""
@@ -74,6 +82,9 @@ while [[ $# -gt 0 ]]; do
     --model)           model="$2";            shift 2 ;;
     --timeout-ms)      timeout_ms="$2";       shift 2 ;;
     --configs)         configs="$2";          shift 2 ;;
+    --kast-backend)    kast_backend="$2";     shift 2 ;;
+    --mock-payloads)   mock_payloads="$2";    shift 2 ;;
+    --history-root)    history_roots+=("$2"); shift 2 ;;
     --grade-command-template) grade_template="$2"; shift 2 ;;
     --skip-dispatch)   skip_dispatch="--skip-dispatch";      shift ;;
     --skip-grade)      skip_grade="--skip-grade";         shift ;;
@@ -88,6 +99,7 @@ done
 [[ -n "$workspace" ]] || { usage; die "--workspace is required"; }
 [[ -f "$bindings"  ]] || die "bindings file not found: $bindings"
 [[ -f "$catalog"   ]] || die "catalog file not found: $catalog"
+[[ "$kast_backend" == "real" || "$kast_backend" == "mock" ]] || die "--kast-backend must be real or mock"
 
 abspath() {
   python3 -c 'from pathlib import Path; import sys; print(Path(sys.argv[1]).resolve())' "$1"
@@ -113,9 +125,38 @@ export KAST_WORKSPACE_ROOT="$workspace_root"
 runner="${REPO_ROOT}/evaluation/runners/copilot-sdk/run-one.mjs"
 [[ -f "$runner" ]] || die "runner not found: $runner"
 
+if [[ "$kast_backend" == "mock" && -z "$mock_payloads" ]]; then
+  workspace_abs="$(abspath "$workspace")"
+  mkdir -p "$workspace_abs"
+  mock_payloads="${workspace_abs}/${iteration}-mock-backend.json"
+  generator="${REPO_ROOT}/evaluation/scripts/generate_mock_backend_payloads.py"
+  [[ -f "$generator" ]] || die "mock backend generator not found: $generator"
+  generator_args=(
+    python3 "$generator"
+    --catalog "$catalog"
+    --bindings "$bindings"
+    --output "$mock_payloads"
+  )
+  for history_root in "${history_roots[@]}"; do
+    generator_args+=(--history-root "$history_root")
+  done
+  "${generator_args[@]}" >&2
+fi
+
+if [[ "$kast_backend" == "mock" ]]; then
+  [[ -n "$mock_payloads" ]] || die "mock backend payload path was empty"
+  [[ -f "$mock_payloads" ]] || die "mock backend payload file not found: $mock_payloads"
+  export KAST_EVAL_MOCK_PAYLOADS="$mock_payloads"
+fi
+export KAST_EVAL_KAST_BACKEND="$kast_backend"
+
 if [[ "${KAST_EVAL_SKIP_NPM_CI:-0}" != "1" ]]; then
   npm ci --prefix "${REPO_ROOT}/evaluation/runners/copilot-sdk" --silent
 fi
+
+shell_quote() {
+  python3 -c 'import shlex, sys; print(shlex.quote(sys.argv[1]))' "$1"
+}
 
 dispatch_template="node ${runner}"
 dispatch_template+=" --instructions {instructions}"
@@ -125,10 +166,10 @@ dispatch_template+=" --eval-id {eval_id}"
 dispatch_template+=" --configuration {configuration}"
 dispatch_template+=" --run-number {run_number}"
 dispatch_template+=" --attempt {attempt}"
-
-shell_quote() {
-  python3 -c 'import shlex, sys; print(shlex.quote(sys.argv[1]))' "$1"
-}
+dispatch_template+=" --kast-backend $(shell_quote "$kast_backend")"
+if [[ -n "$mock_payloads" ]]; then
+  dispatch_template+=" --mock-payloads $(shell_quote "$mock_payloads")"
+fi
 
 if [[ -z "$skip_grade" && -z "$grade_template" ]]; then
   grader="${REPO_ROOT}/evaluation/scripts/script_grader.py"
