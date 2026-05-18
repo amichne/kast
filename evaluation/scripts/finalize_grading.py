@@ -316,11 +316,19 @@ def finalize(run_dir: Path, *, workspace_root: Path | None = None) -> dict[str, 
 
     timing_block = merge_timing(mechanical_source, timing)
 
+    source_integrity = mechanical_source.get("integrity", {}) if isinstance(mechanical_source.get("integrity"), dict) else {}
+    mock_backend_error_samples = [
+        str(item)
+        for item in source_integrity.get("mock_backend_error_samples", [])
+        if str(item).strip()
+    ]
     integrity: dict[str, Any] = {
         "contradictions": contradictions + llm_contradictions,
         "baseline_isolation_violation": configuration == "without_skill" and kast_calls > 0,
         "attempts": int(timing.get("attempts", 1) or 1),
         "flaky": int(timing.get("attempts", 1) or 1) > 1,
+        "mock_backend_error_count": int(source_integrity.get("mock_backend_error_count", 0) or 0),
+        "mock_backend_error_samples": mock_backend_error_samples[:3],
     }
     if workspace_root and workspace_root.exists():
         integrity["git_sha_post"] = _git_head(workspace_root)

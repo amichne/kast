@@ -180,7 +180,7 @@
         "measurements": { "$ref": "#/$defs/runMeasurements" },
         "invalid_reason": {
           "type": "string",
-          "enum": ["ungraded_expectation", "baseline_tainted", "contradictory_grading"]
+          "enum": ["ungraded_expectation", "baseline_tainted", "contradictory_grading", "mock_backend_error"]
         }
       },
       "allOf": [
@@ -226,7 +226,7 @@
         "measurements": { "$ref": "#/$defs/runMeasurements" },
         "invalid_reason": {
           "type": "string",
-          "enum": ["ungraded_expectation", "baseline_tainted", "contradictory_grading"]
+          "enum": ["ungraded_expectation", "baseline_tainted", "contradictory_grading", "mock_backend_error"]
         }
       },
       "allOf": [
@@ -621,6 +621,11 @@
         },
         "contradiction_count": { "type": "integer", "minimum": 0 },
         "contradiction_samples": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "mock_backend_error_count": { "type": "integer", "minimum": 0 },
+        "mock_backend_error_samples": {
           "type": "array",
           "items": { "$ref": "#/$defs/nonEmptyString" }
         },

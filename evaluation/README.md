@@ -74,6 +74,23 @@ bash evaluation/runners/copilot-sdk/run-benchmark.sh \
   -- --case vp-disambiguate-member
 ```
 
+For a mock-backend run that avoids the genuine KAST daemon:
+
+```bash
+bash evaluation/runners/copilot-sdk/run-benchmark.sh \
+  --bindings evaluation/bindings/kast.json \
+  --workspace .benchmarks/copilot-sdk-mock \
+  --iteration mock-smoke \
+  --runs-per-config 1 \
+  --concurrency 2 \
+  --kast-backend mock
+```
+
+Mock payloads are generated from archived `sdk-events.jsonl` history when
+`--history-root` is supplied, then completed from the catalog and bindings
+oracles. This mode measures the agent path against presumed BAU KAST responses;
+it is not evidence that the genuine backend is healthy.
+
 ### One-command workflow
 
 Use `scripts/run_evaluation.py` when you want one orchestrator to render the catalog, scaffold the iteration workspace,

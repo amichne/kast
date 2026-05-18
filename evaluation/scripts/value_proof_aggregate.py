@@ -220,6 +220,12 @@ def _integrity(grading: dict[str, Any], configuration: str) -> dict[str, Any]:
         "baseline_isolation": baseline_isolation,
         "contradiction_count": len(contradictions),
         "contradiction_samples": [str(item) for item in contradictions[:3] if str(item).strip()],
+        "mock_backend_error_count": int(source.get("mock_backend_error_count", 0) or 0),
+        "mock_backend_error_samples": [
+            str(item)
+            for item in (source.get("mock_backend_error_samples", []) or [])[:3]
+            if str(item).strip()
+        ],
         "workspace_dirty_post": bool(source.get("workspace_dirty_post", False)),
         **({"git_sha_post": str(source["git_sha_post"])} if str(source.get("git_sha_post", "")).strip() else {}),
     }
@@ -246,6 +252,8 @@ def _invalid_reason(expectations: list[dict[str, Any]], integrity: dict[str, Any
         return "baseline_tainted"
     if integrity["contradiction_count"] > 0:
         return "contradictory_grading"
+    if integrity.get("mock_backend_error_count", 0) > 0:
+        return "mock_backend_error"
     return None
 
 
