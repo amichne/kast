@@ -15,8 +15,6 @@ val packagedCopilotHooksSourceDir = rootProject.layout.projectDirectory.dir(".gi
 val packagedCopilotExtensionsSourceDir = rootProject.layout.projectDirectory.dir(".github/extensions")
 val embeddedSkillFiles = listOf(
     "SKILL.md",
-    "evals/pain_points.jsonl",
-    "evals/files/.gitkeep",
     "fixtures/maintenance/references/routing-improvement.md",
     "fixtures/maintenance/scripts/build-routing-corpus.py",
     "references/quickstart.md",
@@ -59,6 +57,7 @@ val embeddedCopilotHookFiles = listOf(
 )
 val embeddedCopilotExtensionFiles = listOf(
     "_shared/lib.mjs",
+    "_shared/kast-tools.mjs",
     "kast/extension.mjs",
     "kast/scripts/resolve-kast.sh",
     "kotlin-gradle-loop/extension.mjs",

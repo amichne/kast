@@ -36,6 +36,8 @@ def load_grading_schema() -> dict[str, Any]:
 def run_instruction_text(config: str, prompt: str) -> str:
     if config == "with_skill":
         setup = "Open a Copilot Chat session with the Kast skill loaded."
+    elif config == "tool_only":
+        setup = "Open a Copilot Chat session with kast_* custom tools registered, but without loading the Kast skill instructions."
     elif config == "without_skill":
         setup = "Open a Copilot Chat session WITHOUT the Kast skill (or with Kast tools disabled)."
     else:
@@ -77,49 +79,172 @@ def metadata_for_case(case: dict[str, Any]) -> dict[str, Any]:
 
 def write_placeholder_grading(path: Path) -> None:
     schema = load_grading_schema()
+    empty_summary = {
+        "passed": 0,
+        "failed": 0,
+        "total": 0,
+        "pass_rate": 0.0,
+        "outcome_passed": 0,
+        "outcome_total": 0,
+        "outcome_pass_rate": 0.0,
+        "process_pass_rate": 0.0,
+        "skipped": 0,
+    }
+    empty_execution = {
+        "tool_calls": {},
+        "tool_call_log": "outputs/tool_calls.jsonl",
+        "total_tool_calls": 0,
+        "total_steps": 0,
+        "errors_encountered": 0,
+        "output_chars": 0,
+        "transcript_chars": 0,
+        "kast_calls": 0,
+        "grep_or_find_calls": 0,
+    }
+    empty_timing = {
+        "executor_duration_seconds": 0.0,
+        "grader_duration_seconds": 0.0,
+        "total_duration_seconds": 0.0,
+        "executor_duration_source": "missing",
+    }
+    empty_integrity = {
+        "contradictions": [],
+        "baseline_isolation_violation": False,
+        "attempts": 1,
+        "flaky": False,
+    }
     payload = {
-        "schema_version": 2,
+        "$schema": "https://github.com/amichne/kast/evaluation/grading.schema.json",
+        "schema_version": 3,
         "status": "pending_grading",
+        "mechanical": {
+            "status": "pending_capture",
+            "expectations": [],
+            "summary": empty_summary,
+            "execution_metrics": empty_execution,
+            "timing": empty_timing,
+            "integrity": empty_integrity,
+        },
+        "llm_graded": {
+            "status": "pending_llm_grading",
+            "expectations": [],
+            "summary": empty_summary,
+        },
+        "combined": {
+            "status": "pending_grading",
+            "expectations": [],
+            "summary": empty_summary,
+        },
         "expectations": [],
-        "summary": {
-            "passed": 0,
-            "failed": 0,
-            "total": 0,
-            "pass_rate": 0.0,
-            "outcome_passed": 0,
-            "outcome_total": 0,
-            "outcome_pass_rate": 0.0,
-            "process_pass_rate": 0.0,
-            "skipped": 0,
-        },
-        "execution_metrics": {
-            "tool_calls": {},
-            "tool_call_log": "outputs/tool_calls.jsonl",
-            "total_tool_calls": 0,
-            "total_steps": 0,
-            "errors_encountered": 0,
-            "output_chars": 0,
-            "transcript_chars": 0,
-            "kast_calls": 0,
-            "grep_or_find_calls": 0,
-        },
-        "timing": {
-            "executor_duration_seconds": 0.0,
-            "grader_duration_seconds": 0.0,
-            "total_duration_seconds": 0.0,
-            "executor_duration_source": "missing",
-        },
-        "integrity": {
-            "contradictions": [],
-            "baseline_isolation_violation": False,
-            "attempts": 1,
-            "flaky": False,
-        },
+        "summary": empty_summary,
+        "execution_metrics": empty_execution,
+        "timing": empty_timing,
+        "integrity": empty_integrity,
     }
     missing = sorted(set(schema.get("required", [])) - set(payload))
     if missing:
         raise ValueError(f"Placeholder grading is missing schema fields: {', '.join(missing)}")
     path.write_text(json.dumps(payload, indent=2) + "\n")
+
+
+def write_placeholder_json(path: Path, payload: dict[str, Any]) -> None:
+    path.write_text(json.dumps(payload, indent=2) + "\n")
+
+
+def write_placeholder_mechanical(path: Path) -> None:
+    write_placeholder_json(
+        path,
+        {
+            "$schema": "https://github.com/amichne/kast/evaluation/mechanical.schema.json",
+            "schema_version": 1,
+            "status": "pending_capture",
+            "artifacts": {
+                "inputs": "inputs.json",
+                "sdk_events": "sdk-events.jsonl",
+                "otel": "otel.jsonl",
+                "final_answer": "final-answer.md",
+                "timing": "timing.json",
+            },
+            "expectations": [],
+            "summary": {
+                "passed": 0,
+                "failed": 0,
+                "total": 0,
+                "pass_rate": 0.0,
+                "outcome_passed": 0,
+                "outcome_total": 0,
+                "outcome_pass_rate": 0.0,
+                "process_pass_rate": 0.0,
+                "skipped": 0,
+            },
+            "execution_metrics": {
+                "tool_calls": {},
+                "tool_call_log": "outputs/tool_calls.jsonl",
+                "total_tool_calls": 0,
+                "total_steps": 0,
+                "errors_encountered": 0,
+                "output_chars": 0,
+                "transcript_chars": 0,
+                "kast_calls": 0,
+                "grep_or_find_calls": 0,
+            },
+            "timing": {
+                "executor_duration_seconds": 0.0,
+                "grader_duration_seconds": 0.0,
+                "total_duration_seconds": 0.0,
+            },
+            "integrity": {
+                "contradictions": [],
+                "baseline_isolation_violation": False,
+                "attempts": 1,
+                "flaky": False,
+            },
+        },
+    )
+
+
+def write_placeholder_llm_grade(path: Path) -> None:
+    write_placeholder_json(
+        path,
+        {
+            "$schema": "https://github.com/amichne/kast/evaluation/llm-grade.schema.json",
+            "schema_version": 1,
+            "status": "pending_llm_grading",
+            "rubric_results": [],
+            "expectations": [],
+            "summary": {
+                "passed": 0,
+                "failed": 0,
+                "total": 0,
+                "pass_rate": 0.0,
+                "outcome_passed": 0,
+                "outcome_total": 0,
+                "outcome_pass_rate": 0.0,
+                "process_pass_rate": 0.0,
+                "skipped": 0,
+            },
+        },
+    )
+
+
+def write_placeholder_llm_grade_input(path: Path) -> None:
+    write_placeholder_json(
+        path,
+        {
+            "schema_version": 1,
+            "status": "pending_mechanical_grading",
+        },
+    )
+
+
+def write_placeholder_inputs(path: Path) -> None:
+    write_placeholder_json(
+        path,
+        {
+            "schema_version": 1,
+            "status": "pending_capture",
+        },
+    )
 
 
 def write_placeholder_timing(path: Path) -> None:
@@ -144,7 +269,7 @@ def scaffold_workspace(
 ) -> Path:
     if runs_per_config < 1:
         raise ValueError("runs_per_config must be at least 1.")
-    selected_configs = configs or ["with_skill", "without_skill"]
+    selected_configs = configs or ["with_skill", "tool_only", "without_skill"]
     if not selected_configs:
         raise ValueError("At least one configuration is required.")
 
@@ -175,6 +300,13 @@ def scaffold_workspace(
                 transcript = outputs_dir / "transcript.md"
                 if not transcript.exists():
                     transcript.write_text("")
+                (run_dir / "sdk-events.jsonl").write_text("")
+                (run_dir / "otel.jsonl").write_text("")
+                (run_dir / "final-answer.md").write_text("")
+                write_placeholder_inputs(run_dir / "inputs.json")
+                write_placeholder_mechanical(run_dir / "mechanical.json")
+                write_placeholder_llm_grade_input(run_dir / "llm-grade-input.json")
+                write_placeholder_llm_grade(run_dir / "llm-grade.json")
                 write_placeholder_grading(run_dir / "grading.json")
                 write_placeholder_timing(run_dir / "timing.json")
 
@@ -227,10 +359,13 @@ def grading_is_complete(path: Path) -> bool:
         payload = json.loads(path.read_text())
     except (json.JSONDecodeError, OSError):
         return False
-    if payload.get("status") == "pending_grading":
+    if not isinstance(payload, dict):
         return False
-    summary = payload.get("summary")
-    expectations = payload.get("expectations")
+    if payload.get("status") == "pending_grading" and not isinstance(payload.get("combined"), dict):
+        return False
+    combined = payload.get("combined", {})
+    summary = payload.get("summary") or (combined.get("summary") if isinstance(combined, dict) else None)
+    expectations = payload.get("expectations") or (combined.get("expectations") if isinstance(combined, dict) else None)
     return isinstance(summary, dict) and isinstance(expectations, list) and bool(expectations)
 
 
@@ -270,7 +405,7 @@ def main() -> None:
     parser.add_argument("--catalog", required=True, type=Path, help="Rendered catalog JSON")
     parser.add_argument("--workspace", required=True, type=Path, help="Workspace root to create")
     parser.add_argument("--runs-per-config", type=int, default=5, help="Runs per eval/configuration. Defaults to 5 so paired Wilcoxon has signal — 3 is insufficient for stddev estimates.")
-    parser.add_argument("--configs", type=parse_configs, default=["with_skill", "without_skill"], help="Comma-separated configurations")
+    parser.add_argument("--configs", type=parse_configs, default=["with_skill", "tool_only", "without_skill"], help="Comma-separated configurations")
     parser.add_argument("--iteration", default="iteration-001", help="Iteration directory name")
     parser.add_argument("--no-aggregate", action="store_true", help="Skip aggregation even when grading files are complete")
     args = parser.parse_args()

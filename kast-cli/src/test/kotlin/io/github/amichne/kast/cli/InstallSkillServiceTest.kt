@@ -35,8 +35,8 @@ class InstallSkillServiceTest {
         assertFalse(result.skipped)
         assertTrue(Files.isDirectory(installedSkillDir))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("SKILL.md")))
-        assertTrue(Files.isRegularFile(installedSkillDir.resolve("evals/pain_points.jsonl")))
-        assertTrue(Files.isRegularFile(installedSkillDir.resolve("evals/files/.gitkeep")))
+        assertFalse(Files.exists(installedSkillDir.resolve("evals/pain_points.jsonl")))
+        assertFalse(Files.exists(installedSkillDir.resolve("evals/files/.gitkeep")))
         assertTrue(
             Files.isRegularFile(
                 installedSkillDir.resolve("fixtures/maintenance/references/routing-improvement.md"),

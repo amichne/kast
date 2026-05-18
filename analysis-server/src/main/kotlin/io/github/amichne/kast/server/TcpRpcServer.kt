@@ -16,7 +16,7 @@ import kotlinx.coroutines.runBlocking
 internal class TcpRpcServer(
     private val host: String,
     private val port: Int,
-    private val dispatcher: AnalysisDispatcher,
+    private val dispatcher: RpcAnalysisDispatcher,
 ) : LocalRpcServer {
     private val closed = AtomicBoolean(false)
     private val handlers = Collections.synchronizedList(mutableListOf<Thread>())

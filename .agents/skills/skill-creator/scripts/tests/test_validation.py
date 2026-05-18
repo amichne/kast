@@ -194,13 +194,43 @@ class ValidationTests(unittest.TestCase):
         self.assertTrue(GRADING_SCHEMA_PATH.exists())
         schema = json.loads(GRADING_SCHEMA_PATH.read_text())
         self.assertEqual(
-            {"expectations", "summary", "execution_metrics", "timing"},
+            {
+                "$schema",
+                "schema_version",
+                "status",
+                "mechanical",
+                "llm_graded",
+                "combined",
+                "expectations",
+                "summary",
+                "execution_metrics",
+                "timing",
+                "integrity",
+            },
             set(schema["required"]),
         )
 
         grading = {
-            "expectations": [{"text": "Met expectation", "passed": True, "evidence": "Transcript quote."}],
-            "summary": {"passed": 1, "failed": 0, "total": 1, "pass_rate": 1.0},
+            "$schema": "https://github.com/amichne/kast/evaluation/grading.schema.json",
+            "schema_version": 3,
+            "status": "graded",
+            "mechanical": {
+                "status": "graded",
+                "expectations": [{"text": "Met expectation", "passed": True, "evidence": "Transcript quote.", "kind": "outcome", "applicability": "both", "graded_by": "script"}],
+                "summary": {"passed": 1, "failed": 0, "total": 1, "pass_rate": 1.0, "outcome_passed": 1, "outcome_total": 1, "outcome_pass_rate": 1.0, "process_pass_rate": 0.0, "skipped": 0}
+            },
+            "llm_graded": {
+                "status": "not_requested",
+                "expectations": [],
+                "summary": {"passed": 0, "failed": 0, "total": 0, "pass_rate": 0.0, "outcome_passed": 0, "outcome_total": 0, "outcome_pass_rate": 0.0, "process_pass_rate": 0.0, "skipped": 0}
+            },
+            "combined": {
+                "status": "graded",
+                "expectations": [{"text": "Met expectation", "passed": True, "evidence": "Transcript quote.", "kind": "outcome", "applicability": "both", "graded_by": "script"}],
+                "summary": {"passed": 1, "failed": 0, "total": 1, "pass_rate": 1.0, "outcome_passed": 1, "outcome_total": 1, "outcome_pass_rate": 1.0, "process_pass_rate": 0.0, "skipped": 0}
+            },
+            "expectations": [{"text": "Met expectation", "passed": True, "evidence": "Transcript quote.", "kind": "outcome", "applicability": "both", "graded_by": "script"}],
+            "summary": {"passed": 1, "failed": 0, "total": 1, "pass_rate": 1.0, "outcome_passed": 1, "outcome_total": 1, "outcome_pass_rate": 1.0, "process_pass_rate": 0.0, "skipped": 0},
             "execution_metrics": {
                 "tool_calls": {"kast_scaffold": 1},
                 "total_tool_calls": 1,
@@ -214,6 +244,12 @@ class ValidationTests(unittest.TestCase):
                 "grader_duration_seconds": 0.5,
                 "total_duration_seconds": 1.5,
             },
+            "integrity": {
+                "contradictions": [],
+                "baseline_isolation_violation": False,
+                "attempts": 1,
+                "flaky": False,
+            },
         }
 
         report = validate_grading_data(grading, path=Path("grading.json"))
@@ -221,8 +257,26 @@ class ValidationTests(unittest.TestCase):
 
     def test_grading_contract_rejects_negative_schema_values(self) -> None:
         grading = {
-            "expectations": [{"text": "Met expectation", "passed": True, "evidence": "Transcript quote."}],
-            "summary": {"passed": 1, "failed": 0, "total": 1, "pass_rate": 1.0},
+            "$schema": "https://github.com/amichne/kast/evaluation/grading.schema.json",
+            "schema_version": 3,
+            "status": "graded",
+            "mechanical": {
+                "status": "graded",
+                "expectations": [{"text": "Met expectation", "passed": True, "evidence": "Transcript quote.", "kind": "outcome", "applicability": "both", "graded_by": "script"}],
+                "summary": {"passed": 1, "failed": 0, "total": 1, "pass_rate": 1.0, "outcome_passed": 1, "outcome_total": 1, "outcome_pass_rate": 1.0, "process_pass_rate": 0.0, "skipped": 0}
+            },
+            "llm_graded": {
+                "status": "not_requested",
+                "expectations": [],
+                "summary": {"passed": 0, "failed": 0, "total": 0, "pass_rate": 0.0, "outcome_passed": 0, "outcome_total": 0, "outcome_pass_rate": 0.0, "process_pass_rate": 0.0, "skipped": 0}
+            },
+            "combined": {
+                "status": "graded",
+                "expectations": [{"text": "Met expectation", "passed": True, "evidence": "Transcript quote.", "kind": "outcome", "applicability": "both", "graded_by": "script"}],
+                "summary": {"passed": 1, "failed": 0, "total": 1, "pass_rate": 1.0, "outcome_passed": 1, "outcome_total": 1, "outcome_pass_rate": 1.0, "process_pass_rate": 0.0, "skipped": 0}
+            },
+            "expectations": [{"text": "Met expectation", "passed": True, "evidence": "Transcript quote.", "kind": "outcome", "applicability": "both", "graded_by": "script"}],
+            "summary": {"passed": 1, "failed": 0, "total": 1, "pass_rate": 1.0, "outcome_passed": 1, "outcome_total": 1, "outcome_pass_rate": 1.0, "process_pass_rate": 0.0, "skipped": 0},
             "execution_metrics": {
                 "tool_calls": {},
                 "total_tool_calls": -1,
@@ -235,6 +289,12 @@ class ValidationTests(unittest.TestCase):
                 "executor_duration_seconds": 0.0,
                 "grader_duration_seconds": 0.0,
                 "total_duration_seconds": 0.0,
+            },
+            "integrity": {
+                "contradictions": [],
+                "baseline_isolation_violation": False,
+                "attempts": 1,
+                "flaky": False,
             },
         }
 

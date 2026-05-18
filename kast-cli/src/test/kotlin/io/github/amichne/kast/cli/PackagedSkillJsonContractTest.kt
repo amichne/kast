@@ -66,8 +66,6 @@ class PackagedSkillJsonContractTest {
 
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/scripts/resolve-kast.sh")))
         assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/scripts/kast-session-start.sh")))
-        assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/evals/pain_points.jsonl")))
-        assertTrue(Files.isRegularFile(installedSkillDir.resolve("kast/evals/files/.gitkeep")))
         assertTrue(
             Files.isRegularFile(
                 installedSkillDir.resolve("kast/fixtures/maintenance/scripts/build-routing-corpus.py"),

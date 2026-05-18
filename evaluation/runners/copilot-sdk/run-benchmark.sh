@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # run-benchmark.sh: end-to-end orchestrator that runs the kast evaluation
-# suite with the Copilot CLI as the runner, in parallel, on a zero-cost
+# suite using the @github/copilot-sdk runner, in parallel, on a zero-cost
 # model by default.
 #
-# Pre-wires evaluation/runners/copilot/run-one.sh into
+# Pre-wires evaluation/runners/copilot-sdk/run-one.mjs into
 # evaluation/scripts/run_evaluation.py's --dispatch-command-template.
 set -euo pipefail
 
@@ -19,7 +19,7 @@ Usage: run-benchmark.sh [options] [-- <forwarded args>]
 
 Required:
   --bindings PATH            Bindings JSON (e.g., evaluation/bindings/kast.json)
-  --workspace PATH           Benchmark workspace root (e.g., .benchmarks/copilot)
+  --workspace PATH           Benchmark workspace root (e.g., .benchmarks/copilot-sdk)
 
 Optional:
   --catalog PATH             Catalog JSON (default: evaluation/catalog.json)
@@ -27,21 +27,22 @@ Optional:
   --runs-per-config N        Runs per (eval x config) (default: 5)
   --concurrency N            Parallel workers (default: 4)
   --max-retries N            Retry count for failed/empty runs (default: 1)
-  --model NAME               Copilot model (default: gpt-5-mini, zero-cost)
-  --configs LIST             Comma-separated configs (default: with_skill,without_skill)
+  --model NAME               Model name (default: gpt-5-mini)
+  --timeout-ms N             SDK session idle timeout in milliseconds (default: 180000)
+  --configs LIST             Comma-separated configs (default: with_skill,tool_only,without_skill)
   --grade-command-template T Shell command template for grading
+  --skip-dispatch            Render and scaffold only; do not launch SDK sessions
   --skip-grade               Skip grading phase
   --skip-aggregate           Skip aggregation phase
 
-Anything after `--` is forwarded verbatim to run_evaluation.py (use this
-to pass --case repeatedly to restrict to specific case IDs).
+Anything after '--' is forwarded verbatim to run_evaluation.py.
 
 Environment:
-  COPILOT_MODEL              Override the model (same as --model)
-  COPILOT_OUTPUT_FORMAT      Copilot output format (default: json)
-  COPILOT_EXPERIMENTAL       Set to 0 or false to omit --experimental
-  COPILOT_BIN                Absolute path to the copilot binary
-  COPILOT_EXTRA_ARGS         Extra args appended to each `copilot --prompt` call
+  SDK_MODEL             Override the model (same as --model)
+  SDK_TIMEOUT_MS        Override the SDK session timeout (same as --timeout-ms)
+  KAST_BIN              Path to the kast binary (default: kast)
+  KAST_WORKSPACE_ROOT   Workspace root passed to kast rpc calls (extracted from bindings)
+  KAST_EVAL_SKIP_NPM_CI Set to 1 when runner dependencies are already installed
 USAGE
 }
 
@@ -53,8 +54,10 @@ runs_per_config="5"
 concurrency="4"
 max_retries="1"
 model=""
-configs="with_skill,without_skill"
+timeout_ms=""
+configs="with_skill,tool_only,without_skill"
 grade_template=""
+skip_dispatch=""
 skip_grade=""
 skip_aggregate=""
 forwarded=()
@@ -69,8 +72,10 @@ while [[ $# -gt 0 ]]; do
     --concurrency)     concurrency="$2";      shift 2 ;;
     --max-retries)     max_retries="$2";      shift 2 ;;
     --model)           model="$2";            shift 2 ;;
+    --timeout-ms)      timeout_ms="$2";       shift 2 ;;
     --configs)         configs="$2";          shift 2 ;;
     --grade-command-template) grade_template="$2"; shift 2 ;;
+    --skip-dispatch)   skip_dispatch="--skip-dispatch";      shift ;;
     --skip-grade)      skip_grade="--skip-grade";         shift ;;
     --skip-aggregate)  skip_aggregate="--skip-aggregate"; shift ;;
     -h|--help)         usage; exit 0 ;;
@@ -84,13 +89,20 @@ done
 [[ -f "$bindings"  ]] || die "bindings file not found: $bindings"
 [[ -f "$catalog"   ]] || die "catalog file not found: $catalog"
 
+abspath() {
+  python3 -c 'from pathlib import Path; import sys; print(Path(sys.argv[1]).resolve())' "$1"
+}
+
+bindings="$(abspath "$bindings")"
+catalog="$(abspath "$catalog")"
+
 if [[ -n "$model" ]]; then
-  export COPILOT_MODEL="$model"
+  export SDK_MODEL="$model"
+fi
+if [[ -n "$timeout_ms" ]]; then
+  export SDK_TIMEOUT_MS="$timeout_ms"
 fi
 
-# Extract workspace_root from the bindings so run-one.sh can pass
-# --add-dir to Copilot. The eval framework already validates the field's
-# presence in load_bindings(), but we need it here too.
 workspace_root="$(python3 -c '
 import json, sys
 print(json.load(open(sys.argv[1]))["workspace_root"])
@@ -98,10 +110,14 @@ print(json.load(open(sys.argv[1]))["workspace_root"])
 [[ -n "$workspace_root" ]] || die "bindings missing workspace_root: $bindings"
 export KAST_WORKSPACE_ROOT="$workspace_root"
 
-runner="${REPO_ROOT}/evaluation/runners/copilot/run-one.sh"
-[[ -x "$runner" ]] || die "runner not executable: $runner (chmod +x it?)"
+runner="${REPO_ROOT}/evaluation/runners/copilot-sdk/run-one.mjs"
+[[ -f "$runner" ]] || die "runner not found: $runner"
 
-dispatch_template="bash ${runner}"
+if [[ "${KAST_EVAL_SKIP_NPM_CI:-0}" != "1" ]]; then
+  npm ci --prefix "${REPO_ROOT}/evaluation/runners/copilot-sdk" --silent
+fi
+
+dispatch_template="node ${runner}"
 dispatch_template+=" --instructions {instructions}"
 dispatch_template+=" --transcript {transcript}"
 dispatch_template+=" --run-dir {run_dir}"
@@ -135,6 +151,9 @@ run_args=(
 
 if [[ -n "$grade_template" ]]; then
   run_args+=(--grade-command-template "$grade_template")
+fi
+if [[ -n "$skip_dispatch" ]]; then
+  run_args+=("$skip_dispatch")
 fi
 if [[ -n "$skip_grade" ]]; then
   run_args+=("$skip_grade")

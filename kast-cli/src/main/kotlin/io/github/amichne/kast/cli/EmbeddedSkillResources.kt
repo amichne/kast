@@ -26,8 +26,6 @@ internal class EmbeddedSkillResources(
 
         val MANIFEST: List<String> = listOf(
             "SKILL.md",
-            "evals/pain_points.jsonl",
-            "evals/files/.gitkeep",
             "fixtures/maintenance/references/routing-improvement.md",
             "fixtures/maintenance/scripts/build-routing-corpus.py",
             "references/quickstart.md",

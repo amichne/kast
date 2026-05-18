@@ -49,7 +49,7 @@ object DocExampleGenerator {
         val tempDir = Files.createTempDirectory("kast-doc-examples")
         try {
             val backend = FakeAnalysisBackend.sample(tempDir)
-            val dispatcher = AnalysisDispatcher(backend, AnalysisServerConfig())
+            val dispatcher = RpcAnalysisDispatcher(backend, AnalysisServerConfig())
 
             val sampleFile = tempDir.resolve("src/Sample.kt").toString()
             val typeFile = tempDir.resolve("src/Types.kt").toString()

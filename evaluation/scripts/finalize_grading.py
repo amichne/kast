@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -235,18 +236,49 @@ def merge_timing(grading: dict[str, Any], timing: dict[str, Any]) -> dict[str, A
     }
 
 
+def maybe_cleanup_worktree(mechanical_payload: dict[str, Any], *, preserve_requested: bool) -> bool:
+    worktree_text = str(
+        mechanical_payload.get("identity", {}).get("worktree_path")
+        or mechanical_payload.get("repo_state", {}).get("worktree_path")
+        or mechanical_payload.get("repo_state", {}).get("post_run", {}).get("worktree_path")
+        or ""
+    ).strip()
+    if not worktree_text:
+        return False
+    worktree = Path(worktree_text)
+    if preserve_requested or not worktree.exists():
+        return preserve_requested and worktree.exists()
+    try:
+        subprocess.run(
+            ["git", "-C", str(worktree), "worktree", "remove", "--force", str(worktree)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        return False
+    return False
+
+
 def finalize(run_dir: Path, *, workspace_root: Path | None = None) -> dict[str, Any]:
     grading_path = run_dir / "grading.json"
     timing_path = run_dir / "timing.json"
     metadata_path = run_dir.parents[1] / "eval_metadata.json"
 
     grading = _read_json(grading_path)
+    mechanical_path = run_dir / "mechanical.json"
+    llm_grade_path = run_dir / "llm-grade.json"
+    mechanical = _read_json(mechanical_path)
+    llm_graded = _read_json(llm_grade_path)
     timing = _read_json(timing_path)
     metadata = _read_json(metadata_path)
 
     configuration = run_dir.parent.name  # eval-x/<config>/run-N
     expectation_meta = _expectation_meta(metadata)
-    raw_expectations = grading.get("expectations") or []
+    mechanical_source = mechanical or grading.get("mechanical") or grading
+    llm_source = llm_graded or grading.get("llm_graded") or (grading if grading else {})
+    raw_mechanical_expectations = mechanical_source.get("expectations") or []
+    raw_llm_expectations = llm_source.get("expectations") or []
 
     # Tool calls — authoritative source is tool_calls.jsonl.
     tool_calls = _read_jsonl(run_dir / "outputs" / "tool_calls.jsonl")
@@ -267,13 +299,25 @@ def finalize(run_dir: Path, *, workspace_root: Path | None = None) -> dict[str, 
     transcript_path = run_dir / "outputs" / "transcript.md"
     transcript_chars = transcript_path.stat().st_size if transcript_path.exists() else 0
 
-    expectations, contradictions = normalize_expectations(raw_expectations, expectation_meta, configuration)
-    summary_block = compute_summary(expectations)
+    mechanical_expectations, contradictions = normalize_expectations(
+        raw_mechanical_expectations,
+        expectation_meta,
+        configuration,
+    )
+    llm_expectations, llm_contradictions = normalize_expectations(
+        raw_llm_expectations,
+        expectation_meta,
+        configuration,
+    )
+    combined_expectations = [*mechanical_expectations, *llm_expectations]
+    summary_block = compute_summary(combined_expectations)
+    mechanical_summary = compute_summary(mechanical_expectations)
+    llm_summary = compute_summary(llm_expectations)
 
-    timing_block = merge_timing(grading, timing)
+    timing_block = merge_timing(mechanical_source, timing)
 
     integrity: dict[str, Any] = {
-        "contradictions": contradictions,
+        "contradictions": contradictions + llm_contradictions,
         "baseline_isolation_violation": configuration == "without_skill" and kast_calls > 0,
         "attempts": int(timing.get("attempts", 1) or 1),
         "flaky": int(timing.get("attempts", 1) or 1) > 1,
@@ -282,22 +326,61 @@ def finalize(run_dir: Path, *, workspace_root: Path | None = None) -> dict[str, 
         integrity["git_sha_post"] = _git_head(workspace_root)
         integrity["workspace_dirty_post"] = _workspace_dirty(workspace_root)
 
-    finalized = {
-        "schema_version": 2,
-        "status": grading.get("status") or "graded",
-        "expectations": expectations,
+    execution_metrics = {
+        "tool_calls": by_tool,
+        "tool_call_log": "outputs/tool_calls.jsonl",
+        "total_tool_calls": sum(by_tool.values()),
+        "total_steps": int(mechanical_source.get("execution_metrics", {}).get("total_steps", 0) or 0),
+        "errors_encountered": int(mechanical_source.get("execution_metrics", {}).get("errors_encountered", 0) or 0),
+        "output_chars": int(
+            mechanical_source.get("execution_metrics", {}).get("output_chars", transcript_chars) or transcript_chars
+        ),
+        "transcript_chars": transcript_chars,
+        "kast_calls": kast_calls,
+        "grep_or_find_calls": search_calls,
+    }
+    mechanical_payload = {
+        **{k: v for k, v in mechanical_source.items() if k not in {"expectations", "summary", "execution_metrics", "timing", "integrity"}},
+        "status": mechanical_source.get("status") or "graded",
+        "expectations": mechanical_expectations,
+        "summary": mechanical_summary,
+        "execution_metrics": execution_metrics,
+        "timing": timing_block,
+        "integrity": integrity,
+    }
+    llm_payload = {
+        **{k: v for k, v in llm_source.items() if k not in {"expectations", "summary"}},
+        "status": llm_source.get("status") or "not_requested",
+        "expectations": llm_expectations,
+        "summary": llm_summary,
+    }
+    combined_payload = {
+        "status": "graded",
+        "expectations": combined_expectations,
         "summary": summary_block,
-        "execution_metrics": {
-            "tool_calls": by_tool,
-            "tool_call_log": "outputs/tool_calls.jsonl",
-            "total_tool_calls": sum(by_tool.values()),
-            "total_steps": int(grading.get("execution_metrics", {}).get("total_steps", 0) or 0),
-            "errors_encountered": int(grading.get("execution_metrics", {}).get("errors_encountered", 0) or 0),
-            "output_chars": int(grading.get("execution_metrics", {}).get("output_chars", transcript_chars) or transcript_chars),
-            "transcript_chars": transcript_chars,
-            "kast_calls": kast_calls,
-            "grep_or_find_calls": search_calls,
-        },
+    }
+    preserve_requested = os.getenv("KAST_EVAL_PRESERVE_WORKTREES", "").strip() == "1"
+    repo_state = mechanical_payload.get("repo_state", {}) or {}
+    repo_state["worktree_preserved_for_debugging"] = maybe_cleanup_worktree(
+        mechanical_payload,
+        preserve_requested=preserve_requested,
+    )
+    mechanical_payload["repo_state"] = repo_state
+
+    finalized = {
+        "$schema": "https://github.com/amichne/kast/evaluation/grading.schema.json",
+        "schema_version": 3,
+        "status": (
+            mechanical_source.get("status") or "graded"
+            if grading.get("status") == "pending_grading"
+            else grading.get("status") or mechanical_source.get("status") or "graded"
+        ),
+        "mechanical": mechanical_payload,
+        "llm_graded": llm_payload,
+        "combined": combined_payload,
+        "expectations": combined_expectations,
+        "summary": summary_block,
+        "execution_metrics": execution_metrics,
         "timing": timing_block,
         "integrity": integrity,
     }

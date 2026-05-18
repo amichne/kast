@@ -15,8 +15,10 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from dispatch_runs import DispatchOptions, dispatch_iteration
+from finalize_grading import finalize
 from parse_tool_calls import parse_run_dir
 from run_value_proof import scaffold_workspace
+from script_grader import grade
 
 
 def write_json(path: Path, payload: dict) -> None:
@@ -84,6 +86,43 @@ class ValueProofScriptTests(unittest.TestCase):
             (iteration_dir / "eval-vp-multi-file-rename" / "eval_metadata.json").read_text()
         )
         self.assertEqual("safe-mutations-chain", metadata["chain_id"])
+
+    def test_scaffold_writes_redesign_artifact_placeholders(self) -> None:
+        catalog_path = TEST_WORKSPACE / "catalog.json"
+        write_json(
+            catalog_path,
+            {
+                "skill_name": "kast-value-proof",
+                "version": 1,
+                "cases": [
+                    {
+                        "id": "vp-demo",
+                        "title": "Demo case",
+                        "prompt": "Inspect the demo.",
+                        "expectations": [],
+                    }
+                ],
+            },
+        )
+
+        iteration_dir = scaffold_workspace(
+            catalog_path=catalog_path,
+            workspace_dir=TEST_WORKSPACE / "workspace",
+            runs_per_config=1,
+            configs=["with_skill"],
+            iteration="iteration-001",
+            aggregate=False,
+        )
+
+        run_dir = iteration_dir / "eval-vp-demo" / "with_skill" / "run-1"
+        self.assertTrue((run_dir / "inputs.json").exists())
+        self.assertTrue((run_dir / "sdk-events.jsonl").exists())
+        self.assertTrue((run_dir / "otel.jsonl").exists())
+        self.assertTrue((run_dir / "final-answer.md").exists())
+        self.assertTrue((run_dir / "mechanical.json").exists())
+        self.assertTrue((run_dir / "llm-grade.json").exists())
+        self.assertTrue((run_dir / "llm-grade-input.json").exists())
+        self.assertTrue((run_dir / "grading.json").exists())
 
     def test_dispatch_uses_manifest_retries_empty_transcript_and_records_timing(self) -> None:
         iteration_dir = self.create_iteration_fixture()
@@ -241,6 +280,382 @@ class ValueProofScriptTests(unittest.TestCase):
             {"kast_resolve": 1, "kast_references": 1},
             summary["tool_calls"],
         )
+
+    def test_parse_tool_calls_dedupes_sdk_tool_call_events(self) -> None:
+        run_dir = TEST_WORKSPACE / "run"
+        outputs = run_dir / "outputs"
+        outputs.mkdir(parents=True)
+        transcript = [
+            {
+                "type": "assistant.message",
+                "data": {
+                    "content": "I will resolve the symbol.",
+                    "toolRequests": [
+                        {
+                            "toolCallId": "call_1",
+                            "name": "kast_resolve",
+                            "arguments": {"symbol": "Demo.name"},
+                        }
+                    ],
+                },
+            },
+            {
+                "type": "tool.execution_start",
+                "data": {
+                    "toolCallId": "call_1",
+                    "toolName": "kast_resolve",
+                    "arguments": {"symbol": "Demo.name"},
+                },
+            },
+            {
+                "type": "tool.execution_complete",
+                "data": {
+                    "toolCallId": "call_1",
+                    "toolName": "kast_resolve",
+                    "result": {"ok": True},
+                },
+            },
+        ]
+        (outputs / "transcript.md").write_text("\n".join(json.dumps(row) for row in transcript) + "\n")
+
+        summary = parse_run_dir(run_dir)
+
+        self.assertEqual(1, summary["total_tool_calls"])
+        self.assertEqual(1, summary["kast_calls"])
+        self.assertEqual({"kast_resolve": 1}, summary["tool_calls"])
+
+    def test_script_grader_uses_assistant_text_for_sdk_jsonl_outcomes(self) -> None:
+        workspace_root = TEST_WORKSPACE / "workspace-root"
+        source = workspace_root / "src" / "Demo.kt"
+        source.parent.mkdir(parents=True)
+        source.write_text("class Demo\nfun use() = Demo()\n")
+
+        iteration_dir = TEST_WORKSPACE / "iteration-001"
+        eval_dir = iteration_dir / "eval-vp-demo"
+        run_dir = eval_dir / "with_skill" / "run-1"
+        outputs = run_dir / "outputs"
+        outputs.mkdir(parents=True)
+        write_json(
+            eval_dir / "eval_metadata.json",
+            {
+                "eval_id": "vp-demo",
+                "eval_name": "vp-demo",
+                "assertions": [
+                    {
+                        "id": "om-recall",
+                        "text": "Reports expected file",
+                        "kind": "outcome",
+                        "oracle": "DISAMBIGUATE_MEMBER.expected.expectedFiles",
+                        "graded_by": "script",
+                    },
+                    {
+                        "id": "om-min-sites",
+                        "text": "Reports enough citations",
+                        "kind": "outcome",
+                        "oracle": "DISAMBIGUATE_MEMBER.expected.minimumUsageSites",
+                        "graded_by": "script",
+                    },
+                    {
+                        "id": "om-citations-resolve",
+                        "text": "Citations resolve",
+                        "kind": "outcome",
+                        "graded_by": "script",
+                    },
+                ],
+            },
+        )
+        bindings_path = TEST_WORKSPACE / "bindings.json"
+        write_json(
+            bindings_path,
+            {
+                "workspace_root": str(workspace_root),
+                "slots": {
+                    "DISAMBIGUATE_MEMBER": {
+                        "expected": {
+                            "expectedFiles": ["src/Demo.kt"],
+                            "minimumUsageSites": 1,
+                        }
+                    }
+                },
+            },
+        )
+        transcript = [
+            {
+                "type": "assistant.message",
+                "data": {
+                    "content": "The usage is src/Demo.kt — line 2.",
+                    "encryptedContent": "/not/a/real/file.kt:999",
+                },
+            },
+            {
+                "type": "assistant.reasoning",
+                "data": {"content": "/also/not/real.kt:777"},
+            },
+        ]
+        (outputs / "transcript.md").write_text("\n".join(json.dumps(row) for row in transcript) + "\n")
+
+        result = grade(run_dir, bindings_path)
+
+        self.assertEqual(3, result["summary"]["passed"])
+        self.assertEqual(0, result["summary"]["failed"])
+        self.assertLess(
+            result["execution_metrics"]["output_chars"],
+            result["execution_metrics"]["transcript_chars"],
+        )
+
+    def test_finalize_merges_mechanical_and_llm_surfaces(self) -> None:
+        iteration_dir = TEST_WORKSPACE / "iteration-001"
+        eval_dir = iteration_dir / "eval-vp-demo"
+        run_dir = eval_dir / "with_skill" / "run-1"
+        (run_dir / "outputs").mkdir(parents=True)
+        write_json(
+            eval_dir / "eval_metadata.json",
+            {
+                "eval_id": "vp-demo",
+                "eval_name": "vp-demo",
+                "assertions": [
+                    {
+                        "id": "script-outcome",
+                        "text": "Mechanical outcome",
+                        "kind": "outcome",
+                        "dimension": "accuracy",
+                        "applicability": "both",
+                        "graded_by": "script",
+                    },
+                    {
+                        "id": "llm-outcome",
+                        "text": "LLM outcome",
+                        "kind": "outcome",
+                        "dimension": "task_completion",
+                        "applicability": "both",
+                        "graded_by": "llm",
+                    },
+                ],
+            },
+        )
+        write_json(
+            run_dir / "mechanical.json",
+            {
+                "schema_version": 1,
+                "status": "graded",
+                "expectations": [
+                    {
+                        "id": "script-outcome",
+                        "text": "Mechanical outcome",
+                        "passed": True,
+                        "evidence": "mechanical evidence",
+                        "kind": "outcome",
+                        "dimension": "accuracy",
+                        "applicability": "both",
+                        "graded_by": "script",
+                    }
+                ],
+                "summary": {
+                    "passed": 1,
+                    "failed": 0,
+                    "total": 1,
+                    "pass_rate": 1.0,
+                    "outcome_passed": 1,
+                    "outcome_total": 1,
+                    "outcome_pass_rate": 1.0,
+                    "process_pass_rate": 0.0,
+                    "skipped": 0,
+                },
+                "execution_metrics": {
+                    "tool_calls": {"kast_resolve": 1},
+                    "tool_call_log": "outputs/tool_calls.jsonl",
+                    "total_tool_calls": 1,
+                    "total_steps": 1,
+                    "errors_encountered": 0,
+                    "output_chars": 10,
+                    "transcript_chars": 10,
+                    "kast_calls": 1,
+                    "grep_or_find_calls": 0,
+                },
+                "timing": {
+                    "executor_duration_seconds": 1.0,
+                    "grader_duration_seconds": 0.0,
+                    "total_duration_seconds": 1.0,
+                    "executor_duration_source": "dispatcher",
+                },
+                "integrity": {
+                    "contradictions": [],
+                    "baseline_isolation_violation": False,
+                    "attempts": 1,
+                    "flaky": False,
+                },
+            },
+        )
+        write_json(
+            run_dir / "llm-grade.json",
+            {
+                "schema_version": 1,
+                "status": "graded",
+                "expectations": [
+                    {
+                        "id": "llm-outcome",
+                        "text": "LLM outcome",
+                        "passed": True,
+                        "evidence": "llm evidence",
+                        "kind": "outcome",
+                        "dimension": "task_completion",
+                        "applicability": "both",
+                        "graded_by": "llm",
+                    }
+                ],
+                "summary": {
+                    "passed": 1,
+                    "failed": 0,
+                    "total": 1,
+                    "pass_rate": 1.0,
+                    "outcome_passed": 1,
+                    "outcome_total": 1,
+                    "outcome_pass_rate": 1.0,
+                    "process_pass_rate": 0.0,
+                    "skipped": 0,
+                },
+            },
+        )
+        write_json(
+            run_dir / "timing.json",
+            {
+                "executor_duration_seconds": 1.0,
+                "grader_duration_seconds": 0.25,
+                "attempts": 1,
+            },
+        )
+        (run_dir / "outputs" / "tool_calls.jsonl").write_text("")
+        (run_dir / "outputs" / "transcript.md").write_text("placeholder\n")
+
+        finalized = finalize(run_dir)
+
+        self.assertIn("mechanical", finalized)
+        self.assertIn("llm_graded", finalized)
+        self.assertIn("combined", finalized)
+        self.assertEqual(2, len(finalized["combined"]["expectations"]))
+        self.assertEqual(2, finalized["summary"]["passed"])
+
+    def test_script_grader_uses_harness_probe_for_compile_expectations(self) -> None:
+        worktree = TEST_WORKSPACE / "worktree"
+        scripts_dir = worktree / "scripts"
+        scripts_dir.mkdir(parents=True)
+        (scripts_dir / "compile.sh").write_text("#!/usr/bin/env bash\nexit 0\n")
+        subprocess.run(["chmod", "+x", str(scripts_dir / "compile.sh")], check=True, capture_output=True)
+
+        iteration_dir = TEST_WORKSPACE / "iteration-001"
+        eval_dir = iteration_dir / "eval-vp-demo"
+        run_dir = eval_dir / "with_skill" / "run-1"
+        outputs = run_dir / "outputs"
+        outputs.mkdir(parents=True)
+        write_json(
+            eval_dir / "eval_metadata.json",
+            {
+                "eval_id": "vp-demo",
+                "eval_name": "vp-demo",
+                "assertions": [
+                    {
+                        "id": "or-compiles",
+                        "text": "Compiles cleanly",
+                        "kind": "outcome",
+                        "graded_by": "script",
+                        "oracle": "RENAME_TARGET.expected.compileCommand",
+                    }
+                ],
+            },
+        )
+        bindings_path = TEST_WORKSPACE / "bindings.json"
+        write_json(
+            bindings_path,
+            {
+                "workspace_root": str(TEST_WORKSPACE),
+                "slots": {
+                    "RENAME_TARGET": {
+                        "expected": {
+                            "compileCommand": "bash scripts/compile.sh",
+                        }
+                    }
+                },
+            },
+        )
+        write_json(
+            run_dir / "mechanical.json",
+            {
+                "repo_state": {
+                    "post_run": {
+                        "worktree_path": str(worktree),
+                    }
+                },
+                "build_test_iterations": {
+                    "commands": [],
+                    "total_invocations": 0,
+                },
+            },
+        )
+        (outputs / "transcript.md").write_text("no compile prose\n")
+
+        result = grade(run_dir, bindings_path)
+
+        self.assertTrue(result["expectations"][0]["passed"])
+        self.assertEqual("passed", result["harness_validation"]["compile_probe"]["final_status"])
+
+    def test_script_grader_uses_touched_files_for_mutation_oracles(self) -> None:
+        iteration_dir = TEST_WORKSPACE / "iteration-001"
+        eval_dir = iteration_dir / "eval-vp-demo"
+        run_dir = eval_dir / "with_skill" / "run-1"
+        outputs = run_dir / "outputs"
+        outputs.mkdir(parents=True)
+        write_json(
+            eval_dir / "eval_metadata.json",
+            {
+                "eval_id": "vp-demo",
+                "eval_name": "vp-demo",
+                "assertions": [
+                    {
+                        "id": "or-files-touched",
+                        "text": "Touches expected files",
+                        "kind": "outcome",
+                        "graded_by": "script",
+                        "oracle": "RENAME_TARGET.expected.affectedFiles",
+                    },
+                    {
+                        "id": "or-files-extra",
+                        "text": "Avoids extra files",
+                        "kind": "outcome",
+                        "graded_by": "script",
+                        "oracle": "RENAME_TARGET.expected.affectedFiles",
+                    },
+                ],
+            },
+        )
+        bindings_path = TEST_WORKSPACE / "bindings.json"
+        write_json(
+            bindings_path,
+            {
+                "workspace_root": str(TEST_WORKSPACE),
+                "slots": {
+                    "RENAME_TARGET": {
+                        "expected": {
+                            "affectedFiles": ["src/Demo.kt"],
+                        }
+                    }
+                },
+            },
+        )
+        write_json(
+            run_dir / "mechanical.json",
+            {
+                "repo_state": {
+                    "post_run": {
+                        "touched_files": ["src/Demo.kt"],
+                    }
+                }
+            },
+        )
+        (outputs / "transcript.md").write_text("mutation done\n")
+
+        result = grade(run_dir, bindings_path)
+
+        self.assertTrue(all(expectation["passed"] for expectation in result["expectations"]))
 
     def create_iteration_fixture(
         self,

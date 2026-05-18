@@ -91,6 +91,7 @@ gen
 .qodana/
 .intellijPlatform/
 tmp/
+node_modules/
 *.sandbox/
 *.zip
 ### Kotlin template

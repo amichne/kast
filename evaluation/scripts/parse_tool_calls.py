@@ -71,6 +71,7 @@ class ToolCall:
     source: str  # "fenced_json" | "xml" | "marker" | "bash_kast" | "bash_search"
     line: int
     args_excerpt: str = ""
+    tool_call_id: str = ""
 
     def to_dict(self) -> dict:
         d = asdict(self)
@@ -120,6 +121,7 @@ def _extract_copilot_event(event: dict, line: int) -> Iterable[ToolCall]:
                     source="jsonl_tool_request",
                     line=line,
                     args_excerpt=_excerpt(json.dumps(request)),
+                    tool_call_id=str(request.get("toolCallId") or request.get("id") or ""),
                 )
 
     if "tool" not in event_type.lower() or event_type.lower().endswith("tools_updated"):
@@ -131,6 +133,7 @@ def _extract_copilot_event(event: dict, line: int) -> Iterable[ToolCall]:
             source="jsonl_tool_event",
             line=line,
             args_excerpt=_excerpt(json.dumps(data)),
+            tool_call_id=str(data.get("toolCallId") or data.get("id") or ""),
         )
 
 
@@ -241,12 +244,21 @@ def extract(transcript: str) -> list[ToolCall]:
     calls.extend(_extract_fenced_json(transcript))
     calls.extend(_extract_xml(transcript))
     calls.extend(_extract_markers(transcript))
-    # De-duplicate by (line, tool) so a fenced bash block re-counted as both
-    # bash_kast and a json wrapper for the same call doesn't double-up.
-    seen: set[tuple[int, str]] = set()
+    # De-duplicate by SDK toolCallId when available so request/start/end events
+    # for one invocation do not inflate process metrics. Fall back to (line,
+    # tool) for legacy transcript shapes.
+    seen: set[tuple[str, str, str]] = set()
     out: list[ToolCall] = []
     for call in sorted(calls, key=lambda c: (c.line, c.tool)):
-        key = (call.line, call.tool)
+        key = (
+            "id",
+            call.tool_call_id,
+            call.tool.lower().replace("-", "_"),
+        ) if call.tool_call_id else (
+            "line",
+            str(call.line),
+            call.tool.lower().replace("-", "_"),
+        )
         if key in seen:
             continue
         seen.add(key)

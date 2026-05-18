@@ -2,1453 +2,67 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/amichne/kast/evaluation/benchmark.schema.json",
   "title": "Kast system evaluation benchmark",
-  "description": "Authoritative final benchmark artifact for system-level evaluation. The measurement model fixes four primary dimensions (task completion, accuracy, reliability, scope control) plus efficiency as required supporting evidence.",
+  "description": "Authoritative benchmark artifact. Version 2 separates mechanical, LLM-graded, and combined summary surfaces; version 1 remains accepted for historical benchmark artifacts.",
   "type": "object",
-  "required": [
-    "$schema",
-    "schema_version",
-    "benchmark_kind",
-    "metadata",
-    "runs",
-    "summary",
-    "paired_analysis"
+  "oneOf": [
+    { "$ref": "#/$defs/benchmarkV2" },
+    { "$ref": "#/$defs/benchmarkV1" }
   ],
-  "additionalProperties": false,
-  "properties": {
-    "$schema": {
-      "type": "string",
-      "const": "https://github.com/amichne/kast/evaluation/benchmark.schema.json"
-    },
-    "schema_version": {
-      "type": "integer",
-      "const": 1
-    },
-    "benchmark_kind": {
-      "type": "string",
-      "const": "kast-system-performance-benchmark"
-    },
-    "metadata": {
-      "$ref": "#/$defs/metadata"
-    },
-    "runs": {
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "$ref": "#/$defs/run_observation"
-      }
-    },
-    "summary": {
-      "$ref": "#/$defs/summary"
-    },
-    "paired_analysis": {
-      "$ref": "#/$defs/paired_analysis"
-    }
-  },
   "$defs": {
-    "configuration": {
-      "type": "string",
-      "enum": [
-        "with_skill",
-        "without_skill"
-      ]
-    },
-    "primary_dimension": {
-      "type": "string",
-      "enum": [
-        "task_completion",
-        "accuracy",
-        "reliability",
-        "scope_control"
-      ]
-    },
-    "measurement_dimension": {
-      "type": "string",
-      "description": "All dimensions tracked per expectation. The four primary dimensions (task_completion, accuracy, reliability, scope_control) are the headline ranking surface. efficiency is required supporting evidence only.",
-      "enum": [
-        "task_completion",
-        "accuracy",
-        "reliability",
-        "scope_control",
-        "efficiency"
-      ]
-    },
-    "expectation_kind": {
-      "type": "string",
-      "enum": [
-        "outcome",
-        "process"
-      ]
-    },
-    "applicability": {
-      "type": "string",
-      "enum": [
-        "both",
-        "with_skill_only",
-        "without_skill_only"
-      ]
-    },
-    "graded_by": {
-      "type": "string",
-      "enum": [
-        "script",
-        "llm",
-        "n/a"
-      ]
-    },
-    "evidence": {
+    "benchmarkV2": {
       "type": "object",
       "required": [
-        "kind",
-        "summary"
+        "$schema",
+        "schema_version",
+        "benchmark_kind",
+        "metadata",
+        "runs",
+        "mechanical_summary",
+        "llm_graded_summary",
+        "combined_summary",
+        "summary",
+        "paired_analysis"
       ],
       "additionalProperties": false,
       "properties": {
-        "kind": {
-          "type": "string",
-          "enum": [
-            "automated_check",
-            "llm_judgment",
-            "tool_log",
-            "transcript_excerpt",
-            "integrity_check"
-          ]
-        },
-        "summary": {
-          "type": "string",
-          "minLength": 1
-        },
-        "citations": {
+        "$schema": { "type": "string", "const": "https://github.com/amichne/kast/evaluation/benchmark.schema.json" },
+        "schema_version": { "type": "integer", "const": 2 },
+        "benchmark_kind": { "type": "string", "const": "kast-system-performance-benchmark" },
+        "metadata": { "$ref": "#/$defs/metadata" },
+        "runs": {
           "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        }
+          "items": { "$ref": "#/$defs/runV2" }
+        },
+        "mechanical_summary": { "$ref": "#/$defs/summarySurface" },
+        "llm_graded_summary": { "$ref": "#/$defs/summarySurface" },
+        "combined_summary": { "$ref": "#/$defs/summarySurface" },
+        "summary": { "$ref": "#/$defs/summarySurface" },
+        "paired_analysis": { "$ref": "#/$defs/pairedAnalysis" }
       }
     },
-    "expectation_common": {
+    "benchmarkV1": {
       "type": "object",
       "required": [
-        "id",
-        "text",
-        "kind",
-        "dimension",
-        "applicability",
-        "graded_by"
+        "$schema",
+        "schema_version",
+        "benchmark_kind",
+        "metadata",
+        "runs",
+        "summary",
+        "paired_analysis"
       ],
       "additionalProperties": false,
       "properties": {
-        "id": {
-          "type": "string",
-          "minLength": 1
-        },
-        "text": {
-          "type": "string",
-          "minLength": 1
-        },
-        "kind": {
-          "$ref": "#/$defs/expectation_kind"
-        },
-        "dimension": {
-          "$ref": "#/$defs/measurement_dimension"
-        },
-        "applicability": {
-          "$ref": "#/$defs/applicability"
-        },
-        "graded_by": {
-          "$ref": "#/$defs/graded_by"
-        },
-        "oracle": {
-          "type": "string",
-          "minLength": 1
-        }
-      }
-    },
-    "expectation_observation": {
-      "oneOf": [
-        {
-          "allOf": [
-            {
-              "$ref": "#/$defs/expectation_common"
-            },
-            {
-              "type": "object",
-              "required": [
-                "status",
-                "evidence"
-              ],
-              "additionalProperties": false,
-              "properties": {
-                "id": {},
-                "text": {},
-                "kind": {},
-                "dimension": {},
-                "applicability": {},
-                "graded_by": {},
-                "oracle": {},
-                "status": {
-                  "type": "string",
-                  "const": "passed"
-                },
-                "evidence": {
-                  "$ref": "#/$defs/evidence"
-                }
-              }
-            }
-          ]
-        },
-        {
-          "allOf": [
-            {
-              "$ref": "#/$defs/expectation_common"
-            },
-            {
-              "type": "object",
-              "required": [
-                "status",
-                "evidence"
-              ],
-              "additionalProperties": false,
-              "properties": {
-                "id": {},
-                "text": {},
-                "kind": {},
-                "dimension": {},
-                "applicability": {},
-                "graded_by": {},
-                "oracle": {},
-                "status": {
-                  "type": "string",
-                  "const": "failed"
-                },
-                "evidence": {
-                  "$ref": "#/$defs/evidence"
-                }
-              }
-            }
-          ]
-        },
-        {
-          "allOf": [
-            {
-              "$ref": "#/$defs/expectation_common"
-            },
-            {
-              "type": "object",
-              "required": [
-                "status",
-                "reason"
-              ],
-              "additionalProperties": false,
-              "properties": {
-                "id": {},
-                "text": {},
-                "kind": {},
-                "dimension": {},
-                "applicability": {},
-                "graded_by": {},
-                "oracle": {},
-                "status": {
-                  "type": "string",
-                  "const": "not_applicable"
-                },
-                "reason": {
-                  "type": "string",
-                  "minLength": 1
-                }
-              }
-            }
-          ]
-        },
-        {
-          "allOf": [
-            {
-              "$ref": "#/$defs/expectation_common"
-            },
-            {
-              "type": "object",
-              "required": [
-                "status",
-                "error"
-              ],
-              "additionalProperties": false,
-              "properties": {
-                "id": {},
-                "text": {},
-                "kind": {},
-                "dimension": {},
-                "applicability": {},
-                "graded_by": {},
-                "oracle": {},
-                "status": {
-                  "type": "string",
-                  "const": "ungraded"
-                },
-                "error": {
-                  "type": "string",
-                  "minLength": 1
-                }
-              }
-            }
-          ]
-        }
-      ]
-    },
-    "score_group": {
-      "oneOf": [
-        {
-          "type": "object",
-          "required": [
-            "status",
-            "eligible",
-            "passed",
-            "failed",
-            "not_applicable",
-            "score"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "status": {
-              "type": "string",
-              "const": "scored"
-            },
-            "eligible": {
-              "type": "integer",
-              "minimum": 1
-            },
-            "passed": {
-              "type": "integer",
-              "minimum": 0
-            },
-            "failed": {
-              "type": "integer",
-              "minimum": 0
-            },
-            "not_applicable": {
-              "type": "integer",
-              "minimum": 0
-            },
-            "score": {
-              "type": "number",
-              "minimum": 0.0,
-              "maximum": 1.0
-            }
-          }
-        },
-        {
-          "type": "object",
-          "required": [
-            "status",
-            "eligible",
-            "not_applicable"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "status": {
-              "type": "string",
-              "const": "not_applicable"
-            },
-            "eligible": {
-              "type": "integer",
-              "const": 0
-            },
-            "not_applicable": {
-              "type": "integer",
-              "minimum": 0
-            }
-          }
-        }
-      ]
-    },
-    "measurement_card": {
-      "type": "object",
-      "required": [
-        "all",
-        "outcome",
-        "process"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "all": {
-          "$ref": "#/$defs/score_group"
-        },
-        "outcome": {
-          "$ref": "#/$defs/score_group"
-        },
-        "process": {
-          "$ref": "#/$defs/score_group"
-        }
-      }
-    },
-    "measurements": {
-      "type": "object",
-      "required": [
-        "overall",
-        "task_completion",
-        "accuracy",
-        "reliability",
-        "scope_control",
-        "efficiency"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "overall": {
-          "$ref": "#/$defs/measurement_card"
-        },
-        "task_completion": {
-          "$ref": "#/$defs/measurement_card"
-        },
-        "accuracy": {
-          "$ref": "#/$defs/measurement_card"
-        },
-        "reliability": {
-          "$ref": "#/$defs/measurement_card"
-        },
-        "scope_control": {
-          "$ref": "#/$defs/measurement_card"
-        },
-        "efficiency": {
-          "$ref": "#/$defs/measurement_card",
-          "description": "Supporting evidence only. Efficiency is not a primary headline dimension — it exists to characterize cost and scope tradeoffs, not to rank system quality. The four primary dimensions (task_completion, accuracy, reliability, scope_control) are the headline ranking surface."
-        }
-      }
-    },
-    "run_efficiency": {
-      "type": "object",
-      "required": [
-        "transcript_chars",
-        "total_tool_calls",
-        "semantic_tool_calls",
-        "generic_search_calls",
-        "executor_duration_seconds",
-        "executor_duration_source",
-        "errors_encountered"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "transcript_chars": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "total_tool_calls": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "semantic_tool_calls": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "generic_search_calls": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "executor_duration_seconds": {
-          "type": "number",
-          "minimum": 0.0
-        },
-        "executor_duration_source": {
-          "type": "string",
-          "enum": [
-            "dispatcher",
-            "self_reported",
-            "missing"
-          ]
-        },
-        "errors_encountered": {
-          "type": "integer",
-          "minimum": 0
-        }
-      }
-    },
-    "integrity": {
-      "type": "object",
-      "required": [
-        "attempts",
-        "flaky",
-        "baseline_isolation",
-        "contradiction_count",
-        "contradiction_samples",
-        "workspace_dirty_post"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "attempts": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "flaky": {
-          "type": "boolean"
-        },
-        "baseline_isolation": {
-          "type": "string",
-          "enum": [
-            "intact",
-            "violated",
-            "not_applicable"
-          ]
-        },
-        "contradiction_count": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "contradiction_samples": {
+        "$schema": { "type": "string", "const": "https://github.com/amichne/kast/evaluation/benchmark.schema.json" },
+        "schema_version": { "type": "integer", "const": 1 },
+        "benchmark_kind": { "type": "string", "const": "kast-system-performance-benchmark" },
+        "metadata": { "$ref": "#/$defs/metadata" },
+        "runs": {
           "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
+          "items": { "$ref": "#/$defs/runV1" }
         },
-        "workspace_dirty_post": {
-          "type": "boolean"
-        },
-        "git_sha_post": {
-          "type": "string",
-          "minLength": 1
-        }
-      }
-    },
-    "run_common": {
-      "type": "object",
-      "required": [
-        "eval_id",
-        "configuration",
-        "run_number",
-        "status",
-        "expectations",
-        "efficiency",
-        "integrity"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "eval_id": {
-          "type": "string",
-          "minLength": 1
-        },
-        "configuration": {
-          "$ref": "#/$defs/configuration"
-        },
-        "run_number": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "status": {
-          "type": "string"
-        },
-        "expectations": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/expectation_observation"
-          }
-        },
-        "efficiency": {
-          "$ref": "#/$defs/run_efficiency"
-        },
-        "integrity": {
-          "$ref": "#/$defs/integrity"
-        }
-      }
-    },
-    "run_observation": {
-      "oneOf": [
-        {
-          "allOf": [
-            {
-              "$ref": "#/$defs/run_common"
-            },
-            {
-              "type": "object",
-              "required": [
-                "measurements"
-              ],
-              "additionalProperties": false,
-              "properties": {
-                "eval_id": {},
-                "configuration": {},
-                "run_number": {},
-                "expectations": {},
-                "efficiency": {},
-                "integrity": {},
-                "status": {
-                  "type": "string",
-                  "const": "valid"
-                },
-                "measurements": {
-                  "$ref": "#/$defs/measurements"
-                }
-              }
-            },
-            {
-              "properties": {
-                "integrity": {
-                  "type": "object",
-                  "properties": {
-                    "contradiction_count": {
-                      "const": 0
-                    }
-                  }
-                }
-              }
-            },
-            {
-              "if": {
-                "properties": {
-                  "configuration": {
-                    "const": "without_skill"
-                  }
-                },
-                "required": [
-                  "configuration"
-                ]
-              },
-              "then": {
-                "properties": {
-                  "efficiency": {
-                    "type": "object",
-                    "properties": {
-                      "semantic_tool_calls": {
-                        "const": 0
-                      }
-                    }
-                  },
-                  "integrity": {
-                    "type": "object",
-                    "properties": {
-                      "baseline_isolation": {
-                        "const": "intact"
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            {
-              "if": {
-                "properties": {
-                  "configuration": {
-                    "const": "with_skill"
-                  }
-                },
-                "required": [
-                  "configuration"
-                ]
-              },
-              "then": {
-                "properties": {
-                  "integrity": {
-                    "type": "object",
-                    "properties": {
-                      "baseline_isolation": {
-                        "const": "not_applicable"
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          ]
-        },
-        {
-          "allOf": [
-            {
-              "$ref": "#/$defs/run_common"
-            },
-            {
-              "type": "object",
-              "required": [
-                "invalid_reason"
-              ],
-              "additionalProperties": false,
-              "properties": {
-                "eval_id": {},
-                "configuration": {},
-                "run_number": {},
-                "expectations": {},
-                "efficiency": {},
-                "integrity": {},
-                "status": {
-                  "type": "string",
-                  "const": "invalid"
-                },
-                "invalid_reason": {
-                  "type": "string",
-                  "enum": [
-                    "baseline_tainted",
-                    "contradictory_grading",
-                    "ungraded_expectation"
-                  ]
-                }
-              }
-            }
-          ]
-        }
-      ]
-    },
-    "confidence_interval_95": {
-      "type": "object",
-      "required": [
-        "level",
-        "lower",
-        "upper",
-        "method"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "level": {
-          "type": "number",
-          "const": 0.95
-        },
-        "lower": {
-          "type": "number"
-        },
-        "upper": {
-          "type": "number"
-        },
-        "method": {
-          "type": "string",
-          "enum": [
-            "normal_approximation",
-            "degenerate_single_sample"
-          ]
-        }
-      }
-    },
-    "score_distribution": {
-      "oneOf": [
-        {
-          "type": "object",
-          "required": [
-            "status",
-            "n",
-            "mean",
-            "stddev",
-            "min",
-            "max",
-            "confidence_interval_95"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "status": {
-              "type": "string",
-              "const": "summarized"
-            },
-            "n": {
-              "type": "integer",
-              "minimum": 1
-            },
-            "mean": {
-              "type": "number",
-              "minimum": 0.0,
-              "maximum": 1.0
-            },
-            "stddev": {
-              "type": "number",
-              "minimum": 0.0
-            },
-            "min": {
-              "type": "number",
-              "minimum": 0.0,
-              "maximum": 1.0
-            },
-            "max": {
-              "type": "number",
-              "minimum": 0.0,
-              "maximum": 1.0
-            },
-            "confidence_interval_95": {
-              "$ref": "#/$defs/confidence_interval_95"
-            }
-          }
-        },
-        {
-          "type": "object",
-          "required": [
-            "status",
-            "n"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "status": {
-              "type": "string",
-              "const": "no_valid_samples"
-            },
-            "n": {
-              "type": "integer",
-              "const": 0
-            }
-          }
-        }
-      ]
-    },
-    "metric_distribution": {
-      "oneOf": [
-        {
-          "type": "object",
-          "required": [
-            "status",
-            "n",
-            "mean",
-            "stddev",
-            "min",
-            "max",
-            "confidence_interval_95"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "status": {
-              "type": "string",
-              "const": "summarized"
-            },
-            "n": {
-              "type": "integer",
-              "minimum": 1
-            },
-            "mean": {
-              "type": "number"
-            },
-            "stddev": {
-              "type": "number",
-              "minimum": 0.0
-            },
-            "min": {
-              "type": "number"
-            },
-            "max": {
-              "type": "number"
-            },
-            "confidence_interval_95": {
-              "$ref": "#/$defs/confidence_interval_95"
-            }
-          }
-        },
-        {
-          "type": "object",
-          "required": [
-            "status",
-            "n"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "status": {
-              "type": "string",
-              "const": "no_valid_samples"
-            },
-            "n": {
-              "type": "integer",
-              "const": 0
-            }
-          }
-        }
-      ]
-    },
-    "measurement_summary_card": {
-      "type": "object",
-      "required": [
-        "all",
-        "outcome",
-        "process"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "all": {
-          "$ref": "#/$defs/score_distribution"
-        },
-        "outcome": {
-          "$ref": "#/$defs/score_distribution"
-        },
-        "process": {
-          "$ref": "#/$defs/score_distribution"
-        }
-      }
-    },
-    "configuration_summary": {
-      "type": "object",
-      "required": [
-        "run_counts",
-        "measurements",
-        "efficiency"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "run_counts": {
-          "type": "object",
-          "required": [
-            "total",
-            "valid",
-            "invalid"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "total": {
-              "type": "integer",
-              "minimum": 0
-            },
-            "valid": {
-              "type": "integer",
-              "minimum": 0
-            },
-            "invalid": {
-              "type": "integer",
-              "minimum": 0
-            }
-          }
-        },
-        "measurements": {
-          "type": "object",
-          "required": [
-            "overall",
-            "task_completion",
-            "accuracy",
-            "reliability",
-            "scope_control",
-            "efficiency"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "overall": {
-              "$ref": "#/$defs/measurement_summary_card"
-            },
-            "task_completion": {
-              "$ref": "#/$defs/measurement_summary_card"
-            },
-            "accuracy": {
-              "$ref": "#/$defs/measurement_summary_card"
-            },
-            "reliability": {
-              "$ref": "#/$defs/measurement_summary_card"
-            },
-            "scope_control": {
-              "$ref": "#/$defs/measurement_summary_card"
-            },
-            "efficiency": {
-              "$ref": "#/$defs/measurement_summary_card"
-            }
-          }
-        },
-        "efficiency": {
-          "type": "object",
-          "required": [
-            "transcript_chars",
-            "total_tool_calls",
-            "semantic_tool_calls",
-            "generic_search_calls",
-            "executor_duration_seconds",
-            "errors_encountered"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "transcript_chars": {
-              "$ref": "#/$defs/metric_distribution"
-            },
-            "total_tool_calls": {
-              "$ref": "#/$defs/metric_distribution"
-            },
-            "semantic_tool_calls": {
-              "$ref": "#/$defs/metric_distribution"
-            },
-            "generic_search_calls": {
-              "$ref": "#/$defs/metric_distribution"
-            },
-            "executor_duration_seconds": {
-              "$ref": "#/$defs/metric_distribution"
-            },
-            "errors_encountered": {
-              "$ref": "#/$defs/metric_distribution"
-            }
-          }
-        }
-      }
-    },
-    "summary": {
-      "type": "object",
-      "required": [
-        "by_configuration"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "by_configuration": {
-          "type": "object",
-          "required": [
-            "with_skill",
-            "without_skill"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "with_skill": {
-              "$ref": "#/$defs/configuration_summary"
-            },
-            "without_skill": {
-              "$ref": "#/$defs/configuration_summary"
-            }
-          }
-        }
-      }
-    },
-    "score_delta": {
-      "oneOf": [
-        {
-          "type": "object",
-          "required": [
-            "status",
-            "with_skill_mean",
-            "without_skill_mean",
-            "delta"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "status": {
-              "type": "string",
-              "const": "scored"
-            },
-            "with_skill_mean": {
-              "type": "number",
-              "minimum": 0.0,
-              "maximum": 1.0
-            },
-            "without_skill_mean": {
-              "type": "number",
-              "minimum": 0.0,
-              "maximum": 1.0
-            },
-            "delta": {
-              "type": "number",
-              "minimum": -1.0,
-              "maximum": 1.0
-            }
-          }
-        },
-        {
-          "type": "object",
-          "required": [
-            "status"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "status": {
-              "type": "string",
-              "const": "not_applicable"
-            }
-          }
-        }
-      ]
-    },
-    "metric_delta": {
-      "type": "object",
-      "required": [
-        "with_skill_mean",
-        "without_skill_mean",
-        "delta"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "with_skill_mean": {
-          "type": "number"
-        },
-        "without_skill_mean": {
-          "type": "number"
-        },
-        "delta": {
-          "type": "number"
-        }
-      }
-    },
-    "significance_result": {
-      "oneOf": [
-        {
-          "type": "object",
-          "required": [
-            "status",
-            "test_name",
-            "alternative",
-            "zero_method",
-            "correction",
-            "statistic",
-            "p_value",
-            "n_pairs",
-            "method",
-            "effect_size_rank_biserial",
-            "mean_delta",
-            "median_delta"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "status": {
-              "type": "string",
-              "const": "scored"
-            },
-            "test_name": {
-              "type": "string",
-              "const": "wilcoxon_signed_rank"
-            },
-            "alternative": {
-              "type": "string",
-              "const": "two_sided"
-            },
-            "zero_method": {
-              "type": "string",
-              "const": "wilcox"
-            },
-            "correction": {
-              "type": "string",
-              "enum": [
-                "none",
-                "bonferroni",
-                "holm",
-                "bh"
-              ]
-            },
-            "statistic": {
-              "type": "number",
-              "minimum": 0.0
-            },
-            "p_value": {
-              "type": "number",
-              "minimum": 0.0,
-              "maximum": 1.0
-            },
-            "n_pairs": {
-              "type": "integer",
-              "minimum": 1
-            },
-            "method": {
-              "type": "string",
-              "enum": [
-                "exact",
-                "normal_approx",
-                "no_signal",
-                "no_variance"
-              ]
-            },
-            "effect_size_rank_biserial": {
-              "type": "number",
-              "minimum": -1.0,
-              "maximum": 1.0
-            },
-            "mean_delta": {
-              "type": "number"
-            },
-            "median_delta": {
-              "type": "number"
-            }
-          }
-        },
-        {
-          "type": "object",
-          "required": [
-            "status",
-            "n_pairs"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "status": {
-              "type": "string",
-              "const": "not_applicable"
-            },
-            "n_pairs": {
-              "type": "integer",
-              "const": 0
-            }
-          }
-        }
-      ]
-    },
-    "pair_observation": {
-      "type": "object",
-      "required": [
-        "eval_id",
-        "with_skill_run_numbers",
-        "without_skill_run_numbers",
-        "score_deltas",
-        "efficiency_deltas"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "eval_id": {
-          "type": "string",
-          "minLength": 1
-        },
-        "with_skill_run_numbers": {
-          "type": "array",
-          "items": {
-            "type": "integer",
-            "minimum": 1
-          }
-        },
-        "without_skill_run_numbers": {
-          "type": "array",
-          "items": {
-            "type": "integer",
-            "minimum": 1
-          }
-        },
-        "score_deltas": {
-          "type": "object",
-          "required": [
-            "overall_outcome",
-            "task_completion",
-            "accuracy",
-            "reliability",
-            "scope_control"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "overall_outcome": {
-              "$ref": "#/$defs/score_delta"
-            },
-            "task_completion": {
-              "$ref": "#/$defs/score_delta"
-            },
-            "accuracy": {
-              "$ref": "#/$defs/score_delta"
-            },
-            "reliability": {
-              "$ref": "#/$defs/score_delta"
-            },
-            "scope_control": {
-              "$ref": "#/$defs/score_delta"
-            }
-          }
-        },
-        "efficiency_deltas": {
-          "type": "object",
-          "required": [
-            "transcript_chars",
-            "total_tool_calls",
-            "semantic_tool_calls",
-            "generic_search_calls",
-            "executor_duration_seconds"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "transcript_chars": {
-              "$ref": "#/$defs/metric_delta"
-            },
-            "total_tool_calls": {
-              "$ref": "#/$defs/metric_delta"
-            },
-            "semantic_tool_calls": {
-              "$ref": "#/$defs/metric_delta"
-            },
-            "generic_search_calls": {
-              "$ref": "#/$defs/metric_delta"
-            },
-            "executor_duration_seconds": {
-              "$ref": "#/$defs/metric_delta"
-            }
-          }
-        }
-      }
-    },
-    "invalid_run_record": {
-      "type": "object",
-      "required": [
-        "eval_id",
-        "configuration",
-        "run_number",
-        "reason"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "eval_id": {
-          "type": "string",
-          "minLength": 1
-        },
-        "configuration": {
-          "$ref": "#/$defs/configuration"
-        },
-        "run_number": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "reason": {
-          "type": "string",
-          "enum": [
-            "baseline_tainted",
-            "contradictory_grading",
-            "ungraded_expectation"
-          ]
-        }
-      }
-    },
-    "flaky_run_record": {
-      "type": "object",
-      "required": [
-        "eval_id",
-        "configuration",
-        "run_number",
-        "attempts"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "eval_id": {
-          "type": "string",
-          "minLength": 1
-        },
-        "configuration": {
-          "$ref": "#/$defs/configuration"
-        },
-        "run_number": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "attempts": {
-          "type": "integer",
-          "minimum": 2
-        }
-      }
-    },
-    "outlier_record": {
-      "type": "object",
-      "required": [
-        "configuration",
-        "metric",
-        "eval_id",
-        "value",
-        "side"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "configuration": {
-          "$ref": "#/$defs/configuration"
-        },
-        "metric": {
-          "type": "string",
-          "enum": [
-            "overall_outcome_score",
-            "transcript_chars",
-            "executor_duration_seconds"
-          ]
-        },
-        "eval_id": {
-          "type": "string",
-          "minLength": 1
-        },
-        "value": {
-          "type": "number"
-        },
-        "side": {
-          "type": "string",
-          "enum": [
-            "low",
-            "high"
-          ]
-        }
-      }
-    },
-    "paired_analysis": {
-      "type": "object",
-      "required": [
-        "pair_unit",
-        "pairs",
-        "statistics",
-        "issues"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "pair_unit": {
-          "type": "string",
-          "const": "eval_id"
-        },
-        "pairs": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/pair_observation"
-          }
-        },
-        "statistics": {
-          "type": "object",
-          "required": [
-            "score_metrics",
-            "efficiency_metrics"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "score_metrics": {
-              "type": "object",
-              "required": [
-                "overall_outcome",
-                "task_completion",
-                "accuracy",
-                "reliability",
-                "scope_control"
-              ],
-              "additionalProperties": false,
-              "properties": {
-                "overall_outcome": {
-                  "$ref": "#/$defs/significance_result"
-                },
-                "task_completion": {
-                  "$ref": "#/$defs/significance_result"
-                },
-                "accuracy": {
-                  "$ref": "#/$defs/significance_result"
-                },
-                "reliability": {
-                  "$ref": "#/$defs/significance_result"
-                },
-                "scope_control": {
-                  "$ref": "#/$defs/significance_result"
-                }
-              }
-            },
-            "efficiency_metrics": {
-              "type": "object",
-              "required": [
-                "transcript_chars",
-                "total_tool_calls",
-                "semantic_tool_calls",
-                "generic_search_calls",
-                "executor_duration_seconds"
-              ],
-              "additionalProperties": false,
-              "properties": {
-                "transcript_chars": {
-                  "$ref": "#/$defs/significance_result"
-                },
-                "total_tool_calls": {
-                  "$ref": "#/$defs/significance_result"
-                },
-                "semantic_tool_calls": {
-                  "$ref": "#/$defs/significance_result"
-                },
-                "generic_search_calls": {
-                  "$ref": "#/$defs/significance_result"
-                },
-                "executor_duration_seconds": {
-                  "$ref": "#/$defs/significance_result"
-                }
-              }
-            }
-          }
-        },
-        "issues": {
-          "type": "object",
-          "required": [
-            "invalid_runs",
-            "flaky_runs",
-            "outliers"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "invalid_runs": {
-              "type": "array",
-              "items": {
-                "$ref": "#/$defs/invalid_run_record"
-              }
-            },
-            "flaky_runs": {
-              "type": "array",
-              "items": {
-                "$ref": "#/$defs/flaky_run_record"
-              }
-            },
-            "outliers": {
-              "type": "array",
-              "items": {
-                "$ref": "#/$defs/outlier_record"
-              }
-            }
-          }
-        }
+        "summary": { "$ref": "#/$defs/summarySurface" },
+        "paired_analysis": { "$ref": "#/$defs/pairedAnalysis" }
       }
     },
     "metadata": {
@@ -1470,122 +84,817 @@
       ],
       "additionalProperties": false,
       "properties": {
-        "skill_name": {
-          "type": "string",
-          "minLength": 1
-        },
-        "skill_path": {
-          "type": "string",
-          "minLength": 1
-        },
+        "skill_name": { "$ref": "#/$defs/nonEmptyString" },
+        "skill_path": { "$ref": "#/$defs/nonEmptyString" },
         "generated_at": {
           "type": "string",
           "format": "date-time"
         },
-        "iteration_dir": {
-          "type": "string",
-          "minLength": 1
-        },
-        "target_repo": {
-          "type": "string",
-          "minLength": 1
-        },
-        "workspace_root": {
-          "type": "string",
-          "minLength": 1
-        },
-        "target_git_sha": {
-          "type": "string",
-          "minLength": 1
-        },
+        "iteration_dir": { "$ref": "#/$defs/nonEmptyString" },
+        "target_repo": { "$ref": "#/$defs/nonEmptyString" },
+        "workspace_root": { "$ref": "#/$defs/nonEmptyString" },
+        "target_git_sha": { "$ref": "#/$defs/nonEmptyString" },
         "eval_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/evalId" }
+        },
+        "configurations": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/configuration" }
+        },
+        "runs_per_eval_per_config": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": { "$ref": "#/$defs/configurationRunCounts" }
+        },
+        "catalog_version": { "type": "integer", "minimum": 1 },
+        "primary_dimensions": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/primaryDimension" }
+        },
+        "supporting_metrics": {
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
           "items": {
             "type": "string",
-            "minLength": 1
+            "enum": [
+              "efficiency",
+              "transcript_chars",
+              "total_tool_calls",
+              "semantic_tool_calls",
+              "generic_search_calls",
+              "executor_duration_seconds",
+              "errors_encountered"
+            ]
           }
         },
-        "configurations": {
-          "type": "array",
-          "minItems": 2,
-          "maxItems": 2,
-          "uniqueItems": true,
-          "items": {
-            "$ref": "#/$defs/configuration"
-          }
-        },
-        "runs_per_eval_per_config": {
+        "execution_environment": {
           "type": "object",
-          "additionalProperties": {
-            "type": "object",
-            "required": [
-              "with_skill",
-              "without_skill"
-            ],
-            "additionalProperties": false,
-            "properties": {
-              "with_skill": {
-                "type": "integer",
-                "minimum": 0
-              },
-              "without_skill": {
-                "type": "integer",
-                "minimum": 0
+          "required": ["platform", "python_version", "cpu_count"],
+          "additionalProperties": false,
+          "properties": {
+            "platform": { "$ref": "#/$defs/nonEmptyString" },
+            "python_version": { "$ref": "#/$defs/nonEmptyString" },
+            "cpu_count": { "type": "integer", "minimum": 1 }
+          }
+        }
+      }
+    },
+    "runV2": {
+      "type": "object",
+      "required": [
+        "eval_id",
+        "configuration",
+        "run_number",
+        "mechanical",
+        "llm_graded",
+        "combined",
+        "expectations",
+        "efficiency",
+        "integrity",
+        "status"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "eval_id": { "$ref": "#/$defs/evalId" },
+        "configuration": { "$ref": "#/$defs/configuration" },
+        "run_number": { "type": "integer", "minimum": 1 },
+        "mechanical": { "$ref": "#/$defs/runSurface" },
+        "llm_graded": { "$ref": "#/$defs/runSurface" },
+        "combined": { "$ref": "#/$defs/runSurface" },
+        "expectations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/expectation" }
+        },
+        "efficiency": { "$ref": "#/$defs/runEfficiency" },
+        "integrity": { "$ref": "#/$defs/integrity" },
+        "status": { "type": "string", "enum": ["valid", "invalid"] },
+        "measurements": { "$ref": "#/$defs/runMeasurements" },
+        "invalid_reason": {
+          "type": "string",
+          "enum": ["ungraded_expectation", "baseline_tainted", "contradictory_grading"]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "status": { "const": "valid" } },
+            "required": ["status"]
+          },
+          "then": { "required": ["measurements"] }
+        },
+        {
+          "if": {
+            "properties": { "status": { "const": "invalid" } },
+            "required": ["status"]
+          },
+          "then": { "required": ["invalid_reason"] }
+        }
+      ]
+    },
+    "runV1": {
+      "type": "object",
+      "required": [
+        "eval_id",
+        "configuration",
+        "run_number",
+        "expectations",
+        "efficiency",
+        "integrity",
+        "status"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "eval_id": { "$ref": "#/$defs/evalId" },
+        "configuration": { "$ref": "#/$defs/configuration" },
+        "run_number": { "type": "integer", "minimum": 1 },
+        "expectations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/expectation" }
+        },
+        "efficiency": { "$ref": "#/$defs/runEfficiency" },
+        "integrity": { "$ref": "#/$defs/integrity" },
+        "status": { "type": "string", "enum": ["valid", "invalid"] },
+        "measurements": { "$ref": "#/$defs/runMeasurements" },
+        "invalid_reason": {
+          "type": "string",
+          "enum": ["ungraded_expectation", "baseline_tainted", "contradictory_grading"]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "status": { "const": "valid" } },
+            "required": ["status"]
+          },
+          "then": { "required": ["measurements"] }
+        },
+        {
+          "if": {
+            "properties": { "status": { "const": "invalid" } },
+            "required": ["status"]
+          },
+          "then": { "required": ["invalid_reason"] }
+        }
+      ]
+    },
+    "runSurface": {
+      "type": "object",
+      "required": ["status", "expectations", "summary", "measurements"],
+      "additionalProperties": false,
+      "properties": {
+        "status": { "$ref": "#/$defs/nonEmptyString" },
+        "expectations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/expectation" }
+        },
+        "summary": { "$ref": "#/$defs/gradingSummary" },
+        "measurements": { "$ref": "#/$defs/runMeasurements" },
+        "execution_metrics": { "$ref": "#/$defs/executionMetrics" },
+        "timing": { "$ref": "#/$defs/timing" },
+        "artifacts": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "identity": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "tokens": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "tool_metrics": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "permission_metrics": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "build_test_iterations": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "repo_state": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "harness_validation": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "rubric_results": {
+          "type": "array",
+          "items": { "type": "object", "additionalProperties": true }
+        }
+      }
+    },
+    "summarySurface": {
+      "type": "object",
+      "required": ["by_configuration"],
+      "additionalProperties": false,
+      "properties": {
+        "by_configuration": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": false,
+          "properties": {
+            "with_skill": { "$ref": "#/$defs/configurationSummary" },
+            "tool_only": { "$ref": "#/$defs/configurationSummary" },
+            "without_skill": { "$ref": "#/$defs/configurationSummary" }
+          }
+        }
+      }
+    },
+    "configurationSummary": {
+      "type": "object",
+      "required": ["run_counts", "measurements", "efficiency"],
+      "additionalProperties": false,
+      "properties": {
+        "run_counts": {
+          "type": "object",
+          "required": ["total", "valid", "invalid"],
+          "additionalProperties": false,
+          "properties": {
+            "total": { "type": "integer", "minimum": 0 },
+            "valid": { "type": "integer", "minimum": 0 },
+            "invalid": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "measurements": { "$ref": "#/$defs/summaryMeasurements" },
+        "efficiency": { "$ref": "#/$defs/summaryEfficiency" }
+      }
+    },
+    "summaryMeasurements": {
+      "type": "object",
+      "required": ["overall", "task_completion", "accuracy", "reliability", "scope_control", "efficiency"],
+      "additionalProperties": false,
+      "properties": {
+        "overall": { "$ref": "#/$defs/summaryMeasurementCard" },
+        "task_completion": { "$ref": "#/$defs/summaryMeasurementCard" },
+        "accuracy": { "$ref": "#/$defs/summaryMeasurementCard" },
+        "reliability": { "$ref": "#/$defs/summaryMeasurementCard" },
+        "scope_control": { "$ref": "#/$defs/summaryMeasurementCard" },
+        "efficiency": { "$ref": "#/$defs/summaryMeasurementCard" }
+      }
+    },
+    "summaryMeasurementCard": {
+      "type": "object",
+      "required": ["all", "outcome", "process"],
+      "additionalProperties": false,
+      "properties": {
+        "all": { "$ref": "#/$defs/distribution" },
+        "outcome": { "$ref": "#/$defs/distribution" },
+        "process": { "$ref": "#/$defs/distribution" }
+      }
+    },
+    "runMeasurements": {
+      "type": "object",
+      "required": ["overall", "task_completion", "accuracy", "reliability", "scope_control", "efficiency"],
+      "additionalProperties": false,
+      "properties": {
+        "overall": { "$ref": "#/$defs/runMeasurementCard" },
+        "task_completion": { "$ref": "#/$defs/runMeasurementCard" },
+        "accuracy": { "$ref": "#/$defs/runMeasurementCard" },
+        "reliability": { "$ref": "#/$defs/runMeasurementCard" },
+        "scope_control": { "$ref": "#/$defs/runMeasurementCard" },
+        "efficiency": { "$ref": "#/$defs/runMeasurementCard" }
+      }
+    },
+    "runMeasurementCard": {
+      "type": "object",
+      "required": ["all", "outcome", "process"],
+      "additionalProperties": false,
+      "properties": {
+        "all": { "$ref": "#/$defs/scoreGroup" },
+        "outcome": { "$ref": "#/$defs/scoreGroup" },
+        "process": { "$ref": "#/$defs/scoreGroup" }
+      }
+    },
+    "scoreGroup": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["status", "eligible", "passed", "failed", "not_applicable", "score"],
+          "additionalProperties": false,
+          "properties": {
+            "status": { "type": "string", "const": "scored" },
+            "eligible": { "type": "integer", "minimum": 1 },
+            "passed": { "type": "integer", "minimum": 0 },
+            "failed": { "type": "integer", "minimum": 0 },
+            "not_applicable": { "type": "integer", "minimum": 0 },
+            "score": { "type": "number", "minimum": 0.0, "maximum": 1.0 }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["status", "eligible", "not_applicable"],
+          "additionalProperties": false,
+          "properties": {
+            "status": { "type": "string", "const": "not_applicable" },
+            "eligible": { "type": "integer", "const": 0 },
+            "not_applicable": { "type": "integer", "minimum": 0 }
+          }
+        }
+      ]
+    },
+    "distribution": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["status", "n"],
+          "additionalProperties": false,
+          "properties": {
+            "status": { "type": "string", "const": "no_valid_samples" },
+            "n": { "type": "integer", "const": 0 }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["status", "n", "mean", "stddev", "min", "max", "confidence_interval_95"],
+          "additionalProperties": false,
+          "properties": {
+            "status": { "type": "string", "const": "summarized" },
+            "n": { "type": "integer", "minimum": 1 },
+            "mean": { "type": "number" },
+            "stddev": { "type": "number", "minimum": 0.0 },
+            "min": { "type": "number" },
+            "max": { "type": "number" },
+            "confidence_interval_95": {
+              "type": "object",
+              "required": ["level", "lower", "upper", "method"],
+              "additionalProperties": false,
+              "properties": {
+                "level": { "type": "number", "const": 0.95 },
+                "lower": { "type": "number" },
+                "upper": { "type": "number" },
+                "method": {
+                  "type": "string",
+                  "enum": ["normal_approximation", "degenerate_single_sample"]
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "summaryEfficiency": {
+      "type": "object",
+      "required": [
+        "transcript_chars",
+        "total_tool_calls",
+        "semantic_tool_calls",
+        "generic_search_calls",
+        "executor_duration_seconds",
+        "errors_encountered"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "transcript_chars": { "$ref": "#/$defs/distribution" },
+        "total_tool_calls": { "$ref": "#/$defs/distribution" },
+        "semantic_tool_calls": { "$ref": "#/$defs/distribution" },
+        "generic_search_calls": { "$ref": "#/$defs/distribution" },
+        "executor_duration_seconds": { "$ref": "#/$defs/distribution" },
+        "errors_encountered": { "$ref": "#/$defs/distribution" }
+      }
+    },
+    "runEfficiency": {
+      "type": "object",
+      "required": [
+        "transcript_chars",
+        "total_tool_calls",
+        "semantic_tool_calls",
+        "generic_search_calls",
+        "executor_duration_seconds",
+        "executor_duration_source",
+        "errors_encountered"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "transcript_chars": { "type": "integer", "minimum": 0 },
+        "total_tool_calls": { "type": "integer", "minimum": 0 },
+        "semantic_tool_calls": { "type": "integer", "minimum": 0 },
+        "generic_search_calls": { "type": "integer", "minimum": 0 },
+        "executor_duration_seconds": { "type": "number", "minimum": 0.0 },
+        "executor_duration_source": { "$ref": "#/$defs/nonEmptyString" },
+        "errors_encountered": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "expectation": {
+      "type": "object",
+      "required": ["id", "text", "kind", "dimension", "applicability", "graded_by", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "text": { "$ref": "#/$defs/nonEmptyString" },
+        "kind": { "type": "string", "enum": ["outcome", "process"] },
+        "dimension": { "$ref": "#/$defs/dimension" },
+        "applicability": {
+          "type": "string",
+          "enum": ["both", "with_skill_only", "without_skill_only"]
+        },
+        "graded_by": { "type": "string", "enum": ["script", "llm", "n/a"] },
+        "oracle": { "$ref": "#/$defs/nonEmptyString" },
+        "status": {
+          "type": "string",
+          "enum": ["passed", "failed", "not_applicable", "ungraded"]
+        },
+        "evidence": { "$ref": "#/$defs/evidence" },
+        "reason": { "$ref": "#/$defs/nonEmptyString" },
+        "error": { "$ref": "#/$defs/nonEmptyString" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "status": { "enum": ["passed", "failed"] } },
+            "required": ["status"]
+          },
+          "then": { "required": ["evidence"] }
+        }
+      ]
+    },
+    "evidence": {
+      "type": "object",
+      "required": ["kind", "summary"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["automated_check", "llm_judgment"]
+        },
+        "summary": { "$ref": "#/$defs/nonEmptyString" },
+        "citations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        }
+      }
+    },
+    "gradingSummary": {
+      "type": "object",
+      "required": [
+        "passed",
+        "failed",
+        "total",
+        "pass_rate",
+        "outcome_passed",
+        "outcome_total",
+        "outcome_pass_rate",
+        "process_pass_rate",
+        "skipped"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "passed": { "type": "integer", "minimum": 0 },
+        "failed": { "type": "integer", "minimum": 0 },
+        "total": { "type": "integer", "minimum": 0 },
+        "pass_rate": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+        "outcome_passed": { "type": "integer", "minimum": 0 },
+        "outcome_total": { "type": "integer", "minimum": 0 },
+        "outcome_pass_rate": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+        "process_pass_rate": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+        "skipped": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "executionMetrics": {
+      "type": "object",
+      "required": [
+        "tool_calls",
+        "total_tool_calls",
+        "total_steps",
+        "errors_encountered",
+        "output_chars",
+        "transcript_chars"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "tool_calls": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        },
+        "tool_call_log": { "$ref": "#/$defs/nonEmptyString" },
+        "total_tool_calls": { "type": "integer", "minimum": 0 },
+        "total_steps": { "type": "integer", "minimum": 0 },
+        "errors_encountered": { "type": "integer", "minimum": 0 },
+        "output_chars": { "type": "integer", "minimum": 0 },
+        "transcript_chars": { "type": "integer", "minimum": 0 },
+        "kast_calls": { "type": "integer", "minimum": 0 },
+        "grep_or_find_calls": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "timing": {
+      "type": "object",
+      "required": ["executor_duration_seconds", "grader_duration_seconds", "total_duration_seconds"],
+      "additionalProperties": true,
+      "properties": {
+        "executor_duration_seconds": { "type": "number", "minimum": 0.0 },
+        "grader_duration_seconds": { "type": "number", "minimum": 0.0 },
+        "total_duration_seconds": { "type": "number", "minimum": 0.0 },
+        "executor_duration_source": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "integrity": {
+      "type": "object",
+      "required": [
+        "attempts",
+        "flaky",
+        "baseline_isolation",
+        "contradiction_count",
+        "contradiction_samples",
+        "workspace_dirty_post"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "attempts": { "type": "integer", "minimum": 1 },
+        "flaky": { "type": "boolean" },
+        "baseline_isolation": {
+          "type": "string",
+          "enum": ["intact", "violated", "not_applicable"]
+        },
+        "contradiction_count": { "type": "integer", "minimum": 0 },
+        "contradiction_samples": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "workspace_dirty_post": { "type": "boolean" },
+        "git_sha_post": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "pairedAnalysis": {
+      "type": "object",
+      "required": ["pair_unit", "pairs", "statistics", "issues"],
+      "additionalProperties": false,
+      "properties": {
+        "pair_unit": { "type": "string", "const": "eval_id" },
+        "pairs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/pairRecord" }
+        },
+        "statistics": {
+          "type": "object",
+          "required": ["score_metrics", "efficiency_metrics"],
+          "additionalProperties": false,
+          "properties": {
+            "score_metrics": {
+              "type": "object",
+              "required": ["overall_outcome", "task_completion", "accuracy", "reliability", "scope_control"],
+              "additionalProperties": false,
+              "properties": {
+                "overall_outcome": { "$ref": "#/$defs/statisticalTest" },
+                "task_completion": { "$ref": "#/$defs/statisticalTest" },
+                "accuracy": { "$ref": "#/$defs/statisticalTest" },
+                "reliability": { "$ref": "#/$defs/statisticalTest" },
+                "scope_control": { "$ref": "#/$defs/statisticalTest" }
+              }
+            },
+            "efficiency_metrics": {
+              "type": "object",
+              "required": [
+                "transcript_chars",
+                "total_tool_calls",
+                "semantic_tool_calls",
+                "generic_search_calls",
+                "executor_duration_seconds"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "transcript_chars": { "$ref": "#/$defs/statisticalTest" },
+                "total_tool_calls": { "$ref": "#/$defs/statisticalTest" },
+                "semantic_tool_calls": { "$ref": "#/$defs/statisticalTest" },
+                "generic_search_calls": { "$ref": "#/$defs/statisticalTest" },
+                "executor_duration_seconds": { "$ref": "#/$defs/statisticalTest" }
               }
             }
           }
         },
-        "catalog_version": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "primary_dimensions": {
-          "type": "array",
-          "const": [
-            "task_completion",
-            "accuracy",
-            "reliability",
-            "scope_control"
-          ]
-        },
-        "supporting_metrics": {
-          "type": "array",
-          "const": [
-            "efficiency",
-            "transcript_chars",
-            "total_tool_calls",
-            "semantic_tool_calls",
-            "generic_search_calls",
-            "executor_duration_seconds",
-            "errors_encountered"
-          ]
-        },
-        "execution_environment": {
+        "issues": {
           "type": "object",
-          "required": [
-            "platform",
-            "python_version",
-            "cpu_count"
-          ],
+          "required": ["invalid_runs", "flaky_runs", "outliers"],
           "additionalProperties": false,
           "properties": {
-            "platform": {
-              "type": "string",
-              "minLength": 1
+            "invalid_runs": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/invalidRunIssue" }
             },
-            "python_version": {
-              "type": "string",
-              "minLength": 1
+            "flaky_runs": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/flakyRunIssue" }
             },
-            "cpu_count": {
-              "type": "integer",
-              "minimum": 1
+            "outliers": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/outlierIssue" }
             }
           }
         }
       }
+    },
+    "pairRecord": {
+      "type": "object",
+      "required": [
+        "eval_id",
+        "with_skill_run_numbers",
+        "without_skill_run_numbers",
+        "score_deltas",
+        "efficiency_deltas"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "eval_id": { "$ref": "#/$defs/evalId" },
+        "with_skill_run_numbers": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "integer", "minimum": 1 }
+        },
+        "without_skill_run_numbers": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "integer", "minimum": 1 }
+        },
+        "score_deltas": {
+          "type": "object",
+          "required": ["overall_outcome", "task_completion", "accuracy", "reliability", "scope_control"],
+          "additionalProperties": false,
+          "properties": {
+            "overall_outcome": { "$ref": "#/$defs/scoreDelta" },
+            "task_completion": { "$ref": "#/$defs/scoreDelta" },
+            "accuracy": { "$ref": "#/$defs/scoreDelta" },
+            "reliability": { "$ref": "#/$defs/scoreDelta" },
+            "scope_control": { "$ref": "#/$defs/scoreDelta" }
+          }
+        },
+        "efficiency_deltas": {
+          "type": "object",
+          "required": [
+            "transcript_chars",
+            "total_tool_calls",
+            "semantic_tool_calls",
+            "generic_search_calls",
+            "executor_duration_seconds"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "transcript_chars": { "$ref": "#/$defs/numericDelta" },
+            "total_tool_calls": { "$ref": "#/$defs/numericDelta" },
+            "semantic_tool_calls": { "$ref": "#/$defs/numericDelta" },
+            "generic_search_calls": { "$ref": "#/$defs/numericDelta" },
+            "executor_duration_seconds": { "$ref": "#/$defs/numericDelta" }
+          }
+        }
+      }
+    },
+    "scoreDelta": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["status"],
+          "additionalProperties": false,
+          "properties": {
+            "status": { "type": "string", "const": "not_applicable" }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["status", "with_skill_mean", "without_skill_mean", "delta"],
+          "additionalProperties": false,
+          "properties": {
+            "status": { "type": "string", "const": "scored" },
+            "with_skill_mean": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+            "without_skill_mean": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+            "delta": { "type": "number", "minimum": -1.0, "maximum": 1.0 }
+          }
+        }
+      ]
+    },
+    "numericDelta": {
+      "type": "object",
+      "required": ["with_skill_mean", "without_skill_mean", "delta"],
+      "additionalProperties": false,
+      "properties": {
+        "with_skill_mean": { "type": "number" },
+        "without_skill_mean": { "type": "number" },
+        "delta": { "type": "number" }
+      }
+    },
+    "statisticalTest": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["status", "n_pairs"],
+          "additionalProperties": false,
+          "properties": {
+            "status": { "type": "string", "const": "not_applicable" },
+            "n_pairs": { "type": "integer", "minimum": 0 }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "status",
+            "test_name",
+            "alternative",
+            "zero_method",
+            "correction",
+            "statistic",
+            "p_value",
+            "n_pairs",
+            "method",
+            "effect_size_rank_biserial",
+            "mean_delta",
+            "median_delta"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "status": { "type": "string", "const": "scored" },
+            "test_name": { "type": "string", "const": "wilcoxon_signed_rank" },
+            "alternative": { "type": "string", "const": "two_sided" },
+            "zero_method": { "type": "string", "const": "wilcox" },
+            "correction": { "type": "string", "enum": ["none"] },
+            "statistic": { "type": "number", "minimum": 0.0 },
+            "p_value": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+            "n_pairs": { "type": "integer", "minimum": 1 },
+            "method": { "type": "string", "enum": ["exact", "normal_approx", "no_variance"] },
+            "effect_size_rank_biserial": { "type": "number", "minimum": -1.0, "maximum": 1.0 },
+            "mean_delta": { "type": "number" },
+            "median_delta": { "type": "number" }
+          }
+        }
+      ]
+    },
+    "invalidRunIssue": {
+      "type": "object",
+      "required": ["eval_id", "configuration", "run_number", "reason"],
+      "additionalProperties": false,
+      "properties": {
+        "eval_id": { "$ref": "#/$defs/evalId" },
+        "configuration": { "$ref": "#/$defs/configuration" },
+        "run_number": { "type": "integer", "minimum": 1 },
+        "reason": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "flakyRunIssue": {
+      "type": "object",
+      "required": ["eval_id", "configuration", "run_number", "attempts"],
+      "additionalProperties": false,
+      "properties": {
+        "eval_id": { "$ref": "#/$defs/evalId" },
+        "configuration": { "$ref": "#/$defs/configuration" },
+        "run_number": { "type": "integer", "minimum": 1 },
+        "attempts": { "type": "integer", "minimum": 2 }
+      }
+    },
+    "outlierIssue": {
+      "type": "object",
+      "required": ["configuration", "metric", "eval_id", "value", "side"],
+      "additionalProperties": false,
+      "properties": {
+        "configuration": { "$ref": "#/$defs/configuration" },
+        "metric": {
+          "type": "string",
+          "enum": ["overall_outcome_score", "transcript_chars", "executor_duration_seconds"]
+        },
+        "eval_id": { "$ref": "#/$defs/evalId" },
+        "value": { "type": "number" },
+        "side": { "type": "string", "enum": ["low", "high"] }
+      }
+    },
+    "configurationRunCounts": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "with_skill": { "type": "integer", "minimum": 0 },
+        "tool_only": { "type": "integer", "minimum": 0 },
+        "without_skill": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "configuration": {
+      "type": "string",
+      "enum": ["with_skill", "tool_only", "without_skill"]
+    },
+    "primaryDimension": {
+      "type": "string",
+      "enum": ["task_completion", "accuracy", "reliability", "scope_control"]
+    },
+    "dimension": {
+      "type": "string",
+      "enum": ["task_completion", "accuracy", "reliability", "scope_control", "efficiency"]
+    },
+    "evalId": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
     }
   }
 }
