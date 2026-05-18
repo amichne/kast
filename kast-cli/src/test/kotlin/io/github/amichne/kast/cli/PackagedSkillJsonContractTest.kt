@@ -171,7 +171,7 @@ class PackagedSkillJsonContractTest {
             assertEquals(true, diagnosticsPayload["schemaVersion"] != null)
         } finally {
             runCommand(
-                command = listOf(kastBinary, "workspace", "stop", "--workspace-root=$workspaceRoot"),
+                command = listOf(kastBinary, "stop", "--workspace-root=$workspaceRoot"),
                 env = wrapperEnv,
             )
             daemon.destroyForcibly()
@@ -194,7 +194,7 @@ class PackagedSkillJsonContractTest {
         val daemon = startRealBackend(repoRoot, wrapperEnv, kastBinary)
         try {
             val ensureResult = runCommand(
-                command = listOf(kastBinary, "workspace", "ensure", "--workspace-root=$repoRoot"),
+                command = listOf(kastBinary, "up", "--workspace-root=$repoRoot"),
                 env = wrapperEnv,
             )
             assertEquals(0, ensureResult.exitCode, "stderr: ${ensureResult.stderr}")
@@ -234,7 +234,7 @@ class PackagedSkillJsonContractTest {
             assertEquals(true, diagnosticsPayload["diagnostics"]?.toString() == "[]")
         } finally {
             runCommand(
-                command = listOf(kastBinary, "workspace", "stop", "--workspace-root=$repoRoot"),
+                command = listOf(kastBinary, "stop", "--workspace-root=$repoRoot"),
                 env = wrapperEnv,
             )
             daemon.destroyForcibly()
@@ -265,7 +265,7 @@ class PackagedSkillJsonContractTest {
         timeoutMillis = timeoutMillis,
         statusProbe = {
             val statusResult = runCommand(
-                command = listOf(kastBinary, "workspace", "status", "--workspace-root=$workspace"),
+                command = listOf(kastBinary, "status", "--workspace-root=$workspace"),
                 env = env,
             )
             BackendStatusProbeSnapshot(

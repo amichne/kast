@@ -13,9 +13,6 @@ internal sealed interface CliCommand {
     data object Version : CliCommand
     data object VerifyExtension : CliCommand
     data class Completion(val shell: CliCompletionShell) : CliCommand
-    data class WorkspaceStatus(val options: RuntimeCommandOptions) : CliCommand
-    data class WorkspaceEnsure(val options: RuntimeCommandOptions) : CliCommand
-    data class WorkspaceStop(val options: RuntimeCommandOptions) : CliCommand
     data class Capabilities(val options: RuntimeCommandOptions) : CliCommand
     data class Install(val options: InstallOptions) : CliCommand
     data class InstallSkill(val options: InstallSkillOptions) : CliCommand

@@ -14,12 +14,14 @@ that matches what you're seeing.
 
 ??? question "Daemon won't start"
 
-    **Symptoms:** `kast health` returns an error or hangs.
+    **Symptoms:** a `health` JSON-RPC request returns an error or
+    hangs.
 
     1. Verify the workspace root exists and contains Kotlin sources:
 
         ```console
-        kast health --workspace-root=/path/to/project
+        kast rpc '{"jsonrpc":"2.0","id":1,"method":"health"}' \
+          --workspace-root=/path/to/project
         ```
 
     2. Check that Java 21 or newer is available:
@@ -45,11 +47,11 @@ that matches what you're seeing.
     On first start, the daemon indexes the entire workspace. Big
     multi-module projects can take 30–60 seconds.
 
-    - Run `kast workspace status` to watch progress
+    - Run `kast status` to watch progress
     - Wait for `state: READY` before running queries
     - If indexing never finishes, check the project's Gradle
       wrapper works (`./gradlew tasks` should succeed)
-    - Pass `--accept-indexing=true` to `workspace ensure` if you
+    - Pass `--accept-indexing=true` to `up` if you
       can live with partial results while indexing finishes
 
 ??? question "Shell can't find kast after install"
@@ -100,7 +102,7 @@ that matches what you're seeing.
 
 ??? question "Symbol not found"
 
-    **Symptoms:** `kast resolve` returns empty or a `NOT_FOUND`
+    **Symptoms:** `raw/resolve` returns empty or a `NOT_FOUND`
     error.
 
     - Confirm the file path is absolute and inside the workspace
@@ -108,8 +110,9 @@ that matches what you're seeing.
     - Confirm the offset lands on an actual identifier (not
       whitespace or a comment)
     - Confirm the daemon finished indexing
-      (`kast workspace status` shows `state: READY`)
-    - If the file is brand new, run `kast workspace refresh` to
+      (`kast status` shows `state: READY`)
+    - If the file is brand new, run `raw/workspace-refresh` through
+      `kast rpc` to
       update the index
 
 ??? question "References return partial results"
@@ -147,7 +150,7 @@ that matches what you're seeing.
 
 ??? question "Diagnostics return stale results"
 
-    **Symptoms:** `kast diagnostics` reports an error you already
+    **Symptoms:** `raw/diagnostics` reports an error you already
     fixed, or misses a problem you just introduced.
 
     The daemon caches the last view of disk it observed. If you
@@ -155,12 +158,15 @@ that matches what you're seeing.
     observation window, you'll get a stale answer. Refresh first:
 
     ```console
-    kast workspace refresh --workspace-root=$(pwd)
-    kast diagnostics --workspace-root=$(pwd) --file-paths=$(pwd)/src/App.kt
+    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/workspace-refresh","params":{}}' \
+      --workspace-root=$(pwd)
+    kast rpc '{"jsonrpc":"2.0","id":2,"method":"raw/diagnostics","params":{"filePaths":["/absolute/path/to/src/App.kt"]}}' \
+      --workspace-root=$(pwd)
     ```
 
-    Same fix applies to `resolve`, `references`, `outline`, and
-    any other read command that looks suspiciously out of date.
+    Same fix applies to `raw/resolve`, `raw/references`,
+    `raw/file-outline`, and any other read method that looks
+    suspiciously out of date.
 
 ## Mutations
 
@@ -177,7 +183,7 @@ that matches what you're seeing.
     A file changed between plan and apply. The SHA-256 hash no
     longer matches.
 
-    1. Re-run `rename` for a fresh plan with updated hashes
+    1. Re-run `raw/rename` for a fresh plan with updated hashes
     2. Review the new plan
     3. Apply it before any other changes land
 
@@ -198,7 +204,7 @@ that matches what you're seeing.
 
 If nothing here resolves it:
 
-1. Run `kast health` and `kast workspace status` and capture the
+1. Run `health` through `kast rpc`, then run `kast status`, and capture the
    output
 2. Check daemon stderr for stack traces
 3. Open an issue at

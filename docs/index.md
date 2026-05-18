@@ -73,16 +73,14 @@ Three commands, run from the root of any Kotlin project. Requires Java 21+.
 curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh | bash
 
 # 2. Start a backend for this workspace (waits until indexing is READY)
-kast workspace ensure --backend-name=standalone --workspace-root=$(pwd)
+kast up --backend-name=standalone --workspace-root=$(pwd)
 
 # 3. Resolve a symbol — point at any .kt file and any byte offset on a name
-kast resolve \
-  --workspace-root=$(pwd) \
-  --file-path=$(pwd)/src/main/kotlin/App.kt \
-  --offset=42
+kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/resolve","params":{"position":{"filePath":"/absolute/path/to/App.kt","offset":42}}}' \
+  --workspace-root=$(pwd)
 ```
 
-The first `workspace ensure` is the slow command — the daemon discovers
+The first `up` is the slow command — the daemon discovers
 your project and indexes it. Everything after that hits a warm session.
 Already running IntelliJ with the plugin? Skip step 2; `kast` finds the
 IDE's backend on its own.

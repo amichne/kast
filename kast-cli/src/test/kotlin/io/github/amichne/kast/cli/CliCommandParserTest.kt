@@ -29,10 +29,13 @@ class CliCommandParserTest {
     }
 
     @Test
-    fun `namespace arguments open contextual help`() {
-        val command = parser.parse(arrayOf("workspace"))
+    fun `workspace namespace is unknown`() {
+        val failure = assertThrows<CliFailure> {
+            parser.parse(arrayOf("workspace"))
+        }
 
-        assertEquals(CliCommand.Help(listOf("workspace")), command)
+        assertEquals("CLI_USAGE", failure.code)
+        assertTrue(failure.message.contains("Unknown command: workspace"))
     }
 
     @Test
@@ -43,10 +46,10 @@ class CliCommandParserTest {
     }
 
     @Test
-    fun `scoped help flag keeps the command topic`() {
-        val command = parser.parse(arrayOf("workspace", "status", "--help"))
+    fun `scoped help flag keeps the short command topic`() {
+        val command = parser.parse(arrayOf("status", "--help"))
 
-        assertEquals(CliCommand.Help(listOf("workspace", "status")), command)
+        assertEquals(CliCommand.Help(listOf("status")), command)
     }
 
     @Test
@@ -59,19 +62,36 @@ class CliCommandParserTest {
 
 
     @Test
-    fun `workspace ensure parses accept indexing`() {
+    fun `workspace subcommands are unknown`() {
+        listOf("ensure", "status", "stop", "refresh", "files").forEach { subcommand ->
+            val failure = assertThrows<CliFailure> {
+                parser.parse(
+                    arrayOf(
+                        "workspace",
+                        subcommand,
+                        "--workspace-root=$tempDir",
+                    ),
+                )
+            }
+
+            assertEquals("CLI_USAGE", failure.code)
+            assertTrue(failure.message.contains("Unknown command: workspace $subcommand"))
+        }
+    }
+
+    @Test
+    fun `up parses accept indexing`() {
         val command = parser.parse(
             arrayOf(
-                "workspace",
-                "ensure",
+                "up",
                 "--workspace-root=$tempDir",
                 "--accept-indexing=true",
             ),
         )
 
-        assertTrue(command is CliCommand.WorkspaceEnsure)
-        val ensureCommand = command as CliCommand.WorkspaceEnsure
-        assertTrue(ensureCommand.options.acceptIndexing)
+        assertTrue(command is CliCommand.Up)
+        val upCommand = command as CliCommand.Up
+        assertTrue(upCommand.options.acceptIndexing)
     }
 
 
@@ -281,43 +301,39 @@ class CliCommandParserTest {
     }
 
     @Test
-    fun `runtimeOptions accepts intellij backend name`() {
+    fun `status parses intellij backend name`() {
         val command = parser.parse(
             arrayOf(
-                "workspace",
                 "status",
                 "--workspace-root=$tempDir",
                 "--backend-name=intellij",
             ),
         )
 
-        assertTrue(command is CliCommand.WorkspaceStatus)
-        val statusCommand = command as CliCommand.WorkspaceStatus
+        assertTrue(command is CliCommand.Status)
+        val statusCommand = command as CliCommand.Status
         assertEquals(BackendName.INTELLIJ, statusCommand.options.backendName)
     }
 
     @Test
-    fun `runtimeOptions accepts null backend name for auto-selection`() {
+    fun `status leaves backend auto-selection unset`() {
         val command = parser.parse(
             arrayOf(
-                "workspace",
                 "status",
                 "--workspace-root=$tempDir",
             ),
         )
 
-        assertTrue(command is CliCommand.WorkspaceStatus)
-        val statusCommand = command as CliCommand.WorkspaceStatus
-        // When no --backend-name is specified, it should be null (auto-select)
+        assertTrue(command is CliCommand.Status)
+        val statusCommand = command as CliCommand.Status
         assertEquals(null, statusCommand.options.backendName)
     }
 
     @Test
-    fun `runtimeOptions rejects invalid backend name`() {
+    fun `status rejects invalid backend name`() {
         val failure = assertThrows<CliFailure> {
             parser.parse(
                 arrayOf(
-                    "workspace",
                     "status",
                     "--workspace-root=$tempDir",
                     "--backend-name=foo",
@@ -330,17 +346,16 @@ class CliCommandParserTest {
     }
 
     @Test
-    fun `workspace stop parses from workspace root`() {
+    fun `stop parses from workspace root`() {
         val command = parser.parse(
             arrayOf(
-                "workspace",
                 "stop",
                 "--workspace-root=$tempDir",
             ),
         )
 
-        assertTrue(command is CliCommand.WorkspaceStop)
-        val stopCommand = command as CliCommand.WorkspaceStop
+        assertTrue(command is CliCommand.Stop)
+        val stopCommand = command as CliCommand.Stop
         assertEquals(tempDir, stopCommand.options.workspaceRoot.toJavaPath())
     }
 

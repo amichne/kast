@@ -7,13 +7,13 @@ icon: lucide/git-branch
 
 Once you can name a symbol, the next questions are: who touches it,
 who calls it, and what sits above or below it in the type tree.
-These three operations — `references`, `call-hierarchy`, and
-`type-hierarchy` — answer those questions and tell you whether the
-answer is complete.
+The `raw/references`, `raw/call-hierarchy`, and
+`raw/type-hierarchy` methods answer those questions and tell you
+whether the answer is complete.
 
 ## Find references
 
-`references` returns every usage of a resolved symbol in the
+`raw/references` returns every usage of a resolved symbol in the
 workspace. `kast` narrows the file search based on the symbol's
 Kotlin visibility: a `private` function searches its declaring file,
 an `internal` function searches its module, a `public` function
@@ -23,11 +23,8 @@ pay for the scope the language actually requires.
 === "CLI"
 
     ```console title="Find all references to a symbol"
-    kast references \
-      --workspace-root=$(pwd) \
-      --file-path=$(pwd)/src/main/kotlin/com/shop/OrderService.kt \
-      --offset=42 \
-      --include-declaration=true
+    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/references","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/com/shop/OrderService.kt","offset":42},"includeDeclaration":true}}' \
+      --workspace-root=$(pwd)
     ```
 
 === "JSON-RPC"
@@ -141,7 +138,7 @@ different blast radius — and `kast` knows which is which.
 
 ## Expand the call hierarchy
 
-`call-hierarchy` builds a bounded call tree from a function or
+`raw/call-hierarchy` builds a bounded call tree from a function or
 method. `INCOMING` finds callers, `OUTGOING` finds callees. The
 tree is never unbounded — `kast` enforces depth, total nodes,
 per-node children, and a timeout. Every limit is reported back in
@@ -150,14 +147,8 @@ per-node children, and a timeout. Every limit is reported back in
 === "CLI"
 
     ```console title="Find incoming callers two levels deep"
-    kast call-hierarchy \
-      --workspace-root=$(pwd) \
-      --file-path=$(pwd)/src/main/kotlin/com/shop/OrderService.kt \
-      --offset=42 \
-      --direction=INCOMING \
-      --depth=3 \
-      --max-total-calls=256 \
-      --max-children-per-node=64
+    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/call-hierarchy","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/com/shop/OrderService.kt","offset":42},"direction":"INCOMING","depth":3,"maxTotalCalls":256,"maxChildrenPerNode":64}}' \
+      --workspace-root=$(pwd)
     ```
 
 === "JSON-RPC"
@@ -286,7 +277,7 @@ They do not carry a `truncation` object — read
 
 ## Walk the type hierarchy
 
-`type-hierarchy` expands supertypes and subtypes from a class or
+`raw/type-hierarchy` expands supertypes and subtypes from a class or
 interface. `direction` picks the way:
 
 - `SUPERTYPES` — parents, interfaces, their ancestors
@@ -296,12 +287,8 @@ interface. `direction` picks the way:
 === "CLI"
 
     ```console title="Get supertypes and subtypes"
-    kast type-hierarchy \
-      --workspace-root=$(pwd) \
-      --file-path=$(pwd)/src/main/kotlin/com/shop/Greeter.kt \
-      --offset=45 \
-      --direction=BOTH \
-      --depth=3
+    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/type-hierarchy","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/com/shop/Greeter.kt","offset":45},"direction":"BOTH","depth":3}}' \
+      --workspace-root=$(pwd)
     ```
 
 === "JSON-RPC"

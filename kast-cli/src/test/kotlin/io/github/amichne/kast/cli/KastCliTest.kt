@@ -43,6 +43,22 @@ class KastCliTest {
         assertEquals("", stderr.toString())
     }
 
+
+    @Test
+    fun `help does not advertise workspace namespace commands`() {
+        val help = CliCommandCatalog.helpText(
+            topic = emptyList(),
+            version = "dev",
+            theme = CliTextTheme.detect(),
+        )
+
+        assertTrue(!help.contains("workspace ensure"))
+        assertTrue(!help.contains("workspace status"))
+        assertTrue(!help.contains("workspace stop"))
+        assertTrue(!help.contains("workspace refresh"))
+        assertTrue(!help.contains("workspace files"))
+    }
+
     @Test
     fun `completion prints shell script to stdout`() {
         val stdout = StringBuilder()

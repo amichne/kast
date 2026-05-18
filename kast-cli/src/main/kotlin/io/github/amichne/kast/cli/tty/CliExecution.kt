@@ -74,31 +74,6 @@ internal class DefaultCliCommandExecutor(
                 output = CliOutput.Text(CliCompletionScripts.render(command.shell)),
             )
 
-            is CliCommand.WorkspaceStatus -> {
-                val result = cliService.workspaceStatus(command.options)
-                CliExecutionResult(
-                    output = CliOutput.JsonValue(result),
-                    daemonNote = daemonNoteFor(result),
-                )
-            }
-
-            is CliCommand.WorkspaceEnsure -> {
-                val result = cliService.workspaceEnsure(command.options)
-                CliExecutionResult(
-                    output = CliOutput.JsonValue(result),
-                    daemonNote = daemonNoteFor(result),
-                )
-            }
-
-
-            is CliCommand.WorkspaceStop -> {
-                val result = cliService.workspaceStop(command.options)
-                CliExecutionResult(
-                    output = CliOutput.JsonValue(result),
-                    daemonNote = daemonNoteFor(result),
-                )
-            }
-
             is CliCommand.Capabilities -> {
                 val result = cliService.capabilities(command.options)
                 CliExecutionResult(

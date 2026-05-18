@@ -62,7 +62,7 @@ kast rpc '{"jsonrpc":"2.0","method":"<method>","params":{...},"id":1}'
 ```
 
 The `kast rpc` command auto-ensures the daemon — no explicit
-`workspace ensure` needed.
+`up` needed.
 
 Native tools currently exposed by the extension: `kast_workspace_files`,
 `kast_workspace_search`, `kast_workspace_symbol`, `kast_scaffold`,

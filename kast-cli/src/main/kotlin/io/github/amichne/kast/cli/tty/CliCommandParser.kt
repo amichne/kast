@@ -1,42 +1,20 @@
 package io.github.amichne.kast.cli.tty
 
-import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
-import io.github.amichne.kast.api.contract.CallDirection
-import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
-import io.github.amichne.kast.api.contract.query.CodeActionsQuery
-import io.github.amichne.kast.api.contract.query.CompletionsQuery
-import io.github.amichne.kast.api.contract.query.DiagnosticsQuery
-import io.github.amichne.kast.api.contract.query.FileOutlineQuery
-import io.github.amichne.kast.api.contract.FilePosition
+import io.github.amichne.kast.api.client.StandaloneServerOptions
 import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.PositiveLong
-import io.github.amichne.kast.api.contract.query.ImportOptimizeQuery
-import io.github.amichne.kast.api.contract.query.ImplementationsQuery
-import io.github.amichne.kast.api.contract.query.ReferencesQuery
-import io.github.amichne.kast.api.contract.query.RefreshQuery
-import io.github.amichne.kast.api.contract.query.RenameQuery
-import io.github.amichne.kast.api.contract.SemanticInsertionQuery
-import io.github.amichne.kast.api.contract.SemanticInsertionTarget
-import io.github.amichne.kast.api.client.StandaloneServerOptions
-import io.github.amichne.kast.api.contract.SymbolKind
-import io.github.amichne.kast.api.contract.query.SymbolQuery
-import io.github.amichne.kast.api.contract.TypeHierarchyDirection
-import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
-import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
-import io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery
-import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
-import io.github.amichne.kast.cli.options.DaemonStartOptions
+import io.github.amichne.kast.cli.SmokeOutputFormat
 import io.github.amichne.kast.cli.options.BackendName
+import io.github.amichne.kast.cli.options.DaemonStartOptions
 import io.github.amichne.kast.cli.options.InstallCopilotExtensionOptions
 import io.github.amichne.kast.cli.options.InstallOptions
 import io.github.amichne.kast.cli.options.InstallSkillOptions
 import io.github.amichne.kast.cli.options.RuntimeCommandOptions
 import io.github.amichne.kast.cli.options.SmokeOptions
-import io.github.amichne.kast.cli.SmokeOutputFormat
-import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import java.nio.file.Path
 import kotlin.io.path.readText
+
 internal class CliCommandParser(
     private val json: Json,
 ) {
@@ -91,9 +69,6 @@ internal class CliCommandParser(
     ): CliCommand {
         return try {
             when (metadata.path) {
-                listOf("workspace", "status") -> CliCommand.WorkspaceStatus(parsed.runtimeOptions())
-                listOf("workspace", "ensure") -> CliCommand.WorkspaceEnsure(parsed.runtimeOptions())
-                listOf("workspace", "stop") -> CliCommand.WorkspaceStop(parsed.runtimeOptions())
                 listOf("completion", "bash") -> CliCommand.Completion(CliCompletionShell.BASH)
                 listOf("completion", "zsh") -> CliCommand.Completion(CliCompletionShell.ZSH)
                 listOf("capabilities") -> CliCommand.Capabilities(parsed.runtimeOptions())
@@ -212,265 +187,6 @@ internal data class ParsedArguments(
         )
     }
 
-    fun symbolQuery(json: Json): SymbolQuery = requestOrFile(
-        serializer = SymbolQuery.serializer(),
-        requestFileKey = "request-file",
-        json = json,
-    ) {
-        SymbolQuery(
-            position = FilePosition(
-                filePath = absoluteFilePath(requireOption("file-path")),
-                offset = requireInt("offset"),
-            ),
-            includeDeclarationScope = optionalBoolean("include-body", false),
-            includeDocumentation = optionalBoolean("include-documentation", false),
-        )
-    }
-
-    fun referencesQuery(json: Json): ReferencesQuery = requestOrFile(
-        serializer = ReferencesQuery.serializer(),
-        requestFileKey = "request-file",
-        json = json,
-    ) {
-            ReferencesQuery(
-                position = FilePosition(
-                    filePath = absoluteFilePath(requireOption("file-path")),
-                    offset = requireInt("offset"),
-                ),
-                includeDeclaration = optionalBoolean("include-declaration", false),
-                includeUsageSiteScope = optionalBoolean("include-usage-site-scope", false),
-            )
-        }
-
-    fun diagnosticsQuery(json: Json): DiagnosticsQuery = requestOrFile(
-        serializer = DiagnosticsQuery.serializer(),
-        requestFileKey = "request-file",
-        json = json,
-    ) {
-        DiagnosticsQuery(
-            filePaths = requireOption("file-paths")
-                .split(",")
-                .map(String::trim)
-                .filter(String::isNotEmpty)
-                .map(::absoluteFilePath),
-        )
-    }
-
-    fun callHierarchyQuery(json: Json): CallHierarchyQuery = requestOrFile(
-        serializer = CallHierarchyQuery.serializer(),
-        requestFileKey = "request-file",
-        json = json,
-    ) {
-        CallHierarchyQuery(
-            position = FilePosition(
-                filePath = absoluteFilePath(requireOption("file-path")),
-                offset = requireInt("offset"),
-            ),
-            direction = requireCallDirection("direction"),
-            depth = optionalInt("depth", 3),
-            maxTotalCalls = optionalInt("max-total-calls", 256),
-            maxChildrenPerNode = optionalInt("max-children-per-node", 64),
-            timeoutMillis = options["timeout-millis"]?.toLongOrNull(),
-        )
-    }
-
-    fun typeHierarchyQuery(json: Json): TypeHierarchyQuery = requestOrFile(
-        serializer = TypeHierarchyQuery.serializer(),
-        requestFileKey = "request-file",
-        json = json,
-    ) {
-        TypeHierarchyQuery(
-            position = FilePosition(
-                filePath = absoluteFilePath(requireOption("file-path")),
-                offset = requireInt("offset"),
-            ),
-            direction = requireTypeHierarchyDirection("direction"),
-            depth = optionalInt("depth", 3),
-            maxResults = optionalInt("max-results", 256),
-        )
-    }
-
-    fun semanticInsertionQuery(json: Json): SemanticInsertionQuery = requestOrFile(
-        serializer = SemanticInsertionQuery.serializer(),
-        requestFileKey = "request-file",
-        json = json,
-    ) {
-        SemanticInsertionQuery(
-            position = FilePosition(
-                filePath = absoluteFilePath(requireOption("file-path")),
-                offset = requireInt("offset"),
-            ),
-            target = requireSemanticInsertionTarget("target"),
-        )
-    }
-
-    fun renameQuery(json: Json): RenameQuery = requestOrFile(
-        serializer = RenameQuery.serializer(),
-        requestFileKey = "request-file",
-        json = json,
-    ) {
-        RenameQuery(
-            position = FilePosition(
-                filePath = absoluteFilePath(requireOption("file-path")),
-                offset = requireInt("offset"),
-            ),
-            newName = requireOption("new-name"),
-            dryRun = optionalBoolean("dry-run", true),
-        )
-    }
-
-    fun applyEditsQuery(json: Json): ApplyEditsQuery = requestOrFile(
-        serializer = ApplyEditsQuery.serializer(),
-        requestFileKey = "request-file",
-        json = json,
-    ) {
-        throw CliFailure(
-            code = "CLI_USAGE",
-            message = "`apply-edits` requires --request-file=/absolute/path/to/query.json",
-        )
-    }
-
-    fun importOptimizeQuery(json: Json): ImportOptimizeQuery = requestOrFile(
-        serializer = ImportOptimizeQuery.serializer(),
-        requestFileKey = "request-file",
-        json = json,
-    ) {
-        ImportOptimizeQuery(
-            filePaths = requireOption("file-paths")
-                .split(",")
-                .map(String::trim)
-                .filter(String::isNotEmpty)
-                .map(::absoluteFilePath),
-        )
-    }
-
-    fun workspaceFilesQuery(json: Json): WorkspaceFilesQuery = requestOrFile(
-        serializer = WorkspaceFilesQuery.serializer(),
-        requestFileKey = "request-file",
-        json = json,
-    ) {
-        WorkspaceFilesQuery(
-            moduleName = options["module-name"],
-            includeFiles = optionalBoolean("include-files", false),
-            maxFilesPerModule = options["max-files-per-module"]?.toIntOrNull(),
-        )
-    }
-
-    fun implementationsQuery(json: Json): ImplementationsQuery = requestOrFile(
-        serializer = ImplementationsQuery.serializer(),
-        requestFileKey = "request-file",
-        json = json,
-    ) {
-        ImplementationsQuery(
-            position = FilePosition(
-                filePath = absoluteFilePath(requireOption("file-path")),
-                offset = requireInt("offset"),
-            ),
-            maxResults = optionalInt("max-results", 100),
-        )
-    }
-
-    fun codeActionsQuery(json: Json): CodeActionsQuery = requestOrFile(
-        serializer = CodeActionsQuery.serializer(),
-        requestFileKey = "request-file",
-        json = json,
-    ) {
-        CodeActionsQuery(
-            position = FilePosition(
-                filePath = absoluteFilePath(requireOption("file-path")),
-                offset = requireInt("offset"),
-            ),
-            diagnosticCode = options["diagnostic-code"]?.takeIf { it.isNotBlank() },
-        )
-    }
-
-    fun completionsQuery(json: Json): CompletionsQuery = requestOrFile(
-        serializer = CompletionsQuery.serializer(),
-        requestFileKey = "request-file",
-        json = json,
-    ) {
-        CompletionsQuery(
-            position = FilePosition(
-                filePath = absoluteFilePath(requireOption("file-path")),
-                offset = requireInt("offset"),
-            ),
-            maxResults = optionalInt("max-results", 100),
-            kindFilter = options["kind-filter"]
-                ?.split(",")
-                ?.map(String::trim)
-                ?.filter(String::isNotBlank)
-                ?.map { raw ->
-                    SymbolKind.entries.firstOrNull { it.name.equals(raw, ignoreCase = true) }
-                        ?: throw CliFailure(
-                            code = "CLI_USAGE",
-                            message = "Unknown symbol kind in --kind-filter: $raw. " +
-                                "Valid values: ${SymbolKind.entries.joinToString { it.name }}",
-                        )
-                }
-                ?.toSet()
-                ?.takeIf { it.isNotEmpty() },
-        )
-    }
-
-    fun refreshQuery(json: Json): RefreshQuery = requestOrFile(
-        serializer = RefreshQuery.serializer(),
-        requestFileKey = "request-file",
-        json = json,
-    ) {
-        RefreshQuery(
-            filePaths = options["file-paths"]
-                ?.split(",")
-                ?.map(String::trim)
-                ?.filter(String::isNotEmpty)
-                ?.map(::absoluteFilePath)
-                .orEmpty(),
-        )
-    }
-
-    fun fileOutlineQuery(json: Json): FileOutlineQuery = requestOrFile(
-        serializer = FileOutlineQuery.serializer(),
-        requestFileKey = "request-file",
-        json = json,
-    ) {
-        FileOutlineQuery(
-            filePath = absoluteFilePath(requireOption("file-path")),
-        )
-    }
-
-    fun workspaceSymbolQuery(json: Json): WorkspaceSymbolQuery = requestOrFile(
-        serializer = WorkspaceSymbolQuery.serializer(),
-        requestFileKey = "request-file",
-        json = json,
-    ) {
-        WorkspaceSymbolQuery(
-            pattern = requireOption("pattern"),
-            kind = options["kind"]?.let { raw ->
-                SymbolKind.entries.firstOrNull { it.name.equals(raw, ignoreCase = true) }
-                    ?: throw CliFailure(
-                        code = "CLI_USAGE",
-                        message = "Unknown symbol kind: $raw. Valid values: ${SymbolKind.entries.joinToString { it.name }}",
-                    )
-            },
-            maxResults = optionalInt("max-results", 100),
-            regex = optionalBoolean("regex", false),
-            includeDeclarationScope = optionalBoolean("include-body", false),
-        )
-    }
-
-    fun workspaceSearchQuery(json: Json): WorkspaceSearchQuery = requestOrFile(
-        serializer = WorkspaceSearchQuery.serializer(),
-        requestFileKey = "request-file",
-        json = json,
-    ) {
-        WorkspaceSearchQuery(
-            pattern = requireOption("pattern"),
-            regex = optionalBoolean("regex", false),
-            maxResults = optionalInt("max-results", 100),
-            fileGlob = options["file-glob"]?.takeIf(String::isNotBlank),
-            caseSensitive = optionalBoolean("case-sensitive", false),
-        )
-    }
-
     fun installSkillOptions(): InstallSkillOptions = InstallSkillOptions(
         targetDir = options["target-dir"]?.let { Path.of(it).toAbsolutePath().normalize() },
         name = options["name"]?.takeIf(String::isNotEmpty)
@@ -533,8 +249,6 @@ internal data class ParsedArguments(
             format = format,
         )
     }
-
-    fun withoutOption(key: String): ParsedArguments = copy(options = options - key)
 
     fun daemonStartOptions(): DaemonStartOptions {
         val runtimeLibsDir = options["runtime-libs-dir"]
@@ -608,71 +322,16 @@ internal data class ParsedArguments(
         )
     }
 
-    private fun <T> requestOrFile(
-        serializer: KSerializer<T>,
-        requestFileKey: String,
-        json: Json,
-        fallback: () -> T,
-    ): T {
-        val requestFile = options[requestFileKey] ?: return fallback()
-        val requestPath = Path.of(requestFile).toAbsolutePath().normalize()
-        return json.decodeFromString(serializer, requestPath.readText())
-    }
-
     private fun requireOption(key: String): String = options[key]
         ?: throw CliFailure(
             code = "CLI_USAGE",
             message = "Missing required option --$key",
         )
 
-    private fun requireInt(key: String): Int = options[key]?.toIntOrNull()
-        ?: throw CliFailure(
-            code = "CLI_USAGE",
-            message = "Missing required integer option --$key",
-        )
-
-    private fun optionalInt(
-        key: String,
-        default: Int,
-    ): Int = options[key]?.toIntOrNull() ?: default
-
-    private fun requireCallDirection(key: String): CallDirection = when (requireOption(key).lowercase()) {
-        "incoming" -> CallDirection.INCOMING
-        "outgoing" -> CallDirection.OUTGOING
-        else -> throw CliFailure(
-            code = "CLI_USAGE",
-            message = "Invalid value for --$key; expected incoming or outgoing",
-        )
-    }
-
-    private fun requireTypeHierarchyDirection(key: String): TypeHierarchyDirection = when (requireOption(key).lowercase()) {
-        "supertypes" -> TypeHierarchyDirection.SUPERTYPES
-        "subtypes" -> TypeHierarchyDirection.SUBTYPES
-        "both" -> TypeHierarchyDirection.BOTH
-        else -> throw CliFailure(
-            code = "CLI_USAGE",
-            message = "Invalid value for --$key; expected supertypes, subtypes, or both",
-        )
-    }
-
-    private fun requireSemanticInsertionTarget(key: String): SemanticInsertionTarget = when (requireOption(key).lowercase()) {
-        "class-body-start" -> SemanticInsertionTarget.CLASS_BODY_START
-        "class-body-end" -> SemanticInsertionTarget.CLASS_BODY_END
-        "file-top" -> SemanticInsertionTarget.FILE_TOP
-        "file-bottom" -> SemanticInsertionTarget.FILE_BOTTOM
-        "after-imports" -> SemanticInsertionTarget.AFTER_IMPORTS
-        else -> throw CliFailure(
-            code = "CLI_USAGE",
-            message = "Invalid value for --$key; expected class-body-start, class-body-end, file-top, file-bottom, or after-imports",
-        )
-    }
-
     private fun optionalBoolean(
         key: String,
         default: Boolean,
     ): Boolean = options[key]?.toBooleanStrictOrNull() ?: default
-
-    private fun absoluteFilePath(value: String): String = Path.of(value).toAbsolutePath().normalize().toString()
 
     private fun parseBackendName(raw: String): BackendName = runCatching {
         BackendName.valueOf(raw.uppercase())
@@ -697,15 +356,4 @@ internal data class ParsedArguments(
         else -> null
     }
 
-    fun optionalInt(key: String): Int? = options[key]?.toIntOrNull()
-
-    fun parseBool(key: String): Boolean = when (options[key]?.lowercase()) {
-        null -> false
-        "", "true", "on", "yes", "1" -> true
-        "false", "off", "no", "0" -> false
-        else -> throw CliFailure(
-            code = "CLI_USAGE",
-            message = "Unknown value for --$key: ${options[key]}. Valid values: true, false.",
-        )
-    }
 }
