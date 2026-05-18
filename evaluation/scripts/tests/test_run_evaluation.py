@@ -184,6 +184,7 @@ class RunEvaluationTests(unittest.TestCase):
                 configuration = sys.argv[2]
                 passed = configuration == "with_skill"
                 payload = {
+                    "status": "graded",
                     "expectations": [
                         {
                             "id": "demo-outcome",
@@ -237,8 +238,8 @@ class RunEvaluationTests(unittest.TestCase):
                 "1",
                 "--dispatch-command-template",
                 f"{sys.executable} {runner_path} {{transcript}} {{configuration}}",
-                "--grade-command-template",
-                f"{sys.executable} {grader_path} {{grading}} {{configuration}}",
+                "--llm-grade-command-template",
+                f"{sys.executable} {grader_path} {{llm_grade}} {{configuration}}",
             ],
             capture_output=True,
             text=True,
@@ -257,8 +258,15 @@ class RunEvaluationTests(unittest.TestCase):
             "https://github.com/amichne/kast/evaluation/benchmark.schema.json",
             benchmark["$schema"],
         )
+        self.assertIn("mechanical_summary", benchmark)
+        self.assertIn("llm_graded_summary", benchmark)
+        self.assertIn("combined_summary", benchmark)
+        self.assertEqual(["with_skill", "tool_only", "without_skill"], benchmark["metadata"]["configurations"])
+        self.assertIn("mechanical", benchmark["runs"][0])
+        self.assertIn("llm_graded", benchmark["runs"][0])
+        self.assertIn("combined", benchmark["runs"][0])
         self.assertEqual("evaluation", benchmark["metadata"]["skill_path"])
-        self.assertEqual(1, benchmark["schema_version"])
+        self.assertEqual(2, benchmark["schema_version"])
         self.assertEqual(
             "scored",
             benchmark["paired_analysis"]["statistics"]["score_metrics"]["accuracy"]["status"],
@@ -269,7 +277,7 @@ class RunEvaluationTests(unittest.TestCase):
         self.assertIn("slots", persisted_bindings)
         self.assertIn("DISAMBIGUATE_MEMBER", persisted_bindings["slots"])
 
-    def test_copilot_runner_smoke_command_grades_and_aggregates(self) -> None:
+    def test_copilot_sdk_runner_scaffolds_smoke_command(self) -> None:
         workspace_root = SCRATCH_DIR / "workspace-root"
         workspace_root.mkdir(parents=True)
         subprocess.run(["git", "init"], cwd=workspace_root, check=True, capture_output=True)
@@ -340,37 +348,10 @@ class RunEvaluationTests(unittest.TestCase):
                 },
             },
         )
-        fake_copilot = SCRATCH_DIR / "fake-copilot.py"
-        prompt_capture = SCRATCH_DIR / "copilot-prompt.txt"
-        argv_capture = SCRATCH_DIR / "copilot-argv.json"
-        fake_copilot.write_text(
-            textwrap.dedent(
-                f"""
-                #!/usr/bin/env python3
-                import json
-                import pathlib
-                import sys
-                prompt = sys.argv[sys.argv.index('--prompt') + 1]
-                pathlib.Path({str(prompt_capture)!r}).write_text(prompt)
-                pathlib.Path({str(argv_capture)!r}).write_text(json.dumps(sys.argv))
-                if 'Save the full transcript' in prompt or 'After the grader runs' in prompt:
-                    raise SystemExit(42)
-                if 'Find name' not in prompt:
-                    raise SystemExit(43)
-                print('```tool:call')
-                print('{{"tool":"kast_resolve","arguments":{{"symbol":"name"}}}}')
-                print('```')
-                print('src/Demo.kt:2 uses demo.Demo.name')
-                """
-            ).strip()
-            + "\n"
-        )
-        fake_copilot.chmod(0o755)
-
-        env = {**os.environ, "COPILOT_BIN": str(fake_copilot)}
+        env = {**os.environ, "KAST_EVAL_SKIP_NPM_CI": "1"}
         result = subprocess.run(
             [
-                str(EVALUATION_DIR / "runners" / "copilot" / "run-benchmark.sh"),
+                str(EVALUATION_DIR / "runners" / "copilot-sdk" / "run-benchmark.sh"),
                 "--catalog",
                 str(catalog_path),
                 "--bindings",
@@ -383,6 +364,9 @@ class RunEvaluationTests(unittest.TestCase):
                 "1",
                 "--concurrency",
                 "1",
+                "--skip-dispatch",
+                "--skip-grade",
+                "--skip-aggregate",
                 "--",
                 "--case",
                 "vp-disambiguate-member",
@@ -394,20 +378,13 @@ class RunEvaluationTests(unittest.TestCase):
         )
 
         self.assertEqual(0, result.returncode, result.stderr)
-        benchmark_path = SCRATCH_DIR / "benchmarks" / "smoke" / "benchmark.json"
-        self.assertTrue(benchmark_path.exists())
-        benchmark = json.loads(benchmark_path.read_text())
-        self.assertEqual(["vp-disambiguate-member"], benchmark["metadata"]["eval_ids"])
-        submitted_prompt = prompt_capture.read_text()
-        self.assertEqual("Find name", submitted_prompt)
-        submitted_argv = json.loads(argv_capture.read_text())
-        self.assertIn("--output-format", submitted_argv)
-        self.assertEqual("json", submitted_argv[submitted_argv.index("--output-format") + 1])
-        self.assertIn("--allow-all", submitted_argv)
-        self.assertNotIn("--allow-all-tools", submitted_argv)
-        self.assertIn("--experimental", submitted_argv)
-        self.assertIn("-C", submitted_argv)
-        self.assertEqual(str(workspace_root), submitted_argv[submitted_argv.index("-C") + 1])
+        iteration_dir = SCRATCH_DIR / "benchmarks" / "smoke"
+        run_dir = iteration_dir / "eval-vp-disambiguate-member" / "with_skill" / "run-1"
+        self.assertTrue((run_dir / "run_instructions.md").exists())
+        self.assertIn("Find name", (run_dir / "run_instructions.md").read_text())
+        rendered = json.loads((iteration_dir / "rendered-catalog.json").read_text())
+        self.assertEqual(["vp-disambiguate-member"], [case["id"] for case in rendered["cases"]])
+        self.assertFalse((EVALUATION_DIR / "runners" / "copilot" / "run-benchmark.sh").exists())
 
 
 if __name__ == "__main__":

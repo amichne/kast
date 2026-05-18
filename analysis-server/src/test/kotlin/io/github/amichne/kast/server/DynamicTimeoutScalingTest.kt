@@ -22,7 +22,7 @@ import kotlin.math.ln
  *
  * Verifies that [AnalysisServerConfig.effectiveRequestTimeoutMillis] scales the
  * raw [AnalysisServerConfig.requestTimeoutMillis] based on [AnalysisServerConfig.workspaceFileCount],
- * and that [AnalysisDispatcher] uses the effective (scaled) timeout rather than the raw one.
+ * and that [RpcAnalysisDispatcher] uses the effective (scaled) timeout rather than the raw one.
  */
 class DynamicTimeoutScalingTest {
 
@@ -73,7 +73,7 @@ class DynamicTimeoutScalingTest {
     }
 
     /**
-     * Verifies that [AnalysisDispatcher] uses [AnalysisServerConfig.effectiveRequestTimeoutMillis]
+     * Verifies that [RpcAnalysisDispatcher] uses [AnalysisServerConfig.effectiveRequestTimeoutMillis]
      * rather than raw [AnalysisServerConfig.requestTimeoutMillis].
      *
      * With workspaceFileCount=50_000 and base=100ms:
@@ -86,7 +86,7 @@ class DynamicTimeoutScalingTest {
     @Test
     fun dispatcherUsesEffectiveTimeoutAllowingSlowRequestsForLargeWorkspaces() = runBlocking {
         val config = AnalysisServerConfig(requestTimeoutMillis = 100, workspaceFileCount = 50_000)
-        val dispatcher = AnalysisDispatcher(
+        val dispatcher = RpcAnalysisDispatcher(
             backend = SlowHealthBackend(delayMs = 200),
             config = config,
         )

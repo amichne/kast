@@ -94,7 +94,7 @@ class AnalysisDispatcherTest {
 
     @Test
     fun `dispatcher bytecode avoids kotlin Duration ABI coupling`() {
-        val classFileText = classFileText(AnalysisDispatcher::class.java)
+        val classFileText = classFileText(RpcAnalysisDispatcher::class.java)
 
         assertFalse(classFileText.contains("kotlin/time/Duration"))
         assertFalse(classFileText.contains("fromRawValue-UwyO8pc"))
@@ -718,7 +718,7 @@ class AnalysisDispatcherTest {
 
     private fun sampleTypeFile(): Path = tempDir.resolve("src").resolve("Types.kt")
 
-    private fun dispatcher(): AnalysisDispatcher = AnalysisDispatcher(
+    private fun dispatcher(): RpcAnalysisDispatcher = RpcAnalysisDispatcher(
         backend = FakeAnalysisBackend.sample(tempDir),
         config = AnalysisServerConfig(),
     )

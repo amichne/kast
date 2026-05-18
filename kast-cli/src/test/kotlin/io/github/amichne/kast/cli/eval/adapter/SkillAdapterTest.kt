@@ -49,71 +49,19 @@ class SkillAdapterTest {
     }
 
     @Test
+    fun `scan does not check skill-local eval corpus`() {
+        val skillDir = createMinimalSkill()
+        val descriptor = SkillAdapter(skillDir).scan()
+        assertTrue(descriptor.checks.none { it.id.startsWith("corpus-") })
+        assertTrue(descriptor.metrics.none { it.id.startsWith("corpus-") })
+    }
+
+    @Test
     fun `scan checks routing improvement assets`() {
         val skillDir = createMinimalSkill()
         val descriptor = SkillAdapter(skillDir).scan()
         val check = descriptor.checks.first { it.id == "structural-routing-improvement-assets" }
         assertEquals(EvalStatus.PASS, check.status)
-    }
-
-    @Test
-    fun `scan validates checked-in eval corpora`() {
-        val skillDir = createMinimalSkill()
-        val descriptor = SkillAdapter(skillDir).scan()
-        val behavior = descriptor.checks.first { it.id == "corpus-behavior-evals-valid" }
-        val routing = descriptor.checks.first { it.id == "corpus-routing-evals-valid" }
-        val coverage = descriptor.checks.first { it.id == "corpus-failure-mode-coverage" }
-        val measurementCoverage = descriptor.checks.first { it.id == "corpus-cost-measurement-coverage" }
-        assertEquals(EvalStatus.PASS, behavior.status)
-        assertEquals(EvalStatus.PASS, routing.status)
-        assertEquals(EvalStatus.PASS, coverage.status)
-        assertEquals(EvalStatus.PASS, measurementCoverage.status)
-    }
-
-    @Test
-    fun `scan fails empty behavior eval corpus`() {
-        val skillDir = createMinimalSkill()
-        writeCatalog(skillDir, emptyList(), REQUIRED_FAILURE_MODES)
-        val descriptor = SkillAdapter(skillDir).scan()
-        val check = descriptor.checks.first { it.id == "corpus-behavior-evals-valid" }
-        assertEquals(EvalStatus.FAIL, check.status)
-        assertEquals(EvalSeverity.ERROR, check.severity)
-    }
-
-    @Test
-    fun `scan fails malformed routing eval entries`() {
-        val skillDir = createMinimalSkill()
-        skillDir.resolve("evals/catalog.json").writeText(
-            """
-            {"skill_name":"kast","version":1,"cases":[
-              {"id":"behavior-1","title":"Behavior case 1","prompt":"Behavior prompt 1","files":[],"expected_output":"Expected behavior 1","expectations":["Uses kast semantically"],"labels":["behavior","trigger_miss"],"stage":"holdout","suite":"behavior","failure_mode":"trigger_miss","source":{"kind":"test-fixture"},"promotion":{"required_pass_rate":1.0,"required_benchmarks":2}},
-              {"id":"bad-routing","title":"Bad routing","prompt":"Trace this Kotlin flow","files":[],"expected_output":"Routes through native kast tools","expectations":["Uses kast semantically"],"labels":["routing","trigger_miss"],"stage":"holdout","suite":"routing","expected_skill":"ksat","expected_route":"kast","allowed_ops":["kast resolve","grep"],"forbidden_ops":["grep"],"measurement_dimensions":["bogus_dimension"],"failure_mode":"trigger_miss","source":{"kind":"test-fixture"},"promotion":{"required_pass_rate":1.0,"required_benchmarks":2}}
-            ]}
-            """.trimIndent(),
-        )
-        val descriptor = SkillAdapter(skillDir).scan()
-        val check = descriptor.checks.first { it.id == "corpus-routing-evals-valid" }
-        assertEquals(EvalStatus.FAIL, check.status)
-    }
-
-    @Test
-    fun `scan fails unknown failure modes`() {
-        val skillDir = createMinimalSkill()
-        writeCatalog(skillDir, listOf("trigger_miss", "schema_reponse"), REQUIRED_FAILURE_MODES)
-        val descriptor = SkillAdapter(skillDir).scan()
-        val check = descriptor.checks.first { it.id == "corpus-behavior-evals-valid" }
-        assertEquals(EvalStatus.FAIL, check.status)
-        assertTrue(check.message.contains("unknown failure_mode"))
-    }
-
-    @Test
-    fun `scan warns when failure mode coverage is incomplete`() {
-        val skillDir = createMinimalSkill()
-        writeCatalog(skillDir, listOf("trigger_miss"), listOf("trigger_miss", "routing_bypass"))
-        val descriptor = SkillAdapter(skillDir).scan()
-        val check = descriptor.checks.first { it.id == "corpus-failure-mode-coverage" }
-        assertEquals(EvalStatus.WARN, check.status)
-        assertTrue(check.message.contains("missing"))
     }
 
     @Test
@@ -177,13 +125,6 @@ class SkillAdapterTest {
         assertTrue(metricIds.contains("budget-trigger-tokens"))
         assertTrue(metricIds.contains("budget-invoke-tokens"))
         assertTrue(metricIds.contains("budget-deferred-tokens"))
-        assertTrue(metricIds.contains("corpus-behavior-eval-count"))
-        assertTrue(metricIds.contains("corpus-routing-eval-count"))
-        assertTrue(metricIds.contains("corpus-failure-mode-count"))
-        assertTrue(metricIds.contains("corpus-cost-measurement-dimension-count"))
-        assertTrue(metricIds.contains("corpus-routing-native-route-count"))
-        assertTrue(metricIds.contains("corpus-routing-native-op-count"))
-        assertTrue(metricIds.contains("corpus-routing-generic-guardrail-count"))
     }
 
     @Test
@@ -228,20 +169,6 @@ class SkillAdapterTest {
 
         val refs = skillDir.resolve("references").createDirectories()
         refs.resolve("quickstart.md").writeText("# Quickstart\n")
-
-        val evalsDir = skillDir.resolve("evals").createDirectories()
-        evalsDir.resolve("files").createDirectories()
-        evalsDir.resolve("files/.gitkeep").writeText("")
-        evalsDir.resolve("pain_points.jsonl").writeText("")
-        writeCatalog(skillDir, REQUIRED_FAILURE_MODES.take(4), REQUIRED_FAILURE_MODES.drop(4))
-
-        val historyDir = skillDir.resolve("history").createDirectories()
-        historyDir.resolve("progression.json").writeText(
-            """
-            {"skill_name":"kast","updated_at":"2026-05-02T00:00:00Z","benchmarks":[],"case_history":{}}
-            """.trimIndent(),
-        )
-
         refs.resolve("routing-improvement.md").writeText("# Routing improvement\n")
 
         val scriptsDir = skillDir.resolve("scripts").createDirectories()
@@ -253,54 +180,5 @@ class SkillAdapterTest {
         )
 
         return skillDir
-    }
-
-    private fun writeCatalog(skillDir: Path, behaviorFailureModes: List<String>, routingFailureModes: List<String>) {
-        skillDir.resolve("evals/catalog.json").writeText(
-            buildString {
-                append("""{"skill_name":"kast","version":1,"cases":[""")
-                var first = true
-                behaviorFailureModes.forEachIndexed { index, failureMode ->
-                    if (!first) append(",")
-                    first = false
-                    append(
-                        """
-                        {"id":"behavior-${index + 1}","title":"Behavior case ${index + 1}","prompt":"Behavior prompt ${index + 1}","files":[],"expected_output":"Expected behavior ${index + 1}","expectations":["Uses kast semantically"],"labels":["behavior","$failureMode"],"stage":"holdout","suite":"behavior","failure_mode":"$failureMode","source":{"kind":"test-fixture"},"promotion":{"required_pass_rate":1.0,"required_benchmarks":2}}
-                        """.trimIndent(),
-                    )
-                }
-                routingFailureModes.forEachIndexed { index, failureMode ->
-                    if (!first) append(",")
-                    first = false
-                    append(
-                        """
-                        {"id":"routing-${index + 1}","title":"Routing case ${index + 1}","prompt":"Routing prompt ${index + 1}","files":[],"expected_output":"Routes through native kast tools","expectations":["Uses kast semantically"],"labels":["routing","$failureMode"],"stage":"holdout","suite":"routing","failure_mode":"$failureMode","expected_skill":"kast","expected_route":"native-kast-tools","allowed_ops":["kast_resolve"],"forbidden_ops":["grep","view"],"measurement_dimensions":["${REQUIRED_MEASUREMENT_DIMENSIONS[index % REQUIRED_MEASUREMENT_DIMENSIONS.size]}"],"source":{"kind":"test-fixture"},"promotion":{"required_pass_rate":1.0,"required_benchmarks":2}}
-                        """.trimIndent(),
-                    )
-                }
-                append("]}")
-            },
-        )
-    }
-
-    private companion object {
-        private val REQUIRED_FAILURE_MODES = listOf(
-            "trigger_miss",
-            "routing_bypass",
-            "initialization_friction",
-            "maintenance_thrash",
-            "schema_request",
-            "relative_path",
-            "ambiguous_symbol",
-            "schema_response",
-            "mutation_abandonment",
-            "failure_response_ignored",
-        )
-        private val REQUIRED_MEASUREMENT_DIMENSIONS = listOf(
-            "discoverability",
-            "iteration_reduction",
-            "haystack_reduction",
-            "generic_tool_avoidance",
-        )
     }
 }

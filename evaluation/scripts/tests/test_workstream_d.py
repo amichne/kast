@@ -51,7 +51,7 @@ def benchmark_stub(skill_name: str) -> dict[str, object]:
     }
     return {
         "$schema": "https://github.com/amichne/kast/evaluation/benchmark.schema.json",
-        "schema_version": 1,
+        "schema_version": 2,
         "benchmark_kind": "kast-system-performance-benchmark",
         "metadata": {
             "skill_name": skill_name,
@@ -88,6 +88,48 @@ def benchmark_stub(skill_name: str) -> dict[str, object]:
             },
         },
         "runs": [],
+        "mechanical_summary": {
+            "by_configuration": {
+                "with_skill": {
+                    "run_counts": {"total": 0, "valid": 0, "invalid": 0},
+                    "measurements": measurement_summary,
+                    "efficiency": efficiency_summary,
+                },
+                "without_skill": {
+                    "run_counts": {"total": 0, "valid": 0, "invalid": 0},
+                    "measurements": measurement_summary,
+                    "efficiency": efficiency_summary,
+                },
+            }
+        },
+        "llm_graded_summary": {
+            "by_configuration": {
+                "with_skill": {
+                    "run_counts": {"total": 0, "valid": 0, "invalid": 0},
+                    "measurements": measurement_summary,
+                    "efficiency": efficiency_summary,
+                },
+                "without_skill": {
+                    "run_counts": {"total": 0, "valid": 0, "invalid": 0},
+                    "measurements": measurement_summary,
+                    "efficiency": efficiency_summary,
+                },
+            }
+        },
+        "combined_summary": {
+            "by_configuration": {
+                "with_skill": {
+                    "run_counts": {"total": 0, "valid": 0, "invalid": 0},
+                    "measurements": measurement_summary,
+                    "efficiency": efficiency_summary,
+                },
+                "without_skill": {
+                    "run_counts": {"total": 0, "valid": 0, "invalid": 0},
+                    "measurements": measurement_summary,
+                    "efficiency": efficiency_summary,
+                },
+            }
+        },
         "summary": {
             "by_configuration": {
                 "with_skill": {

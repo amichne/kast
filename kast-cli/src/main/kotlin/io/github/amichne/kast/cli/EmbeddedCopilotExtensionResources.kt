@@ -36,6 +36,7 @@ internal class EmbeddedCopilotExtensionResources(
             "hooks/session-end.sh",
             "hooks/resolve-kast-cli-path.sh",
             "extensions/_shared/lib.mjs",
+            "extensions/_shared/kast-tools.mjs",
             "extensions/kast/extension.mjs",
             "extensions/kast/scripts/resolve-kast.sh",
             "extensions/kotlin-gradle-loop/extension.mjs",

@@ -8,7 +8,8 @@ infrastructure to any one SKILL.md.
 
 The framework is for **value justification**, not progression-gate maintenance.
 `benchmark.json` is the sole authoritative artifact for system-level evaluation, and `benchmark.schema.json` is its
-contract.
+contract. The benchmark now preserves separate `mechanical_summary`, `llm_graded_summary`, and `combined_summary`
+surfaces so deterministic evidence never gets blurred with rubric judgments.
 
 The benchmark fixes four primary dimensions:
 
@@ -18,7 +19,7 @@ The benchmark fixes four primary dimensions:
 - `scope_control` — did it avoid unnecessary changes or over-broad results
 
 Efficiency is required supporting evidence, not the headline ranking surface. It remains part of every run and every
-configuration summary via transcript size, tool counts, search counts, elapsed time, and execution errors.
+configuration summary via transcript size, tool counts, search counts, elapsed time, tokens, and execution errors.
 
 Headline evidence:
 
@@ -36,11 +37,42 @@ Headline evidence:
 - `bindings/`: repo-specific slot bindings plus templates
 - `bindings.schema.json`: schema for the bindings contract
 - `grading.schema.json`: normalized per-run grading contract
+- `mechanical.schema.json`: deterministic per-run evidence contract
+- `llm-grade.schema.json`: qualitative per-run grading contract
 - `benchmark.schema.json`: authoritative final benchmark contract
 - `scripts/`: render, scaffold, dispatch, finalize, aggregate, and orchestration helpers
+- `runners/copilot-sdk/`: supported Copilot-backed runner using `@github/copilot-sdk`
 - `fixtures/`: scratch assets plus non-canonical history-derived candidate cases
 
 ## Running an evaluation
+
+### Copilot SDK Runner
+
+Use the SDK runner for live `with_skill` versus `tool_only` versus `without_skill` benchmark runs.
+It registers the same shared `kast_*` tool contract used by the Copilot
+extension and avoids the older noninteractive Copilot CLI adapter.
+
+```bash
+bash evaluation/runners/copilot-sdk/run-benchmark.sh \
+  --bindings evaluation/bindings/kast.json \
+  --workspace .benchmarks/copilot-sdk \
+  --iteration iteration-001 \
+  --runs-per-config 5 \
+  --concurrency 4
+```
+
+For a one-case smoke run:
+
+```bash
+bash evaluation/runners/copilot-sdk/run-benchmark.sh \
+  --bindings evaluation/bindings/kast.json \
+  --workspace .benchmarks/copilot-sdk-smoke \
+  --iteration smoke \
+  --runs-per-config 1 \
+  --concurrency 1 \
+  --timeout-ms 180000 \
+  -- --case vp-disambiguate-member
+```
 
 ### One-command workflow
 
@@ -59,7 +91,8 @@ python3 evaluation/scripts/run_evaluation.py \
 ```
 
 The command templates are intentionally pluggable. `run_evaluation.py` handles the durable workspace layout; your
-runner/grader handle transcript production and raw grading.
+runner handles SDK/runtime capture, the mechanical grader writes `mechanical.json` plus `llm-grade-input.json`, an
+optional LLM grader writes `llm-grade.json`, and finalization merges them into `grading.json`.
 
 ### Manual phases
 
@@ -95,6 +128,12 @@ If you want to inspect each step separately:
 4. Grade and finalize each run, then aggregate:
 
    ```bash
+   python3 evaluation/scripts/script_grader.py \
+     --run-dir .benchmarks/evaluation/iteration-001/eval-XYZ/with_skill/run-1 \
+     --bindings .benchmarks/evaluation/iteration-001/bindings.json
+
+   # Optional qualitative grader writes llm-grade.json from llm-grade-input.json
+
    python3 evaluation/scripts/finalize_grading.py \
      --run-dir .benchmarks/evaluation/iteration-001/eval-XYZ/with_skill/run-1 \
      --workspace-root /absolute/path/to/target/checkout
@@ -123,7 +162,7 @@ If you want to inspect each step separately:
 2. Add or update the slot data in the relevant `bindings/<repo>.json`
 3. Re-render the catalog and run at least one evaluation iteration
 4. Inspect `benchmark.json`, `benchmark.md`, and the executive summary to confirm the new case discriminates between
-   configs
+   configs without conflating mechanical and LLM-graded evidence
 
 ## History-backed provenance
 

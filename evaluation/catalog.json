@@ -10,7 +10,7 @@
     {
       "id": "vp-disambiguate-member",
       "title": "Disambiguate a common member name",
-      "prompt": "Find all usages of the {{DISAMBIGUATE_MEMBER.symbol}} property on {{DISAMBIGUATE_MEMBER.containingType}}, not every {{DISAMBIGUATE_MEMBER.symbol}} in the repo. List each call site with file path and line number.",
+      "prompt": "Find all usages of the {{DISAMBIGUATE_MEMBER.symbol}} property declared in {{DISAMBIGUATE_MEMBER.file}} on {{DISAMBIGUATE_MEMBER.containingType}}, not every {{DISAMBIGUATE_MEMBER.symbol}} in the repo. List each call site with file path and line number.",
       "files": [],
       "expected_output": "A usage list scoped to the exact member identity.",
       "expectations": [

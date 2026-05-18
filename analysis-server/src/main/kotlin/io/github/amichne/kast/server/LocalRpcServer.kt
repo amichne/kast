@@ -29,7 +29,7 @@ internal interface LocalRpcServer : Closeable {
 
 internal class UnixDomainSocketRpcServer(
     private val socketPath: Path,
-    private val dispatcher: AnalysisDispatcher,
+    private val dispatcher: RpcAnalysisDispatcher,
 ) : LocalRpcServer {
     private val closed = AtomicBoolean(false)
     private val handlers = Collections.synchronizedList(mutableListOf<Thread>())
@@ -97,7 +97,7 @@ internal class UnixDomainSocketRpcServer(
 }
 
 internal class StdioRpcServer(
-    private val dispatcher: AnalysisDispatcher,
+    private val dispatcher: RpcAnalysisDispatcher,
     private val input: InputStream = System.`in`,
     private val output: OutputStream = System.out,
 ) : LocalRpcServer {
@@ -134,7 +134,7 @@ internal class StdioRpcServer(
 }
 
 internal fun processRpcStream(
-    dispatcher: AnalysisDispatcher,
+    dispatcher: RpcAnalysisDispatcher,
     reader: BufferedReader,
     writer: BufferedWriter,
 ) {

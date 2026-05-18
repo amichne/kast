@@ -95,7 +95,7 @@ class AnalysisServerSocketTest {
         )
         val output = ByteArrayOutputStream()
         val server = StdioRpcServer(
-            dispatcher = AnalysisDispatcher(
+            dispatcher = RpcAnalysisDispatcher(
                 backend = FakeAnalysisBackend.sample(tempDir),
                 config = AnalysisServerConfig(transport = AnalysisTransport.Stdio),
             ),

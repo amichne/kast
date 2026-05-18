@@ -15,7 +15,7 @@ class AnalysisServer(
         val capabilities = runBlocking {
             backend.capabilities()
         }
-        val dispatcher = AnalysisDispatcher(backend, config)
+        val dispatcher = RpcAnalysisDispatcher(backend, config)
 
         val transportServer: LocalRpcServer
         val descriptor: ServerInstanceDescriptor?

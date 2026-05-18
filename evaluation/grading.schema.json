@@ -2,67 +2,115 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/amichne/kast/evaluation/grading.schema.json",
   "title": "Kast evaluation grading result",
-  "description": "Per-run grading.json contract. v2 adds: per-expectation kind + applicability + graded_by; structured tool_calls; outcome vs process pass rates separated.",
+  "description": "Merged per-run grading contract. The merged file preserves the mechanical, LLM-graded, and combined evidence surfaces while retaining compatibility aliases for summary/execution consumers.",
   "type": "object",
-  "required": ["expectations", "summary", "execution_metrics", "timing"],
+  "required": [
+    "$schema",
+    "schema_version",
+    "status",
+    "mechanical",
+    "llm_graded",
+    "combined",
+    "expectations",
+    "summary",
+    "execution_metrics",
+    "timing",
+    "integrity"
+  ],
+  "additionalProperties": false,
   "properties": {
+    "$schema": {
+      "type": "string",
+      "const": "https://github.com/amichne/kast/evaluation/grading.schema.json"
+    },
     "schema_version": {
       "type": "integer",
-      "const": 2
+      "const": 3
     },
-    "status": { "type": "string" },
+    "status": {
+      "type": "string",
+      "minLength": 1
+    },
+    "mechanical": {
+      "$ref": "#/$defs/gradingSurface"
+    },
+    "llm_graded": {
+      "$ref": "#/$defs/gradingSurface"
+    },
+    "combined": {
+      "$ref": "#/$defs/gradingSurface"
+    },
     "expectations": {
       "type": "array",
       "items": {
-        "type": "object",
-        "required": ["text", "passed", "evidence", "kind", "applicability", "graded_by"],
-        "additionalProperties": false,
-        "properties": {
-          "id": { "type": "string" },
-          "text": { "type": "string", "minLength": 1 },
-          "passed": { "type": "boolean" },
-          "evidence": { "type": "string" },
-          "kind": { "enum": ["outcome", "process"] },
-          "applicability": { "enum": ["both", "with_skill_only", "without_skill_only"] },
-          "graded_by": { "enum": ["script", "llm", "n/a"] },
-          "skipped": {
-            "type": "boolean",
-            "default": false,
-            "description": "True when the expectation is not applicable to this run's configuration. Skipped expectations do not count toward the pass rate."
-          },
-          "oracle": {
-            "type": "string",
-            "description": "Dotted path into bindings.slots used to evaluate this expectation."
-          }
-        }
+        "$ref": "#/$defs/expectation"
+      }
+    },
+    "summary": {
+      "$ref": "#/$defs/summary"
+    },
+    "execution_metrics": {
+      "$ref": "#/$defs/executionMetrics"
+    },
+    "timing": {
+      "$ref": "#/$defs/timing"
+    },
+    "integrity": {
+      "$ref": "#/$defs/integrity"
+    }
+  },
+  "$defs": {
+    "expectation": {
+      "type": "object",
+      "required": [
+        "text",
+        "passed",
+        "evidence",
+        "kind",
+        "applicability",
+        "graded_by"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string" },
+        "text": { "type": "string", "minLength": 1 },
+        "passed": { "type": "boolean" },
+        "evidence": { "type": ["string", "object"] },
+        "kind": { "type": "string", "enum": ["outcome", "process"] },
+        "dimension": { "type": "string" },
+        "applicability": { "type": "string", "enum": ["both", "with_skill_only", "without_skill_only"] },
+        "graded_by": { "type": "string", "enum": ["script", "llm", "n/a"] },
+        "oracle": { "type": "string" },
+        "skipped": { "type": "boolean" }
       }
     },
     "summary": {
       "type": "object",
-      "required": ["passed", "failed", "total", "pass_rate"],
+      "required": [
+        "passed",
+        "failed",
+        "total",
+        "pass_rate",
+        "outcome_passed",
+        "outcome_total",
+        "outcome_pass_rate",
+        "process_pass_rate",
+        "skipped"
+      ],
+      "additionalProperties": true,
       "properties": {
         "passed": { "type": "integer", "minimum": 0 },
         "failed": { "type": "integer", "minimum": 0 },
         "total": { "type": "integer", "minimum": 0 },
-        "pass_rate": {
-          "type": "number",
-          "minimum": 0.0,
-          "maximum": 1.0,
-          "description": "Raw pass rate across all non-skipped expectations including process assertions. NOT suitable for cross-configuration comparison \u2014 use outcome_pass_rate instead."
-        },
-        "outcome_pass_rate": {
-          "type": "number",
-          "minimum": 0.0,
-          "maximum": 1.0,
-          "description": "Pass rate restricted to applicability='both' AND kind='outcome'. Used for the headline cross-config delta — the only fair comparison."
-        },
-        "outcome_total": { "type": "integer", "minimum": 0 },
+        "pass_rate": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
         "outcome_passed": { "type": "integer", "minimum": 0 },
+        "outcome_total": { "type": "integer", "minimum": 0 },
+        "outcome_pass_rate": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
         "process_pass_rate": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
         "skipped": { "type": "integer", "minimum": 0 }
       }
     },
-    "execution_metrics": {
+    "executionMetrics": {
       "type": "object",
       "required": [
         "tool_calls",
@@ -72,31 +120,20 @@
         "output_chars",
         "transcript_chars"
       ],
+      "additionalProperties": true,
       "properties": {
         "tool_calls": {
           "type": "object",
-          "description": "Map of tool name -> invocation count. Populated by parse_tool_calls.py from outputs/tool_calls.jsonl.",
           "additionalProperties": { "type": "integer", "minimum": 0 }
         },
-        "tool_call_log": {
-          "type": "string",
-          "description": "Relative path to outputs/tool_calls.jsonl; one JSON line per invocation."
-        },
+        "tool_call_log": { "type": "string" },
         "total_tool_calls": { "type": "integer", "minimum": 0 },
         "total_steps": { "type": "integer", "minimum": 0 },
         "errors_encountered": { "type": "integer", "minimum": 0 },
         "output_chars": { "type": "integer", "minimum": 0 },
         "transcript_chars": { "type": "integer", "minimum": 0 },
-        "kast_calls": {
-          "type": "integer",
-          "minimum": 0,
-          "description": "Subset of total_tool_calls whose tool name starts with 'kast_'. Used to detect baseline isolation violations (without_skill MUST be 0)."
-        },
-        "grep_or_find_calls": {
-          "type": "integer",
-          "minimum": 0,
-          "description": "Count of grep/rg/find/ls invocations. Used to flag when with_skill regressed to text search."
-        }
+        "kast_calls": { "type": "integer", "minimum": 0 },
+        "grep_or_find_calls": { "type": "integer", "minimum": 0 }
       }
     },
     "timing": {
@@ -106,33 +143,51 @@
         "grader_duration_seconds",
         "total_duration_seconds"
       ],
+      "additionalProperties": true,
       "properties": {
         "executor_duration_seconds": { "type": "number", "minimum": 0.0 },
         "grader_duration_seconds": { "type": "number", "minimum": 0.0 },
         "total_duration_seconds": { "type": "number", "minimum": 0.0 },
-        "executor_duration_source": {
-          "enum": ["dispatcher", "self_reported", "missing"],
-          "description": "Where executor_duration_seconds came from. 'dispatcher' is authoritative; 'self_reported' is best-effort."
-        }
+        "executor_duration_source": { "type": "string" }
       }
     },
     "integrity": {
       "type": "object",
-      "description": "Populated by finalize_grading.py. Records contradictions detected during normalization.",
+      "required": [
+        "contradictions",
+        "baseline_isolation_violation",
+        "attempts",
+        "flaky"
+      ],
+      "additionalProperties": true,
       "properties": {
         "contradictions": {
           "type": "array",
           "items": { "type": "string" }
         },
-        "baseline_isolation_violation": {
-          "type": "boolean",
-          "description": "True iff configuration='without_skill' but kast_calls > 0. Signals a tainted baseline."
-        },
+        "baseline_isolation_violation": { "type": "boolean" },
         "attempts": { "type": "integer", "minimum": 1 },
-        "flaky": { "type": "boolean" },
-        "git_sha_pre": { "type": "string" },
-        "git_sha_post": { "type": "string" },
-        "workspace_dirty_post": { "type": "boolean" }
+        "flaky": { "type": "boolean" }
+      }
+    },
+    "gradingSurface": {
+      "type": "object",
+      "required": [
+        "status",
+        "expectations",
+        "summary"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "status": { "type": "string", "minLength": 1 },
+        "expectations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/expectation" }
+        },
+        "summary": { "$ref": "#/$defs/summary" },
+        "execution_metrics": { "$ref": "#/$defs/executionMetrics" },
+        "timing": { "$ref": "#/$defs/timing" },
+        "integrity": { "$ref": "#/$defs/integrity" }
       }
     }
   }

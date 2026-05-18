@@ -24,7 +24,7 @@ PRIMARY_DIMENSIONS = (
 MEASUREMENT_DIMENSIONS = PRIMARY_DIMENSIONS + ("efficiency",)
 MEASUREMENT_KEYS = ("overall",) + MEASUREMENT_DIMENSIONS
 MEASUREMENT_KINDS = ("all", "outcome", "process")
-CONFIGURATIONS = ("with_skill", "without_skill")
+CONFIGURATION_ORDER = ("with_skill", "tool_only", "without_skill")
 EFFICIENCY_METRICS = (
     "transcript_chars",
     "total_tool_calls",
@@ -297,26 +297,47 @@ def _distribution(
     }
 
 
-def _configuration_summary(runs: list[dict[str, Any]]) -> dict[str, Any]:
+def _empty_surface_summary() -> dict[str, Any]:
+    return {
+        "run_counts": {
+            "total": 0,
+            "valid": 0,
+            "invalid": 0,
+        },
+        "measurements": {
+            measurement_key: {kind: {"status": "no_valid_samples", "n": 0} for kind in MEASUREMENT_KINDS}
+            for measurement_key in MEASUREMENT_KEYS
+        },
+        "efficiency": {
+            metric: {"status": "no_valid_samples", "n": 0}
+            for metric in EFFICIENCY_METRICS
+        },
+    }
+
+
+def _configuration_summary(runs: list[dict[str, Any]], *, surface: str) -> dict[str, Any]:
     valid_runs = [run for run in runs if run["status"] == "valid"]
     measurements: dict[str, Any] = {}
     for measurement_key in MEASUREMENT_KEYS:
         measurements[measurement_key] = {}
         for kind in MEASUREMENT_KINDS:
             scores = [
-                float(run["measurements"][measurement_key][kind]["score"])
+                float(run[surface]["measurements"][measurement_key][kind]["score"])
                 for run in valid_runs
-                if run["measurements"][measurement_key][kind]["status"] == "scored"
+                if run[surface]["measurements"][measurement_key][kind]["status"] == "scored"
             ]
             measurements[measurement_key][kind] = _distribution(
                 scores,
                 lower_bound=0.0,
                 upper_bound=1.0,
             )
-    efficiency = {
-        metric: _distribution([float(run["efficiency"][metric]) for run in valid_runs], lower_bound=0.0)
-        for metric in EFFICIENCY_METRICS
-    }
+    if surface == "llm_graded":
+        efficiency = {metric: {"status": "no_valid_samples", "n": 0} for metric in EFFICIENCY_METRICS}
+    else:
+        efficiency = {
+            metric: _distribution([float(run["efficiency"][metric]) for run in valid_runs], lower_bound=0.0)
+            for metric in EFFICIENCY_METRICS
+        }
     return {
         "run_counts": {
             "total": len(runs),
@@ -529,7 +550,7 @@ def _paired_analysis(runs: list[dict[str, Any]]) -> dict[str, Any]:
         )
 
     outliers: list[dict[str, Any]] = []
-    for configuration in CONFIGURATIONS:
+    for configuration in ("with_skill", "without_skill"):
         config_runs = [run for run in valid_runs if run["configuration"] == configuration]
         by_eval: dict[str, list[dict[str, Any]]] = defaultdict(list)
         for run in config_runs:
@@ -575,6 +596,74 @@ def _paired_analysis(runs: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _grading_surface(grading: dict[str, Any], name: str) -> dict[str, Any]:
+    surface = grading.get(name)
+    if isinstance(surface, dict):
+        return surface
+    if name == "llm_graded":
+        return {
+            "status": "not_requested",
+            "expectations": [],
+            "summary": {
+                "passed": 0,
+                "failed": 0,
+                "total": 0,
+                "pass_rate": 0.0,
+                "outcome_passed": 0,
+                "outcome_total": 0,
+                "outcome_pass_rate": 0.0,
+                "process_pass_rate": 0.0,
+                "skipped": 0,
+            },
+        }
+    return grading
+
+
+def _normalize_surface_expectations(
+    *,
+    eval_id: str,
+    surface: dict[str, Any],
+    expectation_index: dict[str, dict[str, dict[str, Any]]],
+    configuration: str,
+) -> list[dict[str, Any]]:
+    return [
+        _normalize_expectation(
+            eval_id=eval_id,
+            entry=entry,
+            expectation_index=expectation_index,
+            configuration=configuration,
+        )
+        for entry in surface.get("expectations", []) or []
+        if isinstance(entry, dict)
+    ]
+
+
+def _surface_payload(
+    *,
+    source: dict[str, Any],
+    expectations: list[dict[str, Any]],
+    fallback_execution: dict[str, Any] | None = None,
+    fallback_timing: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    payload = {
+        "status": str(source.get("status") or "graded"),
+        "expectations": expectations,
+        "summary": source.get("summary", {}) or {},
+        "measurements": _measurements(expectations),
+    }
+    execution_metrics = source.get("execution_metrics") or fallback_execution
+    timing = source.get("timing") or fallback_timing
+    if isinstance(execution_metrics, dict):
+        payload["execution_metrics"] = execution_metrics
+    if isinstance(timing, dict):
+        payload["timing"] = timing
+    for key in ("artifacts", "identity", "tokens", "tool_metrics", "permission_metrics", "build_test_iterations", "repo_state", "harness_validation", "rubric_results"):
+        value = source.get(key)
+        if value not in (None, {}):
+            payload[key] = value
+    return payload
+
+
 def aggregate(
     iteration_dir: Path,
     *,
@@ -586,36 +675,72 @@ def aggregate(
     catalog = _read_json(catalog_path)
     expectation_index = _build_expectation_index(catalog)
     eval_ids = sorted({eval_id for eval_id, _, _, _ in _iter_runs(iteration_dir)})
+    seen_configurations = {
+        configuration for _, configuration, _, _ in _iter_runs(iteration_dir)
+    }
+    configurations = [
+        configuration for configuration in CONFIGURATION_ORDER if configuration in seen_configurations
+    ] or sorted(seen_configurations)
 
     runs: list[dict[str, Any]] = []
-    by_configuration: dict[str, list[dict[str, Any]]] = {configuration: [] for configuration in CONFIGURATIONS}
+    by_configuration: dict[str, list[dict[str, Any]]] = {configuration: [] for configuration in configurations}
     for eval_id, configuration, run_number, run_dir in _iter_runs(iteration_dir):
         grading = _read_json(run_dir / "grading.json")
         if not grading:
             continue
-        expectations = [
-            _normalize_expectation(
-                eval_id=eval_id,
-                entry=entry,
-                expectation_index=expectation_index,
-                configuration=configuration,
-            )
-            for entry in grading.get("expectations", []) or []
-            if isinstance(entry, dict)
-        ]
-        integrity = _integrity(grading, configuration)
+        mechanical_source = _grading_surface(grading, "mechanical")
+        llm_source = _grading_surface(grading, "llm_graded")
+        combined_source = _grading_surface(grading, "combined")
+        mechanical_expectations = _normalize_surface_expectations(
+            eval_id=eval_id,
+            surface=mechanical_source,
+            expectation_index=expectation_index,
+            configuration=configuration,
+        )
+        llm_expectations = _normalize_surface_expectations(
+            eval_id=eval_id,
+            surface=llm_source,
+            expectation_index=expectation_index,
+            configuration=configuration,
+        )
+        combined_expectations = _normalize_surface_expectations(
+            eval_id=eval_id,
+            surface=combined_source,
+            expectation_index=expectation_index,
+            configuration=configuration,
+        )
+        if not combined_expectations:
+            combined_expectations = [*mechanical_expectations, *llm_expectations]
+        integrity = _integrity(mechanical_source if "integrity" in mechanical_source else grading, configuration)
+        mechanical_payload = _surface_payload(
+            source=mechanical_source,
+            expectations=mechanical_expectations,
+        )
+        llm_payload = _surface_payload(
+            source=llm_source,
+            expectations=llm_expectations,
+        )
+        combined_payload = _surface_payload(
+            source=combined_source if combined_source is not grading else {"status": grading.get("status"), "summary": grading.get("summary")},
+            expectations=combined_expectations,
+            fallback_execution=mechanical_payload.get("execution_metrics"),
+            fallback_timing=mechanical_payload.get("timing"),
+        )
         record: dict[str, Any] = {
             "eval_id": eval_id,
             "configuration": configuration,
             "run_number": run_number,
-            "expectations": expectations,
-            "efficiency": _run_efficiency(grading),
+            "mechanical": mechanical_payload,
+            "llm_graded": llm_payload,
+            "combined": combined_payload,
+            "expectations": combined_expectations,
+            "efficiency": _run_efficiency(mechanical_source if "execution_metrics" in mechanical_source else grading),
             "integrity": integrity,
         }
-        invalid_reason = _invalid_reason(expectations, integrity)
+        invalid_reason = _invalid_reason(combined_expectations, integrity)
         if invalid_reason is None:
             record["status"] = "valid"
-            record["measurements"] = _measurements(expectations)
+            record["measurements"] = combined_payload["measurements"]
         else:
             record["status"] = "invalid"
             record["invalid_reason"] = invalid_reason
@@ -630,7 +755,7 @@ def aggregate(
 
     return {
         "$schema": "https://github.com/amichne/kast/evaluation/benchmark.schema.json",
-        "schema_version": 1,
+        "schema_version": 2,
         "benchmark_kind": "kast-system-performance-benchmark",
         "metadata": {
             "skill_name": skill_name,
@@ -645,7 +770,7 @@ def aggregate(
                 else {}
             ),
             "eval_ids": eval_ids,
-            "configurations": list(CONFIGURATIONS),
+            "configurations": configurations,
             "runs_per_eval_per_config": {
                 eval_id: {
                     configuration: sum(
@@ -653,7 +778,7 @@ def aggregate(
                         for run in runs
                         if run["eval_id"] == eval_id and run["configuration"] == configuration
                     )
-                    for configuration in CONFIGURATIONS
+                    for configuration in configurations
                 }
                 for eval_id in eval_ids
             },
@@ -675,10 +800,28 @@ def aggregate(
             },
         },
         "runs": runs,
+        "mechanical_summary": {
+            "by_configuration": {
+                configuration: _configuration_summary(by_configuration[configuration], surface="mechanical")
+                for configuration in configurations
+            }
+        },
+        "llm_graded_summary": {
+            "by_configuration": {
+                configuration: _configuration_summary(by_configuration[configuration], surface="llm_graded")
+                for configuration in configurations
+            }
+        },
+        "combined_summary": {
+            "by_configuration": {
+                configuration: _configuration_summary(by_configuration[configuration], surface="combined")
+                for configuration in configurations
+            }
+        },
         "summary": {
             "by_configuration": {
-                configuration: _configuration_summary(by_configuration[configuration])
-                for configuration in CONFIGURATIONS
+                configuration: _configuration_summary(by_configuration[configuration], surface="combined")
+                for configuration in configurations
             }
         },
         "paired_analysis": _paired_analysis(runs),
@@ -690,6 +833,30 @@ def _summary_mean(benchmark: dict[str, Any], configuration: str, measurement_key
     if summary["status"] != "summarized":
         return None
     return float(summary["mean"])
+
+
+def _section_summary_mean(
+    benchmark: dict[str, Any],
+    section: str,
+    configuration: str,
+    measurement_key: str,
+    kind: str = "outcome",
+) -> float | None:
+    summary = (
+        benchmark.get(section, {})
+        .get("by_configuration", {})
+        .get(configuration, {})
+        .get("measurements", {})
+        .get(measurement_key, {})
+        .get(kind, {})
+    )
+    if summary.get("status") != "summarized":
+        return None
+    return float(summary["mean"])
+
+
+def _format_optional_mean(value: float | None) -> str:
+    return f"{value:.3f}" if value is not None else "n/a"
 
 
 def _efficiency_mean(benchmark: dict[str, Any], configuration: str, metric: str) -> float | None:
@@ -707,7 +874,9 @@ def write_outputs(iteration_dir: Path, benchmark: dict[str, Any]) -> None:
         "",
         f"_iteration: `{Path(benchmark['metadata']['iteration_dir']).name}`, evals: {len(benchmark['metadata']['eval_ids'])}_",
         "",
-        "## Primary dimensions",
+        "This report preserves separate `mechanical_summary`, `llm_graded_summary`, and `combined_summary` surfaces.",
+        "",
+        "## Combined primary dimensions",
         "",
         "| Dimension | with_skill | without_skill | Delta | p-value |",
         "| --- | ---: | ---: | ---: | ---: |",
@@ -729,6 +898,30 @@ def write_outputs(iteration_dir: Path, benchmark: dict[str, Any]) -> None:
         with_value = f"{with_mean:.3f}" if with_mean is not None else "n/a"
         without_value = f"{without_mean:.3f}" if without_mean is not None else "n/a"
         lines.append(f"| {metric} | {with_value} | {without_value} | {delta} | {p_value} |")
+
+    lines.extend(
+        [
+            "",
+            "## Surface split",
+            "",
+            "| Surface | with_skill overall outcome | tool_only overall outcome | without_skill overall outcome |",
+            "| --- | ---: | ---: | ---: |",
+        ]
+    )
+    for section, label in (
+        ("mechanical_summary", "Mechanical"),
+        ("llm_graded_summary", "LLM-graded"),
+        ("combined_summary", "Combined"),
+    ):
+        with_mean = _section_summary_mean(benchmark, section, "with_skill", "overall")
+        tool_only_mean = _section_summary_mean(benchmark, section, "tool_only", "overall")
+        without_mean = _section_summary_mean(benchmark, section, "without_skill", "overall")
+        lines.append(
+            f"| {label} | "
+            f"{_format_optional_mean(with_mean)} | "
+            f"{_format_optional_mean(tool_only_mean)} | "
+            f"{_format_optional_mean(without_mean)} |"
+        )
 
     lines.extend(
         [

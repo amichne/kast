@@ -16,6 +16,8 @@ from render_prompts import render_catalog
 from run_value_proof import grading_is_complete, scaffold_workspace
 from value_proof_aggregate import aggregate, write_outputs
 
+SCRIPT_GRADER = Path(__file__).resolve().parent / "script_grader.py"
+
 
 def shell_value(value: str | int | None) -> str:
     return shlex.quote("" if value is None else str(value))
@@ -61,6 +63,9 @@ def render_command(template: str, run_dir: Path) -> str:
     config_dir = run_dir.parent.resolve()
     run_dir = run_dir.resolve()
     transcript_path = (run_dir / "outputs" / "transcript.md").resolve()
+    mechanical_path = (run_dir / "mechanical.json").resolve()
+    llm_grade_input_path = (run_dir / "llm-grade-input.json").resolve()
+    llm_grade_path = (run_dir / "llm-grade.json").resolve()
     grading_path = (run_dir / "grading.json").resolve()
     run_number = run_dir.name.removeprefix("run-")
     placeholders = {
@@ -71,6 +76,9 @@ def render_command(template: str, run_dir: Path) -> str:
         "transcript": shell_value(transcript_path),
         "configuration": shell_value(config_dir.name),
         "run_number": shell_value(run_number),
+        "mechanical": shell_value(mechanical_path),
+        "llm_grade_input": shell_value(llm_grade_input_path),
+        "llm_grade": shell_value(llm_grade_path),
         "grading": shell_value(grading_path),
     }
     rendered = template
@@ -82,12 +90,14 @@ def render_command(template: str, run_dir: Path) -> str:
 def run_grade_step(
     *,
     iteration_dir: Path,
-    grade_command_template: str | None,
+    bindings_path: Path,
+    mechanical_grade_command_template: str | None,
+    llm_grade_command_template: str | None,
     workspace_root: Path,
 ) -> None:
     for run_dir in sorted(iteration_dir.glob("eval-*/*/run-*")):
-        if grade_command_template:
-            command = render_command(grade_command_template, run_dir)
+        if mechanical_grade_command_template:
+            command = render_command(mechanical_grade_command_template, run_dir)
             completed = subprocess.run(
                 command,
                 cwd=run_dir,
@@ -98,7 +108,44 @@ def run_grade_step(
             )
             if completed.returncode != 0:
                 raise ValueError(
-                    f"Grading failed for {run_dir}: {completed.stderr.strip() or completed.stdout.strip()}"
+                    f"Mechanical grading failed for {run_dir}: {completed.stderr.strip() or completed.stdout.strip()}"
+                )
+        else:
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPT_GRADER),
+                    "--run-dir",
+                    str(run_dir),
+                    "--bindings",
+                    str(bindings_path),
+                    "--output",
+                    str(run_dir / "mechanical.json"),
+                    "--llm-grade-input-output",
+                    str(run_dir / "llm-grade-input.json"),
+                ],
+                cwd=run_dir,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            if completed.returncode != 0:
+                raise ValueError(
+                    f"Mechanical grading failed for {run_dir}: {completed.stderr.strip() or completed.stdout.strip()}"
+                )
+        if llm_grade_command_template:
+            command = render_command(llm_grade_command_template, run_dir)
+            completed = subprocess.run(
+                command,
+                cwd=run_dir,
+                shell=True,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            if completed.returncode != 0:
+                raise ValueError(
+                    f"LLM grading failed for {run_dir}: {completed.stderr.strip() or completed.stdout.strip()}"
                 )
         finalize(run_dir, workspace_root=workspace_root)
 
@@ -126,7 +173,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--runs-per-config", type=int, default=5, help="Runs per evaluation/configuration")
     parser.add_argument(
         "--configs",
-        default="with_skill,without_skill",
+        default="with_skill,tool_only,without_skill",
         help="Comma-separated configurations to scaffold",
     )
     parser.add_argument(
@@ -153,8 +200,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="Retries for failed or empty-transcript runs; default: 1",
     )
     parser.add_argument(
+        "--mechanical-grade-command-template",
+        help="Shell command template that writes mechanical.json for each run",
+    )
+    parser.add_argument(
+        "--llm-grade-command-template",
         "--grade-command-template",
-        help="Shell command template that writes grading.json for each run",
+        dest="llm_grade_command_template",
+        help="Shell command template that writes llm-grade.json for each run",
     )
     parser.add_argument("--skip-dispatch", action="store_true", help="Skip the dispatch phase")
     parser.add_argument("--skip-grade", action="store_true", help="Skip grading/finalization")
@@ -200,7 +253,9 @@ def main(argv: list[str] | None = None) -> int:
     if not args.skip_grade:
         run_grade_step(
             iteration_dir=iteration_dir,
-            grade_command_template=args.grade_command_template,
+            bindings_path=args.bindings,
+            mechanical_grade_command_template=args.mechanical_grade_command_template,
+            llm_grade_command_template=args.llm_grade_command_template,
             workspace_root=Path(bindings["workspace_root"]),
         )
 

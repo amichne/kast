@@ -65,7 +65,13 @@ import java.util.UUID
 import io.github.amichne.kast.api.validation.parsed
 import io.github.amichne.kast.api.contract.skill.*
 
-class AnalysisDispatcher(
+@Deprecated("Use RpcAnalysisDispatcher instead")
+interface AnalysisDispatcher {
+    suspend fun dispatch(request: JsonRpcRequest): String
+    suspend fun dispatchRaw(requestText: String): String
+}
+
+class RpcAnalysisDispatcher(
     private val backend: AnalysisBackend,
     private val config: AnalysisServerConfig,
     private val json: Json = Json {
@@ -73,10 +79,10 @@ class AnalysisDispatcher(
         explicitNulls = false
         prettyPrint = false
     },
-) {
+) : AnalysisDispatcher {
     private val skillRpc = SkillRpcOrchestrator(backend, config, json)
 
-    suspend fun dispatch(request: JsonRpcRequest): String {
+    override suspend fun dispatch(request: JsonRpcRequest): String {
         if (request.jsonrpc != JSON_RPC_VERSION || request.method.isBlank()) {
             return json.encodeToString(
                 JsonRpcErrorResponse(
@@ -135,7 +141,7 @@ class AnalysisDispatcher(
         }
     }
 
-    suspend fun dispatchRaw(requestText: String): String {
+    override suspend fun dispatchRaw(requestText: String): String {
         val request = runCatching {
             json.decodeFromString(JsonRpcRequest.serializer(), requestText)
         }.getOrElse { exception ->
