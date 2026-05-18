@@ -31,6 +31,10 @@ EFFICIENCY_METRICS = (
     "semantic_tool_calls",
     "generic_search_calls",
     "executor_duration_seconds",
+    "input_tokens",
+    "output_tokens",
+    "cache_read_tokens",
+    "total_tokens",
     "errors_encountered",
 )
 PAIR_SCORE_METRICS = {
@@ -214,12 +218,32 @@ def _integrity(grading: dict[str, Any], configuration: str) -> dict[str, Any]:
         baseline_isolation = "violated" if baseline_violated else "intact"
     else:
         baseline_isolation = "not_applicable"
+    executor_status = str(source.get("executor_status", "") or "").strip() or "unknown"
+    executor_exit_code = source.get("executor_exit_code")
+    if not isinstance(executor_exit_code, int):
+        executor_exit_code = None
     return {
         "attempts": int(source.get("attempts", 1) or 1),
         "flaky": bool(source.get("flaky", False)),
         "baseline_isolation": baseline_isolation,
         "contradiction_count": len(contradictions),
         "contradiction_samples": [str(item) for item in contradictions[:3] if str(item).strip()],
+        "executor_status": executor_status,
+        "executor_exit_code": executor_exit_code,
+        "executor_message": str(source.get("executor_message", "") or "").strip()[:500],
+        "transcript_present": bool(source.get("transcript_present", True)),
+        "hook_error_count": int(source.get("hook_error_count", 0) or 0),
+        "hook_error_samples": [
+            str(item)
+            for item in (source.get("hook_error_samples", []) or [])[:3]
+            if str(item).strip()
+        ],
+        "session_error_count": int(source.get("session_error_count", 0) or 0),
+        "session_error_samples": [
+            str(item)
+            for item in (source.get("session_error_samples", []) or [])[:3]
+            if str(item).strip()
+        ],
         "mock_backend_error_count": int(source.get("mock_backend_error_count", 0) or 0),
         "mock_backend_error_samples": [
             str(item)
@@ -231,9 +255,19 @@ def _integrity(grading: dict[str, Any], configuration: str) -> dict[str, Any]:
     }
 
 
+def _token_metric(tokens: dict[str, Any], key: str) -> int:
+    raw = tokens.get(key)
+    if isinstance(raw, dict):
+        value = raw.get("value")
+    else:
+        value = raw
+    return int(value) if isinstance(value, (int, float)) and value >= 0 else 0
+
+
 def _run_efficiency(grading: dict[str, Any]) -> dict[str, Any]:
     execution = grading.get("execution_metrics", {}) or {}
     timing = grading.get("timing", {}) or {}
+    tokens = grading.get("tokens", {}) if isinstance(grading.get("tokens"), dict) else {}
     return {
         "transcript_chars": int(execution.get("transcript_chars", 0) or 0),
         "total_tool_calls": int(execution.get("total_tool_calls", 0) or 0),
@@ -241,11 +275,25 @@ def _run_efficiency(grading: dict[str, Any]) -> dict[str, Any]:
         "generic_search_calls": int(execution.get("grep_or_find_calls", 0) or 0),
         "executor_duration_seconds": float(timing.get("executor_duration_seconds", 0.0) or 0.0),
         "executor_duration_source": str(timing.get("executor_duration_source", "missing") or "missing"),
+        "input_tokens": _token_metric(tokens, "input_tokens"),
+        "output_tokens": _token_metric(tokens, "output_tokens"),
+        "cache_read_tokens": _token_metric(tokens, "cache_read_tokens"),
+        "total_tokens": _token_metric(tokens, "total_tokens"),
         "errors_encountered": int(execution.get("errors_encountered", 0) or 0),
     }
 
 
 def _invalid_reason(expectations: list[dict[str, Any]], integrity: dict[str, Any]) -> str | None:
+    executor_status = str(integrity.get("executor_status", "") or "")
+    executor_exit_code = integrity.get("executor_exit_code")
+    if (executor_status and executor_status not in {"unknown", "succeeded"}) or (
+        isinstance(executor_exit_code, int) and executor_exit_code != 0
+    ):
+        return "executor_failed"
+    if not bool(integrity.get("transcript_present", True)):
+        return "empty_transcript"
+    if int(integrity.get("hook_error_count", 0) or 0) > 0 or int(integrity.get("session_error_count", 0) or 0) > 0:
+        return "hook_error"
     if any(expectation["status"] == "ungraded" for expectation in expectations):
         return "ungraded_expectation"
     if integrity["baseline_isolation"] == "violated":
@@ -799,6 +847,10 @@ def aggregate(
                 "semantic_tool_calls",
                 "generic_search_calls",
                 "executor_duration_seconds",
+                "input_tokens",
+                "output_tokens",
+                "cache_read_tokens",
+                "total_tokens",
                 "errors_encountered",
             ],
             "execution_environment": {
@@ -837,8 +889,15 @@ def aggregate(
 
 
 def _summary_mean(benchmark: dict[str, Any], configuration: str, measurement_key: str, kind: str) -> float | None:
-    summary = benchmark["summary"]["by_configuration"][configuration]["measurements"][measurement_key][kind]
-    if summary["status"] != "summarized":
+    summary = (
+        benchmark.get("summary", {})
+        .get("by_configuration", {})
+        .get(configuration, {})
+        .get("measurements", {})
+        .get(measurement_key, {})
+        .get(kind, {})
+    )
+    if summary.get("status") != "summarized":
         return None
     return float(summary["mean"])
 
@@ -868,8 +927,14 @@ def _format_optional_mean(value: float | None) -> str:
 
 
 def _efficiency_mean(benchmark: dict[str, Any], configuration: str, metric: str) -> float | None:
-    summary = benchmark["summary"]["by_configuration"][configuration]["efficiency"][metric]
-    if summary["status"] != "summarized":
+    summary = (
+        benchmark.get("summary", {})
+        .get("by_configuration", {})
+        .get(configuration, {})
+        .get("efficiency", {})
+        .get(metric, {})
+    )
+    if summary.get("status") != "summarized":
         return None
     return float(summary["mean"])
 
@@ -946,6 +1011,10 @@ def write_outputs(iteration_dir: Path, benchmark: dict[str, Any]) -> None:
         "semantic_tool_calls",
         "generic_search_calls",
         "executor_duration_seconds",
+        "input_tokens",
+        "output_tokens",
+        "cache_read_tokens",
+        "total_tokens",
     ):
         with_mean = _efficiency_mean(benchmark, "with_skill", metric)
         without_mean = _efficiency_mean(benchmark, "without_skill", metric)

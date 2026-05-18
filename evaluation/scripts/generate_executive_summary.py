@@ -39,6 +39,10 @@ SUPPORTING_EFFICIENCY = (
     ("Semantic tool calls", "semantic_tool_calls"),
     ("Generic search calls", "generic_search_calls"),
     ("Executor time (s)", "executor_duration_seconds"),
+    ("Input tokens", "input_tokens"),
+    ("Output tokens", "output_tokens"),
+    ("Cache read tokens", "cache_read_tokens"),
+    ("Total tokens", "total_tokens"),
 )
 
 

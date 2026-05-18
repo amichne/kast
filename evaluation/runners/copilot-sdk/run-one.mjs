@@ -8,7 +8,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { CopilotClient, approveAll } from "@github/copilot-sdk";
 import { KAST_TOOL_NAMES, makeKastTools } from "../../../.github/extensions/_shared/kast-tools.mjs";
@@ -21,7 +21,7 @@ const REPO_ROOT = resolve(HERE, "../../..");
 const RUNNER_PACKAGE = JSON.parse(readFileSync(resolve(HERE, "package.json"), "utf8"));
 const RUNNER_VERSION = RUNNER_PACKAGE.version;
 
-const CONFIG_POLICIES = {
+export const CONFIG_POLICIES = {
   with_skill: {
     registerKastTools: true,
     loadKastSkill: true,
@@ -199,6 +199,15 @@ async function createRunWorktree({ targetRoot, targetSha, worktreePath }) {
   return worktreePath;
 }
 
+export async function isolateMockWorktreeConfig(worktreePath) {
+  await execFileAsync("git", ["-C", worktreePath, "sparse-checkout", "init", "--no-cone"], {
+    timeout: 120000,
+  });
+  await execFileAsync("git", ["-C", worktreePath, "sparse-checkout", "set", "/*", "!/.github/", "!/.agents/"], {
+    timeout: 120000,
+  });
+}
+
 async function callKastInWorkspace(workspaceRoot, method, params) {
   const kastBin = process.env.KAST_BIN ?? "kast";
   const rpcRequest = JSON.stringify({ jsonrpc: "2.0", method, params, id: 1 });
@@ -216,11 +225,28 @@ function resolveKastBackendMode(args) {
   return mode;
 }
 
-function containsDirectKastShell(commandText) {
+export function containsDirectKastShell(commandText) {
   return /\bkast(?:\s|$)/.test(commandText) || /\bkast_[a-z_]+\b/.test(commandText);
 }
 
-function buildSessionConfig({
+function mockCopilotHomePath(worktreePath) {
+  return resolve(worktreePath, "..", "copilot-home");
+}
+
+function prepareMockCopilotConfig(worktreePath) {
+  const configDir = mockCopilotHomePath(worktreePath);
+  mkdirSync(configDir, { recursive: true });
+  writeJson(resolve(configDir, "settings.json"), {
+    disableAllHooks: true,
+    extensions: {
+      disabledExtensions: ["kast"],
+      mode: "disabled",
+    },
+  });
+  return configDir;
+}
+
+export function buildSessionConfig({
   configuration,
   model,
   reasoningEffort,
@@ -229,6 +255,7 @@ function buildSessionConfig({
   permissionLog,
   callKast,
   kastBackendMode,
+  mockCopilotHome,
 }) {
   const skillRoot = resolve(REPO_ROOT, ".agents/skills");
   const instructionRoot = resolve(REPO_ROOT, ".github/instructions");
@@ -237,6 +264,7 @@ function buildSessionConfig({
     model,
     reasoningEffort,
     enableConfigDiscovery: false,
+    ...(kastBackendMode === "mock" ? { configDir: mockCopilotHome ?? prepareMockCopilotConfig(worktreePath) } : {}),
     enableSessionTelemetry: true,
     workingDirectory: worktreePath,
     instructionDirectories: [instructionRoot],
@@ -259,35 +287,24 @@ function buildSessionConfig({
       permissionLog.push({ kind: "approved", request });
       return approveAll(request, invocation);
     },
-    hooks: {
-      onPreToolUse: async (input) => {
-        if (
-          policy.denyDirectKastShell &&
-          input?.toolName === "bash" &&
-          containsDirectKastShell(String(input?.toolArgs?.command ?? ""))
-        ) {
-          return {
-            permissionDecision: "deny",
-            modifiedArgs: input.toolArgs,
-            additionalContext: "The benchmark baseline denies direct kast shell use.",
-          };
-        }
-        return {
-          permissionDecision: "allow",
-          modifiedArgs: input.toolArgs,
-        };
-      },
-      onPostToolUse: async () => ({}),
-      onUserPromptSubmitted: async (input) => ({ modifiedPrompt: input.prompt }),
-      onSessionStart: async () => ({ additionalContext: "Benchmark harness active." }),
-      onSessionEnd: async () => {},
-      onErrorOccurred: async () => ({ errorHandling: "abort" }),
-    },
   };
   if (policy.registerKastTools) {
     sessionConfig.tools = makeKastTools((method, params) => callKast(method, params));
   }
   return sessionConfig;
+}
+
+export function buildClientOptions({ githubToken, copilotCliPath, otelPath, mockCopilotHome }) {
+  return {
+    ...(githubToken ? { gitHubToken: githubToken, useLoggedInUser: false } : { useLoggedInUser: true }),
+    ...(copilotCliPath ? { cliPath: copilotCliPath } : {}),
+    ...(mockCopilotHome ? { copilotHome: mockCopilotHome } : {}),
+    telemetry: {
+      exporterType: "file",
+      filePath: otelPath,
+      captureContent: true,
+    },
+  };
 }
 
 async function readSessionSources(session) {
@@ -509,6 +526,9 @@ async function main() {
   mkdirSync(dirname(sdkEventsPath), { recursive: true });
 
   await createRunWorktree({ targetRoot, targetSha, worktreePath });
+  if (kastBackendMode === "mock") {
+    await isolateMockWorktreeConfig(worktreePath);
+  }
   const preState = await gitState(worktreePath);
   const mockCaller = kastBackendMode === "mock"
     ? createMockKastCaller({
@@ -520,6 +540,7 @@ async function main() {
   const callKast = mockCaller
     ? (method, params) => mockCaller.call(method, params)
     : (method, params) => callKastInWorkspace(worktreePath, method, params);
+  const mockCopilotHome = kastBackendMode === "mock" ? prepareMockCopilotConfig(worktreePath) : null;
 
   const transcriptStream = createWriteStream(transcriptPath, { flags: "w" });
   const sdkEventsStream = createWriteStream(sdkEventsPath, { flags: "w" });
@@ -555,6 +576,7 @@ async function main() {
     permissionLog,
     callKast,
     kastBackendMode,
+    mockCopilotHome,
   });
   sessionConfig.onEvent = recordEvent;
 
@@ -564,15 +586,7 @@ async function main() {
   }
   const copilotCliPath = await resolveCopilotCliPath();
   const copilotCliVersion = await resolveCliVersion(copilotCliPath);
-  const clientOptions = {
-    ...(githubToken ? { gitHubToken: githubToken, useLoggedInUser: false } : { useLoggedInUser: true }),
-    ...(copilotCliPath ? { cliPath: copilotCliPath } : {}),
-    telemetry: {
-      exporterType: "file",
-      filePath: otelPath,
-      captureContent: true,
-    },
-  };
+  const clientOptions = buildClientOptions({ githubToken, copilotCliPath, otelPath, mockCopilotHome });
 
   const client = new CopilotClient(clientOptions);
   await client.start();
@@ -672,4 +686,6 @@ async function main() {
   }
 }
 
-await main();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  await main();
+}

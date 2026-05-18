@@ -6,7 +6,7 @@ source "${SCRIPT_DIR}/hook-state.sh"
 
 REPO_ROOT="$(git -C "${SCRIPT_DIR}" rev-parse --show-toplevel)"
 SKILL_STATE_FILE="$(hook_skill_state_file "${REPO_ROOT}")"
-SKILL_CONFIG_FILE="${REPO_ROOT}/.github/hooks/skill-shadowing.json"
+SKILL_CONFIG_FILE="${REPO_ROOT}/.github/skill-shadowing.json"
 
 HOOK_INPUT="$(cat || true)"
 export HOOK_INPUT

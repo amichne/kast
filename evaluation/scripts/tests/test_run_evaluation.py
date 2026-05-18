@@ -277,6 +277,60 @@ class RunEvaluationTests(unittest.TestCase):
         self.assertIn("slots", persisted_bindings)
         self.assertIn("DISAMBIGUATE_MEMBER", persisted_bindings["slots"])
 
+    def test_default_mechanical_grader_accepts_relative_iteration_paths(self) -> None:
+        sys.path.insert(0, str(SCRIPT_DIR))
+        try:
+            import run_evaluation
+
+            workspace_root = SCRATCH_DIR / "workspace-root"
+            workspace_root.mkdir(parents=True)
+            bindings_path = SCRATCH_DIR / "bindings.json"
+            write_json(
+                bindings_path,
+                {
+                    "target_repo": "demo",
+                    "workspace_root": str(workspace_root),
+                    "slots": {},
+                },
+            )
+            iteration_dir = SCRATCH_DIR / "relative-bench" / "iteration-001"
+            run_dir = iteration_dir / "eval-vp-demo" / "with_skill" / "run-1"
+            (run_dir / "outputs").mkdir(parents=True)
+            write_json(
+                iteration_dir / "eval-vp-demo" / "eval_metadata.json",
+                {
+                    "eval_id": "vp-demo",
+                    "eval_name": "Demo",
+                    "assertions": [
+                        {
+                            "id": "oc-concrete-paths",
+                            "text": "Output contains concrete citations",
+                            "kind": "outcome",
+                            "graded_by": "script",
+                        }
+                    ],
+                },
+            )
+            write_json(run_dir / "grading.json", {"status": "pending_grading"})
+            write_json(run_dir / "llm-grade.json", {"expectations": []})
+            write_json(run_dir / "timing.json", {"status": "succeeded", "attempts": 1, "last_exit_code": 0})
+            (run_dir / "outputs" / "tool_calls.jsonl").write_text("")
+            (run_dir / "outputs" / "transcript.md").write_text("src/Demo.kt:1\n")
+            relative_iteration = Path(os.path.relpath(iteration_dir, Path.cwd()))
+
+            run_evaluation.run_grade_step(
+                iteration_dir=relative_iteration,
+                bindings_path=bindings_path,
+                mechanical_grade_command_template=None,
+                llm_grade_command_template=None,
+                workspace_root=workspace_root,
+            )
+
+            mechanical = json.loads((run_dir / "mechanical.json").read_text())
+            self.assertEqual("graded", mechanical["status"])
+        finally:
+            sys.path.remove(str(SCRIPT_DIR))
+
     def test_copilot_sdk_runner_scaffolds_smoke_command(self) -> None:
         workspace_root = SCRATCH_DIR / "workspace-root"
         workspace_root.mkdir(parents=True)
@@ -386,6 +440,70 @@ class RunEvaluationTests(unittest.TestCase):
         rendered = json.loads((iteration_dir / "rendered-catalog.json").read_text())
         self.assertEqual(["vp-disambiguate-member"], [case["id"] for case in rendered["cases"]])
         self.assertFalse((EVALUATION_DIR / "runners" / "copilot" / "run-benchmark.sh").exists())
+
+    def test_copilot_sdk_runner_fails_fast_when_disk_preflight_is_below_threshold(self) -> None:
+        workspace_root = SCRATCH_DIR / "workspace-root"
+        workspace_root.mkdir(parents=True)
+        catalog_path = SCRATCH_DIR / "catalog.json"
+        write_json(
+            catalog_path,
+            {
+                "skill_name": "kast-value-proof",
+                "version": 1,
+                "cases": [
+                    {
+                        "id": "vp-demo",
+                        "title": "Demo",
+                        "prompt": "Demo",
+                        "expectations": [],
+                    }
+                ],
+            },
+        )
+        bindings_path = SCRATCH_DIR / "bindings.json"
+        write_json(
+            bindings_path,
+            {
+                "target_repo": "demo",
+                "workspace_root": str(workspace_root),
+                "slots": {},
+            },
+        )
+        env = {
+            **os.environ,
+            "KAST_EVAL_SKIP_NPM_CI": "1",
+            "KAST_EVAL_MIN_FREE_BYTES": str(10**18),
+        }
+
+        result = subprocess.run(
+            [
+                "/bin/bash",
+                str(EVALUATION_DIR / "runners" / "copilot-sdk" / "run-benchmark.sh"),
+                "--catalog",
+                str(catalog_path),
+                "--bindings",
+                str(bindings_path),
+                "--workspace",
+                str(SCRATCH_DIR / "benchmarks"),
+                "--iteration",
+                "disk-preflight",
+                "--runs-per-config",
+                "1",
+                "--concurrency",
+                "1",
+                "--skip-dispatch",
+                "--skip-grade",
+                "--skip-aggregate",
+            ],
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("insufficient free disk", result.stderr)
+        self.assertFalse((SCRATCH_DIR / "benchmarks" / "disk-preflight").exists())
 
     def test_single_mock_benchmark_dry_run_shows_mock_codex_and_publish_contract(self) -> None:
         home = SCRATCH_DIR / "home"

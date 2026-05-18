@@ -34,6 +34,7 @@ Optional:
   --mock-payloads PATH       Mock backend payload file; generated when omitted in mock mode
   --history-root PATH        Optional archived iteration/run root for mock payload mining (repeatable)
   --grade-command-template T Shell command template for grading
+  --min-free-bytes N         Minimum free disk bytes required before dispatch
   --skip-dispatch            Render and scaffold only; do not launch SDK sessions
   --skip-grade               Skip grading phase
   --skip-aggregate           Skip aggregation phase
@@ -47,6 +48,7 @@ Environment:
   KAST_WORKSPACE_ROOT   Workspace root passed to kast rpc calls (extracted from bindings)
   KAST_EVAL_KAST_BACKEND real or mock backend selection (default: real)
   KAST_EVAL_MOCK_PAYLOADS Mock payload file path for run-one.mjs
+  KAST_EVAL_MIN_FREE_BYTES Override computed disk preflight threshold
   KAST_EVAL_SKIP_NPM_CI Set to 1 when runner dependencies are already installed
 USAGE
 }
@@ -63,6 +65,7 @@ timeout_ms=""
 configs="with_skill,tool_only,without_skill"
 kast_backend="${KAST_EVAL_KAST_BACKEND:-real}"
 mock_payloads="${KAST_EVAL_MOCK_PAYLOADS:-}"
+min_free_bytes="${KAST_EVAL_MIN_FREE_BYTES:-}"
 history_roots=()
 grade_template=""
 skip_dispatch=""
@@ -86,6 +89,7 @@ while [[ $# -gt 0 ]]; do
     --mock-payloads)   mock_payloads="$2";    shift 2 ;;
     --history-root)    history_roots+=("$2"); shift 2 ;;
     --grade-command-template) grade_template="$2"; shift 2 ;;
+    --min-free-bytes)  min_free_bytes="$2";   shift 2 ;;
     --skip-dispatch)   skip_dispatch="--skip-dispatch";      shift ;;
     --skip-grade)      skip_grade="--skip-grade";         shift ;;
     --skip-aggregate)  skip_aggregate="--skip-aggregate"; shift ;;
@@ -121,6 +125,56 @@ print(json.load(open(sys.argv[1]))["workspace_root"])
 ' "$bindings")"
 [[ -n "$workspace_root" ]] || die "bindings missing workspace_root: $bindings"
 export KAST_WORKSPACE_ROOT="$workspace_root"
+
+preflight_disk() {
+  python3 - "$workspace" "$catalog" "$configs" "$runs_per_config" "$concurrency" "$min_free_bytes" <<'PY'
+import json
+import shutil
+import sys
+from pathlib import Path
+
+workspace = Path(sys.argv[1]).resolve()
+catalog = Path(sys.argv[2]).resolve()
+configs = [item for item in sys.argv[3].split(",") if item]
+runs_per_config = int(sys.argv[4])
+concurrency = int(sys.argv[5])
+override = sys.argv[6].strip()
+
+workspace.mkdir(parents=True, exist_ok=True)
+case_count = 0
+try:
+    payload = json.loads(catalog.read_text())
+    case_count = len(payload.get("cases", []) or [])
+except Exception:
+    case_count = 0
+
+planned_runs = max(1, case_count) * max(1, len(configs)) * max(1, runs_per_config)
+base_bytes = 2 * 1024 * 1024 * 1024
+per_active_worktree_bytes = 512 * 1024 * 1024
+per_planned_transcript_bytes = 32 * 1024 * 1024
+computed = (
+    base_bytes
+    + max(1, concurrency) * per_active_worktree_bytes
+    + planned_runs * per_planned_transcript_bytes
+)
+required = int(override) if override else computed
+free = shutil.disk_usage(workspace).free
+if free < required:
+    print(
+        "error: insufficient free disk for benchmark preflight: "
+        f"free_bytes={free} required_bytes={required} planned_runs={planned_runs} workspace={workspace}",
+        file=sys.stderr,
+    )
+    sys.exit(2)
+print(
+    "preflight: disk ok "
+    f"free_bytes={free} required_bytes={required} planned_runs={planned_runs}",
+    file=sys.stderr,
+)
+PY
+}
+
+preflight_disk
 
 runner="${REPO_ROOT}/evaluation/runners/copilot-sdk/run-one.mjs"
 [[ -f "$runner" ]] || die "runner not found: $runner"
@@ -191,7 +245,7 @@ run_args=(
 )
 
 if [[ -n "$grade_template" ]]; then
-  run_args+=(--grade-command-template "$grade_template")
+  run_args+=(--mechanical-grade-command-template "$grade_template")
 fi
 if [[ -n "$skip_dispatch" ]]; then
   run_args+=("$skip_dispatch")

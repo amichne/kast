@@ -31,6 +31,21 @@ POSITIVE_COMPILE_RE = re.compile(
     r"\b(build successful|compiled successfully|compilation succeeded|no compile errors?)\b",
     re.IGNORECASE,
 )
+POSITIVE_IMPORT_UPDATE_RE = re.compile(
+    r"\b(?:imports?|import statements?)\b.{0,80}\b(?:updated|rewritten|adjusted|fixed|changed)\b|"
+    r"\b(?:updated|rewritten|adjusted|fixed|changed)\b.{0,80}\b(?:imports?|import statements?)\b",
+    re.IGNORECASE,
+)
+POSITIVE_ANNOTATION_RE = re.compile(r"@Deprecated\b|deprecated annotation", re.IGNORECASE)
+POSITIVE_SCOPE_RE = re.compile(
+    r"\b(?:no|zero)\s+(?:unrelated|orphan|unexpected|extra)\s+(?:edits?|files?|changes?)\b|"
+    r"\bonly\s+(?:the\s+)?(?:expected|target)\s+(?:files?|changes?)\b",
+    re.IGNORECASE,
+)
+POSITIVE_TEST_PROD_RE = re.compile(
+    r"\btest\b.{0,120}\b(?:prod|production)\b|\b(?:prod|production)\b.{0,120}\btest\b",
+    re.IGNORECASE,
+)
 NEGATIVE_RE = re.compile(r"\b(error|failed|missing|not found|unresolved|exception)\b", re.IGNORECASE)
 
 
@@ -310,13 +325,31 @@ def grade_no_oracle(
     if expectation_id.endswith("compiles") or expectation_id in {"or-compiles", "oe-compiles"}:
         passed = bool(POSITIVE_COMPILE_RE.search(transcript)) and not bool(NEGATIVE_RE.search(transcript))
         return passed, "Compile success phrase found." if passed else "No deterministic compile-success evidence found."
-    if expectation_id in {"or-imports-updated", "oe-annotation-present", "oe-no-orphan-edits", "oi-test-prod-split"}:
-        passed = not bool(NEGATIVE_RE.search(transcript))
-        return passed, "No negative evidence phrase found." if passed else "Negative evidence phrase found."
+    if expectation_id == "or-imports-updated":
+        passed = bool(POSITIVE_IMPORT_UPDATE_RE.search(transcript)) and not bool(NEGATIVE_RE.search(transcript))
+        return passed, "Import-update evidence found." if passed else "No deterministic import-update evidence found."
+    if expectation_id == "oe-annotation-present":
+        passed = bool(POSITIVE_ANNOTATION_RE.search(transcript)) and not bool(NEGATIVE_RE.search(transcript))
+        return passed, "Deprecated annotation evidence found." if passed else "No deterministic annotation evidence found."
+    if expectation_id == "oe-no-orphan-edits":
+        passed = bool(POSITIVE_SCOPE_RE.search(transcript)) and not bool(NEGATIVE_RE.search(transcript))
+        return passed, "Scope-control evidence found." if passed else "No deterministic scope-control evidence found."
+    if expectation_id == "oi-test-prod-split":
+        passed = bool(POSITIVE_TEST_PROD_RE.search(transcript)) and not bool(NEGATIVE_RE.search(transcript))
+        return passed, "Test/production classification evidence found." if passed else "No deterministic test/production classification evidence found."
     if expectation_id in {"ol-no-hallucination", "ow-no-extra-modules"}:
         passed = not bool(re.search(r"\b(extra|unknown|hallucinat)\w*\b", transcript, re.IGNORECASE))
         return passed, "No extra or hallucination marker found." if passed else "Extra or hallucination marker found."
     return False, f"No deterministic outcome check is defined for {expectation_id}."
+
+
+def expectation_applies(spec: dict[str, Any], configuration: str) -> bool:
+    applicability = str(spec.get("applicability", "both") or "both")
+    if applicability == "with_skill_only" and configuration != "with_skill":
+        return False
+    if applicability == "without_skill_only" and configuration != "without_skill":
+        return False
+    return True
 
 
 def compute_summary(expectations: list[dict[str, Any]]) -> dict[str, Any]:
@@ -350,6 +383,7 @@ def grade(run_dir: Path, bindings_path: Path) -> dict[str, Any]:
     transcript_path = run_dir / "outputs" / "transcript.md"
     transcript = transcript_path.read_text(encoding="utf-8", errors="replace") if transcript_path.exists() else ""
     outcome_text = outcome_grading_text(transcript)
+    configuration = run_dir.parent.name
 
     try:
         metrics = parse_run_dir(run_dir)
@@ -371,7 +405,10 @@ def grade(run_dir: Path, bindings_path: Path) -> dict[str, Any]:
             passed = False
             evidence = f"Oracle resolution failed: {exc}"
         else:
-            if spec.get("kind") == "process":
+            if not outcome_text.strip() and expectation_applies(spec, configuration):
+                passed = False
+                evidence = "No assistant-visible output captured."
+            elif spec.get("kind") == "process":
                 passed, evidence = grade_process(expectation_id, names)
             elif spec.get("oracle"):
                 passed, evidence = grade_oracle_expectation(

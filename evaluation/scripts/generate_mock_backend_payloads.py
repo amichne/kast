@@ -130,6 +130,18 @@ def extract_rpc_result(raw_result: Any) -> dict[str, Any] | None:
     return candidate if isinstance(candidate, dict) else None
 
 
+def is_infrastructure_failure_result(result: dict[str, Any]) -> bool:
+    if result.get("ok") is not False:
+        return False
+    stage = str(result.get("stage") or "").strip()
+    message = str(result.get("message") or "").lower()
+    return (
+        stage == "extension.resolve"
+        or "binary not resolved" in message
+        or "no resolved kast cli" in message
+    )
+
+
 def matcher_from_args(args: dict[str, Any], workspace_root: Path | None) -> dict[str, Any]:
     matcher = {
         key: canonicalize_paths(value, key=key, workspace_root=workspace_root)
@@ -196,6 +208,9 @@ def history_entries(history_roots: list[Path], *, workspace_root: Path | None) -
                     continue
                 result = extract_rpc_result(data.get("result"))
                 if result is None:
+                    rejected += 1
+                    continue
+                if is_infrastructure_failure_result(result):
                     rejected += 1
                     continue
                 args = starts.get(tool_call_id, {}).get("arguments")

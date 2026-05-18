@@ -235,6 +235,74 @@ class MockBackendPayloadTests(unittest.TestCase):
         self.assertEqual(2, payload["provenance_summary"]["history_entry_count"])
         self.assertTrue(all(entry["provenance"]["source_file"].endswith("events.jsonl") for entry in history_callers))
 
+    def test_generator_rejects_kast_binary_resolution_failures_from_history(self) -> None:
+        history_run = SCRATCH_DIR / "extension-failure" / "run-1"
+        write_jsonl(
+            history_run / "sdk-events.jsonl",
+            [
+                {
+                    "type": "tool.execution_start",
+                    "data": {
+                        "toolCallId": "call-extension-failure",
+                        "toolName": "kast_workspace_files",
+                        "arguments": {"includeFiles": True},
+                    },
+                },
+                {
+                    "type": "tool.execution_complete",
+                    "data": {
+                        "toolCallId": "call-extension-failure",
+                        "toolName": "kast_workspace_files",
+                        "success": True,
+                        "result": {
+                            "content": json.dumps(
+                                {
+                                    "jsonrpc": "2.0",
+                                    "id": 1,
+                                    "result": {
+                                        "ok": False,
+                                        "stage": "extension.resolve",
+                                        "message": "kast binary not resolved: no resolved Kast CLI supports direct wrapper commands",
+                                    },
+                                }
+                            )
+                        },
+                    },
+                },
+            ],
+        )
+        payload = generate_payload(
+            catalog={"skill_name": "demo", "version": 1, "cases": []},
+            bindings={
+                "target_repo": "demo",
+                "workspace_root": "/workspace/demo",
+                "slots": {
+                    "MODULE_LIST": {
+                        "modules": ["demo.main"],
+                        "expected": {"moduleFileCounts": {"demo.main": 1}},
+                    }
+                },
+            },
+            history_roots=[SCRATCH_DIR / "extension-failure"],
+            generated_at="2026-01-01T00:00:00Z",
+        )
+
+        self.assertFalse(
+            any(
+                entry["method"] == "raw/workspace-files"
+                and entry["provenance"]["source"] == "history"
+                for entry in payload["entries"]
+            )
+        )
+        self.assertTrue(
+            any(
+                entry["method"] == "raw/workspace-files"
+                and entry["provenance"]["fallback"]
+                for entry in payload["entries"]
+            )
+        )
+        self.assertEqual(1, payload["provenance_summary"]["rejected_history_entry_count"])
+
     def test_generator_adds_binding_aliases_for_common_agent_tool_variants(self) -> None:
         catalog = {"skill_name": "demo", "version": 1, "cases": []}
         bindings = {

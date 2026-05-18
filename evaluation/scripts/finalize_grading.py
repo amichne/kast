@@ -66,6 +66,28 @@ def _read_jsonl(path: Path) -> list[dict[str, Any]]:
     return out
 
 
+def _short_text(value: Any, *, limit: int = 500) -> str:
+    text = str(value or "").strip()
+    if len(text) <= limit:
+        return text
+    return text[-limit:]
+
+
+def _event_message(event: dict[str, Any]) -> str:
+    data = event.get("data")
+    if not isinstance(data, dict):
+        return _short_text(event)
+    for key in ("message", "error", "reason"):
+        value = data.get(key)
+        if isinstance(value, str) and value.strip():
+            return _short_text(value)
+        if isinstance(value, dict):
+            nested = value.get("message") or value.get("error") or value.get("reason")
+            if nested:
+                return _short_text(nested)
+    return _short_text(data)
+
+
 def _expectation_meta(metadata: dict[str, Any]) -> dict[str, dict[str, Any]]:
     """Return id-or-text -> {kind, applicability, graded_by, oracle}."""
     out: dict[str, dict[str, Any]] = {}
@@ -125,6 +147,41 @@ def _workspace_dirty(workspace_root: Path) -> bool:
         return bool(result.stdout.strip()) if result.returncode == 0 else False
     except OSError:
         return False
+
+
+def _post_run_state(mechanical_source: dict[str, Any]) -> dict[str, Any]:
+    repo_state = mechanical_source.get("repo_state", {})
+    if not isinstance(repo_state, dict):
+        return {}
+    post_run = repo_state.get("post_run", {})
+    return post_run if isinstance(post_run, dict) else {}
+
+
+def _post_run_git_sha(
+    source_integrity: dict[str, Any],
+    post_run: dict[str, Any],
+    workspace_root: Path | None,
+) -> str:
+    for value in (source_integrity.get("git_sha_post"), post_run.get("sha")):
+        text = str(value or "").strip()
+        if text:
+            return text
+    if workspace_root and workspace_root.exists():
+        return _git_head(workspace_root)
+    return ""
+
+
+def _post_run_workspace_dirty(
+    source_integrity: dict[str, Any],
+    post_run: dict[str, Any],
+    workspace_root: Path | None,
+) -> bool | None:
+    for value in (source_integrity.get("workspace_dirty_post"), post_run.get("dirty")):
+        if isinstance(value, bool):
+            return value
+    if workspace_root and workspace_root.exists():
+        return _workspace_dirty(workspace_root)
+    return None
 
 
 def normalize_expectations(
@@ -298,6 +355,16 @@ def finalize(run_dir: Path, *, workspace_root: Path | None = None) -> dict[str, 
 
     transcript_path = run_dir / "outputs" / "transcript.md"
     transcript_chars = transcript_path.stat().st_size if transcript_path.exists() else 0
+    transcript_present = transcript_chars > 0
+    sdk_events = _read_jsonl(run_dir / "sdk-events.jsonl")
+    hook_error_events = [
+        event
+        for event in sdk_events
+        if event.get("type") == "hook.end"
+        and isinstance(event.get("data"), dict)
+        and event.get("data", {}).get("success") is False
+    ]
+    session_error_events = [event for event in sdk_events if event.get("type") == "session.error"]
 
     mechanical_expectations, contradictions = normalize_expectations(
         raw_mechanical_expectations,
@@ -317,6 +384,7 @@ def finalize(run_dir: Path, *, workspace_root: Path | None = None) -> dict[str, 
     timing_block = merge_timing(mechanical_source, timing)
 
     source_integrity = mechanical_source.get("integrity", {}) if isinstance(mechanical_source.get("integrity"), dict) else {}
+    post_run = _post_run_state(mechanical_source)
     mock_backend_error_samples = [
         str(item)
         for item in source_integrity.get("mock_backend_error_samples", [])
@@ -327,12 +395,23 @@ def finalize(run_dir: Path, *, workspace_root: Path | None = None) -> dict[str, 
         "baseline_isolation_violation": configuration == "without_skill" and kast_calls > 0,
         "attempts": int(timing.get("attempts", 1) or 1),
         "flaky": int(timing.get("attempts", 1) or 1) > 1,
+        "executor_status": str(timing.get("status", "") or "").strip() or "unknown",
+        "executor_exit_code": timing.get("last_exit_code"),
+        "executor_message": _short_text(timing.get("message", "")),
+        "transcript_present": transcript_present,
+        "hook_error_count": len(hook_error_events),
+        "hook_error_samples": [_event_message(event) for event in hook_error_events[:3]],
+        "session_error_count": len(session_error_events),
+        "session_error_samples": [_event_message(event) for event in session_error_events[:3]],
         "mock_backend_error_count": int(source_integrity.get("mock_backend_error_count", 0) or 0),
         "mock_backend_error_samples": mock_backend_error_samples[:3],
     }
-    if workspace_root and workspace_root.exists():
-        integrity["git_sha_post"] = _git_head(workspace_root)
-        integrity["workspace_dirty_post"] = _workspace_dirty(workspace_root)
+    git_sha_post = _post_run_git_sha(source_integrity, post_run, workspace_root)
+    if git_sha_post:
+        integrity["git_sha_post"] = git_sha_post
+    workspace_dirty_post = _post_run_workspace_dirty(source_integrity, post_run, workspace_root)
+    if workspace_dirty_post is not None:
+        integrity["workspace_dirty_post"] = workspace_dirty_post
 
     execution_metrics = {
         "tool_calls": by_tool,
