@@ -1,5 +1,5 @@
 {
-    "method": "code-actions",
+    "method": "raw/code-actions",
     "params": {
         "position": {
             "filePath": "/workspace/src/Sample.kt",

@@ -54,7 +54,7 @@ const capturingTools = makeKastTools((method, params) => {
 });
 const filesToolByCall = capturingTools.find((t) => t.name === "kast_workspace_files");
 await filesToolByCall.handler({ includeFiles: true });
-assert.equal(capturedMethod, "workspace/files", "kast_workspace_files handler must call workspace/files");
+assert.equal(capturedMethod, "raw/workspace-files", "kast_workspace_files handler must call raw/workspace-files");
 assert.deepStrictEqual(capturedParams, { includeFiles: true });
 
 const resolveToolByCall = capturingTools.find((t) => t.name === "kast_resolve");
@@ -63,7 +63,7 @@ await resolveToolByCall.handler({
   kind: "PROPERTY",
   containingType: "io.github.amichne.kast.api.contract.FileOperation",
 });
-assert.equal(capturedMethod, "skill/resolve", "kast_resolve handler must call skill/resolve");
+assert.equal(capturedMethod, "symbol/resolve", "kast_resolve handler must call symbol/resolve");
 assert.deepStrictEqual(
   capturedParams,
   {
@@ -71,7 +71,7 @@ assert.deepStrictEqual(
     kind: "property",
     containingType: "io.github.amichne.kast.api.contract.FileOperation",
   },
-  "skill wrappers must normalize uppercase kind values for the RPC contract",
+  "symbol wrappers must normalize uppercase kind values for the RPC contract",
 );
 
 console.log("All kast-tools tests passed.");

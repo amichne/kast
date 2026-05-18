@@ -1,5 +1,5 @@
 {
-    "method": "semantic-insertion-point",
+    "method": "raw/semantic-insertion-point",
     "params": {
         "position": {
             "filePath": "/workspace/src/Sample.kt",

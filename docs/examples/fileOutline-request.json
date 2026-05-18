@@ -1,5 +1,5 @@
 {
-    "method": "file-outline",
+    "method": "raw/file-outline",
     "params": {
         "filePath": "/workspace/src/Sample.kt"
     },

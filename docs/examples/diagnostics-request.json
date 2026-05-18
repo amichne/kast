@@ -1,5 +1,5 @@
 {
-    "method": "diagnostics",
+    "method": "raw/diagnostics",
     "params": {
         "filePaths": [
             "/workspace/src/Sample.kt"

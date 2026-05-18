@@ -1,5 +1,5 @@
 {
-    "method": "workspace/search",
+    "method": "raw/workspace-search",
     "params": {
         "pattern": "greet",
         "regex": false,

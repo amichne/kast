@@ -49,7 +49,7 @@ object OperationDocRegistry {
             responseSchema = "HealthResponse",
             description = "Returns a lightweight health check confirming the daemon " +
                 "is responsive. Use this before dispatching heavier queries.",
-            cliExample = "kast health --workspace-root=/path/to/project",
+            cliExample = "kast rpc '{\"jsonrpc\":\"2.0\",\"method\":\"health\",\"id\":1}' --workspace-root=/path/to/project",
         ),
         OperationDoc(
             operationId = "runtimeStatus",
@@ -60,7 +60,7 @@ object OperationDocRegistry {
             description = "Returns the full runtime state including indexing progress, " +
                 "backend identity, and workspace root. Use this to verify readiness " +
                 "before running analysis commands.",
-            cliExample = "kast workspace status --workspace-root=/path/to/project",
+            cliExample = "kast rpc '{\"jsonrpc\":\"2.0\",\"method\":\"runtime/status\",\"id\":1}' --workspace-root=/path/to/project",
         ),
         OperationDoc(
             operationId = "capabilities",
@@ -77,7 +77,7 @@ object OperationDocRegistry {
         // Read operations
         OperationDoc(
             operationId = "resolveSymbol",
-            jsonRpcMethod = "symbol/resolve",
+            jsonRpcMethod = "raw/resolve",
             summary = "Resolve the symbol at a file position",
             tag = "read",
             capability = "RESOLVE_SYMBOL",
@@ -92,13 +92,12 @@ object OperationDocRegistry {
                 "Optional fields like `declarationScope` and `documentation` are only " +
                     "populated when the corresponding query flags are set.",
             ),
-            cliExample = "kast resolve --workspace-root=/path/to/project " +
-                "--file=/path/to/project/src/main/kotlin/Example.kt --offset=42",
+            cliExample = "kast rpc --request-file=docs/examples/resolveSymbol-request.json --workspace-root=/path/to/project",
             errorCodes = listOf("NOT_FOUND"),
         ),
         OperationDoc(
             operationId = "findReferences",
-            jsonRpcMethod = "references",
+            jsonRpcMethod = "raw/references",
             summary = "Find all references to the symbol at a file position",
             tag = "read",
             capability = "FIND_REFERENCES",
@@ -113,13 +112,12 @@ object OperationDocRegistry {
                     "in the result alongside usage sites.",
                 "Large result sets are paginated; check the `page` field for continuation.",
             ),
-            cliExample = "kast references --workspace-root=/path/to/project " +
-                "--file=/path/to/project/src/main/kotlin/Example.kt --offset=42",
+            cliExample = "kast rpc --request-file=docs/examples/findReferences-request.json --workspace-root=/path/to/project",
             errorCodes = listOf("NOT_FOUND"),
         ),
         OperationDoc(
             operationId = "callHierarchy",
-            jsonRpcMethod = "call-hierarchy",
+            jsonRpcMethod = "raw/call-hierarchy",
             summary = "Expand a bounded incoming or outgoing call tree",
             tag = "read",
             capability = "CALL_HIERARCHY",
@@ -135,14 +133,12 @@ object OperationDocRegistry {
                 "Cycles are detected and reported via truncation metadata on the " +
                     "affected node.",
             ),
-            cliExample = "kast call-hierarchy --workspace-root=/path/to/project " +
-                "--file=/path/to/project/src/main/kotlin/Example.kt --offset=42 " +
-                "--direction=INCOMING --depth=2",
+            cliExample = "kast rpc --request-file=docs/examples/callHierarchy-request.json --workspace-root=/path/to/project",
             errorCodes = listOf("NOT_FOUND", "CAPABILITY_NOT_SUPPORTED"),
         ),
         OperationDoc(
             operationId = "typeHierarchy",
-            jsonRpcMethod = "type-hierarchy",
+            jsonRpcMethod = "raw/type-hierarchy",
             summary = "Expand supertypes and subtypes from a resolved symbol",
             tag = "read",
             capability = "TYPE_HIERARCHY",
@@ -155,14 +151,12 @@ object OperationDocRegistry {
                 "Traversal is bounded by `depth` and `maxResults`. The stats object " +
                     "reports whether truncation occurred.",
             ),
-            cliExample = "kast type-hierarchy --workspace-root=/path/to/project " +
-                "--file=/path/to/project/src/main/kotlin/Example.kt --offset=42 " +
-                "--direction=BOTH",
+            cliExample = "kast rpc --request-file=docs/examples/typeHierarchy-request.json --workspace-root=/path/to/project",
             errorCodes = listOf("NOT_FOUND", "CAPABILITY_NOT_SUPPORTED"),
         ),
         OperationDoc(
             operationId = "semanticInsertionPoint",
-            jsonRpcMethod = "semantic-insertion-point",
+            jsonRpcMethod = "raw/semantic-insertion-point",
             summary = "Find the best insertion point for a new declaration",
             tag = "read",
             capability = "SEMANTIC_INSERTION_POINT",
@@ -175,14 +169,12 @@ object OperationDocRegistry {
                 "The `target` field controls where the insertion point is computed: " +
                     "class body start/end, file top/bottom, or after imports.",
             ),
-            cliExample = "kast insertion-point --workspace-root=/path/to/project " +
-                "--file=/path/to/project/src/main/kotlin/Example.kt --offset=42 " +
-                "--target=AFTER_IMPORTS",
+            cliExample = "kast rpc --request-file=docs/examples/semanticInsertionPoint-request.json --workspace-root=/path/to/project",
             errorCodes = listOf("NOT_FOUND", "CAPABILITY_NOT_SUPPORTED"),
         ),
         OperationDoc(
             operationId = "diagnostics",
-            jsonRpcMethod = "diagnostics",
+            jsonRpcMethod = "raw/diagnostics",
             summary = "Run compilation diagnostics for files",
             tag = "read",
             capability = "DIAGNOSTICS",
@@ -194,16 +186,15 @@ object OperationDocRegistry {
             behavioralNotes = listOf(
                 "Pass one or more absolute file paths. The daemon analyzes each " +
                     "file and returns all diagnostics sorted by location.",
-                "Diagnostics reflect the current daemon state. Call `workspace/refresh` " +
+                "Diagnostics reflect the current daemon state. Call `raw/workspace-refresh` " +
                     "first if files were modified outside the daemon.",
             ),
-            cliExample = "kast diagnostics --workspace-root=/path/to/project " +
-                "--file=/path/to/project/src/main/kotlin/Example.kt",
+            cliExample = "kast rpc --request-file=docs/examples/diagnostics-request.json --workspace-root=/path/to/project",
             errorCodes = listOf("NOT_FOUND"),
         ),
         OperationDoc(
             operationId = "fileOutline",
-            jsonRpcMethod = "file-outline",
+            jsonRpcMethod = "raw/file-outline",
             summary = "Get a hierarchical symbol outline for a file",
             tag = "read",
             capability = "FILE_OUTLINE",
@@ -215,13 +206,12 @@ object OperationDocRegistry {
                 "The outline includes classes, functions, properties, and other " +
                     "named declarations with their fully qualified names.",
             ),
-            cliExample = "kast outline --workspace-root=/path/to/project " +
-                "--file=/path/to/project/src/main/kotlin/Example.kt",
+            cliExample = "kast rpc --request-file=docs/examples/fileOutline-request.json --workspace-root=/path/to/project",
             errorCodes = listOf("NOT_FOUND", "CAPABILITY_NOT_SUPPORTED"),
         ),
         OperationDoc(
             operationId = "workspaceSymbolSearch",
-            jsonRpcMethod = "workspace-symbol",
+            jsonRpcMethod = "raw/workspace-symbol",
             summary = "Search the workspace for symbols by name pattern",
             tag = "read",
             capability = "WORKSPACE_SYMBOL_SEARCH",
@@ -234,13 +224,12 @@ object OperationDocRegistry {
                 "Set `regex` to true for regular expression patterns.",
                 "Results are bounded by `maxResults`. Set `kind` to filter by symbol type.",
             ),
-            cliExample = "kast workspace-symbol --workspace-root=/path/to/project " +
-                "--pattern=UserService",
+            cliExample = "kast rpc --request-file=docs/examples/workspaceSymbolSearch-request.json --workspace-root=/path/to/project",
             errorCodes = listOf("CAPABILITY_NOT_SUPPORTED"),
         ),
         OperationDoc(
             operationId = "workspaceSearch",
-            jsonRpcMethod = "workspace/search",
+            jsonRpcMethod = "raw/workspace-search",
             summary = "Search workspace file contents for text patterns",
             tag = "read",
             capability = "WORKSPACE_SEARCH",
@@ -253,13 +242,12 @@ object OperationDocRegistry {
                 "Set `regex` to true for regular expression patterns.",
                 "`caseSensitive` applies only to the content matching step.",
             ),
-            cliExample = "kast workspace-search --workspace-root=/path/to/project " +
-                "--pattern=TODO --file-glob='*.kt'",
+            cliExample = "kast rpc --request-file=docs/examples/workspaceSearch-request.json --workspace-root=/path/to/project",
             errorCodes = listOf("CAPABILITY_NOT_SUPPORTED"),
         ),
         OperationDoc(
             operationId = "workspaceFiles",
-            jsonRpcMethod = "workspace/files",
+            jsonRpcMethod = "raw/workspace-files",
             summary = "List workspace modules and source files",
             tag = "read",
             capability = "WORKSPACE_FILES",
@@ -271,12 +259,12 @@ object OperationDocRegistry {
                 "Set `includeFiles` to true to include individual file paths per module.",
                 "Filter by `moduleName` to inspect a single module.",
             ),
-            cliExample = "kast workspace-files --workspace-root=/path/to/project",
+            cliExample = "kast rpc --request-file=docs/examples/workspaceFiles-request.json --workspace-root=/path/to/project",
             errorCodes = listOf("CAPABILITY_NOT_SUPPORTED"),
         ),
         OperationDoc(
             operationId = "implementations",
-            jsonRpcMethod = "implementations",
+            jsonRpcMethod = "raw/implementations",
             summary = "Find concrete implementations and subclasses for a declaration",
             tag = "read",
             capability = "IMPLEMENTATIONS",
@@ -289,13 +277,12 @@ object OperationDocRegistry {
                 "Results include the `exhaustive` flag indicating whether all " +
                     "implementations were found within `maxResults`.",
             ),
-            cliExample = "kast implementations --workspace-root=/path/to/project " +
-                "--file=/path/to/project/src/main/kotlin/Example.kt --offset=42",
+            cliExample = "kast rpc --request-file=docs/examples/implementations-request.json --workspace-root=/path/to/project",
             errorCodes = listOf("NOT_FOUND", "CAPABILITY_NOT_SUPPORTED"),
         ),
         OperationDoc(
             operationId = "codeActions",
-            jsonRpcMethod = "code-actions",
+            jsonRpcMethod = "raw/code-actions",
             summary = "Return available code actions at a file position",
             tag = "read",
             capability = "CODE_ACTIONS",
@@ -307,13 +294,12 @@ object OperationDocRegistry {
                 "Code actions are context-dependent and may return an empty list " +
                     "when no actions are applicable.",
             ),
-            cliExample = "kast code-actions --workspace-root=/path/to/project " +
-                "--file=/path/to/project/src/main/kotlin/Example.kt --offset=42",
+            cliExample = "kast rpc --request-file=docs/examples/codeActions-request.json --workspace-root=/path/to/project",
             errorCodes = listOf("NOT_FOUND", "CAPABILITY_NOT_SUPPORTED"),
         ),
         OperationDoc(
             operationId = "completions",
-            jsonRpcMethod = "completions",
+            jsonRpcMethod = "raw/completions",
             summary = "Return completion candidates available at a file position",
             tag = "read",
             capability = "COMPLETIONS",
@@ -327,15 +313,14 @@ object OperationDocRegistry {
                     "whether all candidates were returned.",
                 "Use `kindFilter` to restrict results to specific symbol kinds.",
             ),
-            cliExample = "kast completions --workspace-root=/path/to/project " +
-                "--file=/path/to/project/src/main/kotlin/Example.kt --offset=42",
+            cliExample = "kast rpc --request-file=docs/examples/completions-request.json --workspace-root=/path/to/project",
             errorCodes = listOf("NOT_FOUND", "CAPABILITY_NOT_SUPPORTED"),
         ),
 
         // Mutation operations
         OperationDoc(
             operationId = "rename",
-            jsonRpcMethod = "rename",
+            jsonRpcMethod = "raw/rename",
             summary = "Plan a symbol rename (dry-run by default)",
             tag = "mutation",
             capability = "RENAME",
@@ -347,16 +332,14 @@ object OperationDocRegistry {
             behavioralNotes = listOf(
                 "The result includes file hashes for conflict detection when " +
                     "applying edits later.",
-                "Pair with `edits/apply` to execute the rename after review.",
+                "Pair with `raw/apply-edits` to execute the rename after review.",
             ),
-            cliExample = "kast rename --workspace-root=/path/to/project " +
-                "--file=/path/to/project/src/main/kotlin/Example.kt --offset=42 " +
-                "--new-name=updatedName",
+            cliExample = "kast rpc --request-file=docs/examples/rename-request.json --workspace-root=/path/to/project",
             errorCodes = listOf("NOT_FOUND"),
         ),
         OperationDoc(
             operationId = "optimizeImports",
-            jsonRpcMethod = "imports/optimize",
+            jsonRpcMethod = "raw/optimize-imports",
             summary = "Optimize imports for one or more files",
             tag = "mutation",
             capability = "OPTIMIZE_IMPORTS",
@@ -368,13 +351,12 @@ object OperationDocRegistry {
                 "Returns the computed edits and file hashes. The daemon applies " +
                     "changes directly.",
             ),
-            cliExample = "kast optimize-imports --workspace-root=/path/to/project " +
-                "--file=/path/to/project/src/main/kotlin/Example.kt",
+            cliExample = "kast rpc --request-file=docs/examples/optimizeImports-request.json --workspace-root=/path/to/project",
             errorCodes = listOf("NOT_FOUND", "CAPABILITY_NOT_SUPPORTED"),
         ),
         OperationDoc(
             operationId = "applyEdits",
-            jsonRpcMethod = "edits/apply",
+            jsonRpcMethod = "raw/apply-edits",
             summary = "Apply a prepared edit plan with conflict detection",
             tag = "mutation",
             capability = "APPLY_EDITS",
@@ -382,19 +364,18 @@ object OperationDocRegistry {
             responseSchema = "ApplyEditsResult",
             description = "Applies a prepared edit plan with file-hash conflict " +
                 "detection. Pass the edits and hashes returned by a prior " +
-                "`rename` or other planning operation.",
+                "`raw/rename` or other planning operation.",
             behavioralNotes = listOf(
                 "File hashes are compared before writing. If a file changed since " +
                     "the edits were planned, the operation fails with a conflict error.",
                 "Supports optional `fileOperations` for creating or deleting files.",
             ),
-            cliExample = "kast apply-edits --workspace-root=/path/to/project " +
-                "--edits-json='{...}'",
+            cliExample = "kast rpc --request-file=docs/examples/applyEdits-request.json --workspace-root=/path/to/project",
             errorCodes = listOf("CONFLICT", "VALIDATION_ERROR"),
         ),
         OperationDoc(
             operationId = "refreshWorkspace",
-            jsonRpcMethod = "workspace/refresh",
+            jsonRpcMethod = "raw/workspace-refresh",
             summary = "Force a targeted or full workspace state refresh",
             tag = "mutation",
             capability = "REFRESH_WORKSPACE",            requestSchema = "RefreshQuery",
@@ -407,7 +388,7 @@ object OperationDocRegistry {
                     "full workspace refresh.",
                 "The result reports which files were refreshed and which were removed.",
             ),
-            cliExample = "kast workspace refresh --workspace-root=/path/to/project",
+            cliExample = "kast rpc --request-file=docs/examples/refreshWorkspace-request.json --workspace-root=/path/to/project",
             errorCodes = listOf("CAPABILITY_NOT_SUPPORTED"),
         ),
     ).associateBy { it.operationId }

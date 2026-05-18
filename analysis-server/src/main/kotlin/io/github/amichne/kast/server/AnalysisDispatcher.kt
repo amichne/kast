@@ -165,7 +165,7 @@ class RpcAnalysisDispatcher(
             "health" -> encode(HealthResponse.serializer(), backend.health())
             "runtime/status" -> encode(RuntimeStatusResponse.serializer(), backend.runtimeStatus())
             "capabilities" -> encode(BackendCapabilities.serializer(), backend.capabilities())
-            "symbol/resolve" -> encode(
+            "raw/resolve" -> encode(
                 SymbolResult.serializer(),
                 backend.resolveSymbol(
                     decodeParams(SymbolQuery.serializer(), params).parsed().also {
@@ -174,7 +174,7 @@ class RpcAnalysisDispatcher(
                 ),
             )
 
-            "references" -> encode(
+            "raw/references" -> encode(
                 ReferencesResult.serializer(),
                 backend.findReferences(
                     decodeParams(ReferencesQuery.serializer(), params).parsed().also {
@@ -183,7 +183,7 @@ class RpcAnalysisDispatcher(
                 ).withLimit(config.maxResults, ::referencePageToken),
             )
 
-            "call-hierarchy" -> encode(
+            "raw/call-hierarchy" -> encode(
                 CallHierarchyResult.serializer(),
                 backend.callHierarchy(
                     decodeParams(CallHierarchyQuery.serializer(), params).parsed().also {
@@ -192,7 +192,7 @@ class RpcAnalysisDispatcher(
                 ),
             )
 
-            "type-hierarchy" -> encode(
+            "raw/type-hierarchy" -> encode(
                 TypeHierarchyResult.serializer(),
                 backend.typeHierarchy(
                     decodeParams(TypeHierarchyQuery.serializer(), params).parsed().also {
@@ -201,7 +201,7 @@ class RpcAnalysisDispatcher(
                 ),
             )
 
-            "semantic-insertion-point" -> encode(
+            "raw/semantic-insertion-point" -> encode(
                 SemanticInsertionResult.serializer(),
                 backend.semanticInsertionPoint(
                     decodeParams(SemanticInsertionQuery.serializer(), params).parsed().also {
@@ -210,7 +210,7 @@ class RpcAnalysisDispatcher(
                 ),
             )
 
-            "diagnostics" -> encode(
+            "raw/diagnostics" -> encode(
                 DiagnosticsResult.serializer(),
                 backend.diagnostics(
                     decodeParams(DiagnosticsQuery.serializer(), params).parsed().also {
@@ -219,7 +219,7 @@ class RpcAnalysisDispatcher(
                 ).withLimit(config.maxResults, ::diagnosticPageToken),
             )
 
-            "rename" -> encode(
+            "raw/rename" -> encode(
                 RenameResult.serializer(),
                 backend.rename(
                     decodeParams(RenameQuery.serializer(), params).parsed().also {
@@ -228,7 +228,7 @@ class RpcAnalysisDispatcher(
                 ),
             )
 
-            "imports/optimize" -> encode(
+            "raw/optimize-imports" -> encode(
                 ImportOptimizeResult.serializer(),
                 backend.optimizeImports(
                     decodeParams(ImportOptimizeQuery.serializer(), params).parsed().also {
@@ -237,7 +237,7 @@ class RpcAnalysisDispatcher(
                 ),
             )
 
-            "edits/apply" -> encode(
+            "raw/apply-edits" -> encode(
                 ApplyEditsResult.serializer(),
                 backend.applyEdits(
                     decodeParams(ApplyEditsQuery.serializer(), params).parsed().also { query ->
@@ -249,7 +249,7 @@ class RpcAnalysisDispatcher(
                 ),
             )
 
-            "workspace/refresh" -> encode(
+            "raw/workspace-refresh" -> encode(
                 RefreshResult.serializer(),
                 backend.refresh(
                     decodeParams(RefreshQuery.serializer(), params).parsed().also {
@@ -258,7 +258,7 @@ class RpcAnalysisDispatcher(
                 ),
             )
 
-            "file-outline" -> encode(
+            "raw/file-outline" -> encode(
                 FileOutlineResult.serializer(),
                 backend.fileOutline(
                     decodeParams(FileOutlineQuery.serializer(), params).parsed().also {
@@ -267,7 +267,7 @@ class RpcAnalysisDispatcher(
                 ),
             )
 
-            "workspace-symbol" -> encode(
+            "raw/workspace-symbol" -> encode(
                 WorkspaceSymbolResult.serializer(),
                 backend.workspaceSymbolSearch(
                     decodeParams(WorkspaceSymbolQuery.serializer(), params).parsed().also {
@@ -276,7 +276,7 @@ class RpcAnalysisDispatcher(
                 ).withLimit(config.maxResults) { workspaceSymbolPageToken(config.maxResults) },
             )
 
-            "workspace/search" -> encode(
+            "raw/workspace-search" -> encode(
                 WorkspaceSearchResult.serializer(),
                 backend.workspaceSearch(
                     decodeParams(WorkspaceSearchQuery.serializer(), params).parsed().also {
@@ -285,7 +285,7 @@ class RpcAnalysisDispatcher(
                 ),
             )
 
-            "workspace/files" -> encode(
+            "raw/workspace-files" -> encode(
                 WorkspaceFilesResult.serializer(),
                 backend.workspaceFiles(
                     decodeParams(WorkspaceFilesQuery.serializer(), params).also { query ->
@@ -300,42 +300,42 @@ class RpcAnalysisDispatcher(
                 ),
             )
 
-            "skill/resolve" -> encode(
+            "symbol/resolve" -> encode(
                 KastResolveResponse.serializer(),
                 skillRpc.resolve(decodeParams(KastResolveRequest.serializer(), params)),
             )
 
-            "skill/references" -> encode(
+            "symbol/references" -> encode(
                 KastReferencesResponse.serializer(),
                 skillRpc.references(decodeParams(KastReferencesRequest.serializer(), params)),
             )
 
-            "skill/callers" -> encode(
+            "symbol/callers" -> encode(
                 KastCallersResponse.serializer(),
                 skillRpc.callers(decodeParams(KastCallersRequest.serializer(), params)),
             )
 
-            "skill/scaffold" -> encode(
+            "symbol/scaffold" -> encode(
                 KastScaffoldResponse.serializer(),
                 skillRpc.scaffold(decodeParams(KastScaffoldRequest.serializer(), params)),
             )
 
-            "skill/rename" -> encode(
+            "symbol/rename" -> encode(
                 KastRenameResponse.serializer(),
                 skillRpc.rename(decodeParams(KastRenameRequest.serializer(), params)),
             )
 
-            "skill/write-and-validate" -> encode(
+            "symbol/write-and-validate" -> encode(
                 KastWriteAndValidateResponse.serializer(),
                 skillRpc.writeAndValidate(decodeParams(KastWriteAndValidateRequest.serializer(), params)),
             )
 
-            "skill/metrics" -> encode(
+            "database/metrics" -> encode(
                 KastMetricsResponse.serializer(),
                 skillRpc.metrics(decodeParams(KastMetricsRequest.serializer(), params)),
             )
 
-            "implementations" -> encode(
+            "raw/implementations" -> encode(
                 ImplementationsResult.serializer(),
                 backend.implementations(
                     decodeParams(ImplementationsQuery.serializer(), params).parsed().also {
@@ -344,7 +344,7 @@ class RpcAnalysisDispatcher(
                 ),
             )
 
-            "code-actions" -> encode(
+            "raw/code-actions" -> encode(
                 CodeActionsResult.serializer(),
                 backend.codeActions(
                     decodeParams(CodeActionsQuery.serializer(), params).parsed().also {
@@ -353,7 +353,7 @@ class RpcAnalysisDispatcher(
                 ),
             )
 
-            "completions" -> encode(
+            "raw/completions" -> encode(
                 CompletionsResult.serializer(),
                 backend.completions(
                     decodeParams(CompletionsQuery.serializer(), params).parsed().also {

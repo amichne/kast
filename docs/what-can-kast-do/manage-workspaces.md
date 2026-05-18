@@ -125,7 +125,7 @@ one response.
 
     ```json title="JSON-RPC request"
     {
-      "method": "workspace/files",
+      "method": "raw/workspace-files",
       "params": {
         "includeFiles": true,
         "maxFilesPerModule": 500

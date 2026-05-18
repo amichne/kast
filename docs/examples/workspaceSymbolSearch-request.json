@@ -1,5 +1,5 @@
 {
-    "method": "workspace-symbol",
+    "method": "raw/workspace-symbol",
     "params": {
         "pattern": "greet",
         "maxResults": 100,

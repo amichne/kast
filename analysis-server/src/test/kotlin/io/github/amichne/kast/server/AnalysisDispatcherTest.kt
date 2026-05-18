@@ -105,7 +105,7 @@ class AnalysisDispatcherTest {
         val file = sampleFile()
 
         val result = dispatchSuccess<SymbolResult>(
-            method = "symbol/resolve",
+            method = "raw/resolve",
             params = json.encodeToJsonElement(
                 SymbolQuery.serializer(),
                 SymbolQuery(
@@ -125,7 +125,7 @@ class AnalysisDispatcherTest {
         val file = sampleFile()
 
         val result = dispatchSuccess<SymbolResult>(
-            method = "symbol/resolve",
+            method = "raw/resolve",
             params = json.encodeToJsonElement(
                 SymbolQuery.serializer(),
                 SymbolQuery(
@@ -143,7 +143,7 @@ class AnalysisDispatcherTest {
         val file = sampleFile()
 
         val result = dispatchSuccess<FileOutlineResult>(
-            method = "file-outline",
+            method = "raw/file-outline",
             params = json.encodeToJsonElement(
                 FileOutlineQuery.serializer(),
                 FileOutlineQuery(filePath = file.toString()),
@@ -155,11 +155,11 @@ class AnalysisDispatcherTest {
     }
 
     @Test
-    fun `skill resolve dispatches named-symbol orchestration`() {
+    fun `symbol resolve dispatches named-symbol orchestration`() {
         val file = sampleFile()
 
         val result = dispatchSuccess<KastResolveResponse>(
-            method = "skill/resolve",
+            method = "symbol/resolve",
             params = json.encodeToJsonElement(
                 KastResolveRequest.serializer(),
                 KastResolveRequest(
@@ -177,11 +177,11 @@ class AnalysisDispatcherTest {
     }
 
     @Test
-    fun `skill rename dispatches rename apply and diagnostics`() {
+    fun `symbol rename dispatches rename apply and diagnostics`() {
         val file = sampleFile()
 
         val result = dispatchSuccess<KastRenameResponse>(
-            method = "skill/rename",
+            method = "symbol/rename",
             params = json.encodeToJsonElement(
                 KastRenameRequest.serializer(),
                 KastRenameBySymbolRequest(
@@ -200,11 +200,23 @@ class AnalysisDispatcherTest {
     }
 
     @Test
+    fun `legacy rpc method names are rejected`() {
+        val response = dispatchRaw("skill/resolve")
+
+        val error = json.decodeFromJsonElement(
+            JsonRpcErrorResponse.serializer(),
+            response,
+        )
+        assertEquals(-32601, error.error.code)
+        assertTrue(error.error.message.contains("skill/resolve"))
+    }
+
+    @Test
     fun `references dispatches without HTTP`() {
         val file = sampleFile()
 
         val result = dispatchSuccess<ReferencesResult>(
-            method = "references",
+            method = "raw/references",
             params = json.encodeToJsonElement(
                 ReferencesQuery.serializer(),
                 ReferencesQuery(
@@ -223,7 +235,7 @@ class AnalysisDispatcherTest {
         val file = sampleFile()
 
         val result = dispatchSuccess<CallHierarchyResult>(
-            method = "call-hierarchy",
+            method = "raw/call-hierarchy",
             params = json.encodeToJsonElement(
                 CallHierarchyQuery.serializer(),
                 CallHierarchyQuery(
@@ -245,7 +257,7 @@ class AnalysisDispatcherTest {
         val offset = file.readText().indexOf("FriendlyGreeter")
 
         val result = dispatchSuccess<TypeHierarchyResult>(
-            method = "type-hierarchy",
+            method = "raw/type-hierarchy",
             params = json.encodeToJsonElement(
                 TypeHierarchyQuery.serializer(),
                 TypeHierarchyQuery(
@@ -267,7 +279,7 @@ class AnalysisDispatcherTest {
         val content = file.readText()
 
         val result = dispatchSuccess<SemanticInsertionResult>(
-            method = "semantic-insertion-point",
+            method = "raw/semantic-insertion-point",
             params = json.encodeToJsonElement(
                 SemanticInsertionQuery.serializer(),
                 SemanticInsertionQuery(
@@ -286,7 +298,7 @@ class AnalysisDispatcherTest {
         val file = sampleFile()
 
         val result = dispatchSuccess<RenameResult>(
-            method = "rename",
+            method = "raw/rename",
             params = json.encodeToJsonElement(
                 RenameQuery.serializer(),
                 RenameQuery(
@@ -305,7 +317,7 @@ class AnalysisDispatcherTest {
         val file = sampleFile()
 
         val result = dispatchSuccess<ImportOptimizeResult>(
-            method = "imports/optimize",
+            method = "raw/optimize-imports",
             params = json.encodeToJsonElement(
                 ImportOptimizeQuery.serializer(),
                 ImportOptimizeQuery(
@@ -324,7 +336,7 @@ class AnalysisDispatcherTest {
         val file = sampleFile()
         val originalContent = file.readText()
         val result = dispatchSuccess<ApplyEditsResult>(
-            method = "edits/apply",
+            method = "raw/apply-edits",
             params = json.encodeToJsonElement(
                 ApplyEditsQuery.serializer(),
                 ApplyEditsQuery(
@@ -353,7 +365,7 @@ class AnalysisDispatcherTest {
     @Test
     fun `apply edits validates absolute file operation paths`() {
         val response = dispatchRaw(
-            method = "edits/apply",
+            method = "raw/apply-edits",
             params = json.encodeToJsonElement(
                 ApplyEditsQuery.serializer(),
                 ApplyEditsQuery(
@@ -379,7 +391,7 @@ class AnalysisDispatcherTest {
     @Test
     fun `imports optimize validates absolute file paths`() {
         val response = dispatchRaw(
-            method = "imports/optimize",
+            method = "raw/optimize-imports",
             params = json.encodeToJsonElement(
                 ImportOptimizeQuery.serializer(),
                 ImportOptimizeQuery(filePaths = listOf("relative/File.kt")),
@@ -398,7 +410,7 @@ class AnalysisDispatcherTest {
         val file = sampleFile()
 
         val result = dispatchSuccess<RefreshResult>(
-            method = "workspace/refresh",
+            method = "raw/workspace-refresh",
             params = json.encodeToJsonElement(
                 RefreshQuery.serializer(),
                 RefreshQuery(filePaths = listOf(file.toString())),
@@ -415,7 +427,7 @@ class AnalysisDispatcherTest {
         val file = sampleFile()
 
         val result = dispatchSuccess<FileOutlineResult>(
-            method = "file-outline",
+            method = "raw/file-outline",
             params = json.encodeToJsonElement(
                 FileOutlineQuery.serializer(),
                 FileOutlineQuery(filePath = file.toString()),
@@ -429,7 +441,7 @@ class AnalysisDispatcherTest {
     @Test
     fun `file outline validates absolute file path`() {
         val response = dispatchRaw(
-            method = "file-outline",
+            method = "raw/file-outline",
             params = json.encodeToJsonElement(
                 FileOutlineQuery.serializer(),
                 FileOutlineQuery(filePath = "relative/File.kt"),
@@ -446,7 +458,7 @@ class AnalysisDispatcherTest {
     @Test
     fun `workspace files dispatches without HTTP`() {
         val result = dispatchSuccess<WorkspaceFilesResult>(
-            method = "workspace/files",
+            method = "raw/workspace-files",
             params = json.encodeToJsonElement(
                 WorkspaceFilesQuery.serializer(),
                 WorkspaceFilesQuery(),
@@ -460,7 +472,7 @@ class AnalysisDispatcherTest {
     @Test
     fun `workspace files filters by module name`() {
         val result = dispatchSuccess<WorkspaceFilesResult>(
-            method = "workspace/files",
+            method = "raw/workspace-files",
             params = json.encodeToJsonElement(
                 WorkspaceFilesQuery.serializer(),
                 WorkspaceFilesQuery(moduleName = "nonexistent"),
@@ -473,7 +485,7 @@ class AnalysisDispatcherTest {
     @Test
     fun `workspace files rejects blank module name`() {
         val response = dispatchRaw(
-            method = "workspace/files",
+            method = "raw/workspace-files",
             params = json.encodeToJsonElement(
                 WorkspaceFilesQuery.serializer(),
                 WorkspaceFilesQuery(moduleName = "  "),
@@ -490,7 +502,7 @@ class AnalysisDispatcherTest {
     @Test
     fun `workspace files rejects non positive file cap`() {
         val response = dispatchRaw(
-            method = "workspace/files",
+            method = "raw/workspace-files",
             params = json.encodeToJsonElement(
                 WorkspaceFilesQuery.serializer(),
                 WorkspaceFilesQuery(includeFiles = true, maxFilesPerModule = 0),
@@ -507,7 +519,7 @@ class AnalysisDispatcherTest {
     @Test
     fun `workspace files rejects file cap above server max results`() {
         val response = dispatchRaw(
-            method = "workspace/files",
+            method = "raw/workspace-files",
             params = json.encodeToJsonElement(
                 WorkspaceFilesQuery.serializer(),
                 WorkspaceFilesQuery(includeFiles = true, maxFilesPerModule = 501),
@@ -524,7 +536,7 @@ class AnalysisDispatcherTest {
     @Test
     fun `workspace symbol dispatches without HTTP`() {
         val result = dispatchSuccess<WorkspaceSymbolResult>(
-            method = "workspace-symbol",
+            method = "raw/workspace-symbol",
             params = json.encodeToJsonElement(
                 WorkspaceSymbolQuery.serializer(),
                 WorkspaceSymbolQuery(pattern = "greet"),
@@ -538,7 +550,7 @@ class AnalysisDispatcherTest {
     @Test
     fun `workspace symbol rejects blank pattern`() {
         val response = dispatchRaw(
-            method = "workspace-symbol",
+            method = "raw/workspace-symbol",
             params = json.encodeToJsonElement(
                 WorkspaceSymbolQuery.serializer(),
                 WorkspaceSymbolQuery(pattern = "  "),
@@ -555,7 +567,7 @@ class AnalysisDispatcherTest {
     @Test
     fun `workspace symbol rejects zero max results`() {
         val response = dispatchRaw(
-            method = "workspace-symbol",
+            method = "raw/workspace-symbol",
             params = json.encodeToJsonElement(
                 WorkspaceSymbolQuery.serializer(),
                 WorkspaceSymbolQuery(pattern = "greet", maxResults = 0),
@@ -572,7 +584,7 @@ class AnalysisDispatcherTest {
     @Test
     fun `workspace search dispatches without HTTP`() {
         val result = dispatchSuccess<WorkspaceSearchResult>(
-            method = "workspace/search",
+            method = "raw/workspace-search",
             params = json.encodeToJsonElement(
                 WorkspaceSearchQuery.serializer(),
                 WorkspaceSearchQuery(pattern = "greet"),
@@ -586,7 +598,7 @@ class AnalysisDispatcherTest {
     @Test
     fun `workspace search rejects blank pattern`() {
         val response = dispatchRaw(
-            method = "workspace/search",
+            method = "raw/workspace-search",
             params = json.encodeToJsonElement(
                 WorkspaceSearchQuery.serializer(),
                 WorkspaceSearchQuery(pattern = "  "),
@@ -606,7 +618,7 @@ class AnalysisDispatcherTest {
         val file = sampleTypeFile()
         val offset = file.readText().indexOf("FriendlyGreeter")
         val result = dispatchSuccess<ImplementationsResult>(
-            method = "implementations",
+            method = "raw/implementations",
             params = json.encodeToJsonElement(
                 ImplementationsQuery.serializer(),
                 ImplementationsQuery(
@@ -622,7 +634,7 @@ class AnalysisDispatcherTest {
     fun `code actions dispatches without HTTP`() {
         val file = sampleFile()
         val result = dispatchSuccess<CodeActionsResult>(
-            method = "code-actions",
+            method = "raw/code-actions",
             params = json.encodeToJsonElement(
                 CodeActionsQuery.serializer(),
                 CodeActionsQuery(
@@ -637,7 +649,7 @@ class AnalysisDispatcherTest {
     fun `completions dispatches without HTTP`() {
         val file = sampleFile()
         val result = dispatchSuccess<CompletionsResult>(
-            method = "completions",
+            method = "raw/completions",
             params = json.encodeToJsonElement(
                 CompletionsQuery.serializer(),
                 CompletionsQuery(
@@ -651,7 +663,7 @@ class AnalysisDispatcherTest {
     @Test
     fun `invalid diagnostics params return rpc error payload`() {
         val response = dispatchRaw(
-            method = "diagnostics",
+            method = "raw/diagnostics",
             params = json.encodeToJsonElement(
                 DiagnosticsQuery.serializer(),
                 DiagnosticsQuery(filePaths = listOf("relative/File.kt")),
@@ -670,7 +682,7 @@ class AnalysisDispatcherTest {
     fun `invalid call hierarchy max total calls returns rpc error payload`() {
         val file = sampleFile()
         val response = dispatchRaw(
-            method = "call-hierarchy",
+            method = "raw/call-hierarchy",
             params = json.encodeToJsonElement(
                 CallHierarchyQuery.serializer(),
                 CallHierarchyQuery(
@@ -695,7 +707,7 @@ class AnalysisDispatcherTest {
         val file = sampleTypeFile()
         val offset = file.readText().indexOf("FriendlyGreeter")
         val response = dispatchRaw(
-            method = "type-hierarchy",
+            method = "raw/type-hierarchy",
             params = json.encodeToJsonElement(
                 TypeHierarchyQuery.serializer(),
                 TypeHierarchyQuery(

@@ -1,5 +1,5 @@
 {
-    "method": "rename",
+    "method": "raw/rename",
     "params": {
         "position": {
             "filePath": "/workspace/src/Sample.kt",

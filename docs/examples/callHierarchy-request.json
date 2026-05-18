@@ -1,5 +1,5 @@
 {
-    "method": "call-hierarchy",
+    "method": "raw/call-hierarchy",
     "params": {
         "position": {
             "filePath": "/workspace/src/Sample.kt",

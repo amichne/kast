@@ -79,11 +79,9 @@ of the declaration at that offset.
     prints the byte offset of every match.
 
 ```console linenums="1" title="Resolve a symbol"
-kast resolve \
-  --backend-name=standalone \
-  --workspace-root=$(pwd) \
-  --file-path=$(pwd)/src/main/kotlin/App.kt \
-  --offset=42
+kast rpc \
+  '{"jsonrpc":"2.0","method":"raw/resolve","params":{"position":{"filePath":"$(pwd)/src/main/kotlin/App.kt","offset":42}},"id":1}' \
+  --workspace-root=$(pwd)
 ```
 
 ```json hl_lines="3-4" title="Example response"
@@ -111,11 +109,9 @@ command can stay anchored to this declaration without ambiguity.
 Same file, same offset. Ask for every reference across the workspace.
 
 ```console linenums="1" title="Find references"
-kast references \
-  --backend-name=standalone \
-  --workspace-root=$(pwd) \
-  --file-path=$(pwd)/src/main/kotlin/App.kt \
-  --offset=42
+kast rpc \
+  '{"jsonrpc":"2.0","method":"raw/references","params":{"position":{"filePath":"$(pwd)/src/main/kotlin/App.kt","offset":42}},"id":1}' \
+  --workspace-root=$(pwd)
 ```
 
 ```json hl_lines="10-11" title="Example response"

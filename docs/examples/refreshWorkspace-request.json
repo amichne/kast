@@ -1,5 +1,5 @@
 {
-    "method": "workspace/refresh",
+    "method": "raw/workspace-refresh",
     "params": {
         "filePaths": [
             "/workspace/src/Sample.kt"

@@ -60,7 +60,7 @@ the workspace — without writing anything. The response carries
 
     ```json title="rename request"
     {
-      "method": "rename",
+      "method": "raw/rename",
       "id": 1,
       "jsonrpc": "2.0",
       "params": {
@@ -140,7 +140,7 @@ and rejects the request if anything drifted.
 
     ```json title="edits/apply request" hl_lines="14 15 16 17 18 19"
     {
-      "method": "edits/apply",
+      "method": "raw/apply-edits",
       "id": 2,
       "jsonrpc": "2.0",
       "params": {
@@ -245,7 +245,7 @@ edit plan with `fileHashes`, you review, you apply.
 
     ```json title="imports/optimize request"
     {
-      "method": "imports/optimize",
+      "method": "raw/optimize-imports",
       "id": 3,
       "jsonrpc": "2.0",
       "params": {

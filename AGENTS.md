@@ -86,6 +86,16 @@ remain the preferred interface. The `kast rpc` CLI command is the universal
 fallback — it accepts any JSON-RPC method the daemon supports and auto-ensures
 the daemon.
 
+The v1 RPC surface is split into three explicit method families plus system
+methods:
+- `symbol/*`: name-based orchestration such as `symbol/resolve`,
+  `symbol/references`, `symbol/callers`, `symbol/scaffold`,
+  `symbol/rename`, and `symbol/write-and-validate`
+- `raw/*`: direct offset/file-based backend operations such as `raw/resolve`,
+  `raw/diagnostics`, `raw/workspace-files`, and `raw/workspace-search`
+- `database/*`: index-backed queries such as `database/metrics`
+- system methods: `health`, `runtime/status`, and `capabilities`
+
 Native tool names for discoverability: `kast_workspace_files`,
 `kast_workspace_symbol`, `kast_workspace_search`, `kast_file_outline`,
 `kast_scaffold`, `kast_resolve`, `kast_references`, `kast_callers`,

@@ -1398,6 +1398,16 @@ internal object CliCommandCatalog {
         listOf("rename"),
         listOf("optimize-imports"),
         listOf("apply-edits"),
+        listOf("metrics", "fan-in"),
+        listOf("metrics", "fan-out"),
+        listOf("metrics", "coupling"),
+        listOf("metrics", "low-usage"),
+        listOf("metrics", "cycles"),
+        listOf("metrics", "module-depth"),
+        listOf("metrics", "dead-code"),
+        listOf("metrics", "impact"),
+        listOf("metrics", "graph"),
+        listOf("skill", "metrics"),
     )
     private val activeCommands: List<CliCommandMetadata> = commands.filterNot { metadata ->
         metadata.path in removedCommandPaths || metadata.path.firstOrNull() == "skill"

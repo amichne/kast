@@ -29,28 +29,28 @@ details from this file — defer to the spec.
 
 ```bash
 # List workspace modules
-"$KAST_CLI_PATH" rpc '{"jsonrpc":"2.0","method":"workspace/files","params":{"includeFiles":true},"id":1}'
+"$KAST_CLI_PATH" rpc '{"jsonrpc":"2.0","method":"raw/workspace-files","params":{"includeFiles":true},"id":1}'
 
 # Resolve an ambiguous symbol
-"$KAST_CLI_PATH" rpc '{"jsonrpc":"2.0","method":"skill/resolve","params":{"symbol":"date","kind":"property","containingType":"com.example.EventBean"},"id":1}'
+"$KAST_CLI_PATH" rpc '{"jsonrpc":"2.0","method":"symbol/resolve","params":{"symbol":"date","kind":"property","containingType":"com.example.EventBean"},"id":1}'
 
 # Find usages
-"$KAST_CLI_PATH" rpc '{"jsonrpc":"2.0","method":"skill/references","params":{"symbol":"EventBean","includeDeclaration":true},"id":1}'
+"$KAST_CLI_PATH" rpc '{"jsonrpc":"2.0","method":"symbol/references","params":{"symbol":"EventBean","includeDeclaration":true},"id":1}'
 
 # Trace callers
-"$KAST_CLI_PATH" rpc '{"jsonrpc":"2.0","method":"skill/callers","params":{"symbol":"process","direction":"incoming","depth":3},"id":1}'
+"$KAST_CLI_PATH" rpc '{"jsonrpc":"2.0","method":"symbol/callers","params":{"symbol":"process","direction":"incoming","depth":3},"id":1}'
 
 # Scaffold a file
-"$KAST_CLI_PATH" rpc '{"jsonrpc":"2.0","method":"skill/scaffold","params":{"targetFile":"/abs/path/EventBean.kt"},"id":1}'
+"$KAST_CLI_PATH" rpc '{"jsonrpc":"2.0","method":"symbol/scaffold","params":{"targetFile":"/abs/path/EventBean.kt"},"id":1}'
 
 # Rename
-"$KAST_CLI_PATH" rpc '{"jsonrpc":"2.0","method":"skill/rename","params":{"type":"RENAME_BY_SYMBOL_REQUEST","symbol":"OldName","newName":"NewName"},"id":1}'
+"$KAST_CLI_PATH" rpc '{"jsonrpc":"2.0","method":"symbol/rename","params":{"type":"RENAME_BY_SYMBOL_REQUEST","symbol":"OldName","newName":"NewName"},"id":1}'
 
 # Write and validate
-"$KAST_CLI_PATH" rpc '{"jsonrpc":"2.0","method":"skill/write-and-validate","params":{"type":"REPLACE_RANGE_REQUEST","filePath":"/abs/path/File.kt","startOffset":120,"endOffset":240,"content":"..."},"id":1}'
+"$KAST_CLI_PATH" rpc '{"jsonrpc":"2.0","method":"symbol/write-and-validate","params":{"type":"REPLACE_RANGE_REQUEST","filePath":"/abs/path/File.kt","startOffset":120,"endOffset":240,"content":"..."},"id":1}'
 
 # Diagnostics
-"$KAST_CLI_PATH" rpc '{"jsonrpc":"2.0","method":"diagnostics","params":{"filePaths":["/abs/path/File.kt"]},"id":1}'
+"$KAST_CLI_PATH" rpc '{"jsonrpc":"2.0","method":"raw/diagnostics","params":{"filePaths":["/abs/path/File.kt"]},"id":1}'
 ```
 
 ## Recovery

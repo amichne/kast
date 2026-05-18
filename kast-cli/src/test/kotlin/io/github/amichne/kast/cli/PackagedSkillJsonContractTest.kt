@@ -103,7 +103,7 @@ class PackagedSkillJsonContractTest {
             }
             val resolveRpcRequest = buildJsonObject {
                 put("jsonrpc", "2.0")
-                put("method", "skill/resolve")
+                put("method", "symbol/resolve")
                 put("params", resolveRequest)
                 put("id", 1)
             }
@@ -147,7 +147,7 @@ class PackagedSkillJsonContractTest {
                     JsonObject.serializer(),
                     buildJsonObject {
                         put("jsonrpc", "2.0")
-                        put("method", "diagnostics")
+                        put("method", "raw/diagnostics")
                         put("params", diagnosticsRequest)
                         put("id", 1)
                     },
@@ -168,7 +168,7 @@ class PackagedSkillJsonContractTest {
                 .parseToJsonElement(diagnosticsResult.stdout)
                 .jsonObject
             val diagnosticsPayload = diagnosticsEnvelope["result"]?.jsonObject ?: diagnosticsEnvelope
-            assertEquals(true, diagnosticsPayload?.get("schemaVersion") != null)
+            assertEquals(true, diagnosticsPayload["schemaVersion"] != null)
         } finally {
             runCommand(
                 command = listOf(kastBinary, "workspace", "stop", "--workspace-root=$workspaceRoot"),
@@ -216,7 +216,7 @@ class PackagedSkillJsonContractTest {
                         JsonObject.serializer(),
                         buildJsonObject {
                             put("jsonrpc", "2.0")
-                            put("method", "diagnostics")
+                            put("method", "raw/diagnostics")
                             put("params", diagnosticsRequest)
                             put("id", 1)
                         },
@@ -231,7 +231,7 @@ class PackagedSkillJsonContractTest {
                 .parseToJsonElement(diagnosticsResult.stdout)
                 .jsonObject
             val diagnosticsPayload = diagnosticsEnvelope["result"]?.jsonObject ?: diagnosticsEnvelope
-            assertEquals(true, diagnosticsPayload?.get("diagnostics")?.toString() == "[]")
+            assertEquals(true, diagnosticsPayload["diagnostics"]?.toString() == "[]")
         } finally {
             runCommand(
                 command = listOf(kastBinary, "workspace", "stop", "--workspace-root=$repoRoot"),

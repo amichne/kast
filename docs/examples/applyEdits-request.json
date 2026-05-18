@@ -1,5 +1,5 @@
 {
-    "method": "edits/apply",
+    "method": "raw/apply-edits",
     "params": {
         "edits": [
             {
