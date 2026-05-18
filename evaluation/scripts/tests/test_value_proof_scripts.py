@@ -15,6 +15,7 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from dispatch_runs import DispatchOptions, dispatch_iteration
+from parse_tool_calls import parse_run_dir
 from run_value_proof import scaffold_workspace
 
 
@@ -204,6 +205,42 @@ class ValueProofScriptTests(unittest.TestCase):
 
         self.assertNotEqual(0, result.returncode)
         self.assertIn("0 succeeded, 1 failed, 0 retried", result.stdout)
+
+    def test_parse_tool_calls_reads_copilot_json_output(self) -> None:
+        run_dir = TEST_WORKSPACE / "run"
+        outputs = run_dir / "outputs"
+        outputs.mkdir(parents=True)
+        transcript = [
+            {
+                "type": "assistant.message",
+                "data": {
+                    "content": "I will resolve the symbol.",
+                    "toolRequests": [
+                        {
+                            "name": "kast_resolve",
+                            "arguments": {"symbol": "Demo.name"},
+                        }
+                    ],
+                },
+            },
+            {
+                "type": "tool.completed",
+                "data": {
+                    "toolName": "kast_references",
+                    "result": {"ok": True},
+                },
+            },
+        ]
+        (outputs / "transcript.md").write_text("\n".join(json.dumps(row) for row in transcript) + "\n")
+
+        summary = parse_run_dir(run_dir)
+
+        self.assertEqual(2, summary["total_tool_calls"])
+        self.assertEqual(2, summary["kast_calls"])
+        self.assertEqual(
+            {"kast_resolve": 1, "kast_references": 1},
+            summary["tool_calls"],
+        )
 
     def create_iteration_fixture(
         self,

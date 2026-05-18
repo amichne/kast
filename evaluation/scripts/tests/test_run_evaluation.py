@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -23,6 +24,31 @@ def write_json(path: Path, payload: dict[str, object]) -> None:
 class RunEvaluationTests(unittest.TestCase):
     def tearDown(self) -> None:
         shutil.rmtree(SCRATCH_DIR, ignore_errors=True)
+
+    def test_orchestrator_forwards_concurrency_and_max_retries(self) -> None:
+        sys.path.insert(0, str(SCRIPT_DIR))
+        try:
+            import run_evaluation
+
+            parser = run_evaluation.build_parser()
+            args = parser.parse_args(
+                [
+                    "--catalog", "c.json",
+                    "--bindings", "b.json",
+                    "--workspace", "w",
+                    "--concurrency", "7",
+                    "--max-retries", "3",
+                ]
+            )
+            self.assertEqual(7, args.concurrency)
+            self.assertEqual(3, args.max_retries)
+            defaults = parser.parse_args(
+                ["--catalog", "c.json", "--bindings", "b.json", "--workspace", "w"]
+            )
+            self.assertEqual(4, defaults.concurrency)
+            self.assertEqual(1, defaults.max_retries)
+        finally:
+            sys.path.remove(str(SCRIPT_DIR))
 
     def test_run_evaluation_orchestrates_end_to_end(self) -> None:
         workspace_root = SCRATCH_DIR / "workspace-root"
@@ -239,6 +265,149 @@ class RunEvaluationTests(unittest.TestCase):
         )
         self.assertTrue((iteration_dir / "rendered-catalog.json").exists())
         self.assertTrue((iteration_dir / "bindings.json").exists())
+        persisted_bindings = json.loads((iteration_dir / "bindings.json").read_text())
+        self.assertIn("slots", persisted_bindings)
+        self.assertIn("DISAMBIGUATE_MEMBER", persisted_bindings["slots"])
+
+    def test_copilot_runner_smoke_command_grades_and_aggregates(self) -> None:
+        workspace_root = SCRATCH_DIR / "workspace-root"
+        workspace_root.mkdir(parents=True)
+        subprocess.run(["git", "init"], cwd=workspace_root, check=True, capture_output=True)
+        source_file = workspace_root / "src" / "Demo.kt"
+        source_file.parent.mkdir(parents=True)
+        source_file.write_text("class Demo { val name = \"demo\" }\nfun use(d: Demo) = d.name\n")
+        subprocess.run(["git", "add", "src/Demo.kt"], cwd=workspace_root, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-m", "init"],
+            cwd=workspace_root,
+            check=True,
+            capture_output=True,
+        )
+
+        catalog_path = SCRATCH_DIR / "catalog.json"
+        write_json(
+            catalog_path,
+            {
+                "skill_name": "kast-value-proof",
+                "version": 1,
+                "cases": [
+                    {
+                        "id": "vp-disambiguate-member",
+                        "title": "Disambiguate member",
+                        "prompt": "Find {{DISAMBIGUATE_MEMBER.symbol}}",
+                        "expectations": [
+                            {
+                                "id": "om-recall",
+                                "text": "Reports usages in every expected file",
+                                "kind": "outcome",
+                                "dimension": "accuracy",
+                                "applicability": "both",
+                                "oracle": "DISAMBIGUATE_MEMBER.expected.expectedFiles",
+                                "graded_by": "script",
+                            },
+                            {
+                                "id": "pm-uses-resolve",
+                                "text": "Resolves the member before scanning usages",
+                                "kind": "process",
+                                "dimension": "reliability",
+                                "applicability": "with_skill_only",
+                                "graded_by": "script",
+                            },
+                        ],
+                    }
+                ],
+            },
+        )
+        bindings_path = SCRATCH_DIR / "bindings.json"
+        write_json(
+            bindings_path,
+            {
+                "target_repo": "demo",
+                "workspace_root": str(workspace_root),
+                "slots": {
+                    "DISAMBIGUATE_MEMBER": {
+                        "symbol": "name",
+                        "fqName": "demo.Demo.name",
+                        "file": "src/Demo.kt",
+                        "description": "demo",
+                        "containingType": "demo.Demo",
+                        "expected": {
+                            "minimumUsageSites": 1,
+                            "expectedFiles": ["src/Demo.kt"],
+                            "decoyFiles": [],
+                        },
+                    }
+                },
+            },
+        )
+        fake_copilot = SCRATCH_DIR / "fake-copilot.py"
+        prompt_capture = SCRATCH_DIR / "copilot-prompt.txt"
+        argv_capture = SCRATCH_DIR / "copilot-argv.json"
+        fake_copilot.write_text(
+            textwrap.dedent(
+                f"""
+                #!/usr/bin/env python3
+                import json
+                import pathlib
+                import sys
+                prompt = sys.argv[sys.argv.index('--prompt') + 1]
+                pathlib.Path({str(prompt_capture)!r}).write_text(prompt)
+                pathlib.Path({str(argv_capture)!r}).write_text(json.dumps(sys.argv))
+                if 'Save the full transcript' in prompt or 'After the grader runs' in prompt:
+                    raise SystemExit(42)
+                if 'Find name' not in prompt:
+                    raise SystemExit(43)
+                print('```tool:call')
+                print('{{"tool":"kast_resolve","arguments":{{"symbol":"name"}}}}')
+                print('```')
+                print('src/Demo.kt:2 uses demo.Demo.name')
+                """
+            ).strip()
+            + "\n"
+        )
+        fake_copilot.chmod(0o755)
+
+        env = {**os.environ, "COPILOT_BIN": str(fake_copilot)}
+        result = subprocess.run(
+            [
+                str(EVALUATION_DIR / "runners" / "copilot" / "run-benchmark.sh"),
+                "--catalog",
+                str(catalog_path),
+                "--bindings",
+                str(bindings_path),
+                "--workspace",
+                str(SCRATCH_DIR / "benchmarks"),
+                "--iteration",
+                "smoke",
+                "--runs-per-config",
+                "1",
+                "--concurrency",
+                "1",
+                "--",
+                "--case",
+                "vp-disambiguate-member",
+            ],
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        benchmark_path = SCRATCH_DIR / "benchmarks" / "smoke" / "benchmark.json"
+        self.assertTrue(benchmark_path.exists())
+        benchmark = json.loads(benchmark_path.read_text())
+        self.assertEqual(["vp-disambiguate-member"], benchmark["metadata"]["eval_ids"])
+        submitted_prompt = prompt_capture.read_text()
+        self.assertEqual("Find name", submitted_prompt)
+        submitted_argv = json.loads(argv_capture.read_text())
+        self.assertIn("--output-format", submitted_argv)
+        self.assertEqual("json", submitted_argv[submitted_argv.index("--output-format") + 1])
+        self.assertIn("--allow-all", submitted_argv)
+        self.assertNotIn("--allow-all-tools", submitted_argv)
+        self.assertIn("--experimental", submitted_argv)
+        self.assertIn("-C", submitted_argv)
+        self.assertEqual(str(workspace_root), submitted_argv[submitted_argv.index("-C") + 1])
 
 
 if __name__ == "__main__":

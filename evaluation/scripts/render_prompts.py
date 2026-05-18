@@ -75,11 +75,7 @@ def render_catalog(catalog: dict[str, Any], bindings: dict[str, Any]) -> dict[st
     if not isinstance(cases, list):
         raise ValueError("Catalog must contain a 'cases' array.")
     rendered = render_value(catalog, bindings)
-    rendered["bindings"] = {
-        "target_repo": bindings.get("target_repo", ""),
-        "workspace_root": bindings.get("workspace_root", ""),
-        "git_sha": bindings.get("git_sha", ""),
-    }
+    rendered["bindings"] = bindings
     leftovers = _find_unresolved(rendered)
     if leftovers:
         sample = ", ".join(sorted(leftovers)[:5])

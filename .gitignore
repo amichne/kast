@@ -128,6 +128,10 @@ dist/
 .agents/skills/kast/.kast-version
 .benchmarks/
 
+# Python bytecode (from evaluation/scripts/ and friends)
+__pycache__/
+*.pyc
+
 # Agent-tool-specific files (not part of kast product)
 .claude/
 skills-lock.json
