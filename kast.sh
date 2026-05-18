@@ -1601,7 +1601,7 @@ _install_summary_phase() {
   printf '  %s\n' "$(colorize '1;33' 'Next steps:')" >&2
   printf '  %s\n' "  Open a new shell (or: source ${config_file})" >&2
   printf '  %s\n' "  kast --help" >&2
-  printf '  %s\n' "  cd /your/kotlin/project && kast workspace ensure" >&2
+  printf '  %s\n' "  cd /your/kotlin/project && kast up" >&2
   if [[ "$intellij_action" == "push" ]]; then
     printf '  %s\n' "  Restart IntelliJ IDEA to activate the plugin" >&2
   elif [[ "$intellij_action" == "zip" ]]; then
@@ -1912,7 +1912,7 @@ USAGE
     log "Config:        $(_install_config_dir)/env"
     log "Components:    ${components}"
     [[ -n "${rc_file:-}" ]] && log "Shell RC:      ${rc_file}"
-    log "Next:          cd /your/kotlin/project && kast workspace ensure"
+    log "Next:          cd /your/kotlin/project && kast up"
     log_section "Ready"
     if [[ "$install_cli" == "true" ]]; then
       log_success "Launcher: ${bin_dir}/kast"

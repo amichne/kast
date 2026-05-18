@@ -39,7 +39,7 @@ one — the daemon discovers your project and indexes Kotlin files. After
 that, you're hitting a warm session.
 
 ```console linenums="1" title="Start the daemon"
-kast workspace ensure \
+kast up \
   --backend-name=standalone \
   --workspace-root=$(pwd)
 ```
@@ -51,7 +51,7 @@ sequenceDiagram
     participant Daemon as "Analysis daemon"
     participant K2 as "K2 engine"
 
-    You->>CLI: workspace ensure
+    You->>CLI: up
     CLI->>Daemon: Start process
     Daemon->>K2: Bootstrap session
     K2-->>Daemon: Indexing complete
@@ -146,7 +146,7 @@ every candidate file. The reference list is complete for this workspace
 Free the resources when you're done.
 
 ```console title="Stop the daemon"
-kast workspace stop \
+kast stop \
   --backend-name=standalone \
   --workspace-root=$(pwd)
 ```

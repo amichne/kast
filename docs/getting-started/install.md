@@ -70,7 +70,7 @@ explicitly.
 | What you want                              | Mode                            | How the backend starts                            |
 |--------------------------------------------|---------------------------------|---------------------------------------------------|
 | IntelliJ already open on the project       | `minimal`                       | Plugin starts with the IDE                        |
-| Terminal, CI, or agent work                | `full`                          | `kast workspace ensure --workspace-root=$(pwd)`   |
+| Terminal, CI, or agent work                | `full`                          | `kast up --workspace-root=$(pwd)`                 |
 | Both                                       | `full` + plugin install         | Pin per session with `--backend-name`             |
 
 ## Install modes

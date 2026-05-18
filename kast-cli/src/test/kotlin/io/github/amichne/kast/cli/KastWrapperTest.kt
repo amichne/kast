@@ -80,8 +80,7 @@ class KastWrapperTest {
         val daemon = startIsolatedRealBackend(workspace)
         try {
             val ensure = runCli(
-                "workspace",
-                "ensure",
+                "up",
                 "--workspace-root=$workspace",
             )
             val ensureResult = defaultCliJson().decodeFromString<WorkspaceEnsureResult>(ensure.stdout)
@@ -90,7 +89,6 @@ class KastWrapperTest {
             assertTrue(ensure.stderr.contains("daemon:"))
 
             val status = runCli(
-                "workspace",
                 "status",
                 "--workspace-root=$workspace",
             )
@@ -121,7 +119,6 @@ class KastWrapperTest {
             assertTrue(diagnostics.stderr.isBlank())
         } finally {
             runCli(
-                "daemon",
                 "stop",
                 "--workspace-root=$workspace",
                 allowFailure = true,
@@ -147,8 +144,7 @@ class KastWrapperTest {
         val daemon = startIsolatedRealBackend(workspace)
         try {
             runCli(
-                "workspace",
-                "ensure",
+                "up",
                 "--workspace-root=$workspace",
             )
 
@@ -168,7 +164,6 @@ class KastWrapperTest {
             assertTrue(success.symbols.any { symbol -> symbol.fqName == "example.greet" })
         } finally {
             runCli(
-                "daemon",
                 "stop",
                 "--workspace-root=$workspace",
                 allowFailure = true,
@@ -196,8 +191,7 @@ class KastWrapperTest {
         val daemon = startIsolatedRealBackend(workspace)
         try {
             runCli(
-                "workspace",
-                "ensure",
+                "up",
                 "--workspace-root=$workspace",
             )
 
@@ -219,7 +213,6 @@ class KastWrapperTest {
             assertTrue(greeter.children.any { child -> child.symbol.fqName == "example.Greeter.greet" })
         } finally {
             runCli(
-                "daemon",
                 "stop",
                 "--workspace-root=$workspace",
                 allowFailure = true,
@@ -236,7 +229,10 @@ class KastWrapperTest {
         )
 
         assertTrue(completion.stdout.contains("__kast_complete"))
-        assertTrue(completion.stdout.contains("workspace"))
+        assertTrue(completion.stdout.contains("--workspace-root"))
+        assertTrue(!completion.stdout.contains("workspace ensure"))
+        assertTrue(!completion.stdout.contains("workspace status"))
+        assertTrue(!completion.stdout.contains("workspace stop"))
         assertEquals("", completion.stderr)
     }
 
@@ -257,8 +253,7 @@ class KastWrapperTest {
         val daemon = startIsolatedRealBackend(workspace, extraArgs = listOf("--request-timeout-ms=120000"))
         try {
             val ensure = runCli(
-                "workspace",
-                "ensure",
+                "up",
                 "--workspace-root=$workspace",
             )
             val ensureResult = defaultCliJson().decodeFromString<WorkspaceEnsureResult>(ensure.stdout)
@@ -273,7 +268,6 @@ class KastWrapperTest {
             assertEquals(120_000L, capabilitiesResult.limits.requestTimeoutMillis)
         } finally {
             runCli(
-                "daemon",
                 "stop",
                 "--workspace-root=$workspace",
                 allowFailure = true,
@@ -357,7 +351,6 @@ class KastWrapperTest {
             }
         } finally {
             runCli(
-                "daemon",
                 "stop",
                 "--workspace-root=$workspace",
                 allowFailure = true,
@@ -427,7 +420,6 @@ class KastWrapperTest {
             }
         } finally {
             runCli(
-                "daemon",
                 "stop",
                 "--workspace-root=$workspace",
                 allowFailure = true,
@@ -519,7 +511,6 @@ class KastWrapperTest {
             )
         } finally {
             runCli(
-                "daemon",
                 "stop",
                 "--workspace-root=$workspace",
                 allowFailure = true,
@@ -738,7 +729,7 @@ class KastWrapperTest {
             extraArgs = extraArgs,
             timeoutMillis = timeoutMillis,
             statusProbe = {
-                val result = runCli("workspace", "status", "--workspace-root=$workspace", allowFailure = true)
+                val result = runCli("status", "--workspace-root=$workspace", allowFailure = true)
                 BackendStatusProbeSnapshot(
                     exitCode = result.exitCode,
                     stdout = result.stdout,

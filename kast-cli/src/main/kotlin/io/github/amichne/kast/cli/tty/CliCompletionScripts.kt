@@ -139,12 +139,6 @@ internal object CliCompletionScripts {
                         appendLine("      return 0")
                         appendLine("      ;;")
                     }
-                    CliOptionCompletionKind.FILE_LIST -> {
-                        appendLine("    --${option.key}=*)")
-                        appendLine("      __kast_complete_path_list \"${dollar}{cur#--${option.key}=}\" \"--${option.key}=\" files")
-                        appendLine("      return 0")
-                        appendLine("      ;;")
-                    }
                     CliOptionCompletionKind.BOOLEAN -> {
                         appendLine("    --${option.key}=*)")
                         appendLine("      __kast_complete_values \"true false\" \"${dollar}{cur#--${option.key}=}\" \"--${option.key}=\"")

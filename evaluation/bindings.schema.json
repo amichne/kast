@@ -46,202 +46,210 @@
     }
   },
   "$defs": {
-    "_base_symbol": {
+    "non_empty_string": {
+      "type": "string",
+      "minLength": 1
+    },
+    "symbol_ref": {
       "type": "object",
       "required": ["symbol", "fqName", "file", "description"],
+      "additionalProperties": false,
       "properties": {
         "_comment": { "type": "string" },
-        "symbol": { "type": "string", "minLength": 1 },
-        "fqName": { "type": "string", "minLength": 1 },
-        "file": { "type": "string", "minLength": 1 },
-        "description": { "type": "string", "minLength": 1 }
+        "symbol": { "$ref": "#/$defs/non_empty_string" },
+        "fqName": { "$ref": "#/$defs/non_empty_string" },
+        "file": { "$ref": "#/$defs/non_empty_string" },
+        "description": { "$ref": "#/$defs/non_empty_string" }
       }
     },
     "sealed_slot": {
-      "allOf": [
-        { "$ref": "#/$defs/_base_symbol" },
-        {
+      "type": "object",
+      "required": ["symbol", "fqName", "file", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "_comment": { "type": "string" },
+        "symbol": { "$ref": "#/$defs/non_empty_string" },
+        "fqName": { "$ref": "#/$defs/non_empty_string" },
+        "file": { "$ref": "#/$defs/non_empty_string" },
+        "description": { "$ref": "#/$defs/non_empty_string" },
+        "expected": {
           "type": "object",
+          "description": "Ground truth for sealed-hierarchy traceability. Implementation list is a closed set under the workspace; populate completely.",
+          "required": ["implementations"],
           "additionalProperties": false,
           "properties": {
-            "_comment": {}, "symbol": {}, "fqName": {}, "file": {}, "description": {},
-            "expected": {
-              "type": "object",
-              "description": "Ground truth for sealed-hierarchy traceability. Implementation list is a closed set under the workspace; populate completely.",
-              "required": ["implementations"],
-              "additionalProperties": false,
-              "properties": {
-                "implementations": {
-                  "type": "array",
-                  "minItems": 1,
-                  "items": {
-                    "type": "object",
-                    "required": ["fqName", "module"],
-                    "additionalProperties": false,
-                    "properties": {
-                      "fqName": { "type": "string", "minLength": 1 },
-                      "module": { "type": "string", "minLength": 1 },
-                      "file": { "type": "string" }
-                    }
-                  }
-                },
-                "modules": {
-                  "type": "array",
-                  "items": { "type": "string", "minLength": 1 },
-                  "description": "Modules expected to host at least one implementation."
+            "_comment": { "type": "string" },
+            "implementations": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "required": ["fqName", "module"],
+                "additionalProperties": false,
+                "properties": {
+                  "fqName": { "$ref": "#/$defs/non_empty_string" },
+                  "module": { "$ref": "#/$defs/non_empty_string" },
+                  "file": { "type": "string" }
                 }
               }
+            },
+            "modules": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/non_empty_string" },
+              "description": "Modules expected to host at least one implementation."
             }
           }
         }
-      ]
+      }
     },
     "member_slot": {
-      "allOf": [
-        { "$ref": "#/$defs/_base_symbol" },
-        {
+      "type": "object",
+      "required": ["symbol", "fqName", "file", "description", "containingType"],
+      "additionalProperties": false,
+      "properties": {
+        "_comment": { "type": "string" },
+        "symbol": { "$ref": "#/$defs/non_empty_string" },
+        "fqName": { "$ref": "#/$defs/non_empty_string" },
+        "file": { "$ref": "#/$defs/non_empty_string" },
+        "description": { "$ref": "#/$defs/non_empty_string" },
+        "containingType": { "$ref": "#/$defs/non_empty_string" },
+        "expected": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "_comment": {}, "symbol": {}, "fqName": {}, "file": {}, "description": {},
-            "containingType": { "type": "string", "minLength": 1 },
-            "expected": {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
-                "minimumUsageSites": { "type": "integer", "minimum": 1 },
-                "expectedFiles": {
-                  "type": "array",
-                  "items": { "type": "string", "minLength": 1 },
-                  "description": "Files expected to contain a real usage. Set is a non-strict subset (recall floor)."
-                },
-                "decoyFiles": {
-                  "type": "array",
-                  "items": { "type": "string", "minLength": 1 },
-                  "description": "Files containing the same identifier on UNRELATED types — a precision-trap a grep-only run will hit."
-                }
-              }
+            "_comment": { "type": "string" },
+            "minimumUsageSites": { "type": "integer", "minimum": 1 },
+            "expectedFiles": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/non_empty_string" },
+              "description": "Files expected to contain a real usage. Set is a non-strict subset (recall floor)."
+            },
+            "decoyFiles": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/non_empty_string" },
+              "description": "Files containing the same identifier on unrelated types; a precision trap a text-only run will hit."
             }
-          },
-          "required": ["containingType"]
+          }
         }
-      ]
+      }
     },
     "function_slot": {
-      "allOf": [
-        { "$ref": "#/$defs/_base_symbol" },
-        {
+      "type": "object",
+      "required": ["symbol", "fqName", "file", "description", "containingType"],
+      "additionalProperties": false,
+      "properties": {
+        "_comment": { "type": "string" },
+        "symbol": { "$ref": "#/$defs/non_empty_string" },
+        "fqName": { "$ref": "#/$defs/non_empty_string" },
+        "file": { "$ref": "#/$defs/non_empty_string" },
+        "description": { "$ref": "#/$defs/non_empty_string" },
+        "containingType": { "$ref": "#/$defs/non_empty_string" },
+        "expected": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "_comment": {}, "symbol": {}, "fqName": {}, "file": {}, "description": {},
-            "containingType": { "type": "string", "minLength": 1 },
-            "expected": {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
-                "minimumCallers": { "type": "integer", "minimum": 1 },
-                "expectedCallerFqNames": {
-                  "type": "array",
-                  "items": { "type": "string", "minLength": 1 }
-                },
-                "expectedCallerModules": {
-                  "type": "array",
-                  "items": { "type": "string", "minLength": 1 }
-                }
-              }
+            "_comment": { "type": "string" },
+            "minimumCallers": { "type": "integer", "minimum": 1 },
+            "expectedCallerFqNames": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/non_empty_string" }
+            },
+            "expectedCallerModules": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/non_empty_string" }
             }
-          },
-          "required": ["containingType"]
+          }
         }
-      ]
+      }
     },
     "cross_module_slot": {
-      "allOf": [
-        { "$ref": "#/$defs/_base_symbol" },
-        {
+      "type": "object",
+      "required": ["symbol", "fqName", "file", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "_comment": { "type": "string" },
+        "symbol": { "$ref": "#/$defs/non_empty_string" },
+        "fqName": { "$ref": "#/$defs/non_empty_string" },
+        "file": { "$ref": "#/$defs/non_empty_string" },
+        "description": { "$ref": "#/$defs/non_empty_string" },
+        "expected": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "_comment": {}, "symbol": {}, "fqName": {}, "file": {}, "description": {},
-            "expected": {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
-                "minimumReferences": { "type": "integer", "minimum": 1 },
-                "expectedConsumerModules": {
-                  "type": "array",
-                  "minItems": 1,
-                  "items": { "type": "string", "minLength": 1 }
-                },
-                "expectedConsumerFiles": {
-                  "type": "array",
-                  "items": { "type": "string", "minLength": 1 }
-                }
-              }
+            "_comment": { "type": "string" },
+            "minimumReferences": { "type": "integer", "minimum": 1 },
+            "expectedConsumerModules": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/non_empty_string" }
+            },
+            "expectedConsumerFiles": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/non_empty_string" }
             }
           }
         }
-      ]
+      }
     },
     "rename_slot": {
-      "allOf": [
-        { "$ref": "#/$defs/_base_symbol" },
-        {
+      "type": "object",
+      "required": ["symbol", "fqName", "file", "description", "newName"],
+      "additionalProperties": false,
+      "properties": {
+        "_comment": { "type": "string" },
+        "symbol": { "$ref": "#/$defs/non_empty_string" },
+        "fqName": { "$ref": "#/$defs/non_empty_string" },
+        "file": { "$ref": "#/$defs/non_empty_string" },
+        "description": { "$ref": "#/$defs/non_empty_string" },
+        "newName": { "$ref": "#/$defs/non_empty_string" },
+        "expected": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "_comment": {}, "symbol": {}, "fqName": {}, "file": {}, "description": {},
-            "newName": { "type": "string", "minLength": 1 },
-            "expected": {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
-                "affectedFiles": {
-                  "type": "array",
-                  "minItems": 1,
-                  "items": { "type": "string", "minLength": 1 },
-                  "description": "Every file the rename must touch (declaration + references + imports). Closed set."
-                },
-                "expectedFileCount": { "type": "integer", "minimum": 1 },
-                "compileCommand": {
-                  "type": "string",
-                  "description": "Optional shell command used by outcome graders to verify post-rename compile state. Default: ./gradlew --offline compileKotlin"
-                }
-              }
-            }
-          },
-          "required": ["newName"]
-        }
-      ]
-    },
-    "large_class_slot": {
-      "allOf": [
-        { "$ref": "#/$defs/_base_symbol" },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "_comment": {}, "symbol": {}, "fqName": {}, "file": {}, "description": {},
-            "expected": {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
-                "rawFileLineCount": { "type": "integer", "minimum": 1 },
-                "publicMembers": {
-                  "type": "array",
-                  "items": { "type": "string", "minLength": 1 },
-                  "description": "Public members the scaffold output MUST mention. Hallucination check: anything outside this list is suspect."
-                },
-                "nestedTypes": {
-                  "type": "array",
-                  "items": { "type": "string", "minLength": 1 }
-                }
-              }
+            "_comment": { "type": "string" },
+            "affectedFiles": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/non_empty_string" },
+              "description": "Every file the rename must touch (declaration, references, and imports). Closed set."
+            },
+            "expectedFileCount": { "type": "integer", "minimum": 1 },
+            "compileCommand": {
+              "type": "string",
+              "description": "Optional shell command used by outcome graders to verify post-rename compile state. Default: ./gradlew --offline compileKotlin"
             }
           }
         }
-      ]
+      }
+    },
+    "large_class_slot": {
+      "type": "object",
+      "required": ["symbol", "fqName", "file", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "_comment": { "type": "string" },
+        "symbol": { "$ref": "#/$defs/non_empty_string" },
+        "fqName": { "$ref": "#/$defs/non_empty_string" },
+        "file": { "$ref": "#/$defs/non_empty_string" },
+        "description": { "$ref": "#/$defs/non_empty_string" },
+        "expected": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "_comment": { "type": "string" },
+            "rawFileLineCount": { "type": "integer", "minimum": 1 },
+            "publicMembers": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/non_empty_string" },
+              "description": "Public members the scaffold output must mention. Anything outside this list is suspect."
+            },
+            "nestedTypes": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/non_empty_string" }
+            }
+          }
+        }
+      }
     },
     "module_list_slot": {
       "type": "object",
@@ -262,7 +270,10 @@
             "moduleFileCounts": {
               "type": "object",
               "description": "Map of module name to expected Kotlin source file count. Used to grade kast_workspace_files accuracy.",
-              "additionalProperties": { "type": "integer", "minimum": 0 }
+              "patternProperties": {
+                "^.+$": { "type": "integer", "minimum": 0 }
+              },
+              "additionalProperties": false
             },
             "fileCountTolerance": {
               "type": "integer",

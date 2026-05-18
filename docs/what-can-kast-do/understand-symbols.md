@@ -29,17 +29,15 @@ compiler picked it.
 === "CLI"
 
     ```console title="Resolve the symbol at a specific file position"
-    kast resolve \
-      --workspace-root=$(pwd) \
-      --file-path=$(pwd)/src/main/kotlin/com/example/OrderService.kt \
-      --offset=142
+    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/resolve","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/com/example/OrderService.kt","offset":142}}}' \
+      --workspace-root=$(pwd)
     ```
 
 === "JSON-RPC"
 
     ```json title="JSON-RPC request"
     {
-      "method": "resolve",
+      "method": "raw/resolve",
       "params": {
         "position": {
           "filePath": "/app/src/main/kotlin/com/example/OrderService.kt",
@@ -83,7 +81,7 @@ call resolves to, not the call itself.
 
 ## Outline a file
 
-`outline` returns a nested declaration tree for one file. Each node
+`raw/file-outline` returns a nested declaration tree for one file. Each node
 is the same `Symbol` shape as `resolve`. Children nest inside their
 parent. Function parameters, anonymous elements, and local
 declarations are excluded — what you get is the file's named
@@ -95,9 +93,8 @@ use it to pick which offset to feed `resolve` or `references`.
 === "CLI"
 
     ```console title="Get the declaration tree for a file"
-    kast outline \
-      --workspace-root=$(pwd) \
-      --file-path=$(pwd)/src/main/kotlin/com/example/OrderService.kt
+    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/file-outline","params":{"filePath":"/absolute/path/to/src/main/kotlin/com/example/OrderService.kt"}}' \
+      --workspace-root=$(pwd)
     ```
 
 === "JSON-RPC"
@@ -174,7 +171,7 @@ named declarations.
 
 ## Search the workspace by name
 
-`workspace-symbol` finds declarations across the workspace by name.
+`raw/workspace-symbol` finds declarations across the workspace by name.
 Substring match by default; narrow with `--kind`, switch to regex
 with `--regex=true`.
 
@@ -185,17 +182,13 @@ specific match.
 === "CLI"
 
     ```console title="Find all classes matching a pattern"
-    kast workspace-symbol \
-      --workspace-root=$(pwd) \
-      --pattern=OrderService
+    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/workspace-symbol","params":{"pattern":"OrderService"}}' \
+      --workspace-root=$(pwd)
     ```
 
     ```console title="Regex search filtered to classes"
-    kast workspace-symbol \
-      --workspace-root=$(pwd) \
-      --pattern=".*Service" \
-      --regex=true \
-      --kind=CLASS
+    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/workspace-symbol","params":{"pattern":".*Service","regex":true,"kind":"CLASS"}}' \
+      --workspace-root=$(pwd)
     ```
 
 === "JSON-RPC"
@@ -254,19 +247,17 @@ claiming you have every match.
 
 ## Find implementations
 
-`implementations` takes a position on an interface or abstract class
-and returns every concrete implementation in the workspace. Each
-result carries its `supertypes` chain so you can see the full
+`raw/implementations` takes a position on an interface or abstract
+class and returns every concrete implementation in the workspace.
+Each result carries its `supertypes` chain so you can see the full
 inheritance path. The `exhaustive` flag tells you whether `kast`
 found every implementation within the result cap.
 
 === "CLI"
 
     ```console title="Find all implementations of an interface"
-    kast implementations \
-      --workspace-root=$(pwd) \
-      --file-path=$(pwd)/src/main/kotlin/sample/Greeter.kt \
-      --offset=28
+    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/implementations","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/sample/Greeter.kt","offset":28},"maxResults":100}}' \
+      --workspace-root=$(pwd)
     ```
 
 === "JSON-RPC"

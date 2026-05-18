@@ -118,7 +118,7 @@ State stays fresh without manual restarts:
   layout)
 - A background watcher batches `.kt` file events under registered
   source roots and refreshes the session
-- `workspace refresh` exists as a manual recovery path
+- `raw/workspace-refresh` via `kast rpc` exists as a manual recovery path
 
 ## Next steps
 

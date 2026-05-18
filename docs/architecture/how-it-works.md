@@ -105,7 +105,7 @@ sequenceDiagram
     participant Backend as "Backend runtime"
     participant K2 as "K2 session"
 
-    User->>CLI: kast resolve --file-path=... --offset=42
+    User->>CLI: kast rpc raw/resolve
     CLI->>Server: JSON-RPC request over Unix socket
     Server->>Backend: Dispatch typed backend call
     Backend->>K2: Resolve symbol in workspace session
@@ -193,7 +193,7 @@ How the daemon finds your project depends on what's there.
 
 ```mermaid
 flowchart TD
-    A["workspace ensure"] --> B{"Gradle wrapper present?"}
+    A["up"] --> B{"Gradle wrapper present?"}
     B -->|Yes| C["Gradle Tooling API<br/>modules, source roots, classpath"]
     B -->|No| D["Conventional fallback<br/>src/main/kotlin, src/test/kotlin"]
     C --> E["Build K2 analysis session"]

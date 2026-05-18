@@ -36,14 +36,15 @@ curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh | bash
 Then start the standalone backend before running analysis commands:
 
 ```console
-# Start the backend (keep running in background or separate terminal)
-kast daemon start --workspace-root=/path/to/your/workspace
+# Start or warm the backend
+kast up --workspace-root=/path/to/your/workspace
 
-# Once READY, run commands from another shell
-kast resolve --workspace-root=/path/to/your/workspace --file-path=... --offset=42
+# Once READY, send JSON-RPC requests through the CLI
+kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/resolve","params":{"position":{"filePath":"/path/to/your/workspace/src/App.kt","offset":42}}}' \
+  --workspace-root=/path/to/your/workspace
 ```
 
-If IntelliJ with the plugin is already open on the project, skip `kast daemon start` —
+If IntelliJ with the plugin is already open on the project, skip `kast up` —
 the CLI connects to the IDE's backend automatically.
 
 ## Why `kast` instead of text search?

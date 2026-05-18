@@ -6,46 +6,49 @@ icon: lucide/terminal
 
 # CLI cheat sheet
 
-A scannable index of the `kast` CLI. Each table covers one slice
-of the surface — workspace lifecycle, read operations, mutations.
-Common flags only; run `kast <command> --help` for the full set.
+A scannable index of the `kast` CLI. The public command tree is
+small: lifecycle commands, install/manage commands, validation
+helpers, and `rpc` for the analysis contract. Common flags only;
+run `kast <command> --help` for the full set.
 
-Every command takes `--workspace-root` (absolute path to your
-project root) and `--backend-name=standalone` by default. Both
-can be set in `kast.toml` so you don't have to repeat them.
+Lifecycle and RPC commands take `--workspace-root`, the absolute
+path to your project root. Backend selection can be pinned with
+`--backend-name=standalone` or `--backend-name=intellij` where the
+command supports it.
 
 ## Workspace lifecycle
 
-The daemon owns Kotlin state. These commands start it, watch it,
-refresh it, and stop it.
+The daemon owns Kotlin state. These commands start it, inspect it,
+and stop it. Manual refresh is an RPC method, not a top-level
+command.
 
 | Command                 | What it does                                                                  | Common flags                                       |
 |-------------------------|-------------------------------------------------------------------------------|----------------------------------------------------|
-| `kast workspace ensure` | Start the backend if needed and block until indexing finishes.                | `--workspace-root`, `--backend-name`               |
-| `kast workspace status` | Report whether a backend is running and what state it's in.                   | `--workspace-root`                                 |
-| `kast workspace refresh`| Re-scan disk for files changed outside the daemon.                            | `--workspace-root`, `--file-paths`                 |
-| `kast workspace stop`   | Shut the backend down cleanly.                                                | `--workspace-root`                                 |
+| `kast up`               | Start the backend if needed and wait until it is servable.                   | `--workspace-root`, `--backend-name`               |
+| `kast status`           | Report whether a backend is running and what state it is in.                 | `--workspace-root`                                 |
+| `kast rpc …raw/workspace-refresh…` | Manually request a workspace refresh through raw JSON-RPC.           | JSON argument or `--request-file`                  |
+| `kast stop`             | Shut the backend down cleanly.                                               | `--workspace-root`                                 |
 | `kast capabilities`     | Print which JSON-RPC methods this backend supports.                           | `--workspace-root`                                 |
-| `kast health`           | Lightweight liveness ping. Returns immediately.                               | `--workspace-root`                                 |
+| `kast rpc …health…`     | Lightweight liveness ping. Returns immediately.                               | JSON argument or `--request-file`                  |
 
 ## Read operations
 
-These commands ask questions about your code. Nothing on disk
+These RPC methods ask questions about your code. Nothing on disk
 changes. Resolve-first applies: most "find X" workflows start
-with `kast resolve` to get a stable symbol identity, then feed
-the same `--file-path` and `--offset` into the next command.
+with `raw/resolve` to get a stable symbol identity, then feed the
+same `filePath` and `offset` into the next request.
 
-| Command                  | What it does                                                                | Common flags                                                |
-|--------------------------|-----------------------------------------------------------------------------|-------------------------------------------------------------|
-| `kast resolve`           | Identify the symbol at a position. Returns FQN, kind, signature, location.  | `--file-path`, `--offset`                                   |
-| `kast references`        | Find every reference to the symbol at a position.                           | `--file-path`, `--offset`, `--include-declaration`          |
-| `kast call-hierarchy`    | Walk callers (`INCOMING`) or callees (`OUTGOING`) of a function.            | `--file-path`, `--offset`, `--direction`, `--depth`         |
-| `kast type-hierarchy`    | Walk supertypes or subtypes of a class or interface.                        | `--file-path`, `--offset`, `--direction`, `--depth`         |
-| `kast implementations`   | Find every concrete implementation of an interface or abstract class.       | `--file-path`, `--offset`                                   |
-| `kast outline`           | Return a tree of named declarations in a file.                              | `--file-path`                                               |
-| `kast workspace-symbol`  | Search for symbols by name across the workspace.                            | `--pattern`, `--regex`, `--limit`                           |
-| `kast insertion-point`   | Find a safe position to insert new code into a class or file.               | `--file-path`, `--offset`, `--kind`                         |
-| `kast diagnostics`       | Return errors and warnings for one or more files.                           | `--file-paths`                                              |
+| RPC method                       | What it does                                                                | Key params                                                  |
+|----------------------------------|-----------------------------------------------------------------------------|-------------------------------------------------------------|
+| `raw/resolve`                    | Identify the symbol at a position. Returns FQN, kind, signature, location.  | `position.filePath`, `position.offset`                      |
+| `raw/references`                 | Find every reference to the symbol at a position.                           | `position`, `includeDeclaration`                            |
+| `raw/call-hierarchy`             | Walk callers (`INCOMING`) or callees (`OUTGOING`) of a function.            | `position`, `direction`, `depth`                            |
+| `raw/type-hierarchy`             | Walk supertypes or subtypes of a class or interface.                        | `position`, `direction`, `depth`                            |
+| `raw/implementations`            | Find every concrete implementation of an interface or abstract class.       | `position`, `maxResults`                                    |
+| `raw/file-outline`               | Return a tree of named declarations in a file.                              | `filePath`                                                  |
+| `raw/workspace-symbol`           | Search for symbols by name across the workspace.                            | `pattern`, `regex`, `maxResults`                            |
+| `raw/semantic-insertion-point`   | Find a safe position to insert new code into a class or file.               | `position`, `target`                                        |
+| `raw/diagnostics`                | Return errors and warnings for one or more files.                           | `filePaths`                                                 |
 
 ## Mutations
 
@@ -54,27 +57,25 @@ computes edits and SHA-256 hashes of the files it read. The
 second writes the edits *only if* the hashes still match — the
 state `kast` planned against is the state `kast` writes to.
 
-| Command                  | What it does                                                                | Common flags                                                |
-|--------------------------|-----------------------------------------------------------------------------|-------------------------------------------------------------|
-| `kast rename`            | Plan a rename of the symbol at a position. Returns edits + file hashes.     | `--file-path`, `--offset`, `--new-name`                     |
-| `kast optimize-imports`  | Plan import cleanup for one or more files.                                  | `--file-paths`                                              |
-| `kast apply-edits`       | Write a previously-planned edit set, rejecting on hash mismatch.            | `--request-file` (JSON file with `edits` + `fileHashes`)    |
+| RPC method                 | What it does                                                                | Key params                                                  |
+|----------------------------|-----------------------------------------------------------------------------|-------------------------------------------------------------|
+| `raw/rename`               | Plan a rename of the symbol at a position. Returns edits + file hashes.     | `position`, `newName`, `dryRun`                             |
+| `raw/optimize-imports`     | Plan import cleanup for one or more files.                                  | `filePaths`                                                 |
+| `raw/apply-edits`          | Write a previously-planned edit set, rejecting on hash mismatch.            | `edits`, `fileHashes`, optional `fileOperations`            |
 
 ## Command tiers
 
 Not every command targets the same audience. `kast` organizes
 its surface into two tiers — both fully supported.
 
-**Tier 1 (primary path):** `workspace ensure`, `workspace
-status`, `workspace stop`, `capabilities`, `resolve`,
-`references`, `diagnostics`, `rename`, `apply-edits`. The default
-operational flow — what you reach for first.
+**Tier 1 (primary path):** `up`, `status`, `stop`, `capabilities`,
+and `rpc`. The default operational flow starts or checks a
+workspace session, then sends explicit JSON-RPC requests.
 
-**Tier 2 (advanced primitives):** `call-hierarchy`,
-`type-hierarchy`, `outline`, `workspace-symbol`,
-`insertion-point`, `workspace refresh`, `optimize-imports`.
-Specialized building blocks for expert workflows and agent
-automation. Stable, supported, less common.
+**Tier 2 (specialized RPC methods):** the `raw/*`, `symbol/*`, and
+`database/*` method families. Use them for semantic navigation,
+mutation planning, workspace recovery, and metrics without growing
+the public CLI command tree.
 
 ## See also
 

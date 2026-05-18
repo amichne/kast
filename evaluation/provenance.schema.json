@@ -16,11 +16,11 @@
   "properties": {
     "$schema": {
       "type": "string",
-      "const": "https://github.com/amichne/kast/evaluation/provenance.schema.json"
+      "enum": ["https://github.com/amichne/kast/evaluation/provenance.schema.json"]
     },
     "version": {
       "type": "integer",
-      "const": 1
+      "enum": [1]
     },
     "generated_at": {
       "type": "string",
@@ -114,7 +114,7 @@
             },
             "status": {
               "type": "string",
-              "const": "matched"
+              "enum": ["matched"]
             },
             "entries": {
               "type": "array",
@@ -140,7 +140,7 @@
             },
             "status": {
               "type": "string",
-              "const": "gap"
+              "enum": ["gap"]
             },
             "gap_reason": {
               "type": "string",

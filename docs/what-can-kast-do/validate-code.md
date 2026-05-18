@@ -11,6 +11,7 @@ description: >-
 Check correctness without opening an IDE. Diagnostics surface
 errors and warnings; code actions tell you what `kast` can fix;
 completions show what the compiler thinks belongs at a position.
+These are JSON-RPC methods sent through `kast rpc`.
 
 ## Diagnostics
 
@@ -24,9 +25,8 @@ before review.
     Pass one file path:
 
     ```console title="Run diagnostics on one file"
-    kast diagnostics \
-      --workspace-root=$(pwd) \
-      --file-paths=$(pwd)/src/main/kotlin/com/shop/OrderService.kt
+    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/diagnostics","params":{"filePaths":["/absolute/path/to/src/main/kotlin/com/shop/OrderService.kt"]}}' \
+      --workspace-root=$(pwd)
     ```
 
 === "Multiple files"
@@ -34,9 +34,8 @@ before review.
     Pass a comma-separated list:
 
     ```console title="Run diagnostics on multiple files"
-    kast diagnostics \
-      --workspace-root=$(pwd) \
-      --file-paths=$(pwd)/src/main/kotlin/com/shop/OrderService.kt,$(pwd)/src/main/kotlin/com/shop/PaymentGateway.kt
+    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/diagnostics","params":{"filePaths":["/absolute/path/to/src/main/kotlin/com/shop/OrderService.kt","/absolute/path/to/src/main/kotlin/com/shop/PaymentGateway.kt"]}}' \
+      --workspace-root=$(pwd)
     ```
 
 The response is a `diagnostics` array. Each entry carries the file,
@@ -67,7 +66,8 @@ the problem and decide whether it blocks the build.
 
     Diagnostics reflect the daemon's last view of disk. If you (or
     your agent, or `git checkout`) modified files outside the
-    daemon's observation window, run `kast workspace refresh`
+    daemon's observation window, run `raw/workspace-refresh`
+    through `kast rpc`
     first — otherwise you get a stale answer that looks correct.
 
 ### Use diagnostics as a CI gate
@@ -76,12 +76,31 @@ Diagnostics return structured JSON, so they drop into a CI pipeline
 next to your normal Kotlin build. Bring up a daemon, diff for
 changed `.kt` files, run diagnostics, fail on errors.
 
-```bash title="Run kast diagnostics in CI"
-kast workspace ensure --workspace-root=$(pwd)
+```bash title="Run diagnostics in CI"
+kast up --workspace-root=$(pwd)
 
-kast diagnostics \
+python3 - <<'PY'
+import json
+import pathlib
+import subprocess
+
+root = pathlib.Path.cwd()
+files = subprocess.check_output(
+    ["git", "diff", "--name-only", "origin/main", "--", "*.kt"],
+    text=True,
+).splitlines()
+request = {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "raw/diagnostics",
+    "params": {"filePaths": [str(root / file) for file in files]},
+}
+with open("diagnostics-request.json", "w") as handle:
+    json.dump(request, handle)
+PY
+
+kast rpc --request-file=diagnostics-request.json \
   --workspace-root=$(pwd) \
-  --file-paths=$(git diff --name-only origin/main -- '*.kt' | sed "s|^|$(pwd)/|" | paste -sd, -) \
   > diagnostics.json
 
 jq -e '[.diagnostics[] | select(.severity == "ERROR")] | length == 0' diagnostics.json
@@ -100,10 +119,8 @@ what `kast` can do about it.
 === "CLI example"
 
     ```console title="Request code actions at a position"
-    kast code-actions \
-      --workspace-root=$(pwd) \
-      --file=$(pwd)/src/main/kotlin/com/shop/OrderService.kt \
-      --offset=312
+    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/code-actions","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/com/shop/OrderService.kt","offset":312}}}' \
+      --workspace-root=$(pwd)
     ```
 
 === "JSON-RPC request"
@@ -141,8 +158,8 @@ the edits it would apply:
 }
 ```
 
-Empty `actions` means nothing matched at that position. Filter to
-a specific diagnostic with `--diagnostic-code` when you only want
+Empty `actions` means nothing matched at that position. Set
+`diagnosticCode` when you only want
 fixes for one error.
 
 ## Completions
@@ -152,13 +169,11 @@ suggests at a position. One-shot lookup, not an editor sync — send
 a position, get back a candidate list.
 
 ```console title="Query completions at a position"
-kast completions \
-  --workspace-root=$(pwd) \
-  --file=$(pwd)/src/main/kotlin/com/shop/OrderService.kt \
-  --offset=312
+kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/completions","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/com/shop/OrderService.kt","offset":312},"maxResults":50}}' \
+  --workspace-root=$(pwd)
 ```
 
-`--max-results` caps the list; `--kind-filter` narrows to specific
+`maxResults` caps the list; `kindFilter` narrows to specific
 kinds. The response carries an `exhaustive` flag — `true` means you
 got every candidate, `false` means results were capped.
 

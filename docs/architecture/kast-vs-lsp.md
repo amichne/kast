@@ -27,7 +27,7 @@ guarantees.
 | **Completeness proof** | Not in the protocol | `searchScope.exhaustive` on every reference result |
 | **Traversal bounds** | Implementation-defined | Explicit depth, fan-out, timeout in every request |
 | **Mutation model** | `WorkspaceEdit` (fire-and-forget) | Plan → review → apply with SHA-256 conflict detection |
-| **Lifecycle** | Editor starts/stops the server | `workspace ensure` / `workspace stop` |
+| **Lifecycle** | Editor starts/stops the server | `up` / `stop` |
 
 ## Where LSP fits
 
@@ -94,8 +94,7 @@ error.
 LSP servers start and stop with the editor. Implicit lifecycle —
 open project, server starts; close project, server stops.
 
-`kast` is explicit. `workspace ensure` brings it up; `workspace
-stop` shuts it down. Maps cleanly onto CI pipelines, scripts, and
+`kast` is explicit. `up` brings it up; `stop` shuts it down. Maps cleanly onto CI pipelines, scripts, and
 agent sessions where the caller controls timing.
 
 ## Can I use both?

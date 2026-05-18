@@ -14,12 +14,12 @@ your scripts and prompts don't change when you switch.
 
 | Runtime           | What runs                            | Best for                              | How it starts                        |
 |-------------------|--------------------------------------|---------------------------------------|--------------------------------------|
-| Standalone        | `kast` CLI plus a JVM daemon         | Terminal, CI, agents, no-IDE machines | `kast workspace ensure`              |
+| Standalone        | `kast` CLI plus a JVM daemon         | Terminal, CI, agents, no-IDE machines | `kast up`                            |
 | IntelliJ plugin   | A `kast` server inside an open IDE   | Local work with IntelliJ already open | Boots when IntelliJ opens the project |
 
 ## Standalone backend
 
-A separate JVM process. `kast workspace ensure` is the high-level entry
+A separate JVM process. `kast up` is the high-level entry
 point. It reuses a running standalone backend when one already serves the
 workspace, or auto-starts one from the configured runtime libraries when
 it doesn't. Use `kast daemon start` only when you need the lower-level
@@ -56,7 +56,7 @@ runtimeLibsDir = "/Users/alex/.kast/lib/backends/current/runtime-libs"
 
 How a session unfolds:
 
-1. You run `kast workspace ensure --workspace-root=$(pwd)` somewhere. It
+1. You run `kast up --workspace-root=$(pwd)` somewhere. It
    starts or reuses the daemon, discovers the project, and waits until
    the analysis session is warm.
 2. You run more `kast` commands against the same workspace. The CLI
@@ -64,7 +64,7 @@ How a session unfolds:
 3. The daemon stays alive. No cold starts between commands.
 
 The packaged Copilot extension also runs
-`kast workspace ensure --accept-indexing=true` at session start, so agent
+`kast up --accept-indexing=true` at session start, so agent
 sessions often find a warm standalone backend without a separate manual
 bootstrap step.
 
@@ -138,15 +138,15 @@ Without `--backend-name`, the CLI uses these rules in order:
 2. A servable standalone backend for the workspace? Use it.
 3. Neither? Error out — no backend available.
 
-`kast workspace ensure` is the only command that starts a backend for
+`kast up` is the only command that starts a backend for
 you. It boots or reuses the standalone daemon and, by default, blocks
 until indexing finishes. Pass `--accept-indexing=true` to return as soon
 as the daemon is servable. Read commands like `resolve` and `references`
 never start a backend implicitly — they fail fast. So: run
-`workspace ensure` first, or open the project in IntelliJ with the
+`up` first, or open the project in IntelliJ with the
 plugin installed.
 
-`kast workspace status` reports backend state and helps you debug
+`kast status` reports backend state and helps you debug
 connection issues.
 
 ## Running both

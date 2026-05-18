@@ -11,7 +11,7 @@ the question one step earlier: *what do I run to do the thing I
 want?*
 
 Every recipe assumes you've started a backend with
-`kast workspace ensure --workspace-root=$(pwd)`. Run that from the
+`kast up --workspace-root=$(pwd)`. Run that from the
 root of your Kotlin project, open the recipe that matches your
 task, and copy. Each one ends with a link to the deeper reference
 if you want the full story.
@@ -26,16 +26,12 @@ if you want the full story.
 
     ```console
     # 1. Resolve the symbol at the cursor (get its compiler identity)
-    kast resolve \
-      --workspace-root=$(pwd) \
-      --file-path=$(pwd)/src/main/kotlin/App.kt \
-      --offset=42
+    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/resolve","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/App.kt","offset":42}}}' \
+      --workspace-root=$(pwd)
 
     # 2. Find every reference to that same symbol
-    kast references \
-      --workspace-root=$(pwd) \
-      --file-path=$(pwd)/src/main/kotlin/App.kt \
-      --offset=42
+    kast rpc '{"jsonrpc":"2.0","id":2,"method":"raw/references","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/App.kt","offset":42}}}' \
+      --workspace-root=$(pwd)
     ```
 
     Check `searchScope.exhaustive: true` on the response to confirm the
@@ -50,17 +46,11 @@ if you want the full story.
     know whether the tree is complete or Kast stopped on purpose.
 
     ```console
-    kast resolve \
-      --workspace-root=$(pwd) \
-      --file-path=$(pwd)/src/main/kotlin/App.kt \
-      --offset=42
+    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/resolve","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/App.kt","offset":42}}}' \
+      --workspace-root=$(pwd)
 
-    kast call-hierarchy \
-      --workspace-root=$(pwd) \
-      --file-path=$(pwd)/src/main/kotlin/App.kt \
-      --offset=42 \
-      --direction=INCOMING \
-      --depth=3
+    kast rpc '{"jsonrpc":"2.0","id":2,"method":"raw/call-hierarchy","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/App.kt","offset":42},"direction":"INCOMING","depth":3}}' \
+      --workspace-root=$(pwd)
     ```
 
     Zero callers on something you know is called from outside?
@@ -75,34 +65,27 @@ if you want the full story.
     concrete subtype `kast` can see in the workspace.
 
     ```console
-    kast resolve \
-      --workspace-root=$(pwd) \
-      --file-path=$(pwd)/src/main/kotlin/Repository.kt \
-      --offset=120
+    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/resolve","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/Repository.kt","offset":120}}}' \
+      --workspace-root=$(pwd)
 
-    kast implementations \
-      --workspace-root=$(pwd) \
-      --file-path=$(pwd)/src/main/kotlin/Repository.kt \
-      --offset=120
+    kast rpc '{"jsonrpc":"2.0","id":2,"method":"raw/implementations","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/Repository.kt","offset":120}}}' \
+      --workspace-root=$(pwd)
     ```
     [Full reference →](what-can-kast-do/understand-symbols.md)
 
 ??? example "Find a class by name when you don't have an offset"
 
-    `workspace-symbol` searches by name across the workspace. Use it as
+    `raw/workspace-symbol` searches by name across the workspace. Use it as
     a bridge into the resolve-first flow when you only know what
     something is called.
 
     ```console
-    kast workspace-symbol \
-      --workspace-root=$(pwd) \
-      --pattern=OrderService
+    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/workspace-symbol","params":{"pattern":"OrderService"}}' \
+      --workspace-root=$(pwd)
 
     # Then feed the result's filePath + startOffset into resolve
-    kast resolve \
-      --workspace-root=$(pwd) \
-      --file-path=<filePath from previous result> \
-      --offset=<startOffset from previous result>
+    kast rpc '{"jsonrpc":"2.0","id":2,"method":"raw/resolve","params":{"position":{"filePath":"/absolute/path/from/previous/result.kt","offset":123}}}' \
+      --workspace-root=$(pwd)
     ```
 
     Default match is case-insensitive substring. Pass `--regex=true` if
@@ -112,15 +95,14 @@ if you want the full story.
 
 ??? example "Explore a file's structure"
 
-    `outline` returns a nested tree of named declarations —
+    `raw/file-outline` returns a nested tree of named declarations —
     classes, objects, named functions, named properties. It skips
     lambdas, object literals, and locals inside function bodies.
     Use it as a map, not a complete index of identifiers.
 
     ```console
-    kast outline \
-      --workspace-root=$(pwd) \
-      --file-path=$(pwd)/src/main/kotlin/OrderService.kt
+    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/file-outline","params":{"filePath":"/absolute/path/to/src/main/kotlin/OrderService.kt"}}' \
+      --workspace-root=$(pwd)
     ```
     [Full reference →](what-can-kast-do/understand-symbols.md)
 
@@ -135,37 +117,30 @@ if you want the full story.
 
     ```console
     # 1. Plan the rename — nothing touches disk yet
-    kast rename \
-      --workspace-root=$(pwd) \
-      --file-path=$(pwd)/src/main/kotlin/App.kt \
-      --offset=42 \
-      --new-name=newSymbolName
+    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/rename","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/App.kt","offset":42},"newName":"newSymbolName","dryRun":true}}' \
+      --workspace-root=$(pwd) > plan.json
 
     # 2. Review the returned `edits` array. When you're satisfied, apply.
-    #    Pass the plan back as a request file — kast apply-edits reads
-    #    the same JSON shape `rename` returned.
-    kast apply-edits --request-file=plan.json
+    #    Create a raw/apply-edits request from the reviewed plan.
+    kast rpc --request-file=apply-edits.json --workspace-root=$(pwd)
 
     # 3. Verify by resolving the new name at the same position
-    kast resolve \
-      --workspace-root=$(pwd) \
-      --file-path=$(pwd)/src/main/kotlin/App.kt \
-      --offset=42
+    kast rpc '{"jsonrpc":"2.0","id":3,"method":"raw/resolve","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/App.kt","offset":42}}}' \
+      --workspace-root=$(pwd)
     ```
     [Full reference →](what-can-kast-do/refactor-safely.md)
 
 ??? example "Clean up imports"
 
-    Same plan-then-apply flow as rename. `optimize-imports`
+    Same plan-then-apply flow as rename. `raw/optimize-imports`
     returns the edits `kast` would make; `apply-edits` writes
     them with conflict detection.
 
     ```console
-    kast optimize-imports \
-      --workspace-root=$(pwd) \
-      --file-path=$(pwd)/src/main/kotlin/App.kt
+    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/optimize-imports","params":{"filePaths":["/absolute/path/to/src/main/kotlin/App.kt"]}}' \
+      --workspace-root=$(pwd) > plan.json
 
-    kast apply-edits --request-file=plan.json
+    kast rpc --request-file=apply-edits.json --workspace-root=$(pwd)
     ```
     [Full reference →](what-can-kast-do/refactor-safely.md)
 
@@ -178,13 +153,12 @@ if you want the full story.
     ranges — easy to feed into a CI script or an agent.
 
     ```console
-    kast diagnostics \
-      --workspace-root=$(pwd) \
-      --file-paths=$(pwd)/src/main/kotlin/App.kt
+    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/diagnostics","params":{"filePaths":["/absolute/path/to/src/main/kotlin/App.kt"]}}' \
+      --workspace-root=$(pwd)
     ```
 
     If you edited the file outside the daemon, run
-    `kast workspace refresh --workspace-root=$(pwd)` first so diagnostics
+    `kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/workspace-refresh","params":{}}' --workspace-root=$(pwd)` first so diagnostics
     don't return a stale view.
     [Full reference →](what-can-kast-do/validate-code.md)
 

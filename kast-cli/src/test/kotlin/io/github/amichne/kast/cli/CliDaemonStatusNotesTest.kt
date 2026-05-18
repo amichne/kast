@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test
 
 class CliDaemonStatusNotesTest {
     @Test
-    fun `workspace status note summarizes the selected ready daemon`() {
+    fun `status note summarizes the selected ready daemon`() {
         val selected = candidate(pid = 41)
         val stale = candidate(
             pid = 17,
@@ -36,7 +36,7 @@ class CliDaemonStatusNotesTest {
     }
 
     @Test
-    fun `workspace status note surfaces indexing messages`() {
+    fun `status note surfaces indexing messages`() {
         val indexing = candidate(
             pid = 52,
             ready = false,
@@ -66,7 +66,7 @@ class CliDaemonStatusNotesTest {
     }
 
     @Test
-    fun `workspace ensure note includes the startup log path`() {
+    fun `up note includes the startup log path`() {
         val note = daemonNoteFor(
             WorkspaceEnsureResult(
                 workspaceRoot = "/tmp/workspace",
@@ -83,7 +83,7 @@ class CliDaemonStatusNotesTest {
     }
 
     @Test
-    fun `workspace ensure note prefers explicit override`() {
+    fun `up note prefers explicit override`() {
         val note = daemonNoteFor(
             WorkspaceEnsureResult(
                 workspaceRoot = "/tmp/workspace",

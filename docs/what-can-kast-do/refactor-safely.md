@@ -24,36 +24,33 @@ sequenceDiagram
     participant U as "You / Agent"
     participant CLI as "kast CLI"
     participant D as "Daemon"
-    U ->> CLI: rename (file, offset, newName)
-    CLI ->> D: rename
+    U ->> CLI: raw/rename (file, offset, newName)
+    CLI ->> D: raw/rename
     D -->> CLI: edit plan + fileHashes
     CLI -->> U: Review edits
     Note over U: Verify edits and hashes
-    U ->> CLI: apply-edits (plan + hashes)
-    CLI ->> D: apply-edits
+    U ->> CLI: raw/apply-edits (plan + hashes)
+    CLI ->> D: raw/apply-edits
     D -->> D: Verify hashes match disk
     D -->> CLI: Applied result
     CLI -->> U: Success
-    U ->> CLI: resolve (verify new name)
-    CLI ->> D: symbol/resolve
+    U ->> CLI: raw/resolve (verify new name)
+    CLI ->> D: raw/resolve
     D -->> CLI: Updated symbol identity
 
 ```
 
 ## Rename a symbol
 
-`rename` computes every text edit needed to rename a symbol across
+`raw/rename` computes every text edit needed to rename a symbol across
 the workspace — without writing anything. The response carries
 `fileHashes` you can pipe straight into `apply-edits`.
 
 === "CLI"
 
     ```console title="Plan a rename"
-    kast rename \
-      --workspace-root=$(pwd) \
-      --file-path=$(pwd)/src/Sample.kt \
-      --offset=20 \
-      --new-name=welcome
+    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/rename","params":{"position":{"filePath":"/absolute/path/to/src/Sample.kt","offset":20},"newName":"welcome","dryRun":true}}' \
+      --workspace-root=$(pwd)
     ```
 
 === "JSON-RPC"
@@ -127,14 +124,12 @@ and rejects the request if anything drifted.
 === "CLI"
 
     ```console title="Apply the rename plan"
-    kast apply-edits \
-      --workspace-root=$(pwd) \
-      --request-file=rename-plan.json
+    kast rpc --request-file=rename-plan.json \
+      --workspace-root=$(pwd)
     ```
 
-    Save the rename response into `rename-plan.json` and pass it
-    with `--request-file`. The CLI forwards `edits` and `fileHashes`
-    to the daemon.
+    Save a `raw/apply-edits` request containing the reviewed `edits`
+    and `fileHashes` into `rename-plan.json`.
 
 === "JSON-RPC"
 
@@ -209,36 +204,32 @@ affected files — or re-resolve the renamed symbol to confirm
 identity survived.
 
 ```console title="Confirm the workspace still compiles"
-kast diagnostics \
-  --workspace-root=$(pwd) \
-  --file-paths=$(pwd)/src/Sample.kt
+kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/diagnostics","params":{"filePaths":["/absolute/path/to/src/Sample.kt"]}}' \
+  --workspace-root=$(pwd)
 ```
 
 ```console title="Or re-resolve the renamed symbol"
-kast resolve \
-  --workspace-root=$(pwd) \
-  --file-path=$(pwd)/src/Sample.kt \
-  --offset=20
+kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/resolve","params":{"position":{"filePath":"/absolute/path/to/src/Sample.kt","offset":20}}}' \
+  --workspace-root=$(pwd)
 ```
 
 If diagnostics surface an unexpected error — or resolve returns a
 different symbol — read the [stale-results troubleshooting
 entry](../troubleshooting.md) before trying another rename. The
-daemon may need a `workspace refresh` to pick up edits made outside
+daemon may need a `raw/workspace-refresh` via `kast rpc` to pick up edits made outside
 its observation window.
 
 ## Optimize imports
 
-`optimize-imports` removes unused imports and sorts the rest for
+`raw/optimize-imports` removes unused imports and sorts the rest for
 the files you name. Same plan-and-apply shape as rename: you get an
 edit plan with `fileHashes`, you review, you apply.
 
 === "CLI"
 
     ```console title="Optimize imports"
-    kast optimize-imports \
-      --workspace-root=$(pwd) \
-      --file-paths=$(pwd)/src/Sample.kt
+    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/optimize-imports","params":{"filePaths":["/absolute/path/to/src/Sample.kt"]}}' \
+      --workspace-root=$(pwd)
     ```
 
 === "JSON-RPC"

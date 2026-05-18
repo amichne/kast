@@ -19,13 +19,13 @@ tells you when to send queries and when to wait.
 
 ```mermaid
 stateDiagram-v2
-    [*] --> STARTING: workspace ensure
+    [*] --> STARTING: up
     STARTING --> INDEXING: session bootstrapped
     INDEXING --> READY: indexing complete
-    READY --> INDEXING: workspace refresh
-    READY --> [*]: workspace stop
+    READY --> INDEXING: raw/workspace-refresh
+    READY --> [*]: stop
     INDEXING --> DEGRADED: fatal error
-    DEGRADED --> [*]: workspace stop
+    DEGRADED --> [*]: stop
 ```
 
 - **STARTING** — process launched, analysis session not yet up
@@ -36,11 +36,10 @@ stateDiagram-v2
 
 ### Start the daemon
 
-`workspace ensure` starts the daemon and blocks until it's
-servable.
+`up` starts the daemon and blocks until it is servable.
 
 ```console title="Start the daemon and wait for READY"
-kast workspace ensure \
+kast up \
   --workspace-root=$(pwd)
 ```
 
@@ -50,7 +49,7 @@ are acceptable.
 ### Check daemon state
 
 ```console title="Check daemon state"
-kast workspace status \
+kast status \
   --workspace-root=$(pwd)
 ```
 
@@ -59,7 +58,7 @@ kast workspace status \
 Stop explicitly when you're done. Don't leave orphans behind.
 
 ```console title="Stop the daemon cleanly"
-kast workspace stop \
+kast stop \
   --workspace-root=$(pwd)
 ```
 
@@ -70,7 +69,7 @@ strategy depends on what's in your workspace root.
 
 ```mermaid
 flowchart TD
-    A["workspace ensure"] --> B{"Gradle wrapper present?"}
+    A["up"] --> B{"Gradle wrapper present?"}
     B -->|Yes| C["Gradle Tooling API\ndiscovers modules + source roots"]
     B -->|No| D["Conventional fallback\nsrc/main/kotlin, src/test/kotlin"]
     C --> E["Build analysis session"]
@@ -87,25 +86,24 @@ falls back to the conventional Kotlin layout (`src/main/kotlin`,
 
 `kast` watches source roots for `.kt` changes and refreshes
 automatically. `apply-edits` triggers an immediate refresh for the
-files it touched. Use `workspace refresh` only as a manual recovery
-when an external change slipped past the watcher.
+files it touched. Use `raw/workspace-refresh` via `kast rpc` only as
+a manual recovery when an external change slipped past the watcher.
 
 ```console title="Full workspace refresh"
-kast workspace refresh \
+kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/workspace-refresh","params":{}}' \
   --workspace-root=$(pwd)
 ```
 
 Targeted refresh:
 
 ```console title="Targeted refresh"
-kast workspace refresh \
-  --workspace-root=$(pwd) \
-  --file-paths=$(pwd)/src/main/kotlin/App.kt
+kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/workspace-refresh","params":{"filePaths":["/absolute/path/to/src/main/kotlin/App.kt"]}}' \
+  --workspace-root=$(pwd)
 ```
 
-## Inspect workspace files
+## Inspect workspace files (RPC)
 
-`workspace/files` returns the modules, source roots, and files the
+`raw/workspace-files` returns the modules, source roots, and files the
 daemon found. Run it when you want to verify the daemon sees what
 you think it sees. File-path enumeration is capped per module so large workspaces
 can inspect scope without forcing the daemon to materialize every path in
@@ -114,11 +112,8 @@ one response.
 === "CLI"
 
     ```console title="List workspace files"
-    kast workspace files \
-      --workspace-root=$(pwd) \
-
-      --include-files=true \
-      --max-files-per-module=500
+    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/workspace-files","params":{"includeFiles":true,"maxFilesPerModule":500}}' \
+      --workspace-root=$(pwd)
     ```
 
 === "JSON-RPC"
@@ -167,7 +162,8 @@ kast capabilities \
 full runtime metadata.
 
 ```console title="Liveness check"
-kast health --workspace-root=$(pwd)
+kast rpc '{"jsonrpc":"2.0","id":1,"method":"health"}' \
+  --workspace-root=$(pwd)
 ```
 
 ## Next steps

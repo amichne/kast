@@ -130,7 +130,7 @@ A typical profiling session:
 
 1. Enable telemetry scopes `memory,io,lock,indexing` in `config.toml`.
 2. Start the daemon with `DebugNonSafepoints` and `NativeMemoryTracking`.
-3. Trigger the workload (e.g., `kast references --symbol=...`).
+3. Trigger the workload (e.g., `kast rpc` with `raw/references`).
 4. Collect a 30-second CPU flame graph via async-profiler.
 5. Run `scripts/analyze-spans.py` for the telemetry view.
 6. Cross-reference lock contention spans with the `lock` flame graph.
