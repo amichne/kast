@@ -414,8 +414,8 @@ class RunEvaluationTests(unittest.TestCase):
         self.assertIn("codex exec", result.stdout)
         self.assertIn("--model gpt-5.5", result.stdout)
         self.assertIn('model_reasoning_effort="xhigh"', result.stdout)
+        self.assertIn('approval_policy="never"', result.stdout)
         self.assertIn("--sandbox danger-full-access", result.stdout)
-        self.assertIn("--ask-for-approval never", result.stdout)
         self.assertIn("cast-benchmarks", result.stdout)
 
 

@@ -169,8 +169,8 @@ codex_cmd=(
   codex exec
   --model "$codex_model"
   -c "model_reasoning_effort=\"${codex_reasoning_effort}\""
+  -c "approval_policy=\"never\""
   --sandbox danger-full-access
-  --ask-for-approval never
   -C "$REPO_ROOT"
   --output-last-message "$analysis_output"
   "$codex_prompt"
@@ -178,7 +178,7 @@ codex_cmd=(
 
 print_plan() {
   printf 'benchmark: %s\n' "$(shell_join "${benchmark_cmd[@]}")"
-  printf 'codex: codex exec --model %s -c model_reasoning_effort="%s" --sandbox danger-full-access --ask-for-approval never\n' "$codex_model" "$codex_reasoning_effort"
+  printf 'codex: codex exec --model %s -c model_reasoning_effort="%s" -c approval_policy="never" --sandbox danger-full-access\n' "$codex_model" "$codex_reasoning_effort"
   printf 'publish: cast-benchmarks repo=%s remote=%s run_slug=%s skip_publish=%s\n' "$results_repo" "$results_remote" "$run_slug" "$skip_publish"
 }
 
