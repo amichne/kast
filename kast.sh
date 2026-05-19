@@ -1005,7 +1005,7 @@ _install_intellij_plugin() {
 }
 
 _install_standalone_backend() {
-  local release_repo="$1" release_tag="$2" install_root="$3" local_archive="${4:-}" bin_dir="${5:-${HOME}/.kast/bin}"
+  local release_repo="$1" release_tag="$2" install_root="$3" local_archive="${4:-}" bin_dir="${5:-${HOME}/.kast/bin}" archive_digest="${6:-}"
 
   log_section "Install standalone backend"
   local backend_dir="${install_root}/backends"
@@ -1030,6 +1030,13 @@ _install_standalone_backend() {
       log_note "Download attempt ${download_attempt} failed; retrying in 5 seconds"
       sleep 5
     done
+  fi
+
+  if [[ -n "$archive_digest" ]]; then
+    local expected_sha256="${archive_digest#sha256:}"
+    local actual_sha256; actual_sha256="$(compute_sha256 "$backend_path")"
+    [[ "$actual_sha256" == "$expected_sha256" ]] || die "Checksum verification failed for ${backend_name}"
+    log_success "Verified SHA-256 for ${backend_name}"
   fi
 
   local staging_dir="${tmp_dir}/backend-extract"
@@ -1486,7 +1493,7 @@ _install_push_plugin_to_intellij() {
 }
 
 _install_skill_phase() {
-  local bin_dir="$1" non_interactive="${2:-false}"
+  local bin_dir="$1" non_interactive="${2:-false}" install_root="${3:-${HOME}/.kast}"
   local kast_bin="${bin_dir}/kast"
   if [[ ! -x "$kast_bin" ]]; then
     kast_bin="$(command -v kast 2>/dev/null || true)"
@@ -1495,21 +1502,31 @@ _install_skill_phase() {
 
   log_section "Install Copilot skill"
 
-  if [[ "$non_interactive" == "true" ]] || ! can_prompt; then
+  local requested_scope="${KAST_SKILL_SCOPE:-}"
+  if [[ -n "$requested_scope" ]]; then
+    case "$requested_scope" in
+      global|local|both|skip) ;;
+      *) die "KAST_SKILL_SCOPE must be one of: global, local, both, skip" ;;
+    esac
+  elif [[ "$non_interactive" == "true" ]] || ! can_prompt; then
     log_note "Skipped skill install. Run: kast install skill"
     return 0
   fi
 
-  local global_dir="${HOME}/.kast/lib/skills"
+  local global_dir="${install_root}/lib/skills"
   local local_dir; local_dir="$(pwd)/.agents/skills"
-  printf '\n' >&2
-  printf '  %-9s %s\n' "$(colorize '1;32' 'global')" "Install to ${global_dir}/kast  (all projects)" >&2
-  printf '  %-9s %s\n' "local  " "Install to ${local_dir}/kast  (current directory)" >&2
-  printf '  %-9s %s\n' "both   " "Install to both locations" >&2
-  printf '  %-9s %s\n' "skip   " "Skip skill install" >&2
-  printf '\n' >&2
 
-  local scope_choice; scope_choice="$(_fzf_select "Skill scope" "global" "local" "both" "skip")"
+  local scope_choice="$requested_scope"
+  if [[ -z "$scope_choice" ]]; then
+    printf '\n' >&2
+    printf '  %-9s %s\n' "$(colorize '1;32' 'global')" "Install to ${global_dir}/kast  (all projects)" >&2
+    printf '  %-9s %s\n' "local  " "Install to ${local_dir}/kast  (current directory)" >&2
+    printf '  %-9s %s\n' "both   " "Install to both locations" >&2
+    printf '  %-9s %s\n' "skip   " "Skip skill install" >&2
+    printf '\n' >&2
+
+    scope_choice="$(_fzf_select "Skill scope" "global" "local" "both" "skip")"
+  fi
   scope_choice="${scope_choice:-global}"
 
   case "$scope_choice" in
@@ -1648,6 +1665,14 @@ Options:
   --local                   Install from local dist/ artifacts (built by ./kast.sh build)
   --non-interactive         Skip all interactive prompts (implies --skip-skill, --skip-copilot-extension)
   --help, -h                Show this help
+
+Environment:
+  KAST_INSTALL_ROOT              Install root override (default: $HOME/.kast)
+  KAST_ARCHIVE_PATH              Local CLI archive path
+  KAST_EXPECTED_SHA256           Expected SHA-256 for KAST_ARCHIVE_PATH
+  KAST_BACKEND_ARCHIVE_PATH      Local standalone backend archive path
+  KAST_BACKEND_EXPECTED_SHA256   Expected SHA-256 for KAST_BACKEND_ARCHIVE_PATH
+  KAST_SKILL_SCOPE               Skill scope when prompts are unavailable: global, local, both, skip
 USAGE
         return 0 ;;
       *) die "Unknown argument: $1" ;;
@@ -1668,7 +1693,9 @@ USAGE
 
   release_repo="$(_install_resolve_release_repo)"
   platform_id="$(_install_detect_platform_id)"
-  install_root="${HOME}/.kast"
+  install_root="${KAST_INSTALL_ROOT:-${HOME}/.kast}"
+  install_root="${install_root%/}"
+  [[ -n "$install_root" ]] || die "KAST_INSTALL_ROOT resolved to an empty path"
   bin_dir="${install_root}/bin"
   shell_name="$(_install_resolve_shell_name)"
 
@@ -1718,7 +1745,11 @@ USAGE
   fi
 
   # Validate local build sources
-  local local_plugin_archive="" local_backend_archive=""
+  local local_plugin_archive="" local_backend_archive="${KAST_BACKEND_ARCHIVE_PATH:-}"
+  local local_backend_digest="${KAST_BACKEND_EXPECTED_SHA256:-}"
+  if [[ "$install_standalone" == "true" && -n "$local_backend_archive" ]]; then
+    [[ -f "$local_backend_archive" ]] || die "KAST_BACKEND_ARCHIVE_PATH does not exist: $local_backend_archive"
+  fi
   if [[ "$local_build" == "true" ]]; then
     if [[ "$install_cli" == "true" && -z "${KAST_ARCHIVE_PATH:-}" ]]; then
       local dist_archive="${SCRIPT_DIR}/dist/cli.zip"
@@ -1730,7 +1761,7 @@ USAGE
       [[ -f "$local_plugin_archive" ]] || die "Local plugin archive not found at ${local_plugin_archive}. Run ./kast.sh build plugin first."
     fi
     if [[ "$install_standalone" == "true" ]]; then
-      local_backend_archive="${SCRIPT_DIR}/dist/backend.zip"
+      local_backend_archive="${local_backend_archive:-${SCRIPT_DIR}/dist/backend.zip}"
       [[ -f "$local_backend_archive" ]] || die "Local backend archive not found at ${local_backend_archive}. Run ./kast.sh build backend first."
     fi
   fi
@@ -1881,8 +1912,13 @@ USAGE
 
   # Phase 7: Standalone backend
   if [[ "$install_standalone" == "true" ]]; then
-    local resolved_tag; resolved_tag="$(_install_resolve_release_tag "$release_repo" "${release_tag:-}")"
-    if _install_standalone_backend "$release_repo" "$resolved_tag" "$install_root" "$local_backend_archive" "$bin_dir"; then
+    local resolved_tag
+    if [[ -n "$local_backend_archive" && -z "${release_tag:-}" ]]; then
+      resolved_tag="${KAST_VERSION:-local}"
+    else
+      resolved_tag="$(_install_resolve_release_tag "$release_repo" "${release_tag:-}")"
+    fi
+    if _install_standalone_backend "$release_repo" "$resolved_tag" "$install_root" "$local_backend_archive" "$bin_dir" "$local_backend_digest"; then
       local runtime_libs_dir="${install_root}/backends/standalone-${resolved_tag}/runtime-libs"
       _install_config_write "$install_root" "$bin_dir" "$runtime_libs_dir"
     fi
@@ -1890,7 +1926,7 @@ USAGE
 
   # Phase 8: Copilot skill
   if [[ "$skip_skill" != "true" && "$install_cli" == "true" ]]; then
-    _install_skill_phase "$bin_dir" "$non_interactive" || true
+    _install_skill_phase "$bin_dir" "$non_interactive" "$install_root" || true
   fi
 
   # Phase 8.5: Copilot extension
