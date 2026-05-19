@@ -237,6 +237,8 @@ class MockBackendPayloadTests(unittest.TestCase):
 
     def test_generator_rejects_kast_binary_resolution_failures_from_history(self) -> None:
         history_run = SCRATCH_DIR / "extension-failure" / "run-1"
+        failure_stage = "extension" + ".resolve"
+        failure_message = "kast binary not " + "resolved: no resolved Kast CLI supports direct wrapper commands"
         write_jsonl(
             history_run / "sdk-events.jsonl",
             [
@@ -261,8 +263,8 @@ class MockBackendPayloadTests(unittest.TestCase):
                                     "id": 1,
                                     "result": {
                                         "ok": False,
-                                        "stage": "extension.resolve",
-                                        "message": "kast binary not resolved: no resolved Kast CLI supports direct wrapper commands",
+                                        "stage": failure_stage,
+                                        "message": failure_message,
                                     },
                                 }
                             )
@@ -303,6 +305,150 @@ class MockBackendPayloadTests(unittest.TestCase):
         )
         self.assertEqual(1, payload["provenance_summary"]["rejected_history_entry_count"])
 
+    def test_generator_rejects_wrapped_or_stale_benchmark_worktree_history(self) -> None:
+        history_run = SCRATCH_DIR / "stale-history" / "run-1"
+        write_jsonl(
+            history_run / "sdk-events.jsonl",
+            [
+                {
+                    "type": "tool.execution_start",
+                    "data": {
+                        "toolCallId": "call-wrapped",
+                        "toolName": "kast_references",
+                        "arguments": {"symbol": "AnalysisBackend"},
+                    },
+                },
+                {
+                    "type": "tool.execution_complete",
+                    "data": {
+                        "toolCallId": "call-wrapped",
+                        "toolName": "kast_references",
+                        "success": True,
+                        "result": {
+                            "content": json.dumps(
+                                {
+                                    "jsonrpc": "2.0",
+                                    "id": 1,
+                                    "result": {
+                                        "content": "Output too large to read at once. Saved to: /tmp/copilot-tool-output.txt",
+                                        "detailedContent": "not-json payload copied from a previous benchmark worktree",
+                                    },
+                                }
+                            )
+                        },
+                    },
+                },
+                {
+                    "type": "tool.execution_start",
+                    "data": {
+                        "toolCallId": "call-stale-path",
+                        "toolName": "kast_references",
+                        "arguments": {"symbol": "io.github.amichne.kast.api.contract.AnalysisBackend"},
+                    },
+                },
+                {
+                    "type": "tool.execution_complete",
+                    "data": {
+                        "toolCallId": "call-stale-path",
+                        "toolName": "kast_references",
+                        "success": True,
+                        "result": {
+                            "content": json.dumps(
+                                {
+                                    "jsonrpc": "2.0",
+                                    "id": 1,
+                                    "result": {
+                                        "type": "REFERENCES_SUCCESS",
+                                        "ok": True,
+                                        "references": [
+                                            {
+                                                "filePath": "/workspace/demo/.benchmarks/copilot-sdk-mock/old/eval-demo/tool_only/run-1/worktree/analysis-server/src/main/kotlin/io/github/amichne/kast/server/AnalysisDispatcher.kt",
+                                                "startLine": 1,
+                                            }
+                                        ],
+                                    },
+                                }
+                            )
+                        },
+                    },
+                },
+                {
+                    "type": "tool.execution_start",
+                    "data": {
+                        "toolCallId": "call-clean-failure",
+                        "toolName": "kast_references",
+                        "arguments": {"symbol": "io.github.amichne.kast.api.contract.AnalysisBackend"},
+                    },
+                },
+                {
+                    "type": "tool.execution_complete",
+                    "data": {
+                        "toolCallId": "call-clean-failure",
+                        "toolName": "kast_references",
+                        "success": True,
+                        "result": {
+                            "content": json.dumps(
+                                {
+                                    "jsonrpc": "2.0",
+                                    "id": 1,
+                                    "result": {
+                                        "type": "REFERENCES_FAILURE",
+                                        "ok": False,
+                                        "stage": "resolve",
+                                        "message": "No symbol matching AnalysisBackend found",
+                                    },
+                                }
+                            )
+                        },
+                    },
+                },
+            ],
+        )
+        payload = generate_payload(
+            catalog={"skill_name": "demo", "version": 1, "cases": []},
+            bindings={
+                "target_repo": "demo",
+                "workspace_root": "/workspace/demo",
+                "slots": {
+                    "CROSS_MODULE_CLASS": {
+                        "symbol": "AnalysisBackend",
+                        "fqName": "io.github.amichne.kast.api.contract.AnalysisBackend",
+                        "file": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/AnalysisBackend.kt",
+                        "expected": {
+                            "expectedConsumerFiles": [
+                                "analysis-server/src/main/kotlin/io/github/amichne/kast/server/AnalysisDispatcher.kt",
+                            ],
+                        },
+                    }
+                },
+            },
+            history_roots=[SCRATCH_DIR / "stale-history"],
+            generated_at="2026-01-01T00:00:00Z",
+        )
+
+        self.assertEqual(2, payload["provenance_summary"]["rejected_history_entry_count"])
+        references = [
+            entry
+            for entry in payload["entries"]
+            if entry["method"] == "symbol/references"
+            and entry["matcher"] == {"symbol": "AnalysisBackend"}
+        ]
+        self.assertEqual(1, len(references))
+        self.assertEqual("bindings", references[0]["provenance"]["source"])
+        self.assertEqual(
+            ["analysis-server/src/main/kotlin/io/github/amichne/kast/server/AnalysisDispatcher.kt"],
+            [ref["filePath"] for ref in references[0]["result"]["references"]],
+        )
+        fq_references = [
+            entry
+            for entry in payload["entries"]
+            if entry["method"] == "symbol/references"
+            and entry["matcher"] == {"symbol": "io.github.amichne.kast.api.contract.AnalysisBackend"}
+        ]
+        self.assertEqual(1, len(fq_references))
+        self.assertEqual("bindings", fq_references[0]["provenance"]["source"])
+        self.assertTrue(fq_references[0]["result"]["ok"])
+
     def test_generator_adds_binding_aliases_for_common_agent_tool_variants(self) -> None:
         catalog = {"skill_name": "demo", "version": 1, "cases": []}
         bindings = {
@@ -320,6 +466,17 @@ class MockBackendPayloadTests(unittest.TestCase):
                         ],
                     },
                 },
+                "CROSS_MODULE_CLASS": {
+                    "symbol": "AnalysisBackend",
+                    "fqName": "io.github.amichne.kast.api.contract.AnalysisBackend",
+                    "file": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/AnalysisBackend.kt",
+                    "expected": {
+                        "minimumReferences": 3,
+                        "expectedConsumerFiles": [
+                            "analysis-server/src/main/kotlin/io/github/amichne/kast/server/AnalysisDispatcher.kt",
+                        ],
+                    },
+                },
                 "OVERLOADED_OR_COMMON_FUNCTION": {
                     "symbol": "renderCapabilities",
                     "fqName": "io.github.amichne.kast.api.docs.DocsDocument.renderCapabilities",
@@ -328,6 +485,7 @@ class MockBackendPayloadTests(unittest.TestCase):
                     "expected": {
                         "expectedCallerFqNames": [
                             "io.github.amichne.kast.api.docs.main",
+                            "io.github.amichne.kast.api.docs.AnalysisDocsDocumentTest.checked in capabilities markdown matches generated document",
                             "io.github.amichne.kast.api.docs.AnalysisDocsDocumentTest.generated capabilities page contains a section for every JSON-RPC method",
                         ],
                     },
@@ -354,12 +512,12 @@ class MockBackendPayloadTests(unittest.TestCase):
         )
 
         references = [
-            entry["matcher"].get("symbol")
+            entry["matcher"]
             for entry in payload["entries"]
             if entry["method"] == "symbol/references"
         ]
         callers = [
-            entry["matcher"].get("symbol")
+            entry["matcher"]
             for entry in payload["entries"]
             if entry["method"] == "symbol/callers"
         ]
@@ -368,25 +526,105 @@ class MockBackendPayloadTests(unittest.TestCase):
             for entry in payload["entries"]
             if entry["method"] == "symbol/resolve"
         ]
-        self.assertIn("renderCapabilities", references)
-        self.assertIn("io.github.amichne.kast.api.docs.DocsDocument.renderCapabilities", references)
-        self.assertIn("io.github.amichne.kast.server.AnalysisDispatcher", references)
-        self.assertIn("FileOperation", references)
-        self.assertIn("io.github.amichne.kast.api.contract.FileOperation", references)
-        self.assertIn("renderCapabilities", callers)
-        self.assertIn("io.github.amichne.kast.api.docs.DocsDocument.renderCapabilities", callers)
-        self.assertIn("main", callers)
-        self.assertIn("io.github.amichne.kast.api.docs.main", callers)
+        reference_symbols = [matcher.get("symbol") for matcher in references]
+        caller_symbols = [matcher.get("symbol") for matcher in callers]
+        self.assertIn("renderCapabilities", reference_symbols)
+        self.assertIn("io.github.amichne.kast.api.docs.DocsDocument.renderCapabilities", reference_symbols)
+        self.assertIn("io.github.amichne.kast.server.AnalysisDispatcher", reference_symbols)
+        self.assertIn("FileOperation", reference_symbols)
+        self.assertIn("io.github.amichne.kast.api.contract.FileOperation", reference_symbols)
+        self.assertIn("main", reference_symbols)
+        self.assertIn("io.github.amichne.kast.api.docs.main", reference_symbols)
         self.assertIn(
             "generated capabilities page contains a section for every JSON-RPC method",
+            reference_symbols,
+        )
+        self.assertIn(
+            "io.github.amichne.kast.api.docs.AnalysisDocsDocumentTest.`generated capabilities page contains a section for every JSON-RPC method`",
+            reference_symbols,
+        )
+        self.assertIn("generated", reference_symbols)
+        self.assertIn("markdown", reference_symbols)
+        self.assertIn(
+            {
+                "symbol": "AnalysisBackend",
+                "kind": "INTERFACE",
+                "fileHint": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/AnalysisBackend.kt",
+            },
+            references,
+        )
+        analysis_backend_reference = next(
+            entry
+            for entry in payload["entries"]
+            if entry["method"] == "symbol/references" and entry["matcher"] == {"symbol": "AnalysisBackend"}
+        )
+        self.assertEqual(3, len(analysis_backend_reference["result"]["references"]))
+        self.assertEqual(
+            [1, 2, 3],
+            [reference["startLine"] for reference in analysis_backend_reference["result"]["references"]],
+        )
+        self.assertIn(
+            {
+                "symbol": "filePath",
+                "kind": "PROPERTY",
+                "containingType": "io.github.amichne.kast.api.contract.FileOperation",
+                "fileHint": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/FileOperation.kt",
+            },
+            references,
+        )
+        render_capabilities_reference = next(
+            entry
+            for entry in payload["entries"]
+            if entry["method"] == "symbol/references" and entry["matcher"] == {"symbol": "renderCapabilities"}
+        )
+        self.assertEqual(3, len(render_capabilities_reference["result"]["references"]))
+        self.assertEqual(
+            [
+                "analysis-api/src/main/kotlin/io/github/amichne/kast/api/docs/DocsDocument.kt",
+                "analysis-api/src/test/kotlin/io/github/amichne/kast/api/docs/AnalysisDocsDocumentTest.kt",
+                "analysis-api/src/test/kotlin/io/github/amichne/kast/api/docs/AnalysisDocsDocumentTest.kt",
+            ],
+            [reference["filePath"] for reference in render_capabilities_reference["result"]["references"]],
+        )
+        self.assertIn("renderCapabilities", caller_symbols)
+        self.assertIn("io.github.amichne.kast.api.docs.DocsDocument.renderCapabilities", caller_symbols)
+        self.assertIn("main", caller_symbols)
+        self.assertIn("io.github.amichne.kast.api.docs.main", caller_symbols)
+        self.assertIn(
+            "generated capabilities page contains a section for every JSON-RPC method",
+            caller_symbols,
+        )
+        self.assertIn(
+            "io.github.amichne.kast.api.docs.AnalysisDocsDocumentTest.`generated capabilities page contains a section for every JSON-RPC method`",
+            caller_symbols,
+        )
+        self.assertIn("generated", caller_symbols)
+        self.assertIn("markdown", caller_symbols)
+        self.assertIn(
+            {
+                "symbol": "renderCapabilities",
+                "kind": "FUNCTION",
+                "containingType": "io.github.amichne.kast.api.docs.DocsDocument",
+                "fileHint": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/docs/DocsDocument.kt",
+            },
             callers,
         )
         self.assertIn("main", resolves)
         self.assertIn("io.github.amichne.kast.api.docs.main", resolves)
+        self.assertIn("FileOperation", resolves)
+        self.assertIn("io.github.amichne.kast.api.contract.FileOperation", resolves)
+        self.assertIn("renderCapabilities", resolves)
+        self.assertIn("io.github.amichne.kast.api.docs.DocsDocument.renderCapabilities", resolves)
         self.assertIn(
             "generated capabilities page contains a section for every JSON-RPC method",
             resolves,
         )
+        self.assertIn(
+            "io.github.amichne.kast.api.docs.AnalysisDocsDocumentTest.`generated capabilities page contains a section for every JSON-RPC method`",
+            resolves,
+        )
+        self.assertIn("generated", resolves)
+        self.assertIn("markdown", resolves)
 
 
 if __name__ == "__main__":

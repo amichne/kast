@@ -24,7 +24,7 @@ from render_prompts import resolve_binding
 
 LINE_CITATION_RE = re.compile(
     r"(?P<path>(?:/[^:\s]+|[\w./-]+\.kts?))"
-    r"(?:(?::(?P<colon_line>\d+))|\s*(?:-|--|\u2013|\u2014)\s*line\s+(?P<word_line>\d+))",
+    r"(?:(?::\s*(?P<colon_line>\d+))|\s*(?:-|--|\u2013|\u2014)\s*line\s+(?P<word_line>\d+))",
     re.IGNORECASE,
 )
 POSITIVE_COMPILE_RE = re.compile(
@@ -201,6 +201,28 @@ def flatten_expected(value: Any) -> list[str]:
     return [str(value)]
 
 
+def module_source_path_fragments(module_name: str) -> list[str]:
+    text = module_name.strip()
+    if text.startswith("kast."):
+        text = text.removeprefix("kast.")
+    if "." not in text:
+        return [text] if text else []
+    module_path, source_set = text.rsplit(".", 1)
+    if source_set in {"main", "test"} and module_path:
+        return [f"{module_path}/src/{source_set}"]
+    return [module_path] if module_path else []
+
+
+def expected_module_present(module_name: str, transcript: str) -> bool:
+    if module_name in transcript:
+        return True
+    return any(fragment and fragment in transcript for fragment in module_source_path_fragments(module_name))
+
+
+def expected_text_present(expected: str, transcript: str) -> bool:
+    return expected in transcript or expected in transcript.replace("`", "")
+
+
 def resolve_oracle(bindings: dict[str, Any], expression: str | None) -> Any:
     if not expression:
         return None
@@ -302,13 +324,20 @@ def grade_oracle_expectation(
         return count >= oracle, f"Found {count} file:line citation(s); expected at least {oracle}."
 
     expected = flatten_expected(oracle)
+    if expectation_id == "or-consumer-modules":
+        missing_modules = [item for item in expected if item and not expected_module_present(item, transcript)]
+        return not missing_modules, (
+            "All expected modules appeared."
+            if not missing_modules
+            else f"Missing expected values: {', '.join(missing_modules[:5])}."
+        )
     if expectation_id in {"om-precision"} or "decoy" in expectation_id or "extra" in expectation_id:
-        present = [item for item in expected if item and item in transcript]
+        present = [item for item in expected if item and expected_text_present(item, transcript)]
         return not present, (
             "No forbidden values appeared." if not present else f"Forbidden values appeared: {', '.join(present[:5])}."
         )
 
-    missing = [item for item in expected if item and item not in transcript]
+    missing = [item for item in expected if item and not expected_text_present(item, transcript)]
     return not missing, (
         "All expected values appeared." if not missing else f"Missing expected values: {', '.join(missing[:5])}."
     )

@@ -405,6 +405,177 @@ class ValueProofScriptTests(unittest.TestCase):
             result["execution_metrics"]["transcript_chars"],
         )
 
+    def test_script_grader_accepts_spaced_colon_line_citations(self) -> None:
+        workspace_root = TEST_WORKSPACE / "workspace-root"
+        source = workspace_root / "src" / "Demo.kt"
+        source.parent.mkdir(parents=True)
+        source.write_text("class Demo\nfun use() = Demo()\n")
+
+        iteration_dir = TEST_WORKSPACE / "iteration-001"
+        eval_dir = iteration_dir / "eval-vp-demo"
+        run_dir = eval_dir / "tool_only" / "run-1"
+        outputs = run_dir / "outputs"
+        outputs.mkdir(parents=True)
+        write_json(
+            eval_dir / "eval_metadata.json",
+            {
+                "eval_id": "vp-demo",
+                "eval_name": "vp-demo",
+                "assertions": [
+                    {
+                        "id": "om-min-sites",
+                        "text": "Reports enough citations",
+                        "kind": "outcome",
+                        "oracle": "DISAMBIGUATE_MEMBER.expected.minimumUsageSites",
+                        "graded_by": "script",
+                    },
+                ],
+            },
+        )
+        bindings_path = TEST_WORKSPACE / "bindings.json"
+        write_json(
+            bindings_path,
+            {
+                "workspace_root": str(workspace_root),
+                "slots": {
+                    "DISAMBIGUATE_MEMBER": {
+                        "expected": {
+                            "minimumUsageSites": 1,
+                        }
+                    }
+                },
+            },
+        )
+        transcript = [
+            {
+                "type": "assistant.message",
+                "data": {"content": "The usage is src/Demo.kt: 2."},
+            }
+        ]
+        (outputs / "transcript.md").write_text("\n".join(json.dumps(row) for row in transcript) + "\n")
+
+        result = grade(run_dir, bindings_path)
+
+        self.assertEqual(1, result["summary"]["passed"])
+        self.assertEqual(0, result["summary"]["failed"])
+
+    def test_script_grader_accepts_path_derived_module_source_set_evidence(self) -> None:
+        iteration_dir = TEST_WORKSPACE / "iteration-001"
+        eval_dir = iteration_dir / "eval-vp-exhaustive-references"
+        run_dir = eval_dir / "tool_only" / "run-1"
+        outputs = run_dir / "outputs"
+        outputs.mkdir(parents=True)
+        write_json(
+            eval_dir / "eval_metadata.json",
+            {
+                "eval_id": "vp-exhaustive-references",
+                "eval_name": "vp-exhaustive-references",
+                "assertions": [
+                    {
+                        "id": "or-consumer-modules",
+                        "text": "Names every expected consumer module",
+                        "kind": "outcome",
+                        "oracle": "CROSS_MODULE_CLASS.expected.expectedConsumerModules",
+                        "graded_by": "script",
+                    },
+                ],
+            },
+        )
+        bindings_path = TEST_WORKSPACE / "bindings.json"
+        write_json(
+            bindings_path,
+            {
+                "workspace_root": str(TEST_WORKSPACE),
+                "slots": {
+                    "CROSS_MODULE_CLASS": {
+                        "expected": {
+                            "expectedConsumerModules": [
+                                "kast.analysis-server.main",
+                                "kast.analysis-server.test",
+                                "kast.backend-intellij.main",
+                                "kast.backend-standalone.main",
+                                "kast.shared-testing.main",
+                            ],
+                        }
+                    }
+                },
+            },
+        )
+        transcript = [
+            {
+                "type": "assistant.message",
+                "data": {
+                    "content": "\n".join(
+                        [
+                            "analysis-server/src/main/kotlin/io/github/amichne/kast/server/AnalysisDispatcher.kt",
+                            "analysis-server/src/test/kotlin/io/github/amichne/kast/server/DynamicTimeoutScalingTest.kt",
+                            "backend-intellij/src/main/kotlin/io/github/amichne/kast/intellij/KastPluginBackend.kt",
+                            "backend-standalone/src/main/kotlin/io/github/amichne/kast/standalone/StandaloneAnalysisBackend.kt",
+                            "shared-testing/src/main/kotlin/io/github/amichne/kast/testing/FakeAnalysisBackend.kt",
+                        ]
+                    )
+                },
+            }
+        ]
+        (outputs / "transcript.md").write_text("\n".join(json.dumps(row) for row in transcript) + "\n")
+
+        result = grade(run_dir, bindings_path)
+
+        self.assertEqual(1, result["summary"]["passed"])
+        self.assertEqual(0, result["summary"]["failed"])
+
+    def test_script_grader_matches_kotlin_backtick_quoted_expected_values(self) -> None:
+        iteration_dir = TEST_WORKSPACE / "iteration-001"
+        eval_dir = iteration_dir / "eval-vp-impact-analysis"
+        run_dir = eval_dir / "tool_only" / "run-1"
+        outputs = run_dir / "outputs"
+        outputs.mkdir(parents=True)
+        write_json(
+            eval_dir / "eval_metadata.json",
+            {
+                "eval_id": "vp-impact-analysis",
+                "eval_name": "vp-impact-analysis",
+                "assertions": [
+                    {
+                        "id": "oi-direct-callers-recall",
+                        "text": "Direct callers list includes every expectedCallerFqName",
+                        "kind": "outcome",
+                        "oracle": "OVERLOADED_OR_COMMON_FUNCTION.expected.expectedCallerFqNames",
+                        "graded_by": "script",
+                    },
+                ],
+            },
+        )
+        bindings_path = TEST_WORKSPACE / "bindings.json"
+        expected_caller = "io.github.amichne.kast.api.docs.AnalysisDocsDocumentTest.generated capabilities page contains a section for every JSON-RPC method"
+        write_json(
+            bindings_path,
+            {
+                "workspace_root": str(TEST_WORKSPACE),
+                "slots": {
+                    "OVERLOADED_OR_COMMON_FUNCTION": {
+                        "expected": {
+                            "expectedCallerFqNames": [expected_caller],
+                        }
+                    }
+                },
+            },
+        )
+        transcript = [
+            {
+                "type": "assistant.message",
+                "data": {
+                    "content": "fqName: io.github.amichne.kast.api.docs.AnalysisDocsDocumentTest.`generated capabilities page contains a section for every JSON-RPC method`"
+                },
+            }
+        ]
+        (outputs / "transcript.md").write_text("\n".join(json.dumps(row) for row in transcript) + "\n")
+
+        result = grade(run_dir, bindings_path)
+
+        self.assertEqual(1, result["summary"]["passed"])
+        self.assertEqual(0, result["summary"]["failed"])
+
     def test_finalize_merges_mechanical_and_llm_surfaces(self) -> None:
         iteration_dir = TEST_WORKSPACE / "iteration-001"
         eval_dir = iteration_dir / "eval-vp-demo"
@@ -793,7 +964,7 @@ class ValueProofScriptTests(unittest.TestCase):
         self.assertEqual(1, integrity["mock_backend_error_count"])
         self.assertEqual("mock_backend_error", _invalid_reason([], integrity))
 
-    def test_dirty_post_run_worktree_invalidates_aggregate_runs(self) -> None:
+    def test_dirty_post_run_worktree_invalidates_read_only_aggregate_runs(self) -> None:
         integrity = _integrity(
             {
                 "integrity": {
@@ -805,6 +976,25 @@ class ValueProofScriptTests(unittest.TestCase):
 
         self.assertTrue(integrity["workspace_dirty_post"])
         self.assertEqual("workspace_dirty_post", _invalid_reason([], integrity))
+
+    def test_dirty_post_run_worktree_remains_score_evidence_for_mutation_runs(self) -> None:
+        integrity = _integrity(
+            {
+                "integrity": {
+                    "workspace_dirty_post": True,
+                }
+            },
+            "with_skill",
+        )
+        expectations = [
+            {
+                "id": "or-files-touched",
+                "status": "failed",
+            },
+        ]
+
+        self.assertTrue(integrity["workspace_dirty_post"])
+        self.assertIsNone(_invalid_reason(expectations, integrity))
 
     def test_failed_timing_invalidates_aggregate_run_as_executor_failure(self) -> None:
         iteration_dir, run_dir = self.create_finalized_run_fixture()

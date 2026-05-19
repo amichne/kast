@@ -76,6 +76,16 @@ assert.deepEqual(
   ),
   { kind: "denied-by-rules" },
 );
+assert.deepEqual(
+  toolOnlyConfig.onPermissionRequest(
+    {
+      kind: "shell",
+      fullCommandText: 'rg --line-number --no-heading "AnalysisBackend" -g "**/*.kt" > analysis-backend-refs.txt || true',
+    },
+    {},
+  ),
+  { kind: "denied-by-rules" },
+);
 
 assert.deepEqual(
   buildClientOptions({

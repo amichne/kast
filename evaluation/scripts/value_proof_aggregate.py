@@ -284,6 +284,13 @@ def _run_efficiency(grading: dict[str, Any]) -> dict[str, Any]:
 
 
 def _invalid_reason(expectations: list[dict[str, Any]], integrity: dict[str, Any]) -> str | None:
+    mutation_expectation_ids = {
+        "oe-edited",
+        "or-files-extra",
+        "or-files-touched",
+        "or-imports-updated",
+    }
+    allows_dirty_post = any(str(expectation.get("id", "")) in mutation_expectation_ids for expectation in expectations)
     executor_status = str(integrity.get("executor_status", "") or "")
     executor_exit_code = integrity.get("executor_exit_code")
     if (executor_status and executor_status not in {"unknown", "succeeded"}) or (
@@ -302,6 +309,8 @@ def _invalid_reason(expectations: list[dict[str, Any]], integrity: dict[str, Any
         return "contradictory_grading"
     if integrity.get("mock_backend_error_count", 0) > 0:
         return "mock_backend_error"
+    if integrity.get("workspace_dirty_post") is True and not allows_dirty_post:
+        return "workspace_dirty_post"
     return None
 
 

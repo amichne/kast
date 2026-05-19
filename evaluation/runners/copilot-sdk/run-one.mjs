@@ -32,12 +32,14 @@ export const CONFIG_POLICIES = {
     registerKastTools: true,
     loadKastSkill: false,
     denyDirectKastShell: false,
+    denyShellWrites: true,
     baselinePolicy: "tool_only",
   },
   without_skill: {
     registerKastTools: false,
     loadKastSkill: false,
     denyDirectKastShell: true,
+    denyShellWrites: true,
     baselinePolicy: "deny_direct_kast_shell",
   },
 };
@@ -229,6 +231,10 @@ export function containsDirectKastShell(commandText) {
   return /\bkast(?:\s|$)/.test(commandText) || /\bkast_[a-z_]+\b/.test(commandText);
 }
 
+export function containsShellWriteRedirection(commandText) {
+  return /(^|[\s;|&])>{1,2}\s*\S/.test(String(commandText ?? ""));
+}
+
 export function containsUnbalancedShellBackticks(commandText) {
   let inSingleQuote = false;
   let escaped = false;
@@ -331,6 +337,10 @@ export function buildSessionConfig({
       }
       if (policy.denyDirectKastShell && request?.kind === "shell" && containsDirectKastShell(fullCommandText)) {
         permissionLog.push({ kind: "denied-by-rules", request });
+        return { kind: "denied-by-rules" };
+      }
+      if (policy.denyShellWrites && request?.kind === "shell" && containsShellWriteRedirection(fullCommandText)) {
+        permissionLog.push({ kind: "denied-by-rules", reason: "shell-write-redirection", request });
         return { kind: "denied-by-rules" };
       }
       permissionLog.push({ kind: "approved", request });
