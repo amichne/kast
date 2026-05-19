@@ -111,18 +111,20 @@ def run_grade_step(
                     f"Mechanical grading failed for {run_dir}: {completed.stderr.strip() or completed.stdout.strip()}"
                 )
         else:
+            resolved_run_dir = run_dir.resolve()
+            resolved_bindings_path = bindings_path.resolve()
             completed = subprocess.run(
                 [
                     sys.executable,
                     str(SCRIPT_GRADER),
                     "--run-dir",
-                    str(run_dir),
+                    str(resolved_run_dir),
                     "--bindings",
-                    str(bindings_path),
+                    str(resolved_bindings_path),
                     "--output",
-                    str(run_dir / "mechanical.json"),
+                    str(resolved_run_dir / "mechanical.json"),
                     "--llm-grade-input-output",
-                    str(run_dir / "llm-grade-input.json"),
+                    str(resolved_run_dir / "llm-grade-input.json"),
                 ],
                 cwd=run_dir,
                 text=True,

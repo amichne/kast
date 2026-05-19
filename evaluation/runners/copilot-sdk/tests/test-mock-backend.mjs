@@ -48,6 +48,32 @@ try {
             },
             provenance: { source: "history", fallback: false },
           },
+          {
+            method: "symbol/resolve",
+            matcher: { symbol: "runDemo", kind: "FUNCTION" },
+            result: {
+              type: "RESOLVE_SUCCESS",
+              ok: true,
+              query: { workspaceRoot: ".", symbol: "runDemo", kind: "FUNCTION" },
+              symbol: {
+                fqName: "sample.runDemo",
+                kind: "FUNCTION",
+                location: {
+                  filePath: "src/Demo.kt",
+                  startOffset: 22,
+                  endOffset: 29,
+                  startLine: 4,
+                  startColumn: 5,
+                  preview: "fun runDemo()",
+                },
+              },
+              filePath: "src/Demo.kt",
+              offset: 22,
+              candidate: { line: 4, column: 5, context: "fun runDemo()" },
+              logFile: ".kast/mock.log",
+            },
+            provenance: { source: "history", fallback: false },
+          },
         ],
       },
       null,
@@ -67,7 +93,11 @@ try {
   assert.equal(resolveEnvelope.result.filePath, resolve(worktree, "src/Demo.kt"));
   assert.equal(resolveEnvelope.result.symbol.location.filePath, resolve(worktree, "src/Demo.kt"));
   assert.equal(caller.metadata().backend_mode, "mock");
-  assert.equal(caller.metadata().payload_entry_count, 1);
+  assert.equal(caller.metadata().payload_entry_count, 2);
+
+  const lowerKindEnvelope = JSON.parse(await caller.call("symbol/resolve", { symbol: "runDemo", kind: "function" }));
+  assert.equal(lowerKindEnvelope.result.ok, true);
+  assert.equal(lowerKindEnvelope.result.symbol.fqName, "sample.runDemo");
 
   const renameWorktree = join(scratch, "rename-worktree");
   await mkdir(join(renameWorktree, "src"), { recursive: true });

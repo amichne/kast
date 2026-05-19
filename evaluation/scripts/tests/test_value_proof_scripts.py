@@ -19,7 +19,8 @@ from finalize_grading import finalize
 from parse_tool_calls import parse_run_dir
 from run_value_proof import scaffold_workspace
 from script_grader import grade
-from value_proof_aggregate import _integrity, _invalid_reason
+from generate_executive_summary import generate_summary_documents
+from value_proof_aggregate import _integrity, _invalid_reason, aggregate, write_outputs
 
 
 def write_json(path: Path, payload: dict) -> None:
@@ -124,6 +125,52 @@ class ValueProofScriptTests(unittest.TestCase):
         self.assertTrue((run_dir / "llm-grade.json").exists())
         self.assertTrue((run_dir / "llm-grade-input.json").exists())
         self.assertTrue((run_dir / "grading.json").exists())
+
+    def test_scaffold_does_not_clobber_existing_run_artifacts(self) -> None:
+        catalog_path = TEST_WORKSPACE / "catalog.json"
+        write_json(
+            catalog_path,
+            {
+                "skill_name": "kast-value-proof",
+                "version": 1,
+                "cases": [
+                    {
+                        "id": "vp-demo",
+                        "title": "Demo case",
+                        "prompt": "Inspect the demo.",
+                        "expectations": [],
+                    }
+                ],
+            },
+        )
+
+        iteration_dir = scaffold_workspace(
+            catalog_path=catalog_path,
+            workspace_dir=TEST_WORKSPACE / "workspace",
+            runs_per_config=1,
+            configs=["with_skill"],
+            iteration="iteration-001",
+            aggregate=False,
+        )
+        run_dir = iteration_dir / "eval-vp-demo" / "with_skill" / "run-1"
+        (run_dir / "timing.json").write_text('{"status":"succeeded"}\n')
+        (run_dir / "mechanical.json").write_text('{"status":"graded"}\n')
+        (run_dir / "final-answer.md").write_text("done\n")
+        (run_dir / "outputs" / "transcript.md").write_text("transcript\n")
+
+        scaffold_workspace(
+            catalog_path=catalog_path,
+            workspace_dir=TEST_WORKSPACE / "workspace",
+            runs_per_config=1,
+            configs=["with_skill"],
+            iteration="iteration-001",
+            aggregate=False,
+        )
+
+        self.assertEqual('{"status":"succeeded"}\n', (run_dir / "timing.json").read_text())
+        self.assertEqual('{"status":"graded"}\n', (run_dir / "mechanical.json").read_text())
+        self.assertEqual("done\n", (run_dir / "final-answer.md").read_text())
+        self.assertEqual("transcript\n", (run_dir / "outputs" / "transcript.md").read_text())
 
     def test_dispatch_uses_manifest_retries_empty_transcript_and_records_timing(self) -> None:
         iteration_dir = self.create_iteration_fixture()
@@ -404,6 +451,177 @@ class ValueProofScriptTests(unittest.TestCase):
             result["execution_metrics"]["transcript_chars"],
         )
 
+    def test_script_grader_accepts_spaced_colon_line_citations(self) -> None:
+        workspace_root = TEST_WORKSPACE / "workspace-root"
+        source = workspace_root / "src" / "Demo.kt"
+        source.parent.mkdir(parents=True)
+        source.write_text("class Demo\nfun use() = Demo()\n")
+
+        iteration_dir = TEST_WORKSPACE / "iteration-001"
+        eval_dir = iteration_dir / "eval-vp-demo"
+        run_dir = eval_dir / "tool_only" / "run-1"
+        outputs = run_dir / "outputs"
+        outputs.mkdir(parents=True)
+        write_json(
+            eval_dir / "eval_metadata.json",
+            {
+                "eval_id": "vp-demo",
+                "eval_name": "vp-demo",
+                "assertions": [
+                    {
+                        "id": "om-min-sites",
+                        "text": "Reports enough citations",
+                        "kind": "outcome",
+                        "oracle": "DISAMBIGUATE_MEMBER.expected.minimumUsageSites",
+                        "graded_by": "script",
+                    },
+                ],
+            },
+        )
+        bindings_path = TEST_WORKSPACE / "bindings.json"
+        write_json(
+            bindings_path,
+            {
+                "workspace_root": str(workspace_root),
+                "slots": {
+                    "DISAMBIGUATE_MEMBER": {
+                        "expected": {
+                            "minimumUsageSites": 1,
+                        }
+                    }
+                },
+            },
+        )
+        transcript = [
+            {
+                "type": "assistant.message",
+                "data": {"content": "The usage is src/Demo.kt: 2."},
+            }
+        ]
+        (outputs / "transcript.md").write_text("\n".join(json.dumps(row) for row in transcript) + "\n")
+
+        result = grade(run_dir, bindings_path)
+
+        self.assertEqual(1, result["summary"]["passed"])
+        self.assertEqual(0, result["summary"]["failed"])
+
+    def test_script_grader_accepts_path_derived_module_source_set_evidence(self) -> None:
+        iteration_dir = TEST_WORKSPACE / "iteration-001"
+        eval_dir = iteration_dir / "eval-vp-exhaustive-references"
+        run_dir = eval_dir / "tool_only" / "run-1"
+        outputs = run_dir / "outputs"
+        outputs.mkdir(parents=True)
+        write_json(
+            eval_dir / "eval_metadata.json",
+            {
+                "eval_id": "vp-exhaustive-references",
+                "eval_name": "vp-exhaustive-references",
+                "assertions": [
+                    {
+                        "id": "or-consumer-modules",
+                        "text": "Names every expected consumer module",
+                        "kind": "outcome",
+                        "oracle": "CROSS_MODULE_CLASS.expected.expectedConsumerModules",
+                        "graded_by": "script",
+                    },
+                ],
+            },
+        )
+        bindings_path = TEST_WORKSPACE / "bindings.json"
+        write_json(
+            bindings_path,
+            {
+                "workspace_root": str(TEST_WORKSPACE),
+                "slots": {
+                    "CROSS_MODULE_CLASS": {
+                        "expected": {
+                            "expectedConsumerModules": [
+                                "kast.analysis-server.main",
+                                "kast.analysis-server.test",
+                                "kast.backend-intellij.main",
+                                "kast.backend-standalone.main",
+                                "kast.shared-testing.main",
+                            ],
+                        }
+                    }
+                },
+            },
+        )
+        transcript = [
+            {
+                "type": "assistant.message",
+                "data": {
+                    "content": "\n".join(
+                        [
+                            "analysis-server/src/main/kotlin/io/github/amichne/kast/server/AnalysisDispatcher.kt",
+                            "analysis-server/src/test/kotlin/io/github/amichne/kast/server/DynamicTimeoutScalingTest.kt",
+                            "backend-intellij/src/main/kotlin/io/github/amichne/kast/intellij/KastPluginBackend.kt",
+                            "backend-standalone/src/main/kotlin/io/github/amichne/kast/standalone/StandaloneAnalysisBackend.kt",
+                            "shared-testing/src/main/kotlin/io/github/amichne/kast/testing/FakeAnalysisBackend.kt",
+                        ]
+                    )
+                },
+            }
+        ]
+        (outputs / "transcript.md").write_text("\n".join(json.dumps(row) for row in transcript) + "\n")
+
+        result = grade(run_dir, bindings_path)
+
+        self.assertEqual(1, result["summary"]["passed"])
+        self.assertEqual(0, result["summary"]["failed"])
+
+    def test_script_grader_matches_kotlin_backtick_quoted_expected_values(self) -> None:
+        iteration_dir = TEST_WORKSPACE / "iteration-001"
+        eval_dir = iteration_dir / "eval-vp-impact-analysis"
+        run_dir = eval_dir / "tool_only" / "run-1"
+        outputs = run_dir / "outputs"
+        outputs.mkdir(parents=True)
+        write_json(
+            eval_dir / "eval_metadata.json",
+            {
+                "eval_id": "vp-impact-analysis",
+                "eval_name": "vp-impact-analysis",
+                "assertions": [
+                    {
+                        "id": "oi-direct-callers-recall",
+                        "text": "Direct callers list includes every expectedCallerFqName",
+                        "kind": "outcome",
+                        "oracle": "OVERLOADED_OR_COMMON_FUNCTION.expected.expectedCallerFqNames",
+                        "graded_by": "script",
+                    },
+                ],
+            },
+        )
+        bindings_path = TEST_WORKSPACE / "bindings.json"
+        expected_caller = "io.github.amichne.kast.api.docs.AnalysisDocsDocumentTest.generated capabilities page contains a section for every JSON-RPC method"
+        write_json(
+            bindings_path,
+            {
+                "workspace_root": str(TEST_WORKSPACE),
+                "slots": {
+                    "OVERLOADED_OR_COMMON_FUNCTION": {
+                        "expected": {
+                            "expectedCallerFqNames": [expected_caller],
+                        }
+                    }
+                },
+            },
+        )
+        transcript = [
+            {
+                "type": "assistant.message",
+                "data": {
+                    "content": "fqName: io.github.amichne.kast.api.docs.AnalysisDocsDocumentTest.`generated capabilities page contains a section for every JSON-RPC method`"
+                },
+            }
+        ]
+        (outputs / "transcript.md").write_text("\n".join(json.dumps(row) for row in transcript) + "\n")
+
+        result = grade(run_dir, bindings_path)
+
+        self.assertEqual(1, result["summary"]["passed"])
+        self.assertEqual(0, result["summary"]["failed"])
+
     def test_finalize_merges_mechanical_and_llm_surfaces(self) -> None:
         iteration_dir = TEST_WORKSPACE / "iteration-001"
         eval_dir = iteration_dir / "eval-vp-demo"
@@ -535,6 +753,126 @@ class ValueProofScriptTests(unittest.TestCase):
         self.assertIn("combined", finalized)
         self.assertEqual(2, len(finalized["combined"]["expectations"]))
         self.assertEqual(2, finalized["summary"]["passed"])
+
+    def test_finalize_prefers_run_local_post_state_over_parent_workspace_state(self) -> None:
+        _, run_dir = self.create_finalized_run_fixture()
+        mechanical = json.loads((run_dir / "mechanical.json").read_text())
+        mechanical["integrity"] = {
+            **mechanical["integrity"],
+            "git_sha_post": "run-sha",
+            "workspace_dirty_post": False,
+        }
+        mechanical["repo_state"] = {
+            "post_run": {
+                "sha": "run-sha",
+                "dirty": False,
+                "diff_name_status": [],
+                "touched_files": [],
+                "patch_hash": None,
+            }
+        }
+        write_json(run_dir / "mechanical.json", mechanical)
+        dirty_workspace = TEST_WORKSPACE / "dirty-parent-workspace"
+        dirty_workspace.mkdir()
+        subprocess.run(["git", "init"], cwd=dirty_workspace, check=True, capture_output=True)
+        (dirty_workspace / "untracked.txt").write_text("dirty\n")
+
+        finalized = finalize(run_dir, workspace_root=dirty_workspace)
+
+        self.assertEqual("run-sha", finalized["integrity"]["git_sha_post"])
+        self.assertFalse(finalized["integrity"]["workspace_dirty_post"])
+
+    def test_finalize_allows_successful_harness_exit_code_evidence(self) -> None:
+        iteration_dir = TEST_WORKSPACE / "iteration-001"
+        eval_dir = iteration_dir / "eval-vp-demo"
+        run_dir = eval_dir / "with_skill" / "run-1"
+        (run_dir / "outputs").mkdir(parents=True)
+        write_json(
+            eval_dir / "eval_metadata.json",
+            {
+                "eval_id": "vp-demo",
+                "eval_name": "vp-demo",
+                "assertions": [
+                    {
+                        "id": "compile-probe",
+                        "text": "Post-edit compile status is reported",
+                        "kind": "outcome",
+                        "graded_by": "script",
+                    }
+                ],
+            },
+        )
+        write_json(
+            run_dir / "mechanical.json",
+            {
+                "status": "graded",
+                "expectations": [
+                    {
+                        "id": "compile-probe",
+                        "text": "Post-edit compile status is reported",
+                        "passed": True,
+                        "evidence": "Harness probe exit code = 0.",
+                        "kind": "outcome",
+                        "graded_by": "script",
+                    }
+                ],
+            },
+        )
+        write_json(run_dir / "llm-grade.json", {"expectations": []})
+        write_json(run_dir / "timing.json", {"attempts": 1})
+        (run_dir / "outputs" / "tool_calls.jsonl").write_text("")
+        (run_dir / "outputs" / "transcript.md").write_text("compile probe passed\n")
+
+        finalized = finalize(run_dir)
+
+        self.assertEqual([], finalized["integrity"]["contradictions"])
+        self.assertEqual(1, finalized["summary"]["passed"])
+
+    def test_finalize_flags_passed_zero_count_evidence_as_contradiction(self) -> None:
+        iteration_dir = TEST_WORKSPACE / "iteration-001"
+        eval_dir = iteration_dir / "eval-vp-demo"
+        run_dir = eval_dir / "with_skill" / "run-1"
+        (run_dir / "outputs").mkdir(parents=True)
+        write_json(
+            eval_dir / "eval_metadata.json",
+            {
+                "eval_id": "vp-demo",
+                "eval_name": "vp-demo",
+                "assertions": [
+                    {
+                        "id": "citations",
+                        "text": "Reports file citations",
+                        "kind": "outcome",
+                        "graded_by": "script",
+                    }
+                ],
+            },
+        )
+        write_json(
+            run_dir / "mechanical.json",
+            {
+                "status": "graded",
+                "expectations": [
+                    {
+                        "id": "citations",
+                        "text": "Reports file citations",
+                        "passed": True,
+                        "evidence": "References found = 0.",
+                        "kind": "outcome",
+                        "graded_by": "script",
+                    }
+                ],
+            },
+        )
+        write_json(run_dir / "llm-grade.json", {"expectations": []})
+        write_json(run_dir / "timing.json", {"attempts": 1})
+        (run_dir / "outputs" / "tool_calls.jsonl").write_text("")
+        (run_dir / "outputs" / "transcript.md").write_text("no citations\n")
+
+        finalized = finalize(run_dir)
+
+        self.assertEqual(1, len(finalized["integrity"]["contradictions"]))
+        self.assertIn("References found = 0", finalized["integrity"]["contradictions"][0])
 
     def test_script_grader_uses_harness_probe_for_compile_expectations(self) -> None:
         worktree = TEST_WORKSPACE / "worktree"
@@ -672,6 +1010,319 @@ class ValueProofScriptTests(unittest.TestCase):
         self.assertEqual(1, integrity["mock_backend_error_count"])
         self.assertEqual("mock_backend_error", _invalid_reason([], integrity))
 
+    def test_dirty_post_run_worktree_invalidates_read_only_aggregate_runs(self) -> None:
+        integrity = _integrity(
+            {
+                "integrity": {
+                    "workspace_dirty_post": True,
+                }
+            },
+            "with_skill",
+        )
+
+        self.assertTrue(integrity["workspace_dirty_post"])
+        self.assertEqual("workspace_dirty_post", _invalid_reason([], integrity))
+
+    def test_dirty_post_run_worktree_remains_score_evidence_for_mutation_runs(self) -> None:
+        integrity = _integrity(
+            {
+                "integrity": {
+                    "workspace_dirty_post": True,
+                }
+            },
+            "with_skill",
+        )
+        expectations = [
+            {
+                "id": "or-files-touched",
+                "status": "failed",
+            },
+        ]
+
+        self.assertTrue(integrity["workspace_dirty_post"])
+        self.assertIsNone(_invalid_reason(expectations, integrity))
+
+    def test_failed_timing_invalidates_aggregate_run_as_executor_failure(self) -> None:
+        iteration_dir, run_dir = self.create_finalized_run_fixture()
+        write_json(
+            run_dir / "timing.json",
+            {
+                "status": "failed",
+                "attempts": 1,
+                "last_exit_code": 1,
+                "message": "exit=1; transcript=non-empty; stderr=No space left on device",
+            },
+        )
+
+        finalized = finalize(run_dir)
+        benchmark = aggregate(
+            iteration_dir,
+            skill_name="kast-value-proof",
+            bindings_path=None,
+            catalog_path=None,
+        )
+        run = benchmark["runs"][0]
+
+        self.assertEqual("failed", finalized["integrity"]["executor_status"])
+        self.assertEqual("executor_failed", run["invalid_reason"])
+        self.assertEqual("failed", run["integrity"]["executor_status"])
+        self.assertEqual(1, run["integrity"]["executor_exit_code"])
+        self.assertIn("No space left on device", run["integrity"]["executor_message"])
+        self.assertTrue(run["integrity"]["transcript_present"])
+
+    def test_empty_transcript_invalidates_aggregate_and_blocks_empty_output_passes(self) -> None:
+        iteration_dir, run_dir = self.create_finalized_run_fixture()
+        (run_dir / "outputs" / "transcript.md").write_text("")
+
+        finalize(run_dir)
+        benchmark = aggregate(
+            iteration_dir,
+            skill_name="kast-value-proof",
+            bindings_path=None,
+            catalog_path=None,
+        )
+
+        self.assertEqual("empty_transcript", benchmark["runs"][0]["invalid_reason"])
+
+        grading_dir = TEST_WORKSPACE / "empty-output-grader" / "iteration-001" / "eval-vp-demo"
+        grading_run = grading_dir / "with_skill" / "run-1"
+        (grading_run / "outputs").mkdir(parents=True)
+        write_json(
+            grading_dir / "eval_metadata.json",
+            {
+                "eval_id": "vp-demo",
+                "eval_name": "vp-demo",
+                "assertions": [
+                    {
+                        "id": "om-precision",
+                        "text": "No decoy usage is reported",
+                        "kind": "outcome",
+                        "graded_by": "script",
+                        "oracle": "DISAMBIGUATE_MEMBER.expected.decoyFiles",
+                    },
+                    {
+                        "id": "or-imports-updated",
+                        "text": "Imports are updated",
+                        "kind": "outcome",
+                        "graded_by": "script",
+                    },
+                    {
+                        "id": "pm-uses-resolve",
+                        "text": "Uses semantic resolve",
+                        "kind": "process",
+                        "applicability": "with_skill_only",
+                        "graded_by": "script",
+                    },
+                ],
+            },
+        )
+        bindings_path = TEST_WORKSPACE / "empty-output-bindings.json"
+        write_json(
+            bindings_path,
+            {
+                "workspace_root": str(TEST_WORKSPACE),
+                "slots": {"DISAMBIGUATE_MEMBER": {"expected": {"decoyFiles": ["src/Decoy.kt"]}}},
+            },
+        )
+        write_json(
+            grading_run / "outputs" / "tool_calls.jsonl",
+            {"tool": "kast_resolve", "source": "sdk"},
+        )
+        (grading_run / "outputs" / "transcript.md").write_text("")
+
+        result = grade(grading_run, bindings_path)
+
+        self.assertEqual(0, result["summary"]["passed"])
+        self.assertEqual(3, result["summary"]["failed"])
+        self.assertTrue(
+            all("No assistant-visible output" in entry["evidence"] for entry in result["expectations"])
+        )
+
+    def test_sdk_hook_or_session_errors_invalidate_aggregate_run(self) -> None:
+        iteration_dir, run_dir = self.create_finalized_run_fixture()
+        (run_dir / "sdk-events.jsonl").write_text(
+            "\n".join(
+                [
+                    json.dumps(
+                        {
+                            "type": "hook.end",
+                            "data": {
+                                "hookType": "sessionStart",
+                                "success": False,
+                                "error": {"message": "unsupported hook output"},
+                            },
+                        }
+                    ),
+                    json.dumps(
+                        {
+                            "type": "session.error",
+                            "data": {"message": "tool registration failed"},
+                        }
+                    ),
+                ]
+            )
+            + "\n"
+        )
+
+        finalize(run_dir)
+        benchmark = aggregate(
+            iteration_dir,
+            skill_name="kast-value-proof",
+            bindings_path=None,
+            catalog_path=None,
+        )
+        run = benchmark["runs"][0]
+
+        self.assertEqual("hook_error", run["invalid_reason"])
+        self.assertEqual(1, run["integrity"]["hook_error_count"])
+        self.assertEqual(1, run["integrity"]["session_error_count"])
+
+    def test_token_metrics_are_aggregated_and_rendered_in_markdown_summaries(self) -> None:
+        iteration_dir, with_run = self.create_finalized_run_fixture(configuration="with_skill")
+        _, without_run = self.create_finalized_run_fixture(
+            iteration_dir=iteration_dir,
+            configuration="without_skill",
+        )
+        for run_dir, input_tokens, output_tokens, cache_read_tokens in (
+            (with_run, 100, 40, 10),
+            (without_run, 75, 25, 0),
+        ):
+            mechanical = json.loads((run_dir / "mechanical.json").read_text())
+            mechanical["tokens"] = {
+                "input_tokens": {"value": input_tokens, "source": "assistant.usage"},
+                "output_tokens": {"value": output_tokens, "source": "assistant.usage"},
+                "cache_read_tokens": {"value": cache_read_tokens, "source": "assistant.usage"},
+                "total_tokens": {
+                    "value": input_tokens + output_tokens + cache_read_tokens,
+                    "source": "derived_from_assistant.usage",
+                },
+            }
+            write_json(run_dir / "mechanical.json", mechanical)
+            finalize(run_dir)
+
+        bindings_path = iteration_dir / "bindings.json"
+        write_json(bindings_path, {"target_repo": "kast", "workspace_root": str(TEST_WORKSPACE)})
+        benchmark = aggregate(
+            iteration_dir,
+            skill_name="kast-value-proof",
+            bindings_path=bindings_path,
+            catalog_path=None,
+        )
+        write_outputs(iteration_dir, benchmark)
+        generate_summary_documents(
+            benchmark_path=iteration_dir / "benchmark.json",
+            bindings_path=bindings_path,
+            output_path=iteration_dir / "executive-summary.md",
+        )
+
+        with_skill = next(run for run in benchmark["runs"] if run["configuration"] == "with_skill")
+        self.assertEqual(100, with_skill["efficiency"]["input_tokens"])
+        self.assertEqual(40, with_skill["efficiency"]["output_tokens"])
+        self.assertEqual(10, with_skill["efficiency"]["cache_read_tokens"])
+        self.assertEqual(150, with_skill["efficiency"]["total_tokens"])
+        self.assertEqual(
+            150,
+            benchmark["summary"]["by_configuration"]["with_skill"]["efficiency"]["total_tokens"]["mean"],
+        )
+        self.assertIn("total_tokens", (iteration_dir / "benchmark.md").read_text())
+        self.assertIn("Total tokens", (iteration_dir / "executive-summary.md").read_text())
+
+    def test_benchmark_markdown_handles_single_configuration_runs(self) -> None:
+        iteration_dir, run_dir = self.create_finalized_run_fixture(configuration="with_skill")
+        finalize(run_dir)
+
+        benchmark = aggregate(
+            iteration_dir,
+            skill_name="kast-value-proof",
+            bindings_path=None,
+            catalog_path=None,
+        )
+        write_outputs(iteration_dir, benchmark)
+
+        report = (iteration_dir / "benchmark.md").read_text()
+        self.assertIn("| task_completion | 1.000 | n/a | n/a | n/a |", report)
+
+    def test_benchmark_output_summary_reports_four_way_known_good_deltas(self) -> None:
+        from summarize_benchmark_outputs import summarize_benchmarks, write_summary_outputs
+
+        benchmark_path = TEST_WORKSPACE / "summary-fixtures" / "four-way" / "benchmark.json"
+        eval_ids = ["vp-disambiguate-member", "vp-impact-analysis"]
+        configurations = ["without_skill", "skill_only", "tool_only", "with_skill"]
+        score_by_configuration = {
+            "without_skill": 0.2,
+            "skill_only": 0.4,
+            "tool_only": 0.6,
+            "with_skill": 0.8,
+        }
+        runs = []
+        for eval_id in eval_ids:
+            for configuration in configurations:
+                score = score_by_configuration[configuration]
+                runs.append(
+                    {
+                        "eval_id": eval_id,
+                        "configuration": configuration,
+                        "run_number": 1,
+                        "status": "valid",
+                        "combined": {
+                            "measurements": {
+                                "overall": {"outcome": {"status": "scored", "score": score}},
+                                "task_completion": {"outcome": {"status": "scored", "score": score}},
+                                "accuracy": {"outcome": {"status": "scored", "score": score}},
+                                "reliability": {"outcome": {"status": "scored", "score": score}},
+                                "scope_control": {"outcome": {"status": "scored", "score": score}},
+                            }
+                        },
+                        "efficiency": {
+                            "total_tokens": 1000 * (1 + score),
+                            "transcript_chars": 100 * (1 + score),
+                            "total_tool_calls": 10,
+                            "semantic_tool_calls": 3 if "skill" in configuration else 0,
+                            "generic_search_calls": 1,
+                            "executor_duration_seconds": 12.0,
+                        },
+                    }
+                )
+        write_json(
+            benchmark_path,
+            {
+                "metadata": {
+                    "generated_at": "2026-05-19T00:00:00Z",
+                    "iteration_dir": ".benchmarks/copilot-sdk-mock/four-way",
+                    "target_git_sha": "abc123",
+                    "eval_ids": eval_ids,
+                    "configurations": configurations,
+                },
+                "runs": runs,
+                "paired_analysis": {"issues": {"invalid_runs": [], "flaky_runs": [], "outliers": []}},
+            },
+        )
+
+        summary = summarize_benchmarks(
+            benchmark_paths=[benchmark_path],
+            known_good_paths=[benchmark_path],
+            title="Test benchmark summary",
+        )
+        four_way = summary["four_scenario_delta"]
+        self.assertEqual("four-way", four_way["benchmark_id"])
+        self.assertEqual(0.6, four_way["delta_vs_without_skill"]["with_skill"]["overall_outcome"])
+        self.assertEqual(0.4, four_way["delta_vs_without_skill"]["tool_only"]["overall_outcome"])
+        self.assertEqual(0.2, four_way["delta_vs_without_skill"]["skill_only"]["overall_outcome"])
+        self.assertEqual(
+            0.6,
+            summary["known_good_statistics"]["paired_deltas"]["overall_outcome"][
+                "with_skill - without_skill"
+            ]["mean_delta"],
+        )
+
+        output_dir = TEST_WORKSPACE / "summary-output"
+        write_summary_outputs(summary, output_dir)
+
+        self.assertTrue((output_dir / "benchmark-summary.json").exists())
+        markdown = (output_dir / "benchmark-summary.md").read_text()
+        self.assertIn("## Four-Scenario Delta", markdown)
+        self.assertIn("with_skill - without_skill", markdown)
+
     def create_iteration_fixture(
         self,
         *,
@@ -700,6 +1351,88 @@ class ValueProofScriptTests(unittest.TestCase):
         if write_manifest:
             write_json(iteration_dir / "manifest.json", {"evals": evals})
         return iteration_dir
+
+    def create_finalized_run_fixture(
+        self,
+        *,
+        iteration_dir: Path | None = None,
+        configuration: str = "with_skill",
+    ) -> tuple[Path, Path]:
+        iteration_dir = iteration_dir or TEST_WORKSPACE / "iteration-001"
+        eval_dir = iteration_dir / "eval-vp-demo"
+        run_number = len(list((eval_dir / configuration).glob("run-*"))) + 1
+        run_dir = eval_dir / configuration / f"run-{run_number}"
+        (run_dir / "outputs").mkdir(parents=True, exist_ok=True)
+        write_json(
+            eval_dir / "eval_metadata.json",
+            {
+                "eval_id": "vp-demo",
+                "eval_name": "vp-demo",
+                "assertions": [
+                    {
+                        "id": "script-outcome",
+                        "text": "Mechanical outcome",
+                        "kind": "outcome",
+                        "dimension": "accuracy",
+                        "applicability": "both",
+                        "graded_by": "script",
+                    }
+                ],
+            },
+        )
+        write_json(
+            run_dir / "mechanical.json",
+            {
+                "status": "graded",
+                "expectations": [
+                    {
+                        "id": "script-outcome",
+                        "text": "Mechanical outcome",
+                        "passed": True,
+                        "evidence": "mechanical evidence",
+                        "kind": "outcome",
+                        "dimension": "accuracy",
+                        "applicability": "both",
+                        "graded_by": "script",
+                    }
+                ],
+                "execution_metrics": {
+                    "tool_calls": {},
+                    "total_tool_calls": 0,
+                    "total_steps": 0,
+                    "errors_encountered": 0,
+                    "output_chars": 19,
+                    "transcript_chars": 19,
+                    "kast_calls": 0,
+                    "grep_or_find_calls": 0,
+                },
+                "timing": {
+                    "executor_duration_seconds": 1.0,
+                    "grader_duration_seconds": 0.0,
+                    "total_duration_seconds": 1.0,
+                    "executor_duration_source": "dispatcher",
+                },
+                "integrity": {
+                    "contradictions": [],
+                    "baseline_isolation_violation": False,
+                    "attempts": 1,
+                    "flaky": False,
+                },
+            },
+        )
+        write_json(run_dir / "llm-grade.json", {"expectations": []})
+        write_json(
+            run_dir / "timing.json",
+            {
+                "status": "succeeded",
+                "attempts": 1,
+                "last_exit_code": 0,
+                "message": "completed",
+            },
+        )
+        (run_dir / "outputs" / "tool_calls.jsonl").write_text("")
+        (run_dir / "outputs" / "transcript.md").write_text("mechanical evidence\n")
+        return iteration_dir, run_dir
 
 
 if __name__ == "__main__":

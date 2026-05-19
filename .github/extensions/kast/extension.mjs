@@ -16,7 +16,7 @@ import {homedir} from "node:os";
 import {dirname, join, resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {joinSession} from "@github/copilot-sdk/extension";
-import { makeKastTools } from "../_shared/kast-tools.mjs";
+import {makeKastTools} from "../_shared/kast-tools.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(HERE, "..", "..", "..");

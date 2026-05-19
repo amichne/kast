@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { execFile } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 import {
   createWriteStream,
   mkdirSync,
@@ -8,7 +8,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { CopilotClient, approveAll } from "@github/copilot-sdk";
 import { KAST_TOOL_NAMES, makeKastTools } from "../../../.github/extensions/_shared/kast-tools.mjs";
@@ -21,23 +21,36 @@ const REPO_ROOT = resolve(HERE, "../../..");
 const RUNNER_PACKAGE = JSON.parse(readFileSync(resolve(HERE, "package.json"), "utf8"));
 const RUNNER_VERSION = RUNNER_PACKAGE.version;
 
-const CONFIG_POLICIES = {
+export const CONFIG_POLICIES = {
   with_skill: {
     registerKastTools: true,
     loadKastSkill: true,
     denyDirectKastShell: false,
+    denyGenericSearchShell: true,
+    availableKastToolsOnly: true,
     baselinePolicy: "not_applicable",
   },
   tool_only: {
     registerKastTools: true,
     loadKastSkill: false,
     denyDirectKastShell: false,
+    denyShellWrites: true,
+    denyGenericSearchShell: true,
+    availableKastToolsOnly: true,
     baselinePolicy: "tool_only",
+  },
+  skill_only: {
+    registerKastTools: false,
+    loadKastSkill: true,
+    denyDirectKastShell: true,
+    denyShellWrites: true,
+    baselinePolicy: "skill_only",
   },
   without_skill: {
     registerKastTools: false,
     loadKastSkill: false,
     denyDirectKastShell: true,
+    denyShellWrites: true,
     baselinePolicy: "deny_direct_kast_shell",
   },
 };
@@ -199,6 +212,15 @@ async function createRunWorktree({ targetRoot, targetSha, worktreePath }) {
   return worktreePath;
 }
 
+export async function isolateMockWorktreeConfig(worktreePath) {
+  await execFileAsync("git", ["-C", worktreePath, "sparse-checkout", "init", "--no-cone"], {
+    timeout: 120000,
+  });
+  await execFileAsync("git", ["-C", worktreePath, "sparse-checkout", "set", "/*", "!/.github/", "!/.agents/"], {
+    timeout: 120000,
+  });
+}
+
 async function callKastInWorkspace(workspaceRoot, method, params) {
   const kastBin = process.env.KAST_BIN ?? "kast";
   const rpcRequest = JSON.stringify({ jsonrpc: "2.0", method, params, id: 1 });
@@ -216,11 +238,85 @@ function resolveKastBackendMode(args) {
   return mode;
 }
 
-function containsDirectKastShell(commandText) {
+export function resolveRealKastWorkspaceRoot({ targetRoot, worktreePath, mode }) {
+  const resolvedMode = String(mode || process.env.KAST_EVAL_REAL_BACKEND_WORKSPACE || "worktree").trim();
+  if (resolvedMode === "target") {
+    return { workspaceRoot: targetRoot, source: "target" };
+  }
+  if (resolvedMode === "worktree") {
+    return { workspaceRoot: worktreePath, source: "worktree" };
+  }
+  die(`KAST_EVAL_REAL_BACKEND_WORKSPACE must be target or worktree, got ${JSON.stringify(resolvedMode)}`);
+}
+
+export function containsDirectKastShell(commandText) {
   return /\bkast(?:\s|$)/.test(commandText) || /\bkast_[a-z_]+\b/.test(commandText);
 }
 
-function buildSessionConfig({
+export function containsShellWriteRedirection(commandText) {
+  return /(^|[\s;|&])>{1,2}\s*\S/.test(String(commandText ?? ""));
+}
+
+export function containsGenericSearchShell(commandText) {
+  return /(^|[\s;|&])(rg|grep|find)(\s|$)/.test(String(commandText ?? ""));
+}
+
+export function containsUnbalancedShellBackticks(commandText) {
+  let inSingleQuote = false;
+  let escaped = false;
+  let backticks = 0;
+  for (const char of commandText) {
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (char === "\\" && !inSingleQuote) {
+      escaped = true;
+      continue;
+    }
+    if (char === "'") {
+      inSingleQuote = !inSingleQuote;
+      continue;
+    }
+    if (char === "`" && !inSingleQuote) {
+      backticks += 1;
+    }
+  }
+  return backticks % 2 === 1;
+}
+
+export function shellSyntaxError(commandText) {
+  if (!String(commandText ?? "").trim()) return null;
+  try {
+    execFileSync("bash", ["-n", "-c", commandText], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      timeout: 2000,
+    });
+    return null;
+  } catch (error) {
+    return String(error?.stderr || error?.message || "shell syntax check failed").trim();
+  }
+}
+
+function mockCopilotHomePath(worktreePath) {
+  return resolve(worktreePath, "..", "copilot-home");
+}
+
+function prepareMockCopilotConfig(worktreePath) {
+  const configDir = mockCopilotHomePath(worktreePath);
+  mkdirSync(configDir, { recursive: true });
+  writeJson(resolve(configDir, "settings.json"), {
+    disableAllHooks: true,
+    extensions: {
+      disabledExtensions: ["kast"],
+      mode: "disabled",
+    },
+  });
+  return configDir;
+}
+
+export function buildSessionConfig({
   configuration,
   model,
   reasoningEffort,
@@ -229,14 +325,17 @@ function buildSessionConfig({
   permissionLog,
   callKast,
   kastBackendMode,
+  mockCopilotHome,
 }) {
   const skillRoot = resolve(REPO_ROOT, ".agents/skills");
   const instructionRoot = resolve(REPO_ROOT, ".github/instructions");
+  const configDir = mockCopilotHome ?? (kastBackendMode === "mock" ? prepareMockCopilotConfig(worktreePath) : null);
   const sessionConfig = {
     clientName: "kast-evaluation-runner",
     model,
     reasoningEffort,
     enableConfigDiscovery: false,
+    ...(configDir ? { configDir } : {}),
     enableSessionTelemetry: true,
     workingDirectory: worktreePath,
     instructionDirectories: [instructionRoot],
@@ -252,42 +351,53 @@ function buildSessionConfig({
     },
     onPermissionRequest: (request, invocation) => {
       const fullCommandText = request?.fullCommandText ?? "";
+      if (request?.kind === "shell" && containsUnbalancedShellBackticks(fullCommandText)) {
+        permissionLog.push({ kind: "denied-by-rules", reason: "unbalanced-shell-backticks", request });
+        return { kind: "denied-by-rules" };
+      }
+      if (request?.kind === "shell") {
+        const syntaxError = shellSyntaxError(fullCommandText);
+        if (syntaxError) {
+          permissionLog.push({ kind: "denied-by-rules", reason: "shell-syntax-error", syntaxError, request });
+          return { kind: "denied-by-rules" };
+        }
+      }
       if (policy.denyDirectKastShell && request?.kind === "shell" && containsDirectKastShell(fullCommandText)) {
         permissionLog.push({ kind: "denied-by-rules", request });
+        return { kind: "denied-by-rules" };
+      }
+      if (policy.denyShellWrites && request?.kind === "shell" && containsShellWriteRedirection(fullCommandText)) {
+        permissionLog.push({ kind: "denied-by-rules", reason: "shell-write-redirection", request });
+        return { kind: "denied-by-rules" };
+      }
+      if (policy.denyGenericSearchShell && request?.kind === "shell" && containsGenericSearchShell(fullCommandText)) {
+        permissionLog.push({ kind: "denied-by-rules", reason: "generic-search-shell", request });
         return { kind: "denied-by-rules" };
       }
       permissionLog.push({ kind: "approved", request });
       return approveAll(request, invocation);
     },
-    hooks: {
-      onPreToolUse: async (input) => {
-        if (
-          policy.denyDirectKastShell &&
-          input?.toolName === "bash" &&
-          containsDirectKastShell(String(input?.toolArgs?.command ?? ""))
-        ) {
-          return {
-            permissionDecision: "deny",
-            modifiedArgs: input.toolArgs,
-            additionalContext: "The benchmark baseline denies direct kast shell use.",
-          };
-        }
-        return {
-          permissionDecision: "allow",
-          modifiedArgs: input.toolArgs,
-        };
-      },
-      onPostToolUse: async () => ({}),
-      onUserPromptSubmitted: async (input) => ({ modifiedPrompt: input.prompt }),
-      onSessionStart: async () => ({ additionalContext: "Benchmark harness active." }),
-      onSessionEnd: async () => {},
-      onErrorOccurred: async () => ({ errorHandling: "abort" }),
-    },
   };
   if (policy.registerKastTools) {
     sessionConfig.tools = makeKastTools((method, params) => callKast(method, params));
   }
+  if (policy.availableKastToolsOnly) {
+    sessionConfig.availableTools = Array.from(KAST_TOOL_NAMES);
+  }
   return sessionConfig;
+}
+
+export function buildClientOptions({ githubToken, copilotCliPath, otelPath, mockCopilotHome }) {
+  return {
+    ...(githubToken ? { gitHubToken: githubToken, useLoggedInUser: false } : { useLoggedInUser: true }),
+    ...(copilotCliPath ? { cliPath: copilotCliPath } : {}),
+    ...(mockCopilotHome ? { copilotHome: mockCopilotHome } : {}),
+    telemetry: {
+      exporterType: "file",
+      filePath: otelPath,
+      captureContent: true,
+    },
+  };
 }
 
 async function readSessionSources(session) {
@@ -509,6 +619,9 @@ async function main() {
   mkdirSync(dirname(sdkEventsPath), { recursive: true });
 
   await createRunWorktree({ targetRoot, targetSha, worktreePath });
+  if (kastBackendMode === "mock") {
+    await isolateMockWorktreeConfig(worktreePath);
+  }
   const preState = await gitState(worktreePath);
   const mockCaller = kastBackendMode === "mock"
     ? createMockKastCaller({
@@ -517,9 +630,14 @@ async function main() {
       bindings,
     })
     : null;
+  const realKastWorkspace = resolveRealKastWorkspaceRoot({ targetRoot, worktreePath });
   const callKast = mockCaller
     ? (method, params) => mockCaller.call(method, params)
-    : (method, params) => callKastInWorkspace(worktreePath, method, params);
+    : (method, params) => callKastInWorkspace(realKastWorkspace.workspaceRoot, method, params);
+  const mockCopilotHome =
+    kastBackendMode === "mock" || process.env.KAST_EVAL_DISABLE_HOOKS === "1"
+      ? prepareMockCopilotConfig(worktreePath)
+      : null;
 
   const transcriptStream = createWriteStream(transcriptPath, { flags: "w" });
   const sdkEventsStream = createWriteStream(sdkEventsPath, { flags: "w" });
@@ -555,6 +673,7 @@ async function main() {
     permissionLog,
     callKast,
     kastBackendMode,
+    mockCopilotHome,
   });
   sessionConfig.onEvent = recordEvent;
 
@@ -564,15 +683,7 @@ async function main() {
   }
   const copilotCliPath = await resolveCopilotCliPath();
   const copilotCliVersion = await resolveCliVersion(copilotCliPath);
-  const clientOptions = {
-    ...(githubToken ? { gitHubToken: githubToken, useLoggedInUser: false } : { useLoggedInUser: true }),
-    ...(copilotCliPath ? { cliPath: copilotCliPath } : {}),
-    telemetry: {
-      exporterType: "file",
-      filePath: otelPath,
-      captureContent: true,
-    },
-  };
+  const clientOptions = buildClientOptions({ githubToken, copilotCliPath, otelPath, mockCopilotHome });
 
   const client = new CopilotClient(clientOptions);
   await client.start();
@@ -603,6 +714,8 @@ async function main() {
           ? mockCaller.metadata()
           : {
             backend_mode: "real",
+            workspace_root: realKastWorkspace.workspaceRoot,
+            workspace_source: realKastWorkspace.source,
             payload_path: null,
             payload_hash: null,
             payload_entry_count: 0,
@@ -623,6 +736,8 @@ async function main() {
         ? mockCaller.metadata()
         : {
           backend_mode: "real",
+          workspace_root: realKastWorkspace.workspaceRoot,
+          workspace_source: realKastWorkspace.source,
           payload_path: null,
           payload_hash: null,
           payload_entry_count: 0,
@@ -672,4 +787,6 @@ async function main() {
   }
 }
 
-await main();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  await main();
+}

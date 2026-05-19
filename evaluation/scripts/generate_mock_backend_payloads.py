@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -54,6 +55,9 @@ MATCHER_KEYS = {
     "metric",
     "pattern",
 }
+INFRA_FAILURE_STAGE = "extension" + ".resolve"
+BINARY_NOT_RESOLVED_FRAGMENT = "binary not " + "resolved"
+STALE_BENCHMARK_WORKTREE = re.compile(r"(^|/)\.benchmarks/.*/worktree(/|$)")
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -121,15 +125,39 @@ def extract_rpc_result(raw_result: Any) -> dict[str, Any] | None:
         nested = parse_json_maybe(candidate.get("detailedContent"))
         if nested is not None:
             candidate = nested
+    if (
+        isinstance(candidate, dict)
+        and "result" not in candidate
+        and ("content" in candidate or "detailedContent" in candidate)
+        and not {"ok", "type"}.intersection(candidate)
+    ):
+        return None
     if not isinstance(candidate, dict):
         return None
     if "error" in candidate:
         return None
     if isinstance(candidate.get("result"), dict):
         candidate = candidate["result"]
-    if candidate.get("ok") is False:
-        return None
+        if "content" in candidate or "detailedContent" in candidate:
+            nested = parse_json_maybe(candidate.get("content"))
+            if nested is None:
+                nested = parse_json_maybe(candidate.get("detailedContent"))
+            if nested is None:
+                return None
+            return extract_rpc_result(nested)
     return candidate if isinstance(candidate, dict) else None
+
+
+def is_infrastructure_failure_result(result: dict[str, Any]) -> bool:
+    if result.get("ok") is not False:
+        return False
+    stage = str(result.get("stage") or "").strip()
+    message = str(result.get("message") or "").lower()
+    return (
+        stage == INFRA_FAILURE_STAGE
+        or BINARY_NOT_RESOLVED_FRAGMENT in message
+        or "no resolved kast cli" in message
+    )
 
 
 def matcher_from_args(args: dict[str, Any], workspace_root: Path | None) -> dict[str, Any]:
@@ -139,6 +167,50 @@ def matcher_from_args(args: dict[str, Any], workspace_root: Path | None) -> dict
         if key in MATCHER_KEYS and value not in (None, "")
     }
     return matcher or {"type": "any"}
+
+
+def contains_foreign_workspace_fragment(value: str, workspace_root: Path | None) -> bool:
+    if workspace_root is None:
+        return False
+    normalized = value.replace("\\", "/")
+    root = workspace_root.as_posix().rstrip("/")
+    parent = workspace_root.parent.as_posix().rstrip("/")
+    if not parent or parent == ".":
+        return False
+    for match in re.finditer(re.escape(parent) + r"/[^\s\"'{}\[\],)]+", normalized):
+        candidate = match.group(0).rstrip(".,;:")
+        if candidate != root and not candidate.startswith(root + "/"):
+            return True
+    return False
+
+
+def is_contaminated_history_value(value: Any, *, key: str | None = None, workspace_root: Path | None = None) -> bool:
+    if isinstance(value, list):
+        return any(is_contaminated_history_value(item, key=key, workspace_root=workspace_root) for item in value)
+    if isinstance(value, dict):
+        return any(
+            is_contaminated_history_value(item_value, key=item_key, workspace_root=workspace_root)
+            for item_key, item_value in value.items()
+        )
+    if not isinstance(value, str) or not value:
+        return False
+    normalized = value.replace("\\", "/")
+    if STALE_BENCHMARK_WORKTREE.search(normalized):
+        return True
+    if contains_foreign_workspace_fragment(value, workspace_root):
+        return True
+    if key not in PATH_KEYS and key not in PATH_LIST_KEYS and not is_path_like(value):
+        return False
+    path = Path(value)
+    if not path.is_absolute() or value == "/dev/null":
+        return False
+    if workspace_root is None:
+        return True
+    try:
+        path.relative_to(workspace_root)
+        return False
+    except ValueError:
+        return True
 
 
 def entry_key(entry: dict[str, Any]) -> str:
@@ -163,6 +235,15 @@ def read_jsonl(path: Path) -> list[dict[str, Any]]:
     return rows
 
 
+def event_log_paths(root: Path) -> list[Path]:
+    if root.is_file():
+        return [root] if root.name in {"sdk-events.jsonl", "events.jsonl"} else []
+    paths: list[Path] = []
+    for filename in ("sdk-events.jsonl", "events.jsonl"):
+        paths.extend(root.rglob(filename))
+    return sorted(set(paths))
+
+
 def history_entries(history_roots: list[Path], *, workspace_root: Path | None) -> tuple[list[dict[str, Any]], int]:
     entries: list[dict[str, Any]] = []
     rejected = 0
@@ -170,7 +251,7 @@ def history_entries(history_roots: list[Path], *, workspace_root: Path | None) -
     for root in history_roots:
         if not root.exists():
             continue
-        for events_path in sorted(root.rglob("sdk-events.jsonl")):
+        for events_path in event_log_paths(root):
             starts: dict[str, dict[str, Any]] = {}
             for event in read_jsonl(events_path):
                 data = event.get("data") if isinstance(event.get("data"), dict) else {}
@@ -191,12 +272,22 @@ def history_entries(history_roots: list[Path], *, workspace_root: Path | None) -
                 if result is None:
                     rejected += 1
                     continue
+                if is_infrastructure_failure_result(result):
+                    rejected += 1
+                    continue
                 args = starts.get(tool_call_id, {}).get("arguments")
                 matcher = matcher_from_args(args if isinstance(args, dict) else {}, workspace_root)
+                canonical_result = canonicalize_paths(result, workspace_root=workspace_root)
+                if is_contaminated_history_value(matcher, workspace_root=workspace_root) or is_contaminated_history_value(
+                    canonical_result,
+                    workspace_root=workspace_root,
+                ):
+                    rejected += 1
+                    continue
                 entry = {
                     "method": method,
                     "matcher": matcher,
-                    "result": canonicalize_paths(result, workspace_root=workspace_root),
+                    "result": canonical_result,
                     "provenance": {
                         "source": "history",
                         "source_file": str(events_path),
@@ -247,6 +338,50 @@ def search_scope(candidate_file_count: int) -> dict[str, Any]:
     }
 
 
+def reference_locations(files: list[Any], token: str, minimum_count: int | None = None) -> list[dict[str, Any]]:
+    file_paths = [str(file_path) for file_path in files if str(file_path).strip()]
+    if not file_paths:
+        file_paths = ["src/main/kotlin/Mock.kt"]
+    target_count = max(len(file_paths), int(minimum_count or 0), 1)
+    return [
+        location(
+            file_paths[index % len(file_paths)],
+            token,
+            line=1 + (index // len(file_paths)),
+        )
+        for index in range(target_count)
+    ]
+
+
+def caller_file_from_fq_name(caller_name: str, default_file: str) -> str:
+    parts = caller_name.split(".")
+    class_index = next(
+        (
+            index
+            for index in range(len(parts) - 1, -1, -1)
+            if parts[index] and parts[index][0].isupper()
+        ),
+        None,
+    )
+    if class_index is None:
+        return default_file
+    default_parts = Path(default_file).parts
+    module_root = default_parts[0] if default_parts else "src"
+    class_name = parts[class_index]
+    package_name = ".".join(parts[:class_index])
+    source_set = "test" if class_name.endswith("Test") else "main"
+    package_path = package_name.replace(".", "/")
+    return f"{module_root}/src/{source_set}/kotlin/{package_path}/{class_name}.kt"
+
+
+def caller_reference_locations(caller_names: list[Any], default_file: str) -> list[dict[str, Any]]:
+    return [
+        location(caller_file_from_fq_name(str(caller_name), default_file), str(caller_name).rsplit(".", 1)[-1])
+        for caller_name in caller_names
+        if str(caller_name).strip()
+    ]
+
+
 def symbol_from_slot(slot: dict[str, Any], *, kind: str = "CLASS") -> dict[str, Any]:
     symbol = str(slot.get("symbol") or str(slot.get("fqName") or "Mock").split(".")[-1])
     return {
@@ -255,6 +390,84 @@ def symbol_from_slot(slot: dict[str, Any], *, kind: str = "CLASS") -> dict[str, 
         "location": location(slot_file(slot), symbol),
         "containingDeclaration": str(slot.get("containingType") or "").rsplit(".", 1)[0] or None,
     }
+
+
+def symbol_from_containing_type(slot: dict[str, Any], *, kind: str = "CLASS") -> dict[str, Any] | None:
+    containing_type = str(slot.get("containingType") or "").strip()
+    if not containing_type:
+        return None
+    name = containing_type.rsplit(".", 1)[-1]
+    return {
+        "fqName": containing_type,
+        "kind": kind,
+        "location": location(slot_file(slot), name),
+        "containingDeclaration": containing_type.rsplit(".", 1)[0] if "." in containing_type else None,
+    }
+
+
+def symbol_name_variants(*values: Any) -> list[str]:
+    names: list[str] = []
+    for value in values:
+        if not isinstance(value, str):
+            continue
+        text = value.strip()
+        if not text:
+            continue
+        names.append(text)
+        if "." in text:
+            names.append(text.rsplit(".", 1)[-1])
+    return list(dict.fromkeys(names))
+
+
+def caller_symbol_variants(value: Any) -> list[str]:
+    variants = symbol_name_variants(value)
+    if isinstance(value, str):
+        short_name = value.rsplit(".", 1)[-1]
+        if " " in short_name:
+            variants.append(f"`{short_name}`")
+            if "." in value:
+                variants.append(f"{value.rsplit('.', 1)[0]}.`{short_name}`")
+        variants.extend(
+            token
+            for token in re.findall(r"[A-Za-z][A-Za-z0-9_-]{3,}", short_name)
+            if token not in {"with", "from", "into", "that", "this"}
+        )
+    return list(dict.fromkeys(variants))
+
+
+def slot_symbol_variants(slot: dict[str, Any]) -> list[str]:
+    return symbol_name_variants(slot.get("symbol"), slot.get("fqName"))
+
+
+def symbol_matcher_variants(
+    symbol_name: str,
+    *,
+    kind: str | None = None,
+    file_hint: str | None = None,
+    containing_type: str | None = None,
+) -> list[dict[str, Any]]:
+    qualifiers = [
+        (key, str(value).strip())
+        for key, value in (
+            ("kind", kind),
+            ("containingType", containing_type),
+            ("fileHint", file_hint),
+        )
+        if value not in (None, "")
+    ]
+    variants: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for mask in sorted(range(1 << len(qualifiers)), key=lambda value: (-value.bit_count(), value)):
+        matcher: dict[str, Any] = {"symbol": symbol_name}
+        for index, (key, value) in enumerate(qualifiers):
+            if mask & (1 << index):
+                matcher[key] = value
+        matcher_key = json.dumps(matcher, sort_keys=True)
+        if matcher_key in seen:
+            continue
+        seen.add(matcher_key)
+        variants.append(matcher)
+    return variants
 
 
 def collect_known_files(slots: dict[str, Any]) -> list[str]:
@@ -323,6 +536,9 @@ def fallback_symbols(bindings: dict[str, Any]) -> list[dict[str, Any]]:
         slot = slots.get(slot_name)
         if isinstance(slot, dict):
             symbols.append(symbol_from_slot(slot, kind=kind))
+            containing_type_symbol = symbol_from_containing_type(slot)
+            if containing_type_symbol is not None:
+                symbols.append(containing_type_symbol)
             implementations = slot.get("expected", {}).get("implementations") if isinstance(slot.get("expected"), dict) else None
             if isinstance(implementations, list):
                 for implementation in implementations:
@@ -343,6 +559,7 @@ def fallback_entries(bindings: dict[str, Any]) -> list[dict[str, Any]]:
     member = slots.get("DISAMBIGUATE_MEMBER") if isinstance(slots.get("DISAMBIGUATE_MEMBER"), dict) else {}
     function = slots.get("OVERLOADED_OR_COMMON_FUNCTION") if isinstance(slots.get("OVERLOADED_OR_COMMON_FUNCTION"), dict) else {}
     large_class = slots.get("LARGE_CLASS") if isinstance(slots.get("LARGE_CLASS"), dict) else {}
+    rename_target = slots.get("RENAME_TARGET") if isinstance(slots.get("RENAME_TARGET"), dict) else {}
     reference_files = (
         cross_module.get("expected", {}).get("expectedConsumerFiles")
         if isinstance(cross_module.get("expected"), dict)
@@ -365,21 +582,22 @@ def fallback_entries(bindings: dict[str, Any]) -> list[dict[str, Any]]:
             "symbol": {
                 "fqName": str(name),
                 "kind": "FUNCTION",
-                "location": location(slot_file(function), str(name).split(".")[-1]),
+                "location": location(caller_file_from_fq_name(str(name), slot_file(function)), str(name).split(".")[-1]),
             },
-            "callSite": location(slot_file(function), str(name).split(".")[-1]),
+            "callSite": location(caller_file_from_fq_name(str(name), slot_file(function)), str(name).split(".")[-1]),
             "children": [],
         }
         for name in caller_names
     ]
-    resolve_entries = [
-        {
+
+    def resolve_entry(symbol_name: str, symbol: dict[str, Any]) -> dict[str, Any]:
+        return {
             "method": "symbol/resolve",
-            "matcher": {"symbol": symbol["fqName"].split(".")[-1]},
+            "matcher": {"symbol": symbol_name},
             "result": {
                 "type": "RESOLVE_SUCCESS",
                 "ok": True,
-                "query": {"workspaceRoot": ".", "symbol": symbol["fqName"].split(".")[-1], "fileHint": None, "kind": None, "containingType": None},
+                "query": {"workspaceRoot": ".", "symbol": symbol_name, "fileHint": None, "kind": None, "containingType": None},
                 "symbol": symbol,
                 "filePath": symbol["location"]["filePath"],
                 "offset": symbol["location"]["startOffset"],
@@ -390,54 +608,60 @@ def fallback_entries(bindings: dict[str, Any]) -> list[dict[str, Any]]:
             },
             "provenance": {"source": "bindings", "fallback": True},
         }
-        for symbol in symbols
-    ] or [
-        {
-            "method": "symbol/resolve",
-            "matcher": {"type": "any"},
-            "result": {
-                "type": "RESOLVE_SUCCESS",
-                "ok": True,
-                "query": {"workspaceRoot": ".", "symbol": first_symbol["fqName"].split(".")[-1], "fileHint": None, "kind": None, "containingType": None},
-                "symbol": first_symbol,
-                "filePath": first_symbol["location"]["filePath"],
-                "offset": first_symbol["location"]["startOffset"],
-                "candidate": {"line": first_symbol["location"]["startLine"], "column": first_symbol["location"]["startColumn"], "context": first_symbol["location"]["preview"]},
-                "candidateCount": 1,
-                "alternatives": [],
-                "logFile": ".kast/mock-backend.log",
-            },
-            "provenance": {"source": "bindings", "fallback": True},
+
+    resolve_entries = []
+    for symbol in symbols:
+        for symbol_name in symbol_name_variants(symbol.get("fqName")):
+            resolve_entries.append(resolve_entry(symbol_name, symbol))
+    if not resolve_entries:
+        resolve_entries.append({**resolve_entry(first_symbol["fqName"].split(".")[-1], first_symbol), "matcher": {"type": "any"}})
+    for caller_name in caller_names:
+        caller_symbol = {
+            "fqName": str(caller_name),
+            "kind": "FUNCTION",
+            "location": location(slot_file(function), str(caller_name).rsplit(".", 1)[-1]),
+            "containingDeclaration": str(caller_name).rsplit(".", 1)[0] if "." in str(caller_name) else None,
         }
-    ]
+        for symbol_name in caller_symbol_variants(caller_name):
+            resolve_entries.append(resolve_entry(symbol_name, caller_symbol))
     reference_entries = []
-    for slot in (member, cross_module, slots.get("RENAME_TARGET") if isinstance(slots.get("RENAME_TARGET"), dict) else {}):
-        if not isinstance(slot, dict) or not slot.get("symbol"):
-            continue
-        slot_symbol = symbol_from_slot(slot, kind="PROPERTY" if slot is member else "CLASS")
-        expected = slot.get("expected") if isinstance(slot.get("expected"), dict) else {}
-        files = (
-            expected.get("expectedFiles")
-            or expected.get("expectedConsumerFiles")
-            or expected.get("affectedFiles")
-            or [slot_file(slot)]
-        )
-        slot_refs = [location(str(file_path), str(slot.get("symbol"))) for file_path in files]
-        slot_scope = search_scope(len(slot_refs))
+    reference_slots = [
+        (member, "PROPERTY"),
+        (cross_module, "INTERFACE"),
+        (function, "FUNCTION"),
+        (rename_target, "CLASS"),
+    ]
+
+    def append_reference_entry(
+        *,
+        matcher: dict[str, Any],
+        target_symbol: dict[str, Any],
+        reference_locations: list[dict[str, Any]],
+        reference_scope: dict[str, Any],
+        containing_type: str | None = None,
+    ) -> None:
+        symbol_name = str(matcher["symbol"])
         reference_entries.append(
             {
                 "method": "symbol/references",
-                "matcher": {"symbol": str(slot.get("symbol"))},
+                "matcher": matcher,
                 "result": {
                     "type": "REFERENCES_SUCCESS",
                     "ok": True,
-                    "query": {"workspaceRoot": ".", "symbol": str(slot.get("symbol")), "fileHint": None, "kind": None, "containingType": slot.get("containingType"), "includeDeclaration": True},
-                    "symbol": slot_symbol,
-                    "filePath": slot_symbol["location"]["filePath"],
-                    "offset": slot_symbol["location"]["startOffset"],
-                    "references": slot_refs,
-                    "searchScope": slot_scope,
-                    "declaration": slot_symbol,
+                    "query": {
+                        "workspaceRoot": ".",
+                        "symbol": symbol_name,
+                        "fileHint": matcher.get("fileHint"),
+                        "kind": matcher.get("kind"),
+                        "containingType": matcher.get("containingType", containing_type),
+                        "includeDeclaration": True,
+                    },
+                    "symbol": target_symbol,
+                    "filePath": target_symbol["location"]["filePath"],
+                    "offset": target_symbol["location"]["startOffset"],
+                    "references": reference_locations,
+                    "searchScope": reference_scope,
+                    "declaration": target_symbol,
                     "candidateCount": 1,
                     "alternatives": [],
                     "logFile": ".kast/mock-backend.log",
@@ -445,6 +669,78 @@ def fallback_entries(bindings: dict[str, Any]) -> list[dict[str, Any]]:
                 "provenance": {"source": "bindings", "fallback": True},
             }
         )
+
+    for slot, slot_kind in reference_slots:
+        if not isinstance(slot, dict) or not slot.get("symbol"):
+            continue
+        slot_symbol = symbol_from_slot(slot, kind=slot_kind)
+        containing_type_symbol = symbol_from_containing_type(slot)
+        expected = slot.get("expected") if isinstance(slot.get("expected"), dict) else {}
+        files = (
+            expected.get("expectedFiles")
+            or expected.get("expectedConsumerFiles")
+            or expected.get("affectedFiles")
+            or [slot_file(slot)]
+        )
+        minimum_references = expected.get("minimumReferences") if isinstance(expected.get("minimumReferences"), int) else None
+        slot_refs = (
+            caller_reference_locations(caller_names, slot_file(function))
+            if slot is function and caller_names
+            else reference_locations(files, str(slot.get("symbol")), minimum_references)
+        )
+        slot_scope = search_scope(len(slot_refs))
+        reference_targets = [(slot_symbol, slot_symbol_variants(slot))]
+        if containing_type_symbol is not None:
+            reference_targets.append((containing_type_symbol, symbol_name_variants(containing_type_symbol["fqName"])))
+        for target_symbol, target_names in reference_targets:
+            for symbol_name in target_names:
+                containing_type = str(slot.get("containingType") or "").strip() or None
+                if target_symbol is not slot_symbol:
+                    containing_type = None
+                for matcher in symbol_matcher_variants(
+                    symbol_name,
+                    kind=str(target_symbol.get("kind") or slot_kind),
+                    file_hint=target_symbol["location"]["filePath"],
+                    containing_type=containing_type,
+                ):
+                    append_reference_entry(
+                        matcher=matcher,
+                        target_symbol=target_symbol,
+                        reference_locations=slot_refs,
+                        reference_scope=slot_scope,
+                        containing_type=containing_type,
+                    )
+    for caller_name in caller_names:
+        caller_symbol = {
+            "fqName": str(caller_name),
+            "kind": "FUNCTION",
+            "location": location(
+                caller_file_from_fq_name(str(caller_name), slot_file(function)),
+                str(caller_name).rsplit(".", 1)[-1],
+            ),
+            "containingDeclaration": str(caller_name).rsplit(".", 1)[0] if "." in str(caller_name) else None,
+        }
+        caller_refs = [
+            location(
+                caller_file_from_fq_name(str(caller_name), slot_file(function)),
+                str(caller_name).rsplit(".", 1)[-1],
+            )
+        ]
+        caller_scope = search_scope(len(caller_refs))
+        for symbol_name in caller_symbol_variants(caller_name):
+            for matcher in symbol_matcher_variants(
+                symbol_name,
+                kind="FUNCTION",
+                file_hint=slot_file(function),
+                containing_type=caller_symbol["containingDeclaration"],
+            ):
+                append_reference_entry(
+                    matcher=matcher,
+                    target_symbol=caller_symbol,
+                    reference_locations=caller_refs,
+                    reference_scope=caller_scope,
+                    containing_type=caller_symbol["containingDeclaration"],
+                )
     if not reference_entries:
         reference_entries.append(
             {
@@ -467,35 +763,76 @@ def fallback_entries(bindings: dict[str, Any]) -> list[dict[str, Any]]:
                 "provenance": {"source": "bindings", "fallback": True},
             }
         )
-    caller_entries = [
-        {
-            "method": "symbol/callers",
-            "matcher": {"symbol": str(function.get("symbol"))},
-            "result": {
-                "type": "CALLERS_SUCCESS",
-                "ok": True,
-                "query": {"workspaceRoot": ".", "symbol": str(function.get("symbol")), "direction": "incoming", "depth": 2},
-                "symbol": symbol_from_slot(function, kind="FUNCTION"),
-                "filePath": slot_file(function),
-                "offset": 0,
-                "root": {"symbol": symbol_from_slot(function, kind="FUNCTION"), "callSite": None, "children": caller_nodes},
-                "stats": {
-                    "totalNodes": 1 + len(caller_nodes),
-                    "totalEdges": len(caller_nodes),
-                    "truncatedNodes": 0,
-                    "maxDepthReached": 1 if caller_nodes else 0,
-                    "timeoutReached": False,
-                    "maxTotalCallsReached": False,
-                    "maxChildrenPerNodeReached": False,
-                    "filesVisited": len({node["callSite"]["filePath"] for node in caller_nodes}) if caller_nodes else 1,
-                },
-                "candidateCount": 1,
-                "alternatives": [],
-                "logFile": ".kast/mock-backend.log",
-            },
-            "provenance": {"source": "bindings", "fallback": True},
-        }
-    ] if isinstance(function, dict) and function.get("symbol") else []
+    caller_entries = []
+    if isinstance(function, dict) and function.get("symbol"):
+        function_symbol = symbol_from_slot(function, kind="FUNCTION")
+
+        def append_caller_entry(matcher: dict[str, Any], symbol: dict[str, Any], children: list[dict[str, Any]]) -> None:
+            symbol_name = str(matcher["symbol"])
+            caller_entries.append(
+                {
+                    "method": "symbol/callers",
+                    "matcher": matcher,
+                    "result": {
+                        "type": "CALLERS_SUCCESS",
+                        "ok": True,
+                        "query": {
+                            "workspaceRoot": ".",
+                            "symbol": symbol_name,
+                            "fileHint": matcher.get("fileHint"),
+                            "kind": matcher.get("kind"),
+                            "containingType": matcher.get("containingType"),
+                            "direction": "incoming",
+                            "depth": 2,
+                        },
+                        "symbol": symbol,
+                        "filePath": symbol["location"]["filePath"],
+                        "offset": symbol["location"]["startOffset"],
+                        "root": {"symbol": symbol, "callSite": None, "children": children},
+                        "stats": {
+                            "totalNodes": 1 + len(children),
+                            "totalEdges": len(children),
+                            "truncatedNodes": 0,
+                            "maxDepthReached": 1 if children else 0,
+                            "timeoutReached": False,
+                            "maxTotalCallsReached": False,
+                            "maxChildrenPerNodeReached": False,
+                            "filesVisited": len({node["callSite"]["filePath"] for node in children}) if children else 1,
+                        },
+                        "candidateCount": 1,
+                        "alternatives": [],
+                        "logFile": ".kast/mock-backend.log",
+                    },
+                    "provenance": {"source": "bindings", "fallback": True},
+                }
+            )
+
+        for symbol_name in slot_symbol_variants(function):
+            for matcher in symbol_matcher_variants(
+                symbol_name,
+                kind="FUNCTION",
+                file_hint=slot_file(function),
+                containing_type=str(function.get("containingType") or "").strip() or None,
+            ):
+                append_caller_entry(matcher, function_symbol, caller_nodes)
+        for caller_name in caller_names:
+            caller_symbol = {
+                "fqName": str(caller_name),
+                "kind": "FUNCTION",
+                "location": location(
+                    caller_file_from_fq_name(str(caller_name), slot_file(function)),
+                    str(caller_name).rsplit(".", 1)[-1],
+                ),
+                "containingDeclaration": str(caller_name).rsplit(".", 1)[0] if "." in str(caller_name) else None,
+            }
+            for symbol_name in caller_symbol_variants(caller_name):
+                for matcher in symbol_matcher_variants(
+                    symbol_name,
+                    kind="FUNCTION",
+                    file_hint=slot_file(function),
+                    containing_type=caller_symbol["containingDeclaration"],
+                ):
+                    append_caller_entry(matcher, caller_symbol, [])
     return [
         {
             "method": "raw/workspace-files",
@@ -602,10 +939,11 @@ def generate_payload(
 ) -> dict[str, Any]:
     workspace_text = str(bindings.get("workspace_root") or "").strip()
     workspace_root = Path(workspace_text) if workspace_text else None
-    entries, rejected = history_entries(history_roots, workspace_root=workspace_root)
-    existing_keys = {entry_key(entry) for entry in entries}
-    fallback = [entry for entry in fallback_entries(bindings) if entry_key(entry) not in existing_keys]
-    all_entries = [*entries, *fallback]
+    history, rejected = history_entries(history_roots, workspace_root=workspace_root)
+    fallback = fallback_entries(bindings)
+    fallback_keys = {entry_key(entry) for entry in fallback}
+    entries = [entry for entry in history if entry_key(entry) not in fallback_keys]
+    all_entries = [*fallback, *entries]
     return {
         "$schema": "https://github.com/amichne/kast/evaluation/mock-backend.schema.json",
         "schema_version": 1,

@@ -38,6 +38,8 @@ def run_instruction_text(config: str, prompt: str) -> str:
         setup = "Open a Copilot Chat session with the Kast skill loaded."
     elif config == "tool_only":
         setup = "Open a Copilot Chat session with kast_* custom tools registered, but without loading the Kast skill instructions."
+    elif config == "skill_only":
+        setup = "Open a Copilot Chat session with the Kast skill loaded, but with kast_* custom tools disabled."
     elif config == "without_skill":
         setup = "Open a Copilot Chat session WITHOUT the Kast skill (or with Kast tools disabled)."
     else:
@@ -300,15 +302,22 @@ def scaffold_workspace(
                 transcript = outputs_dir / "transcript.md"
                 if not transcript.exists():
                     transcript.write_text("")
-                (run_dir / "sdk-events.jsonl").write_text("")
-                (run_dir / "otel.jsonl").write_text("")
-                (run_dir / "final-answer.md").write_text("")
-                write_placeholder_inputs(run_dir / "inputs.json")
-                write_placeholder_mechanical(run_dir / "mechanical.json")
-                write_placeholder_llm_grade_input(run_dir / "llm-grade-input.json")
-                write_placeholder_llm_grade(run_dir / "llm-grade.json")
-                write_placeholder_grading(run_dir / "grading.json")
-                write_placeholder_timing(run_dir / "timing.json")
+                for text_artifact in ("sdk-events.jsonl", "otel.jsonl", "final-answer.md"):
+                    artifact_path = run_dir / text_artifact
+                    if not artifact_path.exists():
+                        artifact_path.write_text("")
+                placeholder_writers = (
+                    ("inputs.json", write_placeholder_inputs),
+                    ("mechanical.json", write_placeholder_mechanical),
+                    ("llm-grade-input.json", write_placeholder_llm_grade_input),
+                    ("llm-grade.json", write_placeholder_llm_grade),
+                    ("grading.json", write_placeholder_grading),
+                    ("timing.json", write_placeholder_timing),
+                )
+                for artifact_name, writer in placeholder_writers:
+                    artifact_path = run_dir / artifact_name
+                    if not artifact_path.exists():
+                        writer(artifact_path)
 
     write_run_manifest(iteration_dir, instruction_paths)
     write_iteration_manifest(iteration_dir, eval_manifest)

@@ -86,10 +86,11 @@ bash evaluation/runners/copilot-sdk/run-benchmark.sh \
   --kast-backend mock
 ```
 
-Mock payloads are generated from archived `sdk-events.jsonl` history when
-`--history-root` is supplied, then completed from the catalog and bindings
-oracles. This mode measures the agent path against presumed BAU KAST responses;
-it is not evidence that the genuine backend is healthy.
+Mock payloads are generated from archived `sdk-events.jsonl` files and Copilot
+root `events.jsonl` history when `--history-root` is supplied, then completed
+from the catalog and bindings oracles. This mode measures the agent path
+against presumed BAU KAST responses; it is not evidence that the genuine
+backend is healthy.
 
 ### One-command workflow
 

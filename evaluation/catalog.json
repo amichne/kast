@@ -70,7 +70,7 @@
     {
       "id": "vp-disambiguate-function",
       "title": "Disambiguate callers of a common function name",
-      "prompt": "Find callers of {{OVERLOADED_OR_COMMON_FUNCTION.containingType}}.{{OVERLOADED_OR_COMMON_FUNCTION.symbol}}(), not every function named {{OVERLOADED_OR_COMMON_FUNCTION.symbol}} in the project. Show the call hierarchy.",
+      "prompt": "Find callers of {{OVERLOADED_OR_COMMON_FUNCTION.containingType}}.{{OVERLOADED_OR_COMMON_FUNCTION.symbol}}(), not every function named {{OVERLOADED_OR_COMMON_FUNCTION.symbol}} in the project. Show the call hierarchy with each caller's full fqName and call-site file:line.",
       "files": [],
       "expected_output": "A call hierarchy rooted at the exact function identity.",
       "expectations": [
@@ -121,7 +121,7 @@
     {
       "id": "vp-exhaustive-references",
       "title": "Prove exhaustive cross-workspace references",
-      "prompt": "Find every reference to {{CROSS_MODULE_CLASS.symbol}} across the entire workspace. Tell me whether the search was exhaustive — did it cover every candidate file, or was it sampled/truncated?",
+      "prompt": "Find every reference to {{CROSS_MODULE_CLASS.symbol}} across the entire workspace. List each reference as file:line, name the exact consumer modules or their module/source-set paths, and tell me whether the search was exhaustive — did it cover every candidate file, or was it sampled/truncated?",
       "files": [],
       "expected_output": "A complete reference report with explicit search completeness metadata.",
       "expectations": [
@@ -456,7 +456,7 @@
     {
       "id": "vp-impact-analysis",
       "title": "Trace two-level deletion impact",
-      "prompt": "I want to delete {{OVERLOADED_OR_COMMON_FUNCTION.containingType}}.{{OVERLOADED_OR_COMMON_FUNCTION.symbol}}(). Show me every direct caller, then for each caller show its callers (depth 2). Identify which of those callers are in test files vs production code.",
+      "prompt": "I want to delete {{OVERLOADED_OR_COMMON_FUNCTION.containingType}}.{{OVERLOADED_OR_COMMON_FUNCTION.symbol}}(). Use caller hierarchy, not plain reference search: show every direct caller by full fqName and file:line, then for each caller show its callers (depth 2). Identify each caller as test or production from its file path.",
       "files": [],
       "expected_output": "A bounded depth-2 caller impact report with production/test classification.",
       "expectations": [
@@ -514,7 +514,7 @@
     {
       "id": "vp-cross-module-flow",
       "title": "Trace cross-module symbol flow",
-      "prompt": "Trace how {{CROSS_MODULE_CLASS.symbol}} flows from its definition in {{CROSS_MODULE_CLASS.file}} to its consumers in other modules. Show the cross-module dependency chain.",
+      "prompt": "Trace how {{CROSS_MODULE_CLASS.symbol}} flows from its definition in {{CROSS_MODULE_CLASS.file}} to its consumers in other modules. Show the cross-module dependency chain with concrete module-rooted file:line citations, not shortened paths.",
       "files": [],
       "expected_output": "A concrete file-to-file flow report across module boundaries.",
       "expectations": [
