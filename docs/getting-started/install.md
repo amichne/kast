@@ -140,6 +140,43 @@ variables are optional but should be set for CI-like installs. The script
 expects `KAST_AGENT_WORKSPACE` to point inside a Git checkout because the
 Copilot extension installs into that repository's `.github` directory.
 
+## Headless agent bundle
+
+Use the headless agent bundle when an image or setup step should install Kast
+from one self-contained archive. The bundle carries the CLI zip, standalone
+backend zip, checksums, metadata, and an `install.sh` entrypoint that sets the
+bundle-local artifact parameters before running the installer.
+
+Download or publish `kast-headless-agent-<version>-linux-x64.zip`, unzip it
+on the target machine, and run `install.sh` from the checked-out workspace:
+
+```bash title="Install Kast from a headless agent bundle"
+unzip kast-headless-agent-v1.2.3-linux-x64.zip -d kast-agent
+cd /path/to/target/workspace
+export KAST_AGENT_INSTALL_ROOT="$HOME/.kast-agent"
+
+/path/to/kast-agent/install.sh
+source "$KAST_AGENT_INSTALL_ROOT/kast-env.sh"
+```
+
+The bundle is self-describing: `README.md` explains the install flow,
+`manifest.json` lists the bundle kind, platform, entrypoint, and artifact
+digests, and `checksums.txt` records the bundled artifact SHA-256 values.
+Run from a Git checkout or set `KAST_AGENT_WORKSPACE` explicitly because the
+Copilot extension installs into that repository's `.github` directory.
+
+Use `scripts/package-headless-agent-bundle.sh` when you need to create the
+same bundle shape from local artifacts:
+
+```bash title="Package a headless agent bundle"
+./scripts/package-headless-agent-bundle.sh \
+  --cli-archive dist/kast-v1.2.3-linux-x64.zip \
+  --backend-archive dist/backend.zip \
+  --version v1.2.3 \
+  --platform-id linux-x64 \
+  --output dist/kast-headless-agent-v1.2.3-linux-x64.zip
+```
+
 ??? info "Where kast stores configuration"
 
     By default, `kast` reads user configuration from
@@ -206,7 +243,7 @@ images, private artifact stores, and CI-style setup scripts.
 
 | Variable                         | What it does                                      |
 |----------------------------------|---------------------------------------------------|
-| `KAST_INSTALL_ROOT`              | Overrides the managed install root                |
+| `KAST_MANAGED_ROOT`              | Overrides the managed install root                |
 | `KAST_ARCHIVE_PATH`              | Installs the CLI from a local zip                 |
 | `KAST_EXPECTED_SHA256`           | Verifies `KAST_ARCHIVE_PATH` before extraction    |
 | `KAST_BACKEND_ARCHIVE_PATH`      | Installs the standalone backend from a local zip  |

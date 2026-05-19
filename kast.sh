@@ -1667,7 +1667,7 @@ Options:
   --help, -h                Show this help
 
 Environment:
-  KAST_INSTALL_ROOT              Install root override (default: $HOME/.kast)
+  KAST_MANAGED_ROOT              Managed install root override (default: $HOME/.kast)
   KAST_ARCHIVE_PATH              Local CLI archive path
   KAST_EXPECTED_SHA256           Expected SHA-256 for KAST_ARCHIVE_PATH
   KAST_BACKEND_ARCHIVE_PATH      Local standalone backend archive path
@@ -1693,9 +1693,9 @@ USAGE
 
   release_repo="$(_install_resolve_release_repo)"
   platform_id="$(_install_detect_platform_id)"
-  install_root="${KAST_INSTALL_ROOT:-${HOME}/.kast}"
+  install_root="${KAST_MANAGED_ROOT:-${HOME}/.kast}"
   install_root="${install_root%/}"
-  [[ -n "$install_root" ]] || die "KAST_INSTALL_ROOT resolved to an empty path"
+  [[ -n "$install_root" ]] || die "KAST_MANAGED_ROOT resolved to an empty path"
   bin_dir="${install_root}/bin"
   shell_name="$(_install_resolve_shell_name)"
 
