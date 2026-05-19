@@ -153,6 +153,10 @@ jobs:
         shell: bash
         run: ./scripts/smoke-headless-agent-install.sh
 
+      - name: Smoke headless agent bundle
+        shell: bash
+        run: ./scripts/smoke-headless-agent-bundle.sh
+
   eval-agent-routing:
     name: Eval agent routing
     runs-on: ubuntu-latest

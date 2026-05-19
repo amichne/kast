@@ -112,33 +112,42 @@ explicitly.
     Skips the wizard entirely. Valid components: `cli`, `intellij`,
     `backend`, `all`.
 
-## Headless agent with internal artifacts
+## Headless agent bundle
 
-Use the headless agent installer when an image or setup step should install
-Kast from private artifact URLs instead of GitHub releases. The script keeps
-the install contained, writes a sourceable environment file, installs the
-packaged skill, installs the repo-local Copilot extension, and verifies the
-result before it exits.
+Use the headless agent bundle when an image or setup step should install Kast
+from one self-contained archive. The bundle carries the CLI zip, standalone
+backend zip, checksums, metadata, and an `install.sh` entrypoint that sets the
+bundle-local artifact parameters before running the installer.
 
-Set the direct artifact URLs and run the script from the checked-out
-workspace:
+Download or publish `kast-headless-agent-<version>-linux-x64.zip`, unzip it
+on the target machine, and run `install.sh` from the checked-out workspace:
 
-```bash title="Install Kast for a headless agent"
-export KAST_AGENT_CLI_URL="https://artifacts.example.internal/kast-cli.zip"
-export KAST_AGENT_BACKEND_URL="https://artifacts.example.internal/kast-standalone.zip"
-export KAST_AGENT_CLI_SHA256="sha256:<cli-digest>"
-export KAST_AGENT_BACKEND_SHA256="sha256:<backend-digest>"
+```bash title="Install Kast from a headless agent bundle"
+unzip kast-headless-agent-v1.2.3-linux-x64.zip -d kast-agent
+cd /path/to/target/workspace
 export KAST_AGENT_INSTALL_ROOT="$HOME/.kast-agent"
-export KAST_AGENT_WORKSPACE="$PWD"
 
-./scripts/headless-agent-install.sh
+/path/to/kast-agent/install.sh
 source "$KAST_AGENT_INSTALL_ROOT/kast-env.sh"
 ```
 
-`KAST_AGENT_CLI_URL` and `KAST_AGENT_BACKEND_URL` are required. The SHA-256
-variables are optional but should be set for CI-like installs. The script
-expects `KAST_AGENT_WORKSPACE` to point inside a Git checkout because the
+The bundle is self-describing: `README.md` explains the install flow,
+`manifest.json` lists the bundle kind, platform, entrypoint, and artifact
+digests, and `checksums.txt` records the bundled artifact SHA-256 values.
+Run from a Git checkout or set `KAST_AGENT_WORKSPACE` explicitly because the
 Copilot extension installs into that repository's `.github` directory.
+
+Use `scripts/package-headless-agent-bundle.sh` when you need to create the
+same bundle shape from local artifacts:
+
+```bash title="Package a headless agent bundle"
+./scripts/package-headless-agent-bundle.sh \
+  --cli-archive dist/kast-v1.2.3-linux-x64.zip \
+  --backend-archive dist/backend.zip \
+  --version v1.2.3 \
+  --platform-id linux-x64 \
+  --output dist/kast-headless-agent-v1.2.3-linux-x64.zip
+```
 
 ??? info "Where kast stores configuration"
 
