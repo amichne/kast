@@ -92,6 +92,7 @@ gen
 .intellijPlatform/
 tmp/
 node_modules/
+.DS_Store
 *.sandbox/
 *.zip
 ### Kotlin template
