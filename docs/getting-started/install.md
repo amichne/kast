@@ -112,6 +112,34 @@ explicitly.
     Skips the wizard entirely. Valid components: `cli`, `intellij`,
     `backend`, `all`.
 
+## Headless agent with internal artifacts
+
+Use the headless agent installer when an image or setup step should install
+Kast from private artifact URLs instead of GitHub releases. The script keeps
+the install contained, writes a sourceable environment file, installs the
+packaged skill, installs the repo-local Copilot extension, and verifies the
+result before it exits.
+
+Set the direct artifact URLs and run the script from the checked-out
+workspace:
+
+```bash title="Install Kast for a headless agent"
+export KAST_AGENT_CLI_URL="https://artifacts.example.internal/kast-cli.zip"
+export KAST_AGENT_BACKEND_URL="https://artifacts.example.internal/kast-standalone.zip"
+export KAST_AGENT_CLI_SHA256="sha256:<cli-digest>"
+export KAST_AGENT_BACKEND_SHA256="sha256:<backend-digest>"
+export KAST_AGENT_INSTALL_ROOT="$HOME/.kast-agent"
+export KAST_AGENT_WORKSPACE="$PWD"
+
+./scripts/headless-agent-install.sh
+source "$KAST_AGENT_INSTALL_ROOT/kast-env.sh"
+```
+
+`KAST_AGENT_CLI_URL` and `KAST_AGENT_BACKEND_URL` are required. The SHA-256
+variables are optional but should be set for CI-like installs. The script
+expects `KAST_AGENT_WORKSPACE` to point inside a Git checkout because the
+Copilot extension installs into that repository's `.github` directory.
+
 ## Headless agent bundle
 
 Use the headless agent bundle when an image or setup step should install Kast
@@ -215,7 +243,7 @@ images, private artifact stores, and CI-style setup scripts.
 
 | Variable                         | What it does                                      |
 |----------------------------------|---------------------------------------------------|
-| `KAST_INSTALL_ROOT`              | Overrides the managed install root                |
+| `KAST_MANAGED_ROOT`              | Overrides the managed install root                |
 | `KAST_ARCHIVE_PATH`              | Installs the CLI from a local zip                 |
 | `KAST_EXPECTED_SHA256`           | Verifies `KAST_ARCHIVE_PATH` before extraction    |
 | `KAST_BACKEND_ARCHIVE_PATH`      | Installs the standalone backend from a local zip  |

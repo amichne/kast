@@ -189,7 +189,7 @@ verify_sha256 "$backend_archive" "${KAST_AGENT_BACKEND_SHA256:-}" "standalone ba
 log "Installing Kast into ${install_root}"
 (
   cd "$workspace_root"
-  KAST_INSTALL_ROOT="$install_root" \
+  KAST_MANAGED_ROOT="$install_root" \
   KAST_CONFIG_HOME="${install_root}/config" \
   KAST_PATH_RC_FILE="${install_root}/shellrc" \
   KAST_INSTALL_COMPLETIONS=false \
