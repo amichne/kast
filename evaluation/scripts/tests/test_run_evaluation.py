@@ -261,7 +261,7 @@ class RunEvaluationTests(unittest.TestCase):
         self.assertIn("mechanical_summary", benchmark)
         self.assertIn("llm_graded_summary", benchmark)
         self.assertIn("combined_summary", benchmark)
-        self.assertEqual(["with_skill", "tool_only", "without_skill"], benchmark["metadata"]["configurations"])
+        self.assertEqual(["without_skill", "tool_only", "with_skill"], benchmark["metadata"]["configurations"])
         self.assertIn("mechanical", benchmark["runs"][0])
         self.assertIn("llm_graded", benchmark["runs"][0])
         self.assertIn("combined", benchmark["runs"][0])

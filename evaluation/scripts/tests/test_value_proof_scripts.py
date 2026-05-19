@@ -126,6 +126,52 @@ class ValueProofScriptTests(unittest.TestCase):
         self.assertTrue((run_dir / "llm-grade-input.json").exists())
         self.assertTrue((run_dir / "grading.json").exists())
 
+    def test_scaffold_does_not_clobber_existing_run_artifacts(self) -> None:
+        catalog_path = TEST_WORKSPACE / "catalog.json"
+        write_json(
+            catalog_path,
+            {
+                "skill_name": "kast-value-proof",
+                "version": 1,
+                "cases": [
+                    {
+                        "id": "vp-demo",
+                        "title": "Demo case",
+                        "prompt": "Inspect the demo.",
+                        "expectations": [],
+                    }
+                ],
+            },
+        )
+
+        iteration_dir = scaffold_workspace(
+            catalog_path=catalog_path,
+            workspace_dir=TEST_WORKSPACE / "workspace",
+            runs_per_config=1,
+            configs=["with_skill"],
+            iteration="iteration-001",
+            aggregate=False,
+        )
+        run_dir = iteration_dir / "eval-vp-demo" / "with_skill" / "run-1"
+        (run_dir / "timing.json").write_text('{"status":"succeeded"}\n')
+        (run_dir / "mechanical.json").write_text('{"status":"graded"}\n')
+        (run_dir / "final-answer.md").write_text("done\n")
+        (run_dir / "outputs" / "transcript.md").write_text("transcript\n")
+
+        scaffold_workspace(
+            catalog_path=catalog_path,
+            workspace_dir=TEST_WORKSPACE / "workspace",
+            runs_per_config=1,
+            configs=["with_skill"],
+            iteration="iteration-001",
+            aggregate=False,
+        )
+
+        self.assertEqual('{"status":"succeeded"}\n', (run_dir / "timing.json").read_text())
+        self.assertEqual('{"status":"graded"}\n', (run_dir / "mechanical.json").read_text())
+        self.assertEqual("done\n", (run_dir / "final-answer.md").read_text())
+        self.assertEqual("transcript\n", (run_dir / "outputs" / "transcript.md").read_text())
+
     def test_dispatch_uses_manifest_retries_empty_transcript_and_records_timing(self) -> None:
         iteration_dir = self.create_iteration_fixture()
         runner = TEST_WORKSPACE / "retry_runner.py"
@@ -1195,6 +1241,87 @@ class ValueProofScriptTests(unittest.TestCase):
 
         report = (iteration_dir / "benchmark.md").read_text()
         self.assertIn("| task_completion | 1.000 | n/a | n/a | n/a |", report)
+
+    def test_benchmark_output_summary_reports_four_way_known_good_deltas(self) -> None:
+        from summarize_benchmark_outputs import summarize_benchmarks, write_summary_outputs
+
+        benchmark_path = TEST_WORKSPACE / "summary-fixtures" / "four-way" / "benchmark.json"
+        eval_ids = ["vp-disambiguate-member", "vp-impact-analysis"]
+        configurations = ["without_skill", "skill_only", "tool_only", "with_skill"]
+        score_by_configuration = {
+            "without_skill": 0.2,
+            "skill_only": 0.4,
+            "tool_only": 0.6,
+            "with_skill": 0.8,
+        }
+        runs = []
+        for eval_id in eval_ids:
+            for configuration in configurations:
+                score = score_by_configuration[configuration]
+                runs.append(
+                    {
+                        "eval_id": eval_id,
+                        "configuration": configuration,
+                        "run_number": 1,
+                        "status": "valid",
+                        "combined": {
+                            "measurements": {
+                                "overall": {"outcome": {"status": "scored", "score": score}},
+                                "task_completion": {"outcome": {"status": "scored", "score": score}},
+                                "accuracy": {"outcome": {"status": "scored", "score": score}},
+                                "reliability": {"outcome": {"status": "scored", "score": score}},
+                                "scope_control": {"outcome": {"status": "scored", "score": score}},
+                            }
+                        },
+                        "efficiency": {
+                            "total_tokens": 1000 * (1 + score),
+                            "transcript_chars": 100 * (1 + score),
+                            "total_tool_calls": 10,
+                            "semantic_tool_calls": 3 if "skill" in configuration else 0,
+                            "generic_search_calls": 1,
+                            "executor_duration_seconds": 12.0,
+                        },
+                    }
+                )
+        write_json(
+            benchmark_path,
+            {
+                "metadata": {
+                    "generated_at": "2026-05-19T00:00:00Z",
+                    "iteration_dir": ".benchmarks/copilot-sdk-mock/four-way",
+                    "target_git_sha": "abc123",
+                    "eval_ids": eval_ids,
+                    "configurations": configurations,
+                },
+                "runs": runs,
+                "paired_analysis": {"issues": {"invalid_runs": [], "flaky_runs": [], "outliers": []}},
+            },
+        )
+
+        summary = summarize_benchmarks(
+            benchmark_paths=[benchmark_path],
+            known_good_paths=[benchmark_path],
+            title="Test benchmark summary",
+        )
+        four_way = summary["four_scenario_delta"]
+        self.assertEqual("four-way", four_way["benchmark_id"])
+        self.assertEqual(0.6, four_way["delta_vs_without_skill"]["with_skill"]["overall_outcome"])
+        self.assertEqual(0.4, four_way["delta_vs_without_skill"]["tool_only"]["overall_outcome"])
+        self.assertEqual(0.2, four_way["delta_vs_without_skill"]["skill_only"]["overall_outcome"])
+        self.assertEqual(
+            0.6,
+            summary["known_good_statistics"]["paired_deltas"]["overall_outcome"][
+                "with_skill - without_skill"
+            ]["mean_delta"],
+        )
+
+        output_dir = TEST_WORKSPACE / "summary-output"
+        write_summary_outputs(summary, output_dir)
+
+        self.assertTrue((output_dir / "benchmark-summary.json").exists())
+        markdown = (output_dir / "benchmark-summary.md").read_text()
+        self.assertIn("## Four-Scenario Delta", markdown)
+        self.assertIn("with_skill - without_skill", markdown)
 
     def create_iteration_fixture(
         self,

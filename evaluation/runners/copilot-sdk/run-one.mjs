@@ -26,6 +26,8 @@ export const CONFIG_POLICIES = {
     registerKastTools: true,
     loadKastSkill: true,
     denyDirectKastShell: false,
+    denyGenericSearchShell: true,
+    availableKastToolsOnly: true,
     baselinePolicy: "not_applicable",
   },
   tool_only: {
@@ -33,7 +35,16 @@ export const CONFIG_POLICIES = {
     loadKastSkill: false,
     denyDirectKastShell: false,
     denyShellWrites: true,
+    denyGenericSearchShell: true,
+    availableKastToolsOnly: true,
     baselinePolicy: "tool_only",
+  },
+  skill_only: {
+    registerKastTools: false,
+    loadKastSkill: true,
+    denyDirectKastShell: true,
+    denyShellWrites: true,
+    baselinePolicy: "skill_only",
   },
   without_skill: {
     registerKastTools: false,
@@ -227,12 +238,27 @@ function resolveKastBackendMode(args) {
   return mode;
 }
 
+export function resolveRealKastWorkspaceRoot({ targetRoot, worktreePath, mode }) {
+  const resolvedMode = String(mode || process.env.KAST_EVAL_REAL_BACKEND_WORKSPACE || "worktree").trim();
+  if (resolvedMode === "target") {
+    return { workspaceRoot: targetRoot, source: "target" };
+  }
+  if (resolvedMode === "worktree") {
+    return { workspaceRoot: worktreePath, source: "worktree" };
+  }
+  die(`KAST_EVAL_REAL_BACKEND_WORKSPACE must be target or worktree, got ${JSON.stringify(resolvedMode)}`);
+}
+
 export function containsDirectKastShell(commandText) {
   return /\bkast(?:\s|$)/.test(commandText) || /\bkast_[a-z_]+\b/.test(commandText);
 }
 
 export function containsShellWriteRedirection(commandText) {
   return /(^|[\s;|&])>{1,2}\s*\S/.test(String(commandText ?? ""));
+}
+
+export function containsGenericSearchShell(commandText) {
+  return /(^|[\s;|&])(rg|grep|find)(\s|$)/.test(String(commandText ?? ""));
 }
 
 export function containsUnbalancedShellBackticks(commandText) {
@@ -303,12 +329,13 @@ export function buildSessionConfig({
 }) {
   const skillRoot = resolve(REPO_ROOT, ".agents/skills");
   const instructionRoot = resolve(REPO_ROOT, ".github/instructions");
+  const configDir = mockCopilotHome ?? (kastBackendMode === "mock" ? prepareMockCopilotConfig(worktreePath) : null);
   const sessionConfig = {
     clientName: "kast-evaluation-runner",
     model,
     reasoningEffort,
     enableConfigDiscovery: false,
-    ...(kastBackendMode === "mock" ? { configDir: mockCopilotHome ?? prepareMockCopilotConfig(worktreePath) } : {}),
+    ...(configDir ? { configDir } : {}),
     enableSessionTelemetry: true,
     workingDirectory: worktreePath,
     instructionDirectories: [instructionRoot],
@@ -343,12 +370,19 @@ export function buildSessionConfig({
         permissionLog.push({ kind: "denied-by-rules", reason: "shell-write-redirection", request });
         return { kind: "denied-by-rules" };
       }
+      if (policy.denyGenericSearchShell && request?.kind === "shell" && containsGenericSearchShell(fullCommandText)) {
+        permissionLog.push({ kind: "denied-by-rules", reason: "generic-search-shell", request });
+        return { kind: "denied-by-rules" };
+      }
       permissionLog.push({ kind: "approved", request });
       return approveAll(request, invocation);
     },
   };
   if (policy.registerKastTools) {
     sessionConfig.tools = makeKastTools((method, params) => callKast(method, params));
+  }
+  if (policy.availableKastToolsOnly) {
+    sessionConfig.availableTools = Array.from(KAST_TOOL_NAMES);
   }
   return sessionConfig;
 }
@@ -596,10 +630,14 @@ async function main() {
       bindings,
     })
     : null;
+  const realKastWorkspace = resolveRealKastWorkspaceRoot({ targetRoot, worktreePath });
   const callKast = mockCaller
     ? (method, params) => mockCaller.call(method, params)
-    : (method, params) => callKastInWorkspace(worktreePath, method, params);
-  const mockCopilotHome = kastBackendMode === "mock" ? prepareMockCopilotConfig(worktreePath) : null;
+    : (method, params) => callKastInWorkspace(realKastWorkspace.workspaceRoot, method, params);
+  const mockCopilotHome =
+    kastBackendMode === "mock" || process.env.KAST_EVAL_DISABLE_HOOKS === "1"
+      ? prepareMockCopilotConfig(worktreePath)
+      : null;
 
   const transcriptStream = createWriteStream(transcriptPath, { flags: "w" });
   const sdkEventsStream = createWriteStream(sdkEventsPath, { flags: "w" });
@@ -676,6 +714,8 @@ async function main() {
           ? mockCaller.metadata()
           : {
             backend_mode: "real",
+            workspace_root: realKastWorkspace.workspaceRoot,
+            workspace_source: realKastWorkspace.source,
             payload_path: null,
             payload_hash: null,
             payload_entry_count: 0,
@@ -696,6 +736,8 @@ async function main() {
         ? mockCaller.metadata()
         : {
           backend_mode: "real",
+          workspace_root: realKastWorkspace.workspaceRoot,
+          workspace_source: realKastWorkspace.source,
           payload_path: null,
           payload_hash: null,
           payload_entry_count: 0,

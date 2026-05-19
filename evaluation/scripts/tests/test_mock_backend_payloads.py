@@ -35,7 +35,7 @@ class MockBackendPayloadTests(unittest.TestCase):
                     "data": {
                         "toolCallId": "call-1",
                         "toolName": "kast_resolve",
-                        "arguments": {"symbol": "Demo"},
+                        "arguments": {"symbol": "OtherDemo"},
                     },
                 },
                 {
@@ -52,17 +52,17 @@ class MockBackendPayloadTests(unittest.TestCase):
                                     "result": {
                                         "type": "RESOLVE_SUCCESS",
                                         "ok": True,
-                                        "filePath": "/workspace/demo/src/Demo.kt",
+                                        "filePath": "/workspace/demo/src/OtherDemo.kt",
                                         "symbol": {
-                                            "fqName": "sample.Demo",
+                                            "fqName": "sample.OtherDemo",
                                             "kind": "CLASS",
                                             "location": {
-                                                "filePath": "/workspace/demo/src/Demo.kt",
+                                                "filePath": "/workspace/demo/src/OtherDemo.kt",
                                                 "startOffset": 0,
                                                 "endOffset": 4,
                                                 "startLine": 1,
                                                 "startColumn": 1,
-                                                "preview": "class Demo",
+                                                "preview": "class OtherDemo",
                                             },
                                         },
                                     },
@@ -116,8 +116,8 @@ class MockBackendPayloadTests(unittest.TestCase):
             if entry["method"] == "symbol/resolve" and entry["provenance"]["source"] == "history"
         ]
         self.assertEqual(1, len(history_resolves))
-        self.assertEqual("src/Demo.kt", history_resolves[0]["result"]["filePath"])
-        self.assertEqual("src/Demo.kt", history_resolves[0]["result"]["symbol"]["location"]["filePath"])
+        self.assertEqual("src/OtherDemo.kt", history_resolves[0]["result"]["filePath"])
+        self.assertEqual("src/OtherDemo.kt", history_resolves[0]["result"]["symbol"]["location"]["filePath"])
         self.assertTrue(
             any(
                 entry["method"] == "symbol/resolve"

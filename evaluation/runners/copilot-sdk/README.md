@@ -58,14 +58,21 @@ run-N/
 | `KAST_BIN` | Path to the `kast` binary used by custom tool handlers. Default: `kast`. |
 | `KAST_WORKSPACE_ROOT` | Workspace root passed to `kast rpc` and used as the SDK session working directory. The wrapper reads it from the bindings file. |
 | `KAST_EVAL_KAST_BACKEND` | `real` or `mock` backend for `kast_*` tools. Default: `real`. |
+| `KAST_EVAL_REAL_BACKEND_WORKSPACE` | For real backend runs, choose whether `kast_*` calls target the isolated `worktree` or original `target` workspace. Default: `worktree`. |
 | `KAST_EVAL_MOCK_PAYLOADS` | Mock backend payload path used when the backend is `mock`. |
+| `KAST_EVAL_DISABLE_HOOKS` | Set to `1` to force an isolated Copilot config dir even when using the real backend. |
 | `KAST_EVAL_SKIP_NPM_CI` | Set to `1` only when dependencies are already installed and you want to skip the wrapper's `npm ci` step. |
 
-The benchmark matrix uses three configurations:
+The default benchmark matrix uses three configurations:
 
 - `with_skill` loads the real repo Kast skill and registers `kast_*` tools.
 - `tool_only` registers `kast_*` tools without loading the Kast skill.
 - `without_skill` loads neither the Kast skill nor `kast_*` tools and denies direct `kast` shell use as explicit baseline policy.
+
+For four-scenario isolation, pass
+`--configs without_skill,skill_only,tool_only,with_skill`. `skill_only` loads
+the Kast skill while disabling `kast_*` tools and direct `kast` shell fallback,
+which separates instruction value from custom-tool value.
 
 ## Mock KAST Backend
 
@@ -112,3 +119,12 @@ launching Copilot.
 The runner intentionally uses the default Copilot home so the SDK can reuse the
 operator's authenticated Copilot session. Per-run benchmark artifacts still
 live under each `run_dir`.
+
+To build a compact gist-ready report from completed benchmark artifacts:
+
+```bash
+python3 evaluation/scripts/summarize_benchmark_outputs.py \
+  --benchmark .benchmarks/copilot-sdk-mock/mock-four-way-full-suite-3x-20260519T053232Z \
+  --known-good .benchmarks/copilot-sdk-mock/mock-four-way-full-suite-3x-20260519T053232Z \
+  --output-dir .benchmarks/summary/kast-benchmark-summary-20260519
+```

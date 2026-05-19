@@ -24,7 +24,7 @@ PRIMARY_DIMENSIONS = (
 MEASUREMENT_DIMENSIONS = PRIMARY_DIMENSIONS + ("efficiency",)
 MEASUREMENT_KEYS = ("overall",) + MEASUREMENT_DIMENSIONS
 MEASUREMENT_KINDS = ("all", "outcome", "process")
-CONFIGURATION_ORDER = ("with_skill", "tool_only", "without_skill")
+CONFIGURATION_ORDER = ("without_skill", "skill_only", "tool_only", "with_skill")
 EFFICIENCY_METRICS = (
     "transcript_chars",
     "total_tool_calls",
@@ -948,6 +948,13 @@ def _efficiency_mean(benchmark: dict[str, Any], configuration: str, metric: str)
     return float(summary["mean"])
 
 
+def _markdown_header(first_column: str, columns: list[str]) -> list[str]:
+    return [
+        "| " + " | ".join([first_column, *columns]) + " |",
+        "| " + " | ".join(["---", *(["---:"] * len(columns))]) + " |",
+    ]
+
+
 def write_outputs(iteration_dir: Path, benchmark: dict[str, Any]) -> None:
     (iteration_dir / "benchmark.json").write_text(json.dumps(benchmark, indent=2) + "\n")
 
@@ -981,39 +988,27 @@ def write_outputs(iteration_dir: Path, benchmark: dict[str, Any]) -> None:
         without_value = f"{without_mean:.3f}" if without_mean is not None else "n/a"
         lines.append(f"| {metric} | {with_value} | {without_value} | {delta} | {p_value} |")
 
+    configurations = list(benchmark["metadata"].get("configurations", []))
+    lines.extend(["", "## Surface split", ""])
     lines.extend(
-        [
-            "",
-            "## Surface split",
-            "",
-            "| Surface | with_skill overall outcome | tool_only overall outcome | without_skill overall outcome |",
-            "| --- | ---: | ---: | ---: |",
-        ]
+        _markdown_header(
+            "Surface",
+            [f"{configuration} overall outcome" for configuration in configurations],
+        )
     )
     for section, label in (
         ("mechanical_summary", "Mechanical"),
         ("llm_graded_summary", "LLM-graded"),
         ("combined_summary", "Combined"),
     ):
-        with_mean = _section_summary_mean(benchmark, section, "with_skill", "overall")
-        tool_only_mean = _section_summary_mean(benchmark, section, "tool_only", "overall")
-        without_mean = _section_summary_mean(benchmark, section, "without_skill", "overall")
-        lines.append(
-            f"| {label} | "
-            f"{_format_optional_mean(with_mean)} | "
-            f"{_format_optional_mean(tool_only_mean)} | "
-            f"{_format_optional_mean(without_mean)} |"
-        )
-
-    lines.extend(
-        [
-            "",
-            "## Supporting efficiency",
-            "",
-            "| Metric | with_skill | without_skill | Delta |",
-            "| --- | ---: | ---: | ---: |",
+        values = [
+            _format_optional_mean(_section_summary_mean(benchmark, section, configuration, "overall"))
+            for configuration in configurations
         ]
-    )
+        lines.append("| " + " | ".join([label, *values]) + " |")
+
+    lines.extend(["", "## Supporting efficiency", ""])
+    lines.extend(_markdown_header("Metric", configurations))
     for metric in (
         "transcript_chars",
         "total_tool_calls",
@@ -1025,14 +1020,11 @@ def write_outputs(iteration_dir: Path, benchmark: dict[str, Any]) -> None:
         "cache_read_tokens",
         "total_tokens",
     ):
-        with_mean = _efficiency_mean(benchmark, "with_skill", metric)
-        without_mean = _efficiency_mean(benchmark, "without_skill", metric)
-        delta = "n/a"
-        if with_mean is not None and without_mean is not None:
-            delta = f"{with_mean - without_mean:+.3f}"
-        with_value = f"{with_mean:.3f}" if with_mean is not None else "n/a"
-        without_value = f"{without_mean:.3f}" if without_mean is not None else "n/a"
-        lines.append(f"| {metric} | {with_value} | {without_value} | {delta} |")
+        values = [
+            _format_optional_mean(_efficiency_mean(benchmark, configuration, metric))
+            for configuration in configurations
+        ]
+        lines.append("| " + " | ".join([metric, *values]) + " |")
 
     issues = benchmark["paired_analysis"]["issues"]
     if issues["invalid_runs"]:
