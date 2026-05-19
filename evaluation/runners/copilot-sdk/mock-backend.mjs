@@ -126,8 +126,9 @@ function materializeValue(value, key, worktreePath) {
   return value;
 }
 
-function normalizeMatcherValue(value, worktreePath) {
+function normalizeMatcherValue(value, worktreePath, key) {
   if (typeof value !== "string") return value;
+  if (key === "kind") return value.toLowerCase();
   return toWorkspaceRelative(value, worktreePath);
 }
 
@@ -137,8 +138,8 @@ function matchesEntry(entry, method, params, worktreePath) {
   if (matcher.type === "any") return true;
   for (const [key, expected] of Object.entries(matcher)) {
     if (key === "type") continue;
-    const actual = normalizeMatcherValue(params?.[key], worktreePath);
-    const normalizedExpected = normalizeMatcherValue(expected, worktreePath);
+    const actual = normalizeMatcherValue(params?.[key], worktreePath, key);
+    const normalizedExpected = normalizeMatcherValue(expected, worktreePath, key);
     if (normalizedExpected !== actual) return false;
   }
   return true;

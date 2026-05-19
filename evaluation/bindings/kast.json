@@ -2,7 +2,7 @@
   "_comment": "Repo-local binding for the kast workspace itself. Update git_sha before each benchmark run.",
   "target_repo": "kast",
   "workspace_root": "/Users/amichne/code/kast",
-  "git_sha": "0769f6fb3fe56a3af7fc671aab53147a3a8f2c94",
+  "git_sha": "0a905e187db2b8dded0515bafbf1fa74096c3ac2",
   "slots": {
     "SEALED_HIERARCHY": {
       "symbol": "AnalysisTransport",

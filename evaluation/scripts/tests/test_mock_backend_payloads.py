@@ -309,6 +309,17 @@ class MockBackendPayloadTests(unittest.TestCase):
             "target_repo": "demo",
             "workspace_root": "/workspace/demo",
             "slots": {
+                "DISAMBIGUATE_MEMBER": {
+                    "symbol": "filePath",
+                    "fqName": "io.github.amichne.kast.api.contract.FileOperation.filePath",
+                    "file": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/FileOperation.kt",
+                    "containingType": "io.github.amichne.kast.api.contract.FileOperation",
+                    "expected": {
+                        "expectedFiles": [
+                            "analysis-api/src/main/kotlin/io/github/amichne/kast/api/validation/EditPlanValidator.kt",
+                        ],
+                    },
+                },
                 "OVERLOADED_OR_COMMON_FUNCTION": {
                     "symbol": "renderCapabilities",
                     "fqName": "io.github.amichne.kast.api.docs.DocsDocument.renderCapabilities",
@@ -352,9 +363,16 @@ class MockBackendPayloadTests(unittest.TestCase):
             for entry in payload["entries"]
             if entry["method"] == "symbol/callers"
         ]
+        resolves = [
+            entry["matcher"].get("symbol")
+            for entry in payload["entries"]
+            if entry["method"] == "symbol/resolve"
+        ]
         self.assertIn("renderCapabilities", references)
         self.assertIn("io.github.amichne.kast.api.docs.DocsDocument.renderCapabilities", references)
         self.assertIn("io.github.amichne.kast.server.AnalysisDispatcher", references)
+        self.assertIn("FileOperation", references)
+        self.assertIn("io.github.amichne.kast.api.contract.FileOperation", references)
         self.assertIn("renderCapabilities", callers)
         self.assertIn("io.github.amichne.kast.api.docs.DocsDocument.renderCapabilities", callers)
         self.assertIn("main", callers)
@@ -362,6 +380,12 @@ class MockBackendPayloadTests(unittest.TestCase):
         self.assertIn(
             "generated capabilities page contains a section for every JSON-RPC method",
             callers,
+        )
+        self.assertIn("main", resolves)
+        self.assertIn("io.github.amichne.kast.api.docs.main", resolves)
+        self.assertIn(
+            "generated capabilities page contains a section for every JSON-RPC method",
+            resolves,
         )
 
 

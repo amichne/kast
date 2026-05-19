@@ -793,6 +793,19 @@ class ValueProofScriptTests(unittest.TestCase):
         self.assertEqual(1, integrity["mock_backend_error_count"])
         self.assertEqual("mock_backend_error", _invalid_reason([], integrity))
 
+    def test_dirty_post_run_worktree_invalidates_aggregate_runs(self) -> None:
+        integrity = _integrity(
+            {
+                "integrity": {
+                    "workspace_dirty_post": True,
+                }
+            },
+            "with_skill",
+        )
+
+        self.assertTrue(integrity["workspace_dirty_post"])
+        self.assertEqual("workspace_dirty_post", _invalid_reason([], integrity))
+
     def test_failed_timing_invalidates_aggregate_run_as_executor_failure(self) -> None:
         iteration_dir, run_dir = self.create_finalized_run_fixture()
         write_json(

@@ -413,14 +413,15 @@ def fallback_entries(bindings: dict[str, Any]) -> list[dict[str, Any]]:
         }
         for name in caller_names
     ]
-    resolve_entries = [
-        {
+
+    def resolve_entry(symbol_name: str, symbol: dict[str, Any]) -> dict[str, Any]:
+        return {
             "method": "symbol/resolve",
-            "matcher": {"symbol": symbol["fqName"].split(".")[-1]},
+            "matcher": {"symbol": symbol_name},
             "result": {
                 "type": "RESOLVE_SUCCESS",
                 "ok": True,
-                "query": {"workspaceRoot": ".", "symbol": symbol["fqName"].split(".")[-1], "fileHint": None, "kind": None, "containingType": None},
+                "query": {"workspaceRoot": ".", "symbol": symbol_name, "fileHint": None, "kind": None, "containingType": None},
                 "symbol": symbol,
                 "filePath": symbol["location"]["filePath"],
                 "offset": symbol["location"]["startOffset"],
@@ -431,26 +432,22 @@ def fallback_entries(bindings: dict[str, Any]) -> list[dict[str, Any]]:
             },
             "provenance": {"source": "bindings", "fallback": True},
         }
+
+    resolve_entries = [
+        resolve_entry(symbol["fqName"].split(".")[-1], symbol)
         for symbol in symbols
     ] or [
-        {
-            "method": "symbol/resolve",
-            "matcher": {"type": "any"},
-            "result": {
-                "type": "RESOLVE_SUCCESS",
-                "ok": True,
-                "query": {"workspaceRoot": ".", "symbol": first_symbol["fqName"].split(".")[-1], "fileHint": None, "kind": None, "containingType": None},
-                "symbol": first_symbol,
-                "filePath": first_symbol["location"]["filePath"],
-                "offset": first_symbol["location"]["startOffset"],
-                "candidate": {"line": first_symbol["location"]["startLine"], "column": first_symbol["location"]["startColumn"], "context": first_symbol["location"]["preview"]},
-                "candidateCount": 1,
-                "alternatives": [],
-                "logFile": ".kast/mock-backend.log",
-            },
-            "provenance": {"source": "bindings", "fallback": True},
-        }
+        {**resolve_entry(first_symbol["fqName"].split(".")[-1], first_symbol), "matcher": {"type": "any"}}
     ]
+    for caller_name in caller_names:
+        caller_symbol = {
+            "fqName": str(caller_name),
+            "kind": "FUNCTION",
+            "location": location(slot_file(function), str(caller_name).rsplit(".", 1)[-1]),
+            "containingDeclaration": str(caller_name).rsplit(".", 1)[0] if "." in str(caller_name) else None,
+        }
+        for symbol_name in symbol_name_variants(caller_name):
+            resolve_entries.append(resolve_entry(symbol_name, caller_symbol))
     reference_entries = []
     reference_slots = [
         (member, "PROPERTY"),

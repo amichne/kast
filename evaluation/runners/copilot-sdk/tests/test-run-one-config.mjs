@@ -45,6 +45,38 @@ assert.deepEqual(
   { kind: "denied-by-rules" },
 );
 
+const toolOnlyConfig = buildSessionConfig({
+  configuration: "tool_only",
+  model: "gpt-5-mini",
+  reasoningEffort: "medium",
+  worktreePath: resolve(tempRoot, "run-3", "worktree"),
+  policy: CONFIG_POLICIES.tool_only,
+  permissionLog,
+  callKast: async () => "{}",
+  kastBackendMode: "mock",
+});
+assert.deepEqual(
+  toolOnlyConfig.onPermissionRequest(
+    {
+      kind: "shell",
+      fullCommandText:
+        'rg -n "^\\s*fun\\s+`|^\\s*fun\\s+[a-zA-Z]" analysis-api/src/test/kotlin/io/github/amichne/kast/api/AnalysisDocsDocumentTest.kt || true',
+    },
+    {},
+  ),
+  { kind: "denied-by-rules" },
+);
+assert.deepEqual(
+  toolOnlyConfig.onPermissionRequest(
+    {
+      kind: "shell",
+      fullCommandText: String.raw`perl -0777 -ne 'while(/include\((.*?)\)/sg){$x=$1; while($x=~ /["\']([^"\']+)["\']/g){print "$1\n"}}' settings.gradle.kts`,
+    },
+    {},
+  ),
+  { kind: "denied-by-rules" },
+);
+
 assert.deepEqual(
   buildClientOptions({
     githubToken: "",

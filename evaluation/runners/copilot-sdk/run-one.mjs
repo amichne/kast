@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { execFile } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 import {
   createWriteStream,
   mkdirSync,
@@ -229,6 +229,44 @@ export function containsDirectKastShell(commandText) {
   return /\bkast(?:\s|$)/.test(commandText) || /\bkast_[a-z_]+\b/.test(commandText);
 }
 
+export function containsUnbalancedShellBackticks(commandText) {
+  let inSingleQuote = false;
+  let escaped = false;
+  let backticks = 0;
+  for (const char of commandText) {
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (char === "\\" && !inSingleQuote) {
+      escaped = true;
+      continue;
+    }
+    if (char === "'") {
+      inSingleQuote = !inSingleQuote;
+      continue;
+    }
+    if (char === "`" && !inSingleQuote) {
+      backticks += 1;
+    }
+  }
+  return backticks % 2 === 1;
+}
+
+export function shellSyntaxError(commandText) {
+  if (!String(commandText ?? "").trim()) return null;
+  try {
+    execFileSync("bash", ["-n", "-c", commandText], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      timeout: 2000,
+    });
+    return null;
+  } catch (error) {
+    return String(error?.stderr || error?.message || "shell syntax check failed").trim();
+  }
+}
+
 function mockCopilotHomePath(worktreePath) {
   return resolve(worktreePath, "..", "copilot-home");
 }
@@ -280,6 +318,17 @@ export function buildSessionConfig({
     },
     onPermissionRequest: (request, invocation) => {
       const fullCommandText = request?.fullCommandText ?? "";
+      if (request?.kind === "shell" && containsUnbalancedShellBackticks(fullCommandText)) {
+        permissionLog.push({ kind: "denied-by-rules", reason: "unbalanced-shell-backticks", request });
+        return { kind: "denied-by-rules" };
+      }
+      if (request?.kind === "shell") {
+        const syntaxError = shellSyntaxError(fullCommandText);
+        if (syntaxError) {
+          permissionLog.push({ kind: "denied-by-rules", reason: "shell-syntax-error", syntaxError, request });
+          return { kind: "denied-by-rules" };
+        }
+      }
       if (policy.denyDirectKastShell && request?.kind === "shell" && containsDirectKastShell(fullCommandText)) {
         permissionLog.push({ kind: "denied-by-rules", request });
         return { kind: "denied-by-rules" };
