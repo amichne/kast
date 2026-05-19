@@ -75,7 +75,7 @@ need_tool git
 need_tool python3
 need_tool curl
 
-scratch_dir="$(absolute_path "$(mktemp -d "${TMPDIR:-/tmp}/kast-devin-smoke.XXXXXX")")"
+scratch_dir="$(absolute_path "$(mktemp -d "${TMPDIR:-/tmp}/kast-agent-smoke.XXXXXX")")"
 cleanup() {
   rm -rf "$scratch_dir"
 }
@@ -166,13 +166,13 @@ git -C "$workspace_root" init -q
 
 HOME="$home_dir" \
 SHELL=/bin/bash \
-KAST_DEVIN_CLI_URL="$(file_uri "$cli_zip")" \
-KAST_DEVIN_BACKEND_URL="$(file_uri "$backend_zip")" \
-KAST_DEVIN_CLI_SHA256="$(compute_sha256 "$cli_zip")" \
-KAST_DEVIN_BACKEND_SHA256="$(compute_sha256 "$backend_zip")" \
-KAST_DEVIN_INSTALL_ROOT="$install_root" \
-KAST_DEVIN_WORKSPACE="$workspace_root" \
-"${repo_root}/scripts/devin-blueprint-install.sh"
+KAST_AGENT_CLI_URL="$(file_uri "$cli_zip")" \
+KAST_AGENT_BACKEND_URL="$(file_uri "$backend_zip")" \
+KAST_AGENT_CLI_SHA256="$(compute_sha256 "$cli_zip")" \
+KAST_AGENT_BACKEND_SHA256="$(compute_sha256 "$backend_zip")" \
+KAST_AGENT_INSTALL_ROOT="$install_root" \
+KAST_AGENT_WORKSPACE="$workspace_root" \
+"${repo_root}/scripts/headless-agent-install.sh"
 
 installed_launcher="${install_root}/bin/kast"
 config_file="${install_root}/config/config.toml"
@@ -212,14 +212,14 @@ PY
 
 if HOME="$home_dir" \
   SHELL=/bin/bash \
-  KAST_DEVIN_CLI_URL="$(file_uri "$cli_zip")" \
-  KAST_DEVIN_BACKEND_URL="$(file_uri "$backend_zip")" \
-  KAST_DEVIN_CLI_SHA256="0000000000000000000000000000000000000000000000000000000000000000" \
-  KAST_DEVIN_BACKEND_SHA256="$(compute_sha256 "$backend_zip")" \
-  KAST_DEVIN_INSTALL_ROOT="${scratch_dir}/bad-checksum-install" \
-  KAST_DEVIN_WORKSPACE="$workspace_root" \
-  "${repo_root}/scripts/devin-blueprint-install.sh" >/dev/null 2>&1; then
+  KAST_AGENT_CLI_URL="$(file_uri "$cli_zip")" \
+  KAST_AGENT_BACKEND_URL="$(file_uri "$backend_zip")" \
+  KAST_AGENT_CLI_SHA256="0000000000000000000000000000000000000000000000000000000000000000" \
+  KAST_AGENT_BACKEND_SHA256="$(compute_sha256 "$backend_zip")" \
+  KAST_AGENT_INSTALL_ROOT="${scratch_dir}/bad-checksum-install" \
+  KAST_AGENT_WORKSPACE="$workspace_root" \
+  "${repo_root}/scripts/headless-agent-install.sh" >/dev/null 2>&1; then
   die "Bad CLI checksum unexpectedly succeeded"
 fi
 
-printf '%s\n' "Devin Blueprint installer smoke test passed"
+printf '%s\n' "Headless agent installer smoke test passed"

@@ -112,9 +112,9 @@ explicitly.
     Skips the wizard entirely. Valid components: `cli`, `intellij`,
     `backend`, `all`.
 
-## Devin Blueprint with internal artifacts
+## Headless agent with internal artifacts
 
-Use the Devin Blueprint installer when an image or setup step should install
+Use the headless agent installer when an image or setup step should install
 Kast from private artifact URLs instead of GitHub releases. The script keeps
 the install contained, writes a sourceable environment file, installs the
 packaged skill, installs the repo-local Copilot extension, and verifies the
@@ -123,21 +123,21 @@ result before it exits.
 Set the direct artifact URLs and run the script from the checked-out
 workspace:
 
-```bash title="Install Kast in a Devin Blueprint"
-export KAST_DEVIN_CLI_URL="https://artifacts.example.internal/kast-cli.zip"
-export KAST_DEVIN_BACKEND_URL="https://artifacts.example.internal/kast-standalone.zip"
-export KAST_DEVIN_CLI_SHA256="sha256:<cli-digest>"
-export KAST_DEVIN_BACKEND_SHA256="sha256:<backend-digest>"
-export KAST_DEVIN_INSTALL_ROOT="$HOME/.kast-devin"
-export KAST_DEVIN_WORKSPACE="$PWD"
+```bash title="Install Kast for a headless agent"
+export KAST_AGENT_CLI_URL="https://artifacts.example.internal/kast-cli.zip"
+export KAST_AGENT_BACKEND_URL="https://artifacts.example.internal/kast-standalone.zip"
+export KAST_AGENT_CLI_SHA256="sha256:<cli-digest>"
+export KAST_AGENT_BACKEND_SHA256="sha256:<backend-digest>"
+export KAST_AGENT_INSTALL_ROOT="$HOME/.kast-agent"
+export KAST_AGENT_WORKSPACE="$PWD"
 
-./scripts/devin-blueprint-install.sh
-source "$KAST_DEVIN_INSTALL_ROOT/kast-env.sh"
+./scripts/headless-agent-install.sh
+source "$KAST_AGENT_INSTALL_ROOT/kast-env.sh"
 ```
 
-`KAST_DEVIN_CLI_URL` and `KAST_DEVIN_BACKEND_URL` are required. The SHA-256
+`KAST_AGENT_CLI_URL` and `KAST_AGENT_BACKEND_URL` are required. The SHA-256
 variables are optional but should be set for CI-like installs. The script
-expects `KAST_DEVIN_WORKSPACE` to point inside a Git checkout because the
+expects `KAST_AGENT_WORKSPACE` to point inside a Git checkout because the
 Copilot extension installs into that repository's `.github` directory.
 
 ??? info "Where kast stores configuration"

@@ -149,9 +149,9 @@ jobs:
         shell: bash
         run: ./.github/scripts/smoke-installer.sh
 
-      - name: Smoke Devin Blueprint installer
+      - name: Smoke headless agent installer
         shell: bash
-        run: ./scripts/smoke-devin-blueprint-install.sh
+        run: ./scripts/smoke-headless-agent-install.sh
 
   eval-agent-routing:
     name: Eval agent routing

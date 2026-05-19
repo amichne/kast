@@ -82,7 +82,7 @@ write_env_file() {
   local env_file="$1"
   local install_root="$2"
   {
-    printf '# Kast environment for Devin Blueprint sessions.\n'
+    printf '# Kast environment for headless agent sessions.\n'
     printf 'export KAST_CONFIG_HOME="%s/config"\n' "$install_root"
     printf 'export PATH="%s/bin:$PATH"\n' "$install_root"
   } > "$env_file"
@@ -130,18 +130,18 @@ PY
 
 usage() {
   cat >&2 <<'USAGE'
-Usage: scripts/devin-blueprint-install.sh
+Usage: scripts/headless-agent-install.sh
 
 Required environment:
-  KAST_DEVIN_CLI_URL       Direct URL for the internal Kast CLI zip
-  KAST_DEVIN_BACKEND_URL   Direct URL for the internal standalone backend zip
+  KAST_AGENT_CLI_URL       Direct URL for the internal Kast CLI zip
+  KAST_AGENT_BACKEND_URL   Direct URL for the internal standalone backend zip
 
 Optional environment:
-  KAST_DEVIN_CLI_SHA256        Expected SHA-256 for KAST_DEVIN_CLI_URL
-  KAST_DEVIN_BACKEND_SHA256    Expected SHA-256 for KAST_DEVIN_BACKEND_URL
-  KAST_DEVIN_INSTALL_ROOT      Contained install root (default: $HOME/.kast-devin)
-  KAST_DEVIN_WORKSPACE         Git workspace for Copilot extension install (default: $PWD)
-  KAST_DEVIN_VERSION           Version label written to Kast install metadata (default: devin)
+  KAST_AGENT_CLI_SHA256        Expected SHA-256 for KAST_AGENT_CLI_URL
+  KAST_AGENT_BACKEND_SHA256    Expected SHA-256 for KAST_AGENT_BACKEND_URL
+  KAST_AGENT_INSTALL_ROOT      Contained install root (default: $HOME/.kast-agent)
+  KAST_AGENT_WORKSPACE         Git workspace for Copilot extension install (default: $PWD)
+  KAST_AGENT_VERSION           Version label written to Kast install metadata (default: agent)
 USAGE
 }
 
@@ -158,18 +158,18 @@ need_tool python3
 repo_root="$(resolve_repo_root)"
 [[ -f "${repo_root}/kast.sh" ]] || die "Could not find kast.sh at ${repo_root}/kast.sh"
 
-cli_url="${KAST_DEVIN_CLI_URL:-}"
-backend_url="${KAST_DEVIN_BACKEND_URL:-}"
-[[ -n "$cli_url" ]] || die "KAST_DEVIN_CLI_URL is required"
-[[ -n "$backend_url" ]] || die "KAST_DEVIN_BACKEND_URL is required"
+cli_url="${KAST_AGENT_CLI_URL:-}"
+backend_url="${KAST_AGENT_BACKEND_URL:-}"
+[[ -n "$cli_url" ]] || die "KAST_AGENT_CLI_URL is required"
+[[ -n "$backend_url" ]] || die "KAST_AGENT_BACKEND_URL is required"
 
-install_root="$(absolute_path "${KAST_DEVIN_INSTALL_ROOT:-${HOME}/.kast-devin}")"
-workspace_input="$(absolute_path "${KAST_DEVIN_WORKSPACE:-$PWD}")"
+install_root="$(absolute_path "${KAST_AGENT_INSTALL_ROOT:-${HOME}/.kast-agent}")"
+workspace_input="$(absolute_path "${KAST_AGENT_WORKSPACE:-$PWD}")"
 workspace_root="$(git -C "$workspace_input" rev-parse --show-toplevel 2>/dev/null)" \
-  || die "KAST_DEVIN_WORKSPACE must point inside a Git workspace: $workspace_input"
+  || die "KAST_AGENT_WORKSPACE must point inside a Git workspace: $workspace_input"
 workspace_root="$(absolute_path "$workspace_root")"
 
-tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/kast-devin-install.XXXXXX")"
+tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/kast-agent-install.XXXXXX")"
 cleanup() {
   rm -rf "$tmp_dir"
 }
@@ -181,10 +181,10 @@ cli_archive="${tmp_dir}/kast-cli.zip"
 backend_archive="${tmp_dir}/kast-standalone.zip"
 
 download_artifact "$cli_url" "$cli_archive" "Kast CLI"
-verify_sha256 "$cli_archive" "${KAST_DEVIN_CLI_SHA256:-}" "Kast CLI"
+verify_sha256 "$cli_archive" "${KAST_AGENT_CLI_SHA256:-}" "Kast CLI"
 
 download_artifact "$backend_url" "$backend_archive" "standalone backend"
-verify_sha256 "$backend_archive" "${KAST_DEVIN_BACKEND_SHA256:-}" "standalone backend"
+verify_sha256 "$backend_archive" "${KAST_AGENT_BACKEND_SHA256:-}" "standalone backend"
 
 log "Installing Kast into ${install_root}"
 (
@@ -194,16 +194,16 @@ log "Installing Kast into ${install_root}"
   KAST_PATH_RC_FILE="${install_root}/shellrc" \
   KAST_INSTALL_COMPLETIONS=false \
   KAST_ARCHIVE_PATH="$cli_archive" \
-  KAST_EXPECTED_SHA256="${KAST_DEVIN_CLI_SHA256:-}" \
+  KAST_EXPECTED_SHA256="${KAST_AGENT_CLI_SHA256:-}" \
   KAST_BACKEND_ARCHIVE_PATH="$backend_archive" \
-  KAST_BACKEND_EXPECTED_SHA256="${KAST_DEVIN_BACKEND_SHA256:-}" \
+  KAST_BACKEND_EXPECTED_SHA256="${KAST_AGENT_BACKEND_SHA256:-}" \
   KAST_SKILL_SCOPE=global \
-  KAST_VERSION="${KAST_DEVIN_VERSION:-${KAST_VERSION:-devin}}" \
+  KAST_VERSION="${KAST_AGENT_VERSION:-${KAST_VERSION:-agent}}" \
   /bin/bash "${repo_root}/kast.sh" install --components=cli,backend --yes
 )
 
 write_env_file "${install_root}/kast-env.sh" "$install_root"
 verify_install "$install_root" "$workspace_root"
 
-log "Kast Devin Blueprint install complete"
+log "Kast headless agent install complete"
 log "Source environment: ${install_root}/kast-env.sh"
