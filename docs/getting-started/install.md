@@ -112,6 +112,34 @@ explicitly.
     Skips the wizard entirely. Valid components: `cli`, `intellij`,
     `backend`, `all`.
 
+## Devin Blueprint with internal artifacts
+
+Use the Devin Blueprint installer when an image or setup step should install
+Kast from private artifact URLs instead of GitHub releases. The script keeps
+the install contained, writes a sourceable environment file, installs the
+packaged skill, installs the repo-local Copilot extension, and verifies the
+result before it exits.
+
+Set the direct artifact URLs and run the script from the checked-out
+workspace:
+
+```bash title="Install Kast in a Devin Blueprint"
+export KAST_DEVIN_CLI_URL="https://artifacts.example.internal/kast-cli.zip"
+export KAST_DEVIN_BACKEND_URL="https://artifacts.example.internal/kast-standalone.zip"
+export KAST_DEVIN_CLI_SHA256="sha256:<cli-digest>"
+export KAST_DEVIN_BACKEND_SHA256="sha256:<backend-digest>"
+export KAST_DEVIN_INSTALL_ROOT="$HOME/.kast-devin"
+export KAST_DEVIN_WORKSPACE="$PWD"
+
+./scripts/devin-blueprint-install.sh
+source "$KAST_DEVIN_INSTALL_ROOT/kast-env.sh"
+```
+
+`KAST_DEVIN_CLI_URL` and `KAST_DEVIN_BACKEND_URL` are required. The SHA-256
+variables are optional but should be set for CI-like installs. The script
+expects `KAST_DEVIN_WORKSPACE` to point inside a Git checkout because the
+Copilot extension installs into that repository's `.github` directory.
+
 ??? info "Where kast stores configuration"
 
     By default, `kast` reads user configuration from
@@ -170,6 +198,23 @@ explicitly.
 | `--yes`                       | Auto-install the Copilot extension into `.github` when inside a Git repo |
 | `--non-interactive`           | Skip all prompts; implies `--skip-skill` and `--skip-copilot-extension` |
 | `--local`                     | Install from local `dist/` artifacts (built by `./kast.sh build`)     |
+
+## Installer environment overrides
+
+Most users do not need environment overrides. They are useful for packaged
+images, private artifact stores, and CI-style setup scripts.
+
+| Variable                         | What it does                                      |
+|----------------------------------|---------------------------------------------------|
+| `KAST_INSTALL_ROOT`              | Overrides the managed install root                |
+| `KAST_ARCHIVE_PATH`              | Installs the CLI from a local zip                 |
+| `KAST_EXPECTED_SHA256`           | Verifies `KAST_ARCHIVE_PATH` before extraction    |
+| `KAST_BACKEND_ARCHIVE_PATH`      | Installs the standalone backend from a local zip  |
+| `KAST_BACKEND_EXPECTED_SHA256`   | Verifies `KAST_BACKEND_ARCHIVE_PATH`              |
+| `KAST_SKILL_SCOPE`               | Sets skill scope when prompts are unavailable     |
+
+Do not combine `KAST_SKILL_SCOPE` with `--non-interactive`; that flag
+deliberately skips both skill and Copilot extension phases.
 
 ## Install the Copilot extension
 

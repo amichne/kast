@@ -33,6 +33,9 @@ Install the `kast` CLI from any shell:
 curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh | bash
 ```
 
+For CI or Devin Blueprint installs from internal artifacts, use the
+[install guide](https://kast.michne.com/getting-started/install/#devin-blueprint-with-internal-artifacts).
+
 Then start the standalone backend before running analysis commands:
 
 ```console
