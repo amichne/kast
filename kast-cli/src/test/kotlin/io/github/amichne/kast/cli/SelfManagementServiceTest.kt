@@ -147,6 +147,7 @@ class SelfManagementServiceTest {
             configHomeProvider = { tempDir.resolve("config") },
             commandAvailability = { true },
             resolveScriptVerifier = { _, _ -> null },
+            envLookup = { null },
         )
 
         val result = service.upgrade()
@@ -164,6 +165,7 @@ class SelfManagementServiceTest {
             configHomeProvider = { tempDir.resolve("config") },
             commandAvailability = { true },
             resolveScriptVerifier = { _, _ -> null },
+            envLookup = { null },
         )
 
         val result = service.upgrade()
