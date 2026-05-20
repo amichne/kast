@@ -91,6 +91,7 @@ write_env_file() {
 verify_install() {
   local install_root="$1"
   local workspace_root="$2"
+  local skip_copilot_extension="$3"
 
   local kast_bin="${install_root}/bin/kast"
   local config_file="${install_root}/config/config.toml"
@@ -108,22 +109,25 @@ verify_install() {
   [[ -d "$runtime_libs_dir" ]] || die "Standalone runtime libs were not installed: $runtime_libs_dir"
 
   [[ -f "${skill_dir}/SKILL.md" ]] || die "Packaged skill was not installed: ${skill_dir}/SKILL.md"
-  [[ -f "$extension_marker" ]] || die "Copilot extension was not installed: $extension_marker"
+  if [[ "$skip_copilot_extension" != "true" ]]; then
+    [[ -f "$extension_marker" ]] || die "Copilot extension was not installed: $extension_marker"
+  fi
   [[ -f "$manifest_file" ]] || die "Install manifest was not written: $manifest_file"
 
-  python3 - "$manifest_file" "$workspace_root" <<'PY'
+  python3 - "$manifest_file" "$workspace_root" "$skip_copilot_extension" <<'PY'
 import json
 import sys
 from pathlib import Path
 
 manifest = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 workspace_root = str(Path(sys.argv[2]).resolve())
+skip_copilot_extension = sys.argv[3] == "true"
 components = set(manifest.get("components", []))
 missing = {"cli", "backend", "skill"} - components
 if missing:
     raise SystemExit(f"manifest missing components: {sorted(missing)}")
 repos = {entry.get("path") for entry in manifest.get("repos", [])}
-if workspace_root not in repos:
+if not skip_copilot_extension and workspace_root not in repos:
     raise SystemExit(f"manifest missing managed repo: {workspace_root}")
 PY
 }
@@ -142,6 +146,7 @@ Optional environment:
   KAST_AGENT_INSTALL_ROOT      Contained install root (default: $HOME/.kast-agent)
   KAST_AGENT_WORKSPACE         Git workspace for Copilot extension install (default: $PWD)
   KAST_AGENT_VERSION           Version label written to Kast install metadata (default: agent)
+  KAST_SKIP_COPILOT_EXTENSION  Set true to skip Copilot extension install
 USAGE
 }
 
@@ -187,6 +192,11 @@ download_artifact "$backend_url" "$backend_archive" "standalone backend"
 verify_sha256 "$backend_archive" "${KAST_AGENT_BACKEND_SHA256:-}" "standalone backend"
 
 log "Installing Kast into ${install_root}"
+install_args=(install --components=cli,backend --yes)
+skip_copilot_extension="${KAST_SKIP_COPILOT_EXTENSION:-false}"
+if [[ "$skip_copilot_extension" == "true" ]]; then
+  install_args+=(--skip-copilot-extension)
+fi
 (
   cd "$workspace_root"
   KAST_MANAGED_ROOT="$install_root" \
@@ -198,12 +208,13 @@ log "Installing Kast into ${install_root}"
   KAST_BACKEND_ARCHIVE_PATH="$backend_archive" \
   KAST_BACKEND_EXPECTED_SHA256="${KAST_AGENT_BACKEND_SHA256:-}" \
   KAST_SKILL_SCOPE=global \
+  KAST_INSTALL_SOURCE="${KAST_INSTALL_SOURCE:-release}" \
   KAST_VERSION="${KAST_AGENT_VERSION:-${KAST_VERSION:-agent}}" \
-  /bin/bash "${repo_root}/kast.sh" install --components=cli,backend --yes
+  /bin/bash "${repo_root}/kast.sh" "${install_args[@]}"
 )
 
 write_env_file "${install_root}/kast-env.sh" "$install_root"
-verify_install "$install_root" "$workspace_root"
+verify_install "$install_root" "$workspace_root" "$skip_copilot_extension"
 
 log "Kast headless agent install complete"
 log "Source environment: ${install_root}/kast-env.sh"

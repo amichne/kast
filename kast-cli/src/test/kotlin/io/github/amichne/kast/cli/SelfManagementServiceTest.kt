@@ -136,4 +136,90 @@ class SelfManagementServiceTest {
         assertTrue(result.removedManagedPaths.any { removed -> removed.endsWith("bin/kast") })
         assertTrue(result.cleanedShellRcFiles.contains(bashrc.toString()))
     }
+
+    @Test
+    fun upgradeReportsHomebrewCommandFromInstallMetadata() {
+        val installRoot = tempDir.resolve("home/.kast")
+        val manifestStore = InstallManifestStore(installRootProvider = { installRoot })
+        writeInstallMetadata(installRoot, "homebrew")
+        val service = SelfManagementService(
+            manifestStore = manifestStore,
+            configHomeProvider = { tempDir.resolve("config") },
+            commandAvailability = { true },
+            resolveScriptVerifier = { _, _ -> null },
+        )
+
+        val result = service.upgrade()
+
+        assertEquals("Run: brew upgrade kast", result.instructions)
+    }
+
+    @Test
+    fun upgradeReportsKastShCommandFromReleaseMetadata() {
+        val installRoot = tempDir.resolve("home/.kast")
+        val manifestStore = InstallManifestStore(installRootProvider = { installRoot })
+        writeInstallMetadata(installRoot, "release")
+        val service = SelfManagementService(
+            manifestStore = manifestStore,
+            configHomeProvider = { tempDir.resolve("config") },
+            commandAvailability = { true },
+            resolveScriptVerifier = { _, _ -> null },
+        )
+
+        val result = service.upgrade()
+
+        assertEquals("Run: ./kast.sh install", result.instructions)
+    }
+
+    @Test
+    fun upgradeReportsEphemeralInstructionsForActionInstallMetadata() {
+        val installRoot = tempDir.resolve("home/.kast")
+        val manifestStore = InstallManifestStore(installRootProvider = { installRoot })
+        writeInstallMetadata(installRoot, "action")
+        val service = SelfManagementService(
+            manifestStore = manifestStore,
+            configHomeProvider = { tempDir.resolve("config") },
+            commandAvailability = { true },
+            resolveScriptVerifier = { _, _ -> null },
+        )
+
+        val result = service.upgrade()
+
+        assertEquals(
+            "Ephemeral environment - pin the version input in your workflow/Blueprint",
+            result.instructions,
+        )
+    }
+
+    @Test
+    fun upgradeReportsEphemeralInstructionsInCi() {
+        val installRoot = tempDir.resolve("home/.kast")
+        val manifestStore = InstallManifestStore(installRootProvider = { installRoot })
+        val service = SelfManagementService(
+            manifestStore = manifestStore,
+            configHomeProvider = { tempDir.resolve("config") },
+            commandAvailability = { true },
+            resolveScriptVerifier = { _, _ -> null },
+            envLookup = { name -> if (name == "CI") "true" else null },
+        )
+
+        val result = service.upgrade()
+
+        assertEquals(
+            "Ephemeral environment - pin the version input in your workflow/Blueprint",
+            result.instructions,
+        )
+    }
+
+    private fun writeInstallMetadata(installRoot: Path, source: String) {
+        Files.createDirectories(installRoot.resolve("current"))
+        Files.writeString(
+            installRoot.resolve("current/.install-metadata.json"),
+            """
+            {
+              "source": "$source"
+            }
+            """.trimIndent(),
+        )
+    }
 }

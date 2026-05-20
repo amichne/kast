@@ -456,8 +456,8 @@ internal object CliCommandCatalog {
         CliCommandMetadata(
             path = listOf("self", "upgrade"),
             group = CliCommandGroup.CLI_MANAGEMENT,
-            summary = "Print reinstall instructions for upgrading Kast.",
-            description = "For now this prints the supported reinstall command instead of performing an in-place upgrade.",
+            summary = "Detect install method and show the appropriate upgrade path.",
+            description = "Reads install metadata and the current environment to print the appropriate upgrade path.",
             usages = listOf(
                 "$CLI_EXECUTABLE_NAME self upgrade",
             ),
