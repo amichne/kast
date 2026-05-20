@@ -192,7 +192,7 @@ log "Installing Kast into ${install_root}"
   KAST_MANAGED_ROOT="$install_root" \
   KAST_CONFIG_HOME="${install_root}/config" \
   KAST_PATH_RC_FILE="${install_root}/shellrc" \
-  KAST_INSTALL_COMPLETIONS=false \
+  KAST_INSTALL_COMPLETIONS=true \
   KAST_ARCHIVE_PATH="$cli_archive" \
   KAST_EXPECTED_SHA256="${KAST_AGENT_CLI_SHA256:-}" \
   KAST_BACKEND_ARCHIVE_PATH="$backend_archive" \
