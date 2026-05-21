@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import java.lang.reflect.Modifier
 import java.net.URLClassLoader
 import java.nio.file.Path
 import kotlin.reflect.full.createType
@@ -148,6 +149,36 @@ class KastConfigTest {
 
         assertEquals(expectedFields, actualFields.toSet())
         assertEquals(actualFields.size, actualFields.toSet().size)
+    }
+
+    @Test
+    fun `config loader decodes every advertised configuration field`() {
+        val configHome = tempDir.resolve("config-home")
+        val installRoot = tempDir.resolve("install-root")
+        val workspaceRoot = tempDir.resolve("workspace")
+        val expectedValues = ConfigurationField.defaultFields().associate { field ->
+            field.section to field.key to overrideValueFor(field)
+        }
+        configHome.resolve("config.toml").apply {
+            parent.toFile().mkdirs()
+            writeText(renderToml(expectedValues))
+        }
+
+        val config = KastConfig.load(
+            workspaceRoot = workspaceRoot,
+            configHome = { configHome },
+            workspaceDirectoryResolver = WorkspaceDirectoryResolver(
+                configHome = { configHome },
+                installRoot = { installRoot },
+                gitRemoteResolver = { null },
+            ),
+        )
+        val actualValues = configurationFields(config).associate { field ->
+            field.section to field.key to field.value
+        }
+
+        assertEquals(expectedValues.keys, actualValues.keys)
+        assertEquals(expectedValues, actualValues)
     }
 
     @Test
@@ -380,6 +411,9 @@ class KastConfigTest {
     fun `config loader supports camel case config keys`() {
         val configHome = tempDir.resolve("config-home")
         val installRoot = tempDir.resolve("install-root")
+        val binDir = installRoot.resolve("custom-bin")
+        val binaryPath = binDir.resolve("custom-kast")
+        val runtimeLibsDir = installRoot.resolve("custom-runtime-libs")
         val workspaceRoot = tempDir.resolve("workspace")
         val sourceIndexUrl = "file:///private/var/kast/source-index.db"
         configHome.resolve("config.toml").apply {
@@ -391,9 +425,16 @@ class KastConfigTest {
 
                 [paths]
                 installRoot = "$installRoot"
+                binDir = "$binDir"
 
                 [indexing.remote]
                 sourceIndexUrl = "$sourceIndexUrl"
+
+                [cli]
+                binaryPath = "$binaryPath"
+
+                [backends.standalone]
+                runtimeLibsDir = "$runtimeLibsDir"
                 """.trimIndent(),
             )
         }
@@ -410,6 +451,9 @@ class KastConfigTest {
 
         assertEquals(123, config.server.maxResults.value)
         assertEquals(installRoot.toString(), config.paths.installRoot.value)
+        assertEquals(binDir.toString(), config.paths.binDir.value)
+        assertEquals(binaryPath.toString(), config.cli.binaryPath.value)
+        assertEquals(runtimeLibsDir.toString(), config.backends.standalone.runtimeLibsDir.value.orNull)
         assertEquals(sourceIndexUrl, config.indexing.remote.sourceIndexUrl.value.orNull)
     }
 
@@ -436,6 +480,57 @@ class KastConfigTest {
             output.toString(Charsets.UTF_8)
         } finally {
             System.setOut(original)
+        }
+    }
+
+    private fun overrideValueFor(field: ConfigurationField<*>): Any = when (val value = field.value) {
+        is Boolean -> !value
+        is Int -> value + 1
+        is Long -> value + 1L
+        is OptionalConfigString -> OptionalConfigString("override-${field.section.replace(".", "-")}-${field.key}")
+        is String -> "override-${field.section.replace(".", "-")}-${field.key}"
+        else -> error("Unsupported configuration field value for ${field.section}.${field.key}: $value")
+    }
+
+    private fun renderToml(values: Map<Pair<String, String>, Any>): String = values.entries
+        .groupBy { it.key.first }
+        .entries
+        .joinToString("\n\n") { (section, entries) ->
+            buildString {
+                appendLine("[$section]")
+                entries.forEach { (key, value) ->
+                    appendLine("${key.second.toKebabCase()} = ${value.toTomlLiteral()}")
+                }
+            }.trimEnd()
+        }
+
+    private fun Any.toTomlLiteral(): String = when (this) {
+        is Boolean -> toString()
+        is Int -> toString()
+        is Long -> toString()
+        is OptionalConfigString -> checkNotNull(orNull).toTomlStringLiteral()
+        is String -> toTomlStringLiteral()
+        else -> error("Unsupported TOML value: $this")
+    }
+
+    private fun String.toTomlStringLiteral(): String = "\"" + replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+
+    private fun String.toKebabCase(): String = fold("") { acc, char ->
+        when {
+            char.isUpperCase() && acc.isEmpty() -> char.lowercaseChar().toString()
+            char.isUpperCase() -> acc + "-" + char.lowercaseChar()
+            else -> acc + char
+        }
+    }
+
+    private fun configurationFields(value: Any): List<ConfigurationField<*>> {
+        if (value is ConfigurationField<*>) return listOf(value)
+        if (value.javaClass.`package`?.name != KastConfig::class.java.`package`.name) return emptyList()
+        return value.javaClass.declaredFields.flatMap { field ->
+            if (Modifier.isStatic(field.modifiers)) return@flatMap emptyList()
+            field.isAccessible = true
+            val fieldValue = field.get(value) ?: return@flatMap emptyList()
+            configurationFields(fieldValue)
         }
     }
 }

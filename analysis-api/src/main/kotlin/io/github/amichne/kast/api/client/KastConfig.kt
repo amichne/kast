@@ -122,7 +122,6 @@ data class KastConfig(
                 .withClassLoader(KastConfig::class.java.classLoader)
                 .addDecoder(StringDecoder())
                 .addDefaultPreprocessors()
-                .addDefaultNodeTransformers()
                 .addParser("toml", TomlParser())
                 .withExplicitSealedTypes()
                 .allowEmptyConfigFiles()
@@ -461,6 +460,7 @@ private fun String.normalizedConfigKey(): String = replace("-", "").replace("_",
 
 private fun KastConfig.merge(override: KastConfigOverride): KastConfig {
     val mergedPaths = paths.merge(override.paths)
+    val binDirChanged = mergedPaths.binDir != paths.binDir
     return copy(
         server = server.merge(override.server),
         indexing = indexing.merge(override.indexing),
@@ -471,7 +471,7 @@ private fun KastConfig.merge(override: KastConfigOverride): KastConfig {
         profiling = profiling.merge(override.profiling),
         backends = backends.merge(override.backends, mergedPaths),
         paths = mergedPaths,
-        cli = cli.merge(override.cli, mergedPaths),
+        cli = cli.merge(override.cli, mergedPaths, binDirChanged),
     )
 }
 
@@ -547,25 +547,51 @@ private fun IntellijBackendConfig.merge(override: IntellijBackendConfigOverride?
 )
 
 private fun PathsConfig.merge(override: PathsConfigOverride?): PathsConfig {
-    val mergedInstallRoot = override?.installRoot ?: installRoot
-    val mergedBinDir = override?.binDir ?: PathsBinDir(defaultConfigBinDir(mergedInstallRoot.value).toString())
-    val mergedLibDir = override?.libDir ?: PathsLibDir(defaultConfigLibDir(mergedInstallRoot.value).toString())
-    val mergedCacheDir = override?.cacheDir ?: PathsCacheDir(defaultConfigCacheDir(mergedInstallRoot.value).toString())
+    if (override == null) return this
+    val mergedInstallRoot = override.installRoot ?: installRoot
+    val installRootChanged = override.installRoot != null && override.installRoot != installRoot
+    val mergedBinDir = override.binDir ?: if (installRootChanged) {
+        PathsBinDir(defaultConfigBinDir(mergedInstallRoot.value).toString())
+    } else {
+        binDir
+    }
+    val mergedLibDir = override.libDir ?: if (installRootChanged) {
+        PathsLibDir(defaultConfigLibDir(mergedInstallRoot.value).toString())
+    } else {
+        libDir
+    }
+    val mergedCacheDir = override.cacheDir ?: if (installRootChanged) {
+        PathsCacheDir(defaultConfigCacheDir(mergedInstallRoot.value).toString())
+    } else {
+        cacheDir
+    }
     return copy(
         installRoot = mergedInstallRoot,
         binDir = mergedBinDir,
         libDir = mergedLibDir,
         cacheDir = mergedCacheDir,
-        logsDir = override?.logsDir ?: PathsLogsDir(defaultConfigLogsDir(mergedInstallRoot.value).toString()),
-        descriptorDir = override?.descriptorDir
-                        ?: PathsDescriptorDir(defaultConfigDescriptorDir(mergedCacheDir.value).toString()),
-        socketDir = override?.socketDir ?: socketDir,
+        logsDir = override.logsDir ?: if (installRootChanged) {
+            PathsLogsDir(defaultConfigLogsDir(mergedInstallRoot.value).toString())
+        } else {
+            logsDir
+        },
+        descriptorDir = override.descriptorDir ?: if (installRootChanged || override.cacheDir != null) {
+            PathsDescriptorDir(defaultConfigDescriptorDir(mergedCacheDir.value).toString())
+        } else {
+            descriptorDir
+        },
+        socketDir = override.socketDir ?: socketDir,
     )
 }
 
 private fun CliConfig.merge(
     override: CliConfigOverride?,
     paths: PathsConfig,
+    binDirChanged: Boolean,
 ): CliConfig = copy(
-    binaryPath = override?.binaryPath ?: CliBinaryPath(defaultConfigCliBinaryPath(paths.binDir.value).toString()),
+    binaryPath = override?.binaryPath ?: if (binDirChanged) {
+        CliBinaryPath(defaultConfigCliBinaryPath(paths.binDir.value).toString())
+    } else {
+        binaryPath
+    },
 )
