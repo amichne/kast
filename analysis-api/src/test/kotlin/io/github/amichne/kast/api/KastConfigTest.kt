@@ -345,6 +345,7 @@ class KastConfigTest {
 
         val loaded = ConfigLoaderBuilder.empty()
             .withClassLoader(KastConfig::class.java.classLoader)
+            .addDecoder(ConfigurationFieldDecoder())
             .addDefaultDecoders()
             .addDefaultPreprocessors()
             .addDefaultNodeTransformers()

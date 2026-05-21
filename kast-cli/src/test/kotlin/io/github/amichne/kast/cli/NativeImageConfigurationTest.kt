@@ -42,7 +42,7 @@ class NativeImageConfigurationTest {
     }
 
     @Test
-    fun nativeResourceConfigIncludesPackagedResourcesAndHopliteDecoderService() {
+    fun nativeResourceConfigIncludesPackagedResourcesAndDoesNotServiceLoadKastConfigDecoder() {
         val patterns = parseJsonObject(nativeConfigResource("resource-config.json"))
             .getValue("resources")
             .jsonObject
@@ -52,7 +52,6 @@ class NativeImageConfigurationTest {
         val expectedPatterns = listOf(
             "packaged-skill/.*",
             "packaged-copilot-extension/.*",
-            Regex.escape(HOPLITE_DECODER_SERVICE_PATH),
         )
         val missingPatterns = expectedPatterns.filterNot(patterns::contains)
 
@@ -61,16 +60,23 @@ class NativeImageConfigurationTest {
             "Add these resource patterns to resource-config.json:\n" + missingPatterns.joinToString("\n"),
         )
 
+        assertTrue(
+            Regex.escape(HOPLITE_DECODER_SERVICE_PATH) !in patterns,
+            "Do not include the Kast Hoplite decoder service resource in native images; " +
+                "KastConfig registers ConfigurationFieldDecoder explicitly.",
+        )
+
         val serviceContents = ConfigurationFieldDecoder::class.java.classLoader
             .getResources(HOPLITE_DECODER_SERVICE_PATH)
             .toList()
             .map { resource -> resource.readText() }
         val decoderClassName = checkNotNull(ConfigurationFieldDecoder::class.qualifiedName)
         assertTrue(
-            serviceContents.any { contents ->
+            serviceContents.none { contents ->
                 contents.lineSequence().any { line -> line.trim() == decoderClassName }
             },
-            "Package " + HOPLITE_DECODER_SERVICE_PATH + " with " + decoderClassName,
+            "Do not publish " + decoderClassName + " through " + HOPLITE_DECODER_SERVICE_PATH +
+                "; ServiceLoader instantiation is brittle in native images.",
         )
     }
 

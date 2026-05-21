@@ -6,9 +6,6 @@
       },
       {
         "pattern": "packaged-copilot-extension/.*"
-      },
-      {
-        "pattern": "\\QMETA-INF/services/com.sksamuel.hoplite.decoder.Decoder\\E"
       }
     ]
   }
