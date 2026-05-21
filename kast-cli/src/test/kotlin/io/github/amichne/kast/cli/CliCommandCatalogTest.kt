@@ -14,6 +14,10 @@ class CliCommandCatalogTest {
             listOf("workspace", "refresh"),
             listOf("workspace", "stop"),
             listOf("workspace", "files"),
+            listOf("self", "status"),
+            listOf("self", "doctor"),
+            listOf("self", "uninstall"),
+            listOf("self", "upgrade"),
             listOf("resolve"),
             listOf("references"),
             listOf("call-hierarchy"),
@@ -60,6 +64,10 @@ class CliCommandCatalogTest {
         assertTrue(
             CliCommandCatalog.visibleCommands().none { it.path.firstOrNull() == "workspace" },
             "Visible help should not contain workspace namespace commands",
+        )
+        assertTrue(
+            CliCommandCatalog.visibleCommands().none { it.path.firstOrNull() == "self" },
+            "Visible help should not contain self namespace commands",
         )
     }
 

@@ -48,7 +48,6 @@ import io.github.amichne.kast.cli.results.InstallResult
 import io.github.amichne.kast.cli.results.SelfDoctorResult
 import io.github.amichne.kast.cli.results.SelfStatusResult
 import io.github.amichne.kast.cli.results.SelfUninstallResult
-import io.github.amichne.kast.cli.results.SelfUpgradeResult
 import io.github.amichne.kast.cli.InstallService
 import io.github.amichne.kast.cli.InstallCopilotExtensionService
 import io.github.amichne.kast.cli.SelfManagementService
@@ -136,8 +135,6 @@ internal class CliService(
     fun selfDoctor(): SelfDoctorResult = selfManagementService.doctor()
 
     fun selfUninstall(): SelfUninstallResult = selfManagementService.uninstall()
-
-    fun selfUpgrade(): SelfUpgradeResult = selfManagementService.upgrade()
 
     suspend fun smoke(options: SmokeOptions): SmokeReport = smokeCommandSupport.run(options)
 

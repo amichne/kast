@@ -163,7 +163,7 @@ internal object CliCommandCatalog {
     private val copilotTargetDirOption = CliOptionMetadata(
         key = "target-dir",
         usage = "--target-dir=/absolute/path/to/workspace/.github",
-        description = "Workspace .github directory to install the packaged Copilot agents and hooks into. Defaults to <cwd>/.github.",
+        description = "Workspace .github directory for the packaged Copilot agents, hooks, and extensions. Defaults to <cwd>/.github.",
         completionKind = CliOptionCompletionKind.DIRECTORY,
     )
     private val skillNameOption = CliOptionMetadata(
@@ -182,10 +182,10 @@ internal object CliCommandCatalog {
         description = "Overwrite an existing installed skill directory without prompting. Defaults to false.",
         completionKind = CliOptionCompletionKind.BOOLEAN,
     )
-    private val uninstallOption = CliOptionMetadata(
-        key = "uninstall",
-        usage = "--uninstall=true",
-        description = "Remove packaged files and the version marker instead of installing. Defaults to false.",
+    private val copilotYesOption = CliOptionMetadata(
+        key = "yes",
+        usage = "--yes=true",
+        description = "Confirm replacing or removing managed Copilot extension files without prompting. Defaults to false.",
         completionKind = CliOptionCompletionKind.BOOLEAN,
     )
     private val smokeFileOption = CliOptionMetadata(
@@ -407,62 +407,63 @@ internal object CliCommandCatalog {
             summary = "Install the kast Copilot agents and hooks into the current workspace.",
             description = "Copies the bundled Copilot agent and hook files into .github, or the path given by --target-dir. Installed extension trees include a $KAST_COPILOT_VERSION marker so matching installs can be skipped safely.",
             usages = listOf(
-                "$CLI_EXECUTABLE_NAME install copilot-extension [--target-dir=/absolute/path/to/workspace/.github] [--yes=true] [--uninstall=true]",
+                "$CLI_EXECUTABLE_NAME install copilot-extension [--target-dir=/absolute/path/to/workspace/.github] [--yes=true]",
             ),
-            options = listOf(copilotTargetDirOption, yesOption, uninstallOption),
+            options = listOf(copilotTargetDirOption, copilotYesOption),
             examples = listOf(
                 "$CLI_EXECUTABLE_NAME install copilot-extension",
                 "$CLI_EXECUTABLE_NAME install copilot-extension --target-dir=/my/project/.github",
                 "$CLI_EXECUTABLE_NAME install copilot-extension --yes=true",
-                "$CLI_EXECUTABLE_NAME install copilot-extension --uninstall=true",
             ),
         ),
         CliCommandMetadata(
-            path = listOf("self", "status"),
+            path = listOf("info"),
             group = CliCommandGroup.CLI_MANAGEMENT,
             summary = "Report the recorded global Kast install manifest.",
             description = "Reads $KAST_ROOT_DIR/$MANIFEST_FILE and returns the installed version, components, managed paths, shell patches, and managed repositories.",
             usages = listOf(
-                "$CLI_EXECUTABLE_NAME self status",
+                "$CLI_EXECUTABLE_NAME info",
             ),
             examples = listOf(
-                "$CLI_EXECUTABLE_NAME self status",
+                "$CLI_EXECUTABLE_NAME info",
             ),
         ),
         CliCommandMetadata(
-            path = listOf("self", "doctor"),
+            path = listOf("doctor"),
             group = CliCommandGroup.CLI_MANAGEMENT,
             summary = "Verify the global Kast install is still healthy.",
             description = "Checks the install manifest, binary, config.toml, managed paths, Copilot resolve scripts, python3 availability, and runtime libs when the backend is installed.",
             usages = listOf(
-                "$CLI_EXECUTABLE_NAME self doctor",
+                "$CLI_EXECUTABLE_NAME doctor",
             ),
             examples = listOf(
-                "$CLI_EXECUTABLE_NAME self doctor",
+                "$CLI_EXECUTABLE_NAME doctor",
             ),
         ),
         CliCommandMetadata(
-            path = listOf("self", "uninstall"),
+            path = listOf("uninstall"),
             group = CliCommandGroup.CLI_MANAGEMENT,
             summary = "Remove manifest-managed files from the global Kast install.",
             description = "Deletes manifest-managed paths under $KAST_ROOT_DIR, removes recorded shell RC patches, and removes the install root when it becomes empty.",
             usages = listOf(
-                "$CLI_EXECUTABLE_NAME self uninstall",
+                "$CLI_EXECUTABLE_NAME uninstall",
             ),
             examples = listOf(
-                "$CLI_EXECUTABLE_NAME self uninstall",
+                "$CLI_EXECUTABLE_NAME uninstall",
             ),
         ),
         CliCommandMetadata(
-            path = listOf("self", "upgrade"),
+            path = listOf("uninstall", "copilot-extension"),
             group = CliCommandGroup.CLI_MANAGEMENT,
-            summary = "Print reinstall instructions for upgrading Kast.",
-            description = "For now this prints the supported reinstall command instead of performing an in-place upgrade.",
+            summary = "Remove packaged Copilot agents, hooks, and extensions from the current workspace.",
+            description = "Removes packaged Copilot agents, hooks, native extensions, manifest entries, and the $KAST_COPILOT_VERSION marker from .github, or the path given by --target-dir. Foreign files are preserved.",
             usages = listOf(
-                "$CLI_EXECUTABLE_NAME self upgrade",
+                "$CLI_EXECUTABLE_NAME uninstall copilot-extension [--target-dir=/absolute/path/to/workspace/.github] [--yes=true]",
             ),
+            options = listOf(copilotTargetDirOption, copilotYesOption),
             examples = listOf(
-                "$CLI_EXECUTABLE_NAME self upgrade",
+                "$CLI_EXECUTABLE_NAME uninstall copilot-extension",
+                "$CLI_EXECUTABLE_NAME uninstall copilot-extension --target-dir=/my/project/.github --yes=true",
             ),
         ),
         CliCommandMetadata(

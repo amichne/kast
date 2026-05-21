@@ -112,10 +112,10 @@ Pass `--target-dir` to point at another workspace `.github` directory, and
 kast install copilot-extension --target-dir=/absolute/path/to/repo/.github --yes=true
 ```
 
-To remove only packaged Copilot files, pass `--uninstall=true`:
+To remove only packaged Copilot files, use the uninstall command:
 
 ```console title="Uninstall Copilot extension files"
-kast install copilot-extension --uninstall=true
+kast uninstall copilot-extension
 ```
 
 Uninstall removes the packaged manifest files and the version marker. It

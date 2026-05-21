@@ -23,6 +23,8 @@ class WorkspaceCommandDocsTest {
         }
         val removedCommandSnippets = listOf(
             "kast workspace ",
+            "kast self ",
+            "kast install copilot-extension --uninstall=true",
             "kast resolve",
             "kast references",
             "kast call-hierarchy",
@@ -44,6 +46,10 @@ class WorkspaceCommandDocsTest {
             "`workspace stop`",
             "`workspace refresh`",
             "`workspace files`",
+            "`self status`",
+            "`self doctor`",
+            "`self uninstall`",
+            "`self upgrade`",
         )
         val violations = files.flatMap { path ->
             val text = path.readText()

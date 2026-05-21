@@ -5,7 +5,6 @@ import io.github.amichne.kast.api.client.kastConfigHome
 import io.github.amichne.kast.cli.results.SelfDoctorResult
 import io.github.amichne.kast.cli.results.SelfStatusResult
 import io.github.amichne.kast.cli.results.SelfUninstallResult
-import io.github.amichne.kast.cli.results.SelfUpgradeResult
 import java.io.IOException
 import java.nio.file.DirectoryNotEmptyException
 import java.nio.file.FileVisitResult
@@ -140,10 +139,6 @@ internal class SelfManagementService(
             removedInstallRoot = removedInstallRoot,
         )
     }
-
-    fun upgrade(): SelfUpgradeResult = SelfUpgradeResult(
-        instructions = "Re-run the installer: /bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh)\"",
-    )
 
     private fun deleteEmptyDirectoriesUpTo(directory: Path?, boundary: Path) {
         var current = directory
