@@ -27,6 +27,10 @@ jobs:
         shell: bash
         run: ./.github/scripts/test-release-asset-verifier.sh
 
+      - name: Test release preflight helper
+        shell: bash
+        run: ./.github/scripts/test-release-preflight.sh
+
   build-and-test:
     name: Build & test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}

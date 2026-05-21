@@ -82,6 +82,7 @@ done
 
 require_contains "$ci_workflow" "Workflow release contracts" "CI must run this workflow contract check"
 require_contains "$ci_workflow" "./.github/scripts/test-release-asset-verifier.sh" "CI must test the release asset verifier"
+require_contains "$ci_workflow" "./.github/scripts/test-release-preflight.sh" "CI must test the release preflight helper"
 require_contains "$ci_workflow" "Analysis server transport" "CI must include an independent analysis-server transport job"
 require_contains "$ci_workflow" "io.github.amichne.kast.server.AnalysisServerSocketTest" "Analysis server job must smoke the socket transport"
 require_contains "$ci_workflow" "Native CLI" "CI must include a native CLI job"
