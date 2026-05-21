@@ -78,11 +78,13 @@ when to paginate or bound their queries:
   and evaluation assets into `.agents/skills/kast/` inside any target
   repository. One command, no internet access required after the initial
   install.
-- **Portable CLI zip** — `./kast.sh build cli` produces
-  `kast-cli-<version>-portable.zip`, a self-contained bundle that includes the
-  native launcher, JVM fallback, and all runtime libs.
-- **Portable backend zip** — `./kast.sh build backend --shrink` produces the
-  stripped standalone backend zip used by CI and remote deployments.
+- **Portable CLI zip** — local `./kast.sh build cli` produces the JVM portable
+  layout used for validation; published release assets replace that launcher
+  with the platform GraalVM native image.
+- **Portable backend zip** — `./kast.sh build backend` produces the
+  standalone backend zip used by CI and remote deployments. Published backend
+  artifacts keep the JVM classpath unshrunk; `--shrink` is only a local
+  diagnostic build option.
 - **OpenAPI spec** — `docs/openapi.yaml` is generated from the analysis API
   model registry and kept in sync with every build.
 
@@ -91,12 +93,14 @@ when to paginate or bound their queries:
 - GitHub Actions release workflow triggered by `workflow_dispatch` with
   `release_type: major | minor | patch | beta`. The workflow auto-increments
   the semver tag, builds native launchers on Linux (x64) and macOS (ARM64),
-  packages the IDEA plugin and headless agent bundle, uploads aggregate
+  packages unshrunk standalone JVM backend assets where native-image is not
+  viable, packages the IDEA plugin and headless agent bundle, uploads aggregate
   SHA-256 checksums, and publishes a GitHub release with combined build
   provenance. The workflow verifies every shipped asset against `SHA256SUMS`
-  and `build-provenance.json` before publication. Beta tags publish as GitHub
-  prereleases; stable tags publish the verified GitHub release before updating
-  and watching the Homebrew tap.
+  and `build-provenance.json`, rejects JVM wrapper CLI assets, and rejects
+  ProGuard/R8-shrunk runtime markers before publication. Beta tags publish as
+  GitHub prereleases; stable tags publish the verified GitHub release before
+  updating and watching the Homebrew tap.
 - Run `scripts/release-preflight.sh --release-type patch` before dispatching a
   stable release. The helper checks GitHub CLI auth, release workflow
   visibility, the `HOMEBREW_TAP_TOKEN` repository secret, and Homebrew tap

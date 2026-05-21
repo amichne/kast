@@ -224,26 +224,45 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v5
 
-      - name: Build portable Kast distribution
+      - name: Build native Kast CLI release asset
         shell: bash
         run: |
           set -euo pipefail
-          ./kast.sh release --tag "${{ needs.prepare-release.outputs.release_tag }}" --platform-id "${{ matrix.asset_id }}" --shrink
+          tag="${{ needs.prepare-release.outputs.release_tag }}"
+          ./gradlew :kast-cli:nativeCompile :kast-cli:portableDistZip
+          ./scripts/smoke-native-cli.sh kast-cli/build/native/nativeCompile/kast
+          ./kast.sh release \
+            --tag "$tag" \
+            --platform-id "${{ matrix.asset_id }}" \
+            --skip-build \
+            --native-binary "kast-cli/build/native/nativeCompile/kast"
 
-      - name: Smoke portable Kast distribution
+      - name: Smoke native Kast release asset
         shell: bash
         run: |
           set -euo pipefail
+          tag="${{ needs.prepare-release.outputs.release_tag }}"
+          asset_path="dist/kast-${tag}-${{ matrix.asset_id }}.zip"
           dist_dir="$RUNNER_TEMP/kast-dist"
           rm -rf "$dist_dir"
           mkdir -p "$dist_dir"
-          unzip -q kast-cli/build/distributions/kast-cli-*-portable.zip -d "$dist_dir"
+          unzip -q "$asset_path" -d "$dist_dir"
           "$dist_dir/kast-cli/kast-cli" --help
+          ./scripts/smoke-native-cli.sh "$dist_dir/kast-cli/kast-cli"
+          if [[ -f "$dist_dir/kast-cli/runtime-libs/kast-shrunk.jar" ]]; then
+            echo "Release asset must not contain ProGuard/R8 shrunk runtime libs" >&2
+            exit 1
+          fi
+          if [[ -f "$dist_dir/kast-cli/runtime-libs/classpath.txt" ]] \
+              && grep -Fq "kast-shrunk.jar" "$dist_dir/kast-cli/runtime-libs/classpath.txt"; then
+            echo "Release asset classpath must not reference ProGuard/R8 shrunk runtime libs" >&2
+            exit 1
+          fi
 
       - name: Build standalone backend for headless agent bundle
         if: matrix.asset_id == 'linux-x64'
         shell: bash
-        run: ./kast.sh build backend --shrink
+        run: ./kast.sh build backend
 
       - name: Package headless agent bundle
         if: matrix.asset_id == 'linux-x64'
@@ -470,7 +489,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v5
 
       - name: Build standalone backend
-        run: ./kast.sh build backend --shrink
+        run: ./kast.sh build backend
 
       - name: Upload standalone backend asset
         shell: bash
