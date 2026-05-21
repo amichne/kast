@@ -543,10 +543,15 @@ jobs:
 
       - name: Update Homebrew tap
         env:
-          GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
+          if [[ -z "${GH_TOKEN:-}" ]]; then
+            echo "Missing HOMEBREW_TAP_TOKEN secret; create a token that can dispatch amichne/homebrew-kast workflows." >&2
+            exit 1
+          fi
+
           tag="${{ needs.prepare-release.outputs.release_tag }}"
           linux_asset="kast-${tag}-linux-x64.zip"
           macos_asset="kast-${tag}-macos-arm64.zip"
