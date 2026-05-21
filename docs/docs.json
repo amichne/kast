@@ -26,7 +26,18 @@
         "group": "Getting started",
         "pages": [
           "getting-started/install",
-          "getting-started/quickstart"
+          "getting-started/quickstart",
+          "getting-started/backends"
+        ]
+      },
+      {
+        "group": "What can Kast do?",
+        "pages": [
+          "what-can-kast-do/understand-symbols",
+          "what-can-kast-do/trace-usage",
+          "what-can-kast-do/refactor-safely",
+          "what-can-kast-do/validate-code",
+          "what-can-kast-do/manage-workspaces"
         ]
       },
       {
@@ -45,38 +56,11 @@
         ]
       },
       {
-        "group": "What can Kast do?",
-        "pages": [
-          "what-can-kast-do/understand-symbols",
-          "what-can-kast-do/trace-usage",
-          "what-can-kast-do/refactor-safely",
-          "what-can-kast-do/validate-code",
-          "what-can-kast-do/manage-workspaces"
-        ]
-      },
-      {
-        "group": "CLI cheat sheet",
-        "pages": [
-          "cli-cheat-sheet"
-        ]
-      },
-      {
-        "group": "Backends",
-        "pages": [
-          "getting-started/backends"
-        ]
-      },
-      {
-        "group": "Kast vs LSP",
-        "pages": [
-          "architecture/kast-vs-lsp"
-        ]
-      },
-      {
         "group": "Reference",
         "pages": [
           "reference/api-reference",
           "reference/api-specification",
+          "cli-cheat-sheet",
           "reference/error-codes"
         ]
       },
@@ -91,6 +75,7 @@
         "pages": [
           "architecture/how-it-works",
           "architecture/behavioral-model",
+          "architecture/kast-vs-lsp",
           "architecture/adt-boundaries"
         ]
       },

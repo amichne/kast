@@ -6,7 +6,7 @@ defining navigation, extensions, and theme configuration.
 
 ## Site structure
 
-The documentation is organized into six sections:
+The documentation is organized into reader-oriented areas:
 
 - `docs/index.md` — focused landing page: differentiators, a 60-second
   quickstart, and navigation cards. No inline capability walkthroughs —
@@ -18,11 +18,14 @@ The documentation is organized into six sections:
   examples.
 - `docs/for-agents/` — agent-facing content (overview, talk-to-agent,
   install-skill, direct-cli)
+- `docs/recipes.md` and `docs/troubleshooting.md` — task-oriented support
+  pages that stay visible as top-level sidebar entries.
 - `docs/architecture/` — how-it-works, behavioral-model, kast-vs-lsp
-- `docs/reference/` — generated pages. `api-reference` and
-  `api-specification` appear in the nav, plus `error-codes`.
-  `capabilities.md` is generated but intentionally excluded from the
-  nav to avoid duplicating `api-reference.md`.
+- `docs/reference/` — generated pages plus the operator-facing CLI cheat
+  sheet. `api-reference`, `api-specification`, `cli-cheat-sheet`, and
+  `error-codes` appear in the nav. `capabilities.md` is generated but
+  intentionally excluded from the nav to avoid duplicating
+  `api-reference.md`.
 
 Generated reference pages under `docs/reference/` are produced by
 `./gradlew :analysis-api:generateDocPages` and drift-tested by
