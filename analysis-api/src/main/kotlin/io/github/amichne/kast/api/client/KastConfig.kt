@@ -1,8 +1,17 @@
 package io.github.amichne.kast.api.client
 
 import io.github.amichne.kast.api.client.fields.*
+import com.sksamuel.hoplite.BooleanNode
 import com.sksamuel.hoplite.ConfigLoaderBuilder
+import com.sksamuel.hoplite.DoubleNode
 import com.sksamuel.hoplite.ExperimentalHoplite
+import com.sksamuel.hoplite.LongNode
+import com.sksamuel.hoplite.MapNode
+import com.sksamuel.hoplite.Node
+import com.sksamuel.hoplite.StringNode
+import com.sksamuel.hoplite.decoder.StringDecoder
+import com.sksamuel.hoplite.loc
+import com.sksamuel.hoplite.toml.TomlParser
 import io.github.amichne.kast.api.contract.ServerLimits
 import java.nio.file.Files
 import java.nio.file.Path
@@ -101,24 +110,26 @@ data class KastConfig(
             val configFiles = listOf(
                 workspaceDirectoryResolver.workspaceDataDirectory(workspaceRoot).resolve("config.toml"),
                 configHome().resolve("config.toml"),
-            ).filter(Files::isRegularFile).map(Path::toString)
-            val loaded = if (configFiles.isEmpty()) {
-                KastConfigOverride()
-            } else {
-                ConfigLoaderBuilder.empty()
-                    .withClassLoader(KastConfig::class.java.classLoader)
-                    .addDecoder(ConfigurationFieldDecoder())
-                    .addDefaultDecoders()
-                    .addDefaultPreprocessors()
-                    .addDefaultNodeTransformers()
-                    .addDefaultParamMappers()
-                    .addDefaultParsers()
-                    .withExplicitSealedTypes()
-                    .allowEmptyConfigFiles()
-                    .build()
-                    .loadConfigOrThrow<KastConfigOverride>(configFiles)
-            }
+            ).filter(Files::isRegularFile)
+            val loaded = loadConfigOverride(configFiles)
             return defaults().merge(loaded).merge(overrides)
+        }
+
+        @OptIn(ExperimentalHoplite::class)
+        private fun loadConfigOverride(configFiles: List<Path>): KastConfigOverride {
+            if (configFiles.isEmpty()) return KastConfigOverride()
+            val root = ConfigLoaderBuilder.empty()
+                .withClassLoader(KastConfig::class.java.classLoader)
+                .addDecoder(StringDecoder())
+                .addDefaultPreprocessors()
+                .addDefaultNodeTransformers()
+                .addParser("toml", TomlParser())
+                .withExplicitSealedTypes()
+                .allowEmptyConfigFiles()
+                .build()
+                .loadNodeOrThrow(configFiles.map(Path::toString))
+
+            return (root as? MapNode)?.toKastConfigOverride() ?: KastConfigOverride()
         }
     }
 }
@@ -293,6 +304,160 @@ data class PathsConfigOverride(
 data class CliConfigOverride(
     val binaryPath: CliBinaryPath? = null,
 )
+
+private fun MapNode.toKastConfigOverride(): KastConfigOverride = KastConfigOverride(
+    server = childMap("server")?.toServerConfigOverride(),
+    indexing = childMap("indexing")?.toIndexingConfigOverride(),
+    cache = childMap("cache")?.toCacheConfigOverride(),
+    watcher = childMap("watcher")?.toWatcherConfigOverride(),
+    gradle = childMap("gradle")?.toGradleConfigOverride(),
+    telemetry = childMap("telemetry")?.toTelemetryConfigOverride(),
+    profiling = childMap("profiling")?.toProfilingConfigOverride(),
+    backends = childMap("backends")?.toBackendsConfigOverride(),
+    paths = childMap("paths")?.toPathsConfigOverride(),
+    cli = childMap("cli")?.toCliConfigOverride(),
+)
+
+private fun MapNode.toServerConfigOverride(): ServerConfigOverride = ServerConfigOverride(
+    maxResults = intField("maxResults")?.let(::ServerMaxResults),
+    requestTimeoutMillis = longField("requestTimeoutMillis")?.let(::ServerRequestTimeoutMillis),
+    maxConcurrentRequests = intField("maxConcurrentRequests")?.let(::ServerMaxConcurrentRequests),
+)
+
+private fun MapNode.toIndexingConfigOverride(): IndexingConfigOverride = IndexingConfigOverride(
+    phase2Enabled = booleanField("phase2Enabled")?.let(::IndexingPhase2Enabled),
+    phase2BatchSize = intField("phase2BatchSize")?.let(::IndexingPhase2BatchSize),
+    phase2Parallelism = intField("phase2Parallelism")?.let(::IndexingPhase2Parallelism),
+    identifierIndexWaitMillis = longField("identifierIndexWaitMillis")?.let(::IndexingIdentifierIndexWaitMillis),
+    referenceBatchSize = intField("referenceBatchSize")?.let(::IndexingReferenceBatchSize),
+    remote = childMap("remote")?.toRemoteIndexConfigOverride(),
+)
+
+private fun MapNode.toRemoteIndexConfigOverride(): RemoteIndexConfigOverride = RemoteIndexConfigOverride(
+    enabled = booleanField("enabled")?.let(::IndexingRemoteEnabled),
+    sourceIndexUrl = optionalStringField("sourceIndexUrl")?.let(::IndexingRemoteSourceIndexUrl),
+)
+
+private fun MapNode.toCacheConfigOverride(): CacheConfigOverride = CacheConfigOverride(
+    enabled = booleanField("enabled")?.let(::CacheEnabled),
+    writeDelayMillis = longField("writeDelayMillis")?.let(::CacheWriteDelayMillis),
+    sourceIndexSaveDelayMillis = longField("sourceIndexSaveDelayMillis")?.let(::CacheSourceIndexSaveDelayMillis),
+)
+
+private fun MapNode.toWatcherConfigOverride(): WatcherConfigOverride = WatcherConfigOverride(
+    debounceMillis = longField("debounceMillis")?.let(::WatcherDebounceMillis),
+)
+
+private fun MapNode.toGradleConfigOverride(): GradleConfigOverride = GradleConfigOverride(
+    toolingApiTimeoutMillis = longField("toolingApiTimeoutMillis")?.let(::GradleToolingApiTimeoutMillis),
+    maxIncludedProjects = intField("maxIncludedProjects")?.let(::GradleMaxIncludedProjects),
+)
+
+private fun MapNode.toTelemetryConfigOverride(): TelemetryConfigOverride = TelemetryConfigOverride(
+    enabled = booleanField("enabled")?.let(::TelemetryEnabled),
+    scopes = stringField("scopes")?.let(::TelemetryScopes),
+    detail = stringField("detail")?.let(::TelemetryDetail),
+    outputFile = optionalStringField("outputFile")?.let(::TelemetryOutputFile),
+)
+
+private fun MapNode.toProfilingConfigOverride(): ProfilingConfigOverride = ProfilingConfigOverride(
+    enabled = booleanField("enabled")?.let(::ProfilingEnabled),
+    modes = stringField("modes")?.let(::ProfilingModes),
+    durationSeconds = longField("durationSeconds")?.let(::ProfilingDurationSeconds),
+    outputDir = stringField("outputDir")?.let(::ProfilingOutputDir),
+    otlpEndpoint = optionalStringField("otlpEndpoint")?.let(::ProfilingOtlpEndpoint),
+    emitManifest = booleanField("emitManifest")?.let(::ProfilingEmitManifest),
+)
+
+private fun MapNode.toBackendsConfigOverride(): BackendsConfigOverride = BackendsConfigOverride(
+    standalone = childMap("standalone")?.toStandaloneBackendConfigOverride(),
+    intellij = childMap("intellij")?.toIntellijBackendConfigOverride(),
+)
+
+private fun MapNode.toStandaloneBackendConfigOverride(): StandaloneBackendConfigOverride = StandaloneBackendConfigOverride(
+    enabled = booleanField("enabled")?.let(::StandaloneBackendEnabled),
+    runtimeLibsDir = optionalStringField("runtimeLibsDir")?.let(::StandaloneRuntimeLibsDir),
+)
+
+private fun MapNode.toIntellijBackendConfigOverride(): IntellijBackendConfigOverride = IntellijBackendConfigOverride(
+    enabled = booleanField("enabled")?.let(::IntellijBackendEnabled),
+)
+
+private fun MapNode.toPathsConfigOverride(): PathsConfigOverride = PathsConfigOverride(
+    installRoot = stringField("installRoot")?.let(::PathsInstallRoot),
+    binDir = stringField("binDir")?.let(::PathsBinDir),
+    libDir = stringField("libDir")?.let(::PathsLibDir),
+    cacheDir = stringField("cacheDir")?.let(::PathsCacheDir),
+    logsDir = stringField("logsDir")?.let(::PathsLogsDir),
+    descriptorDir = stringField("descriptorDir")?.let(::PathsDescriptorDir),
+    socketDir = stringField("socketDir")?.let(::PathsSocketDir),
+)
+
+private fun MapNode.toCliConfigOverride(): CliConfigOverride = CliConfigOverride(
+    binaryPath = stringField("binaryPath")?.let(::CliBinaryPath),
+)
+
+private fun MapNode.childMap(key: String): MapNode? = nodeAt(key) as? MapNode
+
+private fun MapNode.nodeAt(key: String): Node? {
+    val normalized = key.normalizedConfigKey()
+    return map[normalized] ?: map.entries.firstOrNull { (entryKey, _) ->
+        entryKey.normalizedConfigKey() == normalized
+    }?.value
+}
+
+private fun MapNode.stringField(key: String): String? = nodeAt(key)?.asString(key)
+
+private fun MapNode.optionalStringField(key: String): OptionalConfigString? = stringField(key)?.let(::OptionalConfigString)
+
+private fun MapNode.booleanField(key: String): Boolean? = nodeAt(key)?.asBoolean(key)
+
+private fun MapNode.longField(key: String): Long? = nodeAt(key)?.asLong(key)
+
+private fun MapNode.intField(key: String): Int? = nodeAt(key)?.asInt(key)
+
+private fun Node.asString(key: String): String = when (this) {
+    is StringNode -> value
+    is BooleanNode -> value.toString()
+    is LongNode -> value.toString()
+    is DoubleNode -> value.toString()
+    else -> unsupportedConfigValue(key, "a string")
+}
+
+private fun Node.asBoolean(key: String): Boolean = when (this) {
+    is BooleanNode -> value
+    is StringNode -> when (value.lowercase()) {
+        "true", "t", "1", "yes" -> true
+        "false", "f", "0", "no" -> false
+        else -> unsupportedConfigValue(key, "a boolean")
+    }
+    else -> unsupportedConfigValue(key, "a boolean")
+}
+
+private fun Node.asLong(key: String): Long = when (this) {
+    is LongNode -> value
+    is StringNode -> value.toLongOrNull() ?: unsupportedConfigValue(key, "a long integer")
+    else -> unsupportedConfigValue(key, "a long integer")
+}
+
+private fun Node.asInt(key: String): Int = when (this) {
+    is LongNode -> value.toInt().takeIf { it.toLong() == value } ?: unsupportedConfigValue(key, "an integer")
+    is DoubleNode -> value.toInt()
+    is StringNode -> value.toIntOrNull() ?: unsupportedConfigValue(key, "an integer")
+    else -> unsupportedConfigValue(key, "an integer")
+}
+
+private fun Node.unsupportedConfigValue(
+    key: String,
+    expected: String,
+): Nothing {
+    val path = path.flatten().ifBlank { key }
+    throw IllegalArgumentException(
+        "Config value '$path' at ${pos.loc()} must be $expected, but was $simpleName",
+    )
+}
+
+private fun String.normalizedConfigKey(): String = replace("-", "").replace("_", "").lowercase()
 
 private fun KastConfig.merge(override: KastConfigOverride): KastConfig {
     val mergedPaths = paths.merge(override.paths)

@@ -1,10 +1,6 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.api.client.fields.ConfigurationField
-import io.github.amichne.kast.api.client.ConfigurationFieldDecoder
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -14,30 +10,19 @@ import java.net.URL
 
 class NativeImageConfigurationTest {
     @Test
-    fun nativeReflectConfigRetainsConfigurationFieldDecoderAndSubclasses() {
+    fun nativeReflectConfigDoesNotRetainHopliteConfigurationFieldDecoderTypes() {
         val entriesByName = parseJsonArray(nativeConfigResource("reflect-config.json"))
             .map { entry -> entry.jsonObject }
             .associateBy { entry -> entry["name"]?.jsonPrimitive?.content }
-        val expectedConfigurationTypes = ConfigurationField::class.sealedSubclasses
-            .mapNotNull { subclass -> subclass.qualifiedName }
-            .sorted()
-        val expectedTypes = expectedConfigurationTypes + checkNotNull(ConfigurationFieldDecoder::class.qualifiedName)
-        val missingTypes = expectedTypes.filterNot(entriesByName::containsKey)
+        val retainedConfigDecoderTypes = entriesByName.keys.filterNotNull().filter { className ->
+            className == HOPLITE_CONFIGURATION_FIELD_DECODER ||
+                className.startsWith(CONFIGURATION_FIELD_PACKAGE)
+        }.sorted()
 
         assertTrue(
-            missingTypes.isEmpty(),
-            "Add these ConfigurationField native reflection types to reflect-config.json:\n" +
-            missingTypes.joinToString("\n"),
-        )
-
-        val missingConstructorAccess = expectedConfigurationTypes.filterNot { typeName ->
-            val entry = entriesByName.getValue(typeName)
-            entry.enabled("allPublicConstructors") || entry.enabled("allDeclaredConstructors")
-        }
-        assertTrue(
-            missingConstructorAccess.isEmpty(),
-            "Enable constructor reflection for ConfigurationField subclasses:\n" +
-            missingConstructorAccess.joinToString("\n"),
+            retainedConfigDecoderTypes.isEmpty(),
+            "KastConfig must not require Hoplite data-class or ConfigurationField decoder reflection in native images:\n" +
+                retainedConfigDecoderTypes.joinToString("\n"),
         )
     }
 
@@ -63,19 +48,18 @@ class NativeImageConfigurationTest {
         assertTrue(
             Regex.escape(HOPLITE_DECODER_SERVICE_PATH) !in patterns,
             "Do not include the Kast Hoplite decoder service resource in native images; " +
-                "KastConfig registers ConfigurationFieldDecoder explicitly.",
+                "KastConfig parses config without Hoplite data-class decoder binding.",
         )
 
-        val serviceContents = ConfigurationFieldDecoder::class.java.classLoader
+        val serviceContents = NativeImageConfigurationTest::class.java.classLoader
             .getResources(HOPLITE_DECODER_SERVICE_PATH)
             .toList()
             .map { resource -> resource.readText() }
-        val decoderClassName = checkNotNull(ConfigurationFieldDecoder::class.qualifiedName)
         assertTrue(
             serviceContents.none { contents ->
-                contents.lineSequence().any { line -> line.trim() == decoderClassName }
+                contents.lineSequence().any { line -> line.trim() == HOPLITE_CONFIGURATION_FIELD_DECODER }
             },
-            "Do not publish " + decoderClassName + " through " + HOPLITE_DECODER_SERVICE_PATH +
+            "Do not publish " + HOPLITE_CONFIGURATION_FIELD_DECODER + " through " + HOPLITE_DECODER_SERVICE_PATH +
                 "; ServiceLoader instantiation is brittle in native images.",
         )
     }
@@ -84,16 +68,17 @@ class NativeImageConfigurationTest {
 
     private fun parseJsonObject(resource: URL) = json.parseToJsonElement(resource.readText()).jsonObject
 
-    private fun JsonObject.enabled(name: String): Boolean = this[name]?.jsonPrimitive?.booleanOrNull == true
-
     private fun nativeConfigResource(name: String): URL =
-        checkNotNull(ConfigurationFieldDecoder::class.java.classLoader.getResource(NATIVE_CONFIG_RESOURCE_ROOT + name)) {
+        checkNotNull(NativeImageConfigurationTest::class.java.classLoader.getResource(NATIVE_CONFIG_RESOURCE_ROOT + name)) {
             "Package native-image resource " + NATIVE_CONFIG_RESOURCE_ROOT + name
         }
 
     private fun URL.readText(): String = openStream().bufferedReader().use { reader -> reader.readText() }
 
     private companion object {
+        const val CONFIGURATION_FIELD_PACKAGE = "io.github.amichne.kast.api.client.fields."
+        const val HOPLITE_CONFIGURATION_FIELD_DECODER =
+            "io.github.amichne.kast.api.client.ConfigurationFieldDecoder"
         const val HOPLITE_DECODER_SERVICE_PATH = "META-INF/services/com.sksamuel.hoplite.decoder.Decoder"
         const val NATIVE_CONFIG_RESOURCE_ROOT = "META-INF/native-image/io.github.amichne.kast/kast-cli/"
         val json: Json = Json { ignoreUnknownKeys = true }

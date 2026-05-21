@@ -1,8 +1,6 @@
 package io.github.amichne.kast.api.client
 
 import io.github.amichne.kast.api.client.fields.*
-import com.sksamuel.hoplite.ConfigLoaderBuilder
-import com.sksamuel.hoplite.ExperimentalHoplite
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -273,7 +271,7 @@ class KastConfigTest {
     }
 
     @Test
-    fun `config loader uses Kast classloader instead of thread context loader for default Hoplite services`() {
+    fun `config loader does not depend on the thread context classloader`() {
         val configHome = tempDir.resolve("config-home")
         val installRoot = tempDir.resolve("install-root")
         val workspaceRoot = tempDir.resolve("workspace")
@@ -338,11 +336,54 @@ class KastConfigTest {
     }
 
     @Test
-    @OptIn(ExperimentalHoplite::class)
-    fun hopliteDecodesReadableTomlDirectlyIntoConfigurationFieldOverrideLeaves() {
+    fun `config loader supports release installer path overrides`() {
+        val configHome = tempDir.resolve("config-home")
+        val workspaceRoot = tempDir.resolve("workspace")
         val installRoot = tempDir.resolve("install-root")
+        val binDir = installRoot.resolve("bin")
+        val binaryPath = binDir.resolve("kast")
+        val runtimeLibsDir = installRoot.resolve("backends/standalone-probe/runtime-libs")
+        configHome.resolve("config.toml").apply {
+            parent.toFile().mkdirs()
+            writeText(
+                """
+                [paths]
+                install-root = "$installRoot"
+                bin-dir = "$binDir"
+
+                [cli]
+                binary-path = "$binaryPath"
+
+                [backends.standalone]
+                runtime-libs-dir = "$runtimeLibsDir"
+                """.trimIndent(),
+            )
+        }
+
+        val config = KastConfig.load(
+            workspaceRoot = workspaceRoot,
+            configHome = { configHome },
+            workspaceDirectoryResolver = WorkspaceDirectoryResolver(
+                configHome = { configHome },
+                installRoot = { installRoot },
+                gitRemoteResolver = { null },
+            ),
+        )
+
+        assertEquals(installRoot.toString(), config.paths.installRoot.value)
+        assertEquals(binDir.toString(), config.paths.binDir.value)
+        assertEquals(binaryPath.toString(), config.cli.binaryPath.value)
+        assertEquals(runtimeLibsDir.toString(), config.backends.standalone.runtimeLibsDir.value.orNull)
+    }
+
+    @Test
+    fun `config loader supports camel case config keys`() {
+        val configHome = tempDir.resolve("config-home")
+        val installRoot = tempDir.resolve("install-root")
+        val workspaceRoot = tempDir.resolve("workspace")
         val sourceIndexUrl = "file:///private/var/kast/source-index.db"
-        val configFile = tempDir.resolve("field-overrides.toml").apply {
+        configHome.resolve("config.toml").apply {
+            parent.toFile().mkdirs()
             writeText(
                 """
                 [server]
@@ -357,43 +398,19 @@ class KastConfigTest {
             )
         }
 
-        val loaded = ConfigLoaderBuilder.empty()
-            .withClassLoader(KastConfig::class.java.classLoader)
-            .addDecoder(ConfigurationFieldDecoder())
-            .addDefaultDecoders()
-            .addDefaultPreprocessors()
-            .addDefaultNodeTransformers()
-            .addDefaultParamMappers()
-            .addDefaultParsers()
-            .withExplicitSealedTypes()
-            .allowEmptyConfigFiles()
-            .build()
-            .loadConfigOrThrow<KastConfigOverride>(listOf(configFile.toString()))
-
-        val maxResults: Any? = loaded.server?.maxResults
-        val decodedInstallRoot: Any? = loaded.paths?.installRoot
-        val decodedSourceIndexUrl: Any? = loaded.indexing?.remote?.sourceIndexUrl
-
-        assertTrue(
-            maxResults is ServerMaxResults,
-            "Expected server.maxResults to decode into ServerMaxResults, got $maxResults"
+        val config = KastConfig.load(
+            workspaceRoot = workspaceRoot,
+            configHome = { configHome },
+            workspaceDirectoryResolver = WorkspaceDirectoryResolver(
+                configHome = { configHome },
+                installRoot = { installRoot },
+                gitRemoteResolver = { null },
+            ),
         )
-        assertEquals(ServerMaxResults(123), maxResults)
-        assertEquals("server", (maxResults as ServerMaxResults).section)
-        assertEquals("maxResults", maxResults.key)
-        assertEquals(500, maxResults.default.unwrap)
 
-        assertTrue(
-            decodedInstallRoot is PathsInstallRoot,
-            "Expected paths.installRoot to decode into PathsInstallRoot, got $decodedInstallRoot"
-        )
-        assertEquals(PathsInstallRoot(installRoot.toString()), decodedInstallRoot)
-
-        assertTrue(
-            decodedSourceIndexUrl is IndexingRemoteSourceIndexUrl,
-            "Expected indexing.remote.sourceIndexUrl to decode into IndexingRemoteSourceIndexUrl, got $decodedSourceIndexUrl",
-        )
-        assertEquals(IndexingRemoteSourceIndexUrl(OptionalConfigString(sourceIndexUrl)), decodedSourceIndexUrl)
+        assertEquals(123, config.server.maxResults.value)
+        assertEquals(installRoot.toString(), config.paths.installRoot.value)
+        assertEquals(sourceIndexUrl, config.indexing.remote.sourceIndexUrl.value.orNull)
     }
 
     private fun <T> withContextClassLoader(
