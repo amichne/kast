@@ -191,6 +191,58 @@ compute_sha256() {
   die "Neither sha256sum nor shasum is available for checksum computation"
 }
 
+_release_zip_directory() {
+  local source_dir="$1" output_zip="$2"
+  python3 - "$source_dir" "$output_zip" <<'PY'
+import os
+import stat
+import sys
+import zipfile
+from pathlib import Path
+
+source_dir = Path(sys.argv[1])
+output_zip = Path(sys.argv[2])
+tmp_zip = output_zip.with_name(output_zip.name + ".tmp")
+
+with zipfile.ZipFile(tmp_zip, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+    for path in sorted(source_dir.rglob("*")):
+        if path.is_dir():
+            continue
+        relative = path.relative_to(source_dir).as_posix()
+        mode = stat.S_IMODE(path.stat().st_mode)
+        info = zipfile.ZipInfo(relative)
+        info.external_attr = (stat.S_IFREG | mode) << 16
+        with path.open("rb") as handle:
+            archive.writestr(info, handle.read())
+
+os.replace(tmp_zip, output_zip)
+PY
+}
+
+_release_overlay_native_binary() {
+  local asset_path="$1" native_binary="$2"
+  [[ -x "$native_binary" ]] || die "Native binary is missing or not executable: ${native_binary}"
+
+  tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/kast-release.XXXXXX")"
+  local staging_dir="${tmp_dir}/asset"
+  extract_zip_archive "$asset_path" "$staging_dir"
+
+  local archive_root=""
+  if [[ -d "${staging_dir}/kast-cli" ]]; then
+    archive_root="${staging_dir}/kast-cli"
+  elif [[ -d "${staging_dir}/kast" ]]; then
+    archive_root="${staging_dir}/kast"
+  else
+    die "Release asset did not contain the expected kast-cli/ or kast/ directory"
+  fi
+
+  cp "$native_binary" "${archive_root}/kast-cli"
+  chmod 755 "${archive_root}/kast-cli"
+  _release_zip_directory "$staging_dir" "$asset_path"
+  rm -rf "$tmp_dir"
+  tmp_dir=""
+}
+
 # ===========================================================================
 # cmd_build -- local dev build / packaging
 # ===========================================================================
@@ -461,7 +513,7 @@ USAGE
 cmd_release() {
   [[ -n "$REPO_ROOT" && -d "$REPO_ROOT" ]] || die "Release requires a local checkout (not valid when curl-piped)"
 
-  local tag="" platform_id="" skip_build="false"
+  local tag="" platform_id="" skip_build="false" native_binary=""
   _GRADLE_EXTRA_ARGS=()
 
   while [[ $# -gt 0 ]]; do
@@ -471,7 +523,11 @@ cmd_release() {
       --platform-id=*) platform_id="${1#*=}"; shift ;;
       --platform-id)   [[ $# -ge 2 ]] || die "Missing value for --platform-id"; platform_id="$2"; shift 2 ;;
       --skip-build)    skip_build="true"; shift ;;
-      --shrink)        _GRADLE_EXTRA_ARGS+=("-Pkast.shrinkRuntime=true"); shift ;;
+      --native-binary=*) native_binary="${1#*=}"; shift ;;
+      --native-binary) [[ $# -ge 2 ]] || die "Missing value for --native-binary"; native_binary="$2"; shift 2 ;;
+      --shrink)
+        die "Release assets must not use ProGuard/R8 shrinking. Use './kast.sh build --shrink' only for local diagnostic artifacts."
+        ;;
       --help|-h)
         cat >&2 << 'USAGE'
 Usage: ./kast.sh release --tag <version> --platform-id <id> [options]
@@ -482,12 +538,13 @@ Options:
   --tag <version>       Release tag (e.g. v1.2.3). Required.
   --platform-id <id>    Platform identifier (e.g. linux-x64, macos-arm64). Required.
   --skip-build          Skip the Gradle build (use existing portable zip).
-  --shrink              Run ProGuard on the assembled runtime-libs before packaging.
+  --native-binary <path>
+                         Replace the JVM launcher with a GraalVM native binary.
   --help, -h            Show this help.
 
 Examples:
-  ./kast.sh release --tag v1.0.0 --platform-id linux-x64
-  ./kast.sh release --tag v1.0.0 --platform-id macos-arm64 --skip-build
+  ./kast.sh release --tag v1.0.0 --platform-id linux-x64 --native-binary kast-cli/build/native/nativeCompile/kast
+  ./kast.sh release --tag v1.0.0 --platform-id macos-arm64 --skip-build --native-binary kast-cli/build/native/nativeCompile/kast
 USAGE
         return 0
         ;;
@@ -501,10 +558,10 @@ USAGE
 
   if [[ "$skip_build" != "true" ]]; then
     log_section "Building portable distribution"
-    if ! ( cd "$REPO_ROOT"; "$GRADLEW" "${_GRADLE_EXTRA_ARGS[@]}" :kast-cli:portableDistZip ); then
+    if ! ( cd "$REPO_ROOT"; "$GRADLEW" :kast-cli:portableDistZip ); then
       log_note "Gradle build failed; stopping daemon and retrying with --no-daemon"
       "$GRADLEW" --stop >/dev/null 2>&1 || true
-      ( cd "$REPO_ROOT"; "$GRADLEW" --no-daemon "${_GRADLE_EXTRA_ARGS[@]}" :kast-cli:portableDistZip )
+      ( cd "$REPO_ROOT"; "$GRADLEW" --no-daemon :kast-cli:portableDistZip )
     fi
   fi
 
@@ -523,6 +580,11 @@ USAGE
   log_section "Preparing release asset"
   mkdir -p "$DIST_ROOT"
   cp "$source_zip" "$asset_path"
+
+  if [[ -n "$native_binary" ]]; then
+    log_step "Embedding native CLI binary ${native_binary}"
+    _release_overlay_native_binary "$asset_path" "$native_binary"
+  fi
 
   local digest; digest="$(compute_sha256 "$asset_path")"
   printf '%s  %s\n' "$digest" "$asset_name" >> "${DIST_ROOT}/checksums.txt"
