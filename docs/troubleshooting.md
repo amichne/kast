@@ -159,9 +159,9 @@ that matches what you're seeing.
 
     ```console
     kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/workspace-refresh","params":{}}' \
-      --workspace-root=$(pwd)
+      --workspace-root="$PWD"
     kast rpc '{"jsonrpc":"2.0","id":2,"method":"raw/diagnostics","params":{"filePaths":["/absolute/path/to/src/App.kt"]}}' \
-      --workspace-root=$(pwd)
+      --workspace-root="$PWD"
     ```
 
     Same fix applies to `raw/resolve`, `raw/references`,

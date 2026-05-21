@@ -44,19 +44,19 @@ Or pull the CLI and the backend together:
 ```
 
 By default, `kast daemon start` derives standalone runtime libraries from
-`$HOME/.kast/lib/backends/current/runtime-libs`. To use a different
+`$HOME/.kast/backends/current/runtime-libs`. To use a different
 installation, point `backends.standalone.runtimeLibsDir` at the installed
 `runtime-libs` directory in `config.toml`, or pass `--runtime-libs-dir` to
 `kast daemon start`:
 
 ```toml title="$HOME/.config/kast/config.toml"
 [backends.standalone]
-runtimeLibsDir = "/Users/alex/.kast/lib/backends/current/runtime-libs"
+runtimeLibsDir = "/Users/alex/.kast/backends/current/runtime-libs"
 ```
 
 How a session unfolds:
 
-1. You run `kast up --workspace-root=$(pwd)` somewhere. It
+1. You run `kast up --workspace-root="$PWD"` somewhere. It
    starts or reuses the daemon, discovers the project, and waits until
    the analysis session is warm.
 2. You run more `kast` commands against the same workspace. The CLI

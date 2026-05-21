@@ -41,7 +41,7 @@ that, you're hitting a warm session.
 ```console linenums="1" title="Start the daemon"
 kast up \
   --backend-name=standalone \
-  --workspace-root=$(pwd)
+  --workspace-root="$PWD"
 ```
 
 ```mermaid
@@ -79,9 +79,11 @@ of the declaration at that offset.
     prints the byte offset of every match.
 
 ```console linenums="1" title="Resolve a symbol"
+APP_FILE="$PWD/src/main/kotlin/App.kt"
+
 kast rpc \
-  '{"jsonrpc":"2.0","method":"raw/resolve","params":{"position":{"filePath":"$(pwd)/src/main/kotlin/App.kt","offset":42}},"id":1}' \
-  --workspace-root=$(pwd)
+  "{\"jsonrpc\":\"2.0\",\"method\":\"raw/resolve\",\"params\":{\"position\":{\"filePath\":\"$APP_FILE\",\"offset\":42}},\"id\":1}" \
+  --workspace-root="$PWD"
 ```
 
 ```json hl_lines="3-4" title="Example response"
@@ -109,9 +111,11 @@ command can stay anchored to this declaration without ambiguity.
 Same file, same offset. Ask for every reference across the workspace.
 
 ```console linenums="1" title="Find references"
+APP_FILE="$PWD/src/main/kotlin/App.kt"
+
 kast rpc \
-  '{"jsonrpc":"2.0","method":"raw/references","params":{"position":{"filePath":"$(pwd)/src/main/kotlin/App.kt","offset":42}},"id":1}' \
-  --workspace-root=$(pwd)
+  "{\"jsonrpc\":\"2.0\",\"method\":\"raw/references\",\"params\":{\"position\":{\"filePath\":\"$APP_FILE\",\"offset\":42}},\"id\":1}" \
+  --workspace-root="$PWD"
 ```
 
 ```json hl_lines="10-11" title="Example response"
@@ -148,7 +152,7 @@ Free the resources when you're done.
 ```console title="Stop the daemon"
 kast stop \
   --backend-name=standalone \
-  --workspace-root=$(pwd)
+  --workspace-root="$PWD"
 ```
 
 ## What just happened

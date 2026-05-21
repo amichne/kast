@@ -85,7 +85,7 @@ explicitly.
 | What you want                              | Mode                            | How the backend starts                            |
 |--------------------------------------------|---------------------------------|---------------------------------------------------|
 | IntelliJ already open on the project       | `minimal`                       | Plugin starts with the IDE                        |
-| Terminal, CI, or agent work                | `full`                          | `kast up --workspace-root=$(pwd)`                 |
+| Terminal, CI, or agent work                | `full`                          | `kast up --workspace-root="$PWD"`                 |
 | Both                                       | `full` + plugin install         | Pin per session with `--backend-name`             |
 
 ## Developer, CI, and cloud-agent paths
@@ -96,7 +96,7 @@ path that matches the machine.
 
 | Environment | Install path | What gets installed | Follow-up command |
 |-------------|--------------|---------------------|-------------------|
-| Local developer using a terminal | Homebrew or `./kast.sh install --mode=full` | CLI plus standalone backend when using the full installer | `kast up --workspace-root=$(pwd)` |
+| Local developer using a terminal | Homebrew or `./kast.sh install --mode=full` | CLI plus standalone backend when using the full installer | `kast up --workspace-root="$PWD"` |
 | Local developer using IntelliJ or Android Studio | `./kast.sh install --mode=minimal` or the plugin zip | CLI plus optional plugin, or plugin only | Open the project in the IDE |
 | CI job that only gates a workspace | `./kast.sh install --non-interactive` or release archives | CLI only unless archives include backend components | Start or warm standalone before `kast rpc` |
 | Cloud or headless coding agent | `scripts/headless-agent-install.sh` or a headless agent bundle | CLI, standalone backend, packaged skill, and repo-local Copilot extension | `source "$KAST_AGENT_INSTALL_ROOT/kast-env.sh"` |
@@ -282,7 +282,7 @@ digests.
     binaryPath = "/Users/alex/.kast/bin/kast"
 
     [backends.standalone]
-    runtimeLibsDir = "/Users/alex/.kast/lib/backends/current/runtime-libs"
+    runtimeLibsDir = "/Users/alex/.kast/backends/current/runtime-libs"
     ```
 
     Re-run the installer any time. It updates managed files in place.

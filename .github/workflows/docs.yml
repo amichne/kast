@@ -5,6 +5,7 @@ on:
     paths:
       - ".github/workflows/docs.yml"
       - ".github/scripts/test-docs-navigation-contract.sh"
+      - ".github/scripts/test-docs-content-contract.sh"
       - "docs/**"
       - "requirements-docs.txt"
       - "zensical.toml"
@@ -14,6 +15,7 @@ on:
     paths:
       - ".github/workflows/docs.yml"
       - ".github/scripts/test-docs-navigation-contract.sh"
+      - ".github/scripts/test-docs-content-contract.sh"
       - "docs/**"
       - "requirements-docs.txt"
       - "zensical.toml"
@@ -41,6 +43,7 @@ jobs:
           cache-dependency-path: requirements-docs.txt
       - run: pip install -r requirements-docs.txt
       - run: ./.github/scripts/test-docs-navigation-contract.sh
+      - run: ./.github/scripts/test-docs-content-contract.sh
       - run: zensical build --clean
       - uses: actions/upload-pages-artifact@v5
         with:

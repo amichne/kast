@@ -20,7 +20,7 @@ results.
 kast install skill
 
 # 2. Warm the workspace daemon for this repo
-kast up --workspace-root=$(pwd)
+kast up --workspace-root="$PWD"
 
 # 3. Hand off — your agent now has the kast skill loaded
 ```

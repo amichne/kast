@@ -30,7 +30,7 @@ compiler picked it.
 
     ```console title="Resolve the symbol at a specific file position"
     kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/resolve","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/com/example/OrderService.kt","offset":142}}}' \
-      --workspace-root=$(pwd)
+      --workspace-root="$PWD"
     ```
 
 === "JSON-RPC"
@@ -94,7 +94,7 @@ use it to pick which offset to feed `resolve` or `references`.
 
     ```console title="Get the declaration tree for a file"
     kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/file-outline","params":{"filePath":"/absolute/path/to/src/main/kotlin/com/example/OrderService.kt"}}' \
-      --workspace-root=$(pwd)
+      --workspace-root="$PWD"
     ```
 
 === "JSON-RPC"
@@ -183,12 +183,12 @@ specific match.
 
     ```console title="Find all classes matching a pattern"
     kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/workspace-symbol","params":{"pattern":"OrderService"}}' \
-      --workspace-root=$(pwd)
+      --workspace-root="$PWD"
     ```
 
     ```console title="Regex search filtered to classes"
     kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/workspace-symbol","params":{"pattern":".*Service","regex":true,"kind":"CLASS"}}' \
-      --workspace-root=$(pwd)
+      --workspace-root="$PWD"
     ```
 
 === "JSON-RPC"
@@ -257,7 +257,7 @@ found every implementation within the result cap.
 
     ```console title="Find all implementations of an interface"
     kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/implementations","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/sample/Greeter.kt","offset":28},"maxResults":100}}' \
-      --workspace-root=$(pwd)
+      --workspace-root="$PWD"
     ```
 
 === "JSON-RPC"

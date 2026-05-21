@@ -40,7 +40,7 @@ stateDiagram-v2
 
 ```console title="Start the daemon and wait for READY"
 kast up \
-  --workspace-root=$(pwd)
+  --workspace-root="$PWD"
 ```
 
 Pass `--accept-indexing=true` when partial results during indexing
@@ -50,7 +50,7 @@ are acceptable.
 
 ```console title="Check daemon state"
 kast status \
-  --workspace-root=$(pwd)
+  --workspace-root="$PWD"
 ```
 
 ### Stop the daemon
@@ -59,7 +59,7 @@ Stop explicitly when you're done. Don't leave orphans behind.
 
 ```console title="Stop the daemon cleanly"
 kast stop \
-  --workspace-root=$(pwd)
+  --workspace-root="$PWD"
 ```
 
 ## Workspace discovery
@@ -91,14 +91,14 @@ a manual recovery when an external change slipped past the watcher.
 
 ```console title="Full workspace refresh"
 kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/workspace-refresh","params":{}}' \
-  --workspace-root=$(pwd)
+  --workspace-root="$PWD"
 ```
 
 Targeted refresh:
 
 ```console title="Targeted refresh"
 kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/workspace-refresh","params":{"filePaths":["/absolute/path/to/src/main/kotlin/App.kt"]}}' \
-  --workspace-root=$(pwd)
+  --workspace-root="$PWD"
 ```
 
 ## Inspect workspace files (RPC)
@@ -113,7 +113,7 @@ one response.
 
     ```console title="List workspace files"
     kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/workspace-files","params":{"includeFiles":true,"maxFilesPerModule":500}}' \
-      --workspace-root=$(pwd)
+      --workspace-root="$PWD"
     ```
 
 === "JSON-RPC"
@@ -153,7 +153,7 @@ implement.
 
 ```console title="Query supported capabilities"
 kast capabilities \
-  --workspace-root=$(pwd)
+  --workspace-root="$PWD"
 ```
 
 ## Check runtime health
@@ -163,7 +163,7 @@ full runtime metadata.
 
 ```console title="Liveness check"
 kast rpc '{"jsonrpc":"2.0","id":1,"method":"health"}' \
-  --workspace-root=$(pwd)
+  --workspace-root="$PWD"
 ```
 
 ## Next steps

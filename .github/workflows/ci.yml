@@ -27,6 +27,10 @@ jobs:
         shell: bash
         run: ./.github/scripts/test-docs-navigation-contract.sh
 
+      - name: Test docs content contract
+        shell: bash
+        run: ./.github/scripts/test-docs-content-contract.sh
+
       - name: Test release asset verifier
         shell: bash
         run: ./.github/scripts/test-release-asset-verifier.sh

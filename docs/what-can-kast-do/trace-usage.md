@@ -24,7 +24,7 @@ pay for the scope the language actually requires.
 
     ```console title="Find all references to a symbol"
     kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/references","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/com/shop/OrderService.kt","offset":42},"includeDeclaration":true}}' \
-      --workspace-root=$(pwd)
+      --workspace-root="$PWD"
     ```
 
 === "JSON-RPC"
@@ -148,7 +148,7 @@ per-node children, and a timeout. Every limit is reported back in
 
     ```console title="Find incoming callers two levels deep"
     kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/call-hierarchy","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/com/shop/OrderService.kt","offset":42},"direction":"INCOMING","depth":3,"maxTotalCalls":256,"maxChildrenPerNode":64}}' \
-      --workspace-root=$(pwd)
+      --workspace-root="$PWD"
     ```
 
 === "JSON-RPC"
@@ -288,7 +288,7 @@ interface. `direction` picks the way:
 
     ```console title="Get supertypes and subtypes"
     kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/type-hierarchy","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/com/shop/Greeter.kt","offset":45},"direction":"BOTH","depth":3}}' \
-      --workspace-root=$(pwd)
+      --workspace-root="$PWD"
     ```
 
 === "JSON-RPC"
