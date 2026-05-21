@@ -3,6 +3,8 @@ title: Kast
 description: Compiler-backed Kotlin analysis for your terminal, CI, agent,
   or IDEA-backed workflow.
 icon: lucide/network
+hide:
+  - toc
 ---
 
 # Compiler-backed Kotlin answers — outside the IDE
