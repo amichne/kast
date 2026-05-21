@@ -14,6 +14,10 @@ class CliCommandCatalogTest {
             listOf("workspace", "refresh"),
             listOf("workspace", "stop"),
             listOf("workspace", "files"),
+            listOf("self", "status"),
+            listOf("self", "doctor"),
+            listOf("self", "uninstall"),
+            listOf("self", "upgrade"),
             listOf("resolve"),
             listOf("references"),
             listOf("call-hierarchy"),
@@ -61,19 +65,9 @@ class CliCommandCatalogTest {
             CliCommandCatalog.visibleCommands().none { it.path.firstOrNull() == "workspace" },
             "Visible help should not contain workspace namespace commands",
         )
-    }
-
-    @Test
-    fun `self upgrade catalog describes install method detection`() {
-        val command = allCommandMetadata().single { metadata -> metadata.path == listOf("self", "upgrade") }
-
         assertTrue(
-            command.summary.contains("Detect install method"),
-            "self upgrade summary should describe install-method-aware behavior",
-        )
-        assertTrue(
-            command.description.contains("appropriate upgrade path"),
-            "self upgrade description should describe contextual upgrade guidance",
+            CliCommandCatalog.visibleCommands().none { it.path.firstOrNull() == "self" },
+            "Visible help should not contain self namespace commands",
         )
     }
 

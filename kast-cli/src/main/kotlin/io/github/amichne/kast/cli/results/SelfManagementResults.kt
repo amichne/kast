@@ -31,9 +31,3 @@ internal data class SelfUninstallResult(
     val removedInstallRoot: Boolean,
     val schemaVersion: Int = SCHEMA_VERSION,
 )
-
-@Serializable
-internal data class SelfUpgradeResult(
-    val instructions: String,
-    val schemaVersion: Int = SCHEMA_VERSION,
-)

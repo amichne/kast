@@ -280,10 +280,10 @@ Pass `--target-dir` when you need to install into another workspace's
 kast install copilot-extension --target-dir=/Users/alex/work/project/.github --yes=true
 ```
 
-To remove only packaged files, pass `--uninstall=true`:
+To remove only packaged files, use the uninstall command:
 
 ```console title="Uninstall Copilot agents, hooks, and extensions"
-kast install copilot-extension --uninstall=true
+kast uninstall copilot-extension
 ```
 
 Uninstall removes the packaged manifest entries and the version marker. It

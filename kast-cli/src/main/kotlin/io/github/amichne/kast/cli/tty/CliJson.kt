@@ -20,7 +20,6 @@ import io.github.amichne.kast.cli.results.InstallResult
 import io.github.amichne.kast.cli.results.SelfDoctorResult
 import io.github.amichne.kast.cli.results.SelfStatusResult
 import io.github.amichne.kast.cli.results.SelfUninstallResult
-import io.github.amichne.kast.cli.results.SelfUpgradeResult
 import io.github.amichne.kast.cli.results.InstallSkillResult
 import io.github.amichne.kast.cli.SmokeReport
 import io.github.amichne.kast.cli.results.WorkspaceEnsureResult
@@ -49,7 +48,6 @@ internal fun writeCliJson(
         is SelfStatusResult -> json.encodeToString(value)
         is SelfDoctorResult -> json.encodeToString(value)
         is SelfUninstallResult -> json.encodeToString(value)
-        is SelfUpgradeResult -> json.encodeToString(value)
         is BackendCapabilities -> json.encodeToString(value)
         is SymbolResult -> json.encodeToString(value)
         is ReferencesResult -> json.encodeToString(value)

@@ -7,6 +7,7 @@ import io.github.amichne.kast.cli.tty.CliCompletionShell
 import io.github.amichne.kast.cli.tty.CliFailure
 import io.github.amichne.kast.cli.tty.defaultCliJson
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -116,32 +117,38 @@ class CliCommandParserTest {
 
 
     @Test
-    fun `self status parses`() {
-        val command = parser.parse(arrayOf("self", "status"))
+    fun `info parses`() {
+        val command = parser.parse(arrayOf("info"))
 
-        assertSame(CliCommand.SelfStatus, command)
+        assertSame(CliCommand.Info, command)
     }
 
     @Test
-    fun `self doctor parses`() {
-        val command = parser.parse(arrayOf("self", "doctor"))
+    fun `doctor parses`() {
+        val command = parser.parse(arrayOf("doctor"))
 
-        assertSame(CliCommand.SelfDoctor, command)
+        assertSame(CliCommand.Doctor, command)
     }
 
     @Test
-    fun `self uninstall parses`() {
-        val command = parser.parse(arrayOf("self", "uninstall"))
+    fun `uninstall parses`() {
+        val command = parser.parse(arrayOf("uninstall"))
 
-        assertSame(CliCommand.SelfUninstall, command)
+        assertSame(CliCommand.Uninstall, command)
     }
 
     @Test
-    fun `self upgrade parses`() {
-        val command = parser.parse(arrayOf("self", "upgrade"))
+    fun `self namespace is unknown`() {
+        listOf("status", "doctor", "uninstall", "upgrade").forEach { subcommand ->
+            val failure = assertThrows<CliFailure> {
+                parser.parse(arrayOf("self", subcommand))
+            }
 
-        assertSame(CliCommand.SelfUpgrade, command)
+            assertEquals("CLI_USAGE", failure.code)
+            assertTrue(failure.message.contains("Unknown command: self $subcommand"))
+        }
     }
+
     @Test
     fun `smoke parses workspace root filters and format`() {
         val command = parser.parse(
@@ -298,6 +305,24 @@ class CliCommandParserTest {
         assertEquals(tempDir, installCommand.options.targetDir)
         assertTrue(installCommand.options.force)
         assertTrue(installCommand.options.uninstall)
+    }
+
+    @Test
+    fun `uninstall copilot extension parses target and force options`() {
+        val command = parser.parse(
+            arrayOf(
+                "uninstall",
+                "copilot-extension",
+                "--target-dir=$tempDir",
+                "--yes=true",
+            ),
+        )
+
+        assertTrue(command is CliCommand.UninstallCopilotExtension)
+        val uninstallCommand = command as CliCommand.UninstallCopilotExtension
+        assertEquals(tempDir, uninstallCommand.options.targetDir)
+        assertTrue(uninstallCommand.options.force)
+        assertFalse(uninstallCommand.options.uninstall)
     }
 
     @Test

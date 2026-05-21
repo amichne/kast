@@ -5,10 +5,6 @@ import io.github.amichne.kast.api.client.kastConfigHome
 import io.github.amichne.kast.cli.results.SelfDoctorResult
 import io.github.amichne.kast.cli.results.SelfStatusResult
 import io.github.amichne.kast.cli.results.SelfUninstallResult
-import io.github.amichne.kast.cli.results.SelfUpgradeResult
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.json.Json
 import java.io.IOException
 import java.nio.file.DirectoryNotEmptyException
 import java.nio.file.FileVisitResult
@@ -22,8 +18,6 @@ internal class SelfManagementService(
     private val configHomeProvider: () -> Path = { kastConfigHome() },
     private val commandAvailability: (String) -> Boolean = ::commandAvailable,
     private val resolveScriptVerifier: (Path, String) -> String? = ::verifyResolveScript,
-    private val envLookup: (String) -> String? = System::getenv,
-    private val executablePathProvider: () -> Path? = ::currentExecutablePath,
 ) {
     fun status(): SelfStatusResult {
         val manifest = manifestStore.read()
@@ -146,57 +140,6 @@ internal class SelfManagementService(
         )
     }
 
-    fun upgrade(): SelfUpgradeResult = SelfUpgradeResult(instructions = upgradeInstructions())
-
-    private fun upgradeInstructions(): String {
-        val source = installSource()
-        return when {
-            envLookup("CI")?.equals("true", ignoreCase = true) == true || source == "action" ->
-                "Ephemeral environment - pin the version input in your workflow/Blueprint"
-            source == "homebrew" -> "Run: brew upgrade kast"
-            source == "kast.sh" || source == "release" -> "Run: ./kast.sh install"
-            else -> "Re-run the installer: /bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh)\""
-        }
-    }
-
-    private fun installSource(): String? = installMetadataCandidates()
-        .firstNotNullOfOrNull { candidate ->
-            readInstallMetadata(candidate)?.source?.lowercase()?.takeIf(String::isNotBlank)
-        }
-
-    private fun installMetadataCandidates(): List<Path> = buildList {
-        val installRoot = manifestStore.installRoot()
-        add(installRoot.resolve(".install-metadata.json"))
-        add(installRoot.resolve("current/.install-metadata.json"))
-        listOf("KAST_MANAGED_ROOT")
-            .mapNotNull(envLookup)
-            .map { value -> Path.of(value).toAbsolutePath().normalize() }
-            .forEach { envInstallRoot ->
-                add(envInstallRoot.resolve(".install-metadata.json"))
-                add(envInstallRoot.resolve("current/.install-metadata.json"))
-            }
-        executablePathProvider()?.let { executable ->
-            addMetadataCandidatesForExecutable(executable)
-        }
-    }.distinct()
-
-    private fun MutableList<Path>.addMetadataCandidatesForExecutable(executable: Path) {
-        val normalized = executable.toAbsolutePath().normalize()
-        normalized.parent?.let { add(it.resolve(".install-metadata.json")) }
-        runCatching { normalized.toRealPath() }.getOrNull()
-            ?.parent
-            ?.let { add(it.resolve(".install-metadata.json")) }
-    }
-
-    private fun readInstallMetadata(path: Path): InstallMetadata? {
-        if (!Files.isRegularFile(path)) {
-            return null
-        }
-        return runCatching {
-            metadataJson.decodeFromString<InstallMetadata>(Files.readString(path))
-        }.getOrNull()
-    }
-
     private fun deleteEmptyDirectoriesUpTo(directory: Path?, boundary: Path) {
         var current = directory
         while (current != null && current != boundary && current.startsWith(boundary)) {
@@ -314,28 +257,11 @@ internal class SelfManagementService(
         private const val COMPLETION_END_MARKER = "# <<< Kast completion <<<"
         private const val KAST_ENV_SOURCE_START_MARKER = "# >>> kast env >>>"
         private const val KAST_ENV_SOURCE_END_MARKER = "# <<< kast env <<<"
-        private val metadataJson = Json {
-            ignoreUnknownKeys = true
-            explicitNulls = false
-        }
-
-        @Serializable
-        private data class InstallMetadata(
-            val source: String = "",
-        )
-
         private fun commandAvailable(command: String): Boolean = runCatching {
             ProcessBuilder("bash", "-lc", "command -v $command >/dev/null 2>&1")
                 .start()
                 .waitFor() == 0
         }.getOrDefault(false)
-
-        private fun currentExecutablePath(): Path? = ProcessHandle.current()
-            .info()
-            .command()
-            .orElse(null)
-            ?.takeIf(String::isNotBlank)
-            ?.let(Path::of)
 
         private fun verifyResolveScript(repoRoot: Path, relativePath: String): String? {
             val script = repoRoot.resolve(relativePath).normalize()

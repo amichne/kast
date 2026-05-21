@@ -85,7 +85,7 @@ that matches what you're seeing.
 
 ??? question "Copilot extension uninstall leaves files behind"
 
-    `kast install copilot-extension --uninstall=true` removes only files
+    `kast uninstall copilot-extension` removes only files
     listed in the packaged manifest plus `.github/.kast-copilot-version`.
     Files you created under `.github` are preserved, and the installer's
     global inventory in `~/.kast/.manifest.json` drops the repo entry.
@@ -95,7 +95,7 @@ that matches what you're seeing.
 
     ```console
     kast install copilot-extension --yes=true
-    kast install copilot-extension --uninstall=true
+    kast uninstall copilot-extension
     ```
 
 ## Analysis results

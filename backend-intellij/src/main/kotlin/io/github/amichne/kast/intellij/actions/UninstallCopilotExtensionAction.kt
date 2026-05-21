@@ -4,10 +4,9 @@ import java.nio.file.Path
 
 internal class UninstallCopilotExtensionAction : KastInstallAction() {
     override fun buildArgs(workspaceRoot: Path): List<String> = listOf(
-        "install",
+        "uninstall",
         "copilot-extension",
         "--target-dir=${workspaceRoot.resolve(".github")}",
-        "--uninstall=true",
         "--yes=true",
     )
 
