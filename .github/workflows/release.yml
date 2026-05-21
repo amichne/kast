@@ -367,7 +367,7 @@ jobs:
           if-no-files-found: warn
 
   build-intellij-plugin:
-    name: Build IntelliJ plugin
+    name: Build IDEA plugin
     needs: [prepare-release]
     runs-on: ubuntu-latest
     permissions:
@@ -389,14 +389,14 @@ jobs:
           path: ~/.gradle/kast/intellij-distributions
           key: idea-dist-${{ hashFiles('gradle/libs.versions.toml') }}
 
-      - name: Build IntelliJ plugin
+      - name: Build IDEA plugin
         run: >
           ./gradlew
           :backend-intellij:buildPlugin
           :backend-intellij:verifyPluginStructure
           :backend-intellij:verifyPluginXmlPresent
 
-      - name: Upload IntelliJ plugin asset
+      - name: Upload IDEA plugin asset
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -411,7 +411,7 @@ jobs:
             source_zip="$candidate"
             break
           done
-          [[ -n "$source_zip" ]] || { echo "No IntelliJ plugin zip found" >&2; exit 1; }
+          [[ -n "$source_zip" ]] || { echo "No IDEA plugin zip found" >&2; exit 1; }
 
           mkdir -p dist
           cp "$source_zip" "dist/${asset_name}"
@@ -541,7 +541,7 @@ jobs:
           path: provenance-artifacts
           pattern: release-asset-*
 
-      - name: Download IntelliJ provenance
+      - name: Download IDEA plugin provenance
         uses: actions/download-artifact@v7
         with:
           path: provenance-intellij

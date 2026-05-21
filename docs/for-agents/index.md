@@ -20,7 +20,7 @@ results.
 kast install skill
 
 # 2. Warm the workspace daemon for this repo
-kast up --workspace-root=$(pwd)
+kast up --workspace-root="$PWD"
 
 # 3. Hand off — your agent now has the kast skill loaded
 ```
@@ -33,9 +33,26 @@ daemon. The rest of this page is what your agent picks up from that.
 
 The agent talks to either runtime over the same JSON-RPC. Standalone
 runs as an independent daemon — terminals, CI, remote machines, cloud
-agents. The IntelliJ plugin exposes the same protocol from inside an
-open IntelliJ project, reusing the IDE's project model, indexes, and
+agents. The IDEA plugin exposes the same protocol from inside an
+open IDE project, reusing the IDE's project model, indexes, and
 analysis session.
+
+## Local and hosted agent setup
+
+Local agents usually inherit a developer's installed CLI and workspace.
+Hosted or cloud agents should install into a contained root from trusted
+release artifacts before the session starts.
+
+| Agent environment | Install path | Runtime path | What to hand the agent |
+|-------------------|--------------|--------------|-------------------------|
+| Local developer agent | `kast install skill` and optional `kast install copilot-extension` | Existing CLI plus standalone or IDEA backend | The packaged skill and native `kast_*` tools |
+| CI review agent | `./kast.sh install --non-interactive` or release archives | Standalone backend warmed in the job | `kast rpc` commands and structured JSON outputs |
+| Cloud/headless coding agent | `scripts/headless-agent-install.sh` or the headless agent bundle | Contained CLI and standalone backend under `KAST_AGENT_INSTALL_ROOT` | Source `kast-env.sh`, then use the packaged skill and Copilot extension |
+
+Use the headless path when the agent image cannot rely on a human shell
+profile, Homebrew tap state, or an already-open IDE. The headless
+installer verifies the CLI, backend runtime libraries, packaged skill,
+repo-local Copilot hooks, and native extension files before it exits.
 
 | What it gets         | What `kast` returns                                                                       | Why your agent cares                                                            |
 |----------------------|-------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
@@ -80,11 +97,11 @@ lives and who keeps it warm.
 | Runtime         | Where semantic state lives                       | Best fit                                              |
 |-----------------|--------------------------------------------------|-------------------------------------------------------|
 | Standalone      | A long-lived `kast` daemon outside any IDE       | Terminals, CI, remote machines, cloud agents          |
-| IntelliJ plugin | Inside a running IntelliJ project                | Local agents when the IDE is already open and warm    |
+| IDEA plugin     | Inside a running IDEA or Android Studio project  | Local agents when the IDE is already open and warm    |
 
-If IntelliJ is open, agents can connect to the plugin and ride the IDE's
-warmth. If not, the standalone backend exposes the same surface on its
-own.
+If IDEA or Android Studio is open, agents can connect to the plugin and ride
+the IDE's warmth. If not, the standalone backend exposes the same surface on
+its own.
 
 ## What your agent can actually do
 

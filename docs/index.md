@@ -1,7 +1,7 @@
 ---
 title: Kast
 description: Compiler-backed Kotlin analysis for your terminal, CI, agent,
-  or IntelliJ-backed workflow.
+  or IDEA-backed workflow.
 icon: lucide/network
 ---
 
@@ -22,22 +22,22 @@ Pick your entry point:
     A standalone JVM daemon you start from a terminal. Works in CI, in a
     container, on a server with no editor in sight.
 
-    [:octicons-arrow-right-16: CLI install guide](getting-started/install.md#one-line-install)
+    [:octicons-arrow-right-16: CLI install guide](getting-started/install.md#homebrew-install)
 
--   :octicons-plug-16:{ .lg .left } __Install the IntelliJ plugin__
+-   :octicons-plug-16:{ .lg .left } __Install the IDEA plugin__
 
     ---
 
-    Reuse the analysis session IntelliJ already has open. No second JVM,
+    Reuse the analysis session IDEA or Android Studio already has open. No second JVM,
     no second cold start, same JSON-RPC over a socket.
 
-    [:octicons-arrow-right-16: Plugin install guide](getting-started/install.md#install-the-intellij-plugin-manually)
+    [:octicons-arrow-right-16: Plugin install guide](getting-started/install.md#install-the-idea-and-android-studio-plugin-manually)
 
 </div>
 
 ## Two runtimes, one wire format
 
-The standalone daemon and the IntelliJ plugin speak the same JSON-RPC.
+The standalone daemon and the IDEA plugin speak the same JSON-RPC.
 Switch backends without changing a single script or prompt.
 [Compare backends →](getting-started/backends.md)
 
@@ -70,19 +70,20 @@ Three commands, run from the root of any Kotlin project. Requires Java 21+.
 
 ```console linenums="1" title="Install, start, query" hl_lines="1 2 3"
 # 1. Install the kast CLI
-curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh | bash
+brew tap amichne/kast
+brew install kast
 
 # 2. Start a backend for this workspace (waits until indexing is READY)
-kast up --backend-name=standalone --workspace-root=$(pwd)
+kast up --backend-name=standalone --workspace-root="$PWD"
 
 # 3. Resolve a symbol — point at any .kt file and any byte offset on a name
 kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/resolve","params":{"position":{"filePath":"/absolute/path/to/App.kt","offset":42}}}' \
-  --workspace-root=$(pwd)
+  --workspace-root="$PWD"
 ```
 
 The first `up` is the slow command — the daemon discovers
 your project and indexes it. Everything after that hits a warm session.
-Already running IntelliJ with the plugin? Skip step 2; `kast` finds the
+Already running IDEA or Android Studio with the plugin? Skip step 2; `kast` finds the
 IDE's backend on its own.
 
 ## Next steps

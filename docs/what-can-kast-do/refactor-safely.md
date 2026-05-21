@@ -50,7 +50,7 @@ the workspace — without writing anything. The response carries
 
     ```console title="Plan a rename"
     kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/rename","params":{"position":{"filePath":"/absolute/path/to/src/Sample.kt","offset":20},"newName":"welcome","dryRun":true}}' \
-      --workspace-root=$(pwd)
+      --workspace-root="$PWD"
     ```
 
 === "JSON-RPC"
@@ -125,7 +125,7 @@ and rejects the request if anything drifted.
 
     ```console title="Apply the rename plan"
     kast rpc --request-file=rename-plan.json \
-      --workspace-root=$(pwd)
+      --workspace-root="$PWD"
     ```
 
     Save a `raw/apply-edits` request containing the reviewed `edits`
@@ -205,12 +205,12 @@ identity survived.
 
 ```console title="Confirm the workspace still compiles"
 kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/diagnostics","params":{"filePaths":["/absolute/path/to/src/Sample.kt"]}}' \
-  --workspace-root=$(pwd)
+  --workspace-root="$PWD"
 ```
 
 ```console title="Or re-resolve the renamed symbol"
 kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/resolve","params":{"position":{"filePath":"/absolute/path/to/src/Sample.kt","offset":20}}}' \
-  --workspace-root=$(pwd)
+  --workspace-root="$PWD"
 ```
 
 If diagnostics surface an unexpected error — or resolve returns a
@@ -229,7 +229,7 @@ edit plan with `fileHashes`, you review, you apply.
 
     ```console title="Optimize imports"
     kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/optimize-imports","params":{"filePaths":["/absolute/path/to/src/Sample.kt"]}}' \
-      --workspace-root=$(pwd)
+      --workspace-root="$PWD"
     ```
 
 === "JSON-RPC"

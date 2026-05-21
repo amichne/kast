@@ -20,7 +20,7 @@ icon: lucide/layers
 This page explains the architecture: what each module owns, how a
 request flows from your terminal to the K2 engine and back, and why
 the system is shaped this way. It also covers how `kast` runs
-either on its own or piggybacks on a warm IntelliJ session, exposing
+either on its own or piggybacks on a warm IDEA session, exposing
 the same protocol surface either way.
 
 ## High-level architecture
@@ -69,9 +69,9 @@ lives.
 | Runtime mode | Where semantic state lives | Who keeps it warm | Best fit |
 |---|---|---|---|
 | Standalone | A standalone daemon process with its own analysis session and caches | `kast` workspace lifecycle | Terminals, CI, remote machines, cloud agents |
-| IntelliJ plugin | An already-open IntelliJ project, reusing the IDE's project model, PSI, and indexes | IntelliJ project lifecycle | Local tools when the IDE is already open |
+| IDEA plugin | An already-open IDEA or Android Studio project, reusing the IDE's project model, PSI, and indexes | IDE project lifecycle | Local tools when the IDE is already open |
 
-If IntelliJ is warm, external tools connect to the plugin backend
+If IDEA or Android Studio is warm, external tools connect to the plugin backend
 and inherit that state for free. If no IDE is running, the
 standalone backend exposes the same surface independently.
 
@@ -88,7 +88,7 @@ standalone backend exposes the same surface independently.
     | `kast-cli` | Command parsing, lifecycle orchestration, native entrypoint, distribution | Centralizes user-facing workflows |
     | `analysis-server` | JSON-RPC transport, dispatch, descriptor lifecycle | Isolates transport concerns from semantic logic |
     | `backend-standalone` | Headless runtime, workspace discovery, K2 session bootstrap | Concentrates stateful analysis in one runtime |
-    | `backend-intellij` | IDE-hosted runtime, plugin lifecycle, project service | Reuses IntelliJ project model when IDE is running |
+    | `backend-intellij` | IDE-hosted runtime, plugin lifecycle, project service | Reuses the IDE project model when IDEA or Android Studio is running |
     | `backend-shared` | Shared analysis helpers for both runtimes | Avoids duplicate semantic utility code |
     | `shared-testing` | Contract fixtures and fake backend infrastructure | Pins behavior consistency across implementations |
     | `build-logic` | Gradle conventions, wrapper generation, runtime-lib sync | Keeps build and packaging rules centralized |
@@ -119,8 +119,8 @@ Every step returns structured data. No string scraping. No regex
 parsing. Anywhere.
 
 In standalone mode, "Backend runtime" is the standalone daemon and
-its own analysis session. In IntelliJ mode, it's the plugin service
-inside IntelliJ — same transport, but answering from the IDE's
+its own analysis session. In IDEA mode, it's the plugin service
+inside the IDE — same transport, but answering from the IDE's
 warm project state.
 
 ## Why a daemon?
@@ -136,8 +136,8 @@ session warm.
 - **One long-lived host owns the analysis context** — caches and
   indexes stay with the workspace until the host stops
 
-In standalone mode, that host is the `kast` daemon. In IntelliJ
-mode, it's IntelliJ itself. The plugin starts the `kast` server as
+In standalone mode, that host is the `kast` daemon. In IDEA
+mode, it's the IDE itself. The plugin starts the `kast` server as
 part of the IDE lifecycle, so external tools piggyback on the IDE's
 already-open project model, indexes, and analysis session instead
 of bringing up a second warm session.
@@ -149,7 +149,7 @@ Same protocol, two operating environments.
 - **Standalone favors independence** — works without any IDE, so
   the same semantic operations run in terminals, CI jobs, remote
   machines, and cloud agents
-- **IntelliJ plugin favors reuse** — lets external tools tap into
+- **IDEA plugin favors reuse** — lets external tools tap into
   an IDE session that's already open, indexed, and ready
 
 The split keeps the contract stable for clients while letting the
@@ -216,7 +216,7 @@ automation.
 ## Next steps
 
 - [Backends](../getting-started/backends.md) — pick between the
-  standalone daemon and the IntelliJ plugin
+  standalone daemon and the IDEA plugin
 - [Limits and boundaries](behavioral-model.md) — the rules and
   limits behind `kast` results
 - [Kast vs LSP](kast-vs-lsp.md) — why `kast` exists alongside LSP

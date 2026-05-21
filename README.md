@@ -11,9 +11,10 @@ planned edit is safe to apply.
 
 - **Standalone CLI + backend** — install the `kast` CLI and run
   `kast up` to start or warm the analysis backend. Fully independent from
-  IntelliJ; works in terminals, CI, and headless agents.
-- **IntelliJ plugin-backed runtime** — runs inside IntelliJ IDEA and reuses the
-  IDE's already-open project model, indexes, and analysis session.
+  any IDE; works in terminals, CI, and headless agents.
+- **IDEA / Android Studio plugin-backed runtime** — runs inside a supported
+  JetBrains IDE and reuses the IDE's already-open project model, indexes, and
+  analysis session.
 
 Both runtime modes expose the same JSON-RPC contract, so the calling workflow
 does not change when you switch between them.
@@ -25,9 +26,18 @@ Pick the entry point you want first:
 | Runtime mode | Best when | Install |
 | --- | --- | --- |
 | **Standalone CLI + backend** | You want an independent runtime for terminal work, CI, or agents | [Install guide](https://kast.michne.com/getting-started/install/) |
-| **IntelliJ plugin-backed runtime** | IntelliJ is already open and you want to reuse its already-open project model and indexes | [Plugin install guide](https://kast.michne.com/getting-started/install/#install-the-intellij-plugin-manually) · [Latest plugin zip](https://github.com/amichne/kast/releases/latest) |
+| **IDEA / Android Studio plugin-backed runtime** | IDEA or Android Studio is already open and you want to reuse its already-open project model and indexes | [Plugin install guide](https://kast.michne.com/getting-started/install/#install-the-idea-and-android-studio-plugin-manually) · [Latest plugin zip](https://github.com/amichne/kast/releases/latest) |
 
-Install the `kast` CLI from any shell:
+Install the `kast` CLI with Homebrew when you can:
+
+```console
+brew tap amichne/kast
+brew install kast
+```
+
+Use the shell installer when Homebrew is not available, or when you want the
+interactive wizard to install the standalone backend, IDEA plugin zip, packaged
+skill, or repo-local Copilot extension in one pass:
 
 ```console
 curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh | bash
@@ -48,8 +58,8 @@ kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/resolve","params":{"position":{"
   --workspace-root=/path/to/your/workspace
 ```
 
-If IntelliJ with the plugin is already open on the project, skip `kast up` —
-the CLI connects to the IDE's backend automatically.
+If IDEA or Android Studio with the plugin is already open on the project, skip
+`kast up` — the CLI connects to the IDE's backend automatically.
 
 ## Why `kast` instead of text search?
 
@@ -66,9 +76,9 @@ own:
 ## Choose the runtime that fits your workflow
 
 Use the standalone path when you need a fully independent process or when no
-IDE is running. Use the IntelliJ plugin-backed path when IntelliJ already has
-the project open and you want `kast` to piggyback on the IDE's existing
-project model and index.
+IDE is running. Use the IDEA / Android Studio plugin-backed path when the IDE
+already has the project open and you want `kast` to piggyback on the IDE's
+existing project model and index.
 
 For the full comparison, see
 [Backends](https://kast.michne.com/getting-started/backends/).

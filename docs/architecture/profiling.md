@@ -117,8 +117,9 @@ addition to the JSONL file:
 # Start Jaeger all-in-one:
 docker run -d -p 16686:16686 -p 4317:4317 jaegertracing/all-in-one
 
-# Launch kast with OTLP export:
-KAST_OTLP_ENDPOINT=http://localhost:4317 kast daemon start
+# Launch kast with OTLP export for the current workspace:
+KAST_OTLP_ENDPOINT=http://localhost:4317 \
+  kast daemon start --workspace-root="$PWD"
 ```
 
 Open `http://localhost:16686` to browse traces with parent-child span

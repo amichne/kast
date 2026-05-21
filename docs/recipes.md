@@ -11,7 +11,7 @@ the question one step earlier: *what do I run to do the thing I
 want?*
 
 Every recipe assumes you've started a backend with
-`kast up --workspace-root=$(pwd)`. Run that from the
+`kast up --workspace-root="$PWD"`. Run that from the
 root of your Kotlin project, open the recipe that matches your
 task, and copy. Each one ends with a link to the deeper reference
 if you want the full story.
@@ -27,11 +27,11 @@ if you want the full story.
     ```console
     # 1. Resolve the symbol at the cursor (get its compiler identity)
     kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/resolve","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/App.kt","offset":42}}}' \
-      --workspace-root=$(pwd)
+      --workspace-root="$PWD"
 
     # 2. Find every reference to that same symbol
     kast rpc '{"jsonrpc":"2.0","id":2,"method":"raw/references","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/App.kt","offset":42}}}' \
-      --workspace-root=$(pwd)
+      --workspace-root="$PWD"
     ```
 
     Check `searchScope.exhaustive: true` on the response to confirm the
@@ -47,10 +47,10 @@ if you want the full story.
 
     ```console
     kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/resolve","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/App.kt","offset":42}}}' \
-      --workspace-root=$(pwd)
+      --workspace-root="$PWD"
 
     kast rpc '{"jsonrpc":"2.0","id":2,"method":"raw/call-hierarchy","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/App.kt","offset":42},"direction":"INCOMING","depth":3}}' \
-      --workspace-root=$(pwd)
+      --workspace-root="$PWD"
     ```
 
     Zero callers on something you know is called from outside?
@@ -66,10 +66,10 @@ if you want the full story.
 
     ```console
     kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/resolve","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/Repository.kt","offset":120}}}' \
-      --workspace-root=$(pwd)
+      --workspace-root="$PWD"
 
     kast rpc '{"jsonrpc":"2.0","id":2,"method":"raw/implementations","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/Repository.kt","offset":120}}}' \
-      --workspace-root=$(pwd)
+      --workspace-root="$PWD"
     ```
     [Full reference →](what-can-kast-do/understand-symbols.md)
 
@@ -81,11 +81,11 @@ if you want the full story.
 
     ```console
     kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/workspace-symbol","params":{"pattern":"OrderService"}}' \
-      --workspace-root=$(pwd)
+      --workspace-root="$PWD"
 
     # Then feed the result's filePath + startOffset into resolve
     kast rpc '{"jsonrpc":"2.0","id":2,"method":"raw/resolve","params":{"position":{"filePath":"/absolute/path/from/previous/result.kt","offset":123}}}' \
-      --workspace-root=$(pwd)
+      --workspace-root="$PWD"
     ```
 
     Default match is case-insensitive substring. Pass `--regex=true` if
@@ -102,7 +102,7 @@ if you want the full story.
 
     ```console
     kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/file-outline","params":{"filePath":"/absolute/path/to/src/main/kotlin/OrderService.kt"}}' \
-      --workspace-root=$(pwd)
+      --workspace-root="$PWD"
     ```
     [Full reference →](what-can-kast-do/understand-symbols.md)
 
@@ -118,15 +118,15 @@ if you want the full story.
     ```console
     # 1. Plan the rename — nothing touches disk yet
     kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/rename","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/App.kt","offset":42},"newName":"newSymbolName","dryRun":true}}' \
-      --workspace-root=$(pwd) > plan.json
+      --workspace-root="$PWD" > plan.json
 
     # 2. Review the returned `edits` array. When you're satisfied, apply.
     #    Create a raw/apply-edits request from the reviewed plan.
-    kast rpc --request-file=apply-edits.json --workspace-root=$(pwd)
+    kast rpc --request-file=apply-edits.json --workspace-root="$PWD"
 
     # 3. Verify by resolving the new name at the same position
     kast rpc '{"jsonrpc":"2.0","id":3,"method":"raw/resolve","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/App.kt","offset":42}}}' \
-      --workspace-root=$(pwd)
+      --workspace-root="$PWD"
     ```
     [Full reference →](what-can-kast-do/refactor-safely.md)
 
@@ -138,9 +138,9 @@ if you want the full story.
 
     ```console
     kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/optimize-imports","params":{"filePaths":["/absolute/path/to/src/main/kotlin/App.kt"]}}' \
-      --workspace-root=$(pwd) > plan.json
+      --workspace-root="$PWD" > plan.json
 
-    kast rpc --request-file=apply-edits.json --workspace-root=$(pwd)
+    kast rpc --request-file=apply-edits.json --workspace-root="$PWD"
     ```
     [Full reference →](what-can-kast-do/refactor-safely.md)
 
@@ -154,11 +154,11 @@ if you want the full story.
 
     ```console
     kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/diagnostics","params":{"filePaths":["/absolute/path/to/src/main/kotlin/App.kt"]}}' \
-      --workspace-root=$(pwd)
+      --workspace-root="$PWD"
     ```
 
     If you edited the file outside the daemon, run
-    `kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/workspace-refresh","params":{}}' --workspace-root=$(pwd)` first so diagnostics
+    `kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/workspace-refresh","params":{}}' --workspace-root="$PWD"` first so diagnostics
     don't return a stale view.
     [Full reference →](what-can-kast-do/validate-code.md)
 

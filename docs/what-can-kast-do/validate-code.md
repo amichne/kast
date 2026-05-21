@@ -26,7 +26,7 @@ before review.
 
     ```console title="Run diagnostics on one file"
     kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/diagnostics","params":{"filePaths":["/absolute/path/to/src/main/kotlin/com/shop/OrderService.kt"]}}' \
-      --workspace-root=$(pwd)
+      --workspace-root="$PWD"
     ```
 
 === "Multiple files"
@@ -35,7 +35,7 @@ before review.
 
     ```console title="Run diagnostics on multiple files"
     kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/diagnostics","params":{"filePaths":["/absolute/path/to/src/main/kotlin/com/shop/OrderService.kt","/absolute/path/to/src/main/kotlin/com/shop/PaymentGateway.kt"]}}' \
-      --workspace-root=$(pwd)
+      --workspace-root="$PWD"
     ```
 
 The response is a `diagnostics` array. Each entry carries the file,
@@ -77,7 +77,7 @@ next to your normal Kotlin build. Bring up a daemon, diff for
 changed `.kt` files, run diagnostics, fail on errors.
 
 ```bash title="Run diagnostics in CI"
-kast up --workspace-root=$(pwd)
+kast up --workspace-root="$PWD"
 
 python3 - <<'PY'
 import json
@@ -100,7 +100,7 @@ with open("diagnostics-request.json", "w") as handle:
 PY
 
 kast rpc --request-file=diagnostics-request.json \
-  --workspace-root=$(pwd) \
+  --workspace-root="$PWD" \
   > diagnostics.json
 
 jq -e '[.diagnostics[] | select(.severity == "ERROR")] | length == 0' diagnostics.json
@@ -120,7 +120,7 @@ what `kast` can do about it.
 
     ```console title="Request code actions at a position"
     kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/code-actions","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/com/shop/OrderService.kt","offset":312}}}' \
-      --workspace-root=$(pwd)
+      --workspace-root="$PWD"
     ```
 
 === "JSON-RPC request"
@@ -170,7 +170,7 @@ a position, get back a candidate list.
 
 ```console title="Query completions at a position"
 kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/completions","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/com/shop/OrderService.kt","offset":312},"maxResults":50}}' \
-  --workspace-root=$(pwd)
+  --workspace-root="$PWD"
 ```
 
 `maxResults` caps the list; `kindFilter` narrows to specific
