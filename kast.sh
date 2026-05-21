@@ -405,7 +405,7 @@ Builds selected Kast components and publishes artifacts to dist/.
 
 Targets (positional, repeatable):
   cli          CLI binary + JVM wrapper  -> dist/cli/   dist/cli.zip
-  plugin       IntelliJ plugin zip       -> dist/plugin.zip
+  plugin       IDEA plugin zip           -> dist/plugin.zip
   backend      Standalone server         -> dist/backend/  dist/backend.zip
 
 Options:
@@ -972,7 +972,7 @@ _install_shell_completion() {
 _install_intellij_plugin() {
   local release_repo="$1" release_tag="$2" install_root="$3" local_archive="${4:-}"
 
-  log_section "Install IntelliJ plugin"
+  log_section "Install IDEA / Android Studio plugin"
   local plugin_dir="${install_root}/plugins"
   local plugin_name="kast-intellij-${release_tag}.zip"
   local plugin_path="${plugin_dir}/${plugin_name}"
@@ -982,16 +982,16 @@ _install_intellij_plugin() {
     log_step "Copying local plugin archive ${local_archive}"
     cp "$local_archive" "$plugin_path"
   elif [[ "$release_tag" == "local" ]]; then
-    log_note "Local install: no plugin archive available; skipping IntelliJ plugin"
+    log_note "Local install: no plugin archive available; skipping IDEA plugin"
     return 1
   else
     local plugin_url="https://github.com/${release_repo}/releases/download/${release_tag}/${plugin_name}"
-    log_step "Downloading IntelliJ plugin ${plugin_name}"
+    log_step "Downloading IDEA plugin ${plugin_name}"
     local download_attempt
     for download_attempt in 1 2 3; do
       if _install_download_file "$plugin_url" "$plugin_path"; then break; fi
       if [[ "$download_attempt" -eq 3 ]]; then
-        log_note "Failed to download IntelliJ plugin after 3 attempts; skipping"
+        log_note "Failed to download IDEA plugin after 3 attempts; skipping"
         return 1
       fi
       log_note "Download attempt ${download_attempt} failed; retrying in 5 seconds"
@@ -999,8 +999,8 @@ _install_intellij_plugin() {
     done
   fi
 
-  log_success "IntelliJ plugin saved to ${plugin_path}"
-  log_note "Install from IntelliJ: Settings -> Plugins -> gear icon -> Install Plugin from Disk"
+  log_success "IDEA plugin zip saved to ${plugin_path}"
+  log_note "Install from IDEA / Android Studio: Settings -> Plugins -> gear icon -> Install Plugin from Disk"
   log_note "Select: ${plugin_path}"
   return 0
 }
@@ -1150,7 +1150,7 @@ _install_detect_env() {
     _INSTALL_ENV_EXISTING_VERSION="$("$existing_kast" --version 2>/dev/null | head -1 || echo "unknown")"
   fi
 
-  # Running IntelliJ instances (macOS only)
+  # Running IDEA-compatible IDE instances (macOS only)
   [[ "$(uname -s)" != "Darwin" ]] && return
   local pid app_path
   while IFS=' ' read -r pid app_path; do
@@ -1161,16 +1161,14 @@ _install_detect_env() {
     _INSTALL_ENV_INTELLIJ_LABELS+=("$label")
   done < <(
     ps aux \
-      | grep -E '/Contents/MacOS/idea$' \
+      | grep -E '/Contents/MacOS/(idea|studio)$' \
       | grep -v grep \
       | awk '{
           pid = $2
-          for (i = 11; i <= NF; i++) {
-            if ($i ~ /\.app\/Contents\/MacOS\/idea$/) {
-              sub(/\/Contents\/MacOS\/idea$/, "", $i)
-              print pid " " $i
-              break
-            }
+          if (match($0, /\/.*\.app\/Contents\/MacOS\/(idea|studio)$/)) {
+            app = substr($0, RSTART, RLENGTH)
+            sub(/\/Contents\/MacOS\/(idea|studio)$/, "", app)
+            print pid " " app
           }
         }'
   )
@@ -1262,10 +1260,10 @@ _install_mode_select() {
 
   log_section "Choose install mode"
   if [[ "$intellij_count" -gt 0 ]]; then
-    log_step "Detected ${intellij_count} running IntelliJ instance(s)"
+    log_step "Detected ${intellij_count} running IDEA-compatible IDE instance(s)"
     printf '\n' >&2
-    _install_choice_line "minimal" "CLI + IntelliJ plugin (recommended — IntelliJ detected)" "1;32" "recommended"
-    _install_choice_line "full" "CLI + standalone JVM backend (no IntelliJ dependency)" "1;36"
+    _install_choice_line "minimal" "CLI + IDEA plugin (recommended — IDE detected)" "1;32" "recommended"
+    _install_choice_line "full" "CLI + standalone JVM backend (no IDE dependency)" "1;36"
   else
     _install_choice_line "minimal" "CLI only (lightweight; add plugin or backend separately)" "1;32" "quick start"
     _install_choice_line "full" "CLI + standalone JVM backend (includes analysis engine)" "1;36"
@@ -1277,9 +1275,9 @@ _install_mode_select() {
 
   if [[ "$_INSTALL_MODE" == "minimal" ]] && [[ "$intellij_count" -gt 0 ]]; then
     printf '\n' >&2
-    log_step "How would you like to install the IntelliJ plugin?"
+    log_step "How would you like to install the IDEA plugin?"
     printf '\n' >&2
-    _install_choice_line "push" "Push directly to a running instance (restart IntelliJ after)" "1;32" "recommended"
+    _install_choice_line "push" "Push directly to a running IDE instance (restart the IDE after)" "1;32" "recommended"
     _install_choice_line "zip" "Download zip for manual install from disk" "1;36"
     _install_choice_line "skip" "Skip plugin install" "33"
     printf '\n' >&2
@@ -1287,7 +1285,7 @@ _install_mode_select() {
     _INSTALL_INTELLIJ_ACTION="${action_choice:-push}"
   elif [[ "$_INSTALL_MODE" == "minimal" ]]; then
     printf '\n' >&2
-    if prompt_yes_no "Download IntelliJ plugin zip?" "yes"; then
+    if prompt_yes_no "Download IDEA plugin zip?" "yes"; then
       _INSTALL_INTELLIJ_ACTION="zip"
     else
       _INSTALL_INTELLIJ_ACTION="skip"
@@ -1435,7 +1433,7 @@ _install_pick_intellij_instance() {
   [[ "$count" -gt 0 ]] || return 1
   if [[ "$count" -eq 1 ]]; then printf '0'; return 0; fi
 
-  local selection; selection="$(_fzf_select "Select IntelliJ instance" "${_INSTALL_ENV_INTELLIJ_LABELS[@]}")"
+  local selection; selection="$(_fzf_select "Select IDE instance" "${_INSTALL_ENV_INTELLIJ_LABELS[@]}")"
   [[ -n "$selection" ]] || return 1
   local i
   for i in "${!_INSTALL_ENV_INTELLIJ_LABELS[@]}"; do
@@ -1447,9 +1445,9 @@ _install_pick_intellij_instance() {
 _install_push_plugin_to_intellij() {
   local release_repo="$1" release_tag="$2" local_archive="${3:-}"
   local count="${#_INSTALL_ENV_INTELLIJ_PIDS[@]}"
-  [[ "$count" -gt 0 ]] || { log_note "No running IntelliJ instances to push to"; return 1; }
+  [[ "$count" -gt 0 ]] || { log_note "No running IDEA-compatible IDE instances to push to"; return 1; }
 
-  log_section "Push plugin to IntelliJ"
+  log_section "Push plugin to IDEA / Android Studio"
   local idx; idx="$(_install_pick_intellij_instance)" || return 1
   local selected_pid="${_INSTALL_ENV_INTELLIJ_PIDS[$idx]}"
   local selected_app="${_INSTALL_ENV_INTELLIJ_APPS[$idx]}"
@@ -1490,7 +1488,7 @@ _install_push_plugin_to_intellij() {
   done
   unzip -o -q "$plugin_tmp" -d "$plugins_dir"
   log_success "Plugin pushed to ${plugins_dir}"
-  log_note "Restart IntelliJ IDEA to activate the plugin"
+  log_note "Restart the IDE to activate the plugin"
 }
 
 _install_skill_phase() {
@@ -1610,7 +1608,7 @@ _install_summary_phase() {
   printf '  %s  %s\n' "$(colorize '1;32' 'v')" "CLI binary:  ${bin_dir}/kast" >&2
   printf '  %s  %s\n' "$(colorize '1;32' 'v')" "Config:      ${config_file}" >&2
   if [[ "$intellij_action" == "push" || "$intellij_action" == "zip" ]]; then
-    printf '  %s  %s\n' "$(colorize '1;32' 'v')" "IntelliJ plugin installed" >&2
+    printf '  %s  %s\n' "$(colorize '1;32' 'v')" "IDEA plugin installed" >&2
   fi
   if [[ "$install_standalone" == "true" ]]; then
     printf '  %s  %s\n' "$(colorize '1;32' 'v')" "Standalone backend: ${install_root}/backends/current" >&2
@@ -1621,9 +1619,9 @@ _install_summary_phase() {
   printf '  %s\n' "  kast --help" >&2
   printf '  %s\n' "  cd /your/kotlin/project && kast up" >&2
   if [[ "$intellij_action" == "push" ]]; then
-    printf '  %s\n' "  Restart IntelliJ IDEA to activate the plugin" >&2
+    printf '  %s\n' "  Restart the IDE to activate the plugin" >&2
   elif [[ "$intellij_action" == "zip" ]]; then
-    printf '  %s\n' "  IntelliJ: Settings → Plugins → ⚙ → Install from Disk" >&2
+    printf '  %s\n' "  IDEA / Android Studio: Settings → Plugins → ⚙ → Install from Disk" >&2
     printf '  %s\n' "  Select: ${install_root}/plugins/" >&2
   elif [[ "$install_standalone" == "true" ]]; then
     printf '  %s\n' "  kast up --workspace-root=/absolute/path/to/workspace" >&2
@@ -1655,7 +1653,7 @@ Install the Kast CLI and optional components.
 
 Options:
   --mode=minimal|full|auto  Drive the install wizard path (default: interactive)
-                              minimal - CLI + optional IntelliJ plugin
+                              minimal - CLI + optional IDEA plugin
                               full    - CLI + standalone JVM backend
                               auto    - detect environment and recommend
   --components=<list>       Expert override: comma-separated cli,intellij,backend,all
@@ -1709,7 +1707,7 @@ USAGE
   [[ -n "$_INSTALL_ENV_EXISTING_VERSION" ]] && log_step "Existing kast: ${_INSTALL_ENV_EXISTING_VERSION}"
   [[ "$_INSTALL_ENV_HAS_JAVA" == "true" ]]  && log_step "Java detected"
   [[ "${#_INSTALL_ENV_INTELLIJ_PIDS[@]}" -gt 0 ]] && \
-    log_step "IntelliJ: ${#_INSTALL_ENV_INTELLIJ_PIDS[@]} instance(s) running"
+    log_step "IDEA-compatible IDEs: ${#_INSTALL_ENV_INTELLIJ_PIDS[@]} instance(s) running"
 
   # Resolve component set: expert (--components) vs wizard
   local install_cli="false" install_intellij="false" install_standalone="false"
@@ -1901,7 +1899,7 @@ USAGE
     _install_shell_completion "$release_dir" "$install_root" "$shell_name"
   fi
 
-  # Phase 6: IntelliJ plugin
+  # Phase 6: IDEA plugin
   if [[ "$install_intellij" == "true" ]]; then
     local resolved_tag; resolved_tag="$(_install_resolve_release_tag "$release_repo" "${release_tag:-}")"
     if [[ "$wizard_mode" == "true" && "$_INSTALL_INTELLIJ_ACTION" == "push" ]]; then
@@ -1960,7 +1958,7 @@ USAGE
         log_note "Export PATH=\"${bin_dir}:\$PATH\" then run: kast --help"
       fi
     fi
-    [[ "$install_intellij" == "true" ]]  && log_step "IntelliJ plugin: ${install_root}/plugins/"
+    [[ "$install_intellij" == "true" ]]  && log_step "IDEA plugin: ${install_root}/plugins/"
     [[ "$install_standalone" == "true" ]] && log_success "Standalone backend: ${install_root}/backends/current/"
   fi
 
@@ -1979,11 +1977,15 @@ Usage: ./kast.sh <subcommand> [options]
 Subcommands:
   build    Build portable distribution artifacts  ->  dist/
   release  Prepare a release asset from the portable distribution zip
-  install  Install Kast CLI from GitHub releases
+  install  Install Kast CLI and optional components
 
 Run ./kast.sh <subcommand> --help for subcommand-specific options.
 
-Curl pipe (auto-invokes install):
+Recommended local CLI install:
+  brew tap amichne/kast
+  brew install kast
+
+Shell installer (auto-invokes install):
   curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh | bash
   /bin/bash -c "$(curl -fsSL .../kast.sh)" -- install --components=all
 USAGE

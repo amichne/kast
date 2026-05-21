@@ -11,8 +11,8 @@ By the end of this page you'll have asked the daemon two questions —
 back, with proof the search finished.
 
 The walkthrough uses the standalone backend because it works anywhere:
-your terminal, a CI runner, an agent loop. If IntelliJ is already open
-on the project with the plugin installed, swap `--backend-name=standalone`
+your terminal, a CI runner, an agent loop. If IDEA or Android Studio is already
+open on the project with the plugin installed, swap `--backend-name=standalone`
 for `--backend-name=intellij` and skip the start/stop steps. The plugin
 reuses the IDE's analysis session — no second daemon to babysit.
 

@@ -21,9 +21,9 @@ over Unix domain sockets:
 - **Standalone** — GraalVM native-image launcher with JVM daemon fallback.
   Ships as a self-contained zip produced by `./kast.sh build cli`. Fast startup
   (~50 ms native) with no IDE dependency.
-- **IntelliJ plugin** — Delegates to the open IDEA instance for analysis.
+- **IDEA plugin** — Delegates to the open IDEA or Android Studio instance for analysis.
   Shares the IDE's already-warm PSI and K2 compiler, so results are
-  semantically identical to what IntelliJ shows. Installed as a standard
+  semantically identical to what the IDE shows. Installed as a standard
   plugin zip.
 
 ### Analysis surface
@@ -91,7 +91,7 @@ when to paginate or bound their queries:
 - GitHub Actions release workflow triggered by `workflow_dispatch` with
   `release_type: major | minor | patch | beta`. The workflow auto-increments
   the semver tag, builds native launchers on Linux (x64) and macOS (ARM64),
-  packages the IntelliJ plugin and headless agent bundle, uploads aggregate
+  packages the IDEA plugin and headless agent bundle, uploads aggregate
   SHA-256 checksums, and publishes a GitHub release with combined build
   provenance. The workflow verifies every shipped asset against `SHA256SUMS`
   and `build-provenance.json` before publication. Beta tags publish as GitHub
@@ -101,7 +101,7 @@ when to paginate or bound their queries:
   stable release. The helper checks GitHub CLI auth, release workflow
   visibility, the `HOMEBREW_TAP_TOKEN` repository secret, and Homebrew tap
   visibility before the workflow can create a tag or release.
-- Upstream sync workflow keeps the standalone backend's bundled IntelliJ
+- Upstream sync workflow keeps the standalone backend's bundled IDE platform
   distribution current.
 - Copilot setup steps pre-warm Gradle caches and Java 21 for GitHub Copilot
   coding agents.

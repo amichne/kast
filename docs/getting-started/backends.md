@@ -1,6 +1,6 @@
 ---
 title: Backends
-description: Understand standalone vs IntelliJ plugin — when to use each,
+description: Understand standalone vs IDEA plugin — when to use each,
   how they compare, and how to choose.
 icon: lucide/server
 ---
@@ -15,7 +15,7 @@ your scripts and prompts don't change when you switch.
 | Runtime           | What runs                            | Best for                              | How it starts                        |
 |-------------------|--------------------------------------|---------------------------------------|--------------------------------------|
 | Standalone        | `kast` CLI plus a JVM daemon         | Terminal, CI, agents, no-IDE machines | `kast up`                            |
-| IntelliJ plugin   | A `kast` server inside an open IDE   | Local work with IntelliJ already open | Boots when IntelliJ opens the project |
+| IDEA plugin       | A `kast` server inside an open IDE   | Local work with IDEA or Android Studio already open | Boots when the IDE opens the project |
 
 ## Standalone backend
 
@@ -28,7 +28,7 @@ control directly.
 Reach for it when:
 
 - You're in a terminal, a CI runner, or an agent loop
-- IntelliJ isn't installed on this machine
+- IDEA or Android Studio isn't installed on this machine
 - You want to control the lifecycle yourself
 
 Install:
@@ -77,7 +77,7 @@ bootstrap step.
     `src/test/java`) and scans for directories with `.kt`, `.kts`, or
     `.java` files. The Gradle path matters most for multi-module builds.
 
-## IntelliJ / Android Studio plugin backend
+## IDEA / Android Studio plugin backend
 
 The same plugin ZIP runs inside a running IntelliJ IDEA 2025.3 or Android
 Studio 2025.3.1+ instance. It reuses the IDE's K2 analysis session, project
@@ -85,16 +85,16 @@ model, and indexes — no second JVM, no second indexing pass.
 
 Reach for it when:
 
-- IntelliJ IDEA or Android Studio is already open on the project
+- IDEA or Android Studio is already open on the project
 - You'd rather not run a second analysis JVM
 - You want the IDE's richer project model
 
 How a session unfolds:
 
-1. You open the project in IntelliJ IDEA or Android Studio.
+1. You open the project in IDEA or Android Studio.
 2. The plugin starts a `kast` server on a Unix domain socket.
 3. It hydrates a configured remote source index when one is available.
-4. It prepopulates the local SQLite source index from IntelliJ PSI files.
+4. It prepopulates the local SQLite source index from IDE PSI files.
 5. It indexes resolved references while the IDE is in smart mode.
 6. It drops a descriptor file so other tools can find the socket.
 7. External tools connect and speak the same JSON-RPC.
@@ -134,7 +134,7 @@ talking to.
 
 Without `--backend-name`, the CLI uses these rules in order:
 
-1. A servable IntelliJ backend for the workspace? Use it.
+1. A servable IDEA backend for the workspace? Use it.
 2. A servable standalone backend for the workspace? Use it.
 3. Neither? Error out — no backend available.
 
@@ -143,7 +143,7 @@ you. It boots or reuses the standalone daemon and, by default, blocks
 until indexing finishes. Pass `--accept-indexing=true` to return as soon
 as the daemon is servable. Read commands like `resolve` and `references`
 never start a backend implicitly — they fail fast. So: run
-`up` first, or open the project in IntelliJ with the
+`up` first, or open the project in IDEA or Android Studio with the
 plugin installed.
 
 `kast status` reports backend state and helps you debug
@@ -152,10 +152,12 @@ connection issues.
 ## Running both
 
 Nothing stops you from installing both. It's the most practical setup —
-standalone for headless, IntelliJ for when the IDE is already open.
+standalone for headless, IDEA or Android Studio for when the IDE is already open.
 
 When both are running, pin a command with `--backend-name=standalone` or
-`--backend-name=intellij` to be explicit.
+`--backend-name=intellij` to be explicit. The `intellij` backend name is the
+stable machine identifier for the IDE-hosted runtime, even when the human-facing
+docs call it the IDEA plugin.
 
 ## Next steps
 

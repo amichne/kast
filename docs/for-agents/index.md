@@ -33,8 +33,8 @@ daemon. The rest of this page is what your agent picks up from that.
 
 The agent talks to either runtime over the same JSON-RPC. Standalone
 runs as an independent daemon — terminals, CI, remote machines, cloud
-agents. The IntelliJ plugin exposes the same protocol from inside an
-open IntelliJ project, reusing the IDE's project model, indexes, and
+agents. The IDEA plugin exposes the same protocol from inside an
+open IDE project, reusing the IDE's project model, indexes, and
 analysis session.
 
 ## Local and hosted agent setup
@@ -45,7 +45,7 @@ release artifacts before the session starts.
 
 | Agent environment | Install path | Runtime path | What to hand the agent |
 |-------------------|--------------|--------------|-------------------------|
-| Local developer agent | `kast install skill` and optional `kast install copilot-extension` | Existing CLI plus standalone or IntelliJ backend | The packaged skill and native `kast_*` tools |
+| Local developer agent | `kast install skill` and optional `kast install copilot-extension` | Existing CLI plus standalone or IDEA backend | The packaged skill and native `kast_*` tools |
 | CI review agent | `./kast.sh install --non-interactive` or release archives | Standalone backend warmed in the job | `kast rpc` commands and structured JSON outputs |
 | Cloud/headless coding agent | `scripts/headless-agent-install.sh` or the headless agent bundle | Contained CLI and standalone backend under `KAST_AGENT_INSTALL_ROOT` | Source `kast-env.sh`, then use the packaged skill and Copilot extension |
 
@@ -97,11 +97,11 @@ lives and who keeps it warm.
 | Runtime         | Where semantic state lives                       | Best fit                                              |
 |-----------------|--------------------------------------------------|-------------------------------------------------------|
 | Standalone      | A long-lived `kast` daemon outside any IDE       | Terminals, CI, remote machines, cloud agents          |
-| IntelliJ plugin | Inside a running IntelliJ project                | Local agents when the IDE is already open and warm    |
+| IDEA plugin     | Inside a running IDEA or Android Studio project  | Local agents when the IDE is already open and warm    |
 
-If IntelliJ is open, agents can connect to the plugin and ride the IDE's
-warmth. If not, the standalone backend exposes the same surface on its
-own.
+If IDEA or Android Studio is open, agents can connect to the plugin and ride
+the IDE's warmth. If not, the standalone backend exposes the same surface on
+its own.
 
 ## What your agent can actually do
 

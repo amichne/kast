@@ -1,6 +1,6 @@
 ---
 title: Install
-description: Install the kast CLI, the standalone backend, the IntelliJ plugin, or any combination.
+description: Install the kast CLI, the standalone backend, the IDEA plugin, or any combination.
 icon: lucide/download
 ---
 
@@ -13,11 +13,33 @@ start asking questions.
 
 ## Prerequisites
 
-- **Java 21 or newer** on your `PATH` or `JAVA_HOME`. The standalone
-  backend is a JVM process; without Java it won't start.
-- **macOS, Linux, or Windows.** The installer covers all three.
+- **Java 21 or newer** on your `PATH` or `JAVA_HOME`. Homebrew installs
+  `openjdk@21`; the standalone backend is a JVM process and won't start
+  without Java.
+- **macOS, Linux, or Windows.** Homebrew is the preferred local CLI path on
+  supported platforms; the shell installer covers the rest.
 
-## One-line install
+## Homebrew install
+
+Homebrew is the default local developer path when your platform is supported by
+the `amichne/kast` tap. It installs the stable CLI package and pulls
+`openjdk@21` as the Java runtime dependency.
+
+```console title="Install kast with Homebrew"
+brew tap amichne/kast
+brew install kast
+```
+
+Use Homebrew for ordinary terminal use. Use the shell installer when you need
+the interactive wizard, a standalone backend install from GitHub release
+assets, the IDEA plugin zip, packaged Copilot surfaces, local `dist/`
+artifacts, or a non-Homebrew machine.
+
+## Shell installer
+
+The shell installer is still required for portable and full-stack setup flows:
+Windows, non-Homebrew machines, local `dist/` artifacts, full standalone
+backend installs, plugin zip downloads, and contained CI or agent images.
 
 Run from any directory. The wizard handles the rest.
 
@@ -32,41 +54,26 @@ Or piped:
 curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh | bash
 ```
 
-The wizard sniffs your environment (running IntelliJ, existing tools,
+The wizard sniffs your environment (running IDEA-compatible IDEs, existing tools,
 Java version), lets you pick an install mode, writes
 `$HOME/.config/kast/config.toml`, installs managed files under
 `$HOME/.kast`, records the install in `~/.kast/.manifest.json`, and can
 install the packaged Copilot surfaces you use next.
 
-## Homebrew install
-
-Homebrew installs the stable CLI package from the `amichne/kast` tap and
-pulls `openjdk@21` as the Java runtime dependency. This path is the
-shortest local developer install on supported Homebrew platforms.
-
-```console title="Install kast with Homebrew"
-brew tap amichne/kast
-brew install kast
-```
-
-Use the shell installer when you want the interactive wizard, packaged
-Copilot surfaces, or a full standalone backend install from GitHub
-release assets in one step.
-
 ??? info "What the wizard does, step by step"
 
     Most people answer the prompts and move on. If you want the receipts:
 
-    1. **Detect.** Scans for running IntelliJ instances, checks for
+    1. **Detect.** Scans for running IDEA and Android Studio instances, checks for
        Java and `fzf`.
     2. **Choose mode.** `minimal` (CLI plus optional plugin) or `full`
-       (CLI plus standalone backend). If IntelliJ is running, the wizard
+       (CLI plus standalone backend). If a supported IDE is running, the wizard
        offers to push the plugin straight in.
     3. **Configure.** Writes `$HOME/.config/kast/config.toml` with the
        install paths, the CLI binary path, and backend runtime paths.
     4. **Install the CLI.** Downloads the native launcher.
     5. **Shell completions.** Bash or Zsh, your call.
-    6. **IntelliJ plugin.** Push to the running IDE, or download the zip
+    6. **IDEA plugin.** Push to the running IDE, or download the zip
        for manual install.
     7. **Copilot skill.** Install globally
        (`~/.kast/lib/skills/kast`), per-repo, or both. Uses `fzf` if
@@ -84,7 +91,7 @@ explicitly.
 
 | What you want                              | Mode                            | How the backend starts                            |
 |--------------------------------------------|---------------------------------|---------------------------------------------------|
-| IntelliJ already open on the project       | `minimal`                       | Plugin starts with the IDE                        |
+| IDEA or Android Studio already open on the project | `minimal`              | Plugin starts with the IDE                        |
 | Terminal, CI, or agent work                | `full`                          | `kast up --workspace-root="$PWD"`                 |
 | Both                                       | `full` + plugin install         | Pin per session with `--backend-name`             |
 
@@ -97,7 +104,7 @@ path that matches the machine.
 | Environment | Install path | What gets installed | Follow-up command |
 |-------------|--------------|---------------------|-------------------|
 | Local developer using a terminal | Homebrew or `./kast.sh install --mode=full` | CLI plus standalone backend when using the full installer | `kast up --workspace-root="$PWD"` |
-| Local developer using IntelliJ or Android Studio | `./kast.sh install --mode=minimal` or the plugin zip | CLI plus optional plugin, or plugin only | Open the project in the IDE |
+| Local developer using IDEA or Android Studio | `./kast.sh install --mode=minimal` or the plugin zip | CLI plus optional plugin, or plugin only | Open the project in the IDE |
 | CI job that only gates a workspace | `./kast.sh install --non-interactive` or release archives | CLI only unless archives include backend components | Start or warm standalone before `kast rpc` |
 | Cloud or headless coding agent | `scripts/headless-agent-install.sh` or a headless agent bundle | CLI, standalone backend, packaged skill, and repo-local Copilot extension | `source "$KAST_AGENT_INSTALL_ROOT/kast-env.sh"` |
 
@@ -114,8 +121,8 @@ agent.
     ./kast.sh install --mode=minimal
     ```
 
-    Installs the `kast` CLI. The wizard also offers the IntelliJ plugin
-    (push to a running IDE, or download the zip). Pick this if IntelliJ
+    Installs the `kast` CLI. The wizard also offers the IDEA plugin
+    (push to a running IDE, or download the zip). Pick this if the IDE
     is your primary backend.
 
 === "Full"
@@ -251,7 +258,7 @@ digests.
     - `$HOME/.kast/releases` and `$HOME/.kast/current` — installed CLI
       releases and the active symlink
     - `$HOME/.kast/backends` and `$HOME/.kast/plugins` — standalone
-      backend bits and IntelliJ plugin zips
+      backend bits and IDEA plugin zips
     - `$HOME/.kast/lib/skills` — global packaged skills
     - `$HOME/.kast/workspaces` — per-workspace metadata and caches
     - `$HOME/.kast/cache` and `$HOME/.kast/logs` — daemon caches and logs
@@ -357,10 +364,10 @@ When you run `./kast.sh install` from a Git repository, the installer offers
 this step for the current repo. Pass `--yes` to auto-install it, or
 `--skip-copilot-extension` to skip it.
 
-### Install from IntelliJ or Android Studio
+### Install Copilot extension from IDEA or Android Studio
 
-The IntelliJ plugin exposes the same install and uninstall flow from the
-IDE. The action calls the CLI path from `[cli] binaryPath` in
+The IDEA / Android Studio plugin exposes the same install and uninstall flow
+from the IDE. The action calls the CLI path from `[cli] binaryPath` in
 `config.toml`; it doesn't search `PATH`.
 
 Before using the action, confirm the configured binary exists and is
@@ -373,23 +380,26 @@ binaryPath = "/Users/alex/.kast/bin/kast"
 
 Then use the IDE menu:
 
-1. Open the project in IntelliJ IDEA or Android Studio.
+1. Open the project in IDEA or Android Studio.
 2. Choose **Tools → Kast → Install Copilot Extension**.
 3. To remove managed files later, choose
    **Tools → Kast → Uninstall Copilot Extension**.
 
-## Install the IntelliJ plugin manually
+## Install the IDEA and Android Studio plugin manually
 
-Skip the wizard if you'd rather install from disk:
+Use the shell installer first when a supported IDE is already running on macOS;
+it can push the plugin archive directly into the selected IDE's plugin
+directory and then asks you to restart the IDE. Skip the wizard if you'd rather
+install from disk:
 
 1. Download `kast-intellij-<version>.zip` from the
    [latest release](https://github.com/amichne/kast/releases/latest).
-2. In IntelliJ: **Settings → Plugins → ⚙️ → Install Plugin from Disk** →
+2. In IDEA or Android Studio: **Settings → Plugins → ⚙️ → Install Plugin from Disk** →
    pick the zip.
-3. Restart IntelliJ when prompted.
+3. Restart the IDE when prompted.
 
 !!! note
-    The IntelliJ plugin doesn't need the standalone CLI. It reuses the
+    The IDEA / Android Studio plugin doesn't need the standalone CLI. It reuses the
     IDE's K2 analysis session, project model, and indexes. Install the
     CLI separately if you also want a terminal entry point.
 
@@ -423,4 +433,4 @@ You should see the grouped help page. If not, the binary isn't on your
 ## Next steps
 
 - [Quickstart](quickstart.md) — start a backend, run your first query
-- [Backends](backends.md) — standalone vs IntelliJ, when each one wins
+- [Backends](backends.md) — standalone vs IDEA, when each one wins

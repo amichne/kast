@@ -56,4 +56,39 @@ actual_args="$(<"$args_file")"
 [[ "$actual_args" == *"--header=enter = select · ctrl-c = cancel"* ]] || die "expected helpful selector header, got '${actual_args}'"
 [[ "$actual_args" == *"--color=prompt:blue,pointer:green,info:blue,header:yellow,hl:cyan,hl+:cyan,border:blue"* ]] || die "expected colorized fzf styling, got '${actual_args}'"
 
+test_detects_idea_and_android_studio_processes() {
+  _INSTALL_ENV_HAS_JAVA="false"
+  _INSTALL_ENV_HAS_FZF="false"
+  _INSTALL_ENV_EXISTING_VERSION=""
+  _INSTALL_ENV_INTELLIJ_PIDS=()
+  _INSTALL_ENV_INTELLIJ_APPS=()
+  _INSTALL_ENV_INTELLIJ_LABELS=()
+
+  uname() {
+    printf '%s\n' "Darwin"
+  }
+
+  command() {
+    return 1
+  }
+
+  ps() {
+    cat <<'PS'
+user 100 0.0 0.0 0 0 ?? S 0:00 /Applications/IntelliJ IDEA.app/Contents/MacOS/idea
+user 101 0.0 0.0 0 0 ?? S 0:00 /Applications/Android Studio.app/Contents/MacOS/studio
+PS
+  }
+
+  _install_detect_env
+
+  [[ "${#_INSTALL_ENV_INTELLIJ_PIDS[@]}" == "2" ]] \
+    || die "expected IDEA and Android Studio processes to be detected, got ${#_INSTALL_ENV_INTELLIJ_PIDS[@]}"
+  [[ "${_INSTALL_ENV_INTELLIJ_APPS[0]}" == "/Applications/IntelliJ IDEA.app" ]] \
+    || die "unexpected IDEA app path: ${_INSTALL_ENV_INTELLIJ_APPS[0]}"
+  [[ "${_INSTALL_ENV_INTELLIJ_APPS[1]}" == "/Applications/Android Studio.app" ]] \
+    || die "unexpected Android Studio app path: ${_INSTALL_ENV_INTELLIJ_APPS[1]}"
+}
+
+test_detects_idea_and_android_studio_processes
+
 printf '%s\n' "Installer selector test passed"

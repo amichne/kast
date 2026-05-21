@@ -169,6 +169,6 @@ kast rpc '{"jsonrpc":"2.0","id":1,"method":"health"}' \
 ## Next steps
 
 - [Backends](../getting-started/backends.md) — when to pick
-  standalone vs IntelliJ
+  standalone vs IDEA
 - [Troubleshooting](../troubleshooting.md) — daemon won't start,
   stuck indexing, stale results after edits

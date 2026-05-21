@@ -137,7 +137,7 @@ jobs:
           --tests io.github.amichne.kast.server.AnalysisServerSocketTest
 
   test-intellij-plugin:
-    name: IntelliJ plugin
+    name: IDEA plugin
     runs-on: ubuntu-latest
     needs: workflow-contracts
     steps:
@@ -157,7 +157,7 @@ jobs:
             ~/.cache/pluginVerifier/ides
           key: idea-dist-${{ hashFiles('gradle/libs.versions.toml') }}
 
-      - name: Test and verify IntelliJ plugin
+      - name: Test and verify IDEA plugin
         run: >
           ./gradlew
           :backend-intellij:test
@@ -167,7 +167,7 @@ jobs:
           :backend-intellij:verifyPluginXmlPresent
           :backend-intellij:verifyPlugin
 
-      - name: Upload IntelliJ plugin artifact
+      - name: Upload IDEA plugin artifact
         uses: actions/upload-artifact@v6
         with:
           name: kast-intellij-plugin
@@ -175,7 +175,7 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-      - name: Run IntelliJ performance baselines
+      - name: Run IDEA plugin performance baselines
         run: ./gradlew :backend-intellij:test -PincludeTags=performance
 
   smoke-kast-cli:

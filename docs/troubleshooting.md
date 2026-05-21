@@ -68,7 +68,7 @@ that matches what you're seeing.
     - If the binary lives somewhere else, set `[cli] binaryPath` in
       `$HOME/.config/kast/config.toml` to the executable path.
 
-??? question "IntelliJ can't install the Copilot extension"
+??? question "IDEA or Android Studio can't install the Copilot extension"
 
     **Symptoms:** **Tools → Kast → Install Copilot Extension** fails with a
     message about `config.toml`, `cli.binaryPath`, or a non-executable CLI.
