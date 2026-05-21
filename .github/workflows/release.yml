@@ -528,3 +528,36 @@ jobs:
 
           ---
           **Build provenance:** [CI Run #${{ github.run_number }}]($run_url)"
+
+      - name: Generate and upload SHA256SUMS
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ needs.prepare-release.outputs.release_tag }}"
+          mkdir -p release-assets
+          gh release download "$tag" --dir release-assets --pattern '*.zip'
+          (cd release-assets && sha256sum *.zip) > SHA256SUMS
+          gh release upload "$tag" SHA256SUMS --clobber
+
+      - name: Update Homebrew tap
+        env:
+          GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ needs.prepare-release.outputs.release_tag }}"
+          linux_asset="kast-${tag}-linux-x64.zip"
+          macos_asset="kast-${tag}-macos-arm64.zip"
+          sha_linux="$(awk -v name="$linux_asset" '$2 == name { print $1 }' SHA256SUMS)"
+          sha_macos="$(awk -v name="$macos_asset" '$2 == name { print $1 }' SHA256SUMS)"
+
+          [[ -n "$sha_linux" ]] || { echo "Missing SHA-256 for ${linux_asset}" >&2; exit 1; }
+          [[ -n "$sha_macos" ]] || { echo "Missing SHA-256 for ${macos_asset}" >&2; exit 1; }
+
+          gh api repos/amichne/homebrew-kast/dispatches \
+            -f event_type=release-published \
+            -f "client_payload[version]=${tag}" \
+            -f "client_payload[sha256_linux_x64]=${sha_linux}" \
+            -f "client_payload[sha256_macos_arm64]=${sha_macos}"

@@ -228,6 +228,7 @@ Optional overrides:
 - \`KAST_AGENT_INSTALL_ROOT\` - contained install root, defaults to \`\$HOME/.kast-agent\`
 - \`KAST_AGENT_WORKSPACE\` - Git workspace for repo-local Copilot extension install
 - \`KAST_AGENT_VERSION\` - install metadata label, defaults to \`${version}\`
+- \`KAST_SKIP_COPILOT_EXTENSION\` - set \`true\` to skip Copilot extension install
 README
 
 python3 - "${staging_dir}/manifest.json" "$version" "$platform_id" "$cli_sha" "$backend_sha" <<'PY'

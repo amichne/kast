@@ -611,9 +611,9 @@ PY
 
 _install_write_metadata() {
   local output_path="$1" release_repo="$2" release_tag="$3" \
-        platform_id="$4" archive_name="$5" archive_source="$6"
+        platform_id="$4" archive_name="$5" archive_source="$6" source="$7"
   python3 - "$output_path" "$release_repo" "$release_tag" \
-            "$platform_id" "$archive_name" "$archive_source" <<'PY'
+            "$platform_id" "$archive_name" "$archive_source" "$source" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -625,6 +625,7 @@ payload = {
     "platformId":    sys.argv[4],
     "archiveName":   sys.argv[5],
     "archiveSource": sys.argv[6],
+    "source":        sys.argv[7],
 }
 output_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 PY
@@ -1672,6 +1673,7 @@ Environment:
   KAST_EXPECTED_SHA256           Expected SHA-256 for KAST_ARCHIVE_PATH
   KAST_BACKEND_ARCHIVE_PATH      Local standalone backend archive path
   KAST_BACKEND_EXPECTED_SHA256   Expected SHA-256 for KAST_BACKEND_ARCHIVE_PATH
+  KAST_INSTALL_SOURCE            Install source metadata label (default: kast.sh)
   KAST_SKILL_SCOPE               Skill scope when prompts are unavailable: global, local, both, skip
 USAGE
         return 0 ;;
@@ -1881,7 +1883,7 @@ USAGE
 
     _install_write_metadata \
       "${release_dir}/.install-metadata.json" \
-      "$release_repo" "$release_tag" "$platform_id" "$archive_name" "$archive_source"
+      "$release_repo" "$release_tag" "$platform_id" "$archive_name" "$archive_source" "${KAST_INSTALL_SOURCE:-kast.sh}"
 
     mkdir -p "$install_root" "$bin_dir"
     ln -sfn "$release_dir" "$current_link"

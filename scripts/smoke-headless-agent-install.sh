@@ -85,14 +85,17 @@ artifact_dir="${scratch_dir}/artifacts"
 cli_tree="${scratch_dir}/cli"
 backend_tree="${scratch_dir}/backend"
 workspace_root="${scratch_dir}/workspace"
+skip_workspace_root="${scratch_dir}/skip-workspace"
 home_dir="${scratch_dir}/home"
 install_root="${scratch_dir}/contained-kast"
+skip_install_root="${scratch_dir}/skip-contained-kast"
 
 mkdir -p \
   "${artifact_dir}" \
   "${cli_tree}/kast-cli" \
   "${backend_tree}/backend-standalone/runtime-libs" \
   "${workspace_root}" \
+  "${skip_workspace_root}" \
   "${home_dir}"
 
 cat > "${cli_tree}/kast-cli/kast-cli" <<'FAKE_KAST'
@@ -163,6 +166,7 @@ zip_dir "$cli_zip" "$cli_tree"
 zip_dir "$backend_zip" "$backend_tree"
 
 git -C "$workspace_root" init -q
+git -C "$skip_workspace_root" init -q
 
 HOME="$home_dir" \
 SHELL=/bin/bash \
@@ -209,6 +213,21 @@ assert {"cli", "backend", "skill"}.issubset(components), payload
 repos = {entry["path"] for entry in payload.get("repos", [])}
 assert workspace_root in repos, payload
 PY
+
+HOME="$home_dir" \
+SHELL=/bin/bash \
+KAST_AGENT_CLI_URL="$(file_uri "$cli_zip")" \
+KAST_AGENT_BACKEND_URL="$(file_uri "$backend_zip")" \
+KAST_AGENT_CLI_SHA256="$(compute_sha256 "$cli_zip")" \
+KAST_AGENT_BACKEND_SHA256="$(compute_sha256 "$backend_zip")" \
+KAST_AGENT_INSTALL_ROOT="$skip_install_root" \
+KAST_AGENT_WORKSPACE="$skip_workspace_root" \
+KAST_SKIP_COPILOT_EXTENSION=true \
+"${repo_root}/scripts/headless-agent-install.sh"
+
+[[ -x "${skip_install_root}/bin/kast" ]] || die "Skip install missing launcher"
+[[ -f "${skip_install_root}/lib/skills/kast/SKILL.md" ]] || die "Skip install missing skill"
+[[ ! -f "${skip_workspace_root}/.github/.kast-copilot-version" ]] || die "Skip install wrote Copilot extension marker"
 
 if HOME="$home_dir" \
   SHELL=/bin/bash \
