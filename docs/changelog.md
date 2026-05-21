@@ -97,6 +97,10 @@ when to paginate or bound their queries:
   and `build-provenance.json` before publication. Beta tags publish as GitHub
   prereleases; stable tags publish the verified GitHub release before updating
   and watching the Homebrew tap.
+- Run `scripts/release-preflight.sh --release-type patch` before dispatching a
+  stable release. The helper checks GitHub CLI auth, release workflow
+  visibility, the `HOMEBREW_TAP_TOKEN` repository secret, and Homebrew tap
+  visibility before the workflow can create a tag or release.
 - Upstream sync workflow keeps the standalone backend's bundled IntelliJ
   distribution current.
 - Copilot setup steps pre-warm Gradle caches and Java 21 for GitHub Copilot
