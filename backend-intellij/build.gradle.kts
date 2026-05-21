@@ -6,7 +6,7 @@ import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 plugins {
     id("kast.intellij-build-helpers")
     kotlin("jvm")
-    id("org.jetbrains.intellij.platform") version "2.14.0"
+    id("org.jetbrains.intellij.platform") version "2.16.0"
 }
 
 repositories {
