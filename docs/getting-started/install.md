@@ -119,8 +119,8 @@ agent.
 Use `amichne/kast-action@v1` for GitHub Actions-compatible setup steps,
 including hosted coding agents such as Devin when they run inside a workflow.
 The action installs the headless agent bundle, adds the `kast` binary to
-`PATH`, exports `KAST_CONFIG_HOME`, `KAST_INSTALL_ROOT`, and
-`KAST_MANAGED_ROOT`, and marks the install as `KAST_INSTALL_SOURCE=action`.
+`PATH`, exports the action-managed config and install roots, and marks the
+install as `KAST_INSTALL_SOURCE=action`.
 
 ```yaml title="Install Kast in a GitHub Actions-compatible job"
 steps:
