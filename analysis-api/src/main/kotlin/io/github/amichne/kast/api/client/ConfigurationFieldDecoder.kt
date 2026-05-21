@@ -1,10 +1,14 @@
 package io.github.amichne.kast.api.client
 
 import io.github.amichne.kast.api.client.fields.*
+import com.sksamuel.hoplite.BooleanNode
 import com.sksamuel.hoplite.ConfigFailure
 import com.sksamuel.hoplite.ConfigResult
 import com.sksamuel.hoplite.DecoderContext
+import com.sksamuel.hoplite.DoubleNode
+import com.sksamuel.hoplite.LongNode
 import com.sksamuel.hoplite.Node
+import com.sksamuel.hoplite.StringNode
 import com.sksamuel.hoplite.decoder.NullHandlingDecoder
 import com.sksamuel.hoplite.fp.flatMap
 import com.sksamuel.hoplite.fp.invalid
@@ -12,7 +16,6 @@ import com.sksamuel.hoplite.fp.valid
 import kotlin.reflect.KFunction
 import kotlin.reflect.KParameter
 import kotlin.reflect.KType
-import kotlin.reflect.full.createType
 import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.full.primaryConstructor
 import kotlin.reflect.jvm.jvmErasure
@@ -42,12 +45,21 @@ class ConfigurationFieldDecoder : NullHandlingDecoder<ConfigurationField<*>> {
         valueParameter: KParameter,
         context: DecoderContext,
     ): ConfigResult<Any?> = if (valueParameter.type.jvmErasure == OptionalConfigString::class) {
-        context.decoder(stringType)
-            .flatMap { decoder -> decoder.decode(node, stringType, context) }
-            .map { OptionalConfigString(it as String) }
+        decodeOptionalConfigString(node, valueParameter.type)
     } else {
         context.decoder(valueParameter)
             .flatMap { decoder -> decoder.decode(node, valueParameter.type, context) }
+    }
+
+    private fun decodeOptionalConfigString(
+        node: Node,
+        type: KType,
+    ): ConfigResult<OptionalConfigString> = when (node) {
+        is StringNode -> OptionalConfigString(node.value).valid()
+        is BooleanNode -> OptionalConfigString(node.value.toString()).valid()
+        is LongNode -> OptionalConfigString(node.value.toString()).valid()
+        is DoubleNode -> OptionalConfigString(node.value.toString()).valid()
+        else -> ConfigFailure.DecodeError(node, type).invalid()
     }
 
     private fun construct(
@@ -67,7 +79,4 @@ class ConfigurationFieldDecoder : NullHandlingDecoder<ConfigurationField<*>> {
         ).invalid()
     }
 
-    private companion object {
-        val stringType: KType = String::class.createType()
-    }
 }
