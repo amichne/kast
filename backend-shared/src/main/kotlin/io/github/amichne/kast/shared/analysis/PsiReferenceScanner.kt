@@ -31,13 +31,12 @@ class PsiReferenceScanner(
     private val environment: ReferenceIndexEnvironment,
     private val moduleNameForFile: (String) -> String? = { null },
 ) {
-    fun scanFileReferences(filePath: String): List<SymbolReferenceRow> {
-        val rows = mutableListOf<SymbolReferenceRow>()
+    fun scanFileReferences(filePath: String): List<SymbolReferenceRow> =
         // Exclusive access required: the standalone backend's K2 FIR lazy declaration
         // resolver is not thread-safe for concurrent resolution within a single session.
-        // The IntelliJ backend implements this as a plain read action.
         environment.withExclusiveAccess {
-            val psiFile = environment.findPsiFile(filePath) ?: return@withExclusiveAccess
+            val rows = mutableListOf<SymbolReferenceRow>()
+            val psiFile = environment.findPsiFile(filePath) ?: return@withExclusiveAccess emptyList()
             val sourceFilePath = runCatching { psiFile.resolvedFilePath().value }.getOrElse { filePath }
 
             psiFile.accept(
@@ -89,14 +88,13 @@ class PsiReferenceScanner(
                     }
                 },
             )
+            rows
         }
-        return rows
-    }
 
-    fun scanFileDeclarations(filePath: String): List<DeclarationRow> {
-        val rows = mutableListOf<DeclarationRow>()
+    fun scanFileDeclarations(filePath: String): List<DeclarationRow> =
         environment.withExclusiveAccess {
-            val psiFile = environment.findPsiFile(filePath) ?: return@withExclusiveAccess
+            val rows = mutableListOf<DeclarationRow>()
+            val psiFile = environment.findPsiFile(filePath) ?: return@withExclusiveAccess emptyList()
             val sourceFilePath = runCatching { psiFile.resolvedFilePath().value }.getOrElse { filePath }
             val (modulePath, sourceSet) = splitModuleName(moduleNameForFile(sourceFilePath))
             psiFile.accept(
@@ -112,9 +110,8 @@ class PsiReferenceScanner(
                     }
                 },
             )
+            rows
         }
-        return rows
-    }
 
     private fun PsiElement.declarationRow(
         sourceFilePath: String,

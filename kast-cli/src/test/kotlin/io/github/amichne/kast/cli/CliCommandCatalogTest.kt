@@ -71,6 +71,20 @@ class CliCommandCatalogTest {
         )
     }
 
+    @Test
+    fun `self upgrade catalog describes install method detection`() {
+        val command = allCommandMetadata().single { metadata -> metadata.path == listOf("self", "upgrade") }
+
+        assertTrue(
+            command.summary.contains("Detect install method"),
+            "self upgrade summary should describe install-method-aware behavior",
+        )
+        assertTrue(
+            command.description.contains("appropriate upgrade path"),
+            "self upgrade description should describe contextual upgrade guidance",
+        )
+    }
+
     @Suppress("UNCHECKED_CAST")
     private fun allCommandMetadata(): List<CliCommandMetadata> {
         val field = CliCommandCatalog::class.java.getDeclaredField("commands")

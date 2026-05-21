@@ -1,6 +1,7 @@
 package io.github.amichne.kast.intellij
 
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.fileTypes.FileTypeRegistry
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
@@ -12,6 +13,7 @@ import io.github.amichne.kast.indexstore.api.index.SourceIndexFilePolicy
 import io.github.amichne.kast.shared.analysis.ReferenceIndexEnvironment
 import org.jetbrains.kotlin.idea.KotlinFileType
 import java.nio.file.Path
+import java.util.concurrent.Callable
 
 internal class IntelliJReferenceIndexEnvironment(
     private val project: Project,
@@ -41,10 +43,11 @@ internal class IntelliJReferenceIndexEnvironment(
     override fun <T> withReadAccess(action: () -> T): T =
         ApplicationManager.getApplication().runReadAction<T>(action)
 
-    // The IntelliJ threading model only requires read access for PSI traversal and
-    // reference resolution; the platform serializes write actions against readers.
     override fun <T> withExclusiveAccess(action: () -> T): T =
-        ApplicationManager.getApplication().runReadAction<T>(action)
+        ReadAction
+            .nonBlocking(Callable { action() })
+            .expireWhen { cancelled() }
+            .executeSynchronously()
 
     override fun isCancelled(): Boolean = cancelled()
 }
