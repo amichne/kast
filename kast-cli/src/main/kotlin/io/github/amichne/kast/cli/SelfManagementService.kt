@@ -18,8 +18,6 @@ internal class SelfManagementService(
     private val configHomeProvider: () -> Path = { kastConfigHome() },
     private val commandAvailability: (String) -> Boolean = ::commandAvailable,
     private val resolveScriptVerifier: (Path, String) -> String? = ::verifyResolveScript,
-    private val envLookup: (String) -> String? = System::getenv,
-    private val executablePathProvider: () -> Path? = ::currentExecutablePath,
 ) {
     fun status(): SelfStatusResult {
         val manifest = manifestStore.read()
@@ -259,28 +257,11 @@ internal class SelfManagementService(
         private const val COMPLETION_END_MARKER = "# <<< Kast completion <<<"
         private const val KAST_ENV_SOURCE_START_MARKER = "# >>> kast env >>>"
         private const val KAST_ENV_SOURCE_END_MARKER = "# <<< kast env <<<"
-        private val metadataJson = Json {
-            ignoreUnknownKeys = true
-            explicitNulls = false
-        }
-
-        @Serializable
-        private data class InstallMetadata(
-            val source: String = "",
-        )
-
         private fun commandAvailable(command: String): Boolean = runCatching {
             ProcessBuilder("bash", "-lc", "command -v $command >/dev/null 2>&1")
                 .start()
                 .waitFor() == 0
         }.getOrDefault(false)
-
-        private fun currentExecutablePath(): Path? = ProcessHandle.current()
-            .info()
-            .command()
-            .orElse(null)
-            ?.takeIf(String::isNotBlank)
-            ?.let(Path::of)
 
         private fun verifyResolveScript(repoRoot: Path, relativePath: String): String? {
             val script = repoRoot.resolve(relativePath).normalize()
