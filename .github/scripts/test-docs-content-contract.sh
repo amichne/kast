@@ -70,6 +70,7 @@ require_not_contains "$readme" 'IntelliJ plugin-backed runtime' "README must use
 
 require_contains "$readme" "brew tap amichne/kast" "README must document the Homebrew tap install"
 require_order "$readme" "brew tap amichne/kast" "curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh | bash" "README must promote Homebrew before the shell installer"
+require_contains "$readme" "amichne/kast-action@v1" "README must point hosted agents to the GitHub Action install path"
 require_contains "$readme" "headless agent installs from internal artifacts or self-contained" "README must point CI/headless users to the contained install docs"
 require_contains "$index_doc" "brew install kast" "Docs overview must promote Homebrew for the first local install example"
 
@@ -77,6 +78,12 @@ require_contains "$install_doc" "## Homebrew install" "Install docs must disting
 require_contains "$install_doc" "## Shell installer" "Install docs must keep the shell installer for portable and full-stack flows"
 require_order "$install_doc" "## Homebrew install" "## Shell installer" "Install docs must promote Homebrew before the shell installer"
 require_contains "$install_doc" "## Developer, CI, and cloud-agent paths" "Install docs must distinguish developer, CI, and cloud-agent flows"
+require_contains "$install_doc" "## GitHub Actions and hosted agents" "Install docs must cover action-based hosted agent installs"
+require_contains "$install_doc" "amichne/kast-action@v1" "Install docs must document the public Kast GitHub Action"
+require_contains "$install_doc" "bundle-url" "Install docs must document mirrored headless bundle input"
+require_contains "$install_doc" "bundle-sha256" "Install docs must require checksums for mirrored action installs"
+require_contains "$install_doc" "skip-copilot-extension: true" "Install docs must show the conservative enterprise action default"
+require_contains "$install_doc" "KAST_INSTALL_SOURCE=action" "Install docs must document action install metadata"
 require_contains "$install_doc" 'scripts/headless-agent-install.sh' "Install docs must document the headless agent installer"
 require_contains "$install_doc" 'scripts/package-headless-agent-bundle.sh' "Install docs must document bundle packaging"
 require_contains "$install_doc" 'scripts/verify-release-assets.sh' "Install docs must document release asset verification"
@@ -92,6 +99,7 @@ require_contains "$backends_doc" 'IDEA / Android Studio plugin backend' "Backend
 require_contains "$quickstart_doc" 'APP_FILE="$PWD/src/main/kotlin/App.kt"' "Quickstart must show a shell-expanded absolute file path"
 require_contains "$quickstart_doc" '--workspace-root="$PWD"' "Quickstart must quote the workspace root"
 require_contains "$agents_doc" "## Local and hosted agent setup" "Agent docs must separate local and hosted setup"
+require_contains "$agents_doc" "GitHub Actions-compatible hosted agent" "Agent docs must document action-based hosted agents"
 require_contains "$agents_doc" "Cloud/headless coding agent" "Agent docs must document cloud/headless agent setup"
 
 printf '%s\n' "Docs content contract passed"

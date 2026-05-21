@@ -47,12 +47,17 @@ release artifacts before the session starts.
 |-------------------|--------------|--------------|-------------------------|
 | Local developer agent | `kast install skill` and optional `kast install copilot-extension` | Existing CLI plus standalone or IDEA backend | The packaged skill and native `kast_*` tools |
 | CI review agent | `./kast.sh install --non-interactive` or release archives | Standalone backend warmed in the job | `kast rpc` commands and structured JSON outputs |
+| GitHub Actions-compatible hosted agent | `amichne/kast-action@v1` or a mirrored action | Contained headless agent bundle under the action install root | `kast` on `PATH`, `KAST_CONFIG_HOME`, and action outputs |
 | Cloud/headless coding agent | `scripts/headless-agent-install.sh` or the headless agent bundle | Contained CLI and standalone backend under `KAST_AGENT_INSTALL_ROOT` | Source `kast-env.sh`, then use the packaged skill and Copilot extension |
 
 Use the headless path when the agent image cannot rely on a human shell
 profile, Homebrew tap state, or an already-open IDE. The headless
 installer verifies the CLI, backend runtime libraries, packaged skill,
 repo-local Copilot hooks, and native extension files before it exits.
+
+For Devin or enterprise runners that start from a GitHub Actions-compatible
+setup step, use the action path and pin mirrored installs with `bundle-url`
+and `bundle-sha256`.
 
 | What it gets         | What `kast` returns                                                                       | Why your agent cares                                                            |
 |----------------------|-------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|

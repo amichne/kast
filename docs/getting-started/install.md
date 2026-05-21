@@ -106,12 +106,56 @@ path that matches the machine.
 | Local developer using a terminal | Homebrew or `./kast.sh install --mode=full` | CLI plus standalone backend when using the full installer | `kast up --workspace-root="$PWD"` |
 | Local developer using IDEA or Android Studio | `./kast.sh install --mode=minimal` or the plugin zip | CLI plus optional plugin, or plugin only | Open the project in the IDE |
 | CI job that only gates a workspace | `./kast.sh install --non-interactive` or release archives | CLI only unless archives include backend components | Start or warm standalone before `kast rpc` |
+| GitHub Actions-compatible hosted agent | `amichne/kast-action@v1` or an enterprise mirror | Headless agent bundle installed into a contained root and added to the job environment | Run `kast` directly in later steps |
 | Cloud or headless coding agent | `scripts/headless-agent-install.sh` or a headless agent bundle | CLI, standalone backend, packaged skill, and repo-local Copilot extension | `source "$KAST_AGENT_INSTALL_ROOT/kast-env.sh"` |
 
 For CI and cloud agents, keep the runtime isolated from a human shell
 profile. Use setup-time environment variables or a bundle, then source the
 generated environment file inside the job or image step that runs the
 agent.
+
+## GitHub Actions and hosted agents
+
+Use `amichne/kast-action@v1` for GitHub Actions-compatible setup steps,
+including hosted coding agents such as Devin when they run inside a workflow.
+The action installs the headless agent bundle, adds the `kast` binary to
+`PATH`, exports `KAST_CONFIG_HOME`, `KAST_INSTALL_ROOT`, and
+`KAST_MANAGED_ROOT`, and marks the install as `KAST_INSTALL_SOURCE=action`.
+
+```yaml title="Install Kast in a GitHub Actions-compatible job"
+steps:
+  - uses: actions/checkout@v5
+
+  - uses: amichne/kast-action@v1
+    with:
+      version: v1.2.3
+
+  - run: kast --help
+```
+
+For enterprise or GHES runners, mirror both the action and the headless agent
+bundle. Do not mirror only the action repository: the action consumes
+`kast-headless-agent-<version>-linux-x64.zip`, while `SHA256SUMS` is the
+checksum source to verify before promotion.
+
+```yaml title="Install Kast from an enterprise mirror"
+steps:
+  - uses: actions/checkout@v5
+
+  - uses: enterprise-mirror/kast-action@v1
+    with:
+      version: v1.2.3
+      bundle-url: https://github.enterprise.example/org/kast/releases/download/v1.2.3/kast-headless-agent-v1.2.3-linux-x64.zip
+      bundle-sha256: "<sha256>"
+      skip-copilot-extension: true
+
+  - run: kast --help
+```
+
+Set `skip-copilot-extension: true` unless the setup action is approved to
+write packaged Copilot files into the checked-out repository. When
+`bundle-url` is set, also set a pinned `version` and `bundle-sha256`; the
+action rejects mirrored bundle installs without a checksum.
 
 ## Install modes
 
