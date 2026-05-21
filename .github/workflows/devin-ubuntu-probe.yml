@@ -1,0 +1,257 @@
+name: Devin Ubuntu Release Probe
+
+on:
+  push:
+    branches:
+      - codex/devin-ubuntu-probe-20260521
+
+permissions:
+  contents: read
+
+jobs:
+  release-bundle-probe:
+    name: Release bundle in ubuntu:24.04
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:24.04
+    timeout-minutes: 35
+    steps:
+      - name: Install latest release bundle and exercise standalone indexing
+        shell: bash
+        env:
+          RELEASE_TAG: v0.7.8
+          BUNDLE_SHA256: bb8579e347125bb74b063afd24cc735fe98f131702148f7cc4e2e37e658267e2
+          GRADLE_VERSION: 8.14.3
+        run: |
+          set -Eeuo pipefail
+
+          probe_root=/tmp/kast-devin-probe
+          workspace=/workspace/devin-sample
+          install_root=/opt/kast-agent
+          bundle_zip="${probe_root}/kast-headless-agent-${RELEASE_TAG}-linux-x64.zip"
+
+          dump_debug() {
+            local code=$?
+            if [[ "$code" -eq 0 ]]; then
+              return 0
+            fi
+            echo "::group::debug status"
+            if command -v kast >/dev/null 2>&1; then
+              kast status --workspace-root="$workspace" || true
+            fi
+            echo "::endgroup::"
+            echo "::group::debug files"
+            find "$workspace" "$install_root" /root/.kast \
+              -maxdepth 6 \
+              -type f \
+              \( -name '*.log' -o -name 'daemons.json' -o -name 'config.toml' -o -name '*.json' \) \
+              -print 2>/dev/null || true
+            echo "::endgroup::"
+            echo "::group::debug logs"
+            find "$workspace" "$install_root" /root/.kast \
+              -maxdepth 8 \
+              -type f \
+              \( -name '*.log' -o -name 'daemons.json' -o -name 'config.toml' \) \
+              -print \
+              -exec sh -c 'echo "--- $1"; sed -n "1,260p" "$1"' sh {} \; 2>/dev/null || true
+            echo "::endgroup::"
+            return "$code"
+          }
+          trap dump_debug EXIT
+
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            ca-certificates \
+            coreutils \
+            curl \
+            findutils \
+            git \
+            jq \
+            openjdk-21-jdk-headless \
+            procps \
+            python3 \
+            unzip
+          update-ca-certificates
+
+          export JAVA_HOME="$(dirname "$(dirname "$(readlink -f "$(command -v javac)")")")"
+          export PATH="/opt/gradle/gradle-${GRADLE_VERSION}/bin:${PATH}"
+
+          mkdir -p "$probe_root" "$workspace" "$install_root" /opt/gradle
+
+          curl --fail --location --retry 3 --silent --show-error \
+            --output "${probe_root}/gradle-${GRADLE_VERSION}-bin.zip" \
+            "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip"
+          curl --fail --location --retry 3 --silent --show-error \
+            --output "${probe_root}/gradle-${GRADLE_VERSION}-bin.zip.sha256" \
+            "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip.sha256"
+          printf '%s  %s\n' \
+            "$(cat "${probe_root}/gradle-${GRADLE_VERSION}-bin.zip.sha256")" \
+            "${probe_root}/gradle-${GRADLE_VERSION}-bin.zip" \
+            | sha256sum -c -
+          unzip -q "${probe_root}/gradle-${GRADLE_VERSION}-bin.zip" -d /opt/gradle
+
+          echo "::group::environment"
+          uname -a
+          java -version
+          javac -version
+          gradle --version
+          echo "JAVA_HOME=${JAVA_HOME}"
+          echo "::endgroup::"
+
+          curl --fail --location --retry 3 --silent --show-error \
+            --output "$bundle_zip" \
+            "https://github.com/amichne/kast/releases/download/${RELEASE_TAG}/kast-headless-agent-${RELEASE_TAG}-linux-x64.zip"
+          printf '%s  %s\n' "$BUNDLE_SHA256" "$bundle_zip" | sha256sum -c -
+          unzip -q "$bundle_zip" -d "${probe_root}/bundle"
+
+          cd "$workspace"
+          git init -q
+          mkdir -p src/main/kotlin/com/acme
+          cat > settings.gradle.kts <<'EOF_SETTINGS'
+          pluginManagement {
+              repositories {
+                  gradlePluginPortal()
+                  mavenCentral()
+              }
+          }
+
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  mavenCentral()
+              }
+          }
+
+          rootProject.name = "devin-probe"
+          EOF_SETTINGS
+          cat > build.gradle.kts <<'EOF_BUILD'
+          plugins {
+              kotlin("jvm") version "2.0.21"
+          }
+
+          kotlin {
+              jvmToolchain(21)
+          }
+          EOF_BUILD
+          cat > src/main/kotlin/com/acme/App.kt <<'EOF_APP'
+          package com.acme
+
+          class GreetingService {
+              fun greet(name: String): String = "Hello, $name"
+          }
+
+          fun main() {
+              println(GreetingService().greet("Devin"))
+          }
+          EOF_APP
+
+          gradle --no-daemon wrapper --gradle-version "$GRADLE_VERSION" --distribution-type bin
+          ./gradlew --no-daemon help >/tmp/kast-devin-gradle-help.log
+          ./gradlew --version
+
+          HOME=/root \
+          SHELL=/bin/bash \
+          KAST_AGENT_INSTALL_ROOT="$install_root" \
+          KAST_AGENT_WORKSPACE="$workspace" \
+          "${probe_root}/bundle/install.sh"
+
+          source "${install_root}/kast-env.sh"
+
+          echo "::group::installed kast"
+          kast --version
+          kast --help | sed -n '1,80p'
+          test -d "${install_root}/backends/current/runtime-libs"
+          test -f "${workspace}/.github/extensions/kast/extension.mjs"
+          test -f "${workspace}/.github/extensions/kotlin-gradle-loop/extension.mjs"
+          echo "::endgroup::"
+
+          echo "::group::standalone startup"
+          kast up --workspace-root="$workspace" --accept-indexing=true --wait-timeout-ms=180000
+          echo "::endgroup::"
+
+          echo "::group::wait for READY"
+          deadline=$((SECONDS + 180))
+          state=""
+          while [[ "$SECONDS" -lt "$deadline" ]]; do
+            status_json="$(kast rpc '{"jsonrpc":"2.0","method":"runtime/status","params":{},"id":1}' --workspace-root="$workspace")"
+            echo "$status_json" | jq .
+            state="$(echo "$status_json" | jq -r '.result.state // empty')"
+            if [[ "$state" == "READY" ]]; then
+              break
+            fi
+            sleep 2
+          done
+          [[ "$state" == "READY" ]] || {
+            echo "Runtime did not reach READY; final state=${state:-unknown}" >&2
+            exit 1
+          }
+          echo "::endgroup::"
+
+          echo "::group::rpc probes"
+          health_json="$(kast rpc '{"jsonrpc":"2.0","method":"health","params":{},"id":2}' --workspace-root="$workspace")"
+          echo "$health_json" | jq .
+          echo "$health_json" | jq -e 'has("result") and (.error | not)'
+
+          symbol_json="$(kast rpc '{"jsonrpc":"2.0","method":"raw/workspace-symbol","params":{"pattern":"GreetingService","maxResults":20,"regex":false,"includeDeclarationScope":true},"id":3}' --workspace-root="$workspace")"
+          echo "$symbol_json" | jq .
+          echo "$symbol_json" | jq -e 'has("result") and (.error | not) and (.result.symbols | length >= 1)'
+
+          app_file="${workspace}/src/main/kotlin/com/acme/App.kt"
+          resolve_request="$(python3 - "$app_file" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          path = Path(sys.argv[1])
+          content = path.read_text(encoding="utf-8")
+          offset = content.index("GreetingService")
+          print(json.dumps({
+              "jsonrpc": "2.0",
+              "method": "raw/resolve",
+              "params": {
+                  "position": {
+                      "filePath": str(path),
+                      "offset": offset,
+                  },
+                  "includeDeclarationScope": True,
+                  "includeDocumentation": False,
+              },
+              "id": 4,
+          }))
+          PY
+          )"
+          resolve_json="$(kast rpc "$resolve_request" --workspace-root="$workspace")"
+          echo "$resolve_json" | jq .
+          echo "$resolve_json" | jq -e 'has("result") and (.error | not)'
+
+          diagnostics_request="$(python3 - "$app_file" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          path = Path(sys.argv[1])
+          print(json.dumps({
+              "jsonrpc": "2.0",
+              "method": "raw/diagnostics",
+              "params": {"filePaths": [str(path)]},
+              "id": 5,
+          }))
+          PY
+          )"
+          diagnostics_json="$(kast rpc "$diagnostics_request" --workspace-root="$workspace")"
+          echo "$diagnostics_json" | jq .
+          echo "$diagnostics_json" | jq -e 'has("result") and (.error | not)'
+
+          metrics_json="$(kast rpc '{"jsonrpc":"2.0","method":"database/metrics","params":{"metric":"declarations","limit":20},"id":6}' --workspace-root="$workspace")"
+          echo "$metrics_json" | jq .
+          echo "$metrics_json" | jq -e 'has("result") and (.error | not)'
+          echo "::endgroup::"
+
+          echo "::group::smoke"
+          kast smoke --workspace-root="$workspace" --format=json | tee /tmp/kast-smoke.json
+          jq -e '.ok == true' /tmp/kast-smoke.json
+          echo "::endgroup::"
+
+          kast stop --workspace-root="$workspace" --backend-name=standalone || true
+          echo "Devin Ubuntu release probe passed"
