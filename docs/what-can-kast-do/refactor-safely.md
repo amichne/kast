@@ -133,7 +133,7 @@ and rejects the request if anything drifted.
 
 === "JSON-RPC"
 
-    ```json title="edits/apply request" hl_lines="14 15 16 17 18 19"
+    ```json title="raw/apply-edits request" hl_lines="14 15 16 17 18 19"
     {
       "method": "raw/apply-edits",
       "id": 2,
@@ -171,7 +171,7 @@ and rejects the request if anything drifted.
 
 When the hashes match, the daemon writes the edits and responds:
 
-```json title="edits/apply response"
+```json title="raw/apply-edits response"
 {
   "applied": [
     {

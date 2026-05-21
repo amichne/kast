@@ -203,6 +203,10 @@ This bundle installs the Kast CLI, standalone backend, packaged skill, and
 repo-local Copilot extension from bundle-local artifacts. It is intended for
 Linux x64 headless agent images and CI-like bootstrap flows.
 
+The installer verifies the contained CLI launcher, standalone runtime libs,
+packaged skill, install manifest, Copilot hooks, native extension files, and
+executable resolver before it exits.
+
 ## Contents
 
 - \`install.sh\` - entrypoint for this bundle

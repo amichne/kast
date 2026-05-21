@@ -93,7 +93,7 @@ class SmokeCommandSupportTest {
     }
 
     @Test
-    fun `smoke skips include actionable kast daemon start hint when no daemon`() = runTest {
+    fun `smoke skips include actionable kast up hint when no daemon`() = runTest {
         val manager = managerWith(runtimeStatuses = emptyMap(), processLivenessChecker = { false })
         val support = SmokeCommandSupport(runtimeManager = manager)
         val workspace = tempDir.resolve("no-daemon")
@@ -103,8 +103,8 @@ class SmokeCommandSupportTest {
         val ensureCheck = report.checks.first { it.name == "workspace-ensure" }
         assertNotNull(ensureCheck.message)
         assertTrue(
-            ensureCheck.message.orEmpty().contains("kast daemon start"),
-            "Skip message should mention 'kast daemon start', was: ${ensureCheck.message}",
+            ensureCheck.message.orEmpty().contains("kast up"),
+            "Skip message should mention 'kast up', was: ${ensureCheck.message}",
         )
     }
 

@@ -132,6 +132,15 @@ if [[ "$command_name" == "install" ]]; then
       [[ -n "$target_dir" ]] || { printf '%s\n' "missing --target-dir" >&2; exit 1; }
       mkdir -p "${target_dir}/hooks"
       printf '%s\n' '{"version":1,"hooks":{}}' > "${target_dir}/hooks/hooks.json"
+      mkdir -p \
+        "${target_dir}/agents" \
+        "${target_dir}/extensions/kast/scripts" \
+        "${target_dir}/extensions/kotlin-gradle-loop"
+      printf '%s\n' "# fake orchestrator" > "${target_dir}/agents/kast-orchestrator.md"
+      printf '%s\n' "export default {};" > "${target_dir}/extensions/kast/extension.mjs"
+      printf '%s\n' "#!/usr/bin/env bash" "printf '%s\n' fake-kast" > "${target_dir}/extensions/kast/scripts/resolve-kast.sh"
+      chmod +x "${target_dir}/extensions/kast/scripts/resolve-kast.sh"
+      printf '%s\n' "export default {};" > "${target_dir}/extensions/kotlin-gradle-loop/extension.mjs"
       printf '%s\n' "fake" > "${target_dir}/.kast-copilot-version"
       exit 0
       ;;
@@ -195,6 +204,11 @@ grep -Fq "binaryPath = \"${installed_launcher}\"" "$config_file" || die "config.
 [[ -d "$runtime_libs_dir" ]] || die "Missing standalone runtime libs: $runtime_libs_dir"
 [[ -f "${skill_dir}/SKILL.md" ]] || die "Missing installed skill: ${skill_dir}/SKILL.md"
 [[ -f "$extension_marker" ]] || die "Missing Copilot extension marker: $extension_marker"
+[[ -f "${workspace_root}/.github/agents/kast-orchestrator.md" ]] || die "Missing Copilot agent"
+[[ -f "${workspace_root}/.github/hooks/hooks.json" ]] || die "Missing Copilot hooks"
+[[ -f "${workspace_root}/.github/extensions/kast/extension.mjs" ]] || die "Missing kast Copilot extension"
+[[ -x "${workspace_root}/.github/extensions/kast/scripts/resolve-kast.sh" ]] || die "Missing executable kast resolver"
+[[ -f "${workspace_root}/.github/extensions/kotlin-gradle-loop/extension.mjs" ]] || die "Missing Kotlin Gradle loop extension"
 [[ -f "$env_file" ]] || die "Missing sourceable env file: $env_file"
 "$installed_launcher" --help >/dev/null
 

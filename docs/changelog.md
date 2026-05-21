@@ -32,19 +32,21 @@ All operations are available on both backends:
 
 | Operation | Method |
 |-----------|--------|
-| Resolve symbol at position | `resolve` |
-| Find all references | `references` |
-| Incoming / outgoing call hierarchy | `callHierarchy` |
-| Type hierarchy (supertypes & subtypes) | `typeHierarchy` |
-| File outline (declarations) | `outline` |
-| Workspace-wide symbol search | `workspaceSymbol` |
-| Compiler diagnostics | `diagnostics` |
-| Rename symbol (plan + apply) | `rename` |
-| Apply arbitrary edits | `applyEdits` |
-| Optimize imports | `optimizeImports` |
-| Code completions | `completions` |
-| Implementations of interface/abstract | `implementations` |
-| Available code actions | `codeActions` |
+| Resolve symbol at position | `raw/resolve` |
+| Find all references | `raw/references` |
+| Incoming / outgoing call hierarchy | `raw/call-hierarchy` |
+| Type hierarchy (supertypes & subtypes) | `raw/type-hierarchy` |
+| File outline (declarations) | `raw/file-outline` |
+| Workspace-wide symbol search | `raw/workspace-symbol` |
+| Workspace content search | `raw/workspace-search` |
+| Workspace files and source roots | `raw/workspace-files` |
+| Compiler diagnostics | `raw/diagnostics` |
+| Rename symbol (plan + apply) | `raw/rename` |
+| Apply arbitrary edits | `raw/apply-edits` |
+| Optimize imports | `raw/optimize-imports` |
+| Code completions | `raw/completions` |
+| Implementations of interface/abstract | `raw/implementations` |
+| Available code actions | `raw/code-actions` |
 
 ### Source index
 
@@ -64,15 +66,16 @@ restarts and enables sub-millisecond workspace-symbol lookup:
 Every result that may be truncated carries explicit metadata so agents know
 when to paginate or bound their queries:
 
-- `searchScope.exhaustive: boolean` on every `references` result.
-- `stats` and `truncation` on every `callHierarchy` node.
-- SHA-256 conflict detection on `rename` and `applyEdits` — mutations are
+- `searchScope.exhaustive: boolean` on every `raw/references` result.
+- `stats` and `truncation` on every `raw/call-hierarchy` node.
+- SHA-256 conflict detection on `raw/rename` and `raw/apply-edits` — mutations are
   rejected if the file has changed since the plan was computed.
 
 ### Distribution
 
-- **`kast install skill`** — bundles the agent skill (SKILL.md), OpenAPI 3.1
-  spec, and resolver script into `.agents/skills/kast/` inside any target
+- **`kast install skill`** — bundles the agent skill (`SKILL.md`), generated
+  `commands.json` catalog, quickstart reference, resolver/bootstrap scripts,
+  and evaluation assets into `.agents/skills/kast/` inside any target
   repository. One command, no internet access required after the initial
   install.
 - **Portable CLI zip** — `./kast.sh build cli` produces
@@ -80,16 +83,20 @@ when to paginate or bound their queries:
   native launcher, JVM fallback, and all runtime libs.
 - **Portable backend zip** — `./kast.sh build backend --shrink` produces the
   stripped standalone backend zip used by CI and remote deployments.
-- **OpenAPI spec** — `docs/openapi.yaml` is generated from source annotations
-  and kept in sync with every build.
+- **OpenAPI spec** — `docs/openapi.yaml` is generated from the analysis API
+  model registry and kept in sync with every build.
 
 ### CI & release
 
 - GitHub Actions release workflow triggered by `workflow_dispatch` with
   `release_type: major | minor | patch | beta`. The workflow auto-increments
   the semver tag, builds native launchers on Linux (x64) and macOS (ARM64),
-  packages the IntelliJ plugin, and publishes a GitHub release with combined
-  build provenance.
+  packages the IntelliJ plugin and headless agent bundle, uploads aggregate
+  SHA-256 checksums, and publishes a GitHub release with combined build
+  provenance. The workflow verifies every shipped asset against `SHA256SUMS`
+  and `build-provenance.json` before publication. Beta tags publish as GitHub
+  prereleases; stable tags publish the verified GitHub release before updating
+  and watching the Homebrew tap.
 - Upstream sync workflow keeps the standalone backend's bundled IntelliJ
   distribution current.
 - Copilot setup steps pre-warm Gradle caches and Java 21 for GitHub Copilot

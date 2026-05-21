@@ -1056,7 +1056,7 @@ _install_standalone_backend() {
   ln -sfn "$backend_release_dir" "$current_link"
 
   log_success "Standalone backend installed to ${backend_release_dir}"
-  log_note "Start with: kast daemon start --workspace-root=/absolute/path/to/workspace"
+  log_note "Start with: kast up --workspace-root=/absolute/path/to/workspace"
   return 0
 }
 
@@ -1626,7 +1626,7 @@ _install_summary_phase() {
     printf '  %s\n' "  IntelliJ: Settings → Plugins → ⚙ → Install from Disk" >&2
     printf '  %s\n' "  Select: ${install_root}/plugins/" >&2
   elif [[ "$install_standalone" == "true" ]]; then
-    printf '  %s\n' "  kast daemon start --workspace-root=/absolute/path/to/workspace" >&2
+    printf '  %s\n' "  kast up --workspace-root=/absolute/path/to/workspace" >&2
   fi
   printf '\n' >&2
 }
