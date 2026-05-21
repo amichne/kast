@@ -39,6 +39,10 @@ jobs:
         shell: bash
         run: ./.github/scripts/test-release-preflight.sh
 
+      - name: Test release provenance assembler
+        shell: bash
+        run: ./.github/scripts/test-release-provenance-assembler.sh
+
   build-and-test:
     name: Build & test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
