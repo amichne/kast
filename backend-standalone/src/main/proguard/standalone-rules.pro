@@ -5,6 +5,9 @@
 # Preserve Kotlin metadata so reflection and serialization continue to work.
 -keepkotlinmetadata
 -keepattributes *Annotation*, Signature, InnerClasses, EnclosingMethod
+-keep class kotlin.reflect.jvm.internal.impl.load.java.JavaIncompatibilityRulesOverridabilityCondition { <init>(); }
+-keep class kotlin.reflect.jvm.internal.impl.load.java.FieldOverridabilityCondition { <init>(); }
+-keep class kotlin.reflect.jvm.internal.impl.load.java.ErasedOverridabilityCondition { *; }
 
 # Suppress warnings about references into the IntelliJ library JARs.
 -dontwarn **
@@ -13,6 +16,10 @@
 -keep class io.github.amichne.kast.standalone.StandaloneMainKt {
     public static void main(java.lang.String[]);
 }
+
+# ── Hoplite ──────────────────────────────────────────────────────────────────
+-keep class com.sksamuel.hoplite.toml.** { *; }
+-keep class org.tomlj.** { *; }
 
 # ── kast public API ──────────────────────────────────────────────────────────
 # Accessed reflectively by the IntelliJ plugin loader and via JSON-RPC dispatch.
