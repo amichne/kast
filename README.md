@@ -33,6 +33,13 @@ Install the `kast` CLI from any shell:
 curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh | bash
 ```
 
+On Homebrew platforms, install the stable CLI from the tap:
+
+```console
+brew tap amichne/kast
+brew install kast
+```
+
 For CI or headless agent installs from internal artifacts or self-contained
 bundles, use the
 [install guide](https://kast.michne.com/getting-started/install/#headless-agent-with-internal-artifacts).

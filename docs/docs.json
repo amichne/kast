@@ -23,11 +23,25 @@
         "pages": ["index"]
       },
       {
-        "group": "Getting Started",
+        "group": "Getting started",
         "pages": [
           "getting-started/install",
-          "getting-started/quickstart",
-          "getting-started/backends"
+          "getting-started/quickstart"
+        ]
+      },
+      {
+        "group": "For agents",
+        "pages": [
+          "for-agents/index",
+          "for-agents/talk-to-your-agent",
+          "for-agents/install-the-skill",
+          "for-agents/direct-cli"
+        ]
+      },
+      {
+        "group": "Recipes",
+        "pages": [
+          "recipes"
         ]
       },
       {
@@ -41,19 +55,20 @@
         ]
       },
       {
-        "group": "For Agents",
+        "group": "CLI cheat sheet",
         "pages": [
-          "for-agents/index",
-          "for-agents/talk-to-your-agent",
-          "for-agents/install-the-skill",
-          "for-agents/direct-cli"
+          "cli-cheat-sheet"
         ]
       },
       {
-        "group": "Architecture",
+        "group": "Backends",
         "pages": [
-          "architecture/how-it-works",
-          "architecture/behavioral-model",
+          "getting-started/backends"
+        ]
+      },
+      {
+        "group": "Kast vs LSP",
+        "pages": [
           "architecture/kast-vs-lsp"
         ]
       },
@@ -66,9 +81,22 @@
         ]
       },
       {
-        "group": "Help",
+        "group": "Troubleshooting",
         "pages": [
-          "troubleshooting",
+          "troubleshooting"
+        ]
+      },
+      {
+        "group": "Architecture",
+        "pages": [
+          "architecture/how-it-works",
+          "architecture/behavioral-model",
+          "architecture/adt-boundaries"
+        ]
+      },
+      {
+        "group": "Changelog",
+        "pages": [
           "changelog"
         ]
       }

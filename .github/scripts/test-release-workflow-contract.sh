@@ -87,9 +87,11 @@ require_not_contains "$docs_workflow" "actions/deploy-pages@v4" "Documentation w
 require_not_contains "$docs_workflow" "actions/setup-python@v5" "Documentation workflow must not use the Node 20 setup-python action"
 require_not_contains "$docs_workflow" "actions/upload-pages-artifact@v4" "Documentation workflow must not use the Node 20 upload-pages-artifact action"
 require_contains "$docs_workflow" "pull_request:" "Documentation workflow must validate docs changes on pull requests"
+require_contains "$docs_workflow" "./.github/scripts/test-docs-navigation-contract.sh" "Documentation workflow must validate the checked-in navigation mirror"
 require_contains "$docs_workflow" "if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'" "Documentation deployment must be limited to main, not pull requests or branch dispatches"
 
 require_contains "$ci_workflow" "Workflow release contracts" "CI must run this workflow contract check"
+require_contains "$ci_workflow" "./.github/scripts/test-docs-navigation-contract.sh" "CI must run the docs navigation contract check"
 require_contains "$ci_workflow" "./.github/scripts/test-release-asset-verifier.sh" "CI must test the release asset verifier"
 require_contains "$ci_workflow" "./.github/scripts/test-release-preflight.sh" "CI must test the release preflight helper"
 require_contains "$ci_workflow" "Analysis server transport" "CI must include an independent analysis-server transport job"

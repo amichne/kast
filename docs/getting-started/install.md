@@ -38,6 +38,21 @@ Java version), lets you pick an install mode, writes
 `$HOME/.kast`, records the install in `~/.kast/.manifest.json`, and can
 install the packaged Copilot surfaces you use next.
 
+## Homebrew install
+
+Homebrew installs the stable CLI package from the `amichne/kast` tap and
+pulls `openjdk@21` as the Java runtime dependency. This path is the
+shortest local developer install on supported Homebrew platforms.
+
+```console title="Install kast with Homebrew"
+brew tap amichne/kast
+brew install kast
+```
+
+Use the shell installer when you want the interactive wizard, packaged
+Copilot surfaces, or a full standalone backend install from GitHub
+release assets in one step.
+
 ??? info "What the wizard does, step by step"
 
     Most people answer the prompts and move on. If you want the receipts:
@@ -72,6 +87,24 @@ explicitly.
 | IntelliJ already open on the project       | `minimal`                       | Plugin starts with the IDE                        |
 | Terminal, CI, or agent work                | `full`                          | `kast up --workspace-root=$(pwd)`                 |
 | Both                                       | `full` + plugin install         | Pin per session with `--backend-name`             |
+
+## Developer, CI, and cloud-agent paths
+
+The installer has several entry points because local development, CI, and
+hosted agent bootstraps need different side effects. Pick the smallest
+path that matches the machine.
+
+| Environment | Install path | What gets installed | Follow-up command |
+|-------------|--------------|---------------------|-------------------|
+| Local developer using a terminal | Homebrew or `./kast.sh install --mode=full` | CLI plus standalone backend when using the full installer | `kast up --workspace-root=$(pwd)` |
+| Local developer using IntelliJ or Android Studio | `./kast.sh install --mode=minimal` or the plugin zip | CLI plus optional plugin, or plugin only | Open the project in the IDE |
+| CI job that only gates a workspace | `./kast.sh install --non-interactive` or release archives | CLI only unless archives include backend components | Start or warm standalone before `kast rpc` |
+| Cloud or headless coding agent | `scripts/headless-agent-install.sh` or a headless agent bundle | CLI, standalone backend, packaged skill, and repo-local Copilot extension | `source "$KAST_AGENT_INSTALL_ROOT/kast-env.sh"` |
+
+For CI and cloud agents, keep the runtime isolated from a human shell
+profile. Use setup-time environment variables or a bundle, then source the
+generated environment file inside the job or image step that runs the
+agent.
 
 ## Install modes
 
@@ -141,6 +174,17 @@ source "$KAST_AGENT_INSTALL_ROOT/kast-env.sh"
 variables are optional but should be set for CI-like installs. The script
 expects `KAST_AGENT_WORKSPACE` to point inside a Git checkout because the
 Copilot extension installs into that repository's `.github` directory.
+
+| Variable | Required | What it does |
+|----------|----------|--------------|
+| `KAST_AGENT_CLI_URL` | Yes | Direct URL for the internal CLI zip |
+| `KAST_AGENT_BACKEND_URL` | Yes | Direct URL for the standalone backend zip |
+| `KAST_AGENT_CLI_SHA256` | No | Expected SHA-256 for the CLI zip |
+| `KAST_AGENT_BACKEND_SHA256` | No | Expected SHA-256 for the backend zip |
+| `KAST_AGENT_INSTALL_ROOT` | No | Contained install root, defaulting to `$HOME/.kast-agent` |
+| `KAST_AGENT_WORKSPACE` | No | Git workspace for repo-local Copilot extension install |
+| `KAST_AGENT_VERSION` | No | Version label written to install metadata |
+| `KAST_SKIP_COPILOT_EXTENSION` | No | Set `true` to skip repo-local Copilot extension install |
 
 ## Headless agent bundle
 
@@ -214,9 +258,9 @@ digests.
     - `$HOME/.kast/.manifest.json` — installer-managed inventory,
       including shell patches and repo-local Copilot installs
 
-    The only `kast`-specific environment variable is `KAST_CONFIG_HOME`.
-    Set it only when you need to move the directory that contains
-    `config.toml`:
+    The runtime environment variable most installs need after setup is
+    `KAST_CONFIG_HOME`. Set it only when you need to move the directory
+    that contains `config.toml`:
 
     ```bash title="Use a non-default config directory"
     export KAST_CONFIG_HOME="$HOME/.config/kast-dev"
@@ -267,6 +311,7 @@ images, private artifact stores, and CI-style setup scripts.
 | `KAST_EXPECTED_SHA256`           | Verifies `KAST_ARCHIVE_PATH` before extraction    |
 | `KAST_BACKEND_ARCHIVE_PATH`      | Installs the standalone backend from a local zip  |
 | `KAST_BACKEND_EXPECTED_SHA256`   | Verifies `KAST_BACKEND_ARCHIVE_PATH`              |
+| `KAST_INSTALL_SOURCE`            | Writes a custom source label into install metadata |
 | `KAST_SKILL_SCOPE`               | Sets skill scope when prompts are unavailable     |
 
 Do not combine `KAST_SKILL_SCOPE` with `--non-interactive`; that flag
