@@ -143,19 +143,24 @@ jobs:
       - name: Ensure draft release exists
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
         run: |
           set -euo pipefail
           tag="${{ steps.release-tag.outputs.value }}"
 
-          gh release create "$tag" \
-            --draft \
-            --verify-tag \
-            --title "$tag" \
-            --generate-notes
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release already exists: $tag"
+          else
+            gh release create "$tag" \
+              --draft \
+              --verify-tag \
+              --title "$tag" \
+              --generate-notes
+          fi
 
   build-and-upload:
     name: Build release asset (${{ matrix.asset_id }})
-    needs: [bump-version, prepare-release]
+    needs: [prepare-release]
     runs-on: ${{ matrix.runner }}
     permissions:
       contents: write
@@ -247,11 +252,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          tag="${{ needs.prepare-release.outputs.release_tag }}"
           mkdir -p dist
-          digest=""
-          if [[ -f dist/checksums.txt ]]; then
-            digest="$(grep '${{ matrix.asset_id }}' dist/checksums.txt | awk '{print $1}' || true)"
-          fi
+          asset_name="kast-${tag}-${{ matrix.asset_id }}.zip"
+          digest="$(awk -v name="$asset_name" '$2 == name { print $1; found = 1 } END { if (!found) exit 1 }' dist/checksums.txt)"
           cat > dist/build-provenance-${{ matrix.asset_id }}.json <<PROVEOF
           {
             "runId": "${{ github.run_id }}",
@@ -262,10 +266,31 @@ jobs:
             "workflowRef": "${{ github.workflow_ref }}",
             "actor": "${{ github.actor }}",
             "platformId": "${{ matrix.asset_id }}",
+            "assetName": "${asset_name}",
             "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
             "assetDigest": "sha256:${digest}"
           }
           PROVEOF
+
+          if [[ "${{ matrix.asset_id }}" == "linux-x64" ]]; then
+            headless_asset_name="kast-headless-agent-${tag}-linux-x64.zip"
+            headless_digest="$(sha256sum "dist/${headless_asset_name}" | awk '{ print $1 }')"
+            cat > dist/build-provenance-headless-agent-linux-x64.json <<PROVEOF
+          {
+            "runId": "${{ github.run_id }}",
+            "runNumber": "${{ github.run_number }}",
+            "runAttempt": "${{ github.run_attempt }}",
+            "sha": "${{ github.sha }}",
+            "ref": "${{ github.ref }}",
+            "workflowRef": "${{ github.workflow_ref }}",
+            "actor": "${{ github.actor }}",
+            "platformId": "headless-agent-linux-x64",
+            "assetName": "${headless_asset_name}",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "assetDigest": "sha256:${headless_digest}"
+          }
+          PROVEOF
+          fi
 
       - name: Upload release asset
         shell: bash
@@ -305,7 +330,7 @@ jobs:
 
   build-intellij-plugin:
     name: Build IntelliJ plugin
-    needs: [bump-version, prepare-release]
+    needs: [prepare-release]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -359,6 +384,9 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist
+          tag="${{ needs.prepare-release.outputs.release_tag }}"
+          asset_name="kast-intellij-${tag}.zip"
+          digest="$(sha256sum "dist/${asset_name}" | awk '{ print $1 }')"
           cat > dist/build-provenance-intellij.json <<PROVEOF
           {
             "runId": "${{ github.run_id }}",
@@ -369,7 +397,9 @@ jobs:
             "workflowRef": "${{ github.workflow_ref }}",
             "actor": "${{ github.actor }}",
             "platformId": "intellij",
-            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            "assetName": "${asset_name}",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "assetDigest": "sha256:${digest}"
           }
           PROVEOF
 
@@ -385,7 +415,7 @@ jobs:
 
   build-standalone-backend:
     name: Build standalone backend
-    needs: [bump-version, prepare-release]
+    needs: [prepare-release]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -425,6 +455,9 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist
+          tag="${{ needs.prepare-release.outputs.release_tag }}"
+          asset_name="kast-standalone-${tag}.zip"
+          digest="$(sha256sum "dist/${asset_name}" | awk '{ print $1 }')"
           cat > dist/build-provenance-standalone.json <<PROVEOF
           {
             "runId": "${{ github.run_id }}",
@@ -435,7 +468,9 @@ jobs:
             "workflowRef": "${{ github.workflow_ref }}",
             "actor": "${{ github.actor }}",
             "platformId": "standalone",
-            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            "assetName": "${asset_name}",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "assetDigest": "sha256:${digest}"
           }
           PROVEOF
 
@@ -452,7 +487,6 @@ jobs:
   publish-release:
     name: Publish release
     needs:
-      - bump-version
       - prepare-release
       - build-and-upload
       - build-intellij-plugin
@@ -494,19 +528,45 @@ jobs:
             provenance_files+=("$f")
           done
 
-          if [[ ${#provenance_files[@]} -gt 0 ]]; then
-            python3 -c "
-          import json, sys, glob
-          files = sys.argv[1:]
+          python3 - "${provenance_files[@]}" > dist/build-provenance.json <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          expected_platforms = {
+              "linux-x64",
+              "macos-arm64",
+              "headless-agent-linux-x64",
+              "intellij",
+              "standalone",
+          }
           entries = []
-          for f in files:
-              with open(f) as fh:
-                  entries.append(json.load(fh))
-          print(json.dumps({'builds': entries}, indent=2))
-          " "${provenance_files[@]}" > dist/build-provenance.json
-          else
-            echo '{"builds": []}' > dist/build-provenance.json
-          fi
+          for file_name in sys.argv[1:]:
+              with Path(file_name).open(encoding="utf-8") as handle:
+                  entries.append(json.load(handle))
+
+          seen_platforms = {entry.get("platformId") for entry in entries}
+          missing_provenance = expected_platforms - seen_platforms
+          unexpected_provenance = seen_platforms - expected_platforms
+          if missing_provenance or unexpected_provenance:
+              raise SystemExit(
+                  "provenance platform mismatch: "
+                  f"missing={sorted(missing_provenance)} "
+                  f"unexpected={sorted(unexpected_provenance)}"
+              )
+
+          for entry in entries:
+              platform = entry.get("platformId", "<unknown>")
+              asset_name = entry.get("assetName")
+              asset_digest = entry.get("assetDigest")
+              if not isinstance(asset_name, str) or not asset_name.endswith(".zip"):
+                  raise SystemExit(f"provenance entry for {platform} has no zip assetName")
+              if not isinstance(asset_digest, str) or not asset_digest.startswith("sha256:") or asset_digest == "sha256:":
+                  raise SystemExit(f"provenance entry for {platform} has no SHA-256 assetDigest")
+
+          entries.sort(key=lambda item: item["platformId"])
+          print(json.dumps({"builds": entries}, indent=2))
+          PY
 
       - name: Upload combined provenance
         env:
@@ -516,19 +576,6 @@ jobs:
           tag="${{ needs.prepare-release.outputs.release_tag }}"
           gh release upload "$tag" dist/build-provenance.json --clobber
 
-      - name: Publish draft release with provenance annotation
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          tag="${{ needs.prepare-release.outputs.release_tag }}"
-          run_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          gh release edit "$tag" --draft=false --latest \
-            --notes "$(gh release view "$tag" --json body -q .body)
-
-          ---
-          **Build provenance:** [CI Run #${{ github.run_number }}]($run_url)"
-
       - name: Generate and upload SHA256SUMS
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -536,12 +583,50 @@ jobs:
         run: |
           set -euo pipefail
           tag="${{ needs.prepare-release.outputs.release_tag }}"
+          expected_assets=(
+            "kast-${tag}-linux-x64.zip"
+            "kast-${tag}-macos-arm64.zip"
+            "kast-headless-agent-${tag}-linux-x64.zip"
+            "kast-intellij-${tag}.zip"
+            "kast-standalone-${tag}.zip"
+          )
+
+          rm -rf release-assets
           mkdir -p release-assets
           gh release download "$tag" --dir release-assets --pattern '*.zip'
-          (cd release-assets && sha256sum *.zip) > SHA256SUMS
+          for asset in "${expected_assets[@]}"; do
+            [[ -f "release-assets/${asset}" ]] || { echo "Missing release asset: ${asset}" >&2; exit 1; }
+          done
+          (cd release-assets && sha256sum "${expected_assets[@]}") > SHA256SUMS
+          cp SHA256SUMS release-assets/SHA256SUMS
+          cp dist/build-provenance.json release-assets/build-provenance.json
+          ./scripts/verify-release-assets.sh --release-dir release-assets --tag "$tag"
           gh release upload "$tag" SHA256SUMS --clobber
 
-      - name: Update Homebrew tap
+      - name: Publish draft release with provenance annotation
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ needs.prepare-release.outputs.release_tag }}"
+          run_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          release_flags=("--draft=false")
+          if [[ "$tag" == *-* ]]; then
+            release_flags+=(--prerelease)
+          else
+            release_flags+=(--latest)
+          fi
+
+          gh release edit "$tag" "${release_flags[@]}" \
+            --notes "$(gh release view "$tag" --json body -q .body)
+
+          ---
+          **Build provenance:** [CI Run #${{ github.run_number }}]($run_url)"
+
+      - name: Dispatch Homebrew tap update
+        if: ${{ !contains(needs.prepare-release.outputs.release_tag, '-') }}
+        id: homebrew-dispatch
         env:
           GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         shell: bash
@@ -551,6 +636,9 @@ jobs:
             echo "Missing HOMEBREW_TAP_TOKEN secret; create a token that can dispatch amichne/homebrew-kast workflows." >&2
             exit 1
           fi
+
+          dispatch_started="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          printf 'dispatch_started=%s\n' "$dispatch_started" >> "$GITHUB_OUTPUT"
 
           tag="${{ needs.prepare-release.outputs.release_tag }}"
           linux_asset="kast-${tag}-linux-x64.zip"
@@ -566,3 +654,32 @@ jobs:
             -f "client_payload[version]=${tag}" \
             -f "client_payload[sha256_linux_x64]=${sha_linux}" \
             -f "client_payload[sha256_macos_arm64]=${sha_macos}"
+
+      - name: Wait for Homebrew tap update
+        if: ${{ !contains(needs.prepare-release.outputs.release_tag, '-') }}
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          started="${{ steps.homebrew-dispatch.outputs.dispatch_started }}"
+          deadline=$((SECONDS + 180))
+          run_id=""
+
+          while [[ -z "$run_id" && "$SECONDS" -lt "$deadline" ]]; do
+            run_id="$(gh run list \
+              --repo amichne/homebrew-kast \
+              --workflow update-formula.yml \
+              --event repository_dispatch \
+              --branch main \
+              --created ">=$started" \
+              --limit 10 \
+              --json databaseId,createdAt,displayTitle \
+              --jq 'map(select(.displayTitle == "release-published")) | sort_by(.createdAt) | last | .databaseId // ""')"
+            if [[ -z "$run_id" ]]; then
+              sleep 5
+            fi
+          done
+
+          [[ -n "$run_id" ]] || { echo "Timed out waiting for Homebrew tap workflow run to appear" >&2; exit 1; }
+          gh run watch "$run_id" --repo amichne/homebrew-kast --exit-status --compact --interval 10

@@ -10,7 +10,7 @@ planned edit is safe to apply.
 `kast` has two independent runtime modes:
 
 - **Standalone CLI + backend** — install the `kast` CLI and run
-  `kast daemon start` to start the analysis backend. Fully independent from
+  `kast up` to start or warm the analysis backend. Fully independent from
   IntelliJ; works in terminals, CI, and headless agents.
 - **IntelliJ plugin-backed runtime** — runs inside IntelliJ IDEA and reuses the
   IDE's already-open project model, indexes, and analysis session.
@@ -37,7 +37,7 @@ For CI or headless agent installs from internal artifacts or self-contained
 bundles, use the
 [install guide](https://kast.michne.com/getting-started/install/#headless-agent-with-internal-artifacts).
 
-Then start the standalone backend before running analysis commands:
+Warm the standalone backend before running analysis commands:
 
 ```console
 # Start or warm the backend

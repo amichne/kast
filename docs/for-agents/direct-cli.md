@@ -13,6 +13,22 @@ JSON-RPC request and auto-ensures the daemon for the workspace.
 Humans can still manage the daemon lifecycle explicitly with `kast up`,
 `kast status`, and `kast stop`.
 
+## Method families
+
+The CLI accepts the same line-delimited JSON-RPC envelope for every
+family. Pick the family that matches the information you already have.
+
+- `raw/*` methods take explicit file paths, offsets, or file lists and
+  are documented in the generated [API reference](../reference/api-reference.md)
+- `symbol/*` methods are name-based orchestration helpers used by the
+  packaged skill and native `kast_*` tools
+- `database/*` methods read the local SQLite source index, such as
+  `database/metrics`
+
+Exact request and response shapes for the full catalog live in the
+installed `references/commands.json` file. The OpenAPI reference covers
+the raw backend projection.
+
 ## When to call the CLI directly
 
 - The agent already has absolute paths or offsets from a previous response
@@ -98,5 +114,5 @@ Things to check before claiming an answer:
 - [Talk to your agent](talk-to-your-agent.md) — the skill-driven path
 - [Understand symbols](../what-can-kast-do/understand-symbols.md) —
   identity operations in depth
-- [API reference](../reference/api-reference.md) — full schemas and
-  examples
+- [API reference](../reference/api-reference.md) — raw backend schemas
+  and examples

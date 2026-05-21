@@ -1,15 +1,16 @@
 ---
 title: API specification
-description: Machine-readable OpenAPI 3.1 specification for the Kast analysis
-  daemon JSON-RPC protocol.
+description: Machine-readable OpenAPI 3.1 specification for Kast's raw
+  analysis JSON-RPC protocol.
 icon: lucide/file-code
 ---
 
-The OpenAPI spec documents the `kast` analysis daemon's JSON-RPC
-protocol. It's generated from the Kotlin serialization models in
-`analysis-api` and stays in sync via automated tests.
+The OpenAPI spec documents the backend-level `raw/*` analysis methods
+plus the system methods `health`, `runtime/status`, and `capabilities`.
+It's generated from the Kotlin serialization models in `analysis-api`
+and stays in sync via automated tests.
 
-For human-readable documentation of every operation — schemas,
+For human-readable documentation of every OpenAPI operation — schemas,
 examples, behavioral notes — see the [API reference](api-reference.md).
 
 ## Transport note
@@ -19,6 +20,18 @@ sockets, stdio pipes, or TCP — not HTTP. The OpenAPI spec is a
 logical projection for docs, client codegen, and schema validation.
 Batch requests and JSON-RPC notifications aren't supported.
 
+## Full command catalog
+
+`kast rpc` can also route higher-level `symbol/*` orchestration methods
+and `database/*` index methods. Those are generated into
+`.agents/skills/kast/references/commands.json` by
+`./gradlew :kast-cli:generateVersionedCommandSpec` and packaged with
+the installable skill.
+
+Use OpenAPI when you need the raw backend schema. Use `commands.json`
+when an agent or script needs the complete `kast rpc` catalog,
+including `symbol/resolve`, `symbol/rename`, and `database/metrics`.
+
 ## Capability gating
 
 Read and mutation operations require the daemon to advertise the
@@ -27,7 +40,7 @@ in the spec includes an `x-kast-required-capability` extension
 naming the required capability enum value (e.g. `RESOLVE_SYMBOL`,
 `RENAME`). System methods have no capability requirement.
 
-`edits/apply` additionally needs the `FILE_OPERATIONS` capability
+`raw/apply-edits` additionally needs the `FILE_OPERATIONS` capability
 when the request carries non-empty `fileOperations`. This
 conditional requirement is documented with the
 `x-kast-conditional-capability` extension.

@@ -118,7 +118,9 @@ Use the headless agent installer when an image or setup step should install
 Kast from private artifact URLs instead of GitHub releases. The script keeps
 the install contained, writes a sourceable environment file, installs the
 packaged skill, installs the repo-local Copilot extension, and verifies the
-result before it exits.
+result before it exits. Verification checks the CLI launcher, standalone
+runtime libs, packaged skill, install manifest, Copilot hooks, native
+extension files, and executable `resolve-kast.sh` resolver.
 
 Set the direct artifact URLs and run the script from the checked-out
 workspace:
@@ -163,7 +165,8 @@ The bundle is self-describing: `README.md` explains the install flow,
 `manifest.json` lists the bundle kind, platform, entrypoint, and artifact
 digests, and `checksums.txt` records the bundled artifact SHA-256 values.
 Run from a Git checkout or set `KAST_AGENT_WORKSPACE` explicitly because the
-Copilot extension installs into that repository's `.github` directory.
+Copilot extension installs into that repository's `.github` directory and is
+verified before `install.sh` exits.
 
 Use `scripts/package-headless-agent-bundle.sh` when you need to create the
 same bundle shape from local artifacts:
@@ -176,6 +179,22 @@ same bundle shape from local artifacts:
   --platform-id linux-x64 \
   --output dist/kast-headless-agent-v1.2.3-linux-x64.zip
 ```
+
+## Verify release assets
+
+Published releases include the platform zips, headless agent bundle,
+`SHA256SUMS`, and `build-provenance.json`. Mirror or promote those files
+together, then run the same verifier used by CI before importing them into an
+internal artifact store:
+
+```bash title="Verify a downloaded release directory"
+gh release download v1.2.3 --repo amichne/kast --dir kast-release-v1.2.3
+./scripts/verify-release-assets.sh --release-dir kast-release-v1.2.3 --tag v1.2.3
+```
+
+The verifier requires exactly the shipped zip asset set, checks each SHA-256
+digest, and confirms that combined provenance names the same assets and
+digests.
 
 ??? info "Where kast stores configuration"
 

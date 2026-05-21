@@ -86,6 +86,7 @@ cli_tree="${scratch_dir}/cli"
 backend_tree="${scratch_dir}/backend"
 workspace_root="${scratch_dir}/workspace"
 skip_workspace_root="${scratch_dir}/skip-workspace"
+marker_only_workspace_root="${scratch_dir}/marker-only-workspace"
 home_dir="${scratch_dir}/home"
 install_root="${scratch_dir}/contained-kast"
 skip_install_root="${scratch_dir}/skip-contained-kast"
@@ -96,6 +97,7 @@ mkdir -p \
   "${backend_tree}/backend-standalone/runtime-libs" \
   "${workspace_root}" \
   "${skip_workspace_root}" \
+  "${marker_only_workspace_root}" \
   "${home_dir}"
 
 cat > "${cli_tree}/kast-cli/kast-cli" <<'FAKE_KAST'
@@ -142,6 +144,17 @@ if [[ "$command_name" == "install" ]]; then
       [[ -n "$target_dir" ]] || { printf '%s\n' "missing --target-dir" >&2; exit 1; }
       mkdir -p "${target_dir}/hooks"
       printf '%s\n' '{"version":1,"hooks":{}}' > "${target_dir}/hooks/hooks.json"
+      if [[ "${KAST_FAKE_COPILOT_MARKER_ONLY:-false}" != "true" ]]; then
+        mkdir -p \
+          "${target_dir}/agents" \
+          "${target_dir}/extensions/kast/scripts" \
+          "${target_dir}/extensions/kotlin-gradle-loop"
+        printf '%s\n' "# fake orchestrator" > "${target_dir}/agents/kast-orchestrator.md"
+        printf '%s\n' "export default {};" > "${target_dir}/extensions/kast/extension.mjs"
+        printf '%s\n' "#!/usr/bin/env bash" "printf '%s\n' fake-kast" > "${target_dir}/extensions/kast/scripts/resolve-kast.sh"
+        chmod +x "${target_dir}/extensions/kast/scripts/resolve-kast.sh"
+        printf '%s\n' "export default {};" > "${target_dir}/extensions/kotlin-gradle-loop/extension.mjs"
+      fi
       printf '%s\n' "fake" > "${target_dir}/.kast-copilot-version"
       exit 0
       ;;
@@ -167,6 +180,7 @@ zip_dir "$backend_zip" "$backend_tree"
 
 git -C "$workspace_root" init -q
 git -C "$skip_workspace_root" init -q
+git -C "$marker_only_workspace_root" init -q
 
 HOME="$home_dir" \
 SHELL=/bin/bash \
@@ -194,6 +208,10 @@ grep -Fq "installRoot = \"${install_root}\"" "$config_file" || die "config.toml 
 [[ -f "${skill_dir}/SKILL.md" ]] || die "Missing installed skill: ${skill_dir}/SKILL.md"
 [[ -f "$extension_marker" ]] || die "Missing Copilot extension marker: $extension_marker"
 [[ -f "${workspace_root}/.github/hooks/hooks.json" ]] || die "Missing Copilot hooks"
+[[ -f "${workspace_root}/.github/agents/kast-orchestrator.md" ]] || die "Missing Copilot agent"
+[[ -f "${workspace_root}/.github/extensions/kast/extension.mjs" ]] || die "Missing kast Copilot extension"
+[[ -x "${workspace_root}/.github/extensions/kast/scripts/resolve-kast.sh" ]] || die "Missing executable kast resolver"
+[[ -f "${workspace_root}/.github/extensions/kotlin-gradle-loop/extension.mjs" ]] || die "Missing Kotlin Gradle loop extension"
 [[ -f "$env_file" ]] || die "Missing sourceable env file: $env_file"
 grep -Fq "export KAST_CONFIG_HOME=\"${install_root}/config\"" "$env_file" || die "env file missing KAST_CONFIG_HOME"
 grep -Fq "export PATH=\"${install_root}/bin:\$PATH\"" "$env_file" || die "env file missing PATH export"
@@ -239,6 +257,19 @@ if HOME="$home_dir" \
   KAST_AGENT_WORKSPACE="$workspace_root" \
   "${repo_root}/scripts/headless-agent-install.sh" >/dev/null 2>&1; then
   die "Bad CLI checksum unexpectedly succeeded"
+fi
+
+if HOME="$home_dir" \
+  SHELL=/bin/bash \
+  KAST_AGENT_CLI_URL="$(file_uri "$cli_zip")" \
+  KAST_AGENT_BACKEND_URL="$(file_uri "$backend_zip")" \
+  KAST_AGENT_CLI_SHA256="$(compute_sha256 "$cli_zip")" \
+  KAST_AGENT_BACKEND_SHA256="$(compute_sha256 "$backend_zip")" \
+  KAST_AGENT_INSTALL_ROOT="${scratch_dir}/marker-only-install" \
+  KAST_AGENT_WORKSPACE="$marker_only_workspace_root" \
+  KAST_FAKE_COPILOT_MARKER_ONLY=true \
+  "${repo_root}/scripts/headless-agent-install.sh" >/dev/null 2>&1; then
+  die "Marker-only Copilot extension unexpectedly succeeded"
 fi
 
 printf '%s\n' "Headless agent installer smoke test passed"

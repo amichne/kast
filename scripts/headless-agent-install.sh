@@ -99,6 +99,7 @@ verify_install() {
   local runtime_libs_dir="${install_root}/backends/current/runtime-libs"
   local skill_dir="${install_root}/lib/skills/kast"
   local extension_marker="${workspace_root}/.github/.kast-copilot-version"
+  local copilot_root="${workspace_root}/.github"
 
   [[ -x "$kast_bin" ]] || die "Installed kast launcher is missing: $kast_bin"
   "$kast_bin" --help >/dev/null
@@ -111,6 +112,11 @@ verify_install() {
   [[ -f "${skill_dir}/SKILL.md" ]] || die "Packaged skill was not installed: ${skill_dir}/SKILL.md"
   if [[ "$skip_copilot_extension" != "true" ]]; then
     [[ -f "$extension_marker" ]] || die "Copilot extension was not installed: $extension_marker"
+    [[ -f "${copilot_root}/agents/kast-orchestrator.md" ]] || die "Copilot agent was not installed: ${copilot_root}/agents/kast-orchestrator.md"
+    [[ -f "${copilot_root}/hooks/hooks.json" ]] || die "Copilot hooks were not installed: ${copilot_root}/hooks/hooks.json"
+    [[ -f "${copilot_root}/extensions/kast/extension.mjs" ]] || die "Kast Copilot extension was not installed: ${copilot_root}/extensions/kast/extension.mjs"
+    [[ -x "${copilot_root}/extensions/kast/scripts/resolve-kast.sh" ]] || die "Kast resolver was not installed executable: ${copilot_root}/extensions/kast/scripts/resolve-kast.sh"
+    [[ -f "${copilot_root}/extensions/kotlin-gradle-loop/extension.mjs" ]] || die "Kotlin Gradle loop extension was not installed: ${copilot_root}/extensions/kotlin-gradle-loop/extension.mjs"
   fi
   [[ -f "$manifest_file" ]] || die "Install manifest was not written: $manifest_file"
 

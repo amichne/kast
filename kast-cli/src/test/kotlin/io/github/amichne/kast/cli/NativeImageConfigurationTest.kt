@@ -51,6 +51,7 @@ class NativeImageConfigurationTest {
             .map { include -> include.jsonObject.getValue("pattern").jsonPrimitive.content }
         val expectedPatterns = listOf(
             "packaged-skill/.*",
+            "packaged-copilot-extension/.*",
             Regex.escape(HOPLITE_DECODER_SERVICE_PATH),
         )
         val missingPatterns = expectedPatterns.filterNot(patterns::contains)
