@@ -358,7 +358,7 @@ jobs:
 
       - name: Upload build artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: release-asset-${{ matrix.asset_id }}-${{ github.run_id }}
           path: |
@@ -384,7 +384,7 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v5
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: ~/.gradle/kast/intellij-distributions
           key: idea-dist-${{ hashFiles('gradle/libs.versions.toml') }}
@@ -443,7 +443,7 @@ jobs:
 
       - name: Upload plugin artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: intellij-plugin-${{ github.run_id }}
           path: |
@@ -514,7 +514,7 @@ jobs:
 
       - name: Upload standalone backend artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: standalone-backend-${{ github.run_id }}
           path: |
@@ -536,19 +536,19 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Download all provenance artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           path: provenance-artifacts
           pattern: release-asset-*
 
       - name: Download IntelliJ provenance
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           path: provenance-intellij
           pattern: intellij-plugin-*
 
       - name: Download standalone backend provenance
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           path: provenance-standalone
           pattern: standalone-backend-*
