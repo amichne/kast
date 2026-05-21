@@ -80,6 +80,9 @@ require_contains "$ci_workflow" "kast-cli/build/native/nativeCompile/kast" "Nati
 require_contains "$ci_workflow" "./scripts/smoke-native-cli.sh kast-cli/build/native/nativeCompile/kast" "Native CLI job must smoke embedded agent resources"
 
 require_contains "$release_workflow" "Generate and upload SHA256SUMS" "Release must publish aggregate checksums"
+require_contains "$release_workflow" "Preflight stable release automation" "Release must preflight stable-release automation before side effects"
+require_contains "$release_workflow" "Require Homebrew token for stable releases" "Stable releases must require the Homebrew tap token before tagging"
+require_contains "$release_workflow" "HOMEBREW_TAP_TOKEN: \${{ secrets.HOMEBREW_TAP_TOKEN }}" "Stable release preflight must inspect the Homebrew tap token"
 require_contains "$release_workflow" "Dispatch Homebrew tap update" "Release must dispatch the Homebrew tap update"
 require_contains "$release_workflow" "Wait for Homebrew tap update" "Release must wait for the Homebrew tap update"
 require_contains "$release_workflow" "gh run watch" "Release must watch the Homebrew tap workflow result"
@@ -107,6 +110,8 @@ require_contains "$release_workflow" '[[ "$tag" == *-* ]]' "Release publication 
 require_contains "$release_workflow" 'release_flags+=(--prerelease)' "Prerelease tags must publish as prereleases"
 require_contains "$release_workflow" 'release_flags+=(--latest)' "Stable tags must publish as latest releases"
 require_order "$release_workflow" "Generate and upload SHA256SUMS" "Publish draft release with provenance annotation" "Release must upload checksum manifest before publishing"
+require_order "$release_workflow" "Preflight stable release automation" "Bump version" "Release must check stable-release automation before tagging"
+require_order "$release_workflow" "Preflight stable release automation" "Prepare release" "Release must check stable-release automation before creating releases"
 require_order "$release_workflow" "Publish draft release with provenance annotation" "Dispatch Homebrew tap update" "Release must publish GitHub assets before updating Homebrew"
 require_order "$release_workflow" "Dispatch Homebrew tap update" "Wait for Homebrew tap update" "Release must wait only after dispatching Homebrew"
 
