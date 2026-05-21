@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.net.URLClassLoader
 import java.nio.file.Path
+import kotlin.reflect.full.createType
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
 
@@ -27,6 +28,19 @@ class KastConfigTest {
         assertEquals("maxResults", maxResults.key)
         assertEquals(ConfigurationDefault(500), maxResults.default)
         assertEquals(500, maxResults.value)
+    }
+
+    @Test
+    fun `configuration field decoder supports every field wrapper`() {
+        val decoder = ConfigurationFieldDecoder()
+        val missingTypes = ConfigurationField::class.sealedSubclasses
+            .filterNot { subclass -> decoder.supports(subclass.createType()) }
+            .mapNotNull { subclass -> subclass.qualifiedName }
+
+        assertTrue(
+            missingTypes.isEmpty(),
+            "Add ConfigurationFieldDecoder support for:\n" + missingTypes.joinToString("\n"),
+        )
     }
 
     @Test
