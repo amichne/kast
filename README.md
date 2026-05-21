@@ -43,9 +43,10 @@ skill, or repo-local Copilot extension in one pass:
 curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh | bash
 ```
 
+For GitHub Actions-compatible hosted agents, use `amichne/kast-action@v1`.
 For CI or headless agent installs from internal artifacts or self-contained
 bundles, use the
-[install guide](https://kast.michne.com/getting-started/install/#headless-agent-with-internal-artifacts).
+[install guide](https://kast.michne.com/getting-started/install/#github-actions-and-hosted-agents).
 
 Warm the standalone backend before running analysis commands:
 

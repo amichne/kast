@@ -60,5 +60,35 @@ if actual != expected:
     print("actual:", json.dumps(actual, indent=2), file=sys.stderr)
     sys.exit(1)
 
+groups_by_name = {group["group"]: group["pages"] for group in expected}
+
+required_group_order = [
+    "Overview",
+    "Getting started",
+    "What can Kast do?",
+    "For agents",
+    "Recipes",
+    "Reference",
+    "Troubleshooting",
+    "Architecture",
+    "Changelog",
+]
+actual_group_order = [group["group"] for group in expected]
+if actual_group_order != required_group_order:
+    print("Docs sidebar groups should stay intent-first and reader-oriented", file=sys.stderr)
+    print("expected:", required_group_order, file=sys.stderr)
+    print("actual:", actual_group_order, file=sys.stderr)
+    sys.exit(1)
+
+placement_checks = {
+    "Getting started": "getting-started/backends",
+    "Reference": "cli-cheat-sheet",
+    "Architecture": "architecture/kast-vs-lsp",
+}
+for group_name, page in placement_checks.items():
+    if page not in groups_by_name.get(group_name, []):
+        print(f"{page} must appear under {group_name} in the sidebar", file=sys.stderr)
+        sys.exit(1)
+
 print("Docs navigation contract passed")
 PY
