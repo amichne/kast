@@ -18,7 +18,7 @@ USAGE
 
 release_type="patch"
 repo="${KAST_RELEASE_REPO:-amichne/kast}"
-homebrew_tap="${KAST_HOMEBREW_TAP_REPO:-amichne/homebrew-kast}"
+homebrew_tap="${KAST_RELEASE_TAP_REPO:-amichne/homebrew-kast}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
