@@ -65,9 +65,20 @@ require_order() {
 repo_root="$(resolve_repo_root)"
 ci_workflow="${repo_root}/.github/workflows/ci.yml"
 release_workflow="${repo_root}/.github/workflows/release.yml"
+copilot_setup_workflow="${repo_root}/.github/workflows/copilot-setup-steps.yml"
 
 [[ -f "$ci_workflow" ]] || die "CI workflow not found: $ci_workflow"
 [[ -f "$release_workflow" ]] || die "Release workflow not found: $release_workflow"
+[[ -f "$copilot_setup_workflow" ]] || die "Copilot setup workflow not found: $copilot_setup_workflow"
+
+for workflow in "$ci_workflow" "$release_workflow" "$copilot_setup_workflow"; do
+  require_not_contains "$workflow" "actions/cache@v4" "Workflow actions must not use the Node 20 cache action"
+  require_not_contains "$workflow" "actions/upload-artifact@v4" "Workflow actions must not use the Node 20 upload-artifact action"
+  require_not_contains "$workflow" "actions/upload-artifact@v5" "Workflow actions must not use the preliminary Node 24 upload-artifact action"
+  require_not_contains "$workflow" "actions/download-artifact@v4" "Workflow actions must not use the Node 20 download-artifact action"
+  require_not_contains "$workflow" "actions/download-artifact@v5" "Workflow actions must not use the old-runtime download-artifact action"
+  require_not_contains "$workflow" "actions/download-artifact@v6" "Workflow actions must not use the preliminary Node 24 download-artifact action"
+done
 
 require_contains "$ci_workflow" "Workflow release contracts" "CI must run this workflow contract check"
 require_contains "$ci_workflow" "./.github/scripts/test-release-asset-verifier.sh" "CI must test the release asset verifier"
