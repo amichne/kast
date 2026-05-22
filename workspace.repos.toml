@@ -1,5 +1,5 @@
 # Workspace coordination manifest for repositories that move together with Kast.
-# These are sibling checkouts, not Git submodules or vendored source trees.
+# These are sibling checkouts, not vendored source trees.
 
 [repos.kast]
 path = "."

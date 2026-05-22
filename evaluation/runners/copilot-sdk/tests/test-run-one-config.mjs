@@ -1,14 +1,12 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import {
   CONFIG_POLICIES,
   buildClientOptions,
   buildSessionConfig,
-  isolateMockWorktreeConfig,
   resolveRealKastWorkspaceRoot,
 } from "../run-one.mjs";
 
@@ -193,35 +191,6 @@ assert.deepEqual(
   },
 );
 
-const repoRoot = mkdtempSync(resolve(tmpdir(), "kast-run-one-worktree-"));
-execFileSync("git", ["-C", repoRoot, "init"], { stdio: "ignore" });
-mkdirSync(resolve(repoRoot, ".github/extensions/kast"), { recursive: true });
-mkdirSync(resolve(repoRoot, ".github/hooks"), { recursive: true });
-mkdirSync(resolve(repoRoot, ".github/agents"), { recursive: true });
-mkdirSync(resolve(repoRoot, ".agents/skills/kast"), { recursive: true });
-mkdirSync(resolve(repoRoot, "src"), { recursive: true });
-writeFileSync(resolve(repoRoot, ".github/extensions/kast/extension.mjs"), "export default {};\n");
-writeFileSync(resolve(repoRoot, ".github/hooks/hooks.json"), "{}\n");
-writeFileSync(resolve(repoRoot, ".github/agents/kast.md"), "---\nname: kast\n---\n");
-writeFileSync(resolve(repoRoot, ".agents/skills/kast/SKILL.md"), "# kast\n");
-writeFileSync(resolve(repoRoot, "src/Main.txt"), "main\n");
-execFileSync("git", ["-C", repoRoot, "add", "."], { stdio: "ignore" });
-execFileSync(
-  "git",
-  ["-C", repoRoot, "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-m", "init"],
-  { stdio: "ignore" },
-);
-
-await isolateMockWorktreeConfig(repoRoot);
-
-assert.equal(existsSync(resolve(repoRoot, "src/Main.txt")), true);
-assert.equal(existsSync(resolve(repoRoot, ".github/extensions/kast/extension.mjs")), false);
-assert.equal(existsSync(resolve(repoRoot, ".github/hooks/hooks.json")), false);
-assert.equal(existsSync(resolve(repoRoot, ".github/agents/kast.md")), false);
-assert.equal(existsSync(resolve(repoRoot, ".agents/skills/kast/SKILL.md")), false);
-assert.equal(String(execFileSync("git", ["-C", repoRoot, "status", "--porcelain"])).trim(), "");
-
 rmSync(tempRoot, { recursive: true, force: true });
-rmSync(repoRoot, { recursive: true, force: true });
 
 console.log("All run-one config tests passed.");

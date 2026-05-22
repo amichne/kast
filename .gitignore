@@ -144,7 +144,3 @@ skills-lock.json
 .agents/skills/kotlin-gradle-loop/
 .agents/skills/kotlin-standards/
 /.claude/skills/grill-with-docs/**
-
-# Sibling repositories are declared in workspace.repos.toml. Do not vendor them
-# under this repository.
-external/
