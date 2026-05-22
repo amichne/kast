@@ -628,13 +628,34 @@ _install_detect_platform_id() {
 
 _install_download_file() {
   local url="$1" output_path="$2"
+  local progress_mode="${KAST_DOWNLOAD_PROGRESS:-auto}"
+  local -a progress_args=()
+
+  case "$progress_mode" in
+    auto|"")
+      if [[ -t 2 ]]; then
+        progress_args=(--progress-bar)
+      else
+        progress_args=(--silent --show-error)
+      fi
+      ;;
+    always)
+      progress_args=(--progress-bar)
+      ;;
+    never)
+      progress_args=(--silent --show-error)
+      ;;
+    *)
+      die "KAST_DOWNLOAD_PROGRESS must be auto, always, or never"
+      ;;
+  esac
+
   curl \
     --fail \
     --location \
     --retry 3 \
     --retry-delay 2 \
-    --silent \
-    --show-error \
+    "${progress_args[@]}" \
     --output "$output_path" \
     "$url"
 }
@@ -1733,6 +1754,7 @@ Environment:
   KAST_EXPECTED_SHA256           Expected SHA-256 for KAST_ARCHIVE_PATH
   KAST_BACKEND_ARCHIVE_PATH      Local standalone backend archive path
   KAST_BACKEND_EXPECTED_SHA256   Expected SHA-256 for KAST_BACKEND_ARCHIVE_PATH
+  KAST_DOWNLOAD_PROGRESS         auto, always, or never (default: auto)
   KAST_INSTALL_SOURCE            Install source metadata label (default: kast.sh)
   KAST_SKILL_SCOPE               Skill scope when prompts are unavailable: global, local, both, skip
 USAGE

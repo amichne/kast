@@ -91,4 +91,38 @@ PS
 
 test_detects_idea_and_android_studio_processes
 
+test_download_uses_progress_bar_when_requested() {
+  local args_file="${test_tmp_dir}/download-progress-args"
+
+  curl() {
+    printf '%s\n' "$@" > "$args_file"
+  }
+
+  KAST_DOWNLOAD_PROGRESS=always _install_download_file "https://example.invalid/kast.zip" "${test_tmp_dir}/kast.zip"
+
+  local actual_args
+  actual_args="$(<"$args_file")"
+  [[ "$actual_args" == *"--progress-bar"* ]] || die "expected progress-bar curl output, got '${actual_args}'"
+  [[ "$actual_args" != *"--silent"* ]] || die "progress download should not pass --silent, got '${actual_args}'"
+}
+
+test_download_stays_quiet_when_requested() {
+  local args_file="${test_tmp_dir}/download-quiet-args"
+
+  curl() {
+    printf '%s\n' "$@" > "$args_file"
+  }
+
+  KAST_DOWNLOAD_PROGRESS=never _install_download_file "https://example.invalid/kast.zip" "${test_tmp_dir}/kast.zip"
+
+  local actual_args
+  actual_args="$(<"$args_file")"
+  [[ "$actual_args" == *"--silent"* ]] || die "quiet download should pass --silent, got '${actual_args}'"
+  [[ "$actual_args" == *"--show-error"* ]] || die "quiet download should pass --show-error, got '${actual_args}'"
+  [[ "$actual_args" != *"--progress-bar"* ]] || die "quiet download should not pass --progress-bar, got '${actual_args}'"
+}
+
+test_download_uses_progress_bar_when_requested
+test_download_stays_quiet_when_requested
+
 printf '%s\n' "Installer selector test passed"

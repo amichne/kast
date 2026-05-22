@@ -58,7 +58,9 @@ The wizard sniffs your environment (running IDEA-compatible IDEs, existing tools
 Java version), lets you pick an install mode, writes
 `$HOME/.config/kast/config.toml`, installs managed files under
 `$HOME/.kast`, records the install in `~/.kast/.manifest.json`, and can
-install the packaged Copilot surfaces you use next.
+install the packaged Copilot surfaces you use next. Interactive downloads
+show a progress bar; non-interactive downloads stay quiet unless you override
+that with `KAST_DOWNLOAD_PROGRESS`.
 
 ??? info "What the wizard does, step by step"
 
@@ -119,8 +121,8 @@ agent.
 Use `amichne/kast-action@v1` for GitHub Actions-compatible setup steps,
 including hosted coding agents such as Devin when they run inside a workflow.
 The action installs the headless agent bundle, adds the `kast` binary to
-`PATH`, exports the action-managed config and install roots, and marks the
-install as `KAST_INSTALL_SOURCE=action`.
+`PATH`, exports action-managed environment values for config/runtime paths,
+and marks the install as `KAST_INSTALL_SOURCE=action`.
 
 ```yaml title="Install Kast in a GitHub Actions-compatible job"
 steps:
@@ -362,6 +364,7 @@ images, private artifact stores, and CI-style setup scripts.
 | `KAST_EXPECTED_SHA256`           | Verifies `KAST_ARCHIVE_PATH` before extraction    |
 | `KAST_BACKEND_ARCHIVE_PATH`      | Installs the standalone backend from a local zip  |
 | `KAST_BACKEND_EXPECTED_SHA256`   | Verifies `KAST_BACKEND_ARCHIVE_PATH`              |
+| `KAST_DOWNLOAD_PROGRESS`         | Sets download display mode: `auto`, `always`, or `never` |
 | `KAST_INSTALL_SOURCE`            | Writes a custom source label into install metadata |
 | `KAST_SKILL_SCOPE`               | Sets skill scope when prompts are unavailable     |
 
