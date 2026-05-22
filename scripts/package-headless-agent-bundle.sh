@@ -62,7 +62,7 @@ Usage: scripts/package-headless-agent-bundle.sh --cli-archive <zip> --backend-ar
 Build a self-contained headless agent install bundle.
 
 Required:
-  --cli-archive <zip>       Kast CLI portable zip
+  --cli-archive <zip>       Rust kast CLI zip
   --backend-archive <zip>   Standalone backend portable zip
 
 Options:
@@ -137,7 +137,7 @@ trap cleanup EXIT
 staging_dir="${tmp_dir}/staging"
 mkdir -p "${staging_dir}/artifacts" "${staging_dir}/scripts" "$(dirname -- "$output_path")"
 
-cp "$cli_archive" "${staging_dir}/artifacts/kast-cli.zip"
+cp "$cli_archive" "${staging_dir}/artifacts/kast.zip"
 cp "$backend_archive" "${staging_dir}/artifacts/kast-standalone.zip"
 cp "${repo_root}/kast.sh" "${staging_dir}/kast.sh"
 cp "${repo_root}/scripts/headless-agent-install.sh" "${staging_dir}/scripts/headless-agent-install.sh"
@@ -145,11 +145,11 @@ chmod +x \
   "${staging_dir}/kast.sh" \
   "${staging_dir}/scripts/headless-agent-install.sh"
 
-cli_sha="$(compute_sha256 "${staging_dir}/artifacts/kast-cli.zip")"
+cli_sha="$(compute_sha256 "${staging_dir}/artifacts/kast.zip")"
 backend_sha="$(compute_sha256 "${staging_dir}/artifacts/kast-standalone.zip")"
 
 {
-  printf '%s  %s\n' "$cli_sha" "artifacts/kast-cli.zip"
+  printf '%s  %s\n' "$cli_sha" "artifacts/kast.zip"
   printf '%s  %s\n' "$backend_sha" "artifacts/kast-standalone.zip"
 } > "${staging_dir}/checksums.txt"
 
@@ -185,9 +185,9 @@ need_tool git
 need_tool python3
 need_tool curl
 
-export KAST_AGENT_CLI_URL="\$(file_uri "\${script_dir}/artifacts/kast-cli.zip")"
+export KAST_AGENT_CLI_URL="\$(file_uri "\${script_dir}/artifacts/kast.zip")"
 export KAST_AGENT_BACKEND_URL="\$(file_uri "\${script_dir}/artifacts/kast-standalone.zip")"
-export KAST_AGENT_CLI_SHA256="\$(checksum_for "artifacts/kast-cli.zip")"
+export KAST_AGENT_CLI_SHA256="\$(checksum_for "artifacts/kast.zip")"
 export KAST_AGENT_BACKEND_SHA256="\$(checksum_for "artifacts/kast-standalone.zip")"
 export KAST_AGENT_VERSION="\${KAST_AGENT_VERSION:-${version}}"
 export KAST_AGENT_WORKSPACE="\${KAST_AGENT_WORKSPACE:-\${GITHUB_WORKSPACE:-\$PWD}}"
@@ -210,7 +210,7 @@ executable resolver before it exits.
 ## Contents
 
 - \`install.sh\` - entrypoint for this bundle
-- \`artifacts/kast-cli.zip\` - Kast CLI portable archive
+- \`artifacts/kast.zip\` - Rust kast CLI archive
 - \`artifacts/kast-standalone.zip\` - standalone backend portable archive
 - \`checksums.txt\` - SHA-256 digests for bundled artifacts
 - \`manifest.json\` - machine-readable bundle metadata
@@ -254,7 +254,7 @@ payload = {
     "artifacts": [
         {
             "role": "cli",
-            "path": "artifacts/kast-cli.zip",
+            "path": "artifacts/kast.zip",
             "sha256": cli_sha,
         },
         {

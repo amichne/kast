@@ -45,21 +45,19 @@ if [[ -x "${HOME}/.kast/bin/kast" ]]; then
     exit 0
 fi
 
-for command_name in kast kast-cli; do
-    if command -v "${command_name}" >/dev/null 2>&1; then
-        resolve_absolute_path "$(command -v "${command_name}")"
-        exit 0
-    fi
-done
+if command -v kast >/dev/null 2>&1; then
+    resolve_absolute_path "$(command -v kast)"
+    exit 0
+fi
 
 for candidate in \
-    "${REPO_ROOT}/kast-cli/build/scripts/kast-cli" \
-    "${REPO_ROOT}/dist/cli/kast-cli"; do
+    "${REPO_ROOT}/target/debug/kast" \
+    "${REPO_ROOT}/target/release/kast"; do
     if [[ -x "${candidate}" ]]; then
         resolve_absolute_path "${candidate}"
         exit 0
     fi
 done
 
-echo "Unable to resolve Kast CLI path. Build/install kast first or add it to PATH." >&2
+echo "Unable to resolve the Rust kast CLI path. Install kast on PATH or build kast-rs first." >&2
 exit 1

@@ -18,11 +18,10 @@
 | Task                                                     | Command                                                                                                    |
 |----------------------------------------------------------|------------------------------------------------------------------------------------------------------------|
 | Full repo build/test                                     | `./gradlew build --offline`                                                                                |
-| Run one module's tests                                   | `./gradlew :kast-cli:test --offline`                                                                       |
+| Run one module's tests                                   | `./gradlew :analysis-server:test --offline`                                                                |
 | Run a single test class                                  | `./gradlew :analysis-server:test --tests io.github.amichne.kast.server.AnalysisServerSocketTest --offline` |
 | Run a single build-logic test                            | `./gradlew -p build-logic test --tests DefaultTestTagSelectionTest --offline`                              |
-| Validate `.github/` or packaged Copilot resource changes | `./gradlew :kast-cli:processResources :kast-cli:test --offline`                                            |
-| Build the CLI portable zip                               | `./gradlew buildCliPortableZip --offline`                                                                  |
+| Validate `.github/` Copilot extension changes            | `./.github/scripts/test-release-workflow-contract.sh && ./.github/scripts/test-docs-content-contract.sh`   |
 | Build the IntelliJ plugin zip                            | `./gradlew buildIntellijPlugin --offline`                                                                  |
 | Verify plugin compatibility                              | `./gradlew :backend-intellij:verifyPlugin --offline`                                                       |
 | Build shipped artifacts via the repo wrapper             | `./kast.sh build`                                                                                          |
@@ -42,9 +41,9 @@ Default test runs exclude the `concurrency`, `performance`, and `parity` tags un
   every runtime.
 - `analysis-server` wraps `AnalysisBackend` in the line-delimited JSON-RPC transport. `AnalysisDispatcher` is the method
   router that enforces capability checks, pagination limits, and request decoding for socket and stdio servers.
-- `kast-cli` is the operator-facing control plane. `WorkspaceRuntimeManager`
-  inspects descriptor files, reports workspace status, starts or stops the standalone daemon, and packages the CLI,
-  wrapper metadata, and embedded Copilot resources.
+- The Rust CLI in sibling repo `kast-rs` is the operator-facing control plane.
+  It owns command parsing, daemon lifecycle, installer flows, packaged skill
+  resources, and packaged Copilot extension resources.
 - `backend-standalone` is the headless runtime for terminal, CI, and agent use.
   `StandaloneAnalysisSession` owns Gradle workspace discovery, PSI/K2 session lifecycle, workspace refresh, and
   background indexing.
@@ -74,8 +73,8 @@ requests, while `kast up`, `kast status`, and `kast stop` are the human lifecycl
   `join(timeout)` in `close()` or shutdown paths; otherwise macOS `@TempDir` cleanup races show up in tests.
 - `docs/` plus `zensical.toml` are the documentation source of truth. `site/`
   and generated `docs/reference/*.md` output are build artifacts and should not be hand-edited.
-- `.github/hooks/hooks.json` is the authoritative hook manifest. For Copilot packaging work, inspect
-  `kast-cli/build/resources/main/` rather than assuming the packaged bundle exactly matches the source `.github/` tree.
+- `.github/hooks/hooks.json` is the authoritative hook manifest. Packaged
+  Copilot resources are embedded by the Rust CLI in `kast-rs`.
 - Source `.github/hooks/skill-shadowing.json` intentionally keeps repo-local entries, while the packaged Copilot bundle
   filters it down to portable entries backed by `shadowingExtensionId`.
 - Use `kast` terminology in commands, docs, and packaging targets. `analysis-cli`

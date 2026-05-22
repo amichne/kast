@@ -82,13 +82,13 @@ extract_dir="${scratch_dir}/extract"
 
 mkdir -p \
   "${artifact_dir}" \
-  "${cli_tree}/kast-cli" \
+  "${cli_tree}" \
   "${backend_tree}/backend-standalone/runtime-libs" \
   "${workspace_root}" \
   "${home_dir}" \
   "${extract_dir}"
 
-cat > "${cli_tree}/kast-cli/kast-cli" <<'FAKE_KAST'
+cat > "${cli_tree}/kast" <<'FAKE_KAST'
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -150,7 +150,7 @@ fi
 printf 'unexpected fake kast invocation: %s\n' "$*" >&2
 exit 1
 FAKE_KAST
-chmod +x "${cli_tree}/kast-cli/kast-cli"
+chmod +x "${cli_tree}/kast"
 
 cat > "${backend_tree}/backend-standalone/kast-standalone" <<'FAKE_BACKEND'
 #!/usr/bin/env bash
@@ -159,7 +159,7 @@ FAKE_BACKEND
 chmod +x "${backend_tree}/backend-standalone/kast-standalone"
 printf '%s\n' "fake runtime lib" > "${backend_tree}/backend-standalone/runtime-libs/fake.jar"
 
-cli_zip="${artifact_dir}/kast-cli-internal.zip"
+cli_zip="${artifact_dir}/kast-internal.zip"
 backend_zip="${artifact_dir}/kast-standalone-internal.zip"
 bundle_zip="${artifact_dir}/kast-headless-agent-smoke-linux-x64.zip"
 zip_dir "$cli_zip" "$cli_tree"
@@ -178,7 +178,7 @@ unzip -q "$bundle_zip" -d "$extract_dir"
 [[ -x "${extract_dir}/install.sh" ]] || die "Bundle install.sh is missing or not executable"
 [[ -f "${extract_dir}/README.md" ]] || die "Bundle README.md is missing"
 [[ -f "${extract_dir}/manifest.json" ]] || die "Bundle manifest.json is missing"
-grep -Fq "$(compute_sha256 "$cli_zip")  artifacts/kast-cli.zip" "${extract_dir}/checksums.txt" || die "CLI checksum missing from bundle"
+grep -Fq "$(compute_sha256 "$cli_zip")  artifacts/kast.zip" "${extract_dir}/checksums.txt" || die "CLI checksum missing from bundle"
 grep -Fq "$(compute_sha256 "$backend_zip")  artifacts/kast-standalone.zip" "${extract_dir}/checksums.txt" || die "Backend checksum missing from bundle"
 
 git -C "$workspace_root" init -q
@@ -224,7 +224,7 @@ assert payload["platform"] == "linux-x64", payload
 assert payload["version"] == "smoke", payload
 assert payload["entrypoint"] == "install.sh", payload
 artifacts = {entry["path"]: entry for entry in payload["artifacts"]}
-assert set(artifacts) == {"artifacts/kast-cli.zip", "artifacts/kast-standalone.zip"}, payload
+assert set(artifacts) == {"artifacts/kast.zip", "artifacts/kast-standalone.zip"}, payload
 PY
 
 printf '%s\n' "Headless agent bundle smoke test passed"

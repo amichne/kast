@@ -46,19 +46,14 @@ done
 
 python3 - "$release_dir" "$tag" <<'PY'
 import hashlib
-import io
 import json
 import sys
-import zipfile
 from pathlib import Path
 
 release_dir = Path(sys.argv[1])
 tag = sys.argv[2]
 
 expected = {
-    "linux-x64": f"kast-{tag}-linux-x64.zip",
-    "macos-arm64": f"kast-{tag}-macos-arm64.zip",
-    "headless-agent-linux-x64": f"kast-headless-agent-{tag}-linux-x64.zip",
     "intellij": f"kast-intellij-{tag}.zip",
     "standalone": f"kast-standalone-{tag}.zip",
 }
@@ -66,60 +61,6 @@ expected_assets = set(expected.values())
 
 def fail(message: str) -> None:
     raise SystemExit(message)
-
-def inspect_no_shrunk_runtime(display_name: str, payload: bytes) -> None:
-    try:
-        with zipfile.ZipFile(io.BytesIO(payload)) as archive:
-            names = archive.namelist()
-            for name in names:
-                if name.endswith("/kast-shrunk.jar") or name == "kast-shrunk.jar":
-                    fail(f"{display_name} contains ProGuard/R8 shrunk runtime artifact: {name}")
-                if name.endswith("runtime-libs/classpath.txt"):
-                    classpath = archive.read(name).decode("utf-8", errors="replace")
-                    if "kast-shrunk.jar" in classpath:
-                        fail(f"{display_name} classpath references ProGuard/R8 shrunk runtime artifact: {name}")
-
-            for nested in ("artifacts/kast-cli.zip", "artifacts/kast-standalone.zip"):
-                if nested in names:
-                    nested_payload = archive.read(nested)
-                    inspect_no_shrunk_runtime(f"{display_name}!/{nested}", nested_payload)
-                    if nested == "artifacts/kast-cli.zip":
-                        inspect_native_cli_payload(f"{display_name}!/{nested}", nested_payload, "linux-x64")
-    except zipfile.BadZipFile as error:
-        fail(f"{display_name} is not a valid zip archive: {error}")
-
-def inspect_native_cli_payload(display_name: str, payload: bytes, platform_id: str) -> None:
-    try:
-        with zipfile.ZipFile(io.BytesIO(payload)) as archive:
-            names = archive.namelist()
-            candidate_names = ("kast-cli/kast-cli", "kast/kast-cli")
-            launcher_name = next((name for name in candidate_names if name in names), None)
-            if launcher_name is None:
-                fail(f"{display_name} does not contain a kast-cli launcher")
-            jvm_payload = sorted(
-                name for name in names
-                if name.startswith(("kast-cli/runtime-libs/", "kast/runtime-libs/", "kast-cli/libs/", "kast/libs/"))
-            )
-            if jvm_payload:
-                fail(
-                    f"{display_name} contains JVM payload in a native CLI-only asset: "
-                    f"{jvm_payload[0]}"
-                )
-            launcher = archive.read(launcher_name)
-    except zipfile.BadZipFile as error:
-        fail(f"{display_name} is not a valid zip archive: {error}")
-
-    if launcher.startswith(b"#!"):
-        fail(f"{display_name} contains a shell launcher; expected a native image")
-    if platform_id == "linux-x64" and not launcher.startswith(b"\x7fELF"):
-        fail(f"{display_name} launcher is not an ELF native image")
-    if platform_id == "macos-arm64" and launcher[:4] not in {
-        b"\xcf\xfa\xed\xfe",
-        b"\xfe\xed\xfa\xcf",
-        b"\xca\xfe\xba\xbe",
-        b"\xbe\xba\xfe\xca",
-    }:
-        fail(f"{display_name} launcher is not a Mach-O native image")
 
 sha_entries = {}
 for raw_line in (release_dir / "SHA256SUMS").read_text(encoding="utf-8").splitlines():
@@ -155,12 +96,6 @@ for asset_name in expected_assets:
     actual_digest = hashlib.sha256(asset_path.read_bytes()).hexdigest()
     if actual_digest != expected_digest:
         fail(f"checksum mismatch for {asset_name}: expected {expected_digest}, got {actual_digest}")
-
-for platform_id, asset_name in expected.items():
-    payload = (release_dir / asset_name).read_bytes()
-    inspect_no_shrunk_runtime(asset_name, payload)
-    if platform_id in {"linux-x64", "macos-arm64"}:
-        inspect_native_cli_payload(asset_name, payload, platform_id)
 
 payload = json.loads((release_dir / "build-provenance.json").read_text(encoding="utf-8"))
 builds = payload.get("builds")

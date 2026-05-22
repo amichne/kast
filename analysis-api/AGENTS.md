@@ -32,7 +32,7 @@ Validate the contract locally before you rely on downstream failures.
 
 - Run `./gradlew :analysis-api:test` for local changes.
 - If you change public models, capabilities, or descriptor schema, also run
-  `./gradlew :analysis-server:test :kast-cli:test`.
+  `./gradlew :analysis-server:test`.
 - If you change shared config loading, descriptor discovery, or other
   startup-facing helpers, also run `./gradlew :backend-intellij:test` when the
   IntelliJ Platform artifacts for the pinned IDE version are available.

@@ -33,7 +33,7 @@ explicit scripts and ordering rules.
 This source anchors the install-focused concept pages.
 
 - Reinforces [[concepts/installation-and-instance-management]]
-- Adds detail to [[entities/kast-cli]]
+- Adds detail to [[entities/rust-cli]]
 - Supports [[analyses/operator-journeys]]
 
 ## Open questions
@@ -49,5 +49,5 @@ This source leaves some operator policy unstated.
 The pages below now depend on this source.
 
 - [[concepts/installation-and-instance-management]]
-- [[entities/kast-cli]]
+- [[entities/rust-cli]]
 - [[analyses/operator-journeys]]

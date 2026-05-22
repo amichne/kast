@@ -1,6 +1,6 @@
-# kast-cli: Native CLI Module
+# rust-cli: Native CLI Module
 
-This page summarizes the raw note [[kast-cli-Native-CLI-Module]]. It is the
+This page summarizes the raw note [[rust-cli-Native-CLI-Module]]. It is the
 deepest source for the CLI's implementation role.
 
 ## Source
@@ -10,7 +10,7 @@ This source is a CLI implementation note.
 - Type: note
 - Date: Unknown
 - Author: Unknown
-- Location: [[kast-cli-Native-CLI-Module]]
+- Location: [[rust-cli-Native-CLI-Module]]
 
 ## Summary
 
@@ -32,7 +32,7 @@ than hosts semantic state.
 
 This source shapes the frontend-facing wiki pages.
 
-- Reinforces [[entities/kast-cli]]
+- Reinforces [[entities/rust-cli]]
 - Adds detail to [[concepts/llm-agent-workflows]]
 - Supports [[analyses/operator-journeys]]
 
@@ -48,6 +48,6 @@ This source emphasizes structure more than product policy.
 
 The pages below now reflect this source.
 
-- [[entities/kast-cli]]
+- [[entities/rust-cli]]
 - [[concepts/llm-agent-workflows]]
 - [[analyses/operator-journeys]]

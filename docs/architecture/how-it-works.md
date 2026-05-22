@@ -85,7 +85,6 @@ standalone backend exposes the same surface independently.
     | Module | Owns | Why it exists |
     |--------|------|---------------|
     | `analysis-api` | Shared contract, serializable models, capability flags, edit validation | Keeps protocol semantics stable across all consumers |
-    | `kast-cli` | Command parsing, lifecycle orchestration, native entrypoint, distribution | Centralizes user-facing workflows |
     | `analysis-server` | JSON-RPC transport, dispatch, descriptor lifecycle | Isolates transport concerns from semantic logic |
     | `backend-standalone` | Headless runtime, workspace discovery, K2 session bootstrap | Concentrates stateful analysis in one runtime |
     | `backend-intellij` | IDE-hosted runtime, plugin lifecycle, project service | Reuses the IDE project model when IDEA or Android Studio is running |

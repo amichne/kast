@@ -143,7 +143,7 @@ usage() {
 Usage: scripts/headless-agent-install.sh
 
 Required environment:
-  KAST_AGENT_CLI_URL       Direct URL for the internal Kast CLI zip
+  KAST_AGENT_CLI_URL       Direct URL for the internal Rust kast CLI zip
   KAST_AGENT_BACKEND_URL   Direct URL for the internal standalone backend zip
 
 Optional environment:
@@ -188,11 +188,11 @@ trap cleanup EXIT
 
 mkdir -p "$install_root"
 
-cli_archive="${tmp_dir}/kast-cli.zip"
+cli_archive="${tmp_dir}/kast.zip"
 backend_archive="${tmp_dir}/kast-standalone.zip"
 
-download_artifact "$cli_url" "$cli_archive" "Kast CLI"
-verify_sha256 "$cli_archive" "${KAST_AGENT_CLI_SHA256:-}" "Kast CLI"
+download_artifact "$cli_url" "$cli_archive" "Rust kast CLI"
+verify_sha256 "$cli_archive" "${KAST_AGENT_CLI_SHA256:-}" "Rust kast CLI"
 
 download_artifact "$backend_url" "$backend_archive" "standalone backend"
 verify_sha256 "$backend_archive" "${KAST_AGENT_BACKEND_SHA256:-}" "standalone backend"

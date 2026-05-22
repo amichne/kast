@@ -28,7 +28,7 @@ The sources below support the current model of the CLI.
   daemon lifecycle basics.
 - [[sources/cli-command-reference]] - Defines the public verbs and output
   shapes.
-- [[sources/kast-cli-native-cli-module]] - Describes runtime management,
+- [[sources/rust-cli-control-plane]] - Describes runtime management,
   process launching, and RPC calls.
 - [[sources/installation-and-instance-management]] - Explains how the CLI is
   located and how side-by-side versions are selected.

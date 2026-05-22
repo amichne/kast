@@ -11,23 +11,19 @@ flows.
 The most important places to preserve and extend ADT-first behavior are listed
 below.
 
-1. CLI command parsing and argument decoding (`kast-cli`).
-   `CliCommandParser` converts raw `args` into structured command values and
-   throws `CliFailure` on usage violations, which makes it the first decode
-   boundary from untrusted input to typed intent.
-2. API contract numeric and coordinate wrappers (`analysis-api`).
+1. API contract numeric and coordinate wrappers (`analysis-api`).
    `CoreTypes` enforces domain invariants like non-negative offsets and
    1-based line/column values with `require`, so these are foundational parse
    guards for all compile-API-facing payloads.
-3. Edit plan validation and filesystem mutation preflight (`analysis-api`).
+2. Edit plan validation and filesystem mutation preflight (`analysis-api`).
    `EditPlanValidator` canonicalizes paths, groups edits, checks overlap and
    hash presence, and yields validated operations before mutation. This is a
    high-impact assertion boundary because bad plans can corrupt user code.
-4. Runtime/session bootstrapping (`backend-standalone`).
+3. Runtime/session bootstrapping (`backend-standalone`).
    Standalone startup/session code uses `require`/`check` to enforce workspace
    and module assumptions. Those assumptions should be represented as explicit
    startup-state ADTs before heavy analysis work begins.
-5. Config/telemetry parsing (`backend-standalone`).
+4. Config/telemetry parsing (`backend-standalone`).
    Parsing functions map raw strings into enum-like runtime scopes and details.
    These parse points are ideal for total decode ADTs that preserve unknown or
    unsupported inputs without silent drops.

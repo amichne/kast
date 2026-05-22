@@ -49,23 +49,13 @@ need_tool python3
 [[ -x /bin/bash ]] || die "Expected /bin/bash to exist"
 
 repo_root="$(resolve_repo_root)"
-portable_zip=""
-
-for candidate in "${repo_root}"/kast-cli/build/distributions/kast-cli-*-portable.zip; do
-  if [[ -f "$candidate" ]]; then
-    portable_zip="$candidate"
-    break
-  fi
-done
-
-[[ -n "$portable_zip" ]] || die "Portable distribution was not found under ${repo_root}/kast-cli/build/distributions"
 [[ -f "${repo_root}/kast.sh" ]] || die "Installer script was not found at ${repo_root}/kast.sh"
 
 scratch_dir="${repo_root}/.agent-workflow/smoke-installer"
 rm -rf "$scratch_dir"
 mkdir -p "$scratch_dir"
 platform_id="$(detect_platform_id)"
-asset_name="kast-smoke-${platform_id}.zip"
+asset_name="kast-v0.0.0-smoke-${platform_id}.zip"
 asset_path="${scratch_dir}/${asset_name}"
 metadata_path="${scratch_dir}/release.json"
 metadata_url="$({ python3 - "$metadata_path" <<'PY'
@@ -75,7 +65,63 @@ print(Path(sys.argv[1]).as_uri())
 PY
 })"
 
-cp "$portable_zip" "$asset_path"
+python3 - "$asset_path" <<'PY'
+import stat
+import sys
+import zipfile
+from pathlib import Path
+
+asset_path = Path(sys.argv[1])
+script = """#!/usr/bin/env bash
+set -euo pipefail
+case "${1:-}" in
+  --help|-h)
+    printf '%s\\n' "Kast CLI smoke"
+    ;;
+  completion)
+    printf '%s\\n' "# completion smoke"
+    ;;
+  install)
+    resource="${2:-}"
+    target_dir=""
+    name="kast"
+    for arg in "$@"; do
+      case "$arg" in
+        --target-dir=*) target_dir="${arg#--target-dir=}" ;;
+        --name=*) name="${arg#--name=}" ;;
+      esac
+    done
+    case "$resource" in
+      skill)
+        [[ -n "$target_dir" ]] || target_dir="${HOME}/.kast/lib/skills"
+        mkdir -p "${target_dir}/${name}"
+        printf '%s\\n' "# smoke skill" > "${target_dir}/${name}/SKILL.md"
+        printf '%s\\n' "v0.0.0-smoke" > "${target_dir}/${name}/.kast-version"
+        ;;
+      copilot-extension)
+        [[ -n "$target_dir" ]] || target_dir="${PWD}/.github"
+        mkdir -p "${target_dir}/hooks" "${target_dir}/extensions/kast"
+        printf '%s\\n' "{}" > "${target_dir}/hooks/hooks.json"
+        printf '%s\\n' "// smoke extension" > "${target_dir}/extensions/kast/extension.mjs"
+        printf '%s\\n' "v0.0.0-smoke" > "${target_dir}/.kast-copilot-version"
+        ;;
+      *)
+        printf 'unsupported install resource: %s\\n' "$resource" >&2
+        exit 64
+        ;;
+    esac
+    ;;
+  *)
+    printf 'unsupported smoke command: %s\\n' "${1:-}" >&2
+    exit 64
+    ;;
+esac
+"""
+info = zipfile.ZipInfo("kast")
+info.external_attr = (stat.S_IFREG | 0o755) << 16
+with zipfile.ZipFile(asset_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+    archive.writestr(info, script)
+PY
 
 python3 - "$metadata_path" "$asset_path" <<'PY'
 import hashlib
@@ -115,7 +161,7 @@ installer_content="$(cat "${repo_root}/kast.sh")"
   cd "$workspace_root"
   HOME="$home_dir" \
   SHELL=/bin/bash \
-  KAST_RELEASE_METADATA_URL="$metadata_url" \
+  KAST_CLI_RELEASE_METADATA_URL="$metadata_url" \
   KAST_CONFIG_HOME="$config_dir" \
   KAST_INSTALL_COMPLETIONS=false \
   KAST_PATH_RC_FILE="${home_dir}/.bashrc" \
@@ -135,7 +181,7 @@ legacy_bin_link="${home_dir}/.local/bin/kast"
 
 [[ -x "$installed_launcher" ]] || die "Installed launcher is not executable: $installed_launcher"
 [[ -L "$installed_root" ]] || die "Current install symlink was not created: $installed_root"
-[[ -x "${installed_root}/kast-cli" ]] || die "Installed kast-cli launcher is missing from ${installed_root}"
+[[ -x "${installed_root}/kast" ]] || die "Installed kast launcher is missing from ${installed_root}"
 [[ -f "$installed_env" ]] || die "Config env file was not created: $installed_env"
 grep -Fq "export KAST_CONFIG_HOME=\"${config_dir}\"" "$installed_env" || die "KAST_CONFIG_HOME missing from env file"
 [[ -f "$installed_config" ]] || die "config.toml was not created: $installed_config"

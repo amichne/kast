@@ -31,7 +31,7 @@ structured outputs in addition to command syntax.
 
 This source informs the main interface pages.
 
-- Reinforces [[entities/kast-cli]]
+- Reinforces [[entities/rust-cli]]
 - Reinforces [[concepts/semantic-analysis-operations]]
 - Adds detail to [[concepts/llm-agent-workflows]]
 
@@ -46,6 +46,6 @@ This source is broad but not deeply evaluative.
 
 The pages below incorporate this source.
 
-- [[entities/kast-cli]]
+- [[entities/rust-cli]]
 - [[concepts/semantic-analysis-operations]]
 - [[analyses/operator-journeys]]

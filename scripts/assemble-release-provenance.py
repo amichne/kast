@@ -6,9 +6,6 @@ from pathlib import Path
 
 
 EXPECTED_PLATFORMS = {
-    "linux-x64",
-    "macos-arm64",
-    "headless-agent-linux-x64",
     "intellij",
     "standalone",
 }

@@ -22,7 +22,7 @@ trace a claim back to both a source-summary page and the underlying note.
 
 The sections below organize the stable knowledge in the current Kast corpus.
 
-- [[entities/kast-cli]] and [[entities/analysis-server]] explain the user-facing
+- [[entities/rust-cli]] and [[entities/analysis-server]] explain the user-facing
   entry point and the local transport boundary.
 - [[entities/analysis-api]] and [[entities/backend-standalone]] explain the
   semantic contract and the resident K2-based engine.

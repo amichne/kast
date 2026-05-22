@@ -23,10 +23,9 @@ Batch requests and JSON-RPC notifications aren't supported.
 ## Full command catalog
 
 `kast rpc` can also route higher-level `symbol/*` orchestration methods
-and `database/*` index methods. Those are generated into
-`.agents/skills/kast/references/commands.json` by
-`./gradlew :kast-cli:generateVersionedCommandSpec` and packaged with
-the installable skill.
+and `database/*` index methods. The complete RPC command catalog lives in
+`.agents/skills/kast/references/commands.json` and is packaged by the Rust
+CLI in `kast-rs`.
 
 Use OpenAPI when you need the raw backend schema. Use `commands.json`
 when an agent or script needs the complete `kast rpc` catalog,

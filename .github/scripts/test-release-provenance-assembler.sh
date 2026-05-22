@@ -39,18 +39,6 @@ trap cleanup EXIT
 
 tag="v9.8.7"
 write_provenance \
-  "${scratch_dir}/provenance-artifacts/release-asset-linux-x64-1/dist/build-provenance-linux-x64.json" \
-  "linux-x64" \
-  "kast-${tag}-linux-x64.zip"
-write_provenance \
-  "${scratch_dir}/provenance-artifacts/release-asset-linux-x64-1/dist/build-provenance-headless-agent-linux-x64.json" \
-  "headless-agent-linux-x64" \
-  "kast-headless-agent-${tag}-linux-x64.zip"
-write_provenance \
-  "${scratch_dir}/provenance-artifacts/release-asset-macos-arm64-1/dist/build-provenance-macos-arm64.json" \
-  "macos-arm64" \
-  "kast-${tag}-macos-arm64.zip"
-write_provenance \
   "${scratch_dir}/provenance-intellij/dist/build-provenance-intellij.json" \
   "intellij" \
   "kast-intellij-${tag}.zip"
@@ -62,7 +50,6 @@ write_provenance \
 output="${scratch_dir}/dist/build-provenance.json"
 "$assembler" \
   --output "$output" \
-  "${scratch_dir}/provenance-artifacts" \
   "${scratch_dir}/provenance-intellij" \
   "${scratch_dir}/provenance-standalone"
 
@@ -74,10 +61,7 @@ from pathlib import Path
 payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 platforms = [entry.get("platformId") for entry in payload.get("builds", [])]
 expected = [
-    "headless-agent-linux-x64",
     "intellij",
-    "linux-x64",
-    "macos-arm64",
     "standalone",
 ]
 if platforms != expected:

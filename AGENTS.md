@@ -58,9 +58,6 @@ Use this map to choose the narrowest unit that owns a change.
 - `analysis-api`: shared contract, serializable models, JSON-RPC wire types,
   descriptor discovery helpers, standalone option parsing, errors, file edit
   validation, descriptor schema, and disk edit helpers
-- `kast-cli`: CLI control plane, command parsing, JSON output, install
-  flows, runtime orchestration, wrapper packaging, portable distribution
-  layout, and the native-image entrypoint
 - `analysis-server`: JSON-RPC dispatch, local socket and stdio transport,
   request limits, and descriptor lifecycle
 - `index-store`: SQLite source index persistence, file manifest state,
@@ -178,12 +175,12 @@ Apply these rules across the repo before local unit rules add more detail.
   unless the behavior is intentionally changing across the stack.
 - Keep capability gating honest. A transport or backend must not advertise
   support for work it cannot actually perform.
-- Respect the current architecture: `kast-cli` owns the operator-facing
-  control plane, native entrypoint, wrapper packaging, and portable
-  distribution, `analysis-server` owns transport and descriptor plumbing,
-  `backend-standalone` owns headless runtime behavior, `backend-intellij` owns
-  IDE-hosted runtime behavior, and `shared-testing` stays out of production
-  code paths.
+- Respect the current architecture: the Rust CLI in sibling repo `kast-rs`
+  owns the operator-facing control plane, installer, packaged skill, and
+  Copilot extension distribution; `analysis-server` owns transport and
+  descriptor plumbing, `backend-standalone` owns headless runtime behavior,
+  `backend-intellij` owns IDE-hosted runtime behavior, and `shared-testing`
+  stays out of production code paths.
 - Treat `docs/` plus `zensical.toml` as the documentation source of truth.
   `site/` is generated output and should be rebuilt, not hand-edited.
 - Prefer repo-root packaging entry points for shipped artifacts: `./kast.sh build`
@@ -194,14 +191,13 @@ Apply these rules across the repo before local unit rules add more detail.
 
 ## Contract surface inventory
 
-Before modifying `EmbeddedSkillResources`, `EmbeddedCopilotExtensionResources`,
-`AnalysisBackend`, the `kast rpc` machine contract surface, or any packaged
-artifact manifest,
+Before modifying `AnalysisBackend`, the `kast rpc` machine contract surface, or
+any packaged artifact manifest,
 enumerate all consumers: `docs/openapi.yaml`, `.agents/skills/kast/SKILL.md`,
 `.agents/skills/kast/evals/**/*`,
 `.agents/skills/kast/references/*`, `.agents/skills/kast/scripts/*`,
 `evaluation/**/*`, `.github/extensions/kast/extension.mjs`,
-`.github/agents/**/*`, `.github/hooks/**/*`, `kast-cli/build.gradle.kts`,
+`.github/agents/**/*`, `.github/hooks/**/*`, sibling `kast-rs/resources/**/*`,
 and `kast.sh`.
 These are contract surfaces — a change without updating all consumers silently
 breaks the distribution.

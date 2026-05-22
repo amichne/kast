@@ -35,7 +35,7 @@ These pages describe installation and instance selection.
 
 These pages depend on installation and discovery working correctly.
 
-- [[entities/kast-cli]]
+- [[entities/rust-cli]]
 - [[entities/analysis-server]]
 - [[concepts/client-daemon-architecture]]
 - [[analyses/operator-journeys]]

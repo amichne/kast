@@ -22,17 +22,19 @@ start asking questions.
 ## Homebrew install
 
 Homebrew is the default local developer path when your platform is supported by
-the `amichne/kast` tap. It installs the stable native CLI package only.
+the `amichne/kast` tap. `kast` installs the Rust CLI from `amichne/kast-rs`;
+`kast-plugin` installs the IDEA plugin bundle from this repository's releases.
 
 ```console title="Install kast with Homebrew"
 brew tap amichne/kast
 brew install kast
+brew install kast-plugin
 ```
 
 Use Homebrew for ordinary terminal use when you already have a backend path in
 mind. Use the shell installer when you need the interactive wizard, a
-standalone backend install from GitHub release assets, the IDEA plugin zip,
-packaged Copilot surfaces, local `dist/` artifacts, or a non-Homebrew machine.
+standalone backend install from GitHub release assets, packaged Copilot
+surfaces, local `dist/` artifacts, or a non-Homebrew machine.
 
 ## Shell installer
 
@@ -211,7 +213,7 @@ Set the direct artifact URLs and run the script from the checked-out
 workspace:
 
 ```bash title="Install Kast for a headless agent"
-export KAST_AGENT_CLI_URL="https://artifacts.example.internal/kast-cli.zip"
+export KAST_AGENT_CLI_URL="https://artifacts.example.internal/kast.zip"
 export KAST_AGENT_BACKEND_URL="https://artifacts.example.internal/kast-standalone.zip"
 export KAST_AGENT_CLI_SHA256="sha256:<cli-digest>"
 export KAST_AGENT_BACKEND_SHA256="sha256:<backend-digest>"
@@ -269,7 +271,7 @@ same bundle shape from local artifacts:
 
 ```bash title="Package a headless agent bundle"
 ./scripts/package-headless-agent-bundle.sh \
-  --cli-archive dist/kast-v1.2.3-linux-x64.zip \
+  --cli-archive ../kast-rs/dist/kast-v1.2.3-linux-x64.zip \
   --backend-archive dist/backend.zip \
   --version v1.2.3 \
   --platform-id linux-x64 \
@@ -278,10 +280,11 @@ same bundle shape from local artifacts:
 
 ## Verify release assets
 
-Published releases include the platform zips, headless agent bundle,
-`SHA256SUMS`, and `build-provenance.json`. Mirror or promote those files
-together, then run the same verifier used by CI before importing them into an
-internal artifact store:
+Published releases from `amichne/kast` include the standalone daemon zip, IDEA
+plugin zip, `SHA256SUMS`, and `build-provenance.json`. CLI binary releases are
+published by `amichne/kast-rs`. Mirror or promote each repository's files
+together, then run the same verifier used by CI before importing Kast daemon
+or plugin artifacts into an internal artifact store:
 
 ```bash title="Verify a downloaded release directory"
 gh release download v1.2.3 --repo amichne/kast --dir kast-release-v1.2.3
