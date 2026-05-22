@@ -207,6 +207,6 @@ If nothing here resolves it:
 1. Run `health` through `kast rpc`, then run `kast status`, and capture the
    output
 2. Check daemon stderr for stack traces
-3. Open an issue at
-   [github.com/amichne/kast](https://github.com/amichne/kast/issues)
-   with the diagnostic output
+3. Open an issue in the
+   [Kast issue tracker](https://github.com/amichne/kast/issues) with the
+   diagnostic output

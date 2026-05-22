@@ -88,6 +88,6 @@ For the full comparison, see
 
 ## Documentation
 
-- Documentation site: <https://kast.michne.com/>
-- Install guide: <https://kast.michne.com/getting-started/install/>
-- Backend comparison: <https://kast.michne.com/getting-started/backends/>
+- Read the [documentation site](https://kast.michne.com/).
+- Follow the [install guide](https://kast.michne.com/getting-started/install/).
+- Compare runtime modes in [Backends](https://kast.michne.com/getting-started/backends/).
