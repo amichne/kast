@@ -13,27 +13,26 @@ start asking questions.
 
 ## Prerequisites
 
-- **Java 21 or newer** on your `PATH` or `JAVA_HOME`. Homebrew installs
-  `openjdk@21`; the standalone backend is a JVM process and won't start
-  without Java.
+- **Java 21 or newer** on your `PATH` or `JAVA_HOME` when you run the
+  standalone backend. The Homebrew CLI package is native and does not install
+  a JDK.
 - **macOS, Linux, or Windows.** Homebrew is the preferred local CLI path on
   supported platforms; the shell installer covers the rest.
 
 ## Homebrew install
 
 Homebrew is the default local developer path when your platform is supported by
-the `amichne/kast` tap. It installs the stable CLI package and pulls
-`openjdk@21` as the Java runtime dependency.
+the `amichne/kast` tap. It installs the stable native CLI package only.
 
 ```console title="Install kast with Homebrew"
 brew tap amichne/kast
 brew install kast
 ```
 
-Use Homebrew for ordinary terminal use. Use the shell installer when you need
-the interactive wizard, a standalone backend install from GitHub release
-assets, the IDEA plugin zip, packaged Copilot surfaces, local `dist/`
-artifacts, or a non-Homebrew machine.
+Use Homebrew for ordinary terminal use when you already have a backend path in
+mind. Use the shell installer when you need the interactive wizard, a
+standalone backend install from GitHub release assets, the IDEA plugin zip,
+packaged Copilot surfaces, local `dist/` artifacts, or a non-Homebrew machine.
 
 ## Shell installer
 

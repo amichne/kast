@@ -229,7 +229,7 @@ jobs:
         run: |
           set -euo pipefail
           tag="${{ needs.prepare-release.outputs.release_tag }}"
-          ./gradlew :kast-cli:nativeCompile :kast-cli:portableDistZip
+          ./gradlew :kast-cli:nativeCompile
           ./scripts/smoke-native-cli.sh kast-cli/build/native/nativeCompile/kast
           ./kast.sh release \
             --tag "$tag" \
@@ -249,6 +249,10 @@ jobs:
           unzip -q "$asset_path" -d "$dist_dir"
           "$dist_dir/kast-cli/kast-cli" --help
           ./scripts/smoke-native-cli.sh "$dist_dir/kast-cli/kast-cli"
+          if [[ -d "$dist_dir/kast-cli/runtime-libs" || -d "$dist_dir/kast-cli/libs" ]]; then
+            echo "Release CLI asset must contain only the native launcher, not JVM payload directories" >&2
+            exit 1
+          fi
           if [[ -f "$dist_dir/kast-cli/runtime-libs/kast-shrunk.jar" ]]; then
             echo "Release asset must not contain ProGuard/R8 shrunk runtime libs" >&2
             exit 1
