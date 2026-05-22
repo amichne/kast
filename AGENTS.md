@@ -24,6 +24,20 @@ Triage uses the canonical label vocabulary (`needs-triage`, `needs-info`, `ready
 
 This is a single-context repo: use root `CONTEXT.md` and `docs/adr/` when they exist. See `docs/agents/domain.md`.
 
+## Workspace repo coordination
+
+`workspace.repos.toml` is the source of truth for repositories that move with
+this repo but are not part of this Git history. Treat those entries as sibling
+checkouts, not submodules and not vendored source trees.
+
+- Expected local layout is `kast/`, `kast-rs/`, and `homebrew-kast/` as
+  siblings under the same parent directory.
+- Run `scripts/workspace-sync-status.sh` before cross-repo release,
+  migration, or CLI handoff work. Use `--strict` when automation should fail
+  on a missing checkout, remote mismatch, or branch mismatch.
+- Do not add `.gitmodules` or commit repositories under `external/`.
+  `external/` is ignored only to prevent accidental vendoring.
+
 ## North stars
 
 Carry these principles into every change in this repository.

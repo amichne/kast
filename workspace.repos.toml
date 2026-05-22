@@ -1,0 +1,20 @@
+# Workspace coordination manifest for repositories that move together with Kast.
+# These are sibling checkouts, not Git submodules or vendored source trees.
+
+[repos.kast]
+path = "."
+remote = "git@github.com:amichne/kast.git"
+branch = "main"
+role = "JVM daemon, IDEA plugin, JSON-RPC contract, docs, and release assembly"
+
+[repos.kast-rs]
+path = "../kast-rs"
+remote = "git@github.com:amichne/kast-rs.git"
+branch = "main"
+role = "Rust user-facing CLI, daemon lifecycle control, metrics TUI, and direct SQLite reads"
+
+[repos.homebrew-kast]
+path = "../homebrew-kast"
+remote = "git@github.com:amichne/homebrew-kast.git"
+branch = "main"
+role = "Homebrew tap and formula publication for Kast release artifacts"

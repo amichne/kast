@@ -96,6 +96,7 @@ require_contains "$docs_workflow" "if: github.ref == 'refs/heads/main' && github
 require_contains "$ci_workflow" "Workflow release contracts" "CI must run this workflow contract check"
 require_contains "$ci_workflow" "./.github/scripts/test-docs-navigation-contract.sh" "CI must run the docs navigation contract check"
 require_contains "$ci_workflow" "./.github/scripts/test-docs-content-contract.sh" "CI must run the docs content contract check"
+require_contains "$ci_workflow" "./.github/scripts/test-workspace-sync-status.sh" "CI must validate workspace repo coordination"
 require_contains "$ci_workflow" "./.github/scripts/test-release-asset-verifier.sh" "CI must test the release asset verifier"
 require_contains "$ci_workflow" "./.github/scripts/test-kast-release-command.sh" "CI must test the kast.sh release command"
 require_contains "$ci_workflow" "./.github/scripts/test-release-preflight.sh" "CI must test the release preflight helper"
