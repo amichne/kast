@@ -199,6 +199,7 @@ jobs:
   build-intellij-plugin:
     name: Build IDEA plugin
     needs: [prepare-release]
+    if: always() && needs.prepare-release.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -284,6 +285,7 @@ jobs:
   build-standalone-backend:
     name: Build standalone backend
     needs: [prepare-release]
+    if: always() && needs.prepare-release.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -358,6 +360,7 @@ jobs:
       - prepare-release
       - build-intellij-plugin
       - build-standalone-backend
+    if: always() && needs.prepare-release.result == 'success' && needs.build-intellij-plugin.result == 'success' && needs.build-standalone-backend.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
