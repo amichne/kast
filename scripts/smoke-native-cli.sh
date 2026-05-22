@@ -28,13 +28,21 @@ cleanup() {
 trap cleanup EXIT
 
 skill_root="${scratch_dir}/skills"
+config_home="${scratch_dir}/config"
 workspace_root="${scratch_dir}/workspace"
 github_root="${workspace_root}/.github"
 
-mkdir -p "$skill_root" "$workspace_root"
+mkdir -p "$skill_root" "$config_home" "$workspace_root"
 git -C "$workspace_root" init -q
 
+cat > "${config_home}/config.toml" <<EOF_CONFIG
+[backends.standalone]
+runtimeLibsDir = "${scratch_dir}/runtime-libs"
+EOF_CONFIG
+
 "$kast_bin" --help >/dev/null
+
+KAST_CONFIG_HOME="$config_home" "$kast_bin" status --workspace-root="$workspace_root" >/dev/null
 
 "$kast_bin" install skill --target-dir="$skill_root" --name=kast --yes=true >/dev/null
 [[ -f "${skill_root}/kast/SKILL.md" ]] || die "Native CLI did not install packaged skill"
