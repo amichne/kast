@@ -132,5 +132,6 @@ require_contains "$agents_doc" "## Local and hosted agent setup" "Agent docs mus
 require_contains "$agents_doc" "GitHub Actions-compatible hosted agent" "Agent docs must document action-based hosted agents"
 require_contains "$agents_doc" "Cloud/headless coding agent" "Agent docs must document cloud/headless agent setup"
 require_embedded_markdown_links
+python3 "${repo_root}/.github/scripts/render-rpc-contract-summary.py" --check
 
 printf '%s\n' "Docs content contract passed"

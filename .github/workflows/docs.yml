@@ -4,8 +4,10 @@ on:
   pull_request:
     paths:
       - ".github/workflows/docs.yml"
+      - ".github/scripts/render-rpc-contract-summary.py"
       - ".github/scripts/test-docs-navigation-contract.sh"
       - ".github/scripts/test-docs-content-contract.sh"
+      - ".agents/skills/kast/references/commands.json"
       - "docs/**"
       - "requirements-docs.txt"
       - "zensical.toml"
@@ -14,8 +16,10 @@ on:
       - main
     paths:
       - ".github/workflows/docs.yml"
+      - ".github/scripts/render-rpc-contract-summary.py"
       - ".github/scripts/test-docs-navigation-contract.sh"
       - ".github/scripts/test-docs-content-contract.sh"
+      - ".agents/skills/kast/references/commands.json"
       - "docs/**"
       - "requirements-docs.txt"
       - "zensical.toml"

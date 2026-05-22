@@ -31,6 +31,461 @@ Use OpenAPI when you need the raw backend schema. Use `commands.json`
 when an agent or script needs the complete `kast rpc` catalog,
 including `symbol/resolve`, `symbol/rename`, and `database/metrics`.
 
+The embedded catalog below is generated from `commands.json` so readers can
+browse the actual JSON-RPC suite directly on this page.
+
+<!-- BEGIN GENERATED RPC CONTRACT SUITE -->
+### Browse the JSON-RPC suite
+
+This section is generated from `.agents/skills/kast/references/commands.json`
+so the page exposes the same method catalog used by installed agent
+skills and `kast rpc`. It embeds the command families, flow-oriented
+building blocks, and request fields that callers compose into larger
+automation flows.
+
+Catalog version: `dev`. Methods: `27`.
+
+#### Method families
+
+The families below are the top-level namespaces accepted by `kast rpc`.
+
+| Family | Role | Source | Methods |
+| --- | --- | --- | --- |
+| `system` | Runtime readiness, backend state, and capability discovery. | backend | `health`<br>`runtime/status`<br>`capabilities` |
+| `symbol` | Name-based orchestration for agent and script workflows. | backend | `symbol/scaffold`<br>`symbol/resolve`<br>`symbol/references`<br>`symbol/callers`<br>`symbol/rename`<br>`symbol/write-and-validate` |
+| `raw` | Position- and file-based backend primitives. | backend | `raw/resolve`<br>`raw/references`<br>`raw/call-hierarchy`<br>`raw/type-hierarchy`<br>`raw/semantic-insertion-point`<br>`raw/diagnostics`<br>`raw/rename`<br>`raw/optimize-imports`<br>`raw/apply-edits`<br>`raw/workspace-refresh`<br>`raw/file-outline`<br>`raw/workspace-symbol`<br>`raw/workspace-search`<br>`raw/workspace-files`<br>`raw/implementations`<br>`raw/code-actions`<br>`raw/completions` |
+| `database` | SQLite source-index queries for metrics and impact views. | sqlite | `database/metrics` |
+
+#### Composition building blocks
+
+Use these groups as a starting point for composing multi-step flows.
+Each method listed here is validated against the generated catalog.
+
+| Block | Use it for | Methods |
+| --- | --- | --- |
+| Check runtime | Confirm the daemon is reachable, ready, and honest about supported work. | `health`<br>`runtime/status`<br>`capabilities` |
+| Choose targets | List files, search symbols or text, and narrow ambiguous names before deeper calls. | `raw/workspace-files`<br>`raw/workspace-symbol`<br>`raw/workspace-search`<br>`symbol/resolve`<br>`raw/file-outline` |
+| Inspect semantics | Resolve declarations, inspect scopes, and read implementation or completion context. | `raw/resolve`<br>`raw/semantic-insertion-point`<br>`raw/implementations`<br>`raw/code-actions`<br>`raw/completions` |
+| Trace relationships | Move from one declaration to usages, callers, callees, and type relationships. | `symbol/references`<br>`raw/references`<br>`symbol/callers`<br>`raw/call-hierarchy`<br>`raw/type-hierarchy` |
+| Plan changes | Ask Kast to derive edit plans or generation context before mutating files. | `symbol/scaffold`<br>`symbol/rename`<br>`raw/rename`<br>`raw/optimize-imports` |
+| Apply and validate | Write prepared changes, refresh affected workspace state, and re-run diagnostics. | `symbol/write-and-validate`<br>`raw/apply-edits`<br>`raw/workspace-refresh`<br>`raw/diagnostics` |
+| Read the index | Use the source index for API surface, coupling, dead-code, and impact questions. | `database/metrics` |
+
+#### Command catalog
+
+The table below summarizes every method, its backing source, request
+shape, response type, and success/failure variants when the method
+uses a discriminated response envelope.
+
+| Method | Family | Source | Summary | Required params | Optional params | Response | Variants |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `health` | `system` | backend | Basic health check | none | none | `HealthResponse` | single result |
+| `runtime/status` | `system` | backend | Detailed runtime state including indexing progress | none | none | `RuntimeStatusResponse` | single result |
+| `capabilities` | `system` | backend | Advertised read and mutation capabilities | none | none | `BackendCapabilities` | single result |
+| `symbol/scaffold` | `symbol` | backend | Gather structural generation context for a Kotlin file | `targetFile` | `workspaceRoot`<br>`targetSymbol`<br>`mode`<br>`kind` | `KastScaffoldResponse` | `SCAFFOLD_SUCCESS`<br>`SCAFFOLD_FAILURE` |
+| `symbol/resolve` | `symbol` | backend | Resolve a symbol by name to its declaration | `symbol` | `workspaceRoot`<br>`fileHint`<br>`kind`<br>`containingType` | `KastResolveResponse` | `RESOLVE_SUCCESS`<br>`RESOLVE_FAILURE` |
+| `symbol/references` | `symbol` | backend | Find every usage of a Kotlin symbol | `symbol` | `workspaceRoot`<br>`fileHint`<br>`kind`<br>`containingType`<br>`includeDeclaration` | `KastReferencesResponse` | `REFERENCES_SUCCESS`<br>`REFERENCES_FAILURE` |
+| `symbol/callers` | `symbol` | backend | Expand an incoming or outgoing call hierarchy | `symbol` | `workspaceRoot`<br>`fileHint`<br>`kind`<br>`containingType`<br>`direction`<br>`depth`<br>`maxTotalCalls`<br>`maxChildrenPerNode`<br>`timeoutMillis` | `KastCallersResponse` | `CALLERS_SUCCESS`<br>`CALLERS_FAILURE` |
+| `symbol/rename` | `symbol` | backend | Resolve or target a symbol and apply a rename | `type`<br>`value` | none | `KastRenameResponse` | `RENAME_SUCCESS`<br>`RENAME_FAILURE` |
+| `symbol/write-and-validate` | `symbol` | backend | Apply generated Kotlin code and validate the result | `type`<br>`value` | none | `KastWriteAndValidateResponse` | `WRITE_AND_VALIDATE_SUCCESS`<br>`WRITE_AND_VALIDATE_FAILURE` |
+| `raw/resolve` | `raw` | backend | Resolve the symbol at a file position | `position` | `includeDeclarationScope`<br>`includeDocumentation` | `SymbolResult` | single result |
+| `raw/references` | `raw` | backend | Find all references to the symbol at a file position | `position` | `includeDeclaration`<br>`includeUsageSiteScope` | `ReferencesResult` | single result |
+| `raw/call-hierarchy` | `raw` | backend | Expand a bounded incoming or outgoing call tree | `position`<br>`direction` | `depth`<br>`maxTotalCalls`<br>`maxChildrenPerNode`<br>`timeoutMillis` | `CallHierarchyResult` | single result |
+| `raw/type-hierarchy` | `raw` | backend | Expand supertypes and subtypes from a resolved symbol | `position` | `direction`<br>`depth`<br>`maxResults` | `TypeHierarchyResult` | single result |
+| `raw/semantic-insertion-point` | `raw` | backend | Find the best insertion point for a new declaration | `position`<br>`target` | none | `SemanticInsertionResult` | single result |
+| `raw/diagnostics` | `raw` | backend | Run Kotlin diagnostics on listed files | `filePaths` | none | `DiagnosticsResult` | single result |
+| `raw/rename` | `raw` | backend | Plan a symbol rename by file position | `position`<br>`newName` | `dryRun` | `RenameResult` | single result |
+| `raw/optimize-imports` | `raw` | backend | Optimize imports for one or more files | `filePaths` | none | `ImportOptimizeResult` | single result |
+| `raw/apply-edits` | `raw` | backend | Apply a prepared edit plan with conflict detection | `edits`<br>`fileHashes` | `fileOperations` | `ApplyEditsResult` | single result |
+| `raw/workspace-refresh` | `raw` | backend | Force a targeted or full workspace state refresh | none | `filePaths` | `RefreshResult` | single result |
+| `raw/file-outline` | `raw` | backend | Get a hierarchical symbol outline for a file | `filePath` | none | `FileOutlineResult` | single result |
+| `raw/workspace-symbol` | `raw` | backend | Search the workspace for symbols by name pattern | `pattern` | `kind`<br>`maxResults`<br>`regex`<br>`includeDeclarationScope` | `WorkspaceSymbolResult` | single result |
+| `raw/workspace-search` | `raw` | backend | Search workspace file contents by text or regex | `pattern` | `regex`<br>`maxResults`<br>`fileGlob`<br>`caseSensitive` | `WorkspaceSearchResult` | single result |
+| `raw/workspace-files` | `raw` | backend | List workspace modules and optional file paths | none | `moduleName`<br>`includeFiles`<br>`maxFilesPerModule` | `WorkspaceFilesResult` | single result |
+| `raw/implementations` | `raw` | backend | Find concrete implementations and subclasses for a declaration | `position` | `maxResults` | `ImplementationsResult` | single result |
+| `raw/code-actions` | `raw` | backend | Return available code actions at a file position | `position` | `diagnosticCode` | `CodeActionsResult` | single result |
+| `raw/completions` | `raw` | backend | Return completion candidates available at a file position | `position` | `maxResults`<br>`kindFilter` | `CompletionsResult` | single result |
+| `database/metrics` | `database` | sqlite | Query indexed source metrics | `metric` | `workspaceRoot`<br>`limit`<br>`symbol`<br>`depth`<br>`fileGlob`<br>`folderFilter` | `KastMetricsResponse` | `METRICS_SUCCESS`<br>`METRICS_FAILURE` |
+
+#### Command field details
+
+Open a method to inspect the request fields declared in the catalog.
+
+<details markdown="1">
+<summary><code>health</code> - Basic health check</summary>
+
+No request parameters.
+
+Response type: `HealthResponse`.
+
+</details>
+
+<details markdown="1">
+<summary><code>runtime/status</code> - Detailed runtime state including indexing progress</summary>
+
+No request parameters.
+
+Response type: `RuntimeStatusResponse`.
+
+</details>
+
+<details markdown="1">
+<summary><code>capabilities</code> - Advertised read and mutation capabilities</summary>
+
+No request parameters.
+
+Response type: `BackendCapabilities`.
+
+</details>
+
+<details markdown="1">
+<summary><code>symbol/scaffold</code> - Gather structural generation context for a Kotlin file</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `workspaceRoot` | `string` | no | yes |  |
+| `targetFile` | `string` | yes | no |  |
+| `targetSymbol` | `string` | no | yes |  |
+| `mode` | `string` | no | no | `implement`<br>`replace`<br>`consolidate`<br>`extract` |
+| `kind` | `string` | no | yes | `class`<br>`interface`<br>`object`<br>`function`<br>`property` |
+
+Response type: `KastScaffoldResponse`.
+Result variants: `SCAFFOLD_SUCCESS`, `SCAFFOLD_FAILURE`.
+
+</details>
+
+<details markdown="1">
+<summary><code>symbol/resolve</code> - Resolve a symbol by name to its declaration</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `workspaceRoot` | `string` | no | yes |  |
+| `symbol` | `string` | yes | no |  |
+| `fileHint` | `string` | no | yes |  |
+| `kind` | `string` | no | yes | `class`<br>`interface`<br>`object`<br>`function`<br>`property` |
+| `containingType` | `string` | no | yes |  |
+
+Response type: `KastResolveResponse`.
+Result variants: `RESOLVE_SUCCESS`, `RESOLVE_FAILURE`.
+
+Notes:
+
+- The 'symbol' field takes simple names only (e.g. 'key'), never fully-qualified names.
+- Use 'containingType' for scoping and 'fileHint' for disambiguation.
+
+</details>
+
+<details markdown="1">
+<summary><code>symbol/references</code> - Find every usage of a Kotlin symbol</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `workspaceRoot` | `string` | no | yes |  |
+| `symbol` | `string` | yes | no |  |
+| `fileHint` | `string` | no | yes |  |
+| `kind` | `string` | no | yes | `class`<br>`interface`<br>`object`<br>`function`<br>`property` |
+| `containingType` | `string` | no | yes |  |
+| `includeDeclaration` | `boolean` | no | no |  |
+
+Response type: `KastReferencesResponse`.
+Result variants: `REFERENCES_SUCCESS`, `REFERENCES_FAILURE`.
+
+Notes:
+
+- The 'symbol' field takes simple names only.
+- Resolve ambiguous names first with 'kind', 'containingType', or 'fileHint'.
+
+</details>
+
+<details markdown="1">
+<summary><code>symbol/callers</code> - Expand an incoming or outgoing call hierarchy</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `workspaceRoot` | `string` | no | yes |  |
+| `symbol` | `string` | yes | no |  |
+| `fileHint` | `string` | no | yes |  |
+| `kind` | `string` | no | yes | `class`<br>`interface`<br>`object`<br>`function`<br>`property` |
+| `containingType` | `string` | no | yes |  |
+| `direction` | `string` | no | no | `incoming`<br>`outgoing` |
+| `depth` | `integer` | no | no |  |
+| `maxTotalCalls` | `integer` | no | yes |  |
+| `maxChildrenPerNode` | `integer` | no | yes |  |
+| `timeoutMillis` | `integer` | no | yes |  |
+
+Response type: `KastCallersResponse`.
+Result variants: `CALLERS_SUCCESS`, `CALLERS_FAILURE`.
+
+Notes:
+
+- The 'symbol' field takes simple names only.
+
+</details>
+
+<details markdown="1">
+<summary><code>symbol/rename</code> - Resolve or target a symbol and apply a rename</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `type` | `string` | yes | no |  |
+| `value` | `object` | yes | no |  |
+
+Response type: `KastRenameResponse`.
+Result variants: `RENAME_SUCCESS`, `RENAME_FAILURE`.
+
+</details>
+
+<details markdown="1">
+<summary><code>symbol/write-and-validate</code> - Apply generated Kotlin code and validate the result</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `type` | `string` | yes | no |  |
+| `value` | `object` | yes | no |  |
+
+Response type: `KastWriteAndValidateResponse`.
+Result variants: `WRITE_AND_VALIDATE_SUCCESS`, `WRITE_AND_VALIDATE_FAILURE`.
+
+</details>
+
+<details markdown="1">
+<summary><code>raw/resolve</code> - Resolve the symbol at a file position</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `position` | `object` | yes | no |  |
+| `includeDeclarationScope` | `boolean` | no | no |  |
+| `includeDocumentation` | `boolean` | no | no |  |
+
+Response type: `SymbolResult`.
+
+</details>
+
+<details markdown="1">
+<summary><code>raw/references</code> - Find all references to the symbol at a file position</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `position` | `object` | yes | no |  |
+| `includeDeclaration` | `boolean` | no | no |  |
+| `includeUsageSiteScope` | `boolean` | no | no |  |
+
+Response type: `ReferencesResult`.
+
+</details>
+
+<details markdown="1">
+<summary><code>raw/call-hierarchy</code> - Expand a bounded incoming or outgoing call tree</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `position` | `object` | yes | no |  |
+| `direction` | `string` | yes | no | `INCOMING`<br>`OUTGOING` |
+| `depth` | `integer` | no | no |  |
+| `maxTotalCalls` | `integer` | no | no |  |
+| `maxChildrenPerNode` | `integer` | no | no |  |
+| `timeoutMillis` | `integer` | no | yes |  |
+
+Response type: `CallHierarchyResult`.
+
+</details>
+
+<details markdown="1">
+<summary><code>raw/type-hierarchy</code> - Expand supertypes and subtypes from a resolved symbol</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `position` | `object` | yes | no |  |
+| `direction` | `string` | no | no | `SUPERTYPES`<br>`SUBTYPES`<br>`BOTH` |
+| `depth` | `integer` | no | no |  |
+| `maxResults` | `integer` | no | no |  |
+
+Response type: `TypeHierarchyResult`.
+
+</details>
+
+<details markdown="1">
+<summary><code>raw/semantic-insertion-point</code> - Find the best insertion point for a new declaration</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `position` | `object` | yes | no |  |
+| `target` | `string` | yes | no | `CLASS_BODY_START`<br>`CLASS_BODY_END`<br>`FILE_TOP`<br>`FILE_BOTTOM`<br>`AFTER_IMPORTS` |
+
+Response type: `SemanticInsertionResult`.
+
+</details>
+
+<details markdown="1">
+<summary><code>raw/diagnostics</code> - Run Kotlin diagnostics on listed files</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `filePaths` | `array of string` | yes | no |  |
+
+Response type: `DiagnosticsResult`.
+
+</details>
+
+<details markdown="1">
+<summary><code>raw/rename</code> - Plan a symbol rename by file position</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `position` | `object` | yes | no |  |
+| `newName` | `string` | yes | no |  |
+| `dryRun` | `boolean` | no | no |  |
+
+Response type: `RenameResult`.
+
+</details>
+
+<details markdown="1">
+<summary><code>raw/optimize-imports</code> - Optimize imports for one or more files</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `filePaths` | `array of string` | yes | no |  |
+
+Response type: `ImportOptimizeResult`.
+
+</details>
+
+<details markdown="1">
+<summary><code>raw/apply-edits</code> - Apply a prepared edit plan with conflict detection</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `edits` | `array of object` | yes | no |  |
+| `fileHashes` | `array of object` | yes | no |  |
+| `fileOperations` | `array of object` | no | no |  |
+
+Response type: `ApplyEditsResult`.
+
+</details>
+
+<details markdown="1">
+<summary><code>raw/workspace-refresh</code> - Force a targeted or full workspace state refresh</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `filePaths` | `array of string` | no | no |  |
+
+Response type: `RefreshResult`.
+
+</details>
+
+<details markdown="1">
+<summary><code>raw/file-outline</code> - Get a hierarchical symbol outline for a file</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `filePath` | `string` | yes | no |  |
+
+Response type: `FileOutlineResult`.
+
+</details>
+
+<details markdown="1">
+<summary><code>raw/workspace-symbol</code> - Search the workspace for symbols by name pattern</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `pattern` | `string` | yes | no |  |
+| `kind` | `string` | no | yes | `CLASS`<br>`INTERFACE`<br>`OBJECT`<br>`FUNCTION`<br>`PROPERTY`<br>`PARAMETER`<br>`UNKNOWN` |
+| `maxResults` | `integer` | no | no |  |
+| `regex` | `boolean` | no | no |  |
+| `includeDeclarationScope` | `boolean` | no | no |  |
+
+Response type: `WorkspaceSymbolResult`.
+
+</details>
+
+<details markdown="1">
+<summary><code>raw/workspace-search</code> - Search workspace file contents by text or regex</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `pattern` | `string` | yes | no |  |
+| `regex` | `boolean` | no | no |  |
+| `maxResults` | `integer` | no | no |  |
+| `fileGlob` | `string` | no | yes |  |
+| `caseSensitive` | `boolean` | no | no |  |
+
+Response type: `WorkspaceSearchResult`.
+
+</details>
+
+<details markdown="1">
+<summary><code>raw/workspace-files</code> - List workspace modules and optional file paths</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `moduleName` | `string` | no | yes |  |
+| `includeFiles` | `boolean` | no | no |  |
+| `maxFilesPerModule` | `integer` | no | yes |  |
+
+Response type: `WorkspaceFilesResult`.
+
+</details>
+
+<details markdown="1">
+<summary><code>raw/implementations</code> - Find concrete implementations and subclasses for a declaration</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `position` | `object` | yes | no |  |
+| `maxResults` | `integer` | no | no |  |
+
+Response type: `ImplementationsResult`.
+
+</details>
+
+<details markdown="1">
+<summary><code>raw/code-actions</code> - Return available code actions at a file position</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `position` | `object` | yes | no |  |
+| `diagnosticCode` | `string` | no | yes |  |
+
+Response type: `CodeActionsResult`.
+
+</details>
+
+<details markdown="1">
+<summary><code>raw/completions</code> - Return completion candidates available at a file position</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `position` | `object` | yes | no |  |
+| `maxResults` | `integer` | no | no |  |
+| `kindFilter` | `array of string` | no | yes |  |
+
+Response type: `CompletionsResult`.
+
+</details>
+
+<details markdown="1">
+<summary><code>database/metrics</code> - Query indexed source metrics</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `workspaceRoot` | `string` | no | yes |  |
+| `metric` | `string` | yes | no | `apiSurface`<br>`moduleBoundary`<br>`declarations`<br>`fanIn`<br>`fanOut`<br>`coupling`<br>`lowUsage`<br>`cycles`<br>`moduleDepth`<br>`deadCode`<br>`impact` |
+| `limit` | `integer` | no | no |  |
+| `symbol` | `string` | no | yes |  |
+| `depth` | `integer` | no | no |  |
+| `fileGlob` | `string` | no | yes |  |
+| `folderFilter` | `string` | no | yes |  |
+
+Response type: `KastMetricsResponse`.
+Result variants: `METRICS_SUCCESS`, `METRICS_FAILURE`.
+
+</details>
+
+<!-- END GENERATED RPC CONTRACT SUITE -->
+
 ## Capability gating
 
 Read and mutation operations require the daemon to advertise the
