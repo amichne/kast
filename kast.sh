@@ -3,7 +3,7 @@
 #
 # Subcommands:
 #   build    Build portable distribution artifacts  ->  dist/
-#   release  Prepare a release asset from the portable distribution zip
+#   release  Prepare a release asset
 #   install  Install Kast CLI from GitHub releases
 #
 # Curl one-liner (auto-invokes install):
@@ -12,7 +12,7 @@
 #
 # Explicit subcommand:
 #   ./kast.sh build [cli] [plugin] [backend] [--all]
-#   ./kast.sh release --tag v1.0.0 --platform-id linux-x64
+#   ./kast.sh release --tag v1.0.0 --platform-id linux-x64 --native-binary build/native/kast
 #   ./kast.sh install [--components=cli,intellij] [--non-interactive]
 set -euo pipefail
 
@@ -211,6 +211,7 @@ with zipfile.ZipFile(tmp_zip, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         relative = path.relative_to(source_dir).as_posix()
         mode = stat.S_IMODE(path.stat().st_mode)
         info = zipfile.ZipInfo(relative)
+        info.compress_type = zipfile.ZIP_DEFLATED
         info.external_attr = (stat.S_IFREG | mode) << 16
         with path.open("rb") as handle:
             archive.writestr(info, handle.read())
@@ -219,26 +220,18 @@ os.replace(tmp_zip, output_zip)
 PY
 }
 
-_release_overlay_native_binary() {
+_release_create_native_cli_asset() {
   local asset_path="$1" native_binary="$2"
   [[ -x "$native_binary" ]] || die "Native binary is missing or not executable: ${native_binary}"
 
   tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/kast-release.XXXXXX")"
-  local staging_dir="${tmp_dir}/asset"
-  extract_zip_archive "$asset_path" "$staging_dir"
+  local staging_dir="${tmp_dir}/native-cli"
+  mkdir -p "${staging_dir}/kast-cli"
 
-  local archive_root=""
-  if [[ -d "${staging_dir}/kast-cli" ]]; then
-    archive_root="${staging_dir}/kast-cli"
-  elif [[ -d "${staging_dir}/kast" ]]; then
-    archive_root="${staging_dir}/kast"
-  else
-    die "Release asset did not contain the expected kast-cli/ or kast/ directory"
-  fi
-
-  cp "$native_binary" "${archive_root}/kast-cli"
-  chmod 755 "${archive_root}/kast-cli"
+  cp "$native_binary" "${staging_dir}/kast-cli/kast-cli"
+  chmod 755 "${staging_dir}/kast-cli/kast-cli"
   _release_zip_directory "$staging_dir" "$asset_path"
+
   rm -rf "$tmp_dir"
   tmp_dir=""
 }
@@ -507,7 +500,7 @@ USAGE
 }
 
 # ===========================================================================
-# cmd_release -- prepare a release asset from the portable dist zip
+# cmd_release -- prepare a release asset
 # ===========================================================================
 
 cmd_release() {
@@ -532,14 +525,15 @@ cmd_release() {
         cat >&2 << 'USAGE'
 Usage: ./kast.sh release --tag <version> --platform-id <id> [options]
 
-Prepares a release asset from the portable distribution zip.
+Prepares a release asset. Native CLI releases contain only the platform
+launcher; fallback JVM releases copy the portable distribution zip.
 
 Options:
   --tag <version>       Release tag (e.g. v1.2.3). Required.
   --platform-id <id>    Platform identifier (e.g. linux-x64, macos-arm64). Required.
   --skip-build          Skip the Gradle build (use existing portable zip).
   --native-binary <path>
-                         Replace the JVM launcher with a GraalVM native binary.
+                         Package this GraalVM native binary as the CLI asset.
   --help, -h            Show this help.
 
 Examples:
@@ -556,7 +550,7 @@ USAGE
   [[ -n "$platform_id" ]] || die "Missing required --platform-id"
   [[ -x "$GRADLEW" ]]     || die "Missing executable gradlew at ${GRADLEW}"
 
-  if [[ "$skip_build" != "true" ]]; then
+  if [[ "$skip_build" != "true" && -z "$native_binary" ]]; then
     log_section "Building portable distribution"
     if ! ( cd "$REPO_ROOT"; "$GRADLEW" :kast-cli:portableDistZip ); then
       log_note "Gradle build failed; stopping daemon and retrying with --no-daemon"
@@ -565,25 +559,24 @@ USAGE
     fi
   fi
 
-  local newest="" candidate=""
-  shopt -s nullglob
-  for candidate in "${PORTABLE_ZIP_DIR}"/kast-cli-*-portable.zip; do
-    [[ -z "$newest" || "$candidate" -nt "$newest" ]] && newest="$candidate"
-  done
-  shopt -u nullglob
-  [[ -n "$newest" ]] || die "No portable zip found under ${PORTABLE_ZIP_DIR}. Run without --skip-build."
-
-  local source_zip="$newest"
   local asset_name="kast-${tag}-${platform_id}.zip"
   local asset_path="${DIST_ROOT}/${asset_name}"
 
   log_section "Preparing release asset"
   mkdir -p "$DIST_ROOT"
-  cp "$source_zip" "$asset_path"
 
   if [[ -n "$native_binary" ]]; then
-    log_step "Embedding native CLI binary ${native_binary}"
-    _release_overlay_native_binary "$asset_path" "$native_binary"
+    log_step "Packaging native CLI binary ${native_binary}"
+    _release_create_native_cli_asset "$asset_path" "$native_binary"
+  else
+    local newest="" candidate=""
+    shopt -s nullglob
+    for candidate in "${PORTABLE_ZIP_DIR}"/kast-cli-*-portable.zip; do
+      [[ -z "$newest" || "$candidate" -nt "$newest" ]] && newest="$candidate"
+    done
+    shopt -u nullglob
+    [[ -n "$newest" ]] || die "No portable zip found under ${PORTABLE_ZIP_DIR}. Run without --skip-build."
+    cp "$newest" "$asset_path"
   fi
 
   local digest; digest="$(compute_sha256 "$asset_path")"
@@ -2060,7 +2053,7 @@ Usage: ./kast.sh <subcommand> [options]
 
 Subcommands:
   build    Build portable distribution artifacts  ->  dist/
-  release  Prepare a release asset from the portable distribution zip
+  release  Prepare a release asset
   install  Install Kast CLI and optional components
 
 Run ./kast.sh <subcommand> --help for subcommand-specific options.

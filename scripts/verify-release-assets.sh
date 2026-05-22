@@ -91,10 +91,20 @@ def inspect_no_shrunk_runtime(display_name: str, payload: bytes) -> None:
 def inspect_native_cli_payload(display_name: str, payload: bytes, platform_id: str) -> None:
     try:
         with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+            names = archive.namelist()
             candidate_names = ("kast-cli/kast-cli", "kast/kast-cli")
-            launcher_name = next((name for name in candidate_names if name in archive.namelist()), None)
+            launcher_name = next((name for name in candidate_names if name in names), None)
             if launcher_name is None:
                 fail(f"{display_name} does not contain a kast-cli launcher")
+            jvm_payload = sorted(
+                name for name in names
+                if name.startswith(("kast-cli/runtime-libs/", "kast/runtime-libs/", "kast-cli/libs/", "kast/libs/"))
+            )
+            if jvm_payload:
+                fail(
+                    f"{display_name} contains JVM payload in a native CLI-only asset: "
+                    f"{jvm_payload[0]}"
+                )
             launcher = archive.read(launcher_name)
     except zipfile.BadZipFile as error:
         fail(f"{display_name} is not a valid zip archive: {error}")

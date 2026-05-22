@@ -55,6 +55,16 @@ def cli_zip(platform, shell=False):
         else:
             raise ValueError(platform)
         write_entry(archive, "kast-cli/kast-cli", launcher, 0o755)
+    return buffer.getvalue()
+
+def cli_zip_with_runtime(platform):
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        if platform == "linux-x64":
+            launcher = b"\x7fELFfake-linux-native\n"
+        else:
+            raise ValueError(platform)
+        write_entry(archive, "kast-cli/kast-cli", launcher, 0o755)
         write_entry(archive, "kast-cli/runtime-libs/classpath.txt", b"backend-standalone.jar\n")
         write_entry(archive, "kast-cli/runtime-libs/backend-standalone.jar", b"backend")
     return buffer.getvalue()
@@ -78,6 +88,8 @@ elif kind == "cli-macos":
     asset_path.write_bytes(cli_zip("macos-arm64"))
 elif kind == "cli-linux-shell":
     asset_path.write_bytes(cli_zip("linux-x64", shell=True))
+elif kind == "cli-linux-runtime":
+    asset_path.write_bytes(cli_zip_with_runtime("linux-x64"))
 elif kind == "standalone":
     asset_path.write_bytes(backend_zip())
 elif kind == "standalone-shrunk":
@@ -214,6 +226,16 @@ if "$verifier" --release-dir "$release_dir" --tag "$tag" >/dev/null 2>"${scratch
   die "shell launcher CLI asset unexpectedly verified"
 fi
 grep -Fq "native image" "${scratch_dir}/native.err" || die "shell launcher failure did not mention native image"
+
+write_expected_assets
+write_zip_asset "${release_dir}/${assets[0]}" cli-linux-runtime
+write_sha256sums "$release_dir" "${assets[@]}"
+write_provenance
+
+if "$verifier" --release-dir "$release_dir" --tag "$tag" >/dev/null 2>"${scratch_dir}/runtime.err"; then
+  die "CLI asset with JVM runtime payload unexpectedly verified"
+fi
+grep -Fq "native CLI-only asset" "${scratch_dir}/runtime.err" || die "runtime payload failure did not mention native CLI-only asset"
 
 write_expected_assets
 write_zip_asset "${release_dir}/${assets[4]}" standalone-shrunk

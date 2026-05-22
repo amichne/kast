@@ -85,14 +85,19 @@ from pathlib import Path
 
 asset_path = Path(sys.argv[1])
 with zipfile.ZipFile(asset_path) as archive:
+    names = archive.namelist()
     info = archive.getinfo("kast-cli/kast-cli")
     payload = archive.read("kast-cli/kast-cli")
     mode = (info.external_attr >> 16) & 0o777
 
+if any(name.startswith(("kast-cli/runtime-libs/", "kast-cli/libs/")) for name in names):
+    raise SystemExit("native release asset carried JVM payload directories")
 if payload != b"\x7fELFfake-native\n":
     raise SystemExit("release asset did not contain the native binary payload")
 if not mode & stat.S_IXUSR:
     raise SystemExit("release asset native binary is not executable")
+if info.compress_type != zipfile.ZIP_DEFLATED:
+    raise SystemExit("release asset native binary was not deflated")
 PY
 
 printf '%s\n' "Kast release command test passed"
