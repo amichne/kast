@@ -12,7 +12,7 @@
 #
 # Explicit subcommand:
 #   ./kast.sh build [cli] [plugin] [backend] [--all]
-#   ./kast.sh release --tag v1.0.0 --platform-id linux-x64 --native-binary build/native/kast
+#   ./kast.sh release --tag v1.0.0 --platform-id linux-x64 --native-binary build/rust-cli/kast
 #   ./kast.sh install [--components=cli,intellij] [--non-interactive]
 set -euo pipefail
 
@@ -440,8 +440,6 @@ cmd_build() {
         _build_selected_targets+=("$1"); shift ;;
       --all)
         _build_selected_targets=("${_BUILD_ALL_TARGETS[@]}"); shift ;;
-      --shrink)
-        _GRADLE_EXTRA_ARGS+=("-Pkast.shrinkRuntime=true"); shift ;;
       --help|-h)
         cat >&2 << 'USAGE'
 Usage: ./kast.sh build [target...] [options]
@@ -455,7 +453,6 @@ Targets (positional, repeatable):
 
 Options:
   --all            Build all targets.
-  --shrink         Run ProGuard on the assembled runtime-libs before packaging.
   --help, -h       Show this help.
 
 When no targets are supplied and a TTY is available, fzf is used for
@@ -518,9 +515,6 @@ cmd_release() {
       --skip-build)    skip_build="true"; shift ;;
       --native-binary=*) native_binary="${1#*=}"; shift ;;
       --native-binary) [[ $# -ge 2 ]] || die "Missing value for --native-binary"; native_binary="$2"; shift 2 ;;
-      --shrink)
-        die "Release assets must not use ProGuard/R8 shrinking. Use './kast.sh build --shrink' only for local diagnostic artifacts."
-        ;;
       --help|-h)
         cat >&2 << 'USAGE'
 Usage: ./kast.sh release --tag <version> --platform-id <id> [options]
@@ -533,12 +527,12 @@ Options:
   --platform-id <id>    Platform identifier (e.g. linux-x64, macos-arm64). Required.
   --skip-build          Skip the Gradle build (use existing portable zip).
   --native-binary <path>
-                         Package this GraalVM native binary as the CLI asset.
+                         Package this Rust CLI binary as the CLI asset.
   --help, -h            Show this help.
 
 Examples:
-  ./kast.sh release --tag v1.0.0 --platform-id linux-x64 --native-binary kast-cli/build/native/nativeCompile/kast
-  ./kast.sh release --tag v1.0.0 --platform-id macos-arm64 --skip-build --native-binary kast-cli/build/native/nativeCompile/kast
+  ./kast.sh release --tag v1.0.0 --platform-id linux-x64 --native-binary build/rust-cli/kast
+  ./kast.sh release --tag v1.0.0 --platform-id macos-arm64 --skip-build --native-binary build/rust-cli/kast
 USAGE
         return 0
         ;;

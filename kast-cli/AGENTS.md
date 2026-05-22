@@ -1,7 +1,7 @@
 # Kast CLI shared agent guide
 
-`kast-cli` owns the shared operator-facing CLI that runs in both the GraalVM
-native binary and the JVM shell.
+`kast-cli` owns the legacy JVM operator-facing wrapper. The non-JVM CLI lives
+in the Rust `kast-rs` project and is the release CLI path.
 
 ## Ownership
 
@@ -10,16 +10,14 @@ backend implementation itself.
 
 - Keep public command behavior here: command catalog, argument parsing, help
   text, JSON serialization, install flows, and stderr daemon notes.
-- Keep detached-runtime orchestration here when it can run from either the
-  native binary or the JVM shell. `WorkspaceRuntimeManager`, `ProcessLauncher`,
-  and the socket RPC client stay here.
+- Keep detached-runtime orchestration here only while the JVM wrapper still
+  needs it for compatibility. The Rust CLI is the owner for non-JVM command
+  execution.
 - Keep the hidden `internal daemon-run` path abstract here. The shared CLI can
   parse the command and report unsupported use, but only `kast` provides the
   JVM runner.
-- Keep the native-image entrypoint and its configuration here. Changes that
-  affect `CliMainKt`, `ProcessLauncher`, or
-  `META-INF/native-image/io.github.amichne.kast/kast-cli/` must stay aligned
-  with the packaged `runtime-libs` layout in `kast`.
+- Do not add new GraalVM native-image wiring here. Native release assets are
+  built from the Rust CLI.
 
 ## Verification
 
@@ -31,5 +29,3 @@ Prove shared CLI changes here before you rely on the JVM shell or backend.
 - If you change packaged skill or Copilot extension resources, also run
   `./gradlew :kast-cli:processResources` and inspect the generated bundle under
   `kast-cli/build/resources/main/`.
-- If you change native-image wiring and GraalVM is available, also run
-  `./gradlew :kast-cli:nativeCompile`.

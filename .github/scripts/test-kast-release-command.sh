@@ -56,18 +56,6 @@ native_bin="${scratch_dir}/kast-native"
 printf '\177ELFfake-native\n' > "$native_bin"
 chmod +x "$native_bin"
 
-if (
-    cmd_release \
-    --tag v9.8.7 \
-    --platform-id linux-x64 \
-    --skip-build \
-    --shrink
-  ) >/dev/null 2>"${scratch_dir}/shrink.err"; then
-  test_die "release command accepted --shrink for a published asset"
-fi
-grep -Eq 'ProGuard|R8|shrink' "${scratch_dir}/shrink.err" \
-  || test_die "release-time shrink rejection did not explain the ProGuard/R8 constraint"
-
 cmd_release \
   --tag v9.8.7 \
   --platform-id linux-x64 \

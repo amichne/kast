@@ -215,27 +215,29 @@ jobs:
         with:
           ref: ${{ needs.prepare-release.outputs.release_tag }}
 
-      - uses: graalvm/setup-graalvm@v1
+      - uses: actions/checkout@v5
         with:
-          distribution: graalvm-community
-          java-version: "21"
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          native-image-job-reports: "true"
+          repository: amichne/kast-rs
+          path: kast-rs
+
+      - name: Install Rust toolchain
+        shell: bash
+        run: rustup toolchain install stable --profile minimal
 
       - uses: gradle/actions/setup-gradle@v5
 
-      - name: Build native Kast CLI release asset
+      - name: Build Rust Kast CLI release asset
         shell: bash
         run: |
           set -euo pipefail
           tag="${{ needs.prepare-release.outputs.release_tag }}"
-          ./gradlew :kast-cli:nativeCompile
-          ./scripts/smoke-native-cli.sh kast-cli/build/native/nativeCompile/kast
+          ./scripts/build-rust-cli.sh --source-dir kast-rs --output build/rust-cli/kast
+          ./scripts/smoke-native-cli.sh build/rust-cli/kast
           ./kast.sh release \
             --tag "$tag" \
             --platform-id "${{ matrix.asset_id }}" \
             --skip-build \
-            --native-binary "kast-cli/build/native/nativeCompile/kast"
+            --native-binary "build/rust-cli/kast"
 
       - name: Smoke native Kast release asset
         shell: bash
@@ -253,16 +255,6 @@ jobs:
             echo "Release CLI asset must contain only the native launcher, not JVM payload directories" >&2
             exit 1
           fi
-          if [[ -f "$dist_dir/kast-cli/runtime-libs/kast-shrunk.jar" ]]; then
-            echo "Release asset must not contain ProGuard/R8 shrunk runtime libs" >&2
-            exit 1
-          fi
-          if [[ -f "$dist_dir/kast-cli/runtime-libs/classpath.txt" ]] \
-              && grep -Fq "kast-shrunk.jar" "$dist_dir/kast-cli/runtime-libs/classpath.txt"; then
-            echo "Release asset classpath must not reference ProGuard/R8 shrunk runtime libs" >&2
-            exit 1
-          fi
-
       - name: Build standalone backend for headless agent bundle
         if: matrix.asset_id == 'linux-x64'
         shell: bash

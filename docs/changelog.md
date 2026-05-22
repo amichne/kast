@@ -18,9 +18,8 @@ protocol.
 Two fully interoperable backends, both speaking the same JSON-RPC protocol
 over Unix domain sockets:
 
-- **Standalone** — GraalVM native-image launcher with JVM daemon fallback.
-  Ships as a self-contained zip produced by `./kast.sh build cli`. Fast startup
-  (~50 ms native) with no IDE dependency.
+- **Standalone** — Rust CLI launcher with a JVM daemon for Kotlin analysis.
+  Ships as a self-contained platform zip with no IDE dependency.
 - **IDEA plugin** — Delegates to the open IDEA or Android Studio instance for analysis.
   Shares the IDE's already-warm PSI and K2 compiler, so results are
   semantically identical to what the IDE shows. Installed as a standard
@@ -78,13 +77,10 @@ when to paginate or bound their queries:
   and evaluation assets into `.agents/skills/kast/` inside any target
   repository. One command, no internet access required after the initial
   install.
-- **Portable CLI zip** — local `./kast.sh build cli` produces the JVM portable
-  layout used for validation; published release assets replace that launcher
-  with the platform GraalVM native image.
+- **Portable CLI zip** — published release assets ship the platform Rust CLI
+  binary.
 - **Portable backend zip** — `./kast.sh build backend` produces the
-  standalone backend zip used by CI and remote deployments. Published backend
-  artifacts keep the JVM classpath unshrunk; `--shrink` is only a local
-  diagnostic build option.
+  standalone backend zip used by CI and remote deployments.
 - **OpenAPI spec** — `docs/openapi.yaml` is generated from the analysis API
   model registry and kept in sync with every build.
 
@@ -92,15 +88,14 @@ when to paginate or bound their queries:
 
 - GitHub Actions release workflow triggered by `workflow_dispatch` with
   `release_type: major | minor | patch | beta`. The workflow auto-increments
-  the semver tag, builds native launchers on Linux (x64) and macOS (ARM64),
-  packages unshrunk standalone JVM backend assets where native-image is not
-  viable, packages the IDEA plugin and headless agent bundle, uploads aggregate
+  the semver tag, builds Rust launchers on Linux (x64) and macOS (ARM64),
+  packages standalone JVM backend assets, packages the IDEA plugin and
+  headless agent bundle, uploads aggregate
   SHA-256 checksums, and publishes a GitHub release with combined build
   provenance. The workflow verifies every shipped asset against `SHA256SUMS`
-  and `build-provenance.json`, rejects JVM wrapper CLI assets, and rejects
-  ProGuard/R8-shrunk runtime markers before publication. Beta tags publish as
-  GitHub prereleases; stable tags publish the verified GitHub release before
-  updating and watching the Homebrew tap.
+  and `build-provenance.json`, and rejects JVM wrapper CLI assets before
+  publication. Beta tags publish as GitHub prereleases; stable tags publish
+  the verified GitHub release before updating and watching the Homebrew tap.
 - Run `scripts/release-preflight.sh --release-type patch` before dispatching a
   stable release. The helper checks GitHub CLI auth, release workflow
   visibility, the `HOMEBREW_TAP_TOKEN` repository secret, and Homebrew tap

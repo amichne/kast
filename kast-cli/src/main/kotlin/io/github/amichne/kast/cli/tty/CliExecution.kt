@@ -6,18 +6,6 @@ import io.github.amichne.kast.cli.EvalSkillExecutor
 import io.github.amichne.kast.cli.RuntimeCandidateStatus
 import io.github.amichne.kast.cli.SmokeOutputFormat
 import io.github.amichne.kast.cli.options.RuntimeCommandOptions
-import io.github.amichne.kast.indexstore.api.metrics.impact.ChangeImpactNode
-import io.github.amichne.kast.indexstore.api.metrics.impact.DeadCodeCandidate
-import io.github.amichne.kast.indexstore.api.metrics.impact.FanInMetric
-import io.github.amichne.kast.indexstore.api.metrics.impact.FanOutMetric
-import io.github.amichne.kast.indexstore.api.metrics.general.FileFilterSpec
-import io.github.amichne.kast.indexstore.api.metrics.impact.LowUsageSymbol
-import io.github.amichne.kast.indexstore.metrics.MetricsEngine
-import io.github.amichne.kast.indexstore.api.graph.MetricsGraph
-import io.github.amichne.kast.indexstore.api.metrics.module.ModuleCouplingMetric
-import io.github.amichne.kast.indexstore.api.metrics.module.ModuleCycleMetric
-import io.github.amichne.kast.indexstore.api.metrics.module.ModuleDepthMetric
-import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import java.nio.file.Path
 
@@ -134,7 +122,6 @@ internal class DefaultCliCommandExecutor(
             CliCommand.ConfigInit -> CliExecutionResult(
                 output = cliService.configInit(),
             )
-
 
             is CliCommand.Up -> {
                 val result = cliService.workspaceEnsure(command.options)

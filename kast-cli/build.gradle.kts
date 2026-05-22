@@ -2,12 +2,8 @@ import org.gradle.internal.execution.caching.CachingState.enabled
 
 plugins {
     id("kast.standalone-serialization-app")
-    alias(libs.plugins.graalvm.native)
 }
 
-val nativeConfigDir = layout.projectDirectory.dir(
-    "src/main/resources/META-INF/native-image/io.github.amichne.kast/kast-cli",
-)
 val packagedSkillSourceDir = rootProject.layout.projectDirectory.dir(".agents/skills/kast")
 val packagedEvaluationSourceDir = rootProject.layout.projectDirectory.dir("evaluation")
 val packagedCopilotAgentsSourceDir = rootProject.layout.projectDirectory.dir(".github/agents")
@@ -78,30 +74,8 @@ application {
 
 dependencies {
     api(project(":analysis-api"))
-    implementation(project(":index-store"))
     implementation(libs.bundles.coroutines)
-    implementation(libs.mordant)
     implementation(libs.serialization.json)
-}
-
-graalvmNative {
-    metadataRepository {
-        enabled.set(false)
-    }
-    binaries {
-        named("main") {
-            imageName.set("kast")
-            mainClass.set("io.github.amichne.kast.cli.tty.CliMainKt")
-            sharedLibrary.set(false)
-            configurationFileDirectories.from(nativeConfigDir)
-            buildArgs.addAll(
-                "--no-fallback",
-                "--initialize-at-build-time=kotlin.DeprecationLevel",
-                "--enable-native-access=ALL-UNNAMED",
-                "-H:+ReportExceptionStackTraces",
-            )
-        }
-    }
 }
 
 val syncPackagedSkillResources by tasks.registering(Sync::class) {
@@ -163,23 +137,10 @@ tasks.named<ProcessResources>("processResources") {
     from(syncPackagedCopilotExtensionResources)
 }
 
-val shrinkRuntimeEnabled = providers.gradleProperty("kast.shrinkRuntime")
-    .map(String::toBoolean)
-    .getOrElse(false)
-
-if (shrinkRuntimeEnabled) {
-    tasks.named<Sync>("syncPortableDist") {
-        dependsOn(":backend-standalone:shrinkRuntimeLibs")
-        from(project(":backend-standalone").layout.buildDirectory.dir("shrunk-runtime-libs")) {
-            into("runtime-libs")
-        }
-    }
-} else {
-    tasks.named<Sync>("syncPortableDist") {
-        dependsOn(":backend-standalone:syncRuntimeLibs")
-        from(project(":backend-standalone").layout.buildDirectory.dir("runtime-libs")) {
-            into("runtime-libs")
-        }
+tasks.named<Sync>("syncPortableDist") {
+    dependsOn(":backend-standalone:syncRuntimeLibs")
+    from(project(":backend-standalone").layout.buildDirectory.dir("runtime-libs")) {
+        into("runtime-libs")
     }
 }
 

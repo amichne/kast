@@ -69,16 +69,12 @@ def cli_zip_with_runtime(platform):
         write_entry(archive, "kast-cli/runtime-libs/backend-standalone.jar", b"backend")
     return buffer.getvalue()
 
-def backend_zip(shrunk=False):
+def backend_zip():
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w") as archive:
         write_entry(archive, "backend-standalone/kast-standalone", b"#!/usr/bin/env bash\n", 0o755)
-        if shrunk:
-            write_entry(archive, "backend-standalone/runtime-libs/classpath.txt", b"kast-shrunk.jar\n")
-            write_entry(archive, "backend-standalone/runtime-libs/kast-shrunk.jar", b"shrunk")
-        else:
-            write_entry(archive, "backend-standalone/runtime-libs/classpath.txt", b"backend-standalone.jar\n")
-            write_entry(archive, "backend-standalone/runtime-libs/backend-standalone.jar", b"backend")
+        write_entry(archive, "backend-standalone/runtime-libs/classpath.txt", b"backend-standalone.jar\n")
+        write_entry(archive, "backend-standalone/runtime-libs/backend-standalone.jar", b"backend")
     return buffer.getvalue()
 
 asset_path.parent.mkdir(parents=True, exist_ok=True)
@@ -92,8 +88,6 @@ elif kind == "cli-linux-runtime":
     asset_path.write_bytes(cli_zip_with_runtime("linux-x64"))
 elif kind == "standalone":
     asset_path.write_bytes(backend_zip())
-elif kind == "standalone-shrunk":
-    asset_path.write_bytes(backend_zip(shrunk=True))
 elif kind == "headless":
     with zipfile.ZipFile(asset_path, "w") as archive:
         write_entry(archive, "artifacts/kast-cli.zip", cli_zip("linux-x64"))
@@ -225,7 +219,7 @@ write_provenance
 if "$verifier" --release-dir "$release_dir" --tag "$tag" >/dev/null 2>"${scratch_dir}/native.err"; then
   die "shell launcher CLI asset unexpectedly verified"
 fi
-grep -Fq "native image" "${scratch_dir}/native.err" || die "shell launcher failure did not mention native image"
+grep -Fq "native binary" "${scratch_dir}/native.err" || die "shell launcher failure did not mention native binary"
 
 write_expected_assets
 write_zip_asset "${release_dir}/${assets[0]}" cli-linux-runtime
@@ -236,16 +230,6 @@ if "$verifier" --release-dir "$release_dir" --tag "$tag" >/dev/null 2>"${scratch
   die "CLI asset with JVM runtime payload unexpectedly verified"
 fi
 grep -Fq "native CLI-only asset" "${scratch_dir}/runtime.err" || die "runtime payload failure did not mention native CLI-only asset"
-
-write_expected_assets
-write_zip_asset "${release_dir}/${assets[4]}" standalone-shrunk
-write_sha256sums "$release_dir" "${assets[@]}"
-write_provenance
-
-if "$verifier" --release-dir "$release_dir" --tag "$tag" >/dev/null 2>"${scratch_dir}/shrunk.err"; then
-  die "ProGuard/R8-shrunk backend unexpectedly verified"
-fi
-grep -Fq "ProGuard/R8" "${scratch_dir}/shrunk.err" || die "shrunk backend failure did not mention ProGuard/R8"
 
 write_expected_assets
 write_sha256sums "$release_dir" "${assets[@]}"
