@@ -30,7 +30,7 @@ Pick the entry point you want first:
 | **Standalone CLI + backend** | You want an independent runtime for terminal work, CI, or agents | [Install guide](https://kast.michne.com/getting-started/install/) |
 | **IDEA / Android Studio plugin-backed runtime** | IDEA or Android Studio is already open and you want to reuse its already-open project model and indexes | [Plugin install guide](https://kast.michne.com/getting-started/install/#install-the-idea-and-android-studio-plugin-manually) · [Latest plugin zip](https://github.com/amichne/kast/releases/latest) |
 
-Install the `kast` CLI with Homebrew when you can:
+Install the Rust `kast` CLI with Homebrew when you can:
 
 ```console
 brew tap amichne/kast

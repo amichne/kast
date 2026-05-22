@@ -40,7 +40,7 @@ human-readable text or structured JSON for the caller.
 
 The pages below support this lifecycle.
 
-- [[entities/kast-cli]]
+- [[entities/rust-cli]]
 - [[entities/analysis-api]]
 - [[entities/analysis-server]]
 - [[entities/backend-standalone]]

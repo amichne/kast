@@ -36,7 +36,7 @@ This source connects directly to the compiled pages below.
 
 - Reinforces [[concepts/client-daemon-architecture]]
 - Adds orientation to [[overview]]
-- Adds context to [[entities/kast-cli]] and [[entities/backend-standalone]]
+- Adds context to [[entities/rust-cli]] and [[entities/backend-standalone]]
 
 ## Open questions
 

@@ -26,7 +26,7 @@ The sources below describe the server's role.
   dispatch, transports, descriptors, and errors.
 - [[sources/architecture-and-module-structure]] - Places the server inside the
   broader system map.
-- [[sources/kast-cli-native-cli-module]] - Shows how the CLI talks to the
+- [[sources/rust-cli-control-plane]] - Shows how the CLI talks to the
   transport layer.
 - [[sources/session-lifecycle-and-analysis-operations]] - Shows how the backend
   behavior becomes remotely accessible through the server.
@@ -35,7 +35,7 @@ The sources below describe the server's role.
 
 The pages below connect the transport layer to the rest of the wiki.
 
-- [[entities/kast-cli]]
+- [[entities/rust-cli]]
 - [[entities/analysis-api]]
 - [[entities/backend-standalone]]
 - [[concepts/client-daemon-architecture]]

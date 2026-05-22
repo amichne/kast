@@ -212,15 +212,6 @@ async function createRunWorktree({ targetRoot, targetSha, worktreePath }) {
   return worktreePath;
 }
 
-export async function isolateMockWorktreeConfig(worktreePath) {
-  await execFileAsync("git", ["-C", worktreePath, "sparse-checkout", "init", "--no-cone"], {
-    timeout: 120000,
-  });
-  await execFileAsync("git", ["-C", worktreePath, "sparse-checkout", "set", "/*", "!/.github/", "!/.agents/"], {
-    timeout: 120000,
-  });
-}
-
 async function callKastInWorkspace(workspaceRoot, method, params) {
   const kastBin = process.env.KAST_BIN ?? "kast";
   const rpcRequest = JSON.stringify({ jsonrpc: "2.0", method, params, id: 1 });
@@ -619,9 +610,6 @@ async function main() {
   mkdirSync(dirname(sdkEventsPath), { recursive: true });
 
   await createRunWorktree({ targetRoot, targetSha, worktreePath });
-  if (kastBackendMode === "mock") {
-    await isolateMockWorktreeConfig(worktreePath);
-  }
   const preState = await gitState(worktreePath);
   const mockCaller = kastBackendMode === "mock"
     ? createMockKastCaller({

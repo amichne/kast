@@ -85,7 +85,7 @@ PY
 }
 
 if [[ "${#KOTLIN_FILES[@]}" -gt 0 ]]; then
-    if ! KAST_BIN="$(bash "${SCRIPT_DIR}/resolve-kast-cli-path.sh")"; then
+    if ! KAST_BIN="$(bash "${SCRIPT_DIR}/resolve-kast-path.sh")"; then
         echo "session-end: unable to resolve kast binary; cannot run kast diagnostics" >&2
         exit 1
     fi

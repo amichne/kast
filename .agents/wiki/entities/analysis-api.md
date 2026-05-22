@@ -35,7 +35,7 @@ The sources below anchor the current understanding of the contract layer.
 
 The pages below expand on the contract's role in the stack.
 
-- [[entities/kast-cli]]
+- [[entities/rust-cli]]
 - [[entities/analysis-server]]
 - [[entities/backend-standalone]]
 - [[concepts/semantic-analysis-operations]]

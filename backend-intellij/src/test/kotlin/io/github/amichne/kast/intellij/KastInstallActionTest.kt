@@ -45,11 +45,7 @@ class KastInstallActionTest {
     fun installsCopilotExtensionFromConfiguredCliBinaryPath() {
         val workspaceRoot = tempDir.resolve("workspace")
         Files.createDirectories(workspaceRoot)
-        val kastBinary = Path.of(
-            checkNotNull(System.getProperty("kast.wrapper")) {
-                "kast.wrapper system property is missing"
-            },
-        ).toAbsolutePath().normalize()
+        val kastBinary = fakeRustKastBinary()
 
         val resolution = resolveConfiguredKastBinary(workspaceRoot) { configWithBinaryPath(kastBinary) }
         assertEquals(KastBinaryResolution.Found(kastBinary), resolution)
@@ -79,5 +75,32 @@ class KastInstallActionTest {
                 binaryPath = CliBinaryPath(path.toString()),
             ),
         )
+    }
+
+    private fun fakeRustKastBinary(): Path {
+        val kastBinary = tempDir.resolve("kast")
+        Files.writeString(
+            kastBinary,
+            """
+            #!/usr/bin/env bash
+            set -euo pipefail
+            if [[ "${'$'}1" == "install" && "${'$'}2" == "copilot-extension" ]]; then
+              target_dir=""
+              for arg in "${'$'}@"; do
+                case "${'$'}arg" in
+                  --target-dir=*) target_dir="${'$'}{arg#--target-dir=}" ;;
+                esac
+              done
+              [[ -n "${'$'}target_dir" ]] || exit 2
+              mkdir -p "${'$'}target_dir/extensions/kast"
+              printf '%s\n' test > "${'$'}target_dir/.kast-copilot-version"
+              printf '%s\n' '// fake extension' > "${'$'}target_dir/extensions/kast/extension.mjs"
+              exit 0
+            fi
+            exit 64
+            """.trimIndent(),
+        )
+        assertTrue(kastBinary.toFile().setExecutable(true))
+        return kastBinary.toAbsolutePath().normalize()
     }
 }

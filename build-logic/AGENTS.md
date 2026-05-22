@@ -34,6 +34,6 @@ Validate both the immediate target and the wider build impact.
   `-PexcludeTags=<tag1,tag2>`. Default runs exclude `concurrency`,
   `performance`, and `parity` unless include tags are set.
 - Run the affected module tasks that consume the changed convention, starting
-  with `./gradlew :kast-cli:syncRuntimeLibs :kast-cli:writeWrapperScript` for wrapper
-  or runtime-lib changes.
+  with `./gradlew :backend-standalone:syncRuntimeLibs :backend-standalone:portableDistZip`
+  for runtime-lib or portable distribution changes.
 - For significant build-logic edits, run `./gradlew build`.

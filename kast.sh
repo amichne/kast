@@ -3,7 +3,6 @@
 #
 # Subcommands:
 #   build    Build portable distribution artifacts  ->  dist/
-#   release  Prepare a release asset
 #   install  Install Kast CLI from GitHub releases
 #
 # Curl one-liner (auto-invokes install):
@@ -11,8 +10,7 @@
 #   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh)"
 #
 # Explicit subcommand:
-#   ./kast.sh build [cli] [plugin] [backend] [--all]
-#   ./kast.sh release --tag v1.0.0 --platform-id linux-x64 --native-binary build/native/kast
+#   ./kast.sh build [plugin] [backend] [--all]
 #   ./kast.sh install [--components=cli,intellij] [--non-interactive]
 set -euo pipefail
 
@@ -32,14 +30,13 @@ GRADLEW="${REPO_ROOT}/gradlew"
 DIST_ROOT="${REPO_ROOT}/dist"
 
 # Build paths (only meaningful when SCRIPT_DIR is set -- not applicable when curl-piped)
-PORTABLE_DIST_DIR="${REPO_ROOT}/kast-cli/build/portable-dist/kast-cli"
-PORTABLE_ZIP_DIR="${REPO_ROOT}/kast-cli/build/distributions"
 PLUGIN_DIST_DIR="${REPO_ROOT}/backend-intellij/build/distributions"
 BACKEND_PORTABLE_DIST_DIR="${REPO_ROOT}/backend-standalone/build/portable-dist/backend-standalone"
 BACKEND_PORTABLE_ZIP_DIR="${REPO_ROOT}/backend-standalone/build/distributions"
 
 # Install constants
 readonly DEFAULT_RELEASE_REPO="amichne/kast"
+readonly DEFAULT_CLI_RELEASE_REPO="amichne/kast-rs"
 readonly GITHUB_API_ACCEPT="Accept: application/vnd.github+json"
 readonly GITHUB_API_VERSION="X-GitHub-Api-Version: 2022-11-28"
 readonly PATH_MARKER="# Added by the Kast installer"
@@ -97,7 +94,7 @@ die() {
   exit 1
 }
 
-can_prompt() { [[ -r /dev/tty && -w /dev/tty ]]; }
+can_prompt() { [[ -r /dev/tty && -w /dev/tty ]] && { : </dev/tty >/dev/tty; } 2>/dev/null; }
 
 prompt_yes_no() {
   local message="$1"
@@ -191,56 +188,11 @@ compute_sha256() {
   die "Neither sha256sum nor shasum is available for checksum computation"
 }
 
-_release_zip_directory() {
-  local source_dir="$1" output_zip="$2"
-  python3 - "$source_dir" "$output_zip" <<'PY'
-import os
-import stat
-import sys
-import zipfile
-from pathlib import Path
-
-source_dir = Path(sys.argv[1])
-output_zip = Path(sys.argv[2])
-tmp_zip = output_zip.with_name(output_zip.name + ".tmp")
-
-with zipfile.ZipFile(tmp_zip, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-    for path in sorted(source_dir.rglob("*")):
-        if path.is_dir():
-            continue
-        relative = path.relative_to(source_dir).as_posix()
-        mode = stat.S_IMODE(path.stat().st_mode)
-        info = zipfile.ZipInfo(relative)
-        info.compress_type = zipfile.ZIP_DEFLATED
-        info.external_attr = (stat.S_IFREG | mode) << 16
-        with path.open("rb") as handle:
-            archive.writestr(info, handle.read())
-
-os.replace(tmp_zip, output_zip)
-PY
-}
-
-_release_create_native_cli_asset() {
-  local asset_path="$1" native_binary="$2"
-  [[ -x "$native_binary" ]] || die "Native binary is missing or not executable: ${native_binary}"
-
-  tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/kast-release.XXXXXX")"
-  local staging_dir="${tmp_dir}/native-cli"
-  mkdir -p "${staging_dir}/kast-cli"
-
-  cp "$native_binary" "${staging_dir}/kast-cli/kast-cli"
-  chmod 755 "${staging_dir}/kast-cli/kast-cli"
-  _release_zip_directory "$staging_dir" "$asset_path"
-
-  rm -rf "$tmp_dir"
-  tmp_dir=""
-}
-
 # ===========================================================================
 # cmd_build -- local dev build / packaging
 # ===========================================================================
 
-_BUILD_ALL_TARGETS=(cli plugin backend)
+_BUILD_ALL_TARGETS=(plugin backend)
 _build_selected_targets=()
 
 _build_verify_prerequisites() {
@@ -294,17 +246,6 @@ _build_run_gradle_tasks_with_retry() {
   _build_run_gradle_tasks "$@" --offline
 }
 
-_build_resolve_cli_zip() {
-  local newest="" candidate=""
-  shopt -s nullglob
-  for candidate in "${PORTABLE_ZIP_DIR}"/kast-cli-*-portable.zip; do
-    [[ -z "$newest" || "$candidate" -nt "$newest" ]] && newest="$candidate"
-  done
-  shopt -u nullglob
-  [[ -n "$newest" ]] || die "Expected a portable zip under ${PORTABLE_ZIP_DIR}"
-  printf '%s\n' "$newest"
-}
-
 _build_resolve_plugin_zip() {
   local newest="" candidate=""
   shopt -s nullglob
@@ -327,37 +268,6 @@ _build_resolve_backend_zip() {
   printf '%s\n' "$newest"
 }
 
-_build_cli() {
-  log_section "Building target: cli"
-  rm -rf "${REPO_ROOT}/kast-cli/build/portable-dist" "${REPO_ROOT}/kast-cli/build/distributions"
-  _build_run_gradle_tasks_with_retry syncRuntimeLibs stageCliDist buildCliPortableZip
-
-    log_step "Verifying staged CLI tree in ${PORTABLE_DIST_DIR}"
-  [[ -x "${PORTABLE_DIST_DIR}/kast-cli" ]]                    || die "Missing staged kast-cli launcher"
-  [[ -d "${PORTABLE_DIST_DIR}/runtime-libs" ]]                 || die "Missing staged runtime-libs directory"
-  [[ -f "${PORTABLE_DIST_DIR}/runtime-libs/classpath.txt" ]]   || die "Missing staged runtime classpath file"
-  local jars=()
-  shopt -s nullglob; jars=("${PORTABLE_DIST_DIR}"/libs/kast-cli-*-all.jar); shopt -u nullglob
-  [[ "${#jars[@]}" -eq 1 ]] || die "Expected exactly one staged fat jar under ${PORTABLE_DIST_DIR}/libs"
-
-  local dist_dir="${DIST_ROOT}/cli"
-  local dist_zip="${DIST_ROOT}/cli.zip"
-  tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/kast-build.XXXXXX")"
-
-  log_step "Publishing CLI tree into ${dist_dir}"
-  mkdir -p "$DIST_ROOT"
-  cp -R "$PORTABLE_DIST_DIR" "${tmp_dir}/cli"
-  rm -rf "$dist_dir"
-  mv "${tmp_dir}/cli" "$dist_dir"
-  log_success "Published ${dist_dir}"
-
-  local source_zip; source_zip="$(_build_resolve_cli_zip)"
-  cp "$source_zip" "$dist_zip"
-  log_success "Published ${dist_zip}"
-
-  rm -rf "$tmp_dir"; tmp_dir=""
-}
-
 _build_plugin() {
   log_section "Building target: plugin"
   _build_run_gradle_tasks_with_retry buildIntellijPlugin
@@ -373,7 +283,7 @@ _build_plugin() {
 _build_backend() {
   log_section "Building target: backend"
   rm -rf "${REPO_ROOT}/backend-standalone/build/portable-dist" "${REPO_ROOT}/backend-standalone/build/distributions"
-  _build_run_gradle_tasks_with_retry kast-cli:syncRuntimeLibs stageBackendDist buildBackendPortableZip
+  _build_run_gradle_tasks_with_retry stageBackendDist buildBackendPortableZip
 
   log_step "Verifying staged backend tree in ${BACKEND_PORTABLE_DIST_DIR}"
   [[ -x "${BACKEND_PORTABLE_DIST_DIR}/kast-standalone" ]]             || die "Missing staged backend-standalone launcher"
@@ -410,12 +320,6 @@ _build_openapi() {
 }
 
 _build_clean_stale_outputs() {
-  local cli_dir="${DIST_ROOT}/cli"
-  if [[ -d "$cli_dir" && (! -f "${cli_dir}/kast-cli" || ! -d "${cli_dir}/runtime-libs") ]]; then
-    log_step "Removing incomplete ${cli_dir} from a previous run"
-    rm -rf "$cli_dir"
-  fi
-
   local backend_dir="${DIST_ROOT}/backend"
   if [[ -d "$backend_dir" && (! -f "${backend_dir}/kast-standalone" || ! -d "${backend_dir}/runtime-libs") ]]; then
     log_step "Removing incomplete ${backend_dir} from a previous run"
@@ -436,12 +340,10 @@ cmd_build() {
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      cli|plugin|backend)
+      plugin|backend)
         _build_selected_targets+=("$1"); shift ;;
       --all)
         _build_selected_targets=("${_BUILD_ALL_TARGETS[@]}"); shift ;;
-      --shrink)
-        _GRADLE_EXTRA_ARGS+=("-Pkast.shrinkRuntime=true"); shift ;;
       --help|-h)
         cat >&2 << 'USAGE'
 Usage: ./kast.sh build [target...] [options]
@@ -449,13 +351,11 @@ Usage: ./kast.sh build [target...] [options]
 Builds selected Kast components and publishes artifacts to dist/.
 
 Targets (positional, repeatable):
-  cli          CLI binary + JVM wrapper  -> dist/cli/   dist/cli.zip
   plugin       IDEA plugin zip           -> dist/plugin.zip
   backend      Standalone server         -> dist/backend/  dist/backend.zip
 
 Options:
   --all            Build all targets.
-  --shrink         Run ProGuard on the assembled runtime-libs before packaging.
   --help, -h       Show this help.
 
 When no targets are supplied and a TTY is available, fzf is used for
@@ -481,7 +381,6 @@ USAGE
 
   for target in "${_build_selected_targets[@]}"; do
     case "$target" in
-      cli)     _build_cli ;;
       plugin)  _build_plugin ;;
       backend) _build_backend ;;
     esac
@@ -492,98 +391,10 @@ USAGE
   log_section "Build complete"
   for target in "${_build_selected_targets[@]}"; do
     case "$target" in
-      cli)     log_success "cli     ->  ${DIST_ROOT}/cli/  ${DIST_ROOT}/cli.zip" ;;
       plugin)  log_success "plugin  ->  ${DIST_ROOT}/plugin.zip" ;;
       backend) log_success "backend ->  ${DIST_ROOT}/backend/  ${DIST_ROOT}/backend.zip" ;;
     esac
   done
-}
-
-# ===========================================================================
-# cmd_release -- prepare a release asset
-# ===========================================================================
-
-cmd_release() {
-  [[ -n "$REPO_ROOT" && -d "$REPO_ROOT" ]] || die "Release requires a local checkout (not valid when curl-piped)"
-
-  local tag="" platform_id="" skip_build="false" native_binary=""
-  _GRADLE_EXTRA_ARGS=()
-
-  while [[ $# -gt 0 ]]; do
-    case "$1" in
-      --tag=*)         tag="${1#*=}"; shift ;;
-      --tag)           [[ $# -ge 2 ]] || die "Missing value for --tag"; tag="$2"; shift 2 ;;
-      --platform-id=*) platform_id="${1#*=}"; shift ;;
-      --platform-id)   [[ $# -ge 2 ]] || die "Missing value for --platform-id"; platform_id="$2"; shift 2 ;;
-      --skip-build)    skip_build="true"; shift ;;
-      --native-binary=*) native_binary="${1#*=}"; shift ;;
-      --native-binary) [[ $# -ge 2 ]] || die "Missing value for --native-binary"; native_binary="$2"; shift 2 ;;
-      --shrink)
-        die "Release assets must not use ProGuard/R8 shrinking. Use './kast.sh build --shrink' only for local diagnostic artifacts."
-        ;;
-      --help|-h)
-        cat >&2 << 'USAGE'
-Usage: ./kast.sh release --tag <version> --platform-id <id> [options]
-
-Prepares a release asset. Native CLI releases contain only the platform
-launcher; fallback JVM releases copy the portable distribution zip.
-
-Options:
-  --tag <version>       Release tag (e.g. v1.2.3). Required.
-  --platform-id <id>    Platform identifier (e.g. linux-x64, macos-arm64). Required.
-  --skip-build          Skip the Gradle build (use existing portable zip).
-  --native-binary <path>
-                         Package this GraalVM native binary as the CLI asset.
-  --help, -h            Show this help.
-
-Examples:
-  ./kast.sh release --tag v1.0.0 --platform-id linux-x64 --native-binary kast-cli/build/native/nativeCompile/kast
-  ./kast.sh release --tag v1.0.0 --platform-id macos-arm64 --skip-build --native-binary kast-cli/build/native/nativeCompile/kast
-USAGE
-        return 0
-        ;;
-      *) die "Unknown argument: $1" ;;
-    esac
-  done
-
-  [[ -n "$tag" ]]         || die "Missing required --tag"
-  [[ -n "$platform_id" ]] || die "Missing required --platform-id"
-  [[ -x "$GRADLEW" ]]     || die "Missing executable gradlew at ${GRADLEW}"
-
-  if [[ "$skip_build" != "true" && -z "$native_binary" ]]; then
-    log_section "Building portable distribution"
-    if ! ( cd "$REPO_ROOT"; "$GRADLEW" :kast-cli:portableDistZip ); then
-      log_note "Gradle build failed; stopping daemon and retrying with --no-daemon"
-      "$GRADLEW" --stop >/dev/null 2>&1 || true
-      ( cd "$REPO_ROOT"; "$GRADLEW" --no-daemon :kast-cli:portableDistZip )
-    fi
-  fi
-
-  local asset_name="kast-${tag}-${platform_id}.zip"
-  local asset_path="${DIST_ROOT}/${asset_name}"
-
-  log_section "Preparing release asset"
-  mkdir -p "$DIST_ROOT"
-
-  if [[ -n "$native_binary" ]]; then
-    log_step "Packaging native CLI binary ${native_binary}"
-    _release_create_native_cli_asset "$asset_path" "$native_binary"
-  else
-    local newest="" candidate=""
-    shopt -s nullglob
-    for candidate in "${PORTABLE_ZIP_DIR}"/kast-cli-*-portable.zip; do
-      [[ -z "$newest" || "$candidate" -nt "$newest" ]] && newest="$candidate"
-    done
-    shopt -u nullglob
-    [[ -n "$newest" ]] || die "No portable zip found under ${PORTABLE_ZIP_DIR}. Run without --skip-build."
-    cp "$newest" "$asset_path"
-  fi
-
-  local digest; digest="$(compute_sha256 "$asset_path")"
-  printf '%s  %s\n' "$digest" "$asset_name" >> "${DIST_ROOT}/checksums.txt"
-
-  log_success "Release asset: ${asset_path}"
-  log "SHA-256: ${digest}"
 }
 
 # ===========================================================================
@@ -606,6 +417,13 @@ _install_resolve_release_repo() {
     printf '%s/%s\n' "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}"; return
   fi
   printf '%s\n' "$DEFAULT_RELEASE_REPO"
+}
+
+_install_resolve_cli_release_repo() {
+  if [[ -n "${KAST_CLI_RELEASE_REPO:-}" ]]; then
+    printf '%s\n' "$KAST_CLI_RELEASE_REPO"; return
+  fi
+  printf '%s\n' "$DEFAULT_CLI_RELEASE_REPO"
 }
 
 _install_detect_platform_id() {
@@ -827,12 +645,12 @@ _install_migrate_legacy_layout() {
 }
 
 _install_write_manifest() {
-  local install_root="$1" version="$2" platform_id="$3"
+  local install_root="$1" version="$2" platform_id="$3" backend_version="${4:-}"
   local manifest_file="${install_root}/.manifest.json"
   local shell_patches repo_entries
   shell_patches="$(printf '%s\n' "${_INSTALL_SHELL_PATCHES[@]:-}")"
   repo_entries="$(printf '%s\n' "${_INSTALL_MANAGED_REPOS[@]:-}")"
-  INSTALL_SHELL_PATCHES="$shell_patches" INSTALL_REPOS="$repo_entries" python3 - "$manifest_file" "$install_root" "$version" "$platform_id" <<'PYMANIFEST'
+  INSTALL_SHELL_PATCHES="$shell_patches" INSTALL_REPOS="$repo_entries" python3 - "$manifest_file" "$install_root" "$version" "$platform_id" "$backend_version" <<'PYMANIFEST'
 import json
 import os
 import sys
@@ -843,6 +661,7 @@ manifest_file = Path(sys.argv[1])
 install_root = Path(sys.argv[2])
 version = sys.argv[3]
 platform_id = sys.argv[4]
+backend_version = sys.argv[5]
 existing = {}
 if manifest_file.exists():
     try:
@@ -894,6 +713,7 @@ for line in env_lines("INSTALL_REPOS"):
 
 manifest = {
     "version": version or existing.get("version", ""),
+    "backendVersion": backend_version or existing.get("backendVersion", ""),
     "installedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
     "platform": platform_id or existing.get("platform", ""),
     "components": sorted(components),
@@ -1765,10 +1585,13 @@ USAGE
   need_tool curl
   need_tool python3
 
-  local release_repo platform_id install_root bin_dir shell_name
-  local archive_path="" archive_name="" archive_source="" release_tag="" archive_digest=""
+  local release_repo cli_release_repo platform_id install_root bin_dir shell_name
+  local archive_path="" archive_name="" archive_source="" cli_release_tag="" archive_digest="" installed_backend_version=""
+  local requested_cli_version="${KAST_CLI_VERSION:-${KAST_VERSION:-}}"
+  local requested_backend_version="${KAST_BACKEND_VERSION:-${KAST_VERSION:-}}"
 
   release_repo="$(_install_resolve_release_repo)"
+  cli_release_repo="$(_install_resolve_cli_release_repo)"
   platform_id="$(_install_detect_platform_id)"
   install_root="${KAST_MANAGED_ROOT:-${HOME}/.kast}"
   install_root="${install_root%/}"
@@ -1829,9 +1652,7 @@ USAGE
   fi
   if [[ "$local_build" == "true" ]]; then
     if [[ "$install_cli" == "true" && -z "${KAST_ARCHIVE_PATH:-}" ]]; then
-      local dist_archive="${SCRIPT_DIR}/dist/cli.zip"
-      [[ -f "$dist_archive" ]] || die "Local build archive not found at ${dist_archive}. Run ./kast.sh build first."
-      KAST_ARCHIVE_PATH="$dist_archive"
+      die "Local Rust CLI archives are built in kast-rs. Set KAST_ARCHIVE_PATH to a kast-rs release zip."
     fi
     if [[ "$install_intellij" == "true" ]]; then
       local_plugin_archive="${SCRIPT_DIR}/dist/plugin.zip"
@@ -1859,22 +1680,22 @@ USAGE
       [[ -f "$archive_path" ]] || die "KAST_ARCHIVE_PATH does not exist: $archive_path"
       archive_name="$(basename -- "$archive_path")"
       archive_source="$archive_path"
-      release_tag="${KAST_VERSION:-local}"
+      cli_release_tag="${requested_cli_version:-local}"
       archive_digest="${KAST_EXPECTED_SHA256:-}"
       log_step "Using local archive ${archive_name}"
     else
-      local metadata_url="${KAST_RELEASE_METADATA_URL:-}"
+      local metadata_url="${KAST_CLI_RELEASE_METADATA_URL:-}"
       if [[ -z "$metadata_url" ]]; then
-        if [[ -n "${KAST_VERSION:-}" ]]; then
-          metadata_url="https://api.github.com/repos/${release_repo}/releases/tags/${KAST_VERSION}"
+        if [[ -n "$requested_cli_version" ]]; then
+          metadata_url="https://api.github.com/repos/${cli_release_repo}/releases/tags/${requested_cli_version}"
         else
-          metadata_url="https://api.github.com/repos/${release_repo}/releases/latest"
+          metadata_url="https://api.github.com/repos/${cli_release_repo}/releases/latest"
         fi
       fi
 
       local metadata_path="${tmp_dir}/release.json"
       log_section "Resolve release"
-      log_step "Resolving release metadata for ${release_repo} (${platform_id})"
+      log_step "Resolving CLI release metadata for ${cli_release_repo} (${platform_id})"
       curl \
         --fail \
         --location \
@@ -1897,7 +1718,7 @@ USAGE
       done <"$release_info_path"
       [[ "${#release_info[@]}" -eq 4 ]] || die "Release metadata parsing returned incomplete asset information"
 
-      release_tag="${release_info[0]}"
+      cli_release_tag="${release_info[0]}"
       archive_name="${release_info[1]}"
       archive_source="${release_info[2]}"
       archive_digest="${release_info[3]}"
@@ -1926,7 +1747,7 @@ USAGE
     fi
 
     local staging_dir="${tmp_dir}/extract"
-    local release_dir="${install_root}/releases/${release_tag}/${platform_id}"
+    local release_dir="${install_root}/releases/${cli_release_tag}/${platform_id}"
     local current_link="${install_root}/current"
     local bin_link="${bin_dir}/kast"
 
@@ -1944,28 +1765,30 @@ USAGE
 
     extract_zip_archive "$archive_path" "$staging_dir"
 
-    if [[ -d "${staging_dir}/kast-cli" ]]; then
-      mv "${staging_dir}/kast-cli" "${staging_dir}/kast"
+    if [[ -f "${staging_dir}/kast" ]]; then
+      mkdir -p "${staging_dir}/kast-release"
+      mv "${staging_dir}/kast" "${staging_dir}/kast-release/kast"
+      mv "${staging_dir}/kast-release" "${staging_dir}/kast"
     fi
-    [[ -d "${staging_dir}/kast" ]] || die "Archive ${archive_name} did not contain the expected kast-cli/ or kast/ directory"
+    [[ -d "${staging_dir}/kast" ]] || die "Archive ${archive_name} did not contain the expected top-level kast binary"
 
     rm -rf "$release_dir"
     mkdir -p "$(dirname -- "$release_dir")"
     mv "${staging_dir}/kast" "$release_dir"
 
-    [[ -f "${release_dir}/kast-cli" ]] || die "Installed archive did not contain the kast-cli launcher"
-    chmod +x "${release_dir}/kast-cli"
+    [[ -f "${release_dir}/kast" ]] || die "Installed archive did not contain the kast launcher"
+    chmod +x "${release_dir}/kast"
 
     _install_write_metadata \
       "${release_dir}/.install-metadata.json" \
-      "$release_repo" "$release_tag" "$platform_id" "$archive_name" "$archive_source" "${KAST_INSTALL_SOURCE:-kast.sh}"
+      "$cli_release_repo" "$cli_release_tag" "$platform_id" "$archive_name" "$archive_source" "${KAST_INSTALL_SOURCE:-kast.sh}"
 
     mkdir -p "$install_root" "$bin_dir"
     ln -sfn "$release_dir" "$current_link"
     {
       printf '#!/usr/bin/env bash\n'
       printf 'set -euo pipefail\n'
-      printf 'exec "%s/current/kast-cli" "$@"\n' "$install_root"
+      printf 'exec "%s/current/kast" "$@"\n' "$install_root"
     } > "$bin_link"
     chmod +x "$bin_link"
     log_success "Installed ${archive_name} into ${release_dir}"
@@ -1978,7 +1801,7 @@ USAGE
 
   # Phase 6: IDEA plugin
   if [[ "$install_intellij" == "true" ]]; then
-    local resolved_tag; resolved_tag="$(_install_resolve_release_tag "$release_repo" "${release_tag:-}")"
+    local resolved_tag; resolved_tag="$(_install_resolve_release_tag "$release_repo" "$requested_backend_version")"
     if [[ "$wizard_mode" == "true" && "$_INSTALL_INTELLIJ_ACTION" == "push" ]]; then
       _install_push_plugin_to_intellij "$release_repo" "$resolved_tag" "$local_plugin_archive" \
         || _install_intellij_plugin "$release_repo" "$resolved_tag" "$install_root" "$local_plugin_archive" || true
@@ -1990,12 +1813,13 @@ USAGE
   # Phase 7: Standalone backend
   if [[ "$install_standalone" == "true" ]]; then
     local resolved_tag
-    if [[ -n "$local_backend_archive" && -z "${release_tag:-}" ]]; then
-      resolved_tag="${KAST_VERSION:-local}"
+    if [[ -n "$local_backend_archive" && -z "$requested_backend_version" ]]; then
+      resolved_tag="local"
     else
-      resolved_tag="$(_install_resolve_release_tag "$release_repo" "${release_tag:-}")"
+      resolved_tag="$(_install_resolve_release_tag "$release_repo" "$requested_backend_version")"
     fi
     if _install_standalone_backend "$release_repo" "$resolved_tag" "$install_root" "$local_backend_archive" "$bin_dir" "$local_backend_digest"; then
+      installed_backend_version="$resolved_tag"
       local runtime_libs_dir="${install_root}/backends/standalone-${resolved_tag}/runtime-libs"
       _install_config_write "$install_root" "$bin_dir" "$runtime_libs_dir"
     fi
@@ -2008,7 +1832,7 @@ USAGE
 
   # Phase 8.5: Copilot extension
   if [[ "$skip_copilot_extension" != "true" && "$install_cli" == "true" ]]; then
-    _install_copilot_extension_phase "$bin_dir" "$non_interactive" "$assume_yes" "${release_tag:-${KAST_VERSION:-unknown}}" || true
+    _install_copilot_extension_phase "$bin_dir" "$non_interactive" "$assume_yes" "${cli_release_tag:-${requested_cli_version:-unknown}}" || true
   fi
 
   # Phase 9: Summary
@@ -2039,8 +1863,8 @@ USAGE
     [[ "$install_standalone" == "true" ]] && log_success "Standalone backend: ${install_root}/backends/current/"
   fi
 
-  local manifest_version="${release_tag:-${KAST_VERSION:-unknown}}"
-  _install_write_manifest "$install_root" "$manifest_version" "$platform_id"
+  local manifest_version="${cli_release_tag:-${requested_cli_version:-unknown}}"
+  _install_write_manifest "$install_root" "$manifest_version" "$platform_id" "$installed_backend_version"
 }
 
 # ===========================================================================
@@ -2053,7 +1877,6 @@ Usage: ./kast.sh <subcommand> [options]
 
 Subcommands:
   build    Build portable distribution artifacts  ->  dist/
-  release  Prepare a release asset
   install  Install Kast CLI and optional components
 
 Run ./kast.sh <subcommand> --help for subcommand-specific options.
@@ -2082,7 +1905,6 @@ main() {
 
   case "$cmd" in
     build)          shift; cmd_build "$@" ;;
-    release)        shift; cmd_release "$@" ;;
     install)        shift; cmd_install "$@" ;;
     --help|-h|help) usage_main ;;
     "")             usage_main; exit 1 ;;

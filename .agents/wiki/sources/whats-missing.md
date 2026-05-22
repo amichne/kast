@@ -96,7 +96,7 @@ graph TD
       "visibility": "PUBLIC",
       "reference_count": 47,
       "referenced_from_files": ["AnalysisDispatcher.kt", "CliService.kt", ...],
-      "referenced_from_modules": { "analysis-server": 12, "kast-cli": 8, "backend-standalone": 15, ... }
+      "referenced_from_modules": { "analysis-server": 12, "rust-cli": 8, "backend-standalone": 15, ... }
     },
     ...
   ],

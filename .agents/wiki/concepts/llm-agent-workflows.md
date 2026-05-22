@@ -26,7 +26,7 @@ These pages define the current agent integration story.
   and agent-specific considerations.
 - [[sources/cli-command-reference]] - Shows the underlying operations the agent
   wrappers invoke.
-- [[sources/kast-cli-native-cli-module]] - Shows how CLI runtime management
+- [[sources/rust-cli-control-plane]] - Shows how CLI runtime management
   supports those flows.
 - [[sources/installation-and-instance-management]] - Explains skill
   installation.
@@ -35,7 +35,7 @@ These pages define the current agent integration story.
 
 These pages explain the systems agent workflows depend on.
 
-- [[entities/kast-cli]]
+- [[entities/rust-cli]]
 - [[concepts/semantic-analysis-operations]]
 - [[concepts/hierarchy-traversal]]
 - [[analyses/operator-journeys]]

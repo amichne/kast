@@ -93,14 +93,14 @@ skip_install_root="${scratch_dir}/skip-contained-kast"
 
 mkdir -p \
   "${artifact_dir}" \
-  "${cli_tree}/kast-cli" \
+  "${cli_tree}" \
   "${backend_tree}/backend-standalone/runtime-libs" \
   "${workspace_root}" \
   "${skip_workspace_root}" \
   "${marker_only_workspace_root}" \
   "${home_dir}"
 
-cat > "${cli_tree}/kast-cli/kast-cli" <<'FAKE_KAST'
+cat > "${cli_tree}/kast" <<'FAKE_KAST'
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -164,7 +164,7 @@ fi
 printf 'unexpected fake kast invocation: %s\n' "$*" >&2
 exit 1
 FAKE_KAST
-chmod +x "${cli_tree}/kast-cli/kast-cli"
+chmod +x "${cli_tree}/kast"
 
 cat > "${backend_tree}/backend-standalone/kast-standalone" <<'FAKE_BACKEND'
 #!/usr/bin/env bash
@@ -173,7 +173,7 @@ FAKE_BACKEND
 chmod +x "${backend_tree}/backend-standalone/kast-standalone"
 printf '%s\n' "fake runtime lib" > "${backend_tree}/backend-standalone/runtime-libs/fake.jar"
 
-cli_zip="${artifact_dir}/kast-cli-internal.zip"
+cli_zip="${artifact_dir}/kast-internal.zip"
 backend_zip="${artifact_dir}/kast-standalone-internal.zip"
 zip_dir "$cli_zip" "$cli_tree"
 zip_dir "$backend_zip" "$backend_tree"
