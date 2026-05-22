@@ -1,8 +1,6 @@
 package io.github.amichne.kast.api.client
 
 import io.github.amichne.kast.api.client.fields.*
-import com.sksamuel.hoplite.ConfigLoaderBuilder
-import com.sksamuel.hoplite.ExperimentalHoplite
 import io.github.amichne.kast.api.contract.ServerLimits
 import java.nio.file.Files
 import java.nio.file.Path
@@ -91,7 +89,6 @@ data class KastConfig(
             )
         }
 
-        @OptIn(ExperimentalHoplite::class)
         fun load(
             workspaceRoot: Path,
             configHome: () -> Path = { kastConfigHome() },
@@ -101,26 +98,226 @@ data class KastConfig(
             val configFiles = listOf(
                 workspaceDirectoryResolver.workspaceDataDirectory(workspaceRoot).resolve("config.toml"),
                 configHome().resolve("config.toml"),
-            ).filter(Files::isRegularFile).map(Path::toString)
-            val loaded = if (configFiles.isEmpty()) {
-                KastConfigOverride()
-            } else {
-                ConfigLoaderBuilder.empty()
-                    .withClassLoader(KastConfig::class.java.classLoader)
-                    .addDefaultDecoders()
-                    .addDefaultPreprocessors()
-                    .addDefaultNodeTransformers()
-                    .addDefaultParamMappers()
-                    .addDefaultParsers()
-                    .withExplicitSealedTypes()
-                    .allowEmptyConfigFiles()
-                    .build()
-                    .loadConfigOrThrow<KastConfigOverride>(configFiles)
-            }
+            ).filter(Files::isRegularFile)
+            val loaded = loadConfigOverrides(configFiles)
             return defaults().merge(loaded).merge(overrides)
         }
     }
 }
+
+private fun loadConfigOverrides(configFiles: List<Path>): KastConfigOverride {
+    val values = linkedMapOf<String, String>()
+    configFiles.asReversed().forEach { configFile ->
+        values.putAll(parseConfigValues(configFile))
+    }
+    return values.toKastConfigOverride()
+}
+
+private fun parseConfigValues(configFile: Path): Map<String, String> {
+    val values = linkedMapOf<String, String>()
+    var section = ""
+    Files.readAllLines(configFile).forEachIndexed { index, rawLine ->
+        val line = rawLine.withoutTomlComment().trim()
+        if (line.isBlank()) return@forEachIndexed
+        if (line.startsWith("[") && line.endsWith("]")) {
+            section = normalizeConfigPath(line.removePrefix("[").removeSuffix("]"))
+            return@forEachIndexed
+        }
+
+        val separator = line.indexOf('=')
+        require(separator > 0) { "Invalid Kast config line ${index + 1} in $configFile: $rawLine" }
+        val key = normalizeConfigPath(
+            listOf(section, line.substring(0, separator).trim())
+                .filter(String::isNotBlank)
+                .joinToString("."),
+        )
+        values[key] = line.substring(separator + 1).trim().parseTomlScalar()
+    }
+    return values
+}
+
+private fun String.withoutTomlComment(): String {
+    var quoted = false
+    var quote = '\u0000'
+    var escaped = false
+    forEachIndexed { index, char ->
+        when {
+            escaped -> escaped = false
+            quoted && char == '\\' -> escaped = true
+            quoted && char == quote -> quoted = false
+            !quoted && (char == '"' || char == '\'') -> {
+                quoted = true
+                quote = char
+            }
+            !quoted && char == '#' -> return substring(0, index)
+        }
+    }
+    return this
+}
+
+private fun String.parseTomlScalar(): String {
+    val trimmed = trim().removeSuffix(",").trim()
+    if (trimmed.length >= 2 && trimmed.first() == '"' && trimmed.last() == '"') {
+        return trimmed.substring(1, trimmed.lastIndex)
+            .replace("\\\"", "\"")
+            .replace("\\\\", "\\")
+            .replace("\\n", "\n")
+            .replace("\\t", "\t")
+    }
+    if (trimmed.length >= 2 && trimmed.first() == '\'' && trimmed.last() == '\'') {
+        return trimmed.substring(1, trimmed.lastIndex)
+    }
+    return trimmed
+}
+
+private fun normalizeConfigPath(path: String): String =
+    path.split('.')
+        .joinToString(".") { segment -> segment.filterNot { it == '-' || it == '_' }.lowercase() }
+
+private fun Map<String, String>.toKastConfigOverride(): KastConfigOverride = KastConfigOverride(
+    server = serverOverride(),
+    indexing = indexingOverride(),
+    cache = cacheOverride(),
+    watcher = watcherOverride(),
+    gradle = gradleOverride(),
+    telemetry = telemetryOverride(),
+    profiling = profilingOverride(),
+    backends = backendsOverride(),
+    paths = pathsOverride(),
+    cli = cliOverride(),
+)
+
+private fun Map<String, String>.serverOverride(): ServerConfigOverride? {
+    val maxResults = intValue("server.maxresults")?.let(::ServerMaxResults)
+    val requestTimeoutMillis = longValue("server.requesttimeoutmillis")?.let(::ServerRequestTimeoutMillis)
+    val maxConcurrentRequests = intValue("server.maxconcurrentrequests")?.let(::ServerMaxConcurrentRequests)
+    return takeIfAny(maxResults, requestTimeoutMillis, maxConcurrentRequests) {
+        ServerConfigOverride(maxResults, requestTimeoutMillis, maxConcurrentRequests)
+    }
+}
+
+private fun Map<String, String>.indexingOverride(): IndexingConfigOverride? {
+    val phase2Enabled = booleanValue("indexing.phase2enabled")?.let(::IndexingPhase2Enabled)
+    val phase2BatchSize = intValue("indexing.phase2batchsize")?.let(::IndexingPhase2BatchSize)
+    val phase2Parallelism = intValue("indexing.phase2parallelism")?.let(::IndexingPhase2Parallelism)
+    val identifierIndexWaitMillis = longValue("indexing.identifierindexwaitmillis")?.let(::IndexingIdentifierIndexWaitMillis)
+    val referenceBatchSize = intValue("indexing.referencebatchsize")?.let(::IndexingReferenceBatchSize)
+    val remote = remoteIndexOverride()
+    return takeIfAny(phase2Enabled, phase2BatchSize, phase2Parallelism, identifierIndexWaitMillis, referenceBatchSize, remote) {
+        IndexingConfigOverride(
+            phase2Enabled = phase2Enabled,
+            phase2BatchSize = phase2BatchSize,
+            phase2Parallelism = phase2Parallelism,
+            identifierIndexWaitMillis = identifierIndexWaitMillis,
+            referenceBatchSize = referenceBatchSize,
+            remote = remote,
+        )
+    }
+}
+
+private fun Map<String, String>.remoteIndexOverride(): RemoteIndexConfigOverride? {
+    val enabled = booleanValue("indexing.remote.enabled")?.let(::IndexingRemoteEnabled)
+    val sourceIndexUrl = optionalStringValue("indexing.remote.sourceindexurl")?.let(::IndexingRemoteSourceIndexUrl)
+    return takeIfAny(enabled, sourceIndexUrl) { RemoteIndexConfigOverride(enabled, sourceIndexUrl) }
+}
+
+private fun Map<String, String>.cacheOverride(): CacheConfigOverride? {
+    val enabled = booleanValue("cache.enabled")?.let(::CacheEnabled)
+    val writeDelayMillis = longValue("cache.writedelaymillis")?.let(::CacheWriteDelayMillis)
+    val sourceIndexSaveDelayMillis = longValue("cache.sourceindexsavedelaymillis")?.let(::CacheSourceIndexSaveDelayMillis)
+    return takeIfAny(enabled, writeDelayMillis, sourceIndexSaveDelayMillis) {
+        CacheConfigOverride(enabled, writeDelayMillis, sourceIndexSaveDelayMillis)
+    }
+}
+
+private fun Map<String, String>.watcherOverride(): WatcherConfigOverride? {
+    val debounceMillis = longValue("watcher.debouncemillis")?.let(::WatcherDebounceMillis)
+    return takeIfAny(debounceMillis) { WatcherConfigOverride(debounceMillis) }
+}
+
+private fun Map<String, String>.gradleOverride(): GradleConfigOverride? {
+    val toolingApiTimeoutMillis = longValue("gradle.toolingapitimeoutmillis")?.let(::GradleToolingApiTimeoutMillis)
+    val maxIncludedProjects = intValue("gradle.maxincludedprojects")?.let(::GradleMaxIncludedProjects)
+    return takeIfAny(toolingApiTimeoutMillis, maxIncludedProjects) {
+        GradleConfigOverride(toolingApiTimeoutMillis, maxIncludedProjects)
+    }
+}
+
+private fun Map<String, String>.telemetryOverride(): TelemetryConfigOverride? {
+    val enabled = booleanValue("telemetry.enabled")?.let(::TelemetryEnabled)
+    val scopes = stringValue("telemetry.scopes")?.let(::TelemetryScopes)
+    val detail = stringValue("telemetry.detail")?.let(::TelemetryDetail)
+    val outputFile = optionalStringValue("telemetry.outputfile")?.let(::TelemetryOutputFile)
+    return takeIfAny(enabled, scopes, detail, outputFile) {
+        TelemetryConfigOverride(enabled, scopes, detail, outputFile)
+    }
+}
+
+private fun Map<String, String>.profilingOverride(): ProfilingConfigOverride? {
+    val enabled = booleanValue("profiling.enabled")?.let(::ProfilingEnabled)
+    val modes = stringValue("profiling.modes")?.let(::ProfilingModes)
+    val durationSeconds = longValue("profiling.durationseconds")?.let(::ProfilingDurationSeconds)
+    val outputDir = stringValue("profiling.outputdir")?.let(::ProfilingOutputDir)
+    val otlpEndpoint = optionalStringValue("profiling.otlpendpoint")?.let(::ProfilingOtlpEndpoint)
+    val emitManifest = booleanValue("profiling.emitmanifest")?.let(::ProfilingEmitManifest)
+    return takeIfAny(enabled, modes, durationSeconds, outputDir, otlpEndpoint, emitManifest) {
+        ProfilingConfigOverride(enabled, modes, durationSeconds, outputDir, otlpEndpoint, emitManifest)
+    }
+}
+
+private fun Map<String, String>.backendsOverride(): BackendsConfigOverride? {
+    val standalone = standaloneBackendOverride()
+    val intellij = intellijBackendOverride()
+    return takeIfAny(standalone, intellij) { BackendsConfigOverride(standalone, intellij) }
+}
+
+private fun Map<String, String>.standaloneBackendOverride(): StandaloneBackendConfigOverride? {
+    val enabled = booleanValue("backends.standalone.enabled")?.let(::StandaloneBackendEnabled)
+    val runtimeLibsDir = optionalStringValue("backends.standalone.runtimelibsdir")?.let(::StandaloneRuntimeLibsDir)
+    return takeIfAny(enabled, runtimeLibsDir) { StandaloneBackendConfigOverride(enabled, runtimeLibsDir) }
+}
+
+private fun Map<String, String>.intellijBackendOverride(): IntellijBackendConfigOverride? {
+    val enabled = booleanValue("backends.intellij.enabled")?.let(::IntellijBackendEnabled)
+    return takeIfAny(enabled) { IntellijBackendConfigOverride(enabled) }
+}
+
+private fun Map<String, String>.pathsOverride(): PathsConfigOverride? {
+    val installRoot = stringValue("paths.installroot")?.let(::PathsInstallRoot)
+    val binDir = stringValue("paths.bindir")?.let(::PathsBinDir)
+    val libDir = stringValue("paths.libdir")?.let(::PathsLibDir)
+    val cacheDir = stringValue("paths.cachedir")?.let(::PathsCacheDir)
+    val logsDir = stringValue("paths.logsdir")?.let(::PathsLogsDir)
+    val descriptorDir = stringValue("paths.descriptordir")?.let(::PathsDescriptorDir)
+    val socketDir = stringValue("paths.socketdir")?.let(::PathsSocketDir)
+    return takeIfAny(installRoot, binDir, libDir, cacheDir, logsDir, descriptorDir, socketDir) {
+        PathsConfigOverride(installRoot, binDir, libDir, cacheDir, logsDir, descriptorDir, socketDir)
+    }
+}
+
+private fun Map<String, String>.cliOverride(): CliConfigOverride? {
+    val binaryPath = stringValue("cli.binarypath")?.let(::CliBinaryPath)
+    return takeIfAny(binaryPath) { CliConfigOverride(binaryPath) }
+}
+
+private fun Map<String, String>.stringValue(key: String): String? = get(key)
+
+private fun Map<String, String>.optionalStringValue(key: String): OptionalConfigString? = get(key)?.let(::OptionalConfigString)
+
+private fun Map<String, String>.intValue(key: String): Int? = get(key)?.toInt()
+
+private fun Map<String, String>.longValue(key: String): Long? = get(key)?.toLong()
+
+private fun Map<String, String>.booleanValue(key: String): Boolean? = get(key)?.let { value ->
+    when (value.lowercase()) {
+        "true", "t", "1", "yes" -> true
+        "false", "f", "0", "no" -> false
+        else -> error("Invalid boolean value for $key: $value")
+    }
+}
+
+private inline fun <T> takeIfAny(vararg values: Any?, build: () -> T): T? =
+    if (values.any { it != null }) build() else null
 
 data class ServerConfig(
     val maxResults: ServerMaxResults,
