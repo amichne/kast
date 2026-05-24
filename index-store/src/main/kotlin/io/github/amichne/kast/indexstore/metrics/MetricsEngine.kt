@@ -19,6 +19,12 @@ import io.github.amichne.kast.indexstore.api.metrics.module.ModuleCouplingMetric
 import io.github.amichne.kast.indexstore.api.metrics.module.ModuleCycleMetric
 import io.github.amichne.kast.indexstore.api.metrics.module.ModuleDepthDiagnosis
 import io.github.amichne.kast.indexstore.api.metrics.module.ModuleDepthMetric
+import io.github.amichne.kast.indexstore.api.metrics.symbolquery.SymbolQueryConstraint
+import io.github.amichne.kast.indexstore.api.metrics.symbolquery.SymbolQueryDeclarationMatch
+import io.github.amichne.kast.indexstore.api.metrics.symbolquery.SymbolQueryFieldMatch
+import io.github.amichne.kast.indexstore.api.metrics.symbolquery.SymbolQueryFilters
+import io.github.amichne.kast.indexstore.api.metrics.symbolquery.SymbolQueryGraphDirection
+import io.github.amichne.kast.indexstore.api.metrics.symbolquery.SymbolQueryGraphEdge
 import io.github.amichne.kast.indexstore.api.reference.EdgeKind
 import io.github.amichne.kast.indexstore.graph.Edge
 import io.github.amichne.kast.indexstore.graph.EdgeType
@@ -35,6 +41,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.sql.Connection
 import java.sql.DriverManager
+import java.sql.PreparedStatement
 import java.sql.ResultSet
 
 class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
@@ -579,6 +586,106 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
         }
     }
 
+    fun symbolQueryDeclarations(
+        query: String,
+        filters: SymbolQueryFilters = SymbolQueryFilters(),
+        limit: Int = 25,
+    ): List<SymbolQueryDeclarationMatch> {
+        require(limit >= 0) { "limit must be non-negative" }
+        if (limit == 0) return emptyList()
+        val trimmed = query.trim()
+        return readMetric(emptyList()) { conn ->
+            val terms = symbolQueryTerms(trimmed)
+            querySymbolDeclarations(
+                conn = conn,
+                query = trimmed,
+                terms = terms,
+                filters = filters,
+                fqIds = emptySet(),
+                requireQueryMatch = trimmed.isNotEmpty(),
+                limit = limit,
+            )
+        }
+    }
+
+    fun symbolQueryByFilters(
+        filters: SymbolQueryFilters,
+        limit: Int = 25,
+    ): List<SymbolQueryDeclarationMatch> {
+        require(limit >= 0) { "limit must be non-negative" }
+        if (limit == 0) return emptyList()
+        return readMetric(emptyList()) { conn ->
+            querySymbolDeclarations(
+                conn = conn,
+                query = "",
+                terms = emptyList(),
+                filters = filters,
+                fqIds = emptySet(),
+                requireQueryMatch = false,
+                limit = limit,
+            )
+        }
+    }
+
+    fun symbolQueryDeclarationsByFqIds(
+        fqIds: Set<Long>,
+        filters: SymbolQueryFilters = SymbolQueryFilters(),
+        limit: Int = 25,
+    ): List<SymbolQueryDeclarationMatch> {
+        require(limit >= 0) { "limit must be non-negative" }
+        if (fqIds.isEmpty() || limit == 0) return emptyList()
+        return readMetric(emptyList()) { conn ->
+            querySymbolDeclarations(
+                conn = conn,
+                query = "",
+                terms = emptyList(),
+                filters = filters,
+                fqIds = fqIds,
+                requireQueryMatch = false,
+                limit = limit,
+            )
+        }
+    }
+
+    fun symbolQueryGraphEdges(
+        startFqIds: Set<Long>,
+        direction: SymbolQueryGraphDirection = SymbolQueryGraphDirection.BOTH,
+        edgeKinds: Set<EdgeKind> = emptySet(),
+        depth: Int = 1,
+        maxEdgesPerResult: Int = 20,
+    ): List<SymbolQueryGraphEdge> {
+        require(depth >= 0) { "depth must be non-negative" }
+        require(maxEdgesPerResult >= 0) { "maxEdgesPerResult must be non-negative" }
+        if (startFqIds.isEmpty() || depth == 0 || maxEdgesPerResult == 0) return emptyList()
+        val cappedDepth = depth.coerceAtMost(MAX_SYMBOL_QUERY_GRAPH_DEPTH)
+        return readMetric(emptyList()) { conn ->
+            val results = mutableListOf<SymbolQueryGraphEdge>()
+            val visited = startFqIds.toMutableSet()
+            var frontier = startFqIds.associateWith { it }
+            for (currentDepth in 1..cappedDepth) {
+                if (frontier.isEmpty()) break
+                val directEdges = directSymbolQueryGraphEdges(
+                    conn = conn,
+                    frontier = frontier,
+                    direction = direction,
+                    edgeKinds = edgeKinds,
+                    depth = currentDepth,
+                    maxEdgesPerResult = maxEdgesPerResult,
+                )
+                val acceptedEdges = directEdges
+                    .groupBy(SymbolQueryGraphEdge::originFqId)
+                    .flatMap { (_, edges) -> edges.take(maxEdgesPerResult) }
+                results += acceptedEdges
+                frontier = acceptedEdges
+                    .map { edge -> edge.resultFqId to edge.originFqId }
+                    .filterNot { (fqId, _) -> fqId in visited }
+                    .toMap()
+                visited += frontier.keys
+            }
+            results
+        }
+    }
+
     fun graph(fqName: String, depth: Int): MetricsGraph {
         require(depth >= 0) { "depth must be non-negative" }
         val focal = fanInMetric(fqName)
@@ -1020,6 +1127,491 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
             stmt.stringColumnResults()
         }
 
+    private fun querySymbolDeclarations(
+        conn: Connection,
+        query: String,
+        terms: List<String>,
+        filters: SymbolQueryFilters,
+        fqIds: Set<Long>,
+        requireQueryMatch: Boolean,
+        limit: Int,
+    ): List<SymbolQueryDeclarationMatch> {
+        val params = mutableListOf<Any?>()
+        val whereClauses = mutableListOf<String>()
+        if (fqIds.isNotEmpty()) {
+            whereClauses += "declarations.fq_id IN (${fqIds.joinToString(",") { "?" }})"
+            params.addAll(fqIds.toList())
+        }
+        whereClauses += symbolQueryFilterClauses(filters, params)
+        if (requireQueryMatch) {
+            whereClauses += symbolQueryMatchClause(terms, params)
+        }
+        val whereSql = if (whereClauses.isEmpty()) "" else "WHERE ${whereClauses.joinToString(" AND ")}"
+        if (query.isNotEmpty()) {
+            val loweredQuery = query.lowercase()
+            val escapedQuery = escapeLike(loweredQuery)
+            params += loweredQuery
+            params += "%.$escapedQuery"
+            params += "$escapedQuery.%"
+        }
+        params += limit
+        return conn.prepareStatement(
+            """
+            SELECT declarations.fq_id,
+                   names.fq_name,
+                   declarations.kind,
+                   declarations.visibility,
+                   declarations.prefix_id,
+                   prefixes.dir_path,
+                   declarations.filename,
+                   declarations.declaration_offset,
+                   COALESCE(declarations.module_path, metadata.module_path) AS module_path,
+                   COALESCE(declarations.source_set, metadata.source_set) AS source_set
+            FROM declarations
+            JOIN fq_names names ON names.fq_id = declarations.fq_id
+            JOIN path_prefixes prefixes ON prefixes.prefix_id = declarations.prefix_id
+            LEFT JOIN file_metadata metadata
+              ON metadata.prefix_id = declarations.prefix_id
+             AND metadata.filename = declarations.filename
+            LEFT JOIN fq_names package_names ON package_names.fq_id = metadata.package_fq_id
+            $whereSql
+            ORDER BY
+                ${
+                if (query.isEmpty()) {
+                    "CASE WHEN 1 = 1 THEN 0 ELSE 0 END"
+                } else {
+                    """
+                    CASE
+                        WHEN LOWER(names.fq_name) = ? THEN 0
+                        WHEN LOWER(names.fq_name) LIKE ? ESCAPE '\' THEN 1
+                        WHEN LOWER(names.fq_name) LIKE ? ESCAPE '\' THEN 2
+                        ELSE 3
+                    END
+                    """.trimIndent()
+                }
+            },
+                LENGTH(names.fq_name) ASC,
+                names.fq_name ASC,
+                prefixes.dir_path ASC,
+                declarations.filename ASC
+            LIMIT ?
+            """.trimIndent(),
+        ).use { stmt ->
+            stmt.bindParams(params)
+            val confidence = currentConfidence(conn)
+            stmt.executeQuery().use { rs ->
+                buildList {
+                    while (rs.next()) {
+                        val row = SymbolQueryDeclarationRow(
+                            fqId = rs.getLong(1),
+                            fqName = rs.getString(2),
+                            kind = rs.getString(3),
+                            visibility = rs.getString(4),
+                            prefixId = rs.getInt(5),
+                            dirPath = rs.getString(6),
+                            filename = rs.getString(7),
+                            declarationOffset = rs.getNullableInt(8),
+                            modulePath = rs.getString(9),
+                            sourceSet = rs.getString(10),
+                        )
+                        add(
+                            row.toSymbolQueryDeclarationMatch(
+                                conn = conn,
+                                query = query,
+                                terms = terms,
+                                filters = filters,
+                                confidence = confidence,
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private fun symbolQueryFilterClauses(
+        filters: SymbolQueryFilters,
+        params: MutableList<Any?>,
+    ): List<String> = buildList {
+        if (filters.kinds.isNotEmpty()) {
+            add("declarations.kind IN (${filters.kinds.joinToString(",") { "?" }})")
+            params.addAll(filters.kinds.toList())
+        }
+        if (filters.visibility.isNotEmpty()) {
+            add("declarations.visibility IN (${filters.visibility.joinToString(",") { "?" }})")
+            params.addAll(filters.visibility.toList())
+        }
+        filters.modulePath?.let { modulePath ->
+            add("COALESCE(declarations.module_path, metadata.module_path) = ?")
+            params += modulePath
+        }
+        filters.sourceSet?.let { sourceSet ->
+            add("COALESCE(declarations.source_set, metadata.source_set) = ?")
+            params += sourceSet
+        }
+        filters.fileGlob?.let { fileGlob ->
+            add("(prefixes.dir_path || '/' || declarations.filename) GLOB ?")
+            params += fileGlob
+        }
+        filters.packagePrefix?.let { packagePrefix ->
+            val escaped = escapeLike(packagePrefix)
+            add("(package_names.fq_name = ? OR package_names.fq_name LIKE ? ESCAPE '\\')")
+            params += packagePrefix
+            params += "$escaped.%"
+        }
+        filters.fqNamePrefix?.let { fqNamePrefix ->
+            val escaped = escapeLike(fqNamePrefix)
+            add("(names.fq_name = ? OR names.fq_name LIKE ? ESCAPE '\\')")
+            params += fqNamePrefix
+            params += "$escaped.%"
+        }
+    }
+
+    private fun symbolQueryMatchClause(
+        terms: List<String>,
+        params: MutableList<Any?>,
+    ): String {
+        val clauses = terms.flatMap { term ->
+            val like = "%${escapeLike(term.lowercase())}%"
+            listOf(
+                "LOWER(names.fq_name) LIKE ? ESCAPE '\\'",
+                "LOWER(prefixes.dir_path) LIKE ? ESCAPE '\\'",
+                "LOWER(declarations.filename) LIKE ? ESCAPE '\\'",
+                """
+                EXISTS (
+                    SELECT 1
+                    FROM identifier_paths identifiers
+                    WHERE identifiers.prefix_id = declarations.prefix_id
+                      AND identifiers.filename = declarations.filename
+                      AND LOWER(identifiers.identifier) LIKE ? ESCAPE '\'
+                )
+                """.trimIndent(),
+                """
+                EXISTS (
+                    SELECT 1
+                    FROM file_imports imports
+                    JOIN fq_names import_names ON import_names.fq_id = imports.fq_id
+                    WHERE imports.prefix_id = declarations.prefix_id
+                      AND imports.filename = declarations.filename
+                      AND LOWER(import_names.fq_name) LIKE ? ESCAPE '\'
+                )
+                """.trimIndent(),
+                """
+                EXISTS (
+                    SELECT 1
+                    FROM file_wildcard_imports imports
+                    JOIN fq_names import_names ON import_names.fq_id = imports.fq_id
+                    WHERE imports.prefix_id = declarations.prefix_id
+                      AND imports.filename = declarations.filename
+                      AND LOWER(import_names.fq_name) LIKE ? ESCAPE '\'
+                )
+                """.trimIndent(),
+            ).also { repeat(it.size) { params += like } }
+        }
+        return "(${clauses.joinToString(" OR ")})"
+    }
+
+    private fun SymbolQueryDeclarationRow.toSymbolQueryDeclarationMatch(
+        conn: Connection,
+        query: String,
+        terms: List<String>,
+        filters: SymbolQueryFilters,
+        confidence: Confidence,
+    ): SymbolQueryDeclarationMatch =
+        SymbolQueryDeclarationMatch(
+            fqId = fqId,
+            fqName = fqName,
+            simpleName = simpleName,
+            kind = kind,
+            visibility = visibility,
+            prefixId = prefixId,
+            dirPath = dirPath,
+            filename = filename,
+            path = codec.compose(dirPath, filename),
+            declarationOffset = declarationOffset,
+            modulePath = modulePath,
+            sourceSet = sourceSet,
+            exactMatches = exactSymbolQueryMatches(query),
+            lexicalMatches = lexicalSymbolQueryMatches(conn, terms),
+            structuralConstraints = filters.toSymbolQueryConstraints(),
+            confidence = confidence,
+        )
+
+    private fun SymbolQueryDeclarationRow.exactSymbolQueryMatches(query: String): List<SymbolQueryFieldMatch> {
+        if (query.isBlank()) return emptyList()
+        return buildList {
+            if (fqName.equals(query, ignoreCase = true)) {
+                add(SymbolQueryFieldMatch(field = "fq_names.fq_name", term = query, matchType = "EQUALS", evidence = fqName))
+            }
+            if (simpleName.equals(query, ignoreCase = true)) {
+                add(SymbolQueryFieldMatch(field = "simpleName", term = query, matchType = "SIMPLE_NAME_EQUALS", evidence = simpleName))
+            }
+            if (fqName.startsWith("$query.", ignoreCase = true)) {
+                add(SymbolQueryFieldMatch(field = "fq_names.fq_name", term = query, matchType = "PREFIX_EQUALS", evidence = fqName))
+            }
+        }
+    }
+
+    private fun SymbolQueryDeclarationRow.lexicalSymbolQueryMatches(
+        conn: Connection,
+        terms: List<String>,
+    ): List<SymbolQueryFieldMatch> {
+        if (terms.isEmpty()) return emptyList()
+        val fileLexicalValues = lexicalValuesForFile(conn, prefixId, filename)
+        return buildList {
+            terms.forEach { term ->
+                addIfContains(field = "fq_names.fq_name", term = term, value = fqName)
+                addIfContains(field = "simpleName", term = term, value = simpleName)
+                addIfContains(field = "path_prefixes.dir_path", term = term, value = dirPath)
+                addIfContains(field = "declarations.filename", term = term, value = filename)
+                fileLexicalValues.forEach { value ->
+                    addIfContains(field = value.field, term = term, value = value.value)
+                }
+            }
+        }.distinct()
+    }
+
+    private fun MutableList<SymbolQueryFieldMatch>.addIfContains(
+        field: String,
+        term: String,
+        value: String,
+    ) {
+        if (value.contains(term, ignoreCase = true)) {
+            add(SymbolQueryFieldMatch(field = field, term = term, matchType = "LIKE", evidence = value))
+        }
+    }
+
+    private fun lexicalValuesForFile(
+        conn: Connection,
+        prefixId: Int,
+        filename: String,
+    ): List<SymbolQueryLexicalValue> =
+        conn.prepareStatement(
+            """
+            SELECT 'identifier_paths.identifier', identifiers.identifier
+            FROM identifier_paths identifiers
+            WHERE identifiers.prefix_id = ?
+              AND identifiers.filename = ?
+            UNION ALL
+            SELECT 'file_imports.fq_name', names.fq_name
+            FROM file_imports imports
+            JOIN fq_names names ON names.fq_id = imports.fq_id
+            WHERE imports.prefix_id = ?
+              AND imports.filename = ?
+            UNION ALL
+            SELECT 'file_wildcard_imports.fq_name', names.fq_name
+            FROM file_wildcard_imports imports
+            JOIN fq_names names ON names.fq_id = imports.fq_id
+            WHERE imports.prefix_id = ?
+              AND imports.filename = ?
+            """.trimIndent(),
+        ).use { stmt ->
+            stmt.setInt(1, prefixId)
+            stmt.setString(2, filename)
+            stmt.setInt(3, prefixId)
+            stmt.setString(4, filename)
+            stmt.setInt(5, prefixId)
+            stmt.setString(6, filename)
+            stmt.executeQuery().use { rs ->
+                buildList {
+                    while (rs.next()) add(SymbolQueryLexicalValue(field = rs.getString(1), value = rs.getString(2)))
+                }
+            }
+        }
+
+    private fun SymbolQueryFilters.toSymbolQueryConstraints(): List<SymbolQueryConstraint> = buildList {
+        if (kinds.isNotEmpty()) add(SymbolQueryConstraint("declarations.kind", "IN", kinds.toList()))
+        if (visibility.isNotEmpty()) add(SymbolQueryConstraint("declarations.visibility", "IN", visibility.toList()))
+        modulePath?.let { add(SymbolQueryConstraint("declarations.module_path", "=", listOf(it))) }
+        sourceSet?.let { add(SymbolQueryConstraint("declarations.source_set", "=", listOf(it))) }
+        fileGlob?.let { add(SymbolQueryConstraint("file_path", "GLOB", listOf(it))) }
+        packagePrefix?.let { add(SymbolQueryConstraint("file_metadata.package_fq_id", "PREFIX", listOf(it))) }
+        fqNamePrefix?.let { add(SymbolQueryConstraint("fq_names.fq_name", "PREFIX", listOf(it))) }
+    }
+
+    private fun directSymbolQueryGraphEdges(
+        conn: Connection,
+        frontier: Map<Long, Long>,
+        direction: SymbolQueryGraphDirection,
+        edgeKinds: Set<EdgeKind>,
+        depth: Int,
+        maxEdgesPerResult: Int,
+    ): List<SymbolQueryGraphEdge> {
+        val edges = mutableListOf<SymbolQueryGraphEdge>()
+        if (direction == SymbolQueryGraphDirection.INCOMING || direction == SymbolQueryGraphDirection.BOTH) {
+            edges += symbolReferenceGraphEdges(
+                conn = conn,
+                frontier = frontier,
+                direction = SymbolQueryGraphDirection.INCOMING,
+                edgeKinds = edgeKinds,
+                depth = depth,
+                maxEdgesPerResult = maxEdgesPerResult,
+            )
+            edges += declarationSupertypeGraphEdges(
+                conn = conn,
+                frontier = frontier,
+                direction = SymbolQueryGraphDirection.INCOMING,
+                edgeKinds = edgeKinds,
+                depth = depth,
+                maxEdgesPerResult = maxEdgesPerResult,
+            )
+        }
+        if (direction == SymbolQueryGraphDirection.OUTGOING || direction == SymbolQueryGraphDirection.BOTH) {
+            edges += symbolReferenceGraphEdges(
+                conn = conn,
+                frontier = frontier,
+                direction = SymbolQueryGraphDirection.OUTGOING,
+                edgeKinds = edgeKinds,
+                depth = depth,
+                maxEdgesPerResult = maxEdgesPerResult,
+            )
+            edges += declarationSupertypeGraphEdges(
+                conn = conn,
+                frontier = frontier,
+                direction = SymbolQueryGraphDirection.OUTGOING,
+                edgeKinds = edgeKinds,
+                depth = depth,
+                maxEdgesPerResult = maxEdgesPerResult,
+            )
+        }
+        return edges
+            .distinctBy { edge -> listOf(edge.originFqId, edge.startFqId, edge.resultFqId, edge.edgeKind, edge.sourceFile, edge.sourceOffset, edge.depth) }
+            .sortedWith(compareBy({ it.depth }, { it.edgeKind }, { it.fromFqName.orEmpty() }, { it.toFqName }))
+    }
+
+    private fun symbolReferenceGraphEdges(
+        conn: Connection,
+        frontier: Map<Long, Long>,
+        direction: SymbolQueryGraphDirection,
+        edgeKinds: Set<EdgeKind>,
+        depth: Int,
+        maxEdgesPerResult: Int,
+    ): List<SymbolQueryGraphEdge> {
+        if (frontier.isEmpty()) return emptyList()
+        val startIds = frontier.keys.toList()
+        val params = mutableListOf<Any?>()
+        val startColumn = if (direction == SymbolQueryGraphDirection.INCOMING) "refs.target_fq_id" else "refs.source_fq_id"
+        val resultColumn = if (direction == SymbolQueryGraphDirection.INCOMING) "refs.source_fq_id" else "refs.target_fq_id"
+        params.addAll(startIds)
+        val kindClause = if (edgeKinds.isEmpty()) {
+            ""
+        } else {
+            params.addAll(edgeKinds.map(EdgeKind::name))
+            "AND refs.edge_kind IN (${edgeKinds.joinToString(",") { "?" }})"
+        }
+        params += startIds.size * maxEdgesPerResult
+        return conn.prepareStatement(
+            """
+            SELECT $startColumn AS start_fq_id,
+                   $resultColumn AS result_fq_id,
+                   refs.source_fq_id,
+                   source_names.fq_name,
+                   refs.edge_kind,
+                   refs.target_fq_id,
+                   target_names.fq_name,
+                   source_prefixes.dir_path,
+                   refs.src_filename,
+                   refs.source_offset
+            FROM symbol_references refs
+            LEFT JOIN fq_names source_names ON source_names.fq_id = refs.source_fq_id
+            JOIN fq_names target_names ON target_names.fq_id = refs.target_fq_id
+            JOIN path_prefixes source_prefixes ON source_prefixes.prefix_id = refs.src_prefix_id
+            WHERE $startColumn IN (${startIds.joinToString(",") { "?" }})
+              AND $resultColumn IS NOT NULL
+              $kindClause
+            ORDER BY refs.edge_kind ASC, source_names.fq_name ASC, target_names.fq_name ASC, refs.source_offset ASC
+            LIMIT ?
+            """.trimIndent(),
+        ).use { stmt ->
+            stmt.bindParams(params)
+            stmt.executeQuery().use { rs ->
+                buildList {
+                    while (rs.next()) {
+                        val startFqId = rs.getLong(1)
+                        val resultFqId = rs.getLong(2)
+                        add(
+                            SymbolQueryGraphEdge(
+                                originFqId = checkNotNull(frontier[startFqId]) { "Missing graph origin for $startFqId" },
+                                startFqId = startFqId,
+                                resultFqId = resultFqId,
+                                depth = depth,
+                                fromFqId = rs.getNullableLong(3),
+                                fromFqName = rs.getString(4),
+                                edgeKind = rs.getString(5),
+                                toFqId = rs.getLong(6),
+                                toFqName = rs.getString(7),
+                                sourceFile = codec.compose(rs.getString(8), rs.getString(9)),
+                                sourceOffset = rs.getInt(10),
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private fun declarationSupertypeGraphEdges(
+        conn: Connection,
+        frontier: Map<Long, Long>,
+        direction: SymbolQueryGraphDirection,
+        edgeKinds: Set<EdgeKind>,
+        depth: Int,
+        maxEdgesPerResult: Int,
+    ): List<SymbolQueryGraphEdge> {
+        if (frontier.isEmpty() || (edgeKinds.isNotEmpty() && EdgeKind.INHERITANCE !in edgeKinds)) return emptyList()
+        val startIds = frontier.keys.toList()
+        val startColumn = if (direction == SymbolQueryGraphDirection.INCOMING) "supertypes.supertype_fq_id" else "supertypes.declaration_fq_id"
+        val resultColumn = if (direction == SymbolQueryGraphDirection.INCOMING) "supertypes.declaration_fq_id" else "supertypes.supertype_fq_id"
+        val params = mutableListOf<Any?>()
+        params.addAll(startIds)
+        params += startIds.size * maxEdgesPerResult
+        return conn.prepareStatement(
+            """
+            SELECT $startColumn AS start_fq_id,
+                   $resultColumn AS result_fq_id,
+                   supertypes.declaration_fq_id,
+                   declaration_names.fq_name,
+                   supertypes.supertype_fq_id,
+                   supertype_names.fq_name,
+                   prefixes.dir_path,
+                   declarations.filename,
+                   declarations.declaration_offset
+            FROM declaration_supertypes supertypes
+            JOIN fq_names declaration_names ON declaration_names.fq_id = supertypes.declaration_fq_id
+            JOIN fq_names supertype_names ON supertype_names.fq_id = supertypes.supertype_fq_id
+            JOIN declarations ON declarations.fq_id = supertypes.declaration_fq_id
+            JOIN path_prefixes prefixes ON prefixes.prefix_id = declarations.prefix_id
+            WHERE $startColumn IN (${startIds.joinToString(",") { "?" }})
+            ORDER BY declaration_names.fq_name ASC, supertype_names.fq_name ASC
+            LIMIT ?
+            """.trimIndent(),
+        ).use { stmt ->
+            stmt.bindParams(params)
+            stmt.executeQuery().use { rs ->
+                buildList {
+                    while (rs.next()) {
+                        val startFqId = rs.getLong(1)
+                        add(
+                            SymbolQueryGraphEdge(
+                                originFqId = checkNotNull(frontier[startFqId]) { "Missing graph origin for $startFqId" },
+                                startFqId = startFqId,
+                                resultFqId = rs.getLong(2),
+                                depth = depth,
+                                fromFqId = rs.getLong(3),
+                                fromFqName = rs.getString(4),
+                                edgeKind = EdgeKind.INHERITANCE.name,
+                                toFqId = rs.getLong(5),
+                                toFqName = rs.getString(6),
+                                sourceFile = codec.compose(rs.getString(7), rs.getString(8)),
+                                sourceOffset = rs.getNullableInt(9),
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
     private fun directSymbolMatches(conn: Connection, query: String, limit: Int): List<String> =
         conn.prepareStatement(
             """
@@ -1079,6 +1671,35 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
                 while (rs.next()) add(rs.getString(1))
             }
         }
+
+    private fun PreparedStatement.bindParams(params: List<Any?>) {
+        params.forEachIndexed { index, value ->
+            when (value) {
+                null -> setObject(index + 1, null)
+                is Int -> setInt(index + 1, value)
+                is Long -> setLong(index + 1, value)
+                is String -> setString(index + 1, value)
+                else -> setObject(index + 1, value)
+            }
+        }
+    }
+
+    private fun ResultSet.getNullableInt(columnIndex: Int): Int? {
+        val value = getInt(columnIndex)
+        return if (wasNull()) null else value
+    }
+
+    private fun ResultSet.getNullableLong(columnIndex: Int): Long? {
+        val value = getLong(columnIndex)
+        return if (wasNull()) null else value
+    }
+
+    private fun symbolQueryTerms(query: String): List<String> =
+        query
+            .split(Regex("\\s+"))
+            .filter(String::isNotBlank)
+            .plus(query.takeIf(String::isNotBlank).orEmpty())
+            .distinct()
 
     private fun escapeLike(value: String): String =
         value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
@@ -1291,7 +1912,18 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
     }
 
     private fun requiredTablesExist(conn: Connection): Boolean {
-        val requiredTables = setOf("path_prefixes", "fq_names", "symbol_references", "identifier_paths", "file_metadata", "file_manifest", "declarations")
+        val requiredTables = setOf(
+            "path_prefixes",
+            "fq_names",
+            "symbol_references",
+            "identifier_paths",
+            "file_metadata",
+            "file_imports",
+            "file_wildcard_imports",
+            "file_manifest",
+            "declarations",
+            "declaration_supertypes",
+        )
         val existingTables = conn.prepareStatement(
             """SELECT name FROM sqlite_master
                WHERE type = 'table' AND name IN (${requiredTables.joinToString(",") { "?" }})""",
@@ -1327,6 +1959,26 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
     private fun ratio(numerator: Int, denominator: Int): Double =
         if (denominator == 0) 0.0 else numerator / denominator.toDouble()
 
+    private data class SymbolQueryDeclarationRow(
+        val fqId: Long,
+        val fqName: String,
+        val kind: String,
+        val visibility: String,
+        val prefixId: Int,
+        val dirPath: String,
+        val filename: String,
+        val declarationOffset: Int?,
+        val modulePath: String?,
+        val sourceSet: String?,
+    ) {
+        val simpleName: String = fqName.substringAfterLast('.')
+    }
+
+    private data class SymbolQueryLexicalValue(
+        val field: String,
+        val value: String,
+    )
+
     private data class ModuleDeclarationStats(
         val modulePath: String,
         val fileCount: Int,
@@ -1347,6 +1999,7 @@ class MetricsEngine(workspaceRoot: Path) : AutoCloseable {
 
     private companion object {
         const val FUZZY_SYMBOL_CANDIDATE_LIMIT = 1_000
+        const val MAX_SYMBOL_QUERY_GRAPH_DEPTH = 2
 
         val SPECULATIVE_CONFIDENCE = Confidence(
             level = ConfidenceLevel.SPECULATIVE,

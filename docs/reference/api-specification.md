@@ -43,7 +43,7 @@ skills and `kast rpc`. It embeds the command families, flow-oriented
 building blocks, and request fields that callers compose into larger
 automation flows.
 
-Catalog version: `dev`. Methods: `27`.
+Catalog version: `dev`. Methods: `28`.
 
 #### Method families
 
@@ -52,7 +52,7 @@ The families below are the top-level namespaces accepted by `kast rpc`.
 | Family | Role | Source | Methods |
 | --- | --- | --- | --- |
 | `system` | Runtime readiness, backend state, and capability discovery. | backend | `health`<br>`runtime/status`<br>`capabilities` |
-| `symbol` | Name-based orchestration for agent and script workflows. | backend | `symbol/scaffold`<br>`symbol/resolve`<br>`symbol/references`<br>`symbol/callers`<br>`symbol/rename`<br>`symbol/write-and-validate` |
+| `symbol` | Name-based orchestration for agent and script workflows. | backend | `symbol/scaffold`<br>`symbol/discover`<br>`symbol/resolve`<br>`symbol/references`<br>`symbol/callers`<br>`symbol/rename`<br>`symbol/write-and-validate` |
 | `raw` | Position- and file-based backend primitives. | backend | `raw/resolve`<br>`raw/references`<br>`raw/call-hierarchy`<br>`raw/type-hierarchy`<br>`raw/semantic-insertion-point`<br>`raw/diagnostics`<br>`raw/rename`<br>`raw/optimize-imports`<br>`raw/apply-edits`<br>`raw/workspace-refresh`<br>`raw/file-outline`<br>`raw/workspace-symbol`<br>`raw/workspace-search`<br>`raw/workspace-files`<br>`raw/implementations`<br>`raw/code-actions`<br>`raw/completions` |
 | `database` | SQLite source-index queries for metrics and impact views. | sqlite | `database/metrics` |
 
@@ -83,7 +83,8 @@ uses a discriminated response envelope.
 | `runtime/status` | `system` | backend | Detailed runtime state including indexing progress | none | none | `RuntimeStatusResponse` | single result |
 | `capabilities` | `system` | backend | Advertised read and mutation capabilities | none | none | `BackendCapabilities` | single result |
 | `symbol/scaffold` | `symbol` | backend | Gather structural generation context for a Kotlin file | `targetFile` | `workspaceRoot`<br>`targetSymbol`<br>`mode`<br>`kind` | `KastScaffoldResponse` | `SCAFFOLD_SUCCESS`<br>`SCAFFOLD_FAILURE` |
-| `symbol/resolve` | `symbol` | backend | Resolve a symbol by name to its declaration | `symbol` | `workspaceRoot`<br>`fileHint`<br>`kind`<br>`containingType` | `KastResolveResponse` | `RESOLVE_SUCCESS`<br>`RESOLVE_FAILURE` |
+| `symbol/discover` | `symbol` | backend | Rank candidate declarations for a simple symbol name | `symbol` | `workspaceRoot`<br>`fileHint`<br>`line`<br>`codeSnippet`<br>`kind`<br>`containingType`<br>`maxResults`<br>`includeDeclarationScope` | `KastDiscoverResponse` | `DISCOVER_SUCCESS`<br>`DISCOVER_FAILURE` |
+| `symbol/resolve` | `symbol` | backend | Resolve a symbol by name to its declaration and optional context | `symbol` | `workspaceRoot`<br>`fileHint`<br>`kind`<br>`containingType`<br>`includeDeclarationScope`<br>`includeDocumentation`<br>`surroundingLines`<br>`includeSurroundingMembers` | `KastResolveResponse` | `RESOLVE_SUCCESS`<br>`RESOLVE_FAILURE` |
 | `symbol/references` | `symbol` | backend | Find every usage of a Kotlin symbol | `symbol` | `workspaceRoot`<br>`fileHint`<br>`kind`<br>`containingType`<br>`includeDeclaration` | `KastReferencesResponse` | `REFERENCES_SUCCESS`<br>`REFERENCES_FAILURE` |
 | `symbol/callers` | `symbol` | backend | Expand an incoming or outgoing call hierarchy | `symbol` | `workspaceRoot`<br>`fileHint`<br>`kind`<br>`containingType`<br>`direction`<br>`depth`<br>`maxTotalCalls`<br>`maxChildrenPerNode`<br>`timeoutMillis` | `KastCallersResponse` | `CALLERS_SUCCESS`<br>`CALLERS_FAILURE` |
 | `symbol/rename` | `symbol` | backend | Resolve or target a symbol and apply a rename | `type`<br>`value` | none | `KastRenameResponse` | `RENAME_SUCCESS`<br>`RENAME_FAILURE` |
@@ -155,7 +156,32 @@ Result variants: `SCAFFOLD_SUCCESS`, `SCAFFOLD_FAILURE`.
 </details>
 
 <details markdown="1">
-<summary><code>symbol/resolve</code> - Resolve a symbol by name to its declaration</summary>
+<summary><code>symbol/discover</code> - Rank candidate declarations for a simple symbol name</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `workspaceRoot` | `string` | no | yes |  |
+| `symbol` | `string` | yes | no |  |
+| `fileHint` | `string` | no | yes |  |
+| `line` | `integer` | no | yes |  |
+| `codeSnippet` | `string` | no | yes |  |
+| `kind` | `string` | no | yes | `class`<br>`interface`<br>`object`<br>`function`<br>`property` |
+| `containingType` | `string` | no | yes |  |
+| `maxResults` | `integer` | no | no |  |
+| `includeDeclarationScope` | `boolean` | no | no |  |
+
+Response type: `KastDiscoverResponse`.
+Result variants: `DISCOVER_SUCCESS`, `DISCOVER_FAILURE`.
+
+Notes:
+
+- Use this before symbol/resolve when a simple name is ambiguous or context is available.
+- Candidates include resolveParams and nextRequest fields that can be sent to symbol/resolve.
+
+</details>
+
+<details markdown="1">
+<summary><code>symbol/resolve</code> - Resolve a symbol by name to its declaration and optional context</summary>
 
 | Field | Type | Required | Nullable | Values |
 | --- | --- | --- | --- | --- |
@@ -164,6 +190,10 @@ Result variants: `SCAFFOLD_SUCCESS`, `SCAFFOLD_FAILURE`.
 | `fileHint` | `string` | no | yes |  |
 | `kind` | `string` | no | yes | `class`<br>`interface`<br>`object`<br>`function`<br>`property` |
 | `containingType` | `string` | no | yes |  |
+| `includeDeclarationScope` | `boolean` | no | no |  |
+| `includeDocumentation` | `boolean` | no | no |  |
+| `surroundingLines` | `integer` | no | yes |  |
+| `includeSurroundingMembers` | `boolean` | no | no |  |
 
 Response type: `KastResolveResponse`.
 Result variants: `RESOLVE_SUCCESS`, `RESOLVE_FAILURE`.
@@ -172,6 +202,7 @@ Notes:
 
 - The 'symbol' field takes simple names only (e.g. 'key'), never fully-qualified names.
 - Use 'containingType' for scoping and 'fileHint' for disambiguation.
+- Set includeDeclarationScope, includeDocumentation, surroundingLines, or includeSurroundingMembers only when the extra context is needed.
 
 </details>
 
