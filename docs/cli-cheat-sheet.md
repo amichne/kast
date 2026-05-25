@@ -84,7 +84,7 @@ projection.
 | `symbol/callers`              | Expand incoming or outgoing call hierarchy by symbol name.     | `symbol`, `direction`, `depth`                          |
 | `symbol/rename`               | Resolve or target a symbol and apply a rename.                 | request `type`, symbol or offset target, `newName`      |
 | `symbol/write-and-validate`   | Apply generated Kotlin code and validate the result.           | request `type`, file target, edit content               |
-| `database/metrics`            | Query source-index metrics without a running daemon.           | `metric`, optional filters                              |
+| `database/metrics`            | Query Rust-owned source-index metrics without a running daemon. | `metric`, optional filters                              |
 
 ## Command tiers
 

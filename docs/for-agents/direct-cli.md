@@ -8,7 +8,9 @@ icon: lucide/terminal
 
 Most agents should prefer the packaged skill or native `kast_*` tools.
 When the host needs a CLI fallback, use `kast rpc`: it forwards a raw
-JSON-RPC request and auto-ensures the daemon for the workspace.
+JSON-RPC request and auto-ensures the daemon for backend-owned methods.
+SQLite-backed `database/metrics` and `symbol/query` are handled by the
+Rust CLI before daemon passthrough.
 
 Humans can still manage the daemon lifecycle explicitly with `kast up`,
 `kast status`, and `kast stop`.
@@ -22,8 +24,8 @@ family. Pick the family that matches the information you already have.
   are documented in the generated [API reference](../reference/api-reference.md)
 - `symbol/*` methods are name-based orchestration helpers used by the
   packaged skill and native `kast_*` tools
-- `database/*` methods read the local SQLite source index, such as
-  `database/metrics`
+- `database/*` methods read the local SQLite source index through the
+  Rust CLI, such as `database/metrics`
 
 Exact request and response shapes for the full catalog live in the
 installed `references/commands.json` file. The OpenAPI reference covers
