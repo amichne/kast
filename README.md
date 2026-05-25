@@ -37,18 +37,17 @@ brew tap amichne/kast
 brew install kast
 ```
 
-Use the shell installer when Homebrew is not available, or when you want the
-interactive wizard to install the standalone backend, IDEA plugin zip, packaged
-skill, or repo-local Copilot extension in one pass:
+Use the Ubuntu/Debian installer when Homebrew is not available and the target
+host is an Ubuntu or Debian x86_64 environment:
 
 ```console
-curl -fsSL https://raw.githubusercontent.com/amichne/kast/HEAD/kast.sh | bash
+./scripts/install-ubuntu-debian.sh install
 ```
 
-For GitHub Actions-compatible hosted agents, use `amichne/kast-action@v1`.
-For CI or headless agent installs from internal artifacts or self-contained
-bundles, use the
-[install guide](https://kast.michne.com/getting-started/install/#github-actions-and-hosted-agents).
+That is the only supported non-Brew install path. For mirrored artifacts and
+CI images, use the same script with the self-contained Ubuntu/Debian bundle;
+the [install guide](https://kast.michne.com/getting-started/install/#ubuntudebian-bundle)
+shows the exact environment variables.
 
 Warm the standalone backend before running analysis commands:
 

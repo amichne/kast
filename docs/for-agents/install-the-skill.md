@@ -80,11 +80,11 @@ kast install skill --target-dir=/absolute/path/to/skills --yes=true
     resolve the CLI through the installed extension files. For portable
     skill-only installs, use `kast rpc` as the CLI fallback and set
     `[cli] binaryPath` in `config.toml` when the default
-    `$HOME/.kast/bin/kast` path doesn't match your machine:
+    configured CLI path doesn't match your machine:
 
     ```toml title="$HOME/.config/kast/config.toml"
     [cli]
-    binaryPath = "/Users/alex/.kast/bin/kast"
+    binaryPath = "/home/alex/.local/bin/kast"
     ```
 
 GitHub Copilot custom agents are a separate surface. Personas and tool

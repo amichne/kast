@@ -34,24 +34,27 @@ Reach for it when:
 Install:
 
 ```console title="Install the standalone backend"
-./kast.sh install --components=backend
+brew tap amichne/kast
+brew install kast
 ```
 
-Or pull the CLI and the backend together:
+On Ubuntu/Debian x86_64 hosts where Homebrew is not available, use the single
+supported non-Brew installer:
 
 ```console title="Install CLI and standalone backend"
-./kast.sh install --components=cli,backend --non-interactive
+./scripts/install-ubuntu-debian.sh install
 ```
 
-By default, `kast daemon start` derives standalone runtime libraries from
-`$HOME/.kast/backends/current/runtime-libs`. To use a different
-installation, point `backends.standalone.runtimeLibsDir` at the installed
-`runtime-libs` directory in `config.toml`, or pass `--runtime-libs-dir` to
-`kast daemon start`:
+The Ubuntu/Debian installer writes `config.toml` with the installed standalone
+runtime libraries under
+`$HOME/.local/share/kast/ubuntu-debian/<version>/lib/backends/standalone-<version>/runtime-libs`.
+To use a different installation, point `backends.standalone.runtimeLibsDir` at
+the installed `runtime-libs` directory in `config.toml`, or pass
+`--runtime-libs-dir` to `kast daemon start`:
 
 ```toml title="$HOME/.config/kast/config.toml"
 [backends.standalone]
-runtimeLibsDir = "/Users/alex/.kast/backends/current/runtime-libs"
+runtimeLibsDir = "/home/alex/.local/share/kast/ubuntu-debian/v1.2.3/lib/backends/standalone-v1.2.3/runtime-libs"
 ```
 
 How a session unfolds:
@@ -111,7 +114,7 @@ must point at an executable CLI binary:
 
 ```toml title="$HOME/.config/kast/config.toml"
 [cli]
-binaryPath = "/Users/alex/.kast/bin/kast"
+binaryPath = "/home/alex/.local/bin/kast"
 ```
 
 To hydrate a remote SQLite source index before local indexing starts, add an

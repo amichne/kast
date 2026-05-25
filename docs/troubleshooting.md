@@ -59,10 +59,10 @@ that matches what you're seeing.
     Open a fresh shell so the updated `PATH` takes effect. If that doesn't
     help:
 
-    - Check that `$HOME/.kast/bin/kast` exists and is executable:
-      `test -x "$HOME/.kast/bin/kast"`
-    - Check that `$HOME/.kast/bin` is on `PATH`:
-      `echo "$PATH" | tr ':' '\n' | grep "$HOME/.kast/bin"`
+    - Check that `$HOME/.local/bin/kast` exists and is executable:
+      `test -x "$HOME/.local/bin/kast"`
+    - Check that `$HOME/.local/bin` is on `PATH`:
+      `echo "$PATH" | tr ':' '\n' | grep "$HOME/.local/bin"`
     - If you keep config outside the default directory, set
       `KAST_CONFIG_HOME` to the directory that contains `config.toml`.
     - If the binary lives somewhere else, set `[cli] binaryPath` in
@@ -78,7 +78,7 @@ that matches what you're seeing.
 
     ```toml title="$HOME/.config/kast/config.toml"
     [cli]
-    binaryPath = "/Users/alex/.kast/bin/kast"
+    binaryPath = "/home/alex/.local/bin/kast"
     ```
 
     Then run **Tools → Kast → Install Copilot Extension** again.
@@ -87,11 +87,11 @@ that matches what you're seeing.
 
     `kast uninstall copilot-extension` removes only files
     listed in the packaged manifest plus `.github/.kast-copilot-version`.
-    Files you created under `.github` are preserved, and the installer's
-    global inventory in `~/.kast/.manifest.json` drops the repo entry.
+    Files you created under `.github` are preserved, and the CLI-managed
+    inventory drops the repo entry.
 
-    To inspect the managed set, read `~/.kast/.manifest.json`, or reinstall
-    with `--yes=true`, then uninstall again:
+    To inspect the managed set, reinstall with `--yes=true`, then uninstall
+    again:
 
     ```console
     kast install copilot-extension --yes=true

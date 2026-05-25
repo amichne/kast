@@ -40,24 +40,21 @@ analysis session.
 ## Local and hosted agent setup
 
 Local agents usually inherit a developer's installed CLI and workspace.
-Hosted or cloud agents should install into a contained root from trusted
-release artifacts before the session starts.
+Hosted Ubuntu/Debian agents should install into a contained root from the
+self-contained release bundle before the session starts. Homebrew is still the
+developer install path when the target supports it; the Ubuntu/Debian installer
+is the only supported non-Brew path.
 
 | Agent environment | Install path | Runtime path | What to hand the agent |
 |-------------------|--------------|--------------|-------------------------|
 | Local developer agent | `kast install skill` and optional `kast install copilot-extension` | Existing CLI plus standalone or IDEA backend | The packaged skill and native `kast_*` tools |
-| CI review agent | `./kast.sh install --non-interactive` or release archives | Standalone backend warmed in the job | `kast rpc` commands and structured JSON outputs |
-| GitHub Actions-compatible hosted agent | `amichne/kast-action@v1` or a mirrored action | Contained headless agent bundle under the action install root | `kast` on `PATH`, `KAST_CONFIG_HOME`, and action outputs |
-| Cloud/headless coding agent | `scripts/headless-agent-install.sh` or the headless agent bundle | Contained CLI and standalone backend under `KAST_AGENT_INSTALL_ROOT` | Source `kast-env.sh`, then use the packaged skill and Copilot extension |
+| CI review agent | `scripts/install-ubuntu-debian.sh install` | Standalone backend warmed in the job | `kast rpc` commands and structured JSON outputs |
+| Ubuntu/Debian hosted agent | `scripts/install-ubuntu-debian.sh install` from the release bundle | Contained CLI and standalone backend under `KAST_UBUNTU_DEBIAN_ROOT` | `kast` on `PATH` plus `KAST_CONFIG_HOME` when a custom config root is used |
 
-Use the headless path when the agent image cannot rely on a human shell
-profile, Homebrew tap state, or an already-open IDE. The headless
-installer verifies the CLI, backend runtime libraries, packaged skill,
-repo-local Copilot hooks, and native extension files before it exits.
-
-For Devin or enterprise runners that start from a GitHub Actions-compatible
-setup step, use the action path and pin mirrored installs with `bundle-url`
-and `bundle-sha256`.
+Use the Ubuntu/Debian path when the agent image cannot rely on a human shell
+profile, Homebrew tap state, or an already-open IDE. The installer verifies the
+CLI, backend runtime libraries, generated config, and `kast doctor` before it
+exits.
 
 | What it gets         | What `kast` returns                                                                       | Why your agent cares                                                            |
 |----------------------|-------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
