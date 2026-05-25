@@ -68,6 +68,11 @@ write_text_asset() {
 write_expected_assets() {
   write_zip_asset "${release_dir}/kast-intellij-${tag}.zip" intellij
   write_zip_asset "${release_dir}/kast-standalone-${tag}.zip" standalone
+  write_text_asset "${release_dir}/kast-ubuntu-debian-x86_64-${tag}.tar.gz"
+  printf '%s  %s\n' \
+    "$(compute_sha256 "${release_dir}/kast-ubuntu-debian-x86_64-${tag}.tar.gz")" \
+    "kast-ubuntu-debian-x86_64-${tag}.tar.gz" \
+    > "${release_dir}/kast-ubuntu-debian-x86_64-${tag}.tar.gz.sha256"
 }
 
 write_sha256sums() {
@@ -91,6 +96,7 @@ from pathlib import Path
 release_dir = Path(sys.argv[1])
 tag = sys.argv[2]
 entries = [
+    ("ubuntu-debian-x86_64", f"kast-ubuntu-debian-x86_64-{tag}.tar.gz"),
     ("intellij", f"kast-intellij-{tag}.zip"),
     ("standalone", f"kast-standalone-{tag}.zip"),
 ]
@@ -123,6 +129,7 @@ release_dir="${scratch_dir}/release"
 mkdir -p "$release_dir"
 
 assets=(
+  "kast-ubuntu-debian-x86_64-${tag}.tar.gz"
   "kast-intellij-${tag}.zip"
   "kast-standalone-${tag}.zip"
 )

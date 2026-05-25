@@ -6,6 +6,7 @@ from pathlib import Path
 
 
 EXPECTED_PLATFORMS = {
+    "ubuntu-debian-x86_64",
     "intellij",
     "standalone",
 }
@@ -68,8 +69,10 @@ def validate(entries: list[dict]) -> None:
         platform = entry.get("platformId", "<unknown>")
         asset_name = entry.get("assetName")
         asset_digest = entry.get("assetDigest")
-        if not isinstance(asset_name, str) or not asset_name.endswith(".zip"):
-            fail(f"provenance entry for {platform} has no zip assetName")
+        if not isinstance(asset_name, str) or not (
+            asset_name.endswith(".zip") or asset_name.endswith(".tar.gz")
+        ):
+            fail(f"provenance entry for {platform} has no supported assetName")
         if (
             not isinstance(asset_digest, str)
             or not asset_digest.startswith("sha256:")

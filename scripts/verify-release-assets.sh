@@ -10,8 +10,8 @@ usage() {
   cat >&2 <<'USAGE'
 Usage: scripts/verify-release-assets.sh --release-dir <dir> --tag <vX.Y.Z>
 
-Verify a downloaded Kast release directory. The directory must contain the five
-published zip assets, SHA256SUMS, and build-provenance.json.
+Verify a downloaded Kast release directory. The directory must contain the
+published zip/tar assets, SHA256SUMS, and build-provenance.json.
 USAGE
 }
 
@@ -54,10 +54,14 @@ release_dir = Path(sys.argv[1])
 tag = sys.argv[2]
 
 expected = {
+    "ubuntu-debian-x86_64": f"kast-ubuntu-debian-x86_64-{tag}.tar.gz",
     "intellij": f"kast-intellij-{tag}.zip",
     "standalone": f"kast-standalone-{tag}.zip",
 }
 expected_assets = set(expected.values())
+expected_sidecars = {
+    f"kast-ubuntu-debian-x86_64-{tag}.tar.gz.sha256",
+}
 
 def fail(message: str) -> None:
     raise SystemExit(message)
@@ -75,7 +79,12 @@ for raw_line in (release_dir / "SHA256SUMS").read_text(encoding="utf-8").splitli
         fail(f"duplicate checksum entry for {asset_name}")
     sha_entries[asset_name] = digest
 
-actual_assets = {path.name for path in release_dir.glob("*.zip")}
+actual_assets = {
+    path.name for path in release_dir.iterdir()
+    if path.is_file()
+    and (path.name.endswith(".zip") or path.name.endswith(".tar.gz"))
+    and not path.name.endswith(".tar.gz.sha256")
+}
 unexpected_assets = sorted(actual_assets - expected_assets)
 if unexpected_assets:
     fail(f"unexpected release asset: {unexpected_assets}")
@@ -96,6 +105,29 @@ for asset_name in expected_assets:
     actual_digest = hashlib.sha256(asset_path.read_bytes()).hexdigest()
     if actual_digest != expected_digest:
         fail(f"checksum mismatch for {asset_name}: expected {expected_digest}, got {actual_digest}")
+
+actual_sidecars = {path.name for path in release_dir.glob("*.tar.gz.sha256")}
+missing_sidecars = sorted(expected_sidecars - actual_sidecars)
+if missing_sidecars:
+    fail(f"missing checksum sidecar: {missing_sidecars}")
+unexpected_sidecars = sorted(actual_sidecars - expected_sidecars)
+if unexpected_sidecars:
+    fail(f"unexpected checksum sidecar: {unexpected_sidecars}")
+
+for sidecar_name in expected_sidecars:
+    asset_name = sidecar_name.removesuffix(".sha256")
+    sidecar_path = release_dir / sidecar_name
+    sidecar_lines = [
+        line.strip() for line in sidecar_path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    if len(sidecar_lines) != 1:
+        fail(f"invalid checksum sidecar for {asset_name}")
+    parts = sidecar_lines[0].split()
+    if len(parts) != 2 or parts[1] != asset_name:
+        fail(f"checksum sidecar does not name {asset_name}")
+    if parts[0] != sha_entries.get(asset_name):
+        fail(f"checksum sidecar mismatch for {asset_name}")
 
 payload = json.loads((release_dir / "build-provenance.json").read_text(encoding="utf-8"))
 builds = payload.get("builds")

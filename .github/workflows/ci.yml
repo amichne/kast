@@ -47,6 +47,10 @@ jobs:
         shell: bash
         run: ./.github/scripts/test-release-provenance-assembler.sh
 
+      - name: Smoke Ubuntu/Debian bundle contract
+        shell: bash
+        run: ./scripts/smoke-ubuntu-debian-bundle.sh
+
   build-and-test:
     name: Build & test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}

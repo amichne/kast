@@ -46,12 +46,17 @@ write_provenance \
   "${scratch_dir}/provenance-standalone/dist/build-provenance-standalone.json" \
   "standalone" \
   "kast-standalone-${tag}.zip"
+write_provenance \
+  "${scratch_dir}/provenance-ubuntu-debian/dist/build-provenance-ubuntu-debian.json" \
+  "ubuntu-debian-x86_64" \
+  "kast-ubuntu-debian-x86_64-${tag}.tar.gz"
 
 output="${scratch_dir}/dist/build-provenance.json"
 "$assembler" \
   --output "$output" \
   "${scratch_dir}/provenance-intellij" \
-  "${scratch_dir}/provenance-standalone"
+  "${scratch_dir}/provenance-standalone" \
+  "${scratch_dir}/provenance-ubuntu-debian"
 
 python3 - "$output" <<'PY'
 import json
@@ -63,13 +68,14 @@ platforms = [entry.get("platformId") for entry in payload.get("builds", [])]
 expected = [
     "intellij",
     "standalone",
+    "ubuntu-debian-x86_64",
 ]
 if platforms != expected:
     raise SystemExit(f"unexpected platform order: {platforms!r}")
 PY
 
 rm "${scratch_dir}/provenance-intellij/dist/build-provenance-intellij.json"
-if "$assembler" --output "$output" "${scratch_dir}/provenance-artifacts" "${scratch_dir}/provenance-intellij" "${scratch_dir}/provenance-standalone" \
+if "$assembler" --output "$output" "${scratch_dir}/provenance-artifacts" "${scratch_dir}/provenance-intellij" "${scratch_dir}/provenance-standalone" "${scratch_dir}/provenance-ubuntu-debian" \
   >"${scratch_dir}/missing.out" 2>"${scratch_dir}/missing.err"; then
   die "assembler unexpectedly passed with missing intellij provenance"
 fi
