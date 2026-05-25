@@ -60,6 +60,16 @@ kast rpc '{"jsonrpc":"2.0","method":"symbol/resolve","params":{"symbol":"date","
   --workspace-root "$PWD" \
   >"$KAST_RESULT" 2>"$KAST_STDERR"
 
+# Rank candidates before resolving
+kast rpc '{"jsonrpc":"2.0","method":"symbol/discover","params":{"symbol":"date","fileHint":"/abs/path/EventBean.kt","line":42,"codeSnippet":"val date = event.date","maxResults":5},"id":1}' \
+  --workspace-root "$PWD" \
+  >"$KAST_RESULT" 2>"$KAST_STDERR"
+
+# Resolve with declaration context
+kast rpc '{"jsonrpc":"2.0","method":"symbol/resolve","params":{"symbol":"date","kind":"property","containingType":"com.example.EventBean","includeDeclarationScope":true,"includeDocumentation":true,"surroundingLines":3,"includeSurroundingMembers":true},"id":1}' \
+  --workspace-root "$PWD" \
+  >"$KAST_RESULT" 2>"$KAST_STDERR"
+
 # Find usages
 kast rpc '{"jsonrpc":"2.0","method":"symbol/references","params":{"symbol":"EventBean","includeDeclaration":true},"id":1}' \
   --workspace-root "$PWD" \

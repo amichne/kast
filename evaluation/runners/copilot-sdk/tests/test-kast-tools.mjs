@@ -6,6 +6,7 @@ import { makeKastTools, KAST_TOOL_NAMES } from "../../../../.github/extensions/_
 const EXPECTED_NAMES = [
   "kast_workspace_files",
   "kast_workspace_symbol",
+  "kast_symbol_discover",
   "kast_workspace_search",
   "kast_file_outline",
   "kast_scaffold",
@@ -72,6 +73,23 @@ assert.deepStrictEqual(
     containingType: "io.github.amichne.kast.api.contract.FileOperation",
   },
   "symbol wrappers must normalize uppercase kind values for the RPC contract",
+);
+
+const discoverToolByCall = capturingTools.find((t) => t.name === "kast_symbol_discover");
+await discoverToolByCall.handler({
+  symbol: "filePath",
+  kind: "PROPERTY",
+  fileHint: "/tmp/FileOperation.kt",
+});
+assert.equal(capturedMethod, "symbol/discover", "kast_symbol_discover handler must call symbol/discover");
+assert.deepStrictEqual(
+  capturedParams,
+  {
+    symbol: "filePath",
+    kind: "property",
+    fileHint: "/tmp/FileOperation.kt",
+  },
+  "symbol discover must normalize uppercase kind values for the RPC contract",
 );
 
 console.log("All kast-tools tests passed.");

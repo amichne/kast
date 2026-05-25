@@ -8,6 +8,8 @@
     ],
     "symbol": [
       "symbol/scaffold",
+      "symbol/discover",
+      "symbol/query",
       "symbol/resolve",
       "symbol/references",
       "symbol/callers",
@@ -119,10 +121,293 @@
       "successType": "SCAFFOLD_SUCCESS",
       "failureType": "SCAFFOLD_FAILURE"
     },
+    "symbol/discover": {
+      "method": "symbol/discover",
+      "category": "symbol",
+      "summary": "Rank candidate declarations for a simple symbol name",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "workspaceRoot": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "symbol": {
+            "type": "string"
+          },
+          "fileHint": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "line": {
+            "type": "integer",
+            "optional": true,
+            "nullable": true
+          },
+          "codeSnippet": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "kind": {
+            "type": "string",
+            "optional": true,
+            "nullable": true,
+            "enum": [
+              "class",
+              "interface",
+              "object",
+              "function",
+              "property"
+            ]
+          },
+          "containingType": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "maxResults": {
+            "type": "integer",
+            "optional": true
+          },
+          "includeDeclarationScope": {
+            "type": "boolean",
+            "optional": true
+          }
+        },
+        "required": [
+          "symbol"
+        ]
+      },
+      "responseType": "KastDiscoverResponse",
+      "successType": "DISCOVER_SUCCESS",
+      "failureType": "DISCOVER_FAILURE",
+      "notes": [
+        "Use this before symbol/resolve when a simple name is ambiguous or context is available.",
+        "Candidates include resolveParams and nextRequest fields that can be sent to symbol/resolve."
+      ]
+    },
+    "symbol/query": {
+      "method": "symbol/query",
+      "category": "symbol",
+      "summary": "Query compiler-indexed declarations with symbolic hard filters, fielded lexical/name matching, bounded graph relationship evidence, and optional semantic discovery evidence",
+      "dataSource": "sqlite",
+      "request": {
+        "fields": {
+          "workspaceRoot": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "query": {
+            "type": "string"
+          },
+          "modes": {
+            "type": "array",
+            "optional": true,
+            "items": {
+              "type": "string",
+              "enum": [
+                "exact",
+                "lexical",
+                "structural",
+                "graph",
+                "semantic"
+              ]
+            }
+          },
+          "filters": {
+            "type": "object",
+            "optional": true,
+            "fields": {
+              "kinds": {
+                "type": "array",
+                "optional": true,
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "CLASS",
+                    "INTERFACE",
+                    "OBJECT",
+                    "FUNCTION",
+                    "PROPERTY",
+                    "TYPEALIAS",
+                    "ENUM_CLASS",
+                    "ENUM_ENTRY",
+                    "CONSTRUCTOR"
+                  ]
+                }
+              },
+              "visibility": {
+                "type": "array",
+                "optional": true,
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "PUBLIC",
+                    "INTERNAL",
+                    "PROTECTED",
+                    "PRIVATE",
+                    "LOCAL"
+                  ]
+                }
+              },
+              "modulePath": {
+                "type": "string",
+                "optional": true,
+                "nullable": true
+              },
+              "sourceSet": {
+                "type": "string",
+                "optional": true,
+                "nullable": true
+              },
+              "fileGlob": {
+                "type": "string",
+                "optional": true,
+                "nullable": true
+              },
+              "packagePrefix": {
+                "type": "string",
+                "optional": true,
+                "nullable": true
+              },
+              "fqNamePrefix": {
+                "type": "string",
+                "optional": true,
+                "nullable": true
+              }
+            }
+          },
+          "anchor": {
+            "type": "object",
+            "optional": true,
+            "fields": {
+              "fqName": {
+                "type": "string",
+                "optional": true,
+                "nullable": true
+              },
+              "symbol": {
+                "type": "string",
+                "optional": true,
+                "nullable": true
+              },
+              "filePath": {
+                "type": "string",
+                "optional": true,
+                "nullable": true
+              },
+              "offset": {
+                "type": "integer",
+                "optional": true,
+                "nullable": true
+              }
+            }
+          },
+          "graph": {
+            "type": "object",
+            "optional": true,
+            "fields": {
+              "direction": {
+                "type": "string",
+                "optional": true,
+                "enum": [
+                  "INCOMING",
+                  "OUTGOING",
+                  "BOTH"
+                ]
+              },
+              "edgeKinds": {
+                "type": "array",
+                "optional": true,
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "CALL",
+                    "TYPE_REF",
+                    "INHERITANCE",
+                    "OVERRIDE",
+                    "IMPORT",
+                    "ANNOTATION",
+                    "UNKNOWN"
+                  ]
+                }
+              },
+              "depth": {
+                "type": "integer",
+                "optional": true
+              },
+              "maxEdgesPerResult": {
+                "type": "integer",
+                "optional": true
+              }
+            }
+          },
+          "semantic": {
+            "type": "object",
+            "optional": true,
+            "fields": {
+              "enabled": {
+                "type": "boolean",
+                "optional": true
+              },
+              "profile": {
+                "type": "string",
+                "optional": true,
+                "enum": [
+                  "identity",
+                  "behavior",
+                  "api_usage"
+                ]
+              },
+              "maxCandidates": {
+                "type": "integer",
+                "optional": true
+              }
+            }
+          },
+          "limit": {
+            "type": "integer",
+            "optional": true
+          },
+          "includeEvidence": {
+            "type": "boolean",
+            "optional": true
+          },
+          "includeNextRequests": {
+            "type": "boolean",
+            "optional": true
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "responseType": "KastSymbolQueryResponse",
+      "successType": "SYMBOL_QUERY_SUCCESS",
+      "failureType": "SYMBOL_QUERY_FAILURE",
+      "failureReasons": [
+        "INDEX_UNAVAILABLE",
+        "INVALID_FILTER",
+        "QUERY_TOO_BROAD",
+        "AMBIGUOUS_ANCHOR",
+        "ANCHOR_NOT_FOUND",
+        "SEMANTIC_UNAVAILABLE",
+        "TIMEOUT"
+      ],
+      "notes": [
+        "Hard filters are enforced by SQLite/compiler facts, never by semantic score.",
+        "Graph depth defaults to 1 and is capped at 2 in the first implementation.",
+        "Semantic discovery is represented in the response shape but reports available=false until a sidecar exists."
+      ]
+    },
     "symbol/resolve": {
       "method": "symbol/resolve",
       "category": "symbol",
-      "summary": "Resolve a symbol by name to its declaration",
+      "summary": "Resolve a symbol by name to its declaration and optional context",
       "dataSource": "backend",
       "request": {
         "fields": {
@@ -155,6 +440,23 @@
             "type": "string",
             "optional": true,
             "nullable": true
+          },
+          "includeDeclarationScope": {
+            "type": "boolean",
+            "optional": true
+          },
+          "includeDocumentation": {
+            "type": "boolean",
+            "optional": true
+          },
+          "surroundingLines": {
+            "type": "integer",
+            "optional": true,
+            "nullable": true
+          },
+          "includeSurroundingMembers": {
+            "type": "boolean",
+            "optional": true
           }
         },
         "required": [
@@ -166,7 +468,8 @@
       "failureType": "RESOLVE_FAILURE",
       "notes": [
         "The 'symbol' field takes simple names only (e.g. 'key'), never fully-qualified names.",
-        "Use 'containingType' for scoping and 'fileHint' for disambiguation."
+        "Use 'containingType' for scoping and 'fileHint' for disambiguation.",
+        "Set includeDeclarationScope, includeDocumentation, surroundingLines, or includeSurroundingMembers only when the extra context is needed."
       ]
     },
     "symbol/references": {
