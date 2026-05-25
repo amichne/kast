@@ -6,6 +6,7 @@ import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.indexstore.api.index.splitModuleName
 import io.github.amichne.kast.standalone.MutableSourceIdentifierIndex
 import java.nio.file.Path
+import java.sql.SQLException
 
 /**
  * Persists the source identifier index and file manifest to a SQLite database.
@@ -47,7 +48,11 @@ internal class SourceIndexCache(
         val schemaValid = store.ensureSchema()
         if (!schemaValid) return null
 
-        store.reconcilePendingUpdates()
+        try {
+            store.reconcilePendingUpdates()
+        } catch (_: SQLException) {
+            return null
+        }
         val manifestSnapshot = makeManifestSnapshot(sourceRoots)
         return try {
             IncrementalIndexResult(

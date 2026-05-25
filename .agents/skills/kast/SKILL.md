@@ -76,7 +76,7 @@ need exact JSON-RPC field names, response types, or discriminated variants.
 | Apply validated Kotlin edits or create files | `kast rpc` method `symbol/write-and-validate` |
 | Apply raw edit plans or optimize imports | `raw/apply-edits`, `raw/optimize-imports` |
 | Refresh after external edits | `raw/workspace-refresh` |
-| Query source-index metrics through daemon RPC | `kast rpc` method `database/metrics` |
+| Query source-index metrics through Rust RPC | `kast rpc` method `database/metrics` |
 | Query SQLite source-index directly | `kast metrics fan-in`, `fan-out`, `dead-code`, `impact`, `coupling`, `search`, `graph --json` |
 | Explore indexed symbol graph interactively or as JSON | `kast demo`, usually with `--json` for agents |
 | Run build/test validation | Use the repo Gradle command after Kast narrows the affected files or symbols |

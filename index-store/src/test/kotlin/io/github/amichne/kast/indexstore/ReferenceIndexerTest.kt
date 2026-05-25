@@ -1,19 +1,19 @@
 package io.github.amichne.kast.indexstore
 
-import io.github.amichne.kast.indexstore.api.metrics.general.DeclarationInfo
 import io.github.amichne.kast.indexstore.api.reference.DeclarationKind
 import io.github.amichne.kast.indexstore.api.reference.DeclarationRow
 import io.github.amichne.kast.indexstore.api.reference.DeclarationVisibility
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
 import io.github.amichne.kast.indexstore.indexing.ReferenceIndexer
-import io.github.amichne.kast.indexstore.metrics.MetricsEngine
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
+import io.github.amichne.kast.indexstore.store.cache.sourceIndexDatabasePath
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
+import java.sql.DriverManager
 import java.util.concurrent.CancellationException
 
 class ReferenceIndexerTest {
@@ -67,20 +67,24 @@ class ReferenceIndexerTest {
             )
         }
 
-        MetricsEngine(root).use { metrics ->
-            assertEquals(
-                listOf(
-                    DeclarationInfo(
-                        fqName = "sample.Greeter",
-                        kind = "CLASS",
-                        visibility = "PUBLIC",
-                        path = filePath,
-                        modulePath = ":sample",
-                        sourceSet = "main",
-                    ),
-                ),
-                metrics.declarations(),
-            )
+        DriverManager.getConnection("jdbc:sqlite:${sourceIndexDatabasePath(root)}").use { conn ->
+            conn.prepareStatement(
+                """SELECT names.fq_name, declarations.kind, declarations.visibility, prefixes.dir_path, declarations.filename,
+                          declarations.module_path, declarations.source_set
+                   FROM declarations
+                   JOIN fq_names names ON names.fq_id = declarations.fq_id
+                   JOIN path_prefixes prefixes ON prefixes.prefix_id = declarations.prefix_id""",
+            ).use { stmt ->
+                val row = stmt.executeQuery()
+                assertTrue(row.next())
+                assertEquals("sample.Greeter", row.getString("fq_name"))
+                assertEquals("CLASS", row.getString("kind"))
+                assertEquals("PUBLIC", row.getString("visibility"))
+                assertTrue(row.getString("dir_path").endsWith("/src"))
+                assertEquals("Greeter.kt", row.getString("filename"))
+                assertEquals(":sample", row.getString("module_path"))
+                assertEquals("main", row.getString("source_set"))
+            }
         }
     }
 

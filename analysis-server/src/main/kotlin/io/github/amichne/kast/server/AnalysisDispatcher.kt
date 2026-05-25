@@ -310,11 +310,6 @@ class RpcAnalysisDispatcher(
                 skillRpc.discover(decodeParams(KastDiscoverRequest.serializer(), params)),
             )
 
-            "symbol/query" -> encode(
-                KastSymbolQueryResponse.serializer(),
-                skillRpc.symbolQuery(decodeParams(KastSymbolQueryRequest.serializer(), params)),
-            )
-
             "symbol/references" -> encode(
                 KastReferencesResponse.serializer(),
                 skillRpc.references(decodeParams(KastReferencesRequest.serializer(), params)),
@@ -338,11 +333,6 @@ class RpcAnalysisDispatcher(
             "symbol/write-and-validate" -> encode(
                 KastWriteAndValidateResponse.serializer(),
                 skillRpc.writeAndValidate(decodeParams(KastWriteAndValidateRequest.serializer(), params)),
-            )
-
-            "database/metrics" -> encode(
-                KastMetricsResponse.serializer(),
-                skillRpc.metrics(decodeParams(KastMetricsRequest.serializer(), params)),
             )
 
             "raw/implementations" -> encode(

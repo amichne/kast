@@ -20,7 +20,7 @@ import java.nio.file.Path
 import java.sql.Connection
 import java.sql.DriverManager
 
-internal const val SOURCE_INDEX_SCHEMA_VERSION = 5
+internal const val SOURCE_INDEX_SCHEMA_VERSION = 6
 
 /**
  * SQLite-backed store for the source identifier index, file manifest,
@@ -110,7 +110,6 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
             val conn = connection()
             val version = readSchemaVersion(conn)
             if (version == SOURCE_INDEX_SCHEMA_VERSION) {
-                additiveMigration(conn)
                 loadInterningTables(conn)
                 return true
             }
@@ -130,96 +129,6 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
         }
     }
 
-    private fun additiveMigration(conn: Connection) {
-        conn.createStatement().use { stmt ->
-            if (!columnExists(conn, tableName = "schema_version", columnName = "head_commit")) {
-                stmt.execute("ALTER TABLE schema_version ADD COLUMN head_commit TEXT")
-            }
-            stmt.execute(
-                """CREATE TABLE IF NOT EXISTS workspace_discovery (
-                    cache_key TEXT PRIMARY KEY,
-                    schema_version INTEGER NOT NULL,
-                    payload TEXT NOT NULL
-                )""",
-            )
-        }
-        if (!sourceIndexTablesAreCompatible(conn)) {
-            rebuildDerivedIndexTables(conn)
-        } else {
-            createSourceIndexIndexes(conn)
-        }
-        removeIneligibleSourceIndexRows(conn)
-    }
-
-    private fun sourceIndexTablesAreCompatible(conn: Connection): Boolean =
-        tableExists(conn, "path_prefixes") &&
-        tableExists(conn, "fq_names") &&
-        tableExists(conn, "identifier_paths") &&
-        tableExists(conn, "file_metadata") &&
-        tableExists(conn, "file_imports") &&
-        tableExists(conn, "file_wildcard_imports") &&
-        tableExists(conn, "file_manifest") &&
-        tableExists(conn, "symbol_references") &&
-        tableExists(conn, "declarations") &&
-        tableExists(conn, "declaration_supertypes") &&
-        tableExists(conn, "pending_updates") &&
-        columnExists(conn, "path_prefixes", "prefix_id") &&
-        columnExists(conn, "path_prefixes", "dir_path") &&
-        columnExists(conn, "fq_names", "fq_id") &&
-        columnExists(conn, "fq_names", "fq_name") &&
-        columnExists(conn, "identifier_paths", "prefix_id") &&
-        columnExists(conn, "identifier_paths", "filename") &&
-        !columnExists(conn, "identifier_paths", "path") &&
-        columnExists(conn, "file_metadata", "prefix_id") &&
-        columnExists(conn, "file_metadata", "filename") &&
-        columnExists(conn, "file_metadata", "package_fq_id") &&
-        columnExists(conn, "file_metadata", "module_path") &&
-        columnExists(conn, "file_metadata", "source_set") &&
-        !columnExists(conn, "file_metadata", "module_name") &&
-        !columnExists(conn, "file_metadata", "package_name") &&
-        !columnExists(conn, "file_metadata", "imports") &&
-        !columnExists(conn, "file_metadata", "wildcard_imports") &&
-        !columnExists(conn, "file_metadata", "path") &&
-        columnExists(conn, "file_manifest", "prefix_id") &&
-        columnExists(conn, "file_manifest", "filename") &&
-        !columnExists(conn, "file_manifest", "path") &&
-        columnExists(conn, "symbol_references", "src_prefix_id") &&
-        columnExists(conn, "symbol_references", "src_filename") &&
-        columnExists(conn, "symbol_references", "source_fq_id") &&
-        columnExists(conn, "symbol_references", "target_fq_id") &&
-        columnExists(conn, "symbol_references", "tgt_prefix_id") &&
-        columnExists(conn, "symbol_references", "tgt_filename") &&
-        columnExists(conn, "symbol_references", "edge_kind") &&
-        !columnExists(conn, "symbol_references", "target_fq_name") &&
-        !columnExists(conn, "symbol_references", "source_path") &&
-        !columnExists(conn, "symbol_references", "target_path")
-
-    private fun tableExists(
-        conn: Connection,
-        tableName: String,
-    ): Boolean =
-        conn.prepareStatement(
-            """SELECT 1 FROM sqlite_master
-               WHERE type = 'table' AND name = ?
-               LIMIT 1""",
-        ).use { stmt ->
-            stmt.setString(1, tableName)
-            stmt.executeQuery().let { rs -> rs.next() }
-        }
-
-    private fun columnExists(
-        conn: Connection,
-        tableName: String,
-        columnName: String,
-    ): Boolean =
-        conn.prepareStatement("PRAGMA table_info($tableName)").use { stmt ->
-            val rs = stmt.executeQuery()
-            while (rs.next()) {
-                if (rs.getString("name") == columnName) return true
-            }
-            false
-        }
-
     private fun readSchemaVersion(conn: Connection): Int? = try {
         conn.prepareStatement("SELECT version FROM schema_version LIMIT 1").use { stmt ->
             stmt.executeQuery().let { rs -> if (rs.next()) rs.getInt(1) else null }
@@ -230,41 +139,28 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
 
     private fun dropAllTables(conn: Connection) {
         conn.createStatement().use { stmt ->
-            stmt.execute("DROP TABLE IF EXISTS pending_updates")
-            stmt.execute("DROP TABLE IF EXISTS declaration_supertypes")
-            stmt.execute("DROP TABLE IF EXISTS declarations")
-            stmt.execute("DROP TABLE IF EXISTS symbol_references")
-            stmt.execute("DROP TABLE IF EXISTS file_wildcard_imports")
-            stmt.execute("DROP TABLE IF EXISTS file_imports")
-            stmt.execute("DROP TABLE IF EXISTS identifier_paths")
-            stmt.execute("DROP TABLE IF EXISTS file_metadata")
-            stmt.execute("DROP TABLE IF EXISTS file_manifest")
-            stmt.execute("DROP TABLE IF EXISTS fq_names")
-            stmt.execute("DROP TABLE IF EXISTS path_prefixes")
+            dropSourceIndexTables(stmt)
             stmt.execute("DROP TABLE IF EXISTS schema_version")
-            // workspace_discovery is intentionally preserved across source index schema upgrades —
-            // its data is independent of path interning and other source index schema changes.
+            stmt.execute("DROP TABLE IF EXISTS workspace_discovery")
         }
     }
 
-    private fun rebuildDerivedIndexTables(conn: Connection) {
-        conn.createStatement().use { stmt ->
-            stmt.execute("DROP TABLE IF EXISTS pending_updates")
-            stmt.execute("DROP TABLE IF EXISTS declaration_supertypes")
-            stmt.execute("DROP TABLE IF EXISTS declarations")
-            stmt.execute("DROP TABLE IF EXISTS symbol_references")
-            stmt.execute("DROP TABLE IF EXISTS file_wildcard_imports")
-            stmt.execute("DROP TABLE IF EXISTS file_imports")
-            stmt.execute("DROP TABLE IF EXISTS identifier_paths")
-            stmt.execute("DROP TABLE IF EXISTS file_metadata")
-            stmt.execute("DROP TABLE IF EXISTS file_manifest")
-            stmt.execute("DROP TABLE IF EXISTS fq_names")
-            stmt.execute("DROP TABLE IF EXISTS path_prefixes")
-            createPathPrefixTable(stmt)
-            createFqNameTable(stmt)
-            createSourceIndexTables(stmt)
-            createSourceIndexIndexes(stmt)
-        }
+    private fun dropSourceIndexTables(stmt: java.sql.Statement) {
+        stmt.execute("DROP TRIGGER IF EXISTS fq_names_ai")
+        stmt.execute("DROP TRIGGER IF EXISTS fq_names_ad")
+        stmt.execute("DROP TRIGGER IF EXISTS fq_names_au")
+        stmt.execute("DROP TABLE IF EXISTS fq_names_fts")
+        stmt.execute("DROP TABLE IF EXISTS pending_updates")
+        stmt.execute("DROP TABLE IF EXISTS declaration_supertypes")
+        stmt.execute("DROP TABLE IF EXISTS declarations")
+        stmt.execute("DROP TABLE IF EXISTS symbol_references")
+        stmt.execute("DROP TABLE IF EXISTS file_wildcard_imports")
+        stmt.execute("DROP TABLE IF EXISTS file_imports")
+        stmt.execute("DROP TABLE IF EXISTS identifier_paths")
+        stmt.execute("DROP TABLE IF EXISTS file_metadata")
+        stmt.execute("DROP TABLE IF EXISTS file_manifest")
+        stmt.execute("DROP TABLE IF EXISTS fq_names")
+        stmt.execute("DROP TABLE IF EXISTS path_prefixes")
     }
 
     private fun createAllTables(conn: Connection) {
@@ -278,12 +174,11 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
             )
             stmt.execute("INSERT INTO schema_version (version, generation, head_commit) VALUES ($SOURCE_INDEX_SCHEMA_VERSION, 0, NULL)")
 
-
             createPathPrefixTable(stmt)
             createFqNameTable(stmt)
+            createFqNameSearchIndex(stmt)
             createSourceIndexTables(stmt)
             createSourceIndexIndexes(stmt)
-
 
             stmt.execute(
                 """CREATE TABLE IF NOT EXISTS workspace_discovery (
@@ -310,6 +205,29 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
                 fq_id INTEGER PRIMARY KEY,
                 fq_name TEXT NOT NULL UNIQUE
             )""",
+        )
+    }
+
+    private fun createFqNameSearchIndex(stmt: java.sql.Statement) {
+        stmt.execute("""CREATE VIRTUAL TABLE IF NOT EXISTS fq_names_fts USING fts5(fq_name, tokenize='trigram')""")
+        stmt.execute(
+            """CREATE TRIGGER IF NOT EXISTS fq_names_ai
+               AFTER INSERT ON fq_names BEGIN
+                   INSERT INTO fq_names_fts(rowid, fq_name) VALUES (new.fq_id, new.fq_name);
+               END""",
+        )
+        stmt.execute(
+            """CREATE TRIGGER IF NOT EXISTS fq_names_ad
+               AFTER DELETE ON fq_names BEGIN
+                   DELETE FROM fq_names_fts WHERE rowid = old.fq_id;
+               END""",
+        )
+        stmt.execute(
+            """CREATE TRIGGER IF NOT EXISTS fq_names_au
+               AFTER UPDATE OF fq_name ON fq_names BEGIN
+                   DELETE FROM fq_names_fts WHERE rowid = old.fq_id;
+                   INSERT INTO fq_names_fts(rowid, fq_name) VALUES (new.fq_id, new.fq_name);
+               END""",
         )
     }
 

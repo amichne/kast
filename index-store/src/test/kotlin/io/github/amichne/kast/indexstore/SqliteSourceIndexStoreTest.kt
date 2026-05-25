@@ -6,6 +6,7 @@ import io.github.amichne.kast.indexstore.store.cache.kastCacheDirectory
 import io.github.amichne.kast.indexstore.store.cache.sourceIndexDatabasePath
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -64,7 +65,7 @@ class SqliteSourceIndexStoreTest {
             conn.prepareStatement("SELECT version FROM schema_version LIMIT 1").use { stmt ->
                 val rs = stmt.executeQuery()
                 assertTrue(rs.next())
-                assertEquals(5, rs.getInt(1))
+                assertEquals(6, rs.getInt(1))
             }
         }
     }
@@ -82,7 +83,34 @@ class SqliteSourceIndexStoreTest {
     }
 
     @Test
-    fun `version 4 schema rebuilds while preserving workspace discovery`() {
+    fun `schema creates persistent trigram FTS for FQ names`() {
+        val normalized = workspaceRoot.toAbsolutePath().normalize()
+        SqliteSourceIndexStore(normalized).use { store -> store.ensureSchema() }
+
+        DriverManager.getConnection("jdbc:sqlite:${sourceIndexDatabasePath(normalized)}").use { conn ->
+            conn.createStatement().use { stmt ->
+                stmt.execute("INSERT INTO fq_names(fq_id, fq_name) VALUES (1, 'com.example.FooWidget')")
+            }
+
+            assertEquals(listOf("com.example.FooWidget"), ftsMatches(conn, "Widget"))
+
+            conn.createStatement().use { stmt ->
+                stmt.execute("UPDATE fq_names SET fq_name = 'com.example.BarWidget' WHERE fq_id = 1")
+            }
+
+            assertEquals(emptyList<String>(), ftsMatches(conn, "FooWidget"))
+            assertEquals(listOf("com.example.BarWidget"), ftsMatches(conn, "BarWidget"))
+
+            conn.createStatement().use { stmt ->
+                stmt.execute("DELETE FROM fq_names WHERE fq_id = 1")
+            }
+
+            assertEquals(emptyList<String>(), ftsMatches(conn, "BarWidget"))
+        }
+    }
+
+    @Test
+    fun `prior schema rebuilds without preserving compatibility data`() {
         val normalized = workspaceRoot.toAbsolutePath().normalize()
         val cacheDir = kastCacheDirectory(normalized)
         Files.createDirectories(cacheDir)
@@ -131,7 +159,7 @@ class SqliteSourceIndexStoreTest {
             store.writeHeadCommit("def456")
 
             assertEquals("def456", store.readHeadCommit())
-            assertEquals("{}", store.readWorkspaceDiscovery("modules"))
+            assertNull(store.readWorkspaceDiscovery("modules"))
             assertSchemaUsesInternedPaths(dbPath)
         }
     }
@@ -568,7 +596,7 @@ class SqliteSourceIndexStoreTest {
     }
 
     @Test
-    fun `ensureSchema removes stale Kotlin script rows from source index tables`() {
+    fun `ensureSchema does not run compatibility cleanup for current schema`() {
         val normalized = workspaceRoot.toAbsolutePath().normalize()
         val dbPath = sourceIndexDatabasePath(normalized)
 
@@ -606,20 +634,20 @@ class SqliteSourceIndexStoreTest {
         }
 
         DriverManager.getConnection("jdbc:sqlite:$dbPath").use { conn ->
-            assertEquals(0, tableCount(conn, "identifier_paths", "filename = 'build.gradle.kts'"))
-            assertEquals(0, tableCount(conn, "identifier_paths", "filename = 'Foo.KT'"))
-            assertEquals(0, tableCount(conn, "file_metadata", "filename = 'build.gradle.kts'"))
-            assertEquals(0, tableCount(conn, "file_metadata", "filename = 'Foo.KT'"))
-            assertEquals(0, tableCount(conn, "file_manifest", "filename = 'build.gradle.kts'"))
-            assertEquals(0, tableCount(conn, "file_manifest", "filename = 'Foo.KT'"))
-            assertEquals(0, tableCount(conn, "file_imports", "filename = 'build.gradle.kts'"))
-            assertEquals(0, tableCount(conn, "file_wildcard_imports", "filename = 'build.gradle.kts'"))
-            assertEquals(0, tableCount(conn, "symbol_references", "src_filename = 'build.gradle.kts' OR tgt_filename = 'build.gradle.kts'"))
+            assertEquals(1, tableCount(conn, "identifier_paths", "filename = 'build.gradle.kts'"))
+            assertEquals(1, tableCount(conn, "identifier_paths", "filename = 'Foo.KT'"))
+            assertEquals(1, tableCount(conn, "file_metadata", "filename = 'build.gradle.kts'"))
+            assertEquals(1, tableCount(conn, "file_metadata", "filename = 'Foo.KT'"))
+            assertEquals(1, tableCount(conn, "file_manifest", "filename = 'build.gradle.kts'"))
+            assertEquals(1, tableCount(conn, "file_manifest", "filename = 'Foo.KT'"))
+            assertEquals(1, tableCount(conn, "file_imports", "filename = 'build.gradle.kts'"))
+            assertEquals(1, tableCount(conn, "file_wildcard_imports", "filename = 'build.gradle.kts'"))
+            assertEquals(2, tableCount(conn, "symbol_references", "src_filename = 'build.gradle.kts' OR tgt_filename = 'build.gradle.kts'"))
             conn.prepareStatement("SELECT tgt_filename, target_offset FROM symbol_references WHERE src_filename = 'Caller.kt'").use { stmt ->
                 val rs = stmt.executeQuery()
                 assertTrue(rs.next())
-                assertEquals(null, rs.getString("tgt_filename"))
-                assertEquals(null, rs.getObject("target_offset"))
+                assertEquals("build.gradle.kts", rs.getString("tgt_filename"))
+                assertEquals(1, rs.getInt("target_offset"))
             }
         }
     }
@@ -682,6 +710,20 @@ class SqliteSourceIndexStoreTest {
             val rs = stmt.executeQuery()
             assertTrue(rs.next())
             rs.getInt(1)
+        }
+
+    private fun ftsMatches(conn: java.sql.Connection, query: String): List<String> =
+        conn.prepareStatement(
+            """SELECT fq_name
+               FROM fq_names_fts
+               WHERE fq_names_fts MATCH ?
+               ORDER BY rank, fq_name""",
+        ).use { stmt ->
+            stmt.setString(1, "\"${query.lowercase()}\"")
+            val rs = stmt.executeQuery()
+            buildList {
+                while (rs.next()) add(rs.getString(1))
+            }
         }
 
     private fun assertTableColumns(
