@@ -5,5 +5,5 @@ plugins {
 dependencies {
     testImplementation(project(":analysis-api"))
     testImplementation(project(":shared-testing"))
-    testImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
 }
