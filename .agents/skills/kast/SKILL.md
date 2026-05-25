@@ -61,6 +61,7 @@ need exact JSON-RPC field names, response types, or discriminated variants.
 | Warm or inspect a workspace backend | `kast up`, `kast status`, `kast capabilities` |
 | Discover modules and Kotlin files | `kast rpc` method `raw/workspace-files` |
 | Fuzzy symbol discovery by name | `kast rpc` method `raw/workspace-symbol` |
+| Guided symbol disambiguation | `kast rpc` method `symbol/discover` |
 | Fuzzy text search in Kotlin source | `kast rpc` method `raw/workspace-search` |
 | Read a Kotlin file semantically | `kast rpc` method `symbol/scaffold` |
 | Read a lightweight declaration tree | `kast rpc` method `raw/file-outline` |
@@ -83,13 +84,18 @@ need exact JSON-RPC field names, response types, or discriminated variants.
 ## Workflow Patterns
 
 For exploration, start broad but semantic: `workspace-files` for module shape,
-`workspace-symbol` for name search, `workspace-search` for literals/comments,
-then `scaffold` or `file-outline` on the best file. Avoid opening many files.
+`workspace-symbol` for broad name search, `symbol/discover` when you have a
+simple name plus file/line/snippet context, `workspace-search` for
+literals/comments, then `scaffold` or `file-outline` on the best file. Avoid
+opening many files.
 
-For identity work, resolve first. Use simple symbol names with `kind`,
-`containingType`, and `fileHint` to disambiguate; do not pass fully-qualified
-names to `symbol/resolve` unless the command spec explicitly says a field wants
-one.
+For identity work, use `symbol/discover` first when a name is ambiguous or you
+have local code context. Then call `symbol/resolve` with the returned
+`resolveParams`. Use simple symbol names with `kind`, `containingType`, and
+`fileHint` to disambiguate; do not pass fully-qualified names to
+`symbol/resolve` unless the command spec explicitly says a field wants one.
+Request `includeDeclarationScope`, `includeDocumentation`, `surroundingLines`,
+or `includeSurroundingMembers` only when the extra context is needed.
 
 For impact work, combine semantic and index views. Use `references` and
 `callers` for compiler-backed truth, then `kast metrics impact <fqName> --json`,
