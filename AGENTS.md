@@ -102,7 +102,8 @@ methods:
   `symbol/rename`, and `symbol/write-and-validate`
 - `raw/*`: direct offset/file-based backend operations such as `raw/resolve`,
   `raw/diagnostics`, `raw/workspace-files`, and `raw/workspace-search`
-- `database/*`: index-backed queries such as `database/metrics`
+- `database/*`: Rust-owned source-index queries such as `database/metrics`;
+  these are handled by the CLI before JVM daemon passthrough
 - system methods: `health`, `runtime/status`, and `capabilities`
 
 Native tool names for discoverability: `kast_workspace_files`,
@@ -111,6 +112,11 @@ Native tool names for discoverability: `kast_workspace_files`,
 `kast_metrics`, `kast_diagnostics`, `kast_rename`, and
 `kast_write_and_validate`. These tools remain preferred; use the matching
 JSON-RPC method via `kast rpc` when a CLI fallback is needed.
+
+Do not add JVM handlers for operational SQLite reads. Kotlin may hydrate and
+write the source index for standalone or IDE-backed indexing, but source-index
+query methods such as `database/metrics` and SQLite-backed `symbol/query` are
+owned by `kast-rs`.
 
 **Prohibited substitutions:** `grep`, `rg`, `ast-grep`, `cat` + manual
 parsing must NOT be used for symbol identity, reference finding, or call

@@ -1,4 +1,5 @@
 {
+  "$schema": "./commands.schema.json",
   "version": "dev",
   "categories": {
     "system": [
@@ -119,7 +120,11 @@
       },
       "responseType": "KastScaffoldResponse",
       "successType": "SCAFFOLD_SUCCESS",
-      "failureType": "SCAFFOLD_FAILURE"
+      "failureType": "SCAFFOLD_FAILURE",
+      "tool": {
+        "name": "kast_scaffold",
+        "description": "Summarize a Kotlin file or type structure: declarations, signatures, imports, key call sites, and full file content. Prefer this over generic file reads for .kt and .kts files."
+      }
     },
     "symbol/discover": {
       "method": "symbol/discover",
@@ -187,7 +192,11 @@
       "notes": [
         "Use this before symbol/resolve when a simple name is ambiguous or context is available.",
         "Candidates include resolveParams and nextRequest fields that can be sent to symbol/resolve."
-      ]
+      ],
+      "tool": {
+        "name": "kast_symbol_discover",
+        "description": "Rank candidate Kotlin declarations for a simple symbol name, optionally using file, line, and snippet context. Use before kast_resolve when a name is ambiguous; each candidate returns resolveParams and a nextRequest."
+      }
     },
     "symbol/query": {
       "method": "symbol/query",
@@ -399,6 +408,7 @@
         "TIMEOUT"
       ],
       "notes": [
+        "Handled by the Rust CLI before daemon passthrough; JVM backends do not read this SQLite surface.",
         "Hard filters are enforced by SQLite/compiler facts, never by semantic score.",
         "Graph depth defaults to 1 and is capped at 2 in the first implementation.",
         "Semantic discovery is represented in the response shape but reports available=false until a sidecar exists."
@@ -470,7 +480,11 @@
         "The 'symbol' field takes simple names only (e.g. 'key'), never fully-qualified names.",
         "Use 'containingType' for scoping and 'fileHint' for disambiguation.",
         "Set includeDeclarationScope, includeDocumentation, surroundingLines, or includeSurroundingMembers only when the extra context is needed."
-      ]
+      ],
+      "tool": {
+        "name": "kast_resolve",
+        "description": "Resolve a Kotlin symbol to its declaration. Use when a name might be overloaded, inherited, or shadowed; disambiguate with kind, containingType, and fileHint before tracing references or callers."
+      }
     },
     "symbol/references": {
       "method": "symbol/references",
@@ -524,7 +538,11 @@
       "notes": [
         "The 'symbol' field takes simple names only.",
         "Resolve ambiguous names first with 'kind', 'containingType', or 'fileHint'."
-      ]
+      ],
+      "tool": {
+        "name": "kast_references",
+        "description": "Find every usage of a Kotlin symbol. Prefer this over grep for Kotlin identity because it can disambiguate overloads, inherited members, imports, and aliases."
+      }
     },
     "symbol/callers": {
       "method": "symbol/callers",
@@ -600,7 +618,11 @@
       "failureType": "CALLERS_FAILURE",
       "notes": [
         "The 'symbol' field takes simple names only."
-      ]
+      ],
+      "tool": {
+        "name": "kast_callers",
+        "description": "Trace incoming or outgoing call hierarchy for a Kotlin function. Use to understand flow, blast radius, or the entry points reaching a target."
+      }
     },
     "symbol/rename": {
       "method": "symbol/rename",
@@ -610,15 +632,15 @@
       "request": {
         "fields": {
           "type": {
-            "type": "string"
-          },
-          "value": {
-            "type": "object"
+            "type": "string",
+            "enum": [
+              "RENAME_BY_SYMBOL_REQUEST",
+              "RENAME_BY_OFFSET_REQUEST"
+            ]
           }
         },
         "required": [
-          "type",
-          "value"
+          "type"
         ]
       },
       "responseType": "KastRenameResponse",
@@ -689,6 +711,10 @@
             "newName"
           ]
         }
+      },
+      "tool": {
+        "name": "kast_rename",
+        "description": "Rename a Kotlin symbol safely by symbol identity or file offset. Pass the type discriminator plus the fields for that variant; non-clean responses mean the rename did not commit."
       }
     },
     "symbol/write-and-validate": {
@@ -699,15 +725,16 @@
       "request": {
         "fields": {
           "type": {
-            "type": "string"
-          },
-          "value": {
-            "type": "object"
+            "type": "string",
+            "enum": [
+              "CREATE_FILE_REQUEST",
+              "INSERT_AT_OFFSET_REQUEST",
+              "REPLACE_RANGE_REQUEST"
+            ]
           }
         },
         "required": [
-          "type",
-          "value"
+          "type"
         ]
       },
       "responseType": "KastWriteAndValidateResponse",
@@ -801,6 +828,10 @@
             "endOffset"
           ]
         }
+      },
+      "tool": {
+        "name": "kast_write_and_validate",
+        "description": "Apply a Kotlin edit and validate it in one call. Pass the type discriminator plus the fields for that variant. Prefer this over generic edit/create tools for .kt and .kts changes."
       }
     },
     "raw/resolve": {
@@ -973,7 +1004,11 @@
           "filePaths"
         ]
       },
-      "responseType": "DiagnosticsResult"
+      "responseType": "DiagnosticsResult",
+      "tool": {
+        "name": "kast_diagnostics",
+        "description": "Run Kotlin diagnostics on listed files. Run after any mutation that did not already validate; treat dirty results as a failed change."
+      }
     },
     "raw/rename": {
       "method": "raw/rename",
@@ -1077,7 +1112,11 @@
           "filePath"
         ]
       },
-      "responseType": "FileOutlineResult"
+      "responseType": "FileOutlineResult",
+      "tool": {
+        "name": "kast_file_outline",
+        "description": "Get a hierarchical symbol outline for a Kotlin file. Returns nested declarations with signatures and locations. Lighter than scaffold when only the structural overview is needed."
+      }
     },
     "raw/workspace-symbol": {
       "method": "raw/workspace-symbol",
@@ -1120,7 +1159,11 @@
           "pattern"
         ]
       },
-      "responseType": "WorkspaceSymbolResult"
+      "responseType": "WorkspaceSymbolResult",
+      "tool": {
+        "name": "kast_workspace_symbol",
+        "description": "Search the workspace for Kotlin symbols by name pattern. Supports substring matching (default) and regex. Use to find declarations across the codebase because it understands Kotlin symbol names, kinds, and declaration scopes."
+      }
     },
     "raw/workspace-search": {
       "method": "raw/workspace-search",
@@ -1154,7 +1197,14 @@
           "pattern"
         ]
       },
-      "responseType": "WorkspaceSearchResult"
+      "responseType": "WorkspaceSearchResult",
+      "tool": {
+        "name": "kast_workspace_search",
+        "defaultArgs": {
+          "caseSensitive": false
+        },
+        "description": "Search file contents across the workspace for text patterns. Supports substring and regex matching with optional file glob filtering. Use this instead of grep/rg for searching string literals, comments, and arbitrary text in Kotlin source files."
+      }
     },
     "raw/workspace-files": {
       "method": "raw/workspace-files",
@@ -1179,7 +1229,11 @@
           }
         }
       },
-      "responseType": "WorkspaceFilesResult"
+      "responseType": "WorkspaceFilesResult",
+      "tool": {
+        "name": "kast_workspace_files",
+        "description": "List Kotlin workspace modules and (optionally) their source files. Use to discover scope before scaffolding or resolving symbols. Far cheaper than recursive directory listings; truncation is reported per-module."
+      }
     },
     "raw/implementations": {
       "method": "raw/implementations",
@@ -1254,7 +1308,7 @@
     "database/metrics": {
       "method": "database/metrics",
       "category": "database",
-      "summary": "Query indexed source metrics",
+      "summary": "Query Rust-owned source-index metrics",
       "dataSource": "sqlite",
       "request": {
         "fields": {
@@ -1266,17 +1320,13 @@
           "metric": {
             "type": "string",
             "enum": [
-              "apiSurface",
-              "moduleBoundary",
-              "declarations",
               "fanIn",
               "fanOut",
-              "coupling",
-              "lowUsage",
-              "cycles",
-              "moduleDepth",
               "deadCode",
-              "impact"
+              "impact",
+              "coupling",
+              "search",
+              "graph"
             ]
           },
           "limit": {
@@ -1307,9 +1357,17 @@
           "metric"
         ]
       },
-      "responseType": "KastMetricsResponse",
+      "responseType": "RustMetricsResponse",
       "successType": "METRICS_SUCCESS",
-      "failureType": "METRICS_FAILURE"
+      "failureType": "METRICS_FAILURE",
+      "tool": {
+        "name": "kast_metrics",
+        "description": "Query Rust-owned source-index metrics: fanIn, fanOut, deadCode, impact, coupling, search, graph. The CLI handles this before daemon passthrough."
+      },
+      "notes": [
+        "Handled by the Rust CLI before daemon passthrough; JVM backends do not read this SQLite surface.",
+        "Use fanIn, fanOut, deadCode, impact, coupling, search, or graph for the v1 Rust metrics reader."
+      ]
     }
   }
 }

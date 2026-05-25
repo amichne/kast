@@ -55,11 +55,11 @@ The daemon exposes one JSON-RPC endpoint over UDS. All methods live under three 
 |--------|-----------|
 | `symbol/*` | Orchestrated, name-based operations (resolve, references, callers, scaffold, rename, write-and-validate) |
 | `raw/*` | Direct offset/path-based LSP-style operations (diagnostics, outline, completions, code-actions, etc.) |
-| `database/*` | Index-driven analytics (metrics queries) |
+| `database/*` | Rust-owned source-index analytics (metrics queries) |
 
 Plus system methods (`health`, `runtime/status`, `capabilities`) at the root. [1-cite-3](#1-cite-3)
 
-The CLI's `kast rpc` command is a transparent passthrough — it sends whatever JSON the user provides. The higher-level commands (`kast up`, `kast status`) construct the right JSON-RPC payloads internally. There is no "skill" concept in the CLI surface anymore; that's an agent/AI-tooling concern only, handled by the embedded skill resources. [1-cite-4](#1-cite-4)
+The CLI's `kast rpc` command is a transparent passthrough for backend-owned methods, with Rust-owned SQLite methods handled before daemon routing. The higher-level commands (`kast up`, `kast status`) construct the right JSON-RPC payloads internally. There is no "skill" concept in the CLI surface anymore; that's an agent/AI-tooling concern only, handled by the embedded skill resources. [1-cite-4](#1-cite-4)
 
 ---
 

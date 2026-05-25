@@ -6,301 +6,185 @@
 //
 // callFn(method, params) must return a Promise<string> with the JSON-RPC response.
 
-const ABS_PATH = "Absolute filesystem path.";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const TOOL_SPECS = [
-  {
-    name: "kast_workspace_files",
-    method: "raw/workspace-files",
-    description:
-      "List Kotlin workspace modules and (optionally) their source files. Use to discover scope before scaffolding or resolving symbols. Far cheaper than recursive directory listings; truncation is reported per-module.",
-    parameters: {
-      type: "object",
-      properties: {
-        moduleName: {
-          type: "string",
-          description: "Optional module name to restrict the listing to one module.",
-        },
-        includeFiles: {
-          type: "boolean",
-          description: "If true, return per-module source file lists.",
-        },
-        maxFilesPerModule: {
-          type: "integer",
-          description: "Cap per-module file list length. Modules above the cap report filesTruncated:true.",
-        },
-      },
-    },
-  },
-  {
-    name: "kast_workspace_symbol",
-    method: "raw/workspace-symbol",
-    description:
-      "Search the workspace for Kotlin symbols by name pattern. Supports substring matching (default) and regex. Use to find declarations across the codebase — far more precise than grep/rg for symbol names because it understands Kotlin semantics (overloads, inherited members, cross-module references).",
-    parameters: {
-      type: "object",
-      properties: {
-        pattern: { type: "string", description: "Search pattern to match against symbol names." },
-        kind: {
-          type: "string",
-          description: "Filter to symbols of this kind: CLASS, INTERFACE, OBJECT, FUNCTION, PROPERTY, ENUM_CLASS, ENUM_ENTRY, TYPE_ALIAS.",
-        },
-        maxResults: { type: "integer", description: "Maximum number of symbols to return. Default 100." },
-        regex: { type: "boolean", description: "When true, treats pattern as a regular expression." },
-        includeDeclarationScope: {
-          type: "boolean",
-          description: "When true, includes the declaration body text for each symbol.",
-        },
-      },
-      required: ["pattern"],
-    },
-  },
-  {
-    name: "kast_symbol_discover",
-    method: "symbol/discover",
-    description:
-      "Rank candidate Kotlin declarations for a simple symbol name, optionally using file, line, and snippet context. Use before kast_resolve when a name is ambiguous; each candidate returns resolveParams and a nextRequest.",
-    parameters: {
-      type: "object",
-      properties: {
-        symbol: { type: "string", description: "Simple symbol name." },
-        fileHint: { type: "string", description: ABS_PATH + " Narrows ranking to nearby declarations." },
-        line: { type: "integer", description: "One-based source line for local context." },
-        codeSnippet: { type: "string", description: "Short surrounding code text used only for ranking." },
-        kind: { type: "string", description: "Optional discriminator: class, function, property, etc." },
-        containingType: { type: "string", description: "FQ name of the enclosing type for member resolution." },
-        maxResults: { type: "integer", description: "Maximum ranked candidates to return. Default 10." },
-        includeDeclarationScope: {
-          type: "boolean",
-          description: "When true, includes declaration body text for each candidate.",
-        },
-        workspaceRoot: { type: "string", description: ABS_PATH + " Defaults to cwd." },
-      },
-      required: ["symbol"],
-    },
-  },
-  {
-    name: "kast_workspace_search",
-    method: "raw/workspace-search",
-    defaultArgs: { caseSensitive: false },
-    description:
-      "Search file contents across the workspace for text patterns. Supports substring and regex matching with optional file glob filtering. Use this instead of grep/rg for searching string literals, comments, and arbitrary text in Kotlin source files.",
-    parameters: {
-      type: "object",
-      properties: {
-        pattern: { type: "string", description: "Search pattern (substring or regex)." },
-        regex: { type: "boolean", description: "When true, treats pattern as a regular expression." },
-        maxResults: { type: "integer", description: "Maximum number of matches to return. Default 100." },
-        fileGlob: { type: "string", description: "Optional glob to restrict search (e.g., '*.kt')." },
-        caseSensitive: { type: "boolean", description: "Case-sensitive matching. Default false." },
-      },
-      required: ["pattern"],
-    },
-  },
-  {
-    name: "kast_file_outline",
-    method: "raw/file-outline",
-    description:
-      "Get a hierarchical symbol outline for a Kotlin file. Returns nested declarations (classes, functions, properties) with their signatures and locations. Lighter than scaffold — use when you only need the structural overview without references, type hierarchy, or file content.",
-    parameters: {
-      type: "object",
-      properties: {
-        filePath: { type: "string", description: ABS_PATH + " Required." },
-      },
-      required: ["filePath"],
-    },
-  },
-  {
-    name: "kast_scaffold",
-    method: "symbol/scaffold",
-    description:
-      "Summarize a Kotlin file/type structure (declarations, signatures, imports, key call sites). Returns the full file content alongside the semantic skeleton — no separate `view` call needed for .kt files. ALWAYS prefer this over `view` for .kt/.kts files.",
-    parameters: {
-      type: "object",
-      properties: {
-        targetFile: { type: "string", description: ABS_PATH + " Required. Singular path." },
-        targetSymbol: { type: "string", description: "Optional simple symbol name to focus the scaffold within targetFile." },
-        workspaceRoot: { type: "string", description: ABS_PATH + " Defaults to cwd." },
-        mode: {
-          type: "string",
-          description: "Scaffold mode (e.g. \"implement\", \"summary\"). Omit for default.",
-        },
-      },
-      required: ["targetFile"],
-    },
-  },
-  {
-    name: "kast_resolve",
-    method: "symbol/resolve",
-    description:
-      "Resolve a Kotlin symbol to its declaration. Use first whenever a name might be overloaded, inherited, or shadowed — disambiguate with kind/containingType/fileHint before tracing references or callers.",
-    parameters: {
-      type: "object",
-      properties: {
-        symbol: { type: "string", description: "Simple symbol name." },
-        kind: { type: "string", description: "Optional discriminator: class, function, property, etc." },
-        containingType: { type: "string", description: "FQ name of the enclosing type for member resolution." },
-        fileHint: { type: "string", description: ABS_PATH + " Narrows resolution when the same name lives in multiple files." },
-        workspaceRoot: { type: "string", description: ABS_PATH + " Defaults to cwd." },
-        includeDeclarationScope: {
-          type: "boolean",
-          description: "Include the declaration body text and line range on the resolved symbol.",
-        },
-        includeDocumentation: {
-          type: "boolean",
-          description: "Include KDoc, parameter descriptions, and return type documentation when available.",
-        },
-        surroundingLines: {
-          type: "integer",
-          description: "Include this many source lines around the resolved declaration.",
-        },
-        includeSurroundingMembers: {
-          type: "boolean",
-          description: "Include lightweight sibling declarations from the containing scope.",
-        },
-      },
-      required: ["symbol"],
-    },
-  },
-  {
-    name: "kast_references",
-    method: "symbol/references",
-    description:
-      "Find every usage of a Kotlin symbol. ALWAYS prefer this over `grep` for Kotlin identity — grep cannot disambiguate overloads, inherited members, or imports vs aliases.",
-    parameters: {
-      type: "object",
-      properties: {
-        symbol: { type: "string" },
-        kind: { type: "string" },
-        containingType: { type: "string" },
-        fileHint: { type: "string", description: ABS_PATH },
-        includeDeclaration: { type: "boolean", description: "Include the declaration site in results." },
-        workspaceRoot: { type: "string", description: ABS_PATH + " Defaults to cwd." },
-      },
-      required: ["symbol"],
-    },
-  },
-  {
-    name: "kast_callers",
-    method: "symbol/callers",
-    description:
-      "Trace incoming or outgoing call hierarchy for a Kotlin function. Use to understand flow, blast radius, or to find the entry points reaching a target.",
-    parameters: {
-      type: "object",
-      properties: {
-        symbol: { type: "string" },
-        direction: { type: "string", enum: ["incoming", "outgoing"] },
-        depth: { type: "integer", description: "Max levels of recursion." },
-        maxTotalCalls: { type: "integer" },
-        maxChildrenPerNode: { type: "integer" },
-        fileHint: { type: "string", description: ABS_PATH },
-        containingType: { type: "string" },
-        workspaceRoot: { type: "string", description: ABS_PATH + " Defaults to cwd." },
-      },
-      required: ["symbol"],
-    },
-  },
-  {
-    name: "kast_metrics",
-    method: "database/metrics",
-    description:
-      "Query the indexed source metrics: fanIn, fanOut, coupling, lowUsage, cycles, moduleDepth, deadCode, impact. Treat results as advisory if the response indicates the reference index is missing or stale.",
-    parameters: {
-      type: "object",
-      properties: {
-        metric: {
-          type: "string",
-          description: "fanIn | fanOut | coupling | lowUsage | cycles | moduleDepth | deadCode | impact.",
-        },
-        symbol: { type: "string", description: "FQ name when the metric is symbol-scoped." },
-        depth: { type: "integer" },
-        limit: { type: "integer" },
-        workspaceRoot: { type: "string", description: ABS_PATH + " Defaults to cwd." },
-      },
-      required: ["metric"],
-    },
-  },
-  {
-    name: "kast_diagnostics",
-    method: "raw/diagnostics",
-    description:
-      "Run Kotlin diagnostics on the listed files. Run after any mutation that did not already validate; treat dirty results as a failed change.",
-    parameters: {
-      type: "object",
-      properties: {
-        filePaths: {
-          type: "array",
-          items: { type: "string", description: ABS_PATH },
-          description: "Absolute paths of files to validate.",
-        },
-      },
-      required: ["filePaths"],
-    },
-  },
-  {
-    name: "kast_rename",
-    method: "symbol/rename",
-    description:
-      "Rename a Kotlin symbol safely (updates every reference). Pass the `type` discriminator (RENAME_BY_SYMBOL_REQUEST or RENAME_BY_OFFSET_REQUEST) plus the request fields. Validation runs automatically — non-clean responses mean the rename did not commit.",
-    parameters: {
-      type: "object",
-      properties: {
-        type: {
-          type: "string",
-          enum: ["RENAME_BY_SYMBOL_REQUEST", "RENAME_BY_OFFSET_REQUEST"],
-        },
-        symbol: { type: "string" },
-        newName: { type: "string" },
-        filePath: { type: "string", description: ABS_PATH },
-        offset: { type: "integer" },
-        containingType: { type: "string" },
-        kind: { type: "string" },
-        workspaceRoot: { type: "string", description: ABS_PATH + " Defaults to cwd." },
-      },
-      required: ["type", "newName"],
-      additionalProperties: true,
-    },
-  },
-  {
-    name: "kast_write_and_validate",
-    method: "symbol/write-and-validate",
-    description:
-      "Apply a Kotlin edit and validate it in one call. Pass the `type` discriminator (CREATE_FILE_REQUEST, INSERT_AT_OFFSET_REQUEST, or REPLACE_RANGE_REQUEST). ALWAYS prefer this over the generic `edit`/`create` tools for .kt/.kts changes — it guards against compile breakage and import drift.",
-    parameters: {
-      type: "object",
-      properties: {
-        type: {
-          type: "string",
-          enum: ["CREATE_FILE_REQUEST", "INSERT_AT_OFFSET_REQUEST", "REPLACE_RANGE_REQUEST"],
-        },
-        filePath: { type: "string", description: ABS_PATH },
-        content: { type: "string" },
-        startOffset: { type: "integer" },
-        endOffset: { type: "integer" },
-        offset: { type: "integer" },
-        expectedHash: { type: "string", description: "Optional sha256 of the file before edit; protects against concurrent change." },
-        workspaceRoot: { type: "string", description: ABS_PATH + " Defaults to cwd." },
-      },
-      required: ["type", "filePath"],
-      additionalProperties: true,
-    },
-  },
+const HERE = dirname(fileURLToPath(import.meta.url));
+
+const COMMAND_CATALOG_CANDIDATES = [
+  // Installed extension path. The Rust installer writes this from the canonical
+  // packaged skill catalog so installed tools do not carry a second catalog.
+  join(HERE, "commands.json"),
+  // Repository development path.
+  resolve(HERE, "..", "..", "..", "kast-skill", "references", "commands.json"),
 ];
+
+function loadCommandCatalog() {
+  for (const candidate of COMMAND_CATALOG_CANDIDATES) {
+    if (!existsSync(candidate)) continue;
+    return JSON.parse(readFileSync(candidate, "utf8"));
+  }
+  throw new Error(
+    `Kast JSON-RPC command catalog not found. Checked: ${COMMAND_CATALOG_CANDIDATES.join(", ")}`,
+  );
+}
+
+const COMMAND_CATALOG = loadCommandCatalog();
+
+function orderedCommands(catalog) {
+  const seen = new Set();
+  const commands = [];
+  for (const methods of Object.values(catalog.categories ?? {})) {
+    for (const method of methods) {
+      const command = catalog.commands?.[method];
+      if (command && !seen.has(method)) {
+        seen.add(method);
+        commands.push(command);
+      }
+    }
+  }
+  for (const [method, command] of Object.entries(catalog.commands ?? {})) {
+    if (!seen.has(method)) commands.push(command);
+  }
+  return commands;
+}
+
+function jsonType(type, nullable) {
+  return nullable ? [type, "null"] : type;
+}
+
+function itemSchema(items) {
+  if (!items) return { type: "object", additionalProperties: true };
+  if (typeof items === "string") {
+    return items === "object"
+      ? { type: "object", additionalProperties: true }
+      : { type: items };
+  }
+  return fieldSchema(items);
+}
+
+function requestRequired(request) {
+  if (Array.isArray(request?.required)) return request.required;
+  return Object.entries(request?.fields ?? {})
+    .filter(([, field]) => field?.optional !== true)
+    .map(([name]) => name);
+}
+
+function fieldsToProperties(fields) {
+  return Object.fromEntries(
+    Object.entries(fields ?? {}).map(([name, field]) => [name, fieldSchema(field)]),
+  );
+}
+
+function fieldSchema(field) {
+  const nullable = field?.nullable === true;
+  const schema = {};
+  switch (field?.type) {
+    case "array":
+      schema.type = jsonType("array", nullable);
+      schema.items = itemSchema(field.items);
+      break;
+    case "object":
+      schema.type = jsonType("object", nullable);
+      if (field.fields) {
+        schema.properties = fieldsToProperties(field.fields);
+        const required = requestRequired(field);
+        if (required.length > 0) schema.required = required;
+        schema.additionalProperties = false;
+      } else {
+        schema.additionalProperties = true;
+      }
+      break;
+    case "boolean":
+    case "integer":
+    case "string":
+      schema.type = jsonType(field.type, nullable);
+      break;
+    default:
+      schema.type = nullable ? ["object", "null"] : "object";
+      schema.additionalProperties = true;
+      break;
+  }
+  if (Array.isArray(field?.enum)) {
+    schema.enum = nullable ? [...field.enum, null] : [...field.enum];
+  }
+  return schema;
+}
+
+function requestSchema(request) {
+  const schema = {
+    type: "object",
+    properties: fieldsToProperties(request?.fields ?? {}),
+    additionalProperties: false,
+  };
+  const required = requestRequired(request);
+  if (required.length > 0) schema.required = required;
+  return schema;
+}
+
+function variantSchema(variantName, request) {
+  const schema = requestSchema(request);
+  schema.properties = {
+    type: { type: "string", enum: [variantName] },
+    ...schema.properties,
+  };
+  schema.required = ["type", ...requestRequired(request)];
+  return schema;
+}
+
+function parametersForCommand(command) {
+  const variants = command.variants ? Object.entries(command.variants) : [];
+  if (variants.length === 0) return requestSchema(command.request);
+  return {
+    type: "object",
+    oneOf: variants.map(([variantName, request]) => variantSchema(variantName, request)),
+    discriminator: { propertyName: "type" },
+  };
+}
+
+function collectNamedFields(request, name, out = []) {
+  for (const [fieldName, field] of Object.entries(request?.fields ?? {})) {
+    if (fieldName === name) out.push(field);
+    if (field?.fields) collectNamedFields(field, name, out);
+    if (field?.items && typeof field.items === "object") {
+      collectNamedFields({ fields: { item: field.items } }, name, out);
+    }
+  }
+  return out;
+}
+
+function usesLowercaseKind(command) {
+  const kindFields = collectNamedFields(command.request, "kind");
+  for (const variant of Object.values(command.variants ?? {})) {
+    collectNamedFields(variant, "kind", kindFields);
+  }
+  return kindFields.some((field) =>
+    Array.isArray(field.enum) && field.enum.some((value) => value === value.toLowerCase()),
+  );
+}
+
+function buildToolSpecs(catalog) {
+  return orderedCommands(catalog)
+    .filter((command) => command.tool)
+    .map((command) => ({
+      name: command.tool.name,
+      method: command.method,
+      description: command.tool.description,
+      defaultArgs: command.tool.defaultArgs,
+      parameters: parametersForCommand(command),
+      lowercaseKind: usesLowercaseKind(command),
+    }));
+}
+
+const TOOL_SPECS = buildToolSpecs(COMMAND_CATALOG);
 
 /** Immutable set of all kast_* tool names exposed via RPC. */
 export const KAST_TOOL_NAMES = Object.freeze(new Set(TOOL_SPECS.map((s) => s.name)));
 
-const LOWERCASE_KIND_METHODS = new Set([
-  "symbol/discover",
-  "symbol/resolve",
-  "symbol/references",
-  "symbol/callers",
-  "symbol/rename",
-]);
-
-function normalizeArgs(method, args) {
+function normalizeArgs(spec, args) {
   const normalized = { ...(args ?? {}) };
-  if (LOWERCASE_KIND_METHODS.has(method) && typeof normalized.kind === "string") {
+  if (spec.lowercaseKind && typeof normalized.kind === "string") {
     normalized.kind = normalized.kind.toLowerCase();
   }
   return normalized;
@@ -318,9 +202,10 @@ export function makeKastTools(callFn) {
     name: spec.name,
     description: spec.description,
     parameters: spec.parameters,
-    handler: (args) =>
-      spec.defaultArgs
-        ? callFn(spec.method, { ...spec.defaultArgs, ...normalizeArgs(spec.method, args) })
-        : callFn(spec.method, normalizeArgs(spec.method, args)),
+    handler: (args) => {
+      const normalized = normalizeArgs(spec, args);
+      const params = spec.defaultArgs ? { ...spec.defaultArgs, ...normalized } : normalized;
+      return callFn(spec.method, params);
+    },
   }));
 }
