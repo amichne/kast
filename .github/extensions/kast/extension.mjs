@@ -113,11 +113,11 @@ async function resolveKastBinary() {
   addCandidate(readTomlKey(join(configDir, "config.toml"), "cli", "binaryPath"));
   addCandidate(join(homedir(), ".kast", "bin", "kast"));
 
-  const pathResult = await execBash("command -v kast 2>/dev/null || command -v kast-cli 2>/dev/null || true");
+  const pathResult = await execBash("command -v kast 2>/dev/null || true");
   if (pathResult.ok) addCandidate(pathResult.stdout.trim());
 
-  addCandidate(join(REPO_ROOT, "kast-cli", "build", "scripts", "kast-cli"));
-  addCandidate(join(REPO_ROOT, "dist", "cli", "kast-cli"));
+  addCandidate(join(REPO_ROOT, "target", "debug", "kast"));
+  addCandidate(join(REPO_ROOT, "target", "release", "kast"));
 
   if (existsSync(RESOLVE_SCRIPT)) {
     const {ok, stdout} = await execBash(`bash ${JSON.stringify(RESOLVE_SCRIPT)}`);
@@ -134,8 +134,8 @@ async function resolveKastBinary() {
   }
 
   resolveError = rejected.length
-    ? `no resolved Kast CLI supports kast rpc; rejected: ${rejected.join(", ")}`
-    : "no Kast CLI candidate found; build the repo-local CLI or install a matching Kast release";
+    ? `no resolved Rust kast CLI supports kast rpc; rejected: ${rejected.join(", ")}`
+    : "no Rust kast CLI candidate found; build kast-rs or install a matching Kast release";
   return null;
 }
 

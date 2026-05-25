@@ -11,7 +11,7 @@ analyses that now sit alongside the raw `Kast/*.md` notes.
 
 ## Entities
 
-- [[entities/kast-cli]] - The native front end that resolves an installation,
+- [[entities/rust-cli]] - The native front end that resolves an installation,
   manages daemon lifecycles, and exposes the user-facing commands.
 - [[entities/analysis-api]] - The stable protocol and data model shared by the
   CLI, transport layer, and analysis backend.
@@ -68,7 +68,7 @@ analyses that now sit alongside the raw `Kast/*.md` notes.
   contract and core value types.
 - [[sources/analysis-server-json-rpc-transport-layer]] - Covers transport
   setup, request dispatch, descriptors, and error handling.
-- [[sources/kast-cli-native-cli-module]] - Details CLI runtime management,
+- [[sources/rust-cli-control-plane]] - Details CLI runtime management,
   transport calls, and skill installation helpers.
 - [[sources/backend-standalone-analysis-engine]] - Explains the core analysis
   engine and its major subsystems.

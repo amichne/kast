@@ -13,27 +13,28 @@ start asking questions.
 
 ## Prerequisites
 
-- **Java 21 or newer** on your `PATH` or `JAVA_HOME`. Homebrew installs
-  `openjdk@21`; the standalone backend is a JVM process and won't start
-  without Java.
+- **Java 21 or newer** on your `PATH` or `JAVA_HOME` when you run the
+  standalone backend. The Homebrew CLI package is native and does not install
+  a JDK.
 - **macOS, Linux, or Windows.** Homebrew is the preferred local CLI path on
   supported platforms; the shell installer covers the rest.
 
 ## Homebrew install
 
 Homebrew is the default local developer path when your platform is supported by
-the `amichne/kast` tap. It installs the stable CLI package and pulls
-`openjdk@21` as the Java runtime dependency.
+the `amichne/kast` tap. `kast` installs the Rust CLI from `amichne/kast-rs`;
+`kast-plugin` installs the IDEA plugin bundle from this repository's releases.
 
 ```console title="Install kast with Homebrew"
 brew tap amichne/kast
 brew install kast
+brew install kast-plugin
 ```
 
-Use Homebrew for ordinary terminal use. Use the shell installer when you need
-the interactive wizard, a standalone backend install from GitHub release
-assets, the IDEA plugin zip, packaged Copilot surfaces, local `dist/`
-artifacts, or a non-Homebrew machine.
+Use Homebrew for ordinary terminal use when you already have a backend path in
+mind. Use the shell installer when you need the interactive wizard, a
+standalone backend install from GitHub release assets, packaged Copilot
+surfaces, local `dist/` artifacts, or a non-Homebrew machine.
 
 ## Shell installer
 
@@ -58,7 +59,9 @@ The wizard sniffs your environment (running IDEA-compatible IDEs, existing tools
 Java version), lets you pick an install mode, writes
 `$HOME/.config/kast/config.toml`, installs managed files under
 `$HOME/.kast`, records the install in `~/.kast/.manifest.json`, and can
-install the packaged Copilot surfaces you use next.
+install the packaged Copilot surfaces you use next. Interactive downloads
+show a progress bar; non-interactive downloads stay quiet unless you override
+that with `KAST_DOWNLOAD_PROGRESS`.
 
 ??? info "What the wizard does, step by step"
 
@@ -119,8 +122,8 @@ agent.
 Use `amichne/kast-action@v1` for GitHub Actions-compatible setup steps,
 including hosted coding agents such as Devin when they run inside a workflow.
 The action installs the headless agent bundle, adds the `kast` binary to
-`PATH`, exports `KAST_CONFIG_HOME`, `KAST_INSTALL_ROOT`, and
-`KAST_MANAGED_ROOT`, and marks the install as `KAST_INSTALL_SOURCE=action`.
+`PATH`, exports action-managed environment values for config/runtime paths,
+and marks the install as `KAST_INSTALL_SOURCE=action`.
 
 ```yaml title="Install Kast in a GitHub Actions-compatible job"
 steps:
@@ -210,7 +213,7 @@ Set the direct artifact URLs and run the script from the checked-out
 workspace:
 
 ```bash title="Install Kast for a headless agent"
-export KAST_AGENT_CLI_URL="https://artifacts.example.internal/kast-cli.zip"
+export KAST_AGENT_CLI_URL="https://artifacts.example.internal/kast.zip"
 export KAST_AGENT_BACKEND_URL="https://artifacts.example.internal/kast-standalone.zip"
 export KAST_AGENT_CLI_SHA256="sha256:<cli-digest>"
 export KAST_AGENT_BACKEND_SHA256="sha256:<backend-digest>"
@@ -268,7 +271,7 @@ same bundle shape from local artifacts:
 
 ```bash title="Package a headless agent bundle"
 ./scripts/package-headless-agent-bundle.sh \
-  --cli-archive dist/kast-v1.2.3-linux-x64.zip \
+  --cli-archive ../kast-rs/dist/kast-v1.2.3-linux-x64.zip \
   --backend-archive dist/backend.zip \
   --version v1.2.3 \
   --platform-id linux-x64 \
@@ -277,10 +280,11 @@ same bundle shape from local artifacts:
 
 ## Verify release assets
 
-Published releases include the platform zips, headless agent bundle,
-`SHA256SUMS`, and `build-provenance.json`. Mirror or promote those files
-together, then run the same verifier used by CI before importing them into an
-internal artifact store:
+Published releases from `amichne/kast` include the standalone daemon zip, IDEA
+plugin zip, `SHA256SUMS`, and `build-provenance.json`. CLI binary releases are
+published by `amichne/kast-rs`. Mirror or promote each repository's files
+together, then run the same verifier used by CI before importing Kast daemon
+or plugin artifacts into an internal artifact store:
 
 ```bash title="Verify a downloaded release directory"
 gh release download v1.2.3 --repo amichne/kast --dir kast-release-v1.2.3
@@ -362,6 +366,7 @@ images, private artifact stores, and CI-style setup scripts.
 | `KAST_EXPECTED_SHA256`           | Verifies `KAST_ARCHIVE_PATH` before extraction    |
 | `KAST_BACKEND_ARCHIVE_PATH`      | Installs the standalone backend from a local zip  |
 | `KAST_BACKEND_EXPECTED_SHA256`   | Verifies `KAST_BACKEND_ARCHIVE_PATH`              |
+| `KAST_DOWNLOAD_PROGRESS`         | Sets download display mode: `auto`, `always`, or `never` |
 | `KAST_INSTALL_SOURCE`            | Writes a custom source label into install metadata |
 | `KAST_SKILL_SCOPE`               | Sets skill scope when prompts are unavailable     |
 

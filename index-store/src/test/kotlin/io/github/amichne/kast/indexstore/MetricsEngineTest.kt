@@ -4,6 +4,8 @@ import io.github.amichne.kast.indexstore.api.graph.MetricsGraph
 import io.github.amichne.kast.indexstore.api.index.FileIndexUpdate
 import io.github.amichne.kast.indexstore.api.metrics.general.ConfidenceLevel
 import io.github.amichne.kast.indexstore.api.metrics.general.SemanticBasis
+import io.github.amichne.kast.indexstore.api.metrics.symbolquery.SymbolQueryFilters
+import io.github.amichne.kast.indexstore.api.metrics.symbolquery.SymbolQueryGraphDirection
 import io.github.amichne.kast.indexstore.api.reference.DeclarationKind
 import io.github.amichne.kast.indexstore.api.reference.DeclarationRow
 import io.github.amichne.kast.indexstore.api.reference.DeclarationVisibility
@@ -195,6 +197,96 @@ class MetricsEngineTest {
     }
 
     @Test
+    fun `symbol query declarations preserve exact and lexical evidence`() {
+        val root = seededWorkspace()
+
+        MetricsEngine(root).use { metrics ->
+            val exact = metrics.symbolQueryDeclarations(query = "lib.Foo", limit = 5)
+            val lexical = metrics.symbolQueryDeclarations(query = "Internal", limit = 5)
+
+            assertEquals("lib.Foo", exact.first().fqName)
+            assertTrue(exact.first().exactMatches.any { it.field == "fq_names.fq_name" && it.matchType == "EQUALS" })
+            assertTrue(lexical.any { result ->
+                result.fqName == "lib.InternalApi" &&
+                    result.lexicalMatches.any { it.field == "fq_names.fq_name" && it.term == "Internal" }
+            })
+        }
+    }
+
+    @Test
+    fun `symbol query filters are enforced from indexed facts`() {
+        val root = seededWorkspace()
+
+        MetricsEngine(root).use { metrics ->
+            val filtered = metrics.symbolQueryByFilters(
+                filters = SymbolQueryFilters(
+                    kinds = setOf("FUNCTION"),
+                    visibility = setOf("INTERNAL"),
+                    modulePath = ":lib",
+                    sourceSet = "main",
+                    fileGlob = "*/Bar.kt",
+                    packagePrefix = "lib",
+                    fqNamePrefix = "lib",
+                ),
+                limit = 10,
+            )
+
+            assertEquals(listOf("lib.Bar", "lib.InternalApi"), filtered.map { it.fqName })
+            assertTrue(filtered.all { it.kind == "FUNCTION" && it.visibility == "INTERNAL" && it.modulePath == ":lib" })
+            assertTrue(filtered.all { result -> result.structuralConstraints.all { it.source == "sqlite" } })
+        }
+    }
+
+    @Test
+    fun `symbol query graph edges honor direction edge kinds and declaration supertypes`() {
+        val root = seededWorkspace()
+
+        MetricsEngine(root).use { metrics ->
+            val foo = metrics.symbolQueryDeclarations(query = "lib.Foo", limit = 1).single()
+            val incomingCalls = metrics.symbolQueryGraphEdges(
+                startFqIds = setOf(foo.fqId),
+                direction = SymbolQueryGraphDirection.INCOMING,
+                edgeKinds = setOf(EdgeKind.CALL),
+                depth = 1,
+                maxEdgesPerResult = 10,
+            )
+            val incomingInheritance = metrics.symbolQueryGraphEdges(
+                startFqIds = setOf(foo.fqId),
+                direction = SymbolQueryGraphDirection.INCOMING,
+                edgeKinds = setOf(EdgeKind.INHERITANCE),
+                depth = 1,
+                maxEdgesPerResult = 10,
+            )
+            val appA = metrics.symbolQueryDeclarations(query = "app.A", limit = 1).single()
+            val outgoingTypeRefs = metrics.symbolQueryGraphEdges(
+                startFqIds = setOf(appA.fqId),
+                direction = SymbolQueryGraphDirection.OUTGOING,
+                edgeKinds = setOf(EdgeKind.TYPE_REF),
+                depth = 1,
+                maxEdgesPerResult = 10,
+            )
+
+            assertTrue(incomingCalls.all { it.edgeKind == "CALL" && it.toFqName == "lib.Foo" })
+            assertTrue(incomingCalls.any { it.fromFqName == "app.A" && it.sourceFile == "/app/A.kt" && it.sourceOffset == 10 })
+            assertEquals(listOf("app.C"), incomingInheritance.mapNotNull { it.fromFqName })
+            assertEquals(listOf("lib.Bar"), outgoingTypeRefs.map { it.toFqName })
+        }
+    }
+
+    @Test
+    fun `symbol query declarations carry confidence from the source index`() {
+        val root = seededWorkspace()
+
+        MetricsEngine(root).use { metrics ->
+            val result = metrics.symbolQueryDeclarations(query = "lib.Foo", limit = 1).single()
+
+            assertEquals(SemanticBasis.K2_RESOLVED, result.confidence.semanticBasis)
+            assertEquals(ConfidenceLevel.SPECULATIVE, result.confidence.level)
+            assertEquals(3.0 / 7.0, result.confidence.indexCompleteness)
+        }
+    }
+
+    @Test
     fun `returns empty metrics when index database does not exist`() {
         val root = workspaceRoot.toAbsolutePath().normalize()
 
@@ -254,7 +346,9 @@ class MetricsEngineTest {
                 listOf(
                     "/app/A.kt" to listOf(declaration("app.A", DeclarationKind.CLASS, DeclarationVisibility.PUBLIC, "/app/A.kt", ":app")),
                     "/app/B.kt" to listOf(declaration("app.B", DeclarationKind.CLASS, DeclarationVisibility.PUBLIC, "/app/B.kt", ":app")),
-                    "/app/C.kt" to listOf(declaration("app.C", DeclarationKind.CLASS, DeclarationVisibility.PUBLIC, "/app/C.kt", ":app")),
+                    "/app/C.kt" to listOf(
+                        declaration("app.C", DeclarationKind.CLASS, DeclarationVisibility.PUBLIC, "/app/C.kt", ":app", supertypes = listOf("lib.Foo")),
+                    ),
                     "/app/UnusedPrivate.kt" to listOf(
                         declaration("app.unusedPrivate", DeclarationKind.PROPERTY, DeclarationVisibility.PRIVATE, "/app/UnusedPrivate.kt", ":app"),
                     ),
@@ -311,6 +405,7 @@ class MetricsEngineTest {
         visibility: DeclarationVisibility,
         filePath: String,
         modulePath: String,
+        supertypes: List<String> = emptyList(),
     ): DeclarationRow =
         DeclarationRow(
             fqName = fqName,
@@ -320,6 +415,7 @@ class MetricsEngineTest {
             declarationOffset = 1,
             modulePath = modulePath,
             sourceSet = "main",
+            supertypes = supertypes,
         )
 
     private fun reference(

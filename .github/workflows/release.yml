@@ -196,179 +196,10 @@ jobs:
               --generate-notes
           fi
 
-  build-and-upload:
-    name: Build release asset (${{ matrix.asset_id }})
-    needs: [prepare-release]
-    runs-on: ${{ matrix.runner }}
-    permissions:
-      contents: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runner: ubuntu-latest
-            asset_id: linux-x64
-          - runner: macos-14
-            asset_id: macos-arm64
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ needs.prepare-release.outputs.release_tag }}
-
-      - uses: graalvm/setup-graalvm@v1
-        with:
-          distribution: graalvm-community
-          java-version: "21"
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          native-image-job-reports: "true"
-
-      - uses: gradle/actions/setup-gradle@v5
-
-      - name: Build portable Kast distribution
-        shell: bash
-        run: |
-          set -euo pipefail
-          ./kast.sh release --tag "${{ needs.prepare-release.outputs.release_tag }}" --platform-id "${{ matrix.asset_id }}" --shrink
-
-      - name: Smoke portable Kast distribution
-        shell: bash
-        run: |
-          set -euo pipefail
-          dist_dir="$RUNNER_TEMP/kast-dist"
-          rm -rf "$dist_dir"
-          mkdir -p "$dist_dir"
-          unzip -q kast-cli/build/distributions/kast-cli-*-portable.zip -d "$dist_dir"
-          "$dist_dir/kast-cli/kast-cli" --help
-
-      - name: Build standalone backend for headless agent bundle
-        if: matrix.asset_id == 'linux-x64'
-        shell: bash
-        run: ./kast.sh build backend --shrink
-
-      - name: Package headless agent bundle
-        if: matrix.asset_id == 'linux-x64'
-        shell: bash
-        run: |
-          set -euo pipefail
-          tag="${{ needs.prepare-release.outputs.release_tag }}"
-          ./scripts/package-headless-agent-bundle.sh \
-            --cli-archive "dist/kast-${tag}-linux-x64.zip" \
-            --backend-archive "dist/backend.zip" \
-            --version "$tag" \
-            --platform-id linux-x64 \
-            --output "dist/kast-headless-agent-${tag}-linux-x64.zip"
-
-      - name: Smoke headless agent bundle
-        if: matrix.asset_id == 'linux-x64'
-        shell: bash
-        run: |
-          set -euo pipefail
-          tag="${{ needs.prepare-release.outputs.release_tag }}"
-          bundle_path="dist/kast-headless-agent-${tag}-linux-x64.zip"
-          extract_dir="$RUNNER_TEMP/kast-headless-agent-bundle"
-          workspace_dir="$RUNNER_TEMP/kast-headless-agent-workspace"
-          home_dir="$RUNNER_TEMP/kast-headless-agent-home"
-          install_root="$RUNNER_TEMP/kast-headless-agent-install"
-
-          rm -rf "$extract_dir" "$workspace_dir" "$home_dir" "$install_root"
-          mkdir -p "$extract_dir" "$workspace_dir" "$home_dir"
-          unzip -q "$bundle_path" -d "$extract_dir"
-          git -C "$workspace_dir" init -q
-
-          (
-            cd "$workspace_dir"
-            HOME="$home_dir" \
-            SHELL=/bin/bash \
-            KAST_AGENT_INSTALL_ROOT="$install_root" \
-            KAST_AGENT_WORKSPACE="$workspace_dir" \
-            "$extract_dir/install.sh"
-          )
-
-          "$install_root/bin/kast" --help >/dev/null
-
-      - name: Write build provenance
-        shell: bash
-        run: |
-          set -euo pipefail
-          tag="${{ needs.prepare-release.outputs.release_tag }}"
-          mkdir -p dist
-          asset_name="kast-${tag}-${{ matrix.asset_id }}.zip"
-          digest="$(awk -v name="$asset_name" '$2 == name { print $1; found = 1 } END { if (!found) exit 1 }' dist/checksums.txt)"
-          cat > dist/build-provenance-${{ matrix.asset_id }}.json <<PROVEOF
-          {
-            "runId": "${{ github.run_id }}",
-            "runNumber": "${{ github.run_number }}",
-            "runAttempt": "${{ github.run_attempt }}",
-            "sha": "${{ github.sha }}",
-            "ref": "${{ github.ref }}",
-            "workflowRef": "${{ github.workflow_ref }}",
-            "actor": "${{ github.actor }}",
-            "platformId": "${{ matrix.asset_id }}",
-            "assetName": "${asset_name}",
-            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-            "assetDigest": "sha256:${digest}"
-          }
-          PROVEOF
-
-          if [[ "${{ matrix.asset_id }}" == "linux-x64" ]]; then
-            headless_asset_name="kast-headless-agent-${tag}-linux-x64.zip"
-            headless_digest="$(sha256sum "dist/${headless_asset_name}" | awk '{ print $1 }')"
-            cat > dist/build-provenance-headless-agent-linux-x64.json <<PROVEOF
-          {
-            "runId": "${{ github.run_id }}",
-            "runNumber": "${{ github.run_number }}",
-            "runAttempt": "${{ github.run_attempt }}",
-            "sha": "${{ github.sha }}",
-            "ref": "${{ github.ref }}",
-            "workflowRef": "${{ github.workflow_ref }}",
-            "actor": "${{ github.actor }}",
-            "platformId": "headless-agent-linux-x64",
-            "assetName": "${headless_asset_name}",
-            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-            "assetDigest": "sha256:${headless_digest}"
-          }
-          PROVEOF
-          fi
-
-      - name: Upload release asset
-        shell: bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          tag="${{ needs.prepare-release.outputs.release_tag }}"
-          asset_name="kast-${tag}-${{ matrix.asset_id }}.zip"
-          asset_path="dist/${asset_name}"
-
-          [[ -f "$asset_path" ]] || { echo "Release asset not found: $asset_path" >&2; exit 1; }
-          gh release upload "$tag" "$asset_path" --clobber
-
-      - name: Upload headless agent bundle
-        if: matrix.asset_id == 'linux-x64'
-        shell: bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          tag="${{ needs.prepare-release.outputs.release_tag }}"
-          asset_path="dist/kast-headless-agent-${tag}-linux-x64.zip"
-
-          [[ -f "$asset_path" ]] || { echo "Headless agent bundle not found: $asset_path" >&2; exit 1; }
-          gh release upload "$tag" "$asset_path" --clobber
-
-      - name: Upload build artifacts
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: release-asset-${{ matrix.asset_id }}-${{ github.run_id }}
-          path: |
-            dist/
-            kast-cli/build/distributions/
-          if-no-files-found: warn
-
   build-intellij-plugin:
     name: Build IDEA plugin
     needs: [prepare-release]
+    if: always() && needs.prepare-release.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -454,6 +285,7 @@ jobs:
   build-standalone-backend:
     name: Build standalone backend
     needs: [prepare-release]
+    if: always() && needs.prepare-release.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -470,7 +302,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v5
 
       - name: Build standalone backend
-        run: ./kast.sh build backend --shrink
+        run: ./kast.sh build backend
 
       - name: Upload standalone backend asset
         shell: bash
@@ -526,20 +358,14 @@ jobs:
     name: Publish release
     needs:
       - prepare-release
-      - build-and-upload
       - build-intellij-plugin
       - build-standalone-backend
+    if: always() && needs.prepare-release.result == 'success' && needs.build-intellij-plugin.result == 'success' && needs.build-standalone-backend.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v5
-
-      - name: Download all provenance artifacts
-        uses: actions/download-artifact@v7
-        with:
-          path: provenance-artifacts
-          pattern: release-asset-*
 
       - name: Download IDEA plugin provenance
         uses: actions/download-artifact@v7
@@ -557,54 +383,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p dist
-
-          # Collect all individual provenance files into a JSON array
-          provenance_files=()
-          for f in provenance-artifacts/*/dist/build-provenance-*.json provenance-intellij/*/dist/build-provenance-*.json provenance-standalone/*/dist/build-provenance-*.json; do
-            [[ -f "$f" ]] || continue
-            provenance_files+=("$f")
-          done
-
-          python3 - "${provenance_files[@]}" > dist/build-provenance.json <<'PY'
-          import json
-          import sys
-          from pathlib import Path
-
-          expected_platforms = {
-              "linux-x64",
-              "macos-arm64",
-              "headless-agent-linux-x64",
-              "intellij",
-              "standalone",
-          }
-          entries = []
-          for file_name in sys.argv[1:]:
-              with Path(file_name).open(encoding="utf-8") as handle:
-                  entries.append(json.load(handle))
-
-          seen_platforms = {entry.get("platformId") for entry in entries}
-          missing_provenance = expected_platforms - seen_platforms
-          unexpected_provenance = seen_platforms - expected_platforms
-          if missing_provenance or unexpected_provenance:
-              raise SystemExit(
-                  "provenance platform mismatch: "
-                  f"missing={sorted(missing_provenance)} "
-                  f"unexpected={sorted(unexpected_provenance)}"
-              )
-
-          for entry in entries:
-              platform = entry.get("platformId", "<unknown>")
-              asset_name = entry.get("assetName")
-              asset_digest = entry.get("assetDigest")
-              if not isinstance(asset_name, str) or not asset_name.endswith(".zip"):
-                  raise SystemExit(f"provenance entry for {platform} has no zip assetName")
-              if not isinstance(asset_digest, str) or not asset_digest.startswith("sha256:") or asset_digest == "sha256:":
-                  raise SystemExit(f"provenance entry for {platform} has no SHA-256 assetDigest")
-
-          entries.sort(key=lambda item: item["platformId"])
-          print(json.dumps({"builds": entries}, indent=2))
-          PY
+          python3 scripts/assemble-release-provenance.py \
+            --output dist/build-provenance.json \
+            provenance-intellij \
+            provenance-standalone
 
       - name: Upload combined provenance
         env:
@@ -622,9 +404,6 @@ jobs:
           set -euo pipefail
           tag="${{ needs.prepare-release.outputs.release_tag }}"
           expected_assets=(
-            "kast-${tag}-linux-x64.zip"
-            "kast-${tag}-macos-arm64.zip"
-            "kast-headless-agent-${tag}-linux-x64.zip"
             "kast-intellij-${tag}.zip"
             "kast-standalone-${tag}.zip"
           )
@@ -679,19 +458,16 @@ jobs:
           printf 'dispatch_started=%s\n' "$dispatch_started" >> "$GITHUB_OUTPUT"
 
           tag="${{ needs.prepare-release.outputs.release_tag }}"
-          linux_asset="kast-${tag}-linux-x64.zip"
-          macos_asset="kast-${tag}-macos-arm64.zip"
-          sha_linux="$(awk -v name="$linux_asset" '$2 == name { print $1 }' SHA256SUMS)"
-          sha_macos="$(awk -v name="$macos_asset" '$2 == name { print $1 }' SHA256SUMS)"
+          plugin_asset="kast-intellij-${tag}.zip"
+          sha_plugin="$(awk -v name="$plugin_asset" '$2 == name { print $1 }' SHA256SUMS)"
 
-          [[ -n "$sha_linux" ]] || { echo "Missing SHA-256 for ${linux_asset}" >&2; exit 1; }
-          [[ -n "$sha_macos" ]] || { echo "Missing SHA-256 for ${macos_asset}" >&2; exit 1; }
+          [[ -n "$sha_plugin" ]] || { echo "Missing SHA-256 for ${plugin_asset}" >&2; exit 1; }
 
           gh api repos/amichne/homebrew-kast/dispatches \
             -f event_type=release-published \
+            -f "client_payload[component]=plugin" \
             -f "client_payload[version]=${tag}" \
-            -f "client_payload[sha256_linux_x64]=${sha_linux}" \
-            -f "client_payload[sha256_macos_arm64]=${sha_macos}"
+            -f "client_payload[sha256_plugin]=${sha_plugin}"
 
       - name: Wait for Homebrew tap update
         if: ${{ !contains(needs.prepare-release.outputs.release_tag, '-') }}

@@ -35,7 +35,7 @@ These pages support the current architectural picture.
 
 These pages explain the main implications of the architecture.
 
-- [[entities/kast-cli]]
+- [[entities/rust-cli]]
 - [[entities/analysis-server]]
 - [[entities/backend-standalone]]
 - [[concepts/installation-and-instance-management]]

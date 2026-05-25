@@ -52,6 +52,36 @@ require_order() {
   [[ "$earlier_line" -lt "$later_line" ]] || die "${description}: '${earlier}' must appear before '${later}' in ${file_path}"
 }
 
+require_embedded_markdown_links() {
+  local failed="false"
+  local file_path
+
+  while IFS= read -r file_path; do
+    awk '
+      /^```/ { in_fence = !in_fence; next }
+      in_fence { next }
+      /<https?:\/\/[^>]+>/ {
+        printf "%s:%d: use descriptive markdown link text instead of angle autolink\n", FILENAME, FNR
+        failed = 1
+      }
+      /\[[^]]*(https?:\/\/|www\.|[[:alnum:]_.-]+\.[[:alnum:]_.-]+\/)[^]]*\]\(/ {
+        printf "%s:%d: link text should describe the destination, not repeat the URL\n", FILENAME, FNR
+        failed = 1
+      }
+      END { exit failed }
+    ' "$file_path" || failed="true"
+  done < <(
+    {
+      printf '%s\n' "$readme"
+      find "$docs_root" -type f -name '*.md' \
+        ! -path "${docs_root}/reference/api-reference.md" \
+        ! -path "${docs_root}/reference/capabilities.md"
+    } | sort
+  )
+
+  [[ "$failed" != "true" ]] || die "Docs and README links must be embedded in descriptive text"
+}
+
 repo_root="$(resolve_repo_root)"
 docs_root="${repo_root}/docs"
 readme="${repo_root}/README.md"
@@ -101,5 +131,7 @@ require_contains "$quickstart_doc" '--workspace-root="$PWD"' "Quickstart must qu
 require_contains "$agents_doc" "## Local and hosted agent setup" "Agent docs must separate local and hosted setup"
 require_contains "$agents_doc" "GitHub Actions-compatible hosted agent" "Agent docs must document action-based hosted agents"
 require_contains "$agents_doc" "Cloud/headless coding agent" "Agent docs must document cloud/headless agent setup"
+require_embedded_markdown_links
+python3 "${repo_root}/.github/scripts/render-rpc-contract-summary.py" --check
 
 printf '%s\n' "Docs content contract passed"

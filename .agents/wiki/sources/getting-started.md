@@ -33,7 +33,7 @@ first command execution, and daemon shutdown.
 This source links directly into the operational wiki pages.
 
 - Reinforces [[concepts/installation-and-instance-management]]
-- Adds detail to [[entities/kast-cli]]
+- Adds detail to [[entities/rust-cli]]
 - Supports [[analyses/operator-journeys]]
 
 ## Open questions
@@ -47,6 +47,6 @@ This source stops short of a few operational comparisons.
 
 The pages below now reflect this source.
 
-- [[entities/kast-cli]]
+- [[entities/rust-cli]]
 - [[concepts/installation-and-instance-management]]
 - [[analyses/operator-journeys]]

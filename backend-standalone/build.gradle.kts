@@ -2,7 +2,6 @@ import org.gradle.jvm.tasks.Jar
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import ExtractIdeaDistributionTask
 import ExtractLegacyPluginClassesTask
-import ShrinkRuntimeLibsTask
 import WriteWrapperScriptTask
 
 plugins {
@@ -434,34 +433,11 @@ tasks.named<SyncRuntimeLibsTask>("syncRuntimeLibs") {
     requiredClassEntries.add("org/jetbrains/kotlin/analysis/api/standalone/StandaloneAnalysisAPISession.class")
 }
 
-val shrinkRuntimeEnabled = providers.gradleProperty("kast.shrinkRuntime")
-    .map(String::toBoolean)
-    .getOrElse(false)
-
-if (shrinkRuntimeEnabled) {
-    val shrinkRuntimeLibs by tasks.registering(ShrinkRuntimeLibsTask::class) {
-        dependsOn("syncRuntimeLibs")
-        // The output path of syncRuntimeLibs is fixed by the convention plugin.
-        inputDirectory.set(layout.buildDirectory.dir("runtime-libs"))
-        libraryJars.from(ideaLibs, kotlinPluginLibs, javaPluginLibs)
-        proguardRules.set(layout.projectDirectory.file("src/main/proguard/standalone-rules.pro"))
-        outputDirectory.set(layout.buildDirectory.dir("shrunk-runtime-libs"))
-        outputClasspathFile.set(layout.buildDirectory.file("shrunk-runtime-libs/classpath.txt"))
+tasks.named<Sync>("syncPortableDist") {
+    from(layout.buildDirectory.dir("runtime-libs")) {
+        into("runtime-libs")
     }
-
-    tasks.named<Sync>("syncPortableDist") {
-        from(layout.buildDirectory.dir("shrunk-runtime-libs")) {
-            into("runtime-libs")
-        }
-        dependsOn(shrinkRuntimeLibs)
-    }
-} else {
-    tasks.named<Sync>("syncPortableDist") {
-        from(layout.buildDirectory.dir("runtime-libs")) {
-            into("runtime-libs")
-        }
-        dependsOn("syncRuntimeLibs")
-    }
+    dependsOn("syncRuntimeLibs")
 }
 
 tasks.named<Zip>("portableDistZip") {

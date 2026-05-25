@@ -122,8 +122,8 @@ KAST_OTLP_ENDPOINT=http://localhost:4317 \
   kast daemon start --workspace-root="$PWD"
 ```
 
-Open `http://localhost:16686` to browse traces with parent-child span
-relationships.
+Open the [local Jaeger UI](http://localhost:16686) to browse traces with
+parent-child span relationships.
 
 ## Combining approaches
 

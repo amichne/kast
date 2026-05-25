@@ -54,9 +54,6 @@ release_dir = Path(sys.argv[1])
 tag = sys.argv[2]
 
 expected = {
-    "linux-x64": f"kast-{tag}-linux-x64.zip",
-    "macos-arm64": f"kast-{tag}-macos-arm64.zip",
-    "headless-agent-linux-x64": f"kast-headless-agent-{tag}-linux-x64.zip",
     "intellij": f"kast-intellij-{tag}.zip",
     "standalone": f"kast-standalone-{tag}.zip",
 }

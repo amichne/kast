@@ -56,6 +56,30 @@ const TOOL_SPECS = [
     },
   },
   {
+    name: "kast_symbol_discover",
+    method: "symbol/discover",
+    description:
+      "Rank candidate Kotlin declarations for a simple symbol name, optionally using file, line, and snippet context. Use before kast_resolve when a name is ambiguous; each candidate returns resolveParams and a nextRequest.",
+    parameters: {
+      type: "object",
+      properties: {
+        symbol: { type: "string", description: "Simple symbol name." },
+        fileHint: { type: "string", description: ABS_PATH + " Narrows ranking to nearby declarations." },
+        line: { type: "integer", description: "One-based source line for local context." },
+        codeSnippet: { type: "string", description: "Short surrounding code text used only for ranking." },
+        kind: { type: "string", description: "Optional discriminator: class, function, property, etc." },
+        containingType: { type: "string", description: "FQ name of the enclosing type for member resolution." },
+        maxResults: { type: "integer", description: "Maximum ranked candidates to return. Default 10." },
+        includeDeclarationScope: {
+          type: "boolean",
+          description: "When true, includes declaration body text for each candidate.",
+        },
+        workspaceRoot: { type: "string", description: ABS_PATH + " Defaults to cwd." },
+      },
+      required: ["symbol"],
+    },
+  },
+  {
     name: "kast_workspace_search",
     method: "raw/workspace-search",
     defaultArgs: { caseSensitive: false },
@@ -118,6 +142,22 @@ const TOOL_SPECS = [
         containingType: { type: "string", description: "FQ name of the enclosing type for member resolution." },
         fileHint: { type: "string", description: ABS_PATH + " Narrows resolution when the same name lives in multiple files." },
         workspaceRoot: { type: "string", description: ABS_PATH + " Defaults to cwd." },
+        includeDeclarationScope: {
+          type: "boolean",
+          description: "Include the declaration body text and line range on the resolved symbol.",
+        },
+        includeDocumentation: {
+          type: "boolean",
+          description: "Include KDoc, parameter descriptions, and return type documentation when available.",
+        },
+        surroundingLines: {
+          type: "integer",
+          description: "Include this many source lines around the resolved declaration.",
+        },
+        includeSurroundingMembers: {
+          type: "boolean",
+          description: "Include lightweight sibling declarations from the containing scope.",
+        },
       },
       required: ["symbol"],
     },
@@ -251,6 +291,7 @@ const TOOL_SPECS = [
 export const KAST_TOOL_NAMES = Object.freeze(new Set(TOOL_SPECS.map((s) => s.name)));
 
 const LOWERCASE_KIND_METHODS = new Set([
+  "symbol/discover",
   "symbol/resolve",
   "symbol/references",
   "symbol/callers",

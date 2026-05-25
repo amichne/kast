@@ -8,6 +8,7 @@ import io.github.amichne.kast.api.contract.CallDirection
 import io.github.amichne.kast.api.contract.result.CallHierarchyResult
 import io.github.amichne.kast.api.contract.result.CallHierarchyStats
 import io.github.amichne.kast.api.contract.CallNode
+import io.github.amichne.kast.api.contract.DeclarationScope
 import io.github.amichne.kast.api.contract.result.CodeActionsResult
 import io.github.amichne.kast.api.contract.result.CompletionItem
 import io.github.amichne.kast.api.contract.result.CompletionsResult
@@ -114,8 +115,8 @@ class FakeAnalysisBackend private constructor(
     override suspend fun resolveSymbol(query: ParsedSymbolQuery): SymbolResult {
         requireKnownFile(query.position.filePath.value)
         return when {
-            hasMatchingAnchor(symbolAnchors, query.position) -> SymbolResult(symbol)
-            hasMatchingAnchor(typeHierarchyAnchors, query.position) -> SymbolResult(typeHierarchyRootSymbol)
+            hasMatchingAnchor(symbolAnchors, query.position) -> SymbolResult(symbol.withDeclarationScopeIfRequested(query))
+            hasMatchingAnchor(typeHierarchyAnchors, query.position) -> SymbolResult(typeHierarchyRootSymbol.withDeclarationScopeIfRequested(query))
             else -> throw missingSymbol(query.position)
         }
     }
@@ -460,6 +461,36 @@ class FakeAnalysisBackend private constructor(
             "offset" to position.offset.value.toString(),
         ),
     )
+
+    private fun Symbol.withDeclarationScopeIfRequested(query: ParsedSymbolQuery): Symbol {
+        if (!query.includeDeclarationScope || declarationScope != null) {
+            return this
+        }
+        val content = Files.readString(Path.of(location.filePath))
+        val startOffset = lineStartOffsetForOffset(content, location.startOffset)
+        val endOffset = lineEndOffsetForOffset(content, location.startOffset)
+        val startLine = content.take(startOffset).count { it == '\n' } + 1
+        val endLine = content.take(endOffset).count { it == '\n' } + 1
+        return copy(
+            declarationScope = DeclarationScope(
+                startOffset = startOffset,
+                endOffset = endOffset,
+                startLine = startLine,
+                endLine = endLine,
+                sourceText = content.substring(startOffset, endOffset),
+            ),
+        )
+    }
+
+    private fun lineStartOffsetForOffset(content: String, offset: Int): Int =
+        content.lastIndexOf('\n', (offset - 1).coerceAtLeast(0)).let { index ->
+            if (index >= 0) index + 1 else 0
+        }
+
+    private fun lineEndOffsetForOffset(content: String, offset: Int): Int {
+        val newline = content.indexOf('\n', offset)
+        return if (newline >= 0) newline else content.length
+    }
 
     private fun compileWorkspaceSearchRegex(query: ParsedWorkspaceSearchQuery): Regex? =
         if (query.regex) {

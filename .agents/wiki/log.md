@@ -26,14 +26,14 @@ which pages now hold the durable synthesis.
 - `references/command-reference.md` updated: `kast-rename.sh`, `kast-callers.sh`,
   and `kast-impact.sh` sections reflect the new interfaces.
 - Pages updated from this session: [[concepts/llm-agent-workflows]],
-  [[analyses/operator-journeys]], [[entities/kast-cli]].
+  [[analyses/operator-journeys]], [[entities/rust-cli]].
 
 ## [2026-04-14] ingest | Kast source corpus
 
 - Added [[index]] and [[overview]] as the main entry points for the Kast wiki.
 - Added source summaries under [[sources/kast-overview]] through
   [[sources/glossary]] for the current `Kast/*.md` corpus.
-- Added entity pages for [[entities/kast-cli]], [[entities/analysis-api]],
+- Added entity pages for [[entities/rust-cli]], [[entities/analysis-api]],
   [[entities/analysis-server]], and [[entities/backend-standalone]].
 - Added concept pages spanning architecture, operations, discovery, caching,
   traversal, installation, telemetry, testing, and agent workflows.

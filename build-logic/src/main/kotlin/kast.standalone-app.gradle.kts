@@ -78,10 +78,9 @@ val syncPortableDist by tasks.registering(Sync::class) {
     from(shadowJarArchive) {
         into("libs")
     }
-    // runtime-libs is intentionally absent here: each consumer must explicitly wire its
+    // runtime-libs is intentionally absent here: consumers must explicitly wire their
     // own runtime-libs source so that classpath.txt references the correct daemon jars.
-    // See backend-standalone/build.gradle.kts (own syncRuntimeLibs) and
-    // kast-cli/build.gradle.kts (backend-standalone's syncRuntimeLibs).
+    // See backend-standalone/build.gradle.kts for the shipped daemon distribution.
 }
 
 val portableDistZip by tasks.registering(Zip::class) {

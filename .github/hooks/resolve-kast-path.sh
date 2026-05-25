@@ -2,7 +2,11 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd -- "${SCRIPT_DIR}/../../../.." && pwd)"
+REPO_ROOT="$(git -C "${SCRIPT_DIR}" rev-parse --show-toplevel 2>/dev/null || (cd -- "${SCRIPT_DIR}/../.." && pwd))"
+RESOLVE_SCRIPT="${REPO_ROOT}/.github/extensions/kast/scripts/resolve-kast.sh"
+if [[ -x "${RESOLVE_SCRIPT}" ]]; then
+    exec bash "${RESOLVE_SCRIPT}"
+fi
 
 resolve_absolute_path() {
     local path="$1"

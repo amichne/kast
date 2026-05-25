@@ -115,14 +115,6 @@ tasks.withType<Test>().configureEach {
     }
 }
 
-tasks.named<Test>("test") {
-    dependsOn(":kast-cli:writeWrapperScript")
-    systemProperty(
-        "kast.wrapper",
-        project(":kast-cli").layout.buildDirectory.file("scripts/kast-cli").get().asFile.absolutePath,
-    )
-}
-
 configurations.matching { it.name == "testRuntimeClasspath" }.configureEach {
     exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core")
     exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core-jvm")

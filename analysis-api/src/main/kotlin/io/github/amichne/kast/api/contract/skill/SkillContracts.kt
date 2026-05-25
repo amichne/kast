@@ -141,6 +141,23 @@ data class KastResolveRequest(
     val fileHint: String? = null,
     val kind: WrapperNamedSymbolKind? = null,
     val containingType: String? = null,
+    val includeDeclarationScope: Boolean = false,
+    val includeDocumentation: Boolean = false,
+    val surroundingLines: Int? = null,
+    val includeSurroundingMembers: Boolean = false,
+)
+
+@Serializable
+data class KastDiscoverRequest(
+    val workspaceRoot: String? = null,
+    val symbol: String,
+    val fileHint: String? = null,
+    val line: Int? = null,
+    val codeSnippet: String? = null,
+    val kind: WrapperNamedSymbolKind? = null,
+    val containingType: String? = null,
+    val maxResults: Int = 10,
+    val includeDeclarationScope: Boolean = false,
 )
 
 @Serializable
@@ -279,6 +296,62 @@ data class KastResolveQuery(
     val fileHint: String? = null,
     val kind: WrapperNamedSymbolKind? = null,
     val containingType: String? = null,
+    val includeDeclarationScope: Boolean = false,
+    val includeDocumentation: Boolean = false,
+    val surroundingLines: Int? = null,
+    val includeSurroundingMembers: Boolean = false,
+)
+
+@Serializable
+data class KastDiscoverQuery(
+    val workspaceRoot: String,
+    val symbol: String,
+    val fileHint: String? = null,
+    val line: Int? = null,
+    val codeSnippet: String? = null,
+    val kind: WrapperNamedSymbolKind? = null,
+    val containingType: String? = null,
+    val maxResults: Int = 10,
+    val includeDeclarationScope: Boolean = false,
+)
+
+@Serializable
+data class KastResolveParams(
+    val workspaceRoot: String? = null,
+    val symbol: String,
+    val fileHint: String? = null,
+    val kind: WrapperNamedSymbolKind? = null,
+    val containingType: String? = null,
+)
+
+@Serializable
+data class KastNextRequest(
+    val method: String,
+    val params: KastResolveParams,
+)
+
+@Serializable
+data class KastDiscoveryCandidate(
+    val rank: Int,
+    val confidence: Double,
+    val symbol: Symbol,
+    val reasons: List<String>,
+    val resolveParams: KastResolveParams,
+    val nextRequest: KastNextRequest,
+)
+
+@Serializable
+data class KastSourceTextWindow(
+    val filePath: String,
+    val startLine: Int,
+    val endLine: Int,
+    val text: String,
+)
+
+@Serializable
+data class KastResolveContext(
+    val surroundingText: KastSourceTextWindow? = null,
+    val surroundingMembers: List<Symbol>? = null,
 )
 
 @Serializable
@@ -469,6 +542,7 @@ data class KastResolveSuccessResponse(
     val candidate: KastCandidate,
     val candidateCount: Int? = null,
     val alternatives: List<String>? = null,
+    val context: KastResolveContext? = null,
     val logFile: String,
 ) : KastResolveResponse
 
@@ -483,6 +557,31 @@ data class KastResolveFailureResponse(
     val error: ApiErrorResponse? = null,
     val errorText: String? = null,
 ) : KastResolveResponse
+
+@Serializable
+sealed interface KastDiscoverResponse
+
+@Serializable
+@SerialName("DISCOVER_SUCCESS")
+data class KastDiscoverSuccessResponse(
+    val ok: Boolean = true,
+    val query: KastDiscoverQuery,
+    val candidates: List<KastDiscoveryCandidate>,
+    val page: PageInfo? = null,
+    val logFile: String,
+) : KastDiscoverResponse
+
+@Serializable
+@SerialName("DISCOVER_FAILURE")
+data class KastDiscoverFailureResponse(
+    val ok: Boolean = false,
+    val stage: String,
+    val message: String,
+    val query: KastDiscoverQuery,
+    val logFile: String,
+    val error: ApiErrorResponse? = null,
+    val errorText: String? = null,
+) : KastDiscoverResponse
 
 @Serializable
 sealed interface KastReferencesResponse
