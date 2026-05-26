@@ -132,7 +132,6 @@ jobs:
           - ubuntu:22.04
           - ubuntu:24.04
         java-version:
-          - "17"
           - "21"
     steps:
       - uses: actions/checkout@v5
