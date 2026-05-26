@@ -149,6 +149,7 @@ require_contains "$release_workflow" "Generate and upload SHA256SUMS" "Release m
 require_contains "$release_workflow" "Preflight stable release automation" "Release must preflight stable-release automation before side effects"
 require_contains "$release_workflow" "Require Homebrew token for stable releases" "Stable releases must require the Homebrew tap token before tagging"
 require_contains "$release_workflow" "HOMEBREW_TAP_TOKEN: \${{ secrets.HOMEBREW_TAP_TOKEN }}" "Stable release preflight must inspect the Homebrew tap token"
+require_contains "$release_workflow" "RELEASE_GITHUB_TOKEN || github.token" "Release publishing must allow an explicit release token fallback"
 require_contains "$release_workflow" "Dispatch Homebrew tap update" "Release must dispatch the Homebrew tap update"
 require_contains "$release_workflow" "Wait for Homebrew tap update" "Release must wait for the Homebrew tap update"
 require_contains "$release_workflow" "gh run watch" "Release must watch the Homebrew tap workflow result"
