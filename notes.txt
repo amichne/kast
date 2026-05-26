@@ -1,0 +1,22 @@
+- Profiling harness issue: `wall,cpu` launched async-profiler modes concurrently against one JVM, and async-profiler rejected the second mode with `Profiler already started`.
+- Clean workaround validated before the harness fix: run one async-profiler mode per profiling run (`wall` and `cpu` separately) to produce clean flame graph artifacts.
+- Clean 30-module synthetic wall run: `.benchmarks/standalone-profile/results/local-synthetic-30-wall-20260526T1824`, ready in about 20.2s, flame graph `profiling/startup-workload-wall.html`.
+- Clean 30-module synthetic CPU run: `.benchmarks/standalone-profile/results/local-synthetic-30-cpu-20260526T1825`, ready in about 10.2s, flame graph `profiling/startup-workload-cpu.html`.
+- First bottleneck signals from 30-module synthetic runs: `raw/workspace-files`, `raw/diagnostics`, `raw/workspace-search`, and `raw/workspace-symbol` are consistently the slowest JSON-RPC operations after startup.
+- The profiling config already enables kast telemetry with `scopes = "all"` and `outputFile = telemetry/standalone-spans.jsonl`; telemetry detail is currently `basic`.
+- Existing telemetry detail parsing supports at least a non-basic/verbose path in the IntelliJ backend code; standalone config defaults to `basic`, so verbose support should be verified before relying on it for the Docker harness.
+- Added RED contract test `.github/scripts/test-standalone-profile-harness-contract.sh`; current expected failure is that the runner lacks `run_profile_mode()`.
+- Verified standalone telemetry has `StandaloneTelemetryDetail.VERBOSE`; verbose output includes span events in `standalone-spans-*.jsonl`.
+- Harness change in progress: each requested async-profiler mode now runs sequentially with a fresh daemon, separate cache/config/log/diagnostic directories, verbose telemetry, JFR recordings, and per-mode RPC latency tagging.
+- Fixed-harness 3-module validation run succeeded for combined `wall,cpu`: `.benchmarks/standalone-profile/results/local-harness-fix-3m-20260526T1900`.
+- Fixed-harness 3-module run produced both flame graphs (`startup-workload-1-wall.html`, `startup-workload-2-cpu.html`), both JFR recordings, per-mode telemetry JSONL files, per-mode diagnostics, and RPC rows tagged with `profileMode`.
+- In the 3-module fixed-harness run, `asprof-wall.exit` and `asprof-cpu.exit` were both `0`; the previous `Profiler already started` failure did not recur.
+- Fixed-harness 30-module validation run succeeded for combined `wall,cpu`: `.benchmarks/standalone-profile/results/local-harness-fix-30m-20260526T1905`.
+- In the 30-module run, both async-profiler exits were `0`; wall ready time was about 11.5s and CPU-mode ready time was about 3.2s, likely affected by warmed shared Gradle home despite per-mode kast cache/config directories.
+- 30-module slowest RPCs stayed consistent: `raw/workspace-files`, `raw/diagnostics`, `raw/workspace-search`, and `raw/workspace-symbol` led the latency list.
+- 30-module telemetry p95 signals: wall run `kast.workspaceFiles` about 1128ms, `kast.workspaceSearch` about 493ms, `kast.diagnostics` about 330ms; CPU run `kast.workspaceFiles` about 1377ms, `kast.workspaceSearch` about 416ms, `kast.diagnostics` about 385ms.
+- 30-module JFR summary showed thousands of `org.jetbrains.kotlin.LLPhase` events plus heavy allocation pressure in `byte[]` (about 53-54%), with notable `String`/collection/Zip/Kotlin protobuf allocations.
+- 30-module JFR GC summaries showed total pause time around 642-717ms over the whole recording window; lock telemetry remained tiny, mostly below 0.1ms per lock span.
+- Verbose telemetry files were produced, but the current standalone spans had no span events attached; verbose still preserves the event field and is ready if spans start emitting events.
+- Added the standalone profile harness contract to the CI workflow-contract job so the sequential profiler/JFR shape is checked alongside the manual profiling workflow contract.
+- Updated the manual standalone profiling workflow summary to include `profileModes` and `profileRuns`, so wall and CPU startup/artifact data are visible separately in GitHub step summaries.

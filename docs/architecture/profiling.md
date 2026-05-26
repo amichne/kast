@@ -3,6 +3,49 @@
 This guide covers CPU flame graphs, allocation profiling, lock contention
 analysis, and native memory tracking for the headless kast JVM daemon.
 
+## Large-repository Docker harness
+
+Use the repo-local harness when you want repeatable evidence from a clean Linux
+container with Java 21, async-profiler, telemetry, JVM diagnostics, and a
+recorded JSON-RPC workload.
+
+```bash
+scripts/profile-standalone-large-repo.sh \
+  --target ktor \
+  --duration 60 \
+  --profile-modes wall,cpu
+```
+
+The default public target is `ktorio/ktor` tag `3.2.3`, which is above 85%
+Kotlin by GitHub Linguist and uses Gradle `8.14.2`. A local checkout check for
+this tag found 1,995 Kotlin source files, zero Java source files, and 124 Gradle
+projects, giving the standalone backend a real Kotlin-heavy module graph for
+live semantic-workflow profiling. `opensearch-project/OpenSearch` tag `3.3.0`
+remains available as `--target opensearch` when you specifically want a Gradle
+`8.14.3` Java-heavy comparison target.
+
+To stress exact Gradle `8.14.3` plus hundreds of generated Kotlin modules, run
+the synthetic target:
+
+```bash
+scripts/profile-standalone-large-repo.sh \
+  --target synthetic-kotlin \
+  --modules 240 \
+  --duration 60 \
+  --profile-modes wall,cpu,alloc
+```
+
+Results are written under `.benchmarks/standalone-profile/results/<run-id>/`:
+
+- `summary.json` records workspace counts, time to `health`, time to `READY`,
+  sampled Kotlin files, and artifact locations.
+- `rpc-latencies.jsonl` records every JSON-RPC call and latency.
+- `telemetry/standalone-spans.jsonl` contains kast spans for discovery, indexing,
+  workspace queries, lock, I/O, and memory scopes.
+- `profiling/*.html` contains async-profiler flame graphs.
+- `diagnostics/` contains `jcmd` native-memory, heap, thread, and system-property
+  snapshots.
+
 ## Locating the daemon PID
 
 The daemon PID can be found via `jps` or from the workspace descriptor file

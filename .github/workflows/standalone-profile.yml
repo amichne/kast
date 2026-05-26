@@ -1,0 +1,158 @@
+name: Standalone Backend Profiling
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Profiling target"
+        required: true
+        default: ktor
+        type: choice
+        options:
+          - ktor
+          - synthetic-kotlin
+          - opensearch
+      duration_seconds:
+        description: "async-profiler duration per mode"
+        required: true
+        default: "30"
+      profile_modes:
+        description: "Comma-separated async-profiler modes: cpu,wall,alloc,lock"
+        required: true
+        default: wall,cpu
+      heap:
+        description: "Standalone backend JVM heap"
+        required: true
+        default: 6g
+      max_concurrent_requests:
+        description: "Backend max concurrent JSON-RPC requests"
+        required: true
+        default: "4"
+      synthetic_modules:
+        description: "Synthetic Kotlin module count"
+        required: true
+        default: "240"
+      synthetic_fanout:
+        description: "Synthetic Kotlin project dependency fanout"
+        required: true
+        default: "3"
+      synthetic_classes_per_module:
+        description: "Synthetic Kotlin classes per module"
+        required: true
+        default: "3"
+      include_refresh:
+        description: "Include a full workspace refresh in the workload"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: standalone-profile-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  PROFILE_RUN_ID: ci-${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.target }}
+
+jobs:
+  profile:
+    name: Profile standalone backend (${{ inputs.target }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.gradle/kast/intellij-distributions
+          key: idea-dist-${{ hashFiles('gradle/libs.versions.toml') }}
+
+      - name: Build standalone backend distribution
+        shell: bash
+        run: ./kast.sh build backend
+
+      - name: Run Dockerized standalone profile
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=(
+            --target "${{ inputs.target }}"
+            --duration "${{ inputs.duration_seconds }}"
+            --profile-modes "${{ inputs.profile_modes }}"
+            --heap "${{ inputs.heap }}"
+            --max-concurrent "${{ inputs.max_concurrent_requests }}"
+            --modules "${{ inputs.synthetic_modules }}"
+            --fanout "${{ inputs.synthetic_fanout }}"
+            --classes-per-module "${{ inputs.synthetic_classes_per_module }}"
+            --run-id "$PROFILE_RUN_ID"
+            --skip-backend-build
+          )
+
+          if [[ "${{ inputs.include_refresh }}" == "true" ]]; then
+            args+=(--include-refresh)
+          fi
+
+          scripts/profile-standalone-large-repo.sh "${args[@]}"
+
+      - name: Summarize profile
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          summary=".benchmarks/standalone-profile/results/${PROFILE_RUN_ID}/summary.json"
+          latencies=".benchmarks/standalone-profile/results/${PROFILE_RUN_ID}/rpc-latencies.jsonl"
+
+          {
+            echo "## Standalone Backend Profile"
+            echo
+            echo "- Target: \`${{ inputs.target }}\`"
+            echo "- Run ID: \`${PROFILE_RUN_ID}\`"
+            echo "- Artifact root: \`.benchmarks/standalone-profile/results/${PROFILE_RUN_ID}\`"
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [[ -f "$summary" ]]; then
+            {
+              echo "### Summary"
+              echo
+              echo '```json'
+              jq '{targetLabel, counts, profileModes, profileRuns, startup, sampledKotlinFiles}' "$summary"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          if [[ -f "$latencies" ]]; then
+            {
+              echo
+              echo "### Slowest JSON-RPC Operations"
+              echo
+              echo '| Operation | Method | Duration ms | OK |'
+              echo '| --- | --- | ---: | --- |'
+              jq -r 'select(.durationMillis != null) | [.operation, .method, (.durationMillis | tostring), (.ok | tostring)] | @tsv' "$latencies" |
+                sort -t $'\t' -k3,3nr |
+                head -n 10 |
+                while IFS=$'\t' read -r operation method duration ok; do
+                  printf '| `%s` | `%s` | %s | %s |\n' "$operation" "$method" "$duration" "$ok"
+                done
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload standalone profile artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: standalone-profile-${{ inputs.target }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .benchmarks/standalone-profile/results/${{ env.PROFILE_RUN_ID }}/
+          if-no-files-found: warn
+          retention-days: 14
