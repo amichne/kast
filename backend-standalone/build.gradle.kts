@@ -1,8 +1,5 @@
 import org.gradle.jvm.tasks.Jar
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import ExtractIdeaDistributionTask
-import ExtractLegacyPluginClassesTask
-import WriteWrapperScriptTask
 
 plugins {
     id("kast.standalone-serialization-app")
@@ -308,6 +305,7 @@ val writeBackendVersion by tasks.registering {
     // Capture as a local so the doLast lambda does not close over the build-script instance,
     // which is null when the configuration cache deserializes the action.
     val versionProvider = buildVersion
+    inputs.property("buildVersion", versionProvider)
     outputs.file(versionFile)
     doLast {
         versionFile.get().asFile.apply {

@@ -198,6 +198,6 @@ manifest_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 PY
 
 rm -f "$output_path" "${output_path}.sha256"
-tar -C "$tmp_dir" -czf "$output_path" "$bundle_name"
+COPYFILE_DISABLE=1 tar --no-xattrs -C "$tmp_dir" -czf "$output_path" "$bundle_name"
 printf '%s  %s\n' "$(compute_sha256 "$output_path")" "$(basename -- "$output_path")" > "${output_path}.sha256"
 log "Wrote ${output_path}"
