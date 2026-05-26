@@ -122,12 +122,15 @@ jobs:
           retention-days: 1
 
   install-ubuntu-debian-container:
-    name: Ubuntu/Debian install container (Java ${{ matrix.java-version }})
+    name: Ubuntu/Debian install container (${{ matrix.container-image }}, Java ${{ matrix.java-version }})
     runs-on: ubuntu-24.04
     needs: build-and-test
     strategy:
       fail-fast: false
       matrix:
+        container-image:
+          - ubuntu:22.04
+          - ubuntu:24.04
         # The standalone backend currently ships Java 21 bytecode.
         java-version:
           - "21"
@@ -175,6 +178,7 @@ jobs:
 
       - name: Validate Ubuntu/Debian bundle in Ubuntu container
         env:
+          KAST_UBUNTU_DEBIAN_CONTAINER_IMAGE: ${{ matrix.container-image }}
           KAST_UBUNTU_DEBIAN_JAVA_VERSION: ${{ matrix.java-version }}
         shell: bash
         run: BUNDLE_PATH="$KAST_UBUNTU_DEBIAN_BUNDLE" ./scripts/validate-ubuntu-debian-bundle-in-docker.sh

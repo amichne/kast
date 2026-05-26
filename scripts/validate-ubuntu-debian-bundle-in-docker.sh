@@ -64,6 +64,7 @@ docker run --rm \
   "${container_image}" \
   bash -lc '
     set -Eeuo pipefail
+    export DEBIAN_FRONTEND=noninteractive
     java_version="${KAST_UBUNTU_DEBIAN_JAVA_VERSION}"
 
     apt-get update
