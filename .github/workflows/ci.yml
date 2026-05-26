@@ -131,8 +131,8 @@ jobs:
         container-image:
           - ubuntu:22.04
           - ubuntu:24.04
-        # The standalone backend currently ships Java 21 bytecode.
         java-version:
+          - "17"
           - "21"
     steps:
       - uses: actions/checkout@v5
@@ -145,7 +145,7 @@ jobs:
 
       - name: Download Rust CLI release asset
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
         shell: bash
         run: |
           set -euo pipefail

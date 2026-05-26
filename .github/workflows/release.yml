@@ -411,10 +411,13 @@ jobs:
           set -euo pipefail
           tag="${{ needs.prepare-release.outputs.release_tag }}"
           for container_image in ubuntu:22.04 ubuntu:24.04; do
-            KAST_UBUNTU_DEBIAN_VERSION="$tag" \
-            KAST_UBUNTU_DEBIAN_CONTAINER_IMAGE="$container_image" \
-            BUNDLE_PATH="dist/kast-ubuntu-debian-x86_64-${tag}.tar.gz" \
-            ./scripts/validate-ubuntu-debian-bundle-in-docker.sh
+            for java_version in 17 21; do
+              KAST_UBUNTU_DEBIAN_VERSION="$tag" \
+              KAST_UBUNTU_DEBIAN_CONTAINER_IMAGE="$container_image" \
+              KAST_UBUNTU_DEBIAN_JAVA_VERSION="$java_version" \
+              BUNDLE_PATH="dist/kast-ubuntu-debian-x86_64-${tag}.tar.gz" \
+              ./scripts/validate-ubuntu-debian-bundle-in-docker.sh
+            done
           done
 
       - name: Upload Ubuntu/Debian bundle assets
