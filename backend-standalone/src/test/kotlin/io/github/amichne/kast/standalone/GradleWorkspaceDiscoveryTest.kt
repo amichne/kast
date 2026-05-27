@@ -4,8 +4,14 @@ import io.github.amichne.kast.api.client.fields.GradleToolingApiTimeoutMillis
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.fields.GradleDiscoveryMode
 import io.github.amichne.kast.api.client.fields.GradleDiscoveryModeField
+import io.github.amichne.kast.api.client.fields.OptionalConfigString
+import io.github.amichne.kast.api.client.fields.TelemetryDetail
+import io.github.amichne.kast.api.client.fields.TelemetryEnabled
+import io.github.amichne.kast.api.client.fields.TelemetryOutputFile
+import io.github.amichne.kast.api.client.fields.TelemetryScopes
 import io.github.amichne.kast.api.contract.ModuleName
 import io.github.amichne.kast.standalone.cache.WorkspaceDiscoveryCache
+import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetry
 import io.github.amichne.kast.standalone.workspace.GradleDependency
 import io.github.amichne.kast.standalone.workspace.GradleDependencyScope
 import io.github.amichne.kast.standalone.workspace.GradleModuleModel
@@ -20,6 +26,8 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.TimeoutException
 
@@ -41,6 +49,53 @@ class GradleWorkspaceDiscoveryTest {
         )
 
         assertEquals(123_456L, timeoutMillis)
+    }
+
+    @Test
+    fun `gradle discovery emits spans for session startup tooling load`(@TempDir workspaceRoot: Path) {
+        val sourceRoot = workspaceRoot.resolve("app/src/main/kotlin")
+        Files.createDirectories(sourceRoot)
+        val telemetryFile = workspaceRoot.resolve("telemetry/spans.jsonl")
+        val config = KastConfig.defaults().copy(
+            telemetry = KastConfig.defaults().telemetry.copy(
+                enabled = TelemetryEnabled(true),
+                scopes = TelemetryScopes("workspace-discovery"),
+                detail = TelemetryDetail("verbose"),
+                outputFile = TelemetryOutputFile(OptionalConfigString(telemetryFile.toString())),
+            ),
+        )
+        val module = GradleModuleModel(
+            gradlePath = ":app",
+            ideaModuleName = "app",
+            mainSourceRoots = listOf(sourceRoot),
+            testSourceRoots = emptyList(),
+            mainOutputRoots = emptyList(),
+            testOutputRoots = emptyList(),
+            dependencies = emptyList(),
+        )
+
+        GradleWorkspaceDiscovery.discover(
+            workspaceRoot = workspaceRoot,
+            extraClasspathRoots = emptyList(),
+            settingsSnapshot = GradleSettingsSnapshot(
+                includedProjectPaths = listOf(":app"),
+                hasCompositeBuilds = false,
+            ),
+            constrainedGradleLoader = { root, timeoutMillis ->
+                assertEquals(workspaceRoot, root)
+                assertEquals(defaultToolingApiTimeoutMillis, timeoutMillis)
+                listOf(module)
+            },
+            config = config,
+            cache = WorkspaceDiscoveryCache(enabled = false),
+            telemetry = StandaloneTelemetry.fromConfig(workspaceRoot, config),
+        )
+
+        val spans = Files.readString(telemetryFile)
+        assertTrue(spans.contains("\"name\":\"kast.workspaceDiscovery.gradle\""))
+        assertTrue(spans.contains("\"name\":\"kast.workspaceDiscovery.toolingApiLoad\""))
+        assertTrue(spans.contains("\"kast.workspaceDiscovery.mode\":\"CONSTRAINED\""))
+        assertTrue(spans.contains("\"kast.workspaceDiscovery.gradleModuleCount\":\"1\""))
     }
 
     @Test

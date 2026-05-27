@@ -2,6 +2,7 @@ package io.github.amichne.kast.standalone
 
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.contract.ModuleName
+import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetry
 import io.github.amichne.kast.standalone.workspace.GradleWorkspaceDiscovery
 import java.nio.file.Files
 import java.nio.file.Path
@@ -13,6 +14,7 @@ internal fun discoverStandaloneWorkspaceLayout(
     classpathRoots: List<Path>,
     moduleName: String,
     config: KastConfig = KastConfig.load(workspaceRoot),
+    telemetry: StandaloneTelemetry = StandaloneTelemetry.disabled(),
 ): StandaloneWorkspaceLayout {
     val normalizedWorkspaceRoot = normalizeStandalonePath(workspaceRoot)
     if (sourceRoots.isNotEmpty()) {
@@ -32,6 +34,7 @@ internal fun discoverStandaloneWorkspaceLayout(
             workspaceRoot = normalizedWorkspaceRoot,
             extraClasspathRoots = normalizeStandalonePaths(classpathRoots),
             config = config,
+            telemetry = telemetry,
         )
     }
 

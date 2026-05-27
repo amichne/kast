@@ -159,6 +159,20 @@ Analyze the output with the bundled script:
 python scripts/analyze-spans.py ~/.config/kast/telemetry/standalone-spans.jsonl
 ```
 
+For standalone profile result directories, use the operation summary helper to
+combine startup timing, JSON-RPC latency, and telemetry spans into one JSON
+report:
+
+```bash
+python scripts/profiling/summarize-profile-operations.py \
+  .benchmarks/standalone-profile/results/<run-id>
+```
+
+The `spans.workspaceDiscovery` section is the first place to inspect fresh
+Tooling API startup. `kast.workspaceDiscovery.toolingApiConnect` isolates the
+connector open, while `kast.workspaceDiscovery.sourceSetTask` isolates the
+Gradle-owned source-set extraction task.
+
 ### OTLP export to Jaeger / Zipkin
 
 Set `KAST_OTLP_ENDPOINT` to send spans to an OTLP-compatible collector in

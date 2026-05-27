@@ -8,6 +8,8 @@ import io.github.amichne.kast.standalone.StandaloneWorkspaceLayout
 import io.github.amichne.kast.standalone.buildDependentModuleNamesBySourceModuleName
 import io.github.amichne.kast.standalone.cache.WorkspaceDiscoveryCache
 import io.github.amichne.kast.standalone.normalizeStandaloneModelPath
+import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetry
+import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetryScope
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.gradle.tooling.CancellationToken
@@ -43,26 +45,40 @@ internal object GradleWorkspaceDiscovery {
     fun discover(
         workspaceRoot: Path,
         extraClasspathRoots: List<Path>,
+        telemetry: StandaloneTelemetry = StandaloneTelemetry.disabled(),
         settingsSnapshot: GradleSettingsSnapshot = GradleSettingsSnapshot.read(workspaceRoot),
         constrainedGradleLoader: (Path, Long) -> List<GradleModuleModel> = { root, timeoutMillis ->
-            loadModulesWithConstrainedGradleModel(root, timeoutMillis)
+            loadModulesWithConstrainedGradleModel(root, timeoutMillis, telemetry)
         },
         completeIdeaProjectLoader: (Path, Long) -> List<GradleModuleModel> = { root, timeoutMillis ->
-            loadModulesWithIdeaProject(root, timeoutMillis)
+            loadModulesWithIdeaProject(root, timeoutMillis, telemetry)
         },
         warningSink: (String) -> Unit = ::logWorkspaceDiscoveryWarning,
         config: KastConfig = KastConfig.load(workspaceRoot),
         cache: WorkspaceDiscoveryCache = WorkspaceDiscoveryCache(enabled = config.cache.enabled.value),
-    ): StandaloneWorkspaceLayout {
+    ): StandaloneWorkspaceLayout = telemetry.inSpan(
+        scope = StandaloneTelemetryScope.WORKSPACE_DISCOVERY,
+        name = "kast.workspaceDiscovery.gradle",
+        attributes = mapOf(
+            "kast.workspaceDiscovery.workspaceRoot" to workspaceRoot.toString(),
+            "kast.workspaceDiscovery.mode" to config.gradle.discoveryMode.value.name,
+            "kast.workspaceDiscovery.includedProjectCount" to settingsSnapshot.includedProjectPaths.size,
+            "kast.workspaceDiscovery.hasCompositeBuilds" to settingsSnapshot.hasCompositeBuilds,
+        ),
+    ) { span ->
         val discoveryMode = config.gradle.discoveryMode.value
         cachedWorkspaceLayout(
             workspaceRoot = workspaceRoot,
             extraClasspathRoots = extraClasspathRoots,
             cache = cache,
             discoveryMode = discoveryMode,
+            telemetry = telemetry,
         )?.let { cachedLayout ->
-            return cachedLayout
+            span.setAttribute("kast.workspaceDiscovery.cacheHit", true)
+            span.setAttribute("kast.workspaceDiscovery.sourceModuleCount", cachedLayout.sourceModules.size)
+            return@inSpan cachedLayout
         }
+        span.setAttribute("kast.workspaceDiscovery.cacheHit", false)
 
         val toolingApiTimeoutMillis = resolveToolingApiTimeoutMillis(settingsSnapshot.includedProjectPaths.size, config)
             .let { timeoutMillis ->
@@ -72,6 +88,7 @@ internal object GradleWorkspaceDiscovery {
                     timeoutMillis
                 }
             }
+        span.setAttribute("kast.workspaceDiscovery.toolingApiTimeoutMillis", toolingApiTimeoutMillis)
         val discoveryResult = discoverGradleOwnedModules(
             workspaceRoot = workspaceRoot,
             timeoutMillis = toolingApiTimeoutMillis,
@@ -81,49 +98,71 @@ internal object GradleWorkspaceDiscovery {
                 GradleDiscoveryMode.COMPLETE -> completeIdeaProjectLoader
             },
             warningSink = warningSink,
+            telemetry = telemetry,
         )
 
-        return buildStandaloneWorkspaceLayout(
-            gradleModules = discoveryResult.modules,
-            extraClasspathRoots = extraClasspathRoots,
-            diagnostics = workspaceDiscoveryDiagnostics(
-                modules = discoveryResult.modules,
-                warnings = discoveryResult.diagnostics.warnings,
+        val workspaceLayout = telemetry.inSpan(
+            scope = StandaloneTelemetryScope.WORKSPACE_DISCOVERY,
+            name = "kast.workspaceDiscovery.buildLayout",
+            attributes = mapOf(
+                "kast.workspaceDiscovery.mode" to discoveryMode.name,
+                "kast.workspaceDiscovery.gradleModuleCount" to discoveryResult.modules.size,
             ),
-        ).also {
+        ) { layoutSpan ->
+            buildStandaloneWorkspaceLayout(
+                gradleModules = discoveryResult.modules,
+                extraClasspathRoots = extraClasspathRoots,
+                diagnostics = workspaceDiscoveryDiagnostics(
+                    modules = discoveryResult.modules,
+                    warnings = discoveryResult.diagnostics.warnings,
+                ),
+            ).also { layout ->
+                layoutSpan.setAttribute("kast.workspaceDiscovery.sourceModuleCount", layout.sourceModules.size)
+            }
+        }.also {
             if (discoveryResult.toolingApiSucceeded) {
                 persistWorkspaceDiscoveryCache(
                     workspaceRoot = workspaceRoot,
                     result = discoveryResult,
                     cache = cache,
                     discoveryMode = discoveryMode,
+                    telemetry = telemetry,
                 )
             }
         }
+        span.setAttribute("kast.workspaceDiscovery.gradleModuleCount", discoveryResult.modules.size)
+        span.setAttribute("kast.workspaceDiscovery.sourceModuleCount", workspaceLayout.sourceModules.size)
+        span.setAttribute("kast.workspaceDiscovery.toolingApiSucceeded", discoveryResult.toolingApiSucceeded)
+        workspaceLayout
     }
 
     internal fun loadModulesWithConstrainedGradleModel(
         workspaceRoot: Path,
         timeoutMillis: Long = defaultToolingApiTimeoutMillis,
+        telemetry: StandaloneTelemetry = StandaloneTelemetry.disabled(),
     ): List<GradleModuleModel> = loadModulesWithGradleConnection(
         workspaceRoot = workspaceRoot,
         timeoutMillis = timeoutMillis,
         timeoutDescription = "constrained Gradle workspace model",
+        telemetry = telemetry,
     ) { connection, pathNormalizer, cancellationToken ->
         loadModulesWithGradleSourceSetTask(
             connection = connection,
             pathNormalizer = pathNormalizer,
             cancellationToken = cancellationToken,
+            telemetry = telemetry,
         )
     }
 
     internal fun loadModulesWithIdeaProject(
         workspaceRoot: Path,
         timeoutMillis: Long = defaultToolingApiTimeoutMillis,
+        telemetry: StandaloneTelemetry = StandaloneTelemetry.disabled(),
     ): List<GradleModuleModel> = loadModulesWithGradleConnection(
         workspaceRoot = workspaceRoot,
         timeoutMillis = timeoutMillis,
         timeoutDescription = "complete Gradle IDEA model",
+        telemetry = telemetry,
     ) { connection, pathNormalizer, cancellationToken ->
         val ideaModules = connection.model(IdeaProject::class.java)
             .withCancellationToken(cancellationToken)
@@ -143,6 +182,7 @@ internal object GradleWorkspaceDiscovery {
                 connection = connection,
                 pathNormalizer = pathNormalizer,
                 cancellationToken = cancellationToken,
+                telemetry = telemetry,
             )
         }.onFailure { error ->
             logWorkspaceDiscoveryWarning(
@@ -172,18 +212,44 @@ internal object GradleWorkspaceDiscovery {
         workspaceRoot: Path,
         timeoutMillis: Long,
         timeoutDescription: String,
+        telemetry: StandaloneTelemetry,
         load: (ProjectConnection, ToolingApiPathNormalizer, CancellationToken) -> List<GradleModuleModel>,
     ): List<GradleModuleModel> {
         val executor = Executors.newSingleThreadExecutor()
         val cancellationTokenSource = GradleConnector.newCancellationTokenSource()
         val future = executor.submit<List<GradleModuleModel>> {
-            ToolingApiPathNormalizer().let { pathNormalizer ->
-                GradleConnector.newConnector()
-                    .forProjectDirectory(workspaceRoot.toFile())
-                    .connect()
-                    .use { connection ->
-                        load(connection, pathNormalizer, cancellationTokenSource.token())
+            telemetry.inSpan(
+                scope = StandaloneTelemetryScope.WORKSPACE_DISCOVERY,
+                name = "kast.workspaceDiscovery.toolingApiSession",
+                attributes = mapOf(
+                    "kast.workspaceDiscovery.workspaceRoot" to workspaceRoot.toString(),
+                    "kast.workspaceDiscovery.toolingApiTimeoutMillis" to timeoutMillis,
+                    "kast.workspaceDiscovery.toolingApiDescription" to timeoutDescription,
+                ),
+            ) { sessionSpan ->
+                val pathNormalizer = ToolingApiPathNormalizer()
+                val connection = telemetry.inSpan(
+                    scope = StandaloneTelemetryScope.WORKSPACE_DISCOVERY,
+                    name = "kast.workspaceDiscovery.toolingApiConnect",
+                    attributes = mapOf("kast.workspaceDiscovery.workspaceRoot" to workspaceRoot.toString()),
+                ) {
+                    GradleConnector.newConnector()
+                        .forProjectDirectory(workspaceRoot.toFile())
+                        .connect()
+                }
+                connection.use { projectConnection ->
+                    telemetry.inSpan(
+                        scope = StandaloneTelemetryScope.WORKSPACE_DISCOVERY,
+                        name = "kast.workspaceDiscovery.toolingApiModel",
+                        attributes = mapOf("kast.workspaceDiscovery.toolingApiDescription" to timeoutDescription),
+                    ) { modelSpan ->
+                        load(projectConnection, pathNormalizer, cancellationTokenSource.token())
+                            .also { modules ->
+                                sessionSpan.setAttribute("kast.workspaceDiscovery.gradleModuleCount", modules.size)
+                                modelSpan.setAttribute("kast.workspaceDiscovery.gradleModuleCount", modules.size)
+                            }
                     }
+                }
             }
         }
         return try {
@@ -302,33 +368,48 @@ internal object GradleWorkspaceDiscovery {
         connection: ProjectConnection,
         pathNormalizer: ToolingApiPathNormalizer,
         cancellationToken: CancellationToken,
+        telemetry: StandaloneTelemetry = StandaloneTelemetry.disabled(),
     ): List<GradleModuleModel> {
         val tempDir = Files.createTempDirectory("kast-gradle-source-set-model")
         val initScript = tempDir.resolve("kast-source-set-model.gradle")
         val outputFile = tempDir.resolve("workspace-model.json")
         return try {
             Files.writeString(initScript, gradleSourceSetModelInitScript)
-            connection.newBuild()
-                .forTasks(":$gradleSourceSetModelTaskName")
-                .withCancellationToken(cancellationToken)
-                .withArguments(
-                    "--init-script",
-                    initScript.toString(),
-                    "--no-configuration-cache",
-                    "--no-configure-on-demand",
-                    "-PkastWorkspaceModelOutput=$outputFile",
-                )
-                .run()
+            telemetry.inSpan(
+                scope = StandaloneTelemetryScope.WORKSPACE_DISCOVERY,
+                name = "kast.workspaceDiscovery.sourceSetTask",
+                attributes = mapOf("kast.workspaceDiscovery.taskName" to gradleSourceSetModelTaskName),
+            ) {
+                connection.newBuild()
+                    .forTasks(":$gradleSourceSetModelTaskName")
+                    .withCancellationToken(cancellationToken)
+                    .withArguments(
+                        "--init-script",
+                        initScript.toString(),
+                        "--no-configuration-cache",
+                        "--no-configure-on-demand",
+                        "-PkastWorkspaceModelOutput=$outputFile",
+                    )
+                    .run()
+            }
 
             if (!outputFile.isRegularFile()) {
                 return emptyList()
             }
 
-            gradleSourceSetModelJson
-                .decodeFromString<GradleSourceSetModelPayload>(Files.readString(outputFile))
-                .modules
-                .map { module -> module.toGradleModuleModel(pathNormalizer) }
-                .sortedBy(GradleModuleModel::gradlePath)
+            telemetry.inSpan(
+                scope = StandaloneTelemetryScope.WORKSPACE_DISCOVERY,
+                name = "kast.workspaceDiscovery.sourceSetModelDecode",
+            ) { decodeSpan ->
+                gradleSourceSetModelJson
+                    .decodeFromString<GradleSourceSetModelPayload>(Files.readString(outputFile))
+                    .modules
+                    .map { module -> module.toGradleModuleModel(pathNormalizer) }
+                    .sortedBy(GradleModuleModel::gradlePath)
+                    .also { modules ->
+                        decodeSpan.setAttribute("kast.workspaceDiscovery.gradleModuleCount", modules.size)
+                    }
+            }
         } finally {
             tempDir.toFile().deleteRecursively()
         }
@@ -632,12 +713,19 @@ private fun cachedWorkspaceLayout(
     extraClasspathRoots: List<Path>,
     cache: WorkspaceDiscoveryCache,
     discoveryMode: GradleDiscoveryMode,
-): StandaloneWorkspaceLayout? {
+    telemetry: StandaloneTelemetry,
+): StandaloneWorkspaceLayout? = telemetry.inSpan(
+    scope = StandaloneTelemetryScope.WORKSPACE_DISCOVERY,
+    name = "kast.workspaceDiscovery.cacheRead",
+    attributes = mapOf("kast.workspaceDiscovery.mode" to discoveryMode.name),
+) { span ->
     val cachedDiscovery = runCatching {
         cache.read(workspaceRoot, discoveryMode = discoveryMode)
-    }.getOrNull() ?: return null
+    }.getOrNull()
+    span.setAttribute("kast.workspaceDiscovery.cacheHit", cachedDiscovery != null)
+    cachedDiscovery ?: return@inSpan null
 
-    return GradleWorkspaceDiscovery.buildStandaloneWorkspaceLayout(
+    GradleWorkspaceDiscovery.buildStandaloneWorkspaceLayout(
         gradleModules = cachedDiscovery.discoveryResult.modules,
         extraClasspathRoots = extraClasspathRoots,
         diagnostics = workspaceDiscoveryDiagnostics(
@@ -645,7 +733,10 @@ private fun cachedWorkspaceLayout(
             warnings = cachedDiscovery.discoveryResult.diagnostics.warnings,
         ),
         dependentModuleNamesBySourceModuleName = cachedDiscovery.dependentModuleNamesBySourceModuleName,
-    )
+    ).also { layout ->
+        span.setAttribute("kast.workspaceDiscovery.gradleModuleCount", cachedDiscovery.discoveryResult.modules.size)
+        span.setAttribute("kast.workspaceDiscovery.sourceModuleCount", layout.sourceModules.size)
+    }
 }
 
 private fun persistWorkspaceDiscoveryCache(
@@ -653,9 +744,19 @@ private fun persistWorkspaceDiscoveryCache(
     result: GradleWorkspaceDiscoveryResult,
     cache: WorkspaceDiscoveryCache,
     discoveryMode: GradleDiscoveryMode,
+    telemetry: StandaloneTelemetry,
 ) {
-    runCatching {
-        cache.write(workspaceRoot, result, discoveryMode = discoveryMode)
+    telemetry.inSpan(
+        scope = StandaloneTelemetryScope.WORKSPACE_DISCOVERY,
+        name = "kast.workspaceDiscovery.cacheWrite",
+        attributes = mapOf(
+            "kast.workspaceDiscovery.mode" to discoveryMode.name,
+            "kast.workspaceDiscovery.gradleModuleCount" to result.modules.size,
+        ),
+    ) {
+        runCatching {
+            cache.write(workspaceRoot, result, discoveryMode = discoveryMode)
+        }
     }
 }
 
@@ -665,11 +766,23 @@ private fun discoverGradleOwnedModules(
     discoveryMode: GradleDiscoveryMode,
     loader: (Path, Long) -> List<GradleModuleModel>,
     warningSink: (String) -> Unit,
-): GradleWorkspaceDiscoveryResult {
+    telemetry: StandaloneTelemetry,
+): GradleWorkspaceDiscoveryResult = telemetry.inSpan(
+    scope = StandaloneTelemetryScope.WORKSPACE_DISCOVERY,
+    name = "kast.workspaceDiscovery.toolingApiLoad",
+    attributes = mapOf(
+        "kast.workspaceDiscovery.mode" to discoveryMode.name,
+        "kast.workspaceDiscovery.toolingApiTimeoutMillis" to timeoutMillis,
+    ),
+) { span ->
     val warnings = mutableListOf<String>()
     val toolingModules = runCatching {
         loader(workspaceRoot, timeoutMillis)
+            .also { modules ->
+                span.setAttribute("kast.workspaceDiscovery.gradleModuleCount", modules.size)
+            }
     }.onFailure { error ->
+        span.setAttribute("kast.workspaceDiscovery.toolingApiSucceeded", false)
         val warning = toolingApiFailureWarning(
             prefix = "${discoveryMode.label} Gradle-owned workspace discovery failed",
             error = error,
@@ -684,12 +797,14 @@ private fun discoverGradleOwnedModules(
     }
 
     if (toolingModules.isEmpty()) {
+        span.setAttribute("kast.workspaceDiscovery.toolingApiSucceeded", false)
         val warning = "${discoveryMode.label} Gradle-owned workspace discovery returned no modules for $workspaceRoot"
         warningSink(warning)
         throw IllegalStateException(warning)
     }
+    span.setAttribute("kast.workspaceDiscovery.toolingApiSucceeded", true)
 
-    return GradleWorkspaceDiscoveryResult(
+    GradleWorkspaceDiscoveryResult(
         modules = toolingModules,
         diagnostics = WorkspaceDiscoveryDiagnostics(warnings = warnings),
     )
