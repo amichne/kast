@@ -41,7 +41,6 @@ internal fun KastSettingsState.toWorkspaceToml(defaults: KastConfig = KastConfig
             tomlSection(
                 "gradle",
                 "toolingApiTimeoutMillis" to gradleToolingApiTimeoutMillis.changedFrom(defaults.gradle.toolingApiTimeoutMillis.value),
-                "maxIncludedProjects" to gradleMaxIncludedProjects.changedFrom(defaults.gradle.maxIncludedProjects.value),
             ),
         )
         add(

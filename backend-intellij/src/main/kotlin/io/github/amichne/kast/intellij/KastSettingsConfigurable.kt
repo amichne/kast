@@ -41,7 +41,6 @@ internal class KastSettingsConfigurable(
     private lateinit var cacheSourceIndexSaveDelayMillis: JBTextField
     private lateinit var watcherDebounceMillis: JBTextField
     private lateinit var gradleToolingApiTimeoutMillis: JBTextField
-    private lateinit var gradleMaxIncludedProjects: JBTextField
     private lateinit var telemetryEnabled: JBCheckBox
     private lateinit var telemetryScopes: JBTextField
     private lateinit var telemetryDetail: ComboBox<KastTelemetryDetailLevel>
@@ -72,7 +71,6 @@ internal class KastSettingsConfigurable(
             cacheSourceIndexSaveDelayMillis.text != state.cacheSourceIndexSaveDelayMillis.display() ||
             watcherDebounceMillis.text != state.watcherDebounceMillis.display() ||
             gradleToolingApiTimeoutMillis.text != state.gradleToolingApiTimeoutMillis.display() ||
-            gradleMaxIncludedProjects.text != state.gradleMaxIncludedProjects.display() ||
             telemetryEnabled.isSelected != (state.telemetryEnabled ?: false) ||
             telemetryScopes.text != state.telemetryScopes.orEmpty() ||
             selectedTelemetryDetailConfigValue(state) != state.telemetryDetail ||
@@ -175,9 +173,6 @@ internal class KastSettingsConfigurable(
             row("Tooling API timeout (ms):") {
                 gradleToolingApiTimeoutMillis = requiredLongTextField("Gradle tooling API timeout millis").component
             }
-            row("Max included projects:") {
-                gradleMaxIncludedProjects = requiredIntegerTextField("Gradle max included projects").component
-            }
         }
 
         collapsibleGroup("Telemetry") {
@@ -253,7 +248,6 @@ internal class KastSettingsConfigurable(
         cacheSourceIndexSaveDelayMillis.text = state.cacheSourceIndexSaveDelayMillis.display()
         watcherDebounceMillis.text = state.watcherDebounceMillis.display()
         gradleToolingApiTimeoutMillis.text = state.gradleToolingApiTimeoutMillis.display()
-        gradleMaxIncludedProjects.text = state.gradleMaxIncludedProjects.display()
         telemetryEnabled.isSelected = state.telemetryEnabled ?: false
         telemetryScopes.text = state.telemetryScopes.orEmpty()
         loadedTelemetryDetailRaw = state.telemetryDetail
@@ -279,7 +273,6 @@ internal class KastSettingsConfigurable(
         state.cacheSourceIndexSaveDelayMillis = cacheSourceIndexSaveDelayMillis.readRequiredLong("Cache source index save delay millis")
         state.watcherDebounceMillis = watcherDebounceMillis.readRequiredLong("Watcher debounce millis")
         state.gradleToolingApiTimeoutMillis = gradleToolingApiTimeoutMillis.readRequiredLong("Gradle tooling API timeout millis")
-        state.gradleMaxIncludedProjects = gradleMaxIncludedProjects.readRequiredInt("Gradle max included projects")
         state.telemetryEnabled = telemetryEnabled.isSelected
         state.telemetryScopes = telemetryScopes.text.takeIf(String::isNotBlank)
         state.telemetryDetail = selectedTelemetryDetailConfigValue(state)?.takeIf(String::isNotBlank)
