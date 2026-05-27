@@ -40,16 +40,6 @@ class KastConfigTest {
     }
 
     @Test
-    fun `gradle discovery mode defaults to constrained typed value`() {
-        val discoveryMode = KastConfig.defaults().gradle.discoveryMode
-
-        assertEquals("gradle", discoveryMode.section)
-        assertEquals("discoveryMode", discoveryMode.key)
-        assertEquals(ConfigurationDefault(GradleDiscoveryMode.CONSTRAINED), discoveryMode.default)
-        assertEquals(GradleDiscoveryMode.CONSTRAINED, discoveryMode.value)
-    }
-
-    @Test
     fun `defaults expose paths and cli sections`() {
         val configFields = KastConfig::class.java.declaredFields.map { it.name }.toSet()
 
@@ -119,8 +109,6 @@ class KastConfigTest {
             "cache" to "sourceIndexSaveDelayMillis",
             "watcher" to "debounceMillis",
             "gradle" to "toolingApiTimeoutMillis",
-            "gradle" to "maxIncludedProjects",
-            "gradle" to "discoveryMode",
             "telemetry" to "enabled",
             "telemetry" to "scopes",
             "telemetry" to "detail",
@@ -241,9 +229,6 @@ class KastConfigTest {
                 [cache]
                 enabled = false
 
-                [gradle]
-                discovery-mode = "complete"
-
                 [indexing.remote]
                 enabled = true
                 source-index-url = "file:///tmp/kast/source-index.db"
@@ -264,7 +249,6 @@ class KastConfigTest {
             config.server.maxConcurrentRequests.value
         )
         assertEquals(false, config.cache.enabled.value)
-        assertEquals(GradleDiscoveryMode.COMPLETE, config.gradle.discoveryMode.value)
         assertEquals(true, config.indexing.remote.enabled.value)
         assertEquals("file:///tmp/kast/source-index.db", config.indexing.remote.sourceIndexUrl.value.orNull)
         assertEquals(true, config.telemetry.enabled.value)

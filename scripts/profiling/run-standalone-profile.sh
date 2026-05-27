@@ -47,7 +47,6 @@ socketDir = "${results_dir}/sockets/${mode_label}"
 
 [gradle]
 toolingApiTimeoutMillis = ${tooling_timeout_ms}
-maxIncludedProjects = ${max_included_projects}
 
 [telemetry]
 enabled = true
@@ -152,7 +151,6 @@ profile_modes="${KAST_PROFILE_MODES:-wall,cpu}"
 heap="${KAST_PROFILE_HEAP:-8g}"
 max_concurrent_requests="${KAST_MAX_CONCURRENT_REQUESTS:-4}"
 tooling_timeout_ms="${KAST_PROFILE_TOOLING_TIMEOUT_MS:-300000}"
-max_included_projects="${KAST_PROFILE_MAX_INCLUDED_PROJECTS:-200}"
 include_refresh="${KAST_PROFILE_INCLUDE_REFRESH:-false}"
 target_label="${KAST_PROFILE_TARGET_LABEL:-target}"
 ready_timeout_seconds="${KAST_PROFILE_READY_TIMEOUT_SECONDS:-600}"

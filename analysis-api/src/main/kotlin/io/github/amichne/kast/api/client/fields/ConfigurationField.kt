@@ -23,8 +23,6 @@ sealed class ConfigurationField<T> {
             CacheSourceIndexSaveDelayMillis(5_000L),
             WatcherDebounceMillis(200L),
             GradleToolingApiTimeoutMillis(120_000L),
-            GradleMaxIncludedProjects(200),
-            GradleDiscoveryModeField(GradleDiscoveryMode.CONSTRAINED),
             TelemetryEnabled(false),
             TelemetryScopes("all"),
             TelemetryDetail("basic"),

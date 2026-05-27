@@ -1,7 +1,6 @@
 package io.github.amichne.kast.standalone
 
 import io.github.amichne.kast.api.contract.ModuleName
-import io.github.amichne.kast.api.client.fields.GradleDiscoveryMode
 import io.github.amichne.kast.standalone.cache.WorkspaceDiscoveryCache
 import io.github.amichne.kast.standalone.workspace.GradleDependency
 import io.github.amichne.kast.standalone.workspace.GradleDependencyScope
@@ -80,26 +79,6 @@ class WorkspaceDiscoveryCacheTest {
     }
 
     @Test
-    fun `workspace discovery cache separates constrained and complete discovery modes`() {
-        createGradleWorkspace()
-        val constrainedResult = workspaceDiscoveryResult(":app")
-        val completeResult = workspaceDiscoveryResult(":complete-app")
-        val cache = WorkspaceDiscoveryCache()
-
-        cache.write(workspaceRoot, constrainedResult, discoveryMode = GradleDiscoveryMode.CONSTRAINED)
-        cache.write(workspaceRoot, completeResult, discoveryMode = GradleDiscoveryMode.COMPLETE)
-
-        assertEquals(
-            constrainedResult,
-            cache.read(workspaceRoot, discoveryMode = GradleDiscoveryMode.CONSTRAINED)?.discoveryResult,
-        )
-        assertEquals(
-            completeResult,
-            cache.read(workspaceRoot, discoveryMode = GradleDiscoveryMode.COMPLETE)?.discoveryResult,
-        )
-    }
-
-    @Test
     fun `workspace discovery cache ignores build files under skipped directories`() {
         createGradleWorkspace()
         val result = workspaceDiscoveryResult()
@@ -132,7 +111,7 @@ class WorkspaceDiscoveryCacheTest {
             workspaceRoot = workspaceRoot,
             extraClasspathRoots = emptyList(),
             settingsSnapshot = GradleSettingsSnapshot.read(workspaceRoot),
-            constrainedGradleLoader = { _, _ ->
+            toolingApiLoader = { _, _ ->
                 gradleLoaderCalls += 1
                 error("tooling api should not run when cache is valid")
             },
@@ -155,7 +134,7 @@ class WorkspaceDiscoveryCacheTest {
             workspaceRoot = workspaceRoot,
             extraClasspathRoots = emptyList(),
             settingsSnapshot = GradleSettingsSnapshot.read(workspaceRoot),
-            constrainedGradleLoader = { _, _ ->
+            toolingApiLoader = { _, _ ->
                 gradleLoaderCalls += 1
                 error("tooling api should not run when cache is valid")
             },

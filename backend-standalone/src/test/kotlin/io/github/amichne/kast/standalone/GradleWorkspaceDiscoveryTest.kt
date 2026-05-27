@@ -2,8 +2,6 @@ package io.github.amichne.kast.standalone
 
 import io.github.amichne.kast.api.client.fields.GradleToolingApiTimeoutMillis
 import io.github.amichne.kast.api.client.KastConfig
-import io.github.amichne.kast.api.client.fields.GradleDiscoveryMode
-import io.github.amichne.kast.api.client.fields.GradleDiscoveryModeField
 import io.github.amichne.kast.api.client.fields.OptionalConfigString
 import io.github.amichne.kast.api.client.fields.TelemetryDetail
 import io.github.amichne.kast.api.client.fields.TelemetryEnabled
@@ -81,7 +79,7 @@ class GradleWorkspaceDiscoveryTest {
                 includedProjectPaths = listOf(":app"),
                 hasCompositeBuilds = false,
             ),
-            constrainedGradleLoader = { root, timeoutMillis ->
+            toolingApiLoader = { root, timeoutMillis ->
                 assertEquals(workspaceRoot, root)
                 assertEquals(defaultToolingApiTimeoutMillis, timeoutMillis)
                 listOf(module)
@@ -94,7 +92,7 @@ class GradleWorkspaceDiscoveryTest {
         val spans = Files.readString(telemetryFile)
         assertTrue(spans.contains("\"name\":\"kast.workspaceDiscovery.gradle\""))
         assertTrue(spans.contains("\"name\":\"kast.workspaceDiscovery.toolingApiLoad\""))
-        assertTrue(spans.contains("\"kast.workspaceDiscovery.mode\":\"CONSTRAINED\""))
+        assertTrue(spans.contains("\"kast.workspaceDiscovery.mode\":\"GRADLE_OWNED\""))
         assertTrue(spans.contains("\"kast.workspaceDiscovery.gradleModuleCount\":\"1\""))
     }
 
@@ -429,7 +427,7 @@ class GradleWorkspaceDiscoveryTest {
                 workspaceRoot = Path.of("/workspace"),
                 extraClasspathRoots = emptyList(),
                 settingsSnapshot = largeSettingsSnapshot(moduleCount = 250),
-                constrainedGradleLoader = { _, _ -> throw TimeoutException("tooling api timed out") },
+                toolingApiLoader = { _, _ -> throw TimeoutException("tooling api timed out") },
                 warningSink = warningMessages::add,
                 cache = WorkspaceDiscoveryCache(enabled = false),
             )
@@ -466,7 +464,7 @@ class GradleWorkspaceDiscoveryTest {
             workspaceRoot = Path.of("/workspace"),
             extraClasspathRoots = emptyList(),
             settingsSnapshot = largeSettingsSnapshot(moduleCount = 250),
-            constrainedGradleLoader = { _, _ -> toolingModules },
+            toolingApiLoader = { _, _ -> toolingModules },
             cache = WorkspaceDiscoveryCache(enabled = false),
         )
         val modulesByName = layout.sourceModules.associateBy(StandaloneSourceModuleSpec::name)
@@ -476,51 +474,21 @@ class GradleWorkspaceDiscoveryTest {
     }
 
     @Test
-    fun `constrained Gradle discovery is the default loader`() {
-        val loadedBy = mutableListOf<GradleDiscoveryMode>()
+    fun `discover uses a single Gradle-owned loader`() {
+        var loaderCalls = 0
 
         GradleWorkspaceDiscovery.discover(
             workspaceRoot = Path.of("/workspace"),
             extraClasspathRoots = emptyList(),
             settingsSnapshot = largeSettingsSnapshot(moduleCount = 2),
-            constrainedGradleLoader = { _, _ ->
-                loadedBy += GradleDiscoveryMode.CONSTRAINED
-                listOf(gradleModule(":app", mainSourceRoots = listOf(Path.of("/workspace/app/src/main/kotlin"))))
-            },
-            completeIdeaProjectLoader = { _, _ ->
-                loadedBy += GradleDiscoveryMode.COMPLETE
+            toolingApiLoader = { _, _ ->
+                loaderCalls += 1
                 listOf(gradleModule(":app", mainSourceRoots = listOf(Path.of("/workspace/app/src/main/kotlin"))))
             },
             cache = WorkspaceDiscoveryCache(enabled = false),
         )
 
-        assertEquals(listOf(GradleDiscoveryMode.CONSTRAINED), loadedBy)
-    }
-
-    @Test
-    fun `complete Gradle discovery mode is explicit opt in`() {
-        val loadedBy = mutableListOf<GradleDiscoveryMode>()
-        val config = KastConfig.defaults().copy(
-            gradle = KastConfig.defaults().gradle.copy(discoveryMode = GradleDiscoveryModeField(GradleDiscoveryMode.COMPLETE)),
-        )
-
-        GradleWorkspaceDiscovery.discover(
-            workspaceRoot = Path.of("/workspace"),
-            extraClasspathRoots = emptyList(),
-            settingsSnapshot = largeSettingsSnapshot(moduleCount = 2),
-            constrainedGradleLoader = { _, _ ->
-                loadedBy += GradleDiscoveryMode.CONSTRAINED
-                listOf(gradleModule(":app", mainSourceRoots = listOf(Path.of("/workspace/app/src/main/kotlin"))))
-            },
-            completeIdeaProjectLoader = { _, _ ->
-                loadedBy += GradleDiscoveryMode.COMPLETE
-                listOf(gradleModule(":app", mainSourceRoots = listOf(Path.of("/workspace/app/src/main/kotlin"))))
-            },
-            config = config,
-            cache = WorkspaceDiscoveryCache(enabled = false),
-        )
-
-        assertEquals(listOf(GradleDiscoveryMode.COMPLETE), loadedBy)
+        assertEquals(1, loaderCalls)
     }
 
     private fun gradleModule(

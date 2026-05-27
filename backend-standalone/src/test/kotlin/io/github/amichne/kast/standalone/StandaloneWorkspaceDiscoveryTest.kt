@@ -847,10 +847,10 @@ class StandaloneWorkspaceDiscoveryTest {
     }
 
     @Test
-    fun `constrained Gradle model discovers Gradle-owned Kotlin source set roots when IDEA model omits them`() {
+    fun `Gradle-owned model discovers Kotlin source set roots`() {
         createKotlinLikeSourceSetWorkspace()
 
-        val modulesByPath = GradleWorkspaceDiscovery.loadModulesWithConstrainedGradleModel(
+        val modulesByPath = GradleWorkspaceDiscovery.loadModulesWithGradleOwnedModel(
             workspaceRoot,
             timeoutMillis = defaultToolingApiTimeoutMillis,
         ).associateBy(GradleModuleModel::gradlePath)
@@ -866,10 +866,10 @@ class StandaloneWorkspaceDiscoveryTest {
     }
 
     @Test
-    fun `constrained Gradle model discovers Kotlin Multiplatform source roots`() {
+    fun `Gradle-owned model discovers Kotlin Multiplatform source roots`() {
         createKotlinMultiplatformSourceSetWorkspace()
 
-        val modulesByPath = GradleWorkspaceDiscovery.loadModulesWithConstrainedGradleModel(
+        val modulesByPath = GradleWorkspaceDiscovery.loadModulesWithGradleOwnedModel(
             workspaceRoot,
             timeoutMillis = defaultToolingApiTimeoutMillis,
         ).associateBy(GradleModuleModel::gradlePath)
@@ -885,10 +885,10 @@ class StandaloneWorkspaceDiscoveryTest {
     }
 
     @Test
-    fun `constrained Gradle model uses the target build distribution`() {
+    fun `Gradle-owned model uses the target build distribution`() {
         createWrapperPinnedGradleWorkspace()
 
-        val modulesByPath = GradleWorkspaceDiscovery.loadModulesWithConstrainedGradleModel(
+        val modulesByPath = GradleWorkspaceDiscovery.loadModulesWithGradleOwnedModel(
             workspaceRoot,
             timeoutMillis = defaultToolingApiTimeoutMillis,
         ).associateBy(GradleModuleModel::gradlePath)
@@ -900,10 +900,10 @@ class StandaloneWorkspaceDiscoveryTest {
     }
 
     @Test
-    fun `constrained Gradle model evaluates subprojects before collecting source sets`() {
+    fun `Gradle-owned model evaluates subprojects before collecting source sets`() {
         createConfigureOnDemandGradleWorkspace()
 
-        val modulesByPath = GradleWorkspaceDiscovery.loadModulesWithConstrainedGradleModel(
+        val modulesByPath = GradleWorkspaceDiscovery.loadModulesWithGradleOwnedModel(
             workspaceRoot,
             timeoutMillis = defaultToolingApiTimeoutMillis,
         ).associateBy(GradleModuleModel::gradlePath)
@@ -915,10 +915,10 @@ class StandaloneWorkspaceDiscoveryTest {
     }
 
     @Test
-    fun `constrained Gradle model keeps source roots when file dependency enumeration fails`() {
+    fun `Gradle-owned model keeps source roots when file dependency enumeration fails`() {
         createGradleWorkspaceWithUnresolvableFileDependency()
 
-        val modulesByPath = GradleWorkspaceDiscovery.loadModulesWithConstrainedGradleModel(
+        val modulesByPath = GradleWorkspaceDiscovery.loadModulesWithGradleOwnedModel(
             workspaceRoot,
             timeoutMillis = defaultToolingApiTimeoutMillis,
         ).associateBy(GradleModuleModel::gradlePath)

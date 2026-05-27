@@ -115,10 +115,6 @@ class ConfigurationFieldDecoder : NullHandlingDecoder<ConfigurationField<*>> {
             CacheSourceIndexSaveDelayMillis::class to FieldDecoder(ValueKind.Long) { CacheSourceIndexSaveDelayMillis(it as Long) },
             CacheWriteDelayMillis::class to FieldDecoder(ValueKind.Long) { CacheWriteDelayMillis(it as Long) },
             CliBinaryPath::class to FieldDecoder(ValueKind.String) { CliBinaryPath(it as String) },
-            GradleDiscoveryModeField::class to FieldDecoder(ValueKind.String) {
-                GradleDiscoveryModeField(GradleDiscoveryMode.parse(it as String))
-            },
-            GradleMaxIncludedProjects::class to FieldDecoder(ValueKind.Int) { GradleMaxIncludedProjects(it as Int) },
             GradleToolingApiTimeoutMillis::class to FieldDecoder(ValueKind.Long) { GradleToolingApiTimeoutMillis(it as Long) },
             IndexingIdentifierIndexWaitMillis::class to FieldDecoder(ValueKind.Long) { IndexingIdentifierIndexWaitMillis(it as Long) },
             IndexingPhase2BatchSize::class to FieldDecoder(ValueKind.Int) { IndexingPhase2BatchSize(it as Int) },
