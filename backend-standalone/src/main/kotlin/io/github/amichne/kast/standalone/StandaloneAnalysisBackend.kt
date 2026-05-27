@@ -1046,6 +1046,8 @@ internal class StandaloneAnalysisBackend internal constructor(
                 }
                 val indexedInventory = indexedWorkspaceFileInventory(
                     sourceRoots = filtered.flatMap { spec -> spec.sourceRoots },
+                    includeFiles = query.includeFiles,
+                    maxFilesPerModule = fileLimit,
                 )
                 val modules = filtered.map { spec ->
                     val listing = collectWorkspaceFiles(
@@ -1107,7 +1109,11 @@ internal class StandaloneAnalysisBackend internal constructor(
         val filesBySourceRoot: Map<Path, List<Path>>,
     )
 
-    private fun indexedWorkspaceFileInventory(sourceRoots: List<Path>): WorkspaceFileInventory? {
+    private fun indexedWorkspaceFileInventory(
+        sourceRoots: List<Path>,
+        includeFiles: Boolean,
+        maxFilesPerModule: Int,
+    ): WorkspaceFileInventory? {
         if (!session.isInitialSourceIndexReady()) {
             return null
         }
@@ -1123,7 +1129,11 @@ internal class StandaloneAnalysisBackend internal constructor(
         return runCatching {
             WorkspaceFileInventory(
                 countsBySourceRoot = session.sqliteStore.fileCountBySourceRoot(normalizedRoots),
-                filesBySourceRoot = session.sqliteStore.filesBySourceRoot(normalizedRoots),
+                filesBySourceRoot = if (includeFiles) {
+                    session.sqliteStore.filesBySourceRoot(normalizedRoots, limitPerRoot = maxFilesPerModule)
+                } else {
+                    emptyMap()
+                },
             )
         }.getOrNull()
     }

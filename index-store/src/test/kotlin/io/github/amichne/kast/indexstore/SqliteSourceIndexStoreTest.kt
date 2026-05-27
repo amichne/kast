@@ -574,9 +574,7 @@ class SqliteSourceIndexStoreTest {
         val mainFile = writeKotlinFile(mainRoot.resolve("demo/Main.kt"))
         val otherMainFile = writeKotlinFile(mainRoot.resolve("demo/Other.kt"))
         val testFile = writeKotlinFile(testRoot.resolve("demo/MainTest.kt"))
-        val deletedFile = writeKotlinFile(mainRoot.resolve("demo/Deleted.kt"))
         val scriptPath = normalized.resolve("build.gradle.kts").toString()
-        Files.delete(deletedFile)
 
         SqliteSourceIndexStore(normalized).use { store ->
             store.ensureSchema()
@@ -585,14 +583,12 @@ class SqliteSourceIndexStoreTest {
                     fileUpdate(mainFile.toString(), "Main"),
                     fileUpdate(otherMainFile.toString(), "Other"),
                     fileUpdate(testFile.toString(), "MainTest"),
-                    fileUpdate(deletedFile.toString(), "Deleted"),
                     fileUpdate(scriptPath, "GradleScript"),
                 ),
                 manifest = mapOf(
                     mainFile.toString() to 1L,
                     otherMainFile.toString() to 2L,
                     testFile.toString() to 3L,
-                    deletedFile.toString() to 4L,
                     scriptPath to 5L,
                 ),
             )
@@ -617,6 +613,30 @@ class SqliteSourceIndexStoreTest {
                     testRoot to listOf(testFile),
                 ),
                 store.filesBySourceRoot(listOf(mainRoot, testRoot), limitPerRoot = 1),
+            )
+        }
+    }
+
+    @Test
+    fun `source file counts are grouped by source root without requiring files to exist`() {
+        val normalized = workspaceRoot.toAbsolutePath().normalize()
+        val mainRoot = normalized.resolve("src/main/kotlin")
+        val indexedButMissingFile = mainRoot.resolve("demo/Missing.kt").toString()
+
+        SqliteSourceIndexStore(normalized).use { store ->
+            store.ensureSchema()
+            store.saveFullIndex(
+                updates = listOf(fileUpdate(indexedButMissingFile, "Missing")),
+                manifest = mapOf(indexedButMissingFile to 1L),
+            )
+
+            assertEquals(
+                mapOf(mainRoot to 1),
+                store.fileCountBySourceRoot(listOf(mainRoot)),
+            )
+            assertEquals(
+                mapOf(mainRoot to emptyList<Path>()),
+                store.filesBySourceRoot(listOf(mainRoot)),
             )
         }
     }

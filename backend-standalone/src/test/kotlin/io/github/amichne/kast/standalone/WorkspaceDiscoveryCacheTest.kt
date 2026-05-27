@@ -1,6 +1,7 @@
 package io.github.amichne.kast.standalone
 
 import io.github.amichne.kast.api.contract.ModuleName
+import io.github.amichne.kast.api.client.fields.GradleDiscoveryMode
 import io.github.amichne.kast.standalone.cache.WorkspaceDiscoveryCache
 import io.github.amichne.kast.standalone.workspace.GradleDependency
 import io.github.amichne.kast.standalone.workspace.GradleDependencyScope
@@ -79,6 +80,26 @@ class WorkspaceDiscoveryCacheTest {
     }
 
     @Test
+    fun `workspace discovery cache separates constrained and complete discovery modes`() {
+        createGradleWorkspace()
+        val constrainedResult = workspaceDiscoveryResult(":app")
+        val completeResult = workspaceDiscoveryResult(":complete-app")
+        val cache = WorkspaceDiscoveryCache()
+
+        cache.write(workspaceRoot, constrainedResult, discoveryMode = GradleDiscoveryMode.CONSTRAINED)
+        cache.write(workspaceRoot, completeResult, discoveryMode = GradleDiscoveryMode.COMPLETE)
+
+        assertEquals(
+            constrainedResult,
+            cache.read(workspaceRoot, discoveryMode = GradleDiscoveryMode.CONSTRAINED)?.discoveryResult,
+        )
+        assertEquals(
+            completeResult,
+            cache.read(workspaceRoot, discoveryMode = GradleDiscoveryMode.COMPLETE)?.discoveryResult,
+        )
+    }
+
+    @Test
     fun `workspace discovery cache ignores build files under skipped directories`() {
         createGradleWorkspace()
         val result = workspaceDiscoveryResult()
@@ -105,19 +126,19 @@ class WorkspaceDiscoveryCacheTest {
     fun `workspace discovery cache is used when valid`() {
         createGradleWorkspace()
         WorkspaceDiscoveryCache().write(workspaceRoot, workspaceDiscoveryResult())
-        var toolingApiLoaderCalls = 0
+        var gradleLoaderCalls = 0
 
         val layout = GradleWorkspaceDiscovery.discover(
             workspaceRoot = workspaceRoot,
             extraClasspathRoots = emptyList(),
             settingsSnapshot = GradleSettingsSnapshot.read(workspaceRoot),
-            toolingApiLoader = { _, _ ->
-                toolingApiLoaderCalls += 1
+            constrainedGradleLoader = { _, _ ->
+                gradleLoaderCalls += 1
                 error("tooling api should not run when cache is valid")
             },
         )
 
-        assertEquals(0, toolingApiLoaderCalls)
+        assertEquals(0, gradleLoaderCalls)
         assertEquals(
             setOf(ModuleName(":app[main]"), ModuleName(":app[test]"), ModuleName(":lib[main]")),
             layout.sourceModules.map(StandaloneSourceModuleSpec::name).toSet(),
@@ -128,19 +149,19 @@ class WorkspaceDiscoveryCacheTest {
     fun `workspace discovery cache avoids Gradle loader on restart`() {
         createGradleWorkspace()
         WorkspaceDiscoveryCache().write(workspaceRoot, workspaceDiscoveryResult())
-        var toolingApiLoaderCalls = 0
+        var gradleLoaderCalls = 0
 
         val layout = GradleWorkspaceDiscovery.discover(
             workspaceRoot = workspaceRoot,
             extraClasspathRoots = emptyList(),
             settingsSnapshot = GradleSettingsSnapshot.read(workspaceRoot),
-            toolingApiLoader = { _, _ ->
-                toolingApiLoaderCalls += 1
+            constrainedGradleLoader = { _, _ ->
+                gradleLoaderCalls += 1
                 error("tooling api should not run when cache is valid")
             },
         )
 
-        assertEquals(0, toolingApiLoaderCalls)
+        assertEquals(0, gradleLoaderCalls)
         assertEquals(
             setOf(ModuleName(":app[main]"), ModuleName(":app[test]"), ModuleName(":lib[main]")),
             layout.sourceModules.map(StandaloneSourceModuleSpec::name).toSet(),
@@ -169,14 +190,16 @@ class WorkspaceDiscoveryCacheTest {
         writeFile(relativePath = "lib/build.gradle.kts", content = "")
     }
 
-    private fun workspaceDiscoveryResult(): GradleWorkspaceDiscoveryResult = GradleWorkspaceDiscoveryResult(
+    private fun workspaceDiscoveryResult(
+        appPath: String = ":app",
+    ): GradleWorkspaceDiscoveryResult = GradleWorkspaceDiscoveryResult(
         modules = listOf(
             gradleModule(
-                gradlePath = ":app",
-                mainSourceRoots = listOf(workspaceRoot.resolve("app/src/main/kotlin")),
-                testSourceRoots = listOf(workspaceRoot.resolve("app/src/test/kotlin")),
-                mainOutputRoots = listOf(workspaceRoot.resolve("app/build/classes/kotlin/main")),
-                testOutputRoots = listOf(workspaceRoot.resolve("app/build/classes/kotlin/test")),
+                gradlePath = appPath,
+                mainSourceRoots = listOf(workspaceRoot.resolve(appPath.removePrefix(":").replace(':', '/')).resolve("src/main/kotlin")),
+                testSourceRoots = listOf(workspaceRoot.resolve(appPath.removePrefix(":").replace(':', '/')).resolve("src/test/kotlin")),
+                mainOutputRoots = listOf(workspaceRoot.resolve(appPath.removePrefix(":").replace(':', '/')).resolve("build/classes/kotlin/main")),
+                testOutputRoots = listOf(workspaceRoot.resolve(appPath.removePrefix(":").replace(':', '/')).resolve("build/classes/kotlin/test")),
                 dependencies = listOf(
                     GradleDependency.ModuleDependency(
                         targetIdeaModuleName = ":lib",

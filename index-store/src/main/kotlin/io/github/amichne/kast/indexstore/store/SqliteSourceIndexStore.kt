@@ -580,8 +580,33 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
     }
 
     fun fileCountBySourceRoot(sourceRoots: Collection<Path>): Map<Path, Int> {
-        val filesByRoot = filesBySourceRoot(sourceRoots)
-        return normalizedSourceRoots(sourceRoots).associateWith { root -> filesByRoot[root].orEmpty().size }
+        val roots = normalizedSourceRoots(sourceRoots)
+        if (roots.isEmpty()) return emptyMap()
+        if (!dbExists()) return roots.associateWith { 0 }
+
+        return synchronized(writeLock) {
+            val conn = connection()
+            loadInterningTables(conn)
+            val countsByDir = conn.prepareStatement(
+                """SELECT prefixes.dir_path, COUNT(*) AS file_count
+                   FROM file_manifest manifest
+                   JOIN path_prefixes prefixes ON prefixes.prefix_id = manifest.prefix_id
+                   GROUP BY prefixes.dir_path""",
+            ).use { stmt ->
+                val rs = stmt.executeQuery()
+                buildMap {
+                    while (rs.next()) {
+                        put(rs.getString("dir_path"), rs.getInt("file_count"))
+                    }
+                }
+            }
+            roots.associateWith { root ->
+                val rootDir = sourceRootDirKey(root)
+                countsByDir.entries.sumOf { (dir, count) ->
+                    if (dirIsWithinSourceRoot(dir, rootDir)) count else 0
+                }
+            }
+        }
     }
 
     fun filesBySourceRoot(
@@ -590,16 +615,33 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
     ): Map<Path, List<Path>> {
         val roots = normalizedSourceRoots(sourceRoots)
         if (roots.isEmpty()) return emptyMap()
+        if (!dbExists()) return roots.associateWith { emptyList() }
 
-        val filesByRoot = roots.associateWithTo(linkedMapOf()) { mutableListOf<Path>() }
-        knownSourcePaths().forEach { path ->
-            val root = roots.firstOrNull(path::startsWith) ?: return@forEach
-            val files = filesByRoot.getValue(root)
-            if (limitPerRoot == null || files.size < limitPerRoot) {
-                files.add(path)
+        return synchronized(writeLock) {
+            val conn = connection()
+            loadInterningTables(conn)
+            roots.associateWithTo(linkedMapOf()) { root ->
+                val rootDir = sourceRootDirKey(root)
+                val rows = conn.prepareStatement(sourceRootFilesSql(rootDir, limitPerRoot)).use { stmt ->
+                    bindSourceRootPrefix(stmt, rootDir)
+                    if (limitPerRoot != null) {
+                        stmt.setInt(if (rootDir.isEmpty()) 2 else 3, limitPerRoot)
+                    }
+                    val rs = stmt.executeQuery()
+                    buildList {
+                        while (rs.next()) {
+                            val path = Path.of(pathCodec.decode(rs.getInt("prefix_id"), rs.getString("filename")))
+                                .toAbsolutePath()
+                                .normalize()
+                            if (Files.isRegularFile(path) && SourceIndexFilePolicy.isEligible(path)) {
+                                add(path)
+                            }
+                        }
+                    }
+                }
+                rows.distinct().sorted()
             }
         }
-        return filesByRoot.mapValues { (_, files) -> files.sorted() }
     }
 
     fun upsertSymbolReference(
@@ -1599,7 +1641,50 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
             .distinct()
             .sorted()
 
+    private fun sourceRootDirKey(root: Path): String =
+        pathCodec.decompose(root.resolve(sourceRootProbeFileName).toString()).first
+
+    private fun dirIsWithinSourceRoot(
+        dir: String,
+        sourceRootDir: String,
+    ): Boolean = when {
+        sourceRootDir.isEmpty() -> !dir.startsWith(absolutePathPrefix)
+        dir == sourceRootDir -> true
+        else -> dir.startsWith("$sourceRootDir/")
+    }
+
+    private fun sourceRootFilesSql(
+        sourceRootDir: String,
+        limitPerRoot: Int?,
+    ): String {
+        val rootClause = if (sourceRootDir.isEmpty()) {
+            "prefixes.dir_path NOT LIKE ?"
+        } else {
+            "(prefixes.dir_path = ? OR prefixes.dir_path LIKE ?)"
+        }
+        val limitClause = if (limitPerRoot == null) "" else " LIMIT ?"
+        return """SELECT manifest.prefix_id, manifest.filename
+                  FROM file_manifest manifest
+                  JOIN path_prefixes prefixes ON prefixes.prefix_id = manifest.prefix_id
+                  WHERE $rootClause
+                  ORDER BY prefixes.dir_path, manifest.filename$limitClause"""
+    }
+
+    private fun bindSourceRootPrefix(
+        stmt: java.sql.PreparedStatement,
+        sourceRootDir: String,
+    ) {
+        if (sourceRootDir.isEmpty()) {
+            stmt.setString(1, "$absolutePathPrefix%")
+        } else {
+            stmt.setString(1, sourceRootDir)
+            stmt.setString(2, "$sourceRootDir/%")
+        }
+    }
+
     private companion object {
         const val PENDING_UPDATE_RETENTION_MS = 7L * 24 * 60 * 60 * 1_000
+        const val absolutePathPrefix = "__kast_abs__/"
+        const val sourceRootProbeFileName = ".kast-source-root-probe.kt"
     }
 }

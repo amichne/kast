@@ -2,6 +2,8 @@ package io.github.amichne.kast.standalone
 
 import io.github.amichne.kast.api.client.fields.GradleToolingApiTimeoutMillis
 import io.github.amichne.kast.api.client.KastConfig
+import io.github.amichne.kast.api.client.fields.GradleDiscoveryMode
+import io.github.amichne.kast.api.client.fields.GradleDiscoveryModeField
 import io.github.amichne.kast.api.contract.ModuleName
 import io.github.amichne.kast.standalone.cache.WorkspaceDiscoveryCache
 import io.github.amichne.kast.standalone.workspace.GradleDependency
@@ -256,6 +258,49 @@ class GradleWorkspaceDiscoveryTest {
     }
 
     @Test
+    fun `build standalone workspace layout trims cyclic module dependency edges`() {
+        val first = GradleModuleModel(
+            gradlePath = ":first",
+            ideaModuleName = "first",
+            mainSourceRoots = listOf(Path.of("/workspace/first/src/main/kotlin")),
+            testSourceRoots = emptyList(),
+            mainOutputRoots = emptyList(),
+            testOutputRoots = emptyList(),
+            dependencies = listOf(
+                GradleDependency.ModuleDependency(
+                    targetIdeaModuleName = ":second",
+                    scope = GradleDependencyScope.COMPILE,
+                ),
+            ),
+        )
+        val second = GradleModuleModel(
+            gradlePath = ":second",
+            ideaModuleName = "second",
+            mainSourceRoots = listOf(Path.of("/workspace/second/src/main/kotlin")),
+            testSourceRoots = emptyList(),
+            mainOutputRoots = emptyList(),
+            testOutputRoots = emptyList(),
+            dependencies = listOf(
+                GradleDependency.ModuleDependency(
+                    targetIdeaModuleName = ":first",
+                    scope = GradleDependencyScope.COMPILE,
+                ),
+            ),
+        )
+
+        val layout = GradleWorkspaceDiscovery.buildStandaloneWorkspaceLayout(
+            gradleModules = listOf(first, second),
+            extraClasspathRoots = emptyList(),
+        )
+
+        topologicallySortSourceModules(layout.sourceModules)
+        assertEquals(
+            1,
+            layout.sourceModules.sumOf { module -> module.dependencyModuleNames.size },
+        )
+    }
+
+    @Test
     fun `detect incomplete classpath returns warnings for modules with zero library dependencies`() {
         val modules = listOf(
             GradleModuleModel(
@@ -329,7 +374,7 @@ class GradleWorkspaceDiscoveryTest {
                 workspaceRoot = Path.of("/workspace"),
                 extraClasspathRoots = emptyList(),
                 settingsSnapshot = largeSettingsSnapshot(moduleCount = 250),
-                toolingApiLoader = { _, _ -> throw TimeoutException("tooling api timed out") },
+                constrainedGradleLoader = { _, _ -> throw TimeoutException("tooling api timed out") },
                 warningSink = warningMessages::add,
                 cache = WorkspaceDiscoveryCache(enabled = false),
             )
@@ -366,13 +411,61 @@ class GradleWorkspaceDiscoveryTest {
             workspaceRoot = Path.of("/workspace"),
             extraClasspathRoots = emptyList(),
             settingsSnapshot = largeSettingsSnapshot(moduleCount = 250),
-            toolingApiLoader = { _, _ -> toolingModules },
+            constrainedGradleLoader = { _, _ -> toolingModules },
             cache = WorkspaceDiscoveryCache(enabled = false),
         )
         val modulesByName = layout.sourceModules.associateBy(StandaloneSourceModuleSpec::name)
 
         assertEquals(listOf(ModuleName(":lib[main]")), modulesByName.getValue(ModuleName(":app[main]")).dependencyModuleNames)
         assertTrue(modulesByName.getValue(ModuleName(":app[main]")).binaryRoots.contains(Path.of("/deps/runtime.jar")))
+    }
+
+    @Test
+    fun `constrained Gradle discovery is the default loader`() {
+        val loadedBy = mutableListOf<GradleDiscoveryMode>()
+
+        GradleWorkspaceDiscovery.discover(
+            workspaceRoot = Path.of("/workspace"),
+            extraClasspathRoots = emptyList(),
+            settingsSnapshot = largeSettingsSnapshot(moduleCount = 2),
+            constrainedGradleLoader = { _, _ ->
+                loadedBy += GradleDiscoveryMode.CONSTRAINED
+                listOf(gradleModule(":app", mainSourceRoots = listOf(Path.of("/workspace/app/src/main/kotlin"))))
+            },
+            completeIdeaProjectLoader = { _, _ ->
+                loadedBy += GradleDiscoveryMode.COMPLETE
+                listOf(gradleModule(":app", mainSourceRoots = listOf(Path.of("/workspace/app/src/main/kotlin"))))
+            },
+            cache = WorkspaceDiscoveryCache(enabled = false),
+        )
+
+        assertEquals(listOf(GradleDiscoveryMode.CONSTRAINED), loadedBy)
+    }
+
+    @Test
+    fun `complete Gradle discovery mode is explicit opt in`() {
+        val loadedBy = mutableListOf<GradleDiscoveryMode>()
+        val config = KastConfig.defaults().copy(
+            gradle = KastConfig.defaults().gradle.copy(discoveryMode = GradleDiscoveryModeField(GradleDiscoveryMode.COMPLETE)),
+        )
+
+        GradleWorkspaceDiscovery.discover(
+            workspaceRoot = Path.of("/workspace"),
+            extraClasspathRoots = emptyList(),
+            settingsSnapshot = largeSettingsSnapshot(moduleCount = 2),
+            constrainedGradleLoader = { _, _ ->
+                loadedBy += GradleDiscoveryMode.CONSTRAINED
+                listOf(gradleModule(":app", mainSourceRoots = listOf(Path.of("/workspace/app/src/main/kotlin"))))
+            },
+            completeIdeaProjectLoader = { _, _ ->
+                loadedBy += GradleDiscoveryMode.COMPLETE
+                listOf(gradleModule(":app", mainSourceRoots = listOf(Path.of("/workspace/app/src/main/kotlin"))))
+            },
+            config = config,
+            cache = WorkspaceDiscoveryCache(enabled = false),
+        )
+
+        assertEquals(listOf(GradleDiscoveryMode.COMPLETE), loadedBy)
     }
 
     private fun gradleModule(

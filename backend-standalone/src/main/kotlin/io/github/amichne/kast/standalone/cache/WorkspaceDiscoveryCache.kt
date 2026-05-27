@@ -1,6 +1,7 @@
 package io.github.amichne.kast.standalone.cache
 
 import io.github.amichne.kast.api.contract.ModuleName
+import io.github.amichne.kast.api.client.fields.GradleDiscoveryMode
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.indexstore.store.cache.defaultCacheJson
 import io.github.amichne.kast.standalone.normalizeStandalonePath
@@ -16,7 +17,7 @@ import java.nio.file.SimpleFileVisitor
 import java.nio.file.attribute.BasicFileAttributes
 import java.security.MessageDigest
 
-private const val workspaceDiscoveryCacheSchemaVersion = 2
+private const val workspaceDiscoveryCacheSchemaVersion = 3
 
 private val trackedGradleBuildFileNames = setOf(
     "settings.gradle",
@@ -41,16 +42,20 @@ internal class WorkspaceDiscoveryCache(
     private val store: SqliteSourceIndexStore? = null,
 ) {
 
-    fun read(workspaceRoot: Path): CachedWorkspaceDiscovery? {
+    fun read(
+        workspaceRoot: Path,
+        discoveryMode: GradleDiscoveryMode = GradleDiscoveryMode.CONSTRAINED,
+    ): CachedWorkspaceDiscovery? {
         if (!enabled) return null
         val normalizedWorkspaceRoot = normalizeStandalonePath(workspaceRoot)
-        val cacheKey = computeWorkspaceDiscoveryCacheKey(normalizedWorkspaceRoot)
+        val cacheKey = computeWorkspaceDiscoveryCacheKey(normalizedWorkspaceRoot, discoveryMode)
         return withStore(normalizedWorkspaceRoot) { s ->
             val payload = s.readWorkspaceDiscovery(cacheKey) ?: return@withStore null
             val cached = runCatching {
                 json.decodeFromString(CachedWorkspaceDiscoveryPayload.serializer(), payload)
             }.getOrNull() ?: return@withStore null
             if (cached.schemaVersion != workspaceDiscoveryCacheSchemaVersion) return@withStore null
+            if (cached.discoveryMode != discoveryMode) return@withStore null
             CachedWorkspaceDiscovery(
                 discoveryResult = cached.discoveryResult,
                 dependentModuleNamesBySourceModuleName = cached.dependentModuleNamesBySourceModuleName
@@ -63,10 +68,11 @@ internal class WorkspaceDiscoveryCache(
     fun write(
         workspaceRoot: Path,
         result: GradleWorkspaceDiscoveryResult,
+        discoveryMode: GradleDiscoveryMode = GradleDiscoveryMode.CONSTRAINED,
     ) {
         if (!enabled) return
         val normalizedWorkspaceRoot = normalizeStandalonePath(workspaceRoot)
-        val cacheKey = computeWorkspaceDiscoveryCacheKey(normalizedWorkspaceRoot)
+        val cacheKey = computeWorkspaceDiscoveryCacheKey(normalizedWorkspaceRoot, discoveryMode)
         val dependentModuleNamesBySourceModuleName = GradleWorkspaceDiscovery
             .buildStandaloneWorkspaceLayout(
                 gradleModules = result.modules,
@@ -79,6 +85,7 @@ internal class WorkspaceDiscoveryCache(
             CachedWorkspaceDiscoveryPayload.serializer(),
             CachedWorkspaceDiscoveryPayload(
                 cacheKey = cacheKey,
+                discoveryMode = discoveryMode,
                 discoveryResult = result,
                 dependentModuleNamesBySourceModuleName = dependentModuleNamesBySourceModuleName,
             ),
@@ -106,12 +113,18 @@ internal data class CachedWorkspaceDiscovery(
 internal data class CachedWorkspaceDiscoveryPayload(
     val schemaVersion: Int = workspaceDiscoveryCacheSchemaVersion,
     val cacheKey: String,
+    val discoveryMode: GradleDiscoveryMode = GradleDiscoveryMode.CONSTRAINED,
     val discoveryResult: GradleWorkspaceDiscoveryResult,
     val dependentModuleNamesBySourceModuleName: Map<String, List<String>>,
 )
 
-private fun computeWorkspaceDiscoveryCacheKey(workspaceRoot: Path): String {
+private fun computeWorkspaceDiscoveryCacheKey(
+    workspaceRoot: Path,
+    discoveryMode: GradleDiscoveryMode,
+): String {
     val digest = MessageDigest.getInstance("SHA-256")
+    digest.update(discoveryMode.name.toByteArray(StandardCharsets.UTF_8))
+    digest.update(0.toByte())
     trackedGradleBuildFiles(workspaceRoot).forEach { file ->
         digest.update(workspaceRoot.relativize(file).toString().replace('\\', '/').toByteArray(StandardCharsets.UTF_8))
         digest.update(0.toByte())

@@ -847,10 +847,10 @@ class StandaloneWorkspaceDiscoveryTest {
     }
 
     @Test
-    fun `tooling api discovers Gradle-owned Kotlin source set roots when IDEA model omits them`() {
+    fun `constrained Gradle model discovers Gradle-owned Kotlin source set roots when IDEA model omits them`() {
         createKotlinLikeSourceSetWorkspace()
 
-        val modulesByPath = GradleWorkspaceDiscovery.loadModulesWithToolingApi(
+        val modulesByPath = GradleWorkspaceDiscovery.loadModulesWithConstrainedGradleModel(
             workspaceRoot,
             timeoutMillis = defaultToolingApiTimeoutMillis,
         ).associateBy(GradleModuleModel::gradlePath)
@@ -862,6 +862,70 @@ class StandaloneWorkspaceDiscoveryTest {
         assertEquals(
             listOf(normalizeStandalonePath(workspaceRoot.resolve("app/jvmTest/src"))),
             modulesByPath.getValue(":app").testSourceRoots,
+        )
+    }
+
+    @Test
+    fun `constrained Gradle model discovers Kotlin Multiplatform source roots`() {
+        createKotlinMultiplatformSourceSetWorkspace()
+
+        val modulesByPath = GradleWorkspaceDiscovery.loadModulesWithConstrainedGradleModel(
+            workspaceRoot,
+            timeoutMillis = defaultToolingApiTimeoutMillis,
+        ).associateBy(GradleModuleModel::gradlePath)
+
+        assertEquals(
+            listOf(normalizeStandalonePath(workspaceRoot.resolve("app/common/src"))),
+            modulesByPath.getValue(":app").mainSourceRoots,
+        )
+        assertEquals(
+            listOf(normalizeStandalonePath(workspaceRoot.resolve("app/jvm/test"))),
+            modulesByPath.getValue(":app").testSourceRoots,
+        )
+    }
+
+    @Test
+    fun `constrained Gradle model uses the target build distribution`() {
+        createWrapperPinnedGradleWorkspace()
+
+        val modulesByPath = GradleWorkspaceDiscovery.loadModulesWithConstrainedGradleModel(
+            workspaceRoot,
+            timeoutMillis = defaultToolingApiTimeoutMillis,
+        ).associateBy(GradleModuleModel::gradlePath)
+
+        assertEquals(
+            listOf(normalizeStandalonePath(workspaceRoot.resolve("src/main/kotlin"))),
+            modulesByPath.getValue(":").mainSourceRoots,
+        )
+    }
+
+    @Test
+    fun `constrained Gradle model evaluates subprojects before collecting source sets`() {
+        createConfigureOnDemandGradleWorkspace()
+
+        val modulesByPath = GradleWorkspaceDiscovery.loadModulesWithConstrainedGradleModel(
+            workspaceRoot,
+            timeoutMillis = defaultToolingApiTimeoutMillis,
+        ).associateBy(GradleModuleModel::gradlePath)
+
+        assertEquals(
+            listOf(normalizeStandalonePath(workspaceRoot.resolve("app/src/main/kotlin"))),
+            modulesByPath.getValue(":app").mainSourceRoots,
+        )
+    }
+
+    @Test
+    fun `constrained Gradle model keeps source roots when file dependency enumeration fails`() {
+        createGradleWorkspaceWithUnresolvableFileDependency()
+
+        val modulesByPath = GradleWorkspaceDiscovery.loadModulesWithConstrainedGradleModel(
+            workspaceRoot,
+            timeoutMillis = defaultToolingApiTimeoutMillis,
+        ).associateBy(GradleModuleModel::gradlePath)
+
+        assertEquals(
+            listOf(normalizeStandalonePath(workspaceRoot.resolve("app/src/main/kotlin"))),
+            modulesByPath.getValue(":app").mainSourceRoots,
         )
     }
 
@@ -1008,6 +1072,187 @@ class StandaloneWorkspaceDiscoveryTest {
                 package sample;
 
                 public final class JavaApp {}
+            """.trimIndent() + "\n",
+        )
+    }
+
+    private fun createKotlinMultiplatformSourceSetWorkspace() {
+        writeFile(
+            relativePath = "settings.gradle.kts",
+            content = """
+                pluginManagement {
+                    repositories {
+                        gradlePluginPortal()
+                        mavenCentral()
+                    }
+                }
+                dependencyResolutionManagement {
+                    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+                    repositories {
+                        mavenCentral()
+                    }
+                }
+                rootProject.name = "workspace"
+                include(":app")
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "app/build.gradle.kts",
+            content = """
+                plugins {
+                    id("org.jetbrains.kotlin.multiplatform") version "2.1.21"
+                }
+
+                kotlin {
+                    jvm()
+                    sourceSets {
+                        commonMain {
+                            kotlin.srcDir("common/src")
+                        }
+                        jvmTest {
+                            kotlin.srcDir("jvm/test")
+                        }
+                    }
+                }
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "app/common/src/sample/Common.kt",
+            content = """
+                package sample
+
+                fun commonGreeting(): String = "common"
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "app/jvm/test/sample/CommonTest.kt",
+            content = """
+                package sample
+
+                class CommonTest
+            """.trimIndent() + "\n",
+        )
+    }
+
+    private fun createWrapperPinnedGradleWorkspace() {
+        writeFile(
+            relativePath = "settings.gradle.kts",
+            content = """
+                rootProject.name = "workspace"
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "build.gradle.kts",
+            content = """
+                import org.gradle.util.GradleVersion
+
+                if (GradleVersion.current().version != "9.4.0") {
+                    error("expected Gradle wrapper distribution 9.4.0 but was ${'$'}{GradleVersion.current().version}")
+                }
+
+                plugins {
+                    `java-library`
+                }
+
+                configure<SourceSetContainer> {
+                    named("main") {
+                        java.srcDir("src/main/kotlin")
+                    }
+                }
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "gradle/wrapper/gradle-wrapper.properties",
+            content = """
+                distributionBase=GRADLE_USER_HOME
+                distributionPath=wrapper/dists
+                distributionUrl=https\://services.gradle.org/distributions/gradle-9.4.0-bin.zip
+                networkTimeout=10000
+                validateDistributionUrl=true
+                zipStoreBase=GRADLE_USER_HOME
+                zipStorePath=wrapper/dists
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "src/main/kotlin/sample/App.kt",
+            content = """
+                package sample
+
+                fun app(): String = "ready"
+            """.trimIndent() + "\n",
+        )
+    }
+
+    private fun createConfigureOnDemandGradleWorkspace() {
+        writeFile(
+            relativePath = "gradle.properties",
+            content = """
+                org.gradle.configureondemand=true
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "settings.gradle.kts",
+            content = """
+                rootProject.name = "workspace"
+                include(":app")
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "app/build.gradle.kts",
+            content = """
+                plugins {
+                    `java-library`
+                }
+
+                configure<SourceSetContainer> {
+                    named("main") {
+                        java.srcDir("src/main/kotlin")
+                    }
+                }
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "app/src/main/kotlin/sample/App.kt",
+            content = """
+                package sample
+
+                fun app(): String = "ready"
+            """.trimIndent() + "\n",
+        )
+    }
+
+    private fun createGradleWorkspaceWithUnresolvableFileDependency() {
+        writeFile(
+            relativePath = "settings.gradle.kts",
+            content = """
+                rootProject.name = "workspace"
+                include(":app")
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "app/build.gradle.kts",
+            content = """
+                plugins {
+                    `java-library`
+                }
+
+                configure<SourceSetContainer> {
+                    named("main") {
+                        java.srcDir("src/main/kotlin")
+                    }
+                }
+
+                dependencies {
+                    implementation(files({ throw GradleException("file dependency should not be resolved") }))
+                }
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "app/src/main/kotlin/sample/App.kt",
+            content = """
+                package sample
+
+                fun app(): String = "ready"
             """.trimIndent() + "\n",
         )
     }
