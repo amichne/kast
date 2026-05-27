@@ -58,8 +58,7 @@ data class KastConfig(
                 ),
                 watcher = WatcherConfig(debounceMillis = WatcherDebounceMillis(200L)),
                 gradle = GradleConfig(
-                    toolingApiTimeoutMillis = GradleToolingApiTimeoutMillis(60_000L),
-                    maxIncludedProjects = GradleMaxIncludedProjects(200),
+                    toolingApiTimeoutMillis = GradleToolingApiTimeoutMillis(120_000L),
                 ),
                 telemetry = TelemetryConfig(
                     enabled = TelemetryEnabled(false),
@@ -237,9 +236,8 @@ private fun Map<String, String>.watcherOverride(): WatcherConfigOverride? {
 
 private fun Map<String, String>.gradleOverride(): GradleConfigOverride? {
     val toolingApiTimeoutMillis = longValue("gradle.toolingapitimeoutmillis")?.let(::GradleToolingApiTimeoutMillis)
-    val maxIncludedProjects = intValue("gradle.maxincludedprojects")?.let(::GradleMaxIncludedProjects)
-    return takeIfAny(toolingApiTimeoutMillis, maxIncludedProjects) {
-        GradleConfigOverride(toolingApiTimeoutMillis, maxIncludedProjects)
+    return takeIfAny(toolingApiTimeoutMillis) {
+        GradleConfigOverride(toolingApiTimeoutMillis)
     }
 }
 
@@ -351,7 +349,6 @@ data class WatcherConfig(
 
 data class GradleConfig(
     val toolingApiTimeoutMillis: GradleToolingApiTimeoutMillis,
-    val maxIncludedProjects: GradleMaxIncludedProjects,
 )
 
 data class TelemetryConfig(
@@ -443,7 +440,6 @@ data class WatcherConfigOverride(
 
 data class GradleConfigOverride(
     val toolingApiTimeoutMillis: GradleToolingApiTimeoutMillis? = null,
-    val maxIncludedProjects: GradleMaxIncludedProjects? = null,
 )
 
 data class TelemetryConfigOverride(
@@ -538,7 +534,6 @@ private fun WatcherConfig.merge(override: WatcherConfigOverride?): WatcherConfig
 
 private fun GradleConfig.merge(override: GradleConfigOverride?): GradleConfig = copy(
     toolingApiTimeoutMillis = override?.toolingApiTimeoutMillis ?: toolingApiTimeoutMillis,
-    maxIncludedProjects = override?.maxIncludedProjects ?: maxIncludedProjects,
 )
 
 private fun TelemetryConfig.merge(override: TelemetryConfigOverride?): TelemetryConfig = copy(

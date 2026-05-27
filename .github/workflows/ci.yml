@@ -23,6 +23,14 @@ jobs:
         shell: bash
         run: ./.github/scripts/test-release-workflow-contract.sh
 
+      - name: Test standalone profile workflow contract
+        shell: bash
+        run: ./.github/scripts/test-standalone-profile-workflow-contract.sh
+
+      - name: Test standalone profile harness contract
+        shell: bash
+        run: ./.github/scripts/test-standalone-profile-harness-contract.sh
+
       - name: Test docs navigation contract
         shell: bash
         run: ./.github/scripts/test-docs-navigation-contract.sh

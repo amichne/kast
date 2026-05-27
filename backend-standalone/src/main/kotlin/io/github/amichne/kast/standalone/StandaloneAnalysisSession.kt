@@ -165,6 +165,7 @@ internal class StandaloneAnalysisSession(
             classpathRoots = classpathRoots,
             moduleName = moduleName,
             config = config,
+            telemetry = telemetry,
         )
         require(workspaceLayout.sourceModules.isNotEmpty()) {
             "No source roots were found under ${this.workspaceRoot}"

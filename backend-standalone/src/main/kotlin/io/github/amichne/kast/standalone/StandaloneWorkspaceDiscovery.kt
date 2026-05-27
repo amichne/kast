@@ -2,8 +2,8 @@ package io.github.amichne.kast.standalone
 
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.contract.ModuleName
+import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetry
 import io.github.amichne.kast.standalone.workspace.GradleWorkspaceDiscovery
-import io.github.amichne.kast.standalone.workspace.PhasedDiscoveryResult
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.extension
@@ -14,6 +14,7 @@ internal fun discoverStandaloneWorkspaceLayout(
     classpathRoots: List<Path>,
     moduleName: String,
     config: KastConfig = KastConfig.load(workspaceRoot),
+    telemetry: StandaloneTelemetry = StandaloneTelemetry.disabled(),
 ): StandaloneWorkspaceLayout {
     val normalizedWorkspaceRoot = normalizeStandalonePath(workspaceRoot)
     if (sourceRoots.isNotEmpty()) {
@@ -33,6 +34,7 @@ internal fun discoverStandaloneWorkspaceLayout(
             workspaceRoot = normalizedWorkspaceRoot,
             extraClasspathRoots = normalizeStandalonePaths(classpathRoots),
             config = config,
+            telemetry = telemetry,
         )
     }
 
@@ -45,34 +47,6 @@ internal fun discoverStandaloneWorkspaceLayout(
                 dependencyModuleNames = emptyList(),
             ),
         ),
-    )
-}
-
-internal fun discoverStandaloneWorkspaceLayoutPhased(
-    workspaceRoot: Path,
-    sourceRoots: List<Path>,
-    classpathRoots: List<Path>,
-    moduleName: String,
-    config: KastConfig = KastConfig.load(workspaceRoot),
-): PhasedDiscoveryResult {
-    val normalizedWorkspaceRoot = normalizeStandalonePath(workspaceRoot)
-    if (sourceRoots.isNotEmpty() || !looksLikeGradleWorkspace(normalizedWorkspaceRoot)) {
-        return PhasedDiscoveryResult(
-            initialLayout = discoverStandaloneWorkspaceLayout(
-                workspaceRoot = normalizedWorkspaceRoot,
-                sourceRoots = sourceRoots,
-                classpathRoots = classpathRoots,
-                moduleName = moduleName,
-                config = config,
-            ),
-            enrichmentFuture = null,
-        )
-    }
-
-    return GradleWorkspaceDiscovery.discoverPhased(
-        workspaceRoot = normalizedWorkspaceRoot,
-        extraClasspathRoots = normalizeStandalonePaths(classpathRoots),
-        config = config,
     )
 }
 

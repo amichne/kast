@@ -1,0 +1,42 @@
+FROM eclipse-temurin:21-jdk-jammy
+
+ARG ASPROF_VERSION=4.4
+ARG TARGETARCH
+
+RUN set -eux; \
+    apt-get update; \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        bash \
+        ca-certificates \
+        coreutils \
+        curl \
+        git \
+        jq \
+        procps \
+        python3 \
+        unzip; \
+    rm -rf /var/lib/apt/lists/*
+
+RUN set -eux; \
+    case "${TARGETARCH}" in \
+        amd64) asprof_arch="x64" ;; \
+        arm64) asprof_arch="arm64" ;; \
+        *) echo "unsupported Docker architecture for async-profiler: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac; \
+    curl -fsSL \
+        "https://github.com/async-profiler/async-profiler/releases/download/v${ASPROF_VERSION}/async-profiler-${ASPROF_VERSION}-linux-${asprof_arch}.tar.gz" \
+        -o /tmp/async-profiler.tar.gz; \
+    mkdir -p /opt/async-profiler; \
+    tar -xzf /tmp/async-profiler.tar.gz -C /opt/async-profiler --strip-components=1; \
+    ln -s /opt/async-profiler/bin/asprof /usr/local/bin/asprof; \
+    rm -f /tmp/async-profiler.tar.gz
+
+COPY scripts/profiling/run-standalone-profile.sh /opt/kast-profile/run-standalone-profile.sh
+COPY scripts/profiling/kast_profile_workload.py /opt/kast-profile/kast_profile_workload.py
+
+RUN chmod +x \
+    /opt/kast-profile/run-standalone-profile.sh \
+    /opt/kast-profile/kast_profile_workload.py
+
+WORKDIR /work
+ENTRYPOINT ["/opt/kast-profile/run-standalone-profile.sh"]

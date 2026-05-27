@@ -5,5 +5,5 @@ data class GradleToolingApiTimeoutMillis(
 ) : ConfigurationField<Long>() {
     override val section: String get() = "gradle"
     override val key: String get() = "toolingApiTimeoutMillis"
-    override val default: ConfigurationDefault<Long> get() = ConfigurationDefault(60_000L)
+    override val default: ConfigurationDefault<Long> get() = ConfigurationDefault(120_000L)
 }

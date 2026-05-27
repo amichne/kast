@@ -17,7 +17,6 @@ import io.github.amichne.kast.api.client.KastConfigOverride
 import io.github.amichne.kast.api.client.fields.CacheEnabled
 import io.github.amichne.kast.api.client.fields.CacheSourceIndexSaveDelayMillis
 import io.github.amichne.kast.api.client.fields.CacheWriteDelayMillis
-import io.github.amichne.kast.api.client.fields.GradleMaxIncludedProjects
 import io.github.amichne.kast.api.client.fields.GradleToolingApiTimeoutMillis
 import io.github.amichne.kast.api.client.fields.IndexingIdentifierIndexWaitMillis
 import io.github.amichne.kast.api.client.fields.IndexingPhase2BatchSize
@@ -60,7 +59,6 @@ internal class KastSettingsState : PersistentStateComponent<KastSettingsState> {
     var cacheSourceIndexSaveDelayMillis: Long? = null
     var watcherDebounceMillis: Long? = null
     var gradleToolingApiTimeoutMillis: Long? = null
-    var gradleMaxIncludedProjects: Int? = null
     var telemetryEnabled: Boolean? = null
     var telemetryScopes: String? = null
     var telemetryDetail: String? = null
@@ -88,7 +86,6 @@ internal class KastSettingsState : PersistentStateComponent<KastSettingsState> {
         cacheSourceIndexSaveDelayMillis = config.cache.sourceIndexSaveDelayMillis.value
         watcherDebounceMillis = config.watcher.debounceMillis.value
         gradleToolingApiTimeoutMillis = config.gradle.toolingApiTimeoutMillis.value
-        gradleMaxIncludedProjects = config.gradle.maxIncludedProjects.value
         telemetryEnabled = config.telemetry.enabled.value
         telemetryScopes = config.telemetry.scopes.value
         telemetryDetail = config.telemetry.detail.value
@@ -124,7 +121,6 @@ internal class KastSettingsState : PersistentStateComponent<KastSettingsState> {
         watcher = WatcherConfigOverride(debounceMillis = watcherDebounceMillis?.let(::WatcherDebounceMillis)).takeIfAny(),
         gradle = GradleConfigOverride(
             toolingApiTimeoutMillis = gradleToolingApiTimeoutMillis?.let(::GradleToolingApiTimeoutMillis),
-            maxIncludedProjects = gradleMaxIncludedProjects?.let(::GradleMaxIncludedProjects),
         ).takeIfAny(),
         telemetry = TelemetryConfigOverride(
             enabled = telemetryEnabled?.let(::TelemetryEnabled),
@@ -170,7 +166,7 @@ private fun WatcherConfigOverride.takeIfAny(): WatcherConfigOverride? =
     takeIf { debounceMillis != null }
 
 private fun GradleConfigOverride.takeIfAny(): GradleConfigOverride? =
-    takeIf { toolingApiTimeoutMillis != null || maxIncludedProjects != null }
+    takeIf { toolingApiTimeoutMillis != null }
 
 private fun TelemetryConfigOverride.takeIfAny(): TelemetryConfigOverride? =
     takeIf { enabled != null || scopes != null || detail != null || outputFile != null }

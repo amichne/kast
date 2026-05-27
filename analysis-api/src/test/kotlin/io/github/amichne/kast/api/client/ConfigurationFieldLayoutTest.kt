@@ -53,7 +53,6 @@ class ConfigurationFieldLayoutTest {
             "ConfigurationDefault.kt",
             "ConfigurationDefaults.kt",
             "ConfigurationField.kt",
-            "GradleMaxIncludedProjects.kt",
             "GradleToolingApiTimeoutMillis.kt",
             "IndexingIdentifierIndexWaitMillis.kt",
             "IndexingPhase2BatchSize.kt",

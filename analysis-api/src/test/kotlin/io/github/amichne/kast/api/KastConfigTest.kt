@@ -109,7 +109,6 @@ class KastConfigTest {
             "cache" to "sourceIndexSaveDelayMillis",
             "watcher" to "debounceMillis",
             "gradle" to "toolingApiTimeoutMillis",
-            "gradle" to "maxIncludedProjects",
             "telemetry" to "enabled",
             "telemetry" to "scopes",
             "telemetry" to "detail",

@@ -157,21 +157,31 @@ internal class InstrumentedSessionLock(
 
     enum class LockType { READ, WRITE }
 
-    private val delegate = ReentrantSessionLock()
+    private val lock = ReentrantReadWriteLock(/* fair = */ true)
     private val _events = CopyOnWriteArrayList<LockEvent>()
     val events: List<LockEvent> get() = _events.toList()
 
     override fun <T> read(action: () -> T): T {
-        val start = clock.nanoTime()
-        return delegate.read(action).also {
-            _events += LockEvent(LockType.READ, Thread.currentThread().name, start, clock.nanoTime())
+        lock.readLock().lock()
+        val acquiredAtNanos = clock.nanoTime()
+        return try {
+            action()
+        } finally {
+            val releasedAtNanos = clock.nanoTime()
+            lock.readLock().unlock()
+            _events += LockEvent(LockType.READ, Thread.currentThread().name, acquiredAtNanos, releasedAtNanos)
         }
     }
 
     override fun <T> write(action: () -> T): T {
-        val start = clock.nanoTime()
-        return delegate.write(action).also {
-            _events += LockEvent(LockType.WRITE, Thread.currentThread().name, start, clock.nanoTime())
+        lock.writeLock().lock()
+        val acquiredAtNanos = clock.nanoTime()
+        return try {
+            action()
+        } finally {
+            val releasedAtNanos = clock.nanoTime()
+            lock.writeLock().unlock()
+            _events += LockEvent(LockType.WRITE, Thread.currentThread().name, acquiredAtNanos, releasedAtNanos)
         }
     }
 
@@ -180,9 +190,14 @@ internal class InstrumentedSessionLock(
      * when the lock was successfully acquired (i.e., the return value is non-null).
      */
     override fun <T> tryWrite(timeoutMillis: Long, action: () -> T): T? {
-        val start = clock.nanoTime()
-        return delegate.tryWrite(timeoutMillis, action)?.also {
-            _events += LockEvent(LockType.WRITE, Thread.currentThread().name, start, clock.nanoTime())
+        if (!lock.writeLock().tryLock(timeoutMillis, TimeUnit.MILLISECONDS)) return null
+        val acquiredAtNanos = clock.nanoTime()
+        return try {
+            action()
+        } finally {
+            val releasedAtNanos = clock.nanoTime()
+            lock.writeLock().unlock()
+            _events += LockEvent(LockType.WRITE, Thread.currentThread().name, acquiredAtNanos, releasedAtNanos)
         }
     }
 

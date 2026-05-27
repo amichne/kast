@@ -567,6 +567,81 @@ class SqliteSourceIndexStoreTest {
     }
 
     @Test
+    fun `source file inventory groups existing Kotlin files by source root`() {
+        val normalized = workspaceRoot.toAbsolutePath().normalize()
+        val mainRoot = normalized.resolve("src/main/kotlin")
+        val testRoot = normalized.resolve("src/test/kotlin")
+        val mainFile = writeKotlinFile(mainRoot.resolve("demo/Main.kt"))
+        val otherMainFile = writeKotlinFile(mainRoot.resolve("demo/Other.kt"))
+        val testFile = writeKotlinFile(testRoot.resolve("demo/MainTest.kt"))
+        val scriptPath = normalized.resolve("build.gradle.kts").toString()
+
+        SqliteSourceIndexStore(normalized).use { store ->
+            store.ensureSchema()
+            store.saveFullIndex(
+                updates = listOf(
+                    fileUpdate(mainFile.toString(), "Main"),
+                    fileUpdate(otherMainFile.toString(), "Other"),
+                    fileUpdate(testFile.toString(), "MainTest"),
+                    fileUpdate(scriptPath, "GradleScript"),
+                ),
+                manifest = mapOf(
+                    mainFile.toString() to 1L,
+                    otherMainFile.toString() to 2L,
+                    testFile.toString() to 3L,
+                    scriptPath to 5L,
+                ),
+            )
+
+            assertEquals(
+                mapOf(
+                    mainRoot to 2,
+                    testRoot to 1,
+                ),
+                store.fileCountBySourceRoot(listOf(mainRoot, testRoot)),
+            )
+            assertEquals(
+                mapOf(
+                    mainRoot to listOf(mainFile, otherMainFile),
+                    testRoot to listOf(testFile),
+                ),
+                store.filesBySourceRoot(listOf(mainRoot, testRoot)),
+            )
+            assertEquals(
+                mapOf(
+                    mainRoot to listOf(mainFile),
+                    testRoot to listOf(testFile),
+                ),
+                store.filesBySourceRoot(listOf(mainRoot, testRoot), limitPerRoot = 1),
+            )
+        }
+    }
+
+    @Test
+    fun `source file counts are grouped by source root without requiring files to exist`() {
+        val normalized = workspaceRoot.toAbsolutePath().normalize()
+        val mainRoot = normalized.resolve("src/main/kotlin")
+        val indexedButMissingFile = mainRoot.resolve("demo/Missing.kt").toString()
+
+        SqliteSourceIndexStore(normalized).use { store ->
+            store.ensureSchema()
+            store.saveFullIndex(
+                updates = listOf(fileUpdate(indexedButMissingFile, "Missing")),
+                manifest = mapOf(indexedButMissingFile to 1L),
+            )
+
+            assertEquals(
+                mapOf(mainRoot to 1),
+                store.fileCountBySourceRoot(listOf(mainRoot)),
+            )
+            assertEquals(
+                mapOf(mainRoot to emptyList<Path>()),
+                store.filesBySourceRoot(listOf(mainRoot)),
+            )
+        }
+    }
+
+    @Test
     fun `symbol reference entry points reject Kotlin script paths`() {
         val normalized = workspaceRoot.toAbsolutePath().normalize()
 
@@ -662,6 +737,12 @@ class SqliteSourceIndexStoreTest {
             imports = emptySet(),
             wildcardImports = emptySet(),
         )
+
+    private fun writeKotlinFile(path: Path): Path {
+        Files.createDirectories(path.parent)
+        Files.writeString(path, "package demo\n")
+        return path.toAbsolutePath().normalize()
+    }
 
     private fun copySourceIndexDatabase(
         originalRoot: Path,

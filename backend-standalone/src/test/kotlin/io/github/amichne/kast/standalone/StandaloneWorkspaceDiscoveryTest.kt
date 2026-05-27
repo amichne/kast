@@ -13,7 +13,6 @@ import io.github.amichne.kast.standalone.workspace.GradleModuleModel
 import io.github.amichne.kast.standalone.workspace.GradleSettingsSnapshot
 import io.github.amichne.kast.standalone.workspace.GradleWorkspaceDiscovery
 import io.github.amichne.kast.standalone.workspace.PhasedDiscoveryResult
-import io.github.amichne.kast.standalone.workspace.StaticGradleWorkspaceDiscovery
 import io.github.amichne.kast.standalone.workspace.defaultToolingApiTimeoutMillis
 import kotlinx.coroutines.test.TestResult
 import kotlinx.coroutines.test.runTest
@@ -90,114 +89,6 @@ class StandaloneWorkspaceDiscoveryTest {
     }
 
     @Test
-    fun `static gradle discovery defaults to Kotlin and Java source roots`() {
-        createStaticGradleWorkspace(includeJavaSource = true)
-
-        val settingsSnapshot = GradleSettingsSnapshot.read(workspaceRoot)
-        val modulesByPath = StaticGradleWorkspaceDiscovery.discoverModules(workspaceRoot, settingsSnapshot)
-            .associateBy(GradleModuleModel::gradlePath)
-
-        assertEquals(
-            setOf(
-                normalizeStandalonePath(workspaceRoot.resolve("app/src/main/kotlin")),
-                normalizeStandalonePath(workspaceRoot.resolve("app/src/main/java")),
-            ),
-            modulesByPath.getValue(":app").mainSourceRoots.toSet(),
-        )
-    }
-
-    @Test
-    fun `static gradle discovery probes testFixtures roots outputs and dependencies`() {
-        createStaticGradleWorkspaceWithTestFixtures()
-
-        val settingsSnapshot = GradleSettingsSnapshot.read(workspaceRoot)
-        val modulesByPath = StaticGradleWorkspaceDiscovery.discoverModules(workspaceRoot, settingsSnapshot)
-            .associateBy(GradleModuleModel::gradlePath)
-
-        assertEquals(
-            setOf(
-                normalizeStandalonePath(workspaceRoot.resolve("app/src/testFixtures/java")),
-                normalizeStandalonePath(workspaceRoot.resolve("app/src/testFixtures/kotlin")),
-            ),
-            modulesByPath.getValue(":app").testFixturesSourceRoots.toSet(),
-        )
-        assertEquals(
-            listOf(normalizeStandalonePath(workspaceRoot.resolve("app/build/classes/kotlin/testFixtures"))),
-            modulesByPath.getValue(":app").testFixturesOutputRoots,
-        )
-        assertTrue(
-            modulesByPath.getValue(":app").dependencies.contains(
-                GradleDependency.ModuleDependency(
-                    targetIdeaModuleName = ":lib",
-                    scope = GradleDependencyScope.TEST_FIXTURES,
-                ),
-            ),
-        )
-    }
-
-    @Test
-    fun `static discovery finds gatling source roots`() {
-        writeFile(
-            relativePath = "settings.gradle.kts",
-            content = """
-                rootProject.name = "workspace"
-                include(":app")
-            """.trimIndent() + "\n",
-        )
-        writeFile(relativePath = "app/build.gradle.kts", content = "")
-        writeFile(
-            relativePath = "app/src/gatling/kotlin/sample/Simulation.kt",
-            content = """
-                package sample
-
-                class Simulation
-            """.trimIndent() + "\n",
-        )
-
-        val modulesByPath = StaticGradleWorkspaceDiscovery.discoverModules(
-            workspaceRoot,
-            GradleSettingsSnapshot.read(workspaceRoot),
-        ).associateBy(GradleModuleModel::gradlePath)
-
-        assertTrue(
-            modulesByPath.getValue(":app").mainSourceRoots.contains(
-                normalizeStandalonePath(workspaceRoot.resolve("app/src/gatling/kotlin")),
-            ),
-        )
-    }
-
-    @Test
-    fun `static discovery finds custom source sets`() {
-        writeFile(
-            relativePath = "settings.gradle.kts",
-            content = """
-                rootProject.name = "workspace"
-                include(":app")
-            """.trimIndent() + "\n",
-        )
-        writeFile(relativePath = "app/build.gradle.kts", content = "")
-        writeFile(
-            relativePath = "app/src/integrationTest/kotlin/sample/IntegrationTest.kt",
-            content = """
-                package sample
-
-                class IntegrationTest
-            """.trimIndent() + "\n",
-        )
-
-        val modulesByPath = StaticGradleWorkspaceDiscovery.discoverModules(
-            workspaceRoot,
-            GradleSettingsSnapshot.read(workspaceRoot),
-        ).associateBy(GradleModuleModel::gradlePath)
-
-        assertTrue(
-            modulesByPath.getValue(":app").testSourceRoots.contains(
-                normalizeStandalonePath(workspaceRoot.resolve("app/src/integrationTest/kotlin")),
-            ),
-        )
-    }
-
-    @Test
     fun `gradle workspace discovery discovers testFixtures source module with correct dependencies`() {
         createGradleWorkspaceWithTestFixtures()
 
@@ -226,8 +117,8 @@ class StandaloneWorkspaceDiscoveryTest {
     }
 
     @Test
-    fun `composite gradle workspace respects configured source roots`() {
-        createCompositeGradleWorkspace(includeJavaSource = true)
+    fun `gradle workspace respects configured source roots`() {
+        createCustomGradleWorkspace(includeJavaSource = true)
 
         val layout = discoverStandaloneWorkspaceLayout(
             workspaceRoot = workspaceRoot,
@@ -256,8 +147,8 @@ class StandaloneWorkspaceDiscoveryTest {
     }
 
     @Test
-    fun `standalone session includes configured Java roots in composite gradle workspaces`(): TestResult = runTest {
-        createCompositeGradleWorkspace(includeJavaSource = true)
+    fun `standalone session includes configured Java roots in gradle workspaces`() {
+        createCustomGradleWorkspace(includeJavaSource = true)
 
         val session = StandaloneAnalysisSession(
             workspaceRoot = workspaceRoot,
@@ -876,8 +767,8 @@ class StandaloneWorkspaceDiscoveryTest {
     }
 
     @Test
-    fun `standalone session resolves Kotlin references to Java declarations in configured gradle source roots`(): TestResult = runTest {
-        createCompositeGradleWorkspace(includeJavaSource = true)
+    fun `standalone session resolves Kotlin references to Java declarations in configured gradle source roots`(): TestResult {
+        createCustomGradleWorkspace(includeJavaSource = true)
         val usageFile = workspaceRoot.resolve("app/src/main/kotlin/sample/UseJava.kt")
         val queryOffset = Files.readString(usageFile).indexOf("legacyGreeting")
         val declarationFile = workspaceRoot.resolve("app/src/customMain/java/sample/LegacyHelper.java")
@@ -887,7 +778,8 @@ class StandaloneWorkspaceDiscoveryTest {
             classpathRoots = emptyList(),
             moduleName = "ignored",
         )
-        session.use { session ->
+        return runTest {
+            session.use { session ->
             val backend = StandaloneAnalysisBackend(
                 workspaceRoot = workspaceRoot,
                 limits = ServerLimits(
@@ -910,11 +802,12 @@ class StandaloneWorkspaceDiscoveryTest {
             assertEquals("sample.LegacyHelper#legacyGreeting", result.symbol.fqName)
             assertEquals(SymbolKind.FUNCTION, result.symbol.kind)
             assertEquals(normalizePath(declarationFile), result.symbol.location.filePath)
+            }
         }
     }
 
     @Test
-    fun `standalone session resolves symbols across discovered gradle modules`(): TestResult = runTest {
+    fun `standalone session resolves symbols across discovered gradle modules`(): TestResult {
         createGradleWorkspace(includeLocalTestJar = false)
         val usageFile = workspaceRoot.resolve("app/src/main/kotlin/sample/Use.kt")
         val queryOffset = Files.readString(usageFile).indexOf("greet")
@@ -925,7 +818,8 @@ class StandaloneWorkspaceDiscoveryTest {
             classpathRoots = emptyList(),
             moduleName = "ignored",
         )
-        session.use { session ->
+        return runTest {
+            session.use { session ->
             val backend = StandaloneAnalysisBackend(
                 workspaceRoot = workspaceRoot,
                 limits = ServerLimits(
@@ -948,33 +842,95 @@ class StandaloneWorkspaceDiscoveryTest {
             assertEquals(normalizePath(declarationFile), result.symbol.location.filePath)
             assertTrue(session.sourceModules.map { module -> module.name }.contains(":lib[main]"))
             assertTrue(session.sourceModules.map { module -> module.name }.contains(":app[main]"))
+            }
         }
     }
 
     @Test
-    fun `tooling api resolves compileOnly libraries from included-build convention plugins`() {
-        createCompositeConventionPluginWorkspace()
+    fun `Gradle-owned model discovers Kotlin source set roots`() {
+        createKotlinLikeSourceSetWorkspace()
 
-        // Cold CI can spend noticeably longer compiling the included build's convention plugin
-        // before the Tooling API model is ready.
-        val modulesByPath = GradleWorkspaceDiscovery.loadModulesWithToolingApi(
+        val modulesByPath = GradleWorkspaceDiscovery.loadModulesWithGradleOwnedModel(
             workspaceRoot,
-            timeoutMillis = defaultToolingApiTimeoutMillis * 4,
-        )
-            .associateBy(GradleModuleModel::gradlePath)
+            timeoutMillis = defaultToolingApiTimeoutMillis,
+        ).associateBy(GradleModuleModel::gradlePath)
 
-        assertTrue(
-            modulesByPath.getValue(":detekt-rules").dependencies
-                .filterIsInstance<GradleDependency.LibraryDependency>()
-                .any { dependency ->
-                    dependency.scope == GradleDependencyScope.PROVIDED &&
-                    dependency.binaryRoot.fileName.toString() == "detekt-api-1.23.7.jar"
-                },
+        assertEquals(
+            listOf(normalizeStandalonePath(workspaceRoot.resolve("app/common/src"))),
+            modulesByPath.getValue(":app").mainSourceRoots,
+        )
+        assertEquals(
+            listOf(normalizeStandalonePath(workspaceRoot.resolve("app/jvmTest/src"))),
+            modulesByPath.getValue(":app").testSourceRoots,
         )
     }
 
     @Test
-    fun `runtime status includes workspace diagnostics when classpath is incomplete`(): TestResult = runTest {
+    fun `Gradle-owned model discovers Kotlin Multiplatform source roots`() {
+        createKotlinMultiplatformSourceSetWorkspace()
+
+        val modulesByPath = GradleWorkspaceDiscovery.loadModulesWithGradleOwnedModel(
+            workspaceRoot,
+            timeoutMillis = defaultToolingApiTimeoutMillis,
+        ).associateBy(GradleModuleModel::gradlePath)
+
+        assertEquals(
+            listOf(normalizeStandalonePath(workspaceRoot.resolve("app/common/src"))),
+            modulesByPath.getValue(":app").mainSourceRoots,
+        )
+        assertEquals(
+            listOf(normalizeStandalonePath(workspaceRoot.resolve("app/jvm/test"))),
+            modulesByPath.getValue(":app").testSourceRoots,
+        )
+    }
+
+    @Test
+    fun `Gradle-owned model uses the target build distribution`() {
+        createWrapperPinnedGradleWorkspace()
+
+        val modulesByPath = GradleWorkspaceDiscovery.loadModulesWithGradleOwnedModel(
+            workspaceRoot,
+            timeoutMillis = defaultToolingApiTimeoutMillis,
+        ).associateBy(GradleModuleModel::gradlePath)
+
+        assertEquals(
+            listOf(normalizeStandalonePath(workspaceRoot.resolve("src/main/kotlin"))),
+            modulesByPath.getValue(":").mainSourceRoots,
+        )
+    }
+
+    @Test
+    fun `Gradle-owned model evaluates subprojects before collecting source sets`() {
+        createConfigureOnDemandGradleWorkspace()
+
+        val modulesByPath = GradleWorkspaceDiscovery.loadModulesWithGradleOwnedModel(
+            workspaceRoot,
+            timeoutMillis = defaultToolingApiTimeoutMillis,
+        ).associateBy(GradleModuleModel::gradlePath)
+
+        assertEquals(
+            listOf(normalizeStandalonePath(workspaceRoot.resolve("app/src/main/kotlin"))),
+            modulesByPath.getValue(":app").mainSourceRoots,
+        )
+    }
+
+    @Test
+    fun `Gradle-owned model keeps source roots when file dependency enumeration fails`() {
+        createGradleWorkspaceWithUnresolvableFileDependency()
+
+        val modulesByPath = GradleWorkspaceDiscovery.loadModulesWithGradleOwnedModel(
+            workspaceRoot,
+            timeoutMillis = defaultToolingApiTimeoutMillis,
+        ).associateBy(GradleModuleModel::gradlePath)
+
+        assertEquals(
+            listOf(normalizeStandalonePath(workspaceRoot.resolve("app/src/main/kotlin"))),
+            modulesByPath.getValue(":app").mainSourceRoots,
+        )
+    }
+
+    @Test
+    fun `runtime status includes workspace diagnostics when classpath is incomplete`(): TestResult {
         createGradleWorkspace(includeLocalTestJar = false)
 
         val session = StandaloneAnalysisSession(
@@ -983,7 +939,8 @@ class StandaloneWorkspaceDiscoveryTest {
             classpathRoots = emptyList(),
             moduleName = "ignored",
         )
-        session.use { session ->
+        return runTest {
+            session.use { session ->
             val backend = StandaloneAnalysisBackend(
                 workspaceRoot = workspaceRoot,
                 limits = ServerLimits(
@@ -999,6 +956,7 @@ class StandaloneWorkspaceDiscoveryTest {
             assertFalse(status.warnings.isEmpty())
             assertTrue(status.warnings.any { warning -> warning.contains(":lib") })
             assertTrue(checkNotNull(status.message).contains("warnings"))
+            }
         }
     }
 
@@ -1049,6 +1007,254 @@ class StandaloneWorkspaceDiscoveryTest {
 
             assertEquals(RuntimeState.READY, backend.runtimeStatus().state)
         }
+    }
+
+    private fun createKotlinLikeSourceSetWorkspace() {
+        writeFile(
+            relativePath = "settings.gradle.kts",
+            content = """
+                rootProject.name = "workspace"
+                include(":app")
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "app/build.gradle.kts",
+            content = """
+                open class FakeKotlinSourceDirectorySet(
+                    val srcDirs: Set<File>,
+                ) : Iterable<File> {
+                    override fun iterator(): Iterator<File> = emptySet<File>().iterator()
+                }
+                open class FakeKotlinSourceSet(
+                    val name: String,
+                    val kotlin: FakeKotlinSourceDirectorySet,
+                )
+                open class FakeKotlinExtension(val sourceSets: List<FakeKotlinSourceSet>)
+
+                extensions.add(
+                    "kotlin",
+                    FakeKotlinExtension(
+                        listOf(
+                            FakeKotlinSourceSet("commonMain", FakeKotlinSourceDirectorySet(setOf(file("common/src")))),
+                            FakeKotlinSourceSet("jvmTest", FakeKotlinSourceDirectorySet(setOf(file("jvmTest/src")))),
+                        ),
+                    ),
+                )
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "app/common/src/sample/Common.kt",
+            content = """
+                package sample
+
+                fun commonGreeting(): String = "common"
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "app/jvmTest/src/sample/CommonTest.kt",
+            content = """
+                package sample
+
+                class CommonTest
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "java-app/build.gradle.kts",
+            content = """
+                plugins {
+                    `java-library`
+                }
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "java-app/src/main/java/sample/JavaApp.java",
+            content = """
+                package sample;
+
+                public final class JavaApp {}
+            """.trimIndent() + "\n",
+        )
+    }
+
+    private fun createKotlinMultiplatformSourceSetWorkspace() {
+        writeFile(
+            relativePath = "settings.gradle.kts",
+            content = """
+                pluginManagement {
+                    repositories {
+                        gradlePluginPortal()
+                        mavenCentral()
+                    }
+                }
+                dependencyResolutionManagement {
+                    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+                    repositories {
+                        mavenCentral()
+                    }
+                }
+                rootProject.name = "workspace"
+                include(":app")
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "app/build.gradle.kts",
+            content = """
+                plugins {
+                    id("org.jetbrains.kotlin.multiplatform") version "2.1.21"
+                }
+
+                kotlin {
+                    jvm()
+                    sourceSets {
+                        commonMain {
+                            kotlin.srcDir("common/src")
+                        }
+                        jvmTest {
+                            kotlin.srcDir("jvm/test")
+                        }
+                    }
+                }
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "app/common/src/sample/Common.kt",
+            content = """
+                package sample
+
+                fun commonGreeting(): String = "common"
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "app/jvm/test/sample/CommonTest.kt",
+            content = """
+                package sample
+
+                class CommonTest
+            """.trimIndent() + "\n",
+        )
+    }
+
+    private fun createWrapperPinnedGradleWorkspace() {
+        writeFile(
+            relativePath = "settings.gradle.kts",
+            content = """
+                rootProject.name = "workspace"
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "build.gradle.kts",
+            content = """
+                import org.gradle.util.GradleVersion
+
+                if (GradleVersion.current().version != "9.4.0") {
+                    error("expected Gradle wrapper distribution 9.4.0 but was ${'$'}{GradleVersion.current().version}")
+                }
+
+                plugins {
+                    `java-library`
+                }
+
+                configure<SourceSetContainer> {
+                    named("main") {
+                        java.srcDir("src/main/kotlin")
+                    }
+                }
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "gradle/wrapper/gradle-wrapper.properties",
+            content = """
+                distributionBase=GRADLE_USER_HOME
+                distributionPath=wrapper/dists
+                distributionUrl=https\://services.gradle.org/distributions/gradle-9.4.0-bin.zip
+                networkTimeout=10000
+                validateDistributionUrl=true
+                zipStoreBase=GRADLE_USER_HOME
+                zipStorePath=wrapper/dists
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "src/main/kotlin/sample/App.kt",
+            content = """
+                package sample
+
+                fun app(): String = "ready"
+            """.trimIndent() + "\n",
+        )
+    }
+
+    private fun createConfigureOnDemandGradleWorkspace() {
+        writeFile(
+            relativePath = "gradle.properties",
+            content = """
+                org.gradle.configureondemand=true
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "settings.gradle.kts",
+            content = """
+                rootProject.name = "workspace"
+                include(":app")
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "app/build.gradle.kts",
+            content = """
+                plugins {
+                    `java-library`
+                }
+
+                configure<SourceSetContainer> {
+                    named("main") {
+                        java.srcDir("src/main/kotlin")
+                    }
+                }
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "app/src/main/kotlin/sample/App.kt",
+            content = """
+                package sample
+
+                fun app(): String = "ready"
+            """.trimIndent() + "\n",
+        )
+    }
+
+    private fun createGradleWorkspaceWithUnresolvableFileDependency() {
+        writeFile(
+            relativePath = "settings.gradle.kts",
+            content = """
+                rootProject.name = "workspace"
+                include(":app")
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "app/build.gradle.kts",
+            content = """
+                plugins {
+                    `java-library`
+                }
+
+                configure<SourceSetContainer> {
+                    named("main") {
+                        java.srcDir("src/main/kotlin")
+                    }
+                }
+
+                dependencies {
+                    implementation(files({ throw GradleException("file dependency should not be resolved") }))
+                }
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "app/src/main/kotlin/sample/App.kt",
+            content = """
+                package sample
+
+                fun app(): String = "ready"
+            """.trimIndent() + "\n",
+        )
     }
 
     private fun createGradleWorkspace(includeLocalTestJar: Boolean) {
@@ -1250,12 +1456,11 @@ class StandaloneWorkspaceDiscoveryTest {
         workspaceRoot.resolve("app/build/classes/kotlin/testFixtures").createDirectories()
     }
 
-    private fun createCompositeGradleWorkspace(includeJavaSource: Boolean) {
+    private fun createCustomGradleWorkspace(includeJavaSource: Boolean) {
         writeFile(
             relativePath = "settings.gradle.kts",
             content = """
                 rootProject.name = "workspace"
-                includeBuild("build-logic")
                 include("app", "lib")
             """.trimIndent() + "\n",
         )
@@ -1338,16 +1543,6 @@ class StandaloneWorkspaceDiscoveryTest {
             )
         }
         createJar(workspaceRoot.resolve("support/test-support.jar"))
-        writeFile(
-            relativePath = "build-logic/settings.gradle.kts",
-            content = """
-                rootProject.name = "build-logic"
-            """.trimIndent() + "\n",
-        )
-        writeFile(
-            relativePath = "build-logic/build.gradle.kts",
-            content = "",
-        )
     }
 
     private fun createCompositeConventionPluginWorkspace() {

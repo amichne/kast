@@ -8,14 +8,6 @@ internal data class GradleSettingsSnapshot(
     val includedProjectPaths: List<String>,
     val hasCompositeBuilds: Boolean,
 ) {
-    fun shouldPreferStaticDiscovery(maxIncludedProjects: Int = maxIncludedProjectsForToolingApi): Boolean =
-        includedProjectPaths.size > maxIncludedProjects
-
-    fun projectPathsForStaticDiscovery(): List<String> = buildList {
-        add(":")
-        addAll(includedProjectPaths)
-    }.distinct()
-
     companion object {
         private val includeBlockPattern = Regex("""(?s)\binclude\s*\((.*?)\)""")
         private val stringLiteralPattern = Regex("""[\"']([^\"']+)[\"']""")

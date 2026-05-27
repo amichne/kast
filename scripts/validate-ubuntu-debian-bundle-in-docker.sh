@@ -22,11 +22,13 @@ bundle_path="${BUNDLE_PATH:-}"
 version="${KAST_UBUNTU_DEBIAN_VERSION:-}"
 java_version="${KAST_UBUNTU_DEBIAN_JAVA_VERSION:-21}"
 container_image="${KAST_UBUNTU_DEBIAN_CONTAINER_IMAGE:-ubuntu:24.04}"
+wait_timeout_ms="${KAST_UBUNTU_DEBIAN_WAIT_TIMEOUT_MS:-120000}"
 
 [[ -n "$bundle_path" ]] || die "BUNDLE_PATH is required"
 [[ -f "$bundle_path" ]] || die "Bundle not found: $bundle_path"
 [[ -f "${bundle_path}.sha256" ]] || die "Bundle SHA-256 sidecar not found: ${bundle_path}.sha256"
 [[ "$java_version" =~ ^[0-9]+$ ]] || die "KAST_UBUNTU_DEBIAN_JAVA_VERSION must be numeric: $java_version"
+[[ "$wait_timeout_ms" =~ ^[0-9]+$ ]] || die "KAST_UBUNTU_DEBIAN_WAIT_TIMEOUT_MS must be numeric: $wait_timeout_ms"
 
 bundle_dir="$(cd -- "$(dirname -- "$bundle_path")" && pwd)"
 bundle_abs="${bundle_dir}/$(basename -- "$bundle_path")"
@@ -60,6 +62,8 @@ docker run --rm \
   -e "KAST_UBUNTU_DEBIAN_BIN_DIR=/tmp/kast-ubuntu-debian-bin" \
   -e "KAST_UBUNTU_DEBIAN_CONFIG_HOME=/tmp/kast-ubuntu-debian-config" \
   -e "KAST_UBUNTU_DEBIAN_JAVA_VERSION=${java_version}" \
+  -e "KAST_UBUNTU_DEBIAN_WAIT_TIMEOUT_MS=${wait_timeout_ms}" \
+  -e "KAST_UBUNTU_DEBIAN_SMOKE_WORKSPACE=/tmp/kast-ubuntu-debian-smoke-workspace" \
   -w /workspace \
   "${container_image}" \
   bash -lc '
@@ -75,12 +79,20 @@ docker run --rm \
 
     export PATH="${KAST_UBUNTU_DEBIAN_BIN_DIR}:${PATH}"
     export KAST_CONFIG_HOME="${KAST_UBUNTU_DEBIAN_CONFIG_HOME}"
+    smoke_source_root="${KAST_UBUNTU_DEBIAN_SMOKE_WORKSPACE}/src/main/kotlin"
+    mkdir -p "${smoke_source_root}"
+    printf "%s\n" "package smoke" "class Smoke" > "${smoke_source_root}/Smoke.kt"
 
     java -version
     kast version
     kast doctor
-    kast up --workspace-root=/workspace --wait-timeout-ms=120000 --accept-indexing=true
-    kast status --workspace-root=/workspace --no-auto-start=true --accept-indexing=true
-    kast capabilities --workspace-root=/workspace --no-auto-start=true --accept-indexing=true
-    kast stop --workspace-root=/workspace || true
+    kast up \
+      --workspace-root="${KAST_UBUNTU_DEBIAN_SMOKE_WORKSPACE}" \
+      --source-roots="${smoke_source_root}" \
+      --module-name=ubuntu-debian-smoke \
+      --wait-timeout-ms="${KAST_UBUNTU_DEBIAN_WAIT_TIMEOUT_MS}" \
+      --accept-indexing=true
+    kast status --workspace-root="${KAST_UBUNTU_DEBIAN_SMOKE_WORKSPACE}" --no-auto-start=true --accept-indexing=true
+    kast capabilities --workspace-root="${KAST_UBUNTU_DEBIAN_SMOKE_WORKSPACE}" --no-auto-start=true --accept-indexing=true
+    kast stop --workspace-root="${KAST_UBUNTU_DEBIAN_SMOKE_WORKSPACE}" || true
   '

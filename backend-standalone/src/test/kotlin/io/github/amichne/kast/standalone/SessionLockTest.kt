@@ -62,6 +62,35 @@ class SessionLockTest {
     }
 
     @Test
+    fun `queued write event starts when lock is acquired not when requested`() {
+        val lock = InstrumentedSessionLock()
+        val readAcquired = CountDownLatch(1)
+        val releaseRead = CountDownLatch(1)
+        val writeFinished = CountDownLatch(1)
+
+        val reader = thread {
+            lock.read {
+                readAcquired.countDown()
+                releaseRead.await()
+            }
+        }
+        assertTrue(readAcquired.await(5, java.util.concurrent.TimeUnit.SECONDS))
+
+        val writer = thread {
+            lock.write {}
+            writeFinished.countDown()
+        }
+        Thread.sleep(100)
+        releaseRead.countDown()
+
+        assertTrue(writeFinished.await(5, java.util.concurrent.TimeUnit.SECONDS))
+        reader.join(5_000)
+        writer.join(5_000)
+
+        assertTrue(lock.writeEventsOverlappingReads().isEmpty())
+    }
+
+    @Test
     fun `concurrent reads do not block each other`() {
         val lock = ReentrantSessionLock()
         val barrier = CyclicBarrier(2)

@@ -10,7 +10,6 @@ import io.github.amichne.kast.standalone.workspace.GradleWorkspaceDiscovery
 import io.github.amichne.kast.standalone.workspace.GradleWorkspaceDiscoveryResult
 import io.github.amichne.kast.standalone.workspace.WorkspaceDiscoveryDiagnostics
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -106,25 +105,19 @@ class WorkspaceDiscoveryCacheTest {
     fun `workspace discovery cache is used when valid`() {
         createGradleWorkspace()
         WorkspaceDiscoveryCache().write(workspaceRoot, workspaceDiscoveryResult())
-        var staticModulesProviderCalls = 0
-        var toolingApiLoaderCalls = 0
+        var gradleLoaderCalls = 0
 
         val layout = GradleWorkspaceDiscovery.discover(
             workspaceRoot = workspaceRoot,
             extraClasspathRoots = emptyList(),
             settingsSnapshot = GradleSettingsSnapshot.read(workspaceRoot),
-            staticModulesProvider = {
-                staticModulesProviderCalls += 1
-                error("static discovery should not run when cache is valid")
-            },
             toolingApiLoader = { _, _ ->
-                toolingApiLoaderCalls += 1
+                gradleLoaderCalls += 1
                 error("tooling api should not run when cache is valid")
             },
         )
 
-        assertEquals(0, staticModulesProviderCalls)
-        assertEquals(0, toolingApiLoaderCalls)
+        assertEquals(0, gradleLoaderCalls)
         assertEquals(
             setOf(ModuleName(":app[main]"), ModuleName(":app[test]"), ModuleName(":lib[main]")),
             layout.sourceModules.map(StandaloneSourceModuleSpec::name).toSet(),
@@ -132,30 +125,26 @@ class WorkspaceDiscoveryCacheTest {
     }
 
     @Test
-    fun `workspace discovery cache survives phased restart`() {
+    fun `workspace discovery cache avoids Gradle loader on restart`() {
         createGradleWorkspace()
         WorkspaceDiscoveryCache().write(workspaceRoot, workspaceDiscoveryResult())
-        var staticModulesProviderCalls = 0
-        var toolingApiLoaderCalls = 0
+        var gradleLoaderCalls = 0
 
-        val phased = GradleWorkspaceDiscovery.discoverPhased(
+        val layout = GradleWorkspaceDiscovery.discover(
             workspaceRoot = workspaceRoot,
             extraClasspathRoots = emptyList(),
             settingsSnapshot = GradleSettingsSnapshot.read(workspaceRoot),
-            staticModulesProvider = {
-                staticModulesProviderCalls += 1
-                error("static discovery should not run when cache is valid")
-            },
             toolingApiLoader = { _, _ ->
-                toolingApiLoaderCalls += 1
+                gradleLoaderCalls += 1
                 error("tooling api should not run when cache is valid")
             },
         )
 
-        assertNotNull(phased.initialLayout)
-        assertNull(phased.enrichmentFuture)
-        assertEquals(0, staticModulesProviderCalls)
-        assertEquals(0, toolingApiLoaderCalls)
+        assertEquals(0, gradleLoaderCalls)
+        assertEquals(
+            setOf(ModuleName(":app[main]"), ModuleName(":app[test]"), ModuleName(":lib[main]")),
+            layout.sourceModules.map(StandaloneSourceModuleSpec::name).toSet(),
+        )
     }
 
     private fun createGradleWorkspace() {
@@ -180,14 +169,16 @@ class WorkspaceDiscoveryCacheTest {
         writeFile(relativePath = "lib/build.gradle.kts", content = "")
     }
 
-    private fun workspaceDiscoveryResult(): GradleWorkspaceDiscoveryResult = GradleWorkspaceDiscoveryResult(
+    private fun workspaceDiscoveryResult(
+        appPath: String = ":app",
+    ): GradleWorkspaceDiscoveryResult = GradleWorkspaceDiscoveryResult(
         modules = listOf(
             gradleModule(
-                gradlePath = ":app",
-                mainSourceRoots = listOf(workspaceRoot.resolve("app/src/main/kotlin")),
-                testSourceRoots = listOf(workspaceRoot.resolve("app/src/test/kotlin")),
-                mainOutputRoots = listOf(workspaceRoot.resolve("app/build/classes/kotlin/main")),
-                testOutputRoots = listOf(workspaceRoot.resolve("app/build/classes/kotlin/test")),
+                gradlePath = appPath,
+                mainSourceRoots = listOf(workspaceRoot.resolve(appPath.removePrefix(":").replace(':', '/')).resolve("src/main/kotlin")),
+                testSourceRoots = listOf(workspaceRoot.resolve(appPath.removePrefix(":").replace(':', '/')).resolve("src/test/kotlin")),
+                mainOutputRoots = listOf(workspaceRoot.resolve(appPath.removePrefix(":").replace(':', '/')).resolve("build/classes/kotlin/main")),
+                testOutputRoots = listOf(workspaceRoot.resolve(appPath.removePrefix(":").replace(':', '/')).resolve("build/classes/kotlin/test")),
                 dependencies = listOf(
                     GradleDependency.ModuleDependency(
                         targetIdeaModuleName = ":lib",

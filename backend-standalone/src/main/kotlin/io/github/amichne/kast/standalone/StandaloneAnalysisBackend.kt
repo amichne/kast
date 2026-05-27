@@ -85,11 +85,13 @@ import java.util.stream.Collectors
 
 @OptIn(KaExperimentalApi::class)
 internal class StandaloneAnalysisBackend internal constructor(
-    private val workspaceRoot: Path,
+    workspaceRoot: Path,
     private val limits: ServerLimits,
     private val session: StandaloneAnalysisSession,
     private val telemetry: StandaloneTelemetry,
 ) : AnalysisBackend, AutoCloseable {
+    private val workspaceRoot: Path = normalizeStandalonePath(workspaceRoot)
+
     constructor(
         workspaceRoot: Path,
         limits: ServerLimits,
@@ -935,34 +937,39 @@ internal class StandaloneAnalysisBackend internal constructor(
 
     private fun candidateWorkspaceSearchPaths(query: ParsedWorkspaceSearchQuery): List<String> {
         val fileGlob = query.fileGlob?.value
-        val indexedPaths = session.allKtFiles()
+        val indexedPaths = indexedWorkspaceSearchPaths()
+        val allPaths = (indexedPaths ?: session.allKtFiles()
             .mapNotNull { file -> file.virtualFile?.path }
             .filter(::isWorkspaceFile)
-        val allPaths = indexedPaths
-            .ifEmpty { walkWorkspaceKotlinFiles() }
+            .ifEmpty { walkWorkspaceKotlinFiles() })
             .filter { filePath -> fileGlob == null || matchesFileGlob(filePath, fileGlob) }
 
-        if (!query.caseSensitive) {
+        if (query.regex || !query.caseSensitive || !query.pattern.value.isIndexableIdentifier()) {
             return allPaths.distinct().sorted()
         }
 
-        val identifiers = identifierRegex.findAll(query.pattern.value).map { it.value }.distinct().toList()
-        if (identifiers.isEmpty()) {
-            return allPaths.distinct().sorted()
-        }
+        val indexedCandidates = session.candidateKotlinFilePaths(query.pattern.value)
 
-        val intersected = identifiers
-            .map(session::candidateKotlinFilePaths)
-            .reduceOrNull { left, right -> left.intersect(right.toSet()).toList() }
-            .orEmpty()
-
-        val narrowedPaths = intersected
+        val narrowedPaths = indexedCandidates
             .filter(::isWorkspaceFile)
             .filter { filePath -> fileGlob == null || matchesFileGlob(filePath, fileGlob) }
             .distinct()
             .sorted()
 
         return narrowedPaths.ifEmpty { allPaths.distinct().sorted() }
+    }
+
+    private fun indexedWorkspaceSearchPaths(): List<String>? {
+        if (!session.isInitialSourceIndexReady()) {
+            return null
+        }
+        return runCatching {
+            session.sqliteStore.knownSourcePaths()
+                .map { path -> path.toString() }
+                .filter(::isWorkspaceFile)
+                .distinct()
+                .sorted()
+        }.getOrNull()
     }
 
     private fun isWorkspaceFile(filePath: String): Boolean {
@@ -1037,11 +1044,17 @@ internal class StandaloneAnalysisBackend internal constructor(
                 } else {
                     specs
                 }
+                val indexedInventory = indexedWorkspaceFileInventory(
+                    sourceRoots = filtered.flatMap { spec -> spec.sourceRoots },
+                    includeFiles = query.includeFiles,
+                    maxFilesPerModule = fileLimit,
+                )
                 val modules = filtered.map { spec ->
                     val listing = collectWorkspaceFiles(
                         sourceRoots = spec.sourceRoots,
                         includeFiles = query.includeFiles,
                         maxFiles = fileLimit,
+                        indexedInventory = indexedInventory,
                     )
                     WorkspaceModule(
                         name = spec.name.value,
@@ -1056,6 +1069,22 @@ internal class StandaloneAnalysisBackend internal constructor(
                 span.setAttribute("kast.workspaceFiles.totalFileCount", modules.sumOf { it.fileCount })
                 span.setAttribute("kast.workspaceFiles.returnedFileCount", modules.sumOf { it.files.size })
                 span.setAttribute("kast.workspaceFiles.truncatedModuleCount", modules.count { it.filesTruncated })
+                span.setAttribute("kast.workspaceFiles.indexReady", indexedInventory != null)
+                span.setAttribute(
+                    "kast.workspaceFiles.countSource",
+                    if (indexedInventory != null) "sourceIndex" else "filesystemWalk",
+                )
+                span.setAttribute(
+                    "kast.workspaceFiles.pathSource",
+                    if (query.includeFiles && indexedInventory != null) {
+                        "sourceIndex"
+                    } else if (query.includeFiles) {
+                        "filesystemWalk"
+                    } else {
+                        "none"
+                    },
+                )
+                span.setAttribute("kast.workspaceFiles.sourceRootCount", filtered.sumOf { it.sourceRoots.size })
                 WorkspaceFilesResult(modules = modules)
             }
         }
@@ -1075,14 +1104,71 @@ internal class StandaloneAnalysisBackend internal constructor(
         val filesTruncated: Boolean,
     )
 
+    private data class WorkspaceFileInventory(
+        val countsBySourceRoot: Map<Path, Int>,
+        val filesBySourceRoot: Map<Path, List<Path>>,
+    )
+
+    private fun indexedWorkspaceFileInventory(
+        sourceRoots: List<Path>,
+        includeFiles: Boolean,
+        maxFilesPerModule: Int,
+    ): WorkspaceFileInventory? {
+        if (!session.isInitialSourceIndexReady()) {
+            return null
+        }
+        val normalizedRoots = sourceRoots
+            .map { root -> root.toAbsolutePath().normalize() }
+            .distinct()
+        if (normalizedRoots.isEmpty()) {
+            return WorkspaceFileInventory(
+                countsBySourceRoot = emptyMap(),
+                filesBySourceRoot = emptyMap(),
+            )
+        }
+        return runCatching {
+            WorkspaceFileInventory(
+                countsBySourceRoot = session.sqliteStore.fileCountBySourceRoot(normalizedRoots),
+                filesBySourceRoot = if (includeFiles) {
+                    session.sqliteStore.filesBySourceRoot(normalizedRoots, limitPerRoot = maxFilesPerModule)
+                } else {
+                    emptyMap()
+                },
+            )
+        }.getOrNull()
+    }
+
     private fun collectWorkspaceFiles(
         sourceRoots: List<Path>,
         includeFiles: Boolean,
         maxFiles: Int,
+        indexedInventory: WorkspaceFileInventory?,
     ): WorkspaceFileListing {
+        val normalizedRoots = sourceRoots
+            .map { root -> root.toAbsolutePath().normalize() }
+            .distinct()
+            .sorted()
+        if (indexedInventory != null) {
+            val indexedFiles = normalizedRoots
+                .flatMap { root -> indexedInventory.filesBySourceRoot[root].orEmpty() }
+                .distinct()
+                .sorted()
+            val fileCount = normalizedRoots.sumOf { root -> indexedInventory.countsBySourceRoot[root] ?: 0 }
+            val returnedFiles = if (includeFiles) {
+                indexedFiles.take(maxFiles).map { file -> file.toString() }
+            } else {
+                emptyList()
+            }
+            return WorkspaceFileListing(
+                files = returnedFiles,
+                fileCount = fileCount,
+                filesTruncated = includeFiles && fileCount > returnedFiles.size,
+            )
+        }
+
         val files = mutableListOf<String>()
         var fileCount = 0
-        sourceRoots.forEach { root ->
+        normalizedRoots.forEach { root ->
             Files.walk(root).use { stream ->
                 stream
                     .filter { Files.isRegularFile(it) && it.toString().endsWith(".kt") }
