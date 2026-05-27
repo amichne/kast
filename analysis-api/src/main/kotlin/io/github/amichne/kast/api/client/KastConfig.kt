@@ -58,7 +58,7 @@ data class KastConfig(
                 ),
                 watcher = WatcherConfig(debounceMillis = WatcherDebounceMillis(200L)),
                 gradle = GradleConfig(
-                    toolingApiTimeoutMillis = GradleToolingApiTimeoutMillis(60_000L),
+                    toolingApiTimeoutMillis = GradleToolingApiTimeoutMillis(120_000L),
                     maxIncludedProjects = GradleMaxIncludedProjects(200),
                 ),
                 telemetry = TelemetryConfig(

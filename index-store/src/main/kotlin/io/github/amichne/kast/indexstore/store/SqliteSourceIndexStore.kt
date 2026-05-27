@@ -558,6 +558,50 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
         }
     }
 
+    fun knownSourcePaths(): List<Path> {
+        if (!dbExists()) return emptyList()
+        return synchronized(writeLock) {
+            val conn = connection()
+            loadInterningTables(conn)
+            conn.createStatement().use { stmt ->
+                val rs = stmt.executeQuery("SELECT prefix_id, filename FROM file_manifest")
+                buildList {
+                    while (rs.next()) {
+                        val path = Path.of(pathCodec.decode(rs.getInt(1), rs.getString(2)))
+                            .toAbsolutePath()
+                            .normalize()
+                        if (Files.isRegularFile(path) && SourceIndexFilePolicy.isEligible(path)) {
+                            add(path)
+                        }
+                    }
+                }.distinct().sorted()
+            }
+        }
+    }
+
+    fun fileCountBySourceRoot(sourceRoots: Collection<Path>): Map<Path, Int> {
+        val filesByRoot = filesBySourceRoot(sourceRoots)
+        return normalizedSourceRoots(sourceRoots).associateWith { root -> filesByRoot[root].orEmpty().size }
+    }
+
+    fun filesBySourceRoot(
+        sourceRoots: Collection<Path>,
+        limitPerRoot: Int? = null,
+    ): Map<Path, List<Path>> {
+        val roots = normalizedSourceRoots(sourceRoots)
+        if (roots.isEmpty()) return emptyMap()
+
+        val filesByRoot = roots.associateWithTo(linkedMapOf()) { mutableListOf<Path>() }
+        knownSourcePaths().forEach { path ->
+            val root = roots.firstOrNull(path::startsWith) ?: return@forEach
+            val files = filesByRoot.getValue(root)
+            if (limitPerRoot == null || files.size < limitPerRoot) {
+                files.add(path)
+            }
+        }
+        return filesByRoot.mapValues { (_, files) -> files.sorted() }
+    }
+
     fun upsertSymbolReference(
         sourcePath: String,
         sourceOffset: Int,
@@ -1548,6 +1592,12 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
         val sourceOffset: Int,
         val targetFqName: String,
     )
+
+    private fun normalizedSourceRoots(sourceRoots: Collection<Path>): List<Path> =
+        sourceRoots
+            .map { root -> root.toAbsolutePath().normalize() }
+            .distinct()
+            .sorted()
 
     private companion object {
         const val PENDING_UPDATE_RETENTION_MS = 7L * 24 * 60 * 60 * 1_000

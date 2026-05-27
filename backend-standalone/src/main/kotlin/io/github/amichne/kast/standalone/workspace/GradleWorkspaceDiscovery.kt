@@ -7,10 +7,9 @@ import io.github.amichne.kast.standalone.StandaloneWorkspaceLayout
 import io.github.amichne.kast.standalone.buildDependentModuleNamesBySourceModuleName
 import io.github.amichne.kast.standalone.cache.WorkspaceDiscoveryCache
 import io.github.amichne.kast.standalone.normalizeStandaloneModelPath
-import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetry
-import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetryScope
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import org.gradle.tooling.CancellationToken
 import org.gradle.tooling.GradleConnector
 import org.gradle.tooling.ProjectConnection
 import org.gradle.tooling.model.idea.IdeaDependency
@@ -21,14 +20,13 @@ import org.gradle.tooling.model.idea.IdeaSingleEntryLibraryDependency
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.isRegularFile
-import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
 internal const val maxIncludedProjectsForToolingApi = 200
-internal const val defaultToolingApiTimeoutMillis = 60_000L
+internal const val defaultToolingApiTimeoutMillis = 120_000L
 
 internal fun resolveToolingApiTimeoutMillis(
     moduleCount: Int,
@@ -45,9 +43,6 @@ internal object GradleWorkspaceDiscovery {
         workspaceRoot: Path,
         extraClasspathRoots: List<Path>,
         settingsSnapshot: GradleSettingsSnapshot = GradleSettingsSnapshot.read(workspaceRoot),
-        staticModulesProvider: () -> List<GradleModuleModel> = {
-            StaticGradleWorkspaceDiscovery.discoverModules(workspaceRoot, settingsSnapshot)
-        },
         toolingApiLoader: (Path, Long) -> List<GradleModuleModel> = { root, timeoutMillis ->
             loadModulesWithToolingApi(root, timeoutMillis)
         },
@@ -64,25 +59,19 @@ internal object GradleWorkspaceDiscovery {
         }
 
         val toolingApiTimeoutMillis = resolveToolingApiTimeoutMillis(settingsSnapshot.includedProjectPaths.size, config)
-        val discoveryResult = if (settingsSnapshot.shouldPreferStaticDiscovery(config.gradle.maxIncludedProjects.value)) {
-            val resolvedStaticModules = staticModulesProvider()
-            enrichStaticModulesWithToolingApiLibraries(
-                workspaceRoot = workspaceRoot,
-                staticModules = resolvedStaticModules,
-                timeoutMillis = toolingApiTimeoutMillis,
-                toolingApiLoader = toolingApiLoader,
-                warningSink = warningSink,
-            )
-        } else {
-            discoverToolingApiModules(
-                workspaceRoot = workspaceRoot,
-                settingsSnapshot = settingsSnapshot,
-                staticModules = staticModulesProvider,
-                timeoutMillis = toolingApiTimeoutMillis,
-                toolingApiLoader = toolingApiLoader,
-                warningSink = warningSink,
-            )
-        }
+            .let { timeoutMillis ->
+                if (settingsSnapshot.hasCompositeBuilds) {
+                    timeoutMillis.coerceAtLeast(180_000L)
+                } else {
+                    timeoutMillis
+                }
+            }
+        val discoveryResult = discoverGradleOwnedModules(
+            workspaceRoot = workspaceRoot,
+            timeoutMillis = toolingApiTimeoutMillis,
+            toolingApiLoader = toolingApiLoader,
+            warningSink = warningSink,
+        )
 
         return buildStandaloneWorkspaceLayout(
             gradleModules = discoveryResult.modules,
@@ -100,103 +89,6 @@ internal object GradleWorkspaceDiscovery {
                 )
             }
         }
-    }
-
-    fun discoverPhased(
-        workspaceRoot: Path,
-        extraClasspathRoots: List<Path>,
-        settingsSnapshot: GradleSettingsSnapshot = GradleSettingsSnapshot.read(workspaceRoot),
-        staticModulesProvider: () -> List<GradleModuleModel> = {
-            StaticGradleWorkspaceDiscovery.discoverModules(workspaceRoot, settingsSnapshot)
-        },
-        toolingApiLoader: (Path, Long) -> List<GradleModuleModel> = { root, timeoutMillis ->
-            loadModulesWithToolingApi(root, timeoutMillis)
-        },
-        warningSink: (String) -> Unit = ::logWorkspaceDiscoveryWarning,
-        config: KastConfig = KastConfig.load(workspaceRoot),
-        cache: WorkspaceDiscoveryCache = WorkspaceDiscoveryCache(enabled = config.cache.enabled.value),
-    ): PhasedDiscoveryResult {
-        cachedWorkspaceLayout(
-            workspaceRoot = workspaceRoot,
-            extraClasspathRoots = extraClasspathRoots,
-            cache = cache,
-        )?.let { cachedLayout ->
-            return PhasedDiscoveryResult(
-                initialLayout = cachedLayout,
-                enrichmentFuture = null,
-            )
-        }
-
-        if (!settingsSnapshot.shouldPreferStaticDiscovery(config.gradle.maxIncludedProjects.value)) {
-            return PhasedDiscoveryResult(
-                initialLayout = discover(
-                    workspaceRoot = workspaceRoot,
-                    extraClasspathRoots = extraClasspathRoots,
-                    settingsSnapshot = settingsSnapshot,
-                    staticModulesProvider = staticModulesProvider,
-                    toolingApiLoader = toolingApiLoader,
-                    warningSink = warningSink,
-                    cache = cache,
-                    config = config,
-                ),
-                enrichmentFuture = null,
-            )
-        }
-
-        val staticModules = staticModulesProvider()
-        val initialLayout = buildStandaloneWorkspaceLayout(
-            gradleModules = staticModules,
-            extraClasspathRoots = extraClasspathRoots,
-            diagnostics = workspaceDiscoveryDiagnostics(staticModules),
-        )
-        val toolingApiTimeoutMillis = resolveToolingApiTimeoutMillis(settingsSnapshot.includedProjectPaths.size, config)
-        val enrichmentFuture = CompletableFuture.supplyAsync {
-            val enrichedResult = runCatching {
-                val toolingModules = toolingApiLoader(workspaceRoot, toolingApiTimeoutMillis)
-                GradleWorkspaceDiscoveryResult(
-                    modules = if (toolingModules.isEmpty()) {
-                        staticModules
-                    } else {
-                        mergeToolingAndStaticModules(
-                            toolingModules = toolingModules,
-                            staticModules = staticModules,
-                        )
-                    },
-                )
-            }.getOrElse { error ->
-                val warning = toolingApiFailureWarning(
-                    prefix = "Gradle Tooling API library enrichment failed; using static workspace discovery results",
-                    error = error,
-                )
-                warningSink(warning)
-                GradleWorkspaceDiscoveryResult(
-                    modules = staticModules,
-                    diagnostics = WorkspaceDiscoveryDiagnostics(warnings = listOf(warning)),
-                    toolingApiSucceeded = false,
-                )
-            }
-            buildStandaloneWorkspaceLayout(
-                gradleModules = enrichedResult.modules,
-                extraClasspathRoots = extraClasspathRoots,
-                diagnostics = workspaceDiscoveryDiagnostics(
-                    modules = enrichedResult.modules,
-                    warnings = enrichedResult.diagnostics.warnings,
-                ),
-            ).also {
-                if (enrichedResult.toolingApiSucceeded) {
-                    persistWorkspaceDiscoveryCache(
-                        workspaceRoot = workspaceRoot,
-                        result = enrichedResult,
-                        cache = cache,
-                    )
-                }
-            }
-        }
-
-        return PhasedDiscoveryResult(
-            initialLayout = initialLayout,
-            enrichmentFuture = enrichmentFuture,
-        )
     }
 
     internal fun loadModulesWithToolingApi(
@@ -217,37 +109,41 @@ internal object GradleWorkspaceDiscovery {
                             .modules
                             .map { module -> toGradleModuleModel(module, pathNormalizer) }
                             .sortedBy(GradleModuleModel::gradlePath)
-                        if (!ideaModules.shouldLoadGradleSourceSetModel()) {
-                            ideaModules
-                        } else {
-                            val sourceSetModules = runCatching {
-                                loadModulesWithGradleSourceSetTask(connection, pathNormalizer)
-                            }.onFailure { error ->
-                                logWorkspaceDiscoveryWarning(
-                                    "Gradle source-set model extraction failed; using IDEA model source roots only: " +
-                                        (error.message ?: error::class.java.simpleName),
-                                )
-                            }.getOrDefault(emptyList())
-                            if (sourceSetModules.isNotEmpty()) {
-                                val sourceRootCount = sourceSetModules.sumOf { module ->
-                                    module.mainSourceRoots.size +
-                                        module.testSourceRoots.size +
-                                        module.testFixturesSourceRoots.size
-                                }
-                                logWorkspaceDiscoveryWarning(
-                                    "Gradle source-set model extraction returned ${sourceSetModules.size} modules and " +
-                                        "$sourceRootCount source roots.",
-                                )
-                            }
-                            if (sourceSetModules.isEmpty()) {
-                                ideaModules
-                            } else {
-                                mergeToolingAndStaticModules(
-                                    toolingModules = ideaModules,
-                                    staticModules = sourceSetModules,
-                                )
-                            }
+                        if (ideaModules.any(GradleModuleModel::hasSourceRoots)) {
+                            return@use supplementConventionalTestFixtures(
+                                workspaceRoot = workspaceRoot,
+                                modules = ideaModules,
+                            )
                         }
+
+                        val sourceSetModules = runCatching {
+                            loadModulesWithGradleSourceSetTask(
+                                connection = connection,
+                                pathNormalizer = pathNormalizer,
+                                cancellationToken = cancellationTokenSource.token(),
+                            )
+                        }.onFailure { error ->
+                            logWorkspaceDiscoveryWarning(
+                                "Gradle source-set model extraction failed; using IDEA model discovery: " +
+                                    (error.message ?: error::class.java.simpleName),
+                            )
+                        }.getOrDefault(emptyList())
+                        if (sourceSetModules.isNotEmpty()) {
+                            val sourceRootCount = sourceSetModules.sumOf { module ->
+                                module.mainSourceRoots.size +
+                                    module.testSourceRoots.size +
+                                    module.testFixturesSourceRoots.size
+                            }
+                            logWorkspaceDiscoveryWarning(
+                                "Gradle source-set model extraction returned ${sourceSetModules.size} modules and " +
+                                    "$sourceRootCount source roots.",
+                            )
+                            return@use mergeGradleOwnedAndToolingModules(
+                                gradleOwnedModules = sourceSetModules,
+                                toolingModules = ideaModules,
+                            )
+                        }
+                        ideaModules
                     }
             }
         }
@@ -269,73 +165,6 @@ internal object GradleWorkspaceDiscovery {
         } finally {
             executor.shutdownNow()
         }
-    }
-
-    /**
-     * Large workspaces prefer static discovery for module structure (source roots,
-     * inter-project dependencies) because the Tooling API can be too slow. However,
-     * static discovery cannot resolve external Maven/Gradle repository dependencies —
-     * only `project(...)` and `files(...)` references are parsed from build scripts.
-     * It also misses dependencies declared via convention plugins, `allprojects`, or
-     * `subprojects` blocks in parent build scripts.
-     *
-     * This function bridges that gap: it still uses the Tooling API in best-effort mode
-     * to extract resolved dependencies and merges them onto the statically discovered
-     * modules. If the Tooling API fails entirely, the static modules are returned as-is.
-     */
-    internal fun enrichStaticModulesWithToolingApiLibraries(
-        workspaceRoot: Path,
-        staticModules: List<GradleModuleModel>,
-        timeoutMillis: Long = defaultToolingApiTimeoutMillis,
-        toolingApiLoader: (Path, Long) -> List<GradleModuleModel> = { root, loaderTimeoutMillis ->
-            loadModulesWithToolingApi(root, loaderTimeoutMillis)
-        },
-        warningSink: (String) -> Unit = ::logWorkspaceDiscoveryWarning,
-        telemetry: StandaloneTelemetry = StandaloneTelemetry.disabled(),
-    ): GradleWorkspaceDiscoveryResult = telemetry.inSpan(
-        scope = StandaloneTelemetryScope.WORKSPACE_DISCOVERY,
-        name = "kast.workspaceDiscovery.enrichStaticModules",
-        attributes = mapOf(
-            "kast.discovery.staticModuleCount" to staticModules.size,
-            "kast.discovery.timeoutMillis" to timeoutMillis,
-        ),
-    ) { span ->
-        val warnings = mutableListOf<String>()
-        val toolingModules = runCatching {
-            toolingApiLoader(workspaceRoot, timeoutMillis)
-        }.onFailure { error ->
-            val warning = toolingApiFailureWarning(
-                prefix = "Gradle Tooling API library enrichment failed; using static workspace discovery results",
-                error = error,
-            )
-            warnings += warning
-            warningSink(warning)
-        }.getOrNull()
-
-        val toolingApiSucceeded = toolingModules != null
-        span.setAttribute("kast.discovery.toolingApiSucceeded", toolingApiSucceeded)
-        span.setAttribute("kast.discovery.toolingModuleCount", toolingModules?.size ?: 0)
-
-        if (toolingModules.isNullOrEmpty()) {
-            span.setAttribute("kast.discovery.result", "static-only")
-            return@inSpan GradleWorkspaceDiscoveryResult(
-                modules = staticModules,
-                diagnostics = WorkspaceDiscoveryDiagnostics(warnings = warnings),
-                toolingApiSucceeded = toolingApiSucceeded,
-            )
-        }
-
-        val merged = mergeToolingAndStaticModules(
-            toolingModules = toolingModules,
-            staticModules = staticModules,
-        )
-        span.setAttribute("kast.discovery.result", "merged")
-        span.setAttribute("kast.discovery.mergedModuleCount", merged.size)
-
-        GradleWorkspaceDiscoveryResult(
-            modules = merged,
-            diagnostics = WorkspaceDiscoveryDiagnostics(warnings = warnings),
-        )
     }
 
     internal fun buildStandaloneWorkspaceLayout(
@@ -388,13 +217,7 @@ internal object GradleWorkspaceDiscovery {
         )
         val testFixturesSourceRoots = (
             normalizedMainSourceRoots.filter { sourceRoot -> sourceRoot.matchesGradleSourceSet(GradleSourceSet.TEST_FIXTURES) } +
-                normalizedTestSourceRoots.filter { sourceRoot -> sourceRoot.matchesGradleSourceSet(GradleSourceSet.TEST_FIXTURES) } +
-                pathNormalizer.normalizeExistingSourceRoots(
-                    conventionalGradleSourceRootCandidates(
-                        projectDirectory = projectDirectory,
-                        sourceSet = GradleSourceSet.TEST_FIXTURES,
-                    ).asSequence().filter(Files::isDirectory),
-                )
+                normalizedTestSourceRoots.filter { sourceRoot -> sourceRoot.matchesGradleSourceSet(GradleSourceSet.TEST_FIXTURES) }
             ).distinct().sorted()
         val dependencies = module.dependencies.mapNotNull(::toGradleDependency)
         val compilerOutput = module.compilerOutput
@@ -402,11 +225,7 @@ internal object GradleWorkspaceDiscovery {
         val normalizedTestOutputDir = compilerOutput.testOutputDir?.toPath()?.let(::normalizeStandaloneModelPath)
         val testFixturesOutputRoots = (
             listOfNotNull(normalizedOutputDir, normalizedTestOutputDir)
-                .filter { outputRoot -> outputRoot.matchesGradleOutputRoot(GradleSourceSet.TEST_FIXTURES) } +
-                conventionalGradleOutputRootCandidates(
-                    projectDirectory = projectDirectory,
-                    sourceSet = GradleSourceSet.TEST_FIXTURES,
-                ).filter(Files::isDirectory).map(::normalizeStandaloneModelPath)
+                .filter { outputRoot -> outputRoot.matchesGradleOutputRoot(GradleSourceSet.TEST_FIXTURES) }
             ).distinct().sorted()
         return GradleModuleModel(
             gradlePath = module.gradleProject.path,
@@ -443,6 +262,7 @@ internal object GradleWorkspaceDiscovery {
     private fun loadModulesWithGradleSourceSetTask(
         connection: ProjectConnection,
         pathNormalizer: ToolingApiPathNormalizer,
+        cancellationToken: CancellationToken,
     ): List<GradleModuleModel> {
         val tempDir = Files.createTempDirectory("kast-gradle-source-set-model")
         val initScript = tempDir.resolve("kast-source-set-model.gradle")
@@ -450,7 +270,8 @@ internal object GradleWorkspaceDiscovery {
         return try {
             Files.writeString(initScript, gradleSourceSetModelInitScript)
             connection.newBuild()
-                .forTasks(gradleSourceSetModelTaskName)
+                .forTasks(":$gradleSourceSetModelTaskName")
+                .withCancellationToken(cancellationToken)
                 .withArguments(
                     "--init-script",
                     initScript.toString(),
@@ -483,6 +304,7 @@ private val gradleSourceSetModelJson = Json {
 private val gradleSourceSetModelInitScript = """
 import groovy.json.JsonOutput
 import org.gradle.api.GradleException
+import org.gradle.api.artifacts.FileCollectionDependency
 import org.gradle.api.artifacts.ProjectDependency
 
 def kastDependencyScope = { String rawName ->
@@ -539,6 +361,14 @@ def kastNormalizeExistingDirectories = { roots ->
         .sort()
 }
 
+def kastNormalizeExistingClasspathRoots = { roots ->
+    roots
+        .findAll { file -> file instanceof File && file.exists() && (file.isFile() || file.isDirectory()) }
+        .collect { file -> file.toPath().toAbsolutePath().normalize().toString() }
+        .unique()
+        .sort()
+}
+
 gradle.rootProject { root ->
     root.tasks.register("kastWriteWorkspaceModel") {
         outputs.upToDateWhen { false }
@@ -555,6 +385,7 @@ gradle.rootProject { root ->
                 def mainOutputRoots = [] as LinkedHashSet
                 def testOutputRoots = [] as LinkedHashSet
                 def testFixturesOutputRoots = [] as LinkedHashSet
+                def dependencies = [] as LinkedHashSet
 
                 def addRoots = { bucket, roots ->
                     if (bucket == "testFixtures") {
@@ -573,6 +404,13 @@ gradle.rootProject { root ->
                     } else {
                         mainOutputRoots.addAll(kastNormalizeExistingDirectories(roots))
                     }
+                }
+                def addLibraryDependency = { scope, file ->
+                    dependencies.add([
+                        type: "library",
+                        binaryRoot: file,
+                        scope: scope,
+                    ])
                 }
 
                 def sourceSets = project.extensions.findByName("sourceSets")
@@ -622,15 +460,24 @@ gradle.rootProject { root ->
                     }
                 }
 
-                def dependencies = [] as LinkedHashSet
                 project.configurations.each { configuration ->
                     def scope = kastDependencyScope(configuration.name)
-                    configuration.dependencies.withType(ProjectDependency).each { dependency ->
-                        dependencies.add([
-                            type: "module",
-                            targetIdeaModuleName: dependency.dependencyProject.path,
-                            scope: scope,
-                        ])
+                    configuration.dependencies.each { dependency ->
+                        if (dependency instanceof ProjectDependency) {
+                            dependencies.add([
+                                type: "module",
+                                targetIdeaModuleName: dependency.dependencyProject.path,
+                                scope: scope,
+                            ])
+                        } else if (dependency instanceof FileCollectionDependency) {
+                            kastNormalizeExistingClasspathRoots(dependency.files.files).each { file ->
+                                dependencies.add([
+                                    type: "library",
+                                    binaryRoot: file,
+                                    scope: scope,
+                                ])
+                            }
+                        }
                     }
                 }
 
@@ -757,10 +604,8 @@ private fun persistWorkspaceDiscoveryCache(
     }
 }
 
-private fun discoverToolingApiModules(
+private fun discoverGradleOwnedModules(
     workspaceRoot: Path,
-    settingsSnapshot: GradleSettingsSnapshot,
-    staticModules: () -> List<GradleModuleModel>,
     timeoutMillis: Long,
     toolingApiLoader: (Path, Long) -> List<GradleModuleModel>,
     warningSink: (String) -> Unit,
@@ -770,29 +615,26 @@ private fun discoverToolingApiModules(
         toolingApiLoader(workspaceRoot, timeoutMillis)
     }.onFailure { error ->
         val warning = toolingApiFailureWarning(
-            prefix = "Gradle Tooling API workspace discovery failed; falling back to static workspace discovery",
+            prefix = "Gradle-owned workspace discovery failed",
             error = error,
         )
         warnings += warning
         warningSink(warning)
-    }.getOrNull()
-        ?: return GradleWorkspaceDiscoveryResult(
-            modules = staticModules(),
-            diagnostics = WorkspaceDiscoveryDiagnostics(warnings = warnings),
-            toolingApiSucceeded = false,
+    }.getOrElse { error ->
+        throw IllegalStateException(
+            "Gradle-owned workspace discovery failed for $workspaceRoot",
+            error,
         )
+    }
 
-    val modules = when {
-        toolingModules.isEmpty() -> staticModules()
-        toolingModules.shouldFallbackToStaticModules(settingsSnapshot) -> mergeToolingAndStaticModules(
-            toolingModules = toolingModules,
-            staticModules = staticModules(),
-        )
-        else -> toolingModules
+    if (toolingModules.isEmpty()) {
+        val warning = "Gradle-owned workspace discovery returned no modules for $workspaceRoot"
+        warningSink(warning)
+        throw IllegalStateException(warning)
     }
 
     return GradleWorkspaceDiscoveryResult(
-        modules = modules,
+        modules = toolingModules,
         diagnostics = WorkspaceDiscoveryDiagnostics(warnings = warnings),
     )
 }
@@ -814,14 +656,6 @@ private fun GradleModuleModel.hasSourceRoots(): Boolean = mainSourceRoots.isNotE
     testSourceRoots.isNotEmpty() ||
     testFixturesSourceRoots.isNotEmpty()
 
-private fun List<GradleModuleModel>.shouldLoadGradleSourceSetModel(): Boolean {
-    val nonRootModules = filterNot { module -> module.gradlePath == ":" }
-    if (nonRootModules.isEmpty()) {
-        return none(GradleModuleModel::hasSourceRoots)
-    }
-    return nonRootModules.any { module -> !module.hasSourceRoots() }
-}
-
 private fun toolingApiFailureWarning(prefix: String, error: Throwable): String {
     val details = error.message?.takeIf(String::isNotBlank) ?: error::class.java.simpleName
     return "$prefix: $details"
@@ -831,34 +665,73 @@ private fun logWorkspaceDiscoveryWarning(message: String) {
     System.err.println("kast gradle workspace discovery warning: $message")
 }
 
-private fun mergeToolingAndStaticModules(
+private fun supplementConventionalTestFixtures(
+    workspaceRoot: Path,
+    modules: List<GradleModuleModel>,
+): List<GradleModuleModel> = modules.map { module ->
+    val projectDirectory = gradleProjectDirectory(workspaceRoot, module.gradlePath)
+    val testFixturesSourceRoots = listOf(
+        projectDirectory.resolve("src/testFixtures/kotlin"),
+        projectDirectory.resolve("src/testFixtures/java"),
+    )
+        .filter(Files::isDirectory)
+        .map(::normalizeStandaloneModelPath)
+    val testFixturesOutputRoots = listOf(
+        projectDirectory.resolve("build/classes/kotlin/testFixtures"),
+        projectDirectory.resolve("build/classes/java/testFixtures"),
+        projectDirectory.resolve("build/resources/testFixtures"),
+    )
+        .filter(Files::exists)
+        .map(::normalizeStandaloneModelPath)
+
+    if (testFixturesSourceRoots.isEmpty() && testFixturesOutputRoots.isEmpty()) {
+        module
+    } else {
+        module.copy(
+            testFixturesSourceRoots = (module.testFixturesSourceRoots + testFixturesSourceRoots).distinct().sorted(),
+            testFixturesOutputRoots = (module.testFixturesOutputRoots + testFixturesOutputRoots).distinct().sorted(),
+        )
+    }
+}
+
+private fun gradleProjectDirectory(
+    workspaceRoot: Path,
+    gradlePath: String,
+): Path {
+    if (gradlePath == ":") {
+        return workspaceRoot
+    }
+    return normalizeStandaloneModelPath(workspaceRoot.resolve(gradlePath.removePrefix(":").replace(':', '/')))
+}
+
+private fun mergeGradleOwnedAndToolingModules(
+    gradleOwnedModules: List<GradleModuleModel>,
     toolingModules: List<GradleModuleModel>,
-    staticModules: List<GradleModuleModel>,
 ): List<GradleModuleModel> {
+    val gradleOwnedModulesByPath = gradleOwnedModules.associateBy(GradleModuleModel::gradlePath)
     val toolingModulesByPath = toolingModules.associateBy(GradleModuleModel::gradlePath)
-    val staticModulesByPath = staticModules.associateBy(GradleModuleModel::gradlePath)
-    return (toolingModulesByPath.keys + staticModulesByPath.keys)
+    return (gradleOwnedModulesByPath.keys + toolingModulesByPath.keys)
         .sorted()
         .map { gradlePath ->
+            val gradleOwnedModule = gradleOwnedModulesByPath[gradlePath]
             val toolingModule = toolingModulesByPath[gradlePath]
-            val staticModule = staticModulesByPath[gradlePath]
             when {
-                toolingModule != null && staticModule != null -> toolingModule.mergeWithStaticModule(staticModule)
+                gradleOwnedModule != null && toolingModule != null -> gradleOwnedModule.mergeWithToolingModule(toolingModule)
+                gradleOwnedModule != null -> gradleOwnedModule
                 toolingModule != null -> toolingModule
-                staticModule != null -> staticModule
                 else -> error("No Gradle module model was available for $gradlePath")
             }
         }
 }
 
-private fun GradleModuleModel.mergeWithStaticModule(staticModule: GradleModuleModel): GradleModuleModel = copy(
-    mainSourceRoots = (mainSourceRoots + staticModule.mainSourceRoots).distinct().sorted(),
-    testSourceRoots = (testSourceRoots + staticModule.testSourceRoots).distinct().sorted(),
-    testFixturesSourceRoots = (testFixturesSourceRoots + staticModule.testFixturesSourceRoots).distinct().sorted(),
-    dependencies = (dependencies + staticModule.dependencies).distinct(),
-    mainOutputRoots = (mainOutputRoots + staticModule.mainOutputRoots).distinct().sorted(),
-    testOutputRoots = (testOutputRoots + staticModule.testOutputRoots).distinct().sorted(),
-    testFixturesOutputRoots = (testFixturesOutputRoots + staticModule.testFixturesOutputRoots).distinct().sorted(),
+private fun GradleModuleModel.mergeWithToolingModule(toolingModule: GradleModuleModel): GradleModuleModel = copy(
+    mainSourceRoots = (mainSourceRoots + toolingModule.mainSourceRoots).distinct().sorted(),
+    testSourceRoots = (testSourceRoots + toolingModule.testSourceRoots).distinct().sorted(),
+    testFixturesSourceRoots = (testFixturesSourceRoots + toolingModule.testFixturesSourceRoots).distinct().sorted(),
+    dependencies = (dependencies + toolingModule.dependencies).distinct(),
+    mainOutputRoots = (mainOutputRoots + toolingModule.mainOutputRoots).distinct().sorted(),
+    testOutputRoots = (testOutputRoots + toolingModule.testOutputRoots).distinct().sorted(),
+    testFixturesOutputRoots = (testFixturesOutputRoots + toolingModule.testFixturesOutputRoots).distinct().sorted(),
 )
 
 private fun List<StandaloneSourceModuleSpec>.mergeDuplicateSourceModules(): List<StandaloneSourceModuleSpec> {
@@ -892,17 +765,4 @@ private fun Path.matchesGradleOutputRoot(sourceSet: GradleSourceSet): Boolean {
         "/build/classes/kotlin/${sourceSet.id}",
         "/build/resources/${sourceSet.id}",
     ).any(normalizedPath::contains)
-}
-
-private fun List<GradleModuleModel>.shouldFallbackToStaticModules(
-    settingsSnapshot: GradleSettingsSnapshot,
-): Boolean {
-    if (settingsSnapshot.includedProjectPaths.isEmpty()) {
-        return false
-    }
-
-    val hasModuleDependencies = any { module ->
-        module.dependencies.any { dependency -> dependency is GradleDependency.ModuleDependency }
-    }
-    return !hasModuleDependencies
 }

@@ -21,9 +21,9 @@ Use this unit for headless host concerns and nowhere else.
   reintroduce Kast-specific environment variables beyond `KAST_CONFIG_HOME`;
   add a typed config field instead. Standard JVM/terminal env vars such as
   `JAVA_HOME`, `JAVA_OPTS`, and `NO_COLOR` are still respected.
-- Keep Gradle workspace discovery here. `GradleWorkspaceDiscovery` and
-  `StaticGradleWorkspaceDiscovery` must stay aligned on module names, source
-  roots, dependency edges, and large or composite-build fallbacks.
+- Keep Gradle workspace discovery here. `GradleWorkspaceDiscovery` must keep
+  module names, source roots, dependency edges, and Gradle source-set fallbacks
+  aligned with standalone session behavior.
 - Keep capability advertising conservative. The standalone backend currently
   implements `RESOLVE_SYMBOL`, `FIND_REFERENCES`, `CALL_HIERARCHY`,
   `DIAGNOSTICS`, `RENAME`, and `APPLY_EDITS`. Keep the advertised

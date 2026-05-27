@@ -37,13 +37,6 @@ object StandaloneRuntime {
             workspaceRoot = options.workspaceRoot,
             overrides = KastConfigOverride(profiling = options.profilingOverride),
         )
-        val phasedDiscoveryResult = discoverStandaloneWorkspaceLayoutPhased(
-            workspaceRoot = options.workspaceRoot,
-            sourceRoots = options.sourceRoots,
-            classpathRoots = options.classpathRoots,
-            moduleName = options.moduleName,
-            config = config,
-        )
         val telemetry = StandaloneTelemetry.fromConfig(options.workspaceRoot, config)
         val profiling = ProfilingManager(ProfilingConfig.fromConfig(config)).also { it.start() }
         val sessionLock: SessionLock = if (telemetry.isEnabled(StandaloneTelemetryScope.SESSION_LOCK)) {
@@ -56,7 +49,6 @@ object StandaloneRuntime {
             sourceRoots = options.sourceRoots,
             classpathRoots = options.classpathRoots,
             moduleName = options.moduleName,
-            phasedDiscoveryResult = phasedDiscoveryResult,
             config = config,
             analysisSessionLock = sessionLock,
             telemetry = telemetry,
@@ -73,7 +65,7 @@ object StandaloneRuntime {
         )
         val watcher = WorkspaceRefreshWatcher(session, debounceMillis = config.watcher.debounceMillis.value)
         session.attachWorkspaceRefreshWatcher(watcher)
-        val workspaceFileCount = phasedDiscoveryResult.initialLayout.sourceModules
+        val workspaceFileCount = session.moduleSpecs()
             .flatMap { it.sourceRoots }
             .sumOf { root ->
                 root.toFile().walkTopDown()
