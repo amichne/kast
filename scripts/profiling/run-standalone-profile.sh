@@ -131,6 +131,19 @@ shutdown_daemon() {
   fi
 }
 
+write_gradle_profile_properties() {
+  mkdir -p "${GRADLE_USER_HOME}"
+  local properties_file="${GRADLE_USER_HOME}/gradle.properties"
+  cat >"${properties_file}" <<EOF
+# Written by the Kast standalone profiling harness.
+org.gradle.daemon=true
+org.gradle.workers.max=${gradle_workers_max}
+org.gradle.jvmargs=${gradle_jvmargs}
+kotlin.daemon.jvmargs=${kotlin_daemon_jvmargs}
+EOF
+  cp "${properties_file}" "${results_dir}/gradle.properties"
+}
+
 workspace_dir="/work/target"
 results_dir="/work/results"
 backend_launcher="/opt/kast/backend/kast-standalone"
@@ -147,6 +160,9 @@ attach_delay_seconds="${KAST_PROFILE_ATTACH_DELAY_SECONDS:-1}"
 rpc_port="${KAST_PROFILE_RPC_PORT:-37645}"
 telemetry_detail="${KAST_PROFILE_TELEMETRY_DETAIL:-verbose}"
 native_memory_tracking="${KAST_PROFILE_NATIVE_MEMORY_TRACKING:-detail}"
+gradle_jvmargs="${KAST_PROFILE_GRADLE_JVMARGS:--Xmx4g -XX:MaxMetaspaceSize=1g -XX:+UseParallelGC -Dfile.encoding=UTF-8}"
+kotlin_daemon_jvmargs="${KAST_PROFILE_KOTLIN_DAEMON_JVMARGS:--Xmx1536m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8}"
+gradle_workers_max="${KAST_PROFILE_GRADLE_WORKERS_MAX:-${max_concurrent_requests}}"
 
 require_dir "${workspace_dir}"
 require_dir "${results_dir}"
@@ -166,6 +182,7 @@ mkdir -p "${logs_dir}" "${telemetry_dir}" "${profiling_dir}" "${diagnostics_dir}
 export JAVA_OPTS="-Xmx${heap} -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints -XX:+PreserveFramePointer -XX:NativeMemoryTracking=${native_memory_tracking} -XX:FlightRecorderOptions=stackdepth=256 ${JAVA_OPTS:-}"
 export HOME="${home_dir}"
 export GRADLE_USER_HOME="${GRADLE_USER_HOME:-/work/gradle-home}"
+write_gradle_profile_properties
 
 daemon_args=(
   "--workspace-root=${workspace_dir}"

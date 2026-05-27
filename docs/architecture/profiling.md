@@ -13,7 +13,8 @@ recorded JSON-RPC workload.
 scripts/profile-standalone-large-repo.sh \
   --target ktor \
   --duration 60 \
-  --profile-modes wall,cpu
+  --profile-modes wall,cpu \
+  --gradle-jvmargs "-Xmx4g -XX:MaxMetaspaceSize=1g -XX:+UseParallelGC -Dfile.encoding=UTF-8"
 ```
 
 The default public target is `ktorio/ktor` tag `3.2.3`, which is above 85%
@@ -45,6 +46,13 @@ Results are written under `.benchmarks/standalone-profile/results/<run-id>/`:
 - `profiling/*.html` contains async-profiler flame graphs.
 - `diagnostics/` contains `jcmd` native-memory, heap, thread, and system-property
   snapshots.
+- `gradle.properties` records the harness-owned Gradle and Kotlin daemon JVM
+  settings injected into the container's mounted Gradle home.
+
+For memory-constrained Docker or Colima runs, prefer lowering the target Gradle
+daemon heap with `--gradle-jvmargs` and `--kotlin-daemon-jvmargs` before raising
+the standalone heap. When the local Docker runtime has enough memory assigned,
+`--docker-memory 12g` can also make the container limit explicit.
 
 ## Locating the daemon PID
 

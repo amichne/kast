@@ -23,7 +23,12 @@ Profiling options:
   --tooling-timeout-ms MS    Gradle Tooling API timeout in kast config (default: 300000).
   --max-included-projects N  Static-discovery threshold in kast config (default: 200).
   --telemetry-detail LEVEL   Telemetry detail: basic or verbose (default: verbose).
+  --ready-timeout-seconds N  Seconds to wait for health/READY in the workload (default: 600).
   --include-refresh          Include a full workspace refresh in the workload.
+  --gradle-jvmargs ARGS      Gradle daemon JVM args inside Docker (default: -Xmx4g -XX:MaxMetaspaceSize=1g -XX:+UseParallelGC -Dfile.encoding=UTF-8).
+  --kotlin-daemon-jvmargs ARGS
+                              Kotlin daemon JVM args inside Docker (default: -Xmx1536m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8).
+  --gradle-workers-max N     Gradle max workers inside Docker (default: --max-concurrent).
 
 Synthetic target options:
   --modules N                Synthetic module count (default: 240).
@@ -34,6 +39,7 @@ Synthetic target options:
 Build/run options:
   --work-dir PATH            Benchmark state directory (default: .benchmarks/standalone-profile).
   --image NAME               Docker image tag (default: kast-standalone-profile:local).
+  --docker-memory SIZE       Optional Docker memory limit, e.g. 12g or 8192m.
   --run-id ID                Result directory name.
   --rebuild-backend          Run ./kast.sh build backend even when dist/backend exists.
   --skip-backend-build       Require an existing dist/backend tree.
@@ -99,13 +105,18 @@ max_concurrent="4"
 tooling_timeout_ms="300000"
 max_included_projects="200"
 telemetry_detail="verbose"
+ready_timeout_seconds="600"
 include_refresh="false"
+gradle_jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1g -XX:+UseParallelGC -Dfile.encoding=UTF-8"
+kotlin_daemon_jvmargs="-Xmx1536m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8"
+gradle_workers_max=""
 modules="240"
 fanout="3"
 classes_per_module="3"
 regenerate_synthetic="false"
 work_dir=".benchmarks/standalone-profile"
 image="kast-standalone-profile:local"
+docker_memory=""
 run_id=""
 rebuild_backend="false"
 skip_backend_build="false"
@@ -126,13 +137,18 @@ while [[ $# -gt 0 ]]; do
     --tooling-timeout-ms) tooling_timeout_ms="${2:?missing value for --tooling-timeout-ms}"; shift 2 ;;
     --max-included-projects) max_included_projects="${2:?missing value for --max-included-projects}"; shift 2 ;;
     --telemetry-detail) telemetry_detail="${2:?missing value for --telemetry-detail}"; shift 2 ;;
+    --ready-timeout-seconds) ready_timeout_seconds="${2:?missing value for --ready-timeout-seconds}"; shift 2 ;;
     --include-refresh) include_refresh="true"; shift ;;
+    --gradle-jvmargs) gradle_jvmargs="${2:?missing value for --gradle-jvmargs}"; shift 2 ;;
+    --kotlin-daemon-jvmargs) kotlin_daemon_jvmargs="${2:?missing value for --kotlin-daemon-jvmargs}"; shift 2 ;;
+    --gradle-workers-max) gradle_workers_max="${2:?missing value for --gradle-workers-max}"; shift 2 ;;
     --modules) modules="${2:?missing value for --modules}"; shift 2 ;;
     --fanout) fanout="${2:?missing value for --fanout}"; shift 2 ;;
     --classes-per-module) classes_per_module="${2:?missing value for --classes-per-module}"; shift 2 ;;
     --regenerate-synthetic) regenerate_synthetic="true"; shift ;;
     --work-dir) work_dir="${2:?missing value for --work-dir}"; shift 2 ;;
     --image) image="${2:?missing value for --image}"; shift 2 ;;
+    --docker-memory) docker_memory="${2:?missing value for --docker-memory}"; shift 2 ;;
     --run-id) run_id="${2:?missing value for --run-id}"; shift 2 ;;
     --rebuild-backend) rebuild_backend="true"; shift ;;
     --skip-backend-build) skip_backend_build="true"; shift ;;
@@ -156,6 +172,9 @@ esac
 [[ "${max_concurrent}" =~ ^[0-9]+$ ]] || die "--max-concurrent must be an integer"
 [[ "${tooling_timeout_ms}" =~ ^[0-9]+$ ]] || die "--tooling-timeout-ms must be an integer"
 [[ "${max_included_projects}" =~ ^[0-9]+$ ]] || die "--max-included-projects must be an integer"
+[[ "${ready_timeout_seconds}" =~ ^[0-9]+$ ]] || die "--ready-timeout-seconds must be an integer"
+gradle_workers_max="${gradle_workers_max:-${max_concurrent}}"
+[[ "${gradle_workers_max}" =~ ^[0-9]+$ ]] || die "--gradle-workers-max must be an integer"
 case "${telemetry_detail}" in
   basic|verbose) ;;
   *) die "--telemetry-detail must be one of: basic, verbose" ;;
@@ -294,6 +313,13 @@ docker_args=(
   --cap-add SYS_PTRACE
   --security-opt seccomp=unconfined
   --user "$(id -u):$(id -g)"
+)
+
+if [[ -n "${docker_memory}" ]]; then
+  docker_args+=(--memory "${docker_memory}")
+fi
+
+docker_args+=(
   -e "HOME=/work/results/home"
   -e "GRADLE_USER_HOME=/work/gradle-home"
   -e "KAST_PROFILE_DURATION=${duration}"
@@ -303,7 +329,11 @@ docker_args=(
   -e "KAST_PROFILE_TOOLING_TIMEOUT_MS=${tooling_timeout_ms}"
   -e "KAST_PROFILE_MAX_INCLUDED_PROJECTS=${max_included_projects}"
   -e "KAST_PROFILE_TELEMETRY_DETAIL=${telemetry_detail}"
+  -e "KAST_PROFILE_READY_TIMEOUT_SECONDS=${ready_timeout_seconds}"
   -e "KAST_PROFILE_INCLUDE_REFRESH=${include_refresh}"
+  -e "KAST_PROFILE_GRADLE_JVMARGS=${gradle_jvmargs}"
+  -e "KAST_PROFILE_KOTLIN_DAEMON_JVMARGS=${kotlin_daemon_jvmargs}"
+  -e "KAST_PROFILE_GRADLE_WORKERS_MAX=${gradle_workers_max}"
   -e "KAST_PROFILE_TARGET_LABEL=${target_label}"
   -v "${backend_dir}:/opt/kast/backend:ro"
   -v "${workspace_dir}:/work/target:rw"

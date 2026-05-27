@@ -141,7 +141,7 @@ class StandaloneWorkspaceDiscoveryTest {
             relativePath = "settings.gradle.kts",
             content = """
                 rootProject.name = "workspace"
-                include(":app")
+                include(":app", ":java-app")
             """.trimIndent() + "\n",
         )
         writeFile(relativePath = "app/build.gradle.kts", content = "")
@@ -974,6 +974,25 @@ class StandaloneWorkspaceDiscoveryTest {
     }
 
     @Test
+    fun `tooling api discovers Gradle-owned Kotlin source set roots when IDEA model omits them`() {
+        createKotlinLikeSourceSetWorkspace()
+
+        val modulesByPath = GradleWorkspaceDiscovery.loadModulesWithToolingApi(
+            workspaceRoot,
+            timeoutMillis = defaultToolingApiTimeoutMillis,
+        ).associateBy(GradleModuleModel::gradlePath)
+
+        assertEquals(
+            listOf(normalizeStandalonePath(workspaceRoot.resolve("app/common/src"))),
+            modulesByPath.getValue(":app").mainSourceRoots,
+        )
+        assertEquals(
+            listOf(normalizeStandalonePath(workspaceRoot.resolve("app/jvmTest/src"))),
+            modulesByPath.getValue(":app").testSourceRoots,
+        )
+    }
+
+    @Test
     fun `runtime status includes workspace diagnostics when classpath is incomplete`(): TestResult = runTest {
         createGradleWorkspace(includeLocalTestJar = false)
 
@@ -1049,6 +1068,73 @@ class StandaloneWorkspaceDiscoveryTest {
 
             assertEquals(RuntimeState.READY, backend.runtimeStatus().state)
         }
+    }
+
+    private fun createKotlinLikeSourceSetWorkspace() {
+        writeFile(
+            relativePath = "settings.gradle.kts",
+            content = """
+                rootProject.name = "workspace"
+                include(":app")
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "app/build.gradle.kts",
+            content = """
+                open class FakeKotlinSourceDirectorySet(
+                    val srcDirs: Set<File>,
+                ) : Iterable<File> {
+                    override fun iterator(): Iterator<File> = emptySet<File>().iterator()
+                }
+                open class FakeKotlinSourceSet(
+                    val name: String,
+                    val kotlin: FakeKotlinSourceDirectorySet,
+                )
+                open class FakeKotlinExtension(val sourceSets: List<FakeKotlinSourceSet>)
+
+                extensions.add(
+                    "kotlin",
+                    FakeKotlinExtension(
+                        listOf(
+                            FakeKotlinSourceSet("commonMain", FakeKotlinSourceDirectorySet(setOf(file("common/src")))),
+                            FakeKotlinSourceSet("jvmTest", FakeKotlinSourceDirectorySet(setOf(file("jvmTest/src")))),
+                        ),
+                    ),
+                )
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "app/common/src/sample/Common.kt",
+            content = """
+                package sample
+
+                fun commonGreeting(): String = "common"
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "app/jvmTest/src/sample/CommonTest.kt",
+            content = """
+                package sample
+
+                class CommonTest
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "java-app/build.gradle.kts",
+            content = """
+                plugins {
+                    `java-library`
+                }
+            """.trimIndent() + "\n",
+        )
+        writeFile(
+            relativePath = "java-app/src/main/java/sample/JavaApp.java",
+            content = """
+                package sample;
+
+                public final class JavaApp {}
+            """.trimIndent() + "\n",
+        )
     }
 
     private fun createGradleWorkspace(includeLocalTestJar: Boolean) {

@@ -24,6 +24,18 @@ on:
         description: "Standalone backend JVM heap"
         required: true
         default: 6g
+      gradle_jvmargs:
+        description: "Target Gradle daemon JVM args inside Docker"
+        required: true
+        default: "-Xmx4g -XX:MaxMetaspaceSize=1g -XX:+UseParallelGC -Dfile.encoding=UTF-8"
+      kotlin_daemon_jvmargs:
+        description: "Target Kotlin daemon JVM args inside Docker"
+        required: true
+        default: "-Xmx1536m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8"
+      docker_memory:
+        description: "Optional Docker memory limit, e.g. 12g; leave empty for runner default"
+        required: false
+        default: ""
       max_concurrent_requests:
         description: "Backend max concurrent JSON-RPC requests"
         required: true
@@ -91,13 +103,20 @@ jobs:
             --duration "${{ inputs.duration_seconds }}"
             --profile-modes "${{ inputs.profile_modes }}"
             --heap "${{ inputs.heap }}"
+            --gradle-jvmargs "${{ inputs.gradle_jvmargs }}"
+            --kotlin-daemon-jvmargs "${{ inputs.kotlin_daemon_jvmargs }}"
             --max-concurrent "${{ inputs.max_concurrent_requests }}"
+            --gradle-workers-max "${{ inputs.max_concurrent_requests }}"
             --modules "${{ inputs.synthetic_modules }}"
             --fanout "${{ inputs.synthetic_fanout }}"
             --classes-per-module "${{ inputs.synthetic_classes_per_module }}"
             --run-id "$PROFILE_RUN_ID"
             --skip-backend-build
           )
+
+          if [[ -n "${{ inputs.docker_memory }}" ]]; then
+            args+=(--docker-memory "${{ inputs.docker_memory }}")
+          fi
 
           if [[ "${{ inputs.include_refresh }}" == "true" ]]; then
             args+=(--include-refresh)
