@@ -49,9 +49,19 @@ def backend_zip():
         write_entry(archive, "backend-standalone/runtime-libs/classpath.txt", b"backend-standalone.jar\n")
         write_entry(archive, "backend-standalone/runtime-libs/backend-standalone.jar", b"backend")
 
+def headless_zip():
+    asset_path.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(asset_path, "w") as archive:
+        write_entry(archive, "backend-headless/kast-headless", b"#!/usr/bin/env bash\n", 0o755)
+        write_entry(archive, "backend-headless/runtime-libs/classpath.txt", b"backend-headless.jar\n")
+        write_entry(archive, "backend-headless/runtime-libs/backend-headless.jar", b"headless")
+        write_entry(archive, "backend-headless/plugins/kast-headless/lib/backend-headless.jar", b"plugin")
+
 asset_path.parent.mkdir(parents=True, exist_ok=True)
 if kind == "standalone":
     backend_zip()
+elif kind == "headless":
+    headless_zip()
 elif kind == "intellij":
     with zipfile.ZipFile(asset_path, "w") as archive:
         write_entry(archive, "backend-intellij/lib/backend-intellij.jar", b"plugin")
@@ -68,6 +78,7 @@ write_text_asset() {
 write_expected_assets() {
   write_zip_asset "${release_dir}/kast-intellij-${tag}.zip" intellij
   write_zip_asset "${release_dir}/kast-standalone-${tag}.zip" standalone
+  write_zip_asset "${release_dir}/kast-headless-${tag}.zip" headless
   write_text_asset "${release_dir}/kast-ubuntu-debian-x86_64-${tag}.tar.gz"
   printf '%s  %s\n' \
     "$(compute_sha256 "${release_dir}/kast-ubuntu-debian-x86_64-${tag}.tar.gz")" \
@@ -97,6 +108,7 @@ release_dir = Path(sys.argv[1])
 tag = sys.argv[2]
 entries = [
     ("ubuntu-debian-x86_64", f"kast-ubuntu-debian-x86_64-{tag}.tar.gz"),
+    ("headless", f"kast-headless-{tag}.zip"),
     ("intellij", f"kast-intellij-{tag}.zip"),
     ("standalone", f"kast-standalone-{tag}.zip"),
 ]
@@ -130,6 +142,7 @@ mkdir -p "$release_dir"
 
 assets=(
   "kast-ubuntu-debian-x86_64-${tag}.tar.gz"
+  "kast-headless-${tag}.zip"
   "kast-intellij-${tag}.zip"
   "kast-standalone-${tag}.zip"
 )

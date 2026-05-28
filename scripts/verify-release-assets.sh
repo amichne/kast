@@ -54,6 +54,7 @@ release_dir = Path(sys.argv[1])
 tag = sys.argv[2]
 
 expected = {
+    "headless": f"kast-headless-{tag}.zip",
     "ubuntu-debian-x86_64": f"kast-ubuntu-debian-x86_64-{tag}.tar.gz",
     "intellij": f"kast-intellij-{tag}.zip",
     "standalone": f"kast-standalone-{tag}.zip",

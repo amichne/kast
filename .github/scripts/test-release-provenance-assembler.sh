@@ -47,6 +47,10 @@ write_provenance \
   "standalone" \
   "kast-standalone-${tag}.zip"
 write_provenance \
+  "${scratch_dir}/provenance-headless/dist/build-provenance-headless.json" \
+  "headless" \
+  "kast-headless-${tag}.zip"
+write_provenance \
   "${scratch_dir}/provenance-ubuntu-debian/dist/build-provenance-ubuntu-debian.json" \
   "ubuntu-debian-x86_64" \
   "kast-ubuntu-debian-x86_64-${tag}.tar.gz"
@@ -54,6 +58,7 @@ write_provenance \
 output="${scratch_dir}/dist/build-provenance.json"
 "$assembler" \
   --output "$output" \
+  "${scratch_dir}/provenance-headless" \
   "${scratch_dir}/provenance-intellij" \
   "${scratch_dir}/provenance-standalone" \
   "${scratch_dir}/provenance-ubuntu-debian"
@@ -66,6 +71,7 @@ from pathlib import Path
 payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 platforms = [entry.get("platformId") for entry in payload.get("builds", [])]
 expected = [
+    "headless",
     "intellij",
     "standalone",
     "ubuntu-debian-x86_64",
@@ -75,7 +81,7 @@ if platforms != expected:
 PY
 
 rm "${scratch_dir}/provenance-intellij/dist/build-provenance-intellij.json"
-if "$assembler" --output "$output" "${scratch_dir}/provenance-artifacts" "${scratch_dir}/provenance-intellij" "${scratch_dir}/provenance-standalone" "${scratch_dir}/provenance-ubuntu-debian" \
+if "$assembler" --output "$output" "${scratch_dir}/provenance-artifacts" "${scratch_dir}/provenance-headless" "${scratch_dir}/provenance-intellij" "${scratch_dir}/provenance-standalone" "${scratch_dir}/provenance-ubuntu-debian" \
   >"${scratch_dir}/missing.out" 2>"${scratch_dir}/missing.err"; then
   die "assembler unexpectedly passed with missing intellij provenance"
 fi

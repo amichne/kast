@@ -460,14 +460,92 @@ jobs:
           path: dist/
           if-no-files-found: warn
 
+  build-headless-backend:
+    name: Build headless backend
+    needs: [prepare-release]
+    if: always() && needs.prepare-release.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.prepare-release.outputs.release_tag }}
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      - uses: actions/cache@v5
+        with:
+          path: ~/.gradle/kast/intellij-distributions
+          key: idea-dist-${{ hashFiles('gradle/libs.versions.toml') }}
+
+      - name: Build headless backend
+        run: ./kast.sh build headless
+
+      - name: Upload headless backend asset
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          tag="${{ needs.prepare-release.outputs.release_tag }}"
+          asset_name="kast-headless-${tag}.zip"
+
+          source_zip="dist/headless.zip"
+          [[ -f "$source_zip" ]] || { echo "Headless backend zip not found: $source_zip" >&2; exit 1; }
+
+          mkdir -p dist
+          cp "$source_zip" "dist/${asset_name}"
+          gh release upload "$tag" "dist/${asset_name}" --clobber
+
+      - name: Write headless backend build provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          tag="${{ needs.prepare-release.outputs.release_tag }}"
+          asset_name="kast-headless-${tag}.zip"
+          digest="$(sha256sum "dist/${asset_name}" | awk '{ print $1 }')"
+          cat > dist/build-provenance-headless.json <<PROVEOF
+          {
+            "runId": "${{ github.run_id }}",
+            "runNumber": "${{ github.run_number }}",
+            "runAttempt": "${{ github.run_attempt }}",
+            "sha": "${{ github.sha }}",
+            "ref": "${{ github.ref }}",
+            "workflowRef": "${{ github.workflow_ref }}",
+            "actor": "${{ github.actor }}",
+            "platformId": "headless",
+            "assetName": "${asset_name}",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "assetDigest": "sha256:${digest}"
+          }
+          PROVEOF
+
+      - name: Upload headless backend artifact
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: headless-backend-${{ github.run_id }}
+          path: |
+            dist/
+            backend-headless/build/distributions/
+          if-no-files-found: warn
+
   publish-release:
     name: Publish release
     needs:
       - prepare-release
       - build-intellij-plugin
       - build-standalone-backend
+      - build-headless-backend
       - build-ubuntu-debian-bundle
-    if: always() && needs.prepare-release.result == 'success' && needs.build-intellij-plugin.result == 'success' && needs.build-standalone-backend.result == 'success' && needs.build-ubuntu-debian-bundle.result == 'success'
+    if: always() && needs.prepare-release.result == 'success' && needs.build-intellij-plugin.result == 'success' && needs.build-standalone-backend.result == 'success' && needs.build-headless-backend.result == 'success' && needs.build-ubuntu-debian-bundle.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -486,6 +564,12 @@ jobs:
           path: provenance-standalone
           pattern: standalone-backend-*
 
+      - name: Download headless backend provenance
+        uses: actions/download-artifact@v7
+        with:
+          path: provenance-headless
+          pattern: headless-backend-*
+
       - name: Download Ubuntu/Debian bundle provenance
         uses: actions/download-artifact@v7
         with:
@@ -498,6 +582,7 @@ jobs:
           set -euo pipefail
           python3 scripts/assemble-release-provenance.py \
             --output dist/build-provenance.json \
+            provenance-headless \
             provenance-intellij \
             provenance-standalone \
             provenance-ubuntu-debian
@@ -519,6 +604,7 @@ jobs:
           tag="${{ needs.prepare-release.outputs.release_tag }}"
           expected_assets=(
             "kast-ubuntu-debian-x86_64-${tag}.tar.gz"
+            "kast-headless-${tag}.zip"
             "kast-intellij-${tag}.zip"
             "kast-standalone-${tag}.zip"
           )
