@@ -1,13 +1,13 @@
 ---
 title: Backends
-description: Understand standalone vs IDEA plugin — when to use each,
+description: Understand standalone, headless, and IDEA plugin — when to use each,
   how they compare, and how to choose.
 icon: lucide/server
 ---
 
 # Backends
 
-Two ways to run the analysis engine. Both speak the same JSON-RPC, so
+Three ways to run the analysis engine. They speak the same JSON-RPC, so
 your scripts and prompts don't change when you switch.
 
 ## Pick the one that matches where you work
@@ -15,6 +15,7 @@ your scripts and prompts don't change when you switch.
 | Runtime           | What runs                            | Best for                              | How it starts                        |
 |-------------------|--------------------------------------|---------------------------------------|--------------------------------------|
 | Standalone        | `kast` CLI plus a JVM daemon         | Terminal, CI, agents, no-IDE machines | `kast up`                            |
+| Headless          | `kast` CLI plus a packaged IntelliJ backend | Ubuntu/Debian CI and hosted agents | `kast up --backend=headless`         |
 | IDEA plugin       | A `kast` server inside an open IDE   | Local work with IDEA or Android Studio already open | Boots when the IDE opens the project |
 
 ## Standalone backend
@@ -39,22 +40,30 @@ brew install kast
 ```
 
 On Ubuntu/Debian x86_64 hosts where Homebrew is not available, use the single
-supported non-Brew installer:
+supported non-Brew installer. It installs the Rust CLI and headless backend:
 
-```console title="Install CLI and standalone backend"
+```console title="Install CLI and headless backend"
 ./scripts/install-ubuntu-debian.sh install
 ```
 
-The Ubuntu/Debian installer writes `config.toml` with the installed standalone
+The Ubuntu/Debian installer writes `config.toml` with the installed headless
 runtime libraries under
-`$HOME/.local/share/kast/ubuntu-debian/<version>/lib/backends/standalone-<version>/runtime-libs`.
-To use a different installation, point `backends.standalone.runtimeLibsDir` at
-the installed `runtime-libs` directory in `config.toml`, or pass
+`$HOME/.local/share/kast/ubuntu-debian/<version>/lib/backends/headless-<version>/runtime-libs`.
+To use a different installation, point `backends.headless.runtimeLibsDir` at
+the installed `runtime-libs` directory and `backends.headless.ideaHome` at the
+installed headless IDEA home in `config.toml`, or pass
 `--runtime-libs-dir` to `kast daemon start`:
 
 ```toml title="$HOME/.config/kast/config.toml"
-[backends.standalone]
-runtimeLibsDir = "/home/alex/.local/share/kast/ubuntu-debian/v1.2.3/lib/backends/standalone-v1.2.3/runtime-libs"
+[backends.headless]
+runtimeLibsDir = "/home/alex/.local/share/kast/ubuntu-debian/v1.2.3/lib/backends/headless-v1.2.3/runtime-libs"
+ideaHome = "/home/alex/.local/share/kast/ubuntu-debian/v1.2.3/lib/backends/headless-v1.2.3/idea-home"
+```
+
+Warm the Ubuntu/Debian backend with an explicit backend selector:
+
+```console title="Start the packaged headless backend"
+kast up --backend=headless --workspace-root="$PWD"
 ```
 
 How a session unfolds:
@@ -138,29 +147,31 @@ talking to.
 Without `--backend-name`, the CLI uses these rules in order:
 
 1. A servable IDEA backend for the workspace? Use it.
-2. A servable standalone backend for the workspace? Use it.
-3. Neither? Error out — no backend available.
+2. A servable headless backend for the workspace? Use it.
+3. A servable standalone backend for the workspace? Use it.
+4. Neither? Error out — no backend available.
 
 `kast up` is the only command that starts a backend for
-you. It boots or reuses the standalone daemon and, by default, blocks
-until indexing finishes. Pass `--accept-indexing=true` to return as soon
-as the daemon is servable. Read commands like `resolve` and `references`
-never start a backend implicitly — they fail fast. So: run
-`up` first, or open the project in IDEA or Android Studio with the
-plugin installed.
+you. It boots or reuses the selected daemon and, by default, blocks until
+indexing finishes. Pass `--backend=headless` for Ubuntu/Debian bundle installs,
+or omit the selector for the standalone default. Pass `--accept-indexing=true`
+to return as soon as the daemon is servable. Read commands like `resolve` and
+`references` never start a backend implicitly — they fail fast. So: run `up`
+first, or open the project in IDEA or Android Studio with the plugin installed.
 
 `kast status` reports backend state and helps you debug
 connection issues.
 
-## Running both
+## Running multiple runtimes
 
-Nothing stops you from installing both. It's the most practical setup —
-standalone for headless, IDEA or Android Studio for when the IDE is already open.
+Nothing stops you from installing more than one runtime. It's the most practical
+setup: headless for hosted Ubuntu/Debian agents, standalone for local terminal
+work, and IDEA or Android Studio when the IDE is already open.
 
-When both are running, pin a command with `--backend-name=standalone` or
-`--backend-name=intellij` to be explicit. The `intellij` backend name is the
-stable machine identifier for the IDE-hosted runtime, even when the human-facing
-docs call it the IDEA plugin.
+When multiple runtimes are running, pin a command with `--backend-name=headless`,
+`--backend-name=standalone`, or `--backend-name=intellij` to be explicit. The
+`intellij` backend name is the stable machine identifier for the IDE-hosted
+runtime, even when the human-facing docs call it the IDEA plugin.
 
 ## Next steps
 

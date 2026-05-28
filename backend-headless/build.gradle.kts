@@ -48,6 +48,27 @@ val javaPluginLibs: ConfigurableFileCollection = extractedIdeaFiles {
     include("**/plugins/java/lib/**/*.jar")
 }
 
+val packagedIdeaHomeEntries = listOf(
+    "build.txt",
+    "product-info.json",
+    "lib/nio-fs.jar",
+    "lib/jna/**",
+    "lib/pty4j/**",
+    "modules/module-descriptors.dat",
+    "plugins/Groovy/**",
+    "plugins/Kotlin/**",
+    "plugins/gradle/**",
+    "plugins/gradle-java/**",
+    "plugins/java/**",
+    "plugins/java-ide-customization/**",
+    "plugins/json/**",
+    "plugins/maven/**",
+    "plugins/properties/**",
+    "plugins/repository-search/**",
+    "plugins/toml/**",
+    "plugins/yaml/**",
+)
+
 val headlessPluginRuntime: Configuration by configurations.creating {
     isCanBeConsumed = false
     isCanBeResolved = true
@@ -60,6 +81,19 @@ application {
 
 @Suppress("UNCHECKED_CAST")
 val buildVersion: Provider<String> = extra["buildVersion"] as Provider<String>
+
+val headlessLauncherJar by tasks.registering(Jar::class) {
+    archiveClassifier.set("launcher")
+    from(sourceSets.named("main").map { it.output }) {
+        exclude("META-INF/plugin.xml")
+    }
+    manifest {
+        attributes["Main-Class"] = application.mainClass.get()
+        attributes["Implementation-Title"] = "${project.name}-launcher"
+        attributes["Implementation-Version"] = buildVersion.get()
+    }
+    isZip64 = true
+}
 
 val writeBackendVersion by tasks.registering {
     val versionFile = layout.buildDirectory.file("generated-resources/kast-backend-version.txt")
@@ -164,7 +198,6 @@ tasks.named<WriteWrapperScriptTask>("writeWrapperScript") {
             "-Djava.system.class.loader=com.intellij.util.lang.PathClassLoader"
             "-Didea.vendor.name=JetBrains"
             "-Didea.paths.selector=KastHeadless"
-            "-Didea.plugins.path=${dollar}{script_dir}/plugins"
             "-Djna.boot.library.path=${dollar}{idea_home}/lib/jna/${dollar}{jna_arch}"
             "-Djna.nosys=true"
             "-Djna.noclasspath=true"
@@ -231,6 +264,8 @@ tasks.named<WriteWrapperScriptTask>("writeWrapperScript") {
 }
 
 tasks.named<SyncRuntimeLibsTask>("syncRuntimeLibs") {
+    dependsOn(headlessLauncherJar)
+    appJar.set(headlessLauncherJar.flatMap(Jar::getArchiveFile))
     requiredClassEntries.add("io/github/amichne/kast/headless/HeadlessMainKt.class")
     requiredClassEntries.add("com/intellij/idea/Main.class")
     requiredClassEntries.add("com/intellij/openapi/application/ModernApplicationStarter.class")
@@ -241,13 +276,18 @@ tasks.named<Sync>("syncPortableDist") {
     from(layout.buildDirectory.dir("runtime-libs")) {
         into("runtime-libs")
     }
+    from(extractedIdeaDistributionDirectory) {
+        include(packagedIdeaHomeEntries)
+        into("idea-home")
+    }
     from(tasks.named<Jar>("jar")) {
-        into("plugins/kast-headless/lib")
+        into("idea-home/plugins/kast-headless/lib")
     }
     from(headlessPluginRuntime) {
-        into("plugins/kast-headless/lib")
+        into("idea-home/plugins/kast-headless/lib")
     }
     dependsOn("syncRuntimeLibs")
+    dependsOn(extractIdeaDistribution)
 }
 
 tasks.named<Zip>("portableDistZip") {

@@ -10,6 +10,8 @@ fun main(args: Array<String>) {
 }
 
 class HeadlessApplicationStarter : ModernApplicationStarter() {
+    override val isHeadless: Boolean = true
+
     override suspend fun start(args: List<String>) {
         runCatching {
             HeadlessRuntime.run(HeadlessServerOptions.parseStarterArgs(args))

@@ -96,16 +96,28 @@ jobs:
           path: backend-standalone/build/distributions
           key: ${{ runner.os }}-standalone-daemon-dist-${{ hashFiles('**/*.gradle.kts', 'gradle/**/*.toml', 'gradle/wrapper/gradle-wrapper.properties', 'gradle.properties', 'build-logic/src/**', 'analysis-api/src/**', 'analysis-server/src/**', 'index-store/src/**', 'backend-shared/src/**', 'backend-standalone/src/**') }}
 
+      - name: Restore headless backend distribution cache
+        id: headless-dist-cache
+        uses: actions/cache@v5
+        with:
+          path: backend-headless/build/distributions
+          key: ${{ runner.os }}-headless-backend-dist-${{ hashFiles('**/*.gradle.kts', 'gradle/**/*.toml', 'gradle/wrapper/gradle-wrapper.properties', 'gradle.properties', 'build-logic/src/**', 'analysis-api/src/**', 'analysis-server/src/**', 'index-store/src/**', 'backend-shared/src/**', 'backend-intellij/src/**', 'backend-headless/src/**') }}
+
       - name: Test standalone daemon modules
         run: >
           ./gradlew
           :analysis-api:test
           :analysis-server:test
           :backend-standalone:test
+          :backend-headless:test
 
       - name: Build standalone daemon distribution
         if: steps.standalone-dist-cache.outputs.cache-hit != 'true'
         run: ./gradlew :backend-standalone:portableDistZip
+
+      - name: Build headless backend distribution
+        if: steps.headless-dist-cache.outputs.cache-hit != 'true'
+        run: ./gradlew :backend-headless:portableDistZip
 
       - name: Validate cached standalone daemon distribution
         if: steps.standalone-dist-cache.outputs.cache-hit == 'true'
@@ -113,6 +125,13 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$(find backend-standalone/build/distributions -maxdepth 1 -name 'backend-standalone-*-portable.zip' -print -quit)"
+
+      - name: Validate cached headless backend distribution
+        if: steps.headless-dist-cache.outputs.cache-hit == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$(find backend-headless/build/distributions -maxdepth 1 -name 'backend-headless-*-portable.zip' -print -quit)"
 
       - name: Upload build-and-test test reports
         if: always()
@@ -133,6 +152,14 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+      - name: Upload headless backend distribution
+        uses: actions/upload-artifact@v6
+        with:
+          name: kast-headless-${{ matrix.os }}
+          path: backend-headless/build/distributions/backend-headless-*-portable.zip
+          if-no-files-found: error
+          retention-days: 1
+
   install-ubuntu-debian-container:
     name: Ubuntu/Debian install container (${{ matrix.container-image }}, Java ${{ matrix.java-version }})
     runs-on: ubuntu-24.04
@@ -148,11 +175,11 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Download standalone daemon distribution
+      - name: Download headless backend distribution
         uses: actions/download-artifact@v7
         with:
-          name: kast-standalone-ubuntu-latest
-          path: backend-standalone/build/distributions
+          name: kast-headless-ubuntu-latest
+          path: backend-headless/build/distributions
 
       - name: Download Rust CLI release asset
         env:
@@ -175,8 +202,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          backend_asset="$(find backend-standalone/build/distributions -maxdepth 1 -name 'backend-standalone-*-portable.zip' -print -quit)"
-          [[ -n "$backend_asset" ]] || { echo "Missing standalone backend portable zip" >&2; exit 1; }
+          backend_asset="$(find backend-headless/build/distributions -maxdepth 1 -name 'backend-headless-*-portable.zip' -print -quit)"
+          [[ -n "$backend_asset" ]] || { echo "Missing headless backend portable zip" >&2; exit 1; }
           bundle_asset="dist/kast-ubuntu-debian-x86_64-${KAST_RUST_CLI_TAG}.tar.gz"
 
           ./scripts/package-ubuntu-debian-bundle.sh \

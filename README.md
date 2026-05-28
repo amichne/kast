@@ -9,16 +9,19 @@ Use it when text search can show you where a name appears, but you need to
 know which declaration it resolves to, which callers are real, or whether a
 planned edit is safe to apply.
 
-`kast` has two independent runtime modes:
+`kast` has three independent runtime modes:
 
 - **Standalone CLI + backend** — install the `kast` CLI and run
   `kast up` to start or warm the analysis backend. Fully independent from
   any IDE; works in terminals, CI, and headless agents.
+- **Headless CLI + backend** — install the Ubuntu/Debian bundle and run
+  `kast up --backend=headless` for a packaged IntelliJ-backed runtime in
+  hosted Linux agents.
 - **IDEA / Android Studio plugin-backed runtime** — runs inside a supported
   JetBrains IDE and reuses the IDE's already-open project model, indexes, and
   analysis session.
 
-Both runtime modes expose the same JSON-RPC contract, so the calling workflow
+All runtime modes expose the same JSON-RPC contract, so the calling workflow
 does not change when you switch between them.
 
 ## Install
@@ -28,6 +31,7 @@ Pick the entry point you want first:
 | Runtime mode | Best when | Install |
 | --- | --- | --- |
 | **Standalone CLI + backend** | You want an independent runtime for terminal work, CI, or agents | [Install guide](https://kast.michne.com/getting-started/install/) |
+| **Headless CLI + backend** | You need a self-contained Ubuntu/Debian CI or hosted-agent runtime | [Ubuntu/Debian bundle](https://kast.michne.com/getting-started/install/#ubuntudebian-bundle) |
 | **IDEA / Android Studio plugin-backed runtime** | IDEA or Android Studio is already open and you want to reuse its already-open project model and indexes | [Plugin install guide](https://kast.michne.com/getting-started/install/#install-the-idea-and-android-studio-plugin-manually) · [Latest plugin zip](https://github.com/amichne/kast/releases/latest) |
 
 Install the Rust `kast` CLI with Homebrew when you can:
@@ -49,11 +53,13 @@ CI images, use the same script with the self-contained Ubuntu/Debian bundle;
 the [install guide](https://kast.michne.com/getting-started/install/#ubuntudebian-bundle)
 shows the exact environment variables.
 
-Warm the standalone backend before running analysis commands:
+Warm the packaged backend before running analysis commands. Ubuntu/Debian bundle
+installs should pass `--backend=headless`; Homebrew standalone installs can omit
+the selector:
 
 ```console
 # Start or warm the backend
-kast up --workspace-root=/path/to/your/workspace
+kast up --backend=headless --workspace-root=/path/to/your/workspace
 
 # Once READY, send JSON-RPC requests through the CLI
 kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/resolve","params":{"position":{"filePath":"/path/to/your/workspace/src/App.kt","offset":42}}}' \

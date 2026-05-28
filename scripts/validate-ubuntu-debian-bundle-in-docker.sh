@@ -87,12 +87,13 @@ docker run --rm \
     kast version
     kast doctor
     kast up \
+      --backend=headless \
       --workspace-root="${KAST_UBUNTU_DEBIAN_SMOKE_WORKSPACE}" \
       --source-roots="${smoke_source_root}" \
       --module-name=ubuntu-debian-smoke \
       --wait-timeout-ms="${KAST_UBUNTU_DEBIAN_WAIT_TIMEOUT_MS}" \
       --accept-indexing=true
-    kast status --workspace-root="${KAST_UBUNTU_DEBIAN_SMOKE_WORKSPACE}" --no-auto-start=true --accept-indexing=true
-    kast capabilities --workspace-root="${KAST_UBUNTU_DEBIAN_SMOKE_WORKSPACE}" --no-auto-start=true --accept-indexing=true
-    kast stop --workspace-root="${KAST_UBUNTU_DEBIAN_SMOKE_WORKSPACE}" || true
+    kast status --backend=headless --workspace-root="${KAST_UBUNTU_DEBIAN_SMOKE_WORKSPACE}" --no-auto-start=true --accept-indexing=true
+    kast capabilities --backend=headless --workspace-root="${KAST_UBUNTU_DEBIAN_SMOKE_WORKSPACE}" --no-auto-start=true --accept-indexing=true
+    kast stop --backend=headless --workspace-root="${KAST_UBUNTU_DEBIAN_SMOKE_WORKSPACE}" || true
   '

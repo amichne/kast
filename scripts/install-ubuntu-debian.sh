@@ -132,9 +132,10 @@ write_config() {
   local config_file="$1"
   local install_home="$2"
   local bin_path="$3"
-  local runtime_libs_dir="$4"
-  local version="$5"
-  local normalized_version="$6"
+  local headless_runtime_libs_dir="$4"
+  local headless_idea_home="$5"
+  local version="$6"
+  local normalized_version="$7"
 
   mkdir -p "$(dirname -- "$config_file")"
   cat > "$config_file" <<TOML
@@ -152,8 +153,9 @@ logsDir = "$(toml_escape "${install_home}/logs")"
 descriptorDir = "$(toml_escape "${install_home}/cache/daemons")"
 socketDir = "$(toml_escape "${TMPDIR:-/tmp}")"
 
-[backends.standalone]
-runtimeLibsDir = "$(toml_escape "$runtime_libs_dir")"
+[backends.headless]
+runtimeLibsDir = "$(toml_escape "$headless_runtime_libs_dir")"
+ideaHome = "$(toml_escape "$headless_idea_home")"
 
 [cli]
 binaryPath = "$(toml_escape "$bin_path")"
@@ -163,7 +165,7 @@ version = "$(toml_escape "$normalized_version")"
 backendVersion = "$(toml_escape "$normalized_version")"
 installedAt = "ubuntu-debian:${version}"
 platform = "ubuntu-debian-x86_64"
-components = ["cli", "backend", "config"]
+components = ["cli", "headless-backend", "config"]
 managedPaths = ["bin", "lib", "cache", "logs"]
 shellRcPatches = []
 repos = []
@@ -250,7 +252,9 @@ configure_paths() {
   config_home="${KAST_UBUNTU_DEBIAN_CONFIG_HOME:-${KAST_CONFIG_HOME:-${HOME}/.config/kast}}"
   config_file="${config_home}/config.toml"
   base_url="${KAST_UBUNTU_DEBIAN_BASE_URL:-https://github.com/amichne/kast/releases/download/${version}}"
-  runtime_libs_dir="${install_home}/lib/backends/standalone-${version}/runtime-libs"
+  headless_root="${install_home}/lib/backends/headless-${version}"
+  headless_runtime_libs_dir="${headless_root}/runtime-libs"
+  headless_idea_home="${headless_root}/idea-home"
   java_cmd="${KAST_JAVA_CMD:-java}"
 }
 
@@ -266,16 +270,22 @@ verify_install() {
   [[ -x "$bin_path" ]] || die "Expected executable kast at ${bin_path}"
   [[ -d "$install_home" ]] || die "Install root not found: ${install_home}"
   [[ -f "$config_file" ]] || die "Kast config not found: ${config_file}"
-  [[ -d "$runtime_libs_dir" ]] || die "Standalone runtime libs not found: ${runtime_libs_dir}"
-  [[ -f "${runtime_libs_dir}/classpath.txt" ]] || die "Standalone classpath not found: ${runtime_libs_dir}/classpath.txt"
+  [[ -d "$headless_runtime_libs_dir" ]] || die "Headless runtime libs not found: ${headless_runtime_libs_dir}"
+  [[ -f "${headless_runtime_libs_dir}/classpath.txt" ]] || die "Headless classpath not found: ${headless_runtime_libs_dir}/classpath.txt"
+  [[ -d "$headless_idea_home" ]] || die "Headless IDEA home not found: ${headless_idea_home}"
+  [[ -f "${headless_idea_home}/lib/nio-fs.jar" ]] || die "Headless IDEA home missing lib/nio-fs.jar"
+  [[ -f "${headless_idea_home}/modules/module-descriptors.dat" ]] || die "Headless IDEA home missing modules/module-descriptors.dat"
+  [[ -d "${headless_idea_home}/plugins/kast-headless" ]] || die "Headless IDEA home missing bundled kast-headless plugin"
 
   local version_output
   version_output="$("$bin_path" version)"
   printf '%s\n' "$version_output" | grep -Fq "$normalized_version" \
     || die "kast version does not contain ${normalized_version}: ${version_output}"
 
-  grep -Fq "runtimeLibsDir = \"${runtime_libs_dir}\"" "$config_file" \
-    || die "config.toml does not point at ${runtime_libs_dir}"
+  grep -Fq "runtimeLibsDir = \"${headless_runtime_libs_dir}\"" "$config_file" \
+    || die "config.toml does not point at ${headless_runtime_libs_dir}"
+  grep -Fq "ideaHome = \"${headless_idea_home}\"" "$config_file" \
+    || die "config.toml does not point at ${headless_idea_home}"
   grep -Fq "binaryPath = \"${bin_path}\"" "$config_file" \
     || die "config.toml does not point at ${bin_path}"
 
@@ -312,8 +322,14 @@ install_bundle() {
   fi
 
   [[ -x "${bundle_source_dir}/bin/kast" ]] || die "Bundle source missing executable bin/kast"
-  [[ -f "${bundle_source_dir}/lib/backends/standalone-${version}/runtime-libs/classpath.txt" ]] \
-    || die "Bundle source missing standalone runtime-libs/classpath.txt"
+  [[ -f "${bundle_source_dir}/lib/backends/headless-${version}/runtime-libs/classpath.txt" ]] \
+    || die "Bundle source missing headless runtime-libs/classpath.txt"
+  [[ -f "${bundle_source_dir}/lib/backends/headless-${version}/idea-home/lib/nio-fs.jar" ]] \
+    || die "Bundle source missing headless idea-home/lib/nio-fs.jar"
+  [[ -f "${bundle_source_dir}/lib/backends/headless-${version}/idea-home/modules/module-descriptors.dat" ]] \
+    || die "Bundle source missing headless idea-home/modules/module-descriptors.dat"
+  [[ -d "${bundle_source_dir}/lib/backends/headless-${version}/idea-home/plugins/kast-headless" ]] \
+    || die "Bundle source missing bundled kast-headless plugin"
 
   mkdir -p "$root_dir" "$bin_dir"
   rm -rf "$install_home"
@@ -322,7 +338,7 @@ install_bundle() {
   chmod +x "$install_home/bin/kast" "$install_home/scripts/install-ubuntu-debian.sh"
   ln -sfn "$install_home/bin/kast" "$bin_path"
 
-  write_config "$config_file" "$install_home" "$bin_path" "$runtime_libs_dir" "$version" "$normalized_version"
+  write_config "$config_file" "$install_home" "$bin_path" "$headless_runtime_libs_dir" "$headless_idea_home" "$version" "$normalized_version"
   verify_install
   log "Kast Ubuntu/Debian bundle ${version} installed at ${install_home}"
 }

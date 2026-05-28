@@ -62,7 +62,7 @@ usage() {
 Usage: scripts/package-ubuntu-debian-bundle.sh --cli-archive <zip> --backend-archive <zip> --version <tag> [--output <tar.gz>]
 
 Build the Ubuntu/Debian x86_64 Kast bundle from the Rust CLI archive and the
-standalone backend portable archive.
+headless backend portable archive.
 USAGE
 }
 
@@ -127,7 +127,7 @@ cli_extract="${tmp_dir}/cli"
 backend_extract="${tmp_dir}/backend"
 staging_root="${tmp_dir}/${bundle_name}"
 mkdir -p "$cli_extract" "$backend_extract" "$staging_root/bin" \
-  "${staging_root}/lib/backends/standalone-${version}" \
+  "${staging_root}/lib/backends" \
   "$staging_root/scripts" \
   "$(dirname -- "$output_path")"
 
@@ -136,15 +136,18 @@ extract_zip_archive "$backend_archive" "$backend_extract"
 
 cli_bin="${cli_extract}/kast"
 [[ -f "$cli_bin" ]] || die "CLI archive must contain kast at its root"
-backend_root="${backend_extract}/backend-standalone"
-[[ -d "$backend_root" ]] || die "Backend archive must contain backend-standalone/"
+backend_root="${backend_extract}/backend-headless"
+[[ -d "$backend_root" ]] || die "Backend archive must contain backend-headless/"
 [[ -f "${backend_root}/runtime-libs/classpath.txt" ]] || die "Backend archive missing runtime-libs/classpath.txt"
-[[ -f "${backend_root}/kast-standalone" ]] || die "Backend archive missing kast-standalone launcher"
+[[ -f "${backend_root}/kast-headless" ]] || die "Backend archive missing kast-headless launcher"
+[[ -f "${backend_root}/idea-home/lib/nio-fs.jar" ]] || die "Backend archive missing headless idea-home/lib/nio-fs.jar"
+[[ -f "${backend_root}/idea-home/modules/module-descriptors.dat" ]] || die "Backend archive missing headless idea-home/modules/module-descriptors.dat"
+[[ -d "${backend_root}/idea-home/plugins/kast-headless" ]] || die "Backend archive missing bundled kast-headless plugin"
 
 cp "$cli_bin" "${staging_root}/bin/kast"
 chmod 755 "${staging_root}/bin/kast"
-cp -R "${backend_root}/." "${staging_root}/lib/backends/standalone-${version}/"
-chmod 755 "${staging_root}/lib/backends/standalone-${version}/kast-standalone"
+mv "$backend_root" "${staging_root}/lib/backends/headless-${version}"
+chmod 755 "${staging_root}/lib/backends/headless-${version}/kast-headless"
 cp "${repo_root}/scripts/install-ubuntu-debian.sh" "${staging_root}/scripts/install-ubuntu-debian.sh"
 chmod 755 "${staging_root}/scripts/install-ubuntu-debian.sh"
 if [[ -f "${repo_root}/LICENSE" ]]; then
@@ -188,8 +191,8 @@ payload = {
             "sourceSha256": cli_sha,
         },
         {
-            "role": "standalone-backend",
-            "path": f"lib/backends/standalone-{version}",
+            "role": "headless-backend",
+            "path": f"lib/backends/headless-{version}",
             "sourceSha256": backend_sha,
         },
     ],

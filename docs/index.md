@@ -37,9 +37,9 @@ Pick your entry point:
 
 </div>
 
-## Two runtimes, one wire format
+## Three runtimes, one wire format
 
-The standalone daemon and the IDEA plugin speak the same JSON-RPC.
+The standalone daemon, packaged headless backend, and IDEA plugin speak the same JSON-RPC.
 Switch backends without changing a single script or prompt.
 [Compare backends →](getting-started/backends.md)
 

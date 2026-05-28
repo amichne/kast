@@ -125,11 +125,11 @@ require_not_contains "$install_doc" 'KAST_AGENT_CLI_URL' "Install docs must not 
 require_not_contains "$install_doc" 'KAST_AGENT_BACKEND_URL' "Install docs must not mention retired headless agent variables"
 require_not_contains "$install_doc" 'KAST_SKIP_COPILOT_EXTENSION' "Install docs must not mention retired headless agent variables"
 require_contains "$install_doc" 'KAST_UBUNTU_DEBIAN_ARTIFACT_PATH' "Install docs must list the canonical local artifact override"
-require_contains "$install_doc" 'lib/backends/standalone-<version>/runtime-libs' "Install docs must name the installed standalone runtime-libs path"
+require_contains "$install_doc" 'lib/backends/headless-<version>/runtime-libs' "Install docs must name the installed headless runtime-libs path"
 require_not_contains "$install_doc" 'push the plugin archive directly' "Install docs must not document retired shell-installer plugin push behavior"
 
 require_not_contains "$docs_root" '$HOME/.kast/backends/current/runtime-libs' "Docs must not document the retired kast.sh backend path"
-require_contains "$backends_doc" '$HOME/.local/share/kast/ubuntu-debian/<version>/lib/backends/standalone-<version>/runtime-libs' "Backend docs must use the Ubuntu/Debian installer-managed runtime-libs path"
+require_contains "$backends_doc" '$HOME/.local/share/kast/ubuntu-debian/<version>/lib/backends/headless-<version>/runtime-libs' "Backend docs must use the Ubuntu/Debian installer-managed runtime-libs path"
 require_contains "$backends_doc" 'IDEA / Android Studio plugin backend' "Backend docs must use IDEA plugin naming"
 require_contains "$quickstart_doc" 'APP_FILE="$PWD/src/main/kotlin/App.kt"' "Quickstart must show a shell-expanded absolute file path"
 require_contains "$quickstart_doc" '--workspace-root="$PWD"' "Quickstart must quote the workspace root"

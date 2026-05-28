@@ -358,8 +358,8 @@ jobs:
     name: Build Ubuntu/Debian bundle
     needs:
       - prepare-release
-      - build-standalone-backend
-    if: always() && needs.prepare-release.result == 'success' && needs.build-standalone-backend.result == 'success'
+      - build-headless-backend
+    if: always() && needs.prepare-release.result == 'success' && needs.build-headless-backend.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -368,11 +368,11 @@ jobs:
         with:
           ref: ${{ needs.prepare-release.outputs.release_tag }}
 
-      - name: Download standalone backend artifact
+      - name: Download headless backend artifact
         uses: actions/download-artifact@v7
         with:
-          name: standalone-backend-${{ github.run_id }}
-          path: standalone-artifact
+          name: headless-backend-${{ github.run_id }}
+          path: headless-artifact
 
       - name: Download Rust CLI release asset
         env:
@@ -395,10 +395,10 @@ jobs:
           set -euo pipefail
           tag="${{ needs.prepare-release.outputs.release_tag }}"
           cli_asset="dist/kast-${tag}-linux-x64.zip"
-          backend_asset="standalone-artifact/dist/backend.zip"
+          backend_asset="headless-artifact/dist/headless.zip"
           bundle_asset="dist/kast-ubuntu-debian-x86_64-${tag}.tar.gz"
 
-          [[ -f "$backend_asset" ]] || { echo "Missing standalone backend artifact: ${backend_asset}" >&2; exit 1; }
+          [[ -f "$backend_asset" ]] || { echo "Missing headless backend artifact: ${backend_asset}" >&2; exit 1; }
           ./scripts/package-ubuntu-debian-bundle.sh \
             --cli-archive "$cli_asset" \
             --backend-archive "$backend_asset" \

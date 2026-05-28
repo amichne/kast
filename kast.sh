@@ -229,7 +229,7 @@ _build_headless() {
   [[ -x "${HEADLESS_PORTABLE_DIST_DIR}/kast-headless" ]]                  || die "Missing staged backend-headless launcher"
   [[ -d "${HEADLESS_PORTABLE_DIST_DIR}/runtime-libs" ]]                   || die "Missing staged headless runtime-libs directory"
   [[ -f "${HEADLESS_PORTABLE_DIST_DIR}/runtime-libs/classpath.txt" ]]     || die "Missing staged headless runtime classpath file"
-  [[ -d "${HEADLESS_PORTABLE_DIST_DIR}/plugins/kast-headless/lib" ]]      || die "Missing staged headless plugin libraries"
+  [[ -d "${HEADLESS_PORTABLE_DIST_DIR}/idea-home/plugins/kast-headless/lib" ]] || die "Missing staged headless plugin libraries"
   local jars=()
   shopt -s nullglob
   jars=("${HEADLESS_PORTABLE_DIST_DIR}"/libs/backend-headless-*-all.jar)
