@@ -65,7 +65,7 @@ class SqliteSourceIndexStoreTest {
             conn.prepareStatement("SELECT version FROM schema_version LIMIT 1").use { stmt ->
                 val rs = stmt.executeQuery()
                 assertTrue(rs.next())
-                assertEquals(6, rs.getInt(1))
+                assertEquals(7, rs.getInt(1))
             }
         }
     }
@@ -638,7 +638,35 @@ class SqliteSourceIndexStoreTest {
                 mapOf(mainRoot to emptyList<Path>()),
                 store.filesBySourceRoot(listOf(mainRoot)),
             )
+    }
+
+    @Test
+    fun `module index progress records pending indexing and completion state`() {
+        val normalized = workspaceRoot.toAbsolutePath().normalize()
+        SqliteSourceIndexStore(normalized).use { store ->
+            store.ensureSchema()
+
+            store.initializeModuleProgress(
+                mapOf(
+                    ":app[main]" to 2,
+                    ":lib[main]" to 1,
+                ),
+            )
+
+            assertEquals("PENDING", store.moduleIndexStatus(":app[main]"))
+            assertEquals(emptySet<String>(), store.completedModules())
+
+            store.markModuleIndexing(":app[main]")
+            assertEquals("INDEXING", store.moduleIndexStatus(":app[main]"))
+
+            store.markModuleComplete(":app[main]", fileCount = 2)
+            assertEquals("COMPLETE", store.moduleIndexStatus(":app[main]"))
+            assertEquals(setOf(":app[main]"), store.completedModules())
+
+            store.markModuleComplete(":lib[main]", fileCount = 1)
+            assertEquals(setOf(":app[main]", ":lib[main]"), store.completedModules())
         }
+    }
     }
 
     @Test

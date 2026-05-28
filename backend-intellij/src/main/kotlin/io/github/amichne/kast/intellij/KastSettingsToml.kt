@@ -17,6 +17,7 @@ internal fun KastSettingsState.toWorkspaceToml(defaults: KastConfig = KastConfig
                 "indexing",
                 "phase2Enabled" to indexingPhase2Enabled.changedFrom(defaults.indexing.phase2Enabled.value),
                 "phase2BatchSize" to indexingPhase2BatchSize.changedFrom(defaults.indexing.phase2BatchSize.value),
+                "phase2PriorityDepth" to indexingPhase2PriorityDepth.changedFrom(defaults.indexing.phase2PriorityDepth.value),
                 "identifierIndexWaitMillis" to indexingIdentifierIndexWaitMillis.changedFrom(defaults.indexing.identifierIndexWaitMillis.value),
                 "referenceBatchSize" to indexingReferenceBatchSize.changedFrom(defaults.indexing.referenceBatchSize.value),
             ),

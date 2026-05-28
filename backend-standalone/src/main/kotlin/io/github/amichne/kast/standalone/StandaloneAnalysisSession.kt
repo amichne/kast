@@ -66,6 +66,7 @@ internal class StandaloneAnalysisSession(
     private val enablePhase2Indexing: Boolean = config.indexing.phase2Enabled.value,
     private val referenceBatchSize: Int = config.indexing.referenceBatchSize.value,
     private val referenceParallelism: Int = config.indexing.phase2Parallelism.value,
+    private val phase2PriorityDepth: Int = config.indexing.phase2PriorityDepth.value,
 ) : AutoCloseable {
     val workspaceRoot: Path = normalizeStandalonePath(workspaceRoot)
     private val disposable: Disposable = Disposer.newDisposable("kast-standalone")
@@ -492,6 +493,32 @@ internal class StandaloneAnalysisSession(
     internal fun isReferenceIndexReady(): Boolean =
         backgroundIndexer.referenceIndexReady.isDone &&
             !backgroundIndexer.referenceIndexReady.isCompletedExceptionally
+
+    internal fun isReferenceIndexReadyForFile(filePath: String): Boolean {
+        val moduleName = sourceModuleNameForFile(NormalizedPath.of(Path.of(filePath))) ?: return isReferenceIndexReady()
+        return isReferenceIndexReadyForModule(moduleName)
+    }
+
+    internal fun isReferenceIndexReadyForModule(moduleName: ModuleName): Boolean {
+        val completedModules = sqliteStore.completedModules()
+        val modulesByName = sourceModuleSpecs.associateBy(StandaloneSourceModuleSpec::name)
+        val visitedModuleNames = mutableSetOf<ModuleName>()
+        val pendingModuleNames = ArrayDeque(listOf(moduleName))
+        while (pendingModuleNames.isNotEmpty()) {
+            val currentModuleName = pendingModuleNames.removeFirst()
+            if (!visitedModuleNames.add(currentModuleName)) {
+                continue
+            }
+            if (currentModuleName.value !in completedModules) {
+                return false
+            }
+            val dependencyModuleNames = modulesByName[currentModuleName]
+                ?.dependencyModuleNames
+                ?: return false
+            pendingModuleNames += dependencyModuleNames
+        }
+        return true
+    }
 
     /** The underlying SQLite store for cached symbol reference lookups. */
     internal val sqliteStore: SqliteSourceIndexStore get() = sourceIndexCache.store
@@ -1009,6 +1036,25 @@ internal class StandaloneAnalysisSession(
                     moduleNameForFile = { path -> sourceModuleNameForFile(path)?.value },
                 )
                 backgroundIndexer.startPhase2(
+                    moduleOrder = computeModulePriorityOrder(
+                        activeModule = null,
+                        moduleSpecs = sourceModuleSpecs,
+                        dependentModuleGraph = _dependentModuleNamesBySourceModuleName,
+                        depth = phase2PriorityDepth,
+                    ),
+                    onModuleComplete = { moduleName ->
+                        val fileCount = backgroundIndexer
+                            .referenceIndexProgress(ModuleName(moduleName))
+                            ?.indexedFileCount ?: 0
+                        telemetry.inSpan(
+                            scope = StandaloneTelemetryScope.INDEXING,
+                            name = "kast.indexer.phase2.moduleComplete",
+                            attributes = mapOf(
+                                "kast.indexer.moduleName" to moduleName,
+                                "kast.indexer.moduleFileCount" to fileCount,
+                            ),
+                        ) {}
+                    },
                     declarationScanner = scanner::scanFileDeclarations,
                     referenceScanner = scanner::scanFileReferences,
                 )

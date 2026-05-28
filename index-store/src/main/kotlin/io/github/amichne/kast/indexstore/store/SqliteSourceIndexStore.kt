@@ -20,7 +20,7 @@ import java.nio.file.Path
 import java.sql.Connection
 import java.sql.DriverManager
 
-internal const val SOURCE_INDEX_SCHEMA_VERSION = 6
+internal const val SOURCE_INDEX_SCHEMA_VERSION = 7
 
 /**
  * SQLite-backed store for the source identifier index, file manifest,
@@ -151,6 +151,7 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
         stmt.execute("DROP TRIGGER IF EXISTS fq_names_au")
         stmt.execute("DROP TABLE IF EXISTS fq_names_fts")
         stmt.execute("DROP TABLE IF EXISTS pending_updates")
+        stmt.execute("DROP TABLE IF EXISTS module_index_progress")
         stmt.execute("DROP TABLE IF EXISTS declaration_supertypes")
         stmt.execute("DROP TABLE IF EXISTS declarations")
         stmt.execute("DROP TABLE IF EXISTS symbol_references")
@@ -326,6 +327,16 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
                 session_id TEXT,
                 epoch_ms INTEGER NOT NULL,
                 applied INTEGER NOT NULL DEFAULT 0
+            )""",
+        )
+
+        stmt.execute(
+            """CREATE TABLE IF NOT EXISTS module_index_progress (
+                module_name TEXT PRIMARY KEY,
+                phase2_status TEXT NOT NULL DEFAULT 'PENDING' CHECK(phase2_status IN ('PENDING','INDEXING','COMPLETE','FAILED')),
+                indexed_file_count INTEGER NOT NULL DEFAULT 0,
+                total_file_count INTEGER NOT NULL DEFAULT 0,
+                last_indexed_epoch_ms INTEGER
             )""",
         )
     }
@@ -643,6 +654,89 @@ class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWr
             }
         }
     }
+
+    fun initializeModuleProgress(modules: Map<String, Int>) {
+        synchronized(writeLock) {
+            val conn = connection()
+            conn.autoCommit = false
+            try {
+                conn.createStatement().use { stmt -> stmt.execute("DELETE FROM module_index_progress") }
+                conn.prepareStatement(
+                    """INSERT INTO module_index_progress
+                       (module_name, phase2_status, indexed_file_count, total_file_count, last_indexed_epoch_ms)
+                       VALUES (?, 'PENDING', 0, ?, NULL)""",
+                ).use { stmt ->
+                    modules.toSortedMap().forEach { (moduleName, totalFileCount) ->
+                        stmt.setString(1, moduleName)
+                        stmt.setInt(2, totalFileCount)
+                        stmt.addBatch()
+                    }
+                    stmt.executeBatch()
+                }
+                conn.commit()
+            } catch (e: Exception) {
+                conn.rollback()
+                throw e
+            } finally {
+                conn.autoCommit = true
+            }
+        }
+    }
+
+    fun markModuleIndexing(moduleName: String) {
+        synchronized(writeLock) {
+            connection().prepareStatement(
+                """UPDATE module_index_progress
+                   SET phase2_status = 'INDEXING'
+                   WHERE module_name = ? AND phase2_status != 'COMPLETE'""",
+            ).use { stmt ->
+                stmt.setString(1, moduleName)
+                stmt.executeUpdate()
+            }
+        }
+    }
+
+    fun markModuleComplete(moduleName: String, fileCount: Int) {
+        synchronized(writeLock) {
+            connection().prepareStatement(
+                """UPDATE module_index_progress
+                   SET phase2_status = 'COMPLETE',
+                       indexed_file_count = ?,
+                       last_indexed_epoch_ms = ?
+                   WHERE module_name = ?""",
+            ).use { stmt ->
+                stmt.setInt(1, fileCount)
+                stmt.setLong(2, System.currentTimeMillis())
+                stmt.setString(3, moduleName)
+                stmt.executeUpdate()
+            }
+        }
+    }
+
+    fun moduleIndexStatus(moduleName: String): String? =
+        synchronized(writeLock) {
+            connection().prepareStatement(
+                "SELECT phase2_status FROM module_index_progress WHERE module_name = ?",
+            ).use { stmt ->
+                stmt.setString(1, moduleName)
+                val rs = stmt.executeQuery()
+                if (rs.next()) rs.getString(1) else null
+            }
+        }
+
+    fun completedModules(): Set<String> =
+        synchronized(writeLock) {
+            connection().createStatement().use { stmt ->
+                val rs = stmt.executeQuery(
+                    "SELECT module_name FROM module_index_progress WHERE phase2_status = 'COMPLETE'",
+                )
+                buildSet {
+                    while (rs.next()) {
+                        add(rs.getString(1))
+                    }
+                }
+            }
+        }
 
     fun upsertSymbolReference(
         sourcePath: String,

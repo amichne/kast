@@ -44,6 +44,7 @@ data class KastConfig(
                     phase2Enabled = IndexingPhase2Enabled(true),
                     phase2BatchSize = IndexingPhase2BatchSize(50),
                     phase2Parallelism = IndexingPhase2Parallelism(4),
+                    phase2PriorityDepth = IndexingPhase2PriorityDepth(2),
                     identifierIndexWaitMillis = IndexingIdentifierIndexWaitMillis(10_000L),
                     referenceBatchSize = IndexingReferenceBatchSize(50),
                     remote = RemoteIndexConfig(
@@ -199,14 +200,16 @@ private fun Map<String, String>.indexingOverride(): IndexingConfigOverride? {
     val phase2Enabled = booleanValue("indexing.phase2enabled")?.let(::IndexingPhase2Enabled)
     val phase2BatchSize = intValue("indexing.phase2batchsize")?.let(::IndexingPhase2BatchSize)
     val phase2Parallelism = intValue("indexing.phase2parallelism")?.let(::IndexingPhase2Parallelism)
+    val phase2PriorityDepth = intValue("indexing.phase2prioritydepth")?.let(::IndexingPhase2PriorityDepth)
     val identifierIndexWaitMillis = longValue("indexing.identifierindexwaitmillis")?.let(::IndexingIdentifierIndexWaitMillis)
     val referenceBatchSize = intValue("indexing.referencebatchsize")?.let(::IndexingReferenceBatchSize)
     val remote = remoteIndexOverride()
-    return takeIfAny(phase2Enabled, phase2BatchSize, phase2Parallelism, identifierIndexWaitMillis, referenceBatchSize, remote) {
+    return takeIfAny(phase2Enabled, phase2BatchSize, phase2Parallelism, phase2PriorityDepth, identifierIndexWaitMillis, referenceBatchSize, remote) {
         IndexingConfigOverride(
             phase2Enabled = phase2Enabled,
             phase2BatchSize = phase2BatchSize,
             phase2Parallelism = phase2Parallelism,
+            phase2PriorityDepth = phase2PriorityDepth,
             identifierIndexWaitMillis = identifierIndexWaitMillis,
             referenceBatchSize = referenceBatchSize,
             remote = remote,
@@ -327,6 +330,7 @@ data class IndexingConfig(
     val phase2Enabled: IndexingPhase2Enabled,
     val phase2BatchSize: IndexingPhase2BatchSize,
     val phase2Parallelism: IndexingPhase2Parallelism,
+    val phase2PriorityDepth: IndexingPhase2PriorityDepth,
     val identifierIndexWaitMillis: IndexingIdentifierIndexWaitMillis,
     val referenceBatchSize: IndexingReferenceBatchSize,
     val remote: RemoteIndexConfig,
@@ -418,6 +422,7 @@ data class IndexingConfigOverride(
     val phase2Enabled: IndexingPhase2Enabled? = null,
     val phase2BatchSize: IndexingPhase2BatchSize? = null,
     val phase2Parallelism: IndexingPhase2Parallelism? = null,
+    val phase2PriorityDepth: IndexingPhase2PriorityDepth? = null,
     val identifierIndexWaitMillis: IndexingIdentifierIndexWaitMillis? = null,
     val referenceBatchSize: IndexingReferenceBatchSize? = null,
     val remote: RemoteIndexConfigOverride? = null,
@@ -512,6 +517,7 @@ private fun IndexingConfig.merge(override: IndexingConfigOverride?): IndexingCon
     phase2Enabled = override?.phase2Enabled ?: phase2Enabled,
     phase2BatchSize = override?.phase2BatchSize ?: phase2BatchSize,
     phase2Parallelism = override?.phase2Parallelism ?: phase2Parallelism,
+    phase2PriorityDepth = override?.phase2PriorityDepth ?: phase2PriorityDepth,
     identifierIndexWaitMillis = override?.identifierIndexWaitMillis ?: identifierIndexWaitMillis,
     referenceBatchSize = override?.referenceBatchSize ?: referenceBatchSize,
     remote = remote.merge(override?.remote),

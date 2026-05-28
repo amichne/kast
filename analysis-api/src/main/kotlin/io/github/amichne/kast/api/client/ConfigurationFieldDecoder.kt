@@ -120,6 +120,7 @@ class ConfigurationFieldDecoder : NullHandlingDecoder<ConfigurationField<*>> {
             IndexingPhase2BatchSize::class to FieldDecoder(ValueKind.Int) { IndexingPhase2BatchSize(it as Int) },
             IndexingPhase2Enabled::class to FieldDecoder(ValueKind.Boolean) { IndexingPhase2Enabled(it as Boolean) },
             IndexingPhase2Parallelism::class to FieldDecoder(ValueKind.Int) { IndexingPhase2Parallelism(it as Int) },
+            IndexingPhase2PriorityDepth::class to FieldDecoder(ValueKind.Int) { IndexingPhase2PriorityDepth(it as Int) },
             IndexingReferenceBatchSize::class to FieldDecoder(ValueKind.Int) { IndexingReferenceBatchSize(it as Int) },
             IndexingRemoteEnabled::class to FieldDecoder(ValueKind.Boolean) { IndexingRemoteEnabled(it as Boolean) },
             IndexingRemoteSourceIndexUrl::class to FieldDecoder(ValueKind.OptionalString) { IndexingRemoteSourceIndexUrl(it as OptionalConfigString) },

@@ -660,7 +660,12 @@ internal class StandaloneAnalysisBackend internal constructor(
         target: PsiElement,
         span: StandaloneTelemetrySpan,
     ): CandidateSearchResult {
-        if (session.isReferenceIndexReady()) {
+        val targetModule = target.containingFile?.let { file ->
+            val filePath = file.virtualFile?.path ?: return@let null
+            session.sourceModuleNameForFile(filePath)
+        }
+        val fullReferenceIndexReady = session.isReferenceIndexReady()
+        if (fullReferenceIndexReady || (targetModule != null && session.isReferenceIndexReadyForModule(targetModule))) {
             val fqNameAndPkg = target.targetFqNameAndPackage()
             if (fqNameAndPkg != null) {
                 val (fqName, _) = fqNameAndPkg
@@ -677,7 +682,7 @@ internal class StandaloneAnalysisBackend internal constructor(
                         scope = SearchScope(
                             visibility = SymbolVisibility.PUBLIC,
                             scope = SearchScopeKind.DEPENDENT_MODULES,
-                            exhaustive = true,
+                            exhaustive = fullReferenceIndexReady,
                             candidateFileCount = ktFiles.size,
                             searchedFileCount = ktFiles.size,
                         ),

@@ -58,6 +58,7 @@ class ConfigurationFieldLayoutTest {
             "IndexingPhase2BatchSize.kt",
             "IndexingPhase2Enabled.kt",
             "IndexingPhase2Parallelism.kt",
+            "IndexingPhase2PriorityDepth.kt",
             "IndexingReferenceBatchSize.kt",
             "IndexingRemoteEnabled.kt",
             "IndexingRemoteSourceIndexUrl.kt",

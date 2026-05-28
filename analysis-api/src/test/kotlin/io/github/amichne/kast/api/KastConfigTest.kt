@@ -40,6 +40,16 @@ class KastConfigTest {
     }
 
     @Test
+    fun phase2PriorityDepthExposesTypedDefault() {
+        val phase2PriorityDepth = KastConfig.defaults().indexing.phase2PriorityDepth
+
+        assertEquals("indexing", phase2PriorityDepth.section)
+        assertEquals("phase2PriorityDepth", phase2PriorityDepth.key)
+        assertEquals(ConfigurationDefault(2), phase2PriorityDepth.default)
+        assertEquals(2, phase2PriorityDepth.value)
+    }
+
+    @Test
     fun `defaults expose paths and cli sections`() {
         val configFields = KastConfig::class.java.declaredFields.map { it.name }.toSet()
 
@@ -100,6 +110,7 @@ class KastConfigTest {
             "indexing" to "phase2Enabled",
             "indexing" to "phase2BatchSize",
             "indexing" to "phase2Parallelism",
+            "indexing" to "phase2PriorityDepth",
             "indexing" to "identifierIndexWaitMillis",
             "indexing" to "referenceBatchSize",
             "indexing.remote" to "enabled",
@@ -333,6 +344,9 @@ class KastConfigTest {
                 [server]
                 maxResults = 123
 
+                [indexing]
+                phase2PriorityDepth = 3
+
                 [paths]
                 installRoot = "$installRoot"
 
@@ -355,6 +369,7 @@ class KastConfigTest {
             .loadConfigOrThrow<KastConfigOverride>(listOf(configFile.toString()))
 
         val maxResults: Any? = loaded.server?.maxResults
+        val decodedPriorityDepth: Any? = loaded.indexing?.phase2PriorityDepth
         val decodedInstallRoot: Any? = loaded.paths?.installRoot
         val decodedSourceIndexUrl: Any? = loaded.indexing?.remote?.sourceIndexUrl
 
@@ -366,6 +381,12 @@ class KastConfigTest {
         assertEquals("server", (maxResults as ServerMaxResults).section)
         assertEquals("maxResults", maxResults.key)
         assertEquals(500, maxResults.default.unwrap)
+
+        assertTrue(
+            decodedPriorityDepth is IndexingPhase2PriorityDepth,
+            "Expected indexing.phase2PriorityDepth to decode into IndexingPhase2PriorityDepth, got $decodedPriorityDepth",
+        )
+        assertEquals(IndexingPhase2PriorityDepth(3), decodedPriorityDepth)
 
         assertTrue(
             decodedInstallRoot is PathsInstallRoot,

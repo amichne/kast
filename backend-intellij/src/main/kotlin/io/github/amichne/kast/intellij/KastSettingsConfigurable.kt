@@ -32,6 +32,7 @@ internal class KastSettingsConfigurable(
     private lateinit var serverMaxConcurrentRequests: JBTextField
     private lateinit var indexingPhase2Enabled: JBCheckBox
     private lateinit var indexingPhase2BatchSize: JBTextField
+    private lateinit var indexingPhase2PriorityDepth: JBTextField
     private lateinit var indexingIdentifierIndexWaitMillis: JBTextField
     private lateinit var indexingReferenceBatchSize: JBTextField
     private lateinit var indexingRemoteEnabled: JBCheckBox
@@ -62,6 +63,7 @@ internal class KastSettingsConfigurable(
             serverMaxConcurrentRequests.text != state.serverMaxConcurrentRequests.display() ||
             indexingPhase2Enabled.isSelected != (state.indexingPhase2Enabled ?: false) ||
             indexingPhase2BatchSize.text != state.indexingPhase2BatchSize.display() ||
+            indexingPhase2PriorityDepth.text != state.indexingPhase2PriorityDepth.display() ||
             indexingIdentifierIndexWaitMillis.text != state.indexingIdentifierIndexWaitMillis.display() ||
             indexingReferenceBatchSize.text != state.indexingReferenceBatchSize.display() ||
             indexingRemoteEnabled.isSelected != (state.indexingRemoteEnabled ?: false) ||
@@ -133,6 +135,9 @@ internal class KastSettingsConfigurable(
             }
             row("Phase 2 batch size:") {
                 indexingPhase2BatchSize = requiredIntegerTextField("Indexing phase 2 batch size").component
+            }
+            row("Phase 2 priority depth:") {
+                indexingPhase2PriorityDepth = requiredIntegerTextField("Indexing phase 2 priority depth").component
             }
             row("Identifier index wait (ms):") {
                 indexingIdentifierIndexWaitMillis = requiredLongTextField("Identifier index wait millis").component
@@ -239,6 +244,7 @@ internal class KastSettingsConfigurable(
         serverMaxConcurrentRequests.text = state.serverMaxConcurrentRequests.display()
         indexingPhase2Enabled.isSelected = state.indexingPhase2Enabled ?: false
         indexingPhase2BatchSize.text = state.indexingPhase2BatchSize.display()
+        indexingPhase2PriorityDepth.text = state.indexingPhase2PriorityDepth.display()
         indexingIdentifierIndexWaitMillis.text = state.indexingIdentifierIndexWaitMillis.display()
         indexingReferenceBatchSize.text = state.indexingReferenceBatchSize.display()
         indexingRemoteEnabled.isSelected = state.indexingRemoteEnabled ?: false
@@ -264,6 +270,7 @@ internal class KastSettingsConfigurable(
         state.serverMaxConcurrentRequests = serverMaxConcurrentRequests.readRequiredInt("Server max concurrent requests")
         state.indexingPhase2Enabled = indexingPhase2Enabled.isSelected
         state.indexingPhase2BatchSize = indexingPhase2BatchSize.readRequiredInt("Indexing phase 2 batch size")
+        state.indexingPhase2PriorityDepth = indexingPhase2PriorityDepth.readRequiredInt("Indexing phase 2 priority depth")
         state.indexingIdentifierIndexWaitMillis = indexingIdentifierIndexWaitMillis.readRequiredLong("Identifier index wait millis")
         state.indexingReferenceBatchSize = indexingReferenceBatchSize.readRequiredInt("Indexing reference batch size")
         state.indexingRemoteEnabled = indexingRemoteEnabled.isSelected
