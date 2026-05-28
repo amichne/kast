@@ -381,7 +381,8 @@ class FakeAnalysisBackend private constructor(
             filesTruncated = query.includeFiles && allFiles.size > files.size,
             fileCount = allFiles.size,
         )
-        val modules = if (query.moduleName?.value == null || query.moduleName?.value == "fake-module") {
+        val requestedModuleName = query.moduleName?.value
+        val modules = if (requestedModuleName == null || requestedModuleName == "fake-module") {
             listOf(module)
         } else {
             emptyList()

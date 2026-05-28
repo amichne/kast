@@ -1,6 +1,11 @@
 # Kast agent guide
 
-ALways TDD with tracer bullets, use the skill
+All developement should be done with TDD and the narrowest possible scope.
+Use the unit map below to choose the smallest unit that owns the behavior you're working on,
+and write tests that prove the behavior before implementing it.
+
+All dependencies must be declared in libs.version.toml (violating this rule is a common source of build breakage and test flakiness).
+If you need a new dependency, add it to the narrowest unit that needs it and update all consumers.
 
 Kast is a Kotlin analysis tool with one line-delimited JSON-RPC contract and
 two supported operator paths: the repo-local `kast` CLI manages a standalone
@@ -70,8 +75,8 @@ Use this map to choose the narrowest unit that owns a change.
   plugin lifecycle, and IDE-hosted analysis server
 - `backend-shared`: shared analysis utilities consumed by both backend
   runtimes via compileOnly IntelliJ platform dependencies
-- `shared-testing`: fake backend fixtures and shared contract assertions for
-  tests
+- `analysis-api/src/testFixtures`: fake backend fixtures and shared contract
+  assertions for tests
 - `build-logic`: Gradle convention plugins, runtime-lib sync, wrapper
   generation, and shared build configuration
 - `docs`: Zensical source docs, published usage guidance, and implementation
@@ -185,8 +190,8 @@ Apply these rules across the repo before local unit rules add more detail.
   owns the operator-facing control plane, installer, packaged skill, and
   Copilot extension distribution; `analysis-server` owns transport and
   descriptor plumbing, `backend-standalone` owns headless runtime behavior,
-  `backend-intellij` owns IDE-hosted runtime behavior, and `shared-testing`
-  stays out of production code paths.
+  `backend-intellij` owns IDE-hosted runtime behavior, and
+  `analysis-api` test fixtures stay out of production code paths.
 - Treat `docs/` plus `zensical.toml` as the documentation source of truth.
   `site/` is generated output and should be rebuilt, not hand-edited.
 - Prefer repo-root packaging entry points for shipped artifacts: `./kast.sh build`

@@ -52,8 +52,8 @@ Default test runs exclude the `concurrency`, `performance`, and `parity` tags un
 - `index-store` owns the SQLite-backed source index and workspace cache.
   `SqliteSourceIndexStore` persists declarations, references, manifest state, generations, and workspace-discovery
   snapshots used by both runtimes.
-- `shared-testing` provides fake backends and reusable fixtures. `parity-tests`
-  check that standalone and IntelliJ backends stay behaviorally aligned.
+- `analysis-api` test fixtures provide fake backends and reusable contract
+  fixtures.
   `build-logic` owns the shared Gradle conventions and wrapper/runtime-lib packaging tasks.
 
 Operationally, the CLI and both backends speak the same JSON-RPC contract. The CLI prefers a servable IntelliJ backend

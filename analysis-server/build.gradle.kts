@@ -8,7 +8,7 @@ dependencies {
     implementation(libs.coroutines.core)
     implementation(libs.serialization.json)
     implementation(libs.slf4j.api)
-    testImplementation(project(":shared-testing"))
+    testImplementation(testFixtures(project(":analysis-api")))
 }
 
 tasks.register<JavaExec>("generateDocExamples") {

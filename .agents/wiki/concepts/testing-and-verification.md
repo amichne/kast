@@ -23,7 +23,7 @@ validation so semantic behavior can stay consistent across modules and releases.
 These pages define the verification story.
 
 - [[sources/testing-infrastructure]] - Summarizes the overall testing strategy.
-- [[sources/shared-testing-fixtures-and-contract-tests]] - Explains the shared
+- [[sources/analysis-api-test-fixtures-and-contract-tests]] - Explains the shared
   fixture and fake backend.
 - [[sources/backend-standalone-integration-tests]] - Covers backend invariants,
   performance baselines, and compatibility shims.

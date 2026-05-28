@@ -1,17 +1,17 @@
-# Shared Testing Fixtures and Contract Tests
+# Analysis API Test Fixtures and Contract Tests
 
 This page summarizes the raw note
-[[Shared-Testing-Fixtures-and-Contract-Tests]]. It is the most direct source for
-the shared contract fixture.
+[[Analysis-API-Test-Fixtures-and-Contract-Tests]]. It is the most direct source
+for the shared contract fixture.
 
 ## Source
 
-This source is a shared-testing note.
+This source is an analysis-api test-fixtures note.
 
 - Type: note
 - Date: Unknown
 - Author: Unknown
-- Location: [[Shared-Testing-Fixtures-and-Contract-Tests]]
+- Location: [[Analysis-API-Test-Fixtures-and-Contract-Tests]]
 
 ## Summary
 

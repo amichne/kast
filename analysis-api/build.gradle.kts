@@ -1,12 +1,13 @@
 plugins {
     id("kast.kotlin-library")
     id("kast.kotlin-serialization")
+    `java-test-fixtures`
 }
 
 dependencies {
     implementation(libs.bundles.coroutines)
     implementation(libs.bundles.hoplite)
-    testImplementation(project(":shared-testing"))
+    testFixturesImplementation(libs.jimfs)
 }
 
 tasks.register<JavaExec>("generateOpenApiSpec") {

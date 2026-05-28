@@ -26,7 +26,7 @@ The sources below anchor the current understanding of the contract layer.
   the value types, and capability enums.
 - [[sources/cli-command-reference]] - Shows how those contract operations are
   exposed at the CLI boundary.
-- [[sources/shared-testing-fixtures-and-contract-tests]] - Explains how the
+- [[sources/analysis-api-test-fixtures-and-contract-tests]] - Explains how the
   contract is pinned across multiple backend implementations.
 - [[sources/testing-infrastructure]] - Places the shared contract inside the
   larger verification strategy.
