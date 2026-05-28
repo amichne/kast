@@ -1,0 +1,27 @@
+{
+  "jsonrpc": "2.0",
+  "method": "raw/apply-edits",
+  "params": {
+    "edits": [
+      {
+        "filePath": "/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt",
+        "startOffset": 120,
+        "endOffset": 180,
+        "content": "val renamed = Widget()\n"
+      }
+    ],
+    "fileHashes": [
+      {
+        "filePath": "/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt",
+        "sha256": "abc123"
+      }
+    ],
+    "fileOperations": [
+      {
+        "type": "CREATE_FILE",
+        "filePath": "/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt"
+      }
+    ]
+  },
+  "id": 1
+}

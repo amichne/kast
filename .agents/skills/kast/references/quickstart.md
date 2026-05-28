@@ -34,71 +34,62 @@ The Rust `kast` command tree is the operator surface. Use `kast --help` and
 `up`, `status`, and `rpc`.
 
 JSON-RPC request schemas, response types, discriminated variants, and
-field-level notes live in `references/commands.json`. Treat that file as the
-method catalog for requests sent through `kast rpc`, not as a replacement for
-the Rust CLI help.
+field-level notes live in `references/commands.yaml` for reading and
+`references/commands.json` for tooling. Treat that catalog as the method
+contract for requests sent through `kast rpc`, not as a replacement for the
+Rust CLI help.
 
-Read `commands.json` when you need exact field names, types, required vs
-optional, enum values, or variant discriminators. Do not hard-code contract
-details from this file — defer to the spec.
+Read `commands.yaml` when you need exact field names, types, required vs
+optional, enum values, or variant discriminators. Use
+`references/requests/<category>/<method>/minimal.json` and `maximal.json` for
+walkable sample payloads. Validate hand-authored requests with
+`scripts/validate-rpc-request.py` before sending them.
 
 ## Common patterns
 
 ```bash
 KAST_TMP="$(mktemp -d)"
 trap 'rm -rf "$KAST_TMP"' EXIT
+SKILL_DIR=".agents/skills/kast"
+KAST_REQUEST="$KAST_TMP/request.json"
 KAST_RESULT="$KAST_TMP/kast.json"
 KAST_STDERR="$KAST_TMP/kast.stderr"
 
+run_kast_rpc() {
+  printf '%s\n' "$1" >"$KAST_REQUEST"
+  python3 "$SKILL_DIR/scripts/validate-rpc-request.py" --request-file "$KAST_REQUEST" >/dev/null
+  kast rpc --request-file "$KAST_REQUEST" --workspace-root "$PWD" >"$KAST_RESULT" 2>"$KAST_STDERR"
+}
+
 # List workspace modules
-kast rpc '{"jsonrpc":"2.0","method":"raw/workspace-files","params":{"includeFiles":true},"id":1}' \
-  --workspace-root "$PWD" \
-  >"$KAST_RESULT" 2>"$KAST_STDERR"
+run_kast_rpc '{"jsonrpc":"2.0","method":"raw/workspace-files","params":{"includeFiles":true},"id":1}'
 
 # Resolve an ambiguous symbol
-kast rpc '{"jsonrpc":"2.0","method":"symbol/resolve","params":{"symbol":"date","kind":"property","containingType":"com.example.EventBean"},"id":1}' \
-  --workspace-root "$PWD" \
-  >"$KAST_RESULT" 2>"$KAST_STDERR"
+run_kast_rpc '{"jsonrpc":"2.0","method":"symbol/resolve","params":{"symbol":"date","kind":"property","containingType":"com.example.EventBean"},"id":1}'
 
 # Rank candidates before resolving
-kast rpc '{"jsonrpc":"2.0","method":"symbol/discover","params":{"symbol":"date","fileHint":"/abs/path/EventBean.kt","line":42,"codeSnippet":"val date = event.date","maxResults":5},"id":1}' \
-  --workspace-root "$PWD" \
-  >"$KAST_RESULT" 2>"$KAST_STDERR"
+run_kast_rpc '{"jsonrpc":"2.0","method":"symbol/discover","params":{"symbol":"date","fileHint":"/abs/path/EventBean.kt","line":42,"codeSnippet":"val date = event.date","maxResults":5},"id":1}'
 
 # Resolve with declaration context
-kast rpc '{"jsonrpc":"2.0","method":"symbol/resolve","params":{"symbol":"date","kind":"property","containingType":"com.example.EventBean","includeDeclarationScope":true,"includeDocumentation":true,"surroundingLines":3,"includeSurroundingMembers":true},"id":1}' \
-  --workspace-root "$PWD" \
-  >"$KAST_RESULT" 2>"$KAST_STDERR"
+run_kast_rpc '{"jsonrpc":"2.0","method":"symbol/resolve","params":{"symbol":"date","kind":"property","containingType":"com.example.EventBean","includeDeclarationScope":true,"includeDocumentation":true,"surroundingLines":3,"includeSurroundingMembers":true},"id":1}'
 
 # Find usages
-kast rpc '{"jsonrpc":"2.0","method":"symbol/references","params":{"symbol":"EventBean","includeDeclaration":true},"id":1}' \
-  --workspace-root "$PWD" \
-  >"$KAST_RESULT" 2>"$KAST_STDERR"
+run_kast_rpc '{"jsonrpc":"2.0","method":"symbol/references","params":{"symbol":"EventBean","includeDeclaration":true},"id":1}'
 
 # Trace callers
-kast rpc '{"jsonrpc":"2.0","method":"symbol/callers","params":{"symbol":"process","direction":"incoming","depth":3},"id":1}' \
-  --workspace-root "$PWD" \
-  >"$KAST_RESULT" 2>"$KAST_STDERR"
+run_kast_rpc '{"jsonrpc":"2.0","method":"symbol/callers","params":{"symbol":"process","direction":"incoming","depth":3},"id":1}'
 
 # Scaffold a file
-kast rpc '{"jsonrpc":"2.0","method":"symbol/scaffold","params":{"targetFile":"/abs/path/EventBean.kt"},"id":1}' \
-  --workspace-root "$PWD" \
-  >"$KAST_RESULT" 2>"$KAST_STDERR"
+run_kast_rpc '{"jsonrpc":"2.0","method":"symbol/scaffold","params":{"targetFile":"/abs/path/EventBean.kt"},"id":1}'
 
 # Rename
-kast rpc '{"jsonrpc":"2.0","method":"symbol/rename","params":{"type":"RENAME_BY_SYMBOL_REQUEST","symbol":"OldName","newName":"NewName"},"id":1}' \
-  --workspace-root "$PWD" \
-  >"$KAST_RESULT" 2>"$KAST_STDERR"
+run_kast_rpc '{"jsonrpc":"2.0","method":"symbol/rename","params":{"type":"RENAME_BY_SYMBOL_REQUEST","symbol":"OldName","newName":"NewName"},"id":1}'
 
 # Write and validate
-kast rpc '{"jsonrpc":"2.0","method":"symbol/write-and-validate","params":{"type":"REPLACE_RANGE_REQUEST","filePath":"/abs/path/File.kt","startOffset":120,"endOffset":240,"content":"..."},"id":1}' \
-  --workspace-root "$PWD" \
-  >"$KAST_RESULT" 2>"$KAST_STDERR"
+run_kast_rpc '{"jsonrpc":"2.0","method":"symbol/write-and-validate","params":{"type":"REPLACE_RANGE_REQUEST","filePath":"/abs/path/File.kt","startOffset":120,"endOffset":240,"content":"..."},"id":1}'
 
 # Diagnostics
-kast rpc '{"jsonrpc":"2.0","method":"raw/diagnostics","params":{"filePaths":["/abs/path/File.kt"]},"id":1}' \
-  --workspace-root "$PWD" \
-  >"$KAST_RESULT" 2>"$KAST_STDERR"
+run_kast_rpc '{"jsonrpc":"2.0","method":"raw/diagnostics","params":{"filePaths":["/abs/path/File.kt"]},"id":1}'
 
 # Direct source-index metrics
 kast metrics impact com.example.EventBean --workspace-root "$PWD" --depth 3 \

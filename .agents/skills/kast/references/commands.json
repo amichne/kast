@@ -842,7 +842,19 @@
       "request": {
         "fields": {
           "position": {
-            "type": "object"
+            "type": "object",
+            "fields": {
+              "filePath": {
+                "type": "string"
+              },
+              "offset": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "filePath",
+              "offset"
+            ]
           },
           "includeDeclarationScope": {
             "type": "boolean",
@@ -867,7 +879,19 @@
       "request": {
         "fields": {
           "position": {
-            "type": "object"
+            "type": "object",
+            "fields": {
+              "filePath": {
+                "type": "string"
+              },
+              "offset": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "filePath",
+              "offset"
+            ]
           },
           "includeDeclaration": {
             "type": "boolean",
@@ -892,7 +916,19 @@
       "request": {
         "fields": {
           "position": {
-            "type": "object"
+            "type": "object",
+            "fields": {
+              "filePath": {
+                "type": "string"
+              },
+              "offset": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "filePath",
+              "offset"
+            ]
           },
           "direction": {
             "type": "string",
@@ -934,7 +970,19 @@
       "request": {
         "fields": {
           "position": {
-            "type": "object"
+            "type": "object",
+            "fields": {
+              "filePath": {
+                "type": "string"
+              },
+              "offset": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "filePath",
+              "offset"
+            ]
           },
           "direction": {
             "type": "string",
@@ -968,7 +1016,19 @@
       "request": {
         "fields": {
           "position": {
-            "type": "object"
+            "type": "object",
+            "fields": {
+              "filePath": {
+                "type": "string"
+              },
+              "offset": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "filePath",
+              "offset"
+            ]
           },
           "target": {
             "type": "string",
@@ -1018,7 +1078,19 @@
       "request": {
         "fields": {
           "position": {
-            "type": "object"
+            "type": "object",
+            "fields": {
+              "filePath": {
+                "type": "string"
+              },
+              "offset": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "filePath",
+              "offset"
+            ]
           },
           "newName": {
             "type": "string"
@@ -1243,7 +1315,19 @@
       "request": {
         "fields": {
           "position": {
-            "type": "object"
+            "type": "object",
+            "fields": {
+              "filePath": {
+                "type": "string"
+              },
+              "offset": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "filePath",
+              "offset"
+            ]
           },
           "maxResults": {
             "type": "integer",
@@ -1264,7 +1348,19 @@
       "request": {
         "fields": {
           "position": {
-            "type": "object"
+            "type": "object",
+            "fields": {
+              "filePath": {
+                "type": "string"
+              },
+              "offset": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "filePath",
+              "offset"
+            ]
           },
           "diagnosticCode": {
             "type": "string",
@@ -1286,7 +1382,19 @@
       "request": {
         "fields": {
           "position": {
-            "type": "object"
+            "type": "object",
+            "fields": {
+              "filePath": {
+                "type": "string"
+              },
+              "offset": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "filePath",
+              "offset"
+            ]
           },
           "maxResults": {
             "type": "integer",
