@@ -1,0 +1,8 @@
+{
+  "jsonrpc": "2.0",
+  "method": "raw/workspace-symbol",
+  "params": {
+    "pattern": "Widget"
+  },
+  "id": 1
+}

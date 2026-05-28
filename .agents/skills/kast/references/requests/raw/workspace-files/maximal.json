@@ -1,0 +1,10 @@
+{
+  "jsonrpc": "2.0",
+  "method": "raw/workspace-files",
+  "params": {
+    "moduleName": "example-moduleName",
+    "includeFiles": true,
+    "maxFilesPerModule": 25
+  },
+  "id": 1
+}

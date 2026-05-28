@@ -1,0 +1,10 @@
+{
+  "jsonrpc": "2.0",
+  "method": "symbol/rename",
+  "params": {
+    "type": "RENAME_BY_SYMBOL_REQUEST",
+    "symbol": "Widget",
+    "newName": "RenamedWidget"
+  },
+  "id": 1
+}

@@ -151,6 +151,13 @@
         },
         "fields": {
           "$ref": "#/$defs/fields"
+        },
+        "required": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/fieldName"
+          },
+          "uniqueItems": true
         }
       }
     },

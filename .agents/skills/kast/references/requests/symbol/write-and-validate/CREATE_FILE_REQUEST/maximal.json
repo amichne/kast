@@ -1,0 +1,12 @@
+{
+  "jsonrpc": "2.0",
+  "method": "symbol/write-and-validate",
+  "params": {
+    "type": "CREATE_FILE_REQUEST",
+    "workspaceRoot": "/absolute/path/to/workspace",
+    "filePath": "/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt",
+    "content": "fun added() = Unit\n",
+    "contentFile": "/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt"
+  },
+  "id": 1
+}

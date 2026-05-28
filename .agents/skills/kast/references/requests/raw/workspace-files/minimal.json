@@ -1,0 +1,6 @@
+{
+  "jsonrpc": "2.0",
+  "method": "raw/workspace-files",
+  "params": {},
+  "id": 1
+}

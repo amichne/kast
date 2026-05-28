@@ -1,0 +1,11 @@
+{
+  "jsonrpc": "2.0",
+  "method": "symbol/write-and-validate",
+  "params": {
+    "type": "REPLACE_RANGE_REQUEST",
+    "filePath": "/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt",
+    "startOffset": 128,
+    "endOffset": 128
+  },
+  "id": 1
+}
