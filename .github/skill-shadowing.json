@@ -2,7 +2,7 @@
     "skills": [
         {
             "id": "kast",
-            "skillPath": ".agents/skills/kast/SKILL.md",
+            "skillPath": "../kast-rs/.agents/skills/kast/SKILL.md",
             "requireRead": true,
             "shadowingExtensionId": "kast",
             "extensionPath": ".github/extensions/kast/extension.mjs"

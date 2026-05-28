@@ -16,7 +16,7 @@ results.
 ## Zero to agent in three commands
 
 ```console title="Set up Kast for your agent"
-# 1. Drop the kast skill into this repo (writes to .agents/skills/kast)
+# 1. Install the kast skill source from `kast-rs` into this repo (writes to .agents/skills/kast)
 kast install skill
 
 # 2. Warm the workspace daemon for this repo
