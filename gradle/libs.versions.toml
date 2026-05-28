@@ -13,7 +13,7 @@ intellij-idea = "2025.3"
 analysis-api-standalone = "2.3.20-ij253-119"
 gradle-tooling-api = "9.4.0"
 opentelemetry = "1.62.0"
-sqlite-jdbc = "3.45.3.0"
+sqlite-jdbc = "3.53.1.0"
 hoplite = "2.9.0"
 
 [libraries]
