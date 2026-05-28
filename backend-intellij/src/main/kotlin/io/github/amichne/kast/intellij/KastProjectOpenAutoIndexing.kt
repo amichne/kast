@@ -16,6 +16,10 @@ internal object KastProjectOpenAutoIndexing {
             LOG.info("Kast intellij backend skipped because project has no base path")
             return false
         }
+        if (System.getProperty("kast.intellij.autostart") == "false") {
+            LOG.info("Kast intellij backend skipped because plugin autostart is disabled")
+            return false
+        }
 
         val config = loadConfig(workspaceRoot)
         if (!config.backends.intellij.enabled.value) {

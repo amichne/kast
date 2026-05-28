@@ -100,6 +100,7 @@ internal class KastPluginBackend(
     private val workspaceRoot: Path,
     private val limits: ServerLimits,
     private val telemetry: IntelliJBackendTelemetry = IntelliJBackendTelemetry.disabled(),
+    private val backendName: String? = null,
 ) : AnalysisBackend {
 
     private val readDispatcher = Dispatchers.Default.limitedParallelism(limits.maxConcurrentRequests)
@@ -110,10 +111,7 @@ internal class KastPluginBackend(
     }
 
     override suspend fun capabilities(): BackendCapabilities = BackendCapabilities(
-        backendName = when (ApplicationInfo.getInstance().build.productCode) {
-            "AI" -> "android-studio"
-            else -> "intellij"
-        },
+        backendName = backendName ?: defaultBackendName(),
         backendVersion = BACKEND_VERSION,
         workspaceRoot = workspaceRoot.toString(),
         readCapabilities = setOf(
@@ -140,6 +138,11 @@ internal class KastPluginBackend(
         ),
         limits = limits,
     )
+
+    private fun defaultBackendName(): String = when (ApplicationInfo.getInstance().build.productCode) {
+        "AI" -> "android-studio"
+        else -> "intellij"
+    }
 
     override suspend fun runtimeStatus(): RuntimeStatusResponse {
         val caps = capabilities()
