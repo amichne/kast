@@ -64,7 +64,7 @@ requests, while `kast up`, `kast status`, and `kast stop` are the human lifecycl
 
 - Treat `AnalysisBackend`, the `kast rpc` JSON-RPC method surface, embedded skill resources, and packaged
   Copilot-extension resources as contract surfaces. If one changes, update its consumers together:
-  `docs/openapi.yaml`, `../kast-rs/.agents/skills/kast/**`, `.github/extensions/kast/**`,
+  `docs/openapi.yaml`, `../kast-rs/resources/kast-skill/**`, `.github/extensions/kast/**`,
   `.github/hooks/**`, `kast.sh`/`install.sh`, and the related tests.
 - Any `AnalysisBackend` operation change must land in **both**
   `backend-standalone` and `backend-intellij`. Update `parity-tests` and keep advertised capabilities honest.

@@ -154,7 +154,7 @@ Copilot-assisted Kotlin work. It
 - soft-warns once per session when generic `view`/`grep`/`rg`/`edit`/`create`
   targets a `.kt`/`.kts` path, suggesting the semantic equivalent.
 
-When the extension loads successfully, it shadows `.agents/skills/kast/SKILL.md`
+When the extension loads successfully, it shadows `../kast-rs/resources/kast-skill/SKILL.md`
 for routine routing. Fall back to the skill doc only when the extension is
 unavailable or when you need deeper command-shape or recovery guidance, and
 never use `grep`/`rg`/`ast-grep` for symbol operations.
@@ -204,9 +204,10 @@ Apply these rules across the repo before local unit rules add more detail.
 
 Before modifying `AnalysisBackend`, the `kast rpc` machine contract surface, or
 any packaged artifact manifest,
-enumerate all consumers: `docs/openapi.yaml`, `.agents/skills/kast/SKILL.md`,
-`.agents/skills/kast/evals/**/*`,
-`.agents/skills/kast/references/*`, `.agents/skills/kast/scripts/*`,
+enumerate all consumers: `docs/openapi.yaml`, `../kast-rs/resources/kast-skill/SKILL.md`,
+`../kast-rs/resources/kast-skill/SKILL.md`,
+`../kast-rs/resources/kast-skill/evals/**/*`,
+`../kast-rs/resources/kast-skill/references/*`, `../kast-rs/resources/kast-skill/scripts/*`,
 `evaluation/**/*`, `.github/extensions/kast/extension.mjs`,
 `.github/agents/**/*`, `.github/hooks/**/*`, sibling `kast-rs/resources/**/*`,
 and `kast.sh`.

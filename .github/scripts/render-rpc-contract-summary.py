@@ -15,12 +15,14 @@ END_MARKER = "<!-- END GENERATED RPC CONTRACT SUITE -->"
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 COMMAND_PATH_CANDIDATES = [
-    REPO_ROOT / ".agents/skills/kast/references/commands.json",
-    REPO_ROOT.parent / "kast-rs/.agents/skills/kast/references/commands.json",
+    REPO_ROOT / "kast-rs/resources/kast-skill/references/commands.json",
+    REPO_ROOT.parent / "kast-rs/resources/kast-skill/references/commands.json",
+    REPO_ROOT.parent / "code" / "kast-rs" / "resources" / "kast-skill" / "references" / "commands.json",
 ]
 COMMANDS_PATH = None
 DOC_PATH = REPO_ROOT / "docs/reference/api-specification.md"
-COMMANDS_PATH_LABEL = "`.agents/skills/kast/references/commands.json`"
+COMMANDS_PATH_LABEL = "`../kast-rs/resources/kast-skill/references/commands.json`"
+CANONICAL_COMMANDS_PATH_LABEL = "`../kast-rs/resources/kast-skill/references/commands.json`"
 
 CATEGORY_PURPOSES = {
     "system": "Runtime readiness, backend state, and capability discovery.",
@@ -91,7 +93,7 @@ def resolve_commands_path() -> tuple[Path | str, str]:
     for path in COMMAND_PATH_CANDIDATES:
         if path.exists():
             COMMANDS_PATH = path
-            return path, f"`{path.relative_to(REPO_ROOT)}`"
+            return path, CANONICAL_COMMANDS_PATH_LABEL
     raise FileNotFoundError(f"missing commands catalog; expected one of: {[str(path) for path in COMMAND_PATH_CANDIDATES]}")
 
 

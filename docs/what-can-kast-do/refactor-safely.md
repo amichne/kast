@@ -74,7 +74,7 @@ the workspace — without writing anything. The response carries
 === "Ask your agent"
 
     ```text title="Natural-language prompt"
-    Use the kast skill to rename the function at offset 20 in
+    Use the kast-rs skill to rename the function at offset 20 in
     /workspace/src/Sample.kt to "welcome". Show me the edit plan
     before applying it.
     ```
@@ -248,7 +248,7 @@ edit plan with `fileHashes`, you review, you apply.
 === "Ask your agent"
 
     ```text title="Natural-language prompt"
-    Use the kast skill to optimize imports in
+    Use the kast-rs skill to optimize imports in
     /workspace/src/Sample.kt.
     ```
 
