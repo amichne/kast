@@ -35,7 +35,7 @@ or security reason.
 - Start with `AGENTS.md`, then any deeper `AGENTS.md` for the unit being
   changed.
 - `.github/skill-shadowing.json` maps repo-local skills to Copilot extensions;
-  `kast` is required-read and shadows `.agents/skills/kast/SKILL.md` when the
+  `kast` is required-read and shadows `../kast-rs/resources/kast-skill/SKILL.md` when the
   `.github/extensions/kast/extension.mjs` extension is loaded.
 - `.github/hooks/hooks.json` is the authoritative Copilot hook manifest for
   this repo. Keep workflow guidance in instructions or skills, not in vendored

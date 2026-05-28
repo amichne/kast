@@ -89,7 +89,7 @@ standalone backend exposes the same surface independently.
     | `backend-standalone` | Headless runtime, workspace discovery, K2 session bootstrap | Concentrates stateful analysis in one runtime |
     | `backend-intellij` | IDE-hosted runtime, plugin lifecycle, project service | Reuses the IDE project model when IDEA or Android Studio is running |
     | `backend-shared` | Shared analysis helpers for both runtimes | Avoids duplicate semantic utility code |
-    | `shared-testing` | Contract fixtures and fake backend infrastructure | Pins behavior consistency across implementations |
+    | `analysis-api` test fixtures | Contract fixtures and fake backend infrastructure | Pins behavior consistency across implementations without a separate production module |
     | `build-logic` | Gradle conventions, wrapper generation, runtime-lib sync | Keeps build and packaging rules centralized |
 
 ## End-to-end request flow

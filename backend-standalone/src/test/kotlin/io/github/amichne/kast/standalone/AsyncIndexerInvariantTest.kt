@@ -1,9 +1,11 @@
 package io.github.amichne.kast.standalone
 
+import io.github.amichne.kast.api.contract.ModuleName
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
 import io.github.amichne.kast.standalone.cache.SourceIndexCache
 import org.junit.jupiter.api.Assertions.assertDoesNotThrow
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertTimeout
@@ -13,6 +15,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.FileTime
 import java.time.Duration
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.io.path.createDirectories
@@ -420,6 +423,181 @@ class AsyncIndexerInvariantTest {
     }
 
     @Test
+    fun `phase 2 orders paths by module order and persists module progress before full workspace completion`() {
+        val appModuleName = ModuleName(":app[main]")
+        val libModuleName = ModuleName(":lib[main]")
+        val otherModuleName = ModuleName(":other[main]")
+        val appPath = writeSourceFile(
+            relativePath = "app/App.kt",
+            content = "package app\n\nfun app() = lib.lib()\n",
+        ).toString()
+        val libPath = writeSourceFile(
+            relativePath = "lib/Lib.kt",
+            content = "package lib\n\nfun lib() = 1\n",
+        ).toString()
+        val otherPath = writeSourceFile(
+            relativePath = "other/Other.kt",
+            content = "package other\n\nfun other() = 2\n",
+        ).toString()
+        val normalized = normalizeStandalonePath(workspaceRoot)
+        val cache = SourceIndexCache(normalized)
+        val store = cache.store
+        store.ensureSchema()
+        store.saveManifest(listOf(appPath, libPath, otherPath).associateWith { System.currentTimeMillis() })
+        val otherScanStarted = CountDownLatch(1)
+        val releaseOtherScan = CountDownLatch(1)
+        val scannedPaths = java.util.Collections.synchronizedList(mutableListOf<String>())
+        val completedModuleCallbacks = java.util.Collections.synchronizedList(mutableListOf<String>())
+
+        val indexer = BackgroundIndexer(
+            sourceRoots = sourceRoots(),
+            sourceIndexFileReader = { Files.readString(it) },
+            sourceModuleNameResolver = { path ->
+                when {
+                    "/app/" in path.value -> appModuleName
+                    "/lib/" in path.value -> libModuleName
+                    "/other/" in path.value -> otherModuleName
+                    else -> null
+                }
+            },
+            sourceIndexCache = cache,
+            store = store,
+            referenceBatchSize = 1,
+            referenceParallelism = 1,
+        )
+        indexer.use {
+            indexer.startPhase2(
+                moduleOrder = listOf(appModuleName.value, libModuleName.value),
+                onModuleComplete = { moduleName -> completedModuleCallbacks += moduleName },
+                referenceScanner = { path ->
+                    scannedPaths += path
+                    if (path == otherPath) {
+                        otherScanStarted.countDown()
+                        releaseOtherScan.await(10, TimeUnit.SECONDS)
+                    }
+                    emptyList()
+                },
+            )
+
+            waitUntil {
+                indexer.isReferenceIndexReadyForModuleNames(setOf(appModuleName, libModuleName))
+            }
+            assertFalse(indexer.referenceIndexReady.isDone, "The full workspace should still be indexing")
+            assertEquals("COMPLETE", store.moduleIndexStatus(appModuleName.value))
+            assertEquals("COMPLETE", store.moduleIndexStatus(libModuleName.value))
+            assertEquals(setOf(appModuleName.value, libModuleName.value), store.completedModules())
+            assertEquals(
+                listOf(appModuleName.value, libModuleName.value),
+                completedModuleCallbacks.toList(),
+            )
+            assertEquals(
+                Phase2ModuleProgress(
+                    moduleName = appModuleName,
+                    indexedFileCount = 1,
+                    totalFileCount = 1,
+                ),
+                indexer.referenceIndexProgress(appModuleName),
+            )
+            assertEquals(
+                Phase2ModuleProgress(
+                    moduleName = libModuleName,
+                    indexedFileCount = 1,
+                    totalFileCount = 1,
+                ),
+                indexer.referenceIndexProgress(libModuleName),
+            )
+            assertTrue(otherScanStarted.await(10, TimeUnit.SECONDS))
+            assertEquals("INDEXING", store.moduleIndexStatus(otherModuleName.value))
+            assertEquals(listOf(appPath, libPath, otherPath), scannedPaths.toList())
+
+            releaseOtherScan.countDown()
+            indexer.referenceIndexReady.get(10, TimeUnit.SECONDS)
+        }
+        cache.close()
+    }
+
+    @Test
+    fun `module priority order uses active module dependency rings before remaining modules`() {
+        val leafModuleName = ModuleName(":leaf[main]")
+        val midModuleName = ModuleName(":mid[main]")
+        val activeModuleName = ModuleName(":active[main]")
+        val unrelatedModuleName = ModuleName(":unrelated[main]")
+        val moduleSpecs = listOf(
+            StandaloneSourceModuleSpec(
+                name = unrelatedModuleName,
+                sourceRoots = emptyList(),
+                binaryRoots = emptyList(),
+                dependencyModuleNames = emptyList(),
+            ),
+            StandaloneSourceModuleSpec(
+                name = activeModuleName,
+                sourceRoots = emptyList(),
+                binaryRoots = emptyList(),
+                dependencyModuleNames = listOf(midModuleName),
+            ),
+            StandaloneSourceModuleSpec(
+                name = midModuleName,
+                sourceRoots = emptyList(),
+                binaryRoots = emptyList(),
+                dependencyModuleNames = listOf(leafModuleName),
+            ),
+            StandaloneSourceModuleSpec(
+                name = leafModuleName,
+                sourceRoots = emptyList(),
+                binaryRoots = emptyList(),
+                dependencyModuleNames = emptyList(),
+            ),
+        )
+
+        assertEquals(
+            listOf(activeModuleName.value, midModuleName.value, leafModuleName.value, unrelatedModuleName.value),
+            computeModulePriorityOrder(
+                activeModule = activeModuleName,
+                moduleSpecs = moduleSpecs,
+                dependentModuleGraph = buildDependentModuleNamesBySourceModuleName(moduleSpecs),
+                depth = 2,
+            ),
+        )
+    }
+
+    @Test
+    fun `module priority order uses topological leaf first order when active module is absent`() {
+        val leafModuleName = ModuleName(":leaf[main]")
+        val midModuleName = ModuleName(":mid[main]")
+        val appModuleName = ModuleName(":app[main]")
+        val moduleSpecs = listOf(
+            StandaloneSourceModuleSpec(
+                name = appModuleName,
+                sourceRoots = emptyList(),
+                binaryRoots = emptyList(),
+                dependencyModuleNames = listOf(midModuleName),
+            ),
+            StandaloneSourceModuleSpec(
+                name = midModuleName,
+                sourceRoots = emptyList(),
+                binaryRoots = emptyList(),
+                dependencyModuleNames = listOf(leafModuleName),
+            ),
+            StandaloneSourceModuleSpec(
+                name = leafModuleName,
+                sourceRoots = emptyList(),
+                binaryRoots = emptyList(),
+                dependencyModuleNames = emptyList(),
+            ),
+        )
+
+        assertEquals(
+            listOf(leafModuleName.value, midModuleName.value, appModuleName.value),
+            computeModulePriorityOrder(
+                activeModule = null,
+                moduleSpecs = moduleSpecs,
+                dependentModuleGraph = buildDependentModuleNamesBySourceModuleName(moduleSpecs),
+                depth = 2,
+            ),
+        )
+    }
+
+    @Test
     fun `phase 2 uses configured reference batch size`() {
         val filePaths = (0 until 3).map { index ->
             writeSourceFile(
@@ -589,5 +767,20 @@ class AsyncIndexerInvariantTest {
             file,
             FileTime.fromMillis(Files.getLastModifiedTime(file).toMillis() + 1_000),
         )
+    }
+
+    private fun waitUntil(
+        timeoutMillis: Long = 5_000,
+        pollMillis: Long = 25,
+        condition: () -> Boolean,
+    ) {
+        val deadline = System.nanoTime() + timeoutMillis * 1_000_000
+        while (System.nanoTime() < deadline) {
+            if (condition()) {
+                return
+            }
+            Thread.sleep(pollMillis)
+        }
+        error("Condition was not met within ${timeoutMillis}ms")
     }
 }

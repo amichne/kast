@@ -92,7 +92,7 @@ analyses that now sit alongside the raw `Kast/*.md` notes.
   side-by-side versions, and completion support.
 - [[sources/testing-infrastructure]] - Summarizes contract, integration, and
   performance testing.
-- [[sources/shared-testing-fixtures-and-contract-tests]] - Explains the shared
+- [[sources/analysis-api-test-fixtures-and-contract-tests]] - Explains the shared
   fixture and fake backend used to pin contract behavior.
 - [[sources/backend-standalone-integration-tests]] - Covers invariants and
   full-stack backend tests.

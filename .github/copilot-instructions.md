@@ -42,8 +42,8 @@ Default test runs exclude the `concurrency`, `performance`, and `parity` tags un
 - `analysis-server` wraps `AnalysisBackend` in the line-delimited JSON-RPC transport. `AnalysisDispatcher` is the method
   router that enforces capability checks, pagination limits, and request decoding for socket and stdio servers.
 - The Rust CLI in sibling repo `kast-rs` is the operator-facing control plane.
-  It owns command parsing, daemon lifecycle, installer flows, packaged skill
-  resources, and packaged Copilot extension resources.
+  It owns command parsing, daemon lifecycle, installer flows, and packaged
+  skill resources that this repo should import by reference instead of embedding.
 - `backend-standalone` is the headless runtime for terminal, CI, and agent use.
   `StandaloneAnalysisSession` owns Gradle workspace discovery, PSI/K2 session lifecycle, workspace refresh, and
   background indexing.
@@ -52,8 +52,8 @@ Default test runs exclude the `concurrency`, `performance`, and `parity` tags un
 - `index-store` owns the SQLite-backed source index and workspace cache.
   `SqliteSourceIndexStore` persists declarations, references, manifest state, generations, and workspace-discovery
   snapshots used by both runtimes.
-- `shared-testing` provides fake backends and reusable fixtures. `parity-tests`
-  check that standalone and IntelliJ backends stay behaviorally aligned.
+- `analysis-api` test fixtures provide fake backends and reusable contract
+  fixtures.
   `build-logic` owns the shared Gradle conventions and wrapper/runtime-lib packaging tasks.
 
 Operationally, the CLI and both backends speak the same JSON-RPC contract. The CLI prefers a servable IntelliJ backend
@@ -63,8 +63,9 @@ requests, while `kast up`, `kast status`, and `kast stop` are the human lifecycl
 ## Key conventions
 
 - Treat `AnalysisBackend`, the `kast rpc` JSON-RPC method surface, embedded skill resources, and packaged
-  Copilot-extension resources as contract surfaces. If one changes, update its consumers together: `docs/openapi.yaml`, `.agents/skills/kast/**`,
-  `.github/extensions/kast/**`, `.github/hooks/**`, `kast.sh`/`install.sh`, and the related tests.
+  Copilot-extension resources as contract surfaces. If one changes, update its consumers together:
+  `docs/openapi.yaml`, `../kast-rs/resources/kast-skill/**`, `.github/extensions/kast/**`,
+  `.github/hooks/**`, `kast.sh`/`install.sh`, and the related tests.
 - Any `AnalysisBackend` operation change must land in **both**
   `backend-standalone` and `backend-intellij`. Update `parity-tests` and keep advertised capabilities honest.
 - In this repo, "indexing" means real K2/PSI-backed symbol extraction into the SQLite source index, not file walking.

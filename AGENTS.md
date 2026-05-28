@@ -1,6 +1,11 @@
 # Kast agent guide
 
-ALways TDD with tracer bullets, use the skill
+All developement should be done with TDD and the narrowest possible scope.
+Use the unit map below to choose the smallest unit that owns the behavior you're working on,
+and write tests that prove the behavior before implementing it.
+
+All dependencies must be declared in libs.version.toml (violating this rule is a common source of build breakage and test flakiness).
+If you need a new dependency, add it to the narrowest unit that needs it and update all consumers.
 
 Kast is a Kotlin analysis tool with one line-delimited JSON-RPC contract and
 two supported operator paths: the repo-local `kast` CLI manages a standalone
@@ -70,8 +75,8 @@ Use this map to choose the narrowest unit that owns a change.
   plugin lifecycle, and IDE-hosted analysis server
 - `backend-shared`: shared analysis utilities consumed by both backend
   runtimes via compileOnly IntelliJ platform dependencies
-- `shared-testing`: fake backend fixtures and shared contract assertions for
-  tests
+- `analysis-api/src/testFixtures`: fake backend fixtures and shared contract
+  assertions for tests
 - `build-logic`: Gradle convention plugins, runtime-lib sync, wrapper
   generation, and shared build configuration
 - `docs`: Zensical source docs, published usage guidance, and implementation
@@ -149,7 +154,7 @@ Copilot-assisted Kotlin work. It
 - soft-warns once per session when generic `view`/`grep`/`rg`/`edit`/`create`
   targets a `.kt`/`.kts` path, suggesting the semantic equivalent.
 
-When the extension loads successfully, it shadows `.agents/skills/kast/SKILL.md`
+When the extension loads successfully, it shadows `../kast-rs/resources/kast-skill/SKILL.md`
 for routine routing. Fall back to the skill doc only when the extension is
 unavailable or when you need deeper command-shape or recovery guidance, and
 never use `grep`/`rg`/`ast-grep` for symbol operations.
@@ -185,8 +190,8 @@ Apply these rules across the repo before local unit rules add more detail.
   owns the operator-facing control plane, installer, packaged skill, and
   Copilot extension distribution; `analysis-server` owns transport and
   descriptor plumbing, `backend-standalone` owns headless runtime behavior,
-  `backend-intellij` owns IDE-hosted runtime behavior, and `shared-testing`
-  stays out of production code paths.
+  `backend-intellij` owns IDE-hosted runtime behavior, and
+  `analysis-api` test fixtures stay out of production code paths.
 - Treat `docs/` plus `zensical.toml` as the documentation source of truth.
   `site/` is generated output and should be rebuilt, not hand-edited.
 - Prefer repo-root packaging entry points for shipped artifacts: `./kast.sh build`
@@ -199,9 +204,10 @@ Apply these rules across the repo before local unit rules add more detail.
 
 Before modifying `AnalysisBackend`, the `kast rpc` machine contract surface, or
 any packaged artifact manifest,
-enumerate all consumers: `docs/openapi.yaml`, `.agents/skills/kast/SKILL.md`,
-`.agents/skills/kast/evals/**/*`,
-`.agents/skills/kast/references/*`, `.agents/skills/kast/scripts/*`,
+enumerate all consumers: `docs/openapi.yaml`, `../kast-rs/resources/kast-skill/SKILL.md`,
+`../kast-rs/resources/kast-skill/SKILL.md`,
+`../kast-rs/resources/kast-skill/evals/**/*`,
+`../kast-rs/resources/kast-skill/references/*`, `../kast-rs/resources/kast-skill/scripts/*`,
 `evaluation/**/*`, `.github/extensions/kast/extension.mjs`,
 `.github/agents/**/*`, `.github/hooks/**/*`, sibling `kast-rs/resources/**/*`,
 and `kast.sh`.

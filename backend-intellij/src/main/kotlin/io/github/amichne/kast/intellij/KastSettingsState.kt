@@ -21,6 +21,7 @@ import io.github.amichne.kast.api.client.fields.GradleToolingApiTimeoutMillis
 import io.github.amichne.kast.api.client.fields.IndexingIdentifierIndexWaitMillis
 import io.github.amichne.kast.api.client.fields.IndexingPhase2BatchSize
 import io.github.amichne.kast.api.client.fields.IndexingPhase2Enabled
+import io.github.amichne.kast.api.client.fields.IndexingPhase2PriorityDepth
 import io.github.amichne.kast.api.client.fields.IndexingReferenceBatchSize
 import io.github.amichne.kast.api.client.fields.IndexingRemoteEnabled
 import io.github.amichne.kast.api.client.fields.IndexingRemoteSourceIndexUrl
@@ -50,6 +51,7 @@ internal class KastSettingsState : PersistentStateComponent<KastSettingsState> {
     var serverMaxConcurrentRequests: Int? = null
     var indexingPhase2Enabled: Boolean? = null
     var indexingPhase2BatchSize: Int? = null
+    var indexingPhase2PriorityDepth: Int? = null
     var indexingIdentifierIndexWaitMillis: Long? = null
     var indexingReferenceBatchSize: Int? = null
     var indexingRemoteEnabled: Boolean? = null
@@ -77,6 +79,7 @@ internal class KastSettingsState : PersistentStateComponent<KastSettingsState> {
         serverMaxConcurrentRequests = config.server.maxConcurrentRequests.value
         indexingPhase2Enabled = config.indexing.phase2Enabled.value
         indexingPhase2BatchSize = config.indexing.phase2BatchSize.value
+        indexingPhase2PriorityDepth = config.indexing.phase2PriorityDepth.value
         indexingIdentifierIndexWaitMillis = config.indexing.identifierIndexWaitMillis.value
         indexingReferenceBatchSize = config.indexing.referenceBatchSize.value
         indexingRemoteEnabled = config.indexing.remote.enabled.value
@@ -104,6 +107,7 @@ internal class KastSettingsState : PersistentStateComponent<KastSettingsState> {
         indexing = IndexingConfigOverride(
             phase2Enabled = indexingPhase2Enabled?.let(::IndexingPhase2Enabled),
             phase2BatchSize = indexingPhase2BatchSize?.let(::IndexingPhase2BatchSize),
+            phase2PriorityDepth = indexingPhase2PriorityDepth?.let(::IndexingPhase2PriorityDepth),
             identifierIndexWaitMillis = indexingIdentifierIndexWaitMillis?.let(::IndexingIdentifierIndexWaitMillis),
             referenceBatchSize = indexingReferenceBatchSize?.let(::IndexingReferenceBatchSize),
             remote = RemoteIndexConfigOverride(
@@ -151,6 +155,7 @@ private fun IndexingConfigOverride.takeIfAny(): IndexingConfigOverride? =
     takeIf {
         phase2Enabled != null ||
             phase2BatchSize != null ||
+            phase2PriorityDepth != null ||
             identifierIndexWaitMillis != null ||
             referenceBatchSize != null ||
             remote != null

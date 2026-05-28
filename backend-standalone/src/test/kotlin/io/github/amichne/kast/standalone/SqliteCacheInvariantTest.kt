@@ -62,7 +62,7 @@ class SqliteCacheInvariantTest {
             conn.prepareStatement("SELECT version FROM schema_version LIMIT 1").use { stmt ->
                 val rs = stmt.executeQuery()
                 assertTrue(rs.next())
-                assertEquals(6, rs.getInt(1))
+                assertEquals(7, rs.getInt(1))
             }
         }
     }

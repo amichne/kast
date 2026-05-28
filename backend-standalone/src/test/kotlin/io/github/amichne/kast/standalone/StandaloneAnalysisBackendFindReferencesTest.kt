@@ -8,6 +8,7 @@ import io.github.amichne.kast.api.contract.query.ReferencesQuery
 import io.github.amichne.kast.api.contract.SearchScopeKind
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.contract.SymbolVisibility
+import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
 import io.github.amichne.kast.standalone.workspace.PhasedDiscoveryResult
 import kotlinx.coroutines.test.TestResult
 import kotlinx.coroutines.test.runTest
@@ -19,6 +20,8 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import kotlin.io.path.writeText
 
 class StandaloneAnalysisBackendFindReferencesTest {
@@ -954,6 +957,81 @@ class StandaloneAnalysisBackendFindReferencesTest {
     // ── Symbol reference cache-hit / fallback tests ───────────────────
 
     @Test
+    fun `reference index readiness for module requires the module and dependency closure to be complete`(): TestResult = runTest {
+        val coreModuleName = ModuleName(":core[main]")
+        val libModuleName = ModuleName(":lib[main]")
+        val appModuleName = ModuleName(":app[main]")
+        writeFile(
+            relativePath = "core/src/main/kotlin/core/Core.kt",
+            content = "package core\n\nfun core() = 1\n",
+        )
+        writeFile(
+            relativePath = "lib/src/main/kotlin/lib/Lib.kt",
+            content = "package lib\n\nfun lib() = core.core()\n",
+        )
+        writeFile(
+            relativePath = "app/src/main/kotlin/app/App.kt",
+            content = "package app\n\nfun app() = lib.lib()\n",
+        )
+        val phasedDiscoveryResult = PhasedDiscoveryResult(
+            initialLayout = StandaloneWorkspaceLayout(
+                sourceModules = listOf(
+                    StandaloneSourceModuleSpec(
+                        name = coreModuleName,
+                        sourceRoots = listOf(normalizeStandalonePath(workspaceRoot.resolve("core/src/main/kotlin"))),
+                        binaryRoots = emptyList(),
+                        dependencyModuleNames = emptyList(),
+                    ),
+                    StandaloneSourceModuleSpec(
+                        name = libModuleName,
+                        sourceRoots = listOf(normalizeStandalonePath(workspaceRoot.resolve("lib/src/main/kotlin"))),
+                        binaryRoots = emptyList(),
+                        dependencyModuleNames = listOf(coreModuleName),
+                    ),
+                    StandaloneSourceModuleSpec(
+                        name = appModuleName,
+                        sourceRoots = listOf(normalizeStandalonePath(workspaceRoot.resolve("app/src/main/kotlin"))),
+                        binaryRoots = emptyList(),
+                        dependencyModuleNames = listOf(libModuleName),
+                    ),
+                ),
+            ),
+            enrichmentFuture = null,
+        )
+        StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = appModuleName.value,
+            phasedDiscoveryResult = phasedDiscoveryResult,
+            enablePhase2Indexing = false,
+        ).use { session ->
+            session.awaitInitialSourceIndex()
+            session.sqliteStore.initializeModuleProgress(
+                mapOf(
+                    coreModuleName.value to 1,
+                    libModuleName.value to 1,
+                    appModuleName.value to 1,
+                ),
+            )
+
+            session.sqliteStore.markModuleComplete(appModuleName.value, fileCount = 1)
+            assertFalse(session.isReferenceIndexReadyForModule(appModuleName))
+            assertFalse(session.isReferenceIndexReadyForModule(libModuleName))
+            assertFalse(session.isReferenceIndexReadyForModule(coreModuleName))
+
+            session.sqliteStore.markModuleComplete(libModuleName.value, fileCount = 1)
+            assertFalse(session.isReferenceIndexReadyForModule(appModuleName))
+            assertFalse(session.isReferenceIndexReadyForModule(libModuleName))
+
+            session.sqliteStore.markModuleComplete(coreModuleName.value, fileCount = 1)
+            assertTrue(session.isReferenceIndexReadyForModule(appModuleName))
+            assertTrue(session.isReferenceIndexReadyForModule(libModuleName))
+            assertTrue(session.isReferenceIndexReadyForModule(coreModuleName))
+        }
+    }
+
+    @Test
     fun `findReferences uses symbol_references cache when phase 2 is complete`(): TestResult = runTest {
         val declarationFile = writeFile(
             relativePath = "src/main/kotlin/sample/Greeter.kt",
@@ -1037,6 +1115,137 @@ class StandaloneAnalysisBackendFindReferencesTest {
                 referencePaths.none { it.contains("Unrelated.kt") },
                 "Unrelated.kt should not appear in cache-based results, got: $referencePaths",
             )
+        }
+    }
+
+    @Test
+    fun `findReferences uses cached symbol references when target module closure is ready before full workspace`(): TestResult = runTest {
+        val declarationFile = writeFile(
+            relativePath = "lib/src/main/kotlin/sample/Greeter.kt",
+            content = $$"""
+                package sample
+
+                fun greet(name: String): String = "hi $name"
+            """.trimIndent() + "\n",
+        )
+        val sameModuleCallerFile = writeFile(
+            relativePath = "lib/src/main/kotlin/sample/Use.kt",
+            content = """
+                package sample
+
+                fun use(): String = greet("kast")
+            """.trimIndent() + "\n",
+        )
+        val dependentCallerFile = writeFile(
+            relativePath = "app/src/main/kotlin/sample/AppUse.kt",
+            content = """
+                package sample
+
+                fun appUse(): String = greet("app")
+            """.trimIndent() + "\n",
+        )
+        val queryOffset = Files.readString(declarationFile).indexOf("greet")
+        val libModuleName = ModuleName(":lib[main]")
+        val appModuleName = ModuleName(":app[main]")
+        val phasedDiscoveryResult = PhasedDiscoveryResult(
+            initialLayout = StandaloneWorkspaceLayout(
+                sourceModules = listOf(
+                    StandaloneSourceModuleSpec(
+                        name = appModuleName,
+                        sourceRoots = listOf(normalizeStandalonePath(workspaceRoot.resolve("app/src/main/kotlin"))),
+                        binaryRoots = emptyList(),
+                        dependencyModuleNames = listOf(libModuleName),
+                    ),
+                    StandaloneSourceModuleSpec(
+                        name = libModuleName,
+                        sourceRoots = listOf(normalizeStandalonePath(workspaceRoot.resolve("lib/src/main/kotlin"))),
+                        binaryRoots = emptyList(),
+                        dependencyModuleNames = emptyList(),
+                    ),
+                ),
+                dependentModuleNamesBySourceModuleName = mapOf(
+                    libModuleName to setOf(libModuleName, appModuleName),
+                    appModuleName to setOf(appModuleName),
+                ),
+            ),
+            enrichmentFuture = null,
+        )
+        val session = StandaloneAnalysisSession(
+            workspaceRoot = workspaceRoot,
+            sourceRoots = emptyList(),
+            classpathRoots = emptyList(),
+            moduleName = appModuleName.value,
+            phasedDiscoveryResult = phasedDiscoveryResult,
+            enablePhase2Indexing = false,
+            referenceBatchSize = 1,
+            referenceParallelism = 1,
+        )
+        session.use { s ->
+            s.awaitInitialSourceIndex()
+            val normalizedDeclarationPath = normalizePath(declarationFile)
+            val normalizedSameModuleCallerPath = normalizePath(sameModuleCallerFile)
+            val normalizedDependentCallerPath = normalizePath(dependentCallerFile)
+            val dependentScanStarted = CountDownLatch(1)
+            val releaseDependentScan = CountDownLatch(1)
+            backgroundIndexer(s).startPhase2(
+                moduleOrder = listOf(libModuleName.value, appModuleName.value),
+                referenceScanner = { path ->
+                    if (path == normalizedDependentCallerPath) {
+                        dependentScanStarted.countDown()
+                        releaseDependentScan.await(10, TimeUnit.SECONDS)
+                    }
+                    if (path == normalizedSameModuleCallerPath) {
+                        listOf(
+                            SymbolReferenceRow(
+                                sourcePath = normalizedSameModuleCallerPath,
+                                sourceOffset = Files.readString(sameModuleCallerFile).indexOf("greet"),
+                                targetFqName = "sample.greet",
+                                targetPath = normalizedDeclarationPath,
+                                targetOffset = queryOffset,
+                            ),
+                        )
+                    } else {
+                        emptyList()
+                    }
+                },
+            )
+
+            waitUntil { s.isReferenceIndexReadyForModule(libModuleName) }
+            assertFalse(s.isReferenceIndexReady(), "The full workspace should still be indexing")
+
+            val backend = StandaloneAnalysisBackend(
+                workspaceRoot = workspaceRoot,
+                limits = ServerLimits(
+                    maxResults = 100,
+                    requestTimeoutMillis = 30_000,
+                    maxConcurrentRequests = 4,
+                ),
+                session = s,
+            )
+
+            val result = backend.findReferences(
+                ReferencesQuery(
+                    position = FilePosition(
+                        filePath = declarationFile.toString(),
+                        offset = queryOffset,
+                    ),
+                    includeDeclaration = false,
+                ),
+            )
+
+            val referencePaths = result.references.map { it.filePath }
+            assertNotNull(result.searchScope)
+            assertFalse(result.searchScope!!.exhaustive, "Partial module readiness should report non-exhaustive cache results")
+            assertTrue(
+                referencePaths.any { it.endsWith("Use.kt") },
+                "Expected cached same-module Use.kt reference, got: $referencePaths",
+            )
+            assertTrue(
+                referencePaths.none { it.endsWith("AppUse.kt") },
+                "Dependent module should not be reported before it is indexed, got: $referencePaths",
+            )
+            assertTrue(dependentScanStarted.await(10, TimeUnit.SECONDS))
+            releaseDependentScan.countDown()
         }
     }
 
@@ -1178,4 +1387,25 @@ class StandaloneAnalysisBackendFindReferencesTest {
     }
 
     private fun normalizePath(path: Path): String = NormalizedPath.of(path).value
+
+    private fun backgroundIndexer(session: StandaloneAnalysisSession): BackgroundIndexer {
+        val field = StandaloneAnalysisSession::class.java.getDeclaredField("backgroundIndexer")
+        field.isAccessible = true
+        return field.get(session) as BackgroundIndexer
+    }
+
+    private fun waitUntil(
+        timeoutMillis: Long = 5_000,
+        pollMillis: Long = 25,
+        condition: () -> Boolean,
+    ) {
+        val deadline = System.nanoTime() + timeoutMillis * 1_000_000
+        while (System.nanoTime() < deadline) {
+            if (condition()) {
+                return
+            }
+            Thread.sleep(pollMillis)
+        }
+        error("Condition was not met within ${timeoutMillis}ms")
+    }
 }

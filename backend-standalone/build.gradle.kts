@@ -343,7 +343,7 @@ dependencies {
     implementation(libs.opentelemetry.sdk)
     implementation(libs.opentelemetry.exporter.otlp)
 
-    testImplementation(project(":shared-testing"))
+    testImplementation(testFixtures(project(":analysis-api")))
     // IJ platform Logger.setFactory() references junit.rules.TestRule at class-init time.
     testRuntimeOnly(libs.junit4)
 }

@@ -1,23 +1,16 @@
 package io.github.amichne.kast.intellij
 
 import com.intellij.openapi.Disposable
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.defaultSocketPath
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.api.contract.ServerLimits
-import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
-import io.github.amichne.kast.server.AnalysisServer
 import io.github.amichne.kast.server.AnalysisServerConfig
-import io.github.amichne.kast.server.RunningAnalysisServer
 import java.nio.file.Path
-import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.concurrent.thread
 
 @Service(Service.Level.PROJECT)
 internal class KastPluginService(
@@ -25,39 +18,23 @@ internal class KastPluginService(
 ) : Disposable {
 
     @Volatile
-    private var runningServer: RunningAnalysisServer? = null
-
-    private val indexingCancelled = AtomicBoolean(false)
-
-    @Volatile
-    private var indexingThread: Thread? = null
-
-    @Volatile
-    private var indexStore: SqliteSourceIndexStore? = null
+    private var runningBackend: RunningKastIntelliJBackend? = null
 
     fun startServer() {
-        if (runningServer != null) return
+        if (runningBackend != null) return
         val basePath = project.basePath ?: return
         val workspaceRoot = Path.of(basePath).toAbsolutePath().normalize()
 
         LOG.info("Starting kast intellij backend for workspace: $workspaceRoot")
 
         val kastConfig = KastConfig.load(workspaceRoot)
-        val limits = intellijServerLimits(kastConfig)
-
-        val backend = KastPluginBackend(
+        val socketPath = defaultSocketPath(workspaceRoot)
+        runningBackend = KastIntelliJBackendRuntime.start(
             project = project,
             workspaceRoot = workspaceRoot,
-            limits = limits,
-            telemetry = IntelliJBackendTelemetry.fromConfig(workspaceRoot, kastConfig),
+            socketPath = socketPath,
+            config = kastConfig,
         )
-
-        val socketPath = defaultSocketPath(workspaceRoot)
-        val config = intellijAnalysisServerConfig(socketPath, limits, kastConfig)
-
-        val server = AnalysisServer(backend, config)
-        runningServer = server.start()
-        startProjectIndexing(workspaceRoot, kastConfig)
 
         LOG.info("Kast intellij backend started on socket: $socketPath")
     }
@@ -72,67 +49,12 @@ internal class KastPluginService(
     }
 
     private fun stopServer() {
-        cancelProjectIndexing()
-        runningServer?.let { server ->
+        runningBackend?.let { backend ->
             LOG.info("Shutting down kast intellij backend")
-            runCatching { server.close() }
+            runCatching { backend.close() }
                 .onFailure { LOG.warn("Error closing kast server", it) }
-            runningServer = null
+            runningBackend = null
         }
-    }
-
-    private fun startProjectIndexing(
-        workspaceRoot: Path,
-        kastConfig: KastConfig,
-    ) {
-        if (indexingThread != null) return
-        indexingCancelled.set(false)
-        DumbService.getInstance(project).runWhenSmart {
-            if (indexingCancelled.get() || project.isDisposed) return@runWhenSmart
-            indexingThread = thread(
-                start = true,
-                isDaemon = true,
-                name = "kast-intellij-project-indexer",
-            ) {
-                runCatching {
-                    runCatching {
-                        SourceIndexHydrator().hydrate(workspaceRoot, kastConfig.indexing.remote)
-                    }.onFailure { error ->
-                        LOG.warn("Kast IntelliJ remote source index hydration failed", error)
-                    }
-                    val store = SqliteSourceIndexStore(workspaceRoot)
-                    indexStore = store
-                    IntelliJProjectIndexer(
-                        project = project,
-                        workspaceRoot = workspaceRoot,
-                        store = store,
-                        cancelled = { indexingCancelled.get() || Thread.currentThread().isInterrupted || project.isDisposed },
-                    ).indexProject(kastConfig)
-                }.onSuccess {
-                    if (!indexingCancelled.get()) {
-                        LOG.info("Kast IntelliJ project index completed")
-                    }
-                }.onFailure { error ->
-                    if (!indexingCancelled.get()) {
-                        LOG.warn("Kast IntelliJ project index failed", error)
-                    }
-                }
-            }
-        }
-    }
-
-    private fun cancelProjectIndexing() {
-        indexingCancelled.set(true)
-        indexingThread?.interrupt()
-        if (!ApplicationManager.getApplication().isDispatchThread) {
-            indexingThread?.join(2_000)
-        }
-        indexingThread = null
-        indexStore?.let { store ->
-            runCatching { store.close() }
-                .onFailure { LOG.warn("Error closing kast project index store", it) }
-        }
-        indexStore = null
     }
 
     companion object {
@@ -149,13 +71,23 @@ internal fun intellijServerLimits(config: KastConfig): ServerLimits = ServerLimi
 )
 
 internal fun intellijAnalysisServerConfig(
-    socketPath: Path,
+    transport: AnalysisTransport,
     limits: ServerLimits,
     config: KastConfig,
 ): AnalysisServerConfig = AnalysisServerConfig(
-    transport = AnalysisTransport.UnixDomainSocket(socketPath),
+    transport = transport,
     requestTimeoutMillis = limits.requestTimeoutMillis,
     maxResults = limits.maxResults,
     maxConcurrentRequests = limits.maxConcurrentRequests,
     descriptorDirectory = config.paths.descriptorDir.toPath(),
+)
+
+internal fun intellijAnalysisServerConfig(
+    socketPath: Path,
+    limits: ServerLimits,
+    config: KastConfig,
+): AnalysisServerConfig = intellijAnalysisServerConfig(
+    transport = AnalysisTransport.UnixDomainSocket(socketPath),
+    limits = limits,
+    config = config,
 )

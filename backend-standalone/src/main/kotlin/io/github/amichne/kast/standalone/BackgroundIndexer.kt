@@ -12,9 +12,18 @@ import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetry
 import io.github.amichne.kast.standalone.telemetry.StandaloneTelemetryScope
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.concurrent.thread
+
+internal data class Phase2ModuleProgress(
+    val moduleName: ModuleName,
+    val indexedFileCount: Int,
+    val totalFileCount: Int,
+) {
+    val complete: Boolean get() = indexedFileCount >= totalFileCount
+}
 
 /**
  * Manages eager background indexing in two phases:
@@ -54,9 +63,15 @@ internal class BackgroundIndexer(
     private val generation = AtomicInteger(0)
     private val indexRef = AtomicReference<MutableSourceIdentifierIndex?>(null)
     private val phase1HeadCommit = AtomicReference<String?>(null)
+    private val referenceProgressByModuleName = ConcurrentHashMap<ModuleName, MutablePhase2ModuleProgress>()
+    private val indexingStartedModuleNames = ConcurrentHashMap.newKeySet<ModuleName>()
 
     @Volatile
     private var cancelled = false
+
+    @Volatile
+    private var phase2Started = false
+
     private var phase1Thread: Thread? = null
     private var phase2Thread: Thread? = null
 
@@ -115,6 +130,8 @@ internal class BackgroundIndexer(
      */
     fun startPhase2(
         changedPaths: Set<String>? = null,
+        moduleOrder: List<String>? = null,
+        onModuleComplete: ((String) -> Unit)? = null,
         declarationScanner: ((String) -> List<DeclarationRow>)? = null,
         referenceScanner: (String) -> List<SymbolReferenceRow>,
     ) {
@@ -125,13 +142,24 @@ internal class BackgroundIndexer(
         ) {
             runCatching {
                 if (cancelled) return@thread
-                val allPaths = changedPaths ?: store.loadManifest()?.keys ?: return@thread
+                val allPaths = (changedPaths ?: store.loadManifest()?.keys ?: return@thread).toList()
+                val moduleNameByPath = allPaths.associateWith { path ->
+                    sourceModuleNameResolver(NormalizedPath.ofNormalized(path))
+                }
+                initializeReferenceProgress(moduleNameByPath, moduleOrder.orEmpty())
+                val orderedPaths = orderPhase2Paths(allPaths, moduleNameByPath, moduleOrder)
                 generation.incrementAndGet()
                 ReferenceIndexer(store, batchSize = referenceBatchSize, parallelism = referenceParallelism).indexReferences(
-                    filePaths = allPaths,
-                    referenceScanner = referenceScanner,
+                    filePaths = orderedPaths,
+                    referenceScanner = { path ->
+                        markModuleIndexingForPath(path, moduleNameByPath)
+                        referenceScanner(path)
+                    },
                     declarationScanner = declarationScanner,
                     isCancelled = { cancelled || Thread.currentThread().isInterrupted },
+                    onFilesIndexed = { indexedPaths ->
+                        recordIndexedReferencePaths(indexedPaths, moduleNameByPath, onModuleComplete)
+                    },
                 )
                 if (!cancelled) {
                     referenceIndexReady.complete(Unit)
@@ -150,6 +178,21 @@ internal class BackgroundIndexer(
 
     /** Returns the current generation counter. */
     fun currentGeneration(): Int = generation.get()
+
+    fun isReferenceIndexReadyForModuleNames(moduleNames: Set<ModuleName>): Boolean {
+        if (referenceIndexReady.isDone && !referenceIndexReady.isCompletedExceptionally) {
+            return true
+        }
+        if (moduleNames.isEmpty() || !phase2Started) {
+            return false
+        }
+        return moduleNames.all { moduleName ->
+            referenceProgressByModuleName[moduleName]?.complete ?: false
+        }
+    }
+
+    fun referenceIndexProgress(moduleName: ModuleName): Phase2ModuleProgress? =
+        referenceProgressByModuleName[moduleName]?.snapshot(moduleName)
 
     /**
      * Re-indexes a set of changed file paths incrementally. Skips files that
@@ -286,4 +329,105 @@ internal class BackgroundIndexer(
 
     private fun allTrackedKotlinSourcePaths(): Set<String> =
         io.github.amichne.kast.standalone.cache.scanTrackedKotlinFileTimestamps(sourceRoots).keys
+
+    private fun initializeReferenceProgress(
+        moduleNameByPath: Map<String, ModuleName?>,
+        moduleOrder: List<String>,
+    ) {
+        referenceProgressByModuleName.clear()
+        indexingStartedModuleNames.clear()
+        val moduleFileCountsByName = moduleNameByPath.values
+            .filterNotNull()
+            .groupingBy { it }
+            .eachCount()
+            .mapKeys { (moduleName, _) -> moduleName.value }
+            .toMutableMap()
+        moduleOrder.forEach { moduleName -> moduleFileCountsByName.putIfAbsent(moduleName, 0) }
+        store.initializeModuleProgress(moduleFileCountsByName)
+        moduleFileCountsByName.forEach { (moduleName, fileCount) ->
+            if (fileCount == 0) {
+                store.markModuleComplete(moduleName, fileCount = 0)
+            }
+        }
+        moduleFileCountsByName
+            .mapKeys { (moduleName, _) -> ModuleName(moduleName) }
+            .forEach { (moduleName, fileCount) ->
+                referenceProgressByModuleName[moduleName] = MutablePhase2ModuleProgress(fileCount)
+            }
+        phase2Started = true
+    }
+
+    private fun orderPhase2Paths(
+        paths: List<String>,
+        moduleNameByPath: Map<String, ModuleName?>,
+        moduleOrder: List<String>?,
+    ): List<String> {
+        if (moduleOrder.isNullOrEmpty()) {
+            return paths.sorted()
+        }
+        val priorityRankByModuleName = moduleOrder
+            .withIndex()
+            .associate { (index, moduleName) -> moduleName to index }
+        return paths.sortedWith(
+            compareBy<String>(
+                { path -> priorityRankByModuleName[moduleNameByPath[path]?.value] ?: Int.MAX_VALUE },
+                { path -> moduleNameByPath[path]?.value.orEmpty() },
+                { path -> path },
+            ),
+        )
+    }
+
+    private fun markModuleIndexingForPath(
+        path: String,
+        moduleNameByPath: Map<String, ModuleName?>,
+    ) {
+        val moduleName = moduleNameByPath[path] ?: return
+        if (indexingStartedModuleNames.add(moduleName)) {
+            store.markModuleIndexing(moduleName.value)
+        }
+    }
+
+    private fun recordIndexedReferencePaths(
+        indexedPaths: Collection<String>,
+        moduleNameByPath: Map<String, ModuleName?>,
+        onModuleComplete: ((String) -> Unit)?,
+    ) {
+        indexedPaths
+            .mapNotNull(moduleNameByPath::get)
+            .groupingBy { it }
+            .eachCount()
+            .forEach { (moduleName, indexedCount) ->
+                val progress = referenceProgressByModuleName[moduleName] ?: return@forEach
+                val wasComplete = progress.complete
+                progress.addIndexed(indexedCount)
+                if (!wasComplete && progress.complete) {
+                    val completedFileCount = progress.indexedFileCount
+                    store.markModuleComplete(moduleName.value, completedFileCount)
+                    onModuleComplete?.invoke(moduleName.value)
+                }
+            }
+    }
+
+    private class MutablePhase2ModuleProgress(
+        private val totalFileCount: Int,
+    ) {
+        private val indexedFileCounter = AtomicInteger(0)
+
+        val indexedFileCount: Int
+            get() = indexedFileCounter.get()
+
+        val complete: Boolean
+            get() = indexedFileCount >= totalFileCount
+
+        fun addIndexed(count: Int) {
+            indexedFileCounter.addAndGet(count)
+        }
+
+        fun snapshot(moduleName: ModuleName): Phase2ModuleProgress =
+            Phase2ModuleProgress(
+                moduleName = moduleName,
+                indexedFileCount = indexedFileCount,
+                totalFileCount = totalFileCount,
+            )
+    }
 }

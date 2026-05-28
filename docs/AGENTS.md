@@ -32,7 +32,7 @@ Generated reference pages under `docs/reference/` are produced by
 `AnalysisDocsDocumentTest`. Do not hand-edit those generated pages.
 `docs/reference/api-specification.md` is hand-authored, but its
 JSON-RPC suite block is generated from
-`.agents/skills/kast/references/commands.json` by
+`../kast-rs/resources/kast-skill/references/commands.json` by
 `.github/scripts/render-rpc-contract-summary.py` and checked by
 `.github/scripts/test-docs-content-contract.sh`.
 

@@ -5,8 +5,8 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from pathlib import Path
+import sys
 from typing import Any
 
 
@@ -14,8 +14,15 @@ BEGIN_MARKER = "<!-- BEGIN GENERATED RPC CONTRACT SUITE -->"
 END_MARKER = "<!-- END GENERATED RPC CONTRACT SUITE -->"
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-COMMANDS_PATH = REPO_ROOT / ".agents/skills/kast/references/commands.json"
+COMMAND_PATH_CANDIDATES = [
+    REPO_ROOT / "kast-rs/resources/kast-skill/references/commands.json",
+    REPO_ROOT.parent / "kast-rs/resources/kast-skill/references/commands.json",
+    REPO_ROOT.parent / "code" / "kast-rs" / "resources" / "kast-skill" / "references" / "commands.json",
+]
+COMMANDS_PATH = None
 DOC_PATH = REPO_ROOT / "docs/reference/api-specification.md"
+COMMANDS_PATH_LABEL = "`../kast-rs/resources/kast-skill/references/commands.json`"
+CANONICAL_COMMANDS_PATH_LABEL = "`../kast-rs/resources/kast-skill/references/commands.json`"
 
 CATEGORY_PURPOSES = {
     "system": "Runtime readiness, backend state, and capability discovery.",
@@ -81,9 +88,28 @@ FLOW_BLOCKS = [
 ]
 
 
+def resolve_commands_path() -> tuple[Path | str, str]:
+    global COMMANDS_PATH
+    for path in COMMAND_PATH_CANDIDATES:
+        if path.exists():
+            COMMANDS_PATH = path
+            return path, CANONICAL_COMMANDS_PATH_LABEL
+    raise FileNotFoundError(f"missing commands catalog; expected one of: {[str(path) for path in COMMAND_PATH_CANDIDATES]}")
+
+
+def open_catalog(raw_source: Any) -> dict[str, Any]:
+    if isinstance(raw_source, Path):
+        with raw_source.open(encoding="utf-8") as handle:
+            return json.load(handle)
+    if isinstance(raw_source, str):
+        return json.loads(raw_source)
+    raise TypeError(f"unsupported catalog source type: {type(raw_source)!r}")
 def load_catalog() -> dict[str, Any]:
-    with COMMANDS_PATH.open() as handle:
-        catalog = json.load(handle)
+    raw_source, label = resolve_commands_path()
+    global COMMANDS_PATH_LABEL
+    COMMANDS_PATH_LABEL = label
+
+    catalog = open_catalog(raw_source)
     if not isinstance(catalog.get("commands"), dict):
         raise ValueError(f"{COMMANDS_PATH} must contain a commands object")
     if not isinstance(catalog.get("categories"), dict):
@@ -206,7 +232,7 @@ def render_summary(catalog: dict[str, Any]) -> str:
         BEGIN_MARKER,
         "### Browse the JSON-RPC suite",
         "",
-        "This section is generated from `.agents/skills/kast/references/commands.json`",
+        f"This section is generated from {COMMANDS_PATH_LABEL}",
         "so the page exposes the same method catalog used by installed agent",
         "skills and `kast rpc`. It embeds the command families, flow-oriented",
         "building blocks, and request fields that callers compose into larger",

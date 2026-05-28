@@ -36,6 +36,7 @@ class ReferenceIndexer(
         referenceScanner: (String) -> List<SymbolReferenceRow>,
         declarationScanner: ((String) -> List<DeclarationRow>)? = null,
         isCancelled: () -> Boolean = { Thread.currentThread().isInterrupted },
+        onFilesIndexed: (Collection<String>) -> Unit = {},
     ) {
         for (batch in filePaths.toList().chunked(batchSize)) {
             if (isCancelled()) break
@@ -51,6 +52,8 @@ class ReferenceIndexer(
             if (declarationResults != null) {
                 store.replaceDeclarationsFromFiles(declarationResults)
             }
+            if (isCancelled()) break
+            onFilesIndexed(batch)
         }
     }
 
@@ -59,12 +62,14 @@ class ReferenceIndexer(
         referenceScanner: (String) -> List<SymbolReferenceRow>,
         declarationScanner: ((String) -> List<DeclarationRow>)? = null,
         isCancelled: () -> Boolean = { Thread.currentThread().isInterrupted },
+        onFilesIndexed: (Collection<String>) -> Unit = {},
     ) {
         indexReferences(
             filePaths = changedPaths,
             referenceScanner = referenceScanner,
             declarationScanner = declarationScanner,
             isCancelled = isCancelled,
+            onFilesIndexed = onFilesIndexed,
         )
     }
 

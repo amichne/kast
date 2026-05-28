@@ -16,13 +16,13 @@ results.
 ## Zero to agent in three commands
 
 ```console title="Set up Kast for your agent"
-# 1. Drop the kast skill into this repo (writes to .agents/skills/kast)
+# 1. Install the kast-rs skill source from `kast-rs` into this repo (writes to .agents/skills/kast)
 kast install skill
 
 # 2. Warm the workspace daemon for this repo
 kast up --workspace-root="$PWD"
 
-# 3. Hand off — your agent now has the kast skill loaded
+# 3. Hand off — your agent now has the kast-rs skill loaded
 ```
 
 Done. The skill teaches the workflow and the resolve-first pattern. The
