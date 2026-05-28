@@ -44,6 +44,18 @@ tasks.register("buildBackendPortableZip") {
     dependsOn(":backend-standalone:portableDistZip")
 }
 
+tasks.register("stageHeadlessDist") {
+    group = "distribution"
+    description = "Builds a clean staged backend-headless tree under backend-headless/build/portable-dist/backend-headless."
+    dependsOn(":backend-headless:syncPortableDist")
+}
+
+tasks.register("buildHeadlessPortableZip") {
+    group = "distribution"
+    description = "Builds the versioned portable backend-headless zip under backend-headless/build/distributions."
+    dependsOn(":backend-headless:portableDistZip")
+}
+
 tasks.register<Copy>("stageOpenApiSpec") {
     group = "distribution"
     description = "Copies the generated OpenAPI spec to dist/openapi.yaml."
