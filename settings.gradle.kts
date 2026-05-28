@@ -20,7 +20,5 @@ include(
     ":index-store",
     ":backend-standalone",
     ":backend-shared",
-    ":backend-intellij",
-    ":shared-testing",
-    ":parity-tests",
+    ":backend-intellij"
 )
