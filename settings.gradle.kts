@@ -18,6 +18,7 @@ include(
     ":analysis-api",
     ":analysis-server",
     ":index-store",
+    ":backend-headless",
     ":backend-standalone",
     ":backend-shared",
     ":backend-intellij"
