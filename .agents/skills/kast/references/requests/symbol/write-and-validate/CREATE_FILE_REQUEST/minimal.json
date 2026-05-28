@@ -1,9 +1,0 @@
-{
-  "jsonrpc": "2.0",
-  "method": "symbol/write-and-validate",
-  "params": {
-    "type": "CREATE_FILE_REQUEST",
-    "filePath": "/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt"
-  },
-  "id": 1
-}
