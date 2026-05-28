@@ -95,6 +95,17 @@ val headlessLauncherJar by tasks.registering(Jar::class) {
     isZip64 = true
 }
 
+val headlessPluginDescriptorJar by tasks.registering(Jar::class) {
+    archiveClassifier.set("plugin-descriptor")
+    from(sourceSets.named("main").map { it.output }) {
+        include("META-INF/plugin.xml")
+    }
+    manifest {
+        attributes["Implementation-Title"] = "${project.name}-plugin-descriptor"
+        attributes["Implementation-Version"] = buildVersion.get()
+    }
+}
+
 val writeBackendVersion by tasks.registering {
     val versionFile = layout.buildDirectory.file("generated-resources/kast-backend-version.txt")
     val versionProvider = buildVersion
@@ -204,6 +215,7 @@ tasks.named<WriteWrapperScriptTask>("writeWrapperScript") {
             "-Dpty4j.preferred.native.folder=${dollar}{idea_home}/lib/pty4j"
             "-Dio.netty.allocator.type=pooled"
             "-Dintellij.platform.runtime.repository.path=${dollar}{idea_home}/modules/module-descriptors.dat"
+            "-Didea.force.use.core.classloader=true"
             "-Didea.platform.prefix=Idea"
             "-Dsplash=false"
             "-Daether.connector.resumeDownloads=false"
@@ -266,10 +278,13 @@ tasks.named<WriteWrapperScriptTask>("writeWrapperScript") {
 tasks.named<SyncRuntimeLibsTask>("syncRuntimeLibs") {
     dependsOn(headlessLauncherJar)
     appJar.set(headlessLauncherJar.flatMap(Jar::getArchiveFile))
+    runtimeJars.from(headlessPluginRuntime)
     requiredClassEntries.add("io/github/amichne/kast/headless/HeadlessMainKt.class")
     requiredClassEntries.add("com/intellij/idea/Main.class")
     requiredClassEntries.add("com/intellij/openapi/application/ModernApplicationStarter.class")
     requiredClassEntries.add("com/intellij/openapi/project/DumbService.class")
+    requiredClassEntries.add("io/github/amichne/kast/intellij/KastIntelliJBackendRuntime.class")
+    requiredClassEntries.add("io/github/amichne/kast/server/AnalysisServer.class")
 }
 
 tasks.named<Sync>("syncPortableDist") {
@@ -280,10 +295,7 @@ tasks.named<Sync>("syncPortableDist") {
         include(packagedIdeaHomeEntries)
         into("idea-home")
     }
-    from(tasks.named<Jar>("jar")) {
-        into("idea-home/plugins/kast-headless/lib")
-    }
-    from(headlessPluginRuntime) {
+    from(headlessPluginDescriptorJar) {
         into("idea-home/plugins/kast-headless/lib")
     }
     dependsOn("syncRuntimeLibs")
