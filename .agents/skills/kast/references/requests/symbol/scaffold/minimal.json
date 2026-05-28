@@ -1,8 +1,0 @@
-{
-  "jsonrpc": "2.0",
-  "method": "symbol/scaffold",
-  "params": {
-    "targetFile": "/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt"
-  },
-  "id": 1
-}
