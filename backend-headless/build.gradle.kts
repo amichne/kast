@@ -13,7 +13,16 @@ val ideaDistribution: Configuration by configurations.creating {
 }
 
 private val extractedIdeaDistributionDirectory = objects.directoryProperty().apply {
-    set(file(gradle.gradleUserHomeDir.resolve("kast/intellij-distributions/$intellijIdeaVersion")))
+    set(file(gradle.gradleUserHomeDir.resolve("kast/headless-intellij-distributions/$intellijIdeaVersion")))
+
+}
+
+val extractLegacyPluginClasses: TaskProvider<ExtractLegacyPluginClassesTask> by tasks.registering(
+    ExtractLegacyPluginClassesTask::class
+) {
+    dependsOn(extractIdeaDistribution)
+    ideaDistributionDirectory.set(extractedIdeaDistributionDirectory)
+    outputDirectory.set(layout.buildDirectory.dir("legacy-plugin-classes"))
 }
 
 val extractIdeaDistribution: TaskProvider<ExtractIdeaDistributionTask> by tasks.registering(ExtractIdeaDistributionTask::class) {
@@ -48,6 +57,27 @@ val javaPluginLibs: ConfigurableFileCollection = extractedIdeaFiles {
     include("**/plugins/java/lib/**/*.jar")
 }
 
+val packagedIdeaHomeEntries = listOf(
+    "build.txt",
+    "product-info.json",
+    "lib/nio-fs.jar",
+    "lib/jna/**",
+    "lib/pty4j/**",
+    "modules/module-descriptors.dat",
+    "plugins/Groovy/**",
+    "plugins/Kotlin/**",
+    "plugins/gradle/**",
+    "plugins/gradle-java/**",
+    "plugins/java/**",
+    "plugins/java-ide-customization/**",
+    "plugins/json/**",
+    "plugins/maven/**",
+    "plugins/properties/**",
+    "plugins/repository-search/**",
+    "plugins/toml/**",
+    "plugins/yaml/**",
+)
+
 val headlessPluginRuntime: Configuration by configurations.creating {
     isCanBeConsumed = false
     isCanBeResolved = true
@@ -60,6 +90,30 @@ application {
 
 @Suppress("UNCHECKED_CAST")
 val buildVersion: Provider<String> = extra["buildVersion"] as Provider<String>
+
+val headlessLauncherJar by tasks.registering(Jar::class) {
+    archiveClassifier.set("launcher")
+    from(sourceSets.named("main").map { it.output }) {
+        exclude("META-INF/plugin.xml")
+    }
+    manifest {
+        attributes["Main-Class"] = application.mainClass.get()
+        attributes["Implementation-Title"] = "${project.name}-launcher"
+        attributes["Implementation-Version"] = buildVersion.get()
+    }
+    isZip64 = true
+}
+
+val headlessPluginDescriptorJar by tasks.registering(Jar::class) {
+    archiveClassifier.set("plugin-descriptor")
+    from(sourceSets.named("main").map { it.output }) {
+        include("META-INF/plugin.xml")
+    }
+    manifest {
+        attributes["Implementation-Title"] = "${project.name}-plugin-descriptor"
+        attributes["Implementation-Version"] = buildVersion.get()
+    }
+}
 
 val writeBackendVersion by tasks.registering {
     val versionFile = layout.buildDirectory.file("generated-resources/kast-backend-version.txt")
@@ -164,13 +218,13 @@ tasks.named<WriteWrapperScriptTask>("writeWrapperScript") {
             "-Djava.system.class.loader=com.intellij.util.lang.PathClassLoader"
             "-Didea.vendor.name=JetBrains"
             "-Didea.paths.selector=KastHeadless"
-            "-Didea.plugins.path=${dollar}{script_dir}/plugins"
             "-Djna.boot.library.path=${dollar}{idea_home}/lib/jna/${dollar}{jna_arch}"
             "-Djna.nosys=true"
             "-Djna.noclasspath=true"
             "-Dpty4j.preferred.native.folder=${dollar}{idea_home}/lib/pty4j"
             "-Dio.netty.allocator.type=pooled"
             "-Dintellij.platform.runtime.repository.path=${dollar}{idea_home}/modules/module-descriptors.dat"
+            "-Didea.force.use.core.classloader=true"
             "-Didea.platform.prefix=Idea"
             "-Dsplash=false"
             "-Daether.connector.resumeDownloads=false"
@@ -231,23 +285,30 @@ tasks.named<WriteWrapperScriptTask>("writeWrapperScript") {
 }
 
 tasks.named<SyncRuntimeLibsTask>("syncRuntimeLibs") {
+    dependsOn(headlessLauncherJar)
+    appJar.set(headlessLauncherJar.flatMap(Jar::getArchiveFile))
+    runtimeJars.from(headlessPluginRuntime)
     requiredClassEntries.add("io/github/amichne/kast/headless/HeadlessMainKt.class")
     requiredClassEntries.add("com/intellij/idea/Main.class")
     requiredClassEntries.add("com/intellij/openapi/application/ModernApplicationStarter.class")
     requiredClassEntries.add("com/intellij/openapi/project/DumbService.class")
+    requiredClassEntries.add("io/github/amichne/kast/intellij/KastIntelliJBackendRuntime.class")
+    requiredClassEntries.add("io/github/amichne/kast/server/AnalysisServer.class")
 }
 
 tasks.named<Sync>("syncPortableDist") {
     from(layout.buildDirectory.dir("runtime-libs")) {
         into("runtime-libs")
     }
-    from(tasks.named<Jar>("jar")) {
-        into("plugins/kast-headless/lib")
+    from(extractedIdeaDistributionDirectory) {
+        include(packagedIdeaHomeEntries)
+        into("idea-home")
     }
-    from(headlessPluginRuntime) {
-        into("plugins/kast-headless/lib")
+    from(headlessPluginDescriptorJar) {
+        into("idea-home/plugins/kast-headless/lib")
     }
     dependsOn("syncRuntimeLibs")
+    dependsOn(extractIdeaDistribution)
 }
 
 tasks.named<Zip>("portableDistZip") {

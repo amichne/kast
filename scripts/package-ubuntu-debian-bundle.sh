@@ -71,7 +71,7 @@ cli_archive=""
 backend_archive=""
 version="${KAST_UBUNTU_DEBIAN_VERSION:-}"
 output_path=""
-platform="ubuntu-debian-x86_64"
+bundle_kind="${KAST_UBUNTU_DEBIAN_BUNDLE_KIND:-standalone}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -95,6 +95,11 @@ while [[ $# -gt 0 ]]; do
       output_path="$2"; shift 2 ;;
     --output=*)
       output_path="${1#--output=}"; shift ;;
+    --bundle-kind)
+      [[ $# -ge 2 ]] || die "Missing value for --bundle-kind"
+      bundle_kind="$2"; shift 2 ;;
+    --bundle-kind=*)
+      bundle_kind="${1#--bundle-kind=}"; shift ;;
     --help|-h)
       usage; exit 0 ;;
     *)
@@ -112,6 +117,26 @@ done
 need_tool python3
 need_tool tar
 
+case "$bundle_kind" in
+  standalone)
+    platform="ubuntu-debian-x86_64"
+    backend_archive_root="backend-standalone"
+    backend_install_name="standalone-${version}"
+    backend_launcher="kast-standalone"
+    backend_role="standalone-backend"
+    ;;
+  headless)
+    platform="ubuntu-debian-headless-x86_64"
+    backend_archive_root="backend-headless"
+    backend_install_name="headless-${version}"
+    backend_launcher="kast-headless"
+    backend_role="headless-backend"
+    ;;
+  *)
+    die "Unsupported bundle kind: $bundle_kind"
+    ;;
+esac
+
 bundle_name="kast-${platform}-${version}"
 if [[ -z "$output_path" ]]; then
   output_path="${repo_root}/dist/${bundle_name}.tar.gz"
@@ -127,7 +152,7 @@ cli_extract="${tmp_dir}/cli"
 backend_extract="${tmp_dir}/backend"
 staging_root="${tmp_dir}/${bundle_name}"
 mkdir -p "$cli_extract" "$backend_extract" "$staging_root/bin" \
-  "${staging_root}/lib/backends/standalone-${version}" \
+  "${staging_root}/lib/backends" \
   "$staging_root/scripts" \
   "$(dirname -- "$output_path")"
 
@@ -136,15 +161,20 @@ extract_zip_archive "$backend_archive" "$backend_extract"
 
 cli_bin="${cli_extract}/kast"
 [[ -f "$cli_bin" ]] || die "CLI archive must contain kast at its root"
-backend_root="${backend_extract}/backend-standalone"
-[[ -d "$backend_root" ]] || die "Backend archive must contain backend-standalone/"
+backend_root="${backend_extract}/${backend_archive_root}"
+[[ -d "$backend_root" ]] || die "Backend archive must contain ${backend_archive_root}/"
 [[ -f "${backend_root}/runtime-libs/classpath.txt" ]] || die "Backend archive missing runtime-libs/classpath.txt"
-[[ -f "${backend_root}/kast-standalone" ]] || die "Backend archive missing kast-standalone launcher"
+[[ -f "${backend_root}/${backend_launcher}" ]] || die "Backend archive missing ${backend_launcher} launcher"
+if [[ "$bundle_kind" == "headless" ]]; then
+  [[ -f "${backend_root}/idea-home/lib/nio-fs.jar" ]] || die "Backend archive missing headless idea-home/lib/nio-fs.jar"
+  [[ -f "${backend_root}/idea-home/modules/module-descriptors.dat" ]] || die "Backend archive missing headless idea-home/modules/module-descriptors.dat"
+  [[ -d "${backend_root}/idea-home/plugins/kast-headless" ]] || die "Backend archive missing bundled kast-headless plugin"
+fi
 
 cp "$cli_bin" "${staging_root}/bin/kast"
 chmod 755 "${staging_root}/bin/kast"
-cp -R "${backend_root}/." "${staging_root}/lib/backends/standalone-${version}/"
-chmod 755 "${staging_root}/lib/backends/standalone-${version}/kast-standalone"
+mv "$backend_root" "${staging_root}/lib/backends/${backend_install_name}"
+chmod 755 "${staging_root}/lib/backends/${backend_install_name}/${backend_launcher}"
 cp "${repo_root}/scripts/install-ubuntu-debian.sh" "${staging_root}/scripts/install-ubuntu-debian.sh"
 chmod 755 "${staging_root}/scripts/install-ubuntu-debian.sh"
 if [[ -f "${repo_root}/LICENSE" ]]; then
@@ -162,7 +192,7 @@ cli_sha="$(compute_sha256 "$cli_archive")"
 backend_sha="$(compute_sha256 "$backend_archive")"
 build_commit="$(git -C "$repo_root" rev-parse HEAD 2>/dev/null || printf 'unknown')"
 
-python3 - "${staging_root}/manifest.json" "$version" "$platform" "$cli_sha" "$backend_sha" "$build_commit" <<'PY'
+python3 - "${staging_root}/manifest.json" "$version" "$platform" "$bundle_kind" "$backend_role" "$backend_install_name" "$cli_sha" "$backend_sha" "$build_commit" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -170,14 +200,18 @@ from pathlib import Path
 manifest_path = Path(sys.argv[1])
 version = sys.argv[2]
 platform = sys.argv[3]
-cli_sha = sys.argv[4]
-backend_sha = sys.argv[5]
-build_commit = sys.argv[6]
+bundle_kind = sys.argv[4]
+backend_role = sys.argv[5]
+backend_install_name = sys.argv[6]
+cli_sha = sys.argv[7]
+backend_sha = sys.argv[8]
+build_commit = sys.argv[9]
 payload = {
     "schemaVersion": 1,
     "kind": "KAST_UBUNTU_DEBIAN_BUNDLE",
     "version": version,
     "platform": platform,
+    "backendKind": bundle_kind,
     "entrypoint": "scripts/install-ubuntu-debian.sh",
     "javaRequirement": "Java 21 or newer available on PATH, or KAST_JAVA_CMD set",
     "buildCommit": build_commit,
@@ -188,8 +222,8 @@ payload = {
             "sourceSha256": cli_sha,
         },
         {
-            "role": "standalone-backend",
-            "path": f"lib/backends/standalone-{version}",
+            "role": backend_role,
+            "path": f"lib/backends/{backend_install_name}",
             "sourceSha256": backend_sha,
         },
     ],

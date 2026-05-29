@@ -7,6 +7,7 @@ from pathlib import Path
 
 EXPECTED_PLATFORMS = {
     "headless",
+    "ubuntu-debian-headless-x86_64",
     "ubuntu-debian-x86_64",
     "intellij",
     "standalone",

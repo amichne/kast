@@ -31,11 +31,11 @@ tools and fall back to `kast rpc` when they need the CLI directly;
 humans use `kast up`, `kast status`, and `kast stop` to manage the
 daemon. The rest of this page is what your agent picks up from that.
 
-The agent talks to either runtime over the same JSON-RPC. Standalone
-runs as an independent daemon — terminals, CI, remote machines, cloud
-agents. The IDEA plugin exposes the same protocol from inside an
-open IDE project, reusing the IDE's project model, indexes, and
-analysis session.
+The agent talks to any runtime over the same JSON-RPC. Standalone runs as an
+independent daemon for terminals and local automation. Headless packages the
+IntelliJ-backed runtime for Ubuntu/Debian CI and hosted agents. The IDEA plugin
+exposes the same protocol from inside an open IDE project, reusing the IDE's
+project model, indexes, and analysis session.
 
 ## Local and hosted agent setup
 
@@ -48,8 +48,8 @@ is the only supported non-Brew path.
 | Agent environment | Install path | Runtime path | What to hand the agent |
 |-------------------|--------------|--------------|-------------------------|
 | Local developer agent | `kast install skill` and optional `kast install copilot-extension` | Existing CLI plus standalone or IDEA backend | The packaged skill and native `kast_*` tools |
-| CI review agent | `scripts/install-ubuntu-debian.sh install` | Standalone backend warmed in the job | `kast rpc` commands and structured JSON outputs |
-| Ubuntu/Debian hosted agent | `scripts/install-ubuntu-debian.sh install` from the release bundle | Contained CLI and standalone backend under `KAST_UBUNTU_DEBIAN_ROOT` | `kast` on `PATH` plus `KAST_CONFIG_HOME` when a custom config root is used |
+| CI review agent | `scripts/install-ubuntu-debian.sh install` | Headless backend warmed with `kast up --backend=headless` | `kast rpc` commands and structured JSON outputs |
+| Ubuntu/Debian hosted agent | `scripts/install-ubuntu-debian.sh install` from the release bundle | Contained CLI and headless backend under `KAST_UBUNTU_DEBIAN_ROOT` | `kast` on `PATH` plus `KAST_CONFIG_HOME` when a custom config root is used |
 
 Use the Ubuntu/Debian path when the agent image cannot rely on a human shell
 profile, Homebrew tap state, or an already-open IDE. The installer verifies the
@@ -91,7 +91,7 @@ boundaries and visibility shape the results — your agent doesn't need
 to reason about them itself.
 [Manage workspaces →](../what-can-kast-do/manage-workspaces.md)
 
-## Same protocol, two runtimes
+## Same protocol, three runtimes
 
 The contract is identical. What changes is where the analysis state
 lives and who keeps it warm.
@@ -99,11 +99,12 @@ lives and who keeps it warm.
 | Runtime         | Where semantic state lives                       | Best fit                                              |
 |-----------------|--------------------------------------------------|-------------------------------------------------------|
 | Standalone      | A long-lived `kast` daemon outside any IDE       | Terminals, CI, remote machines, cloud agents          |
+| Headless        | A packaged IntelliJ backend outside any IDE      | Ubuntu/Debian CI images and hosted agents             |
 | IDEA plugin     | Inside a running IDEA or Android Studio project  | Local agents when the IDE is already open and warm    |
 
 If IDEA or Android Studio is open, agents can connect to the plugin and ride
-the IDE's warmth. If not, the standalone backend exposes the same surface on
-its own.
+the IDE's warmth. If not, the standalone or packaged headless backend exposes
+the same surface on its own.
 
 ## What your agent can actually do
 

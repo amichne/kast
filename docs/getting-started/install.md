@@ -1,6 +1,6 @@
 ---
 title: Install
-description: Install the kast CLI, the standalone backend, or the IDEA plugin.
+description: Install the kast CLI, the headless backend, or the IDEA plugin.
 icon: lucide/download
 ---
 
@@ -13,9 +13,8 @@ start asking questions.
 
 ## Prerequisites
 
-- **Java 21 or newer** on your `PATH` or `JAVA_HOME` when you run the
-  standalone backend. The Homebrew CLI package is native and does not install
-  a JDK.
+- **Java 21 or newer** on your `PATH` or `JAVA_HOME` when you run a packaged
+  JVM backend. The Homebrew CLI package is native and does not install a JDK.
 - **macOS, Linux, or Windows.** Homebrew is the preferred local CLI path on
   supported platforms. Ubuntu/Debian x86_64 has the only supported non-Brew
   installer path.
@@ -42,7 +41,7 @@ developer machine should install Kast without Homebrew, Rust, Gradle, or the
 IDEA plugin. This is the only supported non-Brew installer path.
 
 The release asset is `kast-ubuntu-debian-x86_64-<version>.tar.gz` with a
-matching `.sha256` sidecar. It contains the Rust CLI, the standalone backend
+matching `.sha256` sidecar. It contains the Rust CLI, the headless backend
 portable runtime, `scripts/install-ubuntu-debian.sh`, bundle metadata, and the
 license notice.
 
@@ -65,7 +64,14 @@ export KAST_UBUNTU_DEBIAN_ARTIFACT_PATH="/artifacts/kast-ubuntu-debian-x86_64-v1
 The installer refuses non-Ubuntu/Debian hosts, installs to
 `$HOME/.local/share/kast/ubuntu-debian/<version>` by default, symlinks
 `$HOME/.local/bin/kast`, and writes `config.toml` so the CLI points at
-`lib/backends/standalone-<version>/runtime-libs`.
+`lib/backends/headless-<version>/runtime-libs` and the bundled headless
+`idea-home`.
+
+Start the bundled backend explicitly as headless:
+
+```bash title="Warm the Ubuntu/Debian headless backend"
+kast up --backend=headless --workspace-root="$PWD"
+```
 
 Use `scripts/package-ubuntu-debian-bundle.sh` when building the release bundle
 from local CLI and backend artifacts:
@@ -73,17 +79,17 @@ from local CLI and backend artifacts:
 ```bash title="Package the Ubuntu/Debian bundle"
 ./scripts/package-ubuntu-debian-bundle.sh \
   --cli-archive ../kast-rs/dist/kast-v1.2.3-linux-x64.zip \
-  --backend-archive dist/backend.zip \
+  --backend-archive dist/headless.zip \
   --version v1.2.3 \
   --output dist/kast-ubuntu-debian-x86_64-v1.2.3.tar.gz
 ```
 
 ## Verify release assets
 
-Published releases from `amichne/kast` include the standalone daemon zip, IDEA
-plugin zip, Ubuntu/Debian bundle, bundle `.sha256` sidecar, `SHA256SUMS`, and
-`build-provenance.json`. CLI binary releases are published by
-`amichne/kast-rs`. Mirror or promote each repository's files together, then run
+Published releases from `amichne/kast` include the standalone daemon zip,
+headless backend zip, IDEA plugin zip, Ubuntu/Debian bundle, bundle `.sha256`
+sidecar, `SHA256SUMS`, and `build-provenance.json`. CLI binary releases are
+published by `amichne/kast-rs`. Mirror or promote each repository's files together, then run
 the same verifier used by CI before importing Kast daemon, plugin, or bundle
 artifacts into an internal artifact store:
 
@@ -106,7 +112,7 @@ combined provenance names the same assets and digests.
     - `$HOME/.local/bin/kast` — symlink to the installed CLI
     - `$HOME/.local/share/kast/ubuntu-debian/<version>/bin` — installed CLI
     - `$HOME/.local/share/kast/ubuntu-debian/<version>/lib/backends` —
-      standalone backend runtime files
+      headless backend runtime files
     - `$HOME/.local/share/kast/ubuntu-debian/<version>/cache` and `logs` —
       daemon caches and logs
 
@@ -131,8 +137,9 @@ combined provenance names the same assets and digests.
     [cli]
     binaryPath = "/home/alex/.local/bin/kast"
 
-    [backends.standalone]
-    runtimeLibsDir = "/home/alex/.local/share/kast/ubuntu-debian/v1.2.3/lib/backends/standalone-v1.2.3/runtime-libs"
+    [backends.headless]
+    runtimeLibsDir = "/home/alex/.local/share/kast/ubuntu-debian/v1.2.3/lib/backends/headless-v1.2.3/runtime-libs"
+    ideaHome = "/home/alex/.local/share/kast/ubuntu-debian/v1.2.3/lib/backends/headless-v1.2.3/idea-home"
     ```
 
 ## Ubuntu/Debian installer environment overrides
@@ -252,4 +259,4 @@ You should see the grouped help page. If not, the binary isn't on your
 ## Next steps
 
 - [Quickstart](quickstart.md) — start a backend, run your first query
-- [Backends](backends.md) — standalone vs IDEA, when each one wins
+- [Backends](backends.md) — standalone, headless, and IDEA, when each one wins
