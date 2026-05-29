@@ -130,6 +130,16 @@ _build_select_targets_interactive() {
 }
 
 _GRADLE_EXTRA_ARGS=()
+_HEADLESS_IDEA_HOME_PROFILE="${KAST_HEADLESS_IDEA_HOME_PROFILE:-full}"
+
+_build_validate_headless_profile() {
+  case "$_HEADLESS_IDEA_HOME_PROFILE" in
+    full|minimal) ;;
+    *)
+      die "Invalid --headless-idea-home-profile value: ${_HEADLESS_IDEA_HOME_PROFILE}; expected full or minimal"
+      ;;
+  esac
+}
 
 _build_run_gradle_tasks() {
   ( cd "$REPO_ROOT"; "$GRADLEW" "${_GRADLE_EXTRA_ARGS[@]}" "$@" )
@@ -306,18 +316,28 @@ Targets (positional, repeatable):
 
 Options:
   --all            Build all targets.
+  --headless-idea-home-profile=full|minimal  Configure headless IDEA home profile (default: full).
   --help, -h       Show this help.
 
 When no targets are supplied and a TTY is available, fzf is used for
 interactive multi-selection. Falls back to building all targets when
 fzf is not installed.
+
+Profile can also be set with KAST_HEADLESS_IDEA_HOME_PROFILE.
 USAGE
         return 0
+        ;;
+      --headless-idea-home-profile=*)
+        _HEADLESS_IDEA_HOME_PROFILE="${1#*=}"
+        shift
         ;;
       *)
         die "Unknown argument: $1" ;;
     esac
   done
+
+  _build_validate_headless_profile
+  _GRADLE_EXTRA_ARGS+=("-PkastHeadlessIdeaHomeProfile=${_HEADLESS_IDEA_HOME_PROFILE}")
 
   _build_verify_prerequisites
   _build_clean_stale_outputs
