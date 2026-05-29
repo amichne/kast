@@ -57,7 +57,11 @@ val javaPluginLibs: ConfigurableFileCollection = extractedIdeaFiles {
     include("**/plugins/java/lib/**/*.jar")
 }
 
-val packagedIdeaHomeEntries = listOf(
+val headlessIdeaHomeProfile = providers.gradleProperty("kastHeadlessIdeaHomeProfile")
+    .orElse("full")
+    .map { it.lowercase() }
+
+val fullPackagedIdeaHomeEntries = listOf(
     "build.txt",
     "product-info.json",
     "lib/nio-fs.jar",
@@ -77,6 +81,23 @@ val packagedIdeaHomeEntries = listOf(
     "plugins/toml/**",
     "plugins/yaml/**",
 )
+
+val minimalPackagedIdeaHomeEntries = listOf(
+    "build.txt",
+    "product-info.json",
+    "lib/nio-fs.jar",
+    "lib/jna/**",
+    "lib/pty4j/**",
+    "modules/module-descriptors.dat",
+    "plugins/java/**",
+    "plugins/Kotlin/**",
+)
+
+val packagedIdeaHomeEntries = when (headlessIdeaHomeProfile.get()) {
+    "full" -> fullPackagedIdeaHomeEntries
+    "minimal" -> minimalPackagedIdeaHomeEntries
+    else -> error("Unsupported kastHeadlessIdeaHomeProfile=${headlessIdeaHomeProfile.get()}")
+}
 
 val headlessPluginRuntime: Configuration by configurations.creating {
     isCanBeConsumed = false
