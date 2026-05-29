@@ -55,12 +55,14 @@ tag = sys.argv[2]
 
 expected = {
     "headless": f"kast-headless-{tag}.zip",
+    "ubuntu-debian-headless-x86_64": f"kast-ubuntu-debian-headless-x86_64-{tag}.tar.gz",
     "ubuntu-debian-x86_64": f"kast-ubuntu-debian-x86_64-{tag}.tar.gz",
     "intellij": f"kast-intellij-{tag}.zip",
     "standalone": f"kast-standalone-{tag}.zip",
 }
 expected_assets = set(expected.values())
 expected_sidecars = {
+    f"kast-ubuntu-debian-headless-x86_64-{tag}.tar.gz.sha256",
     f"kast-ubuntu-debian-x86_64-{tag}.tar.gz.sha256",
 }
 

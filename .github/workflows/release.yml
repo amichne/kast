@@ -358,8 +358,8 @@ jobs:
     name: Build Ubuntu/Debian bundle
     needs:
       - prepare-release
-      - build-headless-backend
-    if: always() && needs.prepare-release.result == 'success' && needs.build-headless-backend.result == 'success'
+      - build-standalone-backend
+    if: always() && needs.prepare-release.result == 'success' && needs.build-standalone-backend.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -368,11 +368,11 @@ jobs:
         with:
           ref: ${{ needs.prepare-release.outputs.release_tag }}
 
-      - name: Download headless backend artifact
+      - name: Download standalone backend artifact
         uses: actions/download-artifact@v7
         with:
-          name: headless-backend-${{ github.run_id }}
-          path: headless-artifact
+          name: standalone-backend-${{ github.run_id }}
+          path: standalone-artifact
 
       - name: Download Rust CLI release asset
         env:
@@ -395,10 +395,10 @@ jobs:
           set -euo pipefail
           tag="${{ needs.prepare-release.outputs.release_tag }}"
           cli_asset="dist/kast-${tag}-linux-x64.zip"
-          backend_asset="headless-artifact/dist/headless.zip"
+          backend_asset="standalone-artifact/dist/backend.zip"
           bundle_asset="dist/kast-ubuntu-debian-x86_64-${tag}.tar.gz"
 
-          [[ -f "$backend_asset" ]] || { echo "Missing headless backend artifact: ${backend_asset}" >&2; exit 1; }
+          [[ -f "$backend_asset" ]] || { echo "Missing standalone backend artifact: ${backend_asset}" >&2; exit 1; }
           ./scripts/package-ubuntu-debian-bundle.sh \
             --cli-archive "$cli_asset" \
             --backend-archive "$backend_asset" \
@@ -537,6 +537,112 @@ jobs:
             backend-headless/build/distributions/
           if-no-files-found: warn
 
+  build-ubuntu-debian-headless-bundle:
+    name: Build Ubuntu/Debian headless bundle
+    needs:
+      - prepare-release
+      - build-headless-backend
+    if: always() && needs.prepare-release.result == 'success' && needs.build-headless-backend.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.prepare-release.outputs.release_tag }}
+
+      - name: Download headless backend artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: headless-backend-${{ github.run_id }}
+          path: headless-artifact
+
+      - name: Download Rust CLI release asset
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ needs.prepare-release.outputs.release_tag }}"
+          cli_asset="kast-${tag}-linux-x64.zip"
+          mkdir -p dist
+          gh release download "$tag" \
+            --repo amichne/kast-rs \
+            --dir dist \
+            --pattern "$cli_asset"
+          [[ -f "dist/${cli_asset}" ]] || { echo "Missing Rust CLI asset: ${cli_asset}" >&2; exit 1; }
+
+      - name: Package Ubuntu/Debian headless bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ needs.prepare-release.outputs.release_tag }}"
+          cli_asset="dist/kast-${tag}-linux-x64.zip"
+          backend_asset="headless-artifact/dist/headless.zip"
+          bundle_asset="dist/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
+
+          [[ -f "$backend_asset" ]] || { echo "Missing headless backend artifact: ${backend_asset}" >&2; exit 1; }
+          ./scripts/package-ubuntu-debian-headless-bundle.sh \
+            --cli-archive "$cli_asset" \
+            --backend-archive "$backend_asset" \
+            --version "$tag" \
+            --output "$bundle_asset"
+
+      - name: Validate Ubuntu/Debian headless bundle in Ubuntu container
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ needs.prepare-release.outputs.release_tag }}"
+          for container_image in ubuntu:22.04 ubuntu:24.04; do
+            KAST_UBUNTU_DEBIAN_VERSION="$tag" \
+            KAST_UBUNTU_DEBIAN_CONTAINER_IMAGE="$container_image" \
+            KAST_UBUNTU_DEBIAN_JAVA_VERSION=21 \
+            BUNDLE_PATH="dist/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz" \
+            ./scripts/validate-ubuntu-debian-headless-bundle-in-docker.sh
+          done
+
+      - name: Upload Ubuntu/Debian headless bundle assets
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ needs.prepare-release.outputs.release_tag }}"
+          bundle_asset="dist/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
+          gh release upload "$tag" "$bundle_asset" "${bundle_asset}.sha256" --clobber
+
+      - name: Write Ubuntu/Debian headless bundle build provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          tag="${{ needs.prepare-release.outputs.release_tag }}"
+          asset_name="kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
+          digest="$(sha256sum "dist/${asset_name}" | awk '{ print $1 }')"
+          cat > dist/build-provenance-ubuntu-debian-headless.json <<PROVEOF
+          {
+            "runId": "${{ github.run_id }}",
+            "runNumber": "${{ github.run_number }}",
+            "runAttempt": "${{ github.run_attempt }}",
+            "sha": "${{ github.sha }}",
+            "ref": "${{ github.ref }}",
+            "workflowRef": "${{ github.workflow_ref }}",
+            "actor": "${{ github.actor }}",
+            "platformId": "ubuntu-debian-headless-x86_64",
+            "assetName": "${asset_name}",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "assetDigest": "sha256:${digest}"
+          }
+          PROVEOF
+
+      - name: Upload Ubuntu/Debian headless bundle artifact
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: ubuntu-debian-headless-bundle-${{ github.run_id }}
+          path: dist/
+          if-no-files-found: warn
+
   publish-release:
     name: Publish release
     needs:
@@ -545,7 +651,8 @@ jobs:
       - build-standalone-backend
       - build-headless-backend
       - build-ubuntu-debian-bundle
-    if: always() && needs.prepare-release.result == 'success' && needs.build-intellij-plugin.result == 'success' && needs.build-standalone-backend.result == 'success' && needs.build-headless-backend.result == 'success' && needs.build-ubuntu-debian-bundle.result == 'success'
+      - build-ubuntu-debian-headless-bundle
+    if: always() && needs.prepare-release.result == 'success' && needs.build-intellij-plugin.result == 'success' && needs.build-standalone-backend.result == 'success' && needs.build-headless-backend.result == 'success' && needs.build-ubuntu-debian-bundle.result == 'success' && needs.build-ubuntu-debian-headless-bundle.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -576,6 +683,12 @@ jobs:
           path: provenance-ubuntu-debian
           pattern: ubuntu-debian-bundle-*
 
+      - name: Download Ubuntu/Debian headless bundle provenance
+        uses: actions/download-artifact@v7
+        with:
+          path: provenance-ubuntu-debian-headless
+          pattern: ubuntu-debian-headless-bundle-*
+
       - name: Assemble combined provenance
         shell: bash
         run: |
@@ -585,6 +698,7 @@ jobs:
             provenance-headless \
             provenance-intellij \
             provenance-standalone \
+            provenance-ubuntu-debian-headless \
             provenance-ubuntu-debian
 
       - name: Upload combined provenance
@@ -604,12 +718,14 @@ jobs:
           tag="${{ needs.prepare-release.outputs.release_tag }}"
           expected_assets=(
             "kast-ubuntu-debian-x86_64-${tag}.tar.gz"
+            "kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
             "kast-headless-${tag}.zip"
             "kast-intellij-${tag}.zip"
             "kast-standalone-${tag}.zip"
           )
           expected_sidecars=(
             "kast-ubuntu-debian-x86_64-${tag}.tar.gz.sha256"
+            "kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz.sha256"
           )
 
           rm -rf release-assets

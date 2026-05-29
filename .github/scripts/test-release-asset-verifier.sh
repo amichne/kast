@@ -55,7 +55,9 @@ def headless_zip():
         write_entry(archive, "backend-headless/kast-headless", b"#!/usr/bin/env bash\n", 0o755)
         write_entry(archive, "backend-headless/runtime-libs/classpath.txt", b"backend-headless.jar\n")
         write_entry(archive, "backend-headless/runtime-libs/backend-headless.jar", b"headless")
-        write_entry(archive, "backend-headless/plugins/kast-headless/lib/backend-headless.jar", b"plugin")
+        write_entry(archive, "backend-headless/idea-home/lib/nio-fs.jar", b"nio")
+        write_entry(archive, "backend-headless/idea-home/modules/module-descriptors.dat", b"modules")
+        write_entry(archive, "backend-headless/idea-home/plugins/kast-headless/lib/backend-headless.jar", b"plugin")
 
 asset_path.parent.mkdir(parents=True, exist_ok=True)
 if kind == "standalone":
@@ -80,10 +82,15 @@ write_expected_assets() {
   write_zip_asset "${release_dir}/kast-standalone-${tag}.zip" standalone
   write_zip_asset "${release_dir}/kast-headless-${tag}.zip" headless
   write_text_asset "${release_dir}/kast-ubuntu-debian-x86_64-${tag}.tar.gz"
+  write_text_asset "${release_dir}/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
   printf '%s  %s\n' \
     "$(compute_sha256 "${release_dir}/kast-ubuntu-debian-x86_64-${tag}.tar.gz")" \
     "kast-ubuntu-debian-x86_64-${tag}.tar.gz" \
     > "${release_dir}/kast-ubuntu-debian-x86_64-${tag}.tar.gz.sha256"
+  printf '%s  %s\n' \
+    "$(compute_sha256 "${release_dir}/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz")" \
+    "kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz" \
+    > "${release_dir}/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz.sha256"
 }
 
 write_sha256sums() {
@@ -108,6 +115,7 @@ release_dir = Path(sys.argv[1])
 tag = sys.argv[2]
 entries = [
     ("ubuntu-debian-x86_64", f"kast-ubuntu-debian-x86_64-{tag}.tar.gz"),
+    ("ubuntu-debian-headless-x86_64", f"kast-ubuntu-debian-headless-x86_64-{tag}.tar.gz"),
     ("headless", f"kast-headless-{tag}.zip"),
     ("intellij", f"kast-intellij-{tag}.zip"),
     ("standalone", f"kast-standalone-{tag}.zip"),
@@ -142,6 +150,7 @@ mkdir -p "$release_dir"
 
 assets=(
   "kast-ubuntu-debian-x86_64-${tag}.tar.gz"
+  "kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
   "kast-headless-${tag}.zip"
   "kast-intellij-${tag}.zip"
   "kast-standalone-${tag}.zip"

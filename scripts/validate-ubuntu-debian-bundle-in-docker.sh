@@ -20,6 +20,7 @@ resolve_repo_root() {
 repo_root="$(resolve_repo_root)"
 bundle_path="${BUNDLE_PATH:-}"
 version="${KAST_UBUNTU_DEBIAN_VERSION:-}"
+bundle_kind="${KAST_UBUNTU_DEBIAN_BUNDLE_KIND:-}"
 java_version="${KAST_UBUNTU_DEBIAN_JAVA_VERSION:-21}"
 container_image="${KAST_UBUNTU_DEBIAN_CONTAINER_IMAGE:-ubuntu:24.04}"
 wait_timeout_ms="${KAST_UBUNTU_DEBIAN_WAIT_TIMEOUT_MS:-120000}"
@@ -40,6 +41,11 @@ esac
 if [[ -z "$version" ]]; then
   bundle_name="$(basename -- "$bundle_path")"
   case "$bundle_name" in
+    kast-ubuntu-debian-headless-x86_64-*.tar.gz)
+      version="${bundle_name#kast-ubuntu-debian-headless-x86_64-}"
+      version="${version%.tar.gz}"
+      [[ -n "$version" ]] || die "Could not infer version from bundle name: $bundle_name"
+      ;;
     kast-ubuntu-debian-x86_64-*.tar.gz)
       version="${bundle_name#kast-ubuntu-debian-x86_64-}"
       version="${version%.tar.gz}"
@@ -51,12 +57,26 @@ if [[ -z "$version" ]]; then
   esac
 fi
 
+if [[ -z "$bundle_kind" ]]; then
+  bundle_name="$(basename -- "$bundle_path")"
+  case "$bundle_name" in
+    kast-ubuntu-debian-headless-x86_64-*) bundle_kind="headless" ;;
+    kast-ubuntu-debian-x86_64-*) bundle_kind="standalone" ;;
+    *) die "Bundle name must match a supported Ubuntu/Debian bundle: $bundle_name" ;;
+  esac
+fi
+case "$bundle_kind" in
+  standalone|headless) ;;
+  *) die "KAST_UBUNTU_DEBIAN_BUNDLE_KIND must be standalone or headless: $bundle_kind" ;;
+esac
+
 need_tool docker
 
 docker run --rm \
   --platform linux/amd64 \
   -v "${repo_root}:/workspace" \
   -e "KAST_UBUNTU_DEBIAN_VERSION=${version}" \
+  -e "KAST_UBUNTU_DEBIAN_BUNDLE_KIND=${bundle_kind}" \
   -e "KAST_UBUNTU_DEBIAN_ARTIFACT_PATH=/workspace/${bundle_rel}" \
   -e "KAST_UBUNTU_DEBIAN_ROOT=/tmp/kast-ubuntu-debian-root" \
   -e "KAST_UBUNTU_DEBIAN_BIN_DIR=/tmp/kast-ubuntu-debian-bin" \
@@ -79,6 +99,10 @@ docker run --rm \
 
     export PATH="${KAST_UBUNTU_DEBIAN_BIN_DIR}:${PATH}"
     export KAST_CONFIG_HOME="${KAST_UBUNTU_DEBIAN_CONFIG_HOME}"
+    backend_args=()
+    if [[ "${KAST_UBUNTU_DEBIAN_BUNDLE_KIND}" == "headless" ]]; then
+      backend_args=(--backend=headless)
+    fi
     smoke_source_root="${KAST_UBUNTU_DEBIAN_SMOKE_WORKSPACE}/src/main/kotlin"
     mkdir -p "${smoke_source_root}"
     printf "%s\n" "package smoke" "class Smoke" > "${smoke_source_root}/Smoke.kt"
@@ -87,13 +111,13 @@ docker run --rm \
     kast version
     kast doctor
     kast up \
-      --backend=headless \
+      "${backend_args[@]}" \
       --workspace-root="${KAST_UBUNTU_DEBIAN_SMOKE_WORKSPACE}" \
       --source-roots="${smoke_source_root}" \
       --module-name=ubuntu-debian-smoke \
       --wait-timeout-ms="${KAST_UBUNTU_DEBIAN_WAIT_TIMEOUT_MS}" \
       --accept-indexing=true
-    kast status --backend=headless --workspace-root="${KAST_UBUNTU_DEBIAN_SMOKE_WORKSPACE}" --no-auto-start=true --accept-indexing=true
-    kast capabilities --backend=headless --workspace-root="${KAST_UBUNTU_DEBIAN_SMOKE_WORKSPACE}" --no-auto-start=true --accept-indexing=true
-    kast stop --backend=headless --workspace-root="${KAST_UBUNTU_DEBIAN_SMOKE_WORKSPACE}" || true
+    kast status "${backend_args[@]}" --workspace-root="${KAST_UBUNTU_DEBIAN_SMOKE_WORKSPACE}" --no-auto-start=true --accept-indexing=true
+    kast capabilities "${backend_args[@]}" --workspace-root="${KAST_UBUNTU_DEBIAN_SMOKE_WORKSPACE}" --no-auto-start=true --accept-indexing=true
+    kast stop "${backend_args[@]}" --workspace-root="${KAST_UBUNTU_DEBIAN_SMOKE_WORKSPACE}" || true
   '

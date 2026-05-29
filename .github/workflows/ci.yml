@@ -63,6 +63,10 @@ jobs:
         shell: bash
         run: ./scripts/smoke-ubuntu-debian-bundle.sh
 
+      - name: Smoke Ubuntu/Debian headless bundle contract
+        shell: bash
+        run: ./scripts/smoke-ubuntu-debian-headless-bundle.sh
+
   build-and-test:
     name: Build & test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -175,6 +179,67 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Download standalone daemon distribution
+        uses: actions/download-artifact@v7
+        with:
+          name: kast-standalone-ubuntu-latest
+          path: backend-standalone/build/distributions
+
+      - name: Download Rust CLI release asset
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cli_tag="$(gh release view --repo amichne/kast-rs --json tagName --jq .tagName)"
+          cli_asset="kast-${cli_tag}-linux-x64.zip"
+          mkdir -p dist
+          gh release download "$cli_tag" \
+            --repo amichne/kast-rs \
+            --dir dist \
+            --pattern "$cli_asset"
+          [[ -f "dist/${cli_asset}" ]] || { echo "Missing Rust CLI asset: ${cli_asset}" >&2; exit 1; }
+          printf 'KAST_RUST_CLI_TAG=%s\n' "$cli_tag" >> "$GITHUB_ENV"
+          printf 'KAST_RUST_CLI_ASSET=%s\n' "dist/${cli_asset}" >> "$GITHUB_ENV"
+
+      - name: Package Ubuntu/Debian CI bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          backend_asset="$(find backend-standalone/build/distributions -maxdepth 1 -name 'backend-standalone-*-portable.zip' -print -quit)"
+          [[ -n "$backend_asset" ]] || { echo "Missing standalone backend portable zip" >&2; exit 1; }
+          bundle_asset="dist/kast-ubuntu-debian-x86_64-${KAST_RUST_CLI_TAG}.tar.gz"
+
+          ./scripts/package-ubuntu-debian-bundle.sh \
+            --cli-archive "$KAST_RUST_CLI_ASSET" \
+            --backend-archive "$backend_asset" \
+            --version "$KAST_RUST_CLI_TAG" \
+            --output "$bundle_asset"
+
+          printf 'KAST_UBUNTU_DEBIAN_BUNDLE=%s\n' "$bundle_asset" >> "$GITHUB_ENV"
+
+      - name: Validate Ubuntu/Debian bundle in Ubuntu container
+        env:
+          KAST_UBUNTU_DEBIAN_CONTAINER_IMAGE: ${{ matrix.container-image }}
+          KAST_UBUNTU_DEBIAN_JAVA_VERSION: ${{ matrix.java-version }}
+        shell: bash
+        run: BUNDLE_PATH="$KAST_UBUNTU_DEBIAN_BUNDLE" ./scripts/validate-ubuntu-debian-bundle-in-docker.sh
+
+  install-ubuntu-debian-headless-container:
+    name: Ubuntu/Debian headless install container (${{ matrix.container-image }}, Java ${{ matrix.java-version }})
+    runs-on: ubuntu-24.04
+    needs: build-and-test
+    strategy:
+      fail-fast: false
+      matrix:
+        container-image:
+          - ubuntu:22.04
+          - ubuntu:24.04
+        java-version:
+          - "21"
+    steps:
+      - uses: actions/checkout@v5
+
       - name: Download headless backend distribution
         uses: actions/download-artifact@v7
         with:
@@ -198,28 +263,28 @@ jobs:
           printf 'KAST_RUST_CLI_TAG=%s\n' "$cli_tag" >> "$GITHUB_ENV"
           printf 'KAST_RUST_CLI_ASSET=%s\n' "dist/${cli_asset}" >> "$GITHUB_ENV"
 
-      - name: Package Ubuntu/Debian CI bundle
+      - name: Package Ubuntu/Debian headless CI bundle
         shell: bash
         run: |
           set -euo pipefail
           backend_asset="$(find backend-headless/build/distributions -maxdepth 1 -name 'backend-headless-*-portable.zip' -print -quit)"
           [[ -n "$backend_asset" ]] || { echo "Missing headless backend portable zip" >&2; exit 1; }
-          bundle_asset="dist/kast-ubuntu-debian-x86_64-${KAST_RUST_CLI_TAG}.tar.gz"
+          bundle_asset="dist/kast-ubuntu-debian-headless-x86_64-${KAST_RUST_CLI_TAG}.tar.gz"
 
-          ./scripts/package-ubuntu-debian-bundle.sh \
+          ./scripts/package-ubuntu-debian-headless-bundle.sh \
             --cli-archive "$KAST_RUST_CLI_ASSET" \
             --backend-archive "$backend_asset" \
             --version "$KAST_RUST_CLI_TAG" \
             --output "$bundle_asset"
 
-          printf 'KAST_UBUNTU_DEBIAN_BUNDLE=%s\n' "$bundle_asset" >> "$GITHUB_ENV"
+          printf 'KAST_UBUNTU_DEBIAN_HEADLESS_BUNDLE=%s\n' "$bundle_asset" >> "$GITHUB_ENV"
 
-      - name: Validate Ubuntu/Debian bundle in Ubuntu container
+      - name: Validate Ubuntu/Debian headless bundle in Ubuntu container
         env:
           KAST_UBUNTU_DEBIAN_CONTAINER_IMAGE: ${{ matrix.container-image }}
           KAST_UBUNTU_DEBIAN_JAVA_VERSION: ${{ matrix.java-version }}
         shell: bash
-        run: BUNDLE_PATH="$KAST_UBUNTU_DEBIAN_BUNDLE" ./scripts/validate-ubuntu-debian-bundle-in-docker.sh
+        run: BUNDLE_PATH="$KAST_UBUNTU_DEBIAN_HEADLESS_BUNDLE" ./scripts/validate-ubuntu-debian-headless-bundle-in-docker.sh
 
   analysis-server-transport:
     name: Analysis server transport
