@@ -104,6 +104,20 @@ abstract class SyncRuntimeLibsTask : DefaultTask() {
 }
 
 object RuntimeClasspathAssertions {
+    fun entriesMatchingAnyPrefix(
+        classpathEntries: List<String>,
+        jarPrefixes: List<String>,
+    ): List<String> = classpathEntries.filter { entry ->
+        jarPrefixes.any(entry::startsWith)
+    }
+
+    fun missingJarPrefixes(
+        classpathEntries: List<String>,
+        requiredJarPrefixes: List<String>,
+    ): List<String> = requiredJarPrefixes.filterNot { prefix ->
+        classpathEntries.any { entry -> entry.startsWith(prefix) }
+    }
+
     fun missingRequiredClassEntries(
         runtimeLibsDirectory: Path,
         classpathEntries: List<String>,

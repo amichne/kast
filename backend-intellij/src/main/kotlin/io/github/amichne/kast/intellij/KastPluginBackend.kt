@@ -3,6 +3,8 @@ package io.github.amichne.kast.intellij
 import com.intellij.openapi.application.ApplicationInfo
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.readAction
+import com.intellij.openapi.fileTypes.FileType
+import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.DumbService
@@ -84,7 +86,6 @@ import kotlinx.coroutines.withContext
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.components.KaDiagnosticCheckerFilter
-import org.jetbrains.kotlin.idea.KotlinFileType
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtFile
@@ -109,6 +110,9 @@ internal class KastPluginBackend(
         override fun <T> run(action: () -> T): T =
             ApplicationManager.getApplication().runReadAction<T> { action() }
     }
+
+    private fun kotlinFileType(): FileType? =
+        FileTypeManager.getInstance().findFileTypeByName("Kotlin")
 
     override suspend fun capabilities(): BackendCapabilities = BackendCapabilities(
         backendName = backendName ?: defaultBackendName(),
@@ -217,8 +221,10 @@ internal class KastPluginBackend(
                     visibility = visibility,
                     scopeKind = scopeKind,
                     candidateFileCount = searchScope.let { scope ->
-                        FileTypeIndex.getFiles(KotlinFileType.INSTANCE, scope)
-                            .count { it.path.startsWith(workspacePrefix) }
+                        kotlinFileType()?.let { fileType ->
+                            FileTypeIndex.getFiles(fileType, scope)
+                                .count { it.path.startsWith(workspacePrefix) }
+                        } ?: 0
                     },
                 ) to refs
             },
@@ -433,7 +439,9 @@ internal class KastPluginBackend(
                     .filter { it.startsWith(workspacePrefix) }
                 val depNames = rootManager.dependencies.map { it.name }
                 val moduleScope = GlobalSearchScope.moduleScope(module)
-                val kotlinFiles = FileTypeIndex.getFiles(KotlinFileType.INSTANCE, moduleScope)
+                val kotlinFiles = kotlinFileType()?.let { fileType ->
+                    FileTypeIndex.getFiles(fileType, moduleScope)
+                } ?: emptyList()
                 val filteredPaths = mutableListOf<String>()
                 var fileCount = 0
                 kotlinFiles.forEach { file ->
@@ -522,8 +530,10 @@ internal class KastPluginBackend(
                 val target = resolveTarget(file, query.position.offset.value)
                 val visibility = target.visibility()
                 val (searchScope, scopeKind) = visibilityScopedSearch(target, visibility)
-                val candidateFileCount = FileTypeIndex.getFiles(KotlinFileType.INSTANCE, searchScope)
-                    .count { it.path.startsWith(workspacePrefix) }
+                val candidateFileCount = kotlinFileType()?.let { fileType ->
+                    FileTypeIndex.getFiles(fileType, searchScope)
+                        .count { it.path.startsWith(workspacePrefix) }
+                } ?: 0
                 val refs = mutableListOf<PsiReference>()
                 ReferencesSearch.search(target, searchScope).forEach { ref ->
                     ProgressManager.checkCanceled()
@@ -674,12 +684,14 @@ internal class KastPluginBackend(
             ) {
                 val scope = GlobalSearchScope.projectScope(project)
                 val fileGlob = query.fileGlob?.value
-                FileTypeIndex.getFiles(KotlinFileType.INSTANCE, scope)
-                    .asSequence()
-                    .filter { file -> isWorkspaceFile(file.path) }
-                    .filter { file -> fileGlob == null || matchesFileGlob(file.path, fileGlob) }
-                    .sortedBy { it.path }
-                    .toList()
+                kotlinFileType()?.let { fileType ->
+                    FileTypeIndex.getFiles(fileType, scope)
+                        .asSequence()
+                        .filter { file -> isWorkspaceFile(file.path) }
+                        .filter { file -> fileGlob == null || matchesFileGlob(file.path, fileGlob) }
+                        .sortedBy { it.path }
+                        .toList()
+                } ?: emptyList()
             }
             span.setAttribute("kast.workspaceSearch.candidateFileCount", candidateFiles.size)
             val regex = compileWorkspaceSearchRegex(query)

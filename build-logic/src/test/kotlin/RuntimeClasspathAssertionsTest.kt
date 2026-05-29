@@ -39,6 +39,40 @@ class RuntimeClasspathAssertionsTest {
         assertEquals(listOf("io/github/amichne/kast/api/client/StandaloneServerOptions.class"), missing)
     }
 
+    @Test
+    fun `runtime entries with forbidden prefixes are reported`() {
+        val forbiddenEntries = RuntimeClasspathAssertions.entriesMatchingAnyPrefix(
+            classpathEntries = listOf(
+                "backend-headless-1.0-launcher.jar",
+                "backend-intellij-1.0-base.jar",
+                "analysis-server-1.0.jar",
+                "platform-loader.jar",
+            ),
+            jarPrefixes = listOf("analysis-server-", "backend-intellij-"),
+        )
+
+        assertEquals(listOf("backend-intellij-1.0-base.jar", "analysis-server-1.0.jar"), forbiddenEntries)
+    }
+
+    @Test
+    fun `missing jar prefixes are reported from plugin lib entries`() {
+        val missingPrefixes = RuntimeClasspathAssertions.missingJarPrefixes(
+            classpathEntries = listOf(
+                "analysis-api-1.0.jar",
+                "backend-intellij-1.0-base.jar",
+                "kotlinx-coroutines-core-jvm-1.10.2.jar",
+            ),
+            requiredJarPrefixes = listOf(
+                "analysis-api-",
+                "analysis-server-",
+                "backend-intellij-",
+                "kotlinx-coroutines-core",
+            ),
+        )
+
+        assertEquals(listOf("analysis-server-"), missingPrefixes)
+    }
+
     private fun writeJar(path: Path, entryName: String) {
         Files.createDirectories(path.parent)
         ZipOutputStream(Files.newOutputStream(path)).use { output ->

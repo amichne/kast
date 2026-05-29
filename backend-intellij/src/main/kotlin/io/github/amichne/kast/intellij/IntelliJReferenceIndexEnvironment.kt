@@ -2,7 +2,7 @@ package io.github.amichne.kast.intellij
 
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ReadAction
-import com.intellij.openapi.fileTypes.FileTypeRegistry
+import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.psi.PsiFile
@@ -11,7 +11,6 @@ import com.intellij.psi.search.FileTypeIndex
 import com.intellij.psi.search.GlobalSearchScope
 import io.github.amichne.kast.indexstore.api.index.SourceIndexFilePolicy
 import io.github.amichne.kast.shared.analysis.ReferenceIndexEnvironment
-import org.jetbrains.kotlin.idea.KotlinFileType
 import java.nio.file.Path
 import java.util.concurrent.Callable
 
@@ -21,10 +20,12 @@ internal class IntelliJReferenceIndexEnvironment(
     private val cancelled: () -> Boolean,
 ) : ReferenceIndexEnvironment {
     override fun allFilePaths(): Collection<String> = withReadAccess {
+        val kotlinFileType = FileTypeManager.getInstance().findFileTypeByName("Kotlin")
+            ?: return@withReadAccess emptyList()
         FileTypeIndex
-            .getFiles(KotlinFileType.INSTANCE, GlobalSearchScope.projectScope(project))
+            .getFiles(kotlinFileType, GlobalSearchScope.projectScope(project))
             .asSequence()
-            .filter { file -> file.isValid && FileTypeRegistry.getInstance().isFileOfType(file, KotlinFileType.INSTANCE) }
+            .filter { file -> file.isValid && file.fileType == kotlinFileType }
             .map { file -> Path.of(file.path).toAbsolutePath().normalize() }
             .filter { path -> path.startsWith(workspaceRoot) }
             .filter(SourceIndexFilePolicy::isEligible)

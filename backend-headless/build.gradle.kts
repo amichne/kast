@@ -136,6 +136,17 @@ val headlessPluginDescriptorJar by tasks.registering(Jar::class) {
     }
 }
 
+val headlessPluginImplementationJar by tasks.registering(Jar::class) {
+    archiveClassifier.set("plugin")
+    from(sourceSets.named("main").map { it.output }) {
+        exclude("META-INF/plugin.xml")
+    }
+    manifest {
+        attributes["Implementation-Title"] = "${project.name}-plugin"
+        attributes["Implementation-Version"] = buildVersion.get()
+    }
+}
+
 val writeBackendVersion by tasks.registering {
     val versionFile = layout.buildDirectory.file("generated-resources/kast-backend-version.txt")
     val versionProvider = buildVersion
@@ -305,17 +316,38 @@ tasks.named<WriteWrapperScriptTask>("writeWrapperScript") {
     )
 }
 
+val headlessRuntimeRequiredClassEntries = listOf(
+    "io/github/amichne/kast/headless/HeadlessMainKt.class",
+    "com/intellij/idea/Main.class",
+    "com/intellij/openapi/application/ModernApplicationStarter.class",
+    "com/intellij/openapi/project/DumbService.class",
+)
+
 tasks.named<SyncRuntimeLibsTask>("syncRuntimeLibs") {
     dependsOn(headlessLauncherJar)
     appJar.set(headlessLauncherJar.flatMap(Jar::getArchiveFile))
-    runtimeJars.from(headlessPluginRuntime)
-    requiredClassEntries.add("io/github/amichne/kast/headless/HeadlessMainKt.class")
-    requiredClassEntries.add("com/intellij/idea/Main.class")
-    requiredClassEntries.add("com/intellij/openapi/application/ModernApplicationStarter.class")
-    requiredClassEntries.add("com/intellij/openapi/project/DumbService.class")
-    requiredClassEntries.add("io/github/amichne/kast/intellij/KastIntelliJBackendRuntime.class")
-    requiredClassEntries.add("io/github/amichne/kast/server/AnalysisServer.class")
+    requiredClassEntries.addAll(headlessRuntimeRequiredClassEntries)
 }
+
+val headlessPluginRequiredClassEntries = listOf(
+    "io/github/amichne/kast/headless/HeadlessApplicationStarter.class",
+    "io/github/amichne/kast/api/client/StandaloneServerOptions.class",
+    "io/github/amichne/kast/server/AnalysisServer.class",
+    "io/github/amichne/kast/indexstore/store/SqliteSourceIndexStore.class",
+    "io/github/amichne/kast/shared/analysis/PsiReferenceScanner.class",
+    "io/github/amichne/kast/intellij/KastIntelliJBackendRuntime.class",
+)
+
+val headlessPluginRuntimeJarPrefixes = listOf(
+    "analysis-api-",
+    "analysis-server-",
+    "backend-intellij-",
+    "backend-shared-",
+    "index-store-",
+    "kotlinx-coroutines-core",
+)
+
+val headlessPluginLibJarPrefixes = headlessPluginRuntimeJarPrefixes
 
 tasks.named<Sync>("syncPortableDist") {
     from(layout.buildDirectory.dir("runtime-libs")) {
@@ -328,8 +360,34 @@ tasks.named<Sync>("syncPortableDist") {
     from(headlessPluginDescriptorJar) {
         into("idea-home/plugins/kast-headless/lib")
     }
+    from(headlessPluginImplementationJar) {
+        into("idea-home/plugins/kast-headless/lib")
+    }
+    from(headlessPluginRuntime) {
+        into("idea-home/plugins/kast-headless/lib")
+    }
     dependsOn("syncRuntimeLibs")
     dependsOn(extractIdeaDistribution)
+}
+
+val verifyHeadlessPortableDistLayout by tasks.registering(VerifyClasspathLayoutTask::class) {
+    group = "verification"
+    description = "Verifies headless plugin runtime jars are loaded from the plugin class loader."
+    dependsOn("syncPortableDist")
+
+    val runtimeLibsDirectory = layout.buildDirectory.dir("portable-dist/${project.name}/runtime-libs")
+    val pluginLibsDirectory = layout.buildDirectory.dir("portable-dist/${project.name}/idea-home/plugins/kast-headless/lib")
+    this.runtimeLibsDirectory.set(runtimeLibsDirectory)
+    runtimeClasspathFile.set(runtimeLibsDirectory.map { it.file("classpath.txt") })
+    this.pluginLibsDirectory.set(pluginLibsDirectory)
+    forbiddenRuntimeJarPrefixes.set(headlessPluginRuntimeJarPrefixes)
+    requiredRuntimeClassEntries.set(headlessRuntimeRequiredClassEntries)
+    requiredPluginJarPrefixes.set(headlessPluginLibJarPrefixes)
+    requiredPluginClassEntries.set(headlessPluginRequiredClassEntries)
+}
+
+tasks.named("check") {
+    dependsOn(verifyHeadlessPortableDistLayout)
 }
 
 tasks.named<Zip>("portableDistZip") {
