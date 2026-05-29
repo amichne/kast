@@ -105,6 +105,12 @@ val headlessPluginRuntime: Configuration by configurations.creating {
     exclude(group = "org.slf4j", module = "slf4j-api")
 }
 
+val backendIntellijPluginArtifacts: Configuration by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+    isTransitive = false
+}
+
 application {
     mainClass = "io.github.amichne.kast.headless.HeadlessMainKt"
 }
@@ -147,6 +153,22 @@ val headlessPluginImplementationJar by tasks.registering(Jar::class) {
     }
 }
 
+val headlessBackendIntellijRuntimeJar by tasks.registering(Jar::class) {
+    archiveBaseName.set("backend-intellij")
+    archiveVersion.set(buildVersion)
+    archiveClassifier.set("headless-runtime")
+    val backendIntellijBaseJar = providers.provider {
+        backendIntellijPluginArtifacts.files.single { artifact ->
+            artifact.name.startsWith("backend-intellij-") && artifact.name.endsWith("-base.jar")
+        }
+    }
+    from(backendIntellijBaseJar.map { artifact -> zipTree(artifact) }) {
+        exclude("META-INF/plugin.xml")
+    }
+    dependsOn(backendIntellijPluginArtifacts)
+    isZip64 = true
+}
+
 val writeBackendVersion by tasks.registering {
     val versionFile = layout.buildDirectory.file("generated-resources/kast-backend-version.txt")
     val versionProvider = buildVersion
@@ -185,6 +207,8 @@ dependencies {
     headlessPluginRuntime(project(":backend-shared"))
     headlessPluginRuntime(project(":index-store"))
     headlessPluginRuntime(libs.coroutines.core)
+
+    backendIntellijPluginArtifacts(project(":backend-intellij"))
 
     testImplementation(project(":analysis-api"))
     testImplementation(project(":backend-intellij"))
@@ -363,7 +387,10 @@ tasks.named<Sync>("syncPortableDist") {
     from(headlessPluginImplementationJar) {
         into("idea-home/plugins/kast-headless/lib")
     }
-    from(headlessPluginRuntime) {
+    from(headlessPluginRuntime.filter { artifact -> !artifact.name.startsWith("backend-intellij-") }) {
+        into("idea-home/plugins/kast-headless/lib")
+    }
+    from(headlessBackendIntellijRuntimeJar) {
         into("idea-home/plugins/kast-headless/lib")
     }
     dependsOn("syncRuntimeLibs")
@@ -384,6 +411,7 @@ val verifyHeadlessPortableDistLayout by tasks.registering(VerifyClasspathLayoutT
     requiredRuntimeClassEntries.set(headlessRuntimeRequiredClassEntries)
     requiredPluginJarPrefixes.set(headlessPluginLibJarPrefixes)
     requiredPluginClassEntries.set(headlessPluginRequiredClassEntries)
+    allowedPluginDescriptorJarPrefixes.set(listOf("backend-headless-"))
 }
 
 tasks.named("check") {

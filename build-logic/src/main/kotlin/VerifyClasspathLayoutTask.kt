@@ -19,6 +19,7 @@ abstract class VerifyClasspathLayoutTask : DefaultTask() {
         requiredRuntimeClassEntries.convention(emptyList())
         requiredPluginJarPrefixes.convention(emptyList())
         requiredPluginClassEntries.convention(emptyList())
+        allowedPluginDescriptorJarPrefixes.convention(emptyList())
     }
 
     @get:InputDirectory
@@ -44,6 +45,9 @@ abstract class VerifyClasspathLayoutTask : DefaultTask() {
 
     @get:Input
     abstract val requiredPluginClassEntries: ListProperty<String>
+
+    @get:Input
+    abstract val allowedPluginDescriptorJarPrefixes: ListProperty<String>
 
     @TaskAction
     fun verify() {
@@ -76,6 +80,20 @@ abstract class VerifyClasspathLayoutTask : DefaultTask() {
 
         val pluginLibsPath = pluginLibsDirectory.get().asFile.toPath()
         val pluginClasspathEntries = jarEntries(pluginLibsPath)
+
+        val forbiddenPluginDescriptors = RuntimeClasspathAssertions.entriesContainingJarEntry(
+            runtimeLibsDirectory = pluginLibsPath,
+            classpathEntries = pluginClasspathEntries,
+            jarEntry = "META-INF/plugin.xml",
+        ).filterNot { entry ->
+            allowedPluginDescriptorJarPrefixes.get().any(entry::startsWith)
+        }
+        if (forbiddenPluginDescriptors.isNotEmpty()) {
+            throw GradleException(
+                "Headless plugin lib directory must not include nested plugin descriptors outside allowed jars: " +
+                    forbiddenPluginDescriptors.joinToString(),
+            )
+        }
 
         val missingPluginJarPrefixes = RuntimeClasspathAssertions.missingJarPrefixes(
             classpathEntries = pluginClasspathEntries,

@@ -118,6 +118,20 @@ object RuntimeClasspathAssertions {
         classpathEntries.any { entry -> entry.startsWith(prefix) }
     }
 
+    fun entriesContainingJarEntry(
+        runtimeLibsDirectory: Path,
+        classpathEntries: List<String>,
+        jarEntry: String,
+    ): List<String> = classpathEntries
+        .asSequence()
+        .filter(String::isNotBlank)
+        .filter { entry -> entry.endsWith(".jar") }
+        .filter { entry ->
+            val jarPath = runtimeLibsDirectory.resolve(entry)
+            Files.isRegularFile(jarPath) && jarContainsEntry(jarPath, jarEntry)
+        }
+        .toList()
+
     fun missingRequiredClassEntries(
         runtimeLibsDirectory: Path,
         classpathEntries: List<String>,
