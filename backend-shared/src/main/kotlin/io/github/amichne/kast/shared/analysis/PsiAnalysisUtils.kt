@@ -290,7 +290,7 @@ fun PsiElement.toKastLocation(range: TextRange = nameRange()): Location {
     )
 }
 
-fun PsiElement.parentsWithSelf(): Sequence<PsiElement> = generateSequence(this) { it.parent }
+private fun PsiElement.parentsWithSelf(): Sequence<PsiElement> = generateSequence(this) { it.parent }
 
 fun PsiElement.callHierarchyDeclaration(): PsiElement? = parentsWithSelf().firstOrNull { element ->
     when (element) {
