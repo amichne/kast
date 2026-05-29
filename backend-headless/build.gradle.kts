@@ -13,7 +13,7 @@ val ideaDistribution: Configuration by configurations.creating {
 }
 
 private val extractedIdeaDistributionDirectory = objects.directoryProperty().apply {
-    set(file(gradle.gradleUserHomeDir.resolve("kast/intellij-distributions/$intellijIdeaVersion")))
+    set(file(gradle.gradleUserHomeDir.resolve("kast/intellij-distributions/$intellijIdeaVersion/backend-headless")))
 }
 
 val extractIdeaDistribution: TaskProvider<ExtractIdeaDistributionTask> by tasks.registering(ExtractIdeaDistributionTask::class) {
