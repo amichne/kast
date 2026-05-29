@@ -14,12 +14,22 @@ val ideaDistribution: Configuration by configurations.creating {
 
 private val extractedIdeaDistributionDirectory = objects.directoryProperty().apply {
     set(file(gradle.gradleUserHomeDir.resolve("kast/intellij-distributions/$intellijIdeaVersion/backend-headless")))
+
+}
+
+val extractLegacyPluginClasses: TaskProvider<ExtractLegacyPluginClassesTask> by tasks.registering(
+    ExtractLegacyPluginClassesTask::class
+) {
+    dependsOn(extractIdeaDistribution)
+    ideaDistributionDirectory.set(extractedIdeaDistributionDirectory)
+    outputDirectory.set(layout.buildDirectory.dir("legacy-plugin-classes"))
 }
 
 val extractIdeaDistribution: TaskProvider<ExtractIdeaDistributionTask> by tasks.registering(ExtractIdeaDistributionTask::class) {
     archives.from(ideaDistribution)
     ideaVersion.set(intellijIdeaVersion)
     outputDirectory.set(extractedIdeaDistributionDirectory)
+    dependsOn(extractLegacyPluginClasses)
 }
 
 private fun extractedIdeaFiles(
