@@ -27,8 +27,7 @@ HOOK_RE = re.compile(r"Hook execution failed:\s*(.*)")
 HTML_ENTRY_RE = re.compile(r"^#\d+$")
 HTML_TOOL_RE = re.compile(r"^([a-z][a-z0-9_-]*) - (.+)$")
 HTML_DURATION_RE = re.compile(r"^(?:\d+h\s+)?(?:\d+m\s+)?\d+s$")
-HTML_STYLE_OR_SCRIPT_RE = re.compile(r"<(?:style|script)\b.*?</(?:style|script)>", re.IGNORECASE | re.DOTALL)
-HTML_TAG_RE = re.compile(r"<[^>]+>")
+IGNORED_VISIBLE_TEXT_TAGS = {"script", "style"}
 INIT_FRICTION_RE = re.compile(
     r"(?:kast:\s*command not found|command not found|Unable to resolve (?:the Rust )?kast CLI path)",
     re.IGNORECASE,
@@ -122,12 +121,40 @@ class TitleParser(HTMLParser):
         return "".join(self.title_parts).strip()
 
 
+class VisibleTextParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self._ignored_depth = 0
+        self.parts: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag.lower() in IGNORED_VISIBLE_TEXT_TAGS:
+            self._ignored_depth += 1
+        elif self._ignored_depth == 0:
+            self.parts.append("\n")
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag.lower() in IGNORED_VISIBLE_TEXT_TAGS and self._ignored_depth > 0:
+            self._ignored_depth -= 1
+        elif self._ignored_depth == 0:
+            self.parts.append("\n")
+
+    def handle_data(self, data: str) -> None:
+        if self._ignored_depth == 0:
+            self.parts.append(data)
+
+    @property
+    def text(self) -> str:
+        return "".join(self.parts)
+
+
 def extract_html_visible_lines(raw: str) -> list[str]:
-    raw = HTML_STYLE_OR_SCRIPT_RE.sub("\n", raw)
-    text = HTML_TAG_RE.sub("\n", raw)
+    parser = VisibleTextParser()
+    parser.feed(raw)
+    parser.close()
     return [
         normalized
-        for line in text.splitlines()
+        for line in parser.text.splitlines()
         if (normalized := re.sub(r"\s+", " ", unescape(line)).strip())
     ]
 
