@@ -1,0 +1,13 @@
+{
+  "jsonrpc": "2.0",
+  "method": "raw/rename",
+  "params": {
+    "position": {
+      "filePath": "/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt",
+      "offset": 128
+    },
+    "newName": "RenamedWidget",
+    "dryRun": true
+  },
+  "id": 1
+}

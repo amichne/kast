@@ -6,6 +6,10 @@ from pathlib import Path
 
 
 EXPECTED_PLATFORMS = {
+    "cli-linux-arm64",
+    "cli-linux-x64",
+    "cli-macos-arm64",
+    "cli-macos-x64",
     "headless",
     "ubuntu-debian-headless-x86_64",
     "ubuntu-debian-x86_64",

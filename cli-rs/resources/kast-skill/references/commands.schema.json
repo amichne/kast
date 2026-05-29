@@ -1,0 +1,184 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kast.dev/schemas/json-rpc-commands.schema.json",
+  "title": "Kast JSON-RPC command catalog",
+  "description": "Schema for the single Kast JSON-RPC operation catalog consumed by docs, skills, and Copilot extension tooling.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "version", "categories", "commands"],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "categories": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "$ref": "#/$defs/methodName"
+        },
+        "uniqueItems": true
+      }
+    },
+    "commands": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/command"
+      }
+    }
+  },
+  "$defs": {
+    "methodName": {
+      "type": "string",
+      "pattern": "^[a-z]+(?:/[a-z][a-z-]*)?$"
+    },
+    "fieldName": {
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+    },
+    "command": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method", "category", "summary", "dataSource", "request", "responseType"],
+      "properties": {
+        "method": {
+          "$ref": "#/$defs/methodName"
+        },
+        "category": {
+          "type": "string",
+          "pattern": "^[a-z]+$"
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dataSource": {
+          "type": "string",
+          "enum": ["backend", "sqlite"]
+        },
+        "request": {
+          "$ref": "#/$defs/request"
+        },
+        "responseType": {
+          "type": "string",
+          "minLength": 1
+        },
+        "successType": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]*$"
+        },
+        "failureType": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]*$"
+        },
+        "variants": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/request"
+          }
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "tool": {
+          "$ref": "#/$defs/tool"
+        }
+      }
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fields"],
+      "properties": {
+        "fields": {
+          "$ref": "#/$defs/fields"
+        },
+        "required": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/fieldName"
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "fields": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/field"
+      }
+    },
+    "field": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["array", "boolean", "integer", "object", "string"]
+        },
+        "optional": {
+          "type": "boolean"
+        },
+        "nullable": {
+          "type": "boolean"
+        },
+        "enum": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "items": {
+          "oneOf": [
+            {
+              "type": "string",
+              "enum": ["array", "boolean", "integer", "object", "string"]
+            },
+            {
+              "$ref": "#/$defs/field"
+            }
+          ]
+        },
+        "fields": {
+          "$ref": "#/$defs/fields"
+        },
+        "required": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/fieldName"
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "description"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^kast_[a-z0-9_]+$"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "defaultArgs": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    }
+  }
+}

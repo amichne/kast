@@ -1,5 +1,11 @@
 plugins {
-    id("kast.kotlin-library")
+    id("kast.published-library")
+}
+
+kastPublishing {
+    artifactId.set("kast-analysis-server")
+    moduleName.set("Kast Analysis Server")
+    moduleDescription.set("JSON-RPC dispatch, descriptor lifecycle, and local analysis-server transports for Kast backends.")
 }
 
 dependencies {

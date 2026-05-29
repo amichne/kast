@@ -317,6 +317,7 @@ Targets (positional, repeatable):
 Options:
   --all            Build all targets.
   --headless-idea-home-profile=full|minimal  Configure headless IDEA home profile (default: full).
+  -Pname=value     Forward a Gradle project property to the build.
   --help, -h       Show this help.
 
 When no targets are supplied and a TTY is available, fzf is used for
@@ -329,6 +330,10 @@ USAGE
         ;;
       --headless-idea-home-profile=*)
         _HEADLESS_IDEA_HOME_PROFILE="${1#*=}"
+        shift
+        ;;
+      -P*)
+        _GRADLE_EXTRA_ARGS+=("$1")
         shift
         ;;
       *)

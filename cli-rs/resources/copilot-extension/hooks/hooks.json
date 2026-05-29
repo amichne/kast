@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "type": "command",
+        "bash": "bash .github/hooks/session-start.sh",
+        "cwd": ".",
+        "timeoutSec": 30,
+        "comment": "Reset per-session hook state used to track edited files and required-skill reads."
+      }
+    ],
+    "postToolUse": [
+      {
+        "type": "command",
+        "bash": "bash .github/hooks/record-paths.sh",
+        "cwd": ".",
+        "timeoutSec": 30,
+        "comment": "Track files edited successfully during the session so final validation only checks session-owned paths."
+      }
+    ],
+    "preToolUse": [
+      {
+        "type": "command",
+        "bash": "bash .github/hooks/require-skills.sh",
+        "cwd": ".",
+        "timeoutSec": 30,
+        "comment": "Require required skill docs to be read before other tools are allowed in this session."
+      }
+    ],
+    "sessionEnd": [
+      {
+        "type": "command",
+        "bash": "bash .github/hooks/session-end.sh",
+        "cwd": ".",
+        "timeoutSec": 1800,
+        "comment": "Run the command-based subset of the legacy completion hooks when the session completes successfully."
+      }
+    ]
+  }
+}

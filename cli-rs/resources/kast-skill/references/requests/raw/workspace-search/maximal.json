@@ -1,0 +1,12 @@
+{
+  "jsonrpc": "2.0",
+  "method": "raw/workspace-search",
+  "params": {
+    "pattern": "Widget",
+    "regex": true,
+    "maxResults": 25,
+    "fileGlob": "**/*.kt",
+    "caseSensitive": true
+  },
+  "id": 1
+}

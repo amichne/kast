@@ -1,0 +1,11 @@
+{
+  "jsonrpc": "2.0",
+  "method": "symbol/rename",
+  "params": {
+    "type": "RENAME_BY_OFFSET_REQUEST",
+    "filePath": "/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt",
+    "offset": 128,
+    "newName": "RenamedWidget"
+  },
+  "id": 1
+}

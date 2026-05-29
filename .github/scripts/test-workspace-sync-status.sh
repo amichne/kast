@@ -42,16 +42,14 @@ manifest="${repo_root}/workspace.repos.toml"
 
 manifest_content="$(<"$manifest")"
 require_contains "$manifest_content" "[repos.kast]" "Manifest must declare the kast repo"
-require_contains "$manifest_content" "[repos.kast-rs]" "Manifest must declare the Rust CLI repo"
 require_contains "$manifest_content" "[repos.homebrew-kast]" "Manifest must declare the Homebrew tap repo"
-require_contains "$manifest_content" 'path = "../kast-rs"' "Rust CLI must be modeled as a sibling checkout"
 require_contains "$manifest_content" 'path = "../homebrew-kast"' "Homebrew tap must be modeled as a sibling checkout"
 
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
 
 workspace_root="${tmp_dir}/workspace"
-mkdir -p "${workspace_root}/kast" "${workspace_root}/kast-rs"
+mkdir -p "${workspace_root}/kast"
 
 cat > "${workspace_root}/kast/workspace.repos.toml" <<'TOML'
 [repos.kast]
@@ -59,12 +57,6 @@ path = "."
 remote = "git@github.com:amichne/kast.git"
 branch = "main"
 role = "JVM daemon and contract"
-
-[repos.kast-rs]
-path = "../kast-rs"
-remote = "git@github.com:amichne/kast-rs.git"
-branch = "main"
-role = "Rust CLI"
 
 [repos.homebrew-kast]
 path = "../homebrew-kast"
@@ -74,17 +66,15 @@ role = "Homebrew tap"
 TOML
 
 create_git_repo "${workspace_root}/kast" "git@github.com:amichne/kast.git"
-create_git_repo "${workspace_root}/kast-rs" "git@github.com:amichne/kast-rs.git"
 
 output="$("$status_script" --manifest "${workspace_root}/kast/workspace.repos.toml")"
 
 require_contains "$output" "Workspace repos" "Status output must identify the report"
 require_contains "$output" "kast" "Status output must include the current repo"
-require_contains "$output" "kast-rs" "Status output must include the Rust CLI repo"
 require_contains "$output" "homebrew-kast" "Status output must include the Homebrew tap repo"
 require_contains "$output" "present" "Status output must report present repositories"
 require_contains "$output" "missing" "Status output must report missing repositories"
-require_contains "$output" "git@github.com:amichne/kast-rs.git" "Status output must show the expected remote"
+require_contains "$output" "git@github.com:amichne/homebrew-kast.git" "Status output must show the expected tap remote"
 
 if "$status_script" --manifest "${workspace_root}/kast/workspace.repos.toml" --strict >/dev/null 2>&1; then
   die "Strict status must fail when a manifest repository is missing"

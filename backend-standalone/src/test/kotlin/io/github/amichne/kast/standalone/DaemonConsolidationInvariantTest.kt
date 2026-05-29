@@ -19,7 +19,7 @@ import kotlin.io.path.writeText
  *
  * The daemon's core contract is that creating a [StandaloneAnalysisSession] eagerly starts
  * indexing and that descriptor uniqueness prevents multiple daemons per workspace root.
- * CLI-side routing is owned by the Rust CLI in sibling repo `kast-rs`.
+ * CLI-side routing is owned by the Rust CLI in `cli-rs`.
  */
 class DaemonConsolidationInvariantTest {
     @TempDir
@@ -123,10 +123,10 @@ class DaemonConsolidationInvariantTest {
     }
 
     @Test
-    @Disabled("daemon start was removed — workspace stop is tested in kast-rs")
+    @Disabled("daemon start was removed — workspace stop is tested in cli-rs")
     fun `daemon consolidation CLI routing placeholder`() {
         // The `daemonStart` method was removed from WorkspaceRuntimeManager.
-        // `workspaceStop` is tested through the Rust CLI in kast-rs.
+        // `workspaceStop` is tested through the Rust CLI in cli-rs.
     }
 
     private fun sourceRoots(): List<Path> =

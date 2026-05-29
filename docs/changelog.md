@@ -19,7 +19,7 @@ Two fully interoperable backends, both speaking the same JSON-RPC protocol
 over Unix domain sockets:
 
 - **Standalone** — headless JVM analysis daemon. Ships as a self-contained zip
-  produced by `./kast.sh build backend`; the Rust CLI in `amichne/kast-rs`
+  produced by `./kast.sh build backend`; the Rust CLI in `cli-rs/`
   starts and manages it over Unix domain sockets.
 - **IDEA plugin** — Delegates to the open IDEA or Android Studio instance for analysis.
   Shares the IDE's already-warm PSI and K2 compiler, so results are
@@ -91,11 +91,10 @@ when to paginate or bound their queries:
   aggregate SHA-256 checksums, and publishes a GitHub release with combined
   build provenance. Beta tags publish as GitHub prereleases; stable tags
   publish the verified GitHub release before updating and watching the Homebrew
-  tap's plugin formula. CLI binary releases are produced by `amichne/kast-rs`.
-- Run `scripts/release-preflight.sh --release-type patch` before dispatching a
-  stable release. The helper checks GitHub CLI auth, release workflow
-  visibility, the `HOMEBREW_TAP_TOKEN` repository secret, and Homebrew tap
-  visibility before the workflow can create a tag or release.
+  tap formula. CLI binary releases are produced by this repository's
+  monorepo release workflow.
+- Release preflight now runs inside the monorepo release workflow before
+  packaging begins, so local release helper scripts are no longer required.
 - Upstream sync workflow keeps the standalone backend's bundled IDE platform
   distribution current.
 - Copilot setup steps pre-warm Gradle caches and Java 21 for GitHub Copilot

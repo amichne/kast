@@ -18,10 +18,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/checkout@v5
-        with:
-          repository: amichne/kast-rs
-          path: kast-rs
 
       - name: Test release workflow contract
         shell: bash
@@ -51,13 +47,13 @@ jobs:
         shell: bash
         run: ./.github/scripts/test-release-asset-verifier.sh
 
-      - name: Test release preflight helper
-        shell: bash
-        run: ./.github/scripts/test-release-preflight.sh
-
       - name: Test release provenance assembler
         shell: bash
         run: ./.github/scripts/test-release-provenance-assembler.sh
+
+      - name: Test Homebrew package renderer
+        shell: bash
+        run: packaging/homebrew/scripts/test-formulas.py
 
       - name: Smoke Ubuntu/Debian bundle contract
         shell: bash
@@ -66,6 +62,73 @@ jobs:
       - name: Smoke Ubuntu/Debian headless bundle contract
         shell: bash
         run: ./scripts/smoke-ubuntu-debian-headless-bundle.sh
+
+  maven-publication-contract:
+    name: Maven publication metadata
+    runs-on: ubuntu-latest
+    needs: workflow-contracts
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      - name: Publish public modules to Maven local
+        run: >
+          ./gradlew
+          :build-logic:test
+          :analysis-api:publishToMavenLocal
+          :analysis-server:publishToMavenLocal
+          :index-store:publishToMavenLocal
+          -Pkast.publish.target=local
+          -Pversion=0.0.0-ci
+
+  rust-cli:
+    name: Rust CLI
+    runs-on: ubuntu-24.04
+    needs: workflow-contracts
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Check Rust formatting
+        working-directory: cli-rs
+        run: cargo fmt --all -- --check
+
+      - name: Check Rust lints
+        working-directory: cli-rs
+        run: cargo clippy --locked --all-targets --all-features -- -D warnings
+
+      - name: Test Rust CLI
+        working-directory: cli-rs
+        run: cargo test --locked --all-targets --all-features
+
+      - name: Build Rust CLI
+        working-directory: cli-rs
+        run: KAST_VERSION=0.0.0-ci cargo build --release --locked
+
+      - name: Package Rust CLI CI asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist cli-rs/target/package/kast-v0.0.0-ci-linux-x64
+          cp cli-rs/target/release/kast cli-rs/target/package/kast-v0.0.0-ci-linux-x64/kast
+          chmod 755 cli-rs/target/package/kast-v0.0.0-ci-linux-x64/kast
+          (cd cli-rs/target/package/kast-v0.0.0-ci-linux-x64 && zip -9 -q "$GITHUB_WORKSPACE/dist/kast-v0.0.0-ci-linux-x64.zip" kast)
+
+      - name: Upload Rust CLI CI asset
+        uses: actions/upload-artifact@v6
+        with:
+          name: kast-rust-cli-linux-x64
+          path: dist/kast-v0.0.0-ci-linux-x64.zip
+          if-no-files-found: error
+          retention-days: 1
 
   build-and-test:
     name: Build & test (${{ matrix.os }})
@@ -167,7 +230,9 @@ jobs:
   install-ubuntu-debian-container:
     name: Ubuntu/Debian install container (${{ matrix.container-image }}, Java ${{ matrix.java-version }})
     runs-on: ubuntu-24.04
-    needs: build-and-test
+    needs:
+      - build-and-test
+      - rust-cli
     strategy:
       fail-fast: false
       matrix:
@@ -185,22 +250,20 @@ jobs:
           name: kast-standalone-ubuntu-latest
           path: backend-standalone/build/distributions
 
-      - name: Download Rust CLI release asset
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+      - name: Download Rust CLI CI asset
+        uses: actions/download-artifact@v7
+        with:
+          name: kast-rust-cli-linux-x64
+          path: dist
+
+      - name: Resolve Rust CLI CI asset
         shell: bash
         run: |
           set -euo pipefail
-          cli_tag="$(gh release view --repo amichne/kast-rs --json tagName --jq .tagName)"
-          cli_asset="kast-${cli_tag}-linux-x64.zip"
-          mkdir -p dist
-          gh release download "$cli_tag" \
-            --repo amichne/kast-rs \
-            --dir dist \
-            --pattern "$cli_asset"
-          [[ -f "dist/${cli_asset}" ]] || { echo "Missing Rust CLI asset: ${cli_asset}" >&2; exit 1; }
-          printf 'KAST_RUST_CLI_TAG=%s\n' "$cli_tag" >> "$GITHUB_ENV"
-          printf 'KAST_RUST_CLI_ASSET=%s\n' "dist/${cli_asset}" >> "$GITHUB_ENV"
+          cli_asset="dist/kast-v0.0.0-ci-linux-x64.zip"
+          [[ -f "$cli_asset" ]] || { echo "Missing Rust CLI CI asset: ${cli_asset}" >&2; exit 1; }
+          printf 'KAST_RUST_CLI_TAG=%s\n' "v0.0.0-ci" >> "$GITHUB_ENV"
+          printf 'KAST_RUST_CLI_ASSET=%s\n' "$cli_asset" >> "$GITHUB_ENV"
 
       - name: Package Ubuntu/Debian CI bundle
         shell: bash
@@ -228,7 +291,9 @@ jobs:
   install-ubuntu-debian-headless-container:
     name: Ubuntu/Debian headless install container (${{ matrix.container-image }}, Java ${{ matrix.java-version }})
     runs-on: ubuntu-24.04
-    needs: build-and-test
+    needs:
+      - build-and-test
+      - rust-cli
     strategy:
       fail-fast: false
       matrix:
@@ -246,22 +311,20 @@ jobs:
           name: kast-headless-ubuntu-latest
           path: backend-headless/build/distributions
 
-      - name: Download Rust CLI release asset
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+      - name: Download Rust CLI CI asset
+        uses: actions/download-artifact@v7
+        with:
+          name: kast-rust-cli-linux-x64
+          path: dist
+
+      - name: Resolve Rust CLI CI asset
         shell: bash
         run: |
           set -euo pipefail
-          cli_tag="$(gh release view --repo amichne/kast-rs --json tagName --jq .tagName)"
-          cli_asset="kast-${cli_tag}-linux-x64.zip"
-          mkdir -p dist
-          gh release download "$cli_tag" \
-            --repo amichne/kast-rs \
-            --dir dist \
-            --pattern "$cli_asset"
-          [[ -f "dist/${cli_asset}" ]] || { echo "Missing Rust CLI asset: ${cli_asset}" >&2; exit 1; }
-          printf 'KAST_RUST_CLI_TAG=%s\n' "$cli_tag" >> "$GITHUB_ENV"
-          printf 'KAST_RUST_CLI_ASSET=%s\n' "dist/${cli_asset}" >> "$GITHUB_ENV"
+          cli_asset="dist/kast-v0.0.0-ci-linux-x64.zip"
+          [[ -f "$cli_asset" ]] || { echo "Missing Rust CLI CI asset: ${cli_asset}" >&2; exit 1; }
+          printf 'KAST_RUST_CLI_TAG=%s\n' "v0.0.0-ci" >> "$GITHUB_ENV"
+          printf 'KAST_RUST_CLI_ASSET=%s\n' "$cli_asset" >> "$GITHUB_ENV"
 
       - name: Package Ubuntu/Debian headless CI bundle
         shell: bash

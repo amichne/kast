@@ -28,17 +28,17 @@ Three things every prompt should have:
    caller summary, truncation status.
 
 ```text title="Example: Resolve a symbol"
-Use the kast-rs skill to resolve the retryDelay property on RetryConfig.
+Use the Kast skill to resolve the retryDelay property on RetryConfig.
 Tell me where it's declared and what type Kast reports.
 ```
 
 ```text title="Example: Find references"
-Use the kast-rs skill to find references to HealthCheckService in this
+Use the Kast skill to find references to HealthCheckService in this
 workspace. Confirm the declaration first, then summarize the callers.
 ```
 
 ```text title="Example: Call hierarchy"
-Use the kast-rs skill to show the incoming call hierarchy for
+Use the Kast skill to show the incoming call hierarchy for
 HealthCheckService.runChecks. Resolve the symbol first, then summarize
 the top callers and any truncation.
 ```

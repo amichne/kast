@@ -54,6 +54,10 @@ release_dir = Path(sys.argv[1])
 tag = sys.argv[2]
 
 expected = {
+    "cli-linux-arm64": f"kast-{tag}-linux-arm64.zip",
+    "cli-linux-x64": f"kast-{tag}-linux-x64.zip",
+    "cli-macos-arm64": f"kast-{tag}-macos-arm64.zip",
+    "cli-macos-x64": f"kast-{tag}-macos-x64.zip",
     "headless": f"kast-headless-{tag}.zip",
     "ubuntu-debian-headless-x86_64": f"kast-ubuntu-debian-headless-x86_64-{tag}.tar.gz",
     "ubuntu-debian-x86_64": f"kast-ubuntu-debian-x86_64-{tag}.tar.gz",

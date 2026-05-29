@@ -78,6 +78,10 @@ write_text_asset() {
 }
 
 write_expected_assets() {
+  write_text_asset "${release_dir}/kast-${tag}-linux-x64.zip"
+  write_text_asset "${release_dir}/kast-${tag}-linux-arm64.zip"
+  write_text_asset "${release_dir}/kast-${tag}-macos-x64.zip"
+  write_text_asset "${release_dir}/kast-${tag}-macos-arm64.zip"
   write_zip_asset "${release_dir}/kast-intellij-${tag}.zip" intellij
   write_zip_asset "${release_dir}/kast-standalone-${tag}.zip" standalone
   write_zip_asset "${release_dir}/kast-headless-${tag}.zip" headless
@@ -114,6 +118,10 @@ from pathlib import Path
 release_dir = Path(sys.argv[1])
 tag = sys.argv[2]
 entries = [
+    ("cli-linux-x64", f"kast-{tag}-linux-x64.zip"),
+    ("cli-linux-arm64", f"kast-{tag}-linux-arm64.zip"),
+    ("cli-macos-x64", f"kast-{tag}-macos-x64.zip"),
+    ("cli-macos-arm64", f"kast-{tag}-macos-arm64.zip"),
     ("ubuntu-debian-x86_64", f"kast-ubuntu-debian-x86_64-{tag}.tar.gz"),
     ("ubuntu-debian-headless-x86_64", f"kast-ubuntu-debian-headless-x86_64-{tag}.tar.gz"),
     ("headless", f"kast-headless-{tag}.zip"),
@@ -149,6 +157,10 @@ release_dir="${scratch_dir}/release"
 mkdir -p "$release_dir"
 
 assets=(
+  "kast-${tag}-linux-x64.zip"
+  "kast-${tag}-linux-arm64.zip"
+  "kast-${tag}-macos-x64.zip"
+  "kast-${tag}-macos-arm64.zip"
   "kast-ubuntu-debian-x86_64-${tag}.tar.gz"
   "kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
   "kast-headless-${tag}.zip"

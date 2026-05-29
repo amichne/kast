@@ -1,0 +1,8 @@
+{
+  "jsonrpc": "2.0",
+  "method": "raw/file-outline",
+  "params": {
+    "filePath": "/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt"
+  },
+  "id": 1
+}
