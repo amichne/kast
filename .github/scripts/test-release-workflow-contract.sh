@@ -102,6 +102,7 @@ require_not_contains "${repo_root}/backend-intellij/build.gradle.kts" "kastPubli
 
 require_contains "$ci_workflow" "Maven publication metadata" "CI must validate Maven publication metadata"
 require_contains "$ci_workflow" "Rust CLI" "CI must validate the in-repo Rust CLI"
+require_contains "$ci_workflow" "runs-on: ubuntu-22.04" "CI Linux CLI asset must build on an Ubuntu 22.04 glibc baseline"
 require_contains "$ci_workflow" "working-directory: cli-rs" "CI Rust commands must run from cli-rs"
 require_contains "$ci_workflow" "packaging/homebrew/scripts/test-formulas.py" "CI must validate Homebrew package templates"
 require_contains "$ci_workflow" "Download Rust CLI CI asset" "CI bundle tests must consume a locally built CLI artifact"
