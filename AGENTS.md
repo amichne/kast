@@ -31,11 +31,12 @@ This is a single-context repo: use root `CONTEXT.md` and `docs/adr/` when they e
 
 ## Workspace repo coordination
 
-`workspace.repos.toml` is the source of truth for repositories that move with
-this repo but are not part of this Git history. Treat those entries as sibling
-checkouts, not vendored source trees.
+`workspace.repos.toml` is the source of truth for generated or mirrored
+repositories that move with this repo but are not part of this Git history.
+Treat those entries as sibling checkouts, not vendored source trees.
 
-- Expected local layout is `kast/`, `kast-rs/`, and `homebrew-kast/` as
+- The Rust CLI now lives in `cli-rs/` inside this repository.
+- The expected local release mirror layout is `kast/` and `homebrew-kast/` as
   siblings under the same parent directory.
 - Run `scripts/workspace-sync-status.sh` before cross-repo release,
   migration, or CLI handoff work. Use `--strict` when automation should fail
@@ -121,7 +122,7 @@ JSON-RPC method via `kast rpc` when a CLI fallback is needed.
 Do not add JVM handlers for operational SQLite reads. Kotlin may hydrate and
 write the source index for standalone or IDE-backed indexing, but source-index
 query methods such as `database/metrics` and SQLite-backed `symbol/query` are
-owned by `kast-rs`.
+owned by the Rust CLI in `cli-rs/`.
 
 **Prohibited substitutions:** `grep`, `rg`, `ast-grep`, `cat` + manual
 parsing must NOT be used for symbol identity, reference finding, or call
@@ -154,7 +155,7 @@ Copilot-assisted Kotlin work. It
 - soft-warns once per session when generic `view`/`grep`/`rg`/`edit`/`create`
   targets a `.kt`/`.kts` path, suggesting the semantic equivalent.
 
-When the extension loads successfully, it shadows `../kast-rs/resources/kast-skill/SKILL.md`
+When the extension loads successfully, it shadows `cli-rs/resources/kast-skill/SKILL.md`
 for routine routing. Fall back to the skill doc only when the extension is
 unavailable or when you need deeper command-shape or recovery guidance, and
 never use `grep`/`rg`/`ast-grep` for symbol operations.
@@ -186,9 +187,9 @@ Apply these rules across the repo before local unit rules add more detail.
   unless the behavior is intentionally changing across the stack.
 - Keep capability gating honest. A transport or backend must not advertise
   support for work it cannot actually perform.
-- Respect the current architecture: the Rust CLI in sibling repo `kast-rs`
-  owns the operator-facing control plane, installer, packaged skill, and
-  Copilot extension distribution; `analysis-server` owns transport and
+- Respect the current architecture: the Rust CLI in `cli-rs/` owns the
+  operator-facing control plane, installer, packaged skill, and Copilot
+  extension distribution; `analysis-server` owns transport and
   descriptor plumbing, `backend-standalone` owns headless runtime behavior,
   `backend-intellij` owns IDE-hosted runtime behavior, and
   `analysis-api` test fixtures stay out of production code paths.
@@ -204,12 +205,11 @@ Apply these rules across the repo before local unit rules add more detail.
 
 Before modifying `AnalysisBackend`, the `kast rpc` machine contract surface, or
 any packaged artifact manifest,
-enumerate all consumers: `docs/openapi.yaml`, `../kast-rs/resources/kast-skill/SKILL.md`,
-`../kast-rs/resources/kast-skill/SKILL.md`,
-`../kast-rs/resources/kast-skill/evals/**/*`,
-`../kast-rs/resources/kast-skill/references/*`, `../kast-rs/resources/kast-skill/scripts/*`,
+enumerate all consumers: `docs/openapi.yaml`, `cli-rs/resources/kast-skill/SKILL.md`,
+`cli-rs/resources/kast-skill/evals/**/*`,
+`cli-rs/resources/kast-skill/references/*`, `cli-rs/resources/kast-skill/scripts/*`,
 `evaluation/**/*`, `.github/extensions/kast/extension.mjs`,
-`.github/agents/**/*`, `.github/hooks/**/*`, sibling `kast-rs/resources/**/*`,
-and `kast.sh`.
+`.github/agents/**/*`, `.github/hooks/**/*`, `cli-rs/resources/**/*`, and
+`kast.sh`.
 These are contract surfaces — a change without updating all consumers silently
 breaks the distribution.

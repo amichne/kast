@@ -15,8 +15,8 @@ on:
     inputs:
       release_type:
         description: >
-          Release type — automatically increments the latest semver tag.
-          Beta appends the short commit SHA for uniqueness.
+          Release type. Stable releases increment the latest vX.Y.Z tag.
+          Beta releases append the short commit SHA.
         required: true
         default: patch
         type: choice
@@ -28,6 +28,7 @@ on:
 
 permissions:
   contents: read
+  packages: write
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -50,7 +51,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           requires_homebrew=false
           if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
             if [[ "$RELEASE_TYPE" != "beta" ]]; then
@@ -59,7 +59,6 @@ jobs:
           elif [[ "$REF_NAME" == v* && "$REF_NAME" != *-* ]]; then
             requires_homebrew=true
           fi
-
           printf 'requires_homebrew=%s\n' "$requires_homebrew" >> "$GITHUB_OUTPUT"
 
       - name: Require Homebrew token for stable releases
@@ -74,7 +73,6 @@ jobs:
             exit 1
           fi
 
-  # ── Step 0 (workflow_dispatch only): auto-increment semver and push new tag ──
   bump-version:
     name: Bump version (${{ inputs.release_type }})
     needs: [release-preflight]
@@ -88,8 +86,6 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-          # Use GITHUB_TOKEN — pushes made with it do NOT re-trigger tag-push
-          # workflows, preventing recursive runs.
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Compute next semver tag and push
@@ -97,29 +93,29 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           release_type="${{ inputs.release_type }}"
           short_sha="${GITHUB_SHA:0:7}"
-
-          # Resolve the latest vX.Y.Z tag (ignore pre-release tags for the base).
           latest_stable="$(git tag --list 'v*' --sort=-version:refname \
             | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1 || true)"
           if [[ -z "$latest_stable" ]]; then
             latest_stable="v0.0.0"
           fi
-          echo "Latest stable tag: ${latest_stable}"
-
           base="${latest_stable#v}"
           IFS='.' read -r major minor patch <<< "$base"
-          major="${major:-0}"; minor="${minor:-0}"; patch="${patch:-0}"
+          major="${major:-0}"
+          minor="${minor:-0}"
+          patch="${patch:-0}"
 
           case "$release_type" in
             major)
-              major=$((major + 1)); minor=0; patch=0
+              major=$((major + 1))
+              minor=0
+              patch=0
               new_tag="v${major}.${minor}.${patch}"
               ;;
             minor)
-              minor=$((minor + 1)); patch=0
+              minor=$((minor + 1))
+              patch=0
               new_tag="v${major}.${minor}.${patch}"
               ;;
             patch)
@@ -136,27 +132,22 @@ jobs:
               ;;
           esac
 
-          echo "New tag: ${new_tag}"
-
-          git config user.name  "github-actions[bot]"
+          git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag "$new_tag"
           git push origin "$new_tag"
-
           printf 'release_tag=%s\n' "$new_tag" >> "$GITHUB_OUTPUT"
 
-  # ── Step 1: create draft GitHub release ──────────────────────────────────────
   prepare-release:
     name: Prepare release
-    # Run after bump-version (workflow_dispatch) or directly (push tag).
-    # 'always()' lets us proceed even when bump-version was skipped.
     needs: [release-preflight, bump-version]
     if: always() && needs.release-preflight.result == 'success' && (needs.bump-version.result == 'success' || needs.bump-version.result == 'skipped')
     runs-on: ubuntu-latest
-    outputs:
-      release_tag: ${{ steps.release-tag.outputs.value }}
     permissions:
       contents: write
+    outputs:
+      release_tag: ${{ steps.release-tag.outputs.value }}
+      release_version: ${{ steps.release-tag.outputs.version }}
     steps:
       - uses: actions/checkout@v5
       - name: Resolve release tag
@@ -164,19 +155,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
             tag="${{ needs.bump-version.outputs.release_tag }}"
           else
             tag="${GITHUB_REF_NAME}"
           fi
-
-          if [[ -z "$tag" || "$tag" != v* ]]; then
-            echo "release tag must start with v; got '$tag'" >&2
-            exit 1
-          fi
-
+          [[ "$tag" == v* ]] || { echo "release tag must start with v: $tag" >&2; exit 1; }
           printf 'value=%s\n' "$tag" >> "$GITHUB_OUTPUT"
+          printf 'version=%s\n' "${tag#v}" >> "$GITHUB_OUTPUT"
 
       - name: Ensure draft release exists
         env:
@@ -185,7 +171,6 @@ jobs:
         run: |
           set -euo pipefail
           tag="${{ steps.release-tag.outputs.value }}"
-
           if gh release view "$tag" >/dev/null 2>&1; then
             echo "Release already exists: $tag"
           else
@@ -195,6 +180,221 @@ jobs:
               --title "$tag" \
               --generate-notes
           fi
+
+  validate-jvm:
+    name: Validate JVM and Maven publications
+    needs: [prepare-release]
+    if: always() && needs.prepare-release.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.prepare-release.outputs.release_tag }}
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      - name: Run JVM tests and local publication checks
+        run: >
+          ./gradlew
+          test
+          :analysis-api:publishToMavenLocal
+          :analysis-server:publishToMavenLocal
+          :index-store:publishToMavenLocal
+          -Pkast.publish.target=local
+          -Pversion="${{ needs.prepare-release.outputs.release_version }}"
+          --no-daemon
+          --stacktrace
+
+  publish-maven-central:
+    name: Publish Maven Central
+    needs:
+      - prepare-release
+      - validate-jvm
+    if: always() && needs.prepare-release.result == 'success' && needs.validate-jvm.result == 'success'
+    runs-on: ubuntu-latest
+    outputs:
+      published: ${{ steps.gate.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.prepare-release.outputs.release_tag }}
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      - name: Check Maven Central and signing secrets
+        id: gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=0
+          for secret_name in \
+            ORG_GRADLE_PROJECT_MAVENCENTRALUSERNAME \
+            ORG_GRADLE_PROJECT_MAVENCENTRALPASSWORD \
+            SIGNING_GPG_KEY_NAME \
+            SIGNING_GPG_PRIVATE_KEY
+          do
+            if [[ -z "${!secret_name:-}" ]]; then
+              echo "Missing ${secret_name} secret"
+              missing=1
+            fi
+          done
+          if [[ "$missing" -eq 1 ]]; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          ORG_GRADLE_PROJECT_MAVENCENTRALUSERNAME: ${{ secrets.ORG_GRADLE_PROJECT_MAVENCENTRALUSERNAME }}
+          ORG_GRADLE_PROJECT_MAVENCENTRALPASSWORD: ${{ secrets.ORG_GRADLE_PROJECT_MAVENCENTRALPASSWORD }}
+          SIGNING_GPG_KEY_NAME: ${{ secrets.SIGNING_GPG_KEY_NAME }}
+          SIGNING_GPG_PRIVATE_KEY: ${{ secrets.SIGNING_GPG_PRIVATE_KEY }}
+
+      - name: Import GPG key
+        if: steps.gate.outputs.publish == 'true'
+        env:
+          SIGNING_GPG_PRIVATE_KEY: ${{ secrets.SIGNING_GPG_PRIVATE_KEY }}
+          SIGNING_GPG_KEY_NAME: ${{ secrets.SIGNING_GPG_KEY_NAME }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! printf '%s' "$SIGNING_GPG_PRIVATE_KEY" | gpg --batch --import; then
+            printf '%s' "$SIGNING_GPG_PRIVATE_KEY" | base64 --decode | gpg --batch --import
+          fi
+          gpg --list-secret-keys --keyid-format=long "$SIGNING_GPG_KEY_NAME"
+
+      - name: Publish to Maven Central
+        if: steps.gate.outputs.publish == 'true'
+        env:
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.ORG_GRADLE_PROJECT_MAVENCENTRALUSERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.ORG_GRADLE_PROJECT_MAVENCENTRALPASSWORD }}
+          SIGNING_GPG_KEY_NAME: ${{ secrets.SIGNING_GPG_KEY_NAME }}
+          SIGNING_GPG_PASSPHRASE: ${{ secrets.SIGNING_GPG_PASSPHRASE }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          signing_args=(-Psigning.gnupg.keyName="$SIGNING_GPG_KEY_NAME")
+          if [[ -n "${SIGNING_GPG_PASSPHRASE:-}" ]]; then
+            signing_args+=(-Psigning.gnupg.passphrase="$SIGNING_GPG_PASSPHRASE")
+          fi
+          ./gradlew publishAndReleaseToMavenCentral "${signing_args[@]}" \
+            -Pkast.publish.target=release \
+            -Pversion="${{ needs.prepare-release.outputs.release_version }}" \
+            --no-configuration-cache \
+            --no-daemon \
+            --stacktrace
+
+  build-cli:
+    name: Build Rust CLI asset (${{ matrix.asset_id }})
+    needs: [prepare-release]
+    if: always() && needs.prepare-release.result == 'success'
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - asset_id: linux-x64
+            runner: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+          - asset_id: linux-arm64
+            runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+          - asset_id: macos-x64
+            runner: macos-15-intel
+            target: x86_64-apple-darwin
+          - asset_id: macos-arm64
+            runner: macos-14
+            target: aarch64-apple-darwin
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.prepare-release.outputs.release_tag }}
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Build Rust CLI
+        working-directory: cli-rs
+        shell: bash
+        run: |
+          set -euo pipefail
+          KAST_VERSION="${{ needs.prepare-release.outputs.release_version }}" \
+            cargo build --release --locked --target "${{ matrix.target }}"
+
+      - name: Smoke Rust CLI
+        working-directory: cli-rs
+        shell: bash
+        run: |
+          set -euo pipefail
+          bin="target/${{ matrix.target }}/release/kast"
+          "$bin" --help >/dev/null
+          "$bin" version | grep -F "Kast CLI" >/dev/null
+
+      - name: Package CLI asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ needs.prepare-release.outputs.release_tag }}"
+          asset_name="kast-${tag}-${{ matrix.asset_id }}.zip"
+          staging_dir="$RUNNER_TEMP/kast-${{ matrix.asset_id }}"
+          rm -rf "$staging_dir" dist
+          mkdir -p "$staging_dir" dist
+          cp "cli-rs/target/${{ matrix.target }}/release/kast" "$staging_dir/kast"
+          chmod 755 "$staging_dir/kast"
+          (cd "$staging_dir" && zip -9 -q "$GITHUB_WORKSPACE/dist/${asset_name}" kast)
+          python3 - "$GITHUB_WORKSPACE/dist/${asset_name}" "dist/build-provenance-cli-${{ matrix.asset_id }}.json" <<'PY'
+          import hashlib
+          import json
+          import os
+          import sys
+          from pathlib import Path
+          asset = Path(sys.argv[1])
+          output = Path(sys.argv[2])
+          digest = hashlib.sha256(asset.read_bytes()).hexdigest()
+          payload = {
+              "runId": os.environ["GITHUB_RUN_ID"],
+              "runNumber": os.environ["GITHUB_RUN_NUMBER"],
+              "runAttempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              "sha": os.environ["GITHUB_SHA"],
+              "ref": os.environ["GITHUB_REF"],
+              "workflowRef": os.environ["GITHUB_WORKFLOW_REF"],
+              "actor": os.environ["GITHUB_ACTOR"],
+              "platformId": "cli-${{ matrix.asset_id }}",
+              "assetName": asset.name,
+              "assetDigest": "sha256:" + digest,
+          }
+          output.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+          PY
+
+      - name: Upload CLI asset
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ needs.prepare-release.outputs.release_tag }}"
+          gh release upload "$tag" "dist/kast-${tag}-${{ matrix.asset_id }}.zip" --clobber
+
+      - name: Upload CLI build artifact
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: rust-cli-${{ matrix.asset_id }}-${{ github.run_id }}
+          path: dist/
+          if-no-files-found: warn
 
   build-intellij-plugin:
     name: Build IDEA plugin
@@ -226,60 +426,46 @@ jobs:
           :backend-intellij:buildPlugin
           :backend-intellij:verifyPluginStructure
           :backend-intellij:verifyPluginXmlPresent
+          -Pversion="${{ needs.prepare-release.outputs.release_version }}"
 
       - name: Upload IDEA plugin asset
-        shell: bash
         env:
           GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+        shell: bash
         run: |
           set -euo pipefail
           tag="${{ needs.prepare-release.outputs.release_tag }}"
           asset_name="kast-intellij-${tag}.zip"
-
-          source_zip=""
-          for candidate in backend-intellij/build/distributions/*.zip; do
-            [[ -f "$candidate" ]] || continue
-            source_zip="$candidate"
-            break
-          done
+          source_zip="$(find backend-intellij/build/distributions -maxdepth 1 -name '*.zip' -print -quit)"
           [[ -n "$source_zip" ]] || { echo "No IDEA plugin zip found" >&2; exit 1; }
-
           mkdir -p dist
           cp "$source_zip" "dist/${asset_name}"
           gh release upload "$tag" "dist/${asset_name}" --clobber
-
-      - name: Write plugin build provenance
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p dist
-          tag="${{ needs.prepare-release.outputs.release_tag }}"
-          asset_name="kast-intellij-${tag}.zip"
-          digest="$(sha256sum "dist/${asset_name}" | awk '{ print $1 }')"
-          cat > dist/build-provenance-intellij.json <<PROVEOF
-          {
-            "runId": "${{ github.run_id }}",
-            "runNumber": "${{ github.run_number }}",
-            "runAttempt": "${{ github.run_attempt }}",
-            "sha": "${{ github.sha }}",
-            "ref": "${{ github.ref }}",
-            "workflowRef": "${{ github.workflow_ref }}",
-            "actor": "${{ github.actor }}",
-            "platformId": "intellij",
-            "assetName": "${asset_name}",
-            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-            "assetDigest": "sha256:${digest}"
+          python3 - "dist/${asset_name}" "dist/build-provenance-intellij.json" <<'PY'
+          import hashlib, json, os, sys
+          from pathlib import Path
+          asset = Path(sys.argv[1])
+          payload = {
+              "runId": os.environ["GITHUB_RUN_ID"],
+              "runNumber": os.environ["GITHUB_RUN_NUMBER"],
+              "runAttempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              "sha": os.environ["GITHUB_SHA"],
+              "ref": os.environ["GITHUB_REF"],
+              "workflowRef": os.environ["GITHUB_WORKFLOW_REF"],
+              "actor": os.environ["GITHUB_ACTOR"],
+              "platformId": "intellij",
+              "assetName": asset.name,
+              "assetDigest": "sha256:" + hashlib.sha256(asset.read_bytes()).hexdigest(),
           }
-          PROVEOF
+          Path(sys.argv[2]).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+          PY
 
       - name: Upload plugin artifact
         if: always()
         uses: actions/upload-artifact@v6
         with:
           name: intellij-plugin-${{ github.run_id }}
-          path: |
-            dist/
-            backend-intellij/build/distributions/
+          path: dist/
           if-no-files-found: warn
 
   build-standalone-backend:
@@ -302,64 +488,52 @@ jobs:
       - uses: gradle/actions/setup-gradle@v5
 
       - name: Build standalone backend
-        run: ./kast.sh build backend
+        run: ./kast.sh build backend -Pversion="${{ needs.prepare-release.outputs.release_version }}"
 
       - name: Upload standalone backend asset
-        shell: bash
         env:
           GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
-        run: |
-          set -euo pipefail
-          tag="${{ needs.prepare-release.outputs.release_tag }}"
-          asset_name="kast-standalone-${tag}.zip"
-
-          source_zip="dist/backend.zip"
-          [[ -f "$source_zip" ]] || { echo "Backend zip not found: $source_zip" >&2; exit 1; }
-
-          mkdir -p dist
-          cp "$source_zip" "dist/${asset_name}"
-          gh release upload "$tag" "dist/${asset_name}" --clobber
-
-      - name: Write standalone backend build provenance
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p dist
           tag="${{ needs.prepare-release.outputs.release_tag }}"
           asset_name="kast-standalone-${tag}.zip"
-          digest="$(sha256sum "dist/${asset_name}" | awk '{ print $1 }')"
-          cat > dist/build-provenance-standalone.json <<PROVEOF
-          {
-            "runId": "${{ github.run_id }}",
-            "runNumber": "${{ github.run_number }}",
-            "runAttempt": "${{ github.run_attempt }}",
-            "sha": "${{ github.sha }}",
-            "ref": "${{ github.ref }}",
-            "workflowRef": "${{ github.workflow_ref }}",
-            "actor": "${{ github.actor }}",
-            "platformId": "standalone",
-            "assetName": "${asset_name}",
-            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-            "assetDigest": "sha256:${digest}"
+          source_zip="dist/backend.zip"
+          [[ -f "$source_zip" ]] || { echo "Backend zip not found: $source_zip" >&2; exit 1; }
+          ln "$source_zip" "dist/${asset_name}"
+          gh release upload "$tag" "dist/${asset_name}" --clobber
+          python3 - "dist/${asset_name}" "dist/build-provenance-standalone.json" <<'PY'
+          import hashlib, json, os, sys
+          from pathlib import Path
+          asset = Path(sys.argv[1])
+          payload = {
+              "runId": os.environ["GITHUB_RUN_ID"],
+              "runNumber": os.environ["GITHUB_RUN_NUMBER"],
+              "runAttempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              "sha": os.environ["GITHUB_SHA"],
+              "ref": os.environ["GITHUB_REF"],
+              "workflowRef": os.environ["GITHUB_WORKFLOW_REF"],
+              "actor": os.environ["GITHUB_ACTOR"],
+              "platformId": "standalone",
+              "assetName": asset.name,
+              "assetDigest": "sha256:" + hashlib.sha256(asset.read_bytes()).hexdigest(),
           }
-          PROVEOF
+          Path(sys.argv[2]).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+          PY
+          rm -f "dist/${asset_name}"
 
       - name: Upload standalone backend artifact
         if: always()
         uses: actions/upload-artifact@v6
         with:
           name: standalone-backend-${{ github.run_id }}
-          path: |
-            dist/
-            backend-standalone/build/distributions/
+          path: dist/
           if-no-files-found: warn
 
-  build-ubuntu-debian-bundle:
-    name: Build Ubuntu/Debian bundle
-    needs:
-      - prepare-release
-      - build-standalone-backend
-    if: always() && needs.prepare-release.result == 'success' && needs.build-standalone-backend.result == 'success'
+  build-headless-backend:
+    name: Build headless backend
+    needs: [prepare-release]
+    if: always() && needs.prepare-release.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -368,36 +542,97 @@ jobs:
         with:
           ref: ${{ needs.prepare-release.outputs.release_tag }}
 
-      - name: Download standalone backend artifact
-        uses: actions/download-artifact@v7
+      - uses: actions/setup-java@v5
         with:
-          name: standalone-backend-${{ github.run_id }}
-          path: standalone-artifact
+          distribution: temurin
+          java-version: "21"
 
-      - name: Download Rust CLI release asset
+      - uses: gradle/actions/setup-gradle@v5
+
+      - uses: actions/cache@v5
+        with:
+          path: ~/.gradle/kast/intellij-distributions
+          key: idea-dist-${{ hashFiles('gradle/libs.versions.toml') }}
+
+      - name: Build headless backend
+        run: ./kast.sh build headless -Pversion="${{ needs.prepare-release.outputs.release_version }}"
+
+      - name: Upload headless backend asset
         env:
           GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
         shell: bash
         run: |
           set -euo pipefail
           tag="${{ needs.prepare-release.outputs.release_tag }}"
-          cli_asset="kast-${tag}-linux-x64.zip"
-          mkdir -p dist
-          gh release download "$tag" \
-            --repo amichne/kast-rs \
-            --dir dist \
-            --pattern "$cli_asset"
-          [[ -f "dist/${cli_asset}" ]] || { echo "Missing Rust CLI asset: ${cli_asset}" >&2; exit 1; }
+          asset_name="kast-headless-${tag}.zip"
+          source_zip="dist/headless.zip"
+          [[ -f "$source_zip" ]] || { echo "Headless backend zip not found: $source_zip" >&2; exit 1; }
+          ln "$source_zip" "dist/${asset_name}"
+          gh release upload "$tag" "dist/${asset_name}" --clobber
+          python3 - "dist/${asset_name}" "dist/build-provenance-headless.json" <<'PY'
+          import hashlib, json, os, sys
+          from pathlib import Path
+          asset = Path(sys.argv[1])
+          payload = {
+              "runId": os.environ["GITHUB_RUN_ID"],
+              "runNumber": os.environ["GITHUB_RUN_NUMBER"],
+              "runAttempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              "sha": os.environ["GITHUB_SHA"],
+              "ref": os.environ["GITHUB_REF"],
+              "workflowRef": os.environ["GITHUB_WORKFLOW_REF"],
+              "actor": os.environ["GITHUB_ACTOR"],
+              "platformId": "headless",
+              "assetName": asset.name,
+              "assetDigest": "sha256:" + hashlib.sha256(asset.read_bytes()).hexdigest(),
+          }
+          Path(sys.argv[2]).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+          PY
+          rm -f "dist/${asset_name}"
+
+      - name: Upload headless backend artifact
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: headless-backend-${{ github.run_id }}
+          path: dist/
+          if-no-files-found: warn
+
+  build-ubuntu-debian-bundle:
+    name: Build Ubuntu/Debian bundle
+    needs:
+      - prepare-release
+      - build-cli
+      - build-standalone-backend
+    if: always() && needs.prepare-release.result == 'success' && needs.build-cli.result == 'success' && needs.build-standalone-backend.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.prepare-release.outputs.release_tag }}
+
+      - name: Download Linux x64 CLI artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: rust-cli-linux-x64-${{ github.run_id }}
+          path: cli-artifact
+
+      - name: Download standalone backend artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: standalone-backend-${{ github.run_id }}
+          path: standalone-artifact
 
       - name: Package Ubuntu/Debian bundle
         shell: bash
         run: |
           set -euo pipefail
           tag="${{ needs.prepare-release.outputs.release_tag }}"
-          cli_asset="dist/kast-${tag}-linux-x64.zip"
-          backend_asset="standalone-artifact/dist/backend.zip"
+          cli_asset="cli-artifact/kast-${tag}-linux-x64.zip"
+          backend_asset="standalone-artifact/backend.zip"
           bundle_asset="dist/kast-ubuntu-debian-x86_64-${tag}.tar.gz"
-
+          [[ -f "$cli_asset" ]] || { echo "Missing CLI asset: ${cli_asset}" >&2; exit 1; }
           [[ -f "$backend_asset" ]] || { echo "Missing standalone backend artifact: ${backend_asset}" >&2; exit 1; }
           ./scripts/package-ubuntu-debian-bundle.sh \
             --cli-archive "$cli_asset" \
@@ -427,30 +662,24 @@ jobs:
           tag="${{ needs.prepare-release.outputs.release_tag }}"
           bundle_asset="dist/kast-ubuntu-debian-x86_64-${tag}.tar.gz"
           gh release upload "$tag" "$bundle_asset" "${bundle_asset}.sha256" --clobber
-
-      - name: Write Ubuntu/Debian bundle build provenance
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p dist
-          tag="${{ needs.prepare-release.outputs.release_tag }}"
-          asset_name="kast-ubuntu-debian-x86_64-${tag}.tar.gz"
-          digest="$(sha256sum "dist/${asset_name}" | awk '{ print $1 }')"
-          cat > dist/build-provenance-ubuntu-debian.json <<PROVEOF
-          {
-            "runId": "${{ github.run_id }}",
-            "runNumber": "${{ github.run_number }}",
-            "runAttempt": "${{ github.run_attempt }}",
-            "sha": "${{ github.sha }}",
-            "ref": "${{ github.ref }}",
-            "workflowRef": "${{ github.workflow_ref }}",
-            "actor": "${{ github.actor }}",
-            "platformId": "ubuntu-debian-x86_64",
-            "assetName": "${asset_name}",
-            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-            "assetDigest": "sha256:${digest}"
+          python3 - "$bundle_asset" "dist/build-provenance-ubuntu-debian.json" <<'PY'
+          import hashlib, json, os, sys
+          from pathlib import Path
+          asset = Path(sys.argv[1])
+          payload = {
+              "runId": os.environ["GITHUB_RUN_ID"],
+              "runNumber": os.environ["GITHUB_RUN_NUMBER"],
+              "runAttempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              "sha": os.environ["GITHUB_SHA"],
+              "ref": os.environ["GITHUB_REF"],
+              "workflowRef": os.environ["GITHUB_WORKFLOW_REF"],
+              "actor": os.environ["GITHUB_ACTOR"],
+              "platformId": "ubuntu-debian-x86_64",
+              "assetName": asset.name,
+              "assetDigest": "sha256:" + hashlib.sha256(asset.read_bytes()).hexdigest(),
           }
-          PROVEOF
+          Path(sys.argv[2]).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+          PY
 
       - name: Upload Ubuntu/Debian bundle artifact
         if: always()
@@ -460,89 +689,13 @@ jobs:
           path: dist/
           if-no-files-found: warn
 
-  build-headless-backend:
-    name: Build headless backend
-    needs: [prepare-release]
-    if: always() && needs.prepare-release.result == 'success'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ needs.prepare-release.outputs.release_tag }}
-
-      - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "21"
-
-      - uses: gradle/actions/setup-gradle@v5
-
-      - uses: actions/cache@v5
-        with:
-          path: ~/.gradle/kast/intellij-distributions
-          key: idea-dist-${{ hashFiles('gradle/libs.versions.toml') }}
-
-      - name: Build headless backend
-        run: ./kast.sh build headless
-
-      - name: Upload headless backend asset
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
-        run: |
-          set -euo pipefail
-          tag="${{ needs.prepare-release.outputs.release_tag }}"
-          asset_name="kast-headless-${tag}.zip"
-
-          source_zip="dist/headless.zip"
-          [[ -f "$source_zip" ]] || { echo "Headless backend zip not found: $source_zip" >&2; exit 1; }
-
-          mkdir -p dist
-          cp "$source_zip" "dist/${asset_name}"
-          gh release upload "$tag" "dist/${asset_name}" --clobber
-
-      - name: Write headless backend build provenance
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p dist
-          tag="${{ needs.prepare-release.outputs.release_tag }}"
-          asset_name="kast-headless-${tag}.zip"
-          digest="$(sha256sum "dist/${asset_name}" | awk '{ print $1 }')"
-          cat > dist/build-provenance-headless.json <<PROVEOF
-          {
-            "runId": "${{ github.run_id }}",
-            "runNumber": "${{ github.run_number }}",
-            "runAttempt": "${{ github.run_attempt }}",
-            "sha": "${{ github.sha }}",
-            "ref": "${{ github.ref }}",
-            "workflowRef": "${{ github.workflow_ref }}",
-            "actor": "${{ github.actor }}",
-            "platformId": "headless",
-            "assetName": "${asset_name}",
-            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-            "assetDigest": "sha256:${digest}"
-          }
-          PROVEOF
-
-      - name: Upload headless backend artifact
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: headless-backend-${{ github.run_id }}
-          path: |
-            dist/
-            backend-headless/build/distributions/
-          if-no-files-found: warn
-
   build-ubuntu-debian-headless-bundle:
     name: Build Ubuntu/Debian headless bundle
     needs:
       - prepare-release
+      - build-cli
       - build-headless-backend
-    if: always() && needs.prepare-release.result == 'success' && needs.build-headless-backend.result == 'success'
+    if: always() && needs.prepare-release.result == 'success' && needs.build-cli.result == 'success' && needs.build-headless-backend.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -550,6 +703,12 @@ jobs:
       - uses: actions/checkout@v5
         with:
           ref: ${{ needs.prepare-release.outputs.release_tag }}
+
+      - name: Download Linux x64 CLI artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: rust-cli-linux-x64-${{ github.run_id }}
+          path: cli-artifact
 
       - name: Download headless backend artifact
         uses: actions/download-artifact@v7
@@ -557,30 +716,15 @@ jobs:
           name: headless-backend-${{ github.run_id }}
           path: headless-artifact
 
-      - name: Download Rust CLI release asset
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          tag="${{ needs.prepare-release.outputs.release_tag }}"
-          cli_asset="kast-${tag}-linux-x64.zip"
-          mkdir -p dist
-          gh release download "$tag" \
-            --repo amichne/kast-rs \
-            --dir dist \
-            --pattern "$cli_asset"
-          [[ -f "dist/${cli_asset}" ]] || { echo "Missing Rust CLI asset: ${cli_asset}" >&2; exit 1; }
-
       - name: Package Ubuntu/Debian headless bundle
         shell: bash
         run: |
           set -euo pipefail
           tag="${{ needs.prepare-release.outputs.release_tag }}"
-          cli_asset="dist/kast-${tag}-linux-x64.zip"
-          backend_asset="headless-artifact/dist/headless.zip"
+          cli_asset="cli-artifact/kast-${tag}-linux-x64.zip"
+          backend_asset="headless-artifact/headless.zip"
           bundle_asset="dist/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
-
+          [[ -f "$cli_asset" ]] || { echo "Missing CLI asset: ${cli_asset}" >&2; exit 1; }
           [[ -f "$backend_asset" ]] || { echo "Missing headless backend artifact: ${backend_asset}" >&2; exit 1; }
           ./scripts/package-ubuntu-debian-headless-bundle.sh \
             --cli-archive "$cli_asset" \
@@ -610,30 +754,24 @@ jobs:
           tag="${{ needs.prepare-release.outputs.release_tag }}"
           bundle_asset="dist/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
           gh release upload "$tag" "$bundle_asset" "${bundle_asset}.sha256" --clobber
-
-      - name: Write Ubuntu/Debian headless bundle build provenance
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p dist
-          tag="${{ needs.prepare-release.outputs.release_tag }}"
-          asset_name="kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
-          digest="$(sha256sum "dist/${asset_name}" | awk '{ print $1 }')"
-          cat > dist/build-provenance-ubuntu-debian-headless.json <<PROVEOF
-          {
-            "runId": "${{ github.run_id }}",
-            "runNumber": "${{ github.run_number }}",
-            "runAttempt": "${{ github.run_attempt }}",
-            "sha": "${{ github.sha }}",
-            "ref": "${{ github.ref }}",
-            "workflowRef": "${{ github.workflow_ref }}",
-            "actor": "${{ github.actor }}",
-            "platformId": "ubuntu-debian-headless-x86_64",
-            "assetName": "${asset_name}",
-            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-            "assetDigest": "sha256:${digest}"
+          python3 - "$bundle_asset" "dist/build-provenance-ubuntu-debian-headless.json" <<'PY'
+          import hashlib, json, os, sys
+          from pathlib import Path
+          asset = Path(sys.argv[1])
+          payload = {
+              "runId": os.environ["GITHUB_RUN_ID"],
+              "runNumber": os.environ["GITHUB_RUN_NUMBER"],
+              "runAttempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              "sha": os.environ["GITHUB_SHA"],
+              "ref": os.environ["GITHUB_REF"],
+              "workflowRef": os.environ["GITHUB_WORKFLOW_REF"],
+              "actor": os.environ["GITHUB_ACTOR"],
+              "platformId": "ubuntu-debian-headless-x86_64",
+              "assetName": asset.name,
+              "assetDigest": "sha256:" + hashlib.sha256(asset.read_bytes()).hexdigest(),
           }
-          PROVEOF
+          Path(sys.argv[2]).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+          PY
 
       - name: Upload Ubuntu/Debian headless bundle artifact
         if: always()
@@ -647,47 +785,61 @@ jobs:
     name: Publish release
     needs:
       - prepare-release
+      - publish-maven-central
+      - build-cli
       - build-intellij-plugin
       - build-standalone-backend
       - build-headless-backend
       - build-ubuntu-debian-bundle
       - build-ubuntu-debian-headless-bundle
-    if: always() && needs.prepare-release.result == 'success' && needs.build-intellij-plugin.result == 'success' && needs.build-standalone-backend.result == 'success' && needs.build-headless-backend.result == 'success' && needs.build-ubuntu-debian-bundle.result == 'success' && needs.build-ubuntu-debian-headless-bundle.result == 'success'
+    if: always() && needs.prepare-release.result == 'success' && needs.publish-maven-central.result == 'success' && needs.build-cli.result == 'success' && needs.build-intellij-plugin.result == 'success' && needs.build-standalone-backend.result == 'success' && needs.build-headless-backend.result == 'success' && needs.build-ubuntu-debian-bundle.result == 'success' && needs.build-ubuntu-debian-headless-bundle.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v5
 
+      - name: Download CLI provenance
+        uses: actions/download-artifact@v7
+        with:
+          path: provenance-cli
+          pattern: rust-cli-*-${{ github.run_id }}
+          merge-multiple: true
+
       - name: Download IDEA plugin provenance
         uses: actions/download-artifact@v7
         with:
           path: provenance-intellij
           pattern: intellij-plugin-*
+          merge-multiple: true
 
       - name: Download standalone backend provenance
         uses: actions/download-artifact@v7
         with:
           path: provenance-standalone
           pattern: standalone-backend-*
+          merge-multiple: true
 
       - name: Download headless backend provenance
         uses: actions/download-artifact@v7
         with:
           path: provenance-headless
           pattern: headless-backend-*
+          merge-multiple: true
 
       - name: Download Ubuntu/Debian bundle provenance
         uses: actions/download-artifact@v7
         with:
           path: provenance-ubuntu-debian
           pattern: ubuntu-debian-bundle-*
+          merge-multiple: true
 
       - name: Download Ubuntu/Debian headless bundle provenance
         uses: actions/download-artifact@v7
         with:
           path: provenance-ubuntu-debian-headless
           pattern: ubuntu-debian-headless-bundle-*
+          merge-multiple: true
 
       - name: Assemble combined provenance
         shell: bash
@@ -695,15 +847,17 @@ jobs:
           set -euo pipefail
           python3 scripts/assemble-release-provenance.py \
             --output dist/build-provenance.json \
+            provenance-cli \
             provenance-headless \
             provenance-intellij \
             provenance-standalone \
-            provenance-ubuntu-debian-headless \
-            provenance-ubuntu-debian
+            provenance-ubuntu-debian \
+            provenance-ubuntu-debian-headless
 
       - name: Upload combined provenance
         env:
           GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+        shell: bash
         run: |
           set -euo pipefail
           tag="${{ needs.prepare-release.outputs.release_tag }}"
@@ -717,6 +871,10 @@ jobs:
           set -euo pipefail
           tag="${{ needs.prepare-release.outputs.release_tag }}"
           expected_assets=(
+            "kast-${tag}-linux-x64.zip"
+            "kast-${tag}-linux-arm64.zip"
+            "kast-${tag}-macos-x64.zip"
+            "kast-${tag}-macos-arm64.zip"
             "kast-ubuntu-debian-x86_64-${tag}.tar.gz"
             "kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
             "kast-headless-${tag}.zip"
@@ -727,12 +885,12 @@ jobs:
             "kast-ubuntu-debian-x86_64-${tag}.tar.gz.sha256"
             "kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz.sha256"
           )
-
           rm -rf release-assets
           mkdir -p release-assets
           gh release download "$tag" --dir release-assets --pattern '*.zip'
           gh release download "$tag" --dir release-assets --pattern '*.tar.gz'
           gh release download "$tag" --dir release-assets --pattern '*.tar.gz.sha256'
+          gh release download "$tag" --dir release-assets --pattern 'build-provenance.json'
           for asset in "${expected_assets[@]}"; do
             [[ -f "release-assets/${asset}" ]] || { echo "Missing release asset: ${asset}" >&2; exit 1; }
           done
@@ -741,7 +899,6 @@ jobs:
           done
           (cd release-assets && sha256sum "${expected_assets[@]}") > SHA256SUMS
           cp SHA256SUMS release-assets/SHA256SUMS
-          cp dist/build-provenance.json release-assets/build-provenance.json
           ./scripts/verify-release-assets.sh --release-dir release-assets --tag "$tag"
           gh release upload "$tag" SHA256SUMS --clobber
 
@@ -759,66 +916,76 @@ jobs:
           else
             release_flags+=(--latest)
           fi
-
           gh release edit "$tag" "${release_flags[@]}" \
             --notes "$(gh release view "$tag" --json body -q .body)
 
           ---
           **Build provenance:** [CI Run #${{ github.run_number }}]($run_url)"
 
-      - name: Dispatch Homebrew tap update
+      - name: Render and push Homebrew tap
         if: ${{ !contains(needs.prepare-release.outputs.release_tag, '-') }}
-        id: homebrew-dispatch
         env:
           GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -z "${GH_TOKEN:-}" ]]; then
-            echo "Missing HOMEBREW_TAP_TOKEN secret; create a token that can dispatch amichne/homebrew-kast workflows." >&2
-            exit 1
-          fi
-
-          dispatch_started="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          printf 'dispatch_started=%s\n' "$dispatch_started" >> "$GITHUB_OUTPUT"
-
+          [[ -n "${GH_TOKEN:-}" ]] || { echo "Missing HOMEBREW_TAP_TOKEN secret" >&2; exit 1; }
           tag="${{ needs.prepare-release.outputs.release_tag }}"
-          plugin_asset="kast-intellij-${tag}.zip"
-          sha_plugin="$(awk -v name="$plugin_asset" '$2 == name { print $1 }' SHA256SUMS)"
-
-          [[ -n "$sha_plugin" ]] || { echo "Missing SHA-256 for ${plugin_asset}" >&2; exit 1; }
-
-          gh api repos/amichne/homebrew-kast/dispatches \
-            -f event_type=release-published \
-            -f "client_payload[component]=plugin" \
-            -f "client_payload[version]=${tag}" \
-            -f "client_payload[sha256_plugin]=${sha_plugin}"
-
-      - name: Wait for Homebrew tap update
-        if: ${{ !contains(needs.prepare-release.outputs.release_tag, '-') }}
-        env:
-          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          started="${{ steps.homebrew-dispatch.outputs.dispatch_started }}"
-          deadline=$((SECONDS + 180))
-          run_id=""
-
-          while [[ -z "$run_id" && "$SECONDS" -lt "$deadline" ]]; do
-            run_id="$(gh run list \
-              --repo amichne/homebrew-kast \
-              --workflow update-formula.yml \
-              --event repository_dispatch \
-              --branch main \
-              --created ">=$started" \
-              --limit 10 \
-              --json databaseId,createdAt,displayTitle \
-              --jq 'map(select(.displayTitle == "release-published")) | sort_by(.createdAt) | last | .databaseId // ""')"
-            if [[ -z "$run_id" ]]; then
-              sleep 5
-            fi
+          sha_for() {
+            local asset="$1"
+            awk -v name="$asset" '$2 == name { print $1 }' SHA256SUMS
+          }
+          sha_linux_x64="$(sha_for "kast-${tag}-linux-x64.zip")"
+          sha_linux_arm64="$(sha_for "kast-${tag}-linux-arm64.zip")"
+          sha_macos_x64="$(sha_for "kast-${tag}-macos-x64.zip")"
+          sha_macos_arm64="$(sha_for "kast-${tag}-macos-arm64.zip")"
+          sha_plugin="$(sha_for "kast-intellij-${tag}.zip")"
+          for value in "$sha_linux_x64" "$sha_linux_arm64" "$sha_macos_x64" "$sha_macos_arm64" "$sha_plugin"; do
+            [[ -n "$value" ]] || { echo "Missing Homebrew checksum input" >&2; exit 1; }
           done
 
-          [[ -n "$run_id" ]] || { echo "Timed out waiting for Homebrew tap workflow run to appear" >&2; exit 1; }
-          gh run watch "$run_id" --repo amichne/homebrew-kast --exit-status --compact --interval 10
+          gh repo clone amichne/homebrew-kast homebrew-tap -- --depth 1
+          rsync -a --delete packaging/homebrew/Formula/ homebrew-tap/Formula/
+          rsync -a --delete packaging/homebrew/Casks/ homebrew-tap/Casks/
+          cp packaging/homebrew/README.md homebrew-tap/README.md
+          cp packaging/homebrew/release-state.json homebrew-tap/release-state.json
+          rm -rf homebrew-tap/.github/scripts
+          rm -f homebrew-tap/.github/workflows/publish-aligned-release.yml
+          rm -f homebrew-tap/.github/workflows/update-formula.yml
+
+          KAST_TAP_ROOT=homebrew-tap \
+          VERSION="$tag" \
+          SHA256_MACOS_X64="$sha_macos_x64" \
+          SHA256_MACOS_ARM64="$sha_macos_arm64" \
+          SHA256_LINUX_X64="$sha_linux_x64" \
+          SHA256_LINUX_ARM64="$sha_linux_arm64" \
+          SHA256_PLUGIN="$sha_plugin" \
+          packaging/homebrew/scripts/update-formulas.py
+
+          ruby -c homebrew-tap/Formula/kast.rb
+          ruby -c homebrew-tap/Casks/kast-plugin.rb
+          git -C homebrew-tap diff --check
+
+          if git -C homebrew-tap diff --quiet -- \
+            Formula/kast.rb \
+            Casks/kast-plugin.rb \
+            README.md \
+            release-state.json \
+            .github/scripts \
+            .github/workflows/publish-aligned-release.yml \
+            .github/workflows/update-formula.yml; then
+            echo "Homebrew tap already up to date for ${tag}"
+            exit 0
+          fi
+          git -C homebrew-tap config user.name "github-actions[bot]"
+          git -C homebrew-tap config user.email "github-actions[bot]@users.noreply.github.com"
+          git -C homebrew-tap add -A \
+            Formula/kast.rb \
+            Casks/kast-plugin.rb \
+            README.md \
+            release-state.json \
+            .github/scripts \
+            .github/workflows/publish-aligned-release.yml \
+            .github/workflows/update-formula.yml
+          git -C homebrew-tap commit -m "kast ${tag}"
+          git -C homebrew-tap push

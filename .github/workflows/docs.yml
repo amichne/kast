@@ -8,6 +8,7 @@ on:
       - ".github/scripts/test-docs-navigation-contract.sh"
       - ".github/scripts/test-docs-content-contract.sh"
       - "docs/**"
+      - "cli-rs/resources/kast-skill/references/commands.json"
       - "requirements-docs.txt"
       - "zensical.toml"
   push:
@@ -19,6 +20,7 @@ on:
       - ".github/scripts/test-docs-navigation-contract.sh"
       - ".github/scripts/test-docs-content-contract.sh"
       - "docs/**"
+      - "cli-rs/resources/kast-skill/references/commands.json"
       - "requirements-docs.txt"
       - "zensical.toml"
   workflow_dispatch:
@@ -38,10 +40,6 @@ jobs:
     steps:
       - uses: actions/configure-pages@v6
       - uses: actions/checkout@v5
-      - uses: actions/checkout@v5
-        with:
-          repository: amichne/kast-rs
-          path: kast-rs
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"

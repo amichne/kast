@@ -86,6 +86,7 @@ fabric.properties
 out
 gen
 **/build/
+**/target/
 .gradle/
 .run/
 .qodana/

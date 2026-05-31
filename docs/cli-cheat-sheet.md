@@ -73,7 +73,7 @@ state `kast` planned against is the state `kast` writes to.
 The packaged skill and Copilot extension also use generated `symbol/*`
 and `database/*` methods. They live in the same `kast rpc` transport,
 but their exact request shapes come from
-`../kast-rs/resources/kast-skill/references/commands.json`, not from the OpenAPI
+`cli-rs/resources/kast-skill/references/commands.json`, not from the OpenAPI
 projection.
 
 | RPC method                    | What it does                                                   | Key params                                              |

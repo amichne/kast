@@ -22,7 +22,7 @@ start asking questions.
 ## Homebrew install
 
 Homebrew is the default local developer path when your platform is supported by
-the `amichne/kast` tap. `kast` installs the Rust CLI from `amichne/kast-rs`;
+the `amichne/kast` tap. `kast` installs the Rust CLI from `amichne/kast`;
 `kast-plugin` installs the IDEA plugin bundle from this repository's releases.
 
 ```console title="Install kast with Homebrew"
@@ -78,7 +78,7 @@ from local CLI and backend artifacts:
 
 ```bash title="Package the Ubuntu/Debian bundle"
 ./scripts/package-ubuntu-debian-bundle.sh \
-  --cli-archive ../kast-rs/dist/kast-v1.2.3-linux-x64.zip \
+  --cli-archive dist/kast-v1.2.3-linux-x64.zip \
   --backend-archive dist/headless.zip \
   --version v1.2.3 \
   --output dist/kast-ubuntu-debian-x86_64-v1.2.3.tar.gz
@@ -86,12 +86,11 @@ from local CLI and backend artifacts:
 
 ## Verify release assets
 
-Published releases from `amichne/kast` include the standalone daemon zip,
-headless backend zip, IDEA plugin zip, Ubuntu/Debian bundle, bundle `.sha256`
-sidecar, `SHA256SUMS`, and `build-provenance.json`. CLI binary releases are
-published by `amichne/kast-rs`. Mirror or promote each repository's files together, then run
-the same verifier used by CI before importing Kast daemon, plugin, or bundle
-artifacts into an internal artifact store:
+Published releases from `amichne/kast` include CLI zips, the standalone daemon
+zip, headless backend zip, IDEA plugin zip, Ubuntu/Debian bundles, bundle
+`.sha256` sidecars, `SHA256SUMS`, and `build-provenance.json`. Mirror or
+promote the release directory as a unit, then run the same verifier used by CI
+before importing Kast artifacts into an internal artifact store:
 
 ```bash title="Verify a downloaded release directory"
 gh release download v1.2.3 --repo amichne/kast --dir kast-release-v1.2.3

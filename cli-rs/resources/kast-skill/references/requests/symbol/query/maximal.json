@@ -1,0 +1,47 @@
+{
+  "jsonrpc": "2.0",
+  "method": "symbol/query",
+  "params": {
+    "workspaceRoot": "/absolute/path/to/workspace",
+    "query": "Widget",
+    "modes": [
+      "semantic"
+    ],
+    "filters": {
+      "kinds": [
+        "CONSTRUCTOR"
+      ],
+      "visibility": [
+        "LOCAL"
+      ],
+      "modulePath": ":app",
+      "sourceSet": "main",
+      "fileGlob": "**/*.kt",
+      "packagePrefix": "com.example",
+      "fqNamePrefix": "com.example.Widget"
+    },
+    "anchor": {
+      "fqName": "com.example.Widget",
+      "symbol": "Widget",
+      "filePath": "/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt",
+      "offset": 128
+    },
+    "graph": {
+      "direction": "BOTH",
+      "edgeKinds": [
+        "UNKNOWN"
+      ],
+      "depth": 2,
+      "maxEdgesPerResult": 25
+    },
+    "semantic": {
+      "enabled": true,
+      "profile": "api_usage",
+      "maxCandidates": 25
+    },
+    "limit": 25,
+    "includeEvidence": true,
+    "includeNextRequests": true
+  },
+  "id": 1
+}

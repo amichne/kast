@@ -5,7 +5,7 @@ plugins {
 }
 
 group = providers.gradleProperty("GROUP").get()
-version = providers.exec {
+val gitDescribeVersion = providers.exec {
     commandLine("git", "describe", "--tags", "--match", "v*", "--long", "--always")
     workingDir(rootDir)
     isIgnoreExitValue = true
@@ -19,7 +19,11 @@ version = providers.exec {
         val sha = m.groupValues[3]
         if (distance == 0) base else "$base-${m.groupValues[2]}-g$sha"
     } ?: trimmed.removePrefix("v").ifEmpty { "0.0.0-unknown" }
-}.get()
+}
+version = providers.gradleProperty("version")
+    .orElse(providers.gradleProperty("VERSION"))
+    .orElse(gitDescribeVersion)
+    .get()
 
 subprojects {
     group = rootProject.group

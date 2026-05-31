@@ -39,6 +39,22 @@ trap cleanup EXIT
 
 tag="v9.8.7"
 write_provenance \
+  "${scratch_dir}/provenance-cli-linux-x64/dist/build-provenance-cli-linux-x64.json" \
+  "cli-linux-x64" \
+  "kast-${tag}-linux-x64.zip"
+write_provenance \
+  "${scratch_dir}/provenance-cli-linux-arm64/dist/build-provenance-cli-linux-arm64.json" \
+  "cli-linux-arm64" \
+  "kast-${tag}-linux-arm64.zip"
+write_provenance \
+  "${scratch_dir}/provenance-cli-macos-x64/dist/build-provenance-cli-macos-x64.json" \
+  "cli-macos-x64" \
+  "kast-${tag}-macos-x64.zip"
+write_provenance \
+  "${scratch_dir}/provenance-cli-macos-arm64/dist/build-provenance-cli-macos-arm64.json" \
+  "cli-macos-arm64" \
+  "kast-${tag}-macos-arm64.zip"
+write_provenance \
   "${scratch_dir}/provenance-intellij/dist/build-provenance-intellij.json" \
   "intellij" \
   "kast-intellij-${tag}.zip"
@@ -62,6 +78,10 @@ write_provenance \
 output="${scratch_dir}/dist/build-provenance.json"
 "$assembler" \
   --output "$output" \
+  "${scratch_dir}/provenance-cli-linux-arm64" \
+  "${scratch_dir}/provenance-cli-linux-x64" \
+  "${scratch_dir}/provenance-cli-macos-arm64" \
+  "${scratch_dir}/provenance-cli-macos-x64" \
   "${scratch_dir}/provenance-headless" \
   "${scratch_dir}/provenance-intellij" \
   "${scratch_dir}/provenance-standalone" \
@@ -76,6 +96,10 @@ from pathlib import Path
 payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 platforms = [entry.get("platformId") for entry in payload.get("builds", [])]
 expected = [
+    "cli-linux-arm64",
+    "cli-linux-x64",
+    "cli-macos-arm64",
+    "cli-macos-x64",
     "headless",
     "intellij",
     "standalone",
@@ -87,7 +111,7 @@ if platforms != expected:
 PY
 
 rm "${scratch_dir}/provenance-intellij/dist/build-provenance-intellij.json"
-if "$assembler" --output "$output" "${scratch_dir}/provenance-artifacts" "${scratch_dir}/provenance-headless" "${scratch_dir}/provenance-intellij" "${scratch_dir}/provenance-standalone" "${scratch_dir}/provenance-ubuntu-debian-headless" "${scratch_dir}/provenance-ubuntu-debian" \
+if "$assembler" --output "$output" "${scratch_dir}/provenance-cli-linux-arm64" "${scratch_dir}/provenance-cli-linux-x64" "${scratch_dir}/provenance-cli-macos-arm64" "${scratch_dir}/provenance-cli-macos-x64" "${scratch_dir}/provenance-headless" "${scratch_dir}/provenance-intellij" "${scratch_dir}/provenance-standalone" "${scratch_dir}/provenance-ubuntu-debian-headless" "${scratch_dir}/provenance-ubuntu-debian" \
   >"${scratch_dir}/missing.out" 2>"${scratch_dir}/missing.err"; then
   die "assembler unexpectedly passed with missing intellij provenance"
 fi

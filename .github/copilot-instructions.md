@@ -41,9 +41,9 @@ Default test runs exclude the `concurrency`, `performance`, and `parity` tags un
   every runtime.
 - `analysis-server` wraps `AnalysisBackend` in the line-delimited JSON-RPC transport. `AnalysisDispatcher` is the method
   router that enforces capability checks, pagination limits, and request decoding for socket and stdio servers.
-- The Rust CLI in sibling repo `kast-rs` is the operator-facing control plane.
-  It owns command parsing, daemon lifecycle, installer flows, and packaged
-  skill resources that this repo should import by reference instead of embedding.
+- The Rust CLI in `cli-rs/` is the operator-facing control plane. It owns
+  command parsing, daemon lifecycle, installer flows, and packaged skill
+  resources.
 - `backend-standalone` is the headless runtime for terminal, CI, and agent use.
   `StandaloneAnalysisSession` owns Gradle workspace discovery, PSI/K2 session lifecycle, workspace refresh, and
   background indexing.
@@ -64,7 +64,7 @@ requests, while `kast up`, `kast status`, and `kast stop` are the human lifecycl
 
 - Treat `AnalysisBackend`, the `kast rpc` JSON-RPC method surface, embedded skill resources, and packaged
   Copilot-extension resources as contract surfaces. If one changes, update its consumers together:
-  `docs/openapi.yaml`, `../kast-rs/resources/kast-skill/**`, `.github/extensions/kast/**`,
+  `docs/openapi.yaml`, `cli-rs/resources/kast-skill/**`, `.github/extensions/kast/**`,
   `.github/hooks/**`, `kast.sh`/`install.sh`, and the related tests.
 - Any `AnalysisBackend` operation change must land in **both**
   `backend-standalone` and `backend-intellij`. Update `parity-tests` and keep advertised capabilities honest.
@@ -75,7 +75,7 @@ requests, while `kast up`, `kast status`, and `kast stop` are the human lifecycl
 - `docs/` plus `zensical.toml` are the documentation source of truth. `site/`
   and generated `docs/reference/*.md` output are build artifacts and should not be hand-edited.
 - `.github/hooks/hooks.json` is the authoritative hook manifest. Packaged
-  Copilot resources are embedded by the Rust CLI in `kast-rs`.
+  Copilot resources are embedded by the Rust CLI in `cli-rs/`.
 - Source `.github/hooks/skill-shadowing.json` intentionally keeps repo-local entries, while the packaged Copilot bundle
   filters it down to portable entries backed by `shadowingExtensionId`.
 - Use `kast` terminology in commands, docs, and packaging targets. `analysis-cli`
