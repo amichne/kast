@@ -76,7 +76,8 @@
           "architecture/how-it-works",
           "architecture/behavioral-model",
           "architecture/kast-vs-lsp",
-          "architecture/adt-boundaries"
+          "architecture/adt-boundaries",
+          "architecture/scip-ingestion-audit"
         ]
       },
       {
