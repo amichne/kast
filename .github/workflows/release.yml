@@ -947,6 +947,7 @@ jobs:
           done
 
           gh repo clone amichne/homebrew-kast homebrew-tap -- --depth 1
+          git -C homebrew-tap remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/amichne/homebrew-kast.git"
           rsync -a --delete packaging/homebrew/Formula/ homebrew-tap/Formula/
           rsync -a --delete packaging/homebrew/Casks/ homebrew-tap/Casks/
           cp packaging/homebrew/README.md homebrew-tap/README.md
