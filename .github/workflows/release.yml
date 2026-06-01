@@ -241,7 +241,8 @@ jobs:
             ORG_GRADLE_PROJECT_MAVENCENTRALUSERNAME \
             ORG_GRADLE_PROJECT_MAVENCENTRALPASSWORD \
             SIGNING_GPG_KEY_NAME \
-            SIGNING_GPG_PRIVATE_KEY
+            SIGNING_GPG_PRIVATE_KEY \
+            SIGNING_GPG_PASSPHRASE
           do
             if [[ -z "${!secret_name:-}" ]]; then
               echo "Missing ${secret_name} secret"
@@ -258,6 +259,7 @@ jobs:
           ORG_GRADLE_PROJECT_MAVENCENTRALPASSWORD: ${{ secrets.ORG_GRADLE_PROJECT_MAVENCENTRALPASSWORD }}
           SIGNING_GPG_KEY_NAME: ${{ secrets.SIGNING_GPG_KEY_NAME }}
           SIGNING_GPG_PRIVATE_KEY: ${{ secrets.SIGNING_GPG_PRIVATE_KEY }}
+          SIGNING_GPG_PASSPHRASE: ${{ secrets.SIGNING_GPG_PASSPHRASE }}
 
       - name: Import GPG key
         if: steps.gate.outputs.publish == 'true'
