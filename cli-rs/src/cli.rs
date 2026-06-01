@@ -32,6 +32,11 @@ pub enum Command {
         #[command(subcommand)]
         command: DaemonCommand,
     },
+    /// Install or remove JVM backend components.
+    Backend {
+        #[command(subcommand)]
+        command: BackendCommand,
+    },
     /// Send a raw JSON-RPC request to the workspace daemon.
     Rpc(RpcArgs),
     /// Start or warm the workspace daemon.
@@ -71,6 +76,41 @@ pub enum ConfigCommand {
 pub enum DaemonCommand {
     /// Launch the standalone JVM backend in the foreground.
     Start(DaemonStartArgs),
+}
+
+#[derive(Debug, Subcommand, Clone)]
+pub enum BackendCommand {
+    /// Install one backend component from a release asset or local archive.
+    Install(BackendInstallArgs),
+    /// Remove one backend component managed by kast.
+    Uninstall(BackendUninstallArgs),
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct BackendInstallArgs {
+    /// Backend component to install.
+    #[arg(value_enum)]
+    pub backend: BackendComponent,
+    /// Local backend zip archive. When omitted, kast downloads the release asset.
+    #[arg(long)]
+    pub archive: Option<PathBuf>,
+    /// Release tag or version. Defaults to this CLI version.
+    #[arg(long)]
+    pub version: Option<String>,
+    /// Release directory URL containing backend zip, SHA256SUMS, and build-provenance.json.
+    /// Defaults to the matching GitHub release.
+    #[arg(long)]
+    pub base_url: Option<String>,
+    /// Replace an existing installed backend version.
+    #[arg(long, num_args = 0..=1, default_missing_value = "true")]
+    pub yes: Option<bool>,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct BackendUninstallArgs {
+    /// Backend component to remove.
+    #[arg(value_enum)]
+    pub backend: BackendComponent,
 }
 
 #[derive(Debug, Subcommand, Clone)]
@@ -422,6 +462,21 @@ impl BackendName {
             Self::Intellij => "intellij",
             Self::Headless => "headless",
             Self::Standalone => "standalone",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
+pub enum BackendComponent {
+    Standalone,
+    Headless,
+}
+
+impl BackendComponent {
+    pub fn canonical(self) -> &'static str {
+        match self {
+            Self::Standalone => "standalone",
+            Self::Headless => "headless",
         }
     }
 }

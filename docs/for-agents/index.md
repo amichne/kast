@@ -19,10 +19,13 @@ results.
 # 1. Install the Kast skill source into this repo (writes to .agents/skills/kast)
 kast install skill
 
-# 2. Warm the workspace daemon for this repo
+# 2. Install the backend this agent will use
+kast backend install standalone
+
+# 3. Warm the workspace daemon for this repo
 kast up --workspace-root="$PWD"
 
-# 3. Hand off — your agent now has the Kast skill loaded
+# 4. Hand off — your agent now has the Kast skill loaded
 ```
 
 Done. The skill teaches the workflow and the resolve-first pattern. The
@@ -39,22 +42,23 @@ project model, indexes, and analysis session.
 
 ## Local and hosted agent setup
 
-Local agents usually inherit a developer's installed CLI and workspace.
-Hosted Ubuntu/Debian agents should install into a contained root from the
-self-contained release bundle before the session starts. Homebrew is still the
-developer install path when the target supports it; the Ubuntu/Debian installer
-is the only supported non-Brew path.
+Local agents usually inherit a developer's installed CLI and workspace, then
+install exactly one backend with `kast backend install standalone` or
+`kast backend install headless`. Hosted Ubuntu/Debian agents can either install
+the headless backend on demand or install into a contained root from the
+self-contained offline bundle before the session starts. Homebrew is still the
+developer install path when the target supports it.
 
 | Agent environment | Install path | Runtime path | What to hand the agent |
 |-------------------|--------------|--------------|-------------------------|
-| Local developer agent | `kast install skill` and optional `kast install copilot-extension` | Existing CLI plus standalone or IDEA backend | The packaged skill and native `kast_*` tools |
-| CI review agent | `scripts/install-ubuntu-debian.sh install` | Headless backend warmed with `kast up --backend=headless` | `kast rpc` commands and structured JSON outputs |
-| Ubuntu/Debian hosted agent | `scripts/install-ubuntu-debian.sh install` from the release bundle | Contained CLI and headless backend under `KAST_UBUNTU_DEBIAN_ROOT` | `kast` on `PATH` plus `KAST_CONFIG_HOME` when a custom config root is used |
+| Local developer agent | `kast install skill` and optional `kast install copilot-extension` | `kast backend install standalone` or IDEA backend | The packaged skill and native `kast_*` tools |
+| CI review agent | `kast backend install headless` | Headless backend warmed with `kast up --backend=headless` | `kast rpc` commands and structured JSON outputs |
+| Ubuntu/Debian hosted agent | `scripts/install-ubuntu-debian.sh install` from the offline release bundle | Contained CLI and headless backend under `KAST_UBUNTU_DEBIAN_ROOT` | `kast` on `PATH` plus `KAST_CONFIG_HOME` when a custom config root is used |
 
 Use the Ubuntu/Debian path when the agent image cannot rely on a human shell
-profile, Homebrew tap state, or an already-open IDE. The installer verifies the
-CLI, backend runtime libraries, generated config, and `kast doctor` before it
-exits.
+profile, Homebrew tap state, network access to component assets, or an
+already-open IDE. The installer verifies the CLI, backend runtime libraries,
+generated config, and `kast doctor` before it exits.
 
 | What it gets         | What `kast` returns                                                                       | Why your agent cares                                                            |
 |----------------------|-------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|

@@ -51,6 +51,10 @@ jobs:
         shell: bash
         run: ./.github/scripts/test-release-provenance-assembler.sh
 
+      - name: Test release provenance merge
+        shell: bash
+        run: ./.github/scripts/test-release-provenance-merge.sh
+
       - name: Test Homebrew package renderer
         shell: bash
         run: packaging/homebrew/scripts/test-formulas.py
@@ -181,6 +185,16 @@ jobs:
       - name: Build standalone daemon distribution
         if: steps.standalone-dist-cache.outputs.cache-hit != 'true'
         run: ./gradlew :backend-standalone:portableDistZip
+
+      - name: Free standalone distribution workspace before headless build
+        if: steps.headless-dist-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf \
+            backend-standalone/build/libs/*-all.jar \
+            backend-standalone/build/portable-dist \
+            backend-standalone/build/runtime-libs
 
       - name: Build headless backend distribution
         if: steps.headless-dist-cache.outputs.cache-hit != 'true'

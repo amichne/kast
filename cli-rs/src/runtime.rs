@@ -169,7 +169,7 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
     }
 
     if args.no_auto_start.unwrap_or(false) {
-        return Err(no_backend_error(&workspace_root));
+        return Err(no_backend_error(&workspace_root, args.backend_name));
     }
 
     let config = KastConfig::load(&workspace_root)?;
@@ -181,7 +181,7 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
         BackendName::Headless => config.backends.headless.runtime_libs_dir.clone(),
     }
     .filter(|path| path.is_dir())
-    .ok_or_else(|| no_backend_error(&workspace_root))?;
+    .ok_or_else(|| no_backend_error(&workspace_root, Some(launch_backend)))?;
     let log_file = daemon_log_file(&config, &workspace_root, launch_backend);
     let daemon_args = DaemonStartArgs {
         workspace_root: Some(workspace_root.clone()),
@@ -572,15 +572,24 @@ fn workspace_root(value: Option<PathBuf>) -> Result<PathBuf> {
     Ok(config::normalize(value.unwrap_or(env::current_dir()?)))
 }
 
-fn no_backend_error(workspace_root: &Path) -> CliError {
-    CliError::new(
+fn no_backend_error(workspace_root: &Path, backend_name: Option<BackendName>) -> CliError {
+    let backend_name = backend_name.unwrap_or(BackendName::Standalone);
+    let install_command = format!("kast backend install {}", backend_name.canonical());
+    let mut error = CliError::new(
         "NO_BACKEND_AVAILABLE",
         format!(
-            "No backend is running for {}. Start with: kast daemon start --workspace-root={}",
+            "No {} backend is installed or running for {}. Install it with: {}. Then start with: kast up --backend={} --workspace-root={}",
+            backend_name.canonical(),
             workspace_root.display(),
+            install_command,
+            backend_name.canonical(),
             workspace_root.display()
         ),
-    )
+    );
+    error
+        .details
+        .insert("installCommand".to_string(), install_command);
+    error
 }
 
 fn daemon_log_file(

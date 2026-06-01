@@ -43,6 +43,7 @@ require_order() {
 repo_root="$(resolve_repo_root)"
 ci_workflow="${repo_root}/.github/workflows/ci.yml"
 release_workflow="${repo_root}/.github/workflows/release.yml"
+offline_bundle_workflow="${repo_root}/.github/workflows/offline-bundles.yml"
 snapshot_workflow="${repo_root}/.github/workflows/snapshot.yml"
 docs_workflow="${repo_root}/.github/workflows/docs.yml"
 root_build_file="${repo_root}/build.gradle.kts"
@@ -60,6 +61,7 @@ kast_script="${repo_root}/kast.sh"
 for path in \
   "$ci_workflow" \
   "$release_workflow" \
+  "$offline_bundle_workflow" \
   "$snapshot_workflow" \
   "$docs_workflow" \
   "$root_build_file" \
@@ -106,8 +108,11 @@ require_contains "$ci_workflow" "runs-on: ubuntu-22.04" "CI Linux CLI asset must
 require_contains "$ci_workflow" "working-directory: cli-rs" "CI Rust commands must run from cli-rs"
 require_contains "$ci_workflow" "packaging/homebrew/scripts/test-formulas.py" "CI must validate Homebrew package templates"
 require_contains "$ci_workflow" "Download Rust CLI CI asset" "CI bundle tests must consume a locally built CLI artifact"
+require_contains "$ci_workflow" "Free standalone distribution workspace before headless build" "CI must free standalone distribution workspace before building headless assets on constrained runners"
 require_not_contains "$ci_workflow" "repository: amichne/kast-rs" "CI must not checkout the retired kast-rs repo"
 require_not_contains "$ci_workflow" "--repo amichne/kast-rs" "CI must not download CLI assets from the retired kast-rs repo"
+require_order "$ci_workflow" "Build standalone daemon distribution" "Free standalone distribution workspace before headless build" "CI must free standalone distribution workspace after producing the standalone zip"
+require_order "$ci_workflow" "Free standalone distribution workspace before headless build" "Build headless backend distribution" "CI must free standalone distribution workspace before building the headless zip"
 
 require_contains "$snapshot_workflow" "Publish Snapshot" "Snapshot workflow must exist"
 require_contains "$snapshot_workflow" "publishAllPublicationsToGitHubPackagesRepository" "Snapshot workflow must publish GitHub Packages snapshots"
@@ -122,7 +127,6 @@ require_contains "$release_workflow" "SIGNING_GPG_PRIVATE_KEY \\" "Release Maven
 require_order "$release_workflow" "SIGNING_GPG_PRIVATE_KEY \\" "SIGNING_GPG_PASSPHRASE" "Release Maven Central gate must require the GPG passphrase secret before signing"
 require_contains "$release_workflow" "Build Rust CLI asset" "Release must build CLI assets from cli-rs"
 require_contains "$release_workflow" "working-directory: cli-rs" "Release CLI build must run from cli-rs"
-require_contains "$release_workflow" "rust-cli-linux-x64" "Release bundles must consume the locally built Linux x64 CLI artifact"
 require_contains "$release_workflow" "Render and push Homebrew tap" "Release must render and push the Homebrew tap"
 require_contains "$release_workflow" "packaging/homebrew/scripts/update-formulas.py" "Release must use the monorepo Homebrew renderer"
 require_contains "$release_workflow" "gh repo clone amichne/homebrew-kast" "Release must push the generated Homebrew tap mirror"
@@ -138,10 +142,24 @@ require_not_contains "$release_workflow" "git -C homebrew-tap add -A \\" "Releas
 require_contains "$release_workflow" "Generate and upload SHA256SUMS" "Release must publish aggregate checksums"
 require_contains "$release_workflow" "scripts/assemble-release-provenance.py" "Release must assemble provenance"
 require_contains "$release_workflow" "scripts/verify-release-assets.sh" "Release must verify assets before publishing checksums"
+require_not_contains "$release_workflow" "build-ubuntu-debian-bundle" "Default release must not build offline Ubuntu/Debian bundles"
+require_not_contains "$release_workflow" "build-ubuntu-debian-headless-bundle" "Default release must not build offline headless Ubuntu/Debian bundles"
+require_not_contains "$release_workflow" "provenance-ubuntu-debian" "Default release provenance must not include optional offline bundles"
 require_not_contains "$release_workflow" "--repo amichne/kast-rs" "Release must not depend on kast-rs release assets"
 require_not_contains "$release_workflow" "Dispatch Homebrew tap update" "Release must render the tap directly instead of dispatching component updates"
 require_order "$release_workflow" "Generate and upload SHA256SUMS" "Publish draft release with provenance annotation" "Release must verify checksums before publication"
 require_order "$release_workflow" "Publish draft release with provenance annotation" "Render and push Homebrew tap" "Release must publish assets before updating Homebrew"
+
+require_contains "$offline_bundle_workflow" "workflow_dispatch:" "Offline bundle workflow must be manually dispatchable"
+require_contains "$offline_bundle_workflow" "version:" "Offline bundle workflow must accept a release version"
+require_contains "$offline_bundle_workflow" "bundle:" "Offline bundle workflow must choose standalone/headless/both"
+require_contains "$offline_bundle_workflow" "publish_to_release:" "Offline bundle workflow must require explicit release append"
+require_contains "$offline_bundle_workflow" 'kast-${tag}-linux-x64.zip' "Offline bundle workflow must consume the published Linux x64 CLI asset"
+require_contains "$offline_bundle_workflow" "scripts/package-ubuntu-debian-bundle.sh" "Offline bundle workflow must package standalone bundles"
+require_contains "$offline_bundle_workflow" "scripts/package-ubuntu-debian-headless-bundle.sh" "Offline bundle workflow must package headless bundles"
+require_contains "$offline_bundle_workflow" "scripts/merge-release-provenance.py" "Offline bundle workflow must merge optional provenance"
+require_contains "$offline_bundle_workflow" "scripts/verify-release-assets.sh" "Offline bundle workflow must verify appended release assets"
+require_contains "$offline_bundle_workflow" "gh release upload" "Offline bundle workflow must support appending assets to a release"
 
 require_contains "$release_provenance_assembler" '"cli-linux-x64"' "Release provenance must include Linux x64 CLI assets"
 require_contains "$release_provenance_assembler" '"cli-linux-arm64"' "Release provenance must include Linux arm64 CLI assets"
