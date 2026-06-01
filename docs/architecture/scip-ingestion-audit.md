@@ -74,7 +74,7 @@ around the same durable source-index schema, not competing sources of truth.
 
 | Priority | Finding | Evidence | Why it matters |
 | --- | --- | --- | --- |
-| P0 | Source-index schema version is duplicated across Kotlin and Rust | `SqliteSourceIndexStore` declares version `7`; Rust `symbol/query` checks version `6` in `cli-rs/` and `../kast-rs` | A Kotlin-written DB can be rejected by the Rust-owned query path. SCIP import would hit the same drift immediately. |
+| P0 | Source-index schema version must stay rooted outside language bindings | The active monorepo now declares `source_index_schema_version` in `packaging/homebrew/release-state.json`; earlier drift had Kotlin writing version `7` while Rust readers accepted version `6` | A Kotlin-written DB can be rejected by the Rust-owned query path whenever the version is duplicated. SCIP import would hit the same drift immediately. |
 | P0 | `symbol/query` wire models are duplicated | Kotlin models live in `analysis-api`; Rust has private serde structs with the same request and response concepts | Contract changes can compile in one language while breaking the other. |
 | P0 | The durable source-index schema is implicit | Storage tables, Kotlin row data classes, and Rust row structs collectively define the contract | A Rust-only writer cannot be built safely while the JVM writer is the practical source of truth. |
 | P1 | Scanner APIs are PSI-shaped instead of producer-shaped | `PsiSourceIndexScanner` and `PsiReferenceScanner` produce useful rows, but their input boundary is IntelliJ PSI | SCIP import should not need a JVM parser or PSI just to emit declaration and reference rows. |
@@ -256,8 +256,7 @@ guide and update the matching docs, generated resources, and tests together.
 
 ## Next steps
 
-Start with the schema source-of-truth work. If the current version mismatch is
-intentional, encode the compatibility rule in the schema manifest and teach
-the Rust reader and writer how to accept the supported range. If it is
-accidental, fix it before introducing the SCIP importer, because external
-ingestion will otherwise build on a broken contract.
+Continue from the schema source-of-truth work. The immediate schema-version
+drift is fixed by the external release-state value; the remaining work is to
+make the DDL, table semantics, compatibility rules, and Rust writer fixtures
+equally explicit before introducing the SCIP importer.

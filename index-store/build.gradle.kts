@@ -3,6 +3,19 @@ plugins {
     kotlin("plugin.serialization")
 }
 
+val sourceIndexReleaseStateFile = rootProject.layout.projectDirectory.file("packaging/homebrew/release-state.json")
+val generatedSourceIndexSchemaDir = layout.buildDirectory.dir("generated/source-index-schema/kotlin")
+val generateSourceIndexSchema by tasks.registering(WriteSourceIndexSchemaVersionTask::class) {
+    releaseStateFile.set(sourceIndexReleaseStateFile)
+    outputDirectory.set(generatedSourceIndexSchemaDir)
+}
+
+kotlin {
+    sourceSets.named("main") {
+        kotlin.srcDir(generateSourceIndexSchema)
+    }
+}
+
 kastPublishing {
     artifactId.set("kast-index-store")
     moduleName.set("Kast Index Store")

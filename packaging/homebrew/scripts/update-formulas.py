@@ -66,6 +66,10 @@ def update_release_state(root: Path, version: str) -> None:
 
     state = json.loads(release_state.read_text(encoding="utf-8"))
     require(state.get("schema_version") == 1, "release-state.json schema_version must be 1")
+    require(
+        isinstance(state.get("source_index_schema_version"), int) and state["source_index_schema_version"] > 0,
+        "release-state.json source_index_schema_version must be a positive integer",
+    )
     state["current_release"] = f"v{version}"
     release_state.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
 

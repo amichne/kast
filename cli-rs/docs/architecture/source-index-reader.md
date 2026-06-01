@@ -63,8 +63,8 @@ target/release/kast-metrics-bench \
 
 The helper runs Rust direct SQLite timings for `fan-in`, `graph`,
 `search`, and `impact`. Metrics commands no longer fall back to JVM
-JSON-RPC, so stale or missing schema-6 indexes fail directly instead of
-hiding the read path being measured. It prints JSON with per-operation
+JSON-RPC, so stale or schema-incompatible indexes fail directly instead
+of hiding the read path being measured. It prints JSON with per-operation
 `minMs`, `medianMs`, `maxMs`, raw `timingsMs`, and any skipped or failed
 comparison runs.
 

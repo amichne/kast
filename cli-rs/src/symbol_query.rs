@@ -1,6 +1,7 @@
 use crate::config;
 use crate::error::{CliError, Result};
 use crate::source_index_db;
+use crate::source_index_schema::SOURCE_INDEX_SCHEMA_VERSION;
 use glob::Pattern;
 use rusqlite::{Connection, OpenFlags, OptionalExtension, Row, params};
 use serde::{Deserialize, Serialize};
@@ -9,8 +10,6 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, HashMap};
 use std::env;
 use std::path::{Path, PathBuf};
-
-const SOURCE_INDEX_SCHEMA_VERSION: i64 = 6;
 
 pub(crate) fn try_handle_raw_rpc(
     raw_request: &str,
