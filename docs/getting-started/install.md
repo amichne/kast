@@ -71,6 +71,12 @@ matching `.sha256` sidecar. The headless variant is
 Rust CLI, one backend portable runtime, `scripts/install-ubuntu-debian.sh`,
 bundle metadata, and the license notice.
 
+Offline bundles are appended to a release by the manual **Offline Bundles**
+workflow after the core CLI, backend, plugin, `SHA256SUMS`, and
+`build-provenance.json` assets exist. Use that workflow with
+`publish_to_release=true` when the bundle should become part of the release
+contents.
+
 ```bash title="Install Kast on Ubuntu/Debian"
 export KAST_UBUNTU_DEBIAN_VERSION="v1.2.3"
 ./scripts/install-ubuntu-debian.sh install
@@ -115,9 +121,10 @@ from local CLI and backend artifacts:
 Published releases from `amichne/kast` include CLI zips, the standalone backend
 zip, headless backend zip, IDEA plugin zip, `SHA256SUMS`, and
 `build-provenance.json`. Ubuntu/Debian tarballs are optional offline bundles
-with matching `.sha256` sidecars. Mirror or promote the release directory as a
-unit, then run the same verifier used by CI before importing Kast artifacts into
-an internal artifact store:
+with matching `.sha256` sidecars; they may appear after the core release when
+the manual offline-bundle workflow appends them. Mirror or promote the release
+directory as a unit, then run the same verifier used by CI before importing
+Kast artifacts into an internal artifact store:
 
 ```bash title="Verify a downloaded release directory"
 gh release download v1.2.3 --repo amichne/kast --dir kast-release-v1.2.3

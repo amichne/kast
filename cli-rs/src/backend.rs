@@ -5,12 +5,13 @@ use crate::cli::{
 use crate::config::{self, KastConfig};
 use crate::error::{CliError, Result};
 use crate::self_mgmt::{self, BackendComponentState, InstallState};
+use serde::Deserialize;
 use serde::Serialize;
+use sha2::{Digest, Sha256};
 use std::env;
 use std::fs;
-use std::io;
+use std::io::{self, Read};
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Serialize)]
@@ -53,6 +54,19 @@ struct BackendLayout {
 
 struct TempTree {
     path: PathBuf,
+}
+
+#[derive(Debug, Deserialize)]
+struct ReleaseProvenance {
+    builds: Vec<ReleaseProvenanceBuild>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ReleaseProvenanceBuild {
+    platform_id: String,
+    asset_name: String,
+    asset_digest: String,
 }
 
 impl Drop for TempTree {
@@ -206,40 +220,131 @@ fn resolve_archive(
         .base_url
         .clone()
         .unwrap_or_else(|| format!("https://github.com/amichne/kast/releases/download/{version}"));
-    let url = format!("{}/{}", base_url.trim_end_matches('/'), asset_name);
-    download_with_curl(&url, &archive)?;
+    let base_url = base_url.trim_end_matches('/');
+    let checksums = temp.path.join("SHA256SUMS");
+    let provenance = temp.path.join("build-provenance.json");
+    download_with_http(&format!("{base_url}/SHA256SUMS"), &checksums)?;
+    download_with_http(&format!("{base_url}/build-provenance.json"), &provenance)?;
+    download_with_http(&format!("{base_url}/{asset_name}"), &archive)?;
+    verify_downloaded_release_asset(args.backend, &asset_name, &archive, &checksums, &provenance)?;
     Ok((archive, true, Some(temp)))
 }
 
-fn download_with_curl(url: &str, output: &Path) -> Result<()> {
-    let status = Command::new("curl")
-        .args([
-            "--fail",
-            "--location",
-            "--retry",
-            "3",
-            "--retry-delay",
-            "2",
-            "--silent",
-            "--show-error",
-            "--output",
-            output.to_str().unwrap_or_default(),
-            url,
-        ])
-        .status()
-        .map_err(|error| {
-            CliError::new(
-                "BACKEND_DOWNLOAD_FAILED",
-                format!("Unable to run curl: {error}"),
-            )
-        })?;
-    if !status.success() {
-        return Err(CliError::new(
+fn download_with_http(url: &str, output: &Path) -> Result<()> {
+    let mut response = ureq::get(url).call().map_err(|error| {
+        CliError::new(
             "BACKEND_DOWNLOAD_FAILED",
-            format!("Failed to download backend archive from {url}"),
+            format!("Failed to download backend release asset from {url}: {error}"),
+        )
+    })?;
+    if let Some(parent) = output.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let mut file = fs::File::create(output)?;
+    let mut reader = response.body_mut().as_reader();
+    io::copy(&mut reader, &mut file).map_err(|error| {
+        CliError::new(
+            "BACKEND_DOWNLOAD_FAILED",
+            format!("Failed to write backend release asset from {url}: {error}"),
+        )
+    })?;
+    Ok(())
+}
+
+fn verify_downloaded_release_asset(
+    backend: BackendComponent,
+    asset_name: &str,
+    archive: &Path,
+    checksums: &Path,
+    provenance: &Path,
+) -> Result<()> {
+    let actual_digest = sha256_file(archive)?;
+    let checksum_digest = checksum_entry(checksums, asset_name)?;
+    if checksum_digest != actual_digest {
+        return Err(CliError::new(
+            "BACKEND_RELEASE_VERIFY_FAILED",
+            format!(
+                "Checksum mismatch for {asset_name}: expected {checksum_digest}, got {actual_digest}"
+            ),
+        ));
+    }
+
+    let provenance = read_provenance_entry(provenance, backend, asset_name)?;
+    let expected_provenance_digest = format!("sha256:{actual_digest}");
+    if provenance.asset_digest != expected_provenance_digest {
+        return Err(CliError::new(
+            "BACKEND_RELEASE_VERIFY_FAILED",
+            format!(
+                "Provenance digest mismatch for {asset_name}: expected {expected_provenance_digest}, got {}",
+                provenance.asset_digest
+            ),
         ));
     }
     Ok(())
+}
+
+fn checksum_entry(checksums: &Path, asset_name: &str) -> Result<String> {
+    for raw_line in fs::read_to_string(checksums)?.lines() {
+        let line = raw_line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        let mut parts = line.split_whitespace();
+        let Some(digest) = parts.next() else {
+            continue;
+        };
+        let Some(name) = parts.next() else {
+            continue;
+        };
+        if name == asset_name {
+            return Ok(digest.to_string());
+        }
+    }
+    Err(CliError::new(
+        "BACKEND_RELEASE_VERIFY_FAILED",
+        format!("SHA256SUMS does not include {asset_name}"),
+    ))
+}
+
+fn read_provenance_entry(
+    provenance: &Path,
+    backend: BackendComponent,
+    asset_name: &str,
+) -> Result<ReleaseProvenanceBuild> {
+    let payload: ReleaseProvenance = serde_json::from_str(&fs::read_to_string(provenance)?)
+        .map_err(|error| {
+            CliError::new(
+                "BACKEND_RELEASE_VERIFY_FAILED",
+                format!("Invalid build-provenance.json: {error}"),
+            )
+        })?;
+    payload
+        .builds
+        .into_iter()
+        .find(|entry| entry.platform_id == backend.canonical() && entry.asset_name == asset_name)
+        .ok_or_else(|| {
+            CliError::new(
+                "BACKEND_RELEASE_VERIFY_FAILED",
+                format!(
+                    "build-provenance.json does not include {} asset {asset_name}",
+                    backend.canonical()
+                ),
+            )
+        })
+}
+
+fn sha256_file(path: &Path) -> Result<String> {
+    let mut hasher = Sha256::new();
+    let mut file = fs::File::open(path)?;
+    let mut buffer = [0_u8; 64 * 1024];
+    loop {
+        let read = file.read(&mut buffer)?;
+        if read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..read]);
+    }
+    Ok(hex::encode(hasher.finalize()))
 }
 
 fn extract_zip_archive(archive: &Path, output_dir: &Path) -> Result<()> {

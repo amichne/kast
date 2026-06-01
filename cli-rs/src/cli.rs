@@ -97,7 +97,8 @@ pub struct BackendInstallArgs {
     /// Release tag or version. Defaults to this CLI version.
     #[arg(long)]
     pub version: Option<String>,
-    /// Release directory URL. Defaults to the matching GitHub release.
+    /// Release directory URL containing backend zip, SHA256SUMS, and build-provenance.json.
+    /// Defaults to the matching GitHub release.
     #[arg(long)]
     pub base_url: Option<String>,
     /// Replace an existing installed backend version.

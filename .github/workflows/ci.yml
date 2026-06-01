@@ -51,6 +51,10 @@ jobs:
         shell: bash
         run: ./.github/scripts/test-release-provenance-assembler.sh
 
+      - name: Test release provenance merge
+        shell: bash
+        run: ./.github/scripts/test-release-provenance-merge.sh
+
       - name: Test Homebrew package renderer
         shell: bash
         run: packaging/homebrew/scripts/test-formulas.py
