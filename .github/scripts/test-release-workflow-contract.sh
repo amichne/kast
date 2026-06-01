@@ -118,6 +118,8 @@ require_not_contains "$snapshot_workflow" "homebrew" "Snapshot workflow must not
 
 require_contains "$release_workflow" "Validate JVM and Maven publications" "Release must validate JVM and Maven publications"
 require_contains "$release_workflow" "Publish Maven Central" "Release must publish public modules to Maven Central"
+require_contains "$release_workflow" "SIGNING_GPG_PRIVATE_KEY \\" "Release Maven Central gate must continue checking after the private key secret"
+require_order "$release_workflow" "SIGNING_GPG_PRIVATE_KEY \\" "SIGNING_GPG_PASSPHRASE" "Release Maven Central gate must require the GPG passphrase secret before signing"
 require_contains "$release_workflow" "Build Rust CLI asset" "Release must build CLI assets from cli-rs"
 require_contains "$release_workflow" "working-directory: cli-rs" "Release CLI build must run from cli-rs"
 require_contains "$release_workflow" "rust-cli-linux-x64" "Release bundles must consume the locally built Linux x64 CLI artifact"
