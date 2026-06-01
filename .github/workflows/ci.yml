@@ -186,6 +186,16 @@ jobs:
         if: steps.standalone-dist-cache.outputs.cache-hit != 'true'
         run: ./gradlew :backend-standalone:portableDistZip
 
+      - name: Free standalone distribution workspace before headless build
+        if: steps.headless-dist-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf \
+            backend-standalone/build/libs/*-all.jar \
+            backend-standalone/build/portable-dist \
+            backend-standalone/build/runtime-libs
+
       - name: Build headless backend distribution
         if: steps.headless-dist-cache.outputs.cache-hit != 'true'
         run: ./gradlew :backend-headless:portableDistZip

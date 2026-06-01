@@ -108,8 +108,11 @@ require_contains "$ci_workflow" "runs-on: ubuntu-22.04" "CI Linux CLI asset must
 require_contains "$ci_workflow" "working-directory: cli-rs" "CI Rust commands must run from cli-rs"
 require_contains "$ci_workflow" "packaging/homebrew/scripts/test-formulas.py" "CI must validate Homebrew package templates"
 require_contains "$ci_workflow" "Download Rust CLI CI asset" "CI bundle tests must consume a locally built CLI artifact"
+require_contains "$ci_workflow" "Free standalone distribution workspace before headless build" "CI must free standalone distribution workspace before building headless assets on constrained runners"
 require_not_contains "$ci_workflow" "repository: amichne/kast-rs" "CI must not checkout the retired kast-rs repo"
 require_not_contains "$ci_workflow" "--repo amichne/kast-rs" "CI must not download CLI assets from the retired kast-rs repo"
+require_order "$ci_workflow" "Build standalone daemon distribution" "Free standalone distribution workspace before headless build" "CI must free standalone distribution workspace after producing the standalone zip"
+require_order "$ci_workflow" "Free standalone distribution workspace before headless build" "Build headless backend distribution" "CI must free standalone distribution workspace before building the headless zip"
 
 require_contains "$snapshot_workflow" "Publish Snapshot" "Snapshot workflow must exist"
 require_contains "$snapshot_workflow" "publishAllPublicationsToGitHubPackagesRepository" "Snapshot workflow must publish GitHub Packages snapshots"
