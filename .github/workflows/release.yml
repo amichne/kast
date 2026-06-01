@@ -966,26 +966,14 @@ jobs:
           ruby -c homebrew-tap/Casks/kast-plugin.rb
           git -C homebrew-tap diff --check
 
-          if git -C homebrew-tap diff --quiet -- \
-            Formula/kast.rb \
-            Casks/kast-plugin.rb \
-            README.md \
-            release-state.json \
-            .github/scripts \
-            .github/workflows/publish-aligned-release.yml \
-            .github/workflows/update-formula.yml; then
+          tap_status="$(git -C homebrew-tap status --porcelain --untracked-files=all)"
+          if [[ -z "$tap_status" ]]; then
             echo "Homebrew tap already up to date for ${tag}"
             exit 0
           fi
           git -C homebrew-tap config user.name "github-actions[bot]"
           git -C homebrew-tap config user.email "github-actions[bot]@users.noreply.github.com"
-          git -C homebrew-tap add -A \
-            Formula/kast.rb \
-            Casks/kast-plugin.rb \
-            README.md \
-            release-state.json \
-            .github/scripts \
-            .github/workflows/publish-aligned-release.yml \
-            .github/workflows/update-formula.yml
+          git -C homebrew-tap add -A
+          git -C homebrew-tap diff --cached --check
           git -C homebrew-tap commit -m "kast ${tag}"
           git -C homebrew-tap push
