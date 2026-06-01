@@ -20,6 +20,8 @@ pub struct InstallState {
     pub platform: String,
     #[serde(default)]
     pub components: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub backends: Vec<BackendComponentState>,
     #[serde(default)]
     pub managed_paths: Vec<String>,
     #[serde(default)]
@@ -28,6 +30,17 @@ pub struct InstallState {
     pub repos: Vec<ManagedRepo>,
     #[serde(default = "schema_version")]
     pub schema_version: u32,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct BackendComponentState {
+    pub name: String,
+    pub version: String,
+    pub install_dir: String,
+    pub runtime_libs_dir: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub idea_home: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -119,6 +132,33 @@ pub fn doctor() -> Result<SelfDoctorResult> {
                 )),
             }
         }
+        for backend in &install.backends {
+            let backend_label = if backend.name.trim().is_empty() {
+                "backend"
+            } else {
+                backend.name.trim()
+            };
+            if !Path::new(&backend.runtime_libs_dir)
+                .join("classpath.txt")
+                .is_file()
+            {
+                issues.push(format!(
+                    "{} backend runtime-libs classpath is missing at {}",
+                    backend_label, backend.runtime_libs_dir
+                ));
+            }
+            match version_meets_minimum(&backend.version, minimum_backend_version) {
+                Some(true) => {}
+                Some(false) => issues.push(format!(
+                    "{} backend {} is older than required minimum {}",
+                    backend_label, backend.version, minimum_backend_version
+                )),
+                None => warnings.push(format!(
+                    "{} backend version {} cannot be compared to required minimum {}",
+                    backend_label, backend.version, minimum_backend_version
+                )),
+            }
+        }
     } else {
         issues.push("Install state is missing from config.toml".to_string());
     }
@@ -202,6 +242,7 @@ pub fn record_copilot_repo(github_dir: &Path, version: &str) -> Result<()> {
         installed_at: String::new(),
         platform: String::new(),
         components: vec![],
+        backends: vec![],
         managed_paths: vec![],
         shell_rc_patches: vec![],
         repos: vec![],
@@ -235,6 +276,7 @@ pub fn forget_copilot_repo(github_dir: &Path) -> Result<()> {
     let repo_path = repo_root.display().to_string();
     install.repos.retain(|repo| repo.path != repo_path);
     if install.components.is_empty()
+        && install.backends.is_empty()
         && install.managed_paths.is_empty()
         && install.shell_rc_patches.is_empty()
         && install.repos.is_empty()
@@ -255,6 +297,25 @@ fn read_install_state(path: &Path) -> Result<Option<InstallState>> {
         return Ok(None);
     };
     Ok(Some(value.clone().try_into()?))
+}
+
+pub fn read_global_install_state() -> Result<Option<InstallState>> {
+    read_install_state(&config::global_config_path())
+}
+
+pub fn update_global_config(
+    mutator: impl FnOnce(&mut toml::Table) -> Result<()>,
+) -> Result<PathBuf> {
+    let path = config::global_config_path();
+    let mut document = default_config_document()?;
+    merge_config_document(&mut document, read_config_document(&path)?);
+    mutator(&mut document)?;
+    write_config_document(&path, &document)?;
+    Ok(path)
+}
+
+pub fn remove_global_install_state() -> Result<bool> {
+    remove_install_state(&config::global_config_path())
 }
 
 fn remove_install_state(path: &Path) -> Result<bool> {

@@ -870,27 +870,29 @@ jobs:
         run: |
           set -euo pipefail
           tag="${{ needs.prepare-release.outputs.release_tag }}"
-          expected_assets=(
-            "kast-${tag}-linux-x64.zip"
-            "kast-${tag}-linux-arm64.zip"
-            "kast-${tag}-macos-x64.zip"
-            "kast-${tag}-macos-arm64.zip"
-            "kast-ubuntu-debian-x86_64-${tag}.tar.gz"
-            "kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
-            "kast-headless-${tag}.zip"
-            "kast-intellij-${tag}.zip"
-            "kast-standalone-${tag}.zip"
-          )
-          expected_sidecars=(
-            "kast-ubuntu-debian-x86_64-${tag}.tar.gz.sha256"
-            "kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz.sha256"
-          )
           rm -rf release-assets
           mkdir -p release-assets
           gh release download "$tag" --dir release-assets --pattern '*.zip'
-          gh release download "$tag" --dir release-assets --pattern '*.tar.gz'
-          gh release download "$tag" --dir release-assets --pattern '*.tar.gz.sha256'
+          gh release download "$tag" --dir release-assets --pattern '*.tar.gz' || true
+          gh release download "$tag" --dir release-assets --pattern '*.tar.gz.sha256' || true
           gh release download "$tag" --dir release-assets --pattern 'build-provenance.json'
+          mapfile -t expected_assets < <(python3 - release-assets/build-provenance.json <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+          payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          for entry in payload.get("builds", []):
+              asset = entry.get("assetName")
+              if isinstance(asset, str):
+                  print(asset)
+          PY
+          )
+          expected_sidecars=()
+          for asset in "${expected_assets[@]}"; do
+            if [[ "$asset" == *.tar.gz ]]; then
+              expected_sidecars+=("${asset}.sha256")
+            fi
+          done
           for asset in "${expected_assets[@]}"; do
             [[ -f "release-assets/${asset}" ]] || { echo "Missing release asset: ${asset}" >&2; exit 1; }
           done

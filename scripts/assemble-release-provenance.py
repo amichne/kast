@@ -5,17 +5,20 @@ import sys
 from pathlib import Path
 
 
-EXPECTED_PLATFORMS = {
+REQUIRED_PLATFORMS = {
     "cli-linux-arm64",
     "cli-linux-x64",
     "cli-macos-arm64",
     "cli-macos-x64",
     "headless",
-    "ubuntu-debian-headless-x86_64",
-    "ubuntu-debian-x86_64",
     "intellij",
     "standalone",
 }
+OPTIONAL_PLATFORMS = {
+    "ubuntu-debian-headless-x86_64",
+    "ubuntu-debian-x86_64",
+}
+SUPPORTED_PLATFORMS = REQUIRED_PLATFORMS | OPTIONAL_PLATFORMS
 
 
 def fail(message: str) -> None:
@@ -57,8 +60,8 @@ def stable_values(values: set[object]) -> list[object]:
 def validate(entries: list[dict]) -> None:
     seen_platforms = [entry.get("platformId") for entry in entries]
     platform_set = set(seen_platforms)
-    missing_provenance = EXPECTED_PLATFORMS - platform_set
-    unexpected_provenance = platform_set - EXPECTED_PLATFORMS
+    missing_provenance = REQUIRED_PLATFORMS - platform_set
+    unexpected_provenance = platform_set - SUPPORTED_PLATFORMS
     duplicate_provenance = stable_values({
         platform for platform in platform_set if seen_platforms.count(platform) > 1
     })

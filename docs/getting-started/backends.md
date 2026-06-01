@@ -14,8 +14,8 @@ your scripts and prompts don't change when you switch.
 
 | Runtime           | What runs                            | Best for                              | How it starts                        |
 |-------------------|--------------------------------------|---------------------------------------|--------------------------------------|
-| Standalone        | `kast` CLI plus a JVM daemon         | Terminal, CI, agents, no-IDE machines | `kast up`                            |
-| Headless          | `kast` CLI plus a packaged IntelliJ backend | Ubuntu/Debian CI and hosted agents | `kast up --backend=headless`         |
+| Standalone        | `kast` CLI plus a JVM daemon         | Terminal, CI, agents, no-IDE machines | `kast backend install standalone`, then `kast up` |
+| Headless          | `kast` CLI plus a packaged IntelliJ backend | Ubuntu/Debian CI and hosted agents | `kast backend install headless`, then `kast up --backend=headless` |
 | IDEA plugin       | A `kast` server inside an open IDE   | Local work with IDEA or Android Studio already open | Boots when the IDE opens the project |
 
 ## Standalone backend
@@ -37,10 +37,11 @@ Install:
 ```console title="Install the standalone backend"
 brew tap amichne/kast
 brew install kast
+kast backend install standalone
 ```
 
-On Ubuntu/Debian x86_64 hosts where Homebrew is not available, use the single
-supported non-Brew installer. It installs the Rust CLI and headless backend:
+On Ubuntu/Debian x86_64 hosts where Homebrew is not available, use the offline
+bundle installer. It installs the Rust CLI and one bundled backend:
 
 ```console title="Install CLI and headless backend"
 ./scripts/install-ubuntu-debian.sh install
@@ -60,7 +61,7 @@ runtimeLibsDir = "/home/alex/.local/share/kast/ubuntu-debian/v1.2.3/lib/backends
 ideaHome = "/home/alex/.local/share/kast/ubuntu-debian/v1.2.3/lib/backends/headless-v1.2.3/idea-home"
 ```
 
-Warm the Ubuntu/Debian backend with an explicit backend selector:
+Warm a headless backend with an explicit backend selector:
 
 ```console title="Start the packaged headless backend"
 kast up --backend=headless --workspace-root="$PWD"
@@ -70,7 +71,8 @@ How a session unfolds:
 
 1. You run `kast up --workspace-root="$PWD"` somewhere. It
    starts or reuses the daemon, discovers the project, and waits until
-   the analysis session is warm.
+   the analysis session is warm. If the backend is missing, `kast up`
+   reports the exact `kast backend install <backend>` command.
 2. You run more `kast` commands against the same workspace. The CLI
    finds the running backend and reuses it.
 3. The daemon stays alive. No cold starts between commands.

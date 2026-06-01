@@ -53,25 +53,68 @@ from pathlib import Path
 release_dir = Path(sys.argv[1])
 tag = sys.argv[2]
 
-expected = {
+required = {
     "cli-linux-arm64": f"kast-{tag}-linux-arm64.zip",
     "cli-linux-x64": f"kast-{tag}-linux-x64.zip",
     "cli-macos-arm64": f"kast-{tag}-macos-arm64.zip",
     "cli-macos-x64": f"kast-{tag}-macos-x64.zip",
     "headless": f"kast-headless-{tag}.zip",
-    "ubuntu-debian-headless-x86_64": f"kast-ubuntu-debian-headless-x86_64-{tag}.tar.gz",
-    "ubuntu-debian-x86_64": f"kast-ubuntu-debian-x86_64-{tag}.tar.gz",
     "intellij": f"kast-intellij-{tag}.zip",
     "standalone": f"kast-standalone-{tag}.zip",
 }
-expected_assets = set(expected.values())
-expected_sidecars = {
-    f"kast-ubuntu-debian-headless-x86_64-{tag}.tar.gz.sha256",
-    f"kast-ubuntu-debian-x86_64-{tag}.tar.gz.sha256",
+optional = {
+    "ubuntu-debian-headless-x86_64": f"kast-ubuntu-debian-headless-x86_64-{tag}.tar.gz",
+    "ubuntu-debian-x86_64": f"kast-ubuntu-debian-x86_64-{tag}.tar.gz",
 }
+supported = required | optional
 
 def fail(message: str) -> None:
     raise SystemExit(message)
+
+actual_assets = {
+    path.name for path in release_dir.iterdir()
+    if path.is_file()
+    and (path.name.endswith(".zip") or path.name.endswith(".tar.gz"))
+    and not path.name.endswith(".tar.gz.sha256")
+}
+
+payload = json.loads((release_dir / "build-provenance.json").read_text(encoding="utf-8"))
+builds = payload.get("builds")
+if not isinstance(builds, list):
+    fail("build-provenance.json must contain a builds array")
+
+by_platform = {}
+for entry in builds:
+    if not isinstance(entry, dict):
+        fail("build-provenance.json builds entries must be objects")
+    platform_id = entry.get("platformId")
+    if platform_id in by_platform:
+        fail(f"duplicate provenance entry for {platform_id}")
+    by_platform[platform_id] = entry
+
+missing_provenance = sorted(set(required) - set(by_platform))
+if missing_provenance:
+    fail(f"missing provenance for {missing_provenance}")
+
+unexpected_provenance = sorted(set(by_platform) - set(supported))
+if unexpected_provenance:
+    fail(f"unexpected provenance for {unexpected_provenance}")
+
+expected_assets = set()
+for platform_id, entry in by_platform.items():
+    asset_name = supported[platform_id]
+    expected_assets.add(asset_name)
+    provenance_asset = entry.get("assetName")
+    if provenance_asset != asset_name:
+        fail(f"provenance asset mismatch for {platform_id}: expected {asset_name}, got {provenance_asset}")
+
+unexpected_assets = sorted(actual_assets - expected_assets)
+if unexpected_assets:
+    fail(f"unexpected release asset: {unexpected_assets}")
+
+missing_assets = sorted(expected_assets - actual_assets)
+if missing_assets:
+    fail(f"missing release asset: {missing_assets}")
 
 sha_entries = {}
 for raw_line in (release_dir / "SHA256SUMS").read_text(encoding="utf-8").splitlines():
@@ -85,20 +128,6 @@ for raw_line in (release_dir / "SHA256SUMS").read_text(encoding="utf-8").splitli
     if asset_name in sha_entries:
         fail(f"duplicate checksum entry for {asset_name}")
     sha_entries[asset_name] = digest
-
-actual_assets = {
-    path.name for path in release_dir.iterdir()
-    if path.is_file()
-    and (path.name.endswith(".zip") or path.name.endswith(".tar.gz"))
-    and not path.name.endswith(".tar.gz.sha256")
-}
-unexpected_assets = sorted(actual_assets - expected_assets)
-if unexpected_assets:
-    fail(f"unexpected release asset: {unexpected_assets}")
-
-missing_assets = sorted(expected_assets - actual_assets)
-if missing_assets:
-    fail(f"missing release asset: {missing_assets}")
 
 unexpected_checksums = sorted(set(sha_entries) - expected_assets)
 if unexpected_checksums:
@@ -114,6 +143,7 @@ for asset_name in expected_assets:
         fail(f"checksum mismatch for {asset_name}: expected {expected_digest}, got {actual_digest}")
 
 actual_sidecars = {path.name for path in release_dir.glob("*.tar.gz.sha256")}
+expected_sidecars = {f"{asset_name}.sha256" for asset_name in expected_assets if asset_name.endswith(".tar.gz")}
 missing_sidecars = sorted(expected_sidecars - actual_sidecars)
 if missing_sidecars:
     fail(f"missing checksum sidecar: {missing_sidecars}")
@@ -136,33 +166,10 @@ for sidecar_name in expected_sidecars:
     if parts[0] != sha_entries.get(asset_name):
         fail(f"checksum sidecar mismatch for {asset_name}")
 
-payload = json.loads((release_dir / "build-provenance.json").read_text(encoding="utf-8"))
-builds = payload.get("builds")
-if not isinstance(builds, list):
-    fail("build-provenance.json must contain a builds array")
-
-by_platform = {}
-for entry in builds:
-    if not isinstance(entry, dict):
-        fail("build-provenance.json builds entries must be objects")
-    platform_id = entry.get("platformId")
-    if platform_id in by_platform:
-        fail(f"duplicate provenance entry for {platform_id}")
-    by_platform[platform_id] = entry
-
-missing_provenance = sorted(set(expected) - set(by_platform))
-if missing_provenance:
-    fail(f"missing provenance for {missing_provenance}")
-
-unexpected_provenance = sorted(set(by_platform) - set(expected))
-if unexpected_provenance:
-    fail(f"unexpected provenance for {unexpected_provenance}")
-
-for platform_id, asset_name in expected.items():
+for platform_id, asset_name in supported.items():
+    if platform_id not in by_platform:
+        continue
     entry = by_platform[platform_id]
-    provenance_asset = entry.get("assetName")
-    if provenance_asset != asset_name:
-        fail(f"provenance asset mismatch for {platform_id}: expected {asset_name}, got {provenance_asset}")
     provenance_digest = entry.get("assetDigest")
     expected_digest = "sha256:" + sha_entries[asset_name]
     if provenance_digest != expected_digest:

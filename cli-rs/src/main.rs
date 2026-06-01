@@ -1,3 +1,4 @@
+mod backend;
 mod cli;
 mod config;
 mod daemon;
@@ -65,6 +66,12 @@ fn run() -> Result<i32> {
         Command::Daemon { command } => match command {
             cli::DaemonCommand::Start(args) => daemon::run_foreground(args),
         },
+        Command::Backend { command } => {
+            let result = backend::run(command)?;
+            serde_json::to_writer_pretty(io::stdout(), &result)?;
+            println!();
+            Ok(0)
+        }
         Command::Rpc(args) => {
             let response = runtime::rpc_passthrough(args)?;
             println!("{response}");

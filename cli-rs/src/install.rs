@@ -399,6 +399,7 @@ fn install_archive(args: InstallArgs) -> Result<ArchiveInstallResult> {
         installed_at: current_timestamp(),
         platform: format!("{}-{}", env::consts::OS, env::consts::ARCH),
         components: vec!["cli".to_string(), "config".to_string()],
+        backends: vec![],
         managed_paths: vec![
             "bin".to_string(),
             "lib".to_string(),

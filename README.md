@@ -12,11 +12,12 @@ planned edit is safe to apply.
 `kast` has three independent runtime modes:
 
 - **Standalone CLI + backend** — install the `kast` CLI and run
-  `kast up` to start or warm the analysis backend. Fully independent from
-  any IDE; works in terminals, CI, and headless agents.
-- **Headless CLI + backend** — install the Ubuntu/Debian bundle and run
-  `kast up --backend=headless` for a packaged IntelliJ-backed runtime in
-  hosted Linux agents.
+  `kast backend install standalone` once. Fully independent from any IDE;
+  works in terminals, CI, and local agents.
+- **Headless CLI + backend** — install the `kast` CLI and run
+  `kast backend install headless` for a packaged IntelliJ-backed runtime in
+  hosted Linux agents. Use the Ubuntu/Debian bundle when the image needs an
+  offline, self-contained install.
 - **IDEA / Android Studio plugin-backed runtime** — runs inside a supported
   JetBrains IDE and reuses the IDE's already-open project model, indexes, and
   analysis session.
@@ -41,21 +42,30 @@ brew tap amichne/kast
 brew install kast
 ```
 
-Use the Ubuntu/Debian installer when Homebrew is not available and the target
-host is an Ubuntu or Debian x86_64 environment:
+Install exactly one backend for the runtime you want:
+
+```console
+# Terminal, CI, or agent runtime without an IDE
+kast backend install standalone
+
+# Hosted Linux agent runtime backed by packaged IntelliJ components
+kast backend install headless
+```
+
+Use the Ubuntu/Debian installer when Homebrew is not available, or when the
+target host needs a self-contained offline bundle:
 
 ```console
 ./scripts/install-ubuntu-debian.sh install
 ```
 
-That is the only supported non-Brew install path. For mirrored artifacts and
-CI images, use the same script with the self-contained Ubuntu/Debian bundle;
-the [install guide](https://kast.michne.com/getting-started/install/#ubuntudebian-bundle)
+For mirrored artifacts and CI images, use the same script with the
+self-contained Ubuntu/Debian bundle; the
+[install guide](https://kast.michne.com/getting-started/install/#ubuntudebian-bundle)
 shows the exact environment variables.
 
-Warm the packaged backend before running analysis commands. Ubuntu/Debian bundle
-installs should pass `--backend=headless`; Homebrew standalone installs can omit
-the selector:
+Warm the configured backend before running analysis commands. Headless installs
+should pass `--backend=headless`; standalone installs can omit the selector:
 
 ```console
 # Start or warm the backend

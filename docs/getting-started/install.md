@@ -1,23 +1,22 @@
 ---
 title: Install
-description: Install the kast CLI, the headless backend, or the IDEA plugin.
+description: Install the kast CLI, a backend component, or the IDEA plugin.
 icon: lucide/download
 ---
 
 # Install
 
-`kast` is two pieces: the **CLI** (the `kast` you type) and a **backend**
-(the analysis process that does the work). The CLI on its own analyzes
-nothing — it routes commands to a backend. Get one running before you
-start asking questions.
+`kast` is two pieces: the **CLI** (the `kast` you type) and one optional
+**backend** (the analysis process that does the work). Install the small CLI
+first, then install exactly the backend you intend to run.
 
 ## Prerequisites
 
 - **Java 21 or newer** on your `PATH` or `JAVA_HOME` when you run a packaged
   JVM backend. The Homebrew CLI package is native and does not install a JDK.
 - **macOS, Linux, or Windows.** Homebrew is the preferred local CLI path on
-  supported platforms. Ubuntu/Debian x86_64 has the only supported non-Brew
-  installer path.
+  supported platforms. Ubuntu/Debian x86_64 also has an offline bundle path for
+  hosted agents, mirrors, and prebuilt images.
 
 ## Homebrew install
 
@@ -31,19 +30,46 @@ brew install kast
 brew install kast-plugin
 ```
 
-Use Homebrew for ordinary terminal use when your platform is supported. Use the
-Ubuntu/Debian bundle for every non-Brew installation.
+Use Homebrew for ordinary terminal use when your platform is supported.
+
+## Install a backend
+
+Install one backend component after the CLI is on `PATH`.
+
+```console title="Install the standalone backend"
+kast backend install standalone
+```
+
+Use the standalone backend for terminal work, local automation, and CI jobs that
+do not need an IDE-hosted project model. Start it with:
+
+```console title="Warm the standalone backend"
+kast up --workspace-root="$PWD"
+```
+
+Use the headless backend for hosted Linux agents that need a packaged
+IntelliJ-backed runtime:
+
+```console title="Install and warm the headless backend"
+kast backend install headless
+kast up --backend=headless --workspace-root="$PWD"
+```
+
+If `kast up` cannot find the selected backend, it reports the exact
+`kast backend install <backend>` command to run.
 
 ## Ubuntu/Debian bundle
 
-Use the Ubuntu/Debian bundle when a CI image, hosted agent snapshot, or
-developer machine should install Kast without Homebrew, Rust, Gradle, or the
-IDEA plugin. This is the only supported non-Brew installer path.
+Use the Ubuntu/Debian bundle when a CI image, hosted agent snapshot, mirror, or
+air-gapped host should install Kast without Homebrew, Rust, Gradle, or network
+access to individual release assets. This is the offline bundle path; the normal
+interactive path is CLI first, then `kast backend install`.
 
 The release asset is `kast-ubuntu-debian-x86_64-<version>.tar.gz` with a
-matching `.sha256` sidecar. It contains the Rust CLI, the headless backend
-portable runtime, `scripts/install-ubuntu-debian.sh`, bundle metadata, and the
-license notice.
+matching `.sha256` sidecar. The headless variant is
+`kast-ubuntu-debian-headless-x86_64-<version>.tar.gz`. Each bundle contains the
+Rust CLI, one backend portable runtime, `scripts/install-ubuntu-debian.sh`,
+bundle metadata, and the license notice.
 
 ```bash title="Install Kast on Ubuntu/Debian"
 export KAST_UBUNTU_DEBIAN_VERSION="v1.2.3"
@@ -86,20 +112,21 @@ from local CLI and backend artifacts:
 
 ## Verify release assets
 
-Published releases from `amichne/kast` include CLI zips, the standalone daemon
-zip, headless backend zip, IDEA plugin zip, Ubuntu/Debian bundles, bundle
-`.sha256` sidecars, `SHA256SUMS`, and `build-provenance.json`. Mirror or
-promote the release directory as a unit, then run the same verifier used by CI
-before importing Kast artifacts into an internal artifact store:
+Published releases from `amichne/kast` include CLI zips, the standalone backend
+zip, headless backend zip, IDEA plugin zip, `SHA256SUMS`, and
+`build-provenance.json`. Ubuntu/Debian tarballs are optional offline bundles
+with matching `.sha256` sidecars. Mirror or promote the release directory as a
+unit, then run the same verifier used by CI before importing Kast artifacts into
+an internal artifact store:
 
 ```bash title="Verify a downloaded release directory"
 gh release download v1.2.3 --repo amichne/kast --dir kast-release-v1.2.3
 ./scripts/verify-release-assets.sh --release-dir kast-release-v1.2.3 --tag v1.2.3
 ```
 
-The verifier requires exactly the shipped zip and tar asset set, checks each
-SHA-256 digest, validates the Ubuntu/Debian bundle sidecar, and confirms that
-combined provenance names the same assets and digests.
+The verifier uses `build-provenance.json` as the release manifest, checks each
+SHA-256 digest, validates Ubuntu/Debian bundle sidecars when those optional
+bundles are present, and rejects assets not named by provenance.
 
 ??? info "Where kast stores configuration"
 

@@ -136,6 +136,7 @@ payload = {
             "assetDigest": "sha256:" + hashlib.sha256((release_dir / asset).read_bytes()).hexdigest(),
         }
         for platform, asset in entries
+        if (release_dir / asset).is_file()
     ]
 }
 (release_dir / "build-provenance.json").write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
@@ -170,6 +171,29 @@ assets=(
 
 write_expected_assets
 write_sha256sums "$release_dir" "${assets[@]}"
+write_provenance
+
+"$verifier" --release-dir "$release_dir" --tag "$tag"
+
+rm -rf "$release_dir"
+mkdir -p "$release_dir"
+core_assets=(
+  "kast-${tag}-linux-x64.zip"
+  "kast-${tag}-linux-arm64.zip"
+  "kast-${tag}-macos-x64.zip"
+  "kast-${tag}-macos-arm64.zip"
+  "kast-headless-${tag}.zip"
+  "kast-intellij-${tag}.zip"
+  "kast-standalone-${tag}.zip"
+)
+write_text_asset "${release_dir}/kast-${tag}-linux-x64.zip"
+write_text_asset "${release_dir}/kast-${tag}-linux-arm64.zip"
+write_text_asset "${release_dir}/kast-${tag}-macos-x64.zip"
+write_text_asset "${release_dir}/kast-${tag}-macos-arm64.zip"
+write_zip_asset "${release_dir}/kast-intellij-${tag}.zip" intellij
+write_zip_asset "${release_dir}/kast-standalone-${tag}.zip" standalone
+write_zip_asset "${release_dir}/kast-headless-${tag}.zip" headless
+write_sha256sums "$release_dir" "${core_assets[@]}"
 write_provenance
 
 "$verifier" --release-dir "$release_dir" --tag "$tag"
