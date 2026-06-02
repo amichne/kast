@@ -1,6 +1,7 @@
 package io.github.amichne.kast.standalone
 
 import io.github.amichne.kast.indexstore.api.index.FileIndexUpdate
+import io.github.amichne.kast.indexstore.store.SOURCE_INDEX_SCHEMA_VERSION
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.indexstore.store.cache.kastCacheDirectory
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -62,7 +63,7 @@ class SqliteCacheInvariantTest {
             conn.prepareStatement("SELECT version FROM schema_version LIMIT 1").use { stmt ->
                 val rs = stmt.executeQuery()
                 assertTrue(rs.next())
-                assertEquals(7, rs.getInt(1))
+                assertEquals(SOURCE_INDEX_SCHEMA_VERSION, rs.getInt(1))
             }
         }
     }

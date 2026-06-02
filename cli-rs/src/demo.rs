@@ -3,6 +3,7 @@ use crate::cli::{DemoArgs, DemoView};
 use crate::config;
 use crate::error::{CliError, Result};
 use crate::source_index_db;
+use crate::source_index_schema::SOURCE_INDEX_SCHEMA_VERSION;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
 use crossterm::execute;
 use crossterm::terminal::{
@@ -23,7 +24,6 @@ use std::io::{self, IsTerminal, Stdout};
 use std::path::PathBuf;
 use std::time::Duration;
 
-const SOURCE_INDEX_SCHEMA_VERSION: i64 = 6;
 const PREVIEW_RADIUS: usize = 7;
 const SPATIAL_VIEWPORT_WIDTH: u16 = 120;
 const SPATIAL_VIEWPORT_HEIGHT: u16 = 40;

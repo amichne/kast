@@ -20,8 +20,6 @@ import java.nio.file.Path
 import java.sql.Connection
 import java.sql.DriverManager
 
-internal const val SOURCE_INDEX_SCHEMA_VERSION = 7
-
 /**
  * SQLite-backed store for the source identifier index, file manifest,
  * symbol references, and workspace discovery cache.

@@ -57,8 +57,8 @@ not mutate source files.
 | `kast demo` | Open the symbol or spatial demo, or print a JSON snapshot. | `--workspace-root`, `--view`, `--symbol`, `--query`, `--limit`, `--json` |
 
 `metrics` and `kast demo` are direct-index only because they need
-schema-6 relation rows, persistent FTS, spatial structure, and local
-source previews.
+current source-index relation rows, persistent FTS, spatial structure,
+and local source previews.
 
 ## Install and self-management
 

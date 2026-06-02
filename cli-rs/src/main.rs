@@ -11,6 +11,7 @@ mod rpc;
 mod runtime;
 mod self_mgmt;
 mod source_index_db;
+mod source_index_schema;
 mod symbol_query;
 
 use clap::{CommandFactory, Parser};

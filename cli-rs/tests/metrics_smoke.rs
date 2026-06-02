@@ -393,10 +393,10 @@ fn seed_source_index(workspace: &std::path::Path) {
     std::fs::create_dir_all(db_path.parent().expect("db parent")).expect("db parent");
     seed_source_files(workspace);
     let conn = Connection::open(db_path).expect("sqlite");
-    conn.execute_batch(
+    conn.execute_batch(&format!(
         r#"
         CREATE TABLE schema_version (version INTEGER NOT NULL, generation INTEGER NOT NULL DEFAULT 0, head_commit TEXT);
-        INSERT INTO schema_version (version, generation, head_commit) VALUES (6, 0, NULL);
+        INSERT INTO schema_version (version, generation, head_commit) VALUES ({}, 0, NULL);
         CREATE TABLE path_prefixes (prefix_id INTEGER PRIMARY KEY, dir_path TEXT NOT NULL UNIQUE);
         CREATE TABLE fq_names (fq_id INTEGER PRIMARY KEY, fq_name TEXT NOT NULL UNIQUE);
         CREATE VIRTUAL TABLE fq_names_fts USING fts5(fq_name, tokenize='trigram');
@@ -437,7 +437,8 @@ fn seed_source_index(workspace: &std::path::Path) {
             PRIMARY KEY (src_prefix_id, src_filename, source_offset, target_fq_id)
         );
         "#,
-    )
+        source_index_schema_version(),
+    ))
     .expect("schema");
 
     conn.execute("INSERT INTO path_prefixes VALUES (1, 'app')", [])
@@ -518,6 +519,12 @@ fn seed_source_index(workspace: &std::path::Path) {
         )
         .expect("reference");
     }
+}
+
+fn source_index_schema_version() -> i64 {
+    env!("KAST_SOURCE_INDEX_SCHEMA_VERSION")
+        .parse()
+        .expect("numeric source_index_schema_version")
 }
 
 fn seed_source_files(workspace: &std::path::Path) {

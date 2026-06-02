@@ -2,6 +2,7 @@ use crate::config;
 use crate::error::{CliError, Result};
 use crate::metrics::MetricsRequest;
 use crate::source_index_db;
+use crate::source_index_schema::SOURCE_INDEX_SCHEMA_VERSION;
 use glob::Pattern;
 use rusqlite::{Connection, ErrorCode, OpenFlags, OptionalExtension, Row, params};
 use serde::{Deserialize, Serialize};
@@ -14,8 +15,6 @@ use std::sync::{
     atomic::{AtomicBool, Ordering},
 };
 use std::time::Instant;
-
-const SOURCE_INDEX_SCHEMA_VERSION: i64 = 6;
 
 #[derive(Debug, Clone)]
 pub(crate) struct FileFilter {
@@ -1692,10 +1691,10 @@ mod tests {
     }
 
     fn seed_schema(conn: &Connection) {
-        conn.execute_batch(
+        conn.execute_batch(&format!(
             r#"
             CREATE TABLE schema_version (version INTEGER NOT NULL, generation INTEGER NOT NULL DEFAULT 0, head_commit TEXT);
-            INSERT INTO schema_version (version, generation, head_commit) VALUES (6, 0, NULL);
+            INSERT INTO schema_version (version, generation, head_commit) VALUES ({}, 0, NULL);
             CREATE TABLE path_prefixes (prefix_id INTEGER PRIMARY KEY, dir_path TEXT NOT NULL UNIQUE);
             CREATE TABLE fq_names (fq_id INTEGER PRIMARY KEY, fq_name TEXT NOT NULL UNIQUE);
             CREATE VIRTUAL TABLE fq_names_fts USING fts5(fq_name, tokenize='trigram');
@@ -1736,7 +1735,8 @@ mod tests {
                 PRIMARY KEY (src_prefix_id, src_filename, source_offset, target_fq_id)
             );
             "#,
-        )
+            SOURCE_INDEX_SCHEMA_VERSION,
+        ))
         .expect("schema");
     }
 

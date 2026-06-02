@@ -212,8 +212,9 @@ and also calls `kast demo --view spatial --json --symbol app.A`.
 ## Source-index requirements
 
 The demo expects the current source-index schema used by `cli-rs`.
-It verifies that the database exists, has schema version `6`, and
-contains the tables needed for symbol names, persistent symbol FTS,
+It verifies that the database exists, has the published source-index
+schema version, and contains the tables needed for symbol names,
+persistent symbol FTS,
 declarations, file metadata, file manifests, and symbol references.
 
 If no database exists for the workspace, run:

@@ -47,6 +47,9 @@ def load_state() -> dict[str, object]:
 
     if state.get("schema_version") != 1:
         fail("release-state.json schema_version must be 1")
+    source_index_schema = state.get("source_index_schema_version")
+    if not isinstance(source_index_schema, int) or source_index_schema <= 0:
+        fail("release-state.json source_index_schema_version must be a positive integer")
     current = state.get("current_release")
     if not isinstance(current, str):
         fail("release-state.json current_release must be a string")

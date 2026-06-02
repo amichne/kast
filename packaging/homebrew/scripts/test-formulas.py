@@ -44,11 +44,16 @@ kast = kast_formula.read_text(encoding="utf-8")
 plugin = plugin_cask.read_text(encoding="utf-8")
 docs = readme.read_text(encoding="utf-8")
 state = json.loads(release_state.read_text(encoding="utf-8"))
+source_index_schema_version = state.get("source_index_schema_version")
 
 kast_version = formula_version(kast, "Formula/kast.rb")
 plugin_version = cask_version(plugin, "Casks/kast-plugin.rb")
 require(kast_version == plugin_version, f"Package versions must match: kast={kast_version}, kast-plugin={plugin_version}")
 require(state.get("schema_version") == 1, "release-state.json schema_version must be 1")
+require(
+    isinstance(source_index_schema_version, int) and source_index_schema_version > 0,
+    "release-state.json source_index_schema_version must be a positive integer",
+)
 require(
     state.get("current_release") == f"v{kast_version}",
     f"release-state.json must match package version v{kast_version}",
@@ -131,6 +136,10 @@ with tempfile.TemporaryDirectory() as tmp:
     require(formula_version(updated_kast, "updated Formula/kast.rb") == "9.8.7", "updater must set the CLI version")
     require(cask_version(updated_plugin, "updated Casks/kast-plugin.rb") == "9.8.7", "updater must set the plugin version")
     require(updated_state.get("current_release") == "v9.8.7", "updater must set the current release state")
+    require(
+        updated_state.get("source_index_schema_version") == source_index_schema_version,
+        "updater must preserve the source-index schema version",
+    )
     require("/v9.8.7/kast-v9.8.7-macos-arm64.zip" in updated_docs, "updater must set the README CLI mirror example")
     require("/v9.8.7/kast-intellij-v9.8.7.zip" in updated_docs, "updater must set the README plugin mirror example")
     require('sha256 "' + ("1" * 64) + '"' in updated_kast, "updater must set macOS x64 sha")
