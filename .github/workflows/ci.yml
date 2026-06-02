@@ -80,6 +80,8 @@ jobs:
           java-version: "21"
 
       - uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-cleanup: always
 
       - name: Publish public modules to Maven local
         run: >
@@ -153,26 +155,14 @@ jobs:
           java-version: "21"
 
       - uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-cleanup: always
 
       - uses: actions/cache@v5
         with:
           path: |
             ~/.gradle/kast/intellij-distributions
           key: idea-dist-${{ hashFiles('gradle/libs.versions.toml') }}
-
-      - name: Restore standalone daemon distribution cache
-        id: standalone-dist-cache
-        uses: actions/cache@v5
-        with:
-          path: backend-standalone/build/distributions
-          key: ${{ runner.os }}-standalone-daemon-dist-${{ hashFiles('**/*.gradle.kts', 'gradle/**/*.toml', 'gradle/wrapper/gradle-wrapper.properties', 'gradle.properties', 'build-logic/src/**', 'analysis-api/src/**', 'analysis-server/src/**', 'index-store/src/**', 'backend-shared/src/**', 'backend-standalone/src/**') }}
-
-      - name: Restore headless backend distribution cache
-        id: headless-dist-cache
-        uses: actions/cache@v5
-        with:
-          path: backend-headless/build/distributions
-          key: ${{ runner.os }}-headless-backend-dist-${{ hashFiles('**/*.gradle.kts', 'gradle/**/*.toml', 'gradle/wrapper/gradle-wrapper.properties', 'gradle.properties', 'build-logic/src/**', 'analysis-api/src/**', 'analysis-server/src/**', 'index-store/src/**', 'backend-shared/src/**', 'backend-intellij/src/**', 'backend-headless/src/**') }}
 
       - name: Test standalone daemon modules
         run: >
@@ -183,11 +173,9 @@ jobs:
           :backend-headless:test
 
       - name: Build standalone daemon distribution
-        if: steps.standalone-dist-cache.outputs.cache-hit != 'true'
         run: ./gradlew :backend-standalone:portableDistZip
 
       - name: Free standalone distribution workspace before headless build
-        if: steps.headless-dist-cache.outputs.cache-hit != 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -197,22 +185,7 @@ jobs:
             backend-standalone/build/runtime-libs
 
       - name: Build headless backend distribution
-        if: steps.headless-dist-cache.outputs.cache-hit != 'true'
         run: ./gradlew :backend-headless:portableDistZip
-
-      - name: Validate cached standalone daemon distribution
-        if: steps.standalone-dist-cache.outputs.cache-hit == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -n "$(find backend-standalone/build/distributions -maxdepth 1 -name 'backend-standalone-*-portable.zip' -print -quit)"
-
-      - name: Validate cached headless backend distribution
-        if: steps.headless-dist-cache.outputs.cache-hit == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -n "$(find backend-headless/build/distributions -maxdepth 1 -name 'backend-headless-*-portable.zip' -print -quit)"
 
       - name: Upload build-and-test test reports
         if: always()
@@ -376,6 +349,8 @@ jobs:
           java-version: "21"
 
       - uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-cleanup: always
 
       - name: Smoke analysis-server socket transport
         run: >
@@ -396,6 +371,8 @@ jobs:
           java-version: "21"
 
       - uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-cleanup: always
 
       - uses: actions/cache@v5
         with:
@@ -404,13 +381,6 @@ jobs:
             ~/.cache/pluginVerifier/ides
           key: idea-dist-${{ hashFiles('gradle/libs.versions.toml') }}
 
-      - name: Restore IDEA plugin distribution cache
-        id: intellij-plugin-dist-cache
-        uses: actions/cache@v5
-        with:
-          path: backend-intellij/build/distributions
-          key: ${{ runner.os }}-intellij-plugin-dist-${{ hashFiles('**/*.gradle.kts', 'gradle/**/*.toml', 'gradle/wrapper/gradle-wrapper.properties', 'gradle.properties', 'build-logic/src/**', 'analysis-api/src/**', 'analysis-server/src/**', 'index-store/src/**', 'backend-shared/src/**', 'backend-intellij/src/**') }}
-
       - name: Test IDEA plugin
         run: >
           ./gradlew
@@ -418,20 +388,12 @@ jobs:
           -PexcludeTags=performance
 
       - name: Build and verify IDEA plugin distribution
-        if: steps.intellij-plugin-dist-cache.outputs.cache-hit != 'true'
         run: >
           ./gradlew
           :backend-intellij:buildPlugin
           :backend-intellij:verifyPluginStructure
           :backend-intellij:verifyPluginXmlPresent
           :backend-intellij:verifyPlugin
-
-      - name: Validate cached IDEA plugin distribution
-        if: steps.intellij-plugin-dist-cache.outputs.cache-hit == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -n "$(find backend-intellij/build/distributions -maxdepth 1 -name '*.zip' -print -quit)"
 
       - name: Upload IDEA plugin artifact
         uses: actions/upload-artifact@v6
