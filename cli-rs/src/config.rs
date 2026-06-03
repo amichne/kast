@@ -10,6 +10,8 @@ use std::path::{Path, PathBuf};
 #[derive(Debug, Clone, Serialize)]
 pub struct KastConfig {
     pub server: ServerConfig,
+    #[serde(skip_serializing_if = "RuntimeConfig::is_default")]
+    pub runtime: RuntimeConfig,
     pub paths: PathsConfig,
     pub backends: BackendsConfig,
     pub cli: CliConfig,
@@ -21,6 +23,19 @@ pub struct ServerConfig {
     pub max_results: u32,
     pub request_timeout_millis: u64,
     pub max_concurrent_requests: u32,
+}
+
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeConfig {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub default_backend: Option<BackendName>,
+}
+
+impl RuntimeConfig {
+    fn is_default(&self) -> bool {
+        self.default_backend.is_none()
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -64,6 +79,7 @@ pub struct CliConfig {
 #[serde(rename_all = "camelCase")]
 struct PartialConfig {
     server: Option<PartialServer>,
+    runtime: Option<PartialRuntime>,
     paths: Option<PartialPaths>,
     backends: Option<PartialBackends>,
     cli: Option<PartialCli>,
@@ -75,6 +91,12 @@ struct PartialServer {
     max_results: Option<u32>,
     request_timeout_millis: Option<u64>,
     max_concurrent_requests: Option<u32>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PartialRuntime {
+    default_backend: Option<BackendName>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -129,6 +151,7 @@ impl KastConfig {
                 request_timeout_millis: 30_000,
                 max_concurrent_requests: 4,
             },
+            runtime: RuntimeConfig::default(),
             paths: PathsConfig {
                 install_root,
                 bin_dir: bin_dir.clone(),
@@ -228,6 +251,11 @@ impl KastConfig {
                 self.server.max_concurrent_requests = value;
             }
         }
+        if let Some(runtime) = partial.runtime
+            && let Some(value) = runtime.default_backend
+        {
+            self.runtime.default_backend = Some(value);
+        }
         if let Some(backends) = partial.backends {
             if let Some(standalone) = backends.standalone
                 && let Some(value) = standalone.runtime_libs_dir
@@ -264,6 +292,15 @@ pub fn init_config() -> Result<PathBuf> {
 
 pub fn default_config_template() -> Result<String> {
     Ok(toml::to_string_pretty(&KastConfig::defaults())?)
+}
+
+pub fn resolve_runtime_backend(
+    config: &KastConfig,
+    backend_name: Option<BackendName>,
+) -> BackendName {
+    backend_name
+        .or(config.runtime.default_backend)
+        .unwrap_or(BackendName::Standalone)
 }
 
 pub fn backend_runtime_libs_dir(
@@ -514,5 +551,62 @@ mod tests {
         assert_eq!(https.host, "github.com");
         assert_eq!(https.owner, "amichne");
         assert_eq!(https.repo, "kast");
+    }
+
+    #[test]
+    fn parses_runtime_default_backend() {
+        let temp = tempfile::tempdir().unwrap();
+        let config_file = temp.path().join("config.toml");
+        fs::write(
+            &config_file,
+            r#"[runtime]
+defaultBackend = "headless"
+"#,
+        )
+        .unwrap();
+
+        let mut config = KastConfig::defaults();
+        config.apply(read_partial_config(&config_file).unwrap());
+
+        assert_eq!(config.runtime.default_backend, Some(BackendName::Headless));
+    }
+
+    #[test]
+    fn rejects_invalid_runtime_default_backend() {
+        let temp = tempfile::tempdir().unwrap();
+        let config_file = temp.path().join("config.toml");
+        fs::write(
+            &config_file,
+            r#"[runtime]
+defaultBackend = "sidecar"
+"#,
+        )
+        .unwrap();
+
+        let error = read_partial_config(&config_file).unwrap_err();
+
+        assert_eq!(error.code, "CONFIG_ERROR");
+        assert!(error.message.contains("sidecar"), "{}", error.message);
+        assert!(error.message.contains("headless"), "{}", error.message);
+    }
+
+    #[test]
+    fn runtime_backend_resolution_prefers_cli_then_config_then_standalone() {
+        let mut config = KastConfig::defaults();
+
+        assert_eq!(
+            resolve_runtime_backend(&config, None),
+            BackendName::Standalone
+        );
+
+        config.runtime.default_backend = Some(BackendName::Headless);
+        assert_eq!(
+            resolve_runtime_backend(&config, None),
+            BackendName::Headless
+        );
+        assert_eq!(
+            resolve_runtime_backend(&config, Some(BackendName::Standalone)),
+            BackendName::Standalone
+        );
     }
 }

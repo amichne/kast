@@ -129,7 +129,8 @@ struct WorkspaceInspection {
 
 pub fn workspace_status(args: RuntimeArgs) -> Result<WorkspaceStatusResult> {
     let workspace_root = workspace_root(args.workspace_root.clone())?;
-    let inspection = inspect_workspace(&workspace_root, args.backend_name, false)?;
+    let backend_name = resolve_runtime_backend(&workspace_root, args.backend_name)?;
+    let inspection = inspect_workspace(&workspace_root, Some(backend_name), false)?;
     Ok(WorkspaceStatusResult {
         workspace_root: workspace_root.display().to_string(),
         descriptor_directory: inspection.descriptor_directory.display().to_string(),
@@ -141,10 +142,13 @@ pub fn workspace_status(args: RuntimeArgs) -> Result<WorkspaceStatusResult> {
 
 pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
     let workspace_root = workspace_root(args.workspace_root.clone())?;
-    let inspection = inspect_workspace(&workspace_root, args.backend_name, true)?;
+    let config = KastConfig::load(&workspace_root)?;
+    let backend_name = config::resolve_runtime_backend(&config, args.backend_name);
+    let inspection =
+        inspect_workspace_with_config(&workspace_root, &config, Some(backend_name), true)?;
     if let Some(selected) = select_servable(
         &inspection.candidates,
-        args.backend_name,
+        Some(backend_name),
         args.accept_indexing.unwrap_or(false),
     ) {
         return Ok(WorkspaceEnsureResult {
@@ -158,7 +162,7 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
         });
     }
 
-    if args.backend_name == Some(BackendName::Intellij) {
+    if backend_name == BackendName::Intellij {
         return Err(CliError::new(
             "INTELLIJ_NOT_RUNNING",
             format!(
@@ -169,11 +173,10 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
     }
 
     if args.no_auto_start.unwrap_or(false) {
-        return Err(no_backend_error(&workspace_root, args.backend_name));
+        return Err(no_backend_error(&workspace_root, Some(backend_name)));
     }
 
-    let config = KastConfig::load(&workspace_root)?;
-    let launch_backend = args.backend_name.unwrap_or(BackendName::Standalone);
+    let launch_backend = backend_name;
     let runtime_libs_dir = match launch_backend {
         BackendName::Intellij | BackendName::Standalone => {
             config.backends.standalone.runtime_libs_dir.clone()
@@ -209,11 +212,13 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
 
 pub fn workspace_stop(args: RuntimeArgs) -> Result<DaemonStopResult> {
     let workspace_root = workspace_root(args.workspace_root.clone())?;
-    let inspection = inspect_workspace(&workspace_root, args.backend_name, true)?;
-    let Some(candidate) = inspection.candidates.into_iter().find(|candidate| {
-        args.backend_name
-            .is_none_or(|backend| candidate.descriptor.backend_name == backend.canonical())
-    }) else {
+    let backend_name = resolve_runtime_backend(&workspace_root, args.backend_name)?;
+    let inspection = inspect_workspace(&workspace_root, Some(backend_name), true)?;
+    let Some(candidate) = inspection
+        .candidates
+        .into_iter()
+        .find(|candidate| candidate.descriptor.backend_name == backend_name.canonical())
+    else {
         return Ok(DaemonStopResult {
             workspace_root: workspace_root.display().to_string(),
             stopped: false,
@@ -273,7 +278,7 @@ pub fn rpc_passthrough(args: RpcArgs) -> Result<String> {
     let workspace_root = workspace_root(args.workspace_root)?;
     let ensure = workspace_ensure(RuntimeArgs {
         workspace_root: Some(workspace_root),
-        backend_name: None,
+        backend_name: args.backend_name,
         idea_home: None,
         wait_timeout_ms: 60_000,
         accept_indexing: Some(true),
@@ -306,13 +311,35 @@ pub fn capabilities(args: RuntimeArgs) -> Result<Value> {
     })
 }
 
+fn resolve_runtime_backend(
+    workspace_root: &Path,
+    backend_name: Option<BackendName>,
+) -> Result<BackendName> {
+    let config = KastConfig::load(workspace_root)?;
+    Ok(config::resolve_runtime_backend(&config, backend_name))
+}
+
 fn inspect_workspace(
     workspace_root: &Path,
     backend_name: Option<BackendName>,
     prune_stale_descriptors: bool,
 ) -> Result<WorkspaceInspection> {
     let config = KastConfig::load(workspace_root)?;
-    let descriptor_directory = config.paths.descriptor_dir;
+    inspect_workspace_with_config(
+        workspace_root,
+        &config,
+        backend_name,
+        prune_stale_descriptors,
+    )
+}
+
+fn inspect_workspace_with_config(
+    workspace_root: &Path,
+    config: &KastConfig,
+    backend_name: Option<BackendName>,
+    prune_stale_descriptors: bool,
+) -> Result<WorkspaceInspection> {
+    let descriptor_directory = config.paths.descriptor_dir.clone();
     let registered = find_by_workspace_root(&descriptor_directory, workspace_root)?;
     let mut candidates = Vec::with_capacity(registered.len());
     for descriptor in registered {

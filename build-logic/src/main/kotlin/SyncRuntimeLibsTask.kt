@@ -158,6 +158,26 @@ object RuntimeClasspathAssertions {
         ZipFile(jarPath.toFile()).use { archive ->
             archive.getEntry(entryName) != null
         }
+
+    fun filesWithAnySuffix(
+        directory: Path,
+        suffixes: List<String>,
+    ): List<String> {
+        if (suffixes.isEmpty() || !Files.isDirectory(directory)) {
+            return emptyList()
+        }
+
+        return Files.walk(directory).use { paths ->
+            paths
+                .filter(Files::isRegularFile)
+                .filter { path -> suffixes.any { suffix -> path.name.endsWith(suffix) } }
+                .map { path ->
+                    directory.relativize(path).joinToString("/")
+                }
+                .sorted()
+                .toList()
+        }
+    }
 }
 
 private fun copyIfChanged(sourcePath: Path, targetPath: Path) {

@@ -74,6 +74,10 @@ write_provenance \
   "${scratch_dir}/provenance-ubuntu-debian/dist/build-provenance-ubuntu-debian.json" \
   "ubuntu-debian-x86_64" \
   "kast-ubuntu-debian-x86_64-${tag}.tar.gz"
+write_provenance \
+  "${scratch_dir}/provenance-devin-headless/dist/build-provenance-devin-headless-linux-x64.json" \
+  "devin-headless-linux-x64" \
+  "kast-devin-headless-runtime-linux-x64-${tag}.tar.gz"
 
 output="${scratch_dir}/dist/build-provenance.json"
 "$assembler" \
@@ -82,6 +86,7 @@ output="${scratch_dir}/dist/build-provenance.json"
   "${scratch_dir}/provenance-cli-linux-x64" \
   "${scratch_dir}/provenance-cli-macos-arm64" \
   "${scratch_dir}/provenance-cli-macos-x64" \
+  "${scratch_dir}/provenance-devin-headless" \
   "${scratch_dir}/provenance-headless" \
   "${scratch_dir}/provenance-intellij" \
   "${scratch_dir}/provenance-standalone" \
@@ -100,6 +105,7 @@ expected = [
     "cli-linux-x64",
     "cli-macos-arm64",
     "cli-macos-x64",
+    "devin-headless-linux-x64",
     "headless",
     "intellij",
     "standalone",
@@ -110,7 +116,7 @@ if platforms != expected:
     raise SystemExit(f"unexpected platform order: {platforms!r}")
 PY
 
-rm -rf "${scratch_dir}/provenance-ubuntu-debian" "${scratch_dir}/provenance-ubuntu-debian-headless"
+rm -rf "${scratch_dir}/provenance-devin-headless" "${scratch_dir}/provenance-ubuntu-debian" "${scratch_dir}/provenance-ubuntu-debian-headless"
 "$assembler" \
   --output "$output" \
   "${scratch_dir}/provenance-cli-linux-arm64" \

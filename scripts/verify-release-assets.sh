@@ -63,6 +63,7 @@ required = {
     "standalone": f"kast-standalone-{tag}.zip",
 }
 optional = {
+    "devin-headless-linux-x64": f"kast-devin-headless-runtime-linux-x64-{tag}.tar.gz",
     "ubuntu-debian-headless-x86_64": f"kast-ubuntu-debian-headless-x86_64-{tag}.tar.gz",
     "ubuntu-debian-x86_64": f"kast-ubuntu-debian-x86_64-{tag}.tar.gz",
 }

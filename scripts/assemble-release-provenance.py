@@ -15,6 +15,7 @@ REQUIRED_PLATFORMS = {
     "standalone",
 }
 OPTIONAL_PLATFORMS = {
+    "devin-headless-linux-x64",
     "ubuntu-debian-headless-x86_64",
     "ubuntu-debian-x86_64",
 }

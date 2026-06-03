@@ -4,6 +4,8 @@ plugins {
     id("kast.standalone-serialization-app")
 }
 
+extra["kastIncludeShadowJar"] = "false"
+
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
 private val intellijIdeaVersion = catalog.findVersion("intellij-idea").get().requiredVersion
 
@@ -93,9 +95,22 @@ val minimalPackagedIdeaHomeEntries = listOf(
     "plugins/Kotlin/**",
 )
 
+val agentPackagedIdeaHomeEntries = minimalPackagedIdeaHomeEntries + listOf(
+    "plugins/gradle/**",
+    "plugins/gradle-java/**",
+    "plugins/java-ide-customization/**",
+    "plugins/json/**",
+    "plugins/maven/**",
+    "plugins/properties/**",
+    "plugins/repository-search/**",
+    "plugins/toml/**",
+    "plugins/yaml/**",
+)
+
 val packagedIdeaHomeEntries = when (headlessIdeaHomeProfile.get()) {
     "full" -> fullPackagedIdeaHomeEntries
     "minimal" -> minimalPackagedIdeaHomeEntries
+    "agent" -> agentPackagedIdeaHomeEntries
     else -> error("Unsupported kastHeadlessIdeaHomeProfile=${headlessIdeaHomeProfile.get()}")
 }
 
@@ -343,7 +358,7 @@ tasks.named<WriteWrapperScriptTask>("writeWrapperScript") {
 val headlessRuntimeRequiredClassEntries = listOf(
     "io/github/amichne/kast/headless/HeadlessMainKt.class",
     "com/intellij/idea/Main.class",
-    "com/intellij/openapi/application/ModernApplicationStarter.class",
+    "com/intellij/openapi/application/ApplicationStarter.class",
     "com/intellij/openapi/project/DumbService.class",
 )
 
@@ -402,11 +417,14 @@ val verifyHeadlessPortableDistLayout by tasks.registering(VerifyClasspathLayoutT
     description = "Verifies headless plugin runtime jars are loaded from the plugin class loader."
     dependsOn("syncPortableDist")
 
+    val portableDistDirectory = layout.buildDirectory.dir("portable-dist/${project.name}")
     val runtimeLibsDirectory = layout.buildDirectory.dir("portable-dist/${project.name}/runtime-libs")
     val pluginLibsDirectory = layout.buildDirectory.dir("portable-dist/${project.name}/idea-home/plugins/kast-headless/lib")
+    this.portableDistDirectory.set(portableDistDirectory)
     this.runtimeLibsDirectory.set(runtimeLibsDirectory)
     runtimeClasspathFile.set(runtimeLibsDirectory.map { it.file("classpath.txt") })
     this.pluginLibsDirectory.set(pluginLibsDirectory)
+    forbiddenPortableDistJarSuffixes.set(listOf("-all.jar"))
     forbiddenRuntimeJarPrefixes.set(headlessPluginRuntimeJarPrefixes)
     requiredRuntimeClassEntries.set(headlessRuntimeRequiredClassEntries)
     requiredPluginJarPrefixes.set(headlessPluginLibJarPrefixes)

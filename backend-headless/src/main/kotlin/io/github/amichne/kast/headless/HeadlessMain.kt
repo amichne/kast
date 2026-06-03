@@ -1,6 +1,6 @@
 package io.github.amichne.kast.headless
 
-import com.intellij.openapi.application.ModernApplicationStarter
+import com.intellij.openapi.application.ApplicationStarter
 import kotlin.system.exitProcess
 
 fun main(args: Array<String>) {
@@ -9,10 +9,10 @@ fun main(args: Array<String>) {
     main.invoke(null, HeadlessRuntime.ideaMainArgs(args))
 }
 
-class HeadlessApplicationStarter : ModernApplicationStarter() {
+class HeadlessApplicationStarter : ApplicationStarter {
     override val isHeadless: Boolean = true
 
-    override suspend fun start(args: List<String>) {
+    override fun main(args: List<String>) {
         runCatching {
             HeadlessRuntime.run(HeadlessServerOptions.parseStarterArgs(args))
         }.onFailure { error ->

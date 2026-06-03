@@ -104,6 +104,21 @@ class RuntimeClasspathAssertionsTest {
         )
     }
 
+    @Test
+    fun `portable distribution jars with forbidden suffixes are reported`(@TempDir portableDist: Path) {
+        Files.createDirectories(portableDist.resolve("libs"))
+        Files.createDirectories(portableDist.resolve("runtime-libs"))
+        Files.writeString(portableDist.resolve("libs/backend-headless-1.0-all.jar"), "fat jar")
+        Files.writeString(portableDist.resolve("runtime-libs/backend-headless-1.0-launcher.jar"), "launcher")
+
+        val entries = RuntimeClasspathAssertions.filesWithAnySuffix(
+            directory = portableDist,
+            suffixes = listOf("-all.jar"),
+        )
+
+        assertEquals(listOf("libs/backend-headless-1.0-all.jar"), entries)
+    }
+
     private fun writeJar(path: Path, vararg entryNames: String) {
         Files.createDirectories(path.parent)
         ZipOutputStream(Files.newOutputStream(path)).use { output ->

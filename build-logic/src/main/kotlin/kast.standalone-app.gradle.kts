@@ -24,6 +24,17 @@ val buildVersion: Provider<String> = gitCommitHash.zip(gitDirty) { hash, dirty -
 
 extra["buildVersion"] = buildVersion
 
+val includeShadowJarProperty = providers.gradleProperty("kastIncludeShadowJar")
+val includeShadowJar: Provider<Boolean> = providers.provider {
+    val rawValue = includeShadowJarProperty.orNull ?: findProperty("kastIncludeShadowJar")?.toString()
+    when (val normalized = rawValue?.trim()?.lowercase()) {
+        null, "" -> true
+        "true" -> true
+        "false" -> false
+        else -> error("kastIncludeShadowJar must be true or false, got $normalized")
+    }
+}
+
 tasks.named<Jar>("jar") {
     manifest {
         attributes["Main-Class"] = application.mainClass.get()
@@ -62,7 +73,6 @@ val syncRuntimeLibs by tasks.registering(SyncRuntimeLibsTask::class) {
 }
 
 val writeWrapperScript by tasks.registering(WriteWrapperScriptTask::class) {
-    dependsOn(shadowJar)
     dependsOn(syncRuntimeLibs)
 
     jarFileName.set(shadowJar.flatMap(ShadowJar::getArchiveFileName))
@@ -75,12 +85,22 @@ val syncPortableDist by tasks.registering(Sync::class) {
     duplicatesStrategy = DuplicatesStrategy.FAIL
 
     from(writeWrapperScript)
-    from(shadowJarArchive) {
-        into("libs")
-    }
     // runtime-libs is intentionally absent here: consumers must explicitly wire their
     // own runtime-libs source so that classpath.txt references the correct daemon jars.
     // See backend-standalone/build.gradle.kts for the shipped daemon distribution.
+}
+
+afterEvaluate {
+    if (includeShadowJar.get()) {
+        writeWrapperScript.configure {
+            dependsOn(shadowJar)
+        }
+        syncPortableDist.configure {
+            from(shadowJarArchive) {
+                into("libs")
+            }
+        }
+    }
 }
 
 val portableDistZip by tasks.registering(Zip::class) {

@@ -87,6 +87,7 @@ write_expected_assets() {
   write_zip_asset "${release_dir}/kast-headless-${tag}.zip" headless
   write_text_asset "${release_dir}/kast-ubuntu-debian-x86_64-${tag}.tar.gz"
   write_text_asset "${release_dir}/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
+  write_text_asset "${release_dir}/kast-devin-headless-runtime-linux-x64-${tag}.tar.gz"
   printf '%s  %s\n' \
     "$(compute_sha256 "${release_dir}/kast-ubuntu-debian-x86_64-${tag}.tar.gz")" \
     "kast-ubuntu-debian-x86_64-${tag}.tar.gz" \
@@ -95,6 +96,10 @@ write_expected_assets() {
     "$(compute_sha256 "${release_dir}/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz")" \
     "kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz" \
     > "${release_dir}/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz.sha256"
+  printf '%s  %s\n' \
+    "$(compute_sha256 "${release_dir}/kast-devin-headless-runtime-linux-x64-${tag}.tar.gz")" \
+    "kast-devin-headless-runtime-linux-x64-${tag}.tar.gz" \
+    > "${release_dir}/kast-devin-headless-runtime-linux-x64-${tag}.tar.gz.sha256"
 }
 
 write_sha256sums() {
@@ -124,6 +129,7 @@ entries = [
     ("cli-macos-arm64", f"kast-{tag}-macos-arm64.zip"),
     ("ubuntu-debian-x86_64", f"kast-ubuntu-debian-x86_64-{tag}.tar.gz"),
     ("ubuntu-debian-headless-x86_64", f"kast-ubuntu-debian-headless-x86_64-{tag}.tar.gz"),
+    ("devin-headless-linux-x64", f"kast-devin-headless-runtime-linux-x64-{tag}.tar.gz"),
     ("headless", f"kast-headless-{tag}.zip"),
     ("intellij", f"kast-intellij-{tag}.zip"),
     ("standalone", f"kast-standalone-{tag}.zip"),
@@ -164,6 +170,7 @@ assets=(
   "kast-${tag}-macos-arm64.zip"
   "kast-ubuntu-debian-x86_64-${tag}.tar.gz"
   "kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
+  "kast-devin-headless-runtime-linux-x64-${tag}.tar.gz"
   "kast-headless-${tag}.zip"
   "kast-intellij-${tag}.zip"
   "kast-standalone-${tag}.zip"

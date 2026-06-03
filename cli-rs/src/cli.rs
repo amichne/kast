@@ -1,4 +1,5 @@
 use clap::{Args, Parser, Subcommand, ValueEnum};
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
@@ -241,6 +242,9 @@ pub struct RpcArgs {
     /// Absolute workspace root for daemon lifecycle and RPC commands.
     #[arg(long)]
     pub workspace_root: Option<PathBuf>,
+    /// Pin the command to a specific backend.
+    #[arg(long = "backend", visible_alias = "backend-name", value_enum)]
+    pub backend_name: Option<BackendName>,
 }
 
 #[derive(Debug, Args, Clone)]
@@ -449,7 +453,8 @@ pub enum UninstallCommand {
     CopilotExtension(ResourceInstallArgs),
 }
 
-#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum BackendName {
     Intellij,
     Headless,

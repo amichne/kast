@@ -97,6 +97,11 @@ write_optional_provenance \
   "ubuntu-debian-headless-x86_64" \
   "kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz" \
   9
+write_optional_provenance \
+  "${scratch_dir}/devin" \
+  "devin-headless-linux-x64" \
+  "kast-devin-headless-runtime-linux-x64-${tag}.tar.gz" \
+  10
 
 one_output="${scratch_dir}/one.json"
 "$merger" \
@@ -105,30 +110,35 @@ one_output="${scratch_dir}/one.json"
   "${scratch_dir}/standalone"
 assert_platform_count "$one_output" "ubuntu-debian-x86_64" 1
 assert_platform_count "$one_output" "ubuntu-debian-headless-x86_64" 0
+assert_platform_count "$one_output" "devin-headless-linux-x64" 0
 
 both_output="${scratch_dir}/both.json"
 "$merger" \
   --base "$one_output" \
   --output "$both_output" \
   "${scratch_dir}/standalone" \
-  "${scratch_dir}/headless"
+  "${scratch_dir}/headless" \
+  "${scratch_dir}/devin"
 assert_platform_count "$both_output" "ubuntu-debian-x86_64" 1
 assert_platform_count "$both_output" "ubuntu-debian-headless-x86_64" 1
+assert_platform_count "$both_output" "devin-headless-linux-x64" 1
 
 rerun_output="${scratch_dir}/rerun.json"
 "$merger" \
   --base "$both_output" \
   --output "$rerun_output" \
   "${scratch_dir}/standalone" \
-  "${scratch_dir}/headless"
+  "${scratch_dir}/headless" \
+  "${scratch_dir}/devin"
 assert_platform_count "$rerun_output" "ubuntu-debian-x86_64" 1
 assert_platform_count "$rerun_output" "ubuntu-debian-headless-x86_64" 1
+assert_platform_count "$rerun_output" "devin-headless-linux-x64" 1
 
 write_optional_provenance \
   "${scratch_dir}/required" \
   "standalone" \
   "kast-standalone-${tag}.zip" \
-  10
+  11
 if "$merger" \
   --base "$base" \
   --output "${scratch_dir}/required-output.json" \
