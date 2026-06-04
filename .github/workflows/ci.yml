@@ -399,10 +399,15 @@ jobs:
           cli_asset="dist/kast-v0.0.0-ci-linux-x64.zip"
           backend_asset="$(find backend-headless/build/distributions -maxdepth 1 -name 'backend-headless-*-portable.zip' -print -quit)"
           bundle_asset="dist/kast-devin-headless-runtime-linux-x64-${version}.tar.gz"
+          cli_run_dir="$RUNNER_TEMP/kast-cli-linux-x64"
           [[ -f "$cli_asset" ]] || { echo "Missing Rust CLI CI asset: ${cli_asset}" >&2; exit 1; }
           [[ -n "$backend_asset" ]] || { echo "Missing agent headless backend portable zip" >&2; exit 1; }
+          rm -rf "$cli_run_dir"
+          mkdir -p "$cli_run_dir"
+          unzip -q "$cli_asset" -d "$cli_run_dir"
+          chmod 755 "$cli_run_dir/kast"
 
-          ./scripts/package-devin-headless-runtime.sh \
+          "$cli_run_dir/kast" devin-runtime package \
             --cli-archive "$cli_asset" \
             --backend-archive "$backend_asset" \
             --version "$version" \
@@ -413,8 +418,8 @@ jobs:
           mkdir -p "$extract_dir"
           tar -xzf "$bundle_asset" -C "$extract_dir"
           prefix="${extract_dir}/kast-devin-headless-runtime-linux-x64-${version}"
-          "$prefix/scripts/setup-kast-devin-runtime.sh" --prefix "$prefix"
-          "$prefix/scripts/verify-kast-devin-runtime.sh" --prefix "$prefix"
+          "$prefix/bin/kast" devin-runtime setup --prefix "$prefix"
+          "$prefix/bin/kast" devin-runtime verify --prefix "$prefix"
 
       - name: Upload Devin runtime artifact
         uses: actions/upload-artifact@v6

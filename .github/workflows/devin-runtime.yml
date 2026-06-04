@@ -89,7 +89,7 @@ jobs:
           [[ -f "$cli_asset" ]] || { echo "Missing CLI asset: ${cli_asset}" >&2; exit 1; }
           [[ -n "$backend_asset" ]] || { echo "Missing agent headless backend portable zip" >&2; exit 1; }
 
-          ./scripts/package-devin-headless-runtime.sh \
+          cli-rs/target/release/kast devin-runtime package \
             --cli-archive "$cli_asset" \
             --backend-archive "$backend_asset" \
             --version "$KAST_RELEASE_TAG" \
@@ -105,8 +105,8 @@ jobs:
           mkdir -p "$extract_dir"
           tar -xzf "$bundle_asset" -C "$extract_dir"
           prefix="${extract_dir}/kast-devin-headless-runtime-linux-x64-${KAST_RELEASE_TAG}"
-          "$prefix/scripts/setup-kast-devin-runtime.sh" --prefix "$prefix"
-          scripts/verify-kast-devin-runtime.sh --prefix "$prefix"
+          "$prefix/bin/kast" devin-runtime setup --prefix "$prefix"
+          "$prefix/bin/kast" devin-runtime verify --prefix "$prefix"
 
       - name: Write Devin provenance
         shell: bash

@@ -57,6 +57,11 @@ pub enum Command {
     },
     /// Install a portable archive or packaged resources.
     Install(InstallArgs),
+    /// Package, set up, or verify the Devin headless runtime bundle.
+    DevinRuntime {
+        #[command(subcommand)]
+        command: DevinRuntimeCommand,
+    },
     /// Report the recorded global Kast install state.
     Info,
     /// Verify the global Kast install is still healthy.
@@ -423,6 +428,49 @@ pub struct IntellijPluginInstallArgs {
     /// Print the planned Homebrew command without running it.
     #[arg(long)]
     pub dry_run: bool,
+}
+
+#[derive(Debug, Subcommand, Clone)]
+pub enum DevinRuntimeCommand {
+    /// Package a relocatable Devin headless runtime bundle.
+    Package(DevinRuntimePackageArgs),
+    /// Generate config.toml for an unpacked Devin headless runtime bundle.
+    Setup(DevinRuntimePrefixArgs),
+    /// Verify an unpacked Devin headless runtime bundle.
+    Verify(DevinRuntimeVerifyArgs),
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct DevinRuntimePackageArgs {
+    /// Linux x64 CLI zip archive containing kast at archive root.
+    #[arg(long)]
+    pub cli_archive: PathBuf,
+    /// backend-headless portable zip archive.
+    #[arg(long)]
+    pub backend_archive: PathBuf,
+    /// Release tag or version for the bundle.
+    #[arg(long)]
+    pub version: String,
+    /// Output tar.gz path. Defaults under dist/.
+    #[arg(long)]
+    pub output: Option<PathBuf>,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct DevinRuntimePrefixArgs {
+    /// Unpacked bundle root. Defaults to the current directory, or current executable parent when run from bundle/bin/kast.
+    #[arg(long)]
+    pub prefix: Option<PathBuf>,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct DevinRuntimeVerifyArgs {
+    /// Unpacked bundle root. Defaults to the current directory, or current executable parent when run from bundle/bin/kast.
+    #[arg(long)]
+    pub prefix: Option<PathBuf>,
+    /// Workspace root used for the runtime startup smoke. Defaults to a temporary empty workspace.
+    #[arg(long)]
+    pub workspace_root: Option<PathBuf>,
 }
 
 #[derive(Debug, Args, Clone)]

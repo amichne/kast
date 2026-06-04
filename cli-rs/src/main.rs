@@ -3,6 +3,7 @@ mod cli;
 mod config;
 mod daemon;
 mod demo;
+mod devin_runtime;
 mod error;
 mod install;
 mod metrics;
@@ -106,6 +107,12 @@ fn run() -> Result<i32> {
         Command::Metrics { command } => metrics::run(command),
         Command::Install(args) => {
             let result = install::install(args)?;
+            serde_json::to_writer_pretty(io::stdout(), &result)?;
+            println!();
+            Ok(0)
+        }
+        Command::DevinRuntime { command } => {
+            let result = devin_runtime::run(command)?;
             serde_json::to_writer_pretty(io::stdout(), &result)?;
             println!();
             Ok(0)

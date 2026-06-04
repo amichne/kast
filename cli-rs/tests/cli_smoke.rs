@@ -107,6 +107,164 @@ fn write_backend_archive(root: &Path, backend: &str, version: &str) -> PathBuf {
     archive
 }
 
+fn write_devin_cli_archive(root: &Path, version: &str) -> PathBuf {
+    let staging = root.join("devin-cli-staging");
+    let archive = root.join(format!("kast-{version}-linux-x64.zip"));
+    std::fs::create_dir_all(&staging).expect("cli staging");
+    let cli = staging.join("kast");
+    std::fs::write(
+        &cli,
+        r#"#!/usr/bin/env bash
+set -euo pipefail
+
+case "${1:-help}" in
+  doctor)
+    [[ -n "${KAST_CONFIG_HOME:-}" ]] || { echo "missing KAST_CONFIG_HOME" >&2; exit 1; }
+    [[ -f "${KAST_CONFIG_HOME}/config.toml" ]] || { echo "missing config.toml" >&2; exit 1; }
+    grep -Fq "[runtime]" "${KAST_CONFIG_HOME}/config.toml"
+    grep -Fq 'defaultBackend = "headless"' "${KAST_CONFIG_HOME}/config.toml"
+    grep -Fq "[backends.headless]" "${KAST_CONFIG_HOME}/config.toml"
+    printf '%s\n' '{"ok":true}'
+    ;;
+  up)
+    [[ -n "${KAST_CONFIG_HOME:-}" ]] || { echo "missing KAST_CONFIG_HOME" >&2; exit 1; }
+    for arg in "$@"; do
+      case "$arg" in
+        --backend|--backend=*)
+          echo "verify command must not pass --backend to up" >&2
+          exit 1
+          ;;
+      esac
+    done
+    touch "${KAST_CONFIG_HOME}/up-called"
+    printf '%s\n' '{"selected":{"descriptor":{"backendName":"headless"},"runtimeStatus":{"backendName":"headless"}}}'
+    ;;
+  rpc)
+    [[ -n "${KAST_CONFIG_HOME:-}" ]] || { echo "missing KAST_CONFIG_HOME" >&2; exit 1; }
+    for arg in "$@"; do
+      case "$arg" in
+        --backend|--backend=*)
+          echo "verify command must not pass --backend to rpc" >&2
+          exit 1
+          ;;
+      esac
+    done
+    [[ "${2:-}" == *'"method":"runtime/status"'* ]] || { echo "unexpected rpc request: ${2:-}" >&2; exit 1; }
+    touch "${KAST_CONFIG_HOME}/rpc-called"
+    printf '%s\n' '{"jsonrpc":"2.0","id":1,"result":{"backendName":"headless"}}'
+    ;;
+  stop)
+    [[ -n "${KAST_CONFIG_HOME:-}" ]] || { echo "missing KAST_CONFIG_HOME" >&2; exit 1; }
+    touch "${KAST_CONFIG_HOME}/stop-called"
+    printf '%s\n' '{"stopped":true}'
+    ;;
+  version|--version)
+    printf '%s\n' "Kast CLI 9.8.7"
+    ;;
+  *)
+    printf '%s\n' "fake kast"
+    ;;
+esac
+"#,
+    )
+    .expect("fake devin cli");
+    set_executable(&cli);
+    zip_dir(&archive, &staging);
+    archive
+}
+
+fn write_devin_backend_archive(root: &Path, version: &str, stale: bool, fat_jar: bool) -> PathBuf {
+    let suffix = match (stale, fat_jar) {
+        (true, _) => "stale",
+        (_, true) => "fat",
+        _ => "ok",
+    };
+    let staging = root.join(format!("devin-backend-{suffix}-staging"));
+    let archive = root.join(format!("backend-headless-{suffix}-{version}.zip"));
+    let backend_root = staging.join("backend-headless");
+    let runtime_libs = backend_root.join("runtime-libs");
+    let plugin_libs = backend_root.join("idea-home/plugins/kast-headless/lib");
+    std::fs::create_dir_all(&runtime_libs).expect("runtime libs");
+    std::fs::create_dir_all(backend_root.join("idea-home/lib")).expect("idea lib");
+    std::fs::create_dir_all(backend_root.join("idea-home/modules")).expect("idea modules");
+    std::fs::create_dir_all(&plugin_libs).expect("plugin libs");
+
+    let archive_version = if stale {
+        "1.2.3"
+    } else {
+        version.trim_start_matches('v')
+    };
+    std::fs::write(
+        runtime_libs.join("classpath.txt"),
+        format!("backend-headless-{archive_version}-launcher.jar\n"),
+    )
+    .expect("classpath");
+    std::fs::write(
+        runtime_libs.join(format!("backend-headless-{archive_version}-launcher.jar")),
+        b"launcher",
+    )
+    .expect("launcher jar");
+    std::fs::write(
+        plugin_libs.join(format!("backend-headless-{archive_version}-plugin.jar")),
+        b"plugin",
+    )
+    .expect("plugin jar");
+    std::fs::write(backend_root.join("idea-home/lib/nio-fs.jar"), b"nio").expect("nio");
+    std::fs::write(
+        backend_root.join("idea-home/modules/module-descriptors.dat"),
+        b"modules",
+    )
+    .expect("module descriptors");
+    let launcher = backend_root.join("kast-headless");
+    std::fs::write(&launcher, "#!/usr/bin/env bash\n").expect("headless launcher");
+    set_executable(&launcher);
+    if fat_jar {
+        std::fs::create_dir_all(backend_root.join("libs")).expect("libs");
+        std::fs::write(
+            backend_root.join("libs/backend-headless-9.8.7-all.jar"),
+            b"fat jar",
+        )
+        .expect("fat jar");
+    }
+
+    zip_dir(&archive, &staging);
+    archive
+}
+
+fn set_executable(path: &Path) {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut permissions = std::fs::metadata(path).expect("metadata").permissions();
+        permissions.set_mode(0o755);
+        std::fs::set_permissions(path, permissions).expect("chmod");
+    }
+}
+
+fn zip_dir(archive: &Path, input_dir: &Path) {
+    let status = Command::new("zip")
+        .args(["-qr", archive.to_str().expect("archive path"), "."])
+        .current_dir(input_dir)
+        .status()
+        .expect("zip command");
+    assert!(status.success(), "zip command should create {archive:?}");
+    assert!(archive.is_file(), "zip archive should exist: {archive:?}");
+}
+
+fn extract_tar_gz(archive: &Path, output_dir: &Path) {
+    std::fs::create_dir_all(output_dir).expect("extract dir");
+    let status = Command::new("tar")
+        .args([
+            "-xzf",
+            archive.to_str().expect("archive path"),
+            "-C",
+            output_dir.to_str().expect("extract path"),
+        ])
+        .status()
+        .expect("tar command");
+    assert!(status.success(), "tar command should extract {archive:?}");
+}
+
 struct TestHttpServer {
     addr: SocketAddr,
     stop: Arc<AtomicBool>,
@@ -838,6 +996,202 @@ fn rpc_backend_flag_overrides_configured_default_backend() {
         stderr.contains("kast backend install standalone"),
         "stderr should include explicit backend install command: {stderr}"
     );
+}
+
+#[test]
+fn devin_runtime_package_setup_and_verify_use_cli_owned_contract() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let artifacts = temp.path().join("artifacts");
+    let extract = temp.path().join("extract");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&artifacts).expect("artifacts");
+
+    let version = "v9.8.7";
+    let cli_archive = write_devin_cli_archive(temp.path(), version);
+    let backend_archive = write_devin_backend_archive(temp.path(), version, false, false);
+    let output = artifacts.join(format!(
+        "kast-devin-headless-runtime-linux-x64-{version}.tar.gz"
+    ));
+
+    let package = kast(&home, &config_home)
+        .args([
+            "devin-runtime",
+            "package",
+            "--cli-archive",
+            cli_archive.to_str().expect("cli archive"),
+            "--backend-archive",
+            backend_archive.to_str().expect("backend archive"),
+            "--version",
+            version,
+            "--output",
+            output.to_str().expect("output"),
+        ])
+        .output()
+        .expect("devin runtime package");
+
+    assert!(
+        package.status.success(),
+        "package should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&package.stdout),
+        String::from_utf8_lossy(&package.stderr)
+    );
+    let stdout: serde_json::Value = serde_json::from_slice(&package.stdout).expect("package json");
+    assert_eq!(stdout["platform"], "devin-headless-linux-x64");
+    assert_eq!(stdout["backendInstallName"], format!("headless-{version}"));
+    assert!(output.is_file(), "bundle archive should exist");
+    let checksum = PathBuf::from(format!("{}.sha256", output.display()));
+    assert!(checksum.is_file(), "checksum sidecar should exist");
+
+    extract_tar_gz(&output, &extract);
+    let bundle_root = extract.join(format!("kast-devin-headless-runtime-linux-x64-{version}"));
+    let backend_root = bundle_root.join(format!("lib/backends/headless-{version}"));
+    assert!(bundle_root.join("bin/kast").is_file());
+    assert!(backend_root.join("runtime-libs/classpath.txt").is_file());
+    assert!(
+        backend_root
+            .join("idea-home/plugins/kast-headless")
+            .is_dir()
+    );
+    assert!(!bundle_root.join("config.toml").exists());
+
+    let manifest: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(bundle_root.join("manifest.json")).expect("manifest"),
+    )
+    .expect("manifest json");
+    assert_eq!(manifest["kind"], "KAST_DEVIN_HEADLESS_RUNTIME");
+    assert_eq!(manifest["platform"], "devin-headless-linux-x64");
+    assert_eq!(
+        manifest["backendInstallName"],
+        format!("headless-{version}")
+    );
+
+    let setup = kast(&home, &config_home)
+        .args([
+            "devin-runtime",
+            "setup",
+            "--prefix",
+            bundle_root.to_str().expect("bundle root"),
+        ])
+        .output()
+        .expect("devin runtime setup");
+    assert!(
+        setup.status.success(),
+        "setup should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&setup.stdout),
+        String::from_utf8_lossy(&setup.stderr)
+    );
+    let config = std::fs::read_to_string(bundle_root.join("config.toml")).expect("config");
+    assert!(config.contains("[runtime]"), "{config}");
+    assert!(config.contains("defaultBackend = \"headless\""), "{config}");
+    assert!(
+        config.contains(&format!(
+            "runtimeLibsDir = \"{}\"",
+            backend_root.join("runtime-libs").display()
+        )),
+        "{config}"
+    );
+    assert!(
+        config.contains(&format!(
+            "binaryPath = \"{}\"",
+            bundle_root.join("bin/kast").display()
+        )),
+        "{config}"
+    );
+
+    let verify = kast(&home, &config_home)
+        .args([
+            "devin-runtime",
+            "verify",
+            "--prefix",
+            bundle_root.to_str().expect("bundle root"),
+        ])
+        .output()
+        .expect("devin runtime verify");
+    assert!(
+        verify.status.success(),
+        "verify should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&verify.stdout),
+        String::from_utf8_lossy(&verify.stderr)
+    );
+    let verify_stdout: serde_json::Value =
+        serde_json::from_slice(&verify.stdout).expect("verify json");
+    assert_eq!(verify_stdout["backendName"], "headless");
+    assert!(bundle_root.join("up-called").is_file());
+    assert!(bundle_root.join("rpc-called").is_file());
+    assert!(bundle_root.join("stop-called").is_file());
+}
+
+#[test]
+fn devin_runtime_package_rejects_stale_backend_archive() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    std::fs::create_dir_all(&home).expect("home");
+
+    let version = "v9.8.7";
+    let cli_archive = write_devin_cli_archive(temp.path(), version);
+    let backend_archive = write_devin_backend_archive(temp.path(), version, true, false);
+    let output = temp.path().join("must-not-exist.tar.gz");
+
+    let package = kast(&home, &config_home)
+        .args([
+            "devin-runtime",
+            "package",
+            "--cli-archive",
+            cli_archive.to_str().expect("cli archive"),
+            "--backend-archive",
+            backend_archive.to_str().expect("backend archive"),
+            "--version",
+            version,
+            "--output",
+            output.to_str().expect("output"),
+        ])
+        .output()
+        .expect("devin runtime package");
+
+    assert!(!package.status.success(), "stale backend should fail");
+    let stderr = String::from_utf8_lossy(&package.stderr);
+    assert!(
+        stderr.contains("does not match requested version v9.8.7"),
+        "{stderr}"
+    );
+    assert!(!output.exists(), "failed package must not create output");
+}
+
+#[test]
+fn devin_runtime_package_rejects_headless_fat_jars() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    std::fs::create_dir_all(&home).expect("home");
+
+    let version = "v9.8.7";
+    let cli_archive = write_devin_cli_archive(temp.path(), version);
+    let backend_archive = write_devin_backend_archive(temp.path(), version, false, true);
+    let output = temp.path().join("must-not-exist.tar.gz");
+
+    let package = kast(&home, &config_home)
+        .args([
+            "devin-runtime",
+            "package",
+            "--cli-archive",
+            cli_archive.to_str().expect("cli archive"),
+            "--backend-archive",
+            backend_archive.to_str().expect("backend archive"),
+            "--version",
+            version,
+            "--output",
+            output.to_str().expect("output"),
+        ])
+        .output()
+        .expect("devin runtime package");
+
+    assert!(!package.status.success(), "fat jar backend should fail");
+    let stderr = String::from_utf8_lossy(&package.stderr);
+    assert!(stderr.contains("must not contain fat jars"), "{stderr}");
+    assert!(!output.exists(), "failed package must not create output");
 }
 
 #[test]
