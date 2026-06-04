@@ -86,6 +86,7 @@ artifact_dir="${scratch_dir}/artifacts"
 cli_tree="${scratch_dir}/cli"
 backend_tree="${scratch_dir}/backend"
 backend_with_fat_tree="${scratch_dir}/backend-with-fat"
+backend_mismatch_tree="${scratch_dir}/backend-mismatch"
 extract_dir="${scratch_dir}/extract"
 
 mkdir -p \
@@ -169,23 +170,32 @@ cat > "${backend_tree}/backend-headless/kast-headless" <<'FAKE_BACKEND'
 printf '%s\n' "fake headless backend"
 FAKE_BACKEND
 chmod 755 "${backend_tree}/backend-headless/kast-headless"
-printf '%s\n' "fake.jar" > "${backend_tree}/backend-headless/runtime-libs/classpath.txt"
-printf '%s\n' "fake runtime lib" > "${backend_tree}/backend-headless/runtime-libs/fake.jar"
 printf '%s\n' "fake nio fs" > "${backend_tree}/backend-headless/idea-home/lib/nio-fs.jar"
 printf '%s\n' "fake module descriptors" > "${backend_tree}/backend-headless/idea-home/modules/module-descriptors.dat"
-printf '%s\n' "fake plugin lib" > "${backend_tree}/backend-headless/idea-home/plugins/kast-headless/lib/backend-headless.jar"
+printf '%s\n' "backend-headless-${version#v}-launcher.jar" > "${backend_tree}/backend-headless/runtime-libs/classpath.txt"
+printf '%s\n' "fake launcher lib" > "${backend_tree}/backend-headless/runtime-libs/backend-headless-${version#v}-launcher.jar"
+printf '%s\n' "fake plugin lib" > "${backend_tree}/backend-headless/idea-home/plugins/kast-headless/lib/backend-headless-${version#v}-plugin.jar"
 
 cp -R "$backend_tree" "$backend_with_fat_tree"
 mkdir -p "${backend_with_fat_tree}/backend-headless/libs"
 printf '%s\n' "fat jar" > "${backend_with_fat_tree}/backend-headless/libs/backend-headless-9.8.7-all.jar"
 
+cp -R "$backend_tree" "$backend_mismatch_tree"
+rm -f "${backend_mismatch_tree}/backend-headless/runtime-libs/backend-headless-${version#v}-launcher.jar"
+rm -f "${backend_mismatch_tree}/backend-headless/idea-home/plugins/kast-headless/lib/backend-headless-${version#v}-plugin.jar"
+printf '%s\n' "backend-headless-1.2.3-launcher.jar" > "${backend_mismatch_tree}/backend-headless/runtime-libs/classpath.txt"
+printf '%s\n' "fake stale launcher lib" > "${backend_mismatch_tree}/backend-headless/runtime-libs/backend-headless-1.2.3-launcher.jar"
+printf '%s\n' "fake stale plugin lib" > "${backend_mismatch_tree}/backend-headless/idea-home/plugins/kast-headless/lib/backend-headless-1.2.3-plugin.jar"
+
 cli_zip="${artifact_dir}/kast-${version}-linux-x64.zip"
 backend_zip="${artifact_dir}/backend-headless-${version}.zip"
 backend_with_fat_zip="${artifact_dir}/backend-headless-with-fat-${version}.zip"
+backend_mismatch_zip="${artifact_dir}/backend-headless-stale-${version}.zip"
 bundle_path="${artifact_dir}/kast-devin-headless-runtime-linux-x64-${version}.tar.gz"
 zip_dir "$cli_zip" "$cli_tree"
 zip_dir "$backend_zip" "$backend_tree"
 zip_dir "$backend_with_fat_zip" "$backend_with_fat_tree"
+zip_dir "$backend_mismatch_zip" "$backend_mismatch_tree"
 
 expect_failure_contains \
   "must not contain fat jars" \
@@ -194,6 +204,14 @@ expect_failure_contains \
   --backend-archive "$backend_with_fat_zip" \
   --version "$version" \
   --output "${artifact_dir}/must-not-exist.tar.gz"
+
+expect_failure_contains \
+  "does not match requested version ${version}" \
+  "$packager" \
+  --cli-archive "$cli_zip" \
+  --backend-archive "$backend_mismatch_zip" \
+  --version "$version" \
+  --output "${artifact_dir}/must-not-exist-stale.tar.gz"
 
 "$packager" \
   --cli-archive "$cli_zip" \
