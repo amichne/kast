@@ -1531,11 +1531,46 @@ fn next_requests(declaration: &DeclarationRow) -> NextRequests {
 }
 
 fn query_terms(query: &str) -> Vec<String> {
-    query
-        .split(|ch: char| !ch.is_alphanumeric() && ch != '_')
-        .filter(|term| !term.is_empty())
-        .map(str::to_string)
-        .collect()
+    lexical_tokens(query)
+}
+
+fn lexical_tokens(value: &str) -> Vec<String> {
+    let chars: Vec<char> = value.chars().collect();
+    let mut tokens = Vec::new();
+    let mut current = String::new();
+    for (index, ch) in chars.iter().copied().enumerate() {
+        if !ch.is_ascii_alphanumeric() {
+            push_lexical_token(&mut tokens, &mut current);
+            continue;
+        }
+        if let Some(previous) = current.chars().last()
+            && is_camel_boundary(previous, ch, chars.get(index + 1).copied())
+        {
+            push_lexical_token(&mut tokens, &mut current);
+        }
+        current.push(ch);
+    }
+    push_lexical_token(&mut tokens, &mut current);
+    tokens
+}
+
+fn is_camel_boundary(previous: char, current: char, next: Option<char>) -> bool {
+    (previous.is_ascii_lowercase() && current.is_ascii_uppercase())
+        || (previous.is_ascii_digit() && current.is_ascii_uppercase())
+        || (previous.is_ascii_uppercase()
+            && current.is_ascii_uppercase()
+            && next.is_some_and(|ch| ch.is_ascii_lowercase()))
+}
+
+fn push_lexical_token(tokens: &mut Vec<String>, current: &mut String) {
+    if current.is_empty() {
+        return;
+    }
+    let token = current.to_ascii_lowercase();
+    if !tokens.contains(&token) {
+        tokens.push(token);
+    }
+    current.clear();
 }
 
 fn simple_name(fq_name: &str) -> &str {
@@ -1642,4 +1677,35 @@ fn default_graph_max_edges() -> usize {
 
 fn sql_error(error: rusqlite::Error) -> CliError {
     CliError::new("SQLITE_ERROR", error.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn lexical_tokens_split_package_punctuation_snake_and_camel_boundaries() {
+        let tokens =
+            lexical_tokens("io.github.payments.CardPaymentProcessor card_payment_processor.kt");
+
+        assert_eq!(
+            tokens,
+            vec![
+                "io",
+                "github",
+                "payments",
+                "card",
+                "payment",
+                "processor",
+                "kt",
+            ]
+        );
+    }
+
+    #[test]
+    fn lexical_tokens_lowercase_ascii_and_deduplicate_per_field() {
+        let tokens = lexical_tokens("CardPaymentProcessor card CARD paymentProcessor");
+
+        assert_eq!(tokens, vec!["card", "payment", "processor"]);
+    }
 }
