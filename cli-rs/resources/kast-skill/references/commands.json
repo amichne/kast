@@ -287,6 +287,39 @@
                 "type": "string",
                 "optional": true,
                 "nullable": true
+              },
+              "gradleProject": {
+                "type": "string",
+                "optional": true,
+                "nullable": true
+              },
+              "relativePathPrefix": {
+                "type": "string",
+                "optional": true,
+                "nullable": true
+              },
+              "productionOnly": {
+                "type": "boolean",
+                "optional": true
+              },
+              "excludePatterns": {
+                "type": "array",
+                "optional": true,
+                "items": "string"
+              },
+              "usageFacets": {
+                "type": "array",
+                "optional": true,
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "PUBLIC_API",
+                    "INTERNAL_API",
+                    "MODULE_PRIVATE",
+                    "BRIDGE",
+                    "BUILD_LOGIC"
+                  ]
+                }
               }
             }
           },
