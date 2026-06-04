@@ -141,6 +141,12 @@ struct SymbolQueryFilters {
     file_glob: Option<String>,
     package_prefix: Option<String>,
     fq_name_prefix: Option<String>,
+    gradle_project: Option<String>,
+    relative_path_prefix: Option<String>,
+    #[serde(default)]
+    production_only: bool,
+    #[serde(default)]
+    exclude_patterns: Vec<String>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -458,6 +464,12 @@ impl<'a> SymbolQueryDatabase<'a> {
                 )
             }
         };
+        let compiled_exclude_patterns = request
+            .filters
+            .exclude_patterns
+            .iter()
+            .map(|pattern| compile_glob_filter("excludePatterns", pattern))
+            .collect::<Result<Vec<_>>>()?;
         let modes = QueryModes::from_request(&request);
         let declarations = self.declarations()?;
         let by_key: HashMap<_, _> = declarations
@@ -469,10 +481,11 @@ impl<'a> SymbolQueryDatabase<'a> {
         let terms = query_terms(&request.query);
 
         for declaration in declarations {
-            if !request
-                .filters
-                .matches(&declaration, compiled_file_glob.as_ref())
-            {
+            if !request.filters.matches(
+                &declaration,
+                compiled_file_glob.as_ref(),
+                &compiled_exclude_patterns,
+            ) {
                 continue;
             }
             let exact_matches = if modes.exact {
@@ -513,9 +526,11 @@ impl<'a> SymbolQueryDatabase<'a> {
             if let Some(anchor_fq_id) = anchor_fq_id {
                 for (key, paths) in self.graph_candidates(anchor_fq_id, &request.graph)? {
                     if let Some(declaration) = by_key.get(&key)
-                        && request
-                            .filters
-                            .matches(declaration, compiled_file_glob.as_ref())
+                        && request.filters.matches(
+                            declaration,
+                            compiled_file_glob.as_ref(),
+                            &compiled_exclude_patterns,
+                        )
                     {
                         candidates
                             .entry(key)
@@ -1157,7 +1172,12 @@ impl QueryModes {
 }
 
 impl SymbolQueryFilters {
-    fn matches(&self, declaration: &DeclarationRow, file_glob: Option<&Pattern>) -> bool {
+    fn matches(
+        &self,
+        declaration: &DeclarationRow,
+        file_glob: Option<&Pattern>,
+        exclude_patterns: &[Pattern],
+    ) -> bool {
         if !self.kinds.is_empty() && !self.kinds.iter().any(|kind| kind == &declaration.kind) {
             return false;
         }
@@ -1189,6 +1209,31 @@ impl SymbolQueryFilters {
         }
         if let Some(fq_name_prefix) = &self.fq_name_prefix
             && !declaration.fq_name.starts_with(fq_name_prefix)
+        {
+            return false;
+        }
+        if let Some(gradle_project) = &self.gradle_project
+            && !declaration
+                .module_path
+                .as_deref()
+                .is_some_and(|module| gradle_project_matches(module, gradle_project))
+        {
+            return false;
+        }
+        if let Some(relative_path_prefix) = &self.relative_path_prefix
+            && !relative_path_prefix_matches(&declaration.relative_path, relative_path_prefix)
+        {
+            return false;
+        }
+        if self.production_only
+            && (declaration.source_set.as_deref() != Some("main")
+                || is_build_logic_location(declaration))
+        {
+            return false;
+        }
+        if exclude_patterns
+            .iter()
+            .any(|pattern| declaration_location_matches(pattern, declaration))
         {
             return false;
         }
@@ -1343,6 +1388,38 @@ fn structural_constraints(filters: &SymbolQueryFilters) -> Vec<StructuralConstra
             source: "sqlite",
         });
     }
+    if let Some(gradle_project) = &filters.gradle_project {
+        constraints.push(StructuralConstraint {
+            field: "gradleProject",
+            operator: "GRADLE_PREFIX",
+            value: json!(gradle_project),
+            source: "sqlite+derived",
+        });
+    }
+    if let Some(relative_path_prefix) = &filters.relative_path_prefix {
+        constraints.push(StructuralConstraint {
+            field: "relativePathPrefix",
+            operator: "PREFIX",
+            value: json!(relative_path_prefix),
+            source: "sqlite+derived",
+        });
+    }
+    if filters.production_only {
+        constraints.push(StructuralConstraint {
+            field: "productionOnly",
+            operator: "=",
+            value: json!(true),
+            source: "sqlite+derived",
+        });
+    }
+    if !filters.exclude_patterns.is_empty() {
+        constraints.push(StructuralConstraint {
+            field: "excludePatterns",
+            operator: "NOT_GLOB",
+            value: json!(filters.exclude_patterns),
+            source: "sqlite+derived",
+        });
+    }
     constraints
 }
 
@@ -1401,6 +1478,38 @@ fn hard_filters(filters: &SymbolQueryFilters) -> Vec<HardFilter> {
             field: "fqNamePrefix".to_string(),
             value: json!(fq_name_prefix),
             source: "fq_names.fq_name",
+            satisfied_symbolically: true,
+        });
+    }
+    if let Some(gradle_project) = &filters.gradle_project {
+        hard_filters.push(HardFilter {
+            field: "gradleProject".to_string(),
+            value: json!(gradle_project),
+            source: "declarations.module_path",
+            satisfied_symbolically: true,
+        });
+    }
+    if let Some(relative_path_prefix) = &filters.relative_path_prefix {
+        hard_filters.push(HardFilter {
+            field: "relativePathPrefix".to_string(),
+            value: json!(relative_path_prefix),
+            source: "path_prefixes.dir_path + declarations.filename",
+            satisfied_symbolically: true,
+        });
+    }
+    if filters.production_only {
+        hard_filters.push(HardFilter {
+            field: "productionOnly".to_string(),
+            value: json!(true),
+            source: "declarations.source_set + declarations.module_path + relative_path",
+            satisfied_symbolically: true,
+        });
+    }
+    if !filters.exclude_patterns.is_empty() {
+        hard_filters.push(HardFilter {
+            field: "excludePatterns".to_string(),
+            value: json!(filters.exclude_patterns),
+            source: "declarations.module_path + relative_path",
             satisfied_symbolically: true,
         });
     }
@@ -1494,6 +1603,61 @@ fn next_requests(declaration: &DeclarationRow) -> NextRequests {
 
 fn query_terms(query: &str) -> Vec<String> {
     lexical_tokens(query)
+}
+
+fn compile_glob_filter(field: &str, pattern: &str) -> Result<Pattern> {
+    if pattern.starts_with("regex:") {
+        return Err(CliError::new(
+            "INVALID_FILTER",
+            format!("regex: {field} filters are not supported by symbol/query"),
+        ));
+    }
+    let normalized = pattern.strip_prefix("glob:").unwrap_or(pattern);
+    Pattern::new(normalized)
+        .map_err(|error| CliError::new("INVALID_FILTER", format!("{field}: {error}")))
+}
+
+fn gradle_project_matches(module_path: &str, gradle_project: &str) -> bool {
+    module_path == gradle_project
+        || module_path
+            .strip_prefix(gradle_project)
+            .is_some_and(|suffix| suffix.starts_with(':'))
+}
+
+fn relative_path_prefix_matches(relative_path: &str, prefix: &str) -> bool {
+    let relative_path = normalize_relative_filter_path(relative_path);
+    let prefix = normalize_relative_filter_path(prefix);
+    if prefix.ends_with('/') {
+        relative_path.starts_with(&prefix)
+    } else {
+        relative_path == prefix || relative_path.starts_with(&format!("{prefix}/"))
+    }
+}
+
+fn declaration_location_matches(pattern: &Pattern, declaration: &DeclarationRow) -> bool {
+    declaration
+        .module_path
+        .as_deref()
+        .is_some_and(|module| pattern.matches(module))
+        || pattern.matches(&normalize_relative_filter_path(&declaration.relative_path))
+        || pattern.matches_path(Path::new(&declaration.relative_path))
+}
+
+fn is_build_logic_location(declaration: &DeclarationRow) -> bool {
+    let module_path = declaration.module_path.as_deref().unwrap_or_default();
+    let relative_path = normalize_relative_filter_path(&declaration.relative_path);
+    module_path == ":build-logic"
+        || module_path.starts_with(":build-logic:")
+        || module_path == ":buildSrc"
+        || module_path.starts_with(":buildSrc:")
+        || relative_path == "build-logic"
+        || relative_path.starts_with("build-logic/")
+        || relative_path == "buildSrc"
+        || relative_path.starts_with("buildSrc/")
+}
+
+fn normalize_relative_filter_path(path: &str) -> String {
+    path.replace('\\', "/").trim_start_matches("./").to_string()
 }
 
 fn lexical_field_matches(
