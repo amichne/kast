@@ -68,6 +68,17 @@ class HeadlessServerOptionsTest {
         }
     }
 
+    @Test
+    @Suppress("DEPRECATION")
+    fun `project open task skips IDE startup work before server registration`() {
+        val task = HeadlessProjectOpener.openProjectTask()
+
+        assertEquals(false, task.isRefreshVfsNeeded)
+        assertEquals(false, task.runConfigurators)
+        assertEquals(false, task.runConversionBeforeOpen)
+        assertEquals(false, task.preloadServices)
+    }
+
     private fun withSystemProperties(
         vararg values: Pair<String, String>,
         block: () -> Unit,

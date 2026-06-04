@@ -83,7 +83,7 @@ pub fn java_command(args: &DaemonStartArgs, config: &KastConfig) -> Result<Vec<S
     let mut command = vec![java_exec];
     if backend_name == BackendName::Headless {
         let idea_home = headless_idea_home(args, config)?;
-        command.extend(headless_jvm_args(&idea_home, &runtime_libs_dir, config));
+        command.extend(headless_jvm_args(&idea_home, config));
     }
     if let Ok(java_opts) = env::var("JAVA_OPTS") {
         command.extend(java_opts.split_whitespace().map(ToOwned::to_owned));
@@ -131,11 +131,7 @@ fn headless_idea_home(args: &DaemonStartArgs, config: &KastConfig) -> Result<Pat
         })
 }
 
-fn headless_jvm_args(
-    idea_home: &Path,
-    runtime_libs_dir: &Path,
-    config: &KastConfig,
-) -> Vec<String> {
+fn headless_jvm_args(idea_home: &Path, config: &KastConfig) -> Vec<String> {
     let jna_arch = match env::consts::ARCH {
         "aarch64" => "aarch64",
         _ => "amd64",
@@ -146,15 +142,20 @@ fn headless_jvm_args(
             idea_home.join("lib/nio-fs.jar").display()
         ),
         "-Djava.system.class.loader=com.intellij.util.lang.PathClassLoader".to_string(),
+        "-Didea.force.use.core.classloader=true".to_string(),
         "-Didea.vendor.name=JetBrains".to_string(),
         "-Didea.paths.selector=KastHeadless".to_string(),
         format!(
-            "-Didea.plugins.path={}",
-            runtime_libs_dir
-                .parent()
-                .unwrap_or(runtime_libs_dir)
-                .join("plugins")
-                .display()
+            "-Didea.config.path={}",
+            config.paths.cache_dir.join("idea-config").display()
+        ),
+        format!(
+            "-Didea.system.path={}",
+            config.paths.cache_dir.join("idea-system").display()
+        ),
+        format!(
+            "-Didea.log.path={}",
+            config.paths.logs_dir.join("idea").display()
         ),
         format!(
             "-Djna.boot.library.path={}",
@@ -368,6 +369,24 @@ mod tests {
             "-Dkast.headless.paths.descriptorDir={}",
             config.paths.descriptor_dir.display()
         )));
+        assert!(command.contains(&format!(
+            "-Didea.config.path={}",
+            config.paths.cache_dir.join("idea-config").display()
+        )));
+        assert!(command.contains(&format!(
+            "-Didea.system.path={}",
+            config.paths.cache_dir.join("idea-system").display()
+        )));
+        assert!(command.contains(&format!(
+            "-Didea.log.path={}",
+            config.paths.logs_dir.join("idea").display()
+        )));
+        assert!(command.contains(&"-Didea.force.use.core.classloader=true".to_string()));
+        assert!(
+            !command
+                .iter()
+                .any(|arg| arg.starts_with("-Didea.plugins.path="))
+        );
         assert!(command.contains(&"--add-opens=java.base/java.lang=ALL-UNNAMED".to_string()));
     }
 

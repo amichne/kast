@@ -114,6 +114,7 @@ need_tool tar
 platform="devin-headless-linux-x64"
 bundle_name="kast-devin-headless-runtime-linux-x64-${version}"
 backend_install_name="headless-${version}"
+normalized_version="${version#v}"
 if [[ -z "$output_path" ]]; then
   output_path="${repo_root}/dist/${bundle_name}.tar.gz"
 fi
@@ -144,6 +145,16 @@ backend_root="${backend_extract}/backend-headless"
 [[ -f "${backend_root}/idea-home/lib/nio-fs.jar" ]] || die "Backend archive missing idea-home/lib/nio-fs.jar"
 [[ -f "${backend_root}/idea-home/modules/module-descriptors.dat" ]] || die "Backend archive missing idea-home/modules/module-descriptors.dat"
 [[ -d "${backend_root}/idea-home/plugins/kast-headless" ]] || die "Backend archive missing bundled kast-headless plugin"
+
+expected_launcher_jar="backend-headless-${normalized_version}-launcher.jar"
+expected_plugin_jar="backend-headless-${normalized_version}-plugin.jar"
+if ! grep -Fxq "$expected_launcher_jar" "${backend_root}/runtime-libs/classpath.txt"; then
+  die "Backend archive does not match requested version ${version}: runtime-libs/classpath.txt must contain ${expected_launcher_jar}"
+fi
+[[ -f "${backend_root}/runtime-libs/${expected_launcher_jar}" ]] \
+  || die "Backend archive does not match requested version ${version}: missing runtime-libs/${expected_launcher_jar}"
+[[ -f "${backend_root}/idea-home/plugins/kast-headless/lib/${expected_plugin_jar}" ]] \
+  || die "Backend archive does not match requested version ${version}: missing idea-home/plugins/kast-headless/lib/${expected_plugin_jar}"
 
 if [[ -d "${backend_root}/libs" ]] && find "${backend_root}/libs" -name '*-all.jar' -print -quit | grep -q .; then
   find "${backend_root}/libs" -name '*-all.jar' -print >&2
