@@ -18,7 +18,16 @@
       "sourceSet": "main",
       "fileGlob": "**/*.kt",
       "packagePrefix": "com.example",
-      "fqNamePrefix": "com.example.Widget"
+      "fqNamePrefix": "com.example.Widget",
+      "gradleProject": "example-gradleProject",
+      "relativePathPrefix": "example-relativePathPrefix",
+      "productionOnly": true,
+      "excludePatterns": [
+        "example-excludePattern"
+      ],
+      "usageFacets": [
+        "BUILD_LOGIC"
+      ]
     },
     "anchor": {
       "fqName": "com.example.Widget",

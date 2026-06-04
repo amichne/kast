@@ -181,6 +181,58 @@ fn command_catalog_is_schema_backed_and_self_consistent() {
 }
 
 #[test]
+fn symbol_query_catalog_documents_relevance_filters() {
+    let catalog = catalog();
+    let filters = &catalog["commands"]["symbol/query"]["request"]["fields"]["filters"]["fields"];
+    for field in [
+        "gradleProject",
+        "relativePathPrefix",
+        "productionOnly",
+        "excludePatterns",
+        "usageFacets",
+    ] {
+        assert!(
+            filters.get(field).is_some(),
+            "symbol/query filters should document {field}"
+        );
+    }
+
+    let usage_facets = filters["usageFacets"]["items"]["enum"]
+        .as_array()
+        .expect("usage facet enum");
+    for facet in [
+        "PUBLIC_API",
+        "INTERNAL_API",
+        "MODULE_PRIVATE",
+        "BRIDGE",
+        "BUILD_LOGIC",
+    ] {
+        assert!(
+            usage_facets.iter().any(|value| value == facet),
+            "usageFacets should include {facet}"
+        );
+    }
+
+    let maximal: Value = serde_json::from_str(include_str!(
+        "../resources/kast-skill/references/requests/symbol/query/maximal.json"
+    ))
+    .expect("symbol/query maximal request");
+    let maximal_filters = &maximal["params"]["filters"];
+    for field in [
+        "gradleProject",
+        "relativePathPrefix",
+        "productionOnly",
+        "excludePatterns",
+        "usageFacets",
+    ] {
+        assert!(
+            maximal_filters.get(field).is_some(),
+            "symbol/query maximal request should include {field}"
+        );
+    }
+}
+
+#[test]
 fn command_catalog_owns_copilot_tool_surface() {
     let catalog = catalog();
     let commands = catalog["commands"].as_object().expect("commands object");

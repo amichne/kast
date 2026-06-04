@@ -388,6 +388,335 @@ fn reads_metrics_directly_from_source_index_db() {
     );
 }
 
+#[test]
+fn symbol_query_reports_token_evidence_for_camel_case_declarations() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    seed_source_index(&workspace);
+
+    let request = serde_json::json!({
+        "jsonrpc": "2.0",
+        "method": "symbol/query",
+        "params": {
+            "query": "card payment",
+            "modes": ["lexical"],
+            "limit": 10
+        },
+        "id": 44
+    });
+    let body = request.to_string();
+    let output = kast(&home, &config_home)
+        .args([
+            "rpc",
+            body.as_str(),
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ])
+        .output()
+        .expect("symbol query rpc");
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let response: Value = serde_json::from_slice(&output.stdout).expect("symbol query json");
+    assert_eq!(
+        response["result"]["results"][0]["declaration"]["fqName"],
+        Value::String("lib.CardPaymentProcessor".to_string())
+    );
+    let lexical_matches = response["result"]["results"][0]["signals"]["lexical"]["matches"]
+        .as_array()
+        .expect("lexical matches");
+    for term in ["card", "payment"] {
+        assert!(
+            lexical_matches.iter().any(|hit| {
+                hit["field"] == Value::String("fq_names.fq_name".to_string())
+                    && hit["term"] == Value::String(term.to_string())
+                    && hit["matchType"] == Value::String("TOKEN".to_string())
+                    && hit["evidence"] == Value::String("lib.CardPaymentProcessor".to_string())
+            }),
+            "symbol/query should report {term} as TOKEN evidence: {response}"
+        );
+    }
+}
+
+#[test]
+fn symbol_query_applies_new_filters_and_reports_filter_evidence() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    seed_source_index(&workspace);
+
+    let filtered = run_symbol_query(
+        &home,
+        &config_home,
+        &workspace,
+        45,
+        serde_json::json!({
+            "query": "processor",
+            "modes": ["lexical"],
+            "filters": {
+                "gradleProject": ":lib",
+                "relativePathPrefix": "lib/",
+                "productionOnly": true,
+                "excludePatterns": ["build-logic/**"]
+            },
+            "limit": 10
+        }),
+    );
+    assert_eq!(
+        result_fq_names(&filtered),
+        vec!["lib.CardPaymentProcessor".to_string()]
+    );
+    assert_hard_filter_fields(
+        &filtered,
+        [
+            "gradleProject",
+            "relativePathPrefix",
+            "productionOnly",
+            "excludePatterns",
+        ],
+    );
+    assert_structural_constraint_fields(
+        &filtered,
+        [
+            "gradleProject",
+            "relativePathPrefix",
+            "productionOnly",
+            "excludePatterns",
+        ],
+    );
+
+    let gradle_prefix = run_symbol_query(
+        &home,
+        &config_home,
+        &workspace,
+        46,
+        serde_json::json!({
+            "query": "bridge",
+            "modes": ["lexical"],
+            "filters": {
+                "gradleProject": ":lib"
+            },
+            "limit": 10
+        }),
+    );
+    assert_eq!(
+        result_fq_names(&gradle_prefix),
+        vec!["lib.payments.PaymentBridge".to_string()]
+    );
+
+    let relative_prefix = run_symbol_query(
+        &home,
+        &config_home,
+        &workspace,
+        47,
+        serde_json::json!({
+            "query": "processor",
+            "modes": ["lexical"],
+            "filters": {
+                "relativePathPrefix": "lib/test/"
+            },
+            "limit": 10
+        }),
+    );
+    assert_eq!(
+        result_fq_names(&relative_prefix),
+        vec!["lib.CardPaymentProcessorTest".to_string()]
+    );
+
+    let excluded = run_symbol_query(
+        &home,
+        &config_home,
+        &workspace,
+        48,
+        serde_json::json!({
+            "query": "processor",
+            "modes": ["lexical"],
+            "filters": {
+                "productionOnly": true,
+                "excludePatterns": ["lib/CardPaymentProcessor.kt"]
+            },
+            "limit": 10
+        }),
+    );
+    assert_eq!(result_fq_names(&excluded), Vec::<String>::new());
+}
+
+#[test]
+fn symbol_query_computes_usage_facets_and_filters_by_them() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    seed_source_index(&workspace);
+
+    let public_bridge = run_symbol_query(
+        &home,
+        &config_home,
+        &workspace,
+        49,
+        serde_json::json!({
+            "query": "A",
+            "modes": ["exact"],
+            "filters": {
+                "usageFacets": ["BRIDGE"]
+            },
+            "limit": 10
+        }),
+    );
+    assert_eq!(result_fq_names(&public_bridge), vec!["app.A".to_string()]);
+    assert_declaration_facets(&public_bridge, ["PUBLIC_API", "BRIDGE"]);
+    assert_hard_filter_fields(&public_bridge, ["usageFacets"]);
+
+    let internal = run_symbol_query(
+        &home,
+        &config_home,
+        &workspace,
+        50,
+        serde_json::json!({
+            "query": "Bar",
+            "modes": ["exact"],
+            "limit": 10
+        }),
+    );
+    assert_declaration_facets(&internal, ["INTERNAL_API"]);
+
+    let module_private = run_symbol_query(
+        &home,
+        &config_home,
+        &workspace,
+        51,
+        serde_json::json!({
+            "query": "Unused",
+            "modes": ["exact"],
+            "limit": 10
+        }),
+    );
+    assert_declaration_facets(&module_private, ["MODULE_PRIVATE"]);
+
+    let build_logic = run_symbol_query(
+        &home,
+        &config_home,
+        &workspace,
+        52,
+        serde_json::json!({
+            "query": "build payment",
+            "modes": ["lexical"],
+            "filters": {
+                "usageFacets": ["BUILD_LOGIC"]
+            },
+            "limit": 10
+        }),
+    );
+    assert_eq!(
+        result_fq_names(&build_logic),
+        vec!["buildlogic.BuildPaymentProcessor".to_string()]
+    );
+    assert_declaration_facets(&build_logic, ["PUBLIC_API", "BUILD_LOGIC"]);
+}
+
+fn run_symbol_query(
+    home: &std::path::Path,
+    config_home: &std::path::Path,
+    workspace: &std::path::Path,
+    id: i64,
+    params: Value,
+) -> Value {
+    let request = serde_json::json!({
+        "jsonrpc": "2.0",
+        "method": "symbol/query",
+        "params": params,
+        "id": id
+    });
+    let body = request.to_string();
+    let output = kast(home, config_home)
+        .args([
+            "rpc",
+            body.as_str(),
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ])
+        .output()
+        .expect("symbol query rpc");
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    serde_json::from_slice(&output.stdout).expect("symbol query json")
+}
+
+fn result_fq_names(response: &Value) -> Vec<String> {
+    response["result"]["results"]
+        .as_array()
+        .expect("results")
+        .iter()
+        .map(|result| {
+            result["declaration"]["fqName"]
+                .as_str()
+                .expect("fqName")
+                .to_string()
+        })
+        .collect()
+}
+
+fn assert_hard_filter_fields<const N: usize>(response: &Value, expected: [&str; N]) {
+    let fields: std::collections::BTreeSet<_> = response["result"]["hardFilters"]
+        .as_array()
+        .expect("hard filters")
+        .iter()
+        .map(|filter| filter["field"].as_str().expect("hard filter field"))
+        .collect();
+    for field in expected {
+        assert!(
+            fields.contains(field),
+            "hard filters should include {field}: {response}"
+        );
+    }
+}
+
+fn assert_structural_constraint_fields<const N: usize>(response: &Value, expected: [&str; N]) {
+    let fields: std::collections::BTreeSet<_> =
+        response["result"]["results"][0]["signals"]["structural"]["constraints"]
+            .as_array()
+            .expect("structural constraints")
+            .iter()
+            .map(|constraint| constraint["field"].as_str().expect("constraint field"))
+            .collect();
+    for field in expected {
+        assert!(
+            fields.contains(field),
+            "structural constraints should include {field}: {response}"
+        );
+    }
+}
+
+fn assert_declaration_facets<const N: usize>(response: &Value, expected: [&str; N]) {
+    let facets: std::collections::BTreeSet<_> =
+        response["result"]["results"][0]["declaration"]["usageFacets"]
+            .as_array()
+            .expect("usage facets")
+            .iter()
+            .map(|facet| facet.as_str().expect("usage facet"))
+            .collect();
+    for facet in expected {
+        assert!(
+            facets.contains(facet),
+            "usage facets should include {facet}: {response}"
+        );
+    }
+}
+
 fn seed_source_index(workspace: &std::path::Path) {
     let db_path = workspace.join(".gradle/kast/cache/source-index.db");
     std::fs::create_dir_all(db_path.parent().expect("db parent")).expect("db parent");
@@ -441,10 +770,19 @@ fn seed_source_index(workspace: &std::path::Path) {
     ))
     .expect("schema");
 
-    conn.execute("INSERT INTO path_prefixes VALUES (1, 'app')", [])
-        .expect("app prefix");
-    conn.execute("INSERT INTO path_prefixes VALUES (2, 'lib')", [])
-        .expect("lib prefix");
+    for (prefix_id, dir_path) in [
+        (1, "app"),
+        (2, "lib"),
+        (3, "lib/test"),
+        (4, "build-logic"),
+        (5, "lib/payments"),
+    ] {
+        conn.execute(
+            "INSERT INTO path_prefixes VALUES (?, ?)",
+            params![prefix_id, dir_path],
+        )
+        .expect("path prefix");
+    }
     for (id, name) in [
         (1, "app.A"),
         (2, "app.B"),
@@ -452,6 +790,10 @@ fn seed_source_index(workspace: &std::path::Path) {
         (4, "lib.Bar"),
         (5, "app.Unused"),
         (6, "lib.FooWidget"),
+        (7, "lib.CardPaymentProcessor"),
+        (8, "lib.CardPaymentProcessorTest"),
+        (9, "buildlogic.BuildPaymentProcessor"),
+        (10, "lib.payments.PaymentBridge"),
     ] {
         conn.execute(
             "INSERT INTO fq_names(fq_id, fq_name) VALUES (?, ?)",
@@ -459,17 +801,21 @@ fn seed_source_index(workspace: &std::path::Path) {
         )
         .expect("fq name");
     }
-    for (prefix, filename, module) in [
-        (1, "A.kt", ":app"),
-        (1, "B.kt", ":app"),
-        (1, "Unused.kt", ":app"),
-        (2, "Foo.kt", ":lib"),
-        (2, "Bar.kt", ":lib"),
-        (2, "FooWidget.kt", ":lib"),
+    for (prefix, filename, module, source_set) in [
+        (1, "A.kt", ":app", "main"),
+        (1, "B.kt", ":app", "main"),
+        (1, "Unused.kt", ":app", "main"),
+        (2, "Foo.kt", ":lib", "main"),
+        (2, "Bar.kt", ":lib", "main"),
+        (2, "FooWidget.kt", ":lib", "main"),
+        (2, "CardPaymentProcessor.kt", ":lib", "main"),
+        (3, "CardPaymentProcessorTest.kt", ":lib", "test"),
+        (4, "BuildPaymentProcessor.kt", ":build-logic", "main"),
+        (5, "PaymentBridge.kt", ":lib:payments", "main"),
     ] {
         conn.execute(
-            "INSERT INTO file_metadata(prefix_id, filename, module_path, source_set) VALUES (?, ?, ?, 'main')",
-            params![prefix, filename, module],
+            "INSERT INTO file_metadata(prefix_id, filename, module_path, source_set) VALUES (?, ?, ?, ?)",
+            params![prefix, filename, module, source_set],
         )
         .expect("file metadata");
         conn.execute(
@@ -483,17 +829,53 @@ fn seed_source_index(workspace: &std::path::Path) {
         )
         .expect("identifier path");
     }
-    for (fq_id, kind, visibility, prefix, filename, module) in [
-        (1, "CLASS", "PUBLIC", 1, "A.kt", ":app"),
-        (2, "CLASS", "PUBLIC", 1, "B.kt", ":app"),
-        (3, "CLASS", "PUBLIC", 2, "Foo.kt", ":lib"),
-        (4, "FUNCTION", "INTERNAL", 2, "Bar.kt", ":lib"),
-        (5, "FUNCTION", "PRIVATE", 1, "Unused.kt", ":app"),
-        (6, "CLASS", "PUBLIC", 2, "FooWidget.kt", ":lib"),
+    for (fq_id, kind, visibility, prefix, filename, module, source_set) in [
+        (1, "CLASS", "PUBLIC", 1, "A.kt", ":app", "main"),
+        (2, "CLASS", "PUBLIC", 1, "B.kt", ":app", "main"),
+        (3, "CLASS", "PUBLIC", 2, "Foo.kt", ":lib", "main"),
+        (4, "FUNCTION", "INTERNAL", 2, "Bar.kt", ":lib", "main"),
+        (5, "FUNCTION", "PRIVATE", 1, "Unused.kt", ":app", "main"),
+        (6, "CLASS", "PUBLIC", 2, "FooWidget.kt", ":lib", "main"),
+        (
+            7,
+            "CLASS",
+            "PUBLIC",
+            2,
+            "CardPaymentProcessor.kt",
+            ":lib",
+            "main",
+        ),
+        (
+            8,
+            "CLASS",
+            "PUBLIC",
+            3,
+            "CardPaymentProcessorTest.kt",
+            ":lib",
+            "test",
+        ),
+        (
+            9,
+            "CLASS",
+            "PUBLIC",
+            4,
+            "BuildPaymentProcessor.kt",
+            ":build-logic",
+            "main",
+        ),
+        (
+            10,
+            "CLASS",
+            "PUBLIC",
+            5,
+            "PaymentBridge.kt",
+            ":lib:payments",
+            "main",
+        ),
     ] {
         conn.execute(
-            "INSERT INTO declarations(fq_id, kind, visibility, prefix_id, filename, declaration_offset, module_path, source_set) VALUES (?, ?, ?, ?, ?, 1, ?, 'main')",
-            params![fq_id, kind, visibility, prefix, filename, module],
+            "INSERT INTO declarations(fq_id, kind, visibility, prefix_id, filename, declaration_offset, module_path, source_set) VALUES (?, ?, ?, ?, ?, 1, ?, ?)",
+            params![fq_id, kind, visibility, prefix, filename, module, source_set],
         )
         .expect("declaration");
     }
@@ -530,6 +912,9 @@ fn source_index_schema_version() -> i64 {
 fn seed_source_files(workspace: &std::path::Path) {
     std::fs::create_dir_all(workspace.join("app")).expect("app sources");
     std::fs::create_dir_all(workspace.join("lib")).expect("lib sources");
+    std::fs::create_dir_all(workspace.join("lib/test")).expect("lib test sources");
+    std::fs::create_dir_all(workspace.join("build-logic")).expect("build logic sources");
+    std::fs::create_dir_all(workspace.join("lib/payments")).expect("lib payments sources");
     std::fs::write(
         workspace.join("app/A.kt"),
         r#"package app
@@ -590,4 +975,36 @@ class FooWidget
 "#,
     )
     .expect("FooWidget.kt");
+    std::fs::write(
+        workspace.join("lib/CardPaymentProcessor.kt"),
+        r#"package lib
+
+class CardPaymentProcessor
+"#,
+    )
+    .expect("CardPaymentProcessor.kt");
+    std::fs::write(
+        workspace.join("lib/test/CardPaymentProcessorTest.kt"),
+        r#"package lib
+
+class CardPaymentProcessorTest
+"#,
+    )
+    .expect("CardPaymentProcessorTest.kt");
+    std::fs::write(
+        workspace.join("build-logic/BuildPaymentProcessor.kt"),
+        r#"package buildlogic
+
+class BuildPaymentProcessor
+"#,
+    )
+    .expect("BuildPaymentProcessor.kt");
+    std::fs::write(
+        workspace.join("lib/payments/PaymentBridge.kt"),
+        r#"package lib.payments
+
+class PaymentBridge
+"#,
+    )
+    .expect("PaymentBridge.kt");
 }

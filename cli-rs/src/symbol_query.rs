@@ -141,6 +141,14 @@ struct SymbolQueryFilters {
     file_glob: Option<String>,
     package_prefix: Option<String>,
     fq_name_prefix: Option<String>,
+    gradle_project: Option<String>,
+    relative_path_prefix: Option<String>,
+    #[serde(default)]
+    production_only: bool,
+    #[serde(default)]
+    exclude_patterns: Vec<String>,
+    #[serde(default)]
+    usage_facets: Vec<UsageFacet>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -227,6 +235,7 @@ struct DeclarationKey {
 #[derive(Debug, Clone)]
 struct Candidate {
     declaration: DeclarationRow,
+    usage_facets: Vec<UsageFacet>,
     exact_matches: Vec<SignalMatch>,
     lexical_matches: Vec<LexicalMatch>,
     structural_constraints: Vec<StructuralConstraint>,
@@ -282,6 +291,7 @@ struct DeclarationResult {
     simple_name: String,
     kind: String,
     visibility: String,
+    usage_facets: Vec<UsageFacet>,
     module_path: Option<String>,
     source_set: Option<String>,
     file: DeclarationFile,
@@ -399,6 +409,16 @@ struct SemanticSignal {
     reason: &'static str,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+enum UsageFacet {
+    PublicApi,
+    InternalApi,
+    ModulePrivate,
+    Bridge,
+    BuildLogic,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct NextRequests {
@@ -458,6 +478,12 @@ impl<'a> SymbolQueryDatabase<'a> {
                 )
             }
         };
+        let compiled_exclude_patterns = request
+            .filters
+            .exclude_patterns
+            .iter()
+            .map(|pattern| compile_glob_filter("excludePatterns", pattern))
+            .collect::<Result<Vec<_>>>()?;
         let modes = QueryModes::from_request(&request);
         let declarations = self.declarations()?;
         let by_key: HashMap<_, _> = declarations
@@ -469,10 +495,11 @@ impl<'a> SymbolQueryDatabase<'a> {
         let terms = query_terms(&request.query);
 
         for declaration in declarations {
-            if !request
-                .filters
-                .matches(&declaration, compiled_file_glob.as_ref())
-            {
+            if !request.filters.matches(
+                &declaration,
+                compiled_file_glob.as_ref(),
+                &compiled_exclude_patterns,
+            ) {
                 continue;
             }
             let exact_matches = if modes.exact {
@@ -485,6 +512,10 @@ impl<'a> SymbolQueryDatabase<'a> {
             } else {
                 Vec::new()
             };
+            let usage_facets = self.usage_facets(&declaration)?;
+            if !request.filters.usage_facets_match(&usage_facets) {
+                continue;
+            }
             let anchored = anchor_matches(&request.anchor, &declaration);
             if !anchored && exact_matches.is_empty() && lexical_matches.is_empty() {
                 continue;
@@ -495,6 +526,7 @@ impl<'a> SymbolQueryDatabase<'a> {
                 key,
                 Candidate {
                     declaration,
+                    usage_facets,
                     exact_matches,
                     lexical_matches,
                     structural_constraints,
@@ -512,16 +544,24 @@ impl<'a> SymbolQueryDatabase<'a> {
             }
             if let Some(anchor_fq_id) = anchor_fq_id {
                 for (key, paths) in self.graph_candidates(anchor_fq_id, &request.graph)? {
-                    if let Some(declaration) = by_key.get(&key)
-                        && request
-                            .filters
-                            .matches(declaration, compiled_file_glob.as_ref())
-                    {
+                    if let Some(declaration) = by_key.get(&key) {
+                        if !request.filters.matches(
+                            declaration,
+                            compiled_file_glob.as_ref(),
+                            &compiled_exclude_patterns,
+                        ) {
+                            continue;
+                        }
+                        let usage_facets = self.usage_facets(declaration)?;
+                        if !request.filters.usage_facets_match(&usage_facets) {
+                            continue;
+                        }
                         candidates
                             .entry(key)
                             .and_modify(|candidate| candidate.graph_paths.extend(paths.clone()))
                             .or_insert_with(|| Candidate {
                                 declaration: declaration.clone(),
+                                usage_facets,
                                 exact_matches: Vec::new(),
                                 lexical_matches: Vec::new(),
                                 structural_constraints: structural_constraints(&request.filters),
@@ -544,7 +584,7 @@ impl<'a> SymbolQueryDatabase<'a> {
                 let components = rank_components(&candidate);
                 let sort_score = sort_score(&components);
                 SymbolQueryResult {
-                    declaration: candidate.declaration.result(),
+                    declaration: candidate.declaration.result(candidate.usage_facets),
                     rank: Rank {
                         position: index + 1,
                         sort_score,
@@ -664,34 +704,12 @@ impl<'a> SymbolQueryDatabase<'a> {
         declaration: &DeclarationRow,
     ) -> Result<Vec<LexicalMatch>> {
         let mut matches = Vec::new();
-        for term in terms {
-            let needle = term.to_lowercase();
-            let fq_lower = declaration.fq_name.to_lowercase();
-            if fq_lower.contains(&needle) {
-                matches.push(LexicalMatch {
-                    field: "fq_names.fq_name",
-                    term: term.clone(),
-                    match_type: if declaration
-                        .fq_name
-                        .split(|ch: char| !ch.is_alphanumeric() && ch != '_')
-                        .any(|token| token.eq_ignore_ascii_case(term))
-                    {
-                        "TOKEN"
-                    } else {
-                        "LIKE"
-                    },
-                    evidence: declaration.fq_name.clone(),
-                });
-            }
-            if declaration.path.to_lowercase().contains(&needle) {
-                matches.push(LexicalMatch {
-                    field: "file_path",
-                    term: term.clone(),
-                    match_type: "LIKE",
-                    evidence: declaration.path.clone(),
-                });
-            }
-        }
+        matches.extend(lexical_field_matches(
+            terms,
+            "fq_names.fq_name",
+            &declaration.fq_name,
+        ));
+        matches.extend(lexical_field_matches(terms, "file_path", &declaration.path));
         matches.extend(self.identifier_matches(terms, declaration)?);
         matches.extend(self.import_matches(terms, declaration)?);
         Ok(matches)
@@ -724,18 +742,12 @@ impl<'a> SymbolQueryDatabase<'a> {
             identifiers.push(row.map_err(sql_error)?);
         }
         let mut matches = Vec::new();
-        for term in terms {
-            let needle = term.to_lowercase();
-            for identifier in &identifiers {
-                if identifier.to_lowercase().contains(&needle) {
-                    matches.push(LexicalMatch {
-                        field: "identifier_paths.identifier",
-                        term: term.clone(),
-                        match_type: "LIKE",
-                        evidence: identifier.clone(),
-                    });
-                }
-            }
+        for identifier in &identifiers {
+            matches.extend(lexical_field_matches(
+                terms,
+                "identifier_paths.identifier",
+                identifier,
+            ));
         }
         Ok(matches)
     }
@@ -786,20 +798,88 @@ impl<'a> SymbolQueryDatabase<'a> {
             imports.push(row.map_err(sql_error)?);
         }
         let mut matches = Vec::new();
-        for term in terms {
-            let needle = term.to_lowercase();
-            for import in &imports {
-                if import.to_lowercase().contains(&needle) {
-                    matches.push(LexicalMatch {
-                        field: "import_fq_name",
-                        term: term.clone(),
-                        match_type: "LIKE",
-                        evidence: import.clone(),
-                    });
-                }
-            }
+        for import in &imports {
+            matches.extend(lexical_field_matches(terms, "import_fq_name", import));
         }
         Ok(matches)
+    }
+
+    fn usage_facets(&self, declaration: &DeclarationRow) -> Result<Vec<UsageFacet>> {
+        let mut facets = Vec::new();
+        match declaration.visibility.as_str() {
+            "PUBLIC" => facets.push(UsageFacet::PublicApi),
+            "INTERNAL" => facets.push(UsageFacet::InternalApi),
+            "PRIVATE" => facets.push(UsageFacet::ModulePrivate),
+            _ => {}
+        }
+        if self.is_bridge_declaration(declaration)? {
+            facets.push(UsageFacet::Bridge);
+        }
+        if is_build_logic_location(declaration) {
+            facets.push(UsageFacet::BuildLogic);
+        }
+        Ok(facets)
+    }
+
+    fn is_bridge_declaration(&self, declaration: &DeclarationRow) -> Result<bool> {
+        Ok(self.has_direct_incoming_graph_edge(declaration.fq_id)?
+            && self.has_direct_outgoing_graph_edge(declaration.fq_id)?)
+    }
+
+    fn has_direct_incoming_graph_edge(&self, fq_id: i64) -> Result<bool> {
+        let reference = self
+            .conn
+            .query_row(
+                "SELECT 1 FROM symbol_references WHERE target_fq_id = ? LIMIT 1",
+                params![fq_id],
+                |_| Ok(true),
+            )
+            .optional()
+            .map_err(sql_error)?
+            .unwrap_or(false);
+        if reference {
+            return Ok(true);
+        }
+        if !self.has_supertypes {
+            return Ok(false);
+        }
+        self.conn
+            .query_row(
+                "SELECT 1 FROM declaration_supertypes WHERE supertype_fq_id = ? LIMIT 1",
+                params![fq_id],
+                |_| Ok(true),
+            )
+            .optional()
+            .map(|value| value.unwrap_or(false))
+            .map_err(sql_error)
+    }
+
+    fn has_direct_outgoing_graph_edge(&self, fq_id: i64) -> Result<bool> {
+        let reference = self
+            .conn
+            .query_row(
+                "SELECT 1 FROM symbol_references WHERE source_fq_id = ? LIMIT 1",
+                params![fq_id],
+                |_| Ok(true),
+            )
+            .optional()
+            .map_err(sql_error)?
+            .unwrap_or(false);
+        if reference {
+            return Ok(true);
+        }
+        if !self.has_supertypes {
+            return Ok(false);
+        }
+        self.conn
+            .query_row(
+                "SELECT 1 FROM declaration_supertypes WHERE declaration_fq_id = ? LIMIT 1",
+                params![fq_id],
+                |_| Ok(true),
+            )
+            .optional()
+            .map(|value| value.unwrap_or(false))
+            .map_err(sql_error)
     }
 
     fn anchor_fq_id(&self, anchor: &SymbolQueryAnchor) -> Result<Option<i64>> {
@@ -1195,7 +1275,12 @@ impl QueryModes {
 }
 
 impl SymbolQueryFilters {
-    fn matches(&self, declaration: &DeclarationRow, file_glob: Option<&Pattern>) -> bool {
+    fn matches(
+        &self,
+        declaration: &DeclarationRow,
+        file_glob: Option<&Pattern>,
+        exclude_patterns: &[Pattern],
+    ) -> bool {
         if !self.kinds.is_empty() && !self.kinds.iter().any(|kind| kind == &declaration.kind) {
             return false;
         }
@@ -1230,6 +1315,31 @@ impl SymbolQueryFilters {
         {
             return false;
         }
+        if let Some(gradle_project) = &self.gradle_project
+            && !declaration
+                .module_path
+                .as_deref()
+                .is_some_and(|module| gradle_project_matches(module, gradle_project))
+        {
+            return false;
+        }
+        if let Some(relative_path_prefix) = &self.relative_path_prefix
+            && !relative_path_prefix_matches(&declaration.relative_path, relative_path_prefix)
+        {
+            return false;
+        }
+        if self.production_only
+            && (declaration.source_set.as_deref() != Some("main")
+                || is_build_logic_location(declaration))
+        {
+            return false;
+        }
+        if exclude_patterns
+            .iter()
+            .any(|pattern| declaration_location_matches(pattern, declaration))
+        {
+            return false;
+        }
         if let Some(pattern) = file_glob
             && !pattern.matches_path(Path::new(&declaration.path))
             && !pattern.matches_path(Path::new(&declaration.relative_path))
@@ -1239,6 +1349,14 @@ impl SymbolQueryFilters {
             return false;
         }
         true
+    }
+
+    fn usage_facets_match(&self, usage_facets: &[UsageFacet]) -> bool {
+        self.usage_facets.is_empty()
+            || self
+                .usage_facets
+                .iter()
+                .any(|requested| usage_facets.contains(requested))
     }
 }
 
@@ -1251,13 +1369,14 @@ impl DeclarationRow {
         }
     }
 
-    fn result(&self) -> DeclarationResult {
+    fn result(&self, usage_facets: Vec<UsageFacet>) -> DeclarationResult {
         DeclarationResult {
             fq_id: self.fq_id,
             fq_name: self.fq_name.clone(),
             simple_name: self.simple_name.clone(),
             kind: self.kind.clone(),
             visibility: self.visibility.clone(),
+            usage_facets,
             module_path: self.module_path.clone(),
             source_set: self.source_set.clone(),
             file: DeclarationFile {
@@ -1381,6 +1500,46 @@ fn structural_constraints(filters: &SymbolQueryFilters) -> Vec<StructuralConstra
             source: "sqlite",
         });
     }
+    if let Some(gradle_project) = &filters.gradle_project {
+        constraints.push(StructuralConstraint {
+            field: "gradleProject",
+            operator: "GRADLE_PREFIX",
+            value: json!(gradle_project),
+            source: "sqlite+derived",
+        });
+    }
+    if let Some(relative_path_prefix) = &filters.relative_path_prefix {
+        constraints.push(StructuralConstraint {
+            field: "relativePathPrefix",
+            operator: "PREFIX",
+            value: json!(relative_path_prefix),
+            source: "sqlite+derived",
+        });
+    }
+    if filters.production_only {
+        constraints.push(StructuralConstraint {
+            field: "productionOnly",
+            operator: "=",
+            value: json!(true),
+            source: "sqlite+derived",
+        });
+    }
+    if !filters.exclude_patterns.is_empty() {
+        constraints.push(StructuralConstraint {
+            field: "excludePatterns",
+            operator: "NOT_GLOB",
+            value: json!(filters.exclude_patterns),
+            source: "sqlite+derived",
+        });
+    }
+    if !filters.usage_facets.is_empty() {
+        constraints.push(StructuralConstraint {
+            field: "usageFacets",
+            operator: "ANY",
+            value: json!(filters.usage_facets),
+            source: "sqlite+derived",
+        });
+    }
     constraints
 }
 
@@ -1439,6 +1598,46 @@ fn hard_filters(filters: &SymbolQueryFilters) -> Vec<HardFilter> {
             field: "fqNamePrefix".to_string(),
             value: json!(fq_name_prefix),
             source: "fq_names.fq_name",
+            satisfied_symbolically: true,
+        });
+    }
+    if let Some(gradle_project) = &filters.gradle_project {
+        hard_filters.push(HardFilter {
+            field: "gradleProject".to_string(),
+            value: json!(gradle_project),
+            source: "declarations.module_path",
+            satisfied_symbolically: true,
+        });
+    }
+    if let Some(relative_path_prefix) = &filters.relative_path_prefix {
+        hard_filters.push(HardFilter {
+            field: "relativePathPrefix".to_string(),
+            value: json!(relative_path_prefix),
+            source: "path_prefixes.dir_path + declarations.filename",
+            satisfied_symbolically: true,
+        });
+    }
+    if filters.production_only {
+        hard_filters.push(HardFilter {
+            field: "productionOnly".to_string(),
+            value: json!(true),
+            source: "declarations.source_set + declarations.module_path + relative_path",
+            satisfied_symbolically: true,
+        });
+    }
+    if !filters.exclude_patterns.is_empty() {
+        hard_filters.push(HardFilter {
+            field: "excludePatterns".to_string(),
+            value: json!(filters.exclude_patterns),
+            source: "declarations.module_path + relative_path",
+            satisfied_symbolically: true,
+        });
+    }
+    if !filters.usage_facets.is_empty() {
+        hard_filters.push(HardFilter {
+            field: "usageFacets".to_string(),
+            value: json!(filters.usage_facets),
+            source: "declarations + symbol_references + file_metadata + declaration_supertypes",
             satisfied_symbolically: true,
         });
     }
@@ -1531,11 +1730,132 @@ fn next_requests(declaration: &DeclarationRow) -> NextRequests {
 }
 
 fn query_terms(query: &str) -> Vec<String> {
-    query
-        .split(|ch: char| !ch.is_alphanumeric() && ch != '_')
-        .filter(|term| !term.is_empty())
-        .map(str::to_string)
+    lexical_tokens(query)
+}
+
+fn compile_glob_filter(field: &str, pattern: &str) -> Result<Pattern> {
+    if pattern.starts_with("regex:") {
+        return Err(CliError::new(
+            "INVALID_FILTER",
+            format!("regex: {field} filters are not supported by symbol/query"),
+        ));
+    }
+    let normalized = pattern.strip_prefix("glob:").unwrap_or(pattern);
+    Pattern::new(normalized)
+        .map_err(|error| CliError::new("INVALID_FILTER", format!("{field}: {error}")))
+}
+
+fn gradle_project_matches(module_path: &str, gradle_project: &str) -> bool {
+    module_path == gradle_project
+        || module_path
+            .strip_prefix(gradle_project)
+            .is_some_and(|suffix| suffix.starts_with(':'))
+}
+
+fn relative_path_prefix_matches(relative_path: &str, prefix: &str) -> bool {
+    let relative_path = normalize_relative_filter_path(relative_path);
+    let prefix = normalize_relative_filter_path(prefix);
+    if prefix.ends_with('/') {
+        relative_path.starts_with(&prefix)
+    } else {
+        relative_path == prefix || relative_path.starts_with(&format!("{prefix}/"))
+    }
+}
+
+fn declaration_location_matches(pattern: &Pattern, declaration: &DeclarationRow) -> bool {
+    declaration
+        .module_path
+        .as_deref()
+        .is_some_and(|module| pattern.matches(module))
+        || pattern.matches(&normalize_relative_filter_path(&declaration.relative_path))
+        || pattern.matches_path(Path::new(&declaration.relative_path))
+}
+
+fn is_build_logic_location(declaration: &DeclarationRow) -> bool {
+    let module_path = declaration.module_path.as_deref().unwrap_or_default();
+    let relative_path = normalize_relative_filter_path(&declaration.relative_path);
+    module_path == ":build-logic"
+        || module_path.starts_with(":build-logic:")
+        || module_path == ":buildSrc"
+        || module_path.starts_with(":buildSrc:")
+        || relative_path == "build-logic"
+        || relative_path.starts_with("build-logic/")
+        || relative_path == "buildSrc"
+        || relative_path.starts_with("buildSrc/")
+}
+
+fn normalize_relative_filter_path(path: &str) -> String {
+    path.replace('\\', "/").trim_start_matches("./").to_string()
+}
+
+fn lexical_field_matches(
+    terms: &[String],
+    field: &'static str,
+    evidence: &str,
+) -> Vec<LexicalMatch> {
+    let field_tokens = lexical_tokens(evidence);
+    let lowered = evidence.to_ascii_lowercase();
+    terms
+        .iter()
+        .filter_map(|term| {
+            if field_tokens.iter().any(|token| token == term) {
+                Some(LexicalMatch {
+                    field,
+                    term: term.clone(),
+                    match_type: "TOKEN",
+                    evidence: evidence.to_string(),
+                })
+            } else if lowered.contains(term) {
+                Some(LexicalMatch {
+                    field,
+                    term: term.clone(),
+                    match_type: "LIKE",
+                    evidence: evidence.to_string(),
+                })
+            } else {
+                None
+            }
+        })
         .collect()
+}
+
+fn lexical_tokens(value: &str) -> Vec<String> {
+    let chars: Vec<char> = value.chars().collect();
+    let mut tokens = Vec::new();
+    let mut current = String::new();
+    for (index, ch) in chars.iter().copied().enumerate() {
+        if !ch.is_ascii_alphanumeric() {
+            push_lexical_token(&mut tokens, &mut current);
+            continue;
+        }
+        if let Some(previous) = current.chars().last()
+            && is_camel_boundary(previous, ch, chars.get(index + 1).copied())
+        {
+            push_lexical_token(&mut tokens, &mut current);
+        }
+        current.push(ch);
+    }
+    push_lexical_token(&mut tokens, &mut current);
+    tokens
+}
+
+fn is_camel_boundary(previous: char, current: char, next: Option<char>) -> bool {
+    (previous.is_ascii_lowercase() && current.is_ascii_uppercase())
+        || (previous.is_ascii_digit() && current.is_ascii_uppercase())
+        || (previous.is_ascii_uppercase()
+            && current.is_ascii_uppercase()
+            && next.is_some_and(|ch| ch.is_ascii_lowercase()))
+}
+
+fn push_lexical_token(tokens: &mut Vec<String>, current: &mut String) {
+    if current.is_empty() {
+        return;
+    }
+    let token = current.to_ascii_lowercase();
+    if !tokens.contains(&token) {
+        tokens.push(token);
+    }
+    current.clear();
 }
 
 fn simple_name(fq_name: &str) -> &str {
@@ -1642,4 +1962,35 @@ fn default_graph_max_edges() -> usize {
 
 fn sql_error(error: rusqlite::Error) -> CliError {
     CliError::new("SQLITE_ERROR", error.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn lexical_tokens_split_package_punctuation_snake_and_camel_boundaries() {
+        let tokens =
+            lexical_tokens("io.github.payments.CardPaymentProcessor card_payment_processor.kt");
+
+        assert_eq!(
+            tokens,
+            vec![
+                "io",
+                "github",
+                "payments",
+                "card",
+                "payment",
+                "processor",
+                "kt",
+            ]
+        );
+    }
+
+    #[test]
+    fn lexical_tokens_lowercase_ascii_and_deduplicate_per_field() {
+        let tokens = lexical_tokens("CardPaymentProcessor card CARD paymentProcessor");
+
+        assert_eq!(tokens, vec!["card", "payment", "processor"]);
+    }
 }
