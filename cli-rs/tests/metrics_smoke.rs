@@ -10,6 +10,21 @@ fn kast(home: &std::path::Path, config_home: &std::path::Path) -> Command {
     command
 }
 
+fn symbol_query_response_schema() -> Value {
+    serde_json::from_str(include_str!(
+        "../../analysis-api/src/main/resources/contracts/symbol-query/symbol-query-response.schema.json"
+    ))
+    .expect("symbol/query response schema")
+}
+
+fn assert_symbol_query_response_matches_schema(response: &Value) {
+    let schema = symbol_query_response_schema();
+    let validator = jsonschema::validator_for(&schema).expect("schema compiles");
+    if let Err(error) = validator.validate(response) {
+        panic!("symbol/query response does not match schema: {error}\nresponse: {response}");
+    }
+}
+
 #[test]
 fn reads_metrics_directly_from_source_index_db() {
     let temp = tempfile::tempdir().expect("tempdir");
@@ -368,6 +383,7 @@ fn reads_metrics_directly_from_source_index_db() {
     );
     let symbol_rpc_json: Value =
         serde_json::from_slice(&symbol_rpc.stdout).expect("symbol query json");
+    assert_symbol_query_response_matches_schema(&symbol_rpc_json);
     assert_eq!(symbol_rpc_json["jsonrpc"], Value::String("2.0".to_string()));
     assert_eq!(symbol_rpc_json["id"], Value::Number(42.into()));
     assert_eq!(
@@ -424,6 +440,7 @@ fn symbol_query_reports_token_evidence_for_camel_case_declarations() {
         String::from_utf8_lossy(&output.stderr)
     );
     let response: Value = serde_json::from_slice(&output.stdout).expect("symbol query json");
+    assert_symbol_query_response_matches_schema(&response);
     assert_eq!(
         response["result"]["results"][0]["declaration"]["fqName"],
         Value::String("lib.CardPaymentProcessor".to_string())
@@ -575,6 +592,7 @@ fn symbol_query_computes_usage_facets_and_filters_by_them() {
         }),
     );
     assert_eq!(result_fq_names(&public_bridge), vec!["app.A".to_string()]);
+    assert_symbol_query_response_matches_schema(&public_bridge);
     assert_declaration_facets(&public_bridge, ["PUBLIC_API", "BRIDGE"]);
     assert_hard_filter_fields(&public_bridge, ["usageFacets"]);
 
@@ -623,6 +641,35 @@ fn symbol_query_computes_usage_facets_and_filters_by_them() {
         vec!["buildlogic.BuildPaymentProcessor".to_string()]
     );
     assert_declaration_facets(&build_logic, ["PUBLIC_API", "BUILD_LOGIC"]);
+}
+
+#[test]
+fn symbol_query_failure_response_matches_shared_schema() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    seed_source_index(&workspace);
+
+    let response = run_symbol_query(
+        &home,
+        &config_home,
+        &workspace,
+        53,
+        serde_json::json!({
+            "query": "",
+            "modes": ["exact"],
+            "limit": 10
+        }),
+    );
+
+    assert_eq!(
+        response["result"]["type"],
+        Value::String("SYMBOL_QUERY_FAILURE".to_string())
+    );
+    assert_symbol_query_response_matches_schema(&response);
 }
 
 fn run_symbol_query(

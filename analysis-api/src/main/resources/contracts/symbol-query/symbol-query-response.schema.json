@@ -1,0 +1,715 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kast.dev/contracts/symbol-query/symbol-query-response.schema.json",
+  "title": "Kast symbol/query JSON-RPC response",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "jsonrpc": {
+      "type": "string",
+      "enum": ["2.0"],
+      "examples": ["2.0"]
+    },
+    "result": {
+      "oneOf": [
+        { "$ref": "#/$defs/successResponse" },
+        { "$ref": "#/$defs/failureResponse" }
+      ],
+      "discriminator": { "propertyName": "type" },
+      "examples": [
+        {
+          "type": "SYMBOL_QUERY_SUCCESS",
+          "query": "lib.Foo",
+          "availableSignals": {
+            "exact": true,
+            "lexical": true,
+            "structural": true,
+            "graph": true,
+            "semantic": false
+          },
+          "hardFilters": [],
+          "results": []
+        }
+      ]
+    },
+    "id": {
+      "$ref": "#/$defs/jsonRpcId"
+    }
+  },
+  "required": ["jsonrpc", "result", "id"],
+  "examples": [
+    {
+      "jsonrpc": "2.0",
+      "result": {
+        "type": "SYMBOL_QUERY_FAILURE",
+        "query": "",
+        "reason": "QUERY_TOO_BROAD",
+        "message": "query may be empty only when an anchor is provided"
+      },
+      "id": 1
+    }
+  ],
+  "$defs": {
+    "jsonRpcId": {
+      "oneOf": [
+        { "type": "integer" },
+        { "type": "string" },
+        { "type": "null" }
+      ],
+      "examples": [1, "request-1", null]
+    },
+    "successResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["SYMBOL_QUERY_SUCCESS"],
+          "examples": ["SYMBOL_QUERY_SUCCESS"]
+        },
+        "query": {
+          "type": "string",
+          "examples": ["lib.Foo"]
+        },
+        "availableSignals": {
+          "$ref": "#/$defs/availableSignals"
+        },
+        "hardFilters": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/hardFilter" },
+          "examples": [
+            [
+              {
+                "field": "usageFacets",
+                "value": ["BRIDGE"],
+                "source": "declarations + symbol_references + file_metadata + declaration_supertypes",
+                "satisfiedSymbolically": true
+              }
+            ]
+          ]
+        },
+        "results": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/symbolQueryResult" },
+          "examples": [[]]
+        }
+      },
+      "required": ["type", "query", "availableSignals", "hardFilters", "results"],
+      "examples": [
+        {
+          "type": "SYMBOL_QUERY_SUCCESS",
+          "query": "lib.Foo",
+          "availableSignals": {
+            "exact": true,
+            "lexical": true,
+            "structural": true,
+            "graph": true,
+            "semantic": false
+          },
+          "hardFilters": [],
+          "results": []
+        }
+      ]
+    },
+    "failureResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["SYMBOL_QUERY_FAILURE"],
+          "examples": ["SYMBOL_QUERY_FAILURE"]
+        },
+        "query": {
+          "type": "string",
+          "examples": [""]
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "INDEX_UNAVAILABLE",
+            "INVALID_FILTER",
+            "QUERY_TOO_BROAD",
+            "AMBIGUOUS_ANCHOR",
+            "ANCHOR_NOT_FOUND",
+            "SEMANTIC_UNAVAILABLE",
+            "TIMEOUT"
+          ],
+          "examples": ["QUERY_TOO_BROAD"]
+        },
+        "message": {
+          "type": "string",
+          "examples": ["query may be empty only when an anchor is provided"]
+        }
+      },
+      "required": ["type", "query", "reason", "message"],
+      "examples": [
+        {
+          "type": "SYMBOL_QUERY_FAILURE",
+          "query": "",
+          "reason": "QUERY_TOO_BROAD",
+          "message": "query may be empty only when an anchor is provided"
+        }
+      ]
+    },
+    "availableSignals": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "exact": { "type": "boolean", "examples": [true] },
+        "lexical": { "type": "boolean", "examples": [true] },
+        "structural": { "type": "boolean", "examples": [true] },
+        "graph": { "type": "boolean", "examples": [true] },
+        "semantic": { "type": "boolean", "examples": [false] }
+      },
+      "required": ["exact", "lexical", "structural", "graph", "semantic"],
+      "examples": [
+        {
+          "exact": true,
+          "lexical": true,
+          "structural": true,
+          "graph": true,
+          "semantic": false
+        }
+      ]
+    },
+    "hardFilter": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "field": { "type": "string", "examples": ["usageFacets"] },
+        "value": {
+          "examples": [["BRIDGE"], ":lib", true]
+        },
+        "source": { "type": "string", "examples": ["declarations.module_path"] },
+        "satisfiedSymbolically": { "type": "boolean", "examples": [true] }
+      },
+      "required": ["field", "value", "source", "satisfiedSymbolically"],
+      "examples": [
+        {
+          "field": "usageFacets",
+          "value": ["BRIDGE"],
+          "source": "declarations + symbol_references + file_metadata + declaration_supertypes",
+          "satisfiedSymbolically": true
+        }
+      ]
+    },
+    "symbolQueryResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "declaration": { "$ref": "#/$defs/declaration" },
+        "rank": { "$ref": "#/$defs/rank" },
+        "signals": { "$ref": "#/$defs/signals" },
+        "nextRequests": { "$ref": "#/$defs/nextRequests" }
+      },
+      "required": ["declaration", "rank", "signals"],
+      "examples": [
+        {
+          "declaration": {
+            "fqId": 1,
+            "fqName": "lib.Foo",
+            "simpleName": "Foo",
+            "kind": "CLASS",
+            "visibility": "PUBLIC",
+            "usageFacets": ["PUBLIC_API"],
+            "modulePath": ":lib",
+            "sourceSet": "main",
+            "file": {
+              "prefixId": 1,
+              "dirPath": "lib",
+              "filename": "Foo.kt",
+              "path": "/workspace/lib/Foo.kt"
+            },
+            "declarationOffset": 12
+          },
+          "rank": {
+            "position": 1,
+            "sortScore": 1.2,
+            "components": {
+              "exact": 1.0,
+              "lexical": 0.0,
+              "structural": 1.0,
+              "graph": 0.0,
+              "semantic": null
+            }
+          },
+          "signals": {
+            "exact": {
+              "matched": true,
+              "matches": [
+                {
+                  "field": "fq_names.fq_name",
+                  "matchType": "EQUALS",
+                  "evidence": "lib.Foo"
+                }
+              ]
+            },
+            "lexical": {
+              "matched": false,
+              "matches": []
+            },
+            "structural": {
+              "matched": true,
+              "constraints": []
+            },
+            "graph": {
+              "matched": false,
+              "paths": []
+            },
+            "semantic": {
+              "available": false,
+              "matched": false,
+              "discoveryOnly": true,
+              "reason": "Semantic projection index is not configured"
+            }
+          }
+        }
+      ]
+    },
+    "declaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fqId": { "type": "integer", "examples": [1] },
+        "fqName": { "type": "string", "examples": ["lib.Foo"] },
+        "simpleName": { "type": "string", "examples": ["Foo"] },
+        "kind": { "type": "string", "examples": ["CLASS"] },
+        "visibility": { "type": "string", "examples": ["PUBLIC"] },
+        "usageFacets": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "PUBLIC_API",
+              "INTERNAL_API",
+              "MODULE_PRIVATE",
+              "BRIDGE",
+              "BUILD_LOGIC"
+            ]
+          },
+          "examples": [["PUBLIC_API", "BRIDGE"]]
+        },
+        "modulePath": { "type": ["string", "null"], "examples": [":lib"] },
+        "sourceSet": { "type": ["string", "null"], "examples": ["main"] },
+        "file": { "$ref": "#/$defs/declarationFile" },
+        "declarationOffset": { "type": ["integer", "null"], "minimum": 0, "examples": [12] }
+      },
+      "required": [
+        "fqId",
+        "fqName",
+        "simpleName",
+        "kind",
+        "visibility",
+        "usageFacets",
+        "modulePath",
+        "sourceSet",
+        "file",
+        "declarationOffset"
+      ],
+      "examples": [
+        {
+          "fqId": 1,
+          "fqName": "lib.Foo",
+          "simpleName": "Foo",
+          "kind": "CLASS",
+          "visibility": "PUBLIC",
+          "usageFacets": ["PUBLIC_API"],
+          "modulePath": ":lib",
+          "sourceSet": "main",
+          "file": {
+            "prefixId": 1,
+            "dirPath": "lib",
+            "filename": "Foo.kt",
+            "path": "/workspace/lib/Foo.kt"
+          },
+          "declarationOffset": 12
+        }
+      ]
+    },
+    "declarationFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "prefixId": { "type": "integer", "examples": [1] },
+        "dirPath": { "type": "string", "examples": ["lib"] },
+        "filename": { "type": "string", "examples": ["Foo.kt"] },
+        "path": { "type": "string", "examples": ["/workspace/lib/Foo.kt"] }
+      },
+      "required": ["prefixId", "dirPath", "filename", "path"],
+      "examples": [
+        {
+          "prefixId": 1,
+          "dirPath": "lib",
+          "filename": "Foo.kt",
+          "path": "/workspace/lib/Foo.kt"
+        }
+      ]
+    },
+    "rank": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "position": { "type": "integer", "minimum": 1, "examples": [1] },
+        "sortScore": { "type": "number", "examples": [1.2] },
+        "components": { "$ref": "#/$defs/rankComponents" }
+      },
+      "required": ["position", "sortScore", "components"],
+      "examples": [
+        {
+          "position": 1,
+          "sortScore": 1.2,
+          "components": {
+            "exact": 1.0,
+            "lexical": 0.0,
+            "structural": 1.0,
+            "graph": 0.0,
+            "semantic": null
+          }
+        }
+      ]
+    },
+    "rankComponents": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "exact": { "type": "number", "examples": [1.0] },
+        "lexical": { "type": "number", "examples": [0.0] },
+        "structural": { "type": "number", "examples": [1.0] },
+        "graph": { "type": "number", "examples": [0.0] },
+        "semantic": { "type": ["number", "null"], "examples": [null] }
+      },
+      "required": ["exact", "lexical", "structural", "graph", "semantic"],
+      "examples": [
+        {
+          "exact": 1.0,
+          "lexical": 0.0,
+          "structural": 1.0,
+          "graph": 0.0,
+          "semantic": null
+        }
+      ]
+    },
+    "signals": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "exact": { "$ref": "#/$defs/exactSignal" },
+        "lexical": { "$ref": "#/$defs/lexicalSignal" },
+        "structural": { "$ref": "#/$defs/structuralSignal" },
+        "graph": { "$ref": "#/$defs/graphSignal" },
+        "semantic": { "$ref": "#/$defs/semanticSignal" }
+      },
+      "required": ["exact", "lexical", "structural", "graph", "semantic"],
+      "examples": [
+        {
+          "exact": { "matched": true, "matches": [] },
+          "lexical": { "matched": false, "matches": [] },
+          "structural": { "matched": true, "constraints": [] },
+          "graph": { "matched": false, "paths": [] },
+          "semantic": {
+            "available": false,
+            "matched": false,
+            "discoveryOnly": true,
+            "reason": "Semantic projection index is not configured"
+          }
+        }
+      ]
+    },
+    "exactSignal": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "matched": { "type": "boolean", "examples": [true] },
+        "matches": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/exactMatch" },
+          "examples": [
+            [
+              {
+                "field": "fq_names.fq_name",
+                "matchType": "EQUALS",
+                "evidence": "lib.Foo"
+              }
+            ]
+          ]
+        }
+      },
+      "required": ["matched", "matches"],
+      "examples": [
+        {
+          "matched": true,
+          "matches": [
+            {
+              "field": "fq_names.fq_name",
+              "matchType": "EQUALS",
+              "evidence": "lib.Foo"
+            }
+          ]
+        }
+      ]
+    },
+    "exactMatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "field": { "type": "string", "examples": ["fq_names.fq_name"] },
+        "matchType": {
+          "type": "string",
+          "enum": ["EQUALS", "SIMPLE_NAME_EQUALS"],
+          "examples": ["EQUALS"]
+        },
+        "evidence": { "type": "string", "examples": ["lib.Foo"] }
+      },
+      "required": ["field", "matchType"],
+      "examples": [
+        {
+          "field": "fq_names.fq_name",
+          "matchType": "EQUALS",
+          "evidence": "lib.Foo"
+        }
+      ]
+    },
+    "lexicalSignal": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "matched": { "type": "boolean", "examples": [true] },
+        "matches": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/lexicalMatch" },
+          "examples": [
+            [
+              {
+                "field": "fq_names.fq_name",
+                "term": "payment",
+                "matchType": "TOKEN",
+                "evidence": "lib.CardPaymentProcessor"
+              }
+            ]
+          ]
+        }
+      },
+      "required": ["matched", "matches"],
+      "examples": [
+        {
+          "matched": true,
+          "matches": [
+            {
+              "field": "fq_names.fq_name",
+              "term": "payment",
+              "matchType": "TOKEN",
+              "evidence": "lib.CardPaymentProcessor"
+            }
+          ]
+        }
+      ]
+    },
+    "lexicalMatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "field": { "type": "string", "examples": ["fq_names.fq_name"] },
+        "term": { "type": "string", "examples": ["payment"] },
+        "matchType": {
+          "type": "string",
+          "enum": ["TOKEN", "LIKE"],
+          "examples": ["TOKEN"]
+        },
+        "evidence": { "type": "string", "examples": ["lib.CardPaymentProcessor"] }
+      },
+      "required": ["field", "term", "matchType", "evidence"],
+      "examples": [
+        {
+          "field": "fq_names.fq_name",
+          "term": "payment",
+          "matchType": "TOKEN",
+          "evidence": "lib.CardPaymentProcessor"
+        }
+      ]
+    },
+    "structuralSignal": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "matched": { "type": "boolean", "examples": [true] },
+        "constraints": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/structuralConstraint" },
+          "examples": [
+            [
+              {
+                "field": "usageFacets",
+                "operator": "ANY",
+                "value": ["BRIDGE"],
+                "source": "sqlite+derived"
+              }
+            ]
+          ]
+        }
+      },
+      "required": ["matched", "constraints"],
+      "examples": [
+        {
+          "matched": true,
+          "constraints": []
+        }
+      ]
+    },
+    "structuralConstraint": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "field": { "type": "string", "examples": ["usageFacets"] },
+        "operator": { "type": "string", "examples": ["ANY"] },
+        "value": { "examples": [["BRIDGE"], ":lib", true] },
+        "source": { "type": "string", "examples": ["sqlite+derived"] }
+      },
+      "required": ["field", "operator", "value", "source"],
+      "examples": [
+        {
+          "field": "usageFacets",
+          "operator": "ANY",
+          "value": ["BRIDGE"],
+          "source": "sqlite+derived"
+        }
+      ]
+    },
+    "graphSignal": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "matched": { "type": "boolean", "examples": [false] },
+        "paths": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/graphPath" },
+          "examples": [[]]
+        }
+      },
+      "required": ["matched", "paths"],
+      "examples": [
+        {
+          "matched": false,
+          "paths": []
+        }
+      ]
+    },
+    "graphPath": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fromFqName": { "type": "string", "examples": ["app.A"] },
+        "edgeKind": { "type": "string", "examples": ["CALL"] },
+        "toFqName": { "type": "string", "examples": ["lib.Foo"] },
+        "sourceFile": { "type": ["string", "null"], "examples": ["/workspace/app/A.kt"] },
+        "sourceOffset": { "type": ["integer", "null"], "minimum": 0, "examples": [42] }
+      },
+      "required": ["fromFqName", "edgeKind", "toFqName", "sourceFile", "sourceOffset"],
+      "examples": [
+        {
+          "fromFqName": "app.A",
+          "edgeKind": "CALL",
+          "toFqName": "lib.Foo",
+          "sourceFile": "/workspace/app/A.kt",
+          "sourceOffset": 42
+        }
+      ]
+    },
+    "semanticSignal": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "available": { "type": "boolean", "examples": [false] },
+        "matched": { "type": "boolean", "examples": [false] },
+        "discoveryOnly": { "type": "boolean", "examples": [true] },
+        "reason": { "type": "string", "examples": ["Semantic projection index is not configured"] }
+      },
+      "required": ["available", "matched", "discoveryOnly", "reason"],
+      "examples": [
+        {
+          "available": false,
+          "matched": false,
+          "discoveryOnly": true,
+          "reason": "Semantic projection index is not configured"
+        }
+      ]
+    },
+    "nextRequests": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "symbolResolve": { "$ref": "#/$defs/nextRequest" },
+        "symbolReferences": { "$ref": "#/$defs/nextRequest" },
+        "symbolCallers": { "$ref": "#/$defs/nextRequest" },
+        "rawResolve": { "$ref": "#/$defs/nextRequest" }
+      },
+      "required": ["symbolResolve", "symbolReferences", "symbolCallers", "rawResolve"],
+      "examples": [
+        {
+          "symbolResolve": {
+            "method": "symbol/resolve",
+            "request": {
+              "symbol": "Foo",
+              "fileHint": "Foo.kt",
+              "kind": "class",
+              "includeDeclarationScope": true
+            }
+          },
+          "symbolReferences": {
+            "method": "symbol/references",
+            "request": {
+              "symbol": "Foo",
+              "fileHint": "Foo.kt",
+              "kind": "class",
+              "includeDeclaration": true
+            }
+          },
+          "symbolCallers": {
+            "method": "symbol/callers",
+            "request": {
+              "symbol": "Foo",
+              "fileHint": "Foo.kt",
+              "kind": "class",
+              "direction": "incoming",
+              "depth": 1
+            }
+          },
+          "rawResolve": {
+            "method": "raw/resolve",
+            "request": {
+              "position": {
+                "filePath": "/workspace/lib/Foo.kt",
+                "offset": 12
+              },
+              "symbol": {
+                "symbol": "Foo",
+                "fileHint": "Foo.kt",
+                "kind": "class"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "nextRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "method": { "type": "string", "examples": ["symbol/resolve"] },
+        "request": { "type": "object", "examples": [{ "symbol": "Foo" }] }
+      },
+      "required": ["method", "request"],
+      "examples": [
+        {
+          "method": "symbol/resolve",
+          "request": {
+            "symbol": "Foo",
+            "fileHint": "Foo.kt",
+            "kind": "class",
+            "includeDeclarationScope": true
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,99 @@
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "type": "SYMBOL_QUERY_SUCCESS",
+    "query": "A",
+    "availableSignals": {
+      "exact": true,
+      "lexical": true,
+      "structural": true,
+      "graph": true,
+      "semantic": false
+    },
+    "hardFilters": [
+      {
+        "field": "usageFacets",
+        "value": [
+          "BRIDGE"
+        ],
+        "source": "declarations + symbol_references + file_metadata + declaration_supertypes",
+        "satisfiedSymbolically": true
+      }
+    ],
+    "results": [
+      {
+        "declaration": {
+          "fqId": 3,
+          "fqName": "app.A",
+          "simpleName": "A",
+          "kind": "CLASS",
+          "visibility": "PUBLIC",
+          "usageFacets": [
+            "PUBLIC_API",
+            "BRIDGE"
+          ],
+          "modulePath": ":app",
+          "sourceSet": "main",
+          "file": {
+            "prefixId": 2,
+            "dirPath": "app",
+            "filename": "A.kt",
+            "path": "/workspace/app/A.kt"
+          },
+          "declarationOffset": 7
+        },
+        "rank": {
+          "position": 1,
+          "sortScore": 1.2,
+          "components": {
+            "exact": 1.0,
+            "lexical": 0.0,
+            "structural": 1.0,
+            "graph": 0.0,
+            "semantic": null
+          }
+        },
+        "signals": {
+          "exact": {
+            "matched": true,
+            "matches": [
+              {
+                "field": "fq_names.fq_name",
+                "matchType": "SIMPLE_NAME_EQUALS",
+                "evidence": "A"
+              }
+            ]
+          },
+          "lexical": {
+            "matched": false,
+            "matches": []
+          },
+          "structural": {
+            "matched": true,
+            "constraints": [
+              {
+                "field": "usageFacets",
+                "operator": "ANY",
+                "value": [
+                  "BRIDGE"
+                ],
+                "source": "sqlite+derived"
+              }
+            ]
+          },
+          "graph": {
+            "matched": false,
+            "paths": []
+          },
+          "semantic": {
+            "available": false,
+            "matched": false,
+            "discoveryOnly": true,
+            "reason": "Semantic projection index is not configured"
+          }
+        }
+      }
+    ]
+  },
+  "id": 1
+}

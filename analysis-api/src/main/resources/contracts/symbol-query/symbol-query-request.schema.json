@@ -1,0 +1,292 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kast.dev/contracts/symbol-query/symbol-query-request.schema.json",
+  "title": "Kast symbol/query JSON-RPC request",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "jsonrpc": {
+      "type": "string",
+      "enum": ["2.0"],
+      "examples": ["2.0"]
+    },
+    "method": {
+      "type": "string",
+      "enum": ["symbol/query"],
+      "examples": ["symbol/query"]
+    },
+    "params": {
+      "$ref": "#/$defs/symbolQueryParams"
+    },
+    "id": {
+      "$ref": "#/$defs/jsonRpcId"
+    }
+  },
+  "required": ["jsonrpc", "method", "params", "id"],
+  "examples": [
+    {
+      "jsonrpc": "2.0",
+      "method": "symbol/query",
+      "params": {
+        "query": "Widget"
+      },
+      "id": 1
+    }
+  ],
+  "$defs": {
+    "jsonRpcId": {
+      "oneOf": [
+        { "type": "integer" },
+        { "type": "string" },
+        { "type": "null" }
+      ],
+      "examples": [1, "request-1", null]
+    },
+    "symbolQueryParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "workspaceRoot": {
+          "type": ["string", "null"],
+          "examples": ["/absolute/path/to/workspace"]
+        },
+        "query": {
+          "type": "string",
+          "examples": ["Widget"]
+        },
+        "modes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["exact", "lexical", "structural", "graph", "semantic"]
+          },
+          "uniqueItems": true,
+          "examples": [["exact", "lexical"]]
+        },
+        "filters": {
+          "$ref": "#/$defs/symbolQueryFilters"
+        },
+        "anchor": {
+          "$ref": "#/$defs/symbolQueryAnchor"
+        },
+        "graph": {
+          "$ref": "#/$defs/symbolQueryGraph"
+        },
+        "semantic": {
+          "$ref": "#/$defs/symbolQuerySemantic"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "examples": [25]
+        },
+        "includeEvidence": {
+          "type": "boolean",
+          "examples": [true]
+        },
+        "includeNextRequests": {
+          "type": "boolean",
+          "examples": [false]
+        }
+      },
+      "required": ["query"],
+      "examples": [
+        {
+          "query": "Widget",
+          "modes": ["exact", "lexical"]
+        }
+      ]
+    },
+    "symbolQueryFilters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kinds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "CLASS",
+              "INTERFACE",
+              "OBJECT",
+              "FUNCTION",
+              "PROPERTY",
+              "TYPEALIAS",
+              "ENUM_CLASS",
+              "ENUM_ENTRY",
+              "CONSTRUCTOR"
+            ]
+          },
+          "uniqueItems": true,
+          "examples": [["CLASS"]]
+        },
+        "visibility": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["PUBLIC", "INTERNAL", "PROTECTED", "PRIVATE", "LOCAL"]
+          },
+          "uniqueItems": true,
+          "examples": [["PUBLIC"]]
+        },
+        "modulePath": {
+          "type": ["string", "null"],
+          "examples": [":app"]
+        },
+        "sourceSet": {
+          "type": ["string", "null"],
+          "examples": ["main"]
+        },
+        "fileGlob": {
+          "type": ["string", "null"],
+          "examples": ["**/*.kt"]
+        },
+        "packagePrefix": {
+          "type": ["string", "null"],
+          "examples": ["com.example"]
+        },
+        "fqNamePrefix": {
+          "type": ["string", "null"],
+          "examples": ["com.example.Widget"]
+        },
+        "gradleProject": {
+          "type": ["string", "null"],
+          "examples": [":lib"]
+        },
+        "relativePathPrefix": {
+          "type": ["string", "null"],
+          "examples": ["lib/"]
+        },
+        "productionOnly": {
+          "type": "boolean",
+          "examples": [true]
+        },
+        "excludePatterns": {
+          "type": "array",
+          "items": { "type": "string" },
+          "examples": [["build-logic/**"]]
+        },
+        "usageFacets": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "PUBLIC_API",
+              "INTERNAL_API",
+              "MODULE_PRIVATE",
+              "BRIDGE",
+              "BUILD_LOGIC"
+            ]
+          },
+          "uniqueItems": true,
+          "examples": [["BRIDGE"]]
+        }
+      },
+      "examples": [
+        {
+          "gradleProject": ":lib",
+          "relativePathPrefix": "lib/",
+          "productionOnly": true,
+          "usageFacets": ["BRIDGE"]
+        }
+      ]
+    },
+    "symbolQueryAnchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fqName": {
+          "type": ["string", "null"],
+          "examples": ["com.example.Widget"]
+        },
+        "symbol": {
+          "type": ["string", "null"],
+          "examples": ["Widget"]
+        },
+        "filePath": {
+          "type": ["string", "null"],
+          "examples": ["/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt"]
+        },
+        "offset": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "examples": [128]
+        }
+      },
+      "examples": [
+        {
+          "fqName": "com.example.Widget",
+          "symbol": "Widget",
+          "filePath": "/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt",
+          "offset": 128
+        }
+      ]
+    },
+    "symbolQueryGraph": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "direction": {
+          "type": "string",
+          "enum": ["INCOMING", "OUTGOING", "BOTH"],
+          "examples": ["BOTH"]
+        },
+        "edgeKinds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["CALL", "TYPE_REF", "INHERITANCE", "OVERRIDE", "IMPORT", "ANNOTATION", "UNKNOWN"]
+          },
+          "uniqueItems": true,
+          "examples": [["CALL"]]
+        },
+        "depth": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2,
+          "examples": [1]
+        },
+        "maxEdgesPerResult": {
+          "type": "integer",
+          "minimum": 0,
+          "examples": [10]
+        }
+      },
+      "examples": [
+        {
+          "direction": "INCOMING",
+          "edgeKinds": ["CALL"],
+          "depth": 1,
+          "maxEdgesPerResult": 5
+        }
+      ]
+    },
+    "symbolQuerySemantic": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "examples": [false]
+        },
+        "profile": {
+          "type": "string",
+          "enum": ["identity", "behavior", "api_usage"],
+          "examples": ["identity"]
+        },
+        "maxCandidates": {
+          "type": "integer",
+          "minimum": 0,
+          "examples": [25]
+        }
+      },
+      "examples": [
+        {
+          "enabled": true,
+          "profile": "api_usage",
+          "maxCandidates": 25
+        }
+      ]
+    }
+  }
+}

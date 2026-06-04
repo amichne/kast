@@ -79,6 +79,22 @@ fn assert_request_shape(request: &Value) {
     }
 }
 
+fn schema_value(relative_path: &str) -> Value {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let path = root.join(relative_path);
+    let content = std::fs::read_to_string(&path)
+        .unwrap_or_else(|error| panic!("read schema {}: {error}", path.display()));
+    serde_json::from_str(&content)
+        .unwrap_or_else(|error| panic!("parse schema {}: {error}", path.display()))
+}
+
+fn assert_valid(schema: &Value, instance: &Value) {
+    let validator = jsonschema::validator_for(schema).expect("schema compiles");
+    if let Err(error) = validator.validate(instance) {
+        panic!("schema validation failed: {error}\ninstance: {instance}");
+    }
+}
+
 #[test]
 fn command_contract_yaml_and_request_samples_are_current() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
@@ -233,6 +249,36 @@ fn symbol_query_catalog_documents_relevance_filters() {
 }
 
 #[test]
+fn symbol_query_catalog_samples_validate_against_shared_schema() {
+    let request_schema = schema_value(
+        "../analysis-api/src/main/resources/contracts/symbol-query/symbol-query-request.schema.json",
+    );
+    let canonical_minimal: Value = serde_json::from_str(include_str!(
+        "../../analysis-api/src/main/resources/contracts/symbol-query/examples/request-minimal.json"
+    ))
+    .expect("canonical minimal request");
+    let canonical_maximal: Value = serde_json::from_str(include_str!(
+        "../../analysis-api/src/main/resources/contracts/symbol-query/examples/request-maximal.json"
+    ))
+    .expect("canonical maximal request");
+    let catalog_minimal: Value = serde_json::from_str(include_str!(
+        "../resources/kast-skill/references/requests/symbol/query/minimal.json"
+    ))
+    .expect("catalog minimal request");
+    let catalog_maximal: Value = serde_json::from_str(include_str!(
+        "../resources/kast-skill/references/requests/symbol/query/maximal.json"
+    ))
+    .expect("catalog maximal request");
+
+    assert_valid(&request_schema, &canonical_minimal);
+    assert_valid(&request_schema, &canonical_maximal);
+    assert_valid(&request_schema, &catalog_minimal);
+    assert_valid(&request_schema, &catalog_maximal);
+    assert_eq!(catalog_minimal, canonical_minimal);
+    assert_eq!(catalog_maximal, canonical_maximal);
+}
+
+#[test]
 fn command_catalog_owns_copilot_tool_surface() {
     let catalog = catalog();
     let commands = catalog["commands"].as_object().expect("commands object");
@@ -260,12 +306,36 @@ fn command_catalog_owns_copilot_tool_surface() {
 
     let tools_source = std::fs::read_to_string(
         Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("resources/copilot-extension/extensions/_shared/kast-tools.mjs"),
+            .join("resources/copilot-extension/extensions/kast/_shared/kast-tools.mjs"),
     )
     .expect("shared kast tools source");
     assert!(tools_source.contains("loadCommandCatalog"));
     assert!(tools_source.contains("commands.json"));
     assert!(!tools_source.contains("const TOOL_SPECS = ["));
+}
+
+#[test]
+fn copilot_extension_source_stays_inside_the_kast_extension_folder() {
+    let extension_source = std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("resources/copilot-extension/extensions/kast/extension.mjs"),
+    )
+    .expect("kast extension source");
+
+    assert!(extension_source.contains("from \"./_shared/kast-tools.mjs\""));
+    assert!(extension_source.contains("from \"./kotlin-gradle-loop/tools.mjs\""));
+    assert!(
+        extension_source.contains("const installedRoot = resolve(HERE, \"..\", \"..\", \"..\");")
+    );
+    assert!(
+        extension_source
+            .contains("const sourceRoot = resolve(HERE, \"..\", \"..\", \"..\", \"..\", \"..\");")
+    );
+    assert!(extension_source.contains("join(REPO_ROOT, \".github\")"));
+    assert!(extension_source.contains("join(HERE, \".kast-copilot-version\")"));
+    assert!(!extension_source.contains("from \"../_shared/"));
+    assert!(!extension_source.contains("--yes=true"));
+    assert!(!extension_source.contains("join(REPO_ROOT, \".github\", \".kast-copilot-version\")"));
 }
 
 #[test]
@@ -284,7 +354,6 @@ fn copilot_install_receives_the_shared_command_catalog() {
             "copilot-extension",
             "--target-dir",
             target.to_str().expect("target path"),
-            "--yes=true",
         ])
         .output()
         .expect("install copilot extension");
@@ -296,7 +365,8 @@ fn copilot_install_receives_the_shared_command_catalog() {
     );
 
     let source = include_str!("../resources/kast-skill/references/commands.json");
-    let installed =
-        std::fs::read_to_string(target.join("extensions/_shared/commands.json")).expect("catalog");
+    let installed = std::fs::read_to_string(target.join("extensions/kast/_shared/commands.json"))
+        .expect("catalog");
     assert_eq!(installed, source);
+    assert!(!target.join("extensions/_shared").exists());
 }
