@@ -147,6 +147,8 @@ struct SymbolQueryFilters {
     production_only: bool,
     #[serde(default)]
     exclude_patterns: Vec<String>,
+    #[serde(default)]
+    usage_facets: Vec<UsageFacet>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -233,6 +235,7 @@ struct DeclarationKey {
 #[derive(Debug, Clone)]
 struct Candidate {
     declaration: DeclarationRow,
+    usage_facets: Vec<UsageFacet>,
     exact_matches: Vec<SignalMatch>,
     lexical_matches: Vec<LexicalMatch>,
     structural_constraints: Vec<StructuralConstraint>,
@@ -288,6 +291,7 @@ struct DeclarationResult {
     simple_name: String,
     kind: String,
     visibility: String,
+    usage_facets: Vec<UsageFacet>,
     module_path: Option<String>,
     source_set: Option<String>,
     file: DeclarationFile,
@@ -405,6 +409,16 @@ struct SemanticSignal {
     reason: &'static str,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+enum UsageFacet {
+    PublicApi,
+    InternalApi,
+    ModulePrivate,
+    Bridge,
+    BuildLogic,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct NextRequests {
@@ -498,6 +512,10 @@ impl<'a> SymbolQueryDatabase<'a> {
             } else {
                 Vec::new()
             };
+            let usage_facets = self.usage_facets(&declaration)?;
+            if !request.filters.usage_facets_match(&usage_facets) {
+                continue;
+            }
             let anchored = anchor_matches(&request.anchor, &declaration);
             if !anchored && exact_matches.is_empty() && lexical_matches.is_empty() {
                 continue;
@@ -508,6 +526,7 @@ impl<'a> SymbolQueryDatabase<'a> {
                 key,
                 Candidate {
                     declaration,
+                    usage_facets,
                     exact_matches,
                     lexical_matches,
                     structural_constraints,
@@ -525,18 +544,24 @@ impl<'a> SymbolQueryDatabase<'a> {
             }
             if let Some(anchor_fq_id) = anchor_fq_id {
                 for (key, paths) in self.graph_candidates(anchor_fq_id, &request.graph)? {
-                    if let Some(declaration) = by_key.get(&key)
-                        && request.filters.matches(
+                    if let Some(declaration) = by_key.get(&key) {
+                        if !request.filters.matches(
                             declaration,
                             compiled_file_glob.as_ref(),
                             &compiled_exclude_patterns,
-                        )
-                    {
+                        ) {
+                            continue;
+                        }
+                        let usage_facets = self.usage_facets(declaration)?;
+                        if !request.filters.usage_facets_match(&usage_facets) {
+                            continue;
+                        }
                         candidates
                             .entry(key)
                             .and_modify(|candidate| candidate.graph_paths.extend(paths.clone()))
                             .or_insert_with(|| Candidate {
                                 declaration: declaration.clone(),
+                                usage_facets,
                                 exact_matches: Vec::new(),
                                 lexical_matches: Vec::new(),
                                 structural_constraints: structural_constraints(&request.filters),
@@ -559,7 +584,7 @@ impl<'a> SymbolQueryDatabase<'a> {
                 let components = rank_components(&candidate);
                 let sort_score = sort_score(&components);
                 SymbolQueryResult {
-                    declaration: candidate.declaration.result(),
+                    declaration: candidate.declaration.result(candidate.usage_facets),
                     rank: Rank {
                         position: index + 1,
                         sort_score,
@@ -777,6 +802,84 @@ impl<'a> SymbolQueryDatabase<'a> {
             matches.extend(lexical_field_matches(terms, "import_fq_name", import));
         }
         Ok(matches)
+    }
+
+    fn usage_facets(&self, declaration: &DeclarationRow) -> Result<Vec<UsageFacet>> {
+        let mut facets = Vec::new();
+        match declaration.visibility.as_str() {
+            "PUBLIC" => facets.push(UsageFacet::PublicApi),
+            "INTERNAL" => facets.push(UsageFacet::InternalApi),
+            "PRIVATE" => facets.push(UsageFacet::ModulePrivate),
+            _ => {}
+        }
+        if self.is_bridge_declaration(declaration)? {
+            facets.push(UsageFacet::Bridge);
+        }
+        if is_build_logic_location(declaration) {
+            facets.push(UsageFacet::BuildLogic);
+        }
+        Ok(facets)
+    }
+
+    fn is_bridge_declaration(&self, declaration: &DeclarationRow) -> Result<bool> {
+        Ok(self.has_direct_incoming_graph_edge(declaration.fq_id)?
+            && self.has_direct_outgoing_graph_edge(declaration.fq_id)?)
+    }
+
+    fn has_direct_incoming_graph_edge(&self, fq_id: i64) -> Result<bool> {
+        let reference = self
+            .conn
+            .query_row(
+                "SELECT 1 FROM symbol_references WHERE target_fq_id = ? LIMIT 1",
+                params![fq_id],
+                |_| Ok(true),
+            )
+            .optional()
+            .map_err(sql_error)?
+            .unwrap_or(false);
+        if reference {
+            return Ok(true);
+        }
+        if !self.has_supertypes {
+            return Ok(false);
+        }
+        self.conn
+            .query_row(
+                "SELECT 1 FROM declaration_supertypes WHERE supertype_fq_id = ? LIMIT 1",
+                params![fq_id],
+                |_| Ok(true),
+            )
+            .optional()
+            .map(|value| value.unwrap_or(false))
+            .map_err(sql_error)
+    }
+
+    fn has_direct_outgoing_graph_edge(&self, fq_id: i64) -> Result<bool> {
+        let reference = self
+            .conn
+            .query_row(
+                "SELECT 1 FROM symbol_references WHERE source_fq_id = ? LIMIT 1",
+                params![fq_id],
+                |_| Ok(true),
+            )
+            .optional()
+            .map_err(sql_error)?
+            .unwrap_or(false);
+        if reference {
+            return Ok(true);
+        }
+        if !self.has_supertypes {
+            return Ok(false);
+        }
+        self.conn
+            .query_row(
+                "SELECT 1 FROM declaration_supertypes WHERE declaration_fq_id = ? LIMIT 1",
+                params![fq_id],
+                |_| Ok(true),
+            )
+            .optional()
+            .map(|value| value.unwrap_or(false))
+            .map_err(sql_error)
     }
 
     fn anchor_fq_id(&self, anchor: &SymbolQueryAnchor) -> Result<Option<i64>> {
@@ -1247,6 +1350,14 @@ impl SymbolQueryFilters {
         }
         true
     }
+
+    fn usage_facets_match(&self, usage_facets: &[UsageFacet]) -> bool {
+        self.usage_facets.is_empty()
+            || self
+                .usage_facets
+                .iter()
+                .any(|requested| usage_facets.contains(requested))
+    }
 }
 
 impl DeclarationRow {
@@ -1258,13 +1369,14 @@ impl DeclarationRow {
         }
     }
 
-    fn result(&self) -> DeclarationResult {
+    fn result(&self, usage_facets: Vec<UsageFacet>) -> DeclarationResult {
         DeclarationResult {
             fq_id: self.fq_id,
             fq_name: self.fq_name.clone(),
             simple_name: self.simple_name.clone(),
             kind: self.kind.clone(),
             visibility: self.visibility.clone(),
+            usage_facets,
             module_path: self.module_path.clone(),
             source_set: self.source_set.clone(),
             file: DeclarationFile {
@@ -1420,6 +1532,14 @@ fn structural_constraints(filters: &SymbolQueryFilters) -> Vec<StructuralConstra
             source: "sqlite+derived",
         });
     }
+    if !filters.usage_facets.is_empty() {
+        constraints.push(StructuralConstraint {
+            field: "usageFacets",
+            operator: "ANY",
+            value: json!(filters.usage_facets),
+            source: "sqlite+derived",
+        });
+    }
     constraints
 }
 
@@ -1510,6 +1630,14 @@ fn hard_filters(filters: &SymbolQueryFilters) -> Vec<HardFilter> {
             field: "excludePatterns".to_string(),
             value: json!(filters.exclude_patterns),
             source: "declarations.module_path + relative_path",
+            satisfied_symbolically: true,
+        });
+    }
+    if !filters.usage_facets.is_empty() {
+        hard_filters.push(HardFilter {
+            field: "usageFacets".to_string(),
+            value: json!(filters.usage_facets),
+            source: "declarations + symbol_references + file_metadata + declaration_supertypes",
             satisfied_symbolically: true,
         });
     }

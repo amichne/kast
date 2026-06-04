@@ -550,6 +550,81 @@ fn symbol_query_applies_new_filters_and_reports_filter_evidence() {
     assert_eq!(result_fq_names(&excluded), Vec::<String>::new());
 }
 
+#[test]
+fn symbol_query_computes_usage_facets_and_filters_by_them() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    seed_source_index(&workspace);
+
+    let public_bridge = run_symbol_query(
+        &home,
+        &config_home,
+        &workspace,
+        49,
+        serde_json::json!({
+            "query": "A",
+            "modes": ["exact"],
+            "filters": {
+                "usageFacets": ["BRIDGE"]
+            },
+            "limit": 10
+        }),
+    );
+    assert_eq!(result_fq_names(&public_bridge), vec!["app.A".to_string()]);
+    assert_declaration_facets(&public_bridge, ["PUBLIC_API", "BRIDGE"]);
+    assert_hard_filter_fields(&public_bridge, ["usageFacets"]);
+
+    let internal = run_symbol_query(
+        &home,
+        &config_home,
+        &workspace,
+        50,
+        serde_json::json!({
+            "query": "Bar",
+            "modes": ["exact"],
+            "limit": 10
+        }),
+    );
+    assert_declaration_facets(&internal, ["INTERNAL_API"]);
+
+    let module_private = run_symbol_query(
+        &home,
+        &config_home,
+        &workspace,
+        51,
+        serde_json::json!({
+            "query": "Unused",
+            "modes": ["exact"],
+            "limit": 10
+        }),
+    );
+    assert_declaration_facets(&module_private, ["MODULE_PRIVATE"]);
+
+    let build_logic = run_symbol_query(
+        &home,
+        &config_home,
+        &workspace,
+        52,
+        serde_json::json!({
+            "query": "build payment",
+            "modes": ["lexical"],
+            "filters": {
+                "usageFacets": ["BUILD_LOGIC"]
+            },
+            "limit": 10
+        }),
+    );
+    assert_eq!(
+        result_fq_names(&build_logic),
+        vec!["buildlogic.BuildPaymentProcessor".to_string()]
+    );
+    assert_declaration_facets(&build_logic, ["PUBLIC_API", "BUILD_LOGIC"]);
+}
+
 fn run_symbol_query(
     home: &std::path::Path,
     config_home: &std::path::Path,
@@ -622,6 +697,22 @@ fn assert_structural_constraint_fields<const N: usize>(response: &Value, expecte
         assert!(
             fields.contains(field),
             "structural constraints should include {field}: {response}"
+        );
+    }
+}
+
+fn assert_declaration_facets<const N: usize>(response: &Value, expected: [&str; N]) {
+    let facets: std::collections::BTreeSet<_> =
+        response["result"]["results"][0]["declaration"]["usageFacets"]
+            .as_array()
+            .expect("usage facets")
+            .iter()
+            .map(|facet| facet.as_str().expect("usage facet"))
+            .collect();
+    for facet in expected {
+        assert!(
+            facets.contains(facet),
+            "usage facets should include {facet}: {response}"
         );
     }
 }
