@@ -218,7 +218,7 @@ jobs:
     if: always() && needs.prepare-release.result == 'success' && needs.validate-jvm.result == 'success'
     runs-on: ubuntu-latest
     outputs:
-      published: ${{ steps.gate.outputs.publish }}
+      state: ${{ steps.maven-state.outputs.state }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -231,7 +231,39 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v5
 
+      - name: Check Maven Central publication state
+        id: maven-state
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          state="$(scripts/verify-maven-central.sh \
+            --version "${{ needs.prepare-release.outputs.release_version }}" \
+            --classify)"
+          verifier_exit="$?"
+          set -e
+          if [[ "$verifier_exit" -ne 0 ]]; then
+            if [[ "$state" == "partial" ]]; then
+              echo "::warning::Maven Central has a partial publication for ${{ needs.prepare-release.outputs.release_version }}; waiting for all modules."
+              if scripts/verify-maven-central.sh \
+                --version "${{ needs.prepare-release.outputs.release_version }}" \
+                --attempts 30 \
+                --delay-seconds 20; then
+                state="all"
+              else
+                echo "::warning::Maven Central remains partial; final release-state verification will decide the workflow result."
+              fi
+            else
+              exit "$verifier_exit"
+            fi
+          fi
+          printf 'state=%s\n' "$state" >> "$GITHUB_OUTPUT"
+          if [[ "$state" == "all" ]]; then
+            echo "Maven Central already has all public modules for ${{ needs.prepare-release.outputs.release_version }}."
+          fi
+
       - name: Check Maven Central and signing secrets
+        if: steps.maven-state.outputs.state == 'none'
         id: gate
         shell: bash
         run: |
@@ -251,6 +283,7 @@ jobs:
           done
           if [[ "$missing" -eq 1 ]]; then
             echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Missing Maven Central or signing secrets and release modules are not yet published."
           else
             echo "publish=true" >> "$GITHUB_OUTPUT"
           fi
@@ -262,7 +295,7 @@ jobs:
           SIGNING_GPG_PASSPHRASE: ${{ secrets.SIGNING_GPG_PASSPHRASE }}
 
       - name: Import GPG key
-        if: steps.gate.outputs.publish == 'true'
+        if: steps.maven-state.outputs.state == 'none' && steps.gate.outputs.publish == 'true'
         env:
           SIGNING_GPG_PRIVATE_KEY: ${{ secrets.SIGNING_GPG_PRIVATE_KEY }}
           SIGNING_GPG_KEY_NAME: ${{ secrets.SIGNING_GPG_KEY_NAME }}
@@ -275,7 +308,7 @@ jobs:
           gpg --list-secret-keys --keyid-format=long "$SIGNING_GPG_KEY_NAME"
 
       - name: Publish to Maven Central
-        if: steps.gate.outputs.publish == 'true'
+        if: steps.maven-state.outputs.state == 'none' && steps.gate.outputs.publish == 'true'
         env:
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.ORG_GRADLE_PROJECT_MAVENCENTRALUSERNAME }}
           ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.ORG_GRADLE_PROJECT_MAVENCENTRALPASSWORD }}
@@ -288,12 +321,30 @@ jobs:
           if [[ -n "${SIGNING_GPG_PASSPHRASE:-}" ]]; then
             signing_args+=(-Psigning.gnupg.passphrase="$SIGNING_GPG_PASSPHRASE")
           fi
+          set +e
           ./gradlew publishAndReleaseToMavenCentral "${signing_args[@]}" \
             -Pkast.publish.target=release \
             -Pversion="${{ needs.prepare-release.outputs.release_version }}" \
             --no-configuration-cache \
             --no-daemon \
             --stacktrace
+          publish_exit="$?"
+          set -e
+          if [[ "$publish_exit" -ne 0 ]]; then
+            echo "::warning::Gradle Maven Central publication exited with ${publish_exit}; verifying published coordinates before final release-state verification."
+          fi
+          set +e
+          scripts/verify-maven-central.sh \
+            --version "${{ needs.prepare-release.outputs.release_version }}" \
+            --attempts 30 \
+            --delay-seconds 20
+          verify_exit="$?"
+          set -e
+          if [[ "$verify_exit" -eq 0 && "$publish_exit" -ne 0 ]]; then
+            echo "Maven Central verification passed after Gradle exited with ${publish_exit}."
+          elif [[ "$verify_exit" -ne 0 ]]; then
+            echo "::warning::Maven Central verification did not pass in the publish job; final release-state verification will decide the workflow result."
+          fi
 
   build-cli:
     name: Build Rust CLI asset (${{ matrix.asset_id }})
@@ -603,12 +654,12 @@ jobs:
     name: Publish release
     needs:
       - prepare-release
-      - publish-maven-central
+      - validate-jvm
       - build-cli
       - build-intellij-plugin
       - build-standalone-backend
       - build-headless-backend
-    if: always() && needs.prepare-release.result == 'success' && needs.publish-maven-central.result == 'success' && needs.build-cli.result == 'success' && needs.build-intellij-plugin.result == 'success' && needs.build-standalone-backend.result == 'success' && needs.build-headless-backend.result == 'success'
+    if: always() && needs.prepare-release.result == 'success' && needs.validate-jvm.result == 'success' && needs.build-cli.result == 'success' && needs.build-intellij-plugin.result == 'success' && needs.build-standalone-backend.result == 'success' && needs.build-headless-backend.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -780,3 +831,33 @@ jobs:
           git -C homebrew-tap diff --cached --check
           git -C homebrew-tap commit -m "kast ${tag}"
           git -C homebrew-tap push
+
+  verify-release-state:
+    name: Verify published release state
+    needs:
+      - prepare-release
+      - publish-maven-central
+      - publish-release
+    if: always() && needs.prepare-release.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Verify published release state
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN || secrets.RELEASE_GITHUB_TOKEN || github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ needs.publish-release.result }}" != "success" ]]; then
+            echo "::error::Publish release finished with result ${{ needs.publish-release.result }}."
+            exit 1
+          fi
+          echo "Maven Central job result: ${{ needs.publish-maven-central.result }}"
+          scripts/verify-release-state.sh \
+            --tag "${{ needs.prepare-release.outputs.release_tag }}" \
+            --repository "${{ github.repository }}" \
+            --maven-attempts 30 \
+            --maven-delay-seconds 20

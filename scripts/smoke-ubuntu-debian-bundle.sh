@@ -256,6 +256,7 @@ else
 fi
 [[ -f "$config_file" ]] || die "Installer did not write config.toml"
 if [[ "$bundle_kind" == "headless" ]]; then
+  grep -Fq 'defaultBackend = "headless"' "$config_file" || die "config.toml does not default to headless runtime"
   grep -Fq "[backends.headless]" "$config_file" || die "config.toml does not include headless backend config"
   grep -Fq "runtimeLibsDir = \"${installed_home}/lib/backends/headless-${version}/runtime-libs\"" "$config_file" \
     || die "config.toml does not point at bundled headless runtime libs"
