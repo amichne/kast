@@ -306,12 +306,36 @@ fn command_catalog_owns_copilot_tool_surface() {
 
     let tools_source = std::fs::read_to_string(
         Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("resources/copilot-extension/extensions/_shared/kast-tools.mjs"),
+            .join("resources/copilot-extension/extensions/kast/_shared/kast-tools.mjs"),
     )
     .expect("shared kast tools source");
     assert!(tools_source.contains("loadCommandCatalog"));
     assert!(tools_source.contains("commands.json"));
     assert!(!tools_source.contains("const TOOL_SPECS = ["));
+}
+
+#[test]
+fn copilot_extension_source_stays_inside_the_kast_extension_folder() {
+    let extension_source = std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("resources/copilot-extension/extensions/kast/extension.mjs"),
+    )
+    .expect("kast extension source");
+
+    assert!(extension_source.contains("from \"./_shared/kast-tools.mjs\""));
+    assert!(extension_source.contains("from \"./kotlin-gradle-loop/tools.mjs\""));
+    assert!(
+        extension_source.contains("const installedRoot = resolve(HERE, \"..\", \"..\", \"..\");")
+    );
+    assert!(
+        extension_source
+            .contains("const sourceRoot = resolve(HERE, \"..\", \"..\", \"..\", \"..\", \"..\");")
+    );
+    assert!(extension_source.contains("join(REPO_ROOT, \".github\")"));
+    assert!(extension_source.contains("join(HERE, \".kast-copilot-version\")"));
+    assert!(!extension_source.contains("from \"../_shared/"));
+    assert!(!extension_source.contains("--yes=true"));
+    assert!(!extension_source.contains("join(REPO_ROOT, \".github\", \".kast-copilot-version\")"));
 }
 
 #[test]
@@ -330,7 +354,6 @@ fn copilot_install_receives_the_shared_command_catalog() {
             "copilot-extension",
             "--target-dir",
             target.to_str().expect("target path"),
-            "--yes=true",
         ])
         .output()
         .expect("install copilot extension");
@@ -342,7 +365,8 @@ fn copilot_install_receives_the_shared_command_catalog() {
     );
 
     let source = include_str!("../resources/kast-skill/references/commands.json");
-    let installed =
-        std::fs::read_to_string(target.join("extensions/_shared/commands.json")).expect("catalog");
+    let installed = std::fs::read_to_string(target.join("extensions/kast/_shared/commands.json"))
+        .expect("catalog");
     assert_eq!(installed, source);
+    assert!(!target.join("extensions/_shared").exists());
 }

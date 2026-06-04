@@ -25,6 +25,8 @@ static KAST_RPC_COMMANDS: &str = include_str!(concat!(
 const KAST_FORMULA_NAME: &str = "kast";
 const KAST_PLUGIN_CASK_NAME: &str = "kast-plugin";
 const DEFAULT_KAST_TAP: &str = "amichne/kast";
+const COPILOT_EXTENSION_DIR: &str = "extensions/kast";
+const COPILOT_EXTENSION_MARKER: &str = ".kast-copilot-version";
 const LEGACY_COPILOT_HOOK_FILES: &[&str] = &[
     "export-session.py",
     "hook-state.sh",
@@ -174,17 +176,12 @@ pub fn install_copilot_extension(
                 .join(".github"),
         )
     });
-    let skipped = install_dir_preserving_target(
-        &COPILOT_EXTENSION,
-        &target,
-        ".kast-copilot-version",
-        args.yes.unwrap_or(false),
-    )?;
-    remove_legacy_copilot_hooks(&target)?;
-    write_copilot_rpc_catalog(&target)?;
+    let extension_target = target.join(COPILOT_EXTENSION_DIR);
+    let skipped = install_copilot_extension_dir(&extension_target)?;
+    write_copilot_rpc_catalog(&extension_target)?;
     self_mgmt::record_copilot_repo(&target, cli::version())?;
     Ok(InstallCopilotExtensionResult {
-        installed_at: target.display().to_string(),
+        installed_at: extension_target.display().to_string(),
         version: cli::version().to_string(),
         skipped,
         warnings: vec![],
@@ -357,19 +354,27 @@ pub fn uninstall_copilot_extension(
                 .join(".github"),
         )
     });
-    remove_embedded_files(&COPILOT_EXTENSION, &target)?;
-    remove_legacy_copilot_hooks(&target)?;
-    let shared_catalog = target.join("extensions/_shared/commands.json");
+    let extension_target = target.join(COPILOT_EXTENSION_DIR);
+    let shared_catalog = extension_target.join("_shared/commands.json");
     if shared_catalog.is_file() {
         fs::remove_file(shared_catalog)?;
     }
-    let marker = target.join(".kast-copilot-version");
+    if let Some(source) = COPILOT_EXTENSION.get_dir(COPILOT_EXTENSION_DIR) {
+        remove_embedded_files_stripped(source, source.path(), &extension_target)?;
+    }
+    let marker = extension_target.join(COPILOT_EXTENSION_MARKER);
     if marker.exists() {
         fs::remove_file(marker)?;
     }
+    let _ = fs::remove_dir(&extension_target);
+    remove_legacy_copilot_hooks(&target)?;
+    let legacy_marker = target.join(COPILOT_EXTENSION_MARKER);
+    if legacy_marker.exists() {
+        fs::remove_file(legacy_marker)?;
+    }
     self_mgmt::forget_copilot_repo(&target)?;
     Ok(InstallCopilotExtensionResult {
-        installed_at: target.display().to_string(),
+        installed_at: extension_target.display().to_string(),
         version: cli::version().to_string(),
         skipped: false,
         warnings: vec![],
@@ -378,7 +383,10 @@ pub fn uninstall_copilot_extension(
 }
 
 pub fn verify_extension() -> Result<VerifyExtensionResult> {
-    let marker = env::current_dir()?.join(".github/.kast-copilot-version");
+    let marker = env::current_dir()?
+        .join(".github")
+        .join(COPILOT_EXTENSION_DIR)
+        .join(COPILOT_EXTENSION_MARKER);
     let extension_version = fs::read_to_string(marker)
         .unwrap_or_default()
         .trim()
@@ -450,12 +458,32 @@ fn current_timestamp() -> String {
 }
 
 fn write_copilot_rpc_catalog(target: &Path) -> Result<()> {
-    let shared_catalog = target.join("extensions/_shared/commands.json");
+    let shared_catalog = target.join("_shared/commands.json");
     if let Some(parent) = shared_catalog.parent() {
         fs::create_dir_all(parent)?;
     }
     fs::write(shared_catalog, KAST_RPC_COMMANDS)?;
     Ok(())
+}
+
+fn install_copilot_extension_dir(target: &Path) -> Result<bool> {
+    let marker = target.join(COPILOT_EXTENSION_MARKER);
+    let skipped = marker
+        .is_file()
+        .then(|| fs::read_to_string(&marker).unwrap_or_default())
+        .is_some_and(|current| current.trim() == cli::version());
+    let source = COPILOT_EXTENSION
+        .get_dir(COPILOT_EXTENSION_DIR)
+        .ok_or_else(|| {
+            CliError::new(
+                "INSTALL_RESOURCE_MISSING",
+                format!("Packaged Copilot extension directory {COPILOT_EXTENSION_DIR} is missing"),
+            )
+        })?;
+    fs::create_dir_all(target)?;
+    copy_dir_entries_stripped(source, source.path(), target)?;
+    fs::write(marker, format!("{}\n", cli::version()))?;
+    Ok(skipped)
 }
 
 fn install_dir(dir: &Dir<'_>, target: &Path, marker_name: &str, force: bool) -> Result<bool> {
@@ -484,37 +512,16 @@ fn install_dir(dir: &Dir<'_>, target: &Path, marker_name: &str, force: bool) -> 
     Ok(false)
 }
 
-fn install_dir_preserving_target(
-    dir: &Dir<'_>,
-    target: &Path,
-    marker_name: &str,
-    force: bool,
-) -> Result<bool> {
-    let marker = target.join(marker_name);
-    if marker.is_file() {
-        let current = fs::read_to_string(&marker).unwrap_or_default();
-        if current.trim() == cli::version() {
-            return Ok(true);
-        }
-    }
-    if target.exists() && !force {
-        return Err(CliError::new(
-            "INSTALL_TARGET_EXISTS",
-            format!(
-                "{} already exists. Pass --yes=true to update packaged resources.",
-                target.display()
-            ),
-        ));
-    }
-    fs::create_dir_all(target)?;
-    copy_dir_entries(dir, target)?;
-    fs::write(marker, format!("{}\n", cli::version()))?;
-    Ok(false)
-}
-
 fn copy_dir_entries(dir: &Dir<'_>, target: &Path) -> Result<()> {
     for entry in dir.entries() {
         copy_entry(entry, target)?;
+    }
+    Ok(())
+}
+
+fn copy_dir_entries_stripped(dir: &Dir<'_>, strip_prefix: &Path, target: &Path) -> Result<()> {
+    for entry in dir.entries() {
+        copy_entry_stripped(entry, strip_prefix, target)?;
     }
     Ok(())
 }
@@ -540,26 +547,99 @@ fn copy_entry(entry: &DirEntry<'_>, target_root: &Path) -> Result<()> {
     Ok(())
 }
 
-fn remove_embedded_files(dir: &Dir<'_>, target_root: &Path) -> Result<()> {
-    for entry in dir.entries() {
-        remove_entry(entry, target_root)?;
+fn copy_entry_stripped(
+    entry: &DirEntry<'_>,
+    strip_prefix: &Path,
+    target_root: &Path,
+) -> Result<()> {
+    match entry {
+        DirEntry::Dir(dir) => {
+            let relative = dir.path().strip_prefix(strip_prefix).map_err(|error| {
+                CliError::new(
+                    "INSTALL_RESOURCE_PATH_INVALID",
+                    format!(
+                        "Packaged resource path {} is not under {}: {error}",
+                        dir.path().display(),
+                        strip_prefix.display()
+                    ),
+                )
+            })?;
+            let target = target_root.join(relative);
+            fs::create_dir_all(&target)?;
+            for child in dir.entries() {
+                copy_entry_stripped(child, strip_prefix, target_root)?;
+            }
+        }
+        DirEntry::File(file) => {
+            let relative = file.path().strip_prefix(strip_prefix).map_err(|error| {
+                CliError::new(
+                    "INSTALL_RESOURCE_PATH_INVALID",
+                    format!(
+                        "Packaged resource path {} is not under {}: {error}",
+                        file.path().display(),
+                        strip_prefix.display()
+                    ),
+                )
+            })?;
+            let target = target_root.join(relative);
+            if let Some(parent) = target.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            fs::write(&target, file.contents())?;
+            set_executable_if_script(&target)?;
+        }
     }
     Ok(())
 }
 
-fn remove_entry(entry: &DirEntry<'_>, target_root: &Path) -> Result<()> {
+fn remove_embedded_files_stripped(
+    dir: &Dir<'_>,
+    strip_prefix: &Path,
+    target_root: &Path,
+) -> Result<()> {
+    for entry in dir.entries() {
+        remove_entry_stripped(entry, strip_prefix, target_root)?;
+    }
+    Ok(())
+}
+
+fn remove_entry_stripped(
+    entry: &DirEntry<'_>,
+    strip_prefix: &Path,
+    target_root: &Path,
+) -> Result<()> {
     match entry {
         DirEntry::Dir(dir) => {
             for child in dir.entries() {
-                remove_entry(child, target_root)?;
+                remove_entry_stripped(child, strip_prefix, target_root)?;
             }
-            let target = target_root.join(dir.path());
+            let relative = dir.path().strip_prefix(strip_prefix).map_err(|error| {
+                CliError::new(
+                    "INSTALL_RESOURCE_PATH_INVALID",
+                    format!(
+                        "Packaged resource path {} is not under {}: {error}",
+                        dir.path().display(),
+                        strip_prefix.display()
+                    ),
+                )
+            })?;
+            let target = target_root.join(relative);
             if target.is_dir() {
                 let _ = fs::remove_dir(&target);
             }
         }
         DirEntry::File(file) => {
-            let target = target_root.join(file.path());
+            let relative = file.path().strip_prefix(strip_prefix).map_err(|error| {
+                CliError::new(
+                    "INSTALL_RESOURCE_PATH_INVALID",
+                    format!(
+                        "Packaged resource path {} is not under {}: {error}",
+                        file.path().display(),
+                        strip_prefix.display()
+                    ),
+                )
+            })?;
+            let target = target_root.join(relative);
             if target.is_file() {
                 fs::remove_file(target)?;
             }

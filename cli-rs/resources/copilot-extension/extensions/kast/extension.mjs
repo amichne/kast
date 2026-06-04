@@ -10,7 +10,8 @@ import {homedir} from "node:os";
 import {dirname, join, resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {joinSession} from "@github/copilot-sdk/extension";
-import {KAST_TOOL_NAMES, makeKastTools} from "../_shared/kast-tools.mjs";
+import {KAST_TOOL_NAMES, makeKastTools} from "./_shared/kast-tools.mjs";
+import {makeKotlinGradleLoopTools} from "./kotlin-gradle-loop/tools.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT_MARKER = "workspace.repos.toml";
@@ -41,17 +42,20 @@ const REPO_ROOT = (() => {
   if (cwdCandidate) {
     return cwdCandidate;
   }
-  // Canonical extension location pattern is:
-  // <repo>/resources/copilot-extension/extensions/kast/extension.mjs
-  // so this fallback keeps this root valid.
-  const resourcesRoot = resolve(HERE, "..", "..", "..", "..");
-  if (hasRepoMarker(resourcesRoot)) {
-    return resourcesRoot;
+  // Installed location: <repo>/.github/extensions/kast/extension.mjs.
+  // Source location: <repo>/cli-rs/resources/copilot-extension/extensions/kast/extension.mjs.
+  const installedRoot = resolve(HERE, "..", "..", "..");
+  if (hasRepoMarker(installedRoot)) {
+    return installedRoot;
+  }
+  const sourceRoot = resolve(HERE, "..", "..", "..", "..", "..");
+  if (hasRepoMarker(sourceRoot)) {
+    return sourceRoot;
   }
   return resolve(HERE, "..", "..", "..");
 })();
 const RESOLVE_SCRIPT = join(HERE, "scripts", "resolve-kast.sh");
-const COPILOT_VERSION_MARKER = join(HERE, "..", "..", ".kast-copilot-version");
+const COPILOT_VERSION_MARKER = join(HERE, ".kast-copilot-version");
 
 let kastBinary = null;
 let kastVersion = null;
@@ -123,11 +127,15 @@ async function readCliVersion(path) {
 
 function readInstalledExtensionVersion() {
   const extensionRepoRoot = process.env.KAST_EXTENSION_REPO_ROOT
+    ? resolve(process.env.KAST_EXTENSION_REPO_ROOT, ".github", "extensions", "kast", ".kast-copilot-version")
+    : null;
+  const legacyExtensionRepoRoot = process.env.KAST_EXTENSION_REPO_ROOT
     ? resolve(process.env.KAST_EXTENSION_REPO_ROOT, ".github", ".kast-copilot-version")
     : null;
   const candidateMarkers = [
     extensionRepoRoot,
     COPILOT_VERSION_MARKER,
+    legacyExtensionRepoRoot,
   ];
   for (const markerPath of candidateMarkers) {
     if (!markerPath) continue;
@@ -180,22 +188,6 @@ async function resolveKastBinary() {
   return null;
 }
 
-async function queryCliVersion(path) {
-  const {ok, stdout} = await execBash(`${JSON.stringify(path)} --version`);
-  if (!ok) return null;
-  const match = stdout.trim().replace(/\x1b\[[0-9;]*m/g, "").match(/Kast CLI (.+)/);
-  return match ? match[1].trim() : null;
-}
-
-function readInstalledVersion() {
-  const markerPath = join(REPO_ROOT, ".github", ".kast-copilot-version");
-  try {
-    return readFileSync(markerPath, "utf8").trim();
-  } catch {
-    return null;
-  }
-}
-
 async function supportsWrapperCommands(path) {
   const cmd = `${JSON.stringify(path)} rpc '{"jsonrpc":"2.0","method":"health","id":1}' --workspace-root=${JSON.stringify(REPO_ROOT)}`;
   const { ok, stdout } = await execBash(cmd);
@@ -244,12 +236,15 @@ async function callKast(method, params) {
 }
 
 // ---------------------------------------------------------------------------
-const tools = makeKastTools((method, args) => callKast(method, args));
+const tools = [
+  ...makeKastTools((method, args) => callKast(method, args)),
+  ...makeKotlinGradleLoopTools(),
+];
 // ---------------------------------------------------------------------------
 
 const session = await joinSession({
   tools,
-  disabledSkills: ["kast"],
+  disabledSkills: ["kast", "kotlin-gradle-loop"],
 });
 
 const bin = await resolveKastBinary();
@@ -263,7 +258,7 @@ if (!bin) {
   const installedVersion = readInstalledExtensionVersion();
   if (cliVersion && installedVersion && cliVersion !== installedVersion) {
     const syncResult = await execBash(
-      `${JSON.stringify(bin)} install copilot-extension --target-dir=${JSON.stringify(join(REPO_ROOT, ".github"))} --yes=true`,
+      `${JSON.stringify(bin)} install copilot-extension --target-dir=${JSON.stringify(join(REPO_ROOT, ".github"))}`,
     );
     if (syncResult.ok) {
       await session.log(
