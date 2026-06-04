@@ -664,34 +664,12 @@ impl<'a> SymbolQueryDatabase<'a> {
         declaration: &DeclarationRow,
     ) -> Result<Vec<LexicalMatch>> {
         let mut matches = Vec::new();
-        for term in terms {
-            let needle = term.to_lowercase();
-            let fq_lower = declaration.fq_name.to_lowercase();
-            if fq_lower.contains(&needle) {
-                matches.push(LexicalMatch {
-                    field: "fq_names.fq_name",
-                    term: term.clone(),
-                    match_type: if declaration
-                        .fq_name
-                        .split(|ch: char| !ch.is_alphanumeric() && ch != '_')
-                        .any(|token| token.eq_ignore_ascii_case(term))
-                    {
-                        "TOKEN"
-                    } else {
-                        "LIKE"
-                    },
-                    evidence: declaration.fq_name.clone(),
-                });
-            }
-            if declaration.path.to_lowercase().contains(&needle) {
-                matches.push(LexicalMatch {
-                    field: "file_path",
-                    term: term.clone(),
-                    match_type: "LIKE",
-                    evidence: declaration.path.clone(),
-                });
-            }
-        }
+        matches.extend(lexical_field_matches(
+            terms,
+            "fq_names.fq_name",
+            &declaration.fq_name,
+        ));
+        matches.extend(lexical_field_matches(terms, "file_path", &declaration.path));
         matches.extend(self.identifier_matches(terms, declaration)?);
         matches.extend(self.import_matches(terms, declaration)?);
         Ok(matches)
@@ -724,18 +702,12 @@ impl<'a> SymbolQueryDatabase<'a> {
             identifiers.push(row.map_err(sql_error)?);
         }
         let mut matches = Vec::new();
-        for term in terms {
-            let needle = term.to_lowercase();
-            for identifier in &identifiers {
-                if identifier.to_lowercase().contains(&needle) {
-                    matches.push(LexicalMatch {
-                        field: "identifier_paths.identifier",
-                        term: term.clone(),
-                        match_type: "LIKE",
-                        evidence: identifier.clone(),
-                    });
-                }
-            }
+        for identifier in &identifiers {
+            matches.extend(lexical_field_matches(
+                terms,
+                "identifier_paths.identifier",
+                identifier,
+            ));
         }
         Ok(matches)
     }
@@ -786,18 +758,8 @@ impl<'a> SymbolQueryDatabase<'a> {
             imports.push(row.map_err(sql_error)?);
         }
         let mut matches = Vec::new();
-        for term in terms {
-            let needle = term.to_lowercase();
-            for import in &imports {
-                if import.to_lowercase().contains(&needle) {
-                    matches.push(LexicalMatch {
-                        field: "import_fq_name",
-                        term: term.clone(),
-                        match_type: "LIKE",
-                        evidence: import.clone(),
-                    });
-                }
-            }
+        for import in &imports {
+            matches.extend(lexical_field_matches(terms, "import_fq_name", import));
         }
         Ok(matches)
     }
@@ -1532,6 +1494,37 @@ fn next_requests(declaration: &DeclarationRow) -> NextRequests {
 
 fn query_terms(query: &str) -> Vec<String> {
     lexical_tokens(query)
+}
+
+fn lexical_field_matches(
+    terms: &[String],
+    field: &'static str,
+    evidence: &str,
+) -> Vec<LexicalMatch> {
+    let field_tokens = lexical_tokens(evidence);
+    let lowered = evidence.to_ascii_lowercase();
+    terms
+        .iter()
+        .filter_map(|term| {
+            if field_tokens.iter().any(|token| token == term) {
+                Some(LexicalMatch {
+                    field,
+                    term: term.clone(),
+                    match_type: "TOKEN",
+                    evidence: evidence.to_string(),
+                })
+            } else if lowered.contains(term) {
+                Some(LexicalMatch {
+                    field,
+                    term: term.clone(),
+                    match_type: "LIKE",
+                    evidence: evidence.to_string(),
+                })
+            } else {
+                None
+            }
+        })
+        .collect()
 }
 
 fn lexical_tokens(value: &str) -> Vec<String> {

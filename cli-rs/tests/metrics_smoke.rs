@@ -388,6 +388,62 @@ fn reads_metrics_directly_from_source_index_db() {
     );
 }
 
+#[test]
+fn symbol_query_reports_token_evidence_for_camel_case_declarations() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    seed_source_index(&workspace);
+
+    let request = serde_json::json!({
+        "jsonrpc": "2.0",
+        "method": "symbol/query",
+        "params": {
+            "query": "card payment",
+            "modes": ["lexical"],
+            "limit": 10
+        },
+        "id": 44
+    });
+    let body = request.to_string();
+    let output = kast(&home, &config_home)
+        .args([
+            "rpc",
+            body.as_str(),
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ])
+        .output()
+        .expect("symbol query rpc");
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let response: Value = serde_json::from_slice(&output.stdout).expect("symbol query json");
+    assert_eq!(
+        response["result"]["results"][0]["declaration"]["fqName"],
+        Value::String("lib.CardPaymentProcessor".to_string())
+    );
+    let lexical_matches = response["result"]["results"][0]["signals"]["lexical"]["matches"]
+        .as_array()
+        .expect("lexical matches");
+    for term in ["card", "payment"] {
+        assert!(
+            lexical_matches.iter().any(|hit| {
+                hit["field"] == Value::String("fq_names.fq_name".to_string())
+                    && hit["term"] == Value::String(term.to_string())
+                    && hit["matchType"] == Value::String("TOKEN".to_string())
+                    && hit["evidence"] == Value::String("lib.CardPaymentProcessor".to_string())
+            }),
+            "symbol/query should report {term} as TOKEN evidence: {response}"
+        );
+    }
+}
+
 fn seed_source_index(workspace: &std::path::Path) {
     let db_path = workspace.join(".gradle/kast/cache/source-index.db");
     std::fs::create_dir_all(db_path.parent().expect("db parent")).expect("db parent");
@@ -452,6 +508,7 @@ fn seed_source_index(workspace: &std::path::Path) {
         (4, "lib.Bar"),
         (5, "app.Unused"),
         (6, "lib.FooWidget"),
+        (7, "lib.CardPaymentProcessor"),
     ] {
         conn.execute(
             "INSERT INTO fq_names(fq_id, fq_name) VALUES (?, ?)",
@@ -466,6 +523,7 @@ fn seed_source_index(workspace: &std::path::Path) {
         (2, "Foo.kt", ":lib"),
         (2, "Bar.kt", ":lib"),
         (2, "FooWidget.kt", ":lib"),
+        (2, "CardPaymentProcessor.kt", ":lib"),
     ] {
         conn.execute(
             "INSERT INTO file_metadata(prefix_id, filename, module_path, source_set) VALUES (?, ?, ?, 'main')",
@@ -490,6 +548,7 @@ fn seed_source_index(workspace: &std::path::Path) {
         (4, "FUNCTION", "INTERNAL", 2, "Bar.kt", ":lib"),
         (5, "FUNCTION", "PRIVATE", 1, "Unused.kt", ":app"),
         (6, "CLASS", "PUBLIC", 2, "FooWidget.kt", ":lib"),
+        (7, "CLASS", "PUBLIC", 2, "CardPaymentProcessor.kt", ":lib"),
     ] {
         conn.execute(
             "INSERT INTO declarations(fq_id, kind, visibility, prefix_id, filename, declaration_offset, module_path, source_set) VALUES (?, ?, ?, ?, ?, 1, ?, 'main')",
@@ -590,4 +649,12 @@ class FooWidget
 "#,
     )
     .expect("FooWidget.kt");
+    std::fs::write(
+        workspace.join("lib/CardPaymentProcessor.kt"),
+        r#"package lib
+
+class CardPaymentProcessor
+"#,
+    )
+    .expect("CardPaymentProcessor.kt");
 }
