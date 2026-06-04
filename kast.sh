@@ -134,9 +134,9 @@ _HEADLESS_IDEA_HOME_PROFILE="${KAST_HEADLESS_IDEA_HOME_PROFILE:-full}"
 
 _build_validate_headless_profile() {
   case "$_HEADLESS_IDEA_HOME_PROFILE" in
-    full|minimal) ;;
+    full|minimal|agent) ;;
     *)
-      die "Invalid --headless-idea-home-profile value: ${_HEADLESS_IDEA_HOME_PROFILE}; expected full or minimal"
+      die "Invalid --headless-idea-home-profile value: ${_HEADLESS_IDEA_HOME_PROFILE}; expected full, minimal, or agent"
       ;;
   esac
 }
@@ -244,7 +244,7 @@ _build_headless() {
   shopt -s nullglob
   jars=("${HEADLESS_PORTABLE_DIST_DIR}"/libs/backend-headless-*-all.jar)
   shopt -u nullglob
-  [[ "${#jars[@]}" -eq 1 ]] || die "Expected exactly one staged fat jar under ${HEADLESS_PORTABLE_DIST_DIR}/libs"
+  [[ "${#jars[@]}" -eq 0 ]] || die "Headless portable distribution must not include fat jars under ${HEADLESS_PORTABLE_DIST_DIR}/libs"
 
   local dist_dir="${DIST_ROOT}/headless"
   local dist_zip="${DIST_ROOT}/headless.zip"
@@ -316,7 +316,7 @@ Targets (positional, repeatable):
 
 Options:
   --all            Build all targets.
-  --headless-idea-home-profile=full|minimal  Configure headless IDEA home profile (default: full).
+  --headless-idea-home-profile=full|minimal|agent  Configure headless IDEA home profile (default: full).
   -Pname=value     Forward a Gradle project property to the build.
   --help, -h       Show this help.
 

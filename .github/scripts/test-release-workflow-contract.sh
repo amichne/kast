@@ -44,6 +44,7 @@ repo_root="$(resolve_repo_root)"
 ci_workflow="${repo_root}/.github/workflows/ci.yml"
 release_workflow="${repo_root}/.github/workflows/release.yml"
 offline_bundle_workflow="${repo_root}/.github/workflows/offline-bundles.yml"
+devin_runtime_workflow="${repo_root}/.github/workflows/devin-runtime.yml"
 snapshot_workflow="${repo_root}/.github/workflows/snapshot.yml"
 docs_workflow="${repo_root}/.github/workflows/docs.yml"
 root_build_file="${repo_root}/build.gradle.kts"
@@ -64,6 +65,7 @@ for path in \
   "$ci_workflow" \
   "$release_workflow" \
   "$offline_bundle_workflow" \
+  "$devin_runtime_workflow" \
   "$snapshot_workflow" \
   "$docs_workflow" \
   "$root_build_file" \
@@ -114,6 +116,9 @@ require_contains "$ci_workflow" "working-directory: cli-rs" "CI Rust commands mu
 require_contains "$ci_workflow" "cache-cleanup: always" "CI Gradle setup must keep persisted Gradle caches pruned"
 require_contains "$ci_workflow" "packaging/homebrew/scripts/test-formulas.py" "CI must validate Homebrew package templates"
 require_contains "$ci_workflow" "Download Rust CLI CI asset" "CI bundle tests must consume a locally built CLI artifact"
+require_contains "$ci_workflow" "Smoke Devin headless runtime contract" "CI must smoke the Devin runtime bundle contract"
+require_contains "$ci_workflow" "-PkastHeadlessIdeaHomeProfile=agent" "CI must build the agent headless IDEA-home profile"
+require_contains "$ci_workflow" "Assert headless distribution excludes fat jar" "CI must guard the headless no-fat-jar layout"
 require_contains "$ci_workflow" "Free standalone distribution workspace before headless build" "CI must free standalone distribution workspace before building headless assets on constrained runners"
 require_not_contains "$ci_workflow" "standalone-dist-cache" "CI must not use a custom Actions cache for generated standalone distributions"
 require_not_contains "$ci_workflow" "headless-dist-cache" "CI must not use a custom Actions cache for generated headless distributions"
@@ -179,12 +184,23 @@ require_contains "$offline_bundle_workflow" "scripts/merge-release-provenance.py
 require_contains "$offline_bundle_workflow" "scripts/verify-release-assets.sh" "Offline bundle workflow must verify appended release assets"
 require_contains "$offline_bundle_workflow" "gh release upload" "Offline bundle workflow must support appending assets to a release"
 
+require_contains "$devin_runtime_workflow" "workflow_dispatch:" "Devin runtime workflow must be manually dispatchable"
+require_contains "$devin_runtime_workflow" "publish_to_release:" "Devin runtime workflow must require explicit release append"
+require_contains "$devin_runtime_workflow" "-PkastHeadlessIdeaHomeProfile=agent" "Devin runtime workflow must build the agent headless profile"
+require_contains "$devin_runtime_workflow" "scripts/package-devin-headless-runtime.sh" "Devin runtime workflow must package the runtime bundle"
+require_contains "$devin_runtime_workflow" "scripts/verify-kast-devin-runtime.sh" "Devin runtime workflow must verify the runtime bundle"
+require_contains "$devin_runtime_workflow" "scripts/merge-release-provenance.py" "Devin runtime workflow must merge optional provenance"
+require_contains "$devin_runtime_workflow" "scripts/verify-release-assets.sh" "Devin runtime workflow must verify appended release assets"
+require_contains "$devin_runtime_workflow" "gh release upload" "Devin runtime workflow must support appending assets to a release"
+
 require_contains "$release_provenance_assembler" '"cli-linux-x64"' "Release provenance must include Linux x64 CLI assets"
 require_contains "$release_provenance_assembler" '"cli-linux-arm64"' "Release provenance must include Linux arm64 CLI assets"
 require_contains "$release_provenance_assembler" '"cli-macos-x64"' "Release provenance must include macOS x64 CLI assets"
 require_contains "$release_provenance_assembler" '"cli-macos-arm64"' "Release provenance must include macOS arm64 CLI assets"
+require_contains "$release_provenance_assembler" '"devin-headless-linux-x64"' "Release provenance must support the optional Devin headless runtime asset"
 require_contains "$release_asset_verifier" '"cli-linux-x64"' "Release verifier must require CLI assets"
 require_contains "$release_asset_verifier" 'kast-{tag}-macos-arm64.zip' "Release verifier must require macOS CLI assets"
+require_contains "$release_asset_verifier" 'kast-devin-headless-runtime-linux-x64-{tag}.tar.gz' "Release verifier must support the optional Devin headless runtime asset"
 require_contains "$release_state_verifier" "gh release download" "Release state verifier must download release assets"
 require_contains "$release_state_verifier" "scripts/verify-release-assets.sh" "Release state verifier must reuse the asset verifier"
 require_contains "$release_state_verifier" "scripts/verify-maven-central.sh" "Release state verifier must verify Maven Central"

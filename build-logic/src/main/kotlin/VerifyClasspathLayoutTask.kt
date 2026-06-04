@@ -6,6 +6,7 @@ import org.gradle.api.provider.ListProperty
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputDirectory
 import org.gradle.api.tasks.InputFile
+import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
@@ -20,6 +21,7 @@ abstract class VerifyClasspathLayoutTask : DefaultTask() {
         requiredPluginJarPrefixes.convention(emptyList())
         requiredPluginClassEntries.convention(emptyList())
         allowedPluginDescriptorJarPrefixes.convention(emptyList())
+        forbiddenPortableDistJarSuffixes.convention(emptyList())
     }
 
     @get:InputDirectory
@@ -33,6 +35,11 @@ abstract class VerifyClasspathLayoutTask : DefaultTask() {
     @get:InputDirectory
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val pluginLibsDirectory: DirectoryProperty
+
+    @get:Optional
+    @get:InputDirectory
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val portableDistDirectory: DirectoryProperty
 
     @get:Input
     abstract val forbiddenRuntimeJarPrefixes: ListProperty<String>
@@ -49,8 +56,24 @@ abstract class VerifyClasspathLayoutTask : DefaultTask() {
     @get:Input
     abstract val allowedPluginDescriptorJarPrefixes: ListProperty<String>
 
+    @get:Input
+    abstract val forbiddenPortableDistJarSuffixes: ListProperty<String>
+
     @TaskAction
     fun verify() {
+        if (portableDistDirectory.isPresent) {
+            val forbiddenPortableDistJars = RuntimeClasspathAssertions.filesWithAnySuffix(
+                directory = portableDistDirectory.get().asFile.toPath(),
+                suffixes = forbiddenPortableDistJarSuffixes.get(),
+            )
+            if (forbiddenPortableDistJars.isNotEmpty()) {
+                throw GradleException(
+                    "Headless portable distribution must not include fat jars: " +
+                        forbiddenPortableDistJars.joinToString(),
+                )
+            }
+        }
+
         val runtimeLibsPath = runtimeLibsDirectory.get().asFile.toPath()
         val runtimeClasspathPath = runtimeClasspathFile.get().asFile.toPath()
         val runtimeClasspathEntries = classpathEntries(runtimeClasspathPath)

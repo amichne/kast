@@ -1,5 +1,6 @@
 package io.github.amichne.kast.headless
 
+import com.intellij.openapi.application.ApplicationStarter
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -7,6 +8,12 @@ import org.junit.jupiter.api.Test
 import java.nio.file.Path
 
 class HeadlessServerOptionsTest {
+    @Test
+    fun `headless starter implements IDEA app starter extension type`() {
+        assertEquals(Any::class.java, HeadlessApplicationStarter::class.java.superclass)
+        assertTrue(HeadlessApplicationStarter::class.java.interfaces.contains(ApplicationStarter::class.java))
+    }
+
     @Test
     fun `starter args drop command token and preserve existing server options`() {
         val options = HeadlessServerOptions.parseStarterArgs(
@@ -59,6 +66,17 @@ class HeadlessServerOptionsTest {
             assertEquals("/tmp/kast-descriptors", paths?.descriptorDir?.value)
             assertEquals("/tmp/kast-sockets", paths?.socketDir?.value)
         }
+    }
+
+    @Test
+    @Suppress("DEPRECATION")
+    fun `project open task skips IDE startup work before server registration`() {
+        val task = HeadlessProjectOpener.openProjectTask()
+
+        assertEquals(false, task.isRefreshVfsNeeded)
+        assertEquals(false, task.runConfigurators)
+        assertEquals(false, task.runConversionBeforeOpen)
+        assertEquals(false, task.preloadServices)
     }
 
     private fun withSystemProperties(

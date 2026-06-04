@@ -232,7 +232,10 @@ runtimeLibsDir = \"$(toml_escape "$standalone_runtime_libs_dir")\""
       components='["cli", "standalone-backend", "config"]'
       ;;
     headless)
-      backend_config="[backends.headless]
+      backend_config="[runtime]
+defaultBackend = \"headless\"
+
+[backends.headless]
 runtimeLibsDir = \"$(toml_escape "$headless_runtime_libs_dir")\"
 ideaHome = \"$(toml_escape "$headless_idea_home")\""
       components='["cli", "headless-backend", "config"]'
@@ -452,6 +455,8 @@ verify_install() {
       [[ -f "$bin_path" && ! -L "$bin_path" ]] || die "Expected headless ${bin_path} to be an executable shim"
       grep -Fq -- "-Didea.force.use.core.classloader=true" "$bin_path" \
         || die "Headless kast shim does not export the core classloader JVM option"
+      grep -Fq 'defaultBackend = "headless"' "$config_file" \
+        || die "config.toml does not default to headless runtime"
       grep -Fq "[backends.headless]" "$config_file" || die "config.toml does not include headless backend config"
       grep -Fq "runtimeLibsDir = \"${headless_runtime_libs_dir}\"" "$config_file" \
         || die "config.toml does not point at ${headless_runtime_libs_dir}"

@@ -23,6 +23,10 @@ jobs:
         shell: bash
         run: ./.github/scripts/test-release-workflow-contract.sh
 
+      - name: Test Kast build contract
+        shell: bash
+        run: ./.github/scripts/test-kast-build-contract.sh
+
       - name: Test standalone profile workflow contract
         shell: bash
         run: ./.github/scripts/test-standalone-profile-workflow-contract.sh
@@ -66,6 +70,10 @@ jobs:
       - name: Smoke Ubuntu/Debian headless bundle contract
         shell: bash
         run: ./scripts/smoke-ubuntu-debian-headless-bundle.sh
+
+      - name: Smoke Devin headless runtime contract
+        shell: bash
+        run: ./scripts/smoke-devin-headless-runtime.sh
 
   maven-publication-contract:
     name: Maven publication metadata
@@ -187,6 +195,16 @@ jobs:
       - name: Build headless backend distribution
         run: ./gradlew :backend-headless:portableDistZip
 
+      - name: Assert headless distribution excludes fat jar
+        shell: bash
+        run: |
+          set -euo pipefail
+          if find backend-headless/build/portable-dist -name '*-all.jar' -print -quit | grep -q .; then
+            echo "Headless portable distribution must not contain fat jars" >&2
+            find backend-headless/build/portable-dist -name '*-all.jar' -print >&2
+            exit 1
+          fi
+
       - name: Upload build-and-test test reports
         if: always()
         uses: actions/upload-artifact@v6
@@ -213,6 +231,10 @@ jobs:
           path: backend-headless/build/distributions/backend-headless-*-portable.zip
           if-no-files-found: error
           retention-days: 1
+
+      - name: Build agent headless backend distribution
+        if: matrix.os == 'ubuntu-latest'
+        run: ./gradlew :backend-headless:portableDistZip -PkastHeadlessIdeaHomeProfile=agent
 
   install-ubuntu-debian-container:
     name: Ubuntu/Debian install container (${{ matrix.container-image }}, Java ${{ matrix.java-version }})
@@ -335,6 +357,74 @@ jobs:
           KAST_UBUNTU_DEBIAN_JAVA_VERSION: ${{ matrix.java-version }}
         shell: bash
         run: BUNDLE_PATH="$KAST_UBUNTU_DEBIAN_HEADLESS_BUNDLE" ./scripts/validate-ubuntu-debian-headless-bundle-in-docker.sh
+
+  devin-headless-runtime:
+    name: Devin headless runtime
+    runs-on: ubuntu-22.04
+    needs:
+      - workflow-contracts
+      - rust-cli
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-cleanup: always
+
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.gradle/kast/headless-intellij-distributions
+          key: headless-idea-dist-${{ hashFiles('gradle/libs.versions.toml') }}
+
+      - name: Download Rust CLI CI asset
+        uses: actions/download-artifact@v7
+        with:
+          name: kast-rust-cli-linux-x64
+          path: dist
+
+      - name: Build agent headless backend distribution
+        run: ./gradlew :backend-headless:portableDistZip -PkastHeadlessIdeaHomeProfile=agent -Pversion=9.8.7
+
+      - name: Package and verify Devin runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="v9.8.7"
+          cli_asset="dist/kast-v0.0.0-ci-linux-x64.zip"
+          backend_asset="$(find backend-headless/build/distributions -maxdepth 1 -name 'backend-headless-*-portable.zip' -print -quit)"
+          bundle_asset="dist/kast-devin-headless-runtime-linux-x64-${version}.tar.gz"
+          [[ -f "$cli_asset" ]] || { echo "Missing Rust CLI CI asset: ${cli_asset}" >&2; exit 1; }
+          [[ -n "$backend_asset" ]] || { echo "Missing agent headless backend portable zip" >&2; exit 1; }
+
+          ./scripts/package-devin-headless-runtime.sh \
+            --cli-archive "$cli_asset" \
+            --backend-archive "$backend_asset" \
+            --version "$version" \
+            --output "$bundle_asset"
+
+          extract_dir="$RUNNER_TEMP/kast-devin-runtime"
+          rm -rf "$extract_dir"
+          mkdir -p "$extract_dir"
+          tar -xzf "$bundle_asset" -C "$extract_dir"
+          prefix="${extract_dir}/kast-devin-headless-runtime-linux-x64-${version}"
+          "$prefix/scripts/setup-kast-devin-runtime.sh" --prefix "$prefix"
+          "$prefix/scripts/verify-kast-devin-runtime.sh" --prefix "$prefix"
+
+      - name: Upload Devin runtime artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: kast-devin-headless-runtime-linux-x64
+          path: |
+            dist/kast-devin-headless-runtime-linux-x64-v9.8.7.tar.gz
+            dist/kast-devin-headless-runtime-linux-x64-v9.8.7.tar.gz.sha256
+          if-no-files-found: error
+          retention-days: 1
 
   analysis-server-transport:
     name: Analysis server transport
