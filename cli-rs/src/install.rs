@@ -25,6 +25,17 @@ static KAST_RPC_COMMANDS: &str = include_str!(concat!(
 const KAST_FORMULA_NAME: &str = "kast";
 const KAST_PLUGIN_CASK_NAME: &str = "kast-plugin";
 const DEFAULT_KAST_TAP: &str = "amichne/kast";
+const LEGACY_COPILOT_HOOK_FILES: &[&str] = &[
+    "export-session.py",
+    "hook-state.sh",
+    "hooks.json",
+    "record-paths.sh",
+    "require-skills.sh",
+    "resolve-kast-path.sh",
+    "session-end.sh",
+    "session-start.sh",
+    "skill-shadowing.json",
+];
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -169,6 +180,7 @@ pub fn install_copilot_extension(
         ".kast-copilot-version",
         args.yes.unwrap_or(false),
     )?;
+    remove_legacy_copilot_hooks(&target)?;
     write_copilot_rpc_catalog(&target)?;
     self_mgmt::record_copilot_repo(&target, cli::version())?;
     Ok(InstallCopilotExtensionResult {
@@ -346,6 +358,7 @@ pub fn uninstall_copilot_extension(
         )
     });
     remove_embedded_files(&COPILOT_EXTENSION, &target)?;
+    remove_legacy_copilot_hooks(&target)?;
     let shared_catalog = target.join("extensions/_shared/commands.json");
     if shared_catalog.is_file() {
         fs::remove_file(shared_catalog)?;
@@ -552,6 +565,18 @@ fn remove_entry(entry: &DirEntry<'_>, target_root: &Path) -> Result<()> {
             }
         }
     }
+    Ok(())
+}
+
+fn remove_legacy_copilot_hooks(target_root: &Path) -> Result<()> {
+    let hooks_dir = target_root.join("hooks");
+    for file_name in LEGACY_COPILOT_HOOK_FILES {
+        let path = hooks_dir.join(file_name);
+        if path.is_file() {
+            fs::remove_file(path)?;
+        }
+    }
+    let _ = fs::remove_dir(&hooks_dir);
     Ok(())
 }
 

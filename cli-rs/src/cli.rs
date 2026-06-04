@@ -399,7 +399,7 @@ pub struct InstallArgs {
 pub enum InstallCommand {
     /// Install the packaged kast skill into the current workspace.
     Skill(ResourceInstallArgs),
-    /// Install the packaged Copilot agents, hooks, and extension.
+    /// Install the packaged Copilot agents and extensions.
     CopilotExtension(ResourceInstallArgs),
     /// Download the Homebrew-managed IntelliJ plugin cask.
     #[command(alias = "developer-plugin")]
@@ -449,7 +449,7 @@ pub struct UninstallArgs {
 
 #[derive(Debug, Subcommand, Clone)]
 pub enum UninstallCommand {
-    /// Remove packaged Copilot agents, hooks, and extension from the current workspace.
+    /// Remove packaged Copilot agents and extensions from the current workspace.
     CopilotExtension(ResourceInstallArgs),
 }
 

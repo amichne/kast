@@ -1,14 +1,8 @@
 // Kast extension for Copilot CLI.
 //
 // Goals:
-//   1. Resolve the kast binary once at
-//      session start, cache, and use that path for every kast_* tool call.
-//   2. Expose native kast_* tools backed by `kast rpc` where the daemon method
+//   1. Expose native kast_* tools backed by `kast rpc` where the daemon method
 //      maps 1:1, while keeping wrapper-backed orchestration for the richer flows.
-//   3. Soft-warn when the agent reaches for generic view/grep/edit/create on
-//      Kotlin source — the kast equivalent is almost always cheaper in tokens
-//      and produces structured results. Soft (not deny) so genuinely
-//      non-semantic work (comments, formatting, generated files) still flows.
 
 import {execFile} from "node:child_process";
 import {existsSync, readFileSync} from "node:fs";
@@ -252,124 +246,54 @@ async function callKast(method, params) {
 // ---------------------------------------------------------------------------
 const tools = makeKastTools((method, args) => callKast(method, args));
 // ---------------------------------------------------------------------------
-// Hooks: bootstrap the binary and warn on generic Kotlin file access.
-
-const KOTLIN_PATH = /\.kts?$/i;
-// Tools where args carry a file path we should inspect.
-const FILE_TOOL_KEYS = {
-  view: ["path", "filePath", "file_path"],
-  edit: ["path", "filePath", "file_path"],
-  create: ["path", "filePath", "file_path"],
-  grep: ["paths", "path"],
-  rg: ["paths", "path"],
-};
-// Per-tool one-time nag — fire once per session per tool name.
-const warned = new Set();
-
-function extractKotlinPath(toolName, toolArgs) {
-  const keys = FILE_TOOL_KEYS[toolName];
-  if (!keys || !toolArgs || typeof toolArgs !== "object") return null;
-  for (const key of keys) {
-    const v = toolArgs[key];
-    if (typeof v === "string" && KOTLIN_PATH.test(v)) return v;
-    if (Array.isArray(v)) {
-      for (const entry of v) {
-        if (typeof entry === "string" && KOTLIN_PATH.test(entry)) return entry;
-      }
-    }
-  }
-  return null;
-}
-
-function suggestionFor(toolName) {
-  switch (toolName) {
-    case "view":
-      return "Prefer `kast_scaffold` over `view` for .kt/.kts files. Scaffold returns the semantic skeleton and full file content, so a separate `view` call is usually unnecessary. If you only need the declaration tree, use `kast_file_outline`. Reserve `view` for non-semantic concerns such as formatting or generated files.";
-    case "grep":
-    case "rg":
-      return "Prefer `kast_workspace_symbol` for Kotlin symbol-name discovery, `kast_workspace_search` for Kotlin content search, and `kast_references` / `kast_resolve` / `kast_callers` for semantic identity work. Reserve grep/rg for non-Kotlin files or simple literal searches outside Kotlin source.";
-    case "edit":
-    case "create":
-      return "Prefer `kast_write_and_validate` over the generic `edit`/`create` tool for .kt/.kts files. write-and-validate runs diagnostics atomically and protects against import drift and compile breakage.";
-    default:
-      return null;
-  }
-}
 
 const session = await joinSession({
   tools,
   disabledSkills: ["kast"],
-  hooks: {
-    onSessionStart: async () => {
-      warned.clear();
-      const bin = await resolveKastBinary();
-      if (!bin) {
-        await session.log(
-          `kast extension: failed to resolve kast binary (${resolveError}). Native kast_* tools will return errors until the binary is on PATH or built in this workspace.`,
-          { level: "warning" },
-        );
-        return {};
-      }
-
-      // Version parity: compare CLI version against the installed extension marker.
-      const cliVersion = await readCliVersion(bin);
-      const installedVersion = readInstalledExtensionVersion();
-      let warningContext = null;
-      if (cliVersion && installedVersion && cliVersion !== installedVersion) {
-        const syncResult = await execBash(
-          `${JSON.stringify(bin)} install copilot-extension --target-dir=${JSON.stringify(join(REPO_ROOT, ".github"))} --yes=true`,
-        );
-        if (syncResult.ok) {
-          await session.log(
-            `kast extension: auto-synced copilot extension from ${installedVersion} to ${cliVersion}`,
-            { level: "info" },
-          );
-        } else {
-          const msg =
-            `kast version mismatch: CLI=${cliVersion}, extension=${installedVersion}. ` +
-            "Auto-sync failed. Run `kast install copilot-extension` manually.";
-          warningContext = `KAST EXTENSION WARNING — ${msg}`;
-          await session.log(`kast extension: ${msg}`, { level: "warning" });
-        }
-      }
-      kastVersion = cliVersion;
-
-      await session.log(`kast extension ready (binary: ${bin}, version: ${cliVersion ?? "unknown"})`, { ephemeral: true });
-      execBash(
-        `${JSON.stringify(bin)} up --workspace-root=${JSON.stringify(REPO_ROOT)} --accept-indexing=true`,
-      ).then(({ok, stderr}) => {
-        if (!ok) {
-          session.log(
-            `kast extension: up failed for ${REPO_ROOT}. stderr: ${stderr.trim().slice(0, 200)}`,
-            { level: "warning" },
-          );
-        } else {
-          session.log(`kast extension: backend ready for ${REPO_ROOT}`, { ephemeral: true });
-        }
-      }).catch(() => {});
-      const toolNames = Array.from(KAST_TOOL_NAMES).join(", ");
-      const toolContext =
-        `Kast tools available natively: ${toolNames}. ` +
-        `Use these for ALL Kotlin semantic work and Kotlin source search — they are far cheaper than view/grep/rg/edit on .kt source. ` +
-        `If a bash fallback is genuinely necessary, run ${bin} rpc '<jsonrpc-request>' directly; do not rely on exported shell state across tool calls.`;
-      return {
-        additionalContext: warningContext ? `${warningContext}\n${toolContext}` : toolContext,
-      };
-    },
-    onPreToolUse: async (input) => {
-      const toolName = input.toolName;
-      const toolArgs = input.toolArgs;
-      const offending = extractKotlinPath(toolName, toolArgs);
-      if (!offending) return;
-      const suggestion = suggestionFor(toolName);
-      if (!suggestion) return;
-      // Always allow; warn at most once per tool per session to avoid nag spam.
-      if (warned.has(toolName)) return;
-      warned.add(toolName);
-      return {
-        permissionDecision: "allow",
-        additionalContext: `kast hint (${offending}): ${suggestion}`,
-      };
-    },
-  },
 });
+
+const bin = await resolveKastBinary();
+if (!bin) {
+  await session.log(
+    `kast extension: failed to resolve kast binary (${resolveError}). Native kast_* tools will return errors until the binary is on PATH or built in this workspace.`,
+    { level: "warning" },
+  );
+} else {
+  const cliVersion = await readCliVersion(bin);
+  const installedVersion = readInstalledExtensionVersion();
+  if (cliVersion && installedVersion && cliVersion !== installedVersion) {
+    const syncResult = await execBash(
+      `${JSON.stringify(bin)} install copilot-extension --target-dir=${JSON.stringify(join(REPO_ROOT, ".github"))} --yes=true`,
+    );
+    if (syncResult.ok) {
+      await session.log(
+        `kast extension: auto-synced copilot extension from ${installedVersion} to ${cliVersion}`,
+        { level: "info" },
+      );
+    } else {
+      const msg =
+        `kast version mismatch: CLI=${cliVersion}, extension=${installedVersion}. ` +
+        "Auto-sync failed. Run `kast install copilot-extension` manually.";
+      await session.log(`kast extension: ${msg}`, { level: "warning" });
+    }
+  }
+  kastVersion = cliVersion;
+
+  const toolNames = Array.from(KAST_TOOL_NAMES).join(", ");
+  await session.log(
+    `kast extension ready (binary: ${bin}, version: ${cliVersion ?? "unknown"}; tools: ${toolNames})`,
+    { ephemeral: true },
+  );
+  execBash(
+    `${JSON.stringify(bin)} up --workspace-root=${JSON.stringify(REPO_ROOT)} --accept-indexing=true`,
+  ).then(({ok, stderr}) => {
+    if (!ok) {
+      session.log(
+        `kast extension: up failed for ${REPO_ROOT}. stderr: ${stderr.trim().slice(0, 200)}`,
+        { level: "warning" },
+      );
+    } else {
+      session.log(`kast extension: backend ready for ${REPO_ROOT}`, { ephemeral: true });
+    }
+  }).catch(() => {});
+}
