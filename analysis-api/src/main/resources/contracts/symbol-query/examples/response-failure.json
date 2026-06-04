@@ -1,0 +1,10 @@
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "type": "SYMBOL_QUERY_FAILURE",
+    "query": "",
+    "reason": "QUERY_TOO_BROAD",
+    "message": "query may be empty only when an anchor is provided"
+  },
+  "id": 1
+}

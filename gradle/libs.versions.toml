@@ -16,6 +16,7 @@ gradle-tooling-api = "9.4.0"
 opentelemetry = "1.62.0"
 sqlite-jdbc = "3.45.3.0"
 hoplite = "2.9.0"
+json-schema-validator = "3.0.3"
 
 [libraries]
 coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
@@ -41,6 +42,7 @@ opentelemetry-exporter-otlp = { module = "io.opentelemetry:opentelemetry-exporte
 sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version.ref = "sqlite-jdbc" }
 hoplite-core = { module = "com.sksamuel.hoplite:hoplite-core", version.ref = "hoplite" }
 hoplite-toml = { module = "com.sksamuel.hoplite:hoplite-toml", version.ref = "hoplite" }
+json-schema-validator = { module = "com.networknt:json-schema-validator", version.ref = "json-schema-validator" }
 
 [bundles]
 test = [

@@ -1,0 +1,87 @@
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "type": "SYMBOL_QUERY_SUCCESS",
+    "query": "card payment",
+    "availableSignals": {
+      "exact": true,
+      "lexical": true,
+      "structural": true,
+      "graph": true,
+      "semantic": false
+    },
+    "hardFilters": [],
+    "results": [
+      {
+        "declaration": {
+          "fqId": 2,
+          "fqName": "lib.CardPaymentProcessor",
+          "simpleName": "CardPaymentProcessor",
+          "kind": "CLASS",
+          "visibility": "PUBLIC",
+          "usageFacets": [
+            "PUBLIC_API"
+          ],
+          "modulePath": ":lib",
+          "sourceSet": "main",
+          "file": {
+            "prefixId": 1,
+            "dirPath": "lib",
+            "filename": "CardPaymentProcessor.kt",
+            "path": "/workspace/lib/CardPaymentProcessor.kt"
+          },
+          "declarationOffset": 24
+        },
+        "rank": {
+          "position": 1,
+          "sortScore": 0.34,
+          "components": {
+            "exact": 0.0,
+            "lexical": 0.4,
+            "structural": 1.0,
+            "graph": 0.0,
+            "semantic": null
+          }
+        },
+        "signals": {
+          "exact": {
+            "matched": false,
+            "matches": []
+          },
+          "lexical": {
+            "matched": true,
+            "matches": [
+              {
+                "field": "fq_names.fq_name",
+                "term": "card",
+                "matchType": "TOKEN",
+                "evidence": "lib.CardPaymentProcessor"
+              },
+              {
+                "field": "fq_names.fq_name",
+                "term": "payment",
+                "matchType": "TOKEN",
+                "evidence": "lib.CardPaymentProcessor"
+              }
+            ]
+          },
+          "structural": {
+            "matched": true,
+            "constraints": []
+          },
+          "graph": {
+            "matched": false,
+            "paths": []
+          },
+          "semantic": {
+            "available": false,
+            "matched": false,
+            "discoveryOnly": true,
+            "reason": "Semantic projection index is not configured"
+          }
+        }
+      }
+    ]
+  },
+  "id": 1
+}

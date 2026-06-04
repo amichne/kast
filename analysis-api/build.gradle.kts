@@ -13,6 +13,7 @@ kastPublishing {
 dependencies {
     implementation(libs.bundles.coroutines)
     implementation(libs.bundles.hoplite)
+    testImplementation(libs.json.schema.validator)
     testFixturesImplementation(libs.jimfs)
 }
 

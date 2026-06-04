@@ -79,6 +79,22 @@ fn assert_request_shape(request: &Value) {
     }
 }
 
+fn schema_value(relative_path: &str) -> Value {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let path = root.join(relative_path);
+    let content = std::fs::read_to_string(&path)
+        .unwrap_or_else(|error| panic!("read schema {}: {error}", path.display()));
+    serde_json::from_str(&content)
+        .unwrap_or_else(|error| panic!("parse schema {}: {error}", path.display()))
+}
+
+fn assert_valid(schema: &Value, instance: &Value) {
+    let validator = jsonschema::validator_for(schema).expect("schema compiles");
+    if let Err(error) = validator.validate(instance) {
+        panic!("schema validation failed: {error}\ninstance: {instance}");
+    }
+}
+
 #[test]
 fn command_contract_yaml_and_request_samples_are_current() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
@@ -230,6 +246,36 @@ fn symbol_query_catalog_documents_relevance_filters() {
             "symbol/query maximal request should include {field}"
         );
     }
+}
+
+#[test]
+fn symbol_query_catalog_samples_validate_against_shared_schema() {
+    let request_schema = schema_value(
+        "../analysis-api/src/main/resources/contracts/symbol-query/symbol-query-request.schema.json",
+    );
+    let canonical_minimal: Value = serde_json::from_str(include_str!(
+        "../../analysis-api/src/main/resources/contracts/symbol-query/examples/request-minimal.json"
+    ))
+    .expect("canonical minimal request");
+    let canonical_maximal: Value = serde_json::from_str(include_str!(
+        "../../analysis-api/src/main/resources/contracts/symbol-query/examples/request-maximal.json"
+    ))
+    .expect("canonical maximal request");
+    let catalog_minimal: Value = serde_json::from_str(include_str!(
+        "../resources/kast-skill/references/requests/symbol/query/minimal.json"
+    ))
+    .expect("catalog minimal request");
+    let catalog_maximal: Value = serde_json::from_str(include_str!(
+        "../resources/kast-skill/references/requests/symbol/query/maximal.json"
+    ))
+    .expect("catalog maximal request");
+
+    assert_valid(&request_schema, &canonical_minimal);
+    assert_valid(&request_schema, &canonical_maximal);
+    assert_valid(&request_schema, &catalog_minimal);
+    assert_valid(&request_schema, &catalog_maximal);
+    assert_eq!(catalog_minimal, canonical_minimal);
+    assert_eq!(catalog_maximal, canonical_maximal);
 }
 
 #[test]

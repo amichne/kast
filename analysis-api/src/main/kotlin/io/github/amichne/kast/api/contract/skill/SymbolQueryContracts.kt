@@ -94,6 +94,18 @@ enum class SymbolQueryFailureReason {
     TIMEOUT,
 }
 
+sealed interface KastQuery<out Request, out Response> {
+    val method: String
+}
+
+sealed interface KastQueryRequest<out Query>
+
+sealed interface KastQueryResponse<out Query>
+
+data object KastSymbolQuery : KastQuery<KastSymbolQueryRequest, KastSymbolQueryResponse> {
+    override val method: String = "symbol/query"
+}
+
 @Serializable
 data class KastSymbolQueryFilters(
     val kinds: List<SymbolQueryDeclarationKind> = emptyList(),
@@ -150,31 +162,26 @@ data class KastSymbolQueryRequest(
     val limit: Int = 25,
     val includeEvidence: Boolean = true,
     val includeNextRequests: Boolean = false,
-)
+) : KastQueryRequest<KastSymbolQuery>
 
 @Serializable
-sealed interface KastSymbolQueryResponse
+sealed interface KastSymbolQueryResponse : KastQueryResponse<KastSymbolQuery>
 
 @Serializable
 @SerialName("SYMBOL_QUERY_SUCCESS")
 data class KastSymbolQuerySuccessResponse(
-    val ok: Boolean = true,
     val query: String,
     val availableSignals: AvailableSignals,
     val hardFilters: List<HardFilter>,
     val results: List<SymbolQueryResult>,
-    val logFile: String,
 ) : KastSymbolQueryResponse
 
 @Serializable
 @SerialName("SYMBOL_QUERY_FAILURE")
 data class KastSymbolQueryFailureResponse(
-    val ok: Boolean = false,
-    val reason: SymbolQueryFailureReason,
-    val stage: String,
-    val message: String,
     val query: String,
-    val logFile: String,
+    val reason: SymbolQueryFailureReason,
+    val message: String,
 ) : KastSymbolQueryResponse
 
 @Serializable
@@ -189,7 +196,7 @@ data class AvailableSignals(
 @Serializable
 data class HardFilter(
     val field: String,
-    val value: String,
+    val value: JsonElement,
     val source: String,
     val satisfiedSymbolically: Boolean,
 )
@@ -250,24 +257,34 @@ data class SymbolQuerySignals(
 )
 
 @Serializable
-data class SymbolQueryExactSignal(
+data class SymbolQuerySignal<out Match : SymbolQuerySignalMatch>(
     val matched: Boolean,
-    val matches: List<SymbolQuerySignalMatch> = emptyList(),
+    val matches: List<Match> = emptyList(),
 )
 
-@Serializable
-data class SymbolQueryLexicalSignal(
-    val matched: Boolean,
-    val matches: List<SymbolQuerySignalMatch> = emptyList(),
-)
+typealias SymbolQueryExactSignal = SymbolQuerySignal<SymbolQueryExactMatch>
+
+typealias SymbolQueryLexicalSignal = SymbolQuerySignal<SymbolQueryLexicalMatch>
+
+sealed interface SymbolQuerySignalMatch {
+    val field: String
+    val matchType: String
+}
 
 @Serializable
-data class SymbolQuerySignalMatch(
-    val field: String,
-    val term: String,
-    val matchType: String,
+data class SymbolQueryExactMatch(
+    override val field: String,
+    override val matchType: String,
     val evidence: String? = null,
-)
+) : SymbolQuerySignalMatch
+
+@Serializable
+data class SymbolQueryLexicalMatch(
+    override val field: String,
+    val term: String,
+    override val matchType: String,
+    val evidence: String,
+) : SymbolQuerySignalMatch
 
 @Serializable
 data class SymbolQueryStructuralSignal(
@@ -291,12 +308,11 @@ data class SymbolQueryGraphSignal(
 
 @Serializable
 data class SymbolQueryGraphPath(
-    val fromFqName: String? = null,
+    val fromFqName: String,
     val edgeKind: String,
     val toFqName: String,
     val sourceFile: String? = null,
     val sourceOffset: Int? = null,
-    val depth: Int = 1,
 )
 
 @Serializable
@@ -304,15 +320,15 @@ data class SymbolQuerySemanticSignal(
     val available: Boolean,
     val matched: Boolean,
     val discoveryOnly: Boolean,
-    val reason: String? = null,
+    val reason: String,
 )
 
 @Serializable
 data class SymbolQueryNextRequests(
-    val symbolResolve: SymbolQueryNextRequest? = null,
-    val symbolReferences: SymbolQueryNextRequest? = null,
-    val symbolCallers: SymbolQueryNextRequest? = null,
-    val rawResolve: SymbolQueryNextRequest? = null,
+    val symbolResolve: SymbolQueryNextRequest,
+    val symbolReferences: SymbolQueryNextRequest,
+    val symbolCallers: SymbolQueryNextRequest,
+    val rawResolve: SymbolQueryNextRequest,
 )
 
 @Serializable

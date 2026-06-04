@@ -1,0 +1,80 @@
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "type": "SYMBOL_QUERY_SUCCESS",
+    "query": "lib.Foo",
+    "availableSignals": {
+      "exact": true,
+      "lexical": true,
+      "structural": true,
+      "graph": true,
+      "semantic": false
+    },
+    "hardFilters": [],
+    "results": [
+      {
+        "declaration": {
+          "fqId": 1,
+          "fqName": "lib.Foo",
+          "simpleName": "Foo",
+          "kind": "CLASS",
+          "visibility": "PUBLIC",
+          "usageFacets": [
+            "PUBLIC_API"
+          ],
+          "modulePath": ":lib",
+          "sourceSet": "main",
+          "file": {
+            "prefixId": 1,
+            "dirPath": "lib",
+            "filename": "Foo.kt",
+            "path": "/workspace/lib/Foo.kt"
+          },
+          "declarationOffset": 12
+        },
+        "rank": {
+          "position": 1,
+          "sortScore": 1.2,
+          "components": {
+            "exact": 1.0,
+            "lexical": 0.0,
+            "structural": 1.0,
+            "graph": 0.0,
+            "semantic": null
+          }
+        },
+        "signals": {
+          "exact": {
+            "matched": true,
+            "matches": [
+              {
+                "field": "fq_names.fq_name",
+                "matchType": "EQUALS",
+                "evidence": "lib.Foo"
+              }
+            ]
+          },
+          "lexical": {
+            "matched": false,
+            "matches": []
+          },
+          "structural": {
+            "matched": true,
+            "constraints": []
+          },
+          "graph": {
+            "matched": false,
+            "paths": []
+          },
+          "semantic": {
+            "available": false,
+            "matched": false,
+            "discoveryOnly": true,
+            "reason": "Semantic projection index is not configured"
+          }
+        }
+      }
+    ]
+  },
+  "id": 1
+}
