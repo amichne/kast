@@ -56,6 +56,8 @@ publishing_conventions="${repo_root}/build-logic/src/main/kotlin/KastPublishingC
 homebrew_test="${repo_root}/packaging/homebrew/scripts/test-formulas.py"
 release_provenance_assembler="${repo_root}/scripts/assemble-release-provenance.py"
 release_asset_verifier="${repo_root}/scripts/verify-release-assets.sh"
+release_state_verifier="${repo_root}/scripts/verify-release-state.sh"
+maven_central_verifier="${repo_root}/scripts/verify-maven-central.sh"
 kast_script="${repo_root}/kast.sh"
 
 for path in \
@@ -74,6 +76,8 @@ for path in \
   "$homebrew_test" \
   "$release_provenance_assembler" \
   "$release_asset_verifier" \
+  "$release_state_verifier" \
+  "$maven_central_verifier" \
   "$kast_script"
 do
   [[ -f "$path" || -x "$path" ]] || die "Required release file is missing: $path"
@@ -128,6 +132,7 @@ require_not_contains "$snapshot_workflow" "homebrew" "Snapshot workflow must not
 
 require_contains "$release_workflow" "Validate JVM and Maven publications" "Release must validate JVM and Maven publications"
 require_contains "$release_workflow" "Publish Maven Central" "Release must publish public modules to Maven Central"
+require_contains "$release_workflow" "Maven Central already has all public modules" "Release Maven Central publishing must be idempotent"
 require_contains "$release_workflow" "SIGNING_GPG_PRIVATE_KEY \\" "Release Maven Central gate must continue checking after the private key secret"
 require_order "$release_workflow" "SIGNING_GPG_PRIVATE_KEY \\" "SIGNING_GPG_PASSPHRASE" "Release Maven Central gate must require the GPG passphrase secret before signing"
 require_contains "$release_workflow" "Build Rust CLI asset" "Release must build CLI assets from cli-rs"
@@ -147,6 +152,13 @@ require_not_contains "$release_workflow" "git -C homebrew-tap add -A \\" "Releas
 require_contains "$release_workflow" "Generate and upload SHA256SUMS" "Release must publish aggregate checksums"
 require_contains "$release_workflow" "scripts/assemble-release-provenance.py" "Release must assemble provenance"
 require_contains "$release_workflow" "scripts/verify-release-assets.sh" "Release must verify assets before publishing checksums"
+require_contains "$release_workflow" "Verify published release state" "Release must have a final published-state verification job"
+require_contains "$release_workflow" "scripts/verify-release-state.sh" "Release must verify the final published state"
+require_contains "$release_workflow" "scripts/verify-maven-central.sh" "Release must verify Maven Central coordinates"
+require_contains "$release_workflow" "needs.validate-jvm.result == 'success'" "Release publication must require local JVM and Maven validation"
+require_contains "$release_workflow" "needs.publish-release.result" "Final release verification must read the publish-release result"
+require_contains "$release_workflow" "Publish release finished with result" "Final release verification must fail when publication did not complete"
+require_not_contains "$release_workflow" "needs.publish-maven-central.result == 'success' && needs.build-cli" "GitHub release publication must not depend on raw Maven Central job success"
 require_not_contains "$release_workflow" "build-ubuntu-debian-bundle" "Default release must not build offline Ubuntu/Debian bundles"
 require_not_contains "$release_workflow" "build-ubuntu-debian-headless-bundle" "Default release must not build offline headless Ubuntu/Debian bundles"
 require_not_contains "$release_workflow" "provenance-ubuntu-debian" "Default release provenance must not include optional offline bundles"
@@ -154,6 +166,7 @@ require_not_contains "$release_workflow" "--repo amichne/kast-rs" "Release must 
 require_not_contains "$release_workflow" "Dispatch Homebrew tap update" "Release must render the tap directly instead of dispatching component updates"
 require_order "$release_workflow" "Generate and upload SHA256SUMS" "Publish draft release with provenance annotation" "Release must verify checksums before publication"
 require_order "$release_workflow" "Publish draft release with provenance annotation" "Render and push Homebrew tap" "Release must publish assets before updating Homebrew"
+require_order "$release_workflow" "Render and push Homebrew tap" "verify-release-state:" "Final verification must run after the Homebrew publication path"
 
 require_contains "$offline_bundle_workflow" "workflow_dispatch:" "Offline bundle workflow must be manually dispatchable"
 require_contains "$offline_bundle_workflow" "version:" "Offline bundle workflow must accept a release version"
@@ -172,6 +185,14 @@ require_contains "$release_provenance_assembler" '"cli-macos-x64"' "Release prov
 require_contains "$release_provenance_assembler" '"cli-macos-arm64"' "Release provenance must include macOS arm64 CLI assets"
 require_contains "$release_asset_verifier" '"cli-linux-x64"' "Release verifier must require CLI assets"
 require_contains "$release_asset_verifier" 'kast-{tag}-macos-arm64.zip' "Release verifier must require macOS CLI assets"
+require_contains "$release_state_verifier" "gh release download" "Release state verifier must download release assets"
+require_contains "$release_state_verifier" "scripts/verify-release-assets.sh" "Release state verifier must reuse the asset verifier"
+require_contains "$release_state_verifier" "scripts/verify-maven-central.sh" "Release state verifier must verify Maven Central"
+require_contains "$release_state_verifier" "releases/latest" "Release state verifier must prove stable releases are latest"
+require_contains "$release_state_verifier" "homebrew-kast" "Release state verifier must prove stable Homebrew state"
+require_contains "$maven_central_verifier" "kast-analysis-api" "Maven Central verifier must check analysis-api"
+require_contains "$maven_central_verifier" "kast-analysis-server" "Maven Central verifier must check analysis-server"
+require_contains "$maven_central_verifier" "kast-index-store" "Maven Central verifier must check index-store"
 require_contains "$kast_script" "-Pname=value" "kast.sh build help must document Gradle property forwarding"
 
 require_not_contains "$docs_workflow" "repository: amichne/kast-rs" "Docs workflow must use in-repo CLI command catalog"
