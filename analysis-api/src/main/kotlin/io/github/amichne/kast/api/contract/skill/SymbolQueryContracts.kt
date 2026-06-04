@@ -45,6 +45,15 @@ enum class SymbolQueryVisibility {
 }
 
 @Serializable
+enum class SymbolQueryUsageFacet {
+    PUBLIC_API,
+    INTERNAL_API,
+    MODULE_PRIVATE,
+    BRIDGE,
+    BUILD_LOGIC,
+}
+
+@Serializable
 enum class SymbolQueryGraphDirection {
     INCOMING,
     OUTGOING,
@@ -94,6 +103,11 @@ data class KastSymbolQueryFilters(
     val fileGlob: String? = null,
     val packagePrefix: String? = null,
     val fqNamePrefix: String? = null,
+    val gradleProject: String? = null,
+    val relativePathPrefix: String? = null,
+    val productionOnly: Boolean = false,
+    val excludePatterns: List<String> = emptyList(),
+    val usageFacets: List<SymbolQueryUsageFacet> = emptyList(),
 )
 
 @Serializable
@@ -195,6 +209,7 @@ data class SymbolQueryDeclaration(
     val simpleName: String,
     val kind: String,
     val visibility: String,
+    val usageFacets: List<SymbolQueryUsageFacet> = emptyList(),
     val modulePath: String? = null,
     val sourceSet: String? = null,
     val file: SymbolQueryDeclarationFile,
