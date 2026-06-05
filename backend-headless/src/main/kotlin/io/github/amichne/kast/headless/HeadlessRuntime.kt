@@ -11,8 +11,8 @@ import io.github.amichne.kast.api.client.fields.PathsDescriptorDir
 import io.github.amichne.kast.api.client.fields.PathsLogsDir
 import io.github.amichne.kast.api.client.fields.PathsSocketDir
 import io.github.amichne.kast.api.contract.AnalysisTransport
-import io.github.amichne.kast.intellij.KastIntelliJBackendRuntime
-import io.github.amichne.kast.intellij.RunningKastIntelliJBackend
+import io.github.amichne.kast.idea.KastIdeaBackendRuntime
+import io.github.amichne.kast.idea.RunningKastIdeaBackend
 import kotlinx.coroutines.runBlocking
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicBoolean
@@ -59,7 +59,7 @@ data class HeadlessBootstrapOptions(
 }
 
 class RunningHeadlessRuntime internal constructor(
-    val backendRuntime: RunningKastIntelliJBackend,
+    val backendRuntime: RunningKastIdeaBackend,
 ) : AutoCloseable {
     private val closed = AtomicBoolean(false)
 
@@ -77,7 +77,7 @@ object HeadlessRuntime {
     fun configureSystemProperties(options: HeadlessBootstrapOptions = HeadlessBootstrapOptions()) {
         System.setProperty("java.awt.headless", "true")
         System.setProperty("idea.is.internal", "true")
-        System.setProperty("kast.intellij.autostart", "false")
+        System.setProperty("kast.idea.autostart", "false")
         options.ideaHome?.let { ideaHome ->
             System.setProperty("idea.home.path", ideaHome.toString())
         }
@@ -101,7 +101,7 @@ object HeadlessRuntime {
             workspaceRoot = workspaceRoot,
             overrides = HeadlessConfigProperties.configOverride(serverOptions.profilingOverride),
         )
-        val backendRuntime = KastIntelliJBackendRuntime.start(
+        val backendRuntime = KastIdeaBackendRuntime.start(
             project = project,
             workspaceRoot = workspaceRoot,
             transport = serverOptions.transport,

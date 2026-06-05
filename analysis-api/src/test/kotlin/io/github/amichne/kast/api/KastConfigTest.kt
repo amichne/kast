@@ -134,7 +134,7 @@ class KastConfigTest {
             "backends.headless" to "enabled",
             "backends.headless" to "runtimeLibsDir",
             "backends.headless" to "ideaHome",
-            "backends.intellij" to "enabled",
+            "backends.idea" to "enabled",
             "paths" to "installRoot",
             "paths" to "binDir",
             "paths" to "libDir",
@@ -247,7 +247,7 @@ class KastConfigTest {
                 source-index-url = "file:///tmp/kast/source-index.db"
 
                 [backends.headless]
-                idea-home = "/Applications/IntelliJ IDEA CE.app/Contents"
+                idea-home = "/Applications/IDEA CE.app/Contents"
                 """.trimIndent(),
             )
         }
@@ -267,7 +267,7 @@ class KastConfigTest {
         assertEquals(false, config.cache.enabled.value)
         assertEquals(true, config.indexing.remote.enabled.value)
         assertEquals("file:///tmp/kast/source-index.db", config.indexing.remote.sourceIndexUrl.value.orNull)
-        assertEquals("/Applications/IntelliJ IDEA CE.app/Contents", config.backends.headless.ideaHome.value.orNull)
+        assertEquals("/Applications/IDEA CE.app/Contents", config.backends.headless.ideaHome.value.orNull)
         assertEquals(true, config.telemetry.enabled.value)
         assertEquals("references,rename", config.telemetry.scopes.value)
         assertEquals(config.server.maxResults.value, config.toServerLimits().maxResults)

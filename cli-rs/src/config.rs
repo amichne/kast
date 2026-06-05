@@ -284,10 +284,10 @@ pub fn backend_runtime_libs_dir(
 ) -> Result<PathBuf> {
     let configured = match backend_name {
         BackendName::Headless => config.backends.headless.runtime_libs_dir.clone(),
-        BackendName::Intellij => {
+        BackendName::Idea => {
             return Err(CliError::new(
                 "DAEMON_START_ERROR",
-                "The intellij backend is hosted by IntelliJ IDEA and cannot be launched by kast daemon start.",
+                "The idea backend is hosted by IDEA and cannot be launched by kast daemon start.",
             ));
         }
     };
@@ -570,10 +570,10 @@ defaultBackend = "sidecar"
             BackendName::Headless
         );
 
-        config.runtime.default_backend = Some(BackendName::Intellij);
+        config.runtime.default_backend = Some(BackendName::Idea);
         assert_eq!(
             resolve_runtime_backend(&config, None),
-            BackendName::Intellij
+            BackendName::Idea
         );
         assert_eq!(
             resolve_runtime_backend(&config, Some(BackendName::Headless)),

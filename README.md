@@ -12,7 +12,7 @@ planned edit is safe to apply.
 `kast` has two independent runtime modes:
 
 - **Headless CLI + backend** — install the `kast` CLI and run
-  `kast backend install headless` for a packaged IntelliJ-backed runtime.
+  `kast backend install headless` for a packaged IDEA-backed runtime.
   Works in terminals, CI, hosted agents, and images that need an offline,
   self-contained Ubuntu/Debian bundle.
 - **IDEA / Android Studio plugin-backed runtime** — runs inside a supported

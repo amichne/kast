@@ -11,7 +11,7 @@ import kotlinx.serialization.Serializable
 data class HealthResponse(
     @DocField(description = "Health status string, always \"ok\" when the daemon is responsive.", defaultValue = "\"ok\"")
     val status: String = "ok",
-    @DocField(description = "Identifier of the analysis backend (e.g. \"headless\" or \"intellij\").")
+    @DocField(description = "Identifier of the analysis backend (e.g. \"headless\" or \"idea\").")
     val backendName: String,
     @DocField(description = "Version string of the analysis backend.")
     val backendVersion: String,

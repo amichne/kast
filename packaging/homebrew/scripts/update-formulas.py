@@ -85,8 +85,8 @@ def update_readme(root: Path, version: str) -> None:
         content,
     )
     content, plugin_count = re.subn(
-        r"/v\d+\.\d+\.\d+/kast-intellij-v\d+\.\d+\.\d+\.zip",
-        f"/v{version}/kast-intellij-v{version}.zip",
+        r"/v\d+\.\d+\.\d+/kast-idea-v\d+\.\d+\.\d+\.zip",
+        f"/v{version}/kast-idea-v{version}.zip",
         content,
     )
     require(cli_count == 1, "README.md must contain exactly one CLI mirror example")

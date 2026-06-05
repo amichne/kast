@@ -173,7 +173,7 @@ formula_assets = [
     f"kast-{tag}-macos-arm64.zip",
     f"kast-{tag}-macos-x64.zip",
 ]
-cask_assets = [f"kast-intellij-{tag}.zip"]
+cask_assets = [f"kast-idea-{tag}.zip"]
 
 for asset_name in formula_assets:
     digest = sha_entries.get(asset_name)

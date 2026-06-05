@@ -35,7 +35,7 @@ humans use `kast up`, `kast status`, and `kast stop` to manage the
 daemon. The rest of this page is what your agent picks up from that.
 
 The agent talks to any runtime over the same JSON-RPC. Headless runs as an
-independent packaged IntelliJ-backed daemon for terminals, CI, and hosted
+independent packaged IDEA-backed daemon for terminals, CI, and hosted
 agents. The IDEA plugin exposes the same protocol from inside an open IDE
 project, reusing the IDE's project model, indexes, and analysis session.
 
@@ -100,7 +100,7 @@ lives and who keeps it warm.
 
 | Runtime         | Where semantic state lives                       | Best fit                                              |
 |-----------------|--------------------------------------------------|-------------------------------------------------------|
-| Headless        | A packaged IntelliJ backend outside any IDE      | Terminals, CI, remote machines, cloud agents          |
+| Headless        | A packaged IDEA backend outside any IDE      | Terminals, CI, remote machines, cloud agents          |
 | IDEA plugin     | Inside a running IDEA or Android Studio project  | Local agents when the IDE is already open and warm    |
 
 If IDEA or Android Studio is open, agents can connect to the plugin and ride

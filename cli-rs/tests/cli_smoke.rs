@@ -861,7 +861,7 @@ fn rpc_backend_flag_overrides_configured_default_backend() {
 }
 
 #[test]
-fn intellij_plugin_install_defaults_to_downloads_without_jetbrains_profiles() {
+fn idea_plugin_install_defaults_to_downloads_without_jetbrains_profiles() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -874,9 +874,9 @@ fn intellij_plugin_install_defaults_to_downloads_without_jetbrains_profiles() {
 
     let install = kast(&home, &config_home)
         .env("PATH", &brew_bin)
-        .args(["install", "intellij-plugin", "--dry-run"])
+        .args(["install", "idea-plugin", "--dry-run"])
         .output()
-        .expect("install intellij plugin");
+        .expect("install idea plugin");
 
     assert!(
         install.status.success(),
@@ -897,14 +897,14 @@ fn intellij_plugin_install_defaults_to_downloads_without_jetbrains_profiles() {
 }
 
 #[test]
-fn intellij_plugin_link_flag_uses_profile_install_mode() {
+fn idea_plugin_link_flag_uses_profile_install_mode() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let brew_bin = temp.path().join("bin");
     let jetbrains_root = temp.path().join("jetbrains");
     std::fs::create_dir_all(&home).expect("home");
-    std::fs::create_dir_all(jetbrains_root.join("IntelliJIdea2026.2")).expect("profile");
+    std::fs::create_dir_all(jetbrains_root.join("AndroidStudio2026.2")).expect("profile");
     let formula_prefix = Path::new(env!("CARGO_BIN_EXE_kast"))
         .parent()
         .expect("binary parent");
@@ -914,14 +914,14 @@ fn intellij_plugin_link_flag_uses_profile_install_mode() {
         .env("PATH", &brew_bin)
         .args([
             "install",
-            "intellij-plugin",
+            "idea-plugin",
             "--link-jetbrains-profiles",
             "--jetbrains-config-root",
             jetbrains_root.to_str().expect("jetbrains root"),
             "--dry-run",
         ])
         .output()
-        .expect("install intellij plugin");
+        .expect("install idea plugin");
 
     assert!(
         install.status.success(),
@@ -940,7 +940,7 @@ fn intellij_plugin_link_flag_uses_profile_install_mode() {
     assert_eq!(
         stdout["pluginDirectories"][0],
         jetbrains_root
-            .join("IntelliJIdea2026.2/plugins")
+            .join("AndroidStudio2026.2/plugins")
             .display()
             .to_string()
     );

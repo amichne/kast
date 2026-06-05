@@ -449,7 +449,7 @@ jobs:
           path: dist/
           if-no-files-found: warn
 
-  build-intellij-plugin:
+  build-idea-plugin:
     name: Build IDEA plugin
     needs: [prepare-release]
     if: always() && needs.prepare-release.result == 'success'
@@ -470,15 +470,15 @@ jobs:
 
       - uses: actions/cache@v5
         with:
-          path: ~/.gradle/kast/intellij-distributions
+          path: ~/.gradle/kast/idea-distributions
           key: idea-dist-${{ hashFiles('gradle/libs.versions.toml') }}
 
       - name: Build IDEA plugin
         run: >
           ./gradlew
-          :backend-intellij:buildPlugin
-          :backend-intellij:verifyPluginStructure
-          :backend-intellij:verifyPluginXmlPresent
+          :backend-idea:buildPlugin
+          :backend-idea:verifyPluginStructure
+          :backend-idea:verifyPluginXmlPresent
           -Pversion="${{ needs.prepare-release.outputs.release_version }}"
 
       - name: Upload IDEA plugin asset
@@ -488,13 +488,13 @@ jobs:
         run: |
           set -euo pipefail
           tag="${{ needs.prepare-release.outputs.release_tag }}"
-          asset_name="kast-intellij-${tag}.zip"
-          source_zip="$(find backend-intellij/build/distributions -maxdepth 1 -name '*.zip' -print -quit)"
+          asset_name="kast-idea-${tag}.zip"
+          source_zip="$(find backend-idea/build/distributions -maxdepth 1 -name '*.zip' -print -quit)"
           [[ -n "$source_zip" ]] || { echo "No IDEA plugin zip found" >&2; exit 1; }
           mkdir -p dist
           cp "$source_zip" "dist/${asset_name}"
           gh release upload "$tag" "dist/${asset_name}" --clobber
-          python3 - "dist/${asset_name}" "dist/build-provenance-intellij.json" <<'PY'
+          python3 - "dist/${asset_name}" "dist/build-provenance-idea.json" <<'PY'
           import hashlib, json, os, sys
           from pathlib import Path
           asset = Path(sys.argv[1])
@@ -506,7 +506,7 @@ jobs:
               "ref": os.environ["GITHUB_REF"],
               "workflowRef": os.environ["GITHUB_WORKFLOW_REF"],
               "actor": os.environ["GITHUB_ACTOR"],
-              "platformId": "intellij",
+              "platformId": "idea",
               "assetName": asset.name,
               "assetDigest": "sha256:" + hashlib.sha256(asset.read_bytes()).hexdigest(),
           }
@@ -517,7 +517,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: intellij-plugin-${{ github.run_id }}
+          name: idea-plugin-${{ github.run_id }}
           path: dist/
           if-no-files-found: warn
 
@@ -542,7 +542,7 @@ jobs:
 
       - uses: actions/cache@v5
         with:
-          path: ~/.gradle/kast/intellij-distributions
+          path: ~/.gradle/kast/idea-distributions
           key: idea-dist-${{ hashFiles('gradle/libs.versions.toml') }}
 
       - name: Build headless backend
@@ -594,9 +594,9 @@ jobs:
       - prepare-release
       - validate-jvm
       - build-cli
-      - build-intellij-plugin
+      - build-idea-plugin
       - build-headless-backend
-    if: always() && needs.prepare-release.result == 'success' && needs.validate-jvm.result == 'success' && needs.build-cli.result == 'success' && needs.build-intellij-plugin.result == 'success' && needs.build-headless-backend.result == 'success'
+    if: always() && needs.prepare-release.result == 'success' && needs.validate-jvm.result == 'success' && needs.build-cli.result == 'success' && needs.build-idea-plugin.result == 'success' && needs.build-headless-backend.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -613,8 +613,8 @@ jobs:
       - name: Download IDEA plugin provenance
         uses: actions/download-artifact@v7
         with:
-          path: provenance-intellij
-          pattern: intellij-plugin-*
+          path: provenance-idea
+          pattern: idea-plugin-*
           merge-multiple: true
 
       - name: Download headless backend provenance
@@ -632,7 +632,7 @@ jobs:
             --output dist/build-provenance.json \
             provenance-cli \
             provenance-headless \
-            provenance-intellij
+            provenance-idea
 
       - name: Upload combined provenance
         env:
@@ -721,7 +721,7 @@ jobs:
           sha_linux_arm64="$(sha_for "kast-${tag}-linux-arm64.zip")"
           sha_macos_x64="$(sha_for "kast-${tag}-macos-x64.zip")"
           sha_macos_arm64="$(sha_for "kast-${tag}-macos-arm64.zip")"
-          sha_plugin="$(sha_for "kast-intellij-${tag}.zip")"
+          sha_plugin="$(sha_for "kast-idea-${tag}.zip")"
           for value in "$sha_linux_x64" "$sha_linux_arm64" "$sha_macos_x64" "$sha_macos_arm64" "$sha_plugin"; do
             [[ -n "$value" ]] || { echo "Missing Homebrew checksum input" >&2; exit 1; }
           done

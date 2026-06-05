@@ -30,10 +30,10 @@ subprojects {
     version = rootProject.version
 }
 
-tasks.register("buildIntellijPlugin") {
+tasks.register("buildIdeaPlugin") {
     group = "distribution"
-    description = "Builds the IntelliJ plugin zip under backend-intellij/build/distributions."
-    dependsOn(":backend-intellij:buildPlugin")
+    description = "Builds the IDEA plugin zip under backend-idea/build/distributions."
+    dependsOn(":backend-idea:buildPlugin")
 }
 
 tasks.register("stageHeadlessDist") {

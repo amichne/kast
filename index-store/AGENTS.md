@@ -11,9 +11,9 @@ Keep this unit focused on storage concerns and schema compatibility.
   `SOURCE_INDEX_SCHEMA_VERSION`, table layouts, and query columns must stay
   aligned.
 - Bootstrap `sqlite-jdbc` inside this module before `DriverManager` access. Do
-  not rely on ambient JDBC registration from the host process because IntelliJ
+  not rely on ambient JDBC registration from the host process because IDEA
   and other plugin classloaders may not register the driver for you.
-- Keep this unit runtime-agnostic. Do not move IntelliJ PSI logic, CLI process
+- Keep this unit runtime-agnostic. Do not move IDEA PSI logic, CLI process
   management, or JSON-RPC transport code here.
 - Treat schema resets, additive migrations, and cache hydration changes as
   compatibility-sensitive. Operational source-index reads belong in the Rust

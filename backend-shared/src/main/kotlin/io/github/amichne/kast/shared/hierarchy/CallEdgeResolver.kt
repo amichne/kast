@@ -17,7 +17,7 @@ data class CallEdge(
 /**
  * Backend-agnostic strategy for discovering incoming and outgoing call edges.
  *
- * Each backend (headless, IntelliJ plugin) provides its own implementation
+ * Each backend (headless, IDEA plugin) provides its own implementation
  * using its native reference-search infrastructure.
  */
 interface CallEdgeResolver {

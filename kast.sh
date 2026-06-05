@@ -26,7 +26,7 @@ GRADLEW="${REPO_ROOT}/gradlew"
 DIST_ROOT="${REPO_ROOT}/dist"
 
 # Build paths are only meaningful when SCRIPT_DIR is set.
-PLUGIN_DIST_DIR="${REPO_ROOT}/backend-intellij/build/distributions"
+PLUGIN_DIST_DIR="${REPO_ROOT}/backend-idea/build/distributions"
 HEADLESS_PORTABLE_DIST_DIR="${REPO_ROOT}/backend-headless/build/portable-dist/backend-headless"
 HEADLESS_PORTABLE_ZIP_DIR="${REPO_ROOT}/backend-headless/build/distributions"
 
@@ -174,7 +174,7 @@ _build_resolve_headless_zip() {
 
 _build_plugin() {
   log_section "Building target: plugin"
-  _build_run_gradle_tasks_with_retry buildIntellijPlugin
+  _build_run_gradle_tasks_with_retry buildIdeaPlugin
 
   local source_zip; source_zip="$(_build_resolve_plugin_zip)"
   local dist_zip="${DIST_ROOT}/plugin.zip"

@@ -51,7 +51,7 @@ The shared mirror root must expose the same repository-shaped paths:
 
 ```text
 ${HOMEBREW_KAST_ARTIFACT_ROOT}/kast/releases/download/v0.7.29/kast-v0.7.29-macos-arm64.zip
-${HOMEBREW_KAST_ARTIFACT_ROOT}/kast/releases/download/v0.7.29/kast-intellij-v0.7.29.zip
+${HOMEBREW_KAST_ARTIFACT_ROOT}/kast/releases/download/v0.7.29/kast-idea-v0.7.29.zip
 ```
 
 If your enterprise artifact layout separates the CLI and plugin roots, set the
@@ -68,7 +68,7 @@ byte-for-byte copies of the published release assets.
 
 The tap tracks the current published release in `release-state.json`. The
 Homebrew package files and release state are rendered atomically by the
-monorepo `amichne/kast` release workflow after the Rust CLI and IntelliJ plugin
+monorepo `amichne/kast` release workflow after the Rust CLI and IDEA plugin
 assets are published from the same tag. A single shared version is used for all
 components; the renderer rejects partial component updates so `kast` and
 `kast-plugin` cannot drift.

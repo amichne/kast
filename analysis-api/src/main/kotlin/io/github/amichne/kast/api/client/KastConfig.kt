@@ -83,7 +83,7 @@ data class KastConfig(
                         ),
                         ideaHome = HeadlessIdeaHome(OptionalConfigString.Unset),
                     ),
-                    intellij = IntellijBackendConfig(enabled = IntellijBackendEnabled(true)),
+                    idea = IdeaBackendConfig(enabled = IdeaBackendEnabled(true)),
                 ),
                 paths = paths,
                 cli = CliConfig(binaryPath = CliBinaryPath(defaultConfigCliBinaryPath(paths.binDir.value).toString())),
@@ -269,8 +269,8 @@ private fun Map<String, String>.profilingOverride(): ProfilingConfigOverride? {
 
 private fun Map<String, String>.backendsOverride(): BackendsConfigOverride? {
     val headless = headlessBackendOverride()
-    val intellij = intellijBackendOverride()
-    return takeIfAny(headless, intellij) { BackendsConfigOverride(headless, intellij) }
+    val idea = ideaBackendOverride()
+    return takeIfAny(headless, idea) { BackendsConfigOverride(headless, idea) }
 }
 
 private fun Map<String, String>.headlessBackendOverride(): HeadlessBackendConfigOverride? {
@@ -280,9 +280,9 @@ private fun Map<String, String>.headlessBackendOverride(): HeadlessBackendConfig
     return takeIfAny(enabled, runtimeLibsDir, ideaHome) { HeadlessBackendConfigOverride(enabled, runtimeLibsDir, ideaHome) }
 }
 
-private fun Map<String, String>.intellijBackendOverride(): IntellijBackendConfigOverride? {
-    val enabled = booleanValue("backends.intellij.enabled")?.let(::IntellijBackendEnabled)
-    return takeIfAny(enabled) { IntellijBackendConfigOverride(enabled) }
+private fun Map<String, String>.ideaBackendOverride(): IdeaBackendConfigOverride? {
+    val enabled = booleanValue("backends.idea.enabled")?.let(::IdeaBackendEnabled)
+    return takeIfAny(enabled) { IdeaBackendConfigOverride(enabled) }
 }
 
 private fun Map<String, String>.pathsOverride(): PathsConfigOverride? {
@@ -375,7 +375,7 @@ data class ProfilingConfig(
 
 data class BackendsConfig(
     val headless: HeadlessBackendConfig,
-    val intellij: IntellijBackendConfig,
+    val idea: IdeaBackendConfig,
 )
 
 data class HeadlessBackendConfig(
@@ -384,8 +384,8 @@ data class HeadlessBackendConfig(
     val ideaHome: HeadlessIdeaHome,
 )
 
-data class IntellijBackendConfig(
-    val enabled: IntellijBackendEnabled,
+data class IdeaBackendConfig(
+    val enabled: IdeaBackendEnabled,
 )
 
 data class PathsConfig(
@@ -468,7 +468,7 @@ data class ProfilingConfigOverride(
 
 data class BackendsConfigOverride(
     val headless: HeadlessBackendConfigOverride? = null,
-    val intellij: IntellijBackendConfigOverride? = null,
+    val idea: IdeaBackendConfigOverride? = null,
 )
 
 data class HeadlessBackendConfigOverride(
@@ -477,8 +477,8 @@ data class HeadlessBackendConfigOverride(
     val ideaHome: HeadlessIdeaHome? = null,
 )
 
-data class IntellijBackendConfigOverride(
-    val enabled: IntellijBackendEnabled? = null,
+data class IdeaBackendConfigOverride(
+    val enabled: IdeaBackendEnabled? = null,
 )
 
 data class PathsConfigOverride(
@@ -567,7 +567,7 @@ private fun BackendsConfig.merge(
     paths: PathsConfig,
 ): BackendsConfig = copy(
     headless = headless.merge(override?.headless, paths),
-    intellij = intellij.merge(override?.intellij),
+    idea = idea.merge(override?.idea),
 )
 
 private fun HeadlessBackendConfig.merge(
@@ -579,7 +579,7 @@ private fun HeadlessBackendConfig.merge(
     ideaHome = override?.ideaHome ?: ideaHome,
 )
 
-private fun IntellijBackendConfig.merge(override: IntellijBackendConfigOverride?): IntellijBackendConfig = copy(
+private fun IdeaBackendConfig.merge(override: IdeaBackendConfigOverride?): IdeaBackendConfig = copy(
     enabled = override?.enabled ?: enabled,
 )
 

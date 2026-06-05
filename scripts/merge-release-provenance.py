@@ -11,7 +11,7 @@ REQUIRED_PLATFORMS = {
     "cli-macos-arm64",
     "cli-macos-x64",
     "headless",
-    "intellij",
+    "idea",
 }
 OPTIONAL_PLATFORMS = {
     "devin-headless-linux-x64",

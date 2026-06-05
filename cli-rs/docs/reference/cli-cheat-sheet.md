@@ -71,8 +71,8 @@ installation state recorded in `config.toml`.
 | `kast install` | Initialize a portable archive install and record install state in `config.toml`. |
 | `kast install skill` | Install the packaged Kast skill into a target directory. |
 | `kast install copilot-extension` | Install packaged Copilot agents, hooks, and extensions. |
-| `kast install intellij-plugin` | Download the Homebrew `kast-plugin` cask ZIP to `~/Downloads`. |
-| `kast install intellij-plugin --link-jetbrains-profiles` | Install or reinstall the Homebrew `kast-plugin` cask and link it into local JetBrains IDE profiles. |
+| `kast install idea-plugin` | Download the Homebrew `kast-plugin` cask ZIP to `~/Downloads`. |
+| `kast install idea-plugin --link-jetbrains-profiles` | Install or reinstall the Homebrew `kast-plugin` cask and link it into local JetBrains IDE profiles. |
 | `kast info` | Print the recorded global install state. |
 | `kast doctor` | Verify the global install is still healthy. |
 | `kast uninstall copilot-extension` | Remove managed Copilot resources. |

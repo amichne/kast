@@ -34,10 +34,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      - name: Cache IntelliJ distribution
+      - name: Cache IDEA distribution
         uses: actions/cache@v5
         with:
-          path: ~/.gradle/kast/intellij-distributions
+          path: ~/.gradle/kast/idea-distributions
           key: idea-dist-${{ hashFiles('gradle/libs.versions.toml') }}
 
       - name: Build headless backend runtime libs

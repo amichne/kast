@@ -13,7 +13,7 @@ back, with proof the search finished.
 The walkthrough uses the headless backend because it works anywhere:
 your terminal, a CI runner, an agent loop. If IDEA or Android Studio is already
 open on the project with the plugin installed, swap `--backend-name=headless`
-for `--backend-name=intellij` and skip the start/stop steps. The plugin
+for `--backend-name=idea` and skip the start/stop steps. The plugin
 reuses the IDE's analysis session — no second daemon to babysit.
 
 ## Before you begin

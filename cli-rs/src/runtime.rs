@@ -162,11 +162,11 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
         });
     }
 
-    if backend_name == BackendName::Intellij {
+    if backend_name == BackendName::Idea {
         return Err(CliError::new(
-            "INTELLIJ_NOT_RUNNING",
+            "IDEA_NOT_RUNNING",
             format!(
-                "No IntelliJ backend is available for {}. Open the project in IntelliJ IDEA with the Kast plugin installed.",
+                "No IDEA backend is available for {}. Open the project in IDEA with the Kast plugin installed.",
                 workspace_root.display()
             ),
         ));
@@ -229,7 +229,7 @@ pub fn workspace_stop(args: RuntimeArgs) -> Result<DaemonStopResult> {
     };
 
     let mut forced = false;
-    if candidate.descriptor.backend_name != "intellij" && candidate.pid_alive {
+    if candidate.descriptor.backend_name != "idea" && candidate.pid_alive {
         terminate_process(candidate.descriptor.pid, false);
         for _ in 0..20 {
             if !is_process_alive(candidate.descriptor.pid) {
@@ -469,8 +469,8 @@ fn select_servable(
         .cloned()
         .collect();
     matches.sort_by(|a, b| {
-        (b.descriptor.backend_name == "intellij")
-            .cmp(&(a.descriptor.backend_name == "intellij"))
+        (b.descriptor.backend_name == "idea")
+            .cmp(&(a.descriptor.backend_name == "idea"))
             .then_with(|| {
                 (b.descriptor.backend_name == "headless")
                     .cmp(&(a.descriptor.backend_name == "headless"))
@@ -496,8 +496,8 @@ fn select_status_candidate(
         b.ready
             .cmp(&a.ready)
             .then_with(|| {
-                (b.descriptor.backend_name == "intellij")
-                    .cmp(&(a.descriptor.backend_name == "intellij"))
+                (b.descriptor.backend_name == "idea")
+                    .cmp(&(a.descriptor.backend_name == "idea"))
             })
             .then_with(|| {
                 (b.descriptor.backend_name == "headless")
@@ -687,13 +687,13 @@ mod tests {
     }
 
     #[test]
-    fn servable_selection_prefers_intellij() {
+    fn servable_selection_prefers_idea() {
         let candidates = vec![
             candidate("headless", RuntimeState::Ready, false),
-            candidate("intellij", RuntimeState::Ready, false),
+            candidate("idea", RuntimeState::Ready, false),
         ];
         let selected = select_servable(&candidates, None, false).unwrap();
-        assert_eq!(selected.descriptor.backend_name, "intellij");
+        assert_eq!(selected.descriptor.backend_name, "idea");
     }
 
     #[test]

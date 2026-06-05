@@ -44,14 +44,14 @@ class RuntimeClasspathAssertionsTest {
         val forbiddenEntries = RuntimeClasspathAssertions.entriesMatchingAnyPrefix(
             classpathEntries = listOf(
                 "backend-headless-1.0-launcher.jar",
-                "backend-intellij-1.0-base.jar",
+                "backend-idea-1.0-base.jar",
                 "analysis-server-1.0.jar",
                 "platform-loader.jar",
             ),
-            jarPrefixes = listOf("analysis-server-", "backend-intellij-"),
+            jarPrefixes = listOf("analysis-server-", "backend-idea-"),
         )
 
-        assertEquals(listOf("backend-intellij-1.0-base.jar", "analysis-server-1.0.jar"), forbiddenEntries)
+        assertEquals(listOf("backend-idea-1.0-base.jar", "analysis-server-1.0.jar"), forbiddenEntries)
     }
 
     @Test
@@ -59,13 +59,13 @@ class RuntimeClasspathAssertionsTest {
         val missingPrefixes = RuntimeClasspathAssertions.missingJarPrefixes(
             classpathEntries = listOf(
                 "analysis-api-1.0.jar",
-                "backend-intellij-1.0-base.jar",
+                "backend-idea-1.0-base.jar",
                 "kotlinx-coroutines-core-jvm-1.10.2.jar",
             ),
             requiredJarPrefixes = listOf(
                 "analysis-api-",
                 "analysis-server-",
-                "backend-intellij-",
+                "backend-idea-",
                 "kotlinx-coroutines-core",
             ),
         )
@@ -80,7 +80,7 @@ class RuntimeClasspathAssertionsTest {
             "META-INF/plugin.xml",
         )
         writeJar(
-            runtimeLibs.resolve("backend-intellij-1.0-base.jar"),
+            runtimeLibs.resolve("backend-idea-1.0-base.jar"),
             "META-INF/plugin.xml",
         )
         writeJar(
@@ -92,14 +92,14 @@ class RuntimeClasspathAssertionsTest {
             runtimeLibsDirectory = runtimeLibs,
             classpathEntries = listOf(
                 "backend-headless-1.0-plugin-descriptor.jar",
-                "backend-intellij-1.0-base.jar",
+                "backend-idea-1.0-base.jar",
                 "analysis-api-1.0.jar",
             ),
             jarEntry = "META-INF/plugin.xml",
         )
 
         assertEquals(
-            listOf("backend-headless-1.0-plugin-descriptor.jar", "backend-intellij-1.0-base.jar"),
+            listOf("backend-headless-1.0-plugin-descriptor.jar", "backend-idea-1.0-base.jar"),
             entries,
         )
     }

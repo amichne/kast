@@ -255,7 +255,7 @@ pub struct RuntimeArgs {
     /// Pin the command to a specific backend.
     #[arg(long = "backend", visible_alias = "backend-name", value_enum)]
     pub backend_name: Option<BackendName>,
-    /// IntelliJ IDEA Community installation home for the headless backend.
+    /// IDEA Community installation home for the headless backend.
     #[arg(long)]
     pub idea_home: Option<PathBuf>,
     /// Maximum time to wait for a ready daemon when a command needs one.
@@ -313,7 +313,7 @@ pub struct DaemonStartArgs {
     /// Override the directory containing backend runtime classpath.txt.
     #[arg(long)]
     pub runtime_libs_dir: Option<PathBuf>,
-    /// IntelliJ IDEA Community installation home for the headless backend.
+    /// IDEA Community installation home for the headless backend.
     #[arg(long)]
     pub idea_home: Option<PathBuf>,
     /// Unix-domain socket path for the backend to listen on.
@@ -401,20 +401,20 @@ pub enum InstallCommand {
     Skill(ResourceInstallArgs),
     /// Install the packaged Copilot agents and extensions.
     CopilotExtension(ResourceInstallArgs),
-    /// Download the Homebrew-managed IntelliJ plugin cask.
+    /// Download the Homebrew-managed IDEA plugin cask.
     #[command(alias = "developer-plugin")]
-    IntellijPlugin(IntellijPluginInstallArgs),
+    IdeaPlugin(IdeaPluginInstallArgs),
 }
 
 #[derive(Debug, Args, Clone)]
-pub struct IntellijPluginInstallArgs {
+pub struct IdeaPluginInstallArgs {
     /// JetBrains config root containing IDE profile directories when linking profiles.
     #[arg(long)]
     pub jetbrains_config_root: Option<PathBuf>,
     /// Link the Homebrew cask into local JetBrains IDE profiles instead of downloading the zip.
     #[arg(long)]
     pub link_jetbrains_profiles: bool,
-    /// Directory for the downloaded IntelliJ plugin zip. Defaults to ~/Downloads.
+    /// Directory for the downloaded IDEA plugin zip. Defaults to ~/Downloads.
     #[arg(long)]
     pub download_dir: Option<PathBuf>,
     /// Override the cask token. Defaults to <kast formula tap>/kast-plugin.
@@ -456,14 +456,14 @@ pub enum UninstallCommand {
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum BackendName {
-    Intellij,
+    Idea,
     Headless,
 }
 
 impl BackendName {
     pub fn canonical(self) -> &'static str {
         match self {
-            Self::Intellij => "intellij",
+            Self::Idea => "idea",
             Self::Headless => "headless",
         }
     }

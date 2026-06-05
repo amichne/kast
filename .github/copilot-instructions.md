@@ -22,8 +22,8 @@
 | Run a single test class                                  | `./gradlew :analysis-server:test --tests io.github.amichne.kast.server.AnalysisServerSocketTest --offline` |
 | Run a single build-logic test                            | `./gradlew -p build-logic test --tests DefaultTestTagSelectionTest --offline`                              |
 | Validate `.github/` Copilot extension changes            | `./.github/scripts/test-release-workflow-contract.sh && ./.github/scripts/test-docs-content-contract.sh`   |
-| Build the IntelliJ plugin zip                            | `./gradlew buildIntellijPlugin --offline`                                                                  |
-| Verify plugin compatibility                              | `./gradlew :backend-intellij:verifyPlugin --offline`                                                       |
+| Build the IDEA plugin zip                            | `./gradlew buildIdeaPlugin --offline`                                                                  |
+| Verify plugin compatibility                              | `./gradlew :backend-idea:verifyPlugin --offline`                                                       |
 | Build shipped artifacts via the repo wrapper             | `./kast.sh build`                                                                                          |
 | Regenerate API reference pages                           | `./gradlew :analysis-api:generateDocPages --offline`                                                       |
 | Build the docs site                                      | `pip install -r requirements-docs.txt && zensical build --clean`                                           |
@@ -45,8 +45,8 @@ Default test runs exclude the `concurrency`, `performance`, and `parity` tags un
   command parsing, daemon lifecycle, installer flows, and packaged skill
   resources.
 - `backend-headless` is the headless runtime for terminal, CI, and agent use.
-  It launches Kast inside a packaged IntelliJ runtime for environments without an already-open IDE.
-- `backend-intellij` is the IDE-hosted runtime. `KastPluginService` starts a local server inside IntelliJ or Android
+  It launches Kast inside a packaged IDEA runtime for environments without an already-open IDE.
+- `backend-idea` is the IDE-hosted runtime. `KastPluginService` starts a local server inside IDEA or Android
   Studio, reuses the IDE project model, and coordinates indexing against the shared SQLite store.
 - `index-store` owns the SQLite-backed source index and workspace cache.
   `SqliteSourceIndexStore` persists declarations, references, manifest state, generations, and workspace-discovery
@@ -55,7 +55,7 @@ Default test runs exclude the `concurrency`, `performance`, and `parity` tags un
   fixtures.
   `build-logic` owns the shared Gradle conventions and wrapper/runtime-lib packaging tasks.
 
-Operationally, the CLI and both backends speak the same JSON-RPC contract. The CLI prefers a servable IntelliJ backend
+Operationally, the CLI and both backends speak the same JSON-RPC contract. The CLI prefers a servable IDEA backend
 for the workspace, otherwise it starts the headless backend. `kast rpc` auto-ensures the selected daemon for machine
 requests, while `kast up`, `kast status`, and `kast stop` are the human lifecycle commands.
 
@@ -78,7 +78,7 @@ requests, while `kast up`, `kast status`, and `kast stop` are the human lifecycl
 - Source `.github/hooks/skill-shadowing.json` intentionally keeps repo-local entries, while the packaged Copilot bundle
   filters it down to portable entries backed by `shadowingExtensionId`.
 - Use `kast` terminology in commands, docs, and packaging targets.
-- CI runs on both ubuntu and macOS. IntelliJ path filtering should use
+- CI runs on both ubuntu and macOS. IDEA path filtering should use
   `GlobalSearchScope.projectScope(project)` instead of `project.basePath`
   string comparisons.
 - Keep ephemeral benchmark and evaluation workspaces under `.benchmarks/`

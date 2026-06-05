@@ -106,7 +106,7 @@ require_contains "${repo_root}/analysis-api/build.gradle.kts" 'artifactId.set("k
 require_contains "${repo_root}/analysis-server/build.gradle.kts" 'artifactId.set("kast-analysis-server")' "analysis-server must publish the public Maven artifact"
 require_contains "${repo_root}/index-store/build.gradle.kts" 'artifactId.set("kast-index-store")' "index-store must publish the public Maven artifact"
 require_not_contains "${repo_root}/backend-headless/build.gradle.kts" "kastPublishing" "Headless backend must remain release-asset-only"
-require_not_contains "${repo_root}/backend-intellij/build.gradle.kts" "kastPublishing" "IntelliJ plugin must remain release-asset-only"
+require_not_contains "${repo_root}/backend-idea/build.gradle.kts" "kastPublishing" "IDEA plugin must remain release-asset-only"
 
 require_contains "$ci_workflow" "Maven publication metadata" "CI must validate Maven publication metadata"
 require_contains "$ci_workflow" "Rust CLI" "CI must validate the in-repo Rust CLI"
@@ -119,7 +119,7 @@ require_contains "$ci_workflow" "Smoke Devin headless runtime contract" "CI must
 require_contains "$ci_workflow" "-PkastHeadlessIdeaHomeProfile=agent" "CI must build the agent headless IDEA-home profile"
 require_contains "$ci_workflow" "Assert headless distribution excludes fat jar" "CI must guard the headless no-fat-jar layout"
 require_not_contains "$ci_workflow" "headless-dist-cache" "CI must not use a custom Actions cache for generated headless distributions"
-require_not_contains "$ci_workflow" "intellij-plugin-dist-cache" "CI must not use a custom Actions cache for generated IDEA plugin distributions"
+require_not_contains "$ci_workflow" "idea-plugin-dist-cache" "CI must not use a custom Actions cache for generated IDEA plugin distributions"
 
 require_contains "$snapshot_workflow" "Publish Snapshot" "Snapshot workflow must exist"
 require_contains "$snapshot_workflow" "publishAllPublicationsToGitHubPackagesRepository" "Snapshot workflow must publish GitHub Packages snapshots"
