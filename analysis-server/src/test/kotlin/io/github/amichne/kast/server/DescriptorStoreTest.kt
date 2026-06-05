@@ -18,7 +18,7 @@ class DescriptorStoreTest {
     fun `writes and deletes descriptor via registry`() {
         val descriptor = ServerInstanceDescriptor(
             workspaceRoot = "/tmp/workspace",
-            backendName = "standalone",
+            backendName = "headless",
             backendVersion = "0.1.0",
             socketPath = "/tmp/workspace/.kast/s",
         )

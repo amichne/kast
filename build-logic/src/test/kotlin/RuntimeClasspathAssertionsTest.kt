@@ -11,13 +11,13 @@ class RuntimeClasspathAssertionsTest {
     fun `required class entry is satisfied by a jar on the runtime classpath`(@TempDir runtimeLibs: Path) {
         writeJar(
             runtimeLibs.resolve("analysis-api.jar"),
-            "io/github/amichne/kast/api/client/StandaloneServerOptions.class",
+            "io/github/amichne/kast/api/client/ServerLaunchOptions.class",
         )
 
         val missing = RuntimeClasspathAssertions.missingRequiredClassEntries(
             runtimeLibsDirectory = runtimeLibs,
             classpathEntries = listOf("analysis-api.jar"),
-            requiredClassEntries = listOf("io/github/amichne/kast/api/client/StandaloneServerOptions.class"),
+            requiredClassEntries = listOf("io/github/amichne/kast/api/client/ServerLaunchOptions.class"),
         )
 
         assertEquals(emptyList<String>(), missing)
@@ -26,17 +26,17 @@ class RuntimeClasspathAssertionsTest {
     @Test
     fun `required class entry is reported when no runtime jar contains it`(@TempDir runtimeLibs: Path) {
         writeJar(
-            runtimeLibs.resolve("backend-standalone.jar"),
-            "io/github/amichne/kast/standalone/StandaloneMainKt.class",
+            runtimeLibs.resolve("backend-headless.jar"),
+            "io/github/amichne/kast/headless/HeadlessMainKt.class",
         )
 
         val missing = RuntimeClasspathAssertions.missingRequiredClassEntries(
             runtimeLibsDirectory = runtimeLibs,
-            classpathEntries = listOf("backend-standalone.jar"),
-            requiredClassEntries = listOf("io/github/amichne/kast/api/client/StandaloneServerOptions.class"),
+            classpathEntries = listOf("backend-headless.jar"),
+            requiredClassEntries = listOf("io/github/amichne/kast/api/client/ServerLaunchOptions.class"),
         )
 
-        assertEquals(listOf("io/github/amichne/kast/api/client/StandaloneServerOptions.class"), missing)
+        assertEquals(listOf("io/github/amichne/kast/api/client/ServerLaunchOptions.class"), missing)
     }
 
     @Test
@@ -85,7 +85,7 @@ class RuntimeClasspathAssertionsTest {
         )
         writeJar(
             runtimeLibs.resolve("analysis-api-1.0.jar"),
-            "io/github/amichne/kast/api/client/StandaloneServerOptions.class",
+            "io/github/amichne/kast/api/client/ServerLaunchOptions.class",
         )
 
         val entries = RuntimeClasspathAssertions.entriesContainingJarEntry(

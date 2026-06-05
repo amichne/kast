@@ -52,14 +52,7 @@ pub struct PathsConfig {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct BackendsConfig {
-    pub standalone: StandaloneBackendConfig,
     pub headless: HeadlessBackendConfig,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct StandaloneBackendConfig {
-    pub runtime_libs_dir: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -113,14 +106,7 @@ struct PartialPaths {
 
 #[derive(Debug, Default, Deserialize)]
 struct PartialBackends {
-    standalone: Option<PartialStandalone>,
     headless: Option<PartialHeadless>,
-}
-
-#[derive(Debug, Default, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct PartialStandalone {
-    runtime_libs_dir: Option<Option<PathBuf>>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -162,9 +148,6 @@ impl KastConfig {
                 socket_dir,
             },
             backends: BackendsConfig {
-                standalone: StandaloneBackendConfig {
-                    runtime_libs_dir: Some(lib_dir.join("backends/current/runtime-libs")),
-                },
                 headless: HeadlessBackendConfig {
                     runtime_libs_dir: Some(lib_dir.join("backends/headless/current/runtime-libs")),
                     idea_home: None,
@@ -204,8 +187,6 @@ impl KastConfig {
                 self.paths.logs_dir = self.paths.install_root.join("logs");
                 self.paths.descriptor_dir = self.paths.cache_dir.join("daemons");
                 self.cli.binary_path = self.paths.bin_dir.join("kast");
-                self.backends.standalone.runtime_libs_dir =
-                    Some(self.paths.lib_dir.join("backends/current/runtime-libs"));
                 self.backends.headless.runtime_libs_dir = Some(
                     self.paths
                         .lib_dir
@@ -218,8 +199,6 @@ impl KastConfig {
             }
             if let Some(value) = paths.lib_dir {
                 self.paths.lib_dir = normalize(value);
-                self.backends.standalone.runtime_libs_dir =
-                    Some(self.paths.lib_dir.join("backends/current/runtime-libs"));
                 self.backends.headless.runtime_libs_dir = Some(
                     self.paths
                         .lib_dir
@@ -256,19 +235,14 @@ impl KastConfig {
         {
             self.runtime.default_backend = Some(value);
         }
-        if let Some(backends) = partial.backends {
-            if let Some(standalone) = backends.standalone
-                && let Some(value) = standalone.runtime_libs_dir
-            {
-                self.backends.standalone.runtime_libs_dir = value.map(normalize);
+        if let Some(backends) = partial.backends
+            && let Some(headless) = backends.headless
+        {
+            if let Some(value) = headless.runtime_libs_dir {
+                self.backends.headless.runtime_libs_dir = value.map(normalize);
             }
-            if let Some(headless) = backends.headless {
-                if let Some(value) = headless.runtime_libs_dir {
-                    self.backends.headless.runtime_libs_dir = value.map(normalize);
-                }
-                if let Some(value) = headless.idea_home {
-                    self.backends.headless.idea_home = value.map(normalize);
-                }
+            if let Some(value) = headless.idea_home {
+                self.backends.headless.idea_home = value.map(normalize);
             }
         }
         if let Some(cli) = partial.cli
@@ -300,7 +274,7 @@ pub fn resolve_runtime_backend(
 ) -> BackendName {
     backend_name
         .or(config.runtime.default_backend)
-        .unwrap_or(BackendName::Standalone)
+        .unwrap_or(BackendName::Headless)
 }
 
 pub fn backend_runtime_libs_dir(
@@ -309,26 +283,23 @@ pub fn backend_runtime_libs_dir(
     override_dir: Option<PathBuf>,
 ) -> Result<PathBuf> {
     let configured = match backend_name {
-        BackendName::Intellij | BackendName::Standalone => {
-            config.backends.standalone.runtime_libs_dir.clone()
-        }
         BackendName::Headless => config.backends.headless.runtime_libs_dir.clone(),
+        BackendName::Intellij => {
+            return Err(CliError::new(
+                "DAEMON_START_ERROR",
+                "The intellij backend is hosted by IntelliJ IDEA and cannot be launched by kast daemon start.",
+            ));
+        }
     };
     override_dir.map(normalize).or(configured).ok_or_else(|| {
-        let config_key = match backend_name {
-            BackendName::Intellij | BackendName::Standalone => "backends.standalone.runtimeLibsDir",
-            BackendName::Headless => "backends.headless.runtimeLibsDir",
-        };
         CliError::new(
             "DAEMON_START_ERROR",
-            format!(
-                "Cannot locate backend runtime-libs. Set {config_key} in `kast config init` output, or pass --runtime-libs-dir.",
-            ),
+            "Cannot locate backend runtime-libs. Set backends.headless.runtimeLibsDir in `kast config init` output, or pass --runtime-libs-dir.",
         )
     })
 }
 
-pub fn standalone_args(args: &DaemonStartArgs, config: &KastConfig) -> Result<Vec<String>> {
+pub fn server_launch_args(args: &DaemonStartArgs, config: &KastConfig) -> Result<Vec<String>> {
     let workspace_root = normalize(args.workspace_root.clone().unwrap_or(env::current_dir()?));
     let socket_path = args
         .socket_path
@@ -591,22 +562,22 @@ defaultBackend = "sidecar"
     }
 
     #[test]
-    fn runtime_backend_resolution_prefers_cli_then_config_then_standalone() {
+    fn runtime_backend_resolution_prefers_cli_then_config_then_headless() {
         let mut config = KastConfig::defaults();
 
         assert_eq!(
             resolve_runtime_backend(&config, None),
-            BackendName::Standalone
-        );
-
-        config.runtime.default_backend = Some(BackendName::Headless);
-        assert_eq!(
-            resolve_runtime_backend(&config, None),
             BackendName::Headless
         );
+
+        config.runtime.default_backend = Some(BackendName::Intellij);
         assert_eq!(
-            resolve_runtime_backend(&config, Some(BackendName::Standalone)),
-            BackendName::Standalone
+            resolve_runtime_backend(&config, None),
+            BackendName::Intellij
+        );
+        assert_eq!(
+            resolve_runtime_backend(&config, Some(BackendName::Headless)),
+            BackendName::Headless
         );
     }
 }

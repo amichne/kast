@@ -1,5 +1,5 @@
 name: Offline Bundles
-run-name: Offline bundles ${{ inputs.version }} (${{ inputs.bundle }})
+run-name: Offline bundles ${{ inputs.version }}
 
 on:
   workflow_dispatch:
@@ -8,15 +8,6 @@ on:
         description: "Release tag to package, for example v1.2.3"
         required: true
         type: string
-      bundle:
-        description: "Offline bundle variant to build"
-        required: true
-        default: both
-        type: choice
-        options:
-          - both
-          - standalone
-          - headless
       publish_to_release:
         description: "Append the offline bundle assets to the existing release"
         required: true
@@ -60,56 +51,7 @@ jobs:
           gh release download "$tag" --dir release-assets --pattern 'build-provenance.json'
           ./scripts/verify-release-assets.sh --release-dir release-assets --tag "$tag"
 
-      - name: Package standalone offline bundle
-        if: ${{ inputs.bundle == 'both' || inputs.bundle == 'standalone' }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          tag="${{ inputs.version }}"
-          cli_asset="release-assets/kast-${tag}-linux-x64.zip"
-          backend_asset="release-assets/kast-standalone-${tag}.zip"
-          bundle_asset="dist/kast-ubuntu-debian-x86_64-${tag}.tar.gz"
-          ./scripts/package-ubuntu-debian-bundle.sh \
-            --cli-archive "$cli_asset" \
-            --backend-archive "$backend_asset" \
-            --version "$tag" \
-            --output "$bundle_asset"
-          mkdir -p dist/provenance
-          python3 - "$bundle_asset" "dist/provenance/build-provenance-ubuntu-debian.json" <<'PY'
-          import hashlib, json, os, sys
-          from pathlib import Path
-          asset = Path(sys.argv[1])
-          payload = {
-              "runId": os.environ["GITHUB_RUN_ID"],
-              "runNumber": os.environ["GITHUB_RUN_NUMBER"],
-              "runAttempt": os.environ["GITHUB_RUN_ATTEMPT"],
-              "sha": os.environ["GITHUB_SHA"],
-              "ref": os.environ["GITHUB_REF"],
-              "workflowRef": os.environ["GITHUB_WORKFLOW_REF"],
-              "actor": os.environ["GITHUB_ACTOR"],
-              "platformId": "ubuntu-debian-x86_64",
-              "assetName": asset.name,
-              "assetDigest": "sha256:" + hashlib.sha256(asset.read_bytes()).hexdigest(),
-          }
-          Path(sys.argv[2]).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-          PY
-
-      - name: Validate standalone offline bundle
-        if: ${{ inputs.bundle == 'both' || inputs.bundle == 'standalone' }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          tag="${{ inputs.version }}"
-          for container_image in ubuntu:22.04 ubuntu:24.04; do
-            KAST_UBUNTU_DEBIAN_VERSION="$tag" \
-            KAST_UBUNTU_DEBIAN_CONTAINER_IMAGE="$container_image" \
-            KAST_UBUNTU_DEBIAN_JAVA_VERSION=21 \
-            BUNDLE_PATH="dist/kast-ubuntu-debian-x86_64-${tag}.tar.gz" \
-            ./scripts/validate-ubuntu-debian-bundle-in-docker.sh
-          done
-
-      - name: Package headless offline bundle
-        if: ${{ inputs.bundle == 'both' || inputs.bundle == 'headless' }}
+      - name: Package Ubuntu/Debian offline bundle
         shell: bash
         run: |
           set -euo pipefail
@@ -117,7 +59,7 @@ jobs:
           cli_asset="release-assets/kast-${tag}-linux-x64.zip"
           backend_asset="release-assets/kast-headless-${tag}.zip"
           bundle_asset="dist/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
-          ./scripts/package-ubuntu-debian-headless-bundle.sh \
+          ./scripts/package-ubuntu-debian-bundle.sh \
             --cli-archive "$cli_asset" \
             --backend-archive "$backend_asset" \
             --version "$tag" \
@@ -142,8 +84,7 @@ jobs:
           Path(sys.argv[2]).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
           PY
 
-      - name: Validate headless offline bundle
-        if: ${{ inputs.bundle == 'both' || inputs.bundle == 'headless' }}
+      - name: Validate Ubuntu/Debian offline bundle
         shell: bash
         run: |
           set -euo pipefail
@@ -153,14 +94,14 @@ jobs:
             KAST_UBUNTU_DEBIAN_CONTAINER_IMAGE="$container_image" \
             KAST_UBUNTU_DEBIAN_JAVA_VERSION=21 \
             BUNDLE_PATH="dist/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz" \
-            ./scripts/validate-ubuntu-debian-headless-bundle-in-docker.sh
+            ./scripts/validate-ubuntu-debian-bundle-in-docker.sh
           done
 
       - name: Upload offline bundle artifacts
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: offline-bundles-${{ inputs.version }}-${{ inputs.bundle }}-${{ github.run_id }}
+          name: offline-bundles-${{ inputs.version }}-${{ github.run_id }}
           path: dist/
           if-no-files-found: warn
 

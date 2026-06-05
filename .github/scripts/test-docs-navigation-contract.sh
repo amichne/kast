@@ -71,7 +71,6 @@ required_group_order = [
     "Reference",
     "Troubleshooting",
     "Architecture",
-    "Changelog",
 ]
 actual_group_order = [group["group"] for group in expected]
 if actual_group_order != required_group_order:

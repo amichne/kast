@@ -36,14 +36,14 @@ Use Homebrew for ordinary terminal use when your platform is supported.
 
 Install one backend component after the CLI is on `PATH`.
 
-```console title="Install the standalone backend"
-kast backend install standalone
+```console title="Install the headless backend"
+kast backend install headless
 ```
 
-Use the standalone backend for terminal work, local automation, and CI jobs that
+Use the headless backend for terminal work, local automation, and CI jobs that
 do not need an IDE-hosted project model. Start it with:
 
-```console title="Warm the standalone backend"
+```console title="Warm the headless backend"
 kast up --workspace-root="$PWD"
 ```
 
@@ -65,9 +65,8 @@ air-gapped host should install Kast without Homebrew, Rust, Gradle, or network
 access to individual release assets. This is the offline bundle path; the normal
 interactive path is CLI first, then `kast backend install`.
 
-The release asset is `kast-ubuntu-debian-x86_64-<version>.tar.gz` with a
-matching `.sha256` sidecar. The headless variant is
-`kast-ubuntu-debian-headless-x86_64-<version>.tar.gz`. Each bundle contains the
+The release asset is `kast-ubuntu-debian-headless-x86_64-<version>.tar.gz`
+with a matching `.sha256` sidecar. Each bundle contains the
 Rust CLI, one backend portable runtime, `scripts/install-ubuntu-debian.sh`,
 bundle metadata, and the license notice.
 
@@ -88,7 +87,7 @@ local tarball:
 
 ```bash title="Install from a mirrored Ubuntu/Debian bundle"
 export KAST_UBUNTU_DEBIAN_VERSION="v1.2.3"
-export KAST_UBUNTU_DEBIAN_ARTIFACT_PATH="/artifacts/kast-ubuntu-debian-x86_64-v1.2.3.tar.gz"
+export KAST_UBUNTU_DEBIAN_ARTIFACT_PATH="/artifacts/kast-ubuntu-debian-headless-x86_64-v1.2.3.tar.gz"
 ./scripts/install-ubuntu-debian.sh install
 ./scripts/install-ubuntu-debian.sh verify
 ```
@@ -113,13 +112,13 @@ from local CLI and backend artifacts:
   --cli-archive dist/kast-v1.2.3-linux-x64.zip \
   --backend-archive dist/headless.zip \
   --version v1.2.3 \
-  --output dist/kast-ubuntu-debian-x86_64-v1.2.3.tar.gz
+  --output dist/kast-ubuntu-debian-headless-x86_64-v1.2.3.tar.gz
 ```
 
 ## Verify release assets
 
-Published releases from `amichne/kast` include CLI zips, the standalone backend
-zip, headless backend zip, IDEA plugin zip, `SHA256SUMS`, and
+Published releases from `amichne/kast` include CLI zips, the headless backend
+zip, IDEA plugin zip, `SHA256SUMS`, and
 `build-provenance.json`. Ubuntu/Debian tarballs are optional offline bundles
 with matching `.sha256` sidecars; they may appear after the core release when
 the manual offline-bundle workflow appends them. Mirror or promote the release
@@ -258,7 +257,7 @@ Download the plugin zip and install it from disk:
 3. Restart the IDE when prompted.
 
 !!! note
-    The IDEA / Android Studio plugin doesn't need the standalone CLI. It reuses the
+    The IDEA / Android Studio plugin doesn't need the headless CLI. It reuses the
     IDE's K2 analysis session, project model, and indexes. Install the
     CLI separately if you also want a terminal entry point.
 
@@ -292,4 +291,4 @@ You should see the grouped help page. If not, the binary isn't on your
 ## Next steps
 
 - [Quickstart](quickstart.md) — start a backend, run your first query
-- [Backends](backends.md) — standalone, headless, and IDEA, when each one wins
+- [Backends](backends.md) — headless and IDEA, when each one wins

@@ -5,41 +5,60 @@ plugins {
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
 private val intellijIdeaVersion = catalog.findVersion("intellij-idea").get().requiredVersion
 
-// Re-use the IntelliJ distribution already extracted by :backend-standalone.
-// This is a Gradle-user-home cache shared across builds.
-private val intellijDistRoot = gradle.gradleUserHomeDir.resolve("kast/intellij-distributions/$intellijIdeaVersion")
+val ideaDistribution: Configuration by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
+
+private val extractedIdeaDistributionDirectory = objects.directoryProperty().apply {
+    set(file(gradle.gradleUserHomeDir.resolve("kast/shared-intellij-distributions/$intellijIdeaVersion")))
+}
+
+val extractIdeaDistribution: TaskProvider<ExtractIdeaDistributionTask> by tasks.registering(ExtractIdeaDistributionTask::class) {
+    archives.from(ideaDistribution)
+    ideaVersion.set(intellijIdeaVersion)
+    outputDirectory.set(extractedIdeaDistributionDirectory)
+}
+
+private fun extractedIdeaFiles(
+    configure: ConfigurableFileTree.() -> Unit,
+) = files(
+    extractedIdeaDistributionDirectory.map { directory ->
+        fileTree(directory) {
+            configure()
+        }
+    },
+).builtBy(extractIdeaDistribution)
+
+val ideaLibs: ConfigurableFileCollection = extractedIdeaFiles {
+    include("**/lib/**/*.jar")
+    exclude("**/plugins/**")
+    exclude("**/testFramework.jar")
+    exclude("**/testFramework-k1.jar")
+}
+
+val kotlinPluginLibs: ConfigurableFileCollection = extractedIdeaFiles {
+    include("**/plugins/Kotlin/lib/**/*.jar")
+    exclude("**/plugins/Kotlin/lib/kotlinc/lib/kotlin-compiler.jar")
+}
+
+val javaPluginLibs: ConfigurableFileCollection = extractedIdeaFiles {
+    include("**/plugins/java/lib/**/*.jar")
+}
 
 dependencies {
+    ideaDistribution("com.jetbrains.intellij.idea:ideaIC:$intellijIdeaVersion@zip") {
+        isTransitive = false
+    }
+
     implementation(libs.bundles.coroutines)
     api(project(":analysis-api"))
     api(project(":index-store"))
-    // K2 Analysis API standalone bootstrap classes (compileOnly — host provides at runtime).
-    compileOnly(libs.analysis.api.standalone) {
-        isTransitive = false
-    }
-    // IntelliJ platform JARs (PsiElement, TextRange, etc.) and Kotlin plugin JARs
-    // (KtFile, KaSession, analyze, etc.) — compileOnly because each host (standalone
-    // or IntelliJ plugin) provides its own copy at runtime.
-    compileOnly(
-        fileTree(intellijDistRoot.resolve("lib")) {
-            include("*.jar")
-            exclude("testFramework*.jar")
-        },
-    )
-    compileOnly(
-        fileTree(intellijDistRoot.resolve("plugins/Kotlin/lib")) {
-            include("*.jar")
-            exclude("jps/**")
-        },
-    )
-    compileOnly(
-        fileTree(intellijDistRoot.resolve("plugins/java/lib")) {
-            include("*.jar")
-        },
-    )
+    compileOnly(ideaLibs)
+    compileOnly(kotlinPluginLibs)
+    compileOnly(javaPluginLibs)
 }
 
-// Ensure IntelliJ distribution is extracted before we compile.
 tasks.named("compileKotlin") {
-    dependsOn(":backend-standalone:extractIdeaDistribution")
+    dependsOn(extractIdeaDistribution)
 }

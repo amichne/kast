@@ -21,7 +21,7 @@ Pick your entry point:
 
     ---
 
-    A standalone JVM daemon you start from a terminal. Works in CI, in a
+    A headless JVM daemon you start from a terminal. Works in CI, in a
     container, on a server with no editor in sight.
 
     [:octicons-arrow-right-16: CLI install guide](getting-started/install.md#homebrew-install)
@@ -37,9 +37,9 @@ Pick your entry point:
 
 </div>
 
-## Three runtimes, one wire format
+## Two runtimes, one wire format
 
-The standalone daemon, packaged headless backend, and IDEA plugin speak the same JSON-RPC.
+The headless daemon and IDEA plugin speak the same JSON-RPC.
 Switch backends without changing a single script or prompt.
 [Compare backends →](getting-started/backends.md)
 
@@ -76,7 +76,7 @@ brew tap amichne/kast
 brew install kast
 
 # 2. Start a backend for this workspace (waits until indexing is READY)
-kast up --backend-name=standalone --workspace-root="$PWD"
+kast up --backend-name=headless --workspace-root="$PWD"
 
 # 3. Resolve a symbol — point at any .kt file and any byte offset on a name
 kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/resolve","params":{"position":{"filePath":"/absolute/path/to/App.kt","offset":42}}}' \

@@ -46,9 +46,7 @@ nav = [
     { "Limits and boundaries" = "architecture/behavioral-model.md" },
     { "Kast vs LSP" = "architecture/kast-vs-lsp.md" },
     { "ADT boundaries" = "architecture/adt-boundaries.md" },
-    { "SCIP ingestion audit" = "architecture/scip-ingestion-audit.md" },
   ]},
-  { "Changelog" = "changelog.md" },
 ]
 
 [project.markdown_extensions.admonition]

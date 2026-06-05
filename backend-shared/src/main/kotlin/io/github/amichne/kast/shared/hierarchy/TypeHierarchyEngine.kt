@@ -13,10 +13,10 @@ import io.github.amichne.kast.shared.analysis.resolvedFilePath
  * Backend-agnostic type hierarchy tree builder.
  *
  * Recursively expands a type graph using a [TypeEdgeResolver] for edge discovery.
- * Does not depend on any backend-specific types (no standalone session, no telemetry).
+ * Does not depend on any backend-specific types (no headless session, no telemetry).
  *
  * @param readAccess wraps PSI access between edge-resolver calls. The IntelliJ plugin
- *        backend supplies `runReadAction`; standalone can pass [ReadAccessScope.IDENTITY].
+ *        backend supplies `runReadAction`; headless can pass [ReadAccessScope.IDENTITY].
  */
 class TypeHierarchyEngine(
     private val edgeResolver: TypeEdgeResolver,

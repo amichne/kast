@@ -6,5 +6,5 @@ data class IndexingRemoteSourceIndexUrl(
     override val section: String get() = "indexing.remote"
     override val key: String get() = "sourceIndexUrl"
     override val default: ConfigurationDefault<OptionalConfigString>
-        get() = ConfigurationDefault(OptionalConfigString(defaultConfigStandaloneRuntimeLibsDir().toString()))
+        get() = ConfigurationDefault(OptionalConfigString.Unset)
 }

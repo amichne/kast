@@ -19,11 +19,11 @@ below.
    `EditPlanValidator` canonicalizes paths, groups edits, checks overlap and
    hash presence, and yields validated operations before mutation. This is a
    high-impact assertion boundary because bad plans can corrupt user code.
-3. Runtime/session bootstrapping (`backend-standalone`).
-   Standalone startup/session code uses `require`/`check` to enforce workspace
+3. Runtime/session bootstrapping (`backend-headless`).
+   Headless startup/session code uses `require`/`check` to enforce workspace
    and module assumptions. Those assumptions should be represented as explicit
    startup-state ADTs before heavy analysis work begins.
-4. Config/telemetry parsing (`backend-standalone`).
+4. Config/telemetry parsing (`backend-headless`).
    Parsing functions map raw strings into enum-like runtime scopes and details.
    These parse points are ideal for total decode ADTs that preserve unknown or
    unsupported inputs without silent drops.

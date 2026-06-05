@@ -55,9 +55,10 @@ internal fun KastSettingsState.toWorkspaceToml(defaults: KastConfig = KastConfig
         )
         add(
             tomlSection(
-                "backends.standalone",
-                "enabled" to backendsStandaloneEnabled.changedFrom(defaults.backends.standalone.enabled.value),
-                "runtimeLibsDir" to backendsStandaloneRuntimeLibsDir.changedFrom(defaults.backends.standalone.runtimeLibsDir.value.orNull),
+                "backends.headless",
+                "enabled" to backendsHeadlessEnabled.changedFrom(defaults.backends.headless.enabled.value),
+                "runtimeLibsDir" to backendsHeadlessRuntimeLibsDir.changedFrom(defaults.backends.headless.runtimeLibsDir.value.orNull),
+                "ideaHome" to backendsHeadlessIdeaHome.changedFrom(defaults.backends.headless.ideaHome.value.orNull),
             ),
         )
         add(tomlSection("backends.intellij", "enabled" to backendsIntellijEnabled.changedFrom(defaults.backends.intellij.enabled.value)))

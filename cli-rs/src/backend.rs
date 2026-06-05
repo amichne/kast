@@ -519,18 +519,12 @@ fn default_install_state() -> InstallState {
 
 fn backend_asset_name(backend: BackendComponent, version: &str) -> String {
     match backend {
-        BackendComponent::Standalone => format!("kast-standalone-{version}.zip"),
         BackendComponent::Headless => format!("kast-headless-{version}.zip"),
     }
 }
 
 fn layout(backend: BackendComponent) -> BackendLayout {
     match backend {
-        BackendComponent::Standalone => BackendLayout {
-            archive_root: "backend-standalone",
-            install_name_prefix: "standalone",
-            launcher: "kast-standalone",
-        },
         BackendComponent::Headless => BackendLayout {
             archive_root: "backend-headless",
             install_name_prefix: "headless",
@@ -542,14 +536,12 @@ fn layout(backend: BackendComponent) -> BackendLayout {
 fn install_dir(config: &KastConfig, backend: BackendComponent, version: &str) -> PathBuf {
     let name = format!("{}-{version}", layout(backend).install_name_prefix);
     match backend {
-        BackendComponent::Standalone => config.paths.lib_dir.join("backends").join(name),
         BackendComponent::Headless => config.paths.lib_dir.join("backends/headless").join(name),
     }
 }
 
 fn current_dir(config: &KastConfig, backend: BackendComponent) -> PathBuf {
     match backend {
-        BackendComponent::Standalone => config.paths.lib_dir.join("backends/current"),
         BackendComponent::Headless => config.paths.lib_dir.join("backends/headless/current"),
     }
 }

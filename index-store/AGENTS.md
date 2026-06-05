@@ -1,7 +1,7 @@
 # Index store agent guide
 
 `index-store` owns the SQLite-backed source index, workspace cache persistence,
-and standalone/indexer hydration APIs shared across kast runtimes.
+and headless/indexer hydration APIs shared across kast runtimes.
 
 ## Ownership
 
@@ -17,7 +17,7 @@ Keep this unit focused on storage concerns and schema compatibility.
   management, or JSON-RPC transport code here.
 - Treat schema resets, additive migrations, and cache hydration changes as
   compatibility-sensitive. Operational source-index reads belong in the Rust
-  CLI; Kotlin should only read SQLite for standalone hydration or targeted
+  CLI; Kotlin should only read SQLite for headless hydration or targeted
   indexer/cache behavior.
 
 ## Verification
@@ -26,4 +26,4 @@ Prove storage changes here before relying on higher-level runtime tests.
 
 - Run `./gradlew :index-store:test`.
 - If you change schema bootstrap, connection setup, or hydration reads, exercise
-  `SqliteSourceIndexStoreTest` and the affected standalone/indexer tests.
+  `SqliteSourceIndexStoreTest` and the affected headless/indexer tests.

@@ -94,7 +94,6 @@ require("monorepo `amichne/kast` release workflow" in docs, "README must documen
 require("HOMEBREW_KAST_ARTIFACT_ROOT" in kast, "kast formula must support a shared artifact mirror root")
 require("HOMEBREW_KAST_CLI_RELEASE_ROOT" in kast, "kast formula must support a CLI-specific release root")
 require("kast/releases/download" in kast, "kast formula must default to monorepo release assets")
-require("kast-rs/releases/download" not in kast, "kast formula must not default to the retired kast-rs release path")
 require('bin.install "kast"' in kast, "kast formula must install the single Rust binary directly")
 require('shell_output("#{bin}/kast version")' in kast, "kast formula test must use stable version output")
 require("strategy :github_releases" in kast, "kast formula livecheck must ignore unpublished draft tags")

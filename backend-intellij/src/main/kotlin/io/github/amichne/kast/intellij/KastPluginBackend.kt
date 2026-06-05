@@ -520,7 +520,7 @@ internal class KastPluginBackend(
         }
     }
 
-    // Note: Unlike the standalone backend, IntelliJ's ReferencesSearch.search() resolves
+    // Note: Unlike the headless backend, IntelliJ's ReferencesSearch.search() resolves
     // import directives as reference sites, so explicit import FQN handling is not needed here.
     override suspend fun rename(query: ParsedRenameQuery): RenameResult = withContext(readDispatcher) {
         telemetry.inSpan(IntelliJTelemetryScope.RENAME, "kast.intellij.rename") {

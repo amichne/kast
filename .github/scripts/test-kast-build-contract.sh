@@ -30,14 +30,14 @@ repo_root="$(resolve_repo_root)"
 kast_script="${repo_root}/kast.sh"
 headless_build="${repo_root}/backend-headless/build.gradle.kts"
 headless_project_opener="${repo_root}/backend-headless/src/main/kotlin/io/github/amichne/kast/headless/HeadlessProjectOpener.kt"
-standalone_app_plugin="${repo_root}/build-logic/src/main/kotlin/kast.standalone-app.gradle.kts"
+runtime_app_plugin="${repo_root}/build-logic/src/main/kotlin/kast.runtime-app.gradle.kts"
 verify_layout_task="${repo_root}/build-logic/src/main/kotlin/VerifyClasspathLayoutTask.kt"
 
-for path in "$kast_script" "$headless_build" "$headless_project_opener" "$standalone_app_plugin" "$verify_layout_task"; do
+for path in "$kast_script" "$headless_build" "$headless_project_opener" "$runtime_app_plugin" "$verify_layout_task"; do
   [[ -f "$path" ]] || die "Required build contract file is missing: $path"
 done
 
-require_contains "$standalone_app_plugin" "kastIncludeShadowJar" "Shared app packaging must expose a shadow-jar inclusion property"
+require_contains "$runtime_app_plugin" "kastIncludeShadowJar" "Shared app packaging must expose a shadow-jar inclusion property"
 require_contains "$headless_build" 'extra["kastIncludeShadowJar"] = "false"' "Headless backend must opt out of the shadow fat jar"
 require_contains "$headless_build" "agentPackagedIdeaHomeEntries" "Headless backend must define the agent IDEA-home profile"
 require_contains "$headless_build" '"agent" -> agentPackagedIdeaHomeEntries' "Headless backend must select the agent IDEA-home profile"

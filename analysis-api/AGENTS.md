@@ -11,7 +11,7 @@ Keep this unit small, stable, and reusable across every runtime host.
   runtime-specific dependencies here.
 - Own `AnalysisBackend`, serializable request and response models,
   `AnalysisTransport`, JSON-RPC wire models, descriptor discovery helpers,
-  `StandaloneServerOptions`, shared error types, capability enums,
+  `ServerLaunchOptions`, shared error types, capability enums,
   `ServerInstanceDescriptor`, and edit-plan validation semantics.
 - Keep shared startup helpers quiet for callers. `KastConfig.load`,
   descriptor discovery, and similar shared entry points must not emit

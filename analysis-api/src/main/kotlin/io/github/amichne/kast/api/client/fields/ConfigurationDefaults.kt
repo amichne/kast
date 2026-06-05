@@ -13,5 +13,5 @@ internal fun defaultConfigLogsDir(installRoot: String = defaultConfigInstallRoot
 internal fun defaultConfigDescriptorDir(cacheDir: String = defaultConfigCacheDir().toString()): Path = Path.of(cacheDir).resolve("daemons")
 internal fun defaultConfigSocketDir(): String = System.getProperty("java.io.tmpdir")
 internal fun defaultConfigCliBinaryPath(binDir: String = defaultConfigBinDir().toString()): Path = Path.of(binDir).resolve("kast")
-internal fun defaultConfigStandaloneRuntimeLibsDir(libDir: String = defaultConfigLibDir().toString()): Path =
-    Path.of(libDir).resolve("backends/current/runtime-libs")
+internal fun defaultConfigHeadlessRuntimeLibsDir(libDir: String = defaultConfigLibDir().toString()): Path =
+    Path.of(libDir).resolve("backends/headless/current/runtime-libs")

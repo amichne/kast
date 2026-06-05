@@ -64,17 +64,6 @@ infer_version_from_bundle_name() {
       [[ -n "$inferred" ]] || return 1
       printf '%s\n' "$inferred"
       ;;
-    kast-ubuntu-debian-x86_64-*.tar.gz)
-      local inferred="${bundle_name#kast-ubuntu-debian-x86_64-}"
-      inferred="${inferred%.tar.gz}"
-      [[ -n "$inferred" ]] || return 1
-      printf '%s\n' "$inferred"
-      ;;
-    kast-ubuntu-debian-x86_64-*)
-      local inferred="${bundle_name#kast-ubuntu-debian-x86_64-}"
-      [[ -n "$inferred" ]] || return 1
-      printf '%s\n' "$inferred"
-      ;;
     *)
       return 1
       ;;
@@ -99,17 +88,11 @@ infer_bundle_kind_from_name() {
   local bundle_name="$1"
   case "$bundle_name" in
     kast-ubuntu-debian-headless-x86_64-*) printf '%s\n' "headless" ;;
-    kast-ubuntu-debian-x86_64-*) printf '%s\n' "standalone" ;;
     *) return 1 ;;
   esac
 }
 
 infer_bundle_kind_from_context() {
-  if [[ -n "${KAST_UBUNTU_DEBIAN_BUNDLE_KIND:-}" ]]; then
-    printf '%s\n' "$KAST_UBUNTU_DEBIAN_BUNDLE_KIND"
-    return
-  fi
-
   if [[ -n "${KAST_UBUNTU_DEBIAN_ARTIFACT_PATH:-}" ]]; then
     infer_bundle_kind_from_name "$(basename -- "$KAST_UBUNTU_DEBIAN_ARTIFACT_PATH")" && return
   fi
@@ -120,7 +103,7 @@ infer_bundle_kind_from_context() {
     infer_bundle_kind_from_name "$(basename -- "$(cd -- "${script_dir}/.." && pwd)")" && return
   fi
 
-  printf '%s\n' "standalone"
+  printf '%s\n' "headless"
 }
 
 resolve_script_dir() {
@@ -135,7 +118,6 @@ Canonical non-Brew Kast installer for Ubuntu/Debian x86_64 hosts.
 
 Environment:
   KAST_UBUNTU_DEBIAN_VERSION        Version tag for download installs
-  KAST_UBUNTU_DEBIAN_BUNDLE_KIND    standalone or headless, default standalone
   KAST_UBUNTU_DEBIAN_ARTIFACT_PATH  Local bundle tarball path
   KAST_UBUNTU_DEBIAN_BASE_URL       Release base URL for download installs
   KAST_UBUNTU_DEBIAN_ROOT           Install root, default ~/.local/share/kast/ubuntu-debian
@@ -190,60 +172,31 @@ SHIM
 }
 
 install_kast_entrypoint() {
-  local backend_kind="$1"
   local bundled_cli_path="${install_home}/bin/kast"
 
-  case "$backend_kind" in
-    standalone)
-      if [[ "$bin_path" != "$bundled_cli_path" ]]; then
-        rm -f "$bin_path"
-        ln -sfn "$bundled_cli_path" "$bin_path"
-      fi
-      ;;
-    headless)
-      local shim_cli_path="$bundled_cli_path"
-      if [[ "$bin_path" == "$bundled_cli_path" ]]; then
-        shim_cli_path="${install_home}/bin/kast-cli"
-        mv "$bundled_cli_path" "$shim_cli_path"
-      fi
-      rm -f "$bin_path"
-      write_headless_kast_shim "$bin_path" "$shim_cli_path"
-      ;;
-    *)
-      die "Unsupported bundle backend kind: $backend_kind"
-      ;;
-  esac
+  local shim_cli_path="$bundled_cli_path"
+  if [[ "$bin_path" == "$bundled_cli_path" ]]; then
+    shim_cli_path="${install_home}/bin/kast-cli"
+    mv "$bundled_cli_path" "$shim_cli_path"
+  fi
+  rm -f "$bin_path"
+  write_headless_kast_shim "$bin_path" "$shim_cli_path"
 }
 
 write_config() {
   local config_file="$1"
   local install_home="$2"
   local bin_path="$3"
-  local backend_kind="$4"
-  local version="$5"
-  local normalized_version="$6"
+  local version="$4"
+  local normalized_version="$5"
 
-  local backend_config=""
-  local components=""
-  case "$backend_kind" in
-    standalone)
-      backend_config="[backends.standalone]
-runtimeLibsDir = \"$(toml_escape "$standalone_runtime_libs_dir")\""
-      components='["cli", "standalone-backend", "config"]'
-      ;;
-    headless)
-      backend_config="[runtime]
+  local backend_config="[runtime]
 defaultBackend = \"headless\"
 
 [backends.headless]
 runtimeLibsDir = \"$(toml_escape "$headless_runtime_libs_dir")\"
 ideaHome = \"$(toml_escape "$headless_idea_home")\""
-      components='["cli", "headless-backend", "config"]'
-      ;;
-    *)
-      die "Unsupported bundle backend kind: $backend_kind"
-      ;;
-  esac
+  local components='["cli", "headless-backend", "config"]'
 
   mkdir -p "$(dirname -- "$config_file")"
   cat > "$config_file" <<TOML
@@ -350,11 +303,8 @@ configure_paths() {
   [[ -n "$version" ]] || die "Set KAST_UBUNTU_DEBIAN_VERSION or run from an extracted Ubuntu/Debian bundle"
   normalized_version="$(normalize_version "$version")"
   bundle_kind="$(infer_bundle_kind_from_context)"
-  case "$bundle_kind" in
-    standalone) platform="ubuntu-debian-x86_64" ;;
-    headless) platform="ubuntu-debian-headless-x86_64" ;;
-    *) die "Unsupported KAST_UBUNTU_DEBIAN_BUNDLE_KIND: $bundle_kind" ;;
-  esac
+  [[ "$bundle_kind" == "headless" ]] || die "Unsupported Ubuntu/Debian bundle kind: $bundle_kind"
+  platform="ubuntu-debian-headless-x86_64"
   artifact_name="kast-${platform}-${version}.tar.gz"
   root_dir="${KAST_UBUNTU_DEBIAN_ROOT:-${HOME}/.local/share/kast/ubuntu-debian}"
   install_home="${root_dir}/${version}"
@@ -363,8 +313,6 @@ configure_paths() {
   config_home="${KAST_UBUNTU_DEBIAN_CONFIG_HOME:-${KAST_CONFIG_HOME:-${HOME}/.config/kast}}"
   config_file="${config_home}/config.toml"
   base_url="${KAST_UBUNTU_DEBIAN_BASE_URL:-https://github.com/amichne/kast/releases/download/${version}}"
-  standalone_root="${install_home}/lib/backends/standalone-${version}"
-  standalone_runtime_libs_dir="${standalone_root}/runtime-libs"
   headless_root="${install_home}/lib/backends/headless-${version}"
   headless_runtime_libs_dir="${headless_root}/runtime-libs"
   headless_idea_home="${headless_root}/idea-home"
@@ -373,20 +321,7 @@ configure_paths() {
 
 detect_installed_backend_kind() {
   local source_dir="$1"
-  local has_standalone=false
-  local has_headless=false
-
-  [[ -f "${source_dir}/lib/backends/standalone-${version}/runtime-libs/classpath.txt" ]] && has_standalone=true
-  [[ -f "${source_dir}/lib/backends/headless-${version}/runtime-libs/classpath.txt" ]] && has_headless=true
-
-  if [[ "$has_standalone" == "true" && "$has_headless" == "true" ]]; then
-    die "Bundle source must not contain both standalone and headless backends for ${version}"
-  fi
-  if [[ "$has_standalone" == "true" ]]; then
-    printf '%s\n' "standalone"
-    return
-  fi
-  if [[ "$has_headless" == "true" ]]; then
+  if [[ -f "${source_dir}/lib/backends/headless-${version}/runtime-libs/classpath.txt" ]]; then
     printf '%s\n' "headless"
     return
   fi
@@ -397,29 +332,17 @@ validate_backend_source() {
   local source_dir="$1"
   local backend_kind="$2"
 
-  case "$backend_kind" in
-    standalone)
-      [[ -f "${source_dir}/lib/backends/standalone-${version}/runtime-libs/classpath.txt" ]] \
-        || die "Bundle source missing standalone runtime-libs/classpath.txt"
-      [[ -x "${source_dir}/lib/backends/standalone-${version}/kast-standalone" ]] \
-        || die "Bundle source missing standalone kast-standalone launcher"
-      ;;
-    headless)
-      [[ -f "${source_dir}/lib/backends/headless-${version}/runtime-libs/classpath.txt" ]] \
-        || die "Bundle source missing headless runtime-libs/classpath.txt"
-      [[ -x "${source_dir}/lib/backends/headless-${version}/kast-headless" ]] \
-        || die "Bundle source missing headless kast-headless launcher"
-      [[ -f "${source_dir}/lib/backends/headless-${version}/idea-home/lib/nio-fs.jar" ]] \
-        || die "Bundle source missing headless idea-home/lib/nio-fs.jar"
-      [[ -f "${source_dir}/lib/backends/headless-${version}/idea-home/modules/module-descriptors.dat" ]] \
-        || die "Bundle source missing headless idea-home/modules/module-descriptors.dat"
-      [[ -d "${source_dir}/lib/backends/headless-${version}/idea-home/plugins/kast-headless" ]] \
-        || die "Bundle source missing bundled kast-headless plugin"
-      ;;
-    *)
-      die "Unsupported bundle backend kind: $backend_kind"
-      ;;
-  esac
+  [[ "$backend_kind" == "headless" ]] || die "Unsupported bundle backend kind: $backend_kind"
+  [[ -f "${source_dir}/lib/backends/headless-${version}/runtime-libs/classpath.txt" ]] \
+    || die "Bundle source missing headless runtime-libs/classpath.txt"
+  [[ -x "${source_dir}/lib/backends/headless-${version}/kast-headless" ]] \
+    || die "Bundle source missing headless kast-headless launcher"
+  [[ -f "${source_dir}/lib/backends/headless-${version}/idea-home/lib/nio-fs.jar" ]] \
+    || die "Bundle source missing headless idea-home/lib/nio-fs.jar"
+  [[ -f "${source_dir}/lib/backends/headless-${version}/idea-home/modules/module-descriptors.dat" ]] \
+    || die "Bundle source missing headless idea-home/modules/module-descriptors.dat"
+  [[ -d "${source_dir}/lib/backends/headless-${version}/idea-home/plugins/kast-headless" ]] \
+    || die "Bundle source missing bundled kast-headless plugin"
 }
 
 verify_install() {
@@ -442,28 +365,17 @@ verify_install() {
   printf '%s\n' "$version_output" | grep -Fq "$normalized_version" \
     || die "kast version does not contain ${normalized_version}: ${version_output}"
 
-  case "$installed_backend_kind" in
-    standalone)
-      if [[ "$bin_path" != "${install_home}/bin/kast" ]]; then
-        [[ -L "$bin_path" ]] || die "Expected standalone ${bin_path} to be a symlink"
-      fi
-      grep -Fq "[backends.standalone]" "$config_file" || die "config.toml does not include standalone backend config"
-      grep -Fq "runtimeLibsDir = \"${standalone_runtime_libs_dir}\"" "$config_file" \
-        || die "config.toml does not point at ${standalone_runtime_libs_dir}"
-      ;;
-    headless)
-      [[ -f "$bin_path" && ! -L "$bin_path" ]] || die "Expected headless ${bin_path} to be an executable shim"
-      grep -Fq -- "-Didea.force.use.core.classloader=true" "$bin_path" \
-        || die "Headless kast shim does not export the core classloader JVM option"
-      grep -Fq 'defaultBackend = "headless"' "$config_file" \
-        || die "config.toml does not default to headless runtime"
-      grep -Fq "[backends.headless]" "$config_file" || die "config.toml does not include headless backend config"
-      grep -Fq "runtimeLibsDir = \"${headless_runtime_libs_dir}\"" "$config_file" \
-        || die "config.toml does not point at ${headless_runtime_libs_dir}"
-      grep -Fq "ideaHome = \"${headless_idea_home}\"" "$config_file" \
-        || die "config.toml does not point at ${headless_idea_home}"
-      ;;
-  esac
+  [[ "$installed_backend_kind" == "headless" ]] || die "Installed backend kind must be headless"
+  [[ -f "$bin_path" && ! -L "$bin_path" ]] || die "Expected headless ${bin_path} to be an executable shim"
+  grep -Fq -- "-Didea.force.use.core.classloader=true" "$bin_path" \
+    || die "Headless kast shim does not export the core classloader JVM option"
+  grep -Fq 'defaultBackend = "headless"' "$config_file" \
+    || die "config.toml does not default to headless runtime"
+  grep -Fq "[backends.headless]" "$config_file" || die "config.toml does not include headless backend config"
+  grep -Fq "runtimeLibsDir = \"${headless_runtime_libs_dir}\"" "$config_file" \
+    || die "config.toml does not point at ${headless_runtime_libs_dir}"
+  grep -Fq "ideaHome = \"${headless_idea_home}\"" "$config_file" \
+    || die "config.toml does not point at ${headless_idea_home}"
   grep -Fq "binaryPath = \"${bin_path}\"" "$config_file" \
     || die "config.toml does not point at ${bin_path}"
 
@@ -509,9 +421,9 @@ install_bundle() {
   copy_tree "$bundle_source_dir" "$install_home"
   mkdir -p "$install_home/cache" "$install_home/logs"
   chmod +x "$install_home/bin/kast" "$install_home/scripts/install-ubuntu-debian.sh"
-  install_kast_entrypoint "$source_backend_kind"
+  install_kast_entrypoint
 
-  write_config "$config_file" "$install_home" "$bin_path" "$source_backend_kind" "$version" "$normalized_version"
+  write_config "$config_file" "$install_home" "$bin_path" "$version" "$normalized_version"
   verify_install
   log "Kast Ubuntu/Debian bundle ${version} installed at ${install_home}"
 }

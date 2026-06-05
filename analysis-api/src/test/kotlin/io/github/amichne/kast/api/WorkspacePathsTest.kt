@@ -26,7 +26,7 @@ class WorkspacePathsTest {
             kastHomeEnv to tempDir.resolve("hostile-kast-home").toString(),
             kastInstallRootEnv to tempDir.resolve("hostile-install-root").toString(),
             kastBinDirEnv to tempDir.resolve("hostile-bin").toString(),
-            kastStandaloneRuntimeLibsEnv to tempDir.resolve("hostile-runtime-libs").toString(),
+            kastHeadlessRuntimeLibsEnv to tempDir.resolve("hostile-runtime-libs").toString(),
         )
         val installRoot = Path.of(System.getProperty("user.home"))
             .resolve(".kast")
@@ -38,7 +38,7 @@ class WorkspacePathsTest {
         assertEquals(configHome.toAbsolutePath().normalize(), kastConfigHome(hostileEnv::get))
         assertEquals(installRoot, defaultInstallRoot(hostileEnv::get))
         assertEquals(installRoot.resolve("bin"), defaultBinDirectory(hostileEnv::get))
-        assertEquals(installRoot.resolve("lib/backends/current/runtime-libs"), defaultStandaloneRuntimeLibsDirectory(hostileEnv::get))
+        assertEquals(installRoot.resolve("lib/backends/headless/current/runtime-libs"), defaultHeadlessRuntimeLibsDirectory(hostileEnv::get))
         assertEquals(installRoot.resolve("cache/daemons"), defaultDescriptorDirectory(hostileEnv::get))
         assertEquals(installRoot.resolve("logs"), kastLogDirectory(workspaceRoot, hostileEnv::get))
         assertEquals(installRoot.toString(), defaults.paths.installRoot.value)
@@ -130,16 +130,16 @@ class WorkspacePathsTest {
         }
 
         @Test
-        fun `standalone runtime libs resolve from default config lib directory`() {
+        fun `headless runtime libs resolve from default config lib directory`() {
             val env = mapOf(
                 kastHomeEnv to tempDir.resolve("kast-home").toString(),
                 kastInstallRootEnv to tempDir.resolve("install-root").toString(),
-                kastStandaloneRuntimeLibsEnv to tempDir.resolve("runtime-libs").toString(),
+                kastHeadlessRuntimeLibsEnv to tempDir.resolve("runtime-libs").toString(),
             )
 
             assertEquals(
-                defaultInstallRootPath().resolve("lib/backends/current/runtime-libs"),
-                defaultStandaloneRuntimeLibsDirectory(env::get),
+                defaultInstallRootPath().resolve("lib/backends/headless/current/runtime-libs"),
+                defaultHeadlessRuntimeLibsDirectory(env::get),
             )
         }
     }
@@ -237,7 +237,7 @@ class WorkspacePathsTest {
         val kastHomeEnv: String = env("KAST", "HOME")
         val kastInstallRootEnv: String = env("KAST", "INSTALL", "ROOT")
         val kastBinDirEnv: String = env("KAST", "BIN", "DIR")
-        val kastStandaloneRuntimeLibsEnv: String = env("KAST", "STANDALONE", "RUNTIME", "LIBS")
+        val kastHeadlessRuntimeLibsEnv: String = env("KAST", "HEADLESS", "RUNTIME", "LIBS")
 
         fun env(vararg parts: String): String = parts.joinToString("_")
     }

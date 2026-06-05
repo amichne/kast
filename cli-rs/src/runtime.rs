@@ -177,14 +177,13 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
     }
 
     let launch_backend = backend_name;
-    let runtime_libs_dir = match launch_backend {
-        BackendName::Intellij | BackendName::Standalone => {
-            config.backends.standalone.runtime_libs_dir.clone()
-        }
-        BackendName::Headless => config.backends.headless.runtime_libs_dir.clone(),
-    }
-    .filter(|path| path.is_dir())
-    .ok_or_else(|| no_backend_error(&workspace_root, Some(launch_backend)))?;
+    let runtime_libs_dir = config
+        .backends
+        .headless
+        .runtime_libs_dir
+        .clone()
+        .filter(|path| path.is_dir())
+        .ok_or_else(|| no_backend_error(&workspace_root, Some(launch_backend)))?;
     let log_file = daemon_log_file(&config, &workspace_root, launch_backend);
     let daemon_args = DaemonStartArgs {
         workspace_root: Some(workspace_root.clone()),
@@ -600,7 +599,7 @@ fn workspace_root(value: Option<PathBuf>) -> Result<PathBuf> {
 }
 
 fn no_backend_error(workspace_root: &Path, backend_name: Option<BackendName>) -> CliError {
-    let backend_name = backend_name.unwrap_or(BackendName::Standalone);
+    let backend_name = backend_name.unwrap_or(BackendName::Headless);
     let install_command = format!("kast backend install {}", backend_name.canonical());
     let mut error = CliError::new(
         "NO_BACKEND_AVAILABLE",
@@ -690,7 +689,7 @@ mod tests {
     #[test]
     fn servable_selection_prefers_intellij() {
         let candidates = vec![
-            candidate("standalone", RuntimeState::Ready, false),
+            candidate("headless", RuntimeState::Ready, false),
             candidate("intellij", RuntimeState::Ready, false),
         ];
         let selected = select_servable(&candidates, None, false).unwrap();
@@ -699,7 +698,7 @@ mod tests {
 
     #[test]
     fn indexing_requires_accept_indexing() {
-        let candidates = vec![candidate("standalone", RuntimeState::Indexing, true)];
+        let candidates = vec![candidate("headless", RuntimeState::Indexing, true)];
         assert!(select_servable(&candidates, None, false).is_none());
         assert!(select_servable(&candidates, None, true).is_some());
     }

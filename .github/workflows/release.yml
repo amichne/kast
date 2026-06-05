@@ -521,68 +521,6 @@ jobs:
           path: dist/
           if-no-files-found: warn
 
-  build-standalone-backend:
-    name: Build standalone backend
-    needs: [prepare-release]
-    if: always() && needs.prepare-release.result == 'success'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ needs.prepare-release.outputs.release_tag }}
-
-      - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "21"
-
-      - uses: gradle/actions/setup-gradle@v5
-
-      - name: Build standalone backend
-        run: ./kast.sh build backend -Pversion="${{ needs.prepare-release.outputs.release_version }}"
-
-      - name: Upload standalone backend asset
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          tag="${{ needs.prepare-release.outputs.release_tag }}"
-          asset_name="kast-standalone-${tag}.zip"
-          source_zip="dist/backend.zip"
-          [[ -f "$source_zip" ]] || { echo "Backend zip not found: $source_zip" >&2; exit 1; }
-          ln "$source_zip" "dist/${asset_name}"
-          gh release upload "$tag" "dist/${asset_name}" --clobber
-          python3 - "dist/${asset_name}" "dist/build-provenance-standalone.json" <<'PY'
-          import hashlib, json, os, sys
-          from pathlib import Path
-          asset = Path(sys.argv[1])
-          payload = {
-              "runId": os.environ["GITHUB_RUN_ID"],
-              "runNumber": os.environ["GITHUB_RUN_NUMBER"],
-              "runAttempt": os.environ["GITHUB_RUN_ATTEMPT"],
-              "sha": os.environ["GITHUB_SHA"],
-              "ref": os.environ["GITHUB_REF"],
-              "workflowRef": os.environ["GITHUB_WORKFLOW_REF"],
-              "actor": os.environ["GITHUB_ACTOR"],
-              "platformId": "standalone",
-              "assetName": asset.name,
-              "assetDigest": "sha256:" + hashlib.sha256(asset.read_bytes()).hexdigest(),
-          }
-          Path(sys.argv[2]).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-          PY
-          rm -f "dist/${asset_name}"
-
-      - name: Upload standalone backend artifact
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: standalone-backend-${{ github.run_id }}
-          path: dist/
-          if-no-files-found: warn
-
   build-headless-backend:
     name: Build headless backend
     needs: [prepare-release]
@@ -657,9 +595,8 @@ jobs:
       - validate-jvm
       - build-cli
       - build-intellij-plugin
-      - build-standalone-backend
       - build-headless-backend
-    if: always() && needs.prepare-release.result == 'success' && needs.validate-jvm.result == 'success' && needs.build-cli.result == 'success' && needs.build-intellij-plugin.result == 'success' && needs.build-standalone-backend.result == 'success' && needs.build-headless-backend.result == 'success'
+    if: always() && needs.prepare-release.result == 'success' && needs.validate-jvm.result == 'success' && needs.build-cli.result == 'success' && needs.build-intellij-plugin.result == 'success' && needs.build-headless-backend.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -680,13 +617,6 @@ jobs:
           pattern: intellij-plugin-*
           merge-multiple: true
 
-      - name: Download standalone backend provenance
-        uses: actions/download-artifact@v7
-        with:
-          path: provenance-standalone
-          pattern: standalone-backend-*
-          merge-multiple: true
-
       - name: Download headless backend provenance
         uses: actions/download-artifact@v7
         with:
@@ -702,8 +632,7 @@ jobs:
             --output dist/build-provenance.json \
             provenance-cli \
             provenance-headless \
-            provenance-intellij \
-            provenance-standalone
+            provenance-intellij
 
       - name: Upload combined provenance
         env:

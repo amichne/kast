@@ -6,7 +6,7 @@
 #   install  Retired; use Homebrew or scripts/install-ubuntu-debian.sh
 #
 # Explicit subcommand:
-#   ./kast.sh build [plugin] [backend] [headless] [--all]
+#   ./kast.sh build [plugin] [headless] [--all]
 #   ./kast.sh install  # prints the supported install paths
 set -euo pipefail
 
@@ -27,8 +27,6 @@ DIST_ROOT="${REPO_ROOT}/dist"
 
 # Build paths are only meaningful when SCRIPT_DIR is set.
 PLUGIN_DIST_DIR="${REPO_ROOT}/backend-intellij/build/distributions"
-BACKEND_PORTABLE_DIST_DIR="${REPO_ROOT}/backend-standalone/build/portable-dist/backend-standalone"
-BACKEND_PORTABLE_ZIP_DIR="${REPO_ROOT}/backend-standalone/build/distributions"
 HEADLESS_PORTABLE_DIST_DIR="${REPO_ROOT}/backend-headless/build/portable-dist/backend-headless"
 HEADLESS_PORTABLE_ZIP_DIR="${REPO_ROOT}/backend-headless/build/distributions"
 
@@ -88,7 +86,7 @@ need_tool() {
 # cmd_build -- local dev build / packaging
 # ===========================================================================
 
-_BUILD_ALL_TARGETS=(plugin backend headless)
+_BUILD_ALL_TARGETS=(plugin headless)
 _build_selected_targets=()
 
 _build_verify_prerequisites() {
@@ -163,17 +161,6 @@ _build_resolve_plugin_zip() {
   printf '%s\n' "$newest"
 }
 
-_build_resolve_backend_zip() {
-  local newest="" candidate=""
-  shopt -s nullglob
-  for candidate in "${BACKEND_PORTABLE_ZIP_DIR}"/backend-standalone-*-portable.zip; do
-    [[ -z "$newest" || "$candidate" -nt "$newest" ]] && newest="$candidate"
-  done
-  shopt -u nullglob
-  [[ -n "$newest" ]] || die "Expected a backend portable zip under ${BACKEND_PORTABLE_ZIP_DIR}"
-  printf '%s\n' "$newest"
-}
-
 _build_resolve_headless_zip() {
   local newest="" candidate=""
   shopt -s nullglob
@@ -195,39 +182,6 @@ _build_plugin() {
   mkdir -p "$DIST_ROOT"
   cp "$source_zip" "$dist_zip"
   log_success "Published ${dist_zip}"
-}
-
-_build_backend() {
-  log_section "Building target: backend"
-  rm -rf "${REPO_ROOT}/backend-standalone/build/portable-dist" "${REPO_ROOT}/backend-standalone/build/distributions"
-  _build_run_gradle_tasks_with_retry stageBackendDist buildBackendPortableZip
-
-  log_step "Verifying staged backend tree in ${BACKEND_PORTABLE_DIST_DIR}"
-  [[ -x "${BACKEND_PORTABLE_DIST_DIR}/kast-standalone" ]]             || die "Missing staged backend-standalone launcher"
-  [[ -d "${BACKEND_PORTABLE_DIST_DIR}/runtime-libs" ]]                || die "Missing staged runtime-libs directory"
-  [[ -f "${BACKEND_PORTABLE_DIST_DIR}/runtime-libs/classpath.txt" ]]  || die "Missing staged runtime classpath file"
-  local jars=()
-  shopt -s nullglob
-  jars=("${BACKEND_PORTABLE_DIST_DIR}"/libs/backend-standalone-*-all.jar)
-  shopt -u nullglob
-  [[ "${#jars[@]}" -eq 1 ]] || die "Expected exactly one staged fat jar under ${BACKEND_PORTABLE_DIST_DIR}/libs"
-
-  local dist_dir="${DIST_ROOT}/backend"
-  local dist_zip="${DIST_ROOT}/backend.zip"
-  tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/kast-build.XXXXXX")"
-
-  log_step "Publishing backend tree into ${dist_dir}"
-  mkdir -p "$DIST_ROOT"
-  cp -R "$BACKEND_PORTABLE_DIST_DIR" "${tmp_dir}/backend"
-  rm -rf "$dist_dir"
-  mv "${tmp_dir}/backend" "$dist_dir"
-  log_success "Published ${dist_dir}"
-
-  local source_zip; source_zip="$(_build_resolve_backend_zip)"
-  cp "$source_zip" "$dist_zip"
-  log_success "Published ${dist_zip}"
-
-  rm -rf "$tmp_dir"; tmp_dir=""
 }
 
 _build_headless() {
@@ -273,12 +227,6 @@ _build_openapi() {
 }
 
 _build_clean_stale_outputs() {
-  local backend_dir="${DIST_ROOT}/backend"
-  if [[ -d "$backend_dir" && (! -f "${backend_dir}/kast-standalone" || ! -d "${backend_dir}/runtime-libs") ]]; then
-    log_step "Removing incomplete ${backend_dir} from a previous run"
-    rm -rf "$backend_dir"
-  fi
-
   local headless_dir="${DIST_ROOT}/headless"
   if [[ -d "$headless_dir" && (! -f "${headless_dir}/kast-headless" || ! -d "${headless_dir}/runtime-libs") ]]; then
     log_step "Removing incomplete ${headless_dir} from a previous run"
@@ -299,7 +247,7 @@ cmd_build() {
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      plugin|backend|headless)
+      plugin|headless)
         _build_selected_targets+=("$1"); shift ;;
       --all)
         _build_selected_targets=("${_BUILD_ALL_TARGETS[@]}"); shift ;;
@@ -311,7 +259,6 @@ Builds selected Kast components and publishes artifacts to dist/.
 
 Targets (positional, repeatable):
   plugin       IDEA plugin zip           -> dist/plugin.zip
-  backend      Standalone server         -> dist/backend/  dist/backend.zip
   headless     Headless IDEA backend     -> dist/headless/  dist/headless.zip
 
 Options:
@@ -357,7 +304,6 @@ USAGE
   for target in "${_build_selected_targets[@]}"; do
     case "$target" in
       plugin)  _build_plugin ;;
-      backend) _build_backend ;;
       headless) _build_headless ;;
     esac
   done
@@ -368,7 +314,6 @@ USAGE
   for target in "${_build_selected_targets[@]}"; do
     case "$target" in
       plugin)  log_success "plugin  ->  ${DIST_ROOT}/plugin.zip" ;;
-      backend) log_success "backend ->  ${DIST_ROOT}/backend/  ${DIST_ROOT}/backend.zip" ;;
       headless) log_success "headless ->  ${DIST_ROOT}/headless/  ${DIST_ROOT}/headless.zip" ;;
     esac
   done

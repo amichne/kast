@@ -6,7 +6,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-const MAIN_CLASS: &str = "io.github.amichne.kast.standalone.StandaloneMainKt";
 const HEADLESS_MAIN_CLASS: &str = "io.github.amichne.kast.headless.HeadlessMainKt";
 
 pub fn run_foreground(args: DaemonStartArgs) -> Result<i32> {
@@ -30,7 +29,7 @@ pub fn spawn_background(args: DaemonStartArgs, log_file: &Path) -> Result<()> {
     let workspace_root =
         config::normalize(args.workspace_root.clone().unwrap_or(env::current_dir()?));
     let config = KastConfig::load(&workspace_root)?;
-    let backend_name = args.backend_name.unwrap_or(BackendName::Standalone);
+    let backend_name = args.backend_name.unwrap_or(BackendName::Headless);
     let command = java_command(&args, &config)?;
     if let Some(parent) = log_file.parent() {
         fs::create_dir_all(parent)?;
@@ -59,7 +58,7 @@ pub fn spawn_background(args: DaemonStartArgs, log_file: &Path) -> Result<()> {
 }
 
 pub fn java_command(args: &DaemonStartArgs, config: &KastConfig) -> Result<Vec<String>> {
-    let backend_name = args.backend_name.unwrap_or(BackendName::Standalone);
+    let backend_name = args.backend_name.unwrap_or(BackendName::Headless);
     if backend_name == BackendName::Intellij {
         return Err(CliError::new(
             "DAEMON_START_ERROR",
@@ -81,23 +80,16 @@ pub fn java_command(args: &DaemonStartArgs, config: &KastConfig) -> Result<Vec<S
         .unwrap_or_else(|| "java".to_string());
 
     let mut command = vec![java_exec];
-    if backend_name == BackendName::Headless {
-        let idea_home = headless_idea_home(args, config)?;
-        command.extend(headless_jvm_args(&idea_home, config));
-    }
+    let idea_home = headless_idea_home(args, config)?;
+    command.extend(headless_jvm_args(&idea_home, config));
     if let Ok(java_opts) = env::var("JAVA_OPTS") {
         command.extend(java_opts.split_whitespace().map(ToOwned::to_owned));
     }
     command.push("-cp".to_string());
     command.push(classpath);
-    command.push(main_class(backend_name).to_string());
-    command.extend(config::standalone_args(args, config)?);
-    if backend_name == BackendName::Headless {
-        command.push(format!(
-            "--idea-home={}",
-            headless_idea_home(args, config)?.display()
-        ));
-    }
+    command.push(HEADLESS_MAIN_CLASS.to_string());
+    command.extend(config::server_launch_args(args, config)?);
+    command.push(format!("--idea-home={}", idea_home.display()));
     Ok(command)
 }
 
@@ -109,13 +101,6 @@ fn apply_daemon_environment(command: &mut Command) {
 
 fn daemon_environment() -> [(&'static str, PathBuf); 1] {
     [("KAST_CONFIG_HOME", config::kast_config_home())]
-}
-
-fn main_class(backend_name: BackendName) -> &'static str {
-    match backend_name {
-        BackendName::Intellij | BackendName::Standalone => MAIN_CLASS,
-        BackendName::Headless => HEADLESS_MAIN_CLASS,
-    }
 }
 
 fn headless_idea_home(args: &DaemonStartArgs, config: &KastConfig) -> Result<PathBuf> {
@@ -255,7 +240,7 @@ fn read_classpath(runtime_libs_dir: &Path) -> Result<String> {
         return Err(CliError::new(
             "DAEMON_START_ERROR",
             format!(
-                "Backend runtime-libs classpath not found at {}. Reinstall the backend, update backends.standalone.runtimeLibsDir, or pass --runtime-libs-dir.",
+                "Backend runtime-libs classpath not found at {}. Reinstall the backend, update backends.headless.runtimeLibsDir, or pass --runtime-libs-dir.",
                 classpath_file.display()
             ),
         ));
@@ -284,14 +269,16 @@ mod tests {
     use std::io::Write;
 
     #[test]
-    fn java_command_uses_classpath_entries_relative_to_runtime_libs() {
+    fn java_command_uses_headless_classpath_entries_relative_to_runtime_libs() {
         let temp = tempfile::tempdir().unwrap();
         let libs = temp.path().join("runtime-libs");
         fs::create_dir_all(&libs).unwrap();
         let mut file = fs::File::create(libs.join("classpath.txt")).unwrap();
         writeln!(file, "a.jar\nlib/b.jar").unwrap();
+        let idea_home = temp.path().join("idea-home");
         let mut config = KastConfig::defaults();
-        config.backends.standalone.runtime_libs_dir = Some(libs.clone());
+        config.backends.headless.runtime_libs_dir = Some(libs.clone());
+        config.backends.headless.idea_home = Some(idea_home.clone());
         let args = DaemonStartArgs {
             workspace_root: Some(temp.path().to_path_buf()),
             backend_name: None,
@@ -315,17 +302,15 @@ mod tests {
         let cp = command.iter().position(|arg| arg == "-cp").unwrap() + 1;
         assert!(command[cp].contains(&libs.join("a.jar").display().to_string()));
         assert!(command[cp].contains(&libs.join("lib/b.jar").display().to_string()));
-        assert!(command.contains(&MAIN_CLASS.to_string()));
+        assert!(command.contains(&HEADLESS_MAIN_CLASS.to_string()));
+        assert!(command.contains(&format!("--idea-home={}", idea_home.display())));
     }
 
     #[test]
     fn java_command_uses_headless_runtime_libs_main_class_and_idea_home() {
         let temp = tempfile::tempdir().unwrap();
-        let standalone_libs = temp.path().join("standalone-runtime-libs");
         let headless_libs = temp.path().join("headless-runtime-libs");
-        fs::create_dir_all(&standalone_libs).unwrap();
         fs::create_dir_all(&headless_libs).unwrap();
-        fs::write(standalone_libs.join("classpath.txt"), "standalone.jar\n").unwrap();
         fs::write(headless_libs.join("classpath.txt"), "headless.jar\n").unwrap();
         let idea_home = temp.path().join("idea-home");
         let mut config = KastConfig::defaults();
@@ -333,7 +318,6 @@ mod tests {
         config.paths.logs_dir = temp.path().join("logs");
         config.paths.descriptor_dir = temp.path().join("descriptors");
         config.paths.socket_dir = temp.path().join("sockets");
-        config.backends.standalone.runtime_libs_dir = Some(standalone_libs.clone());
         config.backends.headless.runtime_libs_dir = Some(headless_libs.clone());
         config.backends.headless.idea_home = Some(idea_home.clone());
         let args = DaemonStartArgs {
@@ -359,11 +343,7 @@ mod tests {
 
         let cp = command.iter().position(|arg| arg == "-cp").unwrap() + 1;
         assert!(command[cp].contains(&headless_libs.join("headless.jar").display().to_string()));
-        assert!(
-            !command[cp].contains(&standalone_libs.join("standalone.jar").display().to_string())
-        );
         assert!(command.contains(&HEADLESS_MAIN_CLASS.to_string()));
-        assert!(!command.contains(&MAIN_CLASS.to_string()));
         assert!(command.contains(&format!("--idea-home={}", idea_home.display())));
         assert!(command.contains(&format!(
             "-Dkast.headless.paths.descriptorDir={}",
@@ -395,9 +375,9 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let libs = temp.path().join("runtime-libs");
         fs::create_dir_all(&libs).unwrap();
-        fs::write(libs.join("classpath.txt"), "standalone.jar\n").unwrap();
+        fs::write(libs.join("classpath.txt"), "headless.jar\n").unwrap();
         let mut config = KastConfig::defaults();
-        config.backends.standalone.runtime_libs_dir = Some(libs);
+        config.backends.headless.runtime_libs_dir = Some(libs);
         let args = DaemonStartArgs {
             workspace_root: Some(temp.path().to_path_buf()),
             backend_name: Some(crate::cli::BackendName::Intellij),

@@ -41,16 +41,16 @@ flowchart LR
     end
 
     subgraph "Runtime plane"
-      STANDALONE["backend-standalone<br/>headless K2 session"]
+      HEADLESS["backend-headless<br/>headless K2 session"]
       IDEA["backend-intellij<br/>IDE-hosted session"]
       SHARED["backend-shared<br/>shared analysis utilities"]
     end
 
     CLI --> API
     CLI --> SERVER
-    SERVER --> STANDALONE
+    SERVER --> HEADLESS
     SERVER --> IDEA
-    STANDALONE --> SHARED
+    HEADLESS --> SHARED
     IDEA --> SHARED
 ```
 
@@ -58,7 +58,7 @@ The core decision: isolate semantic runtime cost in long-lived
 backends so repeat queries reuse session state instead of
 rebuilding compiler context on every command.
 
-## One protocol, three runtime modes
+## One protocol, two runtime modes
 
 The JSON-RPC contract stays stable. The runtime that holds
 semantic state is the part that swaps. All backends expose the
@@ -68,13 +68,12 @@ lives.
 
 | Runtime mode | Where semantic state lives | Who keeps it warm | Best fit |
 |---|---|---|---|
-| Standalone | A standalone daemon process with its own analysis session and caches | `kast` workspace lifecycle | Terminals, CI, remote machines, cloud agents |
-| Headless | A packaged IntelliJ backend outside any open IDE | `kast` workspace lifecycle | Ubuntu/Debian CI images and hosted agents |
+| Headless | A packaged IntelliJ backend outside any open IDE | `kast` workspace lifecycle | Terminals, CI, remote machines, cloud agents |
 | IDEA plugin | An already-open IDEA or Android Studio project, reusing the IDE's project model, PSI, and indexes | IDE project lifecycle | Local tools when the IDE is already open |
 
 If IDEA or Android Studio is warm, external tools connect to the plugin backend
-and inherit that state for free. If no IDE is running, the standalone or
-packaged headless backend exposes the same surface independently.
+and inherit that state for free. If no IDE is running, the headless backend
+exposes the same surface independently.
 
 ## Module ownership
 
@@ -87,7 +86,7 @@ packaged headless backend exposes the same surface independently.
     |--------|------|---------------|
     | `analysis-api` | Shared contract, serializable models, capability flags, edit validation | Keeps protocol semantics stable across all consumers |
     | `analysis-server` | JSON-RPC transport, dispatch, descriptor lifecycle | Isolates transport concerns from semantic logic |
-    | `backend-standalone` | Headless runtime, workspace discovery, K2 session bootstrap | Concentrates stateful analysis in one runtime |
+    | `backend-headless` | Headless runtime, workspace discovery, K2 session bootstrap | Concentrates stateful analysis in one runtime |
     | `backend-intellij` | IDE-hosted runtime, plugin lifecycle, project service | Reuses the IDE project model when IDEA or Android Studio is running |
     | `backend-shared` | Shared analysis helpers for both runtimes | Avoids duplicate semantic utility code |
     | `analysis-api` test fixtures | Contract fixtures and fake backend infrastructure | Pins behavior consistency across implementations without a separate production module |
@@ -118,7 +117,7 @@ sequenceDiagram
 Every step returns structured data. No string scraping. No regex
 parsing. Anywhere.
 
-In standalone mode, "Backend runtime" is the standalone daemon and
+In headless mode, "Backend runtime" is the headless daemon and
 its own analysis session. In IDEA mode, it's the plugin service
 inside the IDE — same transport, but answering from the IDE's
 warm project state.
@@ -136,20 +135,19 @@ session warm.
 - **One long-lived host owns the analysis context** — caches and
   indexes stay with the workspace until the host stops
 
-In standalone or headless mode, that host is the `kast` daemon. In IDEA mode,
+In headless mode, that host is the `kast` daemon. In IDEA mode,
 it's the IDE itself. The plugin starts the `kast` server as part of the IDE
 lifecycle, so external tools piggyback on the IDE's already-open project model,
 indexes, and analysis session instead of bringing up a second warm session.
 
-## Why three runtimes?
+## Why two runtimes?
 
-Same protocol, three operating environments.
+Same protocol, two operating environments.
 
-- **Standalone favors independence** — works without any IDE, so
+- **Headless favors independence** — works without any IDE, so
   the same semantic operations run in terminals, CI jobs, remote
-  machines, and cloud agents
-- **Headless favors packaged Linux agents** — carries the IntelliJ-backed
-  runtime in the Ubuntu/Debian bundle without requiring a desktop IDE process
+  machines, and cloud agents; the Ubuntu/Debian bundle carries the required
+  runtime without requiring a desktop IDE process
 - **IDEA plugin favors reuse** — lets external tools tap into
   an IDE session that's already open, indexed, and ready
 
@@ -217,7 +215,7 @@ automation.
 ## Next steps
 
 - [Backends](../getting-started/backends.md) — pick between the
-  standalone daemon, packaged headless backend, and IDEA plugin
+  headless daemon and IDEA plugin
 - [Limits and boundaries](behavioral-model.md) — the rules and
   limits behind `kast` results
 - [Kast vs LSP](kast-vs-lsp.md) — why `kast` exists alongside LSP

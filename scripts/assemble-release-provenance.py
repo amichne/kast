@@ -12,12 +12,10 @@ REQUIRED_PLATFORMS = {
     "cli-macos-x64",
     "headless",
     "intellij",
-    "standalone",
 }
 OPTIONAL_PLATFORMS = {
     "devin-headless-linux-x64",
     "ubuntu-debian-headless-x86_64",
-    "ubuntu-debian-x86_64",
 }
 SUPPORTED_PLATFORMS = REQUIRED_PLATFORMS | OPTIONAL_PLATFORMS
 

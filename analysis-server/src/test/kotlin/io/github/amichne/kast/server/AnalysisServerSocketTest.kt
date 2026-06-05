@@ -36,7 +36,7 @@ class AnalysisServerSocketTest {
 
     @Test
     fun `socket transport writes descriptor, serves rpc, and cleans up`() {
-        val socketPath = tempDir.resolve("run").resolve("standalone.sock")
+        val socketPath = tempDir.resolve("run").resolve("headless.sock")
         val descriptorDirectory = tempDir.resolve("instances")
         val runningServer = AnalysisServer(
             backend = FakeAnalysisBackend.sample(tempDir),

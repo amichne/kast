@@ -20,7 +20,7 @@ class DescriptorRegistryConcurrencyTest {
 
     private fun descriptor(
         workspaceRoot: String = "/workspace",
-        backendName: String = "standalone",
+        backendName: String = "headless",
         pid: Long = 42L,
     ) = ServerInstanceDescriptor(
         workspaceRoot = workspaceRoot,

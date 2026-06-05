@@ -16,11 +16,11 @@ import io.github.amichne.kast.shared.analysis.toSymbolModel
  * Backend-agnostic call hierarchy tree builder.
  *
  * Recursively expands a call graph using a [CallEdgeResolver] for edge
- * discovery. Does not depend on any backend-specific types (no standalone
+ * discovery. Does not depend on any backend-specific types (no headless
  * session, no telemetry, no SQLite).
  *
  * @param readAccess wraps any direct PSI access that occurs between edge-resolver
- *        calls. The IntelliJ plugin backend supplies `runReadAction`; the standalone
+ *        calls. The IntelliJ plugin backend supplies `runReadAction`; the headless
  *        backend can pass the identity function since it already holds a session-level
  *        read lock.
  */
@@ -186,7 +186,7 @@ class CallHierarchyEngine(
  * Abstraction for acquiring a read lock around PSI access.
  *
  * - IntelliJ plugin backend: delegates to `ApplicationManager.getApplication().runReadAction`.
- * - Standalone backend: identity (session-level read lock is already held).
+ * - Headless backend: identity (session-level read lock is already held).
  */
 interface ReadAccessScope {
     fun <T> run(action: () -> T): T

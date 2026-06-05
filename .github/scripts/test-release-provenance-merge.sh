@@ -72,7 +72,6 @@ entries = [
     ("cli-macos-x64", f"kast-{tag}-macos-x64.zip"),
     ("headless", f"kast-headless-{tag}.zip"),
     ("intellij", f"kast-intellij-{tag}.zip"),
-    ("standalone", f"kast-standalone-{tag}.zip"),
 ]
 payload = {
     "builds": [
@@ -88,11 +87,6 @@ path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 PY
 
 write_optional_provenance \
-  "${scratch_dir}/standalone" \
-  "ubuntu-debian-x86_64" \
-  "kast-ubuntu-debian-x86_64-${tag}.tar.gz" \
-  8
-write_optional_provenance \
   "${scratch_dir}/headless" \
   "ubuntu-debian-headless-x86_64" \
   "kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz" \
@@ -107,19 +101,16 @@ one_output="${scratch_dir}/one.json"
 "$merger" \
   --base "$base" \
   --output "$one_output" \
-  "${scratch_dir}/standalone"
-assert_platform_count "$one_output" "ubuntu-debian-x86_64" 1
-assert_platform_count "$one_output" "ubuntu-debian-headless-x86_64" 0
+  "${scratch_dir}/headless"
+assert_platform_count "$one_output" "ubuntu-debian-headless-x86_64" 1
 assert_platform_count "$one_output" "devin-headless-linux-x64" 0
 
 both_output="${scratch_dir}/both.json"
 "$merger" \
   --base "$one_output" \
   --output "$both_output" \
-  "${scratch_dir}/standalone" \
   "${scratch_dir}/headless" \
   "${scratch_dir}/devin"
-assert_platform_count "$both_output" "ubuntu-debian-x86_64" 1
 assert_platform_count "$both_output" "ubuntu-debian-headless-x86_64" 1
 assert_platform_count "$both_output" "devin-headless-linux-x64" 1
 
@@ -127,17 +118,15 @@ rerun_output="${scratch_dir}/rerun.json"
 "$merger" \
   --base "$both_output" \
   --output "$rerun_output" \
-  "${scratch_dir}/standalone" \
   "${scratch_dir}/headless" \
   "${scratch_dir}/devin"
-assert_platform_count "$rerun_output" "ubuntu-debian-x86_64" 1
 assert_platform_count "$rerun_output" "ubuntu-debian-headless-x86_64" 1
 assert_platform_count "$rerun_output" "devin-headless-linux-x64" 1
 
 write_optional_provenance \
   "${scratch_dir}/required" \
-  "standalone" \
-  "kast-standalone-${tag}.zip" \
+  "headless" \
+  "kast-headless-${tag}.zip" \
   11
 if "$merger" \
   --base "$base" \

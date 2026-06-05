@@ -13,7 +13,7 @@ run `kast <command> --help` for the full set.
 
 Lifecycle and RPC commands take `--workspace-root`, the absolute
 path to your project root. Backend selection can be pinned with
-`--backend-name=standalone` or `--backend-name=intellij` where the
+`--backend-name=headless` or `--backend-name=intellij` where the
 command supports it.
 
 ## Workspace lifecycle
