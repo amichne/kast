@@ -13,17 +13,26 @@ import java.util.UUID
 class WorkspaceDirectoryResolver(
     configHome: () -> Path = { kastConfigHome() },
     private val installRoot: () -> Path = ::kastInstallRoot,
+    private val gitWorkspaceResolver: (Path) -> GitWorkspace? = GitWorkspaceResolver::discover,
     private val gitRemoteResolver: (Path) -> GitRemote? = GitRemoteParser::origin,
     private val uuidGenerator: () -> UUID = UUID::randomUUID,
 ) {
     fun workspaceDataDirectory(workspaceRoot: Path): Path {
         val normalizedRoot = workspaceRoot.toAbsolutePath().normalize()
-        val remote = gitRemoteResolver(normalizedRoot)
-        return if (remote != null) {
-            workspacesRoot()
-                .resolve(remote.host)
-                .resolve(remote.owner)
-                .resolve(remote.repo)
+        val gitWorkspace = gitWorkspaceResolver(normalizedRoot)
+        val remote = gitWorkspace?.remote ?: gitRemoteResolver(normalizedRoot)
+        return if (gitWorkspace != null) {
+            gitWorkspaceDataDirectory(gitWorkspace, remote)
+        } else if (remote != null) {
+            gitWorkspaceDataDirectory(
+                GitWorkspace(
+                    toplevel = normalizedRoot,
+                    commonDir = normalizedRoot.resolve(".git"),
+                    gitDir = normalizedRoot.resolve(".git"),
+                    remote = remote,
+                ),
+                remote,
+            )
         } else if (isEphemeralLocalWorkspace(normalizedRoot)) {
             normalizedRoot
                 .resolve(".gradle")
@@ -49,6 +58,26 @@ class WorkspaceDirectoryResolver(
     }
 
     private fun workspacesRoot(): Path = installRoot().resolve("workspaces").toAbsolutePath().normalize()
+
+    private fun gitWorkspaceDataDirectory(workspace: GitWorkspace, remote: GitRemote?): Path {
+        val repoRoot = if (remote != null) {
+            workspacesRoot()
+                .resolve("git")
+                .resolve(remote.host)
+                .resolve(remote.owner)
+                .resolve(remote.repo)
+        } else {
+            workspacesRoot()
+                .resolve("git")
+                .resolve("local")
+                .resolve(gitCommonDirHash(workspace.commonDir))
+        }
+        return repoRoot
+            .resolve("worktrees")
+            .resolve("${workspaceSlug(workspace.toplevel)}--${gitWorktreeHash(workspace.toplevel, workspace.gitDir)}")
+            .toAbsolutePath()
+            .normalize()
+    }
 
     private fun localWorkspaceId(workspaceRoot: Path): String {
         val registryPath = workspacesRoot().resolve("local-workspaces.json").toAbsolutePath().normalize()
@@ -87,10 +116,16 @@ class WorkspaceDirectoryResolver(
 
     private fun sanitizedPath(workspaceRoot: Path): String = workspaceRoot
         .toString()
-        .replace(Regex("[^A-Za-z0-9._-]+"), "-")
+        .sanitizedSegment()
+        .take(80)
+
+    private fun workspaceSlug(workspaceRoot: Path): String = (workspaceRoot.fileName?.toString() ?: "workspace")
+        .sanitizedSegment()
+        .take(80)
+
+    private fun String.sanitizedSegment(): String = replace(Regex("[^A-Za-z0-9._-]+"), "-")
         .trim('-')
         .ifBlank { "workspace" }
-        .take(80)
 }
 
 fun kastInstallRoot(): Path = Path.of(System.getProperty("user.home")).resolve(".kast").toAbsolutePath().normalize()

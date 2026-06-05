@@ -56,14 +56,14 @@ kast up --backend=headless --workspace-root="$PWD"
 ```
 
 If `kast up` cannot find the selected backend, it reports the exact
-`kast install <backend>` command to run.
+`kast install headless` command to run.
 
 ## Ubuntu/Debian bundle
 
 Use the Ubuntu/Debian bundle when a CI image, hosted agent snapshot, mirror, or
 air-gapped host should install Kast without Homebrew, Rust, Gradle, or network
 access to individual release assets. This is the offline bundle path; the normal
-interactive path is CLI first, then `kast backend install`.
+interactive path is CLI first, then `kast install headless`.
 
 The release asset is `kast-ubuntu-debian-headless-x86_64-<version>.tar.gz`
 with a matching `.sha256` sidecar. Each bundle contains the

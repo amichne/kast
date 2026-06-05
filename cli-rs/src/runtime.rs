@@ -127,10 +127,33 @@ struct WorkspaceInspection {
     selected: Option<RuntimeCandidateStatus>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum RuntimeBackendPreference {
+    Automatic,
+    Fixed(BackendName),
+}
+
+impl RuntimeBackendPreference {
+    fn backend_filter(self) -> Option<BackendName> {
+        match self {
+            Self::Automatic => None,
+            Self::Fixed(backend) => Some(backend),
+        }
+    }
+
+    fn fixed_backend(self) -> Option<BackendName> {
+        match self {
+            Self::Automatic => None,
+            Self::Fixed(backend) => Some(backend),
+        }
+    }
+}
+
 pub fn workspace_status(args: RuntimeArgs) -> Result<WorkspaceStatusResult> {
     let workspace_root = workspace_root(args.workspace_root.clone())?;
-    let backend_name = resolve_runtime_backend(&workspace_root, args.backend_name)?;
-    let inspection = inspect_workspace(&workspace_root, Some(backend_name), false)?;
+    let config = KastConfig::load(&workspace_root)?;
+    let preference = runtime_backend_preference(&config, args.backend_name);
+    let inspection = inspect_workspace_with_config(&workspace_root, &config, preference, false)?;
     Ok(WorkspaceStatusResult {
         workspace_root: workspace_root.display().to_string(),
         descriptor_directory: inspection.descriptor_directory.display().to_string(),
@@ -143,12 +166,11 @@ pub fn workspace_status(args: RuntimeArgs) -> Result<WorkspaceStatusResult> {
 pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
     let workspace_root = workspace_root(args.workspace_root.clone())?;
     let config = KastConfig::load(&workspace_root)?;
-    let backend_name = config::resolve_runtime_backend(&config, args.backend_name);
-    let inspection =
-        inspect_workspace_with_config(&workspace_root, &config, Some(backend_name), true)?;
+    let preference = runtime_backend_preference(&config, args.backend_name);
+    let inspection = inspect_workspace_with_config(&workspace_root, &config, preference, true)?;
     if let Some(selected) = select_servable(
         &inspection.candidates,
-        Some(backend_name),
+        preference.backend_filter(),
         args.accept_indexing.unwrap_or(false),
     ) {
         return Ok(WorkspaceEnsureResult {
@@ -162,7 +184,7 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
         });
     }
 
-    if backend_name == BackendName::Idea {
+    let Some(launch_backend) = fallback_launch_backend(preference) else {
         return Err(CliError::new(
             "IDEA_NOT_RUNNING",
             format!(
@@ -170,13 +192,15 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
                 workspace_root.display()
             ),
         ));
-    }
+    };
 
     if args.no_auto_start.unwrap_or(false) {
-        return Err(no_backend_error(&workspace_root, Some(backend_name)));
+        return Err(no_backend_error(
+            &workspace_root,
+            preference.backend_filter(),
+        ));
     }
 
-    let launch_backend = backend_name;
     let runtime_libs_dir = config
         .backends
         .headless
@@ -211,8 +235,12 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
 
 pub fn workspace_stop(args: RuntimeArgs) -> Result<DaemonStopResult> {
     let workspace_root = workspace_root(args.workspace_root.clone())?;
-    let backend_name = resolve_runtime_backend(&workspace_root, args.backend_name)?;
-    let inspection = inspect_workspace(&workspace_root, Some(backend_name), true)?;
+    let backend_name = args.backend_name.unwrap_or(BackendName::Headless);
+    let inspection = inspect_workspace(
+        &workspace_root,
+        RuntimeBackendPreference::Fixed(backend_name),
+        true,
+    )?;
     let Some(candidate) = inspection
         .candidates
         .into_iter()
@@ -310,36 +338,25 @@ pub fn capabilities(args: RuntimeArgs) -> Result<Value> {
     })
 }
 
-fn resolve_runtime_backend(
-    workspace_root: &Path,
-    backend_name: Option<BackendName>,
-) -> Result<BackendName> {
-    let config = KastConfig::load(workspace_root)?;
-    Ok(config::resolve_runtime_backend(&config, backend_name))
-}
-
 fn inspect_workspace(
     workspace_root: &Path,
-    backend_name: Option<BackendName>,
+    preference: RuntimeBackendPreference,
     prune_stale_descriptors: bool,
 ) -> Result<WorkspaceInspection> {
     let config = KastConfig::load(workspace_root)?;
-    inspect_workspace_with_config(
-        workspace_root,
-        &config,
-        backend_name,
-        prune_stale_descriptors,
-    )
+    inspect_workspace_with_config(workspace_root, &config, preference, prune_stale_descriptors)
 }
 
 fn inspect_workspace_with_config(
     workspace_root: &Path,
     config: &KastConfig,
-    backend_name: Option<BackendName>,
+    preference: RuntimeBackendPreference,
     prune_stale_descriptors: bool,
 ) -> Result<WorkspaceInspection> {
     let descriptor_directory = config.paths.descriptor_dir.clone();
-    let registered = find_by_workspace_root(&descriptor_directory, workspace_root)?;
+    let backend_name = preference.backend_filter();
+    let registered =
+        find_compatible_descriptors(&descriptor_directory, workspace_root, backend_name)?;
     let mut candidates = Vec::with_capacity(registered.len());
     for descriptor in registered {
         candidates.push(inspect_descriptor(
@@ -428,8 +445,11 @@ fn wait_for_servable(
     wait_timeout_ms: u64,
 ) -> Result<RuntimeCandidateStatus> {
     let deadline = Instant::now() + Duration::from_millis(wait_timeout_ms);
+    let preference = backend_name
+        .map(RuntimeBackendPreference::Fixed)
+        .unwrap_or(RuntimeBackendPreference::Automatic);
     while Instant::now() < deadline {
-        let inspection = inspect_workspace(workspace_root, backend_name, true)?;
+        let inspection = inspect_workspace(workspace_root, preference, true)?;
         if let Some(selected) =
             select_servable(&inspection.candidates, backend_name, accept_indexing)
         {
@@ -520,22 +540,118 @@ fn is_ready(status: &RuntimeStatusResponse) -> bool {
         && !status.indexing
 }
 
-fn find_by_workspace_root(
+fn find_compatible_descriptors(
     descriptor_directory: &Path,
     workspace_root: &Path,
+    backend_name: Option<BackendName>,
 ) -> Result<Vec<RegisteredDescriptor>> {
     let descriptors = read_descriptors(descriptor_directory)?;
     let normalized = config::normalize(workspace_root.to_path_buf());
+    let workspace_identity = workspace_git_identity(&normalized);
     Ok(descriptors
         .into_iter()
         .filter(|descriptor| {
-            config::normalize(PathBuf::from(&descriptor.workspace_root)) == normalized
+            backend_name.is_none_or(|backend| descriptor.backend_name == backend.canonical())
+        })
+        .filter(|descriptor| {
+            descriptor_matches_workspace(descriptor, &normalized, workspace_identity.as_ref())
         })
         .map(|descriptor| RegisteredDescriptor {
             id: descriptor_id(&descriptor),
             descriptor,
         })
         .collect())
+}
+
+fn descriptor_matches_workspace(
+    descriptor: &ServerInstanceDescriptor,
+    workspace_root: &Path,
+    workspace_identity: Option<&WorkspaceGitIdentity>,
+) -> bool {
+    let descriptor_root = config::normalize(PathBuf::from(&descriptor.workspace_root));
+    if descriptor_root == workspace_root {
+        return true;
+    }
+    if descriptor.backend_name != BackendName::Idea.canonical() {
+        return false;
+    }
+    let Some(workspace_identity) = workspace_identity else {
+        return false;
+    };
+    let Some(descriptor_identity) = workspace_git_identity(&descriptor_root) else {
+        return false;
+    };
+    workspace_git_identities_are_compatible_for_idea(workspace_identity, &descriptor_identity)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct WorkspaceGitIdentity {
+    common_dir: PathBuf,
+    branch: Option<String>,
+    head: Option<String>,
+}
+
+fn workspace_git_identities_are_compatible_for_idea(
+    invocation: &WorkspaceGitIdentity,
+    candidate: &WorkspaceGitIdentity,
+) -> bool {
+    if invocation.common_dir != candidate.common_dir {
+        return false;
+    }
+    match (&invocation.branch, &candidate.branch) {
+        (Some(invocation_branch), Some(candidate_branch)) => invocation_branch == candidate_branch,
+        _ => invocation.head.is_some() && invocation.head == candidate.head,
+    }
+}
+
+fn workspace_git_identity(workspace_root: &Path) -> Option<WorkspaceGitIdentity> {
+    let _root = git_path(workspace_root, &["rev-parse", "--show-toplevel"])?;
+    let _git_dir = git_path(workspace_root, &["rev-parse", "--git-dir"])?;
+    Some(WorkspaceGitIdentity {
+        common_dir: git_path(workspace_root, &["rev-parse", "--git-common-dir"])?,
+        branch: git_output(workspace_root, &["branch", "--show-current"]),
+        head: git_output(workspace_root, &["rev-parse", "HEAD"]),
+    })
+}
+
+fn git_path(workspace_root: &Path, args: &[&str]) -> Option<PathBuf> {
+    let raw = git_output(workspace_root, args)?;
+    let path = PathBuf::from(raw.trim());
+    Some(config::normalize(if path.is_absolute() {
+        path
+    } else {
+        workspace_root.join(path)
+    }))
+}
+
+fn git_output(workspace_root: &Path, args: &[&str]) -> Option<String> {
+    let output = std::process::Command::new("git")
+        .args(args)
+        .current_dir(workspace_root)
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let value = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    (!value.is_empty()).then_some(value)
+}
+
+fn runtime_backend_preference(
+    config: &KastConfig,
+    backend_name: Option<BackendName>,
+) -> RuntimeBackendPreference {
+    backend_name
+        .or(config.runtime.default_backend)
+        .map(RuntimeBackendPreference::Fixed)
+        .unwrap_or(RuntimeBackendPreference::Automatic)
+}
+
+fn fallback_launch_backend(preference: RuntimeBackendPreference) -> Option<BackendName> {
+    match preference.fixed_backend() {
+        Some(BackendName::Idea) => None,
+        Some(BackendName::Headless) | None => Some(BackendName::Headless),
+    }
 }
 
 fn read_descriptors(descriptor_directory: &Path) -> Result<Vec<ServerInstanceDescriptor>> {
@@ -700,5 +816,108 @@ mod tests {
         let candidates = vec![candidate("headless", RuntimeState::Indexing, true)];
         assert!(select_servable(&candidates, None, false).is_none());
         assert!(select_servable(&candidates, None, true).is_some());
+    }
+
+    #[test]
+    fn servable_selection_respects_fixed_headless_filter() {
+        let candidates = vec![
+            candidate("headless", RuntimeState::Ready, false),
+            candidate("idea", RuntimeState::Ready, false),
+        ];
+        let selected = select_servable(&candidates, Some(BackendName::Headless), false).unwrap();
+        assert_eq!(selected.descriptor.backend_name, "headless");
+    }
+
+    fn git_identity(common_dir: &str, branch: Option<&str>, head: &str) -> WorkspaceGitIdentity {
+        WorkspaceGitIdentity {
+            common_dir: PathBuf::from(common_dir),
+            branch: branch.map(str::to_string),
+            head: Some(head.to_string()),
+        }
+    }
+
+    #[test]
+    fn idea_workspace_compatibility_accepts_same_common_dir_and_branch() {
+        let invocation = git_identity("/work/kast/.git", Some("feature"), "abc123");
+        let candidate = git_identity("/work/kast/.git", Some("feature"), "def456");
+
+        assert!(workspace_git_identities_are_compatible_for_idea(
+            &invocation,
+            &candidate
+        ));
+    }
+
+    #[test]
+    fn idea_workspace_compatibility_rejects_different_branches() {
+        let invocation = git_identity("/work/kast/.git", Some("feature"), "abc123");
+        let candidate = git_identity("/work/kast/.git", Some("main"), "abc123");
+
+        assert!(!workspace_git_identities_are_compatible_for_idea(
+            &invocation,
+            &candidate
+        ));
+    }
+
+    #[test]
+    fn idea_workspace_compatibility_accepts_detached_matching_head() {
+        let invocation = git_identity("/work/kast/.git", None, "abc123");
+        let candidate = git_identity("/work/kast/.git", Some("main"), "abc123");
+
+        assert!(workspace_git_identities_are_compatible_for_idea(
+            &invocation,
+            &candidate
+        ));
+    }
+
+    #[test]
+    fn idea_workspace_compatibility_rejects_same_remote_different_common_dir() {
+        let invocation = git_identity("/work/kast/.git", Some("feature"), "abc123");
+        let candidate = git_identity("/other/kast/.git", Some("feature"), "abc123");
+
+        assert!(!workspace_git_identities_are_compatible_for_idea(
+            &invocation,
+            &candidate
+        ));
+    }
+
+    #[test]
+    fn runtime_backend_preference_is_automatic_without_cli_or_config() {
+        let config = KastConfig::defaults();
+
+        assert_eq!(
+            runtime_backend_preference(&config, None),
+            RuntimeBackendPreference::Automatic,
+        );
+    }
+
+    #[test]
+    fn runtime_backend_preference_preserves_cli_and_config_authority() {
+        let mut config = KastConfig::defaults();
+        config.runtime.default_backend = Some(BackendName::Idea);
+
+        assert_eq!(
+            runtime_backend_preference(&config, None),
+            RuntimeBackendPreference::Fixed(BackendName::Idea),
+        );
+        assert_eq!(
+            runtime_backend_preference(&config, Some(BackendName::Headless)),
+            RuntimeBackendPreference::Fixed(BackendName::Headless),
+        );
+    }
+
+    #[test]
+    fn fallback_launch_backend_uses_headless_unless_idea_is_fixed() {
+        assert_eq!(
+            fallback_launch_backend(RuntimeBackendPreference::Automatic),
+            Some(BackendName::Headless),
+        );
+        assert_eq!(
+            fallback_launch_backend(RuntimeBackendPreference::Fixed(BackendName::Headless)),
+            Some(BackendName::Headless),
+        );
+        assert_eq!(
+            fallback_launch_backend(RuntimeBackendPreference::Fixed(BackendName::Idea)),
+            None,
+        );
     }
 }

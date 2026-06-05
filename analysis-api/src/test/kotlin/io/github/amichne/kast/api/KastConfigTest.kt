@@ -165,20 +165,28 @@ class KastConfigTest {
     }
 
     @Test
-    fun `workspace directory resolver uses git remote hierarchy when origin is parseable`() {
+    fun `workspace directory resolver uses git remote worktree hierarchy when origin is parseable`() {
         val configHome = tempDir.resolve("config-home")
         val installRoot = tempDir.resolve("install-root")
         val workspaceRoot = tempDir.resolve("workspace")
+        val gitDir = tempDir.resolve("main.git").resolve("worktrees").resolve("workspace")
         val resolver = WorkspaceDirectoryResolver(
             configHome = { configHome },
             installRoot = { installRoot },
-            gitRemoteResolver = { GitRemote(host = "github.com", owner = "amichne", repo = "kast") },
+            gitWorkspaceResolver = {
+                GitWorkspace(
+                    toplevel = workspaceRoot,
+                    commonDir = tempDir.resolve("main.git"),
+                    gitDir = gitDir,
+                    remote = GitRemote(host = "github.com", owner = "amichne", repo = "kast"),
+                )
+            },
         )
 
         val dataDirectory = resolver.workspaceDataDirectory(workspaceRoot)
 
         assertEquals(
-            installRoot.resolve("workspaces/github.com/amichne/kast"),
+            installRoot.resolve("workspaces/git/github.com/amichne/kast/worktrees/workspace--${gitWorktreeHash(workspaceRoot, gitDir)}"),
             dataDirectory,
         )
         assertEquals(dataDirectory.resolve("cache"), resolver.workspaceCacheDirectory(workspaceRoot))
@@ -216,7 +224,14 @@ class KastConfigTest {
         val resolver = WorkspaceDirectoryResolver(
             configHome = { configHome },
             installRoot = { installRoot },
-            gitRemoteResolver = { GitRemote(host = "github.com", owner = "amichne", repo = "kast") },
+            gitWorkspaceResolver = {
+                GitWorkspace(
+                    toplevel = workspaceRoot,
+                    commonDir = tempDir.resolve("main.git"),
+                    gitDir = tempDir.resolve("main.git").resolve("worktrees").resolve("workspace"),
+                    remote = GitRemote(host = "github.com", owner = "amichne", repo = "kast"),
+                )
+            },
         )
         configHome.resolve("config.toml").apply {
             parent.toFile().mkdirs()

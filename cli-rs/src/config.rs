@@ -268,15 +268,6 @@ pub fn default_config_template() -> Result<String> {
     Ok(toml::to_string_pretty(&KastConfig::defaults())?)
 }
 
-pub fn resolve_runtime_backend(
-    config: &KastConfig,
-    backend_name: Option<BackendName>,
-) -> BackendName {
-    backend_name
-        .or(config.runtime.default_backend)
-        .unwrap_or(BackendName::Headless)
-}
-
 pub fn backend_runtime_libs_dir(
     config: &KastConfig,
     backend_name: BackendName,
@@ -383,12 +374,8 @@ pub fn normalize(path: PathBuf) -> PathBuf {
 
 pub fn workspace_data_directory(workspace_root: &Path) -> Result<PathBuf> {
     let root = normalize(workspace_root.to_path_buf());
-    if let Some(remote) = git_remote(&root) {
-        return Ok(home_dir()
-            .join(".kast/workspaces")
-            .join(remote.host)
-            .join(remote.owner)
-            .join(remote.repo));
+    if let Some(workspace) = git_workspace(&root) {
+        return Ok(workspace_data_directory_for_git(&home_dir(), &workspace));
     }
     if root.starts_with(env::temp_dir()) {
         return Ok(root.join(".gradle/kast"));
@@ -419,24 +406,89 @@ fn read_partial_config(path: &Path) -> Result<PartialConfig> {
 }
 
 #[derive(Debug)]
+struct GitWorkspace {
+    toplevel: PathBuf,
+    common_dir: PathBuf,
+    git_dir: PathBuf,
+    remote: Option<GitRemote>,
+}
+
+#[derive(Debug, Clone)]
 struct GitRemote {
     host: String,
     owner: String,
     repo: String,
 }
 
-fn git_remote(workspace_root: &Path) -> Option<GitRemote> {
+fn git_workspace(workspace_root: &Path) -> Option<GitWorkspace> {
+    let toplevel = git_path(workspace_root, &["rev-parse", "--show-toplevel"])?;
+    let common_dir = git_path(workspace_root, &["rev-parse", "--git-common-dir"])?;
+    let git_dir = git_path(workspace_root, &["rev-parse", "--git-dir"])?;
+    let remote = git_output(workspace_root, &["config", "--get", "remote.origin.url"])
+        .and_then(|remote| parse_git_remote(remote.trim()));
+    Some(GitWorkspace {
+        toplevel,
+        common_dir,
+        git_dir,
+        remote,
+    })
+}
+
+fn workspace_data_directory_for_git(home: &Path, workspace: &GitWorkspace) -> PathBuf {
+    let repo_root = if let Some(remote) = &workspace.remote {
+        home.join(".kast/workspaces/git")
+            .join(&remote.host)
+            .join(&remote.owner)
+            .join(&remote.repo)
+    } else {
+        home.join(".kast/workspaces/git/local")
+            .join(git_common_dir_hash(&workspace.common_dir))
+    };
+    repo_root.join("worktrees").join(format!(
+        "{}--{}",
+        workspace_slug(&workspace.toplevel),
+        git_worktree_hash(&workspace.toplevel, &workspace.git_dir)
+    ))
+}
+
+fn git_worktree_hash(toplevel: &Path, git_dir: &Path) -> String {
+    sha256_prefix(&format!(
+        "{}\n{}",
+        normalize(toplevel.to_path_buf()).display(),
+        normalize(git_dir.to_path_buf()).display()
+    ))
+}
+
+fn git_common_dir_hash(common_dir: &Path) -> String {
+    sha256_prefix(&normalize(common_dir.to_path_buf()).display().to_string())
+}
+
+fn sha256_prefix(value: &str) -> String {
+    let digest = Sha256::digest(value.as_bytes());
+    hex::encode(digest)[0..12].to_string()
+}
+
+fn git_path(workspace_root: &Path, args: &[&str]) -> Option<PathBuf> {
+    let raw = git_output(workspace_root, args)?;
+    let path = PathBuf::from(raw.trim());
+    Some(normalize(if path.is_absolute() {
+        path
+    } else {
+        workspace_root.join(path)
+    }))
+}
+
+fn git_output(workspace_root: &Path, args: &[&str]) -> Option<String> {
     let output = std::process::Command::new("git")
-        .arg("config")
-        .arg("--get")
-        .arg("remote.origin.url")
+        .args(args)
         .current_dir(workspace_root)
         .output()
         .ok()?;
     if !output.status.success() {
         return None;
     }
-    parse_git_remote(String::from_utf8_lossy(&output.stdout).trim())
+    let value = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    (!value.is_empty()).then_some(value)
 }
 
 fn parse_git_remote(remote_url: &str) -> Option<GitRemote> {
@@ -484,8 +536,20 @@ fn local_workspace_id(workspace_root: &Path) -> Result<String> {
 }
 
 fn sanitized_path(workspace_root: &Path) -> String {
+    sanitized_segment(&workspace_root.to_string_lossy())
+}
+
+fn workspace_slug(workspace_root: &Path) -> String {
+    workspace_root
+        .file_name()
+        .and_then(|name| name.to_str())
+        .map(sanitized_segment)
+        .unwrap_or_else(|| "workspace".to_string())
+}
+
+fn sanitized_segment(value: &str) -> String {
     let mut result = String::new();
-    for ch in workspace_root.to_string_lossy().chars() {
+    for ch in value.chars() {
         if ch.is_ascii_alphanumeric() || matches!(ch, '.' | '_' | '-') {
             result.push(ch);
         } else if !result.ends_with('-') {
@@ -525,6 +589,88 @@ mod tests {
     }
 
     #[test]
+    fn git_workspace_data_directory_uses_remote_worktree_path() {
+        let home = PathBuf::from("/home/alex");
+        let workspace = GitWorkspace {
+            toplevel: PathBuf::from("/work/kast"),
+            common_dir: PathBuf::from("/work/kast/.git"),
+            git_dir: PathBuf::from("/work/kast/.git"),
+            remote: Some(GitRemote {
+                host: "github.com".to_string(),
+                owner: "amichne".to_string(),
+                repo: "kast".to_string(),
+            }),
+        };
+
+        assert_eq!(
+            workspace_data_directory_for_git(&home, &workspace),
+            home.join(format!(
+                ".kast/workspaces/git/github.com/amichne/kast/worktrees/kast--{}",
+                git_worktree_hash(&workspace.toplevel, &workspace.git_dir)
+            )),
+        );
+    }
+
+    #[test]
+    fn git_workspace_data_directory_isolates_sibling_worktrees() {
+        let home = PathBuf::from("/home/alex");
+        let common_dir = PathBuf::from("/work/kast/.git");
+        let remote = GitRemote {
+            host: "github.com".to_string(),
+            owner: "amichne".to_string(),
+            repo: "kast".to_string(),
+        };
+        let first = GitWorkspace {
+            toplevel: PathBuf::from("/work/kast"),
+            common_dir: common_dir.clone(),
+            git_dir: common_dir.clone(),
+            remote: Some(remote.clone()),
+        };
+        let second = GitWorkspace {
+            toplevel: PathBuf::from("/work/kast-feature"),
+            common_dir,
+            git_dir: PathBuf::from("/work/kast/.git/worktrees/kast-feature"),
+            remote: Some(remote),
+        };
+
+        assert_ne!(
+            workspace_data_directory_for_git(&home, &first),
+            workspace_data_directory_for_git(&home, &second),
+        );
+    }
+
+    #[test]
+    fn git_workspace_data_directory_supports_git_without_origin() {
+        let home = PathBuf::from("/home/alex");
+        let workspace = GitWorkspace {
+            toplevel: PathBuf::from("/work/private"),
+            common_dir: PathBuf::from("/work/private/.git"),
+            git_dir: PathBuf::from("/work/private/.git/worktrees/private"),
+            remote: None,
+        };
+
+        assert_eq!(
+            workspace_data_directory_for_git(&home, &workspace),
+            home.join(format!(
+                ".kast/workspaces/git/local/{}/worktrees/private--{}",
+                git_common_dir_hash(&workspace.common_dir),
+                git_worktree_hash(&workspace.toplevel, &workspace.git_dir)
+            )),
+        );
+    }
+
+    #[test]
+    fn git_worktree_hash_matches_toplevel_and_git_dir_contract() {
+        let toplevel = PathBuf::from("/work/kast");
+        let git_dir = PathBuf::from("/work/kast/.git/worktrees/kast");
+
+        assert_eq!(
+            git_worktree_hash(&toplevel, &git_dir),
+            sha256_prefix("/work/kast\n/work/kast/.git/worktrees/kast"),
+        );
+    }
+
+    #[test]
     fn parses_runtime_default_backend() {
         let temp = tempfile::tempdir().unwrap();
         let config_file = temp.path().join("config.toml");
@@ -559,22 +705,5 @@ defaultBackend = "sidecar"
         assert_eq!(error.code, "CONFIG_ERROR");
         assert!(error.message.contains("sidecar"), "{}", error.message);
         assert!(error.message.contains("headless"), "{}", error.message);
-    }
-
-    #[test]
-    fn runtime_backend_resolution_prefers_cli_then_config_then_headless() {
-        let mut config = KastConfig::defaults();
-
-        assert_eq!(
-            resolve_runtime_backend(&config, None),
-            BackendName::Headless
-        );
-
-        config.runtime.default_backend = Some(BackendName::Idea);
-        assert_eq!(resolve_runtime_backend(&config, None), BackendName::Idea);
-        assert_eq!(
-            resolve_runtime_backend(&config, Some(BackendName::Headless)),
-            BackendName::Headless
-        );
     }
 }
