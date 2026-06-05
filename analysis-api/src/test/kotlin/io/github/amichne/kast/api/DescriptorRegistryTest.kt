@@ -24,7 +24,7 @@ class DescriptorRegistryTest {
 
     private fun descriptor(
         workspaceRoot: String = "/tmp/workspace",
-        backendName: String = "standalone",
+        backendName: String = "headless",
         pid: Long = 42L,
     ) = ServerInstanceDescriptor(
         workspaceRoot = workspaceRoot,
@@ -95,12 +95,12 @@ class DescriptorRegistryTest {
     fun `registered descriptor id is derived from workspace-backend-pid`() {
         val daemonsFile = tempDir.resolve("daemons.json")
         val registry = DescriptorRegistry(daemonsFile)
-        val d = descriptor(workspaceRoot = "/tmp/ws", backendName = "standalone", pid = 99L)
+        val d = descriptor(workspaceRoot = "/tmp/ws", backendName = "headless", pid = 99L)
 
         registry.register(d)
         val registered = registry.list().single()
 
-        assertEquals("/tmp/ws:standalone:99", registered.id)
+        assertEquals("/tmp/ws:headless:99", registered.id)
     }
 
     @Test
@@ -108,7 +108,7 @@ class DescriptorRegistryTest {
         val workspaceRoot = tempDir.resolve("workspace")
         val d = ServerInstanceDescriptor(
             workspaceRoot = workspaceRoot.toString(),
-            backendName = "standalone",
+            backendName = "headless",
             backendVersion = "0.1.0",
             socketPath = workspaceRoot.resolve(".kast/s").toString(),
         )

@@ -23,7 +23,7 @@ class KastSettingsConfigurableTest {
         val state = KastSettingsState().apply {
             loadFromConfig(KastConfig.defaults())
             serverMaxResults = 42
-            backendsStandaloneRuntimeLibsDir = "/tmp/runtime-libs"
+            backendsHeadlessRuntimeLibsDir = "/tmp/runtime-libs"
             telemetryEnabled = true
         }
 
@@ -31,7 +31,7 @@ class KastSettingsConfigurableTest {
 
         assertTrue(toml.contains("[server]"))
         assertTrue(toml.contains("maxResults = 42"))
-        assertTrue(toml.contains("[backends.standalone]"))
+        assertTrue(toml.contains("[backends.headless]"))
         assertTrue(toml.contains("runtimeLibsDir = \"/tmp/runtime-libs\""))
         assertTrue(toml.contains("[telemetry]"))
         assertTrue(toml.contains("enabled = true"))

@@ -50,7 +50,7 @@ Pick the path that matches what you are doing:
 
 ## What this crate owns
 
-The Rust binary is a control plane. It can start the standalone JVM
+The Rust binary is a control plane. It can start the headless JVM
 backend, send JSON-RPC requests to a workspace daemon, install packaged
 resources, read `source-index.db` directly for metrics, and render the
 ratatui demo. It does not replace the Kotlin compiler analysis engine.

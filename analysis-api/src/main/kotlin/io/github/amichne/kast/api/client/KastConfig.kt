@@ -76,11 +76,12 @@ data class KastConfig(
                     emitManifest = ProfilingEmitManifest(true),
                 ),
                 backends = BackendsConfig(
-                    standalone = StandaloneBackendConfig(
-                        enabled = StandaloneBackendEnabled(true),
-                        runtimeLibsDir = StandaloneRuntimeLibsDir(
-                            OptionalConfigString(defaultConfigStandaloneRuntimeLibsDir(paths.libDir.value).toString()),
+                    headless = HeadlessBackendConfig(
+                        enabled = HeadlessBackendEnabled(true),
+                        runtimeLibsDir = HeadlessRuntimeLibsDir(
+                            OptionalConfigString(defaultConfigHeadlessRuntimeLibsDir(paths.libDir.value).toString()),
                         ),
+                        ideaHome = HeadlessIdeaHome(OptionalConfigString.Unset),
                     ),
                     intellij = IntellijBackendConfig(enabled = IntellijBackendEnabled(true)),
                 ),
@@ -267,15 +268,16 @@ private fun Map<String, String>.profilingOverride(): ProfilingConfigOverride? {
 }
 
 private fun Map<String, String>.backendsOverride(): BackendsConfigOverride? {
-    val standalone = standaloneBackendOverride()
+    val headless = headlessBackendOverride()
     val intellij = intellijBackendOverride()
-    return takeIfAny(standalone, intellij) { BackendsConfigOverride(standalone, intellij) }
+    return takeIfAny(headless, intellij) { BackendsConfigOverride(headless, intellij) }
 }
 
-private fun Map<String, String>.standaloneBackendOverride(): StandaloneBackendConfigOverride? {
-    val enabled = booleanValue("backends.standalone.enabled")?.let(::StandaloneBackendEnabled)
-    val runtimeLibsDir = optionalStringValue("backends.standalone.runtimelibsdir")?.let(::StandaloneRuntimeLibsDir)
-    return takeIfAny(enabled, runtimeLibsDir) { StandaloneBackendConfigOverride(enabled, runtimeLibsDir) }
+private fun Map<String, String>.headlessBackendOverride(): HeadlessBackendConfigOverride? {
+    val enabled = booleanValue("backends.headless.enabled")?.let(::HeadlessBackendEnabled)
+    val runtimeLibsDir = optionalStringValue("backends.headless.runtimelibsdir")?.let(::HeadlessRuntimeLibsDir)
+    val ideaHome = optionalStringValue("backends.headless.ideahome")?.let(::HeadlessIdeaHome)
+    return takeIfAny(enabled, runtimeLibsDir, ideaHome) { HeadlessBackendConfigOverride(enabled, runtimeLibsDir, ideaHome) }
 }
 
 private fun Map<String, String>.intellijBackendOverride(): IntellijBackendConfigOverride? {
@@ -372,13 +374,14 @@ data class ProfilingConfig(
 )
 
 data class BackendsConfig(
-    val standalone: StandaloneBackendConfig,
+    val headless: HeadlessBackendConfig,
     val intellij: IntellijBackendConfig,
 )
 
-data class StandaloneBackendConfig(
-    val enabled: StandaloneBackendEnabled,
-    val runtimeLibsDir: StandaloneRuntimeLibsDir,
+data class HeadlessBackendConfig(
+    val enabled: HeadlessBackendEnabled,
+    val runtimeLibsDir: HeadlessRuntimeLibsDir,
+    val ideaHome: HeadlessIdeaHome,
 )
 
 data class IntellijBackendConfig(
@@ -464,13 +467,14 @@ data class ProfilingConfigOverride(
 )
 
 data class BackendsConfigOverride(
-    val standalone: StandaloneBackendConfigOverride? = null,
+    val headless: HeadlessBackendConfigOverride? = null,
     val intellij: IntellijBackendConfigOverride? = null,
 )
 
-data class StandaloneBackendConfigOverride(
-    val enabled: StandaloneBackendEnabled? = null,
-    val runtimeLibsDir: StandaloneRuntimeLibsDir? = null,
+data class HeadlessBackendConfigOverride(
+    val enabled: HeadlessBackendEnabled? = null,
+    val runtimeLibsDir: HeadlessRuntimeLibsDir? = null,
+    val ideaHome: HeadlessIdeaHome? = null,
 )
 
 data class IntellijBackendConfigOverride(
@@ -562,16 +566,17 @@ private fun BackendsConfig.merge(
     override: BackendsConfigOverride?,
     paths: PathsConfig,
 ): BackendsConfig = copy(
-    standalone = standalone.merge(override?.standalone, paths),
+    headless = headless.merge(override?.headless, paths),
     intellij = intellij.merge(override?.intellij),
 )
 
-private fun StandaloneBackendConfig.merge(
-    override: StandaloneBackendConfigOverride?,
+private fun HeadlessBackendConfig.merge(
+    override: HeadlessBackendConfigOverride?,
     paths: PathsConfig,
-): StandaloneBackendConfig = copy(
+): HeadlessBackendConfig = copy(
     enabled = override?.enabled ?: enabled,
     runtimeLibsDir = override?.runtimeLibsDir ?: runtimeLibsDir,
+    ideaHome = override?.ideaHome ?: ideaHome,
 )
 
 private fun IntellijBackendConfig.merge(override: IntellijBackendConfigOverride?): IntellijBackendConfig = copy(

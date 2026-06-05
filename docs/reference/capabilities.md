@@ -26,7 +26,7 @@ category. Expand any operation to see its input and output schemas.
             | Signature | Description |
             |-----------|-------------|
             | `#!kotlin status: String` :material-information-outline:{ title="Default: &quot;ok&quot;" } | Health status string, always "ok" when the daemon is responsive. |
-            | `#!kotlin backendName: String` | Identifier of the analysis backend (e.g. "standalone" or "intellij"). |
+            | `#!kotlin backendName: String` | Identifier of the analysis backend (e.g. "headless" or "intellij"). |
             | `#!kotlin backendVersion: String` | Version string of the analysis backend. |
             | `#!kotlin workspaceRoot: String` | Absolute path of the workspace root directory. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |

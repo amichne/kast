@@ -14,7 +14,7 @@ direct source-index metrics plus the ratatui demo views. Run
 ## Workspace lifecycle
 
 These commands manage or inspect a workspace backend. They may start or
-talk to the standalone JVM runtime.
+talk to the headless JVM runtime.
 
 | Command | What it does | Common flags |
 |---------|--------------|--------------|
@@ -22,7 +22,7 @@ talk to the standalone JVM runtime.
 | `kast status` | Report known backends and runtime state. | `--workspace-root` |
 | `kast stop` | Stop a workspace daemon. | `--workspace-root`, `--backend-name` |
 | `kast capabilities` | Print advertised backend capabilities. | `--workspace-root` |
-| `kast daemon start` | Launch the standalone JVM backend in the foreground. | `--workspace-root`, `--socket-path`, `--stdio` |
+| `kast daemon start` | Launch the headless JVM backend in the foreground. | `--workspace-root`, `--socket-path`, `--stdio` |
 
 ## JSON-RPC passthrough
 

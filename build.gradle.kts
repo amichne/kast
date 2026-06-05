@@ -36,18 +36,6 @@ tasks.register("buildIntellijPlugin") {
     dependsOn(":backend-intellij:buildPlugin")
 }
 
-tasks.register("stageBackendDist") {
-    group = "distribution"
-    description = "Builds a clean staged backend-standalone tree under backend-standalone/build/portable-dist/backend-standalone."
-    dependsOn(":backend-standalone:syncPortableDist")
-}
-
-tasks.register("buildBackendPortableZip") {
-    group = "distribution"
-    description = "Builds the versioned portable backend-standalone zip under backend-standalone/build/distributions."
-    dependsOn(":backend-standalone:portableDistZip")
-}
-
 tasks.register("stageHeadlessDist") {
     group = "distribution"
     description = "Builds a clean staged backend-headless tree under backend-headless/build/portable-dist/backend-headless."

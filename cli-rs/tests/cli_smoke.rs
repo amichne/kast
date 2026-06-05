@@ -57,43 +57,37 @@ fi
 }
 
 fn write_backend_archive(root: &Path, backend: &str, version: &str) -> PathBuf {
+    assert_eq!(backend, "headless", "unsupported backend fixture");
     let staging = root.join(format!("{backend}-staging"));
     let archive = root.join(format!("{backend}.zip"));
-    let archive_root = match backend {
-        "standalone" => "backend-standalone",
-        "headless" => "backend-headless",
-        other => panic!("unsupported backend fixture: {other}"),
-    };
+    let archive_root = "backend-headless";
     let runtime_libs = staging.join(archive_root).join("runtime-libs");
     std::fs::create_dir_all(&runtime_libs).expect("runtime libs");
     std::fs::write(runtime_libs.join("classpath.txt"), "kast-test.jar\n").expect("classpath");
     std::fs::write(runtime_libs.join("kast-test.jar"), b"fake jar").expect("jar");
     let launcher = staging.join(archive_root).join(format!("kast-{backend}"));
     std::fs::write(&launcher, "#!/bin/sh\n").expect("launcher");
-    if backend == "headless" {
-        std::fs::create_dir_all(staging.join(archive_root).join("idea-home/lib"))
-            .expect("idea lib");
-        std::fs::create_dir_all(staging.join(archive_root).join("idea-home/modules"))
-            .expect("idea modules");
-        std::fs::create_dir_all(
-            staging
-                .join(archive_root)
-                .join("idea-home/plugins/kast-headless"),
-        )
-        .expect("headless plugin");
-        std::fs::write(
-            staging.join(archive_root).join("idea-home/lib/nio-fs.jar"),
-            b"nio",
-        )
-        .expect("nio");
-        std::fs::write(
-            staging
-                .join(archive_root)
-                .join("idea-home/modules/module-descriptors.dat"),
-            b"modules",
-        )
-        .expect("module descriptors");
-    }
+    std::fs::create_dir_all(staging.join(archive_root).join("idea-home/lib")).expect("idea lib");
+    std::fs::create_dir_all(staging.join(archive_root).join("idea-home/modules"))
+        .expect("idea modules");
+    std::fs::create_dir_all(
+        staging
+            .join(archive_root)
+            .join("idea-home/plugins/kast-headless"),
+    )
+    .expect("headless plugin");
+    std::fs::write(
+        staging.join(archive_root).join("idea-home/lib/nio-fs.jar"),
+        b"nio",
+    )
+    .expect("nio");
+    std::fs::write(
+        staging
+            .join(archive_root)
+            .join("idea-home/modules/module-descriptors.dat"),
+        b"modules",
+    )
+    .expect("module descriptors");
     let status = Command::new("zip")
         .args(["-qr", archive.to_str().expect("archive path"), archive_root])
         .current_dir(&staging)
@@ -363,10 +357,10 @@ fn backend_install_downloaded_archive_verifies_release_metadata() {
     let release_dir = temp.path().join("release");
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&release_dir).expect("release dir");
-    let asset_name = write_backend_release_asset(&release_dir, "standalone", "v9.8.7");
+    let asset_name = write_backend_release_asset(&release_dir, "headless", "v9.8.7");
     write_backend_release_metadata(
         &release_dir,
-        "standalone",
+        "headless",
         &asset_name,
         None,
         None,
@@ -380,7 +374,7 @@ fn backend_install_downloaded_archive_verifies_release_metadata() {
         .args([
             "backend",
             "install",
-            "standalone",
+            "headless",
             "--version",
             "v9.8.7",
             "--base-url",
@@ -399,7 +393,7 @@ fn backend_install_downloaded_archive_verifies_release_metadata() {
         serde_json::from_slice(&install.stdout).expect("backend install json");
     assert_eq!(stdout["downloaded"], true);
     assert!(
-        home.join(".kast/lib/backends/current/runtime-libs/classpath.txt")
+        home.join(".kast/lib/backends/headless/current/runtime-libs/classpath.txt")
             .is_file()
     );
 }
@@ -412,10 +406,10 @@ fn backend_install_downloaded_archive_rejects_checksum_mismatch_before_extract()
     let release_dir = temp.path().join("release");
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&release_dir).expect("release dir");
-    let asset_name = write_backend_release_asset(&release_dir, "standalone", "v9.8.7");
+    let asset_name = write_backend_release_asset(&release_dir, "headless", "v9.8.7");
     write_backend_release_metadata(
         &release_dir,
-        "standalone",
+        "headless",
         &asset_name,
         Some("0000000000000000000000000000000000000000000000000000000000000000"),
         None,
@@ -429,7 +423,7 @@ fn backend_install_downloaded_archive_rejects_checksum_mismatch_before_extract()
         .args([
             "backend",
             "install",
-            "standalone",
+            "headless",
             "--version",
             "v9.8.7",
             "--base-url",
@@ -449,7 +443,7 @@ fn backend_install_downloaded_archive_rejects_checksum_mismatch_before_extract()
         stderr.contains("\"code\": \"BACKEND_RELEASE_VERIFY_FAILED\""),
         "{stderr}"
     );
-    assert!(!home.join(".kast/lib/backends/current").exists());
+    assert!(!home.join(".kast/lib/backends/headless/current").exists());
 }
 
 #[test]
@@ -460,10 +454,10 @@ fn backend_install_downloaded_archive_rejects_provenance_digest_mismatch() {
     let release_dir = temp.path().join("release");
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&release_dir).expect("release dir");
-    let asset_name = write_backend_release_asset(&release_dir, "standalone", "v9.8.7");
+    let asset_name = write_backend_release_asset(&release_dir, "headless", "v9.8.7");
     write_backend_release_metadata(
         &release_dir,
-        "standalone",
+        "headless",
         &asset_name,
         None,
         Some("sha256:0000000000000000000000000000000000000000000000000000000000000000"),
@@ -477,7 +471,7 @@ fn backend_install_downloaded_archive_rejects_provenance_digest_mismatch() {
         .args([
             "backend",
             "install",
-            "standalone",
+            "headless",
             "--version",
             "v9.8.7",
             "--base-url",
@@ -497,7 +491,7 @@ fn backend_install_downloaded_archive_rejects_provenance_digest_mismatch() {
         stderr.contains("\"code\": \"BACKEND_RELEASE_VERIFY_FAILED\""),
         "{stderr}"
     );
-    assert!(!home.join(".kast/lib/backends/current").exists());
+    assert!(!home.join(".kast/lib/backends/headless/current").exists());
 }
 
 #[test]
@@ -508,10 +502,10 @@ fn backend_install_downloaded_archive_requires_sha256sums() {
     let release_dir = temp.path().join("release");
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&release_dir).expect("release dir");
-    let asset_name = write_backend_release_asset(&release_dir, "standalone", "v9.8.7");
+    let asset_name = write_backend_release_asset(&release_dir, "headless", "v9.8.7");
     write_backend_release_metadata(
         &release_dir,
-        "standalone",
+        "headless",
         &asset_name,
         None,
         None,
@@ -525,7 +519,7 @@ fn backend_install_downloaded_archive_requires_sha256sums() {
         .args([
             "backend",
             "install",
-            "standalone",
+            "headless",
             "--version",
             "v9.8.7",
             "--base-url",
@@ -540,7 +534,7 @@ fn backend_install_downloaded_archive_requires_sha256sums() {
         stderr.contains("\"code\": \"BACKEND_DOWNLOAD_FAILED\""),
         "{stderr}"
     );
-    assert!(!home.join(".kast/lib/backends/current").exists());
+    assert!(!home.join(".kast/lib/backends/headless/current").exists());
 }
 
 #[test]
@@ -551,10 +545,10 @@ fn backend_install_downloaded_archive_requires_provenance() {
     let release_dir = temp.path().join("release");
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&release_dir).expect("release dir");
-    let asset_name = write_backend_release_asset(&release_dir, "standalone", "v9.8.7");
+    let asset_name = write_backend_release_asset(&release_dir, "headless", "v9.8.7");
     write_backend_release_metadata(
         &release_dir,
-        "standalone",
+        "headless",
         &asset_name,
         None,
         None,
@@ -568,7 +562,7 @@ fn backend_install_downloaded_archive_requires_provenance() {
         .args([
             "backend",
             "install",
-            "standalone",
+            "headless",
             "--version",
             "v9.8.7",
             "--base-url",
@@ -583,22 +577,22 @@ fn backend_install_downloaded_archive_requires_provenance() {
         stderr.contains("\"code\": \"BACKEND_DOWNLOAD_FAILED\""),
         "{stderr}"
     );
-    assert!(!home.join(".kast/lib/backends/current").exists());
+    assert!(!home.join(".kast/lib/backends/headless/current").exists());
 }
 
 #[test]
-fn backend_install_standalone_archive_configures_runtime_and_install_state() {
+fn backend_install_headless_archive_configures_runtime_and_install_state() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     std::fs::create_dir_all(&home).expect("home");
-    let archive = write_backend_archive(temp.path(), "standalone", "v9.8.7");
+    let archive = write_backend_archive(temp.path(), "headless", "v9.8.7");
 
     let install = kast(&home, &config_home)
         .args([
             "backend",
             "install",
-            "standalone",
+            "headless",
             "--archive",
             archive.to_str().expect("archive path"),
             "--version",
@@ -615,60 +609,56 @@ fn backend_install_standalone_archive_configures_runtime_and_install_state() {
     );
     let stdout: serde_json::Value =
         serde_json::from_slice(&install.stdout).expect("backend install json");
-    assert_eq!(stdout["backendName"], "standalone");
+    assert_eq!(stdout["backendName"], "headless");
     assert_eq!(stdout["version"], "v9.8.7");
     assert_eq!(stdout["downloaded"], false);
     assert!(
         stdout["runtimeLibsDir"]
             .as_str()
             .unwrap()
-            .ends_with(".kast/lib/backends/current/runtime-libs")
+            .ends_with(".kast/lib/backends/headless/current/runtime-libs")
     );
 
     let config = std::fs::read_to_string(config_home.join("config.toml")).expect("config");
     assert!(config.contains("[install]"), "{config}");
     assert!(config.contains("[[install.backends]]"), "{config}");
-    assert!(config.contains("name = \"standalone\""), "{config}");
+    assert!(config.contains("name = \"headless\""), "{config}");
     assert!(config.contains("version = \"v9.8.7\""), "{config}");
-    assert!(config.contains("\"backend:standalone\""), "{config}");
+    assert!(config.contains("\"backend:headless\""), "{config}");
     assert!(
-        home.join(".kast/lib/backends/current/runtime-libs/classpath.txt")
+        home.join(".kast/lib/backends/headless/current/runtime-libs/classpath.txt")
             .is_file()
     );
 }
 
 #[test]
-fn backend_uninstall_removes_only_the_selected_backend_component() {
+fn backend_uninstall_removes_headless_component() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     std::fs::create_dir_all(&home).expect("home");
-    let standalone = write_backend_archive(temp.path(), "standalone", "v9.8.7");
-    let headless = write_backend_archive(temp.path(), "headless", "v9.8.7");
-
-    for (backend, archive) in [("standalone", standalone), ("headless", headless)] {
-        let install = kast(&home, &config_home)
-            .args([
-                "backend",
-                "install",
-                backend,
-                "--archive",
-                archive.to_str().expect("archive path"),
-                "--version",
-                "v9.8.7",
-            ])
-            .output()
-            .expect("backend install");
-        assert!(
-            install.status.success(),
-            "install {backend}: stdout={}, stderr={}",
-            String::from_utf8_lossy(&install.stdout),
-            String::from_utf8_lossy(&install.stderr)
-        );
-    }
+    let archive = write_backend_archive(temp.path(), "headless", "v9.8.7");
+    let install = kast(&home, &config_home)
+        .args([
+            "backend",
+            "install",
+            "headless",
+            "--archive",
+            archive.to_str().expect("archive path"),
+            "--version",
+            "v9.8.7",
+        ])
+        .output()
+        .expect("backend install");
+    assert!(
+        install.status.success(),
+        "install headless: stdout={}, stderr={}",
+        String::from_utf8_lossy(&install.stdout),
+        String::from_utf8_lossy(&install.stderr)
+    );
 
     let uninstall = kast(&home, &config_home)
-        .args(["backend", "uninstall", "standalone"])
+        .args(["backend", "uninstall", "headless"])
         .output()
         .expect("backend uninstall");
     assert!(
@@ -679,17 +669,17 @@ fn backend_uninstall_removes_only_the_selected_backend_component() {
     );
     let stdout: serde_json::Value =
         serde_json::from_slice(&uninstall.stdout).expect("backend uninstall json");
-    assert_eq!(stdout["backendName"], "standalone");
+    assert_eq!(stdout["backendName"], "headless");
     assert_eq!(stdout["skipped"], false);
 
-    let config = std::fs::read_to_string(config_home.join("config.toml")).expect("config");
-    assert!(!config.contains("name = \"standalone\""), "{config}");
-    assert!(config.contains("name = \"headless\""), "{config}");
-    assert!(!home.join(".kast/lib/backends/current").exists());
+    assert!(!home.join(".kast/lib/backends/headless/current").exists());
     assert!(
-        home.join(".kast/lib/backends/headless/current/runtime-libs/classpath.txt")
-            .is_file()
+        !home
+            .join(".kast/lib/backends/headless/headless-v9.8.7")
+            .exists()
     );
+    let config = std::fs::read_to_string(config_home.join("config.toml")).expect("config");
+    assert!(!config.contains("[install]"), "{config}");
 }
 
 #[test]
@@ -781,18 +771,18 @@ fn runtime_backend_flag_overrides_configured_default_backend() {
             "up",
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
-            "--backend=standalone",
+            "--backend=headless",
         ])
         .output()
         .expect("up");
 
     assert!(
         !up.status.success(),
-        "up should fail without an installed standalone backend"
+        "up should fail without an installed headless backend"
     );
     let stderr = String::from_utf8_lossy(&up.stderr);
     assert!(
-        stderr.contains("kast backend install standalone"),
+        stderr.contains("kast backend install headless"),
         "stderr should include explicit backend install command: {stderr}"
     );
 }
@@ -854,18 +844,18 @@ fn rpc_backend_flag_overrides_configured_default_backend() {
             r#"{"jsonrpc":"2.0","method":"runtime/status","id":1}"#,
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
-            "--backend=standalone",
+            "--backend=headless",
         ])
         .output()
         .expect("rpc");
 
     assert!(
         !rpc.status.success(),
-        "rpc should fail without an installed standalone backend"
+        "rpc should fail without an installed headless backend"
     );
     let stderr = String::from_utf8_lossy(&rpc.stderr);
     assert!(
-        stderr.contains("kast backend install standalone"),
+        stderr.contains("kast backend install headless"),
         "stderr should include explicit backend install command: {stderr}"
     );
 }
@@ -1057,8 +1047,10 @@ fn doctor_resolves_relative_managed_paths_under_install_root() {
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let install_root = home.join(".kast");
+    let runtime_libs = install_root.join("backends/headless/headless-0.0.1/runtime-libs");
     std::fs::create_dir_all(&config_home).expect("config home");
-    std::fs::create_dir_all(install_root.join("backends")).expect("backends");
+    std::fs::create_dir_all(&runtime_libs).expect("runtime libs");
+    std::fs::write(runtime_libs.join("classpath.txt"), "kast-test.jar\n").expect("classpath");
     std::fs::write(
         config_home.join("config.toml"),
         format!(
@@ -1098,8 +1090,10 @@ fn doctor_flags_installed_backend_below_embedded_minimum() {
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let install_root = home.join(".kast");
+    let runtime_libs = install_root.join("backends/headless/headless-0.0.1/runtime-libs");
     std::fs::create_dir_all(&config_home).expect("config home");
-    std::fs::create_dir_all(install_root.join("backends")).expect("backends");
+    std::fs::create_dir_all(&runtime_libs).expect("runtime libs");
+    std::fs::write(runtime_libs.join("classpath.txt"), "kast-test.jar\n").expect("classpath");
     std::fs::write(
         config_home.join("config.toml"),
         format!(
@@ -1108,12 +1102,21 @@ installRoot = "{}"
 
 [install]
 version = "0.1.0"
-backendVersion = "0.0.1"
-components = ["backend"]
-managedPaths = ["backends"]
+components = ["backend:headless"]
+managedPaths = ["backends/headless"]
 schemaVersion = 3
+
+[[install.backends]]
+name = "headless"
+version = "0.0.1"
+installDir = "{}"
+runtimeLibsDir = "{}"
 "#,
-            install_root.display()
+            install_root.display(),
+            install_root
+                .join("backends/headless/headless-0.0.1")
+                .display(),
+            runtime_libs.display()
         ),
     )
     .expect("config");

@@ -105,7 +105,6 @@ require_contains "$gradle_properties" "org.gradle.caching=true" "Gradle build ca
 require_contains "${repo_root}/analysis-api/build.gradle.kts" 'artifactId.set("kast-analysis-api")' "analysis-api must publish the public Maven artifact"
 require_contains "${repo_root}/analysis-server/build.gradle.kts" 'artifactId.set("kast-analysis-server")' "analysis-server must publish the public Maven artifact"
 require_contains "${repo_root}/index-store/build.gradle.kts" 'artifactId.set("kast-index-store")' "index-store must publish the public Maven artifact"
-require_not_contains "${repo_root}/backend-standalone/build.gradle.kts" "kastPublishing" "Standalone backend must remain release-asset-only"
 require_not_contains "${repo_root}/backend-headless/build.gradle.kts" "kastPublishing" "Headless backend must remain release-asset-only"
 require_not_contains "${repo_root}/backend-intellij/build.gradle.kts" "kastPublishing" "IntelliJ plugin must remain release-asset-only"
 
@@ -119,14 +118,8 @@ require_contains "$ci_workflow" "Download Rust CLI CI asset" "CI bundle tests mu
 require_contains "$ci_workflow" "Smoke Devin headless runtime contract" "CI must smoke the Devin runtime bundle contract"
 require_contains "$ci_workflow" "-PkastHeadlessIdeaHomeProfile=agent" "CI must build the agent headless IDEA-home profile"
 require_contains "$ci_workflow" "Assert headless distribution excludes fat jar" "CI must guard the headless no-fat-jar layout"
-require_contains "$ci_workflow" "Free standalone distribution workspace before headless build" "CI must free standalone distribution workspace before building headless assets on constrained runners"
-require_not_contains "$ci_workflow" "standalone-dist-cache" "CI must not use a custom Actions cache for generated standalone distributions"
 require_not_contains "$ci_workflow" "headless-dist-cache" "CI must not use a custom Actions cache for generated headless distributions"
 require_not_contains "$ci_workflow" "intellij-plugin-dist-cache" "CI must not use a custom Actions cache for generated IDEA plugin distributions"
-require_not_contains "$ci_workflow" "repository: amichne/kast-rs" "CI must not checkout the retired kast-rs repo"
-require_not_contains "$ci_workflow" "--repo amichne/kast-rs" "CI must not download CLI assets from the retired kast-rs repo"
-require_order "$ci_workflow" "Build standalone daemon distribution" "Free standalone distribution workspace before headless build" "CI must free standalone distribution workspace after producing the standalone zip"
-require_order "$ci_workflow" "Free standalone distribution workspace before headless build" "Build headless backend distribution" "CI must free standalone distribution workspace before building the headless zip"
 
 require_contains "$snapshot_workflow" "Publish Snapshot" "Snapshot workflow must exist"
 require_contains "$snapshot_workflow" "publishAllPublicationsToGitHubPackagesRepository" "Snapshot workflow must publish GitHub Packages snapshots"
@@ -167,7 +160,6 @@ require_not_contains "$release_workflow" "needs.publish-maven-central.result == 
 require_not_contains "$release_workflow" "build-ubuntu-debian-bundle" "Default release must not build offline Ubuntu/Debian bundles"
 require_not_contains "$release_workflow" "build-ubuntu-debian-headless-bundle" "Default release must not build offline headless Ubuntu/Debian bundles"
 require_not_contains "$release_workflow" "provenance-ubuntu-debian" "Default release provenance must not include optional offline bundles"
-require_not_contains "$release_workflow" "--repo amichne/kast-rs" "Release must not depend on kast-rs release assets"
 require_not_contains "$release_workflow" "Dispatch Homebrew tap update" "Release must render the tap directly instead of dispatching component updates"
 require_order "$release_workflow" "Generate and upload SHA256SUMS" "Publish draft release with provenance annotation" "Release must verify checksums before publication"
 require_order "$release_workflow" "Publish draft release with provenance annotation" "Render and push Homebrew tap" "Release must publish assets before updating Homebrew"
@@ -175,11 +167,9 @@ require_order "$release_workflow" "Render and push Homebrew tap" "verify-release
 
 require_contains "$offline_bundle_workflow" "workflow_dispatch:" "Offline bundle workflow must be manually dispatchable"
 require_contains "$offline_bundle_workflow" "version:" "Offline bundle workflow must accept a release version"
-require_contains "$offline_bundle_workflow" "bundle:" "Offline bundle workflow must choose standalone/headless/both"
 require_contains "$offline_bundle_workflow" "publish_to_release:" "Offline bundle workflow must require explicit release append"
 require_contains "$offline_bundle_workflow" 'kast-${tag}-linux-x64.zip' "Offline bundle workflow must consume the published Linux x64 CLI asset"
-require_contains "$offline_bundle_workflow" "scripts/package-ubuntu-debian-bundle.sh" "Offline bundle workflow must package standalone bundles"
-require_contains "$offline_bundle_workflow" "scripts/package-ubuntu-debian-headless-bundle.sh" "Offline bundle workflow must package headless bundles"
+require_contains "$offline_bundle_workflow" "scripts/package-ubuntu-debian-bundle.sh" "Offline bundle workflow must package headless bundles"
 require_contains "$offline_bundle_workflow" "scripts/merge-release-provenance.py" "Offline bundle workflow must merge optional provenance"
 require_contains "$offline_bundle_workflow" "scripts/verify-release-assets.sh" "Offline bundle workflow must verify appended release assets"
 require_contains "$offline_bundle_workflow" "gh release upload" "Offline bundle workflow must support appending assets to a release"
@@ -210,7 +200,5 @@ require_contains "$maven_central_verifier" "kast-analysis-api" "Maven Central ve
 require_contains "$maven_central_verifier" "kast-analysis-server" "Maven Central verifier must check analysis-server"
 require_contains "$maven_central_verifier" "kast-index-store" "Maven Central verifier must check index-store"
 require_contains "$kast_script" "-Pname=value" "kast.sh build help must document Gradle property forwarding"
-
-require_not_contains "$docs_workflow" "repository: amichne/kast-rs" "Docs workflow must use in-repo CLI command catalog"
 
 printf '%s\n' "Release workflow contract passed"

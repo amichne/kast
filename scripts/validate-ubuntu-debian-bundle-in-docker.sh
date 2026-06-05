@@ -52,7 +52,7 @@ if [[ -z "$version" ]]; then
       [[ -n "$version" ]] || die "Could not infer version from bundle name: $bundle_name"
       ;;
     *)
-      die "Bundle name must match kast-ubuntu-debian-x86_64-<version>.tar.gz: $bundle_name"
+      die "Bundle name must match kast-ubuntu-debian-headless-x86_64-<version>.tar.gz: $bundle_name"
       ;;
   esac
 fi
@@ -61,13 +61,12 @@ if [[ -z "$bundle_kind" ]]; then
   bundle_name="$(basename -- "$bundle_path")"
   case "$bundle_name" in
     kast-ubuntu-debian-headless-x86_64-*) bundle_kind="headless" ;;
-    kast-ubuntu-debian-x86_64-*) bundle_kind="standalone" ;;
     *) die "Bundle name must match a supported Ubuntu/Debian bundle: $bundle_name" ;;
   esac
 fi
 case "$bundle_kind" in
-  standalone|headless) ;;
-  *) die "KAST_UBUNTU_DEBIAN_BUNDLE_KIND must be standalone or headless: $bundle_kind" ;;
+  headless) ;;
+  *) die "KAST_UBUNTU_DEBIAN_BUNDLE_KIND must be headless: $bundle_kind" ;;
 esac
 
 need_tool docker

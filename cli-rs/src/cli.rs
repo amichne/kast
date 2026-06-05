@@ -28,7 +28,7 @@ pub enum Command {
         #[command(subcommand)]
         command: ConfigCommand,
     },
-    /// Start the standalone JVM backend for a workspace.
+    /// Start the headless JVM backend for a workspace.
     Daemon {
         #[command(subcommand)]
         command: DaemonCommand,
@@ -75,7 +75,7 @@ pub enum ConfigCommand {
 
 #[derive(Debug, Subcommand)]
 pub enum DaemonCommand {
-    /// Launch the standalone JVM backend in the foreground.
+    /// Launch the headless JVM backend in the foreground.
     Start(DaemonStartArgs),
 }
 
@@ -264,7 +264,7 @@ pub struct RuntimeArgs {
     /// Allow up to return while the daemon is servable in INDEXING.
     #[arg(long, num_args = 0..=1, default_missing_value = "true")]
     pub accept_indexing: Option<bool>,
-    /// Fail instead of auto-starting a standalone daemon.
+    /// Fail instead of auto-starting a headless daemon.
     #[arg(long, num_args = 0..=1, default_missing_value = "true")]
     pub no_auto_start: Option<bool>,
     /// Unix-domain socket path for the backend to listen on when auto-started.
@@ -307,7 +307,7 @@ pub struct DaemonStartArgs {
     /// Absolute workspace root for daemon lifecycle and RPC commands.
     #[arg(long)]
     pub workspace_root: Option<PathBuf>,
-    /// Backend runtime to launch. Defaults to standalone.
+    /// Backend runtime to launch. Defaults to headless.
     #[arg(long = "backend", visible_alias = "backend-name", value_enum)]
     pub backend_name: Option<BackendName>,
     /// Override the directory containing backend runtime classpath.txt.
@@ -458,7 +458,6 @@ pub enum UninstallCommand {
 pub enum BackendName {
     Intellij,
     Headless,
-    Standalone,
 }
 
 impl BackendName {
@@ -466,21 +465,18 @@ impl BackendName {
         match self {
             Self::Intellij => "intellij",
             Self::Headless => "headless",
-            Self::Standalone => "standalone",
         }
     }
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
 pub enum BackendComponent {
-    Standalone,
     Headless,
 }
 
 impl BackendComponent {
     pub fn canonical(self) -> &'static str {
         match self {
-            Self::Standalone => "standalone",
             Self::Headless => "headless",
         }
     }

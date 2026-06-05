@@ -81,28 +81,13 @@ cleanup() {
 trap cleanup EXIT
 
 version="v9.8.7"
-bundle_kind="${KAST_UBUNTU_DEBIAN_BUNDLE_KIND:-standalone}"
-case "$bundle_kind" in
-  standalone)
-    platform="ubuntu-debian-x86_64"
-    packager="${repo_root}/scripts/package-ubuntu-debian-bundle.sh"
-    backend_archive_root="backend-standalone"
-    backend_install_name="standalone-${version}"
-    backend_launcher="kast-standalone"
-    backend_role="standalone-backend"
-    ;;
-  headless)
-    platform="ubuntu-debian-headless-x86_64"
-    packager="${repo_root}/scripts/package-ubuntu-debian-headless-bundle.sh"
-    backend_archive_root="backend-headless"
-    backend_install_name="headless-${version}"
-    backend_launcher="kast-headless"
-    backend_role="headless-backend"
-    ;;
-  *)
-    die "Unsupported KAST_UBUNTU_DEBIAN_BUNDLE_KIND: $bundle_kind"
-    ;;
-esac
+bundle_kind="headless"
+platform="ubuntu-debian-headless-x86_64"
+packager="${repo_root}/scripts/package-ubuntu-debian-bundle.sh"
+backend_archive_root="backend-headless"
+backend_install_name="headless-${version}"
+backend_launcher="kast-headless"
+backend_role="headless-backend"
 artifact_dir="${scratch_dir}/artifacts"
 cli_tree="${scratch_dir}/cli"
 backend_tree="${scratch_dir}/backend"
@@ -122,12 +107,10 @@ mkdir -p \
   "$install_root" \
   "$bin_dir"
 
-if [[ "$bundle_kind" == "headless" ]]; then
-  mkdir -p \
-    "${backend_tree}/${backend_archive_root}/idea-home/lib" \
-    "${backend_tree}/${backend_archive_root}/idea-home/modules" \
-    "${backend_tree}/${backend_archive_root}/idea-home/plugins/kast-headless/lib"
-fi
+mkdir -p \
+  "${backend_tree}/${backend_archive_root}/idea-home/lib" \
+  "${backend_tree}/${backend_archive_root}/idea-home/modules" \
+  "${backend_tree}/${backend_archive_root}/idea-home/plugins/kast-headless/lib"
 
 cat > "${cli_tree}/kast" <<'FAKE_KAST'
 #!/usr/bin/env bash
@@ -154,11 +137,9 @@ FAKE_BACKEND
 chmod +x "${backend_tree}/${backend_archive_root}/${backend_launcher}"
 printf '%s\n' "fake.jar" > "${backend_tree}/${backend_archive_root}/runtime-libs/classpath.txt"
 printf '%s\n' "fake runtime lib" > "${backend_tree}/${backend_archive_root}/runtime-libs/fake.jar"
-if [[ "$bundle_kind" == "headless" ]]; then
-  printf '%s\n' "fake nio fs" > "${backend_tree}/${backend_archive_root}/idea-home/lib/nio-fs.jar"
-  printf '%s\n' "fake module descriptors" > "${backend_tree}/${backend_archive_root}/idea-home/modules/module-descriptors.dat"
-  printf '%s\n' "fake plugin lib" > "${backend_tree}/${backend_archive_root}/idea-home/plugins/kast-headless/lib/backend-headless.jar"
-fi
+printf '%s\n' "fake nio fs" > "${backend_tree}/${backend_archive_root}/idea-home/lib/nio-fs.jar"
+printf '%s\n' "fake module descriptors" > "${backend_tree}/${backend_archive_root}/idea-home/modules/module-descriptors.dat"
+printf '%s\n' "fake plugin lib" > "${backend_tree}/${backend_archive_root}/idea-home/plugins/kast-headless/lib/backend-headless.jar"
 mkdir -p "${backend_tree}/${backend_archive_root}/lib"
 printf '%s\n' "fat jar placeholder" > "${backend_tree}/${backend_archive_root}/lib/${backend_archive_root}-9.8.7-all.jar"
 
@@ -202,11 +183,9 @@ bundle_root="${extract_dir}/kast-${platform}-${version}"
 [[ -x "${bundle_root}/bin/kast" ]] || die "Bundle missing executable Rust CLI"
 [[ -x "${bundle_root}/lib/backends/${backend_install_name}/${backend_launcher}" ]] || die "Bundle missing ${backend_launcher} launcher"
 [[ -f "${bundle_root}/lib/backends/${backend_install_name}/runtime-libs/classpath.txt" ]] || die "Bundle missing runtime classpath"
-if [[ "$bundle_kind" == "headless" ]]; then
-  [[ -f "${bundle_root}/lib/backends/${backend_install_name}/idea-home/lib/nio-fs.jar" ]] || die "Bundle missing headless IDEA home"
-  [[ -f "${bundle_root}/lib/backends/${backend_install_name}/idea-home/modules/module-descriptors.dat" ]] || die "Bundle missing headless module descriptors"
-  [[ -d "${bundle_root}/lib/backends/${backend_install_name}/idea-home/plugins/kast-headless" ]] || die "Bundle missing bundled kast-headless plugin"
-fi
+[[ -f "${bundle_root}/lib/backends/${backend_install_name}/idea-home/lib/nio-fs.jar" ]] || die "Bundle missing headless IDEA home"
+[[ -f "${bundle_root}/lib/backends/${backend_install_name}/idea-home/modules/module-descriptors.dat" ]] || die "Bundle missing headless module descriptors"
+[[ -d "${bundle_root}/lib/backends/${backend_install_name}/idea-home/plugins/kast-headless" ]] || die "Bundle missing bundled kast-headless plugin"
 [[ -x "${bundle_root}/scripts/install-ubuntu-debian.sh" ]] || die "Bundle missing canonical installer"
 [[ ! -e "${bundle_root}/scripts/install-kast-devin.sh" ]] || die "Bundle must not include Devin-specific installer"
 [[ ! -e "${bundle_root}/scripts/verify-kast-devin.sh" ]] || die "Bundle must not include a second verifier script"
@@ -247,26 +226,16 @@ installed_kast="${bin_dir}/kast"
 config_file="${config_home}/config.toml"
 
 [[ -x "$installed_kast" ]] || die "Installed kast is not executable"
-if [[ "$bundle_kind" == "headless" ]]; then
-  [[ -f "$installed_kast" && ! -L "$installed_kast" ]] || die "Installed headless kast must be an executable shim"
-  grep -Fq -- "-Didea.force.use.core.classloader=true" "$installed_kast" \
-    || die "Installed headless kast shim must export the core classloader JVM option"
-else
-  [[ -L "$installed_kast" ]] || die "Installed standalone kast must be a symlink"
-fi
+[[ -f "$installed_kast" && ! -L "$installed_kast" ]] || die "Installed headless kast must be an executable shim"
+grep -Fq -- "-Didea.force.use.core.classloader=true" "$installed_kast" \
+  || die "Installed headless kast shim must export the core classloader JVM option"
 [[ -f "$config_file" ]] || die "Installer did not write config.toml"
-if [[ "$bundle_kind" == "headless" ]]; then
-  grep -Fq 'defaultBackend = "headless"' "$config_file" || die "config.toml does not default to headless runtime"
-  grep -Fq "[backends.headless]" "$config_file" || die "config.toml does not include headless backend config"
-  grep -Fq "runtimeLibsDir = \"${installed_home}/lib/backends/headless-${version}/runtime-libs\"" "$config_file" \
-    || die "config.toml does not point at bundled headless runtime libs"
-  grep -Fq "ideaHome = \"${installed_home}/lib/backends/headless-${version}/idea-home\"" "$config_file" \
-    || die "config.toml does not point at bundled headless IDEA home"
-else
-  grep -Fq "[backends.standalone]" "$config_file" || die "config.toml does not include standalone backend config"
-  grep -Fq "runtimeLibsDir = \"${installed_home}/lib/backends/standalone-${version}/runtime-libs\"" "$config_file" \
-    || die "config.toml does not point at bundled standalone runtime libs"
-fi
+grep -Fq 'defaultBackend = "headless"' "$config_file" || die "config.toml does not default to headless runtime"
+grep -Fq "[backends.headless]" "$config_file" || die "config.toml does not include headless backend config"
+grep -Fq "runtimeLibsDir = \"${installed_home}/lib/backends/headless-${version}/runtime-libs\"" "$config_file" \
+  || die "config.toml does not point at bundled headless runtime libs"
+grep -Fq "ideaHome = \"${installed_home}/lib/backends/headless-${version}/idea-home\"" "$config_file" \
+  || die "config.toml does not point at bundled headless IDEA home"
 grep -Fq "backendVersion = \"9.8.7\"" "$config_file" || die "config.toml does not record normalized backend version"
 
 bundle_without_sidecar="${artifact_dir}/kast-${platform}-v9.8.6.tar.gz"

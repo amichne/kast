@@ -32,7 +32,7 @@ class PsiReferenceScanner(
     private val moduleNameForFile: (String) -> String? = { null },
 ) {
     fun scanFileReferences(filePath: String): List<SymbolReferenceRow> =
-        // Exclusive access required: the standalone backend's K2 FIR lazy declaration
+        // Exclusive access required: the headless backend's K2 FIR lazy declaration
         // resolver is not thread-safe for concurrent resolution within a single session.
         environment.withExclusiveAccess {
             val rows = mutableListOf<SymbolReferenceRow>()

@@ -8,9 +8,9 @@ All dependencies must be declared in libs.version.toml (violating this rule is a
 If you need a new dependency, add it to the narrowest unit that needs it and update all consumers.
 
 Kast is a Kotlin analysis tool with one line-delimited JSON-RPC contract and
-two supported operator paths: the repo-local `kast` CLI manages a standalone
-JVM daemon for local automation and CI, and the IntelliJ plugin backend runs
-inside a running IntelliJ IDEA instance.
+two supported operator paths: the repo-local `kast` CLI manages a headless JVM
+daemon for local automation and CI, and the IntelliJ plugin backend runs inside
+a running IntelliJ IDEA instance.
 
 Subdirectory `AGENTS.md` files narrow these rules for their own units. When a
 rule exists in both places, follow the deeper file.
@@ -62,16 +62,15 @@ not justified.
 Use this map to choose the narrowest unit that owns a change.
 
 - `analysis-api`: shared contract, serializable models, JSON-RPC wire types,
-  descriptor discovery helpers, standalone option parsing, errors, file edit
+  descriptor discovery helpers, server launch options, errors, file edit
   validation, descriptor schema, and disk edit helpers
 - `analysis-server`: JSON-RPC dispatch, local socket and stdio transport,
   request limits, and descriptor lifecycle
 - `index-store`: SQLite source index persistence, file manifest state,
   workspace discovery cache payload storage, and generic reference-index
   batching without IntelliJ or backend runtime dependencies
-- `backend-standalone`: standalone host, Analysis API session bootstrap,
-  Gradle workspace discovery, PSI/K2-backed analysis helpers, and runtime
-  startup
+- `backend-headless`: headless host, Analysis API session bootstrap,
+  packaged IntelliJ runtime bootstrap, and runtime startup
 - `backend-intellij`: IntelliJ IDEA plugin backend, project-level service,
   plugin lifecycle, and IDE-hosted analysis server
 - `backend-shared`: shared analysis utilities consumed by both backend
@@ -120,7 +119,7 @@ Native tool names for discoverability: `kast_workspace_files`,
 JSON-RPC method via `kast rpc` when a CLI fallback is needed.
 
 Do not add JVM handlers for operational SQLite reads. Kotlin may hydrate and
-write the source index for standalone or IDE-backed indexing, but source-index
+write the source index for headless or IDE-backed indexing, but source-index
 query methods such as `database/metrics` and SQLite-backed `symbol/query` are
 owned by the Rust CLI in `cli-rs/`.
 
@@ -178,10 +177,9 @@ Apply these rules across the repo before local unit rules add more detail.
   into `analysis-api` only when multiple hosts or transports need them.
 - Keep host-specific dependencies out of shared units. `analysis-api` and
   `analysis-server` must stay free of IntelliJ-only APIs.
-- Keep standalone PSI and K2 Analysis API helpers in `backend-standalone`
-  unless another surviving runtime genuinely needs them.
-- Use `kast` in commands, docs, and packaging targets. `analysis-cli` is a
-  historical path and should not receive new references.
+- Keep headless runtime behavior in `backend-headless` unless another
+  surviving runtime genuinely needs it.
+- Use `kast` in commands, docs, and packaging targets.
 - Treat API model changes as contract changes. Preserve schema compatibility,
   absolute-path invariants, descriptor fields, and capability advertising
   unless the behavior is intentionally changing across the stack.
@@ -190,7 +188,7 @@ Apply these rules across the repo before local unit rules add more detail.
 - Respect the current architecture: the Rust CLI in `cli-rs/` owns the
   operator-facing control plane, installer, packaged skill, and Copilot
   extension distribution; `analysis-server` owns transport and
-  descriptor plumbing, `backend-standalone` owns headless runtime behavior,
+  descriptor plumbing, `backend-headless` owns headless runtime behavior,
   `backend-intellij` owns IDE-hosted runtime behavior, and
   `analysis-api` test fixtures stay out of production code paths.
 - Treat `docs/` plus `zensical.toml` as the documentation source of truth.

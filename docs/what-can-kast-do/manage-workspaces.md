@@ -148,7 +148,7 @@ one response.
 ## Check capabilities
 
 `capabilities` returns the operations the active backend supports.
-Run it before calling something the standalone backend doesn't yet
+Run it before calling something the headless backend doesn't yet
 implement.
 
 ```console title="Query supported capabilities"
@@ -169,6 +169,6 @@ kast rpc '{"jsonrpc":"2.0","id":1,"method":"health"}' \
 ## Next steps
 
 - [Backends](../getting-started/backends.md) — when to pick
-  standalone vs IDEA
+  headless vs IDEA
 - [Troubleshooting](../troubleshooting.md) — daemon won't start,
   stuck indexing, stale results after edits

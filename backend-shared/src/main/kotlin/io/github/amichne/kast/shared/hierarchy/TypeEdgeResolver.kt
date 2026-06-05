@@ -12,7 +12,7 @@ data class TypeHierarchyEdge(
 /**
  * Backend-specific provider of supertype and subtype edges for a given PSI element.
  *
- * - **Standalone**: scans `session.allKtFiles()` for matching FQNs.
+ * - **Headless**: scans `session.allKtFiles()` for matching FQNs.
  * - **IntelliJ**: uses `DirectClassInheritorsSearch` and `JavaPsiFacade`.
  */
 interface TypeEdgeResolver {

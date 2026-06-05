@@ -68,7 +68,7 @@ class KastConfigTest {
         val descriptorDir = cacheDir.resolve("daemons")
         val socketDir = System.getProperty("java.io.tmpdir")
         val binaryPath = binDir.resolve("kast")
-        val runtimeLibsDir = libDir.resolve("backends/current/runtime-libs")
+        val runtimeLibsDir = libDir.resolve("backends/headless/current/runtime-libs")
 
         assertEquals("paths", config.paths.installRoot.section)
         assertEquals("installRoot", config.paths.installRoot.key)
@@ -84,7 +84,8 @@ class KastConfigTest {
         assertEquals("cli", config.cli.binaryPath.section)
         assertEquals("binaryPath", config.cli.binaryPath.key)
         assertEquals(binaryPath.toString(), config.cli.binaryPath.value)
-        assertEquals(runtimeLibsDir.toString(), config.backends.standalone.runtimeLibsDir.value.orNull)
+        assertEquals(runtimeLibsDir.toString(), config.backends.headless.runtimeLibsDir.value.orNull)
+        assertEquals(OptionalConfigString.Unset, config.backends.headless.ideaHome.value)
     }
 
     @Test
@@ -130,8 +131,9 @@ class KastConfigTest {
             "profiling" to "outputDir",
             "profiling" to "otlpEndpoint",
             "profiling" to "emitManifest",
-            "backends.standalone" to "enabled",
-            "backends.standalone" to "runtimeLibsDir",
+            "backends.headless" to "enabled",
+            "backends.headless" to "runtimeLibsDir",
+            "backends.headless" to "ideaHome",
             "backends.intellij" to "enabled",
             "paths" to "installRoot",
             "paths" to "binDir",
@@ -243,6 +245,9 @@ class KastConfigTest {
                 [indexing.remote]
                 enabled = true
                 source-index-url = "file:///tmp/kast/source-index.db"
+
+                [backends.headless]
+                idea-home = "/Applications/IntelliJ IDEA CE.app/Contents"
                 """.trimIndent(),
             )
         }
@@ -262,6 +267,7 @@ class KastConfigTest {
         assertEquals(false, config.cache.enabled.value)
         assertEquals(true, config.indexing.remote.enabled.value)
         assertEquals("file:///tmp/kast/source-index.db", config.indexing.remote.sourceIndexUrl.value.orNull)
+        assertEquals("/Applications/IntelliJ IDEA CE.app/Contents", config.backends.headless.ideaHome.value.orNull)
         assertEquals(true, config.telemetry.enabled.value)
         assertEquals("references,rename", config.telemetry.scopes.value)
         assertEquals(config.server.maxResults.value, config.toServerLimits().maxResults)
@@ -352,6 +358,9 @@ class KastConfigTest {
 
                 [indexing.remote]
                 sourceIndexUrl = "$sourceIndexUrl"
+
+                [backends.headless]
+                ideaHome = "$installRoot/idea-home"
                 """.trimIndent(),
             )
         }
@@ -372,6 +381,7 @@ class KastConfigTest {
         val decodedPriorityDepth: Any? = loaded.indexing?.phase2PriorityDepth
         val decodedInstallRoot: Any? = loaded.paths?.installRoot
         val decodedSourceIndexUrl: Any? = loaded.indexing?.remote?.sourceIndexUrl
+        val decodedIdeaHome: Any? = loaded.backends?.headless?.ideaHome
 
         assertTrue(
             maxResults is ServerMaxResults,
@@ -399,6 +409,7 @@ class KastConfigTest {
             "Expected indexing.remote.sourceIndexUrl to decode into IndexingRemoteSourceIndexUrl, got $decodedSourceIndexUrl",
         )
         assertEquals(IndexingRemoteSourceIndexUrl(OptionalConfigString(sourceIndexUrl)), decodedSourceIndexUrl)
+        assertEquals(HeadlessIdeaHome(OptionalConfigString("$installRoot/idea-home")), decodedIdeaHome)
     }
 
     private fun <T> withContextClassLoader(

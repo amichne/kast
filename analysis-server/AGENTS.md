@@ -16,7 +16,7 @@ Keep this unit focused on transport concerns around the backend interface.
 - Keep capability checks, truncation, and request-limit handling aligned with
   backend responses.
 - Do not move PSI logic, workspace discovery, or CLI parsing into this unit.
-  Those belong in `backend-standalone` or `kast`.
+  Those belong in `backend-headless` or `kast`.
 
 ## Verification
 

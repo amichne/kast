@@ -10,7 +10,7 @@ Assume every edit in this unit can affect the whole repo.
 - Keep this unit focused on shared build behavior: toolchains, test setup,
   fat-jar packaging, runtime-lib syncing, wrapper generation, and reusable
   dependency bundles.
-- `kast.standalone-app` is the shared packaging contract for app modules. Keep
+- `kast.headless-app` is the shared packaging contract for app modules. Keep
   task names and output layout stable unless every consumer is updated
   together.
 - `SyncRuntimeLibsTask` and `WriteWrapperScriptTask` define the runtime-libs
@@ -34,6 +34,6 @@ Validate both the immediate target and the wider build impact.
   `-PexcludeTags=<tag1,tag2>`. Default runs exclude `concurrency`,
   `performance`, and `parity` unless include tags are set.
 - Run the affected module tasks that consume the changed convention, starting
-  with `./gradlew :backend-standalone:syncRuntimeLibs :backend-standalone:portableDistZip`
+  with `./gradlew :backend-headless:syncRuntimeLibs :backend-headless:portableDistZip`
   for runtime-lib or portable distribution changes.
 - For significant build-logic edits, run `./gradlew build`.

@@ -5,7 +5,7 @@ import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.KastConfigOverride
 import io.github.amichne.kast.api.client.PathsConfigOverride
 import io.github.amichne.kast.api.client.ProfilingConfigOverride
-import io.github.amichne.kast.api.client.StandaloneServerOptions
+import io.github.amichne.kast.api.client.ServerLaunchOptions
 import io.github.amichne.kast.api.client.fields.PathsCacheDir
 import io.github.amichne.kast.api.client.fields.PathsDescriptorDir
 import io.github.amichne.kast.api.client.fields.PathsLogsDir
@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.system.exitProcess
 
 data class HeadlessServerOptions(
-    val serverOptions: StandaloneServerOptions,
+    val serverOptions: ServerLaunchOptions,
     val smokeOnly: Boolean = false,
 ) {
     companion object {
@@ -31,7 +31,7 @@ data class HeadlessServerOptions(
                 .filterNot { it.startsWith(HeadlessBootstrapOptions.IDEA_HOME_PREFIX) }
                 .toTypedArray()
             return HeadlessServerOptions(
-                serverOptions = StandaloneServerOptions.parse(serverArgs),
+                serverOptions = ServerLaunchOptions.parse(serverArgs),
                 smokeOnly = smokeOnly,
             )
         }

@@ -46,8 +46,9 @@ internal class KastSettingsConfigurable(
     private lateinit var telemetryScopes: JBTextField
     private lateinit var telemetryDetail: ComboBox<KastTelemetryDetailLevel>
     private lateinit var telemetryOutputFile: TextFieldWithBrowseButton
-    private lateinit var backendsStandaloneEnabled: JBCheckBox
-    private lateinit var backendsStandaloneRuntimeLibsDir: TextFieldWithBrowseButton
+    private lateinit var backendsHeadlessEnabled: JBCheckBox
+    private lateinit var backendsHeadlessRuntimeLibsDir: TextFieldWithBrowseButton
+    private lateinit var backendsHeadlessIdeaHome: TextFieldWithBrowseButton
     private lateinit var backendsIntellijEnabled: JBCheckBox
     private var loadedTelemetryDetailRaw: String? = null
 
@@ -77,8 +78,9 @@ internal class KastSettingsConfigurable(
             telemetryScopes.text != state.telemetryScopes.orEmpty() ||
             selectedTelemetryDetailConfigValue(state) != state.telemetryDetail ||
             telemetryOutputFile.text != state.telemetryOutputFile.orEmpty() ||
-            backendsStandaloneEnabled.isSelected != (state.backendsStandaloneEnabled ?: false) ||
-            backendsStandaloneRuntimeLibsDir.text != state.backendsStandaloneRuntimeLibsDir.orEmpty() ||
+            backendsHeadlessEnabled.isSelected != (state.backendsHeadlessEnabled ?: false) ||
+            backendsHeadlessRuntimeLibsDir.text != state.backendsHeadlessRuntimeLibsDir.orEmpty() ||
+            backendsHeadlessIdeaHome.text != state.backendsHeadlessIdeaHome.orEmpty() ||
             backendsIntellijEnabled.isSelected != (state.backendsIntellijEnabled ?: false)
     }
 
@@ -208,17 +210,26 @@ internal class KastSettingsConfigurable(
         }
 
         collapsibleGroup("Backends") {
-            lateinit var standaloneEnabledCell: Cell<JBCheckBox>
+            lateinit var headlessEnabledCell: Cell<JBCheckBox>
             row {
-                standaloneEnabledCell = checkBox("Standalone enabled").also { backendsStandaloneEnabled = it.component }
+                headlessEnabledCell = checkBox("Headless enabled").also { backendsHeadlessEnabled = it.component }
             }
             row("Runtime libs directory:") {
-                backendsStandaloneRuntimeLibsDir = textFieldWithBrowseButton(
+                backendsHeadlessRuntimeLibsDir = textFieldWithBrowseButton(
                     FileChooserDescriptorFactory.createSingleFolderDescriptor()
                         .withTitle("Select Runtime Libs Directory"),
                     project,
                 ) { it.path }
-                    .enabledIf(standaloneEnabledCell.selected)
+                    .enabledIf(headlessEnabledCell.selected)
+                    .component
+            }
+            row("IDEA home:") {
+                backendsHeadlessIdeaHome = textFieldWithBrowseButton(
+                    FileChooserDescriptorFactory.createSingleFolderDescriptor()
+                        .withTitle("Select IntelliJ IDEA Home"),
+                    project,
+                ) { it.path }
+                    .enabledIf(headlessEnabledCell.selected)
                     .component
             }
             row {
@@ -259,8 +270,9 @@ internal class KastSettingsConfigurable(
         loadedTelemetryDetailRaw = state.telemetryDetail
         telemetryDetail.selectedItem = KastTelemetryDetailLevel.fromConfigValue(state.telemetryDetail)
         telemetryOutputFile.text = state.telemetryOutputFile.orEmpty()
-        backendsStandaloneEnabled.isSelected = state.backendsStandaloneEnabled ?: false
-        backendsStandaloneRuntimeLibsDir.text = state.backendsStandaloneRuntimeLibsDir.orEmpty()
+        backendsHeadlessEnabled.isSelected = state.backendsHeadlessEnabled ?: false
+        backendsHeadlessRuntimeLibsDir.text = state.backendsHeadlessRuntimeLibsDir.orEmpty()
+        backendsHeadlessIdeaHome.text = state.backendsHeadlessIdeaHome.orEmpty()
         backendsIntellijEnabled.isSelected = state.backendsIntellijEnabled ?: false
     }
 
@@ -284,8 +296,9 @@ internal class KastSettingsConfigurable(
         state.telemetryScopes = telemetryScopes.text.takeIf(String::isNotBlank)
         state.telemetryDetail = selectedTelemetryDetailConfigValue(state)?.takeIf(String::isNotBlank)
         state.telemetryOutputFile = telemetryOutputFile.text.takeIf(String::isNotBlank)
-        state.backendsStandaloneEnabled = backendsStandaloneEnabled.isSelected
-        state.backendsStandaloneRuntimeLibsDir = backendsStandaloneRuntimeLibsDir.text.takeIf(String::isNotBlank)
+        state.backendsHeadlessEnabled = backendsHeadlessEnabled.isSelected
+        state.backendsHeadlessRuntimeLibsDir = backendsHeadlessRuntimeLibsDir.text.takeIf(String::isNotBlank)
+        state.backendsHeadlessIdeaHome = backendsHeadlessIdeaHome.text.takeIf(String::isNotBlank)
         state.backendsIntellijEnabled = backendsIntellijEnabled.isSelected
         loadedTelemetryDetailRaw = state.telemetryDetail
     }

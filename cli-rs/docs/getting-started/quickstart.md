@@ -9,7 +9,7 @@ icon: lucide/rocket
 
 This page starts from the `cli-rs` checkout. The commands assume you
 also have a Kotlin workspace that has been indexed by Kast or can be
-indexed by the standalone backend.
+indexed by the headless backend.
 
 ## Build the binary
 

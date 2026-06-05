@@ -30,8 +30,9 @@ import io.github.amichne.kast.api.client.fields.OptionalConfigString
 import io.github.amichne.kast.api.client.fields.ServerMaxConcurrentRequests
 import io.github.amichne.kast.api.client.fields.ServerMaxResults
 import io.github.amichne.kast.api.client.fields.ServerRequestTimeoutMillis
-import io.github.amichne.kast.api.client.fields.StandaloneBackendEnabled
-import io.github.amichne.kast.api.client.fields.StandaloneRuntimeLibsDir
+import io.github.amichne.kast.api.client.fields.HeadlessBackendEnabled
+import io.github.amichne.kast.api.client.fields.HeadlessIdeaHome
+import io.github.amichne.kast.api.client.fields.HeadlessRuntimeLibsDir
 import io.github.amichne.kast.api.client.fields.TelemetryDetail
 import io.github.amichne.kast.api.client.fields.TelemetryEnabled
 import io.github.amichne.kast.api.client.fields.TelemetryOutputFile
@@ -39,7 +40,7 @@ import io.github.amichne.kast.api.client.fields.TelemetryScopes
 import io.github.amichne.kast.api.client.fields.WatcherDebounceMillis
 import io.github.amichne.kast.api.client.RemoteIndexConfigOverride
 import io.github.amichne.kast.api.client.ServerConfigOverride
-import io.github.amichne.kast.api.client.StandaloneBackendConfigOverride
+import io.github.amichne.kast.api.client.HeadlessBackendConfigOverride
 import io.github.amichne.kast.api.client.TelemetryConfigOverride
 import io.github.amichne.kast.api.client.WatcherConfigOverride
 
@@ -65,8 +66,9 @@ internal class KastSettingsState : PersistentStateComponent<KastSettingsState> {
     var telemetryScopes: String? = null
     var telemetryDetail: String? = null
     var telemetryOutputFile: String? = null
-    var backendsStandaloneEnabled: Boolean? = null
-    var backendsStandaloneRuntimeLibsDir: String? = null
+    var backendsHeadlessEnabled: Boolean? = null
+    var backendsHeadlessRuntimeLibsDir: String? = null
+    var backendsHeadlessIdeaHome: String? = null
     var backendsIntellijEnabled: Boolean? = null
 
     override fun getState(): KastSettingsState = this
@@ -93,8 +95,9 @@ internal class KastSettingsState : PersistentStateComponent<KastSettingsState> {
         telemetryScopes = config.telemetry.scopes.value
         telemetryDetail = config.telemetry.detail.value
         telemetryOutputFile = config.telemetry.outputFile.value.orNull
-        backendsStandaloneEnabled = config.backends.standalone.enabled.value
-        backendsStandaloneRuntimeLibsDir = config.backends.standalone.runtimeLibsDir.value.orNull
+        backendsHeadlessEnabled = config.backends.headless.enabled.value
+        backendsHeadlessRuntimeLibsDir = config.backends.headless.runtimeLibsDir.value.orNull
+        backendsHeadlessIdeaHome = config.backends.headless.ideaHome.value.orNull
         backendsIntellijEnabled = config.backends.intellij.enabled.value
     }
 
@@ -133,10 +136,13 @@ internal class KastSettingsState : PersistentStateComponent<KastSettingsState> {
             outputFile = telemetryOutputFile?.takeIf(String::isNotBlank)?.let { TelemetryOutputFile(OptionalConfigString(it)) },
         ).takeIfAny(),
         backends = BackendsConfigOverride(
-            standalone = StandaloneBackendConfigOverride(
-                enabled = backendsStandaloneEnabled?.let(::StandaloneBackendEnabled),
-                runtimeLibsDir = backendsStandaloneRuntimeLibsDir?.takeIf(String::isNotBlank)?.let {
-                    StandaloneRuntimeLibsDir(OptionalConfigString(it))
+            headless = HeadlessBackendConfigOverride(
+                enabled = backendsHeadlessEnabled?.let(::HeadlessBackendEnabled),
+                runtimeLibsDir = backendsHeadlessRuntimeLibsDir?.takeIf(String::isNotBlank)?.let {
+                    HeadlessRuntimeLibsDir(OptionalConfigString(it))
+                },
+                ideaHome = backendsHeadlessIdeaHome?.takeIf(String::isNotBlank)?.let {
+                    HeadlessIdeaHome(OptionalConfigString(it))
                 },
             ).takeIfAny(),
             intellij = IntellijBackendConfigOverride(enabled = backendsIntellijEnabled?.let(::IntellijBackendEnabled)).takeIfAny(),
@@ -177,10 +183,10 @@ private fun TelemetryConfigOverride.takeIfAny(): TelemetryConfigOverride? =
     takeIf { enabled != null || scopes != null || detail != null || outputFile != null }
 
 private fun BackendsConfigOverride.takeIfAny(): BackendsConfigOverride? =
-    takeIf { standalone != null || intellij != null }
+    takeIf { headless != null || intellij != null }
 
-private fun StandaloneBackendConfigOverride.takeIfAny(): StandaloneBackendConfigOverride? =
-    takeIf { enabled != null || runtimeLibsDir != null }
+private fun HeadlessBackendConfigOverride.takeIfAny(): HeadlessBackendConfigOverride? =
+    takeIf { enabled != null || runtimeLibsDir != null || ideaHome != null }
 
 private fun IntellijBackendConfigOverride.takeIfAny(): IntellijBackendConfigOverride? =
     takeIf { enabled != null }

@@ -62,7 +62,7 @@ usage() {
 Usage: scripts/package-ubuntu-debian-bundle.sh --cli-archive <zip> --backend-archive <zip> --version <tag> [--output <tar.gz>]
 
 Build the Ubuntu/Debian x86_64 Kast bundle from the Rust CLI archive and the
-standalone backend portable archive.
+headless backend portable archive.
 USAGE
 }
 
@@ -71,7 +71,7 @@ cli_archive=""
 backend_archive=""
 version="${KAST_UBUNTU_DEBIAN_VERSION:-}"
 output_path=""
-bundle_kind="${KAST_UBUNTU_DEBIAN_BUNDLE_KIND:-standalone}"
+bundle_kind="headless"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -95,11 +95,6 @@ while [[ $# -gt 0 ]]; do
       output_path="$2"; shift 2 ;;
     --output=*)
       output_path="${1#--output=}"; shift ;;
-    --bundle-kind)
-      [[ $# -ge 2 ]] || die "Missing value for --bundle-kind"
-      bundle_kind="$2"; shift 2 ;;
-    --bundle-kind=*)
-      bundle_kind="${1#--bundle-kind=}"; shift ;;
     --help|-h)
       usage; exit 0 ;;
     *)
@@ -117,25 +112,11 @@ done
 need_tool python3
 need_tool tar
 
-case "$bundle_kind" in
-  standalone)
-    platform="ubuntu-debian-x86_64"
-    backend_archive_root="backend-standalone"
-    backend_install_name="standalone-${version}"
-    backend_launcher="kast-standalone"
-    backend_role="standalone-backend"
-    ;;
-  headless)
-    platform="ubuntu-debian-headless-x86_64"
-    backend_archive_root="backend-headless"
-    backend_install_name="headless-${version}"
-    backend_launcher="kast-headless"
-    backend_role="headless-backend"
-    ;;
-  *)
-    die "Unsupported bundle kind: $bundle_kind"
-    ;;
-esac
+platform="ubuntu-debian-headless-x86_64"
+backend_archive_root="backend-headless"
+backend_install_name="headless-${version}"
+backend_launcher="kast-headless"
+backend_role="headless-backend"
 
 bundle_name="kast-${platform}-${version}"
 if [[ -z "$output_path" ]]; then
@@ -165,11 +146,9 @@ backend_root="${backend_extract}/${backend_archive_root}"
 [[ -d "$backend_root" ]] || die "Backend archive must contain ${backend_archive_root}/"
 [[ -f "${backend_root}/runtime-libs/classpath.txt" ]] || die "Backend archive missing runtime-libs/classpath.txt"
 [[ -f "${backend_root}/${backend_launcher}" ]] || die "Backend archive missing ${backend_launcher} launcher"
-if [[ "$bundle_kind" == "headless" ]]; then
-  [[ -f "${backend_root}/idea-home/lib/nio-fs.jar" ]] || die "Backend archive missing headless idea-home/lib/nio-fs.jar"
-  [[ -f "${backend_root}/idea-home/modules/module-descriptors.dat" ]] || die "Backend archive missing headless idea-home/modules/module-descriptors.dat"
-  [[ -d "${backend_root}/idea-home/plugins/kast-headless" ]] || die "Backend archive missing bundled kast-headless plugin"
-fi
+[[ -f "${backend_root}/idea-home/lib/nio-fs.jar" ]] || die "Backend archive missing headless idea-home/lib/nio-fs.jar"
+[[ -f "${backend_root}/idea-home/modules/module-descriptors.dat" ]] || die "Backend archive missing headless idea-home/modules/module-descriptors.dat"
+[[ -d "${backend_root}/idea-home/plugins/kast-headless" ]] || die "Backend archive missing bundled kast-headless plugin"
 
 cp "$cli_bin" "${staging_root}/bin/kast"
 chmod 755 "${staging_root}/bin/kast"

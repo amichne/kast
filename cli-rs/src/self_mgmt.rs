@@ -112,26 +112,6 @@ pub fn doctor() -> Result<SelfDoctorResult> {
                 ));
             }
         }
-        if install
-            .components
-            .iter()
-            .any(|component| component == "backend")
-        {
-            match installed_backend_version(&install_root, install) {
-                Some(version) => match version_meets_minimum(&version, minimum_backend_version) {
-                    Some(true) => {}
-                    Some(false) => issues.push(format!(
-                        "Standalone backend {version} is older than required minimum {minimum_backend_version}"
-                    )),
-                    None => warnings.push(format!(
-                        "Standalone backend version {version} cannot be compared to required minimum {minimum_backend_version}"
-                    )),
-                },
-                None => issues.push(format!(
-                    "Standalone backend version is unknown; required minimum is {minimum_backend_version}"
-                )),
-            }
-        }
         for backend in &install.backends {
             let backend_label = if backend.name.trim().is_empty() {
                 "backend"
@@ -375,22 +355,6 @@ fn managed_path(install_root: &Path, value: &str) -> PathBuf {
     } else {
         install_root.join(path)
     }
-}
-
-fn installed_backend_version(install_root: &Path, install: &InstallState) -> Option<String> {
-    let install_version = install.backend_version.trim();
-    if !install_version.is_empty() {
-        return Some(install_version.to_string());
-    }
-    let current = install_root.join("backends/current");
-    let target = fs::read_link(&current)
-        .or_else(|_| current.canonicalize())
-        .ok()?;
-    target
-        .file_name()
-        .and_then(|name| name.to_str())
-        .and_then(|name| name.strip_prefix("standalone-"))
-        .map(str::to_string)
 }
 
 fn minimum_backend_version() -> &'static str {

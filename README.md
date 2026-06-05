@@ -9,15 +9,12 @@ Use it when text search can show you where a name appears, but you need to
 know which declaration it resolves to, which callers are real, or whether a
 planned edit is safe to apply.
 
-`kast` has three independent runtime modes:
+`kast` has two independent runtime modes:
 
-- **Standalone CLI + backend** — install the `kast` CLI and run
-  `kast backend install standalone` once. Fully independent from any IDE;
-  works in terminals, CI, and local agents.
 - **Headless CLI + backend** — install the `kast` CLI and run
-  `kast backend install headless` for a packaged IntelliJ-backed runtime in
-  hosted Linux agents. Use the Ubuntu/Debian bundle when the image needs an
-  offline, self-contained install.
+  `kast backend install headless` for a packaged IntelliJ-backed runtime.
+  Works in terminals, CI, hosted agents, and images that need an offline,
+  self-contained Ubuntu/Debian bundle.
 - **IDEA / Android Studio plugin-backed runtime** — runs inside a supported
   JetBrains IDE and reuses the IDE's already-open project model, indexes, and
   analysis session.
@@ -31,8 +28,7 @@ Pick the entry point you want first:
 
 | Runtime mode | Best when | Install |
 | --- | --- | --- |
-| **Standalone CLI + backend** | You want an independent runtime for terminal work, CI, or agents | [Install guide](https://kast.michne.com/getting-started/install/) |
-| **Headless CLI + backend** | You need a self-contained Ubuntu/Debian CI or hosted-agent runtime | [Ubuntu/Debian bundle](https://kast.michne.com/getting-started/install/#ubuntudebian-bundle) |
+| **Headless CLI + backend** | You want an independent runtime for terminal work, CI, agents, or hosted Linux images | [Install guide](https://kast.michne.com/getting-started/install/) |
 | **IDEA / Android Studio plugin-backed runtime** | IDEA or Android Studio is already open and you want to reuse its already-open project model and indexes | [Plugin install guide](https://kast.michne.com/getting-started/install/#install-the-idea-and-android-studio-plugin-manually) · [Latest plugin zip](https://github.com/amichne/kast/releases/latest) |
 
 Install the Rust `kast` CLI with Homebrew when you can:
@@ -46,9 +42,6 @@ Install exactly one backend for the runtime you want:
 
 ```console
 # Terminal, CI, or agent runtime without an IDE
-kast backend install standalone
-
-# Hosted Linux agent runtime backed by packaged IntelliJ components
 kast backend install headless
 ```
 
@@ -64,8 +57,8 @@ self-contained Ubuntu/Debian bundle; the
 [install guide](https://kast.michne.com/getting-started/install/#ubuntudebian-bundle)
 shows the exact environment variables.
 
-Warm the configured backend before running analysis commands. Headless installs
-should pass `--backend=headless`; standalone installs can omit the selector:
+Warm the configured backend before running analysis commands. Headless is the
+default non-IDE backend:
 
 ```console
 # Start or warm the backend
@@ -93,8 +86,8 @@ own:
 
 ## Choose the runtime that fits your workflow
 
-Use the standalone path when you need a fully independent process or when no
-IDE is running. Use the IDEA / Android Studio plugin-backed path when the IDE
+Use the headless path when you need a fully independent process or when no IDE
+is running. Use the IDEA / Android Studio plugin-backed path when the IDE
 already has the project open and you want `kast` to piggyback on the IDE's
 existing project model and index.
 

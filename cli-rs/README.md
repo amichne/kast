@@ -2,12 +2,12 @@
 
 Rust implementation of the Kast CLI control plane.
 
-This crate owns the user-facing `kast` executable. It keeps the standalone
+This crate owns the user-facing `kast` executable. It keeps the headless
 analysis backend as a JVM process and keeps CLI-owned work in Rust:
 
 - command parsing with `clap`
 - config read/write from `config.toml`
-- standalone daemon launch via `java -cp <runtime-libs/classpath.txt>`
+- headless daemon launch via `java -cp <runtime-libs/classpath.txt>`
 - JSON-RPC passthrough over Unix domain sockets
 - descriptor-based `up`, `status`, and `stop`
 - embedded skill and Copilot extension installation

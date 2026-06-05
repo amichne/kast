@@ -76,14 +76,7 @@
           "architecture/how-it-works",
           "architecture/behavioral-model",
           "architecture/kast-vs-lsp",
-          "architecture/adt-boundaries",
-          "architecture/scip-ingestion-audit"
-        ]
-      },
-      {
-        "group": "Changelog",
-        "pages": [
-          "changelog"
+          "architecture/adt-boundaries"
         ]
       }
     ]

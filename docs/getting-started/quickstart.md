@@ -10,9 +10,9 @@ By the end of this page you'll have asked the daemon two questions —
 "what symbol is this?" and "who uses it?" — and gotten structured JSON
 back, with proof the search finished.
 
-The walkthrough uses the standalone backend because it works anywhere:
+The walkthrough uses the headless backend because it works anywhere:
 your terminal, a CI runner, an agent loop. If IDEA or Android Studio is already
-open on the project with the plugin installed, swap `--backend-name=standalone`
+open on the project with the plugin installed, swap `--backend-name=headless`
 for `--backend-name=intellij` and skip the start/stop steps. The plugin
 reuses the IDE's analysis session — no second daemon to babysit.
 
@@ -27,12 +27,12 @@ You need:
 ??? info "About Gradle discovery"
 
     With `settings.gradle(.kts)` or `build.gradle(.kts)` at the root,
-    standalone discovery uses Gradle's project model. Without those
+    headless discovery uses Gradle's project model. Without those
     files, `kast` falls back to conventional source roots and a
     source-file scan. The Gradle path matters most for multi-module
     builds.
 
-## Step 1: Start the standalone backend
+## Step 1: Start the headless backend
 
 Run every command from your project root. The first call is the slow
 one — the daemon discovers your project and indexes Kotlin files. After
@@ -40,7 +40,7 @@ that, you're hitting a warm session.
 
 ```console linenums="1" title="Start the daemon"
 kast up \
-  --backend-name=standalone \
+  --backend-name=headless \
   --workspace-root="$PWD"
 ```
 
@@ -151,7 +151,7 @@ Free the resources when you're done.
 
 ```console title="Stop the daemon"
 kast stop \
-  --backend-name=standalone \
+  --backend-name=headless \
   --workspace-root="$PWD"
 ```
 

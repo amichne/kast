@@ -20,7 +20,7 @@ results.
 kast install skill
 
 # 2. Install the backend this agent will use
-kast backend install standalone
+kast backend install headless
 
 # 3. Warm the workspace daemon for this repo
 kast up --workspace-root="$PWD"
@@ -34,24 +34,22 @@ tools and fall back to `kast rpc` when they need the CLI directly;
 humans use `kast up`, `kast status`, and `kast stop` to manage the
 daemon. The rest of this page is what your agent picks up from that.
 
-The agent talks to any runtime over the same JSON-RPC. Standalone runs as an
-independent daemon for terminals and local automation. Headless packages the
-IntelliJ-backed runtime for Ubuntu/Debian CI and hosted agents. The IDEA plugin
-exposes the same protocol from inside an open IDE project, reusing the IDE's
-project model, indexes, and analysis session.
+The agent talks to any runtime over the same JSON-RPC. Headless runs as an
+independent packaged IntelliJ-backed daemon for terminals, CI, and hosted
+agents. The IDEA plugin exposes the same protocol from inside an open IDE
+project, reusing the IDE's project model, indexes, and analysis session.
 
 ## Local and hosted agent setup
 
 Local agents usually inherit a developer's installed CLI and workspace, then
-install exactly one backend with `kast backend install standalone` or
-`kast backend install headless`. Hosted Ubuntu/Debian agents can either install
-the headless backend on demand or install into a contained root from the
-self-contained offline bundle before the session starts. Homebrew is still the
-developer install path when the target supports it.
+install the backend with `kast backend install headless`. Hosted Ubuntu/Debian
+agents can either install the headless backend on demand or install into a
+contained root from the self-contained offline bundle before the session starts.
+Homebrew is still the developer install path when the target supports it.
 
 | Agent environment | Install path | Runtime path | What to hand the agent |
 |-------------------|--------------|--------------|-------------------------|
-| Local developer agent | `kast install skill` and optional `kast install copilot-extension` | `kast backend install standalone` or IDEA backend | The packaged skill and native `kast_*` tools |
+| Local developer agent | `kast install skill` and optional `kast install copilot-extension` | `kast backend install headless` or IDEA backend | The packaged skill and native `kast_*` tools |
 | CI review agent | `kast backend install headless` | Headless backend warmed with `kast up --backend=headless` | `kast rpc` commands and structured JSON outputs |
 | Ubuntu/Debian hosted agent | `scripts/install-ubuntu-debian.sh install` from the offline release bundle | Contained CLI and headless backend under `KAST_UBUNTU_DEBIAN_ROOT` | `kast` on `PATH` plus `KAST_CONFIG_HOME` when a custom config root is used |
 
@@ -95,20 +93,19 @@ boundaries and visibility shape the results — your agent doesn't need
 to reason about them itself.
 [Manage workspaces →](../what-can-kast-do/manage-workspaces.md)
 
-## Same protocol, three runtimes
+## Same protocol, two runtimes
 
 The contract is identical. What changes is where the analysis state
 lives and who keeps it warm.
 
 | Runtime         | Where semantic state lives                       | Best fit                                              |
 |-----------------|--------------------------------------------------|-------------------------------------------------------|
-| Standalone      | A long-lived `kast` daemon outside any IDE       | Terminals, CI, remote machines, cloud agents          |
-| Headless        | A packaged IntelliJ backend outside any IDE      | Ubuntu/Debian CI images and hosted agents             |
+| Headless        | A packaged IntelliJ backend outside any IDE      | Terminals, CI, remote machines, cloud agents          |
 | IDEA plugin     | Inside a running IDEA or Android Studio project  | Local agents when the IDE is already open and warm    |
 
 If IDEA or Android Studio is open, agents can connect to the plugin and ride
-the IDE's warmth. If not, the standalone or packaged headless backend exposes
-the same surface on its own.
+the IDE's warmth. If not, the headless backend exposes the same surface on its
+own.
 
 ## What your agent can actually do
 

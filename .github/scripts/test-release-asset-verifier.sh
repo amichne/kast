@@ -42,13 +42,6 @@ def write_entry(archive, name, data, mode=0o644):
     info.external_attr = (stat.S_IFREG | mode) << 16
     archive.writestr(info, data)
 
-def backend_zip():
-    asset_path.parent.mkdir(parents=True, exist_ok=True)
-    with zipfile.ZipFile(asset_path, "w") as archive:
-        write_entry(archive, "backend-standalone/kast-standalone", b"#!/usr/bin/env bash\n", 0o755)
-        write_entry(archive, "backend-standalone/runtime-libs/classpath.txt", b"backend-standalone.jar\n")
-        write_entry(archive, "backend-standalone/runtime-libs/backend-standalone.jar", b"backend")
-
 def headless_zip():
     asset_path.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(asset_path, "w") as archive:
@@ -60,9 +53,7 @@ def headless_zip():
         write_entry(archive, "backend-headless/idea-home/plugins/kast-headless/lib/backend-headless.jar", b"plugin")
 
 asset_path.parent.mkdir(parents=True, exist_ok=True)
-if kind == "standalone":
-    backend_zip()
-elif kind == "headless":
+if kind == "headless":
     headless_zip()
 elif kind == "intellij":
     with zipfile.ZipFile(asset_path, "w") as archive:
@@ -83,15 +74,9 @@ write_expected_assets() {
   write_text_asset "${release_dir}/kast-${tag}-macos-x64.zip"
   write_text_asset "${release_dir}/kast-${tag}-macos-arm64.zip"
   write_zip_asset "${release_dir}/kast-intellij-${tag}.zip" intellij
-  write_zip_asset "${release_dir}/kast-standalone-${tag}.zip" standalone
   write_zip_asset "${release_dir}/kast-headless-${tag}.zip" headless
-  write_text_asset "${release_dir}/kast-ubuntu-debian-x86_64-${tag}.tar.gz"
   write_text_asset "${release_dir}/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
   write_text_asset "${release_dir}/kast-devin-headless-runtime-linux-x64-${tag}.tar.gz"
-  printf '%s  %s\n' \
-    "$(compute_sha256 "${release_dir}/kast-ubuntu-debian-x86_64-${tag}.tar.gz")" \
-    "kast-ubuntu-debian-x86_64-${tag}.tar.gz" \
-    > "${release_dir}/kast-ubuntu-debian-x86_64-${tag}.tar.gz.sha256"
   printf '%s  %s\n' \
     "$(compute_sha256 "${release_dir}/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz")" \
     "kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz" \
@@ -127,12 +112,10 @@ entries = [
     ("cli-linux-arm64", f"kast-{tag}-linux-arm64.zip"),
     ("cli-macos-x64", f"kast-{tag}-macos-x64.zip"),
     ("cli-macos-arm64", f"kast-{tag}-macos-arm64.zip"),
-    ("ubuntu-debian-x86_64", f"kast-ubuntu-debian-x86_64-{tag}.tar.gz"),
     ("ubuntu-debian-headless-x86_64", f"kast-ubuntu-debian-headless-x86_64-{tag}.tar.gz"),
     ("devin-headless-linux-x64", f"kast-devin-headless-runtime-linux-x64-{tag}.tar.gz"),
     ("headless", f"kast-headless-{tag}.zip"),
     ("intellij", f"kast-intellij-{tag}.zip"),
-    ("standalone", f"kast-standalone-{tag}.zip"),
 ]
 payload = {
     "builds": [
@@ -168,12 +151,10 @@ assets=(
   "kast-${tag}-linux-arm64.zip"
   "kast-${tag}-macos-x64.zip"
   "kast-${tag}-macos-arm64.zip"
-  "kast-ubuntu-debian-x86_64-${tag}.tar.gz"
   "kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
   "kast-devin-headless-runtime-linux-x64-${tag}.tar.gz"
   "kast-headless-${tag}.zip"
   "kast-intellij-${tag}.zip"
-  "kast-standalone-${tag}.zip"
 )
 
 write_expected_assets
@@ -191,14 +172,12 @@ core_assets=(
   "kast-${tag}-macos-arm64.zip"
   "kast-headless-${tag}.zip"
   "kast-intellij-${tag}.zip"
-  "kast-standalone-${tag}.zip"
 )
 write_text_asset "${release_dir}/kast-${tag}-linux-x64.zip"
 write_text_asset "${release_dir}/kast-${tag}-linux-arm64.zip"
 write_text_asset "${release_dir}/kast-${tag}-macos-x64.zip"
 write_text_asset "${release_dir}/kast-${tag}-macos-arm64.zip"
 write_zip_asset "${release_dir}/kast-intellij-${tag}.zip" intellij
-write_zip_asset "${release_dir}/kast-standalone-${tag}.zip" standalone
 write_zip_asset "${release_dir}/kast-headless-${tag}.zip" headless
 write_sha256sums "$release_dir" "${core_assets[@]}"
 write_provenance

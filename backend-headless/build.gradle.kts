@@ -1,7 +1,7 @@
 import org.gradle.jvm.tasks.Jar
 
 plugins {
-    id("kast.standalone-serialization-app")
+    id("kast.runtime-serialization-app")
 }
 
 extra["kastIncludeShadowJar"] = "false"
@@ -370,7 +370,7 @@ tasks.named<SyncRuntimeLibsTask>("syncRuntimeLibs") {
 
 val headlessPluginRequiredClassEntries = listOf(
     "io/github/amichne/kast/headless/HeadlessApplicationStarter.class",
-    "io/github/amichne/kast/api/client/StandaloneServerOptions.class",
+    "io/github/amichne/kast/api/client/ServerLaunchOptions.class",
     "io/github/amichne/kast/server/AnalysisServer.class",
     "io/github/amichne/kast/indexstore/store/SqliteSourceIndexStore.class",
     "io/github/amichne/kast/shared/analysis/PsiReferenceScanner.class",

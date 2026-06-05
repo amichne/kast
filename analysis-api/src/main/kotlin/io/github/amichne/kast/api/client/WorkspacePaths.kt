@@ -31,11 +31,11 @@ fun defaultBinDirectory(): Path = defaultBinDirectory(System::getenv)
 fun defaultBinDirectory(envLookup: (String) -> String?): Path =
     configPath(KastConfig.defaults().paths.binDir.value)
 
-fun defaultStandaloneRuntimeLibsDirectory(): Path? =
-    defaultStandaloneRuntimeLibsDirectory(System::getenv)
+fun defaultHeadlessRuntimeLibsDirectory(): Path? =
+    defaultHeadlessRuntimeLibsDirectory(System::getenv)
 
-fun defaultStandaloneRuntimeLibsDirectory(envLookup: (String) -> String?): Path? =
-    defaultConfigStandaloneRuntimeLibsDir(KastConfig.defaults().paths.libDir.value)
+fun defaultHeadlessRuntimeLibsDirectory(envLookup: (String) -> String?): Path? =
+    defaultConfigHeadlessRuntimeLibsDir(KastConfig.defaults().paths.libDir.value)
         .toAbsolutePath()
         .normalize()
 
